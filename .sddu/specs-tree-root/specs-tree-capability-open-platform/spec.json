@@ -15,7 +15,7 @@
   },
   "summary": {
     "userStories": 7,
-    "functionalRequirements": 17,
+    "functionalRequirements": 19,
     "nonFunctionalRequirements": 17,
     "edgeCases": 14,
     "openQuestions": 4
@@ -29,15 +29,17 @@
     {"id": "FR-006", "name": "事件权限注册", "status": "specified"},
     {"id": "FR-007", "name": "事件权限编辑", "status": "specified"},
     {"id": "FR-008", "name": "事件权限删除", "status": "specified"},
-    {"id": "FR-009", "name": "应用权限列表查看", "status": "specified"},
-    {"id": "FR-010", "name": "API 权限树形选择", "status": "specified"},
-    {"id": "FR-011", "name": "API 权限申请提交", "status": "specified"},
-    {"id": "FR-012", "name": "应用事件列表查看", "status": "specified"},
-    {"id": "FR-013", "name": "事件权限树形选择", "status": "specified"},
-    {"id": "FR-014", "name": "事件权限申请提交", "status": "specified"},
-    {"id": "FR-015", "name": "审批流程配置", "status": "specified"},
-    {"id": "FR-016", "name": "资源注册审批", "status": "specified"},
-    {"id": "FR-017", "name": "权限申请审批", "status": "specified"}
+    {"id": "FR-009", "name": "分组树管理（增删改）", "status": "specified"},
+    {"id": "FR-010", "name": "分组责任人配置", "status": "specified"},
+    {"id": "FR-011", "name": "应用权限列表查看", "status": "specified"},
+    {"id": "FR-012", "name": "API 权限树形选择", "status": "specified"},
+    {"id": "FR-013", "name": "API 权限申请提交", "status": "specified"},
+    {"id": "FR-014", "name": "应用事件列表查看", "status": "specified"},
+    {"id": "FR-015", "name": "事件权限树形选择", "status": "specified"},
+    {"id": "FR-016", "name": "事件权限申请提交", "status": "specified"},
+    {"id": "FR-017", "name": "审批流程配置", "status": "specified"},
+    {"id": "FR-018", "name": "资源注册审批", "status": "specified"},
+    {"id": "FR-019", "name": "权限申请审批", "status": "specified"}
   ],
   "mvp": {
     "inScope": [
