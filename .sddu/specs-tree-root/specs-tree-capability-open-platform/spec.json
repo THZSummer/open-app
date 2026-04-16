@@ -35,7 +35,7 @@
     {"id": "FR-012", "name": "应用权限列表查看", "status": "specified"},
     {"id": "FR-013", "name": "API 权限树形选择", "status": "specified"},
     {"id": "FR-014", "name": "API 权限申请提交", "status": "specified"},
-    {"id": "FR-015", "name": "应用事件列表查看", "status": "specified"},
+    {"id": "FR-015", "name": "应用事件列表查看与配置", "status": "specified"},
     {"id": "FR-016", "name": "事件权限树形选择", "status": "specified"},
     {"id": "FR-017", "name": "事件权限申请提交", "status": "specified"},
     {"id": "FR-018", "name": "审批流程配置", "status": "specified"},
