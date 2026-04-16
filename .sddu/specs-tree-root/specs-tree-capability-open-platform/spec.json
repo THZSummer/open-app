@@ -15,7 +15,7 @@
   },
   "summary": {
     "userStories": 7,
-    "functionalRequirements": 20,
+    "functionalRequirements": 27,
     "nonFunctionalRequirements": 17,
     "edgeCases": 14,
     "openQuestions": 4
@@ -32,26 +32,33 @@
     {"id": "FR-009", "name": "事件权限注册", "status": "specified"},
     {"id": "FR-010", "name": "事件权限编辑", "status": "specified"},
     {"id": "FR-011", "name": "事件权限删除", "status": "specified"},
-    {"id": "FR-012", "name": "应用权限列表查看", "status": "specified"},
-    {"id": "FR-013", "name": "API 权限树形选择", "status": "specified"},
-    {"id": "FR-014", "name": "API 权限申请提交", "status": "specified"},
-    {"id": "FR-015", "name": "应用事件列表查看与配置", "status": "specified"},
-    {"id": "FR-016", "name": "事件权限树形选择", "status": "specified"},
-    {"id": "FR-017", "name": "事件权限申请提交", "status": "specified"},
-    {"id": "FR-018", "name": "审批流程配置", "status": "specified"},
-    {"id": "FR-019", "name": "资源注册审批", "status": "specified"},
-    {"id": "FR-020", "name": "权限申请审批", "status": "specified"}
+    {"id": "FR-012", "name": "回调权限列表查看", "status": "specified"},
+    {"id": "FR-013", "name": "回调权限注册", "status": "specified"},
+    {"id": "FR-014", "name": "回调权限编辑", "status": "specified"},
+    {"id": "FR-015", "name": "回调权限删除", "status": "specified"},
+    {"id": "FR-016", "name": "应用权限列表查看", "status": "specified"},
+    {"id": "FR-017", "name": "API 权限树形选择", "status": "specified"},
+    {"id": "FR-018", "name": "API 权限申请提交", "status": "specified"},
+    {"id": "FR-019", "name": "应用事件列表查看与配置", "status": "specified"},
+    {"id": "FR-020", "name": "事件权限树形选择", "status": "specified"},
+    {"id": "FR-021", "name": "事件权限申请提交", "status": "specified"},
+    {"id": "FR-022", "name": "应用回调列表查看与配置", "status": "specified"},
+    {"id": "FR-023", "name": "回调权限树形选择", "status": "specified"},
+    {"id": "FR-024", "name": "回调权限申请提交", "status": "specified"},
+    {"id": "FR-025", "name": "审批流程配置", "status": "specified"},
+    {"id": "FR-026", "name": "资源注册审批", "status": "specified"},
+    {"id": "FR-027", "name": "权限申请审批", "status": "specified"}
   ],
   "mvp": {
     "inScope": [
       "权限管理",
       "审批管理",
       "API 管理",
-      "事件管理"
+      "事件管理",
+      "回调管理"
     ],
     "outOfScope": [
       "能力消费网关（API 网关）",
-      "回调管理",
       "连接器管理",
       "特有连接能力（IM 卡片/云盘/邮件）",
       "能力目录/市场",
