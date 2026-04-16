@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Layout, Typography, Space } from 'antd';
+import { Layout } from 'antd';
 
 const { Header: AntHeader } = Layout;
-const { Text } = Typography;
 
 function Header() {
   return (
@@ -15,7 +14,7 @@ function Header() {
       justifyContent: 'space-between',
       borderBottom: '1px solid #f0f0f0'
     }}>
-      <Space size={40}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
             width: 32,
@@ -30,7 +29,7 @@ function Header() {
               <path d="M4 8L8 4L12 8L8 12L4 8Z" fill="white"/>
             </svg>
           </div>
-          <Text strong style={{ fontSize: 16, color: '#1f1f1f' }}>开放平台</Text>
+          <strong style={{ fontSize: 16, color: '#1f1f1f' }}>开放平台</strong>
         </Link>
         <a 
           href="https://open.feishu.cn/"
@@ -40,8 +39,8 @@ function Header() {
         >
           开发文档
         </a>
-      </Space>
-      <Text type="secondary">开发者</Text>
+      </div>
+      <span style={{ color: '#8c8c8c' }}>开发者</span>
     </AntHeader>
   );
 }

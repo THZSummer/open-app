@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Form, Input, Button, Table, Pagination, Space, Radio, Row, Col, Popconfirm } from 'antd';
+import { Form, Input, Button, Table, Pagination, Radio, Popconfirm } from 'antd';
 import { EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { fetchEventList, fetchSubscriptionConfig } from './thunk';
 import EventDrawer from './EventDrawer';
 import './Events.m.less';
-
-const { Title, Text, Link } = Typography;
 
 function Events() {
   const navigate = useNavigate();
@@ -91,7 +89,7 @@ function Events() {
       render: (text, record) => (
         <div>
           <div>{text}</div>
-          <Text type="secondary" style={{ fontSize: 12 }}>{record.event}</Text>
+          <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.event}</span>
         </div>
       ),
     },
@@ -125,15 +123,15 @@ function Events() {
 
   return (
     <div className="events">
-      <Title level={4} className="page-title">事件配置</Title>
-      <Text type="secondary" className="page-desc">
+      <h4 className="page-title">事件配置</h4>
+      <span className="page-desc">
         配置事件订阅和回调地址
-        <Link onClick={() => navigate('/events-docs')} style={{ marginLeft: 4 }}>了解更多</Link>
-      </Text>
+        <a onClick={() => navigate('/events-docs')} style={{ marginLeft: 4, cursor: 'pointer', color: '#1677ff' }}>了解更多</a>
+      </span>
 
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-          <Text strong style={{ fontSize: 16 }}>订阅方式</Text>
+          <strong style={{ fontSize: 16 }}>订阅方式</strong>
           {!isEditing ? (
             <Button icon={<EditOutlined />} onClick={handleEdit}>编辑</Button>
           ) : null}
@@ -153,10 +151,10 @@ function Events() {
               <div>
                 {form.getFieldValue('method') === 'mqs' && (
                   <Form.Item label="说明文档" style={{ marginBottom: 16 }}>
-                    <Link href="https://example.com/mqs-docs" target="_blank">
+                    <a href="https://example.com/mqs-docs" target="_blank">
                       <span style={{ color: '#000' }}>查看</span>
                       <span style={{ color: '#1890ff' }}>MQS内置消息队列使用规范</span>
-                    </Link>
+                    </a>
                   </Form.Item>
                 )}
                 {form.getFieldValue('method') === 'business' && (
@@ -169,7 +167,7 @@ function Events() {
                         />
                       </Form.Item>
                     ) : (
-                      <Text>{subscriptionConfig.callbackUrl || '-'}</Text>
+                      <span>{subscriptionConfig.callbackUrl || '-'}</span>
                     )}
                   </Form.Item>
                 )}
@@ -198,7 +196,7 @@ function Events() {
 
       <div style={{ marginTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <Text strong style={{ fontSize: 16 }}>已添加事件</Text>
+          <strong style={{ fontSize: 16 }}>已添加事件</strong>
           <Button icon={<PlusOutlined />} onClick={handleOpenDrawer}>添加事件</Button>
         </div>
         <Table

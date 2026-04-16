@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Typography, Table, Button, Tag, Space } from 'antd';
+import { Table, Button, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { fetchApiList } from './thunk';
 import ApiPermissionDrawer from './ApiPermissionDrawer';
 import './ApiManagement.m.less';
-
-const { Title, Text } = Typography;
 
 const getStatusTag = (status) => {
   const colorMap = {
@@ -27,7 +25,7 @@ const columns = [
     title: 'codeName',
     dataIndex: 'codeName',
     key: 'codeName',
-    render: (code) => <Text code>{code}</Text>,
+    render: (code) => <code>{code}</code>,
   },
   {
     title: '认证方式',
@@ -49,7 +47,7 @@ const columns = [
     title: '操作',
     key: 'action',
     render: (_, record) => (
-      <Space>
+      <div style={{ display: 'flex', gap: 8 }}>
         {record.status === '审核中' && (
           <>
             <Button type="link" size="small">复制审批地址</Button>
@@ -57,7 +55,7 @@ const columns = [
           </>
         )}
         <Button type="link" size="small">查看文档</Button>
-      </Space>
+      </div>
     ),
   },
 ];
@@ -95,8 +93,8 @@ function ApiManagement() {
     <div className="api-management">
       <div className="page-header">
         <div className="page-header-left">
-          <Title level={4} className="page-title">API管理</Title>
-          <Text type="secondary" className="page-desc">管理应用接口，配置API权限和调用参数</Text>
+          <h4 className="page-title">API管理</h4>
+          <span className="page-desc">管理应用接口，配置API权限和调用参数</span>
         </div>
         <Button 
           type="primary" 

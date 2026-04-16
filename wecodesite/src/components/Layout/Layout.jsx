@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Layout as AntLayout } from 'antd';
 import Header from './Header/Header';
 import AppInfoBar from './AppInfoBar/AppInfoBar';
-import Sidebar from './sidebar/Sidebar';
+import Sidebar from './Sidebar/Sidebar';
 import './Layout.m.less';
 
 const { Content, Sider } = AntLayout;

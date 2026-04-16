@@ -1,10 +1,8 @@
 import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Typography, Card, Button, Tag, Empty, Modal, message } from 'antd';
+import { Card, Button, Tag, Empty, Modal, message } from 'antd';
 import { RobotOutlined, GlobalOutlined, AppstoreOutlined, MailOutlined, CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import './Capabilities.m.less';
-
-const { Title, Text } = Typography;
 
 const capabilityTypes = [
   { type: 'bot', name: '机器人', icon: 'RobotOutlined' },
@@ -60,8 +58,8 @@ function Capabilities() {
   return (
     <div className="capabilities">
       <div className="capabilities-header">
-        <Title level={4} className="page-title">添加应用能力</Title>
-        <Text type="secondary" className="page-desc">为应用开启对应的客户端能力，开启后需完成配置并发布应用才能生效</Text>
+        <h4 className="page-title">添加应用能力</h4>
+        <span className="page-desc">为应用开启对应的客户端能力，开启后需完成配置并发布应用才能生效</span>
       </div>
 
       <div className="capabilities-content">
@@ -94,17 +92,17 @@ function Capabilities() {
                       <Tag color="orange" className="not-recommended-tag">不推荐</Tag>
                     )}
                   </div>
-                  <Text type="secondary" className="capability-desc">
+                  <span className="capability-desc">
                     {capability.type === 'bot' && '通过飞书会话与用户进行消息交互'}
                     {capability.type === 'web' && 'H5 开发，运行在飞书客户端内'}
                     {capability.type === 'miniapp' && '支持在小程序中实现复杂交互'}
                     {capability.type === 'widget' && '将应用嵌入到云文档、多维表格等飞书模块'}
-                  </Text>
+                  </span>
                   <div className="capability-status">
                     {isEnabled(capability.type) ? (
-                      <Text type="success" className="enabled-text">
+                      <span className="enabled-text" style={{ color: '#52c41a' }}>
                         <CheckOutlined /> 已添加{capability.name}
-                      </Text>
+                      </span>
                     ) : (
                       <Button
                         type="primary"
@@ -138,7 +136,7 @@ function Capabilities() {
         )}
 
         <div className="capability-notes">
-          <Text type="secondary" className="notes-title">说明</Text>
+          <span className="notes-title">说明</span>
           <ul className="notes-list">
             <li>应用能力开启后，需完成必填项的配置并提交版本发布申请后，才能在线上生效</li>
             <li>不同能力支持的配置项不同，请根据实际需求进行配置</li>
@@ -166,18 +164,18 @@ function Capabilities() {
                 {selectedCapability.type === 'widget' && <AppstoreOutlined />}
               </span>
               <div className="modal-text">
-                <Text strong>{selectedCapability.name}</Text>
+                <strong>{selectedCapability.name}</strong>
                 <br />
-                <Text type="secondary">
+                <span style={{ color: '#8c8c8c' }}>
                   {selectedCapability.type === 'bot' && '通过飞书会话与用户进行消息交互'}
                   {selectedCapability.type === 'web' && 'H5 开发，运行在飞书客户端内'}
                   {selectedCapability.type === 'miniapp' && '支持在小程序中实现复杂交互'}
                   {selectedCapability.type === 'widget' && '将应用嵌入到云文档、多维表格等飞书模块'}
-                </Text>
+                </span>
               </div>
             </div>
             <div className="modal-notice">
-              <Text>添加能力后，你需要：</Text>
+              <span>添加能力后，你需要：</span>
               <ul>
                 <li>完成必填项的配置</li>
                 <li>提交版本发布申请</li>

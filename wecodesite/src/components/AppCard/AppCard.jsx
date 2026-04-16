@@ -1,8 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Tag } from 'antd';
-
-const { Text } = Typography;
+import { Tag } from 'antd';
 
 function AppCard({ app }) {
   const navigate = useNavigate();
@@ -25,7 +23,7 @@ function AppCard({ app }) {
         </div>
         <div>
           <div style={{ marginBottom: 4 }}>
-            <Text strong style={{ fontSize: 16 }}>{app.name}</Text>
+            <strong style={{ fontSize: 16 }}>{app.name}</strong>
           </div>
           <div>
             {app.eamap ? (
@@ -39,13 +37,13 @@ function AppCard({ app }) {
       
       <div style={{ lineHeight: 2, marginTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div>
-          <Text type="secondary" style={{ width: 70, display: 'inline-block' }}>所有者：</Text><Text style={{ color: '#1677ff' }}>{app.owner.split('@')[0]}</Text>
+          <span style={{ width: 70, display: 'inline-block', color: '#8c8c8c' }}>所有者：</span><span style={{ color: '#1677ff' }}>{app.owner.split('@')[0]}</span>
         </div>
         <div>
-          <Text type="secondary" style={{ width: 70, display: 'inline-block' }}>我的角色：</Text><Text>{app.role}</Text>
+          <span style={{ width: 70, display: 'inline-block', color: '#8c8c8c' }}>我的角色：</span><span>{app.role}</span>
         </div>
         <div>
-          <Text type="secondary" style={{ width: 70, display: 'inline-block' }}>最新动态：</Text><Text>{app.updateTime}</Text>
+          <span style={{ width: 70, display: 'inline-block', color: '#8c8c8c' }}>最新动态：</span><span>{app.updateTime}</span>
         </div>
       </div>
     </div>

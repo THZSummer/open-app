@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Typography, Table, Tag, Button, Space, Popconfirm } from 'antd';
+import { Table, Tag, Button, Popconfirm } from 'antd';
 import { PlusOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons';
 import { mockVersions } from './mock';
 import './VersionRelease.m.less';
-
-const { Title, Text } = Typography;
 
 const statusColorMap = {
   '已发布': 'green',
@@ -36,7 +34,7 @@ function VersionRelease() {
       title: '版本号',
       dataIndex: 'version',
       key: 'version',
-      render: (text) => <Text strong>{text}</Text>,
+      render: (text) => <strong>{text}</strong>,
     },
     {
       title: '版本状态',
@@ -60,7 +58,7 @@ function VersionRelease() {
       title: '操作',
       key: 'actions',
       render: (_, record) => (
-        <Space>
+        <div style={{ display: 'flex', gap: 8 }}>
           <Button
             type="link"
             size="small"
@@ -87,7 +85,7 @@ function VersionRelease() {
               </Button>
             </Popconfirm>
           )}
-        </Space>
+        </div>
       ),
     },
   ];
@@ -96,8 +94,8 @@ function VersionRelease() {
     <div className="version-release">
       <div className="page-header">
         <div className="page-header-left">
-          <Title level={4} className="page-title">版本发布</Title>
-          <Text type="secondary" className="page-desc">管理应用版本和发布历史</Text>
+          <h4 className="page-title">版本发布</h4>
+          <span className="page-desc">管理应用版本和发布历史</span>
         </div>
         <Button
           type="primary"

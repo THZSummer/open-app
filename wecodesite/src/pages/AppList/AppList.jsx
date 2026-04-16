@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, message } from 'antd';
+import { Button, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import AppCard from '../../components/appcard/AppCard';
 import CreateAppModal from '../../components/CreateAppModal/CreateAppModal';
 import { fetchAppList, fetchDefaultIcons, fetchEamapOptions, createApp } from './thunk';
-import './AppList.m.less';
 
-const { Title } = Typography;
+import './AppList.m.less';
 
 function AppList() {
   const [apps, setApps] = useState([]);
@@ -51,7 +50,7 @@ function AppList() {
   return (
     <div className="app-list">
       <div className="app-list-header">
-        <Title level={2} className="app-list-title">我的应用</Title>
+        <h2 className="app-list-title">我的应用</h2>
         <Button
           type="primary"
           icon={<PlusOutlined />}

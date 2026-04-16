@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Typography, Form, Input, Button, Card, Radio, Upload, message } from 'antd';
+import { Form, Input, Button, Card, Radio, Upload, message } from 'antd';
 import { EyeInvisibleOutlined, EyeOutlined, CopyOutlined } from '@ant-design/icons';
 import { mockAppInfo } from './mock';
 import './BasicInfo.m.less';
-
-const { Title, Text } = Typography;
 
 const authOptions = [
   { label: 'Cookie', value: 'Cookie' },
@@ -185,8 +183,8 @@ function BasicInfo() {
     <div className="basic-info">
       <div className="page-header">
         <div className="page-header-left">
-          <Title level={4} className="page-title">凭证和基础信息</Title>
-          <Text type="secondary" className="page-desc">管理应用凭证、安全配置和回调地址</Text>
+          <h4 className="page-title">凭证和基础信息</h4>
+          <span className="page-desc">管理应用凭证、安全配置和回调地址</span>
         </div>
       </div>
 

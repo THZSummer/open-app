@@ -12,6 +12,7 @@ import {
   AppstoreOutlined,
   MailOutlined,
   PlusOutlined,
+  LineChartOutlined,
 } from '@ant-design/icons';
 import './Sidebar.m.less';
 
@@ -27,29 +28,6 @@ const capabilityConfigs = [
   { type: 'web', name: '网页应用', icon: 'GlobalOutlined' },
   { type: 'miniapp', name: '小程序', icon: 'MailOutlined' },
   { type: 'widget', name: '小组件', icon: 'AppstoreOutlined' },
-];
-
-const staticMenuItems = [
-  {
-    category: '基础信息',
-    children: [
-      { key: 'basic-info', icon: <KeyOutlined />, label: '凭证和基础信息' },
-      { key: 'members', icon: <TeamOutlined />, label: '成员管理' },
-    ],
-  },
-  {
-    category: '开发配置',
-    children: [
-      { key: 'api-management', icon: <ApiOutlined />, label: 'API管理' },
-      { key: 'events', icon: <BellOutlined />, label: '事件配置' },
-    ],
-  },
-  {
-    category: '版本管理',
-    children: [
-      { key: 'version-release', icon: <InboxOutlined />, label: '版本发布' },
-    ],
-  },
 ];
 
 function Sidebar({ sidebarMainHeight }) {
@@ -69,44 +47,72 @@ function Sidebar({ sidebarMainHeight }) {
     navigate(`/capability-detail?appId=${appId}&type=${capability.type}&caps=${enabledCapabilities.join(',')}`);
   };
 
-  const getCapabilityMenuItems = () => {
-    const items = [];
-
-    items.push({
-      key: 'capabilities',
-      icon: <ThunderboltOutlined />,
-      label: '添加应用能力',
-      onClick: () => handleClick('capabilities'),
-    });
+  const getCapabilityChildren = () => {
+    const children = [
+      { key: 'capabilities', icon: <ThunderboltOutlined />, label: '添加应用能力' },
+    ];
 
     capabilityConfigs.forEach((capability) => {
       if (isEnabled(capability.type)) {
-        items.push({
+        children.push({
           key: `capability-${capability.type}`,
           icon: iconMap[capability.icon] || <ThunderboltOutlined />,
           label: capability.name,
-          onClick: () => handleCapabilityClick(capability),
+          capability: capability,
           indent: true,
         });
       }
     });
 
-    return items;
+    return children;
   };
 
-  const capabilityMenuItems = getCapabilityMenuItems();
+  const capabilityChildren = getCapabilityChildren();
+
+  const dynamicMenuItems = [
+    {
+      category: '基础信息',
+      children: [
+        { key: 'basic-info', icon: <KeyOutlined />, label: '凭证和基础信息' },
+        { key: 'members', icon: <TeamOutlined />, label: '成员管理' },
+      ],
+    },
+    {
+      category: '应用能力',
+      children: capabilityChildren,
+    },
+    {
+      category: '开发配置',
+      children: [
+        { key: 'api-management', icon: <ApiOutlined />, label: 'API管理' },
+        { key: 'events', icon: <BellOutlined />, label: '事件配置' },
+      ],
+    },
+    {
+      category: '运营监控',
+      children: [
+        { key: 'operation-log', icon: <LineChartOutlined />, label: '操作日志' },
+      ],
+    },
+    {
+      category: '版本管理',
+      children: [
+        { key: 'version-release', icon: <InboxOutlined />, label: '版本发布' },
+      ],
+    },
+  ];
 
   return (
     <div className="sidebar-nav">
-      {staticMenuItems.map((group, index) => (
+      {dynamicMenuItems.map((group, index) => (
         <div key={index} className="sidebar-category">
           <div className="sidebar-category-header">{group.category}</div>
           <ul className="sidebar-category-items">
             {group.children.map((item) => (
               <li
                 key={item.key}
-                className={`sidebar-item ${currentPath === item.key ? 'active' : ''}`}
-                onClick={() => handleClick(item.key)}
+                className={`sidebar-item ${currentPath === item.key ? 'active' : ''} ${item.indent ? 'indented' : ''}`}
+                onClick={() => item.capability ? handleCapabilityClick(item.capability) : handleClick(item.key)}
               >
                 <span className="sidebar-item-icon">{item.icon}</span>
                 <span className="sidebar-item-label">{item.label}</span>
@@ -116,22 +122,6 @@ function Sidebar({ sidebarMainHeight }) {
           <div className="sidebar-divider" />
         </div>
       ))}
-
-      <div className="sidebar-category">
-        <div className="sidebar-category-header">应用能力</div>
-        <ul className="sidebar-category-items">
-          {capabilityMenuItems.map((item) => (
-            <li
-              key={item.key}
-              className={`sidebar-item ${currentPath === item.key ? 'active' : ''} ${item.indent ? 'indented' : ''}`}
-              onClick={item.onClick}
-            >
-              <span className="sidebar-item-icon">{item.icon}</span>
-              <span className="sidebar-item-label">{item.label}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
     </div>
   );
 }

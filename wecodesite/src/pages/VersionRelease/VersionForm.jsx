@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Typography, Card, Form, Input, Button, Space, Tag, Divider } from 'antd';
+import { Card, Form, Input, Button, Tag, Divider } from 'antd';
 import { ArrowLeftOutlined, CheckOutlined, RobotOutlined, GlobalOutlined, AppstoreOutlined, MailOutlined } from '@ant-design/icons';
 import { mockVersions } from './mock';
 import './VersionRelease.m.less';
-
-const { Title, Text } = Typography;
 
 const capabilityIconMap = {
   '机器人': <RobotOutlined />,
@@ -71,19 +69,19 @@ function VersionForm() {
 
   return (
     <div className="version-form">
-      <Space style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16 }}>
         <Button type="link" icon={<ArrowLeftOutlined />} onClick={handleCancel}>
           返回版本列表
         </Button>
-      </Space>
+      </div>
 
       <div className="form-header">
-        <Title level={4} className="page-title">
+        <h4 className="page-title">
           {isViewMode ? '查看版本详情' : '创建新版本'}
-        </Title>
-        <Text type="secondary" className="page-desc">
+        </h4>
+        <span className="page-desc">
           {isViewMode ? '查看版本信息和应用能力配置' : '填写版本信息并提交审核'}
-        </Text>
+        </span>
       </div>
 
       <Card className="form-card">
@@ -97,7 +95,7 @@ function VersionForm() {
             rules={[{ required: true, message: '请输入版本号' }]}
           >
             {isViewMode ? (
-              <Text className="form-text">{versionData?.version}</Text>
+              <span className="form-text">{versionData?.version}</span>
             ) : (
               <Input placeholder="请输入版本号，如：1.0.0" />
             )}
@@ -109,7 +107,7 @@ function VersionForm() {
             rules={[{ required: true, message: '请输入版本描述' }]}
           >
             {isViewMode ? (
-              <Text className="form-text">{versionData?.desc}</Text>
+              <span className="form-text">{versionData?.desc}</span>
             ) : (
               <Input.TextArea
                 placeholder="请输入版本描述，说明本次发布的主要内容和变更"
@@ -129,7 +127,7 @@ function VersionForm() {
                   </Tag>
                 ))
               ) : (
-                <Text type="secondary">暂无已启用的应用能力</Text>
+                <span style={{ color: '#8c8c8c' }}>暂无已启用的应用能力</span>
               )}
             </div>
           </Form.Item>

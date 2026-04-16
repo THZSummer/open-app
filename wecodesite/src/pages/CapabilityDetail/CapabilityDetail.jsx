@@ -1,10 +1,8 @@
 import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Typography, Card, Button, Space, Form, Input, Switch, message } from 'antd';
+import { Card, Button, Form, Input, Switch, message } from 'antd';
 import { ArrowLeftOutlined, RobotOutlined, GlobalOutlined, AppstoreOutlined, MailOutlined } from '@ant-design/icons';
 import './CapabilityDetail.m.less';
-
-const { Title, Text } = Typography;
 
 const capabilityConfigs = {
   bot: {
@@ -60,13 +58,13 @@ function CapabilityDetail() {
   if (!config) {
     return (
       <div className="capability-detail">
-        <Space style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16 }}>
           <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(`/capabilities?appId=${appId}&caps=${enabledCapabilities.join(',')}`)}>
             返回应用能力
           </Button>
-        </Space>
-        <Title level={4}>应用能力详情</Title>
-        <Text type="secondary">查看应用能力详情和权限配置</Text>
+        </div>
+        <h4>应用能力详情</h4>
+        <span style={{ color: '#8c8c8c' }}>查看应用能力详情和权限配置</span>
       </div>
     );
   }
@@ -74,13 +72,13 @@ function CapabilityDetail() {
   if (!isEnabled(capabilityType)) {
     return (
       <div className="capability-detail">
-        <Space style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16 }}>
           <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(`/capabilities?appId=${appId}&caps=${enabledCapabilities.join(',')}`)}>
             返回应用能力
           </Button>
-        </Space>
-        <Title level={4}>{config.name}</Title>
-        <Text type="secondary">该能力尚未启用，请先在添加应用能力页面启用</Text>
+        </div>
+        <h4>{config.name}</h4>
+        <span style={{ color: '#8c8c8c' }}>该能力尚未启用，请先在添加应用能力页面启用</span>
       </div>
     );
   }
@@ -94,17 +92,17 @@ function CapabilityDetail() {
 
   return (
     <div className="capability-detail">
-      <Space style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16 }}>
         <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => navigate(`/capabilities?appId=${appId}&caps=${enabledCapabilities.join(',')}`)}>
           返回应用能力
         </Button>
-      </Space>
+      </div>
 
       <div className="detail-header">
         <div className="detail-icon">{config.icon}</div>
         <div className="detail-title">
-          <Title level={4}>{config.name}</Title>
-          <Text type="secondary">{config.description}</Text>
+          <h4>{config.name}</h4>
+          <span style={{ color: '#8c8c8c' }}>{config.description}</span>
         </div>
       </div>
 

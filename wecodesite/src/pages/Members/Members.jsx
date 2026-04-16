@@ -1,11 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Typography, Table, Button, Tag, Space, Modal, Input, Radio } from 'antd';
+import { Table, Button, Tag, Modal, Input, Radio } from 'antd';
 import { PlusOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { mockMembers, mockUsers, rolePermissions } from './mock';
 import './Members.m.less';
-
-const { Title, Text } = Typography;
 
 function Members() {
   const [searchParams] = useSearchParams();
@@ -48,7 +46,7 @@ function Members() {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <Space>
+        <div style={{ display: 'flex', gap: 8 }}>
           <Button
             type="link"
             size="small"
@@ -58,7 +56,7 @@ function Members() {
           >
             删除
           </Button>
-        </Space>
+        </div>
       ),
     },
   ];
@@ -107,8 +105,8 @@ function Members() {
     <div className="members">
       <div className="page-header">
         <div className="page-header-left">
-          <Title level={4} className="page-title">成员管理</Title>
-          <Text type="secondary" className="page-desc">管理应用成员和角色权限</Text>
+          <h4 className="page-title">成员管理</h4>
+          <span className="page-desc">管理应用成员和角色权限</span>
         </div>
         <Button
           type="primary"

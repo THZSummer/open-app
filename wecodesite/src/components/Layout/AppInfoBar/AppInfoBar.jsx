@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Typography, Space } from 'antd';
+import { Card } from 'antd';
 import { HomeOutlined } from '@ant-design/icons';
 import { fetchEamapOptions, fetchAppById, bindEamap } from '../../../pages/AppList/thunk';
 import BindEamapModal from '../../BindEamapModal/BindEamapModal';
-
-const { Text } = Typography;
 
 function AppInfoBar() {
   const navigate = useNavigate();
@@ -56,23 +54,23 @@ function AppInfoBar() {
   return (
     <>
       <Card size="small" style={{ marginBottom: 1, borderRadius: 0 }}>
-        <Space size={12}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <HomeOutlined
             style={{ fontSize: 16, cursor: 'pointer' }}
             onClick={() => navigate('/')}
           />
           <div style={{ height: 16, width: 1, background: '#d9d9d9' }} />
-          <Space direction="vertical" size={2}>
-            <Text strong style={{ fontSize: 14 }}>{appData.name}</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <strong style={{ fontSize: 14 }}>{appData.name}</strong>
             {appData.eamap ? (
-              <Text type="secondary" style={{ fontSize: 12 }}>已绑定：{appData.eamap}</Text>
+              <span style={{ fontSize: 12, color: '#8c8c8c' }}>已绑定：{appData.eamap}</span>
             ) : (
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                未绑定应用服务：<Text type="warning" style={{ cursor: 'pointer' }} onClick={() => setBindModalVisible(true)}>立即绑定</Text>
-              </Text>
+              <span style={{ fontSize: 12, color: '#8c8c8c' }}>
+                未绑定应用服务：<span style={{ cursor: 'pointer', color: '#faad14' }} onClick={() => setBindModalVisible(true)}>立即绑定</span>
+              </span>
             )}
-          </Space>
-        </Space>
+          </div>
+        </div>
       </Card>
       <BindEamapModal
         visible={bindModalVisible}
