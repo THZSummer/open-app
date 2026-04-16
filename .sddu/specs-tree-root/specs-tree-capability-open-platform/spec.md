@@ -243,7 +243,7 @@ graph TB
 | ID | 需求 | 目标值 |
 |----|------|--------|
 | NFR-001 | 权限数据查询响应时间 | P99 < 50ms（供网关/消费方查询权限分配情况） |
-| NFR-002 | API/事件目录查询响应时间 | P99 < 200ms |
+| NFR-002 | API/事件/回调目录查询响应时间 | P99 < 200ms |
 | NFR-003 | 事件分发延迟 | P99 < 1s（从发布到消费方接收） |
 | NFR-004 | 系统可用性 | ≥ 99.9% |
 
@@ -277,7 +277,7 @@ graph TB
 | ID | 需求 | 描述 |
 |----|------|------|
 | NFR-015 | 权限模型扩展 | 权限模型需支持未来扩展（如数据对象权限） |
-| NFR-016 | 事件类型扩展 | 事件管理需支持未来扩展新的消费形式（如回调、连接器） |
+| NFR-016 | 资源类型扩展 | 系统需支持未来扩展新的能力类型（如连接器）及消费形式 |
 | NFR-017 | 审批流程扩展 | 审批流程配置需支持未来扩展新的审批节点类型 |
 
 ---
@@ -295,7 +295,7 @@ graph TB
             direction LR
             API["API 管理模块"]
             Event["事件管理模块"]
-            Future["（未来：回调/连接器）"]
+            Callback["回调管理模块"]
         end
         
         subgraph Permission["权限管理服务\n(权限资源创建与关联)"]
@@ -336,7 +336,7 @@ classDiagram
     class Permission {
         +string id (UUID)
         +string resource_id "关联资源 ID"
-        +enum resource_type "api|event"
+        +enum resource_type "api|event|callback"
         +string resource_name "资源名称"
         +datetime created_at
     }
@@ -367,7 +367,7 @@ classDiagram
     class ApprovalFlow {
         +string id (UUID)
         +string name
-        +enum trigger_type "api_register|event_register|permission_apply"
+        +enum trigger_type "api_register|event_register|callback_register|permission_apply"
         +string conditions "JSON"
         +datetime created_at
     }
@@ -438,7 +438,7 @@ classDiagram
         +string name
         +string topic
         +string doc_link
-        +string[] channels "websocket|webhook|mq"
+        +string[] channels "webhook|mq"
         +enum[] credential_types "app_a|app_b"
         +bool app_isolation "按应用隔离"
         +string owner_id
@@ -449,12 +449,39 @@ classDiagram
         +string id (UUID)
         +string event_id
         +string app_id
-        +string channel_type "websocket|webhook"
+        +string channel_type "webhook|mq"
         +string channel_config "url/token"
         +datetime subscribed_at
     }
     
     EventDefinition "1" -- "0..*" EventSubscription : subscribed by
+```
+
+#### 5.2.5 回调管理模型
+
+```mermaid
+classDiagram
+    class CallbackDefinition {
+        +string id (UUID)
+        +string name
+        +string protocol "webhook|sse"
+        +string doc_link
+        +string[] credential_types "app_a|app_b"
+        +string owner_id
+        +datetime created_at
+    }
+    
+    class CallbackSubscription {
+        +string id (UUID)
+        +string callback_id
+        +string app_id
+        +string protocol "webhook|sse"
+        +string protocol_address "url"
+        +string credential_type
+        +datetime subscribed_at
+    }
+    
+    CallbackDefinition "1" -- "0..*" CallbackSubscription : subscribed by
 ```
 
 ### 5.3 API 接口设计（管理面）
@@ -463,7 +490,7 @@ classDiagram
 
 | 方法 | 路径 | 描述 | 权限 |
 |------|------|------|------|
-| POST | `/api/v1/permissions` | 创建权限资源（关联到 API/事件） | 平台管理方 |
+| POST | `/api/v1/permissions` | 创建权限资源（关联到 API/事件/回调） | 平台管理方 |
 | GET | `/api/v1/permissions` | 查询权限资源列表 | 平台管理方 |
 | POST | `/api/v1/permissions/grant` | 分配权限给应用（审批通过后调用） | 平台管理方 |
 | POST | `/api/v1/permissions/revoke` | 撤销应用权限 | 平台管理方 |
@@ -497,8 +524,18 @@ classDiagram
 | POST | `/api/v1/events` | 注册事件 | 能力提供方 |
 | GET | `/api/v1/events` | 查询事件列表（目录） | 所有用户 |
 | PUT | `/api/v1/events/{id}` | 更新事件 | 能力提供方 |
-| POST | `/api/v1/events/{id}/subscribe` | 订阅事件（配置通道/凭证） | 能力消费方 |
+| POST | `/api/v1/events/{id}/subscribe` | 订阅事件（配置协议/地址/凭证） | 能力消费方 |
 | POST | `/api/v1/events/{id}/unsubscribe` | 取消订阅事件 | 能力消费方 |
+
+#### 5.3.5 回调管理 API
+
+| 方法 | 路径 | 描述 | 权限 |
+|------|------|------|------|
+| POST | `/api/v1/callbacks` | 注册回调 | 能力提供方 |
+| GET | `/api/v1/callbacks` | 查询回调列表（目录） | 所有用户 |
+| PUT | `/api/v1/callbacks/{id}` | 更新回调 | 能力提供方 |
+| POST | `/api/v1/callbacks/{id}/subscribe` | 订阅回调（配置协议/地址/凭证） | 能力消费方 |
+| POST | `/api/v1/callbacks/{id}/unsubscribe` | 取消订阅回调 | 能力消费方 |
 
 ### 5.4 页面设计
 
@@ -507,8 +544,10 @@ classDiagram
 | **控制台** | `/dashboard` | 关键指标概览（待办审批、订阅统计等） | 运营方/提供方 |
 | **API 管理** | `/apis/manage` | 注册/编辑 API 权限，管理分组树（**仅限白名单用户**） | 提供方（白名单） |
 | **事件管理** | `/events/manage` | 注册/编辑事件权限，管理分组树（**仅限白名单用户**） | 提供方（白名单） |
+| **回调管理** | `/callbacks/manage` | 注册/编辑回调权限，管理分组树（**仅限白名单用户**） | 提供方（白名单） |
 | **API 权限申请** | `/apis/subscribe` | 外侧列表展示已申请/申请中权限；“添加 API"弹框按 L1-L4 树多选提交 | 消费方 |
-| **事件权限申请** | `/events/subscribe` | 外侧列表展示已订阅事件；“添加事件”弹框配置通道/凭证 | 消费方 |
+| **事件权限申请** | `/events/subscribe` | 外侧列表展示已订阅事件；“添加事件”弹框配置协议/地址/凭证 | 消费方 |
+| **回调权限申请** | `/callbacks/subscribe` | 外侧列表展示已订阅回调；“添加回调”弹框配置协议/地址/凭证 | 消费方 |
 | **审批中心** | `/approvals` | 待办列表（资源注册审批、权限申请审批） | 运营方/提供方 |
 | **我的订阅** | `/subscriptions` | 查看已授权权限，配置事件通道参数 | 消费方 |
 
@@ -543,14 +582,14 @@ classDiagram
 | EC-006 | 消费方在审批期间撤销申请 | 审批流程终止，状态标记为 `cancelled` |
 | EC-007 | 审批通过后被撤销 | 系统自动触发权限回收流程，通知相关方 |
 
-### 6.3 API/事件管理相关
+### 6.3 API/事件/回调管理相关
 
 | ID | 场景 | 处理策略 |
 |----|------|---------|
-| EC-008 | 事件 Topic 命名冲突 | 系统校验 Topic 唯一性，冲突时拒绝注册 |
-| EC-009 | 消费方配置了不支持的通道类型 | 校验配置：WebSocket 仅限个人应用，业务应用配置时拒绝 |
-| EC-010 | API/事件注册信息变更 | 变更后需重新审批，审批期间原配置继续生效 |
-| EC-011 | 消费方订阅配置错误（如 WebHook URL 无效） | 订阅创建时进行连通性检查或格式校验，提示错误 |
+| EC-008 | 事件 Topic/回调 Scope 命名冲突 | 系统校验 Topic/Scope 唯一性，冲突时拒绝注册 |
+| EC-009 | 消费方配置了不支持的协议类型 | 校验配置：仅支持系统定义的协议（如 WebHook、SSE），非法时拒绝 |
+| EC-010 | API/事件/回调注册信息变更 | 变更后需重新审批，审批期间原配置继续生效 |
+| EC-011 | 消费方订阅配置错误（如协议地址无效） | 订阅创建时进行连通性检查或格式校验，提示错误 |
 
 ### 6.4 并发与一致性
 
@@ -558,7 +597,7 @@ classDiagram
 |----|------|---------|
 | EC-012 | 并发权限分配（同一应用、同一资源） | 幂等处理，重复分配返回已有记录 |
 | EC-013 | 并发审批（同一审批单、多个审批人） | 基于审批流配置（串行需等待，并行可并行处理） |
-| EC-014 | 事件通道切换期间的消息丢失 | 建议消费方在切换通道时保持双通道监听一小段时间，或系统提供缓冲队列 |
+| EC-014 | 协议切换期间的消息丢失 | 建议消费方在切换协议/地址时保持旧配置生效一小段时间，或系统提供缓冲队列 |
 
 ---
 
@@ -585,7 +624,9 @@ classDiagram
 | **能力消费方 (Consumer)** | 使用开放平台能力的三方平台/应用 |
 | **应用类型 (App Type)** | 应用的分类：业务应用（组织/项目级）、个人应用（个人级） |
 | **凭证类型 (Credential Type)** | 身份验证方式：应用类凭证 A、应用类凭证 B、开放应用凭证等 |
-| **通道类型 (Channel Type)** | 事件消费的传输方式：企业内部消息队列、WebSocket、WebHook |
+| **协议类型 (Protocol Type)** | 消费方接收通知的传输方式：企业内部消息平台、WebHook、SSE |
+| **回调 (Callback)** | 由平台主动发起的 HTTP/SSE 请求，用于将状态变更通知消费方 |
+| **Scope** | 权限范围的唯一标识符（如 `im:message:send`） |
 | **平台管理方 (Admin)** | 开放平台的运营/研发人员 |
 | **AK/SK** | Access Key / Secret Key，应用身份凭证之一 |
 | **Topic** | 事件的主题标识，用于事件订阅和分发 |
@@ -595,7 +636,7 @@ classDiagram
 | 维度 | 关系说明 |
 |------|---------|
 | **定位** | 能力开放平台是基础设施（阶段 1），数据开放平台是上层应用（阶段 2） |
-| **依赖** | 数据开放平台复用能力开放平台的权限管理、审批管理、API/事件通道 |
+| **依赖** | 数据开放平台复用能力开放平台的权限管理、审批管理、API/事件/回调通道 |
 | **权限模型** | 统一权限模型，数据开放平台将数据对象映射到 Scope 后复用 |
 | **不存在迁移** | 两者长期并存，非替代关系 |
 
@@ -651,7 +692,14 @@ classDiagram
 | v1.32 | 2026-04-16 | **移除 WebSocket**：FR-015/G4/US-06 移除 WebSocket 支持（暂不支持） | AI Assistant |
 | v1.33 | 2026-04-16 | **事件通道凭证**：FR-015 明确消费通道（内部消息/WebHook）及凭证类型配置 | AI Assistant |
 | v1.34 | 2026-04-16 | **纳入回调管理**：新增 G5 目标；§3.4/3.7 新增回调管理与权限管理章节；FR 扩展至 27 个；mvp.inScope 增加回调管理 | AI Assistant |
+| v1.35 | 2026-04-16 | **回调目标细化**：G5 明确支持配置通道类型（WebHook、SSE 等）及凭证类型（应用类型凭证 A/B） | AI Assistant |
+| v1.36 | 2026-04-16 | **新增回调用户故事**：US-01/04/07 增加回调范围；新增 US-08 配置回调消费通道与凭证 | AI Assistant |
+| v1.37 | 2026-04-16 | **合并配置故事**：US-06 合并事件与回调配置需求；移除误置于 2.3 节的 US-08 | AI Assistant |
+| v1.38 | 2026-04-16 | **移除触发条件**：FR-012/013/014/022 移除回调“触发条件”相关描述 | AI Assistant |
+| v1.39 | 2026-04-16 | **回调配置参数**：FR-022 明确配置项：协议、协议地址、凭证类型 | AI Assistant |
+| v1.40 | 2026-04-16 | **事件配置参数**：FR-019 统一为协议、协议地址、凭证类型配置结构 | AI Assistant |
+| v1.41 | 2026-04-16 | **后续章节同步**：§4-§8 更新 NFR、架构图、数据模型（新增回调模型）、API 接口、页面设计、边界情况及术语表，全面对齐回调纳入 MVP 的变更 | AI Assistant |
 
 ---
 
-**最后更新**: 2026-04-16（纳入回调管理至 MVP）
+**最后更新**: 2026-04-16（§4-§8 全面同步回调管理变更）
