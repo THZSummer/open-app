@@ -34,8 +34,8 @@
     {"id": "FR-012", "name": "事件权限多维分类", "status": "specified"},
     {"id": "FR-013", "name": "事件权限注册", "status": "specified"},
     {"id": "FR-014", "name": "事件权限编辑", "status": "specified"},
-    {"id": "FR-015", "name": "权限目录浏览与检索", "status": "specified"},
-    {"id": "FR-016", "name": "权限多选申请", "status": "specified"},
+    {"id": "FR-015", "name": "应用权限列表（外侧）", "status": "specified"},
+    {"id": "FR-016", "name": "权限树形选择（弹框）", "status": "specified"},
     {"id": "FR-017", "name": "依赖自动级联", "status": "specified"},
     {"id": "FR-018", "name": "订阅与配置管理", "status": "specified"}
   ],
