@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="cli-anything" agent="cli-anything-drawio/1.0.0" version="24.0.0">
+  <diagram id="diagram_1773911846220659" name="Page-1">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v_1773911846349366" value="终端用户" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="50.0" width="180.0" height="60.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911846715520" value="应用层" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="150.0" width="180.0" height="60.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911847080515" value="自建应用" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="100.0" y="230.0" width="160.0" height="50.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911847448406" value="商店应用" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="230.0" width="160.0" height="50.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911847817048" value="API 调用层" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="300.0" y="320.0" width="180.0" height="60.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911848178848" value="通讯录 API" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=0.27;" vertex="1" parent="1">
+          <mxGeometry x="50.0" y="400.0" width="100.0" height="50.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911848549559" value="消息 API" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=0.27;" vertex="1" parent="1">
+          <mxGeometry x="170.0" y="400.0" width="100.0" height="50.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911848909410" value="云文档 API" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=0.27;" vertex="1" parent="1">
+          <mxGeometry x="290.0" y="400.0" width="100.0" height="50.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911849276916" value="认证授权" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="-80.0" y="320.0" width="140.0" height="120.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911849639010" value="app_access_token" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="-70.0" y="460.0" width="120.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911850000701" value="tenant_access_token" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="-70.0" y="520.0" width="120.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911850354983" value="user_access_token" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="-70.0" y="580.0" width="120.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911850723948" value="事件订阅" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="420.0" y="320.0" width="140.0" height="100.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911851086969" value="用户事件" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;size=30;position=0.5;" vertex="1" parent="1">
+          <mxGeometry x="430.0" y="440.0" width="100.0" height="35.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911851450970" value="消息事件" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;size=30;position=0.5;" vertex="1" parent="1">
+          <mxGeometry x="430.0" y="490.0" width="100.0" height="35.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773911851820160" value="应用事件" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;size=30;position=0.5;" vertex="1" parent="1">
+          <mxGeometry x="430.0" y="540.0" width="100.0" height="35.0" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
