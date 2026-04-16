@@ -1,0 +1,59 @@
+.app-info-bar {
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 var(--spacing-base);
+
+  .app-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0;
+  }
+
+  .app-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+  }
+
+  .app-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .app-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .app-status {
+    font-size: 13px;
+    display: inline-block;
+    width: fit-content;
+
+    &.bound {
+      color: var(--success-color);
+    }
+
+    &.unbound {
+      color: var(--text-secondary);
+    }
+  }
+
+  .bind-link {
+    color: var(--primary-color);
+    cursor: pointer;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

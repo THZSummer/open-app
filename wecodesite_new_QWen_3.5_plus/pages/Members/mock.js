@@ -1,0 +1,92 @@
+// Mock 成员数据
+export const members = [
+  {
+    id: 'member-001',
+    name: '张三',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=zhangsan',
+    role: 'owner',
+    roleName: '所有者',
+    email: 'zhangsan@company.com',
+    department: '技术部',
+    addedAt: '2024-01-15',
+  },
+  {
+    id: 'member-002',
+    name: '李四',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=lisi',
+    role: 'admin',
+    roleName: '管理员',
+    email: 'lisi@company.com',
+    department: '产品部',
+    addedAt: '2024-01-20',
+  },
+  {
+    id: 'member-003',
+    name: '王五',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=wangwu',
+    role: 'admin',
+    roleName: '管理员',
+    email: 'wangwu@company.com',
+    department: '技术部',
+    addedAt: '2024-02-01',
+  },
+  {
+    id: 'member-004',
+    name: '赵六',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=zhaoliu',
+    role: 'developer',
+    roleName: '开发者',
+    email: 'zhaoliu@company.com',
+    department: '技术部',
+    addedAt: '2024-02-10',
+  },
+  {
+    id: 'member-005',
+    name: '钱七',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=qianqi',
+    role: 'developer',
+    roleName: '开发者',
+    email: 'qianqi@company.com',
+    department: '产品部',
+    addedAt: '2024-02-15',
+  },
+  {
+    id: 'member-006',
+    name: '孙八',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=sunba',
+    role: 'developer',
+    roleName: '开发者',
+    email: 'sunba@company.com',
+    department: '技术部',
+    addedAt: '2024-02-20',
+  },
+  {
+    id: 'member-007',
+    name: '周九',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=zhoujiu',
+    role: 'developer',
+    roleName: '开发者',
+    email: 'zhoujiu@company.com',
+    department: '设计部',
+    addedAt: '2024-03-01',
+  },
+  {
+    id: 'member-008',
+    name: '吴十',
+    avatar: 'https://api.dicebear.com/7.x/identicon/svg?seed=wushi',
+    role: 'developer',
+    roleName: '开发者',
+    email: 'wushi@company.com',
+    department: '技术部',
+    addedAt: '2024-03-05',
+  },
+]
+
+// 角色选项
+export const roleOptions = [
+  { value: 'owner', label: '所有者', description: '拥有所有权限' },
+  { value: 'admin', label: '管理员', description: '管理应用配置和成员' },
+  { value: 'developer', label: '开发者', description: '开发和调试应用' },
+]
+
+export default { members, roleOptions }

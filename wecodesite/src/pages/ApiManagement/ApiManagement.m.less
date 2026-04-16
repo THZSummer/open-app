@@ -1,0 +1,126 @@
+.api-management {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+
+  &-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: var(--primary-hover);
+  }
+
+  span {
+    font-size: 16px;
+  }
+}
+
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  th {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+  }
+
+  td {
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  tbody tr:hover {
+    background-color: var(--bg-hover);
+  }
+
+  .code-name {
+    font-family: monospace;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+
+  &.已审核 {
+    background-color: #e6f4ea;
+    color: var(--success-color);
+  }
+
+  &.审核中 {
+    background-color: #fef7e0;
+    color: #b06000;
+  }
+
+  &.已中止 {
+    background-color: #fce8e8;
+    color: var(--error-color);
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-link {
+  padding: 4px 8px;
+  background: none;
+  color: var(--primary-color);
+  font-size: 13px;
+  transition: opacity 0.2s ease;
+  white-space: nowrap;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}

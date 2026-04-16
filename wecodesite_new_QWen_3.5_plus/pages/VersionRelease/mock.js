@@ -1,0 +1,55 @@
+// Mock 版本数据
+export const versionList = [
+  {
+    id: 'version-001',
+    version: 'v1.0.0',
+    name: '初始版本',
+    description: '应用首个正式版本，包含基础功能',
+    status: 'published',
+    publishedAt: '2024-01-15 10:00:00',
+    publishedBy: '张三',
+    changelog: '1. 初始化项目结构\n2. 实现基础功能\n3. 优化用户体验',
+  },
+  {
+    id: 'version-002',
+    version: 'v1.1.0',
+    name: '功能增强版',
+    description: '添加了新的 API 集成和性能优化',
+    status: 'published',
+    publishedAt: '2024-02-01 14:30:00',
+    publishedBy: '李四',
+    changelog: '1. 新增消息推送功能\n2. 优化 API 调用性能\n3. 修复已知问题',
+  },
+  {
+    id: 'version-003',
+    version: 'v1.2.0',
+    name: '事件订阅更新',
+    description: '新增事件订阅配置功能',
+    status: 'published',
+    publishedAt: '2024-02-20 09:15:00',
+    publishedBy: '王五',
+    changelog: '1. 新增事件订阅功能\n2. 支持多种事件类型\n3. 优化事件处理逻辑',
+  },
+  {
+    id: 'version-004',
+    version: 'v1.3.0',
+    name: '用户体验优化',
+    description: '界面优化和交互改进',
+    status: 'published',
+    publishedAt: '2024-03-10 16:45:00',
+    publishedBy: '赵六',
+    changelog: '1. 优化界面布局\n2. 改进交互体验\n3. 增加快捷操作',
+  },
+  {
+    id: 'version-005',
+    version: 'v2.0.0',
+    name: '重大版本更新',
+    description: '架构重构，性能大幅提升',
+    status: 'draft',
+    publishedAt: null,
+    publishedBy: null,
+    changelog: '1. 重构核心架构\n2. 性能提升 50%\n3. 新增多项功能',
+  },
+]
+
+export default versionList

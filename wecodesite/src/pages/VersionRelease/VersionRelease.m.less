@@ -1,0 +1,178 @@
+.version-release {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+
+  &-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: var(--primary-hover);
+  }
+
+  span {
+    font-size: 16px;
+  }
+}
+
+.version-table {
+  :global(.ant-table-thead > tr > th) {
+    background-color: #fafafa;
+    font-weight: 600;
+  }
+}
+
+.version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.version-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--primary-color);
+  }
+}
+
+.version-info {
+  flex: 1;
+}
+
+.version-number {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.version-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.version-time {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.version-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+
+  &.已发布 {
+    background-color: #e6f4ea;
+    color: var(--success-color);
+  }
+
+  &.已废弃 {
+    background-color: #fce8e8;
+    color: var(--error-color);
+  }
+
+  &.开发中 {
+    background-color: #fef7e0;
+    color: #b06000;
+  }
+}
+
+.btn-link {
+  padding: 4px 8px;
+  background: none;
+  color: var(--primary-color);
+  font-size: 13px;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.version-form {
+  .form-header {
+    margin-bottom: 24px;
+  }
+
+  .form-card {
+    max-width: 640px;
+  }
+
+  .form-text {
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .capabilities-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .capability-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    font-size: 13px;
+  }
+
+  .form-actions {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 12px;
+  }
+}

@@ -1,0 +1,86 @@
+.card {
+  background-color: var(--bg-primary);
+  border: 1px solid #f0f0f0;
+  border-radius: 14px;
+  padding: 24px;
+  cursor: pointer;
+  transition: all 0.3s;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+}
+
+.header {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+
+  &.published {
+    background-color: var(--success-color);
+    color: #fff;
+  }
+
+  &.developing {
+    background-color: var(--warning-color);
+    color: #fff;
+  }
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metaItem {
+  display: flex;
+  gap: 8px;
+}
+
+.metaLabel {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.metaValue {
+  color: var(--primary-color);
+  font-size: 14px;
+}
+
+.eamap {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+}

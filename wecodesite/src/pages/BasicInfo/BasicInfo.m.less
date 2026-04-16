@@ -1,0 +1,116 @@
+.basic-info {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+
+  :global(.ant-form-item-label) {
+    width: 120px;
+    flex: 0 0 120px;
+  }
+
+  :global(.ant-form-item-label > label) {
+    width: 120px;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  :global(.ant-form-item-control) {
+    flex: 1;
+  }
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.info-card {
+  :global {
+    .ant-card-head {
+      border-bottom-color: var(--border-color);
+    }
+
+    .ant-card-head-title {
+      font-weight: 600;
+      font-size: 15px;
+    }
+  }
+}
+
+.icon-upload-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.icon-preview {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.detail-text {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.app-secret {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .secret-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .secret-btn {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+
+    &:hover {
+      color: var(--primary-color);
+      background-color: var(--bg-secondary);
+    }
+  }
+}
+
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 16px;
+}
+
+.formContent {
+  .ant-form-item-label {
+    width: 100px;
+    color: #333;
+    text-align: left;
+  }
+}
