@@ -486,56 +486,82 @@ classDiagram
 
 ### 5.3 API 接口设计（管理面）
 
-#### 5.3.1 权限管理 API
+#### 5.3.1 分组管理 API
 
 | 方法 | 路径 | 描述 | 权限 |
 |------|------|------|------|
-| POST | `/api/v1/permissions` | 创建权限资源（关联到 API/事件/回调） | 平台管理方 |
-| GET | `/api/v1/permissions` | 查询权限资源列表 | 平台管理方 |
-| POST | `/api/v1/permissions/grant` | 分配权限给应用（审批通过后调用） | 平台管理方 |
-| POST | `/api/v1/permissions/revoke` | 撤销应用权限 | 平台管理方 |
-| GET | `/api/v1/permissions/apps/{id}` | 查询某应用的已授权列表 | 消费方/提供方 |
+| POST | `/api/v1/groups` | 创建一级分组 | 平台运营方 |
+| GET | `/api/v1/groups` | 查询分组列表（树形） | 所有用户 |
+| PUT | `/api/v1/groups/{id}` | 更新分组信息 | 平台运营方 |
+| DELETE | `/api/v1/groups/{id}` | 删除分组 | 平台运营方 |
+| POST | `/api/v1/groups/{id}/owners` | 配置分组责任人 | 平台运营方 |
+| GET | `/api/v1/groups/{id}/owners` | 查询分组责任人列表 | 平台运营方 |
 
-#### 5.3.2 审批管理 API
+#### 5.3.2 API 管理 API
 
 | 方法 | 路径 | 描述 | 权限 |
 |------|------|------|------|
-| POST | `/api/v1/admin/approval-flows` | 创建审批流程模板 | 平台管理方 |
+| GET | `/api/v1/apis` | 查询 API 列表（目录/管理视图） | 分组责任人 |
+| POST | `/api/v1/apis` | 注册 API（附带权限定义） | 分组责任人 |
+| PUT | `/api/v1/apis/{id}` | 更新 API 及权限信息 | 分组责任人 |
+| DELETE | `/api/v1/apis/{id}` | 删除 API 权限及 API | 分组责任人 |
+| GET | `/api/v1/apis/{id}/doc` | 获取 API 文档链接 | 所有用户 |
+
+#### 5.3.3 事件管理 API
+
+| 方法 | 路径 | 描述 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/events` | 查询事件列表（目录/管理视图） | 分组责任人 |
+| POST | `/api/v1/events` | 注册事件（附带权限定义） | 分组责任人 |
+| PUT | `/api/v1/events/{id}` | 更新事件及权限信息 | 分组责任人 |
+| DELETE | `/api/v1/events/{id}` | 删除事件权限及事件 | 分组责任人 |
+| GET | `/api/v1/events/{id}/doc` | 获取事件文档链接 | 所有用户 |
+
+#### 5.3.4 回调管理 API
+
+| 方法 | 路径 | 描述 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/callbacks` | 查询回调列表（目录/管理视图） | 分组责任人 |
+| POST | `/api/v1/callbacks` | 注册回调（附带权限定义） | 分组责任人 |
+| PUT | `/api/v1/callbacks/{id}` | 更新回调及权限信息 | 分组责任人 |
+| DELETE | `/api/v1/callbacks/{id}` | 删除回调权限及回调 | 分组责任人 |
+| GET | `/api/v1/callbacks/{id}/doc` | 获取回调文档链接 | 所有用户 |
+
+#### 5.3.5 API 权限管理 API（消费方）
+
+| 方法 | 路径 | 描述 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/applications/{appId}/api-permissions` | 查询应用已申请 API 权限列表 | 消费方 |
+| GET | `/api/v1/api-permissions/tree` | 查询 API 权限树形目录（L1-L4） | 消费方 |
+| POST | `/api/v1/api-permissions/apply` | 提交 API 权限申请单 | 消费方 |
+| GET | `/api/v1/api-permissions/apply/{applyId}` | 查询申请单详情 | 消费方 |
+
+#### 5.3.6 事件权限管理 API（消费方）
+
+| 方法 | 路径 | 描述 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/applications/{appId}/event-permissions` | 查询应用已订阅事件权限列表 | 消费方 |
+| GET | `/api/v1/event-permissions/tree` | 查询事件权限树形目录（L1-L4） | 消费方 |
+| POST | `/api/v1/event-permissions/apply` | 提交事件权限申请单 | 消费方 |
+| PUT | `/api/v1/event-permissions/{id}/config` | 配置事件消费参数（协议/地址/凭证） | 消费方（获批后） |
+
+#### 5.3.7 回调权限管理 API（消费方）
+
+| 方法 | 路径 | 描述 | 权限 |
+|------|------|------|------|
+| GET | `/api/v1/applications/{appId}/callback-permissions` | 查询应用已订阅回调权限列表 | 消费方 |
+| GET | `/api/v1/callback-permissions/tree` | 查询回调权限树形目录（L1-L4） | 消费方 |
+| POST | `/api/v1/callback-permissions/apply` | 提交回调权限申请单 | 消费方 |
+| PUT | `/api/v1/callback-permissions/{id}/config` | 配置回调接收参数（协议/地址/凭证） | 消费方（获批后） |
+
+#### 5.3.8 审批管理 API
+
+| 方法 | 路径 | 描述 | 权限 |
+|------|------|------|------|
+| POST | `/api/v1/admin/approval-flows` | 创建审批流程模板 | 平台运营方 |
 | GET | `/api/v1/approvals/{id}` | 查询审批详情 | 相关方 |
 | POST | `/api/v1/approvals/{id}/actions` | 执行审批操作（同意/驳回/撤销） | 审批人 |
 | GET | `/api/v1/approvals/pending` | 查询待审批列表 | 当前用户 |
-
-#### 5.3.3 API 管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| POST | `/api/v1/api-groups` | 创建 API 分组 | 能力提供方 |
-| GET | `/api/v1/api-groups` | 查询 API 分组列表（树形） | 所有用户 |
-| POST | `/api/v1/apis` | 注册 API | 能力提供方 |
-| GET | `/api/v1/apis` | 查询 API 列表（目录） | 所有用户 |
-| PUT | `/api/v1/apis/{id}` | 更新 API | 能力提供方 |
-| POST | `/api/v1/apis/{id}/subscribe` | 订阅 API | 能力消费方 |
-| POST | `/api/v1/apis/{id}/unsubscribe` | 取消订阅 API | 能力消费方 |
-
-#### 5.3.4 事件管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| POST | `/api/v1/events` | 注册事件 | 能力提供方 |
-| GET | `/api/v1/events` | 查询事件列表（目录） | 所有用户 |
-| PUT | `/api/v1/events/{id}` | 更新事件 | 能力提供方 |
-| POST | `/api/v1/events/{id}/subscribe` | 订阅事件（配置协议/地址/凭证） | 能力消费方 |
-| POST | `/api/v1/events/{id}/unsubscribe` | 取消订阅事件 | 能力消费方 |
-
-#### 5.3.5 回调管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| POST | `/api/v1/callbacks` | 注册回调 | 能力提供方 |
-| GET | `/api/v1/callbacks` | 查询回调列表（目录） | 所有用户 |
-| PUT | `/api/v1/callbacks/{id}` | 更新回调 | 能力提供方 |
-| POST | `/api/v1/callbacks/{id}/subscribe` | 订阅回调（配置协议/地址/凭证） | 能力消费方 |
-| POST | `/api/v1/callbacks/{id}/unsubscribe` | 取消订阅回调 | 能力消费方 |
 
 ### 5.4 页面设计
 
