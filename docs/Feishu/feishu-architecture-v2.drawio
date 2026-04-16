@@ -1,0 +1,101 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="cli-anything" agent="cli-anything-drawio/1.0.0" version="24.0.0">
+  <diagram id="diagram_1773912239821040" name="Page-1">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v_1773912239952385" value="普通用户" style="shape=mxgraph.basic.person;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="200.0" y="50.0" width="100.0" height="70.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912240211009" value="管理员" style="shape=mxgraph.basic.person;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="400.0" y="50.0" width="100.0" height="70.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912240462198" value="开发者" style="shape=mxgraph.basic.person;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="600.0" y="50.0" width="100.0" height="70.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912240715384" value="用户层 (End Users)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="400.0" y="130.0" width="400.0" height="30.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912240844831" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="150.0" y="190.0" width="500.0" height="120.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912241343206" value="自建应用&#10;Custom App" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="250.0" y="210.0" width="180.0" height="70.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912241724711" value="商店应用&#10;Store App" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="550.0" y="210.0" width="180.0" height="70.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912242102317" value="应用层 (Applications)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="400.0" y="170.0" width="400.0" height="30.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912242229467" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="150.0" y="360.0" width="280.0" height="220.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912242726644" value="认证授权层 (Authentication)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="290.0" y="375.0" width="250.0" height="30.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912243109519" value="app_access_token&#10;(2 小时)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="180.0" y="410.0" width="200.0" height="45.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912243353692" value="tenant_access_token&#10;(2 小时)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="180.0" y="465.0" width="200.0" height="45.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912243598987" value="user_access_token&#10;(OAuth 2.0)" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="180.0" y="520.0" width="200.0" height="45.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912243849516" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="450.0" y="360.0" width="280.0" height="220.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912244356202" value="事件层 (Event Subscription)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="590.0" y="375.0" width="250.0" height="30.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912244728145" value="用户事件&#10;contact.*" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;size=30;position=0.5;" vertex="1" parent="1">
+          <mxGeometry x="480.0" y="415.0" width="220.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912244975569" value="消息事件&#10;im.*" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;size=30;position=0.5;" vertex="1" parent="1">
+          <mxGeometry x="480.0" y="470.0" width="220.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912245229449" value="应用事件&#10;app.*" style="shape=callout;whiteSpace=wrap;html=1;perimeter=calloutPerimeter;size=30;position=0.5;" vertex="1" parent="1">
+          <mxGeometry x="480.0" y="525.0" width="220.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912245482357" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="100.0" y="550.0" width="600.0" height="140.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912245984836" value="API 调用层 (API Layer)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="400.0" y="530.0" width="400.0" height="30.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912246112271" value="通讯录 API&#10;contact.*" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=0.27;" vertex="1" parent="1">
+          <mxGeometry x="180.0" y="580.0" width="120.0" height="60.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912246492469" value="消息 API&#10;im.*" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=0.27;" vertex="1" parent="1">
+          <mxGeometry x="325.0" y="580.0" width="120.0" height="60.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912246874207" value="云文档 API&#10;drive.*" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=0.27;" vertex="1" parent="1">
+          <mxGeometry x="475.0" y="580.0" width="120.0" height="60.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912247276273" value="日历 API&#10;calendar.*" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=0.27;" vertex="1" parent="1">
+          <mxGeometry x="620.0" y="580.0" width="120.0" height="60.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912247653870" value="" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="100.0" y="640.0" width="600.0" height="80.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912248165717" value="安全机制 (Security)" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;" vertex="1" parent="1">
+          <mxGeometry x="400.0" y="620.0" width="400.0" height="30.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912248296258" value="IP 白名单" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="140.0" y="660.0" width="120.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912248562464" value="凭证加密" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="270.0" y="660.0" width="120.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912248812446" value="事件验签" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="410.0" y="660.0" width="120.0" height="40.0" as="geometry" />
+        </mxCell>
+        <mxCell id="v_1773912249067948" value="权限审查" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;" vertex="1" parent="1">
+          <mxGeometry x="540.0" y="660.0" width="120.0" height="40.0" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
