@@ -284,6 +284,8 @@ graph TB
 
 ## 5. 技术设计
 
+> 💡 **设计原则**：本章仅定义**接口清单**、**页面清单**、**数据库表清单**及架构概览。详细字段定义、交互逻辑、路由规划及数据模型设计将在 `@sddu-plan` 阶段输出。
+
 ### 5.1 架构设计
 
 ```mermaid
@@ -327,257 +329,41 @@ graph TB
     style Existing fill:#e3f2fd,stroke:#1565c0
 ```
 
-### 5.2 数据模型
+### 5.2 接口清单（管理面）
 
-#### 5.2.1 权限模型
-
-```mermaid
-classDiagram
-    class Permission {
-        +string id (UUID)
-        +string resource_id "关联资源 ID"
-        +enum resource_type "api|event|callback"
-        +string resource_name "资源名称"
-        +datetime created_at
-    }
-    
-    class AppType {
-        +enum type "business|personal"
-    }
-    
-    class CredentialType {
-        +enum type "app_a|app_b|open_app"
-    }
-    
-    class AppPermission {
-        +string id (UUID)
-        +string app_id
-        +string permission_id
-        +string granted_by "审批单 ID"
-        +datetime granted_at
-    }
-    
-    Permission "1" -- "0..*" AppPermission : granted to
-```
-
-#### 5.2.2 审批模型
-
-```mermaid
-classDiagram
-    class ApprovalFlow {
-        +string id (UUID)
-        +string name
-        +enum trigger_type "api_register|event_register|callback_register|permission_apply"
-        +string conditions "JSON"
-        +datetime created_at
-    }
-    
-    class ApprovalRecord {
-        +string id (UUID)
-        +string flow_id
-        +string subject_id
-        +string requester_id
-        +enum status "pending|approved|rejected|cancelled"
-        +datetime created_at
-    }
-    
-    class ApprovalAction {
-        +string id (UUID)
-        +string record_id
-        +string approver_id
-        +enum action "approve|reject|revoke"
-        +string comment
-        +datetime created_at
-    }
-    
-    ApprovalFlow "1" -- "0..*" ApprovalRecord : triggers
-    ApprovalRecord "1" *-- "0..*" ApprovalAction : records
-```
-
-#### 5.2.3 API 管理模型
-
-```mermaid
-classDiagram
-    class ApiGroup {
-        +string id (UUID)
-        +string name
-        +string parent_id
-        +datetime created_at
-    }
-    
-    class ApiDefinition {
-        +string id (UUID)
-        +string group_id
-        +string name
-        +string path
-        +enum method "GET|POST|PUT|DELETE"
-        +string doc_link
-        +enum[] app_types "business|personal"
-        +enum[] credential_types "app_a|app_b|open_app"
-        +string owner_id
-        +datetime created_at
-    }
-    
-    class ApiSubscription {
-        +string id (UUID)
-        +string api_id
-        +string app_id
-        +datetime subscribed_at
-    }
-    
-    ApiGroup "1" *-- "0..*" ApiDefinition : contains
-    ApiDefinition "1" -- "0..*" ApiSubscription : subscribed by
-```
-
-#### 5.2.4 事件管理模型
-
-```mermaid
-classDiagram
-    class EventDefinition {
-        +string id (UUID)
-        +string name
-        +string topic
-        +string doc_link
-        +string[] channels "webhook|mq"
-        +enum[] credential_types "app_a|app_b"
-        +bool app_isolation "按应用隔离"
-        +string owner_id
-        +datetime created_at
-    }
-    
-    class EventSubscription {
-        +string id (UUID)
-        +string event_id
-        +string app_id
-        +string channel_type "webhook|mq"
-        +string channel_config "url/token"
-        +datetime subscribed_at
-    }
-    
-    EventDefinition "1" -- "0..*" EventSubscription : subscribed by
-```
-
-#### 5.2.5 回调管理模型
-
-```mermaid
-classDiagram
-    class CallbackDefinition {
-        +string id (UUID)
-        +string name
-        +string protocol "webhook|sse"
-        +string doc_link
-        +string[] credential_types "app_a|app_b"
-        +string owner_id
-        +datetime created_at
-    }
-    
-    class CallbackSubscription {
-        +string id (UUID)
-        +string callback_id
-        +string app_id
-        +string protocol "webhook|sse"
-        +string protocol_address "url"
-        +string credential_type
-        +datetime subscribed_at
-    }
-    
-    CallbackDefinition "1" -- "0..*" CallbackSubscription : subscribed by
-```
-
-### 5.3 API 接口设计（管理面）
-
-#### 5.3.1 分组管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| POST | `/api/v1/groups` | 创建一级分组 | 平台运营方 |
-| GET | `/api/v1/groups` | 查询分组列表（树形） | 所有用户 |
-| PUT | `/api/v1/groups/{id}` | 更新分组信息 | 平台运营方 |
-| DELETE | `/api/v1/groups/{id}` | 删除分组 | 平台运营方 |
-| POST | `/api/v1/groups/{id}/owners` | 配置分组责任人 | 平台运营方 |
-| GET | `/api/v1/groups/{id}/owners` | 查询分组责任人列表 | 平台运营方 |
-
-#### 5.3.2 API 管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| GET | `/api/v1/apis` | 查询 API 列表（目录/管理视图） | 分组责任人 |
-| POST | `/api/v1/apis` | 注册 API（附带权限定义） | 分组责任人 |
-| PUT | `/api/v1/apis/{id}` | 更新 API 及权限信息 | 分组责任人 |
-| DELETE | `/api/v1/apis/{id}` | 删除 API 权限及 API | 分组责任人 |
-| GET | `/api/v1/apis/{id}/doc` | 获取 API 文档链接 | 所有用户 |
-
-#### 5.3.3 事件管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| GET | `/api/v1/events` | 查询事件列表（目录/管理视图） | 分组责任人 |
-| POST | `/api/v1/events` | 注册事件（附带权限定义） | 分组责任人 |
-| PUT | `/api/v1/events/{id}` | 更新事件及权限信息 | 分组责任人 |
-| DELETE | `/api/v1/events/{id}` | 删除事件权限及事件 | 分组责任人 |
-| GET | `/api/v1/events/{id}/doc` | 获取事件文档链接 | 所有用户 |
-
-#### 5.3.4 回调管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| GET | `/api/v1/callbacks` | 查询回调列表（目录/管理视图） | 分组责任人 |
-| POST | `/api/v1/callbacks` | 注册回调（附带权限定义） | 分组责任人 |
-| PUT | `/api/v1/callbacks/{id}` | 更新回调及权限信息 | 分组责任人 |
-| DELETE | `/api/v1/callbacks/{id}` | 删除回调权限及回调 | 分组责任人 |
-| GET | `/api/v1/callbacks/{id}/doc` | 获取回调文档链接 | 所有用户 |
-
-#### 5.3.5 API 权限管理 API（消费方）
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| GET | `/api/v1/applications/{appId}/api-permissions` | 查询应用已申请 API 权限列表 | 消费方 |
-| GET | `/api/v1/api-permissions/tree` | 查询 API 权限树形目录（L1-L4） | 消费方 |
-| POST | `/api/v1/api-permissions/apply` | 提交 API 权限申请单 | 消费方 |
-| GET | `/api/v1/api-permissions/apply/{applyId}` | 查询申请单详情 | 消费方 |
-
-#### 5.3.6 事件权限管理 API（消费方）
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| GET | `/api/v1/applications/{appId}/event-permissions` | 查询应用已订阅事件权限列表 | 消费方 |
-| GET | `/api/v1/event-permissions/tree` | 查询事件权限树形目录（L1-L4） | 消费方 |
-| POST | `/api/v1/event-permissions/apply` | 提交事件权限申请单 | 消费方 |
-| PUT | `/api/v1/event-permissions/{id}/config` | 配置事件消费参数（协议/地址/凭证） | 消费方（获批后） |
-
-#### 5.3.7 回调权限管理 API（消费方）
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| GET | `/api/v1/applications/{appId}/callback-permissions` | 查询应用已订阅回调权限列表 | 消费方 |
-| GET | `/api/v1/callback-permissions/tree` | 查询回调权限树形目录（L1-L4） | 消费方 |
-| POST | `/api/v1/callback-permissions/apply` | 提交回调权限申请单 | 消费方 |
-| PUT | `/api/v1/callback-permissions/{id}/config` | 配置回调接收参数（协议/地址/凭证） | 消费方（获批后） |
-
-#### 5.3.8 审批管理 API
-
-| 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|
-| POST | `/api/v1/admin/approval-flows` | 创建审批流程模板 | 平台运营方 |
-| GET | `/api/v1/approvals/{id}` | 查询审批详情 | 相关方 |
-| POST | `/api/v1/approvals/{id}/actions` | 执行审批操作（同意/驳回/撤销） | 审批人 |
-| GET | `/api/v1/approvals/pending` | 查询待审批列表 | 当前用户 |
-
-### 5.4 页面设计
-
-> 💡 **设计思路**：页面布局严格对齐第 3 章生命周期顺序。分为 **基础设施**（运营方）、**资源管理**（分组责任人）与 **权限订阅**（消费方）三大板块。
-
-| 页面名称 | 路由/路径 | 描述 | 目标用户 |
+| 模块 | 接口组 | 简要描述 | 目标用户 |
 | :--- | :--- | :--- | :--- |
-| **控制台** | `/dashboard` | 关键指标概览（待办审批、订阅统计、资源概览等） | 运营方/提供方/消费方 |
-| **分组管理** | `/groups/manage` | 创建/编辑一级分组（L1），配置分组责任人清单 | 平台运营方 |
-| **审批中心** | `/approvals` | 待办列表（资源注册审批、权限申请审批），支持同意/驳回/撤销 | 运营方/提供方 |
-| **API 管理** | `/apis/manage` | 查看本分组 API 列表；注册/编辑 API 及权限信息（附带审批流） | 分组责任人 |
-| **事件管理** | `/events/manage` | 查看本分组事件列表；注册/编辑事件及权限信息（附带审批流） | 分组责任人 |
-| **回调管理** | `/callbacks/manage` | 查看本分组回调列表；注册/编辑回调及权限信息（附带审批流） | 分组责任人 |
-| **API 权限申请** | `/apis/subscribe` | 查看应用已申请 API 权限列表；浏览 L1-L4 树形目录；提交申请 | 消费方 |
-| **事件权限申请** | `/events/subscribe` | 查看应用已订阅事件列表；浏览目录；提交申请；获批后配置 **协议/地址/凭证** | 消费方 |
-| **回调权限申请** | `/callbacks/subscribe` | 查看应用已订阅回调列表；浏览目录；提交申请；获批后配置 **协议/地址/凭证** | 消费方 |
+| **分组管理** | 分组 CRUD、责任人配置 | 一级分组的增删改查及责任人分配 | 平台运营方 |
+| **API 管理** | API 注册/编辑/删除、列表查询 | API 资源及权限信息的生命周期管理 | 分组责任人 |
+| **事件管理** | 事件注册/编辑/删除、列表查询 | 事件资源及权限信息的生命周期管理 | 分组责任人 |
+| **回调管理** | 回调注册/编辑/删除、列表查询 | 回调资源及权限信息的生命周期管理 | 分组责任人 |
+| **API 权限** | 目录查询、申请提交、列表查询 | 消费方浏览 API 树、提交申请、查看状态 | 消费方 |
+| **事件权限** | 目录查询、申请提交、参数配置 | 消费方浏览事件树、提交申请、配置协议/地址/凭证 | 消费方 |
+| **回调权限** | 目录查询、申请提交、参数配置 | 消费方浏览回调树、提交申请、配置协议/地址/凭证 | 消费方 |
+| **审批管理** | 流程配置、审批执行、待办查询 | 审批流模板维护及审批单处理 | 运营方/审批人 |
+
+### 5.3 页面清单
+
+| 角色 | 页面名称 | 核心功能 |
+| :--- | :--- | :--- |
+| **运营方** | **分组管理** | 维护一级分组结构，配置分组责任人 |
+| | **审批中心** | 处理资源注册审批、权限申请审批 |
+| **提供方** | **API/事件/回调管理** | 查看本分组资源列表，进行注册、编辑、删除操作 |
+| **消费方** | **控制台** | 查看应用权限概览、待办事项 |
+| | **API/事件/回调权限申请** | 浏览权限目录，提交申请，配置消费参数（协议/地址/凭证） |
+
+### 5.4 数据库表清单
+
+| 模块 | 核心表名 | 简要描述 |
+| :--- | :--- | :--- |
+| **分组** | `groups` | 存储一级分组信息及资源类型 |
+| | `group_owners` | 存储分组责任人关联关系 |
+| **资源** | `apis`, `events`, `callbacks` | 存储 API/事件/回调的基础定义信息（名称、Scope、文档等） |
+| **权限** | `permissions` | 存储权限资源与底层资源的关联及状态 |
+| **订阅** | `subscriptions` | 存储应用对权限的订阅关系及消费配置（协议、地址、凭证） |
+| **审批** | `approval_flows` | 存储审批流程模板配置 |
+| | `approval_records` | 存储审批单记录及操作日志 |
+| **审计** | `audit_logs` | 存储关键操作审计日志 |
 
 ### 5.5 第三方依赖
 
@@ -731,7 +517,9 @@ classDiagram
 | v1.41 | 2026-04-16 | **后续章节同步**：§4-§8 更新 NFR、架构图、数据模型（新增回调模型）、API 接口、页面设计、边界情况及术语表，全面对齐回调纳入 MVP 的变更 | AI Assistant |
 | v1.42 | 2026-04-16 | **NFR-012 明确 Mock 策略**：明确开发阶段 Mock 策略实现独立测试（零依赖），联调阶段一键切换调用实际接口 | AI Assistant |
 | v1.43 | 2026-04-16 | **G5 回调通道**：增加 WebSocket 通道类型，备注连接方向（三方连平台 vs 平台连三方）待定 | AI Assistant |
+| v1.44 | 2026-04-16 | **G5 备注澄清**：明确仅 WebSocket 连接方向待定 | AI Assistant |
+| v1.45 | 2026-04-16 | **§5 技术设计精简**：移除详细接口/页面/数据模型设计，改为**接口清单**、**页面清单**、**数据库表清单**及简要描述；详细设计移至 `@sddu-plan` 阶段 | AI Assistant |
 
 ---
 
-**最后更新**: 2026-04-16（G5 增加 WebSocket 通道类型）
+**最后更新**: 2026-04-16（§5 技术设计精简为清单模式）
