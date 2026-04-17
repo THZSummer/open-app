@@ -17,155 +17,66 @@
 
 ## 2. 项目模块结构
 
-### 2.1 项目架构图
+### 2.1 架构概览
 
-```mermaid
-flowchart TB
-    subgraph Entry["入口"]
-        A["main.jsx"]
-    end
-    
-    subgraph Root["根组件"]
-        B["App.jsx<br/>(路由 + 主题)"]
-    end
-    
-    subgraph Layout["布局组件"]
-        C["Layout<br/>(Header + Sidebar + Content)"]
-    end
-    
-    subgraph Pages["页面模块"]
-        D["AppList"]
-        E["BasicInfo"]
-        F["Members"]
-        G["Capabilities"]
-        H["...<br/>(thunk.js<br/>mock.js<br/>*.less)"]
-    end
-    
-    subgraph Components["公共组件"]
-        I["AppCard"]
-        J["CreateAppModal"]
-        K["BindEamapModal"]
-        L["BindEamapSelect"]
-    end
-    
-    A --> B
-    B --> C
-    C --> D
-    C --> E
-    C --> F
-    C --> G
-    C --> H
-    C --> I
-    C --> J
-    C --> K
-    C --> L
-```
+描述项目的整体架构（用文字说明）：
 
-### 2.2 模块关系图
+- **入口文件**: main.jsx - 应用入口
+- **根组件**: App.jsx - 包含路由配置和主题配置
+- **布局组件**: 包含 Header(顶部导航)、Sidebar(左侧菜单)、AppInfoBar(应用信息)、Content(右侧内容区)
+- **页面模块**: 每个页面包含 PageName.jsx、route.js、thunk.js、mock.js、*.less
+- **公共组件**: AppCard、CreateAppModal、BindEamapModal 等
 
-```mermaid
-flowchart TB
-    subgraph Entry["入口层"]
-        M["main.jsx"]
-    end
-    
-    subgraph App["应用层"]
-        A["App.jsx<br/>路由配置"]
-    end
-    
-    subgraph LayoutLayer["布局层"]
-        L["Layout"]
-        H["Header<br/>(顶部导航+用户信息)"]
-        S["Sidebar<br/>(左侧菜单栏)"]
-        AB["AppInfoBar<br/>(应用信息)"]
-        C["Content<br/>(右侧主内容区)"]
-    end
-    
-    subgraph PagesLayer["页面层"]
-        P1["AppList<br/>(首页)"]
-        P2["BasicInfo<br/>(基础信息)"]
-        P3["Members<br/>(成员管理)"]
-        P4["Capabilities<br/>(应用能力)"]
-        P5["CapabilityDetail<br/>(能力详情)"]
-        P6["ApiManagement<br/>(API管理)"]
-        P7["Events<br/>(事件配置)"]
-        P8["OperationLog<br/>(操作日志)"]
-        P9["VersionRelease<br/>(版本发布)"]
-        P10["VersionForm<br/>(版本详情)"]
-    end
-    
-    subgraph ComponentsLayer["组件层"]
-        C1["AppCard"]
-        C2["CreateAppModal"]
-        C3["BindEamapModal"]
-    end
-    
-    M --> A
-    A --> L
-    L --> H
-    L --> S
-    L --> AB
-    L --> C
-    C --> P1
-    C --> P2
-    C --> P3
-    C --> P4
-    C --> P5
-    C --> P6
-    C --> P7
-    C --> P8
-    C --> P9
-    C --> P10
-    P1 --> C1
-    P1 --> C2
-    C2 --> C3
-    P6 --> C4
-    P6 --> C5
-    C4["ApiPermissionDrawer<br/>API权限抽屉"]
-    C5["EventDrawer<br/>事件添加抽屉"]
-```
+**层级关系**: main.jsx → App.jsx → Layout → (Header, Sidebar, AppInfoBar, Content) → Pages/Components
 
-### 2.3 页面导航流程图
+### 2.2 模块关系
 
-```mermaid
-flowchart LR
-    subgraph Level1["一级页面"]
-        A["AppList<br/>首页"]
-    end
-    
-    subgraph Level2["二级页面 (子页面)"]
-        B["BasicInfo<br/>基础信息"]
-        C["Capabilities<br/>应用能力"]
-        D["Members<br/>成员管理"]
-        E["ApiManagement<br/>API管理"]
-        F["Events<br/>事件配置"]
-        G["OperationLog<br/>操作日志"]
-        H["VersionRelease<br/>版本发布"]
-    end
-    
-    subgraph Level3["三级页面"]
-        I["BotDetail<br/>机器人配置"]
-        J["WebDetail<br/>网页应用配置"]
-        K["MiniappDetail<br/>小程序配置"]
-        L["WidgetDetail<br/>小组件配置"]
-        M["VersionForm<br/>版本详情"]
-    end
-    
-    A -->|appId| B
-    A -->|appId| C
-    A -->|appId| D
-    A -->|appId| E
-    A -->|appId| F
-    A -->|appId| G
-    A -->|appId| H
-    
-    C -->|type=bot| I
-    C -->|type=web| J
-    C -->|type=miniapp| K
-    C -->|type=widget| L
-    
-    H -->|versionId| M
-```
+描述模块之间的依赖关系（用文字说明）：
+
+**布局层模块**:
+- Layout: 主布局容器
+- Header: 顶部导航栏，包含 Logo、文档链接、用户信息
+- Sidebar: 左侧菜单栏，根据 appId 和 caps 动态渲染
+- AppInfoBar: 应用信息栏，显示应用名称和绑定状态
+- Content: 右侧主内容区，用于展示各个页面
+
+**页面层模块**:
+- AppList: 首页，应用列表展示
+- BasicInfo: 基础信息页
+- Members: 成员管理页
+- Capabilities: 应用能力页
+- CapabilityDetail: 能力详情页
+- ApiManagement: API 管理页
+- Events: 事件配置页
+- OperationLog: 操作日志页
+- VersionRelease: 版本发布页
+- VersionForm: 版本详情页
+
+**组件层模块**:
+- AppCard: 应用卡片组件
+- CreateAppModal: 创建应用弹窗
+- BindEamapModal: 绑定 EAMAP 弹窗
+- ApiPermissionDrawer: API 权限抽屉 (ApiManagement 页面使用)
+- EventDrawer: 事件添加抽屉 (Events 页面使用)
+
+### 2.3 页面导航流程
+
+描述页面导航流程（用文字说明）：
+
+**一级页面**: AppList (首页)
+
+**二级页面 (子页面)**: 从首页可以导航到以下页面 (通过 appId 参数):
+- BasicInfo (基础信息)
+- Capabilities (应用能力)
+- Members (成员管理)
+- ApiManagement (API管理)
+- Events (事件配置)
+- OperationLog (操作日志)
+- VersionRelease (版本发布)
+
+**三级页面**:
+- Capabilities 的子页面: BotDetail(机器人配置)、WebDetail(网页应用配置)、MiniappDetail(小程序配置)、WidgetDetail(小组件配置) - 通过 type 参数导航
+- VersionRelease 的子页面: VersionForm(版本详情) - 通过 versionId 参数导航
 
 ### 2.4 核心业务模块 (pages/)
 
