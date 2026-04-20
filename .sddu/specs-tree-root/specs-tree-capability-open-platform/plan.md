@@ -137,6 +137,7 @@ graph TB
 | 层级 | 技术选型 | 版本 |
 |------|----------|------|
 | **语言** | Java | 21 |
+| **构建工具** | Maven | 3.9.x |
 | **框架** | Spring Boot | 3.4.6 (Spring 6.2.12) |
 | **ORM** | MyBatis | mybatis-spring-boot-starter 3.0.4 |
 | **数据库** | MySQL | 5.7 |
