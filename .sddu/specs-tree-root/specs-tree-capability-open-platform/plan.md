@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.14  
+**规划版本**: v1.15  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -408,14 +408,12 @@ graph TB
         OpenWeb["open-web\n(React SPA)"]
     end
     
-    subgraph OpenServerInternal["open-server 内部模块"]
-        CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
-        AppMgmt["应用管理模块\n(现有能力)"]
-        Member["成员管理模块\n(现有能力)"]
-    end
-    
     subgraph Services["服务层（独立服务，无依赖）"]
-        OpenServer["open-server\n(Spring Boot)\n管理服务"]
+        subgraph OpenServer["open-server\n(Spring Boot)"]
+            CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
+            AppMgmt["应用管理模块\n(现有能力)"]
+            Member["成员管理模块\n(现有能力)"]
+        end
         ApiServer["api-server\n(Spring Boot)\nAPI网关服务"]
         EventServer["event-server\n(Spring Boot)\n事件网关服务"]
     end
@@ -443,10 +441,7 @@ graph TB
     %% 前端直接连接管理服务
     OpenWeb -->|REST API| OpenServer
     
-    %% open-server 内部模块关系
-    OpenServer --> CapMgmt
-    OpenServer --> AppMgmt
-    OpenServer --> Member
+    %% open-server 内部模块调用
     CapMgmt -.->|方法调用| AppMgmt
     CapMgmt -.->|方法调用| Member
     
@@ -477,7 +472,6 @@ graph TB
     EventServer -.->|事件推送| Consumer2
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
-    style OpenServerInternal fill:#e3f2fd,stroke:#1565c0
     style Services fill:#e3f2fd,stroke:#1565c0
     style DataLayer fill:#f3e5f5,stroke:#7b1fa2
     style PlatformGW fill:#fff3e0,stroke:#ef6c00
@@ -720,14 +714,12 @@ graph LR
         OpenWeb["open-web"]
     end
     
-    subgraph OpenServerInternal["open-server 内部"]
-        CapMgmt["能力开放模块"]
-        AppMgmt["应用管理模块"]
-        Member["成员管理模块"]
-    end
-    
     subgraph Services["后端服务（独立服务，无依赖）"]
-        OpenServer["open-server\n(管理服务)"]
+        subgraph OpenServer["open-server"]
+            CapMgmt["能力开放模块"]
+            AppMgmt["应用管理模块"]
+            Member["成员管理模块"]
+        end
         ApiServer["api-server\n(API网关)"]
         EventServer["event-server\n(事件网关)"]
     end
@@ -756,7 +748,6 @@ graph LR
     MsgGW --> EventServer
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
-    style OpenServerInternal fill:#e3f2fd,stroke:#1565c0
     style Services fill:#e3f2fd,stroke:#1565c0
     style PlatformGW fill:#fff3e0,stroke:#ef6c00
     style Consumers fill:#e0f7fa,stroke:#00838f
@@ -1482,6 +1473,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.12 | 2026-04-20 | 修正架构图：移除网关层，open-web直连open-server，api-server/event-server通过XX通讯平台网关访问 | SDDU Plan Agent |
 | v1.13 | 2026-04-20 | 修正服务依赖关系：api-server/event-server为独立服务，不依赖open-server，直接访问数据库 | SDDU Plan Agent |
 | v1.14 | 2026-04-20 | 修正调用方式：应用管理/成员管理改为open-server内部模块，通过方法调用而非Feign | SDDU Plan Agent |
+| v1.15 | 2026-04-20 | 简化架构图：合并重复的open-server节点，内部模块作为open-server子图 | SDDU Plan Agent |
 
 ---
 
