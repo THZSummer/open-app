@@ -767,17 +767,27 @@ erDiagram
 
 #### Scope 命名规范
 
-权限的 `scope` 字段命名遵循 `{模块}:{资源}:{操作}` 格式：
+权限的 `scope` 字段命名遵循 `{资源类型}:{模块}:{资源}:{操作}` 格式，确保全局唯一：
 
 | 资源类型 | Scope 示例 | 说明 |
 |----------|------------|------|
-| API | `im:message:send` | IM 模块发送消息 API |
-| API | `im:message:get` | IM 模块获取消息 API |
-| Event | `im:message:received` | IM 模块消息接收事件 |
-| Event | `meeting:started` | 会议模块会议开始事件 |
-| Callback | `approval:completed` | 审批模块审批完成回调 |
+| API | `api:im:message:send` | IM 模块发送消息 API |
+| API | `api:im:message:get` | IM 模块获取消息 API |
+| Event | `event:im:message:received` | IM 模块消息接收事件 |
+| Event | `event:meeting:started` | 会议模块会议开始事件 |
+| Callback | `callback:approval:completed` | 审批模块审批完成回调 |
+
+**命名规则**：
+
+| 部分 | 说明 | 示例 |
+|------|------|------|
+| `{资源类型}` | api / event / callback | `api` |
+| `{模块}` | 业务模块名 | `im`、`meeting`、`approval` |
+| `{资源}` | 具体资源名 | `message`、`meeting` |
+| `{操作}` | 操作类型 | `send`、`get`、`received`、`started` |
 
 > 💡 **说明**：
+> - **资源类型前缀**：确保 scope 全局唯一，避免不同类型资源冲突
 > - 只有 **权限（PERMISSION）** 才有 `scope` 属性
 > - API/事件/回调资源表使用 `code_name` 作为代码标识，不叫 scope
 
@@ -1115,7 +1125,7 @@ CREATE TABLE `openplatform_permission_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
-    `scope` VARCHAR(100) NOT NULL UNIQUE COMMENT '权限标识，如 im:message:send',
+    `scope` VARCHAR(100) NOT NULL UNIQUE COMMENT '权限标识，如 api:im:message:send',
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
     `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
