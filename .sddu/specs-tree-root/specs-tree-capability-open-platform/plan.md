@@ -591,8 +591,8 @@ open-app/
 |--------|------|------|
 | `create_time` | DATETIME(3) | 创建时间，默认 CURRENT_TIMESTAMP(3) |
 | `last_update_time` | DATETIME(3) | 更新时间，默认 CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) |
-| `create_by` | VARCHAR(36) | 创建人 ID |
-| `last_update_by` | VARCHAR(36) | 更新人 ID |
+| `create_by` | BIGINT(20) | 创建人 ID |
+| `last_update_by` | BIGINT(20) | 更新人 ID |
 
 > 💡 **说明**：时间字段统一使用 `DATETIME(3)` 精确到毫秒，确保高并发场景下的时间精度。
 
@@ -600,9 +600,10 @@ open-app/
 
 | 规则 | 说明 |
 |------|------|
-| **主键类型** | VARCHAR(36)，使用 UUID |
+| **主键类型** | BIGINT(20)，自增主键 |
 | **主键命名** | 统一使用 `id` |
-| **生成策略** | 应用层生成 UUID，不依赖数据库自增 |
+| **生成策略** | 数据库自增，AUTO_INCREMENT |
+| **外键类型** | BIGINT(20)，与主键类型一致 |
 
 #### 索引规范
 
@@ -611,6 +612,24 @@ open-app/
 | **索引命名** | `idx_字段名` 或 `idx_字段名1_字段名2` |
 | **唯一索引命名** | `uk_字段名` |
 | **外键命名** | `fk_表名_字段名` |
+
+#### 枚举字段规范
+
+| 规则 | 说明 |
+|------|------|
+| **字段类型** | 统一使用 `TINYINT` |
+| **字段长度** | `TINYINT(10)`，显示宽度 10 位 |
+| **默认值** | 使用数字默认值，如 `DEFAULT 0` |
+| **注释说明** | 在 COMMENT 中说明枚举值含义 |
+
+**枚举值示例**：
+
+| 字段 | 枚举值 | 说明 |
+|------|--------|------|
+| `status` (资源状态) | 0=草稿, 1=待审, 2=已发布, 3=已下线 | draft, pending, published, offline |
+| `status` (订阅状态) | 0=待审, 1=已授权, 2=已拒绝, 3=已取消 | pending, approved, rejected, cancelled |
+| `status` (审批状态) | 0=待审, 1=已通过, 2=已拒绝, 3=已撤销 | pending, approved, rejected, cancelled |
+| `is_default` | 0=否, 1=是 | 布尔类型枚举 |
 
 #### 规划表正式命名对照
 
@@ -661,29 +680,29 @@ open-app/
 -- 分组表（扩展现有 openplatform_mode_node_t）
 -- ============================================
 CREATE TABLE `openplatform_group_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
-    `parent_id` VARCHAR(36),
+    `parent_id` BIGINT(20),
     `sort_order` INT DEFAULT 0,
-    `status` VARCHAR(20) DEFAULT 'active',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     KEY `idx_resource_type` (`resource_type`),
     KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组表';
 
 -- 分组责任人关联表
 CREATE TABLE `openplatform_group_owner_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
-    `group_id` VARCHAR(36) NOT NULL,
-    `user_id` VARCHAR(36) NOT NULL,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `group_id` BIGINT(20) NOT NULL,
+    `user_id` BIGINT(20) NOT NULL,
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
     CONSTRAINT `fk_group_owner_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组责任人关联表';
@@ -692,19 +711,19 @@ CREATE TABLE `openplatform_group_owner_t` (
 -- API 资源表（扩展现有 openplatform_permission_api_t）
 -- ============================================
 CREATE TABLE `openplatform_api_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `path` VARCHAR(500) NOT NULL,
     `method` VARCHAR(10) NOT NULL,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `group_id` VARCHAR(36),
-    `status` VARCHAR(20) DEFAULT 'draft' COMMENT 'draft, pending, published, offline',
+    `group_id` BIGINT(20),
+    `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     KEY `idx_group_id` (`group_id`),
     KEY `idx_status` (`status`),
     CONSTRAINT `fk_api_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
@@ -714,18 +733,18 @@ CREATE TABLE `openplatform_api_t` (
 -- 事件资源表（扩展现有 openplatform_event_t）
 -- ============================================
 CREATE TABLE `openplatform_event_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `topic` VARCHAR(200) NOT NULL UNIQUE,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `group_id` VARCHAR(36),
-    `status` VARCHAR(20) DEFAULT 'draft',
+    `group_id` BIGINT(20),
+    `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     KEY `idx_group_id` (`group_id`),
     KEY `idx_topic` (`topic`),
     CONSTRAINT `fk_event_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
@@ -735,17 +754,17 @@ CREATE TABLE `openplatform_event_t` (
 -- 回调资源表（新建）
 -- ============================================
 CREATE TABLE `openplatform_callback_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `group_id` VARCHAR(36),
-    `status` VARCHAR(20) DEFAULT 'draft',
+    `group_id` BIGINT(20),
+    `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     KEY `idx_group_id` (`group_id`),
     CONSTRAINT `fk_callback_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
@@ -754,18 +773,18 @@ CREATE TABLE `openplatform_callback_t` (
 -- 权限资源表（新建）
 -- ============================================
 CREATE TABLE `openplatform_permission_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT 'scope',
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
-    `resource_id` VARCHAR(36) NOT NULL COMMENT '关联的 API/Event/Callback ID',
+    `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
     `description` TEXT,
-    `approval_flow_id` VARCHAR(36) COMMENT '资源特有审批流',
-    `status` VARCHAR(20) DEFAULT 'active',
+    `approval_flow_id` BIGINT(20) COMMENT '资源特有审批流',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     KEY `idx_resource` (`resource_type`, `resource_id`),
     KEY `idx_code_name` (`code_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源表';
@@ -774,19 +793,19 @@ CREATE TABLE `openplatform_permission_t` (
 -- 订阅关系表（扩展现有 openplatform_app_permission_t）
 -- ============================================
 CREATE TABLE `openplatform_subscription_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
-    `app_id` VARCHAR(36) NOT NULL,
-    `permission_id` VARCHAR(36) NOT NULL,
-    `status` VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, approved, rejected, cancelled',
-    `channel_type` VARCHAR(20) COMMENT 'internal_mq, webhook, sse, websocket',
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `app_id` BIGINT(20) NOT NULL,
+    `permission_id` BIGINT(20) NOT NULL,
+    `status` TINYINT(10) DEFAULT 0 COMMENT '0=待审, 1=已授权, 2=已拒绝, 3=已取消',
+    `channel_type` TINYINT(10) COMMENT '0=内部消息队列, 1=WebHook, 2=SSE, 3=WebSocket',
     `channel_address` VARCHAR(500),
-    `auth_type` VARCHAR(20) COMMENT 'app_credential_a, app_credential_b, open_app_credential',
+    `auth_type` TINYINT(10) COMMENT '0=应用类凭证A, 1=应用类凭证B, 2=开放应用凭证',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     `approved_at` DATETIME(3),
-    `approved_by` VARCHAR(36),
+    `approved_by` BIGINT(20),
     UNIQUE KEY `uk_app_permission` (`app_id`, `permission_id`),
     KEY `idx_app_id` (`app_id`),
     KEY `idx_permission_id` (`permission_id`),
@@ -798,34 +817,34 @@ CREATE TABLE `openplatform_subscription_t` (
 -- 审批流程模板表（扩展现有 openplatform_eflow_t）
 -- ============================================
 CREATE TABLE `openplatform_approval_flow_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
     `code` VARCHAR(50) NOT NULL UNIQUE COMMENT 'default, api_register, permission_apply',
     `description` TEXT,
-    `is_default` TINYINT(1) DEFAULT 0,
+    `is_default` TINYINT(10) DEFAULT 0 COMMENT '0=否, 1=是',
     `nodes` JSON NOT NULL COMMENT '审批节点配置',
-    `status` VARCHAR(20) DEFAULT 'active',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36)
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程模板表';
 
 -- ============================================
 -- 审批记录表（扩展现有 openplatform_eflow_log_t）
 -- ============================================
 CREATE TABLE `openplatform_approval_record_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
-    `flow_id` VARCHAR(36) NOT NULL,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `flow_id` BIGINT(20) NOT NULL,
     `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
-    `business_id` VARCHAR(36) NOT NULL,
-    `applicant_id` VARCHAR(36) NOT NULL,
-    `status` VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, approved, rejected, cancelled',
+    `business_id` BIGINT(20) NOT NULL,
+    `applicant_id` BIGINT(20) NOT NULL,
+    `status` TINYINT(10) DEFAULT 0 COMMENT '0=待审, 1=已通过, 2=已拒绝, 3=已撤销',
     `current_node` INT DEFAULT 0,
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     `completed_at` DATETIME(3),
     KEY `idx_flow_id` (`flow_id`),
     KEY `idx_business` (`business_type`, `business_id`),
@@ -838,16 +857,16 @@ CREATE TABLE `openplatform_approval_record_t` (
 -- 审批操作日志表
 -- ============================================
 CREATE TABLE `openplatform_approval_log_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
-    `record_id` VARCHAR(36) NOT NULL,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `record_id` BIGINT(20) NOT NULL,
     `node_index` INT NOT NULL,
-    `operator_id` VARCHAR(36) NOT NULL,
-    `action` VARCHAR(20) NOT NULL COMMENT 'approve, reject, cancel, transfer',
+    `operator_id` BIGINT(20) NOT NULL,
+    `action` TINYINT(10) NOT NULL COMMENT '0=同意, 1=拒绝, 2=撤销, 3=转交',
     `comment` TEXT,
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     KEY `idx_record_id` (`record_id`),
     CONSTRAINT `fk_approval_log_record` FOREIGN KEY (`record_id`) REFERENCES `openplatform_approval_record_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
@@ -856,15 +875,15 @@ CREATE TABLE `openplatform_approval_log_t` (
 -- 用户授权表（Scope 授权）
 -- ============================================
 CREATE TABLE `openplatform_user_authorization_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
-    `user_id` VARCHAR(36) NOT NULL,
-    `app_id` VARCHAR(36) NOT NULL,
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `user_id` BIGINT(20) NOT NULL,
+    `app_id` BIGINT(20) NOT NULL,
     `scopes` JSON NOT NULL COMMENT '权限范围数组',
     `expires_at` DATETIME(3),
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     `revoked_at` DATETIME(3),
     UNIQUE KEY `uk_user_app` (`user_id`, `app_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户授权表';
@@ -873,19 +892,19 @@ CREATE TABLE `openplatform_user_authorization_t` (
 -- 审计日志表（扩展现有 openplatform_oprate_log_t）
 -- ============================================
 CREATE TABLE `openplatform_audit_log_t` (
-    `id` VARCHAR(36) PRIMARY KEY,
-    `user_id` VARCHAR(36),
+    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `user_id` BIGINT(20),
     `action` VARCHAR(50) NOT NULL,
     `resource_type` VARCHAR(50) NOT NULL,
-    `resource_id` VARCHAR(36),
+    `resource_id` BIGINT(20),
     `old_value` JSON,
     `new_value` JSON,
     `ip_address` VARCHAR(45),
     `user_agent` TEXT,
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(36),
-    `last_update_by` VARCHAR(36),
+    `create_by` BIGINT(20),
+    `last_update_by` BIGINT(20),
     KEY `idx_user` (`user_id`),
     KEY `idx_resource` (`resource_type`, `resource_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
