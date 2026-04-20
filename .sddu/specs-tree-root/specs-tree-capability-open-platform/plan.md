@@ -600,7 +600,8 @@ erDiagram
 
     CATEGORY {
         bigint id PK "分类ID"
-        varchar name "分类名称"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
         bigint parent_id FK "父分类ID(树形结构)"
         int sort_order "排序"
         tinyint status "状态"
@@ -622,7 +623,8 @@ erDiagram
     
     PERMISSION {
         bigint id PK "权限ID"
-        varchar name "权限名称"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
         varchar scope UK "权限标识(scope)"
         varchar resource_type "资源类型:api/event/callback"
         bigint resource_id FK "关联资源ID"
@@ -637,11 +639,13 @@ erDiagram
     
     API {
         bigint id PK "API ID"
-        varchar name "API名称"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
         varchar code_name UK "代码标识"
         varchar path "API路径"
         varchar method "HTTP方法"
-        text description "描述"
+        text description_cn "中文描述"
+        text description_en "英文描述"
         varchar doc_url "文档地址"
         tinyint status "状态"
         datetime create_time
@@ -652,10 +656,12 @@ erDiagram
     
     EVENT {
         bigint id PK "事件ID"
-        varchar name "事件名称"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
         varchar code_name UK "代码标识"
         varchar topic UK "Topic"
-        text description "描述"
+        text description_cn "中文描述"
+        text description_en "英文描述"
         varchar doc_url "文档地址"
         tinyint status "状态"
         datetime create_time
@@ -666,9 +672,11 @@ erDiagram
     
     CALLBACK {
         bigint id PK "回调ID"
-        varchar name "回调名称"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
         varchar code_name UK "代码标识"
-        text description "描述"
+        text description_cn "中文描述"
+        text description_en "英文描述"
         varchar doc_url "文档地址"
         tinyint status "状态"
         datetime create_time
@@ -695,9 +703,11 @@ erDiagram
     
     APPROVAL_FLOW {
         bigint id PK "流程ID"
-        varchar name "流程名称"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
         varchar code UK "流程代码"
-        text description "描述"
+        text description_cn "中文描述"
+        text description_en "英文描述"
         tinyint is_default "是否默认"
         json nodes "审批节点配置"
         tinyint status "状态"
@@ -813,6 +823,22 @@ erDiagram
 | **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | `openplatform_permission_api_p_t` |
 | **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_user_authorization_t` |
 
+#### 名称和描述字段规范
+
+涉及名称、描述场景的字段，统一使用中英文双语：
+
+| 字段类型 | 字段命名 | 类型 | 说明 |
+|----------|----------|------|------|
+| **名称** | `name_cn` | VARCHAR(100) | 中文名称 |
+| **名称** | `name_en` | VARCHAR(100) | 英文名称 |
+| **描述** | `description_cn` | TEXT | 中文描述 |
+| **描述** | `description_en` | TEXT | 英文描述 |
+
+> 💡 **说明**：
+> - 名称字段 `name_cn` 和 `name_en` 均为必填
+> - 描述字段 `description_cn` 和 `description_en` 可选
+> - 支持国际化场景，便于多语言展示
+
 #### 必备审计字段
 
 所有业务表必须包含以下四个审计字段：
@@ -912,7 +938,8 @@ erDiagram
 -- ============================================
 CREATE TABLE `openplatform_category_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
+    `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
+    `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `parent_id` BIGINT(20),
     `sort_order` INT DEFAULT 0,
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
@@ -940,11 +967,13 @@ CREATE TABLE `openplatform_category_owner_t` (
 -- ============================================
 CREATE TABLE `openplatform_api_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
+    `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
+    `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `path` VARCHAR(500) NOT NULL,
     `method` VARCHAR(10) NOT NULL,
-    `description` TEXT,
+    `description_cn` TEXT COMMENT '中文描述',
+    `description_en` TEXT COMMENT '英文描述',
     `doc_url` VARCHAR(500),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -959,10 +988,12 @@ CREATE TABLE `openplatform_api_t` (
 -- ============================================
 CREATE TABLE `openplatform_event_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
+    `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
+    `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `topic` VARCHAR(200) NOT NULL UNIQUE,
-    `description` TEXT,
+    `description_cn` TEXT COMMENT '中文描述',
+    `description_en` TEXT COMMENT '英文描述',
     `doc_url` VARCHAR(500),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -977,9 +1008,11 @@ CREATE TABLE `openplatform_event_t` (
 -- ============================================
 CREATE TABLE `openplatform_callback_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
+    `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
+    `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
-    `description` TEXT,
+    `description_cn` TEXT COMMENT '中文描述',
+    `description_en` TEXT COMMENT '英文描述',
     `doc_url` VARCHAR(500),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -993,12 +1026,14 @@ CREATE TABLE `openplatform_callback_t` (
 -- ============================================
 CREATE TABLE `openplatform_permission_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
+    `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
+    `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `scope` VARCHAR(100) NOT NULL UNIQUE COMMENT '权限标识，如 im:message:send',
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
     `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
-    `description` TEXT,
+    `description_cn` TEXT COMMENT '中文描述',
+    `description_en` TEXT COMMENT '英文描述',
     `approval_flow_id` BIGINT(20) COMMENT '资源特有审批流',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -1038,9 +1073,11 @@ CREATE TABLE `openplatform_subscription_t` (
 -- ============================================
 CREATE TABLE `openplatform_approval_flow_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `name` VARCHAR(100) NOT NULL,
+    `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
+    `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `code` VARCHAR(50) NOT NULL UNIQUE COMMENT 'default, api_register, permission_apply',
-    `description` TEXT,
+    `description_cn` TEXT COMMENT '中文描述',
+    `description_en` TEXT COMMENT '英文描述',
     `is_default` TINYINT(10) DEFAULT 0 COMMENT '0=否, 1=是',
     `nodes` JSON NOT NULL COMMENT '审批节点配置',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
