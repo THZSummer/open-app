@@ -598,8 +598,6 @@ erDiagram
     
     APPROVAL_FLOW ||--o{ APPROVAL_RECORD : "生成记录"
     APPROVAL_RECORD ||--o{ APPROVAL_LOG : "操作日志"
-    
-    USER_AUTHORIZATION ||--o{ APP : "授权应用"
 
     CATEGORY {
         bigint id PK
@@ -726,12 +724,6 @@ erDiagram
         varchar user_id
         bigint app_id FK
         json scopes
-    }
-    
-    APP {
-        bigint id PK
-        varchar name
-        varchar app_key UK
     }
 ```
 
