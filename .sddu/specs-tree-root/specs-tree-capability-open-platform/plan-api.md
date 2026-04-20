@@ -7,64 +7,64 @@
 
 ## 接口清单
 
-| 模块 | Method | Path | 说明 | FR |
-|------|--------|------|------|-----|
-| **分类管理** | GET | `/api/v1/categories` | 获取分类列表（树形） | FR-001 |
-| | GET | `/api/v1/categories/:id` | 获取分类详情 | FR-001 |
-| | POST | `/api/v1/categories` | 创建分类（一级分类） | FR-001 |
-| | PUT | `/api/v1/categories/:id` | 更新分类 | FR-001 |
-| | DELETE | `/api/v1/categories/:id` | 删除分类（检查关联资源） | FR-001 |
-| | POST | `/api/v1/categories/:id/owners` | 添加分类责任人 | FR-002 |
-| | GET | `/api/v1/categories/:id/owners` | 获取分类责任人列表 | FR-002 |
-| | DELETE | `/api/v1/categories/:id/owners/:userId` | 移除分类责任人 | FR-002 |
-| **API 管理** | GET | `/api/v1/apis` | 获取 API 列表（按分类过滤） | FR-004 |
-| | GET | `/api/v1/apis/:id` | 获取 API 详情（含权限信息） | FR-004 |
-| | POST | `/api/v1/apis` | 注册 API（附带权限定义） | FR-005 |
-| | PUT | `/api/v1/apis/:id` | 更新 API 及权限信息 | FR-006 |
-| | DELETE | `/api/v1/apis/:id` | 删除 API（检查订阅关系） | FR-007 |
-| | POST | `/api/v1/apis/:id/withdraw` | 撤回审核中的 API | FR-004 |
-| **事件管理** | GET | `/api/v1/events` | 获取事件列表（按分类过滤） | FR-008 |
-| | GET | `/api/v1/events/:id` | 获取事件详情（含权限信息） | FR-008 |
-| | POST | `/api/v1/events` | 注册事件（附带权限定义） | FR-009 |
-| | PUT | `/api/v1/events/:id` | 更新事件及权限信息 | FR-010 |
-| | DELETE | `/api/v1/events/:id` | 删除事件（检查订阅关系） | FR-011 |
-| | POST | `/api/v1/events/:id/withdraw` | 撤回审核中的事件 | FR-008 |
-| **回调管理** | GET | `/api/v1/callbacks` | 获取回调列表（按分类过滤） | FR-012 |
-| | GET | `/api/v1/callbacks/:id` | 获取回调详情（含权限信息） | FR-012 |
-| | POST | `/api/v1/callbacks` | 注册回调（附带权限定义） | FR-013 |
-| | PUT | `/api/v1/callbacks/:id` | 更新回调及权限信息 | FR-014 |
-| | DELETE | `/api/v1/callbacks/:id` | 删除回调（检查订阅关系） | FR-015 |
-| | POST | `/api/v1/callbacks/:id/withdraw` | 撤回审核中的回调 | FR-012 |
-| **API 权限管理** | GET | `/api/v1/apps/:appId/apis` | 获取应用 API 权限列表 | FR-016 |
-| | GET | `/api/v1/permissions/apis/tree` | 获取 API 权限树（抽屉数据源） | FR-017 |
-| | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（独立单据） | FR-018 |
-| | POST | `/api/v1/apps/:appId/apis/:id/withdraw` | 撤回审核中的申请 | FR-016 |
-| **事件权限管理** | GET | `/api/v1/apps/:appId/events` | 获取应用事件订阅列表 | FR-019 |
-| | GET | `/api/v1/permissions/events/tree` | 获取事件权限树（抽屉数据源） | FR-020 |
-| | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（独立单据） | FR-021 |
-| | PUT | `/api/v1/apps/:appId/events/:id/config` | 配置事件消费参数（通道/地址/认证） | FR-019 |
-| | POST | `/api/v1/apps/:appId/events/:id/withdraw` | 撤回审核中的申请 | FR-019 |
-| **回调权限管理** | GET | `/api/v1/apps/:appId/callbacks` | 获取应用回调订阅列表 | FR-022 |
-| | GET | `/api/v1/permissions/callbacks/tree` | 获取回调权限树（抽屉数据源） | FR-023 |
-| | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（独立单据） | FR-024 |
-| | PUT | `/api/v1/apps/:appId/callbacks/:id/config` | 配置回调消费参数（通道/地址/认证） | FR-022 |
-| | POST | `/api/v1/apps/:appId/callbacks/:id/withdraw` | 撤回审核中的申请 | FR-022 |
-| **审批管理** | GET | `/api/v1/approval-flows` | 获取审批流程模板列表 | FR-025 |
-| | GET | `/api/v1/approval-flows/:id` | 获取审批流程模板详情 | FR-025 |
-| | POST | `/api/v1/approval-flows` | 创建审批流程模板 | FR-025 |
-| | PUT | `/api/v1/approval-flows/:id` | 更新审批流程模板 | FR-025 |
-| | GET | `/api/v1/approvals/pending` | 获取待审批列表 | FR-026/FR-027 |
-| | GET | `/api/v1/approvals/:id` | 获取审批详情 | FR-026/FR-027 |
-| | POST | `/api/v1/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
-| | POST | `/api/v1/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
-| | POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
-| **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
-| | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
-| | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
-| **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
-| | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
-| | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
-| | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
+| # | 模块 | Method | Path | 说明 | FR |
+|---|------|--------|------|------|-----|
+| 1 | **分类管理** | GET | `/api/v1/categories` | 获取分类列表（树形） | FR-001 |
+| 2 | | GET | `/api/v1/categories/:id` | 获取分类详情 | FR-001 |
+| 3 | | POST | `/api/v1/categories` | 创建分类（一级分类） | FR-001 |
+| 4 | | PUT | `/api/v1/categories/:id` | 更新分类 | FR-001 |
+| 5 | | DELETE | `/api/v1/categories/:id` | 删除分类（检查关联资源） | FR-001 |
+| 6 | | POST | `/api/v1/categories/:id/owners` | 添加分类责任人 | FR-002 |
+| 7 | | GET | `/api/v1/categories/:id/owners` | 获取分类责任人列表 | FR-002 |
+| 8 | | DELETE | `/api/v1/categories/:id/owners/:userId` | 移除分类责任人 | FR-002 |
+| 9 | **API 管理** | GET | `/api/v1/apis` | 获取 API 列表（按分类过滤） | FR-004 |
+| 10 | | GET | `/api/v1/apis/:id` | 获取 API 详情（含权限信息） | FR-004 |
+| 11 | | POST | `/api/v1/apis` | 注册 API（附带权限定义） | FR-005 |
+| 12 | | PUT | `/api/v1/apis/:id` | 更新 API 及权限信息 | FR-006 |
+| 13 | | DELETE | `/api/v1/apis/:id` | 删除 API（检查订阅关系） | FR-007 |
+| 14 | | POST | `/api/v1/apis/:id/withdraw` | 撤回审核中的 API | FR-004 |
+| 15 | **事件管理** | GET | `/api/v1/events` | 获取事件列表（按分类过滤） | FR-008 |
+| 16 | | GET | `/api/v1/events/:id` | 获取事件详情（含权限信息） | FR-008 |
+| 17 | | POST | `/api/v1/events` | 注册事件（附带权限定义） | FR-009 |
+| 18 | | PUT | `/api/v1/events/:id` | 更新事件及权限信息 | FR-010 |
+| 19 | | DELETE | `/api/v1/events/:id` | 删除事件（检查订阅关系） | FR-011 |
+| 20 | | POST | `/api/v1/events/:id/withdraw` | 撤回审核中的事件 | FR-008 |
+| 21 | **回调管理** | GET | `/api/v1/callbacks` | 获取回调列表（按分类过滤） | FR-012 |
+| 22 | | GET | `/api/v1/callbacks/:id` | 获取回调详情（含权限信息） | FR-012 |
+| 23 | | POST | `/api/v1/callbacks` | 注册回调（附带权限定义） | FR-013 |
+| 24 | | PUT | `/api/v1/callbacks/:id` | 更新回调及权限信息 | FR-014 |
+| 25 | | DELETE | `/api/v1/callbacks/:id` | 删除回调（检查订阅关系） | FR-015 |
+| 26 | | POST | `/api/v1/callbacks/:id/withdraw` | 撤回审核中的回调 | FR-012 |
+| 27 | **API 权限管理** | GET | `/api/v1/apps/:appId/apis` | 获取应用 API 权限列表 | FR-016 |
+| 28 | | GET | `/api/v1/permissions/apis/tree` | 获取 API 权限树（抽屉数据源） | FR-017 |
+| 29 | | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（独立单据） | FR-018 |
+| 30 | | POST | `/api/v1/apps/:appId/apis/:id/withdraw` | 撤回审核中的申请 | FR-016 |
+| 31 | **事件权限管理** | GET | `/api/v1/apps/:appId/events` | 获取应用事件订阅列表 | FR-019 |
+| 32 | | GET | `/api/v1/permissions/events/tree` | 获取事件权限树（抽屉数据源） | FR-020 |
+| 33 | | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（独立单据） | FR-021 |
+| 34 | | PUT | `/api/v1/apps/:appId/events/:id/config` | 配置事件消费参数（通道/地址/认证） | FR-019 |
+| 35 | | POST | `/api/v1/apps/:appId/events/:id/withdraw` | 撤回审核中的申请 | FR-019 |
+| 36 | **回调权限管理** | GET | `/api/v1/apps/:appId/callbacks` | 获取应用回调订阅列表 | FR-022 |
+| 37 | | GET | `/api/v1/permissions/callbacks/tree` | 获取回调权限树（抽屉数据源） | FR-023 |
+| 38 | | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（独立单据） | FR-024 |
+| 39 | | PUT | `/api/v1/apps/:appId/callbacks/:id/config` | 配置回调消费参数（通道/地址/认证） | FR-022 |
+| 40 | | POST | `/api/v1/apps/:appId/callbacks/:id/withdraw` | 撤回审核中的申请 | FR-022 |
+| 41 | **审批管理** | GET | `/api/v1/approval-flows` | 获取审批流程模板列表 | FR-025 |
+| 42 | | GET | `/api/v1/approval-flows/:id` | 获取审批流程模板详情 | FR-025 |
+| 43 | | POST | `/api/v1/approval-flows` | 创建审批流程模板 | FR-025 |
+| 44 | | PUT | `/api/v1/approval-flows/:id` | 更新审批流程模板 | FR-025 |
+| 45 | | GET | `/api/v1/approvals/pending` | 获取待审批列表 | FR-026/FR-027 |
+| 46 | | GET | `/api/v1/approvals/:id` | 获取审批详情 | FR-026/FR-027 |
+| 47 | | POST | `/api/v1/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
+| 48 | | POST | `/api/v1/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
+| 49 | | POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
+| 50 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
+| 51 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
+| 52 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
+| 53 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
+| 54 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
+| 55 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
+| 56 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
 
 > **接口统计**：共 57 个接口，覆盖 FR-001 ~ FR-031
 
