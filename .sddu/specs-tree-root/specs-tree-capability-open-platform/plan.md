@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.25  
+**规划版本**: v1.26  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -111,16 +111,18 @@ graph TB
 
 #### 前端技术栈
 
+> 💡 详细规格参考：[`front/project-documenter/output/2026-04-16-specification.md`](../../../front/project-documenter/output/2026-04-16-specification.md)
+
 | 层级 | 技术选型 | 版本 |
 |------|----------|------|
-| **语言** | TypeScript | 5.x |
-| **框架** | React | 18.x |
-| **状态管理** | Redux Toolkit / Zustand | - |
-| **UI 组件库** | Ant Design / MUI | - |
-| **构建工具** | Vite | 5.x |
-| **HTTP 客户端** | Axios / React Query | - |
-| **表单处理** | React Hook Form | - |
-| **测试框架** | Vitest + React Testing Library | - |
+| **框架** | React | ^18.2.0 |
+| **路由** | React Router | ^6.20.0 |
+| **UI 组件库** | Ant Design | ^4.24.16 |
+| **图标库** | @ant-design/icons | ^6.1.1 |
+| **构建工具** | Vite | ^5.0.0 |
+| **React 插件** | @vitejs/plugin-react | ^4.2.0 |
+| **CSS 预处理器** | Less | ^4.2.0 |
+| **样式方案** | Less 模块化样式 (`.m.less`) + CSS 变量 | - |
 
 #### 前端设计流程
 
@@ -1536,6 +1538,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.23 | 2026-04-20 | 6.1页面清单按spec第3章FR思路重写：对应FR编号、页面数、设计流程，修正风险评估章节编号 | SDDU Plan Agent |
 | v1.24 | 2026-04-20 | 调整页面清单：API/事件/回调权限申请改为按/front/README.md执行；Scope授权标记为暂不开发；应用管理标记为不涉及沿用现有；总页面数调整为18页 | SDDU Plan Agent |
 | v1.25 | 2026-04-20 | 同步plan-page.md页面清单格式与plan.md 6.1节保持一致 | SDDU Plan Agent |
+| v1.26 | 2026-04-20 | 前端技术栈参考front/project-documenter/output/2026-04-16-specification.md定义：React 18.2.0 + Ant Design 4.24.16 + Vite 5.0.0 + Less 4.2.0 | SDDU Plan Agent |
 
 ---
 
