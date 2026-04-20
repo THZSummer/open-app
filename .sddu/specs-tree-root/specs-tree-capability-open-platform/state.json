@@ -1,8 +1,10 @@
 {
   "feature": "capability-open-platform",
-  "state": "specified",
+  "state": "planned",
   "created": "2026-04-13",
-  "updated": "2026-04-14",
+  "updated": "2026-04-20",
   "discovery_completed": "2026-04-13",
-  "specified_at": "2026-04-14"
+  "specified_at": "2026-04-14",
+  "planned_at": "2026-04-20",
+  "adrs": ["ADR-001", "ADR-002", "ADR-003"]
 }

@@ -21,27 +21,32 @@
 
 | Feature ID | Feature 名称 | 状态 | 优先级 | 作者 | 更新时间 |
 |------------|-------------|------|--------|------|----------|
-| **CAPABILITY-001** | [能力开放平台](./specs-tree-capability-open-platform/) | discovered | - | - | 2026-04-13 |
+| **CAPABILITY-001** | [能力开放平台](./specs-tree-capability-open-platform/) | planned | P0 | Summer | 2026-04-20 |
 | **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | specified | P0 | Summer | 2026-04-07 |
 
 ## Feature 详情
 
 ### CAPABILITY-001: 能力开放平台
 
-**状态**: discovered → 需求挖掘完成，待分析确认
+**状态**: planned → 技术规划完成，待任务分解
 
 **文档**:
 - [需求挖掘报告](./specs-tree-capability-open-platform/discovery-report.md) - 完整的需求挖掘报告（615 行）
 - [需求分析笔记](./specs-tree-capability-open-platform/discovery-analysis.md) - 分析总结
 - [会话日志](./specs-tree-capability-open-platform/discovery-session-log.md) - 原始对话记录
+- [产品规范](./specs-tree-capability-open-platform/spec.md) - 完整的产品规范文档（567 行）⭐ 新增
+- [技术规划](./specs-tree-capability-open-platform/plan.md) - 技术规划文档（800+ 行）⭐ 新增
+- [ADR-001](./specs-tree-capability-open-platform/ADR-001.md) - 单体应用架构决策 ⭐ 新增
+- [ADR-002](./specs-tree-capability-open-platform/ADR-002.md) - Mock 策略决策 ⭐ 新增
+- [ADR-003](./specs-tree-capability-open-platform/ADR-003.md) - 权限资源抽象决策 ⭐ 新增
 
-**核心内容**:
-- **核心定位**: open-app 体系下的基础能力平台，聚焦 XX 通讯平台的能力开放管理
-- **目标用户**: 能力 Owner、平台管理员、三方平台业务方
-- **能力分类**: 平台本身能力（内部管理）+ 开放给三方的能力
-- **核心流程**: 能力注册 → 能力审核 → 能力上架 → 订阅申请 → 授权审批 → 能力消费 → 审计监控
+**技术规划摘要**:
+- **推荐方案**: 单体应用 + 模块化设计（NestJS + React）
+- **预估工作量**: 80 人天（约 4 人月）
+- **核心决策**: Mock 策略隔离依赖、权限资源抽象设计
+- **开发阶段**: 框架搭建 → 核心模块 → 审批网关 → 联调上线
 
-**下一步**: 运行 `@sdd-plan 能力开放平台` 开始技术规划
+**下一步**: 运行 `@sddu-tasks capability-open-platform` 开始任务分解
 
 ---
 
