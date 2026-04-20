@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.12  
+**规划版本**: v1.13  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -408,7 +408,7 @@ graph TB
         OpenWeb["open-web\n(React SPA)"]
     end
     
-    subgraph Services["服务层"]
+    subgraph Services["服务层（独立服务，无依赖）"]
         OpenServer["open-server\n(Spring Boot)\n管理服务"]
         ApiServer["api-server\n(Spring Boot)\nAPI网关服务"]
         EventServer["event-server\n(Spring Boot)\n事件网关服务"]
@@ -442,11 +442,9 @@ graph TB
     %% 前端直接连接管理服务
     OpenWeb -->|REST API| OpenServer
     
-    %% 管理服务访问数据层
+    %% 所有服务独立访问数据层
     OpenServer --> MySQL
     OpenServer --> Redis
-    
-    %% 网关服务访问数据层
     ApiServer --> MySQL
     ApiServer --> Redis
     EventServer --> MySQL
@@ -465,10 +463,6 @@ graph TB
     Provider1 -->|事件推送| MsgGW
     Provider2 -->|事件推送| MsgGW
     MsgGW --> EventServer
-    
-    %% 网关服务调用管理服务获取权限信息
-    ApiServer -.->|Feign| OpenServer
-    EventServer -.->|Feign| OpenServer
     
     %% API网关转发请求到提供方
     ApiServer -.->|转发请求| Provider1
@@ -693,14 +687,6 @@ open-app/
 │   │   │   └── util/                 # 共享工具类
 │   │   └── pom.xml
 │   │
-│   ├── open-api-client/              # 服务间调用客户端
-│   │   ├── src/
-│   │   │   └── main/java/
-│   │   │       └── com/xxx/open/client/
-│   │   │           ├── OpenServerClient.java    # open-server 客户端
-│   │   │           └── feign/                   # Feign 接口定义
-│   │   └── pom.xml
-│   │
 │   └── shared-types/                  # 共享类型定义（前端使用）
 │       ├── src/
 │       │   ├── api.ts
@@ -730,7 +716,7 @@ graph LR
         OpenWeb["open-web"]
     end
     
-    subgraph Services["后端服务"]
+    subgraph Services["后端服务（独立服务，无依赖）"]
         OpenServer["open-server\n(管理服务)"]
         ApiServer["api-server\n(API网关)"]
         EventServer["event-server\n(事件网关)"]
@@ -753,10 +739,6 @@ graph LR
     
     %% open-web 直接连接 open-server
     OpenWeb -->|REST API| OpenServer
-    
-    %% 网关服务调用 open-server 获取权限信息
-    ApiServer -.->|Feign\n获取权限| OpenServer
-    EventServer -.->|Feign\n获取订阅| OpenServer
     
     %% open-server 调用外部系统
     OpenServer -.->|Feign| AppMgmt
@@ -862,9 +844,6 @@ graph LR
 | `packages/open-common/src/main/java/.../entity/*.java` | 共享实体类 |
 | `packages/open-common/src/main/java/.../dto/*.java` | 共享 DTO |
 | `packages/open-common/src/main/java/.../enums/*.java` | 共享枚举 |
-| `packages/open-api-client/pom.xml` | 服务间调用客户端配置 |
-| `packages/open-api-client/src/main/java/.../OpenServerClient.java` | open-server 客户端 |
-| `packages/open-api-client/src/main/java/.../feign/*.java` | Feign 接口定义 |
 | `packages/shared-types/package.json` | 共享类型配置 |
 | `packages/shared-types/src/index.ts` | 类型导出 |
 
@@ -1496,6 +1475,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.10 | 2026-04-20 | 同步更新 ADR-003 为 MySQL + Spring Boot 技术栈 | SDDU Plan Agent |
 | v1.11 | 2026-04-20 | 新增方案D（基于现有微服务架构），调整为微服务拆分方案 | SDDU Plan Agent |
 | v1.12 | 2026-04-20 | 修正架构图：移除网关层，open-web直连open-server，api-server/event-server通过XX通讯平台网关访问 | SDDU Plan Agent |
+| v1.13 | 2026-04-20 | 修正服务依赖关系：api-server/event-server为独立服务，不依赖open-server，直接访问数据库 | SDDU Plan Agent |
 
 ---
 
