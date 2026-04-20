@@ -36,16 +36,16 @@
 | 25 | | DELETE | `/api/v1/callbacks/:id` | 删除回调（检查订阅关系） | FR-015 |
 | 26 | | POST | `/api/v1/callbacks/:id/withdraw` | 撤回审核中的回调 | FR-012 |
 | 27 | **API 权限管理** | GET | `/api/v1/apps/:appId/apis` | 获取应用 API 权限列表 | FR-016 |
-| 28 | | GET | `/api/v1/permissions/apis/tree` | 获取 API 权限树（抽屉数据源） | FR-017 |
+| 28 | | GET | `/api/v1/categories/:id/apis` | 获取分类下 API 权限列表 | FR-017 |
 | 29 | | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（独立单据） | FR-018 |
 | 30 | | POST | `/api/v1/apps/:appId/apis/:id/withdraw` | 撤回审核中的申请 | FR-016 |
 | 31 | **事件权限管理** | GET | `/api/v1/apps/:appId/events` | 获取应用事件订阅列表 | FR-019 |
-| 32 | | GET | `/api/v1/permissions/events/tree` | 获取事件权限树（抽屉数据源） | FR-020 |
+| 32 | | GET | `/api/v1/categories/:id/events` | 获取分类下事件权限列表 | FR-020 |
 | 33 | | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（独立单据） | FR-021 |
 | 34 | | PUT | `/api/v1/apps/:appId/events/:id/config` | 配置事件消费参数（通道/地址/认证） | FR-019 |
 | 35 | | POST | `/api/v1/apps/:appId/events/:id/withdraw` | 撤回审核中的申请 | FR-019 |
 | 36 | **回调权限管理** | GET | `/api/v1/apps/:appId/callbacks` | 获取应用回调订阅列表 | FR-022 |
-| 37 | | GET | `/api/v1/permissions/callbacks/tree` | 获取回调权限树（抽屉数据源） | FR-023 |
+| 37 | | GET | `/api/v1/categories/:id/callbacks` | 获取分类下回调权限列表 | FR-023 |
 | 38 | | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（独立单据） | FR-024 |
 | 39 | | PUT | `/api/v1/apps/:appId/callbacks/:id/config` | 配置回调消费参数（通道/地址/认证） | FR-022 |
 | 40 | | POST | `/api/v1/apps/:appId/callbacks/:id/withdraw` | 撤回审核中的申请 | FR-022 |
@@ -66,7 +66,11 @@
 | 55 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
 | 56 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
 
-> **接口统计**：共 57 个接口，覆盖 FR-001 ~ FR-031
+> **接口统计**：共 56 个接口，覆盖 FR-001 ~ FR-031
+>
+> **权限树设计说明**：采用懒加载模式，分为两个步骤：
+> 1. 查树：`GET /api/v1/categories` 获取分类树
+> 2. 查权限：`GET /api/v1/categories/:id/apis` 获取某分类下的权限列表
 
 ---
 
@@ -234,15 +238,16 @@
 
 ### 2.4 API 权限管理
 
-#### GET /api/v1/permissions/apis/tree
+#### GET /api/v1/categories/:id/apis
 
-获取 API 权限树（抽屉数据源）。
+获取分类下 API 权限列表。
+
+> **说明**：权限树采用懒加载模式。分类树通过 `GET /api/v1/categories` 获取，点击分类节点时调用此接口获取该分类下的权限列表。
 
 **请求参数**：
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| category_alias | string | 是 | 分类别名 |
 | keyword | string | 否 | 搜索关键词（名称、Scope） |
 
 **响应示例**：
@@ -252,22 +257,15 @@
   "code": 0,
   "data": [
     {
-      "id": 2,
-      "name": "IM 业务",
-      "type": "category",
-      "children": [
-        {
-          "id": 200,
-          "name_cn": "发送消息权限",
-          "name_en": "Send Message Permission",
-          "scope": "api:im:send-message",
-          "type": "permission",
-          "api": {
-            "path": "/api/v1/messages",
-            "method": "POST"
-          }
-        }
-      ]
+      "id": 200,
+      "name_cn": "发送消息权限",
+      "name_en": "Send Message Permission",
+      "scope": "api:im:send-message",
+      "status": 1,
+      "api": {
+        "path": "/api/v1/messages",
+        "method": "POST"
+      }
     }
   ]
 }
@@ -302,6 +300,38 @@
 ---
 
 ### 2.5 事件权限管理
+
+#### GET /api/v1/categories/:id/events
+
+获取分类下事件权限列表。
+
+> **说明**：权限树采用懒加载模式。分类树通过 `GET /api/v1/categories` 获取，点击分类节点时调用此接口获取该分类下的事件权限列表。
+
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | string | 否 | 搜索关键词（名称、Scope） |
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": [
+    {
+      "id": 201,
+      "name_cn": "消息接收权限",
+      "name_en": "Message Received Permission",
+      "scope": "event:im:message-received",
+      "status": 1,
+      "event": {
+        "topic": "im.message.received"
+      }
+    }
+  ]
+}
+```
 
 #### PUT /api/v1/apps/:appId/events/:id/config
 
