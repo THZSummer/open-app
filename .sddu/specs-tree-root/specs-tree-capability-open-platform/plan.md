@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.0  
+**规划版本**: v1.26  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -111,16 +111,18 @@ graph TB
 
 #### 前端技术栈
 
+> 💡 详细规格参考：[`front/project-documenter/output/2026-04-16-specification.md`](../../../front/project-documenter/output/2026-04-16-specification.md)
+
 | 层级 | 技术选型 | 版本 |
 |------|----------|------|
-| **语言** | TypeScript | 5.x |
-| **框架** | React | 18.x |
-| **状态管理** | Redux Toolkit / Zustand | - |
-| **UI 组件库** | Ant Design / MUI | - |
-| **构建工具** | Vite | 5.x |
-| **HTTP 客户端** | Axios / React Query | - |
-| **表单处理** | React Hook Form | - |
-| **测试框架** | Vitest + React Testing Library | - |
+| **框架** | React | ^18.2.0 |
+| **路由** | React Router | ^6.20.0 |
+| **UI 组件库** | Ant Design | ^4.24.16 |
+| **图标库** | @ant-design/icons | ^6.1.1 |
+| **构建工具** | Vite | ^5.0.0 |
+| **React 插件** | @vitejs/plugin-react | ^4.2.0 |
+| **CSS 预处理器** | Less | ^4.2.0 |
+| **样式方案** | Less 模块化样式 (`.m.less`) + CSS 变量 | - |
 
 #### 前端设计流程
 
@@ -388,24 +390,204 @@ graph TB
 
 ---
 
+### 方案 D：基于现有微服务架构（推荐）
+
+#### 方案描述
+基于现有微服务体系，将能力开放平台拆分为 4 个服务：
+
+| 服务 | 职责 | 功能模块 |
+|------|------|----------|
+| **open-server** | 管理服务 | API管理、事件管理、回调管理、API权限管理、事件权限管理、审批管理 |
+| **open-web** | 前端应用 | 对应 open-server 的前端界面 |
+| **api-server** | API网关服务 | API消费网关、回调消费网关、Scope授权 |
+| **event-server** | 事件网关服务 | 事件消费网关 |
+
+#### 架构图
+
+```mermaid
+graph TB
+    subgraph Frontend["前端层"]
+        OpenWeb["open-web\n(React SPA)"]
+    end
+    
+    subgraph Services["服务层"]
+        subgraph OpenServer["open-server\n(Spring Boot)"]
+            CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
+            AppMgmt["应用管理模块\n(现有能力)"]
+            Member["成员管理模块\n(现有能力)"]
+        end
+        ApiServer["api-server\n(Spring Boot)\nAPI认证鉴权服务\n(由外向内)"]
+        EventServer["event-server\n(Spring Boot)\n事件/回调网关服务\n(由内向外)"]
+    end
+    
+    subgraph DataLayer["数据层"]
+        MySQL[(MySQL)]
+        Redis1[(Redis\nopen-server/api-server)]
+        Redis2[(Redis\nevent-server)]
+    end
+    
+    subgraph PlatformGW["XX通讯平台网关"]
+        ApiGW["内部API网关"]
+        MsgGW["内部消息网关"]
+    end
+    
+    subgraph Consumers["消费方"]
+        Consumer1["消费方应用"]
+        Consumer2["消费方应用"]
+    end
+    
+    subgraph Providers["提供方"]
+        Provider1["提供方应用"]
+        Provider2["提供方应用"]
+    end
+    
+    %% 前端直接连接管理服务
+    OpenWeb -->|REST API| OpenServer
+    
+    %% open-server 内部模块调用
+    CapMgmt -.->|方法调用| AppMgmt
+    CapMgmt -.->|方法调用| Member
+    
+    %% open-server 和 api-server 访问数据层
+    OpenServer --> MySQL
+    OpenServer --> Redis1
+    ApiServer --> MySQL
+    ApiServer --> Redis1
+    
+    %% event-server 有独立 Redis，无数据库，通过 api-server 获取数据
+    EventServer --> Redis2
+    EventServer -.->|调用接口\n获取数据| ApiServer
+    
+    %% API调用流程：消费方 -> 内部API网关 -> api-server认证鉴权 -> 提供方
+    Consumer1 -->|API调用| ApiGW
+    Consumer2 -->|API调用| ApiGW
+    ApiGW -.->|认证鉴权| ApiServer
+    ApiGW -->|转发请求| Provider1
+    ApiGW -->|转发请求| Provider2
+    
+    %% 事件/回调推送流程：提供方 -> 内部消息网关 -> event-server -> 消费方
+    Provider1 -->|事件/回调推送| MsgGW
+    Provider2 -->|事件/回调推送| MsgGW
+    MsgGW --> EventServer
+    EventServer -.->|事件/回调分发| Consumer1
+    EventServer -.->|事件/回调分发| Consumer2
+    
+    style Frontend fill:#e8f5e9,stroke:#2e7d32
+    style Services fill:#e3f2fd,stroke:#1565c0
+    style DataLayer fill:#f3e5f5,stroke:#7b1fa2
+    style PlatformGW fill:#fff3e0,stroke:#ef6c00
+    style Consumers fill:#e0f7fa,stroke:#00838f
+    style Providers fill:#fce4ec,stroke:#c2185b
+```
+
+#### 服务职责明细
+
+##### open-server（管理服务）
+
+| 模块 | 功能说明 |
+|------|----------|
+| **分类管理** | 分类的 CRUD、树形结构维护、责任人配置 |
+| **API管理** | API 注册、编辑、删除、版本管理 |
+| **事件管理** | 事件注册、订阅配置、通道配置 |
+| **回调管理** | 回调注册、订阅配置、通道配置 |
+| **API权限管理** | API 权限资源管理、订阅关系维护 |
+| **事件权限管理** | 事件权限资源管理、订阅关系维护 |
+| **审批管理** | 审批流程配置、审批执行、审批记录 |
+
+##### open-web（前端应用）
+
+| 模块 | 功能说明 |
+|------|----------|
+| **分类管理页面** | 分类树管理、责任人配置 |
+| **API管理页面** | API 列表、编辑、权限配置 |
+| **事件管理页面** | 事件列表、编辑、订阅配置 |
+| **回调管理页面** | 回调列表、编辑、订阅配置 |
+| **权限申请页面** | 权限树浏览、权限申请 |
+| **审批中心页面** | 待审批列表、审批操作 |
+
+##### api-server（API认证鉴权服务）
+
+> **使用者**：XX 通讯平台内部 API 网关、event-server
+> 
+> **调用方向**：由外向内（消费方 → 提供方）
+> 
+> **数据存储**：MySQL + Redis（共享）
+
+| 模块 | 功能说明 |
+|------|----------|
+| **API认证鉴权** | 接收内部API网关的认证鉴权请求，验证消费方对API的访问权限 |
+| **Scope授权** | OAuth 2.0 Scope 授权流程 |
+| **数据查询接口** | 提供 API/事件/回调/订阅等数据查询接口，供 event-server 调用 |
+
+##### event-server（事件/回调网关服务）
+
+> **使用者**：提供方应用，通过 XX 通讯平台内部消息网关访问
+> 
+> **调用方向**：由内向外（提供方 → 消费方）
+> 
+> **数据存储**：Redis（独立），无数据库，通过 api-server 接口获取数据
+
+| 模块 | 功能说明 |
+|------|----------|
+| **事件消费网关** | 接收提供方的事件推送，分发至订阅的消费方 |
+| **回调消费网关** | 接收提供方的回调推送，分发至订阅的消费方 |
+
+#### 优点
+| 优点 | 说明 |
+|------|------|
+| ✅ 符合现有架构 | 与现有微服务架构一致，无需引入新技术栈 |
+| ✅ 服务职责清晰 | 管理服务与网关服务分离，职责单一 |
+| ✅ 独立扩展 | 网关服务可根据流量独立扩缩容 |
+| ✅ 故障隔离 | 管理服务故障不影响网关服务 |
+| ✅ 团队熟悉 | 沿用现有微服务开发模式，学习成本低 |
+
+#### 缺点
+| 缺点 | 说明 |
+|------|------|
+| ⚠️ 服务数量增加 | 新增 4 个服务，运维成本略增 |
+| ⚠️ 服务间协调 | 需要处理服务间调用和数据一致性 |
+| ⚠️ 部署复杂度 | 需要协调多个服务的部署顺序 |
+
+#### 风险评估
+| 风险 | 级别 | 缓解措施 |
+|------|------|----------|
+| 服务间调用 | 中 | 使用 Feign + 熔断降级 |
+| 数据一致性 | 中 | 本地事务 + 最终一致性 |
+| 部署协调 | 低 | CI/CD 流水线自动化 |
+
+#### 预估工作量
+| 服务 | 人天 | 说明 |
+|------|------|------|
+| open-server | 35 | 管理端核心业务逻辑 |
+| open-web | 20 | 前端页面开发 |
+| api-server | 12 | API认证鉴权 + Scope授权 |
+| event-server | 12 | 事件/回调网关 |
+| 公共模块 | 10 | 共享类型、工具类 |
+| 测试 & 联调 | 15 | 单元测试 + 集成测试 |
+| **总计** | **104** | 约 5 人月 |
+
+---
+
 ### 方案推荐
 
-| 维度 | 方案 A（单体） | 方案 B（微服务） | 方案 C（BFF） |
-|------|---------------|-----------------|---------------|
-| **开发效率** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
-| **运维成本** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ |
-| **扩展性** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **MVP 适配** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
-| **团队匹配** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **预估工期** | 80 人天 | 145 人天 | 107 人天 |
+| 维度 | 方案 A（单体） | 方案 B（微服务） | 方案 C（BFF） | 方案 D（现有微服务） |
+|------|---------------|-----------------|---------------|---------------------|
+| **开发效率** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **运维成本** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **扩展性** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **MVP 适配** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **团队匹配** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **架构一致性** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **预估工期** | 80 人天 | 145 人天 | 107 人天 | 103 人天 |
 
-**推荐方案：方案 A（单体应用 + 模块化设计）**
+**推荐方案：方案 D（基于现有微服务架构）**
 
 **推荐理由**：
-1. **符合 MVP 定位**：能力开放平台处于初期建设阶段，需要快速迭代
-2. **技术栈一致**：与现有 `app-management` 系统技术栈一致，降低学习成本
-3. **开发效率高**：单代码仓库，模块化设计，便于协作
-4. **后期可演进**：模块化设计为后期微服务拆分预留空间
+1. **架构一致性**：与现有微服务架构完全一致，无需引入新的架构模式
+2. **团队匹配度高**：团队已具备微服务开发经验，学习成本最低
+3. **职责清晰**：管理服务与网关服务分离，符合业务域划分
+4. **扩展性好**：网关服务可根据流量独立扩缩容
+5. **故障隔离**：管理服务故障不影响网关服务的高可用
 
 ---
 
@@ -415,162 +597,283 @@ graph TB
 
 ```
 open-app/
-├── apps/                              # 应用目录（新增）
-│   ├── capability-platform/           # 能力开放平台后端
-│   │   ├── src/
-│   │   │   ├── main/
-│   │   │   │   ├── java/
-│   │   │   │   │   └── com/xxx/capability/
-│   │   │   │   │       ├── modules/
-│   │   │   │   │       │   ├── category/           # 分类管理模块
-│   │   │   │   │       │   ├── api/               # API 管理模块
-│   │   │   │   │       │   ├── event/             # 事件管理模块
-│   │   │   │   │       │   ├── callback/          # 回调管理模块
-│   │   │   │   │       │   ├── permission/        # 权限管理模块
-│   │   │   │   │       │   ├── approval/          # 审批管理模块
-│   │   │   │   │       │   ├── gateway/           # 消费网关模块
-│   │   │   │   │       │   └── scope/             # Scope 授权模块
-│   │   │   │   │       ├── common/                # 公共模块
-│   │   │   │   │       │   ├── config/            # 配置
-│   │   │   │   │       │   ├── exception/         # 异常处理
-│   │   │   │   │       │   ├── interceptor/       # 拦截器
-│   │   │   │   │       │   └── util/              # 工具类
-│   │   │   │   │       └── CapabilityPlatformApplication.java
-│   │   │   │   └── resources/
-│   │   │   │       ├── mapper/                    # MyBatis Mapper XML
-│   │   │   │       ├── db/                        # 数据库迁移脚本
-│   │   │   │       │   └── migration/
-│   │   │   │       └── application.yml
-│   │   │   └── test/
-│   │   ├── pom.xml
-│   │   └── README.md
-│   │
-│   └── capability-web/                # 能力开放平台前端
-│       ├── src/
-│       │   ├── pages/
-│       │   │   ├── category/           # 分类管理页面
-│       │   │   ├── api/               # API 管理页面
-│       │   │   ├── event/             # 事件管理页面
-│       │   │   ├── callback/          # 回调管理页面
-│       │   │   ├── permission/        # 权限申请页面
-│       │   │   ├── approval/          # 审批中心页面
-│       │   │   └── scope/             # Scope 授权页面
-│       │   ├── components/            # 公共组件
-│       │   ├── hooks/                 # 自定义 Hooks
-│       │   ├── services/              # API 服务
-│       │   ├── stores/                # 状态管理
-│       │   ├── utils/                 # 工具函数
-│       │   └── App.tsx
-│       ├── public/
-│       ├── package.json
-│       ├── vite.config.ts
-│       └── tsconfig.json
+├── open-server/                         # 管理服务工程（后端）
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/xxx/open/
+│   │   │   │       ├── modules/
+│   │   │   │       │   ├── category/           # 分类管理模块
+│   │   │   │       │   ├── api/               # API 管理模块
+│   │   │   │       │   ├── event/             # 事件管理模块
+│   │   │   │       │   ├── callback/          # 回调管理模块
+│   │   │   │       │   ├── permission/        # 权限管理模块（API+事件权限）
+│   │   │   │       │   └── approval/          # 审批管理模块
+│   │   │   │       ├── common/                # 公共模块
+│   │   │   │       │   ├── config/            # 配置
+│   │   │   │       │   ├── exception/         # 异常处理
+│   │   │   │       │   ├── interceptor/       # 拦截器
+│   │   │   │       │   └── util/              # 工具类
+│   │   │   │       └── OpenServerApplication.java
+│   │   │   └── resources/
+│   │   │       ├── mapper/                    # MyBatis Mapper XML
+│   │   │       └── application.yml
+│   │   └── test/
+│   ├── pom.xml
+│   └── README.md
 │
-├── packages/                          # 公共包（新增）
-│   ├── shared-types/                  # 共享类型定义（前端使用）
-│   │   ├── src/
-│   │   │   ├── api.ts
-│   │   │   ├── event.ts
-│   │   │   ├── callback.ts
-│   │   │   ├── permission.ts
-│   │   │   └── approval.ts
-│   │   └── package.json
-│   │
-│   └── mock-services/                 # Mock 服务
-│       ├── src/
-│       │   ├── app-management.mock.ts
-│       │   ├── member.mock.ts
-│       │   └── aksk.mock.ts
-│       └── package.json
+├── api-server/                          # API认证鉴权服务工程（后端）
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/xxx/api/
+│   │   │   │       ├── gateway/
+│   │   │   │       │   └── ApiGateway.java            # API认证鉴权
+│   │   │   │       ├── scope/
+│   │   │   │       │   ├── ScopeController.java        # Scope授权控制器
+│   │   │   │       │   └── ScopeService.java          # Scope授权服务
+│   │   │   │       ├── data/
+│   │   │   │       │   └── DataQueryController.java    # 数据查询接口（供event-server调用）
+│   │   │   │       ├── common/
+│   │   │   │       │   ├── config/
+│   │   │   │       │   ├── filter/
+│   │   │   │       │   └── util/
+│   │   │   │       └── ApiServerApplication.java
+│   │   │   └── resources/
+│   │   │       └── application.yml
+│   │   └── test/
+│   ├── pom.xml
+│   └── README.md
 │
-└── docs/                              # 文档（现有）
+├── event-server/                        # 事件/回调网关服务工程（后端）
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/xxx/event/
+│   │   │   │       ├── gateway/
+│   │   │   │       │   ├── EventGateway.java          # 事件消费网关
+│   │   │   │       │   └── CallbackGateway.java       # 回调消费网关
+│   │   │   │       ├── client/
+│   │   │   │       │   └── ApiServerClient.java       # api-server调用客户端
+│   │   │   │       ├── common/
+│   │   │   │       │   ├── config/
+│   │   │   │       │   ├── filter/
+│   │   │   │       │   └── util/
+│   │   │   │       └── EventServerApplication.java
+│   │   │   └── resources/
+│   │   │       └── application.yml
+│   │   └── test/
+│   ├── pom.xml
+│   └── README.md
+│
+├── open-web/                            # 管理端前端工程（前端）
+│   # ⚠️ 注意：部分功能需通过前端单独设计文档执行，详见 3.2 章节 open-web 设计流程说明
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── category/           # 分类管理页面
+│   │   │   ├── api/               # API 管理页面
+│   │   │   ├── event/             # 事件管理页面
+│   │   │   ├── callback/          # 回调管理页面
+│   │   │   ├── permission/        # 权限申请页面
+│   │   │   ├── approval/          # 审批中心页面
+│   │   │   └── scope/             # Scope 授权页面
+│   │   ├── components/            # 公共组件
+│   │   ├── hooks/                 # 自定义 Hooks
+│   │   ├── services/              # API 服务
+│   │   ├── stores/                # 状态管理
+│   │   ├── utils/                 # 工具函数
+│   │   └── App.tsx
+│   ├── public/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── README.md
+│
+└── docs/                                # 文档
 ```
 
-### 3.2 文件清单
+### 3.2 服务职责划分
+
+| 服务 | 职责 | 使用者 | 调用方向 | 数据存储 | 端口（建议） |
+|------|------|--------|----------|----------|-------------|
+| **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | open-web | - | MySQL + Redis | 8080 |
+| **api-server** | API认证鉴权服务：API认证鉴权、Scope授权、数据查询接口 | XX通讯平台内部API网关、event-server | 由外向内 | MySQL + Redis | 8081 |
+| **event-server** | 事件/回调网关服务：事件消费网关、回调消费网关 | XX通讯平台内部消息网关 | 由内向外 | Redis（独立），无数据库 | 8082 |
+| **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | - | - | 3000 |
+
+> 💡 **open-web 设计流程说明**（参考 1.4 章节）：
+> - **面向三方应用人员的界面**：统一按照 [`/front/README.md`](../../../front/README.md) 描述的内容和设计流程去执行生成代码
+> - **其他页面**（如运营方管理后台、提供方管理后台）：可在此 plan.md 文档进行详细设计
+
+### 3.3 服务间调用关系
+
+```mermaid
+graph LR
+    subgraph Frontend["前端"]
+        OpenWeb["open-web"]
+    end
+    
+    subgraph Services["后端服务"]
+        subgraph OpenServer["open-server"]
+            CapMgmt["能力开放模块"]
+            AppMgmt["应用管理模块"]
+            Member["成员管理模块"]
+        end
+        ApiServer["api-server\n(API认证鉴权)\n由外向内"]
+        EventServer["event-server\n(事件/回调网关)\n由内向外"]
+    end
+    
+    subgraph DataLayer["数据层"]
+        MySQL[(MySQL)]
+        Redis1[(Redis\nopen-server/api-server)]
+        Redis2[(Redis\nevent-server)]
+    end
+    
+    subgraph PlatformGW["XX通讯平台网关"]
+        ApiGW["内部API网关"]
+        MsgGW["内部消息网关"]
+    end
+    
+    subgraph Consumers["消费方/提供方"]
+        Consumer["消费方应用"]
+        Provider["提供方应用"]
+    end
+    
+    %% open-web 直接连接 open-server
+    OpenWeb -->|REST API| OpenServer
+    
+    %% open-server 内部模块调用
+    CapMgmt -.->|方法调用| AppMgmt
+    CapMgmt -.->|方法调用| Member
+    
+    %% open-server 和 api-server 访问数据层
+    OpenServer --> MySQL
+    OpenServer --> Redis1
+    ApiServer --> MySQL
+    ApiServer --> Redis1
+    
+    %% event-server 有独立 Redis，无数据库，调用 api-server 获取数据
+    EventServer --> Redis2
+    EventServer -.->|调用接口| ApiServer
+    
+    %% API调用流程（由外向内）
+    Consumer -->|API调用| ApiGW
+    ApiGW -.->|认证鉴权| ApiServer
+    ApiGW -->|转发请求| Provider
+    
+    %% 事件/回调推送流程（由内向外）
+    Provider -->|事件/回调推送| MsgGW
+    MsgGW --> EventServer
+    EventServer -.->|事件/回调分发| Consumer
+    
+    style Frontend fill:#e8f5e9,stroke:#2e7d32
+    style Services fill:#e3f2fd,stroke:#1565c0
+    style DataLayer fill:#f3e5f5,stroke:#7b1fa2
+    style PlatformGW fill:#fff3e0,stroke:#ef6c00
+    style Consumers fill:#e0f7fa,stroke:#00838f
+```
+
+### 3.4 文件清单
 
 #### 新建文件（[NEW]）
 
+##### open-server 工程
+
 | 文件路径 | 说明 |
 |----------|------|
-| `apps/capability-platform/pom.xml` | 后端项目配置 |
-| `apps/capability-platform/src/main/java/.../CapabilityPlatformApplication.java` | 应用入口 |
-| `apps/capability-platform/src/main/java/.../modules/category/CategoryController.java` | 分类管理控制器 |
-| `apps/capability-platform/src/main/java/.../modules/category/CategoryService.java` | 分类管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/category/entity/Category.java` | 分类实体 |
-| `apps/capability-platform/src/main/java/.../modules/category/mapper/CategoryMapper.java` | 分类 Mapper |
-| `apps/capability-platform/src/main/java/.../modules/api/ApiController.java` | API 管理控制器 |
-| `apps/capability-platform/src/main/java/.../modules/api/ApiService.java` | API 管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/api/entity/Api.java` | API 实体 |
-| `apps/capability-platform/src/main/java/.../modules/api/mapper/ApiMapper.java` | API Mapper |
-| `apps/capability-platform/src/main/java/.../modules/event/EventController.java` | 事件管理控制器 |
-| `apps/capability-platform/src/main/java/.../modules/event/EventService.java` | 事件管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/event/entity/Event.java` | 事件实体 |
-| `apps/capability-platform/src/main/java/.../modules/event/mapper/EventMapper.java` | 事件 Mapper |
-| `apps/capability-platform/src/main/java/.../modules/callback/CallbackController.java` | 回调管理控制器 |
-| `apps/capability-platform/src/modules/callback/callback.controller.ts` | 回调管理控制器 |
-| `apps/capability-platform/src/modules/callback/callback.service.ts` | 回调管理服务 |
-| `apps/capability-platform/src/modules/callback/entities/callback.entity.ts` | 回调实体 |
-| `apps/capability-platform/src/modules/permission/permission.module.ts` | 权限管理模块 |
-| `apps/capability-platform/src/modules/permission/permission.controller.ts` | 权限管理控制器 |
-| `apps/capability-platform/src/modules/permission/permission.service.ts` | 权限管理服务 |
-| `apps/capability-platform/src/modules/permission/entities/permission.entity.ts` | 权限实体 |
-| `apps/capability-platform/src/main/java/.../modules/callback/CallbackService.java` | 回调管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/callback/entity/Callback.java` | 回调实体 |
-| `apps/capability-platform/src/main/java/.../modules/callback/mapper/CallbackMapper.java` | 回调 Mapper |
-| `apps/capability-platform/src/main/java/.../modules/permission/PermissionController.java` | 权限管理控制器 |
-| `apps/capability-platform/src/main/java/.../modules/permission/PermissionService.java` | 权限管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/permission/entity/Permission.java` | 权限实体 |
-| `apps/capability-platform/src/main/java/.../modules/permission/entity/Subscription.java` | 订阅实体 |
-| `apps/capability-platform/src/main/java/.../modules/approval/ApprovalController.java` | 审批管理控制器 |
-| `apps/capability-platform/src/main/java/.../modules/approval/ApprovalService.java` | 审批管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/approval/entity/ApprovalFlow.java` | 审批流实体 |
-| `apps/capability-platform/src/main/java/.../modules/approval/entity/ApprovalRecord.java` | 审批记录实体 |
-| `apps/capability-platform/src/main/java/.../modules/gateway/ApiGatewayService.java` | API 网关服务 |
-| `apps/capability-platform/src/main/java/.../modules/gateway/EventGatewayService.java` | 事件网关服务 |
-| `apps/capability-platform/src/main/java/.../modules/gateway/CallbackGatewayService.java` | 回调网关服务 |
-| `apps/capability-platform/src/main/java/.../modules/scope/ScopeController.java` | Scope 授权控制器 |
-| `apps/capability-platform/src/main/java/.../modules/scope/ScopeService.java` | Scope 授权服务 |
-| `apps/capability-platform/src/main/java/.../common/config/MockConfig.java` | Mock 配置 |
-| `apps/capability-platform/src/main/java/.../common/interceptor/MockInterceptor.java` | Mock 拦截器 |
-| `apps/capability-platform/src/main/resources/application.yml` | 应用配置 |
-| `apps/capability-platform/src/main/resources/mapper/*.xml` | MyBatis Mapper XML |
-| `apps/capability-platform/src/main/resources/db/migration/V1__init.sql` | 初始化迁移 |
-| `apps/capability-web/package.json` | 前端项目配置 |
-| `apps/capability-web/src/main.tsx` | 前端入口 |
-| `apps/capability-web/src/App.tsx` | 应用根组件 |
-| `apps/capability-web/src/router/index.tsx` | 路由配置 |
-| `apps/capability-web/src/pages/category/CategoryList.tsx` | 分类列表页面 |
-| `apps/capability-web/src/pages/api/ApiList.tsx` | API 列表页面 |
-| `apps/capability-web/src/pages/api/ApiRegister.tsx` | API 注册页面 |
-| `apps/capability-web/src/pages/event/EventList.tsx` | 事件列表页面 |
-| `apps/capability-web/src/pages/callback/CallbackList.tsx` | 回调列表页面 |
-| `apps/capability-web/src/pages/permission/PermissionTree.tsx` | 权限树组件 |
-| `apps/capability-web/src/pages/approval/ApprovalCenter.tsx` | 审批中心页面 |
-| `apps/capability-web/src/components/PermissionDrawer.tsx` | 权限选择抽屉 |
-| `apps/capability-web/src/services/api.service.ts` | API 服务 |
-| `apps/capability-web/src/stores/permission.store.ts` | 权限状态 |
-| `packages/shared-types/package.json` | 共享类型配置 |
-| `packages/shared-types/src/index.ts` | 类型导出 |
-| `packages/mock-services/package.json` | Mock 服务配置 |
-| `packages/mock-services/src/index.ts` | Mock 服务导出 |
+| `open-server/pom.xml` | 后端项目配置 |
+| `open-server/src/main/java/.../OpenServerApplication.java` | 应用入口 |
+| `open-server/src/main/java/.../modules/category/CategoryController.java` | 分类管理控制器 |
+| `open-server/src/main/java/.../modules/category/CategoryService.java` | 分类管理服务 |
+| `open-server/src/main/java/.../modules/category/entity/Category.java` | 分类实体 |
+| `open-server/src/main/java/.../modules/category/mapper/CategoryMapper.java` | 分类 Mapper |
+| `open-server/src/main/java/.../modules/api/ApiController.java` | API 管理控制器 |
+| `open-server/src/main/java/.../modules/api/ApiService.java` | API 管理服务 |
+| `open-server/src/main/java/.../modules/api/entity/Api.java` | API 实体 |
+| `open-server/src/main/java/.../modules/api/mapper/ApiMapper.java` | API Mapper |
+| `open-server/src/main/java/.../modules/event/EventController.java` | 事件管理控制器 |
+| `open-server/src/main/java/.../modules/event/EventService.java` | 事件管理服务 |
+| `open-server/src/main/java/.../modules/event/entity/Event.java` | 事件实体 |
+| `open-server/src/main/java/.../modules/event/mapper/EventMapper.java` | 事件 Mapper |
+| `open-server/src/main/java/.../modules/callback/CallbackController.java` | 回调管理控制器 |
+| `open-server/src/main/java/.../modules/callback/CallbackService.java` | 回调管理服务 |
+| `open-server/src/main/java/.../modules/callback/entity/Callback.java` | 回调实体 |
+| `open-server/src/main/java/.../modules/callback/mapper/CallbackMapper.java` | 回调 Mapper |
+| `open-server/src/main/java/.../modules/permission/PermissionController.java` | 权限管理控制器 |
+| `open-server/src/main/java/.../modules/permission/PermissionService.java` | 权限管理服务 |
+| `open-server/src/main/java/.../modules/permission/entity/Permission.java` | 权限实体 |
+| `open-server/src/main/java/.../modules/permission/entity/Subscription.java` | 订阅实体 |
+| `open-server/src/main/java/.../modules/approval/ApprovalController.java` | 审批管理控制器 |
+| `open-server/src/main/java/.../modules/approval/ApprovalService.java` | 审批管理服务 |
+| `open-server/src/main/java/.../modules/approval/entity/ApprovalFlow.java` | 审批流实体 |
+| `open-server/src/main/java/.../modules/approval/entity/ApprovalRecord.java` | 审批记录实体 |
+| `open-server/src/main/java/.../common/config/MockConfig.java` | Mock 配置 |
+| `open-server/src/main/java/.../common/interceptor/MockInterceptor.java` | Mock 拦截器 |
+| `open-server/src/main/resources/application.yml` | 应用配置 |
+| `open-server/src/main/resources/mapper/*.xml` | MyBatis Mapper XML |
+
+##### api-server 工程
+
+| 文件路径 | 说明 |
+|----------|------|
+| `api-server/pom.xml` | 后端项目配置 |
+| `api-server/src/main/java/.../ApiServerApplication.java` | 应用入口 |
+| `api-server/src/main/java/.../gateway/ApiGateway.java` | API认证鉴权 |
+| `api-server/src/main/java/.../scope/ScopeController.java` | Scope授权控制器 |
+| `api-server/src/main/java/.../scope/ScopeService.java` | Scope授权服务 |
+| `api-server/src/main/java/.../data/DataQueryController.java` | 数据查询接口（供event-server调用） |
+| `api-server/src/main/resources/application.yml` | 应用配置 |
+
+##### event-server 工程
+
+| 文件路径 | 说明 |
+|----------|------|
+| `event-server/pom.xml` | 后端项目配置 |
+| `event-server/src/main/java/.../EventServerApplication.java` | 应用入口 |
+| `event-server/src/main/java/.../gateway/EventGateway.java` | 事件消费网关 |
+| `event-server/src/main/java/.../gateway/CallbackGateway.java` | 回调消费网关 |
+| `event-server/src/main/java/.../client/ApiServerClient.java` | api-server调用客户端 |
+| `event-server/src/main/resources/application.yml` | 应用配置 |
+
+##### open-web 工程
+
+> ⚠️ **设计流程说明**（参考 1.4 章节）：
+> - **面向三方应用人员的界面**：统一按照 [`/front/README.md`](../../../front/README.md) 描述的内容和设计流程去执行生成代码
+> - **其他页面**（如运营方管理后台、提供方管理后台）：可在此进行详细设计
+
+| 文件路径 | 说明 |
+|----------|------|
+| `open-web/package.json` | 前端项目配置 |
+| `open-web/src/main.tsx` | 前端入口 |
+| `open-web/src/App.tsx` | 应用根组件 |
+| `open-web/src/router/index.tsx` | 路由配置 |
+| `open-web/src/pages/category/CategoryList.tsx` | 分类列表页面 |
+| `open-web/src/pages/api/ApiList.tsx` | API 列表页面 |
+| `open-web/src/pages/api/ApiRegister.tsx` | API 注册页面 |
+| `open-web/src/pages/event/EventList.tsx` | 事件列表页面 |
+| `open-web/src/pages/callback/CallbackList.tsx` | 回调列表页面 |
+| `open-web/src/pages/permission/PermissionTree.tsx` | 权限树组件 |
+| `open-web/src/pages/approval/ApprovalCenter.tsx` | 审批中心页面 |
+| `open-web/src/components/PermissionDrawer.tsx` | 权限选择抽屉 |
+| `open-web/src/services/api.service.ts` | API 服务 |
+| `open-web/src/stores/permission.store.ts` | 权限状态 |
 
 #### 修改文件（[MODIFY]）
 
 | 文件路径 | 修改内容 |
 |----------|----------|
-| `pom.xml` | 添加模块配置（如使用 Maven 多模块） |
-| `apps/capability-web/tsconfig.json` | 添加 paths 配置 |
+| `pom.xml` | 添加模块配置（Maven 多模块） |
 | `.env.example` | 添加新环境变量示例 |
 
 #### 依赖文件（[DEPEND]）
 
 | 文件路径 | 依赖方式 |
 |----------|----------|
-| 现有 `应用管理系统` | 通过 Mock/真实接口调用 |
-| 现有 `成员管理系统` | 通过 Mock/真实接口调用 |
-| 现有 `AKSK 管理系统` | 通过 Mock/真实接口调用 |
+| 现有 `应用管理模块` | open-server 内部模块，方法调用 |
+| 现有 `成员管理模块` | open-server 内部模块，方法调用 |
+| 现有 `AKSK 管理系统` | 待确认（Feign/方法调用） |
 | 现有 `内部中台网关` | HTTP 调用 |
 | 现有 `内部消息网关` | HTTP/MQ 调用 |
+| `api-server` | event-server 通过 Feign/HTTP 调用获取数据 |
 
 ---
 
@@ -1072,9 +1375,46 @@ CREATE TABLE `openplatform_api_p_t` (
 
 ---
 
-## 6. 风险评估
+## 6. 前端页面设计
 
-### 6.1 技术风险
+> ⚠️ **设计流程说明**（参考 1.4 章节）：
+> - **面向三方应用人员的界面**：统一按照 [`/front/README.md`](../../../front/README.md) 描述的内容和设计流程去执行生成代码
+> - **其他页面**（如运营方管理后台、提供方管理后台）：详细设计请参阅 [plan-page.md](./plan-page.md)
+
+详细的页面交互设计请参阅：[plan-page.md](./plan-page.md)
+
+### 6.1 页面清单概览
+
+基于 spec.md 第 3 章 FR 清单编写，确保功能需求完整覆盖：
+
+| 页面模块 | 对应 FR | 页面数 | 使用角色 | 设计流程 |
+|----------|---------|--------|----------|----------|
+| 分类管理 | FR-001, FR-002 | 2 | 运营方 | 本文档详细设计 |
+| API 管理 | FR-004~FR-007 | 3 | 分类责任人 | 本文档详细设计 |
+| 事件管理 | FR-008~FR-011 | 3 | 分类责任人 | 本文档详细设计 |
+| 回调管理 | FR-012~FR-015 | 3 | 分类责任人 | 本文档详细设计 |
+| API 权限申请 | FR-016~FR-018 | 2 | 消费方 | 按 `/front/README.md` 执行 |
+| 事件权限申请 | FR-019~FR-021 | 2 | 消费方 | 按 `/front/README.md` 执行 |
+| 回调权限申请 | FR-022~FR-024 | 2 | 消费方 | 按 `/front/README.md` 执行 |
+| 审批管理 | FR-025~FR-027 | 3 | 运营方/审批人 | 本文档详细设计 |
+| Scope 用户授权 | FR-031 | - | 用户 | 暂不开发/不在范畴 |
+| 应用管理 | FR-016相关 | - | 三方应用人员 | 不涉及，沿用现有 |
+| **总计** | **FR-001~FR-031** | **18** | - | - |
+
+> 注：FR-003（资源类型扩展支持）为架构设计，无独立页面；FR-028~FR-030（消费网关）为数据面功能，无前端管理页面。
+
+### 6.2 页面分层
+
+| 分层 | 说明 | 页面示例 |
+|------|------|----------|
+| **管理面** | 运营方、分类责任人、消费方管理员使用的管理页面 | 分类管理、API管理、审批中心 |
+| **用户面** | 三方应用人员使用的自助服务页面 | Scope授权、应用管理 |
+
+---
+
+## 7. 风险评估
+
+### 7.1 技术风险
 
 | 风险 | 级别 | 影响 | 缓解措施 |
 |------|------|------|----------|
@@ -1084,7 +1424,7 @@ CREATE TABLE `openplatform_api_p_t` (
 | 事件分发性能 | 中 | 高峰期延迟 | 1. 使用消息队列缓冲<br/>2. 水平扩展网关服务 |
 | 数据迁移风险 | 中 | 历史数据丢失 | 1. 迁移前备份<br/>2. 双写策略过渡 |
 
-### 6.2 依赖风险
+### 7.2 依赖风险
 
 | 风险 | 级别 | 影响 | 缓解措施 |
 |------|------|------|----------|
@@ -1092,7 +1432,7 @@ CREATE TABLE `openplatform_api_p_t` (
 | 内部网关稳定性 | 中 | API 调用失败 | 1. 重试机制<br/>2. 熔断降级 |
 | 消息队列不可用 | 中 | 事件丢失 | 1. 持久化队列<br/>2. 死信队列 |
 
-### 6.3 时间风险
+### 7.3 时间风险
 
 | 风险 | 级别 | 影响 | 缓解措施 |
 |------|------|------|----------|
@@ -1102,9 +1442,9 @@ CREATE TABLE `openplatform_api_p_t` (
 
 ---
 
-## 7. 开发计划
+## 8. 开发计划
 
-### 7.1 阶段划分
+### 8.1 阶段划分
 
 ```
 Phase 1: 基础框架（2 周）
@@ -1133,7 +1473,7 @@ Phase 4: 联调 & 上线（3 周）
 └── 生产部署
 ```
 
-### 7.2 里程碑
+### 8.2 里程碑
 
 | 里程碑 | 日期 | 交付物 |
 |--------|------|--------|
@@ -1145,7 +1485,7 @@ Phase 4: 联调 & 上线（3 周）
 
 ---
 
-## 8. 待确认事项
+## 9. 待确认事项
 
 | ID | 问题 | 影响模块 | 建议 | 状态 |
 |----|------|----------|------|------|
@@ -1156,16 +1496,19 @@ Phase 4: 联调 & 上线（3 周）
 
 ---
 
-## 9. 附录
+## 10. 附录
 
-### 9.1 参考文档
+### 10.1 参考文档
 
 - 规范文档: `spec.md` v1.49
+- 页面设计: `plan-page.md` v1.25
+- 数据库设计: `plan-db.md`
+- 接口设计: `plan-api.md`
 - 需求挖掘报告: `discovery-report.md`
 - 现有系统架构: `docs/业务架构.md`
 - 现有系统技术栈: `docs/app-management-spec.json`
 
-### 9.2 修订记录
+### 10.2 修订记录
 
 | 版本 | 日期 | 修订内容 | 作者 |
 |------|------|----------|------|
@@ -1180,6 +1523,22 @@ Phase 4: 联调 & 上线（3 周）
 | v1.8 | 2026-04-20 | API 清单按 spec.md FR 清单重写 | SDDU Plan Agent |
 | v1.9 | 2026-04-20 | 拆分接口设计到 plan-api.md | SDDU Plan Agent |
 | v1.10 | 2026-04-20 | 同步更新 ADR-003 为 MySQL + Spring Boot 技术栈 | SDDU Plan Agent |
+| v1.11 | 2026-04-20 | 新增方案D（基于现有微服务架构），调整为微服务拆分方案 | SDDU Plan Agent |
+| v1.12 | 2026-04-20 | 修正架构图：移除网关层，open-web直连open-server，api-server/event-server通过XX通讯平台网关访问 | SDDU Plan Agent |
+| v1.13 | 2026-04-20 | 修正服务依赖关系：api-server/event-server为独立服务，不依赖open-server，直接访问数据库 | SDDU Plan Agent |
+| v1.14 | 2026-04-20 | 修正调用方式：应用管理/成员管理改为open-server内部模块，通过方法调用而非Feign | SDDU Plan Agent |
+| v1.15 | 2026-04-20 | 简化架构图：合并重复的open-server节点，内部模块作为open-server子图 | SDDU Plan Agent |
+| v1.16 | 2026-04-20 | 修正API调用流程：内部API网关转发请求给提供方，非api-server转发；回调业务移至event-server（由内向外） | SDDU Plan Agent |
+| v1.17 | 2026-04-20 | 修复Mermaid渲染错误：移除连接标签中的换行符，改用节点标签标注调用方向 | SDDU Plan Agent |
+| v1.18 | 2026-04-20 | 修正event-server数据依赖：无数据库，有独立Redis，通过调用api-server接口获取数据 | SDDU Plan Agent |
+| v1.19 | 2026-04-20 | 简化目录结构：移除services/web/packages层级，所有工程平铺在根目录，每个工程可独立打包部署 | SDDU Plan Agent |
+| v1.20 | 2026-04-20 | 移除open-common和shared-types工程，公共代码在各工程内部维护 | SDDU Plan Agent |
+| v1.21 | 2026-04-20 | 添加open-web设计流程说明：面向三方应用人员的界面需按/front/README.md执行，参考1.4章节 | SDDU Plan Agent |
+| v1.22 | 2026-04-20 | 新增第6章前端页面设计，拆分页面详细设计到plan-page.md，plan.md仅保留页面清单概要 | SDDU Plan Agent |
+| v1.23 | 2026-04-20 | 6.1页面清单按spec第3章FR思路重写：对应FR编号、页面数、设计流程，修正风险评估章节编号 | SDDU Plan Agent |
+| v1.24 | 2026-04-20 | 调整页面清单：API/事件/回调权限申请改为按/front/README.md执行；Scope授权标记为暂不开发；应用管理标记为不涉及沿用现有；总页面数调整为18页 | SDDU Plan Agent |
+| v1.25 | 2026-04-20 | 同步plan-page.md页面清单格式与plan.md 6.1节保持一致 | SDDU Plan Agent |
+| v1.26 | 2026-04-20 | 前端技术栈参考front/project-documenter/output/2026-04-16-specification.md定义：React 18.2.0 + Ant Design 4.24.16 + Vite 5.0.0 + Less 4.2.0 | SDDU Plan Agent |
 
 ---
 
