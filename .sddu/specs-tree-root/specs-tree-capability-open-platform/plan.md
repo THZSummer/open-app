@@ -577,14 +577,21 @@ open-app/
 | 规划表 | 现有表 | 关系 | 处理策略 |
 |--------|--------|------|----------|
 | `groups` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
+| `group_owners` | - | 新建 | 分组责任人关联表 |
 | `apis` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
 | `events` | `openplatform_event_t` | 扩展 | 新建表，保留原有表 |
-| `callbacks` | - | 新建 | - |
-| `permissions` | - | 新建 | - |
+| `callbacks` | - | 新建 | 回调资源表 |
+| `permissions` | - | 新建 | 权限资源表（核心抽象） |
 | `subscriptions` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
 | `approval_flows` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
 | `approval_records` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
+| `approval_logs` | - | 新建 | 审批操作日志表 |
+| `user_authorizations` | - | 新建 | 用户授权表（Scope 授权） |
 | `audit_logs` | `openplatform_oprate_log_t` | 扩展 | 新建表，保留原有表 |
+
+**汇总**：
+- 扩展现有表：7 个
+- 纯新建表：5 个（`group_owners`、`callbacks`、`permissions`、`approval_logs`、`user_authorizations`）
 
 ### 4.2 表结构设计
 
