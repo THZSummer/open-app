@@ -119,17 +119,30 @@ graph TB
 
 基于项目实际情况和团队技术栈：
 
+#### 前端技术栈
+
 | 层级 | 技术选型 | 版本 |
 |------|----------|------|
-| **前端框架** | React + TypeScript | 18.x / 5.x |
+| **语言** | TypeScript | 5.x |
+| **框架** | React | 18.x |
 | **状态管理** | Redux Toolkit / Zustand | - |
 | **UI 组件库** | Ant Design / MUI | - |
 | **构建工具** | Vite | 5.x |
-| **后端语言** | Java | 21 |
-| **后端框架** | Spring Boot | 3.4.6 (Spring 6.2.12) |
+| **HTTP 客户端** | Axios / React Query | - |
+| **表单处理** | React Hook Form | - |
+| **测试框架** | Vitest + React Testing Library | - |
+
+#### 后端技术栈
+
+| 层级 | 技术选型 | 版本 |
+|------|----------|------|
+| **语言** | Java | 21 |
+| **框架** | Spring Boot | 3.4.6 (Spring 6.2.12) |
 | **ORM** | MyBatis | mybatis-spring-boot-starter 3.0.4 |
 | **数据库** | MySQL | 5.7 |
 | **缓存** | Redis | 6.0 |
+| **接口文档** | SpringDoc OpenAPI | 2.x |
+| **测试框架** | JUnit 5 + Mockito | - |
 
 ---
 
