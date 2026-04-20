@@ -601,6 +601,7 @@ erDiagram
 
     CATEGORY {
         bigint id PK
+        varchar category_type
         varchar name_cn
         varchar name_en
         bigint parent_id FK
@@ -733,6 +734,20 @@ erDiagram
 > - **权限关联资源**：`PERMISSION` 通过 `resource_type` + `resource_id` 关联具体的 API/事件/回调资源
 > - **权限树展示**：分类树 + 权限列表 = 权限树，权限数据可附带展示对应资源的部分字段
 > - **属性表**：`API_P`、`EVENT_P`、`CALLBACK_P`、`PERMISSION_P` 存储扩展属性，KV 模式灵活扩展
+
+#### 分类类型说明
+
+分类表通过 `category_type` 字段区分不同的权限树，支持多棵独立树并存：
+
+| category_type | 说明 | 适用场景 |
+|---------------|------|----------|
+| `app_identity` | 应用身份权限树 | 应用类凭证（A/B类）访问的 API 权限 |
+| `personal_identity` | 个人身份权限树 | AKSK 个人凭证访问的 API 权限 |
+
+**设计规则**：
+- 同一棵树的所有分类节点 `category_type` 相同
+- 根节点设置类型，子节点继承
+- 权限通过 `category_id` 关联分类，间接归属于某棵权限树
 
 > ⚠️ **注意**：
 > - ER 图简化展示，属性表只显示核心字段（id、parent_id、property_name、property_value、status）
@@ -968,6 +983,7 @@ CREATE TABLE `openplatform_api_p_t` (
 -- ============================================
 CREATE TABLE `openplatform_category_t` (
     `id` BIGINT(20) PRIMARY KEY,
+    `category_type` VARCHAR(50) NOT NULL COMMENT '分类类型：app_identity/personal_identity',
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `parent_id` BIGINT(20),
@@ -977,6 +993,7 @@ CREATE TABLE `openplatform_category_t` (
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
+    KEY `idx_type_parent` (`category_type`, `parent_id`),
     KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类表';
 
