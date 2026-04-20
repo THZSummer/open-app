@@ -1,17 +1,21 @@
 {
   "feature_id": "CAP-OPEN-001",
   "feature_name": "能力开放平台（Capability Open Platform）",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "created_at": "2026-04-20",
+  "updated_at": "2026-04-20",
   "author": "SDDU Tasks Agent",
   "plan_version": "plan.md v1.26",
+  "api_version": "plan-api.md v1.27",
   "spec_version": "spec.md v1.49",
   "summary": {
     "total_tasks": 13,
+    "total_interfaces": 56,
+    "interface_coverage": "100%",
     "complexity_distribution": {
-      "S": 3,
-      "M": 7,
-      "L": 3
+      "S": 1,
+      "M": 8,
+      "L": 4
     },
     "total_waves": 5,
     "estimated_man_days": 103
@@ -24,6 +28,7 @@
       "complexity": "L",
       "dependencies": [],
       "wave": 1,
+      "interface_coverage": [],
       "projects": ["open-server", "api-server", "event-server"],
       "files": {
         "new": [
@@ -63,6 +68,7 @@
       "complexity": "M",
       "dependencies": [],
       "wave": 1,
+      "interface_coverage": [],
       "projects": ["open-web"],
       "files": {
         "new": [
@@ -90,10 +96,11 @@
     {
       "id": "TASK-003",
       "name": "数据库表设计与初始化",
-      "description": "根据 plan-db.md 创建数据库表结构，包括 15 张表（10 张主表 + 4 张属性表 + 1 张关联表），编写 SQL 初始化脚本。",
+      "description": "根据 plan.md §4 数据库设计创建数据库表结构，包括 15 张表（10 张主表 + 4 张属性表 + 1 张关联表），编写 SQL 初始化脚本。",
       "complexity": "S",
       "dependencies": [],
       "wave": 1,
+      "interface_coverage": [],
       "projects": ["docs"],
       "files": {
         "new": [
@@ -114,10 +121,12 @@
     {
       "id": "TASK-004",
       "name": "分类管理模块",
-      "description": "实现分类管理功能，包括分类树形结构 CRUD、责任人配置等，覆盖 FR-001、FR-002，共 8 个接口。",
+      "description": "实现分类管理功能，包括分类树形结构 CRUD、责任人配置等，覆盖 FR-001、FR-002。分类接口同时作为权限树的"查树"接口，支持懒加载模式。",
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-003"],
       "wave": 2,
+      "interface_coverage": ["#1", "#2", "#3", "#4", "#5", "#6", "#7", "#8"],
+      "interface_count": 8,
       "projects": ["open-server"],
       "files": {
         "new": [
@@ -134,24 +143,27 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "GET /api/v1/categories 返回树形分类列表，支持 category_alias 过滤",
-        "POST /api/v1/categories 创建分类成功，path 字段自动生成",
-        "PUT /api/v1/categories/:id 更新分类成功",
-        "DELETE /api/v1/categories/:id 删除分类，检查关联资源",
-        "POST /api/v1/categories/:id/owners 添加责任人成功",
-        "GET /api/v1/categories/:id/owners 返回责任人列表",
-        "DELETE /api/v1/categories/:id/owners/:userId 移除责任人成功",
+        "#1 GET /api/v1/categories 返回树形分类列表，支持 category_alias 过滤（权限树查树）",
+        "#2 GET /api/v1/categories/:id 返回分类详情",
+        "#3 POST /api/v1/categories 创建分类成功，path 字段自动生成",
+        "#4 PUT /api/v1/categories/:id 更新分类成功",
+        "#5 DELETE /api/v1/categories/:id 删除分类，检查关联资源",
+        "#6 POST /api/v1/categories/:id/owners 添加责任人成功",
+        "#7 GET /api/v1/categories/:id/owners 返回责任人列表",
+        "#8 DELETE /api/v1/categories/:id/owners/:userId 移除责任人成功",
         "树形子分类查询优化生效（通过 path 字段）"
       ],
-      "verification_command": "# 创建根分类\ncurl -X POST http://localhost:8080/api/v1/categories \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"category_alias\":\"app_type_a\",\"name_cn\":\"A类应用权限\",\"name_en\":\"App Type A Permissions\"}'\n\n# 获取分类树\ncurl http://localhost:8080/api/v1/categories?category_alias=app_type_a\n\n# 添加责任人\ncurl -X POST http://localhost:8080/api/v1/categories/1/owners \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"user_id\":\"user001\"}'"
+      "verification_command": "# 创建根分类\ncurl -X POST http://localhost:8080/api/v1/categories \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"category_alias\":\"app_type_a\",\"name_cn\":\"A类应用权限\",\"name_en\":\"App Type A Permissions\"}'\n\n# 获取分类树（权限树查树）\ncurl http://localhost:8080/api/v1/categories?category_alias=app_type_a\n\n# 添加责任人\ncurl -X POST http://localhost:8080/api/v1/categories/1/owners \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"user_id\":\"user001\"}'"
     },
     {
       "id": "TASK-005",
       "name": "API 管理模块",
-      "description": "实现 API 资源管理功能，包括 API 注册、编辑、删除、撤回等，覆盖 FR-004~FR-007，共 6 个接口。API 注册时附带权限定义。",
+      "description": "实现 API 资源管理功能，包括 API 注册、编辑、删除、撤回等，覆盖 FR-004~FR-007。API 注册时附带权限定义。",
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-003", "TASK-004"],
       "wave": 2,
+      "interface_coverage": ["#9", "#10", "#11", "#12", "#13", "#14"],
+      "interface_count": 6,
       "projects": ["open-server"],
       "files": {
         "new": [
@@ -168,23 +180,26 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "GET /api/v1/apis 返回 API 列表，支持按分类过滤",
-        "GET /api/v1/apis/:id 返回 API 详情及权限信息",
-        "POST /api/v1/apis 注册 API 成功，同时创建权限资源",
-        "PUT /api/v1/apis/:id 更新 API 成功，核心属性变更触发审批",
-        "DELETE /api/v1/apis/:id 删除 API，检查订阅关系",
-        "POST /api/v1/apis/:id/withdraw 撤回审核中的 API",
-        "API 属性表 KV 模式正确存储扩展属性"
+        "#9 GET /api/v1/apis 返回 API 列表，支持按分类过滤",
+        "#10 GET /api/v1/apis/:id 返回 API 详情及权限信息、属性",
+        "#11 POST /api/v1/apis 注册 API 成功，同时创建权限资源",
+        "#12 PUT /api/v1/apis/:id 更新 API 成功，核心属性变更触发审批",
+        "#13 DELETE /api/v1/apis/:id 删除 API，检查订阅关系",
+        "#14 POST /api/v1/apis/:id/withdraw 撤回审核中的 API",
+        "API 属性表 KV 模式正确存储扩展属性",
+        "Scope 命名格式正确：api:{module}:{identifier}"
       ],
       "verification_command": "# 注册 API\ncurl -X POST http://localhost:8080/api/v1/apis \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"发送消息\",\"name_en\":\"Send Message\",\"path\":\"/api/v1/messages\",\"method\":\"POST\",\"category_id\":2,\"permission\":{\"name_cn\":\"发送消息权限\",\"name_en\":\"Send Message Permission\",\"scope\":\"api:im:send-message\"}}'\n\n# 获取 API 详情\ncurl http://localhost:8080/api/v1/apis/100"
     },
     {
       "id": "TASK-006",
       "name": "事件管理模块",
-      "description": "实现事件资源管理功能，包括事件注册、编辑、删除、撤回等，覆盖 FR-008~FR-011，共 6 个接口。事件注册时附带权限定义。",
+      "description": "实现事件资源管理功能，包括事件注册、编辑、删除、撤回等，覆盖 FR-008~FR-011。事件注册时附带权限定义。",
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-003", "TASK-004"],
       "wave": 2,
+      "interface_coverage": ["#15", "#16", "#17", "#18", "#19", "#20"],
+      "interface_count": 6,
       "projects": ["open-server"],
       "files": {
         "new": [
@@ -201,12 +216,12 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "GET /api/v1/events 返回事件列表，支持按分类过滤",
-        "GET /api/v1/events/:id 返回事件详情及权限信息",
-        "POST /api/v1/events 注册事件成功，同时创建权限资源，Topic 唯一性校验",
-        "PUT /api/v1/events/:id 更新事件成功",
-        "DELETE /api/v1/events/:id 删除事件，检查订阅关系",
-        "POST /api/v1/events/:id/withdraw 撤回审核中的事件",
+        "#15 GET /api/v1/events 返回事件列表，支持按分类过滤",
+        "#16 GET /api/v1/events/:id 返回事件详情及权限信息、属性",
+        "#17 POST /api/v1/events 注册事件成功，同时创建权限资源，Topic 唯一性校验",
+        "#18 PUT /api/v1/events/:id 更新事件成功",
+        "#19 DELETE /api/v1/events/:id 删除事件，检查订阅关系",
+        "#20 POST /api/v1/events/:id/withdraw 撤回审核中的事件",
         "Scope 命名格式正确：event:{module}:{identifier}"
       ],
       "verification_command": "# 注册事件\ncurl -X POST http://localhost:8080/api/v1/events \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"消息接收事件\",\"name_en\":\"Message Received Event\",\"topic\":\"im.message.received\",\"category_id\":2,\"permission\":{\"name_cn\":\"消息接收权限\",\"name_en\":\"Message Received Permission\",\"scope\":\"event:im:message-received\"}}'\n\n# 获取事件列表\ncurl http://localhost:8080/api/v1/events"
@@ -214,10 +229,12 @@
     {
       "id": "TASK-007",
       "name": "回调管理模块",
-      "description": "实现回调资源管理功能，包括回调注册、编辑、删除、撤回等，覆盖 FR-012~FR-015，共 6 个接口。回调注册时附带权限定义。",
+      "description": "实现回调资源管理功能，包括回调注册、编辑、删除、撤回等，覆盖 FR-012~FR-015。回调注册时附带权限定义。",
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-003", "TASK-004"],
       "wave": 2,
+      "interface_coverage": ["#21", "#22", "#23", "#24", "#25", "#26"],
+      "interface_count": 6,
       "projects": ["open-server"],
       "files": {
         "new": [
@@ -234,12 +251,12 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "GET /api/v1/callbacks 返回回调列表，支持按分类过滤",
-        "GET /api/v1/callbacks/:id 返回回调详情及权限信息",
-        "POST /api/v1/callbacks 注册回调成功，同时创建权限资源",
-        "PUT /api/v1/callbacks/:id 更新回调成功",
-        "DELETE /api/v1/callbacks/:id 删除回调，检查订阅关系",
-        "POST /api/v1/callbacks/:id/withdraw 撤回审核中的回调",
+        "#21 GET /api/v1/callbacks 返回回调列表，支持按分类过滤",
+        "#22 GET /api/v1/callbacks/:id 返回回调详情及权限信息、属性",
+        "#23 POST /api/v1/callbacks 注册回调成功，同时创建权限资源",
+        "#24 PUT /api/v1/callbacks/:id 更新回调成功",
+        "#25 DELETE /api/v1/callbacks/:id 删除回调，检查订阅关系",
+        "#26 POST /api/v1/callbacks/:id/withdraw 撤回审核中的回调",
         "Scope 命名格式正确：callback:{module}:{identifier}"
       ],
       "verification_command": "# 注册回调\ncurl -X POST http://localhost:8080/api/v1/callbacks \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"审批完成回调\",\"name_en\":\"Approval Completed Callback\",\"category_id\":2,\"permission\":{\"name_cn\":\"审批完成权限\",\"name_en\":\"Approval Completed Permission\",\"scope\":\"callback:approval:completed\"}}'\n\n# 获取回调列表\ncurl http://localhost:8080/api/v1/callbacks"
@@ -247,10 +264,12 @@
     {
       "id": "TASK-008",
       "name": "权限管理模块",
-      "description": "实现权限申请与订阅管理功能，包括 API/事件/回调权限树查询、申请提交、订阅配置、撤回等，覆盖 FR-016~FR-024，共 14 个接口。",
+      "description": "实现权限申请与订阅管理功能，覆盖 FR-016~FR-024。权限树采用懒加载模式：查树使用分类接口，查权限使用 categories/:id/apis|events|callbacks。",
       "complexity": "L",
       "dependencies": ["TASK-001", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007"],
       "wave": 3,
+      "interface_coverage": ["#27", "#28", "#29", "#30", "#31", "#32", "#33", "#34", "#35", "#36", "#37", "#38", "#39", "#40"],
+      "interface_count": 14,
       "projects": ["open-server"],
       "files": {
         "new": [
@@ -270,30 +289,32 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "GET /api/v1/apps/:appId/apis 返回应用 API 权限列表",
-        "GET /api/v1/permissions/apis/tree 返回 API 权限树（抽屉数据源）",
-        "POST /api/v1/apps/:appId/apis/subscribe 申请 API 权限，生成独立审批单",
-        "POST /api/v1/apps/:appId/apis/:id/withdraw 撤回审核中的申请",
-        "GET /api/v1/apps/:appId/events 返回应用事件订阅列表",
-        "GET /api/v1/permissions/events/tree 返回事件权限树",
-        "POST /api/v1/apps/:appId/events/subscribe 申请事件权限",
-        "PUT /api/v1/apps/:appId/events/:id/config 配置事件消费参数（通道/地址/认证）",
-        "POST /api/v1/apps/:appId/events/:id/withdraw 撤回审核中的申请",
-        "GET /api/v1/apps/:appId/callbacks 返回应用回调订阅列表",
-        "GET /api/v1/permissions/callbacks/tree 返回回调权限树",
-        "POST /api/v1/apps/:appId/callbacks/subscribe 申请回调权限",
-        "PUT /api/v1/apps/:appId/callbacks/:id/config 配置回调消费参数",
-        "POST /api/v1/apps/:appId/callbacks/:id/withdraw 撤回审核中的申请"
+        "#27 GET /api/v1/apps/:appId/apis 返回应用 API 权限列表",
+        "#28 GET /api/v1/categories/:id/apis 返回分类下 API 权限列表（权限树懒加载）",
+        "#29 POST /api/v1/apps/:appId/apis/subscribe 申请 API 权限，生成独立审批单",
+        "#30 POST /api/v1/apps/:appId/apis/:id/withdraw 撤回审核中的申请",
+        "#31 GET /api/v1/apps/:appId/events 返回应用事件订阅列表",
+        "#32 GET /api/v1/categories/:id/events 返回分类下事件权限列表（权限树懒加载）",
+        "#33 POST /api/v1/apps/:appId/events/subscribe 申请事件权限",
+        "#34 PUT /api/v1/apps/:appId/events/:id/config 配置事件消费参数（通道/地址/认证）",
+        "#35 POST /api/v1/apps/:appId/events/:id/withdraw 撤回审核中的申请",
+        "#36 GET /api/v1/apps/:appId/callbacks 返回应用回调订阅列表",
+        "#37 GET /api/v1/categories/:id/callbacks 返回分类下回调权限列表（权限树懒加载）",
+        "#38 POST /api/v1/apps/:appId/callbacks/subscribe 申请回调权限",
+        "#39 PUT /api/v1/apps/:appId/callbacks/:id/config 配置回调消费参数",
+        "#40 POST /api/v1/apps/:appId/callbacks/:id/withdraw 撤回审核中的申请"
       ],
-      "verification_command": "# 获取 API 权限树\ncurl http://localhost:8080/api/v1/permissions/apis/tree?category_alias=app_type_a\n\n# 申请 API 权限\ncurl -X POST http://localhost:8080/api/v1/apps/100/apis/subscribe \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"permission_id\":200}'\n\n# 配置事件消费参数\ncurl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"channel_type\":1,\"channel_address\":\"https://webhook.example.com/events\",\"auth_type\":0}'"
+      "verification_command": "# 获取分类下 API 权限列表（权限树懒加载）\ncurl http://localhost:8080/api/v1/categories/2/apis\n\n# 申请 API 权限\ncurl -X POST http://localhost:8080/api/v1/apps/100/apis/subscribe \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"permission_id\":200}'\n\n# 配置事件消费参数\ncurl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"channel_type\":1,\"channel_address\":\"https://webhook.example.com/events\",\"auth_type\":0}'"
     },
     {
       "id": "TASK-009",
       "name": "审批管理模块",
-      "description": "实现审批管理功能，包括审批流程配置、审批执行、待办查询等，覆盖 FR-025~FR-027，共 10 个接口。支持动态审批流配置。",
+      "description": "实现审批管理功能，包括审批流程配置、审批执行、待办查询等，覆盖 FR-025~FR-027。支持动态审批流配置。",
       "complexity": "L",
       "dependencies": ["TASK-001", "TASK-003", "TASK-008"],
       "wave": 3,
+      "interface_coverage": ["#41", "#42", "#43", "#44", "#45", "#46", "#47", "#48", "#49"],
+      "interface_count": 9,
       "projects": ["open-server"],
       "files": {
         "new": [
@@ -314,15 +335,15 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "GET /api/v1/approval-flows 返回审批流程模板列表",
-        "GET /api/v1/approval-flows/:id 返回审批流程模板详情",
-        "POST /api/v1/approval-flows 创建审批流程模板",
-        "PUT /api/v1/approval-flows/:id 更新审批流程模板",
-        "GET /api/v1/approvals/pending 返回待审批列表",
-        "GET /api/v1/approvals/:id 返回审批详情",
-        "POST /api/v1/approvals/:id/approve 同意审批，更新订阅状态",
-        "POST /api/v1/approvals/:id/reject 驳回审批，需填写原因",
-        "POST /api/v1/approvals/:id/cancel 撤销审批",
+        "#41 GET /api/v1/approval-flows 返回审批流程模板列表",
+        "#42 GET /api/v1/approval-flows/:id 返回审批流程模板详情（含节点配置）",
+        "#43 POST /api/v1/approval-flows 创建审批流程模板",
+        "#44 PUT /api/v1/approval-flows/:id 更新审批流程模板",
+        "#45 GET /api/v1/approvals/pending 返回待审批列表",
+        "#46 GET /api/v1/approvals/:id 返回审批详情（含节点状态、操作日志）",
+        "#47 POST /api/v1/approvals/:id/approve 同意审批，更新订阅状态",
+        "#48 POST /api/v1/approvals/:id/reject 驳回审批，需填写原因",
+        "#49 POST /api/v1/approvals/:id/cancel 撤销审批",
         "审批通过后自动激活订阅关系（status=1）",
         "审批拒绝后订阅状态变为已拒绝（status=2）",
         "审批记录和操作日志正确写入"
@@ -332,10 +353,12 @@
     {
       "id": "TASK-010",
       "name": "api-server 消费网关模块",
-      "description": "实现 api-server 消费网关功能，包括 API 认证鉴权、Scope 用户授权、数据查询接口等，覆盖 FR-028、FR-031，共 7 个接口。",
+      "description": "实现 api-server 消费网关功能，包括 API 认证鉴权、Scope 用户授权、数据查询接口等，覆盖 FR-028、FR-031。服务定位：由外向内（消费方 → 提供方）。",
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-003", "TASK-008"],
       "wave": 4,
+      "interface_coverage": ["#50", "#51", "#52", "#53", "#56"],
+      "interface_count": 5,
       "projects": ["api-server"],
       "files": {
         "new": [
@@ -351,25 +374,27 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "ANY /gateway/api/* API 请求代理与鉴权生效",
+        "#50 GET /api/v1/user-authorizations 返回用户授权列表",
+        "#51 POST /api/v1/user-authorizations 用户授权成功（支持有效期设置）",
+        "#52 DELETE /api/v1/user-authorizations/:id 取消授权",
+        "#53 ANY /gateway/api/* API 请求代理与鉴权生效",
         "验证应用身份（AKSK/Bearer Token）",
         "查询应用订阅关系，验证请求路径在授权范围内",
         "转发请求到内部中台网关",
-        "GET /api/v1/user-authorizations 返回用户授权列表",
-        "POST /api/v1/user-authorizations 用户授权成功",
-        "DELETE /api/v1/user-authorizations/:id 取消授权",
-        "GET /gateway/permissions/check 权限校验接口可用（供 event-server 调用）",
+        "#56 GET /gateway/permissions/check 权限校验接口可用（供 event-server 调用）",
         "提供 API/事件/回调/订阅等数据查询接口"
       ],
-      "verification_command": "# API 鉴权测试\ncurl -X POST http://localhost:8081/gateway/api/v1/messages \\\n  -H \"X-App-Id: 100\" \\\n  -H \"X-Auth-Type: 0\" \\\n  -H \"Authorization: Bearer token\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"content\":\"Hello World\"}'\n\n# 权限校验\ncurl http://localhost:8081/gateway/permissions/check?app_id=100&scope=api:im:send-message\n\n# 用户授权\ncurl -X POST http://localhost:8081/api/v1/user-authorizations \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"user_id\":\"user001\",\"app_id\":100,\"scopes\":[\"api:im:send-message\"],\"expires_at\":\"2026-12-31T23:59:59\"}'"
+      "verification_command": "# API 鉴权测试\ncurl -X POST http://localhost:8081/gateway/api/v1/messages \\\\n  -H \"X-App-Id: 100\" \\\\n  -H \"X-Auth-Type: 0\" \\\\n  -H \"Authorization: Bearer token\" \\\\n  -H \"Content-Type: application/json\" \\\\n  -d '{\"content\":\"Hello World\"}'\n\n# 权限校验\ncurl http://localhost:8081/gateway/permissions/check?app_id=100&scope=api:im:send-message\n\n# 用户授权\ncurl -X POST http://localhost:8081/api/v1/user-authorizations \\\\n  -H \"Content-Type: application/json\" \\\\n  -d '{\"user_id\":\"user001\",\"app_id\":100,\"scopes\":[\"api:im:send-message\"],\"expires_at\":\"2026-12-31T23:59:59\"}'"
     },
     {
       "id": "TASK-011",
       "name": "event-server 事件/回调网关模块",
-      "description": "实现 event-server 事件/回调网关功能，包括事件消费网关、回调消费网关等，覆盖 FR-029、FR-030，共 2 个接口。通过调用 api-server 获取数据。",
+      "description": "实现 event-server 事件/回调网关功能，覆盖 FR-029、FR-030。服务定位：由内向外（提供方 → 消费方）。事件流程：提供方→内部消息网关→event-server→消费方；回调流程：提供方→event-server→消费方。",
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-010"],
       "wave": 4,
+      "interface_coverage": ["#54", "#55"],
+      "interface_count": 2,
       "projects": ["event-server"],
       "files": {
         "new": [
@@ -384,27 +409,28 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "POST /gateway/events/publish 事件发布接口可用",
+        "#54 POST /gateway/events/publish 事件发布接口可用",
         "验证 Topic 对应的事件资源存在",
-        "查询订阅该事件的应用列表（通过 api-server）",
+        "查询订阅该事件的应用列表（通过 api-server #56 接口）",
         "按订阅配置分发事件（WebHook/内部消息队列）",
         "P99 分发延迟 < 1s",
-        "POST /gateway/callbacks/invoke 回调触发接口可用",
+        "#55 POST /gateway/callbacks/invoke 回调触发接口可用",
         "验证回调 Scope 存在",
         "查询订阅该回调的应用列表",
         "按订阅配置调用三方回调地址",
         "event-server 无数据库，通过 api-server 接口获取数据",
         "Redis 缓存订阅关系数据"
       ],
-      "verification_command": "# 事件发布\ncurl -X POST http://localhost:8082/gateway/events/publish \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"topic\":\"im.message.received\",\"payload\":{\"message_id\":\"msg001\",\"content\":\"Hello World\"}}'\n\n# 回调触发\ncurl -X POST http://localhost:8082/gateway/callbacks/invoke \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"callback_scope\":\"callback:approval:completed\",\"payload\":{\"approval_id\":\"app001\",\"status\":\"approved\"}}'"
+      "verification_command": "# 事件发布\ncurl -X POST http://localhost:8082/gateway/events/publish \\\\n  -H \"Content-Type: application/json\" \\\\n  -d '{\"topic\":\"im.message.received\",\"payload\":{\"message_id\":\"msg001\",\"content\":\"Hello World\"}}'\n\n# 回调触发\ncurl -X POST http://localhost:8082/gateway/callbacks/invoke \\\\n  -H \"Content-Type: application/json\" \\\\n  -d '{\"callback_scope\":\"callback:approval:completed\",\"payload\":{\"approval_id\":\"app001\",\"status\":\"approved\"}}'"
     },
     {
       "id": "TASK-012",
       "name": "前端页面开发",
-      "description": "开发 open-web 前端页面，包括分类管理、API/事件/回调管理、权限申请、审批中心等页面，共 18 个页面。面向三方应用人员的界面按 /front/README.md 流程执行。",
+      "description": "开发 open-web 前端页面，包括分类管理、API/事件/回调管理、权限申请、审批中心等页面。面向三方应用人员的界面按 /front/README.md 流程执行。",
       "complexity": "L",
       "dependencies": ["TASK-002", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009"],
       "wave": 5,
+      "interface_coverage": [],
       "projects": ["open-web"],
       "files": {
         "new": [
@@ -435,9 +461,9 @@
         "API 管理页面可查看本分类 API 列表，进行注册/编辑/删除",
         "事件管理页面可查看本分类事件列表，进行注册/编辑/删除",
         "回调管理页面可查看本分类回调列表，进行注册/编辑/删除",
-        "API 权限申请页面可浏览权限树，提交申请（抽屉模式）",
-        "事件权限申请页面可浏览权限树，提交申请，配置消费参数",
-        "回调权限申请页面可浏览权限树，提交申请，配置消费参数",
+        "API 权限申请页面采用懒加载模式（点击分类节点加载权限列表）",
+        "事件权限申请页面可提交申请，配置消费参数",
+        "回调权限申请页面可提交申请，配置消费参数",
         "权限申请提交后关闭抽屉，展示 Toast 提示",
         "列表支持搜索（名称、Scope）",
         "表单校验正确（必填项、Scope 格式等）"
@@ -451,6 +477,7 @@
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010", "TASK-011", "TASK-012"],
       "wave": 5,
+      "interface_coverage": [],
       "projects": ["all"],
       "files": {
         "new": [
@@ -481,31 +508,53 @@
       "wave": 1,
       "name": "基础框架",
       "tasks": ["TASK-001", "TASK-002", "TASK-003"],
-      "description": "初始化前后端框架和数据库"
+      "description": "初始化前后端框架和数据库",
+      "interface_count": 0
     },
     {
       "wave": 2,
       "name": "核心资源管理",
       "tasks": ["TASK-004", "TASK-005", "TASK-006", "TASK-007"],
-      "description": "实现分类、API、事件、回调管理模块"
+      "description": "实现分类、API、事件、回调管理模块",
+      "interface_count": 26
     },
     {
       "wave": 3,
       "name": "权限与审批",
       "tasks": ["TASK-008", "TASK-009"],
-      "description": "实现权限申请和审批管理模块"
+      "description": "实现权限申请和审批管理模块",
+      "interface_count": 23
     },
     {
       "wave": 4,
       "name": "网关服务",
       "tasks": ["TASK-010", "TASK-011"],
-      "description": "实现 api-server 和 event-server 网关服务"
+      "description": "实现 api-server 和 event-server 网关服务",
+      "interface_count": 7
     },
     {
       "wave": 5,
       "name": "前端与联调",
       "tasks": ["TASK-012", "TASK-013"],
-      "description": "开发前端页面并进行集成测试"
+      "description": "开发前端页面并进行集成测试",
+      "interface_count": 0
     }
-  ]
+  ],
+  "interface_summary": {
+    "total": 56,
+    "distribution": {
+      "open-server": {
+        "count": 44,
+        "interfaces": ["#1-8", "#9-14", "#15-20", "#21-26", "#27-40", "#41-49"]
+      },
+      "api-server": {
+        "count": 5,
+        "interfaces": ["#50-52", "#53", "#56"]
+      },
+      "event-server": {
+        "count": 2,
+        "interfaces": ["#54-55"]
+      }
+    }
+  }
 }
