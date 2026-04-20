@@ -607,14 +607,14 @@ erDiagram
         bigint id PK
         varchar name_cn
         varchar name_en
-        bigint parent_id LK
+        bigint parent_id FK
         int sort_order
         tinyint status
     }
     
     CATEGORY_OWNER {
         bigint id PK
-        bigint category_id LK
+        bigint category_id FK
         varchar user_id
     }
     
@@ -629,7 +629,7 @@ erDiagram
     
     API_P {
         bigint id PK
-        bigint parent_id LK
+        bigint parent_id FK
         varchar property_name
         text property_value
         tinyint status
@@ -645,7 +645,7 @@ erDiagram
     
     EVENT_P {
         bigint id PK
-        bigint parent_id LK
+        bigint parent_id FK
         varchar property_name
         text property_value
         tinyint status
@@ -660,7 +660,7 @@ erDiagram
     
     CALLBACK_P {
         bigint id PK
-        bigint parent_id LK
+        bigint parent_id FK
         varchar property_name
         text property_value
         tinyint status
@@ -672,14 +672,14 @@ erDiagram
         varchar name_en
         varchar scope UK
         varchar resource_type
-        bigint resource_id LK
-        bigint category_id LK
+        bigint resource_id FK
+        bigint category_id FK
         tinyint status
     }
     
     PERMISSION_P {
         bigint id PK
-        bigint parent_id LK
+        bigint parent_id FK
         varchar property_name
         text property_value
         tinyint status
@@ -687,8 +687,8 @@ erDiagram
     
     SUBSCRIPTION {
         bigint id PK
-        bigint app_id LK
-        bigint permission_id LK
+        bigint app_id FK
+        bigint permission_id FK
         tinyint status
         tinyint channel_type
         varchar channel_address
@@ -707,9 +707,9 @@ erDiagram
     
     APPROVAL_RECORD {
         bigint id PK
-        bigint flow_id LK
+        bigint flow_id FK
         varchar business_type
-        bigint business_id LK
+        bigint business_id FK
         varchar applicant_id
         tinyint status
         int current_node
@@ -717,7 +717,7 @@ erDiagram
     
     APPROVAL_LOG {
         bigint id PK
-        bigint record_id LK
+        bigint record_id FK
         int node_index
         varchar operator_id
         tinyint action
@@ -726,7 +726,7 @@ erDiagram
     USER_AUTHORIZATION {
         bigint id PK
         varchar user_id
-        bigint app_id LK
+        bigint app_id FK
         json scopes
     }
     
@@ -760,7 +760,7 @@ erDiagram
 > ⚠️ **注意**：
 > - ER 图简化展示，属性表只显示核心字段（id、parent_id、property_name、property_value、status）
 > - 属性表必备四个审计字段（create_time、last_update_time、create_by、last_update_by）已在规范中定义
-> - 图中 `LK` 表示逻辑外键（Logical Key），不使用物理外键约束
+> - 图中 `FK` 表示逻辑外键，不使用物理外键约束
 
 #### Scope 命名规范
 
