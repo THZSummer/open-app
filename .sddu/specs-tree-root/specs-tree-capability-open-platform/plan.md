@@ -576,7 +576,7 @@ open-app/
 
 ## 4. 数据库设计
 
-### 4.0 ER 图
+### 4.1 ER 图
 
 ```mermaid
 erDiagram
@@ -783,119 +783,8 @@ erDiagram
 > - **权限树展示**：分类树 + 权限列表 = 权限树，权限数据可附带展示对应资源的部分字段
 
 > ⚠️ **注意**：图中 `FK` 表示逻辑外键（存储关联 ID），不使用数据库物理外键约束。
-        varchar resource_type
-        bigint resource_id FK
-        text description
-        bigint approval_flow_id FK
-        tinyint status
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    SUBSCRIPTION {
-        bigint id PK
-        bigint app_id FK
-        bigint permission_id FK
-        tinyint status
-        tinyint channel_type
-        varchar channel_address
-        tinyint auth_type
-        datetime approved_at
-        varchar approved_by
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    APPROVAL_FLOW {
-        bigint id PK
-        varchar name
-        varchar code UK
-        text description
-        tinyint is_default
-        json nodes
-        tinyint status
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    APPROVAL_RECORD {
-        bigint id PK
-        bigint flow_id FK
-        varchar business_type
-        bigint business_id FK
-        varchar applicant_id
-        tinyint status
-        int current_node
-        datetime completed_at
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    APPROVAL_LOG {
-        bigint id PK
-        bigint record_id FK
-        int node_index
-        varchar operator_id
-        tinyint action
-        text comment
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    USER_AUTHORIZATION {
-        bigint id PK
-        varchar user_id
-        bigint app_id FK
-        json scopes
-        datetime expires_at
-        datetime revoked_at
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    AUDIT_LOG {
-        bigint id PK
-        varchar user_id
-        varchar action
-        varchar resource_type
-        bigint resource_id
-        json old_value
-        json new_value
-        varchar ip_address
-        text user_agent
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    APP {
-        bigint id PK
-        varchar name
-        varchar app_key UK
-    }
-    
-    USER {
-        varchar id PK
-        varchar username
-    }
-```
 
-> 💡 **说明**：图中 `FK` 表示逻辑外键（存储关联 ID），不使用数据库物理外键约束。关联关系由应用层维护。
-
-### 4.1 表设计规则
+### 4.2 表设计规则
 
 遵循现有系统的数据库设计规范，统一命名和字段约定：
 
@@ -974,7 +863,7 @@ erDiagram
 | `user_authorizations` | `openplatform_user_authorization_t` | 用户授权表 |
 | `audit_logs` | `openplatform_audit_log_t` | 审计日志表 |
 
-### 4.2 与现有表的关系
+### 4.3 与现有表的关系
 
 基于 spec.md §5.4 数据库表清单，规划表与现有表的对照关系如下：
 
@@ -997,7 +886,7 @@ erDiagram
 - 扩展现有表：7 个
 - 纯新建表：5 个（`openplatform_category_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
 
-### 4.3 表结构设计
+### 4.4 表结构设计
 
 基于上述关系分析，具体表结构设计如下：
 
