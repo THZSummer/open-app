@@ -814,9 +814,9 @@ erDiagram
 
 | 规则 | 说明 |
 |------|------|
-| **主键类型** | BIGINT(20)，自增主键 |
+| **主键类型** | BIGINT(20)，雪花ID |
 | **主键命名** | 统一使用 `id` |
-| **生成策略** | 数据库自增，AUTO_INCREMENT |
+| **生成策略** | 应用层生成雪花ID，不使用数据库自增 |
 | **关联字段** | 使用逻辑外键（存储关联 ID），不使用物理外键约束 |
 
 #### 索引规范
@@ -895,7 +895,7 @@ erDiagram
 -- 分类表（扩展现有 openplatform_mode_node_t）
 -- ============================================
 CREATE TABLE `openplatform_category_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `parent_id` BIGINT(20),
     `sort_order` INT DEFAULT 0,
@@ -909,7 +909,7 @@ CREATE TABLE `openplatform_category_t` (
 
 -- 分类责任人关联表
 CREATE TABLE `openplatform_category_owner_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `category_id` BIGINT(20) NOT NULL,
     `user_id` VARCHAR(100) NOT NULL,
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -923,7 +923,7 @@ CREATE TABLE `openplatform_category_owner_t` (
 -- API 资源表（扩展现有 openplatform_permission_api_t）
 -- ============================================
 CREATE TABLE `openplatform_api_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `path` VARCHAR(500) NOT NULL,
@@ -942,7 +942,7 @@ CREATE TABLE `openplatform_api_t` (
 -- 事件资源表（扩展现有 openplatform_event_t）
 -- ============================================
 CREATE TABLE `openplatform_event_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `topic` VARCHAR(200) NOT NULL UNIQUE,
@@ -960,7 +960,7 @@ CREATE TABLE `openplatform_event_t` (
 -- 回调资源表（新建）
 -- ============================================
 CREATE TABLE `openplatform_callback_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `description` TEXT,
@@ -976,7 +976,7 @@ CREATE TABLE `openplatform_callback_t` (
 -- 权限资源表（新建）
 -- ============================================
 CREATE TABLE `openplatform_permission_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT 'scope',
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
@@ -998,7 +998,7 @@ CREATE TABLE `openplatform_permission_t` (
 -- 订阅关系表（扩展现有 openplatform_app_permission_t）
 -- ============================================
 CREATE TABLE `openplatform_subscription_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `app_id` BIGINT(20) NOT NULL,
     `permission_id` BIGINT(20) NOT NULL,
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=待审, 1=已授权, 2=已拒绝, 3=已取消',
@@ -1021,7 +1021,7 @@ CREATE TABLE `openplatform_subscription_t` (
 -- 审批流程模板表（扩展现有 openplatform_eflow_t）
 -- ============================================
 CREATE TABLE `openplatform_approval_flow_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code` VARCHAR(50) NOT NULL UNIQUE COMMENT 'default, api_register, permission_apply',
     `description` TEXT,
@@ -1038,7 +1038,7 @@ CREATE TABLE `openplatform_approval_flow_t` (
 -- 审批记录表（扩展现有 openplatform_eflow_log_t）
 -- ============================================
 CREATE TABLE `openplatform_approval_record_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `flow_id` BIGINT(20) NOT NULL,
     `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
     `business_id` BIGINT(20) NOT NULL,
@@ -1060,7 +1060,7 @@ CREATE TABLE `openplatform_approval_record_t` (
 -- 审批操作日志表
 -- ============================================
 CREATE TABLE `openplatform_approval_log_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `record_id` BIGINT(20) NOT NULL,
     `node_index` INT NOT NULL,
     `operator_id` VARCHAR(100) NOT NULL,
@@ -1077,7 +1077,7 @@ CREATE TABLE `openplatform_approval_log_t` (
 -- 用户授权表（Scope 授权）
 -- ============================================
 CREATE TABLE `openplatform_user_authorization_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `user_id` VARCHAR(100) NOT NULL,
     `app_id` BIGINT(20) NOT NULL,
     `scopes` JSON NOT NULL COMMENT '权限范围数组',
@@ -1094,7 +1094,7 @@ CREATE TABLE `openplatform_user_authorization_t` (
 -- 审计日志表（扩展现有 openplatform_oprate_log_t）
 -- ============================================
 CREATE TABLE `openplatform_audit_log_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT(20) PRIMARY KEY,
     `user_id` VARCHAR(100),
     `action` VARCHAR(50) NOT NULL,
     `resource_type` VARCHAR(50) NOT NULL,
