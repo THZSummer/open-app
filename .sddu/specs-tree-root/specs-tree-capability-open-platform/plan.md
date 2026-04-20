@@ -48,12 +48,12 @@ graph TB
 
 | 维度 | 现状 | 目标 |
 |------|------|------|
-| **API 管理** | 仅支持 API 注册与应用关联 | 支持完整生命周期（注册/编辑/删除/分组/权限树） |
+| **API 管理** | 仅支持 API 注册与应用关联 | 支持完整生命周期（注册/编辑/删除/分类/权限树） |
 | **事件管理** | 事件注册存在，但权限关联弱 | 支持事件与权限统一注册、通道配置、按应用隔离 |
 | **回调管理** | 不存在 | 全新模块，支持通道类型/认证类型配置 |
 | **权限模型** | API 与权限混合存储 | 权限资源独立抽象，支持多类型资源 |
 | **审批流程** | 基础审批存在 | 动态审批流引擎，支持场景特有审批流 |
-| **分组管理** | 存在模式节点表 | 统一分组治理，支持责任人配置 |
+| **分类管理** | 存在模式节点表 | 统一分类治理，支持责任人配置 |
 
 ### 1.3 依赖关系图
 
@@ -70,7 +70,7 @@ graph TB
             API["API 管理模块"]
             Event["事件管理模块"]
             Callback["回调管理模块"]
-            Group["分组管理模块"]
+            Group["分类管理模块"]
             Permission["权限管理服务"]
             Approval["审批管理服务"]
             Gateway["消费网关"]
@@ -155,7 +155,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph Frontend["前端 (React SPA)"]
-        P1["分组管理"]
+        P1["分类管理"]
         P2["API管理"]
         P3["事件管理"]
         P4["回调管理"]
@@ -217,7 +217,7 @@ graph TB
 |------|------|------|
 | 前端框架搭建 | 3 | React + Ant Design + 状态管理 |
 | 后端框架搭建 | 3 | Spring Boot + MyBatis + 模块划分 |
-| 分组管理 | 5 | CRUD + 责任人配置 |
+| 分类管理 | 5 | CRUD + 责任人配置 |
 | API 管理 | 8 | 注册/编辑/删除/权限 |
 | 事件管理 | 8 | 注册/订阅/通道配置 |
 | 回调管理 | 8 | 注册/订阅/通道配置 |
@@ -340,7 +340,7 @@ graph TB
     end
     
     subgraph Core["Core Service"]
-        CoreService["Spring Boot\n(分组/API/事件/回调/权限/审批)"]
+        CoreService["Spring Boot\n(分类/API/事件/回调/权限/审批)"]
     end
     
     subgraph GatewayService["网关服务"]
@@ -422,7 +422,7 @@ open-app/
 │   │   │   │   ├── java/
 │   │   │   │   │   └── com/xxx/capability/
 │   │   │   │   │       ├── modules/
-│   │   │   │   │       │   ├── group/             # 分组管理模块
+│   │   │   │   │       │   ├── category/           # 分类管理模块
 │   │   │   │   │       │   ├── api/               # API 管理模块
 │   │   │   │   │       │   ├── event/             # 事件管理模块
 │   │   │   │   │       │   ├── callback/          # 回调管理模块
@@ -448,7 +448,7 @@ open-app/
 │   └── capability-web/                # 能力开放平台前端
 │       ├── src/
 │       │   ├── pages/
-│       │   │   ├── group/             # 分组管理页面
+│       │   │   ├── category/           # 分类管理页面
 │       │   │   ├── api/               # API 管理页面
 │       │   │   ├── event/             # 事件管理页面
 │       │   │   ├── callback/          # 回调管理页面
@@ -494,10 +494,10 @@ open-app/
 |----------|------|
 | `apps/capability-platform/pom.xml` | 后端项目配置 |
 | `apps/capability-platform/src/main/java/.../CapabilityPlatformApplication.java` | 应用入口 |
-| `apps/capability-platform/src/main/java/.../modules/group/GroupController.java` | 分组管理控制器 |
-| `apps/capability-platform/src/main/java/.../modules/group/GroupService.java` | 分组管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/group/entity/Group.java` | 分组实体 |
-| `apps/capability-platform/src/main/java/.../modules/group/mapper/GroupMapper.java` | 分组 Mapper |
+| `apps/capability-platform/src/main/java/.../modules/category/CategoryController.java` | 分类管理控制器 |
+| `apps/capability-platform/src/main/java/.../modules/category/CategoryService.java` | 分类管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/category/entity/Category.java` | 分类实体 |
+| `apps/capability-platform/src/main/java/.../modules/category/mapper/CategoryMapper.java` | 分类 Mapper |
 | `apps/capability-platform/src/main/java/.../modules/api/ApiController.java` | API 管理控制器 |
 | `apps/capability-platform/src/main/java/.../modules/api/ApiService.java` | API 管理服务 |
 | `apps/capability-platform/src/main/java/.../modules/api/entity/Api.java` | API 实体 |
@@ -539,7 +539,7 @@ open-app/
 | `apps/capability-web/src/main.tsx` | 前端入口 |
 | `apps/capability-web/src/App.tsx` | 应用根组件 |
 | `apps/capability-web/src/router/index.tsx` | 路由配置 |
-| `apps/capability-web/src/pages/group/GroupList.tsx` | 分组列表页面 |
+| `apps/capability-web/src/pages/category/CategoryList.tsx` | 分类列表页面 |
 | `apps/capability-web/src/pages/api/ApiList.tsx` | API 列表页面 |
 | `apps/capability-web/src/pages/api/ApiRegister.tsx` | API 注册页面 |
 | `apps/capability-web/src/pages/event/EventList.tsx` | 事件列表页面 |
@@ -641,8 +641,8 @@ open-app/
 
 | 规划表名 | 正式表名 | 说明 |
 |----------|----------|------|
-| `groups` | `openplatform_group_t` | 分组表 |
-| `group_owners` | `openplatform_group_owner_t` | 分组责任人关联表 |
+| `categories` | `openplatform_category_t` | 分类表 |
+| `category_owners` | `openplatform_category_owner_t` | 分类责任人关联表 |
 | `apis` | `openplatform_api_t` | API 资源表 |
 | `events` | `openplatform_event_t` | 事件资源表 |
 | `callbacks` | `openplatform_callback_t` | 回调资源表 |
@@ -660,8 +660,8 @@ open-app/
 
 | 正式表名 | 现有表 | 关系 | 处理策略 |
 |----------|--------|------|----------|
-| `openplatform_group_t` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
-| `openplatform_group_owner_t` | - | 新建 | 分组责任人关联表 |
+| `openplatform_category_t` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
+| `openplatform_category_owner_t` | - | 新建 | 分类责任人关联表 |
 | `openplatform_api_t` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
 | `openplatform_event_t` | 现有同名表 | 扩展 | 新建表，保留原有表 |
 | `openplatform_callback_t` | - | 新建 | 回调资源表 |
@@ -675,7 +675,7 @@ open-app/
 
 **汇总**：
 - 扩展现有表：7 个
-- 纯新建表：5 个（`openplatform_group_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
+- 纯新建表：5 个（`openplatform_category_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
 
 ### 4.3 表结构设计
 
@@ -683,9 +683,9 @@ open-app/
 
 ```sql
 -- ============================================
--- 分组表（扩展现有 openplatform_mode_node_t）
+-- 分类表（扩展现有 openplatform_mode_node_t）
 -- ============================================
-CREATE TABLE `openplatform_group_t` (
+CREATE TABLE `openplatform_category_t` (
     `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
@@ -698,20 +698,20 @@ CREATE TABLE `openplatform_group_t` (
     `last_update_by` VARCHAR(100),
     KEY `idx_resource_type` (`resource_type`),
     KEY `idx_parent_id` (`parent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类表';
 
--- 分组责任人关联表
-CREATE TABLE `openplatform_group_owner_t` (
+-- 分类责任人关联表
+CREATE TABLE `openplatform_category_owner_t` (
     `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `group_id` BIGINT(20) NOT NULL,
+    `category_id` BIGINT(20) NOT NULL,
     `user_id` VARCHAR(100) NOT NULL,
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
-    CONSTRAINT `fk_group_owner_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组责任人关联表';
+    UNIQUE KEY `uk_category_user` (`category_id`, `user_id`),
+    CONSTRAINT `fk_category_owner_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类责任人关联表';
 
 -- ============================================
 -- API 资源表（扩展现有 openplatform_permission_api_t）
@@ -724,15 +724,15 @@ CREATE TABLE `openplatform_api_t` (
     `method` VARCHAR(10) NOT NULL,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `group_id` BIGINT(20),
+    `category_id` BIGINT(20),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_group_id` (`group_id`),
+    KEY `idx_category_id` (`category_id`),
     KEY `idx_status` (`status`),
-    CONSTRAINT `fk_api_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
+    CONSTRAINT `fk_api_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源表';
 
 -- ============================================
@@ -745,15 +745,15 @@ CREATE TABLE `openplatform_event_t` (
     `topic` VARCHAR(200) NOT NULL UNIQUE,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `group_id` BIGINT(20),
+    `category_id` BIGINT(20),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_group_id` (`group_id`),
+    KEY `idx_category_id` (`category_id`),
     KEY `idx_topic` (`topic`),
-    CONSTRAINT `fk_event_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
+    CONSTRAINT `fk_event_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源表';
 
 -- ============================================
@@ -765,14 +765,14 @@ CREATE TABLE `openplatform_callback_t` (
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `group_id` BIGINT(20),
+    `category_id` BIGINT(20),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_group_id` (`group_id`),
-    CONSTRAINT `fk_callback_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
+    KEY `idx_category_id` (`category_id`),
+    CONSTRAINT `fk_callback_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
 
 -- ============================================
@@ -922,46 +922,46 @@ CREATE TABLE `openplatform_audit_log_t` (
 
 ### 5.1 后端 API 清单
 
-#### 分组管理
+#### 分类管理
 
 | Method | Path | 说明 | 角色 |
 |--------|------|------|------|
-| GET | `/api/v1/groups` | 获取分组列表（树形） | 运营方 |
-| POST | `/api/v1/groups` | 创建分组 | 运营方 |
-| PUT | `/api/v1/groups/:id` | 更新分组 | 运营方 |
-| DELETE | `/api/v1/groups/:id` | 删除分组 | 运营方 |
-| POST | `/api/v1/groups/:id/owners` | 添加分组责任人 | 运营方 |
-| DELETE | `/api/v1/groups/:id/owners/:userId` | 移除分组责任人 | 运营方 |
+| GET | `/api/v1/categories` | 获取分类列表（树形） | 运营方 |
+| POST | `/api/v1/categories` | 创建分类 | 运营方 |
+| PUT | `/api/v1/categories/:id` | 更新分类 | 运营方 |
+| DELETE | `/api/v1/categories/:id` | 删除分类 | 运营方 |
+| POST | `/api/v1/categories/:id/owners` | 添加分类责任人 | 运营方 |
+| DELETE | `/api/v1/categories/:id/owners/:userId` | 移除分类责任人 | 运营方 |
 
 #### API 管理
 
 | Method | Path | 说明 | 角色 |
 |--------|------|------|------|
-| GET | `/api/v1/apis` | 获取 API 列表 | 分组责任人 |
-| GET | `/api/v1/apis/:id` | 获取 API 详情 | 分组责任人 |
-| POST | `/api/v1/apis` | 注册 API | 分组责任人 |
-| PUT | `/api/v1/apis/:id` | 更新 API | 分组责任人 |
-| DELETE | `/api/v1/apis/:id` | 删除 API | 分组责任人 |
+| GET | `/api/v1/apis` | 获取 API 列表 | 分类责任人 |
+| GET | `/api/v1/apis/:id` | 获取 API 详情 | 分类责任人 |
+| POST | `/api/v1/apis` | 注册 API | 分类责任人 |
+| PUT | `/api/v1/apis/:id` | 更新 API | 分类责任人 |
+| DELETE | `/api/v1/apis/:id` | 删除 API | 分类责任人 |
 
 #### 事件管理
 
 | Method | Path | 说明 | 角色 |
 |--------|------|------|------|
-| GET | `/api/v1/events` | 获取事件列表 | 分组责任人 |
-| GET | `/api/v1/events/:id` | 获取事件详情 | 分组责任人 |
-| POST | `/api/v1/events` | 注册事件 | 分组责任人 |
-| PUT | `/api/v1/events/:id` | 更新事件 | 分组责任人 |
-| DELETE | `/api/v1/events/:id` | 删除事件 | 分组责任人 |
+| GET | `/api/v1/events` | 获取事件列表 | 分类责任人 |
+| GET | `/api/v1/events/:id` | 获取事件详情 | 分类责任人 |
+| POST | `/api/v1/events` | 注册事件 | 分类责任人 |
+| PUT | `/api/v1/events/:id` | 更新事件 | 分类责任人 |
+| DELETE | `/api/v1/events/:id` | 删除事件 | 分类责任人 |
 
 #### 回调管理
 
 | Method | Path | 说明 | 角色 |
 |--------|------|------|------|
-| GET | `/api/v1/callbacks` | 获取回调列表 | 分组责任人 |
-| GET | `/api/v1/callbacks/:id` | 获取回调详情 | 分组责任人 |
-| POST | `/api/v1/callbacks` | 注册回调 | 分组责任人 |
-| PUT | `/api/v1/callbacks/:id` | 更新回调 | 分组责任人 |
-| DELETE | `/api/v1/callbacks/:id` | 删除回调 | 分组责任人 |
+| GET | `/api/v1/callbacks` | 获取回调列表 | 分类责任人 |
+| GET | `/api/v1/callbacks/:id` | 获取回调详情 | 分类责任人 |
+| POST | `/api/v1/callbacks` | 注册回调 | 分类责任人 |
+| PUT | `/api/v1/callbacks/:id` | 更新回调 | 分类责任人 |
+| DELETE | `/api/v1/callbacks/:id` | 删除回调 | 分类责任人 |
 
 #### 权限管理（消费方）
 
@@ -1036,7 +1036,7 @@ Phase 1: 基础框架（2 周）
 └── Mock 服务搭建
 
 Phase 2: 核心模块（4 周）
-├── 分组管理
+├── 分类管理
 ├── API 管理
 ├── 事件管理
 ├── 回调管理
