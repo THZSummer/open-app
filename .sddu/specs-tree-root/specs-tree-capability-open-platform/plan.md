@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.11  
+**规划版本**: v1.12  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -408,14 +408,10 @@ graph TB
         OpenWeb["open-web\n(React SPA)"]
     end
     
-    subgraph Gateway["网关层"]
-        APIGW["API Gateway\n(Kong/APISIX)"]
-    end
-    
     subgraph Services["服务层"]
-        OpenServer["open-server\n(Spring Boot)"]
-        ApiServer["api-server\n(Spring Boot)"]
-        EventServer["event-server\n(Spring Boot)"]
+        OpenServer["open-server\n(Spring Boot)\n管理服务"]
+        ApiServer["api-server\n(Spring Boot)\nAPI网关服务"]
+        EventServer["event-server\n(Spring Boot)\n事件网关服务"]
     end
     
     subgraph DataLayer["数据层"]
@@ -428,26 +424,67 @@ graph TB
         Member["member-service"]
     end
     
-    OpenWeb --> APIGW
-    APIGW --> OpenServer
-    APIGW --> ApiServer
-    APIGW --> EventServer
+    subgraph PlatformGW["XX通讯平台网关"]
+        ApiGW["内部API网关"]
+        MsgGW["内部消息网关"]
+    end
     
+    subgraph Consumers["消费方"]
+        Consumer1["消费方应用"]
+        Consumer2["消费方应用"]
+    end
+    
+    subgraph Providers["提供方"]
+        Provider1["提供方应用"]
+        Provider2["提供方应用"]
+    end
+    
+    %% 前端直接连接管理服务
+    OpenWeb -->|REST API| OpenServer
+    
+    %% 管理服务访问数据层
     OpenServer --> MySQL
     OpenServer --> Redis
+    
+    %% 网关服务访问数据层
     ApiServer --> MySQL
     ApiServer --> Redis
     EventServer --> MySQL
     EventServer --> Redis
     
-    OpenServer -.->|调用| AppMgmt
-    OpenServer -.->|调用| Member
+    %% 管理服务调用外部系统
+    OpenServer -.->|Feign| AppMgmt
+    OpenServer -.->|Feign| Member
+    
+    %% 消费方通过平台网关访问网关服务
+    Consumer1 -->|API调用| ApiGW
+    Consumer2 -->|API调用| ApiGW
+    ApiGW --> ApiServer
+    
+    %% 事件通过平台消息网关
+    Provider1 -->|事件推送| MsgGW
+    Provider2 -->|事件推送| MsgGW
+    MsgGW --> EventServer
+    
+    %% 网关服务调用管理服务获取权限信息
+    ApiServer -.->|Feign| OpenServer
+    EventServer -.->|Feign| OpenServer
+    
+    %% API网关转发请求到提供方
+    ApiServer -.->|转发请求| Provider1
+    ApiServer -.->|转发请求| Provider2
+    
+    %% 事件网关推送到消费方
+    EventServer -.->|事件推送| Consumer1
+    EventServer -.->|事件推送| Consumer2
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
-    style Gateway fill:#fff3e0,stroke:#ef6c00
     style Services fill:#e3f2fd,stroke:#1565c0
     style DataLayer fill:#f3e5f5,stroke:#7b1fa2
     style External fill:#ffebee,stroke:#c62828
+    style PlatformGW fill:#fff3e0,stroke:#ef6c00
+    style Consumers fill:#e0f7fa,stroke:#00838f
+    style Providers fill:#fce4ec,stroke:#c2185b
 ```
 
 #### 服务职责明细
@@ -477,6 +514,8 @@ graph TB
 
 ##### api-server（API网关服务）
 
+> **使用者**：消费方/提供方应用，通过 XX 通讯平台内部 API 网关访问
+
 | 模块 | 功能说明 |
 |------|----------|
 | **API消费网关** | 接收消费方的 API 调用请求，转发至提供方 |
@@ -484,6 +523,8 @@ graph TB
 | **Scope授权** | OAuth 2.0 Scope 授权流程 |
 
 ##### event-server（事件网关服务）
+
+> **使用者**：提供方应用，通过 XX 通讯平台内部消息网关访问
 
 | 模块 | 功能说明 |
 |------|----------|
@@ -674,12 +715,12 @@ open-app/
 
 ### 3.2 服务职责划分
 
-| 服务 | 职责 | 端口（建议） |
-|------|------|-------------|
-| **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | 8080 |
-| **api-server** | API网关服务：API消费网关、回调消费网关、Scope授权 | 8081 |
-| **event-server** | 事件网关服务：事件消费网关 | 8082 |
-| **open-web** | 前端应用：对应 open-server 的管理界面 | 3000 |
+| 服务 | 职责 | 使用者 | 端口（建议） |
+|------|------|--------|-------------|
+| **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | open-web | 8080 |
+| **api-server** | API网关服务：API消费网关、回调消费网关、Scope授权 | 消费方/提供方（通过XX通讯平台内部API网关） | 8081 |
+| **event-server** | 事件网关服务：事件消费网关 | 提供方（通过XX通讯平台内部消息网关） | 8082 |
+| **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | 3000 |
 
 ### 3.3 服务间调用关系
 
@@ -700,15 +741,38 @@ graph LR
         Member["member-service"]
     end
     
+    subgraph PlatformGW["XX通讯平台网关"]
+        ApiGW["内部API网关"]
+        MsgGW["内部消息网关"]
+    end
+    
+    subgraph Consumers["消费方/提供方"]
+        Consumer["消费方应用"]
+        Provider["提供方应用"]
+    end
+    
+    %% open-web 直接连接 open-server
     OpenWeb -->|REST API| OpenServer
-    ApiServer -.->|Feign| OpenServer
-    EventServer -.->|Feign| OpenServer
+    
+    %% 网关服务调用 open-server 获取权限信息
+    ApiServer -.->|Feign\n获取权限| OpenServer
+    EventServer -.->|Feign\n获取订阅| OpenServer
+    
+    %% open-server 调用外部系统
     OpenServer -.->|Feign| AppMgmt
     OpenServer -.->|Feign| Member
+    
+    %% 消费方/提供方通过平台网关访问网关服务
+    Consumer -->|API调用| ApiGW
+    ApiGW --> ApiServer
+    Provider -->|事件推送| MsgGW
+    MsgGW --> EventServer
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
     style External fill:#ffebee,stroke:#c62828
+    style PlatformGW fill:#fff3e0,stroke:#ef6c00
+    style Consumers fill:#e0f7fa,stroke:#00838f
 ```
 
 ### 3.4 文件清单
@@ -1431,6 +1495,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.9 | 2026-04-20 | 拆分接口设计到 plan-api.md | SDDU Plan Agent |
 | v1.10 | 2026-04-20 | 同步更新 ADR-003 为 MySQL + Spring Boot 技术栈 | SDDU Plan Agent |
 | v1.11 | 2026-04-20 | 新增方案D（基于现有微服务架构），调整为微服务拆分方案 | SDDU Plan Agent |
+| v1.12 | 2026-04-20 | 修正架构图：移除网关层，open-web直连open-server，api-server/event-server通过XX通讯平台网关访问 | SDDU Plan Agent |
 
 ---
 
