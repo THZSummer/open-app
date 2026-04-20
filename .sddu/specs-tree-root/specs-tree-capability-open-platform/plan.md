@@ -570,30 +570,87 @@ open-app/
 
 ## 4. 数据库设计
 
-### 4.1 与现有表的关系
+### 4.1 表设计规则
+
+遵循现有系统的数据库设计规范，统一命名和字段约定：
+
+#### 命名规范
+
+| 规则 | 说明 | 示例 |
+|------|------|------|
+| **表前缀** | 统一使用 `openplatform_` 前缀 | `openplatform_permission_api_t` |
+| **表后缀** | 统一使用 `_t` 后缀表示表 | `openplatform_eflow_t` |
+| **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | `openplatform_permission_api_p_t` |
+| **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_user_authorization_t` |
+
+#### 必备审计字段
+
+所有业务表必须包含以下四个审计字段：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| `created_at` | DATETIME | 创建时间，默认 CURRENT_TIMESTAMP |
+| `updated_at` | DATETIME | 更新时间，默认 CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
+| `created_by` | VARCHAR(36) | 创建人 ID |
+| `updated_by` | VARCHAR(36) | 更新人 ID |
+
+#### 主键规范
+
+| 规则 | 说明 |
+|------|------|
+| **主键类型** | VARCHAR(36)，使用 UUID |
+| **主键命名** | 统一使用 `id` |
+| **生成策略** | 应用层生成 UUID，不依赖数据库自增 |
+
+#### 索引规范
+
+| 规则 | 说明 |
+|------|------|
+| **索引命名** | `idx_字段名` 或 `idx_字段名1_字段名2` |
+| **唯一索引命名** | `uk_字段名` |
+| **外键命名** | `fk_表名_字段名` |
+
+#### 规划表正式命名对照
+
+| 规划表名 | 正式表名 | 说明 |
+|----------|----------|------|
+| `groups` | `openplatform_group_t` | 分组表 |
+| `group_owners` | `openplatform_group_owner_t` | 分组责任人关联表 |
+| `apis` | `openplatform_api_t` | API 资源表 |
+| `events` | `openplatform_event_t` | 事件资源表 |
+| `callbacks` | `openplatform_callback_t` | 回调资源表 |
+| `permissions` | `openplatform_permission_t` | 权限资源表 |
+| `subscriptions` | `openplatform_subscription_t` | 订阅关系表 |
+| `approval_flows` | `openplatform_approval_flow_t` | 审批流程模板表 |
+| `approval_records` | `openplatform_approval_record_t` | 审批记录表 |
+| `approval_logs` | `openplatform_approval_log_t` | 审批操作日志表 |
+| `user_authorizations` | `openplatform_user_authorization_t` | 用户授权表 |
+| `audit_logs` | `openplatform_audit_log_t` | 审计日志表 |
+
+### 4.2 与现有表的关系
 
 基于 spec.md §5.4 数据库表清单，规划表与现有表的对照关系如下：
 
-| 规划表 | 现有表 | 关系 | 处理策略 |
-|--------|--------|------|----------|
-| `groups` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
-| `group_owners` | - | 新建 | 分组责任人关联表 |
-| `apis` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
-| `events` | `openplatform_event_t` | 扩展 | 新建表，保留原有表 |
-| `callbacks` | - | 新建 | 回调资源表 |
-| `permissions` | - | 新建 | 权限资源表（核心抽象） |
-| `subscriptions` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
-| `approval_flows` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
-| `approval_records` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
-| `approval_logs` | - | 新建 | 审批操作日志表 |
-| `user_authorizations` | - | 新建 | 用户授权表（Scope 授权） |
-| `audit_logs` | `openplatform_oprate_log_t` | 扩展 | 新建表，保留原有表 |
+| 正式表名 | 现有表 | 关系 | 处理策略 |
+|----------|--------|------|----------|
+| `openplatform_group_t` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
+| `openplatform_group_owner_t` | - | 新建 | 分组责任人关联表 |
+| `openplatform_api_t` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
+| `openplatform_event_t` | 现有同名表 | 扩展 | 新建表，保留原有表 |
+| `openplatform_callback_t` | - | 新建 | 回调资源表 |
+| `openplatform_permission_t` | - | 新建 | 权限资源表（核心抽象） |
+| `openplatform_subscription_t` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
+| `openplatform_approval_flow_t` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
+| `openplatform_approval_record_t` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
+| `openplatform_approval_log_t` | - | 新建 | 审批操作日志表 |
+| `openplatform_user_authorization_t` | - | 新建 | 用户授权表（Scope 授权） |
+| `openplatform_audit_log_t` | `openplatform_oprate_log_t` | 扩展 | 新建表，保留原有表 |
 
 **汇总**：
 - 扩展现有表：7 个
-- 纯新建表：5 个（`group_owners`、`callbacks`、`permissions`、`approval_logs`、`user_authorizations`）
+- 纯新建表：5 个（`openplatform_group_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
 
-### 4.2 表结构设计
+### 4.3 表结构设计
 
 基于上述关系分析，具体表结构设计如下：
 
@@ -601,7 +658,7 @@ open-app/
 -- ============================================
 -- 分组表（扩展现有 openplatform_mode_node_t）
 -- ============================================
-CREATE TABLE `groups` (
+CREATE TABLE `openplatform_group_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
@@ -617,19 +674,22 @@ CREATE TABLE `groups` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组表';
 
 -- 分组责任人关联表
-CREATE TABLE `group_owners` (
+CREATE TABLE `openplatform_group_owner_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `group_id` VARCHAR(36) NOT NULL,
     `user_id` VARCHAR(36) NOT NULL,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
     UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
-    CONSTRAINT `fk_group_owners_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE CASCADE
+    CONSTRAINT `fk_group_owner_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组责任人关联表';
 
 -- ============================================
 -- API 资源表（扩展现有 openplatform_permission_api_t）
 -- ============================================
-CREATE TABLE `apis` (
+CREATE TABLE `openplatform_api_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
@@ -645,13 +705,13 @@ CREATE TABLE `apis` (
     `updated_by` VARCHAR(36),
     KEY `idx_group_id` (`group_id`),
     KEY `idx_status` (`status`),
-    CONSTRAINT `fk_apis_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`)
+    CONSTRAINT `fk_api_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源表';
 
 -- ============================================
 -- 事件资源表（扩展现有 openplatform_event_t）
 -- ============================================
-CREATE TABLE `events` (
+CREATE TABLE `openplatform_event_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
@@ -666,13 +726,13 @@ CREATE TABLE `events` (
     `updated_by` VARCHAR(36),
     KEY `idx_group_id` (`group_id`),
     KEY `idx_topic` (`topic`),
-    CONSTRAINT `fk_events_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`)
+    CONSTRAINT `fk_event_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源表';
 
 -- ============================================
 -- 回调资源表（新建）
 -- ============================================
-CREATE TABLE `callbacks` (
+CREATE TABLE `openplatform_callback_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
@@ -685,13 +745,13 @@ CREATE TABLE `callbacks` (
     `created_by` VARCHAR(36),
     `updated_by` VARCHAR(36),
     KEY `idx_group_id` (`group_id`),
-    CONSTRAINT `fk_callbacks_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`)
+    CONSTRAINT `fk_callback_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
 
 -- ============================================
 -- 权限资源表（新建）
 -- ============================================
-CREATE TABLE `permissions` (
+CREATE TABLE `openplatform_permission_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT 'scope',
@@ -711,7 +771,7 @@ CREATE TABLE `permissions` (
 -- ============================================
 -- 订阅关系表（扩展现有 openplatform_app_permission_t）
 -- ============================================
-CREATE TABLE `subscriptions` (
+CREATE TABLE `openplatform_subscription_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `app_id` VARCHAR(36) NOT NULL,
     `permission_id` VARCHAR(36) NOT NULL,
@@ -721,19 +781,21 @@ CREATE TABLE `subscriptions` (
     `auth_type` VARCHAR(20) COMMENT 'app_credential_a, app_credential_b, open_app_credential',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
     `approved_at` DATETIME,
     `approved_by` VARCHAR(36),
     UNIQUE KEY `uk_app_permission` (`app_id`, `permission_id`),
     KEY `idx_app_id` (`app_id`),
     KEY `idx_permission_id` (`permission_id`),
     KEY `idx_status` (`status`),
-    CONSTRAINT `fk_subscriptions_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`)
+    CONSTRAINT `fk_subscription_permission` FOREIGN KEY (`permission_id`) REFERENCES `openplatform_permission_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订阅关系表';
 
 -- ============================================
 -- 审批流程模板表（扩展现有 openplatform_eflow_t）
 -- ============================================
-CREATE TABLE `approval_flows` (
+CREATE TABLE `openplatform_approval_flow_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
     `code` VARCHAR(50) NOT NULL UNIQUE COMMENT 'default, api_register, permission_apply',
@@ -742,13 +804,15 @@ CREATE TABLE `approval_flows` (
     `nodes` JSON NOT NULL COMMENT '审批节点配置',
     `status` VARCHAR(20) DEFAULT 'active',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程模板表';
 
 -- ============================================
 -- 审批记录表（扩展现有 openplatform_eflow_log_t）
 -- ============================================
-CREATE TABLE `approval_records` (
+CREATE TABLE `openplatform_approval_record_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `flow_id` VARCHAR(36) NOT NULL,
     `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
@@ -757,18 +821,21 @@ CREATE TABLE `approval_records` (
     `status` VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, approved, rejected, cancelled',
     `current_node` INT DEFAULT 0,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
     `completed_at` DATETIME,
     KEY `idx_flow_id` (`flow_id`),
     KEY `idx_business` (`business_type`, `business_id`),
     KEY `idx_applicant` (`applicant_id`),
     KEY `idx_status` (`status`),
-    CONSTRAINT `fk_approval_records_flow` FOREIGN KEY (`flow_id`) REFERENCES `approval_flows`(`id`)
+    CONSTRAINT `fk_approval_record_flow` FOREIGN KEY (`flow_id`) REFERENCES `openplatform_approval_flow_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批记录表';
 
 -- ============================================
 -- 审批操作日志表
 -- ============================================
-CREATE TABLE `approval_logs` (
+CREATE TABLE `openplatform_approval_log_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `record_id` VARCHAR(36) NOT NULL,
     `node_index` INT NOT NULL,
@@ -776,20 +843,26 @@ CREATE TABLE `approval_logs` (
     `action` VARCHAR(20) NOT NULL COMMENT 'approve, reject, cancel, transfer',
     `comment` TEXT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
     KEY `idx_record_id` (`record_id`),
-    CONSTRAINT `fk_approval_logs_record` FOREIGN KEY (`record_id`) REFERENCES `approval_records`(`id`)
+    CONSTRAINT `fk_approval_log_record` FOREIGN KEY (`record_id`) REFERENCES `openplatform_approval_record_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
 
 -- ============================================
 -- 用户授权表（Scope 授权）
 -- ============================================
-CREATE TABLE `user_authorizations` (
+CREATE TABLE `openplatform_user_authorization_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `user_id` VARCHAR(36) NOT NULL,
     `app_id` VARCHAR(36) NOT NULL,
     `scopes` JSON NOT NULL COMMENT '权限范围数组',
     `expires_at` DATETIME,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
     `revoked_at` DATETIME,
     UNIQUE KEY `uk_user_app` (`user_id`, `app_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户授权表';
@@ -797,7 +870,7 @@ CREATE TABLE `user_authorizations` (
 -- ============================================
 -- 审计日志表（扩展现有 openplatform_oprate_log_t）
 -- ============================================
-CREATE TABLE `audit_logs` (
+CREATE TABLE `openplatform_audit_log_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `user_id` VARCHAR(36),
     `action` VARCHAR(50) NOT NULL,
@@ -808,6 +881,9 @@ CREATE TABLE `audit_logs` (
     `ip_address` VARCHAR(45),
     `user_agent` TEXT,
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
     KEY `idx_user` (`user_id`),
     KEY `idx_resource` (`resource_type`, `resource_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
