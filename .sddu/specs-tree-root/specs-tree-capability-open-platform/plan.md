@@ -580,35 +580,30 @@ open-app/
 
 ```mermaid
 erDiagram
+    CATEGORY ||--o{ CATEGORY : "父分类"
     CATEGORY ||--o{ CATEGORY_OWNER : "拥有责任人"
-    CATEGORY ||--o{ API : "包含"
-    CATEGORY ||--o{ EVENT : "包含"
-    CATEGORY ||--o{ CALLBACK : "包含"
+    CATEGORY ||--o{ PERMISSION : "包含权限"
     
-    API ||--o| PERMISSION : "关联权限"
-    EVENT ||--o| PERMISSION : "关联权限"
-    CALLBACK ||--o| PERMISSION : "关联权限"
+    PERMISSION }o--|| API : "关联API资源"
+    PERMISSION }o--|| EVENT : "关联事件资源"
+    PERMISSION }o--|| CALLBACK : "关联回调资源"
     
     PERMISSION ||--o{ SUBSCRIPTION : "被订阅"
-    APPROVAL_FLOW ||--o| PERMISSION : "审批流程"
-    
-    SUBSCRIPTION ||--o| APP : "所属应用"
+    PERMISSION }o--o| APPROVAL_FLOW : "审批流程"
     
     APPROVAL_FLOW ||--o{ APPROVAL_RECORD : "生成记录"
     APPROVAL_RECORD ||--o{ APPROVAL_LOG : "操作日志"
     
-    USER_AUTHORIZATION ||--o| APP : "授权应用"
-    USER_AUTHORIZATION ||--o{ USER : "授权用户"
+    USER_AUTHORIZATION ||--o{ APP : "授权应用"
     
-    AUDIT_LOG ||--o| USER : "操作用户"
+    AUDIT_LOG }o--o| USER : "操作用户"
 
     CATEGORY {
-        bigint id PK
-        varchar name
-        varchar resource_type
-        bigint parent_id
-        int sort_order
-        tinyint status
+        bigint id PK "分类ID"
+        varchar name "分类名称"
+        bigint parent_id FK "父分类ID(树形结构)"
+        int sort_order "排序"
+        tinyint status "状态"
         datetime create_time
         datetime last_update_time
         varchar create_by
@@ -617,53 +612,8 @@ erDiagram
     
     CATEGORY_OWNER {
         bigint id PK
-        bigint category_id FK
-        varchar user_id
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    API {
-        bigint id PK
-        varchar name
-        varchar code_name UK
-        varchar path
-        varchar method
-        text description
-        varchar doc_url
-        bigint category_id FK
-        tinyint status
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    EVENT {
-        bigint id PK
-        varchar name
-        varchar code_name UK
-        varchar topic UK
-        text description
-        varchar doc_url
-        bigint category_id FK
-        tinyint status
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    
-    CALLBACK {
-        bigint id PK
-        varchar name
-        varchar code_name UK
-        text description
-        varchar doc_url
-        bigint category_id FK
-        tinyint status
+        bigint category_id FK "分类ID"
+        varchar user_id "责任人账号"
         datetime create_time
         datetime last_update_time
         varchar create_by
@@ -671,9 +621,168 @@ erDiagram
     }
     
     PERMISSION {
-        bigint id PK
-        varchar name
-        varchar code_name UK
+        bigint id PK "权限ID"
+        varchar name "权限名称"
+        varchar code_name UK "Scope标识"
+        varchar resource_type "资源类型:api/event/callback"
+        bigint resource_id FK "关联资源ID"
+        bigint category_id FK "所属分类"
+        bigint approval_flow_id FK "审批流程"
+        tinyint status "状态"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    API {
+        bigint id PK "API ID"
+        varchar name "API名称"
+        varchar code_name UK "代码标识"
+        varchar path "API路径"
+        varchar method "HTTP方法"
+        text description "描述"
+        varchar doc_url "文档地址"
+        tinyint status "状态"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    EVENT {
+        bigint id PK "事件ID"
+        varchar name "事件名称"
+        varchar code_name UK "代码标识"
+        varchar topic UK "Topic"
+        text description "描述"
+        varchar doc_url "文档地址"
+        tinyint status "状态"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    CALLBACK {
+        bigint id PK "回调ID"
+        varchar name "回调名称"
+        varchar code_name UK "代码标识"
+        text description "描述"
+        varchar doc_url "文档地址"
+        tinyint status "状态"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    SUBSCRIPTION {
+        bigint id PK "订阅ID"
+        bigint app_id FK "应用ID"
+        bigint permission_id FK "权限ID"
+        tinyint status "状态"
+        tinyint channel_type "通道类型"
+        varchar channel_address "通道地址"
+        tinyint auth_type "认证类型"
+        datetime approved_at "审批时间"
+        varchar approved_by "审批人"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APPROVAL_FLOW {
+        bigint id PK "流程ID"
+        varchar name "流程名称"
+        varchar code UK "流程代码"
+        text description "描述"
+        tinyint is_default "是否默认"
+        json nodes "审批节点配置"
+        tinyint status "状态"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APPROVAL_RECORD {
+        bigint id PK "记录ID"
+        bigint flow_id FK "流程ID"
+        varchar business_type "业务类型"
+        bigint business_id FK "业务ID"
+        varchar applicant_id "申请人"
+        tinyint status "状态"
+        int current_node "当前节点"
+        datetime completed_at "完成时间"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APPROVAL_LOG {
+        bigint id PK "日志ID"
+        bigint record_id FK "记录ID"
+        int node_index "节点索引"
+        varchar operator_id "操作人"
+        tinyint action "操作类型"
+        text comment "备注"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    USER_AUTHORIZATION {
+        bigint id PK "授权ID"
+        varchar user_id "用户账号"
+        bigint app_id FK "应用ID"
+        json scopes "权限范围"
+        datetime expires_at "过期时间"
+        datetime revoked_at "撤销时间"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    AUDIT_LOG {
+        bigint id PK "日志ID"
+        varchar user_id "用户账号"
+        varchar action "操作"
+        varchar resource_type "资源类型"
+        bigint resource_id "资源ID"
+        json old_value "旧值"
+        json new_value "新值"
+        varchar ip_address "IP地址"
+        text user_agent "UA"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APP {
+        bigint id PK "应用ID"
+        varchar name "应用名称"
+        varchar app_key UK "应用Key"
+    }
+    
+    USER {
+        varchar id PK "用户账号"
+        varchar username "用户名"
+    }
+```
+
+> 💡 **核心关系说明**：
+> - **分类树形结构**：`CATEGORY` 通过 `parent_id` 实现树形层级，支持多级分类
+> - **分类包含权限**：`CATEGORY` 直接关联 `PERMISSION`，分类下展示的是权限数据
+> - **权限关联资源**：`PERMISSION` 通过 `resource_type` + `resource_id` 关联具体的 API/事件/回调资源
+> - **权限树展示**：分类树 + 权限列表 = 权限树，权限数据可附带展示对应资源的部分字段
+
+> ⚠️ **注意**：图中 `FK` 表示逻辑外键（存储关联 ID），不使用数据库物理外键约束。
         varchar resource_type
         bigint resource_id FK
         text description
@@ -899,7 +1008,6 @@ erDiagram
 CREATE TABLE `openplatform_category_t` (
     `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
     `name` VARCHAR(100) NOT NULL,
-    `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
     `parent_id` BIGINT(20),
     `sort_order` INT DEFAULT 0,
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
@@ -907,7 +1015,6 @@ CREATE TABLE `openplatform_category_t` (
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_resource_type` (`resource_type`),
     KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类表';
 
@@ -934,13 +1041,11 @@ CREATE TABLE `openplatform_api_t` (
     `method` VARCHAR(10) NOT NULL,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `category_id` BIGINT(20),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_category_id` (`category_id`),
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源表';
 
@@ -954,13 +1059,11 @@ CREATE TABLE `openplatform_event_t` (
     `topic` VARCHAR(200) NOT NULL UNIQUE,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `category_id` BIGINT(20),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_category_id` (`category_id`),
     KEY `idx_topic` (`topic`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源表';
 
@@ -973,13 +1076,11 @@ CREATE TABLE `openplatform_callback_t` (
     `code_name` VARCHAR(100) NOT NULL UNIQUE,
     `description` TEXT,
     `doc_url` VARCHAR(500),
-    `category_id` BIGINT(20),
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
-    `last_update_by` VARCHAR(100),
-    KEY `idx_category_id` (`category_id`)
+    `last_update_by` VARCHAR(100)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
 
 -- ============================================
@@ -991,6 +1092,7 @@ CREATE TABLE `openplatform_permission_t` (
     `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT 'scope',
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
+    `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
     `description` TEXT,
     `approval_flow_id` BIGINT(20) COMMENT '资源特有审批流',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
@@ -999,6 +1101,7 @@ CREATE TABLE `openplatform_permission_t` (
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_resource` (`resource_type`, `resource_id`),
+    KEY `idx_category_id` (`category_id`),
     KEY `idx_code_name` (`code_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源表';
 
