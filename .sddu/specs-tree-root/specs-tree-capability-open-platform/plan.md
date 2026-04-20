@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.13  
+**规划版本**: v1.14  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -408,6 +408,12 @@ graph TB
         OpenWeb["open-web\n(React SPA)"]
     end
     
+    subgraph OpenServerInternal["open-server 内部模块"]
+        CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
+        AppMgmt["应用管理模块\n(现有能力)"]
+        Member["成员管理模块\n(现有能力)"]
+    end
+    
     subgraph Services["服务层（独立服务，无依赖）"]
         OpenServer["open-server\n(Spring Boot)\n管理服务"]
         ApiServer["api-server\n(Spring Boot)\nAPI网关服务"]
@@ -417,11 +423,6 @@ graph TB
     subgraph DataLayer["数据层"]
         MySQL[(MySQL)]
         Redis[(Redis)]
-    end
-    
-    subgraph External["外部系统"]
-        AppMgmt["app-management"]
-        Member["member-service"]
     end
     
     subgraph PlatformGW["XX通讯平台网关"]
@@ -442,6 +443,13 @@ graph TB
     %% 前端直接连接管理服务
     OpenWeb -->|REST API| OpenServer
     
+    %% open-server 内部模块关系
+    OpenServer --> CapMgmt
+    OpenServer --> AppMgmt
+    OpenServer --> Member
+    CapMgmt -.->|方法调用| AppMgmt
+    CapMgmt -.->|方法调用| Member
+    
     %% 所有服务独立访问数据层
     OpenServer --> MySQL
     OpenServer --> Redis
@@ -449,10 +457,6 @@ graph TB
     ApiServer --> Redis
     EventServer --> MySQL
     EventServer --> Redis
-    
-    %% 管理服务调用外部系统
-    OpenServer -.->|Feign| AppMgmt
-    OpenServer -.->|Feign| Member
     
     %% 消费方通过平台网关访问网关服务
     Consumer1 -->|API调用| ApiGW
@@ -473,9 +477,9 @@ graph TB
     EventServer -.->|事件推送| Consumer2
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
+    style OpenServerInternal fill:#e3f2fd,stroke:#1565c0
     style Services fill:#e3f2fd,stroke:#1565c0
     style DataLayer fill:#f3e5f5,stroke:#7b1fa2
-    style External fill:#ffebee,stroke:#c62828
     style PlatformGW fill:#fff3e0,stroke:#ef6c00
     style Consumers fill:#e0f7fa,stroke:#00838f
     style Providers fill:#fce4ec,stroke:#c2185b
@@ -716,15 +720,16 @@ graph LR
         OpenWeb["open-web"]
     end
     
+    subgraph OpenServerInternal["open-server 内部"]
+        CapMgmt["能力开放模块"]
+        AppMgmt["应用管理模块"]
+        Member["成员管理模块"]
+    end
+    
     subgraph Services["后端服务（独立服务，无依赖）"]
         OpenServer["open-server\n(管理服务)"]
         ApiServer["api-server\n(API网关)"]
         EventServer["event-server\n(事件网关)"]
-    end
-    
-    subgraph External["外部系统"]
-        AppMgmt["app-management"]
-        Member["member-service"]
     end
     
     subgraph PlatformGW["XX通讯平台网关"]
@@ -740,9 +745,9 @@ graph LR
     %% open-web 直接连接 open-server
     OpenWeb -->|REST API| OpenServer
     
-    %% open-server 调用外部系统
-    OpenServer -.->|Feign| AppMgmt
-    OpenServer -.->|Feign| Member
+    %% open-server 内部模块调用
+    CapMgmt -.->|方法调用| AppMgmt
+    CapMgmt -.->|方法调用| Member
     
     %% 消费方/提供方通过平台网关访问网关服务
     Consumer -->|API调用| ApiGW
@@ -751,8 +756,8 @@ graph LR
     MsgGW --> EventServer
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
+    style OpenServerInternal fill:#e3f2fd,stroke:#1565c0
     style Services fill:#e3f2fd,stroke:#1565c0
-    style External fill:#ffebee,stroke:#c62828
     style PlatformGW fill:#fff3e0,stroke:#ef6c00
     style Consumers fill:#e0f7fa,stroke:#00838f
 ```
@@ -859,9 +864,9 @@ graph LR
 
 | 文件路径 | 依赖方式 |
 |----------|----------|
-| 现有 `应用管理系统` | 通过 Feign 调用 |
-| 现有 `成员管理系统` | 通过 Feign 调用 |
-| 现有 `AKSK 管理系统` | 通过 Feign 调用 |
+| 现有 `应用管理模块` | open-server 内部模块，方法调用 |
+| 现有 `成员管理模块` | open-server 内部模块，方法调用 |
+| 现有 `AKSK 管理系统` | 待确认（Feign/方法调用） |
 | 现有 `内部中台网关` | HTTP 调用 |
 | 现有 `内部消息网关` | HTTP/MQ 调用 |
 
@@ -1476,6 +1481,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.11 | 2026-04-20 | 新增方案D（基于现有微服务架构），调整为微服务拆分方案 | SDDU Plan Agent |
 | v1.12 | 2026-04-20 | 修正架构图：移除网关层，open-web直连open-server，api-server/event-server通过XX通讯平台网关访问 | SDDU Plan Agent |
 | v1.13 | 2026-04-20 | 修正服务依赖关系：api-server/event-server为独立服务，不依赖open-server，直接访问数据库 | SDDU Plan Agent |
+| v1.14 | 2026-04-20 | 修正调用方式：应用管理/成员管理改为open-server内部模块，通过方法调用而非Feign | SDDU Plan Agent |
 
 ---
 
