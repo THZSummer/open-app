@@ -570,9 +570,25 @@ open-app/
 
 ## 4. 数据库设计
 
-### 4.1 表结构设计
+### 4.1 与现有表的关系
 
-基于 spec.md §5.4 数据库表清单，设计如下：
+基于 spec.md §5.4 数据库表清单，规划表与现有表的对照关系如下：
+
+| 规划表 | 现有表 | 关系 | 处理策略 |
+|--------|--------|------|----------|
+| `groups` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
+| `apis` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
+| `events` | `openplatform_event_t` | 扩展 | 新建表，保留原有表 |
+| `callbacks` | - | 新建 | - |
+| `permissions` | - | 新建 | - |
+| `subscriptions` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
+| `approval_flows` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
+| `approval_records` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
+| `audit_logs` | `openplatform_oprate_log_t` | 扩展 | 新建表，保留原有表 |
+
+### 4.2 表结构设计
+
+基于上述关系分析，具体表结构设计如下：
 
 ```sql
 -- ============================================
@@ -789,20 +805,6 @@ CREATE TABLE `audit_logs` (
     KEY `idx_resource` (`resource_type`, `resource_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
 ```
-
-### 4.2 与现有表的关系
-
-| 规划表 | 现有表 | 关系 | 处理策略 |
-|--------|--------|------|----------|
-| `groups` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
-| `apis` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
-| `events` | `openplatform_event_t` | 扩展 | 新建表，保留原有表 |
-| `callbacks` | - | 新建 | - |
-| `permissions` | - | 新建 | - |
-| `subscriptions` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
-| `approval_flows` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
-| `approval_records` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
-| `audit_logs` | `openplatform_oprate_log_t` | 扩展 | 新建表，保留原有表 |
 
 ---
 
