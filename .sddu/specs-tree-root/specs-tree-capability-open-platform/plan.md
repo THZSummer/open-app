@@ -605,6 +605,7 @@ erDiagram
         varchar name_cn
         varchar name_en
         bigint parent_id FK
+        varchar path
         int sort_order
         tinyint status
     }
@@ -756,6 +757,25 @@ erDiagram
 - 根节点设置别名，子节点继承
 - 权限通过 `category_id` 关联分类，间接归属于某棵权限树
 - 不同权限树之间完全隔离
+
+**子树查询优化（路径枚举法）**：
+
+通过 `path` 字段存储从根节点到当前节点的路径，优化查询某节点及其所有子节点关联权限的场景：
+
+| id | name_cn | parent_id | path |
+|----|---------|-----------|------|
+| 1 | 根分类 | NULL | `/1/` |
+| 2 | 子分类A | 1 | `/1/2/` |
+| 3 | 子分类B | 1 | `/1/3/` |
+| 4 | 孙分类A1 | 2 | `/1/2/4/` |
+
+```sql
+-- 查询节点2及其所有子节点的权限
+SELECT p.* 
+FROM openplatform_permission_t p
+JOIN openplatform_category_t c ON p.category_id = c.id
+WHERE c.path LIKE '/1/2/%';
+```
 
 > ⚠️ **注意**：
 > - ER 图简化展示，属性表只显示核心字段（id、parent_id、property_name、property_value、status）
@@ -995,6 +1015,7 @@ CREATE TABLE `openplatform_category_t` (
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `parent_id` BIGINT(20),
+    `path` VARCHAR(500) COMMENT '路径：/根ID/父ID/当前ID/，用于子树查询优化',
     `sort_order` INT DEFAULT 0,
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -1002,7 +1023,8 @@ CREATE TABLE `openplatform_category_t` (
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_alias_parent` (`category_alias`, `parent_id`),
-    KEY `idx_parent_id` (`parent_id`)
+    KEY `idx_parent_id` (`parent_id`),
+    KEY `idx_path` (`path`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类表';
 
 -- 分类责任人关联表
