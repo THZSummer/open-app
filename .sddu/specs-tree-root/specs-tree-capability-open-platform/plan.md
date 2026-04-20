@@ -604,149 +604,149 @@ erDiagram
     AUDIT_LOG }o--o| USER : "操作用户"
 
     CATEGORY {
-        bigint id PK
-        varchar name_cn
-        varchar name_en
-        bigint parent_id LK
-        int sort_order
-        tinyint status
+        BIGINT id PK
+        VARCHAR name_cn
+        VARCHAR name_en
+        BIGINT parent_id LK
+        INT sort_order
+        TINYINT status
     }
     
     CATEGORY_OWNER {
-        bigint id PK
-        bigint category_id LK
-        varchar user_id
+        BIGINT id PK
+        BIGINT category_id LK
+        VARCHAR user_id
     }
     
     API {
-        bigint id PK
-        varchar name_cn
-        varchar name_en
-        varchar path
-        varchar method
-        tinyint status
+        BIGINT id PK
+        VARCHAR name_cn
+        VARCHAR name_en
+        VARCHAR path
+        VARCHAR method
+        TINYINT status
     }
     
     API_P {
-        bigint id PK
-        bigint parent_id LK
-        varchar property_name
-        text property_value
-        tinyint status
+        BIGINT id PK
+        BIGINT parent_id LK
+        VARCHAR property_name
+        TEXT property_value
+        TINYINT status
     }
     
     EVENT {
-        bigint id PK
-        varchar name_cn
-        varchar name_en
-        varchar topic UK
-        tinyint status
+        BIGINT id PK
+        VARCHAR name_cn
+        VARCHAR name_en
+        VARCHAR topic UK
+        TINYINT status
     }
     
     EVENT_P {
-        bigint id PK
-        bigint parent_id LK
-        varchar property_name
-        text property_value
-        tinyint status
+        BIGINT id PK
+        BIGINT parent_id LK
+        VARCHAR property_name
+        TEXT property_value
+        TINYINT status
     }
     
     CALLBACK {
-        bigint id PK
-        varchar name_cn
-        varchar name_en
-        tinyint status
+        BIGINT id PK
+        VARCHAR name_cn
+        VARCHAR name_en
+        TINYINT status
     }
     
     CALLBACK_P {
-        bigint id PK
-        bigint parent_id LK
-        varchar property_name
-        text property_value
-        tinyint status
+        BIGINT id PK
+        BIGINT parent_id LK
+        VARCHAR property_name
+        TEXT property_value
+        TINYINT status
     }
     
     PERMISSION {
-        bigint id PK
-        varchar name_cn
-        varchar name_en
-        varchar scope UK
-        varchar resource_type
-        bigint resource_id LK
-        bigint category_id LK
-        tinyint status
+        BIGINT id PK
+        VARCHAR name_cn
+        VARCHAR name_en
+        VARCHAR scope UK
+        VARCHAR resource_type
+        BIGINT resource_id LK
+        BIGINT category_id LK
+        TINYINT status
     }
     
     PERMISSION_P {
-        bigint id PK
-        bigint parent_id LK
-        varchar property_name
-        text property_value
-        tinyint status
+        BIGINT id PK
+        BIGINT parent_id LK
+        VARCHAR property_name
+        TEXT property_value
+        TINYINT status
     }
     
     SUBSCRIPTION {
-        bigint id PK
-        bigint app_id LK
-        bigint permission_id LK
-        tinyint status
-        tinyint channel_type
-        varchar channel_address
-        tinyint auth_type
+        BIGINT id PK
+        BIGINT app_id LK
+        BIGINT permission_id LK
+        TINYINT status
+        TINYINT channel_type
+        VARCHAR channel_address
+        TINYINT auth_type
     }
     
     APPROVAL_FLOW {
-        bigint id PK
-        varchar name_cn
-        varchar name_en
-        varchar code UK
-        tinyint is_default
-        json nodes
-        tinyint status
+        BIGINT id PK
+        VARCHAR name_cn
+        VARCHAR name_en
+        VARCHAR code UK
+        TINYINT is_default
+        JSON nodes
+        TINYINT status
     }
     
     APPROVAL_RECORD {
-        bigint id PK
-        bigint flow_id LK
-        varchar business_type
-        bigint business_id LK
-        varchar applicant_id
-        tinyint status
-        int current_node
+        BIGINT id PK
+        BIGINT flow_id LK
+        VARCHAR business_type
+        BIGINT business_id LK
+        VARCHAR applicant_id
+        TINYINT status
+        INT current_node
     }
     
     APPROVAL_LOG {
-        bigint id PK
-        bigint record_id LK
-        int node_index
-        varchar operator_id
-        tinyint action
+        BIGINT id PK
+        BIGINT record_id LK
+        INT node_index
+        VARCHAR operator_id
+        TINYINT action
     }
     
     USER_AUTHORIZATION {
-        bigint id PK
-        varchar user_id
-        bigint app_id LK
-        json scopes
+        BIGINT id PK
+        VARCHAR user_id
+        BIGINT app_id LK
+        JSON scopes
     }
     
     AUDIT_LOG {
-        bigint id PK
-        varchar user_id
-        varchar action
-        varchar resource_type
-        bigint resource_id
+        BIGINT id PK
+        VARCHAR user_id
+        VARCHAR action
+        VARCHAR resource_type
+        BIGINT resource_id
     }
     
     APP {
-        bigint id PK
-        varchar name
-        varchar app_key UK
+        BIGINT id PK
+        VARCHAR name
+        VARCHAR app_key UK
     }
     
     USER {
-        varchar id PK
-        varchar username
+        VARCHAR id PK
+        VARCHAR username
     }
 ```
 
