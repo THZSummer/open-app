@@ -600,8 +600,6 @@ erDiagram
     APPROVAL_RECORD ||--o{ APPROVAL_LOG : "操作日志"
     
     USER_AUTHORIZATION ||--o{ APP : "授权应用"
-    
-    AUDIT_LOG }o--o| USER : "操作用户"
 
     CATEGORY {
         bigint id PK
@@ -728,14 +726,6 @@ erDiagram
         varchar user_id
         bigint app_id FK
         json scopes
-    }
-    
-    AUDIT_LOG {
-        bigint id PK
-        varchar user_id
-        varchar action
-        varchar resource_type
-        bigint resource_id
     }
     
     APP {
@@ -946,11 +936,10 @@ CREATE TABLE `openplatform_api_p_t` (
 | `approval_records` | `openplatform_approval_record_t` | 审批记录表 |
 | `approval_logs` | `openplatform_approval_log_t` | 审批操作日志表 |
 | `user_authorizations` | `openplatform_user_authorization_t` | 用户授权表 |
-| `audit_logs` | `openplatform_audit_log_t` | 审计日志表 |
 
 > 💡 **主表+属性表模式说明**：
 > - **使用主表+属性表的对象**：API、事件、回调、权限（4 个业务对象）
-> - **不使用属性表的对象**：分类、订阅、审批流程、审批记录、用户授权、审计日志（固定字段，无需扩展）
+> - **不使用属性表的对象**：分类、订阅、审批流程、审批记录、用户授权（固定字段，无需扩展）
 > - **主表存储**：列表展示字段、搜索条件字段（name、status、path、method、topic 等）
 > - **属性表存储**：详情展示字段、扩展属性（description、doc_url、approval_flow_id 等）
 
@@ -975,13 +964,12 @@ CREATE TABLE `openplatform_api_p_t` (
 | `openplatform_approval_record_t` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
 | `openplatform_approval_log_t` | - | 新建 | 审批操作日志表 |
 | `openplatform_user_authorization_t` | - | 新建 | 用户授权表（Scope 授权） |
-| `openplatform_audit_log_t` | `openplatform_oprate_log_t` | 扩展 | 新建表，保留原有表 |
 
 **汇总**：
-- 扩展现有表：7 个（主表）
+- 扩展现有表：6 个（主表）
 - 纯新建主表：5 个（`openplatform_category_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
 - 新建属性表：4 个（`openplatform_api_p_t`、`openplatform_event_p_t`、`openplatform_callback_p_t`、`openplatform_permission_p_t`）
-- **总表数**：16 个
+- **总表数**：15 个
 
 ### 4.4 表结构设计
 
@@ -1263,26 +1251,6 @@ CREATE TABLE `openplatform_user_authorization_t` (
     UNIQUE KEY `uk_user_app` (`user_id`, `app_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户授权表';
 
--- ============================================
--- 审计日志表（扩展现有 openplatform_oprate_log_t）
--- ============================================
-CREATE TABLE `openplatform_audit_log_t` (
-    `id` BIGINT(20) PRIMARY KEY,
-    `user_id` VARCHAR(100),
-    `action` VARCHAR(50) NOT NULL,
-    `resource_type` VARCHAR(50) NOT NULL,
-    `resource_id` BIGINT(20),
-    `old_value` JSON,
-    `new_value` JSON,
-    `ip_address` VARCHAR(45),
-    `user_agent` TEXT,
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` VARCHAR(100),
-    `last_update_by` VARCHAR(100),
-    KEY `idx_user` (`user_id`),
-    KEY `idx_resource` (`resource_type`, `resource_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
 ```
 
 ---
