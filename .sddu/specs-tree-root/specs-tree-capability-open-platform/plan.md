@@ -48,12 +48,12 @@ graph TB
 
 | 维度 | 现状 | 目标 |
 |------|------|------|
-| **API 管理** | 仅支持 API 注册与应用关联 | 支持完整生命周期（注册/编辑/删除/分组/权限树） |
+| **API 管理** | 仅支持 API 注册与应用关联 | 支持完整生命周期（注册/编辑/删除/分类/权限树） |
 | **事件管理** | 事件注册存在，但权限关联弱 | 支持事件与权限统一注册、通道配置、按应用隔离 |
 | **回调管理** | 不存在 | 全新模块，支持通道类型/认证类型配置 |
 | **权限模型** | API 与权限混合存储 | 权限资源独立抽象，支持多类型资源 |
 | **审批流程** | 基础审批存在 | 动态审批流引擎，支持场景特有审批流 |
-| **分组管理** | 存在模式节点表 | 统一分组治理，支持责任人配置 |
+| **分类管理** | 存在模式节点表 | 统一分类治理，支持责任人配置 |
 
 ### 1.3 依赖关系图
 
@@ -70,7 +70,7 @@ graph TB
             API["API 管理模块"]
             Event["事件管理模块"]
             Callback["回调管理模块"]
-            Group["分组管理模块"]
+            Group["分类管理模块"]
             Permission["权限管理服务"]
             Approval["审批管理服务"]
             Gateway["消费网关"]
@@ -122,6 +122,12 @@ graph TB
 | **表单处理** | React Hook Form | - |
 | **测试框架** | Vitest + React Testing Library | - |
 
+#### 前端设计流程
+
+> 💡 **设计流程说明**：
+> - **面向三方应用人员的界面**：统一按照 [`/front/README.md`](../../../front/README.md) 描述的内容和设计流程去执行生成代码
+> - **其他页面**（如运营方管理后台、提供方管理后台）：可在此 plan.md 文档进行详细设计
+
 #### 后端技术栈
 
 | 层级 | 技术选型 | 版本 |
@@ -149,7 +155,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph Frontend["前端 (React SPA)"]
-        P1["分组管理"]
+        P1["分类管理"]
         P2["API管理"]
         P3["事件管理"]
         P4["回调管理"]
@@ -211,7 +217,7 @@ graph TB
 |------|------|------|
 | 前端框架搭建 | 3 | React + Ant Design + 状态管理 |
 | 后端框架搭建 | 3 | Spring Boot + MyBatis + 模块划分 |
-| 分组管理 | 5 | CRUD + 责任人配置 |
+| 分类管理 | 5 | CRUD + 责任人配置 |
 | API 管理 | 8 | 注册/编辑/删除/权限 |
 | 事件管理 | 8 | 注册/订阅/通道配置 |
 | 回调管理 | 8 | 注册/订阅/通道配置 |
@@ -334,7 +340,7 @@ graph TB
     end
     
     subgraph Core["Core Service"]
-        CoreService["Spring Boot\n(分组/API/事件/回调/权限/审批)"]
+        CoreService["Spring Boot\n(分类/API/事件/回调/权限/审批)"]
     end
     
     subgraph GatewayService["网关服务"]
@@ -416,7 +422,7 @@ open-app/
 │   │   │   │   ├── java/
 │   │   │   │   │   └── com/xxx/capability/
 │   │   │   │   │       ├── modules/
-│   │   │   │   │       │   ├── group/             # 分组管理模块
+│   │   │   │   │       │   ├── category/           # 分类管理模块
 │   │   │   │   │       │   ├── api/               # API 管理模块
 │   │   │   │   │       │   ├── event/             # 事件管理模块
 │   │   │   │   │       │   ├── callback/          # 回调管理模块
@@ -442,7 +448,7 @@ open-app/
 │   └── capability-web/                # 能力开放平台前端
 │       ├── src/
 │       │   ├── pages/
-│       │   │   ├── group/             # 分组管理页面
+│       │   │   ├── category/           # 分类管理页面
 │       │   │   ├── api/               # API 管理页面
 │       │   │   ├── event/             # 事件管理页面
 │       │   │   ├── callback/          # 回调管理页面
@@ -488,10 +494,10 @@ open-app/
 |----------|------|
 | `apps/capability-platform/pom.xml` | 后端项目配置 |
 | `apps/capability-platform/src/main/java/.../CapabilityPlatformApplication.java` | 应用入口 |
-| `apps/capability-platform/src/main/java/.../modules/group/GroupController.java` | 分组管理控制器 |
-| `apps/capability-platform/src/main/java/.../modules/group/GroupService.java` | 分组管理服务 |
-| `apps/capability-platform/src/main/java/.../modules/group/entity/Group.java` | 分组实体 |
-| `apps/capability-platform/src/main/java/.../modules/group/mapper/GroupMapper.java` | 分组 Mapper |
+| `apps/capability-platform/src/main/java/.../modules/category/CategoryController.java` | 分类管理控制器 |
+| `apps/capability-platform/src/main/java/.../modules/category/CategoryService.java` | 分类管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/category/entity/Category.java` | 分类实体 |
+| `apps/capability-platform/src/main/java/.../modules/category/mapper/CategoryMapper.java` | 分类 Mapper |
 | `apps/capability-platform/src/main/java/.../modules/api/ApiController.java` | API 管理控制器 |
 | `apps/capability-platform/src/main/java/.../modules/api/ApiService.java` | API 管理服务 |
 | `apps/capability-platform/src/main/java/.../modules/api/entity/Api.java` | API 实体 |
@@ -533,7 +539,7 @@ open-app/
 | `apps/capability-web/src/main.tsx` | 前端入口 |
 | `apps/capability-web/src/App.tsx` | 应用根组件 |
 | `apps/capability-web/src/router/index.tsx` | 路由配置 |
-| `apps/capability-web/src/pages/group/GroupList.tsx` | 分组列表页面 |
+| `apps/capability-web/src/pages/category/CategoryList.tsx` | 分类列表页面 |
 | `apps/capability-web/src/pages/api/ApiList.tsx` | API 列表页面 |
 | `apps/capability-web/src/pages/api/ApiRegister.tsx` | API 注册页面 |
 | `apps/capability-web/src/pages/event/EventList.tsx` | 事件列表页面 |
@@ -570,7 +576,251 @@ open-app/
 
 ## 4. 数据库设计
 
-### 4.1 表设计规则
+### 4.1 ER 图
+
+```mermaid
+erDiagram
+    CATEGORY ||--o{ CATEGORY : "父分类"
+    CATEGORY ||--o{ CATEGORY_OWNER : "拥有责任人"
+    CATEGORY ||--o{ PERMISSION : "包含权限"
+    
+    PERMISSION }o--|| API : "关联API资源"
+    PERMISSION }o--|| EVENT : "关联事件资源"
+    PERMISSION }o--|| CALLBACK : "关联回调资源"
+    
+    API ||--o{ API_P : "属性表"
+    EVENT ||--o{ EVENT_P : "属性表"
+    CALLBACK ||--o{ CALLBACK_P : "属性表"
+    PERMISSION ||--o{ PERMISSION_P : "属性表"
+    
+    PERMISSION ||--o{ SUBSCRIPTION : "被订阅"
+    PERMISSION }o--o| APPROVAL_FLOW : "审批流程"
+    
+    APPROVAL_FLOW ||--o{ APPROVAL_RECORD : "生成记录"
+    APPROVAL_RECORD ||--o{ APPROVAL_LOG : "操作日志"
+
+    CATEGORY {
+        bigint id PK
+        varchar category_alias
+        varchar name_cn
+        varchar name_en
+        bigint parent_id FK
+        varchar path
+        int sort_order
+        tinyint status
+    }
+    
+    CATEGORY_OWNER {
+        bigint id PK
+        bigint category_id FK
+        varchar user_id
+    }
+    
+    API {
+        bigint id PK
+        varchar name_cn
+        varchar name_en
+        varchar path
+        varchar method
+        tinyint status
+    }
+    
+    API_P {
+        bigint id PK
+        bigint parent_id FK
+        varchar property_name
+        text property_value
+        tinyint status
+    }
+    
+    EVENT {
+        bigint id PK
+        varchar name_cn
+        varchar name_en
+        varchar topic UK
+        tinyint status
+    }
+    
+    EVENT_P {
+        bigint id PK
+        bigint parent_id FK
+        varchar property_name
+        text property_value
+        tinyint status
+    }
+    
+    CALLBACK {
+        bigint id PK
+        varchar name_cn
+        varchar name_en
+        tinyint status
+    }
+    
+    CALLBACK_P {
+        bigint id PK
+        bigint parent_id FK
+        varchar property_name
+        text property_value
+        tinyint status
+    }
+    
+    PERMISSION {
+        bigint id PK
+        varchar name_cn
+        varchar name_en
+        varchar scope UK
+        varchar resource_type
+        bigint resource_id FK
+        bigint category_id FK
+        tinyint status
+    }
+    
+    PERMISSION_P {
+        bigint id PK
+        bigint parent_id FK
+        varchar property_name
+        text property_value
+        tinyint status
+    }
+    
+    SUBSCRIPTION {
+        bigint id PK
+        bigint app_id FK
+        bigint permission_id FK
+        tinyint status
+        tinyint channel_type
+        varchar channel_address
+        tinyint auth_type
+    }
+    
+    APPROVAL_FLOW {
+        bigint id PK
+        varchar name_cn
+        varchar name_en
+        varchar code UK
+        tinyint is_default
+        json nodes
+        tinyint status
+    }
+    
+    APPROVAL_RECORD {
+        bigint id PK
+        bigint flow_id FK
+        varchar business_type
+        bigint business_id FK
+        varchar applicant_id
+        tinyint status
+        int current_node
+    }
+    
+    APPROVAL_LOG {
+        bigint id PK
+        bigint record_id FK
+        int node_index
+        varchar operator_id
+        tinyint action
+    }
+    
+    USER_AUTHORIZATION {
+        bigint id PK
+        varchar user_id
+        bigint app_id FK
+        json scopes
+    }
+```
+
+> 💡 **核心关系说明**：
+> - **分类树形结构**：`CATEGORY` 通过 `parent_id` 实现树形层级，支持多级分类
+> - **分类包含权限**：`CATEGORY` 直接关联 `PERMISSION`，分类下展示的是权限数据
+> - **权限关联资源**：`PERMISSION` 通过 `resource_type` + `resource_id` 关联具体的 API/事件/回调资源
+> - **权限树展示**：分类树 + 权限列表 = 权限树，权限数据可附带展示对应资源的部分字段
+> - **属性表**：`API_P`、`EVENT_P`、`CALLBACK_P`、`PERMISSION_P` 存储扩展属性，KV 模式灵活扩展
+
+#### 分类类型说明
+
+分类表通过 `category_alias` 字段区分不同的权限树，**每种凭证类型对应一棵独立的权限树**：
+
+| category_alias 示例 | 说明 | 对应凭证 |
+|--------------------|------|----------|
+| `app_type_a` | A类应用权限树 | A类应用凭证 |
+| `app_type_b` | B类应用权限树 | B类应用凭证 |
+| `personal_aksk` | 个人AKSK权限树 | AKSK个人凭证 |
+| `...` | 其他类型 | 其他凭证类型 |
+
+**枚举值命名规范**：
+- 格式：`{身份类型}_{凭证类型}`
+- 使用小写字母 + 下划线
+- 具体枚举值由前后端约定
+
+**设计规则**：
+- **只有根分类**需要设置 `category_alias`，子分类为 NULL
+- 权限通过 `category_id` 关联分类，间接归属于某棵权限树
+- 不同权限树之间完全隔离
+
+**查询子分类所属权限树**：
+
+通过 `path` 字段找到根节点，再查根节点的 `category_alias`：
+
+```sql
+-- 从子分类的 path 解析根节点 ID，查询权限树类型
+SELECT root.category_alias
+FROM openplatform_category_t child
+JOIN openplatform_category_t root 
+  ON root.id = CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(child.path, '/', 2), '/', -1) AS UNSIGNED)
+WHERE child.id = :category_id;
+```
+
+**子树查询优化（路径枚举法）**：
+
+通过 `path` 字段存储从根节点到当前节点的路径，优化查询某节点及其所有子节点关联权限的场景：
+
+| id | category_alias | name_cn | parent_id | path |
+|----|----------------|---------|-----------|------|
+| 1 | `app_type_a` | 根分类 | NULL | `/1/` |
+| 2 | NULL | 子分类A | 1 | `/1/2/` |
+| 3 | NULL | 子分类B | 1 | `/1/3/` |
+| 4 | NULL | 孙分类A1 | 2 | `/1/2/4/` |
+
+```sql
+-- 查询节点2及其所有子节点的权限
+SELECT p.* 
+FROM openplatform_permission_t p
+JOIN openplatform_category_t c ON p.category_id = c.id
+WHERE c.path LIKE '/1/2/%';
+```
+
+> ⚠️ **注意**：
+> - ER 图简化展示，属性表只显示核心字段（id、parent_id、property_name、property_value、status）
+> - 属性表必备四个审计字段（create_time、last_update_time、create_by、last_update_by）已在规范中定义
+> - 图中 `FK` 表示逻辑外键，不使用物理外键约束
+
+#### Scope 命名规范
+
+权限的 `scope` 字段命名遵循 `{资源类型}:{模块}:{资源标识}` 格式，确保全局唯一：
+
+| 资源类型 | Scope 示例 | 说明 |
+|----------|------------|------|
+| API | `api:im:send-message` | IM 模块发送消息 API |
+| API | `api:im:get-message` | IM 模块获取消息 API |
+| Event | `event:im:message-received` | IM 模块消息接收事件 |
+| Event | `event:meeting:meeting-started` | 会议模块会议开始事件 |
+| Callback | `callback:approval:approval-completed` | 审批模块审批完成回调 |
+
+**命名规则**：
+
+| 部分 | 说明 | 示例 |
+|------|------|------|
+| `{资源类型}` | api / event / callback | `api` |
+| `{模块}` | 业务模块名 | `im`、`meeting`、`approval` |
+| `{资源标识}` | 具体资源的唯一标识 | `send-message`、`message-received` |
+
+> 💡 **说明**：
+> - **资源类型前缀**：确保 scope 全局唯一，避免不同类型资源冲突
+> - **scope**：权限的外部标识，用于 OAuth 授权和消费方使用
+> - **唯一性**：scope 在权限表全局唯一
+> - 只有 **权限（PERMISSION）** 才有 `scope` 属性
+
+### 4.2 表设计规则
 
 遵循现有系统的数据库设计规范，统一命名和字段约定：
 
@@ -583,6 +833,83 @@ open-app/
 | **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | `openplatform_permission_api_p_t` |
 | **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_user_authorization_t` |
 
+#### 主表与属性表设计规范
+
+对于一般业务对象，采用 **主表 + 属性表** 的设计模式：
+
+**主表设计原则**：
+
+| 原则 | 说明 |
+|------|------|
+| **字段选择** | 存储业务对象的常用字段 |
+| **列表展示** | 涉及在对象列表中展示的字段 |
+| **搜索条件** | 作为列表搜索条件的字段 |
+| **示例** | `name_cn`、`name_en`、`status`、`category_id` 等 |
+
+**属性表设计规范**：
+
+| 规则 | 说明 | 示例 |
+|------|------|------|
+| **用途** | 存储仅在对象详情中涉及的不常用字段 | 扩展配置、元数据等 |
+| **表名格式** | `{前缀}_{业务对象名}_p_t` | `openplatform_api_p_t` |
+| **表名示例** | API 属性表 → `openplatform_api_p_t` | |
+| **表名示例** | 事件属性表 → `openplatform_event_p_t` | |
+| **表名示例** | 权限属性表 → `openplatform_permission_p_t` | |
+
+**属性表必备字段**：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| `id` | BIGINT(20) | 主键，雪花ID |
+| `parent_id` | BIGINT(20) | 父表ID（关联主表） |
+| `property_name` | VARCHAR(100) | 属性名称 |
+| `property_value` | TEXT | 属性值 |
+| `status` | TINYINT(10) | 状态（0=禁用, 1=启用） |
+| `create_time` | DATETIME(3) | 创建时间 |
+| `last_update_time` | DATETIME(3) | 更新时间 |
+| `create_by` | VARCHAR(100) | 创建人账号 |
+| `last_update_by` | VARCHAR(100) | 更新人账号 |
+
+**属性表示例**：
+
+```sql
+CREATE TABLE `openplatform_api_p_t` (
+    `id` BIGINT(20) PRIMARY KEY,
+    `parent_id` BIGINT(20) NOT NULL COMMENT '关联 API 主表 ID',
+    `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
+    `property_value` TEXT COMMENT '属性值',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(100),
+    `last_update_by` VARCHAR(100),
+    KEY `idx_parent_id` (`parent_id`),
+    KEY `idx_property_name` (`property_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API属性表';
+```
+
+> 💡 **说明**：
+> - 属性表采用 **KV 模式**，灵活存储各种扩展属性
+> - 属性名 `property_name` 和属性值 `property_value` 支持动态扩展
+> - 主表保持简洁，便于列表查询和搜索
+> - 属性表存放详情，避免主表字段膨胀
+
+#### 名称和描述字段规范
+
+涉及名称、描述场景的字段，统一使用中英文双语：
+
+| 字段类型 | 字段命名 | 类型 | 说明 |
+|----------|----------|------|------|
+| **名称** | `name_cn` | VARCHAR(100) | 中文名称 |
+| **名称** | `name_en` | VARCHAR(100) | 英文名称 |
+| **描述** | `description_cn` | TEXT | 中文描述 |
+| **描述** | `description_en` | TEXT | 英文描述 |
+
+> 💡 **说明**：
+> - 名称字段 `name_cn` 和 `name_en` 均为必填
+> - 描述字段 `description_cn` 和 `description_en` 可选
+> - 支持国际化场景，便于多语言展示
+
 #### 必备审计字段
 
 所有业务表必须包含以下四个审计字段：
@@ -591,8 +918,8 @@ open-app/
 |--------|------|------|
 | `create_time` | DATETIME(3) | 创建时间，默认 CURRENT_TIMESTAMP(3) |
 | `last_update_time` | DATETIME(3) | 更新时间，默认 CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) |
-| `create_by` | BIGINT(20) | 创建人 ID |
-| `last_update_by` | BIGINT(20) | 更新人 ID |
+| `create_by` | VARCHAR(100) | 创建人账号 |
+| `last_update_by` | VARCHAR(100) | 更新人账号 |
 
 > 💡 **说明**：时间字段统一使用 `DATETIME(3)` 精确到毫秒，确保高并发场景下的时间精度。
 
@@ -600,10 +927,10 @@ open-app/
 
 | 规则 | 说明 |
 |------|------|
-| **主键类型** | BIGINT(20)，自增主键 |
+| **主键类型** | BIGINT(20)，雪花ID |
 | **主键命名** | 统一使用 `id` |
-| **生成策略** | 数据库自增，AUTO_INCREMENT |
-| **外键类型** | BIGINT(20)，与主键类型一致 |
+| **生成策略** | 应用层生成雪花ID，不使用数据库自增 |
+| **关联字段** | 使用逻辑外键（存储关联 ID），不使用物理外键约束 |
 
 #### 索引规范
 
@@ -611,7 +938,8 @@ open-app/
 |------|------|
 | **索引命名** | `idx_字段名` 或 `idx_字段名1_字段名2` |
 | **唯一索引命名** | `uk_字段名` |
-| **外键命名** | `fk_表名_字段名` |
+
+> ⚠️ **禁止使用外键**：所有表关联关系通过存储逻辑字段实现，不使用数据库物理外键约束（FOREIGN KEY）。关联关系由应用层维护。
 
 #### 枚举字段规范
 
@@ -635,355 +963,112 @@ open-app/
 
 | 规划表名 | 正式表名 | 说明 |
 |----------|----------|------|
-| `groups` | `openplatform_group_t` | 分组表 |
-| `group_owners` | `openplatform_group_owner_t` | 分组责任人关联表 |
-| `apis` | `openplatform_api_t` | API 资源表 |
-| `events` | `openplatform_event_t` | 事件资源表 |
-| `callbacks` | `openplatform_callback_t` | 回调资源表 |
-| `permissions` | `openplatform_permission_t` | 权限资源表 |
+| `categories` | `openplatform_category_t` | 分类主表 |
+| `category_owners` | `openplatform_category_owner_t` | 分类责任人关联表 |
+| `apis` | `openplatform_api_t` | API 资源主表 |
+| `apis_p` | `openplatform_api_p_t` | API 资源属性表 |
+| `events` | `openplatform_event_t` | 事件资源主表 |
+| `events_p` | `openplatform_event_p_t` | 事件资源属性表 |
+| `callbacks` | `openplatform_callback_t` | 回调资源主表 |
+| `callbacks_p` | `openplatform_callback_p_t` | 回调资源属性表 |
+| `permissions` | `openplatform_permission_t` | 权限资源主表 |
+| `permissions_p` | `openplatform_permission_p_t` | 权限资源属性表 |
 | `subscriptions` | `openplatform_subscription_t` | 订阅关系表 |
 | `approval_flows` | `openplatform_approval_flow_t` | 审批流程模板表 |
 | `approval_records` | `openplatform_approval_record_t` | 审批记录表 |
 | `approval_logs` | `openplatform_approval_log_t` | 审批操作日志表 |
 | `user_authorizations` | `openplatform_user_authorization_t` | 用户授权表 |
-| `audit_logs` | `openplatform_audit_log_t` | 审计日志表 |
 
-### 4.2 与现有表的关系
+> 💡 **主表+属性表模式说明**：
+> - **使用主表+属性表的对象**：API、事件、回调、权限（4 个业务对象）
+> - **不使用属性表的对象**：分类、订阅、审批流程、审批记录、用户授权（固定字段，无需扩展）
+> - **主表存储**：列表展示字段、搜索条件字段（name、status、path、method、topic 等）
+> - **属性表存储**：详情展示字段、扩展属性（description、doc_url、approval_flow_id 等）
+
+### 4.3 与现有表的关系
 
 基于 spec.md §5.4 数据库表清单，规划表与现有表的对照关系如下：
 
 | 正式表名 | 现有表 | 关系 | 处理策略 |
 |----------|--------|------|----------|
-| `openplatform_group_t` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
-| `openplatform_group_owner_t` | - | 新建 | 分组责任人关联表 |
+| `openplatform_category_t` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
+| `openplatform_category_owner_t` | - | 新建 | 分类责任人关联表 |
 | `openplatform_api_t` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
+| `openplatform_api_p_t` | - | 新建 | API 资源属性表 |
 | `openplatform_event_t` | 现有同名表 | 扩展 | 新建表，保留原有表 |
-| `openplatform_callback_t` | - | 新建 | 回调资源表 |
-| `openplatform_permission_t` | - | 新建 | 权限资源表（核心抽象） |
+| `openplatform_event_p_t` | - | 新建 | 事件资源属性表 |
+| `openplatform_callback_t` | - | 新建 | 回调资源主表 |
+| `openplatform_callback_p_t` | - | 新建 | 回调资源属性表 |
+| `openplatform_permission_t` | - | 新建 | 权限资源主表（核心抽象） |
+| `openplatform_permission_p_t` | - | 新建 | 权限资源属性表 |
 | `openplatform_subscription_t` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
 | `openplatform_approval_flow_t` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
 | `openplatform_approval_record_t` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
 | `openplatform_approval_log_t` | - | 新建 | 审批操作日志表 |
 | `openplatform_user_authorization_t` | - | 新建 | 用户授权表（Scope 授权） |
-| `openplatform_audit_log_t` | `openplatform_oprate_log_t` | 扩展 | 新建表，保留原有表 |
 
 **汇总**：
-- 扩展现有表：7 个
-- 纯新建表：5 个（`openplatform_group_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
+- 扩展现有表：6 个（主表）
+- 纯新建主表：5 个（`openplatform_category_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
+- 新建属性表：4 个（`openplatform_api_p_t`、`openplatform_event_p_t`、`openplatform_callback_p_t`、`openplatform_permission_p_t`）
+- **总表数**：15 个
 
-### 4.3 表结构设计
+### 4.4 表结构设计
 
-基于上述关系分析，具体表结构设计如下：
+详细的表结构设计请参阅：[plan-db.md](./plan-db.md)
 
-```sql
--- ============================================
--- 分组表（扩展现有 openplatform_mode_node_t）
--- ============================================
-CREATE TABLE `openplatform_group_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `name` VARCHAR(100) NOT NULL,
-    `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
-    `parent_id` BIGINT(20),
-    `sort_order` INT DEFAULT 0,
-    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    KEY `idx_resource_type` (`resource_type`),
-    KEY `idx_parent_id` (`parent_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组表';
+**表清单汇总**：
 
--- 分组责任人关联表
-CREATE TABLE `openplatform_group_owner_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `group_id` BIGINT(20) NOT NULL,
-    `user_id` BIGINT(20) NOT NULL,
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
-    CONSTRAINT `fk_group_owner_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组责任人关联表';
+| 表名 | 类型 | 说明 |
+|------|------|------|
+| `openplatform_category_t` | 主表 | 分类表 |
+| `openplatform_category_owner_t` | 关联表 | 分类责任人关联表 |
+| `openplatform_api_t` | 主表 | API资源主表 |
+| `openplatform_api_p_t` | 属性表 | API资源属性表 |
+| `openplatform_event_t` | 主表 | 事件资源主表 |
+| `openplatform_event_p_t` | 属性表 | 事件资源属性表 |
+| `openplatform_callback_t` | 主表 | 回调资源主表 |
+| `openplatform_callback_p_t` | 属性表 | 回调资源属性表 |
+| `openplatform_permission_t` | 主表 | 权限资源主表 |
+| `openplatform_permission_p_t` | 属性表 | 权限资源属性表 |
+| `openplatform_subscription_t` | 主表 | 订阅关系表 |
+| `openplatform_approval_flow_t` | 主表 | 审批流程模板表 |
+| `openplatform_approval_record_t` | 主表 | 审批记录表 |
+| `openplatform_approval_log_t` | 主表 | 审批操作日志表 |
+| `openplatform_user_authorization_t` | 主表 | 用户授权表 |
 
--- ============================================
--- API 资源表（扩展现有 openplatform_permission_api_t）
--- ============================================
-CREATE TABLE `openplatform_api_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `name` VARCHAR(100) NOT NULL,
-    `code_name` VARCHAR(100) NOT NULL UNIQUE,
-    `path` VARCHAR(500) NOT NULL,
-    `method` VARCHAR(10) NOT NULL,
-    `description` TEXT,
-    `doc_url` VARCHAR(500),
-    `group_id` BIGINT(20),
-    `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    KEY `idx_group_id` (`group_id`),
-    KEY `idx_status` (`status`),
-    CONSTRAINT `fk_api_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源表';
-
--- ============================================
--- 事件资源表（扩展现有 openplatform_event_t）
--- ============================================
-CREATE TABLE `openplatform_event_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `name` VARCHAR(100) NOT NULL,
-    `code_name` VARCHAR(100) NOT NULL UNIQUE,
-    `topic` VARCHAR(200) NOT NULL UNIQUE,
-    `description` TEXT,
-    `doc_url` VARCHAR(500),
-    `group_id` BIGINT(20),
-    `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    KEY `idx_group_id` (`group_id`),
-    KEY `idx_topic` (`topic`),
-    CONSTRAINT `fk_event_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源表';
-
--- ============================================
--- 回调资源表（新建）
--- ============================================
-CREATE TABLE `openplatform_callback_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `name` VARCHAR(100) NOT NULL,
-    `code_name` VARCHAR(100) NOT NULL UNIQUE,
-    `description` TEXT,
-    `doc_url` VARCHAR(500),
-    `group_id` BIGINT(20),
-    `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    KEY `idx_group_id` (`group_id`),
-    CONSTRAINT `fk_callback_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
-
--- ============================================
--- 权限资源表（新建）
--- ============================================
-CREATE TABLE `openplatform_permission_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `name` VARCHAR(100) NOT NULL,
-    `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT 'scope',
-    `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
-    `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
-    `description` TEXT,
-    `approval_flow_id` BIGINT(20) COMMENT '资源特有审批流',
-    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    KEY `idx_resource` (`resource_type`, `resource_id`),
-    KEY `idx_code_name` (`code_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源表';
-
--- ============================================
--- 订阅关系表（扩展现有 openplatform_app_permission_t）
--- ============================================
-CREATE TABLE `openplatform_subscription_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `app_id` BIGINT(20) NOT NULL,
-    `permission_id` BIGINT(20) NOT NULL,
-    `status` TINYINT(10) DEFAULT 0 COMMENT '0=待审, 1=已授权, 2=已拒绝, 3=已取消',
-    `channel_type` TINYINT(10) COMMENT '0=内部消息队列, 1=WebHook, 2=SSE, 3=WebSocket',
-    `channel_address` VARCHAR(500),
-    `auth_type` TINYINT(10) COMMENT '0=应用类凭证A, 1=应用类凭证B, 2=开放应用凭证',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    `approved_at` DATETIME(3),
-    `approved_by` BIGINT(20),
-    UNIQUE KEY `uk_app_permission` (`app_id`, `permission_id`),
-    KEY `idx_app_id` (`app_id`),
-    KEY `idx_permission_id` (`permission_id`),
-    KEY `idx_status` (`status`),
-    CONSTRAINT `fk_subscription_permission` FOREIGN KEY (`permission_id`) REFERENCES `openplatform_permission_t`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订阅关系表';
-
--- ============================================
--- 审批流程模板表（扩展现有 openplatform_eflow_t）
--- ============================================
-CREATE TABLE `openplatform_approval_flow_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `name` VARCHAR(100) NOT NULL,
-    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT 'default, api_register, permission_apply',
-    `description` TEXT,
-    `is_default` TINYINT(10) DEFAULT 0 COMMENT '0=否, 1=是',
-    `nodes` JSON NOT NULL COMMENT '审批节点配置',
-    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程模板表';
-
--- ============================================
--- 审批记录表（扩展现有 openplatform_eflow_log_t）
--- ============================================
-CREATE TABLE `openplatform_approval_record_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `flow_id` BIGINT(20) NOT NULL,
-    `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
-    `business_id` BIGINT(20) NOT NULL,
-    `applicant_id` BIGINT(20) NOT NULL,
-    `status` TINYINT(10) DEFAULT 0 COMMENT '0=待审, 1=已通过, 2=已拒绝, 3=已撤销',
-    `current_node` INT DEFAULT 0,
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    `completed_at` DATETIME(3),
-    KEY `idx_flow_id` (`flow_id`),
-    KEY `idx_business` (`business_type`, `business_id`),
-    KEY `idx_applicant` (`applicant_id`),
-    KEY `idx_status` (`status`),
-    CONSTRAINT `fk_approval_record_flow` FOREIGN KEY (`flow_id`) REFERENCES `openplatform_approval_flow_t`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批记录表';
-
--- ============================================
--- 审批操作日志表
--- ============================================
-CREATE TABLE `openplatform_approval_log_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `record_id` BIGINT(20) NOT NULL,
-    `node_index` INT NOT NULL,
-    `operator_id` BIGINT(20) NOT NULL,
-    `action` TINYINT(10) NOT NULL COMMENT '0=同意, 1=拒绝, 2=撤销, 3=转交',
-    `comment` TEXT,
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    KEY `idx_record_id` (`record_id`),
-    CONSTRAINT `fk_approval_log_record` FOREIGN KEY (`record_id`) REFERENCES `openplatform_approval_record_t`(`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
-
--- ============================================
--- 用户授权表（Scope 授权）
--- ============================================
-CREATE TABLE `openplatform_user_authorization_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `user_id` BIGINT(20) NOT NULL,
-    `app_id` BIGINT(20) NOT NULL,
-    `scopes` JSON NOT NULL COMMENT '权限范围数组',
-    `expires_at` DATETIME(3),
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    `revoked_at` DATETIME(3),
-    UNIQUE KEY `uk_user_app` (`user_id`, `app_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户授权表';
-
--- ============================================
--- 审计日志表（扩展现有 openplatform_oprate_log_t）
--- ============================================
-CREATE TABLE `openplatform_audit_log_t` (
-    `id` BIGINT(20) PRIMARY KEY AUTO_INCREMENT,
-    `user_id` BIGINT(20),
-    `action` VARCHAR(50) NOT NULL,
-    `resource_type` VARCHAR(50) NOT NULL,
-    `resource_id` BIGINT(20),
-    `old_value` JSON,
-    `new_value` JSON,
-    `ip_address` VARCHAR(45),
-    `user_agent` TEXT,
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    `create_by` BIGINT(20),
-    `last_update_by` BIGINT(20),
-    KEY `idx_user` (`user_id`),
-    KEY `idx_resource` (`resource_type`, `resource_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
-```
+**总计**：15 张表（10 张主表 + 4 张属性表 + 1 张关联表）
 
 ---
 
 ## 5. 接口设计
 
-### 5.1 后端 API 清单
+详细的接口设计请参阅：[plan-api.md](./plan-api.md)
 
-#### 分组管理
+### 5.1 接口清单概览
 
-| Method | Path | 说明 | 角色 |
-|--------|------|------|------|
-| GET | `/api/v1/groups` | 获取分组列表（树形） | 运营方 |
-| POST | `/api/v1/groups` | 创建分组 | 运营方 |
-| PUT | `/api/v1/groups/:id` | 更新分组 | 运营方 |
-| DELETE | `/api/v1/groups/:id` | 删除分组 | 运营方 |
-| POST | `/api/v1/groups/:id/owners` | 添加分组责任人 | 运营方 |
-| DELETE | `/api/v1/groups/:id/owners/:userId` | 移除分组责任人 | 运营方 |
+基于 spec.md 第 3 章 FR 清单编写，确保功能需求完整覆盖：
 
-#### API 管理
+| 模块 | 对应 FR | 接口数 | 角色 |
+|------|---------|--------|------|
+| 分类管理 | FR-001, FR-002 | 8 | 运营方 |
+| API 管理 | FR-004~FR-007 | 6 | 分类责任人 |
+| 事件管理 | FR-008~FR-011 | 6 | 分类责任人 |
+| 回调管理 | FR-012~FR-015 | 6 | 分类责任人 |
+| API 权限管理 | FR-016~FR-018 | 4 | 消费方 |
+| 事件权限管理 | FR-019~FR-021 | 5 | 消费方 |
+| 回调权限管理 | FR-022~FR-024 | 5 | 消费方 |
+| 审批管理 | FR-025~FR-027 | 10 | 运营方/审批人 |
+| Scope 用户授权 | FR-031 | 3 | 用户 |
+| 消费网关 | FR-028~FR-030 | 4 | 三方应用/业务模块 |
+| **总计** | **FR-001~FR-031** | **57** | - |
 
-| Method | Path | 说明 | 角色 |
-|--------|------|------|------|
-| GET | `/api/v1/apis` | 获取 API 列表 | 分组责任人 |
-| GET | `/api/v1/apis/:id` | 获取 API 详情 | 分组责任人 |
-| POST | `/api/v1/apis` | 注册 API | 分组责任人 |
-| PUT | `/api/v1/apis/:id` | 更新 API | 分组责任人 |
-| DELETE | `/api/v1/apis/:id` | 删除 API | 分组责任人 |
+### 5.2 接口分层
 
-#### 事件管理
-
-| Method | Path | 说明 | 角色 |
-|--------|------|------|------|
-| GET | `/api/v1/events` | 获取事件列表 | 分组责任人 |
-| GET | `/api/v1/events/:id` | 获取事件详情 | 分组责任人 |
-| POST | `/api/v1/events` | 注册事件 | 分组责任人 |
-| PUT | `/api/v1/events/:id` | 更新事件 | 分组责任人 |
-| DELETE | `/api/v1/events/:id` | 删除事件 | 分组责任人 |
-
-#### 回调管理
-
-| Method | Path | 说明 | 角色 |
-|--------|------|------|------|
-| GET | `/api/v1/callbacks` | 获取回调列表 | 分组责任人 |
-| GET | `/api/v1/callbacks/:id` | 获取回调详情 | 分组责任人 |
-| POST | `/api/v1/callbacks` | 注册回调 | 分组责任人 |
-| PUT | `/api/v1/callbacks/:id` | 更新回调 | 分组责任人 |
-| DELETE | `/api/v1/callbacks/:id` | 删除回调 | 分组责任人 |
-
-#### 权限管理（消费方）
-
-| Method | Path | 说明 | 角色 |
-|--------|------|------|------|
-| GET | `/api/v1/permissions/tree` | 获取权限树 | 消费方 |
-| GET | `/api/v1/permissions/subscriptions` | 获取应用订阅列表 | 消费方 |
-| POST | `/api/v1/permissions/subscribe` | 申请权限 | 消费方 |
-| PUT | `/api/v1/permissions/subscriptions/:id/config` | 配置消费参数 | 消费方 |
-| DELETE | `/api/v1/permissions/subscriptions/:id` | 取消订阅 | 消费方 |
-
-#### 审批管理
-
-| Method | Path | 说明 | 角色 |
-|--------|------|------|------|
-| GET | `/api/v1/approvals/pending` | 获取待审批列表 | 审批人 |
-| GET | `/api/v1/approvals/:id` | 获取审批详情 | 审批人 |
-| POST | `/api/v1/approvals/:id/approve` | 同意审批 | 审批人 |
-| POST | `/api/v1/approvals/:id/reject` | 驳回审批 | 审批人 |
-| POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | 申请人 |
-
-#### Scope 授权
-
-| Method | Path | 说明 | 角色 |
-|--------|------|------|------|
-| GET | `/api/v1/scope/authorizations` | 获取用户授权列表 | 用户 |
-| POST | `/api/v1/scope/authorize` | 用户授权 | 用户 |
-| DELETE | `/api/v1/scope/authorizations/:id` | 取消授权 | 用户 |
+| 分层 | 说明 | 接口示例 |
+|------|------|----------|
+| **管理面** | 运营方、分类责任人、消费方使用的管理接口 | `/api/v1/categories`, `/api/v1/apis` |
+| **数据面** | 三方应用、业务模块使用的消费网关接口 | `/gateway/api/*`, `/gateway/events/publish` |
 
 ---
 
@@ -1030,7 +1115,7 @@ Phase 1: 基础框架（2 周）
 └── Mock 服务搭建
 
 Phase 2: 核心模块（4 周）
-├── 分组管理
+├── 分类管理
 ├── API 管理
 ├── 事件管理
 ├── 回调管理
@@ -1085,6 +1170,16 @@ Phase 4: 联调 & 上线（3 周）
 | 版本 | 日期 | 修订内容 | 作者 |
 |------|------|----------|------|
 | v1.0 | 2026-04-20 | 初始版本 | SDDU Plan Agent |
+| v1.1 | 2026-04-20 | 删除 code_name 字段，简化 scope 命名规范 | SDDU Plan Agent |
+| v1.2 | 2026-04-20 | 删除审计日志表（不在本期范围） | SDDU Plan Agent |
+| v1.3 | 2026-04-20 | 删除 USER/APP 表（复用已有能力） | SDDU Plan Agent |
+| v1.4 | 2026-04-20 | 分类表增加 category_alias 区分权限树 | SDDU Plan Agent |
+| v1.5 | 2026-04-20 | 分类表增加 path 字段优化子树查询 | SDDU Plan Agent |
+| v1.6 | 2026-04-20 | category_alias 改为仅根分类设置，子分类为 NULL | SDDU Plan Agent |
+| v1.7 | 2026-04-20 | 拆分表结构设计到 plan-db.md | SDDU Plan Agent |
+| v1.8 | 2026-04-20 | API 清单按 spec.md FR 清单重写 | SDDU Plan Agent |
+| v1.9 | 2026-04-20 | 拆分接口设计到 plan-api.md | SDDU Plan Agent |
+| v1.10 | 2026-04-20 | 同步更新 ADR-003 为 MySQL + Spring Boot 技术栈 | SDDU Plan Agent |
 
 ---
 
