@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.18  
+**规划版本**: v1.19  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -595,115 +595,118 @@ graph TB
 
 ```
 open-app/
-├── services/                           # 服务目录（新增）
-│   │
-│   ├── open-server/                    # 管理服务
-│   │   ├── src/
-│   │   │   ├── main/
-│   │   │   │   ├── java/
-│   │   │   │   │   └── com/xxx/open/
-│   │   │   │   │       ├── modules/
-│   │   │   │   │       │   ├── category/           # 分类管理模块
-│   │   │   │   │       │   ├── api/               # API 管理模块
-│   │   │   │   │       │   ├── event/             # 事件管理模块
-│   │   │   │   │       │   ├── callback/          # 回调管理模块
-│   │   │   │   │       │   ├── permission/        # 权限管理模块（API+事件权限）
-│   │   │   │   │       │   └── approval/          # 审批管理模块
-│   │   │   │   │       ├── common/                # 公共模块
-│   │   │   │   │       │   ├── config/            # 配置
-│   │   │   │   │       │   ├── exception/         # 异常处理
-│   │   │   │   │       │   ├── interceptor/       # 拦截器
-│   │   │   │   │       │   └── util/              # 工具类
-│   │   │   │   │       └── OpenServerApplication.java
-│   │   │   │   └── resources/
-│   │   │   │       ├── mapper/                    # MyBatis Mapper XML
-│   │   │   │       └── application.yml
-│   │   │   └── test/
-│   │   ├── pom.xml
-│   │   └── README.md
-│   │
-│   ├── api-server/                    # API网关服务
-│   │   ├── src/
-│   │   │   ├── main/
-│   │   │   │   ├── java/
-│   │   │   │   │   └── com/xxx/api/
-│   │   │   │   │       ├── gateway/
-│   │   │   │   │       │   ├── ApiGateway.java            # API消费网关
-│   │   │   │   │       │   └── CallbackGateway.java       # 回调消费网关
-│   │   │   │   │       ├── scope/
-│   │   │   │   │       │   ├── ScopeController.java        # Scope授权控制器
-│   │   │   │   │       │   └── ScopeService.java          # Scope授权服务
-│   │   │   │   │       ├── common/
-│   │   │   │   │       │   ├── config/
-│   │   │   │   │       │   ├── filter/
-│   │   │   │   │       │   └── util/
-│   │   │   │   │       └── ApiServerApplication.java
-│   │   │   │   └── resources/
-│   │   │   │       └── application.yml
-│   │   │   └── test/
-│   │   ├── pom.xml
-│   │   └── README.md
-│   │
-│   └── event-server/                  # 事件/回调网关服务
-│       ├── src/
-│       │   ├── main/
-│       │   │   ├── java/
-│       │   │   │   └── com/xxx/event/
-│       │   │   │       ├── gateway/
-│       │   │   │       │   ├── EventGateway.java          # 事件消费网关
-│       │   │   │       │   └── CallbackGateway.java       # 回调消费网关
-│       │   │   │       ├── common/
-│       │   │   │       │   ├── config/
-│       │   │   │       │   ├── filter/
-│       │   │   │       │   └── util/
-│       │   │   │       └── EventServerApplication.java
-│       │   │   └── resources/
-│       │   │       └── application.yml
-│       │   └── test/
-│       ├── pom.xml
-│       └── README.md
+├── open-server/                         # 管理服务工程（后端）
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/xxx/open/
+│   │   │   │       ├── modules/
+│   │   │   │       │   ├── category/           # 分类管理模块
+│   │   │   │       │   ├── api/               # API 管理模块
+│   │   │   │       │   ├── event/             # 事件管理模块
+│   │   │   │       │   ├── callback/          # 回调管理模块
+│   │   │   │       │   ├── permission/        # 权限管理模块（API+事件权限）
+│   │   │   │       │   └── approval/          # 审批管理模块
+│   │   │   │       ├── common/                # 公共模块
+│   │   │   │       │   ├── config/            # 配置
+│   │   │   │       │   ├── exception/         # 异常处理
+│   │   │   │       │   ├── interceptor/       # 拦截器
+│   │   │   │       │   └── util/              # 工具类
+│   │   │   │       └── OpenServerApplication.java
+│   │   │   └── resources/
+│   │   │       ├── mapper/                    # MyBatis Mapper XML
+│   │   │       └── application.yml
+│   │   └── test/
+│   ├── pom.xml
+│   └── README.md
 │
-├── web/                                # 前端应用目录
-│   └── open-web/                       # 管理端前端
-│       ├── src/
-│       │   ├── pages/
-│       │   │   ├── category/           # 分类管理页面
-│       │   │   ├── api/               # API 管理页面
-│       │   │   ├── event/             # 事件管理页面
-│       │   │   ├── callback/          # 回调管理页面
-│       │   │   ├── permission/        # 权限申请页面
-│       │   │   ├── approval/          # 审批中心页面
-│       │   │   └── scope/             # Scope 授权页面
-│       │   ├── components/            # 公共组件
-│       │   ├── hooks/                 # 自定义 Hooks
-│       │   ├── services/              # API 服务
-│       │   ├── stores/                # 状态管理
-│       │   ├── utils/                 # 工具函数
-│       │   └── App.tsx
-│       ├── public/
-│       ├── package.json
-│       ├── vite.config.ts
-│       └── tsconfig.json
+├── api-server/                          # API认证鉴权服务工程（后端）
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/xxx/api/
+│   │   │   │       ├── gateway/
+│   │   │   │       │   └── ApiGateway.java            # API认证鉴权
+│   │   │   │       ├── scope/
+│   │   │   │       │   ├── ScopeController.java        # Scope授权控制器
+│   │   │   │       │   └── ScopeService.java          # Scope授权服务
+│   │   │   │       ├── data/
+│   │   │   │       │   └── DataQueryController.java    # 数据查询接口（供event-server调用）
+│   │   │   │       ├── common/
+│   │   │   │       │   ├── config/
+│   │   │   │       │   ├── filter/
+│   │   │   │       │   └── util/
+│   │   │   │       └── ApiServerApplication.java
+│   │   │   └── resources/
+│   │   │       └── application.yml
+│   │   └── test/
+│   ├── pom.xml
+│   └── README.md
 │
-├── packages/                          # 公共包
-│   ├── open-common/                   # 共享公共模块
-│   │   ├── src/
-│   │   │   ├── entity/               # 共享实体类
-│   │   │   ├── dto/                  # 共享 DTO
-│   │   │   ├── enums/                # 共享枚举
-│   │   │   └── util/                 # 共享工具类
-│   │   └── pom.xml
-│   │
-│   └── shared-types/                  # 共享类型定义（前端使用）
-│       ├── src/
-│       │   ├── api.ts
-│       │   ├── event.ts
-│       │   ├── callback.ts
-│       │   ├── permission.ts
-│       │   └── approval.ts
-│       └── package.json
+├── event-server/                        # 事件/回调网关服务工程（后端）
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/
+│   │   │   │   └── com/xxx/event/
+│   │   │   │       ├── gateway/
+│   │   │   │       │   ├── EventGateway.java          # 事件消费网关
+│   │   │   │       │   └── CallbackGateway.java       # 回调消费网关
+│   │   │   │       ├── client/
+│   │   │   │       │   └── ApiServerClient.java       # api-server调用客户端
+│   │   │   │       ├── common/
+│   │   │   │       │   ├── config/
+│   │   │   │       │   ├── filter/
+│   │   │   │       │   └── util/
+│   │   │   │       └── EventServerApplication.java
+│   │   │   └── resources/
+│   │   │       └── application.yml
+│   │   └── test/
+│   ├── pom.xml
+│   └── README.md
 │
-└── docs/                              # 文档
+├── open-web/                            # 管理端前端工程（前端）
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── category/           # 分类管理页面
+│   │   │   ├── api/               # API 管理页面
+│   │   │   ├── event/             # 事件管理页面
+│   │   │   ├── callback/          # 回调管理页面
+│   │   │   ├── permission/        # 权限申请页面
+│   │   │   ├── approval/          # 审批中心页面
+│   │   │   └── scope/             # Scope 授权页面
+│   │   ├── components/            # 公共组件
+│   │   ├── hooks/                 # 自定义 Hooks
+│   │   ├── services/              # API 服务
+│   │   ├── stores/                # 状态管理
+│   │   ├── utils/                 # 工具函数
+│   │   └── App.tsx
+│   ├── public/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── README.md
+│
+├── open-common/                         # 公共模块工程（后端共享）
+│   ├── src/
+│   │   ├── main/java/
+│   │   │   └── com/xxx/common/
+│   │   │       ├── entity/               # 共享实体类
+│   │   │       ├── dto/                  # 共享 DTO
+│   │   │       ├── enums/                # 共享枚举
+│   │   │       └── util/                 # 共享工具类
+│   │   └── test/
+│   └── pom.xml
+│
+├── shared-types/                        # 共享类型定义工程（前端使用）
+│   ├── src/
+│   │   ├── api.ts
+│   │   ├── event.ts
+│   │   ├── callback.ts
+│   │   ├── permission.ts
+│   │   └── approval.ts
+│   ├── package.json
+│   └── README.md
+│
+└── docs/                                # 文档
 ```
 
 ### 3.2 服务职责划分
@@ -787,99 +790,100 @@ graph LR
 
 #### 新建文件（[NEW]）
 
-##### open-server 服务
+##### open-server 工程
 
 | 文件路径 | 说明 |
 |----------|------|
-| `services/open-server/pom.xml` | 后端项目配置 |
-| `services/open-server/src/main/java/.../OpenServerApplication.java` | 应用入口 |
-| `services/open-server/src/main/java/.../modules/category/CategoryController.java` | 分类管理控制器 |
-| `services/open-server/src/main/java/.../modules/category/CategoryService.java` | 分类管理服务 |
-| `services/open-server/src/main/java/.../modules/category/entity/Category.java` | 分类实体 |
-| `services/open-server/src/main/java/.../modules/category/mapper/CategoryMapper.java` | 分类 Mapper |
-| `services/open-server/src/main/java/.../modules/api/ApiController.java` | API 管理控制器 |
-| `services/open-server/src/main/java/.../modules/api/ApiService.java` | API 管理服务 |
-| `services/open-server/src/main/java/.../modules/api/entity/Api.java` | API 实体 |
-| `services/open-server/src/main/java/.../modules/api/mapper/ApiMapper.java` | API Mapper |
-| `services/open-server/src/main/java/.../modules/event/EventController.java` | 事件管理控制器 |
-| `services/open-server/src/main/java/.../modules/event/EventService.java` | 事件管理服务 |
-| `services/open-server/src/main/java/.../modules/event/entity/Event.java` | 事件实体 |
-| `services/open-server/src/main/java/.../modules/event/mapper/EventMapper.java` | 事件 Mapper |
-| `services/open-server/src/main/java/.../modules/callback/CallbackController.java` | 回调管理控制器 |
-| `services/open-server/src/main/java/.../modules/callback/CallbackService.java` | 回调管理服务 |
-| `services/open-server/src/main/java/.../modules/callback/entity/Callback.java` | 回调实体 |
-| `services/open-server/src/main/java/.../modules/callback/mapper/CallbackMapper.java` | 回调 Mapper |
-| `services/open-server/src/main/java/.../modules/permission/PermissionController.java` | 权限管理控制器 |
-| `services/open-server/src/main/java/.../modules/permission/PermissionService.java` | 权限管理服务 |
-| `services/open-server/src/main/java/.../modules/permission/entity/Permission.java` | 权限实体 |
-| `services/open-server/src/main/java/.../modules/permission/entity/Subscription.java` | 订阅实体 |
-| `services/open-server/src/main/java/.../modules/approval/ApprovalController.java` | 审批管理控制器 |
-| `services/open-server/src/main/java/.../modules/approval/ApprovalService.java` | 审批管理服务 |
-| `services/open-server/src/main/java/.../modules/approval/entity/ApprovalFlow.java` | 审批流实体 |
-| `services/open-server/src/main/java/.../modules/approval/entity/ApprovalRecord.java` | 审批记录实体 |
-| `services/open-server/src/main/java/.../common/config/MockConfig.java` | Mock 配置 |
-| `services/open-server/src/main/java/.../common/interceptor/MockInterceptor.java` | Mock 拦截器 |
-| `services/open-server/src/main/resources/application.yml` | 应用配置 |
-| `services/open-server/src/main/resources/mapper/*.xml` | MyBatis Mapper XML |
+| `open-server/pom.xml` | 后端项目配置 |
+| `open-server/src/main/java/.../OpenServerApplication.java` | 应用入口 |
+| `open-server/src/main/java/.../modules/category/CategoryController.java` | 分类管理控制器 |
+| `open-server/src/main/java/.../modules/category/CategoryService.java` | 分类管理服务 |
+| `open-server/src/main/java/.../modules/category/entity/Category.java` | 分类实体 |
+| `open-server/src/main/java/.../modules/category/mapper/CategoryMapper.java` | 分类 Mapper |
+| `open-server/src/main/java/.../modules/api/ApiController.java` | API 管理控制器 |
+| `open-server/src/main/java/.../modules/api/ApiService.java` | API 管理服务 |
+| `open-server/src/main/java/.../modules/api/entity/Api.java` | API 实体 |
+| `open-server/src/main/java/.../modules/api/mapper/ApiMapper.java` | API Mapper |
+| `open-server/src/main/java/.../modules/event/EventController.java` | 事件管理控制器 |
+| `open-server/src/main/java/.../modules/event/EventService.java` | 事件管理服务 |
+| `open-server/src/main/java/.../modules/event/entity/Event.java` | 事件实体 |
+| `open-server/src/main/java/.../modules/event/mapper/EventMapper.java` | 事件 Mapper |
+| `open-server/src/main/java/.../modules/callback/CallbackController.java` | 回调管理控制器 |
+| `open-server/src/main/java/.../modules/callback/CallbackService.java` | 回调管理服务 |
+| `open-server/src/main/java/.../modules/callback/entity/Callback.java` | 回调实体 |
+| `open-server/src/main/java/.../modules/callback/mapper/CallbackMapper.java` | 回调 Mapper |
+| `open-server/src/main/java/.../modules/permission/PermissionController.java` | 权限管理控制器 |
+| `open-server/src/main/java/.../modules/permission/PermissionService.java` | 权限管理服务 |
+| `open-server/src/main/java/.../modules/permission/entity/Permission.java` | 权限实体 |
+| `open-server/src/main/java/.../modules/permission/entity/Subscription.java` | 订阅实体 |
+| `open-server/src/main/java/.../modules/approval/ApprovalController.java` | 审批管理控制器 |
+| `open-server/src/main/java/.../modules/approval/ApprovalService.java` | 审批管理服务 |
+| `open-server/src/main/java/.../modules/approval/entity/ApprovalFlow.java` | 审批流实体 |
+| `open-server/src/main/java/.../modules/approval/entity/ApprovalRecord.java` | 审批记录实体 |
+| `open-server/src/main/java/.../common/config/MockConfig.java` | Mock 配置 |
+| `open-server/src/main/java/.../common/interceptor/MockInterceptor.java` | Mock 拦截器 |
+| `open-server/src/main/resources/application.yml` | 应用配置 |
+| `open-server/src/main/resources/mapper/*.xml` | MyBatis Mapper XML |
 
-##### api-server 服务
-
-| 文件路径 | 说明 |
-|----------|------|
-| `services/api-server/pom.xml` | 后端项目配置 |
-| `services/api-server/src/main/java/.../ApiServerApplication.java` | 应用入口 |
-| `services/api-server/src/main/java/.../gateway/ApiGateway.java` | API消费网关 |
-| `services/api-server/src/main/java/.../gateway/CallbackGateway.java` | 回调消费网关 |
-| `services/api-server/src/main/java/.../scope/ScopeController.java` | Scope授权控制器 |
-| `services/api-server/src/main/java/.../scope/ScopeService.java` | Scope授权服务 |
-| `services/api-server/src/main/resources/application.yml` | 应用配置 |
-
-##### event-server 服务
+##### api-server 工程
 
 | 文件路径 | 说明 |
 |----------|------|
-| `services/event-server/pom.xml` | 后端项目配置 |
-| `services/event-server/src/main/java/.../EventServerApplication.java` | 应用入口 |
-| `services/event-server/src/main/java/.../gateway/EventGateway.java` | 事件消费网关 |
-| `services/event-server/src/main/java/.../gateway/CallbackGateway.java` | 回调消费网关 |
-| `services/event-server/src/main/resources/application.yml` | 应用配置 |
+| `api-server/pom.xml` | 后端项目配置 |
+| `api-server/src/main/java/.../ApiServerApplication.java` | 应用入口 |
+| `api-server/src/main/java/.../gateway/ApiGateway.java` | API认证鉴权 |
+| `api-server/src/main/java/.../scope/ScopeController.java` | Scope授权控制器 |
+| `api-server/src/main/java/.../scope/ScopeService.java` | Scope授权服务 |
+| `api-server/src/main/java/.../data/DataQueryController.java` | 数据查询接口（供event-server调用） |
+| `api-server/src/main/resources/application.yml` | 应用配置 |
 
-##### open-web 前端
-
-| 文件路径 | 说明 |
-|----------|------|
-| `web/open-web/package.json` | 前端项目配置 |
-| `web/open-web/src/main.tsx` | 前端入口 |
-| `web/open-web/src/App.tsx` | 应用根组件 |
-| `web/open-web/src/router/index.tsx` | 路由配置 |
-| `web/open-web/src/pages/category/CategoryList.tsx` | 分类列表页面 |
-| `web/open-web/src/pages/api/ApiList.tsx` | API 列表页面 |
-| `web/open-web/src/pages/api/ApiRegister.tsx` | API 注册页面 |
-| `web/open-web/src/pages/event/EventList.tsx` | 事件列表页面 |
-| `web/open-web/src/pages/callback/CallbackList.tsx` | 回调列表页面 |
-| `web/open-web/src/pages/permission/PermissionTree.tsx` | 权限树组件 |
-| `web/open-web/src/pages/approval/ApprovalCenter.tsx` | 审批中心页面 |
-| `web/open-web/src/components/PermissionDrawer.tsx` | 权限选择抽屉 |
-| `web/open-web/src/services/api.service.ts` | API 服务 |
-| `web/open-web/src/stores/permission.store.ts` | 权限状态 |
-
-##### 公共模块
+##### event-server 工程
 
 | 文件路径 | 说明 |
 |----------|------|
-| `packages/open-common/pom.xml` | 公共模块配置 |
-| `packages/open-common/src/main/java/.../entity/*.java` | 共享实体类 |
-| `packages/open-common/src/main/java/.../dto/*.java` | 共享 DTO |
-| `packages/open-common/src/main/java/.../enums/*.java` | 共享枚举 |
-| `packages/shared-types/package.json` | 共享类型配置 |
-| `packages/shared-types/src/index.ts` | 类型导出 |
+| `event-server/pom.xml` | 后端项目配置 |
+| `event-server/src/main/java/.../EventServerApplication.java` | 应用入口 |
+| `event-server/src/main/java/.../gateway/EventGateway.java` | 事件消费网关 |
+| `event-server/src/main/java/.../gateway/CallbackGateway.java` | 回调消费网关 |
+| `event-server/src/main/java/.../client/ApiServerClient.java` | api-server调用客户端 |
+| `event-server/src/main/resources/application.yml` | 应用配置 |
+
+##### open-web 工程
+
+| 文件路径 | 说明 |
+|----------|------|
+| `open-web/package.json` | 前端项目配置 |
+| `open-web/src/main.tsx` | 前端入口 |
+| `open-web/src/App.tsx` | 应用根组件 |
+| `open-web/src/router/index.tsx` | 路由配置 |
+| `open-web/src/pages/category/CategoryList.tsx` | 分类列表页面 |
+| `open-web/src/pages/api/ApiList.tsx` | API 列表页面 |
+| `open-web/src/pages/api/ApiRegister.tsx` | API 注册页面 |
+| `open-web/src/pages/event/EventList.tsx` | 事件列表页面 |
+| `open-web/src/pages/callback/CallbackList.tsx` | 回调列表页面 |
+| `open-web/src/pages/permission/PermissionTree.tsx` | 权限树组件 |
+| `open-web/src/pages/approval/ApprovalCenter.tsx` | 审批中心页面 |
+| `open-web/src/components/PermissionDrawer.tsx` | 权限选择抽屉 |
+| `open-web/src/services/api.service.ts` | API 服务 |
+| `open-web/src/stores/permission.store.ts` | 权限状态 |
+
+##### 公共工程
+
+| 文件路径 | 说明 |
+|----------|------|
+| `open-common/pom.xml` | 公共模块配置 |
+| `open-common/src/main/java/.../entity/*.java` | 共享实体类 |
+| `open-common/src/main/java/.../dto/*.java` | 共享 DTO |
+| `open-common/src/main/java/.../enums/*.java` | 共享枚举 |
+| `shared-types/package.json` | 共享类型配置 |
+| `shared-types/src/index.ts` | 类型导出 |
 
 #### 修改文件（[MODIFY]）
 
 | 文件路径 | 修改内容 |
 |----------|----------|
 | `pom.xml` | 添加模块配置（Maven 多模块） |
-| `web/open-web/tsconfig.json` | 添加 paths 配置 |
+| `open-web/tsconfig.json` | 添加 paths 配置 |
 | `.env.example` | 添加新环境变量示例 |
 
 #### 依赖文件（[DEPEND]）
@@ -1509,6 +1513,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.16 | 2026-04-20 | 修正API调用流程：内部API网关转发请求给提供方，非api-server转发；回调业务移至event-server（由内向外） | SDDU Plan Agent |
 | v1.17 | 2026-04-20 | 修复Mermaid渲染错误：移除连接标签中的换行符，改用节点标签标注调用方向 | SDDU Plan Agent |
 | v1.18 | 2026-04-20 | 修正event-server数据依赖：无数据库，有独立Redis，通过调用api-server接口获取数据 | SDDU Plan Agent |
+| v1.19 | 2026-04-20 | 简化目录结构：移除services/web/packages层级，所有工程平铺在根目录，每个工程可独立打包部署 | SDDU Plan Agent |
 
 ---
 
