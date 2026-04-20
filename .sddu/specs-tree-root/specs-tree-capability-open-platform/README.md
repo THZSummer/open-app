@@ -4,8 +4,9 @@
 
 **能力开放平台**是 open-app 体系下的基础能力平台，聚焦 XX 通讯平台的能力开放管理，将企业内部 XX 平台的各类能力（API、事件、回调、连接器等）开放给企业内部三方平台消费使用，构建完整的企业内部能力生态。
 
-**当前状态**: 🟡 discovered（需求挖掘完成，待分析确认）  
+**当前状态**: 🟢 planned（技术规划完成）  
 **创建时间**: 2026-04-13  
+**规划时间**: 2026-04-20  
 **会话 ID**: capability-session-001
 
 ## 目录结构
@@ -13,6 +14,12 @@
 ```
 specs-tree-capability-open-platform/
 ├── README.md                  # 本文件 - 目录导航
+├── spec.md                    # 功能规范文档（567 行）
+├── spec.json                  # 规范元数据
+├── plan.md                    # 技术规划文档（800+ 行）⭐ 新增
+├── ADR-001.md                 # 架构决策：单体应用架构 ⭐ 新增
+├── ADR-002.md                 # 架构决策：Mock 策略 ⭐ 新增
+├── ADR-003.md                 # 架构决策：权限资源抽象 ⭐ 新增
 ├── discovery-report.md        # 需求挖掘报告（615 行）
 ├── discovery-analysis.md      # 需求分析笔记（110 行）
 ├── discovery-session-log.md   # 会话日志（190 行）
@@ -23,10 +30,16 @@ specs-tree-capability-open-platform/
 
 | 文件 | 说明 | 大小 | 状态 |
 |------|------|------|------|
+| spec.md | 功能规范文档 - 完整的 Feature 规范，包含 Goals、用户故事、FR/NFR、技术设计 | 567 行 | ✅ specified |
+| spec.json | 规范元数据 - Feature ID、状态、版本等信息 | - | ✅ specified |
+| plan.md | 技术规划文档 - 架构分析、方案对比、文件清单、风险评估、数据库设计 | 800+ 行 | ✅ planned |
+| ADR-001.md | 架构决策记录 - 采用单体应用 + 模块化架构 | - | ✅ accepted |
+| ADR-002.md | 架构决策记录 - Mock 策略实现第三方依赖隔离 | - | ✅ accepted |
+| ADR-003.md | 架构决策记录 - 权限资源抽象设计 | - | ✅ accepted |
 | discovery-report.md | 需求挖掘报告 - 完整的需求挖掘报告，包含核心定位、用户画像、需求分类、竞品分析等 | 615 行 | ✅ 已完成 |
 | discovery-analysis.md | 需求分析笔记 - 能力分类模型、用户场景分析、优先级评估 | 110 行 | ✅ 已完成 |
 | discovery-session-log.md | 会话日志 - 原始对话记录，包含三轮问题空间探索 | 190 行 | ✅ 已完成 |
-| state.json | 状态文件 - 记录 Feature 当前状态为 discovered | 7 行 | ✅ discovered |
+| state.json | 状态文件 - 记录 Feature 当前状态 | 7 行 | ✅ planned |
 
 ## 核心内容摘要
 
@@ -47,10 +60,29 @@ specs-tree-capability-open-platform/
 - [返回上级](../README.md) - SDD 规范目录
 - [返回首页](../../README.md) - SDD 工作空间
 
+## 技术规划摘要
+
+### 推荐方案
+**单体应用 + 模块化设计**（NestJS + React）
+
+### 核心架构决策
+1. **ADR-001**: 采用单体应用架构，快速迭代 MVP
+2. **ADR-002**: Mock 策略实现第三方依赖隔离
+3. **ADR-003**: 权限资源抽象设计，统一订阅模型
+
+### 预估工作量
+- 总计：**80 人天**（约 4 人月）
+- 阶段：框架搭建 → 核心模块 → 审批网关 → 联调上线
+
+### 文件影响
+- **新建**：前后端应用、公共包、Mock 服务
+- **修改**：项目配置文件
+- **依赖**：现有系统（Mock/真实接口切换）
+
 ## 下一步
 
-运行 `@sdd-plan 能力开放平台` 开始技术规划阶段。
+运行 `@sddu-tasks capability-open-platform` 开始任务分解阶段。
 
 ---
 
-*最后更新: 2026-04-13 | @sdd-docs 自动生成*
+*最后更新: 2026-04-20 | @sddu-docs 自动生成*
