@@ -753,21 +753,33 @@ erDiagram
 - 具体枚举值由前后端约定
 
 **设计规则**：
-- 同一棵树的所有分类节点 `category_alias` 相同
-- 根节点设置别名，子节点继承
+- **只有根分类**需要设置 `category_alias`，子分类为 NULL
 - 权限通过 `category_id` 关联分类，间接归属于某棵权限树
 - 不同权限树之间完全隔离
+
+**查询子分类所属权限树**：
+
+通过 `path` 字段找到根节点，再查根节点的 `category_alias`：
+
+```sql
+-- 从子分类的 path 解析根节点 ID，查询权限树类型
+SELECT root.category_alias
+FROM openplatform_category_t child
+JOIN openplatform_category_t root 
+  ON root.id = CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(child.path, '/', 2), '/', -1) AS UNSIGNED)
+WHERE child.id = :category_id;
+```
 
 **子树查询优化（路径枚举法）**：
 
 通过 `path` 字段存储从根节点到当前节点的路径，优化查询某节点及其所有子节点关联权限的场景：
 
-| id | name_cn | parent_id | path |
-|----|---------|-----------|------|
-| 1 | 根分类 | NULL | `/1/` |
-| 2 | 子分类A | 1 | `/1/2/` |
-| 3 | 子分类B | 1 | `/1/3/` |
-| 4 | 孙分类A1 | 2 | `/1/2/4/` |
+| id | category_alias | name_cn | parent_id | path |
+|----|----------------|---------|-----------|------|
+| 1 | `app_type_a` | 根分类 | NULL | `/1/` |
+| 2 | NULL | 子分类A | 1 | `/1/2/` |
+| 3 | NULL | 子分类B | 1 | `/1/3/` |
+| 4 | NULL | 孙分类A1 | 2 | `/1/2/4/` |
 
 ```sql
 -- 查询节点2及其所有子节点的权限

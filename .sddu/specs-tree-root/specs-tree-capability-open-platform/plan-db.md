@@ -36,7 +36,7 @@
 -- ============================================
 CREATE TABLE `openplatform_category_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `category_alias` VARCHAR(50) NOT NULL COMMENT '分类别名：app_type_a/app_type_b/personal_aksk',
+    `category_alias` VARCHAR(50) COMMENT '分类别名（仅根分类需要）：app_type_a/app_type_b/personal_aksk',
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `parent_id` BIGINT(20),
