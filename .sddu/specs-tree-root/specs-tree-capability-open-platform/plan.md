@@ -87,7 +87,7 @@ graph TB
         end
         
         subgraph Database["数据库层"]
-            DB[(PostgreSQL)]
+            DB[(MySQL)]
             Redis[(Redis Cache)]
         end
     end
@@ -117,7 +117,7 @@ graph TB
 
 ### 1.4 技术栈确认
 
-基于 `docs/app-management-spec.json` 中定义的技术栈：
+基于项目实际情况和团队技术栈：
 
 | 层级 | 技术选型 | 版本 |
 |------|----------|------|
@@ -125,11 +125,11 @@ graph TB
 | **状态管理** | Redux Toolkit / Zustand | - |
 | **UI 组件库** | Ant Design / MUI | - |
 | **构建工具** | Vite | 5.x |
-| **后端框架** | NestJS | 10.x |
-| **运行时** | Node.js | 20.x LTS |
-| **数据库** | PostgreSQL | 15.x |
-| **ORM** | Prisma / TypeORM | - |
-| **缓存** | Redis | 7.x |
+| **后端语言** | Java | 21 |
+| **后端框架** | Spring Boot | 3.4.6 (Spring 6.2.12) |
+| **ORM** | MyBatis | mybatis-spring-boot-starter 3.0.4 |
+| **数据库** | MySQL | 5.7 |
+| **缓存** | Redis | 6.0 |
 
 ---
 
@@ -138,7 +138,7 @@ graph TB
 ### 方案 A：单体应用 + 模块化设计（推荐）
 
 #### 方案描述
-在一个 NestJS 应用中，通过模块化设计实现各功能模块的解耦。前端同样采用单体 React 应用，通过路由和组件划分模块。
+在一个 Spring Boot 应用中，通过模块化设计实现各功能模块的解耦。前端同样采用单体 React 应用，通过路由和组件划分模块。
 
 #### 架构图
 ```
@@ -158,7 +158,7 @@ graph TB
 │                                   │                                      │
 │                                   ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      后端 (NestJS 单体应用)                       │    │
+│  │                      后端 (Spring Boot 单体应用)                    │    │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │    │
 │  │  │ Group    │ │ API      │ │ Event    │ │ Callback │           │    │
 │  │  │ Module   │ │ Module   │ │ Module   │ │ Module   │           │    │
@@ -173,7 +173,7 @@ graph TB
 │  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │                      数据层                                      │    │
 │  │  ┌──────────────┐  ┌──────────────┐                            │    │
-│  │  │ PostgreSQL   │  │ Redis        │                            │    │
+│  │  │ MySQL        │  │ Redis        │                            │    │
 │  │  └──────────────┘  └──────────────┘                            │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
@@ -207,7 +207,7 @@ graph TB
 | 模块 | 人天 | 说明 |
 |------|------|------|
 | 前端框架搭建 | 3 | React + Ant Design + 状态管理 |
-| 后端框架搭建 | 3 | NestJS + Prisma + 模块划分 |
+| 后端框架搭建 | 3 | Spring Boot + MyBatis + 模块划分 |
 | 分组管理 | 5 | CRUD + 责任人配置 |
 | API 管理 | 8 | 注册/编辑/删除/权限 |
 | 事件管理 | 8 | 注册/订阅/通道配置 |
@@ -321,13 +321,13 @@ graph TB
 │            ▼                        ▼                                    │
 │  ┌────────────────────┐    ┌────────────────────┐                       │
 │  │   Admin BFF        │    │   Consumer BFF     │                       │
-│  │   (NestJS)         │    │   (NestJS)         │                       │
+│  │   (Spring Boot)    │    │   (Spring Boot)    │                       │
 │  └────────────────────┘    └────────────────────┘                       │
 │            │                        │                                    │
 │            └────────────────────────┼────────────────────────┘           │
 │                                     ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      Core Service (NestJS)                       │    │
+│  │                      Core Service (Spring Boot)                  │    │
 │  │  (分组/API/事件/回调/权限/审批 核心逻辑)                          │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                     │                                    │
@@ -396,30 +396,32 @@ open-app/
 ├── apps/                              # 应用目录（新增）
 │   ├── capability-platform/           # 能力开放平台后端
 │   │   ├── src/
-│   │   │   ├── modules/
-│   │   │   │   ├── group/             # 分组管理模块
-│   │   │   │   ├── api/               # API 管理模块
-│   │   │   │   ├── event/             # 事件管理模块
-│   │   │   │   ├── callback/          # 回调管理模块
-│   │   │   │   ├── permission/        # 权限管理模块
-│   │   │   │   ├── approval/          # 审批管理模块
-│   │   │   │   ├── gateway/           # 消费网关模块
-│   │   │   │   └── scope/             # Scope 授权模块
-│   │   │   ├── common/                # 公共模块
-│   │   │   │   ├── decorators/
-│   │   │   │   ├── filters/
-│   │   │   │   ├── guards/
-│   │   │   │   ├── interceptors/
-│   │   │   │   └── pipes/
-│   │   │   ├── config/                # 配置
-│   │   │   ├── database/              # 数据库
-│   │   │   │   ├── migrations/
-│   │   │   │   └── seeds/
-│   │   │   └── main.ts
-│   │   ├── test/
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── nest-cli.json
+│   │   │   ├── main/
+│   │   │   │   ├── java/
+│   │   │   │   │   └── com/xxx/capability/
+│   │   │   │   │       ├── modules/
+│   │   │   │   │       │   ├── group/             # 分组管理模块
+│   │   │   │   │       │   ├── api/               # API 管理模块
+│   │   │   │   │       │   ├── event/             # 事件管理模块
+│   │   │   │   │       │   ├── callback/          # 回调管理模块
+│   │   │   │   │       │   ├── permission/        # 权限管理模块
+│   │   │   │   │       │   ├── approval/          # 审批管理模块
+│   │   │   │   │       │   ├── gateway/           # 消费网关模块
+│   │   │   │   │       │   └── scope/             # Scope 授权模块
+│   │   │   │   │       ├── common/                # 公共模块
+│   │   │   │   │       │   ├── config/            # 配置
+│   │   │   │   │       │   ├── exception/         # 异常处理
+│   │   │   │   │       │   ├── interceptor/       # 拦截器
+│   │   │   │   │       │   └── util/              # 工具类
+│   │   │   │   │       └── CapabilityPlatformApplication.java
+│   │   │   │   └── resources/
+│   │   │   │       ├── mapper/                    # MyBatis Mapper XML
+│   │   │   │       ├── db/                        # 数据库迁移脚本
+│   │   │   │       │   └── migration/
+│   │   │   │       └── application.yml
+│   │   │   └── test/
+│   │   ├── pom.xml
+│   │   └── README.md
 │   │
 │   └── capability-web/                # 能力开放平台前端
 │       ├── src/
@@ -443,19 +445,13 @@ open-app/
 │       └── tsconfig.json
 │
 ├── packages/                          # 公共包（新增）
-│   ├── shared-types/                  # 共享类型定义
+│   ├── shared-types/                  # 共享类型定义（前端使用）
 │   │   ├── src/
 │   │   │   ├── api.ts
 │   │   │   ├── event.ts
 │   │   │   ├── callback.ts
 │   │   │   ├── permission.ts
 │   │   │   └── approval.ts
-│   │   └── package.json
-│   │
-│   ├── database-client/               # 数据库客户端
-│   │   ├── src/
-│   │   │   ├── schema.prisma
-│   │   │   └── index.ts
 │   │   └── package.json
 │   │
 │   └── mock-services/                 # Mock 服务
@@ -474,22 +470,21 @@ open-app/
 
 | 文件路径 | 说明 |
 |----------|------|
-| `apps/capability-platform/package.json` | 后端项目配置 |
-| `apps/capability-platform/src/main.ts` | 应用入口 |
-| `apps/capability-platform/src/app.module.ts` | 根模块 |
-| `apps/capability-platform/src/modules/group/group.module.ts` | 分组管理模块 |
-| `apps/capability-platform/src/modules/group/group.controller.ts` | 分组管理控制器 |
-| `apps/capability-platform/src/modules/group/group.service.ts` | 分组管理服务 |
-| `apps/capability-platform/src/modules/group/entities/group.entity.ts` | 分组实体 |
-| `apps/capability-platform/src/modules/api/api.module.ts` | API 管理模块 |
-| `apps/capability-platform/src/modules/api/api.controller.ts` | API 管理控制器 |
-| `apps/capability-platform/src/modules/api/api.service.ts` | API 管理服务 |
-| `apps/capability-platform/src/modules/api/entities/api.entity.ts` | API 实体 |
-| `apps/capability-platform/src/modules/event/event.module.ts` | 事件管理模块 |
-| `apps/capability-platform/src/modules/event/event.controller.ts` | 事件管理控制器 |
-| `apps/capability-platform/src/modules/event/event.service.ts` | 事件管理服务 |
-| `apps/capability-platform/src/modules/event/entities/event.entity.ts` | 事件实体 |
-| `apps/capability-platform/src/modules/callback/callback.module.ts` | 回调管理模块 |
+| `apps/capability-platform/pom.xml` | 后端项目配置 |
+| `apps/capability-platform/src/main/java/.../CapabilityPlatformApplication.java` | 应用入口 |
+| `apps/capability-platform/src/main/java/.../modules/group/GroupController.java` | 分组管理控制器 |
+| `apps/capability-platform/src/main/java/.../modules/group/GroupService.java` | 分组管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/group/entity/Group.java` | 分组实体 |
+| `apps/capability-platform/src/main/java/.../modules/group/mapper/GroupMapper.java` | 分组 Mapper |
+| `apps/capability-platform/src/main/java/.../modules/api/ApiController.java` | API 管理控制器 |
+| `apps/capability-platform/src/main/java/.../modules/api/ApiService.java` | API 管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/api/entity/Api.java` | API 实体 |
+| `apps/capability-platform/src/main/java/.../modules/api/mapper/ApiMapper.java` | API Mapper |
+| `apps/capability-platform/src/main/java/.../modules/event/EventController.java` | 事件管理控制器 |
+| `apps/capability-platform/src/main/java/.../modules/event/EventService.java` | 事件管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/event/entity/Event.java` | 事件实体 |
+| `apps/capability-platform/src/main/java/.../modules/event/mapper/EventMapper.java` | 事件 Mapper |
+| `apps/capability-platform/src/main/java/.../modules/callback/CallbackController.java` | 回调管理控制器 |
 | `apps/capability-platform/src/modules/callback/callback.controller.ts` | 回调管理控制器 |
 | `apps/capability-platform/src/modules/callback/callback.service.ts` | 回调管理服务 |
 | `apps/capability-platform/src/modules/callback/entities/callback.entity.ts` | 回调实体 |
@@ -497,23 +492,27 @@ open-app/
 | `apps/capability-platform/src/modules/permission/permission.controller.ts` | 权限管理控制器 |
 | `apps/capability-platform/src/modules/permission/permission.service.ts` | 权限管理服务 |
 | `apps/capability-platform/src/modules/permission/entities/permission.entity.ts` | 权限实体 |
-| `apps/capability-platform/src/modules/permission/entities/subscription.entity.ts` | 订阅实体 |
-| `apps/capability-platform/src/modules/approval/approval.module.ts` | 审批管理模块 |
-| `apps/capability-platform/src/modules/approval/approval.controller.ts` | 审批管理控制器 |
-| `apps/capability-platform/src/modules/approval/approval.service.ts` | 审批管理服务 |
-| `apps/capability-platform/src/modules/approval/entities/approval-flow.entity.ts` | 审批流实体 |
-| `apps/capability-platform/src/modules/approval/entities/approval-record.entity.ts` | 审批记录实体 |
-| `apps/capability-platform/src/modules/gateway/gateway.module.ts` | 消费网关模块 |
-| `apps/capability-platform/src/modules/gateway/api-gateway.service.ts` | API 网关服务 |
-| `apps/capability-platform/src/modules/gateway/event-gateway.service.ts` | 事件网关服务 |
-| `apps/capability-platform/src/modules/gateway/callback-gateway.service.ts` | 回调网关服务 |
-| `apps/capability-platform/src/modules/scope/scope.module.ts` | Scope 授权模块 |
-| `apps/capability-platform/src/modules/scope/scope.controller.ts` | Scope 授权控制器 |
-| `apps/capability-platform/src/modules/scope/scope.service.ts` | Scope 授权服务 |
-| `apps/capability-platform/src/common/interceptors/mock.interceptor.ts` | Mock 拦截器 |
-| `apps/capability-platform/src/config/configuration.ts` | 配置文件 |
-| `apps/capability-platform/src/database/schema.prisma` | Prisma Schema |
-| `apps/capability-platform/src/database/migrations/001_init.sql` | 初始化迁移 |
+| `apps/capability-platform/src/main/java/.../modules/callback/CallbackService.java` | 回调管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/callback/entity/Callback.java` | 回调实体 |
+| `apps/capability-platform/src/main/java/.../modules/callback/mapper/CallbackMapper.java` | 回调 Mapper |
+| `apps/capability-platform/src/main/java/.../modules/permission/PermissionController.java` | 权限管理控制器 |
+| `apps/capability-platform/src/main/java/.../modules/permission/PermissionService.java` | 权限管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/permission/entity/Permission.java` | 权限实体 |
+| `apps/capability-platform/src/main/java/.../modules/permission/entity/Subscription.java` | 订阅实体 |
+| `apps/capability-platform/src/main/java/.../modules/approval/ApprovalController.java` | 审批管理控制器 |
+| `apps/capability-platform/src/main/java/.../modules/approval/ApprovalService.java` | 审批管理服务 |
+| `apps/capability-platform/src/main/java/.../modules/approval/entity/ApprovalFlow.java` | 审批流实体 |
+| `apps/capability-platform/src/main/java/.../modules/approval/entity/ApprovalRecord.java` | 审批记录实体 |
+| `apps/capability-platform/src/main/java/.../modules/gateway/ApiGatewayService.java` | API 网关服务 |
+| `apps/capability-platform/src/main/java/.../modules/gateway/EventGatewayService.java` | 事件网关服务 |
+| `apps/capability-platform/src/main/java/.../modules/gateway/CallbackGatewayService.java` | 回调网关服务 |
+| `apps/capability-platform/src/main/java/.../modules/scope/ScopeController.java` | Scope 授权控制器 |
+| `apps/capability-platform/src/main/java/.../modules/scope/ScopeService.java` | Scope 授权服务 |
+| `apps/capability-platform/src/main/java/.../common/config/MockConfig.java` | Mock 配置 |
+| `apps/capability-platform/src/main/java/.../common/interceptor/MockInterceptor.java` | Mock 拦截器 |
+| `apps/capability-platform/src/main/resources/application.yml` | 应用配置 |
+| `apps/capability-platform/src/main/resources/mapper/*.xml` | MyBatis Mapper XML |
+| `apps/capability-platform/src/main/resources/db/migration/V1__init.sql` | 初始化迁移 |
 | `apps/capability-web/package.json` | 前端项目配置 |
 | `apps/capability-web/src/main.tsx` | 前端入口 |
 | `apps/capability-web/src/App.tsx` | 应用根组件 |
@@ -530,8 +529,6 @@ open-app/
 | `apps/capability-web/src/stores/permission.store.ts` | 权限状态 |
 | `packages/shared-types/package.json` | 共享类型配置 |
 | `packages/shared-types/src/index.ts` | 类型导出 |
-| `packages/database-client/package.json` | 数据库客户端配置 |
-| `packages/database-client/src/schema.prisma` | Prisma Schema |
 | `packages/mock-services/package.json` | Mock 服务配置 |
 | `packages/mock-services/src/index.ts` | Mock 服务导出 |
 
@@ -539,8 +536,8 @@ open-app/
 
 | 文件路径 | 修改内容 |
 |----------|----------|
-| `package.json` | 添加 monorepo 配置 |
-| `tsconfig.json` | 添加 paths 配置 |
+| `pom.xml` | 添加模块配置（如使用 Maven 多模块） |
+| `apps/capability-web/tsconfig.json` | 添加 paths 配置 |
 | `.env.example` | 添加新环境变量示例 |
 
 #### 依赖文件（[DEPEND]）
@@ -565,216 +562,216 @@ open-app/
 -- ============================================
 -- 分组表（扩展现有 openplatform_mode_node_t）
 -- ============================================
-CREATE TABLE groups (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    resource_type VARCHAR(20) NOT NULL, -- 'api', 'event', 'callback'
-    parent_id UUID REFERENCES groups(id),
-    sort_order INT DEFAULT 0,
-    status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID,
-    updated_by UUID
-);
+CREATE TABLE `groups` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
+    `parent_id` VARCHAR(36),
+    `sort_order` INT DEFAULT 0,
+    `status` VARCHAR(20) DEFAULT 'active',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
+    KEY `idx_resource_type` (`resource_type`),
+    KEY `idx_parent_id` (`parent_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组表';
 
 -- 分组责任人关联表
-CREATE TABLE group_owners (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(group_id, user_id)
-);
+CREATE TABLE `group_owners` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `group_id` VARCHAR(36) NOT NULL,
+    `user_id` VARCHAR(36) NOT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
+    CONSTRAINT `fk_group_owners_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组责任人关联表';
 
 -- ============================================
 -- API 资源表（扩展现有 openplatform_permission_api_t）
 -- ============================================
-CREATE TABLE apis (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    code_name VARCHAR(100) NOT NULL UNIQUE,
-    path VARCHAR(500) NOT NULL,
-    method VARCHAR(10) NOT NULL,
-    description TEXT,
-    doc_url VARCHAR(500),
-    group_id UUID REFERENCES groups(id),
-    status VARCHAR(20) DEFAULT 'draft', -- draft, pending, published, offline
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID,
-    updated_by UUID
-);
+CREATE TABLE `apis` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `code_name` VARCHAR(100) NOT NULL UNIQUE,
+    `path` VARCHAR(500) NOT NULL,
+    `method` VARCHAR(10) NOT NULL,
+    `description` TEXT,
+    `doc_url` VARCHAR(500),
+    `group_id` VARCHAR(36),
+    `status` VARCHAR(20) DEFAULT 'draft' COMMENT 'draft, pending, published, offline',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
+    KEY `idx_group_id` (`group_id`),
+    KEY `idx_status` (`status`),
+    CONSTRAINT `fk_apis_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源表';
 
 -- ============================================
 -- 事件资源表（扩展现有 openplatform_event_t）
 -- ============================================
-CREATE TABLE events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    code_name VARCHAR(100) NOT NULL UNIQUE,
-    topic VARCHAR(200) NOT NULL UNIQUE,
-    description TEXT,
-    doc_url VARCHAR(500),
-    group_id UUID REFERENCES groups(id),
-    status VARCHAR(20) DEFAULT 'draft',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID,
-    updated_by UUID
-);
+CREATE TABLE `events` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `code_name` VARCHAR(100) NOT NULL UNIQUE,
+    `topic` VARCHAR(200) NOT NULL UNIQUE,
+    `description` TEXT,
+    `doc_url` VARCHAR(500),
+    `group_id` VARCHAR(36),
+    `status` VARCHAR(20) DEFAULT 'draft',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
+    KEY `idx_group_id` (`group_id`),
+    KEY `idx_topic` (`topic`),
+    CONSTRAINT `fk_events_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源表';
 
 -- ============================================
 -- 回调资源表（新建）
 -- ============================================
-CREATE TABLE callbacks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    code_name VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    doc_url VARCHAR(500),
-    group_id UUID REFERENCES groups(id),
-    status VARCHAR(20) DEFAULT 'draft',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID,
-    updated_by UUID
-);
+CREATE TABLE `callbacks` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `code_name` VARCHAR(100) NOT NULL UNIQUE,
+    `description` TEXT,
+    `doc_url` VARCHAR(500),
+    `group_id` VARCHAR(36),
+    `status` VARCHAR(20) DEFAULT 'draft',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
+    KEY `idx_group_id` (`group_id`),
+    CONSTRAINT `fk_callbacks_group` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
 
 -- ============================================
 -- 权限资源表（新建）
 -- ============================================
-CREATE TABLE permissions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    code_name VARCHAR(100) NOT NULL UNIQUE, -- scope
-    resource_type VARCHAR(20) NOT NULL, -- 'api', 'event', 'callback'
-    resource_id UUID NOT NULL, -- 关联的 API/Event/Callback ID
-    description TEXT,
-    approval_flow_id UUID, -- 资源特有审批流
-    status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by UUID,
-    updated_by UUID
-);
+CREATE TABLE `permissions` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT 'scope',
+    `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
+    `resource_id` VARCHAR(36) NOT NULL COMMENT '关联的 API/Event/Callback ID',
+    `description` TEXT,
+    `approval_flow_id` VARCHAR(36) COMMENT '资源特有审批流',
+    `status` VARCHAR(20) DEFAULT 'active',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `created_by` VARCHAR(36),
+    `updated_by` VARCHAR(36),
+    KEY `idx_resource` (`resource_type`, `resource_id`),
+    KEY `idx_code_name` (`code_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源表';
 
 -- ============================================
 -- 订阅关系表（扩展现有 openplatform_app_permission_t）
 -- ============================================
-CREATE TABLE subscriptions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    app_id UUID NOT NULL,
-    permission_id UUID NOT NULL REFERENCES permissions(id),
-    status VARCHAR(20) DEFAULT 'pending', -- pending, approved, rejected, cancelled
-    
-    -- 事件/回调消费配置
-    channel_type VARCHAR(20), -- 'internal_mq', 'webhook', 'sse', 'websocket'
-    channel_address VARCHAR(500),
-    auth_type VARCHAR(20), -- 'app_credential_a', 'app_credential_b', 'open_app_credential'
-    
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    approved_at TIMESTAMP,
-    approved_by UUID,
-    
-    UNIQUE(app_id, permission_id)
-);
+CREATE TABLE `subscriptions` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `app_id` VARCHAR(36) NOT NULL,
+    `permission_id` VARCHAR(36) NOT NULL,
+    `status` VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, approved, rejected, cancelled',
+    `channel_type` VARCHAR(20) COMMENT 'internal_mq, webhook, sse, websocket',
+    `channel_address` VARCHAR(500),
+    `auth_type` VARCHAR(20) COMMENT 'app_credential_a, app_credential_b, open_app_credential',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `approved_at` DATETIME,
+    `approved_by` VARCHAR(36),
+    UNIQUE KEY `uk_app_permission` (`app_id`, `permission_id`),
+    KEY `idx_app_id` (`app_id`),
+    KEY `idx_permission_id` (`permission_id`),
+    KEY `idx_status` (`status`),
+    CONSTRAINT `fk_subscriptions_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订阅关系表';
 
 -- ============================================
 -- 审批流程模板表（扩展现有 openplatform_eflow_t）
 -- ============================================
-CREATE TABLE approval_flows (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
-    code VARCHAR(50) NOT NULL UNIQUE, -- 'default', 'api_register', 'permission_apply'
-    description TEXT,
-    is_default BOOLEAN DEFAULT FALSE,
-    nodes JSONB NOT NULL, -- 审批节点配置
-    status VARCHAR(20) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE `approval_flows` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `name` VARCHAR(100) NOT NULL,
+    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT 'default, api_register, permission_apply',
+    `description` TEXT,
+    `is_default` TINYINT(1) DEFAULT 0,
+    `nodes` JSON NOT NULL COMMENT '审批节点配置',
+    `status` VARCHAR(20) DEFAULT 'active',
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程模板表';
 
 -- ============================================
 -- 审批记录表（扩展现有 openplatform_eflow_log_t）
 -- ============================================
-CREATE TABLE approval_records (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    flow_id UUID NOT NULL REFERENCES approval_flows(id),
-    business_type VARCHAR(50) NOT NULL, -- 'api_register', 'event_register', 'permission_apply'
-    business_id UUID NOT NULL,
-    applicant_id UUID NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending', -- pending, approved, rejected, cancelled
-    current_node INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    completed_at TIMESTAMP
-);
+CREATE TABLE `approval_records` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `flow_id` VARCHAR(36) NOT NULL,
+    `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
+    `business_id` VARCHAR(36) NOT NULL,
+    `applicant_id` VARCHAR(36) NOT NULL,
+    `status` VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, approved, rejected, cancelled',
+    `current_node` INT DEFAULT 0,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `completed_at` DATETIME,
+    KEY `idx_flow_id` (`flow_id`),
+    KEY `idx_business` (`business_type`, `business_id`),
+    KEY `idx_applicant` (`applicant_id`),
+    KEY `idx_status` (`status`),
+    CONSTRAINT `fk_approval_records_flow` FOREIGN KEY (`flow_id`) REFERENCES `approval_flows`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批记录表';
 
 -- ============================================
 -- 审批操作日志表
 -- ============================================
-CREATE TABLE approval_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    record_id UUID NOT NULL REFERENCES approval_records(id),
-    node_index INT NOT NULL,
-    operator_id UUID NOT NULL,
-    action VARCHAR(20) NOT NULL, -- 'approve', 'reject', 'cancel', 'transfer'
-    comment TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+CREATE TABLE `approval_logs` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `record_id` VARCHAR(36) NOT NULL,
+    `node_index` INT NOT NULL,
+    `operator_id` VARCHAR(36) NOT NULL,
+    `action` VARCHAR(20) NOT NULL COMMENT 'approve, reject, cancel, transfer',
+    `comment` TEXT,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_record_id` (`record_id`),
+    CONSTRAINT `fk_approval_logs_record` FOREIGN KEY (`record_id`) REFERENCES `approval_records`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
 
 -- ============================================
 -- 用户授权表（Scope 授权）
 -- ============================================
-CREATE TABLE user_authorizations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL,
-    app_id UUID NOT NULL,
-    scopes TEXT[] NOT NULL,
-    expires_at TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    revoked_at TIMESTAMP,
-    UNIQUE(user_id, app_id)
-);
+CREATE TABLE `user_authorizations` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `user_id` VARCHAR(36) NOT NULL,
+    `app_id` VARCHAR(36) NOT NULL,
+    `scopes` JSON NOT NULL COMMENT '权限范围数组',
+    `expires_at` DATETIME,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `revoked_at` DATETIME,
+    UNIQUE KEY `uk_user_app` (`user_id`, `app_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户授权表';
 
 -- ============================================
 -- 审计日志表（扩展现有 openplatform_oprate_log_t）
 -- ============================================
-CREATE TABLE audit_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID,
-    action VARCHAR(50) NOT NULL,
-    resource_type VARCHAR(50) NOT NULL,
-    resource_id UUID,
-    old_value JSONB,
-    new_value JSONB,
-    ip_address VARCHAR(45),
-    user_agent TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================
--- 索引设计
--- ============================================
-CREATE INDEX idx_groups_resource_type ON groups(resource_type);
-CREATE INDEX idx_groups_parent_id ON groups(parent_id);
-CREATE INDEX idx_apis_group_id ON apis(group_id);
-CREATE INDEX idx_apis_status ON apis(status);
-CREATE INDEX idx_events_group_id ON events(group_id);
-CREATE INDEX idx_events_topic ON events(topic);
-CREATE INDEX idx_callbacks_group_id ON callbacks(group_id);
-CREATE INDEX idx_permissions_resource ON permissions(resource_type, resource_id);
-CREATE INDEX idx_permissions_code_name ON permissions(code_name);
-CREATE INDEX idx_subscriptions_app_id ON subscriptions(app_id);
-CREATE INDEX idx_subscriptions_permission_id ON subscriptions(permission_id);
-CREATE INDEX idx_subscriptions_status ON subscriptions(status);
-CREATE INDEX idx_approval_records_business ON approval_records(business_type, business_id);
-CREATE INDEX idx_approval_records_applicant ON approval_records(applicant_id);
-CREATE INDEX idx_approval_records_status ON approval_records(status);
-CREATE INDEX idx_user_auth_user_app ON user_authorizations(user_id, app_id);
-CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
+CREATE TABLE `audit_logs` (
+    `id` VARCHAR(36) PRIMARY KEY,
+    `user_id` VARCHAR(36),
+    `action` VARCHAR(50) NOT NULL,
+    `resource_type` VARCHAR(50) NOT NULL,
+    `resource_id` VARCHAR(36),
+    `old_value` JSON,
+    `new_value` JSON,
+    `ip_address` VARCHAR(45),
+    `user_agent` TEXT,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY `idx_user` (`user_id`),
+    KEY `idx_resource` (`resource_type`, `resource_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
 ```
 
 ### 4.2 与现有表的关系
