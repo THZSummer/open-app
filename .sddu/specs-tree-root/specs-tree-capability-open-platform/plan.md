@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.19  
+**规划版本**: v1.20  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -685,27 +685,6 @@ open-app/
 │   ├── vite.config.ts
 │   └── README.md
 │
-├── open-common/                         # 公共模块工程（后端共享）
-│   ├── src/
-│   │   ├── main/java/
-│   │   │   └── com/xxx/common/
-│   │   │       ├── entity/               # 共享实体类
-│   │   │       ├── dto/                  # 共享 DTO
-│   │   │       ├── enums/                # 共享枚举
-│   │   │       └── util/                 # 共享工具类
-│   │   └── test/
-│   └── pom.xml
-│
-├── shared-types/                        # 共享类型定义工程（前端使用）
-│   ├── src/
-│   │   ├── api.ts
-│   │   ├── event.ts
-│   │   ├── callback.ts
-│   │   ├── permission.ts
-│   │   └── approval.ts
-│   ├── package.json
-│   └── README.md
-│
 └── docs/                                # 文档
 ```
 
@@ -867,23 +846,11 @@ graph LR
 | `open-web/src/services/api.service.ts` | API 服务 |
 | `open-web/src/stores/permission.store.ts` | 权限状态 |
 
-##### 公共工程
-
-| 文件路径 | 说明 |
-|----------|------|
-| `open-common/pom.xml` | 公共模块配置 |
-| `open-common/src/main/java/.../entity/*.java` | 共享实体类 |
-| `open-common/src/main/java/.../dto/*.java` | 共享 DTO |
-| `open-common/src/main/java/.../enums/*.java` | 共享枚举 |
-| `shared-types/package.json` | 共享类型配置 |
-| `shared-types/src/index.ts` | 类型导出 |
-
 #### 修改文件（[MODIFY]）
 
 | 文件路径 | 修改内容 |
 |----------|----------|
 | `pom.xml` | 添加模块配置（Maven 多模块） |
-| `open-web/tsconfig.json` | 添加 paths 配置 |
 | `.env.example` | 添加新环境变量示例 |
 
 #### 依赖文件（[DEPEND]）
@@ -1514,6 +1481,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.17 | 2026-04-20 | 修复Mermaid渲染错误：移除连接标签中的换行符，改用节点标签标注调用方向 | SDDU Plan Agent |
 | v1.18 | 2026-04-20 | 修正event-server数据依赖：无数据库，有独立Redis，通过调用api-server接口获取数据 | SDDU Plan Agent |
 | v1.19 | 2026-04-20 | 简化目录结构：移除services/web/packages层级，所有工程平铺在根目录，每个工程可独立打包部署 | SDDU Plan Agent |
+| v1.20 | 2026-04-20 | 移除open-common和shared-types工程，公共代码在各工程内部维护 | SDDU Plan Agent |
 
 ---
 
