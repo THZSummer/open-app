@@ -1,7 +1,7 @@
 # 前端页面设计：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.22  
+**规划版本**: v1.23  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
