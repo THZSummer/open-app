@@ -1170,6 +1170,16 @@ Phase 4: 联调 & 上线（3 周）
 | 版本 | 日期 | 修订内容 | 作者 |
 |------|------|----------|------|
 | v1.0 | 2026-04-20 | 初始版本 | SDDU Plan Agent |
+| v1.1 | 2026-04-20 | 删除 code_name 字段，简化 scope 命名规范 | SDDU Plan Agent |
+| v1.2 | 2026-04-20 | 删除审计日志表（不在本期范围） | SDDU Plan Agent |
+| v1.3 | 2026-04-20 | 删除 USER/APP 表（复用已有能力） | SDDU Plan Agent |
+| v1.4 | 2026-04-20 | 分类表增加 category_alias 区分权限树 | SDDU Plan Agent |
+| v1.5 | 2026-04-20 | 分类表增加 path 字段优化子树查询 | SDDU Plan Agent |
+| v1.6 | 2026-04-20 | category_alias 改为仅根分类设置，子分类为 NULL | SDDU Plan Agent |
+| v1.7 | 2026-04-20 | 拆分表结构设计到 plan-db.md | SDDU Plan Agent |
+| v1.8 | 2026-04-20 | API 清单按 spec.md FR 清单重写 | SDDU Plan Agent |
+| v1.9 | 2026-04-20 | 拆分接口设计到 plan-api.md | SDDU Plan Agent |
+| v1.10 | 2026-04-20 | 同步更新 ADR-003 为 MySQL + Spring Boot 技术栈 | SDDU Plan Agent |
 
 ---
 
