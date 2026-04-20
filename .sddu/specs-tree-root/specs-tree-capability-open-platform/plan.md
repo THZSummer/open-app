@@ -622,7 +622,6 @@ erDiagram
         bigint id PK
         varchar name_cn
         varchar name_en
-        varchar code_name UK
         varchar path
         varchar method
         tinyint status
@@ -640,7 +639,6 @@ erDiagram
         bigint id PK
         varchar name_cn
         varchar name_en
-        varchar code_name UK
         varchar topic UK
         tinyint status
     }
@@ -657,7 +655,6 @@ erDiagram
         bigint id PK
         varchar name_cn
         varchar name_en
-        varchar code_name UK
         tinyint status
     }
     
@@ -767,15 +764,15 @@ erDiagram
 
 #### Scope 命名规范
 
-权限的 `scope` 字段命名遵循 `{资源类型}:{模块}:{资源}:{操作}` 格式，确保全局唯一：
+权限的 `scope` 字段命名遵循 `{资源类型}:{模块}:{资源标识}` 格式，确保全局唯一：
 
 | 资源类型 | Scope 示例 | 说明 |
 |----------|------------|------|
-| API | `api:im:send-message` | IM 模块发送消息 API，code_name=send-message |
-| API | `api:im:get-message` | IM 模块获取消息 API，code_name=get-message |
-| Event | `event:im:message-received` | IM 模块消息接收事件，code_name=message-received |
-| Event | `event:meeting:meeting-started` | 会议模块会议开始事件，code_name=meeting-started |
-| Callback | `callback:approval:approval-completed` | 审批模块审批完成回调，code_name=approval-completed |
+| API | `api:im:send-message` | IM 模块发送消息 API |
+| API | `api:im:get-message` | IM 模块获取消息 API |
+| Event | `event:im:message-received` | IM 模块消息接收事件 |
+| Event | `event:meeting:meeting-started` | 会议模块会议开始事件 |
+| Callback | `callback:approval:approval-completed` | 审批模块审批完成回调 |
 
 **命名规则**：
 
@@ -783,51 +780,12 @@ erDiagram
 |------|------|------|
 | `{资源类型}` | api / event / callback | `api` |
 | `{模块}` | 业务模块名 | `im`、`meeting`、`approval` |
-| `{资源}` | 具体资源名 | `message`、`meeting` |
-| `{操作}` | 操作类型 | `send`、`get`、`received`、`started` |
-
-#### code_name 与 scope 的关系
-
-**概念定义**：
-
-| 字段 | 所属表 | 用途 | 示例 |
-|------|--------|------|------|
-| `code_name` | 资源表（API/Event/Callback） | 资源的内部代码标识 | `send-message`、`message-received` |
-| `scope` | 权限表（Permission） | 权限的外部授权标识 | `api:im:send-message` |
-
-**关系说明**：
-
-```
-资源表（API/Event/Callback）                权限表（Permission）
-┌─────────────────────────┐              ┌─────────────────────────┐
-│ id: 1001                │              │ id: 2001                │
-│ code_name: send-message │──关联──────▶│ scope: api:im:send-message│
-│ name_cn: 发送消息       │              │ resource_type: api      │
-│ ...                     │              │ resource_id: 1001      │
-└─────────────────────────┘              └─────────────────────────┘
-```
-
-**关联规则**：
-
-| 维度 | 说明 |
-|------|------|
-| **一对一** | 一个资源对应一个权限 |
-| **scope 包含 code_name** | `scope = {资源类型}:{模块}:{code_name}` |
-| **生成时机** | 创建权限时，scope 基于 code_name 自动生成 |
-| **唯一性** | code_name 在同类型资源内唯一，scope 全局唯一 |
-
-**示例**：
-
-| 资源 | code_name | scope |
-|------|-----------|-------|
-| 发送消息 API | `send-message` | `api:im:send-message` |
-| 接收消息事件 | `message-received` | `event:im:message-received` |
-| 审批完成回调 | `approval-completed` | `callback:approval:approval-completed` |
+| `{资源标识}` | 具体资源的唯一标识 | `send-message`、`message-received` |
 
 > 💡 **说明**：
 > - **资源类型前缀**：确保 scope 全局唯一，避免不同类型资源冲突
-> - **code_name**：资源的内部标识，用于系统内部引用
 > - **scope**：权限的外部标识，用于 OAuth 授权和消费方使用
+> - **唯一性**：scope 在权限表全局唯一
 > - 只有 **权限（PERMISSION）** 才有 `scope` 属性
 
 ### 4.2 表设计规则
@@ -854,7 +812,7 @@ erDiagram
 | **字段选择** | 存储业务对象的常用字段 |
 | **列表展示** | 涉及在对象列表中展示的字段 |
 | **搜索条件** | 作为列表搜索条件的字段 |
-| **示例** | `name_cn`、`name_en`、`code_name`、`status`、`category_id` 等 |
+| **示例** | `name_cn`、`name_en`、`status`、`category_id` 等 |
 
 **属性表设计规范**：
 
@@ -993,7 +951,7 @@ CREATE TABLE `openplatform_api_p_t` (
 > 💡 **主表+属性表模式说明**：
 > - **使用主表+属性表的对象**：API、事件、回调、权限（4 个业务对象）
 > - **不使用属性表的对象**：分类、订阅、审批流程、审批记录、用户授权、审计日志（固定字段，无需扩展）
-> - **主表存储**：列表展示字段、搜索条件字段（name、code_name、status、path、method、topic 等）
+> - **主表存储**：列表展示字段、搜索条件字段（name、status、path、method、topic 等）
 > - **属性表存储**：详情展示字段、扩展属性（description、doc_url、approval_flow_id 等）
 
 ### 4.3 与现有表的关系
@@ -1066,7 +1024,6 @@ CREATE TABLE `openplatform_api_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
-    `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT '代码标识',
     `path` VARCHAR(500) NOT NULL COMMENT 'API路径',
     `method` VARCHAR(10) NOT NULL COMMENT 'HTTP方法',
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
@@ -1074,8 +1031,7 @@ CREATE TABLE `openplatform_api_t` (
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_status` (`status`),
-    KEY `idx_code_name` (`code_name`)
+    KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源主表';
 
 -- API 资源属性表
@@ -1100,7 +1056,6 @@ CREATE TABLE `openplatform_event_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
-    `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT '代码标识',
     `topic` VARCHAR(200) NOT NULL UNIQUE COMMENT 'Topic',
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -1133,7 +1088,6 @@ CREATE TABLE `openplatform_callback_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
-    `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT '代码标识',
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
