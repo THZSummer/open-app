@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.15  
+**规划版本**: v1.16  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -414,8 +414,8 @@ graph TB
             AppMgmt["应用管理模块\n(现有能力)"]
             Member["成员管理模块\n(现有能力)"]
         end
-        ApiServer["api-server\n(Spring Boot)\nAPI网关服务"]
-        EventServer["event-server\n(Spring Boot)\n事件网关服务"]
+        ApiServer["api-server\n(Spring Boot)\nAPI认证鉴权服务"]
+        EventServer["event-server\n(Spring Boot)\n事件/回调网关服务"]
     end
     
     subgraph DataLayer["数据层"]
@@ -453,23 +453,26 @@ graph TB
     EventServer --> MySQL
     EventServer --> Redis
     
-    %% 消费方通过平台网关访问网关服务
-    Consumer1 -->|API调用| ApiGW
-    Consumer2 -->|API调用| ApiGW
-    ApiGW --> ApiServer
+    %% API调用流程（由外向内）：消费方 -> 内部API网关 -> api-server认证鉴权 -> 提供方
+    Consumer1 -->|API调用\n(由外向内)| ApiGW
+    Consumer2 -->|API调用\n(由外向内)| ApiGW
+    ApiGW -.->|认证鉴权| ApiServer
+    ApiGW -->|转发请求| Provider1
+    ApiGW -->|转发请求| Provider2
     
-    %% 事件通过平台消息网关
-    Provider1 -->|事件推送| MsgGW
-    Provider2 -->|事件推送| MsgGW
+    %% 事件推送流程（由内向外）：提供方 -> 内部消息网关 -> event-server -> 消费方
+    Provider1 -->|事件推送\n(由内向外)| MsgGW
+    Provider2 -->|事件推送\n(由内向外)| MsgGW
     MsgGW --> EventServer
+    EventServer -.->|事件分发| Consumer1
+    EventServer -.->|事件分发| Consumer2
     
-    %% API网关转发请求到提供方
-    ApiServer -.->|转发请求| Provider1
-    ApiServer -.->|转发请求| Provider2
-    
-    %% 事件网关推送到消费方
-    EventServer -.->|事件推送| Consumer1
-    EventServer -.->|事件推送| Consumer2
+    %% 回调推送流程（由内向外）：提供方 -> 内部消息网关 -> event-server -> 消费方
+    Provider1 -->|回调推送\n(由内向外)| MsgGW
+    Provider2 -->|回调推送\n(由内向外)| MsgGW
+    MsgGW --> EventServer
+    EventServer -.->|回调分发| Consumer1
+    EventServer -.->|回调分发| Consumer2
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
@@ -504,23 +507,27 @@ graph TB
 | **权限申请页面** | 权限树浏览、权限申请 |
 | **审批中心页面** | 待审批列表、审批操作 |
 
-##### api-server（API网关服务）
+##### api-server（API认证鉴权服务）
 
-> **使用者**：消费方/提供方应用，通过 XX 通讯平台内部 API 网关访问
+> **使用者**：XX 通讯平台内部 API 网关，用于完成 API 调用的认证鉴权
+> 
+> **调用方向**：由外向内（消费方 → 提供方）
 
 | 模块 | 功能说明 |
 |------|----------|
-| **API消费网关** | 接收消费方的 API 调用请求，转发至提供方 |
-| **回调消费网关** | 接收提供方的回调请求，推送至消费方 |
+| **API认证鉴权** | 接收内部API网关的认证鉴权请求，验证消费方对API的访问权限 |
 | **Scope授权** | OAuth 2.0 Scope 授权流程 |
 
-##### event-server（事件网关服务）
+##### event-server（事件/回调网关服务）
 
 > **使用者**：提供方应用，通过 XX 通讯平台内部消息网关访问
+> 
+> **调用方向**：由内向外（提供方 → 消费方）
 
 | 模块 | 功能说明 |
 |------|----------|
 | **事件消费网关** | 接收提供方的事件推送，分发至订阅的消费方 |
+| **回调消费网关** | 接收提供方的回调推送，分发至订阅的消费方 |
 
 #### 优点
 | 优点 | 说明 |
@@ -550,11 +557,11 @@ graph TB
 |------|------|------|
 | open-server | 35 | 管理端核心业务逻辑 |
 | open-web | 20 | 前端页面开发 |
-| api-server | 15 | API/回调网关 + Scope授权 |
-| event-server | 8 | 事件网关 |
+| api-server | 12 | API认证鉴权 + Scope授权 |
+| event-server | 12 | 事件/回调网关 |
 | 公共模块 | 10 | 共享类型、工具类 |
 | 测试 & 联调 | 15 | 单元测试 + 集成测试 |
-| **总计** | **103** | 约 5 人月 |
+| **总计** | **104** | 约 5 人月 |
 
 ---
 
@@ -636,13 +643,14 @@ open-app/
 │   │   ├── pom.xml
 │   │   └── README.md
 │   │
-│   └── event-server/                  # 事件网关服务
+│   └── event-server/                  # 事件/回调网关服务
 │       ├── src/
 │       │   ├── main/
 │       │   │   ├── java/
 │       │   │   │   └── com/xxx/event/
 │       │   │   │       ├── gateway/
-│       │   │   │       │   └── EventGateway.java          # 事件消费网关
+│       │   │   │       │   ├── EventGateway.java          # 事件消费网关
+│       │   │   │       │   └── CallbackGateway.java       # 回调消费网关
 │       │   │   │       ├── common/
 │       │   │   │       │   ├── config/
 │       │   │   │       │   ├── filter/
@@ -699,12 +707,12 @@ open-app/
 
 ### 3.2 服务职责划分
 
-| 服务 | 职责 | 使用者 | 端口（建议） |
-|------|------|--------|-------------|
-| **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | open-web | 8080 |
-| **api-server** | API网关服务：API消费网关、回调消费网关、Scope授权 | 消费方/提供方（通过XX通讯平台内部API网关） | 8081 |
-| **event-server** | 事件网关服务：事件消费网关 | 提供方（通过XX通讯平台内部消息网关） | 8082 |
-| **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | 3000 |
+| 服务 | 职责 | 使用者 | 调用方向 | 端口（建议） |
+|------|------|--------|----------|-------------|
+| **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | open-web | - | 8080 |
+| **api-server** | API认证鉴权服务：API认证鉴权、Scope授权 | XX通讯平台内部API网关 | 由外向内 | 8081 |
+| **event-server** | 事件/回调网关服务：事件消费网关、回调消费网关 | XX通讯平台内部消息网关 | 由内向外 | 8082 |
+| **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | - | 3000 |
 
 ### 3.3 服务间调用关系
 
@@ -720,8 +728,8 @@ graph LR
             AppMgmt["应用管理模块"]
             Member["成员管理模块"]
         end
-        ApiServer["api-server\n(API网关)"]
-        EventServer["event-server\n(事件网关)"]
+        ApiServer["api-server\n(API认证鉴权)\n由外向内"]
+        EventServer["event-server\n(事件/回调网关)\n由内向外"]
     end
     
     subgraph PlatformGW["XX通讯平台网关"]
@@ -741,11 +749,15 @@ graph LR
     CapMgmt -.->|方法调用| AppMgmt
     CapMgmt -.->|方法调用| Member
     
-    %% 消费方/提供方通过平台网关访问网关服务
+    %% API调用流程（由外向内）
     Consumer -->|API调用| ApiGW
-    ApiGW --> ApiServer
-    Provider -->|事件推送| MsgGW
+    ApiGW -.->|认证鉴权| ApiServer
+    ApiGW -->|转发请求| Provider
+    
+    %% 事件/回调推送流程（由内向外）
+    Provider -->|事件/回调推送| MsgGW
     MsgGW --> EventServer
+    EventServer -.->|事件/回调分发| Consumer
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
@@ -811,6 +823,7 @@ graph LR
 | `services/event-server/pom.xml` | 后端项目配置 |
 | `services/event-server/src/main/java/.../EventServerApplication.java` | 应用入口 |
 | `services/event-server/src/main/java/.../gateway/EventGateway.java` | 事件消费网关 |
+| `services/event-server/src/main/java/.../gateway/CallbackGateway.java` | 回调消费网关 |
 | `services/event-server/src/main/resources/application.yml` | 应用配置 |
 
 ##### open-web 前端
@@ -1474,6 +1487,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.13 | 2026-04-20 | 修正服务依赖关系：api-server/event-server为独立服务，不依赖open-server，直接访问数据库 | SDDU Plan Agent |
 | v1.14 | 2026-04-20 | 修正调用方式：应用管理/成员管理改为open-server内部模块，通过方法调用而非Feign | SDDU Plan Agent |
 | v1.15 | 2026-04-20 | 简化架构图：合并重复的open-server节点，内部模块作为open-server子图 | SDDU Plan Agent |
+| v1.16 | 2026-04-20 | 修正API调用流程：内部API网关转发请求给提供方，非api-server转发；回调业务移至event-server（由内向外） | SDDU Plan Agent |
 
 ---
 
