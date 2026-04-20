@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.20  
+**规划版本**: v1.21  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -665,6 +665,7 @@ open-app/
 │   └── README.md
 │
 ├── open-web/                            # 管理端前端工程（前端）
+│   # ⚠️ 注意：部分功能需通过前端单独设计文档执行，详见 3.2 章节 open-web 设计流程说明
 │   ├── src/
 │   │   ├── pages/
 │   │   │   ├── category/           # 分类管理页面
@@ -696,6 +697,10 @@ open-app/
 | **api-server** | API认证鉴权服务：API认证鉴权、Scope授权、数据查询接口 | XX通讯平台内部API网关、event-server | 由外向内 | MySQL + Redis | 8081 |
 | **event-server** | 事件/回调网关服务：事件消费网关、回调消费网关 | XX通讯平台内部消息网关 | 由内向外 | Redis（独立），无数据库 | 8082 |
 | **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | - | - | 3000 |
+
+> 💡 **open-web 设计流程说明**（参考 1.4 章节）：
+> - **面向三方应用人员的界面**：统一按照 [`/front/README.md`](../../../front/README.md) 描述的内容和设计流程去执行生成代码
+> - **其他页面**（如运营方管理后台、提供方管理后台）：可在此 plan.md 文档进行详细设计
 
 ### 3.3 服务间调用关系
 
@@ -828,6 +833,10 @@ graph LR
 | `event-server/src/main/resources/application.yml` | 应用配置 |
 
 ##### open-web 工程
+
+> ⚠️ **设计流程说明**（参考 1.4 章节）：
+> - **面向三方应用人员的界面**：统一按照 [`/front/README.md`](../../../front/README.md) 描述的内容和设计流程去执行生成代码
+> - **其他页面**（如运营方管理后台、提供方管理后台）：可在此进行详细设计
 
 | 文件路径 | 说明 |
 |----------|------|
@@ -1482,6 +1491,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.18 | 2026-04-20 | 修正event-server数据依赖：无数据库，有独立Redis，通过调用api-server接口获取数据 | SDDU Plan Agent |
 | v1.19 | 2026-04-20 | 简化目录结构：移除services/web/packages层级，所有工程平铺在根目录，每个工程可独立打包部署 | SDDU Plan Agent |
 | v1.20 | 2026-04-20 | 移除open-common和shared-types工程，公共代码在各工程内部维护 | SDDU Plan Agent |
+| v1.21 | 2026-04-20 | 添加open-web设计流程说明：面向三方应用人员的界面需按/front/README.md执行，参考1.4章节 | SDDU Plan Agent |
 
 ---
 
