@@ -14,42 +14,32 @@
 
 基于 `docs/业务架构.md` 和 `docs/app-management-spec.json` 分析，现有系统架构如下：
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         XXX 通讯系统现有架构                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      通用子模块 (Core Modules)                    │    │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │    │
-│  │  │  应用管理    │  │  应用成员管理 │  │  权限中心    │           │    │
-│  │  │ (已存在)     │  │ (已存在)     │  │ permission   │           │    │
-│  │  │              │  │              │  │   -app       │           │    │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      业务模块 (Business Modules)                  │    │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │    │
-│  │  │  API 开放    │  │  事件开放    │  │  回调开放    │           │    │
-│  │  │ (部分实现)   │  │ (部分实现)   │  │ (部分实现)   │           │    │
-│  │  └──────────────┘  └──────────────┘  └──────────────┘           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      现有数据库表                                 │    │
-│  │  • openplatform_permission_api_t  (API 权限表)                   │    │
-│  │  • openplatform_permission_api_p_t (API 属性表)                  │    │
-│  │  • openplatform_event_t           (事件表)                       │    │
-│  │  • openplatform_event_p_t         (事件属性表)                   │    │
-│  │  • openplatform_app_permission_t  (应用权限关联表)               │    │
-│  │  • openplatform_mode_node_t       (模式节点表-分组)              │    │
-│  │  • openplatform_eflow_t           (审批流程表)                   │    │
-│  │  • openplatform_eflow_log_t       (审批日志表)                   │    │
-│  │  • openplatform_oprate_log_t      (操作日志表)                   │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Core["通用子模块 (Core Modules)"]
+        AppMgr["应用管理\n(已存在)"]
+        MemberMgr["应用成员管理\n(已存在)"]
+        PermissionApp["权限中心\npermission-app"]
+    end
+    
+    subgraph Business["业务模块 (Business Modules)"]
+        ApiOpen["API 开放\n(部分实现)"]
+        EventOpen["事件开放\n(部分实现)"]
+        CallbackOpen["回调开放\n(部分实现)"]
+    end
+    
+    subgraph Database["现有数据库表"]
+        T1["openplatform_permission_api_t\n(API 权限表)"]
+        T2["openplatform_event_t\n(事件表)"]
+        T3["openplatform_app_permission_t\n(应用权限关联表)"]
+        T4["openplatform_mode_node_t\n(模式节点表-分组)"]
+        T5["openplatform_eflow_t\n(审批流程表)"]
+        T6["openplatform_oprate_log_t\n(操作日志表)"]
+    end
+    
+    style Core fill:#e3f2fd,stroke:#1565c0
+    style Business fill:#fff3e0,stroke:#ef6c00
+    style Database fill:#f5f5f5,stroke:#757575
 ```
 
 ### 1.2 新系统定位
@@ -155,43 +145,42 @@ graph TB
 在一个 Spring Boot 应用中，通过模块化设计实现各功能模块的解耦。前端同样采用单体 React 应用，通过路由和组件划分模块。
 
 #### 架构图
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         能力开放平台 - 单体架构                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      前端 (React SPA)                            │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │    │
-│  │  │ 分组管理 │ │API管理   │ │事件管理  │ │回调管理  │           │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │    │
-│  │  │ 权限申请 │ │审批中心  │ │消费网关  │ │Scope授权 │           │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                   │                                      │
-│                                   ▼                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      后端 (Spring Boot 单体应用)                    │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │    │
-│  │  │ Group    │ │ API      │ │ Event    │ │ Callback │           │    │
-│  │  │ Module   │ │ Module   │ │ Module   │ │ Module   │           │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │    │
-│  │  │Permission│ │ Approval │ │ Gateway  │ │ Scope    │           │    │
-│  │  │ Module   │ │ Module   │ │ Module   │ │ Module   │           │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘           │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                   │                                      │
-│                                   ▼                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      数据层                                      │    │
-│  │  ┌──────────────┐  ┌──────────────┐                            │    │
-│  │  │ MySQL        │  │ Redis        │                            │    │
-│  │  └──────────────┘  └──────────────┘                            │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+
+```mermaid
+graph TB
+    subgraph Frontend["前端 (React SPA)"]
+        P1["分组管理"]
+        P2["API管理"]
+        P3["事件管理"]
+        P4["回调管理"]
+        P5["权限申请"]
+        P6["审批中心"]
+        P7["消费网关"]
+        P8["Scope授权"]
+    end
+    
+    subgraph Backend["后端 (Spring Boot 单体应用)"]
+        M1["Group\nModule"]
+        M2["API\nModule"]
+        M3["Event\nModule"]
+        M4["Callback\nModule"]
+        M5["Permission\nModule"]
+        M6["Approval\nModule"]
+        M7["Gateway\nModule"]
+        M8["Scope\nModule"]
+    end
+    
+    subgraph DataLayer["数据层"]
+        MySQL[(MySQL)]
+        Redis[(Redis)]
+    end
+    
+    Frontend --> Backend
+    Backend --> DataLayer
+    
+    style Frontend fill:#e8f5e9,stroke:#2e7d32
+    style Backend fill:#e3f2fd,stroke:#1565c0
+    style DataLayer fill:#fff3e0,stroke:#ef6c00
 ```
 
 #### 优点
@@ -245,37 +234,43 @@ graph TB
 - **网关服务**：消费网关（API/事件/回调）
 
 #### 架构图
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         能力开放平台 - 微服务架构                         │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      API Gateway (Kong/APISIX)                  │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                   │                                      │
-│          ┌────────────────────────┼────────────────────────┐            │
-│          ▼                        ▼                        ▼            │
-│  ┌──────────────┐        ┌──────────────┐        ┌──────────────┐      │
-│  │ Capability   │        │ Permission   │        │ Approval     │      │
-│  │ Service      │        │ Service      │        │ Service      │      │
-│  │ (API/Event/  │        │              │        │              │      │
-│  │  Callback)   │        │              │        │              │      │
-│  └──────────────┘        └──────────────┘        └──────────────┘      │
-│          │                        │                        │            │
-│          └────────────────────────┼────────────────────────┘            │
-│                                   ▼                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      Message Queue (Kafka/RabbitMQ)             │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                   │                                      │
-│                                   ▼                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      Gateway Service                            │    │
-│  │  (API Gateway / Event Gateway / Callback Gateway)               │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+
+```mermaid
+graph TB
+    subgraph Gateway["API Gateway"]
+        GW["Kong/APISIX"]
+    end
+    
+    subgraph Services["微服务层"]
+        Capability["Capability Service\n(API/Event/Callback)"]
+        Permission["Permission Service"]
+        Approval["Approval Service"]
+    end
+    
+    subgraph MQ["消息队列"]
+        Kafka["Kafka/RabbitMQ"]
+    end
+    
+    subgraph GatewayService["网关服务"]
+        ApiGW["API Gateway"]
+        EventGW["Event Gateway"]
+        CallbackGW["Callback Gateway"]
+    end
+    
+    GW --> Capability
+    GW --> Permission
+    GW --> Approval
+    
+    Capability --> Kafka
+    Permission --> Kafka
+    Approval --> Kafka
+    
+    Kafka --> GatewayService
+    
+    style Gateway fill:#e8f5e9,stroke:#2e7d32
+    style Services fill:#e3f2fd,stroke:#1565c0
+    style MQ fill:#fff3e0,stroke:#ef6c00
+    style GatewayService fill:#f3e5f5,stroke:#7b1fa2
 ```
 
 #### 优点
@@ -322,36 +317,43 @@ graph TB
 - **网关服务**：独立的消费网关
 
 #### 架构图
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         能力开放平台 - BFF 架构                           │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌────────────────────┐    ┌────────────────────┐                       │
-│  │   管理端 (React)    │    │   消费端 (React)    │                       │
-│  │   (运营/提供方)     │    │   (消费方)          │                       │
-│  └────────────────────┘    └────────────────────┘                       │
-│            │                        │                                    │
-│            ▼                        ▼                                    │
-│  ┌────────────────────┐    ┌────────────────────┐                       │
-│  │   Admin BFF        │    │   Consumer BFF     │                       │
-│  │   (Spring Boot)    │    │   (Spring Boot)    │                       │
-│  └────────────────────┘    └────────────────────┘                       │
-│            │                        │                                    │
-│            └────────────────────────┼────────────────────────┘           │
-│                                     ▼                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      Core Service (Spring Boot)                  │    │
-│  │  (分组/API/事件/回调/权限/审批 核心逻辑)                          │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                     │                                    │
-│                                     ▼                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                      Gateway Service                             │    │
-│  │  (API Gateway / Event Gateway / Callback Gateway)               │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+
+```mermaid
+graph TB
+    subgraph AdminFront["管理端"]
+        AdminReact["React\n(运营/提供方)"]
+    end
+    
+    subgraph ConsumerFront["消费端"]
+        ConsumerReact["React\n(消费方)"]
+    end
+    
+    subgraph BFF["BFF 层"]
+        AdminBFF["Admin BFF\n(Spring Boot)"]
+        ConsumerBFF["Consumer BFF\n(Spring Boot)"]
+    end
+    
+    subgraph Core["Core Service"]
+        CoreService["Spring Boot\n(分组/API/事件/回调/权限/审批)"]
+    end
+    
+    subgraph GatewayService["网关服务"]
+        ApiGW["API Gateway"]
+        EventGW["Event Gateway"]
+        CallbackGW["Callback Gateway"]
+    end
+    
+    AdminReact --> AdminBFF
+    ConsumerReact --> ConsumerBFF
+    AdminBFF --> CoreService
+    ConsumerBFF --> CoreService
+    CoreService --> GatewayService
+    
+    style AdminFront fill:#e8f5e9,stroke:#2e7d32
+    style ConsumerFront fill:#fff3e0,stroke:#ef6c00
+    style BFF fill:#e3f2fd,stroke:#1565c0
+    style Core fill:#f3e5f5,stroke:#7b1fa2
+    style GatewayService fill:#ffebee,stroke:#c62828
 ```
 
 #### 优点
