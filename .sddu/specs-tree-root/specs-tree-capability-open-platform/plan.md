@@ -609,7 +609,7 @@ open-app/
 | **主键类型** | BIGINT(20)，自增主键 |
 | **主键命名** | 统一使用 `id` |
 | **生成策略** | 数据库自增，AUTO_INCREMENT |
-| **外键类型** | BIGINT(20)，与主键类型一致 |
+| **关联字段** | 使用逻辑外键（存储关联 ID），不使用物理外键约束 |
 
 #### 索引规范
 
@@ -617,7 +617,8 @@ open-app/
 |------|------|
 | **索引命名** | `idx_字段名` 或 `idx_字段名1_字段名2` |
 | **唯一索引命名** | `uk_字段名` |
-| **外键命名** | `fk_表名_字段名` |
+
+> ⚠️ **禁止使用外键**：所有表关联关系通过存储逻辑字段实现，不使用数据库物理外键约束（FOREIGN KEY）。关联关系由应用层维护。
 
 #### 枚举字段规范
 
@@ -709,8 +710,7 @@ CREATE TABLE `openplatform_category_owner_t` (
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    UNIQUE KEY `uk_category_user` (`category_id`, `user_id`),
-    CONSTRAINT `fk_category_owner_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`) ON DELETE CASCADE
+    UNIQUE KEY `uk_category_user` (`category_id`, `user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类责任人关联表';
 
 -- ============================================
@@ -731,8 +731,7 @@ CREATE TABLE `openplatform_api_t` (
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_category_id` (`category_id`),
-    KEY `idx_status` (`status`),
-    CONSTRAINT `fk_api_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`)
+    KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源表';
 
 -- ============================================
@@ -752,8 +751,7 @@ CREATE TABLE `openplatform_event_t` (
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_category_id` (`category_id`),
-    KEY `idx_topic` (`topic`),
-    CONSTRAINT `fk_event_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`)
+    KEY `idx_topic` (`topic`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源表';
 
 -- ============================================
@@ -771,8 +769,7 @@ CREATE TABLE `openplatform_callback_t` (
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_category_id` (`category_id`),
-    CONSTRAINT `fk_callback_category` FOREIGN KEY (`category_id`) REFERENCES `openplatform_category_t`(`id`)
+    KEY `idx_category_id` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
 
 -- ============================================
@@ -815,8 +812,7 @@ CREATE TABLE `openplatform_subscription_t` (
     UNIQUE KEY `uk_app_permission` (`app_id`, `permission_id`),
     KEY `idx_app_id` (`app_id`),
     KEY `idx_permission_id` (`permission_id`),
-    KEY `idx_status` (`status`),
-    CONSTRAINT `fk_subscription_permission` FOREIGN KEY (`permission_id`) REFERENCES `openplatform_permission_t`(`id`)
+    KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订阅关系表';
 
 -- ============================================
@@ -855,8 +851,7 @@ CREATE TABLE `openplatform_approval_record_t` (
     KEY `idx_flow_id` (`flow_id`),
     KEY `idx_business` (`business_type`, `business_id`),
     KEY `idx_applicant` (`applicant_id`),
-    KEY `idx_status` (`status`),
-    CONSTRAINT `fk_approval_record_flow` FOREIGN KEY (`flow_id`) REFERENCES `openplatform_approval_flow_t`(`id`)
+    KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批记录表';
 
 -- ============================================
@@ -873,8 +868,7 @@ CREATE TABLE `openplatform_approval_log_t` (
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_record_id` (`record_id`),
-    CONSTRAINT `fk_approval_log_record` FOREIGN KEY (`record_id`) REFERENCES `openplatform_approval_record_t`(`id`)
+    KEY `idx_record_id` (`record_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
 
 -- ============================================
