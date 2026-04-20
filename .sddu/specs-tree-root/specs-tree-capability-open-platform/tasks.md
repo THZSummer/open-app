@@ -1,10 +1,12 @@
 # 任务分解：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**任务版本**: v1.0  
+**任务版本**: v1.1  
 **创建日期**: 2026-04-20  
+**更新日期**: 2026-04-20  
 **任务作者**: SDDU Tasks Agent  
-**技术规划**: plan.md v1.26
+**技术规划**: plan.md v1.26  
+**接口设计**: plan-api.md v1.27
 
 ---
 
@@ -13,6 +15,7 @@
 | 维度 | 统计 |
 |------|------|
 | **总任务数** | 13 个 |
+| **接口覆盖** | 56 个接口（100%覆盖） |
 | **复杂度分布** | S 级 3 个，M 级 7 个，L 级 3 个 |
 | **执行波次** | 5 个波次 |
 | **预估工期** | 103 人天（约 5 人月） |
@@ -30,20 +33,20 @@ graph TB
     end
     
     subgraph Wave2["Wave 2: 核心资源管理"]
-        T4["TASK-004<br/>分类管理"]
-        T5["TASK-005<br/>API管理"]
-        T6["TASK-006<br/>事件管理"]
-        T7["TASK-007<br/>回调管理"]
+        T4["TASK-004<br/>分类管理<br/>#1-8"]
+        T5["TASK-005<br/>API管理<br/>#9-14"]
+        T6["TASK-006<br/>事件管理<br/>#15-20"]
+        T7["TASK-007<br/>回调管理<br/>#21-26"]
     end
     
     subgraph Wave3["Wave 3: 权限与审批"]
-        T8["TASK-008<br/>权限管理"]
-        T9["TASK-009<br/>审批管理"]
+        T8["TASK-008<br/>权限管理<br/>#27-40"]
+        T9["TASK-009<br/>审批管理<br/>#41-49"]
     end
     
     subgraph Wave4["Wave 4: 网关服务"]
-        T10["TASK-010<br/>api-server"]
-        T11["TASK-11<br/>event-server"]
+        T10["TASK-010<br/>api-server<br/>#50-52,#53,#56"]
+        T11["TASK-011<br/>event-server<br/>#54-55"]
     end
     
     subgraph Wave5["Wave 5: 前端与联调"]
@@ -73,7 +76,8 @@ graph TB
 
 **复杂度**: L  
 **前置依赖**: 无  
-**执行波次**: 1
+**执行波次**: 1  
+**接口覆盖**: 无（基础框架）
 
 ### 描述
 
@@ -128,7 +132,8 @@ curl http://localhost:8082/actuator/health
 
 **复杂度**: M  
 **前置依赖**: 无  
-**执行波次**: 1
+**执行波次**: 1  
+**接口覆盖**: 无（基础框架）
 
 ### 描述
 
@@ -167,13 +172,14 @@ curl http://localhost:3000
 
 ## TASK-003: 数据库表设计与初始化
 
-**复杂度**: M  
+**复杂度**: S  
 **前置依赖**: 无  
-**执行波次**: 1
+**执行波次**: 1  
+**接口覆盖**: 无（数据库设计）
 
 ### 描述
 
-根据 plan-db.md 创建数据库表结构，包括 15 张表（10 张主表 + 4 张属性表 + 1 张关联表），编写 SQL 初始化脚本。
+根据 plan.md §4 数据库设计创建数据库表结构，包括 15 张表（10 张主表 + 4 张属性表 + 1 张关联表），编写 SQL 初始化脚本。
 
 ### 涉及文件
 
@@ -202,11 +208,14 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_%'"
 
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003  
-**执行波次**: 2
+**执行波次**: 2  
+**接口覆盖**: 8 个接口（#1-8）
 
 ### 描述
 
-实现分类管理功能，包括分类树形结构 CRUD、责任人配置等，覆盖 FR-001、FR-002，共 8 个接口。
+实现分类管理功能，包括分类树形结构 CRUD、责任人配置等，覆盖 FR-001、FR-002。
+
+> **设计要点**：分类接口同时作为权限树的"查树"接口，支持懒加载模式。
 
 ### 涉及文件
 
@@ -222,13 +231,14 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_%'"
 
 ### 验收标准
 
-- [ ] GET `/api/v1/categories` 返回树形分类列表，支持 `category_alias` 过滤
-- [ ] POST `/api/v1/categories` 创建分类成功，`path` 字段自动生成
-- [ ] PUT `/api/v1/categories/:id` 更新分类成功
-- [ ] DELETE `/api/v1/categories/:id` 删除分类，检查关联资源
-- [ ] POST `/api/v1/categories/:id/owners` 添加责任人成功
-- [ ] GET `/api/v1/categories/:id/owners` 返回责任人列表
-- [ ] DELETE `/api/v1/categories/:id/owners/:userId` 移除责任人成功
+- [ ] **#1** GET `/api/v1/categories` 返回树形分类列表，支持 `category_alias` 过滤（权限树查树）
+- [ ] **#2** GET `/api/v1/categories/:id` 返回分类详情
+- [ ] **#3** POST `/api/v1/categories` 创建分类成功，`path` 字段自动生成
+- [ ] **#4** PUT `/api/v1/categories/:id` 更新分类成功
+- [ ] **#5** DELETE `/api/v1/categories/:id` 删除分类，检查关联资源
+- [ ] **#6** POST `/api/v1/categories/:id/owners` 添加责任人成功
+- [ ] **#7** GET `/api/v1/categories/:id/owners` 返回责任人列表
+- [ ] **#8** DELETE `/api/v1/categories/:id/owners/:userId` 移除责任人成功
 - [ ] 树形子分类查询优化生效（通过 `path` 字段）
 
 ### 验证命令
@@ -239,7 +249,7 @@ curl -X POST http://localhost:8080/api/v1/categories \
   -H "Content-Type: application/json" \
   -d '{"category_alias":"app_type_a","name_cn":"A类应用权限","name_en":"App Type A Permissions"}'
 
-# 获取分类树
+# 获取分类树（权限树查树）
 curl http://localhost:8080/api/v1/categories?category_alias=app_type_a
 
 # 添加责任人
@@ -254,11 +264,12 @@ curl -X POST http://localhost:8080/api/v1/categories/1/owners \
 
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003, TASK-004  
-**执行波次**: 2
+**执行波次**: 2  
+**接口覆盖**: 6 个接口（#9-14）
 
 ### 描述
 
-实现 API 资源管理功能，包括 API 注册、编辑、删除、撤回等，覆盖 FR-004~FR-007，共 6 个接口。API 注册时附带权限定义。
+实现 API 资源管理功能，包括 API 注册、编辑、删除、撤回等，覆盖 FR-004~FR-007。API 注册时附带权限定义。
 
 ### 涉及文件
 
@@ -274,13 +285,14 @@ curl -X POST http://localhost:8080/api/v1/categories/1/owners \
 
 ### 验收标准
 
-- [ ] GET `/api/v1/apis` 返回 API 列表，支持按分类过滤
-- [ ] GET `/api/v1/apis/:id` 返回 API 详情及权限信息
-- [ ] POST `/api/v1/apis` 注册 API 成功，同时创建权限资源
-- [ ] PUT `/api/v1/apis/:id` 更新 API 成功，核心属性变更触发审批
-- [ ] DELETE `/api/v1/apis/:id` 删除 API，检查订阅关系
-- [ ] POST `/api/v1/apis/:id/withdraw` 撤回审核中的 API
+- [ ] **#9** GET `/api/v1/apis` 返回 API 列表，支持按分类过滤
+- [ ] **#10** GET `/api/v1/apis/:id` 返回 API 详情及权限信息、属性
+- [ ] **#11** POST `/api/v1/apis` 注册 API 成功，同时创建权限资源
+- [ ] **#12** PUT `/api/v1/apis/:id` 更新 API 成功，核心属性变更触发审批
+- [ ] **#13** DELETE `/api/v1/apis/:id` 删除 API，检查订阅关系
+- [ ] **#14** POST `/api/v1/apis/:id/withdraw` 撤回审核中的 API
 - [ ] API 属性表 KV 模式正确存储扩展属性
+- [ ] Scope 命名格式正确：`api:{module}:{identifier}`
 
 ### 验证命令
 
@@ -300,11 +312,12 @@ curl http://localhost:8080/api/v1/apis/100
 
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003, TASK-004  
-**执行波次**: 2
+**执行波次**: 2  
+**接口覆盖**: 6 个接口（#15-20）
 
 ### 描述
 
-实现事件资源管理功能，包括事件注册、编辑、删除、撤回等，覆盖 FR-008~FR-011，共 6 个接口。事件注册时附带权限定义。
+实现事件资源管理功能，包括事件注册、编辑、删除、撤回等，覆盖 FR-008~FR-011。事件注册时附带权限定义。
 
 ### 涉及文件
 
@@ -320,12 +333,12 @@ curl http://localhost:8080/api/v1/apis/100
 
 ### 验收标准
 
-- [ ] GET `/api/v1/events` 返回事件列表，支持按分类过滤
-- [ ] GET `/api/v1/events/:id` 返回事件详情及权限信息
-- [ ] POST `/api/v1/events` 注册事件成功，同时创建权限资源，Topic 唯一性校验
-- [ ] PUT `/api/v1/events/:id` 更新事件成功
-- [ ] DELETE `/api/v1/events/:id` 删除事件，检查订阅关系
-- [ ] POST `/api/v1/events/:id/withdraw` 撤回审核中的事件
+- [ ] **#15** GET `/api/v1/events` 返回事件列表，支持按分类过滤
+- [ ] **#16** GET `/api/v1/events/:id` 返回事件详情及权限信息、属性
+- [ ] **#17** POST `/api/v1/events` 注册事件成功，同时创建权限资源，Topic 唯一性校验
+- [ ] **#18** PUT `/api/v1/events/:id` 更新事件成功
+- [ ] **#19** DELETE `/api/v1/events/:id` 删除事件，检查订阅关系
+- [ ] **#20** POST `/api/v1/events/:id/withdraw` 撤回审核中的事件
 - [ ] Scope 命名格式正确：`event:{module}:{identifier}`
 
 ### 验证命令
@@ -346,11 +359,12 @@ curl http://localhost:8080/api/v1/events
 
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003, TASK-004  
-**执行波次**: 2
+**执行波次**: 2  
+**接口覆盖**: 6 个接口（#21-26）
 
 ### 描述
 
-实现回调资源管理功能，包括回调注册、编辑、删除、撤回等，覆盖 FR-012~FR-015，共 6 个接口。回调注册时附带权限定义。
+实现回调资源管理功能，包括回调注册、编辑、删除、撤回等，覆盖 FR-012~FR-015。回调注册时附带权限定义。
 
 ### 涉及文件
 
@@ -366,12 +380,12 @@ curl http://localhost:8080/api/v1/events
 
 ### 验收标准
 
-- [ ] GET `/api/v1/callbacks` 返回回调列表，支持按分类过滤
-- [ ] GET `/api/v1/callbacks/:id` 返回回调详情及权限信息
-- [ ] POST `/api/v1/callbacks` 注册回调成功，同时创建权限资源
-- [ ] PUT `/api/v1/callbacks/:id` 更新回调成功
-- [ ] DELETE `/api/v1/callbacks/:id` 删除回调，检查订阅关系
-- [ ] POST `/api/v1/callbacks/:id/withdraw` 撤回审核中的回调
+- [ ] **#21** GET `/api/v1/callbacks` 返回回调列表，支持按分类过滤
+- [ ] **#22** GET `/api/v1/callbacks/:id` 返回回调详情及权限信息、属性
+- [ ] **#23** POST `/api/v1/callbacks` 注册回调成功，同时创建权限资源
+- [ ] **#24** PUT `/api/v1/callbacks/:id` 更新回调成功
+- [ ] **#25** DELETE `/api/v1/callbacks/:id` 删除回调，检查订阅关系
+- [ ] **#26** POST `/api/v1/callbacks/:id/withdraw` 撤回审核中的回调
 - [ ] Scope 命名格式正确：`callback:{module}:{identifier}`
 
 ### 验证命令
@@ -392,11 +406,16 @@ curl http://localhost:8080/api/v1/callbacks
 
 **复杂度**: L  
 **前置依赖**: TASK-001, TASK-003, TASK-004, TASK-005, TASK-006, TASK-007  
-**执行波次**: 3
+**执行波次**: 3  
+**接口覆盖**: 14 个接口（#27-40）
 
 ### 描述
 
-实现权限申请与订阅管理功能，包括 API/事件/回调权限树查询、申请提交、订阅配置、撤回等，覆盖 FR-016~FR-024，共 14 个接口。
+实现权限申请与订阅管理功能，覆盖 FR-016~FR-024。
+
+> **权限树设计说明**：采用懒加载模式
+> - **查树**：使用分类接口 `GET /api/v1/categories`（TASK-004 #1）
+> - **查权限**：点击分类节点后调用 `GET /api/v1/categories/:id/apis|events|callbacks` 获取权限列表
 
 ### 涉及文件
 
@@ -415,31 +434,31 @@ curl http://localhost:8080/api/v1/callbacks
 
 ### 验收标准
 
-**API 权限管理**：
-- [ ] GET `/api/v1/apps/:appId/apis` 返回应用 API 权限列表
-- [ ] GET `/api/v1/permissions/apis/tree` 返回 API 权限树（抽屉数据源）
-- [ ] POST `/api/v1/apps/:appId/apis/subscribe` 申请 API 权限，生成独立审批单
-- [ ] POST `/api/v1/apps/:appId/apis/:id/withdraw` 撤回审核中的申请
+**API 权限管理（#27-30）**：
+- [ ] **#27** GET `/api/v1/apps/:appId/apis` 返回应用 API 权限列表
+- [ ] **#28** GET `/api/v1/categories/:id/apis` 返回分类下 API 权限列表（权限树懒加载）
+- [ ] **#29** POST `/api/v1/apps/:appId/apis/subscribe` 申请 API 权限，生成独立审批单
+- [ ] **#30** POST `/api/v1/apps/:appId/apis/:id/withdraw` 撤回审核中的申请
 
-**事件权限管理**：
-- [ ] GET `/api/v1/apps/:appId/events` 返回应用事件订阅列表
-- [ ] GET `/api/v1/permissions/events/tree` 返回事件权限树
-- [ ] POST `/api/v1/apps/:appId/events/subscribe` 申请事件权限
-- [ ] PUT `/api/v1/apps/:appId/events/:id/config` 配置事件消费参数（通道/地址/认证）
-- [ ] POST `/api/v1/apps/:appId/events/:id/withdraw` 撤回审核中的申请
+**事件权限管理（#31-35）**：
+- [ ] **#31** GET `/api/v1/apps/:appId/events` 返回应用事件订阅列表
+- [ ] **#32** GET `/api/v1/categories/:id/events` 返回分类下事件权限列表（权限树懒加载）
+- [ ] **#33** POST `/api/v1/apps/:appId/events/subscribe` 申请事件权限
+- [ ] **#34** PUT `/api/v1/apps/:appId/events/:id/config` 配置事件消费参数（通道/地址/认证）
+- [ ] **#35** POST `/api/v1/apps/:appId/events/:id/withdraw` 撤回审核中的申请
 
-**回调权限管理**：
-- [ ] GET `/api/v1/apps/:appId/callbacks` 返回应用回调订阅列表
-- [ ] GET `/api/v1/permissions/callbacks/tree` 返回回调权限树
-- [ ] POST `/api/v1/apps/:appId/callbacks/subscribe` 申请回调权限
-- [ ] PUT `/api/v1/apps/:appId/callbacks/:id/config` 配置回调消费参数
-- [ ] POST `/api/v1/apps/:appId/callbacks/:id/withdraw` 撤回审核中的申请
+**回调权限管理（#36-40）**：
+- [ ] **#36** GET `/api/v1/apps/:appId/callbacks` 返回应用回调订阅列表
+- [ ] **#37** GET `/api/v1/categories/:id/callbacks` 返回分类下回调权限列表（权限树懒加载）
+- [ ] **#38** POST `/api/v1/apps/:appId/callbacks/subscribe` 申请回调权限
+- [ ] **#39** PUT `/api/v1/apps/:appId/callbacks/:id/config` 配置回调消费参数
+- [ ] **#40** POST `/api/v1/apps/:appId/callbacks/:id/withdraw` 撤回审核中的申请
 
 ### 验证命令
 
 ```bash
-# 获取 API 权限树
-curl http://localhost:8080/api/v1/permissions/apis/tree?category_alias=app_type_a
+# 获取分类下 API 权限列表（权限树懒加载）
+curl http://localhost:8080/api/v1/categories/2/apis
 
 # 申请 API 权限
 curl -X POST http://localhost:8080/api/v1/apps/100/apis/subscribe \
@@ -458,11 +477,12 @@ curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
 
 **复杂度**: L  
 **前置依赖**: TASK-001, TASK-003, TASK-008  
-**执行波次**: 3
+**执行波次**: 3  
+**接口覆盖**: 9 个接口（#41-49）
 
 ### 描述
 
-实现审批管理功能，包括审批流程配置、审批执行、待办查询等，覆盖 FR-025~FR-027，共 10 个接口。支持动态审批流配置。
+实现审批管理功能，包括审批流程配置、审批执行、待办查询等，覆盖 FR-025~FR-027。支持动态审批流配置。
 
 ### 涉及文件
 
@@ -482,18 +502,18 @@ curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
 
 ### 验收标准
 
-**审批流程配置**：
-- [ ] GET `/api/v1/approval-flows` 返回审批流程模板列表
-- [ ] GET `/api/v1/approval-flows/:id` 返回审批流程模板详情
-- [ ] POST `/api/v1/approval-flows` 创建审批流程模板
-- [ ] PUT `/api/v1/approval-flows/:id` 更新审批流程模板
+**审批流程配置（#41-44）**：
+- [ ] **#41** GET `/api/v1/approval-flows` 返回审批流程模板列表
+- [ ] **#42** GET `/api/v1/approval-flows/:id` 返回审批流程模板详情（含节点配置）
+- [ ] **#43** POST `/api/v1/approval-flows` 创建审批流程模板
+- [ ] **#44** PUT `/api/v1/approval-flows/:id` 更新审批流程模板
 
-**审批执行**：
-- [ ] GET `/api/v1/approvals/pending` 返回待审批列表
-- [ ] GET `/api/v1/approvals/:id` 返回审批详情
-- [ ] POST `/api/v1/approvals/:id/approve` 同意审批，更新订阅状态
-- [ ] POST `/api/v1/approvals/:id/reject` 驳回审批，需填写原因
-- [ ] POST `/api/v1/approvals/:id/cancel` 撤销审批
+**审批执行（#45-49）**：
+- [ ] **#45** GET `/api/v1/approvals/pending` 返回待审批列表
+- [ ] **#46** GET `/api/v1/approvals/:id` 返回审批详情（含节点状态、操作日志）
+- [ ] **#47** POST `/api/v1/approvals/:id/approve` 同意审批，更新订阅状态
+- [ ] **#48** POST `/api/v1/approvals/:id/reject` 驳回审批，需填写原因
+- [ ] **#49** POST `/api/v1/approvals/:id/cancel` 撤销审批
 
 **审批引擎**：
 - [ ] 审批通过后自动激活订阅关系（status=1）
@@ -523,38 +543,41 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003, TASK-008  
-**执行波次**: 4
+**执行波次**: 4  
+**接口覆盖**: 5 个接口（#50-52, #53, #56）
 
 ### 描述
 
-实现 api-server 消费网关功能，包括 API 认证鉴权、Scope 用户授权、数据查询接口等，覆盖 FR-028、FR-031，共 7 个接口。
+实现 api-server 消费网关功能，包括 API 认证鉴权、Scope 用户授权、数据查询接口等，覆盖 FR-028、FR-031。
+
+> **服务定位**：由外向内（消费方 → 提供方），api-server 负责 API 认证鉴权和 Scope 授权管理。
 
 ### 涉及文件
 
-- [NEW] `api-server/src/main/java/.../gateway/ApiGatewayController.java`
+- [NEW] `api-server/src/main/java/.../gateway/ApiGatewayController.java` - API 网关
 - [NEW] `api-server/src/main/java/.../gateway/ApiGatewayService.java`
-- [NEW] `api-server/src/main/java/.../scope/ScopeController.java`
+- [NEW] `api-server/src/main/java/.../scope/ScopeController.java` - Scope 授权
 - [NEW] `api-server/src/main/java/.../scope/ScopeService.java`
-- [NEW] `api-server/src/main/java/.../data/DataQueryController.java`
+- [NEW] `api-server/src/main/java/.../data/DataQueryController.java` - 数据查询接口
 - [NEW] `api-server/src/main/java/.../data/DataQueryService.java`
 - [NEW] `api-server/src/main/java/.../common/filter/AuthFilter.java`
 - [NEW] `api-server/src/main/java/.../common/util/SignatureUtil.java`
 
 ### 验收标准
 
-**API 网关**：
-- [ ] ANY `/gateway/api/*` API 请求代理与鉴权生效
+**Scope 用户授权（#50-52）**：
+- [ ] **#50** GET `/api/v1/user-authorizations` 返回用户授权列表
+- [ ] **#51** POST `/api/v1/user-authorizations` 用户授权成功（支持有效期设置）
+- [ ] **#52** DELETE `/api/v1/user-authorizations/:id` 取消授权
+
+**API 网关（#53）**：
+- [ ] **#53** ANY `/gateway/api/*` API 请求代理与鉴权生效
 - [ ] 验证应用身份（AKSK/Bearer Token）
 - [ ] 查询应用订阅关系，验证请求路径在授权范围内
 - [ ] 转发请求到内部中台网关
 
-**Scope 用户授权**：
-- [ ] GET `/api/v1/user-authorizations` 返回用户授权列表
-- [ ] POST `/api/v1/user-authorizations` 用户授权成功
-- [ ] DELETE `/api/v1/user-authorizations/:id` 取消授权
-
-**数据查询接口**：
-- [ ] GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
+**数据查询接口（#56）**：
+- [ ] **#56** GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
 - [ ] 提供 API/事件/回调/订阅等数据查询接口
 
 ### 验证命令
@@ -583,11 +606,16 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-010  
-**执行波次**: 4
+**执行波次**: 4  
+**接口覆盖**: 2 个接口（#54-55）
 
 ### 描述
 
-实现 event-server 事件/回调网关功能，包括事件消费网关、回调消费网关等，覆盖 FR-029、FR-030，共 2 个接口。通过调用 api-server 获取数据。
+实现 event-server 事件/回调网关功能，覆盖 FR-029、FR-030。
+
+> **服务定位**：由内向外（提供方 → 消费方），event-server 负责事件和回调的分发。
+> - **事件流程**：提供方 → 内部消息网关 → event-server → 消费方
+> - **回调流程**：提供方 → event-server → 消费方（不经内部消息网关）
 
 ### 涉及文件
 
@@ -601,15 +629,15 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 
 ### 验收标准
 
-**事件消费网关**：
-- [ ] POST `/gateway/events/publish` 事件发布接口可用
+**事件消费网关（#54）**：
+- [ ] **#54** POST `/gateway/events/publish` 事件发布接口可用
 - [ ] 验证 Topic 对应的事件资源存在
-- [ ] 查询订阅该事件的应用列表（通过 api-server）
+- [ ] 查询订阅该事件的应用列表（通过 api-server #56 接口）
 - [ ] 按订阅配置分发事件（WebHook/内部消息队列）
 - [ ] P99 分发延迟 < 1s
 
-**回调消费网关**：
-- [ ] POST `/gateway/callbacks/invoke` 回调触发接口可用
+**回调消费网关（#55）**：
+- [ ] **#55** POST `/gateway/callbacks/invoke` 回调触发接口可用
 - [ ] 验证回调 Scope 存在
 - [ ] 查询订阅该回调的应用列表
 - [ ] 按订阅配置调用三方回调地址
@@ -638,11 +666,14 @@ curl -X POST http://localhost:8082/gateway/callbacks/invoke \
 
 **复杂度**: L  
 **前置依赖**: TASK-002, TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-009  
-**执行波次**: 5
+**执行波次**: 5  
+**接口覆盖**: 无（前端页面）
 
 ### 描述
 
-开发 open-web 前端页面，包括分类管理、API/事件/回调管理、权限申请、审批中心等页面，共 18 个页面。面向三方应用人员的界面按 `/front/README.md` 流程执行。
+开发 open-web 前端页面，包括分类管理、API/事件/回调管理、权限申请、审批中心等页面。
+
+> **设计流程**：面向三方应用人员的界面按 `/front/README.md` 流程执行，其他管理页面在此设计。
 
 ### 涉及文件
 
@@ -655,7 +686,7 @@ curl -X POST http://localhost:8082/gateway/callbacks/invoke \
 - [NEW] `open-web/src/pages/event/EventForm.tsx` - 事件注册/编辑表单
 - [NEW] `open-web/src/pages/callback/CallbackList.tsx` - 回调管理页面
 - [NEW] `open-web/src/pages/callback/CallbackForm.tsx` - 回调注册/编辑表单
-- [NEW] `open-web/src/pages/permission/ApiPermissionDrawer.tsx` - API 权限抽屉
+- [NEW] `open-web/src/pages/permission/ApiPermissionDrawer.tsx` - API 权限抽屉（懒加载）
 - [NEW] `open-web/src/pages/permission/EventPermissionDrawer.tsx` - 事件权限抽屉
 - [NEW] `open-web/src/pages/permission/CallbackPermissionDrawer.tsx` - 回调权限抽屉
 - [NEW] `open-web/src/pages/approval/ApprovalCenter.tsx` - 审批中心页面
@@ -676,9 +707,9 @@ curl -X POST http://localhost:8082/gateway/callbacks/invoke \
 - [ ] 回调管理页面可查看本分类回调列表，进行注册/编辑/删除
 
 **消费方页面**：
-- [ ] API 权限申请页面可浏览权限树，提交申请（抽屉模式）
-- [ ] 事件权限申请页面可浏览权限树，提交申请，配置消费参数
-- [ ] 回调权限申请页面可浏览权限树，提交申请，配置消费参数
+- [ ] API 权限申请页面采用懒加载模式（点击分类节点加载权限列表）
+- [ ] 事件权限申请页面可提交申请，配置消费参数
+- [ ] 回调权限申请页面可提交申请，配置消费参数
 
 **交互规范**：
 - [ ] 权限申请提交后关闭抽屉，展示 Toast 提示
@@ -699,7 +730,8 @@ npm run dev
 
 **复杂度**: M  
 **前置依赖**: TASK-001~TASK-012  
-**执行波次**: 5
+**执行波次**: 5  
+**接口覆盖**: 无（测试与联调）
 
 ### 描述
 
@@ -744,7 +776,21 @@ curl -w "@curl-format.txt" http://localhost:8080/api/v1/apis?category_id=2
 
 ## 附录
 
-### A. 任务依赖关系图
+### A. 接口分布汇总
+
+| 任务 | 服务 | 接口编号 | 接口数量 |
+|------|------|----------|----------|
+| TASK-004 | open-server | #1-8 | 8 |
+| TASK-005 | open-server | #9-14 | 6 |
+| TASK-006 | open-server | #15-20 | 6 |
+| TASK-007 | open-server | #21-26 | 6 |
+| TASK-008 | open-server | #27-40 | 14 |
+| TASK-009 | open-server | #41-49 | 9 |
+| TASK-010 | api-server | #50-52, #53, #56 | 5 |
+| TASK-011 | event-server | #54-55 | 2 |
+| **总计** | - | **#1-56** | **56** |
+
+### B. 任务依赖关系图
 
 ```mermaid
 graph TB
@@ -753,7 +799,7 @@ graph TB
     T1 --> T6[TASK-006<br/>事件管理]
     T1 --> T7[TASK-007<br/>回调管理]
     T1 --> T10[TASK-010<br/>api-server]
-    T1 --> T11[TASK-11<br/>event-server]
+    T1 --> T11[TASK-011<br/>event-server]
     
     T3[TASK-003<br/>数据库] --> T4
     T3 --> T5
@@ -801,28 +847,31 @@ graph TB
     T12 --> T13
 ```
 
-### B. 工程与服务对照
+### C. 权限树懒加载模式说明
 
-| 任务 | 主要工程 | 服务 |
-|------|----------|------|
-| TASK-001 | open-server, api-server, event-server | 3 个 Spring Boot 应用 |
-| TASK-002 | open-web | 1 个 React SPA |
-| TASK-003 | docs/sql | SQL 脚本 |
-| TASK-004~009 | open-server | open-server 管理模块 |
-| TASK-010 | api-server | api-server 消费网关 |
-| TASK-011 | event-server | event-server 事件/回调网关 |
-| TASK-012 | open-web | 前端页面 |
-| TASK-013 | 所有工程 | 测试与联调 |
+**接口设计**：
+- **查树**：`GET /api/v1/categories`（复用分类接口 #1）
+- **查权限**：
+  - `GET /api/v1/categories/:id/apis`（#28）- 获取分类下 API 权限列表
+  - `GET /api/v1/categories/:id/events`（#32）- 获取分类下事件权限列表
+  - `GET /api/v1/categories/:id/callbacks`（#37）- 获取分类下回调权限列表
 
-### C. 复杂度说明
+**前端交互**：
+1. 用户点击权限申请入口
+2. 加载分类树（`GET /api/v1/categories?category_alias=xxx`）
+3. 用户点击某个分类节点
+4. 懒加载该分类下的权限列表（`GET /api/v1/categories/:id/apis`）
+5. 用户勾选权限，提交申请
+
+### D. 复杂度说明
 
 | 等级 | 定义 | 本文档任务 |
 |------|------|----------|
-| **S** | 单一文件，<50 行代码，无外部依赖 | TASK-003（SQL 脚本）等 3 个 |
-| **M** | 多文件，<200 行代码，有简单依赖 | TASK-002, TASK-004~007, TASK-010~011, TASK-013 等 7 个 |
-| **L** | 复杂变更，>200 行代码，多依赖 | TASK-001, TASK-008, TASK-009, TASK-012 等 3 个 |
+| **S** | 单一文件，<50 行代码，无外部依赖 | TASK-003（SQL 脚本） |
+| **M** | 多文件，<200 行代码，有简单依赖 | TASK-002, TASK-004~007, TASK-010~011, TASK-013 |
+| **L** | 复杂变更，>200 行代码，多依赖 | TASK-001, TASK-008, TASK-009, TASK-012 |
 
 ---
 
-**文档状态**: ✅ 任务分解完成  
+**文档状态**: ✅ 任务分解完成（v1.1）  
 **下一步**: 运行 `@sddu-build TASK-001` 开始实现第一个任务
