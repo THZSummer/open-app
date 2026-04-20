@@ -1,0 +1,511 @@
+{
+  "feature_id": "CAP-OPEN-001",
+  "feature_name": "能力开放平台（Capability Open Platform）",
+  "version": "1.0.0",
+  "created_at": "2026-04-20",
+  "author": "SDDU Tasks Agent",
+  "plan_version": "plan.md v1.26",
+  "spec_version": "spec.md v1.49",
+  "summary": {
+    "total_tasks": 13,
+    "complexity_distribution": {
+      "S": 3,
+      "M": 7,
+      "L": 3
+    },
+    "total_waves": 5,
+    "estimated_man_days": 103
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "name": "后端框架初始化",
+      "description": "初始化三个后端 Spring Boot 工程：open-server、api-server、event-server，搭建项目基础框架，包括公共配置、异常处理、拦截器、Mock 策略等基础设施。",
+      "complexity": "L",
+      "dependencies": [],
+      "wave": 1,
+      "projects": ["open-server", "api-server", "event-server"],
+      "files": {
+        "new": [
+          "open-server/pom.xml",
+          "open-server/src/main/java/.../OpenServerApplication.java",
+          "open-server/src/main/java/.../common/config/*.java",
+          "open-server/src/main/java/.../common/exception/*.java",
+          "open-server/src/main/java/.../common/interceptor/*.java",
+          "open-server/src/main/resources/application.yml",
+          "api-server/pom.xml",
+          "api-server/src/main/java/.../ApiServerApplication.java",
+          "api-server/src/main/java/.../common/config/*.java",
+          "api-server/src/main/resources/application.yml",
+          "event-server/pom.xml",
+          "event-server/src/main/java/.../EventServerApplication.java",
+          "event-server/src/main/java/.../common/config/*.java",
+          "event-server/src/main/resources/application.yml"
+        ],
+        "modify": [
+          "pom.xml"
+        ]
+      },
+      "acceptance_criteria": [
+        "open-server 工程可独立启动，访问 http://localhost:8080/actuator/health 返回健康状态",
+        "api-server 工程可独立启动，访问 http://localhost:8081/actuator/health 返回健康状态",
+        "event-server 工程可独立启动，访问 http://localhost:8082/actuator/health 返回健康状态",
+        "Mock 策略可通过配置开关（mock.enabled=true/false）一键切换",
+        "统一异常处理生效，返回标准错误格式 {code, message, data}",
+        "雪花 ID 生成器可用"
+      ],
+      "verification_command": "# 启动 open-server\ncd open-server && mvn spring-boot:run\ncurl http://localhost:8080/actuator/health\n\n# 启动 api-server\ncd api-server && mvn spring-boot:run\ncurl http://localhost:8081/actuator/health\n\n# 启动 event-server\ncd event-server && mvn spring-boot:run\ncurl http://localhost:8082/actuator/health"
+    },
+    {
+      "id": "TASK-002",
+      "name": "前端框架初始化",
+      "description": "初始化 React + Vite + Ant Design 前端工程 open-web，搭建项目基础框架，包括路由配置、状态管理、API 服务封装、公共组件等基础设施。",
+      "complexity": "M",
+      "dependencies": [],
+      "wave": 1,
+      "projects": ["open-web"],
+      "files": {
+        "new": [
+          "open-web/package.json",
+          "open-web/vite.config.ts",
+          "open-web/src/main.tsx",
+          "open-web/src/App.tsx",
+          "open-web/src/router/index.tsx",
+          "open-web/src/utils/request.ts",
+          "open-web/src/components/Layout/index.tsx",
+          "open-web/src/components/Layout/index.m.less",
+          "open-web/src/stores/global.store.ts"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "前端工程可独立启动，访问 http://localhost:3000 显示欢迎页面",
+        "Vite 构建成功，无 TypeScript 编译错误",
+        "路由配置生效，可访问 / 和 /404 页面",
+        "API 请求封装支持统一错误处理和 Token 携带",
+        "布局组件包含侧边栏、顶部导航、内容区"
+      ],
+      "verification_command": "cd open-web\nnpm install\nnpm run dev\ncurl http://localhost:3000"
+    },
+    {
+      "id": "TASK-003",
+      "name": "数据库表设计与初始化",
+      "description": "根据 plan-db.md 创建数据库表结构，包括 15 张表（10 张主表 + 4 张属性表 + 1 张关联表），编写 SQL 初始化脚本。",
+      "complexity": "S",
+      "dependencies": [],
+      "wave": 1,
+      "projects": ["docs"],
+      "files": {
+        "new": [
+          "docs/sql/init-schema.sql",
+          "docs/sql/drop-schema.sql",
+          "docs/sql/insert-default-data.sql"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "执行 init-schema.sql 后，数据库包含 15 张表",
+        "所有表包含必备审计字段（create_time、last_update_time、create_by、last_update_by）",
+        "属性表主表关联正确，索引创建成功",
+        "默认审批流数据初始化成功（code='default'）"
+      ],
+      "verification_command": "mysql -u root -p openplatform < docs/sql/init-schema.sql\nmysql -u root -p openplatform -e \"SHOW TABLES LIKE 'openplatform_%'\"\n# 期望输出 15 张表"
+    },
+    {
+      "id": "TASK-004",
+      "name": "分类管理模块",
+      "description": "实现分类管理功能，包括分类树形结构 CRUD、责任人配置等，覆盖 FR-001、FR-002，共 8 个接口。",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003"],
+      "wave": 2,
+      "projects": ["open-server"],
+      "files": {
+        "new": [
+          "open-server/src/main/java/.../modules/category/CategoryController.java",
+          "open-server/src/main/java/.../modules/category/CategoryService.java",
+          "open-server/src/main/java/.../modules/category/entity/Category.java",
+          "open-server/src/main/java/.../modules/category/entity/CategoryOwner.java",
+          "open-server/src/main/java/.../modules/category/mapper/CategoryMapper.java",
+          "open-server/src/main/java/.../modules/category/mapper/CategoryOwnerMapper.java",
+          "open-server/src/main/java/.../modules/category/dto/*.java",
+          "open-server/src/main/resources/mapper/CategoryMapper.xml",
+          "open-server/src/main/resources/mapper/CategoryOwnerMapper.xml"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "GET /api/v1/categories 返回树形分类列表，支持 category_alias 过滤",
+        "POST /api/v1/categories 创建分类成功，path 字段自动生成",
+        "PUT /api/v1/categories/:id 更新分类成功",
+        "DELETE /api/v1/categories/:id 删除分类，检查关联资源",
+        "POST /api/v1/categories/:id/owners 添加责任人成功",
+        "GET /api/v1/categories/:id/owners 返回责任人列表",
+        "DELETE /api/v1/categories/:id/owners/:userId 移除责任人成功",
+        "树形子分类查询优化生效（通过 path 字段）"
+      ],
+      "verification_command": "# 创建根分类\ncurl -X POST http://localhost:8080/api/v1/categories \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"category_alias\":\"app_type_a\",\"name_cn\":\"A类应用权限\",\"name_en\":\"App Type A Permissions\"}'\n\n# 获取分类树\ncurl http://localhost:8080/api/v1/categories?category_alias=app_type_a\n\n# 添加责任人\ncurl -X POST http://localhost:8080/api/v1/categories/1/owners \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"user_id\":\"user001\"}'"
+    },
+    {
+      "id": "TASK-005",
+      "name": "API 管理模块",
+      "description": "实现 API 资源管理功能，包括 API 注册、编辑、删除、撤回等，覆盖 FR-004~FR-007，共 6 个接口。API 注册时附带权限定义。",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003", "TASK-004"],
+      "wave": 2,
+      "projects": ["open-server"],
+      "files": {
+        "new": [
+          "open-server/src/main/java/.../modules/api/ApiController.java",
+          "open-server/src/main/java/.../modules/api/ApiService.java",
+          "open-server/src/main/java/.../modules/api/entity/Api.java",
+          "open-server/src/main/java/.../modules/api/entity/ApiProperty.java",
+          "open-server/src/main/java/.../modules/api/mapper/ApiMapper.java",
+          "open-server/src/main/java/.../modules/api/mapper/ApiPropertyMapper.java",
+          "open-server/src/main/java/.../modules/api/dto/*.java",
+          "open-server/src/main/resources/mapper/ApiMapper.xml",
+          "open-server/src/main/resources/mapper/ApiPropertyMapper.xml"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "GET /api/v1/apis 返回 API 列表，支持按分类过滤",
+        "GET /api/v1/apis/:id 返回 API 详情及权限信息",
+        "POST /api/v1/apis 注册 API 成功，同时创建权限资源",
+        "PUT /api/v1/apis/:id 更新 API 成功，核心属性变更触发审批",
+        "DELETE /api/v1/apis/:id 删除 API，检查订阅关系",
+        "POST /api/v1/apis/:id/withdraw 撤回审核中的 API",
+        "API 属性表 KV 模式正确存储扩展属性"
+      ],
+      "verification_command": "# 注册 API\ncurl -X POST http://localhost:8080/api/v1/apis \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"发送消息\",\"name_en\":\"Send Message\",\"path\":\"/api/v1/messages\",\"method\":\"POST\",\"category_id\":2,\"permission\":{\"name_cn\":\"发送消息权限\",\"name_en\":\"Send Message Permission\",\"scope\":\"api:im:send-message\"}}'\n\n# 获取 API 详情\ncurl http://localhost:8080/api/v1/apis/100"
+    },
+    {
+      "id": "TASK-006",
+      "name": "事件管理模块",
+      "description": "实现事件资源管理功能，包括事件注册、编辑、删除、撤回等，覆盖 FR-008~FR-011，共 6 个接口。事件注册时附带权限定义。",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003", "TASK-004"],
+      "wave": 2,
+      "projects": ["open-server"],
+      "files": {
+        "new": [
+          "open-server/src/main/java/.../modules/event/EventController.java",
+          "open-server/src/main/java/.../modules/event/EventService.java",
+          "open-server/src/main/java/.../modules/event/entity/Event.java",
+          "open-server/src/main/java/.../modules/event/entity/EventProperty.java",
+          "open-server/src/main/java/.../modules/event/mapper/EventMapper.java",
+          "open-server/src/main/java/.../modules/event/mapper/EventPropertyMapper.java",
+          "open-server/src/main/java/.../modules/event/dto/*.java",
+          "open-server/src/main/resources/mapper/EventMapper.xml",
+          "open-server/src/main/resources/mapper/EventPropertyMapper.xml"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "GET /api/v1/events 返回事件列表，支持按分类过滤",
+        "GET /api/v1/events/:id 返回事件详情及权限信息",
+        "POST /api/v1/events 注册事件成功，同时创建权限资源，Topic 唯一性校验",
+        "PUT /api/v1/events/:id 更新事件成功",
+        "DELETE /api/v1/events/:id 删除事件，检查订阅关系",
+        "POST /api/v1/events/:id/withdraw 撤回审核中的事件",
+        "Scope 命名格式正确：event:{module}:{identifier}"
+      ],
+      "verification_command": "# 注册事件\ncurl -X POST http://localhost:8080/api/v1/events \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"消息接收事件\",\"name_en\":\"Message Received Event\",\"topic\":\"im.message.received\",\"category_id\":2,\"permission\":{\"name_cn\":\"消息接收权限\",\"name_en\":\"Message Received Permission\",\"scope\":\"event:im:message-received\"}}'\n\n# 获取事件列表\ncurl http://localhost:8080/api/v1/events"
+    },
+    {
+      "id": "TASK-007",
+      "name": "回调管理模块",
+      "description": "实现回调资源管理功能，包括回调注册、编辑、删除、撤回等，覆盖 FR-012~FR-015，共 6 个接口。回调注册时附带权限定义。",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003", "TASK-004"],
+      "wave": 2,
+      "projects": ["open-server"],
+      "files": {
+        "new": [
+          "open-server/src/main/java/.../modules/callback/CallbackController.java",
+          "open-server/src/main/java/.../modules/callback/CallbackService.java",
+          "open-server/src/main/java/.../modules/callback/entity/Callback.java",
+          "open-server/src/main/java/.../modules/callback/entity/CallbackProperty.java",
+          "open-server/src/main/java/.../modules/callback/mapper/CallbackMapper.java",
+          "open-server/src/main/java/.../modules/callback/mapper/CallbackPropertyMapper.java",
+          "open-server/src/main/java/.../modules/callback/dto/*.java",
+          "open-server/src/main/resources/mapper/CallbackMapper.xml",
+          "open-server/src/main/resources/mapper/CallbackPropertyMapper.xml"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "GET /api/v1/callbacks 返回回调列表，支持按分类过滤",
+        "GET /api/v1/callbacks/:id 返回回调详情及权限信息",
+        "POST /api/v1/callbacks 注册回调成功，同时创建权限资源",
+        "PUT /api/v1/callbacks/:id 更新回调成功",
+        "DELETE /api/v1/callbacks/:id 删除回调，检查订阅关系",
+        "POST /api/v1/callbacks/:id/withdraw 撤回审核中的回调",
+        "Scope 命名格式正确：callback:{module}:{identifier}"
+      ],
+      "verification_command": "# 注册回调\ncurl -X POST http://localhost:8080/api/v1/callbacks \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"审批完成回调\",\"name_en\":\"Approval Completed Callback\",\"category_id\":2,\"permission\":{\"name_cn\":\"审批完成权限\",\"name_en\":\"Approval Completed Permission\",\"scope\":\"callback:approval:completed\"}}'\n\n# 获取回调列表\ncurl http://localhost:8080/api/v1/callbacks"
+    },
+    {
+      "id": "TASK-008",
+      "name": "权限管理模块",
+      "description": "实现权限申请与订阅管理功能，包括 API/事件/回调权限树查询、申请提交、订阅配置、撤回等，覆盖 FR-016~FR-024，共 14 个接口。",
+      "complexity": "L",
+      "dependencies": ["TASK-001", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007"],
+      "wave": 3,
+      "projects": ["open-server"],
+      "files": {
+        "new": [
+          "open-server/src/main/java/.../modules/permission/PermissionController.java",
+          "open-server/src/main/java/.../modules/permission/PermissionService.java",
+          "open-server/src/main/java/.../modules/permission/entity/Permission.java",
+          "open-server/src/main/java/.../modules/permission/entity/PermissionProperty.java",
+          "open-server/src/main/java/.../modules/permission/entity/Subscription.java",
+          "open-server/src/main/java/.../modules/permission/mapper/PermissionMapper.java",
+          "open-server/src/main/java/.../modules/permission/mapper/PermissionPropertyMapper.java",
+          "open-server/src/main/java/.../modules/permission/mapper/SubscriptionMapper.java",
+          "open-server/src/main/java/.../modules/permission/dto/*.java",
+          "open-server/src/main/resources/mapper/PermissionMapper.xml",
+          "open-server/src/main/resources/mapper/PermissionPropertyMapper.xml",
+          "open-server/src/main/resources/mapper/SubscriptionMapper.xml"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "GET /api/v1/apps/:appId/apis 返回应用 API 权限列表",
+        "GET /api/v1/permissions/apis/tree 返回 API 权限树（抽屉数据源）",
+        "POST /api/v1/apps/:appId/apis/subscribe 申请 API 权限，生成独立审批单",
+        "POST /api/v1/apps/:appId/apis/:id/withdraw 撤回审核中的申请",
+        "GET /api/v1/apps/:appId/events 返回应用事件订阅列表",
+        "GET /api/v1/permissions/events/tree 返回事件权限树",
+        "POST /api/v1/apps/:appId/events/subscribe 申请事件权限",
+        "PUT /api/v1/apps/:appId/events/:id/config 配置事件消费参数（通道/地址/认证）",
+        "POST /api/v1/apps/:appId/events/:id/withdraw 撤回审核中的申请",
+        "GET /api/v1/apps/:appId/callbacks 返回应用回调订阅列表",
+        "GET /api/v1/permissions/callbacks/tree 返回回调权限树",
+        "POST /api/v1/apps/:appId/callbacks/subscribe 申请回调权限",
+        "PUT /api/v1/apps/:appId/callbacks/:id/config 配置回调消费参数",
+        "POST /api/v1/apps/:appId/callbacks/:id/withdraw 撤回审核中的申请"
+      ],
+      "verification_command": "# 获取 API 权限树\ncurl http://localhost:8080/api/v1/permissions/apis/tree?category_alias=app_type_a\n\n# 申请 API 权限\ncurl -X POST http://localhost:8080/api/v1/apps/100/apis/subscribe \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"permission_id\":200}'\n\n# 配置事件消费参数\ncurl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"channel_type\":1,\"channel_address\":\"https://webhook.example.com/events\",\"auth_type\":0}'"
+    },
+    {
+      "id": "TASK-009",
+      "name": "审批管理模块",
+      "description": "实现审批管理功能，包括审批流程配置、审批执行、待办查询等，覆盖 FR-025~FR-027，共 10 个接口。支持动态审批流配置。",
+      "complexity": "L",
+      "dependencies": ["TASK-001", "TASK-003", "TASK-008"],
+      "wave": 3,
+      "projects": ["open-server"],
+      "files": {
+        "new": [
+          "open-server/src/main/java/.../modules/approval/ApprovalController.java",
+          "open-server/src/main/java/.../modules/approval/ApprovalService.java",
+          "open-server/src/main/java/.../modules/approval/entity/ApprovalFlow.java",
+          "open-server/src/main/java/.../modules/approval/entity/ApprovalRecord.java",
+          "open-server/src/main/java/.../modules/approval/entity/ApprovalLog.java",
+          "open-server/src/main/java/.../modules/approval/mapper/ApprovalFlowMapper.java",
+          "open-server/src/main/java/.../modules/approval/mapper/ApprovalRecordMapper.java",
+          "open-server/src/main/java/.../modules/approval/mapper/ApprovalLogMapper.java",
+          "open-server/src/main/java/.../modules/approval/dto/*.java",
+          "open-server/src/main/java/.../modules/approval/engine/ApprovalEngine.java",
+          "open-server/src/main/resources/mapper/ApprovalFlowMapper.xml",
+          "open-server/src/main/resources/mapper/ApprovalRecordMapper.xml",
+          "open-server/src/main/resources/mapper/ApprovalLogMapper.xml"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "GET /api/v1/approval-flows 返回审批流程模板列表",
+        "GET /api/v1/approval-flows/:id 返回审批流程模板详情",
+        "POST /api/v1/approval-flows 创建审批流程模板",
+        "PUT /api/v1/approval-flows/:id 更新审批流程模板",
+        "GET /api/v1/approvals/pending 返回待审批列表",
+        "GET /api/v1/approvals/:id 返回审批详情",
+        "POST /api/v1/approvals/:id/approve 同意审批，更新订阅状态",
+        "POST /api/v1/approvals/:id/reject 驳回审批，需填写原因",
+        "POST /api/v1/approvals/:id/cancel 撤销审批",
+        "审批通过后自动激活订阅关系（status=1）",
+        "审批拒绝后订阅状态变为已拒绝（status=2）",
+        "审批记录和操作日志正确写入"
+      ],
+      "verification_command": "# 创建审批流程\ncurl -X POST http://localhost:8080/api/v1/approval-flows \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"API注册审批流\",\"name_en\":\"API Registration Approval Flow\",\"code\":\"api_register\",\"nodes\":[{\"type\":\"approver\",\"user_id\":\"user001\",\"order\":1}]}'\n\n# 获取待审批列表\ncurl http://localhost:8080/api/v1/approvals/pending\n\n# 同意审批\ncurl -X POST http://localhost:8080/api/v1/approvals/1/approve \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"comment\":\"同意该申请\"}'"
+    },
+    {
+      "id": "TASK-010",
+      "name": "api-server 消费网关模块",
+      "description": "实现 api-server 消费网关功能，包括 API 认证鉴权、Scope 用户授权、数据查询接口等，覆盖 FR-028、FR-031，共 7 个接口。",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003", "TASK-008"],
+      "wave": 4,
+      "projects": ["api-server"],
+      "files": {
+        "new": [
+          "api-server/src/main/java/.../gateway/ApiGatewayController.java",
+          "api-server/src/main/java/.../gateway/ApiGatewayService.java",
+          "api-server/src/main/java/.../scope/ScopeController.java",
+          "api-server/src/main/java/.../scope/ScopeService.java",
+          "api-server/src/main/java/.../data/DataQueryController.java",
+          "api-server/src/main/java/.../data/DataQueryService.java",
+          "api-server/src/main/java/.../common/filter/AuthFilter.java",
+          "api-server/src/main/java/.../common/util/SignatureUtil.java"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "ANY /gateway/api/* API 请求代理与鉴权生效",
+        "验证应用身份（AKSK/Bearer Token）",
+        "查询应用订阅关系，验证请求路径在授权范围内",
+        "转发请求到内部中台网关",
+        "GET /api/v1/user-authorizations 返回用户授权列表",
+        "POST /api/v1/user-authorizations 用户授权成功",
+        "DELETE /api/v1/user-authorizations/:id 取消授权",
+        "GET /gateway/permissions/check 权限校验接口可用（供 event-server 调用）",
+        "提供 API/事件/回调/订阅等数据查询接口"
+      ],
+      "verification_command": "# API 鉴权测试\ncurl -X POST http://localhost:8081/gateway/api/v1/messages \\\n  -H \"X-App-Id: 100\" \\\n  -H \"X-Auth-Type: 0\" \\\n  -H \"Authorization: Bearer token\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"content\":\"Hello World\"}'\n\n# 权限校验\ncurl http://localhost:8081/gateway/permissions/check?app_id=100&scope=api:im:send-message\n\n# 用户授权\ncurl -X POST http://localhost:8081/api/v1/user-authorizations \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"user_id\":\"user001\",\"app_id\":100,\"scopes\":[\"api:im:send-message\"],\"expires_at\":\"2026-12-31T23:59:59\"}'"
+    },
+    {
+      "id": "TASK-011",
+      "name": "event-server 事件/回调网关模块",
+      "description": "实现 event-server 事件/回调网关功能，包括事件消费网关、回调消费网关等，覆盖 FR-029、FR-030，共 2 个接口。通过调用 api-server 获取数据。",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-010"],
+      "wave": 4,
+      "projects": ["event-server"],
+      "files": {
+        "new": [
+          "event-server/src/main/java/.../gateway/EventGatewayController.java",
+          "event-server/src/main/java/.../gateway/EventGatewayService.java",
+          "event-server/src/main/java/.../gateway/CallbackGatewayController.java",
+          "event-server/src/main/java/.../gateway/CallbackGatewayService.java",
+          "event-server/src/main/java/.../client/ApiServerClient.java",
+          "event-server/src/main/java/.../common/config/RedisConfig.java",
+          "event-server/src/main/java/.../common/channel/WebHookChannel.java"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "POST /gateway/events/publish 事件发布接口可用",
+        "验证 Topic 对应的事件资源存在",
+        "查询订阅该事件的应用列表（通过 api-server）",
+        "按订阅配置分发事件（WebHook/内部消息队列）",
+        "P99 分发延迟 < 1s",
+        "POST /gateway/callbacks/invoke 回调触发接口可用",
+        "验证回调 Scope 存在",
+        "查询订阅该回调的应用列表",
+        "按订阅配置调用三方回调地址",
+        "event-server 无数据库，通过 api-server 接口获取数据",
+        "Redis 缓存订阅关系数据"
+      ],
+      "verification_command": "# 事件发布\ncurl -X POST http://localhost:8082/gateway/events/publish \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"topic\":\"im.message.received\",\"payload\":{\"message_id\":\"msg001\",\"content\":\"Hello World\"}}'\n\n# 回调触发\ncurl -X POST http://localhost:8082/gateway/callbacks/invoke \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"callback_scope\":\"callback:approval:completed\",\"payload\":{\"approval_id\":\"app001\",\"status\":\"approved\"}}'"
+    },
+    {
+      "id": "TASK-012",
+      "name": "前端页面开发",
+      "description": "开发 open-web 前端页面，包括分类管理、API/事件/回调管理、权限申请、审批中心等页面，共 18 个页面。面向三方应用人员的界面按 /front/README.md 流程执行。",
+      "complexity": "L",
+      "dependencies": ["TASK-002", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009"],
+      "wave": 5,
+      "projects": ["open-web"],
+      "files": {
+        "new": [
+          "open-web/src/pages/category/CategoryList.tsx",
+          "open-web/src/pages/category/CategoryForm.tsx",
+          "open-web/src/pages/api/ApiList.tsx",
+          "open-web/src/pages/api/ApiForm.tsx",
+          "open-web/src/pages/api/ApiDetail.tsx",
+          "open-web/src/pages/event/EventList.tsx",
+          "open-web/src/pages/event/EventForm.tsx",
+          "open-web/src/pages/callback/CallbackList.tsx",
+          "open-web/src/pages/callback/CallbackForm.tsx",
+          "open-web/src/pages/permission/ApiPermissionDrawer.tsx",
+          "open-web/src/pages/permission/EventPermissionDrawer.tsx",
+          "open-web/src/pages/permission/CallbackPermissionDrawer.tsx",
+          "open-web/src/pages/approval/ApprovalCenter.tsx",
+          "open-web/src/pages/approval/ApprovalDetail.tsx",
+          "open-web/src/services/*.ts",
+          "open-web/src/hooks/*.ts"
+        ],
+        "modify": [
+          "open-web/src/router/index.tsx"
+        ]
+      },
+      "acceptance_criteria": [
+        "分类管理页面可创建/编辑/删除分类树，配置责任人",
+        "审批中心页面可查看待审批列表，执行同意/驳回/撤销",
+        "API 管理页面可查看本分类 API 列表，进行注册/编辑/删除",
+        "事件管理页面可查看本分类事件列表，进行注册/编辑/删除",
+        "回调管理页面可查看本分类回调列表，进行注册/编辑/删除",
+        "API 权限申请页面可浏览权限树，提交申请（抽屉模式）",
+        "事件权限申请页面可浏览权限树，提交申请，配置消费参数",
+        "回调权限申请页面可浏览权限树，提交申请，配置消费参数",
+        "权限申请提交后关闭抽屉，展示 Toast 提示",
+        "列表支持搜索（名称、Scope）",
+        "表单校验正确（必填项、Scope 格式等）"
+      ],
+      "verification_command": "cd open-web\nnpm run dev\n# 手动验证页面功能"
+    },
+    {
+      "id": "TASK-013",
+      "name": "集成测试与系统联调",
+      "description": "完成系统集成测试与联调，包括前后端联调、网关联调、Mock 策略切换、性能测试等，确保系统整体可用。",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-002", "TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010", "TASK-011", "TASK-012"],
+      "wave": 5,
+      "projects": ["all"],
+      "files": {
+        "new": [
+          "open-server/src/test/java/.../*Test.java",
+          "open-server/src/test/java/.../*IntegrationTest.java",
+          "api-server/src/test/java/.../*Test.java",
+          "event-server/src/test/java/.../*Test.java",
+          "docs/test-plan.md",
+          "docs/deployment-guide.md"
+        ],
+        "modify": []
+      },
+      "acceptance_criteria": [
+        "后端单元测试覆盖率 > 60%",
+        "集成测试通过，覆盖核心业务流程",
+        "前后端联调通过，所有页面功能可用",
+        "Mock 策略切换测试通过（mock.enabled=false）",
+        "api-server 与 event-server 联调通过",
+        "性能测试通过（权限查询 P99 < 50ms，事件分发 P99 < 1s）",
+        "安全测试通过（HTTPS、认证鉴权）",
+        "部署指南完整，生产环境部署成功"
+      ],
+      "verification_command": "# 后端测试\ncd open-server && mvn test\ncd api-server && mvn test\ncd event-server && mvn test\n\n# 集成测试\nmvn verify\n\n# 性能测试（示例）\ncurl -w \"@curl-format.txt\" http://localhost:8080/api/v1/apis?category_id=2"
+    }
+  ],
+  "waves": [
+    {
+      "wave": 1,
+      "name": "基础框架",
+      "tasks": ["TASK-001", "TASK-002", "TASK-003"],
+      "description": "初始化前后端框架和数据库"
+    },
+    {
+      "wave": 2,
+      "name": "核心资源管理",
+      "tasks": ["TASK-004", "TASK-005", "TASK-006", "TASK-007"],
+      "description": "实现分类、API、事件、回调管理模块"
+    },
+    {
+      "wave": 3,
+      "name": "权限与审批",
+      "tasks": ["TASK-008", "TASK-009"],
+      "description": "实现权限申请和审批管理模块"
+    },
+    {
+      "wave": 4,
+      "name": "网关服务",
+      "tasks": ["TASK-010", "TASK-011"],
+      "description": "实现 api-server 和 event-server 网关服务"
+    },
+    {
+      "wave": 5,
+      "name": "前端与联调",
+      "tasks": ["TASK-012", "TASK-013"],
+      "description": "开发前端页面并进行集成测试"
+    }
+  ]
+}
