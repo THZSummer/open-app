@@ -601,7 +601,7 @@ erDiagram
 
     CATEGORY {
         bigint id PK
-        varchar category_type
+        varchar category_alias
         varchar name_cn
         varchar name_en
         bigint parent_id FK
@@ -737,10 +737,10 @@ erDiagram
 
 #### 分类类型说明
 
-分类表通过 `category_type` 字段区分不同的权限树，**每种凭证类型对应一棵独立的权限树**：
+分类表通过 `category_alias` 字段区分不同的权限树，**每种凭证类型对应一棵独立的权限树**：
 
-| category_type 示例 | 说明 | 对应凭证 |
-|-------------------|------|----------|
+| category_alias 示例 | 说明 | 对应凭证 |
+|--------------------|------|----------|
 | `app_type_a` | A类应用权限树 | A类应用凭证 |
 | `app_type_b` | B类应用权限树 | B类应用凭证 |
 | `personal_aksk` | 个人AKSK权限树 | AKSK个人凭证 |
@@ -752,8 +752,8 @@ erDiagram
 - 具体枚举值由前后端约定
 
 **设计规则**：
-- 同一棵树的所有分类节点 `category_type` 相同
-- 根节点设置类型，子节点继承
+- 同一棵树的所有分类节点 `category_alias` 相同
+- 根节点设置别名，子节点继承
 - 权限通过 `category_id` 关联分类，间接归属于某棵权限树
 - 不同权限树之间完全隔离
 
@@ -991,7 +991,7 @@ CREATE TABLE `openplatform_api_p_t` (
 -- ============================================
 CREATE TABLE `openplatform_category_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `category_type` VARCHAR(50) NOT NULL COMMENT '分类类型：app_identity/personal_identity',
+    `category_alias` VARCHAR(50) NOT NULL COMMENT '分类别名：app_type_a/app_type_b/personal_aksk',
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `parent_id` BIGINT(20),
@@ -1001,7 +1001,7 @@ CREATE TABLE `openplatform_category_t` (
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_type_parent` (`category_type`, `parent_id`),
+    KEY `idx_alias_parent` (`category_alias`, `parent_id`),
     KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类表';
 
