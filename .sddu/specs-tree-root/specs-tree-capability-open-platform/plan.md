@@ -631,8 +631,8 @@ erDiagram
     API_P {
         bigint id PK
         bigint parent_id FK
-        varchar attr_name
-        text attr_value
+        varchar property_name
+        text property_value
         tinyint status
     }
     
@@ -648,8 +648,8 @@ erDiagram
     EVENT_P {
         bigint id PK
         bigint parent_id FK
-        varchar attr_name
-        text attr_value
+        varchar property_name
+        text property_value
         tinyint status
     }
     
@@ -664,8 +664,8 @@ erDiagram
     CALLBACK_P {
         bigint id PK
         bigint parent_id FK
-        varchar attr_name
-        text attr_value
+        varchar property_name
+        text property_value
         tinyint status
     }
     
@@ -683,8 +683,8 @@ erDiagram
     PERMISSION_P {
         bigint id PK
         bigint parent_id FK
-        varchar attr_name
-        text attr_value
+        varchar property_name
+        text property_value
         tinyint status
     }
     
@@ -761,7 +761,7 @@ erDiagram
 > - **属性表**：`API_P`、`EVENT_P`、`CALLBACK_P`、`PERMISSION_P` 存储扩展属性，KV 模式灵活扩展
 
 > ⚠️ **注意**：
-> - ER 图简化展示，属性表只显示核心字段（id、parent_id、attr_name、attr_value、status）
+> - ER 图简化展示，属性表只显示核心字段（id、parent_id、property_name、property_value、status）
 > - 属性表必备四个审计字段（create_time、last_update_time、create_by、last_update_by）已在规范中定义
 > - 图中 `FK` 表示逻辑外键，不使用物理外键约束
 
@@ -823,8 +823,8 @@ erDiagram
 |--------|------|------|
 | `id` | BIGINT(20) | 主键，雪花ID |
 | `parent_id` | BIGINT(20) | 父表ID（关联主表） |
-| `attr_name` | VARCHAR(100) | 属性名称 |
-| `attr_value` | TEXT | 属性值 |
+| `property_name` | VARCHAR(100) | 属性名称 |
+| `property_value` | TEXT | 属性值 |
 | `status` | TINYINT(10) | 状态（0=禁用, 1=启用） |
 | `create_time` | DATETIME(3) | 创建时间 |
 | `last_update_time` | DATETIME(3) | 更新时间 |
@@ -837,21 +837,21 @@ erDiagram
 CREATE TABLE `openplatform_api_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联 API 主表 ID',
-    `attr_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
-    `attr_value` TEXT COMMENT '属性值',
+    `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
+    `property_value` TEXT COMMENT '属性值',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_parent_id` (`parent_id`),
-    KEY `idx_attr_name` (`attr_name`)
+    KEY `idx_property_name` (`property_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API属性表';
 ```
 
 > 💡 **说明**：
 > - 属性表采用 **KV 模式**，灵活存储各种扩展属性
-> - 属性名 `attr_name` 和属性值 `attr_value` 支持动态扩展
+> - 属性名 `property_name` 和属性值 `property_value` 支持动态扩展
 > - 主表保持简洁，便于列表查询和搜索
 > - 属性表存放详情，避免主表字段膨胀
 
@@ -1033,15 +1033,15 @@ CREATE TABLE `openplatform_api_t` (
 CREATE TABLE `openplatform_api_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联 API 主表 ID',
-    `attr_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
-    `attr_value` TEXT COMMENT '属性值',
+    `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
+    `property_value` TEXT COMMENT '属性值',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_parent_id` (`parent_id`),
-    KEY `idx_attr_name` (`attr_name`)
+    KEY `idx_property_name` (`property_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源属性表';
 
 -- ============================================
@@ -1066,15 +1066,15 @@ CREATE TABLE `openplatform_event_t` (
 CREATE TABLE `openplatform_event_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联事件主表 ID',
-    `attr_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
-    `attr_value` TEXT COMMENT '属性值',
+    `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
+    `property_value` TEXT COMMENT '属性值',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_parent_id` (`parent_id`),
-    KEY `idx_attr_name` (`attr_name`)
+    KEY `idx_property_name` (`property_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源属性表';
 
 -- ============================================
@@ -1097,15 +1097,15 @@ CREATE TABLE `openplatform_callback_t` (
 CREATE TABLE `openplatform_callback_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联回调主表 ID',
-    `attr_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
-    `attr_value` TEXT COMMENT '属性值',
+    `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
+    `property_value` TEXT COMMENT '属性值',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_parent_id` (`parent_id`),
-    KEY `idx_attr_name` (`attr_name`)
+    KEY `idx_property_name` (`property_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源属性表';
 
 -- ============================================
@@ -1134,32 +1134,32 @@ CREATE TABLE `openplatform_permission_t` (
 CREATE TABLE `openplatform_permission_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联权限主表 ID',
-    `attr_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
-    `attr_value` TEXT COMMENT '属性值',
+    `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
+    `property_value` TEXT COMMENT '属性值',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     KEY `idx_parent_id` (`parent_id`),
-    KEY `idx_attr_name` (`attr_name`)
+    KEY `idx_property_name` (`property_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源属性表';
 
 -- 属性表示例数据：
 -- API 属性表示例
--- INSERT INTO openplatform_api_p_t (id, parent_id, attr_name, attr_value, status, ...) 
+-- INSERT INTO openplatform_api_p_t (id, parent_id, property_name, property_value, status, ...) 
 -- VALUES (1, 100, 'description_cn', '发送消息API的中文描述', 1, ...);
--- INSERT INTO openplatform_api_p_t (id, parent_id, attr_name, attr_value, status, ...) 
+-- INSERT INTO openplatform_api_p_t (id, parent_id, property_name, property_value, status, ...) 
 -- VALUES (2, 100, 'description_en', 'Send message API description', 1, ...);
--- INSERT INTO openplatform_api_p_t (id, parent_id, attr_name, attr_value, status, ...) 
+-- INSERT INTO openplatform_api_p_t (id, parent_id, property_name, property_value, status, ...) 
 -- VALUES (3, 100, 'doc_url', 'https://docs.example.com/api/send-message', 1, ...);
 
 -- 权限属性表示例
--- INSERT INTO openplatform_permission_p_t (id, parent_id, attr_name, attr_value, status, ...)
+-- INSERT INTO openplatform_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 -- VALUES (1, 200, 'description_cn', '发送消息权限的中文描述', 1, ...);
--- INSERT INTO openplatform_permission_p_t (id, parent_id, attr_name, attr_value, status, ...)
+-- INSERT INTO openplatform_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 -- VALUES (2, 200, 'description_en', 'Send message permission description', 1, ...);
--- INSERT INTO openplatform_permission_p_t (id, parent_id, attr_name, attr_value, status, ...)
+-- INSERT INTO openplatform_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 -- VALUES (3, 200, 'approval_flow_id', '1001', 1, ...);
 
 -- ============================================
