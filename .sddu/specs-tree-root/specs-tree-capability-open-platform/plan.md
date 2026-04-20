@@ -623,7 +623,7 @@ erDiagram
     PERMISSION {
         bigint id PK "权限ID"
         varchar name "权限名称"
-        varchar code_name UK "Scope标识"
+        varchar scope UK "权限标识(scope)"
         varchar resource_type "资源类型:api/event/callback"
         bigint resource_id FK "关联资源ID"
         bigint category_id FK "所属分类"
@@ -783,6 +783,22 @@ erDiagram
 > - **权限树展示**：分类树 + 权限列表 = 权限树，权限数据可附带展示对应资源的部分字段
 
 > ⚠️ **注意**：图中 `FK` 表示逻辑外键（存储关联 ID），不使用数据库物理外键约束。
+
+#### Scope 命名规范
+
+权限的 `scope` 字段命名遵循 `{模块}:{资源}:{操作}` 格式：
+
+| 资源类型 | Scope 示例 | 说明 |
+|----------|------------|------|
+| API | `im:message:send` | IM 模块发送消息 API |
+| API | `im:message:get` | IM 模块获取消息 API |
+| Event | `im:message:received` | IM 模块消息接收事件 |
+| Event | `meeting:started` | 会议模块会议开始事件 |
+| Callback | `approval:completed` | 审批模块审批完成回调 |
+
+> 💡 **说明**：
+> - 只有 **权限（PERMISSION）** 才有 `scope` 属性
+> - API/事件/回调资源表使用 `code_name` 作为代码标识，不叫 scope
 
 ### 4.2 表设计规则
 
@@ -978,7 +994,7 @@ CREATE TABLE `openplatform_callback_t` (
 CREATE TABLE `openplatform_permission_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name` VARCHAR(100) NOT NULL,
-    `code_name` VARCHAR(100) NOT NULL UNIQUE COMMENT 'scope',
+    `scope` VARCHAR(100) NOT NULL UNIQUE COMMENT '权限标识，如 im:message:send',
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
     `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
@@ -991,7 +1007,7 @@ CREATE TABLE `openplatform_permission_t` (
     `last_update_by` VARCHAR(100),
     KEY `idx_resource` (`resource_type`, `resource_id`),
     KEY `idx_category_id` (`category_id`),
-    KEY `idx_code_name` (`code_name`)
+    KEY `idx_scope` (`scope`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源表';
 
 -- ============================================
