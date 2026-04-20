@@ -733,11 +733,6 @@ erDiagram
         varchar name
         varchar app_key UK
     }
-    
-    USER {
-        varchar id PK
-        varchar username
-    }
 ```
 
 > 💡 **核心关系说明**：
