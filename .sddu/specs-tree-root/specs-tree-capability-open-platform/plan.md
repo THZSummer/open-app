@@ -576,6 +576,216 @@ open-app/
 
 ## 4. 数据库设计
 
+### 4.0 ER 图
+
+```mermaid
+erDiagram
+    CATEGORY ||--o{ CATEGORY_OWNER : "拥有责任人"
+    CATEGORY ||--o{ API : "包含"
+    CATEGORY ||--o{ EVENT : "包含"
+    CATEGORY ||--o{ CALLBACK : "包含"
+    
+    API ||--o| PERMISSION : "关联权限"
+    EVENT ||--o| PERMISSION : "关联权限"
+    CALLBACK ||--o| PERMISSION : "关联权限"
+    
+    PERMISSION ||--o{ SUBSCRIPTION : "被订阅"
+    APPROVAL_FLOW ||--o| PERMISSION : "审批流程"
+    
+    SUBSCRIPTION ||--o| APP : "所属应用"
+    
+    APPROVAL_FLOW ||--o{ APPROVAL_RECORD : "生成记录"
+    APPROVAL_RECORD ||--o{ APPROVAL_LOG : "操作日志"
+    
+    USER_AUTHORIZATION ||--o| APP : "授权应用"
+    USER_AUTHORIZATION ||--o{ USER : "授权用户"
+    
+    AUDIT_LOG ||--o| USER : "操作用户"
+
+    CATEGORY {
+        bigint id PK
+        varchar name
+        varchar resource_type
+        bigint parent_id
+        int sort_order
+        tinyint status
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    CATEGORY_OWNER {
+        bigint id PK
+        bigint category_id FK
+        varchar user_id
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    API {
+        bigint id PK
+        varchar name
+        varchar code_name UK
+        varchar path
+        varchar method
+        text description
+        varchar doc_url
+        bigint category_id FK
+        tinyint status
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    EVENT {
+        bigint id PK
+        varchar name
+        varchar code_name UK
+        varchar topic UK
+        text description
+        varchar doc_url
+        bigint category_id FK
+        tinyint status
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    CALLBACK {
+        bigint id PK
+        varchar name
+        varchar code_name UK
+        text description
+        varchar doc_url
+        bigint category_id FK
+        tinyint status
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    PERMISSION {
+        bigint id PK
+        varchar name
+        varchar code_name UK
+        varchar resource_type
+        bigint resource_id FK
+        text description
+        bigint approval_flow_id FK
+        tinyint status
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    SUBSCRIPTION {
+        bigint id PK
+        bigint app_id FK
+        bigint permission_id FK
+        tinyint status
+        tinyint channel_type
+        varchar channel_address
+        tinyint auth_type
+        datetime approved_at
+        varchar approved_by
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APPROVAL_FLOW {
+        bigint id PK
+        varchar name
+        varchar code UK
+        text description
+        tinyint is_default
+        json nodes
+        tinyint status
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APPROVAL_RECORD {
+        bigint id PK
+        bigint flow_id FK
+        varchar business_type
+        bigint business_id FK
+        varchar applicant_id
+        tinyint status
+        int current_node
+        datetime completed_at
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APPROVAL_LOG {
+        bigint id PK
+        bigint record_id FK
+        int node_index
+        varchar operator_id
+        tinyint action
+        text comment
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    USER_AUTHORIZATION {
+        bigint id PK
+        varchar user_id
+        bigint app_id FK
+        json scopes
+        datetime expires_at
+        datetime revoked_at
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    AUDIT_LOG {
+        bigint id PK
+        varchar user_id
+        varchar action
+        varchar resource_type
+        bigint resource_id
+        json old_value
+        json new_value
+        varchar ip_address
+        text user_agent
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
+    }
+    
+    APP {
+        bigint id PK
+        varchar name
+        varchar app_key UK
+    }
+    
+    USER {
+        varchar id PK
+        varchar username
+    }
+```
+
+> 💡 **说明**：图中 `FK` 表示逻辑外键（存储关联 ID），不使用数据库物理外键约束。关联关系由应用层维护。
+
 ### 4.1 表设计规则
 
 遵循现有系统的数据库设计规范，统一命名和字段约定：
