@@ -399,8 +399,8 @@ graph TB
 |------|------|----------|
 | **open-server** | 管理服务 | API管理、事件管理、回调管理、API权限管理、事件权限管理、审批管理 |
 | **open-web** | 前端应用 | 对应 open-server 的前端界面 |
-| **api-server** | API网关服务 | API消费网关、回调消费网关、Scope授权 |
-| **event-server** | 事件网关服务 | 事件消费网关 |
+| **api-server** | API网关服务 | API认证鉴权、Scope授权、数据查询接口 |
+| **event-server** | 事件/回调网关服务 | 事件消费网关、回调消费网关 |
 
 #### 架构图
 
@@ -465,12 +465,18 @@ graph TB
     ApiGW -->|转发请求| Provider1
     ApiGW -->|转发请求| Provider2
     
-    %% 事件/回调推送流程：提供方 -> 内部消息网关 -> event-server -> 消费方
-    Provider1 -->|事件/回调推送| MsgGW
-    Provider2 -->|事件/回调推送| MsgGW
-    MsgGW --> EventServer
-    EventServer -.->|事件/回调分发| Consumer1
-    EventServer -.->|事件/回调分发| Consumer2
+    %% 事件推送流程：提供方 -> 内部消息网关 -> event-server -> 消费方
+    Provider1 -->|事件推送| MsgGW
+    Provider2 -->|事件推送| MsgGW
+    MsgGW -->|事件分发| EventServer
+    EventServer -.->|事件分发| Consumer1
+    EventServer -.->|事件分发| Consumer2
+    
+    %% 回调推送流程：提供方 -> event-server -> 消费方（不经内部消息网关）
+    Provider1 -->|回调推送| EventServer
+    Provider2 -->|回调推送| EventServer
+    EventServer -.->|回调分发| Consumer1
+    EventServer -.->|回调分发| Consumer2
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
@@ -521,7 +527,9 @@ graph TB
 
 ##### event-server（事件/回调网关服务）
 
-> **使用者**：提供方应用，通过 XX 通讯平台内部消息网关访问
+> **使用者**：
+> - **事件**：提供方应用，通过 XX 通讯平台内部消息网关访问
+> - **回调**：提供方应用，直接访问 event-server（不经内部消息网关）
 > 
 > **调用方向**：由内向外（提供方 → 消费方）
 > 
@@ -529,8 +537,8 @@ graph TB
 
 | 模块 | 功能说明 |
 |------|----------|
-| **事件消费网关** | 接收提供方的事件推送，分发至订阅的消费方 |
-| **回调消费网关** | 接收提供方的回调推送，分发至订阅的消费方 |
+| **事件消费网关** | 接收内部消息网关转发的事件推送，分发至订阅的消费方 |
+| **回调消费网关** | 接收提供方直接推送的回调，分发至订阅的消费方 |
 
 #### 优点
 | 优点 | 说明 |
@@ -697,7 +705,7 @@ open-app/
 |------|------|--------|----------|----------|-------------|
 | **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | open-web | - | MySQL + Redis | 8080 |
 | **api-server** | API认证鉴权服务：API认证鉴权、Scope授权、数据查询接口 | XX通讯平台内部API网关、event-server | 由外向内 | MySQL + Redis | 8081 |
-| **event-server** | 事件/回调网关服务：事件消费网关、回调消费网关 | XX通讯平台内部消息网关 | 由内向外 | Redis（独立），无数据库 | 8082 |
+| **event-server** | 事件/回调网关服务：事件消费网关、回调消费网关 | 内部消息网关（事件）、提供方应用（回调） | 由内向外 | Redis（独立），无数据库 | 8082 |
 | **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | - | - | 3000 |
 
 > 💡 **open-web 设计流程说明**（参考 1.4 章节）：
@@ -760,10 +768,14 @@ graph LR
     ApiGW -.->|认证鉴权| ApiServer
     ApiGW -->|转发请求| Provider
     
-    %% 事件/回调推送流程（由内向外）
-    Provider -->|事件/回调推送| MsgGW
-    MsgGW --> EventServer
-    EventServer -.->|事件/回调分发| Consumer
+    %% 事件推送流程（由内向外）：提供方 -> 内部消息网关 -> event-server -> 消费方
+    Provider -->|事件推送| MsgGW
+    MsgGW -->|事件分发| EventServer
+    EventServer -.->|事件分发| Consumer
+    
+    %% 回调推送流程（由内向外）：提供方 -> event-server -> 消费方（不经内部消息网关）
+    Provider -->|回调推送| EventServer
+    EventServer -.->|回调分发| Consumer
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
@@ -1539,6 +1551,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.24 | 2026-04-20 | 调整页面清单：API/事件/回调权限申请改为按/front/README.md执行；Scope授权标记为暂不开发；应用管理标记为不涉及沿用现有；总页面数调整为18页 | SDDU Plan Agent |
 | v1.25 | 2026-04-20 | 同步plan-page.md页面清单格式与plan.md 6.1节保持一致 | SDDU Plan Agent |
 | v1.26 | 2026-04-20 | 前端技术栈参考front/project-documenter/output/2026-04-16-specification.md定义：React 18.2.0 + Ant Design 4.24.16 + Vite 5.0.0 + Less 4.2.0 | SDDU Plan Agent |
+| v1.27 | 2026-04-20 | 修正回调与事件流程差异：事件（提供方→内部消息网关→event-server→消费方）；回调（提供方→event-server→消费方，不经内部消息网关） | SDDU Plan Agent |
 
 ---
 
