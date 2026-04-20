@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.16  
+**规划版本**: v1.17  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -414,8 +414,8 @@ graph TB
             AppMgmt["应用管理模块\n(现有能力)"]
             Member["成员管理模块\n(现有能力)"]
         end
-        ApiServer["api-server\n(Spring Boot)\nAPI认证鉴权服务"]
-        EventServer["event-server\n(Spring Boot)\n事件/回调网关服务"]
+        ApiServer["api-server\n(Spring Boot)\nAPI认证鉴权服务\n(由外向内)"]
+        EventServer["event-server\n(Spring Boot)\n事件/回调网关服务\n(由内向外)"]
     end
     
     subgraph DataLayer["数据层"]
@@ -453,26 +453,19 @@ graph TB
     EventServer --> MySQL
     EventServer --> Redis
     
-    %% API调用流程（由外向内）：消费方 -> 内部API网关 -> api-server认证鉴权 -> 提供方
-    Consumer1 -->|API调用\n(由外向内)| ApiGW
-    Consumer2 -->|API调用\n(由外向内)| ApiGW
+    %% API调用流程：消费方 -> 内部API网关 -> api-server认证鉴权 -> 提供方
+    Consumer1 -->|API调用| ApiGW
+    Consumer2 -->|API调用| ApiGW
     ApiGW -.->|认证鉴权| ApiServer
     ApiGW -->|转发请求| Provider1
     ApiGW -->|转发请求| Provider2
     
-    %% 事件推送流程（由内向外）：提供方 -> 内部消息网关 -> event-server -> 消费方
-    Provider1 -->|事件推送\n(由内向外)| MsgGW
-    Provider2 -->|事件推送\n(由内向外)| MsgGW
+    %% 事件/回调推送流程：提供方 -> 内部消息网关 -> event-server -> 消费方
+    Provider1 -->|事件/回调推送| MsgGW
+    Provider2 -->|事件/回调推送| MsgGW
     MsgGW --> EventServer
-    EventServer -.->|事件分发| Consumer1
-    EventServer -.->|事件分发| Consumer2
-    
-    %% 回调推送流程（由内向外）：提供方 -> 内部消息网关 -> event-server -> 消费方
-    Provider1 -->|回调推送\n(由内向外)| MsgGW
-    Provider2 -->|回调推送\n(由内向外)| MsgGW
-    MsgGW --> EventServer
-    EventServer -.->|回调分发| Consumer1
-    EventServer -.->|回调分发| Consumer2
+    EventServer -.->|事件/回调分发| Consumer1
+    EventServer -.->|事件/回调分发| Consumer2
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
@@ -1488,6 +1481,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.14 | 2026-04-20 | 修正调用方式：应用管理/成员管理改为open-server内部模块，通过方法调用而非Feign | SDDU Plan Agent |
 | v1.15 | 2026-04-20 | 简化架构图：合并重复的open-server节点，内部模块作为open-server子图 | SDDU Plan Agent |
 | v1.16 | 2026-04-20 | 修正API调用流程：内部API网关转发请求给提供方，非api-server转发；回调业务移至event-server（由内向外） | SDDU Plan Agent |
+| v1.17 | 2026-04-20 | 修复Mermaid渲染错误：移除连接标签中的换行符，改用节点标签标注调用方向 | SDDU Plan Agent |
 
 ---
 
