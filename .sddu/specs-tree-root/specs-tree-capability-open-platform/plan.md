@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.17  
+**规划版本**: v1.18  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -408,7 +408,7 @@ graph TB
         OpenWeb["open-web\n(React SPA)"]
     end
     
-    subgraph Services["服务层（独立服务，无依赖）"]
+    subgraph Services["服务层"]
         subgraph OpenServer["open-server\n(Spring Boot)"]
             CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
             AppMgmt["应用管理模块\n(现有能力)"]
@@ -420,7 +420,8 @@ graph TB
     
     subgraph DataLayer["数据层"]
         MySQL[(MySQL)]
-        Redis[(Redis)]
+        Redis1[(Redis\nopen-server/api-server)]
+        Redis2[(Redis\nevent-server)]
     end
     
     subgraph PlatformGW["XX通讯平台网关"]
@@ -445,13 +446,15 @@ graph TB
     CapMgmt -.->|方法调用| AppMgmt
     CapMgmt -.->|方法调用| Member
     
-    %% 所有服务独立访问数据层
+    %% open-server 和 api-server 访问数据层
     OpenServer --> MySQL
-    OpenServer --> Redis
+    OpenServer --> Redis1
     ApiServer --> MySQL
-    ApiServer --> Redis
-    EventServer --> MySQL
-    EventServer --> Redis
+    ApiServer --> Redis1
+    
+    %% event-server 有独立 Redis，无数据库，通过 api-server 获取数据
+    EventServer --> Redis2
+    EventServer -.->|调用接口\n获取数据| ApiServer
     
     %% API调用流程：消费方 -> 内部API网关 -> api-server认证鉴权 -> 提供方
     Consumer1 -->|API调用| ApiGW
@@ -502,20 +505,25 @@ graph TB
 
 ##### api-server（API认证鉴权服务）
 
-> **使用者**：XX 通讯平台内部 API 网关，用于完成 API 调用的认证鉴权
+> **使用者**：XX 通讯平台内部 API 网关、event-server
 > 
 > **调用方向**：由外向内（消费方 → 提供方）
+> 
+> **数据存储**：MySQL + Redis（共享）
 
 | 模块 | 功能说明 |
 |------|----------|
 | **API认证鉴权** | 接收内部API网关的认证鉴权请求，验证消费方对API的访问权限 |
 | **Scope授权** | OAuth 2.0 Scope 授权流程 |
+| **数据查询接口** | 提供 API/事件/回调/订阅等数据查询接口，供 event-server 调用 |
 
 ##### event-server（事件/回调网关服务）
 
 > **使用者**：提供方应用，通过 XX 通讯平台内部消息网关访问
 > 
 > **调用方向**：由内向外（提供方 → 消费方）
+> 
+> **数据存储**：Redis（独立），无数据库，通过 api-server 接口获取数据
 
 | 模块 | 功能说明 |
 |------|----------|
@@ -700,12 +708,12 @@ open-app/
 
 ### 3.2 服务职责划分
 
-| 服务 | 职责 | 使用者 | 调用方向 | 端口（建议） |
-|------|------|--------|----------|-------------|
-| **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | open-web | - | 8080 |
-| **api-server** | API认证鉴权服务：API认证鉴权、Scope授权 | XX通讯平台内部API网关 | 由外向内 | 8081 |
-| **event-server** | 事件/回调网关服务：事件消费网关、回调消费网关 | XX通讯平台内部消息网关 | 由内向外 | 8082 |
-| **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | - | 3000 |
+| 服务 | 职责 | 使用者 | 调用方向 | 数据存储 | 端口（建议） |
+|------|------|--------|----------|----------|-------------|
+| **open-server** | 管理服务：分类管理、API/事件/回调管理、权限管理、审批管理 | open-web | - | MySQL + Redis | 8080 |
+| **api-server** | API认证鉴权服务：API认证鉴权、Scope授权、数据查询接口 | XX通讯平台内部API网关、event-server | 由外向内 | MySQL + Redis | 8081 |
+| **event-server** | 事件/回调网关服务：事件消费网关、回调消费网关 | XX通讯平台内部消息网关 | 由内向外 | Redis（独立），无数据库 | 8082 |
+| **open-web** | 前端应用：对应 open-server 的管理界面 | 运营方/提供方/消费方管理员 | - | - | 3000 |
 
 ### 3.3 服务间调用关系
 
@@ -715,7 +723,7 @@ graph LR
         OpenWeb["open-web"]
     end
     
-    subgraph Services["后端服务（独立服务，无依赖）"]
+    subgraph Services["后端服务"]
         subgraph OpenServer["open-server"]
             CapMgmt["能力开放模块"]
             AppMgmt["应用管理模块"]
@@ -723,6 +731,12 @@ graph LR
         end
         ApiServer["api-server\n(API认证鉴权)\n由外向内"]
         EventServer["event-server\n(事件/回调网关)\n由内向外"]
+    end
+    
+    subgraph DataLayer["数据层"]
+        MySQL[(MySQL)]
+        Redis1[(Redis\nopen-server/api-server)]
+        Redis2[(Redis\nevent-server)]
     end
     
     subgraph PlatformGW["XX通讯平台网关"]
@@ -742,6 +756,16 @@ graph LR
     CapMgmt -.->|方法调用| AppMgmt
     CapMgmt -.->|方法调用| Member
     
+    %% open-server 和 api-server 访问数据层
+    OpenServer --> MySQL
+    OpenServer --> Redis1
+    ApiServer --> MySQL
+    ApiServer --> Redis1
+    
+    %% event-server 有独立 Redis，无数据库，调用 api-server 获取数据
+    EventServer --> Redis2
+    EventServer -.->|调用接口| ApiServer
+    
     %% API调用流程（由外向内）
     Consumer -->|API调用| ApiGW
     ApiGW -.->|认证鉴权| ApiServer
@@ -754,6 +778,7 @@ graph LR
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
+    style DataLayer fill:#f3e5f5,stroke:#7b1fa2
     style PlatformGW fill:#fff3e0,stroke:#ef6c00
     style Consumers fill:#e0f7fa,stroke:#00838f
 ```
@@ -866,6 +891,7 @@ graph LR
 | 现有 `AKSK 管理系统` | 待确认（Feign/方法调用） |
 | 现有 `内部中台网关` | HTTP 调用 |
 | 现有 `内部消息网关` | HTTP/MQ 调用 |
+| `api-server` | event-server 通过 Feign/HTTP 调用获取数据 |
 
 ---
 
@@ -1482,6 +1508,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.15 | 2026-04-20 | 简化架构图：合并重复的open-server节点，内部模块作为open-server子图 | SDDU Plan Agent |
 | v1.16 | 2026-04-20 | 修正API调用流程：内部API网关转发请求给提供方，非api-server转发；回调业务移至event-server（由内向外） | SDDU Plan Agent |
 | v1.17 | 2026-04-20 | 修复Mermaid渲染错误：移除连接标签中的换行符，改用节点标签标注调用方向 | SDDU Plan Agent |
+| v1.18 | 2026-04-20 | 修正event-server数据依赖：无数据库，有独立Redis，通过调用api-server接口获取数据 | SDDU Plan Agent |
 
 ---
 
