@@ -823,6 +823,67 @@ erDiagram
 | **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | `openplatform_permission_api_p_t` |
 | **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_user_authorization_t` |
 
+#### 主表与属性表设计规范
+
+对于一般业务对象，采用 **主表 + 属性表** 的设计模式：
+
+**主表设计原则**：
+
+| 原则 | 说明 |
+|------|------|
+| **字段选择** | 存储业务对象的常用字段 |
+| **列表展示** | 涉及在对象列表中展示的字段 |
+| **搜索条件** | 作为列表搜索条件的字段 |
+| **示例** | `name_cn`、`name_en`、`code_name`、`status`、`category_id` 等 |
+
+**属性表设计规范**：
+
+| 规则 | 说明 | 示例 |
+|------|------|------|
+| **用途** | 存储仅在对象详情中涉及的不常用字段 | 扩展配置、元数据等 |
+| **表名格式** | `{前缀}_{业务对象名}_p_t` | `openplatform_api_p_t` |
+| **表名示例** | API 属性表 → `openplatform_api_p_t` | |
+| **表名示例** | 事件属性表 → `openplatform_event_p_t` | |
+| **表名示例** | 权限属性表 → `openplatform_permission_p_t` | |
+
+**属性表必备字段**：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| `id` | BIGINT(20) | 主键，雪花ID |
+| `parent_id` | BIGINT(20) | 父表ID（关联主表） |
+| `attr_name` | VARCHAR(100) | 属性名称 |
+| `attr_value` | TEXT | 属性值 |
+| `status` | TINYINT(10) | 状态（0=禁用, 1=启用） |
+| `create_time` | DATETIME(3) | 创建时间 |
+| `last_update_time` | DATETIME(3) | 更新时间 |
+| `create_by` | VARCHAR(100) | 创建人账号 |
+| `last_update_by` | VARCHAR(100) | 更新人账号 |
+
+**属性表示例**：
+
+```sql
+CREATE TABLE `openplatform_api_p_t` (
+    `id` BIGINT(20) PRIMARY KEY,
+    `parent_id` BIGINT(20) NOT NULL COMMENT '关联 API 主表 ID',
+    `attr_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
+    `attr_value` TEXT COMMENT '属性值',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(100),
+    `last_update_by` VARCHAR(100),
+    KEY `idx_parent_id` (`parent_id`),
+    KEY `idx_attr_name` (`attr_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API属性表';
+```
+
+> 💡 **说明**：
+> - 属性表采用 **KV 模式**，灵活存储各种扩展属性
+> - 属性名 `attr_name` 和属性值 `attr_value` 支持动态扩展
+> - 主表保持简洁，便于列表查询和搜索
+> - 属性表存放详情，避免主表字段膨胀
+
 #### 名称和描述字段规范
 
 涉及名称、描述场景的字段，统一使用中英文双语：
