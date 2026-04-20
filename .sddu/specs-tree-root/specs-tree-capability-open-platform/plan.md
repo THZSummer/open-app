@@ -589,10 +589,12 @@ open-app/
 
 | 字段名 | 类型 | 说明 |
 |--------|------|------|
-| `created_at` | DATETIME | 创建时间，默认 CURRENT_TIMESTAMP |
-| `updated_at` | DATETIME | 更新时间，默认 CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP |
-| `created_by` | VARCHAR(36) | 创建人 ID |
-| `updated_by` | VARCHAR(36) | 更新人 ID |
+| `create_time` | DATETIME(3) | 创建时间，默认 CURRENT_TIMESTAMP(3) |
+| `last_update_time` | DATETIME(3) | 更新时间，默认 CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) |
+| `create_by` | VARCHAR(36) | 创建人 ID |
+| `last_update_by` | VARCHAR(36) | 更新人 ID |
+
+> 💡 **说明**：时间字段统一使用 `DATETIME(3)` 精确到毫秒，确保高并发场景下的时间精度。
 
 #### 主键规范
 
@@ -665,10 +667,10 @@ CREATE TABLE `openplatform_group_t` (
     `parent_id` VARCHAR(36),
     `sort_order` INT DEFAULT 0,
     `status` VARCHAR(20) DEFAULT 'active',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     KEY `idx_resource_type` (`resource_type`),
     KEY `idx_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组表';
@@ -678,10 +680,10 @@ CREATE TABLE `openplatform_group_owner_t` (
     `id` VARCHAR(36) PRIMARY KEY,
     `group_id` VARCHAR(36) NOT NULL,
     `user_id` VARCHAR(36) NOT NULL,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     UNIQUE KEY `uk_group_user` (`group_id`, `user_id`),
     CONSTRAINT `fk_group_owner_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分组责任人关联表';
@@ -699,10 +701,10 @@ CREATE TABLE `openplatform_api_t` (
     `doc_url` VARCHAR(500),
     `group_id` VARCHAR(36),
     `status` VARCHAR(20) DEFAULT 'draft' COMMENT 'draft, pending, published, offline',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     KEY `idx_group_id` (`group_id`),
     KEY `idx_status` (`status`),
     CONSTRAINT `fk_api_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
@@ -720,10 +722,10 @@ CREATE TABLE `openplatform_event_t` (
     `doc_url` VARCHAR(500),
     `group_id` VARCHAR(36),
     `status` VARCHAR(20) DEFAULT 'draft',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     KEY `idx_group_id` (`group_id`),
     KEY `idx_topic` (`topic`),
     CONSTRAINT `fk_event_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
@@ -740,10 +742,10 @@ CREATE TABLE `openplatform_callback_t` (
     `doc_url` VARCHAR(500),
     `group_id` VARCHAR(36),
     `status` VARCHAR(20) DEFAULT 'draft',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     KEY `idx_group_id` (`group_id`),
     CONSTRAINT `fk_callback_group` FOREIGN KEY (`group_id`) REFERENCES `openplatform_group_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源表';
@@ -760,10 +762,10 @@ CREATE TABLE `openplatform_permission_t` (
     `description` TEXT,
     `approval_flow_id` VARCHAR(36) COMMENT '资源特有审批流',
     `status` VARCHAR(20) DEFAULT 'active',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     KEY `idx_resource` (`resource_type`, `resource_id`),
     KEY `idx_code_name` (`code_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源表';
@@ -779,11 +781,11 @@ CREATE TABLE `openplatform_subscription_t` (
     `channel_type` VARCHAR(20) COMMENT 'internal_mq, webhook, sse, websocket',
     `channel_address` VARCHAR(500),
     `auth_type` VARCHAR(20) COMMENT 'app_credential_a, app_credential_b, open_app_credential',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
-    `approved_at` DATETIME,
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
+    `approved_at` DATETIME(3),
     `approved_by` VARCHAR(36),
     UNIQUE KEY `uk_app_permission` (`app_id`, `permission_id`),
     KEY `idx_app_id` (`app_id`),
@@ -803,10 +805,10 @@ CREATE TABLE `openplatform_approval_flow_t` (
     `is_default` TINYINT(1) DEFAULT 0,
     `nodes` JSON NOT NULL COMMENT '审批节点配置',
     `status` VARCHAR(20) DEFAULT 'active',
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36)
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程模板表';
 
 -- ============================================
@@ -820,11 +822,11 @@ CREATE TABLE `openplatform_approval_record_t` (
     `applicant_id` VARCHAR(36) NOT NULL,
     `status` VARCHAR(20) DEFAULT 'pending' COMMENT 'pending, approved, rejected, cancelled',
     `current_node` INT DEFAULT 0,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
-    `completed_at` DATETIME,
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
+    `completed_at` DATETIME(3),
     KEY `idx_flow_id` (`flow_id`),
     KEY `idx_business` (`business_type`, `business_id`),
     KEY `idx_applicant` (`applicant_id`),
@@ -842,10 +844,10 @@ CREATE TABLE `openplatform_approval_log_t` (
     `operator_id` VARCHAR(36) NOT NULL,
     `action` VARCHAR(20) NOT NULL COMMENT 'approve, reject, cancel, transfer',
     `comment` TEXT,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     KEY `idx_record_id` (`record_id`),
     CONSTRAINT `fk_approval_log_record` FOREIGN KEY (`record_id`) REFERENCES `openplatform_approval_record_t`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
@@ -858,12 +860,12 @@ CREATE TABLE `openplatform_user_authorization_t` (
     `user_id` VARCHAR(36) NOT NULL,
     `app_id` VARCHAR(36) NOT NULL,
     `scopes` JSON NOT NULL COMMENT '权限范围数组',
-    `expires_at` DATETIME,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
-    `revoked_at` DATETIME,
+    `expires_at` DATETIME(3),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
+    `revoked_at` DATETIME(3),
     UNIQUE KEY `uk_user_app` (`user_id`, `app_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户授权表';
 
@@ -880,10 +882,10 @@ CREATE TABLE `openplatform_audit_log_t` (
     `new_value` JSON,
     `ip_address` VARCHAR(45),
     `user_agent` TEXT,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `created_by` VARCHAR(36),
-    `updated_by` VARCHAR(36),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    `create_by` VARCHAR(36),
+    `last_update_by` VARCHAR(36),
     KEY `idx_user` (`user_id`),
     KEY `idx_resource` (`resource_type`, `resource_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审计日志表';
