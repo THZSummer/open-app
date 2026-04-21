@@ -1525,6 +1525,7 @@ Phase 4: 联调 & 上线（3 周）
 - 页面设计: `plan-page.md` v1.25
 - 数据库设计: `plan-db.md`
 - 接口设计: `plan-api.md`
+- 开发配置: `plan-config-dev.md`
 - 需求挖掘报告: `discovery-report.md`
 - 现有系统架构: `docs/业务架构.md`
 - 现有系统技术栈: `docs/app-management-spec.json`
@@ -1561,6 +1562,7 @@ Phase 4: 联调 & 上线（3 周）
 | v1.25 | 2026-04-20 | 同步plan-page.md页面清单格式与plan.md 6.1节保持一致 | SDDU Plan Agent |
 | v1.26 | 2026-04-20 | 前端技术栈参考front/project-documenter/output/2026-04-16-specification.md定义：React 18.2.0 + Ant Design 4.24.16 + Vite 5.0.0 + Less 4.2.0 | SDDU Plan Agent |
 | v1.27 | 2026-04-20 | 修正回调与事件流程差异：事件（提供方→内部消息网关→event-server→消费方）；回调（提供方→event-server→消费方，不经内部消息网关） | SDDU Plan Agent |
+| v1.28 | 2026-04-21 | 新增开发环境配置文档 plan-config-dev.md，包含数据库、Redis、服务端口、.gitignore 等配置 | SDDU Plan Agent |
 
 ---
 
