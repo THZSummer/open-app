@@ -90,6 +90,76 @@
 }
 ```
 
+#### 响应格式规范
+
+所有接口统一使用以下响应格式：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| code | string | 状态码，`"200"` 表示成功，非 `"200"` 表示失败 |
+| messageZh | string | 中文提示消息 |
+| messageEn | string | 英文提示消息 |
+| data | object/array | 业务数据 |
+| page | object/null | 分页数据，非列表接口为 null |
+
+**分页数据响应示例**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": [
+    {
+      "id": "100",
+      "nameCn": "发送消息"
+    }
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 123
+  }
+}
+```
+
+**普通数据响应示例**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
+  "data": {
+    "id": "100",
+    "nameCn": "发送消息",
+    "status": 1
+  },
+  "page": null
+}
+```
+
+**错误响应示例**：
+
+```json
+{
+  "code": "400",
+  "messageZh": "参数错误",
+  "messageEn": "Bad Request",
+  "data": null,
+  "page": null
+}
+```
+
+#### 分页请求规范
+
+所有列表接口统一支持分页：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| curPage | int | 否 | 当前页码，从 1 开始，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20，最大 100 |
+
 ### 0.5 示例对照
 
 ```json
@@ -201,7 +271,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": [
     {
       "id": "1",
@@ -222,8 +294,9 @@
           "path": "/1/2/",
           "sortOrder": 0,
           "status": 1,
-          "children": []
-        }
+          "children": [],
+  "page": null
+}
       ]
     }
   ]
@@ -240,7 +313,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "2",
     "categoryAlias": null,
@@ -252,7 +327,8 @@
     "status": 1,
     "createTime": "2026-04-20T10:00:00.000Z",
     "createBy": "admin"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -288,7 +364,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "1",
     "categoryAlias": "app_type_a",
@@ -298,7 +376,8 @@
     "path": "/1/",
     "sortOrder": 0,
     "status": 1
-  }
+  },
+  "page": null
 }
 ```
 
@@ -328,13 +407,16 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "2",
     "nameCn": "IM 业务能力",
     "nameEn": "IM Business Capability",
     "sortOrder": 1
-  }
+  },
+  "page": null
 }
 ```
 
@@ -350,9 +432,11 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "分类删除成功",
+  "messageEn": "Success",
   "data": null,
-  "message": "分类删除成功"
+  "page": null
 }
 ```
 
@@ -360,8 +444,10 @@
 
 ```json
 {
-  "code": 409,
-  "message": "分类下存在 5 个 API 资源，无法删除"
+  "code": "409",
+  "message": "分类下存在 5 个 API 资源，无法删除",
+  "data": null,
+  "page": null
 }
 ```
 
@@ -389,13 +475,16 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "100",
     "categoryId": "2",
     "userId": "user001",
     "userName": "张三"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -409,7 +498,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": [
     {
       "id": "100",
@@ -423,7 +514,8 @@
       "userId": "user002",
       "userName": "李四"
     }
-  ]
+  ],
+  "page": null
 }
 ```
 
@@ -437,9 +529,11 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "责任人移除成功",
+  "messageEn": "Success",
   "data": null,
-  "message": "责任人移除成功"
+  "page": null
 }
 ```
 
@@ -458,19 +552,17 @@
 | category_id | long | 否 | 分类ID过滤 |
 | status | int | 否 | 状态过滤（0=草稿, 1=待审, 2=已发布, 3=已下线） |
 | keyword | string | 否 | 搜索关键词（名称、Scope） |
-| page | int | 否 | 页码，默认 1 |
-| size | int | 否 | 每页数量，默认 20 |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
-  "data": {
-    "total": 50,
-    "page": 1,
-    "size": 20,
-    "list": [
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": [
       {
         "id": "100",
         "nameCn": "发送消息",
@@ -486,7 +578,12 @@
           "status": 1
         }
       }
-    ]
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 50
   }
 }
 ```
@@ -501,7 +598,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "100",
     "nameCn": "发送消息",
@@ -524,7 +623,8 @@
       { "propertyName": "descriptionEn", "propertyValue": "Send message API description" },
       { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/api/send-message" }
     ]
-  }
+  },
+  "page": null
 }
 ```
 
@@ -579,7 +679,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "100",
     "nameCn": "发送消息",
@@ -591,9 +693,11 @@
       "id": "200",
       "scope": "api:im:send-message",
       "status": 1
-    }
-  },
-  "message": "API 注册成功，等待审批"
+    },
+  "page": null
+},
+  "messageZh": "API 注册成功，等待审批",
+  "messageEn": "Error"
 }
 ```
 
@@ -626,13 +730,16 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "100",
     "nameCn": "发送消息V2",
     "status": 1,
     "message": "API 更新成功，核心属性变更需重新审批"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -648,9 +755,11 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "API 删除成功",
+  "messageEn": "Success",
   "data": null,
-  "message": "API 删除成功"
+  "page": null
 }
 ```
 
@@ -658,8 +767,10 @@
 
 ```json
 {
-  "code": 409,
-  "message": "API 被 3 个应用订阅，无法删除"
+  "code": "409",
+  "message": "API 被 3 个应用订阅，无法删除",
+  "data": null,
+  "page": null
 }
 ```
 
@@ -673,12 +784,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "100",
     "status": 0,
     "message": "API 已撤回，状态变为草稿"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -697,14 +811,16 @@
 | category_id | long | 否 | 分类ID过滤 |
 | status | int | 否 | 状态过滤 |
 | keyword | string | 否 | 搜索关键词（名称、Scope、Topic） |
-| page | int | 否 | 页码 |
-| size | int | 否 | 每页数量 |
+| curPage | int | 否 | 当前页码 |
+| pageSize | int | 否 | 每页数量 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "total": 30,
     "list": [
@@ -718,8 +834,9 @@
         "permission": {
           "id": "201",
           "scope": "event:im:message-received"
-        }
-      }
+        },
+  "page": null
+}
     ]
   }
 }
@@ -735,7 +852,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "101",
     "nameCn": "消息接收事件",
@@ -754,7 +873,8 @@
       { "propertyName": "descriptionCn", "propertyValue": "消息接收事件描述" },
       { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/event/message-received" }
     ]
-  }
+  },
+  "page": null
 }
 ```
 
@@ -797,7 +917,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "101",
     "nameCn": "消息接收事件",
@@ -806,9 +928,11 @@
     "permission": {
       "id": "201",
       "scope": "event:im:message-received"
-    }
-  },
-  "message": "事件注册成功，等待审批"
+    },
+  "page": null
+},
+  "messageZh": "事件注册成功，等待审批",
+  "messageEn": "Error"
 }
 ```
 
@@ -834,13 +958,16 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "101",
     "nameCn": "消息接收事件V2",
     "status": 1,
     "message": "事件更新成功，核心属性变更需重新审批"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -856,9 +983,11 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "事件删除成功",
+  "messageEn": "Success",
   "data": null,
-  "message": "事件删除成功"
+  "page": null
 }
 ```
 
@@ -866,8 +995,10 @@
 
 ```json
 {
-  "code": 409,
-  "message": "事件被 3 个应用订阅，无法删除"
+  "code": "409",
+  "message": "事件被 3 个应用订阅，无法删除",
+  "data": null,
+  "page": null
 }
 ```
 
@@ -881,12 +1012,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "101",
     "status": 0,
     "message": "事件已撤回"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -905,14 +1039,16 @@
 | category_id | long | 否 | 分类ID过滤 |
 | status | int | 否 | 状态过滤 |
 | keyword | string | 否 | 搜索关键词 |
-| page | int | 否 | 页码 |
-| size | int | 否 | 每页数量 |
+| curPage | int | 否 | 当前页码 |
+| pageSize | int | 否 | 每页数量 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "total": 20,
     "list": [
@@ -925,8 +1061,9 @@
         "permission": {
           "id": "202",
           "scope": "callback:approval:completed"
-        }
-      }
+        },
+  "page": null
+}
     ]
   }
 }
@@ -942,7 +1079,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "102",
     "nameCn": "审批完成回调",
@@ -960,7 +1099,8 @@
       { "propertyName": "descriptionCn", "propertyValue": "审批完成后的回调通知" },
       { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/callback/approval-completed" }
     ]
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1001,7 +1141,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "102",
     "nameCn": "审批完成回调",
@@ -1009,9 +1151,11 @@
     "permission": {
       "id": "202",
       "scope": "callback:approval:completed"
-    }
-  },
-  "message": "回调注册成功，等待审批"
+    },
+  "page": null
+},
+  "messageZh": "回调注册成功，等待审批",
+  "messageEn": "Error"
 }
 ```
 
@@ -1037,13 +1181,16 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "102",
     "nameCn": "审批完成回调V2",
     "status": 1,
     "message": "回调更新成功，核心属性变更需重新审批"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1059,9 +1206,11 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "回调删除成功",
+  "messageEn": "Success",
   "data": null,
-  "message": "回调删除成功"
+  "page": null
 }
 ```
 
@@ -1069,8 +1218,10 @@
 
 ```json
 {
-  "code": 409,
-  "message": "回调被 2 个应用订阅，无法删除"
+  "code": "409",
+  "message": "回调被 2 个应用订阅，无法删除",
+  "data": null,
+  "page": null
 }
 ```
 
@@ -1086,12 +1237,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "102",
     "status": 0,
     "message": "回调已撤回，状态变为草稿"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1108,42 +1262,53 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | status | int | 否 | 订阅状态过滤（0=待审, 1=已授权, 2=已拒绝, 3=已取消） |
+| keyword | string | 否 | 搜索关键词（权限名称、Scope） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "300",
-      "appId": "10",
-      "permissionId": "200",
-      "permission": {
-        "nameCn": "发送消息权限",
-        "scope": "api:im:send-message"
-      },
-      "api": {
-        "path": "/api/v1/messages",
-        "method": "POST",
-        "docUrl": "https://docs.example.com/api/send-message"
-      },
-      "category": {
-        "id": "2",
-        "nameCn": "IM业务",
-        "path": "/1/2/",
-        "categoryPath": ["A类应用权限", "IM业务"]
-      },
-      "approver": {
-        "userId": "user001",
-        "userName": "张三"
-      },
-      "status": 1,
-      "authType": 0,
-      "approvalUrl": "https://platform.example.com/approval/300",
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+      {
+        "id": "300",
+        "appId": "10",
+        "permissionId": "200",
+        "permission": {
+          "nameCn": "发送消息权限",
+          "scope": "api:im:send-message"
+        },
+        "api": {
+          "path": "/api/v1/messages",
+          "method": "POST",
+          "docUrl": "https://docs.example.com/api/send-message"
+        },
+        "category": {
+          "id": "2",
+          "nameCn": "IM业务",
+          "path": "/1/2/",
+          "categoryPath": ["A类应用权限", "IM业务"]
+        },
+        "approver": {
+          "userId": "user001",
+          "userName": "张三"
+        },
+        "status": 1,
+        "authType": 0,
+        "approvalUrl": "https://platform.example.com/approval/300",
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 50
+  }
 }
 ```
 
@@ -1165,28 +1330,38 @@
 | keyword | string | 否 | 搜索关键词（名称、Scope） |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 | include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "200",
-      "nameCn": "发送消息权限",
-      "nameEn": "Send Message Permission",
-      "scope": "api:im:send-message",
-      "status": 1,
-      "needApproval": 1,
-      "isSubscribed": 1,
-      "api": {
-        "path": "/api/v1/messages",
-        "method": "POST",
-        "docUrl": "https://docs.example.com/api/send-message"
+      {
+        "id": "200",
+        "nameCn": "发送消息权限",
+        "nameEn": "Send Message Permission",
+        "scope": "api:im:send-message",
+        "status": 1,
+        "needApproval": 1,
+        "isSubscribed": 1,
+        "api": {
+          "path": "/api/v1/messages",
+          "method": "POST",
+          "docUrl": "https://docs.example.com/api/send-message"
+        }
       }
-    }
-  ]
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 30
+  }
 }
 ```
 
@@ -1212,7 +1387,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "successCount": 3,
     "failedCount": 0,
@@ -1221,8 +1398,10 @@
       { "id": "301", "appId": "10", "permissionId": "201", "status": 0 },
       { "id": "302", "appId": "10", "permissionId": "202", "status": 0 }
     ],
-    "message": "申请已提交，共3条，等待审批"
-  }
+    "messageZh": "申请已提交，共3条，等待审批",
+  "messageEn": "Error"
+  },
+  "page": null
 }
 ```
 
@@ -1238,12 +1417,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "300",
     "status": 3,
     "message": "申请已撤回"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1260,37 +1442,48 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | status | int | 否 | 订阅状态过滤 |
+| keyword | string | 否 | 搜索关键词（权限名称、Scope、Topic） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "301",
-      "appId": "10",
-      "permissionId": "201",
-      "permission": {
-        "nameCn": "消息接收权限",
-        "scope": "event:im:message-received"
-      },
-      "event": {
-        "topic": "im.message.received"
-      },
-      "category": {
-        "id": "2",
-        "nameCn": "IM业务",
-        "path": "/1/2/",
-        "categoryPath": ["A类应用权限", "IM业务"]
-      },
-      "status": 1,
-      "channelType": 1,
-      "channelAddress": "https://webhook.example.com/events",
-      "authType": 0,
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+      {
+        "id": "301",
+        "appId": "10",
+        "permissionId": "201",
+        "permission": {
+          "nameCn": "消息接收权限",
+          "scope": "event:im:message-received"
+        },
+        "event": {
+          "topic": "im.message.received"
+        },
+        "category": {
+          "id": "2",
+          "nameCn": "IM业务",
+          "path": "/1/2/",
+          "categoryPath": ["A类应用权限", "IM业务"]
+        },
+        "status": 1,
+        "channelType": 1,
+        "channelAddress": "https://webhook.example.com/events",
+        "authType": 0,
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 30
+  }
 }
 ```
 
@@ -1312,27 +1505,37 @@
 | keyword | string | 否 | 搜索关键词 |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 | include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "201",
-      "nameCn": "消息接收权限",
-      "nameEn": "Message Received Permission",
-      "scope": "event:im:message-received",
-      "status": 1,
-      "needApproval": 1,
-      "isSubscribed": 1,
-      "event": {
-        "topic": "im.message.received",
-        "docUrl": "https://docs.example.com/event/message-received"
+      {
+        "id": "201",
+        "nameCn": "消息接收权限",
+        "nameEn": "Message Received Permission",
+        "scope": "event:im:message-received",
+        "status": 1,
+        "needApproval": 1,
+        "isSubscribed": 1,
+        "event": {
+          "topic": "im.message.received",
+          "docUrl": "https://docs.example.com/event/message-received"
+        }
       }
-    }
-  ]
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 20
+  }
 }
 ```
 
@@ -1358,7 +1561,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "successCount": 3,
     "failedCount": 0,
@@ -1367,8 +1572,10 @@
       { "id": "302", "appId": "10", "permissionId": "202", "status": 0 },
       { "id": "303", "appId": "10", "permissionId": "203", "status": 0 }
     ],
-    "message": "申请已提交，共3条，等待审批"
-  }
+    "messageZh": "申请已提交，共3条，等待审批",
+  "messageEn": "Error"
+  },
+  "page": null
 }
 ```
 
@@ -1409,14 +1616,17 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "301",
     "channelType": 1,
     "channelAddress": "https://webhook.example.com/events",
     "authType": 0,
     "message": "事件消费参数配置成功"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1432,12 +1642,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "301",
     "status": 3,
     "message": "申请已撤回"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1449,33 +1662,50 @@
 
 获取应用回调订阅列表。
 
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | int | 否 | 订阅状态过滤 |
+| keyword | string | 否 | 搜索关键词（权限名称、Scope） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
+
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "302",
-      "appId": "10",
-      "permissionId": "202",
-      "permission": {
-        "nameCn": "审批完成回调权限",
-        "scope": "callback:approval:completed"
-      },
-      "category": {
-        "id": "3",
-        "nameCn": "审批回调",
-        "path": "/1/3/",
-        "categoryPath": ["A类应用权限", "审批回调"]
-      },
-      "status": 1,
-      "channelType": 1,
-      "channelAddress": "https://webhook.example.com/callbacks",
-      "authType": 0,
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+      {
+        "id": "302",
+        "appId": "10",
+        "permissionId": "202",
+        "permission": {
+          "nameCn": "审批完成回调权限",
+          "scope": "callback:approval:completed"
+        },
+        "category": {
+          "id": "3",
+          "nameCn": "审批回调",
+          "path": "/1/3/",
+          "categoryPath": ["A类应用权限", "审批回调"]
+        },
+        "status": 1,
+        "channelType": 1,
+        "channelAddress": "https://webhook.example.com/callbacks",
+        "authType": 0,
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 20
+  }
 }
 ```
 
@@ -1497,27 +1727,38 @@
 | keyword | string | 否 | 搜索关键词 |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 | include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "202",
-      "nameCn": "审批完成回调权限",
-      "nameEn": "Approval Completed Callback Permission",
-      "scope": "callback:approval:completed",
-      "status": 1,
-      "needApproval": 1,
-      "isSubscribed": 1,
-      "callback": {
-        "docUrl": "https://docs.example.com/callback/approval-completed"
+      {
+        "id": "202",
+        "nameCn": "审批完成回调权限",
+        "nameEn": "Approval Completed Callback Permission",
+        "scope": "callback:approval:completed",
+        "status": 1,
+        "needApproval": 1,
+        "isSubscribed": 1,
+        "callback": {
+          "docUrl": "https://docs.example.com/callback/approval-completed"
+        }
       }
-    }
-  ]
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 15
+  }
 }
+```
 ```
 
 ---
@@ -1542,7 +1783,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "successCount": 3,
     "failedCount": 0,
@@ -1551,8 +1794,10 @@
       { "id": "303", "appId": "10", "permissionId": "203", "status": 0 },
       { "id": "304", "appId": "10", "permissionId": "204", "status": 0 }
     ],
-    "message": "申请已提交，共3条，等待审批"
-  }
+    "messageZh": "申请已提交，共3条，等待审批",
+  "messageEn": "Error"
+  },
+  "page": null
 }
 ```
 
@@ -1600,12 +1845,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "302",
     "status": 3,
     "message": "申请已撤回"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1617,30 +1865,47 @@
 
 获取审批流程模板列表。
 
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | string | 否 | 搜索关键词（名称、编码） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
+
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "1",
-      "nameCn": "默认审批流",
-      "nameEn": "Default Approval Flow",
-      "code": "default",
-      "isDefault": 1,
-      "status": 1
-    },
-    {
-      "id": "2",
-      "nameCn": "API注册审批流",
-      "nameEn": "API Registration Approval Flow",
-      "code": "api_register",
-      "isDefault": 0,
-      "status": 1
-    }
-  ]
+      {
+        "id": "1",
+        "nameCn": "默认审批流",
+        "nameEn": "Default Approval Flow",
+        "code": "default",
+        "isDefault": 1,
+        "status": 1
+      },
+      {
+        "id": "2",
+        "nameCn": "API注册审批流",
+        "nameEn": "API Registration Approval Flow",
+        "code": "api_register",
+        "isDefault": 0,
+        "status": 1
+      }
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 5
+  }
 }
+```
 ```
 
 ---
@@ -1653,7 +1918,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "2",
     "nameCn": "API注册审批流",
@@ -1665,7 +1932,8 @@
       { "type": "approver", "userId": "user001", "userName": "张三", "order": 1 },
       { "type": "approver", "userId": "user002", "userName": "李四", "order": 2 }
     ]
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1736,17 +2004,18 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | type | string | 否 | 审批类型（resource_register=资源注册, permission_apply=权限申请） |
-| page | int | 否 | 页码 |
-| size | int | 否 | 每页数量 |
+| keyword | string | 否 | 搜索关键词（业务名称、申请人） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
-  "data": {
-    "total": 10,
-    "list": [
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": [
       {
         "id": "500",
         "type": "resource_register",
@@ -1759,7 +2028,12 @@
         "currentNode": 1,
         "createTime": "2026-04-20T10:00:00.000Z"
       }
-    ]
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 10
   }
 }
 ```
@@ -1774,7 +2048,9 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "500",
     "type": "resource_register",
@@ -1795,7 +2071,8 @@
       { "order": 2, "userId": "user002", "userName": "李四", "status": null }
     ],
     "logs": []
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1821,12 +2098,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "500",
     "status": 1,
     "message": "审批通过，API 已上架"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1852,12 +2132,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "500",
     "status": 2,
     "message": "审批已驳回"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1873,12 +2156,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "500",
     "status": 3,
     "message": "审批已撤销"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1906,12 +2192,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "successCount": 3,
     "failedCount": 0,
     "message": "批量审批通过，共3条"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1939,12 +2228,15 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "successCount": 3,
     "failedCount": 0,
     "message": "批量驳回成功，共3条"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -1960,26 +2252,37 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| user_id | string | 否 | 用户ID过滤 |
-| app_id | long | 否 | 应用ID过滤 |
+| userId | string | 否 | 用户ID过滤 |
+| appId | string | 否 | 应用ID过滤 |
+| keyword | string | 否 | 搜索关键词（用户名、应用名） |
+| curPage | int | 否 | 当前页码，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
   "data": [
-    {
-      "id": "600",
-      "userId": "user001",
-      "userName": "张三",
-      "appId": "10",
-      "appName": "消息助手",
-      "scopes": ["api:im:send-message", "api:im:get-message"],
-      "expiresAt": "2026-12-31T23:59:59.000Z",
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+      {
+        "id": "600",
+        "userId": "user001",
+        "userName": "张三",
+        "appId": "10",
+        "appName": "消息助手",
+        "scopes": ["api:im:send-message", "api:im:get-message"],
+        "expiresAt": "2026-12-31T23:59:59.000Z",
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    
+  ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 20
+  }
 }
 ```
 
@@ -2011,14 +2314,17 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "id": "600",
     "userId": "user001",
     "appId": "10",
     "scopes": ["api:im:send-message", "api:im:get-message"],
     "expiresAt": "2026-12-31T23:59:59.000Z"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -2032,9 +2338,11 @@
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "授权已取消",
+  "messageEn": "Success",
   "data": null,
-  "message": "授权已取消"
+  "page": null
 }
 ```
 
@@ -2068,8 +2376,10 @@ API 请求代理与鉴权。
 
 ```json
 {
-  "code": 403,
-  "message": "应用未订阅该 API 权限"
+  "code": "403",
+  "message": "应用未订阅该 API 权限",
+  "data": null,
+  "page": null
 }
 ```
 
@@ -2113,12 +2423,15 @@ API 请求代理与鉴权。
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "topic": "im.message.received",
     "subscribers": 5,
     "message": "事件已分发至 5 个订阅方"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -2176,12 +2489,15 @@ API 请求代理与鉴权。
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "authorized": true,
     "subscriptionId": "300",
     "subscriptionStatus": 1
-  }
+  },
+  "page": null
 }
 ```
 
@@ -2189,11 +2505,14 @@ API 请求代理与鉴权。
 
 ```json
 {
-  "code": 0,
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
   "data": {
     "authorized": false,
     "reason": "应用未订阅该权限"
-  }
+  },
+  "page": null
 }
 ```
 
@@ -2205,13 +2524,13 @@ API 请求代理与鉴权。
 
 | 状态码 | 说明 |
 |--------|------|
-| 0 | 成功 |
-| 400 | 请求参数错误 |
-| 401 | 未授权 |
-| 403 | 权限不足 |
-| 404 | 资源不存在 |
-| 409 | 资源冲突 |
-| 500 | 服务器内部错误 |
+| "200" | 成功 |
+| "400" | 请求参数错误 |
+| "401" | 未授权 |
+| "403" | 权限不足 |
+| "404" | 资源不存在 |
+| "409" | 资源冲突 |
+| "500" | 服务器内部错误 |
 
 ### 3.2 资源状态枚举
 
