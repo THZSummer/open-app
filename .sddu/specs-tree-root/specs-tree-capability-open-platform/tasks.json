@@ -1,7 +1,7 @@
 {
   "feature_id": "CAP-OPEN-001",
   "feature_name": "能力开放平台（Capability Open Platform）",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "created_at": "2026-04-20",
   "updated_at": "2026-04-21",
   "author": "SDDU Tasks Agent",
@@ -10,6 +10,8 @@
   "spec_version": "spec.md v1.49",
   "summary": {
     "total_tasks": 13,
+    "completed_tasks": 12,
+    "pending_tasks": 1,
     "total_interfaces": 58,
     "interface_coverage": "100%",
     "complexity_distribution": {
@@ -30,6 +32,8 @@
       "wave": 1,
       "interface_coverage": [],
       "projects": ["open-server", "api-server", "event-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
       "files": {
         "new": [
           "open-server/pom.xml",
@@ -73,6 +77,8 @@
       "wave": 1,
       "interface_coverage": [],
       "projects": ["open-web"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
       "files": {
         "new": [
           "open-web/package.json",
@@ -106,6 +112,8 @@
       "wave": 1,
       "interface_coverage": [],
       "projects": ["docs"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
       "files": {
         "new": [
           "docs/sql/init-schema.sql",
@@ -132,6 +140,9 @@
       "interface_coverage": ["#1", "#2", "#3", "#4", "#5", "#6", "#7", "#8"],
       "interface_count": 8,
       "projects": ["open-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
+      "build_file": "build-task-004.md",
       "files": {
         "new": [
           "open-server/src/main/java/.../modules/category/CategoryController.java",
@@ -169,6 +180,8 @@
       "interface_coverage": ["#9", "#10", "#11", "#12", "#13", "#14"],
       "interface_count": 6,
       "projects": ["open-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
       "files": {
         "new": [
           "open-server/src/main/java/.../modules/api/ApiController.java",
@@ -205,6 +218,8 @@
       "interface_coverage": ["#15", "#16", "#17", "#18", "#19", "#20"],
       "interface_count": 6,
       "projects": ["open-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
       "files": {
         "new": [
           "open-server/src/main/java/.../modules/event/EventController.java",
@@ -240,6 +255,8 @@
       "interface_coverage": ["#21", "#22", "#23", "#24", "#25", "#26"],
       "interface_count": 6,
       "projects": ["open-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
       "files": {
         "new": [
           "open-server/src/main/java/.../modules/callback/CallbackController.java",
@@ -275,6 +292,8 @@
       "interface_coverage": ["#27", "#28", "#29", "#30", "#31", "#32", "#33", "#34", "#35", "#36", "#37", "#38", "#39", "#40"],
       "interface_count": 14,
       "projects": ["open-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
       "files": {
         "new": [
           "open-server/src/main/java/.../modules/permission/PermissionController.java",
@@ -322,6 +341,9 @@
       "interface_coverage": ["#41", "#42", "#43", "#44", "#45", "#46", "#47", "#48", "#49", "#50", "#51"],
       "interface_count": 11,
       "projects": ["open-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
+      "build_file": "build-task-009.md",
       "files": {
         "new": [
           "open-server/src/main/java/.../modules/approval/ApprovalController.java",
@@ -370,6 +392,9 @@
       "interface_coverage": ["#52", "#53", "#54", "#55", "#58"],
       "interface_count": 5,
       "projects": ["api-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
+      "build_file": "build-TASK-010.md",
       "files": {
         "new": [
           "api-server/src/main/java/.../gateway/ApiGatewayController.java",
@@ -405,6 +430,9 @@
       "interface_coverage": ["#56", "#57"],
       "interface_count": 2,
       "projects": ["event-server"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
+      "build_file": "build-TASK-011.md",
       "files": {
         "new": [
           "event-server/src/main/java/.../gateway/EventGatewayController.java",
@@ -441,6 +469,9 @@
       "wave": 5,
       "interface_coverage": [],
       "projects": ["open-web"],
+      "status": "completed",
+      "completed_at": "2026-04-21",
+      "build_file": "build.md",
       "files": {
         "new": [
           "open-web/src/pages/category/CategoryList.tsx",
@@ -488,6 +519,7 @@
       "wave": 5,
       "interface_coverage": [],
       "projects": ["all"],
+      "status": "pending",
       "files": {
         "new": [
           "open-server/src/test/java/.../*Test.java",
@@ -518,35 +550,40 @@
       "name": "基础框架",
       "tasks": ["TASK-001", "TASK-002", "TASK-003"],
       "description": "初始化前后端框架和数据库",
-      "interface_count": 0
+      "interface_count": 0,
+      "status": "completed"
     },
     {
       "wave": 2,
       "name": "核心资源管理",
       "tasks": ["TASK-004", "TASK-005", "TASK-006", "TASK-007"],
       "description": "实现分类、API、事件、回调管理模块",
-      "interface_count": 26
+      "interface_count": 26,
+      "status": "completed"
     },
     {
       "wave": 3,
       "name": "权限与审批",
       "tasks": ["TASK-008", "TASK-009"],
       "description": "实现权限申请和审批管理模块",
-      "interface_count": 25
+      "interface_count": 25,
+      "status": "completed"
     },
     {
       "wave": 4,
       "name": "网关服务",
       "tasks": ["TASK-010", "TASK-011"],
       "description": "实现 api-server 和 event-server 网关服务",
-      "interface_count": 7
+      "interface_count": 7,
+      "status": "completed"
     },
     {
       "wave": 5,
       "name": "前端与联调",
       "tasks": ["TASK-012", "TASK-013"],
       "description": "开发前端页面并进行集成测试",
-      "interface_count": 0
+      "interface_count": 0,
+      "status": "in_progress"
     }
   ],
   "interface_summary": {

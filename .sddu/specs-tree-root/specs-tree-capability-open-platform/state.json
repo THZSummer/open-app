@@ -1,11 +1,18 @@
 {
   "feature": "capability-open-platform",
-  "state": "tasked",
+  "state": "built",
   "created": "2026-04-13",
   "updated": "2026-04-21",
   "discovery_completed": "2026-04-13",
   "specified_at": "2026-04-14",
   "planned_at": "2026-04-20",
   "tasked_at": "2026-04-21",
-  "adrs": ["ADR-001", "ADR-002", "ADR-003"]
+  "built_at": "2026-04-21",
+  "adrs": ["ADR-001", "ADR-002", "ADR-003"],
+  "task_summary": {
+    "total_tasks": 13,
+    "completed_tasks": 12,
+    "pending_tasks": 1,
+    "completion_rate": "92.3%"
+  }
 }
