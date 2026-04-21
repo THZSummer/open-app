@@ -178,6 +178,9 @@ target/
 logs/
 *.log
 
+# PID files
+*.pid
+
 # OS
 .DS_Store
 Thumbs.db
@@ -201,7 +204,11 @@ build/
 .env.production.local
 
 # Logs
+logs/
 npm-debug.log*
+
+# PID files
+*.pid
 
 # OS
 .DS_Store
@@ -317,6 +324,6 @@ cd open-web && npm install && npm run dev
 
 ---
 
-**文档版本**: v1.2  
+**文档版本**: v1.3  
 **更新日期**: 2026-04-21  
 **作者**: SDDU Plan Agent
