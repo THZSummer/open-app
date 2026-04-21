@@ -1,12 +1,12 @@
 # 任务分解：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**任务版本**: v1.2  
+**任务版本**: v1.3  
 **创建日期**: 2026-04-20  
 **更新日期**: 2026-04-21  
 **任务作者**: SDDU Tasks Agent  
 **技术规划**: plan.md v1.26  
-**接口设计**: plan-api.md v1.27
+**接口设计**: plan-api.md v1.28（含接口规范）
 
 ---
 
@@ -110,7 +110,9 @@ graph TB
 - [ ] api-server 工程可独立启动，访问 `http://localhost:18081/actuator/health` 返回健康状态
 - [ ] event-server 工程可独立启动，访问 `http://localhost:18082/actuator/health` 返回健康状态
 - [ ] Mock 策略可通过配置开关（`mock.enabled=true/false`）一键切换
-- [ ] 统一异常处理生效，返回标准错误格式 `{code, message, data}`
+- [ ] 统一异常处理生效，返回标准错误格式：`{code: "400", messageZh: "参数错误", messageEn: "Bad Request", data: null, page: null}`
+- [ ] 所有 ID 字段统一返回 string 类型（避免 JavaScript 精度丢失）
+- [ ] 统一成功响应格式：`{code: "200", messageZh: "操作成功", messageEn: "Success", data: {...}, page: null}`
 - [ ] 雪花 ID 生成器可用
 
 ### 验证命令
@@ -235,8 +237,8 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_v2_%'"
 
 ### 验收标准
 
-- [ ] **#1** GET `/api/v1/categories` 返回树形分类列表，支持 `category_alias` 过滤（权限树查树）
-- [ ] **#2** GET `/api/v1/categories/:id` 返回分类详情
+- [ ] **#1** GET `/api/v1/categories` 返回树形分类列表，支持 `categoryAlias` 过滤（权限树查树），返回 `path` 和 `categoryPath` 字段
+- [ ] **#2** GET `/api/v1/categories/:id` 返回分类详情，包含 `path` 和 `categoryPath` 字段
 - [ ] **#3** POST `/api/v1/categories` 创建分类成功，`path` 字段自动生成
 - [ ] **#4** PUT `/api/v1/categories/:id` 更新分类成功
 - [ ] **#5** DELETE `/api/v1/categories/:id` 删除分类，检查关联资源
@@ -244,6 +246,7 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_v2_%'"
 - [ ] **#7** GET `/api/v1/categories/:id/owners` 返回责任人列表
 - [ ] **#8** DELETE `/api/v1/categories/:id/owners/:userId` 移除责任人成功
 - [ ] 树形子分类查询优化生效（通过 `path` 字段）
+- [ ] 所有 ID 字段返回 string 类型（categoryId, parentId 等）
 
 ### 验证命令
 
@@ -251,15 +254,15 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_v2_%'"
 # 创建根分类
 curl -X POST http://localhost:18080/api/v1/categories \
   -H "Content-Type: application/json" \
-  -d '{"category_alias":"app_type_a","name_cn":"A类应用权限","name_en":"App Type A Permissions"}'
+  -d '{"categoryAlias":"app_type_a","nameCn":"A类应用权限","nameEn":"App Type A Permissions"}'
 
 # 获取分类树（权限树查树）
-curl http://localhost:18080/api/v1/categories?category_alias=app_type_a
+curl http://localhost:18080/api/v1/categories?categoryAlias=app_type_a
 
 # 添加责任人
 curl -X POST http://localhost:18080/api/v1/categories/1/owners \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"user001"}'
+  -d '{"userId":"user001","userName":"张三"}'
 ```
 
 ---
@@ -289,7 +292,7 @@ curl -X POST http://localhost:18080/api/v1/categories/1/owners \
 
 ### 验收标准
 
-- [ ] **#9** GET `/api/v1/apis` 返回 API 列表，支持按分类过滤
+- [ ] **#9** GET `/api/v1/apis` 返回 API 列表，支持按分类过滤，支持分页参数 `curPage` 和 `pageSize`
 - [ ] **#10** GET `/api/v1/apis/:id` 返回 API 详情及权限信息、属性
 - [ ] **#11** POST `/api/v1/apis` 注册 API 成功，同时创建权限资源
 - [ ] **#12** PUT `/api/v1/apis/:id` 更新 API 成功，核心属性变更触发审批
@@ -297,6 +300,8 @@ curl -X POST http://localhost:18080/api/v1/categories/1/owners \
 - [ ] **#14** POST `/api/v1/apis/:id/withdraw` 撤回审核中的 API
 - [ ] API 属性表 KV 模式正确存储扩展属性
 - [ ] Scope 命名格式正确：`api:{module}:{identifier}`
+- [ ] 所有 ID 字段返回 string 类型
+- [ ] 列表接口返回统一分页格式（data 数组 + page 对象）
 
 ### 验证命令
 
@@ -304,7 +309,7 @@ curl -X POST http://localhost:18080/api/v1/categories/1/owners \
 # 注册 API
 curl -X POST http://localhost:18080/api/v1/apis \
   -H "Content-Type: application/json" \
-  -d '{"name_cn":"发送消息","name_en":"Send Message","path":"/api/v1/messages","method":"POST","category_id":2,"permission":{"name_cn":"发送消息权限","name_en":"Send Message Permission","scope":"api:im:send-message"}}'
+  -d '{"nameCn":"发送消息","nameEn":"Send Message","path":"/api/v1/messages","method":"POST","categoryId":"2","permission":{"nameCn":"发送消息权限","nameEn":"Send Message Permission","scope":"api:im:send-message"}}'
 
 # 获取 API 详情
 curl http://localhost:18080/api/v1/apis/100
@@ -337,13 +342,15 @@ curl http://localhost:18080/api/v1/apis/100
 
 ### 验收标准
 
-- [ ] **#15** GET `/api/v1/events` 返回事件列表，支持按分类过滤
+- [ ] **#15** GET `/api/v1/events` 返回事件列表，支持按分类过滤，支持分页参数
 - [ ] **#16** GET `/api/v1/events/:id` 返回事件详情及权限信息、属性
 - [ ] **#17** POST `/api/v1/events` 注册事件成功，同时创建权限资源，Topic 唯一性校验
 - [ ] **#18** PUT `/api/v1/events/:id` 更新事件成功
 - [ ] **#19** DELETE `/api/v1/events/:id` 删除事件，检查订阅关系
 - [ ] **#20** POST `/api/v1/events/:id/withdraw` 撤回审核中的事件
 - [ ] Scope 命名格式正确：`event:{module}:{identifier}`
+- [ ] 所有 ID 字段返回 string 类型
+- [ ] 列表接口返回统一分页格式
 
 ### 验证命令
 
@@ -351,7 +358,7 @@ curl http://localhost:18080/api/v1/apis/100
 # 注册事件
 curl -X POST http://localhost:18080/api/v1/events \
   -H "Content-Type: application/json" \
-  -d '{"name_cn":"消息接收事件","name_en":"Message Received Event","topic":"im.message.received","category_id":2,"permission":{"name_cn":"消息接收权限","name_en":"Message Received Permission","scope":"event:im:message-received"}}'
+  -d '{"nameCn":"消息接收事件","nameEn":"Message Received Event","topic":"im.message.received","categoryId":"2","permission":{"nameCn":"消息接收权限","nameEn":"Message Received Permission","scope":"event:im:message-received"}}'
 
 # 获取事件列表
 curl http://localhost:18080/api/v1/events
@@ -384,13 +391,15 @@ curl http://localhost:18080/api/v1/events
 
 ### 验收标准
 
-- [ ] **#21** GET `/api/v1/callbacks` 返回回调列表，支持按分类过滤
+- [ ] **#21** GET `/api/v1/callbacks` 返回回调列表，支持按分类过滤，支持分页参数
 - [ ] **#22** GET `/api/v1/callbacks/:id` 返回回调详情及权限信息、属性
 - [ ] **#23** POST `/api/v1/callbacks` 注册回调成功，同时创建权限资源
 - [ ] **#24** PUT `/api/v1/callbacks/:id` 更新回调成功
 - [ ] **#25** DELETE `/api/v1/callbacks/:id` 删除回调，检查订阅关系
 - [ ] **#26** POST `/api/v1/callbacks/:id/withdraw` 撤回审核中的回调
 - [ ] Scope 命名格式正确：`callback:{module}:{identifier}`
+- [ ] 所有 ID 字段返回 string 类型
+- [ ] 列表接口返回统一分页格式
 
 ### 验证命令
 
@@ -398,7 +407,7 @@ curl http://localhost:18080/api/v1/events
 # 注册回调
 curl -X POST http://localhost:18080/api/v1/callbacks \
   -H "Content-Type: application/json" \
-  -d '{"name_cn":"审批完成回调","name_en":"Approval Completed Callback","category_id":2,"permission":{"name_cn":"审批完成权限","name_en":"Approval Completed Permission","scope":"callback:approval:completed"}}'
+  -d '{"nameCn":"审批完成回调","nameEn":"Approval Completed Callback","categoryId":"2","permission":{"nameCn":"审批完成权限","nameEn":"Approval Completed Permission","scope":"callback:approval:completed"}}'
 
 # 获取回调列表
 curl http://localhost:18080/api/v1/callbacks
@@ -439,21 +448,21 @@ curl http://localhost:18080/api/v1/callbacks
 ### 验收标准
 
 **API 权限管理（#27-30）**：
-- [ ] **#27** GET `/api/v1/apps/:appId/apis` 返回应用 API 权限列表
-- [ ] **#28** GET `/api/v1/categories/:id/apis` 返回分类下 API 权限列表（权限树懒加载）
+- [ ] **#27** GET `/api/v1/apps/:appId/apis` 返回应用 API 权限列表，支持分页
+- [ ] **#28** GET `/api/v1/categories/:id/apis` 返回分类下 API 权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath
 - [ ] **#29** POST `/api/v1/apps/:appId/apis/subscribe` 申请 API 权限，**支持批量提交**，生成独立审批单
 - [ ] **#30** POST `/api/v1/apps/:appId/apis/:id/withdraw` 撤回审核中的申请
 
 **事件权限管理（#31-35）**：
-- [ ] **#31** GET `/api/v1/apps/:appId/events` 返回应用事件订阅列表
-- [ ] **#32** GET `/api/v1/categories/:id/events` 返回分类下事件权限列表（权限树懒加载）
+- [ ] **#31** GET `/api/v1/apps/:appId/events` 返回应用事件订阅列表，支持分页
+- [ ] **#32** GET `/api/v1/categories/:id/events` 返回分类下事件权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath
 - [ ] **#33** POST `/api/v1/apps/:appId/events/subscribe` 申请事件权限，**支持批量提交**
 - [ ] **#34** PUT `/api/v1/apps/:appId/events/:id/config` 配置事件消费参数（通道/地址/认证）
 - [ ] **#35** POST `/api/v1/apps/:appId/events/:id/withdraw` 撤回审核中的申请
 
 **回调权限管理（#36-40）**：
-- [ ] **#36** GET `/api/v1/apps/:appId/callbacks` 返回应用回调订阅列表
-- [ ] **#37** GET `/api/v1/categories/:id/callbacks` 返回分类下回调权限列表（权限树懒加载）
+- [ ] **#36** GET `/api/v1/apps/:appId/callbacks` 返回应用回调订阅列表，支持分页
+- [ ] **#37** GET `/api/v1/categories/:id/callbacks` 返回分类下回调权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath
 - [ ] **#38** POST `/api/v1/apps/:appId/callbacks/subscribe` 申请回调权限，**支持批量提交**
 - [ ] **#39** PUT `/api/v1/apps/:appId/callbacks/:id/config` 配置回调消费参数
 - [ ] **#40** POST `/api/v1/apps/:appId/callbacks/:id/withdraw` 撤回审核中的申请
@@ -461,6 +470,11 @@ curl http://localhost:18080/api/v1/callbacks
 **批量操作验收**：
 - [ ] 批量提交返回成功数量和失败项，支持失败重试
 - [ ] 每条权限申请生成独立审批单，状态独立管理
+
+**规范验收**：
+- [ ] 所有 ID 字段返回 string 类型
+- [ ] 列表接口返回统一分页格式
+- [ ] category 对象包含 path 和 categoryPath 字段
 
 ### 验证命令
 
@@ -471,12 +485,12 @@ curl http://localhost:18080/api/v1/categories/2/apis
 # 申请 API 权限
 curl -X POST http://localhost:18080/api/v1/apps/100/apis/subscribe \
   -H "Content-Type: application/json" \
-  -d '{"permission_id":200}'
+  -d '{"permissionIds":["200"]}'
 
 # 配置事件消费参数
 curl -X PUT http://localhost:18080/api/v1/apps/100/events/300/config \
   -H "Content-Type: application/json" \
-  -d '{"channel_type":1,"channel_address":"https://webhook.example.com/events","auth_type":0}'
+  -d '{"channelType":1,"channelAddress":"https://webhook.example.com/events","authType":0}'
 ```
 
 ---
@@ -511,13 +525,13 @@ curl -X PUT http://localhost:18080/api/v1/apps/100/events/300/config \
 ### 验收标准
 
 **审批流程配置（#41-44）**：
-- [ ] **#41** GET `/api/v1/approval-flows` 返回审批流程模板列表
+- [ ] **#41** GET `/api/v1/approval-flows` 返回审批流程模板列表，支持分页
 - [ ] **#42** GET `/api/v1/approval-flows/:id` 返回审批流程模板详情（含节点配置）
 - [ ] **#43** POST `/api/v1/approval-flows` 创建审批流程模板
 - [ ] **#44** PUT `/api/v1/approval-flows/:id` 更新审批流程模板
 
 **审批执行（#45-51）**：
-- [ ] **#45** GET `/api/v1/approvals/pending` 返回待审批列表
+- [ ] **#45** GET `/api/v1/approvals/pending` 返回待审批列表，支持分页
 - [ ] **#46** GET `/api/v1/approvals/:id` 返回审批详情（含节点状态、操作日志）
 - [ ] **#47** POST `/api/v1/approvals/:id/approve` 同意审批，更新订阅状态
 - [ ] **#48** POST `/api/v1/approvals/:id/reject` 驳回审批，需填写原因
@@ -534,13 +548,17 @@ curl -X PUT http://localhost:18080/api/v1/apps/100/events/300/config \
 - [ ] 批量同意接口返回成功数量，支持部分失败场景
 - [ ] 批量驳回需填写统一原因，支持部分失败场景
 
+**规范验收**：
+- [ ] 所有 ID 字段返回 string 类型
+- [ ] 列表接口返回统一分页格式
+
 ### 验证命令
 
 ```bash
 # 创建审批流程
 curl -X POST http://localhost:18080/api/v1/approval-flows \
   -H "Content-Type: application/json" \
-  -d '{"name_cn":"API注册审批流","name_en":"API Registration Approval Flow","code":"api_register","nodes":[{"type":"approver","user_id":"user001","order":1}]}'
+  -d '{"nameCn":"API注册审批流","nameEn":"API Registration Approval Flow","code":"api_register","nodes":[{"type":"approver","userId":"user001","order":1}]}'
 
 # 获取待审批列表
 curl http://localhost:18080/api/v1/approvals/pending
@@ -580,7 +598,7 @@ curl -X POST http://localhost:18080/api/v1/approvals/1/approve \
 ### 验收标准
 
 **Scope 用户授权（#52-54）**：
-- [ ] **#52** GET `/api/v1/user-authorizations` 返回用户授权列表
+- [ ] **#52** GET `/api/v1/user-authorizations` 返回用户授权列表，支持分页
 - [ ] **#53** POST `/api/v1/user-authorizations` 用户授权成功（支持有效期设置）
 - [ ] **#54** DELETE `/api/v1/user-authorizations/:id` 取消授权
 
@@ -592,6 +610,10 @@ curl -X POST http://localhost:18080/api/v1/approvals/1/approve \
 
 **数据查询接口（#58）**：
 - [ ] **#58** GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
+
+**规范验收**：
+- [ ] 所有 ID 字段返回 string 类型
+- [ ] 列表接口返回统一分页格式
 
 ### 验证命令
 
@@ -605,12 +627,12 @@ curl -X POST http://localhost:18081/gateway/api/v1/messages \
   -d '{"content":"Hello World"}'
 
 # 权限校验
-curl http://localhost:18081/gateway/permissions/check?app_id=100&scope=api:im:send-message
+curl "http://localhost:18081/gateway/permissions/check?appId=100&scope=api:im:send-message"
 
 # 用户授权
 curl -X POST http://localhost:18081/api/v1/user-authorizations \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"user001","app_id":100,"scopes":["api:im:send-message"],"expires_at":"2026-12-31T23:59:59"}'
+  -d '{"userId":"user001","appId":"10","scopes":["api:im:send-message"],"expiresAt":"2026-12-31T23:59:59"}'
 ```
 
 ---
@@ -659,18 +681,21 @@ curl -X POST http://localhost:18081/api/v1/user-authorizations \
 - [ ] event-server 无数据库，通过 api-server 接口获取数据
 - [ ] Redis 缓存订阅关系数据
 
+**规范验收**：
+- [ ] 所有 ID 字段返回 string 类型
+
 ### 验证命令
 
 ```bash
 # 事件发布
 curl -X POST http://localhost:18082/gateway/events/publish \
   -H "Content-Type: application/json" \
-  -d '{"topic":"im.message.received","payload":{"message_id":"msg001","content":"Hello World"}}'
+  -d '{"topic":"im.message.received","payload":{"messageId":"msg001","content":"Hello World"}}'
 
 # 回调触发
 curl -X POST http://localhost:18082/gateway/callbacks/invoke \
   -H "Content-Type: application/json" \
-  -d '{"callback_scope":"callback:approval:completed","payload":{"approval_id":"app001","status":"approved"}}'
+  -d '{"callbackScope":"callback:approval:completed","payload":{"approvalId":"app001","status":"approved"}}'
 ```
 
 ---
@@ -871,7 +896,7 @@ graph TB
 
 **前端交互**：
 1. 用户点击权限申请入口
-2. 加载分类树（`GET /api/v1/categories?category_alias=xxx`）
+2. 加载分类树（`GET /api/v1/categories?categoryAlias=xxx`）
 3. 用户点击某个分类节点
 4. 懒加载该分类下的权限列表（`GET /api/v1/categories/:id/apis`）
 5. 用户勾选权限，提交申请
@@ -886,11 +911,15 @@ graph TB
 
 ---
 
-**文档状态**: ✅ 任务分解完成（v1.2）  
+**文档状态**: ✅ 任务分解完成（v1.3）  
 **更新说明**: 
-- 更新接口覆盖（58个接口），新增 #50-51 批量审批接口
-- 更新数据库表前缀为 `openplatform_v2_`
-- 新增 .gitignore 文件到各工程
-- 补充批量操作验收标准
+- **v1.3 (2026-04-21)**：
+  - 🔄 更新字段命名规范：所有字段名从 snake_case 改为 camelCase
+  - 🔄 更新统一响应格式：新增 messageZh/messageEn 字段，分页格式优化
+  - ➕ 补充 ID 类型规范：所有 ID 字段返回 string 类型
+  - ➕ 补充 category 对象增强：新增 path 和 categoryPath 字段
+  - ➕ 补充分页支持：列表接口支持 curPage 和 pageSize 参数
+- **v1.2**: 更新接口覆盖（58个接口），新增 #50-51 批量审批接口
+- **v1.1**: 更新数据库表前缀为 `openplatform_v2_`，新增 .gitignore 文件到各工程
 
 **下一步**: 运行 `@sddu-build TASK-001` 开始实现第一个任务
