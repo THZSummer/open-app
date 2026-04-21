@@ -1,9 +1,9 @@
 # 任务分解：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**任务版本**: v1.1  
+**任务版本**: v1.2  
 **创建日期**: 2026-04-20  
-**更新日期**: 2026-04-20  
+**更新日期**: 2026-04-21  
 **任务作者**: SDDU Tasks Agent  
 **技术规划**: plan.md v1.26  
 **接口设计**: plan-api.md v1.27
@@ -86,16 +86,19 @@ graph TB
 ### 涉及文件
 
 - [NEW] `open-server/pom.xml` - Maven 项目配置
+- [NEW] `open-server/.gitignore` - Git 忽略配置（忽略 target、logs 等）
 - [NEW] `open-server/src/main/java/.../OpenServerApplication.java` - 应用入口
 - [NEW] `open-server/src/main/java/.../common/config/*.java` - 公共配置类
 - [NEW] `open-server/src/main/java/.../common/exception/*.java` - 异常处理
 - [NEW] `open-server/src/main/java/.../common/interceptor/*.java` - Mock 拦截器
 - [NEW] `open-server/src/main/resources/application.yml` - 应用配置
 - [NEW] `api-server/pom.xml` - Maven 项目配置
+- [NEW] `api-server/.gitignore` - Git 忽略配置（忽略 target、logs 等）
 - [NEW] `api-server/src/main/java/.../ApiServerApplication.java` - 应用入口
 - [NEW] `api-server/src/main/java/.../common/config/*.java` - 公共配置类
 - [NEW] `api-server/src/main/resources/application.yml` - 应用配置
 - [NEW] `event-server/pom.xml` - Maven 项目配置
+- [NEW] `event-server/.gitignore` - Git 忽略配置（忽略 target、logs 等）
 - [NEW] `event-server/src/main/java/.../EventServerApplication.java` - 应用入口
 - [NEW] `event-server/src/main/java/.../common/config/*.java` - 公共配置类
 - [NEW] `event-server/src/main/resources/application.yml` - 应用配置
@@ -142,6 +145,7 @@ curl http://localhost:8082/actuator/health
 ### 涉及文件
 
 - [NEW] `open-web/package.json` - npm 项目配置
+- [NEW] `open-web/.gitignore` - Git 忽略配置（忽略 node_modules、dist、.env 等）
 - [NEW] `open-web/vite.config.ts` - Vite 构建配置
 - [NEW] `open-web/src/main.tsx` - 应用入口
 - [NEW] `open-web/src/App.tsx` - 应用根组件
@@ -437,22 +441,26 @@ curl http://localhost:8080/api/v1/callbacks
 **API 权限管理（#27-30）**：
 - [ ] **#27** GET `/api/v1/apps/:appId/apis` 返回应用 API 权限列表
 - [ ] **#28** GET `/api/v1/categories/:id/apis` 返回分类下 API 权限列表（权限树懒加载）
-- [ ] **#29** POST `/api/v1/apps/:appId/apis/subscribe` 申请 API 权限，生成独立审批单
+- [ ] **#29** POST `/api/v1/apps/:appId/apis/subscribe` 申请 API 权限，**支持批量提交**，生成独立审批单
 - [ ] **#30** POST `/api/v1/apps/:appId/apis/:id/withdraw` 撤回审核中的申请
 
 **事件权限管理（#31-35）**：
 - [ ] **#31** GET `/api/v1/apps/:appId/events` 返回应用事件订阅列表
 - [ ] **#32** GET `/api/v1/categories/:id/events` 返回分类下事件权限列表（权限树懒加载）
-- [ ] **#33** POST `/api/v1/apps/:appId/events/subscribe` 申请事件权限
+- [ ] **#33** POST `/api/v1/apps/:appId/events/subscribe` 申请事件权限，**支持批量提交**
 - [ ] **#34** PUT `/api/v1/apps/:appId/events/:id/config` 配置事件消费参数（通道/地址/认证）
 - [ ] **#35** POST `/api/v1/apps/:appId/events/:id/withdraw` 撤回审核中的申请
 
 **回调权限管理（#36-40）**：
 - [ ] **#36** GET `/api/v1/apps/:appId/callbacks` 返回应用回调订阅列表
 - [ ] **#37** GET `/api/v1/categories/:id/callbacks` 返回分类下回调权限列表（权限树懒加载）
-- [ ] **#38** POST `/api/v1/apps/:appId/callbacks/subscribe` 申请回调权限
+- [ ] **#38** POST `/api/v1/apps/:appId/callbacks/subscribe` 申请回调权限，**支持批量提交**
 - [ ] **#39** PUT `/api/v1/apps/:appId/callbacks/:id/config` 配置回调消费参数
 - [ ] **#40** POST `/api/v1/apps/:appId/callbacks/:id/withdraw` 撤回审核中的申请
+
+**批量操作验收**：
+- [ ] 批量提交返回成功数量和失败项，支持失败重试
+- [ ] 每条权限申请生成独立审批单，状态独立管理
 
 ### 验证命令
 
@@ -478,7 +486,7 @@ curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
 **复杂度**: L  
 **前置依赖**: TASK-001, TASK-003, TASK-008  
 **执行波次**: 3  
-**接口覆盖**: 9 个接口（#41-49）
+**接口覆盖**: 11 个接口（#41-51）
 
 ### 描述
 
@@ -508,17 +516,23 @@ curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
 - [ ] **#43** POST `/api/v1/approval-flows` 创建审批流程模板
 - [ ] **#44** PUT `/api/v1/approval-flows/:id` 更新审批流程模板
 
-**审批执行（#45-49）**：
+**审批执行（#45-51）**：
 - [ ] **#45** GET `/api/v1/approvals/pending` 返回待审批列表
 - [ ] **#46** GET `/api/v1/approvals/:id` 返回审批详情（含节点状态、操作日志）
 - [ ] **#47** POST `/api/v1/approvals/:id/approve` 同意审批，更新订阅状态
 - [ ] **#48** POST `/api/v1/approvals/:id/reject` 驳回审批，需填写原因
 - [ ] **#49** POST `/api/v1/approvals/:id/cancel` 撤销审批
+- [ ] **#50** POST `/api/v1/approvals/batch-approve` 批量同意审批，支持一次处理多条
+- [ ] **#51** POST `/api/v1/approvals/batch-reject` 批量驳回审批，需填写统一原因
 
 **审批引擎**：
 - [ ] 审批通过后自动激活订阅关系（status=1）
 - [ ] 审批拒绝后订阅状态变为已拒绝（status=2）
 - [ ] 审批记录和操作日志正确写入
+
+**批量审批验收**：
+- [ ] 批量同意接口返回成功数量，支持部分失败场景
+- [ ] 批量驳回需填写统一原因，支持部分失败场景
 
 ### 验证命令
 
@@ -544,7 +558,7 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003, TASK-008  
 **执行波次**: 4  
-**接口覆盖**: 5 个接口（#52-54, #55, #58）
+**接口覆盖**: 5 个接口（#52-55, #58）
 
 ### 描述
 
@@ -578,7 +592,6 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 
 **数据查询接口（#58）**：
 - [ ] **#58** GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
-- [ ] 提供 API/事件/回调/订阅等数据查询接口
 
 ### 验证命令
 
@@ -785,8 +798,8 @@ curl -w "@curl-format.txt" http://localhost:8080/api/v1/apis?category_id=2
 | TASK-006 | open-server | #15-20 | 6 |
 | TASK-007 | open-server | #21-26 | 6 |
 | TASK-008 | open-server | #27-40 | 14 |
-| TASK-009 | open-server | #41-49 | 9 |
-| TASK-010 | api-server | #52-54, #55, #58 | 5 |
+| TASK-009 | open-server | #41-51 | 11 |
+| TASK-010 | api-server | #52-55, #58 | 5 |
 | TASK-011 | event-server | #56-57 | 2 |
 | **总计** | - | **#1-58** | **58** |
 
@@ -873,5 +886,11 @@ graph TB
 
 ---
 
-**文档状态**: ✅ 任务分解完成（v1.1）  
+**文档状态**: ✅ 任务分解完成（v1.2）  
+**更新说明**: 
+- 更新接口覆盖（58个接口），新增 #50-51 批量审批接口
+- 更新数据库表前缀为 `openplatform_v2_`
+- 新增 .gitignore 文件到各工程
+- 补充批量操作验收标准
+
 **下一步**: 运行 `@sddu-build TASK-001` 开始实现第一个任务

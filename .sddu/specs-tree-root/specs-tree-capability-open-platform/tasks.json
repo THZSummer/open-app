@@ -1,16 +1,16 @@
 {
   "feature_id": "CAP-OPEN-001",
   "feature_name": "能力开放平台（Capability Open Platform）",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "created_at": "2026-04-20",
-  "updated_at": "2026-04-20",
+  "updated_at": "2026-04-21",
   "author": "SDDU Tasks Agent",
   "plan_version": "plan.md v1.26",
   "api_version": "plan-api.md v1.27",
   "spec_version": "spec.md v1.49",
   "summary": {
     "total_tasks": 13,
-    "total_interfaces": 56,
+    "total_interfaces": 58,
     "interface_coverage": "100%",
     "complexity_distribution": {
       "S": 1,
@@ -33,16 +33,19 @@
       "files": {
         "new": [
           "open-server/pom.xml",
+          "open-server/.gitignore",
           "open-server/src/main/java/.../OpenServerApplication.java",
           "open-server/src/main/java/.../common/config/*.java",
           "open-server/src/main/java/.../common/exception/*.java",
           "open-server/src/main/java/.../common/interceptor/*.java",
           "open-server/src/main/resources/application.yml",
           "api-server/pom.xml",
+          "api-server/.gitignore",
           "api-server/src/main/java/.../ApiServerApplication.java",
           "api-server/src/main/java/.../common/config/*.java",
           "api-server/src/main/resources/application.yml",
           "event-server/pom.xml",
+          "event-server/.gitignore",
           "event-server/src/main/java/.../EventServerApplication.java",
           "event-server/src/main/java/.../common/config/*.java",
           "event-server/src/main/resources/application.yml"
@@ -73,6 +76,7 @@
       "files": {
         "new": [
           "open-web/package.json",
+          "open-web/.gitignore",
           "open-web/vite.config.ts",
           "open-web/src/main.tsx",
           "open-web/src/App.tsx",
@@ -116,7 +120,7 @@
         "属性表主表关联正确，索引创建成功",
         "默认审批流数据初始化成功（code='default'）"
       ],
-      "verification_command": "mysql -u root -p openplatform < docs/sql/init-schema.sql\nmysql -u root -p openplatform -e \"SHOW TABLES LIKE 'openplatform_%'\"\n# 期望输出 15 张表"
+      "verification_command": "mysql -u root -p openplatform < docs/sql/init-schema.sql\nmysql -u root -p openplatform -e \"SHOW TABLES LIKE 'openplatform_v2_%'\"\n# 期望输出 15 张表"
     },
     {
       "id": "TASK-004",
@@ -291,18 +295,20 @@
       "acceptance_criteria": [
         "#27 GET /api/v1/apps/:appId/apis 返回应用 API 权限列表",
         "#28 GET /api/v1/categories/:id/apis 返回分类下 API 权限列表（权限树懒加载）",
-        "#29 POST /api/v1/apps/:appId/apis/subscribe 申请 API 权限，生成独立审批单",
+        "#29 POST /api/v1/apps/:appId/apis/subscribe 申请 API 权限，支持批量提交，生成独立审批单",
         "#30 POST /api/v1/apps/:appId/apis/:id/withdraw 撤回审核中的申请",
         "#31 GET /api/v1/apps/:appId/events 返回应用事件订阅列表",
         "#32 GET /api/v1/categories/:id/events 返回分类下事件权限列表（权限树懒加载）",
-        "#33 POST /api/v1/apps/:appId/events/subscribe 申请事件权限",
+        "#33 POST /api/v1/apps/:appId/events/subscribe 申请事件权限，支持批量提交",
         "#34 PUT /api/v1/apps/:appId/events/:id/config 配置事件消费参数（通道/地址/认证）",
         "#35 POST /api/v1/apps/:appId/events/:id/withdraw 撤回审核中的申请",
         "#36 GET /api/v1/apps/:appId/callbacks 返回应用回调订阅列表",
         "#37 GET /api/v1/categories/:id/callbacks 返回分类下回调权限列表（权限树懒加载）",
-        "#38 POST /api/v1/apps/:appId/callbacks/subscribe 申请回调权限",
+        "#38 POST /api/v1/apps/:appId/callbacks/subscribe 申请回调权限，支持批量提交",
         "#39 PUT /api/v1/apps/:appId/callbacks/:id/config 配置回调消费参数",
-        "#40 POST /api/v1/apps/:appId/callbacks/:id/withdraw 撤回审核中的申请"
+        "#40 POST /api/v1/apps/:appId/callbacks/:id/withdraw 撤回审核中的申请",
+        "批量提交返回成功数量和失败项，支持失败重试",
+        "每条权限申请生成独立审批单，状态独立管理"
       ],
       "verification_command": "# 获取分类下 API 权限列表（权限树懒加载）\ncurl http://localhost:8080/api/v1/categories/2/apis\n\n# 申请 API 权限\ncurl -X POST http://localhost:8080/api/v1/apps/100/apis/subscribe \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"permission_id\":200}'\n\n# 配置事件消费参数\ncurl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"channel_type\":1,\"channel_address\":\"https://webhook.example.com/events\",\"auth_type\":0}'"
     },
@@ -313,8 +319,8 @@
       "complexity": "L",
       "dependencies": ["TASK-001", "TASK-003", "TASK-008"],
       "wave": 3,
-      "interface_coverage": ["#41", "#42", "#43", "#44", "#45", "#46", "#47", "#48", "#49"],
-      "interface_count": 9,
+      "interface_coverage": ["#41", "#42", "#43", "#44", "#45", "#46", "#47", "#48", "#49", "#50", "#51"],
+      "interface_count": 11,
       "projects": ["open-server"],
       "files": {
         "new": [
@@ -344,9 +350,13 @@
         "#47 POST /api/v1/approvals/:id/approve 同意审批，更新订阅状态",
         "#48 POST /api/v1/approvals/:id/reject 驳回审批，需填写原因",
         "#49 POST /api/v1/approvals/:id/cancel 撤销审批",
+        "#50 POST /api/v1/approvals/batch-approve 批量同意审批，支持一次处理多条",
+        "#51 POST /api/v1/approvals/batch-reject 批量驳回审批，需填写统一原因",
         "审批通过后自动激活订阅关系（status=1）",
         "审批拒绝后订阅状态变为已拒绝（status=2）",
-        "审批记录和操作日志正确写入"
+        "审批记录和操作日志正确写入",
+        "批量同意接口返回成功数量，支持部分失败场景",
+        "批量驳回需填写统一原因，支持部分失败场景"
       ],
       "verification_command": "# 创建审批流程\ncurl -X POST http://localhost:8080/api/v1/approval-flows \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"name_cn\":\"API注册审批流\",\"name_en\":\"API Registration Approval Flow\",\"code\":\"api_register\",\"nodes\":[{\"type\":\"approver\",\"user_id\":\"user001\",\"order\":1}]}'\n\n# 获取待审批列表\ncurl http://localhost:8080/api/v1/approvals/pending\n\n# 同意审批\ncurl -X POST http://localhost:8080/api/v1/approvals/1/approve \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"comment\":\"同意该申请\"}'"
     },
@@ -357,7 +367,7 @@
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-003", "TASK-008"],
       "wave": 4,
-      "interface_coverage": ["#50", "#51", "#52", "#53", "#56"],
+      "interface_coverage": ["#52", "#53", "#54", "#55", "#58"],
       "interface_count": 5,
       "projects": ["api-server"],
       "files": {
@@ -374,15 +384,14 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "#50 GET /api/v1/user-authorizations 返回用户授权列表",
-        "#51 POST /api/v1/user-authorizations 用户授权成功（支持有效期设置）",
-        "#52 DELETE /api/v1/user-authorizations/:id 取消授权",
-        "#53 ANY /gateway/api/* API 请求代理与鉴权生效",
+        "#52 GET /api/v1/user-authorizations 返回用户授权列表",
+        "#53 POST /api/v1/user-authorizations 用户授权成功（支持有效期设置）",
+        "#54 DELETE /api/v1/user-authorizations/:id 取消授权",
+        "#55 ANY /gateway/api/* API 请求代理与鉴权生效",
         "验证应用身份（AKSK/Bearer Token）",
         "查询应用订阅关系，验证请求路径在授权范围内",
         "转发请求到内部中台网关",
-        "#56 GET /gateway/permissions/check 权限校验接口可用（供 event-server 调用）",
-        "提供 API/事件/回调/订阅等数据查询接口"
+        "#58 GET /gateway/permissions/check 权限校验接口可用（供 event-server 调用）"
       ],
       "verification_command": "# API 鉴权测试\ncurl -X POST http://localhost:8081/gateway/api/v1/messages \\\\n  -H \"X-App-Id: 100\" \\\\n  -H \"X-Auth-Type: 0\" \\\\n  -H \"Authorization: Bearer token\" \\\\n  -H \"Content-Type: application/json\" \\\\n  -d '{\"content\":\"Hello World\"}'\n\n# 权限校验\ncurl http://localhost:8081/gateway/permissions/check?app_id=100&scope=api:im:send-message\n\n# 用户授权\ncurl -X POST http://localhost:8081/api/v1/user-authorizations \\\\n  -H \"Content-Type: application/json\" \\\\n  -d '{\"user_id\":\"user001\",\"app_id\":100,\"scopes\":[\"api:im:send-message\"],\"expires_at\":\"2026-12-31T23:59:59\"}'"
     },
@@ -393,7 +402,7 @@
       "complexity": "M",
       "dependencies": ["TASK-001", "TASK-010"],
       "wave": 4,
-      "interface_coverage": ["#54", "#55"],
+      "interface_coverage": ["#56", "#57"],
       "interface_count": 2,
       "projects": ["event-server"],
       "files": {
@@ -409,12 +418,12 @@
         "modify": []
       },
       "acceptance_criteria": [
-        "#54 POST /gateway/events/publish 事件发布接口可用",
+        "#56 POST /gateway/events/publish 事件发布接口可用",
         "验证 Topic 对应的事件资源存在",
-        "查询订阅该事件的应用列表（通过 api-server #56 接口）",
+        "查询订阅该事件的应用列表（通过 api-server #58 接口）",
         "按订阅配置分发事件（WebHook/内部消息队列）",
         "P99 分发延迟 < 1s",
-        "#55 POST /gateway/callbacks/invoke 回调触发接口可用",
+        "#57 POST /gateway/callbacks/invoke 回调触发接口可用",
         "验证回调 Scope 存在",
         "查询订阅该回调的应用列表",
         "按订阅配置调用三方回调地址",
@@ -523,7 +532,7 @@
       "name": "权限与审批",
       "tasks": ["TASK-008", "TASK-009"],
       "description": "实现权限申请和审批管理模块",
-      "interface_count": 23
+      "interface_count": 25
     },
     {
       "wave": 4,
@@ -541,19 +550,19 @@
     }
   ],
   "interface_summary": {
-    "total": 56,
+    "total": 58,
     "distribution": {
       "open-server": {
-        "count": 44,
-        "interfaces": ["#1-8", "#9-14", "#15-20", "#21-26", "#27-40", "#41-49"]
+        "count": 49,
+        "interfaces": ["#1-8", "#9-14", "#15-20", "#21-26", "#27-40", "#41-51"]
       },
       "api-server": {
         "count": 5,
-        "interfaces": ["#50-52", "#53", "#56"]
+        "interfaces": ["#52-55", "#58"]
       },
       "event-server": {
         "count": 2,
-        "interfaces": ["#54-55"]
+        "interfaces": ["#56-57"]
       }
     }
   }
