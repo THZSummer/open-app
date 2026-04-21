@@ -15,7 +15,7 @@
 | 维度 | 统计 |
 |------|------|
 | **总任务数** | 13 个 |
-| **接口覆盖** | 56 个接口（100%覆盖） |
+| **接口覆盖** | 58 个接口（100%覆盖） |
 | **复杂度分布** | S 级 3 个，M 级 7 个，L 级 3 个 |
 | **执行波次** | 5 个波次 |
 | **预估工期** | 103 人天（约 5 人月） |
@@ -45,8 +45,8 @@ graph TB
     end
     
     subgraph Wave4["Wave 4: 网关服务"]
-        T10["TASK-010<br/>api-server<br/>#50-52,#53,#56"]
-        T11["TASK-011<br/>event-server<br/>#54-55"]
+        T10["TASK-010<br/>api-server<br/>#52-54,#55,#58"]
+        T11["TASK-011<br/>event-server<br/>#56-57"]
     end
     
     subgraph Wave5["Wave 5: 前端与联调"]
@@ -544,7 +544,7 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003, TASK-008  
 **执行波次**: 4  
-**接口覆盖**: 5 个接口（#50-52, #53, #56）
+**接口覆盖**: 5 个接口（#52-54, #55, #58）
 
 ### 描述
 
@@ -565,19 +565,19 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 
 ### 验收标准
 
-**Scope 用户授权（#50-52）**：
-- [ ] **#50** GET `/api/v1/user-authorizations` 返回用户授权列表
-- [ ] **#51** POST `/api/v1/user-authorizations` 用户授权成功（支持有效期设置）
-- [ ] **#52** DELETE `/api/v1/user-authorizations/:id` 取消授权
+**Scope 用户授权（#52-54）**：
+- [ ] **#52** GET `/api/v1/user-authorizations` 返回用户授权列表
+- [ ] **#53** POST `/api/v1/user-authorizations` 用户授权成功（支持有效期设置）
+- [ ] **#54** DELETE `/api/v1/user-authorizations/:id` 取消授权
 
-**API 网关（#53）**：
-- [ ] **#53** ANY `/gateway/api/*` API 请求代理与鉴权生效
+**API 网关（#55）**：
+- [ ] **#55** ANY `/gateway/api/*` API 请求代理与鉴权生效
 - [ ] 验证应用身份（AKSK/Bearer Token）
 - [ ] 查询应用订阅关系，验证请求路径在授权范围内
 - [ ] 转发请求到内部中台网关
 
-**数据查询接口（#56）**：
-- [ ] **#56** GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
+**数据查询接口（#58）**：
+- [ ] **#58** GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
 - [ ] 提供 API/事件/回调/订阅等数据查询接口
 
 ### 验证命令
@@ -607,7 +607,7 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-010  
 **执行波次**: 4  
-**接口覆盖**: 2 个接口（#54-55）
+**接口覆盖**: 2 个接口（#56-57）
 
 ### 描述
 
@@ -629,15 +629,15 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 
 ### 验收标准
 
-**事件消费网关（#54）**：
-- [ ] **#54** POST `/gateway/events/publish` 事件发布接口可用
+**事件消费网关（#56）**：
+- [ ] **#56** POST `/gateway/events/publish` 事件发布接口可用
 - [ ] 验证 Topic 对应的事件资源存在
-- [ ] 查询订阅该事件的应用列表（通过 api-server #56 接口）
+- [ ] 查询订阅该事件的应用列表（通过 api-server #58 接口）
 - [ ] 按订阅配置分发事件（WebHook/内部消息队列）
 - [ ] P99 分发延迟 < 1s
 
-**回调消费网关（#55）**：
-- [ ] **#55** POST `/gateway/callbacks/invoke` 回调触发接口可用
+**回调消费网关（#57）**：
+- [ ] **#57** POST `/gateway/callbacks/invoke` 回调触发接口可用
 - [ ] 验证回调 Scope 存在
 - [ ] 查询订阅该回调的应用列表
 - [ ] 按订阅配置调用三方回调地址
@@ -786,9 +786,9 @@ curl -w "@curl-format.txt" http://localhost:8080/api/v1/apis?category_id=2
 | TASK-007 | open-server | #21-26 | 6 |
 | TASK-008 | open-server | #27-40 | 14 |
 | TASK-009 | open-server | #41-49 | 9 |
-| TASK-010 | api-server | #50-52, #53, #56 | 5 |
-| TASK-011 | event-server | #54-55 | 2 |
-| **总计** | - | **#1-56** | **56** |
+| TASK-010 | api-server | #52-54, #55, #58 | 5 |
+| TASK-011 | event-server | #56-57 | 2 |
+| **总计** | - | **#1-58** | **58** |
 
 ### B. 任务依赖关系图
 

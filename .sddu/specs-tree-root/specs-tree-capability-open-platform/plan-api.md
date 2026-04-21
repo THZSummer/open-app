@@ -37,16 +37,16 @@
 | 26 | | POST | `/api/v1/callbacks/:id/withdraw` | 撤回审核中的回调 | FR-012 |
 | 27 | **API 权限管理** | GET | `/api/v1/apps/:appId/apis` | 获取应用 API 权限列表 | FR-016 |
 | 28 | | GET | `/api/v1/categories/:id/apis` | 获取分类下 API 权限列表 | FR-017 |
-| 29 | | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（独立单据） | FR-018 |
+| 29 | | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（支持批量） | FR-018 |
 | 30 | | POST | `/api/v1/apps/:appId/apis/:id/withdraw` | 撤回审核中的申请 | FR-016 |
 | 31 | **事件权限管理** | GET | `/api/v1/apps/:appId/events` | 获取应用事件订阅列表 | FR-019 |
 | 32 | | GET | `/api/v1/categories/:id/events` | 获取分类下事件权限列表 | FR-020 |
-| 33 | | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（独立单据） | FR-021 |
+| 33 | | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（支持批量） | FR-021 |
 | 34 | | PUT | `/api/v1/apps/:appId/events/:id/config` | 配置事件消费参数（通道/地址/认证） | FR-019 |
 | 35 | | POST | `/api/v1/apps/:appId/events/:id/withdraw` | 撤回审核中的申请 | FR-019 |
 | 36 | **回调权限管理** | GET | `/api/v1/apps/:appId/callbacks` | 获取应用回调订阅列表 | FR-022 |
 | 37 | | GET | `/api/v1/categories/:id/callbacks` | 获取分类下回调权限列表 | FR-023 |
-| 38 | | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（独立单据） | FR-024 |
+| 38 | | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（支持批量） | FR-024 |
 | 39 | | PUT | `/api/v1/apps/:appId/callbacks/:id/config` | 配置回调消费参数（通道/地址/认证） | FR-022 |
 | 40 | | POST | `/api/v1/apps/:appId/callbacks/:id/withdraw` | 撤回审核中的申请 | FR-022 |
 | 41 | **审批管理** | GET | `/api/v1/approval-flows` | 获取审批流程模板列表 | FR-025 |
@@ -58,15 +58,17 @@
 | 47 | | POST | `/api/v1/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
 | 48 | | POST | `/api/v1/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
 | 49 | | POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
-| 50 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
-| 51 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
-| 52 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
-| 53 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
-| 54 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
-| 55 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
-| 56 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
+| 50 | | POST | `/api/v1/approvals/batch-approve` | 批量同意审批 | FR-026/FR-027 |
+| 51 | | POST | `/api/v1/approvals/batch-reject` | 批量驳回审批（需填写原因） | FR-026/FR-027 |
+| 52 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
+| 53 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
+| 54 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
+| 55 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
+| 56 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
+| 57 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
+| 58 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
 
-> **接口统计**：共 56 个接口，覆盖 FR-001 ~ FR-031
+> **接口统计**：共 58 个接口，覆盖 FR-001 ~ FR-031
 >
 > **权限树设计说明**：采用懒加载模式，分为两个步骤：
 > 1. 查树：`GET /api/v1/categories` 获取分类树
@@ -977,17 +979,17 @@
 
 #### 29. POST /api/v1/apps/:appId/apis/subscribe
 
-申请 API 权限（独立单据）。
+申请 API 权限（支持批量）。
 
 **请求体**：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| permission_id | long | 是 | 权限ID |
+| permission_ids | array[long] | 是 | 权限ID列表（支持批量提交） |
 
 ```json
 {
-  "permission_id": 200
+  "permission_ids": [200, 201, 202]
 }
 ```
 
@@ -997,11 +999,14 @@
 {
   "code": 0,
   "data": {
-    "id": 300,
-    "app_id": 10,
-    "permission_id": 200,
-    "status": 0,
-    "message": "申请已提交，等待审批"
+    "success_count": 3,
+    "failed_count": 0,
+    "records": [
+      { "id": 300, "app_id": 10, "permission_id": 200, "status": 0 },
+      { "id": 301, "app_id": 10, "permission_id": 201, "status": 0 },
+      { "id": 302, "app_id": 10, "permission_id": 202, "status": 0 }
+    ],
+    "message": "申请已提交，共3条，等待审批"
   }
 }
 ```
@@ -1105,13 +1110,35 @@
 
 #### 33. POST /api/v1/apps/:appId/events/subscribe
 
-申请事件权限（独立单据）。
+申请事件权限（支持批量）。
 
 **请求体**：
 
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| permission_ids | array[long] | 是 | 权限ID列表（支持批量提交） |
+
 ```json
 {
-  "permission_id": 201
+  "permission_ids": [201, 202, 203]
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "success_count": 3,
+    "failed_count": 0,
+    "records": [
+      { "id": 301, "app_id": 10, "permission_id": 201, "status": 0 },
+      { "id": 302, "app_id": 10, "permission_id": 202, "status": 0 },
+      { "id": 303, "app_id": 10, "permission_id": 203, "status": 0 }
+    ],
+    "message": "申请已提交，共3条，等待审批"
+  }
 }
 ```
 
@@ -1229,13 +1256,35 @@
 
 #### 38. POST /api/v1/apps/:appId/callbacks/subscribe
 
-申请回调权限（独立单据）。
+申请回调权限（支持批量）。
 
 **请求体**：
 
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| permission_ids | array[long] | 是 | 权限ID列表（支持批量提交） |
+
 ```json
 {
-  "permission_id": 202
+  "permission_ids": [202, 203, 204]
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "success_count": 3,
+    "failed_count": 0,
+    "records": [
+      { "id": 302, "app_id": 10, "permission_id": 202, "status": 0 },
+      { "id": 303, "app_id": 10, "permission_id": 203, "status": 0 },
+      { "id": 304, "app_id": 10, "permission_id": 204, "status": 0 }
+    ],
+    "message": "申请已提交，共3条，等待审批"
+  }
 }
 ```
 
@@ -1552,9 +1601,75 @@
 
 ---
 
+#### 50. POST /api/v1/approvals/batch-approve
+
+批量同意审批。
+
+**请求体**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| approval_ids | array[long] | 是 | 审批单ID列表 |
+| comment | string | 否 | 审批意见（统一填写） |
+
+```json
+{
+  "approval_ids": [500, 501, 502],
+  "comment": "批量审批通过"
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "success_count": 3,
+    "failed_count": 0,
+    "message": "批量审批通过，共3条"
+  }
+}
+```
+
+---
+
+#### 51. POST /api/v1/approvals/batch-reject
+
+批量驳回审批（需填写原因）。
+
+**请求体**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| approval_ids | array[long] | 是 | 审批单ID列表 |
+| reason | string | 是 | 驳回原因（统一填写） |
+
+```json
+{
+  "approval_ids": [500, 501, 502],
+  "reason": "文档不完整，请补充后重新提交"
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "success_count": 3,
+    "failed_count": 0,
+    "message": "批量驳回成功，共3条"
+  }
+}
+```
+
+---
+
 ### 2.9 Scope 授权管理
 
-#### 50. GET /api/v1/user-authorizations
+#### 52. GET /api/v1/user-authorizations
 
 获取用户授权列表。
 
@@ -1587,7 +1702,7 @@
 
 ---
 
-#### 51. POST /api/v1/user-authorizations
+#### 53. POST /api/v1/user-authorizations
 
 用户授权（设置有效期）。
 
@@ -1626,7 +1741,7 @@
 
 ---
 
-#### 52. DELETE /api/v1/user-authorizations/:id
+#### 54. DELETE /api/v1/user-authorizations/:id
 
 取消授权。
 
@@ -1644,7 +1759,7 @@
 
 ### 2.10 消费网关
 
-#### 53. ANY /gateway/api/*
+#### 55. ANY /gateway/api/*
 
 API 请求代理与鉴权。
 
@@ -1677,7 +1792,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 54. POST /gateway/events/publish
+#### 56. POST /gateway/events/publish
 
 事件发布接口。
 
@@ -1726,7 +1841,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 55. POST /gateway/callbacks/invoke
+#### 57. POST /gateway/callbacks/invoke
 
 回调触发接口。
 
@@ -1763,7 +1878,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 56. GET /gateway/permissions/check
+#### 58. GET /gateway/permissions/check
 
 权限校验接口（供网关内部调用）。
 
