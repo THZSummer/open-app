@@ -5,6 +5,88 @@
 
 ---
 
+## 0. 接口设计规范
+
+本章节定义能力开放平台接口的命名规范，确保接口的一致性和可维护性。
+
+### 0.1 字段命名规范
+
+**规则**：接口入参和返回值字段统一使用驼峰命名（camelCase）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `userId` | `user_id` |
+| `createTime` | `create_time` |
+| `approvalStatus` | `approval_status` |
+| `categoryAlias` | `category_alias` |
+
+**命名约定**：
+- ID 字段：使用 `Id` 后缀，如 `userId`, `appId`, `categoryId`
+- 时间字段：使用 `Time` 后缀，如 `createTime`, `updateTime`，或 `At` 后缀表示时间点，如 `expiresAt`
+- 布尔字段：使用 `is` 前缀，如 `isDefault`, `isSubscribed`
+- URL 字段：使用 `Url` 后缀，如 `docUrl`, `approvalUrl`
+
+### 0.2 路径命名规范
+
+**规则**：URL 路径使用中划线分隔多个单词（kebab-case）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `/api/v1/user-authorizations` | `/api/v1/user_authorizations` |
+| `/api/v1/approval-flows` | `/api/v1/approvalFlows` |
+| `/gateway/callbacks/invoke` | `/gateway/callbacks_invoke` |
+
+**命名约定**：
+- 资源名称使用复数形式：`/categories`, `/apis`, `/events`
+- 子资源使用中划线分隔：`/user-authorizations`, `/approval-flows`
+- 路径参数使用驼峰：`/apps/:appId/apis`
+
+### 0.3 数据类型规范
+
+**规则**：长整数（如主键 ID）统一返回 string 类型，避免前端接收精度丢失问题。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `"id": "100"` | `"id": 100` |
+| `"appId": "10"` | `"appId": 10` |
+| `"permissionId": "200"` | `"permissionId": 200` |
+
+**原因说明**：
+- JavaScript 的 `Number` 类型最大安全整数是 `2^53 - 1`（即 `9007199254740991`）
+- 当后端使用 `Long` 类型（64 位整数）时，超过安全范围的数值会丢失精度
+- 统一使用 `string` 类型可彻底避免此问题，前端需要时自行转换
+
+**适用范围**：
+- 所有主键 ID 字段：`id`, `userId`, `appId`, `categoryId`, `permissionId` 等
+- 所有外键 ID 字段：`parentId`, `flowId`, `approvalFlowId` 等
+- 其他可能超过安全范围的数值型字段
+
+**入参约定**：
+- 路径参数中的 ID（如 `/api/v1/apis/:id`）可以是数字或字符串，由路由层处理
+- 请求体中的 ID 字段统一使用 `string` 类型
+
+### 0.4 示例对照
+
+```json
+// ✅ 符合规范的请求示例
+{
+  "userId": "user001",
+  "appId": "10",
+  "permissionIds": ["200", "201"],
+  "expiresAt": "2026-12-31T23:59:59"
+}
+
+// ❌ 不符合规范的请求示例
+{
+  "user_id": "user001",      // 应使用 userId
+  "app_id": 10,              // 应使用 appId（string 类型）
+  "permission_ids": [200, 201], // 应使用 permissionIds（string 类型）
+  "expires_at": "2026-12-31T23:59:59" // 应使用 expiresAt
+}
+```
+
+---
+
 ## 1. 接口清单
 
 | # | 模块 | Method | Path | 说明 | FR |
@@ -97,23 +179,23 @@
   "code": 0,
   "data": [
     {
-      "id": 1,
-      "category_alias": "app_type_a",
-      "name_cn": "A类应用权限",
-      "name_en": "App Type A Permissions",
-      "parent_id": null,
+      "id": "1",
+      "categoryAlias": "app_type_a",
+      "nameCn": "A类应用权限",
+      "nameEn": "App Type A Permissions",
+      "parentId": null,
       "path": "/1/",
-      "sort_order": 0,
+      "sortOrder": 0,
       "status": 1,
       "children": [
         {
-          "id": 2,
-          "category_alias": null,
-          "name_cn": "IM 业务",
-          "name_en": "IM Business",
-          "parent_id": 1,
+          "id": "2",
+          "categoryAlias": null,
+          "nameCn": "IM 业务",
+          "nameEn": "IM Business",
+          "parentId": "1",
           "path": "/1/2/",
-          "sort_order": 0,
+          "sortOrder": 0,
           "status": 1,
           "children": []
         }
@@ -135,16 +217,16 @@
 {
   "code": 0,
   "data": {
-    "id": 2,
-    "category_alias": null,
-    "name_cn": "IM 业务",
-    "name_en": "IM Business",
-    "parent_id": 1,
+    "id": "2",
+    "categoryAlias": null,
+    "nameCn": "IM 业务",
+    "nameEn": "IM Business",
+    "parentId": "1",
     "path": "/1/2/",
-    "sort_order": 0,
+    "sortOrder": 0,
     "status": 1,
-    "create_time": "2026-04-20T10:00:00.000Z",
-    "create_by": "admin"
+    "createTime": "2026-04-20T10:00:00.000Z",
+    "createBy": "admin"
   }
 }
 ```
@@ -169,11 +251,11 @@
 
 ```json
 {
-  "category_alias": "app_type_a",
-  "name_cn": "A类应用权限",
-  "name_en": "App Type A Permissions",
-  "parent_id": null,
-  "sort_order": 0
+  "categoryAlias": "app_type_a",
+  "nameCn": "A类应用权限",
+  "nameEn": "App Type A Permissions",
+  "parentId": null,
+  "sortOrder": 0
 }
 ```
 
@@ -183,13 +265,13 @@
 {
   "code": 0,
   "data": {
-    "id": 1,
-    "category_alias": "app_type_a",
-    "name_cn": "A类应用权限",
-    "name_en": "App Type A Permissions",
-    "parent_id": null,
+    "id": "1",
+    "categoryAlias": "app_type_a",
+    "nameCn": "A类应用权限",
+    "nameEn": "App Type A Permissions",
+    "parentId": null,
     "path": "/1/",
-    "sort_order": 0,
+    "sortOrder": 0,
     "status": 1
   }
 }
@@ -211,9 +293,9 @@
 
 ```json
 {
-  "name_cn": "IM 业务能力",
-  "name_en": "IM Business Capability",
-  "sort_order": 1
+  "nameCn": "IM 业务能力",
+  "nameEn": "IM Business Capability",
+  "sortOrder": 1
 }
 ```
 
@@ -223,10 +305,10 @@
 {
   "code": 0,
   "data": {
-    "id": 2,
-    "name_cn": "IM 业务能力",
-    "name_en": "IM Business Capability",
-    "sort_order": 1
+    "id": "2",
+    "nameCn": "IM 业务能力",
+    "nameEn": "IM Business Capability",
+    "sortOrder": 1
   }
 }
 ```
@@ -273,8 +355,8 @@
 
 ```json
 {
-  "user_id": "user001",
-  "user_name": "张三"
+  "userId": "user001",
+  "userName": "张三"
 }
 ```
 
@@ -284,10 +366,10 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "category_id": 2,
-    "user_id": "user001",
-    "user_name": "张三"
+    "id": "100",
+    "categoryId": "2",
+    "userId": "user001",
+    "userName": "张三"
   }
 }
 ```
@@ -305,16 +387,16 @@
   "code": 0,
   "data": [
     {
-      "id": 100,
-      "category_id": 2,
-      "user_id": "user001",
-      "user_name": "张三"
+      "id": "100",
+      "categoryId": "2",
+      "userId": "user001",
+      "userName": "张三"
     },
     {
-      "id": 101,
-      "category_id": 2,
-      "user_id": "user002",
-      "user_name": "李四"
+      "id": "101",
+      "categoryId": "2",
+      "userId": "user002",
+      "userName": "李四"
     }
   ]
 }
@@ -365,16 +447,16 @@
     "size": 20,
     "list": [
       {
-        "id": 100,
-        "name_cn": "发送消息",
-        "name_en": "Send Message",
+        "id": "100",
+        "nameCn": "发送消息",
+        "nameEn": "Send Message",
         "path": "/api/v1/messages",
         "method": "POST",
-        "category_id": 2,
-        "category_name": "IM 业务",
+        "categoryId": "2",
+        "categoryName": "IM 业务",
         "status": 2,
         "permission": {
-          "id": 200,
+          "id": "200",
           "scope": "api:im:send-message",
           "status": 1
         }
@@ -396,26 +478,26 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "name_cn": "发送消息",
-    "name_en": "Send Message",
+    "id": "100",
+    "nameCn": "发送消息",
+    "nameEn": "Send Message",
     "path": "/api/v1/messages",
     "method": "POST",
-    "category_id": 2,
+    "categoryId": "2",
     "status": 2,
-    "create_time": "2026-04-20T10:00:00.000Z",
-    "create_by": "user001",
+    "createTime": "2026-04-20T10:00:00.000Z",
+    "createBy": "user001",
     "permission": {
-      "id": 200,
-      "name_cn": "发送消息权限",
-      "name_en": "Send Message Permission",
+      "id": "200",
+      "nameCn": "发送消息权限",
+      "nameEn": "Send Message Permission",
       "scope": "api:im:send-message",
       "status": 1
     },
     "properties": [
-      { "property_name": "description_cn", "property_value": "发送消息API的中文描述" },
-      { "property_name": "description_en", "property_value": "Send message API description" },
-      { "property_name": "doc_url", "property_value": "https://docs.example.com/api/send-message" }
+      { "propertyName": "descriptionCn", "propertyValue": "发送消息API的中文描述" },
+      { "propertyName": "descriptionEn", "propertyValue": "Send message API description" },
+      { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/api/send-message" }
     ]
   }
 }
@@ -450,20 +532,20 @@
 
 ```json
 {
-  "name_cn": "发送消息",
-  "name_en": "Send Message",
+  "nameCn": "发送消息",
+  "nameEn": "Send Message",
   "path": "/api/v1/messages",
   "method": "POST",
-  "category_id": 2,
+  "categoryId": "2",
   "permission": {
-    "name_cn": "发送消息权限",
-    "name_en": "Send Message Permission",
+    "nameCn": "发送消息权限",
+    "nameEn": "Send Message Permission",
     "scope": "api:im:send-message"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "发送消息API的中文描述" },
-    { "property_name": "description_en", "property_value": "Send message API description" },
-    { "property_name": "doc_url", "property_value": "https://docs.example.com/api/send-message" }
+    { "propertyName": "descriptionCn", "propertyValue": "发送消息API的中文描述" },
+    { "propertyName": "descriptionEn", "propertyValue": "Send message API description" },
+    { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/api/send-message" }
   ]
 }
 ```
@@ -474,14 +556,14 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "name_cn": "发送消息",
-    "name_en": "Send Message",
+    "id": "100",
+    "nameCn": "发送消息",
+    "nameEn": "Send Message",
     "path": "/api/v1/messages",
     "method": "POST",
     "status": 1,
     "permission": {
-      "id": 200,
+      "id": "200",
       "scope": "api:im:send-message",
       "status": 1
     }
@@ -502,15 +584,15 @@
 
 ```json
 {
-  "name_cn": "发送消息V2",
-  "name_en": "Send Message V2",
-  "category_id": 2,
+  "nameCn": "发送消息V2",
+  "nameEn": "Send Message V2",
+  "categoryId": "2",
   "permission": {
-    "name_cn": "发送消息权限V2",
-    "name_en": "Send Message Permission V2"
+    "nameCn": "发送消息权限V2",
+    "nameEn": "Send Message Permission V2"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "发送消息API的中文描述（更新）" }
+    { "propertyName": "descriptionCn", "propertyValue": "发送消息API的中文描述（更新）" }
   ]
 }
 ```
@@ -521,8 +603,8 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "name_cn": "发送消息V2",
+    "id": "100",
+    "nameCn": "发送消息V2",
     "status": 1,
     "message": "API 更新成功，核心属性变更需重新审批"
   }
@@ -568,7 +650,7 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
+    "id": "100",
     "status": 0,
     "message": "API 已撤回，状态变为草稿"
   }
@@ -602,14 +684,14 @@
     "total": 30,
     "list": [
       {
-        "id": 101,
-        "name_cn": "消息接收事件",
-        "name_en": "Message Received Event",
+        "id": "101",
+        "nameCn": "消息接收事件",
+        "nameEn": "Message Received Event",
         "topic": "im.message.received",
-        "category_id": 2,
+        "categoryId": "2",
         "status": 2,
         "permission": {
-          "id": 201,
+          "id": "201",
           "scope": "event:im:message-received"
         }
       }
@@ -630,22 +712,22 @@
 {
   "code": 0,
   "data": {
-    "id": 101,
-    "name_cn": "消息接收事件",
-    "name_en": "Message Received Event",
+    "id": "101",
+    "nameCn": "消息接收事件",
+    "nameEn": "Message Received Event",
     "topic": "im.message.received",
-    "category_id": 2,
+    "categoryId": "2",
     "status": 2,
     "permission": {
-      "id": 201,
-      "name_cn": "消息接收权限",
-      "name_en": "Message Received Permission",
+      "id": "201",
+      "nameCn": "消息接收权限",
+      "nameEn": "Message Received Permission",
       "scope": "event:im:message-received",
       "status": 1
     },
     "properties": [
-      { "property_name": "description_cn", "property_value": "消息接收事件描述" },
-      { "property_name": "doc_url", "property_value": "https://docs.example.com/event/message-received" }
+      { "propertyName": "descriptionCn", "propertyValue": "消息接收事件描述" },
+      { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/event/message-received" }
     ]
   }
 }
@@ -670,18 +752,18 @@
 
 ```json
 {
-  "name_cn": "消息接收事件",
-  "name_en": "Message Received Event",
+  "nameCn": "消息接收事件",
+  "nameEn": "Message Received Event",
   "topic": "im.message.received",
-  "category_id": 2,
+  "categoryId": "2",
   "permission": {
-    "name_cn": "消息接收权限",
-    "name_en": "Message Received Permission",
+    "nameCn": "消息接收权限",
+    "nameEn": "Message Received Permission",
     "scope": "event:im:message-received"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "消息接收事件描述" },
-    { "property_name": "doc_url", "property_value": "https://docs.example.com/event/message-received" }
+    { "propertyName": "descriptionCn", "propertyValue": "消息接收事件描述" },
+    { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/event/message-received" }
   ]
 }
 ```
@@ -692,12 +774,12 @@
 {
   "code": 0,
   "data": {
-    "id": 101,
-    "name_cn": "消息接收事件",
+    "id": "101",
+    "nameCn": "消息接收事件",
     "topic": "im.message.received",
     "status": 1,
     "permission": {
-      "id": 201,
+      "id": "201",
       "scope": "event:im:message-received"
     }
   },
@@ -715,10 +797,10 @@
 
 ```json
 {
-  "name_cn": "消息接收事件V2",
-  "category_id": 2,
+  "nameCn": "消息接收事件V2",
+  "categoryId": "2",
   "permission": {
-    "name_cn": "消息接收权限V2"
+    "nameCn": "消息接收权限V2"
   }
 }
 ```
@@ -743,7 +825,7 @@
 {
   "code": 0,
   "data": {
-    "id": 101,
+    "id": "101",
     "status": 0,
     "message": "事件已撤回"
   }
@@ -777,13 +859,13 @@
     "total": 20,
     "list": [
       {
-        "id": 102,
-        "name_cn": "审批完成回调",
-        "name_en": "Approval Completed Callback",
-        "category_id": 3,
+        "id": "102",
+        "nameCn": "审批完成回调",
+        "nameEn": "Approval Completed Callback",
+        "categoryId": "3",
         "status": 2,
         "permission": {
-          "id": 202,
+          "id": "202",
           "scope": "callback:approval:completed"
         }
       }
@@ -804,21 +886,21 @@
 {
   "code": 0,
   "data": {
-    "id": 102,
-    "name_cn": "审批完成回调",
-    "name_en": "Approval Completed Callback",
-    "category_id": 3,
+    "id": "102",
+    "nameCn": "审批完成回调",
+    "nameEn": "Approval Completed Callback",
+    "categoryId": "3",
     "status": 2,
     "permission": {
-      "id": 202,
-      "name_cn": "审批完成回调权限",
-      "name_en": "Approval Completed Callback Permission",
+      "id": "202",
+      "nameCn": "审批完成回调权限",
+      "nameEn": "Approval Completed Callback Permission",
       "scope": "callback:approval:completed",
       "status": 1
     },
     "properties": [
-      { "property_name": "description_cn", "property_value": "审批完成后的回调通知" },
-      { "property_name": "doc_url", "property_value": "https://docs.example.com/callback/approval-completed" }
+      { "propertyName": "descriptionCn", "propertyValue": "审批完成后的回调通知" },
+      { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/callback/approval-completed" }
     ]
   }
 }
@@ -842,17 +924,17 @@
 
 ```json
 {
-  "name_cn": "审批完成回调",
-  "name_en": "Approval Completed Callback",
-  "category_id": 3,
+  "nameCn": "审批完成回调",
+  "nameEn": "Approval Completed Callback",
+  "categoryId": "3",
   "permission": {
-    "name_cn": "审批完成回调权限",
-    "name_en": "Approval Completed Callback Permission",
+    "nameCn": "审批完成回调权限",
+    "nameEn": "Approval Completed Callback Permission",
     "scope": "callback:approval:completed"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "审批完成后的回调通知" },
-    { "property_name": "doc_url", "property_value": "https://docs.example.com/callback/approval-completed" }
+    { "propertyName": "descriptionCn", "propertyValue": "审批完成后的回调通知" },
+    { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/callback/approval-completed" }
   ]
 }
 ```
@@ -863,11 +945,11 @@
 {
   "code": 0,
   "data": {
-    "id": 102,
-    "name_cn": "审批完成回调",
+    "id": "102",
+    "nameCn": "审批完成回调",
     "status": 1,
     "permission": {
-      "id": 202,
+      "id": "202",
       "scope": "callback:approval:completed"
     }
   },
@@ -885,10 +967,10 @@
 
 ```json
 {
-  "name_cn": "审批完成回调V2",
-  "category_id": 3,
+  "nameCn": "审批完成回调V2",
+  "categoryId": "3",
   "permission": {
-    "name_cn": "审批完成回调权限V2"
+    "nameCn": "审批完成回调权限V2"
   }
 }
 ```
@@ -926,26 +1008,26 @@
   "code": 0,
   "data": [
     {
-      "id": 300,
-      "app_id": 10,
-      "permission_id": 200,
+      "id": "300",
+      "appId": "10",
+      "permissionId": "200",
       "permission": {
-        "name_cn": "发送消息权限",
+        "nameCn": "发送消息权限",
         "scope": "api:im:send-message"
       },
       "category": {
-        "id": 2,
-        "name_cn": "IM业务"
+        "id": "2",
+        "nameCn": "IM业务"
       },
       "approver": {
-        "user_id": "user001",
-        "user_name": "张三"
+        "userId": "user001",
+        "userName": "张三"
       },
       "status": 1,
-      "auth_type": 0,
-      "doc_url": "https://docs.example.com/api/send-message",
-      "approval_url": "https://platform.example.com/approval/300",
-      "create_time": "2026-04-20T10:00:00.000Z"
+      "authType": 0,
+      "docUrl": "https://docs.example.com/api/send-message",
+      "approvalUrl": "https://platform.example.com/approval/300",
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
@@ -977,14 +1059,14 @@
   "code": 0,
   "data": [
     {
-      "id": 200,
-      "name_cn": "发送消息权限",
-      "name_en": "Send Message Permission",
+      "id": "200",
+      "nameCn": "发送消息权限",
+      "nameEn": "Send Message Permission",
       "scope": "api:im:send-message",
       "status": 1,
-      "need_approval": 1,
-      "doc_url": "https://docs.example.com/api/send-message",
-      "is_subscribed": 1,
+      "needApproval": 1,
+      "docUrl": "https://docs.example.com/api/send-message",
+      "isSubscribed": 1,
       "api": {
         "path": "/api/v1/messages",
         "method": "POST"
@@ -1008,7 +1090,7 @@
 
 ```json
 {
-  "permission_ids": [200, 201, 202]
+  "permissionIds": ["200", "201", "202"]
 }
 ```
 
@@ -1018,12 +1100,12 @@
 {
   "code": 0,
   "data": {
-    "success_count": 3,
-    "failed_count": 0,
+    "successCount": 3,
+    "failedCount": 0,
     "records": [
-      { "id": 300, "app_id": 10, "permission_id": 200, "status": 0 },
-      { "id": 301, "app_id": 10, "permission_id": 201, "status": 0 },
-      { "id": 302, "app_id": 10, "permission_id": 202, "status": 0 }
+      { "id": "300", "appId": "10", "permissionId": "200", "status": 0 },
+      { "id": "301", "appId": "10", "permissionId": "201", "status": 0 },
+      { "id": "302", "appId": "10", "permissionId": "202", "status": 0 }
     ],
     "message": "申请已提交，共3条，等待审批"
   }
@@ -1044,7 +1126,7 @@
 {
   "code": 0,
   "data": {
-    "id": 300,
+    "id": "300",
     "status": 3,
     "message": "申请已撤回"
   }
@@ -1072,20 +1154,20 @@
   "code": 0,
   "data": [
     {
-      "id": 301,
-      "app_id": 10,
-      "permission_id": 201,
+      "id": "301",
+      "appId": "10",
+      "permissionId": "201",
       "permission": {
-        "name_cn": "消息接收权限",
+        "nameCn": "消息接收权限",
         "scope": "event:im:message-received"
       },
       "event": {
         "topic": "im.message.received"
       },
       "status": 1,
-      "channel_type": 1,
-      "channel_address": "https://webhook.example.com/events",
-      "auth_type": 0
+      "channelType": 1,
+      "channelAddress": "https://webhook.example.com/events",
+      "authType": 0
     }
   ]
 }
@@ -1117,14 +1199,14 @@
   "code": 0,
   "data": [
     {
-      "id": 201,
-      "name_cn": "消息接收权限",
-      "name_en": "Message Received Permission",
+      "id": "201",
+      "nameCn": "消息接收权限",
+      "nameEn": "Message Received Permission",
       "scope": "event:im:message-received",
       "status": 1,
-      "need_approval": 1,
-      "doc_url": "https://docs.example.com/event/message-received",
-      "is_subscribed": 1,
+      "needApproval": 1,
+      "docUrl": "https://docs.example.com/event/message-received",
+      "isSubscribed": 1,
       "event": {
         "topic": "im.message.received"
       }
@@ -1147,7 +1229,7 @@
 
 ```json
 {
-  "permission_ids": [201, 202, 203]
+  "permissionIds": ["201", "202", "203"]
 }
 ```
 
@@ -1157,12 +1239,12 @@
 {
   "code": 0,
   "data": {
-    "success_count": 3,
-    "failed_count": 0,
+    "successCount": 3,
+    "failedCount": 0,
     "records": [
-      { "id": 301, "app_id": 10, "permission_id": 201, "status": 0 },
-      { "id": 302, "app_id": 10, "permission_id": 202, "status": 0 },
-      { "id": 303, "app_id": 10, "permission_id": 203, "status": 0 }
+      { "id": "301", "appId": "10", "permissionId": "201", "status": 0 },
+      { "id": "302", "appId": "10", "permissionId": "202", "status": 0 },
+      { "id": "303", "appId": "10", "permissionId": "203", "status": 0 }
     ],
     "message": "申请已提交，共3条，等待审批"
   }
@@ -1187,9 +1269,9 @@
 
 ```json
 {
-  "channel_type": 1,
-  "channel_address": "https://webhook.example.com/events",
-  "auth_type": 0
+  "channelType": 1,
+  "channelAddress": "https://webhook.example.com/events",
+  "authType": 0
 }
 ```
 
@@ -1208,10 +1290,10 @@
 {
   "code": 0,
   "data": {
-    "id": 301,
-    "channel_type": 1,
-    "channel_address": "https://webhook.example.com/events",
-    "auth_type": 0,
+    "id": "301",
+    "channelType": 1,
+    "channelAddress": "https://webhook.example.com/events",
+    "authType": 0,
     "message": "事件消费参数配置成功"
   }
 }
@@ -1238,17 +1320,17 @@
   "code": 0,
   "data": [
     {
-      "id": 302,
-      "app_id": 10,
-      "permission_id": 202,
+      "id": "302",
+      "appId": "10",
+      "permissionId": "202",
       "permission": {
-        "name_cn": "审批完成回调权限",
+        "nameCn": "审批完成回调权限",
         "scope": "callback:approval:completed"
       },
       "status": 1,
-      "channel_type": 1,
-      "channel_address": "https://webhook.example.com/callbacks",
-      "auth_type": 0
+      "channelType": 1,
+      "channelAddress": "https://webhook.example.com/callbacks",
+      "authType": 0
     }
   ]
 }
@@ -1280,14 +1362,14 @@
   "code": 0,
   "data": [
     {
-      "id": 202,
-      "name_cn": "审批完成回调权限",
-      "name_en": "Approval Completed Callback Permission",
+      "id": "202",
+      "nameCn": "审批完成回调权限",
+      "nameEn": "Approval Completed Callback Permission",
       "scope": "callback:approval:completed",
       "status": 1,
-      "need_approval": 1,
-      "doc_url": "https://docs.example.com/callback/approval-completed",
-      "is_subscribed": 1
+      "needApproval": 1,
+      "docUrl": "https://docs.example.com/callback/approval-completed",
+      "isSubscribed": 1
     }
   ]
 }
@@ -1307,7 +1389,7 @@
 
 ```json
 {
-  "permission_ids": [202, 203, 204]
+  "permissionIds": ["202", "203", "204"]
 }
 ```
 
@@ -1317,12 +1399,12 @@
 {
   "code": 0,
   "data": {
-    "success_count": 3,
-    "failed_count": 0,
+    "successCount": 3,
+    "failedCount": 0,
     "records": [
-      { "id": 302, "app_id": 10, "permission_id": 202, "status": 0 },
-      { "id": 303, "app_id": 10, "permission_id": 203, "status": 0 },
-      { "id": 304, "app_id": 10, "permission_id": 204, "status": 0 }
+      { "id": "302", "appId": "10", "permissionId": "202", "status": 0 },
+      { "id": "303", "appId": "10", "permissionId": "203", "status": 0 },
+      { "id": "304", "appId": "10", "permissionId": "204", "status": 0 }
     ],
     "message": "申请已提交，共3条，等待审批"
   }
@@ -1347,9 +1429,9 @@
 
 ```json
 {
-  "channel_type": 0,
-  "channel_address": "https://webhook.example.com/callbacks",
-  "auth_type": 0
+  "channelType": 0,
+  "channelAddress": "https://webhook.example.com/callbacks",
+  "authType": 0
 }
 ```
 
@@ -1382,19 +1464,19 @@
   "code": 0,
   "data": [
     {
-      "id": 1,
-      "name_cn": "默认审批流",
-      "name_en": "Default Approval Flow",
+      "id": "1",
+      "nameCn": "默认审批流",
+      "nameEn": "Default Approval Flow",
       "code": "default",
-      "is_default": 1,
+      "isDefault": 1,
       "status": 1
     },
     {
-      "id": 2,
-      "name_cn": "API注册审批流",
-      "name_en": "API Registration Approval Flow",
+      "id": "2",
+      "nameCn": "API注册审批流",
+      "nameEn": "API Registration Approval Flow",
       "code": "api_register",
-      "is_default": 0,
+      "isDefault": 0,
       "status": 1
     }
   ]
@@ -1413,15 +1495,15 @@
 {
   "code": 0,
   "data": {
-    "id": 2,
-    "name_cn": "API注册审批流",
-    "name_en": "API Registration Approval Flow",
+    "id": "2",
+    "nameCn": "API注册审批流",
+    "nameEn": "API Registration Approval Flow",
     "code": "api_register",
-    "is_default": 0,
+    "isDefault": 0,
     "status": 1,
     "nodes": [
-      { "type": "approver", "user_id": "user001", "user_name": "张三", "order": 1 },
-      { "type": "approver", "user_id": "user002", "user_name": "李四", "order": 2 }
+      { "type": "approver", "userId": "user001", "userName": "张三", "order": 1 },
+      { "type": "approver", "userId": "user002", "userName": "李四", "order": 2 }
     ]
   }
 }
@@ -1453,13 +1535,13 @@
 
 ```json
 {
-  "name_cn": "API注册审批流",
-  "name_en": "API Registration Approval Flow",
+  "nameCn": "API注册审批流",
+  "nameEn": "API Registration Approval Flow",
   "code": "api_register",
-  "is_default": 0,
+  "isDefault": 0,
   "nodes": [
-    { "type": "approver", "user_id": "user001", "order": 1 },
-    { "type": "approver", "user_id": "user002", "order": 2 }
+    { "type": "approver", "userId": "user001", "order": 1 },
+    { "type": "approver", "userId": "user002", "order": 2 }
   ]
 }
 ```
@@ -1474,9 +1556,9 @@
 
 ```json
 {
-  "name_cn": "API注册审批流V2",
+  "nameCn": "API注册审批流V2",
   "nodes": [
-    { "type": "approver", "user_id": "user003", "order": 1 }
+    { "type": "approver", "userId": "user003", "order": 1 }
   ]
 }
 ```
@@ -1506,16 +1588,16 @@
     "total": 10,
     "list": [
       {
-        "id": 500,
+        "id": "500",
         "type": "resource_register",
-        "business_type": "api",
-        "business_id": 100,
-        "business_name": "发送消息",
-        "applicant_id": "user003",
-        "applicant_name": "王五",
+        "businessType": "api",
+        "businessId": "100",
+        "businessName": "发送消息",
+        "applicantId": "user003",
+        "applicantName": "王五",
         "status": 0,
-        "current_node": 1,
-        "create_time": "2026-04-20T10:00:00.000Z"
+        "currentNode": 1,
+        "createTime": "2026-04-20T10:00:00.000Z"
       }
     ]
   }
@@ -1534,23 +1616,23 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "type": "resource_register",
-    "business_type": "api",
-    "business_id": 100,
-    "business_data": {
-      "name_cn": "发送消息",
+    "businessType": "api",
+    "businessId": "100",
+    "businessData": {
+      "nameCn": "发送消息",
       "path": "/api/v1/messages",
       "method": "POST"
     },
-    "applicant_id": "user003",
-    "applicant_name": "王五",
+    "applicantId": "user003",
+    "applicantName": "王五",
     "status": 0,
-    "flow_id": 2,
-    "current_node": 1,
+    "flowId": "2",
+    "currentNode": 1,
     "nodes": [
-      { "order": 1, "user_id": "user001", "user_name": "张三", "status": 0 },
-      { "order": 2, "user_id": "user002", "user_name": "李四", "status": null }
+      { "order": 1, "userId": "user001", "userName": "张三", "status": 0 },
+      { "order": 2, "userId": "user002", "userName": "李四", "status": null }
     ],
     "logs": []
   }
@@ -1581,7 +1663,7 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "status": 1,
     "message": "审批通过，API 已上架"
   }
@@ -1612,7 +1694,7 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "status": 2,
     "message": "审批已驳回"
   }
@@ -1633,7 +1715,7 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "status": 3,
     "message": "审批已撤销"
   }
@@ -1655,7 +1737,7 @@
 
 ```json
 {
-  "approval_ids": [500, 501, 502],
+  "approvalIds": ["500", "501", "502"],
   "comment": "批量审批通过"
 }
 ```
@@ -1666,8 +1748,8 @@
 {
   "code": 0,
   "data": {
-    "success_count": 3,
-    "failed_count": 0,
+    "successCount": 3,
+    "failedCount": 0,
     "message": "批量审批通过，共3条"
   }
 }
@@ -1688,7 +1770,7 @@
 
 ```json
 {
-  "approval_ids": [500, 501, 502],
+  "approvalIds": ["500", "501", "502"],
   "reason": "文档不完整，请补充后重新提交"
 }
 ```
@@ -1699,8 +1781,8 @@
 {
   "code": 0,
   "data": {
-    "success_count": 3,
-    "failed_count": 0,
+    "successCount": 3,
+    "failedCount": 0,
     "message": "批量驳回成功，共3条"
   }
 }
@@ -1728,14 +1810,14 @@
   "code": 0,
   "data": [
     {
-      "id": 600,
-      "user_id": "user001",
-      "user_name": "张三",
-      "app_id": 10,
-      "app_name": "消息助手",
+      "id": "600",
+      "userId": "user001",
+      "userName": "张三",
+      "appId": "10",
+      "appName": "消息助手",
       "scopes": ["api:im:send-message", "api:im:get-message"],
-      "expires_at": "2026-12-31T23:59:59.000Z",
-      "create_time": "2026-04-20T10:00:00.000Z"
+      "expiresAt": "2026-12-31T23:59:59.000Z",
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
@@ -1758,10 +1840,10 @@
 
 ```json
 {
-  "user_id": "user001",
-  "app_id": 10,
+  "userId": "user001",
+  "appId": "10",
   "scopes": ["api:im:send-message", "api:im:get-message"],
-  "expires_at": "2026-12-31T23:59:59"
+  "expiresAt": "2026-12-31T23:59:59"
 }
 ```
 
@@ -1771,11 +1853,11 @@
 {
   "code": 0,
   "data": {
-    "id": 600,
-    "user_id": "user001",
-    "app_id": 10,
+    "id": "600",
+    "userId": "user001",
+    "appId": "10",
     "scopes": ["api:im:send-message", "api:im:get-message"],
-    "expires_at": "2026-12-31T23:59:59.000Z"
+    "expiresAt": "2026-12-31T23:59:59.000Z"
   }
 }
 ```
@@ -1852,7 +1934,7 @@ API 请求代理与鉴权。
 {
   "topic": "im.message.received",
   "payload": {
-    "message_id": "msg001",
+    "messageId": "msg001",
     "content": "Hello World",
     "sender": "user001"
   }
@@ -1899,9 +1981,9 @@ API 请求代理与鉴权。
 
 ```json
 {
-  "callback_scope": "callback:approval:completed",
+  "callbackScope": "callback:approval:completed",
   "payload": {
-    "approval_id": "app001",
+    "approvalId": "app001",
     "status": "approved",
     "approver": "user001"
   }
@@ -1937,8 +2019,8 @@ API 请求代理与鉴权。
   "code": 0,
   "data": {
     "authorized": true,
-    "subscription_id": 300,
-    "subscription_status": 1
+    "subscriptionId": "300",
+    "subscriptionStatus": 1
   }
 }
 ```

@@ -1387,7 +1387,45 @@ CREATE TABLE `openplatform_v2_api_p_t` (
 | 消费网关 | FR-028~FR-030 | 4 | 三方应用/业务模块 |
 | **总计** | **FR-001~FR-031** | **57** | - |
 
-### 5.2 接口分层
+### 5.2 接口设计规范
+
+为确保接口的一致性和可维护性，制定以下接口设计规范：
+
+| 规则编号 | 规则名称 | 规则描述 | 示例 |
+|----------|----------|----------|------|
+| **规则一** | 字段命名规范 | 接口入参和返回值字段统一使用驼峰命名（camelCase） | `userId`, `createTime`, `approvalStatus` |
+| **规则二** | 路径命名规范 | URL 路径使用中划线分隔多个单词（kebab-case） | `/api/v1/approval-records`, `/api/v1/user-authorizations` |
+| **规则三** | ID 类型规范 | 长整数（如主键 ID）统一返回 string 类型，避免前端精度丢失 | `"id": "100"`, `"appId": "10"` |
+
+#### 规则详解
+
+**规则一：字段命名规范**
+- ✅ **正确示例**：
+  - 入参：`{ "userId": "user001", "applyReason": "业务需要" }`
+  - 返回值：`{ "code": 0, "data": { "approvalStatus": "pending" } }`
+- ❌ **错误示例**：
+  - 入参：`{ "user_id": 123, "apply_reason": "业务需要" }`
+  - 返回值：`{ "code": 0, "data": { "approval_status": "pending" } }`
+
+**规则二：路径命名规范**
+- ✅ **正确示例**：
+  - `/api/v1/approval-records` - 审批记录
+  - `/api/v1/user-authorizations` - 用户授权
+  - `/gateway/api/callback-urls` - 回调地址
+- ❌ **错误示例**：
+  - `/api/v1/approval_records` - 不应使用下划线
+  - `/api/v1/userAuthorizations` - 不应使用驼峰
+  - `/api/v1/userauthorizations` - 多个单词应使用中划线分隔
+
+**规则三：ID 类型规范**
+- ✅ **正确示例**：
+  - 返回值：`{ "id": "100", "appId": "10", "permissionId": "200" }`
+  - 入参：`{ "userId": "user001", "appId": "10" }`
+- ❌ **错误示例**：
+  - 返回值：`{ "id": 100, "appId": 10, "permissionId": 200 }` - 数值类型可能导致精度丢失
+- **原因说明**：JavaScript 的 `Number` 类型最大安全整数是 `2^53 - 1`，超过此范围的长整数会丢失精度
+
+### 5.3 接口分层
 
 | 分层 | 说明 | 接口示例 |
 |------|------|----------|
