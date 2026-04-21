@@ -198,7 +198,7 @@ curl http://localhost:3000
 
 ```bash
 mysql -u root -p openplatform < docs/sql/init-schema.sql
-mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_%'"
+mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_v2_%'"
 # 期望输出 15 张表
 ```
 

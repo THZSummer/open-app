@@ -6,21 +6,21 @@
 
 | 表名 | 类型 | 说明 |
 |------|------|------|
-| `openplatform_category_t` | 主表 | 分类表 |
-| `openplatform_category_owner_t` | 关联表 | 分类责任人关联表 |
-| `openplatform_api_t` | 主表 | API资源主表 |
-| `openplatform_api_p_t` | 属性表 | API资源属性表 |
-| `openplatform_event_t` | 主表 | 事件资源主表 |
-| `openplatform_event_p_t` | 属性表 | 事件资源属性表 |
-| `openplatform_callback_t` | 主表 | 回调资源主表 |
-| `openplatform_callback_p_t` | 属性表 | 回调资源属性表 |
-| `openplatform_permission_t` | 主表 | 权限资源主表 |
-| `openplatform_permission_p_t` | 属性表 | 权限资源属性表 |
-| `openplatform_subscription_t` | 主表 | 订阅关系表 |
-| `openplatform_approval_flow_t` | 主表 | 审批流程模板表 |
-| `openplatform_approval_record_t` | 主表 | 审批记录表 |
-| `openplatform_approval_log_t` | 主表 | 审批操作日志表 |
-| `openplatform_user_authorization_t` | 主表 | 用户授权表 |
+| `openplatform_v2_category_t` | 主表 | 分类表 |
+| `openplatform_v2_category_owner_t` | 关联表 | 分类责任人关联表 |
+| `openplatform_v2_api_t` | 主表 | API资源主表 |
+| `openplatform_v2_api_p_t` | 属性表 | API资源属性表 |
+| `openplatform_v2_event_t` | 主表 | 事件资源主表 |
+| `openplatform_v2_event_p_t` | 属性表 | 事件资源属性表 |
+| `openplatform_v2_callback_t` | 主表 | 回调资源主表 |
+| `openplatform_v2_callback_p_t` | 属性表 | 回调资源属性表 |
+| `openplatform_v2_permission_t` | 主表 | 权限资源主表 |
+| `openplatform_v2_permission_p_t` | 属性表 | 权限资源属性表 |
+| `openplatform_v2_subscription_t` | 主表 | 订阅关系表 |
+| `openplatform_v2_approval_flow_t` | 主表 | 审批流程模板表 |
+| `openplatform_v2_approval_record_t` | 主表 | 审批记录表 |
+| `openplatform_v2_approval_log_t` | 主表 | 审批操作日志表 |
+| `openplatform_v2_user_authorization_t` | 主表 | 用户授权表 |
 
 **总计**：15 张表（10 张主表 + 4 张属性表 + 1 张关联表）
 
@@ -34,7 +34,7 @@
 -- ============================================
 -- 分类表（扩展现有 openplatform_mode_node_t）
 -- ============================================
-CREATE TABLE `openplatform_category_t` (
+CREATE TABLE `openplatform_v2_category_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `category_alias` VARCHAR(50) COMMENT '分类别名（仅根分类需要）：app_type_a/app_type_b/personal_aksk',
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
@@ -53,7 +53,7 @@ CREATE TABLE `openplatform_category_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='分类表';
 
 -- 分类责任人关联表
-CREATE TABLE `openplatform_category_owner_t` (
+CREATE TABLE `openplatform_v2_category_owner_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `category_id` BIGINT(20) NOT NULL,
     `user_id` VARCHAR(100) NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE `openplatform_category_owner_t` (
 -- ============================================
 -- API 资源主表（扩展现有 openplatform_permission_api_t）
 -- ============================================
-CREATE TABLE `openplatform_api_t` (
+CREATE TABLE `openplatform_v2_api_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
@@ -86,7 +86,7 @@ CREATE TABLE `openplatform_api_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源主表';
 
 -- API 资源属性表
-CREATE TABLE `openplatform_api_p_t` (
+CREATE TABLE `openplatform_v2_api_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联 API 主表 ID',
     `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
@@ -107,7 +107,7 @@ CREATE TABLE `openplatform_api_p_t` (
 -- ============================================
 -- 事件资源主表（扩展现有 openplatform_event_t）
 -- ============================================
-CREATE TABLE `openplatform_event_t` (
+CREATE TABLE `openplatform_v2_event_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
@@ -122,7 +122,7 @@ CREATE TABLE `openplatform_event_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事件资源主表';
 
 -- 事件资源属性表
-CREATE TABLE `openplatform_event_p_t` (
+CREATE TABLE `openplatform_v2_event_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联事件主表 ID',
     `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
@@ -143,7 +143,7 @@ CREATE TABLE `openplatform_event_p_t` (
 -- ============================================
 -- 回调资源主表（新建）
 -- ============================================
-CREATE TABLE `openplatform_callback_t` (
+CREATE TABLE `openplatform_v2_callback_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
@@ -156,7 +156,7 @@ CREATE TABLE `openplatform_callback_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调资源主表';
 
 -- 回调资源属性表
-CREATE TABLE `openplatform_callback_p_t` (
+CREATE TABLE `openplatform_v2_callback_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联回调主表 ID',
     `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
@@ -177,7 +177,7 @@ CREATE TABLE `openplatform_callback_p_t` (
 -- ============================================
 -- 权限资源主表（新建）
 -- ============================================
-CREATE TABLE `openplatform_permission_t` (
+CREATE TABLE `openplatform_v2_permission_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
@@ -197,7 +197,7 @@ CREATE TABLE `openplatform_permission_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源主表';
 
 -- 权限资源属性表
-CREATE TABLE `openplatform_permission_p_t` (
+CREATE TABLE `openplatform_v2_permission_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联权限主表 ID',
     `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
@@ -216,19 +216,19 @@ CREATE TABLE `openplatform_permission_p_t` (
 
 ```sql
 -- API 属性表示例
-INSERT INTO openplatform_api_p_t (id, parent_id, property_name, property_value, status, ...) 
+INSERT INTO openplatform_v2_api_p_t (id, parent_id, property_name, property_value, status, ...) 
 VALUES (1, 100, 'description_cn', '发送消息API的中文描述', 1, ...);
-INSERT INTO openplatform_api_p_t (id, parent_id, property_name, property_value, status, ...) 
+INSERT INTO openplatform_v2_api_p_t (id, parent_id, property_name, property_value, status, ...) 
 VALUES (2, 100, 'description_en', 'Send message API description', 1, ...);
-INSERT INTO openplatform_api_p_t (id, parent_id, property_name, property_value, status, ...) 
+INSERT INTO openplatform_v2_api_p_t (id, parent_id, property_name, property_value, status, ...) 
 VALUES (3, 100, 'doc_url', 'https://docs.example.com/api/send-message', 1, ...);
 
 -- 权限属性表示例
-INSERT INTO openplatform_permission_p_t (id, parent_id, property_name, property_value, status, ...)
+INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 VALUES (1, 200, 'description_cn', '发送消息权限的中文描述', 1, ...);
-INSERT INTO openplatform_permission_p_t (id, parent_id, property_name, property_value, status, ...)
+INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 VALUES (2, 200, 'description_en', 'Send message permission description', 1, ...);
-INSERT INTO openplatform_permission_p_t (id, parent_id, property_name, property_value, status, ...)
+INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 VALUES (3, 200, 'approval_flow_id', '1001', 1, ...);
 ```
 
@@ -238,7 +238,7 @@ VALUES (3, 200, 'approval_flow_id', '1001', 1, ...);
 -- ============================================
 -- 订阅关系表（扩展现有 openplatform_app_permission_t）
 -- ============================================
-CREATE TABLE `openplatform_subscription_t` (
+CREATE TABLE `openplatform_v2_subscription_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `app_id` BIGINT(20) NOT NULL,
     `permission_id` BIGINT(20) NOT NULL,
@@ -265,7 +265,7 @@ CREATE TABLE `openplatform_subscription_t` (
 -- ============================================
 -- 审批流程模板表（扩展现有 openplatform_eflow_t）
 -- ============================================
-CREATE TABLE `openplatform_approval_flow_t` (
+CREATE TABLE `openplatform_v2_approval_flow_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
@@ -284,7 +284,7 @@ CREATE TABLE `openplatform_approval_flow_t` (
 -- ============================================
 -- 审批记录表（扩展现有 openplatform_eflow_log_t）
 -- ============================================
-CREATE TABLE `openplatform_approval_record_t` (
+CREATE TABLE `openplatform_v2_approval_record_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `flow_id` BIGINT(20) NOT NULL,
     `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
@@ -306,7 +306,7 @@ CREATE TABLE `openplatform_approval_record_t` (
 -- ============================================
 -- 审批操作日志表
 -- ============================================
-CREATE TABLE `openplatform_approval_log_t` (
+CREATE TABLE `openplatform_v2_approval_log_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `record_id` BIGINT(20) NOT NULL,
     `node_index` INT NOT NULL,
@@ -327,7 +327,7 @@ CREATE TABLE `openplatform_approval_log_t` (
 -- ============================================
 -- 用户授权表（Scope 授权）
 -- ============================================
-CREATE TABLE `openplatform_user_authorization_t` (
+CREATE TABLE `openplatform_v2_user_authorization_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `user_id` VARCHAR(100) NOT NULL,
     `app_id` BIGINT(20) NOT NULL,
@@ -350,10 +350,10 @@ CREATE TABLE `openplatform_user_authorization_t` (
 
 | 规则 | 说明 | 示例 |
 |------|------|------|
-| **表前缀** | 统一使用 `openplatform_` 前缀 | `openplatform_permission_api_t` |
-| **表后缀** | 统一使用 `_t` 后缀表示表 | `openplatform_eflow_t` |
-| **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | `openplatform_permission_api_p_t` |
-| **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_user_authorization_t` |
+| **表前缀** | 统一使用 `openplatform_v2_` 前缀，表示AI重写的新业务对象表 | `openplatform_v2_permission_api_t` |
+| **表后缀** | 统一使用 `_t` 后缀表示表 | `openplatform_v2_eflow_t` |
+| **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | `openplatform_v2_permission_api_p_t` |
+| **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_v2_user_authorization_t` |
 
 ### 字段规范
 

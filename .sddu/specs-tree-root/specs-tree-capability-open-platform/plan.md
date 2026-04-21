@@ -30,7 +30,7 @@ graph TB
     
     subgraph Database["现有数据库表"]
         T1["openplatform_permission_api_t\n(API 权限表)"]
-        T2["openplatform_event_t\n(事件表)"]
+        T2["openplatform_v2_event_t\n(事件表)"]
         T3["openplatform_app_permission_t\n(应用权限关联表)"]
         T4["openplatform_mode_node_t\n(模式节点表-分组)"]
         T5["openplatform_eflow_t\n(审批流程表)"]
@@ -1079,8 +1079,8 @@ erDiagram
 ```sql
 -- 从子分类的 path 解析根节点 ID，查询权限树类型
 SELECT root.category_alias
-FROM openplatform_category_t child
-JOIN openplatform_category_t root 
+FROM openplatform_v2_category_t child
+JOIN openplatform_v2_category_t root 
   ON root.id = CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(child.path, '/', 2), '/', -1) AS UNSIGNED)
 WHERE child.id = :category_id;
 ```
@@ -1099,8 +1099,8 @@ WHERE child.id = :category_id;
 ```sql
 -- 查询节点2及其所有子节点的权限
 SELECT p.* 
-FROM openplatform_permission_t p
-JOIN openplatform_category_t c ON p.category_id = c.id
+FROM openplatform_v2_permission_t p
+JOIN openplatform_v2_category_t c ON p.category_id = c.id
 WHERE c.path LIKE '/1/2/%';
 ```
 
@@ -1143,10 +1143,10 @@ WHERE c.path LIKE '/1/2/%';
 
 | 规则 | 说明 | 示例 |
 |------|------|------|
-| **表前缀** | 统一使用 `openplatform_` 前缀 | `openplatform_permission_api_t` |
+| **表前缀** | 统一使用 `openplatform_v2_` 前缀，表示AI重写的新业务对象表 | `openplatform_v2_permission_api_t` |
 | **表后缀** | 统一使用 `_t` 后缀表示表 | `openplatform_eflow_t` |
 | **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | `openplatform_permission_api_p_t` |
-| **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_user_authorization_t` |
+| **命名风格** | 小写字母 + 下划线分隔 | `user_authorizations` → `openplatform_v2_user_authorization_t` |
 
 #### 主表与属性表设计规范
 
@@ -1166,10 +1166,10 @@ WHERE c.path LIKE '/1/2/%';
 | 规则 | 说明 | 示例 |
 |------|------|------|
 | **用途** | 存储仅在对象详情中涉及的不常用字段 | 扩展配置、元数据等 |
-| **表名格式** | `{前缀}_{业务对象名}_p_t` | `openplatform_api_p_t` |
-| **表名示例** | API 属性表 → `openplatform_api_p_t` | |
-| **表名示例** | 事件属性表 → `openplatform_event_p_t` | |
-| **表名示例** | 权限属性表 → `openplatform_permission_p_t` | |
+| **表名格式** | `{前缀}_{业务对象名}_p_t` | `openplatform_v2_api_p_t` |
+| **表名示例** | API 属性表 → `openplatform_v2_api_p_t` | |
+| **表名示例** | 事件属性表 → `openplatform_v2_event_p_t` | |
+| **表名示例** | 权限属性表 → `openplatform_v2_permission_p_t` | |
 
 **属性表必备字段**：
 
@@ -1188,7 +1188,7 @@ WHERE c.path LIKE '/1/2/%';
 **属性表示例**：
 
 ```sql
-CREATE TABLE `openplatform_api_p_t` (
+CREATE TABLE `openplatform_v2_api_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联 API 主表 ID',
     `property_name` VARCHAR(100) NOT NULL COMMENT '属性名称',
@@ -1278,21 +1278,21 @@ CREATE TABLE `openplatform_api_p_t` (
 
 | 规划表名 | 正式表名 | 说明 |
 |----------|----------|------|
-| `categories` | `openplatform_category_t` | 分类主表 |
-| `category_owners` | `openplatform_category_owner_t` | 分类责任人关联表 |
-| `apis` | `openplatform_api_t` | API 资源主表 |
-| `apis_p` | `openplatform_api_p_t` | API 资源属性表 |
-| `events` | `openplatform_event_t` | 事件资源主表 |
-| `events_p` | `openplatform_event_p_t` | 事件资源属性表 |
-| `callbacks` | `openplatform_callback_t` | 回调资源主表 |
-| `callbacks_p` | `openplatform_callback_p_t` | 回调资源属性表 |
-| `permissions` | `openplatform_permission_t` | 权限资源主表 |
-| `permissions_p` | `openplatform_permission_p_t` | 权限资源属性表 |
-| `subscriptions` | `openplatform_subscription_t` | 订阅关系表 |
-| `approval_flows` | `openplatform_approval_flow_t` | 审批流程模板表 |
-| `approval_records` | `openplatform_approval_record_t` | 审批记录表 |
-| `approval_logs` | `openplatform_approval_log_t` | 审批操作日志表 |
-| `user_authorizations` | `openplatform_user_authorization_t` | 用户授权表 |
+| `categories` | `openplatform_v2_category_t` | 分类主表 |
+| `category_owners` | `openplatform_v2_category_owner_t` | 分类责任人关联表 |
+| `apis` | `openplatform_v2_api_t` | API 资源主表 |
+| `apis_p` | `openplatform_v2_api_p_t` | API 资源属性表 |
+| `events` | `openplatform_v2_event_t` | 事件资源主表 |
+| `events_p` | `openplatform_v2_event_p_t` | 事件资源属性表 |
+| `callbacks` | `openplatform_v2_callback_t` | 回调资源主表 |
+| `callbacks_p` | `openplatform_v2_callback_p_t` | 回调资源属性表 |
+| `permissions` | `openplatform_v2_permission_t` | 权限资源主表 |
+| `permissions_p` | `openplatform_v2_permission_p_t` | 权限资源属性表 |
+| `subscriptions` | `openplatform_v2_subscription_t` | 订阅关系表 |
+| `approval_flows` | `openplatform_v2_approval_flow_t` | 审批流程模板表 |
+| `approval_records` | `openplatform_v2_approval_record_t` | 审批记录表 |
+| `approval_logs` | `openplatform_v2_approval_log_t` | 审批操作日志表 |
+| `user_authorizations` | `openplatform_v2_user_authorization_t` | 用户授权表 |
 
 > 💡 **主表+属性表模式说明**：
 > - **使用主表+属性表的对象**：API、事件、回调、权限（4 个业务对象）
@@ -1306,26 +1306,26 @@ CREATE TABLE `openplatform_api_p_t` (
 
 | 正式表名 | 现有表 | 关系 | 处理策略 |
 |----------|--------|------|----------|
-| `openplatform_category_t` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
-| `openplatform_category_owner_t` | - | 新建 | 分类责任人关联表 |
-| `openplatform_api_t` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
-| `openplatform_api_p_t` | - | 新建 | API 资源属性表 |
-| `openplatform_event_t` | 现有同名表 | 扩展 | 新建表，保留原有表 |
-| `openplatform_event_p_t` | - | 新建 | 事件资源属性表 |
-| `openplatform_callback_t` | - | 新建 | 回调资源主表 |
-| `openplatform_callback_p_t` | - | 新建 | 回调资源属性表 |
-| `openplatform_permission_t` | - | 新建 | 权限资源主表（核心抽象） |
-| `openplatform_permission_p_t` | - | 新建 | 权限资源属性表 |
-| `openplatform_subscription_t` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
-| `openplatform_approval_flow_t` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
-| `openplatform_approval_record_t` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
-| `openplatform_approval_log_t` | - | 新建 | 审批操作日志表 |
-| `openplatform_user_authorization_t` | - | 新建 | 用户授权表（Scope 授权） |
+| `openplatform_v2_category_t` | `openplatform_mode_node_t` | 扩展 | 新建表，后续迁移数据 |
+| `openplatform_v2_category_owner_t` | - | 新建 | 分类责任人关联表 |
+| `openplatform_v2_api_t` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
+| `openplatform_v2_api_p_t` | - | 新建 | API 资源属性表 |
+| `openplatform_v2_event_t` | 现有同名表 | 扩展 | 新建表，保留原有表 |
+| `openplatform_v2_event_p_t` | - | 新建 | 事件资源属性表 |
+| `openplatform_v2_callback_t` | - | 新建 | 回调资源主表 |
+| `openplatform_v2_callback_p_t` | - | 新建 | 回调资源属性表 |
+| `openplatform_v2_permission_t` | - | 新建 | 权限资源主表（核心抽象） |
+| `openplatform_v2_permission_p_t` | - | 新建 | 权限资源属性表 |
+| `openplatform_v2_subscription_t` | `openplatform_app_permission_t` | 扩展 | 新建表，后续迁移数据 |
+| `openplatform_v2_approval_flow_t` | `openplatform_eflow_t` | 扩展 | 新建表，保留原有表 |
+| `openplatform_v2_approval_record_t` | `openplatform_eflow_log_t` | 扩展 | 新建表，保留原有表 |
+| `openplatform_v2_approval_log_t` | - | 新建 | 审批操作日志表 |
+| `openplatform_v2_user_authorization_t` | - | 新建 | 用户授权表（Scope 授权） |
 
 **汇总**：
 - 扩展现有表：6 个（主表）
-- 纯新建主表：5 个（`openplatform_category_owner_t`、`openplatform_callback_t`、`openplatform_permission_t`、`openplatform_approval_log_t`、`openplatform_user_authorization_t`）
-- 新建属性表：4 个（`openplatform_api_p_t`、`openplatform_event_p_t`、`openplatform_callback_p_t`、`openplatform_permission_p_t`）
+- 纯新建主表：5 个（`openplatform_v2_category_owner_t`、`openplatform_v2_callback_t`、`openplatform_v2_permission_t`、`openplatform_v2_approval_log_t`、`openplatform_v2_user_authorization_t`）
+- 新建属性表：4 个（`openplatform_v2_api_p_t`、`openplatform_v2_event_p_t`、`openplatform_v2_callback_p_t`、`openplatform_v2_permission_p_t`）
 - **总表数**：15 个
 
 ### 4.4 表结构设计
@@ -1336,21 +1336,21 @@ CREATE TABLE `openplatform_api_p_t` (
 
 | 表名 | 类型 | 说明 |
 |------|------|------|
-| `openplatform_category_t` | 主表 | 分类表 |
-| `openplatform_category_owner_t` | 关联表 | 分类责任人关联表 |
-| `openplatform_api_t` | 主表 | API资源主表 |
-| `openplatform_api_p_t` | 属性表 | API资源属性表 |
-| `openplatform_event_t` | 主表 | 事件资源主表 |
-| `openplatform_event_p_t` | 属性表 | 事件资源属性表 |
-| `openplatform_callback_t` | 主表 | 回调资源主表 |
-| `openplatform_callback_p_t` | 属性表 | 回调资源属性表 |
-| `openplatform_permission_t` | 主表 | 权限资源主表 |
-| `openplatform_permission_p_t` | 属性表 | 权限资源属性表 |
-| `openplatform_subscription_t` | 主表 | 订阅关系表 |
-| `openplatform_approval_flow_t` | 主表 | 审批流程模板表 |
-| `openplatform_approval_record_t` | 主表 | 审批记录表 |
-| `openplatform_approval_log_t` | 主表 | 审批操作日志表 |
-| `openplatform_user_authorization_t` | 主表 | 用户授权表 |
+| `openplatform_v2_category_t` | 主表 | 分类表 |
+| `openplatform_v2_category_owner_t` | 关联表 | 分类责任人关联表 |
+| `openplatform_v2_api_t` | 主表 | API资源主表 |
+| `openplatform_v2_api_p_t` | 属性表 | API资源属性表 |
+| `openplatform_v2_event_t` | 主表 | 事件资源主表 |
+| `openplatform_v2_event_p_t` | 属性表 | 事件资源属性表 |
+| `openplatform_v2_callback_t` | 主表 | 回调资源主表 |
+| `openplatform_v2_callback_p_t` | 属性表 | 回调资源属性表 |
+| `openplatform_v2_permission_t` | 主表 | 权限资源主表 |
+| `openplatform_v2_permission_p_t` | 属性表 | 权限资源属性表 |
+| `openplatform_v2_subscription_t` | 主表 | 订阅关系表 |
+| `openplatform_v2_approval_flow_t` | 主表 | 审批流程模板表 |
+| `openplatform_v2_approval_record_t` | 主表 | 审批记录表 |
+| `openplatform_v2_approval_log_t` | 主表 | 审批操作日志表 |
+| `openplatform_v2_user_authorization_t` | 主表 | 用户授权表 |
 
 **总计**：15 张表（10 张主表 + 4 张属性表 + 1 张关联表）
 
