@@ -106,9 +106,9 @@ graph TB
 
 ### 验收标准
 
-- [ ] open-server 工程可独立启动，访问 `http://localhost:8080/actuator/health` 返回健康状态
-- [ ] api-server 工程可独立启动，访问 `http://localhost:8081/actuator/health` 返回健康状态
-- [ ] event-server 工程可独立启动，访问 `http://localhost:8082/actuator/health` 返回健康状态
+- [ ] open-server 工程可独立启动，访问 `http://localhost:18080/actuator/health` 返回健康状态
+- [ ] api-server 工程可独立启动，访问 `http://localhost:18081/actuator/health` 返回健康状态
+- [ ] event-server 工程可独立启动，访问 `http://localhost:18082/actuator/health` 返回健康状态
 - [ ] Mock 策略可通过配置开关（`mock.enabled=true/false`）一键切换
 - [ ] 统一异常处理生效，返回标准错误格式 `{code, message, data}`
 - [ ] 雪花 ID 生成器可用
@@ -118,15 +118,15 @@ graph TB
 ```bash
 # 启动 open-server
 cd open-server && mvn spring-boot:run
-curl http://localhost:8080/actuator/health
+curl http://localhost:18080/actuator/health
 
 # 启动 api-server
 cd api-server && mvn spring-boot:run
-curl http://localhost:8081/actuator/health
+curl http://localhost:18081/actuator/health
 
 # 启动 event-server
 cd event-server && mvn spring-boot:run
-curl http://localhost:8082/actuator/health
+curl http://localhost:18082/actuator/health
 ```
 
 ---
@@ -249,15 +249,15 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_v2_%'"
 
 ```bash
 # 创建根分类
-curl -X POST http://localhost:8080/api/v1/categories \
+curl -X POST http://localhost:18080/api/v1/categories \
   -H "Content-Type: application/json" \
   -d '{"category_alias":"app_type_a","name_cn":"A类应用权限","name_en":"App Type A Permissions"}'
 
 # 获取分类树（权限树查树）
-curl http://localhost:8080/api/v1/categories?category_alias=app_type_a
+curl http://localhost:18080/api/v1/categories?category_alias=app_type_a
 
 # 添加责任人
-curl -X POST http://localhost:8080/api/v1/categories/1/owners \
+curl -X POST http://localhost:18080/api/v1/categories/1/owners \
   -H "Content-Type: application/json" \
   -d '{"user_id":"user001"}'
 ```
@@ -302,12 +302,12 @@ curl -X POST http://localhost:8080/api/v1/categories/1/owners \
 
 ```bash
 # 注册 API
-curl -X POST http://localhost:8080/api/v1/apis \
+curl -X POST http://localhost:18080/api/v1/apis \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"发送消息","name_en":"Send Message","path":"/api/v1/messages","method":"POST","category_id":2,"permission":{"name_cn":"发送消息权限","name_en":"Send Message Permission","scope":"api:im:send-message"}}'
 
 # 获取 API 详情
-curl http://localhost:8080/api/v1/apis/100
+curl http://localhost:18080/api/v1/apis/100
 ```
 
 ---
@@ -349,12 +349,12 @@ curl http://localhost:8080/api/v1/apis/100
 
 ```bash
 # 注册事件
-curl -X POST http://localhost:8080/api/v1/events \
+curl -X POST http://localhost:18080/api/v1/events \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"消息接收事件","name_en":"Message Received Event","topic":"im.message.received","category_id":2,"permission":{"name_cn":"消息接收权限","name_en":"Message Received Permission","scope":"event:im:message-received"}}'
 
 # 获取事件列表
-curl http://localhost:8080/api/v1/events
+curl http://localhost:18080/api/v1/events
 ```
 
 ---
@@ -396,12 +396,12 @@ curl http://localhost:8080/api/v1/events
 
 ```bash
 # 注册回调
-curl -X POST http://localhost:8080/api/v1/callbacks \
+curl -X POST http://localhost:18080/api/v1/callbacks \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"审批完成回调","name_en":"Approval Completed Callback","category_id":2,"permission":{"name_cn":"审批完成权限","name_en":"Approval Completed Permission","scope":"callback:approval:completed"}}'
 
 # 获取回调列表
-curl http://localhost:8080/api/v1/callbacks
+curl http://localhost:18080/api/v1/callbacks
 ```
 
 ---
@@ -466,15 +466,15 @@ curl http://localhost:8080/api/v1/callbacks
 
 ```bash
 # 获取分类下 API 权限列表（权限树懒加载）
-curl http://localhost:8080/api/v1/categories/2/apis
+curl http://localhost:18080/api/v1/categories/2/apis
 
 # 申请 API 权限
-curl -X POST http://localhost:8080/api/v1/apps/100/apis/subscribe \
+curl -X POST http://localhost:18080/api/v1/apps/100/apis/subscribe \
   -H "Content-Type: application/json" \
   -d '{"permission_id":200}'
 
 # 配置事件消费参数
-curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
+curl -X PUT http://localhost:18080/api/v1/apps/100/events/300/config \
   -H "Content-Type: application/json" \
   -d '{"channel_type":1,"channel_address":"https://webhook.example.com/events","auth_type":0}'
 ```
@@ -538,15 +538,15 @@ curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
 
 ```bash
 # 创建审批流程
-curl -X POST http://localhost:8080/api/v1/approval-flows \
+curl -X POST http://localhost:18080/api/v1/approval-flows \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"API注册审批流","name_en":"API Registration Approval Flow","code":"api_register","nodes":[{"type":"approver","user_id":"user001","order":1}]}'
 
 # 获取待审批列表
-curl http://localhost:8080/api/v1/approvals/pending
+curl http://localhost:18080/api/v1/approvals/pending
 
 # 同意审批
-curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
+curl -X POST http://localhost:18080/api/v1/approvals/1/approve \
   -H "Content-Type: application/json" \
   -d '{"comment":"同意该申请"}'
 ```
@@ -597,7 +597,7 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 
 ```bash
 # API 鉴权测试
-curl -X POST http://localhost:8081/gateway/api/v1/messages \
+curl -X POST http://localhost:18081/gateway/api/v1/messages \
   -H "X-App-Id: 100" \
   -H "X-Auth-Type: 0" \
   -H "Authorization: Bearer token" \
@@ -605,10 +605,10 @@ curl -X POST http://localhost:8081/gateway/api/v1/messages \
   -d '{"content":"Hello World"}'
 
 # 权限校验
-curl http://localhost:8081/gateway/permissions/check?app_id=100&scope=api:im:send-message
+curl http://localhost:18081/gateway/permissions/check?app_id=100&scope=api:im:send-message
 
 # 用户授权
-curl -X POST http://localhost:8081/api/v1/user-authorizations \
+curl -X POST http://localhost:18081/api/v1/user-authorizations \
   -H "Content-Type: application/json" \
   -d '{"user_id":"user001","app_id":100,"scopes":["api:im:send-message"],"expires_at":"2026-12-31T23:59:59"}'
 ```
@@ -663,12 +663,12 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 
 ```bash
 # 事件发布
-curl -X POST http://localhost:8082/gateway/events/publish \
+curl -X POST http://localhost:18082/gateway/events/publish \
   -H "Content-Type: application/json" \
   -d '{"topic":"im.message.received","payload":{"message_id":"msg001","content":"Hello World"}}'
 
 # 回调触发
-curl -X POST http://localhost:8082/gateway/callbacks/invoke \
+curl -X POST http://localhost:18082/gateway/callbacks/invoke \
   -H "Content-Type: application/json" \
   -d '{"callback_scope":"callback:approval:completed","payload":{"approval_id":"app001","status":"approved"}}'
 ```
@@ -782,7 +782,7 @@ cd event-server && mvn test
 mvn verify
 
 # 性能测试（示例）
-curl -w "@curl-format.txt" http://localhost:8080/api/v1/apis?category_id=2
+curl -w "@curl-format.txt" http://localhost:18080/api/v1/apis?category_id=2
 ```
 
 ---

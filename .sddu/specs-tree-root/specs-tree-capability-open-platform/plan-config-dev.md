@@ -19,10 +19,10 @@
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
-| open-server | 8080 | 管理服务 |
-| api-server | 8081 | API认证鉴权服务 |
-| event-server | 8082 | 事件/回调网关服务 |
-| open-web | 3000 | 前端应用 |
+| open-server | 18080 | 管理服务 |
+| api-server | 18081 | API认证鉴权服务 |
+| event-server | 18082 | 事件/回调网关服务 |
+| open-web | 13000 | 前端应用 |
 
 ---
 
@@ -47,7 +47,7 @@ mybatis:
 
 ```yaml
 server:
-  port: 8080
+  port: 18080
 
 spring:
   datasource:
@@ -84,7 +84,7 @@ spring:
 
 ```yaml
 server:
-  port: 8081
+  port: 18081
 
 spring:
   datasource:
@@ -122,7 +122,7 @@ spring:
 
 ```yaml
 server:
-  port: 8082
+  port: 18082
 
 spring:
   redis:
@@ -133,7 +133,7 @@ spring:
 
 # api-server 调用配置
 api-server:
-  url: http://localhost:8081
+  url: http://localhost:18081
 
 # 内部消息网关配置
 internal:
@@ -149,7 +149,7 @@ internal:
 
 ```bash
 # API 基础路径
-VITE_API_BASE_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:18080
 
 # 应用标题
 VITE_APP_TITLE=能力开放平台
