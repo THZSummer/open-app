@@ -75,7 +75,6 @@
 |------|------|------|
 | id | string | 分类ID |
 | nameCn | string | 分类中文名称 |
-| parentId | string | 父分类ID，根分类为 null |
 | path | string | 分类路径，如 `/1/2/`，用于树形查询优化 |
 | categoryPath | array[string] | 完整分类路径名称数组，如 `["A类应用权限", "IM业务"]` |
 
@@ -85,7 +84,6 @@
   "category": {
     "id": "2",
     "nameCn": "IM业务",
-    "parentId": "1",
     "path": "/1/2/",
     "categoryPath": ["A类应用权限", "IM业务"]
   }
@@ -1133,7 +1131,6 @@
       "category": {
         "id": "2",
         "nameCn": "IM业务",
-        "parentId": "1",
         "path": "/1/2/",
         "categoryPath": ["A类应用权限", "IM业务"]
       },
@@ -1284,7 +1281,6 @@
       "category": {
         "id": "2",
         "nameCn": "IM业务",
-        "parentId": "1",
         "path": "/1/2/",
         "categoryPath": ["A类应用权限", "IM业务"]
       },
@@ -1470,7 +1466,6 @@
       "category": {
         "id": "3",
         "nameCn": "审批回调",
-        "parentId": "1",
         "path": "/1/3/",
         "categoryPath": ["A类应用权限", "审批回调"]
       },
