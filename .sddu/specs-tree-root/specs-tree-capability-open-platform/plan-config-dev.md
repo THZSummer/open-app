@@ -133,7 +133,7 @@ spring:
 
 # api-server 调用配置
 api-server:
-  url: http://localhost:18081
+  url: http://localhost:18081/api-server
 
 # 内部消息网关配置
 internal:
@@ -149,7 +149,7 @@ internal:
 
 ```bash
 # API 基础路径
-VITE_API_BASE_URL=http://localhost:18080
+VITE_API_BASE_URL=http://localhost:18080/open-server
 
 # 应用标题
 VITE_APP_TITLE=能力开放平台
@@ -317,6 +317,6 @@ cd open-web && npm install && npm run dev
 
 ---
 
-**文档版本**: v1.1  
+**文档版本**: v1.2  
 **更新日期**: 2026-04-21  
 **作者**: SDDU Plan Agent

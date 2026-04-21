@@ -1,7 +1,7 @@
 # 任务分解：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**任务版本**: v1.4  
+**任务版本**: v1.5  
 **创建日期**: 2026-04-20  
 **更新日期**: 2026-04-21  
 **任务作者**: SDDU Tasks Agent  
@@ -115,9 +115,9 @@ graph TB
 
 ### 验收标准
 
-- [ ] open-server 工程可独立启动，访问 `http://localhost:18080/actuator/health` 返回健康状态
-- [ ] api-server 工程可独立启动，访问 `http://localhost:18081/actuator/health` 返回健康状态
-- [ ] event-server 工程可独立启动，访问 `http://localhost:18082/actuator/health` 返回健康状态
+- [ ] open-server 工程可独立启动，访问 `http://localhost:18080/open-server/actuator/health` 返回健康状态
+- [ ] api-server 工程可独立启动，访问 `http://localhost:18081/api-server/actuator/health` 返回健康状态
+- [ ] event-server 工程可独立启动，访问 `http://localhost:18082/event-server/actuator/health` 返回健康状态
 - [ ] Mock 策略可通过配置开关（`mock.enabled=true/false`）一键切换
 - [ ] 统一异常处理生效，返回标准错误格式：`{code: "400", messageZh: "参数错误", messageEn: "Bad Request", data: null, page: null}`
 - [ ] 所有 ID 字段统一返回 string 类型（避免 JavaScript 精度丢失）
@@ -129,15 +129,15 @@ graph TB
 ```bash
 # 启动 open-server
 cd open-server && mvn spring-boot:run
-curl http://localhost:18080/actuator/health
+curl http://localhost:18080/open-server/actuator/health
 
 # 启动 api-server
 cd api-server && mvn spring-boot:run
-curl http://localhost:18081/actuator/health
+curl http://localhost:18081/api-server/actuator/health
 
 # 启动 event-server
 cd event-server && mvn spring-boot:run
-curl http://localhost:18082/actuator/health
+curl http://localhost:18082/event-server/actuator/health
 ```
 
 ---
@@ -183,7 +183,7 @@ curl http://localhost:18082/actuator/health
 cd open-web
 npm install
 npm run dev
-curl http://localhost:13000
+curl http://localhost:13000/open-web
 ```
 
 ---
@@ -264,15 +264,15 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_v2_%'"
 
 ```bash
 # 创建根分类
-curl -X POST http://localhost:18080/api/v1/categories \
+curl -X POST http://localhost:18080/open-server/api/v1/categories \
   -H "Content-Type: application/json" \
   -d '{"categoryAlias":"app_type_a","nameCn":"A类应用权限","nameEn":"App Type A Permissions"}'
 
 # 获取分类树（权限树查树）
-curl http://localhost:18080/api/v1/categories?categoryAlias=app_type_a
+curl http://localhost:18080/open-server/api/v1/categories?categoryAlias=app_type_a
 
 # 添加责任人
-curl -X POST http://localhost:18080/api/v1/categories/1/owners \
+curl -X POST http://localhost:18080/open-server/api/v1/categories/1/owners \
   -H "Content-Type: application/json" \
   -d '{"userId":"user001","userName":"张三"}'
 ```
@@ -319,12 +319,12 @@ curl -X POST http://localhost:18080/api/v1/categories/1/owners \
 
 ```bash
 # 注册 API
-curl -X POST http://localhost:18080/api/v1/apis \
+curl -X POST http://localhost:18080/open-server/api/v1/apis \
   -H "Content-Type: application/json" \
   -d '{"nameCn":"发送消息","nameEn":"Send Message","path":"/api/v1/messages","method":"POST","categoryId":"2","permission":{"nameCn":"发送消息权限","nameEn":"Send Message Permission","scope":"api:im:send-message"}}'
 
 # 获取 API 详情
-curl http://localhost:18080/api/v1/apis/100
+curl http://localhost:18080/open-server/api/v1/apis/100
 ```
 
 ---
@@ -368,12 +368,12 @@ curl http://localhost:18080/api/v1/apis/100
 
 ```bash
 # 注册事件
-curl -X POST http://localhost:18080/api/v1/events \
+curl -X POST http://localhost:18080/open-server/api/v1/events \
   -H "Content-Type: application/json" \
   -d '{"nameCn":"消息接收事件","nameEn":"Message Received Event","topic":"im.message.received","categoryId":"2","permission":{"nameCn":"消息接收权限","nameEn":"Message Received Permission","scope":"event:im:message-received"}}'
 
 # 获取事件列表
-curl http://localhost:18080/api/v1/events
+curl http://localhost:18080/open-server/api/v1/events
 ```
 
 ---
@@ -417,12 +417,12 @@ curl http://localhost:18080/api/v1/events
 
 ```bash
 # 注册回调
-curl -X POST http://localhost:18080/api/v1/callbacks \
+curl -X POST http://localhost:18080/open-server/api/v1/callbacks \
   -H "Content-Type: application/json" \
   -d '{"nameCn":"审批完成回调","nameEn":"Approval Completed Callback","categoryId":"2","permission":{"nameCn":"审批完成权限","nameEn":"Approval Completed Permission","scope":"callback:approval:completed"}}'
 
 # 获取回调列表
-curl http://localhost:18080/api/v1/callbacks
+curl http://localhost:18080/open-server/api/v1/callbacks
 ```
 
 ---
@@ -492,15 +492,15 @@ curl http://localhost:18080/api/v1/callbacks
 
 ```bash
 # 获取分类下 API 权限列表（权限树懒加载）
-curl http://localhost:18080/api/v1/categories/2/apis
+curl http://localhost:18080/open-server/api/v1/categories/2/apis
 
 # 申请 API 权限
-curl -X POST http://localhost:18080/api/v1/apps/100/apis/subscribe \
+curl -X POST http://localhost:18080/open-server/api/v1/apps/100/apis/subscribe \
   -H "Content-Type: application/json" \
   -d '{"permissionIds":["200"]}'
 
 # 配置事件消费参数
-curl -X PUT http://localhost:18080/api/v1/apps/100/events/300/config \
+curl -X PUT http://localhost:18080/open-server/api/v1/apps/100/events/300/config \
   -H "Content-Type: application/json" \
   -d '{"channelType":1,"channelAddress":"https://webhook.example.com/events","authType":0}'
 ```
@@ -568,15 +568,15 @@ curl -X PUT http://localhost:18080/api/v1/apps/100/events/300/config \
 
 ```bash
 # 创建审批流程
-curl -X POST http://localhost:18080/api/v1/approval-flows \
+curl -X POST http://localhost:18080/open-server/api/v1/approval-flows \
   -H "Content-Type: application/json" \
   -d '{"nameCn":"API注册审批流","nameEn":"API Registration Approval Flow","code":"api_register","nodes":[{"type":"approver","userId":"user001","order":1}]}'
 
 # 获取待审批列表
-curl http://localhost:18080/api/v1/approvals/pending
+curl http://localhost:18080/open-server/api/v1/approvals/pending
 
 # 同意审批
-curl -X POST http://localhost:18080/api/v1/approvals/1/approve \
+curl -X POST http://localhost:18080/open-server/api/v1/approvals/1/approve \
   -H "Content-Type: application/json" \
   -d '{"comment":"同意该申请"}'
 ```
@@ -631,7 +631,7 @@ curl -X POST http://localhost:18080/api/v1/approvals/1/approve \
 
 ```bash
 # API 鉴权测试
-curl -X POST http://localhost:18081/gateway/api/v1/messages \
+curl -X POST http://localhost:18081/api-server/gateway/api/v1/messages \
   -H "X-App-Id: 100" \
   -H "X-Auth-Type: 0" \
   -H "Authorization: Bearer token" \
@@ -639,10 +639,10 @@ curl -X POST http://localhost:18081/gateway/api/v1/messages \
   -d '{"content":"Hello World"}'
 
 # 权限校验
-curl "http://localhost:18081/gateway/permissions/check?appId=100&scope=api:im:send-message"
+curl "http://localhost:18081/api-server/gateway/permissions/check?appId=100&scope=api:im:send-message"
 
 # 用户授权
-curl -X POST http://localhost:18081/api/v1/user-authorizations \
+curl -X POST http://localhost:18081/api-server/api/v1/user-authorizations \
   -H "Content-Type: application/json" \
   -d '{"userId":"user001","appId":"10","scopes":["api:im:send-message"],"expiresAt":"2026-12-31T23:59:59"}'
 ```
@@ -700,12 +700,12 @@ curl -X POST http://localhost:18081/api/v1/user-authorizations \
 
 ```bash
 # 事件发布
-curl -X POST http://localhost:18082/gateway/events/publish \
+curl -X POST http://localhost:18082/event-server/gateway/events/publish \
   -H "Content-Type: application/json" \
   -d '{"topic":"im.message.received","payload":{"messageId":"msg001","content":"Hello World"}}'
 
 # 回调触发
-curl -X POST http://localhost:18082/gateway/callbacks/invoke \
+curl -X POST http://localhost:18082/event-server/gateway/callbacks/invoke \
   -H "Content-Type: application/json" \
   -d '{"callbackScope":"callback:approval:completed","payload":{"approvalId":"app001","status":"approved"}}'
 ```
@@ -819,7 +819,7 @@ cd event-server && mvn test
 mvn verify
 
 # 性能测试（示例）
-curl -w "@curl-format.txt" http://localhost:18080/api/v1/apis?category_id=2
+curl -w "@curl-format.txt" http://localhost:18080/open-server/api/v1/apis?category_id=2
 ```
 
 ---
