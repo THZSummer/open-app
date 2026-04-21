@@ -3,7 +3,7 @@
 # TASK-005 验证脚本：API 管理模块
 # 使用方法：bash test-api-module.sh
 
-BASE_URL="http://localhost:18080"
+BASE_URL="http://localhost:18080/open-server"
 CATEGORY_ID=""
 API_ID=""
 

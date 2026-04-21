@@ -27,8 +27,8 @@ echo ""
 echo "等待服务启动完成..."
 
 for i in {1..30}; do
-    if curl -s http://localhost:18082/api/v1/health > /dev/null 2>&1; then
-        echo "✅ 服务已就绪! 访问地址: http://localhost:18082"
+    if curl -s http://localhost:18082/event-server/actuator/health > /dev/null 2>&1; then
+        echo "✅ 服务已就绪! 访问地址: http://localhost:18082/event-server"
         exit 0
     fi
     sleep 1

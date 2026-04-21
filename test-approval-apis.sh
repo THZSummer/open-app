@@ -5,7 +5,7 @@
 # 功能：测试 TASK-009 实现的 11 个接口
 # ============================================================================
 
-BASE_URL="http://localhost:18080"
+BASE_URL="http://localhost:18080/open-server"
 TOKEN="test-token"
 
 # 颜色输出

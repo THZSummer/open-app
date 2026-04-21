@@ -1,3 +1,8 @@
+server:
+  port: 18080
+  servlet:
+    context-path: /open-server
+
 spring:
   profiles:
     active: dev

@@ -39,9 +39,9 @@ echo ""
 echo "等待服务启动完成..."
 
 for i in {1..30}; do
-    if curl -s http://localhost:13000 > /dev/null 2>&1; then
+    if curl -s http://localhost:13000/open-web/ > /dev/null 2>&1; then
         echo ""
-        echo "✅ 服务已就绪! 访问地址: http://localhost:13000"
+        echo "✅ 服务已就绪! 访问地址: http://localhost:13000/open-web/"
         exit 0
     fi
     sleep 1

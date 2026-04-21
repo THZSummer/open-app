@@ -18,11 +18,13 @@ spring:
 
 # API Server 配置
 api-server:
-  url: http://localhost:18081
+  url: http://localhost:18081/api-server
 
 # Server 配置
 server:
   port: 18082
+  servlet:
+    context-path: /event-server
 
 springdoc:
   api-docs:

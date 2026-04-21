@@ -4,6 +4,7 @@ import path from 'path';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/open-web/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -15,7 +16,6 @@ export default defineConfig({
       less: {
         javascriptEnabled: true,
         modifyVars: {
-          // Ant Design 主题变量覆盖
           '@primary-color': '#1890ff',
           '@link-color': '#1890ff',
           '@border-radius-base': '4px',
@@ -26,10 +26,10 @@ export default defineConfig({
   server: {
     port: 13000,
     host: true,
-    open: true,
+    open: false,
     proxy: {
-      '/api': {
-        target: 'http://localhost:18080',
+      '/api/v1': {
+        target: 'http://localhost:18080/open-server',
         changeOrigin: true,
         rewrite: (path) => path,
       },

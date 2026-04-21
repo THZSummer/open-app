@@ -3,7 +3,7 @@
 # 回调管理模块测试脚本
 # 测试接口 #21 ~ #26
 
-BASE_URL="http://localhost:18080"
+BASE_URL="http://localhost:18080/open-server"
 API_PREFIX="/api/v1/callbacks"
 
 echo "========================================="

@@ -3,7 +3,7 @@ import Router from './router';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/open-web">
       <Router />
     </BrowserRouter>
   );

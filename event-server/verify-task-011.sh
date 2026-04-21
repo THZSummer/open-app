@@ -17,8 +17,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # API Server 地址
-API_SERVER="http://localhost:18081"
-EVENT_SERVER="http://localhost:18082"
+API_SERVER="http://localhost:18081/api-server"
+EVENT_SERVER="http://localhost:18082/event-server"
 
 # 检查服务是否运行
 check_service() {
