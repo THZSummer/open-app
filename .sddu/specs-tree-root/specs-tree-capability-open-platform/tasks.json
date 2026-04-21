@@ -10,8 +10,8 @@
   "spec_version": "spec.md v1.49",
   "summary": {
     "total_tasks": 13,
-    "completed_tasks": 12,
-    "pending_tasks": 1,
+    "completed_tasks": 13,
+    "pending_tasks": 0,
     "total_interfaces": 58,
     "interface_coverage": "100%",
     "complexity_distribution": {
@@ -519,7 +519,9 @@
       "wave": 5,
       "interface_coverage": [],
       "projects": ["all"],
-      "status": "pending",
+      "status": "completed",
+      "completed_at": "2026-04-22",
+      "build_file": "build-task-013.md",
       "files": {
         "new": [
           "open-server/src/test/java/.../*Test.java",
