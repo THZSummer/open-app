@@ -934,6 +934,9 @@
         "scope": "api:im:send-message"
       },
       "status": 1,
+      "auth_type": 0,
+      "doc_url": "https://docs.example.com/api/send-message",
+      "approval_url": "https://platform.example.com/approval/300",
       "create_time": "2026-04-20T10:00:00.000Z"
     }
   ]
@@ -953,6 +956,7 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | keyword | string | 否 | 搜索关键词（名称、Scope） |
+| need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 
 **响应示例**：
 
@@ -1085,6 +1089,7 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | keyword | string | 否 | 搜索关键词 |
+| need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 
 **响应示例**：
 
@@ -1234,6 +1239,13 @@
 获取分类下回调权限列表。
 
 > **说明**：权限树懒加载，点击分类节点时调用。
+
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | string | 否 | 搜索关键词 |
+| need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 
 **响应示例**：
 
