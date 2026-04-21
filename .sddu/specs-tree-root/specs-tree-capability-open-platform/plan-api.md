@@ -958,6 +958,9 @@
 获取分类下 API 权限列表。
 
 > **说明**：权限树采用懒加载模式。分类树通过 `GET /api/v1/categories` 获取，点击分类节点时调用此接口获取该分类下的权限列表。
+> - `include_children=false`（默认）：仅获取当前分类直接关联的权限
+> - `include_children=true`：递归获取当前分类及所有子分类下的权限（通过 `path` 字段优化查询）
+> - 传根分类ID + `include_children=true` 可获取全量权限
 
 **请求参数**：
 
@@ -965,6 +968,7 @@
 |------|------|------|------|
 | keyword | string | 否 | 搜索关键词（名称、Scope） |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
+| include_children | boolean | 否 | 是否包含子分类权限（默认 false，仅当前分类） |
 
 **响应示例**：
 
@@ -1091,6 +1095,9 @@
 获取分类下事件权限列表。
 
 > **说明**：权限树懒加载，点击分类节点时调用。
+> - `include_children=false`（默认）：仅获取当前分类直接关联的权限
+> - `include_children=true`：递归获取当前分类及所有子分类下的权限（通过 `path` 字段优化查询）
+> - 传根分类ID + `include_children=true` 可获取全量权限
 
 **请求参数**：
 
@@ -1098,6 +1105,7 @@
 |------|------|------|------|
 | keyword | string | 否 | 搜索关键词 |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
+| include_children | boolean | 否 | 是否包含子分类权限（默认 false，仅当前分类） |
 
 **响应示例**：
 
@@ -1247,6 +1255,9 @@
 获取分类下回调权限列表。
 
 > **说明**：权限树懒加载，点击分类节点时调用。
+> - `include_children=false`（默认）：仅获取当前分类直接关联的权限
+> - `include_children=true`：递归获取当前分类及所有子分类下的权限（通过 `path` 字段优化查询）
+> - 传根分类ID + `include_children=true` 可获取全量权限
 
 **请求参数**：
 
@@ -1254,6 +1265,7 @@
 |------|------|------|------|
 | keyword | string | 否 | 搜索关键词 |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
+| include_children | boolean | 否 | 是否包含子分类权限（默认 false，仅当前分类） |
 
 **响应示例**：
 
