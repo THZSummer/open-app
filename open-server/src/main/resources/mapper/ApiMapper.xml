@@ -9,6 +9,8 @@
         <result column="name_en" property="nameEn"/>
         <result column="path" property="path"/>
         <result column="method" property="method"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="category_name" property="categoryName"/>
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
         <result column="last_update_time" property="lastUpdateTime"/>
@@ -16,28 +18,34 @@
         <result column="last_update_by" property="lastUpdateBy"/>
     </resultMap>
 
+    <!-- 带分类名称的结果映射 -->
+    <resultMap id="WithCategoryResultMap" type="com.xxx.open.modules.api.entity.Api" extends="BaseResultMap">
+        <result column="category_name" property="categoryName"/>
+    </resultMap>
+
     <!-- Base Column -->
     <sql id="Base_Column_List">
-        id, name_cn, name_en, path, method, status,
+        id, name_cn, name_en, path, method, category_id, status,
         create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- Insert -->
     <insert id="insert" parameterType="com.xxx.open.modules.api.entity.Api">
         INSERT INTO openplatform_v2_api_t (
-            id, name_cn, name_en, path, method, status,
+            id, name_cn, name_en, path, method, category_id, status,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{nameCn}, #{nameEn}, #{path}, #{method}, #{status},
+            #{id}, #{nameCn}, #{nameEn}, #{path}, #{method}, #{categoryId}, #{status},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
 
     <!-- Select By ID -->
-    <select id="selectById" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM openplatform_v2_api_t
-        WHERE id = #{id}
+    <select id="selectById" resultMap="WithCategoryResultMap">
+        SELECT a.*, c.name_cn AS category_name
+        FROM openplatform_v2_api_t a
+        LEFT JOIN openplatform_v2_category_t c ON a.category_id = c.id
+        WHERE a.id = #{id}
     </select>
 
     <!-- Update -->
@@ -45,6 +53,7 @@
         UPDATE openplatform_v2_api_t
         SET name_cn = #{nameCn},
             name_en = #{nameEn},
+            category_id = #{categoryId},
             status = #{status},
             last_update_time = #{lastUpdateTime},
             last_update_by = #{lastUpdateBy}
@@ -58,52 +67,49 @@
     </delete>
 
     <!-- Select List -->
-    <select id="selectList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM openplatform_v2_api_t
+    <select id="selectList" resultMap="WithCategoryResultMap">
+        SELECT a.*, c.name_cn AS category_name
+        FROM openplatform_v2_api_t a
+        LEFT JOIN openplatform_v2_category_t c ON a.category_id = c.id
         <where>
             <if test="categoryId != null">
-                AND id IN (
-                    SELECT resource_id FROM openplatform_v2_permission_t
-                    WHERE resource_type = 'api' AND category_id = #{categoryId}
-                )
+                AND a.category_id = #{categoryId}
             </if>
             <if test="status != null">
-                AND status = #{status}
+                AND a.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                     OR id IN (
-                         SELECT resource_id FROM openplatform_v2_permission_t
-                         WHERE resource_type = 'api' AND scope LIKE CONCAT('%', #{keyword}, '%')
+                AND (a.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR a.name_en LIKE CONCAT('%', #{keyword}, '%')
+                     OR EXISTS (
+                         SELECT 1 FROM openplatform_v2_permission_t p
+                         WHERE p.resource_type = 'api' AND p.resource_id = a.id
+                           AND p.scope LIKE CONCAT('%', #{keyword}, '%')
                      ))
             </if>
         </where>
-        ORDER BY create_time DESC
+        ORDER BY a.create_time DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
     <!-- Count List -->
     <select id="countList" resultType="java.lang.Long">
         SELECT COUNT(*)
-        FROM openplatform_v2_api_t
+        FROM openplatform_v2_api_t a
         <where>
             <if test="categoryId != null">
-                AND id IN (
-                    SELECT resource_id FROM openplatform_v2_permission_t
-                    WHERE resource_type = 'api' AND category_id = #{categoryId}
-                )
+                AND a.category_id = #{categoryId}
             </if>
             <if test="status != null">
-                AND status = #{status}
+                AND a.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                     OR id IN (
-                         SELECT resource_id FROM openplatform_v2_permission_t
-                         WHERE resource_type = 'api' AND scope LIKE CONCAT('%', #{keyword}, '%')
+                AND (a.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR a.name_en LIKE CONCAT('%', #{keyword}, '%')
+                     OR EXISTS (
+                         SELECT 1 FROM openplatform_v2_permission_t p
+                         WHERE p.resource_type = 'api' AND p.resource_id = a.id
+                           AND p.scope LIKE CONCAT('%', #{keyword}, '%')
                      ))
             </if>
         </where>
@@ -112,8 +118,8 @@
     <!-- Count By CategoryId -->
     <select id="countByCategoryId" resultType="java.lang.Long">
         SELECT COUNT(*)
-        FROM openplatform_v2_permission_t
-        WHERE resource_type = 'api' AND category_id = #{categoryId}
+        FROM openplatform_v2_api_t
+        WHERE category_id = #{categoryId}
     </select>
 
 </mapper>

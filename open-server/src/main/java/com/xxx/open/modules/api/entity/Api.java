@@ -44,6 +44,16 @@ public class Api implements Serializable {
     private String method;
 
     /**
+     * 所属分类ID
+     */
+    private Long categoryId;
+
+    /**
+     * 分类名称（非数据库字段，查询时 JOIN 获取）
+     */
+    private String categoryName;
+
+    /**
      * 状态：0=草稿, 1=待审, 2=已发布, 3=已下线
      */
     private Integer status;

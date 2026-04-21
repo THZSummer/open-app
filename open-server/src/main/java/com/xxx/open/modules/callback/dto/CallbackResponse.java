@@ -46,6 +46,11 @@ public class CallbackResponse implements Serializable {
     private String categoryId;
 
     /**
+     * 所属分类名称
+     */
+    private String categoryName;
+
+    /**
      * 状态：0=草稿, 1=待审, 2=已发布, 3=已下线
      */
     private Integer status;

@@ -153,6 +153,7 @@ public class ApiService {
         api.setNameEn(request.getNameEn());
         api.setPath(request.getPath());
         api.setMethod(request.getMethod().toUpperCase());
+        api.setCategoryId(categoryId); // 设置分类ID
         api.setStatus(1); // 待审
         api.setCreateTime(now);
         api.setLastUpdateTime(now);
@@ -252,6 +253,7 @@ public class ApiService {
         // 更新 API
         api.setNameCn(request.getNameCn());
         api.setNameEn(request.getNameEn());
+        api.setCategoryId(categoryId); // 更新分类ID
         api.setLastUpdateTime(now);
         api.setLastUpdateBy(currentUser);
 
@@ -374,19 +376,9 @@ public class ApiService {
      * 转换为列表响应
      */
     private ApiListResponse convertToListResponse(Api api) {
-        // 查询权限
+        // 构建权限 DTO
         Permission permission = permissionMapper.selectByResource("api", api.getId());
 
-        // 查询分类名称
-        String categoryName = null;
-        if (permission != null && permission.getCategoryId() != null) {
-            Category category = categoryMapper.selectById(permission.getCategoryId());
-            if (category != null) {
-                categoryName = category.getNameCn();
-            }
-        }
-
-        // 构建权限 DTO
         PermissionDto permissionDto = null;
         if (permission != null) {
             permissionDto = PermissionDto.builder()
@@ -402,8 +394,8 @@ public class ApiService {
                 .nameEn(api.getNameEn())
                 .path(api.getPath())
                 .method(api.getMethod())
-                .categoryId(permission != null ? String.valueOf(permission.getCategoryId()) : null)
-                .categoryName(categoryName)
+                .categoryId(String.valueOf(api.getCategoryId()))
+                .categoryName(api.getCategoryName()) // 从 JOIN 查询获取
                 .status(api.getStatus())
                 .permission(permissionDto)
                 .createTime(api.getCreateTime())
@@ -440,7 +432,8 @@ public class ApiService {
                 .nameEn(api.getNameEn())
                 .path(api.getPath())
                 .method(api.getMethod())
-                .categoryId(permission != null ? String.valueOf(permission.getCategoryId()) : null)
+                .categoryId(String.valueOf(api.getCategoryId()))
+                .categoryName(api.getCategoryName()) // 从 JOIN 查询获取
                 .status(api.getStatus())
                 .createTime(api.getCreateTime())
                 .createBy(api.getCreateBy())

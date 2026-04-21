@@ -8,6 +8,7 @@
         <id column="id" property="id"/>
         <result column="name_cn" property="nameCn"/>
         <result column="name_en" property="nameEn"/>
+        <result column="category_id" property="categoryId"/>
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
         <result column="last_update_time" property="lastUpdateTime"/>
@@ -15,72 +16,71 @@
         <result column="last_update_by" property="lastUpdateBy"/>
     </resultMap>
 
+    <!-- 带分类名称的结果映射 -->
+    <resultMap id="WithCategoryResultMap" type="com.xxx.open.modules.callback.entity.Callback" extends="BaseResultMap">
+        <result column="category_name" property="categoryName"/>
+    </resultMap>
+
     <!-- 基础列 -->
     <sql id="Base_Column_List">
-        id, name_cn, name_en, status,
+        id, name_cn, name_en, category_id, status,
         create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- 插入回调 -->
     <insert id="insert" parameterType="com.xxx.open.modules.callback.entity.Callback">
         INSERT INTO openplatform_v2_callback_t (
-            id, name_cn, name_en, status,
+            id, name_cn, name_en, category_id, status,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{nameCn}, #{nameEn}, #{status},
+            #{id}, #{nameCn}, #{nameEn}, #{categoryId}, #{status},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
 
     <!-- 根据ID查询回调 -->
-    <select id="selectById" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM openplatform_v2_callback_t
-        WHERE id = #{id}
+    <select id="selectById" resultMap="WithCategoryResultMap">
+        SELECT cb.*, c.name_cn AS category_name
+        FROM openplatform_v2_callback_t cb
+        LEFT JOIN openplatform_v2_category_t c ON cb.category_id = c.id
+        WHERE cb.id = #{id}
     </select>
 
     <!-- 分页查询回调列表 -->
-    <select id="selectList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM openplatform_v2_callback_t
+    <select id="selectList" resultMap="WithCategoryResultMap">
+        SELECT cb.*, c.name_cn AS category_name
+        FROM openplatform_v2_callback_t cb
+        LEFT JOIN openplatform_v2_category_t c ON cb.category_id = c.id
         <where>
             <if test="categoryId != null">
-                AND id IN (
-                    SELECT resource_id 
-                    FROM openplatform_v2_permission_t 
-                    WHERE resource_type = 'callback' AND category_id = #{categoryId}
-                )
+                AND cb.category_id = #{categoryId}
             </if>
             <if test="status != null">
-                AND status = #{status}
+                AND cb.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR name_en LIKE CONCAT('%', #{keyword}, '%'))
+                AND (cb.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR cb.name_en LIKE CONCAT('%', #{keyword}, '%'))
             </if>
         </where>
-        ORDER BY create_time DESC
+        ORDER BY cb.create_time DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
     <!-- 统计回调总数 -->
     <select id="countList" resultType="long">
         SELECT COUNT(*)
-        FROM openplatform_v2_callback_t
+        FROM openplatform_v2_callback_t cb
         <where>
             <if test="categoryId != null">
-                AND id IN (
-                    SELECT resource_id 
-                    FROM openplatform_v2_permission_t 
-                    WHERE resource_type = 'callback' AND category_id = #{categoryId}
-                )
+                AND cb.category_id = #{categoryId}
             </if>
             <if test="status != null">
-                AND status = #{status}
+                AND cb.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR name_en LIKE CONCAT('%', #{keyword}, '%'))
+                AND (cb.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR cb.name_en LIKE CONCAT('%', #{keyword}, '%'))
             </if>
         </where>
     </select>
@@ -90,6 +90,7 @@
         UPDATE openplatform_v2_callback_t
         SET name_cn = #{nameCn},
             name_en = #{nameEn},
+            category_id = #{categoryId},
             status = #{status},
             last_update_time = #{lastUpdateTime},
             last_update_by = #{lastUpdateBy}

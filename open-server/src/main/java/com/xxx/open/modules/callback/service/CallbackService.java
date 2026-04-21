@@ -173,6 +173,7 @@ public class CallbackService {
         callback.setId(callbackId);
         callback.setNameCn(request.getNameCn());
         callback.setNameEn(request.getNameEn());
+        callback.setCategoryId(categoryId); // 设置分类ID
         callback.setStatus(1); // 待审
         callback.setCreateTime(new Date());
         callback.setLastUpdateTime(new Date());
@@ -245,7 +246,7 @@ public class CallbackService {
         callback.setLastUpdateBy("system");
 
         // 如果更新分类ID
-        Long categoryId = null;
+        Long categoryId = callback.getCategoryId();
         if (request.getCategoryId() != null) {
             try {
                 categoryId = Long.parseLong(request.getCategoryId());
@@ -253,6 +254,7 @@ public class CallbackService {
                 if (category == null) {
                     throw BusinessException.notFound("分类不存在", "Category not found");
                 }
+                callback.setCategoryId(categoryId); // 更新分类ID
             } catch (NumberFormatException e) {
                 throw BusinessException.badRequest("分类ID格式错误", "Invalid category ID format");
             }
@@ -411,21 +413,12 @@ public class CallbackService {
         // 查询权限信息
         Permission permission = permissionMapper.selectByResource("callback", callback.getId());
 
-        // 查询分类名称
-        String categoryName = null;
-        if (permission != null && permission.getCategoryId() != null) {
-            Category category = categoryMapper.selectById(permission.getCategoryId());
-            if (category != null) {
-                categoryName = category.getNameCn();
-            }
-        }
-
         return CallbackListResponse.builder()
                 .id(String.valueOf(callback.getId()))
                 .nameCn(callback.getNameCn())
                 .nameEn(callback.getNameEn())
-                .categoryId(permission != null ? String.valueOf(permission.getCategoryId()) : null)
-                .categoryName(categoryName)
+                .categoryId(String.valueOf(callback.getCategoryId()))
+                .categoryName(callback.getCategoryName()) // 从 JOIN 查询获取
                 .status(callback.getStatus())
                 .permission(permission != null ? convertToPermissionDto(permission) : null)
                 .createTime(callback.getCreateTime())
@@ -441,7 +434,8 @@ public class CallbackService {
                 .id(String.valueOf(callback.getId()))
                 .nameCn(callback.getNameCn())
                 .nameEn(callback.getNameEn())
-                .categoryId(permission != null ? String.valueOf(permission.getCategoryId()) : null)
+                .categoryId(String.valueOf(callback.getCategoryId()))
+                .categoryName(callback.getCategoryName()) // 从 JOIN 查询获取
                 .status(callback.getStatus())
                 .permission(permission != null ? convertToPermissionDto(permission) : null)
                 .properties(convertToPropertyDtos(properties))

@@ -64,6 +64,12 @@ public class ApiDetailResponse implements Serializable {
     private String categoryId;
 
     /**
+     * 分类名称
+     */
+    @Schema(description = "分类名称")
+    private String categoryName;
+
+    /**
      * 状态：0=草稿, 1=待审, 2=已发布, 3=已下线
      */
     @Schema(description = "状态")
