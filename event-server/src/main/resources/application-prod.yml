@@ -1,0 +1,31 @@
+server:
+  port: 18082
+
+spring:
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:openapp}
+    database: 1
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-wait: -1ms
+        max-idle: 10
+        min-idle: 5
+
+api-server:
+  url: ${API_SERVER_URL:http://api-server:18081}
+
+internal:
+  message-gateway:
+    url: ${INTERNAL_MESSAGE_GATEWAY_URL:http://internal-message-gateway:9091}
+
+mock:
+  enabled: false
+
+logging:
+  level:
+    root: INFO
+    com.xxx.event: INFO

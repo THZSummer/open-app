@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xxx.api.common.mapper.PermissionMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.api.common.entity.Permission">
+        <id column="id" property="id"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="scope" property="scope"/>
+        <result column="resource_type" property="resourceType"/>
+        <result column="resource_id" property="resourceId"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name_cn, name_en, scope, resource_type, resource_id, category_id, status,
+        create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <select id="selectByScope" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_permission_t
+        WHERE scope = #{scope}
+        AND status = 1
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_permission_t
+        WHERE id = #{id}
+    </select>
+
+</mapper>

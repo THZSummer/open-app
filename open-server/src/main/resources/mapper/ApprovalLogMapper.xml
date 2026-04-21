@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.approval.mapper.ApprovalLogMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.approval.entity.ApprovalLog">
+        <id column="id" property="id"/>
+        <result column="record_id" property="recordId"/>
+        <result column="node_index" property="nodeIndex"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="action" property="action"/>
+        <result column="comment" property="comment"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, record_id, node_index, operator_id, operator_name, action, comment,
+        create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- 插入审批日志 -->
+    <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalLog">
+        INSERT INTO openplatform_v2_approval_log_t (
+            id, record_id, node_index, operator_id, operator_name, action, comment,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{recordId}, #{nodeIndex}, #{operatorId}, #{operatorName}, #{action}, #{comment},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 根据审批记录ID查询日志列表 -->
+    <select id="selectByRecordId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_log_t
+        WHERE record_id = #{recordId}
+        ORDER BY create_time ASC
+    </select>
+
+    <!-- 根据ID查询日志 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_log_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 删除审批日志 -->
+    <delete id="deleteByRecordId">
+        DELETE FROM openplatform_v2_approval_log_t
+        WHERE record_id = #{recordId}
+    </delete>
+
+    <!-- 批量插入日志 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO openplatform_v2_approval_log_t (
+            id, record_id, node_index, operator_id, operator_name, action, comment,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.id}, #{item.recordId}, #{item.nodeIndex}, #{item.operatorId}, #{item.operatorName}, #{item.action}, #{item.comment},
+                #{item.createTime}, #{item.lastUpdateTime}, #{item.createBy}, #{item.lastUpdateBy}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

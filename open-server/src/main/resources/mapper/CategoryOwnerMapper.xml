@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.category.mapper.CategoryOwnerMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.category.entity.CategoryOwner">
+        <id column="id" property="id"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="user_id" property="userId"/>
+        <result column="user_name" property="userName"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, category_id, user_id, user_name, create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- 插入责任人 -->
+    <insert id="insert" parameterType="com.xxx.open.modules.category.entity.CategoryOwner">
+        INSERT INTO openplatform_v2_category_owner_t (
+            id, category_id, user_id, user_name, create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{categoryId}, #{userId}, #{userName}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 根据分类ID查询责任人列表 -->
+    <select id="selectByCategoryId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_category_owner_t
+        WHERE category_id = #{categoryId}
+        ORDER BY create_time
+    </select>
+
+    <!-- 根据ID查询责任人 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_category_owner_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据分类ID和用户ID查询责任人 -->
+    <select id="selectByCategoryIdAndUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_category_owner_t
+        WHERE category_id = #{categoryId}
+          AND user_id = #{userId}
+    </select>
+
+    <!-- 删除责任人 -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_category_owner_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 根据分类ID和用户ID删除责任人 -->
+    <delete id="deleteByCategoryIdAndUserId">
+        DELETE FROM openplatform_v2_category_owner_t
+        WHERE category_id = #{categoryId}
+          AND user_id = #{userId}
+    </delete>
+
+    <!-- 统计分类的责任人数量 -->
+    <select id="countByCategoryId" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_v2_category_owner_t
+        WHERE category_id = #{categoryId}
+    </select>
+
+</mapper>

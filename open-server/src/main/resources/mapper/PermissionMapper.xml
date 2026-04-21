@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.event.mapper.PermissionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.event.entity.Permission">
+        <id column="id" property="id"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="scope" property="scope"/>
+        <result column="resource_type" property="resourceType"/>
+        <result column="resource_id" property="resourceId"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, name_cn, name_en, scope, resource_type, resource_id, category_id, status,
+        create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- 插入权限 -->
+    <insert id="insert" parameterType="com.xxx.open.modules.event.entity.Permission">
+        INSERT INTO openplatform_v2_permission_t (
+            id, name_cn, name_en, scope, resource_type, resource_id, category_id, status,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{nameCn}, #{nameEn}, #{scope}, #{resourceType}, #{resourceId}, #{categoryId}, #{status},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 根据ID查询权限 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_permission_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据资源类型和资源ID查询权限 -->
+    <select id="selectByResourceTypeAndResourceId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_permission_t
+        WHERE resource_type = #{resourceType}
+          AND resource_id = #{resourceId}
+    </select>
+
+    <!-- 根据 Scope 查询权限 -->
+    <select id="selectByScope" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_permission_t
+        WHERE scope = #{scope}
+    </select>
+
+    <!-- 根据 Scope 统计数量 -->
+    <select id="countByScope" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_v2_permission_t
+        WHERE scope = #{scope}
+    </select>
+
+    <!-- 更新权限 -->
+    <update id="update" parameterType="com.xxx.open.modules.event.entity.Permission">
+        UPDATE openplatform_v2_permission_t
+        SET name_cn = #{nameCn},
+            name_en = #{nameEn},
+            category_id = #{categoryId},
+            status = #{status},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除权限 -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_permission_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 根据资源类型和资源ID删除权限 -->
+    <delete id="deleteByResourceTypeAndResourceId">
+        DELETE FROM openplatform_v2_permission_t
+        WHERE resource_type = #{resourceType}
+          AND resource_id = #{resourceId}
+    </delete>
+
+    <!-- 统计权限被订阅的数量 -->
+    <select id="countSubscriptionsByPermissionId" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_v2_subscription_t
+        WHERE permission_id = #{permissionId}
+    </select>
+
+    <!-- ==================== 分类权限查询（TASK-008 新增）==================== -->
+
+    <!-- 查询分类下的权限列表（API） -->
+    <select id="selectApiPermissionsByCategory" resultMap="BaseResultMap">
+        SELECT p.*
+        FROM openplatform_v2_permission_t p
+        WHERE p.resource_type = 'api'
+        <if test="includeChildren == true and categoryPath != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_category_t c
+                WHERE c.id = p.category_id
+                  AND c.path LIKE CONCAT(#{categoryPath}, '%')
+            )
+        </if>
+        <if test="includeChildren == false or categoryPath == null">
+            AND p.category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="needApproval != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_permission_p_t pp
+                WHERE pp.parent_id = p.id
+                  AND pp.property_name = 'need_approval'
+                  AND pp.property_value = #{needApproval}
+            )
+        </if>
+        ORDER BY p.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计分类下的权限数量（API） -->
+    <select id="countApiPermissionsByCategory" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_permission_t p
+        WHERE p.resource_type = 'api'
+        <if test="includeChildren == true and categoryPath != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_category_t c
+                WHERE c.id = p.category_id
+                  AND c.path LIKE CONCAT(#{categoryPath}, '%')
+            )
+        </if>
+        <if test="includeChildren == false or categoryPath == null">
+            AND p.category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="needApproval != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_permission_p_t pp
+                WHERE pp.parent_id = p.id
+                  AND pp.property_name = 'need_approval'
+                  AND pp.property_value = #{needApproval}
+            )
+        </if>
+    </select>
+
+    <!-- 查询分类下的权限列表（事件） -->
+    <select id="selectEventPermissionsByCategory" resultMap="BaseResultMap">
+        SELECT p.*
+        FROM openplatform_v2_permission_t p
+        WHERE p.resource_type = 'event'
+        <if test="includeChildren == true and categoryPath != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_category_t c
+                WHERE c.id = p.category_id
+                  AND c.path LIKE CONCAT(#{categoryPath}, '%')
+            )
+        </if>
+        <if test="includeChildren == false or categoryPath == null">
+            AND p.category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="needApproval != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_permission_p_t pp
+                WHERE pp.parent_id = p.id
+                  AND pp.property_name = 'need_approval'
+                  AND pp.property_value = #{needApproval}
+            )
+        </if>
+        ORDER BY p.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计分类下的权限数量（事件） -->
+    <select id="countEventPermissionsByCategory" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_permission_t p
+        WHERE p.resource_type = 'event'
+        <if test="includeChildren == true and categoryPath != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_category_t c
+                WHERE c.id = p.category_id
+                  AND c.path LIKE CONCAT(#{categoryPath}, '%')
+            )
+        </if>
+        <if test="includeChildren == false or categoryPath == null">
+            AND p.category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="needApproval != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_permission_p_t pp
+                WHERE pp.parent_id = p.id
+                  AND pp.property_name = 'need_approval'
+                  AND pp.property_value = #{needApproval}
+            )
+        </if>
+    </select>
+
+    <!-- 查询分类下的权限列表（回调） -->
+    <select id="selectCallbackPermissionsByCategory" resultMap="BaseResultMap">
+        SELECT p.*
+        FROM openplatform_v2_permission_t p
+        WHERE p.resource_type = 'callback'
+        <if test="includeChildren == true and categoryPath != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_category_t c
+                WHERE c.id = p.category_id
+                  AND c.path LIKE CONCAT(#{categoryPath}, '%')
+            )
+        </if>
+        <if test="includeChildren == false or categoryPath == null">
+            AND p.category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="needApproval != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_permission_p_t pp
+                WHERE pp.parent_id = p.id
+                  AND pp.property_name = 'need_approval'
+                  AND pp.property_value = #{needApproval}
+            )
+        </if>
+        ORDER BY p.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计分类下的权限数量（回调） -->
+    <select id="countCallbackPermissionsByCategory" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_permission_t p
+        WHERE p.resource_type = 'callback'
+        <if test="includeChildren == true and categoryPath != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_category_t c
+                WHERE c.id = p.category_id
+                  AND c.path LIKE CONCAT(#{categoryPath}, '%')
+            )
+        </if>
+        <if test="includeChildren == false or categoryPath == null">
+            AND p.category_id = #{categoryId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="needApproval != null">
+            AND EXISTS (
+                SELECT 1 FROM openplatform_v2_permission_p_t pp
+                WHERE pp.parent_id = p.id
+                  AND pp.property_name = 'need_approval'
+                  AND pp.property_value = #{needApproval}
+            )
+        </if>
+    </select>
+
+    <!-- 根据ID列表查询权限 -->
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_permission_t
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+</mapper>
