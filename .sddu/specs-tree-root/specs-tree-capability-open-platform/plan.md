@@ -788,6 +788,11 @@ graph LR
 
 #### 新建文件（[NEW]）
 
+> 📋 **工程规则**：
+> - 每个独立工程都必须包含 `.gitignore` 文件
+> - **前端工程**（open-web）：必须忽略 `node_modules`、`dist`、`build`、`.env`、`.env.local` 等目录和文件
+> - **后端工程**（open-server、api-server、event-server）：必须忽略 `target`、`logs`、`.mvn` 等目录
+
 ##### open-server 工程
 
 | 文件路径 | 说明 |
@@ -822,6 +827,7 @@ graph LR
 | `open-server/src/main/java/.../common/interceptor/MockInterceptor.java` | Mock 拦截器 |
 | `open-server/src/main/resources/application.yml` | 应用配置 |
 | `open-server/src/main/resources/mapper/*.xml` | MyBatis Mapper XML |
+| `open-server/.gitignore` | 后端 Git 忽略配置（忽略 target、logs 等） |
 
 ##### api-server 工程
 
@@ -834,6 +840,7 @@ graph LR
 | `api-server/src/main/java/.../scope/ScopeService.java` | Scope授权服务 |
 | `api-server/src/main/java/.../data/DataQueryController.java` | 数据查询接口（供event-server调用） |
 | `api-server/src/main/resources/application.yml` | 应用配置 |
+| `api-server/.gitignore` | 后端 Git 忽略配置（忽略 target、logs 等） |
 
 ##### event-server 工程
 
@@ -845,6 +852,7 @@ graph LR
 | `event-server/src/main/java/.../gateway/CallbackGateway.java` | 回调消费网关 |
 | `event-server/src/main/java/.../client/ApiServerClient.java` | api-server调用客户端 |
 | `event-server/src/main/resources/application.yml` | 应用配置 |
+| `event-server/.gitignore` | 后端 Git 忽略配置（忽略 target、logs 等） |
 
 ##### open-web 工程
 
@@ -868,6 +876,7 @@ graph LR
 | `open-web/src/components/PermissionDrawer.tsx` | 权限选择抽屉 |
 | `open-web/src/services/api.service.ts` | API 服务 |
 | `open-web/src/stores/permission.store.ts` | 权限状态 |
+| `open-web/.gitignore` | 前端 Git 忽略配置（忽略 node_modules、dist、.env 等） |
 
 #### 修改文件（[MODIFY]）
 
