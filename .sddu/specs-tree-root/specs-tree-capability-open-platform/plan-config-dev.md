@@ -234,29 +234,89 @@ mysql -u openapp -p openapp < docs/sql/insert-default-data.sql
 
 ## 9. 本地开发启动
 
-### 9.1 启动后端服务
+### 9.1 使用启动脚本（推荐）
+
+各服务都提供了一键启动/停止脚本，位于各项目根目录的 `scripts/` 下：
+
+| 服务 | 启动脚本 | 停止脚本 |
+|------|----------|----------|
+| open-server | `open-server/scripts/start.sh` | `open-server/scripts/stop.sh` |
+| api-server | `api-server/scripts/start.sh` | `api-server/scripts/stop.sh` |
+| event-server | `event-server/scripts/start.sh` | `event-server/scripts/stop.sh` |
+| open-web | `open-web/scripts/start.sh` | `open-web/scripts/stop.sh` |
+
+**启动服务：**
+```bash
+# 启动 open-server（管理服务）
+cd open-server && ./scripts/start.sh
+
+# 启动 api-server（API网关）
+cd api-server && ./scripts/start.sh
+
+# 启动 event-server（事件/回调网关）
+cd event-server && ./scripts/start.sh
+
+# 启动 open-web（前端）
+cd open-web && ./scripts/start.sh
+```
+
+**停止服务：**
+```bash
+# 停止服务
+cd open-server && ./scripts/stop.sh
+cd api-server && ./scripts/stop.sh
+cd event-server && ./scripts/stop.sh
+cd open-web && ./scripts/stop.sh
+```
+
+### 9.2 启动脚本功能
+
+**start.sh 功能：**
+- ✅ 端口占用检查
+- ✅ 依赖检查（前端自动安装 npm 依赖）
+- ✅ 后台启动服务
+- ✅ 记录进程 PID 到 .pid 文件
+- ✅ 健康检查等待服务就绪
+- ✅ 日志输出到 logs/ 目录（open-server、api-server、event-server）
+
+**stop.sh 功能：**
+- ✅ 读取 .pid 文件获取进程 ID
+- ✅ 优雅停止（SIGTERM）
+- ✅ 强制停止（3秒后 SIGKILL）
+- ✅ 端口清理确保释放
+- ✅ 清理 .pid 文件
+
+### 9.3 查看日志
+
+```bash
+# 实时查看日志
+tail -f open-server/logs/open-server.log
+tail -f api-server/logs/api-server.log
+tail -f event-server/logs/event-server.log
+
+# 前端服务日志在控制台输出
+```
+
+### 9.4 手动启动（不推荐）
+
+如果需要手动启动，可使用以下命令：
 
 ```bash
 # 启动 open-server
-cd open-server && mvn spring-boot:run
+cd open-server && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 # 启动 api-server
-cd api-server && mvn spring-boot:run
+cd api-server && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 # 启动 event-server
-cd event-server && mvn spring-boot:run
-```
+cd event-server && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
-### 9.2 启动前端应用
-
-```bash
-cd open-web
-npm install
-npm run dev
+# 启动 open-web
+cd open-web && npm install && npm run dev
 ```
 
 ---
 
-**文档版本**: v1.0  
-**创建日期**: 2026-04-21  
+**文档版本**: v1.1  
+**更新日期**: 2026-04-21  
 **作者**: SDDU Plan Agent

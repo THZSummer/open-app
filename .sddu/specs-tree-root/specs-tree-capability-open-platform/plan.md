@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.26  
+**规划版本**: v1.27  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -828,6 +828,9 @@ graph LR
 | `open-server/src/main/resources/application.yml` | 应用配置 |
 | `open-server/src/main/resources/mapper/*.xml` | MyBatis Mapper XML |
 | `open-server/.gitignore` | 后端 Git 忽略配置（忽略 target、logs 等） |
+| `open-server/scripts/start.sh` | open-server 启动脚本（端口 18080） |
+| `open-server/scripts/stop.sh` | open-server 停止脚本 |
+| `open-server/logs/` | open-server 日志目录 |
 
 ##### api-server 工程
 
@@ -841,6 +844,9 @@ graph LR
 | `api-server/src/main/java/.../data/DataQueryController.java` | 数据查询接口（供event-server调用） |
 | `api-server/src/main/resources/application.yml` | 应用配置 |
 | `api-server/.gitignore` | 后端 Git 忽略配置（忽略 target、logs 等） |
+| `api-server/scripts/start.sh` | api-server 启动脚本（端口 18081） |
+| `api-server/scripts/stop.sh` | api-server 停止脚本 |
+| `api-server/logs/` | api-server 日志目录 |
 
 ##### event-server 工程
 
@@ -853,6 +859,9 @@ graph LR
 | `event-server/src/main/java/.../client/ApiServerClient.java` | api-server调用客户端 |
 | `event-server/src/main/resources/application.yml` | 应用配置 |
 | `event-server/.gitignore` | 后端 Git 忽略配置（忽略 target、logs 等） |
+| `event-server/scripts/start.sh` | event-server 启动脚本（端口 18082） |
+| `event-server/scripts/stop.sh` | event-server 停止脚本 |
+| `event-server/logs/` | event-server 日志目录 |
 
 ##### open-web 工程
 
@@ -877,6 +886,9 @@ graph LR
 | `open-web/src/services/api.service.ts` | API 服务 |
 | `open-web/src/stores/permission.store.ts` | 权限状态 |
 | `open-web/.gitignore` | 前端 Git 忽略配置（忽略 node_modules、dist、.env 等） |
+| `open-web/scripts/start.sh` | open-web 启动脚本（端口 13000） |
+| `open-web/scripts/stop.sh` | open-web 停止脚本 |
+| `open-web/vite.config.ts` | Vite 构建配置（含端口配置） |
 
 #### 修改文件（[MODIFY]）
 

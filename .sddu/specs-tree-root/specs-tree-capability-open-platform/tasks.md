@@ -1,7 +1,7 @@
 # 任务分解：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**任务版本**: v1.3  
+**任务版本**: v1.4  
 **创建日期**: 2026-04-20  
 **更新日期**: 2026-04-21  
 **任务作者**: SDDU Tasks Agent  
@@ -102,6 +102,15 @@ graph TB
 - [NEW] `event-server/src/main/java/.../EventServerApplication.java` - 应用入口
 - [NEW] `event-server/src/main/java/.../common/config/*.java` - 公共配置类
 - [NEW] `event-server/src/main/resources/application.yml` - 应用配置
+- [NEW] `open-server/scripts/start.sh` - open-server 启动脚本（端口 18080）
+- [NEW] `open-server/scripts/stop.sh` - open-server 停止脚本
+- [NEW] `open-server/logs/` - open-server 日志目录
+- [NEW] `api-server/scripts/start.sh` - api-server 启动脚本（端口 18081）
+- [NEW] `api-server/scripts/stop.sh` - api-server 停止脚本
+- [NEW] `api-server/logs/` - api-server 日志目录
+- [NEW] `event-server/scripts/start.sh` - event-server 启动脚本（端口 18082）
+- [NEW] `event-server/scripts/stop.sh` - event-server 停止脚本
+- [NEW] `event-server/logs/` - event-server 日志目录
 - [MODIFY] `pom.xml` - 添加 Maven 多模块配置
 
 ### 验收标准
@@ -156,10 +165,13 @@ curl http://localhost:18082/actuator/health
 - [NEW] `open-web/src/components/Layout/index.tsx` - 布局组件
 - [NEW] `open-web/src/components/Layout/index.m.less` - 布局样式
 - [NEW] `open-web/src/stores/global.store.ts` - 全局状态管理
+- [NEW] `open-web/scripts/start.sh` - open-web 启动脚本（端口 13000）
+- [NEW] `open-web/scripts/stop.sh` - open-web 停止脚本
+- [NEW] `open-web/vite.config.ts` - Vite 配置（包含端口 13000 配置）
 
 ### 验收标准
 
-- [ ] 前端工程可独立启动，访问 `http://localhost:3000` 显示欢迎页面
+- [ ] 前端工程可独立启动，访问 `http://localhost:13000` 显示欢迎页面
 - [ ] Vite 构建成功，无 TypeScript 编译错误
 - [ ] 路由配置生效，可访问 `/` 和 `/404` 页面
 - [ ] API 请求封装支持统一错误处理和 Token 携带
@@ -171,7 +183,7 @@ curl http://localhost:18082/actuator/health
 cd open-web
 npm install
 npm run dev
-curl http://localhost:3000
+curl http://localhost:13000
 ```
 
 ---
