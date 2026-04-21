@@ -933,6 +933,14 @@
         "name_cn": "发送消息权限",
         "scope": "api:im:send-message"
       },
+      "category": {
+        "id": 2,
+        "name_cn": "IM业务"
+      },
+      "approver": {
+        "user_id": "user001",
+        "user_name": "张三"
+      },
       "status": 1,
       "auth_type": 0,
       "doc_url": "https://docs.example.com/api/send-message",
