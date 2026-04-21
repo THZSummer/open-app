@@ -1,7 +1,7 @@
 # 技术规划：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**规划版本**: v1.27  
+**规划版本**: v1.28  
 **创建日期**: 2026-04-20  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.49
@@ -790,8 +790,8 @@ graph LR
 
 > 📋 **工程规则**：
 > - 每个独立工程都必须包含 `.gitignore` 文件
-> - **前端工程**（open-web）：必须忽略 `node_modules`、`dist`、`build`、`.env`、`.env.local` 等目录和文件
-> - **后端工程**（open-server、api-server、event-server）：必须忽略 `target`、`logs`、`.mvn` 等目录
+> - **前端工程**（open-web）：必须忽略 `node_modules`、`dist`、`build`、`.env`、`.env.local`、`.pid` 等目录和文件
+> - **后端工程**（open-server、api-server、event-server）：必须忽略 `target`、`logs`、`.mvn`、`.pid` 等目录和文件
 
 ##### open-server 工程
 
