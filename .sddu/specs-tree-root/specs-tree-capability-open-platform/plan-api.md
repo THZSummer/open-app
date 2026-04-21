@@ -65,7 +65,34 @@
 - 路径参数中的 ID（如 `/api/v1/apis/:id`）可以是数字或字符串，由路由层处理
 - 请求体中的 ID 字段统一使用 `string` 类型
 
-### 0.4 示例对照
+### 0.4 通用对象结构
+
+#### category 对象
+
+分类是树形结构，返回时包含完整路径信息：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 分类ID |
+| nameCn | string | 分类中文名称 |
+| parentId | string | 父分类ID，根分类为 null |
+| path | string | 分类路径，如 `/1/2/`，用于树形查询优化 |
+| categoryPath | array[string] | 完整分类路径名称数组，如 `["A类应用权限", "IM业务"]` |
+
+**示例**：
+```json
+{
+  "category": {
+    "id": "2",
+    "nameCn": "IM业务",
+    "parentId": "1",
+    "path": "/1/2/",
+    "categoryPath": ["A类应用权限", "IM业务"]
+  }
+}
+```
+
+### 0.5 示例对照
 
 ```json
 // ✅ 符合规范的请求示例
@@ -1105,7 +1132,10 @@
       },
       "category": {
         "id": "2",
-        "nameCn": "IM业务"
+        "nameCn": "IM业务",
+        "parentId": "1",
+        "path": "/1/2/",
+        "categoryPath": ["A类应用权限", "IM业务"]
       },
       "approver": {
         "userId": "user001",
@@ -1251,10 +1281,18 @@
       "event": {
         "topic": "im.message.received"
       },
+      "category": {
+        "id": "2",
+        "nameCn": "IM业务",
+        "parentId": "1",
+        "path": "/1/2/",
+        "categoryPath": ["A类应用权限", "IM业务"]
+      },
       "status": 1,
       "channelType": 1,
       "channelAddress": "https://webhook.example.com/events",
-      "authType": 0
+      "authType": 0,
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
@@ -1429,10 +1467,18 @@
         "nameCn": "审批完成回调权限",
         "scope": "callback:approval:completed"
       },
+      "category": {
+        "id": "3",
+        "nameCn": "审批回调",
+        "parentId": "1",
+        "path": "/1/3/",
+        "categoryPath": ["A类应用权限", "审批回调"]
+      },
       "status": 1,
       "channelType": 1,
       "channelAddress": "https://webhook.example.com/callbacks",
-      "authType": 0
+      "authType": 0,
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
