@@ -982,6 +982,9 @@
       "name_en": "Send Message Permission",
       "scope": "api:im:send-message",
       "status": 1,
+      "need_approval": 1,
+      "doc_url": "https://docs.example.com/api/send-message",
+      "is_subscribed": 1,
       "api": {
         "path": "/api/v1/messages",
         "method": "POST"
@@ -1119,6 +1122,9 @@
       "name_en": "Message Received Permission",
       "scope": "event:im:message-received",
       "status": 1,
+      "need_approval": 1,
+      "doc_url": "https://docs.example.com/event/message-received",
+      "is_subscribed": 1,
       "event": {
         "topic": "im.message.received"
       }
@@ -1278,7 +1284,10 @@
       "name_cn": "审批完成回调权限",
       "name_en": "Approval Completed Callback Permission",
       "scope": "callback:approval:completed",
-      "status": 1
+      "status": 1,
+      "need_approval": 1,
+      "doc_url": "https://docs.example.com/callback/approval-completed",
+      "is_subscribed": 1
     }
   ]
 }
