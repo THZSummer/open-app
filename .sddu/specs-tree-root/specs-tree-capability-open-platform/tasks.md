@@ -1,9 +1,9 @@
 # 任务分解：能力开放平台（Capability Open Platform）
 
 **Feature ID**: CAP-OPEN-001  
-**任务版本**: v1.1  
+**任务版本**: v1.2  
 **创建日期**: 2026-04-20  
-**更新日期**: 2026-04-20  
+**更新日期**: 2026-04-21  
 **任务作者**: SDDU Tasks Agent  
 **技术规划**: plan.md v1.26  
 **接口设计**: plan-api.md v1.27
@@ -15,7 +15,7 @@
 | 维度 | 统计 |
 |------|------|
 | **总任务数** | 13 个 |
-| **接口覆盖** | 56 个接口（100%覆盖） |
+| **接口覆盖** | 58 个接口（100%覆盖） |
 | **复杂度分布** | S 级 3 个，M 级 7 个，L 级 3 个 |
 | **执行波次** | 5 个波次 |
 | **预估工期** | 103 人天（约 5 人月） |
@@ -45,8 +45,8 @@ graph TB
     end
     
     subgraph Wave4["Wave 4: 网关服务"]
-        T10["TASK-010<br/>api-server<br/>#50-52,#53,#56"]
-        T11["TASK-011<br/>event-server<br/>#54-55"]
+        T10["TASK-010<br/>api-server<br/>#52-54,#55,#58"]
+        T11["TASK-011<br/>event-server<br/>#56-57"]
     end
     
     subgraph Wave5["Wave 5: 前端与联调"]
@@ -86,16 +86,19 @@ graph TB
 ### 涉及文件
 
 - [NEW] `open-server/pom.xml` - Maven 项目配置
+- [NEW] `open-server/.gitignore` - Git 忽略配置（忽略 target、logs 等）
 - [NEW] `open-server/src/main/java/.../OpenServerApplication.java` - 应用入口
 - [NEW] `open-server/src/main/java/.../common/config/*.java` - 公共配置类
 - [NEW] `open-server/src/main/java/.../common/exception/*.java` - 异常处理
 - [NEW] `open-server/src/main/java/.../common/interceptor/*.java` - Mock 拦截器
 - [NEW] `open-server/src/main/resources/application.yml` - 应用配置
 - [NEW] `api-server/pom.xml` - Maven 项目配置
+- [NEW] `api-server/.gitignore` - Git 忽略配置（忽略 target、logs 等）
 - [NEW] `api-server/src/main/java/.../ApiServerApplication.java` - 应用入口
 - [NEW] `api-server/src/main/java/.../common/config/*.java` - 公共配置类
 - [NEW] `api-server/src/main/resources/application.yml` - 应用配置
 - [NEW] `event-server/pom.xml` - Maven 项目配置
+- [NEW] `event-server/.gitignore` - Git 忽略配置（忽略 target、logs 等）
 - [NEW] `event-server/src/main/java/.../EventServerApplication.java` - 应用入口
 - [NEW] `event-server/src/main/java/.../common/config/*.java` - 公共配置类
 - [NEW] `event-server/src/main/resources/application.yml` - 应用配置
@@ -103,9 +106,9 @@ graph TB
 
 ### 验收标准
 
-- [ ] open-server 工程可独立启动，访问 `http://localhost:8080/actuator/health` 返回健康状态
-- [ ] api-server 工程可独立启动，访问 `http://localhost:8081/actuator/health` 返回健康状态
-- [ ] event-server 工程可独立启动，访问 `http://localhost:8082/actuator/health` 返回健康状态
+- [ ] open-server 工程可独立启动，访问 `http://localhost:18080/actuator/health` 返回健康状态
+- [ ] api-server 工程可独立启动，访问 `http://localhost:18081/actuator/health` 返回健康状态
+- [ ] event-server 工程可独立启动，访问 `http://localhost:18082/actuator/health` 返回健康状态
 - [ ] Mock 策略可通过配置开关（`mock.enabled=true/false`）一键切换
 - [ ] 统一异常处理生效，返回标准错误格式 `{code, message, data}`
 - [ ] 雪花 ID 生成器可用
@@ -115,15 +118,15 @@ graph TB
 ```bash
 # 启动 open-server
 cd open-server && mvn spring-boot:run
-curl http://localhost:8080/actuator/health
+curl http://localhost:18080/actuator/health
 
 # 启动 api-server
 cd api-server && mvn spring-boot:run
-curl http://localhost:8081/actuator/health
+curl http://localhost:18081/actuator/health
 
 # 启动 event-server
 cd event-server && mvn spring-boot:run
-curl http://localhost:8082/actuator/health
+curl http://localhost:18082/actuator/health
 ```
 
 ---
@@ -142,6 +145,7 @@ curl http://localhost:8082/actuator/health
 ### 涉及文件
 
 - [NEW] `open-web/package.json` - npm 项目配置
+- [NEW] `open-web/.gitignore` - Git 忽略配置（忽略 node_modules、dist、.env 等）
 - [NEW] `open-web/vite.config.ts` - Vite 构建配置
 - [NEW] `open-web/src/main.tsx` - 应用入口
 - [NEW] `open-web/src/App.tsx` - 应用根组件
@@ -198,7 +202,7 @@ curl http://localhost:3000
 
 ```bash
 mysql -u root -p openplatform < docs/sql/init-schema.sql
-mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_%'"
+mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_v2_%'"
 # 期望输出 15 张表
 ```
 
@@ -245,15 +249,15 @@ mysql -u root -p openplatform -e "SHOW TABLES LIKE 'openplatform_%'"
 
 ```bash
 # 创建根分类
-curl -X POST http://localhost:8080/api/v1/categories \
+curl -X POST http://localhost:18080/api/v1/categories \
   -H "Content-Type: application/json" \
   -d '{"category_alias":"app_type_a","name_cn":"A类应用权限","name_en":"App Type A Permissions"}'
 
 # 获取分类树（权限树查树）
-curl http://localhost:8080/api/v1/categories?category_alias=app_type_a
+curl http://localhost:18080/api/v1/categories?category_alias=app_type_a
 
 # 添加责任人
-curl -X POST http://localhost:8080/api/v1/categories/1/owners \
+curl -X POST http://localhost:18080/api/v1/categories/1/owners \
   -H "Content-Type: application/json" \
   -d '{"user_id":"user001"}'
 ```
@@ -298,12 +302,12 @@ curl -X POST http://localhost:8080/api/v1/categories/1/owners \
 
 ```bash
 # 注册 API
-curl -X POST http://localhost:8080/api/v1/apis \
+curl -X POST http://localhost:18080/api/v1/apis \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"发送消息","name_en":"Send Message","path":"/api/v1/messages","method":"POST","category_id":2,"permission":{"name_cn":"发送消息权限","name_en":"Send Message Permission","scope":"api:im:send-message"}}'
 
 # 获取 API 详情
-curl http://localhost:8080/api/v1/apis/100
+curl http://localhost:18080/api/v1/apis/100
 ```
 
 ---
@@ -345,12 +349,12 @@ curl http://localhost:8080/api/v1/apis/100
 
 ```bash
 # 注册事件
-curl -X POST http://localhost:8080/api/v1/events \
+curl -X POST http://localhost:18080/api/v1/events \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"消息接收事件","name_en":"Message Received Event","topic":"im.message.received","category_id":2,"permission":{"name_cn":"消息接收权限","name_en":"Message Received Permission","scope":"event:im:message-received"}}'
 
 # 获取事件列表
-curl http://localhost:8080/api/v1/events
+curl http://localhost:18080/api/v1/events
 ```
 
 ---
@@ -392,12 +396,12 @@ curl http://localhost:8080/api/v1/events
 
 ```bash
 # 注册回调
-curl -X POST http://localhost:8080/api/v1/callbacks \
+curl -X POST http://localhost:18080/api/v1/callbacks \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"审批完成回调","name_en":"Approval Completed Callback","category_id":2,"permission":{"name_cn":"审批完成权限","name_en":"Approval Completed Permission","scope":"callback:approval:completed"}}'
 
 # 获取回调列表
-curl http://localhost:8080/api/v1/callbacks
+curl http://localhost:18080/api/v1/callbacks
 ```
 
 ---
@@ -437,36 +441,40 @@ curl http://localhost:8080/api/v1/callbacks
 **API 权限管理（#27-30）**：
 - [ ] **#27** GET `/api/v1/apps/:appId/apis` 返回应用 API 权限列表
 - [ ] **#28** GET `/api/v1/categories/:id/apis` 返回分类下 API 权限列表（权限树懒加载）
-- [ ] **#29** POST `/api/v1/apps/:appId/apis/subscribe` 申请 API 权限，生成独立审批单
+- [ ] **#29** POST `/api/v1/apps/:appId/apis/subscribe` 申请 API 权限，**支持批量提交**，生成独立审批单
 - [ ] **#30** POST `/api/v1/apps/:appId/apis/:id/withdraw` 撤回审核中的申请
 
 **事件权限管理（#31-35）**：
 - [ ] **#31** GET `/api/v1/apps/:appId/events` 返回应用事件订阅列表
 - [ ] **#32** GET `/api/v1/categories/:id/events` 返回分类下事件权限列表（权限树懒加载）
-- [ ] **#33** POST `/api/v1/apps/:appId/events/subscribe` 申请事件权限
+- [ ] **#33** POST `/api/v1/apps/:appId/events/subscribe` 申请事件权限，**支持批量提交**
 - [ ] **#34** PUT `/api/v1/apps/:appId/events/:id/config` 配置事件消费参数（通道/地址/认证）
 - [ ] **#35** POST `/api/v1/apps/:appId/events/:id/withdraw` 撤回审核中的申请
 
 **回调权限管理（#36-40）**：
 - [ ] **#36** GET `/api/v1/apps/:appId/callbacks` 返回应用回调订阅列表
 - [ ] **#37** GET `/api/v1/categories/:id/callbacks` 返回分类下回调权限列表（权限树懒加载）
-- [ ] **#38** POST `/api/v1/apps/:appId/callbacks/subscribe` 申请回调权限
+- [ ] **#38** POST `/api/v1/apps/:appId/callbacks/subscribe` 申请回调权限，**支持批量提交**
 - [ ] **#39** PUT `/api/v1/apps/:appId/callbacks/:id/config` 配置回调消费参数
 - [ ] **#40** POST `/api/v1/apps/:appId/callbacks/:id/withdraw` 撤回审核中的申请
+
+**批量操作验收**：
+- [ ] 批量提交返回成功数量和失败项，支持失败重试
+- [ ] 每条权限申请生成独立审批单，状态独立管理
 
 ### 验证命令
 
 ```bash
 # 获取分类下 API 权限列表（权限树懒加载）
-curl http://localhost:8080/api/v1/categories/2/apis
+curl http://localhost:18080/api/v1/categories/2/apis
 
 # 申请 API 权限
-curl -X POST http://localhost:8080/api/v1/apps/100/apis/subscribe \
+curl -X POST http://localhost:18080/api/v1/apps/100/apis/subscribe \
   -H "Content-Type: application/json" \
   -d '{"permission_id":200}'
 
 # 配置事件消费参数
-curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
+curl -X PUT http://localhost:18080/api/v1/apps/100/events/300/config \
   -H "Content-Type: application/json" \
   -d '{"channel_type":1,"channel_address":"https://webhook.example.com/events","auth_type":0}'
 ```
@@ -478,7 +486,7 @@ curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
 **复杂度**: L  
 **前置依赖**: TASK-001, TASK-003, TASK-008  
 **执行波次**: 3  
-**接口覆盖**: 9 个接口（#41-49）
+**接口覆盖**: 11 个接口（#41-51）
 
 ### 描述
 
@@ -508,31 +516,37 @@ curl -X PUT http://localhost:8080/api/v1/apps/100/events/300/config \
 - [ ] **#43** POST `/api/v1/approval-flows` 创建审批流程模板
 - [ ] **#44** PUT `/api/v1/approval-flows/:id` 更新审批流程模板
 
-**审批执行（#45-49）**：
+**审批执行（#45-51）**：
 - [ ] **#45** GET `/api/v1/approvals/pending` 返回待审批列表
 - [ ] **#46** GET `/api/v1/approvals/:id` 返回审批详情（含节点状态、操作日志）
 - [ ] **#47** POST `/api/v1/approvals/:id/approve` 同意审批，更新订阅状态
 - [ ] **#48** POST `/api/v1/approvals/:id/reject` 驳回审批，需填写原因
 - [ ] **#49** POST `/api/v1/approvals/:id/cancel` 撤销审批
+- [ ] **#50** POST `/api/v1/approvals/batch-approve` 批量同意审批，支持一次处理多条
+- [ ] **#51** POST `/api/v1/approvals/batch-reject` 批量驳回审批，需填写统一原因
 
 **审批引擎**：
 - [ ] 审批通过后自动激活订阅关系（status=1）
 - [ ] 审批拒绝后订阅状态变为已拒绝（status=2）
 - [ ] 审批记录和操作日志正确写入
 
+**批量审批验收**：
+- [ ] 批量同意接口返回成功数量，支持部分失败场景
+- [ ] 批量驳回需填写统一原因，支持部分失败场景
+
 ### 验证命令
 
 ```bash
 # 创建审批流程
-curl -X POST http://localhost:8080/api/v1/approval-flows \
+curl -X POST http://localhost:18080/api/v1/approval-flows \
   -H "Content-Type: application/json" \
   -d '{"name_cn":"API注册审批流","name_en":"API Registration Approval Flow","code":"api_register","nodes":[{"type":"approver","user_id":"user001","order":1}]}'
 
 # 获取待审批列表
-curl http://localhost:8080/api/v1/approvals/pending
+curl http://localhost:18080/api/v1/approvals/pending
 
 # 同意审批
-curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
+curl -X POST http://localhost:18080/api/v1/approvals/1/approve \
   -H "Content-Type: application/json" \
   -d '{"comment":"同意该申请"}'
 ```
@@ -544,7 +558,7 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-003, TASK-008  
 **执行波次**: 4  
-**接口覆盖**: 5 个接口（#50-52, #53, #56）
+**接口覆盖**: 5 个接口（#52-55, #58）
 
 ### 描述
 
@@ -565,26 +579,25 @@ curl -X POST http://localhost:8080/api/v1/approvals/1/approve \
 
 ### 验收标准
 
-**Scope 用户授权（#50-52）**：
-- [ ] **#50** GET `/api/v1/user-authorizations` 返回用户授权列表
-- [ ] **#51** POST `/api/v1/user-authorizations` 用户授权成功（支持有效期设置）
-- [ ] **#52** DELETE `/api/v1/user-authorizations/:id` 取消授权
+**Scope 用户授权（#52-54）**：
+- [ ] **#52** GET `/api/v1/user-authorizations` 返回用户授权列表
+- [ ] **#53** POST `/api/v1/user-authorizations` 用户授权成功（支持有效期设置）
+- [ ] **#54** DELETE `/api/v1/user-authorizations/:id` 取消授权
 
-**API 网关（#53）**：
-- [ ] **#53** ANY `/gateway/api/*` API 请求代理与鉴权生效
+**API 网关（#55）**：
+- [ ] **#55** ANY `/gateway/api/*` API 请求代理与鉴权生效
 - [ ] 验证应用身份（AKSK/Bearer Token）
 - [ ] 查询应用订阅关系，验证请求路径在授权范围内
 - [ ] 转发请求到内部中台网关
 
-**数据查询接口（#56）**：
-- [ ] **#56** GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
-- [ ] 提供 API/事件/回调/订阅等数据查询接口
+**数据查询接口（#58）**：
+- [ ] **#58** GET `/gateway/permissions/check` 权限校验接口可用（供 event-server 调用）
 
 ### 验证命令
 
 ```bash
 # API 鉴权测试
-curl -X POST http://localhost:8081/gateway/api/v1/messages \
+curl -X POST http://localhost:18081/gateway/api/v1/messages \
   -H "X-App-Id: 100" \
   -H "X-Auth-Type: 0" \
   -H "Authorization: Bearer token" \
@@ -592,10 +605,10 @@ curl -X POST http://localhost:8081/gateway/api/v1/messages \
   -d '{"content":"Hello World"}'
 
 # 权限校验
-curl http://localhost:8081/gateway/permissions/check?app_id=100&scope=api:im:send-message
+curl http://localhost:18081/gateway/permissions/check?app_id=100&scope=api:im:send-message
 
 # 用户授权
-curl -X POST http://localhost:8081/api/v1/user-authorizations \
+curl -X POST http://localhost:18081/api/v1/user-authorizations \
   -H "Content-Type: application/json" \
   -d '{"user_id":"user001","app_id":100,"scopes":["api:im:send-message"],"expires_at":"2026-12-31T23:59:59"}'
 ```
@@ -607,7 +620,7 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 **复杂度**: M  
 **前置依赖**: TASK-001, TASK-010  
 **执行波次**: 4  
-**接口覆盖**: 2 个接口（#54-55）
+**接口覆盖**: 2 个接口（#56-57）
 
 ### 描述
 
@@ -629,15 +642,15 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 
 ### 验收标准
 
-**事件消费网关（#54）**：
-- [ ] **#54** POST `/gateway/events/publish` 事件发布接口可用
+**事件消费网关（#56）**：
+- [ ] **#56** POST `/gateway/events/publish` 事件发布接口可用
 - [ ] 验证 Topic 对应的事件资源存在
-- [ ] 查询订阅该事件的应用列表（通过 api-server #56 接口）
+- [ ] 查询订阅该事件的应用列表（通过 api-server #58 接口）
 - [ ] 按订阅配置分发事件（WebHook/内部消息队列）
 - [ ] P99 分发延迟 < 1s
 
-**回调消费网关（#55）**：
-- [ ] **#55** POST `/gateway/callbacks/invoke` 回调触发接口可用
+**回调消费网关（#57）**：
+- [ ] **#57** POST `/gateway/callbacks/invoke` 回调触发接口可用
 - [ ] 验证回调 Scope 存在
 - [ ] 查询订阅该回调的应用列表
 - [ ] 按订阅配置调用三方回调地址
@@ -650,12 +663,12 @@ curl -X POST http://localhost:8081/api/v1/user-authorizations \
 
 ```bash
 # 事件发布
-curl -X POST http://localhost:8082/gateway/events/publish \
+curl -X POST http://localhost:18082/gateway/events/publish \
   -H "Content-Type: application/json" \
   -d '{"topic":"im.message.received","payload":{"message_id":"msg001","content":"Hello World"}}'
 
 # 回调触发
-curl -X POST http://localhost:8082/gateway/callbacks/invoke \
+curl -X POST http://localhost:18082/gateway/callbacks/invoke \
   -H "Content-Type: application/json" \
   -d '{"callback_scope":"callback:approval:completed","payload":{"approval_id":"app001","status":"approved"}}'
 ```
@@ -769,7 +782,7 @@ cd event-server && mvn test
 mvn verify
 
 # 性能测试（示例）
-curl -w "@curl-format.txt" http://localhost:8080/api/v1/apis?category_id=2
+curl -w "@curl-format.txt" http://localhost:18080/api/v1/apis?category_id=2
 ```
 
 ---
@@ -785,10 +798,10 @@ curl -w "@curl-format.txt" http://localhost:8080/api/v1/apis?category_id=2
 | TASK-006 | open-server | #15-20 | 6 |
 | TASK-007 | open-server | #21-26 | 6 |
 | TASK-008 | open-server | #27-40 | 14 |
-| TASK-009 | open-server | #41-49 | 9 |
-| TASK-010 | api-server | #50-52, #53, #56 | 5 |
-| TASK-011 | event-server | #54-55 | 2 |
-| **总计** | - | **#1-56** | **56** |
+| TASK-009 | open-server | #41-51 | 11 |
+| TASK-010 | api-server | #52-55, #58 | 5 |
+| TASK-011 | event-server | #56-57 | 2 |
+| **总计** | - | **#1-58** | **58** |
 
 ### B. 任务依赖关系图
 
@@ -873,5 +886,11 @@ graph TB
 
 ---
 
-**文档状态**: ✅ 任务分解完成（v1.1）  
+**文档状态**: ✅ 任务分解完成（v1.2）  
+**更新说明**: 
+- 更新接口覆盖（58个接口），新增 #50-51 批量审批接口
+- 更新数据库表前缀为 `openplatform_v2_`
+- 新增 .gitignore 文件到各工程
+- 补充批量操作验收标准
+
 **下一步**: 运行 `@sddu-build TASK-001` 开始实现第一个任务

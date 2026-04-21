@@ -5,6 +5,113 @@
 
 ---
 
+## 0. 接口设计规范
+
+本章节定义能力开放平台接口的命名规范，确保接口的一致性和可维护性。
+
+### 0.1 字段命名规范
+
+**规则**：接口入参和返回值字段统一使用驼峰命名（camelCase）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `userId` | `user_id` |
+| `createTime` | `create_time` |
+| `approvalStatus` | `approval_status` |
+| `categoryAlias` | `category_alias` |
+
+**命名约定**：
+- ID 字段：使用 `Id` 后缀，如 `userId`, `appId`, `categoryId`
+- 时间字段：使用 `Time` 后缀，如 `createTime`, `updateTime`，或 `At` 后缀表示时间点，如 `expiresAt`
+- 布尔字段：使用 `is` 前缀，如 `isDefault`, `isSubscribed`
+- URL 字段：使用 `Url` 后缀，如 `docUrl`, `approvalUrl`
+
+### 0.2 路径命名规范
+
+**规则**：URL 路径使用中划线分隔多个单词（kebab-case）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `/api/v1/user-authorizations` | `/api/v1/user_authorizations` |
+| `/api/v1/approval-flows` | `/api/v1/approvalFlows` |
+| `/gateway/callbacks/invoke` | `/gateway/callbacks_invoke` |
+
+**命名约定**：
+- 资源名称使用复数形式：`/categories`, `/apis`, `/events`
+- 子资源使用中划线分隔：`/user-authorizations`, `/approval-flows`
+- 路径参数使用驼峰：`/apps/:appId/apis`
+
+### 0.3 数据类型规范
+
+**规则**：长整数（如主键 ID）统一返回 string 类型，避免前端接收精度丢失问题。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `"id": "100"` | `"id": 100` |
+| `"appId": "10"` | `"appId": 10` |
+| `"permissionId": "200"` | `"permissionId": 200` |
+
+**原因说明**：
+- JavaScript 的 `Number` 类型最大安全整数是 `2^53 - 1`（即 `9007199254740991`）
+- 当后端使用 `Long` 类型（64 位整数）时，超过安全范围的数值会丢失精度
+- 统一使用 `string` 类型可彻底避免此问题，前端需要时自行转换
+
+**适用范围**：
+- 所有主键 ID 字段：`id`, `userId`, `appId`, `categoryId`, `permissionId` 等
+- 所有外键 ID 字段：`parentId`, `flowId`, `approvalFlowId` 等
+- 其他可能超过安全范围的数值型字段
+
+**入参约定**：
+- 路径参数中的 ID（如 `/api/v1/apis/:id`）可以是数字或字符串，由路由层处理
+- 请求体中的 ID 字段统一使用 `string` 类型
+
+### 0.4 通用对象结构
+
+#### category 对象
+
+分类是树形结构，返回时包含完整路径信息：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 分类ID |
+| nameCn | string | 分类中文名称 |
+| path | string | 分类路径，如 `/1/2/`，用于树形查询优化 |
+| categoryPath | array[string] | 完整分类路径名称数组，如 `["A类应用权限", "IM业务"]` |
+
+**示例**：
+```json
+{
+  "category": {
+    "id": "2",
+    "nameCn": "IM业务",
+    "path": "/1/2/",
+    "categoryPath": ["A类应用权限", "IM业务"]
+  }
+}
+```
+
+### 0.5 示例对照
+
+```json
+// ✅ 符合规范的请求示例
+{
+  "userId": "user001",
+  "appId": "10",
+  "permissionIds": ["200", "201"],
+  "expiresAt": "2026-12-31T23:59:59"
+}
+
+// ❌ 不符合规范的请求示例
+{
+  "user_id": "user001",      // 应使用 userId
+  "app_id": 10,              // 应使用 appId（string 类型）
+  "permission_ids": [200, 201], // 应使用 permissionIds（string 类型）
+  "expires_at": "2026-12-31T23:59:59" // 应使用 expiresAt
+}
+```
+
+---
+
 ## 1. 接口清单
 
 | # | 模块 | Method | Path | 说明 | FR |
@@ -37,16 +144,16 @@
 | 26 | | POST | `/api/v1/callbacks/:id/withdraw` | 撤回审核中的回调 | FR-012 |
 | 27 | **API 权限管理** | GET | `/api/v1/apps/:appId/apis` | 获取应用 API 权限列表 | FR-016 |
 | 28 | | GET | `/api/v1/categories/:id/apis` | 获取分类下 API 权限列表 | FR-017 |
-| 29 | | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（独立单据） | FR-018 |
+| 29 | | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（支持批量） | FR-018 |
 | 30 | | POST | `/api/v1/apps/:appId/apis/:id/withdraw` | 撤回审核中的申请 | FR-016 |
 | 31 | **事件权限管理** | GET | `/api/v1/apps/:appId/events` | 获取应用事件订阅列表 | FR-019 |
 | 32 | | GET | `/api/v1/categories/:id/events` | 获取分类下事件权限列表 | FR-020 |
-| 33 | | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（独立单据） | FR-021 |
+| 33 | | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（支持批量） | FR-021 |
 | 34 | | PUT | `/api/v1/apps/:appId/events/:id/config` | 配置事件消费参数（通道/地址/认证） | FR-019 |
 | 35 | | POST | `/api/v1/apps/:appId/events/:id/withdraw` | 撤回审核中的申请 | FR-019 |
 | 36 | **回调权限管理** | GET | `/api/v1/apps/:appId/callbacks` | 获取应用回调订阅列表 | FR-022 |
 | 37 | | GET | `/api/v1/categories/:id/callbacks` | 获取分类下回调权限列表 | FR-023 |
-| 38 | | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（独立单据） | FR-024 |
+| 38 | | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（支持批量） | FR-024 |
 | 39 | | PUT | `/api/v1/apps/:appId/callbacks/:id/config` | 配置回调消费参数（通道/地址/认证） | FR-022 |
 | 40 | | POST | `/api/v1/apps/:appId/callbacks/:id/withdraw` | 撤回审核中的申请 | FR-022 |
 | 41 | **审批管理** | GET | `/api/v1/approval-flows` | 获取审批流程模板列表 | FR-025 |
@@ -58,15 +165,17 @@
 | 47 | | POST | `/api/v1/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
 | 48 | | POST | `/api/v1/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
 | 49 | | POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
-| 50 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
-| 51 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
-| 52 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
-| 53 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
-| 54 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
-| 55 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
-| 56 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
+| 50 | | POST | `/api/v1/approvals/batch-approve` | 批量同意审批 | FR-026/FR-027 |
+| 51 | | POST | `/api/v1/approvals/batch-reject` | 批量驳回审批（需填写原因） | FR-026/FR-027 |
+| 52 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
+| 53 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
+| 54 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
+| 55 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
+| 56 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
+| 57 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
+| 58 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
 
-> **接口统计**：共 56 个接口，覆盖 FR-001 ~ FR-031
+> **接口统计**：共 58 个接口，覆盖 FR-001 ~ FR-031
 >
 > **权限树设计说明**：采用懒加载模式，分为两个步骤：
 > 1. 查树：`GET /api/v1/categories` 获取分类树
@@ -95,23 +204,23 @@
   "code": 0,
   "data": [
     {
-      "id": 1,
-      "category_alias": "app_type_a",
-      "name_cn": "A类应用权限",
-      "name_en": "App Type A Permissions",
-      "parent_id": null,
+      "id": "1",
+      "categoryAlias": "app_type_a",
+      "nameCn": "A类应用权限",
+      "nameEn": "App Type A Permissions",
+      "parentId": null,
       "path": "/1/",
-      "sort_order": 0,
+      "sortOrder": 0,
       "status": 1,
       "children": [
         {
-          "id": 2,
-          "category_alias": null,
-          "name_cn": "IM 业务",
-          "name_en": "IM Business",
-          "parent_id": 1,
+          "id": "2",
+          "categoryAlias": null,
+          "nameCn": "IM 业务",
+          "nameEn": "IM Business",
+          "parentId": "1",
           "path": "/1/2/",
-          "sort_order": 0,
+          "sortOrder": 0,
           "status": 1,
           "children": []
         }
@@ -133,16 +242,16 @@
 {
   "code": 0,
   "data": {
-    "id": 2,
-    "category_alias": null,
-    "name_cn": "IM 业务",
-    "name_en": "IM Business",
-    "parent_id": 1,
+    "id": "2",
+    "categoryAlias": null,
+    "nameCn": "IM 业务",
+    "nameEn": "IM Business",
+    "parentId": "1",
     "path": "/1/2/",
-    "sort_order": 0,
+    "sortOrder": 0,
     "status": 1,
-    "create_time": "2026-04-20T10:00:00.000Z",
-    "create_by": "admin"
+    "createTime": "2026-04-20T10:00:00.000Z",
+    "createBy": "admin"
   }
 }
 ```
@@ -167,11 +276,11 @@
 
 ```json
 {
-  "category_alias": "app_type_a",
-  "name_cn": "A类应用权限",
-  "name_en": "App Type A Permissions",
-  "parent_id": null,
-  "sort_order": 0
+  "categoryAlias": "app_type_a",
+  "nameCn": "A类应用权限",
+  "nameEn": "App Type A Permissions",
+  "parentId": null,
+  "sortOrder": 0
 }
 ```
 
@@ -181,13 +290,13 @@
 {
   "code": 0,
   "data": {
-    "id": 1,
-    "category_alias": "app_type_a",
-    "name_cn": "A类应用权限",
-    "name_en": "App Type A Permissions",
-    "parent_id": null,
+    "id": "1",
+    "categoryAlias": "app_type_a",
+    "nameCn": "A类应用权限",
+    "nameEn": "App Type A Permissions",
+    "parentId": null,
     "path": "/1/",
-    "sort_order": 0,
+    "sortOrder": 0,
     "status": 1
   }
 }
@@ -209,9 +318,9 @@
 
 ```json
 {
-  "name_cn": "IM 业务能力",
-  "name_en": "IM Business Capability",
-  "sort_order": 1
+  "nameCn": "IM 业务能力",
+  "nameEn": "IM Business Capability",
+  "sortOrder": 1
 }
 ```
 
@@ -221,10 +330,10 @@
 {
   "code": 0,
   "data": {
-    "id": 2,
-    "name_cn": "IM 业务能力",
-    "name_en": "IM Business Capability",
-    "sort_order": 1
+    "id": "2",
+    "nameCn": "IM 业务能力",
+    "nameEn": "IM Business Capability",
+    "sortOrder": 1
   }
 }
 ```
@@ -271,8 +380,8 @@
 
 ```json
 {
-  "user_id": "user001",
-  "user_name": "张三"
+  "userId": "user001",
+  "userName": "张三"
 }
 ```
 
@@ -282,10 +391,10 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "category_id": 2,
-    "user_id": "user001",
-    "user_name": "张三"
+    "id": "100",
+    "categoryId": "2",
+    "userId": "user001",
+    "userName": "张三"
   }
 }
 ```
@@ -303,16 +412,16 @@
   "code": 0,
   "data": [
     {
-      "id": 100,
-      "category_id": 2,
-      "user_id": "user001",
-      "user_name": "张三"
+      "id": "100",
+      "categoryId": "2",
+      "userId": "user001",
+      "userName": "张三"
     },
     {
-      "id": 101,
-      "category_id": 2,
-      "user_id": "user002",
-      "user_name": "李四"
+      "id": "101",
+      "categoryId": "2",
+      "userId": "user002",
+      "userName": "李四"
     }
   ]
 }
@@ -363,16 +472,16 @@
     "size": 20,
     "list": [
       {
-        "id": 100,
-        "name_cn": "发送消息",
-        "name_en": "Send Message",
+        "id": "100",
+        "nameCn": "发送消息",
+        "nameEn": "Send Message",
         "path": "/api/v1/messages",
         "method": "POST",
-        "category_id": 2,
-        "category_name": "IM 业务",
+        "categoryId": "2",
+        "categoryName": "IM 业务",
         "status": 2,
         "permission": {
-          "id": 200,
+          "id": "200",
           "scope": "api:im:send-message",
           "status": 1
         }
@@ -394,26 +503,26 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "name_cn": "发送消息",
-    "name_en": "Send Message",
+    "id": "100",
+    "nameCn": "发送消息",
+    "nameEn": "Send Message",
     "path": "/api/v1/messages",
     "method": "POST",
-    "category_id": 2,
+    "categoryId": "2",
     "status": 2,
-    "create_time": "2026-04-20T10:00:00.000Z",
-    "create_by": "user001",
+    "createTime": "2026-04-20T10:00:00.000Z",
+    "createBy": "user001",
     "permission": {
-      "id": 200,
-      "name_cn": "发送消息权限",
-      "name_en": "Send Message Permission",
+      "id": "200",
+      "nameCn": "发送消息权限",
+      "nameEn": "Send Message Permission",
       "scope": "api:im:send-message",
       "status": 1
     },
     "properties": [
-      { "property_name": "description_cn", "property_value": "发送消息API的中文描述" },
-      { "property_name": "description_en", "property_value": "Send message API description" },
-      { "property_name": "doc_url", "property_value": "https://docs.example.com/api/send-message" }
+      { "propertyName": "descriptionCn", "propertyValue": "发送消息API的中文描述" },
+      { "propertyName": "descriptionEn", "propertyValue": "Send message API description" },
+      { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/api/send-message" }
     ]
   }
 }
@@ -448,20 +557,20 @@
 
 ```json
 {
-  "name_cn": "发送消息",
-  "name_en": "Send Message",
+  "nameCn": "发送消息",
+  "nameEn": "Send Message",
   "path": "/api/v1/messages",
   "method": "POST",
-  "category_id": 2,
+  "categoryId": "2",
   "permission": {
-    "name_cn": "发送消息权限",
-    "name_en": "Send Message Permission",
+    "nameCn": "发送消息权限",
+    "nameEn": "Send Message Permission",
     "scope": "api:im:send-message"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "发送消息API的中文描述" },
-    { "property_name": "description_en", "property_value": "Send message API description" },
-    { "property_name": "doc_url", "property_value": "https://docs.example.com/api/send-message" }
+    { "propertyName": "descriptionCn", "propertyValue": "发送消息API的中文描述" },
+    { "propertyName": "descriptionEn", "propertyValue": "Send message API description" },
+    { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/api/send-message" }
   ]
 }
 ```
@@ -472,14 +581,14 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "name_cn": "发送消息",
-    "name_en": "Send Message",
+    "id": "100",
+    "nameCn": "发送消息",
+    "nameEn": "Send Message",
     "path": "/api/v1/messages",
     "method": "POST",
     "status": 1,
     "permission": {
-      "id": 200,
+      "id": "200",
       "scope": "api:im:send-message",
       "status": 1
     }
@@ -500,15 +609,15 @@
 
 ```json
 {
-  "name_cn": "发送消息V2",
-  "name_en": "Send Message V2",
-  "category_id": 2,
+  "nameCn": "发送消息V2",
+  "nameEn": "Send Message V2",
+  "categoryId": "2",
   "permission": {
-    "name_cn": "发送消息权限V2",
-    "name_en": "Send Message Permission V2"
+    "nameCn": "发送消息权限V2",
+    "nameEn": "Send Message Permission V2"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "发送消息API的中文描述（更新）" }
+    { "propertyName": "descriptionCn", "propertyValue": "发送消息API的中文描述（更新）" }
   ]
 }
 ```
@@ -519,8 +628,8 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
-    "name_cn": "发送消息V2",
+    "id": "100",
+    "nameCn": "发送消息V2",
     "status": 1,
     "message": "API 更新成功，核心属性变更需重新审批"
   }
@@ -566,7 +675,7 @@
 {
   "code": 0,
   "data": {
-    "id": 100,
+    "id": "100",
     "status": 0,
     "message": "API 已撤回，状态变为草稿"
   }
@@ -600,14 +709,14 @@
     "total": 30,
     "list": [
       {
-        "id": 101,
-        "name_cn": "消息接收事件",
-        "name_en": "Message Received Event",
+        "id": "101",
+        "nameCn": "消息接收事件",
+        "nameEn": "Message Received Event",
         "topic": "im.message.received",
-        "category_id": 2,
+        "categoryId": "2",
         "status": 2,
         "permission": {
-          "id": 201,
+          "id": "201",
           "scope": "event:im:message-received"
         }
       }
@@ -628,22 +737,22 @@
 {
   "code": 0,
   "data": {
-    "id": 101,
-    "name_cn": "消息接收事件",
-    "name_en": "Message Received Event",
+    "id": "101",
+    "nameCn": "消息接收事件",
+    "nameEn": "Message Received Event",
     "topic": "im.message.received",
-    "category_id": 2,
+    "categoryId": "2",
     "status": 2,
     "permission": {
-      "id": 201,
-      "name_cn": "消息接收权限",
-      "name_en": "Message Received Permission",
+      "id": "201",
+      "nameCn": "消息接收权限",
+      "nameEn": "Message Received Permission",
       "scope": "event:im:message-received",
       "status": 1
     },
     "properties": [
-      { "property_name": "description_cn", "property_value": "消息接收事件描述" },
-      { "property_name": "doc_url", "property_value": "https://docs.example.com/event/message-received" }
+      { "propertyName": "descriptionCn", "propertyValue": "消息接收事件描述" },
+      { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/event/message-received" }
     ]
   }
 }
@@ -668,18 +777,18 @@
 
 ```json
 {
-  "name_cn": "消息接收事件",
-  "name_en": "Message Received Event",
+  "nameCn": "消息接收事件",
+  "nameEn": "Message Received Event",
   "topic": "im.message.received",
-  "category_id": 2,
+  "categoryId": "2",
   "permission": {
-    "name_cn": "消息接收权限",
-    "name_en": "Message Received Permission",
+    "nameCn": "消息接收权限",
+    "nameEn": "Message Received Permission",
     "scope": "event:im:message-received"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "消息接收事件描述" },
-    { "property_name": "doc_url", "property_value": "https://docs.example.com/event/message-received" }
+    { "propertyName": "descriptionCn", "propertyValue": "消息接收事件描述" },
+    { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/event/message-received" }
   ]
 }
 ```
@@ -690,12 +799,12 @@
 {
   "code": 0,
   "data": {
-    "id": 101,
-    "name_cn": "消息接收事件",
+    "id": "101",
+    "nameCn": "消息接收事件",
     "topic": "im.message.received",
     "status": 1,
     "permission": {
-      "id": 201,
+      "id": "201",
       "scope": "event:im:message-received"
     }
   },
@@ -713,10 +822,24 @@
 
 ```json
 {
-  "name_cn": "消息接收事件V2",
-  "category_id": 2,
+  "nameCn": "消息接收事件V2",
+  "categoryId": "2",
   "permission": {
-    "name_cn": "消息接收权限V2"
+    "nameCn": "消息接收权限V2"
+  }
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": "101",
+    "nameCn": "消息接收事件V2",
+    "status": 1,
+    "message": "事件更新成功，核心属性变更需重新审批"
   }
 }
 ```
@@ -727,7 +850,26 @@
 
 删除事件（检查订阅关系）。
 
-> **说明**：已订阅的事件无法删除。
+> **说明**：已订阅的事件无法删除，需先取消所有订阅。
+
+**响应示例（成功）**：
+
+```json
+{
+  "code": 0,
+  "data": null,
+  "message": "事件删除成功"
+}
+```
+
+**响应示例（失败-存在订阅）**：
+
+```json
+{
+  "code": 409,
+  "message": "事件被 3 个应用订阅，无法删除"
+}
+```
 
 ---
 
@@ -741,7 +883,7 @@
 {
   "code": 0,
   "data": {
-    "id": 101,
+    "id": "101",
     "status": 0,
     "message": "事件已撤回"
   }
@@ -775,13 +917,13 @@
     "total": 20,
     "list": [
       {
-        "id": 102,
-        "name_cn": "审批完成回调",
-        "name_en": "Approval Completed Callback",
-        "category_id": 3,
+        "id": "102",
+        "nameCn": "审批完成回调",
+        "nameEn": "Approval Completed Callback",
+        "categoryId": "3",
         "status": 2,
         "permission": {
-          "id": 202,
+          "id": "202",
           "scope": "callback:approval:completed"
         }
       }
@@ -802,21 +944,21 @@
 {
   "code": 0,
   "data": {
-    "id": 102,
-    "name_cn": "审批完成回调",
-    "name_en": "Approval Completed Callback",
-    "category_id": 3,
+    "id": "102",
+    "nameCn": "审批完成回调",
+    "nameEn": "Approval Completed Callback",
+    "categoryId": "3",
     "status": 2,
     "permission": {
-      "id": 202,
-      "name_cn": "审批完成回调权限",
-      "name_en": "Approval Completed Callback Permission",
+      "id": "202",
+      "nameCn": "审批完成回调权限",
+      "nameEn": "Approval Completed Callback Permission",
       "scope": "callback:approval:completed",
       "status": 1
     },
     "properties": [
-      { "property_name": "description_cn", "property_value": "审批完成后的回调通知" },
-      { "property_name": "doc_url", "property_value": "https://docs.example.com/callback/approval-completed" }
+      { "propertyName": "descriptionCn", "propertyValue": "审批完成后的回调通知" },
+      { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/callback/approval-completed" }
     ]
   }
 }
@@ -840,17 +982,17 @@
 
 ```json
 {
-  "name_cn": "审批完成回调",
-  "name_en": "Approval Completed Callback",
-  "category_id": 3,
+  "nameCn": "审批完成回调",
+  "nameEn": "Approval Completed Callback",
+  "categoryId": "3",
   "permission": {
-    "name_cn": "审批完成回调权限",
-    "name_en": "Approval Completed Callback Permission",
+    "nameCn": "审批完成回调权限",
+    "nameEn": "Approval Completed Callback Permission",
     "scope": "callback:approval:completed"
   },
   "properties": [
-    { "property_name": "description_cn", "property_value": "审批完成后的回调通知" },
-    { "property_name": "doc_url", "property_value": "https://docs.example.com/callback/approval-completed" }
+    { "propertyName": "descriptionCn", "propertyValue": "审批完成后的回调通知" },
+    { "propertyName": "docUrl", "propertyValue": "https://docs.example.com/callback/approval-completed" }
   ]
 }
 ```
@@ -861,11 +1003,11 @@
 {
   "code": 0,
   "data": {
-    "id": 102,
-    "name_cn": "审批完成回调",
+    "id": "102",
+    "nameCn": "审批完成回调",
     "status": 1,
     "permission": {
-      "id": 202,
+      "id": "202",
       "scope": "callback:approval:completed"
     }
   },
@@ -883,10 +1025,24 @@
 
 ```json
 {
-  "name_cn": "审批完成回调V2",
-  "category_id": 3,
+  "nameCn": "审批完成回调V2",
+  "categoryId": "3",
   "permission": {
-    "name_cn": "审批完成回调权限V2"
+    "nameCn": "审批完成回调权限V2"
+  }
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": "102",
+    "nameCn": "审批完成回调V2",
+    "status": 1,
+    "message": "回调更新成功，核心属性变更需重新审批"
   }
 }
 ```
@@ -897,11 +1053,47 @@
 
 删除回调（检查订阅关系）。
 
+> **说明**：已订阅的回调无法删除，需先取消所有订阅。
+
+**响应示例（成功）**：
+
+```json
+{
+  "code": 0,
+  "data": null,
+  "message": "回调删除成功"
+}
+```
+
+**响应示例（失败-存在订阅）**：
+
+```json
+{
+  "code": 409,
+  "message": "回调被 2 个应用订阅，无法删除"
+}
+```
+
 ---
 
 #### 26. POST /api/v1/callbacks/:id/withdraw
 
 撤回审核中的回调。
+
+> **说明**：仅状态为"待审"的回调可撤回。
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": "102",
+    "status": 0,
+    "message": "回调已撤回，状态变为草稿"
+  }
+}
+```
 
 ---
 
@@ -924,15 +1116,32 @@
   "code": 0,
   "data": [
     {
-      "id": 300,
-      "app_id": 10,
-      "permission_id": 200,
+      "id": "300",
+      "appId": "10",
+      "permissionId": "200",
       "permission": {
-        "name_cn": "发送消息权限",
+        "nameCn": "发送消息权限",
         "scope": "api:im:send-message"
       },
+      "api": {
+        "path": "/api/v1/messages",
+        "method": "POST",
+        "docUrl": "https://docs.example.com/api/send-message"
+      },
+      "category": {
+        "id": "2",
+        "nameCn": "IM业务",
+        "path": "/1/2/",
+        "categoryPath": ["A类应用权限", "IM业务"]
+      },
+      "approver": {
+        "userId": "user001",
+        "userName": "张三"
+      },
       "status": 1,
-      "create_time": "2026-04-20T10:00:00.000Z"
+      "authType": 0,
+      "approvalUrl": "https://platform.example.com/approval/300",
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
@@ -945,12 +1154,17 @@
 获取分类下 API 权限列表。
 
 > **说明**：权限树采用懒加载模式。分类树通过 `GET /api/v1/categories` 获取，点击分类节点时调用此接口获取该分类下的权限列表。
+> - `include_children=true`（默认）：递归获取当前分类及所有子分类下的权限（通过 `path` 字段优化查询）
+> - `include_children=false`：仅获取当前分类直接关联的权限
+> - 传根分类ID + `include_children=true` 可获取全量权限
 
 **请求参数**：
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | keyword | string | 否 | 搜索关键词（名称、Scope） |
+| need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
+| include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
 
 **响应示例**：
 
@@ -959,14 +1173,17 @@
   "code": 0,
   "data": [
     {
-      "id": 200,
-      "name_cn": "发送消息权限",
-      "name_en": "Send Message Permission",
+      "id": "200",
+      "nameCn": "发送消息权限",
+      "nameEn": "Send Message Permission",
       "scope": "api:im:send-message",
       "status": 1,
+      "needApproval": 1,
+      "isSubscribed": 1,
       "api": {
         "path": "/api/v1/messages",
-        "method": "POST"
+        "method": "POST",
+        "docUrl": "https://docs.example.com/api/send-message"
       }
     }
   ]
@@ -977,17 +1194,17 @@
 
 #### 29. POST /api/v1/apps/:appId/apis/subscribe
 
-申请 API 权限（独立单据）。
+申请 API 权限（支持批量）。
 
 **请求体**：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| permission_id | long | 是 | 权限ID |
+| permission_ids | array[long] | 是 | 权限ID列表（支持批量提交） |
 
 ```json
 {
-  "permission_id": 200
+  "permissionIds": ["200", "201", "202"]
 }
 ```
 
@@ -997,11 +1214,14 @@
 {
   "code": 0,
   "data": {
-    "id": 300,
-    "app_id": 10,
-    "permission_id": 200,
-    "status": 0,
-    "message": "申请已提交，等待审批"
+    "successCount": 3,
+    "failedCount": 0,
+    "records": [
+      { "id": "300", "appId": "10", "permissionId": "200", "status": 0 },
+      { "id": "301", "appId": "10", "permissionId": "201", "status": 0 },
+      { "id": "302", "appId": "10", "permissionId": "202", "status": 0 }
+    ],
+    "message": "申请已提交，共3条，等待审批"
   }
 }
 ```
@@ -1020,7 +1240,7 @@
 {
   "code": 0,
   "data": {
-    "id": 300,
+    "id": "300",
     "status": 3,
     "message": "申请已撤回"
   }
@@ -1048,20 +1268,27 @@
   "code": 0,
   "data": [
     {
-      "id": 301,
-      "app_id": 10,
-      "permission_id": 201,
+      "id": "301",
+      "appId": "10",
+      "permissionId": "201",
       "permission": {
-        "name_cn": "消息接收权限",
+        "nameCn": "消息接收权限",
         "scope": "event:im:message-received"
       },
       "event": {
         "topic": "im.message.received"
       },
+      "category": {
+        "id": "2",
+        "nameCn": "IM业务",
+        "path": "/1/2/",
+        "categoryPath": ["A类应用权限", "IM业务"]
+      },
       "status": 1,
-      "channel_type": 1,
-      "channel_address": "https://webhook.example.com/events",
-      "auth_type": 0
+      "channelType": 1,
+      "channelAddress": "https://webhook.example.com/events",
+      "authType": 0,
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
@@ -1074,12 +1301,17 @@
 获取分类下事件权限列表。
 
 > **说明**：权限树懒加载，点击分类节点时调用。
+> - `include_children=true`（默认）：递归获取当前分类及所有子分类下的权限（通过 `path` 字段优化查询）
+> - `include_children=false`：仅获取当前分类直接关联的权限
+> - 传根分类ID + `include_children=true` 可获取全量权限
 
 **请求参数**：
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | keyword | string | 否 | 搜索关键词 |
+| need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
+| include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
 
 **响应示例**：
 
@@ -1088,13 +1320,16 @@
   "code": 0,
   "data": [
     {
-      "id": 201,
-      "name_cn": "消息接收权限",
-      "name_en": "Message Received Permission",
+      "id": "201",
+      "nameCn": "消息接收权限",
+      "nameEn": "Message Received Permission",
       "scope": "event:im:message-received",
       "status": 1,
+      "needApproval": 1,
+      "isSubscribed": 1,
       "event": {
-        "topic": "im.message.received"
+        "topic": "im.message.received",
+        "docUrl": "https://docs.example.com/event/message-received"
       }
     }
   ]
@@ -1105,13 +1340,35 @@
 
 #### 33. POST /api/v1/apps/:appId/events/subscribe
 
-申请事件权限（独立单据）。
+申请事件权限（支持批量）。
 
 **请求体**：
 
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| permission_ids | array[long] | 是 | 权限ID列表（支持批量提交） |
+
 ```json
 {
-  "permission_id": 201
+  "permissionIds": ["201", "202", "203"]
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "successCount": 3,
+    "failedCount": 0,
+    "records": [
+      { "id": "301", "appId": "10", "permissionId": "201", "status": 0 },
+      { "id": "302", "appId": "10", "permissionId": "202", "status": 0 },
+      { "id": "303", "appId": "10", "permissionId": "203", "status": 0 }
+    ],
+    "message": "申请已提交，共3条，等待审批"
+  }
 }
 ```
 
@@ -1133,9 +1390,9 @@
 
 ```json
 {
-  "channel_type": 1,
-  "channel_address": "https://webhook.example.com/events",
-  "auth_type": 0
+  "channelType": 1,
+  "channelAddress": "https://webhook.example.com/events",
+  "authType": 0
 }
 ```
 
@@ -1154,10 +1411,10 @@
 {
   "code": 0,
   "data": {
-    "id": 301,
-    "channel_type": 1,
-    "channel_address": "https://webhook.example.com/events",
-    "auth_type": 0,
+    "id": "301",
+    "channelType": 1,
+    "channelAddress": "https://webhook.example.com/events",
+    "authType": 0,
     "message": "事件消费参数配置成功"
   }
 }
@@ -1168,6 +1425,21 @@
 #### 35. POST /api/v1/apps/:appId/events/:id/withdraw
 
 撤回审核中的事件权限申请。
+
+> **说明**：仅状态为"待审"的申请可撤回。
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": "301",
+    "status": 3,
+    "message": "申请已撤回"
+  }
+}
+```
 
 ---
 
@@ -1184,17 +1456,24 @@
   "code": 0,
   "data": [
     {
-      "id": 302,
-      "app_id": 10,
-      "permission_id": 202,
+      "id": "302",
+      "appId": "10",
+      "permissionId": "202",
       "permission": {
-        "name_cn": "审批完成回调权限",
+        "nameCn": "审批完成回调权限",
         "scope": "callback:approval:completed"
       },
+      "category": {
+        "id": "3",
+        "nameCn": "审批回调",
+        "path": "/1/3/",
+        "categoryPath": ["A类应用权限", "审批回调"]
+      },
       "status": 1,
-      "channel_type": 1,
-      "channel_address": "https://webhook.example.com/callbacks",
-      "auth_type": 0
+      "channelType": 1,
+      "channelAddress": "https://webhook.example.com/callbacks",
+      "authType": 0,
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
@@ -1207,6 +1486,17 @@
 获取分类下回调权限列表。
 
 > **说明**：权限树懒加载，点击分类节点时调用。
+> - `include_children=true`（默认）：递归获取当前分类及所有子分类下的权限（通过 `path` 字段优化查询）
+> - `include_children=false`：仅获取当前分类直接关联的权限
+> - 传根分类ID + `include_children=true` 可获取全量权限
+
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | string | 否 | 搜索关键词 |
+| need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
+| include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
 
 **响应示例**：
 
@@ -1215,11 +1505,16 @@
   "code": 0,
   "data": [
     {
-      "id": 202,
-      "name_cn": "审批完成回调权限",
-      "name_en": "Approval Completed Callback Permission",
+      "id": "202",
+      "nameCn": "审批完成回调权限",
+      "nameEn": "Approval Completed Callback Permission",
       "scope": "callback:approval:completed",
-      "status": 1
+      "status": 1,
+      "needApproval": 1,
+      "isSubscribed": 1,
+      "callback": {
+        "docUrl": "https://docs.example.com/callback/approval-completed"
+      }
     }
   ]
 }
@@ -1229,13 +1524,35 @@
 
 #### 38. POST /api/v1/apps/:appId/callbacks/subscribe
 
-申请回调权限（独立单据）。
+申请回调权限（支持批量）。
 
 **请求体**：
 
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| permission_ids | array[long] | 是 | 权限ID列表（支持批量提交） |
+
 ```json
 {
-  "permission_id": 202
+  "permissionIds": ["202", "203", "204"]
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "successCount": 3,
+    "failedCount": 0,
+    "records": [
+      { "id": "302", "appId": "10", "permissionId": "202", "status": 0 },
+      { "id": "303", "appId": "10", "permissionId": "203", "status": 0 },
+      { "id": "304", "appId": "10", "permissionId": "204", "status": 0 }
+    ],
+    "message": "申请已提交，共3条，等待审批"
+  }
 }
 ```
 
@@ -1257,9 +1574,9 @@
 
 ```json
 {
-  "channel_type": 0,
-  "channel_address": "https://webhook.example.com/callbacks",
-  "auth_type": 0
+  "channelType": 0,
+  "channelAddress": "https://webhook.example.com/callbacks",
+  "authType": 0
 }
 ```
 
@@ -1277,6 +1594,21 @@
 
 撤回审核中的回调权限申请。
 
+> **说明**：仅状态为"待审"的申请可撤回。
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "id": "302",
+    "status": 3,
+    "message": "申请已撤回"
+  }
+}
+```
+
 ---
 
 ### 2.8 审批管理
@@ -1292,19 +1624,19 @@
   "code": 0,
   "data": [
     {
-      "id": 1,
-      "name_cn": "默认审批流",
-      "name_en": "Default Approval Flow",
+      "id": "1",
+      "nameCn": "默认审批流",
+      "nameEn": "Default Approval Flow",
       "code": "default",
-      "is_default": 1,
+      "isDefault": 1,
       "status": 1
     },
     {
-      "id": 2,
-      "name_cn": "API注册审批流",
-      "name_en": "API Registration Approval Flow",
+      "id": "2",
+      "nameCn": "API注册审批流",
+      "nameEn": "API Registration Approval Flow",
       "code": "api_register",
-      "is_default": 0,
+      "isDefault": 0,
       "status": 1
     }
   ]
@@ -1323,15 +1655,15 @@
 {
   "code": 0,
   "data": {
-    "id": 2,
-    "name_cn": "API注册审批流",
-    "name_en": "API Registration Approval Flow",
+    "id": "2",
+    "nameCn": "API注册审批流",
+    "nameEn": "API Registration Approval Flow",
     "code": "api_register",
-    "is_default": 0,
+    "isDefault": 0,
     "status": 1,
     "nodes": [
-      { "type": "approver", "user_id": "user001", "user_name": "张三", "order": 1 },
-      { "type": "approver", "user_id": "user002", "user_name": "李四", "order": 2 }
+      { "type": "approver", "userId": "user001", "userName": "张三", "order": 1 },
+      { "type": "approver", "userId": "user002", "userName": "李四", "order": 2 }
     ]
   }
 }
@@ -1363,13 +1695,13 @@
 
 ```json
 {
-  "name_cn": "API注册审批流",
-  "name_en": "API Registration Approval Flow",
+  "nameCn": "API注册审批流",
+  "nameEn": "API Registration Approval Flow",
   "code": "api_register",
-  "is_default": 0,
+  "isDefault": 0,
   "nodes": [
-    { "type": "approver", "user_id": "user001", "order": 1 },
-    { "type": "approver", "user_id": "user002", "order": 2 }
+    { "type": "approver", "userId": "user001", "order": 1 },
+    { "type": "approver", "userId": "user002", "order": 2 }
   ]
 }
 ```
@@ -1384,9 +1716,9 @@
 
 ```json
 {
-  "name_cn": "API注册审批流V2",
+  "nameCn": "API注册审批流V2",
   "nodes": [
-    { "type": "approver", "user_id": "user003", "order": 1 }
+    { "type": "approver", "userId": "user003", "order": 1 }
   ]
 }
 ```
@@ -1416,16 +1748,16 @@
     "total": 10,
     "list": [
       {
-        "id": 500,
+        "id": "500",
         "type": "resource_register",
-        "business_type": "api",
-        "business_id": 100,
-        "business_name": "发送消息",
-        "applicant_id": "user003",
-        "applicant_name": "王五",
+        "businessType": "api",
+        "businessId": "100",
+        "businessName": "发送消息",
+        "applicantId": "user003",
+        "applicantName": "王五",
         "status": 0,
-        "current_node": 1,
-        "create_time": "2026-04-20T10:00:00.000Z"
+        "currentNode": 1,
+        "createTime": "2026-04-20T10:00:00.000Z"
       }
     ]
   }
@@ -1444,23 +1776,23 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "type": "resource_register",
-    "business_type": "api",
-    "business_id": 100,
-    "business_data": {
-      "name_cn": "发送消息",
+    "businessType": "api",
+    "businessId": "100",
+    "businessData": {
+      "nameCn": "发送消息",
       "path": "/api/v1/messages",
       "method": "POST"
     },
-    "applicant_id": "user003",
-    "applicant_name": "王五",
+    "applicantId": "user003",
+    "applicantName": "王五",
     "status": 0,
-    "flow_id": 2,
-    "current_node": 1,
+    "flowId": "2",
+    "currentNode": 1,
     "nodes": [
-      { "order": 1, "user_id": "user001", "user_name": "张三", "status": 0 },
-      { "order": 2, "user_id": "user002", "user_name": "李四", "status": null }
+      { "order": 1, "userId": "user001", "userName": "张三", "status": 0 },
+      { "order": 2, "userId": "user002", "userName": "李四", "status": null }
     ],
     "logs": []
   }
@@ -1491,7 +1823,7 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "status": 1,
     "message": "审批通过，API 已上架"
   }
@@ -1522,7 +1854,7 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "status": 2,
     "message": "审批已驳回"
   }
@@ -1543,7 +1875,7 @@
 {
   "code": 0,
   "data": {
-    "id": 500,
+    "id": "500",
     "status": 3,
     "message": "审批已撤销"
   }
@@ -1552,9 +1884,75 @@
 
 ---
 
+#### 50. POST /api/v1/approvals/batch-approve
+
+批量同意审批。
+
+**请求体**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| approval_ids | array[long] | 是 | 审批单ID列表 |
+| comment | string | 否 | 审批意见（统一填写） |
+
+```json
+{
+  "approvalIds": ["500", "501", "502"],
+  "comment": "批量审批通过"
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "successCount": 3,
+    "failedCount": 0,
+    "message": "批量审批通过，共3条"
+  }
+}
+```
+
+---
+
+#### 51. POST /api/v1/approvals/batch-reject
+
+批量驳回审批（需填写原因）。
+
+**请求体**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| approval_ids | array[long] | 是 | 审批单ID列表 |
+| reason | string | 是 | 驳回原因（统一填写） |
+
+```json
+{
+  "approvalIds": ["500", "501", "502"],
+  "reason": "文档不完整，请补充后重新提交"
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "successCount": 3,
+    "failedCount": 0,
+    "message": "批量驳回成功，共3条"
+  }
+}
+```
+
+---
+
 ### 2.9 Scope 授权管理
 
-#### 50. GET /api/v1/user-authorizations
+#### 52. GET /api/v1/user-authorizations
 
 获取用户授权列表。
 
@@ -1572,14 +1970,14 @@
   "code": 0,
   "data": [
     {
-      "id": 600,
-      "user_id": "user001",
-      "user_name": "张三",
-      "app_id": 10,
-      "app_name": "消息助手",
+      "id": "600",
+      "userId": "user001",
+      "userName": "张三",
+      "appId": "10",
+      "appName": "消息助手",
       "scopes": ["api:im:send-message", "api:im:get-message"],
-      "expires_at": "2026-12-31T23:59:59.000Z",
-      "create_time": "2026-04-20T10:00:00.000Z"
+      "expiresAt": "2026-12-31T23:59:59.000Z",
+      "createTime": "2026-04-20T10:00:00.000Z"
     }
   ]
 }
@@ -1587,7 +1985,7 @@
 
 ---
 
-#### 51. POST /api/v1/user-authorizations
+#### 53. POST /api/v1/user-authorizations
 
 用户授权（设置有效期）。
 
@@ -1602,10 +2000,10 @@
 
 ```json
 {
-  "user_id": "user001",
-  "app_id": 10,
+  "userId": "user001",
+  "appId": "10",
   "scopes": ["api:im:send-message", "api:im:get-message"],
-  "expires_at": "2026-12-31T23:59:59"
+  "expiresAt": "2026-12-31T23:59:59"
 }
 ```
 
@@ -1615,18 +2013,18 @@
 {
   "code": 0,
   "data": {
-    "id": 600,
-    "user_id": "user001",
-    "app_id": 10,
+    "id": "600",
+    "userId": "user001",
+    "appId": "10",
     "scopes": ["api:im:send-message", "api:im:get-message"],
-    "expires_at": "2026-12-31T23:59:59.000Z"
+    "expiresAt": "2026-12-31T23:59:59.000Z"
   }
 }
 ```
 
 ---
 
-#### 52. DELETE /api/v1/user-authorizations/:id
+#### 54. DELETE /api/v1/user-authorizations/:id
 
 取消授权。
 
@@ -1644,7 +2042,7 @@
 
 ### 2.10 消费网关
 
-#### 53. ANY /gateway/api/*
+#### 55. ANY /gateway/api/*
 
 API 请求代理与鉴权。
 
@@ -1677,7 +2075,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 54. POST /gateway/events/publish
+#### 56. POST /gateway/events/publish
 
 事件发布接口。
 
@@ -1696,7 +2094,7 @@ API 请求代理与鉴权。
 {
   "topic": "im.message.received",
   "payload": {
-    "message_id": "msg001",
+    "messageId": "msg001",
     "content": "Hello World",
     "sender": "user001"
   }
@@ -1726,7 +2124,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 55. POST /gateway/callbacks/invoke
+#### 57. POST /gateway/callbacks/invoke
 
 回调触发接口。
 
@@ -1743,9 +2141,9 @@ API 请求代理与鉴权。
 
 ```json
 {
-  "callback_scope": "callback:approval:completed",
+  "callbackScope": "callback:approval:completed",
   "payload": {
-    "approval_id": "app001",
+    "approvalId": "app001",
     "status": "approved",
     "approver": "user001"
   }
@@ -1763,7 +2161,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 56. GET /gateway/permissions/check
+#### 58. GET /gateway/permissions/check
 
 权限校验接口（供网关内部调用）。
 
@@ -1781,8 +2179,8 @@ API 请求代理与鉴权。
   "code": 0,
   "data": {
     "authorized": true,
-    "subscription_id": 300,
-    "subscription_status": 1
+    "subscriptionId": "300",
+    "subscriptionStatus": 1
   }
 }
 ```
