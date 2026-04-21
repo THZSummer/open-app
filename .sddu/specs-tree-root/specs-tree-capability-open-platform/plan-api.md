@@ -1015,6 +1015,11 @@
         "nameCn": "发送消息权限",
         "scope": "api:im:send-message"
       },
+      "api": {
+        "path": "/api/v1/messages",
+        "method": "POST",
+        "docUrl": "https://docs.example.com/api/send-message"
+      },
       "category": {
         "id": "2",
         "nameCn": "IM业务"
@@ -1025,7 +1030,6 @@
       },
       "status": 1,
       "authType": 0,
-      "docUrl": "https://docs.example.com/api/send-message",
       "approvalUrl": "https://platform.example.com/approval/300",
       "createTime": "2026-04-20T10:00:00.000Z"
     }
@@ -1065,11 +1069,11 @@
       "scope": "api:im:send-message",
       "status": 1,
       "needApproval": 1,
-      "docUrl": "https://docs.example.com/api/send-message",
       "isSubscribed": 1,
       "api": {
         "path": "/api/v1/messages",
-        "method": "POST"
+        "method": "POST",
+        "docUrl": "https://docs.example.com/api/send-message"
       }
     }
   ]
@@ -1205,10 +1209,10 @@
       "scope": "event:im:message-received",
       "status": 1,
       "needApproval": 1,
-      "docUrl": "https://docs.example.com/event/message-received",
       "isSubscribed": 1,
       "event": {
-        "topic": "im.message.received"
+        "topic": "im.message.received",
+        "docUrl": "https://docs.example.com/event/message-received"
       }
     }
   ]
@@ -1368,8 +1372,10 @@
       "scope": "callback:approval:completed",
       "status": 1,
       "needApproval": 1,
-      "docUrl": "https://docs.example.com/callback/approval-completed",
-      "isSubscribed": 1
+      "isSubscribed": 1,
+      "callback": {
+        "docUrl": "https://docs.example.com/callback/approval-completed"
+      }
     }
   ]
 }
