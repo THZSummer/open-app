@@ -1,31 +1,17 @@
 # 开发环境配置
 
 > 本文档为 `plan.md` 的子文档，定义能力开放平台的开发环境配置。
+> 采用 Spring Boot Profile 机制，配置文件分为 application.yml 和 application-dev.yml。
 
 ---
 
-## 1. 环境变量配置
+## 1. 配置文件说明
 
-### 1.1 数据库配置
-
-```bash
-# Database
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=openapp
-DB_USERNAME=openapp
-DB_PASSWORD=openapp
-```
-
-### 1.2 Redis 配置
-
-```bash
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=openapp
-REDIS_DATABASE=0
-```
+| 文件 | 说明 | 使用场景 |
+|------|------|----------|
+| application.yml | 主配置文件，包含公共配置 | 所有环境 |
+| application-dev.yml | 开发环境配置 | 开发环境（spring.profiles.active=dev） |
+| application-prod.yml | 生产环境配置 | 生产环境（spring.profiles.active=prod） |
 
 ---
 
@@ -40,9 +26,24 @@ REDIS_DATABASE=0
 
 ---
 
-## 3. 应用配置示例
+## 3. open-server 配置
 
-### 3.1 open-server/application.yml
+### 3.1 application.yml（主配置）
+
+```yaml
+spring:
+  profiles:
+    active: dev
+  application:
+    name: open-server
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+```
+
+### 3.2 application-dev.yml（开发环境配置）
 
 ```yaml
 server:
@@ -50,27 +51,36 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:openapp}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: ${DB_USERNAME:openapp}
-    password: ${DB_PASSWORD:openapp}
+    url: jdbc:mysql://localhost:3306/openapp?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: openapp
+    password: openapp
     driver-class-name: com.mysql.cj.jdbc.Driver
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:openapp}
-    database: ${REDIS_DATABASE:0}
-
-mybatis:
-  mapper-locations: classpath:mapper/*.xml
-  configuration:
-    map-underscore-to-camel-case: true
+    host: localhost
+    port: 6379
+    password: openapp
+    database: 0
 
 # Mock 配置
 mock:
   enabled: true
 ```
 
-### 3.2 api-server/application.yml
+---
+
+## 4. api-server 配置
+
+### 4.1 application.yml（主配置）
+
+```yaml
+spring:
+  profiles:
+    active: dev
+  application:
+    name: api-server
+```
+
+### 4.2 application-dev.yml（开发环境配置）
 
 ```yaml
 server:
@@ -78,15 +88,15 @@ server:
 
 spring:
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:openapp}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: ${DB_USERNAME:openapp}
-    password: ${DB_PASSWORD:openapp}
+    url: jdbc:mysql://localhost:3306/openapp?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: openapp
+    password: openapp
     driver-class-name: com.mysql.cj.jdbc.Driver
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:openapp}
-    database: ${REDIS_DATABASE:0}
+    host: localhost
+    port: 6379
+    password: openapp
+    database: 0
 
 # 内部API网关配置
 internal:
@@ -94,7 +104,21 @@ internal:
     url: http://internal-gateway:9090
 ```
 
-### 3.3 event-server/application.yml
+---
+
+## 5. event-server 配置
+
+### 5.1 application.yml（主配置）
+
+```yaml
+spring:
+  profiles:
+    active: dev
+  application:
+    name: event-server
+```
+
+### 5.2 application-dev.yml（开发环境配置）
 
 ```yaml
 server:
@@ -102,10 +126,10 @@ server:
 
 spring:
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:openapp}
-    database: ${REDIS_DATABASE:0}
+    host: localhost
+    port: 6379
+    password: openapp
+    database: 0
 
 # api-server 调用配置
 api-server:
@@ -117,7 +141,11 @@ internal:
     url: http://internal-message-gateway:9091
 ```
 
-### 3.4 open-web/.env.development
+---
+
+## 6. open-web 前端配置
+
+### 6.1 .env.development
 
 ```bash
 # API 基础路径
@@ -129,28 +157,18 @@ VITE_APP_TITLE=能力开放平台
 
 ---
 
-## 4. .gitignore 配置示例
+## 7. .gitignore 配置示例
 
-### 4.1 后端工程 (.gitignore)
+### 7.1 后端工程 (.gitignore)
 
 ```gitignore
 # Maven
 target/
 !.mvn/wrapper/maven-wrapper.jar
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
-.mvn/timing.properties
 
 # IDE
 .idea/
 *.iml
-*.ipr
-*.iws
 .project
 .classpath
 .settings/
@@ -165,27 +183,18 @@ logs/
 Thumbs.db
 ```
 
-### 4.2 前端工程 (.gitignore)
+### 7.2 前端工程 (.gitignore)
 
 ```gitignore
 # Dependencies
 node_modules/
-.pnp
-.pnp.js
 
 # Build
 dist/
 build/
 *.local
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
 # Environment
-.env
 .env.local
 .env.development.local
 .env.test.local
@@ -193,19 +202,16 @@ build/
 
 # Logs
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
 # OS
 .DS_Store
-Thumbs.db
 ```
 
 ---
 
-## 5. 数据库初始化
+## 8. 数据库初始化
 
-### 5.1 创建数据库
+### 8.1 创建数据库
 
 ```sql
 CREATE DATABASE IF NOT EXISTS openapp 
@@ -217,7 +223,7 @@ GRANT ALL PRIVILEGES ON openapp.* TO 'openapp'@'%';
 FLUSH PRIVILEGES;
 ```
 
-### 5.2 初始化表结构
+### 8.2 初始化表结构
 
 ```bash
 mysql -u openapp -p openapp < docs/sql/init-schema.sql
@@ -226,9 +232,9 @@ mysql -u openapp -p openapp < docs/sql/insert-default-data.sql
 
 ---
 
-## 6. 本地开发启动
+## 9. 本地开发启动
 
-### 6.1 启动后端服务
+### 9.1 启动后端服务
 
 ```bash
 # 启动 open-server
@@ -241,7 +247,7 @@ cd api-server && mvn spring-boot:run
 cd event-server && mvn spring-boot:run
 ```
 
-### 6.2 启动前端应用
+### 9.2 启动前端应用
 
 ```bash
 cd open-web

@@ -4,25 +4,31 @@
 
 **能力开放平台**是 open-app 体系下的基础能力平台，聚焦 XX 通讯平台的能力开放管理，将企业内部 XX 平台的各类能力（API、事件、回调、连接器等）开放给企业内部三方平台消费使用，构建完整的企业内部能力生态。
 
-**当前状态**: 🟢 planned（技术规划完成）  
+**当前状态**: 🟢 tasked（任务分解完成）  
 **创建时间**: 2026-04-13  
 **规划时间**: 2026-04-20  
-**会话 ID**: capability-session-001
+**任务分解时间**: 2026-04-21
 
 ## 目录结构
 
 ```
 specs-tree-capability-open-platform/
 ├── README.md                  # 本文件 - 目录导航
-├── spec.md                    # 功能规范文档（567 行）
+├── spec.md                    # 功能规范文档
 ├── spec.json                  # 规范元数据
-├── plan.md                    # 技术规划文档（800+ 行）⭐ 新增
-├── ADR-001.md                 # 架构决策：单体应用架构 ⭐ 新增
-├── ADR-002.md                 # 架构决策：Mock 策略 ⭐ 新增
-├── ADR-003.md                 # 架构决策：权限资源抽象 ⭐ 新增
-├── discovery-report.md        # 需求挖掘报告（615 行）
-├── discovery-analysis.md      # 需求分析笔记（110 行）
-├── discovery-session-log.md   # 会话日志（190 行）
+├── plan.md                    # 技术规划文档
+├── plan-api.md                # 接口设计文档 ⭐ 新增
+├── plan-db.md                 # 数据库设计文档 ⭐ 新增
+├── plan-page.md               # 页面设计文档 ⭐ 新增
+├── plan-config-dev.md         # 开发环境配置文档 ⭐ 新增
+├── ADR-001.md                 # 架构决策：单体应用架构
+├── ADR-002.md                 # 架构决策：Mock 策略
+├── ADR-003.md                 # 架构决策：权限资源抽象
+├── tasks.md                   # 任务分解文档 ⭐ 新增
+├── tasks.json                 # 任务数据 ⭐ 新增
+├── discovery-report.md        # 需求挖掘报告
+├── discovery-analysis.md      # 需求分析笔记
+├── discovery-session-log.md   # 会话日志
 └── state.json                 # 状态文件
 ```
 
@@ -33,9 +39,15 @@ specs-tree-capability-open-platform/
 | spec.md | 功能规范文档 - 完整的 Feature 规范，包含 Goals、用户故事、FR/NFR、技术设计 | 567 行 | ✅ specified |
 | spec.json | 规范元数据 - Feature ID、状态、版本等信息 | - | ✅ specified |
 | plan.md | 技术规划文档 - 架构分析、方案对比、文件清单、风险评估、数据库设计 | 800+ 行 | ✅ planned |
+| plan-api.md | 接口设计文档 - 58个接口的详细设计，包含请求/响应示例 | - | ✅ planned |
+| plan-db.md | 数据库设计文档 - 15张表的DDL建表语句和字段说明 | - | ✅ planned |
+| plan-page.md | 页面设计文档 - 前端页面详细设计 | - | ✅ planned |
+| plan-config-dev.md | 开发环境配置 - 数据库、Redis、端口、.gitignore配置 | - | ✅ planned |
 | ADR-001.md | 架构决策记录 - 采用单体应用 + 模块化架构 | - | ✅ accepted |
 | ADR-002.md | 架构决策记录 - Mock 策略实现第三方依赖隔离 | - | ✅ accepted |
 | ADR-003.md | 架构决策记录 - 权限资源抽象设计 | - | ✅ accepted |
+| tasks.md | 任务分解文档 - 13个任务、5个波次、103人天 | 877 行 | ✅ tasked |
+| tasks.json | 任务数据 - 任务元数据，供工具读取 | - | ✅ tasked |
 | discovery-report.md | 需求挖掘报告 - 完整的需求挖掘报告，包含核心定位、用户画像、需求分类、竞品分析等 | 615 行 | ✅ 已完成 |
 | discovery-analysis.md | 需求分析笔记 - 能力分类模型、用户场景分析、优先级评估 | 110 行 | ✅ 已完成 |
 | discovery-session-log.md | 会话日志 - 原始对话记录，包含三轮问题空间探索 | 190 行 | ✅ 已完成 |
@@ -85,4 +97,4 @@ specs-tree-capability-open-platform/
 
 ---
 
-*最后更新: 2026-04-20 | @sddu-docs 自动生成*
+*最后更新: 2026-04-21 | @sddu-docs 自动生成*
