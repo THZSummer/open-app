@@ -1310,7 +1310,7 @@ CREATE TABLE `openplatform_v2_api_p_t` (
 | `openplatform_v2_category_owner_t` | - | 新建 | 分类责任人关联表 |
 | `openplatform_v2_api_t` | `openplatform_permission_api_t` | 扩展 | 新建表，保留原有表 |
 | `openplatform_v2_api_p_t` | - | 新建 | API 资源属性表 |
-| `openplatform_v2_event_t` | 现有同名表 | 扩展 | 新建表，保留原有表 |
+| `openplatform_v2_event_t` | `openplatform_event_t` | 扩展 | 新建表，保留原有表 |
 | `openplatform_v2_event_p_t` | - | 新建 | 事件资源属性表 |
 | `openplatform_v2_callback_t` | - | 新建 | 回调资源主表 |
 | `openplatform_v2_callback_p_t` | - | 新建 | 回调资源属性表 |
