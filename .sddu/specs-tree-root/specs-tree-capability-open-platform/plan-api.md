@@ -90,6 +90,33 @@
 }
 ```
 
+#### 分页规范
+
+所有列表接口统一支持分页，使用以下格式：
+
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | int | 否 | 页码，从 1 开始，默认 1 |
+| size | int | 否 | 每页数量，默认 20，最大 100 |
+
+**响应格式**：
+
+```json
+{
+  "code": 0,
+  "data": {
+    "total": 100,
+    "page": 1,
+    "size": 20,
+    "list": [
+      // 数据列表
+    ]
+  }
+}
+```
+
 ### 0.5 示例对照
 
 ```json
@@ -1108,42 +1135,50 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | status | int | 否 | 订阅状态过滤（0=待审, 1=已授权, 2=已拒绝, 3=已取消） |
+| keyword | string | 否 | 搜索关键词（权限名称、Scope） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "300",
-      "appId": "10",
-      "permissionId": "200",
-      "permission": {
-        "nameCn": "发送消息权限",
-        "scope": "api:im:send-message"
-      },
-      "api": {
-        "path": "/api/v1/messages",
-        "method": "POST",
-        "docUrl": "https://docs.example.com/api/send-message"
-      },
-      "category": {
-        "id": "2",
-        "nameCn": "IM业务",
-        "path": "/1/2/",
-        "categoryPath": ["A类应用权限", "IM业务"]
-      },
-      "approver": {
-        "userId": "user001",
-        "userName": "张三"
-      },
-      "status": 1,
-      "authType": 0,
-      "approvalUrl": "https://platform.example.com/approval/300",
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+  "data": {
+    "total": 50,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "300",
+        "appId": "10",
+        "permissionId": "200",
+        "permission": {
+          "nameCn": "发送消息权限",
+          "scope": "api:im:send-message"
+        },
+        "api": {
+          "path": "/api/v1/messages",
+          "method": "POST",
+          "docUrl": "https://docs.example.com/api/send-message"
+        },
+        "category": {
+          "id": "2",
+          "nameCn": "IM业务",
+          "path": "/1/2/",
+          "categoryPath": ["A类应用权限", "IM业务"]
+        },
+        "approver": {
+          "userId": "user001",
+          "userName": "张三"
+        },
+        "status": 1,
+        "authType": 0,
+        "approvalUrl": "https://platform.example.com/approval/300",
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    ]
+  }
 }
 ```
 
@@ -1165,28 +1200,35 @@
 | keyword | string | 否 | 搜索关键词（名称、Scope） |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 | include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "200",
-      "nameCn": "发送消息权限",
-      "nameEn": "Send Message Permission",
-      "scope": "api:im:send-message",
-      "status": 1,
-      "needApproval": 1,
-      "isSubscribed": 1,
-      "api": {
-        "path": "/api/v1/messages",
-        "method": "POST",
-        "docUrl": "https://docs.example.com/api/send-message"
+  "data": {
+    "total": 30,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "200",
+        "nameCn": "发送消息权限",
+        "nameEn": "Send Message Permission",
+        "scope": "api:im:send-message",
+        "status": 1,
+        "needApproval": 1,
+        "isSubscribed": 1,
+        "api": {
+          "path": "/api/v1/messages",
+          "method": "POST",
+          "docUrl": "https://docs.example.com/api/send-message"
+        }
       }
-    }
-  ]
+    ]
+  }
 }
 ```
 
@@ -1260,37 +1302,45 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | status | int | 否 | 订阅状态过滤 |
+| keyword | string | 否 | 搜索关键词（权限名称、Scope、Topic） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "301",
-      "appId": "10",
-      "permissionId": "201",
-      "permission": {
-        "nameCn": "消息接收权限",
-        "scope": "event:im:message-received"
-      },
-      "event": {
-        "topic": "im.message.received"
-      },
-      "category": {
-        "id": "2",
-        "nameCn": "IM业务",
-        "path": "/1/2/",
-        "categoryPath": ["A类应用权限", "IM业务"]
-      },
-      "status": 1,
-      "channelType": 1,
-      "channelAddress": "https://webhook.example.com/events",
-      "authType": 0,
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+  "data": {
+    "total": 30,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "301",
+        "appId": "10",
+        "permissionId": "201",
+        "permission": {
+          "nameCn": "消息接收权限",
+          "scope": "event:im:message-received"
+        },
+        "event": {
+          "topic": "im.message.received"
+        },
+        "category": {
+          "id": "2",
+          "nameCn": "IM业务",
+          "path": "/1/2/",
+          "categoryPath": ["A类应用权限", "IM业务"]
+        },
+        "status": 1,
+        "channelType": 1,
+        "channelAddress": "https://webhook.example.com/events",
+        "authType": 0,
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    ]
+  }
 }
 ```
 
@@ -1312,27 +1362,34 @@
 | keyword | string | 否 | 搜索关键词 |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 | include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "201",
-      "nameCn": "消息接收权限",
-      "nameEn": "Message Received Permission",
-      "scope": "event:im:message-received",
-      "status": 1,
-      "needApproval": 1,
-      "isSubscribed": 1,
-      "event": {
-        "topic": "im.message.received",
-        "docUrl": "https://docs.example.com/event/message-received"
+  "data": {
+    "total": 20,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "201",
+        "nameCn": "消息接收权限",
+        "nameEn": "Message Received Permission",
+        "scope": "event:im:message-received",
+        "status": 1,
+        "needApproval": 1,
+        "isSubscribed": 1,
+        "event": {
+          "topic": "im.message.received",
+          "docUrl": "https://docs.example.com/event/message-received"
+        }
       }
-    }
-  ]
+    ]
+  }
 }
 ```
 
@@ -1449,33 +1506,47 @@
 
 获取应用回调订阅列表。
 
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | int | 否 | 订阅状态过滤 |
+| keyword | string | 否 | 搜索关键词（权限名称、Scope） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
+
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "302",
-      "appId": "10",
-      "permissionId": "202",
-      "permission": {
-        "nameCn": "审批完成回调权限",
-        "scope": "callback:approval:completed"
-      },
-      "category": {
-        "id": "3",
-        "nameCn": "审批回调",
-        "path": "/1/3/",
-        "categoryPath": ["A类应用权限", "审批回调"]
-      },
-      "status": 1,
-      "channelType": 1,
-      "channelAddress": "https://webhook.example.com/callbacks",
-      "authType": 0,
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+  "data": {
+    "total": 20,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "302",
+        "appId": "10",
+        "permissionId": "202",
+        "permission": {
+          "nameCn": "审批完成回调权限",
+          "scope": "callback:approval:completed"
+        },
+        "category": {
+          "id": "3",
+          "nameCn": "审批回调",
+          "path": "/1/3/",
+          "categoryPath": ["A类应用权限", "审批回调"]
+        },
+        "status": 1,
+        "channelType": 1,
+        "channelAddress": "https://webhook.example.com/callbacks",
+        "authType": 0,
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    ]
+  }
 }
 ```
 
@@ -1497,27 +1568,35 @@
 | keyword | string | 否 | 搜索关键词 |
 | need_approval | int | 否 | 是否需要审核过滤（0=不需要审核, 1=需要审核） |
 | include_children | boolean | 否 | 是否包含子分类权限（默认 true，递归获取） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "202",
-      "nameCn": "审批完成回调权限",
-      "nameEn": "Approval Completed Callback Permission",
-      "scope": "callback:approval:completed",
-      "status": 1,
-      "needApproval": 1,
-      "isSubscribed": 1,
-      "callback": {
-        "docUrl": "https://docs.example.com/callback/approval-completed"
+  "data": {
+    "total": 15,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "202",
+        "nameCn": "审批完成回调权限",
+        "nameEn": "Approval Completed Callback Permission",
+        "scope": "callback:approval:completed",
+        "status": 1,
+        "needApproval": 1,
+        "isSubscribed": 1,
+        "callback": {
+          "docUrl": "https://docs.example.com/callback/approval-completed"
+        }
       }
-    }
-  ]
+    ]
+  }
 }
+```
 ```
 
 ---
@@ -1617,30 +1696,44 @@
 
 获取审批流程模板列表。
 
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| keyword | string | 否 | 搜索关键词（名称、编码） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
+
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "1",
-      "nameCn": "默认审批流",
-      "nameEn": "Default Approval Flow",
-      "code": "default",
-      "isDefault": 1,
-      "status": 1
-    },
-    {
-      "id": "2",
-      "nameCn": "API注册审批流",
-      "nameEn": "API Registration Approval Flow",
-      "code": "api_register",
-      "isDefault": 0,
-      "status": 1
-    }
-  ]
+  "data": {
+    "total": 5,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "1",
+        "nameCn": "默认审批流",
+        "nameEn": "Default Approval Flow",
+        "code": "default",
+        "isDefault": 1,
+        "status": 1
+      },
+      {
+        "id": "2",
+        "nameCn": "API注册审批流",
+        "nameEn": "API Registration Approval Flow",
+        "code": "api_register",
+        "isDefault": 0,
+        "status": 1
+      }
+    ]
+  }
 }
+```
 ```
 
 ---
@@ -1736,8 +1829,9 @@
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | type | string | 否 | 审批类型（resource_register=资源注册, permission_apply=权限申请） |
-| page | int | 否 | 页码 |
-| size | int | 否 | 每页数量 |
+| keyword | string | 否 | 搜索关键词（业务名称、申请人） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
@@ -1746,6 +1840,8 @@
   "code": 0,
   "data": {
     "total": 10,
+    "page": 1,
+    "size": 20,
     "list": [
       {
         "id": "500",
@@ -1960,26 +2056,34 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| user_id | string | 否 | 用户ID过滤 |
-| app_id | long | 否 | 应用ID过滤 |
+| userId | string | 否 | 用户ID过滤 |
+| appId | string | 否 | 应用ID过滤 |
+| keyword | string | 否 | 搜索关键词（用户名、应用名） |
+| page | int | 否 | 页码，默认 1 |
+| size | int | 否 | 每页数量，默认 20 |
 
 **响应示例**：
 
 ```json
 {
   "code": 0,
-  "data": [
-    {
-      "id": "600",
-      "userId": "user001",
-      "userName": "张三",
-      "appId": "10",
-      "appName": "消息助手",
-      "scopes": ["api:im:send-message", "api:im:get-message"],
-      "expiresAt": "2026-12-31T23:59:59.000Z",
-      "createTime": "2026-04-20T10:00:00.000Z"
-    }
-  ]
+  "data": {
+    "total": 20,
+    "page": 1,
+    "size": 20,
+    "list": [
+      {
+        "id": "600",
+        "userId": "user001",
+        "userName": "张三",
+        "appId": "10",
+        "appName": "消息助手",
+        "scopes": ["api:im:send-message", "api:im:get-message"],
+        "expiresAt": "2026-12-31T23:59:59.000Z",
+        "createTime": "2026-04-20T10:00:00.000Z"
+      }
+    ]
+  }
 }
 ```
 
