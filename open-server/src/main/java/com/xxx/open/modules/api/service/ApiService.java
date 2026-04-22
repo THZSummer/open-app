@@ -239,21 +239,29 @@ public class ApiService {
             throw new BusinessException("404", "API 不存在", "API not found");
         }
 
-        Long categoryId = parseId(request.getCategoryId());
-
-        // 检查分类是否存在
-        Category category = categoryMapper.selectById(categoryId);
-        if (category == null) {
-            throw new BusinessException("400", "分类不存在", "Category not found");
+        Long categoryId = null;
+        if (request.getCategoryId() != null && !request.getCategoryId().trim().isEmpty()) {
+            categoryId = parseId(request.getCategoryId());
+            // 检查分类是否存在
+            Category category = categoryMapper.selectById(categoryId);
+            if (category == null) {
+                throw new BusinessException("400", "分类不存在", "Category not found");
+            }
         }
 
         Date now = new Date();
         String currentUser = getCurrentUser();
 
-        // 更新 API
-        api.setNameCn(request.getNameCn());
-        api.setNameEn(request.getNameEn());
-        api.setCategoryId(categoryId); // 更新分类ID
+        // 更新 API（只更新非null字段）
+        if (request.getNameCn() != null && !request.getNameCn().trim().isEmpty()) {
+            api.setNameCn(request.getNameCn());
+        }
+        if (request.getNameEn() != null && !request.getNameEn().trim().isEmpty()) {
+            api.setNameEn(request.getNameEn());
+        }
+        if (categoryId != null) {
+            api.setCategoryId(categoryId);
+        }
         api.setLastUpdateTime(now);
         api.setLastUpdateBy(currentUser);
 
@@ -262,9 +270,15 @@ public class ApiService {
         // 更新权限
         Permission permission = permissionMapper.selectByResource("api", apiId);
         if (permission != null && request.getPermission() != null) {
-            permission.setNameCn(request.getPermission().getNameCn());
-            permission.setNameEn(request.getPermission().getNameEn());
-            permission.setCategoryId(categoryId);
+            if (request.getPermission().getNameCn() != null && !request.getPermission().getNameCn().trim().isEmpty()) {
+                permission.setNameCn(request.getPermission().getNameCn());
+            }
+            if (request.getPermission().getNameEn() != null && !request.getPermission().getNameEn().trim().isEmpty()) {
+                permission.setNameEn(request.getPermission().getNameEn());
+            }
+            if (categoryId != null) {
+                permission.setCategoryId(categoryId);
+            }
             permission.setLastUpdateTime(now);
             permission.setLastUpdateBy(currentUser);
 

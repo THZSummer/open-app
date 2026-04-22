@@ -231,10 +231,16 @@ public class EventService {
             }
         }
         
-        // 更新事件基本信息
-        event.setNameCn(request.getNameCn());
-        event.setNameEn(request.getNameEn());
-        event.setCategoryId(categoryId);
+        // 更新事件基本信息（只更新非null字段）
+        if (request.getNameCn() != null && !request.getNameCn().trim().isEmpty()) {
+            event.setNameCn(request.getNameCn());
+        }
+        if (request.getNameEn() != null && !request.getNameEn().trim().isEmpty()) {
+            event.setNameEn(request.getNameEn());
+        }
+        if (categoryId != null) {
+            event.setCategoryId(categoryId);
+        }
         event.setLastUpdateTime(new Date());
         event.setLastUpdateBy("system"); // TODO: 从上下文获取当前用户
         
