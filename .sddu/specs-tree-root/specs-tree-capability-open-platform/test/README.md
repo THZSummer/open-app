@@ -10,6 +10,10 @@
 | [test-case-api-server.md](./test-case-api-server.md) | api-server | 5 | Scope授权管理、消费网关、权限校验 |
 | [test-case-event-server.md](./test-case-event-server.md) | event-server | 2 | 事件发布、回调触发 |
 
+## 脚本目录
+
+测试脚本已迁移至 [scripts/](./scripts/) 目录，包含 7 个接口测试脚本。
+
 ## 测试覆盖
 
 - **接口总数**: 58 个
