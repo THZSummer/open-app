@@ -2,7 +2,6 @@ package com.xxx.event;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 
 /**
  * 事件/回调网关服务
@@ -14,9 +13,7 @@ import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
  * @author SDDU Build Agent
  * @version 1.0.0
  */
-@SpringBootApplication(exclude = {
-    RedisAutoConfiguration.class
-})
+@SpringBootApplication
 public class EventServerApplication {
 
     public static void main(String[] args) {
