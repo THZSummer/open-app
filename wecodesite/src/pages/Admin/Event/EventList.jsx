@@ -1,0 +1,187 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Button,
+  Table,
+  Tag,
+  Space,
+  Input,
+  Select,
+  Popconfirm,
+  Empty,
+  Spin,
+} from 'antd';
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+} from '@ant-design/icons';
+import { fetchEventList, deleteEvent } from './thunk';
+import './EventList.m.less';
+
+const { Search } = Input;
+
+const STATUS_MAP = {
+  0: { text: '草稿', color: 'default' },
+  1: { text: '待审', color: 'orange' },
+  2: { text: '已发布', color: 'green' },
+  3: { text: '已下线', color: 'red' },
+};
+
+function EventList() {
+  const [loading, setLoading] = useState(false);
+  const [eventList, setEventList] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [keyword, setKeyword] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async (params = {}) => {
+    setLoading(true);
+    const result = await fetchEventList({
+      keyword,
+      categoryId,
+      status,
+      ...params,
+    });
+    if (result.code === '200') {
+      setEventList(result.data);
+      setTotal(result.page?.total || 0);
+    }
+    setLoading(false);
+  };
+
+  const handleSearch = () => {
+    loadData();
+  };
+
+  const handleDelete = async (id) => {
+    await deleteEvent(id);
+    loadData();
+  };
+
+  const columns = [
+    {
+      title: '事件名称',
+      dataIndex: 'nameCn',
+      key: 'nameCn',
+      render: (text, record) => (
+        <div>
+          <div>{text}</div>
+          <div style={{ fontSize: 12, color: '#999' }}>{record.nameEn}</div>
+        </div>
+      ),
+    },
+    {
+      title: '分类',
+      dataIndex: 'categoryName',
+      key: 'categoryName',
+    },
+    {
+      title: 'Topic',
+      dataIndex: 'topic',
+      key: 'topic',
+      render: (text) => <code>{text}</code>,
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
+        return <Tag color={color}>{text}</Tag>;
+      },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_, record) => (
+        <Space>
+          <Button type="link" size="small" icon={<EyeOutlined />}>
+            详情
+          </Button>
+          <Button type="link" size="small" icon={<EditOutlined />}>
+            编辑
+          </Button>
+          <Popconfirm
+            title="确定删除该事件吗？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className="event-list">
+      <div className="page-header">
+        <div className="page-header-left">
+          <h4 className="page-title">事件管理</h4>
+          <span className="page-desc">管理事件定义，配置事件订阅</span>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />}>
+          注册事件
+        </Button>
+      </div>
+
+      <div className="toolbar">
+        <Search
+            placeholder="搜索事件名称"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            style={{ width: 200 }}
+            onSearch={handleSearch}
+          />
+          <Select
+            placeholder="选择分类"
+            value={categoryId}
+            onChange={setCategoryId}
+            style={{ width: 150 }}
+            allowClear
+          >
+            <Select.Option value="2-1">用户状态变更</Select.Option>
+            <Select.Option value="1-2">消息推送</Select.Option>
+          </Select>
+          <Select
+            placeholder="选择状态"
+            value={status}
+            onChange={setStatus}
+            style={{ width: 120 }}
+            allowClear
+          >
+            <Select.Option value={0}>草稿</Select.Option>
+            <Select.Option value={2}>已发布</Select.Option>
+          </Select>
+        </div>
+
+        <Spin spinning={loading}>
+          {eventList.length > 0 ? (
+            <Table
+              columns={columns}
+              dataSource={eventList}
+              rowKey="id"
+              pagination={{
+                total,
+                pageSize: 20,
+                onChange: (page) => loadData({ curPage: page }),
+              }}
+            />
+          ) : (
+            <Empty description="暂无事件数据" />
+          )}
+        </Spin>
+    </div>
+  );
+}
+
+export default EventList;

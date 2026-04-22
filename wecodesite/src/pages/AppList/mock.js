@@ -1,0 +1,55 @@
+export const mockApps = [
+  {
+    id: '1',
+    name: '测试应用',
+    icon: '🔧',
+    status: '已发布',
+    eamap: 'EAMAP-2024-001',
+    owner: 'zhangsan@company.com',
+    role: '所有者',
+    updateTime: '2024-01-15 10:30:45',
+  },
+  {
+    id: '2',
+    name: '企业服务',
+    icon: '🏢',
+    status: '开发中',
+    eamap: null,
+    owner: 'lisi@company.com',
+    role: '开发者',
+    updateTime: '2024-02-01 14:20:30',
+  },
+  {
+    id: '3',
+    name: '审批助手',
+    icon: '📋',
+    status: '已发布',
+    eamap: 'EAMAP-2024-002',
+    owner: 'wangwu@company.com',
+    role: '所有者',
+    updateTime: '2024-01-20 09:15:00',
+  },
+];
+
+export const defaultIcons = ['🚀', '💼', '📊', '🎯', '🔗', '⚡'];
+
+export const eamapOptions = [
+  { label: 'EAMAP-2024-001 - 用户认证服务', value: 'EAMAP-2024-001' },
+  { label: 'EAMAP-2024-002 - 审批流程服务', value: 'EAMAP-2024-002' },
+  { label: 'EAMAP-2024-003 - 消息推送服务', value: 'EAMAP-2024-003' },
+  { label: 'EAMAP-2024-004 - 数据分析服务', value: 'EAMAP-2024-004' },
+  { label: 'EAMAP-2024-005 - 文件存储服务', value: 'EAMAP-2024-005' },
+  { label: 'EAMAP-2024-006 - 日志监控服务', value: 'EAMAP-2024-006' },
+  { label: 'EAMAP-2024-007 - 支付结算服务', value: 'EAMAP-2024-007' },
+  { label: 'EAMAP-2024-008 - 短信验证码服务', value: 'EAMAP-2024-008' },
+  { label: 'EAMAP-2024-009 - 邮件发送服务', value: 'EAMAP-2024-009' },
+  { label: 'EAMAP-2024-010 - 考勤管理服务', value: 'EAMAP-2024-010' },
+  { label: 'EAMAP-2024-011 - 会议预约服务', value: 'EAMAP-2024-011' },
+  { label: 'EAMAP-2024-012 - 项目管理服务', value: 'EAMAP-2024-012' },
+  { label: 'EAMAP-2024-013 - 人力资源服务', value: 'EAMAP-2024-013' },
+  { label: 'EAMAP-2024-014 - 财务报销服务', value: 'EAMAP-2024-014' },
+  { label: 'EAMAP-2024-015 - 知识库管理服务', value: 'EAMAP-2024-015' },
+  { label: 'EAMAP-2024-016 - 任务分配服务', value: 'EAMAP-2024-016' },
+  { label: 'EAMAP-2024-017 - 合同管理服务', value: 'EAMAP-2024-017' },
+  { label: 'EAMAP-2024-018 - 供应商管理服务', value: 'EAMAP-2024-018' },
+];

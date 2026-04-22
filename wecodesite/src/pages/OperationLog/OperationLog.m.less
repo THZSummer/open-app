@@ -1,0 +1,76 @@
+.operation-log {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
+  min-height: 100%;
+  box-sizing: border-box;
+
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    &-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+  }
+
+  .page-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .page-desc {
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+
+  .search-area {
+    margin-bottom: 16px;
+
+    .search-form-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .search-form-left {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .search-form-right {
+      display: flex;
+      gap: 8px;
+    }
+  }
+
+  .table-area {
+    margin-bottom: 16px;
+  }
+
+  .pagination-area {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .pagination-info {
+      color: #666;
+      font-size: 14px;
+    }
+  }
+
+  .result-success {
+    color: #52c41a;
+  }
+
+  .result-fail {
+    color: #ff4d4f;
+  }
+}

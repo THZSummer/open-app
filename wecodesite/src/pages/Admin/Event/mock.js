@@ -1,0 +1,32 @@
+export const mockEvents = [
+  {
+    id: '1',
+    nameCn: '用户状态变更',
+    nameEn: 'User Status Change',
+    topic: 'user.status',
+    categoryId: '2-1',
+    categoryName: '用户状态变更',
+    status: 2,
+    createTime: '2026-04-01 10:00:00',
+  },
+  {
+    id: '2',
+    nameCn: '消息发送成功',
+    nameEn: 'Message Send Success',
+    topic: 'msg.send.ok',
+    categoryId: '1-2',
+    categoryName: '消息推送',
+    status: 2,
+    createTime: '2026-04-02 10:00:00',
+  },
+  {
+    id: '3',
+    nameCn: '新用户注册',
+    nameEn: 'New User Register',
+    topic: 'user.register',
+    categoryId: '2-1',
+    categoryName: '用户状态变更',
+    status: 0,
+    createTime: '2026-04-03 10:00:00',
+  },
+];
