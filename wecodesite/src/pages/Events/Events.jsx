@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Table, Pagination, Tag } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import { fetchEventList } from './thunk';
 import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
@@ -183,36 +182,34 @@ function Events() {
 
   return (
     <div className="events">
-      <h4 className="page-title">事件配置</h4>
-      <span className="page-desc">
-        配置事件订阅和回调地址
-        <a onClick={() => navigate('/events-docs')} style={{ marginLeft: 4, cursor: 'pointer', color: '#1677ff' }}>了解更多</a>
-      </span>
-
-      <div style={{ marginTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <strong style={{ fontSize: 16 }}>已添加事件</strong>
-          <Button icon={<PlusOutlined />} onClick={handleOpenDrawer}>添加事件</Button>
+      <div className="page-header">
+        <div className="page-header-left">
+          <h4 className="page-title">事件配置</h4>
+          <span className="page-desc">
+            配置事件订阅和回调地址
+            <a onClick={() => navigate('/events-docs')} style={{ marginLeft: 4, cursor: 'pointer', color: '#1677ff' }}>了解更多</a>
+          </span>
         </div>
-        <Table
-          columns={columns}
-          dataSource={paginatedData}
-          rowKey="id"
-          pagination={false}
-          loading={loading}
+        <Button type="primary" onClick={handleOpenDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加事件</Button>
+      </div>
+      <Table
+        columns={columns}
+        dataSource={paginatedData}
+        rowKey="id"
+        pagination={false}
+        loading={loading}
+      />
+      <div style={{ marginTop: 16, textAlign: 'right' }}>
+        <Pagination
+          total={events.length}
+          current={currentPage}
+          pageSize={pageSize}
+          pageSizeOptions={[10, 20, 50]}
+          showSizeChanger
+          showQuickJumper
+          showTotal={(total) => `共 ${total} 条`}
+          onChange={handlePageChange}
         />
-        <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <Pagination
-            total={events.length}
-            current={currentPage}
-            pageSize={pageSize}
-            pageSizeOptions={[10, 20, 50]}
-            showSizeChanger
-            showQuickJumper
-            showTotal={(total) => `共 ${total} 条`}
-            onChange={handlePageChange}
-          />
-        </div>
       </div>
 
       <EventDrawer

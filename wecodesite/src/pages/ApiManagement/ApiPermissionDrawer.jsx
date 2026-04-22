@@ -18,12 +18,12 @@ const IDENTITY_TABS = [
 ];
 
 const BUSINESS_API_TABS = [
-  { key: 'SOA', label: 'SOA类型' },
-  { key: 'APIG', label: 'APIG类型' },
+  { key: 'app_type_a', label: 'SOA类型' },
+  { key: 'app_type_b', label: 'APIG类型' },
 ];
 
 const PERSONAL_API_TABS = [
-  { key: 'AKSK', label: 'AKSK类型' },
+  { key: 'personal_aksk', label: 'AKSK类型' },
 ];
 
 /**
@@ -49,7 +49,7 @@ const transformCategoriesToModules = (categories) => {
 function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' }) {
   const enableIdentityPermission = mockFeatureFlag.enableIdentityPermission;
   const [activeIdentityType, setActiveIdentityType] = useState('BUSINESS_IDENTITY');
-  const [activeApiType, setActiveApiType] = useState('SOA');
+  const [activeApiType, setActiveApiType] = useState('app_type_a');
   const [activeModule, setActiveModule] = useState('all');
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,16 +66,16 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
       if (enableIdentityPermission) {
         if (appType === 'business') {
           setActiveIdentityType('BUSINESS_IDENTITY');
-          setActiveApiType('SOA');
+          setActiveApiType('app_type_a');
         } else {
           setActiveIdentityType('PERSONAL_IDENTITY');
-          setActiveApiType('AKSK');
+          setActiveApiType('personal_aksk');
         }
       } else {
         if (appType === 'business') {
-          setActiveApiType('SOA');
+          setActiveApiType('app_type_a');
         } else {
-          setActiveApiType('AKSK');
+          setActiveApiType('personal_aksk');
         }
         setActiveIdentityType('');
       }

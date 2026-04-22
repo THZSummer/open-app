@@ -106,7 +106,7 @@ export const fetchFilteredApis = async ({ auth, name, scope, needReview, identit
   }
   queryParams.includeChildren = true;
   
-  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: 'root' }), { params: queryParams });
+  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: '11' }), { params: queryParams });
   let apis = result?.data || [];
   
   if (scope) {

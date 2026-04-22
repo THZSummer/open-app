@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Table, Button, Tag } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import { fetchApiList } from './thunk';
 import { fetchAppInfo } from '../BasicInfo/thunk';
 import ApiPermissionDrawer from './ApiPermissionDrawer';
@@ -145,14 +144,7 @@ function ApiManagement() {
           <h4 className="page-title">API管理</h4>
           <span className="page-desc">管理应用接口，配置API权限和调用参数</span>
         </div>
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          className="btn-primary"
-          onClick={handleAddApi}
-        >
-          添加API
-        </Button>
+        <Button type="primary" onClick={handleAddApi} style={{ justifyContent: 'center', borderRadius: 6 }}>添加API</Button>
       </div>
       <Table 
         columns={columns} 
