@@ -219,11 +219,14 @@ public class ApprovalService {
     public ApprovalDetailResponse getApprovalDetail(Long id) {
         ApprovalRecord record = recordMapper.selectById(id);
         if (record == null) {
-            throw new BusinessException("404", "审批记录不存在", "Approval record not found");
+            throw new BusinessException("404", "审批记录不存在: " + id, "Approval record not found: " + id);
         }
 
         // 查询审批流程
         ApprovalFlow flow = flowMapper.selectById(record.getFlowId());
+        if (flow == null) {
+            throw new BusinessException("404", "审批流程不存在: " + record.getFlowId(), "Approval flow not found: " + record.getFlowId());
+        }
         List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(flow.getNodes());
 
         // 查询审批日志
@@ -323,8 +326,10 @@ public class ApprovalService {
 
     /**
      * 批量同意审批
+     * 
+     * 注意：此方法不开启事务，每个审批操作在独立事务中执行。
+     * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
-    @Transactional(rollbackFor = Exception.class)
     public BatchApprovalResponse batchApprove(BatchApprovalRequest request, String operatorId,
                                               String operatorName, String operator) {
         int successCount = 0;
@@ -336,7 +341,15 @@ public class ApprovalService {
                 approvalEngine.approve(approvalId, operatorId, operatorName, 
                         request.getComment(), operator);
                 successCount++;
+            } catch (BusinessException e) {
+                // 业务异常，记录失败原因
+                failedItems.add(BatchApprovalResponse.FailedItem.builder()
+                        .approvalId(approvalIdStr)
+                        .reason(e.getMessageZh())
+                        .build());
             } catch (Exception e) {
+                // 其他异常，记录失败原因
+                log.error("批量审批失败: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessage())
@@ -354,8 +367,10 @@ public class ApprovalService {
 
     /**
      * 批量驳回审批
+     * 
+     * 注意：此方法不开启事务，每个审批操作在独立事务中执行。
+     * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
-    @Transactional(rollbackFor = Exception.class)
     public BatchApprovalResponse batchReject(BatchApprovalRequest request, String operatorId,
                                              String operatorName, String operator) {
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
@@ -371,7 +386,15 @@ public class ApprovalService {
                 approvalEngine.reject(approvalId, operatorId, operatorName,
                         request.getReason(), operator);
                 successCount++;
+            } catch (BusinessException e) {
+                // 业务异常，记录失败原因
+                failedItems.add(BatchApprovalResponse.FailedItem.builder()
+                        .approvalId(approvalIdStr)
+                        .reason(e.getMessageZh())
+                        .build());
             } catch (Exception e) {
+                // 其他异常，记录失败原因
+                log.error("批量驳回失败: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessage())

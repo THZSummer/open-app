@@ -2,6 +2,7 @@ package com.xxx.open.modules.approval.engine;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
 import com.xxx.open.modules.approval.dto.ApprovalNodeDto;
 import com.xxx.open.modules.approval.entity.ApprovalFlow;
@@ -93,13 +94,13 @@ public class ApprovalEngine {
         // 查询审批流程
         ApprovalFlow flow = flowMapper.selectById(flowId);
         if (flow == null) {
-            throw new IllegalArgumentException("审批流程不存在: " + flowId);
+            throw new BusinessException("404", "审批流程不存在: " + flowId, "Approval flow not found: " + flowId);
         }
 
         // 解析审批节点
         List<ApprovalNodeDto> nodes = parseNodes(flow.getNodes());
         if (nodes == null || nodes.isEmpty()) {
-            throw new IllegalArgumentException("审批流程节点配置为空");
+            throw new BusinessException("400", "审批流程节点配置为空", "Approval flow nodes configuration is empty");
         }
 
         // 创建审批记录
@@ -141,22 +142,25 @@ public class ApprovalEngine {
         // 查询审批记录
         ApprovalRecord record = recordMapper.selectById(recordId);
         if (record == null) {
-            throw new IllegalArgumentException("审批记录不存在: " + recordId);
+            throw new BusinessException("404", "审批记录不存在: " + recordId, "Approval record not found: " + recordId);
         }
 
         // 检查状态
         if (record.getStatus() != Status.PENDING) {
-            throw new IllegalStateException("审批记录状态不正确，无法同意: " + record.getStatus());
+            throw new BusinessException("400", "审批记录状态不正确，无法同意", "Approval record status is incorrect, cannot approve");
         }
 
         // 查询审批流程
         ApprovalFlow flow = flowMapper.selectById(record.getFlowId());
+        if (flow == null) {
+            throw new BusinessException("404", "审批流程不存在: " + record.getFlowId(), "Approval flow not found: " + record.getFlowId());
+        }
         List<ApprovalNodeDto> nodes = parseNodes(flow.getNodes());
 
         // 检查当前节点
         int currentNodeIndex = record.getCurrentNode();
         if (currentNodeIndex >= nodes.size()) {
-            throw new IllegalStateException("当前节点索引超出范围");
+            throw new BusinessException("400", "当前节点索引超出范围", "Current node index out of range");
         }
 
         // 记录审批日志
@@ -219,12 +223,12 @@ public class ApprovalEngine {
         // 查询审批记录
         ApprovalRecord record = recordMapper.selectById(recordId);
         if (record == null) {
-            throw new IllegalArgumentException("审批记录不存在: " + recordId);
+            throw new BusinessException("404", "审批记录不存在: " + recordId, "Approval record not found: " + recordId);
         }
 
         // 检查状态
         if (record.getStatus() != Status.PENDING) {
-            throw new IllegalStateException("审批记录状态不正确，无法驳回: " + record.getStatus());
+            throw new BusinessException("400", "审批记录状态不正确，无法驳回", "Approval record status is incorrect, cannot reject");
         }
 
         // 记录审批日志
@@ -271,12 +275,12 @@ public class ApprovalEngine {
         // 查询审批记录
         ApprovalRecord record = recordMapper.selectById(recordId);
         if (record == null) {
-            throw new IllegalArgumentException("审批记录不存在: " + recordId);
+            throw new BusinessException("404", "审批记录不存在: " + recordId, "Approval record not found: " + recordId);
         }
 
         // 检查状态
         if (record.getStatus() != Status.PENDING) {
-            throw new IllegalStateException("审批记录状态不正确，无法撤销: " + record.getStatus());
+            throw new BusinessException("400", "审批记录状态不正确，无法撤销", "Approval record status is incorrect, cannot cancel");
         }
 
         // 更新审批状态
@@ -353,7 +357,8 @@ public class ApprovalEngine {
         }
 
         try {
-            return objectMapper.readValue(nodesJson, new TypeReference<List<ApprovalNodeDto>>() {});
+            List<ApprovalNodeDto> nodes = objectMapper.readValue(nodesJson, new TypeReference<List<ApprovalNodeDto>>() {});
+            return nodes != null ? nodes : new ArrayList<>();
         } catch (Exception e) {
             log.error("解析审批节点配置失败: {}", nodesJson, e);
             return new ArrayList<>();

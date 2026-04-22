@@ -875,6 +875,21 @@ public class PermissionService {
 
         // TODO: 查询是否已订阅（需要当前用户的应用ID）
 
+        // 获取分类信息
+        CategoryPermissionListResponse.CategoryInfo categoryInfo = null;
+        if (permission.getCategoryId() != null) {
+            Category category = categoryMapper.selectById(permission.getCategoryId());
+            if (category != null) {
+                List<String> categoryPath = buildCategoryPath(category);
+                categoryInfo = CategoryPermissionListResponse.CategoryInfo.builder()
+                        .id(String.valueOf(category.getId()))
+                        .nameCn(category.getNameCn())
+                        .path(category.getPath())
+                        .categoryPath(categoryPath)
+                        .build();
+            }
+        }
+
         return CategoryPermissionListResponse.builder()
                 .id(String.valueOf(permission.getId()))
                 .nameCn(permission.getNameCn())
@@ -884,6 +899,7 @@ public class PermissionService {
                 .needApproval(needApproval)
                 .isSubscribed(0) // 默认未订阅
                 .resource(resourceInfo)
+                .category(categoryInfo)
                 .build();
     }
 

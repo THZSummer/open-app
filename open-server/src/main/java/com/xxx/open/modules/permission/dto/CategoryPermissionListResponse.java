@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 分类权限列表响应
@@ -62,6 +63,11 @@ public class CategoryPermissionListResponse implements Serializable {
     private ResourceInfo resource;
 
     /**
+     * 分类信息
+     */
+    private CategoryInfo category;
+
+    /**
      * 资源信息
      */
     @Data
@@ -91,5 +97,37 @@ public class CategoryPermissionListResponse implements Serializable {
          * 文档URL
          */
         private String docUrl;
+    }
+
+    /**
+     * 分类信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CategoryInfo implements Serializable {
+        
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 分类ID
+         */
+        private String id;
+
+        /**
+         * 分类中文名称
+         */
+        private String nameCn;
+
+        /**
+         * 分类路径
+         */
+        private String path;
+
+        /**
+         * 分类路径名称列表
+         */
+        private List<String> categoryPath;
     }
 }

@@ -85,18 +85,20 @@
         </if>
     </select>
 
-    <!-- 更新审批流程 -->
+    <!-- 更新审批流程（动态更新非null字段） -->
     <update id="update" parameterType="com.xxx.open.modules.approval.entity.ApprovalFlow">
         UPDATE openplatform_v2_approval_flow_t
-        SET name_cn = #{nameCn},
-            name_en = #{nameEn},
-            description_cn = #{descriptionCn},
-            description_en = #{descriptionEn},
-            is_default = #{isDefault},
-            nodes = #{nodes},
-            status = #{status},
+        <set>
+            <if test="nameCn != null">name_cn = #{nameCn},</if>
+            <if test="nameEn != null">name_en = #{nameEn},</if>
+            <if test="descriptionCn != null">description_cn = #{descriptionCn},</if>
+            <if test="descriptionEn != null">description_en = #{descriptionEn},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="nodes != null">nodes = #{nodes},</if>
+            <if test="status != null">status = #{status},</if>
             last_update_time = #{lastUpdateTime},
             last_update_by = #{lastUpdateBy}
+        </set>
         WHERE id = #{id}
     </update>
 

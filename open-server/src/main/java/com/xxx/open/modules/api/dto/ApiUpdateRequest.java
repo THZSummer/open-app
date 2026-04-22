@@ -21,24 +21,21 @@ public class ApiUpdateRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 中文名称
+     * 中文名称（可选，更新时只更新非null字段）
      */
-    @NotBlank(message = "中文名称不能为空")
-    @Schema(description = "中文名称", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "中文名称（可选）", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String nameCn;
 
     /**
-     * 英文名称
+     * 英文名称（可选，更新时只更新非null字段）
      */
-    @NotBlank(message = "英文名称不能为空")
-    @Schema(description = "英文名称", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "英文名称（可选）", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String nameEn;
 
     /**
-     * 所属分类ID
+     * 所属分类ID（可选，更新时只更新非null字段）
      */
-    @NotBlank(message = "所属分类ID不能为空")
-    @Schema(description = "所属分类ID", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "所属分类ID（可选）", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String categoryId;
 
     /**
