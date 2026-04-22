@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.event.mapper.PermissionPropertyMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.event.entity.PermissionProperty">
+        <id column="id" property="id"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="property_name" property="propertyName"/>
+        <result column="property_value" property="propertyValue"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, parent_id, property_name, property_value, status,
+        create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- 插入权限属性 -->
+    <insert id="insert" parameterType="com.xxx.open.modules.event.entity.PermissionProperty">
+        INSERT INTO openplatform_v2_permission_p_t (
+            id, parent_id, property_name, property_value, status,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{parentId}, #{propertyName}, #{propertyValue}, #{status},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 批量插入权限属性 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO openplatform_v2_permission_p_t (
+            id, parent_id, property_name, property_value, status,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.id}, #{item.parentId}, #{item.propertyName}, #{item.propertyValue}, #{item.status},
+                #{item.createTime}, #{item.lastUpdateTime}, #{item.createBy}, #{item.lastUpdateBy}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 根据父ID查询属性列表 -->
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_permission_p_t
+        WHERE parent_id = #{parentId}
+          AND status = 1
+        ORDER BY id
+    </select>
+
+    <!-- 删除指定父ID的所有属性 -->
+    <delete id="deleteByParentId">
+        DELETE FROM openplatform_v2_permission_p_t
+        WHERE parent_id = #{parentId}
+    </delete>
+
+</mapper>

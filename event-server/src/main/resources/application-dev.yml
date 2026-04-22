@@ -1,0 +1,24 @@
+spring:
+  # Redis 配置（开发环境）
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: openapp
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+# API Server 配置
+api-server:
+  url: http://localhost:18081/api-server
+
+# 日志级别
+logging:
+  level:
+    com.xxx.event: DEBUG

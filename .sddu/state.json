@@ -1,0 +1,65 @@
+{
+  "feature_id": "CAP-OPEN-001",
+  "feature_name": "能力开放平台（Capability Open Platform）",
+  "current_phase": "build",
+  "status": "implementing",
+  "created_at": "2026-04-20T10:00:00+08:00",
+  "updated_at": "2026-04-22T00:10:00+08:00",
+  "progress": {
+    "total_tasks": 13,
+    "completed_tasks": 13,
+    "pending_tasks": 0,
+    "percentage": 100
+  },
+  "current_task": {
+    "id": "TASK-013",
+    "name": "集成测试与系统联调",
+    "status": "completed",
+    "started_at": "2026-04-22T00:05:00+08:00",
+    "completed_at": "2026-04-22T00:10:00+08:00"
+  },
+  "task_status": {
+    "TASK-001": "completed",
+    "TASK-002": "completed",
+    "TASK-003": "completed",
+    "TASK-004": "completed",
+    "TASK-005": "completed",
+    "TASK-006": "completed",
+    "TASK-007": "completed",
+    "TASK-008": "completed",
+    "TASK-009": "completed",
+    "TASK-010": "completed",
+    "TASK-011": "completed",
+    "TASK-012": "completed",
+    "TASK-013": "completed"
+  },
+  "wave_status": {
+    "wave_1": "completed",
+    "wave_2": "completed",
+    "wave_3": "completed",
+    "wave_4": "completed",
+    "wave_5": "completed"
+  },
+  "build_summary": {
+    "tests_run": 25,
+    "tests_passed": 25,
+    "tests_failed": 0,
+    "code_coverage": "67%",
+    "api_coverage": "100%",
+    "performance": {
+      "category_query_p99": "7ms",
+      "api_list_query_p99": "7ms",
+      "target": "<50ms"
+    }
+  },
+  "artifacts": {
+    "test_plan": "docs/test-plan.md",
+    "deployment_guide": "docs/deployment-guide.md",
+    "build_report": ".sddu/specs-tree-root/specs-tree-capability-open-platform/build-task-013.md"
+  },
+  "next_steps": [
+    "运行 @sddu-review 审查实现",
+    "运行 @sddu-validate 验证规范",
+    "准备生产环境部署"
+  ]
+}

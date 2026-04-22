@@ -1,11 +1,46 @@
 {
   "feature": "capability-open-platform",
-  "state": "tasked",
+  "state": "validated",
   "created": "2026-04-13",
-  "updated": "2026-04-21",
+  "updated": "2026-04-22",
   "discovery_completed": "2026-04-13",
   "specified_at": "2026-04-14",
   "planned_at": "2026-04-20",
   "tasked_at": "2026-04-21",
-  "adrs": ["ADR-001", "ADR-002", "ADR-003"]
+  "built_at": "2026-04-21",
+  "reviewed_at": "2026-04-22",
+  "validated_at": "2026-04-22",
+  "adrs": ["ADR-001", "ADR-002", "ADR-003"],
+  "task_summary": {
+    "total_tasks": 13,
+    "completed_tasks": 13,
+    "pending_tasks": 0,
+    "completion_rate": "100%"
+  },
+  "review_summary": {
+    "review_date": "2026-04-22",
+    "review_status": "passed",
+    "overall_score": "4.5/5",
+    "blocking_issues": 0,
+    "improvements": 6,
+    "test_coverage": "67%",
+    "test_pass_rate": "100%",
+    "performance": {
+      "p99_ms": 7,
+      "target_ms": 50,
+      "status": "passed"
+    }
+  },
+  "validation_summary": {
+    "validation_date": "2026-04-22",
+    "validation_status": "passed",
+    "overall_score": "4.5/5",
+    "fr_coverage": "100%",
+    "nfr_coverage": "88%",
+    "us_coverage": "100%",
+    "spec_compliance": "100%",
+    "blocking_issues": 0,
+    "improvements": 6
+  },
+  "next_step": "done"
 }
