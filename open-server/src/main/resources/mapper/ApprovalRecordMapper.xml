@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.approval.mapper.ApprovalRecordMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.approval.entity.ApprovalRecord">
+        <id column="id" property="id"/>
+        <result column="flow_id" property="flowId"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_id" property="businessId"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="status" property="status"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="completed_at" property="completedAt"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, flow_id, business_type, business_id, applicant_id, applicant_name, status, current_node,
+        create_time, last_update_time, create_by, last_update_by, completed_at
+    </sql>
+
+    <!-- 插入审批记录 -->
+    <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalRecord">
+        INSERT INTO openplatform_v2_approval_record_t (
+            id, flow_id, business_type, business_id, applicant_id, applicant_name, status, current_node,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{flowId}, #{businessType}, #{businessId}, #{applicantId}, #{applicantName}, #{status}, #{currentNode},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 根据ID查询审批记录 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_record_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据业务类型和业务ID查询审批记录 -->
+    <select id="selectByBusiness" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_record_t
+        WHERE business_type = #{businessType} AND business_id = #{businessId}
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 查询待审批列表 -->
+    <select id="selectPendingList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_record_t
+        WHERE status = 0
+        <if test="type != null and type != ''">
+            <choose>
+                <when test="type == 'resource_register'">
+                    AND business_type IN ('api_register', 'event_register', 'callback_register')
+                </when>
+                <otherwise>
+                    AND business_type = #{type}
+                </otherwise>
+            </choose>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (applicant_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR business_id IN (
+                     SELECT id FROM openplatform_v2_api_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     UNION
+                     SELECT id FROM openplatform_v2_event_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     UNION
+                     SELECT id FROM openplatform_v2_callback_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     UNION
+                     SELECT id FROM openplatform_v2_permission_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 ))
+        </if>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计待审批数量 -->
+    <select id="countPendingList" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_approval_record_t
+        WHERE status = 0
+        <if test="type != null and type != ''">
+            <choose>
+                <when test="type == 'resource_register'">
+                    AND business_type IN ('api_register', 'event_register', 'callback_register')
+                </when>
+                <otherwise>
+                    AND business_type = #{type}
+                </otherwise>
+            </choose>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (applicant_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR business_id IN (
+                     SELECT id FROM openplatform_v2_api_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     UNION
+                     SELECT id FROM openplatform_v2_event_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     UNION
+                     SELECT id FROM openplatform_v2_callback_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     UNION
+                     SELECT id FROM openplatform_v2_permission_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 ))
+        </if>
+    </select>
+
+    <!-- 更新审批记录 -->
+    <update id="update" parameterType="com.xxx.open.modules.approval.entity.ApprovalRecord">
+        UPDATE openplatform_v2_approval_record_t
+        SET status = #{status},
+            current_node = #{currentNode},
+            completed_at = #{completedAt},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新审批状态 -->
+    <update id="updateStatus">
+        UPDATE openplatform_v2_approval_record_t
+        SET status = #{status},
+            current_node = #{currentNode},
+            completed_at = #{completedAt},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除审批记录 -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_approval_record_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 根据ID列表查询审批记录 -->
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_record_t
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <!-- 根据业务类型和业务ID查询最新审批记录 -->
+    <select id="selectLatestByBusiness" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_record_t
+        WHERE business_type = #{businessType} AND business_id = #{businessId}
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+</mapper>

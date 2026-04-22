@@ -1,0 +1,129 @@
+package com.xxx.open.modules.permission.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.util.List;
+
+/**
+ * 回调权限订阅列表响应
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class CallbackSubscriptionListResponse implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 订阅ID
+     */
+    private String id;
+
+    /**
+     * 应用ID
+     */
+    private String appId;
+
+    /**
+     * 权限ID
+     */
+    private String permissionId;
+
+    /**
+     * 权限信息
+     */
+    private PermissionInfo permission;
+
+    /**
+     * 分类信息
+     */
+    private CategoryInfo category;
+
+    /**
+     * 状态：0=待审, 1=已授权, 2=已拒绝, 3=已取消
+     */
+    private Integer status;
+
+    /**
+     * 通道类型：0=WebHook, 1=SSE, 2=WebSocket
+     */
+    private Integer channelType;
+
+    /**
+     * 通道地址
+     */
+    private String channelAddress;
+
+    /**
+     * 认证类型
+     */
+    private Integer authType;
+
+    /**
+     * 创建时间
+     */
+    private Date createTime;
+
+    /**
+     * 权限信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PermissionInfo implements Serializable {
+        
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 权限名称
+         */
+        private String nameCn;
+
+        /**
+         * Scope
+         */
+        private String scope;
+    }
+
+    /**
+     * 分类信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CategoryInfo implements Serializable {
+        
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 分类ID
+         */
+        private String id;
+
+        /**
+         * 分类名称
+         */
+        private String nameCn;
+
+        /**
+         * 分类路径
+         */
+        private String path;
+
+        /**
+         * 完整分类路径名称数组
+         */
+        private List<String> categoryPath;
+    }
+}

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.api.mapper.ApiPropertyMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.api.entity.ApiProperty">
+        <id column="id" property="id"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="property_name" property="propertyName"/>
+        <result column="property_value" property="propertyValue"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- Batch Insert -->
+    <insert id="batchInsert">
+        INSERT INTO openplatform_v2_api_p_t (
+            id, parent_id, property_name, property_value, status,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id}, #{item.parentId}, #{item.propertyName}, #{item.propertyValue}, #{item.status},
+             #{item.createTime}, #{item.lastUpdateTime}, #{item.createBy}, #{item.lastUpdateBy})
+        </foreach>
+    </insert>
+
+    <!-- Select By ParentId -->
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT id, parent_id, property_name, property_value, status,
+               create_time, last_update_time, create_by, last_update_by
+        FROM openplatform_v2_api_p_t
+        WHERE parent_id = #{parentId} AND status = 1
+    </select>
+
+    <!-- Delete By ParentId -->
+    <delete id="deleteByParentId">
+        DELETE FROM openplatform_v2_api_p_t
+        WHERE parent_id = #{parentId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,20 @@
+package com.xxx.event.common.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
+
+/**
+ * RestTemplate 配置
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+@Configuration
+public class RestTemplateConfig {
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+}

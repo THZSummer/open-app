@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.permission.mapper.SubscriptionMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.permission.entity.Subscription">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="status" property="status"/>
+        <result column="channel_type" property="channelType"/>
+        <result column="channel_address" property="channelAddress"/>
+        <result column="auth_type" property="authType"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="approved_at" property="approvedAt"/>
+        <result column="approved_by" property="approvedBy"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, app_id, permission_id, status, channel_type, channel_address, auth_type,
+        create_time, last_update_time, create_by, last_update_by, approved_at, approved_by
+    </sql>
+
+    <!-- 插入订阅 -->
+    <insert id="insert" parameterType="com.xxx.open.modules.permission.entity.Subscription">
+        INSERT INTO openplatform_v2_subscription_t (
+            id, app_id, permission_id, status, channel_type, channel_address, auth_type,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{appId}, #{permissionId}, #{status}, #{channelType}, #{channelAddress}, #{authType},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 批量插入订阅 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO openplatform_v2_subscription_t (
+            id, app_id, permission_id, status,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.id}, #{item.appId}, #{item.permissionId}, #{item.status},
+                #{item.createTime}, #{item.lastUpdateTime}, #{item.createBy}, #{item.lastUpdateBy}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 根据ID查询订阅 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_subscription_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据应用ID和权限ID查询订阅 -->
+    <select id="selectByAppIdAndPermissionId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_subscription_t
+        WHERE app_id = #{appId}
+          AND permission_id = #{permissionId}
+    </select>
+
+    <!-- 查询应用的订阅列表（API 权限） -->
+    <select id="selectApiSubscriptionsByAppId" resultMap="BaseResultMap">
+        SELECT s.*
+        FROM openplatform_v2_subscription_t s
+        INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
+        WHERE s.app_id = #{appId}
+          AND p.resource_type = 'api'
+        <if test="status != null">
+            AND s.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY s.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计应用的订阅数量（API 权限） -->
+    <select id="countApiSubscriptionsByAppId" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_subscription_t s
+        INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
+        WHERE s.app_id = #{appId}
+          AND p.resource_type = 'api'
+        <if test="status != null">
+            AND s.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- 查询应用的订阅列表（事件权限） -->
+    <select id="selectEventSubscriptionsByAppId" resultMap="BaseResultMap">
+        SELECT s.*
+        FROM openplatform_v2_subscription_t s
+        INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
+        WHERE s.app_id = #{appId}
+          AND p.resource_type = 'event'
+        <if test="status != null">
+            AND s.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY s.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计应用的订阅数量（事件权限） -->
+    <select id="countEventSubscriptionsByAppId" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_subscription_t s
+        INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
+        WHERE s.app_id = #{appId}
+          AND p.resource_type = 'event'
+        <if test="status != null">
+            AND s.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- 查询应用的订阅列表（回调权限） -->
+    <select id="selectCallbackSubscriptionsByAppId" resultMap="BaseResultMap">
+        SELECT s.*
+        FROM openplatform_v2_subscription_t s
+        INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
+        WHERE s.app_id = #{appId}
+          AND p.resource_type = 'callback'
+        <if test="status != null">
+            AND s.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY s.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计应用的订阅数量（回调权限） -->
+    <select id="countCallbackSubscriptionsByAppId" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_subscription_t s
+        INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
+        WHERE s.app_id = #{appId}
+          AND p.resource_type = 'callback'
+        <if test="status != null">
+            AND s.status = #{status}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- 更新订阅 -->
+    <update id="update" parameterType="com.xxx.open.modules.permission.entity.Subscription">
+        UPDATE openplatform_v2_subscription_t
+        SET status = #{status},
+            channel_type = #{channelType},
+            channel_address = #{channelAddress},
+            auth_type = #{authType},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新订阅配置 -->
+    <update id="updateConfig">
+        UPDATE openplatform_v2_subscription_t
+        SET channel_type = #{channelType},
+            channel_address = #{channelAddress},
+            auth_type = #{authType},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新订阅状态 -->
+    <update id="updateStatus">
+        UPDATE openplatform_v2_subscription_t
+        SET status = #{status},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除订阅 -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_subscription_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 统计权限被订阅的数量 -->
+    <select id="countByPermissionId" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_subscription_t
+        WHERE permission_id = #{permissionId}
+    </select>
+
+</mapper>

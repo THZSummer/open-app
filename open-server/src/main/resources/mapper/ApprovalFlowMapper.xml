@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.open.modules.approval.mapper.ApprovalFlowMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.open.modules.approval.entity.ApprovalFlow">
+        <id column="id" property="id"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="code" property="code"/>
+        <result column="description_cn" property="descriptionCn"/>
+        <result column="description_en" property="descriptionEn"/>
+        <result column="is_default" property="isDefault"/>
+        <result column="nodes" property="nodes"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, name_cn, name_en, code, description_cn, description_en, is_default, nodes, status,
+        create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- 插入审批流程 -->
+    <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalFlow">
+        INSERT INTO openplatform_v2_approval_flow_t (
+            id, name_cn, name_en, code, description_cn, description_en, is_default, nodes, status,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{nameCn}, #{nameEn}, #{code}, #{descriptionCn}, #{descriptionEn}, #{isDefault}, #{nodes}, #{status},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 根据ID查询审批流程 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_flow_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据编码查询审批流程 -->
+    <select id="selectByCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_flow_t
+        WHERE code = #{code}
+    </select>
+
+    <!-- 查询默认审批流程 -->
+    <select id="selectDefaultFlow" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_flow_t
+        WHERE is_default = 1 AND status = 1
+        LIMIT 1
+    </select>
+
+    <!-- 查询审批流程列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_flow_t
+        WHERE status = 1
+        <if test="keyword != null and keyword != ''">
+            AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR code LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY is_default DESC, create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计审批流程数量 -->
+    <select id="countList" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_approval_flow_t
+        WHERE status = 1
+        <if test="keyword != null and keyword != ''">
+            AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR code LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- 更新审批流程 -->
+    <update id="update" parameterType="com.xxx.open.modules.approval.entity.ApprovalFlow">
+        UPDATE openplatform_v2_approval_flow_t
+        SET name_cn = #{nameCn},
+            name_en = #{nameEn},
+            description_cn = #{descriptionCn},
+            description_en = #{descriptionEn},
+            is_default = #{isDefault},
+            nodes = #{nodes},
+            status = #{status},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除审批流程 -->
+    <delete id="deleteById">
+        UPDATE openplatform_v2_approval_flow_t
+        SET status = 0, last_update_time = NOW(3)
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 检查编码是否存在 -->
+    <select id="countByCode" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_v2_approval_flow_t
+        WHERE code = #{code} AND status = 1
+    </select>
+
+    <!-- 检查编码是否存在（排除指定ID） -->
+    <select id="countByCodeExcludeId" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_v2_approval_flow_t
+        WHERE code = #{code} AND id != #{excludeId} AND status = 1
+    </select>
+
+</mapper>
