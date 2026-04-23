@@ -18,6 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.xxx.open.modules.api.entity.Api;
+import com.xxx.open.modules.callback.entity.Callback;
+import com.xxx.open.modules.event.entity.Event;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -47,6 +51,11 @@ public class ApprovalEngine {
     private final SubscriptionMapper subscriptionMapper;
     private final SnowflakeIdGenerator idGenerator;
     private final ObjectMapper objectMapper;
+    
+    // 新增：资源 Mapper
+    private final com.xxx.open.modules.api.mapper.ApiMapper apiMapper;
+    private final com.xxx.open.modules.event.mapper.EventMapper eventMapper;
+    private final com.xxx.open.modules.callback.mapper.CallbackMapper callbackMapper;
 
     /**
      * 审批动作枚举
@@ -189,7 +198,10 @@ public class ApprovalEngine {
 
             recordMapper.update(record);
 
-            // 更新订阅状态
+            // 更新资源状态（资源注册场景）
+            updateResourceStatus(record, Status.APPROVED);
+
+            // 更新订阅状态（权限申请场景）
             updateSubscriptionStatus(record, Status.APPROVED);
 
             log.info("审批通过: recordId={}, operator={}", recordId, operatorId);
@@ -255,7 +267,10 @@ public class ApprovalEngine {
 
         recordMapper.update(record);
 
-        // 更新订阅状态
+        // 更新资源状态（资源注册场景）
+        updateResourceStatus(record, Status.REJECTED);
+
+        // 更新订阅状态（权限申请场景）
         updateSubscriptionStatus(record, Status.REJECTED);
 
         log.info("审批驳回: recordId={}, operator={}, reason={}", recordId, operatorId, reason);
@@ -291,12 +306,76 @@ public class ApprovalEngine {
 
         recordMapper.update(record);
 
-        // 更新订阅状态
+        // 更新资源状态（资源注册场景）
+        updateResourceStatus(record, Status.CANCELLED);
+
+        // 更新订阅状态（权限申请场景）
         updateSubscriptionStatus(record, Status.CANCELLED);
 
         log.info("审批撤销: recordId={}", recordId);
 
         return record;
+    }
+
+    /**
+     * 更新资源状态（资源注册场景）
+     * 
+     * @param record 审批记录
+     * @param status 审批状态
+     */
+    private void updateResourceStatus(ApprovalRecord record, int status) {
+        String businessType = record.getBusinessType();
+        Long businessId = record.getBusinessId();
+        
+        // 审批通过，资源状态改为已发布(2)；审批拒绝/撤销，资源状态改为草稿(0)
+        int resourceStatus = (status == Status.APPROVED) ? 2 : 0;
+        
+        try {
+            switch (businessType) {
+                case BusinessType.API_REGISTER:
+                    Api api = apiMapper.selectById(businessId);
+                    if (api != null) {
+                        api.setStatus(resourceStatus);
+                        api.setLastUpdateTime(new Date());
+                        api.setLastUpdateBy(record.getApplicantId());
+                        apiMapper.update(api);
+                        log.info("更新API状态: apiId={}, status={}", businessId, resourceStatus);
+                    }
+                    break;
+                    
+                case BusinessType.EVENT_REGISTER:
+                    Event event = eventMapper.selectById(businessId);
+                    if (event != null) {
+                        event.setStatus(resourceStatus);
+                        event.setLastUpdateTime(new Date());
+                        event.setLastUpdateBy(record.getApplicantId());
+                        eventMapper.update(event);
+                        log.info("更新事件状态: eventId={}, status={}", businessId, resourceStatus);
+                    }
+                    break;
+                    
+                case BusinessType.CALLBACK_REGISTER:
+                    Callback callback = callbackMapper.selectById(businessId);
+                    if (callback != null) {
+                        callback.setStatus(resourceStatus);
+                        callback.setLastUpdateTime(new Date());
+                        callback.setLastUpdateBy(record.getApplicantId());
+                        callbackMapper.update(callback);
+                        log.info("更新回调状态: callbackId={}, status={}", businessId, resourceStatus);
+                    }
+                    break;
+                    
+                case BusinessType.PERMISSION_APPLY:
+                    // 权限申请场景，由 updateSubscriptionStatus 处理
+                    log.debug("权限申请场景，不更新资源状态");
+                    break;
+                    
+                default:
+                    log.warn("未知的业务类型: {}", businessType);
+            }
+        } catch (Exception e) {
+            log.error("更新资源状态失败: businessType={}, businessId={}", businessType, businessId, e);
+        }
     }
 
     /**
