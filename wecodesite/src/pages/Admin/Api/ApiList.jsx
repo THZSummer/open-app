@@ -6,6 +6,7 @@ import {
   Space,
   Input,
   Select,
+  TreeSelect,
   Popconfirm,
   Empty,
   Spin,
@@ -17,6 +18,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { fetchApiList, deleteApi } from './thunk';
+import { fetchCategoryTree } from '../Category/thunk';
 import ApiRegister from './ApiRegister';
 import './ApiList.m.less';
 
@@ -38,10 +40,30 @@ function ApiList() {
   const [status, setStatus] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [currentApi, setCurrentApi] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     loadData();
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    const result = await fetchCategoryTree();
+    if (result.code === '200') {
+      setCategories(result.data || []);
+    }
+  };
+
+  // 将后端返回的分类树数据转换为 TreeSelect 所需格式
+  const convertToTreeData = (categories) => {
+    if (!categories) return [];
+    return categories.map(cat => ({
+      value: cat.id,
+      title: cat.nameCn,
+      key: cat.id,
+      children: cat.children ? convertToTreeData(cat.children) : undefined
+    }));
+  };
 
   const loadData = async (params = {}) => {
     setLoading(true);
@@ -68,12 +90,12 @@ function ApiList() {
   };
 
   const handleEdit = (record) => {
-    setCurrentApi(record);
+    setCurrentApi({ id: record.id });
     setModalVisible(true);
   };
 
   const handleView = (record) => {
-    setCurrentApi(record);
+    setCurrentApi({ id: record.id });
     setModalVisible(true);
   };
 
@@ -171,16 +193,16 @@ function ApiList() {
             style={{ width: 200 }}
             onSearch={handleSearch}
           />
-          <Select
+          <TreeSelect
             placeholder="选择分类"
             value={categoryId}
             onChange={setCategoryId}
-            style={{ width: 150 }}
+            treeData={convertToTreeData(categories)}
+            treeDefaultExpandAll
             allowClear
-          >
-            <Select.Option value="1-1-1">发送消息</Select.Option>
-            <Select.Option value="1-1-2">用户信息</Select.Option>
-          </Select>
+            style={{ width: 150 }}
+            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+          />
           <Select
             placeholder="选择状态"
             value={status}

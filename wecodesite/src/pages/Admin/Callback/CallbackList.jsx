@@ -16,6 +16,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { fetchCallbackList, deleteCallback } from './thunk';
+import CallbackRegister from './CallbackRegister';
 import './CallbackList.m.less';
 
 const { Search } = Input;
@@ -30,6 +31,8 @@ function CallbackList() {
   const [callbackList, setCallbackList] = useState([]);
   const [total, setTotal] = useState(0);
   const [keyword, setKeyword] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentCallback, setCurrentCallback] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -46,6 +49,26 @@ function CallbackList() {
   };
 
   const handleSearch = () => {
+    loadData();
+  };
+
+  const handleAdd = () => {
+    setCurrentCallback(null);
+    setModalVisible(true);
+  };
+
+  const handleEdit = (record) => {
+    setCurrentCallback({ id: record.id });
+    setModalVisible(true);
+  };
+
+  const handleView = (record) => {
+    setCurrentCallback({ id: record.id });
+    setModalVisible(true);
+  };
+
+  const handleSuccess = () => {
+    setModalVisible(false);
     loadData();
   };
 
@@ -91,10 +114,10 @@ function CallbackList() {
       key: 'action',
       render: (_, record) => (
         <Space>
-          <Button type="link" size="small" icon={<EyeOutlined />}>
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleView(record)}>
             详情
           </Button>
-          <Button type="link" size="small" icon={<EditOutlined />}>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
           </Button>
           <Popconfirm
@@ -119,7 +142,7 @@ function CallbackList() {
           <h4 className="page-title">回调管理</h4>
           <span className="page-desc">管理回调接口，配置回调地址</span>
         </div>
-        <Button type="primary" icon={<PlusOutlined />}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           注册回调
         </Button>
       </div>
@@ -150,6 +173,13 @@ function CallbackList() {
             <Empty description="暂无回调数据" />
           )}
         </Spin>
+
+      <CallbackRegister
+        visible={modalVisible}
+        callback={currentCallback}
+        onSuccess={handleSuccess}
+        onCancel={() => setModalVisible(false)}
+      />
     </div>
   );
 }

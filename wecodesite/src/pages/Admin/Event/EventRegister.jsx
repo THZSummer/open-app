@@ -10,22 +10,21 @@ import {
   Card,
 } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { createApi, updateApi, fetchApiDetail } from './thunk';
+import { createEvent, updateEvent, fetchEventDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 
 const { Option } = Select;
 
-// API 扩展属性预设选项
-const API_PROPERTY_PRESETS = [
-  { value: 'descriptionCn', label: '中文描述', placeholder: 'API的中文描述' },
-  { value: 'descriptionEn', label: '英文描述', placeholder: 'API description in English' },
-  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/api/xxx' },
-  { value: 'authType', label: '认证方式', placeholder: 'oauth2 / apikey / none' },
-  { value: 'rateLimit', label: '速率限制', placeholder: '100/minute' },
+// 事件扩展属性预设选项
+const EVENT_PROPERTY_PRESETS = [
+  { value: 'descriptionCn', label: '中文描述', placeholder: '事件的中文描述' },
+  { value: 'descriptionEn', label: '英文描述', placeholder: 'Event description in English' },
+  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/event/xxx' },
+  { value: 'dataSchema', label: '数据结构', placeholder: 'JSON Schema 或数据格式说明' },
   { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
 ];
 
-function ApiRegister({ visible, api, onSuccess, onCancel }) {
+function EventRegister({ visible, event, onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,29 +55,26 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
   };
 
   useEffect(() => {
-    const loadApiDetail = async () => {
-      if (visible && api?.id) {
+    const loadEventDetail = async () => {
+      if (visible && event?.id) {
         setLoading(true);
         try {
-          const result = await fetchApiDetail(api.id);
+          const result = await fetchEventDetail(event.id);
           if (result.code === '200') {
             const data = result.data;
             form.setFieldsValue({
               nameCn: data.nameCn,
               nameEn: data.nameEn,
-              path: data.path,
-              method: data.method,
               categoryId: data.categoryId,
+              topic: data.topic,
               permissionNameCn: data.permission?.nameCn,
               permissionNameEn: data.permission?.nameEn,
               scope: data.permission?.scope,
               properties: data.properties?.map(prop => ({
-                propertyName: API_PROPERTY_PRESETS.find(p => p.value === prop.propertyName)
-                  ? prop.propertyName
-                  : '__custom__',
+                propertyName: prop.propertyName,
                 propertyValue: prop.propertyValue,
-                customPropertyName: API_PROPERTY_PRESETS.find(p => p.value === prop.propertyName)
-                  ? undefined
+                customPropertyName: EVENT_PROPERTY_PRESETS.find(p => p.value === prop.propertyName) 
+                  ? undefined 
                   : prop.propertyName,
               })) || [],
             });
@@ -91,15 +87,14 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
       }
     };
 
-    loadApiDetail();
-  }, [visible, api, form]);
+    loadEventDetail();
+  }, [visible, event, form]);
 
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
       const values = await form.validateFields();
 
-      // 处理 properties，将 __custom__ 替换为用户输入的自定义属性名
       const properties = values.properties?.map(prop => {
         if (prop.propertyName === '__custom__') {
           return {
@@ -108,13 +103,12 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
           };
         }
         return prop;
-      }).filter(prop => prop.propertyName); // 过滤掉空的
+      }).filter(prop => prop.propertyName);
 
       const data = {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
-        path: values.path,
-        method: values.method,
+        topic: values.topic,
         categoryId: values.categoryId,
         permission: {
           nameCn: values.permissionNameCn,
@@ -125,10 +119,10 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
       };
 
       let result;
-      if (api?.id) {
-        result = await updateApi(api.id, data);
+      if (event?.id) {
+        result = await updateEvent(event.id, data);
       } else {
-        result = await createApi(data);
+        result = await createEvent(data);
       }
 
       if (result.code === '200') {
@@ -143,7 +137,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
 
   return (
     <Modal
-      title={api?.id ? '编辑API' : '注册API'}
+      title={event?.id ? '编辑事件' : '注册事件'}
       open={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
@@ -155,19 +149,19 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
       <Form form={form} layout="vertical">
         <Card title="基本信息" size="small" style={{ marginBottom: 16 }}>
           <Form.Item
-            label="API名称（中文）"
+            label="中文名称"
             name="nameCn"
-            rules={[{ required: true, message: '请输入API中文名称' }]}
+            rules={[{ required: true, message: '请输入事件中文名称' }]}
           >
-            <Input placeholder="请输入API中文名称" />
+            <Input placeholder="请输入事件中文名称" />
           </Form.Item>
 
           <Form.Item
-            label="API名称（英文）"
+            label="英文名称"
             name="nameEn"
-            rules={[{ required: true, message: '请输入API英文名称' }]}
+            rules={[{ required: true, message: '请输入事件英文名称' }]}
           >
-            <Input placeholder="请输入API英文名称" />
+            <Input placeholder="请输入事件英文名称" />
           </Form.Item>
 
           <Form.Item
@@ -185,32 +179,19 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
           </Form.Item>
 
           <Form.Item
-            label="API路径"
-            name="path"
+            label="Topic 标识"
+            name="topic"
             rules={[
-              { required: true, message: '请输入API路径' },
-              { pattern: /^\//, message: '路径必须以/开头' },
+              { required: true, message: '请输入 Topic 标识' },
+              { pattern: /^[a-zA-Z][a-zA-Z0-9]*\.[a-zA-Z][a-zA-Z0-9.]*/, message: '格式不正确，应为：模块.事件' },
             ]}
+            extra="格式：模块.事件，例如：user.status, msg.send.ok"
           >
-            <Input placeholder="例如：/api/v1/messages" />
-          </Form.Item>
-
-          <Form.Item
-            label="HTTP方法"
-            name="method"
-            rules={[{ required: true, message: '请选择HTTP方法' }]}
-          >
-            <Select placeholder="请选择HTTP方法">
-              <Option value="GET">GET</Option>
-              <Option value="POST">POST</Option>
-              <Option value="PUT">PUT</Option>
-              <Option value="DELETE">DELETE</Option>
-              <Option value="PATCH">PATCH</Option>
-            </Select>
+            <Input placeholder="user.status" />
           </Form.Item>
         </Card>
 
-        <Card title="权限信息" size="small">
+        <Card title="权限信息" size="small" style={{ marginBottom: 16 }}>
           <Form.Item
             label="权限名称（中文）"
             name="permissionNameCn"
@@ -231,16 +212,15 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             label="Scope标识"
             name="scope"
             rules={[{ required: true, message: '请输入Scope标识' }]}
-            extra="格式：api:{模块}:{资源标识}"
+            extra="格式：event:{模块}:{事件标识}"
           >
-            <Input placeholder="api:im:send-message" disabled={!!api?.id} />
+            <Input placeholder="event:im:message-received" disabled={!!event?.id} />
           </Form.Item>
         </Card>
 
         <Card title="扩展属性（可选）" size="small">
           <Form.List name="properties">
             {(fields, { add, remove }) => {
-              // 获取当前已选择的预设属性
               const formValues = form.getFieldValue('properties') || [];
               const usedPresets = formValues
                 .map(item => item?.propertyName)
@@ -259,13 +239,12 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
                           placeholder="选择属性"
                           style={{ width: 160 }}
                           onChange={(value) => {
-                            // 切换属性时清空属性值
                             const properties = form.getFieldValue('properties');
                             properties[name].propertyValue = undefined;
                             form.setFieldsValue({ properties });
                           }}
                         >
-                          {API_PROPERTY_PRESETS.map(preset => (
+                          {EVENT_PROPERTY_PRESETS.map(preset => (
                             <Select.Option 
                               key={preset.value} 
                               value={preset.value}
@@ -277,7 +256,6 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
                         </Select>
                       </Form.Item>
                       
-                      {/* 当选择"自定义"时显示自定义属性名输入框 */}
                       <Form.Item
                         noStyle
                         shouldUpdate={(prev, cur) => 
@@ -301,7 +279,6 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
                         }}
                       </Form.Item>
 
-                      {/* 属性值输入框 */}
                       <Form.Item
                         noStyle
                         shouldUpdate={(prev, cur) => 
@@ -310,7 +287,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
                       >
                         {({ getFieldValue }) => {
                           const propertyName = getFieldValue(['properties', name, 'propertyName']);
-                          const preset = API_PROPERTY_PRESETS.find(p => p.value === propertyName);
+                          const preset = EVENT_PROPERTY_PRESETS.find(p => p.value === propertyName);
                           const isCustom = propertyName === '__custom__';
                           
                           return (
@@ -344,4 +321,4 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
   );
 }
 
-export default ApiRegister;
+export default EventRegister;
