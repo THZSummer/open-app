@@ -12,6 +12,9 @@ import com.xxx.open.modules.category.entity.Category;
 import com.xxx.open.modules.category.mapper.CategoryMapper;
 import com.xxx.open.modules.event.entity.Permission;
 import com.xxx.open.modules.event.mapper.PermissionMapper;
+import com.xxx.open.modules.approval.engine.ApprovalEngine;
+import com.xxx.open.modules.approval.mapper.ApprovalFlowMapper;
+import com.xxx.open.modules.approval.entity.ApprovalFlow;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,6 +45,8 @@ public class CallbackService {
     private final PermissionMapper permissionMapper;
     private final CategoryMapper categoryMapper;
     private final SnowflakeIdGenerator idGenerator;
+    private final ApprovalEngine approvalEngine;
+    private final ApprovalFlowMapper approvalFlowMapper;
 
     /**
      * Scope 格式正则表达式
@@ -182,6 +187,22 @@ public class CallbackService {
 
         // 保存回调
         callbackMapper.insert(callback);
+
+        // 创建审批记录（如果存在默认审批流程）
+        ApprovalFlow defaultFlow = approvalFlowMapper.selectDefaultFlow();
+        if (defaultFlow != null) {
+            approvalEngine.createApproval(
+                defaultFlow.getId(),
+                ApprovalEngine.BusinessType.CALLBACK_REGISTER,
+                callbackId,
+                "user001",  // TODO: 从上下文获取申请人ID
+                "system",  // 申请人名称
+                "system"
+            );
+            log.info("创建审批记录: callbackId={}, flowId={}", callbackId, defaultFlow.getId());
+        } else {
+            log.warn("未找到默认审批流程，回调将保持待审状态但不创建审批记录");
+        }
 
         // 创建权限
         Long permissionId = idGenerator.nextId();

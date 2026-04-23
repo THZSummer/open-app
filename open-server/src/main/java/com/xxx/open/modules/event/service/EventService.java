@@ -18,6 +18,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.xxx.open.modules.approval.engine.ApprovalEngine;
+import com.xxx.open.modules.approval.mapper.ApprovalFlowMapper;
+import com.xxx.open.modules.approval.entity.ApprovalFlow;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -44,6 +47,8 @@ public class EventService {
     private final PermissionPropertyMapper permissionPropertyMapper;
     private final CategoryMapper categoryMapper;
     private final SnowflakeIdGenerator idGenerator;
+    private final ApprovalEngine approvalEngine;
+    private final ApprovalFlowMapper approvalFlowMapper;
 
     // 事件状态常量
     private static final int STATUS_DRAFT = 0;       // 草稿
@@ -182,6 +187,22 @@ public class EventService {
         
         // 保存事件
         eventMapper.insert(event);
+        
+        // 创建审批记录（如果存在默认审批流程）
+        ApprovalFlow defaultFlow = approvalFlowMapper.selectDefaultFlow();
+        if (defaultFlow != null) {
+            approvalEngine.createApproval(
+                defaultFlow.getId(),
+                ApprovalEngine.BusinessType.EVENT_REGISTER,
+                eventId,
+                "user001",  // TODO: 从上下文获取申请人ID
+                "system",  // 申请人名称
+                "system"
+            );
+            log.info("创建审批记录: eventId={}, flowId={}", eventId, defaultFlow.getId());
+        } else {
+            log.warn("未找到默认审批流程，事件将保持待审状态但不创建审批记录");
+        }
         
         // 创建权限
         createPermission(eventId, categoryId, request.getPermission());
