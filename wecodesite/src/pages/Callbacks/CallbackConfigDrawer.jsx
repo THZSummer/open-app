@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Form, Radio, Input, Button } from 'antd';
+import { Drawer, Form, Radio, Input, Button, message } from 'antd';
 import { CALLBACK_CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
+import { configCallbackSubscription } from './thunk';
 import './CallbackConfigDrawer.m.less';
 
 function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
   const [form] = Form.useForm();
   const [channelType, setChannelType] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (callback && open) {
@@ -23,8 +25,16 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
     form.setFieldsValue({ channelType: e.target.value });
   };
 
-  const handleSave = () => {
-    form.validateFields().then((values) => {
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields();
+      setSaving(true);
+      await configCallbackSubscription('10', callback.id, {
+        channelType: values.channelType,
+        channelAddress: values.channelAddress || '',
+        authType: values.authType
+      });
+      message.success('配置已保存');
       onSave({
         ...callback,
         channelType: values.channelType,
@@ -32,7 +42,14 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
         authType: values.authType
       });
       onClose();
-    });
+    } catch (error) {
+      if (error.errorFields) {
+        return;
+      }
+      message.error('保存失败');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -46,7 +63,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
       footer={
         <div className="drawer-footer">
           <Button onClick={onClose}>取消</Button>
-          <Button type="primary" onClick={handleSave}>
+          <Button type="primary" onClick={handleSave} loading={saving}>
             保存
           </Button>
         </div>

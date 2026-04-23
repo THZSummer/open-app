@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Pagination, Tag } from 'antd';
-import { fetchCallbackList } from './thunk';
+import { Button, Table, Pagination, Tag, message } from 'antd';
+import { fetchAppCallbacks, remindApproval, deleteCallback, withdrawApproval, subscribeCallbacks } from './thunk';
 import CallbackDrawer from './CallbackDrawer';
 import CallbackConfigDrawer from './CallbackConfigDrawer';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { remindApproval, deleteCallback, withdrawApproval } from './thunk';
 import { SUBSCRIPTION_STATUS, CALLBACK_CHANNEL_TYPE } from '../../utils/constants';
 import './Callbacks.m.less';
 
@@ -18,6 +17,7 @@ function getStatusTag(status) {
 function Callbacks() {
   const navigate = useNavigate();
   const [callbacks, setCallbacks] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -29,32 +29,38 @@ function Callbacks() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [currentDeleteId, setCurrentDeleteId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [subscribeLoading, setSubscribeLoading] = useState(false);
+
+  const loadCallbacks = useCallback(async (page = currentPage, size = pageSize) => {
+    setLoading(true);
+    try {
+      const result = await fetchAppCallbacks('10', { curPage: page, pageSize: size });
+      setCallbacks(result.data || []);
+      setTotal(result.page?.total || 0);
+    } catch (error) {
+      message.error('加载回调列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize]);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const callbacksData = await fetchCallbackList();
-      setCallbacks(callbacksData);
-      setLoading(false);
-    };
-    loadData();
-  }, []);
+    loadCallbacks();
+  }, [loadCallbacks]);
 
-  const handleAddCallback = (selectedCallbacks) => {
-    const newCallbacks = selectedCallbacks.map((callback, index) => ({
-      ...callback,
-      id: String(Date.now() + index),
-      status: callback.needReview ? 0 : 1,
-      approver: callback.needReview ? {
-        userId: 'pending',
-        userName: '待分配'
-      } : null,
-      approvalUrl: callback.needReview ? 'https://approval.example.com/callback/' + (Date.now() + index) : '',
-      channelType: 0,
-      channelAddress: '',
-      authType: 0
-    }));
-    setCallbacks([...callbacks, ...newCallbacks]);
+  const handleAddCallback = async (selectedCallbacks) => {
+    setSubscribeLoading(true);
+    try {
+      const permissionIds = selectedCallbacks.map(c => c.id);
+      await subscribeCallbacks('10', { permissionIds });
+      message.success('申请已提交');
+      loadCallbacks(1, pageSize);
+      setDrawerOpen(false);
+    } catch (error) {
+      message.error('申请失败');
+    } finally {
+      setSubscribeLoading(false);
+    }
   };
 
   const handleOpenDrawer = () => {
@@ -70,8 +76,8 @@ function Callbacks() {
     setConfigDrawerOpen(true);
   };
 
-  const handleSaveCallback = (updatedCallback) => {
-    setCallbacks(callbacks.map(c => c.id === updatedCallback.id ? updatedCallback : c));
+  const handleSaveCallback = async (updatedCallback) => {
+    loadCallbacks();
   };
 
   const handleCloseConfigDrawer = () => {
@@ -89,9 +95,13 @@ function Callbacks() {
   };
 
   const handleWithdraw = async (record) => {
-    await withdrawApproval(record.id);
-    const data = await fetchCallbackList();
-    setCallbacks(data);
+    try {
+      await withdrawApproval(record.id);
+      message.success('已撤回');
+      loadCallbacks();
+    } catch (error) {
+      message.error('撤回失败');
+    }
   };
 
   const handleOpenDoc = (url) => {
@@ -107,10 +117,11 @@ function Callbacks() {
     setDeleteLoading(true);
     try {
       await deleteCallback(currentDeleteId);
-      setCallbacks(callbacks.filter(c => c.id !== currentDeleteId));
-      const data = await fetchCallbackList();
-      setCallbacks(data);
+      message.success('删除成功');
       setDeleteModalOpen(false);
+      loadCallbacks();
+    } catch (error) {
+      message.error('删除失败');
     } finally {
       setDeleteLoading(false);
     }
@@ -119,6 +130,7 @@ function Callbacks() {
   const handlePageChange = (page, size) => {
     setCurrentPage(page);
     setPageSize(size);
+    loadCallbacks(page, size);
   };
 
   const columns = [
@@ -178,8 +190,6 @@ function Callbacks() {
     },
   ];
 
-  const paginatedData = callbacks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
   return (
     <div className="callbacks">
       <div className="page-header">
@@ -194,14 +204,14 @@ function Callbacks() {
       </div>
       <Table
         columns={columns}
-        dataSource={paginatedData}
+        dataSource={callbacks}
         rowKey="id"
         pagination={false}
         loading={loading}
       />
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Pagination
-          total={callbacks.length}
+          total={total}
           current={currentPage}
           pageSize={pageSize}
           pageSizeOptions={[10, 20, 50]}
@@ -217,6 +227,7 @@ function Callbacks() {
         onClose={handleCloseDrawer}
         onConfirm={handleAddCallback}
         selectedCallbacks={callbacks}
+        subscribeLoading={subscribeLoading}
       />
 
       <CallbackConfigDrawer

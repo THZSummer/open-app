@@ -114,7 +114,7 @@ export const mockApis = [
 ];
 
 export const mockFeatureFlag = {
-  enableIdentityPermission: false,
+  enableIdentityPermission: true,
 };
 
 export const identityPermissionApis = {

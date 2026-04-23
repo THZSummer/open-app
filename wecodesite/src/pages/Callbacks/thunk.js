@@ -4,41 +4,25 @@ import { mockCallbacks, mockAllCallbacks } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * 获取应用已订阅的回调列表
- * @param {Object} params - 查询参数，包含 appId 等
- * @returns {Promise<Array>} 回调列表数组
- */
-export const fetchCallbackList = async (params = {}) => {
+export const fetchAllCallbacks = async (params = {}) => {
   if (!useTrueFetch) {
     await delay(300);
-    let data = mockCallbacks;
-    data = data.filter(item => item.status !== 3);
-    return data;
+    let data = mockAllCallbacks;
+    const curPage = params.curPage || 1;
+    const pageSize = params.pageSize || 20;
+    const start = (curPage - 1) * pageSize;
+    const end = start + pageSize;
+    return {
+      code: '200',
+      messageZh: '查询成功',
+      data: data.slice(start, end),
+      page: { curPage, pageSize, total: data.length }
+    };
   }
-  const result = await fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.LIST, { appId: params.appId || '10' }), { params });
-  return result?.data || [];
+  const result = await fetchApi(API_CONFIG.CALLBACKS.LIST, { params });
+  return result;
 };
 
-/**
- * 获取全部可用回调列表（用于回调选择器，不包含待审核状态）
- * @returns {Promise<Array>} 回调列表
- */
-export const fetchAllCallbacks = async () => {
-  if (!useTrueFetch) {
-    await delay(300);
-    return mockAllCallbacks;
-  }
-  const result = await fetchApi(API_CONFIG.CALLBACKS.LIST, { params: { needApproval: 0, includeChildren: true } });
-  return result?.data || [];
-};
-
-/**
- * 获取应用已订阅的回调列表（带分页和筛选）
- * @param {string} appId - 应用ID
- * @param {Object} params - 查询参数，包含 status、keyword、curPage、pageSize 等
- * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
- */
 export const fetchAppCallbacks = async (appId, params = {}) => {
   if (!useTrueFetch) {
     await delay(300);
@@ -62,12 +46,6 @@ export const fetchAppCallbacks = async (appId, params = {}) => {
   return fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.LIST, { appId }), { params });
 };
 
-/**
- * 订阅回调
- * @param {string} appId - 应用ID
- * @param {Object} params - 订阅参数，包含 permissionIds 等
- * @returns {Promise<Object>} 订阅结果
- */
 export const subscribeCallbacks = async (appId, params) => {
   if (!useTrueFetch) {
     await delay(300);
@@ -90,13 +68,6 @@ export const subscribeCallbacks = async (appId, params) => {
   return fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
 };
 
-/**
- * 配置回调订阅参数
- * @param {string} appId - 应用ID
- * @param {string} callbackId - 回调ID
- * @param {Object} params - 配置参数
- * @returns {Promise<Object>} 配置结果
- */
 export const configCallbackSubscription = async (appId, callbackId, params) => {
   if (!useTrueFetch) {
     await delay(300);
@@ -109,32 +80,6 @@ export const configCallbackSubscription = async (appId, callbackId, params) => {
   return fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.CONFIG, { appId, id: callbackId }), { method: 'PUT', body: JSON.stringify(params) });
 };
 
-/**
- * 撤回回调申请
- * @param {string} appId - 应用ID
- * @param {string} subscriptionId - 订阅记录ID
- * @returns {Promise<Object>} 撤回结果
- */
-export const withdrawCallbackApplication = async (appId, subscriptionId) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    return {
-      code: '200',
-      messageZh: '申请已撤回',
-      data: {
-        id: subscriptionId,
-        status: 2
-      }
-    };
-  }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.WITHDRAW, { appId, id: subscriptionId }), { method: 'POST' });
-};
-
-/**
- * 催办回调审批
- * @param {string} id - 订阅记录ID
- * @returns {Promise<Object>} 催办结果
- */
 export const remindApproval = async (id) => {
   if (!useTrueFetch) {
     await delay(300);
@@ -144,11 +89,6 @@ export const remindApproval = async (id) => {
   return fetchApi(`/callbacks/${id}/remind`, { method: 'POST' });
 };
 
-/**
- * 删除已订阅的回调
- * @param {string} id - 订阅记录ID
- * @returns {Promise<Object>} 删除结果
- */
 export const deleteCallback = async (id) => {
   if (!useTrueFetch) {
     await delay(300);
@@ -158,11 +98,6 @@ export const deleteCallback = async (id) => {
   return fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id }), { method: 'DELETE' });
 };
 
-/**
- * 撤回回调审核（已订阅列表中）
- * @param {string} id - 订阅记录ID
- * @returns {Promise<Object>} 撤回结果
- */
 export const withdrawApproval = async (id) => {
   if (!useTrueFetch) {
     await delay(300);

@@ -1,34 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Drawer, Table, Button, Pagination, Tag } from 'antd';
 import { fetchAllEvents } from './thunk';
 import './EventDrawer.m.less';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function EventDrawer({ open, onClose, onConfirm, selectedEvents = [] }) {
+function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeLoading = false }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState(
     selectedEvents.map(e => e.id)
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [allEvents, setAllEvents] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const data = await fetchAllEvents();
-      setAllEvents(data);
+  const loadData = useCallback(async (page = currentPage, size = pageSize) => {
+    setLoading(true);
+    try {
+      const result = await fetchAllEvents({ curPage: page, pageSize: size });
+      setAllEvents(result.data || []);
+      setTotal(result.page?.total || 0);
+    } finally {
       setLoading(false);
-    };
+    }
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
     if (open) {
       loadData();
     }
-  }, [open]);
+  }, [open, loadData]);
 
   const handlePageChange = (page, size) => {
     setCurrentPage(page);
     setPageSize(size);
+    loadData(page, size);
   };
 
   const handleSelectChange = (keys) => {
@@ -90,11 +97,6 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [] }) {
     onChange: handleSelectChange,
   };
 
-  const paginatedData = allEvents.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
   return (
     <Drawer
       title="添加事件"
@@ -108,7 +110,8 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [] }) {
           <Button onClick={onClose}>取消</Button>
           <Button 
             type="primary" 
-            disabled={selectedRowKeys.length === 0}
+            disabled={selectedRowKeys.length === 0 || subscribeLoading}
+            loading={subscribeLoading}
             onClick={handleConfirm}
           >
             确认添加
@@ -119,17 +122,17 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [] }) {
       <Table
         rowSelection={rowSelection}
         columns={columns}
-        dataSource={paginatedData}
+        dataSource={allEvents}
         rowKey="id"
         pagination={false}
         loading={loading}
       />
       <div className="drawer-pagination">
-        <span className="pagination-total">共 {allEvents.length} 条</span>
+        <span className="pagination-total">共 {total} 条</span>
         <Pagination
           current={currentPage}
           pageSize={pageSize}
-          total={allEvents.length}
+          total={total}
           onChange={handlePageChange}
           showSizeChanger
           pageSizeOptions={PAGE_SIZE_OPTIONS}
