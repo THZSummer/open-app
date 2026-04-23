@@ -10,15 +10,14 @@ import {
   Card,
 } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { createApi, updateApi, fetchApiDetail } from './thunk';
+import { createEvent, updateEvent } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 
 const { Option } = Select;
 
-function ApiRegister({ visible, api, onSuccess, onCancel }) {
+function EventRegister({ visible, event, onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -46,34 +45,23 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
   };
 
   useEffect(() => {
-    const loadApiDetail = async () => {
-      if (visible && api?.id) {
-        setLoading(true);
-        try {
-          const result = await fetchApiDetail(api.id);
-          if (result.code === '200') {
-            const data = result.data;
-            form.setFieldsValue({
-              nameCn: data.nameCn,
-              nameEn: data.nameEn,
-              path: data.path,
-              method: data.method,
-              categoryId: data.categoryId,
-              permissionNameCn: data.permission?.nameCn,
-              permissionNameEn: data.permission?.nameEn,
-              scope: data.permission?.scope,
-            });
-          }
-        } finally {
-          setLoading(false);
-        }
-      } else if (visible) {
-        form.resetFields();
-      }
-    };
-
-    loadApiDetail();
-  }, [visible, api, form]);
+    if (visible && event) {
+      // 编辑模式：填充表单
+      form.setFieldsValue({
+        nameCn: event.nameCn,
+        nameEn: event.nameEn,
+        categoryId: event.categoryId,
+        topic: event.topic,
+        permissionNameCn: event.permission?.nameCn,
+        permissionNameEn: event.permission?.nameEn,
+        scope: event.permission?.scope,
+        properties: event.properties || [],
+      });
+    } else {
+      // 新增模式：重置表单
+      form.resetFields();
+    }
+  }, [visible, event, form]);
 
   const handleSubmit = async () => {
     try {
@@ -83,21 +71,21 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
       const data = {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
-        path: values.path,
-        method: values.method,
+        topic: values.topic,
         categoryId: values.categoryId,
         permission: {
           nameCn: values.permissionNameCn,
           nameEn: values.permissionNameEn,
           scope: values.scope,
         },
+        properties: values.properties,
       };
 
       let result;
-      if (api?.id) {
-        result = await updateApi(api.id, data);
+      if (event?.id) {
+        result = await updateEvent(event.id, data);
       } else {
-        result = await createApi(data);
+        result = await createEvent(data);
       }
 
       if (result.code === '200') {
@@ -112,31 +100,30 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
 
   return (
     <Modal
-      title={api?.id ? '编辑API' : '注册API'}
+      title={event?.id ? '编辑事件' : '注册事件'}
       open={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
       width={800}
       confirmLoading={submitting}
-      loading={loading}
       destroyOnClose
     >
       <Form form={form} layout="vertical">
         <Card title="基本信息" size="small" style={{ marginBottom: 16 }}>
           <Form.Item
-            label="API名称（中文）"
+            label="中文名称"
             name="nameCn"
-            rules={[{ required: true, message: '请输入API中文名称' }]}
+            rules={[{ required: true, message: '请输入事件中文名称' }]}
           >
-            <Input placeholder="请输入API中文名称" />
+            <Input placeholder="请输入事件中文名称" />
           </Form.Item>
 
           <Form.Item
-            label="API名称（英文）"
+            label="英文名称"
             name="nameEn"
-            rules={[{ required: true, message: '请输入API英文名称' }]}
+            rules={[{ required: true, message: '请输入事件英文名称' }]}
           >
-            <Input placeholder="请输入API英文名称" />
+            <Input placeholder="请输入事件英文名称" />
           </Form.Item>
 
           <Form.Item
@@ -154,32 +141,19 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
           </Form.Item>
 
           <Form.Item
-            label="API路径"
-            name="path"
+            label="Topic 标识"
+            name="topic"
             rules={[
-              { required: true, message: '请输入API路径' },
-              { pattern: /^\//, message: '路径必须以/开头' },
+              { required: true, message: '请输入 Topic 标识' },
+              { pattern: /^[a-zA-Z][a-zA-Z0-9]*\.[a-zA-Z][a-zA-Z0-9.]*/, message: '格式不正确，应为：模块.事件' },
             ]}
+            extra="格式：模块.事件，例如：user.status, msg.send.ok"
           >
-            <Input placeholder="例如：/api/v1/messages" />
-          </Form.Item>
-
-          <Form.Item
-            label="HTTP方法"
-            name="method"
-            rules={[{ required: true, message: '请选择HTTP方法' }]}
-          >
-            <Select placeholder="请选择HTTP方法">
-              <Option value="GET">GET</Option>
-              <Option value="POST">POST</Option>
-              <Option value="PUT">PUT</Option>
-              <Option value="DELETE">DELETE</Option>
-              <Option value="PATCH">PATCH</Option>
-            </Select>
+            <Input placeholder="user.status" />
           </Form.Item>
         </Card>
 
-        <Card title="权限信息" size="small">
+        <Card title="权限信息" size="small" style={{ marginBottom: 16 }}>
           <Form.Item
             label="权限名称（中文）"
             name="permissionNameCn"
@@ -200,14 +174,45 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             label="Scope标识"
             name="scope"
             rules={[{ required: true, message: '请输入Scope标识' }]}
-            extra="格式：api:{模块}:{资源标识}"
+            extra="格式：event:{模块}:{事件标识}"
           >
-            <Input placeholder="api:im:send-message" disabled={!!api?.id} />
+            <Input placeholder="event:im:message-received" disabled={!!event?.id} />
           </Form.Item>
+        </Card>
+
+        <Card title="扩展属性（可选）" size="small">
+          <Form.List name="properties">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'propertyName']}
+                      rules={[{ required: true, message: '请输入属性名' }]}
+                    >
+                      <Input placeholder="属性名，如 descriptionCn" style={{ width: 200 }} />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'propertyValue']}
+                      rules={[{ required: true, message: '请输入属性值' }]}
+                    >
+                      <Input placeholder="属性值" style={{ width: 300 }} />
+                    </Form.Item>
+                    <MinusCircleOutlined onClick={() => remove(name)} />
+                  </Space>
+                ))}
+                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                  添加属性
+                </Button>
+              </>
+            )}
+          </Form.List>
         </Card>
       </Form>
     </Modal>
   );
 }
 
-export default ApiRegister;
+export default EventRegister;

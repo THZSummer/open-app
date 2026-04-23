@@ -6,6 +6,7 @@ import {
   Space,
   Input,
   Select,
+  TreeSelect,
   Popconfirm,
   Empty,
   Spin,
@@ -17,6 +18,8 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { fetchEventList, deleteEvent } from './thunk';
+import { fetchCategoryTree } from '../Category/thunk';
+import EventRegister from './EventRegister';
 import './EventList.m.less';
 
 const { Search } = Input;
@@ -35,10 +38,32 @@ function EventList() {
   const [keyword, setKeyword] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [status, setStatus] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentEvent, setCurrentEvent] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     loadData();
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    const result = await fetchCategoryTree();
+    if (result.code === '200') {
+      setCategories(result.data || []);
+    }
+  };
+
+  // 将后端返回的分类树数据转换为 TreeSelect 所需格式
+  const convertToTreeData = (categories) => {
+    if (!categories) return [];
+    return categories.map(cat => ({
+      value: cat.id,
+      title: cat.nameCn,
+      key: cat.id,
+      children: cat.children ? convertToTreeData(cat.children) : undefined
+    }));
+  };
 
   const loadData = async (params = {}) => {
     setLoading(true);
@@ -56,6 +81,26 @@ function EventList() {
   };
 
   const handleSearch = () => {
+    loadData();
+  };
+
+  const handleAdd = () => {
+    setCurrentEvent(null);
+    setModalVisible(true);
+  };
+
+  const handleEdit = (record) => {
+    setCurrentEvent(record);
+    setModalVisible(true);
+  };
+
+  const handleView = (record) => {
+    setCurrentEvent(record);
+    setModalVisible(true);
+  };
+
+  const handleSuccess = () => {
+    setModalVisible(false);
     loadData();
   };
 
@@ -101,10 +146,10 @@ function EventList() {
       key: 'action',
       render: (_, record) => (
         <Space>
-          <Button type="link" size="small" icon={<EyeOutlined />}>
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleView(record)}>
             详情
           </Button>
-          <Button type="link" size="small" icon={<EditOutlined />}>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
           </Button>
           <Popconfirm
@@ -129,7 +174,7 @@ function EventList() {
           <h4 className="page-title">事件管理</h4>
           <span className="page-desc">管理事件定义，配置事件订阅</span>
         </div>
-        <Button type="primary" icon={<PlusOutlined />}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           注册事件
         </Button>
       </div>
@@ -142,16 +187,16 @@ function EventList() {
             style={{ width: 200 }}
             onSearch={handleSearch}
           />
-          <Select
+          <TreeSelect
             placeholder="选择分类"
             value={categoryId}
             onChange={setCategoryId}
-            style={{ width: 150 }}
+            treeData={convertToTreeData(categories)}
+            treeDefaultExpandAll
             allowClear
-          >
-            <Select.Option value="2-1">用户状态变更</Select.Option>
-            <Select.Option value="1-2">消息推送</Select.Option>
-          </Select>
+            style={{ width: 150 }}
+            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+          />
           <Select
             placeholder="选择状态"
             value={status}
@@ -180,6 +225,13 @@ function EventList() {
             <Empty description="暂无事件数据" />
           )}
         </Spin>
+
+      <EventRegister
+        visible={modalVisible}
+        event={currentEvent}
+        onSuccess={handleSuccess}
+        onCancel={() => setModalVisible(false)}
+      />
     </div>
   );
 }

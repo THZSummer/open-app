@@ -3,22 +3,18 @@ import {
   Modal,
   Form,
   Input,
-  Select,
   TreeSelect,
-  Button,
-  Space,
   Card,
+  Space,
+  Button,
 } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { createApi, updateApi, fetchApiDetail } from './thunk';
+import { createCallback, updateCallback } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 
-const { Option } = Select;
-
-function ApiRegister({ visible, api, onSuccess, onCancel }) {
+function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -46,34 +42,22 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
   };
 
   useEffect(() => {
-    const loadApiDetail = async () => {
-      if (visible && api?.id) {
-        setLoading(true);
-        try {
-          const result = await fetchApiDetail(api.id);
-          if (result.code === '200') {
-            const data = result.data;
-            form.setFieldsValue({
-              nameCn: data.nameCn,
-              nameEn: data.nameEn,
-              path: data.path,
-              method: data.method,
-              categoryId: data.categoryId,
-              permissionNameCn: data.permission?.nameCn,
-              permissionNameEn: data.permission?.nameEn,
-              scope: data.permission?.scope,
-            });
-          }
-        } finally {
-          setLoading(false);
-        }
-      } else if (visible) {
-        form.resetFields();
-      }
-    };
-
-    loadApiDetail();
-  }, [visible, api, form]);
+    if (visible && callback) {
+      // 编辑模式：填充表单
+      form.setFieldsValue({
+        nameCn: callback.nameCn,
+        nameEn: callback.nameEn,
+        categoryId: callback.categoryId,
+        permissionNameCn: callback.permission?.nameCn,
+        permissionNameEn: callback.permission?.nameEn,
+        scope: callback.permission?.scope,
+        properties: callback.properties || [],
+      });
+    } else {
+      // 新增模式：重置表单
+      form.resetFields();
+    }
+  }, [visible, callback, form]);
 
   const handleSubmit = async () => {
     try {
@@ -83,21 +67,20 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
       const data = {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
-        path: values.path,
-        method: values.method,
         categoryId: values.categoryId,
         permission: {
           nameCn: values.permissionNameCn,
           nameEn: values.permissionNameEn,
           scope: values.scope,
         },
+        properties: values.properties,
       };
 
       let result;
-      if (api?.id) {
-        result = await updateApi(api.id, data);
+      if (callback?.id) {
+        result = await updateCallback(callback.id, data);
       } else {
-        result = await createApi(data);
+        result = await createCallback(data);
       }
 
       if (result.code === '200') {
@@ -112,31 +95,30 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
 
   return (
     <Modal
-      title={api?.id ? '编辑API' : '注册API'}
+      title={callback?.id ? '编辑回调' : '注册回调'}
       open={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
       width={800}
       confirmLoading={submitting}
-      loading={loading}
       destroyOnClose
     >
       <Form form={form} layout="vertical">
         <Card title="基本信息" size="small" style={{ marginBottom: 16 }}>
           <Form.Item
-            label="API名称（中文）"
+            label="中文名称"
             name="nameCn"
-            rules={[{ required: true, message: '请输入API中文名称' }]}
+            rules={[{ required: true, message: '请输入回调中文名称' }]}
           >
-            <Input placeholder="请输入API中文名称" />
+            <Input placeholder="请输入回调中文名称" />
           </Form.Item>
 
           <Form.Item
-            label="API名称（英文）"
+            label="英文名称"
             name="nameEn"
-            rules={[{ required: true, message: '请输入API英文名称' }]}
+            rules={[{ required: true, message: '请输入回调英文名称' }]}
           >
-            <Input placeholder="请输入API英文名称" />
+            <Input placeholder="请输入回调英文名称" />
           </Form.Item>
 
           <Form.Item
@@ -148,38 +130,14 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
               placeholder="请选择所属分类"
               treeData={convertToTreeData(categories)}
               treeDefaultExpandAll
+              allowClear
               style={{ width: '100%' }}
               dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
             />
           </Form.Item>
-
-          <Form.Item
-            label="API路径"
-            name="path"
-            rules={[
-              { required: true, message: '请输入API路径' },
-              { pattern: /^\//, message: '路径必须以/开头' },
-            ]}
-          >
-            <Input placeholder="例如：/api/v1/messages" />
-          </Form.Item>
-
-          <Form.Item
-            label="HTTP方法"
-            name="method"
-            rules={[{ required: true, message: '请选择HTTP方法' }]}
-          >
-            <Select placeholder="请选择HTTP方法">
-              <Option value="GET">GET</Option>
-              <Option value="POST">POST</Option>
-              <Option value="PUT">PUT</Option>
-              <Option value="DELETE">DELETE</Option>
-              <Option value="PATCH">PATCH</Option>
-            </Select>
-          </Form.Item>
         </Card>
 
-        <Card title="权限信息" size="small">
+        <Card title="权限信息" size="small" style={{ marginBottom: 16 }}>
           <Form.Item
             label="权限名称（中文）"
             name="permissionNameCn"
@@ -200,14 +158,53 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             label="Scope标识"
             name="scope"
             rules={[{ required: true, message: '请输入Scope标识' }]}
-            extra="格式：api:{模块}:{资源标识}"
+            extra="格式：callback:{模块}:{资源标识}"
           >
-            <Input placeholder="api:im:send-message" disabled={!!api?.id} />
+            <Input placeholder="callback:approval:completed" disabled={!!callback?.id} />
           </Form.Item>
+        </Card>
+
+        <Card title="扩展属性（可选）" size="small">
+          <Form.List name="properties">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'key']}
+                      rules={[{ required: true, message: '请输入属性名' }]}
+                    >
+                      <Input placeholder="属性名" style={{ width: 200 }} />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'value']}
+                      rules={[{ required: true, message: '请输入属性值' }]}
+                    >
+                      <Input placeholder="属性值" style={{ width: 300 }} />
+                    </Form.Item>
+                    <Form.Item
+                      {...restField}
+                      name={[name, 'description']}
+                    >
+                      <Input placeholder="描述（可选）" style={{ width: 200 }} />
+                    </Form.Item>
+                    <MinusCircleOutlined onClick={() => remove(name)} />
+                  </Space>
+                ))}
+                <Form.Item>
+                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                    添加扩展属性
+                  </Button>
+                </Form.Item>
+              </>
+            )}
+          </Form.List>
         </Card>
       </Form>
     </Modal>
   );
 }
 
-export default ApiRegister;
+export default CallbackRegister;
