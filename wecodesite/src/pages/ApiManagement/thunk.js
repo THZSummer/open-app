@@ -9,111 +9,93 @@ import { mockApis, identityPermissionApis } from './mock';
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * 获取应用已订阅的API列表
- * @param {Object} params - 查询参数，包含 appId 等
- * @returns {Promise<Array>} API列表数组
+ * 获取分类列表（用于模块列表）
+ * @param {string} identityType - 身份类型（如 BUSINESS_IDENTITY, PERSONAL_IDENTITY）
+ * @returns {Promise<Array>} 分类列表数组
  */
-export const fetchApiList = async (params = {}) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    let data = mockApis;
-    data = data.filter(item => item.status !== 3);
-    return data;
-  }
-  const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.LIST, { appId: params.appId || '10' }), { params });
-  return result?.data || [];
+const API_TYPE_MAP = {
+  app_type_a: 'SOA',
+  app_type_b: 'APIG',
+  personal_aksk: 'AKSK'
 };
 
-/**
- * 获取分类树（用于模块列表）
- * @param {string} categoryAlias - 分类别名（可选）
- * @returns {Promise<Array>} 分类树数组
- */
-export const fetchApiModules = async (categoryAlias) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    const identityKey = `BUSINESS_IDENTITY_${categoryAlias}`;
-    return identityPermissionApis[identityKey]?.modules || [];
-  }
-  const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias } });
-  return result?.data || [];
+const getMockKey = (identityType, apiType) => {
+  const apiTypeSuffix = API_TYPE_MAP[apiType] || apiType;
+  return `${identityType}_${apiTypeSuffix}`;
 };
 
-/**
- * 获取身份类型对应的分类模块
- * @param {string} identityType - 身份类型
- * @returns {Promise<Array>} 分类列表
- */
-export const fetchIdentityModules = async (identityType) => {
+export const fetchCategories = async (apiType) => {
   if (!useTrueFetch) {
     await delay(300);
-    return identityPermissionApis[identityType]?.modules || [];
+    const mockKey = getMockKey(identityType, apiType);
+    const data = identityPermissionApis[mockKey]?.modules || [];
+    const categories = [{
+      id: '1',
+      nameCn: 'API分类',
+      children: data.map((item, index) => ({
+        id: item.key,
+        nameCn: item.name,
+        name: item.name
+      }))
+    }];
+    return categories;
   }
-  const categoryAlias = identityType.split('_')[0];
-  const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias } });
-  return result?.data || [];
-};
-
-/**
- * 获取身份类型对应的全部API列表
- * @param {string} identityType - 身份类型
- * @returns {Promise<Array>} API列表
- */
-export const fetchIdentityApis = async (identityType) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    return identityPermissionApis[identityType]?.apis || [];
-  }
-  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: 'root' }), { 
-    params: { includeChildren: true } 
-  });
+  const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: apiType } });
   return result?.data || [];
 };
 
 /**
  * 根据筛选条件获取API列表（用于API选择器）
- * @param {Object} params - 筛选参数，包含 auth、name、scope、needReview、identityType、appType
+ * @param {Object} params - 筛选参数，包含 identityType、keyword、needReview、categoryId、curPage、pageSize
  * @returns {Promise<Array>} 筛选后的API列表
  */
-export const fetchFilteredApis = async ({ auth, name, scope, needReview, identityType, appType }) => {
+export const fetchApis = async ({ keyword, needReview, identityType, apiType, categoryId, curPage, pageSize }) => {
   if (!useTrueFetch) {
     await delay(300);
-    let apis;
-    if (identityType) {
-      apis = identityPermissionApis[identityType]?.apis || [];
-    } else {
-      const type = appType === 'personal' ? 'PERSONAL_IDENTITY' : 'BUSINESS_IDENTITY';
-      const key = `${type}_${auth}`;
-      apis = identityPermissionApis[key]?.apis || [];
+    const mockKey = getMockKey(identityType, apiType);
+    let apis = identityPermissionApis[mockKey]?.apis || [];
+    
+    if (categoryId && categoryId !== 'all') {
+      const category = identityPermissionApis[mockKey]?.modules?.find(m => m.key === categoryId);
+      if (category) {
+        apis = apis.filter(api => api.category === category.name);
+      }
     }
-    if (name) {
-      apis = apis.filter(api => (api.nameCn || api.name).includes(name));
-    }
-    if (scope) {
-      apis = apis.filter(api => api.scope.includes(scope));
+    
+    if (keyword) {
+      const lowerKeyword = keyword.toLowerCase();
+      apis = apis.filter(api => 
+        (api.nameCn || api.name || '').toLowerCase().includes(lowerKeyword) || 
+        (api.scope || '').toLowerCase().includes(lowerKeyword)
+      );
     }
     if (needReview !== undefined && needReview !== 'all') {
       const needReviewBool = needReview === 'true';
       apis = apis.filter(api => api.needReview === needReviewBool);
     }
-    return apis;
+    
+    const total = apis.length;
+    const startIndex = ((curPage || 1) - 1) * (pageSize || 10);
+    const paginatedApis = apis.slice(startIndex, startIndex + (pageSize || 10));
+    
+    return {
+      data: paginatedApis,
+      total: total,
+      page: { curPage: curPage || 1, pageSize: pageSize || 10, total }
+    };
   }
   
   const queryParams = {};
-  if (name) queryParams.keyword = name;
+  if (keyword) queryParams.keyword = keyword;
   if (needReview !== undefined && needReview !== 'all') {
     queryParams.needApproval = needReview === 'true' ? 1 : 0;
   }
+  if (curPage) queryParams.curPage = curPage;
+  if (pageSize) queryParams.pageSize = pageSize;
   queryParams.includeChildren = true;
   
-  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: '11' }), { params: queryParams });
-  let apis = result?.data || [];
-  
-  if (scope) {
-    apis = apis.filter(api => api.scope.includes(scope));
-  }
-  
-  return apis;
+  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: categoryId }), { params: queryParams });
+  return result?.data || { data: [], total: 0 };
 };
 
 /**
@@ -204,32 +186,4 @@ export const remindApproval = async (id) => {
   await delay(300);
   console.log(`催办 API id: ${id}`);
   return { success: true };
-};
-
-/**
- * 删除已订阅的API权限
- * @param {string} id - 订阅记录ID
- * @returns {Promise<Object>} 删除结果
- */
-export const deleteApi = async (id) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    console.log(`删除 API id: ${id}`);
-    return { success: true };
-  }
-  return fetchApi(buildApiUrl(API_CONFIG.APIS.DELETE, { id }), { method: 'DELETE' });
-};
-
-/**
- * 撤回API审核（已订阅列表中）
- * @param {string} id - 订阅记录ID
- * @returns {Promise<Object>} 撤回结果
- */
-export const withdrawApproval = async (id) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    console.log(`撤回审核 API id: ${id}`);
-    return { success: true };
-  }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_APIS.WITHDRAW, { appId: '10', id }), { method: 'POST' });
 };

@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Pagination, Tag } from 'antd';
-import { fetchEventList } from './thunk';
+import { Button, Table, Pagination, Tag, message } from 'antd';
+import { fetchAppEvents, remindApproval, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
 import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { remindApproval, deleteEvent, withdrawApproval } from './thunk';
 import { SUBSCRIPTION_STATUS, EVENT_CHANNEL_TYPE } from '../../utils/constants';
 import './Events.m.less';
 
@@ -18,6 +17,7 @@ function getStatusTag(status) {
 function Events() {
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -29,32 +29,38 @@ function Events() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [currentDeleteId, setCurrentDeleteId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [subscribeLoading, setSubscribeLoading] = useState(false);
+
+  const loadEvents = useCallback(async (page = currentPage, size = pageSize) => {
+    setLoading(true);
+    try {
+      const result = await fetchAppEvents('10', { curPage: page, pageSize: size });
+      setEvents(result.data || []);
+      setTotal(result.page?.total || 0);
+    } catch (error) {
+      message.error('加载事件列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize]);
 
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const eventsData = await fetchEventList();
-      setEvents(eventsData);
-      setLoading(false);
-    };
-    loadData();
-  }, []);
+    loadEvents();
+  }, [loadEvents]);
 
-  const handleAddEvent = (selectedEvents) => {
-    const newEvents = selectedEvents.map((event, index) => ({
-      ...event,
-      id: String(Date.now() + index),
-      status: event.needReview ? 0 : 1,
-      approver: event.needReview ? {
-        userId: 'pending',
-        userName: '待分配'
-      } : null,
-      approvalUrl: event.needReview ? 'https://approval.example.com/event/' + (Date.now() + index) : '',
-      channelType: 0,
-      channelAddress: '',
-      authType: 0
-    }));
-    setEvents([...events, ...newEvents]);
+  const handleAddEvent = async (selectedEvents) => {
+    setSubscribeLoading(true);
+    try {
+      const permissionIds = selectedEvents.map(e => e.id);
+      await subscribeEvents('10', { permissionIds });
+      message.success('申请已提交');
+      loadEvents(1, pageSize);
+      setDrawerOpen(false);
+    } catch (error) {
+      message.error('申请失败');
+    } finally {
+      setSubscribeLoading(false);
+    }
   };
 
   const handleOpenDrawer = () => {
@@ -70,8 +76,8 @@ function Events() {
     setSubscriptionDrawerOpen(true);
   };
 
-  const handleSaveSubscription = (updatedEvent) => {
-    setEvents(events.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+  const handleSaveSubscription = async (updatedEvent) => {
+    loadEvents();
   };
 
   const handleCloseSubscriptionDrawer = () => {
@@ -89,9 +95,13 @@ function Events() {
   };
 
   const handleWithdraw = async (record) => {
-    await withdrawApproval(record.id);
-    const data = await fetchEventList();
-    setEvents(data);
+    try {
+      await withdrawApproval(record.id);
+      message.success('已撤回');
+      loadEvents();
+    } catch (error) {
+      message.error('撤回失败');
+    }
   };
 
   const handleOpenDoc = (url) => {
@@ -107,10 +117,11 @@ function Events() {
     setDeleteLoading(true);
     try {
       await deleteEvent(currentDeleteId);
-      setEvents(events.filter(e => e.id !== currentDeleteId));
-      const data = await fetchEventList();
-      setEvents(data);
+      message.success('删除成功');
       setDeleteModalOpen(false);
+      loadEvents();
+    } catch (error) {
+      message.error('删除失败');
     } finally {
       setDeleteLoading(false);
     }
@@ -119,6 +130,7 @@ function Events() {
   const handlePageChange = (page, size) => {
     setCurrentPage(page);
     setPageSize(size);
+    loadEvents(page, size);
   };
 
   const columns = [
@@ -178,8 +190,6 @@ function Events() {
     },
   ];
 
-  const paginatedData = events.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
   return (
     <div className="events">
       <div className="page-header">
@@ -194,14 +204,14 @@ function Events() {
       </div>
       <Table
         columns={columns}
-        dataSource={paginatedData}
+        dataSource={events}
         rowKey="id"
         pagination={false}
         loading={loading}
       />
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Pagination
-          total={events.length}
+          total={total}
           current={currentPage}
           pageSize={pageSize}
           pageSizeOptions={[10, 20, 50]}
@@ -217,6 +227,7 @@ function Events() {
         onClose={handleCloseDrawer}
         onConfirm={handleAddEvent}
         selectedEvents={events}
+        subscribeLoading={subscribeLoading}
       />
 
       <EventSubscriptionDrawer

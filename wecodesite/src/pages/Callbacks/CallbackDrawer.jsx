@@ -1,34 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Drawer, Table, Button, Pagination, Tag } from 'antd';
 import { fetchAllCallbacks } from './thunk';
 import './CallbackDrawer.m.less';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [] }) {
+function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subscribeLoading = false }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState(
     selectedCallbacks.map(c => c.id)
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [allCallbacks, setAllCallbacks] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      const data = await fetchAllCallbacks();
-      setAllCallbacks(data);
+  const loadData = useCallback(async (page = currentPage, size = pageSize) => {
+    setLoading(true);
+    try {
+      const result = await fetchAllCallbacks({ curPage: page, pageSize: size });
+      setAllCallbacks(result.data || []);
+      setTotal(result.page?.total || 0);
+    } finally {
       setLoading(false);
-    };
+    }
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
     if (open) {
       loadData();
     }
-  }, [open]);
+  }, [open, loadData]);
 
   const handlePageChange = (page, size) => {
     setCurrentPage(page);
     setPageSize(size);
+    loadData(page, size);
   };
 
   const handleSelectChange = (keys) => {
@@ -90,11 +97,6 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [] }) {
     onChange: handleSelectChange,
   };
 
-  const paginatedData = allCallbacks.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
   return (
     <Drawer
       title="添加回调"
@@ -108,7 +110,8 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [] }) {
           <Button onClick={onClose}>取消</Button>
           <Button 
             type="primary" 
-            disabled={selectedRowKeys.length === 0}
+            disabled={selectedRowKeys.length === 0 || subscribeLoading}
+            loading={subscribeLoading}
             onClick={handleConfirm}
           >
             确认添加
@@ -119,17 +122,17 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [] }) {
       <Table
         rowSelection={rowSelection}
         columns={columns}
-        dataSource={paginatedData}
+        dataSource={allCallbacks}
         rowKey="id"
         pagination={false}
         loading={loading}
       />
       <div className="drawer-pagination">
-        <span className="pagination-total">共 {allCallbacks.length} 条</span>
+        <span className="pagination-total">共 {total} 条</span>
         <Pagination
           current={currentPage}
           pageSize={pageSize}
-          total={allCallbacks.length}
+          total={total}
           onChange={handlePageChange}
           showSizeChanger
           pageSizeOptions={PAGE_SIZE_OPTIONS}
