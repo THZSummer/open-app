@@ -15,6 +15,15 @@ import { fetchCategoryTree } from '../Category/thunk';
 
 const { Option } = Select;
 
+// 事件扩展属性预设选项
+const EVENT_PROPERTY_PRESETS = [
+  { value: 'descriptionCn', label: '中文描述', placeholder: '事件的中文描述' },
+  { value: 'descriptionEn', label: '英文描述', placeholder: 'Event description in English' },
+  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/event/xxx' },
+  { value: 'dataSchema', label: '数据结构', placeholder: 'JSON Schema 或数据格式说明' },
+  { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
+];
+
 function EventRegister({ visible, event, onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +70,13 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
               permissionNameCn: data.permission?.nameCn,
               permissionNameEn: data.permission?.nameEn,
               scope: data.permission?.scope,
-              properties: data.properties || [],
+              properties: data.properties?.map(prop => ({
+                propertyName: prop.propertyName,
+                propertyValue: prop.propertyValue,
+                customPropertyName: EVENT_PROPERTY_PRESETS.find(p => p.value === prop.propertyName) 
+                  ? undefined 
+                  : prop.propertyName,
+              })) || [],
             });
           }
         } finally {
@@ -80,6 +95,16 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
       setSubmitting(true);
       const values = await form.validateFields();
 
+      const properties = values.properties?.map(prop => {
+        if (prop.propertyName === '__custom__') {
+          return {
+            propertyName: prop.customPropertyName,
+            propertyValue: prop.propertyValue,
+          };
+        }
+        return prop;
+      }).filter(prop => prop.propertyName);
+
       const data = {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
@@ -90,7 +115,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
           nameEn: values.permissionNameEn,
           scope: values.scope,
         },
-        properties: values.properties,
+        properties: properties,
       };
 
       let result;
@@ -195,32 +220,100 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
 
         <Card title="扩展属性（可选）" size="small">
           <Form.List name="properties">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'propertyName']}
-                      rules={[{ required: true, message: '请输入属性名' }]}
-                    >
-                      <Input placeholder="属性名，如 descriptionCn" style={{ width: 200 }} />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'propertyValue']}
-                      rules={[{ required: true, message: '请输入属性值' }]}
-                    >
-                      <Input placeholder="属性值" style={{ width: 300 }} />
-                    </Form.Item>
-                    <MinusCircleOutlined onClick={() => remove(name)} />
-                  </Space>
-                ))}
-                <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                  添加属性
-                </Button>
-              </>
-            )}
+            {(fields, { add, remove }) => {
+              const formValues = form.getFieldValue('properties') || [];
+              const usedPresets = formValues
+                .map(item => item?.propertyName)
+                .filter(name => name && name !== '__custom__');
+
+              return (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'propertyName']}
+                        rules={[{ required: true, message: '请选择或输入属性名' }]}
+                      >
+                        <Select
+                          placeholder="选择属性"
+                          style={{ width: 160 }}
+                          onChange={(value) => {
+                            const properties = form.getFieldValue('properties');
+                            properties[name].propertyValue = undefined;
+                            form.setFieldsValue({ properties });
+                          }}
+                        >
+                          {EVENT_PROPERTY_PRESETS.map(preset => (
+                            <Select.Option 
+                              key={preset.value} 
+                              value={preset.value}
+                              disabled={preset.value !== '__custom__' && usedPresets.includes(preset.value)}
+                            >
+                              {preset.label}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, cur) => 
+                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
+                        }
+                      >
+                        {({ getFieldValue }) => {
+                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
+                          if (propertyName === '__custom__') {
+                            return (
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'customPropertyName']}
+                                rules={[{ required: true, message: '请输入自定义属性名' }]}
+                              >
+                                <Input placeholder="自定义属性名" style={{ width: 140 }} />
+                              </Form.Item>
+                            );
+                          }
+                          return null;
+                        }}
+                      </Form.Item>
+
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, cur) => 
+                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
+                        }
+                      >
+                        {({ getFieldValue }) => {
+                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
+                          const preset = EVENT_PROPERTY_PRESETS.find(p => p.value === propertyName);
+                          const isCustom = propertyName === '__custom__';
+                          
+                          return (
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'propertyValue']}
+                              rules={[{ required: true, message: '请输入属性值' }]}
+                            >
+                              <Input 
+                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
+                                style={{ width: 260 }} 
+                              />
+                            </Form.Item>
+                          );
+                        }}
+                      </Form.Item>
+
+                      <MinusCircleOutlined onClick={() => remove(name)} />
+                    </Space>
+                  ))}
+                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                    添加属性
+                  </Button>
+                </>
+              );
+            }}
           </Form.List>
         </Card>
       </Form>
