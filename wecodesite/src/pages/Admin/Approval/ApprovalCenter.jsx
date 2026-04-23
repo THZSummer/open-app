@@ -31,6 +31,7 @@ const STATUS_MAP = {
   0: { text: '待审', color: 'orange' },
   1: { text: '已通过', color: 'green' },
   2: { text: '已拒绝', color: 'red' },
+  3: { text: '已撤销', color: 'default' },
 };
 
 function ApprovalCenter() {
@@ -82,23 +83,35 @@ function ApprovalCenter() {
   const columns = [
     {
       title: '申请编号',
-      dataIndex: 'applicationNo',
-      key: 'applicationNo',
+      dataIndex: 'id',
+      key: 'id',
     },
     {
       title: '申请人',
-      dataIndex: 'applicant',
-      key: 'applicant',
+      dataIndex: 'applicantName',
+      key: 'applicantName',
     },
     {
-      title: '申请类型',
+      title: '业务类型',
+      dataIndex: 'businessType',
+      key: 'businessType',
+    },
+    {
+      title: '业务名称',
+      dataIndex: 'businessName',
+      key: 'businessName',
+    },
+    {
+      title: '审批类型',
       dataIndex: 'type',
       key: 'type',
-    },
-    {
-      title: '申请内容',
-      dataIndex: 'content',
-      key: 'content',
+      render: (type) => {
+        const typeMap = {
+          'resource_register': '资源注册',
+          'permission_apply': '权限申请',
+        };
+        return typeMap[type] || type;
+      },
     },
     {
       title: '状态',
@@ -154,18 +167,30 @@ function ApprovalCenter() {
   const myColumns = [
     {
       title: '申请编号',
-      dataIndex: 'applicationNo',
-      key: 'applicationNo',
+      dataIndex: 'id',
+      key: 'id',
     },
     {
-      title: '申请类型',
+      title: '业务类型',
+      dataIndex: 'businessType',
+      key: 'businessType',
+    },
+    {
+      title: '业务名称',
+      dataIndex: 'businessName',
+      key: 'businessName',
+    },
+    {
+      title: '审批类型',
       dataIndex: 'type',
       key: 'type',
-    },
-    {
-      title: '申请内容',
-      dataIndex: 'content',
-      key: 'content',
+      render: (type) => {
+        const typeMap = {
+          'resource_register': '资源注册',
+          'permission_apply': '权限申请',
+        };
+        return typeMap[type] || type;
+      },
     },
     {
       title: '状态',
@@ -237,10 +262,15 @@ function ApprovalCenter() {
       >
         {currentDetail && (
           <div>
-            <p><strong>申请编号：</strong>{currentDetail.applicationNo}</p>
-            <p><strong>申请人：</strong>{currentDetail.applicant}</p>
-            <p><strong>申请类型：</strong>{currentDetail.type}</p>
-            <p><strong>申请内容：</strong>{currentDetail.content}</p>
+            <p><strong>申请编号：</strong>{currentDetail.id}</p>
+            <p><strong>申请人：</strong>{currentDetail.applicantName}</p>
+            <p><strong>业务类型：</strong>{currentDetail.businessType}</p>
+            <p><strong>业务名称：</strong>{currentDetail.businessName}</p>
+            <p><strong>审批类型：</strong>{
+              currentDetail.type === 'resource_register' ? '资源注册' :
+              currentDetail.type === 'permission_apply' ? '权限申请' : currentDetail.type
+            }</p>
+            <p><strong>状态：</strong>{STATUS_MAP[currentDetail.status]?.text || '未知'}</p>
             <p><strong>申请时间：</strong>{currentDetail.createTime}</p>
           </div>
         )}

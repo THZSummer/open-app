@@ -72,8 +72,8 @@ public class CategoryService {
         // 第二遍遍历：构建树形关系
         for (Category category : categories) {
             CategoryTreeResponse response = responseMap.get(category.getId());
-            if (category.getParentId() == null) {
-                // 根节点
+            if (category.getParentId() == null || category.getParentId() == 0L) {
+                // 根节点（parentId 为 null 或 0 都视为根节点）
                 roots.add(response);
             } else {
                 // 子节点
