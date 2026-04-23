@@ -182,6 +182,43 @@
 
 ---
 
+### 0.6 状态枚举定义
+
+#### 订阅状态 (Subscription Status)
+
+用于标识应用对权限资源的订阅状态，适用于 API/事件/回调权限管理。
+
+| 值 | 状态 | 说明 | 可执行操作 |
+|----|------|------|-----------|
+| 0 | 审核中 | 申请已提交，等待审批 | 撤回申请 |
+| 1 | 已授权 | 审批通过，权限生效 | 配置消费参数（事件/回调） |
+| 2 | 已拒绝 | 审批驳回 | 重新申请 |
+| 3 | 已取消 | 消费方主动撤回 | 重新申请 |
+
+#### 审批状态 (Approval Status)
+
+用于标识审批单的处理状态。
+
+| 值 | 状态 | 说明 |
+|----|------|------|
+| 0 | 待审批 | 等待审批人处理 |
+| 1 | 已通过 | 审批同意 |
+| 2 | 已驳回 | 审批拒绝 |
+| 3 | 已撤销 | 申请人撤销 |
+
+#### 资源状态 (Resource Status)
+
+用于标识 API/事件/回调资源的生命周期状态。
+
+| 值 | 状态 | 说明 |
+|----|------|------|
+| 0 | 草稿 | 初始状态或已撤回 |
+| 1 | 待审 | 已提交注册，等待审批 |
+| 2 | 已发布 | 审批通过，资源上架 |
+| 3 | 已下线 | 资源已下线 |
+
+---
+
 ## 1. 接口清单
 
 | # | 模块 | Method | Path | 说明 | FR |
@@ -1468,10 +1505,12 @@
         "permissionId": "201",
         "permission": {
           "nameCn": "消息接收权限",
-          "scope": "event:im:message-received"
+          "scope": "event:im:message-received",
+          "docUrl": "https://docs.example.com/event/message-received"
         },
         "event": {
-          "topic": "im.message.received"
+          "topic": "im.message.received",
+          "docUrl": "https://docs.example.com/event/message-received"
         },
         "category": {
           "id": "2",
@@ -1479,7 +1518,12 @@
           "path": "/1/2/",
           "categoryPath": ["A类应用权限", "IM业务"]
         },
+        "approver": {
+          "userId": "user001",
+          "userName": "张三"
+        },
         "status": 1,
+        "approvalUrl": "https://platform.example.com/approval/301",
         "channelType": 1,
         "channelAddress": "https://webhook.example.com/events",
         "authType": 0,

@@ -5,6 +5,8 @@ import {
   Tag,
   Space,
   Input,
+  Select,
+  TreeSelect,
   Popconfirm,
   Empty,
   Spin,
@@ -16,6 +18,7 @@ import {
   EyeOutlined,
 } from '@ant-design/icons';
 import { fetchCallbackList, deleteCallback } from './thunk';
+import { fetchCategoryTree } from '../Category/thunk';
 import CallbackRegister from './CallbackRegister';
 import './CallbackList.m.less';
 
@@ -23,7 +26,9 @@ const { Search } = Input;
 
 const STATUS_MAP = {
   0: { text: '草稿', color: 'default' },
+  1: { text: '待审', color: 'orange' },
   2: { text: '已发布', color: 'green' },
+  3: { text: '已下线', color: 'red' },
 };
 
 function CallbackList() {
@@ -31,17 +36,60 @@ function CallbackList() {
   const [callbackList, setCallbackList] = useState([]);
   const [total, setTotal] = useState(0);
   const [keyword, setKeyword] = useState('');
+  const [categoryId, setCategoryId] = useState(undefined);
+  const [status, setStatus] = useState(undefined);
+  const [categories, setCategories] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentCallback, setCurrentCallback] = useState(null);
   const [mode, setMode] = useState('create');
 
   useEffect(() => {
     loadData();
+    loadCategories();
   }, []);
 
-  const loadData = async () => {
+  const loadCategories = async () => {
+    const result = await fetchCategoryTree();
+    if (result.code === '200') {
+      setCategories(result.data || []);
+    }
+  };
+
+  // 将后端返回的分类树数据转换为 TreeSelect 所需格式
+  const convertToTreeData = (categories) => {
+    if (!categories) return [];
+    return categories.map(cat => ({
+      value: cat.id,
+      title: cat.nameCn,
+      key: cat.id,
+      children: cat.children ? convertToTreeData(cat.children) : undefined
+    }));
+  };
+
+  const loadData = async (params = {}) => {
     setLoading(true);
-    const result = await fetchCallbackList({ keyword });
+    // 使用 'key' in params 区分"传入 undefined 表示清除"和"没有传这个参数"
+    const finalKeyword = 'keyword' in params ? params.keyword : keyword;
+    const finalCategoryId = 'categoryId' in params ? params.categoryId : categoryId;
+    const finalStatus = 'status' in params ? params.status : status;
+    
+    const requestParams = {
+      keyword: finalKeyword,
+      categoryId: finalCategoryId,
+      status: finalStatus,
+    };
+    
+    // 只有当 curPage 有值时才添加
+    if (params.curPage !== undefined) {
+      requestParams.curPage = params.curPage;
+    }
+    
+    // 过滤掉值为 undefined 的参数
+    const filteredParams = Object.fromEntries(
+      Object.entries(requestParams).filter(([_, value]) => value !== undefined)
+    );
+
+    const result = await fetchCallbackList(filteredParams);
     if (result.code === '200') {
       setCallbackList(result.data);
       setTotal(result.page?.total || 0);
@@ -153,6 +201,34 @@ function CallbackList() {
             style={{ width: 200 }}
             onSearch={handleSearch}
           />
+          <TreeSelect
+            placeholder="选择分类"
+            value={categoryId}
+            onChange={(value) => {
+              setCategoryId(value);
+              loadData({ categoryId: value });
+            }}
+            treeData={convertToTreeData(categories)}
+            treeDefaultExpandAll
+            allowClear
+            style={{ width: 150 }}
+            dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+          />
+          <Select
+            placeholder="选择状态"
+            value={status}
+            onChange={(value) => {
+              setStatus(value);
+              loadData({ status: value });
+            }}
+            style={{ width: 120 }}
+            allowClear
+          >
+            <Select.Option value={0}>草稿</Select.Option>
+            <Select.Option value={1}>待审</Select.Option>
+            <Select.Option value={2}>已发布</Select.Option>
+            <Select.Option value={3}>已下线</Select.Option>
+          </Select>
         </div>
 
         <Spin spinning={loading}>
