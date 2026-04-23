@@ -33,6 +33,12 @@ public class ApiUpdateRequest implements Serializable {
     private String nameEn;
 
     /**
+     * 认证方式（可选）：0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN
+     */
+    @Schema(description = "认证方式（可选）: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN")
+    private Integer authType;
+
+    /**
      * 所属分类ID（可选，更新时只更新非null字段）
      */
     @Schema(description = "所属分类ID（可选）", requiredMode = Schema.RequiredMode.NOT_REQUIRED)

@@ -20,9 +20,19 @@ const API_PROPERTY_PRESETS = [
   { value: 'descriptionCn', label: '中文描述', placeholder: 'API的中文描述' },
   { value: 'descriptionEn', label: '英文描述', placeholder: 'API description in English' },
   { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/api/xxx' },
-  { value: 'authType', label: '认证方式', placeholder: 'oauth2 / apikey / none' },
   { value: 'rateLimit', label: '速率限制', placeholder: '100/minute' },
   { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
+];
+
+// 认证方式选项
+const AUTH_TYPE_OPTIONS = [
+  { value: 0, label: 'Cookie' },
+  { value: 1, label: 'SOA' },
+  { value: 2, label: 'APIG' },
+  { value: 3, label: 'IAM' },
+  { value: 4, label: '免认证' },
+  { value: 5, label: 'AKSK' },
+  { value: 6, label: 'CLITOKEN' },
 ];
 
 function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
@@ -68,6 +78,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
               nameEn: data.nameEn,
               path: data.path,
               method: data.method,
+              authType: data.authType,
               categoryId: data.categoryId,
               permissionNameCn: data.permission?.nameCn,
               permissionNameEn: data.permission?.nameEn,
@@ -115,6 +126,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
         nameEn: values.nameEn,
         path: values.path,
         method: values.method,
+        authType: values.authType,
         categoryId: values.categoryId,
         permission: {
           nameCn: values.permissionNameCn,
@@ -216,6 +228,19 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
               <Option value="PUT">PUT</Option>
               <Option value="DELETE">DELETE</Option>
               <Option value="PATCH">PATCH</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="认证方式"
+            name="authType"
+            initialValue={1}
+            extra="默认为 SOA 认证"
+          >
+            <Select placeholder="请选择认证方式" disabled={mode === 'view'}>
+              {AUTH_TYPE_OPTIONS.map(opt => (
+                <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+              ))}
             </Select>
           </Form.Item>
         </Card>

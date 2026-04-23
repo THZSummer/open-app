@@ -31,6 +31,16 @@ const STATUS_MAP = {
   3: { text: '已下线', color: 'red' },
 };
 
+const AUTH_TYPE_MAP = {
+  0: 'Cookie',
+  1: 'SOA',
+  2: 'APIG',
+  3: 'IAM',
+  4: '免认证',
+  5: 'AKSK',
+  6: 'CLITOKEN',
+};
+
 function ApiList() {
   const [loading, setLoading] = useState(false);
   const [apiList, setApiList] = useState([]);
@@ -141,6 +151,15 @@ function ApiList() {
       dataIndex: 'method',
       key: 'method',
       render: (method) => <Tag color="blue">{method}</Tag>,
+    },
+    {
+      title: '认证方式',
+      dataIndex: 'authType',
+      key: 'authType',
+      render: (authType) => {
+        const label = AUTH_TYPE_MAP[authType] || 'SOA';
+        return <Tag color="purple">{label}</Tag>;
+      },
     },
     {
       title: '状态',

@@ -569,6 +569,7 @@
         "nameEn": "Send Message",
         "path": "/api/v1/messages",
         "method": "POST",
+        "authType": 1,
         "categoryId": "2",
         "categoryName": "IM 业务",
         "status": 2,
@@ -607,6 +608,7 @@
     "nameEn": "Send Message",
     "path": "/api/v1/messages",
     "method": "POST",
+    "authType": 1,
     "categoryId": "2",
     "status": 2,
     "createTime": "2026-04-20T10:00:00.000Z",
@@ -642,6 +644,7 @@
 | name_en | string | 是 | 英文名称 |
 | path | string | 是 | API 路径 |
 | method | string | 是 | HTTP 方法（GET/POST/PUT/DELETE） |
+| auth_type | int | 否 | 认证方式: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN，默认 1 |
 | category_id | long | 是 | 所属分类ID |
 | permission | object | 是 | 权限定义 |
 | properties | array | 否 | 扩展属性列表 |
@@ -661,6 +664,7 @@
   "nameEn": "Send Message",
   "path": "/api/v1/messages",
   "method": "POST",
+  "authType": 1,
   "categoryId": "2",
   "permission": {
     "nameCn": "发送消息权限",
@@ -688,14 +692,14 @@
     "nameEn": "Send Message",
     "path": "/api/v1/messages",
     "method": "POST",
+    "authType": 1,
     "status": 1,
     "permission": {
       "id": "200",
       "scope": "api:im:send-message",
       "status": 1
-    },
-  "page": null
-},
+    }
+  },
   "messageZh": "API 注册成功，等待审批",
   "messageEn": "Error"
 }
@@ -715,6 +719,7 @@
 {
   "nameCn": "发送消息V2",
   "nameEn": "Send Message V2",
+  "authType": 2,
   "categoryId": "2",
   "permission": {
     "nameCn": "发送消息权限V2",
@@ -736,6 +741,7 @@
   "data": {
     "id": "100",
     "nameCn": "发送消息V2",
+    "authType": 2,
     "status": 1,
     "message": "API 更新成功，核心属性变更需重新审批"
   },
@@ -1285,6 +1291,7 @@
         "api": {
           "path": "/api/v1/messages",
           "method": "POST",
+          "authType": 1,
           "docUrl": "https://docs.example.com/api/send-message"
         },
         "category": {
@@ -1352,6 +1359,7 @@
         "api": {
           "path": "/api/v1/messages",
           "method": "POST",
+          "authType": 1,
           "docUrl": "https://docs.example.com/api/send-message"
         }
       }
@@ -1609,8 +1617,13 @@
 |------|-----|------|
 | channel_type | 0 | 企业内部消息队列 |
 | channel_type | 1 | WebHook |
-| auth_type | 0 | 应用类凭证A |
-| auth_type | 1 | 应用类凭证B |
+| auth_type | 0 | Cookie |
+| auth_type | 1 | SOA |
+| auth_type | 2 | APIG |
+| auth_type | 3 | IAM |
+| auth_type | 4 | 免认证 |
+| auth_type | 5 | AKSK |
+| auth_type | 6 | CLITOKEN |
 
 **响应示例**：
 

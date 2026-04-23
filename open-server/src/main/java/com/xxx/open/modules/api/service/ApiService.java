@@ -153,6 +153,7 @@ public class ApiService {
         api.setNameEn(request.getNameEn());
         api.setPath(request.getPath());
         api.setMethod(request.getMethod().toUpperCase());
+        api.setAuthType(request.getAuthType() != null ? request.getAuthType() : 1); // 默认 SOA
         api.setCategoryId(categoryId); // 设置分类ID
         api.setStatus(1); // 待审
         api.setCreateTime(now);
@@ -261,6 +262,9 @@ public class ApiService {
         }
         if (categoryId != null) {
             api.setCategoryId(categoryId);
+        }
+        if (request.getAuthType() != null) {
+            api.setAuthType(request.getAuthType());
         }
         api.setLastUpdateTime(now);
         api.setLastUpdateBy(currentUser);
@@ -408,6 +412,7 @@ public class ApiService {
                 .nameEn(api.getNameEn())
                 .path(api.getPath())
                 .method(api.getMethod())
+                .authType(api.getAuthType())
                 .categoryId(String.valueOf(api.getCategoryId()))
                 .categoryName(api.getCategoryName()) // 从 JOIN 查询获取
                 .status(api.getStatus())
@@ -446,6 +451,7 @@ public class ApiService {
                 .nameEn(api.getNameEn())
                 .path(api.getPath())
                 .method(api.getMethod())
+                .authType(api.getAuthType())
                 .categoryId(String.valueOf(api.getCategoryId()))
                 .categoryName(api.getCategoryName()) // 从 JOIN 查询获取
                 .status(api.getStatus())

@@ -44,6 +44,11 @@ public class Api implements Serializable {
     private String method;
 
     /**
+     * 认证方式：0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN
+     */
+    private Integer authType;
+
+    /**
      * 所属分类ID
      */
     private Long categoryId;

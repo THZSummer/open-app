@@ -89,6 +89,11 @@ public class CategoryPermissionListResponse implements Serializable {
         private String method;
 
         /**
+         * 认证方式（仅 API 类型）
+         */
+        private Integer authType;
+
+        /**
          * Topic（仅事件类型）
          */
         private String topic;

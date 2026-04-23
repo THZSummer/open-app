@@ -52,6 +52,14 @@ public class ApiCreateRequest implements Serializable {
     private String method;
 
     /**
+     * 认证方式：0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN
+     * 默认值为 1 (SOA)
+     */
+    @Schema(description = "认证方式: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN", 
+            defaultValue = "1")
+    private Integer authType;
+
+    /**
      * 所属分类ID
      */
     @NotBlank(message = "所属分类ID不能为空")

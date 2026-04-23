@@ -77,11 +77,13 @@ CREATE TABLE `openplatform_v2_api_t` (
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
     `path` VARCHAR(500) NOT NULL COMMENT 'API路径',
     `method` VARCHAR(10) NOT NULL COMMENT 'HTTP方法',
+    `auth_type` TINYINT(10) NOT NULL DEFAULT 1 COMMENT '认证方式: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN',
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=草稿, 1=待审, 2=已发布, 3=已下线',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
+    KEY `idx_auth_type` (`auth_type`),
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API资源主表';
 
@@ -245,7 +247,7 @@ CREATE TABLE `openplatform_v2_subscription_t` (
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=待审, 1=已授权, 2=已拒绝, 3=已取消',
     `channel_type` TINYINT(10) COMMENT '0=内部消息队列, 1=WebHook, 2=SSE, 3=WebSocket',
     `channel_address` VARCHAR(500),
-    `auth_type` TINYINT(10) COMMENT '0=应用类凭证A, 1=应用类凭证B, 2=开放应用凭证',
+    `auth_type` TINYINT(10) COMMENT '认证方式: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
@@ -364,6 +366,27 @@ CREATE TABLE `openplatform_v2_user_authorization_t` (
 | 状态枚举 | `TINYINT(10)` |
 | 人账号字段 | `VARCHAR(100)` |
 | 名称/描述 | 中英文双语（`name_cn`/`name_en`，`description_cn`/`description_en`） |
+
+### 枚举字段规范
+
+本系统使用 `TINYINT(10)` 存储枚举值，遵循以下规范：
+
+| 枚举字段 | 说明 | 枚举值定义 |
+|----------|------|-----------|
+| `status` | 资源状态 | 0=草稿, 1=待审, 2=已发布, 3=已下线 |
+| `auth_type` | 认证方式 | 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN |
+| `channel_type` | 渠道类型 | 0=内部消息队列, 1=WebHook, 2=SSE, 3=WebSocket |
+| `action` | 审批动作 | 0=同意, 1=拒绝, 2=撤销, 3=转交 |
+
+**设计原则**：
+- ✅ 使用数字编码（0, 1, 2...）而非字符串
+- ✅ 在 COMMENT 中完整说明枚举值含义
+- ✅ 枚举值连续，便于扩展
+- ✅ 对应 Java 枚举类，提供类型安全访问
+
+**枚举字段索引**：
+- 频繁查询的枚举字段应添加索引（如 `idx_auth_type`）
+- 使用 `KEY idx_xxx (field_name)` 而非 UNIQUE KEY
 
 ### 审计字段（必备）
 

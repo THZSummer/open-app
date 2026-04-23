@@ -24,6 +24,9 @@ public class Subscription implements Serializable {
     private Integer status;
     private Integer channelType;
     private String channelAddress;
+    /**
+     * 认证方式：0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN
+     */
     private Integer authType;
     private Date createTime;
     private Date lastUpdateTime;

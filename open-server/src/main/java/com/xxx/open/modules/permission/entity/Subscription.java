@@ -50,7 +50,7 @@ public class Subscription implements Serializable {
     private String channelAddress;
 
     /**
-     * 认证类型：0=应用类凭证A, 1=应用类凭证B, 2=开放应用凭证
+     * 认证方式：0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN
      */
     private Integer authType;
 
