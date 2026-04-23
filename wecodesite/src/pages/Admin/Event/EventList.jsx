@@ -68,12 +68,28 @@ function EventList() {
 
   const loadData = async (params = {}) => {
     setLoading(true);
-    const result = await fetchEventList({
-      keyword,
-      categoryId,
-      status,
-      ...params,
-    });
+    // 使用 'key' in params 区分"传入 undefined 表示清除"和"没有传这个参数"
+    const finalKeyword = 'keyword' in params ? params.keyword : keyword;
+    const finalCategoryId = 'categoryId' in params ? params.categoryId : categoryId;
+    const finalStatus = 'status' in params ? params.status : status;
+    
+    const requestParams = {
+      keyword: finalKeyword,
+      categoryId: finalCategoryId,
+      status: finalStatus,
+    };
+    
+    // 只有当 curPage 有值时才添加
+    if (params.curPage !== undefined) {
+      requestParams.curPage = params.curPage;
+    }
+    
+    // 过滤掉值为 undefined 的参数
+    const filteredParams = Object.fromEntries(
+      Object.entries(requestParams).filter(([_, value]) => value !== undefined)
+    );
+
+    const result = await fetchEventList(filteredParams);
     if (result.code === '200') {
       setEventList(result.data);
       setTotal(result.page?.total || 0);
@@ -194,7 +210,10 @@ function EventList() {
           <TreeSelect
             placeholder="选择分类"
             value={categoryId}
-            onChange={setCategoryId}
+            onChange={(value) => {
+              setCategoryId(value);
+              loadData({ categoryId: value });
+            }}
             treeData={convertToTreeData(categories)}
             treeDefaultExpandAll
             allowClear
@@ -204,7 +223,10 @@ function EventList() {
           <Select
             placeholder="选择状态"
             value={status}
-            onChange={setStatus}
+            onChange={(value) => {
+              setStatus(value);
+              loadData({ status: value });
+            }}
             style={{ width: 120 }}
             allowClear
           >

@@ -12,9 +12,11 @@ import com.xxx.open.modules.callback.mapper.CallbackPropertyMapper;
 import com.xxx.open.modules.category.entity.Category;
 import com.xxx.open.modules.category.mapper.CategoryMapper;
 import com.xxx.open.modules.event.entity.Event;
+import com.xxx.open.modules.event.entity.EventProperty;
 import com.xxx.open.modules.event.entity.Permission;
 import com.xxx.open.modules.event.entity.PermissionProperty;
 import com.xxx.open.modules.event.mapper.EventMapper;
+import com.xxx.open.modules.event.mapper.EventPropertyMapper;
 import com.xxx.open.modules.event.mapper.PermissionMapper;
 import com.xxx.open.modules.event.mapper.PermissionPropertyMapper;
 import com.xxx.open.modules.permission.dto.*;
@@ -52,6 +54,7 @@ public class PermissionService {
     private final ApiMapper apiMapper;
     private final ApiPropertyMapper apiPropertyMapper;
     private final EventMapper eventMapper;
+    private final EventPropertyMapper eventPropertyMapper;
     private final CallbackMapper callbackMapper;
     private final CallbackPropertyMapper callbackPropertyMapper;
     private final SnowflakeIdGenerator idGenerator;
@@ -421,6 +424,9 @@ public class PermissionService {
         return WithdrawResponse.builder()
                 .id(subscriptionId)
                 .message("事件消费参数配置成功")
+                .channelType(request.getChannelType())
+                .channelAddress(request.getChannelAddress())
+                .authType(request.getAuthType())
                 .build();
     }
 
@@ -749,16 +755,24 @@ public class PermissionService {
 
         EventSubscriptionListResponse.PermissionInfo permissionInfo = null;
         if (permission != null) {
+            // 查询权限文档URL
+            String permissionDocUrl = getPermissionDocUrl(permission.getId());
+            
             permissionInfo = EventSubscriptionListResponse.PermissionInfo.builder()
                     .nameCn(permission.getNameCn())
                     .scope(permission.getScope())
+                    .docUrl(permissionDocUrl)
                     .build();
         }
 
         EventSubscriptionListResponse.EventInfo eventInfo = null;
         if (event != null) {
+            // 查询事件文档URL
+            String eventDocUrl = getEventDocUrl(event.getId());
+            
             eventInfo = EventSubscriptionListResponse.EventInfo.builder()
                     .topic(event.getTopic())
+                    .docUrl(eventDocUrl)
                     .build();
         }
 
@@ -772,6 +786,12 @@ public class PermissionService {
                     .build();
         }
 
+        // 查询审批人信息
+        EventSubscriptionListResponse.ApproverInfo approverInfo = getApproverInfo(subscription.getId());
+        
+        // 构造审批链接
+        String approvalUrl = "https://platform.example.com/approval/event/" + subscription.getId();
+
         return EventSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
                 .appId(String.valueOf(subscription.getAppId()))
@@ -784,6 +804,8 @@ public class PermissionService {
                 .channelAddress(subscription.getChannelAddress())
                 .authType(subscription.getAuthType())
                 .createTime(subscription.getCreateTime())
+                .approver(approverInfo)
+                .approvalUrl(approvalUrl)
                 .build();
     }
 
@@ -938,14 +960,6 @@ public class PermissionService {
     }
 
     /**
-     * 获取事件文档URL
-     */
-    private String getEventDocUrl(Long eventId) {
-        // TODO: 实现属性查询
-        return null;
-    }
-
-    /**
      * 获取回调文档URL
      */
     private String getCallbackDocUrl(Long callbackId) {
@@ -960,6 +974,41 @@ public class PermissionService {
         // 从属性表查询 need_approval
         // 默认需要审核
         return 1;
+    }
+
+    /**
+     * 获取权限文档URL
+     */
+    private String getPermissionDocUrl(Long permissionId) {
+        // 从 permission_property 表查询 doc_url
+        List<PermissionProperty> properties = permissionPropertyMapper.selectByParentId(permissionId);
+        return properties.stream()
+                .filter(p -> "doc_url".equals(p.getPropertyName()))
+                .findFirst()
+                .map(PermissionProperty::getPropertyValue)
+                .orElse(null);
+    }
+
+    /**
+     * 获取事件文档URL
+     */
+    private String getEventDocUrl(Long eventId) {
+        // 从 event_property 表查询 doc_url
+        List<EventProperty> properties = eventPropertyMapper.selectByParentId(eventId);
+        return properties.stream()
+                .filter(p -> "doc_url".equals(p.getPropertyName()))
+                .findFirst()
+                .map(EventProperty::getPropertyValue)
+                .orElse(null);
+    }
+
+    /**
+     * 获取审批人信息
+     */
+    private EventSubscriptionListResponse.ApproverInfo getApproverInfo(Long subscriptionId) {
+        // TODO: 从审批流程表查询审批人信息
+        // 暂时返回 null,实际应该从审批流程中获取
+        return null;
     }
 
     /**

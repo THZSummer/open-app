@@ -35,4 +35,19 @@ public class WithdrawResponse implements Serializable {
      * 消息
      */
     private String message;
+
+    /**
+     * 通道类型：0=内部消息队列, 1=WebHook
+     */
+    private Integer channelType;
+
+    /**
+     * 通道地址
+     */
+    private String channelAddress;
+
+    /**
+     * 认证类型
+     */
+    private Integer authType;
 }

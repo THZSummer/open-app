@@ -79,6 +79,16 @@ public class EventSubscriptionListResponse implements Serializable {
     private Date createTime;
 
     /**
+     * 审批人信息
+     */
+    private ApproverInfo approver;
+
+    /**
+     * 审批链接
+     */
+    private String approvalUrl;
+
+    /**
      * 权限信息
      */
     @Data
@@ -98,6 +108,11 @@ public class EventSubscriptionListResponse implements Serializable {
          * Scope
          */
         private String scope;
+
+        /**
+         * 文档链接
+         */
+        private String docUrl;
     }
 
     /**
@@ -115,6 +130,33 @@ public class EventSubscriptionListResponse implements Serializable {
          * Topic
          */
         private String topic;
+
+        /**
+         * 文档链接
+         */
+        private String docUrl;
+    }
+
+    /**
+     * 审批人信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ApproverInfo implements Serializable {
+        
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 用户ID
+         */
+        private String userId;
+
+        /**
+         * 用户名称
+         */
+        private String userName;
     }
 
     /**
