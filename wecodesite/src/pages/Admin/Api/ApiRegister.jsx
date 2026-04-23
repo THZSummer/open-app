@@ -15,6 +15,16 @@ import { fetchCategoryTree } from '../Category/thunk';
 
 const { Option } = Select;
 
+// API 扩展属性预设选项
+const API_PROPERTY_PRESETS = [
+  { value: 'descriptionCn', label: '中文描述', placeholder: 'API的中文描述' },
+  { value: 'descriptionEn', label: '英文描述', placeholder: 'API description in English' },
+  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/api/xxx' },
+  { value: 'authType', label: '认证方式', placeholder: 'oauth2 / apikey / none' },
+  { value: 'rateLimit', label: '速率限制', placeholder: '100/minute' },
+  { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
+];
+
 function ApiRegister({ visible, api, onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -62,6 +72,15 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
               permissionNameCn: data.permission?.nameCn,
               permissionNameEn: data.permission?.nameEn,
               scope: data.permission?.scope,
+              properties: data.properties?.map(prop => ({
+                propertyName: API_PROPERTY_PRESETS.find(p => p.value === prop.propertyName)
+                  ? prop.propertyName
+                  : '__custom__',
+                propertyValue: prop.propertyValue,
+                customPropertyName: API_PROPERTY_PRESETS.find(p => p.value === prop.propertyName)
+                  ? undefined
+                  : prop.propertyName,
+              })) || [],
             });
           }
         } finally {
@@ -80,6 +99,17 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
       setSubmitting(true);
       const values = await form.validateFields();
 
+      // 处理 properties，将 __custom__ 替换为用户输入的自定义属性名
+      const properties = values.properties?.map(prop => {
+        if (prop.propertyName === '__custom__') {
+          return {
+            propertyName: prop.customPropertyName,
+            propertyValue: prop.propertyValue,
+          };
+        }
+        return prop;
+      }).filter(prop => prop.propertyName); // 过滤掉空的
+
       const data = {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
@@ -91,6 +121,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
           nameEn: values.permissionNameEn,
           scope: values.scope,
         },
+        properties: properties,
       };
 
       let result;
@@ -204,6 +235,109 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
           >
             <Input placeholder="api:im:send-message" disabled={!!api?.id} />
           </Form.Item>
+        </Card>
+
+        <Card title="扩展属性（可选）" size="small">
+          <Form.List name="properties">
+            {(fields, { add, remove }) => {
+              // 获取当前已选择的预设属性
+              const formValues = form.getFieldValue('properties') || [];
+              const usedPresets = formValues
+                .map(item => item?.propertyName)
+                .filter(name => name && name !== '__custom__');
+
+              return (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'propertyName']}
+                        rules={[{ required: true, message: '请选择或输入属性名' }]}
+                      >
+                        <Select
+                          placeholder="选择属性"
+                          style={{ width: 160 }}
+                          onChange={(value) => {
+                            // 切换属性时清空属性值
+                            const properties = form.getFieldValue('properties');
+                            properties[name].propertyValue = undefined;
+                            form.setFieldsValue({ properties });
+                          }}
+                        >
+                          {API_PROPERTY_PRESETS.map(preset => (
+                            <Select.Option 
+                              key={preset.value} 
+                              value={preset.value}
+                              disabled={preset.value !== '__custom__' && usedPresets.includes(preset.value)}
+                            >
+                              {preset.label}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      
+                      {/* 当选择"自定义"时显示自定义属性名输入框 */}
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, cur) => 
+                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
+                        }
+                      >
+                        {({ getFieldValue }) => {
+                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
+                          if (propertyName === '__custom__') {
+                            return (
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'customPropertyName']}
+                                rules={[{ required: true, message: '请输入自定义属性名' }]}
+                              >
+                                <Input placeholder="自定义属性名" style={{ width: 140 }} />
+                              </Form.Item>
+                            );
+                          }
+                          return null;
+                        }}
+                      </Form.Item>
+
+                      {/* 属性值输入框 */}
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, cur) => 
+                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
+                        }
+                      >
+                        {({ getFieldValue }) => {
+                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
+                          const preset = API_PROPERTY_PRESETS.find(p => p.value === propertyName);
+                          const isCustom = propertyName === '__custom__';
+                          
+                          return (
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'propertyValue']}
+                              rules={[{ required: true, message: '请输入属性值' }]}
+                            >
+                              <Input 
+                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
+                                style={{ width: 260 }} 
+                              />
+                            </Form.Item>
+                          );
+                        }}
+                      </Form.Item>
+
+                      <MinusCircleOutlined onClick={() => remove(name)} />
+                    </Space>
+                  ))}
+                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                    添加属性
+                  </Button>
+                </>
+              );
+            }}
+          </Form.List>
         </Card>
       </Form>
     </Modal>

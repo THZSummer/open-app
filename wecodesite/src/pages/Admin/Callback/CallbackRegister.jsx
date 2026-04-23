@@ -7,14 +7,26 @@ import {
   Card,
   Space,
   Button,
+  Select,
 } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { createCallback, updateCallback } from './thunk';
+import { createCallback, updateCallback, fetchCallbackDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
+
+// 回调扩展属性预设选项
+const CALLBACK_PROPERTY_PRESETS = [
+  { value: 'descriptionCn', label: '中文描述', placeholder: '回调的中文描述' },
+  { value: 'descriptionEn', label: '英文描述', placeholder: 'Callback description in English' },
+  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/callback/xxx' },
+  { value: 'timeout', label: '超时时间', placeholder: '30000 (毫秒)' },
+  { value: 'retryCount', label: '重试次数', placeholder: '3' },
+  { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
+];
 
 function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -42,27 +54,48 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
   };
 
   useEffect(() => {
-    if (visible && callback) {
-      // 编辑模式：填充表单
-      form.setFieldsValue({
-        nameCn: callback.nameCn,
-        nameEn: callback.nameEn,
-        categoryId: callback.categoryId,
-        permissionNameCn: callback.permission?.nameCn,
-        permissionNameEn: callback.permission?.nameEn,
-        scope: callback.permission?.scope,
-        properties: callback.properties || [],
-      });
-    } else {
-      // 新增模式：重置表单
-      form.resetFields();
-    }
+    const loadCallbackDetail = async () => {
+      if (visible && callback?.id) {
+        setLoading(true);
+        try {
+          const result = await fetchCallbackDetail(callback.id);
+          if (result.code === '200') {
+            const data = result.data;
+            form.setFieldsValue({
+              nameCn: data.nameCn,
+              nameEn: data.nameEn,
+              categoryId: data.categoryId,
+              permissionNameCn: data.permission?.nameCn,
+              permissionNameEn: data.permission?.nameEn,
+              scope: data.permission?.scope,
+              properties: data.properties || [],
+            });
+          }
+        } finally {
+          setLoading(false);
+        }
+      } else if (visible) {
+        form.resetFields();
+      }
+    };
+
+    loadCallbackDetail();
   }, [visible, callback, form]);
 
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
       const values = await form.validateFields();
+
+      const properties = values.properties?.map(prop => {
+        if (prop.propertyName === '__custom__') {
+          return {
+            propertyName: prop.customPropertyName,
+            propertyValue: prop.propertyValue,
+          };
+        }
+        return prop;
+      }).filter(prop => prop.propertyName);
 
       const data = {
         nameCn: values.nameCn,
@@ -73,7 +106,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
           nameEn: values.permissionNameEn,
           scope: values.scope,
         },
-        properties: values.properties,
+        properties: properties,
       };
 
       let result;
@@ -101,6 +134,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
       onCancel={onCancel}
       width={800}
       confirmLoading={submitting}
+      loading={loading}
       destroyOnClose
     >
       <Form form={form} layout="vertical">
@@ -166,40 +200,100 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
 
         <Card title="扩展属性（可选）" size="small">
           <Form.List name="properties">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'key']}
-                      rules={[{ required: true, message: '请输入属性名' }]}
-                    >
-                      <Input placeholder="属性名" style={{ width: 200 }} />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'value']}
-                      rules={[{ required: true, message: '请输入属性值' }]}
-                    >
-                      <Input placeholder="属性值" style={{ width: 300 }} />
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, 'description']}
-                    >
-                      <Input placeholder="描述（可选）" style={{ width: 200 }} />
-                    </Form.Item>
-                    <MinusCircleOutlined onClick={() => remove(name)} />
-                  </Space>
-                ))}
-                <Form.Item>
+            {(fields, { add, remove }) => {
+              const formValues = form.getFieldValue('properties') || [];
+              const usedPresets = formValues
+                .map(item => item?.propertyName)
+                .filter(name => name && name !== '__custom__');
+
+              return (
+                <>
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'propertyName']}
+                        rules={[{ required: true, message: '请选择或输入属性名' }]}
+                      >
+                        <Select
+                          placeholder="选择属性"
+                          style={{ width: 160 }}
+                          onChange={(value) => {
+                            const properties = form.getFieldValue('properties');
+                            properties[name].propertyValue = undefined;
+                            form.setFieldsValue({ properties });
+                          }}
+                        >
+                          {CALLBACK_PROPERTY_PRESETS.map(preset => (
+                            <Select.Option 
+                              key={preset.value} 
+                              value={preset.value}
+                              disabled={preset.value !== '__custom__' && usedPresets.includes(preset.value)}
+                            >
+                              {preset.label}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                      
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, cur) => 
+                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
+                        }
+                      >
+                        {({ getFieldValue }) => {
+                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
+                          if (propertyName === '__custom__') {
+                            return (
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'customPropertyName']}
+                                rules={[{ required: true, message: '请输入自定义属性名' }]}
+                              >
+                                <Input placeholder="自定义属性名" style={{ width: 140 }} />
+                              </Form.Item>
+                            );
+                          }
+                          return null;
+                        }}
+                      </Form.Item>
+
+                      <Form.Item
+                        noStyle
+                        shouldUpdate={(prev, cur) => 
+                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
+                        }
+                      >
+                        {({ getFieldValue }) => {
+                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
+                          const preset = CALLBACK_PROPERTY_PRESETS.find(p => p.value === propertyName);
+                          const isCustom = propertyName === '__custom__';
+                          
+                          return (
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'propertyValue']}
+                              rules={[{ required: true, message: '请输入属性值' }]}
+                            >
+                              <Input 
+                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
+                                style={{ width: 260 }} 
+                              />
+                            </Form.Item>
+                          );
+                        }}
+                      </Form.Item>
+
+                      <MinusCircleOutlined onClick={() => remove(name)} />
+                    </Space>
+                  ))}
                   <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                    添加扩展属性
+                    添加属性
                   </Button>
-                </Form.Item>
-              </>
-            )}
+                </>
+              );
+            }}
           </Form.List>
         </Card>
       </Form>

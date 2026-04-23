@@ -90,12 +90,12 @@ function EventList() {
   };
 
   const handleEdit = (record) => {
-    setCurrentEvent(record);
+    setCurrentEvent({ id: record.id });
     setModalVisible(true);
   };
 
   const handleView = (record) => {
-    setCurrentEvent(record);
+    setCurrentEvent({ id: record.id });
     setModalVisible(true);
   };
 

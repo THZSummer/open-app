@@ -58,12 +58,12 @@ function CallbackList() {
   };
 
   const handleEdit = (record) => {
-    setCurrentCallback(record);
+    setCurrentCallback({ id: record.id });
     setModalVisible(true);
   };
 
   const handleView = (record) => {
-    setCurrentCallback(record);
+    setCurrentCallback({ id: record.id });
     setModalVisible(true);
   };
 
