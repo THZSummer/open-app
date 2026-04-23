@@ -46,6 +46,7 @@ function CategoryList() {
   const [currentCategory, setCurrentCategory] = useState(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [expandedKeys, setExpandedKeys] = useState([]);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -132,12 +133,14 @@ function CategoryList() {
 
   const handleAddRoot = () => {
     setCurrentCategory(null);
+    setIsEditing(false);
     form.resetFields();
     setModalVisible(true);
   };
 
   const handleAddChild = (parent) => {
     setCurrentCategory(parent);
+    setIsEditing(false);
     form.resetFields();
     form.setFieldsValue({ parentId: parent.id });
     setModalVisible(true);
@@ -145,6 +148,7 @@ function CategoryList() {
 
   const handleEdit = (category) => {
     setCurrentCategory(category);
+    setIsEditing(true);
     form.setFieldsValue({
       categoryAlias: category.categoryAlias,
       nameCn: category.nameCn,
@@ -162,7 +166,7 @@ function CategoryList() {
   const handleSubmit = async () => {
     const values = await form.validateFields();
     let result;
-    if (currentCategory && currentCategory.id) {
+    if (isEditing) {
       result = await updateCategory(currentCategory.id, {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
@@ -294,7 +298,7 @@ function CategoryList() {
       </Spin>
 
       <Modal
-        title={currentCategory?.id ? '编辑分类' : '新增分类'}
+        title={isEditing ? '编辑分类' : (currentCategory ? '新增子分类' : '新增一级分类')}
         open={modalVisible}
         onOk={handleSubmit}
         onCancel={() => setModalVisible(false)}
