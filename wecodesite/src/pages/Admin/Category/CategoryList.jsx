@@ -47,6 +47,9 @@ function CategoryList() {
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [expandedKeys, setExpandedKeys] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteCategoryData, setDeleteCategoryData] = useState(null);
+  const [deleteConfirmAlias, setDeleteConfirmAlias] = useState('');
 
   useEffect(() => {
     loadData();
@@ -104,25 +107,20 @@ function CategoryList() {
             >
               责任人
             </Button>
-            <Popconfirm
-              title="确定删除该分类吗？"
-              onConfirm={(e) => {
-                e?.stopPropagation();
-                handleDelete(category.id);
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteCategoryData(category);
+                setDeleteConfirmAlias('');
+                setDeleteModalVisible(true);
               }}
-              okText="确定"
-              cancelText="取消"
             >
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={(e) => e.stopPropagation()}
-              >
-                删除
-              </Button>
-            </Popconfirm>
+              删除
+            </Button>
           </Space>
         </div>
       ),
@@ -383,6 +381,39 @@ function CategoryList() {
             size="small"
           />
         </div>
+      </Modal>
+
+      <Modal
+        title="删除确认"
+        open={deleteModalVisible}
+        onOk={() => {
+          if (deleteConfirmAlias === deleteCategoryData?.nameCn) {
+            handleDelete(deleteCategoryData.id);
+            setDeleteModalVisible(false);
+          }
+        }}
+        onCancel={() => setDeleteModalVisible(false)}
+        okText="确认删除"
+        cancelText="取消"
+        okButtonProps={{
+          danger: true,
+          disabled: deleteConfirmAlias !== deleteCategoryData?.nameCn
+        }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          确定要删除分类 <strong>"{deleteCategoryData?.nameCn}"</strong> 吗？
+        </div>
+        <div style={{ marginBottom: 8 }}>
+          请输入分类名称 <strong>"{deleteCategoryData?.nameCn}"</strong> 以确认删除：
+        </div>
+        <Input
+          placeholder={`请输入 ${deleteCategoryData?.nameCn}`}
+          value={deleteConfirmAlias}
+          onChange={(e) => setDeleteConfirmAlias(e.target.value)}
+        />
+        {deleteConfirmAlias && deleteConfirmAlias !== deleteCategoryData?.nameCn && (
+          <div style={{ color: 'red', marginTop: 8 }}>名称输入错误，请重新输入</div>
+        )}
       </Modal>
     </div>
   );

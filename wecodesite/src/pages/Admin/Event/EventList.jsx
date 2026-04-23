@@ -40,6 +40,7 @@ function EventList() {
   const [status, setStatus] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [currentEvent, setCurrentEvent] = useState(null);
+  const [mode, setMode] = useState('create');
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -86,16 +87,19 @@ function EventList() {
 
   const handleAdd = () => {
     setCurrentEvent(null);
+    setMode('create');
     setModalVisible(true);
   };
 
   const handleEdit = (record) => {
     setCurrentEvent({ id: record.id });
+    setMode('edit');
     setModalVisible(true);
   };
 
   const handleView = (record) => {
     setCurrentEvent({ id: record.id });
+    setMode('view');
     setModalVisible(true);
   };
 
@@ -229,6 +233,7 @@ function EventList() {
       <EventRegister
         visible={modalVisible}
         event={currentEvent}
+        mode={mode}
         onSuccess={handleSuccess}
         onCancel={() => setModalVisible(false)}
       />

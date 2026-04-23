@@ -24,7 +24,7 @@ const EVENT_PROPERTY_PRESETS = [
   { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
 ];
 
-function EventRegister({ visible, event, onSuccess, onCancel }) {
+function EventRegister({ visible, event, mode = 'create', onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -137,7 +137,11 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
 
   return (
     <Modal
-      title={event?.id ? '编辑事件' : '注册事件'}
+      title={
+        mode === 'view' ? '查看事件详情' :
+        mode === 'edit' ? '编辑事件' :
+        '注册事件'
+      }
       open={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
@@ -145,6 +149,11 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
       confirmLoading={submitting}
       loading={loading}
       destroyOnClose
+      footer={mode === 'view' ? [
+        <Button key="close" onClick={onCancel}>
+          关闭
+        </Button>
+      ] : undefined}
     >
       <Form form={form} layout="vertical">
         <Card title="基本信息" size="small" style={{ marginBottom: 16 }}>
@@ -153,7 +162,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
             name="nameCn"
             rules={[{ required: true, message: '请输入事件中文名称' }]}
           >
-            <Input placeholder="请输入事件中文名称" />
+            <Input placeholder="请输入事件中文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -161,7 +170,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
             name="nameEn"
             rules={[{ required: true, message: '请输入事件英文名称' }]}
           >
-            <Input placeholder="请输入事件英文名称" />
+            <Input placeholder="请输入事件英文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -175,6 +184,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
               treeDefaultExpandAll
               style={{ width: '100%' }}
               dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              disabled={mode === 'view'}
             />
           </Form.Item>
 
@@ -187,7 +197,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
             ]}
             extra="格式：模块.事件，例如：user.status, msg.send.ok"
           >
-            <Input placeholder="user.status" />
+            <Input placeholder="user.status" disabled={mode === 'view'} />
           </Form.Item>
         </Card>
 
@@ -197,7 +207,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
             name="permissionNameCn"
             rules={[{ required: true, message: '请输入权限中文名称' }]}
           >
-            <Input placeholder="请输入权限中文名称" />
+            <Input placeholder="请输入权限中文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -205,7 +215,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
             name="permissionNameEn"
             rules={[{ required: true, message: '请输入权限英文名称' }]}
           >
-            <Input placeholder="请输入权限英文名称" />
+            <Input placeholder="请输入权限英文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -214,7 +224,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
             rules={[{ required: true, message: '请输入Scope标识' }]}
             extra="格式：event:{模块}:{事件标识}"
           >
-            <Input placeholder="event:im:message-received" disabled={!!event?.id} />
+            <Input placeholder="event:im:message-received" disabled={mode === 'view'} />
           </Form.Item>
         </Card>
 
@@ -238,6 +248,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
                         <Select
                           placeholder="选择属性"
                           style={{ width: 160 }}
+                          disabled={mode === 'view'}
                           onChange={(value) => {
                             const properties = form.getFieldValue('properties');
                             properties[name].propertyValue = undefined;
@@ -271,7 +282,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
                                 name={[name, 'customPropertyName']}
                                 rules={[{ required: true, message: '请输入自定义属性名' }]}
                               >
-                                <Input placeholder="自定义属性名" style={{ width: 140 }} />
+                                <Input placeholder="自定义属性名" style={{ width: 140 }} disabled={mode === 'view'} />
                               </Form.Item>
                             );
                           }
@@ -299,18 +310,21 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
                               <Input 
                                 placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
                                 style={{ width: 260 }} 
+                                disabled={mode === 'view'}
                               />
                             </Form.Item>
                           );
                         }}
                       </Form.Item>
 
-                      <MinusCircleOutlined onClick={() => remove(name)} />
+                      {mode !== 'view' && <MinusCircleOutlined onClick={() => remove(name)} />}
                     </Space>
                   ))}
-                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                    添加属性
-                  </Button>
+                  {mode !== 'view' && (
+                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                      添加属性
+                    </Button>
+                  )}
                 </>
               );
             }}

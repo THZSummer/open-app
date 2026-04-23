@@ -25,7 +25,7 @@ const API_PROPERTY_PRESETS = [
   { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
 ];
 
-function ApiRegister({ visible, api, onSuccess, onCancel }) {
+function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -143,7 +143,11 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
 
   return (
     <Modal
-      title={api?.id ? '编辑API' : '注册API'}
+      title={
+        mode === 'view' ? '查看API详情' :
+        mode === 'edit' ? '编辑API' :
+        '注册API'
+      }
       open={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
@@ -151,6 +155,11 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
       confirmLoading={submitting}
       loading={loading}
       destroyOnClose
+      footer={mode === 'view' ? [
+        <Button key="close" onClick={onCancel}>
+          关闭
+        </Button>
+      ] : undefined}
     >
       <Form form={form} layout="vertical">
         <Card title="基本信息" size="small" style={{ marginBottom: 16 }}>
@@ -159,7 +168,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             name="nameCn"
             rules={[{ required: true, message: '请输入API中文名称' }]}
           >
-            <Input placeholder="请输入API中文名称" />
+            <Input placeholder="请输入API中文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -167,7 +176,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             name="nameEn"
             rules={[{ required: true, message: '请输入API英文名称' }]}
           >
-            <Input placeholder="请输入API英文名称" />
+            <Input placeholder="请输入API英文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -181,6 +190,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
               treeDefaultExpandAll
               style={{ width: '100%' }}
               dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              disabled={mode === 'view'}
             />
           </Form.Item>
 
@@ -192,7 +202,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
               { pattern: /^\//, message: '路径必须以/开头' },
             ]}
           >
-            <Input placeholder="例如：/api/v1/messages" />
+            <Input placeholder="例如：/api/v1/messages" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -200,7 +210,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             name="method"
             rules={[{ required: true, message: '请选择HTTP方法' }]}
           >
-            <Select placeholder="请选择HTTP方法">
+            <Select placeholder="请选择HTTP方法" disabled={mode === 'view'}>
               <Option value="GET">GET</Option>
               <Option value="POST">POST</Option>
               <Option value="PUT">PUT</Option>
@@ -216,7 +226,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             name="permissionNameCn"
             rules={[{ required: true, message: '请输入权限中文名称' }]}
           >
-            <Input placeholder="请输入权限中文名称" />
+            <Input placeholder="请输入权限中文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -224,7 +234,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             name="permissionNameEn"
             rules={[{ required: true, message: '请输入权限英文名称' }]}
           >
-            <Input placeholder="请输入权限英文名称" />
+            <Input placeholder="请输入权限英文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -233,7 +243,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
             rules={[{ required: true, message: '请输入Scope标识' }]}
             extra="格式：api:{模块}:{资源标识}"
           >
-            <Input placeholder="api:im:send-message" disabled={!!api?.id} />
+            <Input placeholder="api:im:send-message" disabled={mode === 'view'} />
           </Form.Item>
         </Card>
 
@@ -250,21 +260,22 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
                 <>
                   {fields.map(({ key, name, ...restField }) => (
                     <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'propertyName']}
-                        rules={[{ required: true, message: '请选择或输入属性名' }]}
-                      >
-                        <Select
-                          placeholder="选择属性"
-                          style={{ width: 160 }}
-                          onChange={(value) => {
-                            // 切换属性时清空属性值
-                            const properties = form.getFieldValue('properties');
-                            properties[name].propertyValue = undefined;
-                            form.setFieldsValue({ properties });
-                          }}
-                        >
+<Form.Item
+                         {...restField}
+                         name={[name, 'propertyName']}
+                         rules={[{ required: true, message: '请选择或输入属性名' }]}
+                       >
+                         <Select
+                           placeholder="选择属性"
+                           style={{ width: 160 }}
+                           disabled={mode === 'view'}
+                           onChange={(value) => {
+                             // 切换属性时清空属性值
+                             const properties = form.getFieldValue('properties');
+                             properties[name].propertyValue = undefined;
+                             form.setFieldsValue({ properties });
+                           }}
+                         >
                           {API_PROPERTY_PRESETS.map(preset => (
                             <Select.Option 
                               key={preset.value} 
@@ -293,7 +304,7 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
                                 name={[name, 'customPropertyName']}
                                 rules={[{ required: true, message: '请输入自定义属性名' }]}
                               >
-                                <Input placeholder="自定义属性名" style={{ width: 140 }} />
+                                <Input placeholder="自定义属性名" style={{ width: 140 }} disabled={mode === 'view'} />
                               </Form.Item>
                             );
                           }
@@ -314,26 +325,29 @@ function ApiRegister({ visible, api, onSuccess, onCancel }) {
                           const isCustom = propertyName === '__custom__';
                           
                           return (
-                            <Form.Item
-                              {...restField}
-                              name={[name, 'propertyValue']}
-                              rules={[{ required: true, message: '请输入属性值' }]}
-                            >
-                              <Input 
-                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
-                                style={{ width: 260 }} 
-                              />
-                            </Form.Item>
+<Form.Item
+                               {...restField}
+                               name={[name, 'propertyValue']}
+                               rules={[{ required: true, message: '请输入属性值' }]}
+                             >
+                               <Input 
+                                 placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
+                                 style={{ width: 260 }} 
+                                 disabled={mode === 'view'}
+                               />
+                             </Form.Item>
                           );
                         }}
                       </Form.Item>
 
-                      <MinusCircleOutlined onClick={() => remove(name)} />
+                      {mode !== 'view' && <MinusCircleOutlined onClick={() => remove(name)} />}
                     </Space>
                   ))}
-                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                    添加属性
-                  </Button>
+                  {mode !== 'view' && (
+                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                      添加属性
+                    </Button>
+                  )}
                 </>
               );
             }}

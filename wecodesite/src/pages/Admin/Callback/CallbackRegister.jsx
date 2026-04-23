@@ -23,7 +23,7 @@ const CALLBACK_PROPERTY_PRESETS = [
   { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
 ];
 
-function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
+function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -128,7 +128,11 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
 
   return (
     <Modal
-      title={callback?.id ? '编辑回调' : '注册回调'}
+      title={
+        mode === 'view' ? '查看回调详情' :
+        mode === 'edit' ? '编辑回调' :
+        '注册回调'
+      }
       open={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
@@ -136,6 +140,11 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
       confirmLoading={submitting}
       loading={loading}
       destroyOnClose
+      footer={mode === 'view' ? [
+        <Button key="close" onClick={onCancel}>
+          关闭
+        </Button>
+      ] : undefined}
     >
       <Form form={form} layout="vertical">
         <Card title="基本信息" size="small" style={{ marginBottom: 16 }}>
@@ -144,7 +153,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
             name="nameCn"
             rules={[{ required: true, message: '请输入回调中文名称' }]}
           >
-            <Input placeholder="请输入回调中文名称" />
+            <Input placeholder="请输入回调中文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -152,7 +161,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
             name="nameEn"
             rules={[{ required: true, message: '请输入回调英文名称' }]}
           >
-            <Input placeholder="请输入回调英文名称" />
+            <Input placeholder="请输入回调英文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -167,6 +176,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
               allowClear
               style={{ width: '100%' }}
               dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              disabled={mode === 'view'}
             />
           </Form.Item>
         </Card>
@@ -177,7 +187,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
             name="permissionNameCn"
             rules={[{ required: true, message: '请输入权限中文名称' }]}
           >
-            <Input placeholder="请输入权限中文名称" />
+            <Input placeholder="请输入权限中文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -185,7 +195,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
             name="permissionNameEn"
             rules={[{ required: true, message: '请输入权限英文名称' }]}
           >
-            <Input placeholder="请输入权限英文名称" />
+            <Input placeholder="请输入权限英文名称" disabled={mode === 'view'} />
           </Form.Item>
 
           <Form.Item
@@ -194,7 +204,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
             rules={[{ required: true, message: '请输入Scope标识' }]}
             extra="格式：callback:{模块}:{资源标识}"
           >
-            <Input placeholder="callback:approval:completed" disabled={!!callback?.id} />
+            <Input placeholder="callback:approval:completed" disabled={mode === 'view'} />
           </Form.Item>
         </Card>
 
@@ -218,6 +228,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
                         <Select
                           placeholder="选择属性"
                           style={{ width: 160 }}
+                          disabled={mode === 'view'}
                           onChange={(value) => {
                             const properties = form.getFieldValue('properties');
                             properties[name].propertyValue = undefined;
@@ -251,7 +262,7 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
                                 name={[name, 'customPropertyName']}
                                 rules={[{ required: true, message: '请输入自定义属性名' }]}
                               >
-                                <Input placeholder="自定义属性名" style={{ width: 140 }} />
+                                <Input placeholder="自定义属性名" style={{ width: 140 }} disabled={mode === 'view'} />
                               </Form.Item>
                             );
                           }
@@ -278,19 +289,22 @@ function CallbackRegister({ visible, callback, onSuccess, onCancel }) {
                             >
                               <Input 
                                 placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
-                                style={{ width: 260 }} 
+                                style={{ width: 260 }}
+                                disabled={mode === 'view'}
                               />
                             </Form.Item>
                           );
                         }}
                       </Form.Item>
 
-                      <MinusCircleOutlined onClick={() => remove(name)} />
+                      {mode !== 'view' && <MinusCircleOutlined onClick={() => remove(name)} />}
                     </Space>
                   ))}
-                  <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                    添加属性
-                  </Button>
+                  {mode !== 'view' && (
+                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                      添加属性
+                    </Button>
+                  )}
                 </>
               );
             }}

@@ -41,6 +41,7 @@ function ApiList() {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentApi, setCurrentApi] = useState(null);
   const [categories, setCategories] = useState([]);
+  const [mode, setMode] = useState('create');
 
   useEffect(() => {
     loadData();
@@ -86,16 +87,19 @@ function ApiList() {
 
   const handleAdd = () => {
     setCurrentApi(null);
+    setMode('create');
     setModalVisible(true);
   };
 
   const handleEdit = (record) => {
     setCurrentApi({ id: record.id });
+    setMode('edit');
     setModalVisible(true);
   };
 
   const handleView = (record) => {
     setCurrentApi({ id: record.id });
+    setMode('view');
     setModalVisible(true);
   };
 
@@ -236,6 +240,7 @@ function ApiList() {
       <ApiRegister
         visible={modalVisible}
         api={currentApi}
+        mode={mode}
         onSuccess={handleSuccess}
         onCancel={() => setModalVisible(false)}
       />

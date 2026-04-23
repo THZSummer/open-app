@@ -33,6 +33,7 @@ function CallbackList() {
   const [keyword, setKeyword] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [currentCallback, setCurrentCallback] = useState(null);
+  const [mode, setMode] = useState('create');
 
   useEffect(() => {
     loadData();
@@ -54,16 +55,19 @@ function CallbackList() {
 
   const handleAdd = () => {
     setCurrentCallback(null);
+    setMode('create');
     setModalVisible(true);
   };
 
   const handleEdit = (record) => {
     setCurrentCallback({ id: record.id });
+    setMode('edit');
     setModalVisible(true);
   };
 
   const handleView = (record) => {
     setCurrentCallback({ id: record.id });
+    setMode('view');
     setModalVisible(true);
   };
 
@@ -93,12 +97,6 @@ function CallbackList() {
       title: '分类',
       dataIndex: 'categoryName',
       key: 'categoryName',
-    },
-    {
-      title: '回调路径',
-      dataIndex: 'path',
-      key: 'path',
-      render: (text) => <code>{text}</code>,
     },
     {
       title: '状态',
@@ -177,6 +175,7 @@ function CallbackList() {
       <CallbackRegister
         visible={modalVisible}
         callback={currentCallback}
+        mode={mode}
         onSuccess={handleSuccess}
         onCancel={() => setModalVisible(false)}
       />
