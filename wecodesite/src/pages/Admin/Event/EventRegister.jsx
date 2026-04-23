@@ -10,7 +10,7 @@ import {
   Card,
 } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
-import { createEvent, updateEvent } from './thunk';
+import { createEvent, updateEvent, fetchEventDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 
 const { Option } = Select;
@@ -18,6 +18,7 @@ const { Option } = Select;
 function EventRegister({ visible, event, onSuccess, onCancel }) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -45,22 +46,33 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
   };
 
   useEffect(() => {
-    if (visible && event) {
-      // 编辑模式：填充表单
-      form.setFieldsValue({
-        nameCn: event.nameCn,
-        nameEn: event.nameEn,
-        categoryId: event.categoryId,
-        topic: event.topic,
-        permissionNameCn: event.permission?.nameCn,
-        permissionNameEn: event.permission?.nameEn,
-        scope: event.permission?.scope,
-        properties: event.properties || [],
-      });
-    } else {
-      // 新增模式：重置表单
-      form.resetFields();
-    }
+    const loadEventDetail = async () => {
+      if (visible && event?.id) {
+        setLoading(true);
+        try {
+          const result = await fetchEventDetail(event.id);
+          if (result.code === '200') {
+            const data = result.data;
+            form.setFieldsValue({
+              nameCn: data.nameCn,
+              nameEn: data.nameEn,
+              categoryId: data.categoryId,
+              topic: data.topic,
+              permissionNameCn: data.permission?.nameCn,
+              permissionNameEn: data.permission?.nameEn,
+              scope: data.permission?.scope,
+              properties: data.properties || [],
+            });
+          }
+        } finally {
+          setLoading(false);
+        }
+      } else if (visible) {
+        form.resetFields();
+      }
+    };
+
+    loadEventDetail();
   }, [visible, event, form]);
 
   const handleSubmit = async () => {
@@ -106,6 +118,7 @@ function EventRegister({ visible, event, onSuccess, onCancel }) {
       onCancel={onCancel}
       width={800}
       confirmLoading={submitting}
+      loading={loading}
       destroyOnClose
     >
       <Form form={form} layout="vertical">
