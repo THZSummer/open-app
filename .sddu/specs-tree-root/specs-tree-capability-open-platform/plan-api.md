@@ -1468,10 +1468,12 @@
         "permissionId": "201",
         "permission": {
           "nameCn": "消息接收权限",
-          "scope": "event:im:message-received"
+          "scope": "event:im:message-received",
+          "docUrl": "https://docs.example.com/event/message-received"
         },
         "event": {
-          "topic": "im.message.received"
+          "topic": "im.message.received",
+          "docUrl": "https://docs.example.com/event/message-received"
         },
         "category": {
           "id": "2",
@@ -1479,7 +1481,12 @@
           "path": "/1/2/",
           "categoryPath": ["A类应用权限", "IM业务"]
         },
+        "approver": {
+          "userId": "user001",
+          "userName": "张三"
+        },
         "status": 1,
+        "approvalUrl": "https://platform.example.com/approval/301",
         "channelType": 1,
         "channelAddress": "https://webhook.example.com/events",
         "authType": 0,
