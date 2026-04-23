@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import AppCard from '../../components/Appcard/AppCard';
+import AppCard from '../../components/AppCard/AppCard';
 import CreateAppModal from '../../components/CreateAppModal/CreateAppModal';
 import { fetchAppList, fetchDefaultIcons, fetchEamapOptions, createApp } from './thunk';
 
