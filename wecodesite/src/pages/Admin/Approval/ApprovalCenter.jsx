@@ -49,19 +49,27 @@ function ApprovalCenter() {
   const loadData = async () => {
     setLoading(true);
     let result;
-    if (activeTab === 'pending' || activeTab === 'all') {
-      result = await fetchApprovalList(
-        activeTab === 'pending' ? { status: 0 } : {}
-      );
+    
+    if (activeTab === 'pending') {
+      // 我的待审：只查询待审状态（status=0）
+      result = await fetchApprovalList({ status: 0 });
       if (result.code === '200') {
         setApprovalList(result.data);
       }
     } else if (activeTab === 'mine') {
+      // 我发起的：查询当前用户发起的所有审批
       result = await fetchMyApprovals();
       if (result.code === '200') {
         setMyApprovals(result.data);
       }
+    } else if (activeTab === 'all') {
+      // 全部：查询所有审批记录（不传 status）
+      result = await fetchApprovalList({});
+      if (result.code === '200') {
+        setApprovalList(result.data);
+      }
     }
+    
     setLoading(false);
   };
 

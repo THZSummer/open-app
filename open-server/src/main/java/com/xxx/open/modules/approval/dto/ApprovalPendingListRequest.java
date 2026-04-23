@@ -35,4 +35,16 @@ public class ApprovalPendingListRequest implements Serializable {
      * 每页数量，默认 20
      */
     private Integer pageSize = 20;
+
+    /**
+     * 审批状态：0=待审, 1=已通过, 2=已拒绝, 3=已撤销
+     * 不传则查询所有状态
+     */
+    private Integer status;
+
+    /**
+     * 申请人ID
+     * 传 "current" 表示查询当前用户发起的审批
+     */
+    private String applicantId;
 }
