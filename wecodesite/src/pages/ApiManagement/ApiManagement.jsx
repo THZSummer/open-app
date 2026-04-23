@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Table, Button, Tag } from 'antd';
+import { Table, Button, Tag, Pagination, message } from 'antd';
 import { fetchAppApis, subscribeApis, withdrawApiApplication, remindApproval } from './thunk';
 import { fetchAppInfo } from '../BasicInfo/thunk';
 import ApiPermissionDrawer from './ApiPermissionDrawer';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import { SUBSCRIPTION_STATUS, AUTH_TYPE } from '../../utils/constants';
 import './ApiManagement.m.less';
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 /**
  * 获取订阅状态的标签显示
@@ -40,6 +42,12 @@ function ApiManagement() {
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   // 当前待审批记录信息
   const [currentApprovalInfo, setCurrentApprovalInfo] = useState({});
+  // 当前页码
+  const [currentPage, setCurrentPage] = useState(1);
+  // 每页显示条数
+  const [pageSize, setPageSize] = useState(10);
+  // 数据总数
+  const [total, setTotal] = useState(0);
 
   /**
    * 组件挂载时加载已订阅的API列表
@@ -47,12 +55,20 @@ function ApiManagement() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      const result = await fetchAppApis(appId);
-      setApis(result.data || []);
-      setLoading(false);
+      try {
+        const result = await fetchAppApis(appId, { curPage: currentPage, pageSize });
+        setApis(result.data || []);
+        setTotal(result.page?.total || 0);
+      } catch (error) {
+        message.error('加载API列表失败');
+      } finally {
+        setLoading(false);
+      }
     };
-    loadData();
-  }, [appId]);
+    if (appId) {
+      loadData();
+    }
+  }, [appId, currentPage, pageSize]);
 
   /**
    * 根据URL参数获取应用信息，确定应用类型
@@ -91,9 +107,11 @@ function ApiManagement() {
     const permissionIds = selectedApis.map(api => api.id);
     // 调用后端接口订阅API权限
     const result = await subscribeApis(appId, { permissionIds });
-    // 重新获取最新列表
-    const listResult = await fetchAppApis(appId);
+    // 重置到第一页并重新获取列表
+    setCurrentPage(1);
+    const listResult = await fetchAppApis(appId, { curPage: 1, pageSize });
     setApis(listResult.data || []);
+    setTotal(listResult.page?.total || 0);
   };
 
   /**
@@ -118,9 +136,10 @@ function ApiManagement() {
   const handleWithdraw = async (record) => {
     // 调用后端撤回接口
     await withdrawApiApplication(appId, record.id);
-    // 重新获取最新列表
-    const result = await fetchAppApis(appId);
+    // 重新获取最新列表（保持当前页）
+    const result = await fetchAppApis(appId, { curPage: currentPage, pageSize });
     setApis(result.data || []);
+    setTotal(result.page?.total || 0);
   };
 
   /**
@@ -129,6 +148,16 @@ function ApiManagement() {
    */
   const handleOpenDoc = (url) => {
     window.open(url, '_blank');
+  };
+
+  /**
+   * 处理分页变化
+   * @param {number} page - 新的页码
+   * @param {number} size - 新的每页条数
+   */
+  const handlePageChange = (page, size) => {
+    setCurrentPage(page);
+    setPageSize(size);
   };
 
   // 表格列配置
@@ -208,6 +237,22 @@ function ApiManagement() {
         pagination={false}
         loading={loading}
       />
+
+      {/* 分页器 */}
+      {total > 0 && (
+        <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <Pagination
+            current={currentPage}
+            pageSize={pageSize}
+            total={total}
+            onChange={handlePageChange}
+            showSizeChanger
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            showQuickJumper
+            showTotal={(total) => `共 ${total} 条`}
+          />
+        </div>
+      )}
 
       {/* 权限开通抽屉弹窗组件 */}
       <ApiPermissionDrawer

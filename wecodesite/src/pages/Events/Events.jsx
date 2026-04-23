@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Table, Pagination, Tag, message } from 'antd';
 import { fetchAppEvents, remindApproval, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
 import EventDrawer from './EventDrawer';
@@ -16,6 +16,8 @@ function getStatusTag(status) {
 
 function Events() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const appId = searchParams.get('appId');
   const [events, setEvents] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -32,9 +34,11 @@ function Events() {
   const [subscribeLoading, setSubscribeLoading] = useState(false);
 
   const loadEvents = useCallback(async (page = currentPage, size = pageSize) => {
+    if (!appId) return;
+    
     setLoading(true);
     try {
-      const result = await fetchAppEvents('10', { curPage: page, pageSize: size });
+      const result = await fetchAppEvents(appId, { curPage: page, pageSize: size });
       setEvents(result.data || []);
       setTotal(result.page?.total || 0);
     } catch (error) {
@@ -42,17 +46,19 @@ function Events() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [appId, currentPage, pageSize]);
 
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
 
   const handleAddEvent = async (selectedEvents) => {
+    if (!appId) return;
+    
     setSubscribeLoading(true);
     try {
       const permissionIds = selectedEvents.map(e => e.id);
-      await subscribeEvents('10', { permissionIds });
+      await subscribeEvents(appId, { permissionIds });
       message.success('申请已提交');
       loadEvents(1, pageSize);
       setDrawerOpen(false);

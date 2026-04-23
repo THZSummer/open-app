@@ -110,11 +110,15 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
   const [filterKeyword, setFilterKeyword] = useState('');
   // 是否需要审核筛选条件
   const [filterNeedReview, setFilterNeedReview] = useState('all');
+  // 内部更新标志，防止 useEffect 和 handle 函数重复调用接口
+  const [isInternalUpdate, setIsInternalUpdate] = useState(false);
 
   /**
    * 统一的数据加载函数
    */
   const fetchApiData = useCallback(async (params = {}) => {
+    if (isInternalUpdate) return;
+    
     setLoading(true);
     let currentCategoryId;
     if (activeModule === 'all') {
@@ -146,7 +150,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
     setApisData(resultData);
     setTotal(resultTotal);
     setLoading(false);
-  }, [activeIdentityType, activeApiType, filterKeyword, filterNeedReview, activeModule, modulesData, currentPage, pageSize]);
+  }, [activeIdentityType, activeApiType, filterKeyword, filterNeedReview, activeModule, modulesData, currentPage, pageSize, isInternalUpdate]);
 
   /**
    * 抽屉打开时初始化状态
@@ -154,6 +158,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
    */
   useEffect(() => {
     if (open) {
+      setIsInternalUpdate(true);
+      
       if (appType === 'business') {
         setActiveIdentityType('BUSINESS_IDENTITY');
         setActiveApiType('api_business_app_soa');
@@ -167,6 +173,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
       setCurrentPage(1);
       setSelectedRowKeys([]);
       setTotal(0);
+      
+      setIsInternalUpdate(false);
     }
   }, [open, appType]);
 
@@ -174,13 +182,14 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
    * 当身份类型或API类型变化时，加载对应的模块列表
    */
   useEffect(() => {
+    if (!open || isInternalUpdate) return;
+    
     const loadModules = async () => {
       const categories = await fetchCategories(activeApiType);
       setModulesData(transformCategoriesToModules(categories));
+      setIsInternalUpdate(false);
     };
-    if (open) {
-      loadModules();
-    }
+    loadModules();
   }, [activeApiType, activeIdentityType, open]);
 
   /**
@@ -208,9 +217,19 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
    * @param {string} identityType - 选中的身份类型
    */
   const handleIdentityChange = async (identityType) => {
-    setActiveIdentityType(identityType);
+    setIsInternalUpdate(true);
     
-    const categories = await fetchCategories(activeApiType, identityType);
+    let newApiType;
+    if (identityType === 'BUSINESS_IDENTITY') {
+      newApiType = 'api_business_app_soa';
+    } else {
+      newApiType = 'api_business_user_soa';
+    }
+    
+    setActiveIdentityType(identityType);
+    setActiveApiType(newApiType);
+    
+    const categories = await fetchCategories(newApiType, identityType);
     setModulesData(transformCategoriesToModules(categories));
     
     setActiveModule('all');
@@ -218,6 +237,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
     setFilterNeedReview('all');
     setCurrentPage(1);
     setSelectedRowKeys([]);
+    
+    setIsInternalUpdate(false);
   };
 
   /**
@@ -226,6 +247,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
    * @param {string} type - 选中的API类型
    */
   const handleApiTypeChange = async (type) => {
+    setIsInternalUpdate(true);
+    
     setActiveApiType(type);
     
     const categories = await fetchCategories(type, activeIdentityType);
@@ -236,6 +259,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
     setFilterNeedReview('all');
     setCurrentPage(1);
     setSelectedRowKeys([]);
+    
+    setIsInternalUpdate(false);
   };
 
   /**

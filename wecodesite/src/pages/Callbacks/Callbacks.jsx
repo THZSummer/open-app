@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Table, Pagination, Tag, message } from 'antd';
 import { fetchAppCallbacks, remindApproval, deleteCallback, withdrawApproval, subscribeCallbacks } from './thunk';
 import CallbackDrawer from './CallbackDrawer';
@@ -16,6 +16,8 @@ function getStatusTag(status) {
 
 function Callbacks() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const appId = searchParams.get('appId');
   const [callbacks, setCallbacks] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -32,9 +34,11 @@ function Callbacks() {
   const [subscribeLoading, setSubscribeLoading] = useState(false);
 
   const loadCallbacks = useCallback(async (page = currentPage, size = pageSize) => {
+    if (!appId) return;
+    
     setLoading(true);
     try {
-      const result = await fetchAppCallbacks('10', { curPage: page, pageSize: size });
+      const result = await fetchAppCallbacks(appId, { curPage: page, pageSize: size });
       setCallbacks(result.data || []);
       setTotal(result.page?.total || 0);
     } catch (error) {
@@ -42,17 +46,19 @@ function Callbacks() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [appId, currentPage, pageSize]);
 
   useEffect(() => {
     loadCallbacks();
   }, [loadCallbacks]);
 
   const handleAddCallback = async (selectedCallbacks) => {
+    if (!appId) return;
+    
     setSubscribeLoading(true);
     try {
       const permissionIds = selectedCallbacks.map(c => c.id);
-      await subscribeCallbacks('10', { permissionIds });
+      await subscribeCallbacks(appId, { permissionIds });
       message.success('申请已提交');
       loadCallbacks(1, pageSize);
       setDrawerOpen(false);

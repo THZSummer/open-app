@@ -118,11 +118,18 @@ export const fetchAppApis = async (appId, params = {}) => {
         item.permission?.scope?.includes(params.keyword)
       );
     }
+    
+    const curPage = params.curPage || 1;
+    const pageSize = params.pageSize || 10;
+    const total = data.length;
+    const startIndex = (curPage - 1) * pageSize;
+    const paginatedData = data.slice(startIndex, startIndex + pageSize);
+    
     return {
       code: '200',
       messageZh: '查询成功',
-      data: data,
-      page: { curPage: 1, pageSize: 20, total: data.length }
+      data: paginatedData,
+      page: { curPage, pageSize, total }
     };
   }
   return fetchApi(buildApiUrl(API_CONFIG.APP_APIS.LIST, { appId }), { params });
