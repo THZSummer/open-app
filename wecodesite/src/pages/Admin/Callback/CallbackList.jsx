@@ -26,7 +26,9 @@ const { Search } = Input;
 
 const STATUS_MAP = {
   0: { text: '草稿', color: 'default' },
+  1: { text: '待审', color: 'orange' },
   2: { text: '已发布', color: 'green' },
+  3: { text: '已下线', color: 'red' },
 };
 
 function CallbackList() {
@@ -34,8 +36,8 @@ function CallbackList() {
   const [callbackList, setCallbackList] = useState([]);
   const [total, setTotal] = useState(0);
   const [keyword, setKeyword] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [status, setStatus] = useState('');
+  const [categoryId, setCategoryId] = useState(undefined);
+  const [status, setStatus] = useState(undefined);
   const [categories, setCategories] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentCallback, setCurrentCallback] = useState(null);
@@ -223,7 +225,9 @@ function CallbackList() {
             allowClear
           >
             <Select.Option value={0}>草稿</Select.Option>
+            <Select.Option value={1}>待审</Select.Option>
             <Select.Option value={2}>已发布</Select.Option>
+            <Select.Option value={3}>已下线</Select.Option>
           </Select>
         </div>
 

@@ -46,8 +46,8 @@ function ApiList() {
   const [apiList, setApiList] = useState([]);
   const [total, setTotal] = useState(0);
   const [keyword, setKeyword] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [status, setStatus] = useState('');
+  const [categoryId, setCategoryId] = useState(undefined);
+  const [status, setStatus] = useState(undefined);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentApi, setCurrentApi] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -256,6 +256,7 @@ function ApiList() {
             allowClear
           >
             <Select.Option value={0}>草稿</Select.Option>
+            <Select.Option value={1}>待审</Select.Option>
             <Select.Option value={2}>已发布</Select.Option>
             <Select.Option value={3}>已下线</Select.Option>
           </Select>
