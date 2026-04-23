@@ -51,13 +51,18 @@
         ORDER BY sort_order, id
     </select>
 
-    <!-- 根据分类别名查询 -->
+    <!-- 根据分类别名查询（包含所有子分类） -->
     <select id="selectByCategoryAlias" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_category_t
-        WHERE category_alias = #{categoryAlias}
-          AND status = 1
-        ORDER BY sort_order, id
+        WHERE path LIKE CONCAT(
+            (SELECT path FROM openplatform_v2_category_t 
+             WHERE category_alias = #{categoryAlias} AND status = 1 
+             LIMIT 1),
+            '%'
+        )
+        AND status = 1
+        ORDER BY path, sort_order, id
     </select>
 
     <!-- 根据父ID查询子分类 -->
