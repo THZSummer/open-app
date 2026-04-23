@@ -60,6 +60,23 @@ export const API_CONFIG = {
     EVENTS: '/categories/{id}/events',
     CALLBACKS: '/categories/{id}/callbacks',
   },
+
+  APPROVALS: {
+    PENDING: '/approvals/pending',
+    DETAIL: '/approvals/{id}',
+    APPROVE: '/approvals/{id}/approve',
+    REJECT: '/approvals/{id}/reject',
+    CANCEL: '/approvals/{id}/cancel',
+    BATCH_APPROVE: '/approvals/batch-approve',
+    BATCH_REJECT: '/approvals/batch-reject',
+  },
+
+  APPROVAL_FLOWS: {
+    LIST: '/approval-flows',
+    DETAIL: '/approval-flows/{id}',
+    CREATE: '/approval-flows',
+    UPDATE: '/approval-flows/{id}',
+  },
 };
 
 export const buildApiUrl = (template, params = {}) => {

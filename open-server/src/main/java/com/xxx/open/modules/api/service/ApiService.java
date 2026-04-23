@@ -25,6 +25,10 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.xxx.open.modules.approval.engine.ApprovalEngine;
+import com.xxx.open.modules.approval.mapper.ApprovalFlowMapper;
+import com.xxx.open.modules.approval.entity.ApprovalFlow;
+
 /**
  * API 管理服务
  * 
@@ -45,6 +49,8 @@ public class ApiService {
     private final PermissionPropertyMapper permissionPropertyMapper;
     private final CategoryMapper categoryMapper;
     private final SnowflakeIdGenerator idGenerator;
+    private final ApprovalEngine approvalEngine;
+    private final ApprovalFlowMapper approvalFlowMapper;
 
     // ==================== 列表查询 (#9) ====================
 
@@ -162,6 +168,22 @@ public class ApiService {
         api.setLastUpdateBy(currentUser);
 
         apiMapper.insert(api);
+
+        // 创建审批记录（如果存在默认审批流程）
+        ApprovalFlow defaultFlow = approvalFlowMapper.selectDefaultFlow();
+        if (defaultFlow != null) {
+            approvalEngine.createApproval(
+                defaultFlow.getId(),
+                ApprovalEngine.BusinessType.API_REGISTER,
+                api.getId(),
+                "user001",  // TODO: 从上下文获取申请人ID
+                currentUser,  // 申请人名称
+                currentUser
+            );
+            log.info("创建审批记录: apiId={}, flowId={}", api.getId(), defaultFlow.getId());
+        } else {
+            log.warn("未找到默认审批流程，API 将保持待审状态但不创建审批记录");
+        }
 
         // 创建权限
         Permission permission = new Permission();

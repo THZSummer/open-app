@@ -37,6 +37,8 @@ public interface ApprovalRecordMapper {
      * 
      * @param type 审批类型
      * @param keyword 搜索关键词
+     * @param status 审批状态
+     * @param applicantId 申请人ID
      * @param offset 偏移量
      * @param pageSize 每页数量
      * @return 审批记录列表
@@ -44,6 +46,8 @@ public interface ApprovalRecordMapper {
     List<ApprovalRecord> selectPendingList(
             @Param("type") String type,
             @Param("keyword") String keyword,
+            @Param("status") Integer status,
+            @Param("applicantId") String applicantId,
             @Param("offset") Integer offset,
             @Param("pageSize") Integer pageSize);
 
@@ -52,7 +56,9 @@ public interface ApprovalRecordMapper {
      */
     Long countPendingList(
             @Param("type") String type,
-            @Param("keyword") String keyword);
+            @Param("keyword") String keyword,
+            @Param("status") Integer status,
+            @Param("applicantId") String applicantId);
 
     /**
      * 更新审批记录

@@ -188,7 +188,12 @@ public class ApprovalService {
     public List<ApprovalPendingListResponse> getPendingList(ApprovalPendingListRequest request) {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
         List<ApprovalRecord> records = recordMapper.selectPendingList(
-                request.getType(), request.getKeyword(), offset, request.getPageSize());
+                request.getType(), 
+                request.getKeyword(), 
+                request.getStatus(),
+                request.getApplicantId(),
+                offset, 
+                request.getPageSize());
 
         return records.stream().map(record -> {
             ApprovalPendingListResponse response = new ApprovalPendingListResponse();
@@ -209,8 +214,8 @@ public class ApprovalService {
     /**
      * 统计待审批数量
      */
-    public Long countPendingList(String type, String keyword) {
-        return recordMapper.countPendingList(type, keyword);
+    public Long countPendingList(String type, String keyword, Integer status, String applicantId) {
+        return recordMapper.countPendingList(type, keyword, status, applicantId);
     }
 
     /**

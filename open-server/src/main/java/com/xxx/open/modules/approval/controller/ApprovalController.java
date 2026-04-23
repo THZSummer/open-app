@@ -130,6 +130,8 @@ public class ApprovalController {
      * 
      * @param type 审批类型
      * @param keyword 搜索关键词
+     * @param status 审批状态
+     * @param applicantId 申请人ID
      * @param curPage 当前页码
      * @param pageSize 每页数量
      * @return 待审批列表
@@ -138,19 +140,24 @@ public class ApprovalController {
     public ApiResponse<List<ApprovalPendingListResponse>> getPendingList(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String applicantId,
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 
-        log.info("获取待审批列表: type={}, keyword={}, curPage={}, pageSize={}", type, keyword, curPage, pageSize);
+        log.info("获取待审批列表: type={}, keyword={}, status={}, applicantId={}, curPage={}, pageSize={}", 
+                type, keyword, status, applicantId, curPage, pageSize);
 
         ApprovalPendingListRequest request = new ApprovalPendingListRequest();
         request.setType(type);
         request.setKeyword(keyword);
+        request.setStatus(status);
+        request.setApplicantId(applicantId);
         request.setCurPage(curPage);
         request.setPageSize(pageSize);
 
         List<ApprovalPendingListResponse> data = approvalService.getPendingList(request);
-        Long total = approvalService.countPendingList(type, keyword);
+        Long total = approvalService.countPendingList(type, keyword, status, applicantId);
 
         ApiResponse.PageResponse page = ApiResponse.PageResponse.builder()
                 .curPage(curPage)
