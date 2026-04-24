@@ -1,6 +1,6 @@
 # 审批流程设计方案
 
-> **版本**: 2.2.0  
+> **版本**: 2.3.0  
 > **创建时间**: 2026-04-24  
 > **状态**: 设计完成
 
@@ -41,9 +41,9 @@
 用户提交申请 → 系统组合三级审批人 → 生成完整审批流程 → 依次执行审批
 
 三级审批人（按顺序组合）：
-第一级：全局审批人（平台运营审核）
+第一级：资源审批人（资源提供方审核）
 第二级：场景审批人（业务场景审核）
-第三级：资源审批人（资源提供方审核）
+第三级：全局审批人（平台运营审核）
 ```
 
 ---
@@ -54,9 +54,9 @@
 
 | 审批级别 | 名称 | 配置来源 | 适用范围 | 审批职责 |
 |---------|------|---------|---------|---------|
-| **第一级** | 全局审批 | `approval_flow_t` (code='global') | 所有申请 | 平台运营层面审核 |
+| **第一级** | 资源审批 | `permission_t` (need_approval + approval_flow_id) | 特定权限资源 | 资源提供方审核 |
 | **第二级** | 场景审批 | `approval_flow_t` (code='场景编码') | 特定业务场景 | 业务场景层面审核 |
-| **第三级** | 资源审批 | `permission_t` (need_approval + approval_flow_id) | 特定权限资源 | 资源提供方审核 |
+| **第三级** | 全局审批 | `approval_flow_t` (code='global') | 所有申请 | 平台运营层面审核 |
 
 ### 2.2 关键概念：组合而非选择
 
@@ -71,21 +71,33 @@
 ### 2.3 审批节点组合顺序
 
 ```
-完整审批流程 = 全局审批节点 + 场景审批节点 + 资源审批节点
+完整审批流程 = 资源审批节点 + 场景审批节点 + 全局审批节点
+
+组合顺序（从具体到一般）：
+1. 第一级：资源审批（资源提供方审核）
+2. 第二级：场景审批（业务场景审核）
+3. 第三级：全局审批（平台运营审核）
 
 示例：
 用户申请"支付API"权限：
 
-节点1：系统管理员（全局审批，level='global')
+节点1：支付团队负责人（资源审批，level='resource')
     ↓ 审批通过
-节点2：权限管理员（场景审批，level='scene')
-    ↓ 审批通过  
-节点3：支付团队负责人（资源审批，level='resource')
+节点2：财务管理员（资源审批，level='resource')
     ↓ 审批通过
-节点4：财务管理员（资源审批，level='resource')
+节点3：权限管理员（场景审批，level='scene')
+    ↓ 审批通过
+节点4：系统管理员（全局审批，level='global')
     ↓ 审批通过
 权限申请成功
 ```
+
+**设计原理**：
+
+审批顺序从具体到一般，确保：
+1. **资源审批**（第一级）：资源提供方最了解资源，先审核是否授权
+2. **场景审批**（第二级）：业务场景层面审核是否符合业务规范
+3. **全局审批**（第三级）：平台运营最终审核，确保符合平台规范
 
 ---
 
@@ -264,31 +276,31 @@ CREATE TABLE `openplatform_v2_approval_record_t` (
 [
   {
     "type": "approver",
-    "userId": "admin001",
-    "userName": "系统管理员",
-    "order": 1,
-    "level": "global"  // 第一级：全局审批
-  },
-  {
-    "type": "approver",
-    "userId": "perm_admin",
-    "userName": "权限管理员",
-    "order": 2,
-    "level": "scene"   // 第二级：场景审批
-  },
-  {
-    "type": "approver",
     "userId": "payment_leader",
     "userName": "支付团队负责人",
-    "order": 3,
-    "level": "resource" // 第三级：资源审批
+    "order": 1,
+    "level": "resource"  // ✅ 第一级：资源审批
   },
   {
     "type": "approver",
     "userId": "finance_admin",
     "userName": "财务管理员",
+    "order": 2,
+    "level": "resource"  // ✅ 第一级：资源审批（第二个节点）
+  },
+  {
+    "type": "approver",
+    "userId": "perm_admin",
+    "userName": "权限管理员",
+    "order": 3,
+    "level": "scene"     // ✅ 第二级：场景审批
+  },
+  {
+    "type": "approver",
+    "userId": "admin001",
+    "userName": "系统管理员",
     "order": 4,
-    "level": "resource" // 第三级：资源审批（第二个节点）
+    "level": "global"    // ✅ 第三级：全局审批
   }
 ]
 ```
@@ -409,9 +421,9 @@ CREATE TABLE `openplatform_v2_permission_t` (
 
 | 审批级别 | 配置位置 | 关键字段 | 配置方式 | 说明 |
 |---------|---------|---------|---------|------|
-| **第一级** | `approval_flow_t` | `code='global'` | 创建审批流程模板 | 创建审批记录时读取配置 |
+| **第一级** | `permission_t` | `need_approval`<br/>`approval_flow_id` | 权限主表直接配置 | 创建审批记录时读取配置 |
 | **第二级** | `approval_flow_t` | `code='场景编码'` | 创建审批流程模板 | 创建审批记录时读取配置 |
-| **第三级** | `permission_t` | `need_approval`<br/>`approval_flow_id` | 权限主表直接配置 | 创建审批记录时读取配置 |
+| **第三级** | `approval_flow_t` | `code='global'` | 创建审批流程模板 | 创建审批记录时读取配置 |
 
 注意：
 - approval_flow_t 只用于创建审批记录时读取配置
@@ -614,35 +626,35 @@ WHERE p.id = 200;
 │ 系统组合三级审批流程                                    │
 ├───────────────────────────────────────────────────────┤
 │                                                        │
-│ 第一级：全局审批                                        │
-│   SELECT * FROM approval_flow_t WHERE code='global'   │
-│   结果：nodes=[系统管理员]                              │
-│                                                        │
-├───────────────────────────────────────────────────────┤
-│                                                        │
-│ 第二级：场景审批                                        │
-│   SELECT * FROM approval_flow_t                       │
-│   WHERE code='permission_apply'                       │
-│   结果：nodes=[权限管理员]                              │
-│                                                        │
-├───────────────────────────────────────────────────────┤
-│                                                        │
-│ 第三级：资源审批                                        │
+│ 第一级：资源审批（✅ 最具体）                           │
 │   SELECT need_approval, approval_flow_id              │
 │   FROM permission_t WHERE id=200                      │
-│   结果：need_approval=1, flow_id=1001                 │
+│   结果：need_approval=1, flow_id=1001                │
 │                                                        │
 │   SELECT * FROM approval_flow_t WHERE id=1001         │
 │   结果：nodes=[支付负责人, 财务管理员]                  │
 │                                                        │
 ├───────────────────────────────────────────────────────┤
 │                                                        │
+│ 第二级：场景审批（✅ 业务层）                           │
+│   SELECT * FROM approval_flow_t                       │
+│   WHERE code='permission_apply'                       │
+│   结果：nodes=[权限管理员]                              │
+│                                                        │
+├───────────────────────────────────────────────────────┤
+│                                                        │
+│ 第三级：全局审批（✅ 平台层）                           │
+│   SELECT * FROM approval_flow_t WHERE code='global'   │
+│   结果：nodes=[系统管理员]                              │
+│                                                        │
+├───────────────────────────────────────────────────────┤
+│                                                        │
 │ 组合结果：                                              │
 │   combined_nodes = [                                  │
-│     {order:1, level:'global', userId:'admin001'},     │
-│     {order:2, level:'scene', userId:'perm_admin'},    │
-│     {order:3, level:'resource', userId:'payment_...'},│
-│     {order:4, level:'resource', userId:'finance_...'} │
+│     {order:1, level:'resource', userId:'payment_...'},│
+│     {order:2, level:'resource', userId:'finance_...'},│
+│     {order:3, level:'scene', userId:'perm_admin'},    │
+│     {order:4, level:'global', userId:'admin001'}      │
 │   ]                                                    │
 │                                                        │
 └───────────────────────────────────────────────────────┘
@@ -705,25 +717,7 @@ public List<ApprovalNodeDto> composeApprovalFlow(Long permissionId, String busin
     List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
     int order = 1;
     
-    // 第一级：全局审批节点
-    ApprovalFlow globalFlow = flowMapper.selectByCode("global");  // ✅ 直接用 code 查询
-    List<ApprovalNodeDto> globalNodes = parseNodes(globalFlow.getNodes());
-    for (ApprovalNodeDto node : globalNodes) {
-        node.setOrder(order++);
-        node.setLevel("global");  // ✅ 标记审批级别
-        combinedNodes.add(node);
-    }
-    
-    // 第二级：场景审批节点
-    ApprovalFlow sceneFlow = flowMapper.selectByCode(businessType);
-    List<ApprovalNodeDto> sceneNodes = parseNodes(sceneFlow.getNodes());
-    for (ApprovalNodeDto node : sceneNodes) {
-        node.setOrder(order++);
-        node.setLevel("scene");  // ✅ 标记审批级别
-        combinedNodes.add(node);
-    }
-    
-    // 第三级：资源审批节点
+    // ✅ 第一级：资源审批节点（最具体）
     // ✅ 直接从主表查询，无需查询属性表
     Permission permission = permissionMapper.selectById(permissionId);
     
@@ -738,6 +732,24 @@ public List<ApprovalNodeDto> composeApprovalFlow(Long permissionId, String busin
                 combinedNodes.add(node);
             }
         }
+    }
+    
+    // ✅ 第二级：场景审批节点（业务层）
+    ApprovalFlow sceneFlow = flowMapper.selectByCode(businessType);
+    List<ApprovalNodeDto> sceneNodes = parseNodes(sceneFlow.getNodes());
+    for (ApprovalNodeDto node : sceneNodes) {
+        node.setOrder(order++);
+        node.setLevel("scene");  // ✅ 标记审批级别
+        combinedNodes.add(node);
+    }
+    
+    // ✅ 第三级：全局审批节点（平台层）
+    ApprovalFlow globalFlow = flowMapper.selectByCode("global");  // ✅ 直接用 code 查询
+    List<ApprovalNodeDto> globalNodes = parseNodes(globalFlow.getNodes());
+    for (ApprovalNodeDto node : globalNodes) {
+        node.setOrder(order++);
+        node.setLevel("global");  // ✅ 标记审批级别
+        combinedNodes.add(node);
     }
     
     return combinedNodes;
@@ -771,9 +783,9 @@ approval_record_t.combined_nodes = [节点0, 节点1, 节点2, 节点3]
 审批执行过程：
 
 ┌─────────────────────────────────────────┐
-│ 节点0（全局审批）                        │
-│ userId=admin001                          │
-│ 系统管理员登录 → 点击"同意"              │
+│ 节点0（资源审批）                        │
+│ userId=payment_leader                    │
+│ 支付团队负责人登录 → 点击"同意"          │
 ├─────────────────────────────────────────┤
 │ 系统处理：                               │
 │ 1. 解析 combined_nodes                  │
@@ -781,7 +793,7 @@ approval_record_t.combined_nodes = [节点0, 节点1, 节点2, 节点3]
 │    0 >= nodes.size()-1 (0>=3)？否       │
 │ 3. 记录审批日志：                        │
 │    INSERT approval_log_t (              │
-│      level='global',                    │
+│      level='resource',                  │
 │      action=0（同意）                   │
 │    )                                    │
 │ 4. 更新审批记录：                        │
@@ -789,38 +801,38 @@ approval_record_t.combined_nodes = [节点0, 节点1, 节点2, 节点3]
 └─────────────────────────────────────────┘
     ↓
 ┌─────────────────────────────────────────┐
-│ 节点1（场景审批）                        │
-│ userId=perm_admin                        │
-│ 权限管理员登录 → 点击"同意"              │
-├─────────────────────────────────────────┤
-│ 系统处理：                               │
-│ 1. current_node=1                       │
-│ 2. 1 >= 3？否                           │
-│ 3. 记录审批日志（level='scene'）        │
-│ 4. 更新审批记录：current_node=2         │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│ 节点2（资源审批）                        │
-│ userId=payment_leader                    │
-│ 支付负责人登录 → 点击"同意"              │
-├─────────────────────────────────────────┤
-│ 系统处理：                               │
-│ 1. current_node=2                       │
-│ 2. 2 >= 3？否                           │
-│ 3. 记录审批日志（level='resource'）     │
-│ 4. 更新审批记录：current_node=3         │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│ 节点3（资源审批）                        │
+│ 节点1（资源审批）                        │
 │ userId=finance_admin                     │
 │ 财务管理员登录 → 点击"同意"              │
 ├─────────────────────────────────────────┤
 │ 系统处理：                               │
+│ 1. current_node=1                       │
+│ 2. 1 >= 3？否                           │
+│ 3. 记录审批日志（level='resource'）     │
+│ 4. 更新审批记录：current_node=2         │
+└─────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────┐
+│ 节点2（场景审批）                        │
+│ userId=perm_admin                        │
+│ 权限管理员登录 → 点击"同意"              │
+├─────────────────────────────────────────┤
+│ 系统处理：                               │
+│ 1. current_node=2                       │
+│ 2. 2 >= 3？否                           │
+│ 3. 记录审批日志（level='scene'）        │
+│ 4. 更新审批记录：current_node=3         │
+└─────────────────────────────────────────┘
+    ↓
+┌─────────────────────────────────────────┐
+│ 节点3（全局审批）                        │
+│ userId=admin001                          │
+│ 系统管理员登录 → 点击"同意"              │
+├─────────────────────────────────────────┤
+│ 系统处理：                               │
 │ 1. current_node=3                       │
 │ 2. 3 >= 3？是 ✅                         │
-│ 3. 记录审批日志（level='resource'）     │
+│ 3. 记录审批日志（level='global'）       │
 │ 4. 更新审批记录：                        │
 │    status=1（已通过）                   │
 │    completed_at=NOW()                   │
@@ -1010,15 +1022,15 @@ public class ApprovalFlowComposer {
         List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
         int order = 1;
         
-        // 第一级：全局审批
-        List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
-        for (ApprovalNodeDto node : globalNodes) {
+        // ✅ 第一级：资源审批（最具体）
+        List<ApprovalNodeDto> resourceNodes = getResourceApprovalNodes(permissionId);
+        for (ApprovalNodeDto node : resourceNodes) {
             node.setOrder(order++);
-            node.setLevel("global");
+            node.setLevel("resource");
             combinedNodes.add(node);
         }
         
-        // 第二级：场景审批
+        // ✅ 第二级：场景审批（业务层）
         List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
         for (ApprovalNodeDto node : sceneNodes) {
             node.setOrder(order++);
@@ -1026,11 +1038,11 @@ public class ApprovalFlowComposer {
             combinedNodes.add(node);
         }
         
-        // 第三级：资源审批
-        List<ApprovalNodeDto> resourceNodes = getResourceApprovalNodes(permissionId);
-        for (ApprovalNodeDto node : resourceNodes) {
+        // ✅ 第三级：全局审批（平台层）
+        List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
+        for (ApprovalNodeDto node : globalNodes) {
             node.setOrder(order++);
-            node.setLevel("resource");
+            node.setLevel("global");
             combinedNodes.add(node);
         }
         
@@ -1221,10 +1233,10 @@ public class PermissionService {
 **组合后的审批流程**：
 
 ```
-节点1：系统管理员（全局审批）
-节点2：权限管理员（场景审批）
-节点3：支付团队负责人（资源审批）
-节点4：财务管理员（资源审批）
+节点1：支付团队负责人（资源审批）
+节点2：财务管理员（资源审批）
+节点3：权限管理员（场景审批）
+节点4：系统管理员（全局审批）
 ```
 
 **审批记录创建（✅ 直接存储完整流程）**：
@@ -1245,10 +1257,10 @@ INSERT INTO openplatform_v2_approval_record_t (
 ) VALUES (
     9001,
     '[  -- ✅ 完整审批流程（包含所有审批人）
-        {"type":"approver","userId":"admin001","userName":"系统管理员","order":1,"level":"global"},
-        {"type":"approver","userId":"perm_admin","userName":"权限管理员","order":2,"level":"scene"},
-        {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":3,"level":"resource"},
-        {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":4,"level":"resource"}
+        {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1,"level":"resource"},
+        {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2,"level":"resource"},
+        {"type":"approver","userId":"perm_admin","userName":"权限管理员","order":3,"level":"scene"},
+        {"type":"approver","userId":"admin001","userName":"系统管理员","order":4,"level":"global"}
     ]',
     'permission_apply',
     5001,
@@ -1269,10 +1281,10 @@ INSERT INTO openplatform_v2_approval_record_t (
 **审批执行**：
 
 ```
-系统管理员审批 → 同意 → current_node=1
-权限管理员审批 → 同意 → current_node=2
-支付负责人审批 → 同意 → current_node=3
-财务管理员审批 → 同意 → status=1（通过）→ 订阅激活
+支付团队负责人审批 → 同意 → current_node=1
+财务管理员审批 → 同意 → current_node=2
+权限管理员审批 → 同意 → current_node=3
+系统管理员审批 → 同意 → status=1（通过）→ 订阅激活
 ```
 
 ### 8.2 数据查询示例
@@ -1294,9 +1306,10 @@ WHERE r.id = 9001;
 -- ✅ 解析审批节点（直接从 combined_nodes 获取）
 -- JSON 示例：
 -- [
---   {"userId":"admin001","userName":"系统管理员","order":1,"level":"global"},
---   {"userId":"perm_admin","userName":"权限管理员","order":2,"level":"scene"},
---   {"userId":"payment_leader","userName":"支付团队负责人","order":3,"level":"resource"}
+--   {"userId":"payment_leader","userName":"支付团队负责人","order":1,"level":"resource"},
+--   {"userId":"finance_admin","userName":"财务管理员","order":2,"level":"resource"},
+--   {"userId":"perm_admin","userName":"权限管理员","order":3,"level":"scene"},
+--   {"userId":"admin001","userName":"系统管理员","order":4,"level":"global"}
 -- ]
 
 -- ❌ 之前的查询方式（需要 JOIN 流程表）
@@ -1333,7 +1346,7 @@ ORDER BY l.node_index;
 | **combined_nodes** | 存储组合后的完整审批节点JSON |
 | **level字段** | 标记节点属于哪一级（global/scene/resource） |
 | **current_node** | 当前审批节点索引（0, 1, 2...） |
-| **审批顺序** | 全局 → 场景 → 资源 |
+| **审批顺序** | 资源 → 场景 → 全局（从具体到一般） |
 | **拒绝处理** | 拒绝后直接结束流程，不进入下一节点 |
 | **code字段** | 统一用code标识审批流程级别（global/场景编码/资源编码） |
 
@@ -1358,6 +1371,32 @@ ORDER BY l.node_index;
 5. ✅ 修改 ApprovalEngine 支持组合审批
 6. ✅ 测试完整审批流程
 
+### 9.3 审批顺序设计原理
+
+**审批顺序设计原理**：
+
+采用"从具体到一般"的审批顺序，原因如下：
+
+1. **资源审批优先**（第一级）
+   - 资源提供方最了解资源的价值和风险
+   - 先确认是否愿意授权给申请方
+   - 如果资源提供方拒绝，无需进行后续审批
+
+2. **场景审批居中**（第二级）
+   - 业务场景层面审核申请是否符合业务规范
+   - 确保申请符合场景特定的安全和管理要求
+   - 场景审批可以设置场景级别的安全策略
+
+3. **全局审批兜底**（第三级）
+   - 平台运营层面最终审核
+   - 确保申请符合平台整体规范
+   - 平台可以统一管理和控制审批流程
+
+**优势**：
+- 提高审批效率：资源提供方拒绝后，无需进行后续审批
+- 降低沟通成本：资源提供方直接审核，减少信息传递
+- 符合业务逻辑：从具体到一般，层层把关
+
 ---
 
 ## 10. 相关文档
@@ -1370,6 +1409,39 @@ ORDER BY l.node_index;
 ---
 
 ## 11. 版本更新记录
+
+### v2.3.0 (2026-04-24)
+
+**优化内容**：调整三级审批组合顺序为"从具体到一般"
+
+**优化原因**：
+
+采用"从具体到一般"的审批顺序（资源审批 → 场景审批 → 全局审批），原因如下：
+
+1. **提高审批效率** - 资源提供方拒绝后，无需进行后续审批
+2. **降低沟通成本** - 资源提供方直接审核，减少信息传递
+3. **符合业务逻辑** - 从具体到一般，层层把关
+
+**主要变更**：
+
+| 变更项 | 变更前 | 变更后 |
+|--------|--------|--------|
+| 审批顺序 | 全局 → 场景 → 资源 | 资源 → 场景 → 全局 |
+| 第一级审批 | 全局审批 | 资源审批 |
+| 第二级审批 | 场景审批 | 场景审批 |
+| 第三级审批 | 资源审批 | 全局审批 |
+| 组合逻辑代码 | globalNodes → sceneNodes → resourceNodes | resourceNodes → sceneNodes → globalNodes |
+
+**影响范围**：
+- ✅ 审批流程配置表：审批级别定义调整
+- ✅ 组合逻辑代码：ApprovalFlowComposer 顺序调整
+- ✅ 审批执行流程：审批节点顺序调整
+- ✅ 示例场景：所有示例中的审批顺序调整
+- ✅ 文档说明：设计原理章节新增
+
+**向后兼容性**：
+- ❌ 不兼容旧版本数据，需要数据迁移
+- ❌ 需要更新所有审批流程配置和组合逻辑
 
 ### v2.2.0 (2026-04-24)
 
