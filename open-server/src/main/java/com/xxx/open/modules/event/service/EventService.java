@@ -1,5 +1,6 @@
 package com.xxx.open.modules.event.service;
 
+import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
@@ -203,8 +204,8 @@ public class EventService {
         
         event.setCreateTime(new Date());
         event.setLastUpdateTime(new Date());
-        event.setCreateBy("system"); // TODO: 从上下文获取当前用户
-        event.setLastUpdateBy("system");
+        event.setCreateBy(UserContextHolder.getUserId());
+        event.setLastUpdateBy(UserContextHolder.getUserId());
         
         // 保存事件
         eventMapper.insert(event);
@@ -220,9 +221,9 @@ public class EventService {
                     ApprovalEngine.BusinessType.EVENT_REGISTER,
                     permissionId,        // ✅ permissionId：用于获取资源审批节点
                     eventId,             // ✅ businessId：事件 ID
-                    "user001",           // TODO: 从上下文获取申请人ID
-                    "system",            // applicantName
-                    "system"             // operator
+                    UserContextHolder.getUserId(),           // applicantId
+                    UserContextHolder.getUserName(),         // applicantName
+                    UserContextHolder.getUserId()            // operator
                 );
                 log.info("创建审批记录: eventId={}, permissionId={}", eventId, permissionId);
             } catch (Exception e) {
@@ -288,7 +289,7 @@ public class EventService {
             event.setCategoryId(categoryId);
         }
         event.setLastUpdateTime(new Date());
-        event.setLastUpdateBy("system"); // TODO: 从上下文获取当前用户
+        event.setLastUpdateBy(UserContextHolder.getUserId());
         
         // 保存更新
         eventMapper.update(event);
@@ -375,7 +376,7 @@ public class EventService {
         // 更新状态为草稿
         event.setStatus(STATUS_DRAFT);
         event.setLastUpdateTime(new Date());
-        event.setLastUpdateBy("system"); // TODO: 从上下文获取当前用户
+        event.setLastUpdateBy(UserContextHolder.getUserId());
         
         eventMapper.update(event);
         
@@ -410,8 +411,8 @@ public class EventService {
         permission.setStatus(1); // 默认启用
         permission.setCreateTime(new Date());
         permission.setLastUpdateTime(new Date());
-        permission.setCreateBy("system");
-        permission.setLastUpdateBy("system");
+        permission.setCreateBy(UserContextHolder.getUserId());
+        permission.setLastUpdateBy(UserContextHolder.getUserId());
         
         permissionMapper.insert(permission);
         
@@ -447,7 +448,7 @@ public class EventService {
             permission.setResourceNodes(permissionDto.getResourceNodes());
         }
         permission.setLastUpdateTime(new Date());
-        permission.setLastUpdateBy("system");
+        permission.setLastUpdateBy(UserContextHolder.getUserId());
         
         permissionMapper.update(permission);
     }
@@ -468,8 +469,8 @@ public class EventService {
             property.setStatus(1);
             property.setCreateTime(now);
             property.setLastUpdateTime(now);
-            property.setCreateBy("system");
-            property.setLastUpdateBy("system");
+            property.setCreateBy(UserContextHolder.getUserId());
+            property.setLastUpdateBy(UserContextHolder.getUserId());
             
             properties.add(property);
         }

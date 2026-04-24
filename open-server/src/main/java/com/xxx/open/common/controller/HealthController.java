@@ -1,6 +1,8 @@
 package com.xxx.open.common.controller;
 
+import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.model.ApiResponse;
+import com.xxx.open.common.model.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +34,17 @@ public class HealthController {
         data.put("service", "open-server");
         data.put("timestamp", LocalDateTime.now());
         data.put("version", "1.0.0");
+        return ApiResponse.success(data);
+    }
+
+    @Operation(summary = "用户信息", description = "返回当前用户上下文信息")
+    @GetMapping("/user-info")
+    public ApiResponse<Map<String, Object>> userInfo() {
+        UserContext userContext = UserContextHolder.get();
+        Map<String, Object> data = new HashMap<>();
+        data.put("userId", userContext.getUserId());
+        data.put("userName", userContext.getUserName());
+        data.put("authType", userContext.getAuthType());
         return ApiResponse.success(data);
     }
 }
