@@ -8,6 +8,7 @@ import {
   Button,
   Space,
   Card,
+  Radio,
 } from 'antd';
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { createApi, updateApi, fetchApiDetail } from './thunk';
@@ -83,6 +84,11 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
               permissionNameCn: data.permission?.nameCn,
               permissionNameEn: data.permission?.nameEn,
               scope: data.permission?.scope,
+              needApproval: data.permission?.needApproval ?? 1,
+              // 解析 resourceNodes JSON 字符串为数组
+              resourceNodes: data.permission?.resourceNodes 
+                ? JSON.parse(data.permission.resourceNodes) 
+                : [],
               properties: data.properties?.map(prop => ({
                 propertyName: API_PROPERTY_PRESETS.find(p => p.value === prop.propertyName)
                   ? prop.propertyName
@@ -132,6 +138,12 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           nameCn: values.permissionNameCn,
           nameEn: values.permissionNameEn,
           scope: values.scope,
+          // v2.8.0新增：审批配置字段
+          needApproval: values.needApproval ?? 1,
+          // 将 resourceNodes 数组转换为 JSON 字符串
+          resourceNodes: values.resourceNodes && values.resourceNodes.length > 0
+            ? JSON.stringify(values.resourceNodes)
+            : null,
         },
         properties: properties,
       };
@@ -269,6 +281,70 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
             extra="格式：api:{模块}:{资源标识}"
           >
             <Input placeholder="api:im:send-message" disabled={mode === 'view'} />
+          </Form.Item>
+
+          {/* 是否需要审批 */}
+          <Form.Item
+            label="是否需要审批"
+            name="needApproval"
+            initialValue={1}
+            tooltip="开启后，消费方申请此权限时需要审批"
+          >
+            <Radio.Group disabled={mode === 'view'}>
+              <Radio value={1}>需要审批</Radio>
+              <Radio value={0}>无需审批</Radio>
+            </Radio.Group>
+          </Form.Item>
+
+          {/* 审批节点配置（当需要审批时显示） */}
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.needApproval !== cur.needApproval}>
+            {({ getFieldValue }) => {
+              const needApproval = getFieldValue('needApproval');
+              if (needApproval === 1) {
+                return (
+                  <Form.Item label="审批节点配置" required>
+                    <Form.List name="resourceNodes">
+                      {(fields, { add, remove }) => (
+                        <>
+                          {fields.map(({ key, name, ...restField }) => (
+                            <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'userId']}
+                                rules={[{ required: true, message: '请输入审批人ID' }]}
+                              >
+                                <Input placeholder="审批人用户ID" style={{ width: 150 }} disabled={mode === 'view'} />
+                              </Form.Item>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'userName']}
+                                rules={[{ required: true, message: '请输入审批人姓名' }]}
+                              >
+                                <Input placeholder="审批人姓名" style={{ width: 150 }} disabled={mode === 'view'} />
+                              </Form.Item>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'order']}
+                                rules={[{ required: true, message: '请输入审批顺序' }]}
+                              >
+                                <Input placeholder="审批顺序" style={{ width: 80 }} disabled={mode === 'view'} />
+                              </Form.Item>
+                              {mode !== 'view' && <MinusCircleOutlined onClick={() => remove(name)} />}
+                            </Space>
+                          ))}
+                          {mode !== 'view' && (
+                            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
+                              添加审批节点
+                            </Button>
+                          )}
+                        </>
+                      )}
+                    </Form.List>
+                  </Form.Item>
+                );
+              }
+              return null;
+            }}
           </Form.Item>
         </Card>
 

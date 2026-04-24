@@ -76,6 +76,7 @@ export const API_CONFIG = {
     DETAIL: '/approval-flows/{id}',
     CREATE: '/approval-flows',
     UPDATE: '/approval-flows/{id}',
+    DELETE: '/approval-flows/{id}',
   },
 };
 

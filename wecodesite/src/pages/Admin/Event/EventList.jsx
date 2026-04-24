@@ -10,12 +10,14 @@ import {
   Popconfirm,
   Empty,
   Spin,
+  Pagination,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   EyeOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { fetchEventList, deleteEvent } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
@@ -35,6 +37,8 @@ function EventList() {
   const [loading, setLoading] = useState(false);
   const [eventList, setEventList] = useState([]);
   const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [categoryId, setCategoryId] = useState(undefined);
   const [status, setStatus] = useState(undefined);
@@ -72,17 +76,16 @@ function EventList() {
     const finalKeyword = 'keyword' in params ? params.keyword : keyword;
     const finalCategoryId = 'categoryId' in params ? params.categoryId : categoryId;
     const finalStatus = 'status' in params ? params.status : status;
+    const finalPage = 'curPage' in params ? params.curPage : currentPage;
+    const finalSize = 'pageSize' in params ? params.pageSize : pageSize;
     
     const requestParams = {
       keyword: finalKeyword,
       categoryId: finalCategoryId,
       status: finalStatus,
+      curPage: finalPage,
+      pageSize: finalSize,
     };
-    
-    // 只有当 curPage 有值时才添加
-    if (params.curPage !== undefined) {
-      requestParams.curPage = params.curPage;
-    }
     
     // 过滤掉值为 undefined 的参数
     const filteredParams = Object.fromEntries(
@@ -98,7 +101,14 @@ function EventList() {
   };
 
   const handleSearch = () => {
-    loadData();
+    setCurrentPage(1);
+    loadData({ curPage: 1 });
+  };
+
+  const handlePageChange = (page, size) => {
+    setCurrentPage(page);
+    setPageSize(size);
+    loadData({ curPage: page, pageSize: size });
   };
 
   const handleAdd = () => {
@@ -153,6 +163,15 @@ function EventList() {
       render: (text) => <code>{text}</code>,
     },
     {
+      title: 'Scope',
+      dataIndex: 'permission',
+      key: 'scope',
+      render: (permission) => {
+        const scope = permission?.scope || '-';
+        return <Tag color="cyan">{scope}</Tag>;
+      },
+    },
+    {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
@@ -169,6 +188,16 @@ function EventList() {
           <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleView(record)}>
             详情
           </Button>
+          {record.docUrl && (
+            <Button 
+              type="link" 
+              size="small" 
+              icon={<FileTextOutlined />}
+              onClick={() => window.open(record.docUrl, '_blank')}
+            >
+              文档
+            </Button>
+          )}
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
           </Button>
@@ -239,16 +268,26 @@ function EventList() {
 
         <Spin spinning={loading}>
           {eventList.length > 0 ? (
-            <Table
-              columns={columns}
-              dataSource={eventList}
-              rowKey="id"
-              pagination={{
-                total,
-                pageSize: 20,
-                onChange: (page) => loadData({ curPage: page }),
-              }}
-            />
+            <>
+              <Table
+                columns={columns}
+                dataSource={eventList}
+                rowKey="id"
+                pagination={false}
+              />
+              <div style={{ marginTop: 16, textAlign: 'right' }}>
+                <Pagination
+                  total={total}
+                  current={currentPage}
+                  pageSize={pageSize}
+                  pageSizeOptions={[10, 20, 50]}
+                  showSizeChanger
+                  showQuickJumper
+                  showTotal={(total) => `共 ${total} 条`}
+                  onChange={handlePageChange}
+                />
+              </div>
+            </>
           ) : (
             <Empty description="暂无事件数据" />
           )}
