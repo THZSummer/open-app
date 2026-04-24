@@ -5,7 +5,7 @@ import './CallbackDrawer.m.less';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subscribeLoading = false }) {
+function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subscribeLoading = false, appId }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState(
     selectedCallbacks.map(c => c.id)
   );
@@ -18,13 +18,13 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
   const loadData = useCallback(async (page = currentPage, size = pageSize) => {
     setLoading(true);
     try {
-      const result = await fetchAllCallbacks({ curPage: page, pageSize: size });
+      const result = await fetchAllCallbacks({ curPage: page, pageSize: size, appId });
       setAllCallbacks(result.data || []);
       setTotal(result.page?.total || 0);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, appId]);
 
   useEffect(() => {
     if (open) {
@@ -79,6 +79,18 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
       },
     },
     {
+      title: '订阅状态',
+      dataIndex: 'isSubscribed',
+      key: 'isSubscribed',
+      width: 100,
+      render: (isSubscribed) => {
+        if (isSubscribed === 1) {
+          return <Tag color="success">已订阅</Tag>;
+        }
+        return <Tag color="default">未订阅</Tag>;
+      },
+    },
+    {
       title: '操作',
       key: 'action',
       render: (_, record) => {
@@ -95,6 +107,9 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
   const rowSelection = {
     selectedRowKeys,
     onChange: handleSelectChange,
+    getCheckboxProps: (record) => ({
+      disabled: record.isSubscribed === 1,
+    }),
   };
 
   return (

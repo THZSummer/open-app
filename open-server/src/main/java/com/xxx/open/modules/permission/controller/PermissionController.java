@@ -64,6 +64,8 @@ public class PermissionController {
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryApiPermissions(
             @Parameter(description = "分类ID") 
             @PathVariable String id,
+            @Parameter(description = "应用ID（用于查询订阅状态）") 
+            @RequestParam(required = false) String appId,
             @Parameter(description = "搜索关键词") 
             @RequestParam(required = false) String keyword,
             @Parameter(description = "是否需要审核过滤") 
@@ -75,9 +77,9 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取分类下 API 权限列表, categoryId={}", id);
+        log.info("获取分类下 API 权限列表, categoryId={}, appId={}", id, appId);
         
-        return permissionService.getCategoryApiPermissions(id, keyword, needApproval, includeChildren, curPage, pageSize);
+        return permissionService.getCategoryApiPermissions(id, appId, keyword, needApproval, includeChildren, curPage, pageSize);
     }
 
     /**
@@ -149,6 +151,8 @@ public class PermissionController {
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryEventPermissions(
             @Parameter(description = "分类ID") 
             @PathVariable String id,
+            @Parameter(description = "应用ID（用于查询订阅状态）") 
+            @RequestParam(required = false) String appId,
             @Parameter(description = "搜索关键词") 
             @RequestParam(required = false) String keyword,
             @Parameter(description = "是否需要审核过滤") 
@@ -160,9 +164,9 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取分类下事件权限列表, categoryId={}", id);
+        log.info("获取分类下事件权限列表, categoryId={}, appId={}", id, appId);
         
-        return permissionService.getCategoryEventPermissions(id, keyword, needApproval, includeChildren, curPage, pageSize);
+        return permissionService.getCategoryEventPermissions(id, appId, keyword, needApproval, includeChildren, curPage, pageSize);
     }
 
     /**
@@ -253,6 +257,8 @@ public class PermissionController {
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryCallbackPermissions(
             @Parameter(description = "分类ID") 
             @PathVariable String id,
+            @Parameter(description = "应用ID（用于查询订阅状态）") 
+            @RequestParam(required = false) String appId,
             @Parameter(description = "搜索关键词") 
             @RequestParam(required = false) String keyword,
             @Parameter(description = "是否需要审核过滤") 
@@ -264,9 +270,9 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取分类下回调权限列表, categoryId={}", id);
+        log.info("获取分类下回调权限列表, categoryId={}, appId={}", id, appId);
         
-        return permissionService.getCategoryCallbackPermissions(id, keyword, needApproval, includeChildren, curPage, pageSize);
+        return permissionService.getCategoryCallbackPermissions(id, appId, keyword, needApproval, includeChildren, curPage, pageSize);
     }
 
     /**

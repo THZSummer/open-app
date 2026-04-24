@@ -4,6 +4,27 @@ import { mockEvents, mockAllEvents } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * 获取事件分类列表
+ * @returns {Promise<Array>} 分类列表数组
+ */
+export const fetchEventCategories = async () => {
+  if (!useTrueFetch) {
+    await delay(300);
+    return [{
+      id: '1',
+      nameCn: '事件分类'
+    }];
+  }
+  const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: 'event' } });
+  return result?.data || [];
+};
+
+/**
+ * 获取所有事件列表
+ * @param {Object} params - 查询参数，包含 curPage、pageSize、appId 等
+ * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
+ */
 export const fetchAllEvents = async (params = {}) => {
   if (!useTrueFetch) {
     await delay(300);
@@ -19,7 +40,28 @@ export const fetchAllEvents = async (params = {}) => {
       page: { curPage, pageSize, total: data.length }
     };
   }
-  const result = await fetchApi(API_CONFIG.EVENTS.LIST, { params });
+  
+  // 1. 先获取事件分类
+  const categories = await fetchEventCategories();
+  if (!categories || categories.length === 0) {
+    return {
+      code: '200',
+      messageZh: '查询成功',
+      data: [],
+      page: { curPage: 1, pageSize: params.pageSize || 20, total: 0 }
+    };
+  }
+  
+  // 2. 使用第一个分类ID获取事件列表
+  const categoryId = categories[0].id;
+  const queryParams = {
+    curPage: params.curPage || 1,
+    pageSize: params.pageSize || 20,
+    includeChildren: true
+  };
+  if (params.appId) queryParams.appId = params.appId;
+  
+  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.EVENTS, { id: categoryId }), { params: queryParams });
   return result;
 };
 

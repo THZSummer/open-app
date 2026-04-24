@@ -244,6 +244,7 @@ function Callbacks() {
         onConfirm={handleAddCallback}
         selectedCallbacks={callbacks}
         subscribeLoading={subscribeLoading}
+        appId={appId}
       />
 
       <CallbackConfigDrawer

@@ -108,11 +108,6 @@ public class EventSubscriptionListResponse implements Serializable {
          * Scope
          */
         private String scope;
-
-        /**
-         * 文档链接
-         */
-        private String docUrl;
     }
 
     /**

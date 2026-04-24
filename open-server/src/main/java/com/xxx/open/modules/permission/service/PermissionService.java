@@ -5,9 +5,11 @@ import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
 import com.xxx.open.modules.api.entity.Api;
+import com.xxx.open.modules.api.entity.ApiProperty;
 import com.xxx.open.modules.api.mapper.ApiMapper;
 import com.xxx.open.modules.api.mapper.ApiPropertyMapper;
 import com.xxx.open.modules.callback.entity.Callback;
+import com.xxx.open.modules.callback.entity.CallbackProperty;
 import com.xxx.open.modules.callback.mapper.CallbackMapper;
 import com.xxx.open.modules.callback.mapper.CallbackPropertyMapper;
 import com.xxx.open.modules.category.entity.Category;
@@ -108,10 +110,10 @@ public class PermissionService {
      * #28 获取分类下 API 权限列表（权限树懒加载）
      */
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryApiPermissions(
-            String categoryId, String keyword, Integer needApproval, 
+            String categoryId, String appId, String keyword, Integer needApproval, 
             Boolean includeChildren, Integer curPage, Integer pageSize) {
         
-        log.info("获取分类下 API 权限列表, categoryId={}, includeChildren={}", categoryId, includeChildren);
+        log.info("获取分类下 API 权限列表, categoryId={}, appId={}, includeChildren={}", categoryId, appId, includeChildren);
 
         Long categoryIdLong = parseId(categoryId);
         
@@ -140,7 +142,7 @@ public class PermissionService {
 
         // 转换响应
         List<CategoryPermissionListResponse> responses = permissions.stream()
-                .map(this::convertToCategoryPermissionResponse)
+                .map(p -> convertToCategoryPermissionResponse(p, appId))
                 .collect(Collectors.toList());
 
         // 构建分页响应
@@ -306,10 +308,10 @@ public class PermissionService {
      * #32 获取分类下事件权限列表（权限树懒加载）
      */
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryEventPermissions(
-            String categoryId, String keyword, Integer needApproval,
+            String categoryId, String appId, String keyword, Integer needApproval,
             Boolean includeChildren, Integer curPage, Integer pageSize) {
         
-        log.info("获取分类下事件权限列表, categoryId={}", categoryId);
+        log.info("获取分类下事件权限列表, categoryId={}, appId={}", categoryId, appId);
 
         Long categoryIdLong = parseId(categoryId);
         
@@ -332,7 +334,7 @@ public class PermissionService {
                 categoryIdLong, keyword, needApproval, categoryPath, include);
 
         List<CategoryPermissionListResponse> responses = permissions.stream()
-                .map(this::convertToCategoryPermissionResponse)
+                .map(p -> convertToCategoryPermissionResponse(p, appId))
                 .collect(Collectors.toList());
 
         ApiResponse.PageResponse pageResponse = ApiResponse.PageResponse.builder()
@@ -520,10 +522,10 @@ public class PermissionService {
      * #37 获取分类下回调权限列表（权限树懒加载）
      */
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryCallbackPermissions(
-            String categoryId, String keyword, Integer needApproval,
+            String categoryId, String appId, String keyword, Integer needApproval,
             Boolean includeChildren, Integer curPage, Integer pageSize) {
         
-        log.info("获取分类下回调权限列表, categoryId={}", categoryId);
+        log.info("获取分类下回调权限列表, categoryId={}, appId={}", categoryId, appId);
 
         Long categoryIdLong = parseId(categoryId);
         
@@ -546,7 +548,7 @@ public class PermissionService {
                 categoryIdLong, keyword, needApproval, categoryPath, include);
 
         List<CategoryPermissionListResponse> responses = permissions.stream()
-                .map(this::convertToCategoryPermissionResponse)
+                .map(p -> convertToCategoryPermissionResponse(p, appId))
                 .collect(Collectors.toList());
 
         ApiResponse.PageResponse pageResponse = ApiResponse.PageResponse.builder()
@@ -762,6 +764,7 @@ public class PermissionService {
             apiInfo = ApiSubscriptionListResponse.ApiInfo.builder()
                     .path(api.getPath())
                     .method(api.getMethod())
+                    .authType(api.getAuthType())
                     .docUrl(docUrl)
                     .build();
         }
@@ -812,13 +815,9 @@ public class PermissionService {
 
         EventSubscriptionListResponse.PermissionInfo permissionInfo = null;
         if (permission != null) {
-            // 查询权限文档URL
-            String permissionDocUrl = getPermissionDocUrl(permission.getId());
-            
             permissionInfo = EventSubscriptionListResponse.PermissionInfo.builder()
                     .nameCn(permission.getNameCn())
                     .scope(permission.getScope())
-                    .docUrl(permissionDocUrl)
                     .build();
         }
 
@@ -871,6 +870,11 @@ public class PermissionService {
      */
     private CallbackSubscriptionListResponse convertToCallbackSubscriptionResponse(Subscription subscription) {
         Permission permission = permissionMapper.selectById(subscription.getPermissionId());
+        
+        Callback callback = null;
+        if (permission != null) {
+            callback = callbackMapper.selectById(permission.getResourceId());
+        }
 
         Category category = null;
         List<String> categoryPath = null;
@@ -889,6 +893,15 @@ public class PermissionService {
                     .build();
         }
 
+        CallbackSubscriptionListResponse.CallbackInfo callbackInfo = null;
+        if (callback != null) {
+            String docUrl = getCallbackDocUrl(callback.getId());
+            callbackInfo = CallbackSubscriptionListResponse.CallbackInfo.builder()
+                    .nameCn(callback.getNameCn())
+                    .docUrl(docUrl)
+                    .build();
+        }
+
         CallbackSubscriptionListResponse.CategoryInfo categoryInfo = null;
         if (category != null) {
             categoryInfo = CallbackSubscriptionListResponse.CategoryInfo.builder()
@@ -899,24 +912,33 @@ public class PermissionService {
                     .build();
         }
 
+        // 查询审批人信息
+        CallbackSubscriptionListResponse.ApproverInfo approverInfo = getCallbackApproverInfo(subscription.getId());
+        
+        // 构造审批链接
+        String approvalUrl = "https://platform.example.com/approval/callback/" + subscription.getId();
+
         return CallbackSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
                 .appId(String.valueOf(subscription.getAppId()))
                 .permissionId(String.valueOf(subscription.getPermissionId()))
                 .permission(permissionInfo)
+                .callback(callbackInfo)
                 .category(categoryInfo)
                 .status(subscription.getStatus())
                 .channelType(subscription.getChannelType())
                 .channelAddress(subscription.getChannelAddress())
                 .authType(subscription.getAuthType())
                 .createTime(subscription.getCreateTime())
+                .approver(approverInfo)
+                .approvalUrl(approvalUrl)
                 .build();
     }
 
     /**
      * 转换为分类权限响应
      */
-    private CategoryPermissionListResponse convertToCategoryPermissionResponse(Permission permission) {
+    private CategoryPermissionListResponse convertToCategoryPermissionResponse(Permission permission, String appId) {
         // 获取资源信息
         CategoryPermissionListResponse.ResourceInfo resourceInfo = null;
         
@@ -927,6 +949,7 @@ public class PermissionService {
                 resourceInfo = CategoryPermissionListResponse.ResourceInfo.builder()
                         .path(api.getPath())
                         .method(api.getMethod())
+                        .authType(api.getAuthType())
                         .docUrl(docUrl)
                         .build();
             }
@@ -952,7 +975,19 @@ public class PermissionService {
         // 查询是否需要审核（从属性表）
         Integer needApproval = getNeedApproval(permission.getId());
 
-        // TODO: 查询是否已订阅（需要当前用户的应用ID）
+        // 查询是否已订阅
+        int isSubscribed = 0;
+        if (appId != null && !appId.isEmpty()) {
+            try {
+                Long appIdLong = Long.parseLong(appId);
+                Subscription subscription = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
+                if (subscription != null) {
+                    isSubscribed = 1;
+                }
+            } catch (NumberFormatException e) {
+                // 忽略无效的 appId
+            }
+        }
 
         // 获取分类信息
         CategoryPermissionListResponse.CategoryInfo categoryInfo = null;
@@ -976,7 +1011,7 @@ public class PermissionService {
                 .scope(permission.getScope())
                 .status(permission.getStatus())
                 .needApproval(needApproval)
-                .isSubscribed(0) // 默认未订阅
+                .isSubscribed(isSubscribed)
                 .resource(resourceInfo)
                 .category(categoryInfo)
                 .build();
@@ -1011,17 +1046,24 @@ public class PermissionService {
      * 获取 API 文档URL
      */
     private String getApiDocUrl(Long apiId) {
-        // 从属性表查询 doc_url
-        // TODO: 实现属性查询
-        return null;
+        List<ApiProperty> properties = apiPropertyMapper.selectByParentId(apiId);
+        return properties.stream()
+                .filter(p -> "docUrl".equals(p.getPropertyName()))
+                .findFirst()
+                .map(ApiProperty::getPropertyValue)
+                .orElse(null);
     }
 
     /**
      * 获取回调文档URL
      */
     private String getCallbackDocUrl(Long callbackId) {
-        // TODO: 实现属性查询
-        return null;
+        List<CallbackProperty> properties = callbackPropertyMapper.selectByParentId(callbackId);
+        return properties.stream()
+                .filter(p -> "docUrl".equals(p.getPropertyName()))
+                .findFirst()
+                .map(CallbackProperty::getPropertyValue)
+                .orElse(null);
     }
 
     /**
@@ -1040,7 +1082,7 @@ public class PermissionService {
         // 从 permission_property 表查询 doc_url
         List<PermissionProperty> properties = permissionPropertyMapper.selectByParentId(permissionId);
         return properties.stream()
-                .filter(p -> "doc_url".equals(p.getPropertyName()))
+                .filter(p -> "docUrl".equals(p.getPropertyName()))
                 .findFirst()
                 .map(PermissionProperty::getPropertyValue)
                 .orElse(null);
@@ -1053,16 +1095,25 @@ public class PermissionService {
         // 从 event_property 表查询 doc_url
         List<EventProperty> properties = eventPropertyMapper.selectByParentId(eventId);
         return properties.stream()
-                .filter(p -> "doc_url".equals(p.getPropertyName()))
+                .filter(p -> "docUrl".equals(p.getPropertyName()))
                 .findFirst()
                 .map(EventProperty::getPropertyValue)
                 .orElse(null);
     }
 
     /**
-     * 获取审批人信息
+     * 获取审批人信息（事件订阅）
      */
     private EventSubscriptionListResponse.ApproverInfo getApproverInfo(Long subscriptionId) {
+        // TODO: 从审批流程表查询审批人信息
+        // 暂时返回 null,实际应该从审批流程中获取
+        return null;
+    }
+
+    /**
+     * 获取审批人信息（回调订阅）
+     */
+    private CallbackSubscriptionListResponse.ApproverInfo getCallbackApproverInfo(Long subscriptionId) {
         // TODO: 从审批流程表查询审批人信息
         // 暂时返回 null,实际应该从审批流程中获取
         return null;

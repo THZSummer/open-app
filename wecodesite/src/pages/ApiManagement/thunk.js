@@ -49,7 +49,7 @@ export const fetchCategories = async (apiType) => {
  * @param {Object} params - 筛选参数，包含 identityType、keyword、needReview、categoryId、curPage、pageSize
  * @returns {Promise<Array>} 筛选后的API列表
  */
-export const fetchApis = async ({ keyword, needReview, identityType, apiType, categoryId, curPage, pageSize }) => {
+export const fetchApis = async ({ keyword, needReview, identityType, apiType, categoryId, curPage, pageSize, appId }) => {
   if (!useTrueFetch) {
     await delay(300);
     const mockKey = getMockKey(identityType, apiType);
@@ -92,6 +92,7 @@ export const fetchApis = async ({ keyword, needReview, identityType, apiType, ca
   }
   if (curPage) queryParams.curPage = curPage;
   if (pageSize) queryParams.pageSize = pageSize;
+  if (appId) queryParams.appId = appId;
   queryParams.includeChildren = true;
   
   const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: categoryId }), { params: queryParams });
