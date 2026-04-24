@@ -2234,174 +2234,43 @@ int updateWithVersion(@Param("record") ApprovalRecord record,
 
 ---
 
-#### 6.9.3 审批超时与催办机制
+#### 6.9.3 审批超时与催办机制（未实现）
 
-**审批超时检测**：
+**说明**：当前版本不支持审批超时检测和催办功能，未来版本可考虑实现。
 
-```
-场景：审批人长时间未处理审批请求
+**未实现功能**：
+- ❌ 审批超时检测（定时任务）
+- ❌ 催办通知机制
+- ❌ 自动转交功能
 
-解决方案：
-1. 记录每个节点的开始时间
-2. 定时检测超时未处理的审批
-3. 发送提醒通知或自动转交
-```
+**可扩展设计（仅供参考）**：
 
-**数据库表增加节点开始时间字段**：
+如果需要实现审批超时功能，可考虑以下设计：
+
+1. 数据库增加字段：
 
 ```sql
 ALTER TABLE approval_record_t 
 ADD COLUMN `node_start_time` DATETIME(3) COMMENT '当前节点开始时间';
 ```
 
-**审批节点超时配置**：
+2. 审批节点配置增加超时时间：
 
-```sql
--- 审批流程模板表增加超时配置
-ALTER TABLE approval_flow_t 
-ADD COLUMN `timeout_hours` INT DEFAULT 72 COMMENT '超时时间（小时）';
-
--- 审批节点配置增加超时时间
-nodes JSON:
-[
-  {
-    "type": "approver",
-    "userId": "payment_leader",
-    "order": 1,
-    "timeoutHours": 48  -- ✅ 节点超时时间（小时）
-  }
-]
+```json
+{
+  "type": "approver",
+  "userId": "payment_leader",
+  "timeoutHours": 48
+}
 ```
 
-**超时检测代码**：
+3. 实现定时任务检测超时（示例）：
 
 ```java
-/**
- * 定时任务：检测审批超时
- * 执行频率：每小时执行一次
- */
-@Scheduled(cron = "0 0 * * * ?")
+@Scheduled(cron = "0 0 * * * ?")  // 每小时执行一次
 public void checkApprovalTimeout() {
-    
-    // 查询所有待审的审批记录
-    List<ApprovalRecord> pendingRecords = recordMapper.selectPendingRecords();
-    
-    for (ApprovalRecord record : pendingRecords) {
-        
-        // 检查当前节点是否超时
-        if (isTimeout(record)) {
-            
-            // ✅ 发送催办通知
-            sendReminderNotification(record);
-            
-            // 或者自动转交给上级
-            // autoEscalate(record);
-        }
-    }
-}
-
-/**
- * 判断是否超时
- */
-private boolean isTimeout(ApprovalRecord record) {
-    
-    // 解析审批节点
-    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
-    ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
-    
-    // 获取节点超时时间
-    Integer timeoutHours = currentNode.getTimeoutHours();
-    if (timeoutHours == null) {
-        timeoutHours = 72;  // 默认72小时
-    }
-    
-    // 计算是否超时
-    Date nodeStartTime = record.getNodeStartTime();
-    long hoursPassed = (System.currentTimeMillis() - nodeStartTime.getTime()) / (1000 * 60 * 60);
-    
-    return hoursPassed > timeoutHours;
-}
-
-/**
- * 发送催办通知
- */
-private void sendReminderNotification(ApprovalRecord record) {
-    
-    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
-    ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
-    
-    // 发送邮件/短信/站内信通知
-    notificationService.send(
-        currentNode.getUserId(),
-        "审批催办通知",
-        String.format("您有一个审批待处理，已超时%d小时", 
-            calculateTimeoutHours(record))
-    );
-}
-```
-
----
-
-**催办机制**：
-
-```
-催办流程：
-1. 第一次超时（48小时）：发送提醒通知
-2. 第二次超时（72小时）：发送催办通知 + 通知上级
-3. 第三次超时（96小时）：自动转交给上级审批
-```
-
-**代码实现**：
-
-```java
-/**
- * 催办记录表
- */
-CREATE TABLE `approval_reminder_t` (
-    `id` BIGINT(20) PRIMARY KEY,
-    `record_id` BIGINT(20) NOT NULL COMMENT '审批记录ID',
-    `node_index` INT NOT NULL COMMENT '审批节点索引',
-    `reminder_count` INT DEFAULT 0 COMMENT '催办次数',
-    `last_reminder_time` DATETIME(3) COMMENT '最后催办时间',
-    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
-    KEY `idx_record_id` (`record_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批催办记录表';
-
-/**
- * 发送催办通知（支持多次催办）
- */
-private void sendReminderNotification(ApprovalRecord record) {
-    
-    // 查询催办记录
-    ApprovalReminder reminder = reminderMapper.selectByRecordId(record.getId());
-    
-    if (reminder == null) {
-        reminder = new ApprovalReminder();
-        reminder.setRecordId(record.getId());
-        reminder.setNodeIndex(record.getCurrentNode());
-        reminder.setReminderCount(0);
-    }
-    
-    int reminderCount = reminder.getReminderCount();
-    
-    if (reminderCount == 0) {
-        // 第一次催办：发送提醒通知
-        sendEmail(record, "审批提醒", "您有一个审批待处理");
-        
-    } else if (reminderCount == 1) {
-        // 第二次催办：发送催办通知 + 通知上级
-        sendEmail(record, "审批催办", "审批已超时，请尽快处理");
-        notifySupervisor(record);
-        
-    } else {
-        // 第三次催办：自动转交给上级
-        autoEscalate(record);
-    }
-    
-    // 更新催办记录
-    reminder.setReminderCount(reminderCount + 1);
-    reminder.setLastReminderTime(NOW(3));
-    reminderMapper.insertOrUpdate(reminder);
+    // 查询待审记录，检查是否超时
+    // 发送催办通知或自动转交
 }
 ```
 
@@ -2572,149 +2441,73 @@ public ApprovalRecord approve(Long recordId, String operatorId, String comment) 
 
 ---
 
-#### 6.9.6 节点协调最佳实践
+#### 6.9.6 审批数据查询（基础功能）
 
-**实践1：审批通知机制**
-
-```
-审批节点变更时，及时通知相关人员：
-
-1. 进入新节点：通知新审批人
-2. 审批通过：通知申请人
-3. 审批拒绝：通知申请人（包含拒绝原因）
-4. 审批撤销：通知所有已审批的人
-5. 审批转交：通知新审批人
-```
-
-**代码实现**：
-
-```java
-/**
- * 进入新节点时发送通知
- */
-private void notifyNewApprover(ApprovalRecord record, ApprovalNodeDto node) {
-    
-    // 获取申请人信息
-    String applicantName = record.getApplicantName();
-    String businessType = record.getBusinessType();
-    
-    // 发送通知
-    notificationService.send(
-        node.getUserId(),
-        "待审批通知",
-        String.format("您有一个新的审批请求，申请人：%s，类型：%s", 
-            applicantName, businessType)
-    );
-}
-
-/**
- * 审批完成时发送通知
- */
-private void notifyApplicant(ApprovalRecord record, boolean approved) {
-    
-    String title = approved ? "审批通过通知" : "审批拒绝通知";
-    String message = approved 
-        ? "您的申请已审批通过" 
-        : "您的申请已被拒绝，请查看拒绝原因";
-    
-    notificationService.send(
-        record.getApplicantId(),
-        title,
-        message
-    );
-}
-```
-
----
-
-**实践2：审批历史查询**
-
-```
-提供完整的审批历史查询功能：
-
-1. 按申请人查询
-2. 按审批人查询
-3. 按审批状态查询
-4. 按时间范围查询
-```
-
-**SQL示例**：
+**基础查询示例**：
 
 ```sql
--- 查询某审批人的待审批列表
+-- 查询审批记录当前状态
 SELECT 
-    r.id,
-    r.business_type,
-    r.business_id,
-    r.applicant_name,
-    r.create_time,
-    n.user_name AS current_approver,
-    n.level AS current_level
-FROM approval_record_t r
--- 解析 combined_nodes 获取当前审批人（应用层处理）
-WHERE r.status = 0
-  AND r.current_node IN (
-      -- 查找当前审批人是该用户的记录
-  )
-ORDER BY r.create_time DESC;
-
--- 查询某申请人的审批历史
-SELECT 
-    r.id,
-    r.business_type,
-    r.status,
-    CASE r.status 
+    id,
+    status,
+    current_node,
+    CASE status 
         WHEN 0 THEN '待审'
         WHEN 1 THEN '已通过'
         WHEN 2 THEN '已拒绝'
         WHEN 3 THEN '已撤销'
     END AS status_name,
-    r.create_time,
-    r.completed_at
-FROM approval_record_t r
-WHERE r.applicant_id = 'user001'
-ORDER BY r.create_time DESC;
+    applicant_name,
+    create_time,
+    completed_at
+FROM approval_record_t
+WHERE id = 9001;
+
+-- 查询审批流转日志
+SELECT 
+    node_index,
+    CASE level 
+        WHEN 'resource' THEN '资源审批'
+        WHEN 'scene' THEN '场景审批'
+        WHEN 'global' THEN '全局审批'
+    END AS level_name,
+    operator_name,
+    CASE action 
+        WHEN 0 THEN '同意'
+        WHEN 1 THEN '拒绝'
+        WHEN 2 THEN '撤销'
+        WHEN 3 THEN '转交'
+    END AS action_name,
+    comment,
+    create_time
+FROM approval_log_t
+WHERE record_id = 9001
+ORDER BY node_index ASC;
 ```
 
 ---
 
-**实践3：审批统计分析**
+**未实现功能**（未来版本可考虑）：
 
-```
-审批效率统计：
+| 功能 | 说明 |
+|------|------|
+| ❌ 审批通知机制 | 审批节点变更时自动发送通知（邮件/短信/站内信） |
+| ❌ 审批统计分析 | 平均审批时长、审批通过率、审批人效率统计 |
+| ❌ 审批历史聚合查询 | 按申请人/审批人/状态聚合查询 |
 
-1. 平均审批时长
-2. 各节点审批时长
-3. 审批通过率
-4. 审批人效率排名
-```
+**可扩展设计（仅供参考）**：
 
-**SQL示例**：
+如果需要实现审批通知功能：
 
-```sql
--- 统计审批平均时长
-SELECT 
-    business_type,
-    AVG(TIMESTAMPDIFF(HOUR, create_time, completed_at)) AS avg_hours,
-    COUNT(*) AS total_count,
-    SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS approved_count,
-    SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS rejected_count
-FROM approval_record_t
-WHERE status IN (1, 2)
-  AND create_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-GROUP BY business_type;
-
--- 统计各节点平均审批时长
-SELECT 
-    l.level,
-    l.node_index,
-    AVG(TIMESTAMPDIFF(HOUR, 
-        (SELECT create_time FROM approval_log_t WHERE record_id = l.record_id AND node_index = l.node_index - 1),
-        l.create_time
-    )) AS avg_hours
-FROM approval_log_t l
-WHERE l.action = 0
-GROUP BY l.level, l.node_index;
+```java
+// 进入新节点时发送通知（示例）
+private void notifyNewApprover(ApprovalRecord record, ApprovalNodeDto node) {
+    notificationService.send(
+        node.getUserId(),
+        "待审批通知",
+        String.format("您有一个新的审批请求，申请人：%s", record.getApplicantName())
+    );
+}
 ```
 
 ---
