@@ -187,6 +187,11 @@ CREATE TABLE `openplatform_v2_permission_t` (
     `resource_type` VARCHAR(20) NOT NULL COMMENT 'api, event, callback',
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
     `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
+    
+    -- ✅ 新增：审批相关字段
+    `need_approval` TINYINT(10) DEFAULT 1 COMMENT '是否需要审批：0=否, 1=是',
+    `approval_flow_id` BIGINT(20) COMMENT '资源级审批流程ID',
+    
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -195,7 +200,8 @@ CREATE TABLE `openplatform_v2_permission_t` (
     KEY `idx_resource` (`resource_type`, `resource_id`),
     KEY `idx_category_id` (`category_id`),
     KEY `idx_scope` (`scope`),
-    KEY `idx_status` (`status`)
+    KEY `idx_status` (`status`),
+    KEY `idx_need_approval` (`need_approval`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源主表';
 
 -- 权限资源属性表
@@ -225,13 +231,11 @@ VALUES (2, 100, 'description_en', 'Send message API description', 1, ...);
 INSERT INTO openplatform_v2_api_p_t (id, parent_id, property_name, property_value, status, ...) 
 VALUES (3, 100, 'doc_url', 'https://docs.example.com/api/send-message', 1, ...);
 
--- 权限属性表示例
+-- 权限属性表示例（审批字段已移到主表）
 INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 VALUES (1, 200, 'description_cn', '发送消息权限的中文描述', 1, ...);
 INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 VALUES (2, 200, 'description_en', 'Send message permission description', 1, ...);
-INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, property_value, status, ...)
-VALUES (3, 200, 'approval_flow_id', '1001', 1, ...);
 ```
 
 ### 订阅关系表
