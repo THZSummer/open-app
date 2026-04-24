@@ -188,9 +188,9 @@ CREATE TABLE `openplatform_v2_permission_t` (
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
     `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
     
-    -- ✅ 新增：审批相关字段
+    -- ✅ 审批相关字段
     `need_approval` TINYINT(10) DEFAULT 1 COMMENT '是否需要审批：0=否, 1=是',
-    `approval_flow_id` BIGINT(20) COMMENT '资源级审批流程ID',
+    `resource_nodes` VARCHAR(2000) COMMENT '资源级审批节点配置（JSON格式字符串）',
     
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -205,6 +205,7 @@ CREATE TABLE `openplatform_v2_permission_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源主表';
 
 -- 权限资源属性表
+-- 说明：审批相关属性（need_approval, resource_nodes）已移到主表，属性表仅存储扩展属性
 CREATE TABLE `openplatform_v2_permission_p_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `parent_id` BIGINT(20) NOT NULL COMMENT '关联权限主表 ID',
@@ -236,6 +237,19 @@ INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, proper
 VALUES (1, 200, 'description_cn', '发送消息权限的中文描述', 1, ...);
 INSERT INTO openplatform_v2_permission_p_t (id, parent_id, property_name, property_value, status, ...)
 VALUES (2, 200, 'description_en', 'Send message permission description', 1, ...);
+
+-- 权限主表审批节点配置示例（resource_nodes 字段）
+-- 注意：使用 VARCHAR 存储 JSON 格式字符串，应用层负责解析
+INSERT INTO openplatform_v2_permission_t (
+    id, name_cn, name_en, scope, resource_type, resource_id, category_id,
+    need_approval, resource_nodes, status, ...
+) VALUES (
+    200, '支付权限', 'Payment Permission', 'payment:write', 'api', 100, 1,
+    1,  -- need_approval：需要审批
+    '[{"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},{"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}]',  -- resource_nodes
+    1,  -- status
+    ...
+);
 ```
 
 ### 订阅关系表
@@ -275,16 +289,16 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
-    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT 'default, api_register, permission_apply',
+    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT '流程编码：global=全局审批, api_register=API注册审批, event_register=事件注册审批, callback_register=回调注册审批, permission_apply=权限申请审批',
     `description_cn` TEXT COMMENT '中文描述',
     `description_en` TEXT COMMENT '英文描述',
-    `is_default` TINYINT(10) DEFAULT 0 COMMENT '0=否, 1=是',
-    `nodes` JSON NOT NULL COMMENT '审批节点配置',
+    `nodes` VARCHAR(2000) NOT NULL COMMENT '审批节点配置（JSON格式字符串）',
     `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
-    `last_update_by` VARCHAR(100)
+    `last_update_by` VARCHAR(100),
+    UNIQUE KEY `uk_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程模板表';
 
 -- ============================================
@@ -292,18 +306,18 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
 -- ============================================
 CREATE TABLE `openplatform_v2_approval_record_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `flow_id` BIGINT(20) NOT NULL,
+    `combined_nodes` VARCHAR(4000) NOT NULL COMMENT '组合后的完整审批节点配置（JSON格式字符串）',
     `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
     `business_id` BIGINT(20) NOT NULL,
     `applicant_id` VARCHAR(100) NOT NULL,
+    `applicant_name` VARCHAR(100) COMMENT '申请人姓名',
     `status` TINYINT(10) DEFAULT 0 COMMENT '0=待审, 1=已通过, 2=已拒绝, 3=已撤销',
-    `current_node` INT DEFAULT 0,
+    `current_node` INT DEFAULT 0 COMMENT '当前审批节点索引',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
     `completed_at` DATETIME(3),
-    KEY `idx_flow_id` (`flow_id`),
     KEY `idx_business` (`business_type`, `business_id`),
     KEY `idx_applicant` (`applicant_id`),
     KEY `idx_status` (`status`)
@@ -316,14 +330,17 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `record_id` BIGINT(20) NOT NULL,
     `node_index` INT NOT NULL,
+    `level` VARCHAR(20) COMMENT '审批级别：global=全局, scene=场景, resource=资源',
     `operator_id` VARCHAR(100) NOT NULL,
+    `operator_name` VARCHAR(100) COMMENT '操作人姓名',
     `action` TINYINT(10) NOT NULL COMMENT '0=同意, 1=拒绝, 2=撤销, 3=转交',
     `comment` TEXT,
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     `create_by` VARCHAR(100),
     `last_update_by` VARCHAR(100),
-    KEY `idx_record_id` (`record_id`)
+    KEY `idx_record_id` (`record_id`),
+    KEY `idx_level` (`level`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
 ```
 

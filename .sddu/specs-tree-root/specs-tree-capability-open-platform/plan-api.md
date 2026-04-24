@@ -655,6 +655,11 @@
       "nameCn": "发送消息权限",
       "nameEn": "Send Message Permission",
       "scope": "api:im:send-message",
+      "needApproval": 1,
+      "resourceNodes": [
+        { "type": "approver", "userId": "api_admin", "userName": "API管理员", "order": 1 },
+        { "type": "approver", "userId": "security_admin", "userName": "安全管理员", "order": 2 }
+      ],
       "status": 1
     },
     "properties": [
@@ -693,7 +698,17 @@
 | name_cn | string | 是 | 权限中文名称 |
 | name_en | string | 是 | 权限英文名称 |
 | scope | string | 是 | Scope标识，格式 `api:{模块}:{资源标识}` |
-| approval_flow_id | long | 否 | 审批流程ID，不填使用默认流程 |
+| need_approval | int | 否 | 是否需要审批：0=否, 1=是，默认 1 |
+| resource_nodes | array | 否 | 资源级审批节点数组（JSON数组，存储为VARCHAR字符串） |
+
+**resource_nodes 数组元素**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| type | string | 是 | 节点类型（approver=审批人） |
+| user_id | string | 是 | 审批人ID |
+| user_name | string | 是 | 审批人姓名 |
+| order | int | 是 | 节点顺序 |
 
 ```json
 {
@@ -706,7 +721,12 @@
   "permission": {
     "nameCn": "发送消息权限",
     "nameEn": "Send Message Permission",
-    "scope": "api:im:send-message"
+    "scope": "api:im:send-message",
+    "needApproval": 1,
+    "resourceNodes": [
+      { "type": "approver", "userId": "api_admin", "userName": "API管理员", "order": 1 },
+      { "type": "approver", "userId": "security_admin", "userName": "安全管理员", "order": 2 }
+    ]
   },
   "properties": [
     { "propertyName": "descriptionCn", "propertyValue": "发送消息API的中文描述" },
@@ -1922,6 +1942,15 @@
 
 获取审批流程模板列表。
 
+**权限要求**：
+- 全局审批流程配置：需要超级管理员权限
+- 场景审批流程配置：需要平台运营管理员权限
+- 查询审批流程列表：所有用户都可以查询
+
+**配置界面**：
+- 全局审批流程：平台管理后台 → 审批流程管理 → 全局审批流程
+- 场景审批流程：平台管理后台 → 审批流程管理 → 场景审批流程列表
+
 **请求参数**：
 
 | 参数 | 类型 | 必填 | 说明 |
@@ -1940,19 +1969,23 @@
   "data": [
       {
         "id": "1",
-        "nameCn": "默认审批流",
-        "nameEn": "Default Approval Flow",
-        "code": "default",
-        "isDefault": 1,
-        "status": 1
+        "nameCn": "全局审批流",
+        "nameEn": "Global Approval Flow",
+        "code": "global",
+        "descriptionCn": "所有申请的平台级审批流程",
+        "descriptionEn": "Platform-level approval flow for all applications",
+        "status": 1,
+        "createTime": "2026-04-20T10:00:00.000Z"
       },
       {
         "id": "2",
-        "nameCn": "API注册审批流",
-        "nameEn": "API Registration Approval Flow",
-        "code": "api_register",
-        "isDefault": 0,
-        "status": 1
+        "nameCn": "权限申请审批流",
+        "nameEn": "Permission Apply Approval Flow",
+        "code": "permission_apply",
+        "descriptionCn": "权限申请场景审批流程",
+        "descriptionEn": "Approval flow for permission apply",
+        "status": 1,
+        "createTime": "2026-04-20T10:00:00.000Z"
       }
     
   ],
@@ -1962,7 +1995,6 @@
     "total": 5
   }
 }
-```
 ```
 
 ---
@@ -1979,16 +2011,19 @@
   "messageZh": "操作成功",
   "messageEn": "Success",
   "data": {
-    "id": "2",
-    "nameCn": "API注册审批流",
-    "nameEn": "API Registration Approval Flow",
-    "code": "api_register",
-    "isDefault": 0,
+    "id": "1",
+    "nameCn": "全局审批流",
+    "nameEn": "Global Approval Flow",
+    "code": "global",
+    "descriptionCn": "所有申请的平台级审批流程",
+    "descriptionEn": "Platform-level approval flow for all applications",
     "status": 1,
     "nodes": [
-      { "type": "approver", "userId": "user001", "userName": "张三", "order": 1 },
-      { "type": "approver", "userId": "user002", "userName": "李四", "order": 2 }
-    ]
+      { "type": "approver", "userId": "admin001", "userName": "系统管理员", "order": 1 },
+      { "type": "approver", "userId": "admin002", "userName": "平台管理员", "order": 2 }
+    ],
+    "createTime": "2026-04-20T10:00:00.000Z",
+    "createBy": "system"
   },
   "page": null
 }
@@ -2000,15 +2035,24 @@
 
 创建审批流程模板。
 
+**权限要求**：
+- 全局审批流程配置：需要超级管理员权限
+- 场景审批流程配置：需要平台运营管理员权限
+
+**配置界面**：
+- 全局审批流程：平台管理后台 → 审批流程管理 → 全局审批流程
+- 场景审批流程：平台管理后台 → 审批流程管理 → 场景审批流程列表
+
 **请求体**：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | name_cn | string | 是 | 中文名称 |
 | name_en | string | 是 | 英文名称 |
-| code | string | 是 | 流程编码，全局唯一 |
-| is_default | int | 否 | 是否默认流程（0=否, 1=是） |
-| nodes | array | 是 | 审批节点列表 |
+| code | string | 是 | 流程编码：global=全局审批, api_register=API注册审批, event_register=事件注册审批, callback_register=回调注册审批, permission_apply=权限申请审批 |
+| description_cn | string | 否 | 中文描述 |
+| description_en | string | 否 | 英文描述 |
+| nodes | array | 是 | 审批节点列表（JSON数组，存储为VARCHAR字符串） |
 
 **nodes 数组元素**：
 
@@ -2016,18 +2060,37 @@
 |------|------|------|------|
 | type | string | 是 | 节点类型（approver=审批人） |
 | user_id | string | 是 | 审批人ID |
+| user_name | string | 是 | 审批人姓名 |
 | order | int | 是 | 节点顺序 |
 
 ```json
 {
-  "nameCn": "API注册审批流",
-  "nameEn": "API Registration Approval Flow",
-  "code": "api_register",
-  "isDefault": 0,
+  "nameCn": "权限申请审批流",
+  "nameEn": "Permission Apply Approval Flow",
+  "code": "permission_apply",
+  "descriptionCn": "权限申请场景审批流程",
+  "descriptionEn": "Approval flow for permission apply",
   "nodes": [
-    { "type": "approver", "userId": "user001", "order": 1 },
-    { "type": "approver", "userId": "user002", "order": 2 }
+    { "type": "approver", "userId": "perm_admin", "userName": "权限管理员", "order": 1 }
   ]
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
+  "data": {
+    "id": "3",
+    "nameCn": "权限申请审批流",
+    "nameEn": "Permission Apply Approval Flow",
+    "code": "permission_apply",
+    "status": 1
+  },
+  "page": null
 }
 ```
 
@@ -2037,14 +2100,41 @@
 
 更新审批流程模板。
 
+**权限要求**：
+- 全局审批流程配置：需要超级管理员权限
+- 场景审批流程配置：需要平台运营管理员权限
+
+**配置界面**：
+- 全局审批流程：平台管理后台 → 审批流程管理 → 全局审批流程
+- 场景审批流程：平台管理后台 → 审批流程管理 → 场景审批流程列表
+
 **请求体**：
 
 ```json
 {
-  "nameCn": "API注册审批流V2",
+  "nameCn": "权限申请审批流V2",
+  "descriptionCn": "权限申请场景审批流程（更新）",
   "nodes": [
-    { "type": "approver", "userId": "user003", "order": 1 }
+    { "type": "approver", "userId": "perm_admin", "userName": "权限管理员", "order": 1 },
+    { "type": "approver", "userId": "security_admin", "userName": "安全管理员", "order": 2 }
   ]
+}
+```
+
+**响应示例**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
+  "data": {
+    "id": "3",
+    "nameCn": "权限申请审批流V2",
+    "status": 1,
+    "message": "审批流程模板更新成功"
+  },
+  "page": null
 }
 ```
 
@@ -2121,11 +2211,24 @@
     "applicantId": "user003",
     "applicantName": "王五",
     "status": 0,
-    "flowId": "2",
     "currentNode": 1,
-    "nodes": [
-      { "order": 1, "userId": "user001", "userName": "张三", "status": 0 },
-      { "order": 2, "userId": "user002", "userName": "李四", "status": null }
+    "combinedNodes": [
+      { 
+        "type": "approver", 
+        "userId": "user001", 
+        "userName": "张三", 
+        "order": 1, 
+        "level": "scene",
+        "status": 0 
+      },
+      { 
+        "type": "approver", 
+        "userId": "user002", 
+        "userName": "李四", 
+        "order": 2, 
+        "level": "global",
+        "status": null 
+      }
     ],
     "logs": []
   },
