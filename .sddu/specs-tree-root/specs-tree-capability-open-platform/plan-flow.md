@@ -1,6 +1,6 @@
 # 审批流程设计方案
 
-> **版本**: 2.6.0  
+> **版本**: 2.7.0  
 > **创建时间**: 2026-04-24  
 > **状态**: 设计完成
 
@@ -112,7 +112,7 @@
 │                                                              │
 │  用于全局审批和场景审批配置                                   │
 │  ├─ 全局流程：code='global'                                   │
-│  └─ 场景流程：code='permission_apply'                        │
+│  └─ 场景流程：code='api_permission_apply'（根据资源类型）     │
 │                                                              │
 │  ❌ 不再用于资源审批配置                                      │
 └─────────────────────────────────────────────────────────────┘
@@ -176,7 +176,9 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
         api_register=API注册审批流程，
         event_register=事件注册审批流程，
         callback_register=回调注册审批流程，
-        permission_apply=权限申请审批流程，
+        api_permission_apply=API权限申请审批流程，
+        event_permission_apply=事件权限申请审批流程，
+        callback_permission_apply=回调权限申请审批流程，
         payment_api=支付API审批流程（资源级自定义）',
     
     `description_cn` TEXT COMMENT '中文描述',
@@ -214,7 +216,9 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
 | `api_register` | 场景审批 | API 注册场景 |
 | `event_register` | 场景审批 | 事件注册场景 |
 | `callback_register` | 场景审批 | 回调注册场景 |
-| `permission_apply` | 场景审批 | 权限申请场景 |
+| `api_permission_apply` | 场景审批 | API 权限申请场景 |
+| `event_permission_apply` | 场景审批 | 事件权限申请场景 |
+| `callback_permission_apply` | 场景审批 | 回调权限申请场景 |
 | `{自定义}` | 资源审批 | 特定资源（如 `payment_api`） |
 
 **nodes 字段 JSON 结构**：
@@ -254,7 +258,13 @@ CREATE TABLE `openplatform_v2_approval_record_t` (
     -- 2. 审批记录数据独立，不受审批流程模板修改影响
     -- 3. 查询效率更高，无需 JOIN 操作
     
-    `business_type` VARCHAR(50) NOT NULL COMMENT '业务类型：api_register, event_register, permission_apply',
+    `business_type` VARCHAR(50) NOT NULL COMMENT '业务类型：
+        api_register = API注册审批，
+        event_register = 事件注册审批，
+        callback_register = 回调注册审批，
+        api_permission_apply = API权限申请审批，
+        event_permission_apply = 事件权限申请审批，
+        callback_permission_apply = 回调权限申请审批',
     `business_id` BIGINT(20) NOT NULL COMMENT '业务对象ID（订阅记录ID或资源ID）',
     `applicant_id` VARCHAR(100) NOT NULL COMMENT '申请人ID',
     `applicant_name` VARCHAR(100) COMMENT '申请人姓名',
@@ -605,32 +615,43 @@ INSERT INTO approval_flow_t (
 
 #### 场景类型
 
-| 场景编码 | 场景名称 | 说明 |
-|---------|---------|------|
-| `api_register` | API注册审批 | 提供方注册API时的审批流程 |
-| `event_register` | 事件注册审批 | 提供方注册事件时的审批流程 |
-| `callback_register` | 回调注册审批 | 提供方注册回调时的审批流程 |
-| `permission_apply` | 权限申请审批 | 消费方申请权限时的审批流程 |
+| 场景编码 | 场景名称 | 适用场景 | 说明 |
+|---------|---------|---------|------|
+| `global` | 全局审批 | 所有申请 | 平台级审批流程 |
+| `api_register` | API注册审批 | API注册场景 | 提供方注册API时的审批 |
+| `event_register` | 事件注册审批 | 事件注册场景 | 提供方注册事件时的审批 |
+| `callback_register` | 回调注册审批 | 回调注册场景 | 提供方注册回调时的审批 |
+| `api_permission_apply` | **API权限申请审批** | API权限申请场景 | ✅ 消费方申请API权限时的审批 |
+| `event_permission_apply` | **事件权限申请审批** | 事件权限申请场景 | ✅ 消费方申请事件权限时的审批 |
+| `callback_permission_apply` | **回调权限申请审批** | 回调权限申请场景 | ✅ 消费方申请回调权限时的审批 |
+
+**说明**：
+- ❌ 废弃：`permission_apply`（通用权限申请审批）
+- ✅ 新增：`api_permission_apply`、`event_permission_apply`、`callback_permission_apply`
+- 原因：不同资源类型的权限申请应该有独立的审批流程，便于精细化管理
 
 #### 配置界面示例
 
 ```
 审批流程管理 > 场景审批流程列表
 
-场景类型：[权限申请审批 flow ▼]
+场景类型：[API权限申请审批 ▼]
   ├─ API 注册审批流程 (api_register)
   ├─ 事件注册审批流程 (event_register)
   ├─ 回调注册审批流程 (callback_register)
-  └─ 权限申请审批流程 (permission_apply) ✓
+  ├─ ───────────────────────
+  ├─ API 权限申请审批流程 (api_permission_apply) ✓
+  ├─ 事件权限申请审批流程 (event_permission_apply)
+  └─ 回调权限申请审批流程 (callback_permission_apply)
 
-审批流程名称：[权限申请审批流程] _______________
-流程编码：permission_apply（系统固定，不可修改）
+审批流程名称：[API权限申请审批流程] _______________
+流程编码：api_permission_apply（系统固定，不可修改）
 
 审批节点配置：
   ┌───────────────────────────────────────────┐
   │ 节点1：                                   │
-  │   审批人：[权限管理员] [选择用户 ▼]       │
-  │   用户ID：perm_admin                      │
+  │   审批人：[API管理员] [选择用户 ▼]        │
+  │   用户ID：api_admin                       │
   │                                           │
   │ [+ 添加审批节点]                          │
   └───────────────────────────────────────────┘
@@ -643,16 +664,46 @@ INSERT INTO approval_flow_t (
 #### 配置示例（SQL）
 
 ```sql
--- 创建/更新场景审批流程
+-- ✅ API 权限申请审批流程
 INSERT INTO approval_flow_t (
     id, name_cn, name_en, code, nodes, status, ...
 ) VALUES (
     3,
-    '权限申请审批流程',
-    'Permission Apply Approval Flow',
-    'permission_apply',  -- ✅ 场景编码，标识权限申请场景
+    'API权限申请审批流程',
+    'API Permission Apply Approval Flow',
+    'api_permission_apply',  -- ✅ API 权限申请场景
     '[
-        {"type":"approver","userId":"perm_admin","userName":"权限管理员","order":1}
+        {"type":"approver","userId":"api_admin","userName":"API管理员","order":1}
+    ]',
+    1,  -- 启用
+    ...
+);
+
+-- ✅ 事件权限申请审批流程
+INSERT INTO approval_flow_t (
+    id, name_cn, name_en, code, nodes, status, ...
+) VALUES (
+    4,
+    '事件权限申请审批流程',
+    'Event Permission Apply Approval Flow',
+    'event_permission_apply',  -- ✅ 事件权限申请场景
+    '[
+        {"type":"approver","userId":"event_admin","userName":"事件管理员","order":1}
+    ]',
+    1,  -- 启用
+    ...
+);
+
+-- ✅ 回调权限申请审批流程
+INSERT INTO approval_flow_t (
+    id, name_cn, name_en, code, nodes, status, ...
+) VALUES (
+    5,
+    '回调权限申请审批流程',
+    'Callback Permission Apply Approval Flow',
+    'callback_permission_apply',  -- ✅ 回调权限申请场景
+    '[
+        {"type":"approver","userId":"callback_admin","userName":"回调管理员","order":1}
     ]',
     1,  -- 启用
     ...
@@ -849,15 +900,18 @@ WHERE code = 'global' AND status = 1;
 
 | 场景类型 | code 值 | 适用业务 |
 |---------|---------|---------|
+| 全局审批 | `global` | 所有申请 |
 | API 注册 | `api_register` | 提供方注册 API |
 | 事件注册 | `event_register` | 提供方注册事件 |
 | 回调注册 | `callback_register` | 提供方注册回调 |
-| 权限申请 | `permission_apply` | 消费方申请权限 |
+| **API 权限申请** | `api_permission_apply` | **消费方申请 API 权限** |
+| **事件权限申请** | `event_permission_apply` | **消费方申请事件权限** |
+| **回调权限申请** | `callback_permission_apply` | **消费方申请回调权限** |
 
 **配置示例**：
 
 ```sql
--- 为权限申请场景配置审批流程
+-- ✅ 为 API 权限申请场景配置审批流程
 INSERT INTO openplatform_v2_approval_flow_t (
     id, 
     name_cn, 
@@ -871,10 +925,60 @@ INSERT INTO openplatform_v2_approval_flow_t (
     last_update_by
 ) VALUES (
     3,
-    '权限申请场景审批流程',
-    'Permission Apply Approval Flow',
-    'permission_apply',  -- ✅ 权限申请场景
-    '[{"type":"approver","userId":"perm_admin","userName":"权限管理员","order":1}]',
+    'API权限申请场景审批流程',
+    'API Permission Apply Approval Flow',
+    'api_permission_apply',  -- ✅ API 权限申请场景
+    '[{"type":"approver","userId":"api_admin","userName":"API管理员","order":1}]',
+    1,
+    NOW(3),
+    NOW(3),
+    'system',
+    'system'
+);
+
+-- ✅ 为事件权限申请场景配置审批流程
+INSERT INTO openplatform_v2_approval_flow_t (
+    id, 
+    name_cn, 
+    name_en, 
+    code, 
+    nodes, 
+    status,
+    create_time, 
+    last_update_time, 
+    create_by, 
+    last_update_by
+) VALUES (
+    4,
+    '事件权限申请场景审批流程',
+    'Event Permission Apply Approval Flow',
+    'event_permission_apply',  -- ✅ 事件权限申请场景
+    '[{"type":"approver","userId":"event_admin","userName":"事件管理员","order":1}]',
+    1,
+    NOW(3),
+    NOW(3),
+    'system',
+    'system'
+);
+
+-- ✅ 为回调权限申请场景配置审批流程
+INSERT INTO openplatform_v2_approval_flow_t (
+    id, 
+    name_cn, 
+    name_en, 
+    code, 
+    nodes, 
+    status,
+    create_time, 
+    last_update_time, 
+    create_by, 
+    last_update_by
+) VALUES (
+    5,
+    '回调权限申请场景审批流程',
+    'Callback Permission Apply Approval Flow',
+    'callback_permission_apply',  -- ✅ 回调权限申请场景
+    '[{"type":"approver","userId":"callback_admin","userName":"回调管理员","order":1}]',
     1,
     NOW(3),
     NOW(3),
@@ -1009,8 +1113,13 @@ permission_t.resource_nodes → 直接存储审批节点配置
 │                                                        │
 │ 第二级：场景审批（✅ 业务层）                           │
 │   SELECT * FROM approval_flow_t                       │
-│   WHERE code='permission_apply'                       │
-│   结果：nodes=[权限管理员]                              │
+│   WHERE code='api_permission_apply'  -- ✅ 根据资源类型│
+│   结果：nodes=[API管理员]                              │
+│                                                        │
+│   ✅ sceneCode 可以是：                                │
+│      - api_permission_apply (API权限申请)             │
+│      - event_permission_apply (事件权限申请)          │
+│      - callback_permission_apply (回调权限申请)       │
 │                                                        │
 ├───────────────────────────────────────────────────────┤
 │                                                        │
@@ -1024,7 +1133,7 @@ permission_t.resource_nodes → 直接存储审批节点配置
 │   combined_nodes = [                                  │
 │     {order:1, level:'resource', userId:'payment_...'},│
 │     {order:2, level:'resource', userId:'finance_...'},│
-│     {order:3, level:'scene', userId:'perm_admin'},    │
+│     {order:3, level:'scene', userId:'api_admin'},     │
 │     {order:4, level:'global', userId:'admin001'}      │
 │   ]                                                    │
 │                                                        │
@@ -1034,7 +1143,7 @@ permission_t.resource_nodes → 直接存储审批节点配置
 INSERT INTO approval_record_t (
     combined_nodes = 组合后的完整审批节点JSON字符串,
     -- ✅ 不存储 flow_id，不关联流程表
-    business_type = 'permission_apply',
+    business_type = 'api_permission_apply',  -- ✅ 根据资源类型选择
     business_id = 订阅记录ID,
     applicant_id = 申请人ID,
     applicant_name = 申请人姓名,
@@ -1052,8 +1161,11 @@ INSERT INTO approval_record_t (
 ### 6.2 组合逻辑伪代码
 
 ```java
+// ✅ 根据权限的资源类型确定场景审批编码
+String sceneCode = getSceneCodeByResourceType(permission.getResourceType());
+
 // 组合审批流程
-List<ApprovalNodeDto> combinedNodes = composeApprovalFlow(permissionId, "permission_apply");
+List<ApprovalNodeDto> combinedNodes = composeApprovalFlow(permissionId, sceneCode);
 
 // 创建审批记录
 ApprovalRecord record = new ApprovalRecord();
@@ -1065,7 +1177,7 @@ record.setCombinedNodes(serializeNodes(combinedNodes));
 // ✅ 不存储 flow_id 字段，不关联审批流程表
 // 原因：combined_nodes 已包含完整信息，审批记录数据独立
 
-record.setBusinessType("permission_apply");
+record.setBusinessType(sceneCode);  // ✅ 使用对应的场景审批编码
 record.setBusinessId(subscription.getId());
 record.setApplicantId(applicantId);
 record.setApplicantName(applicantName);
@@ -1083,7 +1195,7 @@ recordMapper.insert(record);
 **组合审批流程方法**：
 
 ```java
-public List<ApprovalNodeDto> composeApprovalFlow(Long permissionId, String businessType) {
+public List<ApprovalNodeDto> composeApprovalFlow(Long permissionId, String sceneCode) {
     
     List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
     int order = 1;
@@ -1103,25 +1215,49 @@ public List<ApprovalNodeDto> composeApprovalFlow(Long permissionId, String busin
         }
     }
     
-    // ✅ 第二级：场景审批节点（业务层）
-    ApprovalFlow sceneFlow = flowMapper.selectByCode(businessType);
-    List<ApprovalNodeDto> sceneNodes = parseNodes(sceneFlow.getNodes());
-    for (ApprovalNodeDto node : sceneNodes) {
-        node.setOrder(order++);
-        node.setLevel("scene");  // ✅ 标记审批级别
-        combinedNodes.add(node);
+    // ✅ 第二级：场景审批节点（根据 sceneCode 查询）
+    // sceneCode 可以是：
+    //   - api_permission_apply (API权限申请)
+    //   - event_permission_apply (事件权限申请)
+    //   - callback_permission_apply (回调权限申请)
+    ApprovalFlow sceneFlow = flowMapper.selectByCode(sceneCode);
+    if (sceneFlow != null) {
+        List<ApprovalNodeDto> sceneNodes = parseNodes(sceneFlow.getNodes());
+        for (ApprovalNodeDto node : sceneNodes) {
+            node.setOrder(order++);
+            node.setLevel("scene");  // ✅ 标记审批级别
+            combinedNodes.add(node);
+        }
     }
     
     // ✅ 第三级：全局审批节点（平台层）
     ApprovalFlow globalFlow = flowMapper.selectByCode("global");  // ✅ 直接用 code 查询
-    List<ApprovalNodeDto> globalNodes = parseNodes(globalFlow.getNodes());
-    for (ApprovalNodeDto node : globalNodes) {
-        node.setOrder(order++);
-        node.setLevel("global");  // ✅ 标记审批级别
-        combinedNodes.add(node);
+    if (globalFlow != null) {
+        List<ApprovalNodeDto> globalNodes = parseNodes(globalFlow.getNodes());
+        for (ApprovalNodeDto node : globalNodes) {
+            node.setOrder(order++);
+            node.setLevel("global");  // ✅ 标记审批级别
+            combinedNodes.add(node);
+        }
     }
     
     return combinedNodes;
+}
+
+/**
+ * 根据资源类型获取场景审批编码
+ */
+private String getSceneCodeByResourceType(String resourceType) {
+    switch (resourceType) {
+        case "api":
+            return "api_permission_apply";      // ✅ API 权限申请审批
+        case "event":
+            return "event_permission_apply";    // ✅ 事件权限申请审批
+        case "callback":
+            return "callback_permission_apply"; // ✅ 回调权限申请审批
+        default:
+            return "api_permission_apply";      // 默认使用 API 审批
+    }
 }
 ```
 
@@ -1188,8 +1324,8 @@ approval_record_t.combined_nodes = [节点0, 节点1, 节点2, 节点3]
     ↓
 ┌─────────────────────────────────────────┐
 │ 节点2（场景审批）                        │
-│ userId=perm_admin                        │
-│ 权限管理员登录 → 点击"同意"              │
+│ userId=api_admin                         │
+│ API管理员登录 → 点击"同意"               │
 ├─────────────────────────────────────────┤
 │ 系统处理：                               │
 │ 1. current_node=2                       │
@@ -1293,7 +1429,8 @@ public ApprovalRecord reject(Long recordId, String operatorId, String reason) {
     record.setCompletedAt(new Date());
     
     // 5. 更新订阅状态
-    if ("permission_apply".equals(record.getBusinessType())) {
+    // ✅ 判断是否为权限申请场景（三种类型）
+    if (isPermissionApplyType(record.getBusinessType())) {
         Subscription subscription = subscriptionMapper.selectById(record.getBusinessId());
         subscription.setStatus(2);  // 已拒绝
         subscriptionMapper.update(subscription);
@@ -1303,6 +1440,15 @@ public ApprovalRecord reject(Long recordId, String operatorId, String reason) {
     recordMapper.update(record);
     
     return record;
+}
+
+/**
+ * 判断是否为权限申请场景
+ */
+private boolean isPermissionApplyType(String businessType) {
+    return "api_permission_apply".equals(businessType)
+        || "event_permission_apply".equals(businessType)
+        || "callback_permission_apply".equals(businessType);
 }
 ```
 
@@ -1547,17 +1693,36 @@ public interface ApprovalFlowMapper {
 // 查询全局审批流程
 ApprovalFlow globalFlow = flowMapper.selectByCode("global");
 
-// 查询场景审批流程
-ApprovalFlow sceneFlow = flowMapper.selectByCode("permission_apply");
+// ✅ 查询场景审批流程（三种权限申请场景）
+ApprovalFlow apiPermFlow = flowMapper.selectByCode("api_permission_apply");
+ApprovalFlow eventPermFlow = flowMapper.selectByCode("event_permission_apply");
+ApprovalFlow callbackPermFlow = flowMapper.selectByCode("callback_permission_apply");
 
 // 查询资源审批流程
 ApprovalFlow resourceFlow = flowMapper.selectByCode("payment_api");
 // 或通过ID查询
 ApprovalFlow resourceFlow = flowMapper.selectById(1001L);
 ```
+
+### 8.6 ApprovalEngine.BusinessType 枚举
+
+```java
+/**
+ * 业务类型枚举
+ */
+public static class BusinessType {
+    public static final String API_REGISTER = "api_register";
+    public static final String EVENT_REGISTER = "event_register";
+    public static final String CALLBACK_REGISTER = "callback_register";
+    
+    // ✅ 权限申请分为三种类型
+    public static final String API_PERMISSION_APPLY = "api_permission_apply";
+    public static final String EVENT_PERMISSION_APPLY = "event_permission_apply";
+    public static final String CALLBACK_PERMISSION_APPLY = "callback_permission_apply";
+}
 ```
 
-### 8.6 PermissionService 集成
+### 8.7 PermissionService 集成
 
 ```java
 @Service
@@ -1577,7 +1742,10 @@ public class PermissionService {
      */
     public PermissionSubscribeResponse subscribePermission(Long appId, Long permissionId) {
         
-        // 1. 创建订阅记录
+        // 1. 查询权限信息
+        Permission permission = permissionMapper.selectById(permissionId);
+        
+        // 2. 创建订阅记录
         Subscription subscription = new Subscription();
         subscription.setId(idGenerator.nextId());
         subscription.setAppId(appId);
@@ -1585,17 +1753,20 @@ public class PermissionService {
         subscription.setStatus(0);  // 待审
         subscriptionMapper.insert(subscription);
         
-        // 2. ✅ 组合三级审批流程
+        // 3. ✅ 根据权限的资源类型确定场景审批编码
+        String sceneCode = getSceneCodeByResourceType(permission.getResourceType());
+        
+        // 4. ✅ 组合三级审批流程
         List<ApprovalNodeDto> combinedNodes = approvalFlowComposer.composeApprovalFlow(
             permissionId, 
-            "permission_apply"
+            sceneCode  // ✅ 使用对应的场景审批编码
         );
         
-        // 3. 创建审批记录
+        // 5. 创建审批记录
         ApprovalRecord record = new ApprovalRecord();
         record.setId(idGenerator.nextId());
         record.setCombinedNodes(serializeNodes(combinedNodes));  // ✅ 存储完整审批节点配置
-        record.setBusinessType("permission_apply");
+        record.setBusinessType(sceneCode);  // ✅ 使用对应的场景审批编码
         record.setBusinessId(subscription.getId());
         record.setApplicantId(currentUserId);
         record.setApplicantName(currentUserName);
@@ -1608,6 +1779,22 @@ public class PermissionService {
         recordMapper.insert(record);
         
         return response;
+    }
+    
+    /**
+     * 根据资源类型获取场景审批编码
+     */
+    private String getSceneCodeByResourceType(String resourceType) {
+        switch (resourceType) {
+            case "api":
+                return "api_permission_apply";      // ✅ API 权限申请审批
+            case "event":
+                return "event_permission_apply";    // ✅ 事件权限申请审批
+            case "callback":
+                return "callback_permission_apply"; // ✅ 回调权限申请审批
+            default:
+                return "api_permission_apply";      // 默认使用 API 审批
+        }
     }
     
     /**
@@ -1635,11 +1822,12 @@ public class PermissionService {
   nodes=[系统管理员]
 
 场景审批流程：
-  id=3, code='permission_apply'
-  nodes=[权限管理员]
+  id=3, code='api_permission_apply'  -- ✅ API权限申请场景
+  nodes=[API管理员]
 
 权限配置：
   permission_id=200
+  resource_type='api'  -- ✅ API类型
   need_approval=1
   resource_nodes=[
     {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
@@ -1678,10 +1866,10 @@ INSERT INTO openplatform_v2_approval_record_t (
     '[  -- ✅ 完整审批流程（VARCHAR存储的JSON字符串）
         {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1,"level":"resource"},
         {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2,"level":"resource"},
-        {"type":"approver","userId":"perm_admin","userName":"权限管理员","order":3,"level":"scene"},
+        {"type":"approver","userId":"api_admin","userName":"API管理员","order":3,"level":"scene"},
         {"type":"approver","userId":"admin001","userName":"系统管理员","order":4,"level":"global"}
     ]',
-    'permission_apply',
+    'api_permission_apply',  -- ✅ API权限申请场景
     5001,
     'user001',
     '张三',
@@ -1702,7 +1890,7 @@ INSERT INTO openplatform_v2_approval_record_t (
 ```
 支付团队负责人审批 → 同意 → current_node=1
 财务管理员审批 → 同意 → current_node=2
-权限管理员审批 → 同意 → current_node=3
+API管理员审批 → 同意 → current_node=3
 系统管理员审批 → 同意 → status=1（通过）→ 订阅激活
 ```
 
@@ -1727,7 +1915,7 @@ WHERE r.id = 9001;
 -- [
 --   {"userId":"payment_leader","userName":"支付团队负责人","order":1,"level":"resource"},
 --   {"userId":"finance_admin","userName":"财务管理员","order":2,"level":"resource"},
---   {"userId":"perm_admin","userName":"权限管理员","order":3,"level":"scene"},
+--   {"userId":"api_admin","userName":"API管理员","order":3,"level":"scene"},
 --   {"userId":"admin001","userName":"系统管理员","order":4,"level":"global"}
 -- ]
 
@@ -1828,6 +2016,67 @@ ORDER BY l.node_index;
 ---
 
 ## 12. 版本更新记录
+
+### v2.7.0 (2026-04-24)
+
+**优化内容**：
+- 将权限申请审批细分为三种场景审批流程
+
+**优化原因**：
+1. 精细化管理：不同资源类型可以配置不同的审批人
+2. 业务隔离：API、事件、回调有独立的审批策略
+3. 灵活性：可以针对不同资源类型设置不同的审批流程
+
+**主要变更**：
+
+| 变更前 | 变更后 |
+|--------|--------|
+| `permission_apply` | ❌ 废弃（通用权限申请审批） |
+| - | ✅ 新增 `api_permission_apply` |
+| - | ✅ 新增 `event_permission_apply` |
+| - | ✅ 新增 `callback_permission_apply` |
+
+**场景审批编码对照**：
+
+| 资源类型 | 场景审批编码 | 说明 |
+|---------|-------------|------|
+| API | `api_permission_apply` | API 权限申请审批 |
+| Event | `event_permission_apply` | 事件权限申请审批 |
+| Callback | `callback_permission_apply` | 回调权限申请审批 |
+
+**影响范围**：
+- ✅ 数据库表结构：`approval_flow_t` 表的 `code` 字段注释
+- ✅ 数据库表结构：`approval_record_t` 表的 `business_type` 字段注释
+- ✅ 业务代码：`PermissionService.subscribePermission()` 方法
+- ✅ 业务代码：`ApprovalFlowComposer.composeApprovalFlow()` 方法
+- ✅ 业务代码：新增 `getSceneCodeByResourceType()` 方法
+- ✅ 业务代码：新增 `isPermissionApplyType()` 方法
+- ✅ 审批流程配置：需要创建三种新的场景审批流程模板
+
+**向后兼容性**：
+- ❌ 不兼容旧版本数据（需要数据迁移）
+- 需要将原有 `permission_apply` 审批记录迁移到对应的三种场景审批
+- 需要创建三种新的场景审批流程模板
+- 需要更新业务代码中的场景编码引用
+
+**数据迁移建议**：
+1. 根据权限的资源类型（resource_type），更新审批记录的 business_type 字段
+2. 创建三种新的场景审批流程模板
+3. 更新所有使用 `permission_apply` 的业务代码
+
+```sql
+-- 数据迁移示例：根据权限的资源类型更新审批记录
+UPDATE approval_record_t ar
+JOIN subscription_t s ON ar.business_id = s.id
+JOIN permission_t p ON s.permission_id = p.id
+SET ar.business_type = CASE p.resource_type
+    WHEN 'api' THEN 'api_permission_apply'
+    WHEN 'event' THEN 'event_permission_apply'
+    WHEN 'callback' THEN 'callback_permission_apply'
+    ELSE 'api_permission_apply'
+END
+WHERE ar.business_type = 'permission_apply';
+```
 
 ### v2.6.0 (2026-04-24)
 
