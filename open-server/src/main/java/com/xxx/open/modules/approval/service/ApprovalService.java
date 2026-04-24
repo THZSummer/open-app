@@ -246,13 +246,18 @@ public class ApprovalService {
         for (int i = 0; i < nodes.size(); i++) {
             ApprovalNodeDto node = nodes.get(i);
             if (i < record.getCurrentNode()) {
-                // 已处理的节点
+                // 已处理的节点（在当前节点之前）
                 node.setStatus(nodeStatusMap.getOrDefault(i, 1));
-            } else if (i == record.getCurrentNode() && record.getStatus() == 0) {
-                // 当前待处理节点
-                node.setStatus(0);
+            } else if (i == record.getCurrentNode()) {
+                // 当前节点：待审批时显示0，已审批时从日志获取状态
+                if (record.getStatus() == 0) {
+                    node.setStatus(0);  // 待审批
+                } else {
+                    // 审批已通过或已拒绝，从日志获取当前节点状态
+                    node.setStatus(nodeStatusMap.getOrDefault(i, 1));
+                }
             } else {
-                // 未处理的节点
+                // 未处理的节点（在当前节点之后）
                 node.setStatus(null);
             }
         }

@@ -140,7 +140,7 @@ public class ApprovalController {
     public ApiResponse<List<ApprovalPendingListResponse>> getPendingList(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false, defaultValue = "0") Integer status,
             @RequestParam(required = false) String applicantId,
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {

@@ -57,7 +57,17 @@ function Events() {
     
     setSubscribeLoading(true);
     try {
-      const permissionIds = selectedEvents.map(e => e.id);
+      // 使用 permission.id 作为权限ID（而不是事件ID e.id）
+      const permissionIds = selectedEvents
+        .filter(e => e.permission?.id)  // 过滤出有权限ID的事件
+        .map(e => e.permission.id);
+      
+      if (permissionIds.length === 0) {
+        message.warning('没有可订阅的权限');
+        setSubscribeLoading(false);
+        return;
+      }
+      
       await subscribeEvents(appId, { permissionIds });
       message.success('申请已提交');
       loadEvents(1, pageSize);

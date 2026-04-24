@@ -57,7 +57,17 @@ function Callbacks() {
     
     setSubscribeLoading(true);
     try {
-      const permissionIds = selectedCallbacks.map(c => c.id);
+      // 使用 permission.id 作为权限ID（而不是回调ID c.id）
+      const permissionIds = selectedCallbacks
+        .filter(c => c.permission?.id)
+        .map(c => c.permission.id);
+      
+      if (permissionIds.length === 0) {
+        message.warning('没有可订阅的权限');
+        setSubscribeLoading(false);
+        return;
+      }
+      
       await subscribeCallbacks(appId, { permissionIds });
       message.success('申请已提交');
       loadCallbacks(1, pageSize);

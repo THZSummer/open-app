@@ -22,6 +22,8 @@ import com.xxx.open.modules.event.mapper.PermissionPropertyMapper;
 import com.xxx.open.modules.permission.dto.*;
 import com.xxx.open.modules.permission.entity.Subscription;
 import com.xxx.open.modules.permission.mapper.SubscriptionMapper;
+import com.xxx.open.modules.approval.engine.ApprovalEngine;
+import com.xxx.open.modules.approval.entity.ApprovalRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,7 @@ public class PermissionService {
     private final CallbackMapper callbackMapper;
     private final CallbackPropertyMapper callbackPropertyMapper;
     private final SnowflakeIdGenerator idGenerator;
+    private final ApprovalEngine approvalEngine;
 
     // ==================== API 权限管理 (#27-30) ====================
 
@@ -223,6 +226,24 @@ public class PermissionService {
         // 批量插入订阅
         if (!subscriptions.isEmpty()) {
             subscriptionMapper.batchInsert(subscriptions);
+            
+            // 为每个订阅记录创建审批流程
+            for (Subscription subscription : subscriptions) {
+                try {
+                    ApprovalRecord approvalRecord = approvalEngine.createApproval(
+                            3L,  // 权限申请审批流程ID
+                            ApprovalEngine.BusinessType.PERMISSION_APPLY,
+                            subscription.getId(),
+                            currentUser,
+                            currentUser,
+                            currentUser
+                    );
+                    log.info("创建审批记录成功: subscriptionId={}, approvalId={}", 
+                            subscription.getId(), approvalRecord.getId());
+                } catch (Exception e) {
+                    log.error("创建审批记录失败: subscriptionId={}", subscription.getId(), e);
+                }
+            }
         }
 
         return PermissionSubscribeResponse.builder()
@@ -389,6 +410,23 @@ public class PermissionService {
 
         if (!subscriptions.isEmpty()) {
             subscriptionMapper.batchInsert(subscriptions);
+            
+            for (Subscription subscription : subscriptions) {
+                try {
+                    ApprovalRecord approvalRecord = approvalEngine.createApproval(
+                            3L,
+                            ApprovalEngine.BusinessType.PERMISSION_APPLY,
+                            subscription.getId(),
+                            currentUser,
+                            currentUser,
+                            currentUser
+                    );
+                    log.info("创建审批记录成功: subscriptionId={}, approvalId={}", 
+                            subscription.getId(), approvalRecord.getId());
+                } catch (Exception e) {
+                    log.error("创建审批记录失败: subscriptionId={}", subscription.getId(), e);
+                }
+            }
         }
 
         return PermissionSubscribeResponse.builder()
@@ -586,6 +624,24 @@ public class PermissionService {
 
         if (!subscriptions.isEmpty()) {
             subscriptionMapper.batchInsert(subscriptions);
+            
+            // 为每个订阅记录创建审批流程
+            for (Subscription subscription : subscriptions) {
+                try {
+                    ApprovalRecord approvalRecord = approvalEngine.createApproval(
+                            3L,  // 权限申请审批流程ID
+                            ApprovalEngine.BusinessType.PERMISSION_APPLY,
+                            subscription.getId(),
+                            currentUser,
+                            currentUser,
+                            currentUser
+                    );
+                    log.info("创建审批记录成功: subscriptionId={}, approvalId={}", 
+                            subscription.getId(), approvalRecord.getId());
+                } catch (Exception e) {
+                    log.error("创建审批记录失败: subscriptionId={}", subscription.getId(), e);
+                }
+            }
         }
 
         return PermissionSubscribeResponse.builder()

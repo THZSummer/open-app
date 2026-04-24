@@ -103,8 +103,16 @@ function ApiManagement() {
    * @param {Array} selectedApis - 选中的API列表
    */
   const handleConfirmPermission = async (selectedApis) => {
-    // 提取权限ID列表
-    const permissionIds = selectedApis.map(api => api.id);
+    // 使用 permission.id 作为权限ID（而不是API ID api.id）
+    const permissionIds = selectedApis
+      .filter(api => api.permission?.id)
+      .map(api => api.permission.id);
+    
+    if (permissionIds.length === 0) {
+      message.warning('没有可订阅的权限');
+      return;
+    }
+    
     // 调用后端接口订阅API权限
     const result = await subscribeApis(appId, { permissionIds });
     // 重置到第一页并重新获取列表
