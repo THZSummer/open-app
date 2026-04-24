@@ -1,6 +1,7 @@
 # 数据库表结构设计
 
 > 本文档为 `plan.md` 的子文档，定义能力开放平台的详细表结构。
+> 旧版（重构前）的表结构见 [plan-db-history.md](./plan-db-history.md)。
 
 ## 表清单
 

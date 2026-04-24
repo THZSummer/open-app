@@ -177,6 +177,8 @@ CREATE TABLE `openplatform_v2_permission_t` (
     `resource_type` VARCHAR(20) NOT NULL COMMENT '资源类型：api, event, callback',
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的资源ID（API/Event/Callback）',
     `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
+    `need_approval` TINYINT(1) DEFAULT 1 COMMENT '是否需要审批：0=不需要, 1=需要',
+    `resource_nodes` VARCHAR(2000) COMMENT '资源级审批节点配置（JSON格式字符串）',
     `status` TINYINT(10) DEFAULT 1 COMMENT '状态：0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
@@ -185,7 +187,8 @@ CREATE TABLE `openplatform_v2_permission_t` (
     UNIQUE KEY `uk_scope` (`scope`),
     KEY `idx_resource` (`resource_type`, `resource_id`),
     KEY `idx_category_id` (`category_id`),
-    KEY `idx_status` (`status`)
+    KEY `idx_status` (`status`),
+    KEY `idx_need_approval` (`need_approval`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源主表';
 
 -- ============================================================================

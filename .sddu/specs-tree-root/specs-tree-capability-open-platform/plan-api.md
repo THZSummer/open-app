@@ -267,22 +267,23 @@
 | 42 | | GET | `/api/v1/approval-flows/:id` | 获取审批流程模板详情 | FR-025 |
 | 43 | | POST | `/api/v1/approval-flows` | 创建审批流程模板 | FR-025 |
 | 44 | | PUT | `/api/v1/approval-flows/:id` | 更新审批流程模板 | FR-025 |
-| 45 | | GET | `/api/v1/approvals/pending` | 获取待审批列表 | FR-026/FR-027 |
-| 46 | | GET | `/api/v1/approvals/:id` | 获取审批详情 | FR-026/FR-027 |
-| 47 | | POST | `/api/v1/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
-| 48 | | POST | `/api/v1/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
-| 49 | | POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
-| 50 | | POST | `/api/v1/approvals/batch-approve` | 批量同意审批 | FR-026/FR-027 |
-| 51 | | POST | `/api/v1/approvals/batch-reject` | 批量驳回审批（需填写原因） | FR-026/FR-027 |
-| 52 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
-| 53 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
-| 54 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
-| 55 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
-| 56 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
-| 57 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
-| 58 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
+| 45 | | DELETE | `/api/v1/approval-flows/:id` | 删除审批流程模板 | FR-025 |
+| 46 | | GET | `/api/v1/approvals/pending` | 获取待审批列表 | FR-026/FR-027 |
+| 47 | | GET | `/api/v1/approvals/:id` | 获取审批详情 | FR-026/FR-027 |
+| 48 | | POST | `/api/v1/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
+| 49 | | POST | `/api/v1/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
+| 50 | | POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
+| 51 | | POST | `/api/v1/approvals/batch-approve` | 批量同意审批 | FR-026/FR-027 |
+| 52 | | POST | `/api/v1/approvals/batch-reject` | 批量驳回审批（需填写原因） | FR-026/FR-027 |
+| 53 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
+| 54 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
+| 55 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
+| 56 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
+| 57 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
+| 58 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
+| 59 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
 
-> **接口统计**：共 58 个接口，覆盖 FR-001 ~ FR-031
+> **接口统计**：共 59 个接口，覆盖 FR-001 ~ FR-031
 >
 > **权限树设计说明**：采用懒加载模式，分为两个步骤：
 > 1. 查树：`GET /api/v1/categories` 获取分类树
