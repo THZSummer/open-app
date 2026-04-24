@@ -1,10 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Layout } from 'antd';
+import { Layout, Dropdown } from 'antd';
+import { UserOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons';
+import LoginModal from './LoginModal';
+import { getUserIdCookie, isLoggedIn, removeUserIdCookie } from '../../../utils/cookie';
 
 const { Header: AntHeader } = Layout;
 
 function Header() {
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [userId, setUserId] = useState('');
+
+  useEffect(() => {
+    setLoggedIn(isLoggedIn());
+    setUserId(getUserIdCookie() || '');
+  }, []);
+
+  const handleLoginSuccess = (id) => {
+    setLoggedIn(true);
+    setUserId(id);
+  };
+
+  const handleLogout = () => {
+    removeUserIdCookie();
+    setLoggedIn(false);
+    setUserId('');
+  };
+
+  const menuItems = loggedIn
+    ? [
+        { key: 'user_id', label: `用户ID: ${userId}`, disabled: true },
+        { type: 'divider' },
+        { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout }
+      ]
+    : [
+        { key: 'login', label: '登录', icon: <LoginOutlined />, onClick: () => setLoginModalOpen(true) }
+      ];
+
   return (
     <AntHeader style={{ 
       background: '#fff', 
@@ -40,7 +73,14 @@ function Header() {
           开发文档
         </a>
       </div>
-      <span style={{ color: '#8c8c8c' }}>开发者</span>
+      <Dropdown menu={{ items: menuItems }} trigger={['hover', 'click']}>
+        <span style={{ color: '#8c8c8c', cursor: 'pointer' }}>开发者</span>
+      </Dropdown>
+      <LoginModal 
+        open={loginModalOpen} 
+        onClose={() => setLoginModalOpen(false)} 
+        onLoginSuccess={handleLoginSuccess} 
+      />
     </AntHeader>
   );
 }
