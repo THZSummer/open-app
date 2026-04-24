@@ -1,6 +1,6 @@
 # 审批流程设计方案
 
-> **版本**: 2.4.0  
+> **版本**: 2.5.0  
 > **创建时间**: 2026-04-24  
 > **状态**: 设计完成
 
@@ -219,6 +219,8 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
 
 **nodes 字段 JSON 结构**：
 
+**注意**：字段使用 VARCHAR 类型存储 JSON 格式字符串，由应用层负责解析
+
 ```json
 [
   {
@@ -284,6 +286,8 @@ CREATE TABLE `openplatform_v2_approval_record_t` (
 5. **审计追溯** - 审批记录包含审批时的完整配置，便于历史追溯
 
 **combined_nodes 字段示例**：
+
+**注意**：字段使用 VARCHAR 类型存储 JSON 格式字符串，由应用层负责解析
 
 ```json
 [
@@ -431,6 +435,8 @@ CREATE TABLE `openplatform_v2_permission_t` (
 
 **resource_nodes 字段示例**：
 
+**注意**：字段使用 VARCHAR 类型存储 JSON 格式字符串，由应用层负责解析
+
 ```json
 [
   {
@@ -446,6 +452,62 @@ CREATE TABLE `openplatform_v2_permission_t` (
     "order": 2
   }
 ]
+```
+
+### 3.6 字段类型说明
+
+#### JSON 数据存储方式
+
+本系统使用 **VARCHAR** 类型存储 JSON 格式的数据，而不使用数据库原生的 JSON 类型，原因如下：
+
+1. **数据库兼容性**
+   - VARCHAR 在所有数据库版本中都支持
+   - JSON 类型在 MySQL 5.6 及以下版本不支持
+   - 便于数据库迁移和升级
+
+2. **性能考虑**
+   - VARCHAR 在简单查询场景下性能更好
+   - 避免数据库 JSON 解析开销
+   - JSON 解析由应用层处理，更灵活
+
+3. **存储可控**
+   - VARCHAR 有明确的长度限制
+   - 避免数据过长导致的存储问题
+   - 更容易进行数据验证
+
+4. **应用层处理**
+   - Java 应用层使用 Jackson/Gson 解析 JSON
+   - 解析逻辑统一，便于维护
+   - 可以添加自定义序列化/反序列化逻辑
+
+#### 字段长度设计
+
+| 字段 | 长度 | 说明 |
+|------|------|------|
+| `nodes` | VARCHAR(2000) | 单个审批流程节点，通常 2-5 个节点 |
+| `combined_nodes` | VARCHAR(4000) | 组合后的完整流程，可能 10-15 个节点 |
+| `resource_nodes` | VARCHAR(2000) | 资源级审批节点，通常 1-3 个节点 |
+
+**JSON 字符串示例**（约 500 字符）：
+
+```json
+[
+  {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+  {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+]
+```
+
+**应用层处理代码**：
+
+```java
+// 序列化：Java 对象 → JSON 字符串
+String nodesJson = objectMapper.writeValueAsString(nodes);
+
+// 反序列化：JSON 字符串 → Java 对象
+List<ApprovalNodeDto> nodes = objectMapper.readValue(
+    nodesJson, 
+    new TypeReference<List<ApprovalNodeDto>>() {}
+);
 ```
 
 ---
@@ -701,7 +763,7 @@ permission_t.resource_nodes → 直接存储审批节点配置
     ↓
 创建审批记录（✅ 直接存储完整流程）
 INSERT INTO approval_record_t (
-    combined_nodes = 组合后的完整JSON,
+    combined_nodes = 组合后的完整审批节点JSON字符串,
     -- ✅ 不存储 flow_id，不关联流程表
     business_type = 'permission_apply',
     business_id = 订阅记录ID,
@@ -712,7 +774,7 @@ INSERT INTO approval_record_t (
 )
 
 说明：
-1. combined_nodes 包含所有审批节点的完整信息
+1. combined_nodes 使用 VARCHAR(4000) 存储 JSON 字符串，应用层负责解析
 2. 资源审批节点直接从 permission_t.resource_nodes 获取，无需 JOIN
 3. 审批记录创建后，不再依赖审批流程表
 4. 查询审批节点直接从 combined_nodes 解析即可
@@ -990,7 +1052,10 @@ public class ApprovalRecord implements Serializable {
     private Long id;
     
     /**
-     * ✅ 核心：组合后的审批节点配置（JSON格式）
+     * ✅ 核心：组合后的审批节点配置（VARCHAR存储的JSON字符串）
+     * 
+     * 数据库字段：VARCHAR(4000)，存储 JSON 格式字符串
+     * 应用层负责 JSON 解析和序列化
      * 
      * 直接存储完整的审批节点信息，不关联审批流程表
      * 包含所有审批人的 userId、userName、level、order 信息
@@ -1042,7 +1107,10 @@ public class Permission implements Serializable {
     private Integer needApproval;
     
     /**
-     * ✅ 资源级审批节点配置（JSON格式）
+     * ✅ 资源级审批节点配置（VARCHAR存储的JSON字符串）
+     * 
+     * 数据库字段：VARCHAR(2000)，存储 JSON 格式字符串
+     * 应用层负责 JSON 解析和序列化
      * 
      * 直接存储审批节点信息，不关联审批流程表
      * 
@@ -1327,7 +1395,7 @@ public class PermissionService {
 -- 创建审批记录（✅ 直接存储完整流程）
 INSERT INTO openplatform_v2_approval_record_t (
     id,
-    combined_nodes,     -- ✅ 完整审批节点配置（JSON）
+    combined_nodes,     -- ✅ 完整审批节点配置（VARCHAR存储的JSON字符串）
     business_type,      -- 业务类型
     business_id,        -- 业务对象ID
     applicant_id,       -- 申请人ID
@@ -1338,7 +1406,7 @@ INSERT INTO openplatform_v2_approval_record_t (
     last_update_time
 ) VALUES (
     9001,
-    '[  -- ✅ 完整审批流程（包含所有审批人）
+    '[  -- ✅ 完整审批流程（VARCHAR存储的JSON字符串）
         {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1,"level":"resource"},
         {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2,"level":"resource"},
         {"type":"approver","userId":"perm_admin","userName":"权限管理员","order":3,"level":"scene"},
@@ -1355,7 +1423,7 @@ INSERT INTO openplatform_v2_approval_record_t (
 );
 
 -- 注意：
--- ✅ combined_nodes 包含完整的审批节点信息
+-- ✅ combined_nodes 使用 VARCHAR(4000) 存储 JSON 字符串，由应用层解析
 -- ✅ 不存储 global_flow_id、scene_flow_id、resource_flow_id
 -- ✅ 审批记录创建后，数据完全独立
 ```
@@ -1491,6 +1559,29 @@ ORDER BY l.node_index;
 ---
 
 ## 11. 版本更新记录
+
+### v2.5.0 (2026-04-24)
+
+**优化内容**：
+- 将所有 JSON 类型字段改为 VARCHAR 类型
+
+**优化原因**：
+1. 数据库兼容性：VARCHAR 在所有数据库版本中都支持
+2. 性能考虑：VARCHAR 在简单查询场景下性能更好
+3. 存储可控：VARCHAR 有明确的长度限制
+4. 迁移便利：数据库迁移时更方便
+
+**主要变更**：
+
+| 表 | 字段 | 变更 |
+|---|------|------|
+| approval_flow_t | nodes | JSON → VARCHAR(2000) |
+| approval_record_t | combined_nodes | JSON → VARCHAR(4000) |
+| permission_t | resource_nodes | JSON → VARCHAR(2000) |
+
+**向后兼容性**：
+- ✅ 应用层代码无需修改（已使用字符串处理）
+- ✅ JSON 解析逻辑由应用层处理，数据库层变更无影响
 
 ### v2.4.0 (2026-04-24)
 
