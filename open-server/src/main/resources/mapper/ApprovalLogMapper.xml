@@ -4,10 +4,13 @@
 <mapper namespace="com.xxx.open.modules.approval.mapper.ApprovalLogMapper">
 
     <!-- 结果映射 -->
+    <!-- v2.8.0变更：新增 level 字段 -->
     <resultMap id="BaseResultMap" type="com.xxx.open.modules.approval.entity.ApprovalLog">
         <id column="id" property="id"/>
         <result column="record_id" property="recordId"/>
         <result column="node_index" property="nodeIndex"/>
+        <!-- ✅ 新增 level 字段映射 -->
+        <result column="level" property="level"/>
         <result column="operator_id" property="operatorId"/>
         <result column="operator_name" property="operatorName"/>
         <result column="action" property="action"/>
@@ -19,18 +22,20 @@
     </resultMap>
 
     <!-- 基础列 -->
+    <!-- v2.8.0变更：新增 level 字段 -->
     <sql id="Base_Column_List">
-        id, record_id, node_index, operator_id, operator_name, action, comment,
+        id, record_id, node_index, level, operator_id, operator_name, action, comment,
         create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- 插入审批日志 -->
+    <!-- v2.8.0变更：新增 level 字段 -->
     <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalLog">
         INSERT INTO openplatform_v2_approval_log_t (
-            id, record_id, node_index, operator_id, operator_name, action, comment,
+            id, record_id, node_index, level, operator_id, operator_name, action, comment,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{recordId}, #{nodeIndex}, #{operatorId}, #{operatorName}, #{action}, #{comment},
+            #{id}, #{recordId}, #{nodeIndex}, #{level}, #{operatorId}, #{operatorName}, #{action}, #{comment},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
@@ -57,14 +62,15 @@
     </delete>
 
     <!-- 批量插入日志 -->
+    <!-- v2.8.0变更：新增 level 字段 -->
     <insert id="batchInsert" parameterType="java.util.List">
         INSERT INTO openplatform_v2_approval_log_t (
-            id, record_id, node_index, operator_id, operator_name, action, comment,
+            id, record_id, node_index, level, operator_id, operator_name, action, comment,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES
         <foreach collection="list" item="item" separator=",">
             (
-                #{item.id}, #{item.recordId}, #{item.nodeIndex}, #{item.operatorId}, #{item.operatorName}, #{item.action}, #{item.comment},
+                #{item.id}, #{item.recordId}, #{item.nodeIndex}, #{item.level}, #{item.operatorId}, #{item.operatorName}, #{item.action}, #{item.comment},
                 #{item.createTime}, #{item.lastUpdateTime}, #{item.createBy}, #{item.lastUpdateBy}
             )
         </foreach>

@@ -39,4 +39,9 @@ public interface EventPropertyMapper {
      * 更新属性
      */
     int update(EventProperty property);
+
+    /**
+     * 批量查询多个 parentId 的属性列表
+     */
+    List<EventProperty> selectByParentIds(@Param("list") List<Long> parentIds);
 }

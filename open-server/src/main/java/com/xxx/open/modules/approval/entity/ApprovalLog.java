@@ -35,6 +35,13 @@ public class ApprovalLog implements Serializable {
     private Integer nodeIndex;
 
     /**
+     * 审批级别：global=全局, scene=场景, resource=资源
+     * 
+     * v2.8.0新增字段，用于标记审批操作属于哪一级审批
+     */
+    private String level;
+
+    /**
      * 操作人ID
      */
     private String operatorId;

@@ -29,4 +29,9 @@ public interface ApiPropertyMapper {
      * 根据 parentId 删除属性
      */
     int deleteByParentId(@Param("parentId") Long parentId);
+
+    /**
+     * 批量查询多个 parentId 的属性列表
+     */
+    List<ApiProperty> selectByParentIds(@Param("list") List<Long> parentIds);
 }

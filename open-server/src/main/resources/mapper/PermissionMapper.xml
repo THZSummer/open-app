@@ -12,6 +12,8 @@
         <result column="resource_type" property="resourceType"/>
         <result column="resource_id" property="resourceId"/>
         <result column="category_id" property="categoryId"/>
+        <result column="need_approval" property="needApproval"/>
+        <result column="resource_nodes" property="resourceNodes"/>
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
         <result column="last_update_time" property="lastUpdateTime"/>
@@ -21,17 +23,20 @@
 
     <!-- 基础列 -->
     <sql id="Base_Column_List">
-        id, name_cn, name_en, scope, resource_type, resource_id, category_id, status,
+        id, name_cn, name_en, scope, resource_type, resource_id, category_id, 
+        need_approval, resource_nodes, status,
         create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- 插入权限 -->
     <insert id="insert" parameterType="com.xxx.open.modules.event.entity.Permission">
         INSERT INTO openplatform_v2_permission_t (
-            id, name_cn, name_en, scope, resource_type, resource_id, category_id, status,
+            id, name_cn, name_en, scope, resource_type, resource_id, category_id,
+            need_approval, resource_nodes, status,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{nameCn}, #{nameEn}, #{scope}, #{resourceType}, #{resourceId}, #{categoryId}, #{status},
+            #{id}, #{nameCn}, #{nameEn}, #{scope}, #{resourceType}, #{resourceId}, #{categoryId},
+            #{needApproval}, #{resourceNodes}, #{status},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
@@ -71,6 +76,8 @@
         SET name_cn = #{nameCn},
             name_en = #{nameEn},
             category_id = #{categoryId},
+            need_approval = #{needApproval},
+            resource_nodes = #{resourceNodes},
             status = #{status},
             last_update_time = #{lastUpdateTime},
             last_update_by = #{lastUpdateBy}

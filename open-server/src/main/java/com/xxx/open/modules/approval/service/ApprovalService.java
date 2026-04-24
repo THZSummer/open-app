@@ -1,5 +1,6 @@
 package com.xxx.open.modules.approval.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
@@ -30,10 +31,25 @@ import java.util.stream.Collectors;
 /**
  * 审批管理 Service
  * 
- * <p>负责审批相关的业务逻辑处理</p>
+ * <p>v2.8.0 重写版本</p>
+ * 
+ * <p>负责审批相关的业务逻辑处理：</p>
+ * <ul>
+ *   <li>审批流程模板管理</li>
+ *   <li>审批执行管理</li>
+ *   <li>审批详情查询</li>
+ * </ul>
+ * 
+ * <p>核心设计变更（v2.8.0）：</p>
+ * <ul>
+ *   <li>移除 isDefault 字段，用 code='global' 标识全局审批</li>
+ *   <li>移除 flowId 字段，审批记录直接存储 combinedNodes</li>
+ *   <li>审批详情从 combinedNodes 解析节点</li>
+ *   <li>审批节点显示 level 标记（resource/scene/global）</li>
+ * </ul>
  * 
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 2.8.0
  */
 @Slf4j
 @Service
@@ -57,6 +73,8 @@ public class ApprovalService {
 
     /**
      * 查询审批流程列表
+     * 
+     * v2.8.0变更：移除 isDefault 字段
      */
     public List<ApprovalFlowListResponse> getFlowList(ApprovalFlowListRequest request) {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
@@ -68,8 +86,9 @@ public class ApprovalService {
             response.setNameCn(flow.getNameCn());
             response.setNameEn(flow.getNameEn());
             response.setCode(flow.getCode());
-            response.setIsDefault(flow.getIsDefault());
+            // ✅ v2.8.0变更：移除 isDefault 字段
             response.setStatus(flow.getStatus());
+            response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
             return response;
         }).collect(Collectors.toList());
     }
@@ -83,6 +102,8 @@ public class ApprovalService {
 
     /**
      * 获取审批流程详情
+     * 
+     * v2.8.0变更：移除 isDefault 字段
      */
     public ApprovalFlowDetailResponse getFlowDetail(Long id) {
         ApprovalFlow flow = flowMapper.selectById(id);
@@ -95,7 +116,7 @@ public class ApprovalService {
         response.setNameCn(flow.getNameCn());
         response.setNameEn(flow.getNameEn());
         response.setCode(flow.getCode());
-        response.setIsDefault(flow.getIsDefault());
+        // ✅ v2.8.0变更：移除 isDefault 字段
         response.setStatus(flow.getStatus());
         response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
 
@@ -104,6 +125,8 @@ public class ApprovalService {
 
     /**
      * 创建审批流程
+     * 
+     * v2.8.0变更：移除 isDefault 字段，用 code='global' 标识全局审批
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalFlowDetailResponse createFlow(ApprovalFlowCreateRequest request, String operator) {
@@ -112,10 +135,10 @@ public class ApprovalService {
             throw new BusinessException("409", "流程编码已存在", "Flow code already exists");
         }
 
-        // 如果设置为默认流程，清除其他默认流程
-        if (request.getIsDefault() != null && request.getIsDefault() == 1) {
-            clearDefaultFlow();
-        }
+        // ✅ v2.8.0变更：移除 isDefault 相关逻辑
+        // 创建审批流程时，通过 code 标识审批类型：
+        // - code='global' 表示全局审批流程
+        // - code='api_permission_apply' 表示场景审批流程
 
         // 创建流程
         ApprovalFlow flow = new ApprovalFlow();
@@ -123,7 +146,6 @@ public class ApprovalService {
         flow.setNameCn(request.getNameCn());
         flow.setNameEn(request.getNameEn());
         flow.setCode(request.getCode());
-        flow.setIsDefault(request.getIsDefault() != null ? request.getIsDefault() : 0);
         flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
         flow.setStatus(1);
         flow.setCreateTime(new Date());
@@ -140,6 +162,8 @@ public class ApprovalService {
 
     /**
      * 更新审批流程
+     * 
+     * v2.8.0变更：移除 isDefault 字段
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalFlowDetailResponse updateFlow(Long id, ApprovalFlowUpdateRequest request, String operator) {
@@ -148,15 +172,11 @@ public class ApprovalService {
             throw new BusinessException("404", "审批流程不存在", "Approval flow not found");
         }
 
-        // 如果设置为默认流程，清除其他默认流程
-        if (request.getIsDefault() != null && request.getIsDefault() == 1) {
-            clearDefaultFlow();
-        }
+        // ✅ v2.8.0变更：移除 isDefault 相关逻辑
 
         // 更新流程
         flow.setNameCn(request.getNameCn());
         flow.setNameEn(request.getNameEn());
-        flow.setIsDefault(request.getIsDefault() != null ? request.getIsDefault() : flow.getIsDefault());
         flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
         flow.setLastUpdateTime(new Date());
         flow.setLastUpdateBy(operator);
@@ -169,15 +189,26 @@ public class ApprovalService {
     }
 
     /**
-     * 清除默认流程标记
+     * 删除审批流程
+     * 
+     * v2.8.0变更：移除 isDefault 字段相关逻辑
+     * 
+     * @param id 流程ID
+     * @param operator 操作人
      */
-    private void clearDefaultFlow() {
-        ApprovalFlow defaultFlow = flowMapper.selectDefaultFlow();
-        if (defaultFlow != null) {
-            defaultFlow.setIsDefault(0);
-            defaultFlow.setLastUpdateTime(new Date());
-            flowMapper.update(defaultFlow);
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteFlow(Long id, String operator) {
+        ApprovalFlow flow = flowMapper.selectById(id);
+        if (flow == null) {
+            throw new BusinessException("404", "审批流程不存在", "Approval flow not found");
         }
+
+        // ✅ v2.8.0变更：允许删除任何流程，包括 global 流程
+        // 原因：通过 code 标识审批类型，删除不影响其他流程
+
+        flowMapper.deleteById(id);
+
+        log.info("删除审批流程: id={}, code={}, operator={}", id, flow.getCode(), operator);
     }
 
     // ==================== 审批执行管理 ====================
@@ -220,6 +251,11 @@ public class ApprovalService {
 
     /**
      * 获取审批详情
+     * 
+     * v2.8.0核心变更：
+     * - 从 combinedNodes 解析审批节点
+     * - 移除 flowId 字段
+     * - 审批节点显示 level 标记
      */
     public ApprovalDetailResponse getApprovalDetail(Long id) {
         ApprovalRecord record = recordMapper.selectById(id);
@@ -227,24 +263,30 @@ public class ApprovalService {
             throw new BusinessException("404", "审批记录不存在: " + id, "Approval record not found: " + id);
         }
 
-        // 查询审批流程
-        ApprovalFlow flow = flowMapper.selectById(record.getFlowId());
-        if (flow == null) {
-            throw new BusinessException("404", "审批流程不存在: " + record.getFlowId(), "Approval flow not found: " + record.getFlowId());
+        // ✅ v2.8.0核心变更：从 combinedNodes 解析审批节点
+        List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
+        if (nodes.isEmpty()) {
+            log.warn("审批节点解析失败: recordId={}", id);
         }
-        List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(flow.getNodes());
 
         // 查询审批日志
         List<ApprovalLog> logs = logMapper.selectByRecordId(id);
 
         // 填充节点状态
         Map<Integer, Integer> nodeStatusMap = new HashMap<>();
+        Map<Integer, String> nodeLevelMap = new HashMap<>();
+        
         for (ApprovalLog log : logs) {
             nodeStatusMap.put(log.getNodeIndex(), log.getAction() == 0 ? 1 : 2);
+            nodeLevelMap.put(log.getNodeIndex(), log.getLevel());  // ✅ 从日志获取 level
         }
 
         for (int i = 0; i < nodes.size(); i++) {
             ApprovalNodeDto node = nodes.get(i);
+            
+            // ✅ v2.8.0变更：节点已包含 level 信息（从 combinedNodes 解析）
+            // 无需额外填充
+            
             if (i < record.getCurrentNode()) {
                 // 已处理的节点（在当前节点之前）
                 node.setStatus(nodeStatusMap.getOrDefault(i, 1));
@@ -272,9 +314,10 @@ public class ApprovalService {
         response.setApplicantId(record.getApplicantId());
         response.setApplicantName(record.getApplicantName());
         response.setStatus(record.getStatus());
-        response.setFlowId(String.valueOf(record.getFlowId()));
+        // ✅ v2.8.0变更：移除 flowId 字段，审批详情直接显示 combinedNodes
+        response.setCombinedNodes(nodes);  // ✅ 新增：显示组合审批节点
         response.setCurrentNode(record.getCurrentNode());
-        response.setNodes(nodes);
+        response.setNodes(nodes);  // 审批节点列表（含状态和 level）
         response.setLogs(buildLogDtos(logs, nodes));
         response.setCreateTime(record.getCreateTime());
 
@@ -286,7 +329,7 @@ public class ApprovalService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalActionResponse approve(Long id, ApprovalActionRequest request, String operatorId,
-                                          String operatorName, String operator) {
+                                           String operatorName, String operator) {
         ApprovalRecord record = approvalEngine.approve(id, operatorId, operatorName, 
                 request.getComment(), operator);
 
@@ -305,7 +348,7 @@ public class ApprovalService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalActionResponse reject(Long id, ApprovalActionRequest request, String operatorId,
-                                         String operatorName, String operator) {
+                                          String operatorName, String operator) {
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
             throw new BusinessException("400", "驳回原因不能为空", "Reject reason is required");
         }
@@ -341,7 +384,7 @@ public class ApprovalService {
      * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
     public BatchApprovalResponse batchApprove(BatchApprovalRequest request, String operatorId,
-                                              String operatorName, String operator) {
+                                               String operatorName, String operator) {
         int successCount = 0;
         List<BatchApprovalResponse.FailedItem> failedItems = new ArrayList<>();
 
@@ -382,7 +425,7 @@ public class ApprovalService {
      * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
     public BatchApprovalResponse batchReject(BatchApprovalRequest request, String operatorId,
-                                             String operatorName, String operator) {
+                                              String operatorName, String operator) {
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
             throw new BusinessException("400", "驳回原因不能为空", "Reject reason is required");
         }
@@ -449,10 +492,11 @@ public class ApprovalService {
                 case "callback_register":
                     Callback callback = callbackMapper.selectById(businessId);
                     return callback != null ? callback.getNameCn() : null;
-                case "permission_apply":
+                case "api_permission_apply":
+                case "event_permission_apply":
+                case "callback_permission_apply":
                     Subscription subscription = subscriptionMapper.selectById(businessId);
                     if (subscription != null) {
-                        // TODO: 从权限表获取名称
                         return "权限申请";
                     }
                     return null;
@@ -494,7 +538,9 @@ public class ApprovalService {
                         data.put("nameCn", callback.getNameCn());
                     }
                     break;
-                case "permission_apply":
+                case "api_permission_apply":
+                case "event_permission_apply":
+                case "callback_permission_apply":
                     Subscription subscription = subscriptionMapper.selectById(businessId);
                     if (subscription != null) {
                         data.put("appId", subscription.getAppId());
@@ -512,11 +558,15 @@ public class ApprovalService {
 
     /**
      * 构建日志 DTO 列表
+     * 
+     * v2.8.0变更：新增 level 字段显示
      */
     private List<ApprovalLogDto> buildLogDtos(List<ApprovalLog> logs, List<ApprovalNodeDto> nodes) {
         return logs.stream().map(log -> {
             ApprovalLogDto dto = new ApprovalLogDto();
             dto.setOrder(log.getNodeIndex() + 1);
+            dto.setLevel(log.getLevel());  // ✅ v2.8.0新增：显示审批级别
+            dto.setLevelName(getLevelName(log.getLevel()));  // ✅ v2.8.0新增：审批级别名称
             dto.setOperatorId(log.getOperatorId());
             dto.setOperatorName(log.getOperatorName());
             dto.setAction(log.getAction());
@@ -525,6 +575,27 @@ public class ApprovalService {
             dto.setCreateTime(log.getCreateTime());
             return dto;
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * 获取审批级别名称
+     * 
+     * v2.8.0新增方法
+     */
+    private String getLevelName(String level) {
+        if (level == null) {
+            return "未知";
+        }
+        switch (level) {
+            case "resource":
+                return "资源审批";
+            case "scene":
+                return "场景审批";
+            case "global":
+                return "全局审批";
+            default:
+                return "未知";
+        }
     }
 
     /**

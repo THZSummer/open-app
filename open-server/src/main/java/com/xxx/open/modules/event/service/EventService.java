@@ -24,7 +24,9 @@ import com.xxx.open.modules.approval.entity.ApprovalFlow;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -97,9 +99,23 @@ public class EventService {
         // 统计总数
         long total = eventMapper.countList(categoryIdLong, status, keyword);
         
-        // 转换响应
+        // ✅ 新增：批量查询所有事件的properties，提取docUrl
+        Map<Long, String> docUrlMap = new HashMap<>();
+        if (!events.isEmpty()) {
+            List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+            List<EventProperty> allProperties = eventPropertyMapper.selectByParentIds(eventIds);
+            
+            // 构建 Map: eventId -> docUrl
+            for (EventProperty prop : allProperties) {
+                if ("docUrl".equals(prop.getPropertyName()) && prop.getPropertyValue() != null) {
+                    docUrlMap.put(prop.getParentId(), prop.getPropertyValue());
+                }
+            }
+        }
+        
+        // 转换响应（传入docUrlMap）
         List<EventListResponse> responseList = events.stream()
-                .map(this::convertToListResponse)
+                .map(event -> convertToListResponse(event, docUrlMap))
                 .collect(Collectors.toList());
         
         // 构建分页信息
@@ -179,7 +195,12 @@ public class EventService {
         event.setNameEn(request.getNameEn());
         event.setTopic(request.getTopic());
         event.setCategoryId(categoryId);
-        event.setStatus(STATUS_PENDING); // 默认待审
+        
+        // ✅ v2.8.0新增：根据 needApproval 决定事件状态
+        Integer needApproval = request.getPermission().getNeedApproval() != null ? 
+            request.getPermission().getNeedApproval() : 1;
+        event.setStatus(needApproval == 0 ? STATUS_PUBLISHED : STATUS_PENDING); // 无需审批直接上架，否则待审
+        
         event.setCreateTime(new Date());
         event.setLastUpdateTime(new Date());
         event.setCreateBy("system"); // TODO: 从上下文获取当前用户
@@ -188,24 +209,28 @@ public class EventService {
         // 保存事件
         eventMapper.insert(event);
         
-        // 创建审批记录（如果存在默认审批流程）
-        ApprovalFlow defaultFlow = approvalFlowMapper.selectDefaultFlow();
-        if (defaultFlow != null) {
-            approvalEngine.createApproval(
-                defaultFlow.getId(),
-                ApprovalEngine.BusinessType.EVENT_REGISTER,
-                eventId,
-                "user001",  // TODO: 从上下文获取申请人ID
-                "system",  // 申请人名称
-                "system"
-            );
-            log.info("创建审批记录: eventId={}, flowId={}", eventId, defaultFlow.getId());
-        } else {
-            log.warn("未找到默认审批流程，事件将保持待审状态但不创建审批记录");
-        }
+        // 创建权限（先创建权限，再创建审批记录）
+        Long permissionId = createPermission(eventId, categoryId, request.getPermission());
         
-        // 创建权限
-        createPermission(eventId, categoryId, request.getPermission());
+        // ✅ v2.8.0变更：根据 needApproval 决定是否创建审批记录
+        // 只有需要审批的资源才创建审批记录
+        if (needApproval == 1) {
+            try {
+                approvalEngine.createApproval(
+                    ApprovalEngine.BusinessType.EVENT_REGISTER,
+                    permissionId,        // ✅ permissionId：用于获取资源审批节点
+                    eventId,             // ✅ businessId：事件 ID
+                    "user001",           // TODO: 从上下文获取申请人ID
+                    "system",            // applicantName
+                    "system"             // operator
+                );
+                log.info("创建审批记录: eventId={}, permissionId={}", eventId, permissionId);
+            } catch (Exception e) {
+                log.warn("创建审批记录失败，事件将保持待审状态: eventId={}", eventId, e);
+            }
+        } else {
+            log.info("事件无需审批，直接上架: eventId={}, permissionId={}", eventId, permissionId);
+        }
         
         // 保存事件属性
         if (request.getProperties() != null && !request.getProperties().isEmpty()) {
@@ -363,8 +388,11 @@ public class EventService {
 
     /**
      * 创建权限
+     * 
+     * v2.8.0变更：返回 permissionId，用于后续创建审批记录
+     * v2.8.0新增：支持 needApproval 和 resourceNodes 字段
      */
-    private void createPermission(Long eventId, Long categoryId, PermissionDto permissionDto) {
+    private Long createPermission(Long eventId, Long categoryId, PermissionDto permissionDto) {
         Long permissionId = idGenerator.nextId();
         
         Permission permission = new Permission();
@@ -375,6 +403,10 @@ public class EventService {
         permission.setResourceType("event");
         permission.setResourceId(eventId);
         permission.setCategoryId(categoryId);
+        // ✅ v2.8.0新增：审批配置字段
+        permission.setNeedApproval(permissionDto.getNeedApproval() != null 
+            ? permissionDto.getNeedApproval() : 1);
+        permission.setResourceNodes(permissionDto.getResourceNodes());
         permission.setStatus(1); // 默认启用
         permission.setCreateTime(new Date());
         permission.setLastUpdateTime(new Date());
@@ -383,25 +415,13 @@ public class EventService {
         
         permissionMapper.insert(permission);
         
-        // 保存权限属性（审批流程ID等）
-        if (permissionDto.getApprovalFlowId() != null && !permissionDto.getApprovalFlowId().isEmpty()) {
-            PermissionProperty property = new PermissionProperty();
-            property.setId(idGenerator.nextId());
-            property.setParentId(permissionId);
-            property.setPropertyName("approval_flow_id");
-            property.setPropertyValue(permissionDto.getApprovalFlowId());
-            property.setStatus(1);
-            property.setCreateTime(new Date());
-            property.setLastUpdateTime(new Date());
-            property.setCreateBy("system");
-            property.setLastUpdateBy("system");
-            
-            permissionPropertyMapper.insert(property);
-        }
+        return permissionId;  // ✅ v2.8.0变更：返回 permissionId
     }
 
     /**
      * 更新权限
+     * 
+     * v2.8.0变更：移除 approvalFlowId 处理，新增 needApproval 和 resourceNodes 字段
      */
     private void updatePermission(Long eventId, Long categoryId, PermissionDto permissionDto) {
         Permission permission = permissionMapper.selectByResource("event", eventId);
@@ -412,33 +432,24 @@ public class EventService {
         }
         
         // 更新权限基本信息
-        permission.setNameCn(permissionDto.getNameCn());
-        permission.setNameEn(permissionDto.getNameEn());
+        if (permissionDto.getNameCn() != null) {
+            permission.setNameCn(permissionDto.getNameCn());
+        }
+        if (permissionDto.getNameEn() != null) {
+            permission.setNameEn(permissionDto.getNameEn());
+        }
         permission.setCategoryId(categoryId);
+        // ✅ v2.8.0新增：审批配置字段
+        if (permissionDto.getNeedApproval() != null) {
+            permission.setNeedApproval(permissionDto.getNeedApproval());
+        }
+        if (permissionDto.getResourceNodes() != null) {
+            permission.setResourceNodes(permissionDto.getResourceNodes());
+        }
         permission.setLastUpdateTime(new Date());
         permission.setLastUpdateBy("system");
         
         permissionMapper.update(permission);
-        
-        // 更新权限属性
-        if (permissionDto.getApprovalFlowId() != null) {
-            permissionPropertyMapper.deleteByParentId(permission.getId());
-            
-            if (!permissionDto.getApprovalFlowId().isEmpty()) {
-                PermissionProperty property = new PermissionProperty();
-                property.setId(idGenerator.nextId());
-                property.setParentId(permission.getId());
-                property.setPropertyName("approval_flow_id");
-                property.setPropertyValue(permissionDto.getApprovalFlowId());
-                property.setStatus(1);
-                property.setCreateTime(new Date());
-                property.setLastUpdateTime(new Date());
-                property.setCreateBy("system");
-                property.setLastUpdateBy("system");
-                
-                permissionPropertyMapper.insert(property);
-            }
-        }
     }
 
     /**
@@ -469,7 +480,7 @@ public class EventService {
     /**
      * 转换为列表响应
      */
-    private EventListResponse convertToListResponse(Event event) {
+    private EventListResponse convertToListResponse(Event event, Map<Long, String> docUrlMap) {
         EventListResponse response = new EventListResponse();
         response.setId(String.valueOf(event.getId()));
         response.setNameCn(event.getNameCn());
@@ -489,6 +500,10 @@ public class EventService {
             permDto.setStatus(permission.getStatus());
             response.setPermission(permDto);
         }
+        
+        // ✅ 从 Map 中获取 docUrl
+        String docUrl = docUrlMap.get(event.getId());
+        response.setDocUrl(docUrl);
         
         return response;
     }
@@ -516,15 +531,9 @@ public class EventService {
             permDto.setNameEn(permission.getNameEn());
             permDto.setScope(permission.getScope());
             permDto.setStatus(permission.getStatus());
-            
-            // 查询权限属性
-            List<PermissionProperty> permProperties = permissionPropertyMapper.selectByParentId(permission.getId());
-            for (PermissionProperty prop : permProperties) {
-                if ("approval_flow_id".equals(prop.getPropertyName())) {
-                    permDto.setApprovalFlowId(prop.getPropertyValue());
-                    break;
-                }
-            }
+            // ✅ v2.8.0新增：审批配置字段
+            permDto.setNeedApproval(permission.getNeedApproval());
+            permDto.setResourceNodes(permission.getResourceNodes());
             
             response.setPermission(permDto);
         }

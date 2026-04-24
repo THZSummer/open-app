@@ -19,13 +19,14 @@ import java.util.List;
  *   <li>#42 GET /api/v1/approval-flows/:id - 返回审批流程模板详情</li>
  *   <li>#43 POST /api/v1/approval-flows - 创建审批流程模板</li>
  *   <li>#44 PUT /api/v1/approval-flows/:id - 更新审批流程模板</li>
- *   <li>#45 GET /api/v1/approvals/pending - 返回待审批列表</li>
- *   <li>#46 GET /api/v1/approvals/:id - 返回审批详情</li>
- *   <li>#47 POST /api/v1/approvals/:id/approve - 同意审批</li>
- *   <li>#48 POST /api/v1/approvals/:id/reject - 驳回审批</li>
- *   <li>#49 POST /api/v1/approvals/:id/cancel - 撤销审批</li>
- *   <li>#50 POST /api/v1/approvals/batch-approve - 批量同意审批</li>
- *   <li>#51 POST /api/v1/approvals/batch-reject - 批量驳回审批</li>
+* <li>#45 DELETE /api/v1/approval-flows/:id - 删除审批流程模板</li>
+ * <li>#46 GET /api/v1/approvals/pending - 返回待审批列表</li>
+ * <li>#47 GET /api/v1/approvals/:id - 返回审批详情</li>
+ * <li>#48 POST /api/v1/approvals/:id/approve - 同意审批</li>
+ * <li>#49 POST /api/v1/approvals/:id/reject - 驳回审批</li>
+ * <li>#50 POST /api/v1/approvals/:id/cancel - 撤销审批</li>
+ * <li>#51 POST /api/v1/approvals/batch-approve - 批量同意审批</li>
+ * <li>#52 POST /api/v1/approvals/batch-reject - 批量驳回审批</li>
  * </ul>
  * 
  * @author SDDU Build Agent
@@ -123,10 +124,26 @@ public class ApprovalController {
         return ApiResponse.success(data);
     }
 
-    // ==================== 审批执行管理 (#45-51) ====================
+    /**
+     * #45 删除审批流程模板
+     * 
+     * @param id 流程ID
+     * @return 删除结果
+     */
+    @DeleteMapping("/approval-flows/{id}")
+    public ApiResponse<Void> deleteFlow(@PathVariable String id) {
+        log.info("删除审批流程: id={}", id);
+
+        String operator = "system"; // TODO: 从上下文获取当前用户
+        approvalService.deleteFlow(Long.parseLong(id), operator);
+
+        return ApiResponse.success(null);
+    }
+
+    // ==================== 审批执行管理 (#46-52) ====================
 
     /**
-     * #45 获取待审批列表
+     * #46 获取待审批列表
      * 
      * @param type 审批类型
      * @param keyword 搜索关键词
@@ -170,7 +187,7 @@ public class ApprovalController {
     }
 
     /**
-     * #46 获取审批详情
+     * #47 获取审批详情
      * 
      * @param id 审批记录ID
      * @return 审批详情
@@ -184,7 +201,7 @@ public class ApprovalController {
     }
 
     /**
-     * #47 同意审批
+     * #48 同意审批
      * 
      * @param id 审批记录ID
      * @param request 审批请求
@@ -206,7 +223,7 @@ public class ApprovalController {
     }
 
     /**
-     * #48 驳回审批
+     * #49 驳回审批
      * 
      * @param id 审批记录ID
      * @param request 驳回请求
@@ -228,7 +245,7 @@ public class ApprovalController {
     }
 
     /**
-     * #49 撤销审批
+     * #50 撤销审批
      * 
      * @param id 审批记录ID
      * @return 审批操作结果
@@ -244,7 +261,7 @@ public class ApprovalController {
     }
 
     /**
-     * #50 批量同意审批
+     * #51 批量同意审批
      * 
      * @param request 批量审批请求
      * @return 批量审批结果
@@ -263,7 +280,7 @@ public class ApprovalController {
     }
 
     /**
-     * #51 批量驳回审批
+     * #52 批量驳回审批
      * 
      * @param request 批量驳回请求
      * @return 批量驳回结果

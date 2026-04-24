@@ -63,4 +63,9 @@ public class CallbackListResponse implements Serializable {
      * 创建时间
      */
     private Date createTime;
+
+    /**
+     * 文档链接（从properties中提取）
+     */
+    private String docUrl;
 }

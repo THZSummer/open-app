@@ -3,6 +3,7 @@ package com.xxx.open.modules.approval.dto;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 审批流程列表响应
@@ -35,13 +36,17 @@ public class ApprovalFlowListResponse implements Serializable {
      */
     private String code;
 
-    /**
-     * 是否默认流程
-     */
-    private Integer isDefault;
+    // ✅ v2.8.0 变更：移除 isDefault 字段
+    // 原因：用 code='global' 标识全局审批，更语义化且统一规范
+    // 查询全局审批流程：WHERE code='global'
 
     /**
      * 状态
      */
     private Integer status;
+
+    /**
+     * 审批节点列表（用于显示节点数）
+     */
+    private List<ApprovalNodeDto> nodes;
 }

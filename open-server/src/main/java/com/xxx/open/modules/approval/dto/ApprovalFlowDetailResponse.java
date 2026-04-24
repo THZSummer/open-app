@@ -36,10 +36,8 @@ public class ApprovalFlowDetailResponse implements Serializable {
      */
     private String code;
 
-    /**
-     * 是否默认流程
-     */
-    private Integer isDefault;
+    // ✅ v2.8.0 变更：移除 isDefault 字段
+    // 原因：用 code='global' 标识全局审批，更语义化且统一规范
 
     /**
      * 状态

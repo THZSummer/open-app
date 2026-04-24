@@ -43,8 +43,24 @@ public class PermissionCreateRequest implements Serializable {
     private String scope;
 
     /**
-     * 审批流程ID（可选）
+     * 是否需要审批：0=不需要, 1=需要（默认值1）
+     * 
+     * v2.8.0新增字段，用于标识权限申请是否需要审批流程
      */
-    @Schema(description = "审批流程ID")
-    private String approvalFlowId;
+    @Schema(description = "是否需要审批：0=不需要, 1=需要")
+    private Integer needApproval = 1;
+
+    /**
+     * 资源级审批节点配置（JSON格式字符串）
+     * 
+     * v2.8.0新增字段，直接存储审批节点配置
+     * 
+     * 格式示例：
+     * [
+     *   {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+     *   {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+     * ]
+     */
+    @Schema(description = "资源级审批节点配置（JSON字符串）")
+    private String resourceNodes;
 }

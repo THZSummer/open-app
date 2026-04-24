@@ -41,4 +41,16 @@
         WHERE parent_id = #{parentId}
     </delete>
 
+    <!-- Select By ParentIds (Batch) -->
+    <select id="selectByParentIds" resultMap="BaseResultMap">
+        SELECT id, parent_id, property_name, property_value, status,
+               create_time, last_update_time, create_by, last_update_by
+        FROM openplatform_v2_api_p_t
+        WHERE parent_id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND status = 1
+    </select>
+
 </mapper>
