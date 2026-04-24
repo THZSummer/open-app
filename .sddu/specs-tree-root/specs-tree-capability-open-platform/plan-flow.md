@@ -1,6 +1,6 @@
 # 审批流程设计方案
 
-> **版本**: 2.7.0  
+> **版本**: 2.8.0  
 > **创建时间**: 2026-04-24  
 > **状态**: 设计完成
 
@@ -13,9 +13,13 @@
 - [3. 审批流程配置方案](#3-审批流程配置方案)
 - [4. 三级审批配置](#4-三级审批配置)
 - [5. 组合逻辑](#5-组合逻辑)
-- [6. 审批执行流程](#6-审批执行流程)
-- [7. 实现方案](#7-实现方案)
-- [8. 示例场景](#8-示例场景)
+- [6. 审批状态流转记录机制](#6-审批状态流转记录机制)
+- [7. 审批执行流程](#7-审批执行流程)
+- [8. 实现方案](#8-实现方案)
+- [9. 示例场景](#9-示例场景)
+- [10. 总结](#10-总结)
+- [11. 相关文档](#11-相关文档)
+- [12. 版本更新记录](#12-版本更新记录)
 
 ---
 
@@ -1280,6 +1284,1441 @@ ApprovalFlow globalFlow = flowMapper.selectByCode("global");
 
 ---
 
+## 6. 审批状态流转记录机制
+
+### 6.1 核心概念
+
+审批状态流转涉及两个核心字段和一个日志表：
+
+#### 审批记录表（approval_record_t）核心字段
+
+| 字段名 | 类型 | 说明 | 作用 |
+|--------|------|------|------|
+| `status` | TINYINT(10) | 审批整体状态 | 记录审批流程的整体结果（待审/通过/拒绝/撤销） |
+| `current_node` | INT | 当前审批节点索引 | 记录审批流程当前执行到哪个节点 |
+| `combined_nodes` | VARCHAR(4000) | 完整审批节点配置 | 定义审批流程的所有节点信息 |
+
+#### 审批日志表（approval_log_t）
+
+| 字段名 | 类型 | 说明 | 作用 |
+|--------|------|------|------|
+| `record_id` | BIGINT(20) | 审批记录ID | 关联到具体的审批记录 |
+| `node_index` | INT | 审批节点索引 | 记录本次操作是哪个节点 |
+| `level` | VARCHAR(20) | 审批级别 | 标记本次操作属于哪一级审批 |
+| `operator_id` | VARCHAR(100) | 操作人ID | 记录谁执行了审批操作 |
+| `operator_name` | VARCHAR(100) | 操作人姓名 | 显示审批人姓名 |
+| `action` | TINYINT(10) | 审批动作 | 0=同意, 1=拒绝, 2=撤销, 3=转交 |
+| `comment` | TEXT | 审批意见 | 记录审批人的意见或原因 |
+| `create_time` | DATETIME(3) | 操作时间 | 记录审批操作发生的时间 |
+
+---
+
+### 6.2 审批状态定义
+
+#### status 字段值定义
+
+| 值 | 状态名称 | 说明 | 后续操作 |
+|----|---------|------|---------|
+| `0` | 待审 | 审批流程正在执行中 | 可以继续审批、拒绝、撤销 |
+| `1` | 已通过 | 所有审批节点都已同意 | 审批流程结束，业务对象激活 |
+| `2` | 已拒绝 | 有审批节点拒绝了申请 | 审批流程结束，业务对象拒绝 |
+| `3` | 已撤销 | 申请人撤销了申请 | 审批流程结束，业务对象撤销 |
+
+#### action 字段值定义（审批日志表）
+
+| 值 | 动作名称 | 说明 | status 影响 |
+|----|---------|------|------------|
+| `0` | 同意 | 审批人同意本次申请 | 进入下一节点或审批通过 |
+| `1` | 拒绝 | 审批人拒绝本次申请 | status=2（已拒绝） |
+| `2` | 撤销 | 申请人撤销申请 | status=3（已撤销） |
+| `3` | 转交 | 审批人转交给其他人审批 | 不影响 status |
+
+---
+
+### 6.3 审批节点索引（current_node）
+
+#### combined_nodes 与 current_node 的关系
+
+```
+combined_nodes（审批节点数组）:
+[
+  节点0: {"userId":"payment_leader","level":"resource","order":1},
+  节点1: {"userId":"finance_admin","level":"resource","order":2},
+  节点2: {"userId":"perm_admin","level":"scene","order":3},
+  节点3: {"userId":"admin001","level":"global","order":4}
+]
+
+current_node（当前节点索引）:
+  0 → 节点0审批（支付团队负责人）
+  1 → 节点1审批（财务管理员）
+  2 → 节点2审批（权限管理员）
+  3 → 节点3审批（系统管理员）
+```
+
+#### current_node 流转逻辑
+
+| current_node 值 | 当前状态 | 执行操作 | current_node 变化 | status 变化 |
+|----------------|---------|---------|------------------|------------|
+| 0 | 待审 | 节点0同意 | current_node = 1 | 不变（status=0） |
+| 1 | 待审 | 节点1同意 | current_node = 2 | 不变（status=0） |
+| 2 | 待审 | 节点2同意 | current_node = 3 | 不变（status=0） |
+| 3 | 待审 | 节点3同意 | 不变（current_node=3） | status = 1（已通过） ✅ |
+| 任意 | 待审 | 节点拒绝 | 不变 | status = 2（已拒绝） |
+| 任意 | 待审 | 申请撤销 | 不变 | status = 3（已撤销） |
+
+---
+
+### 6.4 完整审批流转示例
+
+#### 示例场景：用户申请"支付API"权限
+
+**审批流程配置**：
+```
+combined_nodes = [
+  节点0: 支付团队负责人（resource级）
+  节点1: 财务管理员（resource级）
+  节点2: 权限管理员（scene级）
+  节点3: 系统管理员（global级）
+]
+```
+
+---
+
+#### 阶段1：创建审批记录（初始状态）
+
+**申请人提交申请时**：
+
+```sql
+-- 创建审批记录
+INSERT INTO approval_record_t (
+    id,
+    combined_nodes,
+    business_type,
+    business_id,
+    applicant_id,
+    applicant_name,
+    status,         -- ✅ 初始状态：待审
+    current_node,   -- ✅ 初始节点：0（第一个节点）
+    create_time,
+    last_update_time
+) VALUES (
+    9001,
+    '[
+        {"userId":"payment_leader","userName":"支付团队负责人","level":"resource","order":1},
+        {"userId":"finance_admin","userName":"财务管理员","level":"resource","order":2},
+        {"userId":"perm_admin","userName":"权限管理员","level":"scene","order":3},
+        {"userId":"admin001","userName":"系统管理员","level":"global","order":4}
+    ]',
+    'api_permission_apply',
+    5001,
+    'user001',
+    '张三',
+    0,  -- ✅ 待审状态
+    0,  -- ✅ 当前节点索引=0（第一个节点）
+    NOW(3),
+    NOW(3)
+);
+```
+
+**状态说明**：
+```
+approval_record_t:
+  id = 9001
+  status = 0（待审）
+  current_node = 0（节点0：支付团队负责人）
+
+审批流程：
+节点0 [待审] → 节点1 [未执行] → 节点2 [未执行] → 节点3 [未执行]
+   ↑
+当前节点
+```
+
+---
+
+#### 阶段2：节点0审批（支付团队负责人同意）
+
+**操作**：支付团队负责人登录系统，点击"同意"，填写意见"符合业务需求"
+
+**系统处理**：
+
+```java
+// ApprovalEngine.approve() 方法
+
+public ApprovalRecord approve(Long recordId, String operatorId, String operatorName, String comment) {
+    
+    // 1. 查询审批记录
+    ApprovalRecord record = recordMapper.selectById(9001);
+    // record.current_node = 0
+    // record.status = 0
+    
+    // 2. 解析审批节点
+    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
+    // nodes.size() = 4
+    // nodes[0] = {userId:"payment_leader", level:"resource"}
+    
+    // 3. ✅ 记录审批日志（重要：记录本次审批操作）
+    ApprovalLog log = new ApprovalLog();
+    log.setId(idGenerator.nextId());
+    log.setRecordId(9001);
+    log.setNodeIndex(0);  // ✅ 当前节点索引
+    log.setLevel("resource");  // ✅ 审批级别：资源审批
+    log.setOperatorId("payment_leader");
+    log.setOperatorName("支付团队负责人");
+    log.setAction(0);  // ✅ 动作：同意
+    log.setComment("符合业务需求");
+    log.setCreateTime(NOW(3));
+    
+    approvalLogMapper.insert(log);
+    
+    // 4. 判断是否最后一个节点
+    if (record.getCurrentNode() >= nodes.size() - 1) {
+        // 0 >= 3？否 → 不是最后一个节点
+        // 进入下一节点
+        record.setCurrentNode(1);  // ✅ 更新当前节点为1
+        record.setStatus(0);       // ✅ 状态保持待审
+    }
+    
+    // 5. 更新审批记录
+    recordMapper.update(record);
+    
+    return record;
+}
+```
+
+**审批日志记录**：
+```sql
+-- ✅ 记录审批日志（记录节点0的审批操作）
+INSERT INTO approval_log_t (
+    id,
+    record_id,
+    node_index,
+    level,
+    operator_id,
+    operator_name,
+    action,
+    comment,
+    create_time
+) VALUES (
+    10001,
+    9001,
+    0,              -- ✅ 节点索引：节点0
+    'resource',     -- ✅ 审批级别：资源审批
+    'payment_leader',
+    '支付团队负责人',
+    0,              -- ✅ 动作：同意
+    '符合业务需求',
+    NOW(3)
+);
+```
+
+**审批记录更新**：
+```sql
+-- ✅ 更新审批记录（进入下一节点）
+UPDATE approval_record_t 
+SET current_node = 1,  -- ✅ 当前节点索引更新为1
+    last_update_time = NOW(3)
+WHERE id = 9001;
+```
+
+**当前状态**：
+```
+approval_record_t:
+  id = 9001
+  status = 0（待审）
+  current_node = 1（节点1：财务管理员）
+
+approval_log_t:
+  node_index=0, action=0（同意）, level='resource'
+
+审批流程：
+节点0 [已通过 ✓] → 节点1 [待审] → 节点2 [未执行] → 节点3 [未执行]
+                        ↑
+                    当前节点
+```
+
+---
+
+#### 阶段3：节点1审批（财务管理员同意）
+
+**操作**：财务管理员登录系统，点击"同意"，填写意见"财务合规"
+
+**系统处理**：
+```java
+// 同样的审批逻辑，只是 current_node=1
+
+// 记录审批日志
+log.setNodeIndex(1);  // ✅ 节点索引：节点1
+log.setLevel("resource");  // ✅ 审批级别：资源审批
+log.setAction(0);  // ✅ 动作：同意
+
+// 判断是否最后一个节点
+// 1 >= 3？否 → 不是最后一个节点
+// 进入下一节点
+record.setCurrentNode(2);  // ✅ 更新当前节点为2
+```
+
+**审批日志记录**：
+```sql
+-- ✅ 记录审批日志（记录节点1的审批操作）
+INSERT INTO approval_log_t VALUES (
+    10002,
+    9001,
+    1,              -- ✅ 节点索引：节点1
+    'resource',     -- ✅ 审批级别：资源审批
+    'finance_admin',
+    '财务管理员',
+    0,              -- ✅ 动作：同意
+    '财务合规',
+    NOW(3)
+);
+```
+
+**审批记录更新**：
+```sql
+-- ✅ 更新审批记录（进入下一节点）
+UPDATE approval_record_t 
+SET current_node = 2,
+    last_update_time = NOW(3)
+WHERE id = 9001;
+```
+
+**当前状态**：
+```
+approval_record_t:
+  id = 9001
+  status = 0（待审）
+  current_node = 2（节点2：权限管理员）
+
+approval_log_t:
+  node_index=0, action=0（同意）
+  node_index=1, action=0（同意）
+
+审批流程：
+节点0 [已通过 ✓] → 节点1 [已通过 ✓] → 节点2 [待审] → 节点3 [未执行]
+                                        ↑
+                                    当前节点
+```
+
+---
+
+#### 阶段4：节点2审批（权限管理员同意）
+
+**操作**：权限管理员登录系统，点击"同意"
+
+**审批日志记录**：
+```sql
+INSERT INTO approval_log_t VALUES (
+    10003,
+    9001,
+    2,              -- ✅ 节点索引：节点2
+    'scene',        -- ✅ 审批级别：场景审批
+    'perm_admin',
+    '权限管理员',
+    0,              -- ✅ 动作：同意
+    '同意',
+    NOW(3)
+);
+```
+
+**审批记录更新**：
+```sql
+UPDATE approval_record_t 
+SET current_node = 3,
+    last_update_time = NOW(3)
+WHERE id = 9001;
+```
+
+**当前状态**：
+```
+approval_record_t:
+  status = 0（待审）
+  current_node = 3（节点3：系统管理员）
+
+审批流程：
+节点0 [已通过 ✓] → 节点1 [已通过 ✓] → 节点2 [已通过 ✓] → 节点3 [待审]
+                                                            ↑
+                                                        当前节点
+```
+
+---
+
+#### 阶段5：节点3审批（系统管理员同意 - 最后一个节点）
+
+**操作**：系统管理员登录系统，点击"同意"
+
+**系统处理**：
+```java
+// ApprovalEngine.approve() 方法
+
+// 判断是否最后一个节点
+if (record.getCurrentNode() >= nodes.size() - 1) {
+    // 3 >= 3？是 ✅ → 是最后一个节点
+    
+    // ✅ 审批通过！
+    record.setStatus(1);  // ✅ 状态：已通过
+    record.setCompletedAt(NOW(3));
+    
+    // ✅ 更新业务对象状态（激活订阅关系）
+    Subscription subscription = subscriptionMapper.selectById(5001);
+    subscription.setStatus(1);  // ✅ 已授权
+    subscription.setApprovedAt(NOW(3));
+    subscriptionMapper.update(subscription);
+}
+```
+
+**审批日志记录**：
+```sql
+INSERT INTO approval_log_t VALUES (
+    10004,
+    9001,
+    3,              -- ✅ 节点索引：节点3
+    'global',       -- ✅ 审批级别：全局审批
+    'admin001',
+    '系统管理员',
+    0,              -- ✅ 动作：同意
+    '同意',
+    NOW(3)
+);
+```
+
+**审批记录更新**（✅ 审批通过）：
+```sql
+-- ✅ 审批通过！更新审批记录状态
+UPDATE approval_record_t 
+SET status = 1,         -- ✅ 状态：已通过
+    completed_at = NOW(3),
+    last_update_time = NOW(3)
+WHERE id = 9001;
+
+-- ✅ 激活订阅关系
+UPDATE subscription_t 
+SET status = 1,         -- ✅ 已授权
+    approved_at = NOW(3),
+    last_update_time = NOW(3)
+WHERE id = 5001;
+```
+
+**最终状态**：
+```
+approval_record_t:
+  id = 9001
+  status = 1（已通过） ✅
+  current_node = 3
+  completed_at = 2026-04-24 10:30:00
+
+approval_log_t:
+  node_index=0, action=0（同意）, level='resource'
+  node_index=1, action=0（同意）, level='resource'
+  node_index=2, action=0（同意）, level='scene'
+  node_index=3, action=0（同意）, level='global' ✅
+
+subscription_t:
+  id = 5001
+  status = 1（已授权） ✅
+  approved_at = 2026-04-24 10:30:00
+
+审批流程：
+节点0 [已通过 ✓] → 节点1 [已通过 ✓] → 节点2 [已通过 ✓] → 节点3 [已通过 ✓]
+                                                            ✅ 审批完成
+```
+
+---
+
+### 6.5 拒绝审批流转示例
+
+#### 示例：节点1拒绝审批
+
+**初始状态**：
+```
+approval_record_t:
+  status = 0（待审）
+  current_node = 1（节点1：财务管理员）
+```
+
+**操作**：财务管理员点击"拒绝"，填写原因"不符合财务规范"
+
+**系统处理**：
+```java
+// ApprovalEngine.reject() 方法
+
+public ApprovalRecord reject(Long recordId, String operatorId, String reason) {
+    
+    // 1. 查询审批记录
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    
+    // 2. ✅ 记录审批日志
+    ApprovalLog log = new ApprovalLog();
+    log.setNodeIndex(record.getCurrentNode());  // ✅ 当前节点索引
+    log.setAction(1);  // ✅ 动作：拒绝
+    log.setComment(reason);  // ✅ 拒绝原因
+    approvalLogMapper.insert(log);
+    
+    // 3. ✅ 直接结束审批流程（拒绝状态）
+    record.setStatus(2);  // ✅ 状态：已拒绝
+    record.setCompletedAt(NOW(3));
+    
+    // 4. ✅ 更新业务对象状态（拒绝订阅）
+    Subscription subscription = subscriptionMapper.selectById(5001);
+    subscription.setStatus(2);  // ✅ 已拒绝
+    subscriptionMapper.update(subscription);
+    
+    // 5. 更新审批记录
+    recordMapper.update(record);
+    
+    return record;
+}
+```
+
+**审批日志记录**：
+```sql
+INSERT INTO approval_log_t VALUES (
+    10002,
+    9001,
+    1,              -- ✅ 节点索引：节点1
+    'resource',
+    'finance_admin',
+    '财务管理员',
+    1,              -- ✅ 动作：拒绝
+    '不符合财务规范', -- ✅ 拒绝原因
+    NOW(3)
+);
+```
+
+**审批记录更新**：
+```sql
+-- ✅ 审批拒绝！直接结束流程
+UPDATE approval_record_t 
+SET status = 2,         -- ✅ 状态：已拒绝
+    completed_at = NOW(3),
+    last_update_time = NOW(3)
+WHERE id = 9001;
+
+-- ✅ 拒绝订阅
+UPDATE subscription_t 
+SET status = 2,         -- ✅ 已拒绝
+    last_update_time = NOW(3)
+WHERE id = 5001;
+```
+
+**最终状态**：
+```
+approval_record_t:
+  status = 2（已拒绝） ✅
+  current_node = 1（审批流程在这里停止）
+
+approval_log_t:
+  node_index=0, action=0（同意）
+  node_index=1, action=1（拒绝） ✅
+
+审批流程：
+节点0 [已通过 ✓] → 节点1 [已拒绝 ✗] → 节点2 [未执行] → 节点3 [未执行]
+                    ↑ ✅ 审批流程在此停止
+                当前节点
+```
+
+---
+
+### 6.6 撤销审批流转示例
+
+#### 示例：申请人撤销申请
+
+**初始状态**：
+```
+approval_record_t:
+  status = 0（待审）
+  current_node = 1（节点1）
+```
+
+**操作**：申请人张三点击"撤销"
+
+**系统处理**：
+```java
+// ApprovalEngine.cancel() 方法
+
+public ApprovalRecord cancel(Long recordId, String operator) {
+    
+    // 1. 查询审批记录
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    
+    // 2. ✅ 记录审批日志
+    ApprovalLog log = new ApprovalLog();
+    log.setNodeIndex(record.getCurrentNode());
+    log.setOperatorId(record.getApplicantId());  // ✅ 操作人：申请人
+    log.setAction(2);  // ✅ 动作：撤销
+    approvalLogMapper.insert(log);
+    
+    // 3. ✅ 直接结束审批流程（撤销状态）
+    record.setStatus(3);  // ✅ 状态：已撤销
+    record.setCompletedAt(NOW(3));
+    
+    // 4. ✅ 更新业务对象状态
+    Subscription subscription = subscriptionMapper.selectById(5001);
+    subscription.setStatus(3);  // ✅ 已取消
+    subscriptionMapper.update(subscription);
+    
+    // 5. 更新审批记录
+    recordMapper.update(record);
+    
+    return record;
+}
+```
+
+**审批日志记录**：
+```sql
+INSERT INTO approval_log_t VALUES (
+    10005,
+    9001,
+    1,              -- ✅ 当前节点索引
+    'resource',
+    'user001',      -- ✅ 操作人：申请人
+    '张三',
+    2,              -- ✅ 动作：撤销
+    '申请人撤销',
+    NOW(3)
+);
+```
+
+**审批记录更新**：
+```sql
+-- ✅ 审批撤销！直接结束流程
+UPDATE approval_record_t 
+SET status = 3,         -- ✅ 状态：已撤销
+    completed_at = NOW(3),
+    last_update_time = NOW(3)
+WHERE id = 9001;
+
+-- ✅ 取消订阅
+UPDATE subscription_t 
+SET status = 3,         -- ✅ 已取消
+    last_update_time = NOW(3)
+WHERE id = 5001;
+```
+
+**最终状态**：
+```
+approval_record_t:
+  status = 3（已撤销） ✅
+
+审批流程：
+节点0 [已通过 ✓] → 节点1 [已撤销 ⊘] → 节点2 [未执行] → 节点3 [未执行]
+                    ↑ ✅ 审批流程在此停止
+```
+
+---
+
+### 6.7 审批状态查询示例
+
+#### 查询审批记录状态
+
+```sql
+-- 查询审批记录当前状态
+SELECT 
+    id,
+    status,
+    current_node,
+    CASE status 
+        WHEN 0 THEN '待审'
+        WHEN 1 THEN '已通过'
+        WHEN 2 THEN '已拒绝'
+        WHEN 3 THEN '已撤销'
+    END AS status_name,
+    create_time,
+    completed_at
+FROM approval_record_t
+WHERE id = 9001;
+```
+
+#### 查询审批流转日志
+
+```sql
+-- 查询审批流转历史（按时间顺序）
+SELECT 
+    l.node_index,
+    l.level,
+    CASE l.level 
+        WHEN 'resource' THEN '资源审批'
+        WHEN 'scene' THEN '场景审批'
+        WHEN 'global' THEN '全局审批'
+    END AS level_name,
+    l.operator_name,
+    CASE l.action 
+        WHEN 0 THEN '同意'
+        WHEN 1 THEN '拒绝'
+        WHEN 2 THEN '撤销'
+        WHEN 3 THEN '转交'
+    END AS action_name,
+    l.comment,
+    l.create_time
+FROM approval_log_t l
+WHERE l.record_id = 9001
+ORDER BY l.node_index ASC;
+
+-- 结果示例：
+-- node_index=0, level='资源审批', operator='支付团队负责人', action='同意', comment='符合业务需求'
+-- node_index=1, level='资源审批', operator='财务管理员', action='同意', comment='财务合规'
+-- node_index=2, level='场景审批', operator='权限管理员', action='同意', comment='同意'
+-- node_index=3, level='全局审批', operator='系统管理员', action='同意', comment='同意'
+```
+
+#### 查询审批节点状态
+
+```sql
+-- 查询审批详情（包含节点状态）
+SELECT 
+    r.id,
+    r.status,
+    r.current_node,
+    r.combined_nodes,
+    -- ✅ 可以通过 combined_nodes 解析出所有节点信息
+    -- 然后根据 current_node 和 approval_log 判断每个节点的状态
+    ...
+FROM approval_record_t r
+WHERE r.id = 9001;
+
+-- ✅ 节点状态判断逻辑（应用层处理）：
+-- for each node in combined_nodes:
+--   if node_index < current_node: node.status = '已通过'
+--   if node_index == current_node: node.status = '待审' 或 '当前审批中'
+--   if node_index > current_node: node.status = '未执行'
+```
+
+---
+
+### 6.8 关键设计要点
+
+#### 1. 状态流转规则
+
+```
+待审 (status=0)
+    ├─ 同意 → 进入下一节点 或 审批通过 (status=1)
+    ├─ 拒绝 → 审批拒绝 (status=2) ✅ 立即结束
+    └─ 撤销 → 审批撤销 (status=3) ✅ 立即结束
+
+已通过 (status=1) ✅ 流程结束，不可操作
+已拒绝 (status=2) ✅ 流程结束，不可操作
+已撤销 (status=3) ✅ 流程结束，不可操作
+```
+
+#### 2. 审批日志的作用
+
+```
+审批日志表（approval_log_t）：
+1. ✅ 记录每一步审批操作的详细信息
+2. ✅ 审计追溯：可以查看完整的审批历史
+3. ✅ 数据完整性：即使审批记录表更新，日志表保留原始操作记录
+4. ✅ 分析统计：可以统计审批人的审批效率、拒绝率等
+```
+
+#### 3. 数据一致性保证
+
+```
+审批记录表 + 审批日志表 = 完整的审批流转记录
+
+审批记录表（approval_record_t）：
+- 记录审批的整体状态（status）
+- 记录当前执行位置（current_node）
+- 记录审批节点配置（combined_nodes）
+
+审批日志表（approval_log_t）：
+- 记录每一步审批操作的详细信息
+- 记录审批人、审批动作、审批意见
+- 记录审批时间戳
+
+两者配合，形成完整的审批流转记录：
+- 审批记录表：提供审批流程的"快照"状态
+- 审批日志表：提供审批流程的"历史"轨迹
+```
+
+---
+
+### 6.9 审批节点协调机制
+
+#### 6.9.1 串行审批机制（当前采用）
+
+**定义**：审批节点按顺序执行，必须完成前一个节点才能进入下一个节点。
+
+**特点**：
+- ✅ 流程清晰：审批顺序固定，不会混乱
+- ✅ 责任明确：每个审批人知道自己的审批顺序
+- ✅ 易于管理：可以精确控制审批流程
+
+**实现方式**：
+
+```
+审批流程：
+节点0 → 节点1 → 节点2 → 节点3
+
+执行规则：
+1. 节点0审批完成后，才能进入节点1
+2. 节点1审批完成后，才能进入节点2
+3. 节点2审批完成后，才能进入节点3
+4. 所有节点完成后，审批通过
+
+当前节点索引控制：
+current_node = 0 → 节点0审批
+current_node = 1 → 节点1审批
+current_node = 2 → 节点2审批
+current_node = 3 → 节点3审批
+```
+
+**代码实现**：
+
+```java
+// 串行审批核心逻辑
+public ApprovalRecord approve(Long recordId, String operatorId, String comment) {
+    
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
+    
+    int currentNodeIndex = record.getCurrentNode();
+    
+    // ✅ 串行执行：只能审批当前节点
+    if (currentNodeIndex >= nodes.size() - 1) {
+        // 最后一个节点，审批通过
+        record.setStatus(1);
+    } else {
+        // 进入下一个节点（串行）
+        record.setCurrentNode(currentNodeIndex + 1);
+    }
+    
+    recordMapper.update(record);
+    return record;
+}
+```
+
+---
+
+#### 6.9.2 节点间协调规则
+
+**规则1：审批权限校验**
+
+```
+只有当前节点的审批人才能执行审批操作
+
+示例：
+current_node = 1
+节点1的审批人 = finance_admin
+
+✅ finance_admin 可以审批
+❌ payment_leader（节点0审批人）不能审批
+❌ perm_admin（节点2审批人）不能审批
+```
+
+**代码实现**：
+
+```java
+public ApprovalRecord approve(Long recordId, String operatorId, String comment) {
+    
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
+    
+    int currentNodeIndex = record.getCurrentNode();
+    ApprovalNodeDto currentNode = nodes.get(currentNodeIndex);
+    
+    // ✅ 校验审批权限：只有当前节点的审批人才能操作
+    if (!currentNode.getUserId().equals(operatorId)) {
+        throw new BusinessException("403", 
+            "您不是当前节点的审批人", 
+            "You are not the approver of current node");
+    }
+    
+    // 继续审批逻辑...
+}
+```
+
+---
+
+**规则2：状态互斥控制**
+
+```
+审批状态互斥，同一时间只能处于一种状态
+
+status = 0（待审）→ 可以审批、拒绝、撤销
+status = 1（已通过）→ ✅ 流程结束，不可操作
+status = 2（已拒绝）→ ✅ 流程结束，不可操作
+status = 3（已撤销）→ ✅ 流程结束，不可操作
+```
+
+**代码实现**：
+
+```java
+public ApprovalRecord approve(Long recordId, String operatorId, String comment) {
+    
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    
+    // ✅ 状态校验：只有待审状态才能操作
+    if (record.getStatus() != 0) {
+        throw new BusinessException("400", 
+            "审批记录状态不正确，无法操作", 
+            "Approval record status is incorrect, cannot operate");
+    }
+    
+    // 继续审批逻辑...
+}
+
+public ApprovalRecord reject(Long recordId, String operatorId, String reason) {
+    
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    
+    // ✅ 状态校验：只有待审状态才能操作
+    if (record.getStatus() != 0) {
+        throw new BusinessException("400", 
+            "审批记录状态不正确，无法操作", 
+            "Approval record status is incorrect, cannot operate");
+    }
+    
+    // 继续拒绝逻辑...
+}
+```
+
+---
+
+**规则3：并发控制（乐观锁）**
+
+```
+防止多人同时审批同一节点
+
+并发场景：
+审批人A和审批人B同时点击"同意"
+
+解决方案：
+使用版本号或时间戳进行乐观锁控制
+```
+
+**数据库表增加版本号字段**：
+
+```sql
+ALTER TABLE approval_record_t 
+ADD COLUMN `version` INT DEFAULT 0 COMMENT '版本号（乐观锁）';
+```
+
+**代码实现**：
+
+```java
+public ApprovalRecord approve(Long recordId, String operatorId, String comment) {
+    
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    int currentVersion = record.getVersion();
+    
+    // ✅ 执行审批逻辑
+    // ...
+    
+    // ✅ 更新审批记录（带版本号校验）
+    int updated = recordMapper.updateWithVersion(record, currentVersion);
+    
+    if (updated == 0) {
+        // 版本号不匹配，说明已被其他人修改
+        throw new BusinessException("409", 
+            "审批记录已被其他人处理，请刷新后重试", 
+            "Approval record has been processed by others, please refresh and retry");
+    }
+    
+    return record;
+}
+
+// Mapper 接口
+int updateWithVersion(@Param("record") ApprovalRecord record, 
+                       @Param("version") int version);
+
+// Mapper XML
+<update id="updateWithVersion">
+    UPDATE approval_record_t 
+    SET status = #{record.status},
+        current_node = #{record.currentNode},
+        version = version + 1,  -- ✅ 版本号自增
+        last_update_time = NOW(3)
+    WHERE id = #{record.id} 
+      AND version = #{version}  -- ✅ 版本号校验
+</update>
+```
+
+---
+
+#### 6.9.3 审批超时与催办机制
+
+**审批超时检测**：
+
+```
+场景：审批人长时间未处理审批请求
+
+解决方案：
+1. 记录每个节点的开始时间
+2. 定时检测超时未处理的审批
+3. 发送提醒通知或自动转交
+```
+
+**数据库表增加节点开始时间字段**：
+
+```sql
+ALTER TABLE approval_record_t 
+ADD COLUMN `node_start_time` DATETIME(3) COMMENT '当前节点开始时间';
+```
+
+**审批节点超时配置**：
+
+```sql
+-- 审批流程模板表增加超时配置
+ALTER TABLE approval_flow_t 
+ADD COLUMN `timeout_hours` INT DEFAULT 72 COMMENT '超时时间（小时）';
+
+-- 审批节点配置增加超时时间
+nodes JSON:
+[
+  {
+    "type": "approver",
+    "userId": "payment_leader",
+    "order": 1,
+    "timeoutHours": 48  -- ✅ 节点超时时间（小时）
+  }
+]
+```
+
+**超时检测代码**：
+
+```java
+/**
+ * 定时任务：检测审批超时
+ * 执行频率：每小时执行一次
+ */
+@Scheduled(cron = "0 0 * * * ?")
+public void checkApprovalTimeout() {
+    
+    // 查询所有待审的审批记录
+    List<ApprovalRecord> pendingRecords = recordMapper.selectPendingRecords();
+    
+    for (ApprovalRecord record : pendingRecords) {
+        
+        // 检查当前节点是否超时
+        if (isTimeout(record)) {
+            
+            // ✅ 发送催办通知
+            sendReminderNotification(record);
+            
+            // 或者自动转交给上级
+            // autoEscalate(record);
+        }
+    }
+}
+
+/**
+ * 判断是否超时
+ */
+private boolean isTimeout(ApprovalRecord record) {
+    
+    // 解析审批节点
+    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
+    ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
+    
+    // 获取节点超时时间
+    Integer timeoutHours = currentNode.getTimeoutHours();
+    if (timeoutHours == null) {
+        timeoutHours = 72;  // 默认72小时
+    }
+    
+    // 计算是否超时
+    Date nodeStartTime = record.getNodeStartTime();
+    long hoursPassed = (System.currentTimeMillis() - nodeStartTime.getTime()) / (1000 * 60 * 60);
+    
+    return hoursPassed > timeoutHours;
+}
+
+/**
+ * 发送催办通知
+ */
+private void sendReminderNotification(ApprovalRecord record) {
+    
+    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
+    ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
+    
+    // 发送邮件/短信/站内信通知
+    notificationService.send(
+        currentNode.getUserId(),
+        "审批催办通知",
+        String.format("您有一个审批待处理，已超时%d小时", 
+            calculateTimeoutHours(record))
+    );
+}
+```
+
+---
+
+**催办机制**：
+
+```
+催办流程：
+1. 第一次超时（48小时）：发送提醒通知
+2. 第二次超时（72小时）：发送催办通知 + 通知上级
+3. 第三次超时（96小时）：自动转交给上级审批
+```
+
+**代码实现**：
+
+```java
+/**
+ * 催办记录表
+ */
+CREATE TABLE `approval_reminder_t` (
+    `id` BIGINT(20) PRIMARY KEY,
+    `record_id` BIGINT(20) NOT NULL COMMENT '审批记录ID',
+    `node_index` INT NOT NULL COMMENT '审批节点索引',
+    `reminder_count` INT DEFAULT 0 COMMENT '催办次数',
+    `last_reminder_time` DATETIME(3) COMMENT '最后催办时间',
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    KEY `idx_record_id` (`record_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批催办记录表';
+
+/**
+ * 发送催办通知（支持多次催办）
+ */
+private void sendReminderNotification(ApprovalRecord record) {
+    
+    // 查询催办记录
+    ApprovalReminder reminder = reminderMapper.selectByRecordId(record.getId());
+    
+    if (reminder == null) {
+        reminder = new ApprovalReminder();
+        reminder.setRecordId(record.getId());
+        reminder.setNodeIndex(record.getCurrentNode());
+        reminder.setReminderCount(0);
+    }
+    
+    int reminderCount = reminder.getReminderCount();
+    
+    if (reminderCount == 0) {
+        // 第一次催办：发送提醒通知
+        sendEmail(record, "审批提醒", "您有一个审批待处理");
+        
+    } else if (reminderCount == 1) {
+        // 第二次催办：发送催办通知 + 通知上级
+        sendEmail(record, "审批催办", "审批已超时，请尽快处理");
+        notifySupervisor(record);
+        
+    } else {
+        // 第三次催办：自动转交给上级
+        autoEscalate(record);
+    }
+    
+    // 更新催办记录
+    reminder.setReminderCount(reminderCount + 1);
+    reminder.setLastReminderTime(NOW(3));
+    reminderMapper.insertOrUpdate(reminder);
+}
+```
+
+---
+
+#### 6.9.4 审批转交机制
+
+**场景**：审批人无法处理时，可以转交给其他人审批
+
+**代码实现**：
+
+```java
+/**
+ * 审批转交
+ * 
+ * @param recordId 审批记录ID
+ * @param fromUserId 原审批人ID
+ * @param toUserId 新审批人ID
+ * @param reason 转交原因
+ */
+public ApprovalRecord transfer(Long recordId, String fromUserId, String toUserId, String reason) {
+    
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    
+    // 1. 校验状态
+    if (record.getStatus() != 0) {
+        throw new BusinessException("400", "审批记录状态不正确，无法转交");
+    }
+    
+    // 2. 校验权限：只有当前节点的审批人才能转交
+    List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
+    ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
+    
+    if (!currentNode.getUserId().equals(fromUserId)) {
+        throw new BusinessException("403", "您不是当前节点的审批人，无法转交");
+    }
+    
+    // 3. 记录审批日志（转交）
+    ApprovalLog log = new ApprovalLog();
+    log.setRecordId(recordId);
+    log.setNodeIndex(record.getCurrentNode());
+    log.setOperatorId(fromUserId);
+    log.setAction(3);  // ✅ 动作：转交
+    log.setComment(String.format("转交给 %s，原因：%s", toUserId, reason));
+    approvalLogMapper.insert(log);
+    
+    // 4. 更新审批节点配置（将审批人改为新审批人）
+    currentNode.setUserId(toUserId);
+    // 注意：这里需要查询新审批人的姓名
+    User newUser = userService.getUserById(toUserId);
+    currentNode.setUserName(newUser.getName());
+    
+    // 5. 更新审批记录
+    record.setCombinedNodes(serializeNodes(nodes));
+    record.setNodeStartTime(NOW(3));  // 重置节点开始时间
+    recordMapper.update(record);
+    
+    // 6. 发送通知给新审批人
+    notificationService.send(
+        toUserId,
+        "审批转交通知",
+        String.format("您收到一个转交的审批请求，原审批人：%s，转交原因：%s", fromUserId, reason)
+    );
+    
+    return record;
+}
+```
+
+---
+
+#### 6.9.5 审批冲突处理
+
+**场景1：同一节点多人同时审批**
+
+```
+场景：审批人A和审批人B同时点击"同意"
+
+解决方案：使用乐观锁（version字段）或数据库行锁
+
+推荐：乐观锁（性能更好）
+```
+
+**代码实现**：
+
+```java
+// 使用数据库行锁（悲观锁）
+public ApprovalRecord approveWithLock(Long recordId, String operatorId, String comment) {
+    
+    // ✅ 使用 SELECT FOR UPDATE 锁定记录
+    ApprovalRecord record = recordMapper.selectByIdForUpdate(recordId);
+    
+    // 执行审批逻辑
+    // ...
+    
+    return record;
+}
+
+// Mapper XML
+<select id="selectByIdForUpdate" resultType="ApprovalRecord">
+    SELECT * FROM approval_record_t 
+    WHERE id = #{id} 
+    FOR UPDATE  -- ✅ 行锁
+</select>
+```
+
+---
+
+**场景2：审批过程中申请人撤销**
+
+```
+场景：
+- 审批人A正在审批（打开了审批页面）
+- 申请人撤销了申请
+- 审批人A点击"同意"
+
+解决方案：状态校验 + 友好提示
+```
+
+**代码实现**：
+
+```java
+public ApprovalRecord approve(Long recordId, String operatorId, String comment) {
+    
+    ApprovalRecord record = recordMapper.selectById(recordId);
+    
+    // ✅ 状态校验
+    if (record.getStatus() != 0) {
+        String statusName = "";
+        switch (record.getStatus()) {
+            case 1: statusName = "已通过"; break;
+            case 2: statusName = "已拒绝"; break;
+            case 3: statusName = "已撤销"; break;
+        }
+        throw new BusinessException("400", 
+            String.format("审批已%s，无法操作", statusName),
+            String.format("Approval has been %s", statusName));
+    }
+    
+    // 继续审批逻辑...
+}
+```
+
+---
+
+**场景3：审批节点配置变更**
+
+```
+场景：
+- 审批进行到节点1
+- 管理员修改了审批流程模板，节点1的审批人变了
+
+解决方案：审批记录数据独立性设计
+```
+
+**设计说明**：
+
+```
+审批记录创建时：
+1. ✅ 直接存储完整的审批节点配置（combined_nodes）
+2. ✅ 不关联审批流程表
+3. ✅ 审批流程模板的修改不影响已创建的审批记录
+
+结果：
+- 已创建的审批记录：继续按原配置执行
+- 新创建的审批记录：使用新配置
+- 历史审批记录：保持原始配置，便于审计追溯
+```
+
+---
+
+#### 6.9.6 节点协调最佳实践
+
+**实践1：审批通知机制**
+
+```
+审批节点变更时，及时通知相关人员：
+
+1. 进入新节点：通知新审批人
+2. 审批通过：通知申请人
+3. 审批拒绝：通知申请人（包含拒绝原因）
+4. 审批撤销：通知所有已审批的人
+5. 审批转交：通知新审批人
+```
+
+**代码实现**：
+
+```java
+/**
+ * 进入新节点时发送通知
+ */
+private void notifyNewApprover(ApprovalRecord record, ApprovalNodeDto node) {
+    
+    // 获取申请人信息
+    String applicantName = record.getApplicantName();
+    String businessType = record.getBusinessType();
+    
+    // 发送通知
+    notificationService.send(
+        node.getUserId(),
+        "待审批通知",
+        String.format("您有一个新的审批请求，申请人：%s，类型：%s", 
+            applicantName, businessType)
+    );
+}
+
+/**
+ * 审批完成时发送通知
+ */
+private void notifyApplicant(ApprovalRecord record, boolean approved) {
+    
+    String title = approved ? "审批通过通知" : "审批拒绝通知";
+    String message = approved 
+        ? "您的申请已审批通过" 
+        : "您的申请已被拒绝，请查看拒绝原因";
+    
+    notificationService.send(
+        record.getApplicantId(),
+        title,
+        message
+    );
+}
+```
+
+---
+
+**实践2：审批历史查询**
+
+```
+提供完整的审批历史查询功能：
+
+1. 按申请人查询
+2. 按审批人查询
+3. 按审批状态查询
+4. 按时间范围查询
+```
+
+**SQL示例**：
+
+```sql
+-- 查询某审批人的待审批列表
+SELECT 
+    r.id,
+    r.business_type,
+    r.business_id,
+    r.applicant_name,
+    r.create_time,
+    n.user_name AS current_approver,
+    n.level AS current_level
+FROM approval_record_t r
+-- 解析 combined_nodes 获取当前审批人（应用层处理）
+WHERE r.status = 0
+  AND r.current_node IN (
+      -- 查找当前审批人是该用户的记录
+  )
+ORDER BY r.create_time DESC;
+
+-- 查询某申请人的审批历史
+SELECT 
+    r.id,
+    r.business_type,
+    r.status,
+    CASE r.status 
+        WHEN 0 THEN '待审'
+        WHEN 1 THEN '已通过'
+        WHEN 2 THEN '已拒绝'
+        WHEN 3 THEN '已撤销'
+    END AS status_name,
+    r.create_time,
+    r.completed_at
+FROM approval_record_t r
+WHERE r.applicant_id = 'user001'
+ORDER BY r.create_time DESC;
+```
+
+---
+
+**实践3：审批统计分析**
+
+```
+审批效率统计：
+
+1. 平均审批时长
+2. 各节点审批时长
+3. 审批通过率
+4. 审批人效率排名
+```
+
+**SQL示例**：
+
+```sql
+-- 统计审批平均时长
+SELECT 
+    business_type,
+    AVG(TIMESTAMPDIFF(HOUR, create_time, completed_at)) AS avg_hours,
+    COUNT(*) AS total_count,
+    SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) AS approved_count,
+    SUM(CASE WHEN status = 2 THEN 1 ELSE 0 END) AS rejected_count
+FROM approval_record_t
+WHERE status IN (1, 2)
+  AND create_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+GROUP BY business_type;
+
+-- 统计各节点平均审批时长
+SELECT 
+    l.level,
+    l.node_index,
+    AVG(TIMESTAMPDIFF(HOUR, 
+        (SELECT create_time FROM approval_log_t WHERE record_id = l.record_id AND node_index = l.node_index - 1),
+        l.create_time
+    )) AS avg_hours
+FROM approval_log_t l
+WHERE l.action = 0
+GROUP BY l.level, l.node_index;
+```
+
+---
+
 ## 7. 审批执行流程
 
 ### 7.1 审批状态流转图
@@ -2016,6 +3455,47 @@ ORDER BY l.node_index;
 ---
 
 ## 12. 版本更新记录
+
+### v2.8.0 (2026-04-24)
+
+**新增内容**：
+- 新增第6章"审批状态流转记录机制"
+- 新增审批节点协调机制详细说明（6.9子章节）
+
+**新增原因**：
+1. 详细解释审批状态如何流转记录
+2. 说明不同审批节点如何协调
+3. 补充审批超时、催办、转交机制
+4. 提供审批冲突处理方案
+
+**主要变更**：
+
+| 章节 | 变更内容 |
+|------|---------|
+| 6.1-6.8 | 新增审批状态流转记录机制 |
+| 6.9 | 新增审批节点协调机制 |
+
+**新增章节内容**：
+- 6.1 核心概念（审批记录表核心字段、审批日志表字段）
+- 6.2 审批状态定义（status字段值定义、action字段值定义）
+- 6.3 审批节点索引（combined_nodes与current_node的关系、流转逻辑）
+- 6.4 完整审批流转示例（5个阶段：创建记录、节点0-3审批）
+- 6.5 拒绝审批流转示例
+- 6.6 撤销审批流转示例
+- 6.7 审批状态查询示例（查询记录状态、流转日志、节点状态）
+- 6.8 关键设计要点（状态流转规则、审批日志作用、数据一致性保证）
+- 6.9 审批节点协调机制
+  - 6.9.1 串行审批机制（当前采用）
+  - 6.9.2 节点间协调规则（权限校验、状态互斥、并发控制）
+  - 6.9.3 审批超时与催办机制
+  - 6.9.4 审批转交机制
+  - 6.9.5 审批冲突处理
+  - 6.9.6 节点协调最佳实践
+
+**向后兼容性**：
+- ✅ 数据库设计无变更
+- ✅ 业务逻辑无变更
+- ✅ 仅文档补充，不影响现有实现
 
 ### v2.7.0 (2026-04-24)
 
