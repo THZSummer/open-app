@@ -1,6 +1,6 @@
 # 审批流程设计方案
 
-> **版本**: 2.3.0  
+> **版本**: 2.4.0  
 > **创建时间**: 2026-04-24  
 > **状态**: 设计完成
 
@@ -54,7 +54,7 @@
 
 | 审批级别 | 名称 | 配置来源 | 适用范围 | 审批职责 |
 |---------|------|---------|---------|---------|
-| **第一级** | 资源审批 | `permission_t` (need_approval + approval_flow_id) | 特定权限资源 | 资源提供方审核 |
+| **第一级** | 资源审批 | `permission_t` (need_approval + resource_nodes) | 特定权限资源 | 资源提供方审核 |
 | **第二级** | 场景审批 | `approval_flow_t` (code='场景编码') | 特定业务场景 | 业务场景层面审核 |
 | **第三级** | 全局审批 | `approval_flow_t` (code='global') | 所有申请 | 平台运营层面审核 |
 
@@ -110,12 +110,24 @@
 │           openplatform_v2_approval_flow_t                    │
 │              (审批流程模板表)                                 │
 │                                                              │
-│  用于创建审批流程时读取配置                                   │
+│  用于全局审批和场景审批配置                                   │
 │  ├─ 全局流程：code='global'                                   │
-│  ├─ 场景流程：code='permission_apply'                        │
-│  └─ 资源流程：id=1001（支付API审批）                          │
+│  └─ 场景流程：code='permission_apply'                        │
 │                                                              │
-│  关键字段：nodes (JSON) - 审批节点配置                        │
+│  ❌ 不再用于资源审批配置                                      │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│           openplatform_v2_permission_t                       │
+│              (权限资源主表)                                   │
+│                                                              │
+│  ✅ 直接存储资源级审批节点配置                                │
+│  resource_nodes = [                                          │
+│    {"userId":"payment_leader","userName":"支付团队负责人"},  │
+│    {"userId":"finance_admin","userName":"财务管理员"}        │
+│  ]                                                            │
+│                                                              │
+│  ✅ 不关联审批流程表（无 approval_flow_id 字段）              │
 └─────────────────────────────────────────────────────────────┘
           ↓ 创建审批记录时读取（仅用于初始化）
           ↓ 之后不再关联
@@ -172,8 +184,8 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
     
     -- ✅ 移除 is_default 字段，用 code='global' 标识全局审批
     
-    -- ✅ 核心：审批节点配置（JSON格式）
-    `nodes` JSON NOT NULL COMMENT '审批节点配置',
+    -- ✅ 审批节点配置（使用 VARCHAR 存储 JSON 字符串）
+    `nodes` VARCHAR(2000) NOT NULL COMMENT '审批节点配置（JSON格式字符串）',
     
     `status` TINYINT(10) DEFAULT 1 COMMENT '状态：0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -230,8 +242,9 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
 CREATE TABLE `openplatform_v2_approval_record_t` (
     `id` BIGINT(20) PRIMARY KEY,
     
-    -- ✅ 核心：直接存储组合后的完整审批流程（JSON格式）
-    `combined_nodes` JSON NOT NULL COMMENT '组合后的完整审批节点配置（包含所有审批人信息）',
+    -- ✅ 组合后的完整审批节点配置（使用 VARCHAR 存储 JSON 字符串）
+    -- 长度设为 4000，因为可能包含多级审批节点（最多约 10-15 个节点）
+    `combined_nodes` VARCHAR(4000) NOT NULL COMMENT '组合后的完整审批节点配置（JSON格式字符串）',
     
     -- ✅ 移除 flow_id 字段，不再关联审批流程表
     -- 原因：
@@ -386,9 +399,11 @@ CREATE TABLE `openplatform_v2_permission_t` (
     `resource_id` BIGINT(20) NOT NULL COMMENT '关联的 API/Event/Callback ID',
     `category_id` BIGINT(20) NOT NULL COMMENT '所属分类ID',
     
-    -- ✅ 新增：审批相关字段（从属性表移到主表）
+    -- ✅ 审批相关字段（直接存储审批节点）
     `need_approval` TINYINT(10) DEFAULT 1 COMMENT '是否需要审批：0=否, 1=是',
-    `approval_flow_id` BIGINT(20) COMMENT '资源级审批流程ID',
+    
+    -- ✅ 资源级审批节点配置（使用 VARCHAR 存储 JSON 字符串）
+    `resource_nodes` VARCHAR(2000) COMMENT '资源级审批节点配置（JSON格式字符串）',
     
     `status` TINYINT(10) DEFAULT 1 COMMENT '状态：0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -400,18 +415,38 @@ CREATE TABLE `openplatform_v2_permission_t` (
     KEY `idx_category_id` (`category_id`),
     KEY `idx_scope` (`scope`),
     KEY `idx_status` (`status`),
-    KEY `idx_need_approval` (`need_approval`)  -- ✅ 支持按审批需求过滤
+    KEY `idx_need_approval` (`need_approval`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限资源主表';
 ```
 
 **设计说明**：
 
-将 `need_approval` 和 `approval_flow_id` 从属性表移到主表的原因：
+将 `approval_flow_id` 改为 `resource_nodes` 直接存储审批节点配置，原因：
 
-1. **查询效率优化**：权限列表查询时可直接按 `need_approval` 过滤，避免关联属性表
-2. **高频查询字段**：权限申请场景需要频繁查询"是否需要审批"的权限列表
-3. **简化业务逻辑**：减少表关联，简化查询代码
-4. **索引支持**：可为 `need_approval` 字段建立索引，提升查询性能
+1. **数据独立性** - 权限审批配置不受审批流程模板修改影响
+2. **查询效率** - 直接从权限表读取审批节点，无需 JOIN approval_flow_t 表
+3. **配置灵活性** - 每个权限可以有独特的审批节点配置，不依赖预设流程
+4. **表结构简化** - 移除关联字段，减少表关联复杂度
+5. **一致性设计** - 与审批记录表的 combined_nodes 设计理念一致
+
+**resource_nodes 字段示例**：
+
+```json
+[
+  {
+    "type": "approver",
+    "userId": "payment_leader",
+    "userName": "支付团队负责人",
+    "order": 1
+  },
+  {
+    "type": "approver",
+    "userId": "finance_admin",
+    "userName": "财务管理员",
+    "order": 2
+  }
+]
+```
 
 ---
 
@@ -421,14 +456,14 @@ CREATE TABLE `openplatform_v2_permission_t` (
 
 | 审批级别 | 配置位置 | 关键字段 | 配置方式 | 说明 |
 |---------|---------|---------|---------|------|
-| **第一级** | `permission_t` | `need_approval`<br/>`approval_flow_id` | 权限主表直接配置 | 创建审批记录时读取配置 |
+| **第一级** | `permission_t` | `need_approval`<br/>`resource_nodes` | 权限主表直接配置审批节点 | 特定权限资源审核 |
 | **第二级** | `approval_flow_t` | `code='场景编码'` | 创建审批流程模板 | 创建审批记录时读取配置 |
 | **第三级** | `approval_flow_t` | `code='global'` | 创建审批流程模板 | 创建审批记录时读取配置 |
 
 注意：
-- approval_flow_t 只用于创建审批记录时读取配置
-- approval_record_t 直接存储完整审批流程（combined_nodes）
-- 审批记录创建后，不再依赖审批流程表
+- 全局审批和场景审批使用审批流程模板（approval_flow_t）
+- 资源审批直接在权限主表配置（resource_nodes），不关联审批流程表
+- 权限配置独立，不受审批流程模板修改影响
 
 ### 4.2 第一级：全局审批配置
 
@@ -519,37 +554,18 @@ INSERT INTO openplatform_v2_approval_flow_t (
 
 ### 4.4 第三级：资源审批配置
 
-**配置位置**：`approval_flow_t` + `permission_t`
+**配置位置**：`permission_t`（权限主表）
 
 **配置步骤**：
 
 ```
-步骤1：在 approval_flow_t 中创建资源级审批流程
-步骤2：在 permission_t 中直接配置两个字段：
-       - need_approval = 1（是否需要审批）
-       - approval_flow_id = 流程ID（审批人配置）
+步骤：创建权限时直接配置审批节点（无需创建审批流程模板）
 ```
 
 **配置示例**：
 
 ```sql
--- 步骤1：创建资源级审批流程（支付API）
-INSERT INTO openplatform_v2_approval_flow_t (
-    id, name_cn, name_en, code, nodes, status, ...
-) VALUES (
-    1001,
-    '支付API审批流程',
-    'Payment API Approval Flow',
-    'payment_api',
-    '[
-        {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
-        {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
-    ]',
-    1,
-    NOW(3), NOW(3), 'system', 'system'
-);
-
--- 步骤2：创建权限时直接配置审批字段（✅ 直接在主表中配置）
+-- ✅ 直接在权限表中配置审批节点（不关联审批流程表）
 INSERT INTO openplatform_v2_permission_t (
     id, 
     name_cn, 
@@ -559,9 +575,9 @@ INSERT INTO openplatform_v2_permission_t (
     resource_id, 
     category_id,
     
-    -- ✅ 审批配置字段（从属性表移到主表）
+    -- ✅ 审批配置字段（直接存储审批节点）
     need_approval,      -- 是否需要审批
-    approval_flow_id,   -- 审批流程ID
+    resource_nodes,     -- ✅ 直接存储审批节点配置
     
     status, 
     create_time, 
@@ -577,9 +593,12 @@ INSERT INTO openplatform_v2_permission_t (
     100,                    -- 关联的API ID
     1,                      -- 分类ID
     
-    -- ✅ 审批配置
+    -- ✅ 审批配置（直接配置审批节点，无需创建流程模板）
     1,                      -- need_approval：需要审批
-    1001,                   -- approval_flow_id：指向审批流程
+    '[                      -- resource_nodes：审批节点配置
+        {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+        {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+    ]',
     
     1,                      -- 状态：启用
     NOW(3),
@@ -589,29 +608,51 @@ INSERT INTO openplatform_v2_permission_t (
 );
 ```
 
-**查询示例**（✅ 直接在主表查询，无需关联属性表）：
+**查询示例**（✅ 直接在主表查询，无需关联审批流程表）：
 
 ```sql
--- 查询需要审批的权限列表
-SELECT * FROM openplatform_v2_permission_t 
+-- 查询需要审批的权限列表（含审批节点配置）
+SELECT 
+    id,
+    name_cn,
+    need_approval,
+    resource_nodes  -- ✅ 直接包含审批节点配置
+FROM openplatform_v2_permission_t 
 WHERE need_approval = 1 AND status = 1;
 
--- 查询不需要审批的权限列表
-SELECT * FROM openplatform_v2_permission_t 
-WHERE need_approval = 0 AND status = 1;
-
--- 查询某权限的审批流程配置
+-- 查询某权限的审批节点配置
 SELECT 
-    p.id,
-    p.name_cn,
-    p.need_approval,
-    p.approval_flow_id,
-    f.name_cn AS flow_name,
-    f.nodes AS flow_nodes
-FROM openplatform_v2_permission_t p
-LEFT JOIN openplatform_v2_approval_flow_t f ON p.approval_flow_id = f.id
-WHERE p.id = 200;
+    id,
+    name_cn,
+    resource_nodes  -- ✅ 直接获取审批节点，无需 JOIN
+FROM openplatform_v2_permission_t 
+WHERE id = 200;
 ```
+
+**优势对比**：
+
+#### 方案一：关联审批流程表（已废弃）
+
+```
+permission_t.approval_flow_id → 关联 approval_flow_t 查询 nodes
+```
+
+**缺点**：
+- 需要 JOIN 操作，查询效率低
+- 审批流程模板修改会影响权限配置
+- 需要先创建审批流程模板，配置步骤繁琐
+
+#### 方案二：直接存储审批节点（当前采用）
+
+```
+permission_t.resource_nodes → 直接存储审批节点配置
+```
+
+**优点**：
+1. **查询效率高** - 单表查询，无需 JOIN 操作
+2. **数据独立性** - 权限配置不受审批流程模板修改影响
+3. **配置灵活性** - 每个权限可以有独特的审批节点配置
+4. **配置简化** - 无需先创建审批流程模板
 
 ---
 
@@ -627,12 +668,11 @@ WHERE p.id = 200;
 ├───────────────────────────────────────────────────────┤
 │                                                        │
 │ 第一级：资源审批（✅ 最具体）                           │
-│   SELECT need_approval, approval_flow_id              │
+│   SELECT need_approval, resource_nodes                │
 │   FROM permission_t WHERE id=200                      │
-│   结果：need_approval=1, flow_id=1001                │
+│   结果：need_approval=1, resource_nodes=[支付负责人, 财务管理员] │
 │                                                        │
-│   SELECT * FROM approval_flow_t WHERE id=1001         │
-│   结果：nodes=[支付负责人, 财务管理员]                  │
+│   ✅ 直接获取审批节点，无需查询审批流程表               │
 │                                                        │
 ├───────────────────────────────────────────────────────┤
 │                                                        │
@@ -673,7 +713,7 @@ INSERT INTO approval_record_t (
 
 说明：
 1. combined_nodes 包含所有审批节点的完整信息
-2. 无需存储 global_flow_id、scene_flow_id、resource_flow_id
+2. 资源审批节点直接从 permission_t.resource_nodes 获取，无需 JOIN
 3. 审批记录创建后，不再依赖审批流程表
 4. 查询审批节点直接从 combined_nodes 解析即可
 ```
@@ -717,15 +757,13 @@ public List<ApprovalNodeDto> composeApprovalFlow(Long permissionId, String busin
     List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
     int order = 1;
     
-    // ✅ 第一级：资源审批节点（最具体）
-    // ✅ 直接从主表查询，无需查询属性表
+    // ✅ 第一级：资源审批节点（直接从权限表读取）
     Permission permission = permissionMapper.selectById(permissionId);
     
-    if (permission.getNeedApproval() == 1) {  // ✅ 直接判断主表字段
-        Long flowId = permission.getApprovalFlowId();  // ✅ 直接获取主表字段
-        if (flowId != null) {
-            ApprovalFlow resourceFlow = flowMapper.selectById(flowId);
-            List<ApprovalNodeDto> resourceNodes = parseNodes(resourceFlow.getNodes());
+    if (permission.getNeedApproval() == 1) {  // 需要审批
+        String resourceNodesJson = permission.getResourceNodes();  // ✅ 直接获取审批节点
+        if (resourceNodesJson != null && !resourceNodesJson.isEmpty()) {
+            List<ApprovalNodeDto> resourceNodes = parseNodes(resourceNodesJson);
             for (ApprovalNodeDto node : resourceNodes) {
                 node.setOrder(order++);
                 node.setLevel("resource");
@@ -755,6 +793,11 @@ public List<ApprovalNodeDto> composeApprovalFlow(Long permissionId, String busin
     return combinedNodes;
 }
 ```
+
+**关键说明**：
+- 资源审批节点直接从 `permission.getResourceNodes()` 获取
+- 不需要查询 `approval_flow_t` 表
+- 权限审批配置完全独立
 
 **查询逻辑变化**：
 
@@ -977,6 +1020,48 @@ public class ApprovalRecord implements Serializable {
 }
 ```
 
+### 7.2 Permission 实体类
+
+```java
+@Data
+public class Permission implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    private Long id;
+    private String nameCn;
+    private String nameEn;
+    private String scope;
+    private String resourceType;
+    private Long resourceId;
+    private Long categoryId;
+    
+    /**
+     * 是否需要审批：0=否, 1=是
+     */
+    private Integer needApproval;
+    
+    /**
+     * ✅ 资源级审批节点配置（JSON格式）
+     * 
+     * 直接存储审批节点信息，不关联审批流程表
+     * 
+     * 格式示例：
+     * [
+     *   {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+     *   {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+     * ]
+     */
+    private String resourceNodes;
+    
+    private Integer status;
+    private Date createTime;
+    private Date lastUpdateTime;
+    private String createBy;
+    private String lastUpdateBy;
+}
+```
+
 ### 7.3 ApprovalNodeDto 增强
 
 ```java
@@ -1072,7 +1157,7 @@ public class ApprovalFlowComposer {
     }
     
     /**
-     * 获取资源审批节点
+     * 获取资源审批节点（✅ 直接从权限表读取）
      */
     private List<ApprovalNodeDto> getResourceApprovalNodes(Long permissionId) {
         Permission permission = permissionMapper.selectById(permissionId);
@@ -1080,17 +1165,13 @@ public class ApprovalFlowComposer {
             return Collections.emptyList();
         }
         
-        Long flowId = permission.getApprovalFlowId();
-        if (flowId == null) {
+        // ✅ 直接从权限表获取审批节点配置
+        String resourceNodesJson = permission.getResourceNodes();
+        if (resourceNodesJson == null || resourceNodesJson.isEmpty()) {
             return Collections.emptyList();
         }
         
-        ApprovalFlow resourceFlow = flowMapper.selectById(flowId);
-        if (resourceFlow == null || resourceFlow.getStatus() != 1) {
-            return Collections.emptyList();
-        }
-        
-        return parseNodes(resourceFlow.getNodes());
+        return parseNodes(resourceNodesJson);
     }
     
     /**
@@ -1220,14 +1301,15 @@ public class PermissionService {
   id=3, code='permission_apply'
   nodes=[权限管理员]
 
-资源审批流程：
-  id=1001
-  nodes=[支付负责人, 财务管理员]
-  
-权限主表配置：
+权限配置：
   permission_id=200
   need_approval=1
-  approval_flow_id=1001
+  resource_nodes=[
+    {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+    {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+  ]
+  
+  ✅ 直接存储审批节点，不关联审批流程表
 ```
 
 **组合后的审批流程**：
@@ -1364,8 +1446,8 @@ ORDER BY l.node_index;
 
 ### 9.2 实施步骤
 
-1. ✅ 创建审批流程模板数据（全局、场景、资源）
-2. ✅ 在权限主表中配置审批字段（need_approval、approval_flow_id）
+1. ✅ 创建审批流程模板数据（全局、场景）
+2. ✅ 在权限主表中配置审批字段（need_approval、resource_nodes）
 3. ✅ 实现 ApprovalFlowComposer 组合逻辑
 4. ✅ 修改 PermissionService 使用组合流程
 5. ✅ 修改 ApprovalEngine 支持组合审批
@@ -1409,6 +1491,39 @@ ORDER BY l.node_index;
 ---
 
 ## 11. 版本更新记录
+
+### v2.4.0 (2026-04-24)
+
+**优化内容**：
+- 资源审批配置改为直接存储审批节点（resource_nodes）
+- 移除 approval_flow_id 字段，不再关联审批流程表
+
+**优化原因**：
+1. 数据独立性：权限配置不受审批流程模板修改影响
+2. 查询效率：直接从权限表读取审批节点，无需 JOIN
+3. 配置灵活性：每个权限可以有独特的审批节点配置
+4. 表结构简化：移除关联字段，减少表关联复杂度
+
+**主要变更**：
+
+| 项目 | 之前 | 现在 |
+|------|------|------|
+| 资源审批配置 | approval_flow_id → 关联流程表 | resource_nodes → 直接存储节点 |
+| 查询方式 | JOIN approval_flow_t | 单表查询 |
+| 配置步骤 | 2步（创建流程+配置权限） | 1步（配置权限） |
+| 数据独立性 | 受流程模板修改影响 | 完全独立 |
+
+**影响范围**：
+- ✅ 数据库表结构：`openplatform_v2_permission_t`（移除 approval_flow_id，新增 resource_nodes）
+- ✅ 权限实体类：`Permission`（移除 approvalFlowId，新增 resourceNodes）
+- ✅ 组合逻辑：`ApprovalFlowComposer.getResourceApprovalNodes()`（直接读取 resourceNodes）
+- ✅ 配置示例：权限配置SQL（直接配置审批节点）
+- ✅ 查询示例：单表查询，无需 JOIN
+
+**向后兼容性**：
+- ❌ 不兼容旧版本数据，需要数据迁移
+- ❌ 需要更新所有使用 `approval_flow_id` 字段的查询和代码
+- ❌ 需要将历史审批流程配置迁移到权限表的 resource_nodes 字段
 
 ### v2.3.0 (2026-04-24)
 
