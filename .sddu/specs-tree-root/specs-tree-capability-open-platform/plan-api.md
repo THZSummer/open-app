@@ -1979,11 +1979,11 @@
       },
       {
         "id": "2",
-        "nameCn": "权限申请审批流",
-        "nameEn": "Permission Apply Approval Flow",
-        "code": "permission_apply",
-        "descriptionCn": "权限申请场景审批流程",
-        "descriptionEn": "Approval flow for permission apply",
+        "nameCn": "API权限申请审批流",
+        "nameEn": "API Permission Apply Approval Flow",
+        "code": "api_permission_apply",
+        "descriptionCn": "API权限申请场景审批流程",
+        "descriptionEn": "Approval flow for API permission apply",
         "status": 1,
         "createTime": "2026-04-20T10:00:00.000Z"
       }
@@ -2049,7 +2049,7 @@
 |------|------|------|------|
 | name_cn | string | 是 | 中文名称 |
 | name_en | string | 是 | 英文名称 |
-| code | string | 是 | 流程编码：global=全局审批, api_register=API注册审批, event_register=事件注册审批, callback_register=回调注册审批, permission_apply=权限申请审批 |
+| code | string | 是 | 流程编码：global=全局审批, api_register=API注册审批, event_register=事件注册审批, callback_register=回调注册审批, api_permission_apply=API权限申请审批, event_permission_apply=事件权限申请审批, callback_permission_apply=回调权限申请审批 |
 | description_cn | string | 否 | 中文描述 |
 | description_en | string | 否 | 英文描述 |
 | nodes | array | 是 | 审批节点列表（JSON数组，存储为VARCHAR字符串） |
@@ -2065,11 +2065,11 @@
 
 ```json
 {
-  "nameCn": "权限申请审批流",
-  "nameEn": "Permission Apply Approval Flow",
-  "code": "permission_apply",
-  "descriptionCn": "权限申请场景审批流程",
-  "descriptionEn": "Approval flow for permission apply",
+  "nameCn": "API权限申请审批流",
+  "nameEn": "API Permission Apply Approval Flow",
+  "code": "api_permission_apply",
+  "descriptionCn": "API权限申请场景审批流程",
+  "descriptionEn": "Approval flow for API permission apply",
   "nodes": [
     { "type": "approver", "userId": "perm_admin", "userName": "权限管理员", "order": 1 }
   ]
@@ -2085,9 +2085,9 @@
   "messageEn": "Success",
   "data": {
     "id": "3",
-    "nameCn": "权限申请审批流",
-    "nameEn": "Permission Apply Approval Flow",
-    "code": "permission_apply",
+    "nameCn": "API权限申请审批流",
+    "nameEn": "API Permission Apply Approval Flow",
+    "code": "api_permission_apply",
     "status": 1
   },
   "page": null
@@ -2150,7 +2150,7 @@
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| type | string | 否 | 审批类型（resource_register=资源注册, permission_apply=权限申请） |
+| type | string | 否 | 审批类型（resource_register=资源注册, api_permission_apply=API权限申请, event_permission_apply=事件权限申请, callback_permission_apply=回调权限申请） |
 | keyword | string | 否 | 搜索关键词（业务名称、申请人） |
 | curPage | int | 否 | 当前页码，默认 1 |
 | pageSize | int | 否 | 每页数量，默认 20 |

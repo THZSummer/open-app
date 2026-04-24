@@ -289,7 +289,14 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
-    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT '流程编码：global=全局审批, api_register=API注册审批, event_register=事件注册审批, callback_register=回调注册审批, permission_apply=权限申请审批',
+    `code` VARCHAR(50) NOT NULL UNIQUE COMMENT '流程编码：
+        global=全局审批流程，
+        api_register=API注册审批流程，
+        event_register=事件注册审批流程，
+        callback_register=回调注册审批流程，
+        api_permission_apply=API权限申请审批流程，
+        event_permission_apply=事件权限申请审批流程，
+        callback_permission_apply=回调权限申请审批流程',
     `description_cn` TEXT COMMENT '中文描述',
     `description_en` TEXT COMMENT '英文描述',
     `nodes` VARCHAR(2000) NOT NULL COMMENT '审批节点配置（JSON格式字符串）',
@@ -307,7 +314,13 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
 CREATE TABLE `openplatform_v2_approval_record_t` (
     `id` BIGINT(20) PRIMARY KEY,
     `combined_nodes` VARCHAR(4000) NOT NULL COMMENT '组合后的完整审批节点配置（JSON格式字符串）',
-    `business_type` VARCHAR(50) NOT NULL COMMENT 'api_register, event_register, permission_apply',
+    `business_type` VARCHAR(50) NOT NULL COMMENT '业务类型：
+        api_register = API注册审批，
+        event_register = 事件注册审批，
+        callback_register = 回调注册审批，
+        api_permission_apply = API权限申请审批，
+        event_permission_apply = 事件权限申请审批，
+        callback_permission_apply = 回调权限申请审批',
     `business_id` BIGINT(20) NOT NULL,
     `applicant_id` VARCHAR(100) NOT NULL,
     `applicant_name` VARCHAR(100) COMMENT '申请人姓名',
