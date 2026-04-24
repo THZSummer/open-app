@@ -15,16 +15,23 @@ import {
   Descriptions,
   Divider,
   Pagination,
+  Row, Col, Progress, Statistic, Avatar, Badge, Timeline, Typography, Collapse,
+  message
 } from 'antd';
 import {
   CheckOutlined,
   CloseOutlined,
   EyeOutlined,
   UserOutlined,
+  CheckCircleOutlined, 
+  CloseCircleOutlined, 
+  ClockCircleOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import {
   fetchApprovalList,
   fetchMyApprovals,
+  fetchApprovalDetail,
   approveApplication,
   rejectApplication,
   LEVEL_MAP,
@@ -34,6 +41,7 @@ import ApprovalFlowConfig from './ApprovalFlowConfig';
 import './ApprovalCenter.m.less';
 
 const { TextArea } = Input;
+const { Text } = Typography;
 
 const STATUS_MAP = {
   0: { text: '待审', color: 'orange' },
@@ -102,18 +110,32 @@ function ApprovalCenter() {
   };
 
   const handleApprove = async (id) => {
-    await approveApplication(id);
-    loadData();
+    const result = await approveApplication(id);
+    if (result.code === '200') {
+      message.success(result.data?.message || '审批成功');
+      loadData();
+    }
   };
 
   const handleReject = async (id) => {
-    await rejectApplication(id);
-    loadData();
+    const result = await rejectApplication(id);
+    if (result.code === '200') {
+      message.success(result.data?.message || '已拒绝');
+      loadData();
+    }
   };
 
-  const handleViewDetail = (record) => {
-    setCurrentDetail(record);
-    setDetailVisible(true);
+  const handleViewDetail = async (record) => {
+    setLoading(true);
+    try {
+      const result = await fetchApprovalDetail(record.id);
+      if (result.code === '200') {
+        setCurrentDetail(result.data);
+        setDetailVisible(true);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const columns = [
@@ -131,18 +153,6 @@ function ApprovalCenter() {
       title: '业务类型',
       dataIndex: 'businessType',
       key: 'businessType',
-      render: (businessType) => {
-        // v2.8.0: 新增业务类型显示
-        const typeMap = {
-          'api_register': 'API注册',
-          'event_register': '事件注册',
-          'callback_register': '回调注册',
-          'api_permission_apply': 'API权限申请',
-          'event_permission_apply': '事件权限申请',
-          'callback_permission_apply': '回调权限申请',
-        };
-        return typeMap[businessType] || businessType;
-      },
     },
     {
       title: '业务名称',
@@ -150,10 +160,9 @@ function ApprovalCenter() {
       key: 'businessName',
     },
     {
-      title: '审批类型',
-      dataIndex: 'type',
-      key: 'type',
-      render: (type) => TYPE_MAP[type] || type,
+      title: '业务ID',
+      dataIndex: 'businessId',
+      key: 'businessId',
     },
     {
       title: '状态',
@@ -223,16 +232,9 @@ function ApprovalCenter() {
       key: 'businessName',
     },
     {
-      title: '审批类型',
-      dataIndex: 'type',
-      key: 'type',
-      render: (type) => {
-        const typeMap = {
-          'resource_register': '资源注册',
-          'permission_apply': '权限申请',
-        };
-        return typeMap[type] || type;
-      },
+      title: '业务ID',
+      dataIndex: 'businessId',
+      key: 'businessId',
     },
     {
       title: '状态',
@@ -324,27 +326,76 @@ function ApprovalCenter() {
       >
         {currentDetail && (
           <div>
+            {/* 进度概览卡片 */}
+            {currentDetail.combinedNodes && currentDetail.combinedNodes.length > 0 && (() => {
+              const totalCount = currentDetail.combinedNodes.length;
+              const completedCount = currentDetail.combinedNodes.filter(n => n.status === 1).length;
+              const currentNodeIndex = currentDetail.currentNode;
+              const currentNode = currentDetail.combinedNodes[currentNodeIndex];
+              const pendingNodes = currentDetail.combinedNodes.filter(n => n.status === null && n !== currentNode);
+              
+              return (
+                <Card size="small" className="approval-progress-card" style={{ marginBottom: 16 }}>
+                  <Row gutter={16} align="middle">
+                    <Col span={6}>
+                      <Statistic 
+                        title="审批进度" 
+                        value={completedCount} 
+                        suffix={`/ ${totalCount} 节点`}
+                        valueStyle={{ fontSize: 20 }}
+                      />
+                    </Col>
+                    <Col span={18}>
+                      <Progress 
+                        percent={Math.round(completedCount / totalCount * 100)} 
+                        status={currentDetail.status === 2 ? 'exception' : 'active'}
+                        strokeColor={{
+                          '0%': '#108ee9',
+                          '100%': '#87d068',
+                        }}
+                      />
+                      <div style={{ marginTop: 12 }}>
+                        {currentDetail.status === 0 && currentNode && (
+                          <>
+                            <Text type="secondary">当前节点：</Text>
+                            <Tag color="processing" icon={<SyncOutlined spin />}>
+                              {LEVEL_MAP[currentNode.level]?.text || currentNode.level}
+                            </Tag>
+                            <Text strong>{currentNode.userName}</Text>
+                            <Text type="secondary" style={{ marginLeft: 8 }}>
+                              (第 {currentNode.order} 步)
+                            </Text>
+                          </>
+                        )}
+                        {pendingNodes.length > 0 && currentDetail.status === 0 && (
+                          <div style={{ marginTop: 8 }}>
+                            <Text type="secondary">待审批：</Text>
+                            {pendingNodes.map((node, idx) => (
+                              <Tag key={idx} style={{ marginTop: 4 }}>
+                                {node.userName}（{LEVEL_MAP[node.level]?.text}）
+                              </Tag>
+                            ))}
+                          </div>
+                        )}
+                        {currentDetail.status === 1 && (
+                          <Text type="success" strong>✓ 审批已通过</Text>
+                        )}
+                        {currentDetail.status === 2 && (
+                          <Text type="danger" strong>✗ 审批已拒绝</Text>
+                        )}
+                      </div>
+                    </Col>
+                  </Row>
+                </Card>
+              );
+            })()}
+            
             {/* 基本信息区域 */}
             <Descriptions bordered column={2} size="small">
               <Descriptions.Item label="申请编号">{currentDetail.id}</Descriptions.Item>
               <Descriptions.Item label="申请人">{currentDetail.applicantName}</Descriptions.Item>
-              <Descriptions.Item label="审批类型">
-                {TYPE_MAP[currentDetail.type] || currentDetail.type}
-              </Descriptions.Item>
-              <Descriptions.Item label="业务类型">
-                {(() => {
-                  const typeMap = {
-                    'api_register': 'API注册',
-                    'event_register': '事件注册',
-                    'callback_register': '回调注册',
-                    'api_permission_apply': 'API权限申请',
-                    'event_permission_apply': '事件权限申请',
-                    'callback_permission_apply': '回调权限申请',
-                  };
-                  return typeMap[currentDetail.businessType] || currentDetail.businessType;
-                })()}
-              </Descriptions.Item>
-              <Descriptions.Item label="业务名称">{currentDetail.businessName}</Descriptions.Item>
+              <Descriptions.Item label="业务类型">{currentDetail.businessType}</Descriptions.Item>
+              <Descriptions.Item label="业务名称">{currentDetail.businessData?.nameCn || '-'}</Descriptions.Item>
               <Descriptions.Item label="业务ID">{currentDetail.businessId}</Descriptions.Item>
               <Descriptions.Item label="状态">
                 <Tag color={STATUS_MAP[currentDetail.status]?.color || 'default'}>
@@ -362,64 +413,147 @@ function ApprovalCenter() {
                   <Steps
                     current={currentDetail.currentNode}
                     direction="vertical"
-                    items={currentDetail.combinedNodes.map((node, index) => ({
-                      title: (
-                        <div className="approval-node-title">
-                          <span className="approver-name">
-                            <UserOutlined style={{ marginRight: 8 }} />
-                            {node.userName}
-                          </span>
-                          <Tag 
-                            color={(LEVEL_MAP[node.level] || MOCK_LEVEL_MAP[node.level] || {}).color || 'default'}
-                            style={{ marginLeft: 8 }}
-                          >
-                            {(LEVEL_MAP[node.level] || MOCK_LEVEL_MAP[node.level] || {}).text || node.level}
-                          </Tag>
-                        </div>
-                      ),
-                      description: (
-                        <div className="approval-node-desc">
-                          <div className="node-info">
-                            审批人ID: {node.userId} | 节点顺序: {node.order}
+                    items={currentDetail.combinedNodes.map((node, index) => {
+                      const isCompleted = node.status === 1;  // 1 = 已通过
+                      const isRejected = node.status === 2;   // 2 = 已拒绝
+                      const isCurrent = index === currentDetail.currentNode && currentDetail.status === 0;
+                      const isPending = node.status === null && !isCurrent;
+                      
+                      // 根据状态选择图标
+                      let icon;
+                      let stepStatus;
+                      
+                      if (isCompleted) {
+                        icon = <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+                        stepStatus = 'finish';
+                      } else if (isRejected) {
+                        icon = <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+                        stepStatus = 'error';
+                      } else if (isCurrent) {
+                        icon = <SyncOutlined spin style={{ color: '#1890ff' }} />;
+                        stepStatus = 'process';
+                      } else {
+                        icon = <ClockCircleOutlined style={{ color: '#999' }} />;
+                        stepStatus = 'wait';
+                      }
+                      
+                      return {
+                        icon,
+                        status: stepStatus,
+                        title: (
+                          <div className="approval-node-title">
+                            <div className="approver-info">
+                              <Avatar size="small" icon={<UserOutlined />} style={{ marginRight: 8 }} />
+                              <span className="approver-name">{node.userName}</span>
+                            </div>
+                            <div className="node-badges">
+                              <Tag color={LEVEL_MAP[node.level]?.color || 'default'}>
+                                {LEVEL_MAP[node.level]?.text || node.level}
+                              </Tag>
+                              {isCurrent && (
+                                <Badge status="processing" text="待审批" />
+                              )}
+                              {isCompleted && (
+                                <Tag color="success" icon={<CheckCircleOutlined />}>已同意</Tag>
+                              )}
+                              {isRejected && (
+                                <Tag color="error" icon={<CloseCircleOutlined />}>已拒绝</Tag>
+                              )}
+                              {isPending && (
+                                <Tag color="default" icon={<ClockCircleOutlined />}>等待中</Tag>
+                              )}
+                            </div>
                           </div>
-                          {node.status !== null && (
-                            <Tag 
-                              color={NODE_STATUS_MAP[node.status]?.color || 'default'}
-                              style={{ marginTop: 4 }}
-                            >
-                              {NODE_STATUS_MAP[node.status]?.text || '未知'}
-                            </Tag>
-                          )}
-                        </div>
-                      ),
-                      status: (() => {
-                        if (index < currentDetail.currentNode) {
-                          return 'finish';  // 已完成
-                        } else if (index === currentDetail.currentNode && currentDetail.status === 0) {
-                          return 'process';  // 当前节点
-                        } else if (currentDetail.status === 2) {
-                          return 'error';  // 已拒绝
-                        } else if (currentDetail.status === 3) {
-                          return 'wait';  // 已撤销
-                        }
-                        return 'wait';
-                      })(),
-                    }))}
+                        ),
+                        description: (
+                          <div className="approval-node-desc">
+                            <div className="node-info">
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                审批人ID：{node.userId} | 节点顺序：第 {node.order} 步
+                              </Text>
+                            </div>
+                            {node.approveTime && (
+                              <div className="approve-time" style={{ marginTop: 4 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  审批时间：{node.approveTime}
+                                </Text>
+                              </div>
+                            )}
+                            {node.comment && (
+                              <div style={{ marginTop: 4 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  审批意见：{node.comment}
+                                </Text>
+                              </div>
+                            )}
+                          </div>
+                        ),
+                      };
+                    })}
                   />
                 </div>
                 
-                {/* 审批流程说明 */}
-                <div className="approval-flow-legend" style={{ marginTop: 16 }}>
-                  <p style={{ color: '#666', fontSize: 12 }}>
-                    审批流程说明：
-                    <Tag color="blue" style={{ marginLeft: 8 }}>资源审批</Tag>
-                    资源提供方审核 → 
-                    <Tag color="orange" style={{ marginLeft: 8 }}>场景审批</Tag>
-                    业务场景审核 → 
-                    <Tag color="green" style={{ marginLeft: 8 }}>全局审批</Tag>
-                    平台运营审核
-                  </p>
-                </div>
+
+                
+                {/* 操作历史（审计追溯） */}
+                {currentDetail.logs && currentDetail.logs.length > 0 && (
+                  <Collapse 
+                    ghost 
+                    style={{ marginTop: 16 }}
+                    items={[{
+                      key: 'logs',
+                      label: (
+                        <span style={{ fontWeight: 500 }}>
+                          操作历史
+                          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                            ({currentDetail.logs.length} 条记录)
+                          </Text>
+                        </span>
+                      ),
+                      children: (
+                        <Timeline
+                          items={currentDetail.logs.map((log, idx) => {
+                            // 操作类型映射
+                            const actionMap = {
+                              0: { text: '同意', color: 'success' },
+                              1: { text: '拒绝', color: 'error' },
+                              2: { text: '撤销', color: 'warning' },
+                              3: { text: '转交', color: 'processing' },
+                            };
+                            const actionInfo = actionMap[log.action] || { text: '未知', color: 'default' };
+                            
+                            return {
+                              color: log.action === 0 ? 'green' : log.action === 1 ? 'red' : 'gray',
+                              children: (
+                                <div key={idx} style={{ paddingBottom: 8 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                    <Text strong>{log.operatorName}</Text>
+                                    <Tag color={actionInfo.color}>{actionInfo.text}</Tag>
+                                    {log.level && (
+                                      <Tag color={LEVEL_MAP[log.level]?.color || 'default'}>
+                                        {LEVEL_MAP[log.level]?.text || log.level}
+                                      </Tag>
+                                    )}
+                                  </div>
+                                  <Text type="secondary" style={{ fontSize: 12 }}>
+                                    {log.createTime}
+                                  </Text>
+                                  {log.comment && (
+                                    <div style={{ marginTop: 4, padding: '6px 10px', background: '#fafafa', borderRadius: 4, borderLeft: '2px solid #1890ff' }}>
+                                      <Text italic style={{ fontSize: 12, color: '#666' }}>
+                                        "{log.comment}"
+                                      </Text>
+                                    </div>
+                                  )}
+                                </div>
+                              ),
+                            };
+                          })}
+                        />
+                      ),
+                    }]}
+                  />
+                )}
               </>
             )}
           </div>

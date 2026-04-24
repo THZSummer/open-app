@@ -30,7 +30,12 @@ export const LEVEL_MAP = {
  */
 export const fetchApprovalList = async (params = {}) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.APPROVALS.PENDING, { method: 'GET', params });
+    // 如果指定了 status=0（待审），添加 approverId=current 参数
+    const queryParams = { ...params };
+    if (params.status === 0 && !params.approverId) {
+      queryParams.approverId = 'current';
+    }
+    return fetchApi(API_CONFIG.APPROVALS.PENDING, { method: 'GET', params: queryParams });
   }
   await delay(300);
   let data = mockApprovals;

@@ -47,4 +47,9 @@ public class ApprovalPendingListRequest implements Serializable {
      * 传 "current" 表示查询当前用户发起的审批
      */
     private String applicantId;
+
+    /**
+     * 审批人ID（用于筛选我的待审）
+     */
+    private String approverId;
 }

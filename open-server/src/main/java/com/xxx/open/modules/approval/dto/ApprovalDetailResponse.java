@@ -24,11 +24,6 @@ public class ApprovalDetailResponse implements Serializable {
     private String id;
 
     /**
-     * 审批类型
-     */
-    private String type;
-
-    /**
      * 业务类型
      */
     private String businessType;
