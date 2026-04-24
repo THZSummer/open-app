@@ -55,6 +55,26 @@ public class Permission implements Serializable {
     private Long categoryId;
 
     /**
+     * 是否需要审批：0=否, 1=是
+     * 
+     * v2.8.0新增字段，用于标识权限是否需要审批流程
+     */
+    private Integer needApproval;
+
+    /**
+     * 资源级审批节点配置（JSON格式字符串）
+     * 
+     * v2.8.0新增字段，直接存储审批节点配置（不关联审批流程表）
+     * 
+     * 格式示例：
+     * [
+     *   {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+     *   {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+     * ]
+     */
+    private String resourceNodes;
+
+    /**
      * 状态：0=禁用, 1=启用
      */
     private Integer status;

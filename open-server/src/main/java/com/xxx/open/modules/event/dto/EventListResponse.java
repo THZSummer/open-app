@@ -72,6 +72,12 @@ public class EventListResponse implements Serializable {
     private java.util.Date createTime;
 
     /**
+     * 文档链接（从properties中提取）
+     */
+    @Schema(description = "文档链接")
+    private String docUrl;
+
+    /**
      * 权限简化 DTO（列表时使用）
      */
     @Data

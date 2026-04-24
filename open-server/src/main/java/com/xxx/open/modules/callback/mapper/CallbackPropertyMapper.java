@@ -42,4 +42,9 @@ public interface CallbackPropertyMapper {
             @Param("parentId") Long parentId,
             @Param("propertyName") String propertyName
     );
+
+    /**
+     * 批量查询多个 parentId 的属性列表
+     */
+    List<CallbackProperty> selectByParentIds(@Param("list") List<Long> parentIds);
 }

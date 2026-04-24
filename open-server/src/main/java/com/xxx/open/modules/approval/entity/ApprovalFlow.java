@@ -35,7 +35,16 @@ public class ApprovalFlow implements Serializable {
     private String nameEn;
 
     /**
-     * 流程编码，全局唯一，如 default, api_register, permission_apply
+     * 流程编码，全局唯一：
+     * - global=全局审批流程
+     * - api_register=API注册审批流程
+     * - event_register=事件注册审批流程
+     * - callback_register=回调注册审批流程
+     * - api_permission_apply=API权限申请审批流程
+     * - event_permission_apply=事件权限申请审批流程
+     * - callback_permission_apply=回调权限申请审批流程
+     * 
+     * v2.8.0变更：移除 isDefault 字段，改用 code='global' 标识全局审批
      */
     private String code;
 
@@ -49,10 +58,9 @@ public class ApprovalFlow implements Serializable {
      */
     private String descriptionEn;
 
-    /**
-     * 是否默认流程：0=否, 1=是
-     */
-    private Integer isDefault;
+    // ✅ v2.8.0 变更：移除 isDefault 字段
+    // 原因：消除冗余，用 code='global' 标识全局审批，更语义化且统一规范
+    // 查询方式：SELECT * FROM approval_flow_t WHERE code='global'
 
     /**
      * 审批节点配置（JSON 格式）

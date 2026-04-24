@@ -11,7 +11,7 @@
         <result column="code" property="code"/>
         <result column="description_cn" property="descriptionCn"/>
         <result column="description_en" property="descriptionEn"/>
-        <result column="is_default" property="isDefault"/>
+        <!-- ✅ v2.8.0 变更：移除 is_default 字段映射 -->
         <result column="nodes" property="nodes"/>
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
@@ -22,17 +22,17 @@
 
     <!-- 基础列 -->
     <sql id="Base_Column_List">
-        id, name_cn, name_en, code, description_cn, description_en, is_default, nodes, status,
+        id, name_cn, name_en, code, description_cn, description_en, nodes, status,
         create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- 插入审批流程 -->
     <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalFlow">
         INSERT INTO openplatform_v2_approval_flow_t (
-            id, name_cn, name_en, code, description_cn, description_en, is_default, nodes, status,
+            id, name_cn, name_en, code, description_cn, description_en, nodes, status,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{nameCn}, #{nameEn}, #{code}, #{descriptionCn}, #{descriptionEn}, #{isDefault}, #{nodes}, #{status},
+            #{id}, #{nameCn}, #{nameEn}, #{code}, #{descriptionCn}, #{descriptionEn}, #{nodes}, #{status},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
@@ -45,21 +45,19 @@
     </select>
 
     <!-- 根据编码查询审批流程 -->
+    <!-- v2.8.0变更：此方法替代原有的 selectDefaultFlow() -->
     <select id="selectByCode" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_approval_flow_t
         WHERE code = #{code}
     </select>
 
-    <!-- 查询默认审批流程 -->
-    <select id="selectDefaultFlow" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM openplatform_v2_approval_flow_t
-        WHERE is_default = 1 AND status = 1
-        LIMIT 1
-    </select>
+    <!-- ✅ v2.8.0 变更：移除 selectDefaultFlow() 查询 -->
+    <!-- 原因：移除 isDefault 字段，改用 code='global' 标识全局审批 -->
+    <!-- 查询全局审批流程：WHERE code='global' -->
 
     <!-- 查询审批流程列表 -->
+    <!-- v2.8.0变更：移除 is_default DESC 排序 -->
     <select id="selectList" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_approval_flow_t
@@ -69,7 +67,7 @@
                  OR name_en LIKE CONCAT('%', #{keyword}, '%')
                  OR code LIKE CONCAT('%', #{keyword}, '%'))
         </if>
-        ORDER BY is_default DESC, create_time DESC
+        ORDER BY create_time DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
@@ -86,6 +84,7 @@
     </select>
 
     <!-- 更新审批流程（动态更新非null字段） -->
+    <!-- v2.8.0变更：移除 is_default 字段更新 -->
     <update id="update" parameterType="com.xxx.open.modules.approval.entity.ApprovalFlow">
         UPDATE openplatform_v2_approval_flow_t
         <set>
@@ -93,7 +92,6 @@
             <if test="nameEn != null">name_en = #{nameEn},</if>
             <if test="descriptionCn != null">description_cn = #{descriptionCn},</if>
             <if test="descriptionEn != null">description_en = #{descriptionEn},</if>
-            <if test="isDefault != null">is_default = #{isDefault},</if>
             <if test="nodes != null">nodes = #{nodes},</if>
             <if test="status != null">status = #{status},</if>
             last_update_time = #{lastUpdateTime},
@@ -102,11 +100,9 @@
         WHERE id = #{id}
     </update>
 
-    <!-- 删除审批流程 -->
+    <!-- 删除审批流程（物理删除） -->
     <delete id="deleteById">
-        UPDATE openplatform_v2_approval_flow_t
-        SET status = 0, last_update_time = NOW(3)
-        WHERE id = #{id}
+        DELETE FROM openplatform_v2_approval_flow_t WHERE id = #{id}
     </delete>
 
     <!-- 检查编码是否存在 -->

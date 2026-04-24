@@ -22,7 +22,9 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.xxx.open.modules.approval.engine.ApprovalEngine;
@@ -84,9 +86,23 @@ public class ApiService {
                 request.getKeyword()
         );
 
-        // 转换响应
+        // ✅ 新增：批量查询所有API的properties，提取docUrl
+        Map<Long, String> docUrlMap = new HashMap<>();
+        if (!apiList.isEmpty()) {
+            List<Long> apiIds = apiList.stream().map(Api::getId).collect(Collectors.toList());
+            List<ApiProperty> allProperties = apiPropertyMapper.selectByParentIds(apiIds);
+            
+            // 构建 Map: apiId -> docUrl
+            for (ApiProperty prop : allProperties) {
+                if ("docUrl".equals(prop.getPropertyName()) && prop.getPropertyValue() != null) {
+                    docUrlMap.put(prop.getParentId(), prop.getPropertyValue());
+                }
+            }
+        }
+
+        // 转换响应（传入docUrlMap）
         List<ApiListResponse> responses = apiList.stream()
-                .map(this::convertToListResponse)
+                .map(api -> convertToListResponse(api, docUrlMap))
                 .collect(Collectors.toList());
 
         // 构建分页响应
@@ -161,7 +177,12 @@ public class ApiService {
         api.setMethod(request.getMethod().toUpperCase());
         api.setAuthType(request.getAuthType() != null ? request.getAuthType() : 1); // 默认 SOA
         api.setCategoryId(categoryId); // 设置分类ID
-        api.setStatus(1); // 待审
+        
+        // ✅ v2.8.0新增：根据 needApproval 决定资源状态
+        Integer needApproval = request.getPermission().getNeedApproval() != null ? 
+            request.getPermission().getNeedApproval() : 1;
+        api.setStatus(needApproval == 0 ? 2 : 1); // 无需审批直接上架(2)，否则待审(1)
+        
         api.setCreateTime(now);
         api.setLastUpdateTime(now);
         api.setCreateBy(currentUser);
@@ -169,23 +190,7 @@ public class ApiService {
 
         apiMapper.insert(api);
 
-        // 创建审批记录（如果存在默认审批流程）
-        ApprovalFlow defaultFlow = approvalFlowMapper.selectDefaultFlow();
-        if (defaultFlow != null) {
-            approvalEngine.createApproval(
-                defaultFlow.getId(),
-                ApprovalEngine.BusinessType.API_REGISTER,
-                api.getId(),
-                "user001",  // TODO: 从上下文获取申请人ID
-                currentUser,  // 申请人名称
-                currentUser
-            );
-            log.info("创建审批记录: apiId={}, flowId={}", api.getId(), defaultFlow.getId());
-        } else {
-            log.warn("未找到默认审批流程，API 将保持待审状态但不创建审批记录");
-        }
-
-        // 创建权限
+        // 创建权限（先创建权限，再创建审批记录）
         Permission permission = new Permission();
         permission.setId(idGenerator.nextId());
         permission.setNameCn(request.getPermission().getNameCn());
@@ -194,6 +199,9 @@ public class ApiService {
         permission.setResourceType("api");
         permission.setResourceId(api.getId());
         permission.setCategoryId(categoryId);
+        // ✅ v2.8.0新增：设置 needApproval 和 resourceNodes 字段
+        permission.setNeedApproval(needApproval);
+        permission.setResourceNodes(request.getPermission().getResourceNodes());
         permission.setStatus(1);
         permission.setCreateTime(now);
         permission.setLastUpdateTime(now);
@@ -202,22 +210,24 @@ public class ApiService {
 
         permissionMapper.insert(permission);
 
-        // 创建权限属性（审批流程ID）
-        if (StringUtils.hasText(request.getPermission().getApprovalFlowId())) {
-            PermissionProperty flowProperty = new PermissionProperty();
-            flowProperty.setId(idGenerator.nextId());
-            flowProperty.setParentId(permission.getId());
-            flowProperty.setPropertyName("approval_flow_id");
-            flowProperty.setPropertyValue(request.getPermission().getApprovalFlowId());
-            flowProperty.setStatus(1);
-            flowProperty.setCreateTime(now);
-            flowProperty.setLastUpdateTime(now);
-            flowProperty.setCreateBy(currentUser);
-            flowProperty.setLastUpdateBy(currentUser);
-
-            List<PermissionProperty> permissionProperties = new ArrayList<>();
-            permissionProperties.add(flowProperty);
-            permissionPropertyMapper.batchInsert(permissionProperties);
+        // ✅ v2.8.0变更：根据 needApproval 决定是否创建审批记录
+        // 只有需要审批的资源才创建审批记录
+        if (needApproval == 1) {
+            try {
+                approvalEngine.createApproval(
+                    ApprovalEngine.BusinessType.API_REGISTER,
+                    permission.getId(),  // ✅ permissionId：用于获取资源审批节点
+                api.getId(),         // ✅ businessId：API ID
+                currentUser,         // applicantId
+                currentUser,         // applicantName
+                currentUser          // operator
+            );
+            log.info("创建审批记录: apiId={}, permissionId={}", api.getId(), permission.getId());
+        } catch (Exception e) {
+            log.warn("创建审批记录失败，API 将保持待审状态: apiId={}", api.getId(), e);
+        }
+        } else {
+            log.info("API 无需审批，直接上架: apiId={}, permissionId={}", api.getId(), permission.getId());
         }
 
         // 创建 API 属性
@@ -415,7 +425,7 @@ public class ApiService {
     /**
      * 转换为列表响应
      */
-    private ApiListResponse convertToListResponse(Api api) {
+    private ApiListResponse convertToListResponse(Api api, Map<Long, String> docUrlMap) {
         // 构建权限 DTO
         Permission permission = permissionMapper.selectByResource("api", api.getId());
 
@@ -428,6 +438,9 @@ public class ApiService {
                     .build();
         }
 
+        // ✅ 从 Map 中获取 docUrl
+        String docUrl = docUrlMap.get(api.getId());
+
         return ApiListResponse.builder()
                 .id(String.valueOf(api.getId()))
                 .nameCn(api.getNameCn())
@@ -439,6 +452,7 @@ public class ApiService {
                 .categoryName(api.getCategoryName()) // 从 JOIN 查询获取
                 .status(api.getStatus())
                 .permission(permissionDto)
+                .docUrl(docUrl)  // ✅ 新增
                 .createTime(api.getCreateTime())
                 .build();
     }
@@ -456,6 +470,9 @@ public class ApiService {
                     .nameEn(permission.getNameEn())
                     .scope(permission.getScope())
                     .status(permission.getStatus())
+                    // ✅ v2.8.0新增：审批配置字段
+                    .needApproval(permission.getNeedApproval())
+                    .resourceNodes(permission.getResourceNodes())
                     .build();
         }
 

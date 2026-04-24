@@ -28,13 +28,15 @@ public class ApprovalFlowCreateRequest implements Serializable {
 
     /**
      * 流程编码，全局唯一
+     * 
+     * v2.8.0变更：通过 code 标识审批类型
+     * - code='global' 表示全局审批流程
+     * - code='api_permission_apply' 表示场景审批流程
      */
     private String code;
 
-    /**
-     * 是否默认流程
-     */
-    private Integer isDefault;
+    // ✅ v2.8.0 变更：移除 isDefault 字段
+    // 原因：用 code='global' 标识全局审批，无需单独设置 isDefault
 
     /**
      * 审批节点列表

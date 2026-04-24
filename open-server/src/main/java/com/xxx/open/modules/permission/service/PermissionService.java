@@ -231,9 +231,9 @@ public class PermissionService {
             for (Subscription subscription : subscriptions) {
                 try {
                     ApprovalRecord approvalRecord = approvalEngine.createApproval(
-                            3L,  // 权限申请审批流程ID
-                            ApprovalEngine.BusinessType.PERMISSION_APPLY,
-                            subscription.getId(),
+                            ApprovalEngine.BusinessType.API_PERMISSION_APPLY,  // ✅ v2.8.0变更
+                            subscription.getPermissionId(),  // ✅ permissionId
+                            subscription.getId(),             // businessId
                             currentUser,
                             currentUser,
                             currentUser
@@ -414,9 +414,9 @@ public class PermissionService {
             for (Subscription subscription : subscriptions) {
                 try {
                     ApprovalRecord approvalRecord = approvalEngine.createApproval(
-                            3L,
-                            ApprovalEngine.BusinessType.PERMISSION_APPLY,
-                            subscription.getId(),
+                            ApprovalEngine.BusinessType.EVENT_PERMISSION_APPLY,  // ✅ v2.8.0变更
+                            subscription.getPermissionId(),  // ✅ permissionId
+                            subscription.getId(),             // businessId
                             currentUser,
                             currentUser,
                             currentUser
@@ -629,9 +629,9 @@ public class PermissionService {
             for (Subscription subscription : subscriptions) {
                 try {
                     ApprovalRecord approvalRecord = approvalEngine.createApproval(
-                            3L,  // 权限申请审批流程ID
-                            ApprovalEngine.BusinessType.PERMISSION_APPLY,
-                            subscription.getId(),
+                            ApprovalEngine.BusinessType.CALLBACK_PERMISSION_APPLY,  // ✅ v2.8.0修正：使用 CALLBACK_PERMISSION_APPLY
+                            subscription.getPermissionId(),  // ✅ permissionId
+                            subscription.getId(),             // businessId
                             currentUser,
                             currentUser,
                             currentUser

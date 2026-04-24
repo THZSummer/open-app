@@ -22,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -92,9 +94,23 @@ public class CallbackService {
         // 查询总数
         long total = callbackMapper.countList(categoryIdLong, status, keyword);
 
-        // 转换响应
+        // ✅ 新增：批量查询所有回调的properties，提取docUrl
+        Map<Long, String> docUrlMap = new HashMap<>();
+        if (!callbacks.isEmpty()) {
+            List<Long> callbackIds = callbacks.stream().map(Callback::getId).collect(Collectors.toList());
+            List<CallbackProperty> allProperties = callbackPropertyMapper.selectByParentIds(callbackIds);
+            
+            // 构建 Map: callbackId -> docUrl
+            for (CallbackProperty prop : allProperties) {
+                if ("docUrl".equals(prop.getPropertyName()) && prop.getPropertyValue() != null) {
+                    docUrlMap.put(prop.getParentId(), prop.getPropertyValue());
+                }
+            }
+        }
+
+        // 转换响应（传入docUrlMap）
         List<CallbackListResponse> responseList = callbacks.stream()
-                .map(this::convertToListResponse)
+                .map(callback -> convertToListResponse(callback, docUrlMap))
                 .collect(Collectors.toList());
 
         // 构建分页信息
@@ -179,7 +195,12 @@ public class CallbackService {
         callback.setNameCn(request.getNameCn());
         callback.setNameEn(request.getNameEn());
         callback.setCategoryId(categoryId); // 设置分类ID
-        callback.setStatus(1); // 待审
+        
+        // ✅ v2.8.0新增：根据 needApproval 决定回调状态
+        Integer needApproval = request.getPermission().getNeedApproval() != null 
+            ? request.getPermission().getNeedApproval() : 1;
+        callback.setStatus(needApproval == 0 ? 2 : 1); // 无需审批直接上架(2)，否则待审(1)
+        
         callback.setCreateTime(new Date());
         callback.setLastUpdateTime(new Date());
         callback.setCreateBy("system"); // TODO: 从上下文获取当前用户
@@ -188,23 +209,7 @@ public class CallbackService {
         // 保存回调
         callbackMapper.insert(callback);
 
-        // 创建审批记录（如果存在默认审批流程）
-        ApprovalFlow defaultFlow = approvalFlowMapper.selectDefaultFlow();
-        if (defaultFlow != null) {
-            approvalEngine.createApproval(
-                defaultFlow.getId(),
-                ApprovalEngine.BusinessType.CALLBACK_REGISTER,
-                callbackId,
-                "user001",  // TODO: 从上下文获取申请人ID
-                "system",  // 申请人名称
-                "system"
-            );
-            log.info("创建审批记录: callbackId={}, flowId={}", callbackId, defaultFlow.getId());
-        } else {
-            log.warn("未找到默认审批流程，回调将保持待审状态但不创建审批记录");
-        }
-
-        // 创建权限
+        // 创建权限（先创建权限，再创建审批记录）
         Long permissionId = idGenerator.nextId();
         Permission permission = new Permission();
         permission.setId(permissionId);
@@ -214,6 +219,9 @@ public class CallbackService {
         permission.setResourceType("callback");
         permission.setResourceId(callbackId);
         permission.setCategoryId(categoryId);
+        // ✅ v2.8.0新增：审批配置字段
+        permission.setNeedApproval(needApproval);
+        permission.setResourceNodes(request.getPermission().getResourceNodes());
         permission.setStatus(1); // 启用
         permission.setCreateTime(new Date());
         permission.setLastUpdateTime(new Date());
@@ -222,6 +230,26 @@ public class CallbackService {
 
         // 保存权限
         permissionMapper.insert(permission);
+
+        // ✅ v2.8.0变更：根据 needApproval 决定是否创建审批记录
+        // 只有需要审批的资源才创建审批记录
+        if (needApproval == 1) {
+            try {
+                approvalEngine.createApproval(
+                    ApprovalEngine.BusinessType.CALLBACK_REGISTER,
+                    permissionId,        // ✅ permissionId：用于获取资源审批节点
+                    callbackId,          // ✅ businessId：回调 ID
+                    "user001",           // TODO: 从上下文获取 applicantId
+                    "system",            // applicantName
+                    "system"             // operator
+                );
+                log.info("创建审批记录: callbackId={}, permissionId={}", callbackId, permissionId);
+            } catch (Exception e) {
+                log.warn("创建审批记录失败，回调将保持待审状态: callbackId={}", callbackId, e);
+            }
+        } else {
+            log.info("回调无需审批，直接上架: callbackId={}, permissionId={}", callbackId, permissionId);
+        }
 
         // 保存属性（如果有）
         List<CallbackProperty> savedProperties = new ArrayList<>();
@@ -430,9 +458,12 @@ public class CallbackService {
     /**
      * 转换为列表响应
      */
-    private CallbackListResponse convertToListResponse(Callback callback) {
+    private CallbackListResponse convertToListResponse(Callback callback, Map<Long, String> docUrlMap) {
         // 查询权限信息
         Permission permission = permissionMapper.selectByResource("callback", callback.getId());
+
+        // ✅ 从 Map 中获取 docUrl
+        String docUrl = docUrlMap.get(callback.getId());
 
         return CallbackListResponse.builder()
                 .id(String.valueOf(callback.getId()))
@@ -442,6 +473,7 @@ public class CallbackService {
                 .categoryName(callback.getCategoryName()) // 从 JOIN 查询获取
                 .status(callback.getStatus())
                 .permission(permission != null ? convertToPermissionDto(permission) : null)
+                .docUrl(docUrl)  // ✅ 新增
                 .createTime(callback.getCreateTime())
                 .build();
     }
@@ -477,6 +509,9 @@ public class CallbackService {
                 .nameEn(permission.getNameEn())
                 .scope(permission.getScope())
                 .status(permission.getStatus())
+                // ✅ v2.8.0新增：审批配置字段
+                .needApproval(permission.getNeedApproval())
+                .resourceNodes(permission.getResourceNodes())
                 .build();
     }
 

@@ -91,4 +91,10 @@ public class ApiListResponse implements Serializable {
      */
     @Schema(description = "创建时间")
     private Date createTime;
+
+    /**
+     * 文档链接（从properties中提取）
+     */
+    @Schema(description = "文档链接")
+    private String docUrl;
 }

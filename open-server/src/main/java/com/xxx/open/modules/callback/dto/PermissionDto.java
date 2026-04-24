@@ -48,4 +48,18 @@ public class PermissionDto implements Serializable {
      * 状态：0=禁用, 1=启用
      */
     private Integer status;
+
+    /**
+     * 是否需要审批：0=不需要, 1=需要
+     * 
+     * v2.8.0新增字段
+     */
+    private Integer needApproval;
+
+    /**
+     * 资源级审批节点配置（JSON格式字符串）
+     * 
+     * v2.8.0新增字段
+     */
+    private String resourceNodes;
 }

@@ -4,9 +4,11 @@
 <mapper namespace="com.xxx.open.modules.approval.mapper.ApprovalRecordMapper">
 
     <!-- 结果映射 -->
+    <!-- v2.8.0变更：移除 flow_id，新增 combined_nodes -->
     <resultMap id="BaseResultMap" type="com.xxx.open.modules.approval.entity.ApprovalRecord">
         <id column="id" property="id"/>
-        <result column="flow_id" property="flowId"/>
+        <!-- ✅ 移除 flow_id 映射 -->
+        <result column="combined_nodes" property="combinedNodes"/>
         <result column="business_type" property="businessType"/>
         <result column="business_id" property="businessId"/>
         <result column="applicant_id" property="applicantId"/>
@@ -21,18 +23,20 @@
     </resultMap>
 
     <!-- 基础列 -->
+    <!-- v2.8.0变更：移除 flow_id，新增 combined_nodes -->
     <sql id="Base_Column_List">
-        id, flow_id, business_type, business_id, applicant_id, applicant_name, status, current_node,
+        id, combined_nodes, business_type, business_id, applicant_id, applicant_name, status, current_node,
         create_time, last_update_time, create_by, last_update_by, completed_at
     </sql>
 
     <!-- 插入审批记录 -->
+    <!-- v2.8.0变更：移除 flow_id，新增 combined_nodes -->
     <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalRecord">
         INSERT INTO openplatform_v2_approval_record_t (
-            id, flow_id, business_type, business_id, applicant_id, applicant_name, status, current_node,
+            id, combined_nodes, business_type, business_id, applicant_id, applicant_name, status, current_node,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{flowId}, #{businessType}, #{businessId}, #{applicantId}, #{applicantName}, #{status}, #{currentNode},
+            #{id}, #{combinedNodes}, #{businessType}, #{businessId}, #{applicantId}, #{applicantName}, #{status}, #{currentNode},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>

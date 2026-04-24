@@ -26,10 +26,8 @@ public class ApprovalFlowUpdateRequest implements Serializable {
      */
     private String nameEn;
 
-    /**
-     * 是否默认流程
-     */
-    private Integer isDefault;
+    // ✅ v2.8.0 变更：移除 isDefault 字段
+    // 原因：审批流程类型由 code 标识，无法通过更新修改
 
     /**
      * 审批节点列表

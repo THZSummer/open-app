@@ -78,25 +78,33 @@ INSERT INTO `openplatform_v2_category_t` (`id`, `category_alias`, `name_cn`, `na
 -- 说明: 审批流程模板定义（生产环境必需）
 -- ============================================================================
 
--- 1. 默认审批流
-INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `is_default`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
-(1, '默认审批流', 'Default Approval Flow', 'default', '系统默认审批流程，适用于未配置审批流的场景', 'System default approval flow, applicable to scenarios without configured approval flow', 1, '[{"type":"approver","userId":"admin","userName":"系统管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
+-- 1. 全局审批流程
+INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
+(1, '全局审批流程', 'Global Approval Flow', 'global', '系统全局审批流程，适用于所有申请的最终审核', 'System global approval flow, applicable to final review of all applications', '[{"type":"approver","userId":"admin","userName":"系统管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
 
--- 2. API注册审批流（二级审批）
-INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `is_default`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
-(2, 'API注册审批流', 'API Registration Approval Flow', 'api_register', 'API资源注册审批流程，需要分类责任人和平台管理员二级审批', 'API resource registration approval flow, requires two-level approval from category owner and platform admin', 0, '[{"type":"approver","userId":"category_owner","userName":"分类责任人","order":1},{"type":"approver","userId":"admin","userName":"平台管理员","order":2}]', 1, NOW(3), NOW(3), 'system', 'system');
+-- 2. API注册审批流程（场景审批）
+INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
+(2, 'API注册审批流程', 'API Registration Approval Flow', 'api_register', 'API资源注册审批流程', 'API resource registration approval flow', '[{"type":"approver","userId":"api_admin","userName":"API管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
 
--- 3. 权限申请审批流（三级审批）
-INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `is_default`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
-(3, '权限申请审批流', 'Permission Apply Approval Flow', 'permission_apply', '权限申请审批流程，需要应用管理员、分类责任人和安全管理员三级审批', 'Permission application approval flow, requires three-level approval', 0, '[{"type":"approver","userId":"app_manager","userName":"应用管理员","order":1},{"type":"approver","userId":"category_owner","userName":"分类责任人","order":2},{"type":"approver","userId":"security_admin","userName":"安全管理员","order":3}]', 1, NOW(3), NOW(3), 'system', 'system');
+-- 3. 事件注册审批流程（场景审批）
+INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
+(3, '事件注册审批流程', 'Event Registration Approval Flow', 'event_register', '事件资源注册审批流程', 'Event resource registration approval flow', '[{"type":"approver","userId":"event_admin","userName":"事件管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
 
--- 4. 事件注册审批流
-INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `is_default`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
-(4, '事件注册审批流', 'Event Registration Approval Flow', 'event_register', '事件资源注册审批流程', 'Event resource registration approval flow', 0, '[{"type":"approver","userId":"category_owner","userName":"分类责任人","order":1},{"type":"approver","userId":"admin","userName":"平台管理员","order":2}]', 1, NOW(3), NOW(3), 'system', 'system');
+-- 4. 回调注册审批流程（场景审批）
+INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
+(4, '回调注册审批流程', 'Callback Registration Approval Flow', 'callback_register', '回调资源注册审批流程', 'Callback resource registration approval flow', '[{"type":"approver","userId":"callback_admin","userName":"回调管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
 
--- 5. 快速审批流（单级）
-INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `is_default`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
-(5, '快速审批流', 'Quick Approval Flow', 'quick', '快速审批流程，适用于低风险操作', 'Quick approval flow for low-risk operations', 0, '[{"type":"approver","userId":"auto_approver","userName":"自动审批","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
+-- 5. API权限申请审批流程（场景审批，资源审批节点从permission.resource_nodes获取）
+INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
+(5, 'API权限申请审批流程', 'API Permission Apply Approval Flow', 'api_permission_apply', 'API权限申请审批流程', 'API permission application approval flow', '[{"type":"approver","userId":"perm_admin","userName":"权限管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
+
+-- 6. 事件权限申请审批流程（场景审批，资源审批节点从permission.resource_nodes获取）
+INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
+(6, '事件权限申请审批流程', 'Event Permission Apply Approval Flow', 'event_permission_apply', '事件权限申请审批流程', 'Event permission application approval flow', '[{"type":"approver","userId":"perm_admin","userName":"权限管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
+
+-- 7. 回调权限申请审批流程（场景审批，资源审批节点从permission.resource_nodes获取）
+INSERT INTO `openplatform_v2_approval_flow_t` (`id`, `name_cn`, `name_en`, `code`, `description_cn`, `description_en`, `nodes`, `status`, `create_time`, `last_update_time`, `create_by`, `last_update_by`) VALUES
+(7, '回调权限申请审批流程', 'Callback Permission Apply Approval Flow', 'callback_permission_apply', '回调权限申请审批流程', 'Callback permission application approval flow', '[{"type":"approver","userId":"perm_admin","userName":"权限管理员","order":1}]', 1, NOW(3), NOW(3), 'system', 'system');
 
 SET FOREIGN_KEY_CHECKS = 1;
 
@@ -105,5 +113,5 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- 
 -- 数据统计：
 -- - 分类表 (category_t): 13 条
--- - 审批流程模板表 (approval_flow_t): 5 条
+-- - 审批流程模板表 (approval_flow_t): 7 条
 -- ============================================================================

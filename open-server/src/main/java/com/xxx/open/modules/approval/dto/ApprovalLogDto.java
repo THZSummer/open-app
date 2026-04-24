@@ -22,6 +22,23 @@ public class ApprovalLogDto implements Serializable {
     private Integer order;
 
     /**
+     * 审批级别（v2.8.0新增）
+     * 
+     * 标识本次审批操作属于哪一级审批：
+     * - resource = 资源审批（资源提供方审核）
+     * - scene = 场景审批（业务场景审核）
+     * - global = 全局审批（平台运营审核）
+     */
+    private String level;
+
+    /**
+     * 审批级别名称（v2.8.0新增）
+     * 
+     * 用于前端显示审批级别的中文名称
+     */
+    private String levelName;
+
+    /**
      * 操作人ID
      */
     private String operatorId;

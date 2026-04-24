@@ -58,10 +58,19 @@ public class ApprovalDetailResponse implements Serializable {
      */
     private Integer status;
 
+    // ✅ v2.8.0 变更：移除 flowId 字段
+    // 原因：审批记录直接存储 combinedNodes，不再关联审批流程表
+    // 审批节点从 combinedNodes 解析，数据完全独立
+
     /**
-     * 审批流程ID
+     * 组合审批节点列表（v2.8.0新增）
+     * 
+     * 包含完整的三级审批节点信息：
+     * - 资源审批节点（level='resource')
+     * - 场景审批节点（level='scene')
+     * - 全局审批节点（level='global')
      */
-    private String flowId;
+    private List<ApprovalNodeDto> combinedNodes;
 
     /**
      * 当前节点索引
