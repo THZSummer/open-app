@@ -97,6 +97,7 @@ export const fetchApi = async (url, options = {}) => {
   }
   const response = await fetch(fullUrl, {
     ...fetchOptions,
+    credentials: 'include',  // 确保请求携带 Cookie
     headers: {
       'Content-Type': 'application/json',
       ...fetchOptions.headers,

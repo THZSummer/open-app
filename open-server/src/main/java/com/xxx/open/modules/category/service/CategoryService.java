@@ -1,5 +1,6 @@
 package com.xxx.open.modules.category.service;
 
+import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
 import com.xxx.open.modules.category.dto.*;
@@ -151,8 +152,8 @@ public class CategoryService {
         category.setStatus(1); // 默认启用
         category.setCreateTime(new Date());
         category.setLastUpdateTime(new Date());
-        category.setCreateBy("system"); // TODO: 从上下文获取当前用户
-        category.setLastUpdateBy("system");
+        category.setCreateBy(UserContextHolder.getUserId());
+        category.setLastUpdateBy(UserContextHolder.getUserId());
 
         // 保存
         categoryMapper.insert(category);
@@ -182,7 +183,7 @@ public class CategoryService {
         category.setNameEn(request.getNameEn());
         category.setSortOrder(request.getSortOrder());
         category.setLastUpdateTime(new Date());
-        category.setLastUpdateBy("system"); // TODO: 从上下文获取当前用户
+        category.setLastUpdateBy(UserContextHolder.getUserId());
 
         // 保存
         categoryMapper.update(category);
@@ -275,8 +276,8 @@ public class CategoryService {
         owner.setUserName(request.getUserName());
         owner.setCreateTime(new Date());
         owner.setLastUpdateTime(new Date());
-        owner.setCreateBy("system"); // TODO: 从上下文获取当前用户
-        owner.setLastUpdateBy("system");
+        owner.setCreateBy(UserContextHolder.getUserId());
+        owner.setLastUpdateBy(UserContextHolder.getUserId());
 
         // 保存
         categoryOwnerMapper.insert(owner);

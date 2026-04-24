@@ -1,5 +1,6 @@
 package com.xxx.open.modules.approval.controller;
 
+import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.model.ApiResponse;
 import com.xxx.open.modules.approval.dto.*;
 import com.xxx.open.modules.approval.service.ApprovalService;
@@ -101,7 +102,7 @@ public class ApprovalController {
             @Valid @RequestBody ApprovalFlowCreateRequest request) {
         log.info("创建审批流程: code={}", request.getCode());
 
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operator = UserContextHolder.getUserId();
         ApprovalFlowDetailResponse data = approvalService.createFlow(request, operator);
         return ApiResponse.success(data);
     }
@@ -119,7 +120,7 @@ public class ApprovalController {
             @Valid @RequestBody ApprovalFlowUpdateRequest request) {
         log.info("更新审批流程: id={}", id);
 
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operator = UserContextHolder.getUserId();
         ApprovalFlowDetailResponse data = approvalService.updateFlow(Long.parseLong(id), request, operator);
         return ApiResponse.success(data);
     }
@@ -134,7 +135,7 @@ public class ApprovalController {
     public ApiResponse<Void> deleteFlow(@PathVariable String id) {
         log.info("删除审批流程: id={}", id);
 
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operator = UserContextHolder.getUserId();
         approvalService.deleteFlow(Long.parseLong(id), operator);
 
         return ApiResponse.success(null);
@@ -213,9 +214,9 @@ public class ApprovalController {
             @RequestBody ApprovalActionRequest request) {
         log.info("同意审批: id={}", id);
 
-        String operatorId = "user001"; // TODO: 从上下文获取当前用户
-        String operatorName = "审批人"; // TODO: 从上下文获取当前用户
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operatorId = UserContextHolder.getUserId();
+        String operatorName = UserContextHolder.getUserName();
+        String operator = UserContextHolder.getUserId();
 
         ApprovalActionResponse data = approvalService.approve(
                 Long.parseLong(id), request, operatorId, operatorName, operator);
@@ -235,9 +236,9 @@ public class ApprovalController {
             @Valid @RequestBody ApprovalActionRequest request) {
         log.info("驳回审批: id={}", id);
 
-        String operatorId = "user001"; // TODO: 从上下文获取当前用户
-        String operatorName = "审批人"; // TODO: 从上下文获取当前用户
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operatorId = UserContextHolder.getUserId();
+        String operatorName = UserContextHolder.getUserName();
+        String operator = UserContextHolder.getUserId();
 
         ApprovalActionResponse data = approvalService.reject(
                 Long.parseLong(id), request, operatorId, operatorName, operator);
@@ -254,7 +255,7 @@ public class ApprovalController {
     public ApiResponse<ApprovalActionResponse> cancel(@PathVariable String id) {
         log.info("撤销审批: id={}", id);
 
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operator = UserContextHolder.getUserId();
 
         ApprovalActionResponse data = approvalService.cancel(Long.parseLong(id), operator);
         return ApiResponse.success(data);
@@ -271,9 +272,9 @@ public class ApprovalController {
             @Valid @RequestBody BatchApprovalRequest request) {
         log.info("批量同意审批: approvalIds={}", request.getApprovalIds());
 
-        String operatorId = "user001"; // TODO: 从上下文获取当前用户
-        String operatorName = "审批人"; // TODO: 从上下文获取当前用户
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operatorId = UserContextHolder.getUserId();
+        String operatorName = UserContextHolder.getUserName();
+        String operator = UserContextHolder.getUserId();
 
         BatchApprovalResponse data = approvalService.batchApprove(request, operatorId, operatorName, operator);
         return ApiResponse.success(data);
@@ -290,9 +291,9 @@ public class ApprovalController {
             @Valid @RequestBody BatchApprovalRequest request) {
         log.info("批量驳回审批: approvalIds={}", request.getApprovalIds());
 
-        String operatorId = "user001"; // TODO: 从上下文获取当前用户
-        String operatorName = "审批人"; // TODO: 从上下文获取当前用户
-        String operator = "system"; // TODO: 从上下文获取当前用户
+        String operatorId = UserContextHolder.getUserId();
+        String operatorName = UserContextHolder.getUserName();
+        String operator = UserContextHolder.getUserId();
 
         BatchApprovalResponse data = approvalService.batchReject(request, operatorId, operatorName, operator);
         return ApiResponse.success(data);

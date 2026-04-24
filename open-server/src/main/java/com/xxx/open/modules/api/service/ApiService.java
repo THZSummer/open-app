@@ -1,5 +1,6 @@
 package com.xxx.open.modules.api.service;
 
+import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
@@ -519,7 +520,6 @@ public class ApiService {
      * 获取当前用户
      */
     private String getCurrentUser() {
-        // TODO: 从安全上下文获取当前用户
-        return "system";
+        return UserContextHolder.getUserId();
     }
 }

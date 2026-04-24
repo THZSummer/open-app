@@ -1,5 +1,6 @@
 package com.xxx.open.modules.permission.service;
 
+import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
@@ -1085,7 +1086,6 @@ public class PermissionService {
      * 获取当前用户
      */
     private String getCurrentUser() {
-        // TODO: 从安全上下文获取当前用户
-        return "system";
+        return UserContextHolder.getUserId();
     }
 }

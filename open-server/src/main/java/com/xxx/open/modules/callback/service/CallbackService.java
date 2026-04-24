@@ -1,5 +1,6 @@
 package com.xxx.open.modules.callback.service;
 
+import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
 import com.xxx.open.common.util.SnowflakeIdGenerator;
@@ -203,8 +204,8 @@ public class CallbackService {
         
         callback.setCreateTime(new Date());
         callback.setLastUpdateTime(new Date());
-        callback.setCreateBy("system"); // TODO: 从上下文获取当前用户
-        callback.setLastUpdateBy("system");
+        callback.setCreateBy(UserContextHolder.getUserId());
+        callback.setLastUpdateBy(UserContextHolder.getUserId());
 
         // 保存回调
         callbackMapper.insert(callback);
@@ -225,8 +226,8 @@ public class CallbackService {
         permission.setStatus(1); // 启用
         permission.setCreateTime(new Date());
         permission.setLastUpdateTime(new Date());
-        permission.setCreateBy("system");
-        permission.setLastUpdateBy("system");
+        permission.setCreateBy(UserContextHolder.getUserId());
+        permission.setLastUpdateBy(UserContextHolder.getUserId());
 
         // 保存权限
         permissionMapper.insert(permission);
@@ -239,9 +240,9 @@ public class CallbackService {
                     ApprovalEngine.BusinessType.CALLBACK_REGISTER,
                     permissionId,        // ✅ permissionId：用于获取资源审批节点
                     callbackId,          // ✅ businessId：回调 ID
-                    "user001",           // TODO: 从上下文获取 applicantId
-                    "system",            // applicantName
-                    "system"             // operator
+                    UserContextHolder.getUserId(),           // applicantId
+                    UserContextHolder.getUserName(),         // applicantName
+                    UserContextHolder.getUserId()            // operator
                 );
                 log.info("创建审批记录: callbackId={}, permissionId={}", callbackId, permissionId);
             } catch (Exception e) {
@@ -292,7 +293,7 @@ public class CallbackService {
             callback.setNameEn(request.getNameEn());
         }
         callback.setLastUpdateTime(new Date());
-        callback.setLastUpdateBy("system");
+        callback.setLastUpdateBy(UserContextHolder.getUserId());
 
         // 如果更新分类ID
         Long categoryId = callback.getCategoryId();
@@ -325,7 +326,7 @@ public class CallbackService {
                 permission.setCategoryId(categoryId);
             }
             permission.setLastUpdateTime(new Date());
-            permission.setLastUpdateBy("system");
+            permission.setLastUpdateBy(UserContextHolder.getUserId());
             permissionMapper.update(permission);
         }
 
@@ -410,7 +411,7 @@ public class CallbackService {
         // 更新状态为草稿
         callback.setStatus(0); // 草稿
         callback.setLastUpdateTime(new Date());
-        callback.setLastUpdateBy("system");
+        callback.setLastUpdateBy(UserContextHolder.getUserId());
 
         // 保存
         callbackMapper.update(callback);
@@ -442,8 +443,8 @@ public class CallbackService {
             property.setStatus(1); // 启用
             property.setCreateTime(now);
             property.setLastUpdateTime(now);
-            property.setCreateBy("system");
-            property.setLastUpdateBy("system");
+            property.setCreateBy(UserContextHolder.getUserId());
+            property.setLastUpdateBy(UserContextHolder.getUserId());
             properties.add(property);
         }
 
