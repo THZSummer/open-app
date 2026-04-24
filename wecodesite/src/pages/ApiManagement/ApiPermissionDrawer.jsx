@@ -81,8 +81,9 @@ const transformCategoriesToModules = (categories) => {
  * @param {Function} onClose - 关闭抽屉回调
  * @param {Function} onConfirm - 确认开通权限回调
  * @param {string} appType - 应用类型：'business'或'personal'
+ * @param {string} appId - 应用ID
  */
-function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' }) {
+function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', appId }) {
   // 是否启用身份权限功能开关（仅控制第一层Tab是否显示）
   const enableIdentityPermission = mockFeatureFlag.enableIdentityPermission;
 
@@ -140,6 +141,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
       categoryId: currentCategoryId,
       curPage: currentPage,
       pageSize: pageSize,
+      appId: appId,
       ...params
     };
     
@@ -150,7 +152,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
     setApisData(resultData);
     setTotal(resultTotal);
     setLoading(false);
-  }, [activeIdentityType, activeApiType, filterKeyword, filterNeedReview, activeModule, modulesData, currentPage, pageSize, isInternalUpdate]);
+  }, [activeIdentityType, activeApiType, filterKeyword, filterNeedReview, activeModule, modulesData, currentPage, pageSize, isInternalUpdate, appId]);
 
   /**
    * 抽屉打开时初始化状态
@@ -342,6 +344,18 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
       },
     },
     {
+      title: '订阅状态',
+      dataIndex: 'isSubscribed',
+      key: 'isSubscribed',
+      width: 100,
+      render: (isSubscribed) => {
+        if (isSubscribed === 1) {
+          return <Tag color="success">已订阅</Tag>;
+        }
+        return <Tag color="default">未订阅</Tag>;
+      },
+    },
+    {
       title: '操作',
       key: 'action',
       render: (_, record) => {
@@ -359,6 +373,9 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business' })
   const rowSelection = {
     selectedRowKeys,
     onChange: handleSelectChange,
+    getCheckboxProps: (record) => ({
+      disabled: record.isSubscribed === 1,  // 已订阅的权限禁用勾选
+    }),
   };
 
   /**

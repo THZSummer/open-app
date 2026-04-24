@@ -268,6 +268,7 @@ function ApiManagement() {
         onClose={() => setDrawerOpen(false)}
         onConfirm={handleConfirmPermission}
         appType={appType}
+        appId={appId}
       />
 
       {/* 审批地址弹窗组件 */}

@@ -244,6 +244,7 @@ function Events() {
         onConfirm={handleAddEvent}
         selectedEvents={events}
         subscribeLoading={subscribeLoading}
+        appId={appId}
       />
 
       <EventSubscriptionDrawer

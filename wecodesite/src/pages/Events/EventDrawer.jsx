@@ -5,7 +5,7 @@ import './EventDrawer.m.less';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeLoading = false }) {
+function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeLoading = false, appId }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState(
     selectedEvents.map(e => e.id)
   );
@@ -18,13 +18,13 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
   const loadData = useCallback(async (page = currentPage, size = pageSize) => {
     setLoading(true);
     try {
-      const result = await fetchAllEvents({ curPage: page, pageSize: size });
+      const result = await fetchAllEvents({ curPage: page, pageSize: size, appId });
       setAllEvents(result.data || []);
       setTotal(result.page?.total || 0);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, appId]);
 
   useEffect(() => {
     if (open) {
@@ -79,6 +79,18 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
       },
     },
     {
+      title: '订阅状态',
+      dataIndex: 'isSubscribed',
+      key: 'isSubscribed',
+      width: 100,
+      render: (isSubscribed) => {
+        if (isSubscribed === 1) {
+          return <Tag color="success">已订阅</Tag>;
+        }
+        return <Tag color="default">未订阅</Tag>;
+      },
+    },
+    {
       title: '操作',
       key: 'action',
       render: (_, record) => {
@@ -95,6 +107,9 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
   const rowSelection = {
     selectedRowKeys,
     onChange: handleSelectChange,
+    getCheckboxProps: (record) => ({
+      disabled: record.isSubscribed === 1,  // 已订阅的事件禁用勾选
+    }),
   };
 
   return (

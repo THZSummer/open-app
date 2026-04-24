@@ -44,6 +44,11 @@ public class CallbackSubscriptionListResponse implements Serializable {
     private PermissionInfo permission;
 
     /**
+     * 回调信息
+     */
+    private CallbackInfo callback;
+
+    /**
      * 分类信息
      */
     private CategoryInfo category;
@@ -74,6 +79,16 @@ public class CallbackSubscriptionListResponse implements Serializable {
     private Date createTime;
 
     /**
+     * 审批人信息
+     */
+    private ApproverInfo approver;
+
+    /**
+     * 审批URL
+     */
+    private String approvalUrl;
+
+    /**
      * 权限信息
      */
     @Data
@@ -93,6 +108,50 @@ public class CallbackSubscriptionListResponse implements Serializable {
          * Scope
          */
         private String scope;
+    }
+
+    /**
+     * 回调信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CallbackInfo implements Serializable {
+        
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 回调名称
+         */
+        private String nameCn;
+
+        /**
+         * 文档URL
+         */
+        private String docUrl;
+    }
+
+    /**
+     * 审批人信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ApproverInfo implements Serializable {
+        
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * 用户ID
+         */
+        private String userId;
+
+        /**
+         * 用户名称
+         */
+        private String userName;
     }
 
     /**
