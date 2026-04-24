@@ -229,17 +229,42 @@ public class ApprovalService {
         return records.stream().map(record -> {
             ApprovalPendingListResponse response = new ApprovalPendingListResponse();
             response.setId(String.valueOf(record.getId()));
-            response.setType(getApprovalType(record.getBusinessType()));
-            response.setBusinessType(record.getBusinessType().replace("_register", "").replace("_apply", ""));
+            response.setBusinessType(record.getBusinessType());
             response.setBusinessId(String.valueOf(record.getBusinessId()));
-            response.setBusinessName(getBusinessName(record.getBusinessType(), record.getBusinessId()));
+            // 设置业务名称（从业务数据中获取）
+            Map<String, Object> businessData = getBusinessData(record.getBusinessType(), record.getBusinessId());
+            if (businessData != null && businessData.get("nameCn") != null) {
+                response.setBusinessName((String) businessData.get("nameCn"));
+            }
             response.setApplicantId(record.getApplicantId());
             response.setApplicantName(record.getApplicantName());
             response.setStatus(record.getStatus());
             response.setCurrentNode(record.getCurrentNode());
             response.setCreateTime(record.getCreateTime());
             return response;
-        }).collect(Collectors.toList());
+        })
+        // 过滤审批人（如果指定了 approverId）
+        .filter(response -> {
+            if (request.getApproverId() == null || request.getApproverId().isEmpty()) {
+                return true; // 未指定审批人，返回所有
+            }
+            // 获取原始记录，解析 combined_nodes 判断当前审批人
+            ApprovalRecord record = records.stream()
+                .filter(r -> String.valueOf(r.getId()).equals(response.getId()))
+                .findFirst()
+                .orElse(null);
+            if (record == null || record.getCombinedNodes() == null) {
+                return false;
+            }
+            List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
+            if (nodes.isEmpty() || record.getCurrentNode() >= nodes.size()) {
+                return false;
+            }
+            // 判断当前节点的审批人是否匹配
+            ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
+            return request.getApproverId().equals(currentNode.getUserId());
+        })
+        .collect(Collectors.toList());
     }
 
     /**
@@ -272,13 +297,19 @@ public class ApprovalService {
         // 查询审批日志
         List<ApprovalLog> logs = logMapper.selectByRecordId(id);
 
-        // 填充节点状态
+        // 填充节点状态和审批信息
         Map<Integer, Integer> nodeStatusMap = new HashMap<>();
         Map<Integer, String> nodeLevelMap = new HashMap<>();
+        // v2.8.1新增：审批时间和意见映射
+        Map<Integer, Date> nodeApproveTimeMap = new HashMap<>();
+        Map<Integer, String> nodeCommentMap = new HashMap<>();
         
         for (ApprovalLog log : logs) {
             nodeStatusMap.put(log.getNodeIndex(), log.getAction() == 0 ? 1 : 2);
             nodeLevelMap.put(log.getNodeIndex(), log.getLevel());  // ✅ 从日志获取 level
+            // v2.8.1新增：填充审批时间和意见
+            nodeApproveTimeMap.put(log.getNodeIndex(), log.getCreateTime());
+            nodeCommentMap.put(log.getNodeIndex(), log.getComment());
         }
 
         for (int i = 0; i < nodes.size(); i++) {
@@ -290,6 +321,9 @@ public class ApprovalService {
             if (i < record.getCurrentNode()) {
                 // 已处理的节点（在当前节点之前）
                 node.setStatus(nodeStatusMap.getOrDefault(i, 1));
+                // v2.8.1新增：填充审批时间和意见
+                node.setApproveTime(nodeApproveTimeMap.get(i));
+                node.setComment(nodeCommentMap.get(i));
             } else if (i == record.getCurrentNode()) {
                 // 当前节点：待审批时显示0，已审批时从日志获取状态
                 if (record.getStatus() == 0) {
@@ -297,6 +331,9 @@ public class ApprovalService {
                 } else {
                     // 审批已通过或已拒绝，从日志获取当前节点状态
                     node.setStatus(nodeStatusMap.getOrDefault(i, 1));
+                    // v2.8.1新增：填充审批时间和意见
+                    node.setApproveTime(nodeApproveTimeMap.get(i));
+                    node.setComment(nodeCommentMap.get(i));
                 }
             } else {
                 // 未处理的节点（在当前节点之后）
@@ -307,8 +344,7 @@ public class ApprovalService {
         // 构建响应
         ApprovalDetailResponse response = new ApprovalDetailResponse();
         response.setId(String.valueOf(record.getId()));
-        response.setType(getApprovalType(record.getBusinessType()));
-        response.setBusinessType(record.getBusinessType().replace("_register", "").replace("_apply", ""));
+        response.setBusinessType(record.getBusinessType());
         response.setBusinessId(String.valueOf(record.getBusinessId()));
         response.setBusinessData(getBusinessData(record.getBusinessType(), record.getBusinessId()));
         response.setApplicantId(record.getApplicantId());
@@ -466,50 +502,6 @@ public class ApprovalService {
     // ==================== 辅助方法 ====================
 
     /**
-     * 获取审批类型
-     */
-    private String getApprovalType(String businessType) {
-        if (businessType.endsWith("_register")) {
-            return "resource_register";
-        } else if (businessType.endsWith("_apply")) {
-            return "permission_apply";
-        }
-        return businessType;
-    }
-
-    /**
-     * 获取业务名称
-     */
-    private String getBusinessName(String businessType, Long businessId) {
-        try {
-            switch (businessType) {
-                case "api_register":
-                    Api api = apiMapper.selectById(businessId);
-                    return api != null ? api.getNameCn() : null;
-                case "event_register":
-                    Event event = eventMapper.selectById(businessId);
-                    return event != null ? event.getNameCn() : null;
-                case "callback_register":
-                    Callback callback = callbackMapper.selectById(businessId);
-                    return callback != null ? callback.getNameCn() : null;
-                case "api_permission_apply":
-                case "event_permission_apply":
-                case "callback_permission_apply":
-                    Subscription subscription = subscriptionMapper.selectById(businessId);
-                    if (subscription != null) {
-                        return "权限申请";
-                    }
-                    return null;
-                default:
-                    return null;
-            }
-        } catch (Exception e) {
-            log.error("获取业务名称失败: businessType={}, businessId={}", businessType, businessId, e);
-            return null;
-        }
-    }
-
-    /**
      * 获取业务数据
      */
     private Map<String, Object> getBusinessData(String businessType, Long businessId) {
@@ -618,4 +610,5 @@ public class ApprovalService {
                 return "未知";
         }
     }
+
 }

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  * 审批节点 DTO
@@ -58,4 +59,18 @@ public class ApprovalNodeDto implements Serializable {
      * 0=待审批, 1=已通过, 2=已拒绝
      */
     private Integer status;
+
+    /**
+     * 审批时间（v2.8.1新增）
+     * 
+     * 记录该节点的审批时间，用于前端显示审批进度
+     */
+    private Date approveTime;
+
+    /**
+     * 审批意见（v2.8.1新增）
+     * 
+     * 记录该节点的审批意见，用于前端显示审批详情
+     */
+    private String comment;
 }

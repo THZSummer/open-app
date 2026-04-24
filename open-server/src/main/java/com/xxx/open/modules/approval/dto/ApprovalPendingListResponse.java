@@ -22,11 +22,6 @@ public class ApprovalPendingListResponse implements Serializable {
     private String id;
 
     /**
-     * 审批类型：resource_register, permission_apply
-     */
-    private String type;
-
-    /**
      * 业务类型：api, event, callback, permission
      */
     private String businessType;

@@ -9,6 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
+import java.util.TimeZone;
+
 /**
  * Jackson 配置
  * 
@@ -34,6 +36,9 @@ public class JacksonConfig {
 
         // 禁用日期序列化为时间戳
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        // 设置时区为北京时间
+        objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
 
         // Long 类型序列化为 String，避免 JavaScript 精度丢失
         SimpleModule simpleModule = new SimpleModule();

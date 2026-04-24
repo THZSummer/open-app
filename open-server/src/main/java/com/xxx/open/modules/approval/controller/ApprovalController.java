@@ -158,24 +158,34 @@ public class ApprovalController {
     public ApiResponse<List<ApprovalPendingListResponse>> getPendingList(
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false, defaultValue = "0") Integer status,
+            @RequestParam(required = false) Integer status,
             @RequestParam(required = false) String applicantId,
+            @RequestParam(required = false) String approverId,
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 
-        log.info("获取待审批列表: type={}, keyword={}, status={}, applicantId={}, curPage={}, pageSize={}", 
-                type, keyword, status, applicantId, curPage, pageSize);
+        log.info("获取待审批列表: type={}, keyword={}, status={}, applicantId={}, approverId={}, curPage={}, pageSize={}", 
+                type, keyword, status, applicantId, approverId, curPage, pageSize);
 
         ApprovalPendingListRequest request = new ApprovalPendingListRequest();
         request.setType(type);
         request.setKeyword(keyword);
         request.setStatus(status);
-        request.setApplicantId(applicantId);
+        // 处理 applicantId=current 特殊值，获取当前用户ID
+        if ("current".equals(applicantId)) {
+            request.setApplicantId(UserContextHolder.getUserId());
+        } else {
+            request.setApplicantId(applicantId);
+        }
+        // 处理 approverId=current 特殊值
+        String actualApproverId = "current".equals(approverId) ? UserContextHolder.getUserId() : approverId;
+        request.setApproverId(actualApproverId);
         request.setCurPage(curPage);
         request.setPageSize(pageSize);
 
         List<ApprovalPendingListResponse> data = approvalService.getPendingList(request);
-        Long total = approvalService.countPendingList(type, keyword, status, applicantId);
+        String actualApplicantId = "current".equals(applicantId) ? UserContextHolder.getUserId() : applicantId;
+        Long total = approvalService.countPendingList(type, keyword, status, actualApplicantId);
 
         ApiResponse.PageResponse page = ApiResponse.PageResponse.builder()
                 .curPage(curPage)
