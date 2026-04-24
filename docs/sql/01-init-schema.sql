@@ -238,18 +238,23 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
     `id` BIGINT(20) PRIMARY KEY COMMENT '主键ID（雪花ID）',
     `name_cn` VARCHAR(100) NOT NULL COMMENT '中文名称',
     `name_en` VARCHAR(100) NOT NULL COMMENT '英文名称',
-    `code` VARCHAR(50) NOT NULL COMMENT '编码：default, api_register, permission_apply',
+    `code` VARCHAR(50) NOT NULL COMMENT '流程编码：
+        global=全局审批流程，
+        api_register=API注册审批流程，
+        event_register=事件注册审批流程，
+        callback_register=回调注册审批流程，
+        api_permission_apply=API权限申请审批流程，
+        event_permission_apply=事件权限申请审批流程，
+        callback_permission_apply=回调权限申请审批流程',
     `description_cn` TEXT COMMENT '中文描述',
     `description_en` TEXT COMMENT '英文描述',
-    `is_default` TINYINT(10) DEFAULT 0 COMMENT '是否默认：0=否, 1=是',
-    `nodes` JSON NOT NULL COMMENT '审批节点配置（JSON数组）',
+    `nodes` VARCHAR(2000) NOT NULL COMMENT '审批节点配置（JSON格式字符串）',
     `status` TINYINT(10) DEFAULT 1 COMMENT '状态：0=禁用, 1=启用',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
     `create_by` VARCHAR(100) COMMENT '创建人账号',
     `last_update_by` VARCHAR(100) COMMENT '最后更新人账号',
     UNIQUE KEY `uk_code` (`code`),
-    KEY `idx_is_default` (`is_default`),
     KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程模板表';
 
@@ -259,19 +264,24 @@ CREATE TABLE `openplatform_v2_approval_flow_t` (
 DROP TABLE IF EXISTS `openplatform_v2_approval_record_t`;
 CREATE TABLE `openplatform_v2_approval_record_t` (
     `id` BIGINT(20) PRIMARY KEY COMMENT '主键ID（雪花ID）',
-    `flow_id` BIGINT(20) NOT NULL COMMENT '审批流程ID',
-    `business_type` VARCHAR(50) NOT NULL COMMENT '业务类型：api_register, event_register, permission_apply',
-    `business_id` BIGINT(20) NOT NULL COMMENT '业务ID',
+    `combined_nodes` VARCHAR(4000) NOT NULL COMMENT '组合后的完整审批节点配置（JSON格式字符串）',
+    `business_type` VARCHAR(50) NOT NULL COMMENT '业务类型：
+        api_register = API注册审批，
+        event_register = 事件注册审批，
+        callback_register = 回调注册审批，
+        api_permission_apply = API权限申请审批，
+        event_permission_apply = 事件权限申请审批，
+        callback_permission_apply = 回调权限申请审批',
+    `business_id` BIGINT(20) NOT NULL COMMENT '业务对象ID',
     `applicant_id` VARCHAR(100) NOT NULL COMMENT '申请人ID',
     `applicant_name` VARCHAR(100) COMMENT '申请人姓名',
     `status` TINYINT(10) DEFAULT 0 COMMENT '状态：0=待审, 1=已通过, 2=已拒绝, 3=已撤销',
-    `current_node` INT DEFAULT 0 COMMENT '当前节点索引',
+    `current_node` INT DEFAULT 0 COMMENT '当前审批节点索引',
     `completed_at` DATETIME(3) COMMENT '完成时间',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
     `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
     `create_by` VARCHAR(100) COMMENT '创建人账号',
     `last_update_by` VARCHAR(100) COMMENT '最后更新人账号',
-    KEY `idx_flow_id` (`flow_id`),
     KEY `idx_business` (`business_type`, `business_id`),
     KEY `idx_applicant` (`applicant_id`),
     KEY `idx_status` (`status`)
@@ -285,6 +295,7 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
     `id` BIGINT(20) PRIMARY KEY COMMENT '主键ID（雪花ID）',
     `record_id` BIGINT(20) NOT NULL COMMENT '审批记录ID',
     `node_index` INT NOT NULL COMMENT '节点索引',
+    `level` VARCHAR(20) COMMENT '审批级别：global=全局, scene=场景, resource=资源',
     `operator_id` VARCHAR(100) NOT NULL COMMENT '操作人ID',
     `operator_name` VARCHAR(100) COMMENT '操作人姓名',
     `action` TINYINT(10) NOT NULL COMMENT '操作类型：0=同意, 1=拒绝, 2=撤销, 3=转交',
@@ -294,6 +305,7 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
     `create_by` VARCHAR(100) COMMENT '创建人账号',
     `last_update_by` VARCHAR(100) COMMENT '最后更新人账号',
     KEY `idx_record_id` (`record_id`),
+    KEY `idx_level` (`level`),
     KEY `idx_operator` (`operator_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批操作日志表';
 
