@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.StreamSupport;
 
 /**
  * Redis 连接测试接口（临时，测试完可删除）
@@ -38,7 +39,7 @@ public class RedisTestController {
                 // 获取集群信息
                 Properties info = connection.info();
                 result.put("connected", true);
-                result.put("clusterNodes", connection.clusterGetNodes().size());
+                result.put("clusterNodes", StreamSupport.stream(connection.clusterGetNodes().spliterator(), false).count());
                 
                 // 测试读写
                 String testKey = "test:connection:" + System.currentTimeMillis();
@@ -49,7 +50,7 @@ public class RedisTestController {
                 result.put("readWrite", "ok".equals(new String(value)));
                 result.put("message", "Redis 集群连接正常");
                 
-                log.info("Redis 集群连接测试成功，节点数: {}", connection.clusterGetNodes().size());
+                log.info("Redis 集群连接测试成功，节点数: {}", result.get("clusterNodes"));
             } finally {
                 if (connection != null) {
                     connection.close();
