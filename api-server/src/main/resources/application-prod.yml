@@ -15,9 +15,15 @@ spring:
       max-lifetime: 1800000
 
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:openapp}
+    cluster:
+      nodes:
+        - 192.168.3.201:6379
+        - 192.168.3.202:6379
+        - 192.168.3.203:6379
+        - 192.168.3.204:6379
+        - 192.168.3.205:6379
+      max-redirects: 3
+    password: ${REDIS_PASSWORD:changeme}
     database: 0
     timeout: 5000ms
     lettuce:
