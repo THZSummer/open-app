@@ -2,7 +2,7 @@ package com.xxx.open.modules.category.service;
 
 import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.category.dto.*;
 import com.xxx.open.modules.category.entity.Category;
 import com.xxx.open.modules.category.entity.CategoryOwner;
@@ -31,7 +31,7 @@ public class CategoryService {
 
     private final CategoryMapper categoryMapper;
     private final CategoryOwnerMapper categoryOwnerMapper;
-    private final SnowflakeIdGenerator idGenerator;
+    private final IdGeneratorStrategy idGenerator;
 
     // ==================== 分类 CRUD ====================
 

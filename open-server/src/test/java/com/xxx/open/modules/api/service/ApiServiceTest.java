@@ -1,7 +1,7 @@
 package com.xxx.open.modules.api.service;
 
 import com.xxx.open.common.exception.BusinessException;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.api.dto.ApiUpdateRequest;
 import com.xxx.open.modules.api.entity.Api;
 import com.xxx.open.modules.api.mapper.ApiMapper;
@@ -49,7 +49,7 @@ class ApiServiceTest {
     private CategoryMapper categoryMapper;
 
     @Mock
-    private SnowflakeIdGenerator idGenerator;
+    private IdGeneratorStrategy idGenerator;
 
     @InjectMocks
     private ApiService apiService;

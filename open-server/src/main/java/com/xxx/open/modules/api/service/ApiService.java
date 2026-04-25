@@ -3,7 +3,7 @@ package com.xxx.open.modules.api.service;
 import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.api.dto.*;
 import com.xxx.open.modules.api.entity.Api;
 import com.xxx.open.modules.api.entity.ApiProperty;
@@ -51,7 +51,7 @@ public class ApiService {
     private final PermissionMapper permissionMapper;
     private final PermissionPropertyMapper permissionPropertyMapper;
     private final CategoryMapper categoryMapper;
-    private final SnowflakeIdGenerator idGenerator;
+    private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
     private final ApprovalFlowMapper approvalFlowMapper;
 

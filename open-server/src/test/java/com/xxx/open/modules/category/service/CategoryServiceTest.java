@@ -1,7 +1,7 @@
 package com.xxx.open.modules.category.service;
 
 import com.xxx.open.common.exception.BusinessException;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.category.dto.*;
 import com.xxx.open.modules.category.entity.Category;
 import com.xxx.open.modules.category.entity.CategoryOwner;
@@ -39,7 +39,7 @@ class CategoryServiceTest {
     private CategoryOwnerMapper categoryOwnerMapper;
 
     @Mock
-    private SnowflakeIdGenerator idGenerator;
+    private IdGeneratorStrategy idGenerator;
 
     @InjectMocks
     private CategoryService categoryService;

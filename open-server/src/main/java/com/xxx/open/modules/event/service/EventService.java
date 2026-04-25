@@ -3,7 +3,7 @@ package com.xxx.open.modules.event.service;
 import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.category.entity.Category;
 import com.xxx.open.modules.category.mapper.CategoryMapper;
 import com.xxx.open.modules.event.dto.*;
@@ -49,7 +49,7 @@ public class EventService {
     private final PermissionMapper permissionMapper;
     private final PermissionPropertyMapper permissionPropertyMapper;
     private final CategoryMapper categoryMapper;
-    private final SnowflakeIdGenerator idGenerator;
+    private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
     private final ApprovalFlowMapper approvalFlowMapper;
 

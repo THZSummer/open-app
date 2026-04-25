@@ -1,22 +1,19 @@
-package com.xxx.open.common.util;
+package com.xxx.open.common.id;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 雪花 ID 生成器
+ * 开发环境 ID 生成器策略
  * 
- * <p>生成全局唯一的 64 位 ID，结构：</p>
- * <pre>
- * 0 - 41位时间戳 - 10位机器ID - 12位序列号
- * </pre>
+ * <p>使用雪花算法生成全局唯一 ID</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
  */
 @Slf4j
 @Component
-public class SnowflakeIdGenerator {
+public class DevIdGeneratorStrategy implements IdGeneratorStrategy {
 
     /**
      * 起始时间戳（2024-01-01 00:00:00）
@@ -88,9 +85,7 @@ public class SnowflakeIdGenerator {
      */
     private long lastTimestamp = -1L;
 
-    /**
-     * 生成下一个 ID
-     */
+    @Override
     public synchronized long nextId() {
         long timestamp = System.currentTimeMillis();
 
@@ -117,6 +112,14 @@ public class SnowflakeIdGenerator {
                 | (datacenterId << DATACENTER_ID_SHIFT)
                 | (workerId << WORKER_ID_SHIFT)
                 | sequence;
+    }
+
+    @Override
+    public boolean supports(String activeProfile) {
+        // 开发环境激活: dev, development, local
+        return "dev".equals(activeProfile) 
+                || "development".equals(activeProfile)
+                || "local".equals(activeProfile);
     }
 
     /**
