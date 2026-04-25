@@ -45,6 +45,10 @@ spring:
     #     max-wait: -1ms
     #     max-idle: 8
     #     min-idle: 0
+# MyBatis 配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+
 # 健康检查配置（不检查数据库和 Redis）
 management:
   health:
