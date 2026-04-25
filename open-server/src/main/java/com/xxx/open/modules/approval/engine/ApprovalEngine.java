@@ -3,7 +3,7 @@ package com.xxx.open.modules.approval.engine;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.open.common.exception.BusinessException;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.approval.dto.ApprovalNodeDto;
 import com.xxx.open.modules.approval.entity.ApprovalFlow;
 import com.xxx.open.modules.approval.entity.ApprovalLog;
@@ -64,7 +64,7 @@ public class ApprovalEngine {
     private final ApprovalLogMapper logMapper;
     private final SubscriptionMapper subscriptionMapper;
     private final PermissionMapper permissionMapper;
-    private final SnowflakeIdGenerator idGenerator;
+    private final IdGeneratorStrategy idGenerator;
     private final ObjectMapper objectMapper;
     
     // 资源 Mapper

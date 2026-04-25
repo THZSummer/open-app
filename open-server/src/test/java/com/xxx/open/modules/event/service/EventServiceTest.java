@@ -2,7 +2,7 @@ package com.xxx.open.modules.event.service;
 
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.category.entity.Category;
 import com.xxx.open.modules.category.mapper.CategoryMapper;
 import com.xxx.open.modules.event.dto.*;
@@ -51,7 +51,7 @@ class EventServiceTest {
     private CategoryMapper categoryMapper;
 
     @Mock
-    private SnowflakeIdGenerator idGenerator;
+    private IdGeneratorStrategy idGenerator;
 
     @InjectMocks
     private EventService eventService;

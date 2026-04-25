@@ -3,7 +3,7 @@ package com.xxx.open.modules.permission.service;
 import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.exception.BusinessException;
 import com.xxx.open.common.model.ApiResponse;
-import com.xxx.open.common.util.SnowflakeIdGenerator;
+import com.xxx.open.common.id.IdGeneratorStrategy;
 import com.xxx.open.modules.api.entity.Api;
 import com.xxx.open.modules.api.entity.ApiProperty;
 import com.xxx.open.modules.api.mapper.ApiMapper;
@@ -62,7 +62,7 @@ public class PermissionService {
     private final EventPropertyMapper eventPropertyMapper;
     private final CallbackMapper callbackMapper;
     private final CallbackPropertyMapper callbackPropertyMapper;
-    private final SnowflakeIdGenerator idGenerator;
+    private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
 
     // ==================== API 权限管理 (#27-30) ====================

@@ -1,4 +1,4 @@
-package com.xxx.open.common.auth.strategy;
+package com.xxx.open.common.user.strategy;
 
 import com.xxx.open.common.model.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
