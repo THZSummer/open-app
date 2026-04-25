@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Table, Button, Pagination, Tag, message } from 'antd';
-import { fetchAllEvents } from './thunk';
+import { Drawer, Table, Button, Pagination, Input, Select, message } from 'antd';
+import { fetchEventCategories, fetchEvents } from './thunk';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
-import { openUrl } from '../../utils/common';
-import { getEventDrawerColumns } from './constants';
+import { getEventDrawerColumns, NEED_REVIEW_OPTIONS } from './constants';
 import './EventDrawer.m.less';
 
 function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeLoading = false, appId }) {
@@ -12,42 +11,79 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
   );
   const [pagination, setPagination] = useState(INIT_PAGECONFIG);
   const [allEvents, setAllEvents] = useState([]);
+  const [rootCategoryId, setRootCategoryId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterNeedReview, setFilterNeedReview] = useState('all');
 
-  /**
-   * 加载事件列表
-   */
-  const loadData = async (page = pagination.curPage, size = pagination.pageSize) => {
-    setLoading(true);
-    try {
-      const result = await fetchAllEvents({ curPage: page, pageSize: size, appId });
-      if (result && result.code === '200') {
-        setAllEvents(result.data || []);
-        setPagination(prev => ({
-          ...prev,
-          curPage: page,
-          pageSize: size,
-          total: result.page?.total || 0
-        }));
-      } else {
-        message.error(result?.message || '加载事件列表失败');
-      }
-    } finally {
+  const loadData = async (params = {}) => {
+    const currentCategoryId = params.categoryId || rootCategoryId;
+    if (!currentCategoryId) {
       setLoading(false);
+      return;
     }
+    
+    setLoading(true);
+    const defaultParams = {
+      keyword: filterKeyword,
+      needReview: filterNeedReview,
+      categoryId: currentCategoryId,
+      curPage: pagination.curPage,
+      pageSize: pagination.pageSize,
+      appId: appId,
+      ...params
+    };
+    
+    const result = await fetchEvents(defaultParams);
+    if (result && result.code === '200') {
+      const resultData = result.data || [];
+      const resultTotal = result.total || resultData.length;
+      setAllEvents(resultData);
+      setPagination(prev => ({ ...prev, total: resultTotal }));
+    } else if (Array.isArray(result?.data)) {
+      setAllEvents(result.data);
+      setPagination(prev => ({ ...prev, total: result.total || result.data.length }));
+    } else {
+      message.error(result?.message || result?.messageZh || '加载事件列表失败');
+      setAllEvents([]);
+      setPagination(prev => ({ ...prev, total: 0 }));
+    }
+    setLoading(false);
   };
 
-  /**
-   * 抽屉打开时加载数据
-   */
   useEffect(() => {
-    if (open) {
-      loadData();
-    }
+    if (!open) return;
+    
+    setFilterKeyword('');
+    setFilterNeedReview('all');
+    setPagination(INIT_PAGECONFIG);
+    setSelectedRowKeys(selectedEvents.map(e => e.id));
+    
+    const initData = async () => {
+      const categoriesRes = await fetchEventCategories();
+      if (categoriesRes && categoriesRes.code === '200') {
+        const rootId = categoriesRes.data?.[0]?.id;
+        if (rootId) {
+          setRootCategoryId(rootId);
+          await loadData({ categoryId: rootId });
+        }
+      } else if (Array.isArray(categoriesRes) && categoriesRes.length > 0) {
+        const rootId = categoriesRes[0]?.id;
+        if (rootId) {
+          setRootCategoryId(rootId);
+          await loadData({ categoryId: rootId });
+        }
+      } else {
+        message.error(categoriesRes?.message || '加载分类失败');
+      }
+    };
+    
+    initData();
   }, [open]);
 
   const handlePageChange = async (page, size) => {
-    await loadData(page, size);
+    setPagination(prev => ({ ...prev, curPage: page, pageSize: size }));
+    await loadData({ curPage: page, pageSize: size });
   };
 
   const handleSelectChange = (keys) => {
@@ -64,51 +100,26 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
     onClose();
   };
 
-  const renderEventName = (text, record) => {
-    const name = record.nameCn || record.name || '-';
-    return (
-      <div>
-        <div>{name}</div>
-        <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.topic}</span>
-      </div>
-    );
+  const handleFilterChange = async (e) => {
+    const keyword = e.target.value;
+    setFilterKeyword(keyword);
+    setPagination(INIT_PAGECONFIG);
+    await loadData({ keyword, curPage: 1 });
   };
 
-  const renderNeedApproval = (needApproval, record) => {
-    const val = needApproval !== undefined ? needApproval : record.needReview;
-    return val ?
-      <Tag color="orange">需要审核</Tag> :
-      <Tag color="green">无需审核</Tag>;
+  const handleNeedReviewChange = async (value) => {
+    setFilterNeedReview(value);
+    setPagination(INIT_PAGECONFIG);
+    await loadData({ needReview: value, curPage: 1 });
   };
 
-  const renderIsSubScribed = (isSubscribed) => {
-    if (isSubscribed === 1) {
-      return <Tag color="success">已订阅</Tag>;
-    }
-    return <Tag color="default">未订阅</Tag>;
-  }
-
-  const renderAction = (_, record) => {
-    const docUrl = record.event?.docUrl || record.docUrl;
-    return (
-      <Button type="link" size="small" onClick={() => openUrl(docUrl)}>
-        查看文档
-      </Button>
-    );
-  };
-
-  const columns = getEventDrawerColumns({
-    renderEventName,
-    renderNeedApproval,
-    renderIsSubScribed,
-    renderAction,
-  });
+  const columns = getEventDrawerColumns();
 
   const rowSelection = {
     selectedRowKeys,
     onChange: handleSelectChange,
     getCheckboxProps: (record) => ({
-      disabled: record.isSubscribed === 1,  // 已订阅的事件禁用勾选
+      disabled: record.isSubscribed === 1,
     }),
   };
 
@@ -116,7 +127,7 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
     <Drawer
       title="添加事件"
       placement="right"
-      width={600}
+      width={700}
       onClose={onClose}
       open={open}
       className="event-drawer"
@@ -134,25 +145,43 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
         </div>
       }
     >
-      <Table
-        rowSelection={rowSelection}
-        columns={columns}
-        dataSource={allEvents}
-        rowKey="id"
-        pagination={false}
-        loading={loading}
-      />
-      <div className="drawer-pagination">
-        <span className="pagination-total">共 {pagination.total} 条</span>
-        <Pagination
-          current={pagination.curPage}
-          pageSize={pagination.pageSize}
-          total={pagination.total}
-          onChange={handlePageChange}
-          showSizeChanger
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          showQuickJumper
+      <div className="drawer-filter">
+        <Input
+          placeholder="事件名称/Topic"
+          value={filterKeyword}
+          onChange={handleFilterChange}
+          style={{ width: 200 }}
+          allowClear
         />
+        <Select
+          placeholder="是否需要审核"
+          value={filterNeedReview}
+          onChange={handleNeedReviewChange}
+          options={NEED_REVIEW_OPTIONS}
+          style={{ width: 150 }}
+        />
+      </div>
+      <div className="drawer-table">
+        <Table
+          rowSelection={rowSelection}
+          columns={columns}
+          dataSource={allEvents}
+          rowKey="id"
+          pagination={false}
+          loading={loading}
+        />
+        <div className="drawer-pagination">
+          <span className="pagination-total">共 {pagination.total} 条</span>
+          <Pagination
+            current={pagination.curPage}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            onChange={handlePageChange}
+            showSizeChanger
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            showQuickJumper
+          />
+        </div>
       </div>
     </Drawer>
   );

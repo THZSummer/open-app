@@ -5,7 +5,7 @@ import CallbackDrawer from './CallbackDrawer';
 import CallbackConfigDrawer from './CallbackConfigDrawer';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { SUBSCRIPTION_STATUS, CALLBACK_CHANNEL_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
+import { SUBSCRIPTION_STATUS, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { queryParams, openUrl } from '../../utils/common';
 import { getCallbackColumns } from './constants';
 import './Callbacks.m.less';
@@ -62,8 +62,8 @@ function Callbacks() {
     setSubscribeLoading(true);
     try {
       const permissionIds = selectedCallbacks
-        .filter(c => c.permission?.id)
-        .map(c => c.permission.id);
+        .filter(c => c.id)
+        .map(c => c.id);
       
       if (permissionIds.length === 0) {
         message.warning('没有可订阅的权限');
@@ -162,43 +162,12 @@ function Callbacks() {
     loadCallbacks(page, size);
   };
 
-  const renderCallbackName = (text, record) => (
-    <div>
-      <div>{text}</div>
-      <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.permission?.scope}</span>
-    </div>
-  );
-
-  const renderChannelType = (type) => CALLBACK_CHANNEL_TYPE[type] || '-';
-
-  const renderStatus = (status) => {
-    const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
-    return <Tag color={color}>{text}</Tag>;
-  };
-
-  const renderAction = (_, record) => (
-    <div>
-      <Button type="link" onClick={() => handleOpenDoc(record.callback?.docUrl || record.docUrl)}>查看文档</Button>
-      {record.status === 1 && (
-        <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
-      )}
-      {record.status === 0 && (
-        <>
-          <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
-          <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
-        </>
-      )}
-      {record.status !== 0 && (
-        <Button type="link" danger onClick={() => handleDeleteClick(record.id)}>删除</Button>
-      )}
-    </div>
-  );
-
   const columns = getCallbackColumns({
-    renderCallbackName,
-    renderChannelType,
-    renderStatus,
-    renderAction,
+    handleOpenDoc,
+    handleEdit,
+    handleCopyApprovalAddress,
+    handleWithdraw,
+    handleDeleteClick,
   });
 
   return (

@@ -15,7 +15,7 @@ import {
   Descriptions,
   Divider,
   Pagination,
-  Row, Col, Progress, Statistic, Avatar, Badge, Timeline, Typography, Collapse,
+  Progress, Statistic, Avatar, Badge, Timeline, Collapse,
   message
 } from 'antd';
 import {
@@ -40,9 +40,6 @@ import { TYPE_MAP, LEVEL_MAP as MOCK_LEVEL_MAP } from './mock';
 import ApprovalFlowConfig from './ApprovalFlowConfig';
 import './ApprovalCenter.m.less';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-
-const { TextArea } = Input;
-const { Text } = Typography;
 
 function ApprovalCenter() {
   const [loading, setLoading] = useState(false); 
@@ -151,64 +148,14 @@ function ApprovalCenter() {
     }
   };
 
-  const renderStatus = (status) => {
-    const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-    return <Tag color={color}>{text}</Tag>;
-  };
-
-  const renderAction = (_, record) => (
-    <Space>
-      <Button
-        type="link"
-        size="small"
-        icon={<EyeOutlined />}
-        onClick={() => handleViewDetail(record)}
-      >
-        详情
-      </Button>
-      {record.status === 0 && activeTab === 'pending' && (
-        <>
-          <Button 
-            type="link" 
-            size="small" 
-            icon={<CheckOutlined />}
-            onClick={() => handleApprove(record.id)}
-          >
-            通过
-          </Button>
-          <Button 
-            type="link" 
-            size="small" 
-            danger 
-            icon={<CloseOutlined />}
-            onClick={() => handleReject(record.id)}
-          >
-            拒绝
-          </Button>
-        </>
-      )}
-    </Space>
-  );
-
-  const renderMyAction = (_, record) => (
-    <Button
-      type="link"
-      size="small"
-      icon={<EyeOutlined />}
-      onClick={() => handleViewDetail(record)}
-    >
-      详情
-    </Button>
-  );
-
   const columns = getApprovalColumns({
-    renderStatus,
-    renderAction,
+    handleViewDetail,
+    handleApprove,
+    handleReject,
   });
 
   const myColumns = getMyApprovalColumns({
-    renderStatus,
-    renderAction: renderMyAction,
+    handleViewDetail,
   });
 
   const dataSource = activeTab === 'mine' ? myApprovals : approvalList;
@@ -286,16 +233,16 @@ function ApprovalCenter() {
 
               return (
                 <Card size="small" className="approval-progress-card" style={{ marginBottom: 16 }}>
-                  <Row gutter={16} align="middle">
-                    <Col span={6}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ flex: '0 0 120px' }}>
                       <Statistic
                         title="审批进度"
                         value={completedCount}
                         suffix={`/ ${totalCount} 节点`}
                         valueStyle={{ fontSize: 20 }}
                       />
-                    </Col>
-                    <Col span={18}>
+                    </div>
+                    <div style={{ flex: 1 }}>
                       <Progress
                         percent={Math.round(completedCount / totalCount * 100)}
                         status={currentDetail.status === 2 ? 'exception' : 'active'}
@@ -307,19 +254,19 @@ function ApprovalCenter() {
                       <div style={{ marginTop: 12 }}>
                         {currentDetail.status === 0 && currentNode && (
                           <>
-                            <Text type="secondary">当前节点：</Text>
+                            <span style={{ color: '#8c8c8c' }}>当前节点：</span>
                             <Tag color="processing" icon={<SyncOutlined spin />}>
                               {LEVEL_MAP[currentNode.level]?.text || currentNode.level}
                             </Tag>
-                            <Text strong>{currentNode.userName}</Text>
-                            <Text type="secondary" style={{ marginLeft: 8 }}>
+                            <strong>{currentNode.userName}</strong>
+                            <span style={{ color: '#8c8c8c', marginLeft: 8 }}>
                               (第 {currentNode.order} 步)
-                            </Text>
+                            </span>
                           </>
                         )}
                         {pendingNodes.length > 0 && currentDetail.status === 0 && (
                           <div style={{ marginTop: 8 }}>
-                            <Text type="secondary">待审批：</Text>
+                            <span style={{ color: '#8c8c8c' }}>待审批：</span>
                             {pendingNodes.map((node, idx) => (
                               <Tag key={idx} style={{ marginTop: 4 }}>
                                 {node.userName}（{LEVEL_MAP[node.level]?.text}）
@@ -328,14 +275,14 @@ function ApprovalCenter() {
                           </div>
                         )}
                         {currentDetail.status === 1 && (
-                          <Text type="success" strong>✓ 审批已通过</Text>
+                          <span style={{ color: '#52c41a', fontWeight: 'bold' }}>✓ 审批已通过</span>
                         )}
                         {currentDetail.status === 2 && (
-                          <Text type="danger" strong>✗ 审批已拒绝</Text>
+                          <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>✗ 审批已拒绝</span>
                         )}
                       </div>
-                    </Col>
-                  </Row>
+                    </div>
+                  </div>
                 </Card>
               );
             })()}
@@ -418,22 +365,22 @@ function ApprovalCenter() {
                         description: (
                           <div className="approval-node-desc">
                             <div className="node-info">
-                              <Text type="secondary" style={{ fontSize: 12 }}>
+                              <span style={{ color: '#8c8c8c', fontSize: 12 }}>
                                 审批人ID：{node.userId} | 节点顺序：第 {node.order} 步
-                              </Text>
+                              </span>
                             </div>
                             {node.approveTime && (
                               <div className="approve-time" style={{ marginTop: 4 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                <span style={{ color: '#8c8c8c', fontSize: 12 }}>
                                   审批时间：{node.approveTime}
-                                </Text>
+                                </span>
                               </div>
                             )}
                             {node.comment && (
                               <div style={{ marginTop: 4 }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                <span style={{ color: '#8c8c8c', fontSize: 12 }}>
                                   审批意见：{node.comment}
-                                </Text>
+                                </span>
                               </div>
                             )}
                           </div>
@@ -455,9 +402,9 @@ function ApprovalCenter() {
                       label: (
                         <span style={{ fontWeight: 500 }}>
                           操作历史
-                          <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                          <span style={{ color: '#8c8c8c', fontSize: 12, marginLeft: 8 }}>
                             ({currentDetail.logs.length} 条记录)
-                          </Text>
+                          </span>
                         </span>
                       ),
                       children: (
@@ -477,7 +424,7 @@ function ApprovalCenter() {
                               children: (
                                 <div key={idx} style={{ paddingBottom: 8 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                    <Text strong>{log.operatorName}</Text>
+                                    <strong>{log.operatorName}</strong>
                                     <Tag color={actionInfo.color}>{actionInfo.text}</Tag>
                                     {log.level && (
                                       <Tag color={LEVEL_MAP[log.level]?.color || 'default'}>
@@ -485,14 +432,14 @@ function ApprovalCenter() {
                                       </Tag>
                                     )}
                                   </div>
-                                  <Text type="secondary" style={{ fontSize: 12 }}>
+                                  <span style={{ color: '#8c8c8c', fontSize: 12 }}>
                                     {log.createTime}
-                                  </Text>
+                                  </span>
                                   {log.comment && (
                                     <div style={{ marginTop: 4, padding: '6px 10px', background: '#fafafa', borderRadius: 4, borderLeft: '2px solid #1890ff' }}>
-                                      <Text italic style={{ fontSize: 12, color: '#666' }}>
+                                      <span style={{ fontStyle: 'italic', fontSize: 12, color: '#666' }}>
                                         "{log.comment}"
-                                      </Text>
+                                      </span>
                                     </div>
                                   )}
                                 </div>

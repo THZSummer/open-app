@@ -4,6 +4,103 @@ import { mockCallbacks, mockAllCallbacks } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export const CALLBACK_CATEGORY_ALIAS = 'callback';
+
+const transformCategoriesToModules = (categories) => {
+  if (!Array.isArray(categories) || categories.length === 0) return [];
+
+  const result = [];
+  const firstCategoryId = categories[0]?.id;
+  if (firstCategoryId) {
+    result.push({
+      key: 'all',
+      value: firstCategoryId,
+      name: '全部分类'
+    });
+  }
+
+  categories.forEach(cat => {
+    if (cat.children && Array.isArray(cat.children)) {
+      cat.children.forEach(child => {
+        if (child.id) {
+          result.push({
+            key: child.id,
+            value: child.id,
+            name: child.nameCn || child.name
+          });
+        }
+      });
+    }
+  });
+
+  return result;
+};
+
+export const fetchCallbackCategories = async () => {
+  if (!useTrueFetch) {
+    await delay(300);
+    const modules = mockAllCallbacks.map((callback, index) => ({
+      key: String(index + 1),
+      name: callback.callbackType || '回调分类'
+    }));
+    const categories = [{
+      id: '1',
+      nameCn: '回调分类',
+      children: modules
+    }];
+    return categories;
+  }
+  try {
+    const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: CALLBACK_CATEGORY_ALIAS } });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const fetchCallbacks = async ({ keyword, needReview, categoryId, curPage, pageSize, appId }) => {
+  if (!useTrueFetch) {
+    await delay(300);
+    let callbacks = mockAllCallbacks.map((callback, index) => ({
+      id: String(301 + index),
+      nameCn: callback.name,
+      name: callback.name,
+      scope: `callback:${callback.callback}`,
+      needApproval: callback.needReview ? 1 : 0,
+      needReview: callback.needReview,
+      isSubscribed: 0,
+      docUrl: callback.docUrl
+    }));
+    
+    const total = callbacks.length;
+    const startIndex = ((curPage || 1) - 1) * (pageSize || 10);
+    const paginatedCallbacks = callbacks.slice(startIndex, startIndex + (pageSize || 10));
+    
+    return {
+      data: paginatedCallbacks,
+      total: total,
+      page: { curPage: curPage || 1, pageSize: pageSize || 10, total }
+    };
+  }
+  
+  const queryParams = {};
+  if (keyword) queryParams.keyword = keyword;
+  if (needReview !== undefined && needReview !== 'all') {
+    queryParams.needApproval = needReview === 'true' ? 1 : 0;
+  }
+  if (curPage) queryParams.curPage = curPage;
+  if (pageSize) queryParams.pageSize = pageSize;
+  if (appId) queryParams.appId = appId;
+  queryParams.includeChildren = true;
+  
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.CALLBACKS, { id: categoryId }), { params: queryParams });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
 export const fetchAllCallbacks = async (params = {}) => {
   if (!useTrueFetch) {
     await delay(300);

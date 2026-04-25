@@ -31,6 +31,7 @@ import {
   addCategoryOwner,
   removeCategoryOwner,
 } from './thunk';
+import { getOwnerColumns } from './constants';
 import './CategoryList.m.less';
 
 const { Search: AntSearch } = Input;
@@ -262,26 +263,7 @@ function CategoryList() {
 
   const filteredTree = filterTree(categoryTree, searchValue);
 
-  const ownerColumns = [
-    { title: '用户ID', dataIndex: 'userId', key: 'userId' },
-    { title: '用户名称', dataIndex: 'userName', key: 'userName' },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Popconfirm
-          title="确定移除该责任人吗？"
-          onConfirm={() => handleRemoveOwner(record.userId)}
-          okText="确定"
-          cancelText="取消"
-        >
-          <Button type="link" danger size="small">
-            移除
-          </Button>
-        </Popconfirm>
-      ),
-    },
-  ];
+  const ownerColumns = getOwnerColumns(handleRemoveOwner);
 
   return (
     <div className="category-list">

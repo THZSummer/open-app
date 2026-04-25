@@ -5,7 +5,7 @@ import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { SUBSCRIPTION_STATUS, EVENT_CHANNEL_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
+import { SUBSCRIPTION_STATUS, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { queryParams, openUrl } from '../../utils/common';
 import { getEventColumns } from './constants';
 import './Events.m.less';
@@ -62,8 +62,8 @@ function Events() {
     setSubscribeLoading(true);
     try {
       const permissionIds = selectedEvents
-        .filter(e => e.permission?.id)
-        .map(e => e.permission.id);
+        .filter(e => e.id)
+        .map(e => e.id);
       
       if (permissionIds.length === 0) {
         message.warning('没有可订阅的权限');
@@ -162,43 +162,12 @@ function Events() {
     loadEvents(page, size);
   };
 
-  const renderEventName = (text, record) => (
-    <div>
-      <div>{text}</div>
-      <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.event?.topic}</span>
-    </div>
-  );
-
-  const renderChannelType = (type) => EVENT_CHANNEL_TYPE[type] || '-';
-
-  const renderStatus = (status) => {
-    const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
-    return <Tag color={color}>{text}</Tag>;
-  };
-
-  const renderAction = (_, record) => (
-    <div>
-      <Button type="link" onClick={() => handleOpenDoc(record.event?.docUrl || record.docUrl)}>查看文档</Button>
-      {record.status === 1 && (
-        <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
-      )}
-      {record.status === 0 && (
-        <>
-          <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
-          <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
-        </>
-      )}
-      {record.status !== 0 && (
-        <Button type="link" danger onClick={() => handleDeleteClick(record.id)}>删除</Button>
-      )}
-    </div>
-  );
-
   const columns = getEventColumns({
-    renderEventName,
-    renderChannelType,
-    renderStatus,
-    renderAction,
+    handleOpenDoc,
+    handleEdit,
+    handleCopyApprovalAddress,
+    handleWithdraw,
+    handleDeleteClick,
   });
 
   return (
