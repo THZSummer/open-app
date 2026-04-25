@@ -5,7 +5,7 @@ spring:
       # 单机模式（开发环境）
       host: localhost
       port: 6379
-      # password: unset  # 开发环境无密码
+      password: openapp
       database: 0
       timeout: 5000ms
       lettuce:
