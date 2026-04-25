@@ -3,22 +3,24 @@ package com.xxx.open.common.config;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
- * Redis 配置
+ * 开发环境 Redis 配置
  * 
- * <p>配置 Redis 连接和序列化规则</p>
+ * <p>仅开发环境生效，标准环境由基础模块注入 RedisTemplate</p>
  * <p>只有在有 RedisConnectionFactory 时才生效</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
  */
 @Configuration
-public class RedisConfig {
+@Profile({"dev", "development", "local"})
+public class DevRedisConfig {
 
     @Bean
     @ConditionalOnBean(RedisConnectionFactory.class)
