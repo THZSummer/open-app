@@ -15,6 +15,7 @@ spring:
       max-lifetime: 1800000
 
   redis:
+    # 单机模式（开发环境）
     host: localhost
     port: 6379
     password: openapp
@@ -26,6 +27,24 @@ spring:
         max-wait: -1ms
         max-idle: 8
         min-idle: 0
+    
+    # 集群模式（切换时取消注释，注释上方单机配置）
+    # cluster:
+    #   nodes:
+    #     - 192.168.3.201:6379
+    #     - 192.168.3.202:6379
+    #     - 192.168.3.203:6379
+    #     - 192.168.3.204:6379
+    #     - 192.168.3.205:6379
+    #   max-redirects: 3
+    # database: 0
+    # timeout: 5000ms
+    # lettuce:
+    #   pool:
+    #     max-active: 8
+    #     max-wait: -1ms
+    #     max-idle: 8
+    #     min-idle: 0
 
 # Mock 配置（开发环境启用）
 mock:
