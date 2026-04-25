@@ -22,12 +22,7 @@ public class BatchApprovalRequest implements Serializable {
     private List<String> approvalIds;
 
     /**
-     * 审批意见（批量同意时可选）
+     * 审批意见（同意/驳回时均可填写）
      */
     private String comment;
-
-    /**
-     * 驳回原因（批量驳回时必填）
-     */
-    private String reason;
 }
