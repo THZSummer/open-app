@@ -16,6 +16,9 @@ import javax.sql.DataSource;
  * <p>配置 MyBatis SqlSessionFactory 和 Mapper 扫描</p>
  * <p>只有在有 DataSource 时才生效</p>
  * 
+ * <p>注意：驼峰命名转换已在 application.yml 中配置，无需重复配置</p>
+ * <p>标准环境由基础模块处理，不使用此配置</p>
+ * 
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -34,11 +37,6 @@ public class MyBatisConfig {
                 new PathMatchingResourcePatternResolver()
                         .getResources("classpath:mapper/*.xml")
         );
-
-        // 开启驼峰命名转换
-        org.apache.ibatis.session.Configuration configuration = new org.apache.ibatis.session.Configuration();
-        configuration.setMapUnderscoreToCamelCase(true);
-        factoryBean.setConfiguration(configuration);
 
         return factoryBean.getObject();
     }
