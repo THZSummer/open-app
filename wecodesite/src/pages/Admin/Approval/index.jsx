@@ -52,6 +52,9 @@ function ApprovalCenter() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [currentDetail, setCurrentDetail] = useState(null);
   const [pagination, setPagination] = useState(INIT_PAGECONFIG);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     loadData(INIT_PAGECONFIG);
@@ -104,13 +107,24 @@ function ApprovalCenter() {
     }
   };
 
-  const handleReject = async (id) => {
-    const res = await rejectApplication(id);
+  const handleReject = (id) => {
+    setRejectingId(id);
+    setRejectReason('');
+    setRejectModalVisible(true);
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectReason.trim()) {
+      message.warning('请输入驳回原因');
+      return;
+    }
+    const res = await rejectApplication(rejectingId, { reason: rejectReason });
     if (res && res.code === '200') {
       message.success('审批已拒绝');
+      setRejectModalVisible(false);
       loadData();
     } else {
-      message.error(res?.message || '审批失败');
+      message.error(res?.messageZh || res?.message || '审批失败');
     }
   };
 
@@ -154,16 +168,15 @@ function ApprovalCenter() {
               通过
             </Button>
           </Popconfirm>
-          <Popconfirm
-            title="确定拒绝该申请吗？"
-            onConfirm={() => handleReject(record.id)}
-            okText="确定"
-            cancelText="取消"
+          <Button 
+            type="link" 
+            size="small" 
+            danger 
+            icon={<CloseOutlined />}
+            onClick={() => handleReject(record.id)}
           >
-            <Button type="link" size="small" danger icon={<CloseOutlined />}>
-              拒绝
-            </Button>
-          </Popconfirm>
+            拒绝
+          </Button>
         </>
       )}
     </Space>
@@ -487,6 +500,28 @@ function ApprovalCenter() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* 驳回原因模态框 */}
+      <Modal
+        title="驳回原因"
+        open={rejectModalVisible}
+        onCancel={() => setRejectModalVisible(false)}
+        onOk={handleConfirmReject}
+        okText="确认驳回"
+        okButtonProps={{ danger: true }}
+      >
+        <div style={{ marginBottom: 8 }}>
+          <Text type="secondary">请输入驳回原因：</Text>
+        </div>
+        <TextArea
+          rows={4}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="请输入驳回原因"
+          maxLength={500}
+          showCount
+        />
       </Modal>
     </div>
   );
