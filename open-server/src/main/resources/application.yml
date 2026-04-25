@@ -12,8 +12,6 @@ spring:
 # MyBatis 配置
 mybatis:
   mapper-locations: classpath:mapper/*.xml
-  configuration:
-    map-underscore-to-camel-case: true
 
 # SpringDoc OpenAPI 配置
 springdoc:
