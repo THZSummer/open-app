@@ -16,6 +16,7 @@ import com.xxx.open.modules.event.mapper.PermissionMapper;
 import com.xxx.open.modules.approval.engine.ApprovalEngine;
 import com.xxx.open.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.open.modules.approval.entity.ApprovalFlow;
+import com.xxx.open.modules.approval.dto.ApprovalNodeDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -197,11 +198,12 @@ public class CallbackService {
         callback.setNameEn(request.getNameEn());
         callback.setCategoryId(categoryId); // 设置分类ID
         
-        // ✅ v2.8.0新增：根据 needApproval 决定回调状态
+        // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
         Integer needApproval = request.getPermission().getNeedApproval() != null 
             ? request.getPermission().getNeedApproval() : 1;
-        callback.setStatus(needApproval == 0 ? 2 : 1); // 无需审批直接上架(2)，否则待审(1)
         
+        // 先插入回调（状态暂设为待审）
+        callback.setStatus(1); // 待审
         callback.setCreateTime(new Date());
         callback.setLastUpdateTime(new Date());
         callback.setCreateBy(UserContextHolder.getUserId());
@@ -232,24 +234,30 @@ public class CallbackService {
         // 保存权限
         permissionMapper.insert(permission);
 
-        // ✅ v2.8.0变更：根据 needApproval 决定是否创建审批记录
-        // 只有需要审批的资源才创建审批记录
-        if (needApproval == 1) {
+        // ✅ 获取注册审批节点（两级：场景+全局）
+        List<ApprovalNodeDto> approvalNodes = approvalEngine.composeApprovalNodes(
+            ApprovalEngine.BusinessType.CALLBACK_REGISTER, null);
+
+        if (approvalNodes.isEmpty()) {
+            // 无审批节点配置，直接发布
+            callback.setStatus(2); // 已发布
+            callbackMapper.update(callback);
+            log.info("回调注册无需审批（无审批节点配置），直接发布: callbackId={}", callbackId);
+        } else {
+            // 有审批节点，创建审批单
             try {
                 approvalEngine.createApproval(
                     ApprovalEngine.BusinessType.CALLBACK_REGISTER,
-                    permissionId,        // ✅ permissionId：用于获取资源审批节点
-                    callbackId,          // ✅ businessId：回调 ID
-                    UserContextHolder.getUserId(),           // applicantId
-                    UserContextHolder.getUserName(),         // applicantName
-                    UserContextHolder.getUserId()            // operator
+                    permissionId,
+                    callbackId,
+                    UserContextHolder.getUserId(),
+                    UserContextHolder.getUserName(),
+                    UserContextHolder.getUserId()
                 );
-                log.info("创建审批记录: callbackId={}, permissionId={}", callbackId, permissionId);
+                log.info("创建回调注册审批记录: callbackId={}, nodesCount={}", callbackId, approvalNodes.size());
             } catch (Exception e) {
-                log.warn("创建审批记录失败，回调将保持待审状态: callbackId={}", callbackId, e);
+                log.warn("创建审批记录失败，回调保持待审状态: callbackId={}", callbackId, e);
             }
-        } else {
-            log.info("回调无需审批，直接上架: callbackId={}, permissionId={}", callbackId, permissionId);
         }
 
         // 保存属性（如果有）

@@ -248,12 +248,18 @@ public class ApprovalEngine {
         
         // 从 resource_nodes 字段解析审批节点
         String resourceNodesJson = permission.getResourceNodes();
-        if (resourceNodesJson == null || resourceNodesJson.trim().isEmpty()) {
-            log.warn("权限审批节点配置为空: permissionId={}", permissionId);
+        if (resourceNodesJson == null || resourceNodesJson.trim().isEmpty() || "[]".equals(resourceNodesJson.trim())) {
+            log.debug("权限审批节点配置为空: permissionId={}", permissionId);
             return Collections.emptyList();
         }
         
-        return parseNodes(resourceNodesJson);
+        List<ApprovalNodeDto> nodes = parseNodes(resourceNodesJson);
+        if (nodes == null || nodes.isEmpty()) {
+            log.debug("权限审批节点解析结果为空: permissionId={}", permissionId);
+            return Collections.emptyList();
+        }
+        
+        return nodes;
     }
 
     /**
@@ -275,12 +281,18 @@ public class ApprovalEngine {
         }
         
         String nodesJson = sceneFlow.getNodes();
-        if (nodesJson == null || nodesJson.trim().isEmpty()) {
-            log.warn("场景审批节点配置为空: code={}", sceneCode);
+        if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
+            log.debug("场景审批节点配置为空: code={}", sceneCode);
             return Collections.emptyList();
         }
         
-        return parseNodes(nodesJson);
+        List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
+        if (nodes == null || nodes.isEmpty()) {
+            log.debug("场景审批节点解析结果为空: code={}", sceneCode);
+            return Collections.emptyList();
+        }
+        
+        return nodes;
     }
 
     /**
@@ -298,12 +310,18 @@ public class ApprovalEngine {
         }
         
         String nodesJson = globalFlow.getNodes();
-        if (nodesJson == null || nodesJson.trim().isEmpty()) {
-            log.warn("全局审批节点配置为空: code=global");
+        if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
+            log.debug("全局审批节点配置为空: code=global");
             return Collections.emptyList();
         }
         
-        return parseNodes(nodesJson);
+        List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
+        if (nodes == null || nodes.isEmpty()) {
+            log.debug("全局审批节点解析结果为空: code=global");
+            return Collections.emptyList();
+        }
+        
+        return nodes;
     }
 
     /**
