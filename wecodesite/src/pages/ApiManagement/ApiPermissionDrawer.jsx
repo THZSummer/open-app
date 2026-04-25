@@ -3,7 +3,6 @@ import { Drawer, Tabs, Table, Button, Tag, Pagination, Input, Select, message } 
 import { fetchApis, fetchCategories } from './thunk';
 import { mockFeatureFlag } from './mock';
 import { AUTH_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
-import { openUrl } from '../../utils/common';
 import {
   NEED_REVIEW_OPTIONS,
   IDENTITY_TABS,
@@ -11,6 +10,7 @@ import {
   BUSINESS_PERSONAL_API_TABS,
   PERSONAL_API_TABS,
   DEFAULT_API_TYPE,
+  getApiPermissionDrawerColumns,
 } from './constants';
 import './ApiPermissionDrawer.m.less';
 
@@ -302,59 +302,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', a
     await loadApis({ needReview: value, curPage: 1 }, null, activeModule);
   };
 
-  // 表格列配置
-  const columns = [
-    {
-      title: '权限名称',
-      dataIndex: 'nameCn',
-      key: 'nameCn',
-      render: (text, record) => {
-        const name = record.nameCn || record.name || '-';
-        return <span>{name}</span>;
-      }
-    },
-    {
-      title: 'Scope',
-      dataIndex: 'scope',
-      key: 'scope',
-      render: (scope) => <code>{scope || '-'}</code>,
-    },
-    {
-      title: '是否需要审核',
-      dataIndex: 'needApproval',
-      key: 'needApproval',
-      render: (needApproval, record) => {
-        const val = needApproval !== undefined ? needApproval : record.needReview;
-        return val ?
-          <Tag color="orange">需要审核</Tag> :
-          <Tag color="green">无需审核</Tag>;
-      },
-    },
-    {
-      title: '订阅状态',
-      dataIndex: 'isSubscribed',
-      key: 'isSubscribed',
-      width: 100,
-      render: (isSubscribed) => {
-        if (isSubscribed === 1) {
-          return <Tag color="success">已订阅</Tag>;
-        }
-        return <Tag color="default">未订阅</Tag>;
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => {
-        const docUrl = record.api?.docUrl || record.docUrl;
-        return (
-          <Button type="link" size="small" onClick={() => openUrl(docUrl)}>
-            查看文档
-          </Button>
-        );
-      },
-    },
-  ];
+  const columns = getApiPermissionDrawerColumns();
 
   // 表格行选择器配置
   const rowSelection = {

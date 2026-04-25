@@ -4,6 +4,104 @@ import { mockEvents, mockAllEvents } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export const EVENT_CATEGORY_ALIAS = 'event';
+
+const transformCategoriesToModules = (categories) => {
+  if (!Array.isArray(categories) || categories.length === 0) return [];
+
+  const result = [];
+  const firstCategoryId = categories[0]?.id;
+  if (firstCategoryId) {
+    result.push({
+      key: 'all',
+      value: firstCategoryId,
+      name: '全部分类'
+    });
+  }
+
+  categories.forEach(cat => {
+    if (cat.children && Array.isArray(cat.children)) {
+      cat.children.forEach(child => {
+        if (child.id) {
+          result.push({
+            key: child.id,
+            value: child.id,
+            name: child.nameCn || child.name
+          });
+        }
+      });
+    }
+  });
+
+  return result;
+};
+
+export const fetchEventCategories = async () => {
+  if (!useTrueFetch) {
+    await delay(300);
+    const modules = mockAllEvents.map((event, index) => ({
+      key: String(index + 1),
+      name: event.eventType || '事件分类'
+    }));
+    const categories = [{
+      id: '1',
+      nameCn: '事件分类',
+      children: modules
+    }];
+    return categories;
+  }
+  try {
+    const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: EVENT_CATEGORY_ALIAS } });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const fetchEvents = async ({ keyword, needReview, categoryId, curPage, pageSize, appId }) => {
+  if (!useTrueFetch) {
+    await delay(300);
+    let events = mockAllEvents.map((event, index) => ({
+      id: String(201 + index),
+      nameCn: event.name,
+      name: event.name,
+      topic: event.event,
+      scope: `event:${event.event}`,
+      needApproval: event.needReview ? 1 : 0,
+      needReview: event.needReview,
+      isSubscribed: 0,
+      docUrl: event.docUrl
+    }));
+    
+    const total = events.length;
+    const startIndex = ((curPage || 1) - 1) * (pageSize || 10);
+    const paginatedEvents = events.slice(startIndex, startIndex + (pageSize || 10));
+    
+    return {
+      data: paginatedEvents,
+      total: total,
+      page: { curPage: curPage || 1, pageSize: pageSize || 10, total }
+    };
+  }
+  
+  const queryParams = {};
+  if (keyword) queryParams.keyword = keyword;
+  if (needReview !== undefined && needReview !== 'all') {
+    queryParams.needApproval = needReview === 'true' ? 1 : 0;
+  }
+  if (curPage) queryParams.curPage = curPage;
+  if (pageSize) queryParams.pageSize = pageSize;
+  if (appId) queryParams.appId = appId;
+  queryParams.includeChildren = true;
+  
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.EVENTS, { id: categoryId }), { params: queryParams });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
 export const fetchAllEvents = async (params = {}) => {
   if (!useTrueFetch) {
     await delay(300);

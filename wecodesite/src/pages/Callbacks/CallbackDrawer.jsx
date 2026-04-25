@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Table, Button, Pagination, Tag, message } from 'antd';
-import { fetchAllCallbacks } from './thunk';
+import { Drawer, Table, Button, Pagination, Input, Select, message } from 'antd';
+import { fetchCallbackCategories, fetchCallbacks } from './thunk';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
-import { openUrl } from '../../utils/common';
-import { getCallbackDrawerColumns } from './constants';
+import { getCallbackDrawerColumns, NEED_REVIEW_OPTIONS } from './constants';
 import './CallbackDrawer.m.less';
 
 function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subscribeLoading = false, appId }) {
@@ -12,42 +11,79 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
   );
   const [pagination, setPagination] = useState(INIT_PAGECONFIG);
   const [allCallbacks, setAllCallbacks] = useState([]);
+  const [rootCategoryId, setRootCategoryId] = useState('');
   const [loading, setLoading] = useState(false);
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterNeedReview, setFilterNeedReview] = useState('all');
 
-  /**
-   * 加载回调列表
-   */
-  const loadData = async (page = pagination.curPage, size = pagination.pageSize) => {
-    setLoading(true);
-    try {
-      const result = await fetchAllCallbacks({ curPage: page, pageSize: size, appId });
-      if (result && result.code === '200') {
-        setAllCallbacks(result.data || []);
-        setPagination(prev => ({
-          ...prev,
-          curPage: page,
-          pageSize: size,
-          total: result.page?.total || 0
-        }));
-      } else {
-        message.error(result?.message || '加载回调列表失败');
-      }
-    } finally {
+  const loadData = async (params = {}) => {
+    const currentCategoryId = params.categoryId || rootCategoryId;
+    if (!currentCategoryId) {
       setLoading(false);
+      return;
     }
+    
+    setLoading(true);
+    const defaultParams = {
+      keyword: filterKeyword,
+      needReview: filterNeedReview,
+      categoryId: currentCategoryId,
+      curPage: pagination.curPage,
+      pageSize: pagination.pageSize,
+      appId: appId,
+      ...params
+    };
+    
+    const result = await fetchCallbacks(defaultParams);
+    if (result && result.code === '200') {
+      const resultData = result.data || [];
+      const resultTotal = result.total || resultData.length;
+      setAllCallbacks(resultData);
+      setPagination(prev => ({ ...prev, total: resultTotal }));
+    } else if (Array.isArray(result?.data)) {
+      setAllCallbacks(result.data);
+      setPagination(prev => ({ ...prev, total: result.total || result.data.length }));
+    } else {
+      message.error(result?.message || result?.messageZh || '加载回调列表失败');
+      setAllCallbacks([]);
+      setPagination(prev => ({ ...prev, total: 0 }));
+    }
+    setLoading(false);
   };
 
-  /**
-   * 抽屉打开时加载数据
-   */
   useEffect(() => {
-    if (open) {
-      loadData();
-    }
+    if (!open) return;
+    
+    setFilterKeyword('');
+    setFilterNeedReview('all');
+    setPagination(INIT_PAGECONFIG);
+    setSelectedRowKeys(selectedCallbacks.map(c => c.id));
+    
+    const initData = async () => {
+      const categoriesRes = await fetchCallbackCategories();
+      if (categoriesRes && categoriesRes.code === '200') {
+        const rootId = categoriesRes.data?.[0]?.id;
+        if (rootId) {
+          setRootCategoryId(rootId);
+          await loadData({ categoryId: rootId });
+        }
+      } else if (Array.isArray(categoriesRes) && categoriesRes.length > 0) {
+        const rootId = categoriesRes[0]?.id;
+        if (rootId) {
+          setRootCategoryId(rootId);
+          await loadData({ categoryId: rootId });
+        }
+      } else {
+        message.error(categoriesRes?.message || '加载分类失败');
+      }
+    };
+    
+    initData();
   }, [open]);
 
   const handlePageChange = async (page, size) => {
-    await loadData(page, size);
+    setPagination(prev => ({ ...prev, curPage: page, pageSize: size }));
+    await loadData({ curPage: page, pageSize: size });
   };
 
   const handleSelectChange = (keys) => {
@@ -64,45 +100,20 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
     onClose();
   };
 
-  const renderCallbackName = (text, record) => {
-    const name = record.nameCn || record.name || '-';
-    return (
-      <div>
-        <div>{name}</div>
-        <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.scope}</span>
-      </div>
-    );
+  const handleFilterChange = async (e) => {
+    const keyword = e.target.value;
+    setFilterKeyword(keyword);
+    setPagination(INIT_PAGECONFIG);
+    await loadData({ keyword, curPage: 1 });
   };
 
-  const renderNeedApproval = (needApproval, record) => {
-    const val = needApproval !== undefined ? needApproval : record.needReview;
-    return val ?
-      <Tag color="orange">需要审核</Tag> :
-      <Tag color="green">无需审核</Tag>;
+  const handleNeedReviewChange = async (value) => {
+    setFilterNeedReview(value);
+    setPagination(INIT_PAGECONFIG);
+    await loadData({ needReview: value, curPage: 1 });
   };
 
-  const renderIsSubScribed = (isSubscribed) => {
-    if (isSubscribed === 1) {
-      return <Tag color="success">已订阅</Tag>;
-    }
-    return <Tag color="default">未订阅</Tag>;
-  }
-
-  const renderAction = (_, record) => {
-    const docUrl = record.callback?.docUrl || record.docUrl;
-    return (
-      <Button type="link" size="small" onClick={() => openUrl(docUrl)}>
-        查看文档
-      </Button>
-    );
-  };
-
-  const columns = getCallbackDrawerColumns({
-    renderCallbackName,
-    renderNeedApproval,
-    renderIsSubScribed,
-    renderAction,
-  });
+  const columns = getCallbackDrawerColumns();
 
   const rowSelection = {
     selectedRowKeys,
@@ -116,7 +127,7 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
     <Drawer
       title="添加回调"
       placement="right"
-      width={600}
+      width={700}
       onClose={onClose}
       open={open}
       className="callback-drawer"
@@ -134,25 +145,43 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
         </div>
       }
     >
-      <Table
-        rowSelection={rowSelection}
-        columns={columns}
-        dataSource={allCallbacks}
-        rowKey="id"
-        pagination={false}
-        loading={loading}
-      />
-      <div className="drawer-pagination">
-        <span className="pagination-total">共 {pagination.total} 条</span>
-        <Pagination
-          current={pagination.curPage}
-          pageSize={pagination.pageSize}
-          total={pagination.total}
-          onChange={handlePageChange}
-          showSizeChanger
-          pageSizeOptions={PAGE_SIZE_OPTIONS}
-          showQuickJumper
+      <div className="drawer-filter">
+        <Input
+          placeholder="回调名称/Scope"
+          value={filterKeyword}
+          onChange={handleFilterChange}
+          style={{ width: 200 }}
+          allowClear
         />
+        <Select
+          placeholder="是否需要审核"
+          value={filterNeedReview}
+          onChange={handleNeedReviewChange}
+          options={NEED_REVIEW_OPTIONS}
+          style={{ width: 150 }}
+        />
+      </div>
+      <div className="drawer-table">
+        <Table
+          rowSelection={rowSelection}
+          columns={columns}
+          dataSource={allCallbacks}
+          rowKey="id"
+          pagination={false}
+          loading={loading}
+        />
+        <div className="drawer-pagination">
+          <span className="pagination-total">共 {pagination.total} 条</span>
+          <Pagination
+            current={pagination.curPage}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            onChange={handlePageChange}
+            showSizeChanger
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            showQuickJumper
+          />
+        </div>
       </div>
     </Drawer>
   );

@@ -2,12 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Button,
   Table,
-  Tag,
-  Space,
   Input,
   Select,
   TreeSelect,
-  Popconfirm,
   Empty,
   Spin,
   message,
@@ -15,15 +12,11 @@ import {
 } from 'antd';
 import {
   PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  EyeOutlined,
-  FileTextOutlined,
 } from '@ant-design/icons';
 import { fetchApiList, deleteApi } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import ApiRegister from './ApiRegister';
-import { STATUS_MAP, AUTH_TYPE_MAP, getApiListColumns } from './constants';
+import { getApiListColumns } from './constants';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import './ApiList.m.less';
 
@@ -132,71 +125,10 @@ function ApiList() {
     loadData();
   };
 
-  const renderApiName = (text, record) => (
-    <div>
-      <div>{text}</div>
-      <div style={{ fontSize: 12, color: '#999' }}>{record.nameEn}</div>
-    </div>
-  );
-
-  const renderPath = (text) => <code>{text}</code>;
-
-  const renderMethod = (method) => <Tag color="blue">{method}</Tag>;
-
-  const renderAuthType = (authType) => {
-    const label = AUTH_TYPE_MAP[authType] || 'SOA';
-    return <Tag color="purple">{label}</Tag>;
-  };
-
-  const renderScope = (permission) => {
-    const scope = permission?.scope || '-';
-    return <Tag color="cyan">{scope}</Tag>;
-  };
-
-  const renderStatus = (status) => {
-    const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-    return <Tag color={color}>{text}</Tag>;
-  };
-
-  const renderAction = (_, record) => (
-    <Space>
-      <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleView(record)}>
-        详情
-      </Button>
-      {record.docUrl && (
-        <Button
-          type="link"
-          size="small"
-          icon={<FileTextOutlined />}
-          onClick={() => window.open(record.docUrl, '_blank')}
-        >
-          文档
-        </Button>
-      )}
-      <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-        编辑
-      </Button>
-      <Popconfirm
-        title="确定删除该API吗？"
-        onConfirm={() => handleDelete(record.id)}
-        okText="确定"
-        cancelText="取消"
-      >
-        <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-          删除
-        </Button>
-      </Popconfirm>
-    </Space>
-  );
-
   const columns = getApiListColumns({
-    renderApiName,
-    renderPath,
-    renderMethod,
-    renderAuthType,
-    renderScope,
-    renderStatus,
-    renderAction,
+    handleView,
+    handleEdit,
+    handleDelete,
   });
 
   return (

@@ -1,3 +1,6 @@
+import React from 'react';
+import { Tag, Button, Space } from 'antd';
+
 export const STATUS_MAP = {
   0: { text: '草稿', color: 'default' },
   1: { text: '待审', color: 'orange' },
@@ -71,20 +74,17 @@ export const DEFAULT_API_TYPE = {
   personal: 'api_personal_user_aksk',
 };
 
-export const getApiListColumns = ({
-  renderApiName,
-  renderPath,
-  renderMethod,
-  renderAuthType,
-  renderScope,
-  renderStatus,
-  renderAction,
-}) => [
+export const getApiListColumns = ({ handleView, handleEdit, handleDelete }) => [
   {
     title: 'API名称',
     dataIndex: 'nameCn',
     key: 'nameCn',
-    render: renderApiName,
+    render: (text, record) => (
+      <div>
+        <div>{text}</div>
+        <div style={{ fontSize: 12, color: '#999' }}>{record.nameEn}</div>
+      </div>
+    ),
   },
   {
     title: '分类',
@@ -95,35 +95,53 @@ export const getApiListColumns = ({
     title: '路径',
     dataIndex: 'path',
     key: 'path',
-    render: renderPath,
+    render: (text) => <code>{text}</code>,
   },
   {
     title: '方法',
     dataIndex: 'method',
     key: 'method',
-    render: renderMethod,
+    render: (method) => <Tag color="blue">{method}</Tag>,
   },
   {
     title: '认证方式',
     dataIndex: 'authType',
     key: 'authType',
-    render: renderAuthType,
-  },
-    {
-      title: 'Scope',
-      dataIndex: 'permission',
-      key: 'scope',
-      render: renderScope,
+    render: (authType) => {
+      const label = AUTH_TYPE_MAP[authType] || 'SOA';
+      return <Tag color="purple">{label}</Tag>;
     },
+  },
+  {
+    title: 'Scope',
+    dataIndex: 'permission',
+    key: 'scope',
+    render: (permission) => {
+      const scope = permission?.scope || '-';
+      return <Tag color="cyan">{scope}</Tag>;
+    },
+  },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
-    render: renderStatus,
+    render: (status) => {
+      const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
+      return <Tag color={color}>{text}</Tag>;
+    },
   },
   {
     title: '操作',
     key: 'action',
-    render: renderAction,
+    render: (_, record) => (
+      <Space>
+        <Button type="link" size="small" onClick={() => handleView(record)}>详情</Button>
+        {record.docUrl && (
+          <Button type="link" size="small" onClick={() => window.open(record.docUrl, '_blank')}>文档</Button>
+        )}
+        <Button type="link" size="small" onClick={() => handleEdit(record)}>编辑</Button>
+        <Button type="link" size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+      </Space>
+    ),
   },
 ];
