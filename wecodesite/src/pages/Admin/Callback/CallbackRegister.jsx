@@ -13,16 +13,7 @@ import {
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { createCallback, updateCallback, fetchCallbackDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
-
-// 回调扩展属性预设选项
-const CALLBACK_PROPERTY_PRESETS = [
-  { value: 'descriptionCn', label: '中文描述', placeholder: '回调的中文描述' },
-  { value: 'descriptionEn', label: '英文描述', placeholder: 'Callback description in English' },
-  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/callback/xxx' },
-  { value: 'timeout', label: '超时时间', placeholder: '30000 (毫秒)' },
-  { value: 'retryCount', label: '重试次数', placeholder: '3' },
-  { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
-];
+import { CALLBACK_PROPERTY_PRESETS } from './constants';
 
 function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCancel }) {
   const [form] = Form.useForm();
@@ -71,8 +62,8 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
               scope: data.permission?.scope,
               needApproval: data.permission?.needApproval ?? 1,
               // 解析 resourceNodes JSON 字符串为数组
-              resourceNodes: data.permission?.resourceNodes 
-                ? JSON.parse(data.permission.resourceNodes) 
+              resourceNodes: data.permission?.resourceNodes
+                ? JSON.parse(data.permission.resourceNodes)
                 : [],
               properties: data.properties || [],
             });
@@ -124,12 +115,20 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
       let result;
       if (callback?.id) {
         result = await updateCallback(callback.id, data);
+        if (result && result.code === '200') {
+          message.success('更新成功');
+          onSuccess();
+        } else {
+          message.error(result?.message || '更新失败');
+        }
       } else {
         result = await createCallback(data);
-      }
-
-      if (result.code === '200') {
-        onSuccess();
+        if (result && result.code === '200') {
+          message.success('注册成功');
+          onSuccess();
+        } else {
+          message.error(result?.message || '注册失败');
+        }
       }
     } catch (error) {
       console.error('表单验证失败:', error);
@@ -142,8 +141,8 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
     <Modal
       title={
         mode === 'view' ? '查看回调详情' :
-        mode === 'edit' ? '编辑回调' :
-        '注册回调'
+          mode === 'edit' ? '编辑回调' :
+            '注册回调'
       }
       open={visible}
       onOk={handleSubmit}
@@ -312,8 +311,8 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
                           }}
                         >
                           {CALLBACK_PROPERTY_PRESETS.map(preset => (
-                            <Select.Option 
-                              key={preset.value} 
+                            <Select.Option
+                              key={preset.value}
                               value={preset.value}
                               disabled={preset.value !== '__custom__' && usedPresets.includes(preset.value)}
                             >
@@ -322,10 +321,10 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
                           ))}
                         </Select>
                       </Form.Item>
-                      
+
                       <Form.Item
                         noStyle
-                        shouldUpdate={(prev, cur) => 
+                        shouldUpdate={(prev, cur) =>
                           prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
                         }
                       >
@@ -348,7 +347,7 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
 
                       <Form.Item
                         noStyle
-                        shouldUpdate={(prev, cur) => 
+                        shouldUpdate={(prev, cur) =>
                           prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
                         }
                       >
@@ -356,15 +355,15 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
                           const propertyName = getFieldValue(['properties', name, 'propertyName']);
                           const preset = CALLBACK_PROPERTY_PRESETS.find(p => p.value === propertyName);
                           const isCustom = propertyName === '__custom__';
-                          
+
                           return (
                             <Form.Item
                               {...restField}
                               name={[name, 'propertyValue']}
                               rules={[{ required: true, message: '请输入属性值' }]}
                             >
-                              <Input 
-                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
+                              <Input
+                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')}
                                 style={{ width: 260 }}
                                 disabled={mode === 'view'}
                               />

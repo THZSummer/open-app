@@ -23,8 +23,8 @@ import {
   CloseOutlined,
   EyeOutlined,
   UserOutlined,
-  CheckCircleOutlined, 
-  CloseCircleOutlined, 
+  CheckCircleOutlined,
+  CloseCircleOutlined,
   ClockCircleOutlined,
   SyncOutlined,
 } from '@ant-design/icons';
@@ -34,94 +34,81 @@ import {
   fetchApprovalDetail,
   approveApplication,
   rejectApplication,
-  LEVEL_MAP,
 } from './thunk';
+import { STATUS_MAP, APPROVAL_TYPE_MAP, APPROVAL_TABS, getApprovalColumns, getMyApprovalColumns, NODE_STATUS_MAP, LEVEL_MAP } from './constants';
 import { TYPE_MAP, LEVEL_MAP as MOCK_LEVEL_MAP } from './mock';
 import ApprovalFlowConfig from './ApprovalFlowConfig';
 import './ApprovalCenter.m.less';
+import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 
 const { TextArea } = Input;
 const { Text } = Typography;
 
-const STATUS_MAP = {
-  0: { text: '待审', color: 'orange' },
-  1: { text: '已通过', color: 'green' },
-  2: { text: '已拒绝', color: 'red' },
-  3: { text: '已撤销', color: 'default' },
-};
-
-// 审批节点状态映射
-const NODE_STATUS_MAP = {
-  null: { text: '待审', color: 'default' },
-  0: { text: '已同意', color: 'success' },
-  1: { text: '已拒绝', color: 'error' },
-};
-
 function ApprovalCenter() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); 
   const [approvalList, setApprovalList] = useState([]);
   const [myApprovals, setMyApprovals] = useState([]);
   const [activeTab, setActiveTab] = useState('pending');
   const [detailVisible, setDetailVisible] = useState(false);
   const [currentDetail, setCurrentDetail] = useState(null);
-  const [total, setTotal] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pagination, setPagination] = useState(INIT_PAGECONFIG);
 
   useEffect(() => {
-    setCurrentPage(1);  // 切换 Tab 时重置页码
-    loadData(1, pageSize);
+    loadData(INIT_PAGECONFIG);
   }, [activeTab]);
 
-  const loadData = async (page = currentPage, size = pageSize) => {
+  const loadData = async (params = {}) => {
     setLoading(true);
     let result;
-    
+
     if (activeTab === 'pending') {
-      // 我的待审：只查询待审状态（status=0）
-      result = await fetchApprovalList({ status: 0, curPage: page, pageSize: size });
+      result = await fetchApprovalList({ status: 0, ...params });
       if (result.code === '200') {
         setApprovalList(result.data);
-        setTotal(result.page?.total || 0);
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0 }));
       }
     } else if (activeTab === 'mine') {
-      // 我发起的：查询当前用户发起的所有审批
-      result = await fetchMyApprovals({ curPage: page, pageSize: size });
+      result = await fetchMyApprovals(params);
       if (result.code === '200') {
         setMyApprovals(result.data);
-        setTotal(result.page?.total || 0);
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0 }));
       }
     } else if (activeTab === 'all') {
-      // 全部：查询所有审批记录（不传 status）
-      result = await fetchApprovalList({ curPage: page, pageSize: size });
+      result = await fetchApprovalList(params);
       if (result.code === '200') {
         setApprovalList(result.data);
-        setTotal(result.page?.total || 0);
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0 }));
       }
     }
-    
+
     setLoading(false);
   };
 
   const handlePageChange = (page, size) => {
-    setCurrentPage(page);
-    setPageSize(size);
-    loadData(page, size);
+    const params = {
+      curPage: page,
+      pageSize: size
+    }
+    loadData(params);
   };
 
   const handleApprove = async (id) => {
-    const result = await approveApplication(id);
-    if (result.code === '200') {
-      message.success(result.data?.message || '审批成功');
+    const res = await approveApplication(id);
+    if (res && res.code === '200') {
+      message.success('审批通过');
       loadData();
+    } else {
+      message.error(res?.message || '审批失败');
     }
   };
 
   const handleReject = async (id) => {
-    const result = await rejectApplication(id);
-    if (result.code === '200') {
-      message.success(result.data?.message || '已拒绝');
+    const res = await rejectApplication(id);
+    if (res && res.code === '200') {
+      message.success('审批已拒绝');
       loadData();
+    } else {
+      message.error(res?.message || '审批失败');
     }
   };
 
@@ -138,128 +125,68 @@ function ApprovalCenter() {
     }
   };
 
-  const columns = [
-    {
-      title: '申请编号',
-      dataIndex: 'id',
-      key: 'id',
-    },
-    {
-      title: '申请人',
-      dataIndex: 'applicantName',
-      key: 'applicantName',
-    },
-    {
-      title: '业务类型',
-      dataIndex: 'businessType',
-      key: 'businessType',
-    },
-    {
-      title: '业务名称',
-      dataIndex: 'businessName',
-      key: 'businessName',
-    },
-    {
-      title: '业务ID',
-      dataIndex: 'businessId',
-      key: 'businessId',
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Space>
-          <Button
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handleViewDetail(record)}
-          >
-            详情
-          </Button>
-          {record.status === 0 && activeTab === 'pending' && (
-            <>
-              <Popconfirm
-                title="确定通过该申请吗？"
-                onConfirm={() => handleApprove(record.id)}
-                okText="确定"
-                cancelText="取消"
-              >
-                <Button type="link" size="small" icon={<CheckOutlined />}>
-                  通过
-                </Button>
-              </Popconfirm>
-              <Popconfirm
-                title="确定拒绝该申请吗？"
-                onConfirm={() => handleReject(record.id)}
-                okText="确定"
-                cancelText="取消"
-              >
-                <Button type="link" size="small" danger icon={<CloseOutlined />}>
-                  拒绝
-                </Button>
-              </Popconfirm>
-            </>
-          )}
-        </Space>
-      ),
-    },
-  ];
+  const renderStatus = (status) => {
+    const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
+    return <Tag color={color}>{text}</Tag>;
+  };
 
-  const myColumns = [
-    {
-      title: '申请编号',
-      dataIndex: 'id',
-      key: 'id',
-    },
-    {
-      title: '业务类型',
-      dataIndex: 'businessType',
-      key: 'businessType',
-    },
-    {
-      title: '业务名称',
-      dataIndex: 'businessName',
-      key: 'businessName',
-    },
-    {
-      title: '业务ID',
-      dataIndex: 'businessId',
-      key: 'businessId',
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-        return <Tag color={color}>{text}</Tag>;
-      },
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewDetail(record)}
-        >
-          详情
-        </Button>
-      ),
-    },
-  ];
+  const renderAction = (_, record) => (
+    <Space>
+      <Button
+        type="link"
+        size="small"
+        icon={<EyeOutlined />}
+        onClick={() => handleViewDetail(record)}
+      >
+        详情
+      </Button>
+      {record.status === 0 && activeTab === 'pending' && (
+        <>
+          <Popconfirm
+            title="确定通过该申请吗？"
+            onConfirm={() => handleApprove(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button type="link" size="small" icon={<CheckOutlined />}>
+              通过
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title="确定拒绝该申请吗？"
+            onConfirm={() => handleReject(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button type="link" size="small" danger icon={<CloseOutlined />}>
+              拒绝
+            </Button>
+          </Popconfirm>
+        </>
+      )}
+    </Space>
+  );
+
+  const renderMyAction = (_, record) => (
+    <Button
+      type="link"
+      size="small"
+      icon={<EyeOutlined />}
+      onClick={() => handleViewDetail(record)}
+    >
+      详情
+    </Button>
+  );
+
+  const columns = getApprovalColumns({
+    renderStatus,
+    renderAction,
+  });
+
+  const myColumns = getMyApprovalColumns({
+    renderStatus,
+    renderAction: renderMyAction,
+  });
 
   const dataSource = activeTab === 'mine' ? myApprovals : approvalList;
   const cols = activeTab === 'mine' ? myColumns : columns;
@@ -274,46 +201,46 @@ function ApprovalCenter() {
       </div>
 
       <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={[
-            { key: 'pending', label: '我的待审' },
-            { key: 'mine', label: '我发起的' },
-            { key: 'all', label: '全部' },
-            { key: 'flowConfig', label: '审批流程配置' },
-          ]}
-        />
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'pending', label: '我的待审' },
+          { key: 'mine', label: '我发起的' },
+          { key: 'all', label: '全部' },
+          { key: 'flowConfig', label: '审批流程配置' },
+        ]}
+      />
 
-        {activeTab === 'flowConfig' ? (
-          <ApprovalFlowConfig />
-        ) : (
-          <Spin spinning={loading}>
-            {dataSource.length > 0 ? (
-              <>
-                <Table
-                  columns={cols}
-                  dataSource={dataSource}
-                  rowKey="id"
-                  pagination={false}
+      {activeTab === 'flowConfig' ? (
+        <ApprovalFlowConfig />
+      ) : (
+        <Spin spinning={loading}>
+          {dataSource.length > 0 ? (
+            <>
+              <Table
+                columns={cols}
+                dataSource={dataSource}
+                rowKey="id"
+                pagination={false}
+              />
+              <div style={{ marginTop: 16, textAlign: 'right' }}>
+                <Pagination
+                  total={pagination.total}
+                  current={pagination.currentPage}
+                  pageSize={pagination.pageSize}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  showSizeChanger
+                  showQuickJumper
+                  showTotal={(total) => `共 ${pagination.total} 条`}
+                  onChange={handlePageChange}
                 />
-                <div style={{ marginTop: 16, textAlign: 'right' }}>
-                  <Pagination
-                    total={total}
-                    current={currentPage}
-                    pageSize={pageSize}
-                    pageSizeOptions={[10, 20, 50]}
-                    showSizeChanger
-                    showQuickJumper
-                    showTotal={(total) => `共 ${total} 条`}
-                    onChange={handlePageChange}
-                  />
-                </div>
-              </>
-            ) : (
-              <Empty description="暂无数据" />
-            )}
-          </Spin>
-        )}
+              </div>
+            </>
+          ) : (
+            <Empty description="暂无数据" />
+          )}
+        </Spin>
+      )}
 
       <Modal
         title="申请详情"
@@ -333,21 +260,21 @@ function ApprovalCenter() {
               const currentNodeIndex = currentDetail.currentNode;
               const currentNode = currentDetail.combinedNodes[currentNodeIndex];
               const pendingNodes = currentDetail.combinedNodes.filter(n => n.status === null && n !== currentNode);
-              
+
               return (
                 <Card size="small" className="approval-progress-card" style={{ marginBottom: 16 }}>
                   <Row gutter={16} align="middle">
                     <Col span={6}>
-                      <Statistic 
-                        title="审批进度" 
-                        value={completedCount} 
+                      <Statistic
+                        title="审批进度"
+                        value={completedCount}
                         suffix={`/ ${totalCount} 节点`}
                         valueStyle={{ fontSize: 20 }}
                       />
                     </Col>
                     <Col span={18}>
-                      <Progress 
-                        percent={Math.round(completedCount / totalCount * 100)} 
+                      <Progress
+                        percent={Math.round(completedCount / totalCount * 100)}
                         status={currentDetail.status === 2 ? 'exception' : 'active'}
                         strokeColor={{
                           '0%': '#108ee9',
@@ -389,7 +316,7 @@ function ApprovalCenter() {
                 </Card>
               );
             })()}
-            
+
             {/* 基本信息区域 */}
             <Descriptions bordered column={2} size="small">
               <Descriptions.Item label="申请编号">{currentDetail.id}</Descriptions.Item>
@@ -418,11 +345,11 @@ function ApprovalCenter() {
                       const isRejected = node.status === 2;   // 2 = 已拒绝
                       const isCurrent = index === currentDetail.currentNode && currentDetail.status === 0;
                       const isPending = node.status === null && !isCurrent;
-                      
+
                       // 根据状态选择图标
                       let icon;
                       let stepStatus;
-                      
+
                       if (isCompleted) {
                         icon = <CheckCircleOutlined style={{ color: '#52c41a' }} />;
                         stepStatus = 'finish';
@@ -436,7 +363,7 @@ function ApprovalCenter() {
                         icon = <ClockCircleOutlined style={{ color: '#999' }} />;
                         stepStatus = 'wait';
                       }
-                      
+
                       return {
                         icon,
                         status: stepStatus,
@@ -492,13 +419,13 @@ function ApprovalCenter() {
                     })}
                   />
                 </div>
-                
 
-                
+
+
                 {/* 操作历史（审计追溯） */}
                 {currentDetail.logs && currentDetail.logs.length > 0 && (
-                  <Collapse 
-                    ghost 
+                  <Collapse
+                    ghost
                     style={{ marginTop: 16 }}
                     items={[{
                       key: 'logs',
@@ -521,7 +448,7 @@ function ApprovalCenter() {
                               3: { text: '转交', color: 'processing' },
                             };
                             const actionInfo = actionMap[log.action] || { text: '未知', color: 'default' };
-                            
+
                             return {
                               color: log.action === 0 ? 'green' : log.action === 1 ? 'red' : 'gray',
                               children: (

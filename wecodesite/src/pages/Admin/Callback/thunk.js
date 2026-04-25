@@ -15,7 +15,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 export const fetchCallbackList = async (params = {}) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.CALLBACKS.LIST, { method: 'GET', params });
+    try {
+      const result = await fetchApi(API_CONFIG.CALLBACKS.LIST, { method: 'GET', params });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   let data = mockCallbacks;
@@ -46,7 +51,12 @@ export const fetchCallbackList = async (params = {}) => {
  */
 export const fetchCallbackDetail = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DETAIL, { id }));
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DETAIL, { id }));
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   const callback = mockCallbacks.find(item => item.id === id);
@@ -64,7 +74,12 @@ export const fetchCallbackDetail = async (id) => {
  */
 export const createCallback = async (data) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.CALLBACKS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    try {
+      const result = await fetchApi(API_CONFIG.CALLBACKS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -82,7 +97,12 @@ export const createCallback = async (data) => {
  */
 export const updateCallback = async (id, data) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -99,7 +119,12 @@ export const updateCallback = async (id, data) => {
  */
 export const deleteCallback = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id }), { method: 'DELETE' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id }), { method: 'DELETE' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -116,7 +141,12 @@ export const deleteCallback = async (id) => {
  */
 export const withdrawCallback = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.WITHDRAW, { id }), { method: 'POST' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.WITHDRAW, { id }), { method: 'POST' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {

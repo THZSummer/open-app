@@ -1,6 +1,9 @@
-export const ROUTE_PATH = '/admin/apis';
-
-export const ROUTE_CONFIG = {
-  path: ROUTE_PATH,
-  name: 'API管理',
-};
+export default {
+    path: '/admin/apis',
+    auth: false,
+    preload: false,
+    isStatic: true,
+    key: 'admin-apis',
+    layout: 'inner',
+    component: () => import('./index'),
+}

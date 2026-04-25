@@ -1,28 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { Button, Table, Pagination, Tag, message } from 'antd';
 import { fetchAppCallbacks, remindApproval, deleteCallback, withdrawApproval, subscribeCallbacks } from './thunk';
 import CallbackDrawer from './CallbackDrawer';
 import CallbackConfigDrawer from './CallbackConfigDrawer';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { SUBSCRIPTION_STATUS, CALLBACK_CHANNEL_TYPE } from '../../utils/constants';
+import { SUBSCRIPTION_STATUS, CALLBACK_CHANNEL_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
+import { queryParams, openUrl } from '../../utils/common';
+import { getCallbackColumns } from './constants';
 import './Callbacks.m.less';
 
-function getStatusTag(status) {
-  const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
-  return <Tag color={color}>{text}</Tag>;
-}
-
 function Callbacks() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const appId = searchParams.get('appId');
+  const appId = queryParams('appId');
   const [callbacks, setCallbacks] = useState([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pagination, setPagination] = useState(INIT_PAGECONFIG);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [editingCallback, setEditingCallback] = useState(null);
@@ -33,31 +25,42 @@ function Callbacks() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [subscribeLoading, setSubscribeLoading] = useState(false);
 
-  const loadCallbacks = useCallback(async (page = currentPage, size = pageSize) => {
+  /**
+   * 加载回调列表
+   */
+  const loadCallbacks = async (page = 1, size = pagination.pageSize) => {
     if (!appId) return;
     
     setLoading(true);
     try {
       const result = await fetchAppCallbacks(appId, { curPage: page, pageSize: size });
-      setCallbacks(result.data || []);
-      setTotal(result.page?.total || 0);
+      if (result && result.code === '200') {
+        setCallbacks(result.data || []);
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: page, pageSize: size }));
+      } else {
+        message.error(result?.message || '加载回调列表失败');
+      }
     } catch (error) {
       message.error('加载回调列表失败');
     } finally {
       setLoading(false);
     }
-  }, [appId, currentPage, pageSize]);
+  };
 
+  /**
+   * 组件挂载和 appId 变化时加载数据
+   */
   useEffect(() => {
-    loadCallbacks();
-  }, [loadCallbacks]);
+    if (appId) {
+      loadCallbacks();
+    }
+  }, [appId]);
 
   const handleAddCallback = async (selectedCallbacks) => {
     if (!appId) return;
     
     setSubscribeLoading(true);
     try {
-      // 使用 permission.id 作为权限ID（而不是回调ID c.id）
       const permissionIds = selectedCallbacks
         .filter(c => c.permission?.id)
         .map(c => c.permission.id);
@@ -68,10 +71,14 @@ function Callbacks() {
         return;
       }
       
-      await subscribeCallbacks(appId, { permissionIds });
-      message.success('申请已提交');
-      loadCallbacks(1, pageSize);
-      setDrawerOpen(false);
+      const res = await subscribeCallbacks(appId, { permissionIds });
+      if (res && res.code === '200') {
+        message.success('申请已提交');
+        loadCallbacks(1, INIT_PAGECONFIG.pageSize);
+        setDrawerOpen(false);
+      } else {
+        message.error(res?.message || '申请失败');
+      }
     } catch (error) {
       message.error('申请失败');
     } finally {
@@ -112,16 +119,20 @@ function Callbacks() {
 
   const handleWithdraw = async (record) => {
     try {
-      await withdrawApproval(record.id);
-      message.success('已撤回');
-      loadCallbacks();
+      const res = await withdrawApproval(record.id);
+      if (res && res.code === '200') {
+        message.success('已撤回');
+        loadCallbacks();
+      } else {
+        message.error(res?.message || '撤回失败');
+      }
     } catch (error) {
       message.error('撤回失败');
     }
   };
 
   const handleOpenDoc = (url) => {
-    window.open(url, '_blank');
+    openUrl(url);
   };
 
   const handleDeleteClick = (id) => {
@@ -132,10 +143,14 @@ function Callbacks() {
   const handleConfirmDelete = async () => {
     setDeleteLoading(true);
     try {
-      await deleteCallback(currentDeleteId);
-      message.success('删除成功');
-      setDeleteModalOpen(false);
-      loadCallbacks();
+      const res = await deleteCallback(currentDeleteId);
+      if (res && res.code === '200') {
+        message.success('删除成功');
+        setDeleteModalOpen(false);
+        loadCallbacks();
+      } else {
+        message.error(res?.message || '删除失败');
+      }
     } catch (error) {
       message.error('删除失败');
     } finally {
@@ -144,67 +159,47 @@ function Callbacks() {
   };
 
   const handlePageChange = (page, size) => {
-    setCurrentPage(page);
-    setPageSize(size);
     loadCallbacks(page, size);
   };
 
-  const columns = [
-    {
-      title: '回调名称',
-      dataIndex: ['permission', 'nameCn'],
-      key: 'nameCn',
-      render: (text, record) => (
-        <div>
-          <div>{text}</div>
-          <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.permission?.scope}</span>
-        </div>
-      ),
-    },
-    {
-      title: '分类',
-      dataIndex: ['category', 'nameCn'],
-      key: 'category',
-    },
-    {
-      title: '所需权限',
-      dataIndex: ['permission', 'nameCn'],
-      key: 'permissionName',
-    },
-    {
-      title: '通道类型',
-      dataIndex: 'channelType',
-      key: 'channelType',
-      render: (type) => CALLBACK_CHANNEL_TYPE[type] || '-',
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: getStatusTag,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <div>
-          <Button type="link" onClick={() => handleOpenDoc(record.callback?.docUrl || record.docUrl)}>查看文档</Button>
-          {record.status === 1 && (
-            <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
-          )}
-          {record.status === 0 && (
-            <>
-              <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
-              <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
-            </>
-          )}
-          {record.status !== 0 && (
-            <Button type="link" danger onClick={() => handleDeleteClick(record.id)}>删除</Button>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const renderCallbackName = (text, record) => (
+    <div>
+      <div>{text}</div>
+      <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.permission?.scope}</span>
+    </div>
+  );
+
+  const renderChannelType = (type) => CALLBACK_CHANNEL_TYPE[type] || '-';
+
+  const renderStatus = (status) => {
+    const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
+    return <Tag color={color}>{text}</Tag>;
+  };
+
+  const renderAction = (_, record) => (
+    <div>
+      <Button type="link" onClick={() => handleOpenDoc(record.callback?.docUrl || record.docUrl)}>查看文档</Button>
+      {record.status === 1 && (
+        <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
+      )}
+      {record.status === 0 && (
+        <>
+          <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
+          <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
+        </>
+      )}
+      {record.status !== 0 && (
+        <Button type="link" danger onClick={() => handleDeleteClick(record.id)}>删除</Button>
+      )}
+    </div>
+  );
+
+  const columns = getCallbackColumns({
+    renderCallbackName,
+    renderChannelType,
+    renderStatus,
+    renderAction,
+  });
 
   return (
     <div className="callbacks">
@@ -227,9 +222,9 @@ function Callbacks() {
       />
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Pagination
-          total={total}
-          current={currentPage}
-          pageSize={pageSize}
+          total={pagination.total}
+          current={pagination.curPage}
+          pageSize={pagination.pageSize}
           pageSizeOptions={[10, 20, 50]}
           showSizeChanger
           showQuickJumper
@@ -244,7 +239,6 @@ function Callbacks() {
         onConfirm={handleAddCallback}
         selectedCallbacks={callbacks}
         subscribeLoading={subscribeLoading}
-        appId={appId}
       />
 
       <CallbackConfigDrawer
@@ -260,6 +254,7 @@ function Callbacks() {
         approver={currentApprovalInfo.approver}
         approvalUrl={currentApprovalInfo.approvalUrl}
         onRemind={() => remindApproval(currentApprovalInfo.id)}
+        appId={appId}
       />
 
       <DeleteConfirmModal

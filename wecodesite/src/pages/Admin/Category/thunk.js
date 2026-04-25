@@ -15,7 +15,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 export const fetchCategoryTree = async (params = {}) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.CATEGORIES.LIST, { params });
+    try {
+      const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -32,7 +37,12 @@ export const fetchCategoryTree = async (params = {}) => {
  */
 export const fetchCategoryDetail = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DETAIL, { id }));
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DETAIL, { id }));
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   const category = mockCategories.find(item => item.id === id);
@@ -50,7 +60,12 @@ export const fetchCategoryDetail = async (id) => {
  */
 export const fetchCategoryOwners = async (categoryId) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }));
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }));
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -67,7 +82,12 @@ export const fetchCategoryOwners = async (categoryId) => {
  */
 export const createCategory = async (data) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.CATEGORIES.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    try {
+      const result = await fetchApi(API_CONFIG.CATEGORIES.CREATE, { method: 'POST', body: JSON.stringify(data) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -85,7 +105,12 @@ export const createCategory = async (data) => {
  */
 export const updateCategory = async (id, data) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -102,7 +127,12 @@ export const updateCategory = async (id, data) => {
  */
 export const deleteCategory = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DELETE, { id }), { method: 'DELETE' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DELETE, { id }), { method: 'DELETE' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -120,7 +150,12 @@ export const deleteCategory = async (id) => {
  */
 export const addCategoryOwner = async (categoryId, owner) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }), { method: 'POST', body: JSON.stringify(owner) });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }), { method: 'POST', body: JSON.stringify(owner) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -138,7 +173,12 @@ export const addCategoryOwner = async (categoryId, owner) => {
  */
 export const removeCategoryOwner = async (categoryId, userId) => {
   if (useTrueFetch) {
-    return fetchApi(`/categories/${categoryId}/owners/${userId}`, { method: 'DELETE' });
+    try {
+      const result = await fetchApi(`/categories/${categoryId}/owners/${userId}`, { method: 'DELETE' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {

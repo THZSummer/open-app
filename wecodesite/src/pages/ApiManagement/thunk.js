@@ -40,8 +40,12 @@ export const fetchCategories = async (apiType) => {
     }];
     return categories;
   }
-  const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: apiType } });
-  return result?.data || [];
+  try {
+    const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: apiType } });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -95,8 +99,12 @@ export const fetchApis = async ({ keyword, needReview, identityType, apiType, ca
   if (appId) queryParams.appId = appId;
   queryParams.includeChildren = true;
   
-  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: categoryId }), { params: queryParams });
-  return result?.data || { data: [], total: 0 };
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: categoryId }), { params: queryParams });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -133,7 +141,12 @@ export const fetchAppApis = async (appId, params = {}) => {
       page: { curPage, pageSize, total }
     };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_APIS.LIST, { appId }), { params });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.LIST, { appId }), { params });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -161,7 +174,12 @@ export const subscribeApis = async (appId, params) => {
       }
     };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_APIS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -182,7 +200,12 @@ export const withdrawApiApplication = async (appId, subscriptionId) => {
       }
     };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_APIS.WITHDRAW, { appId, id: subscriptionId }), { method: 'POST' });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.WITHDRAW, { appId, id: subscriptionId }), { method: 'POST' });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -191,7 +214,15 @@ export const withdrawApiApplication = async (appId, subscriptionId) => {
  * @returns {Promise<Object>} 催办结果
  */
 export const remindApproval = async (id) => {
-  await delay(300);
-  console.log(`催办 API id: ${id}`);
-  return { success: true };
+  if (!useTrueFetch) {
+    await delay(300);
+    console.log(`催办 API id: ${id}`);
+    return { code: '200', messageZh: '催办成功' };
+  }
+  try {
+    const result = await fetchApi(`/approval/remind`, { method: 'POST', body: JSON.stringify({ id }) });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };

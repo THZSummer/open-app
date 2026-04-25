@@ -15,7 +15,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 export const fetchEventList = async (params = {}) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.EVENTS.LIST, { method: 'GET', params });
+    try {
+      const result = await fetchApi(API_CONFIG.EVENTS.LIST, { method: 'GET', params });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   let data = mockEvents;
@@ -46,7 +51,12 @@ export const fetchEventList = async (params = {}) => {
  */
 export const fetchEventDetail = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.EVENTS.DETAIL, { id }));
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.EVENTS.DETAIL, { id }));
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   const event = mockEvents.find(item => item.id === id);
@@ -64,7 +74,12 @@ export const fetchEventDetail = async (id) => {
  */
 export const createEvent = async (data) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.EVENTS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    try {
+      const result = await fetchApi(API_CONFIG.EVENTS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -82,7 +97,12 @@ export const createEvent = async (data) => {
  */
 export const updateEvent = async (id, data) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.EVENTS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.EVENTS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -99,7 +119,12 @@ export const updateEvent = async (id, data) => {
  */
 export const deleteEvent = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.EVENTS.DELETE, { id }), { method: 'DELETE' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.EVENTS.DELETE, { id }), { method: 'DELETE' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -116,7 +141,12 @@ export const deleteEvent = async (id) => {
  */
 export const withdrawEvent = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.EVENTS.WITHDRAW, { id }), { method: 'POST' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.EVENTS.WITHDRAW, { id }), { method: 'POST' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {

@@ -1,6 +1,9 @@
-export const ROUTE_PATH = '/admin/approvals';
-
-export const ROUTE_CONFIG = {
-  path: ROUTE_PATH,
-  name: '审批中心',
-};
+export default {
+    path: '/admin/approvals',
+    auth: false,
+    preload: false,
+    isStatic: true,
+    key: 'admin-approvals',
+    layout: 'inner',
+    component: () => import('./index'),
+}

@@ -1,28 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import { Button, Table, Pagination, Tag, message } from 'antd';
 import { fetchAppEvents, remindApproval, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
 import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { SUBSCRIPTION_STATUS, EVENT_CHANNEL_TYPE } from '../../utils/constants';
+import { SUBSCRIPTION_STATUS, EVENT_CHANNEL_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
+import { queryParams, openUrl } from '../../utils/common';
+import { getEventColumns } from './constants';
 import './Events.m.less';
 
-function getStatusTag(status) {
-  const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
-  return <Tag color={color}>{text}</Tag>;
-}
-
 function Events() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const appId = searchParams.get('appId');
+  const appId = queryParams('appId');
   const [events, setEvents] = useState([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pagination, setPagination] = useState(INIT_PAGECONFIG);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [subscriptionDrawerOpen, setSubscriptionDrawerOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -33,33 +25,44 @@ function Events() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [subscribeLoading, setSubscribeLoading] = useState(false);
 
-  const loadEvents = useCallback(async (page = currentPage, size = pageSize) => {
+  /**
+   * 加载事件列表
+   */
+  const loadEvents = async (page = 1, size = pagination.pageSize) => {
     if (!appId) return;
     
     setLoading(true);
     try {
       const result = await fetchAppEvents(appId, { curPage: page, pageSize: size });
-      setEvents(result.data || []);
-      setTotal(result.page?.total || 0);
+      if (result && result.code === '200') {
+        setEvents(result.data || []);
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: page, pageSize: size }));
+      } else {
+        message.error(result?.message || '加载事件列表失败');
+      }
     } catch (error) {
       message.error('加载事件列表失败');
     } finally {
       setLoading(false);
     }
-  }, [appId, currentPage, pageSize]);
+  };
 
+  /**
+   * 组件挂载和 appId 变化时加载数据
+   */
   useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+    if (appId) {
+      loadEvents();
+    }
+  }, [appId]);
 
   const handleAddEvent = async (selectedEvents) => {
     if (!appId) return;
     
     setSubscribeLoading(true);
     try {
-      // 使用 permission.id 作为权限ID（而不是事件ID e.id）
       const permissionIds = selectedEvents
-        .filter(e => e.permission?.id)  // 过滤出有权限ID的事件
+        .filter(e => e.permission?.id)
         .map(e => e.permission.id);
       
       if (permissionIds.length === 0) {
@@ -68,10 +71,14 @@ function Events() {
         return;
       }
       
-      await subscribeEvents(appId, { permissionIds });
-      message.success('申请已提交');
-      loadEvents(1, pageSize);
-      setDrawerOpen(false);
+      const res = await subscribeEvents(appId, { permissionIds });
+      if (res && res.code === '200') {
+        message.success('申请已提交');
+        loadEvents(1, INIT_PAGECONFIG.pageSize);
+        setDrawerOpen(false);
+      } else {
+        message.error(res?.message || '申请失败');
+      }
     } catch (error) {
       message.error('申请失败');
     } finally {
@@ -112,16 +119,20 @@ function Events() {
 
   const handleWithdraw = async (record) => {
     try {
-      await withdrawApproval(record.id);
-      message.success('已撤回');
-      loadEvents();
+      const res = await withdrawApproval(record.id);
+      if (res && res.code === '200') {
+        message.success('已撤回');
+        loadEvents();
+      } else {
+        message.error(res?.message || '撤回失败');
+      }
     } catch (error) {
       message.error('撤回失败');
     }
   };
 
   const handleOpenDoc = (url) => {
-    window.open(url, '_blank');
+    openUrl(url);
   };
 
   const handleDeleteClick = (id) => {
@@ -132,10 +143,14 @@ function Events() {
   const handleConfirmDelete = async () => {
     setDeleteLoading(true);
     try {
-      await deleteEvent(currentDeleteId);
-      message.success('删除成功');
-      setDeleteModalOpen(false);
-      loadEvents();
+      const res = await deleteEvent(currentDeleteId);
+      if (res && res.code === '200') {
+        message.success('删除成功');
+        setDeleteModalOpen(false);
+        loadEvents();
+      } else {
+        message.error(res?.message || '删除失败');
+      }
     } catch (error) {
       message.error('删除失败');
     } finally {
@@ -144,67 +159,47 @@ function Events() {
   };
 
   const handlePageChange = (page, size) => {
-    setCurrentPage(page);
-    setPageSize(size);
     loadEvents(page, size);
   };
 
-  const columns = [
-    {
-      title: '事件名称',
-      dataIndex: ['permission', 'nameCn'],
-      key: 'nameCn',
-      render: (text, record) => (
-        <div>
-          <div>{text}</div>
-          <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.event?.topic}</span>
-        </div>
-      ),
-    },
-    {
-      title: '分类',
-      dataIndex: ['category', 'nameCn'],
-      key: 'category',
-    },
-    {
-      title: '所需权限',
-      dataIndex: ['permission', 'nameCn'],
-      key: 'permissionName',
-    },
-    {
-      title: '订阅方式',
-      dataIndex: 'channelType',
-      key: 'channelType',
-      render: (type) => EVENT_CHANNEL_TYPE[type] || '-',
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
-      render: getStatusTag,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <div>
-          <Button type="link" onClick={() => handleOpenDoc(record.event?.docUrl || record.docUrl)}>查看文档</Button>
-          {record.status === 1 && (
-            <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
-          )}
-          {record.status === 0 && (
-            <>
-              <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
-              <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
-            </>
-          )}
-          {record.status !== 0 && (
-            <Button type="link" danger onClick={() => handleDeleteClick(record.id)}>删除</Button>
-          )}
-        </div>
-      ),
-    },
-  ];
+  const renderEventName = (text, record) => (
+    <div>
+      <div>{text}</div>
+      <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.event?.topic}</span>
+    </div>
+  );
+
+  const renderChannelType = (type) => EVENT_CHANNEL_TYPE[type] || '-';
+
+  const renderStatus = (status) => {
+    const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
+    return <Tag color={color}>{text}</Tag>;
+  };
+
+  const renderAction = (_, record) => (
+    <div>
+      <Button type="link" onClick={() => handleOpenDoc(record.event?.docUrl || record.docUrl)}>查看文档</Button>
+      {record.status === 1 && (
+        <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
+      )}
+      {record.status === 0 && (
+        <>
+          <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
+          <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
+        </>
+      )}
+      {record.status !== 0 && (
+        <Button type="link" danger onClick={() => handleDeleteClick(record.id)}>删除</Button>
+      )}
+    </div>
+  );
+
+  const columns = getEventColumns({
+    renderEventName,
+    renderChannelType,
+    renderStatus,
+    renderAction,
+  });
 
   return (
     <div className="events">
@@ -227,9 +222,9 @@ function Events() {
       />
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Pagination
-          total={total}
-          current={currentPage}
-          pageSize={pageSize}
+          total={pagination.total}
+          current={pagination.curPage}
+          pageSize={pagination.pageSize}
           pageSizeOptions={[10, 20, 50]}
           showSizeChanger
           showQuickJumper

@@ -29,9 +29,9 @@ import {
   createApprovalFlow,
   updateApprovalFlow,
   deleteApprovalFlow,
-  LEVEL_MAP,
 } from './thunk';
 import './ApprovalCenter.m.less';
+import { LEVEL_MAP } from './constants';
 
 const { Option } = Select;
 

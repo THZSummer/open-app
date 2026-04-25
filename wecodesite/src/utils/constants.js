@@ -2,6 +2,14 @@ export const useTrueFetch = true;
 
 export const API_BASE_URL = '';
 
+export const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+export const INIT_PAGECONFIG = {
+  pageSize: 10,
+  curPage: 1,
+  total: 0,
+}
+
 export const SUBSCRIPTION_STATUS = {
   0: { text: '审核中', color: 'orange' },
   1: { text: '已审核', color: 'green' },

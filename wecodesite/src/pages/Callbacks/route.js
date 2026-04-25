@@ -1,9 +1,9 @@
-import { lazy } from 'react';
-import { Route } from 'react-router-dom';
-
-export default [
-  {
+export default {
     path: '/callbacks',
-    component: lazy(() => import('./Callbacks')),
-  },
-];
+    auth: false,
+    preload: false,
+    isStatic: true,
+    key: 'callbacks',
+    layout: 'inner',
+    component: () => import('./index'),
+}

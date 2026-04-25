@@ -13,28 +13,9 @@ import {
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { createApi, updateApi, fetchApiDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
+import { API_PROPERTY_PRESETS, AUTH_TYPE_OPTIONS, HTTP_METHOD_OPTIONS } from './constants';
 
 const { Option } = Select;
-
-// API 扩展属性预设选项
-const API_PROPERTY_PRESETS = [
-  { value: 'descriptionCn', label: '中文描述', placeholder: 'API的中文描述' },
-  { value: 'descriptionEn', label: '英文描述', placeholder: 'API description in English' },
-  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/api/xxx' },
-  { value: 'rateLimit', label: '速率限制', placeholder: '100/minute' },
-  { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
-];
-
-// 认证方式选项
-const AUTH_TYPE_OPTIONS = [
-  { value: 0, label: 'Cookie' },
-  { value: 1, label: 'SOA' },
-  { value: 2, label: 'APIG' },
-  { value: 3, label: 'IAM' },
-  { value: 4, label: '免认证' },
-  { value: 5, label: 'AKSK' },
-  { value: 6, label: 'CLITOKEN' },
-];
 
 function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
   const [form] = Form.useForm();
@@ -86,8 +67,8 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
               scope: data.permission?.scope,
               needApproval: data.permission?.needApproval ?? 1,
               // 解析 resourceNodes JSON 字符串为数组
-              resourceNodes: data.permission?.resourceNodes 
-                ? JSON.parse(data.permission.resourceNodes) 
+              resourceNodes: data.permission?.resourceNodes
+                ? JSON.parse(data.permission.resourceNodes)
                 : [],
               properties: data.properties?.map(prop => ({
                 propertyName: API_PROPERTY_PRESETS.find(p => p.value === prop.propertyName)
@@ -151,12 +132,20 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
       let result;
       if (api?.id) {
         result = await updateApi(api.id, data);
+        if (result && result.code === '200') {
+          message.success('更新成功');
+          onSuccess();
+        } else {
+          message.error(result?.message || '更新失败');
+        }
       } else {
         result = await createApi(data);
-      }
-
-      if (result.code === '200') {
-        onSuccess();
+        if (result && result.code === '200') {
+          message.success('注册成功');
+          onSuccess();
+        } else {
+          message.error(result?.message || '注册失败');
+        }
       }
     } catch (error) {
       console.error('表单验证失败:', error);
@@ -169,8 +158,8 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
     <Modal
       title={
         mode === 'view' ? '查看API详情' :
-        mode === 'edit' ? '编辑API' :
-        '注册API'
+          mode === 'edit' ? '编辑API' :
+            '注册API'
       }
       open={visible}
       onOk={handleSubmit}
@@ -235,11 +224,9 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
             rules={[{ required: true, message: '请选择HTTP方法' }]}
           >
             <Select placeholder="请选择HTTP方法" disabled={mode === 'view'}>
-              <Option value="GET">GET</Option>
-              <Option value="POST">POST</Option>
-              <Option value="PUT">PUT</Option>
-              <Option value="DELETE">DELETE</Option>
-              <Option value="PATCH">PATCH</Option>
+              {HTTP_METHOD_OPTIONS.map(opt => (
+                <Option value={opt.value}>{opt.label}</Option>
+              ))}
             </Select>
           </Form.Item>
 
@@ -361,25 +348,25 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
                 <>
                   {fields.map(({ key, name, ...restField }) => (
                     <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-<Form.Item
-                         {...restField}
-                         name={[name, 'propertyName']}
-                         rules={[{ required: true, message: '请选择或输入属性名' }]}
-                       >
-                         <Select
-                           placeholder="选择属性"
-                           style={{ width: 160 }}
-                           disabled={mode === 'view'}
-                           onChange={(value) => {
-                             // 切换属性时清空属性值
-                             const properties = form.getFieldValue('properties');
-                             properties[name].propertyValue = undefined;
-                             form.setFieldsValue({ properties });
-                           }}
-                         >
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'propertyName']}
+                        rules={[{ required: true, message: '请选择或输入属性名' }]}
+                      >
+                        <Select
+                          placeholder="选择属性"
+                          style={{ width: 160 }}
+                          disabled={mode === 'view'}
+                          onChange={(value) => {
+                            // 切换属性时清空属性值
+                            const properties = form.getFieldValue('properties');
+                            properties[name].propertyValue = undefined;
+                            form.setFieldsValue({ properties });
+                          }}
+                        >
                           {API_PROPERTY_PRESETS.map(preset => (
-                            <Select.Option 
-                              key={preset.value} 
+                            <Select.Option
+                              key={preset.value}
                               value={preset.value}
                               disabled={preset.value !== '__custom__' && usedPresets.includes(preset.value)}
                             >
@@ -388,11 +375,11 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
                           ))}
                         </Select>
                       </Form.Item>
-                      
+
                       {/* 当选择"自定义"时显示自定义属性名输入框 */}
                       <Form.Item
                         noStyle
-                        shouldUpdate={(prev, cur) => 
+                        shouldUpdate={(prev, cur) =>
                           prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
                         }
                       >
@@ -416,7 +403,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
                       {/* 属性值输入框 */}
                       <Form.Item
                         noStyle
-                        shouldUpdate={(prev, cur) => 
+                        shouldUpdate={(prev, cur) =>
                           prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
                         }
                       >
@@ -424,19 +411,19 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
                           const propertyName = getFieldValue(['properties', name, 'propertyName']);
                           const preset = API_PROPERTY_PRESETS.find(p => p.value === propertyName);
                           const isCustom = propertyName === '__custom__';
-                          
+
                           return (
-<Form.Item
-                               {...restField}
-                               name={[name, 'propertyValue']}
-                               rules={[{ required: true, message: '请输入属性值' }]}
-                             >
-                               <Input 
-                                 placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')} 
-                                 style={{ width: 260 }} 
-                                 disabled={mode === 'view'}
-                               />
-                             </Form.Item>
+                            <Form.Item
+                              {...restField}
+                              name={[name, 'propertyValue']}
+                              rules={[{ required: true, message: '请输入属性值' }]}
+                            >
+                              <Input
+                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')}
+                                style={{ width: 260 }}
+                                disabled={mode === 'view'}
+                              />
+                            </Form.Item>
                           );
                         }}
                       </Form.Item>

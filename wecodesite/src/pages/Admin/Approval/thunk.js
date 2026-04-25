@@ -1,12 +1,6 @@
 /**
  * Admin模块 - 审批管理相关API
  * 用于审批中心处理待审批事项
- * 
- * v2.8.0 设计变更：
- * - 移除 isDefault、flowId 相关字段
- * - 新增 level 字段（资源审批/场景审批/全局审批）
- * - 新增 combinedNodes 字段（组合审批节点）
- * - 新增 businessType、businessId、businessName 字段
  */
 import { useTrueFetch } from '@/utils/constants';
 import { API_CONFIG, buildApiUrl, fetchApi } from '@/configs/web.config';
@@ -15,27 +9,23 @@ import { mockApprovals, mockMyApprovals, mockApprovalFlows } from './mock';
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * 审批级别映射
- */
-export const LEVEL_MAP = {
-  'resource': { text: '资源审批', color: 'blue' },
-  'scene': { text: '场景审批', color: 'orange' },
-  'global': { text: '全局审批', color: 'green' },
-};
-
-/**
  * 获取待审批列表
  * @param {Object} params - 查询参数，包含 type（审批类型）、keyword（关键词）、curPage、pageSize
  * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
  */
 export const fetchApprovalList = async (params = {}) => {
   if (useTrueFetch) {
-    // 如果指定了 status=0（待审），添加 approverId=current 参数
-    const queryParams = { ...params };
-    if (params.status === 0 && !params.approverId) {
-      queryParams.approverId = 'current';
+    try {
+      // 如果指定了 status=0（待审），添加 approverId=current 参数
+      const queryParams = { ...params };
+      if (params.status === 0 && !params.approverId) {
+        queryParams.approverId = 'current';
+      }
+      const result = await fetchApi(API_CONFIG.APPROVALS.PENDING, { method: 'GET', params: queryParams });
+      return result || {};
+    } catch (err) {
+      return {};
     }
-    return fetchApi(API_CONFIG.APPROVALS.PENDING, { method: 'GET', params: queryParams });
   }
   await delay(300);
   let data = mockApprovals;
@@ -57,7 +47,12 @@ export const fetchApprovalList = async (params = {}) => {
  */
 export const fetchApprovalDetail = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APPROVALS.DETAIL, { id }));
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.DETAIL, { id }));
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   const approval = mockApprovals.find(item => item.id === id);
@@ -75,8 +70,12 @@ export const fetchApprovalDetail = async (id) => {
  */
 export const fetchMyApprovals = async (params = {}) => {
   if (useTrueFetch) {
-    // 使用待审批列表接口，通过参数筛选
-    return fetchApi(API_CONFIG.APPROVALS.PENDING, { method: 'GET', params: { ...params, applicantId: 'current' } });
+    try {
+      const result = await fetchApi(API_CONFIG.APPROVALS.PENDING, { method: 'GET', params: { ...params, applicantId: 'current' } });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -94,17 +93,22 @@ export const fetchMyApprovals = async (params = {}) => {
  */
 export const approveApplication = async (id, data = {}) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APPROVALS.APPROVE, { id }), { 
-      method: 'POST', 
-      body: JSON.stringify(data) 
-    });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.APPROVE, { id }), {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
     code: '200',
     messageZh: '审批通过',
-    data: { 
-      id, 
+    data: {
+      id,
       status: 1,
       // v2.8.0: 返回 combinedNodes（组合审批节点）
       combinedNodes: [
@@ -123,17 +127,21 @@ export const approveApplication = async (id, data = {}) => {
  */
 export const rejectApplication = async (id, data = {}) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APPROVALS.REJECT, { id }), { 
-      method: 'POST', 
-      body: JSON.stringify(data) 
-    });
+    try {
+      return await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.REJECT, { id }), {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
     code: '200',
     messageZh: '审批拒绝',
-    data: { 
-      id, 
+    data: {
+      id,
       status: 2,
       // v2.8.0: 返回组合审批节点
       combinedNodes: [
@@ -151,7 +159,12 @@ export const rejectApplication = async (id, data = {}) => {
  */
 export const cancelApproval = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APPROVALS.CANCEL, { id }), { method: 'POST' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.CANCEL, { id }), { method: 'POST' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -168,10 +181,15 @@ export const cancelApproval = async (id) => {
  */
 export const batchApprove = async (data) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.APPROVALS.BATCH_APPROVE, { 
-      method: 'POST', 
-      body: JSON.stringify(data) 
-    });
+    try {
+      const result = await fetchApi(API_CONFIG.APPROVALS.BATCH_APPROVE, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -188,10 +206,15 @@ export const batchApprove = async (data) => {
  */
 export const batchReject = async (data) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.APPROVALS.BATCH_REJECT, { 
-      method: 'POST', 
-      body: JSON.stringify(data) 
-    });
+    try {
+      const result = await fetchApi(API_CONFIG.APPROVALS.BATCH_REJECT, {
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -200,7 +223,6 @@ export const batchReject = async (data) => {
     data: { successCount: data.approvalIds?.length || 0, failedCount: 0 }
   };
 };
-
 // ==================== 审批流程模板管理 ====================
 
 /**
@@ -215,8 +237,8 @@ export const fetchApprovalFlowList = async (params = {}) => {
   await delay(300);
   let data = mockApprovalFlows;
   if (params.keyword) {
-    data = data.filter(item => 
-      item.nameCn.includes(params.keyword) || 
+    data = data.filter(item =>
+      item.nameCn.includes(params.keyword) ||
       item.code.includes(params.keyword)
     );
   }
@@ -253,9 +275,9 @@ export const fetchApprovalFlowDetail = async (id) => {
  */
 export const createApprovalFlow = async (data) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.APPROVAL_FLOWS.CREATE, { 
-      method: 'POST', 
-      body: JSON.stringify(data) 
+    return fetchApi(API_CONFIG.APPROVAL_FLOWS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data)
     });
   }
   await delay(300);
@@ -279,9 +301,9 @@ export const createApprovalFlow = async (data) => {
  */
 export const updateApprovalFlow = async (id, data) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.UPDATE, { id }), { 
-      method: 'PUT', 
-      body: JSON.stringify(data) 
+    return fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.UPDATE, { id }), {
+      method: 'PUT',
+      body: JSON.stringify(data)
     });
   }
   await delay(300);
@@ -299,8 +321,8 @@ export const updateApprovalFlow = async (id, data) => {
  */
 export const deleteApprovalFlow = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.DELETE, { id }), { 
-      method: 'DELETE' 
+    return fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.DELETE, { id }), {
+      method: 'DELETE'
     });
   }
   await delay(300);

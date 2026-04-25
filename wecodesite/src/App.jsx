@@ -7,17 +7,17 @@ import BasicInfo from './pages/BasicInfo/BasicInfo';
 import Members from './pages/Members/Members';
 import Capabilities from './pages/Capabilities/Capabilities';
 import CapabilityDetail from './pages/CapabilityDetail/CapabilityDetail';
-import ApiManagement from './pages/ApiManagement/ApiManagement';
-import Events from './pages/Events/Events';
-import Callbacks from './pages/Callbacks/Callbacks';
+import ApiManagement from './pages/ApiManagement/index';
+import Events from './pages/Events/index';
+import Callbacks from './pages/Callbacks/index';
 import VersionRelease from './pages/VersionRelease/VersionRelease';
 import VersionForm from './pages/VersionRelease/VersionForm';
 import OperationLog from './pages/OperationLog/OperationLog';
-import CategoryList from './pages/Admin/Category/CategoryList';
-import ApiList from './pages/Admin/Api/ApiList';
-import EventList from './pages/Admin/Event/EventList';
-import CallbackList from './pages/Admin/Callback/CallbackList';
-import ApprovalCenter from './pages/Admin/Approval/ApprovalCenter';
+import CategoryList from './pages/Admin/Category/index';
+import ApiList from './pages/Admin/Api/index';
+import EventList from './pages/Admin/Event/index';
+import CallbackList from './pages/Admin/Callback/index';
+import ApprovalCenter from './pages/Admin/Approval/index';
 import 'antd/dist/antd.css';
 
 function App() {

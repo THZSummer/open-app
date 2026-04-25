@@ -1,6 +1,9 @@
-export const ROUTE_PATH = '/admin/callbacks';
-
-export const ROUTE_CONFIG = {
-  path: ROUTE_PATH,
-  name: '回调管理',
-};
+export default {
+    path: '/admin/callbacks',
+    auth: false,
+    preload: false,
+    isStatic: true,
+    key: 'admin-callbacks',
+    layout: 'inner',
+    component: () => import('./index'),
+}

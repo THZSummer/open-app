@@ -1,6 +1,9 @@
-export const ROUTE_PATH = '/admin/categories';
-
-export const ROUTE_CONFIG = {
-  path: ROUTE_PATH,
-  name: '分类管理',
-};
+export default {
+    path: '/admin/categories',
+    auth: false,
+    preload: false,
+    isStatic: true,
+    key: 'admin-categories',
+    layout: 'inner',
+    component: () => import('./index'),
+}

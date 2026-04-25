@@ -1,6 +1,9 @@
-export const ROUTE_PATH = '/events';
-
-export const ROUTE_CONFIG = {
-  path: ROUTE_PATH,
-  name: '事件订阅',
-};
+export default {
+    path: '/events',
+    auth: false,
+    preload: false,
+    isStatic: true,
+    key: 'events',
+    layout: 'inner',
+    component: () => import('./index'),
+}

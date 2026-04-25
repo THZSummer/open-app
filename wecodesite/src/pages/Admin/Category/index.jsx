@@ -12,6 +12,7 @@ import {
   Popconfirm,
   Empty,
   Spin,
+  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -157,8 +158,13 @@ function CategoryList() {
   };
 
   const handleDelete = async (id) => {
-    await deleteCategory(id);
-    loadData();
+    const res = await deleteCategory(id);
+    if (res && res.code === '200') {
+      message.success('删除成功');
+      loadData();
+    } else {
+      message.error(res?.message || '删除失败');
+    }
   };
 
   const handleSubmit = async () => {
@@ -170,6 +176,13 @@ function CategoryList() {
         nameEn: values.nameEn,
         sortOrder: values.sortOrder,
       });
+      if (result && result.code === '200') {
+        message.success('更新成功');
+        setModalVisible(false);
+        loadData();
+      } else {
+        message.error(result?.message || '更新失败');
+      }
     } else {
       result = await createCategory({
         categoryAlias: values.categoryAlias,
@@ -178,10 +191,13 @@ function CategoryList() {
         parentId: values.parentId,
         sortOrder: values.sortOrder,
       });
-    }
-    if (result.code === '200') {
-      setModalVisible(false);
-      loadData();
+      if (result && result.code === '200') {
+        message.success('创建成功');
+        setModalVisible(false);
+        loadData();
+      } else {
+        message.error(result?.message || '创建失败');
+      }
     }
   };
 
@@ -197,22 +213,32 @@ function CategoryList() {
 
   const handleAddOwner = async () => {
     const values = await ownerForm.validateFields();
-    await addCategoryOwner(selectedCategoryId, {
+    const res = await addCategoryOwner(selectedCategoryId, {
       userId: values.userId,
       userName: values.userName,
     });
-    ownerForm.resetFields();
-    const result = await fetchCategoryOwners(selectedCategoryId);
-    if (result.code === '200') {
-      setOwners(result.data);
+    if (res && res.code === '200') {
+      message.success('添加成功');
+      ownerForm.resetFields();
+      const result = await fetchCategoryOwners(selectedCategoryId);
+      if (result.code === '200') {
+        setOwners(result.data);
+      }
+    } else {
+      message.error(res?.message || '添加失败');
     }
   };
 
   const handleRemoveOwner = async (userId) => {
-    await removeCategoryOwner(selectedCategoryId, userId);
-    const result = await fetchCategoryOwners(selectedCategoryId);
-    if (result.code === '200') {
-      setOwners(result.data);
+    const res = await removeCategoryOwner(selectedCategoryId, userId);
+    if (res && res.code === '200') {
+      message.success('移除成功');
+      const result = await fetchCategoryOwners(selectedCategoryId);
+      if (result.code === '200') {
+        setOwners(result.data);
+      }
+    } else {
+      message.error(res?.message || '移除失败');
     }
   };
 

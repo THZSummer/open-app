@@ -29,19 +29,23 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      await configEventSubscription('10', event.id, {
+      const res = await configEventSubscription('10', event.id, {
         channelType: values.channelType,
         channelAddress: values.channelAddress || '',
         authType: values.authType
       });
-      message.success('配置已保存');
-      onSave({
-        ...event,
-        channelType: values.channelType,
-        channelAddress: values.channelAddress || '',
-        authType: values.authType
-      });
-      onClose();
+      if (res && res.code === '200') {
+        message.success('配置已保存');
+        onSave({
+          ...event,
+          channelType: values.channelType,
+          channelAddress: values.channelAddress || '',
+          authType: values.authType
+        });
+        onClose();
+      } else {
+        message.error(res?.message || '保存失败');
+      }
     } catch (error) {
       if (error.errorFields) {
         return;

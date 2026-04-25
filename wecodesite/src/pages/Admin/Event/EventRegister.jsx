@@ -13,17 +13,9 @@ import {
 import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { createEvent, updateEvent, fetchEventDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
+import { EVENT_PROPERTY_PRESETS } from './constants';
 
 const { Option } = Select;
-
-// 事件扩展属性预设选项
-const EVENT_PROPERTY_PRESETS = [
-  { value: 'descriptionCn', label: '中文描述', placeholder: '事件的中文描述' },
-  { value: 'descriptionEn', label: '英文描述', placeholder: 'Event description in English' },
-  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/event/xxx' },
-  { value: 'dataSchema', label: '数据结构', placeholder: 'JSON Schema 或数据格式说明' },
-  { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
-];
 
 function EventRegister({ visible, event, mode = 'create', onSuccess, onCancel }) {
   const [form] = Form.useForm();
@@ -133,12 +125,20 @@ function EventRegister({ visible, event, mode = 'create', onSuccess, onCancel })
       let result;
       if (event?.id) {
         result = await updateEvent(event.id, data);
+        if (result && result.code === '200') {
+          message.success('更新成功');
+          onSuccess();
+        } else {
+          message.error(result?.message || '更新失败');
+        }
       } else {
         result = await createEvent(data);
-      }
-
-      if (result.code === '200') {
-        onSuccess();
+        if (result && result.code === '200') {
+          message.success('注册成功');
+          onSuccess();
+        } else {
+          message.error(result?.message || '注册失败');
+        }
       }
     } catch (error) {
       console.error('表单验证失败:', error);

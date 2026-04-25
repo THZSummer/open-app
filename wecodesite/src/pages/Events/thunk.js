@@ -4,27 +4,6 @@ import { mockEvents, mockAllEvents } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * 获取事件分类列表
- * @returns {Promise<Array>} 分类列表数组
- */
-export const fetchEventCategories = async () => {
-  if (!useTrueFetch) {
-    await delay(300);
-    return [{
-      id: '1',
-      nameCn: '事件分类'
-    }];
-  }
-  const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: 'event' } });
-  return result?.data || [];
-};
-
-/**
- * 获取所有事件列表
- * @param {Object} params - 查询参数，包含 curPage、pageSize、appId 等
- * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
- */
 export const fetchAllEvents = async (params = {}) => {
   if (!useTrueFetch) {
     await delay(300);
@@ -40,29 +19,12 @@ export const fetchAllEvents = async (params = {}) => {
       page: { curPage, pageSize, total: data.length }
     };
   }
-  
-  // 1. 先获取事件分类
-  const categories = await fetchEventCategories();
-  if (!categories || categories.length === 0) {
-    return {
-      code: '200',
-      messageZh: '查询成功',
-      data: [],
-      page: { curPage: 1, pageSize: params.pageSize || 20, total: 0 }
-    };
+  try {
+    const result = await fetchApi(API_CONFIG.EVENTS.LIST, { params });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  
-  // 2. 使用第一个分类ID获取事件列表
-  const categoryId = categories[0].id;
-  const queryParams = {
-    curPage: params.curPage || 1,
-    pageSize: params.pageSize || 20,
-    includeChildren: true
-  };
-  if (params.appId) queryParams.appId = params.appId;
-  
-  const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.EVENTS, { id: categoryId }), { params: queryParams });
-  return result;
 };
 
 export const fetchAppEvents = async (appId, params = {}) => {
@@ -85,7 +47,12 @@ export const fetchAppEvents = async (appId, params = {}) => {
       page: { curPage: 1, pageSize: 20, total: data.length }
     };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.LIST, { appId }), { params });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.LIST, { appId }), { params });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 export const subscribeEvents = async (appId, params) => {
@@ -107,7 +74,12 @@ export const subscribeEvents = async (appId, params) => {
       }
     };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 export const configEventSubscription = async (appId, eventId, params) => {
@@ -119,32 +91,52 @@ export const configEventSubscription = async (appId, eventId, params) => {
       data: { id: eventId, ...params }
     };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.CONFIG, { appId, id: eventId }), { method: 'PUT', body: JSON.stringify(params) });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.CONFIG, { appId, id: eventId }), { method: 'PUT', body: JSON.stringify(params) });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 export const remindApproval = async (id) => {
   if (!useTrueFetch) {
     await delay(300);
     console.log(`催办事件 id: ${id}`);
-    return { success: true };
+    return { code: '200', messageZh: '催办成功' };
   }
-  return fetchApi(`/events/${id}/remind`, { method: 'POST' });
+  try {
+    const result = await fetchApi(`/events/${id}/remind`, { method: 'POST' });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 export const deleteEvent = async (id) => {
   if (!useTrueFetch) {
     await delay(300);
     console.log(`删除事件 id: ${id}`);
-    return { success: true };
+    return { code: '200', messageZh: '删除成功' };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.EVENTS.DELETE, { id }), { method: 'DELETE' });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.EVENTS.DELETE, { id }), { method: 'DELETE' });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 export const withdrawApproval = async (id) => {
   if (!useTrueFetch) {
     await delay(300);
     console.log(`撤回审核事件 id: ${id}`);
-    return { success: true };
+    return { code: '200', messageZh: '已撤回' };
   }
-  return fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.WITHDRAW, { appId: '10', id }), { method: 'POST' });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.WITHDRAW, { appId: '10', id }), { method: 'POST' });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };

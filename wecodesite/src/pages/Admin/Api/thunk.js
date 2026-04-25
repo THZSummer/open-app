@@ -15,7 +15,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 export const fetchApiList = async (params = {}) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.APIS.LIST, { method: 'GET', params });
+    try {
+      const result = await fetchApi(API_CONFIG.APIS.LIST, { method: 'GET', params });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   let data = mockApis;
@@ -46,7 +51,12 @@ export const fetchApiList = async (params = {}) => {
  */
 export const fetchApiDetail = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APIS.DETAIL, { id }));
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.APIS.DETAIL, { id }));
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   const api = mockApis.find(item => item.id === id);
@@ -64,7 +74,11 @@ export const fetchApiDetail = async (id) => {
  */
 export const createApi = async (data) => {
   if (useTrueFetch) {
-    return fetchApi(API_CONFIG.APIS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    try {
+      return await fetchApi(API_CONFIG.APIS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -82,7 +96,12 @@ export const createApi = async (data) => {
  */
 export const updateApi = async (id, data) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APIS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.APIS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -99,7 +118,12 @@ export const updateApi = async (id, data) => {
  */
 export const deleteApi = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APIS.DELETE, { id }), { method: 'DELETE' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.APIS.DELETE, { id }), { method: 'DELETE' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
@@ -116,7 +140,12 @@ export const deleteApi = async (id) => {
  */
 export const withdrawApi = async (id) => {
   if (useTrueFetch) {
-    return fetchApi(buildApiUrl(API_CONFIG.APIS.WITHDRAW, { id }), { method: 'POST' });
+    try {
+      const result = await fetchApi(buildApiUrl(API_CONFIG.APIS.WITHDRAW, { id }), { method: 'POST' });
+      return result || {};
+    } catch (err) {
+      return {};
+    }
   }
   await delay(300);
   return {
