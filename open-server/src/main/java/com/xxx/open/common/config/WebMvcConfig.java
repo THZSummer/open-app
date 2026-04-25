@@ -1,6 +1,6 @@
 package com.xxx.open.common.config;
 
-import com.xxx.open.common.interceptor.UserAuthInterceptor;
+import com.xxx.open.common.interceptor.UserResolveInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -18,12 +18,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @RequiredArgsConstructor
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private final UserAuthInterceptor userAuthInterceptor;
+    private final UserResolveInterceptor userResolveInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 注册用户认证拦截器
-        registry.addInterceptor(userAuthInterceptor)
+        // 注册用户解析拦截器
+        registry.addInterceptor(userResolveInterceptor)
                 .addPathPatterns("/api/**")
                 .order(-10);
     }

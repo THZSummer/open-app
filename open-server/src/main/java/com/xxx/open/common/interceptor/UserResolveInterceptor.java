@@ -11,15 +11,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 /**
- * 用户认证拦截器
+ * 用户解析拦截器
  * 
  * <p>拦截 HTTP 请求，解析用户信息并存入 ThreadLocal</p>
  * <p>根据 spring.profiles.active 选择对应的解析策略</p>
+ * <p>标准环境的用户认证由其他类负责</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -27,7 +27,7 @@ import java.util.Objects;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class UserAuthInterceptor implements HandlerInterceptor {
+public class UserResolveInterceptor implements HandlerInterceptor {
 
     private final List<UserResolveStrategy> strategies;
 
