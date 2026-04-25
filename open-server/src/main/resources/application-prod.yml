@@ -32,11 +32,6 @@ spring:
         max-wait: -1ms
         max-idle: 10
         min-idle: 5
-
-# Mock 配置（生产环境禁用）
-mock:
-  enabled: false
-
 # 日志配置（生产环境）
 logging:
   level:
