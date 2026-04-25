@@ -54,7 +54,10 @@ function ApprovalCenter() {
   const [pagination, setPagination] = useState(INIT_PAGECONFIG);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectingId, setRejectingId] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [rejectComment, setRejectComment] = useState('');
+  const [approveModalVisible, setApproveModalVisible] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
+  const [approveComment, setApproveComment] = useState('');
 
   useEffect(() => {
     loadData(INIT_PAGECONFIG);
@@ -97,28 +100,35 @@ function ApprovalCenter() {
     loadData(params);
   };
 
-  const handleApprove = async (id) => {
-    const res = await approveApplication(id);
+  const handleApprove = (id) => {
+    setApprovingId(id);
+    setApproveComment('');
+    setApproveModalVisible(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    const res = await approveApplication(approvingId, { comment: approveComment });
     if (res && res.code === '200') {
       message.success('审批通过');
+      setApproveModalVisible(false);
       loadData();
     } else {
-      message.error(res?.message || '审批失败');
+      message.error(res?.messageZh || res?.message || '审批失败');
     }
   };
 
   const handleReject = (id) => {
     setRejectingId(id);
-    setRejectReason('');
+    setRejectComment('');
     setRejectModalVisible(true);
   };
 
   const handleConfirmReject = async () => {
-    if (!rejectReason.trim()) {
-      message.warning('请输入驳回原因');
+    if (!rejectComment.trim()) {
+      message.warning('请输入审批意见');
       return;
     }
-    const res = await rejectApplication(rejectingId, { reason: rejectReason });
+    const res = await rejectApplication(rejectingId, { comment: rejectComment });
     if (res && res.code === '200') {
       message.success('审批已拒绝');
       setRejectModalVisible(false);
@@ -158,16 +168,14 @@ function ApprovalCenter() {
       </Button>
       {record.status === 0 && activeTab === 'pending' && (
         <>
-          <Popconfirm
-            title="确定通过该申请吗？"
-            onConfirm={() => handleApprove(record.id)}
-            okText="确定"
-            cancelText="取消"
+          <Button 
+            type="link" 
+            size="small" 
+            icon={<CheckOutlined />}
+            onClick={() => handleApprove(record.id)}
           >
-            <Button type="link" size="small" icon={<CheckOutlined />}>
-              通过
-            </Button>
-          </Popconfirm>
+            通过
+          </Button>
           <Button 
             type="link" 
             size="small" 
@@ -502,9 +510,30 @@ function ApprovalCenter() {
         )}
       </Modal>
 
-      {/* 驳回原因模态框 */}
+      {/* 审批通过模态框 */}
       <Modal
-        title="驳回原因"
+        title="审批通过"
+        open={approveModalVisible}
+        onCancel={() => setApproveModalVisible(false)}
+        onOk={handleConfirmApprove}
+        okText="确认通过"
+      >
+        <div style={{ marginBottom: 8 }}>
+          <Text type="secondary">审批意见（可选）：</Text>
+        </div>
+        <TextArea
+          rows={4}
+          value={approveComment}
+          onChange={(e) => setApproveComment(e.target.value)}
+          placeholder="请输入审批意见（可选）"
+          maxLength={500}
+          showCount
+        />
+      </Modal>
+
+      {/* 驳回审批意见模态框 */}
+      <Modal
+        title="驳回审批意见"
         open={rejectModalVisible}
         onCancel={() => setRejectModalVisible(false)}
         onOk={handleConfirmReject}
@@ -512,13 +541,13 @@ function ApprovalCenter() {
         okButtonProps={{ danger: true }}
       >
         <div style={{ marginBottom: 8 }}>
-          <Text type="secondary">请输入驳回原因：</Text>
+          <Text type="secondary">请输入审批意见：</Text>
         </div>
         <TextArea
           rows={4}
-          value={rejectReason}
-          onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="请输入驳回原因"
+          value={rejectComment}
+          onChange={(e) => setRejectComment(e.target.value)}
+          placeholder="请输入审批意见"
           maxLength={500}
           showCount
         />

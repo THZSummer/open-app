@@ -122,7 +122,7 @@ export const approveApplication = async (id, data = {}) => {
 /**
  * 驳回审批
  * @param {string} id - 审批记录ID
- * @param {Object} data - 驳回数据，包含 reason（驳回原因）
+ * @param {Object} data - 驳回数据，包含 comment（审批意见）
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const rejectApplication = async (id, data = {}) => {
@@ -201,7 +201,7 @@ export const batchApprove = async (data) => {
 
 /**
  * 批量驳回审批
- * @param {Object} data - 批量驳回数据，包含 approvalIds（审批ID列表）、reason（驳回原因）
+ * @param {Object} data - 批量驳回数据，包含 approvalIds（审批ID列表）、comment（审批意见）
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const batchReject = async (data) => {

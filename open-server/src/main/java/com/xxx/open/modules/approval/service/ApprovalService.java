@@ -385,12 +385,12 @@ public class ApprovalService {
     @Transactional(rollbackFor = Exception.class)
     public ApprovalActionResponse reject(Long id, ApprovalActionRequest request, String operatorId,
                                           String operatorName, String operator) {
-        if (request.getReason() == null || request.getReason().trim().isEmpty()) {
-            throw new BusinessException("400", "驳回原因不能为空", "Reject reason is required");
+        if (request.getComment() == null || request.getComment().trim().isEmpty()) {
+            throw new BusinessException("400", "审批意见不能为空", "Approval comment is required");
         }
 
         ApprovalRecord record = approvalEngine.reject(id, operatorId, operatorName,
-                request.getReason(), operator);
+                request.getComment(), operator);
 
         return ApprovalActionResponse.builder()
                 .id(String.valueOf(record.getId()))
@@ -462,8 +462,8 @@ public class ApprovalService {
      */
     public BatchApprovalResponse batchReject(BatchApprovalRequest request, String operatorId,
                                               String operatorName, String operator) {
-        if (request.getReason() == null || request.getReason().trim().isEmpty()) {
-            throw new BusinessException("400", "驳回原因不能为空", "Reject reason is required");
+        if (request.getComment() == null || request.getComment().trim().isEmpty()) {
+            throw new BusinessException("400", "审批意见不能为空", "Approval comment is required");
         }
 
         int successCount = 0;
@@ -473,7 +473,7 @@ public class ApprovalService {
             try {
                 Long approvalId = Long.parseLong(approvalIdStr);
                 approvalEngine.reject(approvalId, operatorId, operatorName,
-                        request.getReason(), operator);
+                        request.getComment(), operator);
                 successCount++;
             } catch (BusinessException e) {
                 // 业务异常，记录失败原因

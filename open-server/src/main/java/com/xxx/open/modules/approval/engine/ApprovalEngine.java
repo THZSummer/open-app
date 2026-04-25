@@ -498,13 +498,13 @@ public class ApprovalEngine {
      * @param recordId 审批记录ID
      * @param operatorId 操作人ID
      * @param operatorName 操作人名称
-     * @param reason 驳回原因
+     * @param comment 审批意见（驳回时填写）
      * @param operator 操作人（用于审计字段）
      * @return 审批记录
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecord reject(Long recordId, String operatorId, String operatorName,
-                                  String reason, String operator) {
+                                  String comment, String operator) {
         // 1. 查询审批记录
         ApprovalRecord record = recordMapper.selectById(recordId);
         if (record == null) {
@@ -531,7 +531,7 @@ public class ApprovalEngine {
         approvalLog.setOperatorId(operatorId);
         approvalLog.setOperatorName(operatorName);
         approvalLog.setAction(Action.REJECT);
-        approvalLog.setComment(reason);
+        approvalLog.setComment(comment);
         approvalLog.setCreateTime(new Date());
         approvalLog.setLastUpdateTime(new Date());
         approvalLog.setCreateBy(operator);
@@ -553,8 +553,8 @@ public class ApprovalEngine {
         // 更新订阅状态（权限申请场景）
         updateSubscriptionStatus(record, Status.REJECTED);
 
-        log.info("审批驳回: recordId={}, operator={}, reason={}, level={}", 
-                recordId, operatorId, reason, currentNode.getLevel());
+        log.info("审批驳回: recordId={}, operator={}, comment={}, level={}", 
+                recordId, operatorId, comment, currentNode.getLevel());
 
         return record;
     }

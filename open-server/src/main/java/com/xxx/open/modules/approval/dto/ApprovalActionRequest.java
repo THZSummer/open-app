@@ -16,12 +16,7 @@ public class ApprovalActionRequest implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /**
-     * 审批意见（同意时可选）
+     * 审批意见（同意/驳回时均可填写）
      */
     private String comment;
-
-    /**
-     * 驳回原因（驳回时必填）
-     */
-    private String reason;
 }
