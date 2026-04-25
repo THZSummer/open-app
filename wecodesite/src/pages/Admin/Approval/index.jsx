@@ -59,25 +59,27 @@ function ApprovalCenter() {
 
   const loadData = async (params = {}) => {
     setLoading(true);
+    const finalPage = 'curPage' in params ? params.curPage : pagination.curPage;
+    const finalSize = 'pageSize' in params ? params.pageSize : pagination.pageSize;
     let result;
 
     if (activeTab === 'pending') {
       result = await fetchApprovalList({ status: 0, ...params });
       if (result.code === '200') {
         setApprovalList(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0 }));
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
       }
     } else if (activeTab === 'mine') {
       result = await fetchMyApprovals(params);
       if (result.code === '200') {
         setMyApprovals(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0 }));
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
       }
     } else if (activeTab === 'all') {
       result = await fetchApprovalList(params);
       if (result.code === '200') {
         setApprovalList(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0 }));
+        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
       }
     }
 
@@ -226,7 +228,7 @@ function ApprovalCenter() {
               <div style={{ marginTop: 16, textAlign: 'right' }}>
                 <Pagination
                   total={pagination.total}
-                  current={pagination.currentPage}
+                  current={pagination.curPage}
                   pageSize={pagination.pageSize}
                   pageSizeOptions={PAGE_SIZE_OPTIONS}
                   showSizeChanger
