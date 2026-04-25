@@ -1,6 +1,6 @@
 package com.xxx.open.common.interceptor;
 
-import com.xxx.open.common.auth.strategy.UserResolveStrategy;
+import com.xxx.open.common.user.strategy.UserResolveStrategy;
 import com.xxx.open.common.context.UserContextHolder;
 import com.xxx.open.common.model.UserContext;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,6 +1,6 @@
-package com.xxx.open.common.auth.strategy.impl;
+package com.xxx.open.common.user.strategy.impl;
 
-import com.xxx.open.common.auth.strategy.UserResolveStrategy;
+import com.xxx.open.common.user.strategy.UserResolveStrategy;
 import com.xxx.open.common.model.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
