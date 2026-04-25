@@ -9,6 +9,7 @@
         <result column="name_en" property="nameEn"/>
         <result column="path" property="path"/>
         <result column="method" property="method"/>
+        <result column="auth_type" property="authType"/>
         <result column="category_id" property="categoryId"/>
         <result column="category_name" property="categoryName"/>
         <result column="status" property="status"/>
@@ -25,17 +26,17 @@
 
     <!-- Base Column -->
     <sql id="Base_Column_List">
-        id, name_cn, name_en, path, method, category_id, status,
+        id, name_cn, name_en, path, method, auth_type, category_id, status,
         create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- Insert -->
     <insert id="insert" parameterType="com.xxx.open.modules.api.entity.Api">
         INSERT INTO openplatform_v2_api_t (
-            id, name_cn, name_en, path, method, category_id, status,
+            id, name_cn, name_en, path, method, auth_type, category_id, status,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{nameCn}, #{nameEn}, #{path}, #{method}, #{categoryId}, #{status},
+            #{id}, #{nameCn}, #{nameEn}, #{path}, #{method}, #{authType}, #{categoryId}, #{status},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
@@ -53,6 +54,9 @@
         UPDATE openplatform_v2_api_t
         SET name_cn = #{nameCn},
             name_en = #{nameEn},
+            path = #{path},
+            method = #{method},
+            auth_type = #{authType},
             category_id = #{categoryId},
             status = #{status},
             last_update_time = #{lastUpdateTime},
