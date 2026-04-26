@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.xxx.open.modules.approval.engine.ApprovalEngine;
 import com.xxx.open.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.open.modules.approval.entity.ApprovalFlow;
+import com.xxx.open.modules.approval.dto.ApprovalNodeDto;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -197,11 +198,12 @@ public class EventService {
         event.setTopic(request.getTopic());
         event.setCategoryId(categoryId);
         
-        // ✅ v2.8.0新增：根据 needApproval 决定事件状态
+        // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
         Integer needApproval = request.getPermission().getNeedApproval() != null ? 
             request.getPermission().getNeedApproval() : 1;
-        event.setStatus(needApproval == 0 ? STATUS_PUBLISHED : STATUS_PENDING); // 无需审批直接上架，否则待审
         
+        // 先插入事件（状态暂设为待审）
+        event.setStatus(STATUS_PENDING); // 待审
         event.setCreateTime(new Date());
         event.setLastUpdateTime(new Date());
         event.setCreateBy(UserContextHolder.getUserId());
@@ -213,24 +215,30 @@ public class EventService {
         // 创建权限（先创建权限，再创建审批记录）
         Long permissionId = createPermission(eventId, categoryId, request.getPermission());
         
-        // ✅ v2.8.0变更：根据 needApproval 决定是否创建审批记录
-        // 只有需要审批的资源才创建审批记录
-        if (needApproval == 1) {
+        // ✅ 获取注册审批节点（两级：场景+全局）
+        List<ApprovalNodeDto> approvalNodes = approvalEngine.composeApprovalNodes(
+            ApprovalEngine.BusinessType.EVENT_REGISTER, null);
+
+        if (approvalNodes.isEmpty()) {
+            // 无审批节点配置，直接发布
+            event.setStatus(STATUS_PUBLISHED); // 已发布
+            eventMapper.update(event);
+            log.info("事件注册无需审批（无审批节点配置），直接发布: eventId={}", eventId);
+        } else {
+            // 有审批节点，创建审批单
             try {
                 approvalEngine.createApproval(
                     ApprovalEngine.BusinessType.EVENT_REGISTER,
-                    permissionId,        // ✅ permissionId：用于获取资源审批节点
-                    eventId,             // ✅ businessId：事件 ID
-                    UserContextHolder.getUserId(),           // applicantId
-                    UserContextHolder.getUserName(),         // applicantName
-                    UserContextHolder.getUserId()            // operator
+                    permissionId,
+                    eventId,
+                    UserContextHolder.getUserId(),
+                    UserContextHolder.getUserName(),
+                    UserContextHolder.getUserId()
                 );
-                log.info("创建审批记录: eventId={}, permissionId={}", eventId, permissionId);
+                log.info("创建事件注册审批记录: eventId={}, nodesCount={}", eventId, approvalNodes.size());
             } catch (Exception e) {
-                log.warn("创建审批记录失败，事件将保持待审状态: eventId={}", eventId, e);
+                log.warn("创建审批记录失败，事件保持待审状态: eventId={}", eventId, e);
             }
-        } else {
-            log.info("事件无需审批，直接上架: eventId={}, permissionId={}", eventId, permissionId);
         }
         
         // 保存事件属性
