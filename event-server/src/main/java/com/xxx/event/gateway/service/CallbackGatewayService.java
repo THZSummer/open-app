@@ -1,7 +1,10 @@
 package com.xxx.event.gateway.service;
 
 import com.xxx.event.client.ApiServerClient;
+import com.xxx.event.common.auth.AuthTypeEnum;
+import com.xxx.event.common.channel.SseChannel;
 import com.xxx.event.common.channel.WebHookChannel;
+import com.xxx.event.common.channel.WebSocketChannel;
 import com.xxx.event.gateway.dto.CallbackInvokeRequest;
 import com.xxx.event.gateway.dto.CallbackInvokeResponse;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -23,15 +27,15 @@ import java.util.concurrent.TimeUnit;
  *   <li>查询订阅该回调的应用列表</li>
  *   <li>按订阅配置调用消费方：
  *     <ul>
- *       <li>WebHook：POST 到 channel_address</li>
- *       <li>SSE：推送到 SSE 连接</li>
- *       <li>WebSocket：推送到 WebSocket 连接</li>
+ *       <li>WebHook (0)：POST 到 channel_address</li>
+ *       <li>SSE (1)：推送到 SSE 连接</li>
+ *       <li>WebSocket (2)：推送到 WebSocket 连接</li>
  *     </ul>
  *   </li>
  * </ol>
  * 
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 1.1.0
  */
 @Slf4j
 @Service
@@ -40,6 +44,8 @@ public class CallbackGatewayService {
 
     private final ApiServerClient apiServerClient;
     private final WebHookChannel webHookChannel;
+    private final SseChannel sseChannel;
+    private final WebSocketChannel webSocketChannel;
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
@@ -156,32 +162,38 @@ public class CallbackGatewayService {
                     continue;
                 }
                 
-                // 获取通道类型
+                // 获取通道配置
                 Integer channelType = (Integer) config.get("channelType");
                 String channelAddress = (String) config.get("channelAddress");
+                
+                // 获取认证类型（三方配置）
+                Integer authTypeCode = (Integer) config.get("authType");
+                AuthTypeEnum authType = AuthTypeEnum.fromCode(authTypeCode);
                 
                 // 按通道类型分发
                 if (channelType != null && channelAddress != null) {
                     switch (channelType) {
                         case 0 -> {
-                            // WebHook
-                            log.info("推送到 WebHook: appId={}, scope={}, url={}", 
-                                    appId, callbackScope, channelAddress);
-                            webHookChannel.sendCallback(channelAddress, payload);
+                            // WebHook（使用新的认证方式：appId + authType）
+                            log.info("推送到 WebHook: appId={}, scope={}, url={}, authType={}", 
+                                    appId, callbackScope, channelAddress, authType);
+                            webHookChannel.sendCallback(channelAddress, payload, appId, authType);
                         }
                         case 1 -> {
                             // SSE（Server-Sent Events）
-                            log.info("推送到 SSE: appId={}, scope={}, url={}", 
+                            log.info("推送到 SSE: appId={}, scope={}, connectionId={}", 
                                     appId, callbackScope, channelAddress);
-                            // TODO: 实际项目中应实现 SSE 推送逻辑
-                            log.warn("SSE 通道暂未实现");
+                            // channelAddress 作为 SSE 连接ID
+                            Map<String, Object> ssePayload = buildCallbackPayload(callbackScope, payload);
+                            sseChannel.sendCallback(channelAddress, ssePayload);
                         }
                         case 2 -> {
                             // WebSocket
-                            log.info("推送到 WebSocket: appId={}, scope={}, url={}", 
+                            log.info("推送到 WebSocket: appId={}, scope={}, connectionId={}", 
                                     appId, callbackScope, channelAddress);
-                            // TODO: 实际项目中应实现 WebSocket 推送逻辑
-                            log.warn("WebSocket 通道暂未实现");
+                            // channelAddress 作为 WebSocket 连接ID
+                            Map<String, Object> wsPayload = buildCallbackPayload(callbackScope, payload);
+                            webSocketChannel.sendCallback(channelAddress, wsPayload);
                         }
                         default -> 
                             log.warn("未知的通道类型: appId={}, channelType={}", appId, channelType);
@@ -203,5 +215,22 @@ public class CallbackGatewayService {
         String cacheKey = CACHE_KEY_PREFIX + callbackScope;
         redisTemplate.delete(cacheKey);
         log.info("清除订阅列表缓存: scope={}", callbackScope);
+    }
+
+    /**
+     * 构建回调消息体
+     * 
+     * <p>包含回调 Scope 和实际载荷</p>
+     * 
+     * @param callbackScope 回调 Scope
+     * @param payload 实际载荷
+     * @return 完整的回调消息体
+     */
+    private Map<String, Object> buildCallbackPayload(String callbackScope, Map<String, Object> payload) {
+        Map<String, Object> message = new HashMap<>();
+        message.put("scope", callbackScope);
+        message.put("timestamp", System.currentTimeMillis());
+        message.put("data", payload);
+        return message;
     }
 }
