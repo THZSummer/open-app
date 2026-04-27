@@ -120,7 +120,6 @@ export const mockFeatureFlag = {
 export const identityPermissionApis = {
   BUSINESS_IDENTITY_SOA: {
     modules: [
-      { key: 'all', name: '所有' },
       { key: 'employee', name: '员工管理' },
       { key: 'department', name: '部门管理' },
       { key: 'organization', name: '组织架构' },
@@ -186,7 +185,6 @@ export const identityPermissionApis = {
   },
   BUSINESS_IDENTITY_APIG: {
     modules: [
-      { key: 'all', name: '所有' },
       { key: 'gateway', name: '网关配置' },
       { key: 'monitor', name: '监控告警' },
       { key: 'log', name: '日志分析' },
@@ -244,7 +242,6 @@ export const identityPermissionApis = {
   },
   PERSONAL_IDENTITY_SOA: {
     modules: [
-      { key: 'all', name: '所有' },
       { key: 'basic', name: '基本信息' },
       { key: 'contact', name: '联系方式' },
     ],
@@ -285,7 +282,6 @@ export const identityPermissionApis = {
   },
   PERSONAL_IDENTITY_APIG: {
     modules: [
-      { key: 'all', name: '所有' },
       { key: 'message', name: '消息通知' },
       { key: 'calendar', name: '日程管理' },
     ],
@@ -334,7 +330,6 @@ export const identityPermissionApis = {
   },
   PERSONAL_IDENTITY_AKSK: {
     modules: [
-      { key: 'all', name: '所有' },
       { key: 'credential', name: '凭证管理' },
       { key: 'signature', name: '签名密钥' },
     ],

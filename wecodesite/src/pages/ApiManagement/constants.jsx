@@ -29,12 +29,7 @@ export const PERSONAL_API_TABS = [
   { key: 'api_personal_user_aksk', label: 'AKSK类型' },
 ];
 
-export const DEFAULT_API_TYPE = {
-  business: 'api_business_app_soa',
-  personal: 'api_personal_user_aksk',
-};
-
-export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddress, handleWithdraw }) => [
+export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddress, handleWithdraw, handleDelete }) => [
   {
     title: '权限名称',
     dataIndex: ['permission', 'nameCn'],
@@ -75,7 +70,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
   {
     title: '操作',
     key: 'action',
-    width: 200,
+    width: 280,
     fixed: 'right',
     render: (_, record) => (
       <div style={{ display: 'flex', gap: 8 }}>
@@ -85,6 +80,9 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
             <Button type="link" size="small" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
             <Button type="link" size="small" onClick={() => handleWithdraw(record)}>撤回审核</Button>
           </>
+        )}
+        {record.status === 3 && (
+          <Button type="link" size="small" danger onClick={() => handleDelete(record)}>删除</Button>
         )}
       </div>
     ),

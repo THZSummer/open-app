@@ -218,6 +218,16 @@ export const NODE_STATUS_MAP = {
 };
 
 // 审批流程模板 mock 数据
+/**
+ * 审批流程配置白名单
+ * 只有在白名单中的账号才能看到和操作审批流程配置
+ */
+export const approvalFlowWhitelist = [
+  'admin001',  // 系统管理员
+  'admin002',  // 平台管理员
+  'perm_admin', // 权限管理员
+];
+
 export const mockApprovalFlows = [
   {
     id: '1',

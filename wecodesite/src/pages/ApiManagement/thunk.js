@@ -11,24 +11,28 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * 获取分类列表（用于模块列表）
  * @param {string} identityType - 身份类型（如 BUSINESS_IDENTITY, PERSONAL_IDENTITY）
+ * @param {string} apiType - API类型（如 api_business_app_soa, api_personal_user_aksk）
  * @returns {Promise<Array>} 分类列表数组
  */
 const API_TYPE_MAP = {
-  app_type_a: 'SOA',
-  app_type_b: 'APIG',
-  personal_aksk: 'AKSK'
+  api_business_app_soa: 'BUSINESS_IDENTITY_SOA',
+  api_business_app_apig: 'BUSINESS_IDENTITY_APIG',
+  api_business_user_soa: 'PERSONAL_IDENTITY_SOA',
+  api_business_user_apig: 'PERSONAL_IDENTITY_APIG',
+  api_personal_user_aksk: 'PERSONAL_IDENTITY_AKSK'
 };
 
-const getMockKey = (identityType, apiType) => {
-  const apiTypeSuffix = API_TYPE_MAP[apiType] || apiType;
-  return `${identityType}_${apiTypeSuffix}`;
+const getMockKey = (apiType) => {
+  return API_TYPE_MAP[apiType];
 };
 
 export const fetchCategories = async (apiType) => {
   if (!useTrueFetch) {
     await delay(300);
-    const mockKey = getMockKey(identityType, apiType);
+    const mockKey = getMockKey(apiType);
     const data = identityPermissionApis[mockKey]?.modules || [];
+    console.log('apiType, mockKey, data', apiType, mockKey, data);
+    
     const categories = [{
       id: '1',
       nameCn: 'API分类',
@@ -53,10 +57,10 @@ export const fetchCategories = async (apiType) => {
  * @param {Object} params - 筛选参数，包含 identityType、keyword、needReview、categoryId、curPage、pageSize
  * @returns {Promise<Array>} 筛选后的API列表
  */
-export const fetchApis = async ({ keyword, needReview, identityType, apiType, categoryId, curPage, pageSize, appId }) => {
+export const fetchApis = async ({ keyword, needReview, apiType, categoryId, curPage, pageSize, appId }) => {
   if (!useTrueFetch) {
     await delay(300);
-    const mockKey = getMockKey(identityType, apiType);
+    const mockKey = getMockKey(apiType);
     let apis = identityPermissionApis[mockKey]?.apis || [];
     
     if (categoryId && categoryId !== 'all') {
@@ -221,6 +225,26 @@ export const remindApproval = async (id) => {
   }
   try {
     const result = await fetchApi(`/approval/remind`, { method: 'POST', body: JSON.stringify({ id }) });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+/**
+ * 删除已撤回的API订阅
+ * @param {string} appId - 应用ID
+ * @param {string} subscriptionId - 订阅记录ID
+ * @returns {Promise<Object>} 删除结果
+ */
+export const deleteApiSubscription = async (appId, subscriptionId) => {
+  if (!useTrueFetch) {
+    await delay(300);
+    console.log(`删除 API 订阅 id: ${subscriptionId}`);
+    return { code: '200', messageZh: '删除成功' };
+  }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.DELETE, { appId, id: subscriptionId }), { method: 'DELETE' });
     return result || {};
   } catch (err) {
     return {};

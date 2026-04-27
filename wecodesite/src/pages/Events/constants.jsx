@@ -56,7 +56,7 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
   {
     title: '操作',
     key: 'action',
-    width: 220,
+    width: 300,
     fixed: 'right',
     render: (_, record) => (
       <div>

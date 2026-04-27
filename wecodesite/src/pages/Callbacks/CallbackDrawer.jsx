@@ -145,42 +145,46 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
         </div>
       }
     >
-      <div className="drawer-filter">
-        <Input
-          placeholder="回调名称/Scope"
-          value={filterKeyword}
-          onChange={handleFilterChange}
-          style={{ width: 200 }}
-          allowClear
-        />
-        <Select
-          placeholder="是否需要审核"
-          value={filterNeedReview}
-          onChange={handleNeedReviewChange}
-          options={NEED_REVIEW_OPTIONS}
-          style={{ width: 150 }}
-        />
-      </div>
-      <div className="drawer-table">
-        <Table
-          rowSelection={rowSelection}
-          columns={columns}
-          dataSource={allCallbacks}
-          rowKey="id"
-          pagination={false}
-          loading={loading}
-        />
-        <div className="drawer-pagination">
-          <span className="pagination-total">共 {pagination.total} 条</span>
-          <Pagination
-            current={pagination.curPage}
-            pageSize={pagination.pageSize}
-            total={pagination.total}
-            onChange={handlePageChange}
-            showSizeChanger
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            showQuickJumper
+      <div className="callback-drawer-content">
+        <div className="callback-drawer-filter">
+          <Input
+            placeholder="回调名称/Scope"
+            value={filterKeyword}
+            onChange={handleFilterChange}
+            style={{ width: 200 }}
+            allowClear
           />
+          <Select
+            placeholder="是否需要审核"
+            value={filterNeedReview}
+            onChange={handleNeedReviewChange}
+            options={NEED_REVIEW_OPTIONS}
+            style={{ width: 150 }}
+          />
+        </div>
+        <div className="callback-drawer-main">
+          <div className="callback-drawer-table">
+            <Table
+              rowSelection={rowSelection}
+              columns={columns}
+              dataSource={allCallbacks}
+              rowKey="id"
+              pagination={false}
+              loading={loading}
+            />
+            <div className="callback-drawer-pagination">
+              <span className="pagination-total">共 {pagination.total} 条</span>
+              <Pagination
+                current={pagination.curPage}
+                pageSize={pagination.pageSize}
+                total={pagination.total}
+                onChange={handlePageChange}
+                showSizeChanger
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                showQuickJumper
+              />
+            </div>
+          </div>
         </div>
       </div>
     </Drawer>

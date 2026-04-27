@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Drawer, Form, Radio, Input, Button, message } from 'antd';
 import { EVENT_CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
 import { configEventSubscription } from './thunk';
+import { queryParams } from '../../utils/common';
 import './EventSubscriptionDrawer.m.less';
 
 function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
   const [form] = Form.useForm();
   const [channelType, setChannelType] = useState(0);
   const [saving, setSaving] = useState(false);
+  const appId = queryParams('appId');
 
   useEffect(() => {
     if (event && open) {
@@ -34,7 +36,7 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      const res = await configEventSubscription('10', event.id, {
+      const res = await configEventSubscription(appId, event.id, {
         channelType: values.channelType,
         channelAddress: values.channelAddress || '',
         authType: values.authType

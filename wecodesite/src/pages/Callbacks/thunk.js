@@ -224,14 +224,14 @@ export const deleteCallback = async (id) => {
   }
 };
 
-export const withdrawApproval = async (id) => {
+export const withdrawApproval = async (appId, id) => {
   if (!useTrueFetch) {
     await delay(300);
     console.log(`撤回审核回调 id: ${id}`);
     return { code: '200', messageZh: '已撤回' };
   }
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.WITHDRAW, { appId: '10', id }), { method: 'POST' });
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.WITHDRAW, { appId, id }), { method: 'POST' });
     return result || {};
   } catch (err) {
     return {};

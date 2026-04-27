@@ -1,129 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Button,
-  Table,
-  Input,
-  Select,
-  TreeSelect,
-  Empty,
-  Spin,
-  Pagination,
-  message,
-} from 'antd';
-import {
-  PlusOutlined,
-} from '@ant-design/icons';
+import React, { useEffect } from 'react';
+import { Button, Table, Spin, Empty, Pagination } from 'antd';
+import { useAdminList } from '../../../hooks/useAdminList';
+import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
 import { fetchEventList, deleteEvent } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import EventRegister from './EventRegister';
 import { getEventListColumns } from './constants';
-import { INIT_PAGECONFIG } from '../../../utils/constants';
 import './EventList.m.less';
 
-const { Search } = Input;
-
 function EventList() {
-  const [loading, setLoading] = useState(false);
-  const [eventList, setEventList] = useState([]);
-  const [pagination, setPagination] = useState(INIT_PAGECONFIG);
-  const [keyword, setKeyword] = useState('');
-  const [categoryId, setCategoryId] = useState(undefined);
-  const [status, setStatus] = useState(undefined);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [currentEvent, setCurrentEvent] = useState(null);
-  const [mode, setMode] = useState('create');
-  const [categories, setCategories] = useState([]);
+  const {
+    data: eventList,
+    loading,
+    pagination,
+    keyword,
+    categoryId,
+    status,
+    categories,
+    modalVisible,
+    currentItem,
+    mode,
+    setKeyword,
+    loadData,
+    loadCategories,
+    convertToTreeData,
+    handleSearch,
+    handlePageChange,
+    handleCategoryChange,
+    handleStatusChange,
+    handleAdd,
+    handleEdit,
+    handleView,
+    handleDelete,
+    handleSuccess,
+    closeModal,
+  } = useAdminList({
+    fetchList: fetchEventList,
+    fetchCategories: fetchCategoryTree,
+    deleteItem: deleteEvent,
+  });
 
   useEffect(() => {
-    loadData();
     loadCategories();
-  }, []);
-
-  const loadCategories = async () => {
-    const result = await fetchCategoryTree();
-    if (result.code === '200') {
-      setCategories(result.data || []);
-    }
-  };
-
-  const convertToTreeData = (categories) => {
-    if (!categories) return [];
-    return categories.map(cat => ({
-      value: cat.id,
-      title: cat.nameCn,
-      key: cat.id,
-      children: cat.children ? convertToTreeData(cat.children) : undefined
-    }));
-  };
-
-  const loadData = async (params = {}) => {
-    setLoading(true);
-    const finalKeyword = 'keyword' in params ? params.keyword : keyword;
-    const finalCategoryId = 'categoryId' in params ? params.categoryId : categoryId;
-    const finalStatus = 'status' in params ? params.status : status;
-    const finalPage = 'curPage' in params ? params.curPage : pagination.curPage;
-    const finalSize = 'pageSize' in params ? params.pageSize : pagination.pageSize;
-
-    const requestParams = {
-      keyword: finalKeyword,
-      categoryId: finalCategoryId,
-      status: finalStatus,
-      curPage: finalPage,
-      pageSize: finalSize,
-    };
-
-    const filteredParams = Object.fromEntries(
-      Object.entries(requestParams).filter(([_, value]) => value !== undefined)
-    );
-
-    const result = await fetchEventList(filteredParams);
-    if (result.code === '200') {
-      setEventList(result.data);
-      setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
-    }
-    setLoading(false);
-  };
-
-  const handleSearch = () => {
-    loadData({ curPage: 1 });
-  };
-
-  const handlePageChange = (page, size) => {
-    loadData({ curPage: page, pageSize: size });
-  };
-
-  const handleAdd = () => {
-    setCurrentEvent(null);
-    setMode('create');
-    setModalVisible(true);
-  };
-
-  const handleEdit = (record) => {
-    setCurrentEvent({ id: record.id });
-    setMode('edit');
-    setModalVisible(true);
-  };
-
-  const handleView = (record) => {
-    setCurrentEvent({ id: record.id });
-    setMode('view');
-    setModalVisible(true);
-  };
-
-  const handleSuccess = () => {
-    setModalVisible(false);
     loadData();
-  };
-
-  const handleDelete = async (id) => {
-    const res = await deleteEvent(id);
-    if (res && res.code === '200') {
-      message.success('删除成功');
-      loadData();
-    } else {
-      message.error(res?.message || '删除失败');
-    }
-  };
+  }, [loadCategories, loadData]);
 
   const columns = getEventListColumns({
     handleView,
@@ -138,48 +58,23 @@ function EventList() {
           <h4 className="page-title">事件管理</h4>
           <span className="page-desc">管理事件定义，配置事件订阅</span>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+        <Button type="primary" onClick={handleAdd} style={{ justifyContent: 'center', borderRadius: 6 }}>
           注册事件
         </Button>
       </div>
 
-      <div className="toolbar">
-        <Search
-          placeholder="搜索事件名称"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-          style={{ width: 200 }}
-          onSearch={handleSearch}
-        />
-        <TreeSelect
-          placeholder="选择分类"
-          value={categoryId}
-          onChange={(value) => {
-            setCategoryId(value);
-            loadData({ categoryId: value });
-          }}
-          treeData={convertToTreeData(categories)}
-          treeDefaultExpandAll
-          allowClear
-          style={{ width: 150 }}
-          dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-        />
-        <Select
-          placeholder="选择状态"
-          value={status}
-          onChange={(value) => {
-            setStatus(value);
-            loadData({ status: value });
-          }}
-          style={{ width: 120 }}
-          allowClear
-        >
-          <Select.Option value={0}>草稿</Select.Option>
-          <Select.Option value={1}>待审</Select.Option>
-          <Select.Option value={2}>已发布</Select.Option>
-          <Select.Option value={3}>已下线</Select.Option>
-        </Select>
-      </div>
+      <AdminTableToolbar
+        keyword={keyword}
+        onKeywordChange={setKeyword}
+        onSearch={handleSearch}
+        placeholder="搜索事件名称"
+        categoryId={categoryId}
+        categories={categories}
+        onCategoryChange={handleCategoryChange}
+        convertToTreeData={convertToTreeData}
+        status={status}
+        onStatusChange={handleStatusChange}
+      />
 
       <Spin spinning={loading}>
         {eventList.length > 0 ? (
@@ -200,7 +95,7 @@ function EventList() {
                 pageSizeOptions={[10, 20, 50]}
                 showSizeChanger
                 showQuickJumper
-                showTotal={(total) => `共 ${pagination.total} 条`}
+                showTotal={(total) => `共 ${total} 条`}
                 onChange={handlePageChange}
               />
             </div>
@@ -212,10 +107,10 @@ function EventList() {
 
       <EventRegister
         visible={modalVisible}
-        event={currentEvent}
+        event={currentItem}
         mode={mode}
         onSuccess={handleSuccess}
-        onCancel={() => setModalVisible(false)}
+        onCancel={closeModal}
       />
     </div>
   );

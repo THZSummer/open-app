@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Table, Button, Tag, Pagination, Input, Select, message } from 'antd';
+const { TabPane } = Tabs;
 import { fetchApis, fetchCategories } from './thunk';
 import { mockFeatureFlag } from './mock';
+import { mockAppInfo } from '../BasicInfo/mock';
 import { AUTH_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import {
   NEED_REVIEW_OPTIONS,
@@ -9,7 +11,6 @@ import {
   BUSINESS_BUSINESS_API_TABS,
   BUSINESS_PERSONAL_API_TABS,
   PERSONAL_API_TABS,
-  DEFAULT_API_TYPE,
   getApiPermissionDrawerColumns,
 } from './constants';
 import './ApiPermissionDrawer.m.less';
@@ -56,12 +57,15 @@ const transformCategoriesToModules = (categories) => {
  * @param {boolean} open - 抽屉显示状态
  * @param {Function} onClose - 关闭抽屉回调
  * @param {Function} onConfirm - 确认开通权限回调
- * @param {string} appType - 应用类型：'business'或'personal'
  * @param {string} appId - 应用ID
  */
-function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', appId }) {
+function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   // 是否启用身份权限功能开关（仅控制第一层Tab是否显示）
   const enableIdentityPermission = mockFeatureFlag.enableIdentityPermission;
+  
+  // 根据 appId 获取应用信息，判断是业务应用还是个人应用
+  const appInfo = appId ? mockAppInfo[appId] : null;
+  const appType = appInfo && appInfo.eamap ? 'business' : 'personal';
 
   // 当前选中的身份类型（BUSINESS_IDENTITY或PERSONAL_IDENTITY）
   const [activeIdentityType, setActiveIdentityType] = useState('BUSINESS_IDENTITY');
@@ -86,6 +90,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', a
 
   /**
    * 加载模块列表
+   * @param {string} identityType - 身份类型
+   * @param {string} apiType - API类型
    */
   const loadModules = async (apiType) => {
     setLoading(true);
@@ -201,10 +207,14 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', a
    */
   const handleIdentityChange = async (identityType) => {
     let newApiType;
-    if (identityType === 'BUSINESS_IDENTITY') {
-      newApiType = DEFAULT_API_TYPE.business;
+    if (appType === 'business') {
+      if (identityType === 'BUSINESS_IDENTITY') {
+        newApiType = 'api_business_app_soa';
+      } else {
+        newApiType = 'api_business_user_soa';
+      }
     } else {
-      newApiType = DEFAULT_API_TYPE.personal;
+      newApiType = 'api_personal_user_aksk';
     }
     
     setActiveIdentityType(identityType);
@@ -239,6 +249,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', a
     
     const modules = await loadModules(type);
     await loadApis({
+      identityType: activeIdentityType,
       apiType: type,
       keyword: '',
       needReview: 'all',
@@ -327,8 +338,11 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', a
       <Tabs
         activeKey={activeIdentityType}
         onChange={handleIdentityChange}
-        items={identityTabs}
-      />
+      >
+        {identityTabs.map(tab => (
+          <TabPane key={tab.key} tab={tab.label} />
+        ))}
+      </Tabs>
     );
   };
 
@@ -337,23 +351,20 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appType = 'business', a
    * 企业应用显示SOA/APIG类型，个人应用显示AKSK类型
    */
   const renderSecondLevelTabs = () => {
-    if (appType === 'business') {
-      return (
-        <Tabs
-          activeKey={activeApiType}
-          onChange={handleApiTypeChange}
-          items={activeIdentityType === 'BUSINESS_IDENTITY' ? BUSINESS_BUSINESS_API_TABS : BUSINESS_PERSONAL_API_TABS}
-        />
-      );
-    } else {
-      return (
-        <Tabs
-          activeKey={activeApiType}
-          onChange={handleApiTypeChange}
-          items={PERSONAL_API_TABS}
-        />
-      );
-    }
+    const apiTabs = appType === 'business' 
+      ? (activeIdentityType === 'BUSINESS_IDENTITY' ? BUSINESS_BUSINESS_API_TABS : BUSINESS_PERSONAL_API_TABS)
+      : PERSONAL_API_TABS;
+    console.log('apiTabs, activeApiType', apiTabs, activeApiType);
+    return (
+      <Tabs
+        activeKey={activeApiType}
+        onChange={handleApiTypeChange}
+      >
+        {apiTabs.map(tab => (
+          <TabPane key={tab.key} tab={tab.label} />
+        ))}
+      </Tabs>
+    );
   };
 
   return (

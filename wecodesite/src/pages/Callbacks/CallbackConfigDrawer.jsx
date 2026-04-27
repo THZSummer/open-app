@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Drawer, Form, Radio, Input, Button, message } from 'antd';
 import { CALLBACK_CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
 import { configCallbackSubscription } from './thunk';
+import { queryParams } from '../../utils/common';
 import './CallbackConfigDrawer.m.less';
 
 function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
   const [form] = Form.useForm();
   const [channelType, setChannelType] = useState(0);
   const [saving, setSaving] = useState(false);
+  const appId = queryParams('appId');
 
   useEffect(() => {
     if (callback && open) {
@@ -34,7 +36,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
     try {
       const values = await form.validateFields();
       setSaving(true);
-      const res = await configCallbackSubscription('10', callback.id, {
+      const res = await configCallbackSubscription(appId, callback.id, {
         channelType: values.channelType,
         channelAddress: values.channelAddress || '',
         authType: values.authType
@@ -112,8 +114,8 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
         </Form.Item>
         <Form.Item name="authType" label="认证类型">
           <Radio.Group>
-            <Radio value={0}>{AUTH_TYPE[0]}</Radio>
-            <Radio value={1}>{AUTH_TYPE[1]}</Radio>
+            <Radio value={1}>{AUTH_TYPE[0]}</Radio>
+            <Radio value={2}>{AUTH_TYPE[1]}</Radio>
           </Radio.Group>
         </Form.Item>
       </Form>

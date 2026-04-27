@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Table, Pagination, Button, message } from 'antd';
-import { fetchAppApis, subscribeApis, withdrawApiApplication, remindApproval } from './thunk';
-import { fetchAppInfo } from '../BasicInfo/thunk';
-import ApiPermissionDrawer from './ApiPermissionDrawer';
+import React, { useEffect } from 'react';
+import { Button, message } from 'antd';
+import { useSubscriptionList } from '../../hooks/useSubscriptionList';
+import SubscriptionTable from '../../components/SubscriptionTable/SubscriptionTable';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
-import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
+import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
+import ApiPermissionDrawer from './ApiPermissionDrawer';
+import { fetchAppApis, subscribeApis, withdrawApiApplication, remindApproval, deleteApiSubscription } from './thunk';
 import { getApiManagementColumns } from './constants';
 import { openUrl, queryParams } from '../../utils/common';
 import './ApiManagement.m.less';
@@ -12,103 +13,49 @@ import './ApiManagement.m.less';
 function ApiManagement() {
   const appId = queryParams('appId');
 
-  const [apis, setApis] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [appType, setAppType] = useState('business');
-  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
-  const [currentApprovalInfo, setCurrentApprovalInfo] = useState({});
-  const [pagination, setPagination] = useState(INIT_PAGECONFIG);
-
-  const loadAppInfo = async () => {
-    const appInfo = await fetchAppInfo(appId);
-    if (appInfo && appInfo.eamap) {
-      setAppType('business');
-    } else {
-      setAppType('personal');
-    }
-  };
-
-  const loadApis = async (page = 1, size = pagination.pageSize) => {
-    setLoading(true);
-    try {
-      const result = await fetchAppApis(appId, { curPage: page, pageSize: size });
-      if (result && result.code === '200') {
-        setApis(result.data || []);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: page, pageSize: size }));
-      } else {
-        message.error(result?.message || '加载API列表失败');
-      }
-    } catch (error) {
-      message.error('加载API列表失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: apis,
+    loading,
+    pagination,
+    drawerOpen,
+    subscribeLoading,
+    approvalModalOpen,
+    currentApprovalInfo,
+    deleteModalOpen,
+    deleteLoading,
+    loadData,
+    handlePageChange,
+    openDrawer,
+    closeDrawer,
+    handleSubscribe,
+    handleCopyApprovalAddress,
+    handleWithdraw,
+    handleDeleteClick,
+    handleConfirmDelete,
+    closeApprovalModal,
+    closeDeleteModal,
+  } = useSubscriptionList(appId, {
+    fetchList: fetchAppApis,
+    subscribe: subscribeApis,
+    withdraw: withdrawApiApplication,
+    deleteItem: deleteApiSubscription,
+  });
 
   useEffect(() => {
     if (appId) {
-      loadAppInfo();
-      loadApis();
+      loadData();
     }
-  }, [appId]);
-
-  const handleAddApi = () => {
-    setDrawerOpen(true);
-  };
-
-  const handleConfirmPermission = async (selectedApis) => {
-    const permissionIds = selectedApis
-      .filter(api => api.id)
-      .map(api => api.id);
-
-    if (permissionIds.length === 0) {
-      message.warning('没有可订阅的权限');
-      return;
-    }
-
-    const result = await subscribeApis(appId, { permissionIds });
-    if (result && result.code === '200') {
-      message.success('申请已提交');
-      setDrawerOpen(false);
-      loadApis(1, INIT_PAGECONFIG.pageSize);
-    } else {
-      message.error(result?.message || '订阅失败');
-    }
-  };
-
-  const handleCopyApprovalAddress = (record) => {
-    setCurrentApprovalInfo({
-      id: record.id,
-      approver: record.approver?.userName || '待分配',
-      approvalUrl: record.approvalUrl || ''
-    });
-    setApprovalModalOpen(true);
-  };
-
-  const handleWithdraw = async (record) => {
-    const res = await withdrawApiApplication(appId, record.id);
-    if (res && res.code === '200') {
-      message.success('已撤回申请');
-      loadApis();
-    } else {
-      message.error(res?.message || '撤回失败');
-    }
-  };
+  }, [appId, loadData]);
 
   const handleOpenDoc = (url) => {
     openUrl(url);
-  };
-
-  const handlePageChange = (page, size) => {
-    const newSize = size || pagination.pageSize;
-    loadApis(page, newSize);
   };
 
   const columns = getApiManagementColumns({
     handleOpenDoc,
     handleCopyApprovalAddress,
     handleWithdraw,
+    handleDelete: handleDeleteClick,
   });
 
   return (
@@ -118,46 +65,27 @@ function ApiManagement() {
           <h4 className="page-title">API管理</h4>
           <span className="page-desc">管理应用接口，配置API权限和调用参数</span>
         </div>
-        {/* 添加API按钮，打开权限开通抽屉 */}
-        <Button type="primary" onClick={handleAddApi} style={{ justifyContent: 'center', borderRadius: 6 }}>添加API</Button>
+        <Button type="primary" onClick={openDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加API</Button>
       </div>
 
-      <div className="table-wrapper">
-        <Table
-          columns={columns}
-          dataSource={apis}
-          rowKey="id"
-          pagination={false}
-          loading={loading}
-        />
-      </div>
-
-      {pagination.total > 0 && (
-        <div style={{ marginTop: 16, textAlign: 'right' }}>
-          <Pagination
-            current={pagination.curPage}
-            pageSize={pagination.pageSize}
-            total={pagination.total}
-            onChange={handlePageChange}
-            showSizeChanger
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
-            showQuickJumper
-            showTotal={(total) => `共 ${total} 条`}
-          />
-        </div>
-      )}
+      <SubscriptionTable
+        columns={columns}
+        dataSource={apis}
+        loading={loading}
+        pagination={pagination}
+        onPageChange={handlePageChange}
+      />
 
       <ApiPermissionDrawer
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onConfirm={handleConfirmPermission}
-        appType={appType}
+        onClose={closeDrawer}
+        onConfirm={handleSubscribe}
         appId={appId}
       />
 
       <ApprovalAddressModal
         open={approvalModalOpen}
-        onClose={() => setApprovalModalOpen(false)}
+        onClose={closeApprovalModal}
         approver={currentApprovalInfo.approver}
         approvalUrl={currentApprovalInfo.approvalUrl}
         onRemind={async () => {
@@ -168,6 +96,13 @@ function ApiManagement() {
             message.error(res?.message || '催办失败');
           }
         }}
+      />
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
       />
     </div>
   );

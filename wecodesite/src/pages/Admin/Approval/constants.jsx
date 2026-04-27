@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tag, Button, Space, Popconfirm } from 'antd';
-import { CheckOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 export const STATUS_MAP = {
   0: { text: '待审', color: 'orange' },
@@ -80,7 +80,7 @@ export const getApprovalColumns = ({ handleViewDetail, handleApprove, handleReje
   {
     title: '操作',
     key: 'action',
-    width: 180,
+    width: 240,
     fixed: 'right',
     render: (_, record) => (
       <Space>
@@ -145,6 +145,91 @@ export const getMyApprovalColumns = ({ handleViewDetail }) => [
     fixed: 'right',
     render: (_, record) => (
       <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>详情</Button>
+    ),
+  },
+];
+
+export const getApprovalFlowColumns = ({ handleEdit, handleDelete }) => [
+  {
+    title: '流程ID',
+    dataIndex: 'id',
+    key: 'id',
+    width: 80,
+  },
+  {
+    title: '流程名称（中文）',
+    dataIndex: 'nameCn',
+    key: 'nameCn',
+    width: 200,
+  },
+  {
+    title: '流程名称（英文）',
+    dataIndex: 'nameEn',
+    key: 'nameEn',
+    width: 200,
+  },
+  {
+    title: '审批类型',
+    dataIndex: 'code',
+    key: 'approvalType',
+    width: 120,
+    render: (code) => (
+      <Tag color={code === 'global' ? 'green' : 'blue'}>
+        {code === 'global' ? '全局审批' : '场景审批'}
+      </Tag>
+    ),
+  },
+  {
+    title: '流程代码',
+    dataIndex: 'code',
+    key: 'code',
+    width: 180,
+    render: (code) => (
+      <Tag color="blue">{code}</Tag>
+    ),
+  },
+  {
+    title: '审批节点数',
+    dataIndex: 'nodes',
+    key: 'nodes',
+    width: 100,
+    render: (nodes) => nodes?.length || 0,
+  },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    key: 'status',
+    width: 80,
+    render: (status) => (
+      <Tag color={status === 1 ? 'green' : 'default'}>
+        {status === 1 ? '启用' : '禁用'}
+      </Tag>
+    ),
+  },
+  {
+    title: '操作',
+    key: 'action',
+    width: 150,
+    render: (_, record) => (
+      <Space>
+        <Button
+          type="link"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => handleEdit(record)}
+        >
+          编辑
+        </Button>
+        <Button
+          type="link"
+          size="small"
+          danger
+          icon={<DeleteOutlined />}
+          onClick={() => handleDelete(record)}
+        >
+          删除
+        </Button>
+      </Space>
     ),
   },
 ];

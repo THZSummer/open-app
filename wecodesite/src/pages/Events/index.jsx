@@ -1,106 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Table, Pagination, Tag, message } from 'antd';
-import { fetchAppEvents, remindApproval, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
-import EventDrawer from './EventDrawer';
-import EventSubscriptionDrawer from './EventSubscriptionDrawer';
+import React, { useEffect, useState } from 'react';
+import { Button } from 'antd';
+import { useSubscriptionList } from '../../hooks/useSubscriptionList';
+import SubscriptionTable from '../../components/SubscriptionTable/SubscriptionTable';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { SUBSCRIPTION_STATUS, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
-import { queryParams, openUrl } from '../../utils/common';
+import EventDrawer from './EventDrawer';
+import EventSubscriptionDrawer from './EventSubscriptionDrawer';
+import { fetchAppEvents, remindApproval, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
 import { getEventColumns } from './constants';
+import { queryParams, openUrl } from '../../utils/common';
 import './Events.m.less';
 
 function Events() {
   const appId = queryParams('appId');
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [pagination, setPagination] = useState(INIT_PAGECONFIG);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [subscriptionDrawerOpen, setSubscriptionDrawerOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
-  const [currentApprovalInfo, setCurrentApprovalInfo] = useState({});
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [currentDeleteId, setCurrentDeleteId] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-  const [subscribeLoading, setSubscribeLoading] = useState(false);
 
-  /**
-   * 加载事件列表
-   */
-  const loadEvents = async (page = 1, size = pagination.pageSize) => {
-    if (!appId) return;
-    
-    setLoading(true);
-    try {
-      const result = await fetchAppEvents(appId, { curPage: page, pageSize: size });
-      if (result && result.code === '200') {
-        setEvents(result.data || []);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: page, pageSize: size }));
-      } else {
-        message.error(result?.message || '加载事件列表失败');
-      }
-    } catch (error) {
-      message.error('加载事件列表失败');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const {
+    data: events,
+    loading,
+    pagination,
+    drawerOpen,
+    subscribeLoading,
+    approvalModalOpen,
+    currentApprovalInfo,
+    deleteModalOpen,
+    deleteLoading,
+    loadData,
+    handlePageChange,
+    openDrawer,
+    closeDrawer,
+    handleSubscribe,
+    handleCopyApprovalAddress,
+    handleWithdraw,
+    handleDeleteClick,
+    handleConfirmDelete,
+    closeApprovalModal,
+    closeDeleteModal,
+  } = useSubscriptionList(appId, {
+    fetchList: fetchAppEvents,
+    subscribe: subscribeEvents,
+    deleteItem: deleteEvent,
+    withdraw: withdrawApproval,
+  });
 
-  /**
-   * 组件挂载和 appId 变化时加载数据
-   */
   useEffect(() => {
     if (appId) {
-      loadEvents();
+      loadData();
     }
-  }, [appId]);
-
-  const handleAddEvent = async (selectedEvents) => {
-    if (!appId) return;
-    
-    setSubscribeLoading(true);
-    try {
-      const permissionIds = selectedEvents
-        .filter(e => e.id)
-        .map(e => e.id);
-      
-      if (permissionIds.length === 0) {
-        message.warning('没有可订阅的权限');
-        setSubscribeLoading(false);
-        return;
-      }
-      
-      const res = await subscribeEvents(appId, { permissionIds });
-      if (res && res.code === '200') {
-        message.success('申请已提交');
-        loadEvents(1, INIT_PAGECONFIG.pageSize);
-        setDrawerOpen(false);
-      } else {
-        message.error(res?.message || '申请失败');
-      }
-    } catch (error) {
-      message.error('申请失败');
-    } finally {
-      setSubscribeLoading(false);
-    }
-  };
-
-  const handleOpenDrawer = () => {
-    setDrawerOpen(true);
-  };
-
-  const handleCloseDrawer = () => {
-    setDrawerOpen(false);
-  };
+  }, [appId, loadData]);
 
   const handleEdit = (record) => {
     setEditingEvent(record);
     setSubscriptionDrawerOpen(true);
   };
 
-  const handleSaveSubscription = async (updatedEvent) => {
-    loadEvents();
+  const handleSaveSubscription = async () => {
+    loadData();
   };
 
   const handleCloseSubscriptionDrawer = () => {
@@ -108,58 +64,8 @@ function Events() {
     setEditingEvent(null);
   };
 
-  const handleCopyApprovalAddress = (record) => {
-    setCurrentApprovalInfo({
-      id: record.id,
-      approver: record.approver?.userName || '待分配',
-      approvalUrl: record.approvalUrl || ''
-    });
-    setApprovalModalOpen(true);
-  };
-
-  const handleWithdraw = async (record) => {
-    try {
-      const res = await withdrawApproval(record.id);
-      if (res && res.code === '200') {
-        message.success('已撤回');
-        loadEvents();
-      } else {
-        message.error(res?.message || '撤回失败');
-      }
-    } catch (error) {
-      message.error('撤回失败');
-    }
-  };
-
   const handleOpenDoc = (url) => {
     openUrl(url);
-  };
-
-  const handleDeleteClick = (id) => {
-    setCurrentDeleteId(id);
-    setDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    setDeleteLoading(true);
-    try {
-      const res = await deleteEvent(currentDeleteId);
-      if (res && res.code === '200') {
-        message.success('删除成功');
-        setDeleteModalOpen(false);
-        loadEvents();
-      } else {
-        message.error(res?.message || '删除失败');
-      }
-    } catch (error) {
-      message.error('删除失败');
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
-  const handlePageChange = (page, size) => {
-    loadEvents(page, size);
   };
 
   const columns = getEventColumns({
@@ -180,34 +86,21 @@ function Events() {
             <a onClick={() => navigate('/events-docs')} style={{ marginLeft: 4, cursor: 'pointer', color: '#1677ff' }}>了解更多</a>
           </span>
         </div>
-        <Button type="primary" onClick={handleOpenDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加事件</Button>
+        <Button type="primary" onClick={openDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加事件</Button>
       </div>
-      <div className="table-wrapper">
-        <Table
-          columns={columns}
-          dataSource={events}
-          rowKey="id"
-          pagination={false}
-          loading={loading}
-        />
-      </div>
-      <div style={{ marginTop: 16, textAlign: 'right' }}>
-        <Pagination
-          total={pagination.total}
-          current={pagination.curPage}
-          pageSize={pagination.pageSize}
-          pageSizeOptions={[10, 20, 50]}
-          showSizeChanger
-          showQuickJumper
-          showTotal={(total) => `共 ${total} 条`}
-          onChange={handlePageChange}
-        />
-      </div>
+
+      <SubscriptionTable
+        columns={columns}
+        dataSource={events}
+        loading={loading}
+        pagination={pagination}
+        onPageChange={handlePageChange}
+      />
 
       <EventDrawer
         open={drawerOpen}
-        onClose={handleCloseDrawer}
-        onConfirm={handleAddEvent}
+        onClose={closeDrawer}
+        onConfirm={handleSubscribe}
         selectedEvents={events}
         subscribeLoading={subscribeLoading}
         appId={appId}
@@ -222,7 +115,7 @@ function Events() {
 
       <ApprovalAddressModal
         open={approvalModalOpen}
-        onClose={() => setApprovalModalOpen(false)}
+        onClose={closeApprovalModal}
         approver={currentApprovalInfo.approver}
         approvalUrl={currentApprovalInfo.approvalUrl}
         onRemind={() => remindApproval(currentApprovalInfo.id)}
@@ -230,7 +123,7 @@ function Events() {
 
       <DeleteConfirmModal
         open={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
+        onClose={closeDeleteModal}
         onConfirm={handleConfirmDelete}
         loading={deleteLoading}
       />

@@ -1,4 +1,4 @@
-export const useTrueFetch = true;
+export const useTrueFetch = false;
 
 export const API_BASE_URL = '';
 

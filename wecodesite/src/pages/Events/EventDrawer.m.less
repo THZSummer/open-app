@@ -1,8 +1,19 @@
 .event-drawer {
   &.ant-drawer {
     .ant-drawer-body {
+      overflow: hidden;
       padding: 0 24px !important;
     }
+    
+    .ant-drawer-wrapper-body {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
+  }
+
+  :deep(.ant-drawer-content) {
+    display: flex;
+    flex-direction: column;
   }
 
   :deep(.ant-drawer-footer) {
@@ -19,51 +30,71 @@
       border-radius: 6px;
     }
   }
+}
 
-  .drawer-filter {
-    display: flex;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border-color);
-  }
+.event-drawer-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
 
-  .drawer-table {
-    overflow-x: auto;
+.event-drawer-filter {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.event-drawer-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.event-drawer-table {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  
+  :deep(.ant-table) {
+    background: transparent;
     
-    :deep(.ant-table) {
-      background: transparent;
-      
-      .ant-table-thead > tr > th,
-      .ant-table-tbody > tr > td {
-        white-space: nowrap;
-      }
-    }
-
-    :deep(.ant-table-thead > tr > th) {
-      background: var(--bg-secondary);
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-
-    :deep(.ant-table-tbody > tr:hover > td) {
-      background: var(--bg-hover);
-    }
-
-    :deep(.ant-checkbox-wrapper) {
-      margin-right: 8px;
+    .ant-table-thead > tr > th,
+    .ant-table-tbody > tr > td {
+      white-space: nowrap;
     }
   }
 
-  .drawer-pagination {
-    padding: 16px 0 0;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
+  :deep(.ant-table-thead > tr > th) {
+    background: var(--bg-secondary);
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
 
-    .pagination-total {
-      font-size: 13px;
-      color: var(--text-tertiary);
-      margin-right: auto;
-    }
+  :deep(.ant-table-tbody > tr:hover > td) {
+    background: var(--bg-hover);
+  }
+
+  :deep(.ant-checkbox-wrapper) {
+    margin-right: 8px;
+  }
+}
+
+.event-drawer-pagination {
+  padding: 16px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+  margin-top: 16px;
+  flex-shrink: 0;
+
+  .pagination-total {
+    font-size: 13px;
+    color: var(--text-tertiary);
   }
 }

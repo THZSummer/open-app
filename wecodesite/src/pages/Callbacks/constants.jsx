@@ -56,7 +56,7 @@ export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprov
   {
     title: '操作',
     key: 'action',
-    width: 220,
+    width: 300,
     fixed: 'right',
     render: (_, record) => (
       <div>
