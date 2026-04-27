@@ -1892,13 +1892,13 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| channel_type | int | 是 | 通道类型（0=WebHook, 1=SSE, 2=WebSocket） |
+| channel_type | int | 是 | 通道类型（1=WebHook, 2=SSE, 3=WebSocket） |
 | channel_address | string | 条件 | 通道地址 |
 | auth_type | int | 是 | 认证类型 |
 
 ```json
 {
-  "channelType": 0,
+  "channelType": 1,
   "channelAddress": "https://webhook.example.com/callbacks",
   "authType": 0
 }
@@ -1908,9 +1908,9 @@
 
 | 字段 | 值 | 说明 |
 |------|-----|------|
-| channel_type | 0 | WebHook |
-| channel_type | 1 | SSE |
-| channel_type | 2 | WebSocket |
+| channel_type | 1 | WebHook |
+| channel_type | 2 | SSE |
+| channel_type | 3 | WebSocket |
 
 ---
 
@@ -2722,7 +2722,7 @@ API 请求代理与鉴权。
   "data": {
     "ak": "AK123456789",
     "scope": "callback:approval:completed",
-    "channelType": 0,
+    "channelType": 1,
     "channelAddress": "https://webhook.example.com/callbacks",
     "authType": 0
   }
@@ -2757,9 +2757,9 @@ API 请求代理与鉴权。
 |------|------|------|
 | ak | string | 应用 Access Key |
 | scope | string | 回调权限标识 |
-| channelType | int | 通道类型（0=WebHook, 1=SSE, 2=WebSocket） |
+| channelType | int | 通道类型（1=WebHook, 2=SSE, 3=WebSocket） |
 | channelAddress | string | 通道地址 |
-| authType | int | 认证类型（0=应用类凭证A, 1=应用类凭证B, 2=AKSK, 3=Bearer Token） |
+| authType | int | 认证类型（1=SOA, 2=APIG） |
 
 **错误码说明**：
 
