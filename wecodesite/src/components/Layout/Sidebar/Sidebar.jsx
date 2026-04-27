@@ -118,25 +118,27 @@ function Sidebar({ sidebarMainHeight }) {
   ];
 
   return (
-    <div className="sidebar-nav">
-      {dynamicMenuItems.map((group, index) => (
-        <div key={index} className="sidebar-category">
-          <div className="sidebar-category-header">{group.category}</div>
-          <ul className="sidebar-category-items">
-            {group.children.map((item) => (
-              <li
-                key={item.key}
-                className={`sidebar-item ${currentPath === item.key || currentPath.startsWith(item.key + '/') ? 'active' : ''} ${item.indent ? 'indented' : ''}`}
-                onClick={() => item.capability ? handleCapabilityClick(item.capability) : handleClick(item.key)}
-              >
-                <span className="sidebar-item-icon">{item.icon}</span>
-                <span className="sidebar-item-label">{item.label}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="sidebar-divider" />
-        </div>
-      ))}
+    <div className="sidebar" style={{ height: sidebarMainHeight || '100%', overflowY: 'auto' }}>
+      <div className="sidebar-nav">
+        {dynamicMenuItems.map((group, index) => (
+          <div key={index} className="sidebar-category">
+            <div className="sidebar-category-header">{group.category}</div>
+            <ul className="sidebar-category-items">
+              {group.children.map((item) => (
+                <li
+                  key={item.key}
+                  className={`sidebar-item ${currentPath === item.key || currentPath.startsWith(item.key + '/') ? 'active' : ''} ${item.indent ? 'indented' : ''}`}
+                  onClick={() => item.capability ? handleCapabilityClick(item.capability) : handleClick(item.key)}
+                >
+                  <span className="sidebar-item-icon">{item.icon}</span>
+                  <span className="sidebar-item-label">{item.label}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="sidebar-divider" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

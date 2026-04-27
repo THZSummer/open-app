@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Layout, Dropdown } from 'antd';
-import { UserOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons';
+import { LoginOutlined, LogoutOutlined } from '@ant-design/icons';
 import LoginModal from './LoginModal';
 import { getUserIdCookie, isLoggedIn, removeUserIdCookie } from '../../../utils/cookie';
 

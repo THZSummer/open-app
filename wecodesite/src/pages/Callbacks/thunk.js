@@ -6,36 +6,6 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const CALLBACK_CATEGORY_ALIAS = 'callback';
 
-const transformCategoriesToModules = (categories) => {
-  if (!Array.isArray(categories) || categories.length === 0) return [];
-
-  const result = [];
-  const firstCategoryId = categories[0]?.id;
-  if (firstCategoryId) {
-    result.push({
-      key: 'all',
-      value: firstCategoryId,
-      name: '全部分类'
-    });
-  }
-
-  categories.forEach(cat => {
-    if (cat.children && Array.isArray(cat.children)) {
-      cat.children.forEach(child => {
-        if (child.id) {
-          result.push({
-            key: child.id,
-            value: child.id,
-            name: child.nameCn || child.name
-          });
-        }
-      });
-    }
-  });
-
-  return result;
-};
-
 export const fetchCallbackCategories = async () => {
   if (!useTrueFetch) {
     await delay(300);

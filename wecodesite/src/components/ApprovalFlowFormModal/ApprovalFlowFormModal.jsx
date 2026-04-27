@@ -9,7 +9,6 @@ import {
   Space,
 } from 'antd';
 import {
-  PlusOutlined,
   MinusCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';

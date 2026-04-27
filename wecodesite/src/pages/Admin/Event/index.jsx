@@ -6,6 +6,7 @@ import { fetchEventList, deleteEvent } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import EventRegister from './EventRegister';
 import { getEventListColumns } from './constants';
+import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import './EventList.m.less';
 
 function EventList() {
@@ -92,7 +93,7 @@ function EventList() {
                 total={pagination.total}
                 current={pagination.curPage}
                 pageSize={pagination.pageSize}
-                pageSizeOptions={[10, 20, 50]}
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
                 showSizeChanger
                 showQuickJumper
                 showTotal={(total) => `共 ${total} 条`}

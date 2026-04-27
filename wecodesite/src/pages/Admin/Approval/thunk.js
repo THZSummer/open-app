@@ -4,7 +4,7 @@
  */
 import { useTrueFetch } from '../../../utils/constants';
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
-import { mockApprovals, mockMyApprovals, mockApprovalFlows } from './mock';
+import { mockApprovals, mockMyApprovals } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
