@@ -147,9 +147,6 @@ export const getApiListColumns = ({ handleView, handleEdit, handleDelete }) => [
     render: (_, record) => (
       <Space>
         <Button type="link" size="small" onClick={() => handleView(record)}>详情</Button>
-        {record.docUrl && (
-          <Button type="link" size="small" onClick={() => window.open(record.docUrl, '_blank')}>文档</Button>
-        )}
         <Button type="link" size="small" onClick={() => handleEdit(record)}>编辑</Button>
         <Button type="link" size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
       </Space>
