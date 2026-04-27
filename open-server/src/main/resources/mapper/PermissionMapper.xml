@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.event.mapper.PermissionMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper">
 
     <!-- 结果映射 -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.event.entity.Permission">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.event.entity.Permission">
         <id column="id" property="id"/>
         <result column="name_cn" property="nameCn"/>
         <result column="name_en" property="nameEn"/>
@@ -29,7 +29,7 @@
     </sql>
 
     <!-- 插入权限 -->
-    <insert id="insert" parameterType="com.xxx.open.modules.event.entity.Permission">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.event.entity.Permission">
         INSERT INTO openplatform_v2_permission_t (
             id, name_cn, name_en, scope, resource_type, resource_id, category_id,
             need_approval, resource_nodes, status,
@@ -71,7 +71,7 @@
     </select>
 
     <!-- 更新权限 -->
-    <update id="update" parameterType="com.xxx.open.modules.event.entity.Permission">
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.event.entity.Permission">
         UPDATE openplatform_v2_permission_t
         SET name_cn = #{nameCn},
             name_en = #{nameEn},

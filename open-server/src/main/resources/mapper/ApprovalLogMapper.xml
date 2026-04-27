@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.approval.mapper.ApprovalLogMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper">
 
     <!-- 结果映射 -->
     <!-- v2.8.0变更：新增 level 字段 -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.approval.entity.ApprovalLog">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog">
         <id column="id" property="id"/>
         <result column="record_id" property="recordId"/>
         <result column="node_index" property="nodeIndex"/>
@@ -30,7 +30,7 @@
 
     <!-- 插入审批日志 -->
     <!-- v2.8.0变更：新增 level 字段 -->
-    <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalLog">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog">
         INSERT INTO openplatform_v2_approval_log_t (
             id, record_id, node_index, level, operator_id, operator_name, action, comment,
             create_time, last_update_time, create_by, last_update_by

@@ -31,6 +31,6 @@ management:
 logging:
   level:
     root: INFO
-    com.xxx.open: DEBUG
+    com.xxx.it.works.wecode.v2: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
