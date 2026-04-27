@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,11 +124,16 @@ public class CallbackGatewayService {
     private List<String> getSubscribedApps(String callbackScope) {
         String cacheKey = CACHE_KEY_PREFIX + callbackScope;
         
-        // 尝试从缓存获取
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            log.debug("从缓存获取订阅列表: scope={}", callbackScope);
-            return (List<String>) cached;
+        try {
+            // 尝试从缓存获取
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                log.debug("从缓存获取订阅列表: scope={}", callbackScope);
+                return (List<String>) cached;
+            }
+        } catch (Exception e) {
+            log.error("从Redis获取订阅列表缓存失败: scope={}", callbackScope, e);
+            // 继续从api-server查询
         }
         
         // 从 api-server 查询
@@ -135,8 +141,13 @@ public class CallbackGatewayService {
         
         // 写入缓存
         if (!apps.isEmpty()) {
-            redisTemplate.opsForValue().set(cacheKey, apps, CACHE_EXPIRE_SECONDS, TimeUnit.SECONDS);
-            log.debug("订阅列表已缓存: scope={}, count={}", callbackScope, apps.size());
+            try {
+                redisTemplate.opsForValue().set(cacheKey, apps, CACHE_EXPIRE_SECONDS, TimeUnit.SECONDS);
+                log.debug("订阅列表已缓存: scope={}, count={}", callbackScope, apps.size());
+            } catch (Exception e) {
+                log.error("缓存订阅列表到Redis失败: scope={}", callbackScope, e);
+                // 缓存失败不影响业务流程
+            }
         }
         
         return apps;
@@ -162,12 +173,12 @@ public class CallbackGatewayService {
                     continue;
                 }
                 
-                // 获取通道配置
-                Integer channelType = (Integer) config.get("channelType");
-                String channelAddress = (String) config.get("channelAddress");
+                // 获取通道配置（类型安全转换）
+                Integer channelType = safeGetInteger(config, "channelType");
+                String channelAddress = safeGetString(config, "channelAddress");
                 
                 // 获取认证类型（三方配置）
-                Integer authTypeCode = (Integer) config.get("authType");
+                Integer authTypeCode = safeGetInteger(config, "authType");
                 AuthTypeEnum authType = AuthTypeEnum.fromCode(authTypeCode);
                 
                 // 按通道类型分发
@@ -213,8 +224,13 @@ public class CallbackGatewayService {
      */
     public void clearCache(String callbackScope) {
         String cacheKey = CACHE_KEY_PREFIX + callbackScope;
-        redisTemplate.delete(cacheKey);
-        log.info("清除订阅列表缓存: scope={}", callbackScope);
+        try {
+            redisTemplate.delete(cacheKey);
+            log.info("清除订阅列表缓存: scope={}", callbackScope);
+        } catch (Exception e) {
+            log.error("清除订阅列表缓存失败: scope={}", callbackScope, e);
+            // 缓存清除失败不影响业务流程
+        }
     }
 
     /**
@@ -232,5 +248,46 @@ public class CallbackGatewayService {
         message.put("timestamp", System.currentTimeMillis());
         message.put("data", payload);
         return message;
+    }
+
+    /**
+     * 安全获取Integer类型配置值
+     * 
+     * @param config 配置Map
+     * @param key 键名
+     * @return Integer值，类型不匹配时返回null
+     */
+    private Integer safeGetInteger(Map<String, Object> config, String key) {
+        Object value = config.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        log.warn("配置值类型不匹配: key={}, expected=Integer, actual={}", key, value.getClass().getSimpleName());
+        return null;
+    }
+
+    /**
+     * 安全获取String类型配置值
+     * 
+     * @param config 配置Map
+     * @param key 键名
+     * @return String值，类型不匹配时返回null
+     */
+    private String safeGetString(Map<String, Object> config, String key) {
+        Object value = config.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        log.warn("配置值类型不匹配: key={}, expected=String, actual={}", key, value.getClass().getSimpleName());
+        return null;
     }
 }
