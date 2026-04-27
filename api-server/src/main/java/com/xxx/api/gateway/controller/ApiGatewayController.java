@@ -2,11 +2,14 @@ package com.xxx.api.gateway.controller;
 
 import com.xxx.api.common.model.ApiResponse;
 import com.xxx.api.gateway.dto.ApiGatewayResponse;
+import com.xxx.api.gateway.dto.CallbackConfigRequest;
+import com.xxx.api.gateway.dto.CallbackConfigResponse;
 import com.xxx.api.gateway.dto.PermissionCheckResponse;
 import com.xxx.api.gateway.service.ApiGatewayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -23,6 +26,7 @@ import java.util.Map;
  * <p>接口列表：</p>
  * <ul>
  *   <li>ANY /gateway/api/* - API 请求代理与鉴权（#55）</li>
+ *   <li>POST /gateway/callbacks/config - 回调配置查询接口（#59）</li>
  * </ul>
  * 
  * @author SDDU Build Agent
@@ -125,5 +129,37 @@ public class ApiGatewayController {
             headers.put(name, request.getHeader(name));
         }
         return headers;
+    }
+
+    /**
+     * 回调配置查询接口
+     * 
+     * <p>接口编号：#59</p>
+     * <p>供 XX 通讯平台内部业务模块调用，通过 AK + Scope 查询应用对某个回调的订阅配置</p>
+     */
+    @Operation(summary = "回调配置查询接口", description = "通过 AK + Scope 查询应用对某个回调的订阅配置")
+    @PostMapping("/callbacks/config")
+    public ApiResponse<CallbackConfigResponse> getCallbackConfig(
+            @Parameter(description = "内部调用凭证") @RequestHeader(value = "Authorization", required = false) String authorization,
+            @Valid @RequestBody CallbackConfigRequest request) {
+        
+        log.info("查询回调配置: ak={}, scope={}", request.getAk(), request.getScope());
+        
+        // TODO: 验证内部调用凭证（Authorization）
+        
+        try {
+            CallbackConfigResponse config = apiGatewayService.getCallbackConfig(request.getAk(), request.getScope());
+            
+            if (config == null) {
+                log.info("未找到回调配置: ak={}, scope={}", request.getAk(), request.getScope());
+                return ApiResponse.success(null);
+            }
+            
+            return ApiResponse.success(config);
+            
+        } catch (Exception e) {
+            log.error("查询回调配置失败: ak={}, scope={}", request.getAk(), request.getScope(), e);
+            return ApiResponse.error("400", "查询失败: " + e.getMessage(), "Query failed");
+        }
     }
 }

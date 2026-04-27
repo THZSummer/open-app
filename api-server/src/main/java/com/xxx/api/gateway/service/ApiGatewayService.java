@@ -5,6 +5,8 @@ import com.xxx.api.common.entity.Subscription;
 import com.xxx.api.common.exception.BusinessException;
 import com.xxx.api.common.mapper.PermissionMapper;
 import com.xxx.api.common.mapper.SubscriptionMapper;
+import com.xxx.api.common.service.ApplicationService;
+import com.xxx.api.gateway.dto.CallbackConfigResponse;
 import com.xxx.api.gateway.dto.PermissionCheckResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ public class ApiGatewayService {
 
     private final PermissionMapper permissionMapper;
     private final SubscriptionMapper subscriptionMapper;
+    private final ApplicationService applicationService;
 
     /**
      * 校验应用权限
@@ -90,31 +93,13 @@ public class ApiGatewayService {
     /**
      * 验证应用身份（AKSK/Bearer Token）
      * 
-     * <p>注意：这里是 Mock 实现，实际项目中应调用真实的认证服务</p>
-     * 
      * @param appId 应用ID
      * @param authType 认证类型
      * @param authCredential 认证凭证
      * @return 是否验证通过
      */
     public boolean verifyApplication(String appId, Integer authType, String authCredential) {
-        // Mock 实现：简单验证
-        // 实际项目中应该：
-        // 1. authType = 0: 验证 AKSK 签名
-        // 2. authType = 1: 验证 Bearer Token
-        // 3. 调用应用管理系统获取应用信息
-        
-        if (appId == null || appId.isEmpty()) {
-            return false;
-        }
-        
-        if (authCredential == null || authCredential.isEmpty()) {
-            return false;
-        }
-        
-        // Mock: 简单验证通过
-        log.debug("应用身份验证通过: appId={}, authType={}", appId, authType);
-        return true;
+        return applicationService.verifyApplication(appId, authType, authCredential);
     }
 
     /**
@@ -138,5 +123,39 @@ public class ApiGatewayService {
         log.debug("生成 Scope: path={}, method={}, scope={}", path, method, scope);
         
         return scope;
+    }
+
+    /**
+     * 获取回调配置
+     * 
+     * <p>通过 AK + Scope 查询应用对某个回调的订阅配置</p>
+     * 
+     * @param ak 应用 Access Key
+     * @param scope 回调权限标识
+     * @return 回调配置，未找到返回 null
+     */
+    public CallbackConfigResponse getCallbackConfig(String ak, String scope) {
+        // 1. 通过 AK 获取应用ID（预留接口，对接现有 AKSK 管理系统）
+        Long appId = applicationService.getAppIdByAk(ak);
+        if (appId == null) {
+            log.warn("无效的 Access Key: {}", ak);
+            return null;
+        }
+
+        // 2. 查询回调订阅配置
+        Subscription subscription = subscriptionMapper.selectCallbackConfigByAppIdAndScope(appId, scope);
+        if (subscription == null) {
+            log.info("未找到回调订阅配置: appId={}, scope={}", appId, scope);
+            return null;
+        }
+
+        // 3. 构建响应
+        return CallbackConfigResponse.builder()
+                .ak(ak)
+                .scope(scope)
+                .channelType(subscription.getChannelType())
+                .channelAddress(subscription.getChannelAddress())
+                .authType(subscription.getAuthType())
+                .build();
     }
 }
