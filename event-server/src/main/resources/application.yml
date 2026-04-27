@@ -27,6 +27,9 @@ auth:
 # API Server 配置
 api-server:
   url: http://localhost:18081/api-server
+  auth:
+    enabled: true   # 是否启用认证
+    # 凭证通过 getApiServerCredential() 方法获取，返回头字段名和值
 
 # Server 配置
 server:

@@ -6,9 +6,14 @@ import com.xxx.event.common.model.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 
@@ -28,8 +33,86 @@ public class ApiServerClient {
     @Value("${api-server.url:http://localhost:18081}")
     private String apiServerUrl;
 
+    @Value("${api-server.auth.enabled:true}")
+    private boolean authEnabled;
+
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+
+    /**
+     * 获取 API Server 认证凭证（预留）
+     * 
+     * <p>返回 HTTP 头字段名和值</p>
+     * <p>约定的认证类型：SOA</p>
+     * <p>TODO: 实际项目中应调用凭证服务或应用管理系统获取</p>
+     * 
+     * @return HTTP 头字段映射（key=头字段名，value=头字段值）
+     */
+    private Map<String, String> getApiServerCredential() {
+        // TODO: 实际实现示例
+        // 1. 调用凭证服务获取凭证
+        //    CredentialService credentialService = ...;
+        //    String token = credentialService.getCredential("api-server", "SOA");
+        //    return Map.of("X-SOA-TOKEN", token);
+        
+        // 2. 或调用应用管理系统
+        //    AppCredentialClient client = ...;
+        //    String token = client.getSoaCredential("api-server");
+        //    return Map.of("X-SOA-TOKEN", token);
+        
+        log.warn("[预留实现] API Server 凭证获取方法尚未实现");
+        return Map.of();  // 返回空 Map
+    }
+
+    /**
+     * 初始化检查配置
+     */
+    @PostConstruct
+    public void init() {
+        if (authEnabled) {
+            Map<String, String> credentials = getApiServerCredential();
+            if (credentials.isEmpty()) {
+                log.warn("API Server 认证已启用，但凭证获取方法返回空值，请实现 getApiServerCredential() 方法");
+            } else {
+                log.info("API Server 认证配置正常，凭证头字段: {}", credentials.keySet());
+            }
+        }
+    }
+
+    /**
+     * 为请求添加认证凭证
+     * 
+     * <p>调用 api-server 必须携带认证凭证</p>
+     * 
+     * @param headers HTTP请求头
+     */
+    private void applyAuth(HttpHeaders headers) {
+        if (!authEnabled) {
+            log.warn("API Server 认证未启用，这可能导致调用失败");
+            return;
+        }
+        
+        // 获取凭证（头字段名和值）
+        Map<String, String> credentials = getApiServerCredential();
+        
+        if (credentials.isEmpty()) {
+            log.error("无法获取 API Server 认证凭证，请实现 getApiServerCredential() 方法");
+            return;
+        }
+        
+        // 直接设置所有头字段
+        for (Map.Entry<String, String> entry : credentials.entrySet()) {
+            String headerName = entry.getKey();
+            String headerValue = entry.getValue();
+            
+            if (headerValue != null && !headerValue.isEmpty()) {
+                headers.set(headerName, headerValue);
+                log.debug("已添加 API Server 认证头: {}={}", headerName, headerValue);
+            } else {
+                log.warn("认证头值为空，跳过设置: {}", headerName);
+            }
+        }
+    }
 
     /**
      * 查询权限详情
@@ -42,9 +125,21 @@ public class ApiServerClient {
             String url = apiServerUrl + "/gateway/permissions/detail?scope=" + scope;
             log.debug("查询权限详情: scope={}, url={}", scope, url);
 
-            String response = restTemplate.getForObject(url, String.class);
+            // 创建请求头并添加凭证
+            HttpHeaders headers = new HttpHeaders();
+            applyAuth(headers);
+            
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(
+                url, 
+                HttpMethod.GET, 
+                entity, 
+                String.class
+            );
+            
             ApiResponse<Map<String, Object>> apiResponse = objectMapper.readValue(
-                    response,
+                    response.getBody(),
                     new TypeReference<ApiResponse<Map<String, Object>>>() {}
             );
 
@@ -72,9 +167,21 @@ public class ApiServerClient {
             String url = apiServerUrl + "/gateway/permissions/subscribers?scope=" + scope;
             log.debug("查询订阅应用列表: scope={}, url={}", scope, url);
 
-            String response = restTemplate.getForObject(url, String.class);
+            // 创建请求头并添加凭证
+            HttpHeaders headers = new HttpHeaders();
+            applyAuth(headers);
+            
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(
+                url, 
+                HttpMethod.GET, 
+                entity, 
+                String.class
+            );
+            
             ApiResponse<List<String>> apiResponse = objectMapper.readValue(
-                    response,
+                    response.getBody(),
                     new TypeReference<ApiResponse<List<String>>>() {}
             );
 
@@ -103,9 +210,21 @@ public class ApiServerClient {
             String url = apiServerUrl + "/gateway/subscriptions/config?appId=" + appId + "&scope=" + scope;
             log.debug("查询订阅配置: appId={}, scope={}, url={}", appId, scope, url);
 
-            String response = restTemplate.getForObject(url, String.class);
+            // 创建请求头并添加凭证
+            HttpHeaders headers = new HttpHeaders();
+            applyAuth(headers);
+            
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(
+                url, 
+                HttpMethod.GET, 
+                entity, 
+                String.class
+            );
+            
             ApiResponse<Map<String, Object>> apiResponse = objectMapper.readValue(
-                    response,
+                    response.getBody(),
                     new TypeReference<ApiResponse<Map<String, Object>>>() {}
             );
 
@@ -134,9 +253,21 @@ public class ApiServerClient {
             String url = apiServerUrl + "/gateway/permissions/check?appId=" + appId + "&scope=" + scope;
             log.debug("权限校验: appId={}, scope={}, url={}", appId, scope, url);
 
-            String response = restTemplate.getForObject(url, String.class);
+            // 创建请求头并添加凭证
+            HttpHeaders headers = new HttpHeaders();
+            applyAuth(headers);
+            
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<String> response = restTemplate.exchange(
+                url, 
+                HttpMethod.GET, 
+                entity, 
+                String.class
+            );
+            
             ApiResponse<Map<String, Object>> apiResponse = objectMapper.readValue(
-                    response,
+                    response.getBody(),
                     new TypeReference<ApiResponse<Map<String, Object>>>() {}
             );
 
