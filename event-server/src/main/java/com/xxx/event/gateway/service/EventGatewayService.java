@@ -1,6 +1,7 @@
 package com.xxx.event.gateway.service;
 
 import com.xxx.event.client.ApiServerClient;
+import com.xxx.event.common.channel.MessageQueueChannel;
 import com.xxx.event.common.channel.WebHookChannel;
 import com.xxx.event.gateway.dto.EventPublishRequest;
 import com.xxx.event.gateway.dto.EventPublishResponse;
@@ -23,14 +24,16 @@ import java.util.concurrent.TimeUnit;
  *   <li>查询订阅该事件的应用列表</li>
  *   <li>按订阅配置分发事件：
  *     <ul>
- *       <li>WebHook：POST 到 channel_address</li>
- *       <li>企业内部消息队列：推送到对应队列</li>
+ *       <li>企业内部消息队列 (0)：推送到对应队列</li>
+ *       <li>WebHook (1)：POST 到 channel_address</li>
  *     </ul>
  *   </li>
  * </ol>
  * 
+ * <p>注意：根据 FR-029 规范，事件分发仅支持企业内部消息队列和 WebHook，不支持 SSE 和 WebSocket</p>
+ * 
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 1.2.0
  */
 @Slf4j
 @Service
@@ -39,6 +42,7 @@ public class EventGatewayService {
 
     private final ApiServerClient apiServerClient;
     private final WebHookChannel webHookChannel;
+    private final MessageQueueChannel messageQueueChannel;
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
@@ -189,27 +193,34 @@ public class EventGatewayService {
                     continue;
                 }
                 
-                // 获取通道类型
+                // 获取通道配置
                 Integer channelType = (Integer) config.get("channelType");
                 String channelAddress = (String) config.get("channelAddress");
+                
+                // 获取认证配置
+                Integer authTypeCode = (Integer) config.get("authType");
+                String authCredentials = (String) config.get("authCredentials");
                 
                 // 按通道类型分发
                 if (channelType != null && channelAddress != null) {
                     switch (channelType) {
                         case 0 -> {
-                            // 企业内部消息队列（Mock 实现）
+                            // 企业内部消息队列
                             log.info("推送到内部消息队列: appId={}, topic={}, queue={}", 
                                     appId, topic, channelAddress);
-                            // TODO: 实际项目中应调用内部消息网关 SDK
+                            messageQueueChannel.sendEvent(channelAddress, payload);
                         }
                         case 1 -> {
                             // WebHook
-                            log.info("推送到 WebHook: appId={}, topic={}, url={}", 
-                                    appId, topic, channelAddress);
-                            webHookChannel.sendEvent(channelAddress, payload);
+                            log.info("推送到 WebHook: appId={}, topic={}, url={}, authType={}", 
+                                    appId, topic, channelAddress, authTypeCode);
+                            webHookChannel.sendEvent(channelAddress, payload,
+                                    com.xxx.event.common.auth.AuthType.fromCode(authTypeCode),
+                                    authCredentials);
                         }
                         default -> 
-                            log.warn("未知的通道类型: appId={}, channelType={}", appId, channelType);
+                            log.warn("未知的通道类型或事件不支持的通道: appId={}, channelType={} (事件仅支持: 0-消息队列, 1-WebHook)", 
+                                    appId, channelType);
                     }
                 }
                 
