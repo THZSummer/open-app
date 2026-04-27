@@ -1,6 +1,7 @@
 package com.xxx.event.gateway.service;
 
 import com.xxx.event.client.ApiServerClient;
+import com.xxx.event.common.auth.AuthTypeEnum;
 import com.xxx.event.common.channel.MessageQueueChannel;
 import com.xxx.event.common.channel.WebHookChannel;
 import com.xxx.event.gateway.dto.EventPublishRequest;
@@ -197,9 +198,9 @@ public class EventGatewayService {
                 Integer channelType = (Integer) config.get("channelType");
                 String channelAddress = (String) config.get("channelAddress");
                 
-                // 获取认证配置
+                // 获取认证类型（三方配置）
                 Integer authTypeCode = (Integer) config.get("authType");
-                String authCredentials = (String) config.get("authCredentials");
+                AuthTypeEnum authType = AuthTypeEnum.fromCode(authTypeCode);
                 
                 // 按通道类型分发
                 if (channelType != null && channelAddress != null) {
@@ -211,12 +212,10 @@ public class EventGatewayService {
                             messageQueueChannel.sendEvent(channelAddress, payload);
                         }
                         case 1 -> {
-                            // WebHook
+                            // WebHook（使用新的认证方式：appId + authType）
                             log.info("推送到 WebHook: appId={}, topic={}, url={}, authType={}", 
-                                    appId, topic, channelAddress, authTypeCode);
-                            webHookChannel.sendEvent(channelAddress, payload,
-                                    com.xxx.event.common.auth.AuthType.fromCode(authTypeCode),
-                                    authCredentials);
+                                    appId, topic, channelAddress, authType);
+                            webHookChannel.sendEvent(channelAddress, payload, appId, authType);
                         }
                         default -> 
                             log.warn("未知的通道类型或事件不支持的通道: appId={}, channelType={} (事件仅支持: 0-消息队列, 1-WebHook)", 

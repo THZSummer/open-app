@@ -5,9 +5,13 @@ import com.xxx.event.EventServerApplication;
 import com.xxx.event.gateway.dto.CallbackInvokeRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,7 +27,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author SDDU Build Agent
  * @version 1.0.0
  */
-@SpringBootTest(classes = EventServerApplication.class)
+@SpringBootTest(classes = EventServerApplication.class, 
+        properties = {
+            "management.health.redis.enabled=false",
+            "spring.data.redis.repositories.enabled=false"
+        })
 @AutoConfigureMockMvc
 class CallbackGatewayControllerTest {
 
@@ -32,6 +40,12 @@ class CallbackGatewayControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private RedisConnectionFactory redisConnectionFactory;
+
+    @MockBean
+    private ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
 
     @MockBean
     private RedisTemplate<String, Object> redisTemplate;

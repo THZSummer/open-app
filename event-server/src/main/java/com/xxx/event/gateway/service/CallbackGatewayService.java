@@ -1,6 +1,7 @@
 package com.xxx.event.gateway.service;
 
 import com.xxx.event.client.ApiServerClient;
+import com.xxx.event.common.auth.AuthTypeEnum;
 import com.xxx.event.common.channel.SseChannel;
 import com.xxx.event.common.channel.WebHookChannel;
 import com.xxx.event.common.channel.WebSocketChannel;
@@ -165,20 +166,18 @@ public class CallbackGatewayService {
                 Integer channelType = (Integer) config.get("channelType");
                 String channelAddress = (String) config.get("channelAddress");
                 
-                // 获取认证配置
+                // 获取认证类型（三方配置）
                 Integer authTypeCode = (Integer) config.get("authType");
-                String authCredentials = (String) config.get("authCredentials");
+                AuthTypeEnum authType = AuthTypeEnum.fromCode(authTypeCode);
                 
                 // 按通道类型分发
                 if (channelType != null && channelAddress != null) {
                     switch (channelType) {
                         case 0 -> {
-                            // WebHook
+                            // WebHook（使用新的认证方式：appId + authType）
                             log.info("推送到 WebHook: appId={}, scope={}, url={}, authType={}", 
-                                    appId, callbackScope, channelAddress, authTypeCode);
-                            webHookChannel.sendCallback(channelAddress, payload, 
-                                    com.xxx.event.common.auth.AuthType.fromCode(authTypeCode), 
-                                    authCredentials);
+                                    appId, callbackScope, channelAddress, authType);
+                            webHookChannel.sendCallback(channelAddress, payload, appId, authType);
                         }
                         case 1 -> {
                             // SSE（Server-Sent Events）

@@ -10,8 +10,15 @@ import lombok.NoArgsConstructor;
  * 
  * <p>封装认证相关信息，用于在事件/回调分发时传递认证配置</p>
  * 
+ * <p>设计变更：</p>
+ * <ul>
+ *   <li>三方系统只配置：协议类型、接口地址、认证类型</li>
+ *   <li>平台根据 authType 自动获取凭证，无需手动配置</li>
+ *   <li>authCredentials 字段保留用于向后兼容，但已弃用</li>
+ * </ul>
+ * 
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 3.0.0
  * @since 2026-04-27
  */
 @Data
@@ -21,76 +28,128 @@ import lombok.NoArgsConstructor;
 public class AuthContext {
 
     /**
-     * 认证类型
+     * 应用ID
      */
-    private AuthType authType;
+    private String appId;
 
     /**
-     * 认证凭证
+     * 认证类型
      */
+    private AuthTypeEnum authType;
+
+    /**
+     * 认证凭证（已弃用，保留用于向后兼容）
+     * 
+     * @deprecated 使用 appId + authType 自动获取凭证，无需手动设置
+     */
+    @Deprecated
     private String authCredentials;
 
     /**
      * 创建免认证上下文
      * 
+     * @param appId 应用ID
      * @return 免认证上下文
      */
+    public static AuthContext noAuth(String appId) {
+        return AuthContext.builder()
+                .appId(appId)
+                .authType(AuthTypeEnum.NONE)
+                .build();
+    }
+
+    /**
+     * 创建免认证上下文（向后兼容）
+     * 
+     * @return 免认证上下文
+     * @deprecated 使用 noAuth(String appId) 代替
+     */
+    @Deprecated
     public static AuthContext noAuth() {
         return AuthContext.builder()
-                .authType(AuthType.NONE)
-                .authCredentials(null)
+                .authType(AuthTypeEnum.NONE)
                 .build();
     }
 
     /**
-     * 创建应用类凭证A上下文
+     * 创建认证上下文
      * 
-     * @param credentials 凭证内容
+     * @param appId 应用ID
+     * @param authType 认证类型
      * @return 认证上下文
      */
-    public static AuthContext appTypeA(String credentials) {
+    public static AuthContext of(String appId, AuthTypeEnum authType) {
         return AuthContext.builder()
-                .authType(AuthType.APP_TYPE_A)
-                .authCredentials(credentials)
+                .appId(appId)
+                .authType(authType)
                 .build();
     }
 
     /**
-     * 创建应用类凭证B上下文
+     * 创建 COOKIE (应用类凭证A) 上下文
      * 
-     * @param credentials 凭证内容
+     * @param appId 应用ID
      * @return 认证上下文
      */
-    public static AuthContext appTypeB(String credentials) {
+    public static AuthContext cookie(String appId) {
         return AuthContext.builder()
-                .authType(AuthType.APP_TYPE_B)
-                .authCredentials(credentials)
+                .appId(appId)
+                .authType(AuthTypeEnum.COOKIE)
                 .build();
     }
 
     /**
-     * 创建Bearer Token上下文
+     * 创建 SOA (应用类凭证B) 上下文
      * 
-     * @param token Token内容
+     * @param appId 应用ID
      * @return 认证上下文
      */
-    public static AuthContext bearerToken(String token) {
+    public static AuthContext soa(String appId) {
         return AuthContext.builder()
-                .authType(AuthType.BEARER_TOKEN)
-                .authCredentials(token)
+                .appId(appId)
+                .authType(AuthTypeEnum.SOA)
+                .build();
+    }
+
+    /**
+     * 创建 IAM (Bearer Token) 上下文
+     * 
+     * @param appId 应用ID
+     * @return 认证上下文
+     */
+    public static AuthContext iam(String appId) {
+        return AuthContext.builder()
+                .appId(appId)
+                .authType(AuthTypeEnum.IAM)
                 .build();
     }
 
     /**
      * 创建AKSK上下文
      * 
-     * @param accessKey Access Key
+     * @param appId 应用ID
      * @return 认证上下文
      */
-    public static AuthContext aksk(String accessKey) {
+    public static AuthContext aksk(String appId) {
         return AuthContext.builder()
-                .authType(AuthType.AKSK)
-                .authCredentials(accessKey)
+                .appId(appId)
+                .authType(AuthTypeEnum.AKSK)
+                .build();
+    }
+
+    /**
+     * 创建认证上下文（向后兼容）
+     * 
+     * @param authType 认证类型
+     * @param authCredentials 认证凭证（已弃用）
+     * @return 认证上下文
+     * @deprecated 使用 of(String appId, AuthTypeEnum authType) 代替
+     */
+    @Deprecated
+    public static AuthContext of(AuthTypeEnum authType, String authCredentials) {
+        return AuthContext.builder()
+                .authType(authType)
+                .authCredentials(authCredentials)
                 .build();
     }
 
@@ -114,11 +173,11 @@ public class AuthContext {
         }
         
         // 免认证模式不需要凭证
-        if (authType == AuthType.NONE) {
+        if (authType == AuthTypeEnum.NONE) {
             return true;
         }
         
-        // 其他认证类型需要凭证
-        return authCredentials != null && !authCredentials.trim().isEmpty();
+        // 新设计：必须有 appId
+        return appId != null && !appId.trim().isEmpty();
     }
 }

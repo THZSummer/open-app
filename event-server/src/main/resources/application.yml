@@ -16,6 +16,14 @@ spring:
           max-idle: 8
           min-idle: 0
 
+# 认证头字段配置（可自定义，以下为默认值）
+auth:
+  headers:
+    soa-token: "X-SOA-TOKEN"
+    apig-app-id: "X-APIG-APPID"
+    apig-app-key: "X-APIG-APPKEY"
+    aksk-token: "X-AKSK-TOKEN"
+
 # API Server 配置
 api-server:
   url: http://localhost:18081/api-server
