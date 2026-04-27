@@ -5,17 +5,25 @@
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- 直接继承 Spring Boot，不再继承根 pom -->
     <parent>
-        <groupId>com.xxx.open</groupId>
-        <artifactId>open-app</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.4.6</version>
+        <relativePath/>
     </parent>
 
+    <groupId>com.xxx.it.works.wecode</groupId>
     <artifactId>event-server</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Event Server</name>
-    <description>能力开放平台 - 事件/回调网关服务</description>
+    <description>WeCode 能力开放平台 - 事件/回调网关服务</description>
+
+    <properties>
+        <springdoc-openapi.version>2.5.0</springdoc-openapi.version>
+    </properties>
 
     <dependencies>
         <!-- Spring Boot Web -->
@@ -46,6 +54,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc-openapi.version}</version>
         </dependency>
 
         <!-- Spring Boot WebSocket -->
