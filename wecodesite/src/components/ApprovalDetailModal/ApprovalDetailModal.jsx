@@ -95,8 +95,21 @@ function ApprovalDetailModal({
               <Collapse
                 ghost
                 style={{ marginTop: 16 }}
-                items={[renderOperationHistory(detail)]}
-              />
+              >
+                <Collapse.Panel
+                  key="logs"
+                  label={
+                    <span style={{ fontWeight: 500 }}>
+                      操作历史
+                      <span style={{ color: '#8c8c8c', fontSize: 12, marginLeft: 8 }}>
+                        ({detail.logs.length} 条记录)
+                      </span>
+                    </span>
+                  }
+                >
+                  {renderOperationHistoryTimeline(detail)}
+                </Collapse.Panel>
+              </Collapse>
             )}
           </div>
         )}
@@ -167,65 +180,70 @@ function renderProgressCard(detail) {
 }
 
 function renderApprovalFlow(detail) {
-  const items = detail.combinedNodes.map((node, index) => {
-    const isCompleted = node.status === 1;
-    const isRejected = node.status === 2;
-    const isCurrent = index === detail.currentNode && detail.status === 0;
-    const isPending = node.status === null && !isCurrent;
+  return (
+    <Steps direction="vertical" current={detail.currentNode}>
+      {detail.combinedNodes.map((node, index) => {
+        const isCompleted = node.status === 1;
+        const isRejected = node.status === 2;
+        const isCurrent = index === detail.currentNode && detail.status === 0;
+        const isPending = node.status === null && !isCurrent;
 
-    let icon;
-    let stepStatus;
+        let icon;
+        let stepStatus;
 
-    if (isCompleted) {
-      icon = <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      stepStatus = 'finish';
-    } else if (isRejected) {
-      icon = <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
-      stepStatus = 'error';
-    } else if (isCurrent) {
-      icon = <SyncOutlined spin style={{ color: '#1890ff' }} />;
-      stepStatus = 'process';
-    } else {
-      icon = <ClockCircleOutlined style={{ color: '#999' }} />;
-      stepStatus = 'wait';
-    }
+        if (isCompleted) {
+          icon = <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+          stepStatus = 'finish';
+        } else if (isRejected) {
+          icon = <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+          stepStatus = 'error';
+        } else if (isCurrent) {
+          icon = <SyncOutlined spin style={{ color: '#1890ff' }} />;
+          stepStatus = 'process';
+        } else {
+          icon = <ClockCircleOutlined style={{ color: '#999' }} />;
+          stepStatus = 'wait';
+        }
 
-    return {
-      icon,
-      status: stepStatus,
-      title: (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Avatar size="small" icon={<UserOutlined />} />
-          <strong>{node.userName}</strong>
-          <Tag color={LEVEL_MAP[node.level]?.color || 'default'}>
-            {LEVEL_MAP[node.level]?.text || node.level}
-          </Tag>
-          {isCurrent && <Tag color="processing">待审批</Tag>}
-          {isCompleted && <Tag color="success">已同意</Tag>}
-          {isRejected && <Tag color="error">已拒绝</Tag>}
-          {isPending && <Tag color="default">等待中</Tag>}
-        </div>
-      ),
-      description: (
-        <div style={{ marginTop: 8, color: '#8c8c8c', fontSize: 12 }}>
-          <div>审批人ID：{node.userId} | 节点顺序：第 {node.order} 步</div>
-          {node.approveTime && (
-            <div style={{ marginTop: 4 }}>审批时间：{node.approveTime}</div>
-          )}
-          {node.comment && (
-            <div style={{ marginTop: 4, fontStyle: 'italic' }}>
-              审批意见：{node.comment}
-            </div>
-          )}
-        </div>
-      ),
-    };
-  });
-
-  return <Steps direction="vertical" current={detail.currentNode} items={items} />;
+        return (
+          <Steps.Step
+            key={index}
+            icon={icon}
+            status={stepStatus}
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Avatar size="small" icon={<UserOutlined />} />
+                <strong>{node.userName}</strong>
+                <Tag color={LEVEL_MAP[node.level]?.color || 'default'}>
+                  {LEVEL_MAP[node.level]?.text || node.level}
+                </Tag>
+                {isCurrent && <Tag color="processing">待审批</Tag>}
+                {isCompleted && <Tag color="success">已同意</Tag>}
+                {isRejected && <Tag color="error">已拒绝</Tag>}
+                {isPending && <Tag color="default">等待中</Tag>}
+              </div>
+            }
+            description={
+              <div style={{ marginTop: 8, color: '#8c8c8c', fontSize: 12 }}>
+                <div>审批人ID：{node.userId} | 节点顺序：第 {node.order} 步</div>
+                {node.approveTime && (
+                  <div style={{ marginTop: 4 }}>审批时间：{node.approveTime}</div>
+                )}
+                {node.comment && (
+                  <div style={{ marginTop: 4, fontStyle: 'italic' }}>
+                    审批意见：{node.comment}
+                  </div>
+                )}
+              </div>
+            }
+          />
+        );
+      })}
+    </Steps>
+  );
 }
 
-function renderOperationHistory(detail) {
+function renderOperationHistoryTimeline(detail) {
   const actionMap = {
     0: { text: '同意', color: 'success' },
     1: { text: '拒绝', color: 'error' },
@@ -233,54 +251,47 @@ function renderOperationHistory(detail) {
     3: { text: '转交', color: 'processing' },
   };
 
-  const timelineItems = detail.logs.map((log, idx) => ({
-    color: log.action === 0 ? 'green' : log.action === 1 ? 'red' : 'gray',
-    children: (
-      <div style={{ paddingBottom: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <strong>{log.operatorName}</strong>
-          <Tag color={actionMap[log.action]?.color || 'default'}>
-            {actionMap[log.action]?.text || '未知'}
-          </Tag>
-          {log.level && (
-            <Tag color={LEVEL_MAP[log.level]?.color || 'default'}>
-              {LEVEL_MAP[log.level]?.text || log.level}
-            </Tag>
-          )}
-        </div>
-        <div style={{ color: '#8c8c8c', fontSize: 12 }}>
-          {log.createTime}
-        </div>
-        {log.comment && (
-          <div style={{ 
-            marginTop: 4, 
-            padding: '6px 10px', 
-            background: '#fafafa', 
-            borderRadius: 4, 
-            borderLeft: '2px solid #1890ff',
-            fontStyle: 'italic',
-            fontSize: 12,
-            color: '#666'
-          }}>
-            "{log.comment}"
+  return (
+    <Timeline>
+      {detail.logs.map((log, idx) => (
+        <Timeline.Item
+          key={idx}
+          color={log.action === 0 ? 'green' : log.action === 1 ? 'red' : 'gray'}
+        >
+          <div style={{ paddingBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <strong>{log.operatorName}</strong>
+              <Tag color={actionMap[log.action]?.color || 'default'}>
+                {actionMap[log.action]?.text || '未知'}
+              </Tag>
+              {log.level && (
+                <Tag color={LEVEL_MAP[log.level]?.color || 'default'}>
+                  {LEVEL_MAP[log.level]?.text || log.level}
+                </Tag>
+              )}
+            </div>
+            <div style={{ color: '#8c8c8c', fontSize: 12 }}>
+              {log.createTime}
+            </div>
+            {log.comment && (
+              <div style={{
+                marginTop: 4,
+                padding: '6px 10px',
+                background: '#fafafa',
+                borderRadius: 4,
+                borderLeft: '2px solid #1890ff',
+                fontStyle: 'italic',
+                fontSize: 12,
+                color: '#666'
+              }}>
+                "{log.comment}"
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    ),
-  }));
-
-  return {
-    key: 'logs',
-    label: (
-      <span style={{ fontWeight: 500 }}>
-        操作历史
-        <span style={{ color: '#8c8c8c', fontSize: 12, marginLeft: 8 }}>
-          ({detail.logs.length} 条记录)
-        </span>
-      </span>
-    ),
-    children: <Timeline items={timelineItems} />,
-  };
+        </Timeline.Item>
+      ))}
+    </Timeline>
+  );
 }
 
 export default ApprovalDetailModal;
