@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.api.mapper.ApiPropertyMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.api.mapper.ApiPropertyMapper">
 
     <!-- ResultMap -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.api.entity.ApiProperty">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.api.entity.ApiProperty">
         <id column="id" property="id"/>
         <result column="parent_id" property="parentId"/>
         <result column="property_name" property="propertyName"/>

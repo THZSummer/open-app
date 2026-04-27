@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.callback.mapper.CallbackMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper">
 
     <!-- 结果映射 -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.callback.entity.Callback">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.callback.entity.Callback">
         <id column="id" property="id"/>
         <result column="name_cn" property="nameCn"/>
         <result column="name_en" property="nameEn"/>
@@ -17,7 +17,7 @@
     </resultMap>
 
     <!-- 带分类名称的结果映射 -->
-    <resultMap id="WithCategoryResultMap" type="com.xxx.open.modules.callback.entity.Callback" extends="BaseResultMap">
+    <resultMap id="WithCategoryResultMap" type="com.xxx.it.works.wecode.v2.modules.callback.entity.Callback" extends="BaseResultMap">
         <result column="category_name" property="categoryName"/>
     </resultMap>
 
@@ -28,7 +28,7 @@
     </sql>
 
     <!-- 插入回调 -->
-    <insert id="insert" parameterType="com.xxx.open.modules.callback.entity.Callback">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.callback.entity.Callback">
         INSERT INTO openplatform_v2_callback_t (
             id, name_cn, name_en, category_id, status,
             create_time, last_update_time, create_by, last_update_by
@@ -86,7 +86,7 @@
     </select>
 
     <!-- 更新回调 -->
-    <update id="update" parameterType="com.xxx.open.modules.callback.entity.Callback">
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.callback.entity.Callback">
         UPDATE openplatform_v2_callback_t
         SET name_cn = #{nameCn},
             name_en = #{nameEn},
