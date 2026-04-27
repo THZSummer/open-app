@@ -1,6 +1,8 @@
 package com.xxx.event.gateway.service;
 
 import com.xxx.event.client.ApiServerClient;
+import com.xxx.event.common.auth.AuthTypeEnum;
+import com.xxx.event.common.channel.MessageQueueChannel;
 import com.xxx.event.common.channel.WebHookChannel;
 import com.xxx.event.gateway.dto.EventPublishRequest;
 import com.xxx.event.gateway.dto.EventPublishResponse;
@@ -9,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -23,14 +26,16 @@ import java.util.concurrent.TimeUnit;
  *   <li>查询订阅该事件的应用列表</li>
  *   <li>按订阅配置分发事件：
  *     <ul>
- *       <li>WebHook：POST 到 channel_address</li>
- *       <li>企业内部消息队列：推送到对应队列</li>
+ *       <li>企业内部消息队列 (0)：推送到对应队列</li>
+ *       <li>WebHook (1)：POST 到 channel_address</li>
  *     </ul>
  *   </li>
  * </ol>
  * 
+ * <p>注意：根据 FR-029 规范，事件分发仅支持企业内部消息队列和 WebHook，不支持 SSE 和 WebSocket</p>
+ * 
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 1.2.0
  */
 @Slf4j
 @Service
@@ -39,6 +44,7 @@ public class EventGatewayService {
 
     private final ApiServerClient apiServerClient;
     private final WebHookChannel webHookChannel;
+    private final MessageQueueChannel messageQueueChannel;
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
@@ -147,21 +153,46 @@ public class EventGatewayService {
     private List<String> getSubscribedApps(String topic) {
         String cacheKey = CACHE_KEY_PREFIX + topic;
         
-        // 尝试从缓存获取
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            log.debug("从缓存获取订阅列表: topic={}", topic);
-            return (List<String>) cached;
+        // 尝试从缓存获取（添加异常处理）
+        try {
+            Object cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                // 类型安全检查
+                if (cached instanceof List) {
+                    try {
+                        return (List<String>) cached;
+                    } catch (ClassCastException e) {
+                        log.warn("缓存数据类型错误，清除缓存: topic={}", topic);
+                        redisTemplate.delete(cacheKey);
+                    }
+                } else {
+                    log.warn("缓存数据类型不匹配，清除缓存: topic={}, actualType={}", topic, cached.getClass());
+                    redisTemplate.delete(cacheKey);
+                }
+            }
+        } catch (Exception e) {
+            log.error("从Redis获取订阅列表失败，降级到API查询: topic={}", topic, e);
+            // 继续执行API查询
         }
         
         // 从 api-server 查询
         String scope = convertTopicToScope(topic);
         List<String> apps = apiServerClient.getSubscribedApps(scope);
         
-        // 写入缓存
+        // 处理null返回
+        if (apps == null) {
+            log.warn("API返回订阅列表为null: scope={}", scope);
+            apps = Collections.emptyList();
+        }
+        
+        // 写入缓存（仅非空列表）
         if (!apps.isEmpty()) {
-            redisTemplate.opsForValue().set(cacheKey, apps, CACHE_EXPIRE_SECONDS, TimeUnit.SECONDS);
-            log.debug("订阅列表已缓存: topic={}, count={}", topic, apps.size());
+            try {
+                redisTemplate.opsForValue().set(cacheKey, apps, CACHE_EXPIRE_SECONDS, TimeUnit.SECONDS);
+                log.debug("订阅列表已缓存: topic={}, count={}", topic, apps.size());
+            } catch (Exception e) {
+                log.error("缓存订阅列表失败: topic={}", topic, e);
+            }
         }
         
         return apps;
@@ -184,33 +215,39 @@ public class EventGatewayService {
                 // 查询订阅配置
                 Map<String, Object> config = apiServerClient.getSubscriptionConfig(appId, scope);
                 
-                if (config.isEmpty()) {
+                if (config == null || config.isEmpty()) {
                     log.warn("应用订阅配置为空: appId={}, topic={}", appId, topic);
                     continue;
                 }
                 
-                // 获取通道类型
-                Integer channelType = (Integer) config.get("channelType");
-                String channelAddress = (String) config.get("channelAddress");
+                // 安全获取通道配置
+                Integer channelType = safeGetInteger(config, "channelType");
+                String channelAddress = safeGetString(config, "channelAddress");
+                Integer authTypeCode = safeGetInteger(config, "authType");
+                AuthTypeEnum authType = authTypeCode != null ? AuthTypeEnum.fromCode(authTypeCode) : null;
                 
                 // 按通道类型分发
-                if (channelType != null && channelAddress != null) {
+                if (channelType != null && channelAddress != null && !channelAddress.isEmpty()) {
                     switch (channelType) {
                         case 0 -> {
-                            // 企业内部消息队列（Mock 实现）
+                            // 企业内部消息队列
                             log.info("推送到内部消息队列: appId={}, topic={}, queue={}", 
                                     appId, topic, channelAddress);
-                            // TODO: 实际项目中应调用内部消息网关 SDK
+                            messageQueueChannel.sendEvent(channelAddress, payload);
                         }
                         case 1 -> {
                             // WebHook
-                            log.info("推送到 WebHook: appId={}, topic={}, url={}", 
-                                    appId, topic, channelAddress);
-                            webHookChannel.sendEvent(channelAddress, payload);
+                            log.info("推送到 WebHook: appId={}, topic={}, url={}, authType={}", 
+                                    appId, topic, channelAddress, authType);
+                            webHookChannel.sendEvent(channelAddress, payload, appId, authType);
                         }
                         default -> 
-                            log.warn("未知的通道类型: appId={}, channelType={}", appId, channelType);
+                            log.warn("未知的通道类型或事件不支持的通道: appId={}, channelType={} (事件仅支持: 0-消息队列, 1-WebHook)", 
+                                    appId, channelType);
                     }
+                } else {
+                    log.warn("通道配置无效: appId={}, channelType={}, channelAddress={}", 
+                            appId, channelType, channelAddress);
                 }
                 
             } catch (Exception e) {
@@ -220,13 +257,68 @@ public class EventGatewayService {
     }
 
     /**
+     * 安全获取Integer值（支持Long、String等类型转换）
+     * 
+     * @param map 配置Map
+     * @param key 键名
+     * @return Integer值，转换失败返回null
+     */
+    private Integer safeGetInteger(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                log.warn("无法将字符串转换为Integer: key={}, value={}", key, value);
+                return null;
+            }
+        }
+        log.warn("无法转换为Integer: key={}, valueType={}", key, value.getClass());
+        return null;
+    }
+
+    /**
+     * 安全获取String值
+     * 
+     * @param map 配置Map
+     * @param key 键名
+     * @return String值，null返回null
+     */
+    private String safeGetString(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof String) {
+            return (String) value;
+        }
+        return String.valueOf(value);
+    }
+
+    /**
      * 清除订阅列表缓存
      * 
      * @param topic 事件 Topic
      */
     public void clearCache(String topic) {
+        if (topic == null || topic.isEmpty()) {
+            return;
+        }
         String cacheKey = CACHE_KEY_PREFIX + topic;
-        redisTemplate.delete(cacheKey);
-        log.info("清除订阅列表缓存: topic={}", topic);
+        try {
+            Boolean deleted = redisTemplate.delete(cacheKey);
+            log.info("清除订阅列表缓存: topic={}, result={}", topic, deleted);
+        } catch (Exception e) {
+            log.error("清除订阅列表缓存失败: topic={}", topic, e);
+        }
     }
 }

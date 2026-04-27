@@ -1,12 +1,14 @@
 package com.xxx.api.scope.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.api.common.exception.BusinessException;
 import com.xxx.api.common.model.ApiResponse;
 import com.xxx.api.scope.dto.*;
 import com.xxx.api.scope.entity.UserAuthorization;
 import com.xxx.api.scope.mapper.UserAuthorizationMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -143,5 +145,137 @@ class ScopeServiceTest {
         // 验证调用
         verify(userAuthorizationMapper, times(1)).selectById(anyLong());
         verify(userAuthorizationMapper, times(1)).revokeById(anyLong());
+    }
+
+    @Nested
+    @DisplayName("获取用户授权列表 - 异常场景")
+    class GetUserAuthorizationsExceptionTests {
+
+        @Test
+        @DisplayName("应用ID格式错误")
+        void testInvalidAppId() {
+            UserAuthorizationListRequest request = new UserAuthorizationListRequest();
+            request.setCurPage(1);
+            request.setPageSize(20);
+            request.setAppId("invalid");
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> scopeService.getUserAuthorizations(request));
+
+            assertEquals("400", exception.getCode());
+            assertEquals("应用ID格式错误", exception.getMessageZh());
+
+            verify(userAuthorizationMapper, never()).selectList(any(), any(), any(), anyInt(), anyInt());
+        }
+    }
+
+    @Nested
+    @DisplayName("创建用户授权 - 异常场景")
+    class CreateUserAuthorizationExceptionTests {
+
+        @Test
+        @DisplayName("应用ID格式错误")
+        void testInvalidAppId() {
+            UserAuthorizationCreateRequest request = new UserAuthorizationCreateRequest();
+            request.setUserId("user001");
+            request.setAppId("invalid");
+            request.setScopes(List.of("api:im:send-message"));
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> scopeService.createUserAuthorization(request));
+
+            assertEquals("400", exception.getCode());
+            assertEquals("应用ID格式错误", exception.getMessageZh());
+
+            verify(userAuthorizationMapper, never()).selectByUserIdAndAppId(anyString(), anyLong());
+            verify(userAuthorizationMapper, never()).insert(any(UserAuthorization.class));
+        }
+
+        @Test
+        @DisplayName("用户已授权该应用")
+        void testUserAlreadyAuthorized() {
+            UserAuthorizationCreateRequest request = new UserAuthorizationCreateRequest();
+            request.setUserId("user001");
+            request.setAppId("10");
+            request.setScopes(List.of("api:im:send-message"));
+
+            UserAuthorization existing = new UserAuthorization();
+            existing.setId(600L);
+            existing.setUserId("user001");
+            existing.setAppId(10L);
+
+            when(userAuthorizationMapper.selectByUserIdAndAppId(anyString(), anyLong()))
+                    .thenReturn(existing);
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> scopeService.createUserAuthorization(request));
+
+            assertEquals("400", exception.getCode());
+            assertEquals("用户已授权该应用", exception.getMessageZh());
+
+            verify(userAuthorizationMapper, times(1)).selectByUserIdAndAppId(anyString(), anyLong());
+            verify(userAuthorizationMapper, never()).insert(any(UserAuthorization.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("取消授权 - 异常场景")
+    class RevokeUserAuthorizationExceptionTests {
+
+        @Test
+        @DisplayName("授权ID格式错误")
+        void testInvalidAuthorizationId() {
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> scopeService.revokeUserAuthorization("invalid"));
+
+            assertEquals("400", exception.getCode());
+            assertEquals("授权ID格式错误", exception.getMessageZh());
+
+            verify(userAuthorizationMapper, never()).selectById(anyLong());
+        }
+
+        @Test
+        @DisplayName("授权记录不存在")
+        void testAuthorizationNotFound() {
+            when(userAuthorizationMapper.selectById(anyLong()))
+                    .thenReturn(null);
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> scopeService.revokeUserAuthorization("600"));
+
+            assertEquals("404", exception.getCode());
+            assertEquals("授权记录不存在", exception.getMessageZh());
+
+            verify(userAuthorizationMapper, times(1)).selectById(anyLong());
+            verify(userAuthorizationMapper, never()).revokeById(anyLong());
+        }
+
+        @Test
+        @DisplayName("授权已被取消")
+        void testAuthorizationAlreadyRevoked() {
+            UserAuthorization existing = new UserAuthorization();
+            existing.setId(600L);
+            existing.setUserId("user001");
+            existing.setAppId(10L);
+            existing.setRevokedAt(new Date());
+
+            when(userAuthorizationMapper.selectById(anyLong()))
+                    .thenReturn(existing);
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> scopeService.revokeUserAuthorization("600"));
+
+            assertEquals("400", exception.getCode());
+            assertEquals("授权已被取消", exception.getMessageZh());
+
+            verify(userAuthorizationMapper, times(1)).selectById(anyLong());
+            verify(userAuthorizationMapper, never()).revokeById(anyLong());
+        }
     }
 }

@@ -46,4 +46,15 @@
         AND status = 1
     </select>
 
+    <!-- 根据应用ID和Scope查询回调订阅配置 -->
+    <select id="selectCallbackConfigByAppIdAndScope" resultMap="BaseResultMap">
+        SELECT s.*
+        FROM openplatform_v2_subscription_t s
+        INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
+        WHERE s.app_id = #{appId}
+          AND p.scope = #{scope}
+          AND s.status = 1
+          AND p.resource_type = 'callback'
+    </select>
+
 </mapper>
