@@ -31,4 +31,15 @@ public interface SubscriptionMapper {
      * 根据权限ID查询所有已授权订阅
      */
     List<Subscription> selectAuthorizedByPermissionId(@Param("permissionId") Long permissionId);
+
+    /**
+     * 根据应用ID和Scope查询回调订阅配置
+     * 
+     * @param appId 应用ID
+     * @param scope 权限标识
+     * @return 订阅配置
+     */
+    Subscription selectCallbackConfigByAppIdAndScope(
+            @Param("appId") Long appId,
+            @Param("scope") String scope);
 }
