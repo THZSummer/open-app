@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import com.xxx.open.modules.approval.engine.ApprovalEngine;
 import com.xxx.open.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.open.modules.approval.entity.ApprovalFlow;
+import com.xxx.open.modules.approval.dto.ApprovalNodeDto;
 
 /**
  * API 管理服务
@@ -179,11 +180,12 @@ public class ApiService {
         api.setAuthType(request.getAuthType() != null ? request.getAuthType() : 1); // 默认 SOA
         api.setCategoryId(categoryId); // 设置分类ID
         
-        // ✅ v2.8.0新增：根据 needApproval 决定资源状态
+        // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
         Integer needApproval = request.getPermission().getNeedApproval() != null ? 
             request.getPermission().getNeedApproval() : 1;
-        api.setStatus(needApproval == 0 ? 2 : 1); // 无需审批直接上架(2)，否则待审(1)
         
+        // 先插入 API（状态暂设为待审）
+        api.setStatus(1); // 待审
         api.setCreateTime(now);
         api.setLastUpdateTime(now);
         api.setCreateBy(currentUser);
@@ -211,24 +213,30 @@ public class ApiService {
 
         permissionMapper.insert(permission);
 
-        // ✅ v2.8.0变更：根据 needApproval 决定是否创建审批记录
-        // 只有需要审批的资源才创建审批记录
-        if (needApproval == 1) {
+        // ✅ 获取注册审批节点（两级：场景+全局）
+        List<ApprovalNodeDto> approvalNodes = approvalEngine.composeApprovalNodes(
+            ApprovalEngine.BusinessType.API_REGISTER, null);
+
+        if (approvalNodes.isEmpty()) {
+            // 无审批节点配置，直接发布
+            api.setStatus(2); // 已发布
+            apiMapper.update(api);
+            log.info("API 注册无需审批（无审批节点配置），直接发布: apiId={}", api.getId());
+        } else {
+            // 有审批节点，创建审批单
             try {
                 approvalEngine.createApproval(
                     ApprovalEngine.BusinessType.API_REGISTER,
-                    permission.getId(),  // ✅ permissionId：用于获取资源审批节点
-                api.getId(),         // ✅ businessId：API ID
-                currentUser,         // applicantId
-                currentUser,         // applicantName
-                currentUser          // operator
-            );
-            log.info("创建审批记录: apiId={}, permissionId={}", api.getId(), permission.getId());
-        } catch (Exception e) {
-            log.warn("创建审批记录失败，API 将保持待审状态: apiId={}", api.getId(), e);
-        }
-        } else {
-            log.info("API 无需审批，直接上架: apiId={}, permissionId={}", api.getId(), permission.getId());
+                    permission.getId(),
+                    api.getId(),
+                    currentUser,
+                    currentUser,
+                    currentUser
+                );
+                log.info("创建 API 注册审批记录: apiId={}, nodesCount={}", api.getId(), approvalNodes.size());
+            } catch (Exception e) {
+                log.warn("创建审批记录失败，API 保持待审状态: apiId={}", api.getId(), e);
+            }
         }
 
         // 创建 API 属性
