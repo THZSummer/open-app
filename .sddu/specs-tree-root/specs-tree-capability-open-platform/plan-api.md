@@ -282,8 +282,9 @@
 | 57 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
 | 58 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
 | 59 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
+| 60 | | GET | `/gateway/callbacks/config` | 回调配置查询接口（内部） | FR-030 |
 
-> **接口统计**：共 59 个接口，覆盖 FR-001 ~ FR-031
+> **接口统计**：共 60 个接口，覆盖 FR-001 ~ FR-031
 >
 > **权限树设计说明**：采用懒加载模式，分为两个步骤：
 > 1. 查树：`GET /api/v1/categories` 获取分类树
@@ -2676,6 +2677,89 @@ API 请求代理与鉴权。
   "page": null
 }
 ```
+
+---
+
+#### 59. GET /gateway/callbacks/config
+
+回调配置查询接口（供 api-server 内部调用）。
+
+> **说明**：内部业务模块通过 AK + Scope 查询应用对某个回调的订阅配置，用于触发回调时获取消费方配置信息。
+>
+> **调用方**：event-server 等内部业务模块
+> **场景**：回调触发时，根据 AK 找到应用，再根据 Scope 获取回调配置（通道类型、通道地址、认证类型等）
+
+**请求参数**：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| ak | string | 是 | 应用 Access Key |
+| scope | string | 是 | 回调权限标识（Scope） |
+
+**响应示例（成功）**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
+  "data": {
+    "subscriptionId": "302",
+    "appId": "10",
+    "appName": "测试应用",
+    "scope": "callback:approval:completed",
+    "status": 1,
+    "channelType": 0,
+    "channelAddress": "https://webhook.example.com/callbacks",
+    "authType": 0
+  },
+  "page": null
+}
+```
+
+**响应示例（未订阅）**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
+  "data": null,
+  "page": null
+}
+```
+
+**响应示例（AK 无效）**：
+
+```json
+{
+  "code": "400",
+  "messageZh": "无效的 Access Key",
+  "messageEn": "Invalid Access Key",
+  "data": null,
+  "page": null
+}
+```
+
+**字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| subscriptionId | string | 订阅记录ID |
+| appId | string | 应用ID |
+| appName | string | 应用名称 |
+| scope | string | 回调权限标识 |
+| status | int | 订阅状态（1=已授权） |
+| channelType | int | 通道类型（0=WebHook, 1=SSE, 2=WebSocket） |
+| channelAddress | string | 通道地址 |
+| authType | int | 认证类型（0=应用类凭证A, 1=应用类凭证B, 2=AKSK, 3=Bearer Token） |
+
+**错误码说明**：
+
+| 错误码 | 说明 |
+|--------|------|
+| 400 | 无效的 Access Key 或 Scope |
+| 404 | 回调资源不存在 |
 
 ---
 

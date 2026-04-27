@@ -61,15 +61,34 @@ public class CredentialProviderImpl implements CredentialProvider {
         try {
             switch (authType) {
                 case SOA -> {
-                    headers.put(authHeaderProperties.getSoaToken(), getSoaCredential(appId));
+                    String token = getSoaCredential(appId);
+                    if (token != null && !token.isEmpty()) {
+                        headers.put(authHeaderProperties.getSoaToken(), token);
+                    } else {
+                        log.warn("[预留实现] SOA凭证未获取，跳过设置: appId={}", appId);
+                    }
                 }
                 case APIG -> {
                     // APPID 和 APPKEY 都从凭证获取方法获得
-                    headers.put(authHeaderProperties.getApigAppId(), getApigAppId(appId));
-                    headers.put(authHeaderProperties.getApigAppKey(), getApigAppKey(appId));
+                    String appId2 = getApigAppId(appId);
+                    String appKey = getApigAppKey(appId);
+                    if (appId2 != null && !appId2.isEmpty()) {
+                        headers.put(authHeaderProperties.getApigAppId(), appId2);
+                    }
+                    if (appKey != null && !appKey.isEmpty()) {
+                        headers.put(authHeaderProperties.getApigAppKey(), appKey);
+                    }
+                    if (headers.isEmpty()) {
+                        log.warn("[预留实现] APIG凭证未获取，跳过设置: appId={}", appId);
+                    }
                 }
                 case AKSK -> {
-                    headers.put(authHeaderProperties.getAkskToken(), getAkskToken(appId));
+                    String token = getAkskToken(appId);
+                    if (token != null && !token.isEmpty()) {
+                        headers.put(authHeaderProperties.getAkskToken(), token);
+                    } else {
+                        log.warn("[预留实现] AKSK凭证未获取，跳过设置: appId={}", appId);
+                    }
                 }
                 default ->
                     log.warn("暂不支持的认证类型: authType={}", authType);
