@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.callback.mapper.CallbackPropertyMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackPropertyMapper">
 
     <!-- 结果映射 -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.callback.entity.CallbackProperty">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.callback.entity.CallbackProperty">
         <id column="id" property="id"/>
         <result column="parent_id" property="parentId"/>
         <result column="property_name" property="propertyName"/>
@@ -23,7 +23,7 @@
     </sql>
 
     <!-- 插入回调属性 -->
-    <insert id="insert" parameterType="com.xxx.open.modules.callback.entity.CallbackProperty">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.callback.entity.CallbackProperty">
         INSERT INTO openplatform_v2_callback_p_t (
             id, parent_id, property_name, property_value, status,
             create_time, last_update_time, create_by, last_update_by

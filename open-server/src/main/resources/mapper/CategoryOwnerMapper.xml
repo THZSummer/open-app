@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.category.mapper.CategoryOwnerMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryOwnerMapper">
 
     <!-- 结果映射 -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.category.entity.CategoryOwner">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.category.entity.CategoryOwner">
         <id column="id" property="id"/>
         <result column="category_id" property="categoryId"/>
         <result column="user_id" property="userId"/>
@@ -21,7 +21,7 @@
     </sql>
 
     <!-- 插入责任人 -->
-    <insert id="insert" parameterType="com.xxx.open.modules.category.entity.CategoryOwner">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.category.entity.CategoryOwner">
         INSERT INTO openplatform_v2_category_owner_t (
             id, category_id, user_id, user_name, create_time, last_update_time, create_by, last_update_by
         ) VALUES (

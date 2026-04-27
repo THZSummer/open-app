@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.api.mapper.ApiMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper">
 
     <!-- ResultMap -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.api.entity.Api">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.api.entity.Api">
         <id column="id" property="id"/>
         <result column="name_cn" property="nameCn"/>
         <result column="name_en" property="nameEn"/>
@@ -20,7 +20,7 @@
     </resultMap>
 
     <!-- 带分类名称的结果映射 -->
-    <resultMap id="WithCategoryResultMap" type="com.xxx.open.modules.api.entity.Api" extends="BaseResultMap">
+    <resultMap id="WithCategoryResultMap" type="com.xxx.it.works.wecode.v2.modules.api.entity.Api" extends="BaseResultMap">
         <result column="category_name" property="categoryName"/>
     </resultMap>
 
@@ -31,7 +31,7 @@
     </sql>
 
     <!-- Insert -->
-    <insert id="insert" parameterType="com.xxx.open.modules.api.entity.Api">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.api.entity.Api">
         INSERT INTO openplatform_v2_api_t (
             id, name_cn, name_en, path, method, auth_type, category_id, status,
             create_time, last_update_time, create_by, last_update_by
@@ -50,7 +50,7 @@
     </select>
 
     <!-- Update -->
-    <update id="update" parameterType="com.xxx.open.modules.api.entity.Api">
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.api.entity.Api">
         UPDATE openplatform_v2_api_t
         SET name_cn = #{nameCn},
             name_en = #{nameEn},

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.open.modules.approval.mapper.ApprovalFlowMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper">
 
     <!-- 结果映射 -->
-    <resultMap id="BaseResultMap" type="com.xxx.open.modules.approval.entity.ApprovalFlow">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow">
         <id column="id" property="id"/>
         <result column="name_cn" property="nameCn"/>
         <result column="name_en" property="nameEn"/>
@@ -27,7 +27,7 @@
     </sql>
 
     <!-- 插入审批流程 -->
-    <insert id="insert" parameterType="com.xxx.open.modules.approval.entity.ApprovalFlow">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow">
         INSERT INTO openplatform_v2_approval_flow_t (
             id, name_cn, name_en, code, description_cn, description_en, nodes, status,
             create_time, last_update_time, create_by, last_update_by
@@ -85,7 +85,7 @@
 
     <!-- 更新审批流程（动态更新非null字段） -->
     <!-- v2.8.0变更：移除 is_default 字段更新 -->
-    <update id="update" parameterType="com.xxx.open.modules.approval.entity.ApprovalFlow">
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow">
         UPDATE openplatform_v2_approval_flow_t
         <set>
             <if test="nameCn != null">name_cn = #{nameCn},</if>
