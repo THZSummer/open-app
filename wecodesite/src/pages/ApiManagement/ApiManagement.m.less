@@ -124,3 +124,16 @@
     opacity: 0.8;
   }
 }
+
+.table-wrapper {
+  overflow-x: auto;
+  
+  :global(.ant-table) {
+    min-width: 800px;
+  }
+  
+  :global(.ant-table-thead > tr > th),
+  :global(.ant-table-tbody > tr > td) {
+    white-space: nowrap;
+  }
+}

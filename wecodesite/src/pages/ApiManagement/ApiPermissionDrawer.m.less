@@ -98,13 +98,18 @@
 
 .drawer-table {
   flex: 1;
-  overflow-y: auto;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   padding-left: 16px;
 
   :deep(.ant-table) {
     background: transparent;
+    
+    .ant-table-thead > tr > th,
+    .ant-table-tbody > tr > td {
+      white-space: nowrap;
+    }
   }
 
   :deep(.ant-table-thead > tr > th) {

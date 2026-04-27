@@ -171,7 +171,10 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
           <Form.Item
             label="英文名称"
             name="nameEn"
-            rules={[{ required: true, message: '请输入回调英文名称' }]}
+            rules={[
+              { required: true, message: '请输入回调英文名称' },
+              { pattern: /^[a-zA-Z0-9\s\-_()]+$/, message: '英文名称不能输入中文字符' }
+            ]}
           >
             <Input placeholder="请输入回调英文名称" disabled={mode === 'view'} />
           </Form.Item>
@@ -205,7 +208,10 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
           <Form.Item
             label="权限名称（英文）"
             name="permissionNameEn"
-            rules={[{ required: true, message: '请输入权限英文名称' }]}
+            rules={[
+              { required: true, message: '请输入权限英文名称' },
+              { pattern: /^[a-zA-Z0-9\s\-_()]+$/, message: '英文名称不能输入中文字符' }
+            ]}
           >
             <Input placeholder="请输入权限英文名称" disabled={mode === 'view'} />
           </Form.Item>
@@ -213,7 +219,10 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
           <Form.Item
             label="Scope标识"
             name="scope"
-            rules={[{ required: true, message: '请输入Scope标识' }]}
+            rules={[
+              { required: true, message: '请输入Scope标识' },
+              { pattern: /^callback:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/, message: '格式不正确，应为：callback:{模块}:{资源标识}' }
+            ]}
             extra="格式：callback:{模块}:{资源标识}"
           >
             <Input placeholder="callback:approval:completed" disabled={mode === 'view'} />

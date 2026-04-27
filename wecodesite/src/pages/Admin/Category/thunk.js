@@ -2,8 +2,8 @@
  * Admin模块 - 分类管理相关API
  * 用于管理员管理平台API/事件/回调的分类结构
  */
-import { useTrueFetch } from '@/utils/constants';
-import { API_CONFIG, buildApiUrl, fetchApi } from '@/configs/web.config';
+import { useTrueFetch } from '../../../utils/constants';
+import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
 import { mockCategories, mockOwners } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

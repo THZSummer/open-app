@@ -28,8 +28,15 @@
   }
 
   .drawer-table {
+    overflow-x: auto;
+    
     :deep(.ant-table) {
       background: transparent;
+      
+      .ant-table-thead > tr > th,
+      .ant-table-tbody > tr > td {
+        white-space: nowrap;
+      }
     }
 
     :deep(.ant-table-thead > tr > th) {

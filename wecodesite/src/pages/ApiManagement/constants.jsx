@@ -39,28 +39,34 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
     title: '权限名称',
     dataIndex: ['permission', 'nameCn'],
     key: 'nameCn',
+    width: 180,
   },
   {
     title: 'scope',
     dataIndex: ['permission', 'scope'],
     key: 'scope',
+    width: 200,
+    ellipsis: true,
     render: (code) => <code>{code}</code>,
   },
   {
     title: '认证方式',
     dataIndex: 'authType',
     key: 'authType',
+    width: 100,
     render: (type) => AUTH_TYPE[type] || '-',
   },
   {
     title: '分类',
     dataIndex: ['category', 'nameCn'],
     key: 'category',
+    width: 120,
   },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
+    width: 100,
     render: (status) => {
       const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
       return <Tag color={color}>{text}</Tag>;
@@ -69,6 +75,8 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
   {
     title: '操作',
     key: 'action',
+    width: 200,
+    fixed: 'right',
     render: (_, record) => (
       <div style={{ display: 'flex', gap: 8 }}>
         <Button type="link" size="small" onClick={() => handleOpenDoc(record.api?.docUrl)}>查看文档</Button>
@@ -88,6 +96,7 @@ export const getApiPermissionDrawerColumns = () => [
     title: '权限名称',
     dataIndex: 'nameCn',
     key: 'nameCn',
+    width: 180,
     render: (text, record) => {
       const name = record.nameCn || record.name || '-';
       return <span>{name}</span>;
@@ -97,12 +106,15 @@ export const getApiPermissionDrawerColumns = () => [
     title: 'Scope',
     dataIndex: 'scope',
     key: 'scope',
+    width: 200,
+    ellipsis: true,
     render: (scope) => <code>{scope || '-'}</code>,
   },
   {
     title: '是否需要审核',
     dataIndex: 'needApproval',
     key: 'needApproval',
+    width: 120,
     render: (needApproval, record) => {
       const val = needApproval !== undefined ? needApproval : record.needReview;
       return val ?
@@ -125,6 +137,7 @@ export const getApiPermissionDrawerColumns = () => [
   {
     title: '操作',
     key: 'action',
+    width: 80,
     render: () => null,
   },
 ];

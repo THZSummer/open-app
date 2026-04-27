@@ -21,6 +21,7 @@ export const getEventListColumns = ({ handleView, handleEdit, handleDelete }) =>
     title: '事件名称',
     dataIndex: 'nameCn',
     key: 'nameCn',
+    width: 180,
     render: (text, record) => (
       <div>
         <div>{text}</div>
@@ -32,17 +33,22 @@ export const getEventListColumns = ({ handleView, handleEdit, handleDelete }) =>
     title: '分类',
     dataIndex: 'categoryName',
     key: 'categoryName',
+    width: 120,
   },
   {
     title: 'Topic',
     dataIndex: 'topic',
     key: 'topic',
+    width: 200,
+    ellipsis: true,
     render: (text) => <code>{text}</code>,
   },
   {
     title: 'Scope',
     dataIndex: 'permission',
     key: 'scope',
+    width: 200,
+    ellipsis: true,
     render: (permission) => {
       const scope = permission?.scope || '-';
       return <Tag color="cyan">{scope}</Tag>;
@@ -52,6 +58,7 @@ export const getEventListColumns = ({ handleView, handleEdit, handleDelete }) =>
     title: '状态',
     dataIndex: 'status',
     key: 'status',
+    width: 100,
     render: (status) => {
       const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
       return <Tag color={color}>{text}</Tag>;
@@ -60,6 +67,8 @@ export const getEventListColumns = ({ handleView, handleEdit, handleDelete }) =>
   {
     title: '操作',
     key: 'action',
+    width: 180,
+    fixed: 'right',
     render: (_, record) => (
       <Space>
         <Button type="link" size="small" onClick={() => handleView(record)}>详情</Button>

@@ -182,13 +182,15 @@ function Events() {
         </div>
         <Button type="primary" onClick={handleOpenDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加事件</Button>
       </div>
-      <Table
-        columns={columns}
-        dataSource={events}
-        rowKey="id"
-        pagination={false}
-        loading={loading}
-      />
+      <div className="table-wrapper">
+        <Table
+          columns={columns}
+          dataSource={events}
+          rowKey="id"
+          pagination={false}
+          loading={loading}
+        />
+      </div>
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Pagination
           total={pagination.total}

@@ -2,8 +2,8 @@
  * Admin模块 - 审批管理相关API
  * 用于审批中心处理待审批事项
  */
-import { useTrueFetch } from '@/utils/constants';
-import { API_CONFIG, buildApiUrl, fetchApi } from '@/configs/web.config';
+import { useTrueFetch } from '../../../utils/constants';
+import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
 import { mockApprovals, mockMyApprovals, mockApprovalFlows } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

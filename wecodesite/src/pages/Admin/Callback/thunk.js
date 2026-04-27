@@ -2,8 +2,8 @@
  * Admin模块 - 回调管理相关API
  * 用于管理员管理平台全部回调接口的定义、发布和下线操作
  */
-import { useTrueFetch } from '@/utils/constants';
-import { API_CONFIG, buildApiUrl, fetchApi } from '@/configs/web.config';
+import { useTrueFetch } from '../../../utils/constants';
+import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
 import { mockCallbacks } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

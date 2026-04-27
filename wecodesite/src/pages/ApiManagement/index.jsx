@@ -122,13 +122,15 @@ function ApiManagement() {
         <Button type="primary" onClick={handleAddApi} style={{ justifyContent: 'center', borderRadius: 6 }}>添加API</Button>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={apis}
-        rowKey="id"
-        pagination={false}
-        loading={loading}
-      />
+      <div className="table-wrapper">
+        <Table
+          columns={columns}
+          dataSource={apis}
+          rowKey="id"
+          pagination={false}
+          loading={loading}
+        />
+      </div>
 
       {pagination.total > 0 && (
         <div style={{ marginTop: 16, textAlign: 'right' }}>

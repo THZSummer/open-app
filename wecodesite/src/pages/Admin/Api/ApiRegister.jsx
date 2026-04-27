@@ -188,7 +188,10 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           <Form.Item
             label="API名称（英文）"
             name="nameEn"
-            rules={[{ required: true, message: '请输入API英文名称' }]}
+            rules={[
+              { required: true, message: '请输入API英文名称' },
+              { pattern: /^[a-zA-Z0-9\s\-_()]+$/, message: '英文名称不能输入中文字符' }
+            ]}
           >
             <Input placeholder="请输入API英文名称" disabled={mode === 'view'} />
           </Form.Item>
@@ -257,7 +260,10 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           <Form.Item
             label="权限名称（英文）"
             name="permissionNameEn"
-            rules={[{ required: true, message: '请输入权限英文名称' }]}
+            rules={[
+              { required: true, message: '请输入权限英文名称' },
+              { pattern: /^[a-zA-Z0-9\s\-_()]+$/, message: '英文名称不能输入中文字符' }
+            ]}
           >
             <Input placeholder="请输入权限英文名称" disabled={mode === 'view'} />
           </Form.Item>
@@ -265,7 +271,10 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           <Form.Item
             label="Scope标识"
             name="scope"
-            rules={[{ required: true, message: '请输入Scope标识' }]}
+            rules={[
+              { required: true, message: '请输入Scope标识' },
+              { pattern: /^api:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/, message: '格式不正确，应为：api:{模块}:{资源标识}' }
+            ]}
             extra="格式：api:{模块}:{资源标识}"
           >
             <Input placeholder="api:im:send-message" disabled={mode === 'view'} />

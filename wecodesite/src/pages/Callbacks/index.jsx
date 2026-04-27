@@ -182,13 +182,15 @@ function Callbacks() {
         </div>
         <Button type="primary" onClick={handleOpenDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加回调</Button>
       </div>
-      <Table
-        columns={columns}
-        dataSource={callbacks}
-        rowKey="id"
-        pagination={false}
-        loading={loading}
-      />
+      <div className="table-wrapper">
+        <Table
+          columns={columns}
+          dataSource={callbacks}
+          rowKey="id"
+          pagination={false}
+          loading={loading}
+        />
+      </div>
       <div style={{ marginTop: 16, textAlign: 'right' }}>
         <Pagination
           total={pagination.total}

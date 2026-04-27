@@ -16,7 +16,8 @@ import {
   Divider,
   Pagination,
   Progress, Statistic, Avatar, Badge, Timeline, Collapse,
-  message
+  message,
+  Typography
 } from 'antd';
 import {
   CheckOutlined,
@@ -40,6 +41,9 @@ import { TYPE_MAP, LEVEL_MAP as MOCK_LEVEL_MAP } from './mock';
 import ApprovalFlowConfig from './ApprovalFlowConfig';
 import './ApprovalCenter.m.less';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
+
+const { TextArea } = Input;
+const { Text } = Typography;
 
 function ApprovalCenter() {
   const [loading, setLoading] = useState(false); 
@@ -187,12 +191,14 @@ function ApprovalCenter() {
         <Spin spinning={loading}>
           {dataSource.length > 0 ? (
             <>
-              <Table
-                columns={cols}
-                dataSource={dataSource}
-                rowKey="id"
-                pagination={false}
-              />
+              <div className="table-wrapper">
+                <Table
+                  columns={cols}
+                  dataSource={dataSource}
+                  rowKey="id"
+                  pagination={false}
+                />
+              </div>
               <div style={{ marginTop: 16, textAlign: 'right' }}>
                 <Pagination
                   total={pagination.total}

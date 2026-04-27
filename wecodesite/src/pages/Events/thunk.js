@@ -1,5 +1,5 @@
-import { useTrueFetch } from '@/utils/constants';
-import { API_CONFIG, buildApiUrl, fetchApi } from '@/configs/web.config';
+import { useTrueFetch } from '../../utils/constants';
+import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
 import { mockEvents, mockAllEvents } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -154,6 +154,10 @@ export const fetchAppEvents = async (appId, params = {}) => {
 };
 
 export const subscribeEvents = async (appId, params) => {
+  const subscribeParams = {
+    ...params,
+    channelType: 0
+  };
   if (!useTrueFetch) {
     await delay(300);
     const { permissionIds } = params;
@@ -167,13 +171,14 @@ export const subscribeEvents = async (appId, params) => {
           id: String(Date.now() + Math.random()),
           appId,
           permissionId,
+          channelType: 0,
           status: 0
         })) || []
       }
     };
   }
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(subscribeParams) });
     return result || {};
   } catch (err) {
     return {};

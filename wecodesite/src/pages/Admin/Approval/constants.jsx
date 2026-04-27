@@ -38,31 +38,40 @@ export const getApprovalColumns = ({ handleViewDetail, handleApprove, handleReje
     title: '申请编号',
     dataIndex: 'id',
     key: 'id',
+    width: 180,
+    ellipsis: true,
   },
   {
     title: '申请人',
     dataIndex: 'applicantName',
     key: 'applicantName',
+    width: 100,
   },
   {
     title: '业务类型',
     dataIndex: 'businessType',
     key: 'businessType',
+    width: 120,
   },
   {
     title: '业务名称',
     dataIndex: 'businessName',
     key: 'businessName',
+    width: 150,
+    ellipsis: true,
   },
   {
     title: '业务ID',
     dataIndex: 'businessId',
     key: 'businessId',
+    width: 150,
+    ellipsis: true,
   },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
+    width: 100,
     render: (status) => {
       const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
       return <Tag color={color}>{text}</Tag>;
@@ -71,6 +80,8 @@ export const getApprovalColumns = ({ handleViewDetail, handleApprove, handleReje
   {
     title: '操作',
     key: 'action',
+    width: 180,
+    fixed: 'right',
     render: (_, record) => (
       <Space>
         <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>详情</Button>
@@ -94,26 +105,34 @@ export const getMyApprovalColumns = ({ handleViewDetail }) => [
     title: '申请编号',
     dataIndex: 'id',
     key: 'id',
+    width: 180,
+    ellipsis: true,
   },
   {
     title: '业务类型',
     dataIndex: 'businessType',
     key: 'businessType',
+    width: 120,
   },
   {
     title: '业务名称',
     dataIndex: 'businessName',
     key: 'businessName',
+    width: 150,
+    ellipsis: true,
   },
   {
     title: '业务ID',
     dataIndex: 'businessId',
     key: 'businessId',
+    width: 150,
+    ellipsis: true,
   },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
+    width: 100,
     render: (status) => {
       const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
       return <Tag color={color}>{text}</Tag>;
@@ -122,6 +141,8 @@ export const getMyApprovalColumns = ({ handleViewDetail }) => [
   {
     title: '操作',
     key: 'action',
+    width: 100,
+    fixed: 'right',
     render: (_, record) => (
       <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)}>详情</Button>
     ),

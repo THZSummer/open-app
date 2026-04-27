@@ -2,8 +2,8 @@
  * API 管理相关 API
  * 用于应用订阅 API 权限
  */
-import { useTrueFetch } from '@/utils/constants';
-import { API_CONFIG, buildApiUrl, fetchApi } from '@/configs/web.config';
+import { useTrueFetch } from '../../utils/constants';
+import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
 import { mockApis, identityPermissionApis } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

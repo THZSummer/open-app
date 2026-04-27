@@ -184,12 +184,14 @@ function EventList() {
       <Spin spinning={loading}>
         {eventList.length > 0 ? (
           <>
-            <Table
-              columns={columns}
-              dataSource={eventList}
-              rowKey="id"
-              pagination={false}
-            />
+            <div className="table-wrapper">
+              <Table
+                columns={columns}
+                dataSource={eventList}
+                rowKey="id"
+                pagination={false}
+              />
+            </div>
             <div style={{ marginTop: 16, textAlign: 'right' }}>
               <Pagination
                 total={pagination.total}

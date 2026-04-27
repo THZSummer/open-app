@@ -2,8 +2,8 @@
  * Admin模块 - 事件管理相关API
  * 用于管理员管理平台全部事件定义的创建、发布和下线操作
  */
-import { useTrueFetch } from '@/utils/constants';
-import { API_CONFIG, buildApiUrl, fetchApi } from '@/configs/web.config';
+import { useTrueFetch } from '../../../utils/constants';
+import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
 import { mockEvents } from './mock';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

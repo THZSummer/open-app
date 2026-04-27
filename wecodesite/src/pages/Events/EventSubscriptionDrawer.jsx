@@ -21,8 +21,13 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
   }, [event, open, form]);
 
   const handleChannelTypeChange = (e) => {
-    setChannelType(e.target.value);
-    form.setFieldsValue({ channelType: e.target.value });
+    const newChannelType = e.target.value;
+    setChannelType(newChannelType);
+    const updateFields = { channelType: newChannelType };
+    if (newChannelType === 1) {
+      updateFields.authType = 0;
+    }
+    form.setFieldsValue(updateFields);
   };
 
   const handleSave = async () => {
@@ -112,7 +117,10 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
             <Form.Item
               name="channelAddress"
               label="请求地址"
-              rules={[{ required: true, message: '请输入请求地址' }]}
+              rules={[
+                { required: true, message: '请输入请求地址' },
+                { pattern: /^https?:\/\/.+/, message: '地址必须以 http:// 或 https:// 开头' }
+              ]}
             >
               <Input placeholder="https://your-domain.com/webhook" />
             </Form.Item>

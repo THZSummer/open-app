@@ -13,7 +13,8 @@ export const INIT_PAGECONFIG = {
 export const SUBSCRIPTION_STATUS = {
   0: { text: '审核中', color: 'orange' },
   1: { text: '已审核', color: 'green' },
-  2: { text: '已中止', color: 'red' }
+  2: { text: '已中止', color: 'red' },
+  3: { text: '已撤回', color: 'default' }
 };
 
 export const RESOURCE_STATUS = {

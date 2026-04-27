@@ -21,8 +21,13 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
   }, [callback, open, form]);
 
   const handleChannelTypeChange = (e) => {
-    setChannelType(e.target.value);
-    form.setFieldsValue({ channelType: e.target.value });
+    const newChannelType = e.target.value;
+    setChannelType(newChannelType);
+    form.setFieldsValue({
+      channelType: newChannelType,
+      channelAddress: '',
+      authType: 0
+    });
   };
 
   const handleSave = async () => {
@@ -95,32 +100,22 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
           </Radio.Group>
         </Form.Item>
 
-        {channelType === 0 && (
-          <Form.Item label="说明文档">
-            <a href="https://example.com/mqs-docs" target="_blank" rel="noopener noreferrer">
-              <span style={{ color: '#000' }}>查看</span>
-              <span style={{ color: '#1890ff' }}>MQS内置消息队列使用规范</span>
-            </a>
-          </Form.Item>
-        )}
-
-        {(channelType === 1 || channelType === 2) && (
-          <>
-            <Form.Item
-              name="channelAddress"
-              label="回调地址"
-              rules={[{ required: true, message: '请输入回调地址' }]}
-            >
-              <Input placeholder="https://your-domain.com/webhook" />
-            </Form.Item>
-            <Form.Item name="authType" label="认证类型">
-              <Radio.Group>
-                <Radio value={0}>{AUTH_TYPE[0]}</Radio>
-                <Radio value={1}>{AUTH_TYPE[1]}</Radio>
-              </Radio.Group>
-            </Form.Item>
-          </>
-        )}
+        <Form.Item
+          name="channelAddress"
+          label="回调地址"
+          rules={[
+            { required: true, message: '请输入回调地址' },
+            { pattern: /^https?:\/\/.+/, message: '地址必须以 http:// 或 https:// 开头' }
+          ]}
+        >
+          <Input placeholder="https://your-domain.com/webhook" />
+        </Form.Item>
+        <Form.Item name="authType" label="认证类型">
+          <Radio.Group>
+            <Radio value={0}>{AUTH_TYPE[0]}</Radio>
+            <Radio value={1}>{AUTH_TYPE[1]}</Radio>
+          </Radio.Group>
+        </Form.Item>
       </Form>
     </Drawer>
   );

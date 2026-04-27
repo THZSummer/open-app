@@ -15,6 +15,7 @@ export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprov
     title: '回调名称',
     dataIndex: ['permission', 'nameCn'],
     key: 'nameCn',
+    width: 200,
     render: (text, record) => (
       <div>
         <div>{text}</div>
@@ -26,22 +27,27 @@ export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprov
     title: '分类',
     dataIndex: ['category', 'nameCn'],
     key: 'category',
+    width: 120,
   },
   {
     title: '所需权限',
     dataIndex: ['permission', 'nameCn'],
     key: 'permissionName',
+    width: 150,
+    ellipsis: true,
   },
   {
     title: '通道类型',
     dataIndex: 'channelType',
     key: 'channelType',
+    width: 100,
     render: (type) => CALLBACK_CHANNEL_TYPE[type] || '-',
   },
   {
     title: '状态',
     dataIndex: 'status',
     key: 'status',
+    width: 100,
     render: (status) => {
       const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
       return <Tag color={color}>{text}</Tag>;
@@ -50,6 +56,8 @@ export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprov
   {
     title: '操作',
     key: 'action',
+    width: 220,
+    fixed: 'right',
     render: (_, record) => (
       <div>
         <Button type="link" onClick={() => handleOpenDoc(record.callback?.docUrl || record.docUrl)}>查看文档</Button>
@@ -75,6 +83,7 @@ export const getCallbackDrawerColumns = () => [
     title: '回调名称',
     dataIndex: 'nameCn',
     key: 'nameCn',
+    width: 200,
     render: (text, record) => {
       const name = record.nameCn || record.name || '-';
       return (
@@ -89,6 +98,7 @@ export const getCallbackDrawerColumns = () => [
     title: '是否需要审核',
     dataIndex: 'needApproval',
     key: 'needApproval',
+    width: 120,
     render: (needApproval, record) => {
       const val = needApproval !== undefined ? needApproval : record.needReview;
       return val ?
@@ -111,6 +121,7 @@ export const getCallbackDrawerColumns = () => [
   {
     title: '操作',
     key: 'action',
+    width: 80,
     render: () => null,
   },
 ];
