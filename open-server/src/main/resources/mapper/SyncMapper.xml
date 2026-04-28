@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.sync.mapper.SyncMapper">
+
+    <!-- ==================== 结果映射 ==================== -->
+    
+    <!-- 旧订阅关系 -->
+    <resultMap id="OldSubscriptionResultMap" type="com.xxx.it.works.wecode.v2.modules.sync.entity.OldSubscription">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="permisssion_type" property="permisssionType"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <!-- 旧权限 -->
+    <resultMap id="OldPermissionResultMap" type="com.xxx.it.works.wecode.v2.modules.sync.entity.OldPermission">
+        <id column="id" property="id"/>
+        <result column="permission_name_cn" property="permissionNameCn"/>
+        <result column="permission_name_en" property="permissionNameEn"/>
+        <result column="module_id" property="moduleId"/>
+        <result column="scope_id" property="scopeId"/>
+        <result column="permisssion_type" property="permisssionType"/>
+        <result column="is_approval_required" property="isApprovalRequired"/>
+        <result column="auth_type" property="authType"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 旧API -->
+    <resultMap id="OldApiResultMap" type="com.xxx.it.works.wecode.v2.modules.sync.entity.OldApi">
+        <id column="id" property="id"/>
+        <result column="api_name_cn" property="apiNameCn"/>
+        <result column="api_name_en" property="apiNameEn"/>
+        <result column="module_id" property="moduleId"/>
+        <result column="path" property="path"/>
+        <result column="method" property="method"/>
+        <result column="auth_type" property="authType"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 旧事件 -->
+    <resultMap id="OldEventResultMap" type="com.xxx.it.works.wecode.v2.modules.sync.entity.OldEvent">
+        <id column="id" property="id"/>
+        <result column="event_name_cn" property="eventNameCn"/>
+        <result column="event_name_en" property="eventNameEn"/>
+        <result column="module_id" property="moduleId"/>
+        <result column="topic" property="topic"/>
+        <result column="event_type" property="eventType"/>
+        <result column="is_approval_required" property="isApprovalRequired"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 旧审批流程 -->
+    <resultMap id="OldEflowResultMap" type="com.xxx.it.works.wecode.v2.modules.sync.entity.OldEflow">
+        <id column="eflow_id" property="eflowId"/>
+        <result column="eflow_type" property="eflowType"/>
+        <result column="eflow_status" property="eflowStatus"/>
+        <result column="eflow_submit_user" property="eflowSubmitUser"/>
+        <result column="eflow_submit_message" property="eflowSubmitMessage"/>
+        <result column="eflow_audit_user" property="eflowAuditUser"/>
+        <result column="eflow_audit_message" property="eflowAuditMessage"/>
+        <result column="resource_type" property="resourceType"/>
+        <result column="resource_id" property="resourceId"/>
+        <result column="resource_info" property="resourceInfo"/>
+        <result column="resource_delta" property="resourceDelta"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- 旧审批日志 -->
+    <resultMap id="OldEflowLogResultMap" type="com.xxx.it.works.wecode.v2.modules.sync.entity.OldEflowLog">
+        <id column="eflow_log_id" property="eflowLogId"/>
+        <result column="eflow_log_trace_id" property="eflowLogTraceId"/>
+        <result column="eflow_log_type" property="eflowLogType"/>
+        <result column="eflow_log_user" property="eflowLogUser"/>
+        <result column="eflow_log_message" property="eflowLogMessage"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- 旧应用属性 -->
+    <resultMap id="OldAppPropertyResultMap" type="com.xxx.it.works.wecode.v2.modules.sync.entity.OldAppProperty">
+        <id column="id" property="id"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="property_name" property="propertyName"/>
+        <result column="property_value" property="propertyValue"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 新订阅关系 -->
+    <resultMap id="NewSubscriptionResultMap" type="com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="status" property="status"/>
+        <result column="channel_type" property="channelType"/>
+        <result column="channel_address" property="channelAddress"/>
+        <result column="auth_type" property="authType"/>
+        <result column="approved_at" property="approvedAt"/>
+        <result column="approved_by" property="approvedBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- 新权限 -->
+    <resultMap id="NewPermissionResultMap" type="com.xxx.it.works.wecode.v2.modules.event.entity.Permission">
+        <id column="id" property="id"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="scope" property="scope"/>
+        <result column="resource_type" property="resourceType"/>
+        <result column="resource_id" property="resourceId"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="need_approval" property="needApproval"/>
+        <result column="resource_nodes" property="resourceNodes"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 新API -->
+    <resultMap id="NewApiResultMap" type="com.xxx.it.works.wecode.v2.modules.api.entity.Api">
+        <id column="id" property="id"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="path" property="path"/>
+        <result column="method" property="method"/>
+        <result column="auth_type" property="authType"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 新事件 -->
+    <resultMap id="NewEventResultMap" type="com.xxx.it.works.wecode.v2.modules.event.entity.Event">
+        <id column="id" property="id"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="topic" property="topic"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <!-- 新审批记录 -->
+    <resultMap id="NewApprovalRecordResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord">
+        <id column="id" property="id"/>
+        <result column="combined_nodes" property="combinedNodes"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_id" property="businessId"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="status" property="status"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="completed_at" property="completedAt"/>
+    </resultMap>
+
+    <!-- 新审批日志 -->
+    <resultMap id="NewApprovalLogResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog">
+        <id column="id" property="id"/>
+        <result column="record_id" property="recordId"/>
+        <result column="node_index" property="nodeIndex"/>
+        <result column="level" property="level"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="action" property="action"/>
+        <result column="comment" property="comment"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <!-- ==================== 旧表查询 ==================== -->
+
+    <!-- 查询旧订阅关系列表 -->
+    <select id="selectOldSubscriptions" resultMap="OldSubscriptionResultMap">
+        SELECT id, app_id, permission_id, tenant_id, permisssion_type, status,
+               create_by, create_time, last_update_by, last_update_time
+        FROM openplatform_app_permission_t
+        WHERE status = 1
+        <if test="ids != null and ids.size() > 0">
+            AND id IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        ORDER BY id
+    </select>
+
+    <!-- 根据ID查询旧订阅关系 -->
+    <select id="selectOldSubscriptionById" resultMap="OldSubscriptionResultMap">
+        SELECT id, app_id, permission_id, tenant_id, permisssion_type, status,
+               create_by, create_time, last_update_by, last_update_time
+        FROM openplatform_app_permission_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询旧权限 -->
+    <select id="selectOldPermissionById" resultMap="OldPermissionResultMap">
+        SELECT id, permission_name_cn, permission_name_en, module_id, scope_id,
+               permisssion_type, is_approval_required, auth_type, status
+        FROM openplatform_permission_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询旧API -->
+    <select id="selectOldApiById" resultMap="OldApiResultMap">
+        SELECT id, api_name_cn, api_name_en, module_id, path, method, auth_type, status
+        FROM openplatform_permission_api_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询旧事件 -->
+    <select id="selectOldEventById" resultMap="OldEventResultMap">
+        SELECT id, event_name_cn, event_name_en, module_id, topic, event_type,
+               is_approval_required, status
+        FROM openplatform_event_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据path和method查询旧API -->
+    <select id="selectOldApiByPathAndMethod" resultMap="OldApiResultMap">
+        SELECT id, api_name_cn, api_name_en, module_id, path, method, auth_type, status
+        FROM openplatform_permission_api_t
+        WHERE path = #{path} AND method = #{method} AND status = 1
+        LIMIT 1
+    </select>
+
+    <!-- 根据topic查询旧事件 -->
+    <select id="selectOldEventByTopic" resultMap="OldEventResultMap">
+        SELECT id, event_name_cn, event_name_en, module_id, topic, event_type,
+               is_approval_required, status
+        FROM openplatform_event_t
+        WHERE topic = #{topic} AND status = 1
+        LIMIT 1
+    </select>
+
+    <!-- 查询旧审批记录（根据resourceId） -->
+    <select id="selectOldEflowByResourceId" resultMap="OldEflowResultMap">
+        SELECT eflow_id, eflow_type, eflow_status, eflow_submit_user, eflow_submit_message,
+               eflow_audit_user, eflow_audit_message, resource_type, resource_id,
+               resource_info, resource_delta, tenant_id, status, create_time
+        FROM openplatform_eflow_t
+        WHERE resource_type = #{resourceType}
+          AND resource_id = #{resourceId}
+          AND status = 1
+    </select>
+
+    <!-- 查询旧审批日志（根据eflowId） -->
+    <select id="selectOldEflowLogByEflowId" resultMap="OldEflowLogResultMap">
+        SELECT eflow_log_id, eflow_log_trace_id, eflow_log_type, eflow_log_user,
+               eflow_log_message, status, create_time
+        FROM openplatform_eflow_log_t
+        WHERE eflow_log_trace_id = #{eflowId}
+          AND status = 1
+    </select>
+
+    <!-- 查询应用属性（通道配置） -->
+    <select id="selectAppChannelConfig" resultType="com.xxx.it.works.wecode.v2.modules.sync.entity.OldAppProperty">
+        SELECT 
+            MAX(CASE WHEN property_name = 'event_msg_recive_mode' THEN CAST(property_value AS UNSIGNED) END) AS channelType,
+            MAX(CASE WHEN property_name = 'event_push_url' THEN property_value END) AS channelAddress,
+            MAX(CASE WHEN property_name = 'event_push_auth_type' THEN CAST(property_value AS UNSIGNED) END) AS authType
+        FROM openplatform_app_p_t
+        WHERE parent_id = #{appId}
+          AND status = 1
+          AND property_name IN ('event_msg_recive_mode', 'event_push_url', 'event_push_auth_type')
+    </select>
+
+    <!-- ==================== 新表查询 ==================== -->
+
+    <!-- 查询新订阅关系列表 -->
+    <select id="selectNewSubscriptions" resultMap="NewSubscriptionResultMap">
+        SELECT id, app_id, permission_id, status, channel_type, channel_address, auth_type,
+               approved_at, approved_by, create_time, last_update_time, create_by, last_update_by
+        FROM openplatform_v2_subscription_t
+        <if test="ids != null and ids.size() > 0">
+            WHERE id IN
+            <foreach collection="ids" item="id" open="(" separator="," close=")">
+                #{id}
+            </foreach>
+        </if>
+        ORDER BY id
+    </select>
+
+    <!-- 根据ID查询新订阅关系 -->
+    <select id="selectNewSubscriptionById" resultMap="NewSubscriptionResultMap">
+        SELECT id, app_id, permission_id, status, channel_type, channel_address, auth_type,
+               approved_at, approved_by, create_time, last_update_time, create_by, last_update_by
+        FROM openplatform_v2_subscription_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询新权限 -->
+    <select id="selectNewPermissionById" resultMap="NewPermissionResultMap">
+        SELECT id, name_cn, name_en, scope, resource_type, resource_id, category_id,
+               need_approval, resource_nodes, status
+        FROM openplatform_v2_permission_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据resourceType和resourceId查询新权限 -->
+    <select id="selectNewPermissionByResource" resultMap="NewPermissionResultMap">
+        SELECT id, name_cn, name_en, scope, resource_type, resource_id, category_id,
+               need_approval, resource_nodes, status
+        FROM openplatform_v2_permission_t
+        WHERE resource_type = #{resourceType}
+          AND resource_id = #{resourceId}
+          AND status = 1
+        LIMIT 1
+    </select>
+
+    <!-- 根据path和method查询新API -->
+    <select id="selectNewApiByPathAndMethod" resultMap="NewApiResultMap">
+        SELECT id, name_cn, name_en, path, method, auth_type, category_id, status
+        FROM openplatform_v2_api_t
+        WHERE path = #{path} AND method = #{method} AND status = 1
+        LIMIT 1
+    </select>
+
+    <!-- 根据topic查询新事件 -->
+    <select id="selectNewEventByTopic" resultMap="NewEventResultMap">
+        SELECT id, name_cn, name_en, topic, category_id, status
+        FROM openplatform_v2_event_t
+        WHERE topic = #{topic} AND status = 1
+        LIMIT 1
+    </select>
+
+    <!-- 根据ID查询新审批记录 -->
+    <select id="selectNewApprovalRecordById" resultMap="NewApprovalRecordResultMap">
+        SELECT id, combined_nodes, business_type, business_id, applicant_id, applicant_name,
+               status, current_node, create_time, last_update_time, completed_at
+        FROM openplatform_v2_approval_record_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询新审批日志 -->
+    <select id="selectNewApprovalLogById" resultMap="NewApprovalLogResultMap">
+        SELECT id, record_id, node_index, level, operator_id, operator_name, action, comment, create_time
+        FROM openplatform_v2_approval_log_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- ==================== 新表写入（迁移） ==================== -->
+
+    <!-- 插入新订阅关系（如果不存在） -->
+    <insert id="insertNewSubscriptionIfNotExists" 
+            parameterType="com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription">
+        INSERT INTO openplatform_v2_subscription_t (
+            id, app_id, permission_id, status, channel_type, channel_address, auth_type,
+            approved_at, approved_by, create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{appId}, #{permissionId}, #{status}, #{channelType}, #{channelAddress}, #{authType},
+            #{approvedAt}, #{approvedBy}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <!-- 插入新审批记录（如果不存在） -->
+    <insert id="insertNewApprovalRecordIfNotExists"
+            parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord">
+        INSERT INTO openplatform_v2_approval_record_t (
+            id, combined_nodes, business_type, business_id, applicant_id, applicant_name,
+            status, current_node, create_time, last_update_time, completed_at
+        ) VALUES (
+            #{id}, #{combinedNodes}, #{businessType}, #{businessId}, #{applicantId}, #{applicantName},
+            #{status}, #{currentNode}, #{createTime}, #{lastUpdateTime}, #{completedAt}
+        )
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <!-- 插入新审批日志（如果不存在） -->
+    <insert id="insertNewApprovalLogIfNotExists"
+            parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog">
+        INSERT INTO openplatform_v2_approval_log_t (
+            id, record_id, node_index, level, operator_id, operator_name, action, comment, create_time
+        ) VALUES (
+            #{id}, #{recordId}, #{nodeIndex}, #{level}, #{operatorId}, #{operatorName}, #{action}, #{comment}, #{createTime}
+        )
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <!-- 批量插入新审批日志 -->
+    <insert id="batchInsertNewApprovalLogs" parameterType="java.util.List">
+        INSERT INTO openplatform_v2_approval_log_t (
+            id, record_id, node_index, level, operator_id, operator_name, action, comment, create_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id}, #{item.recordId}, #{item.nodeIndex}, #{item.level}, #{item.operatorId}, 
+             #{item.operatorName}, #{item.action}, #{item.comment}, #{item.createTime})
+        </foreach>
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <!-- ==================== 旧表写入（回退） ==================== -->
+
+    <!-- 插入旧订阅关系（如果不存在） -->
+    <insert id="insertOldSubscriptionIfNotExists"
+            parameterType="com.xxx.it.works.wecode.v2.modules.sync.entity.OldSubscription">
+        INSERT INTO openplatform_app_permission_t (
+            id, app_id, permission_id, tenant_id, permisssion_type, status,
+            create_by, create_time, last_update_by, last_update_time
+        ) VALUES (
+            #{id}, #{appId}, #{permissionId}, #{tenantId}, #{permisssionType}, #{status},
+            #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
+        )
+        ON DUPLICATE KEY UPDATE id = id
+    </insert>
+
+    <!-- 插入旧审批记录（如果不存在） -->
+    <insert id="insertOldEflowIfNotExists"
+            parameterType="com.xxx.it.works.wecode.v2.modules.sync.entity.OldEflow">
+        INSERT INTO openplatform_eflow_t (
+            eflow_id, eflow_type, eflow_status, eflow_submit_user, eflow_submit_message,
+            eflow_audit_user, eflow_audit_message, resource_type, resource_id,
+            resource_info, resource_delta, tenant_id, status, create_by, create_time
+        ) VALUES (
+            #{eflowId}, #{eflowType}, #{eflowStatus}, #{eflowSubmitUser}, #{eflowSubmitMessage},
+            #{eflowAuditUser}, #{eflowAuditMessage}, #{resourceType}, #{resourceId},
+            #{resourceInfo}, #{resourceDelta}, #{tenantId}, #{status}, #{createBy}, #{createTime}
+        )
+        ON DUPLICATE KEY UPDATE eflow_id = eflow_id
+    </insert>
+
+    <!-- 插入旧审批日志（如果不存在） -->
+    <insert id="insertOldEflowLogIfNotExists"
+            parameterType="com.xxx.it.works.wecode.v2.modules.sync.entity.OldEflowLog">
+        INSERT INTO openplatform_eflow_log_t (
+            eflow_log_id, eflow_log_trace_id, eflow_log_type, eflow_log_user,
+            eflow_log_message, status, create_by, create_time
+        ) VALUES (
+            #{eflowLogId}, #{eflowLogTraceId}, #{eflowLogType}, #{eflowLogUser},
+            #{eflowLogMessage}, #{status}, #{createBy}, #{createTime}
+        )
+        ON DUPLICATE KEY UPDATE eflow_log_id = eflow_log_id
+    </insert>
+
+    <!-- 批量插入旧审批日志 -->
+    <insert id="batchInsertOldEflowLogs" parameterType="java.util.List">
+        INSERT INTO openplatform_eflow_log_t (
+            eflow_log_id, eflow_log_trace_id, eflow_log_type, eflow_log_user,
+            eflow_log_message, status, create_by, create_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.eflowLogId}, #{item.eflowLogTraceId}, #{item.eflowLogType}, #{item.eflowLogUser},
+             #{item.eflowLogMessage}, #{item.status}, #{item.createBy}, #{item.createTime})
+        </foreach>
+        ON DUPLICATE KEY UPDATE eflow_log_id = eflow_log_id
+    </insert>
+
+</mapper>
