@@ -199,6 +199,28 @@ class PermissionControllerTest {
             assertEquals(2, response.getData().getFailedRecords().size());
             verify(permissionService).subscribeApiPermissions(eq("app001"), any(PermissionSubscribeRequest.class));
         }
+
+        @Test
+        @DisplayName("#31 删除 API 权限订阅成功")
+        void testDeleteApiSubscription_Success() {
+            WithdrawResponse withdrawResponse = WithdrawResponse.builder()
+                    .id("sub001")
+                    .message("订阅记录删除成功")
+                    .build();
+
+            when(permissionService.deleteApiSubscription("app001", "sub001"))
+                    .thenReturn(withdrawResponse);
+
+            ApiResponse<WithdrawResponse> response = permissionController
+                    .deleteApiSubscription("app001", "sub001");
+
+            assertNotNull(response);
+            assertEquals("200", response.getCode());
+            assertNotNull(response.getData());
+            assertEquals("sub001", response.getData().getId());
+            assertEquals("订阅记录删除成功", response.getData().getMessage());
+            verify(permissionService).deleteApiSubscription("app001", "sub001");
+        }
     }
 
     @Nested
@@ -371,6 +393,28 @@ class PermissionControllerTest {
             assertEquals("200", response.getCode());
             assertEquals(0, response.getData().getChannelType());
             verify(permissionService).configEventSubscription(eq("app001"), eq("esub002"), any(SubscriptionConfigRequest.class));
+        }
+
+        @Test
+        @DisplayName("#37 删除事件权限订阅成功")
+        void testDeleteEventSubscription_Success() {
+            WithdrawResponse withdrawResponse = WithdrawResponse.builder()
+                    .id("esub001")
+                    .message("订阅记录删除成功")
+                    .build();
+
+            when(permissionService.deleteEventSubscription("app001", "esub001"))
+                    .thenReturn(withdrawResponse);
+
+            ApiResponse<WithdrawResponse> response = permissionController
+                    .deleteEventSubscription("app001", "esub001");
+
+            assertNotNull(response);
+            assertEquals("200", response.getCode());
+            assertNotNull(response.getData());
+            assertEquals("esub001", response.getData().getId());
+            assertEquals("订阅记录删除成功", response.getData().getMessage());
+            verify(permissionService).deleteEventSubscription("app001", "esub001");
         }
     }
 
@@ -548,6 +592,28 @@ class PermissionControllerTest {
             assertEquals(2, response.getData().getChannelType());
             assertEquals("wss://ws.example.com/callback", response.getData().getChannelAddress());
             verify(permissionService).configCallbackSubscription(eq("app001"), eq("csub002"), any(SubscriptionConfigRequest.class));
+        }
+
+        @Test
+        @DisplayName("#43 删除回调权限订阅成功")
+        void testDeleteCallbackSubscription_Success() {
+            WithdrawResponse withdrawResponse = WithdrawResponse.builder()
+                    .id("csub001")
+                    .message("订阅记录删除成功")
+                    .build();
+
+            when(permissionService.deleteCallbackSubscription("app001", "csub001"))
+                    .thenReturn(withdrawResponse);
+
+            ApiResponse<WithdrawResponse> response = permissionController
+                    .deleteCallbackSubscription("app001", "csub001");
+
+            assertNotNull(response);
+            assertEquals("200", response.getCode());
+            assertNotNull(response.getData());
+            assertEquals("csub001", response.getData().getId());
+            assertEquals("订阅记录删除成功", response.getData().getMessage());
+            verify(permissionService).deleteCallbackSubscription("app001", "csub001");
         }
     }
 }

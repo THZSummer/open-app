@@ -17,7 +17,7 @@ import java.util.List;
  * 权限管理 Controller
  * 
  * <p>提供权限申请与订阅管理接口</p>
- * <p>接口编号：#27 ~ #40</p>
+ * <p>接口编号：#27 ~ #43</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -30,7 +30,7 @@ public class PermissionController {
 
     private final PermissionService permissionService;
 
-    // ==================== API 权限管理 (#27-30) ====================
+    // ==================== API 权限管理 (#27-31) ====================
 
     /**
      * #27 获取应用 API 权限列表
@@ -117,13 +117,31 @@ public class PermissionController {
         return ApiResponse.success(response);
     }
 
-    // ==================== 事件权限管理 (#31-35) ====================
+    /**
+     * #31 删除 API 权限订阅记录
+     */
+    @DeleteMapping("/api/v1/apps/{appId}/apis/{id}")
+    @Operation(summary = "#31 删除 API 权限订阅记录", 
+               description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
+    public ApiResponse<WithdrawResponse> deleteApiSubscription(
+            @Parameter(description = "应用ID") 
+            @PathVariable String appId,
+            @Parameter(description = "订阅ID") 
+            @PathVariable String id) {
+        
+        log.info("Delete API permission subscription, appId={}, subscriptionId={}", appId, id);
+        
+        WithdrawResponse response = permissionService.deleteApiSubscription(appId, id);
+        return ApiResponse.success(response);
+    }
+
+    // ==================== 事件权限管理 (#32-37) ====================
 
     /**
-     * #31 获取应用事件订阅列表
+     * #32 获取应用事件订阅列表
      */
     @GetMapping("/api/v1/apps/{appId}/events")
-    @Operation(summary = "#31 获取应用事件订阅列表", 
+    @Operation(summary = "#32 获取应用事件订阅列表", 
                description = "返回应用事件订阅列表，支持分页")
     public ApiResponse<List<EventSubscriptionListResponse>> getEventSubscriptionList(
             @Parameter(description = "应用ID") 
@@ -143,10 +161,10 @@ public class PermissionController {
     }
 
     /**
-     * #32 获取分类下事件权限列表（权限树懒加载）
+     * #33 获取分类下事件权限列表（权限树懒加载）
      */
     @GetMapping("/api/v1/categories/{id}/events")
-    @Operation(summary = "#32 获取分类下事件权限列表", 
+    @Operation(summary = "#33 获取分类下事件权限列表", 
                description = "返回分类下事件权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath")
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryEventPermissions(
             @Parameter(description = "分类ID") 
@@ -170,10 +188,10 @@ public class PermissionController {
     }
 
     /**
-     * #33 申请事件权限（支持批量）
+     * #34 申请事件权限（支持批量）
      */
     @PostMapping("/api/v1/apps/{appId}/events/subscribe")
-    @Operation(summary = "#33 申请事件权限", 
+    @Operation(summary = "#34 申请事件权限", 
                description = "申请事件权限，支持批量提交")
     public ApiResponse<PermissionSubscribeResponse> subscribeEventPermissions(
             @Parameter(description = "应用ID") 
@@ -187,10 +205,10 @@ public class PermissionController {
     }
 
     /**
-     * #34 配置事件消费参数
+     * #35 配置事件消费参数
      */
     @PutMapping("/api/v1/apps/{appId}/events/{id}/config")
-    @Operation(summary = "#34 配置事件消费参数", 
+    @Operation(summary = "#35 配置事件消费参数", 
                description = "配置事件消费参数（通道/地址/认证）")
     public ApiResponse<WithdrawResponse> configEventSubscription(
             @Parameter(description = "应用ID") 
@@ -206,10 +224,10 @@ public class PermissionController {
     }
 
     /**
-     * #35 撤回审核中的事件权限申请
+     * #36 撤回审核中的事件权限申请
      */
     @PostMapping("/api/v1/apps/{appId}/events/{id}/withdraw")
-    @Operation(summary = "#35 撤回事件权限申请", 
+    @Operation(summary = "#36 撤回事件权限申请", 
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawEventSubscription(
             @Parameter(description = "应用ID") 
@@ -223,13 +241,31 @@ public class PermissionController {
         return ApiResponse.success(response);
     }
 
-    // ==================== 回调权限管理 (#36-40) ====================
+    /**
+     * #37 删除事件权限订阅记录
+     */
+    @DeleteMapping("/api/v1/apps/{appId}/events/{id}")
+    @Operation(summary = "#37 删除事件权限订阅记录", 
+               description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
+    public ApiResponse<WithdrawResponse> deleteEventSubscription(
+            @Parameter(description = "应用ID") 
+            @PathVariable String appId,
+            @Parameter(description = "订阅ID") 
+            @PathVariable String id) {
+        
+        log.info("Delete event permission subscription, appId={}, subscriptionId={}", appId, id);
+        
+        WithdrawResponse response = permissionService.deleteEventSubscription(appId, id);
+        return ApiResponse.success(response);
+    }
+
+    // ==================== 回调权限管理 (#38-43) ====================
 
     /**
-     * #36 获取应用回调订阅列表
+     * #38 获取应用回调订阅列表
      */
     @GetMapping("/api/v1/apps/{appId}/callbacks")
-    @Operation(summary = "#36 获取应用回调订阅列表", 
+    @Operation(summary = "#38 获取应用回调订阅列表", 
                description = "返回应用回调订阅列表，支持分页")
     public ApiResponse<List<CallbackSubscriptionListResponse>> getCallbackSubscriptionList(
             @Parameter(description = "应用ID") 
@@ -249,10 +285,10 @@ public class PermissionController {
     }
 
     /**
-     * #37 获取分类下回调权限列表（权限树懒加载）
+     * #39 获取分类下回调权限列表（权限树懒加载）
      */
     @GetMapping("/api/v1/categories/{id}/callbacks")
-    @Operation(summary = "#37 获取分类下回调权限列表", 
+    @Operation(summary = "#39 获取分类下回调权限列表", 
                description = "返回分类下回调权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath")
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryCallbackPermissions(
             @Parameter(description = "分类ID") 
@@ -276,10 +312,10 @@ public class PermissionController {
     }
 
     /**
-     * #38 申请回调权限（支持批量）
+     * #40 申请回调权限（支持批量）
      */
     @PostMapping("/api/v1/apps/{appId}/callbacks/subscribe")
-    @Operation(summary = "#38 申请回调权限", 
+    @Operation(summary = "#40 申请回调权限", 
                description = "申请回调权限，支持批量提交")
     public ApiResponse<PermissionSubscribeResponse> subscribeCallbackPermissions(
             @Parameter(description = "应用ID") 
@@ -293,10 +329,10 @@ public class PermissionController {
     }
 
     /**
-     * #39 配置回调消费参数
+     * #41 配置回调消费参数
      */
     @PutMapping("/api/v1/apps/{appId}/callbacks/{id}/config")
-    @Operation(summary = "#39 配置回调消费参数", 
+    @Operation(summary = "#41 配置回调消费参数", 
                description = "配置回调消费参数")
     public ApiResponse<WithdrawResponse> configCallbackSubscription(
             @Parameter(description = "应用ID") 
@@ -312,10 +348,10 @@ public class PermissionController {
     }
 
     /**
-     * #40 撤回审核中的回调权限申请
+     * #42 撤回审核中的回调权限申请
      */
     @PostMapping("/api/v1/apps/{appId}/callbacks/{id}/withdraw")
-    @Operation(summary = "#40 撤回回调权限申请", 
+    @Operation(summary = "#42 撤回回调权限申请", 
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawCallbackSubscription(
             @Parameter(description = "应用ID") 
@@ -326,6 +362,24 @@ public class PermissionController {
         log.info("Withdraw callback permission application, appId={}, subscriptionId={}", appId, id);
         
         WithdrawResponse response = permissionService.withdrawCallbackSubscription(appId, id);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * #43 删除回调权限订阅记录
+     */
+    @DeleteMapping("/api/v1/apps/{appId}/callbacks/{id}")
+    @Operation(summary = "#43 删除回调权限订阅记录", 
+               description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
+    public ApiResponse<WithdrawResponse> deleteCallbackSubscription(
+            @Parameter(description = "应用ID") 
+            @PathVariable String appId,
+            @Parameter(description = "订阅ID") 
+            @PathVariable String id) {
+        
+        log.info("Delete callback permission subscription, appId={}, subscriptionId={}", appId, id);
+        
+        WithdrawResponse response = permissionService.deleteCallbackSubscription(appId, id);
         return ApiResponse.success(response);
     }
 }

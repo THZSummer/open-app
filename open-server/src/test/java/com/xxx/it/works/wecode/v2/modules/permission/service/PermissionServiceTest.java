@@ -257,6 +257,71 @@ class PermissionServiceTest {
             assertEquals(3, response.getStatus());
             assertEquals("申请已撤回", response.getMessage());
         }
+
+        @Test
+        @DisplayName("#31 删除订阅成功-已授权状态")
+        void testDeleteApiSubscription_Success_Authorized() {
+            testSubscription.setStatus(1);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+            when(subscriptionMapper.deleteById(200L)).thenReturn(1);
+
+            WithdrawResponse response = 
+                    permissionService.deleteApiSubscription("1", "200");
+
+            assertNotNull(response);
+            assertEquals("200", response.getId());
+            assertEquals("订阅记录删除成功", response.getMessage());
+            verify(subscriptionMapper).deleteById(200L);
+        }
+
+        @Test
+        @DisplayName("#31 删除订阅成功-已拒绝状态")
+        void testDeleteApiSubscription_Success_Rejected() {
+            testSubscription.setStatus(2);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+            when(subscriptionMapper.deleteById(200L)).thenReturn(1);
+
+            WithdrawResponse response = 
+                    permissionService.deleteApiSubscription("1", "200");
+
+            assertNotNull(response);
+            assertEquals("订阅记录删除成功", response.getMessage());
+            verify(subscriptionMapper).deleteById(200L);
+        }
+
+        @Test
+        @DisplayName("#31 删除订阅成功-已取消状态")
+        void testDeleteApiSubscription_Success_Cancelled() {
+            testSubscription.setStatus(3);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+            when(subscriptionMapper.deleteById(200L)).thenReturn(1);
+
+            WithdrawResponse response = 
+                    permissionService.deleteApiSubscription("1", "200");
+
+            assertNotNull(response);
+            assertEquals("订阅记录删除成功", response.getMessage());
+            verify(subscriptionMapper).deleteById(200L);
+        }
+
+        @Test
+        @DisplayName("#31 删除订阅失败-待审状态不允许删除")
+        void testDeleteApiSubscription_Fail_Pending() {
+            testSubscription.setStatus(0);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+
+            BusinessException exception = assertThrows(BusinessException.class, () -> {
+                permissionService.deleteApiSubscription("1", "200");
+            });
+
+            assertEquals("400", exception.getCode());
+            assertEquals("审核中的申请不支持删除，请使用撤回接口", exception.getMessageZh());
+            verify(subscriptionMapper, never()).deleteById(anyLong());
+        }
     }
 
     @Nested
@@ -355,6 +420,37 @@ class PermissionServiceTest {
             assertEquals(3, response.getStatus());
             assertEquals("申请已撤回", response.getMessage());
         }
+
+        @Test
+        @DisplayName("#37 删除订阅成功-已授权状态")
+        void testDeleteEventSubscription_Success_Authorized() {
+            testSubscription.setStatus(1);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+            when(subscriptionMapper.deleteById(200L)).thenReturn(1);
+
+            WithdrawResponse response = 
+                    permissionService.deleteEventSubscription("1", "200");
+
+            assertNotNull(response);
+            assertEquals("订阅记录删除成功", response.getMessage());
+            verify(subscriptionMapper).deleteById(200L);
+        }
+
+        @Test
+        @DisplayName("#37 删除订阅失败-待审状态不允许删除")
+        void testDeleteEventSubscription_Fail_Pending() {
+            testSubscription.setStatus(0);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+
+            BusinessException exception = assertThrows(BusinessException.class, () -> {
+                permissionService.deleteEventSubscription("1", "200");
+            });
+
+            assertEquals("400", exception.getCode());
+            verify(subscriptionMapper, never()).deleteById(anyLong());
+        }
     }
 
     @Nested
@@ -432,6 +528,37 @@ class PermissionServiceTest {
             assertNotNull(response);
             assertEquals("200", response.getId());
             assertEquals("回调消费参数配置成功", response.getMessage());
+        }
+
+        @Test
+        @DisplayName("#43 删除订阅成功-已授权状态")
+        void testDeleteCallbackSubscription_Success_Authorized() {
+            testSubscription.setStatus(1);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+            when(subscriptionMapper.deleteById(200L)).thenReturn(1);
+
+            WithdrawResponse response = 
+                    permissionService.deleteCallbackSubscription("1", "200");
+
+            assertNotNull(response);
+            assertEquals("订阅记录删除成功", response.getMessage());
+            verify(subscriptionMapper).deleteById(200L);
+        }
+
+        @Test
+        @DisplayName("#43 删除订阅失败-待审状态不允许删除")
+        void testDeleteCallbackSubscription_Fail_Pending() {
+            testSubscription.setStatus(0);
+
+            when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
+
+            BusinessException exception = assertThrows(BusinessException.class, () -> {
+                permissionService.deleteCallbackSubscription("1", "200");
+            });
+
+            assertEquals("400", exception.getCode());
+            verify(subscriptionMapper, never()).deleteById(anyLong());
         }
     }
 
@@ -525,6 +652,18 @@ class PermissionServiceTest {
             assertThrows(AppAccessException.class, () -> {
                 permissionService.subscribeApiPermissions("app_without_permission", new PermissionSubscribeRequest());
             });
+        }
+
+        @Test
+        @DisplayName("删除-订阅记录不存在")
+        void testDeleteApiSubscription_SubscriptionNotFound() {
+            when(subscriptionMapper.selectById(999L)).thenReturn(null);
+
+            BusinessException exception = assertThrows(BusinessException.class, () -> {
+                permissionService.deleteApiSubscription("1", "999");
+            });
+
+            assertEquals("404", exception.getCode());
         }
     }
 
