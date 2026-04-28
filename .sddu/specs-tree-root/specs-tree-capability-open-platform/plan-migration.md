@@ -1,58 +1,76 @@
 # 数据迁移方案
 
-## 1. 数据对象分类与同步策略
+## 1. 数据对象分类
 
 ### 1.1 静态数据（1-7）- 平台配置数据
-这些数据由平台管理员配置，调用平台接口即可同步，无需单独开发迁移接口。
 
-| 序号 | 数据对象 | 旧表 | 新表 | 同步方式 |
-|------|----------|------|------|----------|
-| 1 | 分类数据 | openplatform_module_node_t | openplatform_v2_category_t | 调用平台接口 |
-| 2 | API数据 | openplatform_permission_api_t | openplatform_v2_api_t | 调用平台接口 |
-| 3 | 事件数据 | openplatform_event_t | openplatform_v2_event_t | 调用平台接口 |
-| 4 | 回调数据 | - | openplatform_v2_callback_t | 调用平台接口（新增） |
-| 5 | API权限数据 | openplatform_permission_t | openplatform_v2_permission_t | 调用平台接口 |
-| 6 | 事件权限数据 | openplatform_permission_t | openplatform_v2_permission_t | 调用平台接口 |
-| 7 | 回调权限数据 | - | openplatform_v2_permission_t | 调用平台接口（新增） |
+| 序号 | 数据对象 | 旧表 | 新表 |
+|------|----------|------|------|
+| 1 | 分类数据 | openplatform_module_node_t | openplatform_v2_category_t |
+| 2 | API数据 | openplatform_permission_api_t | openplatform_v2_api_t |
+| 3 | 事件数据 | openplatform_event_t | openplatform_v2_event_t |
+| 4 | 回调数据 | - | openplatform_v2_callback_t |
+| 5 | API权限数据 | openplatform_permission_t | openplatform_v2_permission_t |
+| 6 | 事件权限数据 | openplatform_permission_t | openplatform_v2_permission_t |
+| 7 | 回调权限数据 | - | openplatform_v2_permission_t |
 
-**说明**：
-- 静态数据由平台管理员通过管理界面配置
-- 新旧系统通过调用平台的增删改查接口进行同步
-- 不需要开发专门的迁移接口
+**处理方式**：新旧系统独立运行，各自使用各自的接口操作各自的数据表
+
+**无需同步**：有数据差异时按正常流程各自处理，不需要专门的数据同步机制
 
 ### 1.2 动态数据（8-9）- 用户操作数据
-这些数据由用户操作产生，需要开发同步接口，支持双向同步。
 
 | 序号 | 数据对象 | 旧表 | 新表 | 同步方式 |
 |------|----------|------|------|----------|
-| 8 | 订阅关系数据 | openplatform_app_permission_t | openplatform_v2_subscription_t | **同步接口**（双向） |
-| 9 | 审批数据 | openplatform_eflow_t + openplatform_eflow_log_t | openplatform_v2_approval_flow_t + openplatform_v2_approval_record_t + openplatform_v2_approval_log_t | **同步接口**（双向） |
+| 8 | 订阅关系数据 | openplatform_app_permission_t | openplatform_v2_subscription_t | **双向同步** |
+| 9 | 审批数据 | openplatform_eflow_t + openplatform_eflow_log_t | openplatform_v2_approval_flow_t + openplatform_v2_approval_record_t + openplatform_v2_approval_log_t | **双向同步** |
 
-**说明**：
-- 动态数据由用户操作产生
-- 需要支持双向同步：
-  - 旧→新：迁移场景
-  - 新→旧：回退场景
-- 需要开发专门的同步接口
+**处理方式**：需要双向同步
+- 迁移场景：旧→新（用户在旧系统操作的数据同步到新系统）
+- 回退场景：新→旧（用户在新系统操作的数据同步到旧系统）
+
+**需要开发同步接口**
 
 ---
 
-## 2. 静态数据同步方案
+## 2. 静态数据处理说明
 
-### 2.1 同步流程
+### 2.1 独立运行原则
+
 ```
-1. 在新系统配置平台接口调用权限
-2. 调用新系统的创建接口，依次创建：
-   - 分类数据
-   - API数据
-   - 事件数据
-   - 回调数据
-   - 权限数据（API/事件/回调）
-3. 验证数据一致性
+旧系统：使用旧接口操作旧表
+新系统：使用新接口操作新表
+
+两套系统独立维护各自的数据
 ```
 
-### 2.2 无需开发迁移接口
-静态数据不需要开发专门的迁移接口，通过平台的管理接口即可完成同步。
+**核心原则**：两套系统独立运行，无需同步
+
+### 2.2 数据差异处理
+
+- 数据差异是正常现象
+- 各自按照正常的操作流程处理
+- 不需要专门的数据同步机制
+
+**示例**：
+- 旧系统管理员在旧系统创建了一个新API分类
+- 新系统管理员在新系统创建了一个新API分类
+- 两个分类可以不同，各自独立维护
+- 不需要进行数据同步
+
+### 2.3 表结构对照（仅作参考）
+
+| 序号 | 数据对象 | 旧表 | 新表 |
+|------|----------|------|------|
+| 1 | 分类数据 | openplatform_module_node_t | openplatform_v2_category_t |
+| 2 | API数据 | openplatform_permission_api_t | openplatform_v2_api_t |
+| 3 | 事件数据 | openplatform_event_t | openplatform_v2_event_t |
+| 4 | 回调数据 | - | openplatform_v2_callback_t |
+| 5 | API权限数据 | openplatform_permission_t | openplatform_v2_permission_t |
+| 6 | 事件权限数据 | openplatform_permission_t | openplatform_v2_permission_t |
+| 7 | 回调权限数据 | - | openplatform_v2_permission_t |
+
+**说明**：上表仅作参考，不涉及数据同步
 
 ---
 
@@ -320,9 +338,7 @@ public SyncStatus getStatus(@PathVariable String module) {
 }
 ```
 
----
-
-## 5. 同步日志表
+### 4.3 同步日志表
 
 ```sql
 CREATE TABLE `openplatform_sync_log_t` (
@@ -340,9 +356,7 @@ CREATE TABLE `openplatform_sync_log_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数据同步日志表';
 ```
 
----
-
-## 6. Java代码示例
+### 4.4 Java代码示例
 
 ```java
 @RestController
@@ -365,9 +379,10 @@ public class SyncController {
 
 ---
 
-## 7. HTML工具更新
+## 5. HTML工具
 
-更新HTML页面，只保留动态数据的同步功能：
+HTML同步工具只支持动态数据同步：
 - 订阅关系同步
 - 审批数据同步
-- 移除静态数据的迁移功能
+
+**不支持静态数据同步**（静态数据由新旧系统独立维护）
