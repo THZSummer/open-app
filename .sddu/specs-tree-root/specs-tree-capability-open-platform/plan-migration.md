@@ -314,14 +314,6 @@ CREATE TABLE `openplatform_v2_subscription_t` (
 | create_by | create_by | 创建人 |
 | last_update_by | last_update_by | 更新人 |
 
-#### 同步接口设计
-```
-POST /api/v1/sync/subscription/migrate   # 旧→新（迁移）
-POST /api/v1/sync/subscription/rollback  # 新→旧（回退）
-POST /api/v1/sync/subscription/batch     # 批量同步
-GET  /api/v1/sync/subscription/status    # 同步状态查询
-```
-
 ---
 
 ### 3.2 审批数据同步
@@ -480,52 +472,56 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
 | last_update_by | - | 更新人（迁移时记录） |
 | last_update_time | - | 更新时间（迁移时记录） |
 
-#### 同步接口设计
-```
-POST /api/v1/sync/approval/migrate       # 旧→新（迁移）
-POST /api/v1/sync/approval/rollback      # 新→旧（回退）
-POST /api/v1/sync/approval/batch         # 批量同步
-GET  /api/v1/sync/approval/status        # 同步状态查询
-```
-
 ---
 
 ## 4. 同步接口设计
+
+每个模块提供2个接口：
+- **batch**：批量同步（通过 `direction` 参数区分 migrate/rollback）
+- **status**：状态查询
 
 ### 4.1 接口列表
 
 **订阅关系同步接口**：
 ```
-POST /api/v1/sync/subscription/migrate   # 迁移（旧→新）
-POST /api/v1/sync/subscription/rollback  # 回退（新→旧）
-POST /api/v1/sync/subscription/batch     # 批量同步
+POST /api/v1/sync/subscription/batch     # 批量同步（direction: migrate/rollback）
 GET  /api/v1/sync/subscription/status    # 状态查询
 ```
 
 **审批数据同步接口**：
 ```
-POST /api/v1/sync/approval/migrate       # 迁移（旧→新）
-POST /api/v1/sync/approval/rollback      # 回退（新→旧）
-POST /api/v1/sync/approval/batch         # 批量同步
+POST /api/v1/sync/approval/batch         # 批量同步（direction: migrate/rollback）
 GET  /api/v1/sync/approval/status        # 状态查询
 ```
 
 ### 4.2 接口示例
 
-**批量同步接口**：
+**批量同步接口**（合并迁移和回退）：
 ```java
 @PostMapping("/sync/{module}/batch")
 public SyncResult syncBatch(
     @PathVariable String module,
     @RequestBody SyncRequest request) {
-    // request.ids: 要同步的数据ID列表
-    // request.direction: "migrate" 或 "rollback"
+    // request.ids: 要同步的数据ID列表（null=全量）
+    // request.direction: "migrate"（迁移）或 "rollback"（回退）
 }
 
-// 请求示例
+// 请求示例 - 迁移指定ID
 {
     "ids": [1, 2, 3],
-    "direction": "migrate"  // 或 "rollback"
+    "direction": "migrate"
+}
+
+// 请求示例 - 回退指定ID
+{
+    "ids": [1, 2, 3],
+    "direction": "rollback"
+}
+
+// 请求示例 - 全量迁移
+{
+    "ids": null,
+    "direction": "migrate"
 }
 
 // 响应示例
@@ -543,37 +539,18 @@ public SyncResult syncBatch(
 ```java
 @GetMapping("/sync/{module}/status")
 public SyncStatus getStatus(@PathVariable String module) {
-    // 返回：源数据数量、目标数据数量、同步进度
+    // 返回：源数据数量、目标数据数量、待同步数量
 }
 
 // 响应示例
 {
     "sourceCount": 100,
     "targetCount": 95,
-    "pending": 5,
-    "lastSyncTime": "2024-01-15 10:30:00"
+    "pending": 5
 }
 ```
 
-### 4.3 同步日志表
-
-```sql
-CREATE TABLE `openplatform_sync_log_t` (
-    `id` BIGINT(20) PRIMARY KEY,
-    `module` VARCHAR(50) NOT NULL COMMENT '模块：subscription/approval',
-    `direction` VARCHAR(20) NOT NULL COMMENT '方向：migrate/rollback',
-    `source_id` BIGINT(20) COMMENT '源数据ID',
-    `target_id` BIGINT(20) COMMENT '目标数据ID',
-    `status` TINYINT(10) COMMENT '状态：0=失败,1=成功',
-    `error_message` TEXT COMMENT '错误信息',
-    `create_time` DATETIME(3),
-    KEY `idx_module` (`module`),
-    KEY `idx_source_id` (`source_id`),
-    KEY `idx_status` (`status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='数据同步日志表';
-```
-
-### 4.4 Java代码示例
+### 4.3 Java代码示例
 
 ```java
 @RestController
@@ -584,7 +561,7 @@ public class SyncController {
     public SyncResult syncBatch(
         @PathVariable String module,
         @RequestBody SyncRequest request) {
-        // 批量同步
+        // 批量同步（通过direction区分迁移/回退）
     }
     
     @GetMapping("/{module}/status")
