@@ -34,8 +34,13 @@ export const CALLBACK_CHANNEL_TYPE = {
 };
 
 export const AUTH_TYPE = {
-  0: 'SOA',
-  1: 'APIG'
+  0: 'Cookie',
+  1: 'SOA',
+  2: 'APIG',
+  3: 'IAM',
+  4: '免认证',
+  5: 'AKSK',
+  6: 'CLITOKEN',
 };
 
 export const formatCategoryPath = (category) => {

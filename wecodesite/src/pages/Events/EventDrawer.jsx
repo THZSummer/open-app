@@ -113,7 +113,13 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
     await loadData({ needReview: value, curPage: 1 });
   };
 
-  const columns = getEventDrawerColumns();
+  const handleOpenDoc = (docUrl) => {
+    if (docUrl) {
+      window.open(docUrl, '_blank');
+    }
+  };
+
+  const columns = getEventDrawerColumns({ handleOpenDoc });
 
   const rowSelection = {
     selectedRowKeys,

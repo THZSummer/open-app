@@ -89,7 +89,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
   },
 ];
 
-export const getApiPermissionDrawerColumns = () => [
+export const getApiPermissionDrawerColumns = ({ handleOpenDoc }) => [
   {
     title: '权限名称',
     dataIndex: 'nameCn',
@@ -125,17 +125,17 @@ export const getApiPermissionDrawerColumns = () => [
     dataIndex: 'isSubscribed',
     key: 'isSubscribed',
     width: 100,
-    render: (isSubscribed) => {
-      if (isSubscribed === 1) {
-        return <Tag color="success">已订阅</Tag>;
-      }
-      return <Tag color="default">未订阅</Tag>;
-    },
+    render: (isSubscribed, record) => {
+      const { text, color } = SUBSCRIPTION_STATUS[record.status] || { text: '未订阅', color: 'default' };
+      return <Tag color={color}>{text}</Tag>;
+    }
   },
   {
     title: '操作',
     key: 'action',
-    width: 80,
-    render: () => null,
+    width: 100,
+    render: (_, record) => (
+      <Button type="link" size="small" onClick={() => handleOpenDoc(record.docUrl)}>查看文档</Button>
+    ),
   },
 ];

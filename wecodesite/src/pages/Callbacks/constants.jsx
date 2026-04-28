@@ -78,7 +78,7 @@ export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprov
   },
 ];
 
-export const getCallbackDrawerColumns = () => [
+export const getCallbackDrawerColumns = ({ handleOpenDoc }) => [
   {
     title: '回调名称',
     dataIndex: 'nameCn',
@@ -121,7 +121,9 @@ export const getCallbackDrawerColumns = () => [
   {
     title: '操作',
     key: 'action',
-    width: 80,
-    render: () => null,
+    width: 100,
+    render: (_, record) => (
+      <Button type="link" size="small" onClick={() => handleOpenDoc(record.docUrl)}>查看文档</Button>
+    ),
   },
 ];

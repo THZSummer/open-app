@@ -78,7 +78,7 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
   },
 ];
 
-export const getEventDrawerColumns = () => [
+export const getEventDrawerColumns = ({ handleOpenDoc }) => [
   {
     title: '事件名称',
     dataIndex: 'nameCn',
@@ -121,7 +121,9 @@ export const getEventDrawerColumns = () => [
   {
     title: '操作',
     key: 'action',
-    width: 80,
-    render: () => null,
+    width: 100,
+    render: (_, record) => (
+      <Button type="link" size="small" onClick={() => handleOpenDoc(record.docUrl)}>查看文档</Button>
+    ),
   },
 ];

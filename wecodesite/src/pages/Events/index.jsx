@@ -6,7 +6,7 @@ import ApprovalAddressModal from '../../components/ApprovalAddressModal/Approval
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
-import { fetchAppEvents, remindApproval, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
+import { fetchAppEvents, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
 import { getEventColumns } from './constants';
 import { queryParams, openUrl } from '../../utils/common';
 import './Events.m.less';
@@ -118,7 +118,6 @@ function Events() {
         onClose={closeApprovalModal}
         approver={currentApprovalInfo.approver}
         approvalUrl={currentApprovalInfo.approvalUrl}
-        onRemind={() => remindApproval(currentApprovalInfo.id)}
       />
 
       <DeleteConfirmModal
