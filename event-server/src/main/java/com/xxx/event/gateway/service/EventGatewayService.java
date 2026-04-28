@@ -67,16 +67,16 @@ public class EventGatewayService {
         String topic = request.getTopic();
         Map<String, Object> payload = request.getPayload();
         
-        log.info("发布事件: topic={}", topic);
+        log.info("Publishing event: topic={}", topic);
         
         // 1. 验证 Topic 对应的事件资源存在且已发布
         Map<String, Object> permission = verifyEventResource(topic);
         if (permission == null) {
-            log.warn("事件资源不存在或未发布: topic={}", topic);
+            log.warn("Event resource not found or not published: topic={}", topic);
             return EventPublishResponse.builder()
                     .topic(topic)
                     .subscribers(0)
-                    .message("事件资源不存在或未发布")
+                    .message("Event resource not found or not published")
                     .build();
         }
         
@@ -84,11 +84,11 @@ public class EventGatewayService {
         List<String> subscribedApps = getSubscribedApps(topic);
         
         if (subscribedApps.isEmpty()) {
-            log.info("事件无订阅者: topic={}", topic);
+            log.info("Event has no subscribers: topic={}", topic);
             return EventPublishResponse.builder()
                     .topic(topic)
                     .subscribers(0)
-                    .message("事件无订阅者")
+                    .message("Event has no subscribers")
                     .build();
         }
         
@@ -98,7 +98,7 @@ public class EventGatewayService {
         return EventPublishResponse.builder()
                 .topic(topic)
                 .subscribers(subscribedApps.size())
-                .message("事件已分发至 " + subscribedApps.size() + " 个订阅方")
+                .message("Event dispatched to " + subscribedApps.size() + " subscribers")
                 .build();
     }
 
@@ -162,16 +162,16 @@ public class EventGatewayService {
                     try {
                         return (List<String>) cached;
                     } catch (ClassCastException e) {
-                        log.warn("缓存数据类型错误，清除缓存: topic={}", topic);
+                        log.warn("Cache data type error, clearing cache: topic={}", topic);
                         redisTemplate.delete(cacheKey);
                     }
                 } else {
-                    log.warn("缓存数据类型不匹配，清除缓存: topic={}, actualType={}", topic, cached.getClass());
+                    log.warn("Cache data type mismatch, clearing cache: topic={}, actualType={}", topic, cached.getClass());
                     redisTemplate.delete(cacheKey);
                 }
             }
         } catch (Exception e) {
-            log.error("从Redis获取订阅列表失败，降级到API查询: topic={}", topic, e);
+            log.error("Failed to get subscriber list from Redis, fallback to API query: topic={}", topic, e);
             // 继续执行API查询
         }
         
@@ -181,7 +181,7 @@ public class EventGatewayService {
         
         // 处理null返回
         if (apps == null) {
-            log.warn("API返回订阅列表为null: scope={}", scope);
+            log.warn("API returned null subscriber list: scope={}", scope);
             apps = Collections.emptyList();
         }
         
@@ -189,9 +189,9 @@ public class EventGatewayService {
         if (!apps.isEmpty()) {
             try {
                 redisTemplate.opsForValue().set(cacheKey, apps, CACHE_EXPIRE_SECONDS, TimeUnit.SECONDS);
-                log.debug("订阅列表已缓存: topic={}, count={}", topic, apps.size());
+                log.debug("Subscriber list cached: topic={}, count={}", topic, apps.size());
             } catch (Exception e) {
-                log.error("缓存订阅列表失败: topic={}", topic, e);
+                log.error("Failed to cache subscriber list: topic={}", topic, e);
             }
         }
         
@@ -206,7 +206,7 @@ public class EventGatewayService {
      * @param appIds 应用ID列表
      */
     private void distributeEvent(String topic, Map<String, Object> payload, List<String> appIds) {
-        log.info("分发事件: topic={}, subscribers={}", topic, appIds.size());
+        log.info("Dispatching event: topic={}, subscribers={}", topic, appIds.size());
         
         String scope = convertTopicToScope(topic);
         
@@ -216,7 +216,7 @@ public class EventGatewayService {
                 Map<String, Object> config = apiServerClient.getSubscriptionConfig(appId, scope);
                 
                 if (config == null || config.isEmpty()) {
-                    log.warn("应用订阅配置为空: appId={}, topic={}", appId, topic);
+                    log.warn("App subscription config is empty: appId={}, topic={}", appId, topic);
                     continue;
                 }
                 
@@ -231,27 +231,27 @@ public class EventGatewayService {
                     switch (channelType) {
                         case 0 -> {
                             // 企业内部消息队列
-                            log.info("推送到内部消息队列: appId={}, topic={}, queue={}", 
+                            log.info("Pushing to internal message queue: appId={}, topic={}, queue={}",
                                     appId, topic, channelAddress);
                             messageQueueChannel.sendEvent(channelAddress, payload);
                         }
                         case 1 -> {
                             // WebHook
-                            log.info("推送到 WebHook: appId={}, topic={}, url={}, authType={}", 
+                            log.info("Pushing to WebHook: appId={}, topic={}, url={}, authType={}", 
                                     appId, topic, channelAddress, authType);
                             webHookChannel.sendEvent(channelAddress, payload, appId, authType);
                         }
                         default -> 
-                            log.warn("未知的通道类型或事件不支持的通道: appId={}, channelType={} (事件仅支持: 0-消息队列, 1-WebHook)", 
+                            log.warn("Unknown channel type or channel not supported for event: appId={}, channelType={} (event supports: 0-message queue, 1-WebHook)", 
                                     appId, channelType);
                     }
                 } else {
-                    log.warn("通道配置无效: appId={}, channelType={}, channelAddress={}", 
+                    log.warn("Invalid channel config: appId={}, channelType={}, channelAddress={}", 
                             appId, channelType, channelAddress);
                 }
                 
             } catch (Exception e) {
-                log.error("分发事件失败: appId={}, topic={}", appId, topic, e);
+                log.error("Failed to dispatch event: appId={}, topic={}", appId, topic, e);
             }
         }
     }
@@ -278,11 +278,11 @@ public class EventGatewayService {
             try {
                 return Integer.parseInt((String) value);
             } catch (NumberFormatException e) {
-                log.warn("无法将字符串转换为Integer: key={}, value={}", key, value);
+                log.warn("Cannot convert string to Integer: key={}, value={}", key, value);
                 return null;
             }
         }
-        log.warn("无法转换为Integer: key={}, valueType={}", key, value.getClass());
+        log.warn("Cannot convert to Integer: key={}, valueType={}", key, value.getClass());
         return null;
     }
 
@@ -316,9 +316,9 @@ public class EventGatewayService {
         String cacheKey = CACHE_KEY_PREFIX + topic;
         try {
             Boolean deleted = redisTemplate.delete(cacheKey);
-            log.info("清除订阅列表缓存: topic={}, result={}", topic, deleted);
+            log.info("Clearing subscriber list cache: topic={}, result={}", topic, deleted);
         } catch (Exception e) {
-            log.error("清除订阅列表缓存失败: topic={}", topic, e);
+            log.error("Failed to clear subscriber list cache: topic={}", topic, e);
         }
     }
 }

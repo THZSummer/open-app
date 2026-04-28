@@ -108,10 +108,10 @@ public class WebHookChannel {
         long startTime = System.currentTimeMillis();
         
         try {
-            log.info("发送 WebHook: type={}, url={}, appId={}, authType={}", 
+            log.info("Sending WebHook: type={}, url={}, appId={}, authType={}", 
                     type, url, 
-                    authContext != null ? authContext.getAppId() : "无",
-                    authContext != null ? authContext.getAuthType() : "无");
+                    authContext != null ? authContext.getAppId() : "none",
+                    authContext != null ? authContext.getAuthType() : "none");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -119,7 +119,7 @@ public class WebHookChannel {
             // 应用认证
             if (authContext != null && authContext.requiresAuth()) {
                 authHandler.applyAuth(headers, authContext.getAppId(), authContext.getAuthType());
-                log.debug("已应用认证: authType={}", authContext.getAuthType());
+                log.debug("Auth applied: authType={}", authContext.getAuthType());
             }
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
@@ -134,16 +134,16 @@ public class WebHookChannel {
             long duration = System.currentTimeMillis() - startTime;
             
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("WebHook 发送成功: type={}, url={}, status={}, duration={}ms",
+                log.info("WebHook sent successfully: type={}, url={}, status={}, duration={}ms",
                         type, url, response.getStatusCode(), duration);
             } else {
-                log.warn("WebHook 发送失败: type={}, url={}, status={}, duration={}ms",
+                log.warn("WebHook send failed: type={}, url={}, status={}, duration={}ms",
                         type, url, response.getStatusCode(), duration);
             }
 
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("WebHook 发送异常: type={}, url={}, duration={}ms", type, url, duration, e);
+            log.error("WebHook send exception: type={}, url={}, duration={}ms", type, url, duration, e);
         }
     }
 
@@ -188,7 +188,7 @@ public class WebHookChannel {
             return response.getStatusCode().is2xxSuccessful();
 
         } catch (Exception e) {
-            log.error("WebHook 同步发送失败: url={}", url, e);
+            log.error("WebHook sync send failed: url={}", url, e);
             return false;
         }
     }

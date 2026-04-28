@@ -46,30 +46,30 @@ public class SseChannel {
         
         // 设置完成回调（连接正常关闭）
         emitter.onCompletion(() -> {
-            log.info("SSE 连接完成: connectionId={}", connectionId);
+            log.info("SSE connection completed: connectionId={}", connectionId);
             connections.remove(connectionId);
         });
         
         // 设置超时回调
         emitter.onTimeout(() -> {
-            log.warn("SSE 连接超时: connectionId={}", connectionId);
+            log.warn("SSE connection timeout: connectionId={}", connectionId);
             connections.remove(connectionId);
         });
         
         // 设置错误回调
         emitter.onError(throwable -> {
-            log.error("SSE 连接异常: connectionId={}", connectionId, throwable);
+            log.error("SSE connection error: connectionId={}", connectionId, throwable);
             connections.remove(connectionId);
         });
         
         // 存储连接
         SseEmitter oldEmitter = connections.put(connectionId, emitter);
         if (oldEmitter != null) {
-            log.warn("SSE 连接已存在，将被新连接替换: connectionId={}", connectionId);
+            log.warn("SSE connection already exists, will be replaced by new connection: connectionId={}", connectionId);
             oldEmitter.complete();
         }
         
-        log.info("SSE 连接已建立: connectionId={}, 当前活跃连接数={}", connectionId, connections.size());
+        log.info("SSE connection established: connectionId={}, active connections={}", connectionId, connections.size());
         
         return emitter;
     }
@@ -83,9 +83,9 @@ public class SseChannel {
         SseEmitter emitter = connections.remove(connectionId);
         if (emitter != null) {
             emitter.complete();
-            log.info("SSE 连接已移除: connectionId={}, 当前活跃连接数={}", connectionId, connections.size());
+            log.info("SSE connection removed: connectionId={}, active connections={}", connectionId, connections.size());
         } else {
-            log.warn("SSE 连接不存在，无法移除: connectionId={}", connectionId);
+            log.warn("SSE connection not found, cannot remove: connectionId={}", connectionId);
         }
     }
 
@@ -115,7 +115,7 @@ public class SseChannel {
      * @param payload 事件内容
      */
     public void broadcastEvent(Map<String, Object> payload) {
-        log.info("广播事件到所有连接: 连接数={}", connections.size());
+        log.info("Broadcasting event to all connections: connections={}", connections.size());
         
         connections.forEach((connectionId, emitter) -> {
             try {
@@ -123,9 +123,9 @@ public class SseChannel {
                         .name("event")
                         .data(payload);
                 emitter.send(eventBuilder);
-                log.debug("广播事件成功: connectionId={}", connectionId);
+                log.debug("Broadcast event succeeded: connectionId={}", connectionId);
             } catch (IOException e) {
-                log.error("广播事件失败: connectionId={}", connectionId, e);
+                log.error("Broadcast event failed: connectionId={}", connectionId, e);
                 connections.remove(connectionId);
             }
         });
@@ -151,7 +151,7 @@ public class SseChannel {
         SseEmitter emitter = connections.get(connectionId);
         
         if (emitter == null) {
-            log.warn("SSE 连接不存在，无法发送消息: connectionId={}, eventType={}", connectionId, eventType);
+            log.warn("SSE connection not found, cannot send message: connectionId={}, eventType={}", connectionId, eventType);
             return;
         }
         
@@ -160,9 +160,9 @@ public class SseChannel {
                     .name(eventType)
                     .data(payload);
             emitter.send(eventBuilder);
-            log.info("SSE 消息发送成功: connectionId={}, eventType={}", connectionId, eventType);
+            log.info("SSE message sent successfully: connectionId={}, eventType={}", connectionId, eventType);
         } catch (IOException e) {
-            log.error("SSE 消息发送失败: connectionId={}, eventType={}", connectionId, eventType, e);
+            log.error("SSE message send failed: connectionId={}, eventType={}", connectionId, eventType, e);
             connections.remove(connectionId);
         }
     }

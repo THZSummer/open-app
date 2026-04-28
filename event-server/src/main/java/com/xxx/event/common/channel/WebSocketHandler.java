@@ -45,7 +45,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         String connectionId = extractConnectionId(session);
         
         if (connectionId == null || connectionId.isEmpty()) {
-            log.warn("WebSocket 连接缺少 connectionId，关闭连接: sessionId={}", session.getId());
+            log.warn("WebSocket connection missing connectionId, closing connection: sessionId={}", session.getId());
             session.close(CloseStatus.BAD_DATA);
             return;
         }
@@ -53,7 +53,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         // 注册连接
         webSocketChannel.addConnection(connectionId, session);
         
-        log.info("WebSocket 连接建立: connectionId={}, sessionId={}, remoteAddress={}", 
+        log.info("WebSocket connection established: connectionId={}, sessionId={}, remoteAddress={}", 
                 connectionId, session.getId(), session.getRemoteAddress());
     }
 
@@ -71,18 +71,18 @@ public class WebSocketHandler extends TextWebSocketHandler {
         String connectionId = extractConnectionId(session);
         String payload = message.getPayload();
         
-        log.debug("WebSocket 收到消息: connectionId={}, payload={}", connectionId, payload);
+        log.debug("WebSocket received message: connectionId={}, payload={}", connectionId, payload);
         
         // 心跳响应（支持 ping/pong）
         if ("ping".equalsIgnoreCase(payload) || "heartbeat".equalsIgnoreCase(payload)) {
             session.sendMessage(new TextMessage("pong"));
-            log.debug("WebSocket 心跳响应: connectionId={}", connectionId);
+            log.debug("WebSocket heartbeat response: connectionId={}", connectionId);
             return;
         }
         
         // 其他消息处理（可根据业务需求扩展）
         // 例如：解析 JSON 消息，根据类型分发处理
-        log.info("WebSocket 消息接收: connectionId={}, message={}", connectionId, payload);
+        log.info("WebSocket message received: connectionId={}, message={}", connectionId, payload);
     }
 
     /**
@@ -100,7 +100,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         
         if (connectionId != null) {
             webSocketChannel.removeConnection(connectionId);
-            log.info("WebSocket 连接关闭: connectionId={}, sessionId={}, status={}", 
+            log.info("WebSocket connection closed: connectionId={}, sessionId={}, status={}", 
                     connectionId, session.getId(), status);
         }
     }
@@ -118,7 +118,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
         String connectionId = extractConnectionId(session);
         
-        log.error("WebSocket 传输错误: connectionId={}, sessionId={}, error={}", 
+        log.error("WebSocket transport error: connectionId={}, sessionId={}, error={}", 
                 connectionId, session.getId(), exception.getMessage(), exception);
         
         // 移除连接
@@ -160,7 +160,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             
             return null;
         } catch (Exception e) {
-            log.error("提取 connectionId 失败: sessionId={}", session.getId(), e);
+            log.error("Failed to extract connectionId: sessionId={}", session.getId(), e);
             return null;
         }
     }

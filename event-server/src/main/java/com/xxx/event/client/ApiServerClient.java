@@ -59,7 +59,7 @@ public class ApiServerClient {
         //    String token = client.getSoaCredential("api-server");
         //    return Map.of("X-SOA-TOKEN", token);
         
-        log.warn("[预留实现] API Server 凭证获取方法尚未实现");
+        log.warn("[Reserved] API Server credential method not implemented yet");
         return Map.of();  // 返回空 Map
     }
 
@@ -72,7 +72,7 @@ public class ApiServerClient {
      */
     private void applyAuth(HttpHeaders headers) {
         if (!authEnabled) {
-            log.warn("API Server 认证未启用，这可能导致调用失败");
+            log.warn("API Server auth disabled, this may cause call failure");
             return;
         }
         
@@ -80,7 +80,7 @@ public class ApiServerClient {
         Map<String, String> credentials = getApiServerCredential();
         
         if (credentials.isEmpty()) {
-            log.error("无法获取 API Server 认证凭证，请实现 getApiServerCredential() 方法");
+            log.error("Failed to get API Server auth credentials, please implement getApiServerCredential() method");
             return;
         }
         
@@ -91,9 +91,9 @@ public class ApiServerClient {
             
             if (headerValue != null && !headerValue.isEmpty()) {
                 headers.set(headerName, headerValue);
-                log.debug("已添加 API Server 认证头: {}={}", headerName, headerValue);
+                log.debug("Added API Server auth header: {}={}", headerName, headerValue);
             } else {
-                log.warn("认证头值为空，跳过设置: {}", headerName);
+                log.warn("Auth header value is empty, skip setting: {}", headerName);
             }
         }
     }
@@ -107,7 +107,7 @@ public class ApiServerClient {
     public Map<String, Object> getPermissionByScope(String scope) {
         try {
             String url = apiServerUrl + "/gateway/permissions/detail?scope=" + scope;
-            log.debug("查询权限详情: scope={}, url={}", scope, url);
+            log.debug("Query permission detail: scope={}, url={}", scope, url);
 
             // 创建请求头并添加凭证
             HttpHeaders headers = new HttpHeaders();
@@ -131,11 +131,11 @@ public class ApiServerClient {
                 return apiResponse.getData();
             }
 
-            log.warn("查询权限详情失败: scope={}, code={}", scope, apiResponse.getCode());
+            log.warn("Query permission detail failed: scope={}, code={}", scope, apiResponse.getCode());
             return null;
 
         } catch (Exception e) {
-            log.error("查询权限详情失败: scope={}", scope, e);
+            log.error("Query permission detail failed: scope={}", scope, e);
             return null;
         }
     }
@@ -149,7 +149,7 @@ public class ApiServerClient {
     public List<String> getSubscribedApps(String scope) {
         try {
             String url = apiServerUrl + "/gateway/permissions/subscribers?scope=" + scope;
-            log.debug("查询订阅应用列表: scope={}, url={}", scope, url);
+            log.debug("Query subscribed apps list: scope={}, url={}", scope, url);
 
             // 创建请求头并添加凭证
             HttpHeaders headers = new HttpHeaders();
@@ -173,11 +173,11 @@ public class ApiServerClient {
                 return apiResponse.getData();
             }
 
-            log.warn("查询订阅应用列表失败: scope={}, code={}", scope, apiResponse.getCode());
+            log.warn("Query subscribed apps list failed: scope={}, code={}", scope, apiResponse.getCode());
             return List.of();
 
         } catch (Exception e) {
-            log.error("查询订阅应用列表失败: scope={}", scope, e);
+            log.error("Query subscribed apps list failed: scope={}", scope, e);
             return List.of();
         }
     }
@@ -192,7 +192,7 @@ public class ApiServerClient {
     public Map<String, Object> getSubscriptionConfig(String appId, String scope) {
         try {
             String url = apiServerUrl + "/gateway/subscriptions/config?appId=" + appId + "&scope=" + scope;
-            log.debug("查询订阅配置: appId={}, scope={}, url={}", appId, scope, url);
+            log.debug("Query subscription config: appId={}, scope={}, url={}", appId, scope, url);
 
             // 创建请求头并添加凭证
             HttpHeaders headers = new HttpHeaders();
@@ -216,11 +216,11 @@ public class ApiServerClient {
                 return apiResponse.getData();
             }
 
-            log.warn("查询订阅配置失败: appId={}, scope={}, code={}", appId, scope, apiResponse.getCode());
+            log.warn("Query subscription config failed: appId={}, scope={}, code={}", appId, scope, apiResponse.getCode());
             return Map.of();
 
         } catch (Exception e) {
-            log.error("查询订阅配置失败: appId={}, scope={}", appId, scope, e);
+            log.error("Query subscription config failed: appId={}, scope={}", appId, scope, e);
             return Map.of();
         }
     }
@@ -235,7 +235,7 @@ public class ApiServerClient {
     public boolean checkPermission(String appId, String scope) {
         try {
             String url = apiServerUrl + "/gateway/permissions/check?appId=" + appId + "&scope=" + scope;
-            log.debug("权限校验: appId={}, scope={}, url={}", appId, scope, url);
+            log.debug("Permission check: appId={}, scope={}, url={}", appId, scope, url);
 
             // 创建请求头并添加凭证
             HttpHeaders headers = new HttpHeaders();
@@ -263,7 +263,7 @@ public class ApiServerClient {
             return false;
 
         } catch (Exception e) {
-            log.error("权限校验失败: appId={}, scope={}", appId, scope, e);
+            log.error("Permission check failed: appId={}, scope={}", appId, scope, e);
             return false;
         }
     }
