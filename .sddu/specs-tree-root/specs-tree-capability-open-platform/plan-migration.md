@@ -490,7 +490,75 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
 - 同步订阅关系时，自动同步关联的审批记录和审批日志
 - 同步执行，无需状态查询
 
-### 4.2 接口示例
+### 4.2 同步原则
+
+#### 原则1：订阅关系优先
+- 优先保证订阅关系同步成功
+- 审批数据同步失败**不影响**订阅关系
+- 审批数据同步失败时记录错误信息，返回给调用方
+
+#### 原则2：支持重复执行
+- 接口支持重复调用
+- 已存在的数据自动跳过（通过ID判断）
+- 只同步新增的数据
+
+#### 原则3：同步顺序
+```
+订阅关系同步
+    ↓
+审批记录同步（失败不影响订阅关系）
+    ↓
+审批日志同步（失败不影响订阅关系）
+```
+
+#### 原则4：数据存在性判断
+- 订阅关系：通过 `id` 判断是否已存在
+- 审批记录：通过 `id` 判断是否已存在
+- 审批日志：通过 `id` 判断是否已存在
+
+#### 执行逻辑伪代码
+
+```java
+// 同步订阅关系（核心数据）
+for (subscription : subscriptions) {
+    if (exists(subscription.id)) {
+        skip("订阅关系已存在");
+        continue;
+    }
+    save(subscription);
+    success++;
+}
+
+// 同步审批记录（辅助数据，失败不影响订阅关系）
+for (approvalRecord : approvalRecords) {
+    try {
+        if (exists(approvalRecord.id)) {
+            skip("审批记录已存在");
+            continue;
+        }
+        save(approvalRecord);
+    } catch (Exception e) {
+        log.error("审批记录同步失败", e);
+        // 不抛出异常，继续处理其他数据
+    }
+}
+
+// 同步审批日志（辅助数据，失败不影响订阅关系）
+for (approvalLog : approvalLogs) {
+    try {
+        if (exists(approvalLog.id)) {
+            skip("审批日志已存在");
+            continue;
+        }
+        save(approvalLog);
+    } catch (Exception e) {
+        log.error("审批日志同步失败", e);
+        // 不抛出异常，继续处理其他数据
+    }
+}
+```
+
+### 4.3 接口示例
 
 ```java
 // 迁移接口：旧表 → 新表
@@ -557,7 +625,7 @@ public SyncResult rollback(@RequestBody SyncRequest request) {
 }
 ```
 
-### 4.3 Java代码示例
+### 4.4 Java代码示例
 
 ```java
 @RestController
@@ -588,7 +656,7 @@ public class SyncResult {
 }
 ```
 
-### 4.4 同步逻辑说明
+### 4.5 同步逻辑说明
 
 **订阅关系同步时的数据处理**：
 
