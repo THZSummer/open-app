@@ -81,7 +81,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
             <Button type="link" size="small" onClick={() => handleWithdraw(record)}>撤回审核</Button>
           </>
         )}
-        {record.status === 3 && (
+        {record.status !== 0 && (
           <Button type="link" size="small" danger onClick={() => handleDelete(record)}>删除</Button>
         )}
       </div>
