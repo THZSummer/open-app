@@ -172,67 +172,53 @@ done
 
 ---
 
+#### 验证原则
+
+1. **分类数据**：验证数量一致即可
+2. **API数据**：验证全量API数量一致即可
+3. **事件数据**：验证数量即可
+4. **权限数据**：不做单独验证（API/事件/回调注册接口会同步注册权限，保证接口功能前提下无需单独验证）
+5. **权限与资源关联**：无需单独验证完整性
+
+---
+
 #### 步骤4：数据库脚本一键验证
 
 导入完成后，执行验证脚本确认数据完整性：
 
 ```sql
 -- ============================================
--- 数据导入验证脚本
+-- 数据导入验证脚本（简化版）
 -- ============================================
 
--- 验证分类数据
+-- 验证分类数据数量
 SELECT 
     '分类数据' AS module,
-    COUNT(*) AS count
-FROM openplatform_v2_category_t
-WHERE status = 1;
+    (SELECT COUNT(*) FROM openplatform_module_node_t WHERE status = 1) AS old_count,
+    (SELECT COUNT(*) FROM openplatform_v2_category_t WHERE status = 1) AS new_count;
 
--- 验证API数据
+-- 验证API数据数量
 SELECT 
     'API数据' AS module,
-    COUNT(*) AS count
-FROM openplatform_v2_api_t
-WHERE status IN (1, 2);
+    (SELECT COUNT(*) FROM openplatform_permission_api_t WHERE status = 1) AS old_count,
+    (SELECT COUNT(*) FROM openplatform_v2_api_t WHERE status IN (1, 2)) AS new_count;
 
--- 验证事件数据
+-- 验证事件数据数量
 SELECT 
     '事件数据' AS module,
-    COUNT(*) AS count
-FROM openplatform_v2_event_t
-WHERE status IN (1, 2);
+    (SELECT COUNT(*) FROM openplatform_event_t WHERE status = 1) AS old_count,
+    (SELECT COUNT(*) FROM openplatform_v2_event_t WHERE status IN (1, 2)) AS new_count;
 
--- 验证权限数据
+-- 验证回调数据数量（新增功能）
 SELECT 
-    '权限数据' AS module,
-    COUNT(*) AS count,
-    SUM(CASE WHEN resource_type = 'api' THEN 1 ELSE 0 END) AS api_permission,
-    SUM(CASE WHEN resource_type = 'event' THEN 1 ELSE 0 END) AS event_permission,
-    SUM(CASE WHEN resource_type = 'callback' THEN 1 ELSE 0 END) AS callback_permission
-FROM openplatform_v2_permission_t
-WHERE status = 1;
-
--- 验证权限与资源关联完整性
-SELECT 
-    '权限-资源关联缺失' AS issue,
-    p.id,
-    p.scope,
-    p.resource_type,
-    p.resource_id
-FROM openplatform_v2_permission_t p
-LEFT JOIN openplatform_v2_api_t a ON p.resource_type = 'api' AND p.resource_id = a.id
-LEFT JOIN openplatform_v2_event_t e ON p.resource_type = 'event' AND p.resource_id = e.id
-LEFT JOIN openplatform_v2_callback_t c ON p.resource_type = 'callback' AND p.resource_id = c.id
-WHERE p.status = 1
-AND (p.resource_type = 'api' AND a.id IS NULL)
-OR (p.resource_type = 'event' AND e.id IS NULL)
-OR (p.resource_type = 'callback' AND c.id IS NULL);
+    '回调数据' AS module,
+    0 AS old_count,
+    (SELECT COUNT(*) FROM openplatform_v2_callback_t WHERE status IN (1, 2)) AS new_count;
 ```
 
 **验证要点**：
-- 数据数量是否符合预期
-- 关联关系是否完整（权限→资源）
-- 字段值是否正确（如scope格式）
+- 数据数量是否符合预期（新旧数据量一致或符合业务预期）
+- 回调数据为新增功能，旧表无对应数据
 
 ---
 
