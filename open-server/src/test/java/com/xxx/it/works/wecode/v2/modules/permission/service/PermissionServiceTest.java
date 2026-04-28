@@ -16,6 +16,9 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppAccessException;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import com.xxx.it.works.wecode.v2.modules.permission.dto.*;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
@@ -77,6 +80,9 @@ class PermissionServiceTest {
     @Mock
     private ApprovalEngine approvalEngine;
     
+    @Mock
+    private AppContextResolver appContextResolver;
+    
     @InjectMocks
     private PermissionService permissionService;
 
@@ -109,6 +115,14 @@ class PermissionServiceTest {
         testCategory.setNameCn("测试分类");
         testCategory.setNameEn("Test Category");
         testCategory.setPath("/1/10/");
+
+        // 默认 mock AppContextResolver
+        AppContext defaultAppContext = AppContext.builder()
+                .internalId(1L)
+                .externalId("1")
+                .build();
+        lenient().when(appContextResolver.resolveAndValidate(anyString())).thenReturn(defaultAppContext);
+        lenient().when(appContextResolver.toExternalId(anyLong())).thenReturn("1");
     }
 
     @Nested
@@ -488,6 +502,28 @@ class PermissionServiceTest {
 
             assertThrows(BusinessException.class, () -> {
                 permissionService.subscribeApiPermissions("1", request);
+            });
+        }
+
+        @Test
+        @DisplayName("应用ID无效")
+        void testAppIdInvalid() {
+            when(appContextResolver.resolveAndValidate("invalid_app_id"))
+                    .thenThrow(AppAccessException.notFound("invalid_app_id"));
+
+            assertThrows(AppAccessException.class, () -> {
+                permissionService.getApiSubscriptionList("invalid_app_id", null, null, 1, 20);
+            });
+        }
+
+        @Test
+        @DisplayName("无应用访问权限")
+        void testAppNoPermission() {
+            when(appContextResolver.resolveAndValidate("app_without_permission"))
+                    .thenThrow(AppAccessException.noPermission("app_without_permission"));
+
+            assertThrows(AppAccessException.class, () -> {
+                permissionService.subscribeApiPermissions("app_without_permission", new PermissionSubscribeRequest());
             });
         }
     }
