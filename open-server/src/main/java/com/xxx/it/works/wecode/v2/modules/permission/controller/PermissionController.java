@@ -35,7 +35,7 @@ public class PermissionController {
     /**
      * #27 获取应用 API 权限列表
      */
-    @GetMapping("/api/v1/apps/{appId}/apis")
+    @GetMapping("/service/open/v2/apps/{appId}/apis")
     @Operation(summary = "#27 获取应用 API 权限列表", 
                description = "返回应用 API 权限列表，支持分页")
     public ApiResponse<List<ApiSubscriptionListResponse>> getApiSubscriptionList(
@@ -58,7 +58,7 @@ public class PermissionController {
     /**
      * #28 获取分类下 API 权限列表（权限树懒加载）
      */
-    @GetMapping("/api/v1/categories/{id}/apis")
+    @GetMapping("/service/open/v2/categories/{id}/apis")
     @Operation(summary = "#28 获取分类下 API 权限列表", 
                description = "返回分类下 API 权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath")
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryApiPermissions(
@@ -85,7 +85,7 @@ public class PermissionController {
     /**
      * #29 申请 API 权限（支持批量）
      */
-    @PostMapping("/api/v1/apps/{appId}/apis/subscribe")
+    @PostMapping("/service/open/v2/apps/{appId}/apis/subscribe")
     @Operation(summary = "#29 申请 API 权限", 
                description = "申请 API 权限，支持批量提交，每条权限申请生成独立审批单")
     public ApiResponse<PermissionSubscribeResponse> subscribeApiPermissions(
@@ -102,7 +102,7 @@ public class PermissionController {
     /**
      * #30 撤回审核中的 API 权限申请
      */
-    @PostMapping("/api/v1/apps/{appId}/apis/{id}/withdraw")
+    @PostMapping("/service/open/v2/apps/{appId}/apis/{id}/withdraw")
     @Operation(summary = "#30 撤回 API 权限申请", 
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawApiSubscription(
@@ -120,7 +120,7 @@ public class PermissionController {
     /**
      * #31 删除 API 权限订阅记录
      */
-    @DeleteMapping("/api/v1/apps/{appId}/apis/{id}")
+    @DeleteMapping("/service/open/v2/apps/{appId}/apis/{id}")
     @Operation(summary = "#31 删除 API 权限订阅记录", 
                description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
     public ApiResponse<WithdrawResponse> deleteApiSubscription(
@@ -140,7 +140,7 @@ public class PermissionController {
     /**
      * #32 获取应用事件订阅列表
      */
-    @GetMapping("/api/v1/apps/{appId}/events")
+    @GetMapping("/service/open/v2/apps/{appId}/events")
     @Operation(summary = "#32 获取应用事件订阅列表", 
                description = "返回应用事件订阅列表，支持分页")
     public ApiResponse<List<EventSubscriptionListResponse>> getEventSubscriptionList(
@@ -163,7 +163,7 @@ public class PermissionController {
     /**
      * #33 获取分类下事件权限列表（权限树懒加载）
      */
-    @GetMapping("/api/v1/categories/{id}/events")
+    @GetMapping("/service/open/v2/categories/{id}/events")
     @Operation(summary = "#33 获取分类下事件权限列表", 
                description = "返回分类下事件权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath")
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryEventPermissions(
@@ -190,7 +190,7 @@ public class PermissionController {
     /**
      * #34 申请事件权限（支持批量）
      */
-    @PostMapping("/api/v1/apps/{appId}/events/subscribe")
+    @PostMapping("/service/open/v2/apps/{appId}/events/subscribe")
     @Operation(summary = "#34 申请事件权限", 
                description = "申请事件权限，支持批量提交")
     public ApiResponse<PermissionSubscribeResponse> subscribeEventPermissions(
@@ -207,7 +207,7 @@ public class PermissionController {
     /**
      * #35 配置事件消费参数
      */
-    @PutMapping("/api/v1/apps/{appId}/events/{id}/config")
+    @PutMapping("/service/open/v2/apps/{appId}/events/{id}/config")
     @Operation(summary = "#35 配置事件消费参数", 
                description = "配置事件消费参数（通道/地址/认证）")
     public ApiResponse<WithdrawResponse> configEventSubscription(
@@ -226,7 +226,7 @@ public class PermissionController {
     /**
      * #36 撤回审核中的事件权限申请
      */
-    @PostMapping("/api/v1/apps/{appId}/events/{id}/withdraw")
+    @PostMapping("/service/open/v2/apps/{appId}/events/{id}/withdraw")
     @Operation(summary = "#36 撤回事件权限申请", 
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawEventSubscription(
@@ -244,7 +244,7 @@ public class PermissionController {
     /**
      * #37 删除事件权限订阅记录
      */
-    @DeleteMapping("/api/v1/apps/{appId}/events/{id}")
+    @DeleteMapping("/service/open/v2/apps/{appId}/events/{id}")
     @Operation(summary = "#37 删除事件权限订阅记录", 
                description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
     public ApiResponse<WithdrawResponse> deleteEventSubscription(
@@ -264,7 +264,7 @@ public class PermissionController {
     /**
      * #38 获取应用回调订阅列表
      */
-    @GetMapping("/api/v1/apps/{appId}/callbacks")
+    @GetMapping("/service/open/v2/apps/{appId}/callbacks")
     @Operation(summary = "#38 获取应用回调订阅列表", 
                description = "返回应用回调订阅列表，支持分页")
     public ApiResponse<List<CallbackSubscriptionListResponse>> getCallbackSubscriptionList(
@@ -287,7 +287,7 @@ public class PermissionController {
     /**
      * #39 获取分类下回调权限列表（权限树懒加载）
      */
-    @GetMapping("/api/v1/categories/{id}/callbacks")
+    @GetMapping("/service/open/v2/categories/{id}/callbacks")
     @Operation(summary = "#39 获取分类下回调权限列表", 
                description = "返回分类下回调权限列表（权限树懒加载），返回 category 对象含 path 和 categoryPath")
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryCallbackPermissions(
@@ -314,7 +314,7 @@ public class PermissionController {
     /**
      * #40 申请回调权限（支持批量）
      */
-    @PostMapping("/api/v1/apps/{appId}/callbacks/subscribe")
+    @PostMapping("/service/open/v2/apps/{appId}/callbacks/subscribe")
     @Operation(summary = "#40 申请回调权限", 
                description = "申请回调权限，支持批量提交")
     public ApiResponse<PermissionSubscribeResponse> subscribeCallbackPermissions(
@@ -331,7 +331,7 @@ public class PermissionController {
     /**
      * #41 配置回调消费参数
      */
-    @PutMapping("/api/v1/apps/{appId}/callbacks/{id}/config")
+    @PutMapping("/service/open/v2/apps/{appId}/callbacks/{id}/config")
     @Operation(summary = "#41 配置回调消费参数", 
                description = "配置回调消费参数")
     public ApiResponse<WithdrawResponse> configCallbackSubscription(
@@ -350,7 +350,7 @@ public class PermissionController {
     /**
      * #42 撤回审核中的回调权限申请
      */
-    @PostMapping("/api/v1/apps/{appId}/callbacks/{id}/withdraw")
+    @PostMapping("/service/open/v2/apps/{appId}/callbacks/{id}/withdraw")
     @Operation(summary = "#42 撤回回调权限申请", 
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawCallbackSubscription(
@@ -368,7 +368,7 @@ public class PermissionController {
     /**
      * #43 删除回调权限订阅记录
      */
-    @DeleteMapping("/api/v1/apps/{appId}/callbacks/{id}")
+    @DeleteMapping("/service/open/v2/apps/{appId}/callbacks/{id}")
     @Operation(summary = "#43 删除回调权限订阅记录", 
                description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
     public ApiResponse<WithdrawResponse> deleteCallbackSubscription(

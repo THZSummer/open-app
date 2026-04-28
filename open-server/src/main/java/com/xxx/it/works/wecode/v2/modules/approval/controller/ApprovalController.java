@@ -16,18 +16,18 @@ import java.util.List;
  * 
  * <p>实现审批管理相关的 11 个接口：</p>
  * <ul>
- *   <li>#41 GET /api/v1/approval-flows - 返回审批流程模板列表</li>
- *   <li>#42 GET /api/v1/approval-flows/:id - 返回审批流程模板详情</li>
- *   <li>#43 POST /api/v1/approval-flows - 创建审批流程模板</li>
- *   <li>#44 PUT /api/v1/approval-flows/:id - 更新审批流程模板</li>
-* <li>#45 DELETE /api/v1/approval-flows/:id - 删除审批流程模板</li>
- * <li>#46 GET /api/v1/approvals/pending - 返回待审批列表</li>
- * <li>#47 GET /api/v1/approvals/:id - 返回审批详情</li>
- * <li>#48 POST /api/v1/approvals/:id/approve - 同意审批</li>
- * <li>#49 POST /api/v1/approvals/:id/reject - 驳回审批</li>
- * <li>#50 POST /api/v1/approvals/:id/cancel - 撤销审批</li>
- * <li>#51 POST /api/v1/approvals/batch-approve - 批量同意审批</li>
- * <li>#52 POST /api/v1/approvals/batch-reject - 批量驳回审批</li>
+ *   <li>#41 GET /service/open/v2/approval-flows - 返回审批流程模板列表</li>
+ *   <li>#42 GET /service/open/v2/approval-flows/:id - 返回审批流程模板详情</li>
+ *   <li>#43 POST /service/open/v2/approval-flows - 创建审批流程模板</li>
+ *   <li>#44 PUT /service/open/v2/approval-flows/:id - 更新审批流程模板</li>
+ * <li>#45 DELETE /service/open/v2/approval-flows/:id - 删除审批流程模板</li>
+ * <li>#46 GET /service/open/v2/approvals/pending - 返回待审批列表</li>
+ * <li>#47 GET /service/open/v2/approvals/:id - 返回审批详情</li>
+ * <li>#48 POST /service/open/v2/approvals/:id/approve - 同意审批</li>
+ * <li>#49 POST /service/open/v2/approvals/:id/reject - 驳回审批</li>
+ * <li>#50 POST /service/open/v2/approvals/:id/cancel - 撤销审批</li>
+ * <li>#51 POST /service/open/v2/approvals/batch-approve - 批量同意审批</li>
+ * <li>#52 POST /service/open/v2/approvals/batch-reject - 批量驳回审批</li>
  * </ul>
  * 
  * @author SDDU Build Agent
