@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * 权限管理服务
  * 
  * <p>实现权限申请与订阅管理功能</p>
- * <p>接口编号：#27 ~ #40</p>
+ * <p>接口编号：#27 ~ #43</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -68,7 +68,7 @@ public class PermissionService {
     private final ApprovalEngine approvalEngine;
     private final AppContextResolver appContextResolver;
 
-    // ==================== API 权限管理 (#27-30) ====================
+    // ==================== API 权限管理 (#27-31) ====================
 
     /**
      * #27 获取应用 API 权限列表
@@ -294,10 +294,24 @@ public class PermissionService {
         return withdrawSubscription(subscriptionId);
     }
 
-    // ==================== 事件权限管理 (#31-35) ====================
+    /**
+     * #31 删除 API 权限订阅记录
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public WithdrawResponse deleteApiSubscription(String appId, String subscriptionId) {
+        
+        log.info("Delete API permission subscription, appId={}, subscriptionId={}", appId, subscriptionId);
+        
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
+
+        return deleteSubscription(subscriptionId);
+    }
+
+    // ==================== 事件权限管理 (#32-37) ====================
 
     /**
-     * #31 获取应用事件订阅列表
+     * #32 获取应用事件订阅列表
      */
     public ApiResponse<List<EventSubscriptionListResponse>> getEventSubscriptionList(
             String appId, Integer status, String keyword, Integer curPage, Integer pageSize) {
@@ -333,7 +347,7 @@ public class PermissionService {
     }
 
     /**
-     * #32 获取分类下事件权限列表（权限树懒加载）
+     * #33 获取分类下事件权限列表（权限树懒加载）
      */
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryEventPermissions(
             String categoryId, String appId, String keyword, Integer needApproval,
@@ -389,7 +403,7 @@ public class PermissionService {
     }
 
     /**
-     * #33 申请事件权限（支持批量）
+     * #34 申请事件权限（支持批量）
      */
     @Transactional(rollbackFor = Exception.class)
     public PermissionSubscribeResponse subscribeEventPermissions(String appId, PermissionSubscribeRequest request) {
@@ -485,7 +499,7 @@ public class PermissionService {
     }
 
     /**
-     * #34 配置事件消费参数
+     * #35 配置事件消费参数
      */
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse configEventSubscription(String appId, String subscriptionId, SubscriptionConfigRequest request) {
@@ -519,7 +533,7 @@ public class PermissionService {
     }
 
     /**
-     * #35 撤回审核中的事件权限申请
+     * #36 撤回审核中的事件权限申请
      */
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse withdrawEventSubscription(String appId, String subscriptionId) {
@@ -532,10 +546,24 @@ public class PermissionService {
         return withdrawSubscription(subscriptionId);
     }
 
-    // ==================== 回调权限管理 (#36-40) ====================
+    /**
+     * #37 删除事件权限订阅记录
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public WithdrawResponse deleteEventSubscription(String appId, String subscriptionId) {
+        
+        log.info("Delete event permission subscription, appId={}, subscriptionId={}", appId, subscriptionId);
+        
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
+
+        return deleteSubscription(subscriptionId);
+    }
+
+    // ==================== 回调权限管理 (#38-43) ====================
 
     /**
-     * #36 获取应用回调订阅列表
+     * #38 获取应用回调订阅列表
      */
     public ApiResponse<List<CallbackSubscriptionListResponse>> getCallbackSubscriptionList(
             String appId, Integer status, String keyword, Integer curPage, Integer pageSize) {
@@ -571,7 +599,7 @@ public class PermissionService {
     }
 
     /**
-     * #37 获取分类下回调权限列表（权限树懒加载）
+     * #39 获取分类下回调权限列表（权限树懒加载）
      */
     public ApiResponse<List<CategoryPermissionListResponse>> getCategoryCallbackPermissions(
             String categoryId, String appId, String keyword, Integer needApproval,
@@ -627,7 +655,7 @@ public class PermissionService {
     }
 
     /**
-     * #38 申请回调权限（支持批量）
+     * #40 申请回调权限（支持批量）
      */
     @Transactional(rollbackFor = Exception.class)
     public PermissionSubscribeResponse subscribeCallbackPermissions(String appId, PermissionSubscribeRequest request) {
@@ -724,7 +752,7 @@ public class PermissionService {
     }
 
     /**
-     * #39 配置回调消费参数
+     * #41 配置回调消费参数
      */
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse configCallbackSubscription(String appId, String subscriptionId, SubscriptionConfigRequest request) {
@@ -754,7 +782,7 @@ public class PermissionService {
     }
 
     /**
-     * #40 撤回审核中的回调权限申请
+     * #42 撤回审核中的回调权限申请
      */
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse withdrawCallbackSubscription(String appId, String subscriptionId) {
@@ -765,6 +793,20 @@ public class PermissionService {
         appContextResolver.resolveAndValidate(appId);
 
         return withdrawSubscription(subscriptionId);
+    }
+
+    /**
+     * #43 删除回调权限订阅记录
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public WithdrawResponse deleteCallbackSubscription(String appId, String subscriptionId) {
+        
+        log.info("Delete callback permission subscription, appId={}, subscriptionId={}", appId, subscriptionId);
+        
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
+
+        return deleteSubscription(subscriptionId);
     }
 
     // ==================== 私有方法 ====================
@@ -795,6 +837,35 @@ public class PermissionService {
                 .id(subscriptionId)
                 .status(3)
                 .message("申请已撤回")
+                .build();
+    }
+
+    /**
+     * 删除订阅（通用方法）
+     * 
+     * <p>仅允许删除终态记录（已授权/已拒绝/已取消），审核中的申请不支持删除</p>
+     */
+    private WithdrawResponse deleteSubscription(String subscriptionId) {
+        Long subIdLong = parseId(subscriptionId);
+
+        Subscription subscription = subscriptionMapper.selectById(subIdLong);
+        if (subscription == null) {
+            throw new BusinessException("404", "订阅记录不存在", "Subscription not found");
+        }
+
+        // 检查状态：审核中(0)不允许删除
+        if (subscription.getStatus() == 0) {
+            throw new BusinessException("400", 
+                    "审核中的申请不支持删除，请使用撤回接口", 
+                    "Cannot delete pending subscription, please use withdraw API");
+        }
+
+        // 执行删除
+        subscriptionMapper.deleteById(subIdLong);
+
+        return WithdrawResponse.builder()
+                .id(subscriptionId)
+                .message("订阅记录删除成功")
                 .build();
     }
 
