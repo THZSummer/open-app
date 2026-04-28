@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/sync")
+@RequestMapping("/service/open/v2/sync")
 @RequiredArgsConstructor
 @Tag(name = "数据同步", description = "订阅关系数据双向同步接口")
 public class SyncController {

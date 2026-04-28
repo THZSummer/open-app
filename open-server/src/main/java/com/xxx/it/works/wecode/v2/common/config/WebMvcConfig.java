@@ -14,6 +14,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * <p>注意：标准环境无需修改此配置</p>
  * <p>标准环境的用户认证拦截器由基础模块注入，优先级为 0</p>
  * <p>本配置的拦截器优先级为 10，在标准环境拦截器之后执行</p>
+ * <p>拦截器作用范围：/service/open/v2/**</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -29,7 +30,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 注册用户解析拦截器
         // 优先级 10：在标准环境的认证拦截器（优先级 0）之后执行
         registry.addInterceptor(userResolveInterceptor)
-                .addPathPatterns("/api/**")
+                .addPathPatterns("/service/open/v2/**")
                 .order(10);
     }
 }

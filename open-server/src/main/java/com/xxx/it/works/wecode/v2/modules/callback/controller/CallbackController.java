@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/callbacks")
+@RequestMapping("/service/open/v2/callbacks")
 @RequiredArgsConstructor
 @Tag(name = "回调管理", description = "回调资源管理接口，覆盖 FR-012~FR-015")
 public class CallbackController {

@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/categories")
+@RequestMapping("/service/open/v2/categories")
 @RequiredArgsConstructor
 @Tag(name = "分类管理", description = "分类树形结构 CRUD 和责任人管理接口")
 public class CategoryController {
