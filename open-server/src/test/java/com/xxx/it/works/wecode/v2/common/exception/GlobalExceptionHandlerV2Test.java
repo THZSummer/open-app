@@ -20,10 +20,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @DisplayName("全局异常处理器测试")
-class GlobalExceptionHandlerTest {
+class GlobalExceptionHandlerV2Test {
 
     @InjectMocks
-    private GlobalExceptionHandler handler;
+    private GlobalExceptionHandlerV2 handler;
 
     @BeforeEach
     void setUp() {
