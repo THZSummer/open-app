@@ -178,6 +178,127 @@ class ApiGatewayServiceTest {
         }
     }
 
+    // ==================== 权限校验补充分支测试 ====================
+
+        @Test
+        @DisplayName("应用ID格式错误")
+        void testCheckPermission_InvalidAppId() {
+            PermissionCheckResponse response = apiGatewayService.checkPermission("abc", "api:im:send-message");
+
+            assertNotNull(response);
+            assertFalse(response.getAuthorized());
+            assertEquals("应用ID格式错误", response.getReason());
+
+            verify(permissionMapper, never()).selectByScope(anyString());
+            verify(subscriptionMapper, never()).selectByAppIdAndPermissionId(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("订阅已拒绝")
+        void testCheckPermission_Rejected() {
+            Permission permission = new Permission();
+            permission.setId(200L);
+
+            Subscription subscription = new Subscription();
+            subscription.setId(300L);
+            subscription.setStatus(2);
+
+            when(permissionMapper.selectByScope(anyString())).thenReturn(permission);
+            when(subscriptionMapper.selectByAppIdAndPermissionId(anyLong(), anyLong()))
+                    .thenReturn(subscription);
+
+            PermissionCheckResponse response = apiGatewayService.checkPermission("10", "api:im:send-message");
+
+            assertNotNull(response);
+            assertFalse(response.getAuthorized());
+            assertEquals("订阅已拒绝", response.getReason());
+            assertEquals("300", response.getSubscriptionId());
+            assertEquals(2, response.getSubscriptionStatus());
+        }
+
+        @Test
+        @DisplayName("订阅已取消")
+        void testCheckPermission_Cancelled() {
+            Permission permission = new Permission();
+            permission.setId(200L);
+
+            Subscription subscription = new Subscription();
+            subscription.setId(300L);
+            subscription.setStatus(3);
+
+            when(permissionMapper.selectByScope(anyString())).thenReturn(permission);
+            when(subscriptionMapper.selectByAppIdAndPermissionId(anyLong(), anyLong()))
+                    .thenReturn(subscription);
+
+            PermissionCheckResponse response = apiGatewayService.checkPermission("10", "api:im:send-message");
+
+            assertNotNull(response);
+            assertFalse(response.getAuthorized());
+            assertEquals("订阅已取消", response.getReason());
+            assertEquals("300", response.getSubscriptionId());
+            assertEquals(3, response.getSubscriptionStatus());
+        }
+
+        @Test
+        @DisplayName("订阅状态异常")
+        void testCheckPermission_UnknownStatus() {
+            Permission permission = new Permission();
+            permission.setId(200L);
+
+            Subscription subscription = new Subscription();
+            subscription.setId(300L);
+            subscription.setStatus(9);
+
+            when(permissionMapper.selectByScope(anyString())).thenReturn(permission);
+            when(subscriptionMapper.selectByAppIdAndPermissionId(anyLong(), anyLong()))
+                    .thenReturn(subscription);
+
+            PermissionCheckResponse response = apiGatewayService.checkPermission("10", "api:im:send-message");
+
+            assertNotNull(response);
+            assertFalse(response.getAuthorized());
+            assertEquals("订阅状态异常", response.getReason());
+            assertEquals("300", response.getSubscriptionId());
+            assertEquals(9, response.getSubscriptionStatus());
+        }
+
+    @Nested
+    @DisplayName("Scope 匹配测试")
+    class FindScopeByPathAndMethodTests {
+
+        @Test
+        @DisplayName("根据路径和方法生成Scope")
+        void testFindScopeByPathAndMethod_Success() {
+            String scope = apiGatewayService.findScopeByPathAndMethod("/v1/messages", "GET");
+
+            assertEquals("api::v1:messages:get", scope);
+        }
+
+        @Test
+        @DisplayName("路径中非字母数字字符转换为冒号")
+        void testFindScopeByPathAndMethod_NormalizesSpecialCharacters() {
+            String scope = apiGatewayService.findScopeByPathAndMethod("/v1/messages/{id}", "POST");
+
+            assertEquals("api::v1:messages::id::post", scope);
+        }
+
+        @Test
+        @DisplayName("路径为空返回null")
+        void testFindScopeByPathAndMethod_NullPath() {
+            String scope = apiGatewayService.findScopeByPathAndMethod(null, "GET");
+
+            assertNull(scope);
+        }
+
+        @Test
+        @DisplayName("方法为空返回null")
+        void testFindScopeByPathAndMethod_NullMethod() {
+            String scope = apiGatewayService.findScopeByPathAndMethod("/v1/messages", null);
+
+            assertNull(scope);
+        }
+    }
+
     // ==================== 应用身份验证测试 ====================
 
     @Nested
