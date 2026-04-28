@@ -482,28 +482,30 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
 
 ### 4.1 接口列表
 
-**订阅关系同步接口**：
+**订阅关系同步接口**（自动同步关联的审批数据）：
 ```
-POST /api/v1/sync/subscription/batch     # 批量同步（direction: migrate/rollback）
+POST /api/v1/sync/subscription/batch     # 批量同步订阅关系（自动同步审批数据）
 GET  /api/v1/sync/subscription/status    # 状态查询
 ```
 
-**审批数据同步接口**：
-```
-POST /api/v1/sync/approval/batch         # 批量同步（direction: migrate/rollback）
-GET  /api/v1/sync/approval/status        # 状态查询
-```
+**说明**：
+- 同步订阅关系时，自动同步相关的审批记录和审批日志
+- 迁移方向：订阅关系 + 关联的审批数据一起迁移
+- 回退方向：订阅关系 + 关联的审批数据一起回退
 
 ### 4.2 接口示例
 
 **批量同步接口**（合并迁移和回退）：
 ```java
-@PostMapping("/sync/{module}/batch")
-public SyncResult syncBatch(
-    @PathVariable String module,
-    @RequestBody SyncRequest request) {
-    // request.ids: 要同步的数据ID列表（null=全量）
+@PostMapping("/sync/subscription/batch")
+public SyncResult syncBatch(@RequestBody SyncRequest request) {
+    // request.ids: 要同步的订阅关系ID列表（null=全量）
     // request.direction: "migrate"（迁移）或 "rollback"（回退）
+    
+    // 同步逻辑：
+    // 1. 同步订阅关系数据（openplatform_app_permission_t → openplatform_v2_subscription_t）
+    // 2. 自动同步关联的审批记录（openplatform_eflow_t → openplatform_v2_approval_record_t）
+    // 3. 自动同步关联的审批日志（openplatform_eflow_log_t → openplatform_v2_approval_log_t）
 }
 
 // 请求示例 - 迁移指定ID
@@ -537,8 +539,8 @@ public SyncResult syncBatch(
 
 **状态查询接口**：
 ```java
-@GetMapping("/sync/{module}/status")
-public SyncStatus getStatus(@PathVariable String module) {
+@GetMapping("/sync/subscription/status")
+public SyncStatus getSubscriptionStatus() {
     // 返回：源数据数量、目标数据数量、待同步数量
 }
 
@@ -557,18 +559,40 @@ public SyncStatus getStatus(@PathVariable String module) {
 @RequestMapping("/api/v1/sync")
 public class SyncController {
     
-    @PostMapping("/{module}/batch")
-    public SyncResult syncBatch(
-        @PathVariable String module,
-        @RequestBody SyncRequest request) {
-        // 批量同步（通过direction区分迁移/回退）
+    @PostMapping("/subscription/batch")
+    public SyncResult syncSubscriptionBatch(@RequestBody SyncRequest request) {
+        // 批量同步订阅关系（自动同步审批数据）
+        // direction: "migrate" 或 "rollback"
     }
     
-    @GetMapping("/{module}/status")
-    public SyncStatus getStatus(@PathVariable String module) {
+    @GetMapping("/subscription/status")
+    public SyncStatus getSubscriptionStatus() {
         // 状态查询
     }
 }
+```
+
+### 4.4 同步逻辑说明
+
+**订阅关系同步时的数据处理**：
+
+1. **订阅关系数据同步**
+   - 旧表：`openplatform_app_permission_t`
+   - 新表：`openplatform_v2_subscription_t`
+
+2. **审批记录数据同步（自动）**
+   - 根据 `app_permission.id` 关联查询 `openplatform_eflow_t`（resource_id = app_permission.id）
+   - 旧表：`openplatform_eflow_t`
+   - 新表：`openplatform_v2_approval_record_t`
+
+3. **审批日志数据同步（自动）**
+   - 根据 `eflow_id` 关联查询 `openplatform_eflow_log_t`
+   - 旧表：`openplatform_eflow_log_t`
+   - 新表：`openplatform_v2_approval_log_t`
+
+**同步流程**：
+```
+订阅关系ID → 查询审批记录 → 查询审批日志 → 批量同步
 ```
 
 ---
