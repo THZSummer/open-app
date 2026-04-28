@@ -41,7 +41,7 @@ public class CategoryService {
      * @param categoryAlias 分类别名过滤（可选）
      * @return 树形分类列表
      */
-    public List<CategoryTreeResponse> getCategoryTree(String categoryAlias) {
+    public List<CategoryTreesResponse> getCategoryTree(String categoryAlias) {
         // 查询所有分类
         List<Category> categories;
         if (categoryAlias != null && !categoryAlias.isEmpty()) {
@@ -61,24 +61,24 @@ public class CategoryService {
                 .collect(Collectors.toMap(Category::getId, c -> c));
 
         // 构建树形结构
-        Map<Long, CategoryTreeResponse> responseMap = new HashMap<>();
-        List<CategoryTreeResponse> roots = new ArrayList<>();
+        Map<Long, CategoryTreesResponse> responseMap = new HashMap<>();
+        List<CategoryTreesResponse> roots = new ArrayList<>();
 
         // 第一遍遍历：创建所有响应对象
         for (Category category : categories) {
-            CategoryTreeResponse response = convertToTreeResponse(category);
+            CategoryTreesResponse response = convertToTreeResponse(category);
             responseMap.put(category.getId(), response);
         }
 
         // 第二遍遍历：构建树形关系
         for (Category category : categories) {
-            CategoryTreeResponse response = responseMap.get(category.getId());
+            CategoryTreesResponse response = responseMap.get(category.getId());
             if (category.getParentId() == null || category.getParentId() == 0L) {
                 // 根节点（parentId 为 null 或 0 都视为根节点）
                 roots.add(response);
             } else {
                 // 子节点
-                CategoryTreeResponse parent = responseMap.get(category.getParentId());
+                CategoryTreesResponse parent = responseMap.get(category.getParentId());
                 if (parent != null) {
                     parent.getChildren().add(response);
                 }
@@ -130,7 +130,7 @@ public class CategoryService {
             parentPath = parent.getPath();
             // 子分类不能设置 categoryAlias
             if (request.getCategoryAlias() != null && !request.getCategoryAlias().isEmpty()) {
-                log.warn("子分类不能设置分类别名，将被忽略: {}", request.getCategoryAlias());
+                log.warn("Sub-category cannot set category alias, will be ignored: {}", request.getCategoryAlias());
             }
         }
 
@@ -158,7 +158,7 @@ public class CategoryService {
         // 保存
         categoryMapper.insert(category);
 
-        log.info("分类创建成功: id={}, nameCn={}, path={}", id, request.getNameCn(), path);
+        log.info("Category created successfully: id={}, nameCn={}, path={}", id, request.getNameCn(), path);
 
         return convertToResponse(category);
     }
@@ -188,7 +188,7 @@ public class CategoryService {
         // 保存
         categoryMapper.update(category);
 
-        log.info("分类更新成功: id={}, nameCn={}", id, request.getNameCn());
+        log.info("Category updated successfully: id={}, nameCn={}", id, request.getNameCn());
 
         return convertToResponse(category);
     }
@@ -236,7 +236,7 @@ public class CategoryService {
         // 删除分类
         categoryMapper.deleteById(id);
 
-        log.info("分类删除成功: id={}", id);
+        log.info("Category deleted successfully: id={}", id);
     }
 
     // ==================== 责任人管理 ====================
@@ -282,7 +282,7 @@ public class CategoryService {
         // 保存
         categoryOwnerMapper.insert(owner);
 
-        log.info("分类责任人添加成功: categoryId={}, userId={}", categoryId, request.getUserId());
+        log.info("Category owner added successfully: categoryId={}, userId={}", categoryId, request.getUserId());
 
         return convertToOwnerResponse(owner);
     }
@@ -326,7 +326,7 @@ public class CategoryService {
             throw BusinessException.notFound("责任人不存在", "Owner not found");
         }
 
-        log.info("分类责任人移除成功: categoryId={}, userId={}", categoryId, userId);
+        log.info("Category owner removed successfully: categoryId={}, userId={}", categoryId, userId);
     }
 
     // ==================== 私有方法 ====================
@@ -334,8 +334,8 @@ public class CategoryService {
     /**
      * 转换为树形响应
      */
-    private CategoryTreeResponse convertToTreeResponse(Category category) {
-        CategoryTreeResponse response = new CategoryTreeResponse();
+    private CategoryTreesResponse convertToTreeResponse(Category category) {
+        CategoryTreesResponse response = new CategoryTreesResponse();
         response.setId(String.valueOf(category.getId()));
         response.setCategoryAlias(category.getCategoryAlias());
         response.setNameCn(category.getNameCn());
@@ -389,7 +389,7 @@ public class CategoryService {
                 try {
                     ids.add(Long.parseLong(part));
                 } catch (NumberFormatException e) {
-                    log.warn("无效的路径部分: {}", part);
+                    log.warn("Invalid path part: {}", part);
                 }
             }
         }

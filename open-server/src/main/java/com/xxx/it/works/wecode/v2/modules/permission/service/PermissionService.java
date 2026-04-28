@@ -76,7 +76,7 @@ public class PermissionService {
     public ApiResponse<List<ApiSubscriptionListResponse>> getApiSubscriptionList(
             String appId, Integer status, String keyword, Integer curPage, Integer pageSize) {
         
-        log.info("获取应用 API 权限列表, appId={}, status={}, keyword={}", appId, status, keyword);
+        log.info("Get app API permission list, appId={}, status={}, keyword={}", appId, status, keyword);
 
         // 解析并校验应用访问权限
         AppContext appContext = appContextResolver.resolveAndValidate(appId);
@@ -118,7 +118,7 @@ public class PermissionService {
             String categoryId, String appId, String keyword, Integer needApproval, 
             Boolean includeChildren, Integer curPage, Integer pageSize) {
         
-        log.info("获取分类下 API 权限列表, categoryId={}, appId={}, includeChildren={}", categoryId, appId, includeChildren);
+        log.info("Get API permission list under category, categoryId={}, appId={}, includeChildren={}", categoryId, appId, includeChildren);
 
         Long categoryIdLong = parseId(categoryId);
         
@@ -153,7 +153,7 @@ public class PermissionService {
                 appIdLong = appCtx.getInternalId();
             } catch (Exception e) {
                 // 分类查询时，appId 是可选参数，转换失败时忽略
-                log.warn("解析应用ID失败，跳过订阅状态查询: {}", appId);
+                log.warn("Failed to parse appId, skip subscription status query: {}", appId);
             }
         }
         
@@ -182,7 +182,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public PermissionSubscribeResponse subscribeApiPermissions(String appId, PermissionSubscribeRequest request) {
         
-        log.info("申请 API 权限, appId={}, permissionIds={}", appId, request.getPermissionIds());
+        log.info("Apply for API permission, appId={}, permissionIds={}", appId, request.getPermissionIds());
 
         // 解析并校验应用访问权限
         AppContext appContext = appContextResolver.resolveAndValidate(appId);
@@ -264,10 +264,10 @@ public class PermissionService {
                             currentUser,
                             currentUser
                     );
-                    log.info("创建审批记录成功: subscriptionId={}, approvalId={}", 
+                    log.info("Approval record created successfully: subscriptionId={}, approvalId={}", 
                             subscription.getId(), approvalRecord.getId());
                 } catch (Exception e) {
-                    log.error("创建审批记录失败: subscriptionId={}", subscription.getId(), e);
+                    log.error("Failed to create approval record: subscriptionId={}", subscription.getId(), e);
                 }
             }
         }
@@ -286,7 +286,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse withdrawApiSubscription(String appId, String subscriptionId) {
         
-        log.info("撤回 API 权限申请, appId={}, subscriptionId={}", appId, subscriptionId);
+        log.info("Withdraw API permission application, appId={}, subscriptionId={}", appId, subscriptionId);
         
         // 解析并校验应用访问权限
         appContextResolver.resolveAndValidate(appId);
@@ -302,7 +302,7 @@ public class PermissionService {
     public ApiResponse<List<EventSubscriptionListResponse>> getEventSubscriptionList(
             String appId, Integer status, String keyword, Integer curPage, Integer pageSize) {
         
-        log.info("获取应用事件订阅列表, appId={}", appId);
+        log.info("Get app event subscription list, appId={}", appId);
 
         // 解析并校验应用访问权限
         AppContext appContext = appContextResolver.resolveAndValidate(appId);
@@ -339,7 +339,7 @@ public class PermissionService {
             String categoryId, String appId, String keyword, Integer needApproval,
             Boolean includeChildren, Integer curPage, Integer pageSize) {
         
-        log.info("获取分类下事件权限列表, categoryId={}, appId={}", categoryId, appId);
+        log.info("Get event permission list under category, categoryId={}, appId={}", categoryId, appId);
 
         Long categoryIdLong = parseId(categoryId);
         
@@ -368,7 +368,7 @@ public class PermissionService {
                 AppContext appCtx = appContextResolver.resolveAndValidate(appId);
                 appIdLong = appCtx.getInternalId();
             } catch (Exception e) {
-                log.warn("解析应用ID失败，跳过订阅状态查询: {}", appId);
+                log.warn("Failed to parse appId, skip subscription status query: {}", appId);
             }
         }
         
@@ -394,7 +394,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public PermissionSubscribeResponse subscribeEventPermissions(String appId, PermissionSubscribeRequest request) {
         
-        log.info("申请事件权限, appId={}", appId);
+        log.info("Apply for event permission, appId={}", appId);
 
         // 解析并校验应用访问权限
         AppContext appContext = appContextResolver.resolveAndValidate(appId);
@@ -468,10 +468,10 @@ public class PermissionService {
                             currentUser,
                             currentUser
                     );
-                    log.info("创建审批记录成功: subscriptionId={}, approvalId={}", 
+                    log.info("Approval record created successfully: subscriptionId={}, approvalId={}", 
                             subscription.getId(), approvalRecord.getId());
                 } catch (Exception e) {
-                    log.error("创建审批记录失败: subscriptionId={}", subscription.getId(), e);
+                    log.error("Failed to create approval record: subscriptionId={}", subscription.getId(), e);
                 }
             }
         }
@@ -490,7 +490,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse configEventSubscription(String appId, String subscriptionId, SubscriptionConfigRequest request) {
         
-        log.info("配置事件消费参数, appId={}, subscriptionId={}", appId, subscriptionId);
+        log.info("Configure event consumption params, appId={}, subscriptionId={}", appId, subscriptionId);
 
         // 解析并校验应用访问权限
         appContextResolver.resolveAndValidate(appId);
@@ -524,7 +524,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse withdrawEventSubscription(String appId, String subscriptionId) {
         
-        log.info("撤回事件权限申请, appId={}, subscriptionId={}", appId, subscriptionId);
+        log.info("Withdraw event permission application, appId={}, subscriptionId={}", appId, subscriptionId);
         
         // 解析并校验应用访问权限
         appContextResolver.resolveAndValidate(appId);
@@ -540,7 +540,7 @@ public class PermissionService {
     public ApiResponse<List<CallbackSubscriptionListResponse>> getCallbackSubscriptionList(
             String appId, Integer status, String keyword, Integer curPage, Integer pageSize) {
         
-        log.info("获取应用回调订阅列表, appId={}", appId);
+        log.info("Get app callback subscription list, appId={}", appId);
 
         // 解析并校验应用访问权限
         AppContext appContext = appContextResolver.resolveAndValidate(appId);
@@ -577,7 +577,7 @@ public class PermissionService {
             String categoryId, String appId, String keyword, Integer needApproval,
             Boolean includeChildren, Integer curPage, Integer pageSize) {
         
-        log.info("获取分类下回调权限列表, categoryId={}, appId={}", categoryId, appId);
+        log.info("Get callback permission list under category, categoryId={}, appId={}", categoryId, appId);
 
         Long categoryIdLong = parseId(categoryId);
         
@@ -606,7 +606,7 @@ public class PermissionService {
                 AppContext appCtx = appContextResolver.resolveAndValidate(appId);
                 appIdLong = appCtx.getInternalId();
             } catch (Exception e) {
-                log.warn("解析应用ID失败，跳过订阅状态查询: {}", appId);
+                log.warn("Failed to parse appId, skip subscription status query: {}", appId);
             }
         }
         
@@ -632,7 +632,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public PermissionSubscribeResponse subscribeCallbackPermissions(String appId, PermissionSubscribeRequest request) {
         
-        log.info("申请回调权限, appId={}", appId);
+        log.info("Apply for callback permission, appId={}", appId);
 
         // 解析并校验应用访问权限
         AppContext appContext = appContextResolver.resolveAndValidate(appId);
@@ -707,10 +707,10 @@ public class PermissionService {
                             currentUser,
                             currentUser
                     );
-                    log.info("创建审批记录成功: subscriptionId={}, approvalId={}", 
+                    log.info("Approval record created successfully: subscriptionId={}, approvalId={}", 
                             subscription.getId(), approvalRecord.getId());
                 } catch (Exception e) {
-                    log.error("创建审批记录失败: subscriptionId={}", subscription.getId(), e);
+                    log.error("Failed to create approval record: subscriptionId={}", subscription.getId(), e);
                 }
             }
         }
@@ -729,7 +729,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse configCallbackSubscription(String appId, String subscriptionId, SubscriptionConfigRequest request) {
         
-        log.info("配置回调消费参数, appId={}, subscriptionId={}", appId, subscriptionId);
+        log.info("Configure callback consumption params, appId={}, subscriptionId={}", appId, subscriptionId);
 
         // 解析并校验应用访问权限
         appContextResolver.resolveAndValidate(appId);
@@ -759,7 +759,7 @@ public class PermissionService {
     @Transactional(rollbackFor = Exception.class)
     public WithdrawResponse withdrawCallbackSubscription(String appId, String subscriptionId) {
         
-        log.info("撤回回调权限申请, appId={}, subscriptionId={}", appId, subscriptionId);
+        log.info("Withdraw callback permission application, appId={}, subscriptionId={}", appId, subscriptionId);
         
         // 解析并校验应用访问权限
         appContextResolver.resolveAndValidate(appId);

@@ -14,9 +14,9 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 
 /**
- * 全局异常处理器
+ * Global Exception Handler
  * 
- * <p>统一处理所有异常，返回标准错误格式：{code, messageZh, messageEn, data: null, page: null}</p>
+ * <p>Unified exception handler that returns standard error format: {code, messageZh, messageEn, data: null, page: null}</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -26,17 +26,17 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     /**
-     * 处理业务异常
+     * Handle business exception
      */
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> handleBusinessException(BusinessException e) {
-        log.warn("业务异常: code={}, messageZh={}, messageEn={}", e.getCode(), e.getMessageZh(), e.getMessageEn());
+        log.warn("Business exception: code={}, messageZh={}, messageEn={}", e.getCode(), e.getMessageZh(), e.getMessageEn());
         return ApiResponse.error(e.getCode(), e.getMessageZh(), e.getMessageEn());
     }
 
     /**
-     * 处理参数校验异常（@Valid）
+     * Handle parameter validation exception (@Valid)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -44,12 +44,12 @@ public class GlobalExceptionHandler {
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining(", "));
-        log.warn("参数校验失败: {}", errorMessage);
-        return ApiResponse.error("400", "参数错误: " + errorMessage, "Bad Request: " + errorMessage);
+        log.warn("Parameter validation failed: {}", errorMessage);
+        return ApiResponse.error("400", "Parameter error: " + errorMessage, "Bad Request: " + errorMessage);
     }
 
     /**
-     * 处理参数校验异常（@Validated）
+     * Handle parameter validation exception (@Validated)
      */
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -57,17 +57,17 @@ public class GlobalExceptionHandler {
         String errorMessage = e.getConstraintViolations().stream()
                 .map(ConstraintViolation::getMessage)
                 .collect(Collectors.joining(", "));
-        log.warn("参数校验失败: {}", errorMessage);
-        return ApiResponse.error("400", "参数错误: " + errorMessage, "Bad Request: " + errorMessage);
+        log.warn("Parameter validation failed: {}", errorMessage);
+        return ApiResponse.error("400", "Parameter error: " + errorMessage, "Bad Request: " + errorMessage);
     }
 
     /**
-     * 处理未知异常
+     * Handle unknown exception
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleException(Exception e) {
-        log.error("系统异常", e);
-        return ApiResponse.error("500", "系统内部错误", "Internal Server Error");
+        log.error("System exception", e);
+        return ApiResponse.error("500", "Internal server error", "Internal Server Error");
     }
 }

@@ -242,7 +242,7 @@ public class CallbackService {
             // 无审批节点配置，直接发布
             callback.setStatus(2); // 已发布
             callbackMapper.update(callback);
-            log.info("回调注册无需审批（无审批节点配置），直接发布: callbackId={}", callbackId);
+            log.info("Callback registration does not require approval (no approval nodes configured), publish directly: callbackId={}", callbackId);
         } else {
             // 有审批节点，创建审批单
             try {
@@ -254,9 +254,9 @@ public class CallbackService {
                     UserContextHolder.getUserName(),
                     UserContextHolder.getUserId()
                 );
-                log.info("创建回调注册审批记录: callbackId={}, nodesCount={}", callbackId, approvalNodes.size());
+                log.info("Create callback registration approval record: callbackId={}, nodesCount={}", callbackId, approvalNodes.size());
             } catch (Exception e) {
-                log.warn("创建审批记录失败，回调保持待审状态: callbackId={}", callbackId, e);
+                log.warn("Failed to create approval record, callback remains pending status: callbackId={}", callbackId, e);
             }
         }
 
@@ -266,7 +266,7 @@ public class CallbackService {
             savedProperties = saveProperties(callbackId, request.getProperties());
         }
 
-        log.info("回调注册成功: id={}, nameCn={}, scope={}", callbackId, request.getNameCn(), scope);
+        log.info("Callback registered successfully: id={}, nameCn={}, scope={}", callbackId, request.getNameCn(), scope);
 
         return convertToResponse(callback, permission, savedProperties);
     }
@@ -352,7 +352,7 @@ public class CallbackService {
             savedProperties = callbackPropertyMapper.selectByParentId(id);
         }
 
-        log.info("回调更新成功: id={}, nameCn={}", id, callback.getNameCn());
+        log.info("Callback updated successfully: id={}, nameCn={}", id, callback.getNameCn());
 
         return convertToResponse(callback, permission, savedProperties);
     }
@@ -392,7 +392,7 @@ public class CallbackService {
         // 删除回调
         callbackMapper.deleteById(id);
 
-        log.info("回调删除成功: id={}", id);
+        log.info("Callback deleted successfully: id={}", id);
     }
 
     /**
@@ -424,7 +424,7 @@ public class CallbackService {
         // 保存
         callbackMapper.update(callback);
 
-        log.info("回调撤回成功: id={}", id);
+        log.info("Callback withdrawn successfully: id={}", id);
 
         // 查询权限和属性
         Permission permission = permissionMapper.selectByResource("callback", id);

@@ -57,7 +57,7 @@ public class ApprovalController {
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 
-        log.info("获取审批流程列表: keyword={}, curPage={}, pageSize={}", keyword, curPage, pageSize);
+        log.info("Get approval flow list: keyword={}, curPage={}, pageSize={}", keyword, curPage, pageSize);
 
         ApprovalFlowListRequest request = new ApprovalFlowListRequest();
         request.setKeyword(keyword);
@@ -85,7 +85,7 @@ public class ApprovalController {
      */
     @GetMapping("/approval-flows/{id}")
     public ApiResponse<ApprovalFlowDetailResponse> getFlowDetail(@PathVariable String id) {
-        log.info("获取审批流程详情: id={}", id);
+        log.info("Get approval flow detail: id={}", id);
 
         ApprovalFlowDetailResponse data = approvalService.getFlowDetail(Long.parseLong(id));
         return ApiResponse.success(data);
@@ -100,7 +100,7 @@ public class ApprovalController {
     @PostMapping("/approval-flows")
     public ApiResponse<ApprovalFlowDetailResponse> createFlow(
             @Valid @RequestBody ApprovalFlowCreateRequest request) {
-        log.info("创建审批流程: code={}", request.getCode());
+        log.info("Create approval flow: code={}", request.getCode());
 
         String operator = UserContextHolder.getUserId();
         ApprovalFlowDetailResponse data = approvalService.createFlow(request, operator);
@@ -118,7 +118,7 @@ public class ApprovalController {
     public ApiResponse<ApprovalFlowDetailResponse> updateFlow(
             @PathVariable String id,
             @Valid @RequestBody ApprovalFlowUpdateRequest request) {
-        log.info("更新审批流程: id={}", id);
+        log.info("Update approval flow: id={}", id);
 
         String operator = UserContextHolder.getUserId();
         ApprovalFlowDetailResponse data = approvalService.updateFlow(Long.parseLong(id), request, operator);
@@ -133,7 +133,7 @@ public class ApprovalController {
      */
     @DeleteMapping("/approval-flows/{id}")
     public ApiResponse<Void> deleteFlow(@PathVariable String id) {
-        log.info("删除审批流程: id={}", id);
+        log.info("Delete approval flow: id={}", id);
 
         String operator = UserContextHolder.getUserId();
         approvalService.deleteFlow(Long.parseLong(id), operator);
@@ -164,7 +164,7 @@ public class ApprovalController {
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 
-        log.info("获取待审批列表: type={}, keyword={}, status={}, applicantId={}, approverId={}, curPage={}, pageSize={}", 
+        log.info("Get pending approval list: type={}, keyword={}, status={}, applicantId={}, approverId={}, curPage={}, pageSize={}", 
                 type, keyword, status, applicantId, approverId, curPage, pageSize);
 
         ApprovalPendingListRequest request = new ApprovalPendingListRequest();
@@ -205,7 +205,7 @@ public class ApprovalController {
      */
     @GetMapping("/approvals/{id}")
     public ApiResponse<ApprovalDetailResponse> getApprovalDetail(@PathVariable String id) {
-        log.info("获取审批详情: id={}", id);
+        log.info("Get approval detail: id={}", id);
 
         ApprovalDetailResponse data = approvalService.getApprovalDetail(Long.parseLong(id));
         return ApiResponse.success(data);
@@ -222,7 +222,7 @@ public class ApprovalController {
     public ApiResponse<ApprovalActionResponse> approve(
             @PathVariable String id,
             @RequestBody ApprovalActionRequest request) {
-        log.info("同意审批: id={}", id);
+        log.info("Approve: id={}", id);
 
         String operatorId = UserContextHolder.getUserId();
         String operatorName = UserContextHolder.getUserName();
@@ -244,7 +244,7 @@ public class ApprovalController {
     public ApiResponse<ApprovalActionResponse> reject(
             @PathVariable String id,
             @Valid @RequestBody ApprovalActionRequest request) {
-        log.info("驳回审批: id={}", id);
+        log.info("Reject: id={}", id);
 
         String operatorId = UserContextHolder.getUserId();
         String operatorName = UserContextHolder.getUserName();
@@ -263,7 +263,7 @@ public class ApprovalController {
      */
     @PostMapping("/approvals/{id}/cancel")
     public ApiResponse<ApprovalActionResponse> cancel(@PathVariable String id) {
-        log.info("撤销审批: id={}", id);
+        log.info("Cancel approval: id={}", id);
 
         String operator = UserContextHolder.getUserId();
 
@@ -280,7 +280,7 @@ public class ApprovalController {
     @PostMapping("/approvals/batch-approve")
     public ApiResponse<BatchApprovalResponse> batchApprove(
             @Valid @RequestBody BatchApprovalRequest request) {
-        log.info("批量同意审批: approvalIds={}", request.getApprovalIds());
+        log.info("Batch approve: approvalIds={}", request.getApprovalIds());
 
         String operatorId = UserContextHolder.getUserId();
         String operatorName = UserContextHolder.getUserName();
@@ -299,7 +299,7 @@ public class ApprovalController {
     @PostMapping("/approvals/batch-reject")
     public ApiResponse<BatchApprovalResponse> batchReject(
             @Valid @RequestBody BatchApprovalRequest request) {
-        log.info("批量驳回审批: approvalIds={}", request.getApprovalIds());
+        log.info("Batch reject: approvalIds={}", request.getApprovalIds());
 
         String operatorId = UserContextHolder.getUserId();
         String operatorName = UserContextHolder.getUserName();

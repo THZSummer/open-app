@@ -155,7 +155,7 @@ public class ApprovalService {
 
         flowMapper.insert(flow);
 
-        log.info("创建审批流程: id={}, code={}, operator={}", flow.getId(), flow.getCode(), operator);
+        log.info("Create approval flow: id={}, code={}, operator={}", flow.getId(), flow.getCode(), operator);
 
         return getFlowDetail(flow.getId());
     }
@@ -183,7 +183,7 @@ public class ApprovalService {
 
         flowMapper.update(flow);
 
-        log.info("更新审批流程: id={}, operator={}", id, operator);
+        log.info("Update approval flow: id={}, operator={}", id, operator);
 
         return getFlowDetail(id);
     }
@@ -208,7 +208,7 @@ public class ApprovalService {
 
         flowMapper.deleteById(id);
 
-        log.info("删除审批流程: id={}, code={}, operator={}", id, flow.getCode(), operator);
+        log.info("Delete approval flow: id={}, code={}, operator={}", id, flow.getCode(), operator);
     }
 
     // ==================== 审批执行管理 ====================
@@ -291,7 +291,7 @@ public class ApprovalService {
         // ✅ v2.8.0核心变更：从 combinedNodes 解析审批节点
         List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
         if (nodes.isEmpty()) {
-            log.warn("审批节点解析失败: recordId={}", id);
+            log.warn("Failed to parse approval nodes: recordId={}", id);
         }
 
         // 查询审批日志
@@ -438,7 +438,7 @@ public class ApprovalService {
                         .build());
             } catch (Exception e) {
                 // 其他异常，记录失败原因
-                log.error("批量审批失败: approvalId={}", approvalIdStr, e);
+                log.error("Batch approval failed: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessage())
@@ -483,7 +483,7 @@ public class ApprovalService {
                         .build());
             } catch (Exception e) {
                 // 其他异常，记录失败原因
-                log.error("批量驳回失败: approvalId={}", approvalIdStr, e);
+                log.error("Batch rejection failed: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessage())
@@ -543,7 +543,7 @@ public class ApprovalService {
 
             return data;
         } catch (Exception e) {
-            log.error("获取业务数据失败: businessType={}, businessId={}", businessType, businessId, e);
+            log.error("Failed to get business data: businessType={}, businessId={}", businessType, businessId, e);
             return new HashMap<>();
         }
     }

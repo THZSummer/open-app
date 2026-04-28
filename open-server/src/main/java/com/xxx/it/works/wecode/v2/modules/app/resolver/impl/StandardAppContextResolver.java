@@ -8,12 +8,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * 标准环境应用上下文解析器
+ * Standard Environment Application Context Resolver
  * 
- * <p>生产环境实现：</p>
+ * <p>Production environment implementation:</p>
  * <ul>
- *   <li>ID 转换：调用应用管理服务获取映射关系</li>
- *   <li>权限校验：校验当前用户对该应用的访问权限</li>
+ *   <li>ID conversion: Call application management service to get mapping</li>
+ *   <li>Permission validation: Validate current user's access permission to the application</li>
  * </ul>
  * 
  * @author SDDU Build Agent
@@ -24,27 +24,27 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.resolver.type", havingValue = "standard")
 public class StandardAppContextResolver implements AppContextResolver {
 
-    // TODO: 注入应用管理服务
+    // TODO: Inject application management service
     // @Autowired
     // private AppManageService appManageService;
     
     @Override
     public AppContext resolveAndValidate(String externalAppId) {
-        log.info("标准环境解析应用ID: {}", externalAppId);
+        log.info("Standard environment resolving appId: {}", externalAppId);
         
-        // 1. 校验参数
+        // 1. Validate parameters
         if (externalAppId == null || externalAppId.isEmpty()) {
             throw AppAccessException.notFound(externalAppId);
         }
         
-        // TODO: 标准环境实现，对接应用管理服务
-        // 2. 调用应用管理服务获取内部ID
+        // TODO: Standard environment implementation, integrate with application management service
+        // 2. Call application management service to get internal ID
         // Long internalId = appManageService.getInternalIdByExternalId(externalAppId);
         // if (internalId == null) {
         //     throw AppAccessException.notFound(externalAppId);
         // }
         
-        // 3. 校验当前用户对该应用的访问权限
+        // 3. Validate current user's access permission to the application
         // String currentUserId = UserContextHolder.getUserId();
         // boolean hasPermission = appManageService.checkUserAppPermission(
         //     currentUserId, internalId);
@@ -52,7 +52,7 @@ public class StandardAppContextResolver implements AppContextResolver {
         //     throw AppAccessException.noPermission(externalAppId);
         // }
         
-        // 4. 返回上下文
+        // 4. Return context
         // return AppContext.builder()
         //     .internalId(internalId)
         //     .externalId(externalAppId)
@@ -64,7 +64,7 @@ public class StandardAppContextResolver implements AppContextResolver {
 
     @Override
     public String toExternalId(Long internalId) {
-        // TODO: 标准环境实现
+        // TODO: Standard environment implementation
         // return appManageService.getExternalIdByInternalId(internalId);
         throw new UnsupportedOperationException(
             "StandardAppContextResolver not implemented yet, please implement it in standard environment");
