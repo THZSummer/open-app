@@ -13,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Map;
 
@@ -62,21 +61,6 @@ public class ApiServerClient {
         
         log.warn("[预留实现] API Server 凭证获取方法尚未实现");
         return Map.of();  // 返回空 Map
-    }
-
-    /**
-     * 初始化检查配置
-     */
-    @PostConstruct
-    public void init() {
-        if (authEnabled) {
-            Map<String, String> credentials = getApiServerCredential();
-            if (credentials.isEmpty()) {
-                log.warn("API Server 认证已启用，但凭证获取方法返回空值，请实现 getApiServerCredential() 方法");
-            } else {
-                log.info("API Server 认证配置正常，凭证头字段: {}", credentials.keySet());
-            }
-        }
     }
 
     /**
