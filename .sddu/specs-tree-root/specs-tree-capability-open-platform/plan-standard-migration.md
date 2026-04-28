@@ -16,15 +16,44 @@
 - 当前环境：开发环境（dev/development/local）
 
 ### 1.2 目标状态
-- open-server 作为模块集成到标准环境 Spring Boot 主工程
-- 主工程已有自己的全局组件（异常处理器、拦截器、配置等）
-- 需要实现模块隔离，避免冲突
+
+**核心目标**："迁过去就能用"
+
+**具体要求**：
+1. ✅ **避免冲突**：v2 模块组件不与主工程冲突
+2. ✅ **最小改动**：尽可能少的代码修改
+3. ✅ **开箱即用**：无需复杂配置，迁移即可运行
+
+**实现原则**：
+- 环境感知：配置类自动适配不同环境
+- 条件装配：使用 Spring 条件注解避免 Bean 冲突
+- 作用域隔离：通过包名、路径限定组件作用范围
+- 向后兼容：不破坏现有代码结构
 
 ### 1.3 迁移原则
-1. **模块隔离**：v2 模块组件不影响主工程和其他模块
-2. **配置分离**：开发环境配置只在开发环境生效
-3. **路径区分**：使用独立的 URL 前缀标识 v2 模块
-4. **命名规范**：全局组件添加 V2 后缀，避免类名冲突
+
+**核心原则："迁过去就能用"**
+
+1. **最小改动**：优先使用配置和注解解决冲突，而非修改代码结构
+   - ✅ 使用 `@ConditionalOnMissingBean` 自动适配
+   - ✅ 使用 `@Profile` 环境感知
+   - ✅ 使用 `basePackages` 作用域隔离
+   - ❌ 不删除现有代码
+   - ❌ 不重构代码结构
+
+2. **自动适配**：代码能感知运行环境，自动选择合适的配置
+   - 开发环境：使用 v2 的配置
+   - 标准环境：自动使用主工程配置
+
+3. **隔离优先**：通过 Spring 机制实现模块隔离
+   - 异常处理隔离：`basePackages`
+   - 拦截器隔离：`order` + `pathPatterns`
+   - Bean 隔离：`@ConditionalOnMissingBean`
+
+4. **零侵入**：对主工程零侵入
+   - 不修改主工程代码
+   - 不修改主工程配置
+   - 不影响主工程其他模块
 
 ---
 
@@ -63,6 +92,63 @@ public class GlobalExceptionHandlerV2 {
 ---
 
 ## 3. 需要修改的内容
+
+### 3.0 接口路径修改评估
+
+**核心原则**："最小改动，迁过去就能用"
+
+#### 方案对比
+
+| 方案 | 改动量 | 冲突风险 | 使用建议 |
+|------|--------|---------|---------|
+| **方案一：保持原路径，前端网关隔离** | ✅ 无改动 | 中等 | 推荐用于快速集成 |
+| **方案二：修改为统一路径** | ❌ 较大改动 | 低 | 推荐用于长期维护 |
+
+#### 推荐方案：保持原路径，前端网关隔离
+
+**实现方式**：
+- 不修改接口路径
+- 通过前端网关（Nginx/Gateway）做路径映射
+- 主工程通过网关区分不同模块
+
+**优点**：
+- ✅ **零代码改动**
+- ✅ **迁移即可使用**
+- ✅ 不影响前端已有的 API 调用
+- ✅ 快速集成
+
+**配置示例**：
+```nginx
+# Nginx 配置
+location /service/open/v2/ {
+    proxy_pass http://open-server/api/v1/;
+}
+```
+
+**或者 Spring Cloud Gateway**：
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: open-server-v2
+          uri: lb://open-server
+          predicates:
+            - Path=/service/open/v2/**
+          filters:
+            - RewritePath=/service/open/v2/(?<segment>.*), /api/v1/$\{segment}
+```
+
+#### 备选方案：修改接口路径
+
+**仅在以下情况使用**：
+- 主工程没有网关层
+- 接口路径必须统一规范
+- 长期维护需求
+
+**详细方案**：（见下节）
+
+---
 
 ### 3.1 🔴 高优先级：接口路径统一修改
 
@@ -105,9 +191,11 @@ public class GlobalExceptionHandlerV2 {
 
 ---
 
-### 3.2 🟡 中优先级：配置类冲突评估
+### 3.2 配置类自动适配（推荐方案）
 
-#### 3.2.1 JacksonConfig.java
+**核心思路**：使用 Spring 条件注解，"迁过去就能用"
+
+#### 3.2.1 JacksonConfig.java - 自动适配
 
 **当前配置**：
 ```java
@@ -122,81 +210,83 @@ public class JacksonConfig {
 }
 ```
 
-**潜在冲突**：
-- 主工程可能已有 ObjectMapper Bean
-- 可能覆盖主工程的 Jackson 配置
+**推荐方案：添加条件注解（最小改动）** ✅
 
-**解决方案**：
-
-**方案一：添加条件注解**（推荐）
-```java
-@Configuration
-@ConditionalOnMissingBean(ObjectMapper.class)
-public class JacksonConfig {
-    // 只在主工程没有 ObjectMapper 时才创建
-}
-```
-
-**方案二：限定作用范围**
 ```java
 @Configuration
 public class JacksonConfig {
-    @Bean("v2ObjectMapper")
-    @Primary(false)
-    public ObjectMapper v2ObjectMapper(Jackson2ObjectMapperBuilder builder) {
-        // 不覆盖主工程的 ObjectMapper
-    }
-}
-```
-
-**方案三：直接删除**
-- 如果主工程已有相同配置，可以直接删除此配置类
-
-**需要确认**：主工程是否已有 Jackson 配置？
-
----
-
-#### 3.2.2 IdGeneratorConfig.java
-
-**当前配置**：
-```java
-@Configuration
-public class IdGeneratorConfig {
+    
     @Bean
-    public IdGeneratorStrategy idGenerator() {
-        // 根据环境选择 ID 生成策略
+    @ConditionalOnMissingBean(ObjectMapper.class)
+    // ✅ 主工程没有 ObjectMapper 时才创建
+    // ✅ 主工程有 ObjectMapper 时自动使用主工程的
+    // ✅ 零侵入，自动适配
+    public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
+        ObjectMapper objectMapper = builder.createXmlMapper(false).build();
+        
+        // Java 8 时间模块
+        objectMapper.registerModule(new JavaTimeModule());
+        
+        // 禁用日期序列化为时间戳
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        
+        // 设置时区为北京时间
+        objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
+        
+        // Long 类型序列化为 String，避免 JavaScript 精度丢失
+        SimpleModule simpleModule = new SimpleModule();
+        simpleModule.addSerializer(Long.class, ToStringSerializer.instance);
+        simpleModule.addSerializer(Long.TYPE, ToStringSerializer.instance);
+        objectMapper.registerModule(simpleModule);
+        
+        return objectMapper;
     }
 }
 ```
 
-**潜在冲突**：
-- 主工程可能已有 ID 生成器 Bean
-- Bean 名称可能冲突
+**优点**：
+- ✅ 只需添加一行注解 `@ConditionalOnMissingBean`
+- ✅ 迁过去就能用，无需删除代码
+- ✅ 主工程有配置时自动使用主工程的
+- ✅ 主工程无配置时自动创建
 
-**解决方案**：
+#### 3.2.2 IdGeneratorConfig.java - 自动适配
 
-**方案一：添加条件注解**（推荐）
+**推荐方案：添加条件注解（最小改动）** ✅
+
 ```java
 @Configuration
 public class IdGeneratorConfig {
+
+    private final List<IdGeneratorStrategy> strategies;
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+
     @Bean
     @ConditionalOnMissingBean(IdGeneratorStrategy.class)
+    // ✅ 主工程没有 ID 生成器时才创建
+    // ✅ 主工程有 ID 生成器时自动使用主工程的
+    // ✅ 零侵入，自动适配
     public IdGeneratorStrategy idGenerator() {
-        // 只在主工程没有 ID 生成器时才创建
+        IdGeneratorStrategy strategy = strategies.stream()
+                .filter(s -> s.supports(activeProfile))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        String.format(Locale.ROOT, "No ID generator strategy found for current environment [%s]", activeProfile)));
+        
+        log.info("ID generator strategy loaded: {}, active profile: {}", 
+                strategy.getClass().getSimpleName(), activeProfile);
+        
+        return strategy;
     }
 }
 ```
 
-**方案二：限定为开发环境**
-```java
-@Configuration
-@Profile({"dev", "development", "local"})
-public class IdGeneratorConfig {
-    // 只在开发环境生效
-}
-```
-
-**需要确认**：主工程是否有 ID 生成器？标准环境如何生成 ID？
+**优点**：
+- ✅ 只需添加一行注解 `@ConditionalOnMissingBean`
+- ✅ 迁过去就能用，无需删除代码
+- ✅ 自动适配不同环境
 
 ---
 
@@ -218,6 +308,36 @@ public class IdGeneratorConfig {
 ---
 
 ## 4. 迁移执行计划
+
+### 核心思路
+
+**遵循"迁过去就能用"原则**：
+
+```
+开发环境（独立运行）
+    ↓ 直接迁移
+标准环境（集成到主工程）
+    ↓ 自动适配
+✅ 正常运行
+```
+
+**最小改动方案**：
+
+| 组件 | 改动内容 | 改动量 |
+|------|---------|--------|
+| 异常处理器 | 已完成（basePackages 限定） | ✅ 无需改动 |
+| Jackson 配置 | 添加 `@ConditionalOnMissingBean` | ✅ 1 行 |
+| ID 生成器配置 | 添加 `@ConditionalOnMissingBean` | ✅ 1 行 |
+| 接口路径 | 保持不变，网关层隔离 | ✅ 0 行 |
+| **总计** | | **2 行代码** |
+
+**迁移步骤**：
+1. ✅ 添加 2 行条件注解
+2. ✅ 迁移代码到主工程
+3. ✅ 启动测试
+4. ✅ 完成
+
+---
 
 ### 4.1 准备阶段
 
