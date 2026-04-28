@@ -1,5 +1,3 @@
-export const useTrueFetch = true;
-
 export const API_BASE_URL = '';
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50];

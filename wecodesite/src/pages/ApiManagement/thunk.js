@@ -2,11 +2,7 @@
  * API 管理相关 API
  * 用于应用订阅 API 权限
  */
-import { useTrueFetch } from '../../utils/constants';
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
-import { mockApis, identityPermissionApis } from './mock';
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * 获取分类列表（用于模块列表）
@@ -14,36 +10,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @param {string} apiType - API类型（如 api_business_app_soa, api_personal_user_aksk）
  * @returns {Promise<Array>} 分类列表数组
  */
-const API_TYPE_MAP = {
-  api_business_app_soa: 'BUSINESS_IDENTITY_SOA',
-  api_business_app_apig: 'BUSINESS_IDENTITY_APIG',
-  api_business_user_soa: 'PERSONAL_IDENTITY_SOA',
-  api_business_user_apig: 'PERSONAL_IDENTITY_APIG',
-  api_personal_user_aksk: 'PERSONAL_IDENTITY_AKSK'
-};
-
-const getMockKey = (apiType) => {
-  return API_TYPE_MAP[apiType];
-};
-
 export const fetchCategories = async (apiType) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    const mockKey = getMockKey(apiType);
-    const data = identityPermissionApis[mockKey]?.modules || [];
-    console.log('apiType, mockKey, data', apiType, mockKey, data);
-    
-    const categories = [{
-      id: '1',
-      nameCn: 'API分类',
-      children: data.map((item, index) => ({
-        id: item.key,
-        nameCn: item.name,
-        name: item.name
-      }))
-    }];
-    return categories;
-  }
   try {
     const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: apiType } });
     return result || {};
@@ -58,41 +25,6 @@ export const fetchCategories = async (apiType) => {
  * @returns {Promise<Array>} 筛选后的API列表
  */
 export const fetchApis = async ({ keyword, needReview, apiType, categoryId, curPage, pageSize, appId }) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    const mockKey = getMockKey(apiType);
-    let apis = identityPermissionApis[mockKey]?.apis || [];
-    
-    if (categoryId && categoryId !== 'all') {
-      const category = identityPermissionApis[mockKey]?.modules?.find(m => m.key === categoryId);
-      if (category) {
-        apis = apis.filter(api => api.category === category.name);
-      }
-    }
-    
-    if (keyword) {
-      const lowerKeyword = keyword.toLowerCase();
-      apis = apis.filter(api => 
-        (api.nameCn || api.name || '').toLowerCase().includes(lowerKeyword) || 
-        (api.scope || '').toLowerCase().includes(lowerKeyword)
-      );
-    }
-    if (needReview !== undefined && needReview !== 'all') {
-      const needReviewBool = needReview === 'true';
-      apis = apis.filter(api => api.needReview === needReviewBool);
-    }
-    
-    const total = apis.length;
-    const startIndex = ((curPage || 1) - 1) * (pageSize || 10);
-    const paginatedApis = apis.slice(startIndex, startIndex + (pageSize || 10));
-    
-    return {
-      data: paginatedApis,
-      total: total,
-      page: { curPage: curPage || 1, pageSize: pageSize || 10, total }
-    };
-  }
-  
   const queryParams = {};
   if (keyword) queryParams.keyword = keyword;
   if (needReview !== undefined && needReview !== 'all') {
@@ -118,33 +50,6 @@ export const fetchApis = async ({ keyword, needReview, apiType, categoryId, curP
  * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
  */
 export const fetchAppApis = async (appId, params = {}) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    let data = mockApis;
-    data = data.filter(item => item.status !== 3);
-    if (params.status !== undefined) {
-      data = data.filter(item => item.status === params.status);
-    }
-    if (params.keyword) {
-      data = data.filter(item =>
-        item.permission?.nameCn?.includes(params.keyword) ||
-        item.permission?.scope?.includes(params.keyword)
-      );
-    }
-    
-    const curPage = params.curPage || 1;
-    const pageSize = params.pageSize || 10;
-    const total = data.length;
-    const startIndex = (curPage - 1) * pageSize;
-    const paginatedData = data.slice(startIndex, startIndex + pageSize);
-    
-    return {
-      code: '200',
-      messageZh: '查询成功',
-      data: paginatedData,
-      page: { curPage, pageSize, total }
-    };
-  }
   try {
     const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.LIST, { appId }), { params });
     return result || {};
@@ -160,24 +65,6 @@ export const fetchAppApis = async (appId, params = {}) => {
  * @returns {Promise<Object>} 订阅结果
  */
 export const subscribeApis = async (appId, params) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    const { permissionIds } = params;
-    return {
-      code: '200',
-      messageZh: `申请已提交，共${permissionIds?.length || 0}条，等待审批`,
-      data: {
-        successCount: permissionIds?.length || 0,
-        failedCount: 0,
-        records: permissionIds?.map(permissionId => ({
-          id: String(Date.now() + Math.random()),
-          appId,
-          permissionId,
-          status: 0
-        })) || []
-      }
-    };
-  }
   try {
     const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
     return result || {};
@@ -193,17 +80,6 @@ export const subscribeApis = async (appId, params) => {
  * @returns {Promise<Object>} 撤回结果
  */
 export const withdrawApiApplication = async (appId, subscriptionId) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    return {
-      code: '200',
-      messageZh: '申请已撤回',
-      data: {
-        id: subscriptionId,
-        status: 2
-      }
-    };
-  }
   try {
     const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.WITHDRAW, { appId, id: subscriptionId }), { method: 'POST' });
     return result || {};
@@ -218,11 +94,6 @@ export const withdrawApiApplication = async (appId, subscriptionId) => {
  * @returns {Promise<Object>} 催办结果
  */
 export const remindApproval = async (id) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    console.log(`催办 API id: ${id}`);
-    return { code: '200', messageZh: '催办成功' };
-  }
   try {
     const result = await fetchApi(`/approval/remind`, { method: 'POST', body: JSON.stringify({ id }) });
     return result || {};
@@ -238,11 +109,6 @@ export const remindApproval = async (id) => {
  * @returns {Promise<Object>} 删除结果
  */
 export const deleteApiSubscription = async (appId, subscriptionId) => {
-  if (!useTrueFetch) {
-    await delay(300);
-    console.log(`删除 API 订阅 id: ${subscriptionId}`);
-    return { code: '200', messageZh: '删除成功' };
-  }
   try {
     const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.DELETE, { appId, id: subscriptionId }), { method: 'DELETE' });
     return result || {};

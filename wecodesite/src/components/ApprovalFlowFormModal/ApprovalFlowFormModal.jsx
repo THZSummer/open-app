@@ -10,6 +10,7 @@ import {
 } from 'antd';
 import {
   MinusCircleOutlined,
+  PlusOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 
@@ -84,9 +85,6 @@ function ApprovalFlowFormModal({
       <Form
         form={form}
         layout="vertical"
-        initialValues={{
-          nodes: [],
-        }}
       >
         <Form.Item
           label="流程名称（中文）"
@@ -117,19 +115,6 @@ function ApprovalFlowFormModal({
             placeholder="请输入流程代码（如：api_register）"
             disabled={!!isEditing}
           />
-        </Form.Item>
-
-        <Form.Item label="审批类型">
-          <Form.Item name="code" noStyle>
-            {({ getFieldValue }) => {
-              const code = getFieldValue('code');
-              return (
-                <Tag color={code === 'global' ? 'green' : 'blue'}>
-                  {code === 'global' ? '全局审批' : '场景审批'}
-                </Tag>
-              );
-            }}
-          </Form.Item>
         </Form.Item>
 
         <Divider orientation="left">审批节点配置</Divider>

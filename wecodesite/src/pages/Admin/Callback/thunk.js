@@ -2,11 +2,7 @@
  * Admin模块 - 回调管理相关API
  * 用于管理员管理平台全部回调接口的定义、发布和下线操作
  */
-import { useTrueFetch } from '../../../utils/constants';
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
-import { mockCallbacks } from './mock';
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * 获取回调列表（管理员视角）
@@ -14,34 +10,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
  */
 export const fetchCallbackList = async (params = {}) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(API_CONFIG.CALLBACKS.LIST, { method: 'GET', params });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(API_CONFIG.CALLBACKS.LIST, { method: 'GET', params });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  let data = mockCallbacks;
-  if (params.categoryId) {
-    data = data.filter(item => item.categoryId === params.categoryId);
-  }
-  if (params.status !== undefined) {
-    data = data.filter(item => item.status === params.status);
-  }
-  if (params.keyword) {
-    data = data.filter(item =>
-      item.nameCn.includes(params.keyword) ||
-      item.nameEn.includes(params.keyword)
-    );
-  }
-  return {
-    code: '200',
-    messageZh: '查询成功',
-    data: data,
-    page: { curPage: 1, pageSize: 20, total: data.length }
-  };
 };
 
 /**
@@ -50,21 +24,12 @@ export const fetchCallbackList = async (params = {}) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const fetchCallbackDetail = async (id) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DETAIL, { id }));
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DETAIL, { id }));
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  const callback = mockCallbacks.find(item => item.id === id);
-  return {
-    code: '200',
-    messageZh: '查询成功',
-    data: callback
-  };
 };
 
 /**
@@ -73,20 +38,12 @@ export const fetchCallbackDetail = async (id) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const createCallback = async (data) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(API_CONFIG.CALLBACKS.CREATE, { method: 'POST', body: JSON.stringify(data) });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(API_CONFIG.CALLBACKS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '注册成功',
-    data: { id: String(Date.now()), ...data, status: 0 }
-  };
 };
 
 /**
@@ -96,20 +53,12 @@ export const createCallback = async (data) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const updateCallback = async (id, data) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '更新成功',
-    data: { id, ...data }
-  };
 };
 
 /**
@@ -118,20 +67,12 @@ export const updateCallback = async (id, data) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const deleteCallback = async (id) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id }), { method: 'DELETE' });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id }), { method: 'DELETE' });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '删除成功',
-    data: { id }
-  };
 };
 
 /**
@@ -140,18 +81,10 @@ export const deleteCallback = async (id) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const withdrawCallback = async (id) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.WITHDRAW, { id }), { method: 'POST' });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.WITHDRAW, { id }), { method: 'POST' });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '撤回成功',
-    data: { id, status: 0 }
-  };
 };

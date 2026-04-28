@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Table, Button, Tag, Pagination, Input, Select, message } from 'antd';
 const { TabPane } = Tabs;
 import { fetchApis, fetchCategories } from './thunk';
-import { mockFeatureFlag } from './mock';
 import { mockAppInfo } from '../BasicInfo/mock';
 import { AUTH_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import {
@@ -61,7 +60,7 @@ const transformCategoriesToModules = (categories) => {
  */
 function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   // 是否启用身份权限功能开关（仅控制第一层Tab是否显示）
-  const enableIdentityPermission = mockFeatureFlag.enableIdentityPermission;
+  const enableIdentityPermission = true;
   
   // 根据 appId 获取应用信息，判断是业务应用还是个人应用
   const appInfo = appId ? mockAppInfo[appId] : null;

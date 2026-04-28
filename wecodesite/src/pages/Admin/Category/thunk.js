@@ -2,11 +2,7 @@
  * Admin模块 - 分类管理相关API
  * 用于管理员管理平台API/事件/回调的分类结构
  */
-import { useTrueFetch } from '../../../utils/constants';
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
-import { mockCategories } from './mock';
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * 获取分类树结构
@@ -14,20 +10,12 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const fetchCategoryTree = async (params = {}) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '查询成功',
-    data: mockCategories
-  };
 };
 
 /**
@@ -36,21 +24,12 @@ export const fetchCategoryTree = async (params = {}) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const fetchCategoryDetail = async (id) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DETAIL, { id }));
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DETAIL, { id }));
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  const category = mockCategories.find(item => item.id === id);
-  return {
-    code: '200',
-    messageZh: '查询成功',
-    data: category
-  };
 };
 
 /**
@@ -59,20 +38,12 @@ export const fetchCategoryDetail = async (id) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const fetchCategoryOwners = async (categoryId) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }));
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }));
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '查询成功',
-    data: mockOwners
-  };
 };
 
 /**
@@ -81,20 +52,12 @@ export const fetchCategoryOwners = async (categoryId) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const createCategory = async (data) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(API_CONFIG.CATEGORIES.CREATE, { method: 'POST', body: JSON.stringify(data) });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(API_CONFIG.CATEGORIES.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '创建成功',
-    data: { id: String(Date.now()), ...data }
-  };
 };
 
 /**
@@ -104,20 +67,12 @@ export const createCategory = async (data) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const updateCategory = async (id, data) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '更新成功',
-    data: { id, ...data }
-  };
 };
 
 /**
@@ -126,20 +81,12 @@ export const updateCategory = async (id, data) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const deleteCategory = async (id) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DELETE, { id }), { method: 'DELETE' });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.DELETE, { id }), { method: 'DELETE' });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '删除成功',
-    data: { id }
-  };
 };
 
 /**
@@ -149,20 +96,12 @@ export const deleteCategory = async (id) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const addCategoryOwner = async (categoryId, owner) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }), { method: 'POST', body: JSON.stringify(owner) });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.OWNERS, { id: categoryId }), { method: 'POST', body: JSON.stringify(owner) });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '添加成功',
-    data: { id: String(Date.now()), categoryId, ...owner }
-  };
 };
 
 /**
@@ -172,18 +111,10 @@ export const addCategoryOwner = async (categoryId, owner) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const removeCategoryOwner = async (categoryId, userId) => {
-  if (useTrueFetch) {
-    try {
-      const result = await fetchApi(`/categories/${categoryId}/owners/${userId}`, { method: 'DELETE' });
-      return result || {};
-    } catch (err) {
-      return {};
-    }
+  try {
+    const result = await fetchApi(`/categories/${categoryId}/owners/${userId}`, { method: 'DELETE' });
+    return result || {};
+  } catch (err) {
+    return {};
   }
-  await delay(300);
-  return {
-    code: '200',
-    messageZh: '移除成功',
-    data: { categoryId, userId }
-  };
 };

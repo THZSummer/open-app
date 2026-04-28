@@ -113,10 +113,6 @@ export const mockApis = [
   },
 ];
 
-export const mockFeatureFlag = {
-  enableIdentityPermission: true,
-};
-
 export const identityPermissionApis = {
   BUSINESS_IDENTITY_SOA: {
     modules: [
