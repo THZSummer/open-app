@@ -23,7 +23,8 @@
 | 序号 | 数据对象 | 旧表 | 新表 | 同步方式 |
 |------|----------|------|------|----------|
 | 8 | 订阅关系数据 | openplatform_app_permission_t | openplatform_v2_subscription_t | **双向同步** |
-| 9 | 审批数据 | openplatform_eflow_t + openplatform_eflow_log_t | openplatform_v2_approval_flow_t + openplatform_v2_approval_record_t + openplatform_v2_approval_log_t | **双向同步** |
+| 9 | 审批数据 | openplatform_eflow_t + openplatform_eflow_log_t | openplatform_v2_approval_record_t + openplatform_v2_approval_log_t | **双向同步** |
+| 9.1 | 审批流程模板 | - | openplatform_v2_approval_flow_t | **平台后台新建**（新增功能表） |
 
 **处理方式**：需要双向同步
 - 迁移场景：旧→新（用户在旧系统操作的数据同步到新系统）
@@ -324,6 +325,17 @@ GET  /api/v1/sync/subscription/status    # 同步状态查询
 ---
 
 ### 3.2 审批数据同步
+
+#### 重要说明
+
+**审批流程模板表（`openplatform_v2_approval_flow_t`）为新增功能表**：
+- 旧系统没有审批流程模板的概念
+- 该表需要在平台后台新建配置
+- **不涉及数据同步**
+
+**需要同步的数据**：
+- `openplatform_v2_approval_record_t` - 审批记录（从旧表提取）
+- `openplatform_v2_approval_log_t` - 审批日志（从旧表迁移）
 
 #### 旧表结构
 
