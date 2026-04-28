@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.app.resolver;
 
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
+import java.util.Locale;
 
 /**
  * 应用访问异常
@@ -24,8 +25,8 @@ public class AppAccessException extends BusinessException {
     public static AppAccessException notFound(String appId) {
         return new AppAccessException(
             "APP_NOT_FOUND",
-            String.format("应用不存在: %s", appId),
-            String.format("Application not found: %s", appId)
+            String.format(Locale.ROOT, "应用不存在: %s", appId),
+            String.format(Locale.ROOT, "Application not found: %s", appId)
         );
     }
 
@@ -35,8 +36,8 @@ public class AppAccessException extends BusinessException {
     public static AppAccessException noPermission(String appId) {
         return new AppAccessException(
             "APP_NO_PERMISSION",
-            String.format("无权访问应用: %s", appId),
-            String.format("No permission to access application: %s", appId)
+            String.format(Locale.ROOT, "无权访问应用: %s", appId),
+            String.format(Locale.ROOT, "No permission to access application: %s", appId)
         );
     }
 }

@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -450,7 +451,7 @@ public class ApprovalService {
                 .successCount(successCount)
                 .failedCount(failedItems.size())
                 .failedItems(failedItems.isEmpty() ? null : failedItems)
-                .message(String.format("批量审批完成，成功%d条，失败%d条", successCount, failedItems.size()))
+                .message(String.format(Locale.ROOT, "批量审批完成，成功%d条，失败%d条", successCount, failedItems.size()))
                 .build();
     }
 
@@ -495,7 +496,7 @@ public class ApprovalService {
                 .successCount(successCount)
                 .failedCount(failedItems.size())
                 .failedItems(failedItems.isEmpty() ? null : failedItems)
-                .message(String.format("批量驳回完成，成功%d条，失败%d条", successCount, failedItems.size()))
+                .message(String.format(Locale.ROOT, "批量驳回完成，成功%d条，失败%d条", successCount, failedItems.size()))
                 .build();
     }
 
@@ -538,6 +539,9 @@ public class ApprovalService {
                         data.put("appId", subscription.getAppId());
                         data.put("permissionId", subscription.getPermissionId());
                     }
+                    break;
+                default:
+                    log.warn("Unknown business type: {}", businessType);
                     break;
             }
 

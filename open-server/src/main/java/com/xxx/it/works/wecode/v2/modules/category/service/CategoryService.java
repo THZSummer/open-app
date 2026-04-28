@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -221,7 +222,7 @@ public class CategoryService {
         int totalResources = apiCount + eventCount + callbackCount;
 
         if (totalResources > 0) {
-            String resourceInfo = String.format("API: %d, 事件: %d, 回调: %d", apiCount, eventCount, callbackCount);
+            String resourceInfo = String.format(Locale.ROOT, "API: %d, 事件: %d, 回调: %d", apiCount, eventCount, callbackCount);
             throw new BusinessException("409", 
                     "分类下存在 " + totalResources + " 个资源（" + resourceInfo + "），无法删除", 
                     "Category has " + totalResources + " resources, cannot delete");
