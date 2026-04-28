@@ -666,3 +666,211 @@ public class SyncResult {
 ```
 
 
+
+### 4.6 详细实现逻辑
+
+#### 4.6.1 权限ID查找链路（不建映射表）
+
+**迁移（旧→新）查找流程**：
+
+```
+旧订阅关系.permission_id
+        ↓
+旧权限表 (openplatform_permission_t)
+    → 得到 resource_type, resource_id
+        ↓
+┌─ 如果是 API：
+│   旧API表(resource_id) → path + method
+│       ↓
+│   新API表(openplatform_v2_api_t) → 匹配 path + method → 新API.id
+│       ↓
+│   新权限表(openplatform_v2_permission_t) 
+│       WHERE resource_type='api' AND resource_id=新API.id
+│       → 新权限ID
+│
+└─ 如果是事件：
+    旧事件表(resource_id) → topic
+        ↓
+    新事件表(openplatform_v2_event_t) → 匹配 topic → 新事件.id
+        ↓
+    新权限表(openplatform_v2_permission_t)
+        WHERE resource_type='event' AND resource_id=新事件.id
+        → 新权限ID
+```
+
+**回退（新→旧）查找流程**：反向查找
+
+---
+
+#### 4.6.2 通道配置获取（仅事件订阅）
+
+**数据来源**：`openplatform_app_p_t`（应用属性表）
+
+**关联方式**：`parent_id` = 订阅关系的 `app_id`
+
+**字段映射**：
+
+| 新表字段 | 旧表字段 | 枚举值说明 |
+|----------|----------|------------|
+| channel_type | event_msg_recive_mode | 1=WebHook, 2=企业内部消息通道 |
+| channel_address | event_push_url | 推送地址 |
+| auth_type | event_push_auth_type | 固定值1（SOA） |
+
+**SQL查询示例**：
+
+```sql
+SELECT 
+    event_msg_recive_mode AS channel_type,
+    event_push_url AS channel_address,
+    event_push_auth_type AS auth_type
+FROM openplatform_app_p_t
+WHERE parent_id = #{app_id};
+```
+
+**重要说明**：
+- 历史配置是**应用级别**的统一配置
+- 迁移到新表时，**每个事件订阅都要写入通道配置**
+- 回退时**不需要处理**（旧系统在应用属性表统一管理）
+
+---
+
+#### 4.6.3 combined_nodes 构造方法
+
+**来源**：`openplatform_eflow_t.eflow_audit_user`（历史审批人字段）
+
+**构造规则**：创建一个单节点审批配置
+
+**JSON格式**：
+
+```json
+{
+  "nodes": [
+    {
+      "level": "审批人",
+      "approver": "历史审批人ID"
+    }
+  ]
+}
+```
+
+**实现示例**：
+
+```java
+String constructCombinedNodes(String auditUser) {
+    if (StringUtils.isEmpty(auditUser)) {
+        return null;
+    }
+    JSONObject node = new JSONObject();
+    node.put("level", "审批人");
+    node.put("approver", auditUser);
+    
+    JSONArray nodes = new JSONArray();
+    nodes.add(node);
+    
+    JSONObject combinedNodes = new JSONObject();
+    combinedNodes.put("nodes", nodes);
+    
+    return combinedNodes.toJSONString();
+}
+```
+
+---
+
+#### 4.6.4 异常处理
+
+**场景**：找不到对应的新API/事件
+
+**处理方式**：
+
+```
+找不到对应新API/事件
+    ↓
+标记该订阅关系为失败
+    ↓
+记录失败原因："未找到对应的API/事件"
+    ↓
+跳过该条，继续处理下一条
+    ↓
+用户后续在新系统注册API/事件后
+    ↓
+重新执行同步接口（幂等性保证）
+```
+
+**代码示例**：
+
+```java
+try {
+    Long newPermissionId = findNewPermissionId(oldPermission);
+    // ... 同步逻辑
+} catch (ResourceNotFoundException e) {
+    SyncDetail detail = new SyncDetail();
+    detail.setId(subscription.getId());
+    detail.setStatus("failed");
+    detail.setError("未找到对应的" + e.getResourceType() + "，请先在新系统注册");
+    failedList.add(detail);
+    continue;  // 继续处理下一条
+}
+```
+
+---
+
+#### 4.6.5 完整迁移逻辑（旧→新）
+
+```
+for each 订阅关系 in 旧表:
+    
+    1️⃣ 幂等性检查
+    └─ if exists(订阅关系.id): 跳过
+    
+    2️⃣ 查找新权限ID
+    ├─ 旧permission_id → 旧权限 → 确定resource_type
+    ├─ API: resource_id → 旧API(path,method) → 新API → 新权限ID
+    ├─ 事件: resource_id → 旧事件(topic) → 新事件 → 新权限ID
+    └─ 找不到 → 记录失败，跳过
+    
+    3️⃣ 获取通道配置（仅事件订阅）
+    └─ app_id → 应用属性表(parent_id=app_id) → channel_type, channel_address, auth_type
+    
+    4️⃣ 构造新订阅关系
+    ├─ 如果是事件订阅：写入通道配置
+    └─ 如果是API订阅：通道配置为空
+    
+    5️⃣ 写入新订阅关系表
+    
+    6️⃣ 同步审批记录（如存在，失败不影响订阅关系）
+    ├─ resource_id = 订阅关系.id → 查询旧审批记录
+    ├─ 构造 combined_nodes（用 eflow_audit_user）
+    └─ 写入新审批记录表
+    
+    7️⃣ 同步审批日志（如存在，失败不影响订阅关系）
+    └─ eflow_log.trace_id = eflow_id → 写入新审批日志表
+```
+
+---
+
+#### 4.6.6 完整回退逻辑（新→旧）
+
+```
+for each 订阅关系 in 新表:
+    
+    1️⃣ 幂等性检查
+    └─ if exists(订阅关系.id): 跳过
+    
+    2️⃣ 反向查找旧权限ID
+    ├─ 新permission_id → 新权限 → 确定resource_type
+    ├─ API: resource_id → 新API(path,method) → 旧API → 旧权限ID
+    └─ 事件: resource_id → 新事件(topic) → 旧事件 → 旧权限ID
+    
+    3️⃣ 构造旧订阅关系
+    └─ 通道配置不处理（旧系统在应用属性表统一管理）
+    
+    4️⃣ 写入旧订阅关系表
+    
+    5️⃣ 同步审批记录（如存在）
+    └─ 从新审批记录 → 旧审批记录
+    
+    6️⃣ 同步审批日志（如存在）
+    └─ 从新审批日志 → 旧审批日志
+```
+
+---
