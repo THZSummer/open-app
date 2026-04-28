@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>数据迁移工具</title>
+    <title>数据同步工具</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 700px; margin: 0 auto; }
         .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         h2 { color: #333; margin-bottom: 15px; font-size: 18px; border-bottom: 2px solid #1890ff; padding-bottom: 10px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; color: #666; font-size: 14px; }
-        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-        textarea { resize: vertical; min-height: 80px; font-family: monospace; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .radio-group { display: flex; gap: 20px; padding: 10px 0; }
+        .radio-group label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 14px; color: #333; }
+        .radio-group input { width: auto; }
         .btn-group { display: flex; gap: 10px; }
         button { flex: 1; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
         .btn-primary { background: #1890ff; color: white; }
         .btn-primary:hover { background: #40a9ff; }
         .btn-success { background: #52c41a; color: white; }
         .btn-success:hover { background: #73d13d; }
-        .btn-warning { background: #faad14; color: white; }
-        .btn-warning:hover { background: #ffc53d; }
         .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
         .result.success { background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
         .result.error { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
@@ -39,10 +39,10 @@
 <body>
     <div class="container">
         <div class="card">
-            <h2>配置</h2>
+            <h2>配置区域</h2>
             <div class="form-group">
                 <label>API地址</label>
-                <input type="text" id="apiBase" value="http://localhost:8080/api/v1/migration" placeholder="输入API基础地址">
+                <input type="text" id="apiBase" value="http://localhost:8080/api/v1/sync" placeholder="输入API基础地址">
             </div>
             <div class="form-group">
                 <label>Authorization</label>
@@ -51,31 +51,33 @@
         </div>
 
         <div class="card">
-            <h2>操作</h2>
+            <h2>同步操作</h2>
             <div class="form-group">
-                <label>选择模块</label>
+                <label>模块</label>
                 <select id="module">
-                    <option value="category">分类模块 (category)</option>
-                    <option value="api">API模块 (api)</option>
-                    <option value="event">事件模块 (event)</option>
-                    <option value="permission">权限模块 (permission)</option>
-                    <option value="approval">审批模块 (approval)</option>
-                    <option value="subscription">订阅模块 (subscription)</option>
+                    <option value="subscription">订阅关系 (subscription)</option>
+                    <option value="approval">审批数据 (approval)</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>数据ID列表（留空表示全量）</label>
-                <input type="text" id="ids" placeholder="输入ID，逗号分隔，如：1,2,3">
+                <label>ID列表（逗号分隔）</label>
+                <input type="text" id="ids" placeholder="如：1,2,3">
+            </div>
+            <div class="form-group">
+                <label>方向</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="direction" value="migrate" checked> 迁移（旧→新）</label>
+                    <label><input type="radio" name="direction" value="rollback"> 回退（新→旧）</label>
+                </div>
             </div>
             <div class="btn-group">
                 <button class="btn-primary" onclick="queryStatus()">查询状态</button>
-                <button class="btn-success" onclick="executeMigrate()">执行迁移</button>
-                <button class="btn-warning" onclick="executeValidate()">执行验证</button>
+                <button class="btn-success" onclick="executeSync()">执行同步</button>
             </div>
         </div>
 
         <div class="card">
-            <h2>结果</h2>
+            <h2>同步结果</h2>
             <div class="loading" id="loading">处理中...</div>
             <div id="resultArea"></div>
         </div>
@@ -95,8 +97,12 @@
 
         function getIds() {
             const idsStr = document.getElementById('ids').value.trim();
-            if (!idsStr) return null;
+            if (!idsStr) return [];
             return idsStr.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+        }
+
+        function getDirection() {
+            return document.querySelector('input[name="direction"]:checked').value;
         }
 
         function showLoading() {
@@ -123,23 +129,21 @@
                             <div class="stat-label">目标数据量</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value" style="color: #ff4d4f;">${data.pending || 0}</div>
-                            <div class="stat-label">待迁移</div>
+                            <div class="stat-value" style="color: #faad14;">${data.pending || 0}</div>
+                            <div class="stat-label">待同步</div>
                         </div>
                     </div>
                 `;
                 resultArea.innerHTML = `<div class="result info">${html}</div>`;
-            } else if (type === 'migrate' || type === 'validate') {
-                const successKey = type === 'migrate' ? 'success' : 'passed';
-                const failKey = type === 'migrate' ? 'failed' : 'failed';
-                const successCount = data[successKey] || 0;
-                const failedCount = data[failKey] || 0;
+            } else if (type === 'sync') {
+                const successCount = data.success || 0;
+                const failedCount = data.failed || 0;
                 const details = data.details || [];
 
                 let detailsHtml = '';
                 if (details.length > 0) {
                     detailsHtml = `<div class="detail-list">${details.map(d => 
-                        `<div class="detail-item"><strong>ID: ${d.id || d.sourceId}</strong> - ${d.error || d.message || '未知错误'}</div>`
+                        `<div class="detail-item"><strong>ID:${d.id}</strong> ${d.error || '同步失败'}</div>`
                     ).join('')}</div>`;
                 }
 
@@ -147,7 +151,7 @@
                     <div class="stats">
                         <div class="stat-item">
                             <div class="stat-value" style="color: #52c41a;">${successCount}</div>
-                            <div class="stat-label">${type === 'migrate' ? '成功' : '通过'}</div>
+                            <div class="stat-label">成功</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-value" style="color: #ff4d4f;">${failedCount}</div>
@@ -184,41 +188,26 @@
             }
         }
 
-        async function executeMigrate() {
-            showLoading();
-            try {
-                const response = await fetch(`${document.getElementById('apiBase').value}/${getModule()}/migrate`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ ids: getIds() })
-                });
-                const result = await response.json();
-                hideLoading();
-                if (result.code === 0 || result.success) {
-                    renderResult(result.data || result, 'migrate');
-                } else {
-                    showError(result.message || '迁移失败');
-                }
-            } catch (e) {
-                hideLoading();
-                showError('请求失败: ' + e.message);
+        async function executeSync() {
+            const ids = getIds();
+            if (ids.length === 0) {
+                showError('请输入ID列表');
+                return;
             }
-        }
-
-        async function executeValidate() {
+            
             showLoading();
             try {
-                const response = await fetch(`${document.getElementById('apiBase').value}/${getModule()}/validate`, {
+                const response = await fetch(`${document.getElementById('apiBase').value}/${getModule()}/batch`, {
                     method: 'POST',
                     headers: getHeaders(),
-                    body: JSON.stringify({ ids: getIds() })
+                    body: JSON.stringify({ ids: ids, direction: getDirection() })
                 });
                 const result = await response.json();
                 hideLoading();
                 if (result.code === 0 || result.success) {
-                    renderResult(result.data || result, 'validate');
+                    renderResult(result.data || result, 'sync');
                 } else {
-                    showError(result.message || '验证失败');
+                    showError(result.message || '同步失败');
                 }
             } catch (e) {
                 hideLoading();
