@@ -27,6 +27,8 @@ import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -64,6 +66,7 @@ public class PermissionService {
     private final CallbackPropertyMapper callbackPropertyMapper;
     private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
+    private final AppContextResolver appContextResolver;
 
     // ==================== API 权限管理 (#27-30) ====================
 
@@ -75,7 +78,9 @@ public class PermissionService {
         
         log.info("获取应用 API 权限列表, appId={}, status={}, keyword={}", appId, status, keyword);
 
-        Long appIdLong = parseId(appId);
+        // 解析并校验应用访问权限
+        AppContext appContext = appContextResolver.resolveAndValidate(appId);
+        Long appIdLong = appContext.getInternalId();
         
         // 分页参数
         int page = curPage != null ? curPage : 1;
@@ -140,9 +145,24 @@ public class PermissionService {
         Long total = permissionMapper.countApiPermissionsByCategory(
                 categoryIdLong, keyword, needApproval, categoryPath, include);
 
+        // 解析应用ID（用于查询订阅状态，可选参数）
+        Long appIdLong = null;
+        if (appId != null && !appId.isEmpty()) {
+            try {
+                AppContext appCtx = appContextResolver.resolveAndValidate(appId);
+                appIdLong = appCtx.getInternalId();
+            } catch (Exception e) {
+                // 分类查询时，appId 是可选参数，转换失败时忽略
+                log.warn("解析应用ID失败，跳过订阅状态查询: {}", appId);
+            }
+        }
+        
+        final Long finalAppIdLong = appIdLong;
+        final String finalExternalAppId = appId;
+        
         // 转换响应
         List<CategoryPermissionListResponse> responses = permissions.stream()
-                .map(p -> convertToCategoryPermissionResponse(p, appId))
+                .map(p -> convertToCategoryPermissionResponse(p, finalAppIdLong))
                 .collect(Collectors.toList());
 
         // 构建分页响应
@@ -164,7 +184,10 @@ public class PermissionService {
         
         log.info("申请 API 权限, appId={}, permissionIds={}", appId, request.getPermissionIds());
 
-        Long appIdLong = parseId(appId);
+        // 解析并校验应用访问权限
+        AppContext appContext = appContextResolver.resolveAndValidate(appId);
+        Long appIdLong = appContext.getInternalId();
+        String externalAppId = appContext.getExternalId();
         
         // 解析权限ID列表
         List<Long> permissionIds = request.getPermissionIds().stream()
@@ -220,7 +243,7 @@ public class PermissionService {
 
             successRecords.add(PermissionSubscribeResponse.SubscriptionRecord.builder()
                     .id(String.valueOf(subscription.getId()))
-                    .appId(appId)
+                    .appId(externalAppId)
                     .permissionId(String.valueOf(permission.getId()))
                     .status(0)
                     .build());
@@ -264,6 +287,9 @@ public class PermissionService {
     public WithdrawResponse withdrawApiSubscription(String appId, String subscriptionId) {
         
         log.info("撤回 API 权限申请, appId={}, subscriptionId={}", appId, subscriptionId);
+        
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
 
         return withdrawSubscription(subscriptionId);
     }
@@ -278,7 +304,9 @@ public class PermissionService {
         
         log.info("获取应用事件订阅列表, appId={}", appId);
 
-        Long appIdLong = parseId(appId);
+        // 解析并校验应用访问权限
+        AppContext appContext = appContextResolver.resolveAndValidate(appId);
+        Long appIdLong = appContext.getInternalId();
         
         int page = curPage != null ? curPage : 1;
         int size = pageSize != null ? pageSize : 20;
@@ -333,8 +361,21 @@ public class PermissionService {
         Long total = permissionMapper.countEventPermissionsByCategory(
                 categoryIdLong, keyword, needApproval, categoryPath, include);
 
+        // 解析应用ID（用于查询订阅状态，可选参数）
+        Long appIdLong = null;
+        if (appId != null && !appId.isEmpty()) {
+            try {
+                AppContext appCtx = appContextResolver.resolveAndValidate(appId);
+                appIdLong = appCtx.getInternalId();
+            } catch (Exception e) {
+                log.warn("解析应用ID失败，跳过订阅状态查询: {}", appId);
+            }
+        }
+        
+        final Long finalAppIdLong = appIdLong;
+        
         List<CategoryPermissionListResponse> responses = permissions.stream()
-                .map(p -> convertToCategoryPermissionResponse(p, appId))
+                .map(p -> convertToCategoryPermissionResponse(p, finalAppIdLong))
                 .collect(Collectors.toList());
 
         ApiResponse.PageResponse pageResponse = ApiResponse.PageResponse.builder()
@@ -355,7 +396,10 @@ public class PermissionService {
         
         log.info("申请事件权限, appId={}", appId);
 
-        Long appIdLong = parseId(appId);
+        // 解析并校验应用访问权限
+        AppContext appContext = appContextResolver.resolveAndValidate(appId);
+        Long appIdLong = appContext.getInternalId();
+        String externalAppId = appContext.getExternalId();
         
         List<Long> permissionIds = request.getPermissionIds().stream()
                 .map(this::parseId)
@@ -405,7 +449,7 @@ public class PermissionService {
 
             successRecords.add(PermissionSubscribeResponse.SubscriptionRecord.builder()
                     .id(String.valueOf(subscription.getId()))
-                    .appId(appId)
+                    .appId(externalAppId)
                     .permissionId(String.valueOf(permission.getId()))
                     .status(0)
                     .build());
@@ -448,6 +492,9 @@ public class PermissionService {
         
         log.info("配置事件消费参数, appId={}, subscriptionId={}", appId, subscriptionId);
 
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
+
         Long subIdLong = parseId(subscriptionId);
 
         Subscription subscription = subscriptionMapper.selectById(subIdLong);
@@ -478,6 +525,9 @@ public class PermissionService {
     public WithdrawResponse withdrawEventSubscription(String appId, String subscriptionId) {
         
         log.info("撤回事件权限申请, appId={}, subscriptionId={}", appId, subscriptionId);
+        
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
 
         return withdrawSubscription(subscriptionId);
     }
@@ -492,7 +542,9 @@ public class PermissionService {
         
         log.info("获取应用回调订阅列表, appId={}", appId);
 
-        Long appIdLong = parseId(appId);
+        // 解析并校验应用访问权限
+        AppContext appContext = appContextResolver.resolveAndValidate(appId);
+        Long appIdLong = appContext.getInternalId();
         
         int page = curPage != null ? curPage : 1;
         int size = pageSize != null ? pageSize : 20;
@@ -547,8 +599,21 @@ public class PermissionService {
         Long total = permissionMapper.countCallbackPermissionsByCategory(
                 categoryIdLong, keyword, needApproval, categoryPath, include);
 
+        // 解析应用ID（用于查询订阅状态，可选参数）
+        Long appIdLong = null;
+        if (appId != null && !appId.isEmpty()) {
+            try {
+                AppContext appCtx = appContextResolver.resolveAndValidate(appId);
+                appIdLong = appCtx.getInternalId();
+            } catch (Exception e) {
+                log.warn("解析应用ID失败，跳过订阅状态查询: {}", appId);
+            }
+        }
+        
+        final Long finalAppIdLong = appIdLong;
+        
         List<CategoryPermissionListResponse> responses = permissions.stream()
-                .map(p -> convertToCategoryPermissionResponse(p, appId))
+                .map(p -> convertToCategoryPermissionResponse(p, finalAppIdLong))
                 .collect(Collectors.toList());
 
         ApiResponse.PageResponse pageResponse = ApiResponse.PageResponse.builder()
@@ -569,7 +634,10 @@ public class PermissionService {
         
         log.info("申请回调权限, appId={}", appId);
 
-        Long appIdLong = parseId(appId);
+        // 解析并校验应用访问权限
+        AppContext appContext = appContextResolver.resolveAndValidate(appId);
+        Long appIdLong = appContext.getInternalId();
+        String externalAppId = appContext.getExternalId();
         
         List<Long> permissionIds = request.getPermissionIds().stream()
                 .map(this::parseId)
@@ -619,7 +687,7 @@ public class PermissionService {
 
             successRecords.add(PermissionSubscribeResponse.SubscriptionRecord.builder()
                     .id(String.valueOf(subscription.getId()))
-                    .appId(appId)
+                    .appId(externalAppId)
                     .permissionId(String.valueOf(permission.getId()))
                     .status(0)
                     .build());
@@ -663,6 +731,9 @@ public class PermissionService {
         
         log.info("配置回调消费参数, appId={}, subscriptionId={}", appId, subscriptionId);
 
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
+
         Long subIdLong = parseId(subscriptionId);
 
         Subscription subscription = subscriptionMapper.selectById(subIdLong);
@@ -689,6 +760,9 @@ public class PermissionService {
     public WithdrawResponse withdrawCallbackSubscription(String appId, String subscriptionId) {
         
         log.info("撤回回调权限申请, appId={}, subscriptionId={}", appId, subscriptionId);
+        
+        // 解析并校验应用访问权限
+        appContextResolver.resolveAndValidate(appId);
 
         return withdrawSubscription(subscriptionId);
     }
@@ -781,7 +855,7 @@ public class PermissionService {
 
         return ApiSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
-                .appId(String.valueOf(subscription.getAppId()))
+                .appId(appContextResolver.toExternalId(subscription.getAppId()))
                 .permissionId(String.valueOf(subscription.getPermissionId()))
                 .permission(permissionInfo)
                 .api(apiInfo)
@@ -850,7 +924,7 @@ public class PermissionService {
 
         return EventSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
-                .appId(String.valueOf(subscription.getAppId()))
+                .appId(appContextResolver.toExternalId(subscription.getAppId()))
                 .permissionId(String.valueOf(subscription.getPermissionId()))
                 .permission(permissionInfo)
                 .event(eventInfo)
@@ -920,7 +994,7 @@ public class PermissionService {
 
         return CallbackSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
-                .appId(String.valueOf(subscription.getAppId()))
+                .appId(appContextResolver.toExternalId(subscription.getAppId()))
                 .permissionId(String.valueOf(subscription.getPermissionId()))
                 .permission(permissionInfo)
                 .callback(callbackInfo)
@@ -938,7 +1012,7 @@ public class PermissionService {
     /**
      * 转换为分类权限响应
      */
-    private CategoryPermissionListResponse convertToCategoryPermissionResponse(Permission permission, String appId) {
+    private CategoryPermissionListResponse convertToCategoryPermissionResponse(Permission permission, Long appIdLong) {
         // 获取资源信息
         CategoryPermissionListResponse.ResourceInfo resourceInfo = null;
         
@@ -977,15 +1051,10 @@ public class PermissionService {
 
         // 查询是否已订阅
         int isSubscribed = 0;
-        if (appId != null && !appId.isEmpty()) {
-            try {
-                Long appIdLong = Long.parseLong(appId);
-                Subscription subscription = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
-                if (subscription != null) {
-                    isSubscribed = 1;
-                }
-            } catch (NumberFormatException e) {
-                // 忽略无效的 appId
+        if (appIdLong != null) {
+            Subscription subscription = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
+            if (subscription != null) {
+                isSubscribed = 1;
             }
         }
 
