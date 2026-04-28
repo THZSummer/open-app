@@ -7,12 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 开发环境应用上下文解析器
+ * Development environment application context resolver
  * 
- * <p>默认实现，用于开发和测试环境：</p>
+ * <p>Default implementation for development and testing environments:</p>
  * <ul>
- *   <li>ID 转换：直接将 String 解析为 Long（或原样返回兼容测试）</li>
- *   <li>权限校验：跳过校验，允许所有访问</li>
+ *   <li>ID conversion: Parse String directly to Long (or return as-is for compatibility)</li>
+ *   <li>Permission validation: Skip validation, allow all access</li>
  * </ul>
  * 
  * @author SDDU Build Agent
@@ -24,9 +24,9 @@ public class DevAppContextResolver implements AppContextResolver {
 
     @Override
     public AppContext resolveAndValidate(String externalAppId) {
-        log.debug("开发环境解析应用ID: {}", externalAppId);
+        log.debug("Dev environment resolving appId: {}", externalAppId);
         
-        // 开发环境：简单解析，不做权限校验
+        // Dev environment: Simple parsing, no permission validation
         Long internalId = parseInternalId(externalAppId);
         
         return AppContext.builder()
@@ -37,27 +37,27 @@ public class DevAppContextResolver implements AppContextResolver {
 
     @Override
     public String toExternalId(Long internalId) {
-        // 开发环境：直接返回 String
+        // Dev environment: Return String directly
         return String.valueOf(internalId);
     }
     
     /**
-     * 解析内部ID
-     * 支持两种格式：
-     * 1. 纯数字字符串 "1001" → 1001L
-     * 2. 长业务ID，提取末尾数字或使用默认值
+     * Parse internal ID
+     * Supports two formats:
+     * 1. Pure numeric string "1001" → 1001L
+     * 2. Long business ID, extract trailing number or use default value
      */
     private Long parseInternalId(String externalAppId) {
         if (externalAppId == null || externalAppId.isEmpty()) {
             throw AppAccessException.notFound(externalAppId);
         }
         
-        // 尝试直接解析为数字
+        // Try to parse directly as number
         try {
             return Long.parseLong(externalAppId);
         } catch (NumberFormatException e) {
-            // 开发环境：非数字ID时返回默认值 1L，方便测试
-            log.debug("非数字格式的应用ID: {}, 使用默认值 1L", externalAppId);
+            // Dev environment: Return default value 1L for non-numeric ID, convenient for testing
+            log.debug("Non-numeric appId: {}, using default value 1L", externalAppId);
             return 1L;
         }
     }

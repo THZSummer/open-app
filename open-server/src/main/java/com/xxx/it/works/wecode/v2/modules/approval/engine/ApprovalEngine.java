@@ -144,7 +144,7 @@ public class ApprovalEngine {
         
         if (isRegisterApproval) {
             // ==================== 资源注册审批：两级审批 ====================
-            log.info("资源注册审批: businessType={}, 两级审批(场景+全局)", businessType);
+            log.info("Resource registration approval: businessType={}, two-level approval (scene+global)", businessType);
             
             // 第一级：场景审批节点
             List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
@@ -153,7 +153,7 @@ public class ApprovalEngine {
                 node.setLevel(Level.SCENE);
                 combinedNodes.add(node);
             }
-            log.debug("场景审批节点数量: {}", sceneNodes.size());
+            log.debug("Scene approval nodes count: {}", sceneNodes.size());
             
             // 第二级：全局审批节点
             List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
@@ -162,11 +162,11 @@ public class ApprovalEngine {
                 node.setLevel(Level.GLOBAL);
                 combinedNodes.add(node);
             }
-            log.debug("全局审批节点数量: {}", globalNodes.size());
+            log.debug("Global approval nodes count: {}", globalNodes.size());
             
         } else if (isPermissionApply) {
             // ==================== 权限申请审批：三级审批 ====================
-            log.info("权限申请审批: businessType={}, 三级审批(资源+场景+全局)", businessType);
+            log.info("Permission application approval: businessType={}, three-level approval (resource+scene+global)", businessType);
             
             // 第一级：资源审批节点（从 permission_t.resource_nodes 读取）
             List<ApprovalNodeDto> resourceNodes = getResourceApprovalNodes(permissionId);
@@ -175,7 +175,7 @@ public class ApprovalEngine {
                 node.setLevel(Level.RESOURCE);
                 combinedNodes.add(node);
             }
-            log.debug("资源审批节点数量: {}", resourceNodes.size());
+            log.debug("Resource approval nodes count: {}", resourceNodes.size());
             
             // 第二级：场景审批节点
             List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
@@ -184,7 +184,7 @@ public class ApprovalEngine {
                 node.setLevel(Level.SCENE);
                 combinedNodes.add(node);
             }
-            log.debug("场景审批节点数量: {}", sceneNodes.size());
+            log.debug("Scene approval nodes count: {}", sceneNodes.size());
             
             // 第三级：全局审批节点
             List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
@@ -193,10 +193,10 @@ public class ApprovalEngine {
                 node.setLevel(Level.GLOBAL);
                 combinedNodes.add(node);
             }
-            log.debug("全局审批节点数量: {}", globalNodes.size());
+            log.debug("Global approval nodes count: {}", globalNodes.size());
             
         } else {
-            log.warn("未知的业务类型: {}, 使用默认两级审批(场景+全局)", businessType);
+            log.warn("Unknown business type: {}, using default two-level approval (scene+global)", businessType);
             
             // 默认：场景审批 + 全局审批
             List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
@@ -214,9 +214,9 @@ public class ApprovalEngine {
             }
         }
         
-        log.info("组合审批节点完成: businessType={}, permissionId={}, totalNodes={}, approvalLevel={}", 
+        log.info("Combined approval nodes completed: businessType={}, permissionId={}, totalNodes={}, approvalLevel={}", 
                 businessType, permissionId, combinedNodes.size(), 
-                isRegisterApproval ? "两级(场景+全局)" : "三级(资源+场景+全局)");
+                isRegisterApproval ? "two-level (scene+global)" : "three-level (resource+scene+global)");
         
         return combinedNodes;
     }
@@ -236,26 +236,26 @@ public class ApprovalEngine {
         
         Permission permission = permissionMapper.selectById(permissionId);
         if (permission == null) {
-            log.warn("权限不存在: permissionId={}", permissionId);
+            log.warn("Permission not found: permissionId={}", permissionId);
             return Collections.emptyList();
         }
         
         // 检查是否需要审批
         if (permission.getNeedApproval() == null || permission.getNeedApproval() != 1) {
-            log.debug("权限不需要审批: permissionId={}", permissionId);
+            log.debug("Permission does not require approval: permissionId={}", permissionId);
             return Collections.emptyList();
         }
         
         // 从 resource_nodes 字段解析审批节点
         String resourceNodesJson = permission.getResourceNodes();
         if (resourceNodesJson == null || resourceNodesJson.trim().isEmpty() || "[]".equals(resourceNodesJson.trim())) {
-            log.debug("权限审批节点配置为空: permissionId={}", permissionId);
+            log.debug("Permission approval nodes config is empty: permissionId={}", permissionId);
             return Collections.emptyList();
         }
         
         List<ApprovalNodeDto> nodes = parseNodes(resourceNodesJson);
         if (nodes == null || nodes.isEmpty()) {
-            log.debug("权限审批节点解析结果为空: permissionId={}", permissionId);
+            log.debug("Permission approval nodes parse result is empty: permissionId={}", permissionId);
             return Collections.emptyList();
         }
         
@@ -276,19 +276,19 @@ public class ApprovalEngine {
         
         ApprovalFlow sceneFlow = flowMapper.selectByCode(sceneCode);
         if (sceneFlow == null) {
-            log.warn("场景审批流程不存在: code={}", sceneCode);
+            log.warn("Scene approval flow not found: code={}", sceneCode);
             return Collections.emptyList();
         }
         
         String nodesJson = sceneFlow.getNodes();
         if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
-            log.debug("场景审批节点配置为空: code={}", sceneCode);
+            log.debug("Scene approval nodes config is empty: code={}", sceneCode);
             return Collections.emptyList();
         }
         
         List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
         if (nodes == null || nodes.isEmpty()) {
-            log.debug("场景审批节点解析结果为空: code={}", sceneCode);
+            log.debug("Scene approval nodes parse result is empty: code={}", sceneCode);
             return Collections.emptyList();
         }
         
@@ -305,19 +305,19 @@ public class ApprovalEngine {
     private List<ApprovalNodeDto> getGlobalApprovalNodes() {
         ApprovalFlow globalFlow = flowMapper.selectByCode("global");
         if (globalFlow == null) {
-            log.warn("全局审批流程不存在: code=global");
+            log.warn("Global approval flow not found: code=global");
             return Collections.emptyList();
         }
         
         String nodesJson = globalFlow.getNodes();
         if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
-            log.debug("全局审批节点配置为空: code=global");
+            log.debug("Global approval nodes config is empty: code=global");
             return Collections.emptyList();
         }
         
         List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
         if (nodes == null || nodes.isEmpty()) {
-            log.debug("全局审批节点解析结果为空: code=global");
+            log.debug("Global approval nodes parse result is empty: code=global");
             return Collections.emptyList();
         }
         
@@ -347,7 +347,7 @@ public class ApprovalEngine {
             case BusinessType.CALLBACK_PERMISSION_APPLY:
                 return "callback_permission_apply";
             default:
-                log.warn("未知的业务类型: {}, 使用默认场景编码", businessType);
+                log.warn("Unknown business type: {}, using default scene code", businessType);
                 return "api_permission_apply";  // 默认使用API权限申请审批
         }
     }
@@ -401,7 +401,7 @@ public class ApprovalEngine {
 
         recordMapper.insert(record);
 
-        log.info("创建审批记录: id={}, businessType={}, businessId={}, nodesCount={}, applicant={}",
+        log.info("Created approval record: id={}, businessType={}, businessId={}, nodesCount={}, applicant={}",
                 record.getId(), businessType, businessId, combinedNodes.size(), applicantId);
 
         return record;
@@ -489,7 +489,7 @@ public class ApprovalEngine {
             // 更新订阅状态（权限申请场景）
             updateSubscriptionStatus(record, Status.APPROVED);
 
-            log.info("审批通过: recordId={}, operator={}, level={}", 
+            log.info("Approval approved: recordId={}, operator={}, level={}", 
                     recordId, operatorId, currentNode.getLevel());
         } else {
             // 进入下一个审批节点
@@ -499,7 +499,7 @@ public class ApprovalEngine {
 
             recordMapper.update(record);
 
-            log.info("审批节点通过，进入下一节点: recordId={}, currentNode={}, level={}", 
+            log.info("Approval node passed, entering next node: recordId={}, currentNode={}, level={}", 
                     recordId, record.getCurrentNode(), currentNode.getLevel());
         }
 
@@ -571,7 +571,7 @@ public class ApprovalEngine {
         // 更新订阅状态（权限申请场景）
         updateSubscriptionStatus(record, Status.REJECTED);
 
-        log.info("审批驳回: recordId={}, operator={}, comment={}, level={}", 
+        log.info("Approval rejected: recordId={}, operator={}, comment={}, level={}", 
                 recordId, operatorId, comment, currentNode.getLevel());
 
         return record;
@@ -615,7 +615,7 @@ public class ApprovalEngine {
         // 更新订阅状态（权限申请场景）
         updateSubscriptionStatus(record, Status.CANCELLED);
 
-        log.info("审批撤销: recordId={}", recordId);
+        log.info("Approval cancelled: recordId={}", recordId);
 
         return record;
     }
@@ -644,7 +644,7 @@ public class ApprovalEngine {
                         api.setLastUpdateTime(new Date());
                         api.setLastUpdateBy(record.getApplicantId());
                         apiMapper.update(api);
-                        log.info("更新API状态: apiId={}, status={}", businessId, resourceStatus);
+                        log.info("Updated API status: apiId={}, status={}", businessId, resourceStatus);
                     }
                     break;
                     
@@ -655,7 +655,7 @@ public class ApprovalEngine {
                         event.setLastUpdateTime(new Date());
                         event.setLastUpdateBy(record.getApplicantId());
                         eventMapper.update(event);
-                        log.info("更新事件状态: eventId={}, status={}", businessId, resourceStatus);
+                        log.info("Updated event status: eventId={}, status={}", businessId, resourceStatus);
                     }
                     break;
                     
@@ -666,7 +666,7 @@ public class ApprovalEngine {
                         callback.setLastUpdateTime(new Date());
                         callback.setLastUpdateBy(record.getApplicantId());
                         callbackMapper.update(callback);
-                        log.info("更新回调状态: callbackId={}, status={}", businessId, resourceStatus);
+                        log.info("Updated callback status: callbackId={}, status={}", businessId, resourceStatus);
                     }
                     break;
                     
@@ -674,14 +674,14 @@ public class ApprovalEngine {
                 case BusinessType.EVENT_PERMISSION_APPLY:
                 case BusinessType.CALLBACK_PERMISSION_APPLY:
                     // 权限申请场景，由 updateSubscriptionStatus 处理
-                    log.debug("权限申请场景，不更新资源状态");
+                    log.debug("Permission application scenario, not updating resource status");
                     break;
                     
                 default:
-                    log.warn("未知的业务类型: {}", businessType);
+                    log.warn("Unknown business type: {}", businessType);
             }
         } catch (Exception e) {
-            log.error("更新资源状态失败: businessType={}, businessId={}", businessType, businessId, e);
+            log.error("Failed to update resource status: businessType={}, businessId={}", businessType, businessId, e);
         }
     }
 
@@ -702,7 +702,7 @@ public class ApprovalEngine {
         // 查询订阅记录
         Subscription subscription = subscriptionMapper.selectById(record.getBusinessId());
         if (subscription == null) {
-            log.warn("订阅记录不存在，无法更新状态: businessId={}", record.getBusinessId());
+            log.warn("Subscription record not found, cannot update status: businessId={}", record.getBusinessId());
             return;
         }
 
@@ -730,7 +730,7 @@ public class ApprovalEngine {
 
         subscriptionMapper.update(subscription);
 
-        log.info("更新订阅状态: subscriptionId={}, status={}", subscription.getId(), subscriptionStatus);
+        log.info("Updated subscription status: subscriptionId={}, status={}", subscription.getId(), subscriptionStatus);
     }
 
     /**
@@ -751,7 +751,7 @@ public class ApprovalEngine {
                     new TypeReference<List<ApprovalNodeDto>>() {});
             return nodes != null ? nodes : new ArrayList<>();
         } catch (Exception e) {
-            log.error("解析审批节点配置失败: {}", nodesJson, e);
+            log.error("Failed to parse approval nodes config: {}", nodesJson, e);
             return new ArrayList<>();
         }
     }
@@ -768,7 +768,7 @@ public class ApprovalEngine {
         try {
             return objectMapper.writeValueAsString(nodes);
         } catch (Exception e) {
-            log.error("序列化审批节点配置失败", e);
+            log.error("Failed to serialize approval nodes config", e);
             return "[]";
         }
     }

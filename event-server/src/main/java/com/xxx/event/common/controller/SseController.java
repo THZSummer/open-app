@@ -58,7 +58,7 @@ public class SseController {
             @Parameter(description = "连接ID（唯一标识，建议使用 UUID）", required = true)
             @PathVariable String connectionId) {
         
-        log.info("收到 SSE 连接请求: connectionId={}", connectionId);
+        log.info("Received SSE connection request: connectionId={}", connectionId);
         
         return sseChannel.addConnection(connectionId);
     }
@@ -74,7 +74,7 @@ public class SseController {
             @Parameter(description = "连接ID", required = true)
             @PathVariable String connectionId) {
         
-        log.info("收到 SSE 断开请求: connectionId={}", connectionId);
+        log.info("Received SSE disconnect request: connectionId={}", connectionId);
         
         sseChannel.removeConnection(connectionId);
         
@@ -89,7 +89,7 @@ public class SseController {
     @Operation(summary = "查询连接状态", description = "查询当前活跃的 SSE 连接数")
     @GetMapping("/status")
     public ApiResponse<Map<String, Object>> status() {
-        log.info("查询 SSE 连接状态");
+        log.info("Querying SSE connection status");
         
         Map<String, Object> data = new HashMap<>();
         data.put("activeConnections", sseChannel.getActiveConnectionCount());

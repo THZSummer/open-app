@@ -15,11 +15,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 用户解析拦截器
+ * User Resolve Interceptor
  * 
- * <p>拦截 HTTP 请求，解析用户信息并存入 ThreadLocal</p>
- * <p>根据 spring.profiles.active 选择对应的解析策略</p>
- * <p>标准环境的用户认证由其他类负责</p>
+ * <p>Intercepts HTTP requests, resolves user info and stores in ThreadLocal</p>
+ * <p>Selects corresponding resolve strategy based on spring.profiles.active</p>
+ * <p>User authentication in standard environment is handled by other classes</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -39,19 +39,19 @@ public class UserResolveInterceptor implements HandlerInterceptor {
                             HttpServletResponse response, 
                             Object handler) {
         try {
-            // 1. 选择并执行策略
+            // 1. Select and execute strategy
             UserContext userContext = resolveUser(request);
             
-            // 2. 存入 ThreadLocal
+            // 2. Store in ThreadLocal
             UserContextHolder.set(userContext);
             
-            // 3. 记录日志
+            // 3. Log user context
             logUserContext(userContext);
             
             return true;
         } catch (Exception e) {
-            log.warn("用户信息解析失败，使用默认用户: {}", e.getMessage());
-            // 解析失败时使用默认用户
+            log.warn("Failed to resolve user info, using default user: {}", e.getMessage());
+            // Use default user when resolution fails
             UserContextHolder.set(UserContext.empty());
             return true;
         }
@@ -62,16 +62,16 @@ public class UserResolveInterceptor implements HandlerInterceptor {
                                 HttpServletResponse response, 
                                 Object handler, 
                                 Exception ex) {
-        // 清理 ThreadLocal，防止内存泄漏
+        // Clear ThreadLocal to prevent memory leak
         UserContextHolder.clear();
     }
 
     /**
-     * 解析用户信息
-     * 按策略优先级选择支持的策略执行解析
+     * Resolve user info
+     * Selects and executes the first supported strategy by priority
      * 
-     * @param request HTTP 请求
-     * @return 用户上下文，解析失败返回默认系统用户
+     * @param request HTTP request
+     * @return User context, returns default system user if resolution fails
      */
     private UserContext resolveUser(HttpServletRequest request) {
         return strategies.stream()
@@ -83,13 +83,13 @@ public class UserResolveInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 记录用户上下文日志
+     * Log user context
      * 
-     * @param context 用户上下文
+     * @param context User context
      */
     private void logUserContext(UserContext context) {
         if (log.isDebugEnabled()) {
-            log.debug("用户上下文: userId={}, userName={}, authType={}", 
+            log.debug("User context: userId={}, userName={}, authType={}", 
                     context.getUserId(), 
                     context.getUserName(), 
                     context.getAuthType());

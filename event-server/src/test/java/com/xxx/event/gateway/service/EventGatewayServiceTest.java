@@ -131,7 +131,7 @@ class EventGatewayServiceTest {
             assertNotNull(response);
             assertEquals(topic, response.getTopic());
             assertEquals(2, response.getSubscribers());
-            assertTrue(response.getMessage().contains("事件已分发"));
+            assertTrue(response.getMessage().contains("Event dispatched"));
 
             // 验证调用
             verify(apiServerClient).getPermissionByScope(scope);
@@ -154,7 +154,7 @@ class EventGatewayServiceTest {
             assertNotNull(response);
             assertEquals("im.message.received", response.getTopic());
             assertEquals(0, response.getSubscribers());
-            assertEquals("事件资源不存在或未发布", response.getMessage());
+            assertEquals("Event resource not found or not published", response.getMessage());
 
             // 验证不继续调用订阅查询
             verify(apiServerClient, never()).getSubscribedApps(anyString());
@@ -180,7 +180,7 @@ class EventGatewayServiceTest {
             assertNotNull(response);
             assertEquals("im.message.received", response.getTopic());
             assertEquals(0, response.getSubscribers());
-            assertEquals("事件无订阅者", response.getMessage());
+            assertEquals("Event has no subscribers", response.getMessage());
         }
     }
 
@@ -918,7 +918,7 @@ class EventGatewayServiceTest {
             // Then
             assertNotNull(response);
             assertEquals(3, response.getSubscribers());
-            assertTrue(response.getMessage().contains("事件已分发至 3 个订阅方"));
+            assertTrue(response.getMessage().contains("Event dispatched to 3 subscribers"));
 
             // 验证调用
             verify(messageQueueChannel).sendEvent("queue-mq-app", payload);

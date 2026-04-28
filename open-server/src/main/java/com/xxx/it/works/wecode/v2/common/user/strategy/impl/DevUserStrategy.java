@@ -9,10 +9,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 开发环境用户解析策略
+ * Dev environment user resolution strategy
  * 
- * <p>从 Cookie 中解析 user_id 字段</p>
- * <p>Cookie 格式示例: user_id=api_admin</p>
+ * <p>Parse user_id field from Cookie</p>
+ * <p>Cookie format example: user_id=api_admin</p>
  * 
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -22,44 +22,44 @@ import org.springframework.stereotype.Component;
 public class DevUserStrategy implements UserResolveStrategy {
 
     /**
-     * Cookie 中用户ID的键名
+     * Cookie key name for user ID
      */
     private static final String USER_ID_COOKIE = "user_id";
 
     @Override
     public UserContext resolve(HttpServletRequest request) {
-        // 从 Cookie 解析 user_id
+        // Parse user_id from Cookie
         String userId = extractCookieValue(request, USER_ID_COOKIE);
         
         if (userId == null || userId.isEmpty()) {
-            log.debug("未从 Cookie 中找到 user_id");
+            log.debug("user_id not found in Cookie");
             return null;
         }
         
-        log.debug("从 Cookie 解析到用户ID: {}", userId);
+        log.debug("Parsed user ID from Cookie: {}", userId);
         
-        // 构建用户上下文
+        // Build user context
         return UserContext.builder()
                 .userId(userId)
-                .userName(userId) // 开发环境默认使用 userId 作为 userName
+                .userName(userId) // Dev environment uses userId as userName by default
                 .authType(AuthTypeEnum.COOKIE)
                 .build();
     }
 
     @Override
     public boolean supports(String activeProfile) {
-        // 开发环境激活: dev, development, local
+        // Dev environment activation: dev, development, local
         return "dev".equals(activeProfile) 
                 || "development".equals(activeProfile)
                 || "local".equals(activeProfile);
     }
 
     /**
-     * 从请求中提取指定名称的 Cookie 值
+     * Extract specified Cookie value from request
      * 
-     * @param request HTTP 请求
-     * @param cookieName Cookie 名称
-     * @return Cookie 值，未找到返回 null
+     * @param request HTTP request
+     * @param cookieName Cookie name
+     * @return Cookie value, returns null if not found
      */
     private String extractCookieValue(HttpServletRequest request, String cookieName) {
         Cookie[] cookies = request.getCookies();

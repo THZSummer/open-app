@@ -175,7 +175,7 @@ class CallbackGatewayServiceTest {
             assertNotNull(response);
             assertEquals(callbackScope, response.getCallbackScope());
             assertEquals(0, response.getSubscribers());
-            assertEquals("回调资源不存在", response.getMessage());
+            assertEquals("Callback resource not found", response.getMessage());
 
             // 验证没有进一步调用
             verify(apiServerClient, never()).getSubscribedApps(anyString());
@@ -211,7 +211,7 @@ class CallbackGatewayServiceTest {
             assertNotNull(response);
             assertEquals(callbackScope, response.getCallbackScope());
             assertEquals(0, response.getSubscribers());
-            assertEquals("回调无订阅者", response.getMessage());
+            assertEquals("Callback has no subscribers", response.getMessage());
 
             // 验证没有分发调用
             verify(webHookChannel, never()).sendCallback(anyString(), any(), anyString(), any());

@@ -60,7 +60,7 @@ public class CallbackController {
             @Parameter(description = "每页数量，默认 20") 
             @RequestParam(required = false) Integer pageSize) {
         
-        log.info("获取回调列表: categoryId={}, status={}, keyword={}, curPage={}, pageSize={}", 
+        log.info("Get callback list: categoryId={}, status={}, keyword={}, curPage={}, pageSize={}", 
                 categoryId, status, keyword, curPage, pageSize);
         
         return callbackService.getCallbackList(categoryId, status, keyword, curPage, pageSize);
@@ -81,7 +81,7 @@ public class CallbackController {
             @Parameter(description = "回调ID") 
             @PathVariable String id) {
         
-        log.info("获取回调详情: id={}", id);
+        log.info("Get callback detail: id={}", id);
         
         CallbackResponse response = callbackService.getCallbackById(parseId(id));
         return ApiResponse.success(response);
@@ -101,7 +101,7 @@ public class CallbackController {
     public ApiResponse<CallbackResponse> createCallback(
             @Valid @RequestBody CallbackCreateRequest request) {
         
-        log.info("注册回调: nameCn={}, scope={}", request.getNameCn(), 
+        log.info("Register callback: nameCn={}, scope={}", request.getNameCn(), 
                 request.getPermission() != null ? request.getPermission().getScope() : null);
         
         CallbackResponse response = callbackService.createCallback(request);
@@ -130,7 +130,7 @@ public class CallbackController {
             @PathVariable String id,
             @Valid @RequestBody CallbackUpdateRequest request) {
         
-        log.info("更新回调: id={}, nameCn={}", id, request.getNameCn());
+        log.info("Update callback: id={}, nameCn={}", id, request.getNameCn());
         
         CallbackResponse response = callbackService.updateCallback(parseId(id), request);
         return ApiResponse.success(response);
@@ -151,7 +151,7 @@ public class CallbackController {
             @Parameter(description = "回调ID") 
             @PathVariable String id) {
         
-        log.info("删除回调: id={}", id);
+        log.info("Delete callback: id={}", id);
         
         callbackService.deleteCallback(parseId(id));
         return ApiResponse.success();
@@ -172,7 +172,7 @@ public class CallbackController {
             @Parameter(description = "回调ID") 
             @PathVariable String id) {
         
-        log.info("撤回回调: id={}", id);
+        log.info("Withdraw callback: id={}", id);
         
         CallbackResponse response = callbackService.withdrawCallback(parseId(id));
         
@@ -192,7 +192,7 @@ public class CallbackController {
         try {
             return Long.parseLong(id);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("无效的ID格式: " + id);
+            throw new IllegalArgumentException("Invalid ID format: " + id);
         }
     }
 }

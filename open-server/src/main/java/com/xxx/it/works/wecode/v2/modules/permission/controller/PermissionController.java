@@ -50,7 +50,7 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取应用 API 权限列表, appId={}", appId);
+        log.info("Get app API permission list, appId={}", appId);
         
         return permissionService.getApiSubscriptionList(appId, status, keyword, curPage, pageSize);
     }
@@ -77,7 +77,7 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取分类下 API 权限列表, categoryId={}, appId={}", id, appId);
+        log.info("Get API permission list under category, categoryId={}, appId={}", id, appId);
         
         return permissionService.getCategoryApiPermissions(id, appId, keyword, needApproval, includeChildren, curPage, pageSize);
     }
@@ -93,7 +93,7 @@ public class PermissionController {
             @PathVariable String appId,
             @Valid @RequestBody PermissionSubscribeRequest request) {
         
-        log.info("申请 API 权限, appId={}, permissionIds={}", appId, request.getPermissionIds());
+        log.info("Apply for API permission, appId={}, permissionIds={}", appId, request.getPermissionIds());
         
         PermissionSubscribeResponse response = permissionService.subscribeApiPermissions(appId, request);
         return ApiResponse.success(response);
@@ -111,7 +111,7 @@ public class PermissionController {
             @Parameter(description = "订阅ID") 
             @PathVariable String id) {
         
-        log.info("撤回 API 权限申请, appId={}, subscriptionId={}", appId, id);
+        log.info("Withdraw API permission application, appId={}, subscriptionId={}", appId, id);
         
         WithdrawResponse response = permissionService.withdrawApiSubscription(appId, id);
         return ApiResponse.success(response);
@@ -137,7 +137,7 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取应用事件订阅列表, appId={}", appId);
+        log.info("Get app event subscription list, appId={}", appId);
         
         return permissionService.getEventSubscriptionList(appId, status, keyword, curPage, pageSize);
     }
@@ -164,7 +164,7 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取分类下事件权限列表, categoryId={}, appId={}", id, appId);
+        log.info("Get event permission list under category, categoryId={}, appId={}", id, appId);
         
         return permissionService.getCategoryEventPermissions(id, appId, keyword, needApproval, includeChildren, curPage, pageSize);
     }
@@ -180,7 +180,7 @@ public class PermissionController {
             @PathVariable String appId,
             @Valid @RequestBody PermissionSubscribeRequest request) {
         
-        log.info("申请事件权限, appId={}, permissionIds={}", appId, request.getPermissionIds());
+        log.info("Apply for event permission, appId={}, permissionIds={}", appId, request.getPermissionIds());
         
         PermissionSubscribeResponse response = permissionService.subscribeEventPermissions(appId, request);
         return ApiResponse.success(response);
@@ -199,7 +199,7 @@ public class PermissionController {
             @PathVariable String id,
             @Valid @RequestBody SubscriptionConfigRequest request) {
         
-        log.info("配置事件消费参数, appId={}, subscriptionId={}", appId, id);
+        log.info("Configure event consumption params, appId={}, subscriptionId={}", appId, id);
         
         WithdrawResponse response = permissionService.configEventSubscription(appId, id, request);
         return ApiResponse.success(response);
@@ -217,7 +217,7 @@ public class PermissionController {
             @Parameter(description = "订阅ID") 
             @PathVariable String id) {
         
-        log.info("撤回事件权限申请, appId={}, subscriptionId={}", appId, id);
+        log.info("Withdraw event permission application, appId={}, subscriptionId={}", appId, id);
         
         WithdrawResponse response = permissionService.withdrawEventSubscription(appId, id);
         return ApiResponse.success(response);
@@ -243,7 +243,7 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取应用回调订阅列表, appId={}", appId);
+        log.info("Get app callback subscription list, appId={}", appId);
         
         return permissionService.getCallbackSubscriptionList(appId, status, keyword, curPage, pageSize);
     }
@@ -270,7 +270,7 @@ public class PermissionController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取分类下回调权限列表, categoryId={}, appId={}", id, appId);
+        log.info("Get callback permission list under category, categoryId={}, appId={}", id, appId);
         
         return permissionService.getCategoryCallbackPermissions(id, appId, keyword, needApproval, includeChildren, curPage, pageSize);
     }
@@ -286,7 +286,7 @@ public class PermissionController {
             @PathVariable String appId,
             @Valid @RequestBody PermissionSubscribeRequest request) {
         
-        log.info("申请回调权限, appId={}, permissionIds={}", appId, request.getPermissionIds());
+        log.info("Apply for callback permission, appId={}, permissionIds={}", appId, request.getPermissionIds());
         
         PermissionSubscribeResponse response = permissionService.subscribeCallbackPermissions(appId, request);
         return ApiResponse.success(response);
@@ -305,7 +305,7 @@ public class PermissionController {
             @PathVariable String id,
             @Valid @RequestBody SubscriptionConfigRequest request) {
         
-        log.info("配置回调消费参数, appId={}, subscriptionId={}", appId, id);
+        log.info("Configure callback consumption params, appId={}, subscriptionId={}", appId, id);
         
         WithdrawResponse response = permissionService.configCallbackSubscription(appId, id, request);
         return ApiResponse.success(response);
@@ -323,7 +323,7 @@ public class PermissionController {
             @Parameter(description = "订阅ID") 
             @PathVariable String id) {
         
-        log.info("撤回回调权限申请, appId={}, subscriptionId={}", appId, id);
+        log.info("Withdraw callback permission application, appId={}, subscriptionId={}", appId, id);
         
         WithdrawResponse response = permissionService.withdrawCallbackSubscription(appId, id);
         return ApiResponse.success(response);

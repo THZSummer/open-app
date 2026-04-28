@@ -48,7 +48,7 @@ public class CategoryController {
             @Parameter(description = "分类别名过滤") 
             @RequestParam(required = false) String categoryAlias) {
         
-        log.info("获取分类树形列表, categoryAlias={}", categoryAlias);
+        log.info("Get category tree list, categoryAlias={}", categoryAlias);
         
         List<CategoryTreeResponse> tree = categoryService.getCategoryTree(categoryAlias);
         return ApiResponse.success(tree);
@@ -67,7 +67,7 @@ public class CategoryController {
             @Parameter(description = "分类ID") 
             @PathVariable String id) {
         
-        log.info("获取分类详情, id={}", id);
+        log.info("Get category detail, id={}", id);
         
         CategoryResponse response = categoryService.getCategoryById(parseId(id));
         return ApiResponse.success(response);
@@ -85,7 +85,7 @@ public class CategoryController {
     public ApiResponse<CategoryResponse> createCategory(
             @Valid @RequestBody CategoryCreateRequest request) {
         
-        log.info("创建分类, nameCn={}", request.getNameCn());
+        log.info("Create category, nameCn={}", request.getNameCn());
         
         CategoryResponse response = categoryService.createCategory(request);
         return ApiResponse.success(response);
@@ -106,7 +106,7 @@ public class CategoryController {
             @PathVariable String id,
             @Valid @RequestBody CategoryUpdateRequest request) {
         
-        log.info("更新分类, id={}, nameCn={}", id, request.getNameCn());
+        log.info("Update category, id={}, nameCn={}", id, request.getNameCn());
         
         CategoryResponse response = categoryService.updateCategory(parseId(id), request);
         return ApiResponse.success(response);
@@ -127,7 +127,7 @@ public class CategoryController {
             @Parameter(description = "分类ID") 
             @PathVariable String id) {
         
-        log.info("删除分类, id={}", id);
+        log.info("Delete category, id={}", id);
         
         categoryService.deleteCategory(parseId(id));
         return ApiResponse.success();
@@ -150,7 +150,7 @@ public class CategoryController {
             @PathVariable String id,
             @Valid @RequestBody CategoryOwnerRequest request) {
         
-        log.info("添加分类责任人, categoryId={}, userId={}", id, request.getUserId());
+        log.info("Add category owner, categoryId={}, userId={}", id, request.getUserId());
         
         CategoryOwnerResponse response = categoryService.addOwner(parseId(id), request);
         return ApiResponse.success(response);
@@ -169,7 +169,7 @@ public class CategoryController {
             @Parameter(description = "分类ID") 
             @PathVariable String id) {
         
-        log.info("获取分类责任人列表, categoryId={}", id);
+        log.info("Get category owner list, categoryId={}", id);
         
         List<CategoryOwnerResponse> owners = categoryService.getOwners(parseId(id));
         return ApiResponse.success(owners);
@@ -191,7 +191,7 @@ public class CategoryController {
             @Parameter(description = "用户ID") 
             @PathVariable String userId) {
         
-        log.info("移除分类责任人, categoryId={}, userId={}", id, userId);
+        log.info("Remove category owner, categoryId={}, userId={}", id, userId);
         
         categoryService.removeOwner(parseId(id), userId);
         return ApiResponse.success();
@@ -206,7 +206,7 @@ public class CategoryController {
         try {
             return Long.parseLong(id);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("无效的ID格式: " + id);
+            throw new IllegalArgumentException("Invalid ID format: " + id);
         }
     }
 }
