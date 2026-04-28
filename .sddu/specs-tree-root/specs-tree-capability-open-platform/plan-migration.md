@@ -194,26 +194,26 @@ done
 -- 验证分类数据数量
 SELECT 
     '分类数据' AS module,
-    (SELECT COUNT(*) FROM openplatform_module_node_t WHERE status = 1) AS old_count,
-    (SELECT COUNT(*) FROM openplatform_v2_category_t WHERE status = 1) AS new_count;
+    (SELECT COUNT(*) FROM openplatform_module_node_t) AS old_count,
+    (SELECT COUNT(*) FROM openplatform_v2_category_t) AS new_count;
 
 -- 验证API数据数量
 SELECT 
     'API数据' AS module,
-    (SELECT COUNT(*) FROM openplatform_permission_api_t WHERE status = 1) AS old_count,
-    (SELECT COUNT(*) FROM openplatform_v2_api_t WHERE status IN (1, 2)) AS new_count;
+    (SELECT COUNT(*) FROM openplatform_permission_api_t) AS old_count,
+    (SELECT COUNT(*) FROM openplatform_v2_api_t) AS new_count;
 
 -- 验证事件数据数量
 SELECT 
     '事件数据' AS module,
-    (SELECT COUNT(*) FROM openplatform_event_t WHERE status = 1) AS old_count,
-    (SELECT COUNT(*) FROM openplatform_v2_event_t WHERE status IN (1, 2)) AS new_count;
+    (SELECT COUNT(*) FROM openplatform_event_t) AS old_count,
+    (SELECT COUNT(*) FROM openplatform_v2_event_t) AS new_count;
 
 -- 验证回调数据数量（新增功能）
 SELECT 
     '回调数据' AS module,
     0 AS old_count,
-    (SELECT COUNT(*) FROM openplatform_v2_callback_t WHERE status IN (1, 2)) AS new_count;
+    (SELECT COUNT(*) FROM openplatform_v2_callback_t) AS new_count;
 ```
 
 **验证要点**：
