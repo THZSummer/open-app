@@ -121,8 +121,8 @@ class PermissionServiceTest {
                 .internalId(1L)
                 .externalId("1")
                 .build();
-        when(appContextResolver.resolveAndValidate(anyString())).thenReturn(defaultAppContext);
-        when(appContextResolver.toExternalId(anyLong())).thenAnswer(invocation -> String.valueOf(invocation.getArgument(0)));
+        lenient().when(appContextResolver.resolveAndValidate(anyString())).thenReturn(defaultAppContext);
+        lenient().when(appContextResolver.toExternalId(anyLong())).thenReturn("1");
     }
 
     @Nested
