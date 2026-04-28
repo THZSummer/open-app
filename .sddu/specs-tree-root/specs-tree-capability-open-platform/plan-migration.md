@@ -476,54 +476,44 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
 
 ## 4. 同步接口设计
 
-每个模块提供2个接口：
-- **batch**：批量同步（通过 `direction` 参数区分 migrate/rollback）
-- **status**：状态查询
-
 ### 4.1 接口列表
 
 **订阅关系同步接口**（自动同步关联的审批数据）：
-```
-POST /api/v1/sync/subscription/batch     # 批量同步订阅关系（自动同步审批数据）
-GET  /api/v1/sync/subscription/status    # 状态查询
-```
+
+| 接口 | 说明 |
+|------|------|
+| `POST /api/v1/sync/subscription/migrate` | 旧表→新表（迁移） |
+| `POST /api/v1/sync/subscription/rollback` | 新表→旧表（回退） |
 
 **说明**：
-- 同步订阅关系时，自动同步相关的审批记录和审批日志
-- 迁移方向：订阅关系 + 关联的审批数据一起迁移
-- 回退方向：订阅关系 + 关联的审批数据一起回退
+- 两个接口都支持批量同步（传入ID列表）和全量同步（不传ID或传空数组）
+- 同步订阅关系时，自动同步关联的审批记录和审批日志
+- 同步执行，无需状态查询
 
 ### 4.2 接口示例
 
-**批量同步接口**（合并迁移和回退）：
 ```java
-@PostMapping("/sync/subscription/batch")
-public SyncResult syncBatch(@RequestBody SyncRequest request) {
-    // request.ids: 要同步的订阅关系ID列表（null=全量）
-    // request.direction: "migrate"（迁移）或 "rollback"（回退）
+// 迁移接口：旧表 → 新表
+@PostMapping("/sync/subscription/migrate")
+public SyncResult migrate(@RequestBody SyncRequest request) {
+    // request.ids: 要迁移的订阅关系ID列表
+    // - 传入ID列表：批量迁移指定数据
+    // - 不传或传空数组：全量迁移
     
     // 同步逻辑：
-    // 1. 同步订阅关系数据（openplatform_app_permission_t → openplatform_v2_subscription_t）
-    // 2. 自动同步关联的审批记录（openplatform_eflow_t → openplatform_v2_approval_record_t）
-    // 3. 自动同步关联的审批日志（openplatform_eflow_log_t → openplatform_v2_approval_log_t）
+    // 1. 从旧表读取订阅关系数据，写入新表
+    // 2. 自动同步关联的审批记录
+    // 3. 自动同步关联的审批日志
 }
 
-// 请求示例 - 迁移指定ID
+// 请求示例 - 批量迁移
 {
-    "ids": [1, 2, 3],
-    "direction": "migrate"
-}
-
-// 请求示例 - 回退指定ID
-{
-    "ids": [1, 2, 3],
-    "direction": "rollback"
+    "ids": [1, 2, 3]
 }
 
 // 请求示例 - 全量迁移
 {
-    "ids": null,
-    "direction": "migrate"
+    "ids": null  // 或 "ids": []
 }
 
 // 响应示例
@@ -535,20 +525,35 @@ public SyncResult syncBatch(@RequestBody SyncRequest request) {
         {"id": 5, "status": "failed", "error": "权限ID映射失败"}
     ]
 }
-```
 
-**状态查询接口**：
-```java
-@GetMapping("/sync/subscription/status")
-public SyncStatus getSubscriptionStatus() {
-    // 返回：源数据数量、目标数据数量、待同步数量
+// 回退接口：新表 → 旧表
+@PostMapping("/sync/subscription/rollback")
+public SyncResult rollback(@RequestBody SyncRequest request) {
+    // request.ids: 要回退的订阅关系ID列表
+    // - 传入ID列表：批量回退指定数据
+    // - 不传或传空数组：全量回退
+    
+    // 同步逻辑：
+    // 1. 从新表读取订阅关系数据，写入旧表
+    // 2. 自动同步关联的审批记录
+    // 3. 自动同步关联的审批日志
+}
+
+// 请求示例 - 批量回退
+{
+    "ids": [1, 2, 3]
+}
+
+// 请求示例 - 全量回退
+{
+    "ids": null
 }
 
 // 响应示例
 {
-    "sourceCount": 100,
-    "targetCount": 95,
-    "pending": 5
+    "success": 10,
+    "failed": 2,
+    "details": [...]
 }
 ```
 
@@ -559,16 +564,27 @@ public SyncStatus getSubscriptionStatus() {
 @RequestMapping("/api/v1/sync")
 public class SyncController {
     
-    @PostMapping("/subscription/batch")
-    public SyncResult syncSubscriptionBatch(@RequestBody SyncRequest request) {
-        // 批量同步订阅关系（自动同步审批数据）
-        // direction: "migrate" 或 "rollback"
+    @PostMapping("/subscription/migrate")
+    public SyncResult migrate(@RequestBody SyncRequest request) {
+        // 旧表 → 新表（批量/全量）
     }
     
-    @GetMapping("/subscription/status")
-    public SyncStatus getSubscriptionStatus() {
-        // 状态查询
+    @PostMapping("/subscription/rollback")
+    public SyncResult rollback(@RequestBody SyncRequest request) {
+        // 新表 → 旧表（批量/全量）
     }
+}
+
+@Data
+public class SyncRequest {
+    private List<Long> ids;  // null或空数组=全量同步
+}
+
+@Data
+public class SyncResult {
+    private int success;
+    private int failed;
+    private List<SyncDetail> details;
 }
 ```
 
