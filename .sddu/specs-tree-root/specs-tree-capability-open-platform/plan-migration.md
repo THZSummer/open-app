@@ -60,15 +60,15 @@
 
 ### 2.3 表结构对照（仅作参考）
 
-| 序号 | 数据对象 | 旧表 | 新表 |
-|------|----------|------|------|
-| 1 | 分类数据 | openplatform_module_node_t | openplatform_v2_category_t |
-| 2 | API数据 | openplatform_permission_api_t | openplatform_v2_api_t |
-| 3 | 事件数据 | openplatform_event_t | openplatform_v2_event_t |
-| 4 | 回调数据 | - | openplatform_v2_callback_t |
-| 5 | API权限数据 | openplatform_permission_t | openplatform_v2_permission_t |
-| 6 | 事件权限数据 | openplatform_permission_t | openplatform_v2_permission_t |
-| 7 | 回调权限数据 | - | openplatform_v2_permission_t |
+| 序号 | 数据对象 | 旧表 | 新表 | 关键字段 |
+|------|----------|------|------|----------|
+| 1 | 分类数据 | openplatform_module_node_t | openplatform_v2_category_t | name_cn, name_en, parent_id, category_alias |
+| 2 | API数据 | openplatform_permission_api_t | openplatform_v2_api_t | name_cn, name_en, path, method, auth_type |
+| 3 | 事件数据 | openplatform_event_t | openplatform_v2_event_t | name_cn, name_en, topic |
+| 4 | 回调数据 | - | openplatform_v2_callback_t | name_cn, name_en |
+| 5 | API权限数据 | openplatform_permission_t | openplatform_v2_permission_t | scope, resource_type, resource_id, category_id |
+| 6 | 事件权限数据 | openplatform_permission_t | openplatform_v2_permission_t | scope, resource_type, resource_id, category_id |
+| 7 | 回调权限数据 | - | openplatform_v2_permission_t | scope, resource_type, resource_id, category_id |
 
 **说明**：上表仅作参考，不涉及数据同步
 
