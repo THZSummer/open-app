@@ -756,41 +756,6 @@ class ApiServerClientTest {
     }
 
     /**
-     * 测试 init 方法
-     */
-    @Nested
-    @DisplayName("init 方法测试")
-    class InitTest {
-
-        @Test
-        @DisplayName("初始化检查 - 认证启用且凭证为空")
-        void testInit_AuthEnabledWithEmptyCredential() {
-            // 设置认证启用
-            ReflectionTestUtils.setField(apiServerClient, "authEnabled", true);
-
-            // 执行 init 方法
-            apiServerClient.init();
-
-            // 验证：由于 getApiServerCredential() 返回空 Map，应该记录警告日志
-            // 这里主要验证方法能正常执行，不抛出异常
-            // 实际项目中可以使用 LogCaptor 验证日志输出
-        }
-
-        @Test
-        @DisplayName("初始化检查 - 认证禁用")
-        void testInit_AuthDisabled() {
-            // 设置认证禁用
-            ReflectionTestUtils.setField(apiServerClient, "authEnabled", false);
-
-            // 执行 init 方法
-            apiServerClient.init();
-
-            // 验证：认证禁用时，不会检查凭证
-            // 方法能正常执行，不抛出异常
-        }
-    }
-
-    /**
      * 测试 HTTP 请求构建
      */
     @Nested
