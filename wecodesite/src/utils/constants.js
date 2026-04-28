@@ -51,3 +51,11 @@ export const getPermissionName = (permission) => {
   if (typeof permission === 'string') return permission;
   return permission.nameCn || permission.scope || '-';
 };
+
+export const ADMIN_MENU_CONFIG = [
+  { title: 'API列表', router: '/admin/apis' },
+  { title: '事件列表', router: '/admin/events' },
+  { title: '回调列表', router: '/admin/callbacks' },
+  { title: '分类列表', router: '/admin/categories' },
+  { title: '审批中心', router: '/admin/approvals' }
+];

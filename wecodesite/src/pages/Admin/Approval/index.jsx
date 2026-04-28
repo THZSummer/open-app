@@ -21,14 +21,14 @@ import {
   approveApplication,
   rejectApplication,
 } from './thunk';
-import { getApprovalColumns, getMyApprovalColumns } from './constants';
+import { getApprovalColumns, getMyApprovalColumns, getAllApprovalColumns } from './constants';
 import ApprovalFlowConfig from './ApprovalFlowConfig';
 import ApprovalDetailModalWrapper from '../../../components/ApprovalDetailModal/ApprovalDetailModalWrapper';
 import ApprovalOpinionModal from '../../../components/ApprovalOpinionModal/ApprovalOpinionModal';
+import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import './ApprovalCenter.m.less';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-import { getUserIdCookie } from '../../../utils/cookie';
-import { approvalFlowWhitelist } from './mock';
+import { isInAdminWhitelist } from '../../../utils/common';
 
 function ApprovalCenter() {
   const [loading, setLoading] = useState(false); 
@@ -45,8 +45,7 @@ function ApprovalCenter() {
   const [canViewFlowConfig, setCanViewFlowConfig] = useState(false);
 
   useEffect(() => {
-    const currentUserId = getUserIdCookie();
-    const hasPermission = approvalFlowWhitelist.includes(currentUserId);
+    const hasPermission = isInAdminWhitelist();
     setCanViewFlowConfig(hasPermission);
   }, []);
 
@@ -138,88 +137,102 @@ function ApprovalCenter() {
     handleViewDetail,
   });
 
+  const allColumns = getAllApprovalColumns({
+    handleViewDetail,
+  });
+
   const dataSource = activeTab === 'mine' ? myApprovals : approvalList;
-  const cols = activeTab === 'mine' ? myColumns : columns;
+  let cols = columns;
+  if (activeTab === 'mine') {
+    cols = myColumns;
+  } else if (activeTab === 'all') {
+    cols = allColumns;
+  }
 
   return (
-    <div className="approval-center">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h4 className="page-title">审批中心</h4>
-          <span className="page-desc">审批权限申请，处理待办事项</span>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <SimpleSidebar />
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <div className="approval-center">
+          <div className="page-header">
+            <div className="page-header-left">
+              <h4 className="page-title">审批中心</h4>
+              <span className="page-desc">审批权限申请，处理待办事项</span>
+            </div>
+          </div>
+
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+          >
+            <TabPane key="pending" tab="我的待审" />
+            <TabPane key="mine" tab="我发起的" />
+            {canViewFlowConfig && <TabPane key="all" tab="全部" />}
+            {canViewFlowConfig && <TabPane key="flowConfig" tab="审批流程配置" />}
+          </Tabs>
+
+          {activeTab === 'flowConfig' ? (
+            canViewFlowConfig ? <ApprovalFlowConfig /> : <Empty description="您没有权限访问审批流程配置" />
+          ) : (
+            <Spin spinning={loading}>
+              {dataSource.length > 0 ? (
+                <>
+                  <div className="table-wrapper">
+                    <Table
+                      columns={cols}
+                      dataSource={dataSource}
+                      rowKey="id"
+                      pagination={false}
+                    />
+                  </div>
+                  <div style={{ marginTop: 16, textAlign: 'right' }}>
+                    <Pagination
+                      total={pagination.total}
+                      current={pagination.curPage}
+                      pageSize={pagination.pageSize}
+                      pageSizeOptions={PAGE_SIZE_OPTIONS}
+                      showSizeChanger
+                      showQuickJumper
+                      showTotal={(total) => `共 ${pagination.total} 条`}
+                      onChange={handlePageChange}
+                    />
+                  </div>
+                </>
+              ) : (
+                <Empty description="暂无数据" />
+              )}
+            </Spin>
+          )}
+
+          <ApprovalDetailModalWrapper
+            visible={detailVisible}
+            approvalId={currentDetailId}
+            onClose={() => setDetailVisible(false)}
+            fetchDetail={fetchApprovalDetail}
+          />
+
+          <ApprovalOpinionModal
+            visible={approveModalVisible}
+            title="审批通过"
+            okText="确认通过"
+            isRequired={false}
+            approvalId={approvingId}
+            onClose={() => setApproveModalVisible(false)}
+            onConfirm={handleConfirmApprove}
+          />
+
+          <ApprovalOpinionModal
+            visible={rejectModalVisible}
+            title="驳回审批意见"
+            okText="确认驳回"
+            okButtonProps={{ danger: true }}
+            isRequired={true}
+            approvalId={rejectingId}
+            onClose={() => setRejectModalVisible(false)}
+            onConfirm={handleConfirmReject}
+          />
         </div>
       </div>
-
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-      >
-        <TabPane key="pending" tab="我的待审" />
-        <TabPane key="mine" tab="我发起的" />
-        {canViewFlowConfig && <TabPane key="all" tab="全部" />}
-        {canViewFlowConfig && <TabPane key="flowConfig" tab="审批流程配置" />}
-      </Tabs>
-
-      {activeTab === 'flowConfig' ? (
-        canViewFlowConfig ? <ApprovalFlowConfig /> : <Empty description="您没有权限访问审批流程配置" />
-      ) : (
-        <Spin spinning={loading}>
-          {dataSource.length > 0 ? (
-            <>
-              <div className="table-wrapper">
-                <Table
-                  columns={cols}
-                  dataSource={dataSource}
-                  rowKey="id"
-                  pagination={false}
-                />
-              </div>
-              <div style={{ marginTop: 16, textAlign: 'right' }}>
-                <Pagination
-                  total={pagination.total}
-                  current={pagination.curPage}
-                  pageSize={pagination.pageSize}
-                  pageSizeOptions={PAGE_SIZE_OPTIONS}
-                  showSizeChanger
-                  showQuickJumper
-                  showTotal={(total) => `共 ${pagination.total} 条`}
-                  onChange={handlePageChange}
-                />
-              </div>
-            </>
-          ) : (
-            <Empty description="暂无数据" />
-          )}
-        </Spin>
-      )}
-
-      <ApprovalDetailModalWrapper
-        visible={detailVisible}
-        approvalId={currentDetailId}
-        onClose={() => setDetailVisible(false)}
-        fetchDetail={fetchApprovalDetail}
-      />
-
-      <ApprovalOpinionModal
-        visible={approveModalVisible}
-        title="审批通过"
-        okText="确认通过"
-        isRequired={false}
-        approvalId={approvingId}
-        onClose={() => setApproveModalVisible(false)}
-        onConfirm={handleConfirmApprove}
-      />
-
-      <ApprovalOpinionModal
-        visible={rejectModalVisible}
-        title="驳回审批意见"
-        okText="确认驳回"
-        okButtonProps={{ danger: true }}
-        isRequired={true}
-        approvalId={rejectingId}
-        onClose={() => setRejectModalVisible(false)}
-        onConfirm={handleConfirmReject}
-      />
     </div>
   );
 }

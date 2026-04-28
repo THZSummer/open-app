@@ -105,16 +105,16 @@ function Sidebar({ sidebarMainHeight }) {
         { key: 'version-release', icon: <InboxOutlined />, label: '版本发布' },
       ],
     },
-    {
-      category: '后台管理',
-      children: [
-        { key: 'admin/categories', icon: <FolderOutlined />, label: '分类管理' },
-        { key: 'admin/apis', icon: <ApiOutlined />, label: 'API管理' },
-        { key: 'admin/events', icon: <BellOutlined />, label: '事件管理' },
-        { key: 'admin/callbacks', icon: <SwapOutlined />, label: '回调管理' },
-        { key: 'admin/approvals', icon: <CheckCircleOutlined />, label: '审批中心' },
-      ],
-    },
+    // {
+    //   category: '后台管理',
+    //   children: [
+    //     { key: 'admin/categories', icon: <FolderOutlined />, label: '分类管理' },
+    //     { key: 'admin/apis', icon: <ApiOutlined />, label: 'API管理' },
+    //     { key: 'admin/events', icon: <BellOutlined />, label: '事件管理' },
+    //     { key: 'admin/callbacks', icon: <SwapOutlined />, label: '回调管理' },
+    //     { key: 'admin/approvals', icon: <CheckCircleOutlined />, label: '审批中心' },
+    //   ],
+    // },
   ];
 
   return (

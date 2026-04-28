@@ -18,6 +18,7 @@ import {
   FileOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchCategoryTree,
   fetchCategoryOwners,
@@ -30,11 +31,19 @@ import {
 import CategoryFormModal from '../../../components/CategoryFormModal/CategoryFormModal';
 import CategoryOwnerModal from '../../../components/CategoryOwnerModal/CategoryOwnerModal';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
+import { isInAdminWhitelist } from '../../../utils/common';
+import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import './CategoryList.m.less';
 
-const { Search: AntSearch } = Input;
-
 function CategoryList() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isInAdminWhitelist()) {
+      navigate('/apps');
+    }
+  }, [navigate]);
+
   const [loading, setLoading] = useState(false);
   const [categoryTree, setCategoryTree] = useState([]);
   const [searchValue, setSearchValue] = useState('');
@@ -47,6 +56,8 @@ function CategoryList() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteCategoryId, setDeleteCategoryId] = useState('');
   const [deleteCategoryName, setDeleteCategoryName] = useState('');
+
+  const { Search: AntSearch } = Input;
 
   useEffect(() => {
     loadData();
@@ -224,69 +235,74 @@ function CategoryList() {
   const filteredTree = filterTree(categoryTree, searchValue);
 
   return (
-    <div className="category-list">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h4 className="page-title">分类管理</h4>
-          <span className="page-desc">管理分类树结构，配置分类责任人</span>
-        </div>
-        <Button type="primary" onClick={handleAddRoot} style={{ justifyContent: 'center', borderRadius: 6 }}>
-          新增一级分类
-        </Button>
-      </div>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <SimpleSidebar />
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <div className="category-list">
+          <div className="page-header">
+            <div className="page-header-left">
+              <h4 className="page-title">分类管理</h4>
+              <span className="page-desc">管理分类树结构，配置分类责任人</span>
+            </div>
+            <Button type="primary" onClick={handleAddRoot} style={{ justifyContent: 'center', borderRadius: 6 }}>
+              新增一级分类
+            </Button>
+          </div>
 
-      <div className="toolbar">
-        <AntSearch
-          placeholder="搜索分类名称"
-          value={searchValue}
-          onChange={(e) => setSearchValue(e.target.value)}
-          style={{ width: 300 }}
-          allowClear
-        />
-      </div>
+          <div className="toolbar">
+            <AntSearch
+              placeholder="搜索分类名称"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              style={{ width: 300 }}
+              allowClear
+            />
+          </div>
 
-      <Spin spinning={loading}>
-        {filteredTree.length > 0 ? (
-          <Tree
-            showLine
-            showIcon
-            expandedKeys={expandedKeys}
-            onExpand={(keys) => setExpandedKeys(keys)}
-            selectedKeys={[]}
-            treeData={convertToTreeData(filteredTree)}
-            className="category-tree"
+          <Spin spinning={loading}>
+            {filteredTree.length > 0 ? (
+              <Tree
+                showLine
+                showIcon
+                expandedKeys={expandedKeys}
+                onExpand={(keys) => setExpandedKeys(keys)}
+                selectedKeys={[]}
+                treeData={convertToTreeData(filteredTree)}
+                className="category-tree"
+              />
+            ) : (
+              <Empty description="暂无分类数据" />
+            )}
+          </Spin>
+
+          <CategoryFormModal
+            visible={formModalVisible}
+            isEditing={!!editingCategory}
+            parentCategory={parentCategory}
+            initialValues={editingCategory}
+            onClose={handleFormClose}
+            onSubmit={handleFormSubmit}
           />
-        ) : (
-          <Empty description="暂无分类数据" />
-        )}
-      </Spin>
 
-      <CategoryFormModal
-        visible={formModalVisible}
-        isEditing={!!editingCategory}
-        parentCategory={parentCategory}
-        initialValues={editingCategory}
-        onClose={handleFormClose}
-        onSubmit={handleFormSubmit}
-      />
+          <CategoryOwnerModal
+            visible={ownerModalVisible}
+            categoryId={ownerCategoryId}
+            onClose={() => setOwnerModalVisible(false)}
+            fetchOwners={fetchCategoryOwners}
+            addOwner={addCategoryOwner}
+            removeOwner={removeCategoryOwner}
+          />
 
-      <CategoryOwnerModal
-        visible={ownerModalVisible}
-        categoryId={ownerCategoryId}
-        onClose={() => setOwnerModalVisible(false)}
-        fetchOwners={fetchCategoryOwners}
-        addOwner={addCategoryOwner}
-        removeOwner={removeCategoryOwner}
-      />
-
-      <DeleteConfirmModal
-        open={deleteModalVisible}
-        onClose={() => setDeleteModalVisible(false)}
-        onConfirm={handleConfirmDelete}
-        requireConfirmText={deleteCategoryName}
-        title="删除分类"
-        content="此操作将永久删除该分类及其所有子分类，无法恢复！"
-      />
+          <DeleteConfirmModal
+            open={deleteModalVisible}
+            onClose={() => setDeleteModalVisible(false)}
+            onConfirm={handleConfirmDelete}
+            requireConfirmText={deleteCategoryName}
+            title="删除分类"
+            content="此操作将永久删除该分类及其所有子分类，无法恢复！"
+          />
+        </div>
+      </div>
     </div>
   );
 }

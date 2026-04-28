@@ -4,6 +4,5 @@ export default {
     preload: false,
     isStatic: true,
     key: 'admin-apis',
-    layout: 'inner',
     component: () => import('./index'),
 }
