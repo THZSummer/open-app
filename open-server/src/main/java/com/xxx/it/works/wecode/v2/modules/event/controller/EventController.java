@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/events")
+@RequestMapping("/service/open/v2/events")
 @RequiredArgsConstructor
 @Tag(name = "事件管理", description = "事件资源管理接口")
 public class EventController {

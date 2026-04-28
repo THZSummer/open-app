@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/apis")
+@RequestMapping("/service/open/v2/apis")
 @RequiredArgsConstructor
 @Tag(name = "API 管理", description = "API 资源管理接口")
 public class ApiController {
