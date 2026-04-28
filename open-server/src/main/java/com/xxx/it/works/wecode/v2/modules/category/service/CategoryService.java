@@ -41,7 +41,7 @@ public class CategoryService {
      * @param categoryAlias 分类别名过滤（可选）
      * @return 树形分类列表
      */
-    public List<CategoryTreesResponse> getCategoryTree(String categoryAlias) {
+    public List<CategoryTreeResponse> getCategoryTree(String categoryAlias) {
         // 查询所有分类
         List<Category> categories;
         if (categoryAlias != null && !categoryAlias.isEmpty()) {
@@ -61,24 +61,24 @@ public class CategoryService {
                 .collect(Collectors.toMap(Category::getId, c -> c));
 
         // 构建树形结构
-        Map<Long, CategoryTreesResponse> responseMap = new HashMap<>();
-        List<CategoryTreesResponse> roots = new ArrayList<>();
+        Map<Long, CategoryTreeResponse> responseMap = new HashMap<>();
+        List<CategoryTreeResponse> roots = new ArrayList<>();
 
         // 第一遍遍历：创建所有响应对象
         for (Category category : categories) {
-            CategoryTreesResponse response = convertToTreeResponse(category);
+            CategoryTreeResponse response = convertToTreeResponse(category);
             responseMap.put(category.getId(), response);
         }
 
         // 第二遍遍历：构建树形关系
         for (Category category : categories) {
-            CategoryTreesResponse response = responseMap.get(category.getId());
+            CategoryTreeResponse response = responseMap.get(category.getId());
             if (category.getParentId() == null || category.getParentId() == 0L) {
                 // 根节点（parentId 为 null 或 0 都视为根节点）
                 roots.add(response);
             } else {
                 // 子节点
-                CategoryTreesResponse parent = responseMap.get(category.getParentId());
+                CategoryTreeResponse parent = responseMap.get(category.getParentId());
                 if (parent != null) {
                     parent.getChildren().add(response);
                 }
@@ -334,8 +334,8 @@ public class CategoryService {
     /**
      * 转换为树形响应
      */
-    private CategoryTreesResponse convertToTreeResponse(Category category) {
-        CategoryTreesResponse response = new CategoryTreesResponse();
+    private CategoryTreeResponse convertToTreeResponse(Category category) {
+        CategoryTreeResponse response = new CategoryTreeResponse();
         response.setId(String.valueOf(category.getId()));
         response.setCategoryAlias(category.getCategoryAlias());
         response.setNameCn(category.getNameCn());
