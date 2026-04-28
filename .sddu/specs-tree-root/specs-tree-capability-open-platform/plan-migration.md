@@ -259,17 +259,20 @@ OR (p.resource_type = 'callback' AND c.id IS NULL);
 ```sql
 CREATE TABLE `openplatform_app_permission_t` (
     `id` BIGINT(20) PRIMARY KEY,
-    `app_id` BIGINT(20) COMMENT '应用ID',
-    `permission_id` BIGINT(20) COMMENT '权限ID',
-    `status` TINYINT(10) COMMENT '状态',
-    `channel_type` TINYINT(10) COMMENT '通道类型',
-    `channel_address` VARCHAR(500) COMMENT '通道地址',
-    `auth_type` TINYINT(10) COMMENT '认证类型',
-    `create_time` DATETIME(3),
-    `last_update_time` DATETIME(3),
+    `app_id` BIGINT(20) NOT NULL COMMENT '应用ID',
+    `permission_id` BIGINT(20) NOT NULL COMMENT '权限ID',
+    `tenant_id` VARCHAR(100) COMMENT '租户ID',
+    `permisssion_type` VARCHAR(20) COMMENT '权限类型（⚠️ 拼写错误：3个s）',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
     `create_by` VARCHAR(100),
-    `last_update_by` VARCHAR(100)
-);
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_by` VARCHAR(100),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    KEY `idx_app_id` (`app_id`),
+    KEY `idx_permission_id` (`permission_id`),
+    KEY `idx_tenant_id` (`tenant_id`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用权限关联表';
 ```
 
 #### 新表结构
@@ -297,12 +300,14 @@ CREATE TABLE `openplatform_v2_subscription_t` (
 | id | id | 主键保持不变 |
 | app_id | app_id | 应用ID |
 | permission_id | permission_id | 需要映射到新权限ID |
-| status | status | 状态值保持一致 |
-| channel_type | channel_type | 通道类型 |
-| channel_address | channel_address | 通道地址 |
-| auth_type | auth_type | 认证类型 |
-| - | approved_at | 新增：审批通过时间 |
-| - | approved_by | 新增：审批人 |
+| tenant_id | tenant_id | 租户ID（直接迁移） |
+| permisssion_type | - | 移除（通过permission获取resource_type） |
+| status | status | 状态值映射 |
+| - | channel_type | 新增：通道类型（需补充） |
+| - | channel_address | 新增：通道地址（需补充） |
+| - | auth_type | 新增：认证类型（需补充） |
+| - | approved_at | 新增：审批通过时间（需补充） |
+| - | approved_by | 新增：审批人（需补充） |
 | create_time | create_time | 创建时间 |
 | last_update_time | last_update_time | 更新时间 |
 | create_by | create_by | 创建人 |
@@ -327,7 +332,7 @@ GET  /api/v1/sync/subscription/status    # 同步状态查询
 CREATE TABLE `openplatform_eflow_t` (
     `eflow_id` BIGINT(20) PRIMARY KEY,
     `eflow_type` VARCHAR(50) COMMENT '审批流程类型',
-    `eflow_status` TINYINT(10) COMMENT '审批状态',
+    `eflow_status` TINYINT(10) COMMENT '审批状态: 0=待审, 1=已通过, 2=已拒绝, 3=已撤销',
     `eflow_submit_user` VARCHAR(100) COMMENT '提交用户',
     `eflow_submit_message` TEXT COMMENT '提交消息',
     `eflow_audit_user` VARCHAR(100) COMMENT '审批用户',
@@ -336,22 +341,34 @@ CREATE TABLE `openplatform_eflow_t` (
     `resource_id` BIGINT(20) COMMENT '资源ID',
     `resource_info` TEXT COMMENT '资源信息',
     `resource_delta` TEXT COMMENT '资源变更信息',
-    `tenant_id` VARCHAR(100),
-    `create_time` DATETIME(3),
-    `last_update_time` DATETIME(3)
-);
+    `tenant_id` VARCHAR(100) COMMENT '租户ID',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
+    `create_by` VARCHAR(100),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_by` VARCHAR(100),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    KEY `idx_eflow_type` (`eflow_type`),
+    KEY `idx_eflow_status` (`eflow_status`),
+    KEY `idx_resource` (`resource_type`, `resource_id`),
+    KEY `idx_tenant_id` (`tenant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程表';
 ```
 
 **审批日志表**：
 ```sql
 CREATE TABLE `openplatform_eflow_log_t` (
     `eflow_log_id` BIGINT(20) PRIMARY KEY,
-    `eflow_log_trace_id` BIGINT(20) COMMENT '追踪ID',
-    `eflow_log_type` VARCHAR(50) COMMENT '日志类型',
+    `eflow_log_trace_id` BIGINT(20) COMMENT '追踪ID（关联审批流程）',
+    `eflow_log_type` VARCHAR(50) COMMENT '日志类型（文本描述）',
     `eflow_log_user` VARCHAR(100) COMMENT '操作用户',
     `eflow_log_message` TEXT COMMENT '日志消息',
-    `create_time` DATETIME(3)
-);
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=禁用, 1=启用',
+    `create_by` VARCHAR(100),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_by` VARCHAR(100),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    KEY `idx_eflow_log_trace_id` (`eflow_log_trace_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='审批流程日志表';
 ```
 
 #### 新表结构
@@ -427,6 +444,12 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
 | - | combined_nodes | 组合节点配置（新增） |
 | - | current_node | 当前节点索引（新增） |
 | eflow_audit_message | - | 拆分到日志表 |
+| tenant_id | - | 租户ID（迁移时记录） |
+| status | - | 记录状态（启用/禁用） |
+| create_by | - | 创建人（迁移时记录） |
+| create_time | create_time | 创建时间 |
+| last_update_by | - | 更新人（迁移时记录） |
+| last_update_time | last_update_time | 更新时间 |
 
 **日志数据**：从 `openplatform_eflow_log_t` 迁移到 `openplatform_v2_approval_log_t`
 
@@ -439,6 +462,11 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
 | eflow_log_user | operator_id | 操作人 |
 | eflow_log_type | action | 操作类型（需转换） |
 | eflow_log_message | comment | 备注 |
+| status | - | 记录状态（启用/禁用） |
+| create_by | - | 创建人（迁移时记录） |
+| create_time | create_time | 创建时间 |
+| last_update_by | - | 更新人（迁移时记录） |
+| last_update_time | - | 更新时间（迁移时记录） |
 
 #### 同步接口设计
 ```
