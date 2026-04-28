@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.*;
  * 
  * <p>提供订阅关系数据的双向同步接口：</p>
  * <ul>
- *   <li>POST /api/v1/sync/subscription/migrate - 旧表→新表（迁移）</li>
- *   <li>POST /api/v1/sync/subscription/rollback - 新表→旧表（回退）</li>
+ *   <li>POST /service/open/v2/sync/subscription/migrate - 旧表→新表（迁移）</li>
+ *   <li>POST /service/open/v2/sync/subscription/rollback - 新表→旧表（回退）</li>
  * </ul>
  * 
  * <p>接口特性：</p>
