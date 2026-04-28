@@ -3,6 +3,8 @@ package com.xxx.it.works.wecode.v2.common.id;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.Locale;
+
 /**
  * 开发环境 ID 生成器策略
  * 
@@ -92,7 +94,7 @@ public class DevIdGeneratorStrategy implements IdGeneratorStrategy {
         // 时钟回拨检测
         if (timestamp < lastTimestamp) {
             throw new RuntimeException(
-                    String.format("时钟回拨 %d 毫秒", lastTimestamp - timestamp));
+                    String.format(Locale.ROOT, "时钟回拨 %d 毫秒", lastTimestamp - timestamp));
         }
 
         // 同一毫秒内
@@ -139,7 +141,7 @@ public class DevIdGeneratorStrategy implements IdGeneratorStrategy {
     public void setWorkerId(long workerId) {
         if (workerId > MAX_WORKER_ID || workerId < 0) {
             throw new IllegalArgumentException(
-                    String.format("机器 ID 超出范围 [0, %d]", MAX_WORKER_ID));
+                    String.format(Locale.ROOT, "机器 ID 超出范围 [0, %d]", MAX_WORKER_ID));
         }
         this.workerId = workerId;
     }
@@ -150,7 +152,7 @@ public class DevIdGeneratorStrategy implements IdGeneratorStrategy {
     public void setDatacenterId(long datacenterId) {
         if (datacenterId > MAX_DATACENTER_ID || datacenterId < 0) {
             throw new IllegalArgumentException(
-                    String.format("数据中心 ID 超出范围 [0, %d]", MAX_DATACENTER_ID));
+                    String.format(Locale.ROOT, "数据中心 ID 超出范围 [0, %d]", MAX_DATACENTER_ID));
         }
         this.datacenterId = datacenterId;
     }
