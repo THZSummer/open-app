@@ -22,8 +22,8 @@
 
 | 序号 | 数据对象 | 旧表 | 新表 | 同步方式 |
 |------|----------|------|------|----------|
-| 8 | 订阅关系数据 | openplatform_app_permission_t | openplatform_v2_subscription_t | **双向同步** |
-| 9 | 审批数据 | openplatform_eflow_t + openplatform_eflow_log_t | openplatform_v2_approval_record_t + openplatform_v2_approval_log_t | **双向同步** |
+| 8 | 订阅关系数据 | openplatform_app_permission_t | openplatform_v2_subscription_t | **双向同步（手动触发）** |
+| 9 | 审批数据 | openplatform_eflow_t + openplatform_eflow_log_t | openplatform_v2_approval_record_t + openplatform_v2_approval_log_t | **双向同步（手动触发）** |
 | 9.1 | 审批流程模板 | - | openplatform_v2_approval_flow_t | **平台后台新建**（新增功能表） |
 
 **处理方式**：需要双向同步
