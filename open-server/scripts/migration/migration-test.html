@@ -2,345 +2,108 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>数据迁移测试工具</title>
+    <title>接口批量执行工具</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-            color: #333;
-        }
-        h1 {
-            font-size: 20px;
-            margin-bottom: 20px;
-            color: #333;
-        }
-        .section {
-            background: #fff;
-            border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .section-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #666;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 8px;
-        }
-        .config-item {
-            display: flex;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-        .config-label {
-            width: 80px;
-            color: #666;
-            flex-shrink: 0;
-        }
-        .config-value {
-            color: #333;
-            word-break: break-all;
-        }
-        .api-item {
-            background: #f9f9f9;
-            padding: 10px 12px;
-            border-radius: 4px;
-            margin-bottom: 8px;
-        }
-        .api-name {
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-        .api-detail {
-            font-size: 12px;
-            color: #666;
-        }
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: background 0.2s;
-        }
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .btn-primary {
-            background: #1890ff;
-            color: #fff;
-        }
-        .btn-primary:hover:not(:disabled) {
-            background: #40a9ff;
-        }
-        .btn-warning {
-            background: #faad14;
-            color: #fff;
-        }
-        .btn-warning:hover:not(:disabled) {
-            background: #ffc53d;
-        }
-        .btn-danger {
-            background: #ff4d4f;
-            color: #fff;
-        }
-        .btn-danger:hover:not(:disabled) {
-            background: #ff7875;
-        }
-        .result-item {
-            background: #f9f9f9;
-            border-radius: 4px;
-            padding: 12px;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #eee;
-        }
-        .result-status {
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-        }
-        .status-success {
-            background: #f6ffed;
-            color: #52c41a;
-        }
-        .status-error {
-            background: #fff2f0;
-            color: #ff4d4f;
-        }
-        .result-body {
-            background: #fff;
-            padding: 10px;
-            border-radius: 3px;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 12px;
-        }
-        .loading {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid #fff;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .empty {
-            color: #999;
-            font-size: 13px;
-            text-align: center;
-            padding: 20px;
-        }
+        body { font-family: sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+        .section { margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 4px; }
+        .label { color: #666; margin-right: 10px; }
+        .value { color: #333; word-break: break-all; }
+        .config-row { margin: 5px 0; }
+        .body-item { background: #fff; padding: 10px; margin: 5px 0; border-radius: 3px; border-left: 3px solid #1890ff; }
+        button { margin: 5px; padding: 8px 16px; cursor: pointer; border: none; border-radius: 4px; background: #1890ff; color: #fff; }
+        button:hover { background: #40a9ff; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .result { background: #fff; padding: 10px; margin-top: 10px; border-radius: 3px; white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        .success { border-left: 3px solid #52c41a; }
+        .error { border-left: 3px solid #ff4d4f; }
     </style>
 </head>
 <body>
-    <h1>数据迁移测试工具</h1>
+    <h2>接口批量执行工具</h2>
     
     <div class="section">
-        <div class="section-title">配置信息</div>
-        <div class="config-item">
-            <span class="config-label">Base URL:</span>
-            <span class="config-value" id="configBaseUrl"></span>
-        </div>
-        <div class="config-item">
-            <span class="config-label">Session ID:</span>
-            <span class="config-value" id="configSessionId"></span>
-        </div>
-        <div class="config-item">
-            <span class="config-label">测试ID:</span>
-            <span class="config-value" id="configTestIds"></span>
-        </div>
-        <div class="config-item">
-            <span class="config-label">请求头:</span>
-            <span class="config-value">Content-Type: application/json</span>
-        </div>
+        <div class="config-row"><span class="label">URL:</span><span class="value" id="url"></span></div>
+        <div class="config-row"><span class="label">Method:</span><span class="value" id="method"></span></div>
+        <div class="config-row"><span class="label">Headers:</span><span class="value" id="headers"></span></div>
     </div>
     
     <div class="section">
-        <div class="section-title">接口列表</div>
-        <div id="apiList"></div>
+        <span class="label">Body参数列表:</span>
+        <div id="bodyList"></div>
     </div>
     
     <div class="section">
-        <div class="section-title">执行操作</div>
-        <div class="btn-group">
-            <button class="btn-primary" id="btnMigrateSingle">单条迁移</button>
-            <button class="btn-primary" id="btnMigrateBatch">批量迁移</button>
-            <button class="btn-warning" id="btnRollbackSingle">单条回退</button>
-            <button class="btn-warning" id="btnRollbackBatch">批量回退</button>
-            <button class="btn-danger" id="btnMigrateAll">迁移全部 (ids: null)</button>
-            <button class="btn-danger" id="btnRollbackAll">回退全部 (ids: null)</button>
-        </div>
+        <button onclick="executeSingle()">单个执行</button>
+        <button onclick="executeBatch()">批量执行</button>
     </div>
     
     <div class="section">
-        <div class="section-title">执行结果</div>
-        <div id="resultArea">
-            <div class="empty">暂无执行结果</div>
-        </div>
+        <h3>执行结果</h3>
+        <div id="results"></div>
     </div>
 
     <script>
-        // ========== 配置变量（在此修改） ==========
         const CONFIG = {
-            baseUrl: 'http://localhost:18080/open-server',
-            sessionId: 'your-session-id',
-            testIds: [6001, 6002]
-        };
-        
-        const APIs = {
-            migrate: {
-                name: '迁移（旧表→新表）',
-                path: '/service/open/v2/sync/subscription/migrate',
-                method: 'POST'
+            url: 'http://localhost:18080/open-server/service/open/v2/sync/subscription/migrate',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
             },
-            rollback: {
-                name: '回退（新表→旧表）',
-                path: '/service/open/v2/sync/subscription/rollback',
-                method: 'POST'
-            }
+            bodies: [
+                { ids: [6001] },
+                { ids: [6002] },
+                { ids: [6001, 6002] },
+                { ids: null }
+            ]
         };
         
-        // ========== 初始化 ==========
         function init() {
-            document.getElementById('configBaseUrl').textContent = CONFIG.baseUrl;
-            document.getElementById('configSessionId').textContent = CONFIG.sessionId;
-            document.getElementById('configTestIds').textContent = JSON.stringify(CONFIG.testIds);
+            document.getElementById('url').textContent = CONFIG.url;
+            document.getElementById('method').textContent = CONFIG.method;
+            document.getElementById('headers').textContent = JSON.stringify(CONFIG.headers, null, 2);
             
-            const apiList = document.getElementById('apiList');
-            apiList.innerHTML = Object.entries(APIs).map(([key, api]) => `
-                <div class="api-item">
-                    <div class="api-name">${api.name}</div>
-                    <div class="api-detail">
-                        ${api.method} ${api.path}<br>
-                        Body: {"ids": [id1, id2, ...]} 或 {"ids": null}
-                    </div>
-                </div>
-            `).join('');
-            
-            bindEvents();
+            const bodyList = document.getElementById('bodyList');
+            bodyList.innerHTML = CONFIG.bodies.map((body, index) => 
+                `<div class="body-item">#${index + 1}: ${JSON.stringify(body)}</div>`
+            ).join('');
         }
         
-        // ========== 事件绑定 ==========
-        function bindEvents() {
-            document.getElementById('btnMigrateSingle').onclick = () => executeSingle('migrate');
-            document.getElementById('btnMigrateBatch').onclick = () => executeBatch('migrate');
-            document.getElementById('btnRollbackSingle').onclick = () => executeSingle('rollback');
-            document.getElementById('btnRollbackBatch').onclick = () => executeBatch('rollback');
-            document.getElementById('btnMigrateAll').onclick = () => executeAll('migrate');
-            document.getElementById('btnRollbackAll').onclick = () => executeAll('rollback');
-        }
-        
-        // ========== 执行函数 ==========
-        async function executeSingle(apiKey) {
-            const id = CONFIG.testIds[0];
-            if (!id) {
-                alert('请配置 testIds');
-                return;
-            }
-            await executeRequest(apiKey, [id]);
-        }
-        
-        async function executeBatch(apiKey) {
-            if (!CONFIG.testIds.length) {
-                alert('请配置 testIds');
-                return;
-            }
-            await executeRequest(apiKey, CONFIG.testIds);
-        }
-        
-        async function executeAll(apiKey) {
-            if (!confirm(`确定要执行全部${APIs[apiKey].name}吗？`)) return;
-            await executeRequest(apiKey, null);
-        }
-        
-        async function executeRequest(apiKey, ids) {
-            const api = APIs[apiKey];
-            const url = CONFIG.baseUrl + api.path;
-            const body = { ids };
-            
+        async function executeRequest(body, index) {
             const resultId = Date.now();
-            appendResult(resultId, api.name, ids, 'loading');
+            const results = document.getElementById('results');
+            results.insertAdjacentHTML('afterbegin', 
+                `<div class="result" id="result-${resultId}">执行 #${index + 1}: ${JSON.stringify(body)}\n请求中...</div>`
+            );
+            
+            const resultEl = document.getElementById(`result-${resultId}`);
             
             try {
-                const response = await fetch(url, {
-                    method: api.method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Session-Id': CONFIG.sessionId
-                    },
+                const response = await fetch(CONFIG.url, {
+                    method: CONFIG.method,
+                    headers: CONFIG.headers,
                     body: JSON.stringify(body)
                 });
-                
                 const data = await response.json();
-                updateResult(resultId, api.name, ids, response.ok, data);
+                resultEl.className = `result ${response.ok ? 'success' : 'error'}`;
+                resultEl.textContent = `执行 #${index + 1}: ${JSON.stringify(body)}\n状态: ${response.status}\n响应:\n${JSON.stringify(data, null, 2)}`;
             } catch (error) {
-                updateResult(resultId, api.name, ids, false, { error: error.message });
+                resultEl.className = 'result error';
+                resultEl.textContent = `执行 #${index + 1}: ${JSON.stringify(body)}\n错误: ${error.message}`;
             }
         }
         
-        // ========== 结果展示 ==========
-        function appendResult(id, name, ids, status) {
-            const resultArea = document.getElementById('resultArea');
-            const empty = resultArea.querySelector('.empty');
-            if (empty) empty.remove();
-            
-            const html = `
-                <div class="result-item" id="result-${id}">
-                    <div class="result-header">
-                        <span>${name} - IDs: ${JSON.stringify(ids)}</span>
-                        <span class="result-status status-loading">
-                            <span class="loading"></span>执行中
-                        </span>
-                    </div>
-                    <div class="result-body">等待响应...</div>
-                </div>
-            `;
-            resultArea.insertAdjacentHTML('afterbegin', html);
+        function executeSingle() {
+            if (CONFIG.bodies.length > 0) {
+                executeRequest(CONFIG.bodies[0], 0);
+            }
         }
         
-        function updateResult(id, name, ids, success, data) {
-            const resultItem = document.getElementById(`result-${id}`);
-            if (!resultItem) return;
-            
-            const statusEl = resultItem.querySelector('.result-status');
-            const bodyEl = resultItem.querySelector('.result-body');
-            
-            statusEl.className = `result-status ${success ? 'status-success' : 'status-error'}`;
-            statusEl.textContent = success ? '成功' : '失败';
-            
-            bodyEl.textContent = JSON.stringify(data, null, 2);
+        async function executeBatch() {
+            for (let i = 0; i < CONFIG.bodies.length; i++) {
+                await executeRequest(CONFIG.bodies[i], i);
+            }
         }
         
-        // 启动
         init();
     </script>
 </body>
