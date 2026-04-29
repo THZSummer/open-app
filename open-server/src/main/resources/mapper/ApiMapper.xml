@@ -43,7 +43,9 @@
 
     <!-- Select By ID -->
     <select id="selectById" resultMap="WithCategoryResultMap">
-        SELECT a.*, c.name_cn AS category_name
+        SELECT a.id, a.name_cn, a.name_en, a.path, a.method, a.auth_type, a.category_id, a.status,
+               a.create_time, a.last_update_time, a.create_by, a.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_api_t a
         LEFT JOIN openplatform_v2_category_t c ON a.category_id = c.id
         WHERE a.id = #{id}
@@ -72,7 +74,9 @@
 
     <!-- Select List -->
     <select id="selectList" resultMap="WithCategoryResultMap">
-        SELECT a.*, c.name_cn AS category_name
+        SELECT a.id, a.name_cn, a.name_en, a.path, a.method, a.auth_type, a.category_id, a.status,
+               a.create_time, a.last_update_time, a.create_by, a.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_api_t a
         LEFT JOIN openplatform_v2_category_t c ON a.category_id = c.id
         <where>

@@ -48,7 +48,9 @@
 
     <!-- 根据ID查询事件（包含分类名称） -->
     <select id="selectByIdWithCategoryName" resultMap="WithCategoryResultMap">
-        SELECT e.*, c.name_cn AS category_name
+        SELECT e.id, e.name_cn, e.name_en, e.topic, e.category_id, e.status,
+               e.create_time, e.last_update_time, e.create_by, e.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_event_t e
         LEFT JOIN openplatform_v2_category_t c ON e.category_id = c.id
         WHERE e.id = #{id}
@@ -56,7 +58,9 @@
 
     <!-- 分页查询事件列表 -->
     <select id="selectList" resultMap="WithCategoryResultMap">
-        SELECT e.*, c.name_cn AS category_name
+        SELECT e.id, e.name_cn, e.name_en, e.topic, e.category_id, e.status,
+               e.create_time, e.last_update_time, e.create_by, e.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_event_t e
         LEFT JOIN openplatform_v2_category_t c ON e.category_id = c.id
         <where>

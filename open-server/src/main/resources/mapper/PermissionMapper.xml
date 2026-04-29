@@ -108,7 +108,9 @@
 
     <!-- 查询分类下的权限列表（API） -->
     <select id="selectApiPermissionsByCategory" resultMap="BaseResultMap">
-        SELECT p.*
+        SELECT p.id, p.name_cn, p.name_en, p.scope, p.resource_type, p.resource_id, p.category_id, 
+               p.need_approval, p.resource_nodes, p.status,
+               p.create_time, p.last_update_time, p.create_by, p.last_update_by
         FROM openplatform_v2_permission_t p
         WHERE p.resource_type = 'api'
         <if test="includeChildren == true and categoryPath != null">
@@ -170,7 +172,9 @@
 
     <!-- 查询分类下的权限列表（事件） -->
     <select id="selectEventPermissionsByCategory" resultMap="BaseResultMap">
-        SELECT p.*
+        SELECT p.id, p.name_cn, p.name_en, p.scope, p.resource_type, p.resource_id, p.category_id, 
+               p.need_approval, p.resource_nodes, p.status,
+               p.create_time, p.last_update_time, p.create_by, p.last_update_by
         FROM openplatform_v2_permission_t p
         WHERE p.resource_type = 'event'
         <if test="includeChildren == true and categoryPath != null">
@@ -232,7 +236,9 @@
 
     <!-- 查询分类下的权限列表（回调） -->
     <select id="selectCallbackPermissionsByCategory" resultMap="BaseResultMap">
-        SELECT p.*
+        SELECT p.id, p.name_cn, p.name_en, p.scope, p.resource_type, p.resource_id, p.category_id, 
+               p.need_approval, p.resource_nodes, p.status,
+               p.create_time, p.last_update_time, p.create_by, p.last_update_by
         FROM openplatform_v2_permission_t p
         WHERE p.resource_type = 'callback'
         <if test="includeChildren == true and categoryPath != null">

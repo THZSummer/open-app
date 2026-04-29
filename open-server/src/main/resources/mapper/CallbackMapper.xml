@@ -40,7 +40,9 @@
 
     <!-- 根据ID查询回调 -->
     <select id="selectById" resultMap="WithCategoryResultMap">
-        SELECT cb.*, c.name_cn AS category_name
+        SELECT cb.id, cb.name_cn, cb.name_en, cb.category_id, cb.status,
+               cb.create_time, cb.last_update_time, cb.create_by, cb.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_callback_t cb
         LEFT JOIN openplatform_v2_category_t c ON cb.category_id = c.id
         WHERE cb.id = #{id}
@@ -48,7 +50,9 @@
 
     <!-- 分页查询回调列表 -->
     <select id="selectList" resultMap="WithCategoryResultMap">
-        SELECT cb.*, c.name_cn AS category_name
+        SELECT cb.id, cb.name_cn, cb.name_en, cb.category_id, cb.status,
+               cb.create_time, cb.last_update_time, cb.create_by, cb.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_callback_t cb
         LEFT JOIN openplatform_v2_category_t c ON cb.category_id = c.id
         <where>
