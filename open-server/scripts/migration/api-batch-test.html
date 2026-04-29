@@ -9,13 +9,60 @@
         .label { color: #666; margin-right: 10px; }
         .value { color: #333; word-break: break-all; }
         .config-row { margin: 5px 0; }
-        .body-item { background: #fff; padding: 10px; margin: 5px 0; border-radius: 3px; border-left: 3px solid #1890ff; }
-        button { margin: 5px; padding: 8px 16px; cursor: pointer; border: none; border-radius: 4px; background: #1890ff; color: #fff; }
-        button:hover { background: #40a9ff; }
+        .body-item { background: #fff; padding: 10px; margin: 5px 0; border-radius: 3px; border-left: 3px solid #1890ff; transition: all 0.3s; }
+        .body-item.success { border-left-color: #52c41a; background: #f6ffed; }
+        .body-item.error { border-left-color: #ff4d4f; background: #fff2f0; }
+        .body-item.running { border-left-color: #faad14; background: #fffbe6; }
+        button { margin: 5px; padding: 8px 16px; cursor: pointer; border: none; border-radius: 4px; background: #1890ff; color: #fff; transition: all 0.3s; }
+        button:hover:not(:disabled) { background: #40a9ff; }
         button:disabled { background: #ccc; cursor: not-allowed; }
-        .result { background: #fff; padding: 10px; margin-top: 10px; border-radius: 3px; white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
-        .success { border-left: 3px solid #52c41a; }
-        .error { border-left: 3px solid #ff4d4f; }
+        .btn-secondary { background: #ff4d4f; }
+        .btn-secondary:hover:not(:disabled) { background: #ff7875; }
+        .btn-clear { background: #8c8c8c; }
+        .btn-clear:hover:not(:disabled) { background: #a6a6a6; }
+        .result { background: #fff; padding: 10px; margin-top: 5px; border-radius: 3px; white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        .result.success { border-left: 3px solid #52c41a; }
+        .result.error { border-left: 3px solid #ff4d4f; }
+        .status-icon { margin-left: 10px; font-weight: bold; }
+        .status-icon.success { color: #52c41a; }
+        .status-icon.error { color: #ff4d4f; }
+        .status-icon.running { color: #faad14; }
+        .btn-loading { position: relative; padding-right: 30px; }
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            width: 14px;
+            height: 14px;
+            margin-top: -7px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-text { margin-left: 10px; color: #faad14; font-weight: bold; }
+        .item-header { display: flex; align-items: center; justify-content: space-between; }
+        .item-info { display: flex; align-items: center; flex-wrap: wrap; }
+        .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .result-item { margin: 10px 0; border: 1px solid #e8e8e8; border-radius: 4px; }
+        .result-header { padding: 8px 10px; background: #fafafa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .result-header:hover { background: #f0f0f0; }
+        .result-content { display: none; border-top: 1px solid #e8e8e8; }
+        .result-content.show { display: block; }
+        .result-link { color: #1890ff; cursor: pointer; }
+        .result-link:hover { text-decoration: underline; }
+        .arrow { transition: transform 0.3s; }
+        .arrow.open { transform: rotate(90deg); }
+        .body-preview { font-family: monospace; font-size: 12px; }
+        .toggle-link { color: #1890ff; margin-left: 5px; cursor: pointer; font-size: 12px; }
+        .toggle-link:hover { text-decoration: underline; }
+        .body-full { display: none; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; background: #f5f5f5; padding: 5px; margin-top: 5px; border-radius: 3px; }
+        .body-full.show { display: block; }
+        .result-body-preview { font-family: monospace; font-size: 12px; }
+        .result-body-full { display: none; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; background: #f5f5f5; padding: 5px; margin-top: 5px; border-radius: 3px; }
+        .result-body-full.show { display: block; }
     </style>
 </head>
 <body>
@@ -28,13 +75,16 @@
     </div>
     
     <div class="section">
-        <span class="label">Body参数列表:</span>
+        <div class="results-header">
+            <span class="label">Body参数列表:</span>
+        </div>
         <div id="bodyList"></div>
     </div>
     
     <div class="section">
-        <button onclick="executeSingle()">单个执行</button>
-        <button onclick="executeBatch()">批量执行</button>
+        <button id="batchBtn" onclick="executeBatch()">批量执行</button>
+        <button id="clearBtn" class="btn-clear" onclick="clearResults()">清空结果</button>
+        <span id="progressText" class="progress-text" style="display: none;"></span>
     </div>
     
     <div class="section">
@@ -57,25 +107,155 @@
             ]
         };
         
+        let executionIndex = 0;
+        let isRunning = false;
+        
+        function truncateBody(body, maxLength = 100) {
+            const str = JSON.stringify(body);
+            if (str.length <= maxLength) {
+                return { text: str, truncated: false };
+            }
+            return { 
+                text: str.substring(0, maxLength) + '...', 
+                full: str,
+                truncated: true 
+            };
+        }
+        
+        function toggleBody(index) {
+            const full = document.getElementById('body-full-' + index);
+            const link = document.getElementById('toggle-link-' + index);
+            
+            if (full.classList.contains('show')) {
+                full.classList.remove('show');
+                link.textContent = '展开';
+            } else {
+                full.classList.add('show');
+                link.textContent = '收起';
+            }
+        }
+        
+        function toggleResultBody(resultId) {
+            const full = document.getElementById('result-body-full-' + resultId);
+            const link = document.getElementById('result-toggle-link-' + resultId);
+            
+            if (full.classList.contains('show')) {
+                full.classList.remove('show');
+                link.textContent = '展开';
+            } else {
+                full.classList.add('show');
+                link.textContent = '收起';
+            }
+        }
+        
         function init() {
             document.getElementById('url').textContent = CONFIG.url;
             document.getElementById('method').textContent = CONFIG.method;
             document.getElementById('headers').textContent = JSON.stringify(CONFIG.headers, null, 2);
             
-            const bodyList = document.getElementById('bodyList');
-            bodyList.innerHTML = CONFIG.bodies.map((body, index) => 
-                `<div class="body-item">#${index + 1}: ${JSON.stringify(body)}</div>`
-            ).join('');
+            renderBodyList();
         }
         
-        async function executeRequest(body, index) {
-            const resultId = Date.now();
-            const results = document.getElementById('results');
-            results.insertAdjacentHTML('afterbegin', 
-                `<div class="result" id="result-${resultId}">执行 #${index + 1}: ${JSON.stringify(body)}\n请求中...</div>`
-            );
+        function renderBodyList() {
+            const bodyList = document.getElementById('bodyList');
+            bodyList.innerHTML = CONFIG.bodies.map((body, index) => {
+                const truncated = truncateBody(body);
+                let bodyHtml;
+                if (truncated.truncated) {
+                    bodyHtml = '<span class="body-preview">' + truncated.text + '</span>' +
+                        '<a href="javascript:void(0)" class="toggle-link" id="toggle-link-' + index + '" onclick="toggleBody(' + index + ')">展开</a>' +
+                        '<div class="body-full" id="body-full-' + index + '">' + truncated.full + '</div>';
+                } else {
+                    bodyHtml = '<span class="body-preview">' + truncated.text + '</span>';
+                }
+                return '<div class="body-item" id="body-item-' + index + '">' +
+                    '<div class="item-header">' +
+                        '<div class="item-info">' +
+                            '<span id="body-label-' + index + '">#' + (index + 1) + ': ' + bodyHtml + '</span>' +
+                            '<span class="status-icon" id="status-' + index + '"></span>' +
+                        '</div>' +
+                        '<button id="btn-' + index + '" onclick="executeRequest(' + index + ')">执行</button>' +
+                    '</div>' +
+                    '<div class="result" id="inline-result-' + index + '" style="display: none;"></div>' +
+                '</div>';
+            }).join('');
+        }
+        
+        function setButtonLoading(index, loading) {
+            const btn = document.getElementById('btn-' + index);
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('btn-loading');
+                btn.textContent = '';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('btn-loading');
+                btn.textContent = '执行';
+            }
+        }
+        
+        function setBatchButtonLoading(loading) {
+            const btn = document.getElementById('batchBtn');
+            if (loading) {
+                btn.disabled = true;
+                btn.classList.add('btn-loading');
+                btn.textContent = '';
+            } else {
+                btn.disabled = false;
+                btn.classList.remove('btn-loading');
+                btn.textContent = '批量执行';
+            }
+        }
+        
+        function updateProgress(current, total) {
+            const progressText = document.getElementById('progressText');
+            if (current <= total) {
+                progressText.style.display = 'inline';
+                progressText.textContent = '执行中 ' + current + '/' + total;
+            } else {
+                progressText.style.display = 'none';
+            }
+        }
+        
+        function setBodyItemStatus(index, status) {
+            const item = document.getElementById('body-item-' + index);
+            const statusEl = document.getElementById('status-' + index);
             
-            const resultEl = document.getElementById(`result-${resultId}`);
+            item.classList.remove('success', 'error', 'running');
+            statusEl.classList.remove('success', 'error', 'running');
+            
+            if (status === 'running') {
+                item.classList.add('running');
+                statusEl.classList.add('running');
+                statusEl.textContent = '⏳ 执行中...';
+            } else if (status === 'success') {
+                item.classList.add('success');
+                statusEl.classList.add('success');
+                statusEl.textContent = '✓ 成功';
+            } else if (status === 'error') {
+                item.classList.add('error');
+                statusEl.classList.add('error');
+                statusEl.textContent = '✗ 失败';
+            } else {
+                statusEl.textContent = '';
+            }
+        }
+        
+        function showInlineResult(index, content, isSuccess) {
+            const resultEl = document.getElementById('inline-result-' + index);
+            resultEl.style.display = 'block';
+            resultEl.className = 'result ' + (isSuccess ? 'success' : 'error');
+            resultEl.textContent = content;
+        }
+        
+        async function executeRequest(index) {
+            if (isRunning) return;
+            
+            const body = CONFIG.bodies[index];
+            isRunning = true;
+            
+            setButtonLoading(index, true);
+            setBodyItemStatus(index, 'running');
             
             try {
                 const response = await fetch(CONFIG.url, {
@@ -84,24 +264,129 @@
                     body: JSON.stringify(body)
                 });
                 const data = await response.json();
-                resultEl.className = `result ${response.ok ? 'success' : 'error'}`;
-                resultEl.textContent = `执行 #${index + 1}: ${JSON.stringify(body)}\n状态: ${response.status}\n响应:\n${JSON.stringify(data, null, 2)}`;
+                const isSuccess = response.ok;
+                
+                setBodyItemStatus(index, isSuccess ? 'success' : 'error');
+                showInlineResult(index, '状态: ' + response.status + '\n响应:\n' + JSON.stringify(data, null, 2), isSuccess);
+                addResultToPanel(index, body, response.status, data, isSuccess);
             } catch (error) {
-                resultEl.className = 'result error';
-                resultEl.textContent = `执行 #${index + 1}: ${JSON.stringify(body)}\n错误: ${error.message}`;
+                setBodyItemStatus(index, 'error');
+                showInlineResult(index, '错误: ' + error.message, false);
+                addResultToPanel(index, body, null, error.message, false);
+            } finally {
+                setButtonLoading(index, false);
+                isRunning = false;
             }
         }
         
-        function executeSingle() {
-            if (CONFIG.bodies.length > 0) {
-                executeRequest(CONFIG.bodies[0], 0);
+        function addResultToPanel(index, body, status, data, isSuccess) {
+            const results = document.getElementById('results');
+            const resultId = 'result-panel-' + Date.now();
+            const truncated = truncateBody(body);
+            
+            let bodyHtml;
+            if (truncated.truncated) {
+                bodyHtml = '<span class="result-body-preview">' + truncated.text + '</span>' +
+                    '<a href="javascript:void(0)" class="toggle-link" id="result-toggle-link-' + resultId + '" onclick="toggleResultBody(\'' + resultId + '\')">展开</a>' +
+                    '<div class="result-body-full" id="result-body-full-' + resultId + '">' + truncated.full + '</div>';
+            } else {
+                bodyHtml = '<span class="result-body-preview">' + truncated.text + '</span>';
+            }
+            
+            const resultHtml = '<div class="result-item" id="' + resultId + '">' +
+                '<div class="result-header" onclick="toggleResult(\'' + resultId + '\')">' +
+                    '<span>' +
+                        '<span class="result-link" onclick="scrollToBodyItem(' + index + '); event.stopPropagation();">#' + (index + 1) + '</span>' +
+                        ': ' + bodyHtml +
+                    '</span>' +
+                    '<span>' +
+                        (isSuccess ? '<span style="color: #52c41a;">✓ 成功</span>' : '<span style="color: #ff4d4f;">✗ 失败</span>') +
+                        '<span class="arrow" id="arrow-' + resultId + '">▶</span>' +
+                    '</span>' +
+                '</div>' +
+                '<div class="result-content" id="content-' + resultId + '">' +
+                    '<div class="result ' + (isSuccess ? 'success' : 'error') + '">' +
+                        (status ? '状态: ' + status + '\n' : '') + '响应:\n' + (typeof data === 'string' ? data : JSON.stringify(data, null, 2)) +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+            
+            results.insertAdjacentHTML('beforeend', resultHtml);
+        }
+        
+        function toggleResult(resultId) {
+            const content = document.getElementById('content-' + resultId);
+            const arrow = document.getElementById('arrow-' + resultId);
+            
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                arrow.classList.remove('open');
+            } else {
+                content.classList.add('show');
+                arrow.classList.add('open');
+            }
+        }
+        
+        function scrollToBodyItem(index) {
+            const item = document.getElementById('body-item-' + index);
+            if (item) {
+                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                item.style.boxShadow = '0 0 10px rgba(24, 144, 255, 0.5)';
+                setTimeout(function() {
+                    item.style.boxShadow = '';
+                }, 2000);
             }
         }
         
         async function executeBatch() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            setBatchButtonLoading(true);
+            document.getElementById('clearBtn').disabled = true;
+            
             for (let i = 0; i < CONFIG.bodies.length; i++) {
-                await executeRequest(CONFIG.bodies[i], i);
+                updateProgress(i + 1, CONFIG.bodies.length);
+                
+                const body = CONFIG.bodies[i];
+                setBodyItemStatus(i, 'running');
+                
+                try {
+                    const response = await fetch(CONFIG.url, {
+                        method: CONFIG.method,
+                        headers: CONFIG.headers,
+                        body: JSON.stringify(body)
+                    });
+                    const data = await response.json();
+                    const isSuccess = response.ok;
+                    
+                    setBodyItemStatus(i, isSuccess ? 'success' : 'error');
+                    showInlineResult(i, '状态: ' + response.status + '\n响应:\n' + JSON.stringify(data, null, 2), isSuccess);
+                    addResultToPanel(i, body, response.status, data, isSuccess);
+                } catch (error) {
+                    setBodyItemStatus(i, 'error');
+                    showInlineResult(i, '错误: ' + error.message, false);
+                    addResultToPanel(i, body, null, error.message, false);
+                }
             }
+            
+            updateProgress(CONFIG.bodies.length + 1, CONFIG.bodies.length);
+            setBatchButtonLoading(false);
+            document.getElementById('clearBtn').disabled = false;
+            isRunning = false;
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            
+            CONFIG.bodies.forEach(function(_, index) {
+                setBodyItemStatus(index, '');
+                const resultEl = document.getElementById('inline-result-' + index);
+                if (resultEl) {
+                    resultEl.style.display = 'none';
+                    resultEl.textContent = '';
+                }
+            });
         }
         
         init();
