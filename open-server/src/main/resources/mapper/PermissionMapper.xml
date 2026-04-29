@@ -124,9 +124,9 @@
             AND p.category_id = #{categoryId}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
             AND EXISTS (
@@ -156,9 +156,9 @@
             AND p.category_id = #{categoryId}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
             AND EXISTS (
@@ -188,9 +188,9 @@
             AND p.category_id = #{categoryId}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
             AND EXISTS (
@@ -220,9 +220,9 @@
             AND p.category_id = #{categoryId}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
             AND EXISTS (
@@ -252,9 +252,9 @@
             AND p.category_id = #{categoryId}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
             AND EXISTS (
@@ -284,9 +284,9 @@
             AND p.category_id = #{categoryId}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
             AND EXISTS (

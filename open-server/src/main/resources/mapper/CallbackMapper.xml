@@ -63,8 +63,8 @@
                 AND cb.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (cb.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR cb.name_en LIKE CONCAT('%', #{keyword}, '%'))
+                AND (cb.name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR cb.name_en LIKE CONCAT(#{keyword}, '%'))
             </if>
         </where>
         ORDER BY cb.create_time DESC
@@ -83,8 +83,8 @@
                 AND cb.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (cb.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR cb.name_en LIKE CONCAT('%', #{keyword}, '%'))
+                AND (cb.name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR cb.name_en LIKE CONCAT(#{keyword}, '%'))
             </if>
         </where>
     </select>

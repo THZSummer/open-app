@@ -71,9 +71,9 @@
                 AND e.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (e.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR e.name_en LIKE CONCAT('%', #{keyword}, '%')
-                     OR e.topic LIKE CONCAT('%', #{keyword}, '%'))
+                AND (e.name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR e.name_en LIKE CONCAT(#{keyword}, '%')
+                     OR e.topic LIKE CONCAT(#{keyword}, '%'))
             </if>
         </where>
         ORDER BY e.create_time DESC
@@ -92,9 +92,9 @@
                 AND status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                     OR topic LIKE CONCAT('%', #{keyword}, '%'))
+                AND (name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR name_en LIKE CONCAT(#{keyword}, '%')
+                     OR topic LIKE CONCAT(#{keyword}, '%'))
             </if>
         </where>
     </select>

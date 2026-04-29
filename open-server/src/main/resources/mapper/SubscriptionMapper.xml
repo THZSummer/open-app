@@ -78,9 +78,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         ORDER BY s.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -97,9 +97,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
     </select>
 
@@ -115,9 +115,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         ORDER BY s.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -134,9 +134,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
     </select>
 
@@ -152,9 +152,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         ORDER BY s.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -171,9 +171,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
     </select>
 

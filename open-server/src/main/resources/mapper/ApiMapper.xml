@@ -87,12 +87,12 @@
                 AND a.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (a.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR a.name_en LIKE CONCAT('%', #{keyword}, '%')
+                AND (a.name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR a.name_en LIKE CONCAT(#{keyword}, '%')
                      OR EXISTS (
                          SELECT 1 FROM openplatform_v2_permission_t p
                          WHERE p.resource_type = 'api' AND p.resource_id = a.id
-                           AND p.scope LIKE CONCAT('%', #{keyword}, '%')
+                           AND p.scope LIKE CONCAT(#{keyword}, '%')
                      ))
             </if>
         </where>
@@ -112,12 +112,12 @@
                 AND a.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (a.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR a.name_en LIKE CONCAT('%', #{keyword}, '%')
+                AND (a.name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR a.name_en LIKE CONCAT(#{keyword}, '%')
                      OR EXISTS (
                          SELECT 1 FROM openplatform_v2_permission_t p
                          WHERE p.resource_type = 'api' AND p.resource_id = a.id
-                           AND p.scope LIKE CONCAT('%', #{keyword}, '%')
+                           AND p.scope LIKE CONCAT(#{keyword}, '%')
                      ))
             </if>
         </where>
