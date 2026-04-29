@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口31: GET /api/v1/apps/:appId/events - 获取应用事件订阅列表
 
 # 加载配置

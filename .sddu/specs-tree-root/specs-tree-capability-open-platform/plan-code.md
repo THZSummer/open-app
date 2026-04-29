@@ -337,8 +337,180 @@ while (hasNext()) fetchNext();
 
 ---
 
+## 10. 字符串操作规范
+
+**规则**：使用 `toLowerCase()` 和 `toUpperCase()` 必须指定 `Locale.ROOT`，避免不同地区的转换差异。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 指定 Locale.ROOT | 不指定 Locale |
+
+```java
+// ✅ 正确示例
+String normalized = input.toLowerCase(Locale.ROOT);
+String upperValue = code.toUpperCase(Locale.ROOT);
+
+if (type.toLowerCase(Locale.ROOT).equals("api")) {
+    // 处理 API 类型
+}
+
+// ❌ 错误示例
+String normalized = input.toLowerCase();  // 使用默认 Locale，可能导致不一致
+String upperValue = code.toUpperCase();   // 在土耳其环境下 'i' → 'İ' 而非 'I'
+
+if (type.toLowerCase().equals("api")) {
+    // 在某些 Locale 下可能不匹配
+}
+```
+
+**原因**：
+- 不同地区的字母转换规则不同（如土耳其语 'i' → 'İ'）
+- 不指定 Locale 可能导致字符串匹配失败
+- 确保在不同服务器环境下转换结果一致
+- 与规则 #4（String.format）同理，避免国际化问题
+
+**典型案例**：
+- 某系统在土耳其服务器上，`"title".toLowerCase()` → `"tıtle"`（非 `"title"`）
+- 导致字符串匹配失败，功能异常
+
+---
+
+## 11. 空代码块规范
+
+**规则**：禁止空代码块，所有代码块（if/else/for/while/try/catch 等）必须有实际代码。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 代码块内有实际逻辑或日志 | 只有注释的空代码块 |
+
+```java
+// ✅ 正确示例
+if (status == null) {
+    log.warn("Status is null, using default value");
+    status = 0;
+}
+
+try {
+    processItem(item);
+} catch (Exception e) {
+    log.error("Failed to process item: {}", item, e);
+}
+
+// ❌ 错误示例
+if (status == null) {
+    // 忽略
+}
+
+try {
+    processItem(item);
+} catch (Exception e) {
+    // 忽略异常
+}
+
+else if (type.equals("event")) {
+    // 类似逻辑
+}
+```
+
+**原因**：
+- 空代码块通常表示未完成的功能
+- 空的 catch 块会吞掉异常，导致问题难以排查
+- 降低代码可维护性
+
+**建议处理方式**：
+- 空 if/else：添加日志记录或抛出异常
+- 空 catch：至少添加日志记录异常信息
+- 未实现功能：添加 `throw new UnsupportedOperationException("TODO: implement")`
+
+---
+
+## 12. 行尾空格规范
+
+**规则**：禁止代码行尾有多余空格（Trailing Whitespace）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 行尾无多余空格 | 行尾有 1 个或多个空格 |
+
+```java
+// ✅ 正确示例
+String name = "test";
+log.info("Processing item: {}", itemId);
+
+// ❌ 错误示例（注意行尾空格）
+String name = "test";    
+log.info("Processing item: {}", itemId);   
+```
+
+**原因**：
+- 多余空格增加代码体积，无实际意义
+- 在 Git diff 中显示为无意义的修改
+- 不同编辑器可能显示不一致
+- 影响代码整洁度
+
+**IDE 配置**：
+- IntelliJ IDEA: Settings → Editor → General → On Save → Remove trailing spaces
+- VS Code: Settings → Files: Trim Trailing Whitespace
+- 可配置保存时自动删除行尾空格
+
+---
+
+## 13. Shell 脚本规范
+
+**规则**：Shell 脚本必须以 `#!/bin/bash` 和 `set -ex` 开头，确保异常退出和调试输出。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 包含 `set -ex` | 缺少 `set -ex` |
+
+```bash
+#!/bin/bash
+set -ex
+
+# 脚本内容
+echo "Starting deployment"
+./deploy.sh
+
+# ❌ 错误示例
+#!/bin/bash
+
+# 缺少 set -ex，脚本出错时会继续执行
+echo "Starting deployment"
+./deploy.sh
+```
+
+**`set -ex` 参数说明**：
+- `set -e`：脚本中任何命令返回非零状态码时立即退出，防止错误累积
+- `set -x`：在执行命令前打印命令，便于调试和日志追踪
+
+**原因**：
+- 避免脚本在错误状态下继续执行
+- 提供调试信息，便于排查问题
+- 符合 Shell 脚本最佳实践
+- 提高脚本可靠性
+
+**完整示例**：
+```bash
+#!/bin/bash
+set -ex
+
+# 获取脚本目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/config.sh"
+
+# 执行主要逻辑
+main() {
+    echo "Starting process..."
+    # 业务逻辑
+}
+
+main "$@"
+```
+
+---
+
 ## 总结
 
-以上 9 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
+以上 13 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
 
 请在 IDE 中配置相应的代码格式化和检查规则，确保代码风格统一。

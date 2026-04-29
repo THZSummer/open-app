@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口52: GET /api/v1/user-authorizations - 获取用户授权列表
 
 # 加载配置

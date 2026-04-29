@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口18: PUT /api/v1/events/:id - 更新事件
 
 # 加载配置

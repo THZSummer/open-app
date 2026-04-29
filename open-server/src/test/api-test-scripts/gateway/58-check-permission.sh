@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口58: GET /gateway/permissions/check - 权限校验接口
 
 # 加载配置

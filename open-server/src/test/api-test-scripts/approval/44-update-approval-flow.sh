@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口44: PUT /api/v1/approval-flows/:id - 更新审批流程模板
 
 # 加载配置

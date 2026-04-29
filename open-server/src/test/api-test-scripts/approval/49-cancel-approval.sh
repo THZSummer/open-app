@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口49: POST /api/v1/approvals/:id/cancel - 撤销审批
 
 # 加载配置

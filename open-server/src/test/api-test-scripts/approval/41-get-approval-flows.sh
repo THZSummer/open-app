@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口41: GET /api/v1/approval-flows - 获取审批流程模板列表
 
 # 加载配置

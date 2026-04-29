@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口28: GET /api/v1/categories/:id/apis - 获取分类下API权限列表
 
 # 加载配置

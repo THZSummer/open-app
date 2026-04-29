@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口10: GET /api/v1/apis/:id - 获取API详情
 
 # 加载配置

@@ -307,7 +307,7 @@ public class SyncService {
             return 0;
         }
         
-        switch (eflowLogType.toLowerCase()) {
+        switch (eflowLogType.toLowerCase(Locale.ROOT)) {
             case "approve":
             case "同意":
                 return 0;
@@ -434,9 +434,10 @@ public class SyncService {
             // 通过 resource_id 查询新API
             Api api = syncMapper.selectNewApiByPathAndMethod(null, null);
             
-        } else if ("event".equalsIgnoreCase(resourceType)) {
-            // 类似逻辑
-        }
+} else if ("event".equalsIgnoreCase(resourceType)) {
+            log.warn("Event rollback not implemented yet");
+            // TODO: 实现事件回退逻辑
+}
 
         // TODO: 完整实现反向查找
         return null;
