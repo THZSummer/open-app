@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口54: DELETE /api/v1/user-authorizations/:id - 取消授权
 
 # 加载配置

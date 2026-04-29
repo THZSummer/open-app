@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口13: DELETE /api/v1/apis/:id - 删除API
 
 # 加载配置

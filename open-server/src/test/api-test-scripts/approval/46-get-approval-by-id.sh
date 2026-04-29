@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口46: GET /api/v1/approvals/:id - 获取审批详情
 
 # 加载配置

@@ -68,7 +68,8 @@
 
     <!-- 查询应用的订阅列表（API 权限） -->
     <select id="selectApiSubscriptionsByAppId" resultMap="BaseResultMap">
-        SELECT s.*
+        SELECT s.id, s.app_id, s.permission_id, s.status, s.channel_type, s.channel_address, s.auth_type,
+               s.create_time, s.last_update_time, s.create_by, s.last_update_by, s.approved_at, s.approved_by
         FROM openplatform_v2_subscription_t s
         INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
         WHERE s.app_id = #{appId}
@@ -77,9 +78,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         ORDER BY s.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -96,15 +97,16 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
     </select>
 
     <!-- 查询应用的订阅列表（事件权限） -->
     <select id="selectEventSubscriptionsByAppId" resultMap="BaseResultMap">
-        SELECT s.*
+        SELECT s.id, s.app_id, s.permission_id, s.status, s.channel_type, s.channel_address, s.auth_type,
+               s.create_time, s.last_update_time, s.create_by, s.last_update_by, s.approved_at, s.approved_by
         FROM openplatform_v2_subscription_t s
         INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
         WHERE s.app_id = #{appId}
@@ -113,9 +115,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         ORDER BY s.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -132,15 +134,16 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
     </select>
 
     <!-- 查询应用的订阅列表（回调权限） -->
     <select id="selectCallbackSubscriptionsByAppId" resultMap="BaseResultMap">
-        SELECT s.*
+        SELECT s.id, s.app_id, s.permission_id, s.status, s.channel_type, s.channel_address, s.auth_type,
+               s.create_time, s.last_update_time, s.create_by, s.last_update_by, s.approved_at, s.approved_by
         FROM openplatform_v2_subscription_t s
         INNER JOIN openplatform_v2_permission_t p ON s.permission_id = p.id
         WHERE s.app_id = #{appId}
@@ -149,9 +152,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         ORDER BY s.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -168,9 +171,9 @@
             AND s.status = #{status}
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (p.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR p.scope LIKE CONCAT('%', #{keyword}, '%'))
+            AND (p.name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR p.name_en LIKE CONCAT(#{keyword}, '%')
+                 OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
     </select>
 

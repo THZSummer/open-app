@@ -262,8 +262,255 @@ public class PermissionService {
 
 ---
 
+## 8. 变量声明规范
+
+**规则**：每行只能声明一个变量，禁止在一行声明多个变量。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 每行一个变量声明 | 一行声明多个变量 |
+
+```java
+// ✅ 正确示例 - 每行一个变量
+int success = 0;
+int failed = 0;
+int skipped = 0;
+
+String name = "test";
+String scope = "api:test";
+
+// ❌ 错误示例 - 一行声明多个变量
+int success = 0, failed = 0, skipped = 0;
+
+String name = "test", scope = "api:test";
+```
+
+**原因**：
+- 提高代码可读性，每个变量独立一行
+- 方便添加注释说明每个变量的用途
+- 便于代码审查和调试
+- 符合 Java 编码最佳实践
+
+---
+
+## 9. 大括号规范
+
+**规则**：条件语句（if/else）和循环语句（for/while）必须使用大括号，即使只有一行代码。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 使用大括号包裹代码块 | 省略大括号（即使只有一行） |
+
+```java
+// ✅ 正确示例 - 使用大括号
+if (status == null) {
+    return 0;
+}
+
+if (count > 0) {
+    log.info("Found {} records", count);
+}
+
+for (String item : items) {
+    processItem(item);
+}
+
+while (hasNext()) {
+    fetchNext();
+}
+
+// ❌ 错误示例 - 省略大括号
+if (status == null) return 0;
+
+if (count > 0) log.info("Found {} records", count);
+
+for (String item : items) processItem(item);
+
+while (hasNext()) fetchNext();
+```
+
+**原因**：
+- 避免因添加代码时忘记加括号导致的逻辑错误
+- 提高代码可读性和一致性
+- 防止"苹果公司 SSL/TLS 重大漏洞"类问题（因缺少括号导致的逻辑错误）
+- 符合主流 Java 编码规范（Google、Oracle、阿里巴巴等）
+
+---
+
+## 10. 字符串操作规范
+
+**规则**：使用 `toLowerCase()` 和 `toUpperCase()` 必须指定 `Locale.ROOT`，避免不同地区的转换差异。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 指定 Locale.ROOT | 不指定 Locale |
+
+```java
+// ✅ 正确示例
+String normalized = input.toLowerCase(Locale.ROOT);
+String upperValue = code.toUpperCase(Locale.ROOT);
+
+if (type.toLowerCase(Locale.ROOT).equals("api")) {
+    // 处理 API 类型
+}
+
+// ❌ 错误示例
+String normalized = input.toLowerCase();  // 使用默认 Locale，可能导致不一致
+String upperValue = code.toUpperCase();   // 在土耳其环境下 'i' → 'İ' 而非 'I'
+
+if (type.toLowerCase().equals("api")) {
+    // 在某些 Locale 下可能不匹配
+}
+```
+
+**原因**：
+- 不同地区的字母转换规则不同（如土耳其语 'i' → 'İ'）
+- 不指定 Locale 可能导致字符串匹配失败
+- 确保在不同服务器环境下转换结果一致
+- 与规则 #4（String.format）同理，避免国际化问题
+
+**典型案例**：
+- 某系统在土耳其服务器上，`"title".toLowerCase()` → `"tıtle"`（非 `"title"`）
+- 导致字符串匹配失败，功能异常
+
+---
+
+## 11. 空代码块规范
+
+**规则**：禁止空代码块，所有代码块（if/else/for/while/try/catch 等）必须有实际代码。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 代码块内有实际逻辑或日志 | 只有注释的空代码块 |
+
+```java
+// ✅ 正确示例
+if (status == null) {
+    log.warn("Status is null, using default value");
+    status = 0;
+}
+
+try {
+    processItem(item);
+} catch (Exception e) {
+    log.error("Failed to process item: {}", item, e);
+}
+
+// ❌ 错误示例
+if (status == null) {
+    // 忽略
+}
+
+try {
+    processItem(item);
+} catch (Exception e) {
+    // 忽略异常
+}
+
+else if (type.equals("event")) {
+    // 类似逻辑
+}
+```
+
+**原因**：
+- 空代码块通常表示未完成的功能
+- 空的 catch 块会吞掉异常，导致问题难以排查
+- 降低代码可维护性
+
+**建议处理方式**：
+- 空 if/else：添加日志记录或抛出异常
+- 空 catch：至少添加日志记录异常信息
+- 未实现功能：添加 `throw new UnsupportedOperationException("TODO: implement")`
+
+---
+
+## 12. 行尾空格规范
+
+**规则**：禁止代码行尾有多余空格（Trailing Whitespace）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 行尾无多余空格 | 行尾有 1 个或多个空格 |
+
+```java
+// ✅ 正确示例
+String name = "test";
+log.info("Processing item: {}", itemId);
+
+// ❌ 错误示例（注意行尾空格）
+String name = "test";    
+log.info("Processing item: {}", itemId);   
+```
+
+**原因**：
+- 多余空格增加代码体积，无实际意义
+- 在 Git diff 中显示为无意义的修改
+- 不同编辑器可能显示不一致
+- 影响代码整洁度
+
+**IDE 配置**：
+- IntelliJ IDEA: Settings → Editor → General → On Save → Remove trailing spaces
+- VS Code: Settings → Files: Trim Trailing Whitespace
+- 可配置保存时自动删除行尾空格
+
+---
+
+## 13. Shell 脚本规范
+
+**规则**：Shell 脚本必须以 `#!/bin/bash` 和 `set -ex` 开头，确保异常退出和调试输出。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 包含 `set -ex` | 缺少 `set -ex` |
+
+```bash
+#!/bin/bash
+set -ex
+
+# 脚本内容
+echo "Starting deployment"
+./deploy.sh
+
+# ❌ 错误示例
+#!/bin/bash
+
+# 缺少 set -ex，脚本出错时会继续执行
+echo "Starting deployment"
+./deploy.sh
+```
+
+**`set -ex` 参数说明**：
+- `set -e`：脚本中任何命令返回非零状态码时立即退出，防止错误累积
+- `set -x`：在执行命令前打印命令，便于调试和日志追踪
+
+**原因**：
+- 避免脚本在错误状态下继续执行
+- 提供调试信息，便于排查问题
+- 符合 Shell 脚本最佳实践
+- 提高脚本可靠性
+
+**完整示例**：
+```bash
+#!/bin/bash
+set -ex
+
+# 获取脚本目录
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/config.sh"
+
+# 执行主要逻辑
+main() {
+    echo "Starting process..."
+    # 业务逻辑
+}
+
+main "$@"
+```
+
+---
+
 ## 总结
 
-以上 7 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
+以上 13 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
 
 请在 IDE 中配置相应的代码格式化和检查规则，确保代码风格统一。

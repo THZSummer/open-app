@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口1: GET /api/v1/categories - 获取分类列表（树形结构）
 
 # 加载配置

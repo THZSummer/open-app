@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口38: POST /api/v1/apps/:appId/callbacks/subscribe - 申请回调权限
 
 # 加载配置

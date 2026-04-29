@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -176,7 +177,7 @@ public class ApiService {
         api.setNameCn(request.getNameCn());
         api.setNameEn(request.getNameEn());
         api.setPath(request.getPath());
-        api.setMethod(request.getMethod().toUpperCase());
+        api.setMethod(request.getMethod().toUpperCase(Locale.ROOT));
         api.setAuthType(request.getAuthType() != null ? request.getAuthType() : 1); // 默认 SOA
         api.setCategoryId(categoryId); // 设置分类ID
         

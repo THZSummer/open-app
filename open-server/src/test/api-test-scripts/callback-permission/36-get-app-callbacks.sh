@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口36: GET /api/v1/apps/:appId/callbacks - 获取应用回调订阅列表
 
 # 加载配置

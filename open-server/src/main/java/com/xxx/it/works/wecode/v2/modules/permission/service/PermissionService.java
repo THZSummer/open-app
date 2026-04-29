@@ -1173,9 +1173,9 @@ public class PermissionService {
                         if (c != null) {
                             path.add(c.getNameCn());
                         }
-                    } catch (NumberFormatException e) {
-                        // 忽略
-                    }
+} catch (NumberFormatException e) {
+                        log.warn("Invalid number format for path parsing", e);
+}
                 }
             }
         }

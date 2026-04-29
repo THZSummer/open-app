@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口23: POST /api/v1/callbacks - 注册回调
 
 # 加载配置

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口19: DELETE /api/v1/events/:id - 删除事件
 
 # 加载配置

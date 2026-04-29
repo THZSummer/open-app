@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口15: GET /api/v1/events - 获取事件列表
 
 # 加载配置

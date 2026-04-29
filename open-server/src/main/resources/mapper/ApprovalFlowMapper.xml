@@ -63,9 +63,9 @@
         FROM openplatform_v2_approval_flow_t
         WHERE status = 1
         <if test="keyword != null and keyword != ''">
-            AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR code LIKE CONCAT('%', #{keyword}, '%'))
+            AND (name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR name_en LIKE CONCAT(#{keyword}, '%')
+                 OR code LIKE CONCAT(#{keyword}, '%'))
         </if>
         ORDER BY create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -77,9 +77,9 @@
         FROM openplatform_v2_approval_flow_t
         WHERE status = 1
         <if test="keyword != null and keyword != ''">
-            AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR code LIKE CONCAT('%', #{keyword}, '%'))
+            AND (name_cn LIKE CONCAT(#{keyword}, '%')
+                 OR name_en LIKE CONCAT(#{keyword}, '%')
+                 OR code LIKE CONCAT(#{keyword}, '%'))
         </if>
     </select>
 

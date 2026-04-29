@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口30: POST /api/v1/apps/:appId/apis/:id/withdraw - 撤回API权限申请
 
 # 加载配置

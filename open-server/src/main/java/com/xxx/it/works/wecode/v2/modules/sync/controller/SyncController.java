@@ -60,11 +60,11 @@ public class SyncController {
             @Parameter(description = "同步请求，ids=null或空数组表示全量同步")
             @Valid @RequestBody SyncRequest request) {
         
-        log.info("收到迁移请求, ids={}", request.getIds());
+        log.info("Received migration request, ids={}", request.getIds());
         
         SyncResult result = syncService.migrate(request);
         
-        log.info("迁移完成, success={}, failed={}, skipped={}", 
+        log.info("Migration completed, success={}, failed={}, skipped={}", 
                 result.getSuccess(), result.getFailed(), result.getSkipped());
         
         return ApiResponse.success(result);
@@ -89,11 +89,11 @@ public class SyncController {
             @Parameter(description = "同步请求，ids=null或空数组表示全量同步")
             @Valid @RequestBody SyncRequest request) {
         
-        log.info("收到回退请求, ids={}", request.getIds());
+        log.info("Received rollback request, ids={}", request.getIds());
         
         SyncResult result = syncService.rollback(request);
         
-        log.info("回退完成, success={}, failed={}, skipped={}", 
+        log.info("Rollback completed, success={}, failed={}, skipped={}", 
                 result.getSuccess(), result.getFailed(), result.getSkipped());
         
         return ApiResponse.success(result);

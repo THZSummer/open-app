@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口34: PUT /api/v1/apps/:appId/events/:id/config - 配置事件消费参数
 
 # 加载配置

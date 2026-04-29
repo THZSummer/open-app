@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口8: DELETE /api/v1/categories/:id/owners/:userId - 移除分类责任人
 
 # 加载配置

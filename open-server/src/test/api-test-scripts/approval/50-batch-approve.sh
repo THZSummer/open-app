@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口50: POST /api/v1/approvals/batch-approve - 批量同意审批
 
 # 加载配置

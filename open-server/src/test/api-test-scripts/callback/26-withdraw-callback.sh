@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口26: POST /api/v1/callbacks/:id/withdraw - 撤回审核中的回调
 
 # 加载配置

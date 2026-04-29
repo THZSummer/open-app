@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口43: POST /api/v1/approval-flows - 创建审批流程模板
 
 # 加载配置

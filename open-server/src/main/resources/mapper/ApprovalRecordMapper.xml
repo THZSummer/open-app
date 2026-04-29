@@ -76,15 +76,15 @@
             </choose>
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (applicant_name LIKE CONCAT('%', #{keyword}, '%')
+            AND (applicant_name LIKE CONCAT(#{keyword}, '%')
                  OR business_id IN (
-                     SELECT id FROM openplatform_v2_api_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_api_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                      UNION
-                     SELECT id FROM openplatform_v2_event_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_event_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                      UNION
-                     SELECT id FROM openplatform_v2_callback_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_callback_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                      UNION
-                     SELECT id FROM openplatform_v2_permission_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_permission_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                  ))
         </if>
         <if test="applicantId != null and applicantId != ''">
@@ -113,15 +113,15 @@
             </choose>
         </if>
         <if test="keyword != null and keyword != ''">
-            AND (applicant_name LIKE CONCAT('%', #{keyword}, '%')
+            AND (applicant_name LIKE CONCAT(#{keyword}, '%')
                  OR business_id IN (
-                     SELECT id FROM openplatform_v2_api_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_api_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                      UNION
-                     SELECT id FROM openplatform_v2_event_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_event_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                      UNION
-                     SELECT id FROM openplatform_v2_callback_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_callback_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                      UNION
-                     SELECT id FROM openplatform_v2_permission_t WHERE name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     SELECT id FROM openplatform_v2_permission_t WHERE name_cn LIKE CONCAT(#{keyword}, '%')
                  ))
         </if>
         <if test="applicantId != null and applicantId != ''">

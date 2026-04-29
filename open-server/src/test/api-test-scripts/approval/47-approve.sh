@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口47: POST /api/v1/approvals/:id/approve - 同意审批
 
 # 加载配置

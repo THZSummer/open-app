@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口35: POST /api/v1/apps/:appId/events/:id/withdraw - 撤回事件权限申请
 
 # 加载配置

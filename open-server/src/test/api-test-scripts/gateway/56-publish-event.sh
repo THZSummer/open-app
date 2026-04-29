@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口56: POST /gateway/events/publish - 事件发布接口
 
 # 加载配置

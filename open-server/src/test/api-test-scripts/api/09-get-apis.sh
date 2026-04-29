@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口9: GET /api/v1/apis - 获取API列表
 
 # 加载配置

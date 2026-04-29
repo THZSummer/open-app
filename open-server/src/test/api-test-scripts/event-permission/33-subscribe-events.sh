@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口33: POST /api/v1/apps/:appId/events/subscribe - 申请事件权限
 
 # 加载配置
