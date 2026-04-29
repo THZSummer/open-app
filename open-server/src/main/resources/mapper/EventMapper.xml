@@ -48,7 +48,9 @@
 
     <!-- 根据ID查询事件（包含分类名称） -->
     <select id="selectByIdWithCategoryName" resultMap="WithCategoryResultMap">
-        SELECT e.*, c.name_cn AS category_name
+        SELECT e.id, e.name_cn, e.name_en, e.topic, e.category_id, e.status,
+               e.create_time, e.last_update_time, e.create_by, e.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_event_t e
         LEFT JOIN openplatform_v2_category_t c ON e.category_id = c.id
         WHERE e.id = #{id}
@@ -56,7 +58,9 @@
 
     <!-- 分页查询事件列表 -->
     <select id="selectList" resultMap="WithCategoryResultMap">
-        SELECT e.*, c.name_cn AS category_name
+        SELECT e.id, e.name_cn, e.name_en, e.topic, e.category_id, e.status,
+               e.create_time, e.last_update_time, e.create_by, e.last_update_by,
+               c.name_cn AS category_name
         FROM openplatform_v2_event_t e
         LEFT JOIN openplatform_v2_category_t c ON e.category_id = c.id
         <where>
@@ -67,9 +71,9 @@
                 AND e.status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (e.name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR e.name_en LIKE CONCAT('%', #{keyword}, '%')
-                     OR e.topic LIKE CONCAT('%', #{keyword}, '%'))
+                AND (e.name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR e.name_en LIKE CONCAT(#{keyword}, '%')
+                     OR e.topic LIKE CONCAT(#{keyword}, '%'))
             </if>
         </where>
         ORDER BY e.create_time DESC
@@ -88,9 +92,9 @@
                 AND status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
-                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                     OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                     OR topic LIKE CONCAT('%', #{keyword}, '%'))
+                AND (name_cn LIKE CONCAT(#{keyword}, '%')
+                     OR name_en LIKE CONCAT(#{keyword}, '%')
+                     OR topic LIKE CONCAT(#{keyword}, '%'))
             </if>
         </where>
     </select>

@@ -46,14 +46,14 @@ public class SyncService {
      */
     @Transactional(rollbackFor = Exception.class)
     public SyncResult migrate(SyncRequest request) {
-        log.info("开始迁移数据，ids={}", request.getIds());
+        log.info("Starting data migration, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
         int success = 0, failed = 0, skipped = 0;
 
         // 1. 查询旧订阅关系
         List<OldSubscription> oldSubscriptions = syncMapper.selectOldSubscriptions(request.getIds());
-        log.info("查询到 {} 条旧订阅关系", oldSubscriptions.size());
+        log.info("Found {} old subscriptions", oldSubscriptions.size());
 
         for (OldSubscription oldSub : oldSubscriptions) {
             SyncDetail detail = SyncDetail.builder()
@@ -124,7 +124,7 @@ public class SyncService {
                 }
 
             } catch (Exception e) {
-                log.error("迁移订阅关系失败, id={}", oldSub.getId(), e);
+                log.error("Failed to migrate subscription, id={}", oldSub.getId(), e);
                 detail.setStatus("failed");
                 detail.setError(e.getMessage());
                 failed++;
@@ -148,7 +148,7 @@ public class SyncService {
         // 1. 查询旧权限
         OldPermission oldPermission = syncMapper.selectOldPermissionById(oldSub.getPermissionId());
         if (oldPermission == null) {
-            log.warn("旧权限不存在, permissionId={}", oldSub.getPermissionId());
+            log.warn("Old permission not found, permissionId={}", oldSub.getPermissionId());
             return null;
         }
 
@@ -160,14 +160,14 @@ public class SyncService {
             // API 权限
             OldApi oldApi = syncMapper.selectOldApiById(oldPermission.getModuleId());
             if (oldApi == null) {
-                log.warn("旧API不存在, id={}", oldPermission.getModuleId());
+                log.warn("Old API not found, id={}", oldPermission.getModuleId());
                 return null;
             }
 
             // 通过 path+method 匹配新API
             Api newApi = syncMapper.selectNewApiByPathAndMethod(oldApi.getPath(), oldApi.getMethod());
             if (newApi == null) {
-                log.warn("未找到对应的新API, path={}, method={}", oldApi.getPath(), oldApi.getMethod());
+                log.warn("New API not found, path={}, method={}", oldApi.getPath(), oldApi.getMethod());
                 return null;
             }
             resourceId = newApi.getId();
@@ -176,20 +176,20 @@ public class SyncService {
             // 事件权限
             OldEvent oldEvent = syncMapper.selectOldEventById(oldPermission.getModuleId());
             if (oldEvent == null) {
-                log.warn("旧事件不存在, id={}", oldPermission.getModuleId());
+                log.warn("Old event not found, id={}", oldPermission.getModuleId());
                 return null;
             }
 
             // 通过 topic 匹配新事件
             Event newEvent = syncMapper.selectNewEventByTopic(oldEvent.getTopic());
             if (newEvent == null) {
-                log.warn("未找到对应的新事件, topic={}", oldEvent.getTopic());
+                log.warn("New event not found, topic={}", oldEvent.getTopic());
                 return null;
             }
             resourceId = newEvent.getId();
 
         } else {
-            log.warn("未知的资源类型, type={}", resourceType);
+            log.warn("Unknown resource type, type={}", resourceType);
             return null;
         }
 
@@ -265,7 +265,7 @@ public class SyncService {
             detail.setApprovalLogStatus("同步" + logCount + "条审批日志");
 
         } catch (Exception e) {
-            log.error("同步审批记录失败, subscriptionId={}", oldSub.getId(), e);
+            log.error("Failed to sync approval records, subscriptionId={}", oldSub.getId(), e);
             detail.setApprovalStatus("失败: " + e.getMessage());
         }
     }
@@ -291,7 +291,7 @@ public class SyncService {
             
             return objectMapper.writeValueAsString(combinedNodes);
         } catch (Exception e) {
-            log.error("构造combinedNodes失败", e);
+            log.error("Failed to construct combinedNodes", e);
             return null;
         }
     }
@@ -327,14 +327,14 @@ public class SyncService {
      */
     @Transactional(rollbackFor = Exception.class)
     public SyncResult rollback(SyncRequest request) {
-        log.info("开始回退数据，ids={}", request.getIds());
+        log.info("Starting data rollback, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
         int success = 0, failed = 0, skipped = 0;
 
         // 1. 查询新订阅关系
         List<Subscription> newSubscriptions = syncMapper.selectNewSubscriptions(request.getIds());
-        log.info("查询到 {} 条新订阅关系", newSubscriptions.size());
+        log.info("Found {} new subscriptions", newSubscriptions.size());
 
         for (Subscription newSub : newSubscriptions) {
             SyncDetail detail = SyncDetail.builder()
@@ -388,7 +388,7 @@ public class SyncService {
                 }
 
             } catch (Exception e) {
-                log.error("回退订阅关系失败, id={}", newSub.getId(), e);
+                log.error("Failed to rollback subscription, id={}", newSub.getId(), e);
                 detail.setStatus("failed");
                 detail.setError(e.getMessage());
                 failed++;
@@ -412,7 +412,7 @@ public class SyncService {
         // 1. 查询新权限
         Permission newPermission = syncMapper.selectNewPermissionById(newSub.getPermissionId());
         if (newPermission == null) {
-            log.warn("新权限不存在, permissionId={}", newSub.getPermissionId());
+            log.warn("New permission not found, permissionId={}", newSub.getPermissionId());
             return null;
         }
 
