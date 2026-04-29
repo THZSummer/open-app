@@ -1,8 +1,8 @@
-import { API_BASE_URL } from './constants';
 import { getUserIdCookie } from './cookie';
+import { API_CONFIG } from '../configs/web.config';
 
 async function request(url, options = {}) {
-  const fullUrl = `${API_BASE_URL}${url}`;
+  const fullUrl = `${API_CONFIG.BASE_URL}${url}`;
   const userId = getUserIdCookie();
   const headers = {
     'Content-Type': 'application/json',

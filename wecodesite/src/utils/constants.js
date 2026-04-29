@@ -1,5 +1,3 @@
-export const API_BASE_URL = '';
-
 export const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export const INIT_PAGECONFIG = {
@@ -11,8 +9,9 @@ export const INIT_PAGECONFIG = {
 export const SUBSCRIPTION_STATUS = {
   0: { text: '审核中', color: 'orange' },
   1: { text: '已审核', color: 'green' },
-  2: { text: '已中止', color: 'red' },
-  3: { text: '已撤回', color: 'default' }
+  2: { text: '已驳回', color: 'red' },
+  3: { text: '已撤回', color: 'default' },
+  4: { text: '已中止', color: 'red' },
 };
 
 export const RESOURCE_STATUS = {
@@ -41,18 +40,6 @@ export const AUTH_TYPE = {
   4: '免认证',
   5: 'AKSK',
   6: 'CLITOKEN',
-};
-
-export const formatCategoryPath = (category) => {
-  if (!category) return '';
-  if (typeof category === 'string') return category;
-  return category.categoryPath?.join(' > ') || category.nameCn || '';
-};
-
-export const getPermissionName = (permission) => {
-  if (!permission) return '-';
-  if (typeof permission === 'string') return permission;
-  return permission.nameCn || permission.scope || '-';
 };
 
 export const ADMIN_MENU_CONFIG = [
