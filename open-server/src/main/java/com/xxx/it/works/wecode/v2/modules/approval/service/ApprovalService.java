@@ -18,6 +18,8 @@ import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
 import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
+import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
+import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +71,7 @@ public class ApprovalService {
     private final EventMapper eventMapper;
     private final CallbackMapper callbackMapper;
     private final SubscriptionMapper subscriptionMapper;
+    private final PermissionMapper permissionMapper;
 
     // ==================== 审批流程模板管理 ====================
 
@@ -538,6 +541,32 @@ public class ApprovalService {
                     if (subscription != null) {
                         data.put("appId", subscription.getAppId());
                         data.put("permissionId", subscription.getPermissionId());
+                        
+                        Permission permission = permissionMapper.selectById(subscription.getPermissionId());
+                        if (permission != null) {
+                            data.put("nameCn", permission.getNameCn());
+                            data.put("nameEn", permission.getNameEn());
+                            data.put("scope", permission.getScope());
+                            data.put("resourceType", permission.getResourceType());
+                            
+                            if ("api".equals(permission.getResourceType())) {
+                                Api apiResource = apiMapper.selectById(permission.getResourceId());
+                                if (apiResource != null) {
+                                    data.put("path", apiResource.getPath());
+                                    data.put("method", apiResource.getMethod());
+                                }
+                            } else if ("event".equals(permission.getResourceType())) {
+                                Event evt = eventMapper.selectById(permission.getResourceId());
+                                if (evt != null) {
+                                    data.put("topic", evt.getTopic());
+                                }
+                            } else if ("callback".equals(permission.getResourceType())) {
+                                Callback cb = callbackMapper.selectById(permission.getResourceId());
+                                if (cb != null) {
+                                    data.put("nameCn", cb.getNameCn());
+                                }
+                            }
+                        }
                     }
                     break;
                 default:
