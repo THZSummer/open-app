@@ -268,13 +268,7 @@ public class EventService {
             throw BusinessException.notFound("事件不存在", "Event not found");
         }
         
-        // 检查事件状态（已发布的事件不能更新核心属性）
-        if (event.getStatus() == STATUS_PUBLISHED) {
-            throw new BusinessException("403", 
-                    "Published event cannot be updated", 
-                    "Published event cannot be updated");
-        }
-        
+
         // 解析分类ID
         Long categoryId = event.getCategoryId();
         if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {

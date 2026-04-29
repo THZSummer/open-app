@@ -37,3 +37,8 @@ logging:
   level:
     root: INFO
     com.xxx.open: INFO
+
+
+# 平台配置（生产环境）
+platform:
+  approval-url-prefix: https://platform.example.com/approval/

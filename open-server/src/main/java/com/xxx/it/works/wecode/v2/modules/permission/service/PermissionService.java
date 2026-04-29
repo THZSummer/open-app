@@ -27,6 +27,7 @@ import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -66,7 +68,26 @@ public class PermissionService {
     private final CallbackPropertyMapper callbackPropertyMapper;
     private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
+    private final ApprovalRecordMapper approvalRecordMapper;
     private final AppContextResolver appContextResolver;
+
+
+
+    /**
+     * 审批URL前缀（域名+路径）
+     */
+    @Value("${platform.approval-url-prefix}")
+    private String approvalUrlPrefix;
+    
+    /**
+     * 构建审批URL
+     * 
+     * @param id 订阅ID
+     * @return 完整的审批URL
+     */
+    private String buildApprovalUrl(Long id) {
+        return approvalUrlPrefix + id;
+    }
 
     // ==================== API 权限管理 (#27-31) ====================
 
@@ -924,6 +945,15 @@ public class PermissionService {
                     .build();
         }
 
+        // 查询审批人信息
+        java.util.Map<String, String> approverMap = getApproverInfo(subscription.getId(), "api_permission_apply");
+        ApiSubscriptionListResponse.ApproverInfo approverInfo = approverMap != null 
+                ? ApiSubscriptionListResponse.ApproverInfo.builder()
+                        .userId(approverMap.get("userId"))
+                        .userName(approverMap.get("userName"))
+                        .build()
+                : null;
+
         return ApiSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
                 .appId(appContextResolver.toExternalId(subscription.getAppId()))
@@ -931,9 +961,10 @@ public class PermissionService {
                 .permission(permissionInfo)
                 .api(apiInfo)
                 .category(categoryInfo)
+                .approver(approverInfo)
                 .status(subscription.getStatus())
                 .authType(subscription.getAuthType())
-                .approvalUrl("https://platform.example.com/approval/" + subscription.getId())
+                .approvalUrl(buildApprovalUrl(subscription.getId()))
                 .createTime(subscription.getCreateTime())
                 .build();
     }
@@ -988,10 +1019,16 @@ public class PermissionService {
         }
 
         // 查询审批人信息
-        EventSubscriptionListResponse.ApproverInfo approverInfo = getApproverInfo(subscription.getId());
-        
+        java.util.Map<String, String> approverMap = getApproverInfo(subscription.getId(), "event_permission_apply");
+        EventSubscriptionListResponse.ApproverInfo approverInfo = approverMap != null
+                ? EventSubscriptionListResponse.ApproverInfo.builder()
+                        .userId(approverMap.get("userId"))
+                        .userName(approverMap.get("userName"))
+                        .build()
+                : null;
+
         // 构造审批链接
-        String approvalUrl = "https://platform.example.com/approval/event/" + subscription.getId();
+        String approvalUrl = buildApprovalUrl(subscription.getId());
 
         return EventSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
@@ -1058,10 +1095,16 @@ public class PermissionService {
         }
 
         // 查询审批人信息
-        CallbackSubscriptionListResponse.ApproverInfo approverInfo = getCallbackApproverInfo(subscription.getId());
-        
+        java.util.Map<String, String> approverMap = getApproverInfo(subscription.getId(), "callback_permission_apply");
+        CallbackSubscriptionListResponse.ApproverInfo approverInfo = approverMap != null
+                ? CallbackSubscriptionListResponse.ApproverInfo.builder()
+                        .userId(approverMap.get("userId"))
+                        .userName(approverMap.get("userName"))
+                        .build()
+                : null;
+
         // 构造审批链接
-        String approvalUrl = "https://platform.example.com/approval/callback/" + subscription.getId();
+        String approvalUrl = buildApprovalUrl(subscription.getId());
 
         return CallbackSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
@@ -1117,8 +1160,8 @@ public class PermissionService {
             }
         }
 
-        // 查询是否需要审核（从属性表）
-        Integer needApproval = getNeedApproval(permission.getId());
+        // 获取是否需要审核
+        Integer needApproval = permission.getNeedApproval() != null ? permission.getNeedApproval() : 1;
 
         // 查询是否已订阅
         int isSubscribed = 0;
@@ -1207,15 +1250,6 @@ public class PermissionService {
     }
 
     /**
-     * 获取是否需要审核
-     */
-    private Integer getNeedApproval(Long permissionId) {
-        // 从属性表查询 need_approval
-        // 默认需要审核
-        return 1;
-    }
-
-    /**
      * 获取权限文档URL
      */
     private String getPermissionDocUrl(Long permissionId) {
@@ -1242,21 +1276,45 @@ public class PermissionService {
     }
 
     /**
-     * 获取审批人信息（事件订阅）
+     * 获取审批人信息
+     * 
+     * @param subscriptionId 订阅ID
+     * @param businessType 业务类型（api_permission_apply, event_permission_apply, callback_permission_apply）
+     * @return 包含 userId 和 userName 的 Map，如果没有审批记录则返回 null
      */
-    private EventSubscriptionListResponse.ApproverInfo getApproverInfo(Long subscriptionId) {
-        // TODO: 从审批流程表查询审批人信息
-        // 暂时返回 null,实际应该从审批流程中获取
-        return null;
-    }
-
-    /**
-     * 获取审批人信息（回调订阅）
-     */
-    private CallbackSubscriptionListResponse.ApproverInfo getCallbackApproverInfo(Long subscriptionId) {
-        // TODO: 从审批流程表查询审批人信息
-        // 暂时返回 null,实际应该从审批流程中获取
-        return null;
+    private java.util.Map<String, String> getApproverInfo(Long subscriptionId, String businessType) {
+        ApprovalRecord record = approvalRecordMapper.selectLatestByBusiness(businessType, subscriptionId);
+        if (record == null || record.getCombinedNodes() == null) {
+            return null;
+        }
+        
+        // 解析 combinedNodes JSON，获取当前审批人
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.List<java.util.Map<String, Object>> nodes = objectMapper.readValue(
+                    record.getCombinedNodes(), 
+                    new com.fasterxml.jackson.core.type.TypeReference<java.util.List<java.util.Map<String, Object>>>() {}
+            );
+            
+            // 获取当前审批节点索引
+            Integer currentNode = record.getCurrentNode();
+            if (currentNode == null || currentNode < 0 || currentNode >= nodes.size()) {
+                return null;
+            }
+            
+            // 获取当前审批人
+            java.util.Map<String, Object> currentNodeInfo = nodes.get(currentNode);
+            String userId = (String) currentNodeInfo.get("userId");
+            String userName = (String) currentNodeInfo.get("userName");
+            
+            java.util.Map<String, String> result = new java.util.HashMap<>();
+            result.put("userId", userId);
+            result.put("userName", userName);
+            return result;
+        } catch (Exception e) {
+            log.warn("解析审批节点信息失败: subscriptionId={}, error={}", subscriptionId, e.getMessage());
+            return null;
+        }
     }
 
     /**

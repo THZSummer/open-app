@@ -34,3 +34,8 @@ logging:
     com.xxx.it.works.wecode.v2: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+
+# 平台配置
+platform:
+  approval-url-prefix: https://platform.example.com/approval/

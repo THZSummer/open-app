@@ -286,12 +286,6 @@ public class CallbackService {
             throw BusinessException.notFound("回调不存在", "Callback not found");
         }
 
-        // 检查回调状态（只有草稿和已发布状态可以更新）
-        if (callback.getStatus() == 1) {
-            throw new BusinessException("400",
-                    "待审状态的回调不能更新，请先撤回",
-                    "Cannot update pending callback, please withdraw first");
-        }
 
         // 更新回调基本信息
         if (request.getNameCn() != null) {
@@ -332,6 +326,12 @@ public class CallbackService {
             }
             if (categoryId != null) {
                 permission.setCategoryId(categoryId);
+            }
+            if (request.getPermission().getNeedApproval() != null) {
+                permission.setNeedApproval(request.getPermission().getNeedApproval());
+            }
+            if (request.getPermission().getResourceNodes() != null) {
+                permission.setResourceNodes(request.getPermission().getResourceNodes());
             }
             permission.setLastUpdateTime(new Date());
             permission.setLastUpdateBy(UserContextHolder.getUserId());

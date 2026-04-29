@@ -302,6 +302,12 @@ public class ApiService {
         if (request.getNameEn() != null && !request.getNameEn().trim().isEmpty()) {
             api.setNameEn(request.getNameEn());
         }
+        if (request.getPath() != null && !request.getPath().trim().isEmpty()) {
+            api.setPath(request.getPath());
+        }
+        if (request.getMethod() != null && !request.getMethod().trim().isEmpty()) {
+            api.setMethod(request.getMethod().toUpperCase(Locale.ROOT));
+        }
         if (categoryId != null) {
             api.setCategoryId(categoryId);
         }
@@ -321,6 +327,15 @@ public class ApiService {
             }
             if (request.getPermission().getNameEn() != null && !request.getPermission().getNameEn().trim().isEmpty()) {
                 permission.setNameEn(request.getPermission().getNameEn());
+            }
+            if (request.getPermission().getScope() != null && !request.getPermission().getScope().trim().isEmpty()) {
+                permission.setScope(request.getPermission().getScope());
+            }
+            if (request.getPermission().getNeedApproval() != null) {
+                permission.setNeedApproval(request.getPermission().getNeedApproval());
+            }
+            if (request.getPermission().getResourceNodes() != null) {
+                permission.setResourceNodes(request.getPermission().getResourceNodes());
             }
             if (categoryId != null) {
                 permission.setCategoryId(categoryId);

@@ -16,6 +16,7 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppAccessException;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -82,6 +84,9 @@ class PermissionServiceTest {
     
     @Mock
     private AppContextResolver appContextResolver;
+
+    @Mock
+    private ApprovalRecordMapper approvalRecordMapper;
     
     @InjectMocks
     private PermissionService permissionService;
@@ -123,6 +128,9 @@ class PermissionServiceTest {
                 .build();
         lenient().when(appContextResolver.resolveAndValidate(anyString())).thenReturn(defaultAppContext);
         lenient().when(appContextResolver.toExternalId(anyLong())).thenReturn("1");
+
+        // 设置审批URL前缀
+        ReflectionTestUtils.setField(permissionService, "approvalUrlPrefix", "https://platform.example.com/approval/");
     }
 
     @Nested
@@ -141,6 +149,7 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
             ApiResponse<List<ApiSubscriptionListResponse>> response = 
                     permissionService.getApiSubscriptionList("1", null, null, 1, 20);
@@ -151,6 +160,9 @@ class PermissionServiceTest {
             assertEquals(1, response.getData().size());
             assertNotNull(response.getPage());
             assertEquals(1L, response.getPage().getTotal());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
@@ -345,6 +357,7 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
             ApiResponse<List<EventSubscriptionListResponse>> response = 
                     permissionService.getEventSubscriptionList("1", null, null, 1, 20);
@@ -353,6 +366,9 @@ class PermissionServiceTest {
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
             assertEquals(1, response.getData().size());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
@@ -474,6 +490,7 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
             ApiResponse<List<CallbackSubscriptionListResponse>> response = 
                     permissionService.getCallbackSubscriptionList("1", null, null, 1, 20);
@@ -482,6 +499,9 @@ class PermissionServiceTest {
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
             assertEquals(1, response.getData().size());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
