@@ -1160,8 +1160,8 @@ public class PermissionService {
             }
         }
 
-        // 查询是否需要审核（从属性表）
-        Integer needApproval = getNeedApproval(permission.getId());
+        // 获取是否需要审核
+        Integer needApproval = permission.getNeedApproval() != null ? permission.getNeedApproval() : 1;
 
         // 查询是否已订阅
         int isSubscribed = 0;
@@ -1247,15 +1247,6 @@ public class PermissionService {
                 .findFirst()
                 .map(CallbackProperty::getPropertyValue)
                 .orElse(null);
-    }
-
-    /**
-     * 获取是否需要审核
-     */
-    private Integer getNeedApproval(Long permissionId) {
-        // 从属性表查询 need_approval
-        // 默认需要审核
-        return 1;
     }
 
     /**

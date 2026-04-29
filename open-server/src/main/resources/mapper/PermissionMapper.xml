@@ -129,12 +129,7 @@
                  OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
-            AND EXISTS (
-                SELECT 1 FROM openplatform_v2_permission_p_t pp
-                WHERE pp.parent_id = p.id
-                  AND pp.property_name = 'need_approval'
-                  AND pp.property_value = #{needApproval}
-            )
+            AND p.need_approval = #{needApproval}
         </if>
         ORDER BY p.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -161,12 +156,7 @@
                  OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
-            AND EXISTS (
-                SELECT 1 FROM openplatform_v2_permission_p_t pp
-                WHERE pp.parent_id = p.id
-                  AND pp.property_name = 'need_approval'
-                  AND pp.property_value = #{needApproval}
-            )
+            AND p.need_approval = #{needApproval}
         </if>
     </select>
 
@@ -193,12 +183,7 @@
                  OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
-            AND EXISTS (
-                SELECT 1 FROM openplatform_v2_permission_p_t pp
-                WHERE pp.parent_id = p.id
-                  AND pp.property_name = 'need_approval'
-                  AND pp.property_value = #{needApproval}
-            )
+            AND p.need_approval = #{needApproval}
         </if>
         ORDER BY p.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -225,12 +210,7 @@
                  OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
-            AND EXISTS (
-                SELECT 1 FROM openplatform_v2_permission_p_t pp
-                WHERE pp.parent_id = p.id
-                  AND pp.property_name = 'need_approval'
-                  AND pp.property_value = #{needApproval}
-            )
+            AND p.need_approval = #{needApproval}
         </if>
     </select>
 
@@ -257,12 +237,7 @@
                  OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
-            AND EXISTS (
-                SELECT 1 FROM openplatform_v2_permission_p_t pp
-                WHERE pp.parent_id = p.id
-                  AND pp.property_name = 'need_approval'
-                  AND pp.property_value = #{needApproval}
-            )
+            AND p.need_approval = #{needApproval}
         </if>
         ORDER BY p.create_time DESC
         LIMIT #{offset}, #{pageSize}
@@ -289,12 +264,7 @@
                  OR p.scope LIKE CONCAT(#{keyword}, '%'))
         </if>
         <if test="needApproval != null">
-            AND EXISTS (
-                SELECT 1 FROM openplatform_v2_permission_p_t pp
-                WHERE pp.parent_id = p.id
-                  AND pp.property_name = 'need_approval'
-                  AND pp.property_value = #{needApproval}
-            )
+            AND p.need_approval = #{needApproval}
         </if>
     </select>
 
