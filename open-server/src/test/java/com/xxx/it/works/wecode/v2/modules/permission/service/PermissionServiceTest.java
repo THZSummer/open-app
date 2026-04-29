@@ -16,6 +16,7 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppAccessException;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
@@ -83,6 +84,9 @@ class PermissionServiceTest {
     
     @Mock
     private AppContextResolver appContextResolver;
+
+    @Mock
+    private ApprovalRecordMapper approvalRecordMapper;
     
     @InjectMocks
     private PermissionService permissionService;
@@ -145,6 +149,7 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
             ApiResponse<List<ApiSubscriptionListResponse>> response = 
                     permissionService.getApiSubscriptionList("1", null, null, 1, 20);
@@ -352,6 +357,7 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
             ApiResponse<List<EventSubscriptionListResponse>> response = 
                     permissionService.getEventSubscriptionList("1", null, null, 1, 20);
@@ -484,6 +490,7 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
             ApiResponse<List<CallbackSubscriptionListResponse>> response = 
                     permissionService.getCallbackSubscriptionList("1", null, null, 1, 20);
