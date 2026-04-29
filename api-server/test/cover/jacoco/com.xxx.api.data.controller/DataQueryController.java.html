@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataQueryController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.data.controller</a> &gt; <span class="el_source">DataQueryController.java</span></div><h1>DataQueryController.java</h1><pre class="source lang-java linenums">package com.xxx.api.data.controller;
+
+import com.xxx.api.common.model.ApiResponse;
+import com.xxx.api.data.service.DataQueryService;
+import com.xxx.api.gateway.dto.PermissionCheckResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 数据查询控制器
+ * 
+ * &lt;p&gt;接口列表：&lt;/p&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;GET /gateway/permissions/check - 权限校验接口（#58）&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * &lt;p&gt;供 event-server 或其他服务调用&lt;/p&gt;
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+<span class="fc" id="L29">@Slf4j</span>
+@Tag(name = &quot;数据查询接口&quot;, description = &quot;提供数据查询接口，供其他服务调用&quot;)
+@RestController
+@RequestMapping(&quot;/gateway&quot;)
+@RequiredArgsConstructor
+public class DataQueryController {
+
+    private final DataQueryService dataQueryService;
+
+    /**
+     * 权限校验接口
+     * 
+     * &lt;p&gt;接口编号：#58&lt;/p&gt;
+     * &lt;p&gt;供 event-server 调用，校验应用是否拥有指定权限&lt;/p&gt;
+     */
+    @Operation(summary = &quot;权限校验&quot;, description = &quot;校验应用是否拥有指定权限&quot;)
+    @GetMapping(&quot;/permissions/check&quot;)
+    public ApiResponse&lt;PermissionCheckResponse&gt; checkPermission(
+            @Parameter(description = &quot;应用ID&quot;, required = true) @RequestParam String appId,
+            @Parameter(description = &quot;权限标识&quot;, required = true) @RequestParam String scope) {
+        
+<span class="fc" id="L50">        log.debug(&quot;权限校验请求: appId={}, scope={}&quot;, appId, scope);</span>
+        
+<span class="fc" id="L52">        PermissionCheckResponse response = dataQueryService.checkPermission(appId, scope);</span>
+<span class="fc" id="L53">        return ApiResponse.success(response);</span>
+    }
+
+    /**
+     * 查询订阅某权限的所有应用
+     */
+    @Operation(summary = &quot;查询订阅应用列表&quot;, description = &quot;查询订阅某权限的所有应用&quot;)
+    @GetMapping(&quot;/permissions/subscribers&quot;)
+    public ApiResponse&lt;List&lt;String&gt;&gt; getSubscribedApps(
+            @Parameter(description = &quot;权限标识&quot;, required = true) @RequestParam String scope) {
+        
+<span class="fc" id="L64">        log.debug(&quot;查询订阅应用列表: scope={}&quot;, scope);</span>
+        
+<span class="fc" id="L66">        List&lt;String&gt; appIds = dataQueryService.getSubscribedApps(scope);</span>
+<span class="fc" id="L67">        return ApiResponse.success(appIds);</span>
+    }
+
+    /**
+     * 查询应用的订阅配置
+     */
+    @Operation(summary = &quot;查询订阅配置&quot;, description = &quot;查询应用对某权限的订阅配置&quot;)
+    @GetMapping(&quot;/subscriptions/config&quot;)
+    public ApiResponse&lt;Map&lt;String, Object&gt;&gt; getSubscriptionConfig(
+            @Parameter(description = &quot;应用ID&quot;, required = true) @RequestParam String appId,
+            @Parameter(description = &quot;权限标识&quot;, required = true) @RequestParam String scope) {
+        
+<span class="fc" id="L79">        log.debug(&quot;查询订阅配置: appId={}, scope={}&quot;, appId, scope);</span>
+        
+<span class="fc" id="L81">        Map&lt;String, Object&gt; config = dataQueryService.getSubscriptionConfig(appId, scope);</span>
+<span class="fc" id="L82">        return ApiResponse.success(config);</span>
+    }
+
+    /**
+     * 查询权限详情
+     */
+    @Operation(summary = &quot;查询权限详情&quot;, description = &quot;根据 Scope 查询权限详情&quot;)
+    @GetMapping(&quot;/permissions/detail&quot;)
+    public ApiResponse&lt;Map&lt;String, Object&gt;&gt; getPermissionByScope(
+            @Parameter(description = &quot;权限标识&quot;, required = true) @RequestParam String scope) {
+        
+<span class="fc" id="L93">        log.debug(&quot;查询权限详情: scope={}&quot;, scope);</span>
+        
+<span class="fc" id="L95">        Map&lt;String, Object&gt; permission = dataQueryService.getPermissionByScope(scope);</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        if (permission == null) {</span>
+<span class="fc" id="L97">            return ApiResponse.error(&quot;404&quot;, &quot;权限不存在&quot;, &quot;Permission not found&quot;);</span>
+        }
+<span class="fc" id="L99">        return ApiResponse.success(permission);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

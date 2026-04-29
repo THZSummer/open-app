@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiGatewayController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.gateway.controller</a> &gt; <span class="el_source">ApiGatewayController.java</span></div><h1>ApiGatewayController.java</h1><pre class="source lang-java linenums">package com.xxx.api.gateway.controller;
+
+import com.xxx.api.common.model.ApiResponse;
+import com.xxx.api.gateway.dto.ApiGatewayResponse;
+import com.xxx.api.gateway.dto.CallbackConfigRequest;
+import com.xxx.api.gateway.dto.CallbackConfigResponse;
+import com.xxx.api.gateway.dto.PermissionCheckResponse;
+import com.xxx.api.gateway.service.ApiGatewayService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.*;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * API 网关控制器
+ * 
+ * &lt;p&gt;接口列表：&lt;/p&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;ANY /gateway/api/* - API 请求代理与鉴权（#55）&lt;/li&gt;
+ *   &lt;li&gt;POST /gateway/callbacks/config - 回调配置查询接口（#59）&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+<span class="fc" id="L35">@Slf4j</span>
+@Tag(name = &quot;API 网关&quot;, description = &quot;API 请求代理与鉴权&quot;)
+@RestController
+@RequestMapping(&quot;/gateway&quot;)
+@RequiredArgsConstructor
+public class ApiGatewayController {
+
+    private final ApiGatewayService apiGatewayService;
+
+    /**
+     * API 请求代理与鉴权
+     * 
+     * &lt;p&gt;接口编号：#55&lt;/p&gt;
+     * &lt;p&gt;处理流程：&lt;/p&gt;
+     * &lt;ol&gt;
+     *   &lt;li&gt;验证应用身份（AKSK/Bearer Token）&lt;/li&gt;
+     *   &lt;li&gt;查询应用订阅关系&lt;/li&gt;
+     *   &lt;li&gt;验证请求路径与方法是否在授权 Scope 范围内&lt;/li&gt;
+     *   &lt;li&gt;转发请求到内部中台网关&lt;/li&gt;
+     *   &lt;li&gt;返回响应&lt;/li&gt;
+     * &lt;/ol&gt;
+     */
+    @Operation(summary = &quot;API 请求代理与鉴权&quot;, description = &quot;验证权限后转发请求到内部中台网关&quot;)
+    @RequestMapping(value = &quot;/api/**&quot;, method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
+    public ResponseEntity&lt;String&gt; proxyApiRequest(
+            @Parameter(description = &quot;应用ID&quot;) @RequestHeader(value = &quot;X-App-Id&quot;, required = false) String appId,
+            @Parameter(description = &quot;认证类型&quot;) @RequestHeader(value = &quot;X-Auth-Type&quot;, required = false) Integer authType,
+            @Parameter(description = &quot;认证凭证&quot;) @RequestHeader(value = &quot;Authorization&quot;, required = false) String authCredential,
+            @RequestBody(required = false) String body,
+            HttpServletRequest request) {
+        
+<span class="fc" id="L66">        log.info(&quot;API 网关请求: method={}, path={}&quot;, request.getMethod(), request.getRequestURI());</span>
+        
+        try {
+            // 1. 验证应用身份
+<span class="fc bfc" id="L70" title="All 2 branches covered.">            if (!apiGatewayService.verifyApplication(appId, authType, authCredential)) {</span>
+<span class="fc" id="L71">                log.warn(&quot;应用身份验证失败: appId={}&quot;, appId);</span>
+<span class="fc" id="L72">                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)</span>
+<span class="fc" id="L73">                        .body(&quot;{\&quot;code\&quot;:\&quot;401\&quot;,\&quot;messageZh\&quot;:\&quot;应用身份验证失败\&quot;,\&quot;messageEn\&quot;:\&quot;Unauthorized\&quot;}&quot;);</span>
+            }
+            
+            // 2. 获取请求路径和方法
+<span class="fc" id="L77">            String path = extractPath(request);</span>
+<span class="fc" id="L78">            String method = request.getMethod();</span>
+            
+            // 3. 查找对应的 Scope
+<span class="fc" id="L81">            String scope = apiGatewayService.findScopeByPathAndMethod(path, method);</span>
+            
+            // 4. 校验权限
+<span class="fc" id="L84">            PermissionCheckResponse checkResult = apiGatewayService.checkPermission(appId, scope);</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">            if (!checkResult.getAuthorized()) {</span>
+<span class="fc" id="L86">                log.warn(&quot;权限校验失败: appId={}, scope={}, reason={}&quot;, appId, scope, checkResult.getReason());</span>
+<span class="fc" id="L87">                return ResponseEntity.status(HttpStatus.FORBIDDEN)</span>
+<span class="fc" id="L88">                        .body(&quot;{\&quot;code\&quot;:\&quot;403\&quot;,\&quot;messageZh\&quot;:\&quot;&quot; + checkResult.getReason() + &quot;\&quot;,\&quot;messageEn\&quot;:\&quot;Forbidden\&quot;}&quot;);</span>
+            }
+            
+            // 5. 转发请求到内部中台网关（Mock 实现）
+<span class="fc" id="L92">            log.info(&quot;权限校验通过，转发请求到内部网关: appId={}, scope={}&quot;, appId, scope);</span>
+            
+            // Mock: 返回成功响应
+            // 实际项目中应该使用 RestTemplate 或 WebClient 转发请求
+<span class="fc" id="L96">            String mockResponse = &quot;{\&quot;code\&quot;:\&quot;200\&quot;,\&quot;messageZh\&quot;:\&quot;操作成功\&quot;,\&quot;messageEn\&quot;:\&quot;Success\&quot;,\&quot;data\&quot;:{\&quot;result\&quot;:\&quot;API调用成功（Mock响应）\&quot;}}&quot;;</span>
+            
+<span class="fc" id="L98">            return ResponseEntity.ok()</span>
+<span class="fc" id="L99">                    .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L100">                    .body(mockResponse);</span>
+            
+<span class="fc" id="L102">        } catch (Exception e) {</span>
+<span class="fc" id="L103">            log.error(&quot;API 网关处理失败&quot;, e);</span>
+<span class="fc" id="L104">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="fc" id="L105">                    .body(&quot;{\&quot;code\&quot;:\&quot;500\&quot;,\&quot;messageZh\&quot;:\&quot;服务器内部错误\&quot;,\&quot;messageEn\&quot;:\&quot;Internal Server Error\&quot;}&quot;);</span>
+        }
+    }
+    
+    /**
+     * 提取请求路径
+     */
+    private String extractPath(HttpServletRequest request) {
+<span class="fc" id="L113">        String uri = request.getRequestURI();</span>
+        // 移除 /gateway/api 前缀
+<span class="pc bpc" id="L115" title="1 of 2 branches missed.">        if (uri.startsWith(&quot;/gateway/api&quot;)) {</span>
+<span class="fc" id="L116">            return uri.substring(&quot;/gateway/api&quot;.length());</span>
+        }
+<span class="nc" id="L118">        return uri;</span>
+    }
+    
+    /**
+     * 提取请求头
+     */
+    private Map&lt;String, String&gt; extractHeaders(HttpServletRequest request) {
+<span class="nc" id="L125">        Map&lt;String, String&gt; headers = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L126">        Enumeration&lt;String&gt; headerNames = request.getHeaderNames();</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        while (headerNames.hasMoreElements()) {</span>
+<span class="nc" id="L128">            String name = headerNames.nextElement();</span>
+<span class="nc" id="L129">            headers.put(name, request.getHeader(name));</span>
+<span class="nc" id="L130">        }</span>
+<span class="nc" id="L131">        return headers;</span>
+    }
+
+    /**
+     * 回调配置查询接口
+     * 
+     * &lt;p&gt;接口编号：#59&lt;/p&gt;
+     * &lt;p&gt;供 XX 通讯平台内部业务模块调用，通过 AK + Scope 查询应用对某个回调的订阅配置&lt;/p&gt;
+     */
+    @Operation(summary = &quot;回调配置查询接口&quot;, description = &quot;通过 AK + Scope 查询应用对某个回调的订阅配置&quot;)
+    @PostMapping(&quot;/callbacks/config&quot;)
+    public ApiResponse&lt;CallbackConfigResponse&gt; getCallbackConfig(
+            @Parameter(description = &quot;内部调用凭证&quot;) @RequestHeader(value = &quot;Authorization&quot;, required = false) String authorization,
+            @Valid @RequestBody CallbackConfigRequest request) {
+        
+<span class="fc" id="L146">        log.info(&quot;查询回调配置: ak={}, scope={}&quot;, request.getAk(), request.getScope());</span>
+        
+        // TODO: 验证内部调用凭证（Authorization）
+        
+        try {
+<span class="fc" id="L151">            CallbackConfigResponse config = apiGatewayService.getCallbackConfig(request.getAk(), request.getScope());</span>
+            
+<span class="fc bfc" id="L153" title="All 2 branches covered.">            if (config == null) {</span>
+<span class="fc" id="L154">                log.info(&quot;未找到回调配置: ak={}, scope={}&quot;, request.getAk(), request.getScope());</span>
+<span class="fc" id="L155">                return ApiResponse.success(null);</span>
+            }
+            
+<span class="fc" id="L158">            return ApiResponse.success(config);</span>
+            
+<span class="fc" id="L160">        } catch (Exception e) {</span>
+<span class="fc" id="L161">            log.error(&quot;查询回调配置失败: ak={}, scope={}&quot;, request.getAk(), request.getScope(), e);</span>
+<span class="fc" id="L162">            return ApiResponse.error(&quot;400&quot;, &quot;查询失败: &quot; + e.getMessage(), &quot;Query failed&quot;);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

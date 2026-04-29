@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HealthController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.common.controller</a> &gt; <span class="el_source">HealthController.java</span></div><h1>HealthController.java</h1><pre class="source lang-java linenums">package com.xxx.api.common.controller;
+
+import com.xxx.api.common.model.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 健康检查控制器
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+@Tag(name = &quot;健康检查&quot;, description = &quot;服务健康检查接口&quot;)
+@RestController
+@RequestMapping(&quot;/api/v1&quot;)
+<span class="fc" id="L23">public class HealthController {</span>
+
+    @Operation(summary = &quot;健康检查&quot;, description = &quot;返回服务健康状态&quot;)
+    @GetMapping(&quot;/health&quot;)
+    public ApiResponse&lt;Map&lt;String, Object&gt;&gt; health() {
+<span class="fc" id="L28">        Map&lt;String, Object&gt; data = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L29">        data.put(&quot;status&quot;, &quot;UP&quot;);</span>
+<span class="fc" id="L30">        data.put(&quot;service&quot;, &quot;api-server&quot;);</span>
+<span class="fc" id="L31">        data.put(&quot;timestamp&quot;, LocalDateTime.now());</span>
+<span class="fc" id="L32">        data.put(&quot;version&quot;, &quot;1.0.0&quot;);</span>
+<span class="fc" id="L33">        return ApiResponse.success(data);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

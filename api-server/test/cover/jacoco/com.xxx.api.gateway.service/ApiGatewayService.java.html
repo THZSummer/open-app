@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApiGatewayService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.gateway.service</a> &gt; <span class="el_source">ApiGatewayService.java</span></div><h1>ApiGatewayService.java</h1><pre class="source lang-java linenums">package com.xxx.api.gateway.service;
+
+import com.xxx.api.common.entity.Permission;
+import com.xxx.api.common.entity.Subscription;
+import com.xxx.api.common.exception.BusinessException;
+import com.xxx.api.common.mapper.PermissionMapper;
+import com.xxx.api.common.mapper.SubscriptionMapper;
+import com.xxx.api.common.service.ApplicationService;
+import com.xxx.api.gateway.dto.CallbackConfigResponse;
+import com.xxx.api.gateway.dto.PermissionCheckResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+/**
+ * API 网关服务
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+<span class="fc" id="L21">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class ApiGatewayService {
+
+    private final PermissionMapper permissionMapper;
+    private final SubscriptionMapper subscriptionMapper;
+    private final ApplicationService applicationService;
+
+    /**
+     * 校验应用权限
+     * 
+     * @param appId 应用ID
+     * @param scope 权限标识
+     * @return 校验结果
+     */
+    public PermissionCheckResponse checkPermission(String appId, String scope) {
+        // 转换 appId
+        Long appIdLong;
+        try {
+<span class="fc" id="L41">            appIdLong = Long.parseLong(appId);</span>
+<span class="fc" id="L42">        } catch (NumberFormatException e) {</span>
+<span class="fc" id="L43">            return PermissionCheckResponse.builder()</span>
+<span class="fc" id="L44">                    .authorized(false)</span>
+<span class="fc" id="L45">                    .reason(&quot;应用ID格式错误&quot;)</span>
+<span class="fc" id="L46">                    .build();</span>
+<span class="fc" id="L47">        }</span>
+
+        // 查询权限
+<span class="fc" id="L50">        Permission permission = permissionMapper.selectByScope(scope);</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (permission == null) {</span>
+<span class="fc" id="L52">            return PermissionCheckResponse.builder()</span>
+<span class="fc" id="L53">                    .authorized(false)</span>
+<span class="fc" id="L54">                    .reason(&quot;权限不存在&quot;)</span>
+<span class="fc" id="L55">                    .build();</span>
+        }
+
+        // 查询订阅关系
+<span class="fc" id="L59">        Subscription subscription = subscriptionMapper.selectByAppIdAndPermissionId(</span>
+<span class="fc" id="L60">                appIdLong, permission.getId());</span>
+
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (subscription == null) {</span>
+<span class="fc" id="L63">            return PermissionCheckResponse.builder()</span>
+<span class="fc" id="L64">                    .authorized(false)</span>
+<span class="fc" id="L65">                    .reason(&quot;应用未订阅该权限&quot;)</span>
+<span class="fc" id="L66">                    .build();</span>
+        }
+
+        // 检查订阅状态（1=已授权）
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        if (subscription.getStatus() != 1) {</span>
+<span class="fc bfc" id="L71" title="All 4 branches covered.">            String statusReason = switch (subscription.getStatus()) {</span>
+<span class="fc" id="L72">                case 0 -&gt; &quot;订阅待审批&quot;;</span>
+<span class="fc" id="L73">                case 2 -&gt; &quot;订阅已拒绝&quot;;</span>
+<span class="fc" id="L74">                case 3 -&gt; &quot;订阅已取消&quot;;</span>
+<span class="fc" id="L75">                default -&gt; &quot;订阅状态异常&quot;;</span>
+            };
+<span class="fc" id="L77">            return PermissionCheckResponse.builder()</span>
+<span class="fc" id="L78">                    .authorized(false)</span>
+<span class="fc" id="L79">                    .reason(statusReason)</span>
+<span class="fc" id="L80">                    .subscriptionId(String.valueOf(subscription.getId()))</span>
+<span class="fc" id="L81">                    .subscriptionStatus(subscription.getStatus())</span>
+<span class="fc" id="L82">                    .build();</span>
+        }
+
+        // 返回成功结果
+<span class="fc" id="L86">        return PermissionCheckResponse.builder()</span>
+<span class="fc" id="L87">                .authorized(true)</span>
+<span class="fc" id="L88">                .subscriptionId(String.valueOf(subscription.getId()))</span>
+<span class="fc" id="L89">                .subscriptionStatus(subscription.getStatus())</span>
+<span class="fc" id="L90">                .build();</span>
+    }
+
+    /**
+     * 验证应用身份（AKSK/Bearer Token）
+     * 
+     * @param appId 应用ID
+     * @param authType 认证类型
+     * @param authCredential 认证凭证
+     * @return 是否验证通过
+     */
+    public boolean verifyApplication(String appId, Integer authType, String authCredential) {
+<span class="fc" id="L102">        return applicationService.verifyApplication(appId, authType, authCredential);</span>
+    }
+
+    /**
+     * 根据路径和方法查找对应的 Scope
+     * 
+     * @param path API路径
+     * @param method HTTP方法
+     * @return Scope 标识
+     */
+    public String findScopeByPathAndMethod(String path, String method) {
+        // Mock 实现：根据路径和方法生成 Scope
+        // 实际项目中应该查询 API 资源表，找到对应的权限
+        
+        // 示例：/api/v1/messages + POST -&gt; api:im:send-message
+<span class="fc bfc" id="L117" title="All 4 branches covered.">        if (path == null || method == null) {</span>
+<span class="fc" id="L118">            return null;</span>
+        }
+        
+        // 简单的路径转换规则
+<span class="fc" id="L122">        String scope = &quot;api:&quot; + path.replaceAll(&quot;[^a-zA-Z0-9]&quot;, &quot;:&quot;) + &quot;:&quot; + method.toLowerCase();</span>
+<span class="fc" id="L123">        log.debug(&quot;生成 Scope: path={}, method={}, scope={}&quot;, path, method, scope);</span>
+        
+<span class="fc" id="L125">        return scope;</span>
+    }
+
+    /**
+     * 获取回调配置
+     * 
+     * &lt;p&gt;通过 AK + Scope 查询应用对某个回调的订阅配置&lt;/p&gt;
+     * 
+     * @param ak 应用 Access Key
+     * @param scope 回调权限标识
+     * @return 回调配置，未找到返回 null
+     */
+    public CallbackConfigResponse getCallbackConfig(String ak, String scope) {
+        // 1. 通过 AK 获取应用ID（预留接口，对接现有 AKSK 管理系统）
+<span class="fc" id="L139">        Long appId = applicationService.getAppIdByAk(ak);</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">        if (appId == null) {</span>
+<span class="fc" id="L141">            log.warn(&quot;无效的 Access Key: {}&quot;, ak);</span>
+<span class="fc" id="L142">            return null;</span>
+        }
+
+        // 2. 查询回调订阅配置
+<span class="fc" id="L146">        Subscription subscription = subscriptionMapper.selectCallbackConfigByAppIdAndScope(appId, scope);</span>
+<span class="fc bfc" id="L147" title="All 2 branches covered.">        if (subscription == null) {</span>
+<span class="fc" id="L148">            log.info(&quot;未找到回调订阅配置: appId={}, scope={}&quot;, appId, scope);</span>
+<span class="fc" id="L149">            return null;</span>
+        }
+
+        // 3. 构建响应
+<span class="fc" id="L153">        return CallbackConfigResponse.builder()</span>
+<span class="fc" id="L154">                .ak(ak)</span>
+<span class="fc" id="L155">                .scope(scope)</span>
+<span class="fc" id="L156">                .channelType(subscription.getChannelType())</span>
+<span class="fc" id="L157">                .channelAddress(subscription.getChannelAddress())</span>
+<span class="fc" id="L158">                .authType(subscription.getAuthType())</span>
+<span class="fc" id="L159">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

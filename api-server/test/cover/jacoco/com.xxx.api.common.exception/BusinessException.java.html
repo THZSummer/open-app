@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BusinessException.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.common.exception</a> &gt; <span class="el_source">BusinessException.java</span></div><h1>BusinessException.java</h1><pre class="source lang-java linenums">package com.xxx.api.common.exception;
+
+import lombok.Getter;
+
+/**
+ * 业务异常
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+@Getter
+public class BusinessException extends RuntimeException {
+
+    private static final long serialVersionUID = 1L;
+
+    private final String code;
+    private final String messageZh;
+    private final String messageEn;
+
+    public BusinessException(String code, String messageZh, String messageEn) {
+<span class="fc" id="L21">        super(messageZh);</span>
+<span class="fc" id="L22">        this.code = code;</span>
+<span class="fc" id="L23">        this.messageZh = messageZh;</span>
+<span class="fc" id="L24">        this.messageEn = messageEn;</span>
+<span class="fc" id="L25">    }</span>
+
+    public BusinessException(String code, String messageZh, String messageEn, Throwable cause) {
+<span class="fc" id="L28">        super(messageZh, cause);</span>
+<span class="fc" id="L29">        this.code = code;</span>
+<span class="fc" id="L30">        this.messageZh = messageZh;</span>
+<span class="fc" id="L31">        this.messageEn = messageEn;</span>
+<span class="fc" id="L32">    }</span>
+
+    public static BusinessException badRequest(String messageZh, String messageEn) {
+<span class="fc" id="L35">        return new BusinessException(&quot;400&quot;, messageZh, messageEn);</span>
+    }
+
+    public static BusinessException unauthorized(String messageZh, String messageEn) {
+<span class="fc" id="L39">        return new BusinessException(&quot;401&quot;, messageZh, messageEn);</span>
+    }
+
+    public static BusinessException forbidden(String messageZh, String messageEn) {
+<span class="fc" id="L43">        return new BusinessException(&quot;403&quot;, messageZh, messageEn);</span>
+    }
+
+    public static BusinessException notFound(String messageZh, String messageEn) {
+<span class="fc" id="L47">        return new BusinessException(&quot;404&quot;, messageZh, messageEn);</span>
+    }
+
+    public static BusinessException internalError(String messageZh, String messageEn) {
+<span class="fc" id="L51">        return new BusinessException(&quot;500&quot;, messageZh, messageEn);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

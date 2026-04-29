@@ -1,0 +1,286 @@
+﻿{
+    "GeneratedAt":  "2026-04-28 20:53:34",
+    "Tests":  91,
+    "Failures":  0,
+    "Errors":  0,
+    "Skipped":  0,
+    "Totals":  {
+                   "Instruction":  "87.19%",
+                   "Branch":  "78.00%",
+                   "Line":  "86.23%",
+                   "Method":  "83.33%",
+                   "Complexity":  "78.86%",
+                   "InstructionCovered":  1423,
+                   "InstructionMissed":  209,
+                   "BranchCovered":  78,
+                   "BranchMissed":  22,
+                   "LineCovered":  382,
+                   "LineMissed":  61,
+                   "MethodCovered":  60,
+                   "MethodMissed":  12,
+                   "ComplexityCovered":  97,
+                   "ComplexityMissed":  26
+               },
+    "Packages":  [
+                     {
+                         "Package":  "com.xxx.api",
+                         "Instruction":  "0.00%",
+                         "Branch":  "N/A",
+                         "Line":  "0.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.common.config",
+                         "Instruction":  "0.00%",
+                         "Branch":  "N/A",
+                         "Line":  "0.00%",
+                         "Classes":  2
+                     },
+                     {
+                         "Package":  "com.xxx.api.common.controller",
+                         "Instruction":  "100.00%",
+                         "Branch":  "N/A",
+                         "Line":  "100.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.common.exception",
+                         "Instruction":  "100.00%",
+                         "Branch":  "N/A",
+                         "Line":  "100.00%",
+                         "Classes":  2
+                     },
+                     {
+                         "Package":  "com.xxx.api.common.model",
+                         "Instruction":  "100.00%",
+                         "Branch":  "N/A",
+                         "Line":  "100.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.common.service.impl",
+                         "Instruction":  "0.00%",
+                         "Branch":  "0.00%",
+                         "Line":  "0.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.common.util",
+                         "Instruction":  "91.63%",
+                         "Branch":  "90.00%",
+                         "Line":  "86.54%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.data.controller",
+                         "Instruction":  "100.00%",
+                         "Branch":  "100.00%",
+                         "Line":  "100.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.data.service",
+                         "Instruction":  "100.00%",
+                         "Branch":  "100.00%",
+                         "Line":  "100.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.gateway.controller",
+                         "Instruction":  "86.53%",
+                         "Branch":  "70.00%",
+                         "Line":  "81.40%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.gateway.service",
+                         "Instruction":  "100.00%",
+                         "Branch":  "100.00%",
+                         "Line":  "100.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.scope.controller",
+                         "Instruction":  "100.00%",
+                         "Branch":  "N/A",
+                         "Line":  "100.00%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.scope.entity",
+                         "Instruction":  "98.15%",
+                         "Branch":  "90.00%",
+                         "Line":  "92.86%",
+                         "Classes":  1
+                     },
+                     {
+                         "Package":  "com.xxx.api.scope.service",
+                         "Instruction":  "94.66%",
+                         "Branch":  "83.33%",
+                         "Line":  "93.51%",
+                         "Classes":  1
+                     }
+                 ],
+    "Classes":  [
+                    {
+                        "Package":  "com.xxx.api.common.config",
+                        "Class":  "RedisConfig",
+                        "Instruction":  "0.00%",
+                        "Branch":  "N/A",
+                        "Line":  "0.00%",
+                        "Method":  "0.00%",
+                        "LineMissed":  9,
+                        "LineCovered":  0
+                    },
+                    {
+                        "Package":  "com.xxx.api.common.service.impl",
+                        "Class":  "ApplicationServiceMockImpl",
+                        "Instruction":  "0.00%",
+                        "Branch":  "0.00%",
+                        "Line":  "0.00%",
+                        "Method":  "0.00%",
+                        "LineMissed":  19,
+                        "LineCovered":  0
+                    },
+                    {
+                        "Package":  "com.xxx.api.common.config",
+                        "Class":  "JacksonConfig",
+                        "Instruction":  "0.00%",
+                        "Branch":  "N/A",
+                        "Line":  "0.00%",
+                        "Method":  "0.00%",
+                        "LineMissed":  9,
+                        "LineCovered":  0
+                    },
+                    {
+                        "Package":  "com.xxx.api",
+                        "Class":  "ApiServerApplication",
+                        "Instruction":  "0.00%",
+                        "Branch":  "N/A",
+                        "Line":  "0.00%",
+                        "Method":  "0.00%",
+                        "LineMissed":  3,
+                        "LineCovered":  0
+                    },
+                    {
+                        "Package":  "com.xxx.api.gateway.controller",
+                        "Class":  "ApiGatewayController",
+                        "Instruction":  "86.53%",
+                        "Branch":  "70.00%",
+                        "Line":  "81.40%",
+                        "Method":  "80.00%",
+                        "LineMissed":  8,
+                        "LineCovered":  35
+                    },
+                    {
+                        "Package":  "com.xxx.api.common.util",
+                        "Class":  "SignatureUtil",
+                        "Instruction":  "91.63%",
+                        "Branch":  "90.00%",
+                        "Line":  "86.54%",
+                        "Method":  "90.91%",
+                        "LineMissed":  7,
+                        "LineCovered":  45
+                    },
+                    {
+                        "Package":  "com.xxx.api.scope.entity",
+                        "Class":  "UserAuthorization",
+                        "Instruction":  "98.15%",
+                        "Branch":  "90.00%",
+                        "Line":  "92.86%",
+                        "Method":  "100.00%",
+                        "LineMissed":  1,
+                        "LineCovered":  13
+                    },
+                    {
+                        "Package":  "com.xxx.api.scope.service",
+                        "Class":  "ScopeService",
+                        "Instruction":  "94.66%",
+                        "Branch":  "83.33%",
+                        "Line":  "93.51%",
+                        "Method":  "100.00%",
+                        "LineMissed":  5,
+                        "LineCovered":  72
+                    },
+                    {
+                        "Package":  "com.xxx.api.data.service",
+                        "Class":  "DataQueryService",
+                        "Instruction":  "100.00%",
+                        "Branch":  "100.00%",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  73
+                    },
+                    {
+                        "Package":  "com.xxx.api.scope.controller",
+                        "Class":  "ScopeController",
+                        "Instruction":  "100.00%",
+                        "Branch":  "N/A",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  9
+                    },
+                    {
+                        "Package":  "com.xxx.api.common.controller",
+                        "Class":  "HealthController",
+                        "Instruction":  "100.00%",
+                        "Branch":  "N/A",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  7
+                    },
+                    {
+                        "Package":  "com.xxx.api.common.exception",
+                        "Class":  "BusinessException",
+                        "Instruction":  "100.00%",
+                        "Branch":  "N/A",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  15
+                    },
+                    {
+                        "Package":  "com.xxx.api.data.controller",
+                        "Class":  "DataQueryController",
+                        "Instruction":  "100.00%",
+                        "Branch":  "100.00%",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  15
+                    },
+                    {
+                        "Package":  "com.xxx.api.common.exception",
+                        "Class":  "GlobalExceptionHandler",
+                        "Instruction":  "100.00%",
+                        "Branch":  "N/A",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  16
+                    },
+                    {
+                        "Package":  "com.xxx.api.common.model",
+                        "Class":  "ApiResponse",
+                        "Instruction":  "100.00%",
+                        "Branch":  "N/A",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  23
+                    },
+                    {
+                        "Package":  "com.xxx.api.gateway.service",
+                        "Class":  "ApiGatewayService",
+                        "Instruction":  "100.00%",
+                        "Branch":  "100.00%",
+                        "Line":  "100.00%",
+                        "Method":  "100.00%",
+                        "LineMissed":  0,
+                        "LineCovered":  59
+                    }
+                ]
+}

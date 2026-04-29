@@ -4,9 +4,9 @@
 
 测试命令：`mvn -DskipTests=false org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test org.jacoco:jacoco-maven-plugin:0.8.12:report`
 
-报告目录：`target/site/jacoco/index.html`
+报告目录：`jacoco/index.html`
 
-原始汇总：`target/coverage-summary.json`
+原始汇总：`coverage-summary.json`
 
 ## 1. 测试执行结果
 
@@ -90,3 +90,4 @@
 - `ApiGatewayService` 当前行覆盖率、分支覆盖率、方法覆盖率均为 `100.00%`。
 - 当前整体行覆盖率为 `86.23%`，分支覆盖率为 `78.00%`。
 - 项目整体未达到 100%，剩余缺口主要集中在启动类、配置类和 Mock 应用服务实现。
+

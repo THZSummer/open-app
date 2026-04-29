@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ApplicationServiceMockImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.common.service.impl</a> &gt; <span class="el_source">ApplicationServiceMockImpl.java</span></div><h1>ApplicationServiceMockImpl.java</h1><pre class="source lang-java linenums">package com.xxx.api.common.service.impl;
+
+import com.xxx.api.common.service.ApplicationService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+/**
+ * 应用服务 Mock 实现
+ * 
+ * &lt;p&gt;注意：这是 Mock 实现，仅供开发测试使用&lt;/p&gt;
+ * &lt;p&gt;生产环境需要替换为对接现有应用管理系统/AKSK 管理系统的实现&lt;/p&gt;
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+<span class="nc" id="L16">@Slf4j</span>
+@Service
+<span class="nc" id="L18">public class ApplicationServiceMockImpl implements ApplicationService {</span>
+
+    @Override
+    public Long getAppIdByAk(String ak) {
+        // TODO: 对接现有 AKSK 管理系统
+        // 实际实现应该调用现有的应用管理系统或 AKSK 管理系统接口
+        
+<span class="nc bnc" id="L25" title="All 4 branches missed.">        if (ak == null || ak.isEmpty()) {</span>
+<span class="nc" id="L26">            return null;</span>
+        }
+        
+        // Mock: 以 &quot;AK&quot; 开头的视为有效 AK
+<span class="nc bnc" id="L30" title="All 2 branches missed.">        if (ak.startsWith(&quot;AK&quot;)) {</span>
+            try {
+<span class="nc" id="L32">                String numPart = ak.substring(2);</span>
+                // 简单处理：取模生成 appId（仅用于测试）
+<span class="nc" id="L34">                Long appId = Math.abs(numPart.hashCode() % 1000) + 1L;</span>
+<span class="nc" id="L35">                log.debug(&quot;Mock: AK={} -&gt; appId={}&quot;, ak, appId);</span>
+<span class="nc" id="L36">                return appId;</span>
+<span class="nc" id="L37">            } catch (Exception e) {</span>
+<span class="nc" id="L38">                log.warn(&quot;Mock: 解析 AK 失败: {}&quot;, ak, e);</span>
+<span class="nc" id="L39">                return null;</span>
+            }
+        }
+        
+<span class="nc" id="L43">        return null;</span>
+    }
+
+    @Override
+    public boolean verifyApplication(String appId, Integer authType, String authCredential) {
+        // TODO: 对接现有应用管理系统
+        // 实际实现应该：
+        // 1. authType = 5: 验证 AKSK 签名
+        // 2. authType = 3: 验证 Bearer Token
+        // 3. 调用应用管理系统获取应用信息并验证
+        
+<span class="nc bnc" id="L54" title="All 4 branches missed.">        if (appId == null || appId.isEmpty()) {</span>
+<span class="nc" id="L55">            return false;</span>
+        }
+        
+<span class="nc bnc" id="L58" title="All 4 branches missed.">        if (authCredential == null || authCredential.isEmpty()) {</span>
+<span class="nc" id="L59">            return false;</span>
+        }
+        
+        // Mock: 简单验证通过
+<span class="nc" id="L63">        log.debug(&quot;Mock: 应用身份验证通过: appId={}, authType={}&quot;, appId, authType);</span>
+<span class="nc" id="L64">        return true;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

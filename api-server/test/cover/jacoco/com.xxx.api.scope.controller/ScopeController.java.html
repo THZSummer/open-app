@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScopeController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.scope.controller</a> &gt; <span class="el_source">ScopeController.java</span></div><h1>ScopeController.java</h1><pre class="source lang-java linenums">package com.xxx.api.scope.controller;
+
+import com.xxx.api.common.model.ApiResponse;
+import com.xxx.api.scope.dto.*;
+import com.xxx.api.scope.service.ScopeService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+import java.util.List;
+
+/**
+ * Scope 授权控制器
+ * 
+ * &lt;p&gt;接口列表：&lt;/p&gt;
+ * &lt;ul&gt;
+ *   &lt;li&gt;GET /api/v1/user-authorizations - 获取用户授权列表（#52）&lt;/li&gt;
+ *   &lt;li&gt;POST /api/v1/user-authorizations - 用户授权（#53）&lt;/li&gt;
+ *   &lt;li&gt;DELETE /api/v1/user-authorizations/:id - 取消授权（#54）&lt;/li&gt;
+ * &lt;/ul&gt;
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+@Tag(name = &quot;Scope 授权管理&quot;, description = &quot;用户授权管理接口&quot;)
+@RestController
+@RequestMapping(&quot;/api/v1/user-authorizations&quot;)
+@RequiredArgsConstructor
+@Validated
+public class ScopeController {
+
+    private final ScopeService scopeService;
+
+    /**
+     * 获取用户授权列表
+     * 
+     * &lt;p&gt;接口编号：#52&lt;/p&gt;
+     */
+    @Operation(summary = &quot;获取用户授权列表&quot;, description = &quot;查询用户授权列表，支持分页和过滤&quot;)
+    @GetMapping
+    public ApiResponse&lt;List&lt;UserAuthorizationListResponse&gt;&gt; getUserAuthorizations(
+            @Parameter(description = &quot;用户ID&quot;) @RequestParam(required = false) String userId,
+            @Parameter(description = &quot;应用ID&quot;) @RequestParam(required = false) String appId,
+            @Parameter(description = &quot;搜索关键词&quot;) @RequestParam(required = false) String keyword,
+            @Parameter(description = &quot;当前页码&quot;) @RequestParam(defaultValue = &quot;1&quot;) Integer curPage,
+            @Parameter(description = &quot;每页数量&quot;) @RequestParam(defaultValue = &quot;20&quot;) Integer pageSize) {
+        
+<span class="fc" id="L52">        UserAuthorizationListRequest request = new UserAuthorizationListRequest();</span>
+<span class="fc" id="L53">        request.setUserId(userId);</span>
+<span class="fc" id="L54">        request.setAppId(appId);</span>
+<span class="fc" id="L55">        request.setKeyword(keyword);</span>
+<span class="fc" id="L56">        request.setCurPage(curPage);</span>
+<span class="fc" id="L57">        request.setPageSize(pageSize);</span>
+        
+<span class="fc" id="L59">        return scopeService.getUserAuthorizations(request);</span>
+    }
+
+    /**
+     * 用户授权
+     * 
+     * &lt;p&gt;接口编号：#53&lt;/p&gt;
+     */
+    @Operation(summary = &quot;用户授权&quot;, description = &quot;为用户授权应用 Scope，支持设置有效期&quot;)
+    @PostMapping
+    public ApiResponse&lt;UserAuthorizationResponse&gt; createUserAuthorization(
+            @Valid @RequestBody UserAuthorizationCreateRequest request) {
+<span class="fc" id="L71">        return scopeService.createUserAuthorization(request);</span>
+    }
+
+    /**
+     * 取消授权
+     * 
+     * &lt;p&gt;接口编号：#54&lt;/p&gt;
+     */
+    @Operation(summary = &quot;取消授权&quot;, description = &quot;取消用户的授权&quot;)
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ApiResponse&lt;Void&gt; revokeUserAuthorization(
+            @Parameter(description = &quot;授权ID&quot;) @PathVariable String id) {
+<span class="fc" id="L83">        return scopeService.revokeUserAuthorization(id);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

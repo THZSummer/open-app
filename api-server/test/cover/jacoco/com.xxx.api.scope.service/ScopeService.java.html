@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScopeService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.scope.service</a> &gt; <span class="el_source">ScopeService.java</span></div><h1>ScopeService.java</h1><pre class="source lang-java linenums">package com.xxx.api.scope.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.api.common.exception.BusinessException;
+import com.xxx.api.common.model.ApiResponse;
+import com.xxx.api.scope.dto.*;
+import com.xxx.api.scope.entity.UserAuthorization;
+import com.xxx.api.scope.mapper.UserAuthorizationMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * Scope 授权服务
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+<span class="fc" id="L24">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class ScopeService {
+
+    private final UserAuthorizationMapper userAuthorizationMapper;
+    private final ObjectMapper objectMapper;
+
+    // 简单的雪花ID生成（实际项目中应使用专门的ID生成器）
+    private long idCounter = System.currentTimeMillis();
+
+    private synchronized Long nextId() {
+<span class="fc" id="L36">        return ++idCounter;</span>
+    }
+
+    /**
+     * 获取用户授权列表
+     */
+    public ApiResponse&lt;List&lt;UserAuthorizationListResponse&gt;&gt; getUserAuthorizations(
+            UserAuthorizationListRequest request) {
+        
+        // 计算分页偏移量
+<span class="fc" id="L46">        int offset = (request.getCurPage() - 1) * request.getPageSize();</span>
+        
+        // 转换 appId
+<span class="fc" id="L49">        Long appIdLong = null;</span>
+<span class="pc bpc" id="L50" title="1 of 4 branches missed.">        if (request.getAppId() != null &amp;&amp; !request.getAppId().isEmpty()) {</span>
+            try {
+<span class="nc" id="L52">                appIdLong = Long.parseLong(request.getAppId());</span>
+<span class="fc" id="L53">            } catch (NumberFormatException e) {</span>
+<span class="fc" id="L54">                throw BusinessException.badRequest(&quot;应用ID格式错误&quot;, &quot;Invalid app ID format&quot;);</span>
+<span class="nc" id="L55">            }</span>
+        }
+        
+        // 查询列表
+<span class="fc" id="L59">        List&lt;UserAuthorization&gt; list = userAuthorizationMapper.selectList(</span>
+<span class="fc" id="L60">                request.getUserId(),</span>
+                appIdLong,
+<span class="fc" id="L62">                request.getKeyword(),</span>
+<span class="fc" id="L63">                offset,</span>
+<span class="fc" id="L64">                request.getPageSize());</span>
+        
+        // 查询总数
+<span class="fc" id="L67">        Long total = userAuthorizationMapper.countList(</span>
+<span class="fc" id="L68">                request.getUserId(),</span>
+                appIdLong,
+<span class="fc" id="L70">                request.getKeyword());</span>
+        
+        // 转换响应
+<span class="fc" id="L73">        List&lt;UserAuthorizationListResponse&gt; responseList = list.stream()</span>
+<span class="fc" id="L74">                .map(this::toListResponse)</span>
+<span class="fc" id="L75">                .collect(Collectors.toList());</span>
+        
+        // 构建分页响应
+<span class="fc" id="L78">        ApiResponse.PageResponse page = ApiResponse.PageResponse.builder()</span>
+<span class="fc" id="L79">                .curPage(request.getCurPage())</span>
+<span class="fc" id="L80">                .pageSize(request.getPageSize())</span>
+<span class="fc" id="L81">                .total(total)</span>
+<span class="fc" id="L82">                .totalPages((int) Math.ceil((double) total / request.getPageSize()))</span>
+<span class="fc" id="L83">                .build();</span>
+        
+<span class="fc" id="L85">        return ApiResponse.success(responseList, page);</span>
+    }
+
+    /**
+     * 创建用户授权
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResponse&lt;UserAuthorizationResponse&gt; createUserAuthorization(
+            UserAuthorizationCreateRequest request) {
+        
+        // 转换 appId
+        Long appIdLong;
+        try {
+<span class="fc" id="L98">            appIdLong = Long.parseLong(request.getAppId());</span>
+<span class="fc" id="L99">        } catch (NumberFormatException e) {</span>
+<span class="fc" id="L100">            throw BusinessException.badRequest(&quot;应用ID格式错误&quot;, &quot;Invalid app ID format&quot;);</span>
+<span class="fc" id="L101">        }</span>
+        
+        // 检查是否已存在授权
+<span class="fc" id="L104">        UserAuthorization existing = userAuthorizationMapper.selectByUserIdAndAppId(</span>
+<span class="fc" id="L105">                request.getUserId(),</span>
+                appIdLong);
+        
+<span class="fc bfc" id="L108" title="All 2 branches covered.">        if (existing != null) {</span>
+<span class="fc" id="L109">            throw BusinessException.badRequest(</span>
+                    &quot;用户已授权该应用&quot;,
+                    &quot;User has already authorized this application&quot;);
+        }
+        
+        // 创建授权记录
+<span class="fc" id="L115">        UserAuthorization authorization = new UserAuthorization();</span>
+<span class="fc" id="L116">        authorization.setId(nextId());</span>
+<span class="fc" id="L117">        authorization.setUserId(request.getUserId());</span>
+<span class="fc" id="L118">        authorization.setAppId(appIdLong);</span>
+        
+        try {
+<span class="fc" id="L121">            authorization.setScopes(objectMapper.writeValueAsString(request.getScopes()));</span>
+<span class="nc" id="L122">        } catch (JsonProcessingException e) {</span>
+<span class="nc" id="L123">            throw BusinessException.internalError(</span>
+                    &quot;Scope 序列化失败&quot;,
+                    &quot;Failed to serialize scopes&quot;);
+<span class="fc" id="L126">        }</span>
+        
+<span class="fc" id="L128">        authorization.setExpiresAt(request.getExpiresAt());</span>
+<span class="fc" id="L129">        authorization.setCreateBy(request.getUserId());</span>
+<span class="fc" id="L130">        authorization.setLastUpdateBy(request.getUserId());</span>
+        
+<span class="fc" id="L132">        userAuthorizationMapper.insert(authorization);</span>
+        
+        // 构建响应
+<span class="fc" id="L135">        UserAuthorizationResponse response = new UserAuthorizationResponse();</span>
+<span class="fc" id="L136">        response.setId(String.valueOf(authorization.getId()));</span>
+<span class="fc" id="L137">        response.setUserId(authorization.getUserId());</span>
+<span class="fc" id="L138">        response.setAppId(String.valueOf(authorization.getAppId()));</span>
+<span class="fc" id="L139">        response.setScopes(request.getScopes());</span>
+<span class="fc" id="L140">        response.setExpiresAt(authorization.getExpiresAt());</span>
+        
+<span class="fc" id="L142">        return ApiResponse.success(response);</span>
+    }
+
+    /**
+     * 取消授权
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResponse&lt;Void&gt; revokeUserAuthorization(String id) {
+        Long idLong;
+        try {
+<span class="fc" id="L152">            idLong = Long.parseLong(id);</span>
+<span class="fc" id="L153">        } catch (NumberFormatException e) {</span>
+<span class="fc" id="L154">            throw BusinessException.badRequest(&quot;授权ID格式错误&quot;, &quot;Invalid authorization ID format&quot;);</span>
+<span class="fc" id="L155">        }</span>
+        
+<span class="fc" id="L157">        UserAuthorization existing = userAuthorizationMapper.selectById(idLong);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">        if (existing == null) {</span>
+<span class="fc" id="L159">            throw BusinessException.notFound(&quot;授权记录不存在&quot;, &quot;Authorization not found&quot;);</span>
+        }
+        
+<span class="fc bfc" id="L162" title="All 2 branches covered.">        if (existing.getRevokedAt() != null) {</span>
+<span class="fc" id="L163">            throw BusinessException.badRequest(&quot;授权已被取消&quot;, &quot;Authorization has already been revoked&quot;);</span>
+        }
+        
+<span class="fc" id="L166">        int updated = userAuthorizationMapper.revokeById(idLong);</span>
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">        if (updated == 0) {</span>
+<span class="nc" id="L168">            throw BusinessException.internalError(</span>
+                    &quot;取消授权失败&quot;,
+                    &quot;Failed to revoke authorization&quot;);
+        }
+        
+<span class="fc" id="L173">        return ApiResponse.success();</span>
+    }
+
+    /**
+     * 转换为列表响应
+     */
+    private UserAuthorizationListResponse toListResponse(UserAuthorization entity) {
+<span class="fc" id="L180">        UserAuthorizationListResponse response = new UserAuthorizationListResponse();</span>
+<span class="fc" id="L181">        response.setId(String.valueOf(entity.getId()));</span>
+<span class="fc" id="L182">        response.setUserId(entity.getUserId());</span>
+<span class="fc" id="L183">        response.setUserName(entity.getUserId()); // 实际应查询用户信息</span>
+<span class="fc" id="L184">        response.setAppId(String.valueOf(entity.getAppId()));</span>
+<span class="fc" id="L185">        response.setAppName(&quot;应用&quot; + entity.getAppId()); // 实际应查询应用信息</span>
+<span class="fc" id="L186">        response.setScopes(entity.getScopeList());</span>
+<span class="fc" id="L187">        response.setExpiresAt(entity.getExpiresAt());</span>
+<span class="fc" id="L188">        response.setCreateTime(entity.getCreateTime());</span>
+<span class="fc" id="L189">        return response;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

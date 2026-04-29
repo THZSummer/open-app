@@ -1,0 +1,40 @@
+﻿{
+    "Total":  {
+                  "Instruction":  "87.19%",
+                  "Branch":  "78.00%",
+                  "Line":  "86.23%",
+                  "Method":  "83.33%"
+              },
+    "ApiGatewayService":  {
+                              "Instruction":  "100.00%",
+                              "Branch":  "100.00%",
+                              "Line":  "100.00%",
+                              "Method":  "100.00%",
+                              "LineCovered":  "59",
+                              "LineMissed":  "0",
+                              "MethodCovered":  "5",
+                              "MethodMissed":  "0"
+                          },
+    "FindScopeByPathAndMethod":  {
+                                     "BRANCH":  {
+                                                    "missed":  "0",
+                                                    "covered":  "4"
+                                                },
+                                     "COMPLEXITY":  {
+                                                        "missed":  "0",
+                                                        "covered":  "3"
+                                                    },
+                                     "METHOD":  {
+                                                    "missed":  "0",
+                                                    "covered":  "1"
+                                                },
+                                     "INSTRUCTION":  {
+                                                         "missed":  "0",
+                                                         "covered":  "33"
+                                                     },
+                                     "LINE":  {
+                                                  "missed":  "0",
+                                                  "covered":  "5"
+                                              }
+                                 }
+}

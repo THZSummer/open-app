@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Server</a> &gt; <a href="index.source.html" class="el_package">com.xxx.api.common.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.xxx.api.common.exception;
+
+import com.xxx.api.common.model.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import java.util.stream.Collectors;
+
+/**
+ * 全局异常处理器
+ * 
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+<span class="fc" id="L22">@Slf4j</span>
+@RestControllerAdvice
+<span class="fc" id="L24">public class GlobalExceptionHandler {</span>
+
+    @ExceptionHandler(BusinessException.class)
+    @ResponseStatus(HttpStatus.OK)
+    public ApiResponse&lt;Void&gt; handleBusinessException(BusinessException e) {
+<span class="fc" id="L29">        log.warn(&quot;业务异常: code={}, messageZh={}, messageEn={}&quot;, e.getCode(), e.getMessageZh(), e.getMessageEn());</span>
+<span class="fc" id="L30">        return ApiResponse.error(e.getCode(), e.getMessageZh(), e.getMessageEn());</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse&lt;Void&gt; handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+<span class="fc" id="L36">        String errorMessage = e.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L37">                .map(FieldError::getDefaultMessage)</span>
+<span class="fc" id="L38">                .collect(Collectors.joining(&quot;, &quot;));</span>
+<span class="fc" id="L39">        log.warn(&quot;参数校验失败: {}&quot;, errorMessage);</span>
+<span class="fc" id="L40">        return ApiResponse.error(&quot;400&quot;, &quot;参数错误: &quot; + errorMessage, &quot;Bad Request: &quot; + errorMessage);</span>
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse&lt;Void&gt; handleConstraintViolationException(ConstraintViolationException e) {
+<span class="fc" id="L46">        String errorMessage = e.getConstraintViolations().stream()</span>
+<span class="fc" id="L47">                .map(ConstraintViolation::getMessage)</span>
+<span class="fc" id="L48">                .collect(Collectors.joining(&quot;, &quot;));</span>
+<span class="fc" id="L49">        log.warn(&quot;参数校验失败: {}&quot;, errorMessage);</span>
+<span class="fc" id="L50">        return ApiResponse.error(&quot;400&quot;, &quot;参数错误: &quot; + errorMessage, &quot;Bad Request: &quot; + errorMessage);</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ApiResponse&lt;Void&gt; handleException(Exception e) {
+<span class="fc" id="L56">        log.error(&quot;系统异常&quot;, e);</span>
+<span class="fc" id="L57">        return ApiResponse.error(&quot;500&quot;, &quot;系统内部错误&quot;, &quot;Internal Server Error&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -140,7 +140,7 @@
 
 ## 6. 原始结果
 
-原始 JSON 结果保存在 `target/api-test-results.json`。
+原始 JSON 结果保存在 `api-test-results.json`。
 
 ## 7. 代码覆盖率测试
 
@@ -154,5 +154,6 @@
 | 方法 Method | 83.33% |
 
 本次覆盖率测试执行 `91` 个测试，失败 `0`，错误 `0`，跳过 `0`。
+
 
 

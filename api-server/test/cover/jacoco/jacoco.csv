@@ -1,0 +1,17 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+API Server,com.xxx.api.scope.controller,ScopeController,0,34,0,0,0,9,0,3,0,3
+API Server,com.xxx.api.data.controller,DataQueryController,0,63,0,2,0,15,0,6,0,5
+API Server,com.xxx.api.common.exception,BusinessException,0,62,0,0,0,15,0,7,0,7
+API Server,com.xxx.api.common.exception,GlobalExceptionHandler,0,87,0,0,0,16,0,6,0,6
+API Server,com.xxx.api.common.config,JacksonConfig,38,0,0,0,9,0,2,0,2,0
+API Server,com.xxx.api.common.config,RedisConfig,34,0,0,0,9,0,2,0,2,0
+API Server,com.xxx.api.gateway.service,ApiGatewayService,0,179,0,18,0,59,0,15,0,5
+API Server,com.xxx.api.common.model,ApiResponse,0,42,0,0,0,23,0,4,0,4
+API Server,com.xxx.api.scope.entity,UserAuthorization,1,53,1,9,1,13,1,6,0,2
+API Server,com.xxx.api.gateway.controller,ApiGatewayController,26,167,3,7,8,35,3,7,1,4
+API Server,com.xxx.api.common.controller,HealthController,0,30,0,0,0,7,0,2,0,2
+API Server,com.xxx.api,ApiServerApplication,8,0,0,0,3,0,2,0,2,0
+API Server,com.xxx.api.scope.service,ScopeService,15,266,2,10,5,72,2,10,0,6
+API Server,com.xxx.api.common.service.impl,ApplicationServiceMockImpl,70,0,14,0,19,0,11,0,4,0
+API Server,com.xxx.api.data.service,DataQueryService,0,254,0,14,0,73,0,13,0,6
+API Server,com.xxx.api.common.util,SignatureUtil,17,186,2,18,7,45,3,18,1,10
