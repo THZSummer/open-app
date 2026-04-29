@@ -49,7 +49,9 @@ public class SyncService {
         log.info("Starting data migration, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
-        int success = 0, failed = 0, skipped = 0;
+        int success = 0;
+        int failed = 0;
+        int skipped = 0;
 
         // 1. 查询旧订阅关系
         List<OldSubscription> oldSubscriptions = syncMapper.selectOldSubscriptions(request.getIds());
@@ -210,7 +212,8 @@ public class SyncService {
                 return;
             }
 
-            int recordCount = 0, logCount = 0;
+            int recordCount = 0;
+            int logCount = 0;
             for (OldEflow oldEflow : oldEflows) {
                 // 检查是否已存在
                 ApprovalRecord existing = syncMapper.selectNewApprovalRecordById(oldEflow.getEflowId());
@@ -330,7 +333,9 @@ public class SyncService {
         log.info("Starting data rollback, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
-        int success = 0, failed = 0, skipped = 0;
+        int success = 0;
+        int failed = 0;
+        int skipped = 0;
 
         // 1. 查询新订阅关系
         List<Subscription> newSubscriptions = syncMapper.selectNewSubscriptions(request.getIds());
