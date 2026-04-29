@@ -293,8 +293,52 @@ String name = "test", scope = "api:test";
 
 ---
 
+## 9. 大括号规范
+
+**规则**：条件语句（if/else）和循环语句（for/while）必须使用大括号，即使只有一行代码。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 使用大括号包裹代码块 | 省略大括号（即使只有一行） |
+
+```java
+// ✅ 正确示例 - 使用大括号
+if (status == null) {
+    return 0;
+}
+
+if (count > 0) {
+    log.info("Found {} records", count);
+}
+
+for (String item : items) {
+    processItem(item);
+}
+
+while (hasNext()) {
+    fetchNext();
+}
+
+// ❌ 错误示例 - 省略大括号
+if (status == null) return 0;
+
+if (count > 0) log.info("Found {} records", count);
+
+for (String item : items) processItem(item);
+
+while (hasNext()) fetchNext();
+```
+
+**原因**：
+- 避免因添加代码时忘记加括号导致的逻辑错误
+- 提高代码可读性和一致性
+- 防止"苹果公司 SSL/TLS 重大漏洞"类问题（因缺少括号导致的逻辑错误）
+- 符合主流 Java 编码规范（Google、Oracle、阿里巴巴等）
+
+---
+
 ## 总结
 
-以上 8 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
+以上 9 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
 
 请在 IDE 中配置相应的代码格式化和检查规则，确保代码风格统一。

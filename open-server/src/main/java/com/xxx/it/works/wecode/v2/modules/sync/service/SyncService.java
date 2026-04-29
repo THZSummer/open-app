@@ -303,7 +303,9 @@ public class SyncService {
      * 转换操作类型
      */
     protected Integer convertAction(String eflowLogType) {
-        if (eflowLogType == null) return 0;
+        if (eflowLogType == null) {
+            return 0;
+        }
         
         switch (eflowLogType.toLowerCase()) {
             case "approve":
