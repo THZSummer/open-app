@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口14: POST /api/v1/apis/:id/withdraw - 撤回审核中的API
 
 # 加载配置

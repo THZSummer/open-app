@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口40: POST /api/v1/apps/:appId/callbacks/:id/withdraw - 撤回回调权限申请
 
 # 加载配置

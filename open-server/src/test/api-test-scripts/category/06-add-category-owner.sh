@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口6: POST /api/v1/categories/:id/owners - 添加分类责任人
 
 # 加载配置

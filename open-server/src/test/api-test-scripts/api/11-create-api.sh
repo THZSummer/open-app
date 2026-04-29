@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口11: POST /api/v1/apis - 注册API
 
 # 加载配置

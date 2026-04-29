@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口27: GET /api/v1/apps/:appId/apis - 获取应用API权限列表
 
 # 加载配置

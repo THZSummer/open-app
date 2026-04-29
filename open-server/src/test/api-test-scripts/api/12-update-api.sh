@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口12: PUT /api/v1/apis/:id - 更新API
 
 # 加载配置

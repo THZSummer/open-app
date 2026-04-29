@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口5: DELETE /api/v1/categories/:id - 删除分类
 
 # 加载配置

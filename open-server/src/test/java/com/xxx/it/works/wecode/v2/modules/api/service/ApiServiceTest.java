@@ -27,7 +27,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * ApiService 测试类
- * 
+ *
  * 测试部分字段更新功能
  */
 @ExtendWith(MockitoExtension.class)
@@ -92,8 +92,8 @@ class ApiServiceTest {
         apiService.updateApi("100", request);
 
         // Then: 验证只更新了 nameCn，其他字段保持不变
-        verify(apiMapper).update(argThat(api -> 
-            "新的中文名称".equals(api.getNameCn()) && 
+        verify(apiMapper).update(argThat(api ->
+            "新的中文名称".equals(api.getNameCn()) &&
             "Original English Name".equals(api.getNameEn()) &&
             api.getCategoryId().equals(2L)
         ));
@@ -114,8 +114,8 @@ class ApiServiceTest {
         apiService.updateApi("100", request);
 
         // Then: 验证只更新了 nameEn
-        verify(apiMapper).update(argThat(api -> 
-            "原始中文名称".equals(api.getNameCn()) && 
+        verify(apiMapper).update(argThat(api ->
+            "原始中文名称".equals(api.getNameCn()) &&
             "New English Name".equals(api.getNameEn())
         ));
     }
@@ -141,8 +141,8 @@ class ApiServiceTest {
         apiService.updateApi("100", request);
 
         // Then: 验证所有提供的字段都被更新
-        verify(apiMapper).update(argThat(api -> 
-            "新中文名称".equals(api.getNameCn()) && 
+        verify(apiMapper).update(argThat(api ->
+            "新中文名称".equals(api.getNameCn()) &&
             "New Name".equals(api.getNameEn()) &&
             api.getCategoryId().equals(3L)
         ));
@@ -163,8 +163,8 @@ class ApiServiceTest {
         apiService.updateApi("100", request);
 
         // Then: nameCn 应保持不变，只有 nameEn 被更新
-        verify(apiMapper).update(argThat(api -> 
-            "原始中文名称".equals(api.getNameCn()) && 
+        verify(apiMapper).update(argThat(api ->
+            "原始中文名称".equals(api.getNameCn()) &&
             "Valid Name".equals(api.getNameEn())
         ));
     }

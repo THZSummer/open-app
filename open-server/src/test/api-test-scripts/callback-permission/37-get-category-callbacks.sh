@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口37: GET /api/v1/categories/:id/callbacks - 获取分类下回调权限列表
 
 # 加载配置

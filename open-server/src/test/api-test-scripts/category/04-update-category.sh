@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口4: PUT /api/v1/categories/:id - 更新分类
 
 # 加载配置

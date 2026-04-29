@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口32: GET /api/v1/categories/:id/events - 获取分类下事件权限列表
 
 # 加载配置

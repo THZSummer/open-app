@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口24: PUT /api/v1/callbacks/:id - 更新回调
 
 # 加载配置

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口57: POST /gateway/callbacks/invoke - 回调触发接口
 
 # 加载配置

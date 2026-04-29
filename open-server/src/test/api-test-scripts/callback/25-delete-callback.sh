@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口25: DELETE /api/v1/callbacks/:id - 删除回调
 
 # 加载配置

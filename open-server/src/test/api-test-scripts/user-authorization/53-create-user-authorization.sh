@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口53: POST /api/v1/user-authorizations - 用户授权
 
 # 加载配置

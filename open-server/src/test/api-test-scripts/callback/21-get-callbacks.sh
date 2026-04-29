@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口21: GET /api/v1/callbacks - 获取回调列表
 
 # 加载配置

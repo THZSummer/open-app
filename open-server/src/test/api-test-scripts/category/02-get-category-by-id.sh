@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口2: GET /api/v1/categories/:id - 获取分类详情
 
 # 加载配置

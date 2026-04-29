@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口17: POST /api/v1/events - 注册事件
 
 # 加载配置

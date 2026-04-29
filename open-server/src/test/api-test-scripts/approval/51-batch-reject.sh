@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口51: POST /api/v1/approvals/batch-reject - 批量驳回审批
 
 # 加载配置

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口48: POST /api/v1/approvals/:id/reject - 驳回审批
 
 # 加载配置

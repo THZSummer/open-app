@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口29: POST /api/v1/apps/:appId/apis/subscribe - 申请API权限
 
 # 加载配置

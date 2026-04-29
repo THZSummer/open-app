@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口45: GET /api/v1/approvals/pending - 获取待审批列表
 
 # 加载配置

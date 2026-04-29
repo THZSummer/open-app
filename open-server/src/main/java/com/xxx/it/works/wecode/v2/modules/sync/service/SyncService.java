@@ -49,7 +49,9 @@ public class SyncService {
         log.info("Starting data migration, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
-        int success = 0, failed = 0, skipped = 0;
+        int success = 0;
+        int failed = 0;
+        int skipped = 0;
 
         // 1. 查询旧订阅关系
         List<OldSubscription> oldSubscriptions = syncMapper.selectOldSubscriptions(request.getIds());
@@ -210,7 +212,8 @@ public class SyncService {
                 return;
             }
 
-            int recordCount = 0, logCount = 0;
+            int recordCount = 0;
+            int logCount = 0;
             for (OldEflow oldEflow : oldEflows) {
                 // 检查是否已存在
                 ApprovalRecord existing = syncMapper.selectNewApprovalRecordById(oldEflow.getEflowId());
@@ -300,9 +303,11 @@ public class SyncService {
      * 转换操作类型
      */
     protected Integer convertAction(String eflowLogType) {
-        if (eflowLogType == null) return 0;
+        if (eflowLogType == null) {
+            return 0;
+        }
         
-        switch (eflowLogType.toLowerCase()) {
+        switch (eflowLogType.toLowerCase(Locale.ROOT)) {
             case "approve":
             case "同意":
                 return 0;
@@ -330,7 +335,9 @@ public class SyncService {
         log.info("Starting data rollback, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
-        int success = 0, failed = 0, skipped = 0;
+        int success = 0;
+        int failed = 0;
+        int skipped = 0;
 
         // 1. 查询新订阅关系
         List<Subscription> newSubscriptions = syncMapper.selectNewSubscriptions(request.getIds());
@@ -427,9 +434,10 @@ public class SyncService {
             // 通过 resource_id 查询新API
             Api api = syncMapper.selectNewApiByPathAndMethod(null, null);
             
-        } else if ("event".equalsIgnoreCase(resourceType)) {
-            // 类似逻辑
-        }
+} else if ("event".equalsIgnoreCase(resourceType)) {
+            log.warn("Event rollback not implemented yet");
+            // TODO: 实现事件回退逻辑
+}
 
         // TODO: 完整实现反向查找
         return null;

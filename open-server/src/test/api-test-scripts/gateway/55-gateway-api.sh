@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口55: ANY /gateway/api/* - API请求代理与鉴权
 
 # 加载配置

@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口7: GET /api/v1/categories/:id/owners - 获取分类责任人列表
 
 # 加载配置

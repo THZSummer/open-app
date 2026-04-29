@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 # 接口20: POST /api/v1/events/:id/withdraw - 撤回审核中的事件
 
 # 加载配置
