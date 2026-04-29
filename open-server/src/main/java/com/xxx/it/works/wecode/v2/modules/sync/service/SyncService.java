@@ -89,14 +89,26 @@ public class SyncService {
                 String channelAddress = null;
                 Integer authType = null;
 
-                if ("1".equals(oldSub.getPermisssionType())) { // 事件订阅
+                log.info("Subscription {}, permissionType: {}, permissionId: {}", 
+                    oldSub.getId(), oldSub.getPermisssionType(), oldSub.getPermissionId());
+
+                if ("1".equals(oldSub.getPermisssionType())) {
                     OldAppProperty channelConfig = syncMapper.selectAppChannelConfig(oldSub.getAppId());
+                    log.info("Event subscription {}, channelConfig: {}", oldSub.getId(), channelConfig);
                     if (channelConfig != null) {
                         channelType = channelConfig.getChannelType();
                         channelAddress = channelConfig.getChannelAddress();
                         authType = channelConfig.getAuthType();
                     }
+                } else if ("0".equals(oldSub.getPermisssionType())) {
+                    OldApi oldApi = syncMapper.selectOldApiByPermissionId(oldSub.getPermissionId());
+                    log.info("API subscription {}, oldApi: {}", oldSub.getId(), oldApi);
+                    if (oldApi != null) {
+                        authType = oldApi.getAuthType();
+                    }
                 }
+
+                log.info("Subscription {} final authType: {}", oldSub.getId(), authType);
 
                 // 5. 构造新订阅关系
                 Subscription newSub = new Subscription();

@@ -47,6 +47,11 @@ public interface SyncMapper {
     OldApi selectOldApiById(@Param("id") Long id);
 
     /**
+     * 根据permission_id查询旧API
+     */
+    OldApi selectOldApiByPermissionId(@Param("permissionId") Long permissionId);
+
+    /**
      * 根据ID查询旧事件
      */
     OldEvent selectOldEventById(@Param("id") Long id);
