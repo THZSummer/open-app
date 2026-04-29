@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
-import { Button, message } from 'antd';
+import { Button } from 'antd';
 import { useSubscriptionList } from '../../hooks/useSubscriptionList';
 import SubscriptionTable from '../../components/SubscriptionTable/SubscriptionTable';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ApiPermissionDrawer from './ApiPermissionDrawer';
-import { fetchAppApis, subscribeApis, withdrawApiApplication, remindApproval, deleteApiSubscription } from './thunk';
+import { fetchAppApis, subscribeApis, withdrawApiApplication, deleteApiSubscription } from './thunk';
 import { getApiManagementColumns } from './constants';
 import { openUrl, queryParams } from '../../utils/common';
 import './ApiManagement.m.less';
@@ -88,14 +88,6 @@ function ApiManagement() {
         onClose={closeApprovalModal}
         approver={currentApprovalInfo.approver}
         approvalUrl={currentApprovalInfo.approvalUrl}
-        onRemind={async () => {
-          const res = await remindApproval(currentApprovalInfo.id);
-          if (res && res.code === '200') {
-            message.success('已催办');
-          } else {
-            message.error(res?.message || '催办失败');
-          }
-        }}
       />
 
       <DeleteConfirmModal

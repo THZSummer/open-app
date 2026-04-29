@@ -69,16 +69,16 @@ public class CallbackGatewayService {
         String callbackScope = request.getCallbackScope();
         Map<String, Object> payload = request.getPayload();
         
-        log.info("触发回调: scope={}", callbackScope);
+        log.info("Triggering callback: scope={}", callbackScope);
         
         // 1. 验证回调资源存在
         Map<String, Object> permission = verifyCallbackResource(callbackScope);
         if (permission == null) {
-            log.warn("回调资源不存在: scope={}", callbackScope);
+            log.warn("Callback resource not found: scope={}", callbackScope);
             return CallbackInvokeResponse.builder()
                     .callbackScope(callbackScope)
                     .subscribers(0)
-                    .message("回调资源不存在")
+                    .message("Callback resource not found")
                     .build();
         }
         
@@ -86,11 +86,11 @@ public class CallbackGatewayService {
         List<String> subscribedApps = getSubscribedApps(callbackScope);
         
         if (subscribedApps.isEmpty()) {
-            log.info("回调无订阅者: scope={}", callbackScope);
+            log.info("Callback has no subscribers: scope={}", callbackScope);
             return CallbackInvokeResponse.builder()
                     .callbackScope(callbackScope)
                     .subscribers(0)
-                    .message("回调无订阅者")
+                    .message("Callback has no subscribers")
                     .build();
         }
         
@@ -100,7 +100,7 @@ public class CallbackGatewayService {
         return CallbackInvokeResponse.builder()
                 .callbackScope(callbackScope)
                 .subscribers(subscribedApps.size())
-                .message("回调已分发至 " + subscribedApps.size() + " 个订阅方")
+                .message("Callback dispatched to " + subscribedApps.size() + " subscribers")
                 .build();
     }
 
@@ -128,11 +128,11 @@ public class CallbackGatewayService {
             // 尝试从缓存获取
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
-                log.debug("从缓存获取订阅列表: scope={}", callbackScope);
+                log.debug("Getting subscriber list from cache: scope={}", callbackScope);
                 return (List<String>) cached;
             }
         } catch (Exception e) {
-            log.error("从Redis获取订阅列表缓存失败: scope={}", callbackScope, e);
+            log.error("Failed to get subscriber list cache from Redis: scope={}", callbackScope, e);
             // 继续从api-server查询
         }
         
@@ -143,9 +143,9 @@ public class CallbackGatewayService {
         if (!apps.isEmpty()) {
             try {
                 redisTemplate.opsForValue().set(cacheKey, apps, CACHE_EXPIRE_SECONDS, TimeUnit.SECONDS);
-                log.debug("订阅列表已缓存: scope={}, count={}", callbackScope, apps.size());
+                log.debug("Subscriber list cached: scope={}, count={}", callbackScope, apps.size());
             } catch (Exception e) {
-                log.error("缓存订阅列表到Redis失败: scope={}", callbackScope, e);
+                log.error("Failed to cache subscriber list to Redis: scope={}", callbackScope, e);
                 // 缓存失败不影响业务流程
             }
         }
@@ -161,7 +161,7 @@ public class CallbackGatewayService {
      * @param appIds 应用ID列表
      */
     private void distributeCallback(String callbackScope, Map<String, Object> payload, List<String> appIds) {
-        log.info("分发回调: scope={}, subscribers={}", callbackScope, appIds.size());
+        log.info("Dispatching callback: scope={}, subscribers={}", callbackScope, appIds.size());
         
         for (String appId : appIds) {
             try {
@@ -169,7 +169,7 @@ public class CallbackGatewayService {
                 Map<String, Object> config = apiServerClient.getSubscriptionConfig(appId, callbackScope);
                 
                 if (config.isEmpty()) {
-                    log.warn("应用订阅配置为空: appId={}, scope={}", appId, callbackScope);
+                    log.warn("App subscription config is empty: appId={}, scope={}", appId, callbackScope);
                     continue;
                 }
                 
@@ -186,13 +186,13 @@ public class CallbackGatewayService {
                     switch (channelType) {
                         case 0 -> {
                             // WebHook（使用新的认证方式：appId + authType）
-                            log.info("推送到 WebHook: appId={}, scope={}, url={}, authType={}", 
+                            log.info("Pushing to WebHook: appId={}, scope={}, url={}, authType={}", 
                                     appId, callbackScope, channelAddress, authType);
                             webHookChannel.sendCallback(channelAddress, payload, appId, authType);
                         }
                         case 1 -> {
                             // SSE（Server-Sent Events）
-                            log.info("推送到 SSE: appId={}, scope={}, connectionId={}", 
+                            log.info("Pushing to SSE: appId={}, scope={}, connectionId={}", 
                                     appId, callbackScope, channelAddress);
                             // channelAddress 作为 SSE 连接ID
                             Map<String, Object> ssePayload = buildCallbackPayload(callbackScope, payload);
@@ -200,19 +200,19 @@ public class CallbackGatewayService {
                         }
                         case 2 -> {
                             // WebSocket
-                            log.info("推送到 WebSocket: appId={}, scope={}, connectionId={}", 
+                            log.info("Pushing to WebSocket: appId={}, scope={}, connectionId={}", 
                                     appId, callbackScope, channelAddress);
                             // channelAddress 作为 WebSocket 连接ID
                             Map<String, Object> wsPayload = buildCallbackPayload(callbackScope, payload);
                             webSocketChannel.sendCallback(channelAddress, wsPayload);
                         }
                         default -> 
-                            log.warn("未知的通道类型: appId={}, channelType={}", appId, channelType);
+                            log.warn("Unknown channel type: appId={}, channelType={}", appId, channelType);
                     }
                 }
                 
             } catch (Exception e) {
-                log.error("分发回调失败: appId={}, scope={}", appId, callbackScope, e);
+                log.error("Failed to dispatch callback: appId={}, scope={}", appId, callbackScope, e);
             }
         }
     }
@@ -226,9 +226,9 @@ public class CallbackGatewayService {
         String cacheKey = CACHE_KEY_PREFIX + callbackScope;
         try {
             redisTemplate.delete(cacheKey);
-            log.info("清除订阅列表缓存: scope={}", callbackScope);
+            log.info("Clearing subscriber list cache: scope={}", callbackScope);
         } catch (Exception e) {
-            log.error("清除订阅列表缓存失败: scope={}", callbackScope, e);
+            log.error("Failed to clear subscriber list cache: scope={}", callbackScope, e);
             // 缓存清除失败不影响业务流程
         }
     }
@@ -268,7 +268,7 @@ public class CallbackGatewayService {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
-        log.warn("配置值类型不匹配: key={}, expected=Integer, actual={}", key, value.getClass().getSimpleName());
+        log.warn("Config value type mismatch: key={}, expected=Integer, actual={}", key, value.getClass().getSimpleName());
         return null;
     }
 
@@ -287,7 +287,7 @@ public class CallbackGatewayService {
         if (value instanceof String) {
             return (String) value;
         }
-        log.warn("配置值类型不匹配: key={}, expected=String, actual={}", key, value.getClass().getSimpleName());
+        log.warn("Config value type mismatch: key={}, expected=String, actual={}", key, value.getClass().getSimpleName());
         return null;
     }
 }

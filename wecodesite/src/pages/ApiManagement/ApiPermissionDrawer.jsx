@@ -312,7 +312,13 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     await loadApis({ needReview: value, curPage: 1 }, null, activeModule);
   };
 
-  const columns = getApiPermissionDrawerColumns();
+  const handleOpenDoc = (docUrl) => {
+    if (docUrl) {
+      window.open(docUrl, '_blank');
+    }
+  };
+
+  const columns = getApiPermissionDrawerColumns({ handleOpenDoc });
 
   // 表格行选择器配置
   const rowSelection = {

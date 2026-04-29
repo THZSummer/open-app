@@ -37,7 +37,7 @@ public class MessageQueueChannel {
         long startTime = System.currentTimeMillis();
         
         try {
-            log.info("[预留实现] 发送事件到消息队列: queue={}, payload={}", queueName, payload);
+            log.info("[Reserved] Sending event to message queue: queue={}, payload={}", queueName, payload);
             
             // TODO: 集成企业内部消息网关 SDK
             // 实际项目中应调用企业内部消息平台的 SDK 进行推送
@@ -45,14 +45,14 @@ public class MessageQueueChannel {
             // MessageQueueClient client = getMessageQueueClient();
             // client.send(queueName, payload);
             
-            log.warn("[预留实现] 消息队列通道尚未实现，事件未实际发送: queue={}", queueName);
+            log.warn("[Reserved] Message queue channel not implemented, event not actually sent: queue={}", queueName);
             
             long duration = System.currentTimeMillis() - startTime;
-            log.info("[预留实现] 消息队列发送完成（模拟）: queue={}, duration={}ms", queueName, duration);
+            log.info("[Reserved] Message queue send completed (simulated): queue={}, duration={}ms", queueName, duration);
             
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("[预留实现] 消息队列发送失败: queue={}, duration={}ms", queueName, duration, e);
+            log.error("[Reserved] Message queue send failed: queue={}, duration={}ms", queueName, duration, e);
         }
     }
     
@@ -71,7 +71,7 @@ public class MessageQueueChannel {
         // MessageQueueClient client = getMessageQueueClient();
         // return client.getQueueStatus(queueName);
         
-        log.warn("[预留实现] 队列状态查询尚未实现: queue={}", queueName);
+        log.warn("[Reserved] Queue status query not implemented: queue={}", queueName);
         return Map.of(
             "queueName", queueName, 
             "status", "unknown", 
@@ -90,7 +90,7 @@ public class MessageQueueChannel {
      */
     public long getMessageCount(String queueName) {
         // TODO: 集成企业内部消息网关 SDK
-        log.warn("[预留实现] 队列消息数量查询尚未实现: queue={}", queueName);
+        log.warn("[Reserved] Queue message count query not implemented: queue={}", queueName);
         return -1L;
     }
 }

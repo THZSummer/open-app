@@ -20,10 +20,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @DisplayName("全局异常处理器测试")
-class GlobalExceptionHandlerTest {
+class GlobalExceptionHandlerV2Test {
 
     @InjectMocks
-    private GlobalExceptionHandler handler;
+    private GlobalExceptionHandlerV2 handler;
 
     @BeforeEach
     void setUp() {
@@ -110,7 +110,7 @@ class GlobalExceptionHandlerTest {
             ApiResponse<Void> response = handler.handleException(exception);
 
             assertEquals("500", response.getCode());
-            assertEquals("系统内部错误", response.getMessageZh());
+            assertEquals("Internal server error", response.getMessageZh());
             assertEquals("Internal Server Error", response.getMessageEn());
             assertNull(response.getData());
         }

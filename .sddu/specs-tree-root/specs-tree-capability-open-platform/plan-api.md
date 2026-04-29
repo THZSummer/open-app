@@ -1,5 +1,9 @@
 # 接口设计
 
+**版本**: v1.31  
+**最后更新**: 2026-04-29  
+**更新说明**: 接口路径从 /api/v1/ 修改为 /service/open/v2/，用于标准环境集成时的路径隔离
+
 > 本文档为 `plan.md` 的子文档，定义能力开放平台的详细接口设计。
 > 基于 spec.md 第 3 章 FR 清单编写，确保功能需求完整覆盖。
 
@@ -32,8 +36,8 @@
 
 | ✅ 正确示例 | ❌ 错误示例 |
 |------------|------------|
-| `/api/v1/user-authorizations` | `/api/v1/user_authorizations` |
-| `/api/v1/approval-flows` | `/api/v1/approvalFlows` |
+| `/service/open/v2/user-authorizations` | `/service/open/v2/user_authorizations` |
+| `/service/open/v2/approval-flows` | `/service/open/v2/approvalFlows` |
 | `/gateway/callbacks/invoke` | `/gateway/callbacks_invoke` |
 
 **命名约定**：
@@ -62,7 +66,7 @@
 - 其他可能超过安全范围的数值型字段
 
 **入参约定**：
-- 路径参数中的 ID（如 `/api/v1/apis/:id`）可以是数字或字符串，由路由层处理
+- 路径参数中的 ID（如 `/service/open/v2/apis/:id`）可以是数字或字符串，由路由层处理
 - 请求体中的 ID 字段统一使用 `string` 类型
 
 ### 0.4 通用对象结构
@@ -223,72 +227,75 @@
 
 | # | 模块 | Method | Path | 说明 | FR |
 |---|------|--------|------|------|-----|
-| 1 | **分类管理** | GET | `/api/v1/categories` | 获取分类列表（树形） | FR-001 |
-| 2 | | GET | `/api/v1/categories/:id` | 获取分类详情 | FR-001 |
-| 3 | | POST | `/api/v1/categories` | 创建分类（一级分类） | FR-001 |
-| 4 | | PUT | `/api/v1/categories/:id` | 更新分类 | FR-001 |
-| 5 | | DELETE | `/api/v1/categories/:id` | 删除分类（检查关联资源） | FR-001 |
-| 6 | | POST | `/api/v1/categories/:id/owners` | 添加分类责任人 | FR-002 |
-| 7 | | GET | `/api/v1/categories/:id/owners` | 获取分类责任人列表 | FR-002 |
-| 8 | | DELETE | `/api/v1/categories/:id/owners/:userId` | 移除分类责任人 | FR-002 |
-| 9 | **API 管理** | GET | `/api/v1/apis` | 获取 API 列表（按分类过滤） | FR-004 |
-| 10 | | GET | `/api/v1/apis/:id` | 获取 API 详情（含权限信息） | FR-004 |
-| 11 | | POST | `/api/v1/apis` | 注册 API（附带权限定义） | FR-005 |
-| 12 | | PUT | `/api/v1/apis/:id` | 更新 API 及权限信息 | FR-006 |
-| 13 | | DELETE | `/api/v1/apis/:id` | 删除 API（检查订阅关系） | FR-007 |
-| 14 | | POST | `/api/v1/apis/:id/withdraw` | 撤回审核中的 API | FR-004 |
-| 15 | **事件管理** | GET | `/api/v1/events` | 获取事件列表（按分类过滤） | FR-008 |
-| 16 | | GET | `/api/v1/events/:id` | 获取事件详情（含权限信息） | FR-008 |
-| 17 | | POST | `/api/v1/events` | 注册事件（附带权限定义） | FR-009 |
-| 18 | | PUT | `/api/v1/events/:id` | 更新事件及权限信息 | FR-010 |
-| 19 | | DELETE | `/api/v1/events/:id` | 删除事件（检查订阅关系） | FR-011 |
-| 20 | | POST | `/api/v1/events/:id/withdraw` | 撤回审核中的事件 | FR-008 |
-| 21 | **回调管理** | GET | `/api/v1/callbacks` | 获取回调列表（按分类过滤） | FR-012 |
-| 22 | | GET | `/api/v1/callbacks/:id` | 获取回调详情（含权限信息） | FR-012 |
-| 23 | | POST | `/api/v1/callbacks` | 注册回调（附带权限定义） | FR-013 |
-| 24 | | PUT | `/api/v1/callbacks/:id` | 更新回调及权限信息 | FR-014 |
-| 25 | | DELETE | `/api/v1/callbacks/:id` | 删除回调（检查订阅关系） | FR-015 |
-| 26 | | POST | `/api/v1/callbacks/:id/withdraw` | 撤回审核中的回调 | FR-012 |
-| 27 | **API 权限管理** | GET | `/api/v1/apps/:appId/apis` | 获取应用 API 权限列表 | FR-016 |
-| 28 | | GET | `/api/v1/categories/:id/apis` | 获取分类下 API 权限列表 | FR-017 |
-| 29 | | POST | `/api/v1/apps/:appId/apis/subscribe` | 申请 API 权限（支持批量） | FR-018 |
-| 30 | | POST | `/api/v1/apps/:appId/apis/:id/withdraw` | 撤回审核中的申请 | FR-016 |
-| 31 | **事件权限管理** | GET | `/api/v1/apps/:appId/events` | 获取应用事件订阅列表 | FR-019 |
-| 32 | | GET | `/api/v1/categories/:id/events` | 获取分类下事件权限列表 | FR-020 |
-| 33 | | POST | `/api/v1/apps/:appId/events/subscribe` | 申请事件权限（支持批量） | FR-021 |
-| 34 | | PUT | `/api/v1/apps/:appId/events/:id/config` | 配置事件消费参数（通道/地址/认证） | FR-019 |
-| 35 | | POST | `/api/v1/apps/:appId/events/:id/withdraw` | 撤回审核中的申请 | FR-019 |
-| 36 | **回调权限管理** | GET | `/api/v1/apps/:appId/callbacks` | 获取应用回调订阅列表 | FR-022 |
-| 37 | | GET | `/api/v1/categories/:id/callbacks` | 获取分类下回调权限列表 | FR-023 |
-| 38 | | POST | `/api/v1/apps/:appId/callbacks/subscribe` | 申请回调权限（支持批量） | FR-024 |
-| 39 | | PUT | `/api/v1/apps/:appId/callbacks/:id/config` | 配置回调消费参数（通道/地址/认证） | FR-022 |
-| 40 | | POST | `/api/v1/apps/:appId/callbacks/:id/withdraw` | 撤回审核中的申请 | FR-022 |
-| 41 | **审批管理** | GET | `/api/v1/approval-flows` | 获取审批流程模板列表 | FR-025 |
-| 42 | | GET | `/api/v1/approval-flows/:id` | 获取审批流程模板详情 | FR-025 |
-| 43 | | POST | `/api/v1/approval-flows` | 创建审批流程模板 | FR-025 |
-| 44 | | PUT | `/api/v1/approval-flows/:id` | 更新审批流程模板 | FR-025 |
-| 45 | | DELETE | `/api/v1/approval-flows/:id` | 删除审批流程模板 | FR-025 |
-| 46 | | GET | `/api/v1/approvals/pending` | 获取待审批列表 | FR-026/FR-027 |
-| 47 | | GET | `/api/v1/approvals/:id` | 获取审批详情 | FR-026/FR-027 |
-| 48 | | POST | `/api/v1/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
-| 49 | | POST | `/api/v1/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
-| 50 | | POST | `/api/v1/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
-| 51 | | POST | `/api/v1/approvals/batch-approve` | 批量同意审批 | FR-026/FR-027 |
-| 52 | | POST | `/api/v1/approvals/batch-reject` | 批量驳回审批（需填写原因） | FR-026/FR-027 |
-| 53 | **Scope 授权管理** | GET | `/api/v1/user-authorizations` | 获取用户授权列表 | FR-031 |
-| 54 | | POST | `/api/v1/user-authorizations` | 用户授权（设置有效期） | FR-031 |
-| 55 | | DELETE | `/api/v1/user-authorizations/:id` | 取消授权 | FR-031 |
-| 56 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
-| 57 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
-| 58 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
-| 59 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
-| 60 | | POST | `/gateway/callbacks/config` | 回调配置查询接口（内部） | FR-030 |
+| 1 | **分类管理** | GET | `/service/open/v2/categories` | 获取分类列表（树形） | FR-001 |
+| 2 | | GET | `/service/open/v2/categories/:id` | 获取分类详情 | FR-001 |
+| 3 | | POST | `/service/open/v2/categories` | 创建分类（一级分类） | FR-001 |
+| 4 | | PUT | `/service/open/v2/categories/:id` | 更新分类 | FR-001 |
+| 5 | | DELETE | `/service/open/v2/categories/:id` | 删除分类（检查关联资源） | FR-001 |
+| 6 | | POST | `/service/open/v2/categories/:id/owners` | 添加分类责任人 | FR-002 |
+| 7 | | GET | `/service/open/v2/categories/:id/owners` | 获取分类责任人列表 | FR-002 |
+| 8 | | DELETE | `/service/open/v2/categories/:id/owners/:userId` | 移除分类责任人 | FR-002 |
+| 9 | **API 管理** | GET | `/service/open/v2/apis` | 获取 API 列表（按分类过滤） | FR-004 |
+| 10 | | GET | `/service/open/v2/apis/:id` | 获取 API 详情（含权限信息） | FR-004 |
+| 11 | | POST | `/service/open/v2/apis` | 注册 API（附带权限定义） | FR-005 |
+| 12 | | PUT | `/service/open/v2/apis/:id` | 更新 API 及权限信息 | FR-006 |
+| 13 | | DELETE | `/service/open/v2/apis/:id` | 删除 API（检查订阅关系） | FR-007 |
+| 14 | | POST | `/service/open/v2/apis/:id/withdraw` | 撤回审核中的 API | FR-004 |
+| 15 | **事件管理** | GET | `/service/open/v2/events` | 获取事件列表（按分类过滤） | FR-008 |
+| 16 | | GET | `/service/open/v2/events/:id` | 获取事件详情（含权限信息） | FR-008 |
+| 17 | | POST | `/service/open/v2/events` | 注册事件（附带权限定义） | FR-009 |
+| 18 | | PUT | `/service/open/v2/events/:id` | 更新事件及权限信息 | FR-010 |
+| 19 | | DELETE | `/service/open/v2/events/:id` | 删除事件（检查订阅关系） | FR-011 |
+| 20 | | POST | `/service/open/v2/events/:id/withdraw` | 撤回审核中的事件 | FR-008 |
+| 21 | **回调管理** | GET | `/service/open/v2/callbacks` | 获取回调列表（按分类过滤） | FR-012 |
+| 22 | | GET | `/service/open/v2/callbacks/:id` | 获取回调详情（含权限信息） | FR-012 |
+| 23 | | POST | `/service/open/v2/callbacks` | 注册回调（附带权限定义） | FR-013 |
+| 24 | | PUT | `/service/open/v2/callbacks/:id` | 更新回调及权限信息 | FR-014 |
+| 25 | | DELETE | `/service/open/v2/callbacks/:id` | 删除回调（检查订阅关系） | FR-015 |
+| 26 | | POST | `/service/open/v2/callbacks/:id/withdraw` | 撤回审核中的回调 | FR-012 |
+| 27 | **API 权限管理** | GET | `/service/open/v2/apps/:appId/apis` | 获取应用 API 权限列表 | FR-016 |
+| 28 | | GET | `/service/open/v2/categories/:id/apis` | 获取分类下 API 权限列表 | FR-017 |
+| 29 | | POST | `/service/open/v2/apps/:appId/apis/subscribe` | 申请 API 权限（支持批量） | FR-018 |
+| 30 | | POST | `/service/open/v2/apps/:appId/apis/:id/withdraw` | 撤回审核中的申请 | FR-016 |
+| 31 | | DELETE | `/service/open/v2/apps/:appId/apis/:id` | 删除终态订阅记录 | FR-016 |
+| 32 | **事件权限管理** | GET | `/service/open/v2/apps/:appId/events` | 获取应用事件订阅列表 | FR-019 |
+| 33 | | GET | `/service/open/v2/categories/:id/events` | 获取分类下事件权限列表 | FR-020 |
+| 34 | | POST | `/service/open/v2/apps/:appId/events/subscribe` | 申请事件权限（支持批量） | FR-021 |
+| 35 | | PUT | `/service/open/v2/apps/:appId/events/:id/config` | 配置事件消费参数（通道/地址/认证） | FR-019 |
+| 36 | | POST | `/service/open/v2/apps/:appId/events/:id/withdraw` | 撤回审核中的申请 | FR-019 |
+| 37 | | DELETE | `/service/open/v2/apps/:appId/events/:id` | 删除终态订阅记录 | FR-019 |
+| 38 | **回调权限管理** | GET | `/service/open/v2/apps/:appId/callbacks` | 获取应用回调订阅列表 | FR-022 |
+| 39 | | GET | `/service/open/v2/categories/:id/callbacks` | 获取分类下回调权限列表 | FR-023 |
+| 40 | | POST | `/service/open/v2/apps/:appId/callbacks/subscribe` | 申请回调权限（支持批量） | FR-024 |
+| 41 | | PUT | `/service/open/v2/apps/:appId/callbacks/:id/config` | 配置回调消费参数（通道/地址/认证） | FR-022 |
+| 42 | | POST | `/service/open/v2/apps/:appId/callbacks/:id/withdraw` | 撤回审核中的申请 | FR-022 |
+| 43 | | DELETE | `/service/open/v2/apps/:appId/callbacks/:id` | 删除终态订阅记录 | FR-022 |
+| 44 | **审批管理** | GET | `/service/open/v2/approval-flows` | 获取审批流程模板列表 | FR-025 |
+| 45 | | GET | `/service/open/v2/approval-flows/:id` | 获取审批流程模板详情 | FR-025 |
+| 46 | | POST | `/service/open/v2/approval-flows` | 创建审批流程模板 | FR-025 |
+| 47 | | PUT | `/service/open/v2/approval-flows/:id` | 更新审批流程模板 | FR-025 |
+| 48 | | DELETE | `/service/open/v2/approval-flows/:id` | 删除审批流程模板 | FR-025 |
+| 49 | | GET | `/service/open/v2/approvals/pending` | 获取待审批列表 | FR-026/FR-027 |
+| 50 | | GET | `/service/open/v2/approvals/:id` | 获取审批详情 | FR-026/FR-027 |
+| 51 | | POST | `/service/open/v2/approvals/:id/approve` | 同意审批 | FR-026/FR-027 |
+| 52 | | POST | `/service/open/v2/approvals/:id/reject` | 驳回审批（需填写原因） | FR-026/FR-027 |
+| 53 | | POST | `/service/open/v2/approvals/:id/cancel` | 撤销审批 | FR-026/FR-027 |
+| 54 | | POST | `/service/open/v2/approvals/batch-approve` | 批量同意审批 | FR-026/FR-027 |
+| 55 | | POST | `/service/open/v2/approvals/batch-reject` | 批量驳回审批（需填写原因） | FR-026/FR-027 |
+| 56 | **Scope 授权管理** | GET | `/service/open/v2/user-authorizations` | 获取用户授权列表 | FR-031 |
+| 57 | | POST | `/service/open/v2/user-authorizations` | 用户授权（设置有效期） | FR-031 |
+| 58 | | DELETE | `/service/open/v2/user-authorizations/:id` | 取消授权 | FR-031 |
+| 59 | **消费网关** | ANY | `/gateway/api/*` | API 请求代理与鉴权 | FR-028 |
+| 60 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
+| 61 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
+| 62 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
+| 63 | | POST | `/gateway/callbacks/config` | 回调配置查询接口（内部） | FR-030 |
 
-> **接口统计**：共 60 个接口，覆盖 FR-001 ~ FR-031
+> **接口统计**：共 63 个接口，覆盖 FR-001 ~ FR-031
 >
 > **权限树设计说明**：采用懒加载模式，分为两个步骤：
-> 1. 查树：`GET /api/v1/categories` 获取分类树
-> 2. 查权限：`GET /api/v1/categories/:id/apis` 获取某分类下的权限列表
+> 1. 查树：`GET /service/open/v2/categories` 获取分类树
+> 2. 查权限：`GET /service/open/v2/categories/:id/apis` 获取某分类下的权限列表
 
 ---
 
@@ -296,7 +303,7 @@
 
 ### 2.1 分类管理
 
-#### 1. GET /api/v1/categories
+#### 1. GET /service/open/v2/categories
 
 获取分类列表（树形结构）。
 
@@ -344,7 +351,7 @@
 
 ---
 
-#### 2. GET /api/v1/categories/:id
+#### 2. GET /service/open/v2/categories/:id
 
 获取分类详情。
 
@@ -373,7 +380,7 @@
 
 ---
 
-#### 3. POST /api/v1/categories
+#### 3. POST /service/open/v2/categories
 
 创建分类（一级分类）。
 
@@ -422,7 +429,7 @@
 
 ---
 
-#### 4. PUT /api/v1/categories/:id
+#### 4. PUT /service/open/v2/categories/:id
 
 更新分类。
 
@@ -461,7 +468,7 @@
 
 ---
 
-#### 5. DELETE /api/v1/categories/:id
+#### 5. DELETE /service/open/v2/categories/:id
 
 删除分类（检查关联资源）。
 
@@ -492,7 +499,7 @@
 
 ---
 
-#### 6. POST /api/v1/categories/:id/owners
+#### 6. POST /service/open/v2/categories/:id/owners
 
 添加分类责任人。
 
@@ -529,7 +536,7 @@
 
 ---
 
-#### 7. GET /api/v1/categories/:id/owners
+#### 7. GET /service/open/v2/categories/:id/owners
 
 获取分类责任人列表。
 
@@ -560,7 +567,7 @@
 
 ---
 
-#### 8. DELETE /api/v1/categories/:id/owners/:userId
+#### 8. DELETE /service/open/v2/categories/:id/owners/:userId
 
 移除分类责任人。
 
@@ -580,7 +587,7 @@
 
 ### 2.2 API 管理
 
-#### 9. GET /api/v1/apis
+#### 9. GET /service/open/v2/apis
 
 获取 API 列表（按分类过滤）。
 
@@ -606,7 +613,7 @@
         "id": "100",
         "nameCn": "发送消息",
         "nameEn": "Send Message",
-        "path": "/api/v1/messages",
+        "path": "/service/open/v2/messages",
         "method": "POST",
         "authType": 1,
         "categoryId": "2",
@@ -630,7 +637,7 @@
 
 ---
 
-#### 10. GET /api/v1/apis/:id
+#### 10. GET /service/open/v2/apis/:id
 
 获取 API 详情（含权限信息及属性）。
 
@@ -645,7 +652,7 @@
     "id": "100",
     "nameCn": "发送消息",
     "nameEn": "Send Message",
-    "path": "/api/v1/messages",
+    "path": "/service/open/v2/messages",
     "method": "POST",
     "authType": 1,
     "categoryId": "2",
@@ -676,7 +683,7 @@
 
 ---
 
-#### 11. POST /api/v1/apis
+#### 11. POST /service/open/v2/apis
 
 注册 API（附带权限定义）。
 
@@ -716,7 +723,7 @@
 {
   "nameCn": "发送消息",
   "nameEn": "Send Message",
-  "path": "/api/v1/messages",
+  "path": "/service/open/v2/messages",
   "method": "POST",
   "authType": 1,
   "categoryId": "2",
@@ -749,7 +756,7 @@
     "id": "100",
     "nameCn": "发送消息",
     "nameEn": "Send Message",
-    "path": "/api/v1/messages",
+    "path": "/service/open/v2/messages",
     "method": "POST",
     "authType": 1,
     "status": 1,
@@ -766,7 +773,7 @@
 
 ---
 
-#### 12. PUT /api/v1/apis/:id
+#### 12. PUT /service/open/v2/apis/:id
 
 更新 API 及权限信息。
 
@@ -810,7 +817,7 @@
 
 ---
 
-#### 13. DELETE /api/v1/apis/:id
+#### 13. DELETE /service/open/v2/apis/:id
 
 删除 API（检查订阅关系）。
 
@@ -841,7 +848,7 @@
 
 ---
 
-#### 14. POST /api/v1/apis/:id/withdraw
+#### 14. POST /service/open/v2/apis/:id/withdraw
 
 撤回审核中的 API。
 
@@ -865,7 +872,7 @@
 
 ### 2.3 事件管理
 
-#### 15. GET /api/v1/events
+#### 15. GET /service/open/v2/events
 
 获取事件列表（按分类过滤）。
 
@@ -909,7 +916,7 @@
 
 ---
 
-#### 16. GET /api/v1/events/:id
+#### 16. GET /service/open/v2/events/:id
 
 获取事件详情（含权限信息及属性）。
 
@@ -945,7 +952,7 @@
 
 ---
 
-#### 17. POST /api/v1/events
+#### 17. POST /service/open/v2/events
 
 注册事件（附带权限定义）。
 
@@ -1003,7 +1010,7 @@
 
 ---
 
-#### 18. PUT /api/v1/events/:id
+#### 18. PUT /service/open/v2/events/:id
 
 更新事件及权限信息。
 
@@ -1038,7 +1045,7 @@
 
 ---
 
-#### 19. DELETE /api/v1/events/:id
+#### 19. DELETE /service/open/v2/events/:id
 
 删除事件（检查订阅关系）。
 
@@ -1069,7 +1076,7 @@
 
 ---
 
-#### 20. POST /api/v1/events/:id/withdraw
+#### 20. POST /service/open/v2/events/:id/withdraw
 
 撤回审核中的事件。
 
@@ -1093,7 +1100,7 @@
 
 ### 2.4 回调管理
 
-#### 21. GET /api/v1/callbacks
+#### 21. GET /service/open/v2/callbacks
 
 获取回调列表（按分类过滤）。
 
@@ -1136,7 +1143,7 @@
 
 ---
 
-#### 22. GET /api/v1/callbacks/:id
+#### 22. GET /service/open/v2/callbacks/:id
 
 获取回调详情（含权限信息及属性）。
 
@@ -1171,7 +1178,7 @@
 
 ---
 
-#### 23. POST /api/v1/callbacks
+#### 23. POST /service/open/v2/callbacks
 
 注册回调（附带权限定义）。
 
@@ -1226,7 +1233,7 @@
 
 ---
 
-#### 24. PUT /api/v1/callbacks/:id
+#### 24. PUT /service/open/v2/callbacks/:id
 
 更新回调及权限信息。
 
@@ -1261,7 +1268,7 @@
 
 ---
 
-#### 25. DELETE /api/v1/callbacks/:id
+#### 25. DELETE /service/open/v2/callbacks/:id
 
 删除回调（检查订阅关系）。
 
@@ -1292,7 +1299,7 @@
 
 ---
 
-#### 26. POST /api/v1/callbacks/:id/withdraw
+#### 26. POST /service/open/v2/callbacks/:id/withdraw
 
 撤回审核中的回调。
 
@@ -1318,7 +1325,7 @@
 
 ### 2.5 API 权限管理
 
-#### 27. GET /api/v1/apps/:appId/apis
+#### 27. GET /service/open/v2/apps/:appId/apis
 
 获取应用 API 权限列表。
 
@@ -1348,7 +1355,7 @@
           "scope": "api:im:send-message"
         },
         "api": {
-          "path": "/api/v1/messages",
+          "path": "/service/open/v2/messages",
           "method": "POST",
           "authType": 1,
           "docUrl": "https://docs.example.com/api/send-message"
@@ -1380,11 +1387,11 @@
 
 ---
 
-#### 28. GET /api/v1/categories/:id/apis
+#### 28. GET /service/open/v2/categories/:id/apis
 
 获取分类下 API 权限列表。
 
-> **说明**：权限树采用懒加载模式。分类树通过 `GET /api/v1/categories` 获取，点击分类节点时调用此接口获取该分类下的权限列表。
+> **说明**：权限树采用懒加载模式。分类树通过 `GET /service/open/v2/categories` 获取，点击分类节点时调用此接口获取该分类下的权限列表。
 > - `include_children=true`（默认）：递归获取当前分类及所有子分类下的权限（通过 `path` 字段优化查询）
 > - `include_children=false`：仅获取当前分类直接关联的权限
 > - 传根分类ID + `include_children=true` 可获取全量权限
@@ -1416,7 +1423,7 @@
         "needApproval": 1,
         "isSubscribed": 1,
         "api": {
-          "path": "/api/v1/messages",
+          "path": "/service/open/v2/messages",
           "method": "POST",
           "authType": 1,
           "docUrl": "https://docs.example.com/api/send-message"
@@ -1434,7 +1441,7 @@
 
 ---
 
-#### 29. POST /api/v1/apps/:appId/apis/subscribe
+#### 29. POST /service/open/v2/apps/:appId/apis/subscribe
 
 申请 API 权限（支持批量）。
 
@@ -1474,7 +1481,7 @@
 
 ---
 
-#### 30. POST /api/v1/apps/:appId/apis/:id/withdraw
+#### 30. POST /service/open/v2/apps/:appId/apis/:id/withdraw
 
 撤回审核中的 API 权限申请。
 
@@ -1498,9 +1505,62 @@
 
 ---
 
+#### 31. DELETE /service/open/v2/apps/:appId/apis/:id
+
+删除 API 权限订阅记录。
+
+> **说明**：仅允许删除终态记录（approved/rejected/revoked），申请中状态需使用撤回接口。审批通过状态删除时，系统自动取消已授权的 API 权限。
+
+**删除规则**：
+
+| 订阅状态 | 是否允许删除 | 说明 |
+|---------|-------------|------|
+| `0`（审核中） | ❌ 不允许 | 应使用"撤回"接口 |
+| `1`（已授权） | ✅ 允许 | 系统自动取消权限 |
+| `2`（已拒绝） | ✅ 允许 | 删除后可重新申请 |
+| `3`（已取消） | ✅ 允许 | 删除后可重新申请 |
+
+**响应示例（成功）**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "订阅记录删除成功",
+  "messageEn": "Success",
+  "data": null,
+  "page": null
+}
+```
+
+**响应示例（失败-状态不允许删除）**：
+
+```json
+{
+  "code": "400",
+  "messageZh": "审核中的申请不支持删除，请使用撤回接口",
+  "messageEn": "Bad Request",
+  "data": null,
+  "page": null
+}
+```
+
+**响应示例（失败-记录不存在）**：
+
+```json
+{
+  "code": "404",
+  "messageZh": "订阅记录不存在",
+  "messageEn": "Not Found",
+  "data": null,
+  "page": null
+}
+```
+
+---
+
 ### 2.6 事件权限管理
 
-#### 31. GET /api/v1/apps/:appId/events
+#### 32. GET /service/open/v2/apps/:appId/events
 
 获取应用事件订阅列表。
 
@@ -1563,7 +1623,7 @@
 
 ---
 
-#### 32. GET /api/v1/categories/:id/events
+#### 33. GET /service/open/v2/categories/:id/events
 
 获取分类下事件权限列表。
 
@@ -1615,7 +1675,7 @@
 
 ---
 
-#### 33. POST /api/v1/apps/:appId/events/subscribe
+#### 34. POST /service/open/v2/apps/:appId/events/subscribe
 
 申请事件权限（支持批量）。
 
@@ -1655,7 +1715,7 @@
 
 ---
 
-#### 34. PUT /api/v1/apps/:appId/events/:id/config
+#### 35. PUT /service/open/v2/apps/:appId/events/:id/config
 
 配置事件消费参数。
 
@@ -1711,7 +1771,7 @@
 
 ---
 
-#### 35. POST /api/v1/apps/:appId/events/:id/withdraw
+#### 36. POST /service/open/v2/apps/:appId/events/:id/withdraw
 
 撤回审核中的事件权限申请。
 
@@ -1735,9 +1795,50 @@
 
 ---
 
+#### 37. DELETE /service/open/v2/apps/:appId/events/:id
+
+删除事件权限订阅记录。
+
+> **说明**：仅允许删除终态记录（approved/rejected/revoked），申请中状态需使用撤回接口。审批通过状态删除时，系统自动取消事件订阅。
+
+**删除规则**：
+
+| 订阅状态 | 是否允许删除 | 说明 |
+|---------|-------------|------|
+| `0`（审核中） | ❌ 不允许 | 应使用"撤回"接口 |
+| `1`（已授权） | ✅ 允许 | 系统自动取消订阅 |
+| `2`（已拒绝） | ✅ 允许 | 删除后可重新申请 |
+| `3`（已取消） | ✅ 允许 | 删除后可重新申请 |
+
+**响应示例（成功）**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "订阅记录删除成功",
+  "messageEn": "Success",
+  "data": null,
+  "page": null
+}
+```
+
+**响应示例（失败-状态不允许删除）**：
+
+```json
+{
+  "code": "400",
+  "messageZh": "审核中的申请不支持删除，请使用撤回接口",
+  "messageEn": "Bad Request",
+  "data": null,
+  "page": null
+}
+```
+
+---
+
 ### 2.7 回调权限管理
 
-#### 36. GET /api/v1/apps/:appId/callbacks
+#### 38. GET /service/open/v2/apps/:appId/callbacks
 
 获取应用回调订阅列表。
 
@@ -1790,7 +1891,7 @@
 
 ---
 
-#### 37. GET /api/v1/categories/:id/callbacks
+#### 39. GET /service/open/v2/categories/:id/callbacks
 
 获取分类下回调权限列表。
 
@@ -1842,7 +1943,7 @@
 
 ---
 
-#### 38. POST /api/v1/apps/:appId/callbacks/subscribe
+#### 40. POST /service/open/v2/apps/:appId/callbacks/subscribe
 
 申请回调权限（支持批量）。
 
@@ -1882,7 +1983,7 @@
 
 ---
 
-#### 39. PUT /api/v1/apps/:appId/callbacks/:id/config
+#### 41. PUT /service/open/v2/apps/:appId/callbacks/:id/config
 
 配置回调消费参数。
 
@@ -1914,7 +2015,7 @@
 
 ---
 
-#### 40. POST /api/v1/apps/:appId/callbacks/:id/withdraw
+#### 42. POST /service/open/v2/apps/:appId/callbacks/:id/withdraw
 
 撤回审核中的回调权限申请。
 
@@ -1936,11 +2037,50 @@
 }
 ```
 
+#### 43. DELETE /service/open/v2/apps/:appId/callbacks/:id
+
+删除回调权限订阅记录。
+
+> **说明**：仅允许删除终态记录（approved/rejected/revoked），申请中状态需使用撤回接口。审批通过状态删除时，系统自动取消回调订阅。
+
+**删除规则**：
+
+| 订阅状态 | 是否允许删除 | 说明 |
+|---------|-------------|------|
+| `0`（审核中） | ❌ 不允许 | 应使用"撤回"接口 |
+| `1`（已授权） | ✅ 允许 | 系统自动取消订阅 |
+| `2`（已拒绝） | ✅ 允许 | 删除后可重新申请 |
+| `3`（已取消） | ✅ 允许 | 删除后可重新申请 |
+
+**响应示例（成功）**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "订阅记录删除成功",
+  "messageEn": "Success",
+  "data": null,
+  "page": null
+}
+```
+
+**响应示例（失败-状态不允许删除）**：
+
+```json
+{
+  "code": "400",
+  "messageZh": "审核中的申请不支持删除，请使用撤回接口",
+  "messageEn": "Bad Request",
+  "data": null,
+  "page": null
+}
+```
+
 ---
 
 ### 2.8 审批管理
 
-#### 41. GET /api/v1/approval-flows
+#### 44. GET /service/open/v2/approval-flows
 
 获取审批流程模板列表。
 
@@ -2001,7 +2141,7 @@
 
 ---
 
-#### 42. GET /api/v1/approval-flows/:id
+#### 45. GET /service/open/v2/approval-flows/:id
 
 获取审批流程模板详情。
 
@@ -2033,7 +2173,7 @@
 
 ---
 
-#### 43. POST /api/v1/approval-flows
+#### 46. POST /service/open/v2/approval-flows
 
 创建审批流程模板。
 
@@ -2098,7 +2238,7 @@
 
 ---
 
-#### 44. PUT /api/v1/approval-flows/:id
+#### 47. PUT /service/open/v2/approval-flows/:id
 
 更新审批流程模板。
 
@@ -2142,7 +2282,45 @@
 
 ---
 
-#### 45. GET /api/v1/approvals/pending
+#### 48. DELETE /service/open/v2/approval-flows/:id
+
+删除审批流程模板。
+
+**权限要求**：
+- 全局审批流程配置：需要超级管理员权限
+- 场景审批流程配置：需要平台运营管理员权限
+
+**配置界面**：
+- 全局审批流程：平台管理后台 → 审批流程管理 → 全局审批流程
+- 场景审批流程：平台管理后台 → 审批流程管理 → 场景审批流程列表
+
+**响应示例（成功）**：
+
+```json
+{
+  "code": "200",
+  "messageZh": "审批流程模板删除成功",
+  "messageEn": "Success",
+  "data": null,
+  "page": null
+}
+```
+
+**响应示例（失败-流程不存在）**：
+
+```json
+{
+  "code": "404",
+  "messageZh": "审批流程模板不存在",
+  "messageEn": "Not Found",
+  "data": null,
+  "page": null
+}
+```
+
+---
+
+#### 49. GET /service/open/v2/approvals/pending
 
 获取待审批列表。
 
@@ -2189,7 +2367,7 @@
 
 ---
 
-#### 46. GET /api/v1/approvals/:id
+#### 50. GET /service/open/v2/approvals/:id
 
 获取审批详情。
 
@@ -2207,7 +2385,7 @@
     "businessId": "100",
     "businessData": {
       "nameCn": "发送消息",
-      "path": "/api/v1/messages",
+      "path": "/service/open/v2/messages",
       "method": "POST"
     },
     "applicantId": "user003",
@@ -2240,7 +2418,7 @@
 
 ---
 
-#### 47. POST /api/v1/approvals/:id/approve
+#### 51. POST /service/open/v2/approvals/:id/approve
 
 同意审批。
 
@@ -2274,7 +2452,7 @@
 
 ---
 
-#### 48. POST /api/v1/approvals/:id/reject
+#### 52. POST /service/open/v2/approvals/:id/reject
 
 驳回审批（需填写原因）。
 
@@ -2308,7 +2486,7 @@
 
 ---
 
-#### 49. POST /api/v1/approvals/:id/cancel
+#### 53. POST /service/open/v2/approvals/:id/cancel
 
 撤销审批。
 
@@ -2332,7 +2510,7 @@
 
 ---
 
-#### 50. POST /api/v1/approvals/batch-approve
+#### 54. POST /service/open/v2/approvals/batch-approve
 
 批量同意审批。
 
@@ -2368,7 +2546,7 @@
 
 ---
 
-#### 51. POST /api/v1/approvals/batch-reject
+#### 55. POST /service/open/v2/approvals/batch-reject
 
 批量驳回审批（需填写原因）。
 
@@ -2406,7 +2584,7 @@
 
 ### 2.9 Scope 授权管理
 
-#### 52. GET /api/v1/user-authorizations
+#### 56. GET /service/open/v2/user-authorizations
 
 获取用户授权列表。
 
@@ -2450,7 +2628,7 @@
 
 ---
 
-#### 53. POST /api/v1/user-authorizations
+#### 57. POST /service/open/v2/user-authorizations
 
 用户授权（设置有效期）。
 
@@ -2492,7 +2670,7 @@
 
 ---
 
-#### 54. DELETE /api/v1/user-authorizations/:id
+#### 58. DELETE /service/open/v2/user-authorizations/:id
 
 取消授权。
 
@@ -2512,7 +2690,7 @@
 
 ### 2.10 消费网关
 
-#### 55. ANY /gateway/api/*
+#### 59. ANY /gateway/api/*
 
 API 请求代理与鉴权。
 
@@ -2547,7 +2725,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 56. POST /gateway/events/publish
+#### 60. POST /gateway/events/publish
 
 事件发布接口。
 
@@ -2599,7 +2777,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 57. POST /gateway/callbacks/invoke
+#### 61. POST /gateway/callbacks/invoke
 
 回调触发接口。
 
@@ -2636,7 +2814,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 58. GET /gateway/permissions/check
+#### 62. GET /gateway/permissions/check
 
 权限校验接口（供网关内部调用）。
 
@@ -2680,7 +2858,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 59. POST /gateway/callbacks/config
+#### 63. POST /gateway/callbacks/config
 
 回调配置查询接口（供 XX 通讯平台内部业务模块调用）。
 

@@ -62,7 +62,7 @@ public class ApiService {
      * #9 获取 API 列表
      */
     public ApiResponse<List<ApiListResponse>> getApiList(ApiListRequest request) {
-        log.info("获取 API 列表, request={}", request);
+        log.info("Get API list, request={}", request);
 
         // 解析参数
         Long categoryId = parseId(request.getCategoryId());
@@ -124,7 +124,7 @@ public class ApiService {
      * #10 获取 API 详情
      */
     public ApiDetailResponse getApiDetail(String id) {
-        log.info("获取 API 详情, id={}", id);
+        log.info("Get API detail, id={}", id);
 
         Long apiId = parseId(id);
 
@@ -151,7 +151,7 @@ public class ApiService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApiDetailResponse createApi(ApiCreateRequest request) {
-        log.info("注册 API, nameCn={}, path={}", request.getNameCn(), request.getPath());
+        log.info("Register API, nameCn={}, path={}", request.getNameCn(), request.getPath());
 
         Long categoryId = parseId(request.getCategoryId());
 
@@ -221,7 +221,7 @@ public class ApiService {
             // 无审批节点配置，直接发布
             api.setStatus(2); // 已发布
             apiMapper.update(api);
-            log.info("API 注册无需审批（无审批节点配置），直接发布: apiId={}", api.getId());
+            log.info("API registration does not require approval (no approval nodes configured), publish directly: apiId={}", api.getId());
         } else {
             // 有审批节点，创建审批单
             try {
@@ -233,9 +233,9 @@ public class ApiService {
                     currentUser,
                     currentUser
                 );
-                log.info("创建 API 注册审批记录: apiId={}, nodesCount={}", api.getId(), approvalNodes.size());
+                log.info("Create API registration approval record: apiId={}, nodesCount={}", api.getId(), approvalNodes.size());
             } catch (Exception e) {
-                log.warn("创建审批记录失败，API 保持待审状态: apiId={}", api.getId(), e);
+                log.warn("Failed to create approval record, API remains pending status: apiId={}", api.getId(), e);
             }
         }
 
@@ -271,7 +271,7 @@ public class ApiService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApiDetailResponse updateApi(String id, ApiUpdateRequest request) {
-        log.info("更新 API, id={}, nameCn={}", id, request.getNameCn());
+        log.info("Update API, id={}, nameCn={}", id, request.getNameCn());
 
         Long apiId = parseId(id);
 
@@ -366,7 +366,7 @@ public class ApiService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteApi(String id) {
-        log.info("删除 API, id={}", id);
+        log.info("Delete API, id={}", id);
 
         Long apiId = parseId(id);
 
@@ -400,7 +400,7 @@ public class ApiService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApiDetailResponse withdrawApi(String id) {
-        log.info("撤回 API, id={}", id);
+        log.info("Withdraw API, id={}", id);
 
         Long apiId = parseId(id);
 

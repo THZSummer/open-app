@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -130,7 +131,7 @@ public class CategoryService {
             parentPath = parent.getPath();
             // 子分类不能设置 categoryAlias
             if (request.getCategoryAlias() != null && !request.getCategoryAlias().isEmpty()) {
-                log.warn("子分类不能设置分类别名，将被忽略: {}", request.getCategoryAlias());
+                log.warn("Sub-category cannot set category alias, will be ignored: {}", request.getCategoryAlias());
             }
         }
 
@@ -158,7 +159,7 @@ public class CategoryService {
         // 保存
         categoryMapper.insert(category);
 
-        log.info("分类创建成功: id={}, nameCn={}, path={}", id, request.getNameCn(), path);
+        log.info("Category created successfully: id={}, nameCn={}, path={}", id, request.getNameCn(), path);
 
         return convertToResponse(category);
     }
@@ -188,7 +189,7 @@ public class CategoryService {
         // 保存
         categoryMapper.update(category);
 
-        log.info("分类更新成功: id={}, nameCn={}", id, request.getNameCn());
+        log.info("Category updated successfully: id={}, nameCn={}", id, request.getNameCn());
 
         return convertToResponse(category);
     }
@@ -221,7 +222,7 @@ public class CategoryService {
         int totalResources = apiCount + eventCount + callbackCount;
 
         if (totalResources > 0) {
-            String resourceInfo = String.format("API: %d, 事件: %d, 回调: %d", apiCount, eventCount, callbackCount);
+            String resourceInfo = String.format(Locale.ROOT, "API: %d, 事件: %d, 回调: %d", apiCount, eventCount, callbackCount);
             throw new BusinessException("409", 
                     "分类下存在 " + totalResources + " 个资源（" + resourceInfo + "），无法删除", 
                     "Category has " + totalResources + " resources, cannot delete");
@@ -236,7 +237,7 @@ public class CategoryService {
         // 删除分类
         categoryMapper.deleteById(id);
 
-        log.info("分类删除成功: id={}", id);
+        log.info("Category deleted successfully: id={}", id);
     }
 
     // ==================== 责任人管理 ====================
@@ -282,7 +283,7 @@ public class CategoryService {
         // 保存
         categoryOwnerMapper.insert(owner);
 
-        log.info("分类责任人添加成功: categoryId={}, userId={}", categoryId, request.getUserId());
+        log.info("Category owner added successfully: categoryId={}, userId={}", categoryId, request.getUserId());
 
         return convertToOwnerResponse(owner);
     }
@@ -326,7 +327,7 @@ public class CategoryService {
             throw BusinessException.notFound("责任人不存在", "Owner not found");
         }
 
-        log.info("分类责任人移除成功: categoryId={}, userId={}", categoryId, userId);
+        log.info("Category owner removed successfully: categoryId={}, userId={}", categoryId, userId);
     }
 
     // ==================== 私有方法 ====================
@@ -389,7 +390,7 @@ public class CategoryService {
                 try {
                     ids.add(Long.parseLong(part));
                 } catch (NumberFormatException e) {
-                    log.warn("无效的路径部分: {}", part);
+                    log.warn("Invalid path part: {}", part);
                 }
             }
         }

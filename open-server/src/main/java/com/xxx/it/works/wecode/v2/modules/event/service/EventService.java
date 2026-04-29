@@ -88,7 +88,7 @@ public class EventService {
             try {
                 categoryIdLong = Long.parseLong(categoryId);
             } catch (NumberFormatException e) {
-                throw BusinessException.badRequest("分类ID格式错误", "Invalid category ID format");
+                throw BusinessException.badRequest("Invalid category ID format", "Invalid category ID format");
             }
         }
         
@@ -141,7 +141,7 @@ public class EventService {
         // 查询事件（包含分类名称）
         Event event = eventMapper.selectByIdWithCategoryName(id);
         if (event == null) {
-            throw BusinessException.notFound("事件不存在", "Event not found");
+            throw BusinessException.notFound("Event not found", "Event not found");
         }
         
         // 查询权限
@@ -175,7 +175,7 @@ public class EventService {
         Event existingEvent = eventMapper.selectByTopic(request.getTopic());
         if (existingEvent != null) {
             throw new BusinessException("409", 
-                    "Topic 已存在: " + request.getTopic(), 
+                    "Topic already exists: " + request.getTopic(), 
                     "Topic already exists: " + request.getTopic());
         }
         
@@ -183,7 +183,7 @@ public class EventService {
         Permission existingPermission = permissionMapper.selectByScope(request.getPermission().getScope());
         if (existingPermission != null) {
             throw new BusinessException("409", 
-                    "Scope 已存在: " + request.getPermission().getScope(), 
+                    "Scope already exists: " + request.getPermission().getScope(), 
                     "Scope already exists: " + request.getPermission().getScope());
         }
         
@@ -223,7 +223,7 @@ public class EventService {
             // 无审批节点配置，直接发布
             event.setStatus(STATUS_PUBLISHED); // 已发布
             eventMapper.update(event);
-            log.info("事件注册无需审批（无审批节点配置），直接发布: eventId={}", eventId);
+            log.info("Event registration does not require approval (no approval nodes configured), publish directly: eventId={}", eventId);
         } else {
             // 有审批节点，创建审批单
             try {
@@ -235,9 +235,9 @@ public class EventService {
                     UserContextHolder.getUserName(),
                     UserContextHolder.getUserId()
                 );
-                log.info("创建事件注册审批记录: eventId={}, nodesCount={}", eventId, approvalNodes.size());
+                log.info("Create event registration approval record: eventId={}, nodesCount={}", eventId, approvalNodes.size());
             } catch (Exception e) {
-                log.warn("创建审批记录失败，事件保持待审状态: eventId={}", eventId, e);
+                log.warn("Failed to create approval record, event remains pending status: eventId={}", eventId, e);
             }
         }
         
@@ -246,7 +246,7 @@ public class EventService {
             saveEventProperties(eventId, request.getProperties());
         }
         
-        log.info("事件注册成功: id={}, topic={}, scope={}", 
+        log.info("Event registered successfully: id={}, topic={}, scope={}", 
                 eventId, request.getTopic(), request.getPermission().getScope());
         
         // 返回详情
@@ -271,7 +271,7 @@ public class EventService {
         // 检查事件状态（已发布的事件不能更新核心属性）
         if (event.getStatus() == STATUS_PUBLISHED) {
             throw new BusinessException("403", 
-                    "已发布的事件不能更新", 
+                    "Published event cannot be updated", 
                     "Published event cannot be updated");
         }
         
@@ -282,7 +282,7 @@ public class EventService {
             // 验证分类是否存在
             Category category = categoryMapper.selectById(categoryId);
             if (category == null) {
-                throw BusinessException.notFound("分类不存在", "Category not found");
+            throw BusinessException.notFound("Category not found", "Category not found");
             }
         }
         
@@ -317,7 +317,7 @@ public class EventService {
             }
         }
         
-        log.info("事件更新成功: id={}, nameCn={}", id, request.getNameCn());
+        log.info("Event updated successfully: id={}, nameCn={}", id, request.getNameCn());
         
         return getEventById(id);
     }
@@ -339,7 +339,7 @@ public class EventService {
         int subscriptionCount = eventMapper.countSubscriptionsByEventId(id);
         if (subscriptionCount > 0) {
             throw new BusinessException("409", 
-                    "事件被 " + subscriptionCount + " 个应用订阅，无法删除", 
+                    "Event is subscribed by " + subscriptionCount + " apps, cannot delete", 
                     "Event is subscribed by " + subscriptionCount + " apps, cannot delete");
         }
         
@@ -357,7 +357,7 @@ public class EventService {
         // 删除事件
         eventMapper.deleteById(id);
         
-        log.info("事件删除成功: id={}", id);
+        log.info("Event deleted successfully: id={}", id);
     }
 
     /**
@@ -377,7 +377,7 @@ public class EventService {
         // 检查事件状态（只有待审状态可以撤回）
         if (event.getStatus() != STATUS_PENDING) {
             throw new BusinessException("400", 
-                    "只有待审状态的事件可以撤回", 
+                    "Only pending event can be withdrawn", 
                     "Only pending event can be withdrawn");
         }
         
@@ -388,7 +388,7 @@ public class EventService {
         
         eventMapper.update(event);
         
-        log.info("事件撤回成功: id={}, status=draft", id);
+        log.info("Event withdrawn successfully: id={}, status=draft", id);
         
         return getEventById(id);
     }
@@ -570,7 +570,7 @@ public class EventService {
         try {
             return Long.parseLong(id);
         } catch (NumberFormatException e) {
-            throw BusinessException.badRequest(fieldName + "格式错误", "Invalid " + fieldName + " format");
+            throw BusinessException.badRequest("Invalid " + fieldName + " format", "Invalid " + fieldName + " format");
         }
     }
 }

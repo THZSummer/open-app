@@ -77,7 +77,7 @@ class MessageQueueChannelTest {
             
             // 验证日志包含关键信息
             assertTrue(
-                logMessages.stream().anyMatch(msg -> msg.contains("发送事件到消息队列")),
+                logMessages.stream().anyMatch(msg -> msg.contains("Sending event to message queue")),
                 "应该记录发送事件日志"
             );
         }
@@ -135,7 +135,7 @@ class MessageQueueChannelTest {
             List<String> warnMessages = testAppender.getWarnMessages();
             assertTrue(
                 warnMessages.stream().anyMatch(msg -> 
-                    msg.contains("预留实现") && msg.contains("尚未实现")),
+                    msg.contains("Reserved") && msg.contains("not implemented")),
                 "应输出预留实现的警告日志"
             );
         }
@@ -154,7 +154,7 @@ class MessageQueueChannelTest {
             List<String> logMessages = testAppender.getLogMessages();
             assertTrue(
                 logMessages.stream().anyMatch(msg -> 
-                    msg.contains("发送完成") || msg.contains("duration")),
+                    msg.contains("send completed") || msg.contains("duration")),
                 "应输出完成日志并包含耗时信息"
             );
         }
@@ -220,11 +220,11 @@ class MessageQueueChannelTest {
             // Then
             List<String> logMessages = testAppender.getLogMessages();
             assertTrue(
-                logMessages.stream().anyMatch(msg -> msg.contains("发送事件到消息队列")),
+                logMessages.stream().anyMatch(msg -> msg.contains("Sending event to message queue")),
                 "应记录发送开始日志"
             );
             assertTrue(
-                logMessages.stream().anyMatch(msg -> msg.contains("发送完成") || msg.contains("发送失败")),
+                logMessages.stream().anyMatch(msg -> msg.contains("send completed") || msg.contains("send failed")),
                 "应记录发送完成或失败日志"
             );
         }
@@ -264,7 +264,7 @@ class MessageQueueChannelTest {
             List<String> warnMessages = testAppender.getWarnMessages();
             assertTrue(
                 warnMessages.stream().anyMatch(msg -> 
-                    msg.contains("预留实现") && msg.contains("状态查询")),
+                    msg.contains("Reserved") && msg.contains("status query")),
                 "应输出预留实现的警告日志"
             );
         }
@@ -369,7 +369,7 @@ class MessageQueueChannelTest {
             List<String> warnMessages = testAppender.getWarnMessages();
             assertTrue(
                 warnMessages.stream().anyMatch(msg -> 
-                    msg.contains("预留实现") && msg.contains("消息数量")),
+                    msg.contains("Reserved") && msg.contains("message count")),
                 "应输出预留实现的警告日志"
             );
         }
@@ -488,15 +488,15 @@ class MessageQueueChannelTest {
             // Then
             List<String> warnMessages = testAppender.getWarnMessages();
             assertTrue(
-                warnMessages.stream().anyMatch(msg -> msg.contains("预留实现")),
+                warnMessages.stream().anyMatch(msg -> msg.contains("Reserved")),
                 "sendEvent 应输出预留实现的警告"
             );
             assertTrue(
-                warnMessages.stream().anyMatch(msg -> msg.contains("状态查询")),
+                warnMessages.stream().anyMatch(msg -> msg.contains("status query")),
                 "getQueueStatus 应输出状态查询的警告"
             );
             assertTrue(
-                warnMessages.stream().anyMatch(msg -> msg.contains("消息数量")),
+                warnMessages.stream().anyMatch(msg -> msg.contains("message count")),
                 "getMessageCount 应输出消息数量的警告"
             );
         }

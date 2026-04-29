@@ -16,8 +16,9 @@
 | `openplatform_eflow_t` | 审批 | 审批流程表 | `openplatform_v2_approval_flow_t` + `openplatform_v2_approval_record_t` |
 | `openplatform_eflow_log_t` | 审批 | 审批流程日志表 | `openplatform_v2_approval_log_t` |
 | `openplatform_eflow_log_doc_t` | 审批 | 审批流程日志文档关联表 | 合并到 `openplatform_v2_approval_record_t` |
+| `openplatform_app_permission_t` | 订阅 | 应用权限关联表 | `openplatform_v2_subscription_t` |
 
-**总计**：10 张表（历史版本，重构前）
+**总计**：11 张表（历史版本，重构前）
 
 ---
 
@@ -363,6 +364,40 @@ CREATE TABLE `openplatform_eflow_log_doc_t` (
 
 - ⚠️ **表设计废弃**：v2 不再需要独立的文档关联表
 - ⚠️ **功能合并**：v2 将文档关联信息直接存储在 `openplatform_v2_approval_record_t` 的业务字段中
+
+---
+
+### 应用权限关联表
+
+```sql
+-- ============================================
+-- 应用权限关联表（订阅关系）
+-- ============================================
+CREATE TABLE `openplatform_app_permission_t` (
+    `id` BIGINT(20) PRIMARY KEY,
+    `app_id` BIGINT(20) NOT NULL COMMENT '应用ID',
+    `permission_id` BIGINT(20) NOT NULL COMMENT '权限ID',
+    `tenant_id` VARCHAR(100) COMMENT '租户ID',
+    `permisssion_type` VARCHAR(20) COMMENT '权限类型：0=API权限（对应permission_id为API权限ID）、1=事件（对应permission_id为事件ID）',
+    `status` TINYINT(10) DEFAULT 1 COMMENT '0=待审核、1=已开通、2=驳回、3=关闭',
+    `create_by` VARCHAR(100),
+    `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    `last_update_by` VARCHAR(100),
+    `last_update_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    KEY `idx_app_id` (`app_id`),
+    KEY `idx_permission_id` (`permission_id`),
+    KEY `idx_tenant_id` (`tenant_id`),
+    KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='应用权限关联表';
+```
+
+#### 与 v2 差异
+
+- ⚠️ **拼写错误**：`permisssion_type`（3个s）vs v2 的无此字段
+- ⚠️ **缺少订阅通道信息**：v2 新增 `channel_type`/`channel_address`/`auth_type` 字段
+- ⚠️ **缺少审批信息**：v2 新增 `approved_at`/`approved_by` 字段
+- ⚠️ **表名语义更清晰**：`app_permission` → `subscription`（应用权限→订阅关系）
+- **字段简化**：`permisssion_type` 在 v2 中移除，通过 `permission_t.resource_type` 获取
 
 ---
 

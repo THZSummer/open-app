@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/apis")
+@RequestMapping("/service/open/v2/apis")
 @RequiredArgsConstructor
 @Tag(name = "API 管理", description = "API 资源管理接口")
 public class ApiController {
@@ -58,7 +58,7 @@ public class ApiController {
             @Parameter(description = "每页数量") 
             @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
         
-        log.info("获取 API 列表, categoryId={}, status={}, keyword={}, curPage={}, pageSize={}", 
+        log.info("Get API list, categoryId={}, status={}, keyword={}, curPage={}, pageSize={}", 
                 categoryId, status, keyword, curPage, pageSize);
         
         ApiListRequest request = new ApiListRequest();
@@ -86,7 +86,7 @@ public class ApiController {
             @Parameter(description = "API ID") 
             @PathVariable String id) {
         
-        log.info("获取 API 详情, id={}", id);
+        log.info("Get API detail, id={}", id);
         
         ApiDetailResponse response = apiService.getApiDetail(id);
         return ApiResponse.success(response);
@@ -106,7 +106,7 @@ public class ApiController {
     public ApiResponse<ApiDetailResponse> createApi(
             @Valid @RequestBody ApiCreateRequest request) {
         
-        log.info("注册 API, nameCn={}, path={}", request.getNameCn(), request.getPath());
+        log.info("Register API, nameCn={}, path={}", request.getNameCn(), request.getPath());
         
         ApiDetailResponse response = apiService.createApi(request);
         return ApiResponse.success(response);
@@ -129,7 +129,7 @@ public class ApiController {
             @PathVariable String id,
             @Valid @RequestBody ApiUpdateRequest request) {
         
-        log.info("更新 API, id={}, nameCn={}", id, request.getNameCn());
+        log.info("Update API, id={}, nameCn={}", id, request.getNameCn());
         
         ApiDetailResponse response = apiService.updateApi(id, request);
         return ApiResponse.success(response);
@@ -150,7 +150,7 @@ public class ApiController {
             @Parameter(description = "API ID") 
             @PathVariable String id) {
         
-        log.info("删除 API, id={}", id);
+        log.info("Delete API, id={}", id);
         
         apiService.deleteApi(id);
         return ApiResponse.success();
@@ -171,7 +171,7 @@ public class ApiController {
             @Parameter(description = "API ID") 
             @PathVariable String id) {
         
-        log.info("撤回 API, id={}", id);
+        log.info("Withdraw API, id={}", id);
         
         ApiDetailResponse response = apiService.withdrawApi(id);
         return ApiResponse.success(response);

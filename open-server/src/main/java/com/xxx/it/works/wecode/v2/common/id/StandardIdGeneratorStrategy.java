@@ -25,8 +25,8 @@ public class StandardIdGeneratorStrategy implements IdGeneratorStrategy {
         // 3. 使用数据库序列
         // 4. 调用外部 ID 生成服务
         
-        log.debug("标准环境 ID 生成策略暂未实现");
-        throw new UnsupportedOperationException("标准环境 ID 生成策略暂未实现，请先配置 ID 生成服务");
+        log.debug("Standard environment ID generator strategy not implemented yet");
+        throw new UnsupportedOperationException("Standard environment ID generator strategy not implemented, please configure ID generator service first");
     }
 
     @Override

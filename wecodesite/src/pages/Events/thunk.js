@@ -15,7 +15,7 @@ export const fetchEvents = async ({ keyword, needReview, categoryId, curPage, pa
   const queryParams = {};
   if (keyword) queryParams.keyword = keyword;
   if (needReview !== undefined && needReview !== 'all') {
-    queryParams.needApproval = needReview === 'true' ? 1 : 0;
+    queryParams.need_approval = needReview === 'true' ? 1 : 0;
   }
   if (curPage) queryParams.curPage = curPage;
   if (pageSize) queryParams.pageSize = pageSize;

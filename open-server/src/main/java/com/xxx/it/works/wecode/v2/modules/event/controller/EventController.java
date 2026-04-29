@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/events")
+@RequestMapping("/service/open/v2/events")
 @RequiredArgsConstructor
 @Tag(name = "事件管理", description = "事件资源管理接口")
 public class EventController {
@@ -58,7 +58,7 @@ public class EventController {
             @Parameter(description = "每页大小，默认 20") 
             @RequestParam(required = false) Integer pageSize) {
         
-        log.info("获取事件列表: categoryId={}, status={}, keyword={}, curPage={}, pageSize={}", 
+        log.info("Get event list: categoryId={}, status={}, keyword={}, curPage={}, pageSize={}", 
                 categoryId, status, keyword, curPage, pageSize);
         
         return eventService.getEventList(categoryId, status, keyword, curPage, pageSize);
@@ -79,7 +79,7 @@ public class EventController {
             @Parameter(description = "事件ID") 
             @PathVariable String id) {
         
-        log.info("获取事件详情: id={}", id);
+        log.info("Get event detail: id={}", id);
         
         EventResponse response = eventService.getEventById(parseId(id));
         return ApiResponse.success(response);
@@ -99,7 +99,7 @@ public class EventController {
     public ApiResponse<EventResponse> createEvent(
             @Valid @RequestBody EventCreateRequest request) {
         
-        log.info("注册事件: nameCn={}, topic={}, scope={}", 
+        log.info("Register event: nameCn={}, topic={}, scope={}", 
                 request.getNameCn(), request.getTopic(), request.getPermission().getScope());
         
         EventResponse response = eventService.createEvent(request);
@@ -123,7 +123,7 @@ public class EventController {
             @PathVariable String id,
             @Valid @RequestBody EventUpdateRequest request) {
         
-        log.info("更新事件: id={}, nameCn={}", id, request.getNameCn());
+        log.info("Update event: id={}, nameCn={}", id, request.getNameCn());
         
         EventResponse response = eventService.updateEvent(parseId(id), request);
         return ApiResponse.success(response);
@@ -144,7 +144,7 @@ public class EventController {
             @Parameter(description = "事件ID") 
             @PathVariable String id) {
         
-        log.info("删除事件: id={}", id);
+        log.info("Delete event: id={}", id);
         
         eventService.deleteEvent(parseId(id));
         return ApiResponse.success();
@@ -165,13 +165,13 @@ public class EventController {
             @Parameter(description = "事件ID") 
             @PathVariable String id) {
         
-        log.info("撤回事件: id={}", id);
+        log.info("Withdraw event: id={}", id);
         
         EventResponse response = eventService.withdrawEvent(parseId(id));
         return ApiResponse.success(response);
     }
 
-    // ==================== 私有方法 ====================
+    // ==================== Private methods ====================
 
     /**
      * 解析 ID
@@ -180,7 +180,7 @@ public class EventController {
         try {
             return Long.parseLong(id);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("无效的ID格式: " + id);
+            throw new IllegalArgumentException("Invalid ID format: " + id);
         }
     }
 }

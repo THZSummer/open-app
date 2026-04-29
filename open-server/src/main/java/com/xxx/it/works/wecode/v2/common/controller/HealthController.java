@@ -23,7 +23,7 @@ import java.util.Map;
  */
 @Tag(name = "健康检查", description = "服务健康检查接口")
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/service/open/v2")
 public class HealthController {
 
     @Operation(summary = "健康检查", description = "返回服务健康状态")

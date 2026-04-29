@@ -57,13 +57,13 @@ public class WebSocketChannel {
         if (oldSession != null && oldSession.isOpen()) {
             try {
                 oldSession.close();
-                log.warn("WebSocket 连接已存在，旧连接已关闭: connectionId={}", connectionId);
+                log.warn("WebSocket connection already exists, old connection closed: connectionId={}", connectionId);
             } catch (IOException e) {
-                log.error("关闭旧 WebSocket 连接失败: connectionId={}", connectionId, e);
+                log.error("Failed to close old WebSocket connection: connectionId={}", connectionId, e);
             }
         }
         
-        log.info("WebSocket 连接已添加: connectionId={}, 当前连接数={}", 
+        log.info("WebSocket connection added: connectionId={}, current connections={}", 
                 connectionId, connections.size());
     }
 
@@ -80,13 +80,13 @@ public class WebSocketChannel {
                 if (session.isOpen()) {
                     session.close();
                 }
-                log.info("WebSocket 连接已移除: connectionId={}, 当前连接数={}", 
+                log.info("WebSocket connection removed: connectionId={}, current connections={}", 
                         connectionId, connections.size());
             } catch (IOException e) {
-                log.error("关闭 WebSocket 连接失败: connectionId={}", connectionId, e);
+                log.error("Failed to close WebSocket connection: connectionId={}", connectionId, e);
             }
         } else {
-            log.warn("WebSocket 连接不存在，无法移除: connectionId={}", connectionId);
+            log.warn("WebSocket connection not found, cannot remove: connectionId={}", connectionId);
         }
     }
 
@@ -148,7 +148,7 @@ public class WebSocketChannel {
         message.put("type", "event");
         message.put("data", payload);
         
-        log.info("广播事件到所有连接: 连接数={}", connections.size());
+        log.info("Broadcasting event to all connections: connections={}", connections.size());
         
         int successCount = 0;
         int failCount = 0;
@@ -165,7 +165,7 @@ public class WebSocketChannel {
             }
         }
         
-        log.info("广播事件完成: 成功={}, 失败={}", successCount, failCount);
+        log.info("Broadcast event completed: success={}, failed={}", successCount, failCount);
     }
 
     /**
@@ -180,7 +180,7 @@ public class WebSocketChannel {
         message.put("type", "callback");
         message.put("data", payload);
         
-        log.info("广播回调到所有连接: 连接数={}", connections.size());
+        log.info("Broadcasting callback to all connections: connections={}", connections.size());
         
         int successCount = 0;
         int failCount = 0;
@@ -197,7 +197,7 @@ public class WebSocketChannel {
             }
         }
         
-        log.info("广播回调完成: 成功={}, 失败={}", successCount, failCount);
+        log.info("Broadcast callback completed: success={}, failed={}", successCount, failCount);
     }
 
     /**
@@ -240,7 +240,7 @@ public class WebSocketChannel {
         WebSocketSession session = connections.get(connectionId);
         
         if (session == null) {
-            log.warn("WebSocket 连接不存在，无法发送消息: connectionId={}", connectionId);
+            log.warn("WebSocket connection not found, cannot send message: connectionId={}", connectionId);
             return false;
         }
         
@@ -256,7 +256,7 @@ public class WebSocketChannel {
      */
     private boolean sendMessageInternal(WebSocketSession session, Map<String, Object> message) {
         if (session == null || !session.isOpen()) {
-            log.warn("WebSocket 会话不可用: sessionId={}", session != null ? session.getId() : "null");
+            log.warn("WebSocket session unavailable: sessionId={}", session != null ? session.getId() : "null");
             return false;
         }
         
@@ -264,11 +264,11 @@ public class WebSocketChannel {
             String json = objectMapper.writeValueAsString(message);
             session.sendMessage(new TextMessage(json));
             
-            log.debug("WebSocket 消息发送成功: sessionId={}", session.getId());
+            log.debug("WebSocket message sent successfully: sessionId={}", session.getId());
             return true;
             
         } catch (IOException e) {
-            log.error("WebSocket 消息发送失败: sessionId={}", session.getId(), e);
+            log.error("Failed to send WebSocket message: sessionId={}", session.getId(), e);
             return false;
         }
     }

@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -39,9 +40,9 @@ public class IdGeneratorConfig {
                 .filter(s -> s.supports(activeProfile))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
-                        String.format("未找到支持当前环境 [%s] 的 ID 生成策略", activeProfile)));
+                        String.format(Locale.ROOT, "No ID generator strategy found for current environment [%s]", activeProfile)));
         
-        log.info("ID 生成策略已加载: {}, 激活环境: {}", 
+        log.info("ID generator strategy loaded: {}, active profile: {}", 
                 strategy.getClass().getSimpleName(), activeProfile);
         
         return strategy;

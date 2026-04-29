@@ -113,7 +113,13 @@ function CallbackDrawer({ open, onClose, onConfirm, selectedCallbacks = [], subs
     await loadData({ needReview: value, curPage: 1 });
   };
 
-  const columns = getCallbackDrawerColumns();
+  const handleOpenDoc = (docUrl) => {
+    if (docUrl) {
+      window.open(docUrl, '_blank');
+    }
+  };
+
+  const columns = getCallbackDrawerColumns({ handleOpenDoc });
 
   const rowSelection = {
     selectedRowKeys,
