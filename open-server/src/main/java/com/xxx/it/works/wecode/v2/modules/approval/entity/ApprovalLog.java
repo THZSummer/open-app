@@ -7,10 +7,10 @@ import java.util.Date;
 
 /**
  * 审批操作日志实体
- * 
+ *
  * <p>对应表 openplatform_v2_approval_log_t</p>
  * <p>记录审批过程中的操作历史</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -36,7 +36,7 @@ public class ApprovalLog implements Serializable {
 
     /**
      * 审批级别：global=全局, scene=场景, resource=资源
-     * 
+     *
      * v2.8.0新增字段，用于标记审批操作属于哪一级审批
      */
     private String level;

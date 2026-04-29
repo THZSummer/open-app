@@ -7,9 +7,9 @@ import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 
 /**
  * 能力开放平台 - 管理服务
- * 
+ *
  * <p>职责：分类管理、API/事件/回调管理、权限管理、审批管理</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

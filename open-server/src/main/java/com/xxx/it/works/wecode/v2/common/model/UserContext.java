@@ -10,9 +10,9 @@ import java.io.Serializable;
 
 /**
  * 用户上下文模型
- * 
+ *
  * <p>承载当前请求用户信息的统一 Bean，支持多种认证策略</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -41,7 +41,7 @@ public class UserContext implements Serializable {
 
     /**
      * 创建默认系统用户上下文
-     * 
+     *
      * @return 系统用户上下文
      */
     public static UserContext empty() {
@@ -54,7 +54,7 @@ public class UserContext implements Serializable {
 
     /**
      * 判断用户是否已认证
-     * 
+     *
      * @return true-已认证, false-未认证（系统用户）
      */
     public boolean isAuthenticated() {

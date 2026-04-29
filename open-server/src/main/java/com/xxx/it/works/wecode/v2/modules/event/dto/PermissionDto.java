@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 /**
  * 权限 DTO（用于创建请求）
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -50,7 +50,7 @@ public class PermissionDto implements Serializable {
 
     /**
      * 是否需要审批：0=不需要, 1=需要
-     * 
+     *
      * v2.8.0新增字段，用于标识权限申请是否需要审批流程
      */
     @Schema(description = "是否需要审批：0=不需要, 1=需要")
@@ -58,9 +58,9 @@ public class PermissionDto implements Serializable {
 
     /**
      * 资源级审批节点配置（JSON格式字符串）
-     * 
+     *
      * v2.8.0新增字段，直接存储审批节点配置
-     * 
+     *
      * 格式示例：
      * [
      *   {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},

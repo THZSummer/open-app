@@ -54,6 +54,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("授权成功")
         void testCheckPermission_Authorized() {
+
             // 准备数据
             String appId = "10";
             String scope = "api:im:send-message";
@@ -91,6 +92,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("权限不存在")
         void testCheckPermission_PermissionNotFound() {
+
             // 准备数据
             String appId = "10";
             String scope = "api:im:send-message";
@@ -114,6 +116,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("未订阅")
         void testCheckPermission_NotSubscribed() {
+
             // 准备数据
             String appId = "10";
             String scope = "api:im:send-message";
@@ -144,6 +147,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("订阅待审批")
         void testCheckPermission_PendingApproval() {
+
             // 准备数据
             String appId = "10";
             String scope = "api:im:send-message";
@@ -187,6 +191,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("验证成功")
         void testVerifyApplication_Success() {
+
             // 准备数据
             String appId = "10";
             Integer authType = 5;
@@ -208,6 +213,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("验证失败")
         void testVerifyApplication_Failed() {
+
             // 准备数据
             String appId = "10";
             Integer authType = 5;
@@ -236,6 +242,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("查询成功 - WebHook通道")
         void testGetCallbackConfig_Success_WebHook() {
+
             // 准备数据
             String ak = "AK123456789";
             String scope = "callback:approval:completed";
@@ -273,6 +280,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("查询成功 - SSE通道")
         void testGetCallbackConfig_Success_SSE() {
+
             // 准备数据
             String ak = "AK987654321";
             String scope = "callback:message:received";
@@ -310,6 +318,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("查询成功 - WebSocket通道")
         void testGetCallbackConfig_Success_WebSocket() {
+
             // 准备数据
             String ak = "AK111222333";
             String scope = "callback:notification:push";
@@ -344,6 +353,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("无效的 AK")
         void testGetCallbackConfig_InvalidAk() {
+
             // 准备数据
             String ak = "INVALID_AK";
             String scope = "callback:approval:completed";
@@ -364,6 +374,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("未找到订阅配置")
         void testGetCallbackConfig_NotSubscribed() {
+
             // 准备数据
             String ak = "AK123456789";
             String scope = "callback:approval:completed";
@@ -387,6 +398,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("AK为空")
         void testGetCallbackConfig_EmptyAk() {
+
             // 准备数据
             String ak = "";
             String scope = "callback:approval:completed";
@@ -407,6 +419,7 @@ class ApiGatewayServiceTest {
         @Test
         @DisplayName("AK为null")
         void testGetCallbackConfig_NullAk() {
+
             // 准备数据
             String ak = null;
             String scope = "callback:approval:completed";

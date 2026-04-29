@@ -7,10 +7,10 @@ import java.util.Date;
 
 /**
  * 订阅关系实体
- * 
+ *
  * <p>对应表 openplatform_v2_subscription_t</p>
  * <p>记录应用对权限资源的订阅关系</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

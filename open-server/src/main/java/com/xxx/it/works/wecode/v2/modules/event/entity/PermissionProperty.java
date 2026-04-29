@@ -7,9 +7,9 @@ import java.util.Date;
 
 /**
  * 权限属性实体
- * 
+ *
  * <p>对应表 openplatform_v2_permission_p_t</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

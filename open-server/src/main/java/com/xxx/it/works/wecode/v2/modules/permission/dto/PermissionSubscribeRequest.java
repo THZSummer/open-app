@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 权限申请请求
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

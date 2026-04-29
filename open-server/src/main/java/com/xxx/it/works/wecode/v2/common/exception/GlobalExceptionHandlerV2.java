@@ -15,16 +15,16 @@ import java.util.stream.Collectors;
 
 /**
  * V2 模块全局异常处理器
- * 
+ *
  * <p>限定处理范围：仅处理 com.xxx.it.works.wecode.v2 包下的异常</p>
- * 
+ *
  * <p>设计说明：</p>
  * <ul>
  *   <li>open-server 作为独立模块集成到现有 Spring Boot 工程</li>
  *   <li>通过 basePackages 限定异常处理范围，避免影响其他模块</li>
  *   <li>统一返回标准错误格式：{code, messageZh, messageEn, data: null, page: null}</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 2.0.0
  */

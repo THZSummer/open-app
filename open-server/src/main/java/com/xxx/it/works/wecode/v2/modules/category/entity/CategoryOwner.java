@@ -7,9 +7,9 @@ import java.util.Date;
 
 /**
  * 分类责任人实体
- * 
+ *
  * <p>对应表 openplatform_v2_category_owner_t</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

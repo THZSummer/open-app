@@ -109,6 +109,7 @@ public class EventGatewayService {
      * @return 权限详情
      */
     private Map<String, Object> verifyEventResource(String topic) {
+
         // 根据 Topic 查询对应的事件权限
         // Scope 格式：event:{module}:{identifier}
         // Topic 格式：{module}.{identifier}
@@ -157,6 +158,7 @@ public class EventGatewayService {
         try {
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
+
                 // 类型安全检查
                 if (cached instanceof List) {
                     try {
@@ -172,6 +174,7 @@ public class EventGatewayService {
             }
         } catch (Exception e) {
             log.error("Failed to get subscriber list from Redis, fallback to API query: topic={}", topic, e);
+
             // 继续执行API查询
         }
         
@@ -212,6 +215,7 @@ public class EventGatewayService {
         
         for (String appId : appIds) {
             try {
+
                 // 查询订阅配置
                 Map<String, Object> config = apiServerClient.getSubscriptionConfig(appId, scope);
                 
@@ -230,12 +234,14 @@ public class EventGatewayService {
                 if (channelType != null && channelAddress != null && !channelAddress.isEmpty()) {
                     switch (channelType) {
                         case 0 -> {
+
                             // 企业内部消息队列
                             log.info("Pushing to internal message queue: appId={}, topic={}, queue={}",
                                     appId, topic, channelAddress);
                             messageQueueChannel.sendEvent(channelAddress, payload);
                         }
                         case 1 -> {
+
                             // WebHook
                             log.info("Pushing to WebHook: appId={}, topic={}, url={}, authType={}", 
                                     appId, topic, channelAddress, authType);

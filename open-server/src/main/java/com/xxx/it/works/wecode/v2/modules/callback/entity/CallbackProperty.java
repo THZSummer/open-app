@@ -7,10 +7,10 @@ import java.util.Date;
 
 /**
  * 回调属性实体
- * 
+ *
  * <p>对应表 openplatform_v2_callback_p_t</p>
  * <p>使用 KV 模式存储扩展属性</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

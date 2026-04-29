@@ -10,9 +10,9 @@ import java.io.Serializable;
 
 /**
  * 统一 API 响应格式
- * 
+ *
  * <p>所有接口返回统一格式：{code, messageZh, messageEn, data, page}</p>
- * 
+ *
  * @param <T> 数据类型
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -59,7 +59,7 @@ public class ApiResponse<T> implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PageResponse implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**

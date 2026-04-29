@@ -9,9 +9,9 @@ import java.io.Serializable;
 
 /**
  * 回调属性 DTO
- * 
+ *
  * <p>用于回调响应中展示属性信息</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

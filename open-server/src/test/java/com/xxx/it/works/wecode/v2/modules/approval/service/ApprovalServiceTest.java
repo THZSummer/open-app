@@ -117,7 +117,7 @@ class ApprovalServiceTest {
         void getFlowDetail_notFound() {
             when(flowMapper.selectById(999L)).thenReturn(null);
 
-            BusinessException exception = assertThrows(BusinessException.class, 
+            BusinessException exception = assertThrows(BusinessException.class,
                 () -> approvalService.getFlowDetail(999L));
 
             assertEquals("404", exception.getCode());

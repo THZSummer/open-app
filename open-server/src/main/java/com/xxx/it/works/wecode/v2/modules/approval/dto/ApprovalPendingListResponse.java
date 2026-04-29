@@ -7,7 +7,7 @@ import java.util.Date;
 
 /**
  * 待审批列表响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

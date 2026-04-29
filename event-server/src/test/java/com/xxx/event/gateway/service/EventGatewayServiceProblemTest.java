@@ -71,6 +71,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("Redis连接失败 - 应该降级到数据库查询而不是抛异常")
         void test_RedisConnectionFailure_ShouldDegradeGracefully() {
+
             // Given: Redis连接失败
             String scope = "event:im:message-received";
             when(valueOperations.get(anyString()))
@@ -94,6 +95,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("Redis超时 - 应该降级处理")
         void test_RedisTimeout_ShouldDegradeGracefully() {
+
             // Given: Redis超时
             String scope = "event:im:message-received";
             when(valueOperations.get(anyString()))
@@ -118,6 +120,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("缓存中存储了错误类型 - 应该安全处理而不是ClassCastException")
         void test_CacheTypeMismatch_ShouldHandleSafely() {
+
             // Given: 缓存中存储了字符串而不是List
             String scope = "event:im:message-received";
             when(valueOperations.get(anyString())).thenReturn("invalid-cache-data");
@@ -136,6 +139,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("配置channelType为字符串 - 应该安全处理")
         void test_ConfigChannelTypeAsString_ShouldHandleSafely() throws Exception {
+
             // Given: channelType是字符串"1"而不是Integer
             String scope = "event:im:message-received";
             String appId = "app-001";
@@ -162,6 +166,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("配置channelType为Long - 应该安全处理")
         void test_ConfigChannelTypeAsLong_ShouldHandleSafely() throws Exception {
+
             // Given: channelType是Long而不是Integer
             String scope = "event:im:message-received";
             String appId = "app-001";
@@ -193,6 +198,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("getSubscribedApps返回null - 应该返回空列表而不是NPE")
         void test_ApiReturnsNull_ShouldNotThrowNPE() {
+
             // Given: API返回null
             String scope = "event:im:message-received";
             Map<String, Object> permission = new HashMap<>();
@@ -210,6 +216,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("配置authType缺失 - 应该使用默认值")
         void test_ConfigMissingAuthType_ShouldUseDefault() throws Exception {
+
             // Given: 配置中没有authType
             String scope = "event:im:message-received";
             String appId = "app-001";
@@ -224,6 +231,7 @@ class EventGatewayServiceProblemTest {
             Map<String, Object> config = new HashMap<>();
             config.put("channelType", 1);
             config.put("channelAddress", "http://example.com/webhook");
+
             // 没有 authType
             when(apiServerClient.getSubscriptionConfig(appId, scope)).thenReturn(config);
 
@@ -244,6 +252,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("无效的认证类型code - 应该优雅处理")
         void test_InvalidAuthTypeCode_ShouldHandleGracefully() throws Exception {
+
             // Given: 无效的authType code
             String scope = "event:im:message-received";
             String appId = "app-001";
@@ -270,6 +279,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("空的Topic - 应该安全处理")
         void test_EmptyTopic_ShouldHandleSafely() {
+
             // Given
             EventPublishRequest emptyRequest = EventPublishRequest.builder()
                     .topic("")
@@ -285,6 +295,7 @@ class EventGatewayServiceProblemTest {
         @Test
         @DisplayName("Topic只有空格 - 应该安全处理")
         void test_BlankTopic_ShouldHandleSafely() {
+
             // Given
             EventPublishRequest blankRequest = EventPublishRequest.builder()
                     .topic("   ")

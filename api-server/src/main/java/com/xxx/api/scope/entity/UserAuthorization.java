@@ -78,6 +78,7 @@ public class UserAuthorization implements Serializable {
             return List.of();
         }
         try {
+
             // 简单的 JSON 数组解析（假设格式为 ["scope1","scope2"]）
             String json = scopes.trim();
             if (json.startsWith("[") && json.endsWith("]")) {
@@ -91,6 +92,7 @@ public class UserAuthorization implements Serializable {
                         .toList();
             }
         } catch (Exception e) {
+
             // 解析失败返回空列表
         }
         return List.of();

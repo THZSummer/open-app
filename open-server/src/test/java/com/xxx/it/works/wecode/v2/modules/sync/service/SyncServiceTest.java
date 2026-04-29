@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * SyncService 测试类
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -59,6 +59,7 @@ class SyncServiceTest {
 
     @BeforeEach
     void setUp() {
+
         // 准备旧订阅关系测试数据
         oldSubscription = new OldSubscription();
         oldSubscription.setId(1L);
@@ -138,6 +139,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("迁移API订阅关系成功")
         void testMigrate_ApiSubscription_Success() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -175,6 +177,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("迁移事件订阅关系成功（带通道配置）")
         void testMigrate_EventSubscription_WithChannelConfig() {
+
             // Given
             oldSubscription.setPermisssionType("1"); // 事件
             oldPermission.setPermisssionType("event");
@@ -209,6 +212,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("跳过已存在的订阅关系")
         void testMigrate_SkipExisting() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -233,6 +237,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("找不到对应的新API时记录失败")
         void testMigrate_ApiNotFound_Failed() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -256,6 +261,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("全量同步（不传ids）")
         void testMigrate_FullSync() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(null); // 全量
@@ -294,6 +300,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("同步审批记录成功")
         void testMigrate_WithApprovalRecords() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -329,6 +336,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("回退数据基本流程")
         void testRollback_Basic() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -347,12 +355,14 @@ class SyncServiceTest {
 
             // Then
             assertNotNull(result);
+
             // 注意：rollback 方法需要完善，当前可能返回 failed
         }
 
         @Test
         @DisplayName("跳过已存在的旧订阅关系")
         void testRollback_SkipExisting() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -382,6 +392,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("构造 combinedNodes JSON")
         void testConstructCombinedNodes() {
+
             // When
             String result = syncService.constructCombinedNodes("auditor001");
 
@@ -394,6 +405,7 @@ class SyncServiceTest {
         @Test
         @DisplayName("构造 combinedNodes - 空用户")
         void testConstructCombinedNodes_NullUser() {
+
             // When
             String result = syncService.constructCombinedNodes(null);
 

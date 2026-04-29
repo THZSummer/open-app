@@ -6,7 +6,7 @@ import java.io.Serializable;
 
 /**
  * 待审批列表查询请求
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

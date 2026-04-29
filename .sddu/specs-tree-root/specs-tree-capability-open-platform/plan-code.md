@@ -37,6 +37,38 @@ public List<Permission> getSubscribedPermissions(String appId) {
 }
 ```
 
+**格式要求**：注释前面如果有代码，必须有空行分隔。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 代码与注释之间有空行 | 代码与注释之间无空行 |
+
+```java
+// ✅ 正确示例
+public void process() {
+    int status = getStatus();
+    
+    // 处理状态逻辑
+    if (status == 1) {
+        doSomething();
+    }
+}
+
+// ❌ 错误示例
+public void process() {
+    int status = getStatus();
+    // 处理状态逻辑
+    if (status == 1) {
+        doSomething();
+    }
+}
+```
+
+**原因**：
+- 提高代码可读性
+- 清晰区分代码块和注释
+- 符合主流编码规范（Google、阿里巴巴等）
+
 ---
 
 ## 2. 日志规范

@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 # TASK-005 验证脚本：API 管理模块
 # 使用方法：bash test-api-module.sh
 

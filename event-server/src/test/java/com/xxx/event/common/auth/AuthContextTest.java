@@ -81,6 +81,7 @@ class AuthContextTest {
 
     @Test
     void testRequiresAuth() {
+
         // 免认证
         assertFalse(AuthContext.noAuth("app-001").requiresAuth());
         
@@ -90,6 +91,7 @@ class AuthContextTest {
 
     @Test
     void testIsValid() {
+
         // 免认证模式有效
         assertTrue(AuthContext.noAuth("app-001").isValid());
         
@@ -130,6 +132,7 @@ class AuthContextTest {
 
     @Test
     void testDeprecatedMethods() {
+
         // 测试向后兼容的方法
         AuthContext context1 = AuthContext.noAuth();
         assertEquals(AuthTypeEnum.NONE, context1.getAuthType());

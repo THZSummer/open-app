@@ -57,7 +57,7 @@ public class CallbackGatewayController {
     @Operation(summary = "回调触发", description = "触发回调并调用已订阅的消费方")
     @PostMapping("/invoke")
     public ApiResponse<CallbackInvokeResponse> invokeCallback(@Valid @RequestBody CallbackInvokeRequest request) {
-        log.info("接收到回调触发请求: scope={}", request.getCallbackScope());
+        log.info("Received callback trigger request: scope={}", request.getCallbackScope());
         
         CallbackInvokeResponse response = callbackGatewayService.invokeCallback(request);
         
@@ -72,7 +72,7 @@ public class CallbackGatewayController {
     @Operation(summary = "清除缓存", description = "清除指定 Scope 的订阅列表缓存")
     @DeleteMapping("/cache/{scope}")
     public ApiResponse<Void> clearCache(@PathVariable String scope) {
-        log.info("清除订阅列表缓存: scope={}", scope);
+        log.info("Clearing subscription list cache: scope={}", scope);
         
         callbackGatewayService.clearCache(scope);
         

@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x  # 只打印命令，不自动退出
+set -ex
 
 # ==================== 创建分类 ====================
 # 接口：POST /service/open/v2/categories

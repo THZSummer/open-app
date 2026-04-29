@@ -56,7 +56,7 @@ public class EventGatewayController {
     @Operation(summary = "事件发布", description = "发布事件并分发至订阅的消费方")
     @PostMapping("/publish")
     public ApiResponse<EventPublishResponse> publishEvent(@Valid @RequestBody EventPublishRequest request) {
-        log.info("接收到事件发布请求: topic={}", request.getTopic());
+        log.info("Received event publish request: topic={}", request.getTopic());
         
         EventPublishResponse response = eventGatewayService.publishEvent(request);
         
@@ -71,7 +71,7 @@ public class EventGatewayController {
     @Operation(summary = "清除缓存", description = "清除指定 Topic 的订阅列表缓存")
     @DeleteMapping("/cache/{topic}")
     public ApiResponse<Void> clearCache(@PathVariable String topic) {
-        log.info("清除订阅列表缓存: topic={}", topic);
+        log.info("Clearing subscription list cache: topic={}", topic);
         
         eventGatewayService.clearCache(topic);
         

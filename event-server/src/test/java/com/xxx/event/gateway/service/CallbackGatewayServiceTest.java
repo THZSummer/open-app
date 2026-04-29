@@ -87,6 +87,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("正常流程 - 成功分发回调")
         void testInvokeCallback_Success() {
+
             // Given
             String callbackScope = "callback:approval:completed";
             Map<String, Object> payload = Map.of(
@@ -156,6 +157,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("资源不存在 - 返回错误响应")
         void testInvokeCallback_ResourceNotFound() {
+
             // Given
             String callbackScope = "callback:not:exist";
             Map<String, Object> payload = Map.of("key", "value");
@@ -187,6 +189,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("无订阅者 - 返回成功但订阅者为0")
         void testInvokeCallback_NoSubscribers() {
+
             // Given
             String callbackScope = "callback:empty:scope";
             Map<String, Object> payload = Map.of("key", "value");
@@ -229,6 +232,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("缓存命中 - 直接返回缓存数据")
         void testGetSubscribedApps_CacheHit() throws Exception {
+
             // Given
             String callbackScope = "callback:test:scope";
             List<String> cachedApps = Arrays.asList("app-001", "app-002", "app-003");
@@ -252,6 +256,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("缓存未命中 - 从API Server获取并缓存")
         void testGetSubscribedApps_CacheMiss() throws Exception {
+
             // Given
             String callbackScope = "callback:new:scope";
             List<String> apps = Arrays.asList("app-004", "app-005");
@@ -284,6 +289,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("缓存未命中且订阅者为空 - 不写入缓存")
         void testGetSubscribedApps_EmptyListNotCached() throws Exception {
+
             // Given
             String callbackScope = "callback:empty:apps";
 
@@ -313,6 +319,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("WebHook分发 - channelType=0")
         void testDistributeCallback_WebHook() throws Exception {
+
             // Given
             String callbackScope = "callback:webhook:test";
             Map<String, Object> payload = Map.of("key", "value");
@@ -349,6 +356,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("SSE分发 - channelType=1")
         void testDistributeCallback_Sse() throws Exception {
+
             // Given
             String callbackScope = "callback:sse:test";
             Map<String, Object> payload = Map.of("data", "test-data");
@@ -387,6 +395,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("WebSocket分发 - channelType=2")
         void testDistributeCallback_WebSocket() throws Exception {
+
             // Given
             String callbackScope = "callback:websocket:test";
             Map<String, Object> payload = Map.of("message", "hello");
@@ -425,6 +434,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("配置为空 - 跳过分发")
         void testDistributeCallback_EmptyConfig() throws Exception {
+
             // Given
             String callbackScope = "callback:empty:config";
             Map<String, Object> payload = Map.of("key", "value");
@@ -448,6 +458,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("异常处理 - 单个应用异常不影响其他应用")
         void testDistributeCallback_ExceptionHandling() throws Exception {
+
             // Given
             String callbackScope = "callback:exception:test";
             Map<String, Object> payload = Map.of("key", "value");
@@ -491,6 +502,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("未知通道类型 - 记录警告日志")
         void testDistributeCallback_UnknownChannelType() throws Exception {
+
             // Given
             String callbackScope = "callback:unknown:channel";
             Map<String, Object> payload = Map.of("key", "value");
@@ -518,6 +530,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("channelType为null - 跳过分发")
         void testDistributeCallback_NullChannelType() throws Exception {
+
             // Given
             String callbackScope = "callback:null:channel";
             Map<String, Object> payload = Map.of("key", "value");
@@ -545,6 +558,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("channelAddress为null - 跳过分发")
         void testDistributeCallback_NullChannelAddress() throws Exception {
+
             // Given
             String callbackScope = "callback:null:address";
             Map<String, Object> payload = Map.of("key", "value");
@@ -570,6 +584,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("多种认证类型 - APIG认证")
         void testDistributeCallback_ApigAuth() throws Exception {
+
             // Given
             String callbackScope = "callback:apig:test";
             Map<String, Object> payload = Map.of("key", "value");
@@ -602,6 +617,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("多种认证类型 - AKSK认证")
         void testDistributeCallback_AkskAuth() throws Exception {
+
             // Given
             String callbackScope = "callback:aksk:test";
             Map<String, Object> payload = Map.of("key", "value");
@@ -634,6 +650,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("authType为null - 使用null作为认证类型")
         void testDistributeCallback_NullAuthType() throws Exception {
+
             // Given
             String callbackScope = "callback:null:auth";
             Map<String, Object> payload = Map.of("key", "value");
@@ -671,6 +688,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("构建回调消息体 - 包含scope、timestamp、data")
         void testBuildCallbackPayload() throws Exception {
+
             // Given
             String callbackScope = "callback:test:payload";
             Map<String, Object> payload = Map.of(
@@ -698,6 +716,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("构建回调消息体 - 空payload")
         void testBuildCallbackPayload_EmptyPayload() throws Exception {
+
             // Given
             String callbackScope = "callback:empty:payload";
             Map<String, Object> payload = Collections.emptyMap();
@@ -727,6 +746,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("清除指定scope的缓存")
         void testClearCache() {
+
             // Given
             String callbackScope = "callback:clear:test";
 
@@ -740,6 +760,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("清除缓存 - 不同scope")
         void testClearCache_DifferentScopes() {
+
             // Given
             String scope1 = "callback:scope:one";
             String scope2 = "callback:scope:two";
@@ -764,6 +785,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("验证回调资源 - 资源存在")
         void testVerifyCallbackResource_Exists() throws Exception {
+
             // Given
             String callbackScope = "callback:exists:test";
             Map<String, Object> expectedPermission = Map.of(
@@ -790,6 +812,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("验证回调资源 - 资源不存在")
         void testVerifyCallbackResource_NotExists() throws Exception {
+
             // Given
             String callbackScope = "callback:not:exists";
             when(apiServerClient.getPermissionByScope(callbackScope)).thenReturn(null);
@@ -817,6 +840,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("完整流程 - 多应用多通道类型")
         void testFullFlow_MultipleAppsMultipleChannels() {
+
             // Given
             String callbackScope = "callback:full:flow";
             Map<String, Object> payload = Map.of(
@@ -884,6 +908,7 @@ class CallbackGatewayServiceTest {
         @Test
         @DisplayName("缓存命中场景 - 完整流程")
         void testFullFlow_CacheHit() {
+
             // Given
             String callbackScope = "callback:cache:hit";
             Map<String, Object> payload = Map.of("key", "value");

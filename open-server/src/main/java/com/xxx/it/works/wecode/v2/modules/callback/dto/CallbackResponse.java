@@ -11,9 +11,9 @@ import java.util.List;
 
 /**
  * 回调详情响应
- * 
+ *
  * <p>用于回调详情接口返回</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

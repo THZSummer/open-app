@@ -1,9 +1,7 @@
 #!/bin/bash
-
+set -ex
 # TASK-011: event-server 验证脚本
 # 用于验证事件发布和回调触发接口是否正常工作
-
-set -e
 
 echo "========================================="
 echo "TASK-011: event-server 验证脚本"

@@ -4,9 +4,9 @@ import lombok.Getter;
 
 /**
  * 业务异常
- * 
+ *
  * <p>用于业务逻辑中抛出的可预期异常</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

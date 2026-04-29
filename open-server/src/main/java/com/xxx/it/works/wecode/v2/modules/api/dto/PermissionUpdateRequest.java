@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 /**
  * 权限更新请求
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -46,9 +46,9 @@ public class PermissionUpdateRequest implements Serializable {
 
     /**
      * 资源级审批节点配置（JSON格式字符串）
-     * 
+     *
      * v2.8.0新增字段，直接存储审批节点配置
-     * 
+     *
      * 格式示例：
      * [
      *   {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},

@@ -10,7 +10,7 @@ import java.util.Date;
 
 /**
  * 审批节点 DTO
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -44,9 +44,9 @@ public class ApprovalNodeDto implements Serializable {
 
     /**
      * 审批级别：global=全局, scene=场景, resource=资源
-     * 
+     *
      * v2.8.0新增字段，用于标记审批节点属于哪一级审批
-     * 
+     *
      * 三级审批顺序（从具体到一般）：
      * 1. resource - 资源审批（资源提供方审核）
      * 2. scene - 场景审批（业务场景审核）
@@ -62,14 +62,14 @@ public class ApprovalNodeDto implements Serializable {
 
     /**
      * 审批时间（v2.8.1新增）
-     * 
+     *
      * 记录该节点的审批时间，用于前端显示审批进度
      */
     private Date approveTime;
 
     /**
      * 审批意见（v2.8.1新增）
-     * 
+     *
      * 记录该节点的审批意见，用于前端显示审批详情
      */
     private String comment;

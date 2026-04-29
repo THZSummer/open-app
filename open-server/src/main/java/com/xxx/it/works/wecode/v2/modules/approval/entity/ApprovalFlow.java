@@ -7,10 +7,10 @@ import java.util.Date;
 
 /**
  * 审批流程模板实体
- * 
+ *
  * <p>对应表 openplatform_v2_approval_flow_t</p>
  * <p>审批流程模板定义，支持动态节点配置</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -43,7 +43,7 @@ public class ApprovalFlow implements Serializable {
      * - api_permission_apply=API权限申请审批流程
      * - event_permission_apply=事件权限申请审批流程
      * - callback_permission_apply=回调权限申请审批流程
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段，改用 code='global' 标识全局审批
      */
     private String code;
@@ -64,7 +64,7 @@ public class ApprovalFlow implements Serializable {
 
     /**
      * 审批节点配置（JSON 格式）
-     * 
+     *
      * 格式示例：
      * [
      *   {"type": "approver", "userId": "user001", "userName": "张三", "order": 1},

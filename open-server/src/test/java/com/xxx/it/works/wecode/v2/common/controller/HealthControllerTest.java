@@ -15,9 +15,9 @@ class HealthControllerTest {
     @DisplayName("健康检查成功")
     void testHealth() {
         HealthController controller = new HealthController();
-        
+
         ApiResponse<Map<String, Object>> response = controller.health();
-        
+
         assertNotNull(response);
         assertEquals("200", response.getCode());
         assertNotNull(response.getData());
