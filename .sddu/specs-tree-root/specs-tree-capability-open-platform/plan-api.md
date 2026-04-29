@@ -30,6 +30,14 @@
 - 布尔字段：使用 `is` 前缀，如 `isDefault`, `isSubscribed`
 - URL 字段：使用 `Url` 后缀，如 `docUrl`, `approvalUrl`
 
+> **审批URL说明**：`approvalUrl` = `approval-url-prefix` + `id`
+> - 配置示例：
+>   ```yaml
+>   platform:
+>     approval-url-prefix: https://platform.example.com/approval/
+>   ```
+> - 生成URL：`https://platform.example.com/approval/306127058944131072`
+
 ### 0.2 路径命名规范
 
 **规则**：URL 路径使用中划线分隔多个单词（kebab-case）。

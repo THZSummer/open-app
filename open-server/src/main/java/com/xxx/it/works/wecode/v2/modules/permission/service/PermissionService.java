@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -67,6 +68,24 @@ public class PermissionService {
     private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
     private final AppContextResolver appContextResolver;
+
+
+
+    /**
+     * 审批URL前缀（域名+路径）
+     */
+    @Value("${platform.approval-url-prefix}")
+    private String approvalUrlPrefix;
+    
+    /**
+     * 构建审批URL
+     * 
+     * @param id 订阅ID
+     * @return 完整的审批URL
+     */
+    private String buildApprovalUrl(Long id) {
+        return approvalUrlPrefix + id;
+    }
 
     // ==================== API 权限管理 (#27-31) ====================
 
@@ -933,7 +952,7 @@ public class PermissionService {
                 .category(categoryInfo)
                 .status(subscription.getStatus())
                 .authType(subscription.getAuthType())
-                .approvalUrl("https://platform.example.com/approval/" + subscription.getId())
+                .approvalUrl(buildApprovalUrl(subscription.getId()))
                 .createTime(subscription.getCreateTime())
                 .build();
     }
@@ -991,7 +1010,7 @@ public class PermissionService {
         EventSubscriptionListResponse.ApproverInfo approverInfo = getApproverInfo(subscription.getId());
         
         // 构造审批链接
-        String approvalUrl = "https://platform.example.com/approval/event/" + subscription.getId();
+        String approvalUrl = buildApprovalUrl(subscription.getId());
 
         return EventSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))
@@ -1061,7 +1080,7 @@ public class PermissionService {
         CallbackSubscriptionListResponse.ApproverInfo approverInfo = getCallbackApproverInfo(subscription.getId());
         
         // 构造审批链接
-        String approvalUrl = "https://platform.example.com/approval/callback/" + subscription.getId();
+        String approvalUrl = buildApprovalUrl(subscription.getId());
 
         return CallbackSubscriptionListResponse.builder()
                 .id(String.valueOf(subscription.getId()))

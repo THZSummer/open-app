@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -123,6 +124,9 @@ class PermissionServiceTest {
                 .build();
         lenient().when(appContextResolver.resolveAndValidate(anyString())).thenReturn(defaultAppContext);
         lenient().when(appContextResolver.toExternalId(anyLong())).thenReturn("1");
+
+        // 设置审批URL前缀
+        ReflectionTestUtils.setField(permissionService, "approvalUrlPrefix", "https://platform.example.com/approval/");
     }
 
     @Nested
@@ -151,6 +155,9 @@ class PermissionServiceTest {
             assertEquals(1, response.getData().size());
             assertNotNull(response.getPage());
             assertEquals(1L, response.getPage().getTotal());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
@@ -353,6 +360,9 @@ class PermissionServiceTest {
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
             assertEquals(1, response.getData().size());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
@@ -482,6 +492,9 @@ class PermissionServiceTest {
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
             assertEquals(1, response.getData().size());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
