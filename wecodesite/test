@@ -1,0 +1,87 @@
+/pages/ApiManagement
+/pages/Callbacks
+/pages/Events
+/pages/Admin/Api
+/pages/Admin/Approval
+/pages/Admin/Callback
+/pages/Admin/Category
+/pages/Admin/Event
+
+try {
+    const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: apiType } });
+    return result || {};
+} catch (err) {
+    return {}
+}
+
+const res = await subscribeApis(appId, { permissionIds });
+if (res && res.code === '200') {
+    // 后续交互
+} else {
+    message.error(res.message)
+}
+
+export default {
+    path: '/events',
+    auth: false,
+    preload: false,
+    isStatic: true,
+    key: 'events',
+    layout: 'inner',
+    component: () => import('./index'),
+}
+
+待办
+1.回调地址和事件地址要有校验
+2.import路径修改
+3.测试代码
+
+
+{
+    code: 200,
+    message: 'success',
+    data: {
+        lookups: {
+            CEC.open/Api.Drawer.TabsList: {
+                items: [
+                    {
+                        itemCode: 'business',
+                        itemDesc: '业务应用订阅api抽屉弹窗两层tab数据',
+                        itemValue: '[{"key":"business_app_business_role","label":"业务身份权限","desc":"业务应用下的业务身份权限","children":[{"key":"api_business_app_soa","label":"SOA类型"},{"key":"api_business_app_apig","label":"API类型"}]},{"key":"business_app_person_role","label":"个人身份权限","desc":"业务应用下的个人身份权限","children":[{"key":"api_business_user_soa","label":"SOA类型"},{"key":"api_business_user_apig","label":"API类型"}]}]'
+                    },{
+                        itemCode: 'person',
+                        itemDesc: '个人应用订阅api抽屉弹窗两层tab数据',
+                        itemValue: '[{"key":"person_app_person_role","label":"个人身份权限","desc":"个人应用下的个人身份权限","children":[{"key":"api_personal_user_aksk","label":"AKSK"}]}]'
+                    }
+                ]
+            }
+        }
+    }
+}
+
+const demo = [
+    {
+        key: 'business_app_business_role', 
+        label: '业务身份权限', 
+        desc: '业务应用下的业务身份权限',
+        children: [
+            {key: 'api_business_app_soa', label: 'SOA类型'},
+            {key: 'api_business_app_apig', label: 'API类型'},
+        ]
+    },{
+        key: 'business_app_person_role', 
+        label: '个人身份权限', 
+        desc: '业务应用下的个人身份权限',
+        children: [
+            {key: 'api_business_user_soa', label: 'SOA类型'},
+            {key: 'api_business_user_apig', label: 'API类型'},
+        ]
+    },{
+        key: 'person_app_person_role', 
+        label: '个人身份权限', 
+        desc: '个人应用下的个人身份权限',
+        children: [
+            {key: 'api_personal_user_aksk', label: 'AKSK'},
+        ]
+    }
+]

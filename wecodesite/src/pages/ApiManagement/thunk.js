@@ -116,3 +116,75 @@ export const deleteApiSubscription = async (appId, subscriptionId) => {
     return {};
   }
 };
+
+/**
+ * 获取Tab配置原始数据（用于抽屉弹窗的两层Tab）
+ * 返回Mock数据，不做数据处理
+ * @param {string} searchKey - 查询标识符，传入 'CEC.open/Api.Drawer.TabsList'
+ * @returns {Promise<Object>} 原始接口响应数据
+ */
+export const fetchTabConfig = async (searchKey = 'CEC.open/Api.Drawer.TabsList') => {
+  try {
+    // TODO: 替换为真实接口调用
+    // const result = await fetchApi('/lookup', {
+    //   params: { searchKey }
+    // });
+
+    // 使用Mock数据（模拟接口返回的数据结构）
+    const mockResponse = {
+      code: 200,
+      message: 'success',
+      data: {
+        lookups: {
+          'CEC.open/Api.Drawer.TabsList': {
+            items: [
+              {
+                itemCode: 'business',
+                itemDesc: '业务应用订阅api抽屉弹窗两层tab数据',
+                itemValue: JSON.stringify([
+                  {
+                    key: 'business_app_business_role',
+                    label: '业务身份权限',
+                    desc: '业务应用下的业务身份权限',
+                    children: [
+                      { key: 'api_business_app_soa', label: 'SOA类型' },
+                      { key: 'api_business_app_apig', label: 'API类型' }
+                    ]
+                  },
+                  {
+                    key: 'business_app_person_role',
+                    label: '个人身份权限',
+                    desc: '业务应用下的个人身份权限',
+                    children: [
+                      { key: 'api_business_user_soa', label: 'SOA类型' },
+                      { key: 'api_business_user_apig', label: 'API类型' }
+                    ]
+                  }
+                ])
+              },
+              {
+                itemCode: 'person',
+                itemDesc: '个人应用订阅api抽屉弹窗两层tab数据',
+                itemValue: JSON.stringify([
+                  {
+                    key: 'person_app_person_role',
+                    label: '个人身份权限',
+                    desc: '个人应用下的个人身份权限',
+                    children: [
+                      { key: 'api_personal_user_aksk', label: 'AKSK' }
+                    ]
+                  }
+                ])
+              }
+            ]
+          }
+        }
+      }
+    };
+
+    return mockResponse;
+  } catch (err) {
+    console.error('获取Tab配置失败', err);
+    return { code: 500, message: '获取Tab配置失败' };
+  }
+};

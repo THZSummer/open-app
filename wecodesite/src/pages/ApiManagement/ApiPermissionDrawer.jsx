@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Table, Button, Tag, Pagination, Input, Select, message } from 'antd';
 const { TabPane } = Tabs;
-import { fetchApis, fetchCategories } from './thunk';
+import { fetchApis, fetchCategories, fetchTabConfig } from './thunk';
 import { mockAppInfo } from '../BasicInfo/mock';
 import { AUTH_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import {
   NEED_REVIEW_OPTIONS,
-  IDENTITY_TABS,
-  BUSINESS_BUSINESS_API_TABS,
-  BUSINESS_PERSONAL_API_TABS,
-  PERSONAL_API_TABS,
+  TAB_CONFIG_SEARCH_KEY,
   getApiPermissionDrawerColumns,
 } from './constants';
 import './ApiPermissionDrawer.m.less';
@@ -66,10 +63,16 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   const appInfo = appId ? mockAppInfo[appId] : null;
   const appType = appInfo && appInfo.eamap ? 'business' : 'personal';
 
-  // 当前选中的身份类型（BUSINESS_IDENTITY或PERSONAL_IDENTITY）
-  const [activeIdentityType, setActiveIdentityType] = useState('BUSINESS_IDENTITY');
-  // 当前选中的API类型（app_type_a、app_type_b、personal_aksk等）
-  const [activeApiType, setActiveApiType] = useState('api_business_app_soa');
+  // Tab配置状态
+  const [tabConfig, setTabConfig] = useState({
+    firstLevelTabs: [],
+    secondLevelTabs: []
+  });
+  
+  // 当前选中的身份类型
+  const [activeIdentityType, setActiveIdentityType] = useState('');
+  // 当前选中的API类型
+  const [activeApiType, setActiveApiType] = useState('');
   // 当前选中的模块（侧边栏分类）
   const [activeModule, setActiveModule] = useState('all');
   // 表格选中行的key数组
@@ -86,6 +89,80 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   const [filterKeyword, setFilterKeyword] = useState('');
   // 是否需要审核筛选条件
   const [filterNeedReview, setFilterNeedReview] = useState('all');
+
+  /**
+   * 解析原始接口数据，返回指定应用类型的Tab配置
+   * @param {Object} rawData - 原始接口响应数据
+   * @param {string} targetAppType - 应用类型：'business'（业务应用）或 'person'（个人应用）
+   * @returns {Object} 解析后的Tab配置 { firstLevelTabs, secondLevelTabs }
+   */
+  const parseTabConfig = (rawData, targetAppType) => {
+    try {
+      if (!rawData?.data?.lookups?.[TAB_CONFIG_SEARCH_KEY]?.items) {
+        return { firstLevelTabs: [], secondLevelTabs: [] };
+      }
+      
+      const items = rawData.data.lookups[TAB_CONFIG_SEARCH_KEY].items;
+      const targetItem = items.find(item => item.itemCode === targetAppType);
+      
+      if (!targetItem?.itemValue) {
+        return { firstLevelTabs: [], secondLevelTabs: [] };
+      }
+      
+      const parsedTabs = JSON.parse(targetItem.itemValue);
+      return {
+        firstLevelTabs: parsedTabs,
+        secondLevelTabs: parsedTabs[0]?.children || []
+      };
+    } catch (error) {
+      console.error('解析Tab配置失败', error);
+      return { firstLevelTabs: [], secondLevelTabs: [] };
+    }
+  };
+
+  /**
+   * 加载Tab配置
+   * 抽屉打开时调用一次，缓存到组件状态
+   * 数据处理逻辑在此处完成
+   */
+  const loadTabConfig = async () => {
+    setLoading(true);
+    try {
+      // 调用接口时传入 searchKey 参数
+      const rawData = await fetchTabConfig(TAB_CONFIG_SEARCH_KEY);
+      
+      if (rawData && rawData.code === 200) {
+        // 数据处理：根据应用类型筛选并解析数据
+        const appTypeKey = appType === 'business' ? 'business' : 'person';
+        const parsedConfig = parseTabConfig(rawData, appTypeKey);
+        
+        setTabConfig({
+          firstLevelTabs: parsedConfig.firstLevelTabs,
+          secondLevelTabs: parsedConfig.secondLevelTabs
+        });
+        
+        // 设置默认选中的Tab
+        const firstTab = parsedConfig.firstLevelTabs[0];
+        const firstChildTab = firstTab?.children?.[0];
+        
+        setActiveIdentityType(firstTab?.key || '');
+        setActiveApiType(firstChildTab?.key || '');
+        
+        return { firstTab, firstChildTab };
+      } else {
+        message.error(rawData?.message || '加载Tab配置失败');
+        setTabConfig({ firstLevelTabs: [], secondLevelTabs: [] });
+        return null;
+      }
+    } catch (error) {
+      console.error('加载Tab配置失败', error);
+      message.error('加载Tab配置失败');
+      setTabConfig({ firstLevelTabs: [], secondLevelTabs: [] });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /**
    * 加载模块列表
@@ -169,13 +246,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   useEffect(() => {
     if (!open) return;
     
-    if (appType === 'business') {
-      setActiveIdentityType('BUSINESS_IDENTITY');
-      setActiveApiType('api_business_app_soa');
-    } else {
-      setActiveIdentityType('PERSONAL_IDENTITY');
-      setActiveApiType('api_personal_user_aksk');
-    }
+    // 重置状态
     setActiveModule('all');
     setFilterKeyword('');
     setFilterNeedReview('all');
@@ -183,8 +254,17 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     setSelectedRowKeys([]);
     
     const initData = async () => {
-      const apiType = appType === 'business' ? 'api_business_app_soa' : 'api_personal_user_aksk';
-      const modules = await loadModules(apiType);
+      // 1. 加载Tab配置
+      const tabResult = await loadTabConfig();
+      
+      if (!tabResult) {
+        return;
+      }
+      
+      // 2. 加载模块列表
+      const modules = await loadModules(tabResult.firstChildTab.key);
+      
+      // 3. 加载API列表
       await loadApis({}, modules, 'all');
     };
     
@@ -203,36 +283,34 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
 
   /**
    * 处理身份类型Tab切换
+   * 切换一级Tab时，更新二级Tab列表和默认选中项
    */
   const handleIdentityChange = async (identityType) => {
-    let newApiType;
-    if (appType === 'business') {
-      if (identityType === 'BUSINESS_IDENTITY') {
-        newApiType = 'api_business_app_soa';
-      } else {
-        newApiType = 'api_business_user_soa';
-      }
-    } else {
-      newApiType = 'api_personal_user_aksk';
-    }
+    // 查找当前选中的一级Tab
+    const currentFirstTab = tabConfig.firstLevelTabs.find(tab => tab.key === identityType);
+    const newSecondLevelTabs = currentFirstTab?.children || [];
+    const defaultSecondLevel = newSecondLevelTabs[0]?.key || '';
     
     setActiveIdentityType(identityType);
-    setActiveApiType(newApiType);
+    setActiveApiType(defaultSecondLevel);
     setActiveModule('all');
     setFilterKeyword('');
     setFilterNeedReview('all');
     setPagination(INIT_PAGECONFIG);
     setSelectedRowKeys([]);
     
-    const modules = await loadModules(newApiType);
-    await loadApis({ 
-      identityType, 
-      apiType: newApiType,
-      keyword: '',
-      needReview: 'all',
-      curPage: 1,
-      categoryId: modules[0]?.value
-    }, modules, 'all');
+    // 重新加载模块列表和API列表
+    if (defaultSecondLevel) {
+      const modules = await loadModules(defaultSecondLevel);
+      await loadApis({
+        identityType,
+        apiType: defaultSecondLevel,
+        keyword: '',
+        needReview: 'all',
+        curPage: 1,
+        categoryId: modules[0]?.value
+      }, modules, 'all');
+    }
   };
 
   /**
@@ -331,20 +409,24 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
 
   /**
    * 渲染第一层Tab（身份权限Tab）
-   * 仅在启用身份权限时显示
+   * 仅在一级Tab数量大于1时显示
    */
   const renderFirstLevelTabs = () => {
     if (!enableIdentityPermission) {
       return null;
     }
-    const identityTabs = appType === 'business' ?
-      IDENTITY_TABS : [IDENTITY_TABS[1]];
+    
+    const tabs = tabConfig.firstLevelTabs;
+    if (!tabs || tabs.length <= 1) {
+      return null;
+    }
+    
     return (
       <Tabs
         activeKey={activeIdentityType}
         onChange={handleIdentityChange}
       >
-        {identityTabs.map(tab => (
+        {tabs.map(tab => (
           <TabPane key={tab.key} tab={tab.label} />
         ))}
       </Tabs>
@@ -353,13 +435,16 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
 
   /**
    * 渲染第二层Tab（API类型Tab）
-   * 企业应用显示SOA/APIG类型，个人应用显示AKSK类型
+   * 显示当前选中的一级Tab下的所有二级Tab
    */
   const renderSecondLevelTabs = () => {
-    const apiTabs = appType === 'business' 
-      ? (activeIdentityType === 'BUSINESS_IDENTITY' ? BUSINESS_BUSINESS_API_TABS : BUSINESS_PERSONAL_API_TABS)
-      : PERSONAL_API_TABS;
-    console.log('apiTabs, activeApiType', apiTabs, activeApiType);
+    const firstLevelTab = tabConfig.firstLevelTabs.find(tab => tab.key === activeIdentityType);
+    const apiTabs = firstLevelTab?.children || [];
+    
+    if (apiTabs.length === 0) {
+      return null;
+    }
+    
     return (
       <Tabs
         activeKey={activeApiType}

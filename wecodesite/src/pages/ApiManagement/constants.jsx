@@ -10,24 +10,7 @@ export const NEED_REVIEW_OPTIONS = [
   { value: 'false', label: '无需审核' },
 ];
 
-export const IDENTITY_TABS = [
-  { key: 'BUSINESS_IDENTITY', label: '业务身份权限' },
-  { key: 'PERSONAL_IDENTITY', label: '个人身份权限' },
-];
-
-export const BUSINESS_BUSINESS_API_TABS = [
-  { key: 'api_business_app_soa', label: 'SOA类型' },
-  { key: 'api_business_app_apig', label: 'APIG类型' },
-];
-
-export const BUSINESS_PERSONAL_API_TABS = [
-  { key: 'api_business_user_soa', label: 'SOA类型' },
-  { key: 'api_business_user_apig', label: 'APIG类型' },
-];
-
-export const PERSONAL_API_TABS = [
-  { key: 'api_personal_user_aksk', label: 'AKSK类型' },
-];
+export const TAB_CONFIG_SEARCH_KEY = 'CEC.open/Api.Drawer.TabsList';
 
 export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddress, handleWithdraw, handleDelete }) => [
   {
