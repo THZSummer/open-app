@@ -5,7 +5,12 @@ setlocal enabledelayedexpansion
 REM ========== 配置（修改一次） ==========
 set URL=http://localhost:18080/open-server/service/open/v2/sync/subscription/migrate
 set METHOD=POST
-set HEADERS=-H "Content-Type: application/json"
+
+set HEADER_1=Content-Type: application/json
+set HEADER_2=X-Session-Id: your-session-id
+set HEADER_3=X-Request-Id: test-001
+
+set HEADERS=-H "%HEADER_1%" -H "%HEADER_2%" -H "%HEADER_3%"
 
 REM ========== Body参数（数量不固定） ==========
 set BODY_1={"ids": [6001]}
