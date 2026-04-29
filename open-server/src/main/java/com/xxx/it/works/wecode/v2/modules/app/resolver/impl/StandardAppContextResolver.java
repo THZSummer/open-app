@@ -64,6 +64,7 @@ public class StandardAppContextResolver implements AppContextResolver {
 
     @Override
     public String toExternalId(Long internalId) {
+
         // TODO: Standard environment implementation
         // return appManageService.getExternalIdByInternalId(internalId);
         throw new UnsupportedOperationException(

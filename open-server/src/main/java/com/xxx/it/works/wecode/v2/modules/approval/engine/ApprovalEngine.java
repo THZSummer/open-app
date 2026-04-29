@@ -143,6 +143,7 @@ public class ApprovalEngine {
         boolean isPermissionApply = businessType.endsWith("_permission_apply");
 
         if (isRegisterApproval) {
+
             // ==================== 资源注册审批：两级审批 ====================
             log.info("Resource registration approval: businessType={}, two-level approval (scene+global)", businessType);
 
@@ -165,6 +166,7 @@ public class ApprovalEngine {
             log.debug("Global approval nodes count: {}", globalNodes.size());
 
         } else if (isPermissionApply) {
+
             // ==================== 权限申请审批：三级审批 ====================
             log.info("Permission application approval: businessType={}, three-level approval (resource+scene+global)", businessType);
 
@@ -271,6 +273,7 @@ public class ApprovalEngine {
      * @return 场景审批节点列表
      */
     private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType) {
+
         // 根据业务类型确定场景审批编码
         String sceneCode = getSceneCodeByBusinessType(businessType);
 
@@ -373,6 +376,7 @@ public class ApprovalEngine {
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecord createApproval(String businessType, Long permissionId, Long businessId,
                                           String applicantId, String applicantName, String operator) {
+
         // 1. 组合三级审批节点
         List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId);
 
@@ -426,6 +430,7 @@ public class ApprovalEngine {
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecord approve(Long recordId, String operatorId, String operatorName,
                                    String comment, String operator) {
+
         // 1. 查询审批记录
         ApprovalRecord record = recordMapper.selectById(recordId);
         if (record == null) {
@@ -475,6 +480,7 @@ public class ApprovalEngine {
 
         // 7. 判断是否所有节点都已审批通过
         if (currentNodeIndex >= combinedNodes.size() - 1) {
+
             // 最后一个节点，审批通过
             record.setStatus(Status.APPROVED);
             record.setCompletedAt(new Date());
@@ -492,6 +498,7 @@ public class ApprovalEngine {
             log.info("Approval approved: recordId={}, operator={}, level={}",
                     recordId, operatorId, currentNode.getLevel());
         } else {
+
             // 进入下一个审批节点
             record.setCurrentNode(currentNodeIndex + 1);
             record.setLastUpdateTime(new Date());
@@ -523,6 +530,7 @@ public class ApprovalEngine {
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecord reject(Long recordId, String operatorId, String operatorName,
                                   String comment, String operator) {
+
         // 1. 查询审批记录
         ApprovalRecord record = recordMapper.selectById(recordId);
         if (record == null) {
@@ -588,6 +596,7 @@ public class ApprovalEngine {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecord cancel(Long recordId, String operator) {
+
         // 查询审批记录
         ApprovalRecord record = recordMapper.selectById(recordId);
         if (record == null) {
@@ -673,6 +682,7 @@ public class ApprovalEngine {
                 case BusinessType.API_PERMISSION_APPLY:
                 case BusinessType.EVENT_PERMISSION_APPLY:
                 case BusinessType.CALLBACK_PERMISSION_APPLY:
+
                     // 权限申请场景，由 updateSubscriptionStatus 处理
                     log.debug("Permission application scenario, not updating resource status");
                     break;
@@ -692,6 +702,7 @@ public class ApprovalEngine {
      * @param status 审批状态
      */
     private void updateSubscriptionStatus(ApprovalRecord record, int status) {
+
         // 仅处理权限申请类型的审批
         if (!BusinessType.API_PERMISSION_APPLY.equals(record.getBusinessType()) &&
             !BusinessType.EVENT_PERMISSION_APPLY.equals(record.getBusinessType()) &&

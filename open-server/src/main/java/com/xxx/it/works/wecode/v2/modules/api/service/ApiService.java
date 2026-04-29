@@ -203,6 +203,7 @@ public class ApiService {
         permission.setResourceType("api");
         permission.setResourceId(api.getId());
         permission.setCategoryId(categoryId);
+
         // ✅ v2.8.0新增：设置 needApproval 和 resourceNodes 字段
         permission.setNeedApproval(needApproval);
         permission.setResourceNodes(request.getPermission().getResourceNodes());
@@ -219,11 +220,13 @@ public class ApiService {
             ApprovalEngine.BusinessType.API_REGISTER, null);
 
         if (approvalNodes.isEmpty()) {
+
             // 无审批节点配置，直接发布
             api.setStatus(2); // 已发布
             apiMapper.update(api);
             log.info("API registration does not require approval (no approval nodes configured), publish directly: apiId={}", api.getId());
         } else {
+
             // 有审批节点，创建审批单
             try {
                 approvalEngine.createApproval(
@@ -285,6 +288,7 @@ public class ApiService {
         Long categoryId = null;
         if (request.getCategoryId() != null && !request.getCategoryId().trim().isEmpty()) {
             categoryId = parseId(request.getCategoryId());
+
             // 检查分类是否存在
             Category category = categoryMapper.selectById(categoryId);
             if (category == null) {
@@ -451,6 +455,7 @@ public class ApiService {
      * 转换为列表响应
      */
     private ApiListResponse convertToListResponse(Api api, Map<Long, String> docUrlMap) {
+
         // 构建权限 DTO
         Permission permission = permissionMapper.selectByResource("api", api.getId());
 
@@ -486,6 +491,7 @@ public class ApiService {
      * 转换为详情响应
      */
     private ApiDetailResponse convertToDetailResponse(Api api, Permission permission, List<ApiProperty> properties) {
+
         // 构建权限 DTO
         PermissionDto permissionDto = null;
         if (permission != null) {
@@ -495,6 +501,7 @@ public class ApiService {
                     .nameEn(permission.getNameEn())
                     .scope(permission.getScope())
                     .status(permission.getStatus())
+
                     // ✅ v2.8.0新增：审批配置字段
                     .needApproval(permission.getNeedApproval())
                     .resourceNodes(permission.getResourceNodes())

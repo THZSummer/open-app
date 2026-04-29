@@ -138,6 +138,7 @@ public class EventService {
      * @return 事件详情响应
      */
     public EventResponse getEventById(Long id) {
+
         // 查询事件（包含分类名称）
         Event event = eventMapper.selectByIdWithCategoryName(id);
         if (event == null) {
@@ -162,6 +163,7 @@ public class EventService {
      */
     @Transactional(rollbackFor = Exception.class)
     public EventResponse createEvent(EventCreateRequest request) {
+
         // 解析分类ID
         Long categoryId = parseId(request.getCategoryId(), "分类ID");
 
@@ -220,11 +222,13 @@ public class EventService {
             ApprovalEngine.BusinessType.EVENT_REGISTER, null);
 
         if (approvalNodes.isEmpty()) {
+
             // 无审批节点配置，直接发布
             event.setStatus(STATUS_PUBLISHED); // 已发布
             eventMapper.update(event);
             log.info("Event registration does not require approval (no approval nodes configured), publish directly: eventId={}", eventId);
         } else {
+
             // 有审批节点，创建审批单
             try {
                 approvalEngine.createApproval(
@@ -262,6 +266,7 @@ public class EventService {
      */
     @Transactional(rollbackFor = Exception.class)
     public EventResponse updateEvent(Long id, EventUpdateRequest request) {
+
         // 查询事件
         Event event = eventMapper.selectById(id);
         if (event == null) {
@@ -273,6 +278,7 @@ public class EventService {
         Long categoryId = event.getCategoryId();
         if (request.getCategoryId() != null && !request.getCategoryId().isEmpty()) {
             categoryId = parseId(request.getCategoryId(), "分类ID");
+
             // 验证分类是否存在
             Category category = categoryMapper.selectById(categoryId);
             if (category == null) {
@@ -303,8 +309,10 @@ public class EventService {
 
         // 更新事件属性
         if (request.getProperties() != null) {
+
             // 删除旧属性
             eventPropertyMapper.deleteByParentId(id);
+
             // 保存新属性
             if (!request.getProperties().isEmpty()) {
                 saveEventProperties(id, request.getProperties());
@@ -323,6 +331,7 @@ public class EventService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteEvent(Long id) {
+
         // 查询事件
         Event event = eventMapper.selectById(id);
         if (event == null) {
@@ -341,6 +350,7 @@ public class EventService {
         Permission permission = permissionMapper.selectByResource("event", id);
         if (permission != null) {
             permissionPropertyMapper.deleteByParentId(permission.getId());
+
             // 删除权限
             permissionMapper.deleteById(permission.getId());
         }
@@ -362,6 +372,7 @@ public class EventService {
      */
     @Transactional(rollbackFor = Exception.class)
     public EventResponse withdrawEvent(Long id) {
+
         // 查询事件
         Event event = eventMapper.selectById(id);
         if (event == null) {
@@ -406,6 +417,7 @@ public class EventService {
         permission.setResourceType("event");
         permission.setResourceId(eventId);
         permission.setCategoryId(categoryId);
+
         // ✅ v2.8.0新增：审批配置字段
         permission.setNeedApproval(permissionDto.getNeedApproval() != null
             ? permissionDto.getNeedApproval() : 1);
@@ -429,6 +441,7 @@ public class EventService {
     private void updatePermission(Long eventId, Long categoryId, PermissionDto permissionDto) {
         Permission permission = permissionMapper.selectByResource("event", eventId);
         if (permission == null) {
+
             // 不存在则创建
             createPermission(eventId, categoryId, permissionDto);
             return;
@@ -442,6 +455,7 @@ public class EventService {
             permission.setNameEn(permissionDto.getNameEn());
         }
         permission.setCategoryId(categoryId);
+
         // ✅ v2.8.0新增：审批配置字段
         if (permissionDto.getNeedApproval() != null) {
             permission.setNeedApproval(permissionDto.getNeedApproval());
@@ -534,6 +548,7 @@ public class EventService {
             permDto.setNameEn(permission.getNameEn());
             permDto.setScope(permission.getScope());
             permDto.setStatus(permission.getStatus());
+
             // ✅ v2.8.0新增：审批配置字段
             permDto.setNeedApproval(permission.getNeedApproval());
             permDto.setResourceNodes(permission.getResourceNodes());

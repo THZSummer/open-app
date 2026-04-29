@@ -69,6 +69,7 @@ public class CredentialProviderImpl implements CredentialProvider {
                     }
                 }
                 case APIG -> {
+
                     // APPID 和 APPKEY 都从凭证获取方法获得
                     String appId2 = getApigAppId(appId);
                     String appKey = getApigAppKey(appId);

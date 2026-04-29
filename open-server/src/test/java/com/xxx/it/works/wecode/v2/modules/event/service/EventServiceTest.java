@@ -61,6 +61,7 @@ class EventServiceTest {
 
     @BeforeEach
     void setUp() {
+
         // 准备测试数据
         existingEvent = new Event();
         existingEvent.setId(100L);
@@ -81,9 +82,11 @@ class EventServiceTest {
     @Test
     @DisplayName("部分字段更新 - 只更新中文名称")
     void testPartialUpdate_OnlyNameCn() {
+
         // Given: 只提供中文名称
         EventUpdateRequest request = new EventUpdateRequest();
         request.setNameCn("新的中文名称");
+
         // nameEn 为 null
 
         when(eventMapper.selectById(100L)).thenReturn(existingEvent);
@@ -106,9 +109,11 @@ class EventServiceTest {
     @Test
     @DisplayName("部分字段更新 - 只更新英文名称")
     void testPartialUpdate_OnlyNameEn() {
+
         // Given: 只提供英文名称
         EventUpdateRequest request = new EventUpdateRequest();
         request.setNameEn("New English Name");
+
         // nameCn 为 null
 
         when(eventMapper.selectById(100L)).thenReturn(existingEvent);
@@ -131,6 +136,7 @@ class EventServiceTest {
     @Test
     @DisplayName("部分字段更新 - 同时更新多个字段")
     void testPartialUpdate_MultipleFields() {
+
         // Given: 提供中文名称和英文名称
         EventUpdateRequest request = new EventUpdateRequest();
         request.setNameCn("新中文名称");
@@ -163,6 +169,7 @@ class EventServiceTest {
     @Test
     @DisplayName("部分字段更新 - 空字符串应被忽略")
     void testPartialUpdate_EmptyStringShouldBeIgnored() {
+
         // Given: 提供空字符串
         EventUpdateRequest request = new EventUpdateRequest();
         request.setNameCn("  "); // 空格字符串
@@ -188,6 +195,7 @@ class EventServiceTest {
     @Test
     @DisplayName("部分字段更新 - 更新分类ID")
     void testPartialUpdate_CategoryId() {
+
         // Given: 只更新分类ID
         EventUpdateRequest request = new EventUpdateRequest();
         request.setCategoryId("3");
@@ -217,6 +225,7 @@ class EventServiceTest {
     @Test
     @DisplayName("更新不存在的Event应抛出异常")
     void testUpdateNonExistentEvent() {
+
         // Given
         EventUpdateRequest request = new EventUpdateRequest();
         request.setNameCn("新名称");
@@ -232,6 +241,7 @@ class EventServiceTest {
     @Test
     @DisplayName("更新已发布的Event应抛出异常")
     void testUpdatePublishedEvent() {
+
         // Given
         Event publishedEvent = new Event();
         publishedEvent.setId(100L);

@@ -41,6 +41,7 @@ public class SseChannel {
      * @return SseEmitter 实例
      */
     public SseEmitter addConnection(String connectionId) {
+
         // 创建 SseEmitter，设置超时时间
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
         

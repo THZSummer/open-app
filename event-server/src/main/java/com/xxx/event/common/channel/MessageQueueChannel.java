@@ -65,6 +65,7 @@ public class MessageQueueChannel {
      * @return 队列状态信息
      */
     public Map<String, Object> getQueueStatus(String queueName) {
+
         // TODO: 集成企业内部消息网关 SDK
         // 实际项目中应调用企业内部消息平台的 SDK 查询队列状态
         // 示例代码：
@@ -89,6 +90,7 @@ public class MessageQueueChannel {
      * @return 消息数量，-1 表示查询失败
      */
     public long getMessageCount(String queueName) {
+
         // TODO: 集成企业内部消息网关 SDK
         log.warn("[Reserved] Queue message count query not implemented: queue={}", queueName);
         return -1L;

@@ -51,6 +51,7 @@ class EventGatewayControllerTest {
 
     @Test
     void testPublishEvent() throws Exception {
+
         // 构造请求
         EventPublishRequest request = EventPublishRequest.builder()
                 .topic("im.message.received")
@@ -72,6 +73,7 @@ class EventGatewayControllerTest {
 
     @Test
     void testPublishEventWithoutTopic() throws Exception {
+
         // 构造请求（缺少 topic）
         EventPublishRequest request = EventPublishRequest.builder()
                 .payload(Map.of("messageId", "msg001"))

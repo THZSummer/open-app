@@ -27,6 +27,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+
         // 注册用户解析拦截器
         // 优先级 10：在标准环境的认证拦截器（优先级 0）之后执行
         registry.addInterceptor(userResolveInterceptor)

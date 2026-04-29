@@ -18,6 +18,7 @@ public class StandardIdGeneratorStrategy implements IdGeneratorStrategy {
 
     @Override
     public long nextId() {
+
         // TODO: 标准环境预留实现
         // 可选方案：
         // 1. 使用分布式 ID 服务（如美团 Leaf、百度 UidGenerator）
@@ -31,6 +32,7 @@ public class StandardIdGeneratorStrategy implements IdGeneratorStrategy {
 
     @Override
     public boolean supports(String activeProfile) {
+
         // 非开发环境的默认策略
         // 支持: test, uat, prod, production 等所有非开发环境
         return !"dev".equals(activeProfile)

@@ -90,6 +90,7 @@ public class ApprovalService {
             response.setNameCn(flow.getNameCn());
             response.setNameEn(flow.getNameEn());
             response.setCode(flow.getCode());
+
             // ✅ v2.8.0变更：移除 isDefault 字段
             response.setStatus(flow.getStatus());
             response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
@@ -120,6 +121,7 @@ public class ApprovalService {
         response.setNameCn(flow.getNameCn());
         response.setNameEn(flow.getNameEn());
         response.setCode(flow.getCode());
+
         // ✅ v2.8.0变更：移除 isDefault 字段
         response.setStatus(flow.getStatus());
         response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
@@ -134,6 +136,7 @@ public class ApprovalService {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalFlowDetailResponse createFlow(ApprovalFlowCreateRequest request, String operator) {
+
         // 检查编码唯一性
         if (flowMapper.countByCode(request.getCode()) > 0) {
             throw new BusinessException("409", "流程编码已存在", "Flow code already exists");
@@ -235,6 +238,7 @@ public class ApprovalService {
             response.setId(String.valueOf(record.getId()));
             response.setBusinessType(record.getBusinessType());
             response.setBusinessId(String.valueOf(record.getBusinessId()));
+
             // 设置业务名称（从业务数据中获取）
             Map<String, Object> businessData = getBusinessData(record.getBusinessType(), record.getBusinessId());
             if (businessData != null && businessData.get("nameCn") != null) {
@@ -247,11 +251,14 @@ public class ApprovalService {
             response.setCreateTime(record.getCreateTime());
             return response;
         })
+
         // 过滤审批人（如果指定了 approverId）
         .filter(response -> {
             if (request.getApproverId() == null || request.getApproverId().isEmpty()) {
                 return true; // 未指定审批人，返回所有
             }
+
+
             // 获取原始记录，解析 combined_nodes 判断当前审批人
             ApprovalRecord record = records.stream()
                 .filter(r -> String.valueOf(r.getId()).equals(response.getId()))
@@ -264,6 +271,8 @@ public class ApprovalService {
             if (nodes.isEmpty() || record.getCurrentNode() >= nodes.size()) {
                 return false;
             }
+
+
             // 判断当前节点的审批人是否匹配
             ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
             return request.getApproverId().equals(currentNode.getUserId());
@@ -304,6 +313,7 @@ public class ApprovalService {
         // 填充节点状态和审批信息
         Map<Integer, Integer> nodeStatusMap = new HashMap<>();
         Map<Integer, String> nodeLevelMap = new HashMap<>();
+
         // v2.8.1新增：审批时间和意见映射
         Map<Integer, Date> nodeApproveTimeMap = new HashMap<>();
         Map<Integer, String> nodeCommentMap = new HashMap<>();
@@ -311,6 +321,7 @@ public class ApprovalService {
         for (ApprovalLog log : logs) {
             nodeStatusMap.put(log.getNodeIndex(), log.getAction() == 0 ? 1 : 2);
             nodeLevelMap.put(log.getNodeIndex(), log.getLevel());  // ✅ 从日志获取 level
+
             // v2.8.1新增：填充审批时间和意见
             nodeApproveTimeMap.put(log.getNodeIndex(), log.getCreateTime());
             nodeCommentMap.put(log.getNodeIndex(), log.getComment());
@@ -323,23 +334,29 @@ public class ApprovalService {
             // 无需额外填充
 
             if (i < record.getCurrentNode()) {
+
                 // 已处理的节点（在当前节点之前）
                 node.setStatus(nodeStatusMap.getOrDefault(i, 1));
+
                 // v2.8.1新增：填充审批时间和意见
                 node.setApproveTime(nodeApproveTimeMap.get(i));
                 node.setComment(nodeCommentMap.get(i));
             } else if (i == record.getCurrentNode()) {
+
                 // 当前节点：待审批时显示0，已审批时从日志获取状态
                 if (record.getStatus() == 0) {
                     node.setStatus(0);  // 待审批
                 } else {
+
                     // 审批已通过或已拒绝，从日志获取当前节点状态
                     node.setStatus(nodeStatusMap.getOrDefault(i, 1));
+
                     // v2.8.1新增：填充审批时间和意见
                     node.setApproveTime(nodeApproveTimeMap.get(i));
                     node.setComment(nodeCommentMap.get(i));
                 }
             } else {
+
                 // 未处理的节点（在当前节点之后）
                 node.setStatus(null);
             }
@@ -354,6 +371,7 @@ public class ApprovalService {
         response.setApplicantId(record.getApplicantId());
         response.setApplicantName(record.getApplicantName());
         response.setStatus(record.getStatus());
+
         // ✅ v2.8.0变更：移除 flowId 字段，审批详情直接显示 combinedNodes
         response.setCombinedNodes(nodes);  // ✅ 新增：显示组合审批节点
         response.setCurrentNode(record.getCurrentNode());
@@ -435,12 +453,14 @@ public class ApprovalService {
                         request.getComment(), operator);
                 successCount++;
             } catch (BusinessException e) {
+
                 // 业务异常，记录失败原因
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessageZh())
                         .build());
             } catch (Exception e) {
+
                 // 其他异常，记录失败原因
                 log.error("Batch approval failed: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
@@ -480,12 +500,14 @@ public class ApprovalService {
                         request.getComment(), operator);
                 successCount++;
             } catch (BusinessException e) {
+
                 // 业务异常，记录失败原因
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessageZh())
                         .build());
             } catch (Exception e) {
+
                 // 其他异常，记录失败原因
                 log.error("Batch rejection failed: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()

@@ -100,6 +100,7 @@ public class DevIdGeneratorStrategy implements IdGeneratorStrategy {
         // 同一毫秒内
         if (lastTimestamp == timestamp) {
             sequence = (sequence + 1) & SEQUENCE_MASK;
+
             // 序列号溢出
             if (sequence == 0) {
                 timestamp = tilNextMillis(lastTimestamp);
@@ -118,6 +119,7 @@ public class DevIdGeneratorStrategy implements IdGeneratorStrategy {
 
     @Override
     public boolean supports(String activeProfile) {
+
         // 开发环境激活: dev, development, local
         return "dev".equals(activeProfile)
                 || "development".equals(activeProfile)

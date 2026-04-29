@@ -39,6 +39,7 @@ public class UserResolveInterceptor implements HandlerInterceptor {
                             HttpServletResponse response,
                             Object handler) {
         try {
+
             // 1. Select and execute strategy
             UserContext userContext = resolveUser(request);
 
@@ -51,6 +52,7 @@ public class UserResolveInterceptor implements HandlerInterceptor {
             return true;
         } catch (Exception e) {
             log.warn("Failed to resolve user info, using default user: {}", e.getMessage());
+
             // Use default user when resolution fails
             UserContextHolder.set(UserContext.empty());
             return true;
@@ -62,6 +64,7 @@ public class UserResolveInterceptor implements HandlerInterceptor {
                                 HttpServletResponse response,
                                 Object handler,
                                 Exception ex) {
+
         // Clear ThreadLocal to prevent memory leak
         UserContextHolder.clear();
     }

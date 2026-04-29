@@ -171,12 +171,15 @@ public class ApprovalController {
         request.setType(type);
         request.setKeyword(keyword);
         request.setStatus(status);
+
         // 处理 applicantId=current 特殊值，获取当前用户ID
         if ("current".equals(applicantId)) {
             request.setApplicantId(UserContextHolder.getUserId());
         } else {
             request.setApplicantId(applicantId);
         }
+
+
         // 处理 approverId=current 特殊值
         String actualApproverId = "current".equals(approverId) ? UserContextHolder.getUserId() : approverId;
         request.setApproverId(actualApproverId);

@@ -76,6 +76,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendEvent - 带appId和authType - 成功发送")
         void testSendEvent_WithAppIdAndAuthType_Success() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -110,6 +111,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendEvent - 带AuthContext - 成功发送")
         void testSendEvent_WithAuthContext_Success() {
+
             // Given
             AuthContext authContext = AuthContext.iam(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -137,6 +139,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendEvent - 免认证模式 - 不调用认证处理器")
         void testSendEvent_NoAuthMode_ShouldNotCallAuthHandler() {
+
             // Given
             AuthContext authContext = AuthContext.noAuth(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -164,6 +167,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendEvent - null AuthContext - 不调用认证处理器")
         void testSendEvent_NullAuthContext_ShouldNotCallAuthHandler() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -190,6 +194,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendEvent - HTTP状态码非2xx - 记录警告日志")
         void testSendEvent_Non2xxStatus_ShouldLogWarning() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Error", HttpStatus.BAD_REQUEST);
             
@@ -215,6 +220,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendEvent - 发送异常 - 捕获并记录错误")
         void testSendEvent_ExceptionThrown_ShouldCatchAndLog() {
+
             // Given
             when(restTemplate.exchange(
                     eq(TEST_URL),
@@ -244,6 +250,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendCallback - 带appId和authType - 成功发送")
         void testSendCallback_WithAppIdAndAuthType_Success() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -270,6 +277,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendCallback - 带AuthContext - 成功发送")
         void testSendCallback_WithAuthContext_Success() {
+
             // Given
             AuthContext authContext = AuthContext.aksk(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -297,6 +305,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendCallback - 使用COOKIE认证 - 正确应用认证")
         void testSendCallback_WithCookieAuth_ShouldApplyCorrectly() {
+
             // Given
             AuthContext authContext = AuthContext.cookie(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -318,6 +327,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendCallback - 使用SOA认证 - 正确应用认证")
         void testSendCallback_WithSoaAuth_ShouldApplyCorrectly() {
+
             // Given
             AuthContext authContext = AuthContext.soa(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -339,6 +349,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendCallback - 免认证模式 - 不调用认证处理器")
         void testSendCallback_NoAuthMode_ShouldNotCallAuthHandler() {
+
             // Given
             AuthContext authContext = AuthContext.noAuth(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -360,6 +371,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendCallback - 发送异常 - 捕获并记录错误")
         void testSendCallback_ExceptionThrown_ShouldCatchAndLog() {
+
             // Given
             when(restTemplate.exchange(
                     anyString(),
@@ -382,6 +394,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - 无认证 - 成功发送返回true")
         void testSendSync_WithoutAuth_Success() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -409,6 +422,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - 带认证 - 成功发送返回true")
         void testSendSync_WithAuth_Success() {
+
             // Given
             AuthContext authContext = AuthContext.iam(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Created", HttpStatus.CREATED);
@@ -431,6 +445,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - HTTP状态码非2xx - 返回false")
         void testSendSync_Non2xxStatus_ShouldReturnFalse() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Bad Request", HttpStatus.BAD_REQUEST);
             
@@ -451,6 +466,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - 服务器错误 - 返回false")
         void testSendSync_ServerError_ShouldReturnFalse() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR);
             
@@ -471,6 +487,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - 发送异常 - 返回false")
         void testSendSync_ExceptionThrown_ShouldReturnFalse() {
+
             // Given
             when(restTemplate.exchange(
                     eq(TEST_URL),
@@ -489,6 +506,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - 带认证异常 - 返回false")
         void testSendSync_WithAuthException_ShouldReturnFalse() {
+
             // Given
             AuthContext authContext = AuthContext.iam(TEST_APP_ID);
             when(restTemplate.exchange(
@@ -509,6 +527,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - 免认证模式 - 不调用认证处理器")
         void testSendSync_NoAuthMode_ShouldNotCallAuthHandler() {
+
             // Given
             AuthContext authContext = AuthContext.noAuth(TEST_APP_ID);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -531,6 +550,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("sendSync - null AuthContext - 不调用认证处理器")
         void testSendSync_NullAuthContext_ShouldNotCallAuthHandler() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -557,6 +577,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("认证处理器被正确调用 - IAM认证")
         void testAuthHandler_CalledCorrectly_ForIamAuth() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -581,6 +602,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("认证处理器被正确调用 - AKSK认证")
         void testAuthHandler_CalledCorrectly_ForAkskAuth() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -605,6 +627,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("认证处理器被正确调用 - APIG认证")
         void testAuthHandler_CalledCorrectly_ForApigAuth() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -629,6 +652,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("HTTP请求头设置验证")
         void testHttpHeaders_SetCorrectly() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
@@ -663,6 +687,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("COOKIE认证 - 正确传递认证参数")
         void testCookieAuth_ShouldPassCorrectParams() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -680,6 +705,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("SOA认证 - 正确传递认证参数")
         void testSoaAuth_ShouldPassCorrectParams() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -697,6 +723,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("CLITOKEN认证 - 正确传递认证参数")
         void testClitokenAuth_ShouldPassCorrectParams() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             AuthContext authContext = AuthContext.of(TEST_APP_ID, AuthTypeEnum.CLITOKEN);
@@ -715,6 +742,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("多种认证类型 - 验证requiresAuth逻辑")
         void testVariousAuthTypes_RequiresAuth() {
+
             // 需要认证的类型
             assertTrue(AuthTypeEnum.COOKIE.requiresAuth());
             assertTrue(AuthTypeEnum.SOA.requiresAuth());
@@ -735,6 +763,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("空payload - 应正常发送")
         void testEmptyPayload_ShouldSendSuccessfully() {
+
             // Given
             Map<String, Object> emptyPayload = new HashMap<>();
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -756,6 +785,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("空appId - 应正常处理")
         void testEmptyAppId_ShouldHandleGracefully() {
+
             // Given
             AuthContext authContext = AuthContext.of("", AuthTypeEnum.IAM);
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
@@ -774,6 +804,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("null payload - 应正常发送")
         void testNullPayload_ShouldSendSuccessfully() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             
@@ -794,6 +825,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("大型payload - 应正常发送")
         void testLargePayload_ShouldSendSuccessfully() {
+
             // Given
             Map<String, Object> largePayload = new HashMap<>();
             for (int i = 0; i < 1000; i++) {
@@ -823,6 +855,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("状态码200 - 返回true")
         void testStatusCode200_ShouldReturnTrue() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("OK", HttpStatus.OK);
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class))).thenReturn(mockResponse);
@@ -837,6 +870,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("状态码201 - 返回true")
         void testStatusCode201_ShouldReturnTrue() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Created", HttpStatus.CREATED);
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class))).thenReturn(mockResponse);
@@ -851,6 +885,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("状态码204 - 返回true")
         void testStatusCode204_ShouldReturnTrue() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>(HttpStatus.NO_CONTENT);
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class))).thenReturn(mockResponse);
@@ -865,6 +900,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("状态码301 - 返回false")
         void testStatusCode301_ShouldReturnFalse() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>(HttpStatus.MOVED_PERMANENTLY);
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class))).thenReturn(mockResponse);
@@ -879,6 +915,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("状态码401 - 返回false")
         void testStatusCode401_ShouldReturnFalse() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Unauthorized", HttpStatus.UNAUTHORIZED);
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class))).thenReturn(mockResponse);
@@ -893,6 +930,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("状态码500 - 返回false")
         void testStatusCode500_ShouldReturnFalse() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Internal Server Error", HttpStatus.INTERNAL_SERVER_ERROR);
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class))).thenReturn(mockResponse);
@@ -907,6 +945,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("状态码503 - 返回false")
         void testStatusCode503_ShouldReturnFalse() {
+
             // Given
             ResponseEntity<String> mockResponse = new ResponseEntity<>("Service Unavailable", HttpStatus.SERVICE_UNAVAILABLE);
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class))).thenReturn(mockResponse);
@@ -926,6 +965,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("RestClientException - sendSync返回false")
         void testRestClientException_ShouldReturnFalse() {
+
             // Given
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class)))
                     .thenThrow(new RestClientException("Connection refused"));
@@ -940,6 +980,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("RuntimeException - sendSync返回false")
         void testRuntimeException_ShouldReturnFalse() {
+
             // Given
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class)))
                     .thenThrow(new RuntimeException("Unexpected error"));
@@ -954,6 +995,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("InterruptedException - sendEvent捕获异常")
         void testInterruptedException_ShouldCatchException() {
+
             // Given
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class)))
                     .thenThrow(new RuntimeException("Thread interrupted"));
@@ -967,6 +1009,7 @@ class WebHookChannelTest {
         @Test
         @DisplayName("IllegalArgumentException - sendSync返回false")
         void testIllegalArgumentException_ShouldReturnFalse() {
+
             // Given
             when(restTemplate.exchange(anyString(), any(), any(), eq(String.class)))
                     .thenThrow(new IllegalArgumentException("Invalid URL"));

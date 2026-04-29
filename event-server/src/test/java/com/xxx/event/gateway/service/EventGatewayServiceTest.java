@@ -73,6 +73,7 @@ class EventGatewayServiceTest {
 
     @BeforeEach
     void setUp() {
+
         // 初始化测试数据
         payload = new HashMap<>();
         payload.put("messageId", "msg-123");
@@ -94,6 +95,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("正常流程 - 成功发布事件")
         void testPublishEvent_Success() {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -143,6 +145,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("事件资源不存在或未发布")
         void testPublishEvent_ResourceNotFound() {
+
             // Given
             String scope = "event:im:message-received";
             when(apiServerClient.getPermissionByScope(scope)).thenReturn(null);
@@ -163,6 +166,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("事件无订阅者")
         void testPublishEvent_NoSubscribers() {
+
             // Given
             String scope = "event:im:message-received";
             
@@ -191,6 +195,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("标准两段格式转换")
         void testConvertTopicToScope_TwoParts() throws Exception {
+
             // Given
             Method method = EventGatewayService.class.getDeclaredMethod("convertTopicToScope", String.class);
             method.setAccessible(true);
@@ -204,6 +209,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("三段格式转换")
         void testConvertTopicToScope_ThreeParts() throws Exception {
+
             // Given
             Method method = EventGatewayService.class.getDeclaredMethod("convertTopicToScope", String.class);
             method.setAccessible(true);
@@ -216,6 +222,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("四段及以上格式转换")
         void testConvertTopicToScope_MultipleParts() throws Exception {
+
             // Given
             Method method = EventGatewayService.class.getDeclaredMethod("convertTopicToScope", String.class);
             method.setAccessible(true);
@@ -228,6 +235,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("空字符串处理")
         void testConvertTopicToScope_EmptyString() throws Exception {
+
             // Given
             Method method = EventGatewayService.class.getDeclaredMethod("convertTopicToScope", String.class);
             method.setAccessible(true);
@@ -239,6 +247,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("null 值处理")
         void testConvertTopicToScope_Null() throws Exception {
+
             // Given
             Method method = EventGatewayService.class.getDeclaredMethod("convertTopicToScope", String.class);
             method.setAccessible(true);
@@ -250,6 +259,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("单段格式处理")
         void testConvertTopicToScope_SinglePart() throws Exception {
+
             // Given
             Method method = EventGatewayService.class.getDeclaredMethod("convertTopicToScope", String.class);
             method.setAccessible(true);
@@ -266,6 +276,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("缓存命中 - 直接返回缓存数据")
         void testGetSubscribedApps_CacheHit() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String cacheKey = "event:subscribers:" + topic;
@@ -291,6 +302,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("缓存未命中 - 从 api-server 查询并缓存")
         void testGetSubscribedApps_CacheMiss() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -320,6 +332,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("订阅列表为空 - 不缓存空列表")
         void testGetSubscribedApps_EmptyList() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -345,6 +358,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("Redis连接异常 - 应该降级处理而不是直接失败")
         void testGetSubscribedApps_RedisConnectionError() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -353,6 +367,7 @@ class EventGatewayServiceTest {
 
             // 模拟 Redis 抛出连接异常
             when(valueOperations.get(cacheKey)).thenThrow(new RedisConnectionFailureException("Connection refused"));
+
             // 期望：应该降级到数据库查询
             when(apiServerClient.getSubscribedApps(scope)).thenReturn(apps);
 
@@ -376,6 +391,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("缓存类型错误 - 应该清除错误缓存并重新查询")
         void testGetSubscribedApps_CacheTypeMismatch() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -384,6 +400,7 @@ class EventGatewayServiceTest {
 
             // 模拟缓存中存储了非 List<String> 类型的数据
             when(valueOperations.get(cacheKey)).thenReturn("invalid-type-string");
+
             // 期望：应该清除缓存并重新查询
             when(apiServerClient.getSubscribedApps(scope)).thenReturn(apps);
 
@@ -400,6 +417,7 @@ class EventGatewayServiceTest {
             
             // 验证清除了错误缓存
             verify(redisTemplate).delete(cacheKey);
+
             // 验证从数据库重新查询
             verify(apiServerClient).getSubscribedApps(scope);
         }
@@ -407,12 +425,14 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("getSubscribedApps返回null - 应该返回空列表而不是NPE")
         void testGetSubscribedApps_ApiReturnsNull() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
             String cacheKey = "event:subscribers:" + topic;
 
             when(valueOperations.get(cacheKey)).thenReturn(null);
+
             // 模拟 API 返回 null
             when(apiServerClient.getSubscribedApps(scope)).thenReturn(null);
 
@@ -439,6 +459,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("消息队列分发 - channelType=0")
         void testDistributeEvent_MessageQueue() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -467,6 +488,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("WebHook分发 - channelType=1")
         void testDistributeEvent_WebHook() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -500,6 +522,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("未知通道类型 - 记录警告日志")
         void testDistributeEvent_UnknownChannelType() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -527,6 +550,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("SSE/WebSocket 通道类型 - 不支持")
         void testDistributeEvent_SSENotSupported() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -554,6 +578,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("订阅配置为空 - 跳过处理")
         void testDistributeEvent_EmptyConfig() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -577,6 +602,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("channelType 为 null - 不处理")
         void testDistributeEvent_NullChannelType() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -604,6 +630,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("channelAddress 为 null - 不处理")
         void testDistributeEvent_NullChannelAddress() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -630,6 +657,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("异常处理 - 单个应用失败不影响其他应用")
         void testDistributeEvent_ExceptionHandling() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -667,6 +695,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("认证类型解析 - 各种 AuthType")
         void testDistributeEvent_VariousAuthTypes() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -699,6 +728,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("认证类型为 null - 传递 null")
         void testDistributeEvent_NullAuthType() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -731,6 +761,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("配置channelType为字符串 - 应该安全处理而不是抛出异常")
         void testDistributeEvent_ChannelTypeAsString() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -769,6 +800,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("清除缓存成功")
         void testClearCache_Success() {
+
             // Given
             String topic = "im.message.received";
             String cacheKey = "event:subscribers:" + topic;
@@ -783,6 +815,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("清除不同 Topic 的缓存")
         void testClearCache_DifferentTopics() {
+
             // Given
             String topic1 = "calendar.event.created";
             String topic2 = "workflow.task.completed";
@@ -804,6 +837,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("验证已发布的事件资源")
         void testVerifyEventResource_Published() throws Exception {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -831,6 +865,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("事件资源不存在")
         void testVerifyEventResource_NotFound() throws Exception {
+
             // Given
             String topic = "unknown.event.type";
             String scope = "event:unknown:event-type";
@@ -851,6 +886,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("事件资源未发布")
         void testVerifyEventResource_NotPublished() throws Exception {
+
             // Given
             String topic = "draft.event.type";
             String scope = "event:draft:event-type";
@@ -876,6 +912,7 @@ class EventGatewayServiceTest {
         @Test
         @DisplayName("完整流程 - 多个订阅者使用不同通道")
         void testFullFlow_MultipleSubscribersDifferentChannels() {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";
@@ -928,12 +965,14 @@ class EventGatewayServiceTest {
                     eq("webhook-app"), 
                     eq(AuthTypeEnum.IAM)
             );
+
             // 未知通道不应该调用任何通道
         }
 
         @Test
         @DisplayName("完整流程 - 缓存命中场景")
         void testFullFlow_CacheHit() {
+
             // Given
             String topic = "im.message.received";
             String scope = "event:im:message-received";

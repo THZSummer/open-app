@@ -37,6 +37,7 @@ public class DevAppContextResolver implements AppContextResolver {
 
     @Override
     public String toExternalId(Long internalId) {
+
         // Dev environment: Return String directly
         return String.valueOf(internalId);
     }
@@ -56,6 +57,7 @@ public class DevAppContextResolver implements AppContextResolver {
         try {
             return Long.parseLong(externalAppId);
         } catch (NumberFormatException e) {
+
             // Dev environment: Return default value 1L for non-numeric ID, convenient for testing
             log.debug("Non-numeric appId: {}, using default value 1L", externalAppId);
             return 1L;

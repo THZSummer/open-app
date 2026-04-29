@@ -173,6 +173,7 @@ public class PermissionService {
                 AppContext appCtx = appContextResolver.resolveAndValidate(appId);
                 appIdLong = appCtx.getInternalId();
             } catch (Exception e) {
+
                 // 分类查询时，appId 是可选参数，转换失败时忽略
                 log.warn("Failed to parse appId, skip subscription status query: {}", appId);
             }
@@ -239,6 +240,7 @@ public class PermissionService {
         List<PermissionSubscribeResponse.FailedRecord> failedRecords = new ArrayList<>();
 
         for (Permission permission : apiPermissions) {
+
             // 检查是否已订阅
             Subscription existing = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
             if (existing != null) {
@@ -894,6 +896,7 @@ public class PermissionService {
      * 转换为 API 订阅响应
      */
     private ApiSubscriptionListResponse convertToApiSubscriptionResponse(Subscription subscription) {
+
         // 查询权限
         Permission permission = permissionMapper.selectById(subscription.getPermissionId());
 
@@ -924,6 +927,7 @@ public class PermissionService {
 
         ApiSubscriptionListResponse.ApiInfo apiInfo = null;
         if (api != null) {
+
             // 查询文档URL
             String docUrl = getApiDocUrl(api.getId());
 
@@ -999,6 +1003,7 @@ public class PermissionService {
 
         EventSubscriptionListResponse.EventInfo eventInfo = null;
         if (event != null) {
+
             // 查询事件文档URL
             String eventDocUrl = getEventDocUrl(event.getId());
 
@@ -1127,6 +1132,7 @@ public class PermissionService {
      * 转换为分类权限响应
      */
     private CategoryPermissionListResponse convertToCategoryPermissionResponse(Permission permission, Long appIdLong) {
+
         // 获取资源信息
         CategoryPermissionListResponse.ResourceInfo resourceInfo = null;
 
@@ -1206,6 +1212,7 @@ public class PermissionService {
     private List<String> buildCategoryPath(Category category) {
         List<String> path = new ArrayList<>();
         if (category.getPath() != null) {
+
             // 解析 path 字段，如 /1/2/ -> [1, 2]
             String[] ids = category.getPath().split("/");
             for (String idStr : ids) {
@@ -1253,6 +1260,7 @@ public class PermissionService {
      * 获取权限文档URL
      */
     private String getPermissionDocUrl(Long permissionId) {
+
         // 从 permission_property 表查询 doc_url
         List<PermissionProperty> properties = permissionPropertyMapper.selectByParentId(permissionId);
         return properties.stream()
@@ -1266,6 +1274,7 @@ public class PermissionService {
      * 获取事件文档URL
      */
     private String getEventDocUrl(Long eventId) {
+
         // 从 event_property 表查询 doc_url
         List<EventProperty> properties = eventPropertyMapper.selectByParentId(eventId);
         return properties.stream()

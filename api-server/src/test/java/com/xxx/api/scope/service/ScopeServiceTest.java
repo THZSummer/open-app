@@ -49,6 +49,7 @@ class ScopeServiceTest {
     @Test
     @DisplayName("获取用户授权列表 - 成功")
     void testGetUserAuthorizations() {
+
         // 准备数据
         UserAuthorizationListRequest request = new UserAuthorizationListRequest();
         request.setCurPage(1);
@@ -88,6 +89,7 @@ class ScopeServiceTest {
     @Test
     @DisplayName("创建用户授权 - 成功")
     void testCreateUserAuthorization() {
+
         // 准备数据
         UserAuthorizationCreateRequest request = new UserAuthorizationCreateRequest();
         request.setUserId("user001");
@@ -121,6 +123,7 @@ class ScopeServiceTest {
     @Test
     @DisplayName("取消授权 - 成功")
     void testRevokeUserAuthorization() {
+
         // 准备数据
         String authId = "600";
 

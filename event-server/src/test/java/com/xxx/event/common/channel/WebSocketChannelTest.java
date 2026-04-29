@@ -76,6 +76,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("添加新连接 - 成功")
         void testAddNewConnection_Success() {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -91,6 +92,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("添加多个不同连接 - 成功")
         void testAddMultipleConnections_Success() {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -111,6 +113,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("替换已存在的连接 - 旧连接被关闭")
         void testReplaceExistingConnection_OldConnectionClosed() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -133,6 +136,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("替换已关闭的旧连接 - 不调用 close")
         void testReplaceClosedConnection_NoCloseCall() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(false); // 旧连接已关闭
@@ -154,6 +158,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("关闭旧连接时抛出异常 - 不影响新连接")
         void testCloseOldConnectionException_DoesNotAffectNewConnection() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -181,6 +186,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("移除存在的连接 - 成功")
         void testRemoveExistingConnection_Success() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -198,6 +204,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("移除已关闭的连接 - 不调用 close")
         void testRemoveClosedConnection_NoCloseCall() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -211,6 +218,7 @@ class WebSocketChannelTest {
 
             // Then
             assertEquals(0, webSocketChannel.getActiveConnectionCount());
+
             // 验证 close 未被调用（因为会话已关闭）
             verify(mockSession1, never()).close();
         }
@@ -218,6 +226,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("移除不存在的连接 - 不抛异常")
         void testRemoveNonExistentConnection_NoException() {
+
             // Given
             String connectionId = "conn-999";
 
@@ -229,6 +238,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("关闭连接时抛出异常 - 连接仍被移除")
         void testCloseConnectionException_ConnectionStillRemoved() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -253,6 +263,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送事件消息 - 连接存在且打开")
         void testSendEvent_ConnectionExistsAndOpen() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -287,6 +298,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送事件消息 - 连接不存在")
         void testSendEvent_ConnectionNotExists() {
+
             // Given
             String connectionId = "conn-999";
             Map<String, Object> payload = new HashMap<>();
@@ -302,6 +314,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送事件消息 - 连接已关闭")
         void testSendEvent_ConnectionClosed() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -324,6 +337,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送事件消息 - 发送时抛出 IO 异常")
         void testSendEvent_IOException() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -350,6 +364,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送回调消息 - 连接存在且打开")
         void testSendCallback_ConnectionExistsAndOpen() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -384,6 +399,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送回调消息 - 连接不存在")
         void testSendCallback_ConnectionNotExists() {
+
             // Given
             String connectionId = "conn-999";
             Map<String, Object> payload = new HashMap<>();
@@ -399,6 +415,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送回调消息 - 连接已关闭")
         void testSendCallback_ConnectionClosed() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -421,6 +438,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("发送回调消息 - 发送时抛出 IO 异常")
         void testSendCallback_IOException() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -447,6 +465,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播事件消息 - 多个连接全部成功")
         void testBroadcastEvent_AllSuccess() throws IOException {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -475,6 +494,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播事件消息 - 无连接")
         void testBroadcastEvent_NoConnections() {
+
             // Given - 无连接
             Map<String, Object> payload = new HashMap<>();
             payload.put("event", "test");
@@ -486,6 +506,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播事件消息 - 部分连接失败")
         void testBroadcastEvent_PartialFailure() throws IOException {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -514,6 +535,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播事件消息 - 验证 JSON 格式")
         void testBroadcastEvent_VerifyJsonFormat() throws IOException {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             webSocketChannel.addConnection("conn-001", mockSession1);
@@ -546,6 +568,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播回调消息 - 多个连接全部成功")
         void testBroadcastCallback_AllSuccess() throws IOException {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -570,6 +593,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播回调消息 - 无连接")
         void testBroadcastCallback_NoConnections() {
+
             // Given - 无连接
             Map<String, Object> payload = new HashMap<>();
             payload.put("action", "refresh");
@@ -581,6 +605,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播回调消息 - 部分连接失败")
         void testBroadcastCallback_PartialFailure() throws IOException {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -606,6 +631,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("广播回调消息 - 验证 JSON 格式")
         void testBroadcastCallback_VerifyJsonFormat() throws IOException {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             webSocketChannel.addConnection("conn-001", mockSession1);
@@ -638,6 +664,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("获取连接数 - 无连接")
         void testGetActiveConnectionCount_NoConnections() {
+
             // When
             int count = webSocketChannel.getActiveConnectionCount();
 
@@ -648,6 +675,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("获取连接数 - 有多个连接")
         void testGetActiveConnectionCount_MultipleConnections() {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -665,6 +693,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("获取连接数 - 添加和移除后")
         void testGetActiveConnectionCount_AfterAddAndRemove() {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -690,6 +719,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("检查连接 - 存在且打开")
         void testHasConnection_ExistsAndOpen() {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             webSocketChannel.addConnection("conn-001", mockSession1);
@@ -704,6 +734,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("检查连接 - 存在但已关闭")
         void testHasConnection_ExistsButClosed() {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             webSocketChannel.addConnection("conn-001", mockSession1);
@@ -721,6 +752,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("检查连接 - 不存在")
         void testHasConnection_NotExists() {
+
             // When
             boolean exists = webSocketChannel.hasConnection("conn-999");
 
@@ -738,6 +770,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("获取所有连接ID - 无连接")
         void testGetConnectionIds_NoConnections() {
+
             // When
             Set<String> connectionIds = webSocketChannel.getConnectionIds();
 
@@ -749,6 +782,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("获取所有连接ID - 有多个连接")
         void testGetConnectionIds_MultipleConnections() {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);
@@ -772,6 +806,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("获取所有连接ID - 修改返回集合不影响内部状态")
         void testGetConnectionIds_ModifyReturnedSetDoesNotAffectInternalState() {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             webSocketChannel.addConnection("conn-001", mockSession1);
@@ -796,6 +831,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("完整生命周期 - 添加、发送、移除")
         void testFullLifecycle() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -826,6 +862,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("并发场景 - 多次添加相同连接")
         void testConcurrentAddSameConnection() throws IOException {
+
             // Given
             String connectionId = "conn-001";
             when(mockSession1.isOpen()).thenReturn(true);
@@ -845,6 +882,7 @@ class WebSocketChannelTest {
         @Test
         @DisplayName("复杂场景 - 混合操作")
         void testComplexScenario() throws IOException {
+
             // Given
             when(mockSession1.isOpen()).thenReturn(true);
             when(mockSession2.isOpen()).thenReturn(true);

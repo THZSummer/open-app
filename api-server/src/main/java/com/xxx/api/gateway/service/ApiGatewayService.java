@@ -35,6 +35,7 @@ public class ApiGatewayService {
      * @return 校验结果
      */
     public PermissionCheckResponse checkPermission(String appId, String scope) {
+
         // 转换 appId
         Long appIdLong;
         try {
@@ -110,6 +111,7 @@ public class ApiGatewayService {
      * @return Scope 标识
      */
     public String findScopeByPathAndMethod(String path, String method) {
+
         // Mock 实现：根据路径和方法生成 Scope
         // 实际项目中应该查询 API 资源表，找到对应的权限
         
@@ -135,6 +137,7 @@ public class ApiGatewayService {
      * @return 回调配置，未找到返回 null
      */
     public CallbackConfigResponse getCallbackConfig(String ak, String scope) {
+
         // 1. 通过 AK 获取应用ID（预留接口，对接现有 AKSK 管理系统）
         Long appId = applicationService.getAppIdByAk(ak);
         if (appId == null) {

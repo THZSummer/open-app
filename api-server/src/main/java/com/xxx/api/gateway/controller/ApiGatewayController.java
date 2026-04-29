@@ -66,6 +66,7 @@ public class ApiGatewayController {
         log.info("API gateway request: method={}, path={}", request.getMethod(), request.getRequestURI());
         
         try {
+
             // 1. 验证应用身份
             if (!apiGatewayService.verifyApplication(appId, authType, authCredential)) {
                 log.warn("Application authentication failed: appId={}", appId);
@@ -111,6 +112,7 @@ public class ApiGatewayController {
      */
     private String extractPath(HttpServletRequest request) {
         String uri = request.getRequestURI();
+
         // 移除 /gateway/api 前缀
         if (uri.startsWith("/gateway/api")) {
             return uri.substring("/gateway/api".length());

@@ -28,6 +28,7 @@ public class DevUserStrategy implements UserResolveStrategy {
 
     @Override
     public UserContext resolve(HttpServletRequest request) {
+
         // Parse user_id from Cookie
         String userId = extractCookieValue(request, USER_ID_COOKIE);
 
@@ -48,6 +49,7 @@ public class DevUserStrategy implements UserResolveStrategy {
 
     @Override
     public boolean supports(String activeProfile) {
+
         // Dev environment activation: dev, development, local
         return "dev".equals(activeProfile)
                 || "development".equals(activeProfile)

@@ -49,6 +49,7 @@ class CategoryServiceTest {
 
     @BeforeEach
     void setUp() {
+
         // 创建测试分类
         testCategory = new Category();
         testCategory.setId(1L);
@@ -79,6 +80,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("获取分类详情 - 成功")
     void testGetCategoryById_Success() {
+
         // Given
         when(categoryMapper.selectById(1L)).thenReturn(testCategory);
 
@@ -97,6 +99,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("获取分类详情 - 分类不存在")
     void testGetCategoryById_NotFound() {
+
         // Given
         when(categoryMapper.selectById(999L)).thenReturn(null);
 
@@ -109,6 +112,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("创建分类 - 根分类")
     void testCreateCategory_Root() {
+
         // Given
         CategoryCreateRequest request = new CategoryCreateRequest();
         request.setCategoryAlias("app_type_a");
@@ -135,6 +139,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("创建分类 - 子分类")
     void testCreateCategory_Child() {
+
         // Given
         CategoryCreateRequest request = new CategoryCreateRequest();
         request.setNameCn("IM业务");
@@ -161,6 +166,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("更新分类 - 成功")
     void testUpdateCategory_Success() {
+
         // Given
         CategoryUpdateRequest request = new CategoryUpdateRequest();
         request.setNameCn("更新后的名称");
@@ -183,6 +189,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("删除分类 - 成功")
     void testDeleteCategory_Success() {
+
         // Given
         when(categoryMapper.selectById(1L)).thenReturn(testCategory);
         when(categoryMapper.countChildrenByParentId(1L)).thenReturn(0);
@@ -202,6 +209,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("删除分类 - 存在子分类")
     void testDeleteCategory_HasChildren() {
+
         // Given
         when(categoryMapper.selectById(1L)).thenReturn(testCategory);
         when(categoryMapper.countChildrenByParentId(1L)).thenReturn(2);
@@ -218,6 +226,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("删除分类 - 存在关联资源")
     void testDeleteCategory_HasResources() {
+
         // Given
         when(categoryMapper.selectById(1L)).thenReturn(testCategory);
         when(categoryMapper.countChildrenByParentId(1L)).thenReturn(0);
@@ -235,6 +244,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("添加责任人 - 成功")
     void testAddOwner_Success() {
+
         // Given
         CategoryOwnerRequest request = new CategoryOwnerRequest();
         request.setUserId("user001");
@@ -260,6 +270,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("添加责任人 - 已存在")
     void testAddOwner_AlreadyExists() {
+
         // Given
         CategoryOwnerRequest request = new CategoryOwnerRequest();
         request.setUserId("user001");
@@ -280,6 +291,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("获取责任人列表 - 成功")
     void testGetOwners_Success() {
+
         // Given
         List<CategoryOwner> owners = new ArrayList<>();
         owners.add(testOwner);
@@ -299,6 +311,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("移除责任人 - 成功")
     void testRemoveOwner_Success() {
+
         // Given
         when(categoryMapper.selectById(1L)).thenReturn(testCategory);
         when(categoryOwnerMapper.deleteByCategoryIdAndUserId(1L, "user001")).thenReturn(1);
@@ -313,6 +326,7 @@ class CategoryServiceTest {
     @Test
     @DisplayName("移除责任人 - 不存在")
     void testRemoveOwner_NotFound() {
+
         // Given
         when(categoryMapper.selectById(1L)).thenReturn(testCategory);
         when(categoryOwnerMapper.deleteByCategoryIdAndUserId(1L, "user999")).thenReturn(0);

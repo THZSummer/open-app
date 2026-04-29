@@ -133,6 +133,7 @@ public class CallbackService {
      * @return 回调详情
      */
     public CallbackResponse getCallbackById(Long id) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
@@ -158,6 +159,7 @@ public class CallbackService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CallbackResponse createCallback(CallbackCreateRequest request) {
+
         // 解析分类ID
         Long categoryId;
         try {
@@ -222,6 +224,7 @@ public class CallbackService {
         permission.setResourceType("callback");
         permission.setResourceId(callbackId);
         permission.setCategoryId(categoryId);
+
         // ✅ v2.8.0新增：审批配置字段
         permission.setNeedApproval(needApproval);
         permission.setResourceNodes(request.getPermission().getResourceNodes());
@@ -239,11 +242,13 @@ public class CallbackService {
             ApprovalEngine.BusinessType.CALLBACK_REGISTER, null);
 
         if (approvalNodes.isEmpty()) {
+
             // 无审批节点配置，直接发布
             callback.setStatus(2); // 已发布
             callbackMapper.update(callback);
             log.info("Callback registration does not require approval (no approval nodes configured), publish directly: callbackId={}", callbackId);
         } else {
+
             // 有审批节点，创建审批单
             try {
                 approvalEngine.createApproval(
@@ -280,6 +285,7 @@ public class CallbackService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CallbackResponse updateCallback(Long id, CallbackUpdateRequest request) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
@@ -341,13 +347,16 @@ public class CallbackService {
         // 更新属性（如果有）
         List<CallbackProperty> savedProperties = new ArrayList<>();
         if (request.getProperties() != null) {
+
             // 删除原有属性
             callbackPropertyMapper.deleteByParentId(id);
+
             // 保存新属性
             if (!request.getProperties().isEmpty()) {
                 savedProperties = saveProperties(id, request.getProperties());
             }
         } else {
+
             // 查询现有属性
             savedProperties = callbackPropertyMapper.selectByParentId(id);
         }
@@ -366,6 +375,7 @@ public class CallbackService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteCallback(Long id) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
@@ -403,6 +413,7 @@ public class CallbackService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CallbackResponse withdrawCallback(Long id) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
@@ -468,6 +479,7 @@ public class CallbackService {
      * 转换为列表响应
      */
     private CallbackListResponse convertToListResponse(Callback callback, Map<Long, String> docUrlMap) {
+
         // 查询权限信息
         Permission permission = permissionMapper.selectByResource("callback", callback.getId());
 
@@ -518,6 +530,7 @@ public class CallbackService {
                 .nameEn(permission.getNameEn())
                 .scope(permission.getScope())
                 .status(permission.getStatus())
+
                 // ✅ v2.8.0新增：审批配置字段
                 .needApproval(permission.getNeedApproval())
                 .resourceNodes(permission.getResourceNodes())

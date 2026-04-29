@@ -42,6 +42,7 @@ public class SignatureUtil {
             String requestBody) {
         
         try {
+
             // 1. 验证时间戳（防止重放攻击）
             long currentTime = System.currentTimeMillis();
             long requestTime = Long.parseLong(timestamp);
@@ -140,6 +141,7 @@ public class SignatureUtil {
      * @return 是否验证通过
      */
     public static boolean verifyBearerToken(String token) {
+
         // Mock: 简单验证 token 不为空且以 "Bearer " 开头
         if (token == null || token.isEmpty()) {
             return false;

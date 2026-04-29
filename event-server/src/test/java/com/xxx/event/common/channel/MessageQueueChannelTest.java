@@ -34,6 +34,7 @@ class MessageQueueChannelTest {
 
     @BeforeEach
     void setUp() {
+
         // 初始化被测对象（不依赖 Spring 容器）
         messageQueueChannel = new MessageQueueChannel();
         
@@ -48,6 +49,7 @@ class MessageQueueChannelTest {
 
     @AfterEach
     void tearDown() {
+
         // 清理日志捕获
         if (logger != null && testAppender != null) {
             logger.detachAppender(testAppender);
@@ -61,6 +63,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该正常处理发送事件请求（预留实现）")
         void shouldHandleSendEventGracefully() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of(
@@ -85,6 +88,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该在日志中包含队列名称")
         void shouldIncludeQueueNameInLog() {
+
             // Given
             String queueName = "order-event-queue";
             Map<String, Object> payload = Map.of("test", "data");
@@ -103,6 +107,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该在日志中包含事件内容")
         void shouldIncludePayloadInLog() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of(
@@ -124,6 +129,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该输出预留实现的警告日志")
         void shouldLogWarningForReservedImplementation() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of("key", "value");
@@ -143,6 +149,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该输出完成日志并记录耗时")
         void shouldLogCompletionWithDuration() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of("test", "data");
@@ -162,6 +169,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该正确处理空事件内容")
         void shouldHandleEmptyPayload() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of();
@@ -176,6 +184,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该正确处理复杂嵌套的事件内容")
         void shouldHandleComplexPayload() {
+
             // Given
             String queueName = "complex-queue";
             Map<String, Object> payload = Map.of(
@@ -210,6 +219,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该记录发送开始和完成两个阶段的日志")
         void shouldLogBothStartAndCompletion() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of("test", "data");
@@ -237,6 +247,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该返回预留状态信息")
         void shouldReturnReservedStatus() {
+
             // Given
             String queueName = "test-queue";
 
@@ -254,6 +265,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该输出预留实现的警告日志")
         void shouldLogWarningForReservedImplementation() {
+
             // Given
             String queueName = "status-check-queue";
 
@@ -272,6 +284,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该返回包含所有必需字段的Map")
         void shouldReturnMapWithAllRequiredFields() {
+
             // Given
             String queueName = "test-queue";
 
@@ -288,6 +301,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该正确处理不同的队列名称")
         void shouldHandleDifferentQueueNames() {
+
             // Given
             String[] queueNames = {
                 "simple-queue",
@@ -308,6 +322,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("返回的Map应该是不可变的")
         void shouldReturnImmutableMap() {
+
             // Given
             String queueName = "test-queue";
 
@@ -323,6 +338,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该能够区分不同的队列状态查询")
         void shouldDistinguishDifferentQueueStatusQueries() {
+
             // Given
             String queue1 = "queue-1";
             String queue2 = "queue-2";
@@ -346,6 +362,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该返回-1表示查询失败（预留实现）")
         void shouldReturnMinusOneForReservedImplementation() {
+
             // Given
             String queueName = "test-queue";
 
@@ -359,6 +376,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该输出预留实现的警告日志")
         void shouldLogWarningForReservedImplementation() {
+
             // Given
             String queueName = "count-check-queue";
 
@@ -377,6 +395,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该在日志中包含队列名称")
         void shouldIncludeQueueNameInLog() {
+
             // Given
             String queueName = "message-count-queue";
 
@@ -394,6 +413,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("应该对不同的队列返回相同的结果")
         void shouldReturnSameResultForDifferentQueues() {
+
             // Given
             String[] queueNames = {"queue-a", "queue-b", "queue-c"};
 
@@ -407,6 +427,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("返回值应该是long类型")
         void shouldReturnLongType() {
+
             // Given
             String queueName = "test-queue";
 
@@ -421,6 +442,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("多次调用应返回一致的结果")
         void shouldReturnConsistentResultOnMultipleCalls() {
+
             // Given
             String queueName = "test-queue";
             
@@ -443,6 +465,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("所有方法都应正常执行不抛出异常")
         void allMethodsShouldExecuteWithoutException() {
+
             // Given
             String queueName = "integration-queue";
             Map<String, Object> payload = Map.of("key", "value");
@@ -458,6 +481,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("方法的返回值应符合预留实现的预期")
         void methodReturnValuesShouldMatchExpectations() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of("eventType", "test");
@@ -476,6 +500,7 @@ class MessageQueueChannelTest {
         @Test
         @DisplayName("所有预留实现的方法都应输出警告日志")
         void allReservedMethodsShouldLogWarnings() {
+
             // Given
             String queueName = "test-queue";
             Map<String, Object> payload = Map.of("test", "data");

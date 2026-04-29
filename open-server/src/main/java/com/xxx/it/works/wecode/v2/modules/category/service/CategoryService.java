@@ -43,12 +43,15 @@ public class CategoryService {
      * @return 树形分类列表
      */
     public List<CategoryTreeResponse> getCategoryTree(String categoryAlias) {
+
         // 查询所有分类
         List<Category> categories;
         if (categoryAlias != null && !categoryAlias.isEmpty()) {
+
             // 根据分类别名查询（用于权限树查询）
             categories = categoryMapper.selectByCategoryAlias(categoryAlias);
         } else {
+
             // 查询所有分类
             categories = categoryMapper.selectAll();
         }
@@ -75,9 +78,11 @@ public class CategoryService {
         for (Category category : categories) {
             CategoryTreeResponse response = responseMap.get(category.getId());
             if (category.getParentId() == null || category.getParentId() == 0L) {
+
                 // 根节点（parentId 为 null 或 0 都视为根节点）
                 roots.add(response);
             } else {
+
                 // 子节点
                 CategoryTreeResponse parent = responseMap.get(category.getParentId());
                 if (parent != null) {
@@ -111,6 +116,7 @@ public class CategoryService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CategoryResponse createCategory(CategoryCreateRequest request) {
+
         // 解析父分类ID
         Long parentId = null;
         if (request.getParentId() != null && !request.getParentId().isEmpty()) {
@@ -129,6 +135,7 @@ public class CategoryService {
                 throw BusinessException.notFound("父分类不存在", "Parent category not found");
             }
             parentPath = parent.getPath();
+
             // 子分类不能设置 categoryAlias
             if (request.getCategoryAlias() != null && !request.getCategoryAlias().isEmpty()) {
                 log.warn("Sub-category cannot set category alias, will be ignored: {}", request.getCategoryAlias());
@@ -173,6 +180,7 @@ public class CategoryService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CategoryResponse updateCategory(Long id, CategoryUpdateRequest request) {
+
         // 查询分类
         Category category = categoryMapper.selectById(id);
         if (category == null) {
@@ -201,6 +209,7 @@ public class CategoryService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteCategory(Long id) {
+
         // 查询分类
         Category category = categoryMapper.selectById(id);
         if (category == null) {
@@ -251,6 +260,7 @@ public class CategoryService {
      */
     @Transactional(rollbackFor = Exception.class)
     public CategoryOwnerResponse addOwner(Long categoryId, CategoryOwnerRequest request) {
+
         // 验证分类是否存在
         Category category = categoryMapper.selectById(categoryId);
         if (category == null) {
@@ -295,6 +305,7 @@ public class CategoryService {
      * @return 责任人列表
      */
     public List<CategoryOwnerResponse> getOwners(Long categoryId) {
+
         // 验证分类是否存在
         Category category = categoryMapper.selectById(categoryId);
         if (category == null) {
@@ -315,6 +326,7 @@ public class CategoryService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void removeOwner(Long categoryId, String userId) {
+
         // 验证分类是否存在
         Category category = categoryMapper.selectById(categoryId);
         if (category == null) {

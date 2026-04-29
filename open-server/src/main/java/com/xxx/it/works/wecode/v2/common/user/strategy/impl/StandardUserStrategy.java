@@ -21,6 +21,7 @@ public class StandardUserStrategy implements UserResolveStrategy {
 
     @Override
     public UserContext resolve(HttpServletRequest request) {
+
         // TODO: Reserved implementation for standard environment
         // Possible solutions:
         // 1. Parse from APIG Header: request.getHeader("X-User-Id")
@@ -34,6 +35,7 @@ public class StandardUserStrategy implements UserResolveStrategy {
 
     @Override
     public boolean supports(String activeProfile) {
+
         // Default strategy for non-development environments
         // Supports: test, uat, prod, production and all other non-development environments
         return !"dev".equals(activeProfile)

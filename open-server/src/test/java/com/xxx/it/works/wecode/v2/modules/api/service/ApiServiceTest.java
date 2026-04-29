@@ -59,6 +59,7 @@ class ApiServiceTest {
 
     @BeforeEach
     void setUp() {
+
         // 准备测试数据
         existingApi = new Api();
         existingApi.setId(100L);
@@ -80,9 +81,11 @@ class ApiServiceTest {
     @Test
     @DisplayName("部分字段更新 - 只更新中文名称")
     void testPartialUpdate_OnlyNameCn() {
+
         // Given: 只提供中文名称
         ApiUpdateRequest request = new ApiUpdateRequest();
         request.setNameCn("新的中文名称");
+
         // nameEn 和 categoryId 为 null
 
         when(apiMapper.selectById(100L)).thenReturn(existingApi);
@@ -102,9 +105,11 @@ class ApiServiceTest {
     @Test
     @DisplayName("部分字段更新 - 只更新英文名称")
     void testPartialUpdate_OnlyNameEn() {
+
         // Given: 只提供英文名称
         ApiUpdateRequest request = new ApiUpdateRequest();
         request.setNameEn("New English Name");
+
         // nameCn 和 categoryId 为 null
 
         when(apiMapper.selectById(100L)).thenReturn(existingApi);
@@ -123,6 +128,7 @@ class ApiServiceTest {
     @Test
     @DisplayName("部分字段更新 - 同时更新多个字段")
     void testPartialUpdate_MultipleFields() {
+
         // Given: 提供多个字段
         ApiUpdateRequest request = new ApiUpdateRequest();
         request.setNameCn("新中文名称");
@@ -151,6 +157,7 @@ class ApiServiceTest {
     @Test
     @DisplayName("部分字段更新 - 空字符串应被忽略")
     void testPartialUpdate_EmptyStringShouldBeIgnored() {
+
         // Given: 提供空字符串
         ApiUpdateRequest request = new ApiUpdateRequest();
         request.setNameCn("  "); // 空格字符串
@@ -172,6 +179,7 @@ class ApiServiceTest {
     @Test
     @DisplayName("更新不存在的API应抛出异常")
     void testUpdateNonExistentApi() {
+
         // Given
         ApiUpdateRequest request = new ApiUpdateRequest();
         request.setNameCn("新名称");
@@ -187,6 +195,7 @@ class ApiServiceTest {
     @Test
     @DisplayName("更新分类ID为不存在的分类应抛出异常")
     void testUpdateWithNonExistentCategory() {
+
         // Given
         ApiUpdateRequest request = new ApiUpdateRequest();
         request.setCategoryId("999");

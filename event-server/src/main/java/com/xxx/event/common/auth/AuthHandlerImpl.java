@@ -27,6 +27,7 @@ public class AuthHandlerImpl implements AuthHandler {
 
     @Override
     public void applyAuth(HttpHeaders headers, String appId, AuthTypeEnum authType) {
+
         // 参数校验
         if (authType == null || authType == AuthTypeEnum.NONE) {
             log.debug("Authentication skipped, skipping auth header application: appId={}", appId);
