@@ -75,6 +75,7 @@
         UPDATE openplatform_v2_permission_t
         SET name_cn = #{nameCn},
             name_en = #{nameEn},
+            scope = #{scope},
             category_id = #{categoryId},
             need_approval = #{needApproval},
             resource_nodes = #{resourceNodes},

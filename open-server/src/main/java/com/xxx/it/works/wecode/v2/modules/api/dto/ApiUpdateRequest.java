@@ -33,6 +33,18 @@ public class ApiUpdateRequest implements Serializable {
     private String nameEn;
 
     /**
+     * API 路径（可选，更新时只更新非null字段）
+     */
+    @Schema(description = "API 路径（可选）", example = "/api/v1/messages")
+    private String path;
+
+    /**
+     * HTTP 方法（可选，更新时只更新非null字段）
+     */
+    @Schema(description = "HTTP 方法（可选）", allowableValues = {"GET", "POST", "PUT", "DELETE"})
+    private String method;
+
+    /**
      * 认证方式（可选）：0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN
      */
     @Schema(description = "认证方式（可选）: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN")
