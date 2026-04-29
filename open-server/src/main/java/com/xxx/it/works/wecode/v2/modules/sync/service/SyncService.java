@@ -444,23 +444,53 @@ public class SyncService {
         }
 
         String resourceType = newPermission.getResourceType();
-        Long oldResourceId = null;
+        Long resourceId = newPermission.getResourceId();
 
         // 2. 根据类型查找对应的旧资源
         if ("api".equalsIgnoreCase(resourceType)) {
-            Api newApi = syncMapper.selectNewApiByPathAndMethod(
-                    null, null); // 需要先查询API详情
+            // 查询新API详情
+            Api newApi = syncMapper.selectNewApiById(resourceId);
+            if (newApi == null) {
+                log.warn("New API not found, id={}", resourceId);
+                return null;
+            }
 
-            // 通过 resource_id 查询新API
-            Api api = syncMapper.selectNewApiByPathAndMethod(null, null);
+            // 通过 path+method 匹配旧API
+            OldApi oldApi = syncMapper.selectOldApiByPathAndMethod(newApi.getPath(), newApi.getMethod());
+            if (oldApi == null) {
+                log.warn("Old API not found, path={}, method={}", newApi.getPath(), newApi.getMethod());
+                return null;
+            }
 
-} else if ("event".equalsIgnoreCase(resourceType)) {
-            log.warn("Event rollback not implemented yet");
+            // 返回旧API关联的权限ID
+            return oldApi.getPermissionId();
 
-            // TODO: 实现事件回退逻辑
-}
+        } else if ("event".equalsIgnoreCase(resourceType)) {
+            // 查询新Event详情
+            Event newEvent = syncMapper.selectNewEventById(resourceId);
+            if (newEvent == null) {
+                log.warn("New event not found, id={}", resourceId);
+                return null;
+            }
 
-        // TODO: 完整实现反向查找
+            // 通过 topic 匹配旧Event
+            OldEvent oldEvent = syncMapper.selectOldEventByTopic(newEvent.getTopic());
+            if (oldEvent == null) {
+                log.warn("Old event not found, topic={}", newEvent.getTopic());
+                return null;
+            }
+
+            // 旧Event没有直接关联权限ID，需要查找对应的旧权限
+            // 旧权限通过 module_id 关联旧Event
+            OldPermission oldPermission = syncMapper.selectOldPermissionByModuleIdAndType(oldEvent.getId(), "event");
+            if (oldPermission == null) {
+                log.warn("Old permission not found for event, moduleId={}", oldEvent.getId());
+                return null;
+            }
+            return oldPermission.getId();
+        }
+
+        log.warn("Unknown resource type, type={}", resourceType);
         return null;
     }
 

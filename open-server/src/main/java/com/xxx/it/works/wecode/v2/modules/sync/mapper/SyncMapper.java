@@ -127,6 +127,21 @@ public interface SyncMapper {
      */
     ApprovalLog selectNewApprovalLogById(@Param("id") Long id);
 
+    /**
+     * 根据ID查询新API
+     */
+    Api selectNewApiById(@Param("id") Long id);
+
+    /**
+     * 根据ID查询新事件
+     */
+    Event selectNewEventById(@Param("id") Long id);
+
+    /**
+     * 根据module_id和类型查询旧权限
+     */
+    OldPermission selectOldPermissionByModuleIdAndType(@Param("moduleId") Long moduleId, @Param("type") String type);
+
     // ==================== 新表写入（迁移） ====================
 
     /**

@@ -354,6 +354,31 @@
         WHERE id = #{id}
     </select>
 
+    <!-- 根据ID查询新API -->
+    <select id="selectNewApiById" resultMap="NewApiResultMap">
+        SELECT id, name_cn, name_en, path, method, auth_type, category_id, status
+        FROM openplatform_v2_api_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询新事件 -->
+    <select id="selectNewEventById" resultMap="NewEventResultMap">
+        SELECT id, name_cn, name_en, topic, category_id, status
+        FROM openplatform_v2_event_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据module_id和类型查询旧权限 -->
+    <select id="selectOldPermissionByModuleIdAndType" resultMap="OldPermissionResultMap">
+        SELECT id, permission_name_cn, permission_name_en, module_id, scope_id,
+               permisssion_type, is_approval_required, auth_type, status
+        FROM openplatform_permission_t
+        WHERE module_id = #{moduleId}
+          AND permisssion_type = #{type}
+          AND status = 1
+        LIMIT 1
+    </select>
+
     <!-- ==================== 新表写入（迁移） ==================== -->
 
     <!-- 插入新订阅关系（如果不存在） -->
