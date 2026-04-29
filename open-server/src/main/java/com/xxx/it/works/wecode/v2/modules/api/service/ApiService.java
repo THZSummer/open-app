@@ -285,95 +285,19 @@ public class ApiService {
             throw new BusinessException("404", "API 不存在", "API not found");
         }
 
-        Long categoryId = null;
-        if (request.getCategoryId() != null && !request.getCategoryId().trim().isEmpty()) {
-            categoryId = parseId(request.getCategoryId());
+        // 验证并获取分类ID
+        Long categoryId = validateAndGetCategoryId(request.getCategoryId());
 
-            // 检查分类是否存在
-            Category category = categoryMapper.selectById(categoryId);
-            if (category == null) {
-                throw new BusinessException("400", "分类不存在", "Category not found");
-            }
-        }
-
-        Date now = new Date();
-        String currentUser = getCurrentUser();
-
-        // 更新 API（只更新非null字段）
-        if (request.getNameCn() != null && !request.getNameCn().trim().isEmpty()) {
-            api.setNameCn(request.getNameCn());
-        }
-        if (request.getNameEn() != null && !request.getNameEn().trim().isEmpty()) {
-            api.setNameEn(request.getNameEn());
-        }
-        if (request.getPath() != null && !request.getPath().trim().isEmpty()) {
-            api.setPath(request.getPath());
-        }
-        if (request.getMethod() != null && !request.getMethod().trim().isEmpty()) {
-            api.setMethod(request.getMethod().toUpperCase(Locale.ROOT));
-        }
-        if (categoryId != null) {
-            api.setCategoryId(categoryId);
-        }
-        if (request.getAuthType() != null) {
-            api.setAuthType(request.getAuthType());
-        }
-        api.setLastUpdateTime(now);
-        api.setLastUpdateBy(currentUser);
+        // 更新 API 字段
+        updateApiFields(api, request, categoryId);
 
         apiMapper.update(api);
 
         // 更新权限
-        Permission permission = permissionMapper.selectByResource("api", apiId);
-        if (permission != null && request.getPermission() != null) {
-            if (request.getPermission().getNameCn() != null && !request.getPermission().getNameCn().trim().isEmpty()) {
-                permission.setNameCn(request.getPermission().getNameCn());
-            }
-            if (request.getPermission().getNameEn() != null && !request.getPermission().getNameEn().trim().isEmpty()) {
-                permission.setNameEn(request.getPermission().getNameEn());
-            }
-            if (request.getPermission().getScope() != null && !request.getPermission().getScope().trim().isEmpty()) {
-                permission.setScope(request.getPermission().getScope());
-            }
-            if (request.getPermission().getNeedApproval() != null) {
-                permission.setNeedApproval(request.getPermission().getNeedApproval());
-            }
-            if (request.getPermission().getResourceNodes() != null) {
-                permission.setResourceNodes(request.getPermission().getResourceNodes());
-            }
-            if (categoryId != null) {
-                permission.setCategoryId(categoryId);
-            }
-            permission.setLastUpdateTime(now);
-            permission.setLastUpdateBy(currentUser);
+        updatePermissionIfNeeded(apiId, request, categoryId);
 
-            permissionMapper.update(permission);
-        }
-
-        // 更新属性（删除旧的，插入新的）
-        if (request.getProperties() != null) {
-            apiPropertyMapper.deleteByParentId(apiId);
-
-            if (!request.getProperties().isEmpty()) {
-                List<ApiProperty> apiProperties = request.getProperties().stream()
-                        .map(prop -> {
-                            ApiProperty apiProp = new ApiProperty();
-                            apiProp.setId(idGenerator.nextId());
-                            apiProp.setParentId(api.getId());
-                            apiProp.setPropertyName(prop.getPropertyName());
-                            apiProp.setPropertyValue(prop.getPropertyValue());
-                            apiProp.setStatus(1);
-                            apiProp.setCreateTime(now);
-                            apiProp.setLastUpdateTime(now);
-                            apiProp.setCreateBy(currentUser);
-                            apiProp.setLastUpdateBy(currentUser);
-                            return apiProp;
-                        })
-                        .collect(Collectors.toList());
-
-                apiPropertyMapper.batchInsert(apiProperties);
-            }
-        }
+        // 更新属性
+        updatePropertiesIfNeeded(api, request);
 
         // 返回详情
         return getApiDetail(String.valueOf(api.getId()));
@@ -450,6 +374,141 @@ public class ApiService {
     }
 
     // ==================== 私有方法 ====================
+
+    /**
+     * 验证并获取分类ID
+     *
+     * @param categoryIdStr 分类ID字符串
+     * @return 分类ID，如果为空则返回null
+     */
+    private Long validateAndGetCategoryId(String categoryIdStr) {
+        if (categoryIdStr == null || categoryIdStr.trim().isEmpty()) {
+            return null;
+        }
+
+        Long categoryId = parseId(categoryIdStr);
+
+        // 检查分类是否存在
+        Category category = categoryMapper.selectById(categoryId);
+        if (category == null) {
+            throw new BusinessException("400", "分类不存在", "Category not found");
+        }
+
+        return categoryId;
+    }
+
+    /**
+     * 更新 API 字段
+     *
+     * @param api API实体
+     * @param request 更新请求
+     * @param categoryId 分类ID
+     */
+    private void updateApiFields(Api api, ApiUpdateRequest request, Long categoryId) {
+        Date now = new Date();
+        String currentUser = getCurrentUser();
+
+        if (request.getNameCn() != null && !request.getNameCn().trim().isEmpty()) {
+            api.setNameCn(request.getNameCn());
+        }
+        if (request.getNameEn() != null && !request.getNameEn().trim().isEmpty()) {
+            api.setNameEn(request.getNameEn());
+        }
+        if (request.getPath() != null && !request.getPath().trim().isEmpty()) {
+            api.setPath(request.getPath());
+        }
+        if (request.getMethod() != null && !request.getMethod().trim().isEmpty()) {
+            api.setMethod(request.getMethod().toUpperCase(Locale.ROOT));
+        }
+        if (categoryId != null) {
+            api.setCategoryId(categoryId);
+        }
+        if (request.getAuthType() != null) {
+            api.setAuthType(request.getAuthType());
+        }
+        api.setLastUpdateTime(now);
+        api.setLastUpdateBy(currentUser);
+    }
+
+    /**
+     * 更新权限（如果需要）
+     *
+     * @param apiId API ID
+     * @param request 更新请求
+     * @param categoryId 分类ID
+     */
+    private void updatePermissionIfNeeded(Long apiId, ApiUpdateRequest request, Long categoryId) {
+        Permission permission = permissionMapper.selectByResource("api", apiId);
+        if (permission == null || request.getPermission() == null) {
+            return;
+        }
+
+        Date now = new Date();
+        String currentUser = getCurrentUser();
+
+        if (request.getPermission().getNameCn() != null && !request.getPermission().getNameCn().trim().isEmpty()) {
+            permission.setNameCn(request.getPermission().getNameCn());
+        }
+        if (request.getPermission().getNameEn() != null && !request.getPermission().getNameEn().trim().isEmpty()) {
+            permission.setNameEn(request.getPermission().getNameEn());
+        }
+        if (request.getPermission().getScope() != null && !request.getPermission().getScope().trim().isEmpty()) {
+            permission.setScope(request.getPermission().getScope());
+        }
+        if (request.getPermission().getNeedApproval() != null) {
+            permission.setNeedApproval(request.getPermission().getNeedApproval());
+        }
+        if (request.getPermission().getResourceNodes() != null) {
+            permission.setResourceNodes(request.getPermission().getResourceNodes());
+        }
+        if (categoryId != null) {
+            permission.setCategoryId(categoryId);
+        }
+        permission.setLastUpdateTime(now);
+        permission.setLastUpdateBy(currentUser);
+
+        permissionMapper.update(permission);
+    }
+
+    /**
+     * 更新属性（如果需要）
+     *
+     * @param api API实体
+     * @param request 更新请求
+     */
+    private void updatePropertiesIfNeeded(Api api, ApiUpdateRequest request) {
+        if (request.getProperties() == null) {
+            return;
+        }
+
+        Long apiId = api.getId();
+        apiPropertyMapper.deleteByParentId(apiId);
+
+        if (request.getProperties().isEmpty()) {
+            return;
+        }
+
+        Date now = new Date();
+        String currentUser = getCurrentUser();
+
+        List<ApiProperty> apiProperties = request.getProperties().stream()
+                .map(prop -> {
+                    ApiProperty apiProp = new ApiProperty();
+                    apiProp.setId(idGenerator.nextId());
+                    apiProp.setParentId(api.getId());
+                    apiProp.setPropertyName(prop.getPropertyName());
+                    apiProp.setPropertyValue(prop.getPropertyValue());
+                    apiProp.setStatus(1);
+                    apiProp.setCreateTime(now);
+                    apiProp.setLastUpdateTime(now);
+                    apiProp.setCreateBy(currentUser);
+                    apiProp.setLastUpdateBy(currentUser);
+                    return apiProp;
+                })
+                .collect(Collectors.toList());
+
+        apiPropertyMapper.batchInsert(apiProperties);
+    }
 
     /**
      * 转换为列表响应

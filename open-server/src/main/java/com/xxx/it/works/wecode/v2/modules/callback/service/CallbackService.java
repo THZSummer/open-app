@@ -292,74 +292,20 @@ public class CallbackService {
             throw BusinessException.notFound("回调不存在", "Callback not found");
         }
 
-
         // 更新回调基本信息
-        if (request.getNameCn() != null) {
-            callback.setNameCn(request.getNameCn());
-        }
-        if (request.getNameEn() != null) {
-            callback.setNameEn(request.getNameEn());
-        }
-        callback.setLastUpdateTime(new Date());
-        callback.setLastUpdateBy(UserContextHolder.getUserId());
+        updateCallbackBasicInfo(callback, request);
 
-        // 如果更新分类ID
-        Long categoryId = callback.getCategoryId();
-        if (request.getCategoryId() != null) {
-            try {
-                categoryId = Long.parseLong(request.getCategoryId());
-                Category category = categoryMapper.selectById(categoryId);
-                if (category == null) {
-                    throw BusinessException.notFound("分类不存在", "Category not found");
-                }
-                callback.setCategoryId(categoryId); // 更新分类ID
-            } catch (NumberFormatException e) {
-                throw BusinessException.badRequest("分类ID格式错误", "Invalid category ID format");
-            }
-        }
+        // 验证并更新分类ID
+        Long categoryId = validateAndGetCategoryId(request.getCategoryId(), callback);
 
         // 保存回调
         callbackMapper.update(callback);
 
         // 更新权限
-        Permission permission = permissionMapper.selectByResource("callback", id);
-        if (permission != null && request.getPermission() != null) {
-            if (request.getPermission().getNameCn() != null) {
-                permission.setNameCn(request.getPermission().getNameCn());
-            }
-            if (request.getPermission().getNameEn() != null) {
-                permission.setNameEn(request.getPermission().getNameEn());
-            }
-            if (categoryId != null) {
-                permission.setCategoryId(categoryId);
-            }
-            if (request.getPermission().getNeedApproval() != null) {
-                permission.setNeedApproval(request.getPermission().getNeedApproval());
-            }
-            if (request.getPermission().getResourceNodes() != null) {
-                permission.setResourceNodes(request.getPermission().getResourceNodes());
-            }
-            permission.setLastUpdateTime(new Date());
-            permission.setLastUpdateBy(UserContextHolder.getUserId());
-            permissionMapper.update(permission);
-        }
+        Permission permission = updatePermissionIfNeeded(id, request, categoryId);
 
-        // 更新属性（如果有）
-        List<CallbackProperty> savedProperties = new ArrayList<>();
-        if (request.getProperties() != null) {
-
-            // 删除原有属性
-            callbackPropertyMapper.deleteByParentId(id);
-
-            // 保存新属性
-            if (!request.getProperties().isEmpty()) {
-                savedProperties = saveProperties(id, request.getProperties());
-            }
-        } else {
-
-            // 查询现有属性
-            savedProperties = callbackPropertyMapper.selectByParentId(id);
-        }
+        // 更新属性
+        List<CallbackProperty> savedProperties = updatePropertiesIfNeeded(id, request.getProperties());
 
         log.info("Callback updated successfully: id={}, nameCn={}", id, callback.getNameCn());
 
@@ -473,6 +419,103 @@ public class CallbackService {
         }
 
         return properties;
+    }
+
+    /**
+     * 更新回调基本信息
+     *
+     * @param callback 回调实体
+     * @param request 更新请求
+     */
+    private void updateCallbackBasicInfo(Callback callback, CallbackUpdateRequest request) {
+        if (request.getNameCn() != null) {
+            callback.setNameCn(request.getNameCn());
+        }
+        if (request.getNameEn() != null) {
+            callback.setNameEn(request.getNameEn());
+        }
+        callback.setLastUpdateTime(new Date());
+        callback.setLastUpdateBy(UserContextHolder.getUserId());
+    }
+
+    /**
+     * 验证并获取分类ID
+     *
+     * @param categoryIdStr 分类ID字符串
+     * @param callback 回调实体
+     * @return 分类ID
+     */
+    private Long validateAndGetCategoryId(String categoryIdStr, Callback callback) {
+        Long categoryId = callback.getCategoryId();
+        if (categoryIdStr != null) {
+            try {
+                categoryId = Long.parseLong(categoryIdStr);
+                Category category = categoryMapper.selectById(categoryId);
+                if (category == null) {
+                    throw BusinessException.notFound("分类不存在", "Category not found");
+                }
+                callback.setCategoryId(categoryId);
+            } catch (NumberFormatException e) {
+                throw BusinessException.badRequest("分类ID格式错误", "Invalid category ID format");
+            }
+        }
+        return categoryId;
+    }
+
+    /**
+     * 更新权限（如果需要）
+     *
+     * @param callbackId 回调ID
+     * @param request 更新请求
+     * @param categoryId 分类ID
+     * @return 权限实体
+     */
+    private Permission updatePermissionIfNeeded(Long callbackId, CallbackUpdateRequest request, Long categoryId) {
+        Permission permission = permissionMapper.selectByResource("callback", callbackId);
+        if (permission != null && request.getPermission() != null) {
+            if (request.getPermission().getNameCn() != null) {
+                permission.setNameCn(request.getPermission().getNameCn());
+            }
+            if (request.getPermission().getNameEn() != null) {
+                permission.setNameEn(request.getPermission().getNameEn());
+            }
+            if (categoryId != null) {
+                permission.setCategoryId(categoryId);
+            }
+            if (request.getPermission().getNeedApproval() != null) {
+                permission.setNeedApproval(request.getPermission().getNeedApproval());
+            }
+            if (request.getPermission().getResourceNodes() != null) {
+                permission.setResourceNodes(request.getPermission().getResourceNodes());
+            }
+            permission.setLastUpdateTime(new Date());
+            permission.setLastUpdateBy(UserContextHolder.getUserId());
+            permissionMapper.update(permission);
+        }
+        return permission;
+    }
+
+    /**
+     * 更新属性（如果需要）
+     *
+     * @param callbackId 回调ID
+     * @param properties 属性列表
+     * @return 保存的属性列表
+     */
+    private List<CallbackProperty> updatePropertiesIfNeeded(Long callbackId, List<CallbackPropertyDto> properties) {
+        if (properties != null) {
+            // 删除原有属性
+            callbackPropertyMapper.deleteByParentId(callbackId);
+
+            // 保存新属性
+            if (!properties.isEmpty()) {
+                return saveProperties(callbackId, properties);
+            }
+            return new ArrayList<>();
+        } else {
+            // 查询现有属性
+            return callbackPropertyMapper.selectByParentId(callbackId);
+        }
     }
 
     /**

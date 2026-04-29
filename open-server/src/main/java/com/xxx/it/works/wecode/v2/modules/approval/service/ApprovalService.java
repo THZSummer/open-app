@@ -532,74 +532,133 @@ public class ApprovalService {
      */
     private Map<String, Object> getBusinessData(String businessType, Long businessId) {
         try {
-            Map<String, Object> data = new HashMap<>();
-
             switch (businessType) {
                 case "api_register":
-                    Api api = apiMapper.selectById(businessId);
-                    if (api != null) {
-                        data.put("nameCn", api.getNameCn());
-                        data.put("path", api.getPath());
-                        data.put("method", api.getMethod());
-                    }
-                    break;
+                    return getApiRegisterData(businessId);
                 case "event_register":
-                    Event event = eventMapper.selectById(businessId);
-                    if (event != null) {
-                        data.put("nameCn", event.getNameCn());
-                        data.put("topic", event.getTopic());
-                    }
-                    break;
+                    return getEventRegisterData(businessId);
                 case "callback_register":
-                    Callback callback = callbackMapper.selectById(businessId);
-                    if (callback != null) {
-                        data.put("nameCn", callback.getNameCn());
-                    }
-                    break;
+                    return getCallbackRegisterData(businessId);
                 case "api_permission_apply":
                 case "event_permission_apply":
                 case "callback_permission_apply":
-                    Subscription subscription = subscriptionMapper.selectById(businessId);
-                    if (subscription != null) {
-                        data.put("appId", subscription.getAppId());
-                        data.put("permissionId", subscription.getPermissionId());
-
-                        Permission permission = permissionMapper.selectById(subscription.getPermissionId());
-                        if (permission != null) {
-                            data.put("nameCn", permission.getNameCn());
-                            data.put("nameEn", permission.getNameEn());
-                            data.put("scope", permission.getScope());
-                            data.put("resourceType", permission.getResourceType());
-
-                            if ("api".equals(permission.getResourceType())) {
-                                Api apiResource = apiMapper.selectById(permission.getResourceId());
-                                if (apiResource != null) {
-                                    data.put("path", apiResource.getPath());
-                                    data.put("method", apiResource.getMethod());
-                                }
-                            } else if ("event".equals(permission.getResourceType())) {
-                                Event evt = eventMapper.selectById(permission.getResourceId());
-                                if (evt != null) {
-                                    data.put("topic", evt.getTopic());
-                                }
-                            } else if ("callback".equals(permission.getResourceType())) {
-                                Callback cb = callbackMapper.selectById(permission.getResourceId());
-                                if (cb != null) {
-                                    data.put("nameCn", cb.getNameCn());
-                                }
-                            }
-                        }
-                    }
-                    break;
+                    return getPermissionApplyData(businessId);
                 default:
                     log.warn("Unknown business type: {}", businessType);
-                    break;
+                    return new HashMap<>();
             }
-
-            return data;
         } catch (Exception e) {
             log.error("Failed to get business data: businessType={}, businessId={}", businessType, businessId, e);
             return new HashMap<>();
+        }
+    }
+
+    /**
+     * 获取 API 注册数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getApiRegisterData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Api api = apiMapper.selectById(businessId);
+        if (api != null) {
+            data.put("nameCn", api.getNameCn());
+            data.put("path", api.getPath());
+            data.put("method", api.getMethod());
+        }
+        return data;
+    }
+
+    /**
+     * 获取事件注册数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getEventRegisterData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Event event = eventMapper.selectById(businessId);
+        if (event != null) {
+            data.put("nameCn", event.getNameCn());
+            data.put("topic", event.getTopic());
+        }
+        return data;
+    }
+
+    /**
+     * 获取回调注册数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getCallbackRegisterData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Callback callback = callbackMapper.selectById(businessId);
+        if (callback != null) {
+            data.put("nameCn", callback.getNameCn());
+        }
+        return data;
+    }
+
+    /**
+     * 获取权限申请数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getPermissionApplyData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Subscription subscription = subscriptionMapper.selectById(businessId);
+        if (subscription == null) {
+            return data;
+        }
+
+        data.put("appId", subscription.getAppId());
+        data.put("permissionId", subscription.getPermissionId());
+
+        Permission permission = permissionMapper.selectById(subscription.getPermissionId());
+        if (permission == null) {
+            return data;
+        }
+
+        data.put("nameCn", permission.getNameCn());
+        data.put("nameEn", permission.getNameEn());
+        data.put("scope", permission.getScope());
+        data.put("resourceType", permission.getResourceType());
+
+        // 根据资源类型填充额外信息
+        fillResourceData(data, permission);
+
+        return data;
+    }
+
+    /**
+     * 填充资源数据
+     *
+     * @param data 数据Map
+     * @param permission 权限实体
+     */
+    private void fillResourceData(Map<String, Object> data, Permission permission) {
+        String resourceType = permission.getResourceType();
+        Long resourceId = permission.getResourceId();
+
+        if ("api".equals(resourceType)) {
+            Api apiResource = apiMapper.selectById(resourceId);
+            if (apiResource != null) {
+                data.put("path", apiResource.getPath());
+                data.put("method", apiResource.getMethod());
+            }
+        } else if ("event".equals(resourceType)) {
+            Event evt = eventMapper.selectById(resourceId);
+            if (evt != null) {
+                data.put("topic", evt.getTopic());
+            }
+        } else if ("callback".equals(resourceType)) {
+            Callback cb = callbackMapper.selectById(resourceId);
+            if (cb != null) {
+                data.put("nameCn", cb.getNameCn());
+            }
         }
     }
 
