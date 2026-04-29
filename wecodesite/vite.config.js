@@ -19,7 +19,7 @@ export default defineConfig({
     host: true,
     open: false,
     proxy: {
-      '/api/v1': {
+      '/service/open/v2': {
         target: 'http://localhost:18080/open-server',
         changeOrigin: true,
         rewrite: (path) => path,

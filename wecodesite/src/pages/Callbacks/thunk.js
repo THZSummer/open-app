@@ -15,7 +15,7 @@ export const fetchCallbacks = async ({ keyword, needReview, categoryId, curPage,
   const queryParams = {};
   if (keyword) queryParams.keyword = keyword;
   if (needReview !== undefined && needReview !== 'all') {
-    queryParams.need_approval = needReview === 'true' ? 1 : 0;
+    queryParams.needApproval = needReview === 'true' ? 1 : 0;
   }
   if (curPage) queryParams.curPage = curPage;
   if (pageSize) queryParams.pageSize = pageSize;
@@ -78,6 +78,15 @@ export const remindApproval = async (id) => {
 export const deleteCallback = async (id) => {
   try {
     const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id }), { method: 'DELETE' });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const deleteAppCallbackSubscription = async (appId, subscriptionId) => {
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_CALLBACKS.DELETE, { appId, id: subscriptionId }), { method: 'DELETE' });
     return result || {};
   } catch (err) {
     return {};

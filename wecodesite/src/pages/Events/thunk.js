@@ -15,7 +15,7 @@ export const fetchEvents = async ({ keyword, needReview, categoryId, curPage, pa
   const queryParams = {};
   if (keyword) queryParams.keyword = keyword;
   if (needReview !== undefined && needReview !== 'all') {
-    queryParams.need_approval = needReview === 'true' ? 1 : 0;
+    queryParams.needApproval = needReview === 'true' ? 1 : 0;
   }
   if (curPage) queryParams.curPage = curPage;
   if (pageSize) queryParams.pageSize = pageSize;
@@ -82,6 +82,15 @@ export const remindApproval = async (id) => {
 export const deleteEvent = async (id) => {
   try {
     const result = await fetchApi(buildApiUrl(API_CONFIG.EVENTS.DELETE, { id }), { method: 'DELETE' });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const deleteAppEventSubscription = async (appId, subscriptionId) => {
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_EVENTS.DELETE, { appId, id: subscriptionId }), { method: 'DELETE' });
     return result || {};
   } catch (err) {
     return {};

@@ -6,7 +6,7 @@ import ApprovalAddressModal from '../../components/ApprovalAddressModal/Approval
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import CallbackDrawer from './CallbackDrawer';
 import CallbackConfigDrawer from './CallbackConfigDrawer';
-import { fetchAppCallbacks, deleteCallback, withdrawApproval, subscribeCallbacks } from './thunk';
+import { fetchAppCallbacks, deleteAppCallbackSubscription, withdrawApproval, subscribeCallbacks } from './thunk';
 import { getCallbackColumns } from './constants';
 import { queryParams, openUrl } from '../../utils/common';
 import './Callbacks.m.less';
@@ -40,7 +40,7 @@ function Callbacks() {
   } = useSubscriptionList(appId, {
     fetchList: fetchAppCallbacks,
     subscribe: subscribeCallbacks,
-    deleteItem: deleteCallback,
+    deleteItem: deleteAppCallbackSubscription,
     withdraw: withdrawApproval,
   });
 

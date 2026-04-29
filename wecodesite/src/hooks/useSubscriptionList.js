@@ -141,7 +141,7 @@ const createApprovalOperations = (state) => {
   };
 };
 
-const createDeleteOperations = (state, options) => {
+const createDeleteOperations = (state, appId, options) => {
   const { setDeleteModalOpen, setCurrentDeleteId, setDeleteLoading } = state;
   let loadDataRef = null;
 
@@ -153,7 +153,7 @@ const createDeleteOperations = (state, options) => {
   const handleConfirmDelete = useCallback(async () => {
     setDeleteLoading(true);
     try {
-      const res = await options.deleteItem(state.currentDeleteId);
+      const res = await options.deleteItem(appId, state.currentDeleteId);
       if (res && res.code === '200') {
         message.success('删除成功');
         setDeleteModalOpen(false);
@@ -166,7 +166,7 @@ const createDeleteOperations = (state, options) => {
     } finally {
       setDeleteLoading(false);
     }
-  }, [state.currentDeleteId, setDeleteLoading, setDeleteModalOpen, options.deleteItem]);
+  }, [appId, state.currentDeleteId, setDeleteLoading, setDeleteModalOpen, options.deleteItem]);
 
   const closeDeleteModal = useCallback(() => setDeleteModalOpen(false), [setDeleteModalOpen]);
 
@@ -215,7 +215,7 @@ export const useSubscriptionList = (appId, options) => {
   const drawerOps = createDrawerOperations(state);
   const subscribeOps = createSubscribeOperations(state, appId, options);
   const approvalOps = createApprovalOperations(state);
-  const deleteOps = createDeleteOperations(state, options);
+  const deleteOps = createDeleteOperations(state, appId, options);
   const withdrawOps = createWithdrawOperations(state, appId, options);
 
   drawerOps.setLoadData(listOps.loadData);

@@ -6,7 +6,7 @@ import ApprovalAddressModal from '../../components/ApprovalAddressModal/Approval
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
-import { fetchAppEvents, deleteEvent, withdrawApproval, subscribeEvents } from './thunk';
+import { fetchAppEvents, deleteAppEventSubscription, withdrawApproval, subscribeEvents } from './thunk';
 import { getEventColumns } from './constants';
 import { queryParams, openUrl } from '../../utils/common';
 import './Events.m.less';
@@ -40,7 +40,7 @@ function Events() {
   } = useSubscriptionList(appId, {
     fetchList: fetchAppEvents,
     subscribe: subscribeEvents,
-    deleteItem: deleteEvent,
+    deleteItem: deleteAppEventSubscription,
     withdraw: withdrawApproval,
   });
 

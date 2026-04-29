@@ -82,7 +82,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
           </>
         )}
         {record.status !== 0 && (
-          <Button type="link" size="small" danger onClick={() => handleDelete(record)}>删除</Button>
+          <Button type="link" size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
         )}
       </div>
     ),
