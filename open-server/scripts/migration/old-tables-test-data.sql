@@ -11,7 +11,7 @@ VALUES
 
 -- 2. 权限主表测试数据（2个）
 INSERT INTO `openplatform_permission_t`
-(`id`, `permission_name_cn`, `permission_name_en`, `module_id`, `scope_id`, `permisssion_type`, `is_approval_required`, `auth_type`, `status`, `create_by`, `create_time`, `last_update_by`, `last_update_time`)
+(`id`, `permission_name_cn`, `permission_name_en`, `module_id`, `scope_id`, `permission_type`, `is_approval_required`, `auth_type`, `status`, `create_by`, `create_time`, `last_update_by`, `last_update_time`)
 VALUES
 (2001, '用户信息查询权限', 'user-info-query', 1001, 'user:read', 'API', 0, 1, 1, 'admin', NOW(3), 'admin', NOW(3)),
 (2002, '订单管理权限', 'order-management', 1002, 'order:manage', 'API', 1, 1, 1, 'admin', NOW(3), 'admin', NOW(3));
@@ -38,7 +38,7 @@ VALUES
 
 -- 6. 订阅关系表测试数据（3个：2个API订阅 + 1个事件订阅）
 INSERT INTO `openplatform_app_permission_t`
-(`id`, `app_id`, `permission_id`, `tenant_id`, `permisssion_type`, `status`, `create_by`, `create_time`, `last_update_by`, `last_update_time`)
+(`id`, `app_id`, `permission_id`, `tenant_id`, `permission_type`, `status`, `create_by`, `create_time`, `last_update_by`, `last_update_time`)
 VALUES
 (6001, 10001, 2001, 'tenant-001', '0', 1, 'user001', NOW(3), 'user001', NOW(3)),
 (6002, 10001, 2002, 'tenant-001', '0', 0, 'user001', NOW(3), 'user001', NOW(3)),
