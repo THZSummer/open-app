@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * 批量审批请求
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

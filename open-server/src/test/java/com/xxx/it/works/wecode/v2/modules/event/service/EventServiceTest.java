@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * EventService 测试类
- * 
+ *
  * 测试部分字段更新功能
  */
 @ExtendWith(MockitoExtension.class)
@@ -96,8 +96,8 @@ class EventServiceTest {
         EventResponse response = eventService.updateEvent(100L, request);
 
         // Then: 验证只更新了 nameCn，nameEn 保持不变
-        verify(eventMapper).update(argThat(event -> 
-            "新的中文名称".equals(event.getNameCn()) && 
+        verify(eventMapper).update(argThat(event ->
+            "新的中文名称".equals(event.getNameCn()) &&
             "Original English Name".equals(event.getNameEn())
         ));
         assertNotNull(response);
@@ -121,8 +121,8 @@ class EventServiceTest {
         EventResponse response = eventService.updateEvent(100L, request);
 
         // Then: 验证只更新了 nameEn，nameCn 保持不变
-        verify(eventMapper).update(argThat(event -> 
-            "原始中文名称".equals(event.getNameCn()) && 
+        verify(eventMapper).update(argThat(event ->
+            "原始中文名称".equals(event.getNameCn()) &&
             "New English Name".equals(event.getNameEn())
         ));
         assertNotNull(response);
@@ -152,8 +152,8 @@ class EventServiceTest {
         EventResponse response = eventService.updateEvent(100L, request);
 
         // Then: 验证所有提供的字段都被更新
-        verify(eventMapper).update(argThat(event -> 
-            "新中文名称".equals(event.getNameCn()) && 
+        verify(eventMapper).update(argThat(event ->
+            "新中文名称".equals(event.getNameCn()) &&
             "New Name".equals(event.getNameEn()) &&
             event.getCategoryId().equals(3L)
         ));
@@ -178,8 +178,8 @@ class EventServiceTest {
         EventResponse response = eventService.updateEvent(100L, request);
 
         // Then: nameCn 应保持不变，只有 nameEn 被更新
-        verify(eventMapper).update(argThat(event -> 
-            "原始中文名称".equals(event.getNameCn()) && 
+        verify(eventMapper).update(argThat(event ->
+            "原始中文名称".equals(event.getNameCn()) &&
             "Valid Name".equals(event.getNameEn())
         ));
         assertNotNull(response);
@@ -206,8 +206,8 @@ class EventServiceTest {
         EventResponse response = eventService.updateEvent(100L, request);
 
         // Then: 只有 categoryId 被更新，名称保持不变
-        verify(eventMapper).update(argThat(event -> 
-            "原始中文名称".equals(event.getNameCn()) && 
+        verify(eventMapper).update(argThat(event ->
+            "原始中文名称".equals(event.getNameCn()) &&
             "Original English Name".equals(event.getNameEn()) &&
             event.getCategoryId().equals(3L)
         ));

@@ -7,7 +7,7 @@ import java.io.Serializable;
 
 /**
  * 事件列表响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -83,7 +83,7 @@ public class EventListResponse implements Serializable {
     @Data
     @Schema(description = "权限简化信息")
     public static class PermissionSimpleDto implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         @Schema(description = "权限ID")

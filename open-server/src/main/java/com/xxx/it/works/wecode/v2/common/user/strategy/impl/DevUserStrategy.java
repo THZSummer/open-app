@@ -10,10 +10,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * Dev environment user resolution strategy
- * 
+ *
  * <p>Parse user_id field from Cookie</p>
  * <p>Cookie format example: user_id=api_admin</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -30,14 +30,14 @@ public class DevUserStrategy implements UserResolveStrategy {
     public UserContext resolve(HttpServletRequest request) {
         // Parse user_id from Cookie
         String userId = extractCookieValue(request, USER_ID_COOKIE);
-        
+
         if (userId == null || userId.isEmpty()) {
             log.debug("user_id not found in Cookie");
             return null;
         }
-        
+
         log.debug("Parsed user ID from Cookie: {}", userId);
-        
+
         // Build user context
         return UserContext.builder()
                 .userId(userId)
@@ -49,14 +49,14 @@ public class DevUserStrategy implements UserResolveStrategy {
     @Override
     public boolean supports(String activeProfile) {
         // Dev environment activation: dev, development, local
-        return "dev".equals(activeProfile) 
+        return "dev".equals(activeProfile)
                 || "development".equals(activeProfile)
                 || "local".equals(activeProfile);
     }
 
     /**
      * Extract specified Cookie value from request
-     * 
+     *
      * @param request HTTP request
      * @param cookieName Cookie name
      * @return Cookie value, returns null if not found

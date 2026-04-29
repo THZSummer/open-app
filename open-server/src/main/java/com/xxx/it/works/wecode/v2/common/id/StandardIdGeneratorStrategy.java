@@ -5,10 +5,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * 标准环境 ID 生成器策略
- * 
+ *
  * <p>非开发环境（测试、预发布、生产等）的默认 ID 生成策略</p>
  * <p>待环境 ID 生成方式确定后补充具体实现</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -24,7 +24,7 @@ public class StandardIdGeneratorStrategy implements IdGeneratorStrategy {
         // 2. 使用 Redis 自增 ID
         // 3. 使用数据库序列
         // 4. 调用外部 ID 生成服务
-        
+
         log.debug("Standard environment ID generator strategy not implemented yet");
         throw new UnsupportedOperationException("Standard environment ID generator strategy not implemented, please configure ID generator service first");
     }
@@ -33,7 +33,7 @@ public class StandardIdGeneratorStrategy implements IdGeneratorStrategy {
     public boolean supports(String activeProfile) {
         // 非开发环境的默认策略
         // 支持: test, uat, prod, production 等所有非开发环境
-        return !"dev".equals(activeProfile) 
+        return !"dev".equals(activeProfile)
                 && !"development".equals(activeProfile)
                 && !"local".equals(activeProfile);
     }

@@ -33,16 +33,16 @@ import java.util.stream.Collectors;
 
 /**
  * 审批管理 Service
- * 
+ *
  * <p>v2.8.0 重写版本</p>
- * 
+ *
  * <p>负责审批相关的业务逻辑处理：</p>
  * <ul>
  *   <li>审批流程模板管理</li>
  *   <li>审批执行管理</li>
  *   <li>审批详情查询</li>
  * </ul>
- * 
+ *
  * <p>核心设计变更（v2.8.0）：</p>
  * <ul>
  *   <li>移除 isDefault 字段，用 code='global' 标识全局审批</li>
@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  *   <li>审批详情从 combinedNodes 解析节点</li>
  *   <li>审批节点显示 level 标记（resource/scene/global）</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 2.8.0
  */
@@ -77,7 +77,7 @@ public class ApprovalService {
 
     /**
      * 查询审批流程列表
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段
      */
     public List<ApprovalFlowListResponse> getFlowList(ApprovalFlowListRequest request) {
@@ -106,7 +106,7 @@ public class ApprovalService {
 
     /**
      * 获取审批流程详情
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段
      */
     public ApprovalFlowDetailResponse getFlowDetail(Long id) {
@@ -129,7 +129,7 @@ public class ApprovalService {
 
     /**
      * 创建审批流程
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段，用 code='global' 标识全局审批
      */
     @Transactional(rollbackFor = Exception.class)
@@ -166,7 +166,7 @@ public class ApprovalService {
 
     /**
      * 更新审批流程
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段
      */
     @Transactional(rollbackFor = Exception.class)
@@ -194,9 +194,9 @@ public class ApprovalService {
 
     /**
      * 删除审批流程
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段相关逻辑
-     * 
+     *
      * @param id 流程ID
      * @param operator 操作人
      */
@@ -223,11 +223,11 @@ public class ApprovalService {
     public List<ApprovalPendingListResponse> getPendingList(ApprovalPendingListRequest request) {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
         List<ApprovalRecord> records = recordMapper.selectPendingList(
-                request.getType(), 
-                request.getKeyword(), 
+                request.getType(),
+                request.getKeyword(),
                 request.getStatus(),
                 request.getApplicantId(),
-                offset, 
+                offset,
                 request.getPageSize());
 
         return records.stream().map(record -> {
@@ -280,7 +280,7 @@ public class ApprovalService {
 
     /**
      * 获取审批详情
-     * 
+     *
      * v2.8.0核心变更：
      * - 从 combinedNodes 解析审批节点
      * - 移除 flowId 字段
@@ -307,7 +307,7 @@ public class ApprovalService {
         // v2.8.1新增：审批时间和意见映射
         Map<Integer, Date> nodeApproveTimeMap = new HashMap<>();
         Map<Integer, String> nodeCommentMap = new HashMap<>();
-        
+
         for (ApprovalLog log : logs) {
             nodeStatusMap.put(log.getNodeIndex(), log.getAction() == 0 ? 1 : 2);
             nodeLevelMap.put(log.getNodeIndex(), log.getLevel());  // ✅ 从日志获取 level
@@ -318,10 +318,10 @@ public class ApprovalService {
 
         for (int i = 0; i < nodes.size(); i++) {
             ApprovalNodeDto node = nodes.get(i);
-            
+
             // ✅ v2.8.0变更：节点已包含 level 信息（从 combinedNodes 解析）
             // 无需额外填充
-            
+
             if (i < record.getCurrentNode()) {
                 // 已处理的节点（在当前节点之前）
                 node.setStatus(nodeStatusMap.getOrDefault(i, 1));
@@ -370,10 +370,10 @@ public class ApprovalService {
     @Transactional(rollbackFor = Exception.class)
     public ApprovalActionResponse approve(Long id, ApprovalActionRequest request, String operatorId,
                                            String operatorName, String operator) {
-        ApprovalRecord record = approvalEngine.approve(id, operatorId, operatorName, 
+        ApprovalRecord record = approvalEngine.approve(id, operatorId, operatorName,
                 request.getComment(), operator);
 
-        String message = record.getStatus() == ApprovalEngine.Status.APPROVED 
+        String message = record.getStatus() == ApprovalEngine.Status.APPROVED
                 ? "审批通过" : "审批节点通过，等待下一节点审批";
 
         return ApprovalActionResponse.builder()
@@ -419,7 +419,7 @@ public class ApprovalService {
 
     /**
      * 批量同意审批
-     * 
+     *
      * 注意：此方法不开启事务，每个审批操作在独立事务中执行。
      * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
@@ -431,7 +431,7 @@ public class ApprovalService {
         for (String approvalIdStr : request.getApprovalIds()) {
             try {
                 Long approvalId = Long.parseLong(approvalIdStr);
-                approvalEngine.approve(approvalId, operatorId, operatorName, 
+                approvalEngine.approve(approvalId, operatorId, operatorName,
                         request.getComment(), operator);
                 successCount++;
             } catch (BusinessException e) {
@@ -460,7 +460,7 @@ public class ApprovalService {
 
     /**
      * 批量驳回审批
-     * 
+     *
      * 注意：此方法不开启事务，每个审批操作在独立事务中执行。
      * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
@@ -541,14 +541,14 @@ public class ApprovalService {
                     if (subscription != null) {
                         data.put("appId", subscription.getAppId());
                         data.put("permissionId", subscription.getPermissionId());
-                        
+
                         Permission permission = permissionMapper.selectById(subscription.getPermissionId());
                         if (permission != null) {
                             data.put("nameCn", permission.getNameCn());
                             data.put("nameEn", permission.getNameEn());
                             data.put("scope", permission.getScope());
                             data.put("resourceType", permission.getResourceType());
-                            
+
                             if ("api".equals(permission.getResourceType())) {
                                 Api apiResource = apiMapper.selectById(permission.getResourceId());
                                 if (apiResource != null) {
@@ -583,7 +583,7 @@ public class ApprovalService {
 
     /**
      * 构建日志 DTO 列表
-     * 
+     *
      * v2.8.0变更：新增 level 字段显示
      */
     private List<ApprovalLogDto> buildLogDtos(List<ApprovalLog> logs, List<ApprovalNodeDto> nodes) {
@@ -604,7 +604,7 @@ public class ApprovalService {
 
     /**
      * 获取审批级别名称
-     * 
+     *
      * v2.8.0新增方法
      */
     private String getLevelName(String level) {

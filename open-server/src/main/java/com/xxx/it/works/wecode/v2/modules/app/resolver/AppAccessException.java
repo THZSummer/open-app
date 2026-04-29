@@ -5,9 +5,9 @@ import java.util.Locale;
 
 /**
  * 应用访问异常
- * 
+ *
  * <p>用于应用ID无效或无访问权限的场景</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

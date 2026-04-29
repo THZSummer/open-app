@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 审批记录 Mapper 接口
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -34,7 +34,7 @@ public interface ApprovalRecordMapper {
 
     /**
      * 查询待审批列表
-     * 
+     *
      * @param type 审批类型
      * @param keyword 搜索关键词
      * @param status 审批状态

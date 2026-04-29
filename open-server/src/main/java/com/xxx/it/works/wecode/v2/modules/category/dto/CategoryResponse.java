@@ -9,9 +9,9 @@ import java.util.List;
 
 /**
  * 分类响应
- * 
+ *
  * <p>包含完整路径信息：path 和 categoryPath</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

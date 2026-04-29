@@ -11,10 +11,10 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * 开发环境 Redis 配置
- * 
+ *
  * <p>仅开发环境生效，标准环境由基础模块注入 RedisTemplate</p>
  * <p>只有在有 RedisConnectionFactory 时才生效</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

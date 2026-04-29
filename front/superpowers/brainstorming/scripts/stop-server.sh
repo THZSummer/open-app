@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -x
 # Stop the brainstorm server and clean up
 # Usage: stop-server.sh <session_dir>
 #

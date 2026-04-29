@@ -11,7 +11,7 @@ import java.util.Date;
 @Data
 public class OldEflow implements Serializable {
     private static final long serialVersionUID = 1L;
-    
+
     private Long eflowId;
     private String eflowType;
     private Integer eflowStatus;

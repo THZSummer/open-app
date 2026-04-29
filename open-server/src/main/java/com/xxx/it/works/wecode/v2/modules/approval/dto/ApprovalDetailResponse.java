@@ -9,7 +9,7 @@ import java.util.Map;
 
 /**
  * 审批详情响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -59,7 +59,7 @@ public class ApprovalDetailResponse implements Serializable {
 
     /**
      * 组合审批节点列表（v2.8.0新增）
-     * 
+     *
      * 包含完整的三级审批节点信息：
      * - 资源审批节点（level='resource')
      * - 场景审批节点（level='scene')

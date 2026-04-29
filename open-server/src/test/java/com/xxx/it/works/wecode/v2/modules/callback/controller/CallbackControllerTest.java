@@ -126,7 +126,7 @@ class CallbackControllerTest {
         request.setNameCn("新回调");
         request.setNameEn("New Callback");
         request.setCategoryId("1");
-        
+
         PermissionDefinitionDto permissionDto = new PermissionDefinitionDto();
         permissionDto.setNameCn("新权限");
         permissionDto.setNameEn("New Permission");

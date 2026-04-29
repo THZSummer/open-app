@@ -32,10 +32,10 @@ import java.util.stream.Collectors;
 
 /**
  * 回调服务
- * 
+ *
  * <p>提供回调资源管理功能，包括回调注册、编辑、删除、撤回等</p>
  * <p>接口编号：#21 ~ #26</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -62,7 +62,7 @@ public class CallbackService {
 
     /**
      * #21 获取回调列表
-     * 
+     *
      * @param categoryId 分类ID（可选）
      * @param status 状态（可选）
      * @param keyword 搜索关键词（可选）
@@ -73,7 +73,7 @@ public class CallbackService {
     public ApiResponse<List<CallbackListResponse>> getCallbackList(
             String categoryId, Integer status, String keyword,
             Integer curPage, Integer pageSize) {
-        
+
         // 默认值处理
         int page = curPage != null && curPage > 0 ? curPage : 1;
         int size = pageSize != null && pageSize > 0 ? Math.min(pageSize, 100) : 20;
@@ -101,7 +101,7 @@ public class CallbackService {
         if (!callbacks.isEmpty()) {
             List<Long> callbackIds = callbacks.stream().map(Callback::getId).collect(Collectors.toList());
             List<CallbackProperty> allProperties = callbackPropertyMapper.selectByParentIds(callbackIds);
-            
+
             // 构建 Map: callbackId -> docUrl
             for (CallbackProperty prop : allProperties) {
                 if ("docUrl".equals(prop.getPropertyName()) && prop.getPropertyValue() != null) {
@@ -128,7 +128,7 @@ public class CallbackService {
 
     /**
      * #22 获取回调详情
-     * 
+     *
      * @param id 回调ID
      * @return 回调详情
      */
@@ -150,9 +150,9 @@ public class CallbackService {
 
     /**
      * #23 注册回调
-     * 
+     *
      * <p>注册回调成功，同时创建权限资源</p>
-     * 
+     *
      * @param request 创建请求
      * @return 回调响应
      */
@@ -197,11 +197,11 @@ public class CallbackService {
         callback.setNameCn(request.getNameCn());
         callback.setNameEn(request.getNameEn());
         callback.setCategoryId(categoryId); // 设置分类ID
-        
+
         // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
-        Integer needApproval = request.getPermission().getNeedApproval() != null 
+        Integer needApproval = request.getPermission().getNeedApproval() != null
             ? request.getPermission().getNeedApproval() : 1;
-        
+
         // 先插入回调（状态暂设为待审）
         callback.setStatus(1); // 待审
         callback.setCreateTime(new Date());
@@ -273,7 +273,7 @@ public class CallbackService {
 
     /**
      * #24 更新回调
-     * 
+     *
      * @param id 回调ID
      * @param request 更新请求
      * @return 回调响应
@@ -359,9 +359,9 @@ public class CallbackService {
 
     /**
      * #25 删除回调
-     * 
+     *
      * <p>删除回调，检查订阅关系</p>
-     * 
+     *
      * @param id 回调ID
      */
     @Transactional(rollbackFor = Exception.class)
@@ -397,7 +397,7 @@ public class CallbackService {
 
     /**
      * #26 撤回审核中的回调
-     * 
+     *
      * @param id 回调ID
      * @return 回调响应
      */
@@ -490,7 +490,7 @@ public class CallbackService {
     /**
      * 转换为详情响应
      */
-    private CallbackResponse convertToResponse(Callback callback, Permission permission, 
+    private CallbackResponse convertToResponse(Callback callback, Permission permission,
                                                 List<CallbackProperty> properties) {
         return CallbackResponse.builder()
                 .id(String.valueOf(callback.getId()))

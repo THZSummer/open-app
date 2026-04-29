@@ -9,13 +9,13 @@ import org.springframework.stereotype.Component;
 
 /**
  * Standard Environment Application Context Resolver
- * 
+ *
  * <p>Production environment implementation:</p>
  * <ul>
  *   <li>ID conversion: Call application management service to get mapping</li>
  *   <li>Permission validation: Validate current user's access permission to the application</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -27,23 +27,23 @@ public class StandardAppContextResolver implements AppContextResolver {
     // TODO: Inject application management service
     // @Autowired
     // private AppManageService appManageService;
-    
+
     @Override
     public AppContext resolveAndValidate(String externalAppId) {
         log.info("Standard environment resolving appId: {}", externalAppId);
-        
+
         // 1. Validate parameters
         if (externalAppId == null || externalAppId.isEmpty()) {
             throw AppAccessException.notFound(externalAppId);
         }
-        
+
         // TODO: Standard environment implementation, integrate with application management service
         // 2. Call application management service to get internal ID
         // Long internalId = appManageService.getInternalIdByExternalId(externalAppId);
         // if (internalId == null) {
         //     throw AppAccessException.notFound(externalAppId);
         // }
-        
+
         // 3. Validate current user's access permission to the application
         // String currentUserId = UserContextHolder.getUserId();
         // boolean hasPermission = appManageService.checkUserAppPermission(
@@ -51,13 +51,13 @@ public class StandardAppContextResolver implements AppContextResolver {
         // if (!hasPermission) {
         //     throw AppAccessException.noPermission(externalAppId);
         // }
-        
+
         // 4. Return context
         // return AppContext.builder()
         //     .internalId(internalId)
         //     .externalId(externalAppId)
         //     .build();
-        
+
         throw new UnsupportedOperationException(
             "StandardAppContextResolver not implemented yet, please implement it in standard environment");
     }

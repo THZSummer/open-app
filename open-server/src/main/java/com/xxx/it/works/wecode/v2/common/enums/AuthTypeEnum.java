@@ -5,9 +5,9 @@ import lombok.Getter;
 
 /**
  * 认证方式枚举
- * 
+ *
  * <p>用于 API 和订阅关系的认证方式定义</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

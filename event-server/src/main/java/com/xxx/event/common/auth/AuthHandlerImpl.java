@@ -29,12 +29,12 @@ public class AuthHandlerImpl implements AuthHandler {
     public void applyAuth(HttpHeaders headers, String appId, AuthTypeEnum authType) {
         // 参数校验
         if (authType == null || authType == AuthTypeEnum.NONE) {
-            log.debug("免认证，跳过认证头应用: appId={}", appId);
+            log.debug("Authentication skipped, skipping auth header application: appId={}", appId);
             return;
         }
 
         if (appId == null || appId.trim().isEmpty()) {
-            log.warn("应用ID为空，无法应用认证: authType={}", authType);
+            log.warn("Application ID is empty, cannot apply authentication: authType={}", authType);
             return;
         }
 
@@ -42,7 +42,7 @@ public class AuthHandlerImpl implements AuthHandler {
         Map<String, String> credentialHeaders = credentialProvider.getCredentials(appId, authType);
         
         if (credentialHeaders.isEmpty()) {
-            log.warn("获取凭证失败，跳过认证头应用: appId={}, authType={}", appId, authType);
+            log.warn("Failed to retrieve credentials, skipping auth header application: appId={}, authType={}", appId, authType);
             return;
         }
 
@@ -54,24 +54,24 @@ public class AuthHandlerImpl implements AuthHandler {
             // 只设置非空值
             if (headerValue != null && !headerValue.isEmpty()) {
                 headers.set(headerName, headerValue);
-                log.debug("已设置认证头: {}={}", headerName, headerValue);
+                log.debug("Auth header set: {}={}", headerName, headerValue);
             } else {
-                log.warn("认证头值为空，跳过设置: {}", headerName);
+                log.warn("Auth header value is empty, skipping: {}", headerName);
             }
         }
         
-        log.info("认证已应用: appId={}, authType={}, headers={}", appId, authType, credentialHeaders.size());
+        log.info("Authentication applied: appId={}, authType={}, headers={}", appId, authType, credentialHeaders.size());
     }
 
     @Override
     public boolean validateAuth(String appId, AuthTypeEnum authType) {
         if (appId == null || appId.trim().isEmpty()) {
-            log.warn("应用ID为空，无法验证认证");
+            log.warn("Application ID is empty, cannot verify authentication");
             return false;
         }
 
         if (authType == null || authType == AuthTypeEnum.NONE) {
-            log.debug("免认证类型，验证通过: appId={}", appId);
+            log.debug("No-auth type, verification passed: appId={}", appId);
             return true;
         }
 
@@ -80,7 +80,7 @@ public class AuthHandlerImpl implements AuthHandler {
         boolean isValid = !credentials.isEmpty();
         
         if (!isValid) {
-            log.warn("认证凭证验证失败: appId={}, authType={}", appId, authType);
+            log.warn("Authentication credential verification failed: appId={}, authType={}", appId, authType);
         }
         
         return isValid;

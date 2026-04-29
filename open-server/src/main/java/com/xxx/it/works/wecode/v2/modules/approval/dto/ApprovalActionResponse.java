@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 /**
  * 审批操作响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

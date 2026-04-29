@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * SyncController 测试类
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -79,7 +79,7 @@ class SyncControllerTest {
             assertEquals("200", response.getCode());
             assertEquals("操作成功", response.getMessageZh());
             assertEquals("Success", response.getMessageEn());
-            
+
             SyncResult result = response.getData();
             assertNotNull(result);
             assertEquals(10, result.getSuccess());
@@ -116,7 +116,7 @@ class SyncControllerTest {
             // Then
             assertEquals("200", response.getCode());
             assertEquals(100, response.getData().getSuccess());
-            
+
             verify(syncService).migrate(argThat(req -> req.getIds() == null));
         }
 
@@ -261,7 +261,7 @@ class SyncControllerTest {
             // Then
             assertEquals(0, response.getData().getSuccess());
             assertEquals(1, response.getData().getFailed());
-            
+
             SyncDetail detail = response.getData().getDetails().get(0);
             assertEquals("failed", detail.getStatus());
             assertEquals("未找到对应的旧权限", detail.getError());

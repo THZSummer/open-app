@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 事件 Mapper
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -32,7 +32,7 @@ public interface EventMapper {
 
     /**
      * 分页查询事件列表
-     * 
+     *
      * @param categoryId 分类ID（可选）
      * @param status 状态（可选）
      * @param keyword 搜索关键词（可选）

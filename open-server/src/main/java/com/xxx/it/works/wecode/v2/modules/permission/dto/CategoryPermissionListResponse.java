@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * 分类权限列表响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -75,7 +75,7 @@ public class CategoryPermissionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ResourceInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -112,7 +112,7 @@ public class CategoryPermissionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CategoryInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**

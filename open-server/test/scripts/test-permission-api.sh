@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 # TASK-008 权限管理模块接口测试脚本
 
 BASE_URL="http://localhost:18080/open-server"

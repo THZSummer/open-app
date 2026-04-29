@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 事件属性 Mapper
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

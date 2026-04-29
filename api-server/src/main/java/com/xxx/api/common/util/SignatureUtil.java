@@ -48,7 +48,7 @@ public class SignatureUtil {
             
             // 时间差超过 5 分钟，拒绝请求
             if (Math.abs(currentTime - requestTime) > 5 * 60 * 1000) {
-                log.warn("AKSK 签名验证失败：时间戳过期");
+                log.warn("AKSK signature verification failed: timestamp expired");
                 return false;
             }
             
@@ -62,13 +62,13 @@ public class SignatureUtil {
             boolean valid = calculatedSignature.equals(signature);
             
             if (!valid) {
-                log.warn("AKSK 签名验证失败：签名不匹配");
+                log.warn("AKSK signature verification failed: signature mismatch");
             }
             
             return valid;
             
         } catch (Exception e) {
-            log.error("AKSK 签名验证异常", e);
+            log.error("AKSK signature verification exception", e);
             return false;
         }
     }
@@ -100,7 +100,7 @@ public class SignatureUtil {
             byte[] hash = mac.doFinal(stringToSign.getBytes(StandardCharsets.UTF_8));
             return bytesToHex(hash);
         } catch (Exception e) {
-            log.error("计算签名失败", e);
+            log.error("Failed to calculate signature", e);
             return "";
         }
     }
@@ -114,7 +114,7 @@ public class SignatureUtil {
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
             return bytesToHex(hash);
         } catch (Exception e) {
-            log.error("SHA-256 哈希失败", e);
+            log.error("SHA-256 hash failed", e);
             return "";
         }
     }
@@ -125,7 +125,7 @@ public class SignatureUtil {
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();
         for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
+            sb.append(String.format(Locale.ROOT, "%02x", b));
         }
         return sb.toString();
     }
@@ -150,7 +150,7 @@ public class SignatureUtil {
         }
         
         // Mock: 验证通过
-        log.debug("Bearer Token 验证通过");
+        log.debug("Bearer Token verification passed");
         return true;
     }
 

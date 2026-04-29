@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * SyncService 测试类
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

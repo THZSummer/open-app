@@ -14,9 +14,9 @@ import java.util.List;
 
 /**
  * 数据同步 Mapper 接口
- * 
+ *
  * <p>包含旧表查询和新表写入的所有方法</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -64,7 +64,7 @@ public interface SyncMapper {
     /**
      * 查询旧审批记录（根据resourceId）
      */
-    List<OldEflow> selectOldEflowByResourceId(@Param("resourceType") String resourceType, 
+    List<OldEflow> selectOldEflowByResourceId(@Param("resourceType") String resourceType,
                                                @Param("resourceId") Long resourceId);
 
     /**
@@ -99,7 +99,7 @@ public interface SyncMapper {
     /**
      * 根据resourceType和resourceId查询新权限
      */
-    Permission selectNewPermissionByResource(@Param("resourceType") String resourceType, 
+    Permission selectNewPermissionByResource(@Param("resourceType") String resourceType,
                                               @Param("resourceId") Long resourceId);
 
     /**

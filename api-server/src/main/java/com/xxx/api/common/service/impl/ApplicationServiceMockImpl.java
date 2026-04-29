@@ -35,7 +35,7 @@ public class ApplicationServiceMockImpl implements ApplicationService {
                 log.debug("Mock: AK={} -> appId={}", ak, appId);
                 return appId;
             } catch (Exception e) {
-                log.warn("Mock: 解析 AK 失败: {}", ak, e);
+                log.warn("Mock: Failed to parse AK: {}", ak, e);
                 return null;
             }
         }
@@ -60,7 +60,7 @@ public class ApplicationServiceMockImpl implements ApplicationService {
         }
         
         // Mock: 简单验证通过
-        log.debug("Mock: 应用身份验证通过: appId={}, authType={}", appId, authType);
+        log.debug("Mock: Application authentication passed: appId={}, authType={}", appId, authType);
         return true;
     }
 }

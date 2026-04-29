@@ -19,9 +19,9 @@ import java.util.stream.Collectors;
 
 /**
  * 分类服务
- * 
+ *
  * <p>提供分类树形结构 CRUD 和责任人管理功能</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -38,7 +38,7 @@ public class CategoryService {
 
     /**
      * 获取分类树形列表
-     * 
+     *
      * @param categoryAlias 分类别名过滤（可选）
      * @return 树形分类列表
      */
@@ -91,7 +91,7 @@ public class CategoryService {
 
     /**
      * 获取分类详情
-     * 
+     *
      * @param id 分类ID
      * @return 分类详情
      */
@@ -105,7 +105,7 @@ public class CategoryService {
 
     /**
      * 创建分类
-     * 
+     *
      * @param request 创建请求
      * @return 分类响应
      */
@@ -166,7 +166,7 @@ public class CategoryService {
 
     /**
      * 更新分类
-     * 
+     *
      * @param id 分类ID
      * @param request 更新请求
      * @return 分类响应
@@ -196,7 +196,7 @@ public class CategoryService {
 
     /**
      * 删除分类
-     * 
+     *
      * @param id 分类ID
      */
     @Transactional(rollbackFor = Exception.class)
@@ -210,8 +210,8 @@ public class CategoryService {
         // 检查是否存在子分类
         int childCount = categoryMapper.countChildrenByParentId(id);
         if (childCount > 0) {
-            throw new BusinessException("409", 
-                    "分类下存在 " + childCount + " 个子分类，无法删除", 
+            throw new BusinessException("409",
+                    "分类下存在 " + childCount + " 个子分类，无法删除",
                     "Category has " + childCount + " children, cannot delete");
         }
 
@@ -223,8 +223,8 @@ public class CategoryService {
 
         if (totalResources > 0) {
             String resourceInfo = String.format(Locale.ROOT, "API: %d, 事件: %d, 回调: %d", apiCount, eventCount, callbackCount);
-            throw new BusinessException("409", 
-                    "分类下存在 " + totalResources + " 个资源（" + resourceInfo + "），无法删除", 
+            throw new BusinessException("409",
+                    "分类下存在 " + totalResources + " 个资源（" + resourceInfo + "），无法删除",
                     "Category has " + totalResources + " resources, cannot delete");
         }
 
@@ -244,7 +244,7 @@ public class CategoryService {
 
     /**
      * 添加分类责任人
-     * 
+     *
      * @param categoryId 分类ID
      * @param request 添加请求
      * @return 责任人响应
@@ -261,8 +261,8 @@ public class CategoryService {
         CategoryOwner existingOwner = categoryOwnerMapper.selectByCategoryIdAndUserId(
                 categoryId, request.getUserId());
         if (existingOwner != null) {
-            throw new BusinessException("409", 
-                    "责任人已存在", 
+            throw new BusinessException("409",
+                    "责任人已存在",
                     "Owner already exists");
         }
 
@@ -290,7 +290,7 @@ public class CategoryService {
 
     /**
      * 获取分类责任人列表
-     * 
+     *
      * @param categoryId 分类ID
      * @return 责任人列表
      */
@@ -309,7 +309,7 @@ public class CategoryService {
 
     /**
      * 移除分类责任人
-     * 
+     *
      * @param categoryId 分类ID
      * @param userId 用户ID
      */
@@ -373,7 +373,7 @@ public class CategoryService {
 
     /**
      * 构建分类路径名称数组
-     * 
+     *
      * @param path 分类路径，如 /1/2/3/
      * @return 分类路径名称数组，如 ["A类应用权限", "IM业务", "消息服务"]
      */

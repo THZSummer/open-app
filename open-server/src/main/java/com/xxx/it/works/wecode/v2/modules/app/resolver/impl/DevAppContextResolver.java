@@ -8,13 +8,13 @@ import org.springframework.stereotype.Component;
 
 /**
  * Development environment application context resolver
- * 
+ *
  * <p>Default implementation for development and testing environments:</p>
  * <ul>
  *   <li>ID conversion: Parse String directly to Long (or return as-is for compatibility)</li>
  *   <li>Permission validation: Skip validation, allow all access</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -25,10 +25,10 @@ public class DevAppContextResolver implements AppContextResolver {
     @Override
     public AppContext resolveAndValidate(String externalAppId) {
         log.debug("Dev environment resolving appId: {}", externalAppId);
-        
+
         // Dev environment: Simple parsing, no permission validation
         Long internalId = parseInternalId(externalAppId);
-        
+
         return AppContext.builder()
             .internalId(internalId)
             .externalId(externalAppId)
@@ -40,7 +40,7 @@ public class DevAppContextResolver implements AppContextResolver {
         // Dev environment: Return String directly
         return String.valueOf(internalId);
     }
-    
+
     /**
      * Parse internal ID
      * Supports two formats:
@@ -51,7 +51,7 @@ public class DevAppContextResolver implements AppContextResolver {
         if (externalAppId == null || externalAppId.isEmpty()) {
             throw AppAccessException.notFound(externalAppId);
         }
-        
+
         // Try to parse directly as number
         try {
             return Long.parseLong(externalAppId);

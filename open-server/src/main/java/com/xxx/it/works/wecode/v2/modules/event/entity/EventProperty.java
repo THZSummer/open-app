@@ -7,10 +7,10 @@ import java.util.Date;
 
 /**
  * 事件属性实体
- * 
+ *
  * <p>对应表 openplatform_v2_event_p_t</p>
  * <p>用于存储事件的扩展属性，采用 KV 模式</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

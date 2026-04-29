@@ -13,9 +13,9 @@ import java.util.Objects;
 
 /**
  * ID 生成器配置
- * 
+ *
  * <p>根据环境自动选择合适的 ID 生成策略</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -31,7 +31,7 @@ public class IdGeneratorConfig {
 
     /**
      * 根据当前环境选择合适的 ID 生成策略
-     * 
+     *
      * @return ID 生成器策略实例
      */
     @Bean
@@ -41,10 +41,10 @@ public class IdGeneratorConfig {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         String.format(Locale.ROOT, "No ID generator strategy found for current environment [%s]", activeProfile)));
-        
-        log.info("ID generator strategy loaded: {}, active profile: {}", 
+
+        log.info("ID generator strategy loaded: {}, active profile: {}",
                 strategy.getClass().getSimpleName(), activeProfile);
-        
+
         return strategy;
     }
 }

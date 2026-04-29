@@ -12,7 +12,7 @@ import java.util.Date;
 
 /**
  * API 列表响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

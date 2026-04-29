@@ -36,10 +36,10 @@ import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 
 /**
  * API 管理服务
- * 
+ *
  * <p>实现 API 注册、编辑、删除、撤回等功能</p>
  * <p>接口编号：#9 ~ #14</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -67,7 +67,7 @@ public class ApiService {
 
         // 解析参数
         Long categoryId = parseId(request.getCategoryId());
-        
+
         // 分页参数
         int curPage = request.getCurPage() != null ? request.getCurPage() : 1;
         int pageSize = request.getPageSize() != null ? request.getPageSize() : 20;
@@ -94,7 +94,7 @@ public class ApiService {
         if (!apiList.isEmpty()) {
             List<Long> apiIds = apiList.stream().map(Api::getId).collect(Collectors.toList());
             List<ApiProperty> allProperties = apiPropertyMapper.selectByParentIds(apiIds);
-            
+
             // 构建 Map: apiId -> docUrl
             for (ApiProperty prop : allProperties) {
                 if ("docUrl".equals(prop.getPropertyName()) && prop.getPropertyValue() != null) {
@@ -180,11 +180,11 @@ public class ApiService {
         api.setMethod(request.getMethod().toUpperCase(Locale.ROOT));
         api.setAuthType(request.getAuthType() != null ? request.getAuthType() : 1); // 默认 SOA
         api.setCategoryId(categoryId); // 设置分类ID
-        
+
         // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
-        Integer needApproval = request.getPermission().getNeedApproval() != null ? 
+        Integer needApproval = request.getPermission().getNeedApproval() != null ?
             request.getPermission().getNeedApproval() : 1;
-        
+
         // 先插入 API（状态暂设为待审）
         api.setStatus(1); // 待审
         api.setCreateTime(now);

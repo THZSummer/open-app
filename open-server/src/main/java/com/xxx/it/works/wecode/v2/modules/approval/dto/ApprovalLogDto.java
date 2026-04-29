@@ -7,7 +7,7 @@ import java.util.Date;
 
 /**
  * 审批日志 DTO
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -23,7 +23,7 @@ public class ApprovalLogDto implements Serializable {
 
     /**
      * 审批级别（v2.8.0新增）
-     * 
+     *
      * 标识本次审批操作属于哪一级审批：
      * - resource = 资源审批（资源提供方审核）
      * - scene = 场景审批（业务场景审核）
@@ -33,7 +33,7 @@ public class ApprovalLogDto implements Serializable {
 
     /**
      * 审批级别名称（v2.8.0新增）
-     * 
+     *
      * 用于前端显示审批级别的中文名称
      */
     private String levelName;

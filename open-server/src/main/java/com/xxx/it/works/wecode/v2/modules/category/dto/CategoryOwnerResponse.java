@@ -8,7 +8,7 @@ import java.util.Date;
 
 /**
  * 分类责任人响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
