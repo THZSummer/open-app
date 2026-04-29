@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { message } from 'antd';
 import { INIT_PAGECONFIG } from '../utils/constants';
 
@@ -144,20 +144,24 @@ const createApprovalOperations = (state) => {
 const createDeleteOperations = (state, appId, options) => {
   const { setDeleteModalOpen, setCurrentDeleteId, setDeleteLoading } = state;
   let loadDataRef = null;
+  const deleteIdRef = useRef(null);
 
   const handleDeleteClick = useCallback((id) => {
+    deleteIdRef.current = id;
     setCurrentDeleteId(id);
     setDeleteModalOpen(true);
   }, [setDeleteModalOpen, setCurrentDeleteId]);
 
   const handleConfirmDelete = useCallback(async () => {
+    if (!deleteIdRef.current) return;
     setDeleteLoading(true);
     try {
-      const res = await options.deleteItem(appId, state.currentDeleteId);
+      const res = await options.deleteItem(appId, deleteIdRef.current);
       if (res && res.code === '200') {
         message.success('删除成功');
         setDeleteModalOpen(false);
-        loadDataRef?.();
+        deleteIdRef.current = null;
+        loadDataRef?.(1);
       } else {
         message.error(res?.message || '删除失败');
       }
@@ -166,7 +170,7 @@ const createDeleteOperations = (state, appId, options) => {
     } finally {
       setDeleteLoading(false);
     }
-  }, [appId, state.currentDeleteId, setDeleteLoading, setDeleteModalOpen, options.deleteItem]);
+  }, [appId, setDeleteLoading, setDeleteModalOpen, options.deleteItem]);
 
   const closeDeleteModal = useCallback(() => setDeleteModalOpen(false), [setDeleteModalOpen]);
 
