@@ -33,6 +33,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public SyncResult migrate(SyncRequest request) {
+        checkPermission("sync:migrate");
+        
         log.info("Starting data migration, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
@@ -300,6 +302,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public SyncResult rollback(SyncRequest request) {
+        checkPermission("sync:rollback");
+        
         log.info("Starting data rollback, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
@@ -435,6 +439,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public EmergencyResult emergencyUpdateOld(EmergencyRequest request) {
+        checkPermission("sync:emergency:update-old");
+        
         log.info("Starting emergency update old table");
 
         List<EmergencyDetail> details = new ArrayList<>();
@@ -527,6 +533,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public EmergencyResult emergencyUpdateNew(EmergencyRequest request) {
+        checkPermission("sync:emergency:update-new");
+        
         log.info("Starting emergency update new table");
 
         List<EmergencyDetail> details = new ArrayList<>();
@@ -678,4 +686,29 @@ public class SyncService {
         
         return true;
     }
+
+    // ==================== 权限校验（预留） ====================
+
+    /**
+     * 权限校验：检查用户是否有执行操作的权限
+     * 
+     * <p>当前为预留方法，暂时跳过校验</p>
+     * <p>后续集成统一权限管理模块后启用</p>
+     *
+     * @param permissionCode 权限码
+     */
+    private void checkPermission(String permissionCode) {
+        // TODO: 权限校验逻辑（后续集成）
+        // 示例实现：
+        // String currentUser = getCurrentUser();
+        // if (!permissionService.hasPermission(currentUser, permissionCode)) {
+        //     throw new PermissionDeniedException(
+        //         "无权限执行此操作: " + permissionCode,
+        //         "Permission denied: " + permissionCode
+        //     );
+        // }
+        
+        log.debug("Permission check passed (currently skipped), permissionCode={}", permissionCode);
+    }
+
 }

@@ -62,8 +62,6 @@ public class SyncController {
             @Parameter(description = "同步请求，ids=null或空数组表示全量同步")
             @Valid @RequestBody SyncRequest request) {
 
-        checkPermission("sync:migrate");
-
         log.info("Received migration request, ids={}", request.getIds());
 
         SyncResult result = syncService.migrate(request);
@@ -92,8 +90,6 @@ public class SyncController {
     public ApiResponse<SyncResult> rollback(
             @Parameter(description = "同步请求，ids=null或空数组表示全量同步")
             @Valid @RequestBody SyncRequest request) {
-
-        checkPermission("sync:rollback");
 
         log.info("Received rollback request, ids={}", request.getIds());
 
@@ -124,8 +120,6 @@ public class SyncController {
     public ApiResponse<EmergencyResult> emergencyUpdateOld(
             @Parameter(description = "应急更新请求")
             @Valid @RequestBody EmergencyRequest request) {
-
-        checkSuperAdminPermission();
 
         log.info("Received emergency update old request, count={}", 
                 request.getSubscriptions() != null ? request.getSubscriptions().size() : 0);
@@ -158,8 +152,6 @@ public class SyncController {
             @Parameter(description = "应急更新请求")
             @Valid @RequestBody EmergencyRequest request) {
 
-        checkSuperAdminPermission();
-
         log.info("Received emergency update new request, count={}", 
                 request.getSubscriptions() != null ? request.getSubscriptions().size() : 0);
 
@@ -169,52 +161,5 @@ public class SyncController {
                 result.getSuccess(), result.getFailed(), result.getInserted(), result.getUpdated());
 
         return ApiResponse.success(result);
-    }
-
-    // ==================== 权限校验（预留） ====================
-
-    /**
-     * 权限校验：检查用户是否有执行同步操作的权限
-     * 
-     * <p>当前为预留方法，暂时跳过校验</p>
-     * <p>后续集成统一权限管理模块后启用</p>
-     *
-     * @param permissionCode 权限码
-     * @throws PermissionDeniedException 无权限时抛出异常
-     */
-    private void checkPermission(String permissionCode) {
-        // TODO: 权限校验逻辑（后续集成）
-        // 示例实现：
-        // String currentUser = getCurrentUser();
-        // if (!permissionService.hasPermission(currentUser, permissionCode)) {
-        //     throw new PermissionDeniedException(
-        //         "无权限执行此操作: " + permissionCode,
-        //         "Permission denied: " + permissionCode
-        //     );
-        // }
-        
-        log.debug("Permission check passed (currently skipped), permissionCode={}", permissionCode);
-    }
-
-    /**
-     * 权限校验：检查用户是否为超级管理员
-     * 
-     * <p>当前为预留方法，暂时跳过校验</p>
-     * <p>应急接口需要超级管理员权限</p>
-     *
-     * @throws PermissionDeniedException 非超级管理员时抛出异常
-     */
-    private void checkSuperAdminPermission() {
-        // TODO: 超级管理员权限校验（后续集成）
-        // 示例实现：
-        // String currentUser = getCurrentUser();
-        // if (!permissionService.isSuperAdmin(currentUser)) {
-        //     throw new PermissionDeniedException(
-        //         "仅超级管理员可执行此操作",
-        //         "Only super admin can perform this operation"
-        //     );
-        // }
-        
-        log.debug("Super admin permission check passed (currently skipped)");
     }
 }
