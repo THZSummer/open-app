@@ -462,6 +462,116 @@ CREATE TABLE `openplatform_v2_approval_log_t` (
 
 ## 4. 同步接口设计
 
+### 4.0 接口权限校验
+
+**重要说明**：所有同步接口和应急接口都需要进行权限校验。
+
+#### 4.0.1 权限校验要求
+
+| 接口类型 | 权限要求 | 说明 |
+|---------|---------|------|
+| **同步接口** | 需要管理员权限 | 仅允许特定管理员执行数据同步操作 |
+| **应急接口** | 需要超级管理员权限 | 应急接口风险较高，需要更严格的权限控制 |
+| **查询接口** | 需要普通权限 | 允许普通用户查询同步状态和结果 |
+
+#### 4.0.2 权限校验逻辑（预留）
+
+**当前阶段**：
+- ✅ 接口设计阶段预留权限校验点
+- ✅ 接口实现时添加权限校验入口（可暂时注释或跳过）
+- ✅ 后续集成统一权限管理模块
+
+**权限校验伪代码**：
+
+```java
+// Controller层权限校验（预留）
+@PostMapping("/sync/subscription/migrate")
+@RequiresPermission("sync:migrate")  // 预留注解
+public ApiResponse<SyncResult> migrate(@RequestBody SyncRequest request) {
+    
+    // TODO: 预留权限校验逻辑
+    // if (!hasPermission(currentUser, "sync:migrate")) {
+    //     throw new PermissionDeniedException("无权限执行数据迁移操作");
+    // }
+    
+    // 实际业务逻辑
+    SyncResult result = syncService.migrate(request);
+    return ApiResponse.success(result);
+}
+
+// 应急接口权限校验（预留）
+@PostMapping("/sync/subscription/emergency/update-old")
+@RequiresPermission("sync:emergency:update")  // 预留注解
+public ApiResponse<EmergencyResult> emergencyUpdateOld(@RequestBody EmergencyRequest request) {
+    
+    // TODO: 预留超级管理员权限校验逻辑
+    // if (!isSuperAdmin(currentUser)) {
+    //     throw new PermissionDeniedException("仅超级管理员可执行应急操作");
+    // }
+    
+    // 实际业务逻辑
+    EmergencyResult result = syncService.emergencyUpdateOld(request);
+    return ApiResponse.success(result);
+}
+```
+
+#### 4.0.3 权限校验实现建议
+
+**后续集成方案**：
+
+1. **统一权限管理模块**
+   - 使用现有的权限管理系统
+   - 定义权限码：`sync:migrate`、`sync:rollback`、`sync:emergency:update`
+   - 角色绑定：管理员角色、超级管理员角色
+
+2. **权限校验方式**
+   - 注解方式：使用 `@RequiresPermission` 注解
+   - 编程方式：在方法内部手动校验
+   - 拦截器方式：使用统一的权限拦截器
+
+3. **权限分级**
+   ```
+   查看同步状态    → sync:view（普通权限）
+   执行数据同步    → sync:execute（管理员权限）
+   执行应急操作    → sync:emergency（超级管理员权限）
+   ```
+
+4. **权限审计**
+   - 记录每次操作的执行人
+   - 记录操作时间、操作内容
+   - 定期审计权限使用情况
+
+#### 4.0.4 当前阶段实现策略
+
+**开发阶段**：
+```java
+// 方式1：预留注解（推荐）
+@PostMapping("/sync/subscription/migrate")
+// @RequiresPermission("sync:migrate")  // 暂时注释，后续启用
+public ApiResponse<SyncResult> migrate(@RequestBody SyncRequest request) {
+    return ApiResponse.success(syncService.migrate(request));
+}
+
+// 方式2：预留校验代码（注释形式）
+@PostMapping("/sync/subscription/migrate")
+public ApiResponse<SyncResult> migrate(@RequestBody SyncRequest request) {
+    // TODO: 权限校验逻辑（后续集成）
+    // checkPermission("sync:migrate");
+    
+    return ApiResponse.success(syncService.migrate(request));
+}
+```
+
+**测试阶段**：
+- 单元测试不校验权限
+- 接口测试模拟权限校验
+
+**上线阶段**：
+- 启用权限校验
+- 配置权限码和角色
+
+---
+
 ### 4.1 接口列表
 
 **订阅关系同步接口**（自动同步关联的审批数据）：
@@ -693,7 +803,285 @@ curl -X POST "http://localhost:8080/api/v1/sync/subscription/rollback" \
 }
 ```
 
-### 4.6 同步逻辑说明
+### 4.6 应急接口设计
+
+#### 4.6.1 应急接口说明
+
+**应急场景**：
+- 数据同步过程中出现异常，需要快速修复数据
+- 需要直接更新订阅关系表的特定字段
+- 不需要通过复杂的权限ID查找逻辑
+
+**应急接口列表**：
+
+| 接口 | 说明 | 适用场景 |
+|------|------|----------|
+| `POST /api/v1/sync/subscription/emergency/update-old` | 直接更新旧订阅关系表数据 | 旧系统数据修复 |
+| `POST /api/v1/sync/subscription/emergency/update-new` | 直接更新新订阅关系表数据 | 新系统数据修复 |
+
+#### 4.6.2 应急接口特点
+
+**核心特点**：
+- ✅ **基本数据保护**：新增时检查应用ID+权限ID组合，防止重复订阅关系
+- ✅ **直接更新**：根据主键ID直接更新目标表
+- ✅ **自动新增**：记录不存在时自动新增（需通过数据保护校验）
+- ✅ **字段灵活**：除关键字段外，其它字段均可更新
+- ✅ **批量操作**：支持批量更新多条记录
+- ⚠️ **无复杂校验**：无需权限ID查找链路、无需审批流程校验
+
+**数据保护规则**：
+- 🔒 **唯一性保护**：一个应用对同一个权限只能有一条订阅关系
+- 🔒 **主键保护**：主键ID、创建人、创建时间不允许修改
+- 🔒 **重复检测**：新增记录前检查是否已存在相同的 app_id + permission_id 组合
+- 🔒 **错误提示**：检测到重复数据时返回明确的错误信息，阻止新增
+
+**保护字段（不允许更新）**：
+适用于以下表：
+- `openplatform_app_permission_t` - 旧订阅关系表
+- `openplatform_v2_subscription_t` - 新订阅关系表
+
+保护字段列表：
+- `id` - 主键ID
+- `create_by` - 创建人
+- `create_time` - 创建时间
+- `last_update_by` - 更新人（由系统自动设置）
+- `last_update_time` - 更新时间（由系统自动设置）
+
+**可更新字段**：
+
+旧订阅关系表 `openplatform_app_permission_t` 可更新字段：
+- `app_id` - 应用ID
+- `permission_id` - 权限ID
+- `tenant_id` - 租户ID
+- `permission_type` - 权限类型（0=API, 1=事件）
+- `status` - 状态（0=待审核, 1=已开通, 2=驳回, 3=关闭）
+
+新订阅关系表 `openplatform_v2_subscription_t` 可更新字段：
+- `app_id` - 应用ID
+- `permission_id` - 权限ID
+- `status` - 状态（0=待审, 1=已授权, 2=已拒绝, 3=已取消）
+- `channel_type` - 通道类型（1=WebHook, 2=企业内部消息通道）
+- `channel_address` - 通道地址（推送URL）
+- `auth_type` - 认证类型
+
+#### 4.6.3 应急接口请求格式
+
+**更新旧订阅关系表**：
+
+```json
+POST /api/v1/sync/subscription/emergency/update-old
+
+{
+  "subscriptions": [
+    {
+      "id": 1,                    // 必填：主键ID
+      "appId": 100,               // 可选：应用ID
+      "permissionId": 10,         // 可选：权限ID
+      "tenantId": "tenant-001",   // 可选：租户ID
+      "permissionType": "0",      // 可选：权限类型
+      "status": 1                 // 可选：状态
+    },
+    {
+      "id": 2,
+      "appId": 101,
+      "status": 0
+    }
+  ]
+}
+```
+
+**更新新订阅关系表**：
+
+```json
+POST /api/v1/sync/subscription/emergency/update-new
+
+{
+  "subscriptions": [
+    {
+      "id": 1,                      // 必填：主键ID
+      "appId": 100,                 // 可选：应用ID
+      "permissionId": 100,          // 可选：权限ID
+      "status": 1,                  // 可选：状态
+      "channelType": 1,             // 可选：通道类型
+      "channelAddress": "http://...", // 可选：通道地址
+      "authType": 5                 // 可选：认证类型
+    }
+  ]
+}
+```
+
+#### 4.6.4 应急接口响应格式
+
+```json
+{
+  "success": 10,        // 成功数量
+  "failed": 2,          // 失败数量
+  "inserted": 3,        // 新增数量（记录不存在时）
+  "updated": 7,         // 更新数量（记录已存在时）
+  "details": [
+    {
+      "id": 1,
+      "status": "updated",     // 或 "inserted"
+      "message": "更新成功"
+    },
+    {
+      "id": 5,
+      "status": "failed",
+      "error": "数据库连接失败"
+    }
+  ]
+}
+```
+
+#### 4.6.5 应急接口实现逻辑
+
+```java
+public EmergencyResult emergencyUpdate(List<SubscriptionData> subscriptions) {
+    
+    int success = 0;
+    int failed = 0;
+    int inserted = 0;
+    int updated = 0;
+    List<EmergencyDetail> details = new ArrayList<>();
+    
+    for (SubscriptionData data : subscriptions) {
+        EmergencyDetail detail = new EmergencyDetail();
+        detail.setId(data.getId());
+        
+        try {
+            // 1. 检查记录是否存在（根据主键ID）
+            boolean existsById = existsById(data.getId());
+            
+            if (existsById) {
+                // 2. 更新操作：只更新非保护字段
+                updateById(data);
+                updated++;
+                detail.setStatus("updated");
+                detail.setMessage("更新成功");
+                success++;
+                
+            } else {
+                // 3. 数据保护：检查是否已存在相同的应用ID+权限ID组合
+                if (data.getAppId() != null && data.getPermissionId() != null) {
+                    boolean existsByAppAndPermission = existsByAppIdAndPermissionId(
+                        data.getAppId(), 
+                        data.getPermissionId()
+                    );
+                    
+                    if (existsByAppAndPermission) {
+                        // ⚠️ 数据保护：不允许重复的订阅关系
+                        detail.setStatus("failed");
+                        detail.setError("数据保护：应用ID=" + data.getAppId() + 
+                                       " 和权限ID=" + data.getPermissionId() + 
+                                       " 的订阅关系已存在，不允许重复创建");
+                        failed++;
+                        details.add(detail);
+                        continue;  // 跳过该记录
+                    }
+                }
+                
+                // 4. 新增操作：设置创建人和创建时间
+                data.setCreateBy("emergency-update");
+                data.setCreateTime(new Date());
+                data.setLastUpdateBy("emergency-update");
+                data.setLastUpdateTime(new Date());
+                insert(data);
+                inserted++;
+                detail.setStatus("inserted");
+                detail.setMessage("新增成功");
+                success++;
+            }
+            
+            details.add(detail);
+            
+        } catch (Exception e) {
+            log.error("应急更新失败, id={}", data.getId(), e);
+            detail.setStatus("failed");
+            detail.setError("系统异常: " + e.getMessage());
+            failed++;
+            details.add(detail);
+            // 继续处理下一条
+        }
+    }
+    
+    return EmergencyResult.builder()
+        .success(success)
+        .failed(failed)
+        .inserted(inserted)
+        .updated(updated)
+        .details(details)
+        .build();
+}
+
+/**
+ * 数据保护方法：检查是否已存在相同的应用ID+权限ID组合
+ * 
+ * 业务规则：一个应用对同一个权限只能有一条订阅关系
+ */
+private boolean existsByAppIdAndPermissionId(Long appId, Long permissionId) {
+    // 查询数据库，检查是否已存在
+    // SELECT COUNT(*) FROM subscription_table 
+    // WHERE app_id = #{appId} AND permission_id = #{permissionId}
+    int count = subscriptionMapper.countByAppIdAndPermissionId(appId, permissionId);
+    return count > 0;
+}
+```
+
+#### 4.6.6 应急接口调用示例
+
+**批量更新旧表数据**：
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/sync/subscription/emergency/update-old" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: SESSIONID=your-session-id" \
+  -d '{
+    "subscriptions": [
+      {"id": 1, "status": 1, "permissionId": 10},
+      {"id": 2, "status": 0, "appId": 100}
+    ]
+  }'
+```
+
+**批量更新新表数据**：
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/sync/subscription/emergency/update-new" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: SESSIONID=your-session-id" \
+  -d '{
+    "subscriptions": [
+      {"id": 1, "status": 1, "channelType": 1},
+      {"id": 2, "authType": 5}
+    ]
+  }'
+```
+
+#### 4.6.7 应急接口使用注意事项
+
+⚠️ **重要提醒**：
+
+1. **谨慎使用**：应急接口跳过所有业务校验，仅用于紧急修复
+2. **数据风险**：可能导致数据不一致，使用前需评估影响
+3. **记录审计**：建议记录每次应急操作的详细日志
+4. **备份优先**：操作前建议备份目标表数据
+5. **权限限制**：仅授权特定管理员使用
+6. **事后验证**：应急操作后需验证数据完整性
+
+**适用场景**：
+- ✅ 修复错误的权限ID
+- ✅ 更新订阅状态
+- ✅ 修正通道配置
+- ✅ 补充缺失的记录
+
+**不适用场景**：
+- ❌ 正常数据同步（应使用标准同步接口）
+- ❌ 批量数据迁移
+- ❌ 频繁日常操作
+
+---
+
+### 4.7 同步逻辑说明
 
 **订阅关系同步时的数据处理**：
 
@@ -718,9 +1106,9 @@ curl -X POST "http://localhost:8080/api/v1/sync/subscription/rollback" \
 
 
 
-### 4.7 详细实现逻辑
+### 4.8 详细实现逻辑
 
-#### 4.7.1 权限ID查找链路（不建映射表）
+#### 4.8.1 权限ID查找链路（不建映射表）
 
 **迁移（旧→新）查找流程**：
 
@@ -753,7 +1141,7 @@ curl -X POST "http://localhost:8080/api/v1/sync/subscription/rollback" \
 
 ---
 
-#### 4.7.2 通道配置获取（仅事件订阅）
+#### 4.8.2 通道配置获取（仅事件订阅）
 
 **数据来源**：`openplatform_app_p_t`（应用属性表）
 
@@ -785,7 +1173,7 @@ WHERE parent_id = #{app_id};
 
 ---
 
-#### 4.7.3 combined_nodes 构造方法
+#### 4.8.3 combined_nodes 构造方法
 
 **来源**：`openplatform_eflow_t.eflow_audit_user`（历史审批人字段）
 
@@ -827,7 +1215,7 @@ String constructCombinedNodes(String auditUser) {
 
 ---
 
-#### 4.7.4 异常处理
+#### 4.8.4 异常处理
 
 **场景**：找不到对应的新API/事件
 
@@ -865,7 +1253,7 @@ try {
 
 ---
 
-#### 4.7.5 完整迁移逻辑（旧→新）
+#### 4.8.5 完整迁移逻辑（旧→新）
 
 ```
 for each 订阅关系 in 旧表:
@@ -899,7 +1287,7 @@ for each 订阅关系 in 旧表:
 
 ---
 
-#### 4.7.6 完整回退逻辑（新→旧）
+#### 4.8.6 完整回退逻辑（新→旧）
 
 ```
 for each 订阅关系 in 新表:

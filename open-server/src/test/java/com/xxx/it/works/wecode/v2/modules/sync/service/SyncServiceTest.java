@@ -65,7 +65,7 @@ class SyncServiceTest {
         oldSubscription.setId(1L);
         oldSubscription.setAppId(100L);
         oldSubscription.setPermissionId(10L);
-        oldSubscription.setPermisssionType("0"); // API
+        oldSubscription.setPermissionType("0"); // API
         oldSubscription.setStatus(1);
         oldSubscription.setCreateTime(new Date());
         oldSubscription.setLastUpdateTime(new Date());
@@ -73,7 +73,7 @@ class SyncServiceTest {
         // 准备旧权限测试数据
         oldPermission = new OldPermission();
         oldPermission.setId(10L);
-        oldPermission.setPermisssionType("api");
+        oldPermission.setPermissionType("api");
         oldPermission.setModuleId(5L);
 
         // 准备旧API测试数据
@@ -179,8 +179,8 @@ class SyncServiceTest {
         void testMigrate_EventSubscription_WithChannelConfig() {
 
             // Given
-            oldSubscription.setPermisssionType("1"); // 事件
-            oldPermission.setPermisssionType("event");
+            oldSubscription.setPermissionType("1"); // 事件
+            oldPermission.setPermissionType("event");
             oldPermission.setModuleId(6L);
 
             SyncRequest request = new SyncRequest();
@@ -270,14 +270,14 @@ class SyncServiceTest {
             sub1.setId(1L);
             sub1.setAppId(100L);
             sub1.setPermissionId(10L);
-            sub1.setPermisssionType("0");
+            sub1.setPermissionType("0");
             sub1.setStatus(1);
 
             OldSubscription sub2 = new OldSubscription();
             sub2.setId(2L);
             sub2.setAppId(101L);
             sub2.setPermissionId(11L);
-            sub2.setPermisssionType("0");
+            sub2.setPermissionType("0");
             sub2.setStatus(1);
 
             when(syncMapper.selectOldSubscriptions(isNull())).thenReturn(Arrays.asList(sub1, sub2));

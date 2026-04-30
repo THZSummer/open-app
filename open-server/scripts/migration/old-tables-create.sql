@@ -1,3 +1,7 @@
+-- ============================================
+-- 旧系统表结构创建脚本
+-- ============================================
+
 -- 1. 分类节点表
 CREATE TABLE `openplatform_module_node_t` (
     `id` BIGINT(20) PRIMARY KEY,
@@ -23,7 +27,7 @@ CREATE TABLE `openplatform_permission_t` (
     `permission_name_en` VARCHAR(100),
     `module_id` BIGINT(20),
     `scope_id` VARCHAR(200),
-    `permission_type` VARCHAR(20) COMMENT '权限类型（拼写错误保留）',
+    `permission_type` VARCHAR(20) COMMENT '权限类型',
     `is_approval_required` TINYINT(10),
     `auth_type` TINYINT(10),
     `status` TINYINT(10) DEFAULT 1,
