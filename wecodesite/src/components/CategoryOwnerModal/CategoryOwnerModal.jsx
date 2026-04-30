@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Button, Table, Spin } from 'antd';
+import { Modal, Form, Input, Button, Table, Spin, message } from 'antd';
 import { getOwnerColumns } from '../../pages/Admin/Category/constants';
 
 function CategoryOwnerModal({
@@ -22,33 +22,47 @@ function CategoryOwnerModal({
 
   const loadOwners = async () => {
     setLoading(true);
-    try {
-      const result = await fetchOwners(categoryId);
-      if (result.code === '200') {
-        setOwners(result.data || []);
-      }
-    } finally {
-      setLoading(false);
+    const result = await fetchOwners(categoryId);
+    if (result && result.code === '200') {
+      setOwners(result.data || []);
+    } else {
+      message.error(result?.message || '加载责任人失败');
     }
+    setLoading(false);
   };
 
   const handleAddOwner = async () => {
     try {
       const values = await ownerForm.validateFields();
-      await addOwner(categoryId, {
+      const res = await addOwner(categoryId, {
         userId: values.userId,
         userName: values.userName,
       });
-      ownerForm.resetFields();
-      await loadOwners();
+      if (res && res.code === '200') {
+        message.success('添加成功');
+        ownerForm.resetFields();
+        await loadOwners();
+      } else {
+        message.error(res?.message || '添加失败');
+      }
     } catch (error) {
+      message.error('添加失败');
       console.error('Failed to add owner:', error);
     }
   };
 
   const handleRemoveOwner = async (userId) => {
-    await removeOwner(categoryId, userId);
-    await loadOwners();
+    try {
+      const res = await removeOwner(categoryId, userId);
+      if (res && res.code === '200') {
+        message.success('移除成功');
+        await loadOwners();
+      } else {
+        message.error(res?.message || '移除失败');
+      }
+    } catch (error) {
+      message.error('移除失败');
+    }
   };
 
   const handleClose = () => {

@@ -5,17 +5,16 @@ import {
   Input,
   Select,
   TreeSelect,
-  Button,
-  Space,
   Card,
   Radio,
   message,
 } from 'antd';
-import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { createApi, updateApi, fetchApiDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import { API_PROPERTY_PRESETS, AUTH_TYPE_OPTIONS, HTTP_METHOD_OPTIONS } from './constants';
 import { convertToTreeData } from '../../../utils/common';
+import ApprovalNodesConfig from '../../../components/ApprovalNodesConfig';
+import PropertiesConfig from '../../../components/PropertiesConfig';
 
 const { Option } = Select;
 
@@ -33,8 +32,10 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
 
   const loadCategories = async () => {
     const result = await fetchCategoryTree();
-    if (result.code === '200') {
+    if (result && result.code === '200') {
       setCategories(result.data || []);
+    } else {
+      message.error(result?.message || '加载分类失败');
     }
   };
 
@@ -44,7 +45,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
         setLoading(true);
         try {
           const result = await fetchApiDetail(api.id);
-          if (result.code === '200') {
+          if (result && result.code === '200') {
             const data = result.data;
             form.setFieldsValue({
               nameCn: data.nameCn,
@@ -57,7 +58,6 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
               permissionNameEn: data.permission?.nameEn,
               scope: data.permission?.scope,
               needApproval: data.permission?.needApproval ?? 1,
-              // 解析 resourceNodes JSON 字符串为数组
               resourceNodes: data.permission?.resourceNodes
                 ? JSON.parse(data.permission.resourceNodes)
                 : [],
@@ -71,6 +71,8 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
                   : prop.propertyName,
               })) || [],
             });
+          } else {
+            message.error(result?.message || '加载API详情失败');
           }
         } finally {
           setLoading(false);
@@ -283,164 +285,23 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
             </Radio.Group>
           </Form.Item>
 
-          {/* 审批节点配置（当需要审批时显示） */}
           <Form.Item noStyle shouldUpdate={(prev, cur) => prev.needApproval !== cur.needApproval}>
-            {({ getFieldValue }) => {
-              const needApproval = getFieldValue('needApproval');
-              if (needApproval === 1) {
-                return (
-                  <Form.Item label="审批节点配置" required>
-                    <Form.List name="resourceNodes">
-                      {(fields, { add, remove }) => (
-                        <>
-                          {fields.map(({ key, name, ...restField }) => (
-                            <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'userId']}
-                                rules={[{ required: true, message: '请输入审批人ID' }]}
-                              >
-                                <Input placeholder="审批人用户ID" style={{ width: 150 }} disabled={mode === 'view'} />
-                              </Form.Item>
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'userName']}
-                                rules={[{ required: true, message: '请输入审批人姓名' }]}
-                              >
-                                <Input placeholder="审批人姓名" style={{ width: 150 }} disabled={mode === 'view'} />
-                              </Form.Item>
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'order']}
-                                rules={[{ required: true, message: '请输入审批顺序' }]}
-                              >
-                                <Input placeholder="审批顺序" style={{ width: 80 }} disabled={mode === 'view'} />
-                              </Form.Item>
-                              {mode !== 'view' && <MinusCircleOutlined onClick={() => remove(name)} />}
-                            </Space>
-                          ))}
-                          {mode !== 'view' && (
-                            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                              添加审批节点
-                            </Button>
-                          )}
-                        </>
-                      )}
-                    </Form.List>
-                  </Form.Item>
-                );
-              }
-              return null;
-            }}
+            {({ getFieldValue }) => (
+              <ApprovalNodesConfig
+                form={form}
+                mode={mode}
+                needApproval={getFieldValue('needApproval')}
+              />
+            )}
           </Form.Item>
         </Card>
 
-        <Card title="扩展属性（可选）" size="small">
-          <Form.List name="properties">
-            {(fields, { add, remove }) => {
-              // 获取当前已选择的预设属性
-              const formValues = form.getFieldValue('properties') || [];
-              const usedPresets = formValues
-                .map(item => item?.propertyName)
-                .filter(name => name && name !== '__custom__');
-
-              return (
-                <>
-                  {fields.map(({ key, name, ...restField }) => (
-                    <Space key={key} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
-                      <Form.Item
-                        {...restField}
-                        name={[name, 'propertyName']}
-                        rules={[{ required: true, message: '请选择或输入属性名' }]}
-                      >
-                        <Select
-                          placeholder="选择属性"
-                          style={{ width: 160 }}
-                          disabled={mode === 'view'}
-                          onChange={(value) => {
-                            // 切换属性时清空属性值
-                            const properties = form.getFieldValue('properties');
-                            properties[name].propertyValue = undefined;
-                            form.setFieldsValue({ properties });
-                          }}
-                        >
-                          {API_PROPERTY_PRESETS.map(preset => (
-                            <Select.Option
-                              key={preset.value}
-                              value={preset.value}
-                              disabled={preset.value !== '__custom__' && usedPresets.includes(preset.value)}
-                            >
-                              {preset.label}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-
-                      {/* 当选择"自定义"时显示自定义属性名输入框 */}
-                      <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, cur) =>
-                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
-                        }
-                      >
-                        {({ getFieldValue }) => {
-                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
-                          if (propertyName === '__custom__') {
-                            return (
-                              <Form.Item
-                                {...restField}
-                                name={[name, 'customPropertyName']}
-                                rules={[{ required: true, message: '请输入自定义属性名' }]}
-                              >
-                                <Input placeholder="自定义属性名" style={{ width: 140 }} disabled={mode === 'view'} />
-                              </Form.Item>
-                            );
-                          }
-                          return null;
-                        }}
-                      </Form.Item>
-
-                      {/* 属性值输入框 */}
-                      <Form.Item
-                        noStyle
-                        shouldUpdate={(prev, cur) =>
-                          prev.properties?.[name]?.propertyName !== cur.properties?.[name]?.propertyName
-                        }
-                      >
-                        {({ getFieldValue }) => {
-                          const propertyName = getFieldValue(['properties', name, 'propertyName']);
-                          const preset = API_PROPERTY_PRESETS.find(p => p.value === propertyName);
-                          const isCustom = propertyName === '__custom__';
-
-                          return (
-                            <Form.Item
-                              {...restField}
-                              name={[name, 'propertyValue']}
-                              rules={[{ required: true, message: '请输入属性值' }]}
-                            >
-                              <Input
-                                placeholder={isCustom ? '属性值' : (preset?.placeholder || '属性值')}
-                                style={{ width: 260 }}
-                                disabled={mode === 'view'}
-                              />
-                            </Form.Item>
-                          );
-                        }}
-                      </Form.Item>
-
-                      {mode !== 'view' && <MinusCircleOutlined onClick={() => remove(name)} />}
-                    </Space>
-                  ))}
-                  {mode !== 'view' && (
-                    <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />}>
-                      添加属性
-                    </Button>
-                  )}
-                </>
-              );
-            }}
-          </Form.List>
-        </Card>
+        <PropertiesConfig
+          form={form}
+          mode={mode}
+          propertyPresets={API_PROPERTY_PRESETS}
+          title="扩展属性（可选）"
+        />
       </Form>
     </Modal>
   );

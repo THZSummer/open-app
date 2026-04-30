@@ -49,9 +49,11 @@ function ApprovalFlowConfig() {
       curPage: page,
       pageSize: size 
     });
-    if (result.code === '200') {
+    if (result && result.code === '200') {
       setFlowList(result.data);
       setTotal(result.page?.total || 0);
+    } else {
+      message.error(result?.message || '加载流程列表失败');
     }
     setLoading(false);
   };

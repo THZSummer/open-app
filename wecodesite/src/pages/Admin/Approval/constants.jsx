@@ -15,6 +15,39 @@ export const LEVEL_MAP = {
   'global': { text: '全局审批', color: 'green' },
 };
 
+export const BUSINESS_COLUMNS = [
+  {
+    title: '业务类型',
+    dataIndex: 'businessType',
+    key: 'businessType',
+    width: 120,
+  },
+  {
+    title: '业务名称',
+    dataIndex: 'businessName',
+    key: 'businessName',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '业务ID',
+    dataIndex: 'businessId',
+    key: 'businessId',
+    width: 150,
+    ellipsis: true,
+  },
+  {
+    title: '状态',
+    dataIndex: 'status',
+    key: 'status',
+    width: 100,
+    render: (status) => {
+      const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
+      return <Tag color={color}>{text}</Tag>;
+    },
+  },
+];
+
 export const NODE_STATUS_MAP = {
   null: { text: '待审', color: 'default' },
   0: { text: '待审批', color: 'default' },
@@ -47,36 +80,7 @@ export const getApprovalColumns = ({ handleViewDetail, handleApprove, handleReje
     key: 'applicantName',
     width: 100,
   },
-  {
-    title: '业务类型',
-    dataIndex: 'businessType',
-    key: 'businessType',
-    width: 120,
-  },
-  {
-    title: '业务名称',
-    dataIndex: 'businessName',
-    key: 'businessName',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '业务ID',
-    dataIndex: 'businessId',
-    key: 'businessId',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    key: 'status',
-    width: 100,
-    render: (status) => {
-      const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-      return <Tag color={color}>{text}</Tag>;
-    },
-  },
+  ...BUSINESS_COLUMNS,
   {
     title: '操作',
     key: 'action',
@@ -108,36 +112,7 @@ export const getMyApprovalColumns = ({ handleViewDetail }) => [
     width: 180,
     ellipsis: true,
   },
-  {
-    title: '业务类型',
-    dataIndex: 'businessType',
-    key: 'businessType',
-    width: 120,
-  },
-  {
-    title: '业务名称',
-    dataIndex: 'businessName',
-    key: 'businessName',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '业务ID',
-    dataIndex: 'businessId',
-    key: 'businessId',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    key: 'status',
-    width: 100,
-    render: (status) => {
-      const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-      return <Tag color={color}>{text}</Tag>;
-    },
-  },
+  ...BUSINESS_COLUMNS,
   {
     title: '操作',
     key: 'action',
@@ -163,36 +138,7 @@ export const getAllApprovalColumns = ({ handleViewDetail }) => [
     key: 'applicantName',
     width: 100,
   },
-  {
-    title: '业务类型',
-    dataIndex: 'businessType',
-    key: 'businessType',
-    width: 120,
-  },
-  {
-    title: '业务名称',
-    dataIndex: 'businessName',
-    key: 'businessName',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '业务ID',
-    dataIndex: 'businessId',
-    key: 'businessId',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    key: 'status',
-    width: 100,
-    render: (status) => {
-      const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-      return <Tag color={color}>{text}</Tag>;
-    },
-  },
+  ...BUSINESS_COLUMNS,
   {
     title: '操作',
     key: 'action',

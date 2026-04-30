@@ -13,6 +13,7 @@ import {
   Timeline,
   Spin,
   Empty,
+  message,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -45,14 +46,13 @@ function ApprovalDetailModal({
     if (!approvalId) return;
 
     setLoading(true);
-    try {
-      const result = await fetchDetail(approvalId);
-      if (result.code === '200') {
-        setDetail(result.data);
-      }
-    } finally {
-      setLoading(false);
+    const result = await fetchDetail(approvalId);
+    if (result && result.code === '200') {
+      setDetail(result.data);
+    } else {
+      message.error(result?.message || '加载审批详情失败');
     }
+    setLoading(false);
   };
 
   if (!visible) return null;

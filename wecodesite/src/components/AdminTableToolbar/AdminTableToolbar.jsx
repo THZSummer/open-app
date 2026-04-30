@@ -1,6 +1,6 @@
 import React from 'react';
 import { Input, TreeSelect, Select } from 'antd';
-import { convertToTreeData } from '../../../utils/common';
+import { convertToTreeData } from '../../utils/common';
 import './AdminTableToolbar.less';
 
 const { Search } = Input;

@@ -76,10 +76,11 @@ export const approveApplication = async (id, data = {}) => {
  */
 export const rejectApplication = async (id, data = {}) => {
   try {
-    return await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.REJECT, { id }), {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.REJECT, { id }), {
       method: 'POST',
       body: JSON.stringify(data)
     });
+    return result || {};
   } catch (err) {
     return {};
   }
@@ -170,10 +171,15 @@ export const createApprovalFlow = async (data) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const updateApprovalFlow = async (id, data) => {
-  return fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.UPDATE, { id }), {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.UPDATE, { id }), {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -182,7 +188,12 @@ export const updateApprovalFlow = async (id, data) => {
  * @returns {Promise<Object>} 包含 code、messageZh 的响应对象
  */
 export const deleteApprovalFlow = async (id) => {
-  return fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.DELETE, { id }), {
-    method: 'DELETE'
-  });
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.DELETE, { id }), {
+      method: 'DELETE'
+    });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };

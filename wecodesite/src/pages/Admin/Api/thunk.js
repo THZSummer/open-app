@@ -39,7 +39,8 @@ export const fetchApiDetail = async (id) => {
  */
 export const createApi = async (data) => {
   try {
-    return await fetchApi(API_CONFIG.APIS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    const result = await fetchApi(API_CONFIG.APIS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    return result || {};
   } catch (err) {
     return {};
   }

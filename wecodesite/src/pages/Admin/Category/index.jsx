@@ -66,8 +66,10 @@ function CategoryList() {
   const loadData = async () => {
     setLoading(true);
     const result = await fetchCategoryTree();
-    if (result.code === '200') {
+    if (result && result.code === '200') {
       setCategoryTree(result.data);
+    } else {
+      message.error(result?.message || '加载分类失败');
     }
     setLoading(false);
   };

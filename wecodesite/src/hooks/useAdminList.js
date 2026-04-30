@@ -29,13 +29,15 @@ const createState = () => {
 };
 
 const createListOperations = (state, options) => {
-  const { setLoading, setData, setPagination, keyword, categoryId, status, pagination, categories, setCategories } = state;
+  const { setLoading, setData, setPagination, keyword, categoryId, setCategoryId, status, setStatus, pagination, setCategories } = state;
 
   const loadCategories = useCallback(async () => {
     if (!options.fetchCategories) return;
     const result = await options.fetchCategories();
-    if (result.code === '200') {
+    if (result && result.code === '200') {
       setCategories(result.data || []);
+    } else {
+      message.error(result?.message || '加载分类失败');
     }
   }, [options.fetchCategories]);
 
@@ -200,8 +202,10 @@ const buildListRequestParams = (params) => {
 };
 
 const handleListResponse = (result, setData, setPagination, curPage, pageSize) => {
-  if (result.code === '200') {
+  if (result && result.code === '200') {
     setData(result.data);
     setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage, pageSize }));
+  } else {
+    message.error(result?.message || '加载数据失败');
   }
 };

@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useAdminList } from '../../../hooks/useAdminList';
-import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
 import { fetchCallbackList, deleteCallback } from './thunk';
-import { fetchCategoryTree } from '../Category/thunk';
 import CallbackRegister from './CallbackRegister';
 import { getCallbackListColumns } from './constants';
+import { useAdminList } from '../../../hooks/useAdminList';
+import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
+import { fetchCategoryTree } from '../Category/thunk';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import { isInAdminWhitelist } from '../../../utils/common';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
@@ -24,31 +24,31 @@ function CallbackList() {
   const {
     data: callbackList,
     loading,
+    handleAdd,
+    handleView,
+    handleEdit,
+    handleDelete,
+    handleSuccess,
+    setKeyword,
+    handleSearch,
+    loadData,
+    loadCategories,
     pagination,
-    keyword,
-    categoryId,
-    status,
-    categories,
+    handlePageChange,
     modalVisible,
     currentItem,
     mode,
-    setKeyword,
-    loadData,
-    loadCategories,
-    handleSearch,
-    handlePageChange,
+    closeModal,
+    keyword,
+    categoryId,
+    categories,
+    status,
     handleCategoryChange,
     handleStatusChange,
-    handleAdd,
-    handleEdit,
-    handleView,
-    handleDelete,
-    handleSuccess,
-    closeModal,
   } = useAdminList({
+    deleteItem: deleteCallback,
     fetchList: fetchCallbackList,
     fetchCategories: fetchCategoryTree,
-    deleteItem: deleteCallback,
   });
 
   useEffect(() => {
