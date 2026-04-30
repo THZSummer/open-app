@@ -480,20 +480,10 @@ public class SyncService {
                     success++;
                     
                 } else {
-                    if (data.getAppId() != null && data.getPermissionId() != null) {
-                        int count = syncMapper.countOldSubscriptionByAppIdAndPermissionId(
-                            data.getAppId(), data.getPermissionId()
-                        );
-                        
-                        if (count > 0) {
-                            detail.setStatus("failed");
-                            detail.setError("数据保护：应用ID=" + data.getAppId() + 
-                                           " 和权限ID=" + data.getPermissionId() + 
-                                           " 的订阅关系已存在，不允许重复创建");
-                            failed++;
-                            details.add(detail);
-                            continue;
-                        }
+                    // 数据保护校验
+                    if (!checkDataProtectionForOld(data, detail, details)) {
+                        failed++;
+                        continue;
                     }
                     
                     OldSubscription newData = new OldSubscription();
@@ -583,20 +573,10 @@ public class SyncService {
                     success++;
                     
                 } else {
-                    if (data.getAppId() != null && data.getPermissionId() != null) {
-                        int count = syncMapper.countNewSubscriptionByAppIdAndPermissionId(
-                            data.getAppId(), data.getPermissionId()
-                        );
-                        
-                        if (count > 0) {
-                            detail.setStatus("failed");
-                            detail.setError("数据保护：应用ID=" + data.getAppId() + 
-                                           " 和权限ID=" + data.getPermissionId() + 
-                                           " 的订阅关系已存在，不允许重复创建");
-                            failed++;
-                            details.add(detail);
-                            continue;
-                        }
+                    // 数据保护校验
+                    if (!checkDataProtectionForNew(data, detail, details)) {
+                        failed++;
+                        continue;
                     }
                     
                     Subscription newData = new Subscription();
@@ -637,5 +617,65 @@ public class SyncService {
                 .updated(updated)
                 .details(details)
                 .build();
+    }
+
+    /**
+     * 数据保护校验：检查旧表是否存在重复订阅关系
+     * 
+     * @param data 订阅关系数据
+     * @param detail 详细信息
+     * @param details 详细信息列表
+     * @return true=通过校验可新增, false=存在重复不允许新增
+     */
+    private boolean checkDataProtectionForOld(SubscriptionData data, EmergencyDetail detail, 
+                                               List<EmergencyDetail> details) {
+        if (data.getAppId() == null || data.getPermissionId() == null) {
+            return true;
+        }
+        
+        int count = syncMapper.countOldSubscriptionByAppIdAndPermissionId(
+            data.getAppId(), data.getPermissionId()
+        );
+        
+        if (count > 0) {
+            detail.setStatus("failed");
+            detail.setError(String.format(Locale.ROOT, 
+                "数据保护：应用ID=%d 和权限ID=%d 的订阅关系已存在，不允许重复创建",
+                data.getAppId(), data.getPermissionId()));
+            details.add(detail);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * 数据保护校验：检查新表是否存在重复订阅关系
+     * 
+     * @param data 订阅关系数据
+     * @param detail 详细信息
+     * @param details 详细信息列表
+     * @return true=通过校验可新增, false=存在重复不允许新增
+     */
+    private boolean checkDataProtectionForNew(SubscriptionData data, EmergencyDetail detail,
+                                               List<EmergencyDetail> details) {
+        if (data.getAppId() == null || data.getPermissionId() == null) {
+            return true;
+        }
+        
+        int count = syncMapper.countNewSubscriptionByAppIdAndPermissionId(
+            data.getAppId(), data.getPermissionId()
+        );
+        
+        if (count > 0) {
+            detail.setStatus("failed");
+            detail.setError(String.format(Locale.ROOT, 
+                "数据保护：应用ID=%d 和权限ID=%d 的订阅关系已存在，不允许重复创建",
+                data.getAppId(), data.getPermissionId()));
+            details.add(detail);
+            return false;
+        }
+        
+        return true;
     }
 }
