@@ -11,7 +11,7 @@
         <result column="app_id" property="appId"/>
         <result column="permission_id" property="permissionId"/>
         <result column="tenant_id" property="tenantId"/>
-        <result column="permisssion_type" property="permisssionType"/>
+        <result column="permission_type" property="permissionType"/>
         <result column="status" property="status"/>
         <result column="create_by" property="createBy"/>
         <result column="create_time" property="createTime"/>
@@ -26,7 +26,7 @@
         <result column="permission_name_en" property="permissionNameEn"/>
         <result column="module_id" property="moduleId"/>
         <result column="scope_id" property="scopeId"/>
-        <result column="permisssion_type" property="permisssionType"/>
+        <result column="permission_type" property="permissionType"/>
         <result column="is_approval_required" property="isApprovalRequired"/>
         <result column="auth_type" property="authType"/>
         <result column="status" property="status"/>
@@ -179,7 +179,7 @@
 
     <!-- 查询旧订阅关系列表 -->
     <select id="selectOldSubscriptions" resultMap="OldSubscriptionResultMap">
-        SELECT id, app_id, permission_id, tenant_id, permisssion_type, status,
+        SELECT id, app_id, permission_id, tenant_id, permission_type, status,
                create_by, create_time, last_update_by, last_update_time
         FROM openplatform_app_permission_t
         WHERE status = 1
@@ -194,7 +194,7 @@
 
     <!-- 根据ID查询旧订阅关系 -->
     <select id="selectOldSubscriptionById" resultMap="OldSubscriptionResultMap">
-        SELECT id, app_id, permission_id, tenant_id, permisssion_type, status,
+        SELECT id, app_id, permission_id, tenant_id, permission_type, status,
                create_by, create_time, last_update_by, last_update_time
         FROM openplatform_app_permission_t
         WHERE id = #{id}
@@ -203,7 +203,7 @@
     <!-- 根据ID查询旧权限 -->
     <select id="selectOldPermissionById" resultMap="OldPermissionResultMap">
         SELECT id, permission_name_cn, permission_name_en, module_id, scope_id,
-               permisssion_type, is_approval_required, auth_type, status
+               permission_type, is_approval_required, auth_type, status
         FROM openplatform_permission_t
         WHERE id = #{id}
     </select>
@@ -371,10 +371,10 @@
     <!-- 根据module_id和类型查询旧权限 -->
     <select id="selectOldPermissionByModuleIdAndType" resultMap="OldPermissionResultMap">
         SELECT id, permission_name_cn, permission_name_en, module_id, scope_id,
-               permisssion_type, is_approval_required, auth_type, status
+               permission_type, is_approval_required, auth_type, status
         FROM openplatform_permission_t
         WHERE module_id = #{moduleId}
-          AND permisssion_type = #{type}
+          AND permission_type = #{type}
           AND status = 1
         LIMIT 1
     </select>
@@ -436,10 +436,10 @@
     <insert id="insertOldSubscriptionIfNotExists"
             parameterType="com.xxx.it.works.wecode.v2.modules.sync.entity.OldSubscription">
         INSERT INTO openplatform_app_permission_t (
-            id, app_id, permission_id, tenant_id, permisssion_type, status,
+            id, app_id, permission_id, tenant_id, permission_type, status,
             create_by, create_time, last_update_by, last_update_time
         ) VALUES (
-            #{id}, #{appId}, #{permissionId}, #{tenantId}, #{permisssionType}, #{status},
+            #{id}, #{appId}, #{permissionId}, #{tenantId}, #{permissionType}, #{status},
             #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
         )
         ON DUPLICATE KEY UPDATE id = id
@@ -484,6 +484,79 @@
              #{item.eflowLogMessage}, #{item.status}, #{item.createBy}, #{item.createTime})
         </foreach>
         ON DUPLICATE KEY UPDATE eflow_log_id = eflow_log_id
+    </insert>
+
+    <!-- ==================== 应急接口：数据保护查询 ==================== -->
+    
+    <!-- 统计旧订阅关系表中指定应用ID+权限ID组合的数量 -->
+    <select id="countOldSubscriptionByAppIdAndPermissionId" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_app_permission_t
+        WHERE app_id = #{appId}
+          AND permission_id = #{permissionId}
+    </select>
+    
+    <!-- 统计新订阅关系表中指定应用ID+权限ID组合的数量 -->
+    <select id="countNewSubscriptionByAppIdAndPermissionId" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_v2_subscription_t
+        WHERE app_id = #{appId}
+          AND permission_id = #{permissionId}
+    </select>
+    
+    <!-- 更新旧订阅关系表（根据主键ID，动态更新非空字段） -->
+    <update id="updateOldSubscriptionById">
+        UPDATE openplatform_app_permission_t
+        <set>
+            <if test="appId != null">app_id = #{appId},</if>
+            <if test="permissionId != null">permission_id = #{permissionId},</if>
+            <if test="tenantId != null">tenant_id = #{tenantId},</if>
+            <if test="permissionType != null">permission_type = #{permissionType},</if>
+            <if test="status != null">status = #{status},</if>
+            last_update_by = #{lastUpdateBy},
+            last_update_time = #{lastUpdateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 更新新订阅关系表（根据主键ID，动态更新非空字段） -->
+    <update id="updateNewSubscriptionById">
+        UPDATE openplatform_v2_subscription_t
+        <set>
+            <if test="appId != null">app_id = #{appId},</if>
+            <if test="permissionId != null">permission_id = #{permissionId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="channelType != null">channel_type = #{channelType},</if>
+            <if test="channelAddress != null">channel_address = #{channelAddress},</if>
+            <if test="authType != null">auth_type = #{authType},</if>
+            last_update_by = #{lastUpdateBy},
+            last_update_time = #{lastUpdateTime}
+        </set>
+        WHERE id = #{id}
+    </update>
+    
+    <!-- 插入旧订阅关系表（普通插入） -->
+    <insert id="insertOldSubscription">
+        INSERT INTO openplatform_app_permission_t (
+            id, app_id, permission_id, tenant_id, permission_type, status,
+            create_by, create_time, last_update_by, last_update_time
+        ) VALUES (
+            #{id}, #{appId}, #{permissionId}, #{tenantId}, #{permissionType}, #{status},
+            #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
+        )
+    </insert>
+    
+    <!-- 插入新订阅关系表（普通插入） -->
+    <insert id="insertNewSubscription">
+        INSERT INTO openplatform_v2_subscription_t (
+            id, app_id, permission_id, status,
+            channel_type, channel_address, auth_type,
+            create_by, create_time, last_update_by, last_update_time
+        ) VALUES (
+            #{id}, #{appId}, #{permissionId}, #{status},
+            #{channelType}, #{channelAddress}, #{authType},
+            #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
+        )
     </insert>
 
 </mapper>

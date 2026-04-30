@@ -191,4 +191,40 @@ public interface SyncMapper {
      * 批量插入旧审批日志
      */
     int batchInsertOldEflowLogs(@Param("list") List<OldEflowLog> logs);
+
+    // ==================== 应急接口：数据保护查询 ====================
+
+    /**
+     * 统计旧订阅关系表中指定应用ID+权限ID组合的数量
+     * 用于数据保护：防止重复订阅关系
+     */
+    int countOldSubscriptionByAppIdAndPermissionId(@Param("appId") Long appId, 
+                                                     @Param("permissionId") Long permissionId);
+
+    /**
+     * 统计新订阅关系表中指定应用ID+权限ID组合的数量
+     * 用于数据保护：防止重复订阅关系
+     */
+    int countNewSubscriptionByAppIdAndPermissionId(@Param("appId") Long appId, 
+                                                     @Param("permissionId") Long permissionId);
+
+    /**
+     * 更新旧订阅关系表（根据主键ID）
+     */
+    int updateOldSubscriptionById(OldSubscription subscription);
+
+    /**
+     * 更新新订阅关系表（根据主键ID）
+     */
+    int updateNewSubscriptionById(Subscription subscription);
+
+    /**
+     * 插入旧订阅关系表（普通插入，不做存在性检查）
+     */
+    int insertOldSubscription(OldSubscription subscription);
+
+    /**
+     * 插入新订阅关系表（普通插入，不做存在性检查）
+     */
+    int insertNewSubscription(Subscription subscription);
 }
