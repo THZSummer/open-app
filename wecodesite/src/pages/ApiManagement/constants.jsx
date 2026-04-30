@@ -1,14 +1,14 @@
 import React from 'react';
 import { Tag, Button } from 'antd';
 import { SUBSCRIPTION_STATUS, AUTH_TYPE } from '../../utils/constants';
+import {
+  renderStatus,
+  renderNeedApprovalStatus,
+  renderSubscriptionStatus,
+  createApiDrawerColumns
+} from '../../utils/commonTableConfigs';
 
-export const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-export const NEED_REVIEW_OPTIONS = [
-  { value: 'all', label: '全部' },
-  { value: 'true', label: '需要审核' },
-  { value: 'false', label: '无需审核' },
-];
+export { NEED_REVIEW_OPTIONS, PAGE_SIZE_OPTIONS } from '../../utils/commonTableConfigs';
 
 export const TAB_CONFIG_SEARCH_KEY = 'CEC.open/Api.Drawer.TabsList';
 
@@ -45,10 +45,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
     dataIndex: 'status',
     key: 'status',
     width: 100,
-    render: (status) => {
-      const { text, color } = SUBSCRIPTION_STATUS[status] || { text: '未知', color: 'default' };
-      return <Tag color={color}>{text}</Tag>;
-    },
+    render: renderStatus,
   },
   {
     title: '操作',
@@ -96,12 +93,7 @@ export const getApiPermissionDrawerColumns = ({ handleOpenDoc }) => [
     dataIndex: 'needApproval',
     key: 'needApproval',
     width: 120,
-    render: (needApproval, record) => {
-      const val = needApproval !== undefined ? needApproval : record.needReview;
-      return val ?
-        <Tag color="orange">需要审核</Tag> :
-        <Tag color="green">无需审核</Tag>;
-    },
+    render: renderNeedApprovalStatus,
   },
   {
     title: '订阅状态',

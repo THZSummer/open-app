@@ -53,38 +53,47 @@ function ApprovalCenter() {
     loadData(INIT_PAGECONFIG);
   }, [activeTab]);
 
+  const fetchAndUpdate = async (apiCall, setData, errorMessage, curPage, pageSize) => {
+    const result = await apiCall;
+    if (result && result.code === '200') {
+      setData(result.data);
+      setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage, pageSize }));
+    } else {
+      message.error(result?.message || errorMessage);
+    }
+  };
+
   const loadData = async (params = {}) => {
     setLoading(true);
     const finalPage = 'curPage' in params ? params.curPage : pagination.curPage;
     const finalSize = 'pageSize' in params ? params.pageSize : pagination.pageSize;
     params.curPage = finalPage;
     params.pageSize = finalSize;
-    let result;
 
     if (activeTab === 'pending') {
-      result = await fetchApprovalList({ status: 0, ...params });
-      if (result && result.code === '200') {
-        setApprovalList(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
-      } else {
-        message.error(result?.message || '加载待审批列表失败');
-      }
+      await fetchAndUpdate(
+        fetchApprovalList({ status: 0, ...params }),
+        setApprovalList,
+        '加载待审批列表失败',
+        finalPage,
+        finalSize
+      );
     } else if (activeTab === 'mine') {
-      result = await fetchMyApprovals(params);
-      if (result && result.code === '200') {
-        setMyApprovals(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
-      } else {
-        message.error(result?.message || '加载我发起的审批列表失败');
-      }
+      await fetchAndUpdate(
+        fetchMyApprovals(params),
+        setMyApprovals,
+        '加载我发起的审批列表失败',
+        finalPage,
+        finalSize
+      );
     } else if (activeTab === 'all') {
-      result = await fetchApprovalList(params);
-      if (result && result.code === '200') {
-        setApprovalList(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
-      } else {
-        message.error(result?.message || '加载全部审批列表失败');
-      }
+      await fetchAndUpdate(
+        fetchApprovalList(params),
+        setApprovalList,
+        '加载全部审批列表失败',
+        finalPage,
+        finalSize
+      );
     }
 
     setLoading(false);

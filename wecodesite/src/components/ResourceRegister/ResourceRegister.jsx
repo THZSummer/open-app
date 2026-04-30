@@ -14,7 +14,7 @@ import { fetchCategoryTree } from '../../pages/Admin/Category/thunk';
 import { convertToTreeData } from '../../utils/common';
 import ApprovalNodesConfig from '../ApprovalNodesConfig';
 import PropertiesConfig from '../PropertiesConfig';
-import { RESOURCE_TYPES } from './constants';
+import { RESOURCE_TYPES, COMMON_BASE_FIELDS } from './constants';
 
 const { Option } = Select;
 
@@ -24,6 +24,7 @@ function ResourceRegister({
   resourceType = 'callback',
   thunk = {},
   propertyPresets = [],
+  transformProperties = null,
   mode = 'create',
   onSuccess,
   onCancel,
@@ -59,6 +60,9 @@ function ResourceRegister({
           const result = await fetchDetail(resource.id);
           if (result && result.code === '200') {
             const data = result.data;
+            const properties = transformProperties
+              ? transformProperties(data.properties || [], propertyPresets)
+              : data.properties || [];
             form.setFieldsValue({
               nameCn: data.nameCn,
               nameEn: data.nameEn,
@@ -71,7 +75,7 @@ function ResourceRegister({
               resourceNodes: data.permission?.resourceNodes
                 ? JSON.parse(data.permission.resourceNodes)
                 : [],
-              properties: data.properties || [],
+              properties: properties,
             });
           } else {
             message.error(result?.message || '加载详情失败');
@@ -140,122 +144,60 @@ function ResourceRegister({
     }
   };
 
+  const renderField = (fieldConfig) => {
+    const label = fieldConfig.label || config.labels[fieldConfig.labelKey];
+    const placeholder = fieldConfig.placeholder || (fieldConfig.placeholderPrefix ? `${fieldConfig.placeholderPrefix}${label}` : '');
+    const processedRules = (fieldConfig.rules || []).map(rule => ({
+      ...rule,
+      message: rule.message || `请输入${label}`,
+    }));
+
+    const commonProps = {
+      label,
+      name: fieldConfig.name,
+      rules: processedRules,
+      extra: fieldConfig.extra,
+      initialValue: fieldConfig.initialValue,
+    };
+
+    switch (fieldConfig.type) {
+      case 'Input':
+        return (
+          <Form.Item key={fieldConfig.key} {...commonProps}>
+            <Input placeholder={placeholder} disabled={mode === 'view'} />
+          </Form.Item>
+        );
+      case 'TreeSelect':
+        return (
+          <Form.Item key={fieldConfig.key} {...commonProps}>
+            <TreeSelect
+              placeholder={placeholder}
+              treeData={convertToTreeData(categories)}
+              treeDefaultExpandAll
+              style={{ width: '100%' }}
+              dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
+              disabled={mode === 'view'}
+            />
+          </Form.Item>
+        );
+      case 'Select':
+        return (
+          <Form.Item key={fieldConfig.key} {...commonProps}>
+            <Select placeholder={placeholder} disabled={mode === 'view'}>
+              {(fieldConfig.options || []).map(opt => (
+                <Option key={opt.value} value={opt.value}>{opt.label}</Option>
+              ))}
+            </Select>
+          </Form.Item>
+        );
+      default:
+        return null;
+    }
+  };
+
   const renderBaseInfoFields = () => {
-    const fields = [];
-
-    fields.push(
-      <Form.Item
-        key="nameCn"
-        label={config.labels.nameCn}
-        name="nameCn"
-        rules={[{ required: true, message: `请输入${config.labels.nameCn}` }]}
-      >
-        <Input placeholder={`请输入${config.labels.nameCn}`} disabled={mode === 'view'} />
-      </Form.Item>
-    );
-
-    fields.push(
-      <Form.Item
-        key="nameEn"
-        label={config.labels.nameEn}
-        name="nameEn"
-        rules={[
-          { required: true, message: `请输入${config.labels.nameEn}` },
-          { pattern: /^[a-zA-Z0-9\s\-_()]+$/, message: '英文名称不能输入中文字符' }
-        ]}
-      >
-        <Input placeholder={`请输入${config.labels.nameEn}`} disabled={mode === 'view'} />
-      </Form.Item>
-    );
-
-    fields.push(
-      <Form.Item
-        key="categoryId"
-        label="所属分类"
-        name="categoryId"
-        rules={[{ required: true, message: '请选择所属分类' }]}
-      >
-        <TreeSelect
-          placeholder="请选择所属分类"
-          treeData={convertToTreeData(categories)}
-          treeDefaultExpandAll
-          style={{ width: '100%' }}
-          dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-          disabled={mode === 'view'}
-        />
-      </Form.Item>
-    );
-
-    if (config.baseInfoFields.includes('topic')) {
-      fields.push(
-        <Form.Item
-          key="topic"
-          label="Topic 标识"
-          name="topic"
-          rules={[
-            { required: true, message: '请输入 Topic 标识' },
-            { pattern: config.topicPattern, message: config.topicMessage },
-          ]}
-          extra={config.topicExtra}
-        >
-          <Input placeholder={config.labels.topic} disabled={mode === 'view'} />
-        </Form.Item>
-      );
-    }
-
-    if (config.baseInfoFields.includes('path')) {
-      fields.push(
-        <Form.Item
-          key="path"
-          label="API路径"
-          name="path"
-          rules={[
-            { required: true, message: '请输入API路径' },
-            { pattern: /^\//, message: '路径必须以/开头' },
-          ]}
-        >
-          <Input placeholder="例如：/api/v1/messages" disabled={mode === 'view'} />
-        </Form.Item>
-      );
-    }
-
-    if (config.baseInfoFields.includes('method')) {
-      fields.push(
-        <Form.Item
-          key="method"
-          label="HTTP方法"
-          name="method"
-          rules={[{ required: true, message: '请选择HTTP方法' }]}
-        >
-          <Select placeholder="请选择HTTP方法" disabled={mode === 'view'}>
-            <Option value="GET">GET</Option>
-            <Option value="POST">POST</Option>
-            <Option value="PUT">PUT</Option>
-            <Option value="DELETE">DELETE</Option>
-            <Option value="PATCH">PATCH</Option>
-          </Select>
-        </Form.Item>
-      );
-    }
-
-    if (config.baseInfoFields.includes('authType')) {
-      fields.push(
-        <Form.Item
-          key="authType"
-          label="认证方式"
-          name="authType"
-          initialValue={1}
-          extra="默认为 SOA 认证"
-        >
-          <Select placeholder="请选择认证方式" disabled={mode === 'view'}>
-            <Option value={1}>SOA认证</Option>
-            <Option value={2}>Token认证</Option>
-          </Select>
-        </Form.Item>
-      );
-    }
-
-    return fields;
+    const allFields = [...COMMON_BASE_FIELDS, ...(config.baseFields || [])];
+    return allFields.map(field => renderField(field));
   };
 
   const getTitle = () => {
