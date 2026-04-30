@@ -216,6 +216,33 @@ class PermissionServiceTest {
         }
 
         @Test
+        @DisplayName("申请无需审批 API 权限成功")
+        void testSubscribeApiPermissions_NoApprovalRequired() {
+            testPermission.setNeedApproval(0);
+            PermissionSubscribeRequest request = new PermissionSubscribeRequest();
+            request.setPermissionIds(List.of("100"));
+
+            when(permissionMapper.selectByIds(anyList())).thenReturn(List.of(testPermission));
+            when(subscriptionMapper.selectByAppIdAndPermissionId(eq(1L), eq(100L))).thenReturn(null);
+            when(idGenerator.nextId()).thenReturn(200L);
+            when(subscriptionMapper.batchInsert(anyList())).thenReturn(1);
+
+            PermissionSubscribeResponse response =
+                    permissionService.subscribeApiPermissions("1", request);
+
+            assertNotNull(response);
+            assertEquals(1, response.getSuccessCount());
+            assertEquals(0, response.getFailedCount());
+            assertEquals(1, response.getRecords().get(0).getStatus());
+            verify(subscriptionMapper).batchInsert(argThat(list ->
+                    list.size() == 1
+                            && list.get(0).getStatus() == 1
+                            && list.get(0).getApprovedAt() != null
+                            && list.get(0).getApprovedBy() != null));
+            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString());
+        }
+
+        @Test
         @DisplayName("申请权限-权限不存在")
         void testSubscribeApiPermissions_PermissionNotFound() {
             PermissionSubscribeRequest request = new PermissionSubscribeRequest();

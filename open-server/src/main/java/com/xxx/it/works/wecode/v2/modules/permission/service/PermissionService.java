@@ -256,11 +256,15 @@ public class PermissionService {
             subscription.setId(idGenerator.nextId());
             subscription.setAppId(appIdLong);
             subscription.setPermissionId(permission.getId());
-            subscription.setStatus(0); // 待审
+            subscription.setStatus(isApprovalRequired(permission) ? 0 : 1);
             subscription.setCreateTime(now);
             subscription.setLastUpdateTime(now);
             subscription.setCreateBy(currentUser);
             subscription.setLastUpdateBy(currentUser);
+            if (subscription.getStatus() == 1) {
+                subscription.setApprovedAt(now);
+                subscription.setApprovedBy(currentUser);
+            }
 
             subscriptions.add(subscription);
 
@@ -268,7 +272,7 @@ public class PermissionService {
                     .id(String.valueOf(subscription.getId()))
                     .appId(externalAppId)
                     .permissionId(String.valueOf(permission.getId()))
-                    .status(0)
+                    .status(subscription.getStatus())
                     .build());
         }
 
@@ -276,8 +280,11 @@ public class PermissionService {
         if (!subscriptions.isEmpty()) {
             subscriptionMapper.batchInsert(subscriptions);
 
-            // 为每个订阅记录创建审批流程
+            // Create approval only for pending subscriptions.
             for (Subscription subscription : subscriptions) {
+                if (subscription.getStatus() != 0) {
+                    continue;
+                }
                 try {
                     ApprovalRecord approvalRecord = approvalEngine.createApproval(
                             ApprovalEngine.BusinessType.API_PERMISSION_APPLY,  // ✅ v2.8.0变更
@@ -476,11 +483,16 @@ public class PermissionService {
             subscription.setId(idGenerator.nextId());
             subscription.setAppId(appIdLong);
             subscription.setPermissionId(permission.getId());
-            subscription.setStatus(0);
+            subscription.setStatus(isApprovalRequired(permission) ? 0 : 1);
             subscription.setCreateTime(now);
             subscription.setLastUpdateTime(now);
             subscription.setCreateBy(currentUser);
             subscription.setLastUpdateBy(currentUser);
+
+            if (subscription.getStatus() == 1) {
+                subscription.setApprovedAt(now);
+                subscription.setApprovedBy(currentUser);
+            }
 
             subscriptions.add(subscription);
 
@@ -488,7 +500,7 @@ public class PermissionService {
                     .id(String.valueOf(subscription.getId()))
                     .appId(externalAppId)
                     .permissionId(String.valueOf(permission.getId()))
-                    .status(0)
+                    .status(subscription.getStatus())
                     .build());
         }
 
@@ -496,6 +508,9 @@ public class PermissionService {
             subscriptionMapper.batchInsert(subscriptions);
 
             for (Subscription subscription : subscriptions) {
+                if (subscription.getStatus() != 0) {
+                    continue;
+                }
                 try {
                     ApprovalRecord approvalRecord = approvalEngine.createApproval(
                             ApprovalEngine.BusinessType.EVENT_PERMISSION_APPLY,  // ✅ v2.8.0变更
@@ -732,11 +747,15 @@ public class PermissionService {
             subscription.setId(idGenerator.nextId());
             subscription.setAppId(appIdLong);
             subscription.setPermissionId(permission.getId());
-            subscription.setStatus(0);
+            subscription.setStatus(isApprovalRequired(permission) ? 0 : 1);
             subscription.setCreateTime(now);
             subscription.setLastUpdateTime(now);
             subscription.setCreateBy(currentUser);
             subscription.setLastUpdateBy(currentUser);
+            if (subscription.getStatus() == 1) {
+                subscription.setApprovedAt(now);
+                subscription.setApprovedBy(currentUser);
+            }
 
             subscriptions.add(subscription);
 
@@ -744,7 +763,7 @@ public class PermissionService {
                     .id(String.valueOf(subscription.getId()))
                     .appId(externalAppId)
                     .permissionId(String.valueOf(permission.getId()))
-                    .status(0)
+                    .status(subscription.getStatus())
                     .build());
         }
 
@@ -753,6 +772,9 @@ public class PermissionService {
 
             // 为每个订阅记录创建审批流程
             for (Subscription subscription : subscriptions) {
+                if (subscription.getStatus() != 0) {
+                    continue;
+                }
                 try {
                     ApprovalRecord approvalRecord = approvalEngine.createApproval(
                             ApprovalEngine.BusinessType.CALLBACK_PERMISSION_APPLY,  // ✅ v2.8.0修正：使用 CALLBACK_PERMISSION_APPLY
@@ -841,6 +863,10 @@ public class PermissionService {
     /**
      * 撤回订阅（通用方法）
      */
+    private boolean isApprovalRequired(Permission permission) {
+        return permission.getNeedApproval() == null || permission.getNeedApproval() == 1;
+    }
+
     private WithdrawResponse withdrawSubscription(String subscriptionId) {
         Long subIdLong = parseId(subscriptionId);
 
