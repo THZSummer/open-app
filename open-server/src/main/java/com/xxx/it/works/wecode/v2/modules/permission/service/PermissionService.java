@@ -872,10 +872,28 @@ public class PermissionService {
             throw new BusinessException("400", "只能撤回待审状态的申请", "Can only withdraw pending subscription");
         }
 
-        // 更新状态为已取消
-        Date now = new Date();
         String currentUser = getCurrentUser();
 
+        // 查询关联的审批单
+        Permission permission = permissionMapper.selectById(subscription.getPermissionId());
+        if (permission != null) {
+            String businessType = getBusinessType(permission.getResourceType());
+            if (businessType != null) {
+                ApprovalRecord approvalRecord = approvalRecordMapper.selectLatestByBusiness(businessType, subscription.getId());
+                if (approvalRecord != null && approvalRecord.getStatus() == ApprovalEngine.Status.PENDING) {
+                    // 调用审批引擎取消审批单（会同时更新审批单和订阅状态）
+                    approvalEngine.cancel(approvalRecord.getId(), currentUser);
+                    return WithdrawResponse.builder()
+                            .id(subscriptionId)
+                            .status(3)
+                            .message("申请已撤回")
+                            .build();
+                }
+            }
+        }
+
+        // 兼容场景：如果没有审批单，直接更新订阅状态
+        Date now = new Date();
         subscriptionMapper.updateStatus(subIdLong, 3, now, currentUser);
 
         return WithdrawResponse.builder()
@@ -883,6 +901,17 @@ public class PermissionService {
                 .status(3)
                 .message("申请已撤回")
                 .build();
+    }
+
+    private String getBusinessType(String resourceType) {
+        if ("api".equals(resourceType)) {
+            return ApprovalEngine.BusinessType.API_PERMISSION_APPLY;
+        } else if ("event".equals(resourceType)) {
+            return ApprovalEngine.BusinessType.EVENT_PERMISSION_APPLY;
+        } else if ("callback".equals(resourceType)) {
+            return ApprovalEngine.BusinessType.CALLBACK_PERMISSION_APPLY;
+        }
+        return null;
     }
 
     /**

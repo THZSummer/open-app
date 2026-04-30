@@ -285,8 +285,17 @@ class PermissionServiceTest {
         void testWithdrawApiSubscription_Success() {
             testSubscription.setStatus(0);
 
+            // 模拟审批单存在且状态为待审
+            ApprovalRecord approvalRecord = new ApprovalRecord();
+            approvalRecord.setId(300L);
+            approvalRecord.setStatus(ApprovalEngine.Status.PENDING);
+
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
-            when(subscriptionMapper.updateStatus(eq(200L), eq(3), any(Date.class), anyString())).thenReturn(1);
+            when(permissionMapper.selectById(100L)).thenReturn(testPermission);
+            when(approvalRecordMapper.selectLatestByBusiness(
+                    eq(ApprovalEngine.BusinessType.API_PERMISSION_APPLY), eq(200L)))
+                    .thenReturn(approvalRecord);
+            when(approvalEngine.cancel(eq(300L), anyString())).thenReturn(approvalRecord);
 
             WithdrawResponse response =
                     permissionService.withdrawApiSubscription("1", "200");
@@ -295,6 +304,11 @@ class PermissionServiceTest {
             assertEquals("200", response.getId());
             assertEquals(3, response.getStatus());
             assertEquals("申请已撤回", response.getMessage());
+
+            // 验证审批引擎的 cancel 方法被调用
+            verify(approvalEngine).cancel(300L, anyString());
+            // 验证不会直接更新订阅状态（因为审批引擎会处理）
+            verify(subscriptionMapper, never()).updateStatus(eq(200L), eq(3), any(Date.class), anyString());
         }
 
         @Test
