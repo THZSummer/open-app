@@ -33,6 +33,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public SyncResult migrate(SyncRequest request) {
+        checkPermission("sync:migrate");
+        
         log.info("Starting data migration, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
@@ -300,6 +302,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public SyncResult rollback(SyncRequest request) {
+        checkPermission("sync:rollback");
+        
         log.info("Starting data rollback, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
@@ -435,6 +439,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public EmergencyResult emergencyUpdateOld(EmergencyRequest request) {
+        checkPermission("sync:emergency:update-old");
+        
         log.info("Starting emergency update old table");
 
         List<EmergencyDetail> details = new ArrayList<>();
@@ -480,20 +486,10 @@ public class SyncService {
                     success++;
                     
                 } else {
-                    if (data.getAppId() != null && data.getPermissionId() != null) {
-                        int count = syncMapper.countOldSubscriptionByAppIdAndPermissionId(
-                            data.getAppId(), data.getPermissionId()
-                        );
-                        
-                        if (count > 0) {
-                            detail.setStatus("failed");
-                            detail.setError("数据保护：应用ID=" + data.getAppId() + 
-                                           " 和权限ID=" + data.getPermissionId() + 
-                                           " 的订阅关系已存在，不允许重复创建");
-                            failed++;
-                            details.add(detail);
-                            continue;
-                        }
+                    // 数据保护校验
+                    if (!checkDataProtectionForOld(data, detail, details)) {
+                        failed++;
+                        continue;
                     }
                     
                     OldSubscription newData = new OldSubscription();
@@ -537,6 +533,8 @@ public class SyncService {
 
     @Transactional(rollbackFor = Exception.class)
     public EmergencyResult emergencyUpdateNew(EmergencyRequest request) {
+        checkPermission("sync:emergency:update-new");
+        
         log.info("Starting emergency update new table");
 
         List<EmergencyDetail> details = new ArrayList<>();
@@ -583,20 +581,10 @@ public class SyncService {
                     success++;
                     
                 } else {
-                    if (data.getAppId() != null && data.getPermissionId() != null) {
-                        int count = syncMapper.countNewSubscriptionByAppIdAndPermissionId(
-                            data.getAppId(), data.getPermissionId()
-                        );
-                        
-                        if (count > 0) {
-                            detail.setStatus("failed");
-                            detail.setError("数据保护：应用ID=" + data.getAppId() + 
-                                           " 和权限ID=" + data.getPermissionId() + 
-                                           " 的订阅关系已存在，不允许重复创建");
-                            failed++;
-                            details.add(detail);
-                            continue;
-                        }
+                    // 数据保护校验
+                    if (!checkDataProtectionForNew(data, detail, details)) {
+                        failed++;
+                        continue;
                     }
                     
                     Subscription newData = new Subscription();
@@ -638,4 +626,89 @@ public class SyncService {
                 .details(details)
                 .build();
     }
+
+    /**
+     * 数据保护校验：检查旧表是否存在重复订阅关系
+     * 
+     * @param data 订阅关系数据
+     * @param detail 详细信息
+     * @param details 详细信息列表
+     * @return true=通过校验可新增, false=存在重复不允许新增
+     */
+    private boolean checkDataProtectionForOld(SubscriptionData data, EmergencyDetail detail, 
+                                               List<EmergencyDetail> details) {
+        if (data.getAppId() == null || data.getPermissionId() == null) {
+            return true;
+        }
+        
+        int count = syncMapper.countOldSubscriptionByAppIdAndPermissionId(
+            data.getAppId(), data.getPermissionId()
+        );
+        
+        if (count > 0) {
+            detail.setStatus("failed");
+            detail.setError(String.format(Locale.ROOT, 
+                "数据保护：应用ID=%d 和权限ID=%d 的订阅关系已存在，不允许重复创建",
+                data.getAppId(), data.getPermissionId()));
+            details.add(detail);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * 数据保护校验：检查新表是否存在重复订阅关系
+     * 
+     * @param data 订阅关系数据
+     * @param detail 详细信息
+     * @param details 详细信息列表
+     * @return true=通过校验可新增, false=存在重复不允许新增
+     */
+    private boolean checkDataProtectionForNew(SubscriptionData data, EmergencyDetail detail,
+                                               List<EmergencyDetail> details) {
+        if (data.getAppId() == null || data.getPermissionId() == null) {
+            return true;
+        }
+        
+        int count = syncMapper.countNewSubscriptionByAppIdAndPermissionId(
+            data.getAppId(), data.getPermissionId()
+        );
+        
+        if (count > 0) {
+            detail.setStatus("failed");
+            detail.setError(String.format(Locale.ROOT, 
+                "数据保护：应用ID=%d 和权限ID=%d 的订阅关系已存在，不允许重复创建",
+                data.getAppId(), data.getPermissionId()));
+            details.add(detail);
+            return false;
+        }
+        
+        return true;
+    }
+
+    // ==================== 权限校验（预留） ====================
+
+    /**
+     * 权限校验：检查用户是否有执行操作的权限
+     * 
+     * <p>当前为预留方法，暂时跳过校验</p>
+     * <p>后续集成统一权限管理模块后启用</p>
+     *
+     * @param permissionCode 权限码
+     */
+    private void checkPermission(String permissionCode) {
+        // TODO: 权限校验逻辑（后续集成）
+        // 示例实现：
+        // String currentUser = getCurrentUser();
+        // if (!permissionService.hasPermission(currentUser, permissionCode)) {
+        //     throw new PermissionDeniedException(
+        //         "无权限执行此操作: " + permissionCode,
+        //         "Permission denied: " + permissionCode
+        //     );
+        // }
+        
+        log.debug("Permission check passed (currently skipped), permissionCode={}", permissionCode);
+    }
+
 }
