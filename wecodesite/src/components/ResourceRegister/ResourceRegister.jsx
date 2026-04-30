@@ -10,7 +10,7 @@ import {
   message,
   Button,
 } from 'antd';
-import { fetchCategoryTree } from '../../pages/admin/Category/thunk';
+import { fetchCategoryTree } from '../../pages/Admin/Category/thunk';
 import { convertToTreeData } from '../../utils/common';
 import ApprovalNodesConfig from '../ApprovalNodesConfig';
 import PropertiesConfig from '../PropertiesConfig';
