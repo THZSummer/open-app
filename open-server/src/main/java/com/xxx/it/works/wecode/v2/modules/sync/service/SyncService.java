@@ -1,6 +1,10 @@
 package com.xxx.it.works.wecode.v2.modules.sync.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyDetail;
+import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyRequest;
+import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyResult;
+import com.xxx.it.works.wecode.v2.modules.sync.dto.SubscriptionData;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.SyncDetail;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.SyncRequest;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.SyncResult;
@@ -19,18 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
-/**
- * 数据同步服务
- *
- * <p>提供订阅关系数据的双向同步功能：</p>
- * <ul>
- *   <li>migrate: 旧表 → 新表（迁移）</li>
- *   <li>rollback: 新表 → 旧表（回退）</li>
- * </ul>
- *
- * @author SDDU Build Agent
- * @version 1.0.0
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,13 +31,10 @@ public class SyncService {
     private final SyncMapper syncMapper;
     private final ObjectMapper objectMapper;
 
-    // ==================== 迁移：旧表 → 新表 ====================
-
-    /**
-     * 迁移数据：旧表 → 新表
-     */
     @Transactional(rollbackFor = Exception.class)
     public SyncResult migrate(SyncRequest request) {
+        checkPermission("sync:migrate");
+        
         log.info("Starting data migration, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
@@ -53,7 +42,6 @@ public class SyncService {
         int failed = 0;
         int skipped = 0;
 
-        // 1. 查询旧订阅关系
         List<OldSubscription> oldSubscriptions = syncMapper.selectOldSubscriptions(request.getIds());
         log.info("Found {} old subscriptions", oldSubscriptions.size());
 
@@ -64,7 +52,6 @@ public class SyncService {
 
             try {
 
-                // 2. 检查新表是否已存在
                 Subscription existing = syncMapper.selectNewSubscriptionById(oldSub.getId());
                 if (existing != null) {
                     detail.setStatus("skipped");
@@ -74,7 +61,6 @@ public class SyncService {
                     continue;
                 }
 
-                // 3. 查找新权限ID
                 Long newPermissionId = findNewPermissionId(oldSub);
                 if (newPermissionId == null) {
                     detail.setStatus("failed");
@@ -84,15 +70,14 @@ public class SyncService {
                     continue;
                 }
 
-                // 4. 获取通道配置（仅事件订阅）
                 Integer channelType = null;
                 String channelAddress = null;
                 Integer authType = null;
 
                 log.info("Subscription {}, permissionType: {}, permissionId: {}", 
-                    oldSub.getId(), oldSub.getPermisssionType(), oldSub.getPermissionId());
+                    oldSub.getId(), oldSub.getPermissionType(), oldSub.getPermissionId());
 
-                if ("1".equals(oldSub.getPermisssionType())) {
+                if ("1".equals(oldSub.getPermissionType())) {
                     OldAppProperty channelConfig = syncMapper.selectAppChannelConfig(oldSub.getAppId());
                     log.info("Event subscription {}, channelConfig: {}", oldSub.getId(), channelConfig);
                     if (channelConfig != null) {
@@ -100,7 +85,7 @@ public class SyncService {
                         channelAddress = channelConfig.getChannelAddress();
                         authType = channelConfig.getAuthType();
                     }
-                } else if ("0".equals(oldSub.getPermisssionType())) {
+                } else if ("0".equals(oldSub.getPermissionType())) {
                     OldApi oldApi = syncMapper.selectOldApiByPermissionId(oldSub.getPermissionId());
                     log.info("API subscription {}, oldApi: {}", oldSub.getId(), oldApi);
                     if (oldApi != null) {
@@ -110,7 +95,6 @@ public class SyncService {
 
                 log.info("Subscription {} final authType: {}", oldSub.getId(), authType);
 
-                // 5. 构造新订阅关系
                 Subscription newSub = new Subscription();
                 newSub.setId(oldSub.getId());
                 newSub.setAppId(oldSub.getAppId());
@@ -124,13 +108,11 @@ public class SyncService {
                 newSub.setCreateBy(oldSub.getCreateBy());
                 newSub.setLastUpdateBy(oldSub.getLastUpdateBy());
 
-                // 6. 写入新订阅关系
                 int inserted = syncMapper.insertNewSubscriptionIfNotExists(newSub);
                 if (inserted > 0) {
                     success++;
                     detail.setStatus("success");
 
-                    // 7. 同步审批记录（失败不影响订阅关系）
                     syncApprovalRecordsMigrate(oldSub, detail);
                 } else {
                     detail.setStatus("skipped");
@@ -156,32 +138,25 @@ public class SyncService {
                 .build();
     }
 
-    /**
-     * 查找新权限ID
-     */
     private Long findNewPermissionId(OldSubscription oldSub) {
 
-        // 1. 查询旧权限
         OldPermission oldPermission = syncMapper.selectOldPermissionById(oldSub.getPermissionId());
         if (oldPermission == null) {
             log.warn("Old permission not found, permissionId={}", oldSub.getPermissionId());
             return null;
         }
 
-        String resourceType = oldPermission.getPermisssionType();
+        String resourceType = oldPermission.getPermissionType();
         Long resourceId = null;
 
-        // 2. 根据类型查找对应的新资源
-        if ("api".equalsIgnoreCase(resourceType) || "0".equals(oldSub.getPermisssionType())) {
+        if ("api".equalsIgnoreCase(resourceType) || "0".equals(oldSub.getPermissionType())) {
 
-            // API 权限
             OldApi oldApi = syncMapper.selectOldApiById(oldPermission.getModuleId());
             if (oldApi == null) {
                 log.warn("Old API not found, id={}", oldPermission.getModuleId());
                 return null;
             }
 
-            // 通过 path+method 匹配新API
             Api newApi = syncMapper.selectNewApiByPathAndMethod(oldApi.getPath(), oldApi.getMethod());
             if (newApi == null) {
                 log.warn("New API not found, path={}, method={}", oldApi.getPath(), oldApi.getMethod());
@@ -189,16 +164,14 @@ public class SyncService {
             }
             resourceId = newApi.getId();
 
-        } else if ("event".equalsIgnoreCase(resourceType) || "1".equals(oldSub.getPermisssionType())) {
+        } else if ("event".equalsIgnoreCase(resourceType) || "1".equals(oldSub.getPermissionType())) {
 
-            // 事件权限
             OldEvent oldEvent = syncMapper.selectOldEventById(oldPermission.getModuleId());
             if (oldEvent == null) {
                 log.warn("Old event not found, id={}", oldPermission.getModuleId());
                 return null;
             }
 
-            // 通过 topic 匹配新事件
             Event newEvent = syncMapper.selectNewEventByTopic(oldEvent.getTopic());
             if (newEvent == null) {
                 log.warn("New event not found, topic={}", oldEvent.getTopic());
@@ -211,18 +184,13 @@ public class SyncService {
             return null;
         }
 
-        // 3. 查找新权限
         Permission newPermission = syncMapper.selectNewPermissionByResource(resourceType, resourceId);
         return newPermission != null ? newPermission.getId() : null;
     }
 
-    /**
-     * 同步审批记录（迁移）
-     */
     private void syncApprovalRecordsMigrate(OldSubscription oldSub, SyncDetail detail) {
         try {
 
-            // 查询旧审批记录
             List<OldEflow> oldEflows = syncMapper.selectOldEflowByResourceId("app_permission", oldSub.getId());
             if (oldEflows == null || oldEflows.isEmpty()) {
                 detail.setApprovalStatus("无审批记录");
@@ -233,16 +201,13 @@ public class SyncService {
             int logCount = 0;
             for (OldEflow oldEflow : oldEflows) {
 
-                // 检查是否已存在
                 ApprovalRecord existing = syncMapper.selectNewApprovalRecordById(oldEflow.getEflowId());
                 if (existing != null) {
                     continue;
                 }
 
-                // 构造 combinedNodes
                 String combinedNodes = constructCombinedNodes(oldEflow.getEflowAuditUser());
 
-                // 构造新审批记录
                 ApprovalRecord record = new ApprovalRecord();
                 record.setId(oldEflow.getEflowId());
                 record.setCombinedNodes(combinedNodes);
@@ -253,12 +218,10 @@ public class SyncService {
                 record.setStatus(oldEflow.getEflowStatus());
                 record.setCreateTime(oldEflow.getCreateTime());
 
-                // 写入新审批记录
                 if (syncMapper.insertNewApprovalRecordIfNotExists(record) > 0) {
                     recordCount++;
                 }
 
-                // 同步审批日志
                 List<OldEflowLog> oldLogs = syncMapper.selectOldEflowLogByEflowId(oldEflow.getEflowId());
                 if (oldLogs != null && !oldLogs.isEmpty()) {
                     List<ApprovalLog> newLogs = new ArrayList<>();
@@ -291,9 +254,6 @@ public class SyncService {
         }
     }
 
-    /**
-     * 构造 combinedNodes JSON
-     */
     protected String constructCombinedNodes(String auditUser) {
         if (auditUser == null || auditUser.isEmpty()) {
             return null;
@@ -317,9 +277,6 @@ public class SyncService {
         }
     }
 
-    /**
-     * 转换操作类型
-     */
     protected Integer convertAction(String eflowLogType) {
         if (eflowLogType == null) {
             return 0;
@@ -343,13 +300,10 @@ public class SyncService {
         }
     }
 
-    // ==================== 回退：新表 → 旧表 ====================
-
-    /**
-     * 回退数据：新表 → 旧表
-     */
     @Transactional(rollbackFor = Exception.class)
     public SyncResult rollback(SyncRequest request) {
+        checkPermission("sync:rollback");
+        
         log.info("Starting data rollback, ids={}", request.getIds());
 
         List<SyncDetail> details = new ArrayList<>();
@@ -357,7 +311,6 @@ public class SyncService {
         int failed = 0;
         int skipped = 0;
 
-        // 1. 查询新订阅关系
         List<Subscription> newSubscriptions = syncMapper.selectNewSubscriptions(request.getIds());
         log.info("Found {} new subscriptions", newSubscriptions.size());
 
@@ -368,7 +321,6 @@ public class SyncService {
 
             try {
 
-                // 2. 检查旧表是否已存在
                 OldSubscription existing = syncMapper.selectOldSubscriptionById(newSub.getId());
                 if (existing != null) {
                     detail.setStatus("skipped");
@@ -378,7 +330,6 @@ public class SyncService {
                     continue;
                 }
 
-                // 3. 反向查找旧权限ID
                 Long oldPermissionId = findOldPermissionId(newSub);
                 if (oldPermissionId == null) {
                     detail.setStatus("failed");
@@ -388,7 +339,6 @@ public class SyncService {
                     continue;
                 }
 
-                // 4. 构造旧订阅关系
                 OldSubscription oldSub = new OldSubscription();
                 oldSub.setId(newSub.getId());
                 oldSub.setAppId(newSub.getAppId());
@@ -399,13 +349,11 @@ public class SyncService {
                 oldSub.setCreateBy(newSub.getCreateBy());
                 oldSub.setLastUpdateBy(newSub.getLastUpdateBy());
 
-                // 5. 写入旧订阅关系
                 int inserted = syncMapper.insertOldSubscriptionIfNotExists(oldSub);
                 if (inserted > 0) {
                     success++;
                     detail.setStatus("success");
 
-                    // 6. 同步审批记录
                     syncApprovalRecordsRollback(newSub, detail);
                 } else {
                     detail.setStatus("skipped");
@@ -431,12 +379,8 @@ public class SyncService {
                 .build();
     }
 
-    /**
-     * 反向查找旧权限ID
-     */
     private Long findOldPermissionId(Subscription newSub) {
 
-        // 1. 查询新权限
         Permission newPermission = syncMapper.selectNewPermissionById(newSub.getPermissionId());
         if (newPermission == null) {
             log.warn("New permission not found, permissionId={}", newSub.getPermissionId());
@@ -446,42 +390,34 @@ public class SyncService {
         String resourceType = newPermission.getResourceType();
         Long resourceId = newPermission.getResourceId();
 
-        // 2. 根据类型查找对应的旧资源
         if ("api".equalsIgnoreCase(resourceType)) {
-            // 查询新API详情
             Api newApi = syncMapper.selectNewApiById(resourceId);
             if (newApi == null) {
                 log.warn("New API not found, id={}", resourceId);
                 return null;
             }
 
-            // 通过 path+method 匹配旧API
             OldApi oldApi = syncMapper.selectOldApiByPathAndMethod(newApi.getPath(), newApi.getMethod());
             if (oldApi == null) {
                 log.warn("Old API not found, path={}, method={}", newApi.getPath(), newApi.getMethod());
                 return null;
             }
 
-            // 返回旧API关联的权限ID
             return oldApi.getPermissionId();
 
         } else if ("event".equalsIgnoreCase(resourceType)) {
-            // 查询新Event详情
             Event newEvent = syncMapper.selectNewEventById(resourceId);
             if (newEvent == null) {
                 log.warn("New event not found, id={}", resourceId);
                 return null;
             }
 
-            // 通过 topic 匹配旧Event
             OldEvent oldEvent = syncMapper.selectOldEventByTopic(newEvent.getTopic());
             if (oldEvent == null) {
                 log.warn("Old event not found, topic={}", newEvent.getTopic());
                 return null;
             }
 
-            // 旧Event没有直接关联权限ID，需要查找对应的旧权限
-            // 旧权限通过 module_id 关联旧Event
             OldPermission oldPermission = syncMapper.selectOldPermissionByModuleIdAndType(oldEvent.getId(), "event");
             if (oldPermission == null) {
                 log.warn("Old permission not found for event, moduleId={}", oldEvent.getId());
@@ -494,12 +430,285 @@ public class SyncService {
         return null;
     }
 
-    /**
-     * 同步审批记录（回退）
-     */
     private void syncApprovalRecordsRollback(Subscription newSub, SyncDetail detail) {
 
-        // TODO: 实现审批记录回退逻辑
         detail.setApprovalStatus("回退暂不支持审批数据");
     }
+
+    // ==================== 应急接口：直接更新订阅关系表 ====================
+
+    @Transactional(rollbackFor = Exception.class)
+    public EmergencyResult emergencyUpdateOld(EmergencyRequest request) {
+        checkPermission("sync:emergency:update-old");
+        
+        log.info("Starting emergency update old table");
+
+        List<EmergencyDetail> details = new ArrayList<>();
+        int success = 0;
+        int failed = 0;
+        int inserted = 0;
+        int updated = 0;
+
+        List<SubscriptionData> subscriptions = request.getSubscriptions();
+        if (subscriptions == null || subscriptions.isEmpty()) {
+            return EmergencyResult.builder()
+                    .success(0)
+                    .failed(0)
+                    .inserted(0)
+                    .updated(0)
+                    .details(details)
+                    .build();
+        }
+
+        for (SubscriptionData data : subscriptions) {
+            EmergencyDetail detail = EmergencyDetail.builder()
+                    .id(data.getId())
+                    .build();
+
+            try {
+                OldSubscription existing = syncMapper.selectOldSubscriptionById(data.getId());
+                
+                if (existing != null) {
+                    OldSubscription updateData = new OldSubscription();
+                    updateData.setId(data.getId());
+                    if (data.getAppId() != null) updateData.setAppId(data.getAppId());
+                    if (data.getPermissionId() != null) updateData.setPermissionId(data.getPermissionId());
+                    if (data.getTenantId() != null) updateData.setTenantId(data.getTenantId());
+                    if (data.getPermissionType() != null) updateData.setPermissionType(data.getPermissionType());
+                    if (data.getStatus() != null) updateData.setStatus(data.getStatus());
+                    updateData.setLastUpdateBy("emergency-update");
+                    updateData.setLastUpdateTime(new Date());
+                    
+                    syncMapper.updateOldSubscriptionById(updateData);
+                    updated++;
+                    detail.setStatus("updated");
+                    detail.setMessage("更新成功");
+                    success++;
+                    
+                } else {
+                    // 数据保护校验
+                    if (!checkDataProtectionForOld(data, detail, details)) {
+                        failed++;
+                        continue;
+                    }
+                    
+                    OldSubscription newData = new OldSubscription();
+                    newData.setId(data.getId());
+                    newData.setAppId(data.getAppId());
+                    newData.setPermissionId(data.getPermissionId());
+                    newData.setTenantId(data.getTenantId());
+                    newData.setPermissionType(data.getPermissionType());
+                    newData.setStatus(data.getStatus());
+                    newData.setCreateBy("emergency-update");
+                    newData.setCreateTime(new Date());
+                    newData.setLastUpdateBy("emergency-update");
+                    newData.setLastUpdateTime(new Date());
+                    
+                    syncMapper.insertOldSubscription(newData);
+                    inserted++;
+                    detail.setStatus("inserted");
+                    detail.setMessage("新增成功");
+                    success++;
+                }
+                
+                details.add(detail);
+                
+            } catch (Exception e) {
+                log.error("Emergency update old failed, id={}", data.getId(), e);
+                detail.setStatus("failed");
+                detail.setError("系统异常: " + e.getMessage());
+                failed++;
+                details.add(detail);
+            }
+        }
+
+        return EmergencyResult.builder()
+                .success(success)
+                .failed(failed)
+                .inserted(inserted)
+                .updated(updated)
+                .details(details)
+                .build();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public EmergencyResult emergencyUpdateNew(EmergencyRequest request) {
+        checkPermission("sync:emergency:update-new");
+        
+        log.info("Starting emergency update new table");
+
+        List<EmergencyDetail> details = new ArrayList<>();
+        int success = 0;
+        int failed = 0;
+        int inserted = 0;
+        int updated = 0;
+
+        List<SubscriptionData> subscriptions = request.getSubscriptions();
+        if (subscriptions == null || subscriptions.isEmpty()) {
+            return EmergencyResult.builder()
+                    .success(0)
+                    .failed(0)
+                    .inserted(0)
+                    .updated(0)
+                    .details(details)
+                    .build();
+        }
+
+        for (SubscriptionData data : subscriptions) {
+            EmergencyDetail detail = EmergencyDetail.builder()
+                    .id(data.getId())
+                    .build();
+
+            try {
+                Subscription existing = syncMapper.selectNewSubscriptionById(data.getId());
+                
+                if (existing != null) {
+                    Subscription updateData = new Subscription();
+                    updateData.setId(data.getId());
+                    if (data.getAppId() != null) updateData.setAppId(data.getAppId());
+                    if (data.getPermissionId() != null) updateData.setPermissionId(data.getPermissionId());
+                    if (data.getStatus() != null) updateData.setStatus(data.getStatus());
+                    if (data.getChannelType() != null) updateData.setChannelType(data.getChannelType());
+                    if (data.getChannelAddress() != null) updateData.setChannelAddress(data.getChannelAddress());
+                    if (data.getAuthType() != null) updateData.setAuthType(data.getAuthType());
+                    updateData.setLastUpdateBy("emergency-update");
+                    updateData.setLastUpdateTime(new Date());
+                    
+                    syncMapper.updateNewSubscriptionById(updateData);
+                    updated++;
+                    detail.setStatus("updated");
+                    detail.setMessage("更新成功");
+                    success++;
+                    
+                } else {
+                    // 数据保护校验
+                    if (!checkDataProtectionForNew(data, detail, details)) {
+                        failed++;
+                        continue;
+                    }
+                    
+                    Subscription newData = new Subscription();
+                    newData.setId(data.getId());
+                    newData.setAppId(data.getAppId());
+                    newData.setPermissionId(data.getPermissionId());
+                    newData.setStatus(data.getStatus());
+                    newData.setChannelType(data.getChannelType());
+                    newData.setChannelAddress(data.getChannelAddress());
+                    newData.setAuthType(data.getAuthType());
+                    newData.setCreateBy("emergency-update");
+                    newData.setCreateTime(new Date());
+                    newData.setLastUpdateBy("emergency-update");
+                    newData.setLastUpdateTime(new Date());
+                    
+                    syncMapper.insertNewSubscription(newData);
+                    inserted++;
+                    detail.setStatus("inserted");
+                    detail.setMessage("新增成功");
+                    success++;
+                }
+                
+                details.add(detail);
+                
+            } catch (Exception e) {
+                log.error("Emergency update new failed, id={}", data.getId(), e);
+                detail.setStatus("failed");
+                detail.setError("系统异常: " + e.getMessage());
+                failed++;
+                details.add(detail);
+            }
+        }
+
+        return EmergencyResult.builder()
+                .success(success)
+                .failed(failed)
+                .inserted(inserted)
+                .updated(updated)
+                .details(details)
+                .build();
+    }
+
+    /**
+     * 数据保护校验：检查旧表是否存在重复订阅关系
+     * 
+     * @param data 订阅关系数据
+     * @param detail 详细信息
+     * @param details 详细信息列表
+     * @return true=通过校验可新增, false=存在重复不允许新增
+     */
+    private boolean checkDataProtectionForOld(SubscriptionData data, EmergencyDetail detail, 
+                                               List<EmergencyDetail> details) {
+        if (data.getAppId() == null || data.getPermissionId() == null) {
+            return true;
+        }
+        
+        int count = syncMapper.countOldSubscriptionByAppIdAndPermissionId(
+            data.getAppId(), data.getPermissionId()
+        );
+        
+        if (count > 0) {
+            detail.setStatus("failed");
+            detail.setError(String.format(Locale.ROOT, 
+                "数据保护：应用ID=%d 和权限ID=%d 的订阅关系已存在，不允许重复创建",
+                data.getAppId(), data.getPermissionId()));
+            details.add(detail);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * 数据保护校验：检查新表是否存在重复订阅关系
+     * 
+     * @param data 订阅关系数据
+     * @param detail 详细信息
+     * @param details 详细信息列表
+     * @return true=通过校验可新增, false=存在重复不允许新增
+     */
+    private boolean checkDataProtectionForNew(SubscriptionData data, EmergencyDetail detail,
+                                               List<EmergencyDetail> details) {
+        if (data.getAppId() == null || data.getPermissionId() == null) {
+            return true;
+        }
+        
+        int count = syncMapper.countNewSubscriptionByAppIdAndPermissionId(
+            data.getAppId(), data.getPermissionId()
+        );
+        
+        if (count > 0) {
+            detail.setStatus("failed");
+            detail.setError(String.format(Locale.ROOT, 
+                "数据保护：应用ID=%d 和权限ID=%d 的订阅关系已存在，不允许重复创建",
+                data.getAppId(), data.getPermissionId()));
+            details.add(detail);
+            return false;
+        }
+        
+        return true;
+    }
+
+    // ==================== 权限校验（预留） ====================
+
+    /**
+     * 权限校验：检查用户是否有执行操作的权限
+     * 
+     * <p>当前为预留方法，暂时跳过校验</p>
+     * <p>后续集成统一权限管理模块后启用</p>
+     *
+     * @param permissionCode 权限码
+     */
+    private void checkPermission(String permissionCode) {
+        // TODO: 权限校验逻辑（后续集成）
+        // 示例实现：
+        // String currentUser = getCurrentUser();
+        // if (!permissionService.hasPermission(currentUser, permissionCode)) {
+        //     throw new PermissionDeniedException(
+        //         "无权限执行此操作: " + permissionCode,
+        //         "Permission denied: " + permissionCode
+        //     );
+        // }
+        
+        log.debug("Permission check passed (currently skipped), permissionCode={}", permissionCode);
+    }
+
 }
