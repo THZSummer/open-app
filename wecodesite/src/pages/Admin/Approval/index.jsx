@@ -57,6 +57,8 @@ function ApprovalCenter() {
     setLoading(true);
     const finalPage = 'curPage' in params ? params.curPage : pagination.curPage;
     const finalSize = 'pageSize' in params ? params.pageSize : pagination.pageSize;
+    params.curPage = finalPage;
+    params.pageSize = finalSize;
     let result;
 
     if (activeTab === 'pending') {
@@ -177,9 +179,7 @@ function ApprovalCenter() {
             {canViewFlowConfig && <TabPane key="flowConfig" tab="审批流程配置" />}
           </Tabs>
 
-          {activeTab === 'flowConfig' ? (
-            canViewFlowConfig ? <ApprovalFlowConfig /> : <Empty description="您没有权限访问审批流程配置" />
-          ) : (
+          {activeTab === 'flowConfig' ? <ApprovalFlowConfig /> : (
             <Spin spinning={loading}>
               {dataSource.length > 0 ? (
                 <>

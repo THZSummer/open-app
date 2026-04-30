@@ -37,8 +37,6 @@ function ApprovalDetailModal({
   useEffect(() => {
     if (visible && approvalId) {
       loadDetail();
-    } else if (visible && currentDetail) {
-      setDetail(currentDetail);
     }
   }, [visible, approvalId, currentDetail]);
 
@@ -122,7 +120,7 @@ function renderProgressCard(detail) {
   const totalCount = detail.combinedNodes.length;
   const completedCount = detail.combinedNodes.filter(n => n.status === 1).length;
   const currentNodeIndex = detail.currentNode;
-  const currentNode = detail.combinedNodes[currentNodeIndex];
+  const currentNode = currentNodeIndex >= 0 && currentNodeIndex < detail.combinedNodes.length ? detail.combinedNodes[currentNodeIndex] : null;
   const pendingNodes = detail.combinedNodes.filter(n => n.status === null && n !== currentNode);
 
   return (
@@ -180,8 +178,9 @@ function renderProgressCard(detail) {
 }
 
 function renderApprovalFlow(detail) {
+  const safeCurrentNode = Math.max(0, Math.min(detail.currentNode, detail.combinedNodes.length - 1));
   return (
-    <Steps direction="vertical" current={detail.currentNode}>
+    <Steps direction="vertical" current={safeCurrentNode}>
       {detail.combinedNodes.map((node, index) => {
         const isCompleted = node.status === 1;
         const isRejected = node.status === 2;

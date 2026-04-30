@@ -49,7 +49,6 @@ export const BUSINESS_COLUMNS = [
 ];
 
 export const NODE_STATUS_MAP = {
-  null: { text: '待审', color: 'default' },
   0: { text: '待审批', color: 'default' },
   1: { text: '已同意', color: 'success' },
   2: { text: '已拒绝', color: 'error' },

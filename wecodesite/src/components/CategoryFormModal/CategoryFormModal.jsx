@@ -32,10 +32,6 @@ function CategoryFormModal({
           form.setFieldsValue({
             parentId: parentCategory.id,
           });
-        } else {
-          form.setFieldsValue({
-            sortOrder: 0,
-          });
         }
       }
     }
@@ -74,9 +70,19 @@ function CategoryFormModal({
     onClose();
   };
 
+  const getModalTitle = () => {
+    if (isEditing) {
+      return '编辑分类';
+    }
+    if (parentCategory) {
+      return '新增子分类';
+    }
+    return '新增一级分类';
+  };
+
   return (
     <Modal
-      title={isEditing ? '编辑分类' : (parentCategory ? '新增子分类' : '新增一级分类')}
+      title={getModalTitle()}
       open={visible}
       onOk={handleOk}
       onCancel={handleCancel}

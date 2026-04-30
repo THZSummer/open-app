@@ -140,7 +140,12 @@ export const batchReject = async (data) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
  */
 export const fetchApprovalFlowList = async (params = {}) => {
-  return fetchApi(API_CONFIG.APPROVAL_FLOWS.LIST, { method: 'GET', params });
+  try {
+    const result = await fetchApi(API_CONFIG.APPROVAL_FLOWS.LIST, { method: 'GET', params });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -149,7 +154,12 @@ export const fetchApprovalFlowList = async (params = {}) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const fetchApprovalFlowDetail = async (id) => {
-  return fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.DETAIL, { id }));
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVAL_FLOWS.DETAIL, { id }));
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**
@@ -158,10 +168,15 @@ export const fetchApprovalFlowDetail = async (id) => {
  * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
  */
 export const createApprovalFlow = async (data) => {
-  return fetchApi(API_CONFIG.APPROVAL_FLOWS.CREATE, {
-    method: 'POST',
-    body: JSON.stringify(data)
-  });
+  try {
+    const result = await fetchApi(API_CONFIG.APPROVAL_FLOWS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
 };
 
 /**

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Input, Typography } from 'antd';
+import { Modal, Input, Typography, message } from 'antd';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -27,14 +27,14 @@ function ApprovalOpinionModal({
     setLoading(true);
     setError('');
 
-    try {
-      await onConfirm(approvalId, comment.trim());
+    const result = await onConfirm(approvalId, comment.trim());
+    if (result && result.code === '200') {
       setComment('');
-    } catch (err) {
+    } else {
       setError('操作失败，请重试');
-    } finally {
-      setLoading(false);
+      message.error(result?.message || '操作失败');
     }
+    setLoading(false);
   };
 
   const handleClose = () => {
