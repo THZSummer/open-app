@@ -543,6 +543,10 @@ public class PermissionService {
         Date now = new Date();
         String currentUser = getCurrentUser();
 
+        if (request == null || request.getChannelType() == null) {
+            throw new BusinessException("400", "通道类型不能为空", "Channel type cannot be null");
+        }
+
         subscriptionMapper.updateConfig(subIdLong, request.getChannelType(),
                 request.getChannelAddress(), request.getAuthType(), now, currentUser);
 
