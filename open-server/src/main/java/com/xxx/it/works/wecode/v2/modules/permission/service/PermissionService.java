@@ -1170,11 +1170,11 @@ public class PermissionService {
         Integer needApproval = permission.getNeedApproval() != null ? permission.getNeedApproval() : 1;
 
         // 查询是否已订阅
-        int isSubscribed = 0;
+        int isSubscribed = 99;
         if (appIdLong != null) {
             Subscription subscription = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
             if (subscription != null) {
-                isSubscribed = 1;
+                isSubscribed = subscription.getStatus();
             }
         }
 
