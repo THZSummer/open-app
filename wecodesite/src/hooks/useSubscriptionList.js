@@ -52,7 +52,7 @@ const createListOperations = (state, appId, options) => {
     } finally {
       setLoading(false);
     }
-  }, [appId, pagination.pageSize, options.fetchList, setLoading, setData, setPagination]);
+  }, [appId, pagination.pageSize, options.fetchList]);
 
   const handlePageChange = useCallback((page, size) => {
     loadData(page, size);
@@ -68,9 +68,9 @@ const createDrawerOperations = (state) => {
   const { setDrawerOpen } = state;
   let loadDataRef = null;
 
-  const openDrawer = useCallback(() => setDrawerOpen(true), [setDrawerOpen]);
+  const openDrawer = useCallback(() => setDrawerOpen(true), []);
 
-  const closeDrawer = useCallback(() => setDrawerOpen(false), [setDrawerOpen]);
+  const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
   const setLoadData = useCallback((fn) => {
     loadDataRef = fn;
@@ -109,7 +109,7 @@ const createSubscribeOperations = (state, appId, options) => {
     } finally {
       setSubscribeLoading(false);
     }
-  }, [appId, setSubscribeLoading, setDrawerOpen, options.subscribe]);
+  }, [appId, options.subscribe]);
 
   const setLoadData = useCallback((fn) => {
     loadDataRef = fn;
@@ -131,9 +131,9 @@ const createApprovalOperations = (state) => {
       approvalUrl: record.approvalUrl || ''
     });
     setApprovalModalOpen(true);
-  }, [setApprovalModalOpen, setCurrentApprovalInfo]);
+  }, []);
 
-  const closeApprovalModal = useCallback(() => setApprovalModalOpen(false), [setApprovalModalOpen]);
+  const closeApprovalModal = useCallback(() => setApprovalModalOpen(false), []);
 
   return {
     handleCopyApprovalAddress,
@@ -150,7 +150,7 @@ const createDeleteOperations = (state, appId, options) => {
     deleteIdRef.current = id;
     setCurrentDeleteId(id);
     setDeleteModalOpen(true);
-  }, [setDeleteModalOpen, setCurrentDeleteId]);
+  }, []);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteIdRef.current) return;
@@ -170,9 +170,9 @@ const createDeleteOperations = (state, appId, options) => {
     } finally {
       setDeleteLoading(false);
     }
-  }, [appId, setDeleteLoading, setDeleteModalOpen, options.deleteItem]);
+  }, [appId, options.deleteItem]);
 
-  const closeDeleteModal = useCallback(() => setDeleteModalOpen(false), [setDeleteModalOpen]);
+  const closeDeleteModal = useCallback(() => setDeleteModalOpen(false), []);
 
   const setLoadData = useCallback((fn) => {
     loadDataRef = fn;

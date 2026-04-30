@@ -15,6 +15,7 @@ import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { createEvent, updateEvent, fetchEventDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import { EVENT_PROPERTY_PRESETS } from './constants';
+import { convertToTreeData } from '../../../utils/common';
 
 const { Option } = Select;
 
@@ -35,17 +36,6 @@ function EventRegister({ visible, event, mode = 'create', onSuccess, onCancel })
     if (result.code === '200') {
       setCategories(result.data || []);
     }
-  };
-
-  // 将后端返回的分类树数据转换为 TreeSelect 所需格式
-  const convertToTreeData = (categories) => {
-    if (!categories) return [];
-    return categories.map(cat => ({
-      value: cat.id,
-      title: cat.nameCn,
-      key: cat.id,
-      children: cat.children ? convertToTreeData(cat.children) : undefined
-    }));
   };
 
   useEffect(() => {

@@ -35,7 +35,6 @@ function EventList() {
     setKeyword,
     loadData,
     loadCategories,
-    convertToTreeData,
     handleSearch,
     handlePageChange,
     handleCategoryChange,
@@ -86,7 +85,6 @@ function EventList() {
             categoryId={categoryId}
             categories={categories}
             onCategoryChange={handleCategoryChange}
-            convertToTreeData={convertToTreeData}
             status={status}
             onStatusChange={handleStatusChange}
           />

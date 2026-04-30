@@ -15,6 +15,7 @@ import { PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { createCallback, updateCallback, fetchCallbackDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import { CALLBACK_PROPERTY_PRESETS } from './constants';
+import { convertToTreeData } from '../../../utils/common';
 
 function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCancel }) {
   const [form] = Form.useForm();
@@ -33,17 +34,6 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
     if (result.code === '200') {
       setCategories(result.data || []);
     }
-  };
-
-  // 将后端返回的分类树数据转换为 TreeSelect 所需格式
-  const convertToTreeData = (categories) => {
-    if (!categories) return [];
-    return categories.map(cat => ({
-      value: cat.id,
-      title: cat.nameCn,
-      key: cat.id,
-      children: cat.children ? convertToTreeData(cat.children) : undefined
-    }));
   };
 
   useEffect(() => {

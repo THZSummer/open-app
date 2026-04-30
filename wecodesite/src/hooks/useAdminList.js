@@ -37,7 +37,7 @@ const createListOperations = (state, options) => {
     if (result.code === '200') {
       setCategories(result.data || []);
     }
-  }, [options.fetchCategories, setCategories]);
+  }, [options.fetchCategories]);
 
   const loadData = useCallback(async (params = {}) => {
     setLoading(true);
@@ -63,7 +63,7 @@ const createListOperations = (state, options) => {
     } finally {
       setLoading(false);
     }
-  }, [keyword, categoryId, status, pagination.curPage, pagination.pageSize, options.fetchList, setLoading, setData, setPagination]);
+  }, [keyword, categoryId, status, pagination.curPage, pagination.pageSize, options.fetchList]);
 
   const handleSearch = useCallback(() => {
     loadData({ curPage: 1 });
@@ -74,14 +74,14 @@ const createListOperations = (state, options) => {
   }, [loadData]);
 
   const handleCategoryChange = useCallback((value) => {
-    state.setCategoryId(value);
+    setCategoryId(value);
     loadData({ categoryId: value });
-  }, [loadData, state]);
+  }, [loadData]);
 
   const handleStatusChange = useCallback((value) => {
-    state.setStatus(value);
+    setStatus(value);
     loadData({ status: value });
-  }, [loadData, state]);
+  }, [loadData]);
 
   return {
     loadData,
@@ -101,19 +101,19 @@ const createCrudOperations = (state, options) => {
     setCurrentItem(null);
     setMode('create');
     setModalVisible(true);
-  }, [setCurrentItem, setMode, setModalVisible]);
+  }, []);
 
   const handleEdit = useCallback((record) => {
     setCurrentItem({ id: record.id });
     setMode('edit');
     setModalVisible(true);
-  }, [setCurrentItem, setMode, setModalVisible]);
+  }, []);
 
   const handleView = useCallback((record) => {
     setCurrentItem({ id: record.id });
     setMode('view');
     setModalVisible(true);
-  }, [setCurrentItem, setMode, setModalVisible]);
+  }, []);
 
   const handleDelete = useCallback(async (id) => {
     if (!options.deleteItem) return;
@@ -146,18 +146,18 @@ const createModalOperations = (state) => {
   const handleSuccess = useCallback(() => {
     setModalVisible(false);
     loadDataRef?.();
-  }, [setModalVisible]);
+  }, []);
 
   const openModal = useCallback((item, editMode) => {
     setCurrentItem(item);
     setMode(editMode ? 'edit' : 'create');
     setModalVisible(true);
-  }, [setCurrentItem, setModalVisible]);
+  }, []);
 
   const closeModal = useCallback(() => {
     setModalVisible(false);
     setCurrentItem(null);
-  }, [setModalVisible, setCurrentItem]);
+  }, []);
 
   const setLoadData = useCallback((fn) => {
     loadDataRef = fn;
@@ -185,7 +185,6 @@ export const useAdminList = (options) => {
     ...listOps,
     ...crudOps,
     ...modalOps,
-    convertToTreeData,
   };
 };
 
@@ -193,14 +192,10 @@ const getFinalParam = (params, key, defaultValue) => {
   return key in params ? params[key] : defaultValue;
 };
 
-const buildListRequestParams = ({ keyword, categoryId, status, curPage, pageSize }) => {
-  const requestParams = { keyword, categoryId, status, curPage, pageSize };
-  return filterUndefinedParams(requestParams);
-};
-
-const filterUndefinedParams = (params) => {
+const buildListRequestParams = (params) => {
   return Object.fromEntries(
-    Object.entries(params).filter(([_, value]) => value !== undefined)
+    Object.entries(params)
+      .filter(([_, value]) => value !== undefined)
   );
 };
 
@@ -209,14 +204,4 @@ const handleListResponse = (result, setData, setPagination, curPage, pageSize) =
     setData(result.data);
     setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage, pageSize }));
   }
-};
-
-const convertToTreeData = (categoryList) => {
-  if (!categoryList) return [];
-  return categoryList.map(cat => ({
-    value: cat.id,
-    title: cat.nameCn,
-    key: cat.id,
-    children: cat.children ? convertToTreeData(cat.children) : undefined
-  }));
 };

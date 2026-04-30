@@ -61,7 +61,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   
   // 根据 appId 获取应用信息，判断是业务应用还是个人应用
   const appInfo = appId ? mockAppInfo[appId] : null;
-  const appType = appInfo && appInfo.eamap ? 'business' : 'personal';
+  const appType = appInfo && appInfo.eamap ? 'business' : 'person';
 
   // Tab配置状态
   const [tabConfig, setTabConfig] = useState({
@@ -133,8 +133,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
       
       if (rawData && rawData.code === 200) {
         // 数据处理：根据应用类型筛选并解析数据
-        const appTypeKey = appType === 'business' ? 'business' : 'person';
-        const parsedConfig = parseTabConfig(rawData, appTypeKey);
+        const parsedConfig = parseTabConfig(rawData, appType);
         
         setTabConfig({
           firstLevelTabs: parsedConfig.firstLevelTabs,

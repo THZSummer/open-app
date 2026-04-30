@@ -28,3 +28,13 @@ export const isInAdminWhitelist = () => {
   const currentUserId = getUserIdCookie();
   return ADMIN_WHITELIST.includes(currentUserId);
 };
+
+export const convertToTreeData = (categoryList) => {
+  if (!Array.isArray(categoryList)) return [];
+  return categoryList.map(cat => ({
+    value: cat.id,
+    title: cat.nameCn,
+    key: cat.id,
+    children: convertToTreeData(cat.children)
+  }));
+};

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Input, TreeSelect, Select } from 'antd';
+import { convertToTreeData } from '../../../utils/common';
 import './AdminTableToolbar.less';
 
 const { Search } = Input;
@@ -12,7 +13,6 @@ const AdminTableToolbar = ({
   categoryId,
   categories,
   onCategoryChange,
-  convertToTreeData,
   status,
   statusOptions = [
     { value: 0, label: '草稿' },
