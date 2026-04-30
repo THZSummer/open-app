@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * 事件权限订阅列表响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -96,7 +96,7 @@ public class EventSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PermissionInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -118,7 +118,7 @@ public class EventSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class EventInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -140,7 +140,7 @@ public class EventSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ApproverInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -162,7 +162,7 @@ public class EventSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CategoryInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**

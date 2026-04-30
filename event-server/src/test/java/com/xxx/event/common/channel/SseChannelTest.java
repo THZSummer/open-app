@@ -41,6 +41,7 @@ class SseChannelTest {
     @Test
     @DisplayName("添加新连接 - 应返回 SseEmitter 并增加连接数")
     void testAddConnection_NewConnection() {
+
         // When
         SseEmitter emitter = sseChannel.addConnection("conn-001");
 
@@ -52,6 +53,7 @@ class SseChannelTest {
     @Test
     @DisplayName("添加已存在的连接 - 应替换旧连接")
     void testAddConnection_ReplaceExistingConnection() {
+
         // Given
         sseChannel.addConnection("conn-001");
         assertEquals(1, sseChannel.getActiveConnectionCount());
@@ -67,6 +69,7 @@ class SseChannelTest {
     @Test
     @DisplayName("添加多个不同连接 - 应正确管理所有连接")
     void testAddConnection_MultipleConnections() {
+
         // When
         sseChannel.addConnection("conn-001");
         sseChannel.addConnection("conn-002");
@@ -81,6 +84,7 @@ class SseChannelTest {
     @Test
     @DisplayName("移除存在的连接 - 应成功移除并减少连接数")
     void testRemoveConnection_ExistingConnection() {
+
         // Given
         sseChannel.addConnection("conn-001");
         assertEquals(1, sseChannel.getActiveConnectionCount());
@@ -95,6 +99,7 @@ class SseChannelTest {
     @Test
     @DisplayName("移除不存在的连接 - 应不影响现有连接")
     void testRemoveConnection_NonExistingConnection() {
+
         // Given
         sseChannel.addConnection("conn-001");
         assertEquals(1, sseChannel.getActiveConnectionCount());
@@ -109,6 +114,7 @@ class SseChannelTest {
     @Test
     @DisplayName("移除空连接后再次移除 - 应不影响系统")
     void testRemoveConnection_RemoveTwice() {
+
         // Given
         sseChannel.addConnection("conn-001");
 
@@ -125,6 +131,7 @@ class SseChannelTest {
     @Test
     @DisplayName("向存在的连接发送事件 - 应成功发送")
     void testSendEvent_ConnectionExists() {
+
         // Given
         SseEmitter emitter = sseChannel.addConnection("conn-001");
         Map<String, Object> payload = createTestPayload("test-event", "这是一个测试事件");
@@ -137,6 +144,7 @@ class SseChannelTest {
     @Test
     @DisplayName("向不存在的连接发送事件 - 应不抛出异常")
     void testSendEvent_ConnectionNotExists() {
+
         // Given
         Map<String, Object> payload = createTestPayload("test-event", "这是一个测试事件");
 
@@ -148,6 +156,7 @@ class SseChannelTest {
     @Test
     @DisplayName("发送空 payload - 应成功发送")
     void testSendEvent_EmptyPayload() {
+
         // Given
         sseChannel.addConnection("conn-001");
         Map<String, Object> emptyPayload = new HashMap<>();
@@ -162,6 +171,7 @@ class SseChannelTest {
     @Test
     @DisplayName("向存在的连接发送回调 - 应成功发送")
     void testSendCallback_ConnectionExists() {
+
         // Given
         SseEmitter emitter = sseChannel.addConnection("conn-001");
         Map<String, Object> payload = createTestPayload("callback-data", "回调数据");
@@ -174,6 +184,7 @@ class SseChannelTest {
     @Test
     @DisplayName("向不存在的连接发送回调 - 应不抛出异常")
     void testSendCallback_ConnectionNotExists() {
+
         // Given
         Map<String, Object> payload = createTestPayload("callback-data", "回调数据");
 
@@ -187,6 +198,7 @@ class SseChannelTest {
     @Test
     @DisplayName("广播事件到多个连接 - 所有连接应收到消息")
     void testBroadcastEvent_MultipleConnections() {
+
         // Given
         sseChannel.addConnection("conn-001");
         sseChannel.addConnection("conn-002");
@@ -202,6 +214,7 @@ class SseChannelTest {
     @Test
     @DisplayName("广播事件到空连接列表 - 应不抛出异常")
     void testBroadcastEvent_NoConnections() {
+
         // Given
         Map<String, Object> payload = createTestPayload("broadcast", "广播消息");
 
@@ -214,6 +227,7 @@ class SseChannelTest {
     @Test
     @DisplayName("广播事件到单个连接 - 应成功发送")
     void testBroadcastEvent_SingleConnection() {
+
         // Given
         sseChannel.addConnection("conn-001");
         Map<String, Object> payload = createTestPayload("broadcast", "广播消息");
@@ -235,6 +249,7 @@ class SseChannelTest {
     @Test
     @DisplayName("添加和移除连接后连接数应正确")
     void testGetActiveConnectionCount_AfterOperations() {
+
         // 初始状态
         assertEquals(0, sseChannel.getActiveConnectionCount());
 
@@ -257,6 +272,7 @@ class SseChannelTest {
     @Test
     @DisplayName("连接完成回调 - 应移除连接")
     void testConnectionLifecycle_OnCompletion() throws Exception {
+
         // Given
         SseEmitter emitter = sseChannel.addConnection("conn-001");
         assertEquals(1, sseChannel.getActiveConnectionCount());
@@ -275,6 +291,7 @@ class SseChannelTest {
     @Test
     @DisplayName("连接超时回调 - 应移除连接")
     void testConnectionLifecycle_OnTimeout() throws Exception {
+
         // Given
         SseEmitter emitter = sseChannel.addConnection("conn-001");
         assertEquals(1, sseChannel.getActiveConnectionCount());
@@ -287,6 +304,7 @@ class SseChannelTest {
     @Test
     @DisplayName("连接错误回调 - 应移除连接")
     void testConnectionLifecycle_OnError() throws Exception {
+
         // Given
         SseEmitter emitter = sseChannel.addConnection("conn-001");
         assertEquals(1, sseChannel.getActiveConnectionCount());
@@ -301,6 +319,7 @@ class SseChannelTest {
     @Test
     @DisplayName("并发添加连接 - 应正确处理并发")
     void testConcurrentAddConnection() throws InterruptedException {
+
         // Given
         int threadCount = 10;
         Thread[] threads = new Thread[threadCount];
@@ -327,6 +346,7 @@ class SseChannelTest {
     @Test
     @DisplayName("并发移除连接 - 应正确处理并发")
     void testConcurrentRemoveConnection() throws InterruptedException {
+
         // Given
         int threadCount = 10;
         for (int i = 0; i < threadCount; i++) {
@@ -358,6 +378,7 @@ class SseChannelTest {
     @Test
     @DisplayName("并发发送事件 - 应正确处理并发")
     void testConcurrentSendEvent() throws InterruptedException {
+
         // Given
         sseChannel.addConnection("conn-001");
         int threadCount = 5;
@@ -388,6 +409,7 @@ class SseChannelTest {
     @Test
     @DisplayName("null 连接ID - 应抛出 NullPointerException（ConcurrentHashMap 不支持 null key）")
     void testNullConnectionId() {
+
         // When & Then - ConcurrentHashMap 不允许 null key
         assertThrows(NullPointerException.class, () -> {
             sseChannel.addConnection(null);
@@ -405,6 +427,7 @@ class SseChannelTest {
     @Test
     @DisplayName("空字符串连接ID - 应能正常处理")
     void testEmptyConnectionId() {
+
         // When
         sseChannel.addConnection("");
         sseChannel.addConnection("conn-001");
@@ -416,6 +439,7 @@ class SseChannelTest {
     @Test
     @DisplayName("null payload 发送 - 应能正常处理")
     void testSendEvent_NullPayload() {
+
         // Given
         sseChannel.addConnection("conn-001");
 
@@ -425,6 +449,7 @@ class SseChannelTest {
             try {
                 sseChannel.sendEvent("conn-001", null);
             } catch (Exception e) {
+
                 // 如果抛出异常，确保是可预期的
             }
         }, "发送 null payload 应有合理的处理");

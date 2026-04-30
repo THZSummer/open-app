@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * API 属性 Mapper 接口
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

@@ -153,6 +153,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
             
             String path = uri.getPath();
+
             // 路径格式：/ws/{connectionId}
             if (path != null && path.startsWith("/ws/")) {
                 return path.substring(4); // 去掉 "/ws/" 前缀

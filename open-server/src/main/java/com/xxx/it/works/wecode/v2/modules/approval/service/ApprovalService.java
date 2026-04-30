@@ -18,6 +18,8 @@ import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
 import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
+import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
+import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,16 +33,16 @@ import java.util.stream.Collectors;
 
 /**
  * 审批管理 Service
- * 
+ *
  * <p>v2.8.0 重写版本</p>
- * 
+ *
  * <p>负责审批相关的业务逻辑处理：</p>
  * <ul>
  *   <li>审批流程模板管理</li>
  *   <li>审批执行管理</li>
  *   <li>审批详情查询</li>
  * </ul>
- * 
+ *
  * <p>核心设计变更（v2.8.0）：</p>
  * <ul>
  *   <li>移除 isDefault 字段，用 code='global' 标识全局审批</li>
@@ -48,7 +50,7 @@ import java.util.stream.Collectors;
  *   <li>审批详情从 combinedNodes 解析节点</li>
  *   <li>审批节点显示 level 标记（resource/scene/global）</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 2.8.0
  */
@@ -69,12 +71,13 @@ public class ApprovalService {
     private final EventMapper eventMapper;
     private final CallbackMapper callbackMapper;
     private final SubscriptionMapper subscriptionMapper;
+    private final PermissionMapper permissionMapper;
 
     // ==================== 审批流程模板管理 ====================
 
     /**
      * 查询审批流程列表
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段
      */
     public List<ApprovalFlowListResponse> getFlowList(ApprovalFlowListRequest request) {
@@ -87,6 +90,7 @@ public class ApprovalService {
             response.setNameCn(flow.getNameCn());
             response.setNameEn(flow.getNameEn());
             response.setCode(flow.getCode());
+
             // ✅ v2.8.0变更：移除 isDefault 字段
             response.setStatus(flow.getStatus());
             response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
@@ -103,7 +107,7 @@ public class ApprovalService {
 
     /**
      * 获取审批流程详情
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段
      */
     public ApprovalFlowDetailResponse getFlowDetail(Long id) {
@@ -117,6 +121,7 @@ public class ApprovalService {
         response.setNameCn(flow.getNameCn());
         response.setNameEn(flow.getNameEn());
         response.setCode(flow.getCode());
+
         // ✅ v2.8.0变更：移除 isDefault 字段
         response.setStatus(flow.getStatus());
         response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
@@ -126,11 +131,12 @@ public class ApprovalService {
 
     /**
      * 创建审批流程
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段，用 code='global' 标识全局审批
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalFlowDetailResponse createFlow(ApprovalFlowCreateRequest request, String operator) {
+
         // 检查编码唯一性
         if (flowMapper.countByCode(request.getCode()) > 0) {
             throw new BusinessException("409", "流程编码已存在", "Flow code already exists");
@@ -163,7 +169,7 @@ public class ApprovalService {
 
     /**
      * 更新审批流程
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段
      */
     @Transactional(rollbackFor = Exception.class)
@@ -191,9 +197,9 @@ public class ApprovalService {
 
     /**
      * 删除审批流程
-     * 
+     *
      * v2.8.0变更：移除 isDefault 字段相关逻辑
-     * 
+     *
      * @param id 流程ID
      * @param operator 操作人
      */
@@ -220,11 +226,11 @@ public class ApprovalService {
     public List<ApprovalPendingListResponse> getPendingList(ApprovalPendingListRequest request) {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
         List<ApprovalRecord> records = recordMapper.selectPendingList(
-                request.getType(), 
-                request.getKeyword(), 
+                request.getType(),
+                request.getKeyword(),
                 request.getStatus(),
                 request.getApplicantId(),
-                offset, 
+                offset,
                 request.getPageSize());
 
         return records.stream().map(record -> {
@@ -232,6 +238,7 @@ public class ApprovalService {
             response.setId(String.valueOf(record.getId()));
             response.setBusinessType(record.getBusinessType());
             response.setBusinessId(String.valueOf(record.getBusinessId()));
+
             // 设置业务名称（从业务数据中获取）
             Map<String, Object> businessData = getBusinessData(record.getBusinessType(), record.getBusinessId());
             if (businessData != null && businessData.get("nameCn") != null) {
@@ -244,11 +251,14 @@ public class ApprovalService {
             response.setCreateTime(record.getCreateTime());
             return response;
         })
+
         // 过滤审批人（如果指定了 approverId）
         .filter(response -> {
             if (request.getApproverId() == null || request.getApproverId().isEmpty()) {
                 return true; // 未指定审批人，返回所有
             }
+
+
             // 获取原始记录，解析 combined_nodes 判断当前审批人
             ApprovalRecord record = records.stream()
                 .filter(r -> String.valueOf(r.getId()).equals(response.getId()))
@@ -261,6 +271,8 @@ public class ApprovalService {
             if (nodes.isEmpty() || record.getCurrentNode() >= nodes.size()) {
                 return false;
             }
+
+
             // 判断当前节点的审批人是否匹配
             ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
             return request.getApproverId().equals(currentNode.getUserId());
@@ -277,7 +289,7 @@ public class ApprovalService {
 
     /**
      * 获取审批详情
-     * 
+     *
      * v2.8.0核心变更：
      * - 从 combinedNodes 解析审批节点
      * - 移除 flowId 字段
@@ -301,13 +313,15 @@ public class ApprovalService {
         // 填充节点状态和审批信息
         Map<Integer, Integer> nodeStatusMap = new HashMap<>();
         Map<Integer, String> nodeLevelMap = new HashMap<>();
+
         // v2.8.1新增：审批时间和意见映射
         Map<Integer, Date> nodeApproveTimeMap = new HashMap<>();
         Map<Integer, String> nodeCommentMap = new HashMap<>();
-        
+
         for (ApprovalLog log : logs) {
             nodeStatusMap.put(log.getNodeIndex(), log.getAction() == 0 ? 1 : 2);
             nodeLevelMap.put(log.getNodeIndex(), log.getLevel());  // ✅ 从日志获取 level
+
             // v2.8.1新增：填充审批时间和意见
             nodeApproveTimeMap.put(log.getNodeIndex(), log.getCreateTime());
             nodeCommentMap.put(log.getNodeIndex(), log.getComment());
@@ -315,28 +329,34 @@ public class ApprovalService {
 
         for (int i = 0; i < nodes.size(); i++) {
             ApprovalNodeDto node = nodes.get(i);
-            
+
             // ✅ v2.8.0变更：节点已包含 level 信息（从 combinedNodes 解析）
             // 无需额外填充
-            
+
             if (i < record.getCurrentNode()) {
+
                 // 已处理的节点（在当前节点之前）
                 node.setStatus(nodeStatusMap.getOrDefault(i, 1));
+
                 // v2.8.1新增：填充审批时间和意见
                 node.setApproveTime(nodeApproveTimeMap.get(i));
                 node.setComment(nodeCommentMap.get(i));
             } else if (i == record.getCurrentNode()) {
+
                 // 当前节点：待审批时显示0，已审批时从日志获取状态
                 if (record.getStatus() == 0) {
                     node.setStatus(0);  // 待审批
                 } else {
+
                     // 审批已通过或已拒绝，从日志获取当前节点状态
                     node.setStatus(nodeStatusMap.getOrDefault(i, 1));
+
                     // v2.8.1新增：填充审批时间和意见
                     node.setApproveTime(nodeApproveTimeMap.get(i));
                     node.setComment(nodeCommentMap.get(i));
                 }
             } else {
+
                 // 未处理的节点（在当前节点之后）
                 node.setStatus(null);
             }
@@ -351,6 +371,7 @@ public class ApprovalService {
         response.setApplicantId(record.getApplicantId());
         response.setApplicantName(record.getApplicantName());
         response.setStatus(record.getStatus());
+
         // ✅ v2.8.0变更：移除 flowId 字段，审批详情直接显示 combinedNodes
         response.setCombinedNodes(nodes);  // ✅ 新增：显示组合审批节点
         response.setCurrentNode(record.getCurrentNode());
@@ -367,10 +388,10 @@ public class ApprovalService {
     @Transactional(rollbackFor = Exception.class)
     public ApprovalActionResponse approve(Long id, ApprovalActionRequest request, String operatorId,
                                            String operatorName, String operator) {
-        ApprovalRecord record = approvalEngine.approve(id, operatorId, operatorName, 
+        ApprovalRecord record = approvalEngine.approve(id, operatorId, operatorName,
                 request.getComment(), operator);
 
-        String message = record.getStatus() == ApprovalEngine.Status.APPROVED 
+        String message = record.getStatus() == ApprovalEngine.Status.APPROVED
                 ? "审批通过" : "审批节点通过，等待下一节点审批";
 
         return ApprovalActionResponse.builder()
@@ -416,7 +437,7 @@ public class ApprovalService {
 
     /**
      * 批量同意审批
-     * 
+     *
      * 注意：此方法不开启事务，每个审批操作在独立事务中执行。
      * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
@@ -428,16 +449,18 @@ public class ApprovalService {
         for (String approvalIdStr : request.getApprovalIds()) {
             try {
                 Long approvalId = Long.parseLong(approvalIdStr);
-                approvalEngine.approve(approvalId, operatorId, operatorName, 
+                approvalEngine.approve(approvalId, operatorId, operatorName,
                         request.getComment(), operator);
                 successCount++;
             } catch (BusinessException e) {
+
                 // 业务异常，记录失败原因
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessageZh())
                         .build());
             } catch (Exception e) {
+
                 // 其他异常，记录失败原因
                 log.error("Batch approval failed: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
@@ -457,7 +480,7 @@ public class ApprovalService {
 
     /**
      * 批量驳回审批
-     * 
+     *
      * 注意：此方法不开启事务，每个审批操作在独立事务中执行。
      * 这样可以确保单个审批失败不会影响其他审批的处理。
      */
@@ -477,12 +500,14 @@ public class ApprovalService {
                         request.getComment(), operator);
                 successCount++;
             } catch (BusinessException e) {
+
                 // 业务异常，记录失败原因
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
                         .approvalId(approvalIdStr)
                         .reason(e.getMessageZh())
                         .build());
             } catch (Exception e) {
+
                 // 其他异常，记录失败原因
                 log.error("Batch rejection failed: approvalId={}", approvalIdStr, e);
                 failedItems.add(BatchApprovalResponse.FailedItem.builder()
@@ -507,45 +532,21 @@ public class ApprovalService {
      */
     private Map<String, Object> getBusinessData(String businessType, Long businessId) {
         try {
-            Map<String, Object> data = new HashMap<>();
-
             switch (businessType) {
                 case "api_register":
-                    Api api = apiMapper.selectById(businessId);
-                    if (api != null) {
-                        data.put("nameCn", api.getNameCn());
-                        data.put("path", api.getPath());
-                        data.put("method", api.getMethod());
-                    }
-                    break;
+                    return getApiRegisterData(businessId);
                 case "event_register":
-                    Event event = eventMapper.selectById(businessId);
-                    if (event != null) {
-                        data.put("nameCn", event.getNameCn());
-                        data.put("topic", event.getTopic());
-                    }
-                    break;
+                    return getEventRegisterData(businessId);
                 case "callback_register":
-                    Callback callback = callbackMapper.selectById(businessId);
-                    if (callback != null) {
-                        data.put("nameCn", callback.getNameCn());
-                    }
-                    break;
+                    return getCallbackRegisterData(businessId);
                 case "api_permission_apply":
                 case "event_permission_apply":
                 case "callback_permission_apply":
-                    Subscription subscription = subscriptionMapper.selectById(businessId);
-                    if (subscription != null) {
-                        data.put("appId", subscription.getAppId());
-                        data.put("permissionId", subscription.getPermissionId());
-                    }
-                    break;
+                    return getPermissionApplyData(businessId);
                 default:
                     log.warn("Unknown business type: {}", businessType);
-                    break;
+                    return new HashMap<>();
             }
-
-            return data;
         } catch (Exception e) {
             log.error("Failed to get business data: businessType={}, businessId={}", businessType, businessId, e);
             return new HashMap<>();
@@ -553,8 +554,117 @@ public class ApprovalService {
     }
 
     /**
+     * 获取 API 注册数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getApiRegisterData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Api api = apiMapper.selectById(businessId);
+        if (api != null) {
+            data.put("nameCn", api.getNameCn());
+            data.put("path", api.getPath());
+            data.put("method", api.getMethod());
+        }
+        return data;
+    }
+
+    /**
+     * 获取事件注册数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getEventRegisterData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Event event = eventMapper.selectById(businessId);
+        if (event != null) {
+            data.put("nameCn", event.getNameCn());
+            data.put("topic", event.getTopic());
+        }
+        return data;
+    }
+
+    /**
+     * 获取回调注册数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getCallbackRegisterData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Callback callback = callbackMapper.selectById(businessId);
+        if (callback != null) {
+            data.put("nameCn", callback.getNameCn());
+        }
+        return data;
+    }
+
+    /**
+     * 获取权限申请数据
+     *
+     * @param businessId 业务ID
+     * @return 业务数据
+     */
+    private Map<String, Object> getPermissionApplyData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Subscription subscription = subscriptionMapper.selectById(businessId);
+        if (subscription == null) {
+            return data;
+        }
+
+        data.put("appId", subscription.getAppId());
+        data.put("permissionId", subscription.getPermissionId());
+
+        Permission permission = permissionMapper.selectById(subscription.getPermissionId());
+        if (permission == null) {
+            return data;
+        }
+
+        data.put("nameCn", permission.getNameCn());
+        data.put("nameEn", permission.getNameEn());
+        data.put("scope", permission.getScope());
+        data.put("resourceType", permission.getResourceType());
+
+        // 根据资源类型填充额外信息
+        fillResourceData(data, permission);
+
+        return data;
+    }
+
+    /**
+     * 填充资源数据
+     *
+     * @param data 数据Map
+     * @param permission 权限实体
+     */
+    private void fillResourceData(Map<String, Object> data, Permission permission) {
+        String resourceType = permission.getResourceType();
+        Long resourceId = permission.getResourceId();
+
+        if ("api".equals(resourceType)) {
+            Api apiResource = apiMapper.selectById(resourceId);
+            if (apiResource != null) {
+                data.put("path", apiResource.getPath());
+                data.put("method", apiResource.getMethod());
+            }
+        } else if ("event".equals(resourceType)) {
+            Event evt = eventMapper.selectById(resourceId);
+            if (evt != null) {
+                data.put("topic", evt.getTopic());
+            }
+        } else if ("callback".equals(resourceType)) {
+            Callback cb = callbackMapper.selectById(resourceId);
+            if (cb != null) {
+                data.put("nameCn", cb.getNameCn());
+            }
+        }
+    }
+
+    /**
      * 构建日志 DTO 列表
-     * 
+     *
      * v2.8.0变更：新增 level 字段显示
      */
     private List<ApprovalLogDto> buildLogDtos(List<ApprovalLog> logs, List<ApprovalNodeDto> nodes) {
@@ -575,7 +685,7 @@ public class ApprovalService {
 
     /**
      * 获取审批级别名称
-     * 
+     *
      * v2.8.0新增方法
      */
     private String getLevelName(String level) {

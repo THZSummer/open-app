@@ -32,10 +32,10 @@ import java.util.stream.Collectors;
 
 /**
  * 回调服务
- * 
+ *
  * <p>提供回调资源管理功能，包括回调注册、编辑、删除、撤回等</p>
  * <p>接口编号：#21 ~ #26</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -62,7 +62,7 @@ public class CallbackService {
 
     /**
      * #21 获取回调列表
-     * 
+     *
      * @param categoryId 分类ID（可选）
      * @param status 状态（可选）
      * @param keyword 搜索关键词（可选）
@@ -73,7 +73,7 @@ public class CallbackService {
     public ApiResponse<List<CallbackListResponse>> getCallbackList(
             String categoryId, Integer status, String keyword,
             Integer curPage, Integer pageSize) {
-        
+
         // 默认值处理
         int page = curPage != null && curPage > 0 ? curPage : 1;
         int size = pageSize != null && pageSize > 0 ? Math.min(pageSize, 100) : 20;
@@ -101,7 +101,7 @@ public class CallbackService {
         if (!callbacks.isEmpty()) {
             List<Long> callbackIds = callbacks.stream().map(Callback::getId).collect(Collectors.toList());
             List<CallbackProperty> allProperties = callbackPropertyMapper.selectByParentIds(callbackIds);
-            
+
             // 构建 Map: callbackId -> docUrl
             for (CallbackProperty prop : allProperties) {
                 if ("docUrl".equals(prop.getPropertyName()) && prop.getPropertyValue() != null) {
@@ -128,11 +128,12 @@ public class CallbackService {
 
     /**
      * #22 获取回调详情
-     * 
+     *
      * @param id 回调ID
      * @return 回调详情
      */
     public CallbackResponse getCallbackById(Long id) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
@@ -150,14 +151,15 @@ public class CallbackService {
 
     /**
      * #23 注册回调
-     * 
+     *
      * <p>注册回调成功，同时创建权限资源</p>
-     * 
+     *
      * @param request 创建请求
      * @return 回调响应
      */
     @Transactional(rollbackFor = Exception.class)
     public CallbackResponse createCallback(CallbackCreateRequest request) {
+
         // 解析分类ID
         Long categoryId;
         try {
@@ -197,11 +199,11 @@ public class CallbackService {
         callback.setNameCn(request.getNameCn());
         callback.setNameEn(request.getNameEn());
         callback.setCategoryId(categoryId); // 设置分类ID
-        
+
         // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
-        Integer needApproval = request.getPermission().getNeedApproval() != null 
+        Integer needApproval = request.getPermission().getNeedApproval() != null
             ? request.getPermission().getNeedApproval() : 1;
-        
+
         // 先插入回调（状态暂设为待审）
         callback.setStatus(1); // 待审
         callback.setCreateTime(new Date());
@@ -222,6 +224,7 @@ public class CallbackService {
         permission.setResourceType("callback");
         permission.setResourceId(callbackId);
         permission.setCategoryId(categoryId);
+
         // ✅ v2.8.0新增：审批配置字段
         permission.setNeedApproval(needApproval);
         permission.setResourceNodes(request.getPermission().getResourceNodes());
@@ -239,11 +242,13 @@ public class CallbackService {
             ApprovalEngine.BusinessType.CALLBACK_REGISTER, null);
 
         if (approvalNodes.isEmpty()) {
+
             // 无审批节点配置，直接发布
             callback.setStatus(2); // 已发布
             callbackMapper.update(callback);
             log.info("Callback registration does not require approval (no approval nodes configured), publish directly: callbackId={}", callbackId);
         } else {
+
             // 有审批节点，创建审批单
             try {
                 approvalEngine.createApproval(
@@ -273,84 +278,34 @@ public class CallbackService {
 
     /**
      * #24 更新回调
-     * 
+     *
      * @param id 回调ID
      * @param request 更新请求
      * @return 回调响应
      */
     @Transactional(rollbackFor = Exception.class)
     public CallbackResponse updateCallback(Long id, CallbackUpdateRequest request) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
             throw BusinessException.notFound("回调不存在", "Callback not found");
         }
 
-        // 检查回调状态（只有草稿和已发布状态可以更新）
-        if (callback.getStatus() == 1) {
-            throw new BusinessException("400",
-                    "待审状态的回调不能更新，请先撤回",
-                    "Cannot update pending callback, please withdraw first");
-        }
-
         // 更新回调基本信息
-        if (request.getNameCn() != null) {
-            callback.setNameCn(request.getNameCn());
-        }
-        if (request.getNameEn() != null) {
-            callback.setNameEn(request.getNameEn());
-        }
-        callback.setLastUpdateTime(new Date());
-        callback.setLastUpdateBy(UserContextHolder.getUserId());
+        updateCallbackBasicInfo(callback, request);
 
-        // 如果更新分类ID
-        Long categoryId = callback.getCategoryId();
-        if (request.getCategoryId() != null) {
-            try {
-                categoryId = Long.parseLong(request.getCategoryId());
-                Category category = categoryMapper.selectById(categoryId);
-                if (category == null) {
-                    throw BusinessException.notFound("分类不存在", "Category not found");
-                }
-                callback.setCategoryId(categoryId); // 更新分类ID
-            } catch (NumberFormatException e) {
-                throw BusinessException.badRequest("分类ID格式错误", "Invalid category ID format");
-            }
-        }
+        // 验证并更新分类ID
+        Long categoryId = validateAndGetCategoryId(request.getCategoryId(), callback);
 
         // 保存回调
         callbackMapper.update(callback);
 
         // 更新权限
-        Permission permission = permissionMapper.selectByResource("callback", id);
-        if (permission != null && request.getPermission() != null) {
-            if (request.getPermission().getNameCn() != null) {
-                permission.setNameCn(request.getPermission().getNameCn());
-            }
-            if (request.getPermission().getNameEn() != null) {
-                permission.setNameEn(request.getPermission().getNameEn());
-            }
-            if (categoryId != null) {
-                permission.setCategoryId(categoryId);
-            }
-            permission.setLastUpdateTime(new Date());
-            permission.setLastUpdateBy(UserContextHolder.getUserId());
-            permissionMapper.update(permission);
-        }
+        Permission permission = updatePermissionIfNeeded(id, request, categoryId);
 
-        // 更新属性（如果有）
-        List<CallbackProperty> savedProperties = new ArrayList<>();
-        if (request.getProperties() != null) {
-            // 删除原有属性
-            callbackPropertyMapper.deleteByParentId(id);
-            // 保存新属性
-            if (!request.getProperties().isEmpty()) {
-                savedProperties = saveProperties(id, request.getProperties());
-            }
-        } else {
-            // 查询现有属性
-            savedProperties = callbackPropertyMapper.selectByParentId(id);
-        }
+        // 更新属性
+        List<CallbackProperty> savedProperties = updatePropertiesIfNeeded(id, request.getProperties());
 
         log.info("Callback updated successfully: id={}, nameCn={}", id, callback.getNameCn());
 
@@ -359,13 +314,14 @@ public class CallbackService {
 
     /**
      * #25 删除回调
-     * 
+     *
      * <p>删除回调，检查订阅关系</p>
-     * 
+     *
      * @param id 回调ID
      */
     @Transactional(rollbackFor = Exception.class)
     public void deleteCallback(Long id) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
@@ -397,12 +353,13 @@ public class CallbackService {
 
     /**
      * #26 撤回审核中的回调
-     * 
+     *
      * @param id 回调ID
      * @return 回调响应
      */
     @Transactional(rollbackFor = Exception.class)
     public CallbackResponse withdrawCallback(Long id) {
+
         // 查询回调
         Callback callback = callbackMapper.selectById(id);
         if (callback == null) {
@@ -465,9 +422,107 @@ public class CallbackService {
     }
 
     /**
+     * 更新回调基本信息
+     *
+     * @param callback 回调实体
+     * @param request 更新请求
+     */
+    private void updateCallbackBasicInfo(Callback callback, CallbackUpdateRequest request) {
+        if (request.getNameCn() != null) {
+            callback.setNameCn(request.getNameCn());
+        }
+        if (request.getNameEn() != null) {
+            callback.setNameEn(request.getNameEn());
+        }
+        callback.setLastUpdateTime(new Date());
+        callback.setLastUpdateBy(UserContextHolder.getUserId());
+    }
+
+    /**
+     * 验证并获取分类ID
+     *
+     * @param categoryIdStr 分类ID字符串
+     * @param callback 回调实体
+     * @return 分类ID
+     */
+    private Long validateAndGetCategoryId(String categoryIdStr, Callback callback) {
+        Long categoryId = callback.getCategoryId();
+        if (categoryIdStr != null) {
+            try {
+                categoryId = Long.parseLong(categoryIdStr);
+                Category category = categoryMapper.selectById(categoryId);
+                if (category == null) {
+                    throw BusinessException.notFound("分类不存在", "Category not found");
+                }
+                callback.setCategoryId(categoryId);
+            } catch (NumberFormatException e) {
+                throw BusinessException.badRequest("分类ID格式错误", "Invalid category ID format");
+            }
+        }
+        return categoryId;
+    }
+
+    /**
+     * 更新权限（如果需要）
+     *
+     * @param callbackId 回调ID
+     * @param request 更新请求
+     * @param categoryId 分类ID
+     * @return 权限实体
+     */
+    private Permission updatePermissionIfNeeded(Long callbackId, CallbackUpdateRequest request, Long categoryId) {
+        Permission permission = permissionMapper.selectByResource("callback", callbackId);
+        if (permission != null && request.getPermission() != null) {
+            if (request.getPermission().getNameCn() != null) {
+                permission.setNameCn(request.getPermission().getNameCn());
+            }
+            if (request.getPermission().getNameEn() != null) {
+                permission.setNameEn(request.getPermission().getNameEn());
+            }
+            if (categoryId != null) {
+                permission.setCategoryId(categoryId);
+            }
+            if (request.getPermission().getNeedApproval() != null) {
+                permission.setNeedApproval(request.getPermission().getNeedApproval());
+            }
+            if (request.getPermission().getResourceNodes() != null) {
+                permission.setResourceNodes(request.getPermission().getResourceNodes());
+            }
+            permission.setLastUpdateTime(new Date());
+            permission.setLastUpdateBy(UserContextHolder.getUserId());
+            permissionMapper.update(permission);
+        }
+        return permission;
+    }
+
+    /**
+     * 更新属性（如果需要）
+     *
+     * @param callbackId 回调ID
+     * @param properties 属性列表
+     * @return 保存的属性列表
+     */
+    private List<CallbackProperty> updatePropertiesIfNeeded(Long callbackId, List<CallbackPropertyDto> properties) {
+        if (properties != null) {
+            // 删除原有属性
+            callbackPropertyMapper.deleteByParentId(callbackId);
+
+            // 保存新属性
+            if (!properties.isEmpty()) {
+                return saveProperties(callbackId, properties);
+            }
+            return new ArrayList<>();
+        } else {
+            // 查询现有属性
+            return callbackPropertyMapper.selectByParentId(callbackId);
+        }
+    }
+
+    /**
      * 转换为列表响应
      */
     private CallbackListResponse convertToListResponse(Callback callback, Map<Long, String> docUrlMap) {
+
         // 查询权限信息
         Permission permission = permissionMapper.selectByResource("callback", callback.getId());
 
@@ -490,7 +545,7 @@ public class CallbackService {
     /**
      * 转换为详情响应
      */
-    private CallbackResponse convertToResponse(Callback callback, Permission permission, 
+    private CallbackResponse convertToResponse(Callback callback, Permission permission,
                                                 List<CallbackProperty> properties) {
         return CallbackResponse.builder()
                 .id(String.valueOf(callback.getId()))
@@ -518,6 +573,7 @@ public class CallbackService {
                 .nameEn(permission.getNameEn())
                 .scope(permission.getScope())
                 .status(permission.getStatus())
+
                 // ✅ v2.8.0新增：审批配置字段
                 .needApproval(permission.getNeedApproval())
                 .resourceNodes(permission.getResourceNodes())

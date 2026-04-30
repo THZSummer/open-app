@@ -21,13 +21,13 @@ import java.util.*;
 
 /**
  * 数据同步服务
- * 
+ *
  * <p>提供订阅关系数据的双向同步功能：</p>
  * <ul>
  *   <li>migrate: 旧表 → 新表（迁移）</li>
  *   <li>rollback: 新表 → 旧表（回退）</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -63,6 +63,7 @@ public class SyncService {
                     .build();
 
             try {
+
                 // 2. 检查新表是否已存在
                 Subscription existing = syncMapper.selectNewSubscriptionById(oldSub.getId());
                 if (existing != null) {
@@ -87,15 +88,27 @@ public class SyncService {
                 Integer channelType = null;
                 String channelAddress = null;
                 Integer authType = null;
-                
-                if ("1".equals(oldSub.getPermisssionType())) { // 事件订阅
+
+                log.info("Subscription {}, permissionType: {}, permissionId: {}", 
+                    oldSub.getId(), oldSub.getPermisssionType(), oldSub.getPermissionId());
+
+                if ("1".equals(oldSub.getPermisssionType())) {
                     OldAppProperty channelConfig = syncMapper.selectAppChannelConfig(oldSub.getAppId());
+                    log.info("Event subscription {}, channelConfig: {}", oldSub.getId(), channelConfig);
                     if (channelConfig != null) {
                         channelType = channelConfig.getChannelType();
                         channelAddress = channelConfig.getChannelAddress();
                         authType = channelConfig.getAuthType();
                     }
+                } else if ("0".equals(oldSub.getPermisssionType())) {
+                    OldApi oldApi = syncMapper.selectOldApiByPermissionId(oldSub.getPermissionId());
+                    log.info("API subscription {}, oldApi: {}", oldSub.getId(), oldApi);
+                    if (oldApi != null) {
+                        authType = oldApi.getAuthType();
+                    }
                 }
+
+                log.info("Subscription {} final authType: {}", oldSub.getId(), authType);
 
                 // 5. 构造新订阅关系
                 Subscription newSub = new Subscription();
@@ -147,6 +160,7 @@ public class SyncService {
      * 查找新权限ID
      */
     private Long findNewPermissionId(OldSubscription oldSub) {
+
         // 1. 查询旧权限
         OldPermission oldPermission = syncMapper.selectOldPermissionById(oldSub.getPermissionId());
         if (oldPermission == null) {
@@ -159,6 +173,7 @@ public class SyncService {
 
         // 2. 根据类型查找对应的新资源
         if ("api".equalsIgnoreCase(resourceType) || "0".equals(oldSub.getPermisssionType())) {
+
             // API 权限
             OldApi oldApi = syncMapper.selectOldApiById(oldPermission.getModuleId());
             if (oldApi == null) {
@@ -175,6 +190,7 @@ public class SyncService {
             resourceId = newApi.getId();
 
         } else if ("event".equalsIgnoreCase(resourceType) || "1".equals(oldSub.getPermisssionType())) {
+
             // 事件权限
             OldEvent oldEvent = syncMapper.selectOldEventById(oldPermission.getModuleId());
             if (oldEvent == null) {
@@ -205,6 +221,7 @@ public class SyncService {
      */
     private void syncApprovalRecordsMigrate(OldSubscription oldSub, SyncDetail detail) {
         try {
+
             // 查询旧审批记录
             List<OldEflow> oldEflows = syncMapper.selectOldEflowByResourceId("app_permission", oldSub.getId());
             if (oldEflows == null || oldEflows.isEmpty()) {
@@ -215,6 +232,7 @@ public class SyncService {
             int recordCount = 0;
             int logCount = 0;
             for (OldEflow oldEflow : oldEflows) {
+
                 // 检查是否已存在
                 ApprovalRecord existing = syncMapper.selectNewApprovalRecordById(oldEflow.getEflowId());
                 if (existing != null) {
@@ -228,13 +246,13 @@ public class SyncService {
                 ApprovalRecord record = new ApprovalRecord();
                 record.setId(oldEflow.getEflowId());
                 record.setCombinedNodes(combinedNodes);
-                record.setBusinessType("api_permission_apply".equals(oldEflow.getEflowType()) ? 
+                record.setBusinessType("api_permission_apply".equals(oldEflow.getEflowType()) ?
                         "api_permission_apply" : "event_permission_apply");
                 record.setBusinessId(oldSub.getId());
                 record.setApplicantId(oldEflow.getEflowSubmitUser());
                 record.setStatus(oldEflow.getEflowStatus());
                 record.setCreateTime(oldEflow.getCreateTime());
-                
+
                 // 写入新审批记录
                 if (syncMapper.insertNewApprovalRecordIfNotExists(record) > 0) {
                     recordCount++;
@@ -256,7 +274,7 @@ public class SyncService {
                         newLog.setCreateTime(oldLog.getCreateTime());
                         newLogs.add(newLog);
                     }
-                    
+
                     if (!newLogs.isEmpty()) {
                         syncMapper.batchInsertNewApprovalLogs(newLogs);
                         logCount += newLogs.size();
@@ -280,18 +298,18 @@ public class SyncService {
         if (auditUser == null || auditUser.isEmpty()) {
             return null;
         }
-        
+
         try {
             Map<String, Object> node = new LinkedHashMap<>();
             node.put("level", "审批人");
             node.put("approver", auditUser);
-            
+
             List<Map<String, Object>> nodes = new ArrayList<>();
             nodes.add(node);
-            
+
             Map<String, Object> combinedNodes = new LinkedHashMap<>();
             combinedNodes.put("nodes", nodes);
-            
+
             return objectMapper.writeValueAsString(combinedNodes);
         } catch (Exception e) {
             log.error("Failed to construct combinedNodes", e);
@@ -306,7 +324,7 @@ public class SyncService {
         if (eflowLogType == null) {
             return 0;
         }
-        
+
         switch (eflowLogType.toLowerCase(Locale.ROOT)) {
             case "approve":
             case "同意":
@@ -349,6 +367,7 @@ public class SyncService {
                     .build();
 
             try {
+
                 // 2. 检查旧表是否已存在
                 OldSubscription existing = syncMapper.selectOldSubscriptionById(newSub.getId());
                 if (existing != null) {
@@ -416,6 +435,7 @@ public class SyncService {
      * 反向查找旧权限ID
      */
     private Long findOldPermissionId(Subscription newSub) {
+
         // 1. 查询新权限
         Permission newPermission = syncMapper.selectNewPermissionById(newSub.getPermissionId());
         if (newPermission == null) {
@@ -424,22 +444,53 @@ public class SyncService {
         }
 
         String resourceType = newPermission.getResourceType();
-        Long oldResourceId = null;
+        Long resourceId = newPermission.getResourceId();
 
         // 2. 根据类型查找对应的旧资源
         if ("api".equalsIgnoreCase(resourceType)) {
-            Api newApi = syncMapper.selectNewApiByPathAndMethod(
-                    null, null); // 需要先查询API详情
-            
-            // 通过 resource_id 查询新API
-            Api api = syncMapper.selectNewApiByPathAndMethod(null, null);
-            
-} else if ("event".equalsIgnoreCase(resourceType)) {
-            log.warn("Event rollback not implemented yet");
-            // TODO: 实现事件回退逻辑
-}
+            // 查询新API详情
+            Api newApi = syncMapper.selectNewApiById(resourceId);
+            if (newApi == null) {
+                log.warn("New API not found, id={}", resourceId);
+                return null;
+            }
 
-        // TODO: 完整实现反向查找
+            // 通过 path+method 匹配旧API
+            OldApi oldApi = syncMapper.selectOldApiByPathAndMethod(newApi.getPath(), newApi.getMethod());
+            if (oldApi == null) {
+                log.warn("Old API not found, path={}, method={}", newApi.getPath(), newApi.getMethod());
+                return null;
+            }
+
+            // 返回旧API关联的权限ID
+            return oldApi.getPermissionId();
+
+        } else if ("event".equalsIgnoreCase(resourceType)) {
+            // 查询新Event详情
+            Event newEvent = syncMapper.selectNewEventById(resourceId);
+            if (newEvent == null) {
+                log.warn("New event not found, id={}", resourceId);
+                return null;
+            }
+
+            // 通过 topic 匹配旧Event
+            OldEvent oldEvent = syncMapper.selectOldEventByTopic(newEvent.getTopic());
+            if (oldEvent == null) {
+                log.warn("Old event not found, topic={}", newEvent.getTopic());
+                return null;
+            }
+
+            // 旧Event没有直接关联权限ID，需要查找对应的旧权限
+            // 旧权限通过 module_id 关联旧Event
+            OldPermission oldPermission = syncMapper.selectOldPermissionByModuleIdAndType(oldEvent.getId(), "event");
+            if (oldPermission == null) {
+                log.warn("Old permission not found for event, moduleId={}", oldEvent.getId());
+                return null;
+            }
+            return oldPermission.getId();
+        }
+
+        log.warn("Unknown resource type, type={}", resourceType);
         return null;
     }
 
@@ -447,6 +498,7 @@ public class SyncService {
      * 同步审批记录（回退）
      */
     private void syncApprovalRecordsRollback(Subscription newSub, SyncDetail detail) {
+
         // TODO: 实现审批记录回退逻辑
         detail.setApprovalStatus("回退暂不支持审批数据");
     }

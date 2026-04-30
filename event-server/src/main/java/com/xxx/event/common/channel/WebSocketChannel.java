@@ -160,6 +160,7 @@ public class WebSocketChannel {
                 successCount++;
             } else {
                 failCount++;
+
                 // 发送失败，移除连接
                 connections.remove(connectionId);
             }
@@ -192,6 +193,7 @@ public class WebSocketChannel {
                 successCount++;
             } else {
                 failCount++;
+
                 // 发送失败，移除连接
                 connections.remove(connectionId);
             }

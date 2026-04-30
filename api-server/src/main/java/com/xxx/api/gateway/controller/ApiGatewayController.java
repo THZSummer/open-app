@@ -63,12 +63,13 @@ public class ApiGatewayController {
             @RequestBody(required = false) String body,
             HttpServletRequest request) {
         
-        log.info("API 网关请求: method={}, path={}", request.getMethod(), request.getRequestURI());
+        log.info("API gateway request: method={}, path={}", request.getMethod(), request.getRequestURI());
         
         try {
+
             // 1. 验证应用身份
             if (!apiGatewayService.verifyApplication(appId, authType, authCredential)) {
-                log.warn("应用身份验证失败: appId={}", appId);
+                log.warn("Application authentication failed: appId={}", appId);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body("{\"code\":\"401\",\"messageZh\":\"应用身份验证失败\",\"messageEn\":\"Unauthorized\"}");
             }
@@ -83,13 +84,13 @@ public class ApiGatewayController {
             // 4. 校验权限
             PermissionCheckResponse checkResult = apiGatewayService.checkPermission(appId, scope);
             if (!checkResult.getAuthorized()) {
-                log.warn("权限校验失败: appId={}, scope={}, reason={}", appId, scope, checkResult.getReason());
+                log.warn("Permission check failed: appId={}, scope={}, reason={}", appId, scope, checkResult.getReason());
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body("{\"code\":\"403\",\"messageZh\":\"" + checkResult.getReason() + "\",\"messageEn\":\"Forbidden\"}");
             }
             
             // 5. 转发请求到内部中台网关（Mock 实现）
-            log.info("权限校验通过，转发请求到内部网关: appId={}, scope={}", appId, scope);
+            log.info("Permission check passed, forwarding request to internal gateway: appId={}, scope={}", appId, scope);
             
             // Mock: 返回成功响应
             // 实际项目中应该使用 RestTemplate 或 WebClient 转发请求
@@ -100,7 +101,7 @@ public class ApiGatewayController {
                     .body(mockResponse);
             
         } catch (Exception e) {
-            log.error("API 网关处理失败", e);
+            log.error("API gateway processing failed", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("{\"code\":\"500\",\"messageZh\":\"服务器内部错误\",\"messageEn\":\"Internal Server Error\"}");
         }
@@ -111,6 +112,7 @@ public class ApiGatewayController {
      */
     private String extractPath(HttpServletRequest request) {
         String uri = request.getRequestURI();
+
         // 移除 /gateway/api 前缀
         if (uri.startsWith("/gateway/api")) {
             return uri.substring("/gateway/api".length());
@@ -143,7 +145,7 @@ public class ApiGatewayController {
             @Parameter(description = "内部调用凭证") @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody CallbackConfigRequest request) {
         
-        log.info("查询回调配置: ak={}, scope={}", request.getAk(), request.getScope());
+        log.info("Query callback configuration: ak={}, scope={}", request.getAk(), request.getScope());
         
         // TODO: 验证内部调用凭证（Authorization）
         
@@ -151,14 +153,14 @@ public class ApiGatewayController {
             CallbackConfigResponse config = apiGatewayService.getCallbackConfig(request.getAk(), request.getScope());
             
             if (config == null) {
-                log.info("未找到回调配置: ak={}, scope={}", request.getAk(), request.getScope());
+                log.info("Callback configuration not found: ak={}, scope={}", request.getAk(), request.getScope());
                 return ApiResponse.success(null);
             }
             
             return ApiResponse.success(config);
             
         } catch (Exception e) {
-            log.error("查询回调配置失败: ak={}, scope={}", request.getAk(), request.getScope(), e);
+            log.error("Failed to query callback configuration: ak={}, scope={}", request.getAk(), request.getScope(), e);
             return ApiResponse.error("400", "查询失败: " + e.getMessage(), "Query failed");
         }
     }

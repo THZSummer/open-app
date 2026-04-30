@@ -7,10 +7,10 @@ import java.util.Date;
 
 /**
  * 权限实体
- * 
+ *
  * <p>对应表 openplatform_v2_permission_t</p>
  * <p>权限资源主表，关联 API/事件/回调资源</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -56,16 +56,16 @@ public class Permission implements Serializable {
 
     /**
      * 是否需要审批：0=否, 1=是
-     * 
+     *
      * v2.8.0新增字段，用于标识权限是否需要审批流程
      */
     private Integer needApproval;
 
     /**
      * 资源级审批节点配置（JSON格式字符串）
-     * 
+     *
      * v2.8.0新增字段，直接存储审批节点配置（不关联审批流程表）
-     * 
+     *
      * 格式示例：
      * [
      *   {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},

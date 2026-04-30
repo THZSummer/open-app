@@ -47,7 +47,7 @@ public class DataQueryController {
             @Parameter(description = "应用ID", required = true) @RequestParam String appId,
             @Parameter(description = "权限标识", required = true) @RequestParam String scope) {
         
-        log.debug("权限校验请求: appId={}, scope={}", appId, scope);
+        log.debug("Permission check request: appId={}, scope={}", appId, scope);
         
         PermissionCheckResponse response = dataQueryService.checkPermission(appId, scope);
         return ApiResponse.success(response);
@@ -61,7 +61,7 @@ public class DataQueryController {
     public ApiResponse<List<String>> getSubscribedApps(
             @Parameter(description = "权限标识", required = true) @RequestParam String scope) {
         
-        log.debug("查询订阅应用列表: scope={}", scope);
+        log.debug("Query subscribed application list: scope={}", scope);
         
         List<String> appIds = dataQueryService.getSubscribedApps(scope);
         return ApiResponse.success(appIds);
@@ -76,7 +76,7 @@ public class DataQueryController {
             @Parameter(description = "应用ID", required = true) @RequestParam String appId,
             @Parameter(description = "权限标识", required = true) @RequestParam String scope) {
         
-        log.debug("查询订阅配置: appId={}, scope={}", appId, scope);
+        log.debug("Query subscription configuration: appId={}, scope={}", appId, scope);
         
         Map<String, Object> config = dataQueryService.getSubscriptionConfig(appId, scope);
         return ApiResponse.success(config);
@@ -90,7 +90,7 @@ public class DataQueryController {
     public ApiResponse<Map<String, Object>> getPermissionByScope(
             @Parameter(description = "权限标识", required = true) @RequestParam String scope) {
         
-        log.debug("查询权限详情: scope={}", scope);
+        log.debug("Query permission details: scope={}", scope);
         
         Map<String, Object> permission = dataQueryService.getPermissionByScope(scope);
         if (permission == null) {

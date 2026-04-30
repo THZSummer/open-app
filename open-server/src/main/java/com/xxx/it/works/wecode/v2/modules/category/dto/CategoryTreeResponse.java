@@ -10,9 +10,9 @@ import java.util.List;
 
 /**
  * 分类树形响应
- * 
+ *
  * <p>包含 children 字段用于树形结构</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

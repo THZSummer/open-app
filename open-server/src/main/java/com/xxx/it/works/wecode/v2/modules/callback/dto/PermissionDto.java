@@ -9,9 +9,9 @@ import java.io.Serializable;
 
 /**
  * 权限信息 DTO
- * 
+ *
  * <p>用于回调响应中展示权限信息</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -51,14 +51,14 @@ public class PermissionDto implements Serializable {
 
     /**
      * 是否需要审批：0=不需要, 1=需要
-     * 
+     *
      * v2.8.0新增字段
      */
     private Integer needApproval;
 
     /**
      * 资源级审批节点配置（JSON格式字符串）
-     * 
+     *
      * v2.8.0新增字段
      */
     private String resourceNodes;

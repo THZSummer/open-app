@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * API 权限订阅列表响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -86,7 +86,7 @@ public class ApiSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class PermissionInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -108,7 +108,7 @@ public class ApiSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ApiInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -140,7 +140,7 @@ public class ApiSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CategoryInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -172,7 +172,7 @@ public class ApiSubscriptionListResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ApproverInfo implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**

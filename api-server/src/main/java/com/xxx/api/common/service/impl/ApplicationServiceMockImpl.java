@@ -19,6 +19,7 @@ public class ApplicationServiceMockImpl implements ApplicationService {
 
     @Override
     public Long getAppIdByAk(String ak) {
+
         // TODO: 对接现有 AKSK 管理系统
         // 实际实现应该调用现有的应用管理系统或 AKSK 管理系统接口
         
@@ -30,12 +31,13 @@ public class ApplicationServiceMockImpl implements ApplicationService {
         if (ak.startsWith("AK")) {
             try {
                 String numPart = ak.substring(2);
+
                 // 简单处理：取模生成 appId（仅用于测试）
                 Long appId = Math.abs(numPart.hashCode() % 1000) + 1L;
                 log.debug("Mock: AK={} -> appId={}", ak, appId);
                 return appId;
             } catch (Exception e) {
-                log.warn("Mock: 解析 AK 失败: {}", ak, e);
+                log.warn("Mock: Failed to parse AK: {}", ak, e);
                 return null;
             }
         }
@@ -45,6 +47,7 @@ public class ApplicationServiceMockImpl implements ApplicationService {
 
     @Override
     public boolean verifyApplication(String appId, Integer authType, String authCredential) {
+
         // TODO: 对接现有应用管理系统
         // 实际实现应该：
         // 1. authType = 5: 验证 AKSK 签名
@@ -60,7 +63,7 @@ public class ApplicationServiceMockImpl implements ApplicationService {
         }
         
         // Mock: 简单验证通过
-        log.debug("Mock: 应用身份验证通过: appId={}, authType={}", appId, authType);
+        log.debug("Mock: Application authentication passed: appId={}, authType={}", appId, authType);
         return true;
     }
 }

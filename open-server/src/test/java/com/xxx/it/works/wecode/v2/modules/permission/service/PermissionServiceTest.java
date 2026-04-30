@@ -16,6 +16,7 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppAccessException;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -46,43 +48,46 @@ class PermissionServiceTest {
 
     @Mock
     private PermissionMapper permissionMapper;
-    
+
     @Mock
     private PermissionPropertyMapper permissionPropertyMapper;
-    
+
     @Mock
     private SubscriptionMapper subscriptionMapper;
-    
+
     @Mock
     private CategoryMapper categoryMapper;
-    
+
     @Mock
     private ApiMapper apiMapper;
-    
+
     @Mock
     private ApiPropertyMapper apiPropertyMapper;
-    
+
     @Mock
     private EventMapper eventMapper;
-    
+
     @Mock
     private EventPropertyMapper eventPropertyMapper;
-    
+
     @Mock
     private CallbackMapper callbackMapper;
-    
+
     @Mock
     private CallbackPropertyMapper callbackPropertyMapper;
-    
+
     @Mock
     private IdGeneratorStrategy idGenerator;
-    
+
     @Mock
     private ApprovalEngine approvalEngine;
-    
+
     @Mock
     private AppContextResolver appContextResolver;
-    
+
+    @Mock
+    private ApprovalRecordMapper approvalRecordMapper;
+
     @InjectMocks
     private PermissionService permissionService;
 
@@ -123,6 +128,9 @@ class PermissionServiceTest {
                 .build();
         lenient().when(appContextResolver.resolveAndValidate(anyString())).thenReturn(defaultAppContext);
         lenient().when(appContextResolver.toExternalId(anyLong())).thenReturn("1");
+
+        // 设置审批URL前缀
+        ReflectionTestUtils.setField(permissionService, "approvalUrlPrefix", "https://platform.example.com/approval/");
     }
 
     @Nested
@@ -141,8 +149,9 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
-            ApiResponse<List<ApiSubscriptionListResponse>> response = 
+            ApiResponse<List<ApiSubscriptionListResponse>> response =
                     permissionService.getApiSubscriptionList("1", null, null, 1, 20);
 
             assertNotNull(response);
@@ -151,6 +160,9 @@ class PermissionServiceTest {
             assertEquals(1, response.getData().size());
             assertNotNull(response.getPage());
             assertEquals(1L, response.getPage().getTotal());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
@@ -165,7 +177,7 @@ class PermissionServiceTest {
             when(permissionMapper.countApiPermissionsByCategory(eq(10L), any(), any(), any(), anyBoolean()))
                     .thenReturn(1L);
 
-            ApiResponse<List<CategoryPermissionListResponse>> response = 
+            ApiResponse<List<CategoryPermissionListResponse>> response =
                     permissionService.getCategoryApiPermissions("10", "1", null, null, true, 1, 20);
 
             assertNotNull(response);
@@ -193,7 +205,7 @@ class PermissionServiceTest {
             when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
                     .thenReturn(mockRecord);
 
-            PermissionSubscribeResponse response = 
+            PermissionSubscribeResponse response =
                     permissionService.subscribeApiPermissions("1", request);
 
             assertNotNull(response);
@@ -230,7 +242,7 @@ class PermissionServiceTest {
             when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
             when(subscriptionMapper.selectByAppIdAndPermissionId(eq(1L), eq(100L))).thenReturn(testSubscription);
 
-            PermissionSubscribeResponse response = 
+            PermissionSubscribeResponse response =
                     permissionService.subscribeApiPermissions("1", request);
 
             assertNotNull(response);
@@ -249,7 +261,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.updateStatus(eq(200L), eq(3), any(Date.class), anyString())).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.withdrawApiSubscription("1", "200");
 
             assertNotNull(response);
@@ -266,7 +278,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.deleteById(200L)).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.deleteApiSubscription("1", "200");
 
             assertNotNull(response);
@@ -283,7 +295,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.deleteById(200L)).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.deleteApiSubscription("1", "200");
 
             assertNotNull(response);
@@ -299,7 +311,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.deleteById(200L)).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.deleteApiSubscription("1", "200");
 
             assertNotNull(response);
@@ -345,14 +357,18 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
-            ApiResponse<List<EventSubscriptionListResponse>> response = 
+            ApiResponse<List<EventSubscriptionListResponse>> response =
                     permissionService.getEventSubscriptionList("1", null, null, 1, 20);
 
             assertNotNull(response);
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
             assertEquals(1, response.getData().size());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
@@ -374,7 +390,7 @@ class PermissionServiceTest {
             when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
                     .thenReturn(mockRecord);
 
-            PermissionSubscribeResponse response = 
+            PermissionSubscribeResponse response =
                     permissionService.subscribeEventPermissions("1", request);
 
             assertNotNull(response);
@@ -393,7 +409,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.updateConfig(eq(200L), anyInt(), anyString(), anyInt(), any(Date.class), anyString())).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.configEventSubscription("1", "200", request);
 
             assertNotNull(response);
@@ -412,7 +428,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.updateStatus(eq(200L), eq(3), any(Date.class), anyString())).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.withdrawEventSubscription("1", "200");
 
             assertNotNull(response);
@@ -429,7 +445,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.deleteById(200L)).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.deleteEventSubscription("1", "200");
 
             assertNotNull(response);
@@ -474,14 +490,18 @@ class PermissionServiceTest {
                     .thenReturn(1L);
             when(permissionMapper.selectById(100L)).thenReturn(testPermission);
             when(categoryMapper.selectById(10L)).thenReturn(testCategory);
+            when(approvalRecordMapper.selectLatestByBusiness(anyString(), anyLong())).thenReturn(null);
 
-            ApiResponse<List<CallbackSubscriptionListResponse>> response = 
+            ApiResponse<List<CallbackSubscriptionListResponse>> response =
                     permissionService.getCallbackSubscriptionList("1", null, null, 1, 20);
 
             assertNotNull(response);
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
             assertEquals(1, response.getData().size());
+
+            // 验证审批URL
+            assertEquals("https://platform.example.com/approval/200", response.getData().get(0).getApprovalUrl());
         }
 
         @Test
@@ -503,7 +523,7 @@ class PermissionServiceTest {
             when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
                     .thenReturn(mockRecord);
 
-            PermissionSubscribeResponse response = 
+            PermissionSubscribeResponse response =
                     permissionService.subscribeCallbackPermissions("1", request);
 
             assertNotNull(response);
@@ -522,7 +542,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.updateConfig(eq(200L), anyInt(), anyString(), anyInt(), any(Date.class), anyString())).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.configCallbackSubscription("1", "200", request);
 
             assertNotNull(response);
@@ -538,7 +558,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.selectById(200L)).thenReturn(testSubscription);
             when(subscriptionMapper.deleteById(200L)).thenReturn(1);
 
-            WithdrawResponse response = 
+            WithdrawResponse response =
                     permissionService.deleteCallbackSubscription("1", "200");
 
             assertNotNull(response);
@@ -680,7 +700,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.countApiSubscriptionsByAppId(eq(1L), any(), any()))
                     .thenReturn(0L);
 
-            ApiResponse<List<ApiSubscriptionListResponse>> response = 
+            ApiResponse<List<ApiSubscriptionListResponse>> response =
                     permissionService.getApiSubscriptionList("1", null, null, null, null);
 
             assertNotNull(response);
@@ -698,7 +718,7 @@ class PermissionServiceTest {
             when(subscriptionMapper.countApiSubscriptionsByAppId(eq(1L), any(), any()))
                     .thenReturn(0L);
 
-            ApiResponse<List<ApiSubscriptionListResponse>> response = 
+            ApiResponse<List<ApiSubscriptionListResponse>> response =
                     permissionService.getApiSubscriptionList("1", null, null, 2, 50);
 
             assertNotNull(response);
@@ -750,7 +770,7 @@ class PermissionServiceTest {
             when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
                     .thenReturn(mockRecord);
 
-            PermissionSubscribeResponse response = 
+            PermissionSubscribeResponse response =
                     permissionService.subscribeApiPermissions("1", request);
 
             assertNotNull(response);
@@ -779,7 +799,7 @@ class PermissionServiceTest {
             when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
             when(subscriptionMapper.selectByAppIdAndPermissionId(anyLong(), anyLong())).thenReturn(testSubscription);
 
-            PermissionSubscribeResponse response = 
+            PermissionSubscribeResponse response =
                     permissionService.subscribeApiPermissions("1", request);
 
             assertNotNull(response);

@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 /**
  * 分类权限列表请求
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

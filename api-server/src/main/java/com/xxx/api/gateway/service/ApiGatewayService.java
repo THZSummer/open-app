@@ -35,6 +35,7 @@ public class ApiGatewayService {
      * @return 校验结果
      */
     public PermissionCheckResponse checkPermission(String appId, String scope) {
+
         // 转换 appId
         Long appIdLong;
         try {
@@ -110,6 +111,7 @@ public class ApiGatewayService {
      * @return Scope 标识
      */
     public String findScopeByPathAndMethod(String path, String method) {
+
         // Mock 实现：根据路径和方法生成 Scope
         // 实际项目中应该查询 API 资源表，找到对应的权限
         
@@ -120,7 +122,7 @@ public class ApiGatewayService {
         
         // 简单的路径转换规则
         String scope = "api:" + path.replaceAll("[^a-zA-Z0-9]", ":") + ":" + method.toLowerCase();
-        log.debug("生成 Scope: path={}, method={}, scope={}", path, method, scope);
+        log.debug("Generated Scope: path={}, method={}, scope={}", path, method, scope);
         
         return scope;
     }
@@ -135,17 +137,18 @@ public class ApiGatewayService {
      * @return 回调配置，未找到返回 null
      */
     public CallbackConfigResponse getCallbackConfig(String ak, String scope) {
+
         // 1. 通过 AK 获取应用ID（预留接口，对接现有 AKSK 管理系统）
         Long appId = applicationService.getAppIdByAk(ak);
         if (appId == null) {
-            log.warn("无效的 Access Key: {}", ak);
+            log.warn("Invalid Access Key: {}", ak);
             return null;
         }
 
         // 2. 查询回调订阅配置
         Subscription subscription = subscriptionMapper.selectCallbackConfigByAppIdAndScope(appId, scope);
         if (subscription == null) {
-            log.info("未找到回调订阅配置: appId={}, scope={}", appId, scope);
+            log.info("Callback subscription configuration not found: appId={}, scope={}", appId, scope);
             return null;
         }
 

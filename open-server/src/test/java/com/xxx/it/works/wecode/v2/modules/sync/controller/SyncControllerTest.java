@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * SyncController 测试类
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -64,6 +64,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("批量迁移成功")
         void testMigrate_Batch_Success() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L, 2L, 3L));
@@ -79,7 +80,7 @@ class SyncControllerTest {
             assertEquals("200", response.getCode());
             assertEquals("操作成功", response.getMessageZh());
             assertEquals("Success", response.getMessageEn());
-            
+
             SyncResult result = response.getData();
             assertNotNull(result);
             assertEquals(10, result.getSuccess());
@@ -98,6 +99,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("全量迁移（ids为null）")
         void testMigrate_FullSync_NullIds() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(null);
@@ -116,13 +118,14 @@ class SyncControllerTest {
             // Then
             assertEquals("200", response.getCode());
             assertEquals(100, response.getData().getSuccess());
-            
+
             verify(syncService).migrate(argThat(req -> req.getIds() == null));
         }
 
         @Test
         @DisplayName("全量迁移（ids为空数组）")
         void testMigrate_FullSync_EmptyIds() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Collections.emptyList());
@@ -146,6 +149,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("迁移返回详细信息")
         void testMigrate_WithDetails() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -184,6 +188,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("批量回退成功")
         void testRollback_Batch_Success() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L, 2L));
@@ -214,6 +219,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("全量回退")
         void testRollback_FullSync() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(null);
@@ -237,6 +243,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("回退返回失败详情")
         void testRollback_WithFailure() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L));
@@ -261,7 +268,7 @@ class SyncControllerTest {
             // Then
             assertEquals(0, response.getData().getSuccess());
             assertEquals(1, response.getData().getFailed());
-            
+
             SyncDetail detail = response.getData().getDetails().get(0);
             assertEquals("failed", detail.getStatus());
             assertEquals("未找到对应的旧权限", detail.getError());
@@ -275,6 +282,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("migrate 和 rollback 使用相同的请求格式")
         void testSameRequestFormat() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(Arrays.asList(1L, 2L, 3L));
@@ -294,6 +302,7 @@ class SyncControllerTest {
         @Test
         @DisplayName("响应包含完整字段")
         void testResponseFields() {
+
             // Given
             SyncRequest request = new SyncRequest();
             request.setIds(null);

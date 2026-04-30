@@ -47,12 +47,12 @@ public class CredentialProviderImpl implements CredentialProvider {
     @Override
     public Map<String, String> getCredentials(String appId, AuthTypeEnum authType) {
         if (appId == null || appId.trim().isEmpty()) {
-            log.warn("应用ID为空，无法获取凭证");
+            log.warn("Application ID is empty, cannot retrieve credentials");
             return Map.of();
         }
         
         if (authType == null || authType == AuthTypeEnum.NONE) {
-            log.debug("免认证类型，无需获取凭证: appId={}", appId);
+            log.debug("No-auth type, no credentials needed: appId={}", appId);
             return Map.of();
         }
         
@@ -65,10 +65,11 @@ public class CredentialProviderImpl implements CredentialProvider {
                     if (token != null && !token.isEmpty()) {
                         headers.put(authHeaderProperties.getSoaToken(), token);
                     } else {
-                        log.warn("[预留实现] SOA凭证未获取，跳过设置: appId={}", appId);
+                        log.warn("[Reserved implementation] SOA credential not retrieved, skipping: appId={}", appId);
                     }
                 }
                 case APIG -> {
+
                     // APPID 和 APPKEY 都从凭证获取方法获得
                     String appId2 = getApigAppId(appId);
                     String appKey = getApigAppKey(appId);
@@ -79,7 +80,7 @@ public class CredentialProviderImpl implements CredentialProvider {
                         headers.put(authHeaderProperties.getApigAppKey(), appKey);
                     }
                     if (headers.isEmpty()) {
-                        log.warn("[预留实现] APIG凭证未获取，跳过设置: appId={}", appId);
+                        log.warn("[Reserved implementation] APIG credential not retrieved, skipping: appId={}", appId);
                     }
                 }
                 case AKSK -> {
@@ -87,14 +88,14 @@ public class CredentialProviderImpl implements CredentialProvider {
                     if (token != null && !token.isEmpty()) {
                         headers.put(authHeaderProperties.getAkskToken(), token);
                     } else {
-                        log.warn("[预留实现] AKSK凭证未获取，跳过设置: appId={}", appId);
+                        log.warn("[Reserved implementation] AKSK credential not retrieved, skipping: appId={}", appId);
                     }
                 }
                 default ->
-                    log.warn("暂不支持的认证类型: authType={}", authType);
+                    log.warn("Unsupported authentication type: authType={}", authType);
             }
         } catch (Exception e) {
-            log.error("获取凭证失败: appId={}, authType={}", appId, authType, e);
+            log.error("Failed to retrieve credentials: appId={}, authType={}", appId, authType, e);
         }
         
         return headers;
@@ -106,7 +107,7 @@ public class CredentialProviderImpl implements CredentialProvider {
      * TODO: 实际应调用应用管理系统或凭证服务
      */
     private String getSoaCredential(String appId) {
-        log.warn("[预留实现] SOA凭证获取逻辑尚未实现: appId={}", appId);
+        log.warn("[Reserved implementation] SOA credential retrieval logic not implemented: appId={}", appId);
         return null; // 预留，暂返回null
     }
     
@@ -116,7 +117,7 @@ public class CredentialProviderImpl implements CredentialProvider {
      * TODO: 实际应调用应用管理系统或凭证服务获取 APIG AppId
      */
     private String getApigAppId(String appId) {
-        log.warn("[预留实现] APIG AppId获取逻辑尚未实现: appId={}", appId);
+        log.warn("[Reserved implementation] APIG AppId retrieval logic not implemented: appId={}", appId);
         return null;
     }
     
@@ -126,7 +127,7 @@ public class CredentialProviderImpl implements CredentialProvider {
      * TODO: 实际应调用应用管理系统或凭证服务获取 APIG AppKey
      */
     private String getApigAppKey(String appId) {
-        log.warn("[预留实现] APIG AppKey获取逻辑尚未实现: appId={}", appId);
+        log.warn("[Reserved implementation] APIG AppKey retrieval logic not implemented: appId={}", appId);
         return null;
     }
     
@@ -136,7 +137,7 @@ public class CredentialProviderImpl implements CredentialProvider {
      * TODO: 实际应调用应用管理系统或凭证服务获取 AKSK Token
      */
     private String getAkskToken(String appId) {
-        log.warn("[预留实现] AKSK Token获取逻辑尚未实现: appId={}", appId);
+        log.warn("[Reserved implementation] AKSK Token retrieval logic not implemented: appId={}", appId);
         return null;
     }
 }

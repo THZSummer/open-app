@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * API 详情响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

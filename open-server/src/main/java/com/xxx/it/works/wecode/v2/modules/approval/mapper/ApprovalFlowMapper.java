@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 审批流程模板 Mapper 接口
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -27,7 +27,7 @@ public interface ApprovalFlowMapper {
 
     /**
      * 根据编码查询审批流程
-     * 
+     *
      * v2.8.0变更：此方法替代原有的 selectDefaultFlow()
      * - 查询全局审批流程：selectByCode("global")
      * - 查询场景审批流程：selectByCode("api_permission_apply") 等
@@ -40,7 +40,7 @@ public interface ApprovalFlowMapper {
 
     /**
      * 查询审批流程列表
-     * 
+     *
      * @param keyword 搜索关键词
      * @param offset 偏移量
      * @param pageSize 每页数量

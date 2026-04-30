@@ -642,7 +642,58 @@ public class SyncResult {
 }
 ```
 
-### 4.5 同步逻辑说明
+### 4.5 接口调用命令
+
+#### 迁移接口（旧表→新表）
+
+**批量迁移指定订阅关系**：
+```bash
+curl -X POST "http://localhost:8080/api/v1/sync/subscription/migrate" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: SESSIONID=your-session-id" \
+  -d '{"ids": [1, 2, 3]}'
+```
+
+**全量迁移**：
+```bash
+curl -X POST "http://localhost:8080/api/v1/sync/subscription/migrate" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: SESSIONID=your-session-id" \
+  -d '{"ids": null}'
+```
+
+#### 回退接口（新表→旧表）
+
+**批量回退指定订阅关系**：
+```bash
+curl -X POST "http://localhost:8080/api/v1/sync/subscription/rollback" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: SESSIONID=your-session-id" \
+  -d '{"ids": [1, 2, 3]}'
+```
+
+**全量回退**：
+```bash
+curl -X POST "http://localhost:8080/api/v1/sync/subscription/rollback" \
+  -H "Content-Type: application/json" \
+  -H "Cookie: SESSIONID=your-session-id" \
+  -d '{"ids": null}'
+```
+
+#### 响应格式
+
+```json
+{
+  "success": 10,
+  "failed": 2,
+  "details": [
+    {"id": 1, "status": "success"},
+    {"id": 5, "status": "failed", "error": "权限ID映射失败"}
+  ]
+}
+```
+
+### 4.6 同步逻辑说明
 
 **订阅关系同步时的数据处理**：
 
@@ -667,9 +718,9 @@ public class SyncResult {
 
 
 
-### 4.6 详细实现逻辑
+### 4.7 详细实现逻辑
 
-#### 4.6.1 权限ID查找链路（不建映射表）
+#### 4.7.1 权限ID查找链路（不建映射表）
 
 **迁移（旧→新）查找流程**：
 
@@ -702,7 +753,7 @@ public class SyncResult {
 
 ---
 
-#### 4.6.2 通道配置获取（仅事件订阅）
+#### 4.7.2 通道配置获取（仅事件订阅）
 
 **数据来源**：`openplatform_app_p_t`（应用属性表）
 
@@ -734,7 +785,7 @@ WHERE parent_id = #{app_id};
 
 ---
 
-#### 4.6.3 combined_nodes 构造方法
+#### 4.7.3 combined_nodes 构造方法
 
 **来源**：`openplatform_eflow_t.eflow_audit_user`（历史审批人字段）
 
@@ -776,7 +827,7 @@ String constructCombinedNodes(String auditUser) {
 
 ---
 
-#### 4.6.4 异常处理
+#### 4.7.4 异常处理
 
 **场景**：找不到对应的新API/事件
 
@@ -814,7 +865,7 @@ try {
 
 ---
 
-#### 4.6.5 完整迁移逻辑（旧→新）
+#### 4.7.5 完整迁移逻辑（旧→新）
 
 ```
 for each 订阅关系 in 旧表:
@@ -848,7 +899,7 @@ for each 订阅关系 in 旧表:
 
 ---
 
-#### 4.6.6 完整回退逻辑（新→旧）
+#### 4.7.6 完整回退逻辑（新→旧）
 
 ```
 for each 订阅关系 in 新表:

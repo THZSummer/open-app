@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 /**
  * 事件属性 DTO
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

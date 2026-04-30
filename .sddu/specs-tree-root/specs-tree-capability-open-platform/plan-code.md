@@ -37,6 +37,38 @@ public List<Permission> getSubscribedPermissions(String appId) {
 }
 ```
 
+**格式要求**：注释前面如果有代码，必须有空行分隔。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 代码与注释之间有空行 | 代码与注释之间无空行 |
+
+```java
+// ✅ 正确示例
+public void process() {
+    int status = getStatus();
+    
+    // 处理状态逻辑
+    if (status == 1) {
+        doSomething();
+    }
+}
+
+// ❌ 错误示例
+public void process() {
+    int status = getStatus();
+    // 处理状态逻辑
+    if (status == 1) {
+        doSomething();
+    }
+}
+```
+
+**原因**：
+- 提高代码可读性
+- 清晰区分代码块和注释
+- 符合主流编码规范（Google、阿里巴巴等）
+
 ---
 
 ## 2. 日志规范
@@ -509,8 +541,189 @@ main "$@"
 
 ---
 
+## 14. 圈复杂度规范
+
+**规则**：方法圈复杂度必须维持在 15 以下，超过时必须重构拆分。
+
+**圈复杂度计算**：
+- 基础复杂度 = 1
+- 每个 if/else 分支 +1
+- 每个 case 分支 +1
+- 每个 for/while 循环 +1
+- 每个 catch 块 +1
+- 每个 && 或 || 运算符 +1
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 圈复杂度 ≤ 15，逻辑清晰 | 圈复杂度 > 15，难以维护 |
+
+```java
+// ✅ 正确示例 - 圈复杂度 5
+public void updateUser(Long id, UserUpdateRequest request) {
+    User user = userMapper.selectById(id);
+    
+    if (user == null) {
+        throw BusinessException.notFound("用户不存在", "User not found");
+    }
+    
+    // 提取到独立方法，降低复杂度
+    updateUserFields(user, request);
+    updatePermissionIfNeeded(user, request);
+    
+    userMapper.update(user);
+}
+
+private void updateUserFields(User user, UserUpdateRequest request) {
+    if (request.getName() != null) {
+        user.setName(request.getName());
+    }
+    if (request.getEmail() != null) {
+        user.setEmail(request.getEmail());
+    }
+}
+
+// ❌ 错误示例 - 圈复杂度 20+
+public void updateUser(Long id, UserUpdateRequest request) {
+    User user = userMapper.selectById(id);
+    if (user == null) {
+        throw new BusinessException(...);
+    }
+    if (request.getName() != null && !request.getName().isEmpty()) {
+        user.setName(request.getName());
+    }
+    if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+        user.setEmail(request.getEmail());
+    }
+    if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+        user.setPhone(request.getPhone());
+    }
+    // ... 更多 if 检查，圈复杂度累积超过 15
+}
+```
+
+**重构策略**：
+1. **提取方法**：将复杂逻辑拆分为多个小方法
+2. **早返回（Guard Clause）**：用早返回减少嵌套层级
+3. **策略模式**：替代复杂的 switch-case 结构
+4. **使用 Optional**：减少 null 检查的嵌套
+
+**工具检测**：
+- Maven: `mvn checkstyle:check` 配置 CyclomaticComplexity 规则
+- IntelliJ IDEA: 安装 MetricsReloaded 插件查看方法复杂度
+- PMD: 配置 `CyclomaticComplexity` 规则
+
+**原因**：
+- 圈复杂度过高导致代码难以理解和维护
+- 测试覆盖难度增加，需要更多测试用例
+- 代码审查和调试效率降低
+- 符合业界最佳实践（Google、阿里巴巴规范建议 < 10）
+
+---
+
+## 15. 函数深度规范
+
+**规则**：方法最大嵌套深度不得超过 5 层，超过时必须重构。
+
+**嵌套深度计算**：
+- 方法基础深度 = 0
+- 每个 if/else 嵌套 +1
+- 每个 for/while 循环嵌套 +1
+- 每个 try-catch 嵌套 +1
+- 每个 switch-case 嵌套 +1
+- 方法调用内部嵌套继续累加
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 嵌套深度 ≤ 5，层次清晰 | 嵌套深度 > 5，难以理解 |
+
+```java
+// ✅ 正确示例 - 最大深度 2
+public void processOrder(Long orderId) {
+    Order order = orderMapper.selectById(orderId);
+    
+    if (order == null) {
+        throw BusinessException.notFound("订单不存在", "Order not found");
+    }
+    
+    // 提取方法，避免嵌套
+    validateOrderItems(order);
+    calculateOrderTotal(order);
+    saveOrder(order);
+}
+
+private void validateOrderItems(Order order) {
+    for (OrderItem item : order.getItems()) {
+        // 深度 = 1（for循环）
+        if (item.getQuantity() <= 0) {
+            // 深度 = 2（if）
+            throw BusinessException.badRequest("商品数量无效", "Invalid quantity");
+        }
+    }
+}
+
+// ❌ 错误示例 - 最大深度 6
+public void processOrder(Long orderId) {
+    Order order = orderMapper.selectById(orderId);
+    if (order != null) {                          // 深度 = 1
+        if (order.getStatus() == 1) {             // 深度 = 2
+            for (OrderItem item : order.getItems()) {  // 深度 = 3
+                if (item.getType() == "normal") {       // 深度 = 4
+                    if (item.getQuantity() > 0) {       // 深度 = 5
+                        if (item.getPrice() > 0) {      // 深度 = 6 ❌
+                            // 处理逻辑...
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+**重构策略**：
+1. **早返回（Guard Clause）**：用 return 或 throw 提前退出，减少嵌套
+2. **提取方法**：将嵌套逻辑拆分为独立方法
+3. **使用 continue/break**：减少循环内的嵌套
+4. **使用 Optional**：减少 null 检查的嵌套
+5. **策略模式**：替代多层条件判断
+
+```java
+// 重构示例：使用早返回降低嵌套深度
+public void processOrder(Long orderId) {
+    Order order = orderMapper.selectById(orderId);
+    
+    // ✅ 早返回，避免嵌套
+    if (order == null) {
+        throw BusinessException.notFound("订单不存在", "Order not found");
+    }
+    
+    if (order.getStatus() != 1) {
+        log.warn("Order status is not valid, orderId={}", orderId);
+        return;
+    }
+    
+    // 主逻辑平铺，深度 = 0
+    for (OrderItem item : order.getItems()) {  // 深度 = 1
+        validateItem(item);  // 提取方法，内部深度独立计算
+    }
+}
+```
+
+**工具检测**：
+- IntelliJ IDEA: 安装 MetricsReloaded 插件查看嵌套深度
+- Checkstyle: 配置 `NPathComplexity` 规则
+- PMD: 配置 `DeepNestedMethod` 规则
+
+**原因**：
+- 嵌套过深导致代码难以理解（需要记住多层上下文）
+- 测试覆盖难度增加，需要更多测试组合
+- 代码审查效率降低，难以追踪逻辑流程
+- 符合业界最佳实践（Google、阿里巴巴规范建议 ≤ 4）
+
+---
+
 ## 总结
 
-以上 13 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
+以上 15 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
 
 请在 IDE 中配置相应的代码格式化和检查规则，确保代码风格统一。

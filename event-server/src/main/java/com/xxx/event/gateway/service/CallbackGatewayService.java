@@ -125,6 +125,7 @@ public class CallbackGatewayService {
         String cacheKey = CACHE_KEY_PREFIX + callbackScope;
         
         try {
+
             // 尝试从缓存获取
             Object cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
@@ -133,6 +134,7 @@ public class CallbackGatewayService {
             }
         } catch (Exception e) {
             log.error("Failed to get subscriber list cache from Redis: scope={}", callbackScope, e);
+
             // 继续从api-server查询
         }
         
@@ -146,6 +148,7 @@ public class CallbackGatewayService {
                 log.debug("Subscriber list cached: scope={}, count={}", callbackScope, apps.size());
             } catch (Exception e) {
                 log.error("Failed to cache subscriber list to Redis: scope={}", callbackScope, e);
+
                 // 缓存失败不影响业务流程
             }
         }
@@ -165,6 +168,7 @@ public class CallbackGatewayService {
         
         for (String appId : appIds) {
             try {
+
                 // 查询订阅配置
                 Map<String, Object> config = apiServerClient.getSubscriptionConfig(appId, callbackScope);
                 
@@ -185,23 +189,28 @@ public class CallbackGatewayService {
                 if (channelType != null && channelAddress != null) {
                     switch (channelType) {
                         case 0 -> {
+
                             // WebHook（使用新的认证方式：appId + authType）
                             log.info("Pushing to WebHook: appId={}, scope={}, url={}, authType={}", 
                                     appId, callbackScope, channelAddress, authType);
                             webHookChannel.sendCallback(channelAddress, payload, appId, authType);
                         }
                         case 1 -> {
+
                             // SSE（Server-Sent Events）
                             log.info("Pushing to SSE: appId={}, scope={}, connectionId={}", 
                                     appId, callbackScope, channelAddress);
+
                             // channelAddress 作为 SSE 连接ID
                             Map<String, Object> ssePayload = buildCallbackPayload(callbackScope, payload);
                             sseChannel.sendCallback(channelAddress, ssePayload);
                         }
                         case 2 -> {
+
                             // WebSocket
                             log.info("Pushing to WebSocket: appId={}, scope={}, connectionId={}", 
                                     appId, callbackScope, channelAddress);
+
                             // channelAddress 作为 WebSocket 连接ID
                             Map<String, Object> wsPayload = buildCallbackPayload(callbackScope, payload);
                             webSocketChannel.sendCallback(channelAddress, wsPayload);
@@ -229,6 +238,7 @@ public class CallbackGatewayService {
             log.info("Clearing subscriber list cache: scope={}", callbackScope);
         } catch (Exception e) {
             log.error("Failed to clear subscriber list cache: scope={}", callbackScope, e);
+
             // 缓存清除失败不影响业务流程
         }
     }

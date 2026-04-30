@@ -28,6 +28,7 @@ class CredentialProviderImplTest {
 
     @BeforeEach
     void setUp() {
+
         // 默认配置
         defaultProperties = new AuthHeaderProperties();
         

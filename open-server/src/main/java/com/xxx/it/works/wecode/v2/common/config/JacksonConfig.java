@@ -13,14 +13,14 @@ import java.util.TimeZone;
 
 /**
  * Jackson 配置
- * 
+ *
  * <p>配置 JSON 序列化规则：</p>
  * <ul>
  *   <li>所有 ID 字段（Long/BigInteger）返回 string 类型，避免 JavaScript 精度丢失</li>
  *   <li>Java 8 时间类型序列化支持</li>
  *   <li>禁用日期序列化为时间戳</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

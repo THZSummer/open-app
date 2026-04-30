@@ -15,9 +15,9 @@ import java.util.Map;
 
 /**
  * 健康检查控制器
- * 
+ *
  * <p>提供简单的健康检查接口，不依赖数据库和 Redis</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

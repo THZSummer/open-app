@@ -11,7 +11,7 @@ import java.util.Date;
 @Data
 public class OldSubscription implements Serializable {
     private static final long serialVersionUID = 1L;
-    
+
     private Long id;
     private Long appId;
     private Long permissionId;

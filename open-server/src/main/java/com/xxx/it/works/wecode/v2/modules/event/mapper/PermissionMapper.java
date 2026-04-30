@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 权限 Mapper
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -75,7 +75,7 @@ public interface PermissionMapper {
 
     /**
      * 查询分类下的权限列表（API）
-     * 
+     *
      * @param categoryId 分类ID
      * @param keyword 关键词
      * @param needApproval 是否需要审核

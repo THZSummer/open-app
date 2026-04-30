@@ -8,7 +8,7 @@ import java.io.Serializable;
 
 /**
  * 权限更新请求
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -31,4 +31,30 @@ public class PermissionUpdateRequest implements Serializable {
     @NotBlank(message = "权限英文名称不能为空")
     @Schema(description = "权限英文名称", requiredMode = Schema.RequiredMode.REQUIRED)
     private String nameEn;
+
+    /**
+     * Scope 标识（可选），格式：api:{模块}:{资源标识}
+     */
+    @Schema(description = "Scope 标识，格式：api:{模块}:{资源标识}", example = "api:im:send-message")
+    private String scope;
+
+    /**
+     * 是否需要审批（可选）：0=不需要, 1=需要
+     */
+    @Schema(description = "是否需要审批：0=不需要, 1=需要")
+    private Integer needApproval;
+
+    /**
+     * 资源级审批节点配置（JSON格式字符串）
+     *
+     * v2.8.0新增字段，直接存储审批节点配置
+     *
+     * 格式示例：
+     * [
+     *   {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+     *   {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+     * ]
+     */
+    @Schema(description = "资源级审批节点配置（JSON字符串）")
+    private String resourceNodes;
 }

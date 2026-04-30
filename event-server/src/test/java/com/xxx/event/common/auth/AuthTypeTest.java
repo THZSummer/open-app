@@ -15,6 +15,7 @@ class AuthTypeTest {
 
     @Test
     void testFromCode() {
+
         // 正常情况
         assertEquals(AuthTypeEnum.COOKIE, AuthTypeEnum.fromCode(0));
         assertEquals(AuthTypeEnum.SOA, AuthTypeEnum.fromCode(1));

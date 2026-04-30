@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * 批量审批响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -50,7 +50,7 @@ public class BatchApprovalResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class FailedItem implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**

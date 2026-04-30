@@ -10,9 +10,9 @@ import java.util.Date;
 
 /**
  * 回调列表响应
- * 
+ *
  * <p>用于回调列表接口返回</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

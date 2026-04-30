@@ -11,11 +11,11 @@ import java.util.Date;
 @Data
 public class OldApi implements Serializable {
     private static final long serialVersionUID = 1L;
-    
+
     private Long id;
     private String apiNameCn;
     private String apiNameEn;
-    private Long moduleId;
+    private Long permissionId;
     private String path;
     private String method;
     private Integer authType;

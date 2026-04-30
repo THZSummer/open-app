@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * 审批管理 Controller
- * 
+ *
  * <p>实现审批管理相关的 11 个接口：</p>
  * <ul>
  *   <li>#41 GET /service/open/v2/approval-flows - 返回审批流程模板列表</li>
@@ -29,7 +29,7 @@ import java.util.List;
  * <li>#51 POST /service/open/v2/approvals/batch-approve - 批量同意审批</li>
  * <li>#52 POST /service/open/v2/approvals/batch-reject - 批量驳回审批</li>
  * </ul>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -45,7 +45,7 @@ public class ApprovalController {
 
     /**
      * #41 获取审批流程模板列表
-     * 
+     *
      * @param keyword 搜索关键词
      * @param curPage 当前页码
      * @param pageSize 每页数量
@@ -79,7 +79,7 @@ public class ApprovalController {
 
     /**
      * #42 获取审批流程模板详情
-     * 
+     *
      * @param id 流程ID
      * @return 审批流程模板详情
      */
@@ -93,7 +93,7 @@ public class ApprovalController {
 
     /**
      * #43 创建审批流程模板
-     * 
+     *
      * @param request 创建请求
      * @return 创建的审批流程模板
      */
@@ -109,7 +109,7 @@ public class ApprovalController {
 
     /**
      * #44 更新审批流程模板
-     * 
+     *
      * @param id 流程ID
      * @param request 更新请求
      * @return 更新后的审批流程模板
@@ -127,7 +127,7 @@ public class ApprovalController {
 
     /**
      * #45 删除审批流程模板
-     * 
+     *
      * @param id 流程ID
      * @return 删除结果
      */
@@ -145,7 +145,7 @@ public class ApprovalController {
 
     /**
      * #46 获取待审批列表
-     * 
+     *
      * @param type 审批类型
      * @param keyword 搜索关键词
      * @param status 审批状态
@@ -164,19 +164,22 @@ public class ApprovalController {
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 
-        log.info("Get pending approval list: type={}, keyword={}, status={}, applicantId={}, approverId={}, curPage={}, pageSize={}", 
+        log.info("Get pending approval list: type={}, keyword={}, status={}, applicantId={}, approverId={}, curPage={}, pageSize={}",
                 type, keyword, status, applicantId, approverId, curPage, pageSize);
 
         ApprovalPendingListRequest request = new ApprovalPendingListRequest();
         request.setType(type);
         request.setKeyword(keyword);
         request.setStatus(status);
+
         // 处理 applicantId=current 特殊值，获取当前用户ID
         if ("current".equals(applicantId)) {
             request.setApplicantId(UserContextHolder.getUserId());
         } else {
             request.setApplicantId(applicantId);
         }
+
+
         // 处理 approverId=current 特殊值
         String actualApproverId = "current".equals(approverId) ? UserContextHolder.getUserId() : approverId;
         request.setApproverId(actualApproverId);
@@ -199,7 +202,7 @@ public class ApprovalController {
 
     /**
      * #47 获取审批详情
-     * 
+     *
      * @param id 审批记录ID
      * @return 审批详情
      */
@@ -213,7 +216,7 @@ public class ApprovalController {
 
     /**
      * #48 同意审批
-     * 
+     *
      * @param id 审批记录ID
      * @param request 审批请求
      * @return 审批操作结果
@@ -235,7 +238,7 @@ public class ApprovalController {
 
     /**
      * #49 驳回审批
-     * 
+     *
      * @param id 审批记录ID
      * @param request 驳回请求
      * @return 审批操作结果
@@ -257,7 +260,7 @@ public class ApprovalController {
 
     /**
      * #50 撤销审批
-     * 
+     *
      * @param id 审批记录ID
      * @return 审批操作结果
      */
@@ -273,7 +276,7 @@ public class ApprovalController {
 
     /**
      * #51 批量同意审批
-     * 
+     *
      * @param request 批量审批请求
      * @return 批量审批结果
      */
@@ -292,7 +295,7 @@ public class ApprovalController {
 
     /**
      * #52 批量驳回审批
-     * 
+     *
      * @param request 批量驳回请求
      * @return 批量驳回结果
      */

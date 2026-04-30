@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * 权限申请响应
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -50,7 +50,7 @@ public class PermissionSubscribeResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SubscriptionRecord implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**
@@ -82,7 +82,7 @@ public class PermissionSubscribeResponse implements Serializable {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class FailedRecord implements Serializable {
-        
+
         private static final long serialVersionUID = 1L;
 
         /**

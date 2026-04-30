@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * API 更新请求
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -31,6 +31,18 @@ public class ApiUpdateRequest implements Serializable {
      */
     @Schema(description = "英文名称（可选）", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String nameEn;
+
+    /**
+     * API 路径（可选，更新时只更新非null字段）
+     */
+    @Schema(description = "API 路径（可选）", example = "/api/v1/messages")
+    private String path;
+
+    /**
+     * HTTP 方法（可选，更新时只更新非null字段）
+     */
+    @Schema(description = "HTTP 方法（可选）", allowableValues = {"GET", "POST", "PUT", "DELETE"})
+    private String method;
 
     /**
      * 认证方式（可选）：0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN

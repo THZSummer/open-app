@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * 回调 Mapper
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -27,7 +27,7 @@ public interface CallbackMapper {
 
     /**
      * 分页查询回调列表
-     * 
+     *
      * @param categoryId 分类ID（可选）
      * @param status 状态（可选）
      * @param keyword 搜索关键词（可选）
@@ -45,7 +45,7 @@ public interface CallbackMapper {
 
     /**
      * 统计回调总数
-     * 
+     *
      * @param categoryId 分类ID（可选）
      * @param status 状态（可选）
      * @param keyword 搜索关键词（可选）

@@ -48,6 +48,7 @@ public class ApiServerClient {
      * @return HTTP 头字段映射（key=头字段名，value=头字段值）
      */
     private Map<String, String> getApiServerCredential() {
+
         // TODO: 实际实现示例
         // 1. 调用凭证服务获取凭证
         //    CredentialService credentialService = ...;

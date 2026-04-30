@@ -104,6 +104,7 @@ class AuthHandlerImplTest {
 
     @Test
     void testApplyAuth_EmptyCredentials() {
+
         // 不设置凭证，CredentialProvider 返回空 Map
         testCredentialProvider.setReturnEmpty(true);
         
@@ -124,18 +125,21 @@ class AuthHandlerImplTest {
 
     @Test
     void testValidateAuth_NoneAuth() {
+
         // 免认证类型，应该验证通过
         assertTrue(authHandler.validateAuth("app-001", AuthTypeEnum.NONE));
     }
 
     @Test
     void testValidateAuth_NullAppId() {
+
         // 应用ID为空，应该验证失败
         assertFalse(authHandler.validateAuth(null, AuthTypeEnum.SOA));
     }
 
     @Test
     void testValidateAuth_EmptyAppId() {
+
         // 应用ID为空，应该验证失败
         assertFalse(authHandler.validateAuth("", AuthTypeEnum.SOA));
     }

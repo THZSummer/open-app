@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 # api-server 测试数据初始化脚本
 # 根据测试用例文档准备测试数据
 

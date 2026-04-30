@@ -7,9 +7,9 @@ import java.util.Date;
 
 /**
  * 回调实体
- * 
+ *
  * <p>对应表 openplatform_v2_callback_t</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */

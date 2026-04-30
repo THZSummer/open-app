@@ -57,6 +57,7 @@ class ApiServerClientTest {
 
     @BeforeEach
     void setUp() {
+
         // 设置配置属性
         ReflectionTestUtils.setField(apiServerClient, "apiServerUrl", API_SERVER_URL);
         ReflectionTestUtils.setField(apiServerClient, "authEnabled", true);
@@ -72,6 +73,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("成功查询权限详情")
         void testGetPermissionByScope_Success() throws Exception {
+
             // 准备测试数据
             Map<String, Object> permissionData = new HashMap<>();
             permissionData.put("scope", SCOPE);
@@ -109,6 +111,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询权限详情失败 - API返回错误码")
         void testGetPermissionByScope_ApiError() throws Exception {
+
             // 准备测试数据 - API 返回错误
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.error("404", "权限不存在", "Permission not found");
             String responseJson = objectMapper.writeValueAsString(apiResponse);
@@ -138,6 +141,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询权限详情异常 - 网络错误")
         void testGetPermissionByScope_NetworkError() {
+
             // Mock RestTemplate 抛出异常
             when(restTemplate.exchange(
                     anyString(),
@@ -163,6 +167,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询权限详情异常 - JSON解析错误")
         void testGetPermissionByScope_JsonParseError() {
+
             // Mock RestTemplate 返回无效 JSON
             when(restTemplate.exchange(
                     anyString(),
@@ -196,6 +201,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("成功查询订阅应用列表")
         void testGetSubscribedApps_Success() throws Exception {
+
             // 准备测试数据
             List<String> appList = Arrays.asList("app-001", "app-002", "app-003");
             ApiResponse<List<String>> apiResponse = ApiResponse.success(appList);
@@ -231,6 +237,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询订阅应用列表失败 - API返回错误码")
         void testGetSubscribedApps_ApiError() throws Exception {
+
             // 准备测试数据 - API 返回错误
             ApiResponse<List<String>> apiResponse = ApiResponse.error("500", "服务器内部错误", "Internal server error");
             String responseJson = objectMapper.writeValueAsString(apiResponse);
@@ -261,6 +268,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询订阅应用列表异常 - 网络错误")
         void testGetSubscribedApps_NetworkError() {
+
             // Mock RestTemplate 抛出异常
             when(restTemplate.exchange(
                     anyString(),
@@ -287,6 +295,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询订阅应用列表 - 空列表")
         void testGetSubscribedApps_EmptyList() throws Exception {
+
             // 准备测试数据 - 空列表
             ApiResponse<List<String>> apiResponse = ApiResponse.success(List.of());
             String responseJson = objectMapper.writeValueAsString(apiResponse);
@@ -325,6 +334,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("成功查询订阅配置")
         void testGetSubscriptionConfig_Success() throws Exception {
+
             // 准备测试数据
             Map<String, Object> configData = new HashMap<>();
             configData.put("appId", APP_ID);
@@ -364,6 +374,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询订阅配置失败 - API返回错误码")
         void testGetSubscriptionConfig_ApiError() throws Exception {
+
             // 准备测试数据 - API 返回错误
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.error("404", "订阅配置不存在", "Subscription config not found");
             String responseJson = objectMapper.writeValueAsString(apiResponse);
@@ -394,6 +405,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("查询订阅配置异常 - 网络错误")
         void testGetSubscriptionConfig_NetworkError() {
+
             // Mock RestTemplate 抛出异常
             when(restTemplate.exchange(
                     anyString(),
@@ -428,6 +440,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("权限校验 - 已授权")
         void testCheckPermission_Authorized() throws Exception {
+
             // 准备测试数据
             Map<String, Object> data = new HashMap<>();
             data.put("authorized", true);
@@ -463,6 +476,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("权限校验 - 未授权")
         void testCheckPermission_Unauthorized() throws Exception {
+
             // 准备测试数据
             Map<String, Object> data = new HashMap<>();
             data.put("authorized", false);
@@ -498,6 +512,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("权限校验 - 数据为null")
         void testCheckPermission_NullData() throws Exception {
+
             // 准备测试数据 - data 为 null
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.success(null);
             String responseJson = objectMapper.writeValueAsString(apiResponse);
@@ -527,6 +542,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("权限校验 - authorized字段缺失")
         void testCheckPermission_MissingAuthorizedField() throws Exception {
+
             // 准备测试数据 - 没有 authorized 字段
             Map<String, Object> data = new HashMap<>();
             data.put("appId", APP_ID);
@@ -560,6 +576,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("权限校验 - API返回错误")
         void testCheckPermission_ApiError() throws Exception {
+
             // 准备测试数据 - API 返回错误
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.error("403", "权限不足", "Forbidden");
             String responseJson = objectMapper.writeValueAsString(apiResponse);
@@ -589,6 +606,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("权限校验异常 - 网络错误")
         void testCheckPermission_NetworkError() {
+
             // Mock RestTemplate 抛出异常
             when(restTemplate.exchange(
                     anyString(),
@@ -622,6 +640,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("认证启用 - 添加认证头")
         void testApplyAuth_AuthEnabled() throws Exception {
+
             // 设置认证启用
             ReflectionTestUtils.setField(apiServerClient, "authEnabled", true);
 
@@ -661,6 +680,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("认证禁用 - 不添加认证头")
         void testApplyAuth_AuthDisabled() throws Exception {
+
             // 设置认证禁用
             ReflectionTestUtils.setField(apiServerClient, "authEnabled", false);
 
@@ -686,6 +706,7 @@ class ApiServerClientTest {
             HttpEntity<String> capturedEntity = entityCaptor.getValue();
             assertNotNull(capturedEntity);
             assertNotNull(capturedEntity.getHeaders());
+
             // 认证禁用时，Header 应该是空的
             assertTrue(capturedEntity.getHeaders().isEmpty());
 
@@ -700,6 +721,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("直接测试 applyAuth 私有方法 - 认证启用")
         void testApplyAuthDirectly_AuthEnabled() throws Exception {
+
             // 设置认证启用
             ReflectionTestUtils.setField(apiServerClient, "authEnabled", true);
 
@@ -717,6 +739,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("直接测试 applyAuth 私有方法 - 认证禁用")
         void testApplyAuthDirectly_AuthDisabled() throws Exception {
+
             // 设置认证禁用
             ReflectionTestUtils.setField(apiServerClient, "authEnabled", false);
 
@@ -742,6 +765,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("获取认证凭证 - 预留实现返回空Map")
         void testGetApiServerCredential_ReturnsEmptyMap() throws Exception {
+
             // 使用反射调用私有方法
             Method getCredentialMethod = ApiServerClient.class.getDeclaredMethod("getApiServerCredential");
             getCredentialMethod.setAccessible(true);
@@ -765,6 +789,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("验证请求URL构建正确")
         void testRequestUrlConstruction() throws Exception {
+
             // 准备测试数据
             Map<String, Object> data = new HashMap<>();
             data.put("scope", SCOPE);
@@ -793,6 +818,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("验证HTTP方法为GET")
         void testHttpMethodIsGet() throws Exception {
+
             // 准备测试数据
             Map<String, Object> data = new HashMap<>();
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.success(data);
@@ -828,6 +854,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("scope为null时的处理")
         void testNullScope() throws Exception {
+
             // 准备测试数据
             Map<String, Object> data = new HashMap<>();
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.success(data);
@@ -845,6 +872,7 @@ class ApiServerClientTest {
 
             // 验证结果
             assertNotNull(result);
+
             // URL 中会包含 "scope=null"
             verify(restTemplate).exchange(
                     contains("scope=null"),
@@ -857,6 +885,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("appId为null时的处理")
         void testNullAppId() throws Exception {
+
             // 准备测试数据
             Map<String, Object> data = new HashMap<>();
             data.put("authorized", false);
@@ -875,6 +904,7 @@ class ApiServerClientTest {
 
             // 验证结果
             assertFalse(result);
+
             // URL 中会包含 "appId=null"
             verify(restTemplate).exchange(
                     contains("appId=null"),
@@ -887,6 +917,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("scope包含特殊字符")
         void testSpecialCharactersInScope() throws Exception {
+
             // 准备测试数据
             String specialScope = "user:read&write";
             Map<String, Object> data = new HashMap<>();
@@ -905,6 +936,7 @@ class ApiServerClientTest {
 
             // 验证结果
             assertNotNull(result);
+
             // 注意：实际项目中应该对特殊字符进行 URL 编码
             verify(restTemplate).exchange(
                     contains(specialScope),
@@ -925,6 +957,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("API响应data字段为null")
         void testApiResponseDataNull() throws Exception {
+
             // 准备测试数据 - data 为 null
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.success(null);
             String responseJson = objectMapper.writeValueAsString(apiResponse);
@@ -946,6 +979,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("API响应体为空字符串")
         void testEmptyResponseBody() {
+
             // Mock RestTemplate 返回空字符串
             when(restTemplate.exchange(
                     anyString(),
@@ -972,6 +1006,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("HTTP 200 成功")
         void testHttp200() throws Exception {
+
             // 准备测试数据
             Map<String, Object> data = new HashMap<>();
             data.put("authorized", true);
@@ -995,6 +1030,7 @@ class ApiServerClientTest {
         @Test
         @DisplayName("HTTP 500 服务器错误但响应体有效")
         void testHttp500WithValidBody() throws Exception {
+
             // 准备测试数据 - HTTP 500 但返回有效的 JSON
             Map<String, Object> data = new HashMap<>();
             ApiResponse<Map<String, Object>> apiResponse = ApiResponse.success(data);

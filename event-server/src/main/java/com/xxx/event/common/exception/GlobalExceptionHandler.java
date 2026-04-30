@@ -26,7 +26,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<Void> handleBusinessException(BusinessException e) {
-        log.warn("业务异常: code={}, messageZh={}, messageEn={}", e.getCode(), e.getMessageZh(), e.getMessageEn());
+        log.warn("Business exception: code={}, messageZh={}, messageEn={}", e.getCode(), e.getMessageZh(), e.getMessageEn());
         return ApiResponse.error(e.getCode(), e.getMessageZh(), e.getMessageEn());
     }
 
@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
         String errorMessage = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining(", "));
-        log.warn("参数校验失败: {}", errorMessage);
+        log.warn("Parameter validation failed: {}", errorMessage);
         return ApiResponse.error("400", "参数错误: " + errorMessage, "Bad Request: " + errorMessage);
     }
 
@@ -46,14 +46,14 @@ public class GlobalExceptionHandler {
         String errorMessage = e.getConstraintViolations().stream()
                 .map(ConstraintViolation::getMessage)
                 .collect(Collectors.joining(", "));
-        log.warn("参数校验失败: {}", errorMessage);
+        log.warn("Parameter validation failed: {}", errorMessage);
         return ApiResponse.error("400", "参数错误: " + errorMessage, "Bad Request: " + errorMessage);
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleException(Exception e) {
-        log.error("系统异常", e);
+        log.error("System exception", e);
         return ApiResponse.error("500", "系统内部错误", "Internal Server Error");
     }
 }

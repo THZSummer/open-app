@@ -52,6 +52,7 @@ class CallbackGatewayControllerTest {
 
     @Test
     void testInvokeCallback() throws Exception {
+
         // 构造请求
         CallbackInvokeRequest request = CallbackInvokeRequest.builder()
                 .callbackScope("callback:approval:completed")
@@ -73,6 +74,7 @@ class CallbackGatewayControllerTest {
 
     @Test
     void testInvokeCallbackWithoutScope() throws Exception {
+
         // 构造请求（缺少 callbackScope）
         CallbackInvokeRequest request = CallbackInvokeRequest.builder()
                 .payload(Map.of("approvalId", "app001"))

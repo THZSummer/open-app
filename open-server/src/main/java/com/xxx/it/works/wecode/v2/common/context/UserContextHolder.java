@@ -4,9 +4,9 @@ import com.xxx.it.works.wecode.v2.common.model.UserContext;
 
 /**
  * 用户上下文持有者(ThreadLocal 工具类)
- * 
+ *
  * <p>使用 ThreadLocal 存储当前请求的用户上下文，确保线程安全</p>
- * 
+ *
  * @author SDDU Build Agent
  * @version 1.0.0
  */
@@ -25,7 +25,7 @@ public final class UserContextHolder {
 
     /**
      * 设置用户上下文
-     * 
+     *
      * @param context 用户上下文
      */
     public static void set(UserContext context) {
@@ -34,7 +34,7 @@ public final class UserContextHolder {
 
     /**
      * 获取用户上下文
-     * 
+     *
      * @return 用户上下文，如果未设置则返回默认系统用户
      */
     public static UserContext get() {
@@ -44,7 +44,7 @@ public final class UserContextHolder {
 
     /**
      * 获取当前用户ID
-     * 
+     *
      * @return 用户ID
      */
     public static String getUserId() {
@@ -54,7 +54,7 @@ public final class UserContextHolder {
     /**
      * 获取当前用户名称
      * 如果用户名称为空，则返回用户ID
-     * 
+     *
      * @return 用户名称
      */
     public static String getUserName() {

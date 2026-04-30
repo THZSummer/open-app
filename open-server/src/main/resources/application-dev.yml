@@ -63,3 +63,8 @@ logging:
     root: INFO
     com.xxx.open: DEBUG
     org.springframework.web: DEBUG
+
+
+# 平台配置（开发环境）
+platform:
+  approval-url-prefix: http://localhost:3000/approval/
