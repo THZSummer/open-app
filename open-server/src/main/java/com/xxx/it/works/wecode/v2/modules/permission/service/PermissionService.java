@@ -2,12 +2,17 @@ package com.xxx.it.works.wecode.v2.modules.permission.service;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
+import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
 import com.xxx.it.works.wecode.v2.modules.api.entity.ApiProperty;
 import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
+import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
+import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.CallbackProperty;
 import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
@@ -25,17 +30,12 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.dto.*;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
-import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
-import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
-import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
-import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -261,10 +261,6 @@ public class PermissionService {
             subscription.setLastUpdateTime(now);
             subscription.setCreateBy(currentUser);
             subscription.setLastUpdateBy(currentUser);
-            if (subscription.getStatus() == 1) {
-                subscription.setApprovedAt(now);
-                subscription.setApprovedBy(currentUser);
-            }
 
             subscriptions.add(subscription);
 
@@ -752,10 +748,6 @@ public class PermissionService {
             subscription.setLastUpdateTime(now);
             subscription.setCreateBy(currentUser);
             subscription.setLastUpdateBy(currentUser);
-            if (subscription.getStatus() == 1) {
-                subscription.setApprovedAt(now);
-                subscription.setApprovedBy(currentUser);
-            }
 
             subscriptions.add(subscription);
 

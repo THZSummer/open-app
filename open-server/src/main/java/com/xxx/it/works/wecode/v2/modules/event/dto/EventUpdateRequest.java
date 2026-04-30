@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.event.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -31,6 +30,12 @@ public class EventUpdateRequest implements Serializable {
      */
     @Schema(description = "英文名称（可选）", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     private String nameEn;
+
+    /**
+     * Event topic.
+     */
+    @Schema(description = "事件 Topic", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    private String topic;
 
     /**
      * 所属分类ID

@@ -1,17 +1,17 @@
 package com.xxx.it.works.wecode.v2.modules.event.service;
 
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
-import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.category.entity.Category;
 import com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryMapper;
-import com.xxx.it.works.wecode.v2.modules.event.dto.*;
+import com.xxx.it.works.wecode.v2.modules.event.dto.EventCreateRequest;
+import com.xxx.it.works.wecode.v2.modules.event.dto.EventResponse;
+import com.xxx.it.works.wecode.v2.modules.event.dto.EventUpdateRequest;
+import com.xxx.it.works.wecode.v2.modules.event.dto.PermissionDto;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
-import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,13 +45,7 @@ class EventServiceTest {
     private PermissionMapper permissionMapper;
 
     @Mock
-    private PermissionPropertyMapper permissionPropertyMapper;
-
-    @Mock
     private CategoryMapper categoryMapper;
-
-    @Mock
-    private IdGeneratorStrategy idGenerator;
 
     @InjectMocks
     private EventService eventService;
@@ -223,12 +217,100 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("更新不存在的Event应抛出异常")
+    @DisplayName("部分字段更新 - 更新 Topic 和 Scope")
+    void testCreatePermissionScope_InvalidFormat() {
+        EventCreateRequest request = new EventCreateRequest();
+        request.setNameCn("Test Event");
+        request.setNameEn("Test Event");
+        request.setTopic("test.event.invalid");
+        request.setCategoryId("2");
+
+        PermissionDto permissionDto = new PermissionDto();
+        permissionDto.setNameCn("Test Permission");
+        permissionDto.setNameEn("Test Permission");
+        permissionDto.setScope("event:1test:demo");
+        request.setPermission(permissionDto);
+
+        when(categoryMapper.selectById(2L)).thenReturn(category);
+        when(eventMapper.selectByTopic("test.event.invalid")).thenReturn(null);
+
+        BusinessException exception = assertThrows(BusinessException.class, () ->
+                eventService.createEvent(request));
+
+        assertEquals("400", exception.getCode());
+        verify(permissionMapper, never()).selectByScope(anyString());
+        verify(eventMapper, never()).insert(any(Event.class));
+    }
+
+    @Test
+    @DisplayName("Partial update - update Topic and Scope")
+    void testPartialUpdate_TopicAndScope() {
+        EventUpdateRequest request = new EventUpdateRequest();
+        request.setTopic("test.event.changed");
+
+        PermissionDto permissionDto = new PermissionDto();
+        permissionDto.setScope("event:test:changed");
+        request.setPermission(permissionDto);
+
+        Permission permission = new Permission();
+        permission.setId(200L);
+        permission.setNameCn("原始权限中文名称");
+        permission.setNameEn("Original Permission Name");
+        permission.setScope("event:test:update");
+        permission.setResourceType("event");
+        permission.setResourceId(100L);
+        permission.setCategoryId(2L);
+        permission.setStatus(1);
+
+        when(eventMapper.selectById(100L)).thenReturn(existingEvent);
+        when(eventMapper.selectByTopic("test.event.changed")).thenReturn(null);
+        when(eventMapper.update(any(Event.class))).thenReturn(1);
+        when(permissionMapper.selectByResource("event", 100L)).thenReturn(permission);
+        when(permissionMapper.selectByScope("event:test:changed")).thenReturn(null);
+        when(permissionMapper.update(any(Permission.class))).thenReturn(1);
+        when(eventMapper.selectByIdWithCategoryName(100L)).thenReturn(existingEvent);
+        when(eventPropertyMapper.selectByParentId(100L)).thenReturn(List.of());
+
+        EventResponse response = eventService.updateEvent(100L, request);
+
+        verify(eventMapper).update(argThat(event ->
+                "test.event.changed".equals(event.getTopic())));
+        verify(permissionMapper).update(argThat(updatedPermission ->
+                "event:test:changed".equals(updatedPermission.getScope())));
+        assertNotNull(response);
+    }
+
+    @Test
+    @DisplayName("Update event scope should reject invalid format")
+    void testUpdatePermissionScope_InvalidFormat() {
+        EventUpdateRequest request = new EventUpdateRequest();
+        PermissionDto permissionDto = new PermissionDto();
+        permissionDto.setScope("api:test:changed");
+        request.setPermission(permissionDto);
+
+        Permission permission = new Permission();
+        permission.setId(200L);
+        permission.setScope("event:test:old");
+
+        when(eventMapper.selectById(100L)).thenReturn(existingEvent);
+        when(eventMapper.update(any(Event.class))).thenReturn(1);
+        when(permissionMapper.selectByResource("event", 100L)).thenReturn(permission);
+
+        BusinessException exception = assertThrows(BusinessException.class, () ->
+                eventService.updateEvent(100L, request));
+
+        assertEquals("400", exception.getCode());
+        verify(permissionMapper, never()).selectByScope(anyString());
+        verify(permissionMapper, never()).update(any(Permission.class));
+    }
+
+    @Test
+    @DisplayName("Update non-existent event should throw")
     void testUpdateNonExistentEvent() {
 
         // Given
         EventUpdateRequest request = new EventUpdateRequest();
-        request.setNameCn("新名称");
+        request.setNameCn("New Name");
 
         when(eventMapper.selectById(999L)).thenReturn(null);
 
@@ -239,7 +321,7 @@ class EventServiceTest {
     }
 
     @Test
-    @DisplayName("更新已发布的Event应抛出异常")
+    @DisplayName("Update published event should throw")
     void testUpdatePublishedEvent() {
 
         // Given
@@ -248,7 +330,7 @@ class EventServiceTest {
         publishedEvent.setStatus(2); // 已发布状态
 
         EventUpdateRequest request = new EventUpdateRequest();
-        request.setNameCn("新名称");
+        request.setNameCn("New Name");
 
         when(eventMapper.selectById(100L)).thenReturn(publishedEvent);
 
