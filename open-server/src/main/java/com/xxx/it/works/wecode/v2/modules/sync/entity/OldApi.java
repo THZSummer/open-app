@@ -15,7 +15,7 @@ public class OldApi implements Serializable {
     private Long id;
     private String apiNameCn;
     private String apiNameEn;
-    private Long moduleId;
+    private Long permissionId;
     private String path;
     private String method;
     private Integer authType;

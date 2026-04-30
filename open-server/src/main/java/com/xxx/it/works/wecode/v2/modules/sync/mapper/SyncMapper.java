@@ -47,6 +47,11 @@ public interface SyncMapper {
     OldApi selectOldApiById(@Param("id") Long id);
 
     /**
+     * 根据permission_id查询旧API
+     */
+    OldApi selectOldApiByPermissionId(@Param("permissionId") Long permissionId);
+
+    /**
      * 根据ID查询旧事件
      */
     OldEvent selectOldEventById(@Param("id") Long id);
@@ -121,6 +126,21 @@ public interface SyncMapper {
      * 根据ID查询新审批日志
      */
     ApprovalLog selectNewApprovalLogById(@Param("id") Long id);
+
+    /**
+     * 根据ID查询新API
+     */
+    Api selectNewApiById(@Param("id") Long id);
+
+    /**
+     * 根据ID查询新事件
+     */
+    Event selectNewEventById(@Param("id") Long id);
+
+    /**
+     * 根据module_id和类型查询旧权限
+     */
+    OldPermission selectOldPermissionByModuleIdAndType(@Param("moduleId") Long moduleId, @Param("type") String type);
 
     // ==================== 新表写入（迁移） ====================
 

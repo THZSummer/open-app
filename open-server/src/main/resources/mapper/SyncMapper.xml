@@ -37,9 +37,9 @@
         <id column="id" property="id"/>
         <result column="api_name_cn" property="apiNameCn"/>
         <result column="api_name_en" property="apiNameEn"/>
-        <result column="module_id" property="moduleId"/>
-        <result column="path" property="path"/>
-        <result column="method" property="method"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="api_path" property="path"/>
+        <result column="api_method" property="method"/>
         <result column="auth_type" property="authType"/>
         <result column="status" property="status"/>
     </resultMap>
@@ -210,9 +210,17 @@
 
     <!-- 根据ID查询旧API -->
     <select id="selectOldApiById" resultMap="OldApiResultMap">
-        SELECT id, api_name_cn, api_name_en, module_id, path, method, auth_type, status
+        SELECT id, api_name_cn, api_name_en, permission_id, api_path, api_method, auth_type, status
         FROM openplatform_permission_api_t
         WHERE id = #{id}
+    </select>
+
+    <!-- 根据permission_id查询旧API -->
+    <select id="selectOldApiByPermissionId" resultMap="OldApiResultMap">
+        SELECT id, api_name_cn, api_name_en, permission_id, api_path, api_method, auth_type, status
+        FROM openplatform_permission_api_t
+        WHERE permission_id = #{permissionId} AND status = 1
+        LIMIT 1
     </select>
 
     <!-- 根据ID查询旧事件 -->
@@ -225,9 +233,9 @@
 
     <!-- 根据path和method查询旧API -->
     <select id="selectOldApiByPathAndMethod" resultMap="OldApiResultMap">
-        SELECT id, api_name_cn, api_name_en, module_id, path, method, auth_type, status
+        SELECT id, api_name_cn, api_name_en, permission_id, api_path, api_method, auth_type, status
         FROM openplatform_permission_api_t
-        WHERE path = #{path} AND method = #{method} AND status = 1
+        WHERE api_path = #{path} AND api_method = #{method} AND status = 1
         LIMIT 1
     </select>
 
@@ -344,6 +352,31 @@
         SELECT id, record_id, node_index, level, operator_id, operator_name, action, comment, create_time
         FROM openplatform_v2_approval_log_t
         WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询新API -->
+    <select id="selectNewApiById" resultMap="NewApiResultMap">
+        SELECT id, name_cn, name_en, path, method, auth_type, category_id, status
+        FROM openplatform_v2_api_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据ID查询新事件 -->
+    <select id="selectNewEventById" resultMap="NewEventResultMap">
+        SELECT id, name_cn, name_en, topic, category_id, status
+        FROM openplatform_v2_event_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据module_id和类型查询旧权限 -->
+    <select id="selectOldPermissionByModuleIdAndType" resultMap="OldPermissionResultMap">
+        SELECT id, permission_name_cn, permission_name_en, module_id, scope_id,
+               permisssion_type, is_approval_required, auth_type, status
+        FROM openplatform_permission_t
+        WHERE module_id = #{moduleId}
+          AND permisssion_type = #{type}
+          AND status = 1
+        LIMIT 1
     </select>
 
     <!-- ==================== 新表写入（迁移） ==================== -->
