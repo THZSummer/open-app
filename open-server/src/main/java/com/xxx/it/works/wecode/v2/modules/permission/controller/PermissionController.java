@@ -215,7 +215,7 @@ public class PermissionController {
             @PathVariable String appId,
             @Parameter(description = "订阅ID")
             @PathVariable String id,
-            @Valid @RequestBody SubscriptionConfigRequest request) {
+            @RequestBody SubscriptionConfigRequest request) {
 
         log.info("Configure event consumption params, appId={}, subscriptionId={}", appId, id);
 

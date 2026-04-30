@@ -1,8 +1,10 @@
 package com.xxx.it.works.wecode.v2.modules.api.service;
 
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
+import com.xxx.it.works.wecode.v2.modules.api.dto.ApiCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.api.dto.ApiUpdateRequest;
+import com.xxx.it.works.wecode.v2.modules.api.dto.PermissionCreateRequest;
+import com.xxx.it.works.wecode.v2.modules.api.dto.PermissionUpdateRequest;
 import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
 import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiPropertyMapper;
@@ -10,7 +12,6 @@ import com.xxx.it.works.wecode.v2.modules.category.entity.Category;
 import com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
-import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Date;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -43,13 +45,7 @@ class ApiServiceTest {
     private PermissionMapper permissionMapper;
 
     @Mock
-    private PermissionPropertyMapper permissionPropertyMapper;
-
-    @Mock
     private CategoryMapper categoryMapper;
-
-    @Mock
-    private IdGeneratorStrategy idGenerator;
 
     @InjectMocks
     private ApiService apiService;
@@ -207,5 +203,83 @@ class ApiServiceTest {
         assertThrows(BusinessException.class, () -> {
             apiService.updateApi("100", request);
         });
+    }
+
+    @Test
+    @DisplayName("Create API scope should reject invalid format")
+    void testCreatePermissionScope_InvalidFormat() {
+        ApiCreateRequest request = new ApiCreateRequest();
+        request.setNameCn("Test API");
+        request.setNameEn("Test API");
+        request.setPath("/test/api");
+        request.setMethod("GET");
+        request.setCategoryId("2");
+
+        PermissionCreateRequest permissionRequest = new PermissionCreateRequest();
+        permissionRequest.setNameCn("Test Permission");
+        permissionRequest.setNameEn("Test Permission");
+        permissionRequest.setScope("event:test:demo");
+        request.setPermission(permissionRequest);
+
+        when(categoryMapper.selectById(2L)).thenReturn(category);
+
+        BusinessException exception = assertThrows(BusinessException.class, () ->
+                apiService.createApi(request));
+
+        assertEquals("400", exception.getCode());
+        verify(permissionMapper, never()).countByScope(anyString());
+        verify(apiMapper, never()).insert(any(Api.class));
+    }
+
+    @Test
+    @DisplayName("Update API scope should reject duplicate scope")
+    void testUpdatePermissionScope_Duplicate() {
+        ApiUpdateRequest request = new ApiUpdateRequest();
+        PermissionUpdateRequest permissionRequest = new PermissionUpdateRequest();
+        permissionRequest.setScope("api:test:duplicate");
+        request.setPermission(permissionRequest);
+
+        Permission permission = new Permission();
+        permission.setId(200L);
+        permission.setScope("api:test:old");
+
+        Permission duplicatePermission = new Permission();
+        duplicatePermission.setId(201L);
+        duplicatePermission.setScope("api:test:duplicate");
+
+        when(apiMapper.selectById(100L)).thenReturn(existingApi);
+        when(apiMapper.update(any(Api.class))).thenReturn(1);
+        when(permissionMapper.selectByResource("api", 100L)).thenReturn(permission);
+        when(permissionMapper.selectByScope("api:test:duplicate")).thenReturn(duplicatePermission);
+
+        BusinessException exception = assertThrows(BusinessException.class, () ->
+                apiService.updateApi("100", request));
+
+        assertEquals("409", exception.getCode());
+        verify(permissionMapper, never()).update(any(Permission.class));
+    }
+
+    @Test
+    @DisplayName("Update API scope should reject invalid format")
+    void testUpdatePermissionScope_InvalidFormat() {
+        ApiUpdateRequest request = new ApiUpdateRequest();
+        PermissionUpdateRequest permissionRequest = new PermissionUpdateRequest();
+        permissionRequest.setScope("event:test:changed");
+        request.setPermission(permissionRequest);
+
+        Permission permission = new Permission();
+        permission.setId(200L);
+        permission.setScope("api:test:old");
+
+        when(apiMapper.selectById(100L)).thenReturn(existingApi);
+        when(apiMapper.update(any(Api.class))).thenReturn(1);
+        when(permissionMapper.selectByResource("api", 100L)).thenReturn(permission);
+
+        BusinessException exception = assertThrows(BusinessException.class, () ->
+                apiService.updateApi("100", request));
+
+        assertEquals("400", exception.getCode());
+        verify(permissionMapper, never()).selectByScope(anyString());
+        verify(permissionMapper, never()).update(any(Permission.class));
     }
 }
