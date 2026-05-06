@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
+
 /**
  * API 管理 Controller
  *
@@ -101,6 +103,7 @@ public class ApiController {
      * @return API 详情
      */
     @PostMapping
+    @PlatformAdminPermission
     @Operation(summary = "#11 注册 API",
                description = "注册 API 成功，同时创建权限资源")
     public ApiResponse<ApiDetailResponse> createApi(
@@ -122,6 +125,7 @@ public class ApiController {
      * @return API 详情
      */
     @PutMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#12 更新 API",
                description = "更新 API 成功，核心属性变更触发审批")
     public ApiResponse<ApiDetailResponse> updateApi(
@@ -144,6 +148,7 @@ public class ApiController {
      * @return 成功响应
      */
     @DeleteMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#13 删除 API",
                description = "删除 API，检查订阅关系")
     public ApiResponse<Void> deleteApi(
@@ -165,6 +170,7 @@ public class ApiController {
      * @return API 详情
      */
     @PostMapping("/{id}/withdraw")
+    @PlatformAdminPermission
     @Operation(summary = "#14 撤回审核中的 API",
                description = "撤回审核中的 API，状态变为草稿")
     public ApiResponse<ApiDetailResponse> withdrawApi(
