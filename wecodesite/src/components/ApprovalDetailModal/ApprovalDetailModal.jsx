@@ -22,7 +22,8 @@ import {
   SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { STATUS_MAP, LEVEL_MAP } from '../../pages/Admin/Approval/constants';
+import { STATUS_MAP } from '../../utils/constants';
+import { LEVEL_MAP } from '../../pages/Admin/Approval/constants';
 
 function ApprovalDetailModal({
   visible,

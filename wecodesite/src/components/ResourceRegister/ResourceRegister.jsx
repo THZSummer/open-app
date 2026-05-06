@@ -24,7 +24,6 @@ function ResourceRegister({
   resourceType = 'callback',
   thunk = {},
   propertyPresets = [],
-  transformProperties = null,
   mode = 'create',
   onSuccess,
   onCancel,
@@ -37,12 +36,6 @@ function ResourceRegister({
 
   const config = RESOURCE_TYPES[resourceType];
 
-  useEffect(() => {
-    if (visible) {
-      loadCategories();
-    }
-  }, [visible]);
-
   const loadCategories = async () => {
     const result = await fetchCategoryTree();
     if (result && result.code === '200') {
@@ -53,6 +46,12 @@ function ResourceRegister({
   };
 
   useEffect(() => {
+    if (visible) {
+      loadCategories();
+    }
+  }, [visible]);
+
+  useEffect(() => {
     const loadDetail = async () => {
       if (visible && resource?.id && fetchDetail) {
         setLoading(true);
@@ -60,22 +59,17 @@ function ResourceRegister({
           const result = await fetchDetail(resource.id);
           if (result && result.code === '200') {
             const data = result.data;
-            const properties = transformProperties
-              ? transformProperties(data.properties || [], propertyPresets)
-              : data.properties || [];
             form.setFieldsValue({
               nameCn: data.nameCn,
               nameEn: data.nameEn,
-              categoryId: data.categoryId,
               topic: data.topic,
+              categoryId: data.categoryId,
+              scope: data.permission?.scope,
               permissionNameCn: data.permission?.nameCn,
               permissionNameEn: data.permission?.nameEn,
-              scope: data.permission?.scope,
               needApproval: data.permission?.needApproval ?? 1,
-              resourceNodes: data.permission?.resourceNodes
-                ? JSON.parse(data.permission.resourceNodes)
-                : [],
-              properties: properties,
+              resourceNodes: data.permission?.resourceNodes ? JSON.parse(data.permission.resourceNodes) : [],
+              properties: data.properties || [],
             });
           } else {
             message.error(result?.message || '加载详情失败');
@@ -87,7 +81,6 @@ function ResourceRegister({
         form.resetFields();
       }
     };
-
     loadDetail();
   }, [visible, resource, form, fetchDetail]);
 
@@ -99,8 +92,8 @@ function ResourceRegister({
       const properties = values.properties?.map(prop => {
         if (prop.propertyName === '__custom__') {
           return {
-            propertyName: prop.customPropertyName,
             propertyValue: prop.propertyValue,
+            propertyName: prop.customPropertyName,
           };
         }
         return prop;
@@ -109,16 +102,14 @@ function ResourceRegister({
       const data = {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
-        categoryId: values.categoryId,
         topic: values.topic,
+        categoryId: values.categoryId,
         permission: {
           nameCn: values.permissionNameCn,
           nameEn: values.permissionNameEn,
           scope: values.scope,
           needApproval: values.needApproval ?? 1,
-          resourceNodes: values.resourceNodes && values.resourceNodes.length > 0
-            ? JSON.stringify(values.resourceNodes)
-            : null,
+          resourceNodes: values.resourceNodes && values.resourceNodes.length > 0 ? JSON.stringify(values.resourceNodes) : null,
         },
         properties: properties,
       };

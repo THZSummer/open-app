@@ -15,11 +15,16 @@ import './ApiList.m.less';
 function ApiList() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isInAdminWhitelist()) {
+  const init = async () => {
+    const canShow = await isInAdminWhitelist();
+    if (!canShow) {
       navigate('/apps');
     }
-  }, [navigate]);
+  }
+
+  useEffect(() => {
+    init();
+  }, []);
 
   const {
     categories,

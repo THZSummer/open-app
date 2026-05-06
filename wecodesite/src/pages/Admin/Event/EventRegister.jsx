@@ -1,7 +1,7 @@
 import React from 'react';
 import ResourceRegister from '../../../components/ResourceRegister';
 import { createEvent, updateEvent, fetchEventDetail } from './thunk';
-import { EVENT_PROPERTY_PRESETS } from './constants';
+import { PROPERTY_PRESETS } from '../../../utils/constants';
 
 function EventRegister({ visible, event, mode = 'create', onSuccess, onCancel }) {
   return (
@@ -14,7 +14,7 @@ function EventRegister({ visible, event, mode = 'create', onSuccess, onCancel })
         create: createEvent,
         update: updateEvent,
       }}
-      propertyPresets={EVENT_PROPERTY_PRESETS}
+      propertyPresets={PROPERTY_PRESETS}
       mode={mode}
       onSuccess={onSuccess}
       onCancel={onCancel}

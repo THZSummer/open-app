@@ -42,22 +42,25 @@ function CategoryFormModal({
       const values = await form.validateFields();
       setLoading(true);
 
-      const data = isEditing
-        ? {
-            nameCn: values.nameCn,
-            nameEn: values.nameEn,
-            sortOrder: values.sortOrder,
-          }
-        : {
-            categoryAlias: values.categoryAlias,
-            nameCn: values.nameCn,
-            nameEn: values.nameEn,
-            parentId: values.parentId,
-            sortOrder: values.sortOrder,
-          };
+      const data = isEditing ? 
+      {
+        nameCn: values.nameCn,
+        nameEn: values.nameEn,
+        sortOrder: values.sortOrder,
+      } : {
+        categoryAlias: values.categoryAlias,
+        nameCn: values.nameCn,
+        nameEn: values.nameEn,
+        parentId: values.parentId,
+        sortOrder: values.sortOrder,
+      };
 
-      await onSubmit(data);
-      form.resetFields();
+      const result = await onSubmit(data);
+      if (result && result.code === '200') {
+        form.resetFields();
+      } else {
+        message.error(result.message || '提交失败')
+      }      
     } catch (error) {
       console.error('Validation failed:', error);
     } finally {

@@ -6,7 +6,17 @@ import {
   createEventDrawerColumns
 } from '../../utils/commonTableConfigs';
 
-export { NEED_REVIEW_OPTIONS, PAGE_SIZE_OPTIONS } from '../../utils/commonTableConfigs';
+export const getEventDrawerColumns = ({ handleOpenDoc }) => createEventDrawerColumns().map(col => {
+  if (col.key === 'action') {
+    return {
+      ...col,
+      render: (_, record) => (
+        <Button type="link" size="small" onClick={() => handleOpenDoc(record.docUrl)}>查看文档</Button>
+      ),
+    };
+  }
+  return col;
+});
 
 export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalAddress, handleWithdraw, handleDeleteClick }) => [
   {
@@ -72,15 +82,3 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
     ),
   },
 ];
-
-export const getEventDrawerColumns = ({ handleOpenDoc }) => createEventDrawerColumns().map(col => {
-  if (col.key === 'action') {
-    return {
-      ...col,
-      render: (_, record) => (
-        <Button type="link" size="small" onClick={() => handleOpenDoc(record.docUrl)}>查看文档</Button>
-      ),
-    };
-  }
-  return col;
-});

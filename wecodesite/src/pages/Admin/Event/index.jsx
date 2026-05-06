@@ -16,10 +16,15 @@ function EventList() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isInAdminWhitelist()) {
+    init();
+  }, []);
+  
+  const init = async () => {
+    const canShow = await isInAdminWhitelist();
+    if (!canShow) {
       navigate('/apps');
     }
-  }, [navigate]);
+  };
 
   const {
     loadData,

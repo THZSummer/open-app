@@ -161,7 +161,7 @@ const createDeleteOperations = (state, appId, options) => {
         message.success('删除成功');
         setDeleteModalOpen(false);
         deleteIdRef.current = null;
-        loadDataRef?.(1);
+        loadDataRef?.(pagination.curPage);
       } else {
         message.error(res?.message || '删除失败');
       }
@@ -187,6 +187,7 @@ const createDeleteOperations = (state, appId, options) => {
 };
 
 const createWithdrawOperations = (state, appId, options) => {
+  const { pagination } = state;
   let loadDataRef = null;
 
   const handleWithdraw = useCallback(async (record) => {
@@ -194,7 +195,7 @@ const createWithdrawOperations = (state, appId, options) => {
       const res = await options.withdraw(appId, record.id);
       if (res && res.code === '200') {
         message.success('已撤回');
-        loadDataRef?.();
+        loadDataRef?.(pagination.curPage);
       } else {
         message.error(res?.message || '撤回失败');
       }

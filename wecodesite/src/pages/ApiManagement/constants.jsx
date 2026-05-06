@@ -4,11 +4,7 @@ import { SUBSCRIPTION_STATUS, AUTH_TYPE } from '../../utils/constants';
 import {
   renderStatus,
   renderNeedApprovalStatus,
-  renderSubscriptionStatus,
-  createApiDrawerColumns
 } from '../../utils/commonTableConfigs';
-
-export { NEED_REVIEW_OPTIONS, PAGE_SIZE_OPTIONS } from '../../utils/commonTableConfigs';
 
 export const TAB_CONFIG_SEARCH_KEY = 'CEC.open/Api.Drawer.TabsList';
 

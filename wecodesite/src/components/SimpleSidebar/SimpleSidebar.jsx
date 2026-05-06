@@ -17,7 +17,6 @@ function SimpleSidebar() {
         const result = await isInAdminWhitelist();
         setIsWhitelisted(result);
       } catch (error) {
-        console.error('Failed to check whitelist:', error);
         setIsWhitelisted(false);
       } finally {
         setLoading(false);

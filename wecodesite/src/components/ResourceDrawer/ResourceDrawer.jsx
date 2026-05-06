@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Table, Button, Pagination, Input, Select, message } from 'antd';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
-import { NEED_REVIEW_OPTIONS } from './constants';
+import { NEED_REVIEW_OPTIONS } from '../../utils/commonTableConfigs';
+import { openUrl } from '../../utils/common';
 
 function ResourceDrawer({
   open,
@@ -48,14 +49,10 @@ function ResourceDrawer({
     const result = await fetchData(defaultParams);
     if (result && result.code === '200') {
       const resultData = result.data || [];
-      const resultTotal = result.total || resultData.length;
       setAllItems(resultData);
-      setPagination(prev => ({ ...prev, total: resultTotal }));
-    } else if (Array.isArray(result?.data)) {
-      setAllItems(result.data);
-      setPagination(prev => ({ ...prev, total: result.total || result.data.length }));
+      setPagination(prev => ({ ...prev, total: result.page.total }));
     } else {
-      message.error(result?.message || result?.messageZh || '加载列表失败');
+      message.error(result?.message || '加载列表失败');
       setAllItems([]);
       setPagination(prev => ({ ...prev, total: 0 }));
     }
@@ -74,12 +71,6 @@ function ResourceDrawer({
       const categoriesRes = await fetchCategories();
       if (categoriesRes && categoriesRes.code === '200') {
         const rootId = categoriesRes.data?.[0]?.id;
-        if (rootId) {
-          setRootCategoryId(rootId);
-          await loadData({ categoryId: rootId });
-        }
-      } else if (Array.isArray(categoriesRes) && categoriesRes.length > 0) {
-        const rootId = categoriesRes[0]?.id;
         if (rootId) {
           setRootCategoryId(rootId);
           await loadData({ categoryId: rootId });
@@ -125,9 +116,7 @@ function ResourceDrawer({
   };
 
   const handleOpenDoc = (docUrl) => {
-    if (docUrl) {
-      window.open(docUrl, '_blank');
-    }
+    openUrl(docUrl)
   };
 
   const columns = getColumns({ handleOpenDoc });

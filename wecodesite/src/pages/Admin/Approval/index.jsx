@@ -10,11 +10,6 @@ import {
 } from 'antd';
 const { TabPane } = Tabs;
 import {
-  CheckOutlined,
-  CloseOutlined,
-  EyeOutlined,
-} from '@ant-design/icons';
-import {
   fetchApprovalList,
   fetchMyApprovals,
   fetchApprovalDetail,
@@ -44,9 +39,13 @@ function ApprovalCenter() {
   const [approvingId, setApprovingId] = useState(null);
   const [canViewFlowConfig, setCanViewFlowConfig] = useState(false);
 
+  const init = async () => {
+    const canShow = await isInAdminWhitelist();
+    setCanViewFlowConfig(canShow);
+  }
+
   useEffect(() => {
-    const hasPermission = isInAdminWhitelist();
-    setCanViewFlowConfig(hasPermission);
+    init();
   }, []);
 
   useEffect(() => {

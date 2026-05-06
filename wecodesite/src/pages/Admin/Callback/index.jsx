@@ -15,11 +15,16 @@ import './CallbackList.m.less';
 function CallbackList() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isInAdminWhitelist()) {
+  const init = async () => {
+    const canShow = await isAdminWhitelist();
+    if (!canShow) {
       navigate('/apps');
     }
-  }, [navigate]);
+  };
+
+  useEffect(() => {
+    init();
+  }, []);
 
   const {
     data: callbackList,

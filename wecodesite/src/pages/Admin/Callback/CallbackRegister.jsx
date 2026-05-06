@@ -1,7 +1,7 @@
 import React from 'react';
 import ResourceRegister from '../../../components/ResourceRegister';
 import { createCallback, updateCallback, fetchCallbackDetail } from './thunk';
-import { CALLBACK_PROPERTY_PRESETS } from './constants';
+import { PROPERTY_PRESETS } from '../../../utils/constants';
 
 function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCancel }) {
   return (
@@ -14,7 +14,7 @@ function CallbackRegister({ visible, callback, mode = 'create', onSuccess, onCan
         create: createCallback,
         update: updateCallback,
       }}
-      propertyPresets={CALLBACK_PROPERTY_PRESETS}
+      propertyPresets={PROPERTY_PRESETS}
       mode={mode}
       onSuccess={onSuccess}
       onCancel={onCancel}
