@@ -46,6 +46,7 @@ public class EventController {
      * @return 事件列表
      */
     @GetMapping
+    @PlatformAdminPermission
     @Operation(summary = "#15 获取事件列表",
                description = "返回事件列表，支持按分类过滤，支持分页参数")
     public ApiResponse<List<EventListResponse>> getEventList(
@@ -75,6 +76,7 @@ public class EventController {
      * @return 事件详情
      */
     @GetMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#16 获取事件详情",
                description = "返回事件详情及权限信息、属性")
     public ApiResponse<EventResponse> getEventById(

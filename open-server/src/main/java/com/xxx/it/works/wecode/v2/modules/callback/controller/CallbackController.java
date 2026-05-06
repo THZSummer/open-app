@@ -48,6 +48,7 @@ public class CallbackController {
      * @return 分页回调列表
      */
     @GetMapping
+    @PlatformAdminPermission
     @Operation(summary = "#21 获取回调列表",
                description = "返回回调列表，支持按分类过滤，支持分页参数 curPage 和 pageSize")
     public ApiResponse<List<CallbackListResponse>> getCallbackList(
@@ -77,6 +78,7 @@ public class CallbackController {
      * @return 回调详情
      */
     @GetMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#22 获取回调详情",
                description = "返回回调详情及权限信息、属性")
     public ApiResponse<CallbackResponse> getCallbackById(

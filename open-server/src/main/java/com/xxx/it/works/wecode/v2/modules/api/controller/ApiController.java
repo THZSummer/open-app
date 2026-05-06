@@ -46,6 +46,7 @@ public class ApiController {
      * @return API 列表
      */
     @GetMapping
+    @PlatformAdminPermission
     @Operation(summary = "#9 获取 API 列表",
                description = "返回 API 列表，支持按分类过滤和分页")
     public ApiResponse<List<ApiListResponse>> getApiList(
@@ -82,6 +83,7 @@ public class ApiController {
      * @return API 详情
      */
     @GetMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#10 获取 API 详情",
                description = "返回 API 详情及权限信息、属性")
     public ApiResponse<ApiDetailResponse> getApiDetail(
