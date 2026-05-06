@@ -113,7 +113,9 @@
                p.need_approval, p.resource_nodes, p.status,
                p.create_time, p.last_update_time, p.create_by, p.last_update_by
         FROM openplatform_v2_permission_t p
+        INNER JOIN openplatform_v2_api_t a ON a.id = p.resource_id
         WHERE p.resource_type = 'api'
+          AND a.status = 2
         <if test="includeChildren == true and categoryPath != null">
             AND EXISTS (
                 SELECT 1 FROM openplatform_v2_category_t c
@@ -140,7 +142,9 @@
     <select id="countApiPermissionsByCategory" resultType="java.lang.Long">
         SELECT COUNT(*)
         FROM openplatform_v2_permission_t p
+        INNER JOIN openplatform_v2_api_t a ON a.id = p.resource_id
         WHERE p.resource_type = 'api'
+          AND a.status = 2
         <if test="includeChildren == true and categoryPath != null">
             AND EXISTS (
                 SELECT 1 FROM openplatform_v2_category_t c
@@ -167,7 +171,9 @@
                p.need_approval, p.resource_nodes, p.status,
                p.create_time, p.last_update_time, p.create_by, p.last_update_by
         FROM openplatform_v2_permission_t p
+        INNER JOIN openplatform_v2_event_t e ON e.id = p.resource_id
         WHERE p.resource_type = 'event'
+          AND e.status = 2
         <if test="includeChildren == true and categoryPath != null">
             AND EXISTS (
                 SELECT 1 FROM openplatform_v2_category_t c
@@ -194,7 +200,9 @@
     <select id="countEventPermissionsByCategory" resultType="java.lang.Long">
         SELECT COUNT(*)
         FROM openplatform_v2_permission_t p
+        INNER JOIN openplatform_v2_event_t e ON e.id = p.resource_id
         WHERE p.resource_type = 'event'
+          AND e.status = 2
         <if test="includeChildren == true and categoryPath != null">
             AND EXISTS (
                 SELECT 1 FROM openplatform_v2_category_t c
@@ -221,7 +229,9 @@
                p.need_approval, p.resource_nodes, p.status,
                p.create_time, p.last_update_time, p.create_by, p.last_update_by
         FROM openplatform_v2_permission_t p
+        INNER JOIN openplatform_v2_callback_t cb ON cb.id = p.resource_id
         WHERE p.resource_type = 'callback'
+          AND cb.status = 2
         <if test="includeChildren == true and categoryPath != null">
             AND EXISTS (
                 SELECT 1 FROM openplatform_v2_category_t c
@@ -248,7 +258,9 @@
     <select id="countCallbackPermissionsByCategory" resultType="java.lang.Long">
         SELECT COUNT(*)
         FROM openplatform_v2_permission_t p
+        INNER JOIN openplatform_v2_callback_t cb ON cb.id = p.resource_id
         WHERE p.resource_type = 'callback'
+          AND cb.status = 2
         <if test="includeChildren == true and categoryPath != null">
             AND EXISTS (
                 SELECT 1 FROM openplatform_v2_category_t c
