@@ -17,7 +17,6 @@ function BindEamapModal({ visible, onCancel, onOk, appId, eamapOptions = [], cur
       const values = await form.validateFields();
       onOk(values.eamap);
     } catch (error) {
-      console.error('Validation failed:', error);
     }
   };
 

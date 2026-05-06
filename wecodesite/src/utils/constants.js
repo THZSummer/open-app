@@ -14,8 +14,8 @@ export const SUBSCRIPTION_STATUS = {
   4: { text: '已中止', color: 'red' },
 };
 
-export const RESOURCE_STATUS = {
-  0: { text: '草稿', color: 'default' },
+export const STATUS_MAP = {
+  0: { text: '已撤回', color: 'default' },
   1: { text: '待审', color: 'orange' },
   2: { text: '已发布', color: 'green' },
   3: { text: '已下线', color: 'red' }

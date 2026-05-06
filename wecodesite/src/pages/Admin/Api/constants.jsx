@@ -63,7 +63,7 @@ export const getApiListColumns = ({ handleView, handleEdit, handleDelete }) => {
       key: 'authType',
       width: 100,
       render: (authType) => {
-        const label = AUTH_TYPE_MAP[authType] || 'SOA';
+        const label = AUTH_TYPE[authType] || 'SOA';
         return <Tag color="purple">{label}</Tag>;
       },
     },

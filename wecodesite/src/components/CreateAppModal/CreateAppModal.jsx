@@ -45,7 +45,6 @@ function CreateAppModal({ visible, onCancel, onOk, defaultIcons = [], eamapOptio
       }
       onOk(values);
     } catch (error) {
-      console.error('Validation failed:', error);
     }
   };
 

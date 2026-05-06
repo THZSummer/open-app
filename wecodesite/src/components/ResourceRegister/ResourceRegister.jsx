@@ -129,7 +129,6 @@ function ResourceRegister({
         }
       }
     } catch (error) {
-      console.error('表单验证失败:', error);
     } finally {
       setSubmitting(false);
     }

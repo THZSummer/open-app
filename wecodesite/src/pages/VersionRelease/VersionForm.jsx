@@ -45,7 +45,6 @@ function VersionForm() {
 
   const handleSave = () => {
     form.validateFields().then((values) => {
-      console.log('Saved values:', values);
       navigate(`/version-release?appId=${appId}`);
     });
   };

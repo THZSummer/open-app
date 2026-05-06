@@ -28,7 +28,6 @@ function AppInfoBar() {
         setAppData(app);
       }
     } catch (error) {
-      console.error('Failed to load app data:', error);
     }
   };
 
@@ -37,7 +36,6 @@ function AppInfoBar() {
       const options = await fetchEamapOptions();
       setEamapOptions(options);
     } catch (error) {
-      console.error('Failed to load EAMAP options:', error);
     }
   };
 
@@ -47,7 +45,6 @@ function AppInfoBar() {
       setAppData((prev) => ({ ...prev, eamap }));
       setBindModalVisible(false);
     } catch (error) {
-      console.error('Failed to bind EAMAP:', error);
     }
   };
 

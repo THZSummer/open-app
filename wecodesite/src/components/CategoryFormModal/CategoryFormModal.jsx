@@ -62,7 +62,6 @@ function CategoryFormModal({
         message.error(result.message || '提交失败')
       }      
     } catch (error) {
-      console.error('Validation failed:', error);
     } finally {
       setLoading(false);
     }

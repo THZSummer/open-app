@@ -184,7 +184,6 @@ export const fetchTabConfig = async (searchKey = 'CEC.open/Api.Drawer.TabsList')
 
     return mockResponse;
   } catch (err) {
-    console.error('获取Tab配置失败', err);
     return { code: 500, message: '获取Tab配置失败' };
   }
 };

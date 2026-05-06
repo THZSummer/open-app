@@ -85,7 +85,6 @@ function CapabilityDetail() {
 
   const handleSave = () => {
     form.validateFields().then((values) => {
-      console.log('Saved values:', values);
       message.success('保存成功');
     });
   };

@@ -15,7 +15,7 @@ const AdminTableToolbar = ({
   onCategoryChange,
   status,
   statusOptions = [
-    { value: 0, label: '草稿' },
+    { value: 0, label: '已撤回' },
     { value: 1, label: '待审' },
     { value: 2, label: '已发布' },
     { value: 3, label: '已下线' },

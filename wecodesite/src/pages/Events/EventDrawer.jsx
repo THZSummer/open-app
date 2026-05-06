@@ -1,5 +1,5 @@
 import React from 'react';
-import ResourceDrawer from '../../components/ResourceDrawer';
+import ResourceDrawer from '../../components/ResourceDrawer/ResourceDrawer';
 import { fetchEventCategories, fetchEvents } from './thunk';
 import { getEventDrawerColumns } from './constants';
 import './EventDrawer.m.less';

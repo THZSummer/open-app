@@ -1,13 +1,7 @@
 import React from 'react';
 import { Tag, Button, Space, Popconfirm } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-
-export const STATUS_MAP = {
-  0: { text: '待审', color: 'orange' },
-  1: { text: '已通过', color: 'green' },
-  2: { text: '已拒绝', color: 'red' },
-  3: { text: '已撤销', color: 'default' },
-};
+import { STATUS_MAP } from '../../../utils/constants';
 
 export const LEVEL_MAP = {
   'resource': { text: '资源审批', color: 'blue' },

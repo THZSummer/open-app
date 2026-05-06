@@ -1,5 +1,5 @@
 import React from 'react';
-import adminTableBaseColumn from '../../../utils/constants';
+import { adminTableBaseColumn } from '../../../utils/commonTableConfigs';
 
 export const getEventListColumns = ({ handleView, handleEdit, handleDelete }) => {
   const baseColumn = adminTableBaseColumn({ handleView, handleEdit, handleDelete });

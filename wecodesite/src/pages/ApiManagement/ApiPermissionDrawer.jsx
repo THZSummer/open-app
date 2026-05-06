@@ -4,8 +4,8 @@ const { TabPane } = Tabs;
 import { fetchApis, fetchCategories, fetchTabConfig } from './thunk';
 import { mockAppInfo } from '../BasicInfo/mock';
 import { AUTH_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
+import { NEED_REVIEW_OPTIONS } from '../../utils/commonTableConfigs';
 import {
-  NEED_REVIEW_OPTIONS,
   TAB_CONFIG_SEARCH_KEY,
   getApiPermissionDrawerColumns,
 } from './constants';
@@ -115,7 +115,6 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
         secondLevelTabs: parsedTabs[0]?.children || []
       };
     } catch (error) {
-      console.error('解析Tab配置失败', error);
       return { firstLevelTabs: [], secondLevelTabs: [] };
     }
   };
@@ -154,7 +153,6 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
         return null;
       }
     } catch (error) {
-      console.error('加载Tab配置失败', error);
       message.error('加载Tab配置失败');
       setTabConfig({ firstLevelTabs: [], secondLevelTabs: [] });
       return null;
@@ -173,10 +171,6 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     const categoriesRes = await fetchCategories(apiType);
     if (categoriesRes && categoriesRes.code === '200') {
       const transformedModules = transformCategoriesToModules(categoriesRes.data || []);
-      setModulesData(transformedModules);
-      return transformedModules;
-    } else if (Array.isArray(categoriesRes)) {
-      const transformedModules = transformCategoriesToModules(categoriesRes);
       setModulesData(transformedModules);
       return transformedModules;
     } else {
@@ -264,7 +258,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
       const modules = await loadModules(tabResult.firstChildTab.key);
       
       // 3. 加载API列表
-      await loadApis({}, modules, 'all');
+      await loadApis({ needReview: 'all', keyword: '' }, modules, 'all');
     };
     
     initData();

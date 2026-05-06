@@ -121,7 +121,7 @@ export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) =
     render: (_, record) => {
       <Space>
         <Button type='link' size='small' onClick={() => handleView(record)}>详情</Button>
-        <Button type='link' size='small' onClick={() => handleEdit(record)}>编辑</Button>
+        {record.status !== 0 && <Button type='link' size='small' onClick={() => handleEdit(record)}>编辑</Button>}
         <Button type='link' size='small' danger onClick={() => handleDelete(record)}>删除</Button>
       </Space>
     }

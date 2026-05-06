@@ -47,7 +47,6 @@ function CategoryOwnerModal({
       }
     } catch (error) {
       message.error('添加失败');
-      console.error('Failed to add owner:', error);
     }
   };
 

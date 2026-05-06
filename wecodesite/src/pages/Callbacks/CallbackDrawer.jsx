@@ -1,5 +1,5 @@
 import React from 'react';
-import ResourceDrawer from '../../components/ResourceDrawer';
+import ResourceDrawer from '../../components/ResourceDrawer/ResourceDrawer';
 import { fetchCallbackCategories, fetchCallbacks } from './thunk';
 import { getCallbackDrawerColumns } from './constants';
 import './CallbackDrawer.m.less';

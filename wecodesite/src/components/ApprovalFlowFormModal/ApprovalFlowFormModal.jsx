@@ -66,7 +66,6 @@ function ApprovalFlowFormModal({
         message.error(result?.message || '操作失败');
       }
     } catch (error) {
-      console.error('Validation failed:', error);
     } finally {
       setLoading(false);
     }

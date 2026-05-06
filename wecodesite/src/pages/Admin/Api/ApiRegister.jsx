@@ -144,7 +144,6 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
         }
       }
     } catch (error) {
-      console.error('表单验证失败:', error);
     } finally {
       setSubmitting(false);
     }
@@ -304,7 +303,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
         <PropertiesConfig
           form={form}
           mode={mode}
-          propertyPresets={API_PROPERTY_PRESETS}
+          propertyPresets={PROPERTY_PRESETS}
           title="扩展属性（可选）"
         />
       </Form>

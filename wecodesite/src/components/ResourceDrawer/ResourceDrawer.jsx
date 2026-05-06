@@ -73,7 +73,7 @@ function ResourceDrawer({
         const rootId = categoriesRes.data?.[0]?.id;
         if (rootId) {
           setRootCategoryId(rootId);
-          await loadData({ categoryId: rootId });
+          await loadData({ categoryId: rootId, needReview: 'all', keyword: '' });
         }
       } else {
         message.error(categoriesRes?.message || '加载分类失败');

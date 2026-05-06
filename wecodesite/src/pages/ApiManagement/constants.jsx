@@ -19,7 +19,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
     title: 'scope',
     dataIndex: ['permission', 'scope'],
     key: 'scope',
-    width: 200,
+    width: 180,
     ellipsis: true,
     render: (code) => <code>{code}</code>,
   },
