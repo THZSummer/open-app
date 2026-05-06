@@ -63,6 +63,7 @@ public class CategoryController {
      * @return 分类详情
      */
     @GetMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#2 获取分类详情",
                description = "返回分类详情，包含 path 和 categoryPath 字段")
     public ApiResponse<CategoryResponse> getCategoryById(
@@ -169,6 +170,7 @@ public class CategoryController {
      * @return 责任人列表
      */
     @GetMapping("/{id}/owners")
+    @PlatformAdminPermission
     @Operation(summary = "#7 获取分类责任人列表",
                description = "返回责任人列表")
     public ApiResponse<List<CategoryOwnerResponse>> getOwners(

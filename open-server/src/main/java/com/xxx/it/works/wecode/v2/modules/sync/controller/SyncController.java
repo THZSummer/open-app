@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
 
 /**
  * 数据同步 Controller
@@ -56,6 +57,7 @@ public class SyncController {
      * @return 同步结果
      */
     @PostMapping("/subscription/migrate")
+    @PlatformAdminPermission
     @Operation(summary = "迁移数据（旧表→新表）",
                description = "将旧系统的订阅关系数据迁移到新系统，自动同步审批数据")
     public ApiResponse<SyncResult> migrate(
@@ -85,6 +87,7 @@ public class SyncController {
      * @return 同步结果
      */
     @PostMapping("/subscription/rollback")
+    @PlatformAdminPermission
     @Operation(summary = "回退数据（新表→旧表）",
                description = "将新系统的订阅关系数据回退到旧系统，自动同步审批数据")
     public ApiResponse<SyncResult> rollback(
@@ -115,6 +118,7 @@ public class SyncController {
      * @return 应急更新结果
      */
     @PostMapping("/subscription/emergency/update-old")
+    @PlatformAdminPermission
     @Operation(summary = "应急更新旧订阅关系表",
                description = "直接更新旧订阅关系表数据，自动新增或更新，带基本数据保护")
     public ApiResponse<EmergencyResult> emergencyUpdateOld(
@@ -146,6 +150,7 @@ public class SyncController {
      * @return 应急更新结果
      */
     @PostMapping("/subscription/emergency/update-new")
+    @PlatformAdminPermission
     @Operation(summary = "应急更新新订阅关系表",
                description = "直接更新新订阅关系表数据，自动新增或更新，带基本数据保护")
     public ApiResponse<EmergencyResult> emergencyUpdateNew(

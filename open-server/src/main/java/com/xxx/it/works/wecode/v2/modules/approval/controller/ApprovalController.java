@@ -54,6 +54,7 @@ public class ApprovalController {
      * @return 审批流程模板列表
      */
     @GetMapping("/approval-flows")
+    @PlatformAdminPermission
     public ApiResponse<List<ApprovalFlowListResponse>> getFlowList(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") Integer curPage,
@@ -86,6 +87,7 @@ public class ApprovalController {
      * @return 审批流程模板详情
      */
     @GetMapping("/approval-flows/{id}")
+    @PlatformAdminPermission
     public ApiResponse<ApprovalFlowDetailResponse> getFlowDetail(@PathVariable String id) {
         log.info("Get approval flow detail: id={}", id);
 
