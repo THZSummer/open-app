@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
+import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
+
 /**
  * 审批管理 Controller
  *
@@ -98,6 +100,7 @@ public class ApprovalController {
      * @return 创建的审批流程模板
      */
     @PostMapping("/approval-flows")
+    @PlatformAdminPermission
     public ApiResponse<ApprovalFlowDetailResponse> createFlow(
             @Valid @RequestBody ApprovalFlowCreateRequest request) {
         log.info("Create approval flow: code={}", request.getCode());
@@ -115,6 +118,7 @@ public class ApprovalController {
      * @return 更新后的审批流程模板
      */
     @PutMapping("/approval-flows/{id}")
+    @PlatformAdminPermission
     public ApiResponse<ApprovalFlowDetailResponse> updateFlow(
             @PathVariable String id,
             @Valid @RequestBody ApprovalFlowUpdateRequest request) {
@@ -132,6 +136,7 @@ public class ApprovalController {
      * @return 删除结果
      */
     @DeleteMapping("/approval-flows/{id}")
+    @PlatformAdminPermission
     public ApiResponse<Void> deleteFlow(@PathVariable String id) {
         log.info("Delete approval flow: id={}", id);
 

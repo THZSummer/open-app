@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
+
 /**
  * 分类管理 Controller
  *
@@ -80,6 +82,7 @@ public class CategoryController {
      * @return 分类响应
      */
     @PostMapping
+    @PlatformAdminPermission
     @Operation(summary = "#3 创建分类",
                description = "创建分类成功，path 字段自动生成")
     public ApiResponse<CategoryResponse> createCategory(
@@ -99,6 +102,7 @@ public class CategoryController {
      * @return 分类响应
      */
     @PutMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#4 更新分类",
                description = "更新分类成功")
     public ApiResponse<CategoryResponse> updateCategory(
@@ -121,6 +125,7 @@ public class CategoryController {
      * @return 成功响应
      */
     @DeleteMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#5 删除分类",
                description = "删除分类，检查关联资源")
     public ApiResponse<Void> deleteCategory(
@@ -143,6 +148,7 @@ public class CategoryController {
      * @return 责任人响应
      */
     @PostMapping("/{id}/owners")
+    @PlatformAdminPermission
     @Operation(summary = "#6 添加分类责任人",
                description = "添加责任人成功")
     public ApiResponse<CategoryOwnerResponse> addOwner(
@@ -183,6 +189,7 @@ public class CategoryController {
      * @return 成功响应
      */
     @DeleteMapping("/{id}/owners/{userId}")
+    @PlatformAdminPermission
     @Operation(summary = "#8 移除分类责任人",
                description = "移除责任人成功")
     public ApiResponse<Void> removeOwner(
