@@ -11,6 +11,9 @@ import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
+import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
+import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
@@ -128,6 +131,27 @@ class PermissionServiceTest {
                 .build();
         lenient().when(appContextResolver.resolveAndValidate(anyString())).thenReturn(defaultAppContext);
         lenient().when(appContextResolver.toExternalId(anyLong())).thenReturn("1");
+        lenient().when(apiMapper.selectById(anyLong())).thenAnswer(invocation -> {
+            Long id = invocation.getArgument(0);
+            Api api = new Api();
+            api.setId(id);
+            api.setStatus(2);
+            return api;
+        });
+        lenient().when(eventMapper.selectById(anyLong())).thenAnswer(invocation -> {
+            Long id = invocation.getArgument(0);
+            Event event = new Event();
+            event.setId(id);
+            event.setStatus(2);
+            return event;
+        });
+        lenient().when(callbackMapper.selectById(anyLong())).thenAnswer(invocation -> {
+            Long id = invocation.getArgument(0);
+            Callback callback = new Callback();
+            callback.setId(id);
+            callback.setStatus(2);
+            return callback;
+        });
 
         // 设置审批URL前缀
         ReflectionTestUtils.setField(permissionService, "approvalUrlPrefix", "https://platform.example.com/approval/");
@@ -194,8 +218,14 @@ class PermissionServiceTest {
 
             List<Permission> permissions = new ArrayList<>();
             permissions.add(testPermission);
+            testPermission.setResourceType("api");
+            testPermission.setResourceId(1L);
 
             when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
+            Api api = new Api();
+            api.setId(1L);
+            api.setStatus(2);
+            when(apiMapper.selectById(1L)).thenReturn(api);
             when(subscriptionMapper.selectByAppIdAndPermissionId(eq(1L), eq(100L))).thenReturn(null);
             when(idGenerator.nextId()).thenReturn(200L);
             when(subscriptionMapper.batchInsert(anyList())).thenReturn(1);
@@ -238,8 +268,14 @@ class PermissionServiceTest {
 
             List<Permission> permissions = new ArrayList<>();
             permissions.add(testPermission);
+            testPermission.setResourceType("api");
+            testPermission.setResourceId(1L);
 
             when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
+            Api api = new Api();
+            api.setId(1L);
+            api.setStatus(2);
+            when(apiMapper.selectById(1L)).thenReturn(api);
             when(subscriptionMapper.selectByAppIdAndPermissionId(eq(1L), eq(100L))).thenReturn(testSubscription);
 
             PermissionSubscribeResponse response =
@@ -251,6 +287,30 @@ class PermissionServiceTest {
             assertNotNull(response.getFailedRecords());
             assertEquals(1, response.getFailedRecords().size());
             assertEquals("已订阅该权限", response.getFailedRecords().get(0).getReason());
+        }
+
+        @Test
+        @DisplayName("API未发布时不允许订阅")
+        void testSubscribeApiPermissions_UnpublishedApiRejected() {
+            PermissionSubscribeRequest request = new PermissionSubscribeRequest();
+            request.setPermissionIds(List.of("100"));
+
+            List<Permission> permissions = new ArrayList<>();
+            permissions.add(testPermission);
+            testPermission.setResourceType("api");
+            testPermission.setResourceId(1L);
+
+            when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
+            Api api = new Api();
+            api.setId(1L);
+            api.setStatus(1);
+            when(apiMapper.selectById(1L)).thenReturn(api);
+
+            BusinessException exception = assertThrows(BusinessException.class, () ->
+                    permissionService.subscribeApiPermissions("1", request));
+
+            assertEquals("400", exception.getCode());
+            verify(subscriptionMapper, never()).batchInsert(anyList());
         }
 
         @Test
@@ -379,8 +439,14 @@ class PermissionServiceTest {
 
             List<Permission> permissions = new ArrayList<>();
             permissions.add(testPermission);
+            testPermission.setResourceType("event");
+            testPermission.setResourceId(1L);
 
             when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
+            Event event = new Event();
+            event.setId(1L);
+            event.setStatus(2);
+            when(eventMapper.selectById(1L)).thenReturn(event);
             when(subscriptionMapper.selectByAppIdAndPermissionId(eq(1L), eq(100L))).thenReturn(null);
             when(idGenerator.nextId()).thenReturn(200L);
             when(subscriptionMapper.batchInsert(anyList())).thenReturn(1);
@@ -396,6 +462,30 @@ class PermissionServiceTest {
             assertNotNull(response);
             assertEquals(1, response.getSuccessCount());
             assertEquals(0, response.getFailedCount());
+        }
+
+        @Test
+        @DisplayName("事件未发布时不允许订阅")
+        void testSubscribeEventPermissions_UnpublishedEventRejected() {
+            PermissionSubscribeRequest request = new PermissionSubscribeRequest();
+            request.setPermissionIds(List.of("100"));
+
+            List<Permission> permissions = new ArrayList<>();
+            permissions.add(testPermission);
+            testPermission.setResourceType("event");
+            testPermission.setResourceId(1L);
+
+            when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
+            Event event = new Event();
+            event.setId(1L);
+            event.setStatus(1);
+            when(eventMapper.selectById(1L)).thenReturn(event);
+
+            BusinessException exception = assertThrows(BusinessException.class, () ->
+                    permissionService.subscribeEventPermissions("1", request));
+
+            assertEquals("400", exception.getCode());
+            verify(subscriptionMapper, never()).batchInsert(anyList());
         }
 
         @Test
@@ -512,8 +602,15 @@ class PermissionServiceTest {
 
             List<Permission> permissions = new ArrayList<>();
             permissions.add(testPermission);
+            testPermission.setStatus(1);
+            testPermission.setResourceType("callback");
+            testPermission.setResourceId(1L);
 
             when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
+            Callback callback = new Callback();
+            callback.setId(1L);
+            callback.setStatus(2);
+            when(callbackMapper.selectById(1L)).thenReturn(callback);
             when(subscriptionMapper.selectByAppIdAndPermissionId(eq(1L), eq(100L))).thenReturn(null);
             when(idGenerator.nextId()).thenReturn(200L);
             when(subscriptionMapper.batchInsert(anyList())).thenReturn(1);
@@ -529,6 +626,33 @@ class PermissionServiceTest {
             assertNotNull(response);
             assertEquals(1, response.getSuccessCount());
             assertEquals(0, response.getFailedCount());
+        }
+
+        @Test
+        @DisplayName("回调未发布时不允许订阅")
+        void testSubscribeCallbackPermissions_PendingPermissionRejected() {
+            PermissionSubscribeRequest request = new PermissionSubscribeRequest();
+            request.setPermissionIds(List.of("100"));
+
+            List<Permission> permissions = new ArrayList<>();
+            permissions.add(testPermission);
+            testPermission.setStatus(1);
+            testPermission.setResourceType("callback");
+            testPermission.setResourceId(1L);
+
+            when(permissionMapper.selectByIds(anyList())).thenReturn(permissions);
+            Callback callback = new Callback();
+            callback.setId(1L);
+            callback.setStatus(1);
+            when(callbackMapper.selectById(1L)).thenReturn(callback);
+
+            BusinessException exception = assertThrows(BusinessException.class, () ->
+                    permissionService.subscribeCallbackPermissions("1", request));
+
+            assertEquals("400", exception.getCode());
+            assertTrue(exception.getMessageZh().contains("已发布"));
+            verify(subscriptionMapper, never()).batchInsert(anyList());
+            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString());
         }
 
         @Test
@@ -741,16 +865,19 @@ class PermissionServiceTest {
             Permission permission1 = new Permission();
             permission1.setId(100L);
             permission1.setResourceType("api");
+            permission1.setResourceId(1L);
             permission1.setNameCn("权限1");
 
             Permission permission2 = new Permission();
             permission2.setId(101L);
             permission2.setResourceType("api");
+            permission2.setResourceId(2L);
             permission2.setNameCn("权限2");
 
             Permission permission3 = new Permission();
             permission3.setId(102L);
             permission3.setResourceType("api");
+            permission3.setResourceId(3L);
             permission3.setNameCn("权限3");
 
             List<Permission> permissions = new ArrayList<>();
@@ -787,10 +914,12 @@ class PermissionServiceTest {
             Permission permission1 = new Permission();
             permission1.setId(100L);
             permission1.setResourceType("api");
+            permission1.setResourceId(1L);
 
             Permission permission2 = new Permission();
             permission2.setId(101L);
             permission2.setResourceType("api");
+            permission2.setResourceId(2L);
 
             List<Permission> permissions = new ArrayList<>();
             permissions.add(permission1);

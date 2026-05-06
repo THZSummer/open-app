@@ -240,6 +240,12 @@ public class PermissionService {
         List<PermissionSubscribeResponse.FailedRecord> failedRecords = new ArrayList<>();
 
         for (Permission permission : apiPermissions) {
+            Api api = apiMapper.selectById(permission.getResourceId());
+            if (api == null || api.getStatus() == null || api.getStatus() != 2) {
+                throw new BusinessException("400",
+                        "只能订阅已发布的API",
+                        "Only published APIs can be subscribed");
+            }
 
             // 检查是否已订阅
             Subscription existing = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
@@ -463,6 +469,12 @@ public class PermissionService {
         List<PermissionSubscribeResponse.FailedRecord> failedRecords = new ArrayList<>();
 
         for (Permission permission : eventPermissions) {
+            Event event = eventMapper.selectById(permission.getResourceId());
+            if (event == null || event.getStatus() == null || event.getStatus() != 2) {
+                throw new BusinessException("400",
+                        "只能订阅已发布的事件",
+                        "Only published events can be subscribed");
+            }
             Subscription existing = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
             if (existing != null) {
                 failedRecords.add(PermissionSubscribeResponse.FailedRecord.builder()
@@ -715,6 +727,12 @@ public class PermissionService {
         List<PermissionSubscribeResponse.FailedRecord> failedRecords = new ArrayList<>();
 
         for (Permission permission : callbackPermissions) {
+            Callback callback = callbackMapper.selectById(permission.getResourceId());
+            if (callback == null || callback.getStatus() == null || callback.getStatus() != 2) {
+                throw new BusinessException("400",
+                        "只能订阅已发布的回调配置",
+                        "Only published callback permissions can be subscribed");
+            }
             Subscription existing = subscriptionMapper.selectByAppIdAndPermissionId(appIdLong, permission.getId());
             if (existing != null) {
                 failedRecords.add(PermissionSubscribeResponse.FailedRecord.builder()
