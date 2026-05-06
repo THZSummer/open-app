@@ -4,6 +4,7 @@ import com.xxx.it.works.wecode.v2.modules.sync.dto.*;
 import com.xxx.it.works.wecode.v2.modules.sync.entity.*;
 import com.xxx.it.works.wecode.v2.modules.sync.mapper.SyncMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
+import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,6 +32,9 @@ class EmergencyServiceTest {
 
     @Mock
     private SyncMapper syncMapper;
+
+    @Mock
+    private IdGeneratorStrategy idGenerator;
 
     @InjectMocks
     private SyncService syncService;
@@ -93,6 +97,7 @@ class EmergencyServiceTest {
 
             when(syncMapper.selectOldSubscriptionById(1L)).thenReturn(null);
             when(syncMapper.countOldSubscriptionByAppIdAndPermissionId(100L, 10L)).thenReturn(0);
+            when(idGenerator.nextId()).thenReturn(123456789L);
             when(syncMapper.insertOldSubscription(any(OldSubscription.class))).thenReturn(1);
 
             // When
@@ -104,9 +109,11 @@ class EmergencyServiceTest {
 
             EmergencyDetail detail = result.getDetails().get(0);
             assertEquals("inserted", detail.getStatus());
+            assertEquals(123456789L, detail.getId());
 
             verify(syncMapper).insertOldSubscription(argThat(sub ->
-                sub.getCreateBy().equals("emergency-update")
+                sub.getCreateBy().equals("emergency-update") &&
+                sub.getId().equals(123456789L)
             ));
         }
 
@@ -155,6 +162,7 @@ class EmergencyServiceTest {
 
             when(syncMapper.selectOldSubscriptionById(1L)).thenReturn(null);
             when(syncMapper.countOldSubscriptionByAppIdAndPermissionId(100L, 10L)).thenReturn(0);
+            when(idGenerator.nextId()).thenReturn(123456789L);
             when(syncMapper.insertOldSubscription(any())).thenReturn(1);
 
             when(syncMapper.selectOldSubscriptionById(2L)).thenReturn(null);
@@ -212,6 +220,7 @@ class EmergencyServiceTest {
 
             when(syncMapper.selectNewSubscriptionById(1L)).thenReturn(null);
             when(syncMapper.countNewSubscriptionByAppIdAndPermissionId(100L, 10L)).thenReturn(0);
+            when(idGenerator.nextId()).thenReturn(123456789L);
             when(syncMapper.insertNewSubscription(any(Subscription.class))).thenReturn(1);
 
             // When
@@ -221,8 +230,12 @@ class EmergencyServiceTest {
             assertEquals(1, result.getSuccess());
             assertEquals(1, result.getInserted());
 
+            EmergencyDetail detail = result.getDetails().get(0);
+            assertEquals(123456789L, detail.getId());
+
             verify(syncMapper).insertNewSubscription(argThat(sub ->
-                sub.getCreateBy().equals("emergency-update")
+                sub.getCreateBy().equals("emergency-update") &&
+                sub.getId().equals(123456789L)
             ));
         }
 
