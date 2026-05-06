@@ -2,15 +2,17 @@ package com.xxx.it.works.wecode.v2.modules.event.service;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
+import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
+import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.category.entity.Category;
 import com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryMapper;
 import com.xxx.it.works.wecode.v2.modules.event.dto.*;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
 import com.xxx.it.works.wecode.v2.modules.event.entity.EventProperty;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
-import com.xxx.it.works.wecode.v2.modules.event.entity.PermissionProperty;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
@@ -19,16 +21,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
-import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow;
-import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +39,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class EventService {
+
+    private static final Pattern SCOPE_PATTERN = Pattern.compile("^event:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]*$");
 
     private final EventMapper eventMapper;
     private final EventPropertyMapper eventPropertyMapper;
@@ -182,11 +179,14 @@ public class EventService {
         }
 
         // 验证 Scope 唯一性
-        Permission existingPermission = permissionMapper.selectByScope(request.getPermission().getScope());
+        String scope = request.getPermission().getScope();
+        validateScope(scope);
+
+        Permission existingPermission = permissionMapper.selectByScope(scope);
         if (existingPermission != null) {
             throw new BusinessException("409",
-                    "Scope already exists: " + request.getPermission().getScope(),
-                    "Scope already exists: " + request.getPermission().getScope());
+                    "Scope already exists: " + scope,
+                    "Scope already exists: " + scope);
         }
 
         // 生成事件ID
@@ -292,6 +292,14 @@ public class EventService {
         }
         if (request.getNameEn() != null && !request.getNameEn().trim().isEmpty()) {
             event.setNameEn(request.getNameEn());
+        }
+        if (request.getTopic() != null && !request.getTopic().trim().isEmpty()
+                && !request.getTopic().equals(event.getTopic())) {
+            Event existingEvent = eventMapper.selectByTopic(request.getTopic());
+            if (existingEvent != null && !existingEvent.getId().equals(id)) {
+                throw new BusinessException("409", "Topic 已存在", "Topic already exists");
+            }
+            event.setTopic(request.getTopic());
         }
         if (categoryId != null) {
             event.setCategoryId(categoryId);
@@ -454,6 +462,15 @@ public class EventService {
         if (permissionDto.getNameEn() != null) {
             permission.setNameEn(permissionDto.getNameEn());
         }
+        if (permissionDto.getScope() != null && !permissionDto.getScope().trim().isEmpty()
+                && !permissionDto.getScope().equals(permission.getScope())) {
+            validateScope(permissionDto.getScope());
+            Permission existingPermission = permissionMapper.selectByScope(permissionDto.getScope());
+            if (existingPermission != null && !existingPermission.getId().equals(permission.getId())) {
+                throw new BusinessException("409", "Scope 已存在", "Scope already exists");
+            }
+            permission.setScope(permissionDto.getScope());
+        }
         permission.setCategoryId(categoryId);
 
         // ✅ v2.8.0新增：审批配置字段
@@ -580,6 +597,14 @@ public class EventService {
             return Long.parseLong(id);
         } catch (NumberFormatException e) {
             throw BusinessException.badRequest("Invalid " + fieldName + " format", "Invalid " + fieldName + " format");
+        }
+    }
+
+    private void validateScope(String scope) {
+        if (scope == null || !SCOPE_PATTERN.matcher(scope).matches()) {
+            throw BusinessException.badRequest(
+                    "Scope 格式错误，正确格式：event:{module}:{identifier}",
+                    "Invalid scope format. Expected: event:{module}:{identifier}");
         }
     }
 }

@@ -22,6 +22,29 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
     }
   }, [callback, open, form]);
 
+  const handleSave = async () => {
+    try {
+      const values = await form.validateFields();
+      setSaving(true);
+      const res = await configCallbackSubscription(appId, callback.id, {
+        authType: values.authType,
+        channelType: values.channelType,
+        channelAddress: values.channelAddress || '',
+      });
+      if (res && res.code === '200') {
+        onSave();
+        onClose();
+        message.success('配置已保存');
+      } else {
+        message.error(res?.message || '保存失败');
+      }
+    } catch (error) {
+      message.error('保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleChannelTypeChange = (e) => {
     const newChannelType = e.target.value;
     setChannelType(newChannelType);
@@ -30,37 +53,6 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
       channelAddress: '',
       authType: 0
     });
-  };
-
-  const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-      setSaving(true);
-      const res = await configCallbackSubscription(appId, callback.id, {
-        channelType: values.channelType,
-        channelAddress: values.channelAddress || '',
-        authType: values.authType
-      });
-      if (res && res.code === '200') {
-        message.success('配置已保存');
-        onSave({
-          ...callback,
-          channelType: values.channelType,
-          channelAddress: values.channelAddress || '',
-          authType: values.authType
-        });
-        onClose();
-      } else {
-        message.error(res?.message || '保存失败');
-      }
-    } catch (error) {
-      if (error.errorFields) {
-        return;
-      }
-      message.error('保存失败');
-    } finally {
-      setSaving(false);
-    }
   };
 
   return (

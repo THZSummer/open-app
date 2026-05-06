@@ -21,6 +21,15 @@ export const RESOURCE_STATUS = {
   3: { text: '已下线', color: 'red' }
 };
 
+export const PROPERTY_PRESETS = [
+  { value: 'descriptionCn', label: '中文描述', placeholder: '回调的中文描述' },
+  { value: 'descriptionEn', label: '英文描述', placeholder: 'Callback description in English' },
+  { value: 'docUrl', label: '文档链接', placeholder: 'https://docs.example.com/callback/xxx' },
+  { value: 'timeout', label: '超时时间', placeholder: '30000 (毫秒)' },
+  { value: 'retryCount', label: '重试次数', placeholder: '3' },
+  { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
+];
+
 export const EVENT_CHANNEL_TYPE = {
   0: 'MQS',
   1: 'WebHook'

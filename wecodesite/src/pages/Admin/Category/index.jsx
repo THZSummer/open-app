@@ -38,11 +38,16 @@ import './CategoryList.m.less';
 function CategoryList() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isInAdminWhitelist()) {
+  const init = async () => {
+    const canShow = await isAdminWhitelist();
+    if (!canShow) {
       navigate('/apps');
     }
-  }, [navigate]);
+  };
+
+  useEffect(() => {
+    init();
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [categoryTree, setCategoryTree] = useState([]);
@@ -66,8 +71,10 @@ function CategoryList() {
   const loadData = async () => {
     setLoading(true);
     const result = await fetchCategoryTree();
-    if (result.code === '200') {
+    if (result && result.code === '200') {
       setCategoryTree(result.data);
+    } else {
+      message.error(result?.message || '加载分类失败');
     }
     setLoading(false);
   };
@@ -152,6 +159,7 @@ function CategoryList() {
   };
 
   const convertToTreeData = (categories) => {
+    if (!Array.isArray(categories)) return [];
     return categories.map((category) => ({
       key: category.id,
       title: (
@@ -216,6 +224,7 @@ function CategoryList() {
 
   const filterTree = (data, search) => {
     if (!search) return data;
+    if (!Array.isArray(data)) return [];
     return data
       .map((item) => {
         if (item.nameCn.includes(search) || item.nameEn.includes(search)) {

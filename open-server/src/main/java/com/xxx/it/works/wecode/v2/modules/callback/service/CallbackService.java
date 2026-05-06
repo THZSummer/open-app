@@ -2,8 +2,11 @@ package com.xxx.it.works.wecode.v2.modules.callback.service;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
+import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
+import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.dto.*;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.CallbackProperty;
@@ -13,20 +16,12 @@ import com.xxx.it.works.wecode.v2.modules.category.entity.Category;
 import com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
-import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
-import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow;
-import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -478,6 +473,23 @@ public class CallbackService {
             }
             if (request.getPermission().getNameEn() != null) {
                 permission.setNameEn(request.getPermission().getNameEn());
+            }
+            if (request.getPermission().getScope() != null && !request.getPermission().getScope().trim().isEmpty()) {
+                String scope = request.getPermission().getScope();
+                if (!SCOPE_PATTERN.matcher(scope).matches()) {
+                    throw BusinessException.badRequest(
+                            "Scope 格式错误，正确格式：callback:{module}:{identifier}",
+                            "Invalid scope format. Expected: callback:{module}:{identifier}");
+                }
+                if (!scope.equals(permission.getScope())) {
+                    Permission existingPermission = permissionMapper.selectByScope(scope);
+                    if (existingPermission != null && !existingPermission.getId().equals(permission.getId())) {
+                        throw new BusinessException("409",
+                                "Scope 已存在: " + scope,
+                                "Scope already exists: " + scope);
+                    }
+                }
+                permission.setScope(scope);
             }
             if (categoryId != null) {
                 permission.setCategoryId(categoryId);

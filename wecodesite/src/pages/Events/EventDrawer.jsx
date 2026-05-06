@@ -1,199 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Drawer, Table, Button, Pagination, Input, Select, message } from 'antd';
+import React from 'react';
+import ResourceDrawer from '../../components/ResourceDrawer';
 import { fetchEventCategories, fetchEvents } from './thunk';
-import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
-import { getEventDrawerColumns, NEED_REVIEW_OPTIONS } from './constants';
+import { getEventDrawerColumns } from './constants';
 import './EventDrawer.m.less';
 
 function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeLoading = false, appId }) {
-  const [selectedRowKeys, setSelectedRowKeys] = useState(
-    selectedEvents.map(e => e.id)
-  );
-  const [pagination, setPagination] = useState(INIT_PAGECONFIG);
-  const [allEvents, setAllEvents] = useState([]);
-  const [rootCategoryId, setRootCategoryId] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [filterKeyword, setFilterKeyword] = useState('');
-  const [filterNeedReview, setFilterNeedReview] = useState('all');
-
-  const loadData = async (params = {}) => {
-    const currentCategoryId = params.categoryId || rootCategoryId;
-    if (!currentCategoryId) {
-      setLoading(false);
-      return;
-    }
-    
-    setLoading(true);
-    const defaultParams = {
-      keyword: filterKeyword,
-      needReview: filterNeedReview,
-      categoryId: currentCategoryId,
-      curPage: pagination.curPage,
-      pageSize: pagination.pageSize,
-      appId: appId,
-      ...params
-    };
-    
-    const result = await fetchEvents(defaultParams);
-    if (result && result.code === '200') {
-      const resultData = result.data || [];
-      const resultTotal = result.total || resultData.length;
-      setAllEvents(resultData);
-      setPagination(prev => ({ ...prev, total: resultTotal }));
-    } else if (Array.isArray(result?.data)) {
-      setAllEvents(result.data);
-      setPagination(prev => ({ ...prev, total: result.total || result.data.length }));
-    } else {
-      message.error(result?.message || result?.messageZh || '加载事件列表失败');
-      setAllEvents([]);
-      setPagination(prev => ({ ...prev, total: 0 }));
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    
-    setFilterKeyword('');
-    setFilterNeedReview('all');
-    setPagination(INIT_PAGECONFIG);
-    setSelectedRowKeys(selectedEvents.map(e => e.id));
-    
-    const initData = async () => {
-      const categoriesRes = await fetchEventCategories();
-      if (categoriesRes && categoriesRes.code === '200') {
-        const rootId = categoriesRes.data?.[0]?.id;
-        if (rootId) {
-          setRootCategoryId(rootId);
-          await loadData({ categoryId: rootId });
-        }
-      } else if (Array.isArray(categoriesRes) && categoriesRes.length > 0) {
-        const rootId = categoriesRes[0]?.id;
-        if (rootId) {
-          setRootCategoryId(rootId);
-          await loadData({ categoryId: rootId });
-        }
-      } else {
-        message.error(categoriesRes?.message || '加载分类失败');
-      }
-    };
-    
-    initData();
-  }, [open]);
-
-  const handlePageChange = async (page, size) => {
-    setPagination(prev => ({ ...prev, curPage: page, pageSize: size }));
-    await loadData({ curPage: page, pageSize: size });
-  };
-
-  const handleSelectChange = (keys) => {
-    setSelectedRowKeys(keys);
-  };
-
-  const handleConfirm = () => {
-    const selected = allEvents.filter(event =>
-      selectedRowKeys.includes(event.id)
-    );
-    onConfirm(selected);
-    setSelectedRowKeys([]);
-    setPagination(INIT_PAGECONFIG);
-    onClose();
-  };
-
-  const handleFilterChange = async (e) => {
-    const keyword = e.target.value;
-    setFilterKeyword(keyword);
-    setPagination(INIT_PAGECONFIG);
-    await loadData({ keyword, curPage: 1 });
-  };
-
-  const handleNeedReviewChange = async (value) => {
-    setFilterNeedReview(value);
-    setPagination(INIT_PAGECONFIG);
-    await loadData({ needReview: value, curPage: 1 });
-  };
-
-  const handleOpenDoc = (docUrl) => {
-    if (docUrl) {
-      window.open(docUrl, '_blank');
-    }
-  };
-
-  const columns = getEventDrawerColumns({ handleOpenDoc });
-
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: handleSelectChange,
-    getCheckboxProps: (record) => ({
-      disabled: record.isSubscribed === 1,
-    }),
-  };
-
   return (
-    <Drawer
-      title="添加事件"
-      placement="right"
-      width={700}
-      onClose={onClose}
+    <ResourceDrawer
       open={open}
+      onClose={onClose}
+      onConfirm={onConfirm}
+      selectedItems={selectedEvents}
+      subscribeLoading={subscribeLoading}
+      appId={appId}
+      title="添加事件"
       className="event-drawer"
-      footer={
-        <div className="drawer-footer">
-          <Button onClick={onClose}>取消</Button>
-          <Button
-            type="primary"
-            disabled={selectedRowKeys.length === 0 || subscribeLoading}
-            loading={subscribeLoading}
-            onClick={handleConfirm}
-          >
-            确认添加
-          </Button>
-        </div>
-      }
-    >
-      <div className="event-drawer-content">
-        <div className="event-drawer-filter">
-          <Input
-            placeholder="事件名称/Topic"
-            value={filterKeyword}
-            onChange={handleFilterChange}
-            style={{ width: 200 }}
-            allowClear
-          />
-          <Select
-            placeholder="是否需要审核"
-            value={filterNeedReview}
-            onChange={handleNeedReviewChange}
-            options={NEED_REVIEW_OPTIONS}
-            style={{ width: 150 }}
-          />
-        </div>
-        <div className="event-drawer-main">
-          <div className="event-drawer-table">
-            <Table
-              rowSelection={rowSelection}
-              columns={columns}
-              dataSource={allEvents}
-              rowKey="id"
-              pagination={false}
-              loading={loading}
-            />
-            <div className="event-drawer-pagination">
-              <span className="pagination-total">共 {pagination.total} 条</span>
-              <Pagination
-                current={pagination.curPage}
-                pageSize={pagination.pageSize}
-                total={pagination.total}
-                onChange={handlePageChange}
-                showSizeChanger
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
-                showQuickJumper
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </Drawer>
+      placeholder="事件名称/Topic"
+      fetchCategories={fetchEventCategories}
+      fetchData={fetchEvents}
+      getColumns={getEventDrawerColumns}
+    />
   );
 }
 

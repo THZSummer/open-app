@@ -43,20 +43,12 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
       });
       if (res && res.code === '200') {
         message.success('配置已保存');
-        onSave({
-          ...event,
-          channelType: values.channelType,
-          channelAddress: values.channelAddress || '',
-          authType: values.authType
-        });
+        onSave();
         onClose();
       } else {
         message.error(res?.message || '保存失败');
       }
     } catch (error) {
-      if (error.errorFields) {
-        return;
-      }
       message.error('保存失败');
     } finally {
       setSaving(false);

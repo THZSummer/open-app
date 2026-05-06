@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
+
 /**
  * 回调管理 Controller
  *
@@ -46,6 +48,7 @@ public class CallbackController {
      * @return 分页回调列表
      */
     @GetMapping
+    @PlatformAdminPermission
     @Operation(summary = "#21 获取回调列表",
                description = "返回回调列表，支持按分类过滤，支持分页参数 curPage 和 pageSize")
     public ApiResponse<List<CallbackListResponse>> getCallbackList(
@@ -75,6 +78,7 @@ public class CallbackController {
      * @return 回调详情
      */
     @GetMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#22 获取回调详情",
                description = "返回回调详情及权限信息、属性")
     public ApiResponse<CallbackResponse> getCallbackById(
@@ -95,6 +99,7 @@ public class CallbackController {
      * @param request 创建请求
      * @return 回调响应
      */
+    @PlatformAdminPermission
     @PostMapping
     @Operation(summary = "#23 注册回调",
                description = "注册回调成功，同时创建权限资源。Scope 格式：callback:{module}:{identifier}")
@@ -122,6 +127,7 @@ public class CallbackController {
      * @param request 更新请求
      * @return 回调响应
      */
+    @PlatformAdminPermission
     @PutMapping("/{id}")
     @Operation(summary = "#24 更新回调",
                description = "更新回调成功")
@@ -144,6 +150,7 @@ public class CallbackController {
      * @param id 回调ID
      * @return 成功响应
      */
+    @PlatformAdminPermission
     @DeleteMapping("/{id}")
     @Operation(summary = "#25 删除回调",
                description = "删除回调，检查订阅关系。已订阅的回调无法删除，需先取消所有订阅。")
@@ -165,6 +172,7 @@ public class CallbackController {
      * @param id 回调ID
      * @return 回调响应
      */
+    @PlatformAdminPermission
     @PostMapping("/{id}/withdraw")
     @Operation(summary = "#26 撤回审核中的回调",
                description = "仅状态为待审的回调可撤回，撤回后状态变为草稿")

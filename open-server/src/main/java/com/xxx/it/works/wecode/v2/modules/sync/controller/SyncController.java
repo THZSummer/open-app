@@ -1,6 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.sync.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyRequest;
+import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyResult;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.SyncRequest;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.SyncResult;
 import com.xxx.it.works.wecode.v2.modules.sync.service.SyncService;
@@ -11,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
 
 /**
  * 数据同步 Controller
@@ -54,6 +57,7 @@ public class SyncController {
      * @return 同步结果
      */
     @PostMapping("/subscription/migrate")
+    @PlatformAdminPermission
     @Operation(summary = "迁移数据（旧表→新表）",
                description = "将旧系统的订阅关系数据迁移到新系统，自动同步审批数据")
     public ApiResponse<SyncResult> migrate(
@@ -83,6 +87,7 @@ public class SyncController {
      * @return 同步结果
      */
     @PostMapping("/subscription/rollback")
+    @PlatformAdminPermission
     @Operation(summary = "回退数据（新表→旧表）",
                description = "将新系统的订阅关系数据回退到旧系统，自动同步审批数据")
     public ApiResponse<SyncResult> rollback(
@@ -95,6 +100,70 @@ public class SyncController {
 
         log.info("Rollback completed, success={}, failed={}, skipped={}",
                 result.getSuccess(), result.getFailed(), result.getSkipped());
+
+        return ApiResponse.success(result);
+    }
+
+    /**
+     * 应急更新旧订阅关系表数据
+     *
+     * <p>直接更新旧系统的订阅关系表，无需业务校验</p>
+     * <ul>
+     *   <li>根据主键ID判断记录是否存在</li>
+     *   <li>存在则更新，不存在则新增（需通过数据保护校验）</li>
+     *   <li>数据保护：新增时检查 app_id + permission_id 组合是否已存在</li>
+     * </ul>
+     *
+     * @param request 应急更新请求
+     * @return 应急更新结果
+     */
+    @PostMapping("/subscription/emergency/update-old")
+    @PlatformAdminPermission
+    @Operation(summary = "应急更新旧订阅关系表",
+               description = "直接更新旧订阅关系表数据，自动新增或更新，带基本数据保护")
+    public ApiResponse<EmergencyResult> emergencyUpdateOld(
+            @Parameter(description = "应急更新请求")
+            @Valid @RequestBody EmergencyRequest request) {
+
+        log.info("Received emergency update old request, count={}", 
+                request.getSubscriptions() != null ? request.getSubscriptions().size() : 0);
+
+        EmergencyResult result = syncService.emergencyUpdateOld(request);
+
+        log.info("Emergency update old completed, success={}, failed={}, inserted={}, updated={}",
+                result.getSuccess(), result.getFailed(), result.getInserted(), result.getUpdated());
+
+        return ApiResponse.success(result);
+    }
+
+    /**
+     * 应急更新新订阅关系表数据
+     *
+     * <p>直接更新新系统的订阅关系表，无需业务校验</p>
+     * <ul>
+     *   <li>根据主键ID判断记录是否存在</li>
+     *   <li>存在则更新，不存在则新增（需通过数据保护校验）</li>
+     *   <li>数据保护：新增时检查 app_id + permission_id 组合是否已存在</li>
+     * </ul>
+     *
+     * @param request 应急更新请求
+     * @return 应急更新结果
+     */
+    @PostMapping("/subscription/emergency/update-new")
+    @PlatformAdminPermission
+    @Operation(summary = "应急更新新订阅关系表",
+               description = "直接更新新订阅关系表数据，自动新增或更新，带基本数据保护")
+    public ApiResponse<EmergencyResult> emergencyUpdateNew(
+            @Parameter(description = "应急更新请求")
+            @Valid @RequestBody EmergencyRequest request) {
+
+        log.info("Received emergency update new request, count={}", 
+                request.getSubscriptions() != null ? request.getSubscriptions().size() : 0);
+
+        EmergencyResult result = syncService.emergencyUpdateNew(request);
+
+        log.info("Emergency update new completed, success={}, failed={}, inserted={}, updated={}",
+                result.getSuccess(), result.getFailed(), result.getInserted(), result.getUpdated());
 
         return ApiResponse.success(result);
     }

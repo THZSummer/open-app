@@ -1,54 +1,59 @@
 import React, { useEffect } from 'react';
-import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useAdminList } from '../../../hooks/useAdminList';
-import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
+import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { fetchApiList, deleteApi } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
-import ApiRegister from './ApiRegister';
+import { useAdminList } from '../../../hooks/useAdminList';
+import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
 import { getApiListColumns } from './constants';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import { isInAdminWhitelist } from '../../../utils/common';
+import ApiRegister from './ApiRegister';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import './ApiList.m.less';
 
 function ApiList() {
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isInAdminWhitelist()) {
+  const init = async () => {
+    const canShow = await isInAdminWhitelist();
+    if (!canShow) {
       navigate('/apps');
     }
-  }, [navigate]);
+  }
+
+  useEffect(() => {
+    init();
+  }, []);
 
   const {
-    data: apiList,
-    loading,
-    pagination,
-    keyword,
-    categoryId,
-    status,
     categories,
-    modalVisible,
-    currentItem,
-    mode,
-    setKeyword,
-    loadData,
-    loadCategories,
-    handleSearch,
-    handlePageChange,
-    handleCategoryChange,
-    handleStatusChange,
-    handleAdd,
-    handleEdit,
-    handleView,
-    handleDelete,
-    handleSuccess,
     closeModal,
+    currentItem,
+    data: apiList,
+    handleAdd,
+    handleCategoryChange,
+    handleDelete,
+    handleEdit,
+    handlePageChange,
+    handleSearch,
+    handleStatusChange,
+    handleSuccess,
+    handleView,
+    keyword,
+    loadCategories,
+    loadData,
+    loading,
+    mode,
+    modalVisible,
+    pagination,
+    setKeyword,
+    status,
+    categoryId,
   } = useAdminList({
-    fetchList: fetchApiList,
     fetchCategories: fetchCategoryTree,
     deleteItem: deleteApi,
+    fetchList: fetchApiList,
   });
 
   useEffect(() => {

@@ -10,11 +10,6 @@ import {
 } from 'antd';
 const { TabPane } = Tabs;
 import {
-  CheckOutlined,
-  CloseOutlined,
-  EyeOutlined,
-} from '@ant-design/icons';
-import {
   fetchApprovalList,
   fetchMyApprovals,
   fetchApprovalDetail,
@@ -44,39 +39,60 @@ function ApprovalCenter() {
   const [approvingId, setApprovingId] = useState(null);
   const [canViewFlowConfig, setCanViewFlowConfig] = useState(false);
 
+  const init = async () => {
+    const canShow = await isInAdminWhitelist();
+    setCanViewFlowConfig(canShow);
+  }
+
   useEffect(() => {
-    const hasPermission = isInAdminWhitelist();
-    setCanViewFlowConfig(hasPermission);
+    init();
   }, []);
 
   useEffect(() => {
     loadData(INIT_PAGECONFIG);
   }, [activeTab]);
 
+  const fetchAndUpdate = async (apiCall, setData, errorMessage, curPage, pageSize) => {
+    const result = await apiCall;
+    if (result && result.code === '200') {
+      setData(result.data);
+      setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage, pageSize }));
+    } else {
+      message.error(result?.message || errorMessage);
+    }
+  };
+
   const loadData = async (params = {}) => {
     setLoading(true);
     const finalPage = 'curPage' in params ? params.curPage : pagination.curPage;
     const finalSize = 'pageSize' in params ? params.pageSize : pagination.pageSize;
-    let result;
+    params.curPage = finalPage;
+    params.pageSize = finalSize;
 
     if (activeTab === 'pending') {
-      result = await fetchApprovalList({ status: 0, ...params });
-      if (result.code === '200') {
-        setApprovalList(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
-      }
+      await fetchAndUpdate(
+        fetchApprovalList({ status: 0, ...params }),
+        setApprovalList,
+        '加载待审批列表失败',
+        finalPage,
+        finalSize
+      );
     } else if (activeTab === 'mine') {
-      result = await fetchMyApprovals(params);
-      if (result.code === '200') {
-        setMyApprovals(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
-      }
+      await fetchAndUpdate(
+        fetchMyApprovals(params),
+        setMyApprovals,
+        '加载我发起的审批列表失败',
+        finalPage,
+        finalSize
+      );
     } else if (activeTab === 'all') {
-      result = await fetchApprovalList(params);
-      if (result.code === '200') {
-        setApprovalList(result.data);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage: finalPage, pageSize: finalSize }));
-      }
+      await fetchAndUpdate(
+        fetchApprovalList(params),
+        setApprovalList,
+        '加载全部审批列表失败',
+        finalPage,
+        finalSize
+      );
     }
 
     setLoading(false);
@@ -171,9 +187,7 @@ function ApprovalCenter() {
             {canViewFlowConfig && <TabPane key="flowConfig" tab="审批流程配置" />}
           </Tabs>
 
-          {activeTab === 'flowConfig' ? (
-            canViewFlowConfig ? <ApprovalFlowConfig /> : <Empty description="您没有权限访问审批流程配置" />
-          ) : (
+          {activeTab === 'flowConfig' ? <ApprovalFlowConfig /> : (
             <Spin spinning={loading}>
               {dataSource.length > 0 ? (
                 <>

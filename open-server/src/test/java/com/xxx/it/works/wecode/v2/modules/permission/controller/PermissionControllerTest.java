@@ -373,14 +373,12 @@ class PermissionControllerTest {
         void testConfigEventSubscription_InternalQueue() {
             SubscriptionConfigRequest request = new SubscriptionConfigRequest();
             request.setChannelType(0);
-            request.setAuthType(1);
 
             WithdrawResponse withdrawResponse = WithdrawResponse.builder()
                     .id("esub002")
                     .status(1)
                     .message("配置成功")
                     .channelType(0)
-                    .authType(1)
                     .build();
 
             when(permissionService.configEventSubscription(eq("app001"), eq("esub002"), any(SubscriptionConfigRequest.class)))

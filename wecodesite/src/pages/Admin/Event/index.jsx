@@ -1,40 +1,41 @@
 import React, { useEffect } from 'react';
-import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { Button, Table, Spin, Empty, Pagination } from 'antd';
+import { fetchEventList, deleteEvent } from './thunk';
+import { getEventListColumns } from './constants';
+import EventRegister from './EventRegister';
 import { useAdminList } from '../../../hooks/useAdminList';
 import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
-import { fetchEventList, deleteEvent } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
-import EventRegister from './EventRegister';
-import { getEventListColumns } from './constants';
+import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import { isInAdminWhitelist } from '../../../utils/common';
-import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import './EventList.m.less';
 
 function EventList() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isInAdminWhitelist()) {
+    init();
+  }, []);
+  
+  const init = async () => {
+    const canShow = await isInAdminWhitelist();
+    if (!canShow) {
       navigate('/apps');
     }
-  }, [navigate]);
+  };
 
   const {
-    data: eventList,
-    loading,
-    pagination,
-    keyword,
-    categoryId,
-    status,
-    categories,
-    modalVisible,
-    currentItem,
-    mode,
-    setKeyword,
     loadData,
     loadCategories,
+    data: eventList,
+    categories,
+    categoryId,
+    status,
+    keyword,
+    loading,
+    pagination,
     handleSearch,
     handlePageChange,
     handleCategoryChange,
@@ -44,11 +45,15 @@ function EventList() {
     handleView,
     handleDelete,
     handleSuccess,
+    modalVisible,
+    currentItem,
+    mode,
     closeModal,
+    setKeyword,
   } = useAdminList({
     fetchList: fetchEventList,
-    fetchCategories: fetchCategoryTree,
     deleteItem: deleteEvent,
+    fetchCategories: fetchCategoryTree,
   });
 
   useEffect(() => {

@@ -19,7 +19,13 @@ function DeleteConfirmModal({
     }
   }, [open]);
 
-  const isConfirmDisabled = loading || (requireConfirmText && confirmText !== requireConfirmText);
+  const isConfirmDisabled = () => {
+    if (requireConfirmText) {
+      return loading || confirmText !== requireConfirmText
+    } else {
+      loading;
+    }
+  }
 
   const handleConfirm = () => {
     if (!isConfirmDisabled) {

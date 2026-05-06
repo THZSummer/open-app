@@ -1,0 +1,131 @@
+export const RESOURCE_TYPES = {
+  callback: {
+    type: 'callback',
+    title: '回调',
+    labels: {
+      nameCn: '回调中文名称',
+      nameEn: '回调英文名称',
+      permissionNameCn: '权限中文名称',
+      permissionNameEn: '权限英文名称',
+      scope: 'callback:approval:completed',
+    },
+    scopePattern: /^callback:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/,
+    scopeMessage: '格式不正确，应为：callback:{模块}:{资源标识}',
+    scopeExtra: '格式：callback:{模块}:{资源标识}',
+    baseFields: [],
+  },
+  event: {
+    type: 'event',
+    title: '事件',
+    labels: {
+      nameCn: '事件中文名称',
+      nameEn: '事件英文名称',
+      permissionNameCn: '权限中文名称',
+      permissionNameEn: '权限英文名称',
+      scope: 'event:im:message-received',
+      topic: 'user.status',
+    },
+    scopePattern: /^event:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/,
+    scopeMessage: '格式不正确，应为：event:{模块}:{事件标识}',
+    scopeExtra: '格式：event:{模块}:{事件标识}',
+    baseFields: [
+      {
+        key: 'topic',
+        label: 'Topic 标识',
+        name: 'topic',
+        type: 'Input',
+        rules: [
+          { required: true, message: '请输入 Topic 标识' },
+          { pattern: /^[a-zA-Z][a-zA-Z0-9]*\.[a-zA-Z][a-zA-Z0-9.]*$/, message: '格式不正确，应为：模块.事件' },
+        ],
+        extra: '格式：模块.事件，例如：user.status, msg.send.ok',
+        placeholder: 'user.status',
+      },
+    ],
+  },
+  api: {
+    type: 'api',
+    title: 'API',
+    labels: {
+      nameCn: 'API中文名称',
+      nameEn: 'API英文名称',
+      permissionNameCn: '权限中文名称',
+      permissionNameEn: '权限英文名称',
+      scope: 'api:im:send-message',
+    },
+    scopePattern: /^api:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/,
+    scopeMessage: '格式不正确，应为：api:{模块}:{资源标识}',
+    scopeExtra: '格式：api:{模块}:{资源标识}',
+    baseFields: [
+      {
+        key: 'path',
+        label: 'API路径',
+        name: 'path',
+        type: 'Input',
+        rules: [
+          { required: true, message: '请输入API路径' },
+          { pattern: /^\//, message: '路径必须以/开头' },
+        ],
+        placeholder: '例如：/api/v1/messages',
+      },
+      {
+        key: 'method',
+        label: 'HTTP方法',
+        name: 'method',
+        type: 'Select',
+        rules: [{ required: true, message: '请选择HTTP方法' }],
+        options: [
+          { value: 'GET', label: 'GET' },
+          { value: 'POST', label: 'POST' },
+          { value: 'PUT', label: 'PUT' },
+          { value: 'DELETE', label: 'DELETE' },
+          { value: 'PATCH', label: 'PATCH' },
+        ],
+        placeholder: '请选择HTTP方法',
+      },
+      {
+        key: 'authType',
+        label: '认证方式',
+        name: 'authType',
+        type: 'Select',
+        initialValue: 1,
+        options: [
+          { value: 1, label: 'SOA认证' },
+          { value: 2, label: 'Token认证' },
+        ],
+        placeholder: '请选择认证方式',
+        extra: '默认为 SOA 认证',
+      },
+    ],
+  },
+};
+
+export const COMMON_BASE_FIELDS = [
+  {
+    key: 'nameCn',
+    labelKey: 'nameCn',
+    name: 'nameCn',
+    type: 'Input',
+    rules: [{ required: true, message: '请输入' }],
+    placeholderPrefix: '请输入',
+  },
+  {
+    key: 'nameEn',
+    labelKey: 'nameEn',
+    name: 'nameEn',
+    type: 'Input',
+    rules: [
+      { required: true, message: '请输入' },
+      { pattern: /^[a-zA-Z0-9\s\-_()]+$/, message: '英文名称不能输入中文字符' },
+    ],
+    placeholderPrefix: '请输入',
+  },
+  {
+    key: 'categoryId',
+    label: '所属分类',
+    name: 'categoryId',
+    type: 'TreeSelect',
+    rules: [{ required: true, message: '请选择所属分类' }],
+    placeholder: '请选择所属分类',
+  },
+];

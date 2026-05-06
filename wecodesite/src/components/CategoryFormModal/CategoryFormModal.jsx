@@ -32,10 +32,6 @@ function CategoryFormModal({
           form.setFieldsValue({
             parentId: parentCategory.id,
           });
-        } else {
-          form.setFieldsValue({
-            sortOrder: 0,
-          });
         }
       }
     }
@@ -46,22 +42,25 @@ function CategoryFormModal({
       const values = await form.validateFields();
       setLoading(true);
 
-      const data = isEditing
-        ? {
-            nameCn: values.nameCn,
-            nameEn: values.nameEn,
-            sortOrder: values.sortOrder,
-          }
-        : {
-            categoryAlias: values.categoryAlias,
-            nameCn: values.nameCn,
-            nameEn: values.nameEn,
-            parentId: values.parentId,
-            sortOrder: values.sortOrder,
-          };
+      const data = isEditing ? 
+      {
+        nameCn: values.nameCn,
+        nameEn: values.nameEn,
+        sortOrder: values.sortOrder,
+      } : {
+        categoryAlias: values.categoryAlias,
+        nameCn: values.nameCn,
+        nameEn: values.nameEn,
+        parentId: values.parentId,
+        sortOrder: values.sortOrder,
+      };
 
-      await onSubmit(data);
-      form.resetFields();
+      const result = await onSubmit(data);
+      if (result && result.code === '200') {
+        form.resetFields();
+      } else {
+        message.error(result.message || '提交失败')
+      }      
     } catch (error) {
       console.error('Validation failed:', error);
     } finally {
@@ -74,9 +73,19 @@ function CategoryFormModal({
     onClose();
   };
 
+  const getModalTitle = () => {
+    if (isEditing) {
+      return '编辑分类';
+    }
+    if (parentCategory) {
+      return '新增子分类';
+    }
+    return '新增一级分类';
+  };
+
   return (
     <Modal
-      title={isEditing ? '编辑分类' : (parentCategory ? '新增子分类' : '新增一级分类')}
+      title={getModalTitle()}
       open={visible}
       onOk={handleOk}
       onCancel={handleCancel}

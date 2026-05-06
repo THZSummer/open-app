@@ -7,6 +7,7 @@ import {
   Divider,
   Tag,
   Space,
+  message,
 } from 'antd';
 import {
   MinusCircleOutlined,
@@ -58,8 +59,12 @@ function ApprovalFlowFormModal({
         nodes,
       };
 
-      await onSubmit(data);
-      form.resetFields();
+      const result = await onSubmit(data);
+      if (result && result.code === '200') {
+        form.resetFields();
+      } else {
+        message.error(result?.message || '操作失败');
+      }
     } catch (error) {
       console.error('Validation failed:', error);
     } finally {

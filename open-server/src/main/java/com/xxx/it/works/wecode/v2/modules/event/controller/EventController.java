@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
+
 /**
  * 事件管理 Controller
  *
@@ -44,6 +46,7 @@ public class EventController {
      * @return 事件列表
      */
     @GetMapping
+    @PlatformAdminPermission
     @Operation(summary = "#15 获取事件列表",
                description = "返回事件列表，支持按分类过滤，支持分页参数")
     public ApiResponse<List<EventListResponse>> getEventList(
@@ -73,6 +76,7 @@ public class EventController {
      * @return 事件详情
      */
     @GetMapping("/{id}")
+    @PlatformAdminPermission
     @Operation(summary = "#16 获取事件详情",
                description = "返回事件详情及权限信息、属性")
     public ApiResponse<EventResponse> getEventById(
@@ -93,6 +97,7 @@ public class EventController {
      * @param request 创建请求
      * @return 事件响应
      */
+    @PlatformAdminPermission
     @PostMapping
     @Operation(summary = "#17 注册事件",
                description = "注册事件成功，同时创建权限资源，Topic 唯一性校验")
@@ -115,6 +120,7 @@ public class EventController {
      * @param request 更新请求
      * @return 事件响应
      */
+    @PlatformAdminPermission
     @PutMapping("/{id}")
     @Operation(summary = "#18 更新事件",
                description = "更新事件成功")
@@ -137,6 +143,7 @@ public class EventController {
      * @param id 事件ID
      * @return 成功响应
      */
+    @PlatformAdminPermission
     @DeleteMapping("/{id}")
     @Operation(summary = "#19 删除事件",
                description = "删除事件，检查订阅关系")
@@ -158,6 +165,7 @@ public class EventController {
      * @param id 事件ID
      * @return 事件响应
      */
+    @PlatformAdminPermission
     @PostMapping("/{id}/withdraw")
     @Operation(summary = "#20 撤回事件",
                description = "撤回审核中的事件")

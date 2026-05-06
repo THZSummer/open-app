@@ -13,6 +13,7 @@ import {
   Timeline,
   Spin,
   Empty,
+  message,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -21,7 +22,8 @@ import {
   SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { STATUS_MAP, LEVEL_MAP } from '../../pages/Admin/Approval/constants';
+import { STATUS_MAP } from '../../utils/constants';
+import { LEVEL_MAP } from '../../pages/Admin/Approval/constants';
 
 function ApprovalDetailModal({
   visible,
@@ -36,8 +38,6 @@ function ApprovalDetailModal({
   useEffect(() => {
     if (visible && approvalId) {
       loadDetail();
-    } else if (visible && currentDetail) {
-      setDetail(currentDetail);
     }
   }, [visible, approvalId, currentDetail]);
 
@@ -45,14 +45,13 @@ function ApprovalDetailModal({
     if (!approvalId) return;
 
     setLoading(true);
-    try {
-      const result = await fetchDetail(approvalId);
-      if (result.code === '200') {
-        setDetail(result.data);
-      }
-    } finally {
-      setLoading(false);
+    const result = await fetchDetail(approvalId);
+    if (result && result.code === '200') {
+      setDetail(result.data);
+    } else {
+      message.error(result?.message || '加载审批详情失败');
     }
+    setLoading(false);
   };
 
   if (!visible) return null;
@@ -122,7 +121,7 @@ function renderProgressCard(detail) {
   const totalCount = detail.combinedNodes.length;
   const completedCount = detail.combinedNodes.filter(n => n.status === 1).length;
   const currentNodeIndex = detail.currentNode;
-  const currentNode = detail.combinedNodes[currentNodeIndex];
+  const currentNode = currentNodeIndex >= 0 && currentNodeIndex < detail.combinedNodes.length ? detail.combinedNodes[currentNodeIndex] : null;
   const pendingNodes = detail.combinedNodes.filter(n => n.status === null && n !== currentNode);
 
   return (
@@ -180,8 +179,9 @@ function renderProgressCard(detail) {
 }
 
 function renderApprovalFlow(detail) {
+  const safeCurrentNode = Math.max(0, Math.min(detail.currentNode, detail.combinedNodes.length - 1));
   return (
-    <Steps direction="vertical" current={detail.currentNode}>
+    <Steps direction="vertical" current={safeCurrentNode}>
       {detail.combinedNodes.map((node, index) => {
         const isCompleted = node.status === 1;
         const isRejected = node.status === 2;

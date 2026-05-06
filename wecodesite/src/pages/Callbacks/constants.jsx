@@ -2,7 +2,7 @@ import React from 'react';
 import { Tag, Button } from 'antd';
 import { SUBSCRIPTION_STATUS, CALLBACK_CHANNEL_TYPE } from '../../utils/constants';
 
-export const PAGE_SIZE_OPTIONS = [10, 20, 50];
+export const PAGE_SIZE = [10, 20, 50];
 
 export const NEED_REVIEW_OPTIONS = [
   { value: 'all', label: '全部' },

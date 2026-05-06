@@ -16,7 +16,7 @@ public class OldSubscription implements Serializable {
     private Long appId;
     private Long permissionId;
     private String tenantId;
-    private String permisssionType; // 权限类型：0=API, 1=事件
+    private String permissionType; // 权限类型：0=API, 1=事件
     private Integer status;
     private String createBy;
     private Date createTime;

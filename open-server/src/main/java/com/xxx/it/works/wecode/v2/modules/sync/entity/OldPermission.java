@@ -17,7 +17,7 @@ public class OldPermission implements Serializable {
     private String permissionNameEn;
     private Long moduleId;
     private String scopeId;
-    private String permisssionType; // 拼写错误：3个s
+    private String permissionType; // 权限类型
     private Integer isApprovalRequired;
     private Integer authType;
     private Integer status;
