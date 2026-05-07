@@ -115,21 +115,23 @@ function ResourceRegister({
       };
 
       let result;
-      const successMessage = resource?.id ? '更新成功' : '注册成功';
-      const errorMessage = resource?.id ? '更新失败' : '注册失败';
+      let successMessage;
+      let errorMessage;
 
-      if (apiMethod) {
-        if (resource?.id) {
-          result = await update(resource?.id, data);
-        } else {
-          result = await create(data);
-        }
-        if (result && result.code === '200') {
-          message.success(successMessage);
-          onSuccess?.();
-        } else {
-          message.error(result?.message || errorMessage);
-        }
+      if (resource?.id) {
+        result = await update(resource?.id, data);
+        successMessage = '更新成功';
+        errorMessage = '更新失败';
+      } else {
+        result = await create(data);
+        successMessage = '注册成功';
+        errorMessage = '注册失败';
+      }
+      if (result && result.code === '200') {
+        message.success(successMessage);
+        onSuccess?.();
+      } else {
+        message.error(result?.message || errorMessage);
       }
     } catch (error) {
     } finally {
