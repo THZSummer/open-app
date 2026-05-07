@@ -48,7 +48,6 @@ public interface ApprovalRecordMapper {
             @Param("keyword") String keyword,
             @Param("status") Integer status,
             @Param("applicantId") String applicantId,
-            @Param("approverId") String approverId,
             @Param("offset") Integer offset,
             @Param("pageSize") Integer pageSize);
 
@@ -59,8 +58,7 @@ public interface ApprovalRecordMapper {
             @Param("type") String type,
             @Param("keyword") String keyword,
             @Param("status") Integer status,
-            @Param("applicantId") String applicantId,
-            @Param("approverId") String approverId);
+            @Param("applicantId") String applicantId);
 
     /**
      * 更新审批记录

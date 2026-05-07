@@ -225,12 +225,27 @@ public class ApprovalService {
      */
     public List<ApprovalPendingListResponse> getPendingList(ApprovalPendingListRequest request) {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
+
+        if (hasText(request.getApproverId())) {
+            return recordMapper.selectPendingList(
+                            request.getType(),
+                            request.getKeyword(),
+                            request.getStatus(),
+                            request.getApplicantId(),
+                            0,
+                            Integer.MAX_VALUE).stream()
+                    .filter(record -> isCurrentApprover(record, request.getApproverId()))
+                    .skip(offset)
+                    .limit(request.getPageSize())
+                    .map(this::convertToPendingListResponse)
+                    .collect(Collectors.toList());
+        }
+
         List<ApprovalRecord> records = recordMapper.selectPendingList(
                 request.getType(),
                 request.getKeyword(),
                 request.getStatus(),
                 request.getApplicantId(),
-                request.getApproverId(),
                 offset,
                 request.getPageSize());
 
@@ -285,7 +300,48 @@ public class ApprovalService {
      * 统计待审批数量
      */
     public Long countPendingList(String type, String keyword, Integer status, String applicantId, String approverId) {
-        return recordMapper.countPendingList(type, keyword, status, applicantId, approverId);
+        if (hasText(approverId)) {
+            return recordMapper.selectPendingList(type, keyword, status, applicantId, 0, Integer.MAX_VALUE).stream()
+                    .filter(record -> isCurrentApprover(record, approverId))
+                    .count();
+        }
+
+        return recordMapper.countPendingList(type, keyword, status, applicantId);
+    }
+
+    private ApprovalPendingListResponse convertToPendingListResponse(ApprovalRecord record) {
+        ApprovalPendingListResponse response = new ApprovalPendingListResponse();
+        response.setId(String.valueOf(record.getId()));
+        response.setBusinessType(record.getBusinessType());
+        response.setBusinessId(String.valueOf(record.getBusinessId()));
+
+        Map<String, Object> businessData = getBusinessData(record.getBusinessType(), record.getBusinessId());
+        if (businessData != null && businessData.get("nameCn") != null) {
+            response.setBusinessName((String) businessData.get("nameCn"));
+        }
+        response.setApplicantId(record.getApplicantId());
+        response.setApplicantName(record.getApplicantName());
+        response.setStatus(record.getStatus());
+        response.setCurrentNode(record.getCurrentNode());
+        response.setCreateTime(record.getCreateTime());
+        return response;
+    }
+
+    private boolean isCurrentApprover(ApprovalRecord record, String approverId) {
+        if (record == null || record.getCombinedNodes() == null || record.getCurrentNode() == null) {
+            return false;
+        }
+        List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
+        if (nodes.isEmpty() || record.getCurrentNode() < 0 || record.getCurrentNode() >= nodes.size()) {
+            return false;
+        }
+
+        ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
+        return approverId.equals(currentNode.getUserId());
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isEmpty();
     }
 
     /**
