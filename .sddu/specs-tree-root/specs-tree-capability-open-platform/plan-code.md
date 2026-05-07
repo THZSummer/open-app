@@ -722,8 +722,82 @@ public void processOrder(Long orderId) {
 
 ---
 
+## 16. 敏感信息规范
+
+**规则**：日志中禁止打印敏感信息，如直接打印请求头、Token、密码等。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| 过滤敏感信息后打印日志 | 直接打印包含敏感信息的对象 |
+| 打印脱敏后的参数 | 打印完整的请求头、请求体 |
+
+```java
+// ✅ 正确示例
+@Slf4j
+@RestController
+public class ApiController {
+    
+    public void handleRequest(HttpServletRequest request) {
+        // 只记录必要的非敏感信息
+        log.info("Request received, uri={}, method={}", 
+            request.getRequestURI(), request.getMethod());
+        
+        String token = request.getHeader("Authorization");
+        if (token != null) {
+            log.info("Authorization header present, length={}", token.length());
+        }
+    }
+    
+    public void login(LoginRequest request) {
+        // 脱敏处理后记录
+        log.info("User login attempt, username={}", request.getUsername());
+        // 不记录密码
+    }
+}
+
+// ❌ 错误示例
+@Slf4j
+@RestController
+public class ApiController {
+    
+    public void handleRequest(HttpServletRequest request) {
+        // ❌ 直接打印请求头，可能包含敏感信息
+        log.info("Request headers: {}", request.getHeaderNames());
+        Enumeration<String> headerNames = request.getHeaderNames();
+        while (headerNames.hasMoreElements()) {
+            String name = headerNames.nextElement();
+            // ❌ 打印所有请求头，包括 Authorization
+            log.info("Header: {}={}", name, request.getHeader(name));
+        }
+    }
+    
+    public void login(LoginRequest request) {
+        // ❌ 直接打印包含密码的对象
+        log.info("Login request: {}", request);
+    }
+}
+```
+
+**敏感信息类型**：
+- 认证信息：Token、Session ID、Cookie
+- 个人信息：密码、身份证号、手机号、邮箱
+- 支付信息：银行卡号、CVV、支付密码
+- 业务敏感信息：API Key、私钥、加密密钥
+
+**工具检测**：
+- Logback: 配置 `maskingConverter` 敏感信息脱敏
+- 自定义 Logback Filter: 拦截敏感字段
+
+**原因**：
+- 安全合规要求（GDPR、网络安全法等）
+- 防止敏感信息泄露到日志文件
+- 避免日志被未授权人员访问导致信息泄露
+- 降低安全审计风险
+
+---
+
 ## 总结
 
-以上 15 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
+以上 16 条规范为能力开放平台项目的**强制要求**，所有代码提交前必须确保符合规范。
 
 请在 IDE 中配置相应的代码格式化和检查规则，确保代码风格统一。

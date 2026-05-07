@@ -92,7 +92,7 @@ public class ApiServerClient {
             
             if (headerValue != null && !headerValue.isEmpty()) {
                 headers.set(headerName, headerValue);
-                log.debug("Added API Server auth header: {}={}", headerName, headerValue);
+                log.debug("Added API Server auth header: {}, value length={}", headerName, headerValue.length());
             } else {
                 log.warn("Auth header value is empty, skip setting: {}", headerName);
             }
