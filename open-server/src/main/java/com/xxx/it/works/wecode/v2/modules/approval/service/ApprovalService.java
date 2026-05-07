@@ -230,6 +230,7 @@ public class ApprovalService {
                 request.getKeyword(),
                 request.getStatus(),
                 request.getApplicantId(),
+                request.getApproverId(),
                 offset,
                 request.getPageSize());
 
@@ -283,8 +284,8 @@ public class ApprovalService {
     /**
      * 统计待审批数量
      */
-    public Long countPendingList(String type, String keyword, Integer status, String applicantId) {
-        return recordMapper.countPendingList(type, keyword, status, applicantId);
+    public Long countPendingList(String type, String keyword, Integer status, String applicantId, String approverId) {
+        return recordMapper.countPendingList(type, keyword, status, applicantId, approverId);
     }
 
     /**

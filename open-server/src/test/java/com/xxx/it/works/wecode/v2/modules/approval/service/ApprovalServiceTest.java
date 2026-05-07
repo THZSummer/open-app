@@ -283,7 +283,7 @@ class ApprovalServiceTest {
             record.setCreateTime(new Date());
             record.setCombinedNodes("[]");
 
-            when(recordMapper.selectPendingList(any(), any(), any(), any(), anyInt(), anyInt()))
+            when(recordMapper.selectPendingList(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(List.of(record));
             when(approvalEngine.parseNodes("[]")).thenReturn(new ArrayList<>());
 
@@ -427,9 +427,9 @@ class ApprovalServiceTest {
         @Test
         @DisplayName("统计待审批数量成功")
         void countPendingList_success() {
-            when(recordMapper.countPendingList("api_register", null, 0, null)).thenReturn(5L);
+            when(recordMapper.countPendingList("api_register", null, 0, null, "user001")).thenReturn(5L);
 
-            Long result = approvalService.countPendingList("api_register", null, 0, null);
+            Long result = approvalService.countPendingList("api_register", null, 0, null, "user001");
 
             assertEquals(5L, result);
         }

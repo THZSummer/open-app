@@ -186,7 +186,7 @@ class ApprovalControllerTest {
             List<ApprovalPendingListResponse> mockList = Collections.singletonList(response1);
 
             when(approvalService.getPendingList(any())).thenReturn(mockList);
-            when(approvalService.countPendingList(any(), any(), any(), any())).thenReturn(1L);
+            when(approvalService.countPendingList(any(), any(), any(), any(), any())).thenReturn(1L);
 
             ApiResponse<List<ApprovalPendingListResponse>> response = approvalController.getPendingList(
                     "api_register", null, null, null, null, 1, 20);
@@ -199,7 +199,7 @@ class ApprovalControllerTest {
             assertNotNull(response.getPage());
             assertEquals(1L, response.getPage().getTotal());
             verify(approvalService).getPendingList(any());
-            verify(approvalService).countPendingList(any(), any(), any(), any());
+            verify(approvalService).countPendingList(any(), any(), any(), any(), any());
         }
 
         @Test

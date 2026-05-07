@@ -90,6 +90,9 @@
         <if test="applicantId != null and applicantId != ''">
             AND applicant_id = #{applicantId}
         </if>
+        <if test="approverId != null and approverId != ''">
+            AND JSON_UNQUOTE(JSON_EXTRACT(combined_nodes, CONCAT('$[', current_node, '].userId'))) = #{approverId}
+        </if>
         ORDER BY create_time DESC
         LIMIT #{offset}, #{pageSize}
     </select>
@@ -126,6 +129,9 @@
         </if>
         <if test="applicantId != null and applicantId != ''">
             AND applicant_id = #{applicantId}
+        </if>
+        <if test="approverId != null and approverId != ''">
+            AND JSON_UNQUOTE(JSON_EXTRACT(combined_nodes, CONCAT('$[', current_node, '].userId'))) = #{approverId}
         </if>
     </select>
 
