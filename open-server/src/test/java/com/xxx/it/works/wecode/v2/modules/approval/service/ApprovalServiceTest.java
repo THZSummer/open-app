@@ -322,7 +322,7 @@ class ApprovalServiceTest {
             ApprovalRecord record2 = buildPendingRecord(2L, "nodes2");
             ApprovalRecord record3 = buildPendingRecord(3L, "nodes3");
 
-            when(recordMapper.selectPendingList("api_register", null, null, null, 0, Integer.MAX_VALUE))
+            when(recordMapper.selectPendingList("api_register", null, null, null, 0, 200))
                     .thenReturn(List.of(record1, record2, record3));
             when(approvalEngine.parseNodes("nodes1"))
                     .thenReturn(List.of(ApprovalNodeDto.builder().userId("user001").build()));
@@ -335,6 +335,7 @@ class ApprovalServiceTest {
 
             assertEquals(1, result.size());
             assertEquals("2", result.get(0).getId());
+            verify(recordMapper, never()).selectPendingList("api_register", null, null, null, 200, 200);
         }
 
         @Test
@@ -343,7 +344,7 @@ class ApprovalServiceTest {
             ApprovalRecord record1 = buildPendingRecord(1L, "nodes1");
             ApprovalRecord record2 = buildPendingRecord(2L, "nodes2");
 
-            when(recordMapper.selectPendingList("api_register", null, 0, null, 0, Integer.MAX_VALUE))
+            when(recordMapper.selectPendingList("api_register", null, 0, null, 0, 200))
                     .thenReturn(List.of(record1, record2));
             when(approvalEngine.parseNodes("nodes1"))
                     .thenReturn(List.of(ApprovalNodeDto.builder().userId("user001").build()));
