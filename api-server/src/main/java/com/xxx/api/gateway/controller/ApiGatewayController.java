@@ -26,7 +26,7 @@ import java.util.Map;
  * <p>接口列表：</p>
  * <ul>
  *   <li>ANY /gateway/api/* - API 请求代理与鉴权（#55）</li>
- *   <li>POST /gateway/callbacks/config - 回调配置查询接口（#59）</li>
+ *   <li>POST /gateway/assistant/callbacks/config - 回调配置查询接口（#59）</li>
  * </ul>
  * 
  * @author SDDU Build Agent
@@ -140,8 +140,8 @@ public class ApiGatewayController {
      * <p>供 XX 通讯平台内部业务模块调用，通过 AK + Scope 查询应用对某个回调的订阅配置</p>
      */
     @Operation(summary = "回调配置查询接口", description = "通过 AK + Scope 查询应用对某个回调的订阅配置")
-    @PostMapping("/callbacks/config")
-    public ApiResponse<CallbackConfigResponse> getCallbackConfig(
+    @PostMapping("/assistant/callbacks/config")
+    public ApiResponse<CallbackConfigResponse> getAssistantCallbackConfig(
             @Parameter(description = "内部调用凭证") @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody CallbackConfigRequest request) {
         
@@ -150,7 +150,7 @@ public class ApiGatewayController {
         // TODO: 验证内部调用凭证（Authorization）
         
         try {
-            CallbackConfigResponse config = apiGatewayService.getCallbackConfig(request.getAk(), request.getScope());
+            CallbackConfigResponse config = apiGatewayService.getAssistantCallbackConfig(request.getAk(), request.getScope());
             
             if (config == null) {
                 log.info("Callback configuration not found: ak={}, scope={}", request.getAk(), request.getScope());

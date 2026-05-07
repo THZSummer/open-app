@@ -195,7 +195,7 @@ public class ApprovalController {
 
         List<ApprovalPendingListResponse> data = approvalService.getPendingList(request);
         String actualApplicantId = "current".equals(applicantId) ? UserContextHolder.getUserId() : applicantId;
-        Long total = approvalService.countPendingList(type, keyword, status, actualApplicantId);
+        Long total = approvalService.countPendingList(type, keyword, status, actualApplicantId, actualApproverId);
 
         ApiResponse.PageResponse page = ApiResponse.PageResponse.builder()
                 .curPage(curPage)

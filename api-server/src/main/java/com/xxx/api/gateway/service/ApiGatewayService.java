@@ -136,7 +136,7 @@ public class ApiGatewayService {
      * @param scope 回调权限标识
      * @return 回调配置，未找到返回 null
      */
-    public CallbackConfigResponse getCallbackConfig(String ak, String scope) {
+    public CallbackConfigResponse getAssistantCallbackConfig(String ak, String scope) {
 
         // 1. 通过 AK 获取应用ID（预留接口，对接现有 AKSK 管理系统）
         Long appId = applicationService.getAppIdByAk(ak);

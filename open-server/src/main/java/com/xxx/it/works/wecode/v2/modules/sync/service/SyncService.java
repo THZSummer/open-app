@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.sync.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyDetail;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyRequest;
 import com.xxx.it.works.wecode.v2.modules.sync.dto.EmergencyResult;
@@ -30,6 +31,7 @@ public class SyncService {
 
     private final SyncMapper syncMapper;
     private final ObjectMapper objectMapper;
+    private final IdGeneratorStrategy idGenerator;
 
     @Transactional(rollbackFor = Exception.class)
     public SyncResult migrate(SyncRequest request) {
@@ -486,8 +488,9 @@ public class SyncService {
                         continue;
                     }
                     
+                    Long newId = idGenerator.nextId();
                     OldSubscription newData = new OldSubscription();
-                    newData.setId(data.getId());
+                    newData.setId(newId);
                     newData.setAppId(data.getAppId());
                     newData.setPermissionId(data.getPermissionId());
                     newData.setTenantId(data.getTenantId());
@@ -499,9 +502,11 @@ public class SyncService {
                     newData.setLastUpdateTime(new Date());
                     
                     syncMapper.insertOldSubscription(newData);
+                    
+                    detail.setId(newId);
                     inserted++;
                     detail.setStatus("inserted");
-                    detail.setMessage("新增成功");
+                    detail.setMessage("新增成功，ID=" + newId);
                     success++;
                 }
                 
@@ -579,8 +584,9 @@ public class SyncService {
                         continue;
                     }
                     
+                    Long newId = idGenerator.nextId();
                     Subscription newData = new Subscription();
-                    newData.setId(data.getId());
+                    newData.setId(newId);
                     newData.setAppId(data.getAppId());
                     newData.setPermissionId(data.getPermissionId());
                     newData.setStatus(data.getStatus());
@@ -593,9 +599,11 @@ public class SyncService {
                     newData.setLastUpdateTime(new Date());
                     
                     syncMapper.insertNewSubscription(newData);
+                    
+                    detail.setId(newId);
                     inserted++;
                     detail.setStatus("inserted");
-                    detail.setMessage("新增成功");
+                    detail.setMessage("新增成功，ID=" + newId);
                     success++;
                 }
                 

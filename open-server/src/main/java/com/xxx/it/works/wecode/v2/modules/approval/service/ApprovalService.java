@@ -59,6 +59,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ApprovalService {
 
+    private static final int APPROVER_FILTER_BATCH_SIZE = 200;
+
     private final ApprovalFlowMapper flowMapper;
     private final ApprovalRecordMapper recordMapper;
     private final ApprovalLogMapper logMapper;
@@ -225,6 +227,13 @@ public class ApprovalService {
      */
     public List<ApprovalPendingListResponse> getPendingList(ApprovalPendingListRequest request) {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
+
+        if (hasText(request.getApproverId())) {
+            return selectPendingListByApprover(request, offset).stream()
+                    .map(this::convertToPendingListResponse)
+                    .collect(Collectors.toList());
+        }
+
         List<ApprovalRecord> records = recordMapper.selectPendingList(
                 request.getType(),
                 request.getKeyword(),
@@ -283,8 +292,113 @@ public class ApprovalService {
     /**
      * 统计待审批数量
      */
-    public Long countPendingList(String type, String keyword, Integer status, String applicantId) {
+    public Long countPendingList(String type, String keyword, Integer status, String applicantId, String approverId) {
+        if (hasText(approverId)) {
+            return countPendingListByApprover(type, keyword, status, applicantId, approverId);
+        }
+
         return recordMapper.countPendingList(type, keyword, status, applicantId);
+    }
+
+    private List<ApprovalRecord> selectPendingListByApprover(ApprovalPendingListRequest request, int targetOffset) {
+        int scannedOffset = 0;
+        int matchedCount = 0;
+        List<ApprovalRecord> pageRecords = new ArrayList<>();
+
+        while (true) {
+            List<ApprovalRecord> batch = recordMapper.selectPendingList(
+                    request.getType(),
+                    request.getKeyword(),
+                    request.getStatus(),
+                    request.getApplicantId(),
+                    scannedOffset,
+                    APPROVER_FILTER_BATCH_SIZE);
+
+            if (batch.isEmpty()) {
+                return pageRecords;
+            }
+
+            for (ApprovalRecord record : batch) {
+                if (!isCurrentApprover(record, request.getApproverId())) {
+                    continue;
+                }
+                if (matchedCount >= targetOffset && pageRecords.size() < request.getPageSize()) {
+                    pageRecords.add(record);
+                }
+                matchedCount++;
+                if (pageRecords.size() >= request.getPageSize()) {
+                    return pageRecords;
+                }
+            }
+
+            if (batch.size() < APPROVER_FILTER_BATCH_SIZE) {
+                return pageRecords;
+            }
+            scannedOffset += APPROVER_FILTER_BATCH_SIZE;
+        }
+    }
+
+    private long countPendingListByApprover(String type, String keyword, Integer status, String applicantId, String approverId) {
+        int scannedOffset = 0;
+        long matchedCount = 0L;
+
+        while (true) {
+            List<ApprovalRecord> batch = recordMapper.selectPendingList(
+                    type,
+                    keyword,
+                    status,
+                    applicantId,
+                    scannedOffset,
+                    APPROVER_FILTER_BATCH_SIZE);
+
+            if (batch.isEmpty()) {
+                return matchedCount;
+            }
+
+            matchedCount += batch.stream()
+                    .filter(record -> isCurrentApprover(record, approverId))
+                    .count();
+
+            if (batch.size() < APPROVER_FILTER_BATCH_SIZE) {
+                return matchedCount;
+            }
+            scannedOffset += APPROVER_FILTER_BATCH_SIZE;
+        }
+    }
+
+    private ApprovalPendingListResponse convertToPendingListResponse(ApprovalRecord record) {
+        ApprovalPendingListResponse response = new ApprovalPendingListResponse();
+        response.setId(String.valueOf(record.getId()));
+        response.setBusinessType(record.getBusinessType());
+        response.setBusinessId(String.valueOf(record.getBusinessId()));
+
+        Map<String, Object> businessData = getBusinessData(record.getBusinessType(), record.getBusinessId());
+        if (businessData != null && businessData.get("nameCn") != null) {
+            response.setBusinessName((String) businessData.get("nameCn"));
+        }
+        response.setApplicantId(record.getApplicantId());
+        response.setApplicantName(record.getApplicantName());
+        response.setStatus(record.getStatus());
+        response.setCurrentNode(record.getCurrentNode());
+        response.setCreateTime(record.getCreateTime());
+        return response;
+    }
+
+    private boolean isCurrentApprover(ApprovalRecord record, String approverId) {
+        if (record == null || record.getCombinedNodes() == null || record.getCurrentNode() == null) {
+            return false;
+        }
+        List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
+        if (nodes.isEmpty() || record.getCurrentNode() < 0 || record.getCurrentNode() >= nodes.size()) {
+            return false;
+        }
+
+        ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
+        return approverId.equals(currentNode.getUserId());
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isEmpty();
     }
 
     /**
