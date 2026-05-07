@@ -55,7 +55,7 @@ public class AuthHandlerImpl implements AuthHandler {
             // 只设置非空值
             if (headerValue != null && !headerValue.isEmpty()) {
                 headers.set(headerName, headerValue);
-                log.debug("Auth header set: {}={}", headerName, headerValue);
+                log.debug("Auth header set: {}, value length={}", headerName, headerValue.length());
             } else {
                 log.warn("Auth header value is empty, skipping: {}", headerName);
             }
