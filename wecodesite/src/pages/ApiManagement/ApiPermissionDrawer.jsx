@@ -396,13 +396,13 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     selectedRowKeys,
     onChange: handleSelectChange,
     getCheckboxProps: (record) => ({
-      disabled: record.isSubscribed === 1,  // 已订阅的权限禁用勾选
+      disabled: record.isSubscribed !== 99,  // 已订阅的权限禁用勾选
     }),
   };
 
   /**
    * 渲染第一层Tab（身份权限Tab）
-   * 仅在一级Tab数量大于1时显示
+   * 仅在一级Tab数量大于0时显示
    */
   const renderFirstLevelTabs = () => {
     if (!enableIdentityPermission) {
@@ -410,7 +410,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     }
     
     const tabs = tabConfig.firstLevelTabs;
-    if (!tabs || tabs.length <= 1) {
+    if (!tabs || tabs.length <= 0) {
       return null;
     }
     

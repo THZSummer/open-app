@@ -11,10 +11,8 @@ export const NEED_REVIEW_OPTIONS = [
 export const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export const renderSubscriptionStatus = (isSubscribed) => {
-  if (isSubscribed === 1) {
-    return <Tag color="success">已订阅</Tag>;
-  }
-  return <Tag color="default">未订阅</Tag>;
+  const { text, color } = SUBSCRIPTION_STATUS[status];
+  return <Tag color={color}>{text}</Tag>;
 };
 
 export const renderNeedApprovalStatus = (needApproval, record) => {

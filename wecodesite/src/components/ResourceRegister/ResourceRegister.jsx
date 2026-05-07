@@ -120,7 +120,11 @@ function ResourceRegister({
       const errorMessage = resource?.id ? '更新失败' : '注册失败';
 
       if (apiMethod) {
-        result = await apiMethod(resource?.id, data);
+        if (resource?.id) {
+          result = await apiMethod(resource?.id, data);
+        } else {
+          result = await apiMethod(data);
+        }
         if (result && result.code === '200') {
           message.success(successMessage);
           onSuccess?.();

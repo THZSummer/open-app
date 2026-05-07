@@ -125,7 +125,7 @@ function ResourceDrawer({
     selectedRowKeys,
     onChange: handleSelectChange,
     getCheckboxProps: (record) => ({
-      disabled: record.isSubscribed === 1,
+      disabled: record.isSubscribed !== 99,
     }),
   };
 

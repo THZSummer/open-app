@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tag, Button, Space, Popconfirm } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { STATUS_MAP } from '../../../utils/constants';
+import { SUBSCRIPTION_STATUS } from '../../../utils/constants';
 
 export const LEVEL_MAP = {
   'resource': { text: '资源审批', color: 'blue' },
@@ -36,27 +36,10 @@ export const BUSINESS_COLUMNS = [
     key: 'status',
     width: 100,
     render: (status) => {
-      const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
+      const { text, color } = SUBSCRIPTION_STATUS[status] || SUBSCRIPTION_STATUS[0];
       return <Tag color={color}>{text}</Tag>;
     },
   },
-];
-
-export const NODE_STATUS_MAP = {
-  0: { text: '待审批', color: 'default' },
-  1: { text: '已同意', color: 'success' },
-  2: { text: '已拒绝', color: 'error' },
-};
-
-export const APPROVAL_TYPE_MAP = {
-  'resource_register': '资源注册',
-  'permission_apply': '权限申请',
-};
-
-export const APPROVAL_TABS = [
-  { key: 'pending', label: '我的待审' },
-  { key: 'mine', label: '我发起的' },
-  { key: 'all', label: '全部' },
 ];
 
 export const getApprovalColumns = ({ handleViewDetail, handleApprove, handleReject }) => [

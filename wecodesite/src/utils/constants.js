@@ -12,6 +12,7 @@ export const SUBSCRIPTION_STATUS = {
   2: { text: '已驳回', color: 'red' },
   3: { text: '已撤回', color: 'default' },
   4: { text: '已中止', color: 'red' },
+  99: { text: '未订阅', color: 'default' }
 };
 
 export const STATUS_MAP = {
