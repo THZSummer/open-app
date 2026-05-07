@@ -109,22 +109,19 @@ function ResourceRegister({
           nameEn: values.permissionNameEn,
           scope: values.scope,
           needApproval: values.needApproval ?? 1,
-          resourceNodes: values.resourceNodes && values.resourceNodes.length > 0 ? JSON.stringify(values.resourceNodes) : null,
+          resourceNodes: values.resourceNodes?.length > 0 ? JSON.stringify(values.resourceNodes) : null,
         },
         properties: properties,
       };
 
-      let result;
-      const apiMethod = resource?.id ? update : create;
-      const successMessage = resource?.id ? '更新成功' : '注册成功';
-      const errorMessage = resource?.id ? '更新失败' : '注册失败';
+      const isEdit = !!resource?.id;
+      const apiMethod = isEdit ? update : create;
+      const successMessage = isEdit ? '更新成功' : '注册成功';
+      const errorMessage = isEdit ? '更新失败' : '注册失败';
 
       if (apiMethod) {
-        if (resource?.id) {
-          result = await apiMethod(resource?.id, data);
-        } else {
-          result = await apiMethod(data);
-        }
+        const params = isEdit ? [resource.id, data] : [data];
+        result = await apiMethod(...params);
         if (result && result.code === '200') {
           message.success(successMessage);
           onSuccess?.();
