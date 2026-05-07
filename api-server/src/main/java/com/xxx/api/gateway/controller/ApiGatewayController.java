@@ -141,7 +141,7 @@ public class ApiGatewayController {
      */
     @Operation(summary = "回调配置查询接口", description = "通过 AK + Scope 查询应用对某个回调的订阅配置")
     @PostMapping("/assistant/callbacks/config")
-    public ApiResponse<CallbackConfigResponse> getCallbackConfig(
+    public ApiResponse<CallbackConfigResponse> getAssistantCallbackConfig(
             @Parameter(description = "内部调用凭证") @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody CallbackConfigRequest request) {
         
@@ -150,7 +150,7 @@ public class ApiGatewayController {
         // TODO: 验证内部调用凭证（Authorization）
         
         try {
-            CallbackConfigResponse config = apiGatewayService.getCallbackConfig(request.getAk(), request.getScope());
+            CallbackConfigResponse config = apiGatewayService.getAssistantCallbackConfig(request.getAk(), request.getScope());
             
             if (config == null) {
                 log.info("Callback configuration not found: ak={}, scope={}", request.getAk(), request.getScope());

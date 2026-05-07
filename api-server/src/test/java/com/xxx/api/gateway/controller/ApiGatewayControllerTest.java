@@ -141,7 +141,7 @@ class ApiGatewayControllerTest {
     }
 
     @Nested
-    @DisplayName("getCallbackConfig 测试")
+    @DisplayName("getAssistantCallbackConfig 测试")
     class GetCallbackConfigTests {
 
         @Test
@@ -159,10 +159,10 @@ class ApiGatewayControllerTest {
                     .authType(1)
                     .build();
 
-            when(apiGatewayService.getCallbackConfig("AK123456789", "callback:approval:completed"))
+            when(apiGatewayService.getAssistantCallbackConfig("AK123456789", "callback:approval:completed"))
                     .thenReturn(mockResponse);
 
-            ApiResponse<CallbackConfigResponse> response = apiGatewayController.getCallbackConfig("Bearer token", configRequest);
+            ApiResponse<CallbackConfigResponse> response = apiGatewayController.getAssistantCallbackConfig("Bearer token", configRequest);
 
             assertNotNull(response);
             assertEquals("200", response.getCode());
@@ -170,7 +170,7 @@ class ApiGatewayControllerTest {
             assertEquals("AK123456789", response.getData().getAk());
             assertEquals("callback:approval:completed", response.getData().getScope());
             assertEquals(1, response.getData().getChannelType());
-            verify(apiGatewayService).getCallbackConfig("AK123456789", "callback:approval:completed");
+            verify(apiGatewayService).getAssistantCallbackConfig("AK123456789", "callback:approval:completed");
         }
 
         @Test
@@ -180,15 +180,15 @@ class ApiGatewayControllerTest {
             configRequest.setAk("AK_NOT_EXIST");
             configRequest.setScope("callback:approval:completed");
 
-            when(apiGatewayService.getCallbackConfig("AK_NOT_EXIST", "callback:approval:completed"))
+            when(apiGatewayService.getAssistantCallbackConfig("AK_NOT_EXIST", "callback:approval:completed"))
                     .thenReturn(null);
 
-            ApiResponse<CallbackConfigResponse> response = apiGatewayController.getCallbackConfig("Bearer token", configRequest);
+            ApiResponse<CallbackConfigResponse> response = apiGatewayController.getAssistantCallbackConfig("Bearer token", configRequest);
 
             assertNotNull(response);
             assertEquals("200", response.getCode());
             assertNull(response.getData());
-            verify(apiGatewayService).getCallbackConfig("AK_NOT_EXIST", "callback:approval:completed");
+            verify(apiGatewayService).getAssistantCallbackConfig("AK_NOT_EXIST", "callback:approval:completed");
         }
 
         @Test
@@ -198,15 +198,15 @@ class ApiGatewayControllerTest {
             configRequest.setAk("AK123456789");
             configRequest.setScope("callback:approval:completed");
 
-            when(apiGatewayService.getCallbackConfig("AK123456789", "callback:approval:completed"))
+            when(apiGatewayService.getAssistantCallbackConfig("AK123456789", "callback:approval:completed"))
                     .thenThrow(new RuntimeException("Database error"));
 
-            ApiResponse<CallbackConfigResponse> response = apiGatewayController.getCallbackConfig("Bearer token", configRequest);
+            ApiResponse<CallbackConfigResponse> response = apiGatewayController.getAssistantCallbackConfig("Bearer token", configRequest);
 
             assertNotNull(response);
             assertEquals("400", response.getCode());
             assertTrue(response.getMessageZh().contains("查询失败"));
-            verify(apiGatewayService).getCallbackConfig("AK123456789", "callback:approval:completed");
+            verify(apiGatewayService).getAssistantCallbackConfig("AK123456789", "callback:approval:completed");
         }
     }
 }

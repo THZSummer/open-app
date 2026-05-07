@@ -262,7 +262,7 @@ class ApiGatewayServiceTest {
                     .thenReturn(subscription);
 
             // 执行测试
-            CallbackConfigResponse response = apiGatewayService.getCallbackConfig(ak, scope);
+            CallbackConfigResponse response = apiGatewayService.getAssistantCallbackConfig(ak, scope);
 
             // 验证结果
             assertNotNull(response);
@@ -300,7 +300,7 @@ class ApiGatewayServiceTest {
                     .thenReturn(subscription);
 
             // 执行测试
-            CallbackConfigResponse response = apiGatewayService.getCallbackConfig(ak, scope);
+            CallbackConfigResponse response = apiGatewayService.getAssistantCallbackConfig(ak, scope);
 
             // 验证结果
             assertNotNull(response);
@@ -338,7 +338,7 @@ class ApiGatewayServiceTest {
                     .thenReturn(subscription);
 
             // 执行测试
-            CallbackConfigResponse response = apiGatewayService.getCallbackConfig(ak, scope);
+            CallbackConfigResponse response = apiGatewayService.getAssistantCallbackConfig(ak, scope);
 
             // 验证结果
             assertNotNull(response);
@@ -361,7 +361,7 @@ class ApiGatewayServiceTest {
             when(applicationService.getAppIdByAk(ak)).thenReturn(null);
 
             // 执行测试
-            CallbackConfigResponse response = apiGatewayService.getCallbackConfig(ak, scope);
+            CallbackConfigResponse response = apiGatewayService.getAssistantCallbackConfig(ak, scope);
 
             // 验证结果
             assertNull(response);
@@ -385,7 +385,7 @@ class ApiGatewayServiceTest {
                     .thenReturn(null);
 
             // 执行测试
-            CallbackConfigResponse response = apiGatewayService.getCallbackConfig(ak, scope);
+            CallbackConfigResponse response = apiGatewayService.getAssistantCallbackConfig(ak, scope);
 
             // 验证结果
             assertNull(response);
@@ -406,7 +406,7 @@ class ApiGatewayServiceTest {
             when(applicationService.getAppIdByAk(ak)).thenReturn(null);
 
             // 执行测试
-            CallbackConfigResponse response = apiGatewayService.getCallbackConfig(ak, scope);
+            CallbackConfigResponse response = apiGatewayService.getAssistantCallbackConfig(ak, scope);
 
             // 验证结果
             assertNull(response);
@@ -427,7 +427,7 @@ class ApiGatewayServiceTest {
             when(applicationService.getAppIdByAk(ak)).thenReturn(null);
 
             // 执行测试
-            CallbackConfigResponse response = apiGatewayService.getCallbackConfig(ak, scope);
+            CallbackConfigResponse response = apiGatewayService.getAssistantCallbackConfig(ak, scope);
 
             // 验证结果
             assertNull(response);
