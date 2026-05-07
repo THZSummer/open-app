@@ -109,7 +109,7 @@ function ResourceRegister({
           nameEn: values.permissionNameEn,
           scope: values.scope,
           needApproval: values.needApproval ?? 1,
-          resourceNodes: vvalues.resourceNodes?.length > 0 ? JSON.stringify(values.resourceNodes) : null,
+          resourceNodes: values.resourceNodes?.length > 0 ? JSON.stringify(values.resourceNodes) : null,
         },
         properties: properties,
       };
