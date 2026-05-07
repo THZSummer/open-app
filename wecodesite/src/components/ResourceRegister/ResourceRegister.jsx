@@ -121,7 +121,7 @@ function ResourceRegister({
 
       if (apiMethod) {
         const params = isEdit ? [resource.id, data] : [data];
-        result = await apiMethod(...params);
+        const result = await apiMethod(...params);
         if (result && result.code === '200') {
           message.success(successMessage);
           onSuccess?.();

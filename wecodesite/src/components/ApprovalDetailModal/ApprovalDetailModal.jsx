@@ -22,7 +22,7 @@ import {
   SyncOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { STATUS_MAP } from '../../utils/constants';
+import { SUBSCRIPTION_STATUS } from '../../utils/constants';
 import { LEVEL_MAP } from '../../pages/Admin/Approval/constants';
 
 function ApprovalDetailModal({
@@ -76,8 +76,8 @@ function ApprovalDetailModal({
               <Descriptions.Item label="业务名称">{detail.businessData?.nameCn || '-'}</Descriptions.Item>
               <Descriptions.Item label="业务ID">{detail.businessId}</Descriptions.Item>
               <Descriptions.Item label="状态">
-                <Tag color={STATUS_MAP[detail.status]?.color || 'default'}>
-                  {STATUS_MAP[detail.status]?.text || '未知'}
+                <Tag color={SUBSCRIPTION_STATUS[detail.status]?.color || 'default'}>
+                  {SUBSCRIPTION_STATUS[detail.status]?.text || '未知'}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="申请时间" span={2}>{detail.createTime}</Descriptions.Item>
