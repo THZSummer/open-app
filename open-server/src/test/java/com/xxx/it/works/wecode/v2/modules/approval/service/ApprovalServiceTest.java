@@ -263,6 +263,20 @@ class ApprovalServiceTest {
     @DisplayName("审批执行管理测试")
     class ApprovalExecutionTests {
 
+        private ApprovalRecord buildPendingRecord(Long id, String combinedNodes) {
+            ApprovalRecord record = new ApprovalRecord();
+            record.setId(id);
+            record.setBusinessType("api_register");
+            record.setBusinessId(id);
+            record.setApplicantId("user001");
+            record.setApplicantName("test");
+            record.setStatus(0);
+            record.setCurrentNode(0);
+            record.setCreateTime(new Date());
+            record.setCombinedNodes(combinedNodes);
+            return record;
+        }
+
         @Test
         @DisplayName("获取待审批列表成功")
         void getPendingList_success() {
@@ -293,6 +307,52 @@ class ApprovalServiceTest {
             assertEquals(1, result.size());
             assertEquals("1", result.get(0).getId());
             assertEquals("api_register", result.get(0).getBusinessType());
+        }
+
+        @Test
+        @DisplayName("按审批人过滤后分页成功")
+        void getPendingList_filterByApproverBeforePaging_success() {
+            ApprovalPendingListRequest request = new ApprovalPendingListRequest();
+            request.setType("api_register");
+            request.setCurPage(1);
+            request.setPageSize(1);
+            request.setApproverId("user002");
+
+            ApprovalRecord record1 = buildPendingRecord(1L, "nodes1");
+            ApprovalRecord record2 = buildPendingRecord(2L, "nodes2");
+            ApprovalRecord record3 = buildPendingRecord(3L, "nodes3");
+
+            when(recordMapper.selectPendingList("api_register", null, null, null, 0, Integer.MAX_VALUE))
+                    .thenReturn(List.of(record1, record2, record3));
+            when(approvalEngine.parseNodes("nodes1"))
+                    .thenReturn(List.of(ApprovalNodeDto.builder().userId("user001").build()));
+            when(approvalEngine.parseNodes("nodes2"))
+                    .thenReturn(List.of(ApprovalNodeDto.builder().userId("user002").build()));
+            when(approvalEngine.parseNodes("nodes3"))
+                    .thenReturn(List.of(ApprovalNodeDto.builder().userId("user002").build()));
+
+            List<ApprovalPendingListResponse> result = approvalService.getPendingList(request);
+
+            assertEquals(1, result.size());
+            assertEquals("2", result.get(0).getId());
+        }
+
+        @Test
+        @DisplayName("按审批人过滤后统计成功")
+        void countPendingList_filterByApprover_success() {
+            ApprovalRecord record1 = buildPendingRecord(1L, "nodes1");
+            ApprovalRecord record2 = buildPendingRecord(2L, "nodes2");
+
+            when(recordMapper.selectPendingList("api_register", null, 0, null, 0, Integer.MAX_VALUE))
+                    .thenReturn(List.of(record1, record2));
+            when(approvalEngine.parseNodes("nodes1"))
+                    .thenReturn(List.of(ApprovalNodeDto.builder().userId("user001").build()));
+            when(approvalEngine.parseNodes("nodes2"))
+                    .thenReturn(List.of(ApprovalNodeDto.builder().userId("user002").build()));
+
+            Long result = approvalService.countPendingList("api_register", null, 0, null, "user002");
+
+            assertEquals(1L, result);
         }
 
         @Test
@@ -429,7 +489,7 @@ class ApprovalServiceTest {
         void countPendingList_success() {
             when(recordMapper.countPendingList("api_register", null, 0, null)).thenReturn(5L);
 
-            Long result = approvalService.countPendingList("api_register", null, 0, null);
+            Long result = approvalService.countPendingList("api_register", null, 0, null, null);
 
             assertEquals(5L, result);
         }

@@ -297,7 +297,7 @@
 | 60 | | POST | `/gateway/events/publish` | 事件发布接口 | FR-029 |
 | 61 | | POST | `/gateway/callbacks/invoke` | 回调触发接口 | FR-030 |
 | 62 | | GET | `/gateway/permissions/check` | 权限校验接口 | FR-028/029/030 |
-| 63 | | POST | `/gateway/callbacks/config` | 回调配置查询接口（内部） | FR-030 |
+| 63 | | POST | `/gateway/assistant/callbacks/config` | 回调配置查询接口（内部） | FR-030 |
 
 > **接口统计**：共 63 个接口，覆盖 FR-001 ~ FR-031
 >
@@ -2866,7 +2866,7 @@ API 请求代理与鉴权。
 
 ---
 
-#### 63. POST /gateway/callbacks/config
+#### 63. POST /gateway/assistant/callbacks/config
 
 回调配置查询接口（供 XX 通讯平台内部业务模块调用）。
 
