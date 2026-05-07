@@ -120,6 +120,7 @@ function ApprovalCenter() {
     } else {
       message.error(res?.messageZh || res?.message || '审批失败');
     }
+    return res;
   };
 
   const handleReject = (id) => {
@@ -136,6 +137,7 @@ function ApprovalCenter() {
     } else {
       message.error(res?.messageZh || res?.message || '审批失败');
     }
+    return res;
   };
 
   const handleViewDetail = async (record) => {

@@ -32,7 +32,6 @@ function ApprovalOpinionModal({
       setComment('');
     } else {
       setError('操作失败，请重试');
-      message.error(result?.message || '操作失败');
     }
     setLoading(false);
   };
