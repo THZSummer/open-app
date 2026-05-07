@@ -59,6 +59,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ApprovalService {
 
+    private static final int APPROVER_FILTER_BATCH_SIZE = 200;
+
     private final ApprovalFlowMapper flowMapper;
     private final ApprovalRecordMapper recordMapper;
     private final ApprovalLogMapper logMapper;
@@ -227,16 +229,7 @@ public class ApprovalService {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
 
         if (hasText(request.getApproverId())) {
-            return recordMapper.selectPendingList(
-                            request.getType(),
-                            request.getKeyword(),
-                            request.getStatus(),
-                            request.getApplicantId(),
-                            0,
-                            Integer.MAX_VALUE).stream()
-                    .filter(record -> isCurrentApprover(record, request.getApproverId()))
-                    .skip(offset)
-                    .limit(request.getPageSize())
+            return selectPendingListByApprover(request, offset).stream()
                     .map(this::convertToPendingListResponse)
                     .collect(Collectors.toList());
         }
@@ -301,12 +294,76 @@ public class ApprovalService {
      */
     public Long countPendingList(String type, String keyword, Integer status, String applicantId, String approverId) {
         if (hasText(approverId)) {
-            return recordMapper.selectPendingList(type, keyword, status, applicantId, 0, Integer.MAX_VALUE).stream()
-                    .filter(record -> isCurrentApprover(record, approverId))
-                    .count();
+            return countPendingListByApprover(type, keyword, status, applicantId, approverId);
         }
 
         return recordMapper.countPendingList(type, keyword, status, applicantId);
+    }
+
+    private List<ApprovalRecord> selectPendingListByApprover(ApprovalPendingListRequest request, int targetOffset) {
+        int scannedOffset = 0;
+        int matchedCount = 0;
+        List<ApprovalRecord> pageRecords = new ArrayList<>();
+
+        while (true) {
+            List<ApprovalRecord> batch = recordMapper.selectPendingList(
+                    request.getType(),
+                    request.getKeyword(),
+                    request.getStatus(),
+                    request.getApplicantId(),
+                    scannedOffset,
+                    APPROVER_FILTER_BATCH_SIZE);
+
+            if (batch.isEmpty()) {
+                return pageRecords;
+            }
+
+            for (ApprovalRecord record : batch) {
+                if (!isCurrentApprover(record, request.getApproverId())) {
+                    continue;
+                }
+                if (matchedCount >= targetOffset && pageRecords.size() < request.getPageSize()) {
+                    pageRecords.add(record);
+                }
+                matchedCount++;
+                if (pageRecords.size() >= request.getPageSize()) {
+                    return pageRecords;
+                }
+            }
+
+            if (batch.size() < APPROVER_FILTER_BATCH_SIZE) {
+                return pageRecords;
+            }
+            scannedOffset += APPROVER_FILTER_BATCH_SIZE;
+        }
+    }
+
+    private long countPendingListByApprover(String type, String keyword, Integer status, String applicantId, String approverId) {
+        int scannedOffset = 0;
+        long matchedCount = 0L;
+
+        while (true) {
+            List<ApprovalRecord> batch = recordMapper.selectPendingList(
+                    type,
+                    keyword,
+                    status,
+                    applicantId,
+                    scannedOffset,
+                    APPROVER_FILTER_BATCH_SIZE);
+
+            if (batch.isEmpty()) {
+                return matchedCount;
+            }
+
+            matchedCount += batch.stream()
+                    .filter(record -> isCurrentApprover(record, approverId))
+                    .count();
+
+            if (batch.size() < APPROVER_FILTER_BATCH_SIZE) {
+                return matchedCount;
+            }
+            scannedOffset += APPROVER_FILTER_BATCH_SIZE;
+        }
     }
 
     private ApprovalPendingListResponse convertToPendingListResponse(ApprovalRecord record) {
