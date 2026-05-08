@@ -91,6 +91,8 @@ public class CategoryService {
             }
         }
 
+        sortCategoryTree(roots);
+
         return roots;
     }
 
@@ -367,6 +369,18 @@ public class CategoryService {
     /**
      * 转换为响应
      */
+    private void sortCategoryTree(List<CategoryTreeResponse> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return;
+        }
+        categories.sort(Comparator
+                .comparing(CategoryTreeResponse::getSortOrder, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(CategoryTreeResponse::getId, Comparator.nullsLast(String::compareTo)));
+        for (CategoryTreeResponse category : categories) {
+            sortCategoryTree(category.getChildren());
+        }
+    }
+
     private CategoryResponse convertToResponse(Category category) {
         CategoryResponse response = new CategoryResponse();
         response.setId(String.valueOf(category.getId()));
