@@ -220,7 +220,7 @@ CREATE TABLE `openplatform_v2_subscription_t` (
     `status` TINYINT(10) DEFAULT 0 COMMENT '状态：0=待审, 1=已授权, 2=已拒绝, 3=已取消',
     `channel_type` TINYINT(10) COMMENT '通道类型：0=内部消息队列, 1=WebHook, 2=SSE, 3=WebSocket',
     `channel_address` VARCHAR(500) COMMENT '通道地址',
-    `auth_type` TINYINT(10) NOT NULL DEFAULT 1 COMMENT '认证方式: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN',
+    `auth_type` TINYINT(10) COMMENT '认证方式: 0=Cookie, 1=SOA, 2=APIG, 3=IAM, 4=免认证, 5=AKSK, 6=CLITOKEN',
     `approved_at` DATETIME(3) COMMENT '审批通过时间',
     `approved_by` VARCHAR(100) COMMENT '审批人账号',
     `create_time` DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
