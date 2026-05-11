@@ -17,6 +17,7 @@ import com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.permission.service.PermissionScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -41,8 +41,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ApiService {
 
-    private static final Pattern SCOPE_PATTERN = Pattern.compile("^api:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]*$");
-
     private final ApiMapper apiMapper;
     private final ApiPropertyMapper apiPropertyMapper;
     private final PermissionMapper permissionMapper;
@@ -51,16 +49,9 @@ public class ApiService {
     private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
     private final ApprovalFlowMapper approvalFlowMapper;
+    private final PermissionScopeService permissionScopeService;
 
     // ==================== 列表查询 (#9) ====================
-
-    private void validateScope(String scope) {
-        if (scope == null || !SCOPE_PATTERN.matcher(scope).matches()) {
-            throw new BusinessException("400",
-                    "Scope 格式错误，正确格式：api:{module}:{identifier}",
-                    "Invalid scope format. Expected: api:{module}:{identifier}");
-        }
-    }
 
     /**
      * #9 获取 API 列表
@@ -167,7 +158,7 @@ public class ApiService {
 
         // 检查 Scope 是否已存在
         String scope = request.getPermission().getScope();
-        validateScope(scope);
+        permissionScopeService.validateScope("api", scope);
         Integer scopeCount = permissionMapper.countByScope(scope);
         if (scopeCount > 0) {
             throw new BusinessException("409", "Scope 已存在", "Scope already exists");
@@ -189,6 +180,8 @@ public class ApiService {
         // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
         Integer needApproval = request.getPermission().getNeedApproval() != null ?
             request.getPermission().getNeedApproval() : 1;
+        approvalEngine.validateResourceApprovalNodesIfRequired(
+                needApproval, request.getPermission().getResourceNodes());
 
         // 先插入 API（状态暂设为待审）
         api.setStatus(1); // 待审
@@ -459,7 +452,7 @@ public class ApiService {
         }
         if (request.getPermission().getScope() != null && !request.getPermission().getScope().trim().isEmpty()) {
             String scope = request.getPermission().getScope();
-            validateScope(scope);
+            permissionScopeService.validateScope("api", scope);
             if (!scope.equals(permission.getScope())) {
                 Permission existingPermission = permissionMapper.selectByScope(scope);
                 if (existingPermission != null && !existingPermission.getId().equals(permission.getId())) {
@@ -474,6 +467,8 @@ public class ApiService {
         if (request.getPermission().getResourceNodes() != null) {
             permission.setResourceNodes(request.getPermission().getResourceNodes());
         }
+        approvalEngine.validateResourceApprovalNodesIfRequired(
+                permission.getNeedApproval(), permission.getResourceNodes());
         if (categoryId != null) {
             permission.setCategoryId(categoryId);
         }

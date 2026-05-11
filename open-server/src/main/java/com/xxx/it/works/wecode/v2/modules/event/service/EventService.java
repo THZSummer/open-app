@@ -17,13 +17,13 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
+import com.xxx.it.works.wecode.v2.modules.permission.service.PermissionScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -40,8 +40,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EventService {
 
-    private static final Pattern SCOPE_PATTERN = Pattern.compile("^event:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]*$");
-
     private final EventMapper eventMapper;
     private final EventPropertyMapper eventPropertyMapper;
     private final PermissionMapper permissionMapper;
@@ -50,6 +48,7 @@ public class EventService {
     private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
     private final ApprovalFlowMapper approvalFlowMapper;
+    private final PermissionScopeService permissionScopeService;
 
     // 事件状态常量
     private static final int STATUS_DRAFT = 0;       // 草稿
@@ -180,7 +179,7 @@ public class EventService {
 
         // 验证 Scope 唯一性
         String scope = request.getPermission().getScope();
-        validateScope(scope);
+        permissionScopeService.validateScope("event", scope);
 
         Permission existingPermission = permissionMapper.selectByScope(scope);
         if (existingPermission != null) {
@@ -203,6 +202,8 @@ public class EventService {
         // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
         Integer needApproval = request.getPermission().getNeedApproval() != null ?
             request.getPermission().getNeedApproval() : 1;
+        approvalEngine.validateResourceApprovalNodesIfRequired(
+                needApproval, request.getPermission().getResourceNodes());
 
         // 先插入事件（状态暂设为待审）
         event.setStatus(STATUS_PENDING); // 待审
@@ -430,6 +431,8 @@ public class EventService {
         permission.setNeedApproval(permissionDto.getNeedApproval() != null
             ? permissionDto.getNeedApproval() : 1);
         permission.setResourceNodes(permissionDto.getResourceNodes());
+        approvalEngine.validateResourceApprovalNodesIfRequired(
+                permission.getNeedApproval(), permission.getResourceNodes());
         permission.setStatus(1); // 默认启用
         permission.setCreateTime(new Date());
         permission.setLastUpdateTime(new Date());
@@ -464,7 +467,7 @@ public class EventService {
         }
         if (permissionDto.getScope() != null && !permissionDto.getScope().trim().isEmpty()
                 && !permissionDto.getScope().equals(permission.getScope())) {
-            validateScope(permissionDto.getScope());
+            permissionScopeService.validateScope("event", permissionDto.getScope());
             Permission existingPermission = permissionMapper.selectByScope(permissionDto.getScope());
             if (existingPermission != null && !existingPermission.getId().equals(permission.getId())) {
                 throw new BusinessException("409", "Scope 已存在", "Scope already exists");
@@ -480,6 +483,8 @@ public class EventService {
         if (permissionDto.getResourceNodes() != null) {
             permission.setResourceNodes(permissionDto.getResourceNodes());
         }
+        approvalEngine.validateResourceApprovalNodesIfRequired(
+                permission.getNeedApproval(), permission.getResourceNodes());
         permission.setLastUpdateTime(new Date());
         permission.setLastUpdateBy(UserContextHolder.getUserId());
 
@@ -600,11 +605,5 @@ public class EventService {
         }
     }
 
-    private void validateScope(String scope) {
-        if (scope == null || !SCOPE_PATTERN.matcher(scope).matches()) {
-            throw BusinessException.badRequest(
-                    "Scope 格式错误，正确格式：event:{module}:{identifier}",
-                    "Invalid scope format. Expected: event:{module}:{identifier}");
-        }
-    }
+
 }

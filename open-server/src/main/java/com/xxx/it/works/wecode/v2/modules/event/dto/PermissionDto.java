@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.event.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -44,7 +43,6 @@ public class PermissionDto implements Serializable {
      * 格式：event:{module}:{identifier}
      */
     @NotBlank(message = "Scope 不能为空")
-    @Pattern(regexp = "^event:[a-z]+:[a-z0-9-]+$", message = "Scope 格式不正确，应为 event:{module}:{identifier}")
     @Schema(description = "权限标识，格式：event:{module}:{identifier}", example = "event:im:message-received", requiredMode = Schema.RequiredMode.REQUIRED)
     private String scope;
 

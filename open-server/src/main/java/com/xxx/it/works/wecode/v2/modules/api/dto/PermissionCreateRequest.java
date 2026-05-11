@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -37,7 +36,6 @@ public class PermissionCreateRequest implements Serializable {
      * Scope 标识，格式：api:{模块}:{资源标识}
      */
     @NotBlank(message = "Scope 不能为空")
-    @Pattern(regexp = "^api:[a-z0-9]+:[a-z0-9-]+$", message = "Scope 格式不正确，应为：api:{模块}:{资源标识}")
     @Schema(description = "Scope 标识，格式：api:{模块}:{资源标识}", requiredMode = Schema.RequiredMode.REQUIRED,
             example = "api:im:send-message")
     private String scope;

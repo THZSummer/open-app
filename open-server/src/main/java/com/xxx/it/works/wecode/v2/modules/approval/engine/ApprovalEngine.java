@@ -768,12 +768,23 @@ public class ApprovalEngine {
     }
 
     /**
-     * 序列化审批节点配置
-     *
-     * v2.8.0变更：适配 ApprovalNodeDto 的 level 字段
-     *
-     * @param nodes 节点列表
-     * @return JSON 字符串
+     * Validate resource approval nodes before saving permission config.
+     */
+    public void validateResourceApprovalNodesIfRequired(Integer needApproval, String resourceNodesJson) {
+        if (needApproval == null || needApproval != 1) {
+            return;
+        }
+
+        List<ApprovalNodeDto> nodes = parseNodes(resourceNodesJson);
+        if (nodes.isEmpty()) {
+            throw new BusinessException("400",
+                    "Approval nodes configuration is required when approval is enabled",
+                    "Approval nodes configuration is required when approval is enabled");
+        }
+    }
+
+    /**
+     * Serialize approval nodes config.
      */
     public String serializeNodes(List<ApprovalNodeDto> nodes) {
         try {

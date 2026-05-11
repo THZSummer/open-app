@@ -16,13 +16,13 @@ import com.xxx.it.works.wecode.v2.modules.category.entity.Category;
 import com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
+import com.xxx.it.works.wecode.v2.modules.permission.service.PermissionScopeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -46,12 +46,8 @@ public class CallbackService {
     private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
     private final ApprovalFlowMapper approvalFlowMapper;
+    private final PermissionScopeService permissionScopeService;
 
-    /**
-     * Scope 格式正则表达式
-     * 格式：callback:{module}:{identifier}
-     */
-    private static final Pattern SCOPE_PATTERN = Pattern.compile("^callback:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]*$");
 
     // ==================== 回调 CRUD ====================
 
@@ -171,11 +167,7 @@ public class CallbackService {
 
         // 验证 Scope 格式
         String scope = request.getPermission().getScope();
-        if (!SCOPE_PATTERN.matcher(scope).matches()) {
-            throw BusinessException.badRequest(
-                    "Scope 格式错误，正确格式：callback:{module}:{identifier}",
-                    "Invalid scope format. Expected: callback:{module}:{identifier}");
-        }
+        permissionScopeService.validateScope("callback", scope);
 
         // 检查 Scope 是否已存在
         Permission existingPermission = permissionMapper.selectByScope(scope);
@@ -198,6 +190,8 @@ public class CallbackService {
         // 设置 needApproval（仅影响权限申请审批，不影响注册审批）
         Integer needApproval = request.getPermission().getNeedApproval() != null
             ? request.getPermission().getNeedApproval() : 1;
+        approvalEngine.validateResourceApprovalNodesIfRequired(
+                needApproval, request.getPermission().getResourceNodes());
 
         // 先插入回调（状态暂设为待审）
         callback.setStatus(1); // 待审
@@ -476,11 +470,7 @@ public class CallbackService {
             }
             if (request.getPermission().getScope() != null && !request.getPermission().getScope().trim().isEmpty()) {
                 String scope = request.getPermission().getScope();
-                if (!SCOPE_PATTERN.matcher(scope).matches()) {
-                    throw BusinessException.badRequest(
-                            "Scope 格式错误，正确格式：callback:{module}:{identifier}",
-                            "Invalid scope format. Expected: callback:{module}:{identifier}");
-                }
+                permissionScopeService.validateScope("callback", scope);
                 if (!scope.equals(permission.getScope())) {
                     Permission existingPermission = permissionMapper.selectByScope(scope);
                     if (existingPermission != null && !existingPermission.getId().equals(permission.getId())) {
@@ -500,6 +490,8 @@ public class CallbackService {
             if (request.getPermission().getResourceNodes() != null) {
                 permission.setResourceNodes(request.getPermission().getResourceNodes());
             }
+            approvalEngine.validateResourceApprovalNodesIfRequired(
+                    permission.getNeedApproval(), permission.getResourceNodes());
             permission.setLastUpdateTime(new Date());
             permission.setLastUpdateBy(UserContextHolder.getUserId());
             permissionMapper.update(permission);
