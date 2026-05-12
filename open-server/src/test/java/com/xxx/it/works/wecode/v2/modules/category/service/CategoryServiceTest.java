@@ -336,4 +336,48 @@ class CategoryServiceTest {
             categoryService.removeOwner(1L, "user999");
         });
     }
+
+    @Test
+    @DisplayName("Get category tree - sort by sort order")
+    void testGetCategoryTree_SortBySortOrder() {
+
+        // Given
+        Category root = createCategory(1L, null, "root", 0);
+        Category childLowPriority = createCategory(2L, 1L, "lowPriority", 20);
+        Category childHighPriority = createCategory(3L, 1L, "highPriority", 10);
+        Category grandChildLowPriority = createCategory(4L, 3L, "grandLowPriority", 30);
+        Category grandChildHighPriority = createCategory(5L, 3L, "grandHighPriority", 5);
+
+        when(categoryMapper.selectByCategoryAlias("api_test"))
+                .thenReturn(List.of(root, childLowPriority, childHighPriority,
+                        grandChildLowPriority, grandChildHighPriority));
+
+        // When
+        List<CategoryTreeResponse> result = categoryService.getCategoryTree("api_test");
+
+        // Then
+        assertEquals(1, result.size());
+        assertEquals("3", result.get(0).getChildren().get(0).getId());
+        assertEquals("2", result.get(0).getChildren().get(1).getId());
+        assertEquals("5", result.get(0).getChildren().get(0).getChildren().get(0).getId());
+        assertEquals("4", result.get(0).getChildren().get(0).getChildren().get(1).getId());
+    }
+
+    private Category createCategory(Long id, Long parentId, String name, Integer sortOrder) {
+
+        Category category = new Category();
+        category.setId(id);
+        category.setCategoryAlias(parentId == null ? "api_test" : null);
+        category.setNameCn(name);
+        category.setNameEn(name);
+        category.setParentId(parentId);
+        category.setPath(parentId == null ? "/" + id + "/" : "/1/" + id + "/");
+        category.setSortOrder(sortOrder);
+        category.setStatus(1);
+        category.setCreateTime(new Date());
+        category.setLastUpdateTime(new Date());
+        category.setCreateBy("system");
+        category.setLastUpdateBy("system");
+        return category;
+    }
 }
