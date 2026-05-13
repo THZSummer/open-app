@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Form, Radio, Input, Button, message } from 'antd';
-import { CALLBACK_CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
+import { CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
 import { configCallbackSubscription } from './thunk';
 import { queryParams } from '../../utils/common';
 import './CallbackConfigDrawer.m.less';
@@ -88,9 +88,9 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
       <Form form={form} layout="vertical" className="subscription-form">
         <Form.Item name="channelType" label="通道类型">
           <Radio.Group onChange={handleChannelTypeChange}>
-            <Radio value={0}>{CALLBACK_CHANNEL_TYPE[0]}</Radio>
-            <Radio value={1}>{CALLBACK_CHANNEL_TYPE[1]}</Radio>
-            <Radio value={2}>{CALLBACK_CHANNEL_TYPE[2]}</Radio>
+            <Radio value={1}>{CHANNEL_TYPE[0]}</Radio>
+            <Radio value={2}>{CHANNEL_TYPE[1]}</Radio>
+            <Radio value={3}>{CHANNEL_TYPE[2]}</Radio>
           </Radio.Group>
         </Form.Item>
 
@@ -106,8 +106,8 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
         </Form.Item>
         <Form.Item name="authType" label="认证类型">
           <Radio.Group>
-            <Radio value={1}>{AUTH_TYPE[0]}</Radio>
-            <Radio value={2}>{AUTH_TYPE[1]}</Radio>
+            <Radio value={0}>{AUTH_TYPE[0]}</Radio>
+            <Radio value={1}>{AUTH_TYPE[1]}</Radio>
           </Radio.Group>
         </Form.Item>
       </Form>

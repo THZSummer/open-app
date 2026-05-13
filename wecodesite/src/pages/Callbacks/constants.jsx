@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tag, Button } from 'antd';
-import { SUBSCRIPTION_STATUS, CALLBACK_CHANNEL_TYPE } from '../../utils/constants';
+import { SUBSCRIPTION_STATUS, CHANNEL_TYPE } from '../../utils/constants';
 
 export const PAGE_SIZE = [10, 20, 50];
 
@@ -41,7 +41,7 @@ export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprov
     dataIndex: 'channelType',
     key: 'channelType',
     width: 100,
-    render: (type) => CALLBACK_CHANNEL_TYPE[type] || '-',
+    render: (type) => CHANNEL_TYPE[type] || '-',
   },
   {
     title: '状态',

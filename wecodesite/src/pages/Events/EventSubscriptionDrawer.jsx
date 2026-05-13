@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Form, Radio, Input, Button, message } from 'antd';
-import { EVENT_CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
+import { CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
 import { configEventSubscription } from './thunk';
 import { queryParams } from '../../utils/common';
 import './EventSubscriptionDrawer.m.less';
@@ -92,8 +92,8 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
       <Form form={form} layout="vertical" className="subscription-form">
         <Form.Item name="channelType" label="通道类型">
           <Radio.Group onChange={handleChannelTypeChange}>
-            <Radio value={0}>{EVENT_CHANNEL_TYPE[0]}</Radio>
-            <Radio value={1}>{EVENT_CHANNEL_TYPE[1]}</Radio>
+            <Radio value={0}>{CHANNEL_TYPE[0]}</Radio>
+            <Radio value={1}>{CHANNEL_TYPE[1]}</Radio>
           </Radio.Group>
         </Form.Item>
 

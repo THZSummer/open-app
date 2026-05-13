@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tag, Button } from 'antd';
-import { SUBSCRIPTION_STATUS, EVENT_CHANNEL_TYPE } from '../../utils/constants';
+import { SUBSCRIPTION_STATUS, CHANNEL_TYPE } from '../../utils/constants';
 import {
   renderStatus,
   createEventDrawerColumns
@@ -49,7 +49,7 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
     dataIndex: 'channelType',
     key: 'channelType',
     width: 100,
-    render: (type) => EVENT_CHANNEL_TYPE[type] || '-',
+    render: (type) => CHANNEL_TYPE[type] || '-',
   },
   {
     title: '状态',

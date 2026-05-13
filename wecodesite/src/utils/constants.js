@@ -31,15 +31,11 @@ export const PROPERTY_PRESETS = [
   { value: '__custom__', label: '自定义...', placeholder: '输入自定义属性名' },
 ];
 
-export const EVENT_CHANNEL_TYPE = {
+export const CHANNEL_TYPE = {
   0: 'MQS',
-  1: 'WebHook'
-};
-
-export const CALLBACK_CHANNEL_TYPE = {
-  0: 'WebHook',
-  1: 'SSE',
-  2: 'WebSocket'
+  1: 'WebHook',
+  2: 'SSE',
+  3: 'WebSocket'
 };
 
 export const AUTH_TYPE = {
