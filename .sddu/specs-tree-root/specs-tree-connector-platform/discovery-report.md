@@ -18,37 +18,30 @@
 ```mermaid
 graph TB
     subgraph XX["XX 通讯平台"]
-        subgraph Cap["能力开放平台\n(已建成 MVP)"]
-            Cap_API[API 管理]
-            Cap_Event[事件管理]
-            Cap_Callback[回调管理]
-            Cap_Perm[权限管理 · Scope]
-            Cap_Approval[审批管理]
-        end
-        
-        subgraph Conn["连接器平台\n(本 Feature)"]
-            Conn_Conn[连接器\n(单系统封装)]
-            Conn_Flow[连接流\n(集成流编排)]
-            Conn_Runtime[运行时\n(平台托管)]
-        end
-        
         Biz_IM[IM 业务模块]
         Biz_Cloud[云盘业务模块]
+
+        subgraph Cap["能力开放平台\n(已建成 MVP)"]
+            Cap_Node[API/事件/回调管理\n权限管理 · 审批管理]
+        end
+
+        subgraph Conn["连接器平台\n(本 Feature)"]
+            Conn_Node[连接器 · 连接流\n运行时 · 治理]
+        end
     end
-    
+
     subgraph Third["企业内三方平台"]
         Apps[三方应用/业务人员]
     end
-    
+
     Biz_IM -.->|注册能力| Cap
     Biz_Cloud -.->|注册能力| Cap
-    
-    Cap_API & Cap_Event & Cap_Callback -->|作为触发器/动作源| Conn_Conn
-    Cap_Perm -.->|复用 Scope| Conn
-    Cap_Approval -.->|复用审批流| Conn
-    
+
+    Cap_Node -->|API/事件/回调\n作为触发器/动作源| Conn_Node
+    Cap -.->|复用 Scope · 审批流| Conn
+
     Conn ==>|开放连接器/集成流| Apps
-    
+
     style Conn fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
     style Cap fill:#e1f5e1,stroke:#2e7d32
     style Third fill:#e3f2fd
