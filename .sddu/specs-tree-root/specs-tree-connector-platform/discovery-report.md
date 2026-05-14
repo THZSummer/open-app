@@ -18,38 +18,26 @@
 ```mermaid
 graph TB
     subgraph XX["XX 通讯平台"]
-        subgraph Biz["XX 通讯平台内其它业务模块"]
-            Biz_IM[IM 业务模块]
-            Biz_Cloud[云盘业务模块]
-        end
-
-        subgraph Open["开放平台"]
-            subgraph Cap["能力开放平台\n(已建成 MVP)"]
-                Cap_Node[API · 事件 · 回调\n权限管理 · 审批管理]
-            end
-
-            subgraph Conn["连接器平台\n(本 Feature · 可选项)"]
-                Conn_Node[连接器 · 连接流\n运行时 · 治理]
-            end
-        end
+        Biz_IM[IM 业务模块]
+        Biz_Cloud[云盘业务模块]
+        Cap["能力开放平台\n(已建成 MVP)\nAPI · 事件 · 回调\n权限 · 审批"]
+        Conn["连接器平台\n(本 Feature · 可选项)\n连接器 · 连接流\n运行时 · 治理"]
     end
 
-    subgraph Third["企业内三方业务系统"]
-        Apps[三方应用/业务人员]
-    end
+    Third["企业内三方业务系统"]
 
-    Biz -.->|注册能力| Cap
-    Biz -.->|微改造暴露内部接口| Conn
+    Biz_IM -.->|注册能力| Cap
+    Biz_Cloud -.->|注册能力| Cap
+    Biz_IM -.->|微改造暴露内部接口| Conn
 
     Cap -.->|复用 Scope · 审批流| Conn
 
-    Cap ==>|开放 API/事件/回调\n(基础方式)| Apps
-    Conn ==>|开放连接器/集成流\n(便捷方式)| Apps
+    Cap ==>|开放 API/事件/回调\n基础方式| Third
+    Conn ==>|开放连接器/集成流\n便捷方式| Third
 
     style Conn fill:#e1bee7,stroke:#7b1fa2,stroke-width:2px
     style Cap fill:#e1f5e1,stroke:#2e7d32
     style Third fill:#e3f2fd
-    style Open fill:#f5f5f5,stroke:#333,stroke-dasharray: 5 5
 ```
 
 > 💡 **关系解读**：
