@@ -1,0 +1,55 @@
+{
+  "feature": "connector-platform",
+  "identifier": "CONN-PLAT-001",
+  "name": "连接器平台",
+  "version": "1.0.0",
+  "state": "discovered",
+  "priority": "P1",
+  "createdAt": "2026-05-14",
+  "discoveredAt": "2026-05-14",
+  "files": {
+    "discovery": "discovery-report.md",
+    "discoveryAnalysis": "discovery-analysis.md",
+    "discoverySessionLog": "discovery-session-log.md"
+  },
+  "summary": {
+    "userStories": 4,
+    "mustHave": 7,
+    "shouldHave": 6,
+    "couldHave": 4,
+    "edgeCases": 0,
+    "openQuestions": 4
+  },
+  "mvp": {
+    "inScope": [
+      "预置连接器",
+      "连接器生命周期管理",
+      "集成流线性编排",
+      "集成流生命周期管理",
+      "基础数据转换",
+      "平台托管运行时",
+      "运行监控与日志"
+    ],
+    "outOfScope": [
+      "连接器市场与发现",
+      "自定义连接器发布",
+      "可视化拖拽编排",
+      "条件分支/循环/子流程",
+      "函数库+脚本转换",
+      "连接器开发SDK",
+      "AI辅助编排",
+      "计费系统",
+      "多租户/跨企业"
+    ]
+  },
+  "children": [
+    {
+      "name": "connector-platform-serve",
+      "description": "后端服务：连接器引擎+流编排引擎+运行时+连接器SDK"
+    },
+    {
+      "name": "connector-platform-web",
+      "description": "前端界面：可视化编排器+管理界面+运行监控面板"
+    }
+  ]
+}
