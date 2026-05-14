@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>连接器平台 - 可视化Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #333; }
+
+.header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: white; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 20px; display: flex; align-items: center; gap: 10px; }
+.header h1 span { background: #e94560; padding: 2px 10px; border-radius: 4px; font-size: 12px; }
+.header-right { display: flex; align-items: center; gap: 20px; font-size: 13px; }
+.header-right .user { display: flex; align-items: center; gap: 6px; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: #e94560; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+
+.app { display: flex; height: calc(100vh - 56px); }
+.sidebar { width: 200px; background: white; border-right: 1px solid #e8e8e8; padding: 16px 0; flex-shrink: 0; }
+.sidebar-item { padding: 10px 24px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 10px; color: #555; transition: all 0.2s; border-left: 3px solid transparent; }
+.sidebar-item:hover { background: #f5f5f5; color: #1a1a2e; }
+.sidebar-item.active { background: #eef2ff; color: #0f3460; border-left-color: #0f3460; font-weight: 600; }
+.sidebar-item .icon { width: 18px; text-align: center; }
+
+.main { flex: 1; padding: 20px; overflow-y: auto; }
+
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.page-header h2 { font-size: 18px; }
+.btn { padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.btn-primary { background: #0f3460; color: white; }
+.btn-primary:hover { background: #1a4a7a; transform: translateY(-1px); }
+.btn-success { background: #22c55e; color: white; }
+.btn-success:hover { background: #16a34a; }
+.btn-outline { background: white; border: 1px solid #d0d0d0; color: #555; }
+.btn-outline:hover { background: #f5f5f5; }
+.btn-sm { padding: 4px 12px; font-size: 12px; }
+.btn-warning { background: #f59e0b; color: white; }
+.btn-warning:hover { background: #d97706; }
+
+.card { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 16px; overflow: hidden; }
+.card-header { padding: 14px 20px; border-bottom: 1px solid #f0f0f0; font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+.card-body { padding: 20px; }
+
+.canvas-area { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 8px; min-height: 500px; position: relative; overflow: hidden; background-image: radial-gradient(circle, #ddd 1px, transparent 1px); background-size: 20px 20px; }
+.canvas-area svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+.flow-node { position: absolute; width: 165px; background: white; border: 2px solid #d0d0d0; border-radius: 10px; text-align: center; cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.06); animation: nodeAppear 0.5s ease-out; z-index: 2; }
+.flow-node:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); transform: translateY(-2px); }
+.flow-node .node-header { padding: 8px 12px 4px; font-size: 10px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+.flow-node .node-body { padding: 4px 12px 10px; font-size: 12px; font-weight: 600; color: #333; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.flow-node .node-body .ni { font-size: 15px; }
+.flow-node.trigger { border-color: #f59e0b; }
+.flow-node.trigger .node-header { color: #f59e0b; }
+.flow-node.action { border-color: #3b82f6; }
+.flow-node.action .node-header { color: #3b82f6; }
+.flow-node.condition { border-color: #8b5cf6; }
+.flow-node.condition .node-header { color: #8b5cf6; }
+.flow-node.end { border-color: #22c55e; }
+.flow-node.end .node-header { color: #22c55e; }
+.flow-node.executing { border-color: #22c55e; box-shadow: 0 0 20px rgba(34,197,94,0.3); animation: pulse 1s infinite; }
+.flow-node.completed { border-color: #22c55e; background: #f0fdf4; }
+.flow-node.completed .node-body::after { content: " ✓"; color: #22c55e; font-size: 14px; }
+
+@keyframes pulse { 0%,100% { box-shadow: 0 0 20px rgba(34,197,94,0.3); } 50% { box-shadow: 0 0 30px rgba(34,197,94,0.5); } }
+@keyframes nodeAppear { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes dashMove { to { stroke-dashoffset: -20; } }
+
+.config-panel { position: absolute; right: 0; top: 0; width: 340px; background: white; border-left: 1px solid #e8e8e8; height: 100%; padding: 20px; overflow-y: auto; display: none; z-index: 10; }
+.config-panel.show { display: block; animation: slideIn 0.3s ease-out; }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.config-panel h3 { font-size: 15px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.config-panel .close-btn { margin-left: auto; cursor: pointer; color: #999; font-size: 18px; }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: 13px; outline: none; transition: border-color 0.2s; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #0f3460; }
+.form-group textarea { min-height: 60px; resize: vertical; font-family: monospace; font-size: 12px; }
+.form-row { display: flex; gap: 10px; }
+.form-row .form-group { flex: 1; }
+
+.palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.palette-item { background: #f8f9fa; border: 1px solid #e8e8e8; border-radius: 8px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.palette-item:hover { background: #eef2ff; border-color: #0f3460; transform: translateY(-2px); }
+.palette-item .pi { font-size: 24px; margin-bottom: 4px; }
+.palette-item .pn { font-size: 11px; color: #555; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.stat-card .num { font-size: 24px; font-weight: 700; color: #0f3460; }
+.stat-card .label { font-size: 12px; color: #888; margin-top: 4px; }
+.stat-card .trend { font-size: 11px; margin-top: 4px; }
+.trend-up { color: #22c55e; }
+.trend-down { color: #ef4444; }
+
+.connector-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.connector-card { background: white; border: 1px solid #e8e8e8; border-radius: 8px; padding: 16px; text-align: center; cursor: pointer; transition: all 0.2s; }
+.connector-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
+.connector-card .ci { font-size: 32px; margin-bottom: 8px; }
+.connector-card .cn { font-size: 13px; font-weight: 600; }
+.connector-card .cd { font-size: 11px; color: #888; margin-top: 4px; }
+.connector-card .cstatus { display: inline-block; margin-top: 8px; padding: 2px 10px; border-radius: 10px; font-size: 11px; }
+.cstatus.active { background: #dcfce7; color: #16a34a; }
+.cstatus.inactive { background: #fee2e2; color: #dc2626; }
+
+.log-list { max-height: 300px; overflow-y: auto; }
+.log-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+.log-item .log-time { color: #999; font-size: 12px; width: 80px; flex-shrink: 0; }
+.log-item .log-status { width: 60px; flex-shrink: 0; }
+.log-item .log-msg { flex: 1; }
+.badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.badge-success { background: #dcfce7; color: #16a34a; }
+.badge-running { background: #fef3c7; color: #d97706; }
+.badge-error { background: #fee2e2; color: #dc2626; }
+
+.bottom-bar { display: flex; gap: 12px; margin-top: 12px; }
+.bottom-bar .info-item { background: white; border-radius: 6px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; border: 1px solid #e8e8e8; }
+.bottom-bar .info-item .dot { width: 6px; height: 6px; border-radius: 50%; }
+.dot.green { background: #22c55e; }
+.dot.yellow { background: #f59e0b; }
+
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.monitor-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.exec-list .exec-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+.exec-item .ei-name { flex: 1; font-size: 13px; font-weight: 500; }
+.exec-item .ei-status { margin-right: 16px; }
+.exec-item .ei-time { font-size: 12px; color: #888; }
+
+.execution-bar { height: 4px; background: #e8e8e8; border-radius: 2px; margin: 10px 0; overflow: hidden; }
+.execution-bar .fill { height: 100%; background: linear-gradient(90deg, #22c55e, #86efac); border-radius: 2px; transition: width 0.5s; }
+
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #f0f0f0; color: #555; }
+
+.node-label { position: absolute; font-size: 10px; color: #888; z-index: 3; pointer-events: none; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .connector-grid { grid-template-columns: repeat(2, 1fr); }
+  .monitor-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>&#9881; 连接器平台 <span>Demo</span></h1>
+  <div class="header-right">
+    <span>&#9679; 运行中</span>
+    <span><span style="color:#22c55e;">&#9679;</span> 3 个活跃流程</span>
+    <div class="user"><div class="avatar">张</div> 张明</div>
+  </div>
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-item active" onclick="switchPage('flow')"><span class="icon">&#9723;</span> 流程编辑器</div>
+    <div class="sidebar-item" onclick="switchPage('connectors')"><span class="icon">&#128268;</span> 连接器管理</div>
+    <div class="sidebar-item" onclick="switchPage('monitor')"><span class="icon">&#128200;</span> 监控大盘</div>
+    <div class="sidebar-item" onclick="switchPage('logs')"><span class="icon">&#128214;</span> 执行日志</div>
+    <div class="sidebar-item" onclick="switchPage('settings')"><span class="icon">&#9881;</span> 系统设置</div>
+  </div>
+
+  <div class="main">
+    <!-- 流程编辑器 -->
+    <div id="page-flow" class="page active">
+      <div class="page-header">
+        <h2>流程编辑器 <span style="font-weight:400;font-size:13px;color:#888;">/ 员工入职自动化</span></h2>
+        <div>
+          <button class="btn btn-outline btn-sm" style="margin-right:6px;">&#128194; 保存</button>
+          <button class="btn btn-outline btn-sm" style="margin-right:6px;" onclick="toggleConfig()">&#9881; 配置</button>
+          <button class="btn btn-success btn-sm" onclick="startExecution()">&#9654; 运行</button>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card"><div class="num">12</div><div class="label">流程总数</div><div class="trend trend-up">&#9650; 较上月 +2</div></div>
+        <div class="stat-card"><div class="num">98.5%</div><div class="label">执行成功率</div><div class="trend trend-up">&#9650; +0.5%</div></div>
+        <div class="stat-card"><div class="num">1.2s</div><div class="label">平均耗时</div><div class="trend trend-down">&#9660; -0.3s</div></div>
+        <div class="stat-card"><div class="num">3</div><div class="label">活跃流程</div><div class="trend trend-up">&#9679; 运行中</div></div>
+      </div>
+
+      <div class="canvas-area" id="canvas">
+        <!-- SVG 连接线 -->
+        <svg id="linesSvg"></svg>
+
+        <!-- 节点 -->
+        <div class="flow-node trigger" id="node-trigger" style="left:30px;top:200px;">
+          <div class="node-header">&#9889; 触发器</div>
+          <div class="node-body"><span class="ni">&#128279;</span> HTTP回调</div>
+        </div>
+        <div class="flow-node action" id="node-1" style="left:230px;top:200px;">
+          <div class="node-header">&#9654; 执行动作</div>
+          <div class="node-body"><span class="ni">&#128451;</span> 创建员工档案</div>
+        </div>
+        <div class="flow-node action" id="node-2" style="left:430px;top:200px;">
+          <div class="node-header">&#9654; 执行动作</div>
+          <div class="node-body"><span class="ni">&#128202;</span> 数据映射处理</div>
+        </div>
+        <div class="flow-node condition" id="node-3" style="left:630px;top:200px;">
+          <div class="node-header">&#9878; 条件分支</div>
+          <div class="node-body"><span class="ni">&#9881;</span> 部门判断</div>
+        </div>
+
+        <div class="flow-node action" id="node-3a" style="left:870px;top:70px;">
+          <div class="node-header">&#9654; 执行动作</div>
+          <div class="node-body"><span class="ni">&#128187;</span> 开通IT账号</div>
+        </div>
+        <div class="flow-node action" id="node-3b" style="left:870px;top:200px;">
+          <div class="node-header">&#9654; 执行动作</div>
+          <div class="node-body"><span class="ni">&#128188;</span> 分配工位</div>
+        </div>
+        <div class="flow-node action" id="node-3c" style="left:870px;top:330px;">
+          <div class="node-header">&#9654; 执行动作</div>
+          <div class="node-body"><span class="ni">&#128172;</span> 发送WeLink</div>
+        </div>
+
+        <div class="flow-node end" id="node-end" style="left:1100px;top:200px;">
+          <div class="node-header">&#10004; 完成</div>
+          <div class="node-body"><span class="ni">&#9989;</span> 流程完成</div>
+        </div>
+
+        <!-- 连接线标签 -->
+        <div class="node-label" id="label-1-2" style="left:205px;top:180px;">传入数据</div>
+        <div class="node-label" id="label-2-3" style="left:405px;top:180px;">过滤映射</div>
+        <div class="node-label" id="label-3-3a" style="left:715px;top:115px;">技术部</div>
+        <div class="node-label" id="label-3-3b" style="left:715px;top:190px;">行政部门</div>
+        <div class="node-label" id="label-3-3c" style="left:715px;top:275px;">其他部门</div>
+
+        <!-- 配置面板 -->
+        <div class="config-panel" id="configPanel">
+          <h3>&#9881; 节点配置 <span class="close-btn" onclick="toggleConfig()">&times;</span></h3>
+          <div class="form-group"><label>节点名称</label><input type="text" value="部门判断"></div>
+          <div class="form-group"><label>节点类型</label><select><option>条件分支</option><option>执行动作</option><option>子流程</option><option>循环处理</option></select></div>
+          <div class="form-group"><label>条件表达式</label><textarea>department == "技术研发部"</textarea></div>
+          <div class="form-row">
+            <div class="form-group"><label>超时(秒)</label><input type="number" value="30"></div>
+            <div class="form-group"><label>重试次数</label><input type="number" value="3"></div>
+          </div>
+          <div class="form-group"><label>错误处理</label><select><option>停止流程</option><option>继续执行</option><option>执行补偿</option></select></div>
+          <button class="btn btn-primary" style="width:100%;">保存配置</button>
+        </div>
+      </div>
+
+      <div class="bottom-bar">
+        <div class="info-item"><span class="dot green"></span> 运行正常</div>
+        <div class="info-item">&#9201; 最后执行: 2025-06-01 09:30:22</div>
+        <div class="info-item">&#9203; 平均耗时: 1.2s</div>
+        <div class="info-item">&#9989; 节点: 7 / 7</div>
+        <div class="info-item" style="margin-left:auto;">
+          <span style="display:flex;gap:4px;align-items:center;">
+            <span style="width:10px;height:2px;background:#bbb;"></span> 待执行
+            <span style="width:10px;height:2px;background:#22c55e;margin-left:8px;"></span> 已完成
+            <span style="width:10px;height:2px;background:#f59e0b;margin-left:8px;"></span> 执行中
+          </span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header">执行日志 <span style="font-weight:400;font-size:12px;color:#888;">(最新执行记录)</span></div>
+        <div class="card-body">
+          <div class="execution-bar"><div class="fill" style="width:100%;" id="execFill"></div></div>
+          <div class="log-list" id="logList">
+            <div class="log-item"><span class="log-time">09:30:22</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">&#9989; 流程执行完成，共7个节点，总耗时1.2s</span></div>
+            <div class="log-item"><span class="log-time">09:30:21</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">节点[4. 发送欢迎邮件] 已发送至 zhangsan@company.com</span></div>
+            <div class="log-item"><span class="log-time">09:30:20</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">节点[3c. 发送WeLink] WeLink消息已发送给经理[李四]</span></div>
+            <div class="log-item"><span class="log-time">09:30:19</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">节点[3b. 分配工位] 工位A-301已分配给技术研发部</span></div>
+            <div class="log-item"><span class="log-time">09:30:18</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">节点[3a. 开通IT账号] OA账号 zhang**** 创建成功</span></div>
+            <div class="log-item"><span class="log-time">09:30:17</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">节点[条件判断] 部门=技术研发部，走"是"分支</span></div>
+            <div class="log-item"><span class="log-time">09:30:16</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">节点[2. 数据映射] 10个字段映射/转换完成</span></div>
+            <div class="log-item"><span class="log-time">09:30:15</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">节点[1. 创建员工档案] HR系统返回 employeeId=EMP20250601</span></div>
+            <div class="log-item"><span class="log-time">09:30:13</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">&#9654; 触发器[HTTP] 收到HR系统入职回调请求</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 连接器管理 -->
+    <div id="page-connectors" class="page">
+      <div class="page-header">
+        <h2>连接器管理</h2>
+        <div>
+          <button class="btn btn-outline btn-sm" style="margin-right:6px;">&#128269; 搜索</button>
+          <button class="btn btn-primary btn-sm">+ 新建连接器</button>
+        </div>
+      </div>
+      <div class="connector-grid">
+        <div class="connector-card"><div class="ci">&#128451;</div><div class="cn">MySQL</div><div class="cd">数据库连接器</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#128196;</div><div class="cn">PostgreSQL</div><div class="cd">数据库连接器</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#128190;</div><div class="cn">Kafka</div><div class="cd">消息队列</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#128172;</div><div class="cn">WeLink</div><div class="cd">消息通知</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#9993;</div><div class="cn">邮件服务</div><div class="cd">消息通知</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#128682;</div><div class="cn">HR系统API</div><div class="cd">HTTP连接器</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#128187;</div><div class="cn">OA系统API</div><div class="cd">HTTP连接器</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#127970;</div><div class="cn">行政系统</div><div class="cd">HTTP连接器</div><span class="cstatus active">&#9679; 已连接</span></div>
+        <div class="connector-card"><div class="ci">&#128200;</div><div class="cn">Oracle</div><div class="cd">数据库连接器</div><span class="cstatus inactive">&#9679; 未连接</span></div>
+        <div class="connector-card"><div class="ci">&#128640;</div><div class="cn">RabbitMQ</div><div class="cd">消息队列</div><span class="cstatus inactive">&#9679; 未连接</span></div>
+        <div class="connector-card"><div class="ci">&#10133;</div><div class="cn">添加连接器</div><div class="cd">从连接器市场安装</div><span class="cstatus active" style="background:#eef2ff;color:#0f3460;">+ 安装</span></div>
+      </div>
+    </div>
+
+    <!-- 监控大盘 -->
+    <div id="page-monitor" class="page">
+      <div class="page-header">
+        <h2>监控大盘</h2>
+        <div>
+          <select style="padding:6px 12px;border:1px solid #d0d0d0;border-radius:6px;font-size:13px;">
+            <option>今天</option><option>本周</option><option>本月</option>
+          </select>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="num">1,284</div><div class="label">总执行次数</div><div class="trend trend-up">&#9650; 较昨日 +12.3%</div></div>
+        <div class="stat-card"><div class="num">98.5%</div><div class="label">成功率</div><div class="trend trend-up">&#9650; +0.2%</div></div>
+        <div class="stat-card"><div class="num">1.2s</div><div class="label">平均响应时间</div><div class="trend trend-down">&#9660; -0.1s</div></div>
+        <div class="stat-card"><div class="num">7</div><div class="label">活跃连接器</div><div class="trend trend-up">&#9679; 全部在线</div></div>
+      </div>
+      <div class="monitor-grid">
+        <div class="card">
+          <div class="card-header">实时执行列表 <span class="badge badge-running" style="margin-left:8px;">3 个</span></div>
+          <div class="card-body exec-list">
+            <div class="exec-item"><div class="ei-name">员工入职自动化</div><div class="ei-status"><span class="badge badge-running">&#9654; 运行中</span></div><div class="ei-time">0:02.3</div></div>
+            <div class="exec-item"><div class="ei-name">每日数据同步</div><div class="ei-status"><span class="badge badge-running">&#9654; 运行中</span></div><div class="ei-time">0:15.7</div></div>
+            <div class="exec-item"><div class="ei-name">异常告警通知</div><div class="ei-status"><span class="badge badge-running">&#9654; 运行中</span></div><div class="ei-time">0:00.8</div></div>
+            <div class="exec-item"><div class="ei-name">财务月报生成</div><div class="ei-status"><span class="badge badge-success">完成</span></div><div class="ei-time">0:45.2</div></div>
+            <div class="exec-item"><div class="ei-name">周报推送</div><div class="ei-status"><span class="badge badge-success">完成</span></div><div class="ei-time">0:03.1</div></div>
+            <div class="exec-item"><div class="ei-name">考勤数据同步</div><div class="ei-status"><span class="badge badge-error">失败</span></div><div class="ei-time">0:30.0</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">本周执行趋势</div>
+          <div class="card-body">
+            <div style="height:180px;display:flex;align-items:end;gap:6px;padding:10px 0;">
+              <div style="flex:1;background:#dbeafe;height:40%;border-radius:4px 4px 0 0;text-align:center;font-size:11px;padding-top:4px;">周一</div>
+              <div style="flex:1;background:#dbeafe;height:55%;border-radius:4px 4px 0 0;text-align:center;font-size:11px;padding-top:4px;">周二</div>
+              <div style="flex:1;background:#dbeafe;height:35%;border-radius:4px 4px 0 0;text-align:center;font-size:11px;padding-top:4px;">周三</div>
+              <div style="flex:1;background:#dbeafe;height:70%;border-radius:4px 4px 0 0;text-align:center;font-size:11px;padding-top:4px;">周四</div>
+              <div style="flex:1;background:#dbeafe;height:50%;border-radius:4px 4px 0 0;text-align:center;font-size:11px;padding-top:4px;">周五</div>
+              <div style="flex:1;background:#dbeafe;height:30%;border-radius:4px 4px 0 0;text-align:center;font-size:11px;padding-top:4px;">周六</div>
+              <div style="flex:1;background:#22c55e;height:65%;border-radius:4px 4px 0 0;text-align:center;font-size:11px;padding-top:4px;color:white;">今日</div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-top:4px;">
+              <span>&#9679; 执行次数 1,284</span>
+              <span>&#9679; 成功率 98.5%</span>
+              <span>&#9679; 失败 19</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 执行日志 -->
+    <div id="page-logs" class="page">
+      <div class="page-header">
+        <h2>执行日志</h2>
+        <div>
+          <select style="padding:6px 12px;border:1px solid #d0d0d0;border-radius:6px;font-size:13px;margin-right:6px;">
+            <option>全部流程</option><option>员工入职</option><option>数据同步</option>
+          </select>
+          <select style="padding:6px 12px;border:1px solid #d0d0d0;border-radius:6px;font-size:13px;">
+            <option>全部状态</option><option>成功</option><option>失败</option><option>运行中</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          日志列表
+          <div>
+            <button class="btn btn-outline btn-sm">&#128230; 导出</button>
+            <button class="btn btn-outline btn-sm" style="margin-left:6px;">&#8635; 刷新</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="log-list">
+            <div class="log-item"><span class="log-time">09:30:22</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">[员工入职] 流程执行完成，所有节点处理成功</span><span style="font-size:11px;color:#888;width:50px;">1.2s</span></div>
+            <div class="log-item"><span class="log-time">09:15:10</span><span class="log-status"><span class="badge badge-error">失败</span></span><span class="log-msg">[考勤同步] 数据库连接超时，已重试3次</span><span style="font-size:11px;color:#888;width:50px;">30.0s</span></div>
+            <div class="log-item"><span class="log-time">09:00:01</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">[数据同步] 完成，共处理 2,384 条记录</span><span style="font-size:11px;color:#888;width:50px;">15.7s</span></div>
+            <div class="log-item"><span class="log-time">08:45:33</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">[员工入职] 新员工张三已完成入职流程</span><span style="font-size:11px;color:#888;width:50px;">1.5s</span></div>
+            <div class="log-item"><span class="log-time">08:30:00</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">[日报推送] 昨日运营日报已推送至管理层</span><span style="font-size:11px;color:#888;width:50px;">2.1s</span></div>
+            <div class="log-item"><span class="log-time">08:15:22</span><span class="log-status"><span class="badge badge-running">&#8635; 重试</span></span><span class="log-msg">[考勤同步] 第2次重试连接数据库...</span><span style="font-size:11px;color:#888;width:50px;">--</span></div>
+            <div class="log-item"><span class="log-time">08:00:00</span><span class="log-status"><span class="badge badge-success">成功</span></span><span class="log-msg">[定时备份] 数据库备份完成，大小 2.3GB</span><span style="font-size:11px;color:#888;width:50px;">45.2s</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统设置 -->
+    <div id="page-settings" class="page">
+      <div class="page-header"><h2>系统设置</h2></div>
+      <div class="card">
+        <div class="card-header">基础配置</div>
+        <div class="card-body">
+          <div class="form-row">
+            <div class="form-group"><label>系统名称</label><input type="text" value="连接器平台"></div>
+            <div class="form-group"><label>时区</label><select><option>Asia/Shanghai (UTC+8)</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>语言</label><select><option>简体中文</option><option>English</option></select></div>
+            <div class="form-group"><label>日期格式</label><select><option>YYYY-MM-DD</option></select></div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:12px;">保存设置</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// 绘制连接线
+function drawLines() {
+  var connections = [
+    { from: 'node-trigger', to: 'node-1', labelPos: 0.5 },
+    { from: 'node-1', to: 'node-2', labelPos: 0.5 },
+    { from: 'node-2', to: 'node-3', labelPos: 0.5 },
+    { from: 'node-3', to: 'node-3a', labelPos: 0.3 },
+    { from: 'node-3', to: 'node-3b', labelPos: 0.5 },
+    { from: 'node-3', to: 'node-3c', labelPos: 0.7 },
+    { from: 'node-3a', to: 'node-end', labelPos: 0.5 },
+    { from: 'node-3b', to: 'node-end', labelPos: 0.5 },
+    { from: 'node-3c', to: 'node-end', labelPos: 0.5 }
+  ];
+
+  var svg = document.getElementById('linesSvg');
+  var canvas = document.getElementById('canvas');
+  var rect = canvas.getBoundingClientRect();
+  svg.setAttribute('width', canvas.scrollWidth);
+  svg.setAttribute('height', canvas.scrollHeight);
+  svg.innerHTML = '';
+
+  connections.forEach(function(conn) {
+    var fromEl = document.getElementById(conn.from);
+    var toEl = document.getElementById(conn.to);
+    if (!fromEl || !toEl) return;
+
+    var fx = fromEl.offsetLeft + fromEl.offsetWidth;
+    var fy = fromEl.offsetTop + fromEl.offsetHeight / 2;
+    var tx = toEl.offsetLeft;
+    var ty = toEl.offsetTop + toEl.offsetHeight / 2;
+
+    // 如果是条件分支到并行节点，直接画直线
+    var isBranch = (conn.from === 'node-3' && (conn.to === 'node-3a' || conn.to === 'node-3b' || conn.to === 'node-3c'));
+
+    if (isBranch) {
+      var my = fy;
+      var midX = (fx + tx) / 2;
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      var d = 'M ' + fx + ' ' + fy + ' L ' + midX + ' ' + fy + ' L ' + midX + ' ' + ty + ' L ' + tx + ' ' + ty;
+      path.setAttribute('d', d);
+      path.setAttribute('stroke', '#bbb');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-dasharray', '6,4');
+      path.setAttribute('class', 'line-' + conn.from + '-' + conn.to);
+      svg.appendChild(path);
+
+      // 箭头在终点
+      var arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      var ax = tx, ay = ty;
+      arrow.setAttribute('points', (ax-8)+','+(ay-5)+' '+ax+','+ay+' '+(ax-8)+','+(ay+5));
+      arrow.setAttribute('fill', '#bbb');
+      arrow.setAttribute('class', 'line-' + conn.from + '-' + conn.to);
+      svg.appendChild(arrow);
+    } else {
+      // 直线
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      path.setAttribute('x1', fx);
+      path.setAttribute('y1', fy);
+      path.setAttribute('x2', tx);
+      path.setAttribute('y2', ty);
+      path.setAttribute('stroke', '#bbb');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-dasharray', '6,4');
+      path.setAttribute('class', 'line-' + conn.from + '-' + conn.to);
+      svg.appendChild(path);
+
+      // 箭头
+      var angle = Math.atan2(ty - fy, tx - fx);
+      var arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      arrow.setAttribute('points',
+        (tx-12*Math.cos(angle-0.3))+','+(ty-12*Math.sin(angle-0.3))+' '+
+        tx+','+ty+' '+
+        (tx-12*Math.cos(angle+0.3))+','+(ty-12*Math.sin(angle+0.3))
+      );
+      arrow.setAttribute('fill', '#bbb');
+      arrow.setAttribute('class', 'line-' + conn.from + '-' + conn.to);
+      svg.appendChild(arrow);
+    }
+  });
+}
+
+// 页面切换
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  document.querySelectorAll('.sidebar-item').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById('page-' + page).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function toggleConfig() {
+  document.getElementById('configPanel').classList.toggle('show');
+}
+
+// 执行动画
+var isExecuting = false;
+function startExecution() {
+  if (isExecuting) return;
+  isExecuting = true;
+
+  // 重置
+  var allNodes = document.querySelectorAll('.flow-node');
+  allNodes.forEach(function(n) { n.classList.remove('executing', 'completed'); });
+  document.getElementById('execFill').style.width = '0%';
+
+  // 重置所有线颜色
+  var allLines = document.querySelectorAll('line, path');
+  allLines.forEach(function(l) {
+    l.setAttribute('stroke', '#bbb');
+    l.classList.remove('line-active');
+  });
+  var allArrows = document.querySelectorAll('polygon');
+  allArrows.forEach(function(a) { a.setAttribute('fill', '#bbb'); });
+
+  var steps = [
+    { node: 'node-trigger',   line: null,                              msg: '&#9654; 触发器[HTTP] 收到HR系统入职回调请求',                  status: 'success' },
+    { node: 'node-1',        line: 'node-trigger-node-1',             msg: '节点[1. 创建员工档案] HR系统返回 employeeId=EMP20250601',     status: 'success' },
+    { node: 'node-2',        line: 'node-1-node-2',                   msg: '节点[2. 数据映射] 10个字段映射/转换完成',                    status: 'success' },
+    { node: 'node-3',        line: 'node-2-node-3',                   msg: '节点[条件判断] 部门=技术研发部，走技术部分支',                status: 'success' },
+    { node: 'node-3a',       line: 'node-3-node-3a',                  msg: '节点[3a. 开通IT账号] OA账号 zhang**** 创建成功',              status: 'success' },
+    { node: 'node-3b',       line: 'node-3-node-3b',                  msg: '节点[3b. 分配工位] 工位A-301已分配给技术研发部',              status: 'success' },
+    { node: 'node-3c',       line: 'node-3-node-3c',                  msg: '节点[3c. 发送WeLink] WeLink消息已发送给经理[李四]',           status: 'success' },
+    { node: 'node-end',      line: 'node-3a-node-end',                msg: '节点[4. 发送欢迎邮件] 已发送至 zhangsan@company.com',          status: 'success' },
+    { node: null,             line: null,                              msg: '&#9989; 流程执行完成，共7个节点，总耗时1.2s',                 status: 'success' }
+  ];
+
+  // 高亮连接线的函数
+  function activateLine(lineClass) {
+    if (!lineClass) return;
+    var els = document.querySelectorAll('.' + lineClass);
+    els.forEach(function(el) {
+      if (el.tagName === 'path' || el.tagName === 'line') {
+        el.setAttribute('stroke', '#22c55e');
+        el.classList.add('line-active');
+      } else if (el.tagName === 'polygon') {
+        el.setAttribute('fill', '#22c55e');
+      }
+    });
+    // 同时高亮所有到该节点的线
+  }
+
+  var i = 0;
+  function step() {
+    if (i >= steps.length) { isExecuting = false; return; }
+
+    var s = steps[i];
+    var fill = document.getElementById('execFill');
+    fill.style.width = ((i+1)/(steps.length)*100) + '%';
+
+    // 高亮当前节点
+    if (s.node) {
+      var el = document.getElementById(s.node);
+      if (el) {
+        el.classList.add('executing');
+        // 滚动到可视区域
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    // 激活连线
+    if (s.line) { activateLine(s.line); }
+
+    // 添加日志项
+    var logList = document.getElementById('logList');
+    var row = document.createElement('div');
+    row.className = 'log-item';
+    row.style.animation = 'fadeIn 0.3s';
+    var now = new Date();
+    var timeStr = now.getHours().toString().padStart(2,'0') + ':' +
+                  now.getMinutes().toString().padStart(2,'0') + ':' +
+                  now.getSeconds().toString().padStart(2,'0');
+    var badgeClass = s.status === 'success' ? 'badge-success' : (s.status === 'running' ? 'badge-running' : 'badge-error');
+    row.innerHTML = '<span class="log-time">' + timeStr + '</span><span class="log-status"><span class="badge ' + badgeClass + '">' +
+                    (s.status === 'success' ? '成功' : '失败') + '</span></span><span class="log-msg">' + s.msg + '</span>';
+    logList.insertBefore(row, logList.firstChild);
+
+    // 完成上一个节点
+    if (i > 0 && steps[i-1].node) {
+      var prevEl = document.getElementById(steps[i-1].node);
+      if (prevEl) { prevEl.classList.remove('executing'); prevEl.classList.add('completed'); }
+    }
+
+    i++;
+    setTimeout(step, 900);
+  }
+  step();
+}
+
+// 窗口大小变化时重绘
+window.addEventListener('resize', drawLines);
+// 页面切换后重绘
+var _origSwitch = switchPage;
+switchPage = function(page) {
+  _origSwitch(page);
+  setTimeout(drawLines, 100);
+};
+
+// 初始化
+setTimeout(drawLines, 200);
+</script>
+</body>
+</html>
