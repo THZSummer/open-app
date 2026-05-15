@@ -186,9 +186,10 @@ flowchart TB
         CSchema[参数定义<br/>输入/输出 Schema]
     end
     
+    FlowTrigger["流触发器（流平台自身）<br/>定时 / 手动"]
+    
     subgraph Flow["连接流（连接器 + 编排逻辑）"]
         direction TB
-        FTrigger[流触发器<br/>定时/手动]
         FEdit[编排模式<br/>可视化/代码（可互转）]
         FTrans[数据转换<br/>字段映射+函数+脚本]
         FCtrl[流程控制<br/>线性/分支/循环/子流程]
@@ -210,8 +211,9 @@ flowchart TB
     end
     
     ExternalSystems -->|封装为| Connector
-    FTrigger --> Flow
-    Connector --> Flow
+    CT -->|触发| Flow
+    FlowTrigger -->|触发| Flow
+    Connector -->|参与编排| Flow
     Flow --> Runtime
     Governance -.-> Connector
     Governance -.-> Flow
@@ -219,6 +221,7 @@ flowchart TB
     
     style ExternalSystems fill:#f5f5f5,stroke:#616161
     style Connector fill:#e1bee7,stroke:#7b1fa2
+    style FlowTrigger fill:#bbdefb,stroke:#1565c0
     style Flow fill:#c8e6c9,stroke:#2e7d32
     style Runtime fill:#fff9c4,stroke:#f9a825
     style Governance fill:#e3f2fd,stroke:#1565c0
@@ -778,6 +781,7 @@ flowchart TB
 | v1.8 | 2026-05-15 | 3.2核心概念模型图：增加外部系统（企业内三方平台+XX内部业务模块），体现连接器的封装对象 | AI Assistant |
 | v1.9 | 2026-05-15 | 概念对照表新增触发器/动作独立定义：触发器=感知（入站），动作=执行（出站） | AI Assistant |
 | v2.0 | 2026-05-15 | 触发器归属修正：定时/手动触发归为流平台自身，事件/Webhook触发属于连接器；概念模型图连接流增加流触发器节点；与业界主流做法（钉钉/飞书/Power Automate等5家）对齐 | AI Assistant |
+| v2.1 | 2026-05-15 | 概念模型图修正：流触发器移出连接流独立展示，连接器触发器和流触发器并列作为连接流的两种触发来源 | AI Assistant |
 
 ---
 
