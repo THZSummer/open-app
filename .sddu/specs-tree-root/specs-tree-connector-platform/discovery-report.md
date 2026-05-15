@@ -172,6 +172,12 @@ graph TB
 
 ```mermaid
 flowchart TB
+    subgraph ExternalSystems["外部系统（连接器封装对象）"]
+        direction LR
+        Third["企业内三方业务系统<br/>ERP/CRM/OA/HR/…"]
+        Inner["XX通讯平台内部业务模块<br/>IM/云盘/审批/…"]
+    end
+    
     subgraph Connector["连接器（单系统封装）"]
         direction TB
         CT[触发器<br/>事件/Webhook/定时/手动]
@@ -202,12 +208,14 @@ flowchart TB
         GApproval[审批流程<br/>复用审批引擎]
     end
     
+    ExternalSystems -->|封装为| Connector
     Connector --> Flow
     Flow --> Runtime
     Governance -.-> Connector
     Governance -.-> Flow
     Governance -.-> Runtime
     
+    style ExternalSystems fill:#f5f5f5,stroke:#616161
     style Connector fill:#e1bee7,stroke:#7b1fa2
     style Flow fill:#c8e6c9,stroke:#2e7d32
     style Runtime fill:#fff9c4,stroke:#f9a825
@@ -763,6 +771,7 @@ flowchart TB
 | v1.5 | 2026-05-15 | 术语统一：全文"集成流"统一为"连接流"，消除同一概念的两种叫法 | AI Assistant |
 | v1.6 | 2026-05-15 | 5.2示例图优化：增加第二条连接流（审批通过→发送IM通知），连接器A被两条流复用，消除连接器C孤立节点 | AI Assistant |
 | v1.7 | 2026-05-15 | 竞品对标扩充：从3家扩充到9家（增加企业微信/集简云/数环通/腾讯轻联/Power Automate/Zapier），新增竞品分类定位、国内iPaaS边界参照、国际iPaaS最佳实践三个维度，核心启示从5条增至8条 | AI Assistant |
+| v1.8 | 2026-05-15 | 3.2核心概念模型图：增加外部系统（企业内三方平台+XX内部业务模块），体现连接器的封装对象 | AI Assistant |
 
 ---
 
