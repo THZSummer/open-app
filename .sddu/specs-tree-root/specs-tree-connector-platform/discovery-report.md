@@ -269,15 +269,15 @@ flowchart LR
 
 #### 3.4.2 Webhook触发（点对点）
 
-每个连接流有独立的Webhook URL，外部系统调哪个URL就触发哪个流：
+每个连接流有独立的Webhook URL，调用方（三方系统或XX平台内部模块）调哪个URL就触发哪个流：
 
 ```mermaid
 flowchart LR
-    ERP["ERP系统"] -->|调用URL-A| F1["连接流1<br/>ERP变更→IM通知<br/>Webhook URL-A"]
-    CRM["CRM系统"] -->|调用URL-B| F2["连接流2<br/>CRM更新→同步数据<br/>Webhook URL-B"]
+    ERP["ERP系统<br/>（三方平台）"] -->|调用URL-A| F1["连接流1<br/>ERP变更→IM通知<br/>Webhook URL-A"]
+    OA["OA审批模块<br/>（XX平台内部）"] -->|调用URL-B| F2["连接流2<br/>审批回调→同步数据<br/>Webhook URL-B"]
 
     style ERP fill:#f5f5f5,stroke:#616161
-    style CRM fill:#f5f5f5,stroke:#616161
+    style OA fill:#f5f5f5,stroke:#616161
     style F1 fill:#c8e6c9,stroke:#2e7d32
     style F2 fill:#c8e6c9,stroke:#2e7d32
 ```
