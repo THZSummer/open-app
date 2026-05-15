@@ -247,7 +247,66 @@ flowchart TB
 | **S3** | 入职自动化 | 定时查询新员工 | ① 拉群 ② 分配权限 ③ 推送欢迎消息 | 线性+循环 | 业务人员 |
 | **S4** | 会议→云盘→IM联动 | 会议结束事件 | ① 上传录音到云盘 ② 发送总结到群 | 线性 | 业务人员 |
 
-### 3.4 用户旅程地图
+### 3.4 触发机制
+
+连接器不能单独执行，触发器触发时执行的是**连接流**。不同触发类型的机制不同：
+
+#### 3.4.1 事件触发（广播）
+
+外部系统推送事件 → 平台事件总线 → **广播给所有订阅的连接流**：
+
+```mermaid
+flowchart LR
+    IM["IM系统"] -->|推送事件| Bus["事件总线"]
+    Bus -->|订阅| F1["连接流1<br/>IM消息→创建工单"]
+    Bus -->|订阅| F2["连接流2<br/>IM消息→发送通知"]
+
+    style IM fill:#f5f5f5,stroke:#616161
+    style Bus fill:#fff9c4,stroke:#f9a825
+    style F1 fill:#c8e6c9,stroke:#2e7d32
+    style F2 fill:#c8e6c9,stroke:#2e7d32
+```
+
+#### 3.4.2 Webhook触发（点对点）
+
+每个连接流有独立的Webhook URL，外部系统调哪个URL就触发哪个流：
+
+```mermaid
+flowchart LR
+    ERP["ERP系统"] -->|调用URL-A| F1["连接流1<br/>ERP变更→IM通知<br/>Webhook URL-A"]
+    CRM["CRM系统"] -->|调用URL-B| F2["连接流2<br/>CRM更新→同步数据<br/>Webhook URL-B"]
+
+    style ERP fill:#f5f5f5,stroke:#616161
+    style CRM fill:#f5f5f5,stroke:#616161
+    style F1 fill:#c8e6c9,stroke:#2e7d32
+    style F2 fill:#c8e6c9,stroke:#2e7d32
+```
+
+#### 3.4.3 定时/手动触发（流平台自身）
+
+无需外部系统参与，由流平台按计划或用户操作触发：
+
+```mermaid
+flowchart LR
+    Cron["定时调度器"] -->|每天9:00| F1["连接流3<br/>定时发送日报"]
+    User["用户"] -->|点击执行| F2["连接流4<br/>手动数据迁移"]
+
+    style Cron fill:#e3f2fd,stroke:#1565c0
+    style User fill:#e3f2fd,stroke:#1565c0
+    style F1 fill:#c8e6c9,stroke:#2e7d32
+    style F2 fill:#c8e6c9,stroke:#2e7d32
+```
+
+#### 3.4.4 触发机制对照
+
+| 触发类型 | 定义归属 | URL/订阅归属 | 触发模式 | 一个触发能驱动几条流 |
+|---------|---------|-------------|---------|----------------|
+| 事件 | 连接器 | 连接流订阅 | 广播 | 多条（所有订阅的流） |
+| Webhook | 连接器（定义格式） | 连接流（每流独立URL） | 点对点 | 一条（URL对应的流） |
+| 定时 | 流平台 | 流平台 | 独立 | 一条 |
+| 手动 | 流平台 | 流平台 | 独立 | 一条 |
+
+### 3.5 用户旅程地图
 
 ```mermaid
 journey
@@ -782,6 +841,7 @@ flowchart TB
 | v1.9 | 2026-05-15 | 概念对照表新增触发器/动作独立定义：触发器=感知（入站），动作=执行（出站） | AI Assistant |
 | v2.0 | 2026-05-15 | 触发器归属修正：定时/手动触发归为流平台自身，事件/Webhook触发属于连接器；概念模型图连接流增加流触发器节点；与业界主流做法（钉钉/飞书/Power Automate等5家）对齐 | AI Assistant |
 | v2.1 | 2026-05-15 | 概念模型图修正：流触发器移出连接流独立展示，连接器触发器和流触发器并列作为连接流的两种触发来源 | AI Assistant |
+| v2.2 | 2026-05-15 | 新增3.4触发机制：事件广播/Webhook点对点/定时手动独立，配图+对照表 | AI Assistant |
 
 ---
 
