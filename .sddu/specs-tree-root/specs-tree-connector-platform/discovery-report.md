@@ -180,14 +180,15 @@ flowchart TB
     
     subgraph Connector["连接器（单系统封装）"]
         direction TB
-        CT[触发器<br/>事件/Webhook/定时/手动]
-        CA[动作<br/>API调用/事件发布/回调通知]
+        CT[触发器（感知）<br/>事件/Webhook]
+        CA[动作（执行）<br/>API调用/事件发布/回调通知]
         CAuth[认证配置<br/>AKSK/OAuth/自定义]
         CSchema[参数定义<br/>输入/输出 Schema]
     end
     
-    subgraph Flow["连接流（业务流程编排）"]
+    subgraph Flow["连接流（连接器 + 编排逻辑）"]
         direction TB
+        FTrigger[流触发器<br/>定时/手动]
         FEdit[编排模式<br/>可视化/代码（可互转）]
         FTrans[数据转换<br/>字段映射+函数+脚本]
         FCtrl[流程控制<br/>线性/分支/循环/子流程]
@@ -209,6 +210,7 @@ flowchart TB
     end
     
     ExternalSystems -->|封装为| Connector
+    FTrigger --> Flow
     Connector --> Flow
     Flow --> Runtime
     Governance -.-> Connector
@@ -226,10 +228,12 @@ flowchart TB
 
 | 概念 | 定义 | 类比 |
 |------|------|------|
-| **连接器** | 对单个外部系统的封装，包含触发器（感知）、动作（执行）、认证、参数定义 | 钉钉的"自定义连接器"、Zapier 的"App" |
-| **连接流** | 连接器 + 连接器的编排逻辑，包含转换、流程控制、错误处理 | 钉钉的"连接流"、Make 的"Scenario"、Zapier 的"Zap" |
+| **连接器** | 对单个外部系统的封装，包含触发器（感知，事件/Webhook）、动作（执行）、认证、参数定义 | 钉钉的"自定义连接器"、Zapier 的"App" |
+| **连接流** | 流触发器 + 连接器 + 连接器的编排逻辑；流触发器（定时/手动）属于流平台自身，连接器触发器（事件/Webhook）属于连接器 | 钉钉的"连接流"、Make 的"Scenario"、Zapier 的"Zap" |
 | **运行时** | 平台托管的流调度与执行引擎 | 类似 AWS Lambda + Step Functions |
 | **治理** | 复用能力开放平台的权限模型（Scope）和审批流引擎 | 复用现有基础设施 |
+
+> 💡 **触发器归属**：业界主流做法（钉钉/飞书/Power Automate/集简云/Make）将**定时触发和手动触发归为流平台自身**，而非某个连接器。只有事件触发和Webhook触发属于连接器。详见第六章竞品对标。
 
 ### 3.3 典型场景
 
@@ -773,6 +777,7 @@ flowchart TB
 | v1.7 | 2026-05-15 | 竞品对标扩充：从3家扩充到9家（增加企业微信/集简云/数环通/腾讯轻联/Power Automate/Zapier），新增竞品分类定位、国内iPaaS边界参照、国际iPaaS最佳实践三个维度，核心启示从5条增至8条 | AI Assistant |
 | v1.8 | 2026-05-15 | 3.2核心概念模型图：增加外部系统（企业内三方平台+XX内部业务模块），体现连接器的封装对象 | AI Assistant |
 | v1.9 | 2026-05-15 | 概念对照表新增触发器/动作独立定义：触发器=感知（入站），动作=执行（出站） | AI Assistant |
+| v2.0 | 2026-05-15 | 触发器归属修正：定时/手动触发归为流平台自身，事件/Webhook触发属于连接器；概念模型图连接流增加流触发器节点；与业界主流做法（钉钉/飞书/Power Automate等5家）对齐 | AI Assistant |
 
 ---
 
