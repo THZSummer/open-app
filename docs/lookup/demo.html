@@ -1,0 +1,2112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LookUp管理</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #2b5ff5;
+            --primary-hover: #1e4fd9;
+            --primary-light: #eef2ff;
+            --danger: #f54a45;
+            --danger-hover: #d93832;
+            --success: #00b578;
+            --warning: #ff9f00;
+            --text-main: #1d2129;
+            --text-secondary: #4e5969;
+            --text-hint: #86909c;
+            --border: #e5e6eb;
+            --bg-page: #f2f3f5;
+            --bg-card: #ffffff;
+            --radius: 6px;
+            --radius-lg: 8px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-page);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--text-main);
+            font-size: 14px;
+        }
+        
+        .header {
+            height: 52px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            flex-shrink: 0;
+            gap: 12px;
+        }
+        
+        .header-logo {
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .breadcrumb a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .breadcrumb a:hover {
+            color: var(--primary);
+        }
+        
+        .breadcrumb .sep {
+            color: var(--text-hint);
+        }
+        
+        .breadcrumb .current {
+            color: var(--text-main);
+            font-weight: 500;
+        }
+        
+        .main {
+            flex: 1;
+            overflow: hidden;
+            padding: 12px 16px;
+        }
+        
+        .page {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%;
+        }
+        
+        .page-head {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            position: relative;
+        }
+        
+        .page-head-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .page-head-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .page-head-tag {
+            font-size: 12px;
+            color: var(--text-hint);
+            background: var(--bg-page);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            height: 28px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: #fff;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .back-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .classify-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            background: var(--bg-page);
+            padding: 4px 12px;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .classify-info-item {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .classify-info-item + .classify-info-item {
+            margin-left: 4px;
+            padding-left: 8px;
+            border-left: 1px solid var(--border);
+        }
+        .classify-info-label {
+            color: var(--text-hint);
+        }
+        .classify-info-value {
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        .toolbar {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        
+        .search-input {
+            width: 200px;
+            padding: 7px 12px 7px 30px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+            background: #fff;
+        }
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+        .search-input::placeholder {
+            color: var(--text-hint);
+        }
+        .search-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .search-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+        .search-wrap .icon {
+            position: absolute;
+            left: 8px;
+            color: var(--text-hint);
+            line-height: 1;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .search-wrap .icon svg {
+            display: block;
+        }
+        .search-wrap .clear-btn {
+            position: absolute;
+            right: 6px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-hint);
+            font-size: 14px;
+            padding: 2px;
+            line-height: 1;
+            display: none;
+        }
+        .search-wrap .clear-btn:hover {
+            color: var(--text-secondary);
+        }
+        .search-wrap:hover .clear-btn.has-value {
+            display: flex;
+        }
+        .btn-reset {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 32px;
+            padding: 0 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: #fff;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-reset:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #f8f9fb;
+        }
+        
+        .filter-select {
+            padding: 7px 28px 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2386909c' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .filter-select:focus {
+            border-color: var(--primary);
+        }
+        
+        .table-wrap {
+            flex: 1;
+            overflow: auto;
+        }
+        .table-wrap::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .table-wrap::-webkit-scrollbar-thumb {
+            background: #c9cdd4;
+            border-radius: 2px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 13px;
+            color: var(--text-secondary);
+            background: #fafafa;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            white-space: nowrap;
+        }
+        
+        table td {
+            padding: 14px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid #f2f3f5;
+            color: var(--text-main);
+        }
+        
+        table tr {
+            transition: background 0.15s;
+        }
+        table tr:hover td {
+            background: #f8f9fb;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .status-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-badge .dot.active {
+            background: #00b578;
+            box-shadow: 0 0 0 2px rgba(0,181,120,0.2);
+        }
+        .status-badge .dot.inactive {
+            background: #c9cdd4;
+        }
+        .status-badge .label {
+            color: var(--text-secondary);
+        }
+        .status-badge .label.active {
+            color: #00b578;
+        }
+        .status-badge .label.inactive {
+            color: var(--text-hint);
+        }
+        
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .action-link {
+            color: var(--primary);
+            font-size: 13px;
+            cursor: pointer;
+            text-decoration: none;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+        }
+        .action-link:hover {
+            text-decoration: underline;
+        }
+        .action-link.danger {
+            color: var(--danger);
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+            padding: 0 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            gap: 4px;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+        .btn-outline {
+            background: #fff;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .btn-text {
+            background: none;
+            color: var(--text-secondary);
+            height: 28px;
+            padding: 0 6px;
+        }
+        .btn-text:hover {
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+        .btn-sm {
+            height: 28px;
+            padding: 0 12px;
+            font-size: 12px;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--text-hint);
+        }
+        .empty .icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+        .empty p {
+            font-size: 14px;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(29,33,41,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.15s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .modal {
+            background: #fff;
+            border-radius: var(--radius-lg);
+            width: 520px;
+            max-height: 85vh;
+            overflow: hidden;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+            animation: slideUp 0.2s ease;
+        }
+        .modal-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-header h3 {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-hint);
+            font-size: 18px;
+            transition: all 0.15s;
+        }
+        .modal-close:hover {
+            background: var(--bg-page);
+            color: var(--text-main);
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: calc(85vh - 120px);
+        }
+        .modal-body::-webkit-scrollbar {
+            width: 4px;
+        }
+        .modal-body::-webkit-scrollbar-thumb {
+            background: #c9cdd4;
+            border-radius: 2px;
+        }
+        .modal-footer {
+            padding: 12px 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .form-item {
+            margin-bottom: 16px;
+        }
+        .form-item:last-child {
+            margin-bottom: 0;
+        }
+        .form-item label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .form-item label .required {
+            color: var(--danger);
+            margin-right: 2px;
+        }
+        .form-item input,
+        .form-item textarea,
+        .form-item select {
+            width: 100%;
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+            background: #fff;
+        }
+        .form-item input:focus,
+        .form-item textarea:focus,
+        .form-item select:focus {
+            border-color: var(--primary);
+        }
+        .form-item textarea {
+            resize: vertical;
+            min-height: 68px;
+        }
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+        .form-row .form-item {
+            flex: 1;
+        }
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-hint);
+            margin-top: 4px;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            z-index: 2000;
+            animation: slideDown 0.25s ease;
+            border: 1px solid var(--border);
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translate(-50%, -12px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        
+        .pagination {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .pagination-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--text-hint);
+        }
+        .pagination-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .page-size-select {
+            padding: 4px 24px 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+            appearance: auto;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-family: inherit;
+        }
+        .page-size-select:focus {
+            border-color: var(--primary);
+        }
+        .pagination-btns {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .page-btn {
+            min-width: 28px;
+            height: 28px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            color: var(--text-secondary);
+            padding: 0 6px;
+            font-family: inherit;
+        }
+        .page-btn:hover:not(:disabled):not(.active) {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .page-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+        .page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            color: var(--text-hint);
+        }
+        .page-jump input {
+            width: 48px;
+            height: 28px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            text-align: center;
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+            color: var(--text-main);
+        }
+        .page-jump input:focus {
+            border-color: var(--primary);
+        }
+        .page-jump .btn-go {
+            height: 28px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .page-jump .btn-go:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        
+        .confirm-dialog {
+            width: 380px;
+        }
+        .confirm-body {
+            padding: 24px 20px 20px;
+            text-align: center;
+        }
+        .confirm-body .icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+        }
+        .confirm-body .title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .confirm-body .desc {
+            font-size: 13px;
+            color: var(--text-hint);
+        }
+        .confirm-footer {
+            padding: 12px 20px;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            border-top: 1px solid var(--border);
+        }
+        
+        
+        .link-text {
+            color: var(--primary);
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .link-text:hover {
+            text-decoration: underline;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .item-page-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .item-list-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+            transition: margin-right 0.3s;
+        }
+        
+        .item-detail-panel {
+            width: 420px;
+            background: var(--bg-card);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 10;
+        }
+        
+        .item-detail-panel.show {
+            transform: translateX(0);
+        }
+        
+        .detail-panel-head {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        
+        .detail-panel-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+        
+        .detail-panel-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-hint);
+            font-size: 18px;
+            transition: all 0.15s;
+        }
+        
+        .detail-panel-close:hover {
+            background: var(--bg-page);
+            color: var(--text-main);
+        }
+        
+        .edit-btn-head {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            transition: all 0.15s;
+        }
+        .edit-btn-head:hover {
+            background: var(--primary-light);
+        }
+        
+        .detail-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+        }
+        
+        .detail-card {
+            background: #fafafa;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+        
+        .detail-card-head {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .detail-card-body {
+            padding: 12px 16px;
+        }
+        
+        .detail-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px dashed #e5e6eb;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            width: 80px;
+            flex-shrink: 0;
+            color: var(--text-hint);
+            font-size: 12px;
+        }
+        .detail-value {
+            flex: 1;
+            color: var(--text-main);
+            font-size: 13px;
+            word-break: break-all;
+        }
+        
+        .detail-panel-footer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .detail-edit-form {
+            padding: 16px 20px;
+        }
+        
+        .detail-edit-form .form-item {
+            margin-bottom: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-logo">L</div>
+    <span class="header-title">LookUp管理</span>
+    <div class="breadcrumb" id="breadcrumb"></div>
+</div>
+
+<div class="main">
+    <!-- 分类列表页 -->
+    <div class="page" id="classifyPage">
+        <div class="page-head">
+            <div class="page-head-left">
+                <span class="page-head-title">LookUp分类</span>
+            </div>
+        </div>
+        <div class="toolbar">
+            <div class="search-wrap">
+                <label class="search-label">类别编码</label>
+                <input class="search-input" id="classifyCodeSearch" oninput="filterClassify()" style="width:120px;">
+            </div>
+            <div class="search-wrap">
+                <label class="search-label">类别名称</label>
+                <input class="search-input" id="classifyNameSearch" oninput="filterClassify()" style="width:120px;">
+            </div>
+            <div class="search-wrap">
+                <label class="search-label">描述</label>
+                <input class="search-input" id="classifyDescSearch" oninput="filterClassify()" style="width:120px;">
+            </div>
+            <select class="filter-select" id="classifyStatusFilter" onchange="filterClassify()">
+                <option value="">全部状态</option>
+                <option value="1">有效</option>
+                <option value="2">失效</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="filterClassify()" style="height:32px;">查询</button>
+            <button class="btn-reset" onclick="resetClassifyFilter()" title="重置筛选条件">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7a4.5 4.5 0 0 1 8.54-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 7a4.5 4.5 0 0 1-8.54 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 1.5V5H8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                重置
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="openClassifyModal()" style="margin-left:auto;height:32px;">+ 新增分类</button>
+        </div>
+
+        <div class="table-wrap">
+            <table id="classifyTable">
+                <thead>
+                    <tr>
+                        <th style="width:60px;">序号</th>
+                        <th style="width:120px;">类别编码</th>
+                        <th style="width:140px;">类别名称</th>
+                        <th>描述</th>
+                        <th style="width:80px;">LookUp项数</th>
+                        <th style="width:80px;">状态</th>
+                        <th style="width:80px;">创建人</th>
+                        <th style="width:150px;">创建时间</th>
+                        <th style="width:140px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="classifyBody"></tbody>
+            </table>
+        </div>
+
+        <div class="pagination" id="classifyPagination">
+            <div class="pagination-left">
+                <span class="pagination-info" id="classifyPageInfo">共 0 条</span>
+            </div>
+            <div class="pagination-right">
+                <span>每页</span>
+                <select class="page-size-select" id="classifyPageSize" onchange="changeClassifyPageSize(this.value)">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+                <span>条</span>
+                <div class="pagination-btns" id="classifyPageBtns"></div>
+                <div class="page-jump">
+                    <span>跳至</span>
+                    <input type="text" id="classifyPageJump" onkeydown="if(event.key==='Enter')jumpClassifyPage()">
+                    <span>页</span>
+                    <button class="btn-go" onclick="jumpClassifyPage()">GO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Item列表页 -->
+    <div class="page hidden" id="itemListPage">
+        <div class="page-head">
+            <div class="page-head-left">
+                <button class="back-btn" onclick="goToClassify()">← 返回</button>
+                <span class="page-head-title" id="itemListTitle">LookUp项列表</span>
+            </div>
+            <div class="classify-info" id="classifyInfo"></div>
+        </div>
+        <div class="item-page-wrapper">
+            <div class="item-list-panel">
+                <div class="toolbar">
+                    <div class="search-wrap">
+                        <label class="search-label">项编码</label>
+                        <input class="search-input" id="itemCodeSearch" oninput="filterItems()" style="width:120px;">
+                    </div>
+                    <div class="search-wrap">
+                        <label class="search-label">项名称</label>
+                        <input class="search-input" id="itemNameSearch" oninput="filterItems()" style="width:120px;">
+                    </div>
+                    <select class="filter-select" id="itemStatusFilter" onchange="filterItems()">
+                        <option value="">全部状态</option>
+                        <option value="1">有效</option>
+                        <option value="2">失效</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" onclick="filterItems()" style="height:32px;">查询</button>
+                    <button class="btn-reset" onclick="resetItemFilter()" title="重置筛选条件">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2.5 7a4.5 4.5 0 0 1 8.54-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 7a4.5 4.5 0 0 1-8.54 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.5 1.5V5H8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        重置
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="openImportModal()" style="height:32px;">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="margin-right:2px;"><path d="M7 1.5v8M3.5 6.5L7 10l3.5-3.5M2 10.5v1.5h10v-1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        导入
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="showItemDetail(null)" style="height:32px;">+ 新增LookUp项</button>
+                </div>
+
+                <div class="table-wrap">
+                    <table id="itemTable">
+                        <thead>
+                            <tr>
+                                <th style="width:60px;">序号</th>
+                                <th style="width:100px;">项编码</th>
+                                <th style="width:120px;">项名称</th>
+                                <th style="width:100px;">项值</th>
+                                <th style="width:60px;">排序</th>
+                                <th style="width:80px;">状态</th>
+                                <th style="width:80px;">创建人</th>
+                                <th style="width:150px;">创建时间</th>
+                                <th style="width:160px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemBody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="itemPagination">
+                    <div class="pagination-left">
+                        <span class="pagination-info" id="itemPageInfo">共 0 条</span>
+                    </div>
+                    <div class="pagination-right">
+                        <span>每页</span>
+                        <select class="page-size-select" id="itemPageSize" onchange="changeItemPageSize(this.value)">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span>条</span>
+                        <div class="pagination-btns" id="itemPageBtns"></div>
+                        <div class="page-jump">
+                            <span>跳至</span>
+                            <input type="text" id="itemPageJump" onkeydown="if(event.key==='Enter')jumpItemPage()">
+                            <span>页</span>
+                            <button class="btn-go" onclick="jumpItemPage()">GO</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 右侧详情/编辑面板 -->
+            <div class="item-detail-panel" id="itemDetailPanel">
+                <div class="detail-panel-head">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="detail-panel-title" id="detailPanelTitle">LookUp项详情</span>
+                        <button class="edit-btn-head" id="editBtnHead" onclick="switchToEditMode()" title="编辑">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M10.5 1.5L12.5 3.5L4 12H2V10L10.5 1.5Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="detail-panel-close" onclick="closeDetailPanel()">×</button>
+                </div>
+                <div class="detail-panel-body" id="itemDetailContent"></div>
+                <div class="detail-panel-footer" id="detailPanelFooter"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 分类弹窗 -->
+<div class="modal-overlay" id="classifyModal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="classifyModalTitle">新增分类</h3>
+            <button class="modal-close" onclick="closeModal('classifyModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row">
+                <div class="form-item">
+                    <label><span class="required">*</span>分类编码</label>
+                    <input id="classifyCode" placeholder="如: USER_TYPE" maxlength="100">
+                </div>
+                <div class="form-item">
+                    <label><span class="required">*</span>分类名称</label>
+                    <input id="classifyName" placeholder="如: 用户类型" maxlength="100">
+                </div>
+            </div>
+            <div class="form-item">
+                <label>路径</label>
+                <input id="classifyPath" placeholder="如: system/user_type，用于层级归类" maxlength="100">
+                <div class="form-hint">路径可用于分类的层级管理，斜杠分隔</div>
+            </div>
+            <div class="form-item">
+                <label>描述</label>
+                <textarea id="classifyDesc" placeholder="请输入分类描述..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('classifyModal')">取消</button>
+            <button class="btn btn-primary" onclick="saveClassify()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 确认弹窗 -->
+<div class="modal-overlay" id="confirmModal" style="display:none;">
+    <div class="modal confirm-dialog">
+        <div class="confirm-body">
+            <div class="icon" id="confirmIcon">⚠️</div>
+            <div class="title" id="confirmTitle">确认删除？</div>
+            <div class="desc" id="confirmDesc">此操作不可恢复，请谨慎操作。</div>
+        </div>
+        <div class="confirm-footer">
+            <button class="btn btn-outline" onclick="closeModal('confirmModal')">取消</button>
+            <button class="btn btn-primary" id="confirmBtn" onclick="confirmAction()">确定</button>
+        </div>
+    </div>
+</div>
+
+<!-- 导入弹窗 -->
+<div class="modal-overlay" id="importModal" style="display:none;">
+    <div class="modal" style="width:600px;">
+        <div class="modal-header">
+            <h3>批量导入 LookUp 项</h3>
+            <button class="modal-close" onclick="closeModal('importModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div style="text-align:right;margin-bottom:12px;">
+                <a class="link-text" onclick="downloadImportTemplate()" style="font-size:13px;">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:inline;vertical-align:middle;margin-right:4px;"><path d="M7 1.5v8M3.5 6.5L7 10l3.5-3.5M2 10.5v1.5h10v-1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    下载 Excel 导入模板
+                </a>
+            </div>
+            <div class="form-item" id="importFileArea">
+                <div style="border:2px dashed var(--border);border-radius:var(--radius-lg);padding:32px 20px;text-align:center;transition:all 0.2s;background:#fafafa;cursor:pointer;" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                    <div style="font-size:36px;margin-bottom:8px;opacity:0.3;">📄</div>
+                    <div style="font-size:14px;color:var(--text-secondary);margin-bottom:4px;">点击选择或拖拽 Excel 文件到此处</div>
+                    <div style="font-size:12px;color:var(--text-hint);">支持 .xlsx / .xls 格式</div>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+            <div class="form-item" id="importPreviewArea" style="display:none;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <span style="font-size:13px;font-weight:500;color:var(--text-secondary);">文件预览</span>
+                    <span style="font-size:12px;color:var(--text-hint);" id="importFileName"></span>
+                </div>
+                <div style="max-height:220px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius);">
+                    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                        <thead id="importPreviewHead"></thead>
+                        <tbody id="importPreviewBody"></tbody>
+                    </table>
+                </div>
+                <div class="form-hint" style="margin-top:6px;" id="importPreviewInfo"></div>
+            </div>
+            <div id="importResult"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeImportModal()">取消</button>
+            <button class="btn btn-primary" id="importBtn" onclick="doExcelImport()" disabled>开始导入</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ======== Mock Data ========
+    let classifyIdSeq = 4;
+    let itemIdSeq = 15;
+    
+    const classifyData = [
+        { id: 1, code: 'USER_TYPE', name: '用户类型', path: 'system/user', desc: '用户身份分类', status: 1, createBy: 'admin', createTime: '2024-01-10 09:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-10 09:00:00', items: [
+            { id: 1, code: 'ADMIN', name: '管理员', value: '1', index: 1, desc: '系统管理员', attr1: 'super', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-15 10:30:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-15 10:30:00' },
+            { id: 2, code: 'USER', name: '普通用户', value: '2', index: 2, desc: '注册用户', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-15 10:30:00', lastUpdateBy: 'zhang', lastUpdateTime: '2024-06-10 15:20:00' },
+            { id: 3, code: 'GUEST', name: '游客', value: '3', index: 3, desc: '未登录访客', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 2, createBy: 'admin', createTime: '2024-01-15 10:30:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-15 10:30:00' },
+            { id: 4, code: 'MEMBER', name: '会员', value: '4', index: 4, desc: '付费会员', attr1: 'vip', attr2: 'gold', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'zhang', createTime: '2024-03-20 14:00:00', lastUpdateBy: 'zhang', lastUpdateTime: '2024-03-20 14:00:00' },
+            { id: 5, code: 'TEST', name: '测试账号', value: '99', index: 99, desc: '仅测试环境', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 2, createBy: 'admin', createTime: '2024-05-10 09:15:00', lastUpdateBy: 'li', lastUpdateTime: '2024-07-01 11:00:00' },
+        ]},
+        { id: 2, code: 'GENDER', name: '性别', path: 'system', desc: '性别枚举', status: 1, createBy: 'admin', createTime: '2024-01-10 09:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-10 09:00:00', items: [
+            { id: 6, code: 'MALE', name: '男', value: 'M', index: 1, desc: '', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-15 10:30:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-15 10:30:00' },
+            { id: 7, code: 'FEMALE', name: '女', value: 'F', index: 2, desc: '', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-15 10:30:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-15 10:30:00' },
+            { id: 8, code: 'UNKNOWN', name: '未知', value: 'U', index: 3, desc: '不愿透露', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 2, createBy: 'admin', createTime: '2024-02-01 16:00:00', lastUpdateBy: 'zhang', lastUpdateTime: '2024-06-15 09:30:00' },
+        ]},
+        { id: 3, code: 'ORDER_STATUS', name: '订单状态', path: 'order', desc: '订单全生命周期状态', status: 1, createBy: 'admin', createTime: '2024-01-12 08:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-12 08:00:00', items: [
+            { id: 9, code: 'PENDING', name: '待支付', value: '0', index: 1, desc: '已下单未支付', attr1: 'orange', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-20 08:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-20 08:00:00' },
+            { id: 10, code: 'PAID', name: '已支付', value: '1', index: 2, desc: '支付完成', attr1: 'green', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-20 08:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-20 08:00:00' },
+            { id: 11, code: 'SHIPPED', name: '已发货', value: '2', index: 3, desc: '', attr1: 'blue', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-20 08:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-20 08:00:00' },
+            { id: 12, code: 'DONE', name: '已完成', value: '3', index: 4, desc: '', attr1: 'gray', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-20 08:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-20 08:00:00' },
+            { id: 13, code: 'CANCEL', name: '已取消', value: '-1', index: 5, desc: '用户取消或超时取消', attr1: 'red', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-01-20 08:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-20 08:00:00' },
+        ]},
+        { id: 4, code: 'PAY_TYPE', name: '支付方式', path: 'order/pay', desc: '支持的支付渠道', status: 1, createBy: 'admin', createTime: '2024-02-05 10:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-02-05 10:00:00', items: [
+            { id: 14, code: 'WXPAY', name: '微信支付', value: 'wx', index: 1, desc: '', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-02-10 10:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-02-10 10:00:00' },
+            { id: 15, code: 'ALIPAY', name: '支付宝', value: 'ali', index: 2, desc: '', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1, createBy: 'admin', createTime: '2024-02-10 10:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-02-10 10:00:00' },
+        ]},
+    ];
+    
+    // ======== State ========
+    let currentPage = 'classify';
+    let currentClassifyId = null;
+    let currentItemId = null;
+    let editingClassifyId = null;
+    let detailMode = 'view';
+    let confirmCallback = null;
+    let classifyPage = 1;
+    let itemPage = 1;
+    let pageSize = 10;
+    
+    // ======== Utils ========
+    function formatNow() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+    }
+    
+    function getClassify(id) { return classifyData.find(c => c.id === id); }
+    
+    function getItem(classifyId, itemId) {
+        const c = getClassify(classifyId);
+        if (!c) return null;
+        return c.items.find(i => i.id === itemId);
+    }
+    
+    // ======== Page Navigation ========
+    function showPage(pageName) {
+        document.getElementById('classifyPage').classList.add('hidden');
+        document.getElementById('itemListPage').classList.add('hidden');
+        document.getElementById(pageName).classList.remove('hidden');
+        currentPage = pageName;
+        updateBreadcrumb();
+    }
+    
+    function updateBreadcrumb() {
+        const bc = document.getElementById('breadcrumb');
+        if (currentPage === 'classifyPage') {
+            bc.innerHTML = '<span class="current">LookUp分类</span>';
+        } else if (currentPage === 'itemListPage') {
+            const c = getClassify(currentClassifyId);
+            bc.innerHTML = '<a onclick="goToClassify()">LookUp分类</a><span class="sep">/</span><span class="current">' + (c ? c.name : 'LookUp项列表') + '</span>';
+        }
+    }
+    
+    function goToClassify() {
+        currentClassifyId = null;
+        currentItemId = null;
+        closeDetailPanel();
+        showPage('classifyPage');
+        renderClassifyList();
+    }
+    
+    function goToItems(classifyId) {
+        currentClassifyId = classifyId;
+        currentItemId = null;
+        itemPage = 1;
+        closeDetailPanel();
+        showPage('itemListPage');
+        renderItemList();
+    }
+    
+    // ======== Detail Panel ========
+    function showItemDetail(itemId) {
+        currentItemId = itemId;
+        detailMode = itemId ? 'view' : 'edit';
+        renderDetailPanel();
+        document.getElementById('itemDetailPanel').classList.add('show');
+    }
+    
+    function closeDetailPanel() {
+        document.getElementById('itemDetailPanel').classList.remove('show');
+        currentItemId = null;
+        detailMode = 'view';
+    }
+    
+    function switchToEditMode() {
+        detailMode = 'edit';
+        renderDetailPanel();
+    }
+    
+    function switchToViewMode() {
+        detailMode = 'view';
+        renderDetailPanel();
+    }
+    
+    function renderDetailPanel() {
+        const c = getClassify(currentClassifyId);
+        const item = currentItemId ? getItem(currentClassifyId, currentItemId) : null;
+        
+        const editBtnHead = document.getElementById('editBtnHead');
+        
+        document.getElementById('detailPanelTitle').textContent = item ? 'LookUp项详情' : '新增LookUp项';
+        
+        const content = document.getElementById('itemDetailContent');
+        const footer = document.getElementById('detailPanelFooter');
+        
+        if (detailMode === 'view' && item) {
+            editBtnHead.style.display = 'flex';
+            const isActive = item.status === 1;
+            content.innerHTML = `
+                <div class="detail-card">
+                    <div class="detail-card-head">📋 基本信息</div>
+                    <div class="detail-card-body">
+                        <div class="detail-row">
+                            <div class="detail-label">所属分类</div>
+                            <div class="detail-value">${c ? c.name : '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">项编码</div>
+                            <div class="detail-value"><code style="background:#f5f6f7;padding:2px 6px;border-radius:3px;font-size:12px;">${item.code}</code></div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">项名称</div>
+                            <div class="detail-value">${item.name}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">项值</div>
+                            <div class="detail-value">${item.value || '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">排序</div>
+                            <div class="detail-value">${item.index || '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">状态</div>
+                            <div class="detail-value">
+                                <span class="status-badge">
+                                    <span class="dot ${isActive ? 'active' : 'inactive'}"></span>
+                                    <span class="label ${isActive ? 'active' : 'inactive'}">${isActive ? '有效' : '失效'}</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">描述</div>
+                            <div class="detail-value">${item.desc || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="detail-card">
+                    <div class="detail-card-head">⚙️ 扩展属性</div>
+                    <div class="detail-card-body">
+                        ${[1,2,3,4,5,6].map(n => `
+                        <div class="detail-row">
+                            <div class="detail-label">属性${n}</div>
+                            <div class="detail-value">${item['attr' + n] || '-'}</div>
+                        </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="detail-card">
+                    <div class="detail-card-head">📝 操作记录</div>
+                    <div class="detail-card-body">
+                        <div class="detail-row">
+                            <div class="detail-label">创建人</div>
+                            <div class="detail-value">${item.createBy || '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">创建时间</div>
+                            <div class="detail-value">${item.createTime || '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">修改人</div>
+                            <div class="detail-value">${item.lastUpdateBy || '-'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">修改时间</div>
+                            <div class="detail-value">${item.lastUpdateTime || '-'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            footer.innerHTML = '';
+        } else {
+            editBtnHead.style.display = 'none';
+            const editItem = item || { code: '', name: '', value: '', index: '', desc: '', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '' };
+            content.innerHTML = `
+                <div class="detail-edit-form">
+                    <div class="form-item">
+                        <label><span class="required">*</span>项编码</label>
+                        <input id="editItemCode" value="${editItem.code}" placeholder="如: ADMIN" maxlength="100">
+                    </div>
+                    <div class="form-item">
+                        <label><span class="required">*</span>项名称</label>
+                        <input id="editItemName" value="${editItem.name}" placeholder="如: 管理员" maxlength="100">
+                    </div>
+                    <div class="form-item">
+                        <label>项值</label>
+                        <input id="editItemValue" value="${editItem.value || ''}" placeholder="业务中使用的值" maxlength="2000">
+                    </div>
+                    <div class="form-item">
+                        <label>排序</label>
+                        <input id="editItemIndex" type="number" value="${editItem.index || ''}" placeholder="数字越小越靠前">
+                    </div>
+                    <div class="form-item">
+                        <label>描述</label>
+                        <textarea id="editItemDesc" placeholder="请输入项描述...">${editItem.desc || ''}</textarea>
+                    </div>
+                    <div style="border-top:1px solid var(--border);margin:12px 0 12px;padding-top:12px;">
+                        <span style="font-size:12px;color:var(--text-hint);font-weight:500;">扩展属性</span>
+                    </div>
+                    <div class="form-item">
+                        <label>属性1</label>
+                        <input id="editItemAttr1" value="${editItem.attr1 || ''}" placeholder="扩展属性 1" maxlength="2000">
+                    </div>
+                    <div class="form-item">
+                        <label>属性2</label>
+                        <input id="editItemAttr2" value="${editItem.attr2 || ''}" placeholder="扩展属性 2" maxlength="2000">
+                    </div>
+                    <div class="form-item">
+                        <label>属性3</label>
+                        <input id="editItemAttr3" value="${editItem.attr3 || ''}" placeholder="扩展属性 3" maxlength="2000">
+                    </div>
+                    <div class="form-item">
+                        <label>属性4</label>
+                        <input id="editItemAttr4" value="${editItem.attr4 || ''}" placeholder="扩展属性 4" maxlength="2000">
+                    </div>
+                    <div class="form-item">
+                        <label>属性5</label>
+                        <input id="editItemAttr5" value="${editItem.attr5 || ''}" placeholder="扩展属性 5" maxlength="2000">
+                    </div>
+                    <div class="form-item">
+                        <label>属性6</label>
+                        <input id="editItemAttr6" value="${editItem.attr6 || ''}" placeholder="扩展属性 6" maxlength="2000">
+                    </div>
+                </div>
+            `;
+            footer.innerHTML = `
+                <button class="btn btn-outline btn-sm" onclick="${item ? 'switchToViewMode' : 'closeDetailPanel'}()">取消</button>
+                <button class="btn btn-primary btn-sm" onclick="saveItemFromPanel()">保存</button>
+            `;
+        }
+    }
+    
+    function saveItemFromPanel() {
+        const code = document.getElementById('editItemCode').value.trim();
+        const name = document.getElementById('editItemName').value.trim();
+        if (!code || !name) { showToast('请填写必填项', 'error'); return; }
+        
+        const c = getClassify(currentClassifyId);
+        if (!c) return;
+        
+        const now = formatNow();
+        const itemData = {
+            code,
+            name,
+            value: document.getElementById('editItemValue').value.trim(),
+            index: parseInt(document.getElementById('editItemIndex').value) || null,
+            desc: document.getElementById('editItemDesc').value.trim(),
+            attr1: document.getElementById('editItemAttr1').value.trim(),
+            attr2: document.getElementById('editItemAttr2').value.trim(),
+            attr3: document.getElementById('editItemAttr3').value.trim(),
+            attr4: document.getElementById('editItemAttr4').value.trim(),
+            attr5: document.getElementById('editItemAttr5').value.trim(),
+            attr6: document.getElementById('editItemAttr6').value.trim()
+        };
+        
+        if (currentItemId) {
+            const item = c.items.find(i => i.id === currentItemId);
+            if (item) {
+                Object.assign(item, itemData);
+                item.lastUpdateBy = 'admin';
+                item.lastUpdateTime = now;
+            }
+            showToast('LookUp项更新成功');
+            detailMode = 'view';
+            renderDetailPanel();
+        } else {
+            c.items.push({
+                id: ++itemIdSeq,
+                ...itemData,
+                status: 1,
+                createBy: 'admin',
+                createTime: now,
+                lastUpdateBy: 'admin',
+                lastUpdateTime: now
+            });
+            showToast('LookUp项创建成功');
+            closeDetailPanel();
+        }
+        renderItemList();
+    }
+    
+    function toggleCurrentItemStatus() {
+        if (!currentItemId) return;
+        const item = getItem(currentClassifyId, currentItemId);
+        if (item) {
+            item.status = item.status === 1 ? 2 : 1;
+            item.lastUpdateBy = 'admin';
+            item.lastUpdateTime = formatNow();
+            renderDetailPanel();
+            renderItemList();
+            showToast(item.status === 1 ? '已生效' : '已失效');
+        }
+    }
+    
+    function deleteCurrentItem() {
+        if (!currentItemId) return;
+        showConfirm('确认删除此LookUp项？', '此操作不可恢复，请谨慎操作。', '⚠️', () => {
+            const c = getClassify(currentClassifyId);
+            if (c) {
+                const idx = c.items.findIndex(i => i.id === currentItemId);
+                if (idx > -1) {
+                    c.items.splice(idx, 1);
+                    closeDetailPanel();
+                    renderItemList();
+                    showToast('LookUp项已删除');
+                }
+            }
+        });
+    }
+    
+    // ======== Toast ========
+    function showToast(msg, type) {
+        const old = document.querySelector('.toast');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.className = 'toast';
+        el.innerHTML = '<span>' + (type === 'error' ? '✕' : '✓') + '</span> ' + msg;
+        el.style.borderLeft = '4px solid ' + (type === 'error' ? 'var(--danger)' : 'var(--primary)');
+        document.body.appendChild(el);
+        setTimeout(function() { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(function() { el.remove(); }, 300); }, 2000);
+    }
+    
+    // ======== Confirm Dialog ========
+    function showConfirm(title, desc, icon, callback) {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmDesc').textContent = desc;
+        document.getElementById('confirmIcon').textContent = icon || '⚠️';
+        confirmCallback = callback;
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+    
+    function confirmAction() {
+        if (confirmCallback) confirmCallback();
+        confirmCallback = null;
+        closeModal('confirmModal');
+    }
+    
+    // ======== Modal ========
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    document.querySelectorAll('.modal-overlay').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            if (e.target === this) this.style.display = 'none';
+        });
+    });
+    
+    // ======== Classify List ========
+    function filterClassifyData() {
+        const codeKeyword = document.getElementById('classifyCodeSearch').value.trim().toLowerCase();
+        const nameKeyword = document.getElementById('classifyNameSearch').value.trim().toLowerCase();
+        const descKeyword = document.getElementById('classifyDescSearch').value.trim().toLowerCase();
+        const status = document.getElementById('classifyStatusFilter').value;
+        let filtered = classifyData;
+        if (codeKeyword) {
+            filtered = filtered.filter(function(c) { return c.code.toLowerCase().includes(codeKeyword); });
+        }
+        if (nameKeyword) {
+            filtered = filtered.filter(function(c) { return c.name.toLowerCase().includes(nameKeyword); });
+        }
+        if (descKeyword) {
+            filtered = filtered.filter(function(c) { return c.desc && c.desc.toLowerCase().includes(descKeyword); });
+        }
+        if (status) {
+            filtered = filtered.filter(function(c) { return c.status === parseInt(status); });
+        }
+        return filtered;
+    }
+    
+    function renderClassifyList() {
+        const filtered = filterClassifyData();
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / pageSize) || 1;
+        if (classifyPage > totalPages) classifyPage = totalPages;
+        const start = (classifyPage - 1) * pageSize;
+        const pageData = filtered.slice(start, start + pageSize);
+        
+        document.getElementById('classifyPageInfo').textContent = '共 ' + total + ' 条';
+        
+        const tbody = document.getElementById('classifyBody');
+        if (total === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:60px;color:var(--text-hint);">暂无数据</td></tr>';
+            document.getElementById('classifyPageBtns').innerHTML = '';
+            return;
+        }
+        
+        tbody.innerHTML = pageData.map(function(c, i) {
+            const isActive = c.status === 1;
+            const statusHtml = '<span class="status-badge"><span class=" ' + (isActive ? 'active' : 'inactive') + '"></span><span class="label ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? '有效' : '失效') + '</span></span>';
+            return '<tr>' +
+                '<td>' + (start + i + 1) + '</td>' +
+                '<td><span class="link-text" onclick="goToItems(' + c.id + ')"><code style="background:#f5f6f7;padding:2px 6px;border-radius:3px;font-size:12px;color:var(--primary);">' + c.code + '</code></span></td>' +
+                '<td>' + c.name + '</td>' +
+                '<td style="color:var(--text-hint);">' + (c.desc || '-') + '</td>' +
+                '<td style="text-align:center;">' + c.items.length + '</td>' +
+                '<td>' + statusHtml + '</td>' +
+                '<td style="color:var(--text-secondary);font-size:12px;">' + (c.createBy || '-') + '</td>' +
+                '<td style="color:var(--text-hint);font-size:12px;">' + c.createTime + '</td>' +
+                '<td>' +
+                    '<div class="actions">' +
+                        '<button class="action-link" onclick="editClassify(' + c.id + ')">编辑</button>' +
+                        '<button class="action-link" onclick="toggleClassifyStatus(' + c.id + ')">' + (isActive ? '失效' : '生效') + '</button>' +
+                        '<button class="action-link danger" onclick="deleteClassify(' + c.id + ')">删除</button>' +
+                    '</div>' +
+                '</td>' +
+            '</tr>';
+        }).join('');
+        
+        pageCallback = function(p) { classifyPage = p; renderClassifyList(); };
+        renderPagination('classifyPageBtns', classifyPage, totalPages, pageCallback);
+    }
+    
+    function renderPagination(containerId, current, total, callback) {
+        const container = document.getElementById(containerId);
+        let html = '';
+        // 左箭头
+        html += '<button class="page-btn" ' + (current <= 1 ? 'disabled' : '') + ' onclick="' + (current > 1 ? 'callbackProxy(' + (current - 1) + ')' : '') + '">‹</button>';
+        // 页码
+        for (let i = 1; i <= total; i++) {
+            if (total > 7) {
+                if (i === 1 || i === total || (i >= current - 1 && i <= current + 1)) {
+                    html += '<button class="page-btn ' + (i === current ? 'active' : '') + '" onclick="callbackProxy(' + i + ')">' + i + '</button>';
+                } else if (i === current - 2 || i === current + 2) {
+                    html += '<span style="padding:0 4px;color:var(--text-hint);">…</span>';
+                }
+            } else {
+                html += '<button class="page-btn ' + (i === current ? 'active' : '') + '" onclick="callbackProxy(' + i + ')">' + i + '</button>';
+            }
+        }
+        // 右箭头
+        html += '<button class="page-btn" ' + (current >= total ? 'disabled' : '') + ' onclick="' + (current < total ? 'callbackProxy(' + (current + 1) + ')' : '') + '">›</button>';
+        container.innerHTML = html;
+    }
+    
+    // 全局代理变量，用于存储当前页面的callback
+    let pageCallback = null;
+    function callbackProxy(page) {
+        if (pageCallback) pageCallback(page);
+    }
+    
+    // ======== Page Size & Jump ========
+    function changeClassifyPageSize(size) {
+        pageSize = parseInt(size);
+        classifyPage = 1;
+        renderClassifyList();
+    }
+    
+    function changeItemPageSize(size) {
+        pageSize = parseInt(size);
+        itemPage = 1;
+        renderItemList();
+    }
+    
+    function jumpClassifyPage() {
+        const input = document.getElementById('classifyPageJump');
+        let p = parseInt(input.value);
+        const total = Math.ceil(filterClassifyData().length / pageSize) || 1;
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > total) p = total;
+        classifyPage = p;
+        input.value = p;
+        renderClassifyList();
+    }
+    
+    function jumpItemPage() {
+        const input = document.getElementById('itemPageJump');
+        let p = parseInt(input.value);
+        const c = getClassify(currentClassifyId);
+        const total = c ? Math.ceil(filterItemData().length / pageSize) || 1 : 1;
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > total) p = total;
+        itemPage = p;
+        input.value = p;
+        renderItemList();
+    }
+    
+    function filterClassify() {
+        classifyPage = 1;
+        renderClassifyList();
+    }
+    
+    function resetClassifyFilter() {
+        document.getElementById('classifyCodeSearch').value = '';
+        document.getElementById('classifyNameSearch').value = '';
+        document.getElementById('classifyDescSearch').value = '';
+        document.getElementById('classifyStatusFilter').value = '';
+        classifyPage = 1;
+        renderClassifyList();
+    }
+    
+    
+    // ======== Classify CRUD ========
+    function openClassifyModal() {
+        editingClassifyId = null;
+        document.getElementById('classifyModalTitle').textContent = '新增分类';
+        document.getElementById('classifyCode').value = '';
+        document.getElementById('classifyName').value = '';
+        document.getElementById('classifyPath').value = '';
+        document.getElementById('classifyDesc').value = '';
+        openModal('classifyModal');
+    }
+    
+    function editClassify(id) {
+        const c = getClassify(id);
+        if (!c) return;
+        editingClassifyId = id;
+        document.getElementById('classifyModalTitle').textContent = '编辑分类';
+        document.getElementById('classifyCode').value = c.code;
+        document.getElementById('classifyName').value = c.name;
+        document.getElementById('classifyPath').value = c.path || '';
+        document.getElementById('classifyDesc').value = c.desc || '';
+        openModal('classifyModal');
+    }
+    
+    function saveClassify() {
+        const code = document.getElementById('classifyCode').value.trim();
+        const name = document.getElementById('classifyName').value.trim();
+        if (!code || !name) { showToast('请填写必填项', 'error'); return; }
+        const now = formatNow();
+        if (editingClassifyId) {
+            const c = getClassify(editingClassifyId);
+            if (c) {
+                c.code = code;
+                c.name = name;
+                c.path = document.getElementById('classifyPath').value.trim();
+                c.desc = document.getElementById('classifyDesc').value.trim();
+                c.lastUpdateBy = 'admin';
+                c.lastUpdateTime = now;
+            }
+            showToast('分类更新成功');
+        } else {
+            classifyData.push({
+                id: ++classifyIdSeq,
+                code: code,
+                name: name,
+                path: document.getElementById('classifyPath').value.trim(),
+                desc: document.getElementById('classifyDesc').value.trim(),
+                status: 1,
+                createBy: 'admin',
+                createTime: now,
+                lastUpdateBy: 'admin',
+                lastUpdateTime: now,
+                items: []
+            });
+            showToast('分类创建成功');
+        }
+        closeModal('classifyModal');
+        renderClassifyList();
+    }
+    
+    function deleteClassify(id) {
+        showConfirm('确认删除此分类？', '删除后该分类下的所有LookUp项也将一并删除。此操作不可恢复。', '⚠️', function() {
+            const idx = classifyData.findIndex(function(c) { return c.id === id; });
+            if (idx > -1) {
+                classifyData.splice(idx, 1);
+                renderClassifyList();
+                showToast('分类已删除');
+            }
+        });
+    }
+    
+    function toggleClassifyStatus(id) {
+        const c = getClassify(id);
+        if (c) {
+            c.status = c.status === 1 ? 2 : 1;
+            c.lastUpdateBy = 'admin';
+            c.lastUpdateTime = formatNow();
+            renderClassifyList();
+            showToast(c.status === 1 ? '已生效' : '已失效');
+        }
+    }
+    
+    // ======== Item List ========
+    function filterItemData() {
+        const c = getClassify(currentClassifyId);
+        if (!c) return [];
+        const codeKeyword = document.getElementById('itemCodeSearch').value.trim().toLowerCase();
+        const nameKeyword = document.getElementById('itemNameSearch').value.trim().toLowerCase();
+        const status = document.getElementById('itemStatusFilter').value;
+        let filtered = c.items;
+        if (codeKeyword) {
+            filtered = filtered.filter(function(i) { return i.code.toLowerCase().includes(codeKeyword); });
+        }
+        if (nameKeyword) {
+            filtered = filtered.filter(function(i) { return i.name.toLowerCase().includes(nameKeyword); });
+        }
+        if (status) {
+            filtered = filtered.filter(function(i) { return i.status === parseInt(status); });
+        }
+        return filtered.sort(function(a, b) { return (a.index || 999) - (b.index || 999); });
+    }
+    
+    function renderItemList() {
+        const c = getClassify(currentClassifyId);
+        if (!c) {
+            goToClassify();
+            return;
+        }
+        
+        document.getElementById('itemListTitle').textContent = c.name + ' - LookUp项列表';
+        document.getElementById('classifyInfo').innerHTML = 
+            '<div class="classify-info-item"><span class="classify-info-label">编码:</span><span class="classify-info-value">' + c.code + '</span></div>' +
+            '<div class="classify-info-item"><span class="classify-info-label">名称:</span><span class="classify-info-value">' + c.name + '</span></div>';
+        
+        const filtered = filterItemData();
+        const total = filtered.length;
+        const totalPages = Math.ceil(total / pageSize) || 1;
+        if (itemPage > totalPages) itemPage = totalPages;
+        const start = (itemPage - 1) * pageSize;
+        const pageData = filtered.slice(start, start + pageSize);
+        
+        document.getElementById('itemPageInfo').textContent = '共 ' + total + ' 条';
+        
+        const tbody = document.getElementById('itemBody');
+        if (total === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:60px;color:var(--text-hint);">暂无数据，点击右上角"新增LookUp项"开始添加</td></tr>';
+            document.getElementById('itemPageBtns').innerHTML = '';
+            return;
+        }
+        
+        tbody.innerHTML = pageData.map(function(item, i) {
+            const isActive = item.status === 1;
+            const statusHtml = '<span class="status-badge"><span class="dot ' + (isActive ? 'active' : 'inactive') + '"></span><span class="label ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? '有效' : '失效') + '</span></span>';
+            return '<tr>' +
+                '<td>' + (start + i + 1) + '</td>' +
+                '<td><span class="link-text" onclick="showItemDetail(' + item.id + ')"><code style="background:#f5f6f7;padding:2px 6px;border-radius:3px;font-size:12px;color:var(--primary);">' + item.code + '</code></span></td>' +
+                '<td>' + item.name + '</td>' +
+                '<td style="color:var(--text-hint);">' + (item.value || '-') + '</td>' +
+                '<td style="text-align:center;">' + (item.index || '-') + '</td>' +
+                '<td>' + statusHtml + '</td>' +
+                '<td style="color:var(--text-secondary);font-size:12px;">' + (item.createBy || '-') + '</td>' +
+                '<td style="color:var(--text-hint);font-size:12px;">' + item.createTime + '</td>' +
+                '<td>' +
+                    '<div class="actions">' +
+                        '<button class="action-link" onclick="showItemDetail(' + item.id + ')">编辑</button>' +
+                        '<button class="action-link" onclick="toggleItemStatus(' + item.id + ')">' + (isActive ? '失效' : '生效') + '</button>' +
+                        '<button class="action-link danger" onclick="deleteItem(' + item.id + ')">删除</button>' +
+                    '</div>' +
+                '</td>' +
+            '</tr>';
+        }).join('');
+        
+        pageCallback = function(p) { itemPage = p; renderItemList(); };
+        renderPagination('itemPageBtns', itemPage, totalPages, pageCallback);
+    }
+    
+    function filterItems() {
+        itemPage = 1;
+        renderItemList();
+    }
+    
+    function resetItemFilter() {
+        document.getElementById('itemCodeSearch').value = '';
+        document.getElementById('itemNameSearch').value = '';
+        document.getElementById('itemStatusFilter').value = '';
+        itemPage = 1;
+        renderItemList();
+    }
+    
+    
+    function toggleItemStatus(itemId) {
+        const item = getItem(currentClassifyId, itemId);
+        if (item) {
+            item.status = item.status === 1 ? 2 : 1;
+            item.lastUpdateBy = 'admin';
+            item.lastUpdateTime = formatNow();
+            if (currentItemId === itemId) {
+                renderDetailPanel();
+            }
+            renderItemList();
+            showToast(item.status === 1 ? '已生效' : '已失效');
+        }
+    }
+    
+    function deleteItem(itemId) {
+        showConfirm('确认删除此LookUp项？', '此操作不可恢复，请谨慎操作。', '⚠️', function() {
+            const c = getClassify(currentClassifyId);
+            if (c) {
+                const idx = c.items.findIndex(function(i) { return i.id === itemId; });
+                if (idx > -1) {
+                    c.items.splice(idx, 1);
+                    if (currentItemId === itemId) {
+                        closeDetailPanel();
+                    }
+                    renderItemList();
+                    showToast('LookUp项已删除');
+                }
+            }
+        });
+    }
+    
+    // ======== Init ========
+    function init() {
+        goToClassify();
+    }
+    
+    // ======== Import Items from Excel ========
+    let importedRows = [];
+
+    function resetImportModal() {
+        document.getElementById('fileInput').value = '';
+        document.getElementById('importPreviewArea').style.display = 'none';
+        document.getElementById('importFileArea').style.display = 'block';
+        document.getElementById('importResult').innerHTML = '';
+        document.getElementById('importBtn').disabled = true;
+        importedRows = [];
+        var dz = document.getElementById('dropZone');
+        dz.style.borderColor = 'var(--border)';
+        dz.style.background = '#fafafa';
+    }
+
+    function openImportModal() {
+        resetImportModal();
+        openModal('importModal');
+    }
+
+    function closeImportModal() {
+        closeModal('importModal');
+    }
+
+    function handleFileSelect(e) {
+        var file = e.target.files[0];
+        if (file) parseExcelFile(file);
+    }
+
+    // Drag & drop
+    document.addEventListener('DOMContentLoaded', function() {
+        var dz = document.getElementById('dropZone');
+        if (!dz) return;
+        dz.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dz.style.borderColor = 'var(--primary)';
+            dz.style.background = 'var(--primary-light)';
+        });
+        dz.addEventListener('dragleave', function() {
+            dz.style.borderColor = 'var(--border)';
+            dz.style.background = '#fafafa';
+        });
+        dz.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dz.style.borderColor = 'var(--border)';
+            dz.style.background = '#fafafa';
+            var file = e.dataTransfer.files[0];
+            if (file) {
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                parseExcelFile(file);
+            }
+        });
+    });
+
+    function parseExcelFile(file) {
+        if (!file.name.match(/\.xlsx?$/i)) {
+            showToast('请选择 .xlsx 或 .xls 格式的文件', 'error');
+            return;
+        }
+
+        document.getElementById('importFileName').textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var data = new Uint8Array(e.target.result);
+                var workbook = XLSX.read(data, { type: 'array' });
+                var sheet = workbook.Sheets[workbook.SheetNames[0]];
+                var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                if (!json || json.length === 0) {
+                    showToast('Excel 文件中没有数据', 'error');
+                    return;
+                }
+
+                importedRows = json;
+                renderImportPreview(json);
+                document.getElementById('importBtn').disabled = false;
+            } catch (err) {
+                showToast('解析 Excel 失败: ' + err.message, 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function renderImportPreview(rows) {
+        var columns = Object.keys(rows[0]);
+        var heads = document.getElementById('importPreviewHead');
+        var bodies = document.getElementById('importPreviewBody');
+
+        heads.innerHTML = '<tr>' + columns.map(function(c) {
+            var isReq = c === 'code' || c === 'name';
+            return '<th style="padding:6px 10px;text-align:left;font-weight:600;background:#f5f6f7;border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px;color:' + (isReq ? 'var(--primary)' : 'var(--text-secondary)') + ';">' + c + (isReq ? ' <span style="color:var(--danger)">*</span>' : '') + '</th>';
+        }).join('') + '</tr>';
+
+        var previewRows = rows.slice(0, 20);
+        bodies.innerHTML = previewRows.map(function(row) {
+            return '<tr>' + columns.map(function(c) {
+                var val = row[c] != null ? row[c] : '';
+                return '<td style="padding:6px 10px;border-bottom:1px solid #f2f3f5;font-size:12px;color:var(--text-main);max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + val + '</td>';
+            }).join('') + '</tr>';
+        }).join('');
+
+        document.getElementById('importFileArea').style.display = 'none';
+        document.getElementById('importPreviewArea').style.display = 'block';
+
+        var info = document.getElementById('importPreviewInfo');
+        var valid = rows.filter(function(r) { return r.code && r.name; }).length;
+        info.innerHTML = '共 ' + rows.length + ' 条数据，' + valid + ' 条有效（含 code 和 name）' + (rows.length > 20 ? '，显示前 20 条' : '');
+    }
+
+    function doExcelImport() {
+        if (!importedRows || importedRows.length === 0) return;
+
+        var c = getClassify(currentClassifyId);
+        if (!c) return;
+
+        var success = 0, fail = 0, skipExist = 0;
+        var now = formatNow();
+
+        importedRows.forEach(function(row) {
+            var code = (row.code || '').toString().trim();
+            var name = (row.name || '').toString().trim();
+            if (!code || !name) { fail++; return; }
+
+            var exists = c.items.some(function(i) { return i.code === code; });
+            if (exists) { skipExist++; return; }
+
+            c.items.push({
+                id: ++itemIdSeq,
+                code: code,
+                name: name,
+                value: (row.value || '').toString(),
+                index: parseInt(row.index) || null,
+                desc: row.desc || '',
+                attr1: row.attr1 || '',
+                attr2: row.attr2 || '',
+                attr3: row.attr3 || '',
+                attr4: row.attr4 || '',
+                attr5: row.attr5 || '',
+                attr6: row.attr6 || '',
+                status: row.status !== undefined && row.status !== '' ? Number(row.status) : 1,
+                createBy: 'admin',
+                createTime: now,
+                lastUpdateBy: 'admin',
+                lastUpdateTime: now
+            });
+            success++;
+        });
+
+        var resultEl = document.getElementById('importResult');
+        var parts = [];
+        if (success > 0) parts.push('<span style="color:var(--success);font-weight:500;">✓ 成功导入 ' + success + ' 条</span>');
+        if (skipExist > 0) parts.push('<span style="color:var(--warning);">⚠ ' + skipExist + ' 条跳过（编码已存在）</span>');
+        if (fail > 0) parts.push('<span style="color:var(--danger);">✕ ' + fail + ' 条无效（缺少 code 或 name）</span>');
+        resultEl.innerHTML = parts.join('<br>');
+
+        if (success > 0) {
+            renderItemList();
+            renderClassifyList();
+            document.getElementById('importBtn').disabled = true;
+            showToast('成功导入 ' + success + ' 条记录');
+        } else {
+            showToast('没有可导入的数据', 'error');
+        }
+    }
+
+    function downloadImportTemplate() {
+        var wb = XLSX.utils.book_new();
+        var data = [
+            { code: 'ROLE_ADMIN', name: '管理员', value: 'admin', index: 1, desc: '系统管理员', attr1: 'super', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1 },
+            { code: 'ROLE_USER', name: '普通用户', value: 'user', index: 2, desc: '注册用户', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 1 },
+            { code: 'ROLE_GUEST', name: '游客', value: 'guest', index: 3, desc: '未登录访客', attr1: '', attr2: '', attr3: '', attr4: '', attr5: '', attr6: '', status: 2 }
+        ];
+        var ws = XLSX.utils.json_to_sheet(data);
+
+        var cols = [
+            { wch: 18 }, { wch: 14 }, { wch: 12 }, { wch: 8 },
+            { wch: 20 }, { wch: 12 }, { wch: 8 }, { wch: 8 },
+            { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }
+        ];
+        ws['!cols'] = cols;
+
+        XLSX.utils.book_append_sheet(wb, ws, 'LookUp项');
+        XLSX.writeFile(wb, 'lookup-import-template.xlsx');
+    }
+
+    init();
+</script>
+</body>
+</html>

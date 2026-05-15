@@ -1,0 +1,42 @@
+CREATE TABLE openplatform_lookup_classify_t (
+`classify_id` bigint(20) not null comment '主键id',
+`classify_code` varchar(100) not null COMMENT '类别编码',
+`classify_name` varchar(100) DEFAULT null COMMENT '类别名称',
+`classify_desc` VARCHAR(4000) DEFAULT NULL COMMENT '类别描述',
+`path` VARCHAR(100) DEFAULT null COMMENT '路径',
+`status` TINYINT(10) not null DEFAULT '1' COMMENT '数据状态：0-失效 1-有效',
+`create_by` VARCHAR(100) not null COMMENT '创建人',
+`create_time` DATETIME(3) not null COMMENT '创建时间',
+`last_update_by` varchar(100) not null COMMENT '更新人',
+`last_update_time` DATETIME(3) not null comment '更新时间',
+PRIMARY KEY (`classify_id`) USING BTREE,
+UNIQUE KEY `idxu_path_classifycode` (`path`,`classify_code`) USING BTREE,
+KEY `idx_classifycode` (`classify_code`) USING BTREE,
+KEY `idx_path_classifyname` (`path`,`classify_name`) USING BTREE,
+KEY `idx_classifyname` (`classify_name`) USING BTREE   
+) ENGINE = InnoDB COMMENT = 'lookup类别表'
+
+
+CREATE TABLE openplatform_lookup_item_t (
+`item_id` bigint(20) not null comment '主键id',
+`item_code` varchar(100) not null COMMENT '项编码',
+`item_name` varchar(100) DEFAULT null COMMENT '项名称',
+`item_value` VARCHAR(2000) DEFAULT NULL COMMENT '项目值',
+`item_desc` VARCHAR(4000) DEFAULT NULL COMMENT '项描述',
+`item_index` BIGINT(20) DEFAULT NULL COMMENT '项排序',
+`item_attr1` text COMMENT '扩展属性1',
+`item_attr2` text COMMENT '扩展属性2',
+`item_attr3` text COMMENT '扩展属性3',
+`item_attr4` text COMMENT '扩展属性4',
+`item_attr5` text COMMENT '扩展属性5',
+`item_attr6` text COMMENT '扩展属性6',
+`classify_id` BIGINT(20) not NULL COMMENT '类别ID',
+`status` TINYINT(10) not null DEFAULT '1' COMMENT '数据状态：0-失效 1-有效',
+`create_by` VARCHAR(100) not null COMMENT '创建人',
+`create_time` DATETIME(3) not null COMMENT '创建时间',
+`last_update_by` varchar(100) not null COMMENT '更新人',
+`last_update_time` DATETIME(3) not null comment '更新时间',
+PRIMARY KEY (`item_id`) USING BTREE,
+UNIQUE KEY `idxu_cid_icode` (`classify_id`,`item_code`) USING BTREE,
+KEY `idx_cid_iname` (`classify_id`,`item_name`) USING BTREE   
+) ENGINE = InnoDB COMMENT = 'lookup明细表'
