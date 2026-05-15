@@ -2,7 +2,7 @@
 
 **报告 ID**: DISCOVERY-CONN-001  
 **创建时间**: 2026-05-14  
-**最后更新**: 2026-05-14  
+**最后更新**: 2026-05-15
 **阶段**: 0.discovery（需求挖掘）  
 **状态**: ✅ 已完成  
 **会话 ID**: connector-session-001
@@ -154,9 +154,12 @@ graph TB
         U3_Motive[治理合规<br/>运维可控]
     end
     
-    U1 --> U1_Desc & U1_Motive
-    U2 --> U2_Desc & U2_Motive
-    U3 --> U3_Desc & U3_Motive
+    U1 --> U1_Desc
+    U1 --> U1_Motive
+    U2 --> U2_Desc
+    U2 --> U2_Motive
+    U3 --> U3_Desc
+    U3 --> U3_Motive
     
     style U2 fill:#e1f5e1,stroke:#2e7d32,stroke-width:2px
     style U1 fill:#e3f2fd,stroke:#1565c0
@@ -695,7 +698,8 @@ flowchart TB
 | v1.1 | 2026-05-14 | 修正定位：连接器是开放平台组成部分，仅对接与开放平台相关的业务系统 | AI Assistant |
 | v1.2 | 2026-05-14 | 核心定位重构：连接器与API/事件/回调同级并列，是可选项/锦上添花，没有也能达成目标，有了更便捷；不做后果从"非常严重"降级 | AI Assistant |
 | v1.3 | 2026-05-14 | 视角修正：痛点从"对接外部系统"改为"三方平台消费开放能力"，明确大多数场景是三方平台对接开放平台 | AI Assistant |
+| v1.4 | 2026-05-15 | 治理概念修正：复用的只有权限模型（Scope）和审批流引擎，生命周期管理是连接器平台自有；修正 mermaid 兼容性 | AI Assistant |
 
 ---
 
-**最后更新**: 2026-05-14
+**最后更新**: 2026-05-15
