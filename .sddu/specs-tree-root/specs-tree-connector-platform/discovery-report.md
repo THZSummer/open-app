@@ -440,16 +440,25 @@ flowchart TB
         CA3[动作：发起审批API]
     end
     
-    subgraph Flow1["连接流：IM消息→创建工单"]
+    subgraph Flow1["连接流1：IM消息→创建工单"]
         F1_Start[触发：IM消息事件] --> F1_Map1[映射：消息内容→工单描述]
         F1_Map1 --> F1_Action[动作：创建工单]
         F1_Action --> F1_Error[错误处理：重试3次]
     end
     
+    subgraph Flow2["连接流2：审批通过→发送IM通知"]
+        F2_Start[触发：审批通过回调] --> F2_Map1[映射：审批结果→消息内容]
+        F2_Map1 --> F2_Action[动作：发送IM通知]
+        F2_Action --> F2_Error[错误处理：重试3次]
+    end
+    
     CT1 --> F1_Start
     CA2 --> F1_Action
+    CT3 --> F2_Start
+    CA1 --> F2_Action
     
     style Flow1 fill:#e1f5e1,stroke:#2e7d32,stroke-width:2px
+    style Flow2 fill:#e1f5e1,stroke:#2e7d32,stroke-width:2px
     style Conn1 fill:#e1bee7,stroke:#7b1fa2
     style Conn2 fill:#e1bee7,stroke:#7b1fa2
     style Conn3 fill:#e1bee7,stroke:#7b1fa2
@@ -700,6 +709,7 @@ flowchart TB
 | v1.3 | 2026-05-14 | 视角修正：痛点从"对接外部系统"改为"三方平台消费开放能力"，明确大多数场景是三方平台对接开放平台 | AI Assistant |
 | v1.4 | 2026-05-15 | 治理概念修正：复用的只有权限模型（Scope）和审批流引擎，生命周期管理是连接器平台自有；修正 mermaid 兼容性 | AI Assistant |
 | v1.5 | 2026-05-15 | 术语统一：全文"集成流"统一为"连接流"，消除同一概念的两种叫法 | AI Assistant |
+| v1.6 | 2026-05-15 | 5.2示例图优化：增加第二条连接流（审批通过→发送IM通知），连接器A被两条流复用，消除连接器C孤立节点 | AI Assistant |
 
 ---
 
