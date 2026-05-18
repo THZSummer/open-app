@@ -9,8 +9,8 @@ export const RESOURCE_TYPES = {
       permissionNameEn: '权限英文名称',
       scope: 'callback:approval:completed',
     },
-    scopePattern: /^callback:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/,
-    scopeMessage: '格式不正确，应为：callback:{模块}:{资源标识}',
+    scopePattern: /^callback:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]+$/,
+    scopeMessage: '格式不正确，应为：callback:{模块}:{资源标识}（小写字母开头）',
     scopeExtra: '格式：callback:{模块}:{资源标识}',
     baseFields: [],
   },
@@ -25,8 +25,8 @@ export const RESOURCE_TYPES = {
       scope: 'event:im:message-received',
       topic: 'user.status',
     },
-    scopePattern: /^event:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/,
-    scopeMessage: '格式不正确，应为：event:{模块}:{事件标识}',
+    scopePattern: /^event:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]+$/,
+    scopeMessage: '格式不正确，应为：event:{模块}:{事件标识}（小写字母开头）',
     scopeExtra: '格式：event:{模块}:{事件标识}',
     baseFields: [
       {
@@ -36,9 +36,9 @@ export const RESOURCE_TYPES = {
         type: 'Input',
         rules: [
           { required: true, message: '请输入 Topic 标识' },
-          { pattern: /^[a-zA-Z][a-zA-Z0-9]*\.[a-zA-Z][a-zA-Z0-9.]*$/, message: '格式不正确，应为：模块.事件' },
+          { pattern: /^[a-zA-Z][a-zA-Z0-9._-]*$/, message: '格式不正确，支持英文字母（大小写）、数字、小数点、中划线和下划线' },
         ],
-        extra: '格式：模块.事件，例如：user.status, msg.send.ok',
+        extra: '支持英文字母（大小写）、数字、小数点（.）、中划线（-）和下划线（_）',
         placeholder: 'user.status',
       },
     ],
@@ -53,8 +53,8 @@ export const RESOURCE_TYPES = {
       permissionNameEn: '权限英文名称',
       scope: 'api:im:send-message',
     },
-    scopePattern: /^api:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/,
-    scopeMessage: '格式不正确，应为：api:{模块}:{资源标识}',
+    scopePattern: /^api:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]+$/,
+    scopeMessage: '格式不正确，应为：api:{模块}:{资源标识}（小写字母开头）',
     scopeExtra: '格式：api:{模块}:{资源标识}',
     baseFields: [
       {

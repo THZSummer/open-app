@@ -8,12 +8,25 @@ import {
   Tag,
   Space,
   message,
+  Select,
 } from 'antd';
 import {
   MinusCircleOutlined,
   PlusOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+
+const { Option } = Select;
+
+const APPROVAL_FLOW_CODE_OPTIONS = [
+  { value: 'global', label: 'global - 全局审批' },
+  { value: 'api_register', label: 'api_register - API注册审批' },
+  { value: 'event_register', label: 'event_register - 事件注册审批' },
+  { value: 'callback_register', label: 'callback_register - 回调注册审批' },
+  { value: 'api_permission_apply', label: 'api_permission_apply - API权限申请审批' },
+  { value: 'event_permission_apply', label: 'event_permission_apply - 事件权限申请审批' },
+  { value: 'callback_permission_apply', label: 'callback_permission_apply - 回调权限申请审批' },
+];
 
 function ApprovalFlowFormModal({
   visible,
@@ -110,15 +123,20 @@ function ApprovalFlowFormModal({
           label="流程代码"
           name="code"
           rules={[
-            { required: true, message: '请输入流程代码' },
-            { pattern: /^[a-z_]+$/, message: '流程代码只能包含小写字母和下划线' },
+            { required: true, message: '请选择流程代码' },
           ]}
-          extra="常用代码：global（全局审批）、api_register、event_register、callback_register、api_permission_apply、event_permission_apply、callback_permission_apply"
+          extra="选择审批流程类型"
         >
-          <Input
-            placeholder="请输入流程代码（如：api_register）"
+          <Select
+            placeholder="请选择流程代码"
             disabled={!!isEditing}
-          />
+          >
+            {APPROVAL_FLOW_CODE_OPTIONS.map(opt => (
+              <Option key={opt.value} value={opt.value}>
+                {opt.label}
+              </Option>
+            ))}
+          </Select>
         </Form.Item>
 
         <Divider orientation="left">审批节点配置</Divider>

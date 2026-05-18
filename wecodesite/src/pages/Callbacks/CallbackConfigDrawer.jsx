@@ -98,8 +98,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
           name="channelAddress"
           label="回调地址"
           rules={[
-            { required: true, message: '请输入回调地址' },
-            { pattern: /^https?:\/\/.+/, message: '地址必须以 http:// 或 https:// 开头' }
+            { required: true, message: '请输入回调地址' }
           ]}
         >
           <Input placeholder="https://your-domain.com/webhook" />
