@@ -67,8 +67,10 @@ determineCandidateConstructors()
 |---------|------|------|
 | 🟠 APM/监控 Java Agent | SkyWalking、Pinpoint 等通过字节码增强添加合成构造器 | 仅特定环境存在 `-javaagent` 参数 |
 | 🟡 CGLIB 代理冲突 | AOP `@EnableAspectJAutoProxy` / Caching 等触发 CGLIB 创建代理子类 | 需要 `spring-boot-starter-aop` |
-| 🟢 SpringDoc 反射实例化 | Swagger/OpenAPI 文档生成时绕开容器直接反射实例化 | 访问 `/swagger-ui.html` 时触发 |
+| 🟢 SpringDoc 反射实例化 | **已验证后排除: API Docs 接口返回500但并非因 Controller 实例化，而是 SpringDoc 2.5.0 与 Spring Boot 3.4.6 的 `ControllerAdviceBean` 版本不兼容。完全未触发 SseController 相关错误 | 已验证：不是根因 |
 | 🔵 类加载器隔离 ClassLoader | 外部 Servlet 容器部署时类加载器层级导致构造器查找异常 | WAR vs JAR 部署 |
+
+> **🟢 SpringDoc 场景验证（2026-05-18）：** 在 `main` 分支（无 `@Autowired` 修复）启动应用后，访问 `/api-docs` 返回 HTTP 500，错误为 `NoSuchMethodError: ControllerAdviceBean.<init>(Object)`，这是 SpringDoc 2.5.0 与 Spring Boot 3.4.6 的版本兼容问题，**与 SseController 的构造器注入完全无关**。日志中 grep 搜索 `SseController`、`No default constructor`、`NoSuchMethodException` 均无结果。此场景已排除。
 
 ---
 
