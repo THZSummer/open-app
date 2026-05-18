@@ -1,5 +1,5 @@
 import React from 'react';
-import ResourceRegister from '../../../components/ResourceRegister';
+import ResourceRegister from '../../../components/ResourceRegister/ResourceRegister';
 import { createCallback, updateCallback, fetchCallbackDetail } from './thunk';
 import { PROPERTY_PRESETS } from '../../../utils/constants';
 

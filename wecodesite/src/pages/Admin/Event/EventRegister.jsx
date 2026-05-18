@@ -1,5 +1,5 @@
 import React from 'react';
-import ResourceRegister from '../../../components/ResourceRegister';
+import ResourceRegister from '../../../components/ResourceRegister/ResourceRegister';
 import { createEvent, updateEvent, fetchEventDetail } from './thunk';
 import { PROPERTY_PRESETS } from '../../../utils/constants';
 
