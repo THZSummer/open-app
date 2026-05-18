@@ -76,7 +76,7 @@ function ApprovalFlowFormModal({
       if (result && result.code === '200') {
         form.resetFields();
       } else {
-        message.error(result?.message || '操作失败');
+        message.error(result?.messageZh || result?.message || '操作失败');
       }
     } catch (error) {
     } finally {

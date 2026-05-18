@@ -18,6 +18,9 @@ import ApiList from './pages/Admin/Api/index';
 import EventList from './pages/Admin/Event/index';
 import CallbackList from './pages/Admin/Callback/index';
 import ApprovalCenter from './pages/Admin/Approval/index';
+import ConnectorList from './pages/Admin/Connector/index';
+import ConnectorEditor from './pages/Admin/ConnectorEditor/index';
+import FlowList from './pages/Admin/Flow/index';
 import 'antd/dist/antd.css';
 
 function App() {
@@ -48,6 +51,9 @@ function App() {
           <Route path="admin/events" element={<EventList />} />
           <Route path="admin/callbacks" element={<CallbackList />} />
           <Route path="admin/approvals" element={<ApprovalCenter />} />
+          <Route path="admin/connectors" element={<ConnectorList />} />
+          <Route path="admin/connector-editor" element={<ConnectorEditor />} />
+          <Route path="admin/flows" element={<FlowList />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

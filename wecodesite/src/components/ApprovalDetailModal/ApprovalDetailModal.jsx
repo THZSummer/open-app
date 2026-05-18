@@ -49,7 +49,7 @@ function ApprovalDetailModal({
     if (result && result.code === '200') {
       setDetail(result.data);
     } else {
-      message.error(result?.message || '加载审批详情失败');
+      message.error(result?.messageZh || result?.message || '加载审批详情失败');
     }
     setLoading(false);
   };

@@ -37,7 +37,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
     if (result && result.code === '200') {
       setCategories(result.data || []);
     } else {
-      message.error(result?.message || '加载分类失败');
+      message.error(result?.messageZh || result?.message || '加载分类失败');
     }
   };
 
@@ -64,7 +64,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
               properties: getProperties(data.properties),
             });
           } else {
-            message.error(result?.message || '加载API详情失败');
+            message.error(result?.messageZh || result?.message || '加载API详情失败');
           }
         } finally {
           setLoading(false);
@@ -132,7 +132,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           message.success('更新成功');
           onSuccess();
         } else {
-          message.error(result?.message || '更新失败');
+          message.error(result?.messageZh || result?.message || '更新失败');
         }
       } else {
         result = await createApi(data);
@@ -140,7 +140,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           message.success('注册成功');
           onSuccess();
         } else {
-          message.error(result?.message || '注册失败');
+          message.error(result?.messageZh || result?.message || '注册失败');
         }
       }
     } catch (error) {

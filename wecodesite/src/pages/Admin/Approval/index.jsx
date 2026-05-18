@@ -58,7 +58,7 @@ function ApprovalCenter() {
       setData(result.data);
       setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage, pageSize }));
     } else {
-      message.error(result?.message || errorMessage);
+      message.error(result?.messageZh || result?.message || errorMessage);
     }
   };
 

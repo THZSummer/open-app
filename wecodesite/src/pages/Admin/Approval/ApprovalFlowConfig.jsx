@@ -53,7 +53,7 @@ function ApprovalFlowConfig() {
       setFlowList(result.data);
       setTotal(result.page?.total || 0);
     } else {
-      message.error(result?.message || '加载流程列表失败');
+      message.error(result?.messageZh || result?.message || '加载流程列表失败');
     }
     setLoading(false);
   };

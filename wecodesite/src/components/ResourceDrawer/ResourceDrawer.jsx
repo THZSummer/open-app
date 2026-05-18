@@ -52,7 +52,7 @@ function ResourceDrawer({
       setAllItems(resultData);
       setPagination(prev => ({ ...prev, total: result.page.total }));
     } else {
-      message.error(result?.message || '加载列表失败');
+      message.error(result?.messageZh || result?.message || '加载列表失败');
       setAllItems([]);
       setPagination(prev => ({ ...prev, total: 0 }));
     }

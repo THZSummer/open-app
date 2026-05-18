@@ -26,7 +26,7 @@ function CategoryOwnerModal({
     if (result && result.code === '200') {
       setOwners(result.data || []);
     } else {
-      message.error(result?.message || '加载责任人失败');
+      message.error(result?.messageZh || result?.message || '加载责任人失败');
     }
     setLoading(false);
   };

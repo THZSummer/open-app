@@ -45,7 +45,7 @@ const createListOperations = (state, appId, options) => {
           pageSize: size
         }));
       } else {
-        message.error(result?.message || '加载列表失败');
+        message.error(result?.messageZh || result?.message || '加载列表失败');
       }
     } catch (error) {
       message.error('加载列表失败');

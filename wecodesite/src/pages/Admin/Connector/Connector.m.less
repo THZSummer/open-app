@@ -1,0 +1,52 @@
+/**
+ * 连接器管理页面样式
+ */
+
+.connector-management-page {
+  padding: 24px;
+  background: #fff;
+  min-height: 100%;
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+
+    &-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+  }
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.page-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.toolbar {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 12px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+
+  :global(.ant-table) {
+    min-width: 800px;
+  }
+
+  :global(.ant-table-thead > tr > th),
+  :global(.ant-table-tbody > tr > td) {
+    white-space: nowrap;
+  }
+}

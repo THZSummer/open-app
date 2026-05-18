@@ -226,7 +226,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
       setApisData(result.data);
       setPagination(prev => ({ ...prev, total: result.total || result.data.length }));
     } else {
-      message.error(result?.message || result?.messageZh || '加载API列表失败');
+      message.error(result?.messageZh || result?.message || '加载API列表失败');
       setApisData([]);
       setPagination(prev => ({ ...prev, total: 0 }));
     }

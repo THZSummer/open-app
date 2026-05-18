@@ -1,17 +1,27 @@
 /**
- * Admin模块 - 回调管理相关API
- * 用于管理员管理平台全部回调接口的定义、发布和下线操作
+ * ========================================
+ * 回调管理 - API接口层
+ * ========================================
+ *
+ * 【功能说明】
+ * 提供回调的增删改查操作接口封装
  */
+
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
 
 /**
- * 获取回调列表（管理员视角）
- * @param {Object} params - 查询参数，包含 categoryId（分类ID）、status（状态）、keyword（关键词）
- * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
+ * 获取回调列表数据
+ *
+ * @description 分页查询平台所有回调接口
+ * @param {Object} filter - 筛选条件
+ * @param {string} [filter.categoryId] - 分类ID
+ * @param {number} [filter.status] - 状态
+ * @param {string} [filter.keyword] - 关键词
+ * @returns {Promise<Object>} { code, data, page }
  */
-export const fetchCallbackList = async (params = {}) => {
+export const fetchCallbackList = async (filter = {}) => {
   try {
-    const result = await fetchApi(API_CONFIG.CALLBACKS.LIST, { method: 'GET', params });
+    const result = await fetchApi(API_CONFIG.CALLBACKS.LIST, { method: 'GET', params: filter });
     return result || {};
   } catch (err) {
     return {};
@@ -20,12 +30,14 @@ export const fetchCallbackList = async (params = {}) => {
 
 /**
  * 获取回调详情
- * @param {string} id - 回调ID
- * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
+ *
+ * @description 根据ID查询单个回调的完整信息
+ * @param {string} callbackId - 回调ID
+ * @returns {Promise<Object>} { code, data }
  */
-export const fetchCallbackDetail = async (id) => {
+export const fetchCallbackDetail = async (callbackId) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DETAIL, { id }));
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DETAIL, { id: callbackId }));
     return result || {};
   } catch (err) {
     return {};
@@ -33,13 +45,18 @@ export const fetchCallbackDetail = async (id) => {
 };
 
 /**
- * 创建新回调（管理员操作）
- * @param {Object} data - 回调配置数据
- * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
+ * 新建回调接口
+ *
+ * @description 创建新的回调配置
+ * @param {Object} config - 回调配置数据
+ * @returns {Promise<Object>} { code, data }
  */
-export const createCallback = async (data) => {
+export const createCallback = async (config) => {
   try {
-    const result = await fetchApi(API_CONFIG.CALLBACKS.CREATE, { method: 'POST', body: JSON.stringify(data) });
+    const result = await fetchApi(API_CONFIG.CALLBACKS.CREATE, {
+      method: 'POST',
+      body: JSON.stringify(config)
+    });
     return result || {};
   } catch (err) {
     return {};
@@ -47,14 +64,19 @@ export const createCallback = async (data) => {
 };
 
 /**
- * 更新回调信息（管理员操作）
- * @param {string} id - 回调ID
- * @param {Object} data - 更新后的回调配置数据
- * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
+ * 更新回调配置
+ *
+ * @description 修改指定回调的信息
+ * @param {string} callbackId - 回调ID
+ * @param {Object} config - 更新后的配置
+ * @returns {Promise<Object>} { code, data }
  */
-export const updateCallback = async (id, data) => {
+export const updateCallback = async (callbackId, config) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.UPDATE, { id }), { method: 'PUT', body: JSON.stringify(data) });
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.UPDATE, { id: callbackId }), {
+      method: 'PUT',
+      body: JSON.stringify(config)
+    });
     return result || {};
   } catch (err) {
     return {};
@@ -62,13 +84,17 @@ export const updateCallback = async (id, data) => {
 };
 
 /**
- * 删除回调（管理员操作）
- * @param {string} id - 回调ID
- * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
+ * 删除回调
+ *
+ * @description 永久删除指定的回调配置
+ * @param {string} callbackId - 回调ID
+ * @returns {Promise<Object>} { code, data }
  */
-export const deleteCallback = async (id) => {
+export const deleteCallback = async (callbackId) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id }), { method: 'DELETE' });
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.DELETE, { id: callbackId }), {
+      method: 'DELETE'
+    });
     return result || {};
   } catch (err) {
     return {};
@@ -76,13 +102,17 @@ export const deleteCallback = async (id) => {
 };
 
 /**
- * 撤回回调审核（重新变为草稿状态）
- * @param {string} id - 回调ID
- * @returns {Promise<Object>} 包含 code、messageZh、data 的响应对象
+ * 撤回回调审核
+ *
+ * @description 将已提交审核的回调退回草稿状态
+ * @param {string} callbackId - 回调ID
+ * @returns {Promise<Object>} { code, data }
  */
-export const withdrawCallback = async (id) => {
+export const withdrawCallback = async (callbackId) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.WITHDRAW, { id }), { method: 'POST' });
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CALLBACKS.WITHDRAW, { id: callbackId }), {
+      method: 'POST'
+    });
     return result || {};
   } catch (err) {
     return {};

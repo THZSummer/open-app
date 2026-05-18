@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Button, Table, Spin, Empty, Pagination } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { fetchCallbackList, deleteCallback } from './thunk';
 import CallbackRegister from './CallbackRegister';
@@ -10,29 +10,42 @@ import { fetchCategoryTree } from '../Category/thunk';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import { isInAdminWhitelist } from '../../../utils/common';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
+import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import './CallbackList.m.less';
 
+/**
+ * 回调管理列表页面
+ */
 function CallbackList() {
   const navigate = useNavigate();
 
-  const init = async () => {
-    const canShow = await isAdminWhitelist();
-    if (!canShow) {
+  /**
+   * 删除弹窗相关状态
+   */
+  const [delDialogVisible, setDelDialogVisible] = useState(false);
+  const [delTargetId, setDelTargetId] = useState(null);
+  const [delProcessing, setDelProcessing] = useState(false);
+
+  /**
+   * 页面初始化
+   */
+  const pageInit = async () => {
+    const hasPermission = await isInAdminWhitelist();
+    if (!hasPermission) {
       navigate('/apps');
     }
   };
 
   useEffect(() => {
-    init();
+    pageInit();
   }, []);
 
   const {
-    data: callbackList,
+    data: callbackData,
     loading,
     handleAdd,
     handleView,
     handleEdit,
-    handleDelete,
     handleSuccess,
     setKeyword,
     handleSearch,
@@ -56,15 +69,46 @@ function CallbackList() {
     fetchCategories: fetchCategoryTree,
   });
 
+  /**
+   * 删除相关操作
+   */
+  const triggerDelete = (id) => {
+    setDelTargetId(id);
+    setDelDialogVisible(true);
+  };
+
+  const executeDelete = async () => {
+    if (!delTargetId) return;
+
+    setDelProcessing(true);
+    const result = await deleteCallback(delTargetId);
+
+    if (result && result.code === '200') {
+      message.success('删除成功');
+      setDelDialogVisible(false);
+      setDelTargetId(null);
+      loadData();
+    } else {
+      message.error(result?.messageZh || result?.message || '删除失败');
+    }
+
+    setDelProcessing(false);
+  };
+
+  const dismissDelete = () => {
+    setDelDialogVisible(false);
+    setDelTargetId(null);
+  };
+
   useEffect(() => {
     loadCategories();
     loadData();
   }, [loadCategories, loadData]);
 
   const columns = getCallbackListColumns({
-    handleView,
-    handleEdit,
-    handleDelete,
+    onView: handleView,
+    onEdit: handleEdit,
+    onDelete: triggerDelete,
   });
 
   return (
@@ -95,12 +139,12 @@ function CallbackList() {
           />
 
           <Spin spinning={loading}>
-            {callbackList.length > 0 ? (
+            {callbackData.length > 0 ? (
               <>
                 <div className="table-wrapper">
                   <Table
                     columns={columns}
-                    dataSource={callbackList}
+                    dataSource={callbackData}
                     rowKey="id"
                     pagination={false}
                   />
@@ -129,6 +173,16 @@ function CallbackList() {
             mode={mode}
             onSuccess={handleSuccess}
             onCancel={closeModal}
+          />
+
+          <DeleteConfirmModal
+            open={delDialogVisible}
+            onClose={dismissDelete}
+            onConfirm={executeDelete}
+            type="delete"
+            title="确认删除回调"
+            content="删除后无法恢复，确定要删除这个回调吗？"
+            loading={delProcessing}
           />
         </div>
       </div>

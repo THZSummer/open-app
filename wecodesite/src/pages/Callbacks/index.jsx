@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button } from 'antd';
+import { Button, message } from 'antd';
 import { useSubscriptionList } from '../../hooks/useSubscriptionList';
 import SubscriptionTable from '../../components/SubscriptionTable/SubscriptionTable';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
@@ -11,13 +11,27 @@ import { getCallbackColumns } from './constants';
 import { queryParams, openUrl } from '../../utils/common';
 import './Callbacks.m.less';
 
+/**
+ * 回调配置管理页面
+ */
 function Callbacks() {
   const appId = queryParams('appId');
-  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
-  const [editingCallback, setEditingCallback] = useState(null);
+
+  /**
+   * 编辑抽屉状态
+   */
+  const [editDrawerVisible, setEditDrawerVisible] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+
+  /**
+   * 撤回弹窗状态
+   */
+  const [withdrawVisible, setWithdrawVisible] = useState(false);
+  const [withdrawData, setWithdrawData] = useState(null);
+  const [withdrawPending, setWithdrawPending] = useState(false);
 
   const {
-    data: callbacks,
+    data: callbackRecords,
     loading,
     pagination,
     drawerOpen,
@@ -32,7 +46,6 @@ function Callbacks() {
     closeDrawer,
     handleSubscribe,
     handleCopyApprovalAddress,
-    handleWithdraw,
     handleDeleteClick,
     handleConfirmDelete,
     closeApprovalModal,
@@ -50,30 +63,64 @@ function Callbacks() {
     }
   }, [appId, loadData]);
 
-  const handleEdit = (record) => {
-    setEditingCallback(record);
-    setConfigDrawerOpen(true);
+  /**
+   * 撤回处理
+   */
+  const showWithdrawModal = (record) => {
+    setWithdrawData(record);
+    setWithdrawVisible(true);
   };
 
-  const handleSaveCallback = async () => {
+  const processWithdraw = async () => {
+    if (!withdrawData) return;
+
+    setWithdrawPending(true);
+    const result = await withdrawApproval(appId, withdrawData.id);
+
+    if (result && result.code === '200') {
+      message.success('已撤回');
+      setWithdrawVisible(false);
+      setWithdrawData(null);
+      loadData();
+    } else {
+      message.error(result?.messageZh || result?.message || '撤回失败');
+    }
+
+    setWithdrawPending(false);
+  };
+
+  const hideWithdrawModal = () => {
+    setWithdrawVisible(false);
+    setWithdrawData(null);
+  };
+
+  /**
+   * 编辑处理
+   */
+  const showEditDrawer = (record) => {
+    setEditTarget(record);
+    setEditDrawerVisible(true);
+  };
+
+  const refreshData = async () => {
     loadData();
   };
 
-  const handleCloseConfigDrawer = () => {
-    setConfigDrawerOpen(false);
-    setEditingCallback(null);
+  const hideEditDrawer = () => {
+    setEditDrawerVisible(false);
+    setEditTarget(null);
   };
 
-  const handleOpenDoc = (url) => {
+  const viewDocument = (url) => {
     openUrl(url);
   };
 
   const columns = getCallbackColumns({
-    handleOpenDoc,
-    handleEdit,
-    handleCopyApprovalAddress,
-    handleWithdraw,
-    handleDeleteClick,
+    onDocLink: viewDocument,
+    onEditItem: showEditDrawer,
+    onCopyAddr: handleCopyApprovalAddress,
+    onWithdraw: showWithdrawModal,
+    onDeleteItem: handleDeleteClick,
   });
 
   return (
@@ -91,7 +138,7 @@ function Callbacks() {
 
       <SubscriptionTable
         columns={columns}
-        dataSource={callbacks}
+        dataSource={callbackRecords}
         loading={loading}
         pagination={pagination}
         onPageChange={handlePageChange}
@@ -101,15 +148,15 @@ function Callbacks() {
         open={drawerOpen}
         onClose={closeDrawer}
         onConfirm={handleSubscribe}
-        selectedCallbacks={callbacks}
+        selectedCallbacks={callbackRecords}
         subscribeLoading={subscribeLoading}
       />
 
       <CallbackConfigDrawer
-        open={configDrawerOpen}
-        onClose={handleCloseConfigDrawer}
-        onSave={handleSaveCallback}
-        callback={editingCallback}
+        open={editDrawerVisible}
+        onClose={hideEditDrawer}
+        onSave={refreshData}
+        callback={editTarget}
       />
 
       <ApprovalAddressModal
@@ -125,6 +172,16 @@ function Callbacks() {
         onClose={closeDeleteModal}
         onConfirm={handleConfirmDelete}
         loading={deleteLoading}
+      />
+
+      <DeleteConfirmModal
+        open={withdrawVisible}
+        onClose={hideWithdrawModal}
+        onConfirm={processWithdraw}
+        type="withdraw"
+        title="确认撤回订阅"
+        content="撤回后将无法恢复，确定要撤回这个回调订阅吗？"
+        loading={withdrawPending}
       />
     </div>
   );

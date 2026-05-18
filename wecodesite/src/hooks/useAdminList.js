@@ -37,7 +37,7 @@ const createListOperations = (state, options) => {
     if (result && result.code === '200') {
       setCategories(result.data || []);
     } else {
-      message.error(result?.message || '加载分类失败');
+      message.error(result?.messageZh || result?.message || '加载分类失败');
     }
   }, [options.fetchCategories]);
 
@@ -206,6 +206,6 @@ const handleListResponse = (result, setData, setPagination, curPage, pageSize) =
     setData(result.data);
     setPagination(prev => ({ ...prev, total: result.page?.total || 0, curPage, pageSize }));
   } else {
-    message.error(result?.message || '加载数据失败');
+    message.error(result?.messageZh || result?.message || '加载数据失败');
   }
 };

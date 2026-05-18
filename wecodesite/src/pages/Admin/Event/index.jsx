@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Spin, Empty, Pagination } from 'antd';
+import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
 import { fetchEventList, deleteEvent } from './thunk';
 import { getEventListColumns } from './constants';
 import EventRegister from './EventRegister';
@@ -10,18 +10,32 @@ import { fetchCategoryTree } from '../Category/thunk';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import { isInAdminWhitelist } from '../../../utils/common';
+import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import './EventList.m.less';
 
+/**
+ * 事件列表管理页
+ */
 function EventList() {
   const navigate = useNavigate();
 
+  /**
+   * 删除弹窗状态管理
+   */
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
-    init();
+    checkPermission();
   }, []);
-  
-  const init = async () => {
-    const canShow = await isInAdminWhitelist();
-    if (!canShow) {
+
+  /**
+   * 权限校验
+   */
+  const checkPermission = async () => {
+    const allowed = await isInAdminWhitelist();
+    if (!allowed) {
       navigate('/apps');
     }
   };
@@ -29,7 +43,7 @@ function EventList() {
   const {
     loadData,
     loadCategories,
-    data: eventList,
+    data: eventData,
     categories,
     categoryId,
     status,
@@ -56,6 +70,37 @@ function EventList() {
     fetchCategories: fetchCategoryTree,
   });
 
+  /**
+   * 删除操作处理
+   */
+  const initiateDelete = (id) => {
+    setDeletingId(id);
+    setShowDeleteDialog(true);
+  };
+
+  const proceedDelete = async () => {
+    if (!deletingId) return;
+
+    setIsDeleting(true);
+    const response = await deleteEvent(deletingId);
+
+    if (response && response.code === '200') {
+      message.success('删除成功');
+      setShowDeleteDialog(false);
+      setDeletingId(null);
+      loadData();
+    } else {
+      message.error(response?.message || '删除失败');
+    }
+
+    setIsDeleting(false);
+  };
+
+  const abortDelete = () => {
+    setShowDeleteDialog(false);
+    setDeletingId(null);
+  };
+
   useEffect(() => {
     loadCategories();
     loadData();
@@ -64,7 +109,7 @@ function EventList() {
   const columns = getEventListColumns({
     handleView,
     handleEdit,
-    handleDelete,
+    handleDelete: initiateDelete,
   });
 
   return (
@@ -95,12 +140,12 @@ function EventList() {
           />
 
           <Spin spinning={loading}>
-            {eventList.length > 0 ? (
+            {eventData.length > 0 ? (
               <>
                 <div className="table-wrapper">
                   <Table
                     columns={columns}
-                    dataSource={eventList}
+                    dataSource={eventData}
                     rowKey="id"
                     pagination={false}
                   />
@@ -129,6 +174,16 @@ function EventList() {
             mode={mode}
             onSuccess={handleSuccess}
             onCancel={closeModal}
+          />
+
+          <DeleteConfirmModal
+            open={showDeleteDialog}
+            onClose={abortDelete}
+            onConfirm={proceedDelete}
+            type="delete"
+            title="确认删除事件"
+            content="删除后无法恢复，确定要删除这个事件吗？"
+            loading={isDeleting}
           />
         </div>
       </div>

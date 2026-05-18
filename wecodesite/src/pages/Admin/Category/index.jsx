@@ -74,7 +74,7 @@ function CategoryList() {
     if (result && result.code === '200') {
       setCategoryTree(result.data);
     } else {
-      message.error(result?.message || '加载分类失败');
+      message.error(result?.messageZh || result?.message || '加载分类失败');
     }
     setLoading(false);
   };
@@ -132,7 +132,7 @@ function CategoryList() {
         setFormModalVisible(false);
         loadData();
       } else {
-        message.error(result?.message || '更新失败');
+        message.error(result?.messageZh || result?.message || '更新失败');
       }
     } else {
       result = await createCategory({
@@ -147,7 +147,7 @@ function CategoryList() {
         setFormModalVisible(false);
         loadData();
       } else {
-        message.error(result?.message || '创建失败');
+        message.error(result?.messageZh || result?.message || '创建失败');
       }
     }
   };

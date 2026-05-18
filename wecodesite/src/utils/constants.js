@@ -53,5 +53,26 @@ export const ADMIN_MENU_CONFIG = [
   { title: 'API列表', router: '/admin/apis' },
   { title: '事件列表', router: '/admin/events' },
   { title: '回调列表', router: '/admin/callbacks' },
-  { title: '审批中心', router: '/admin/approvals' }
+  { title: '审批中心', router: '/admin/approvals' },
+  { title: '连接器管理', router: '/admin/connectors' },
+  { title: '连接流管理', router: '/admin/flows' }
 ];
+
+// ==================== 操作确认弹窗配置 ====================
+
+export const ACTION_CONFIG = {
+  delete: {
+    defaultTitle: '确认删除',
+    defaultContent: '确定要删除吗？',
+    confirmButtonText: '确认删除',
+    loadingText: '删除中...',
+    dangerColor: '#ff4d4f'
+  },
+  withdraw: {
+    defaultTitle: '确认撤回',
+    defaultContent: '确定要撤回吗？撤回后将无法恢复。',
+    confirmButtonText: '确认撤回',
+    loadingText: '撤回中...',
+    dangerColor: '#faad14'
+  }
+};

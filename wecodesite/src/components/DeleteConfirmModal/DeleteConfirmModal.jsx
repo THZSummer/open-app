@@ -1,18 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { ACTION_CONFIG } from '../../utils/constants';
 
-function DeleteConfirmModal({ 
-  open, 
-  onClose, 
-  onConfirm, 
-  title = '确认删除', 
-  content = '确定要删除吗？', 
+/**
+ * 删除确认弹窗组件
+ *
+ * @param {Object} props - 组件属性
+ * @param {boolean} props.open - 弹窗显示状态
+ * @param {Function} props.onClose - 关闭回调
+ * @param {Function} props.onConfirm - 确认回调
+ * @param {string} [props.type='delete'] - 弹窗类型，支持delete/withdraw
+ * @param {string} [props.title] - 自定义标题
+ * @param {string} [props.content] - 自定义内容
+ * @param {boolean} [props.loading] - 加载状态
+ * @param {string} [props.requireConfirmText] - 需要输入确认文字
+ */
+function ActionConfirmModal({
+  open,
+  onClose,
+  onConfirm,
+  type = 'delete',
+  title,
+  content,
   loading,
-  requireConfirmText = null 
+  requireConfirmText = null
 }) {
   const [confirmText, setConfirmText] = useState('');
-  
+
+  // 获取配置
+  const config = ACTION_CONFIG[type] || ACTION_CONFIG.delete;
+  const modalTitle = title || config.defaultTitle;
+  const modalContent = content || config.defaultContent;
+
   useEffect(() => {
     if (!open) {
       setConfirmText('');
@@ -21,14 +41,14 @@ function DeleteConfirmModal({
 
   const isConfirmDisabled = () => {
     if (requireConfirmText) {
-      return loading || confirmText !== requireConfirmText
+      return loading || confirmText !== requireConfirmText;
     } else {
-      loading;
+      return loading;
     }
-  }
+  };
 
   const handleConfirm = () => {
-    if (!isConfirmDisabled) {
+    if (!isConfirmDisabled()) {
       onConfirm();
     }
   };
@@ -44,14 +64,14 @@ function DeleteConfirmModal({
     >
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <ExclamationCircleOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
-        <div style={{ fontSize: 16, marginBottom: 8 }}>{title}</div>
-        <div style={{ color: '#8c8c8c' }}>{content}</div>
+        <div style={{ fontSize: 16, marginBottom: 8 }}>{modalTitle}</div>
+        <div style={{ color: '#8c8c8c' }}>{modalContent}</div>
       </div>
 
       {requireConfirmText && (
         <div style={{ marginBottom: 16, padding: '0 20px' }}>
           <div style={{ marginBottom: 8, color: '#333' }}>
-            请输入 <strong style={{ color: '#1677ff' }}>{requireConfirmText}</strong> 以确认删除：
+            请输入 <strong style={{ color: '#1677ff' }}>{requireConfirmText}</strong> 以确认：
           </div>
           <Input
             placeholder={`请输入 ${requireConfirmText}`}
@@ -68,12 +88,12 @@ function DeleteConfirmModal({
       )}
 
       <div style={{ textAlign: 'center', paddingBottom: 16 }}>
-        <button 
+        <button
           onClick={onClose}
-          style={{ 
-            marginRight: 8, 
-            padding: '6px 24px', 
-            border: '1px solid #d9d9d9', 
+          style={{
+            marginRight: 8,
+            padding: '6px 24px',
+            border: '1px solid #d9d9d9',
             background: '#fff',
             borderRadius: 4,
             cursor: 'pointer'
@@ -81,24 +101,24 @@ function DeleteConfirmModal({
         >
           取消
         </button>
-        <button 
+        <button
           onClick={handleConfirm}
-          disabled={isConfirmDisabled}
-          style={{ 
-            padding: '6px 24px', 
-            background: '#ff4d4f', 
+          disabled={isConfirmDisabled()}
+          style={{
+            padding: '6px 24px',
+            background: config.dangerColor,
             color: '#fff',
             border: 'none',
             borderRadius: 4,
-            cursor: isConfirmDisabled ? 'not-allowed' : 'pointer',
-            opacity: isConfirmDisabled ? 0.7 : 1
+            cursor: isConfirmDisabled() ? 'not-allowed' : 'pointer',
+            opacity: isConfirmDisabled() ? 0.7 : 1
           }}
         >
-          {loading ? '删除中...' : '确认删除'}
+          {loading ? config.loadingText : config.confirmButtonText}
         </button>
       </div>
     </Modal>
   );
 }
 
-export default DeleteConfirmModal;
+export default ActionConfirmModal;

@@ -1,73 +1,102 @@
 /**
- * API 管理相关 API
- * 用于应用订阅 API 权限
+ * ========================================
+ * API权限管理 - 接口封装层
+ * ========================================
+ * 功能：应用订阅API权限相关接口
  */
+
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
 
 /**
- * 获取分类列表（用于模块列表）
- * @param {string} identityType - 身份类型（如 BUSINESS_IDENTITY, PERSONAL_IDENTITY）
- * @param {string} apiType - API类型（如 api_business_app_soa, api_personal_user_aksk）
- * @returns {Promise<Array>} 分类列表数组
+ * 获取API分类列表
+ *
+ * @description 根据API类型获取对应的分类数据
+ * @param {string} apiType - API类型标识
+ * @returns {Promise<Object>} 分类列表响应
  */
 export const fetchCategories = async (apiType) => {
   try {
-    const result = await fetchApi(API_CONFIG.CATEGORIES.LIST, { params: { categoryAlias: apiType } });
-    return result || {};
+    const response = await fetchApi(API_CONFIG.CATEGORIES.LIST, {
+      params: { categoryAlias: apiType }
+    });
+    return response || {};
   } catch (err) {
     return {};
   }
 };
 
 /**
- * 根据筛选条件获取API列表（用于API选择器）
- * @param {Object} params - 筛选参数，包含 identityType、keyword、needReview、categoryId、curPage、pageSize
- * @returns {Promise<Array>} 筛选后的API列表
+ * 获取API列表（用于选择器）
+ *
+ * @description 根据分类和筛选条件获取可选的API列表
+ * @param {Object} options - 查询选项
+ * @returns {Promise<Object>} API列表响应
  */
-export const fetchApis = async ({ keyword, needReview, apiType, categoryId, curPage, pageSize, appId }) => {
-  const queryParams = {};
-  if (keyword) queryParams.keyword = keyword;
+export const fetchApis = async ({
+  keyword,
+  needReview,
+  apiType,
+  categoryId,
+  curPage,
+  pageSize,
+  appId
+}) => {
+  const params = {};
+  if (keyword) params.keyword = keyword;
   if (needReview !== undefined && needReview !== 'all') {
-    queryParams.needApproval = needReview === 'true' ? 1 : 0;
+    params.needApproval = needReview === 'true' ? 1 : 0;
   }
-  if (curPage) queryParams.curPage = curPage;
-  if (pageSize) queryParams.pageSize = pageSize;
-  if (appId) queryParams.appId = appId;
-  queryParams.includeChildren = true;
-  
+  if (curPage) params.curPage = curPage;
+  if (pageSize) params.pageSize = pageSize;
+  if (appId) params.appId = appId;
+  params.includeChildren = true;
+
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: categoryId }), { params: queryParams });
-    return result || {};
+    const response = await fetchApi(
+      buildApiUrl(API_CONFIG.CATEGORIES.APIS, { id: categoryId }),
+      { params }
+    );
+    return response || {};
   } catch (err) {
     return {};
   }
 };
 
 /**
- * 获取应用已订阅的API列表（带分页）
- * @param {string} appId - 应用ID
- * @param {Object} params - 查询参数，包含 status、keyword、curPage、pageSize 等
- * @returns {Promise<Object>} 包含 code、messageZh、data、page 的响应对象
+ * 获取应用已订阅的API列表
+ *
+ * @description 分页获取当前应用的API订阅记录
+ * @param {string} appId - 应用标识
+ * @param {Object} paginationParams - 分页和筛选参数
+ * @returns {Promise<Object>} 订阅列表响应
  */
-export const fetchAppApis = async (appId, params = {}) => {
+export const fetchAppApis = async (appId, paginationParams = {}) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.LIST, { appId }), { params });
-    return result || {};
+    const response = await fetchApi(
+      buildApiUrl(API_CONFIG.APP_APIS.LIST, { appId }),
+      { params: paginationParams }
+    );
+    return response || {};
   } catch (err) {
     return {};
   }
 };
 
 /**
- * 订阅API权限
- * @param {string} appId - 应用ID
- * @param {Object} params - 订阅参数，包含 permissionIds 等
+ * 申请API权限订阅
+ *
+ * @description 向应用添加API权限订阅
+ * @param {string} appId - 应用标识
+ * @param {Array} permissionIds - 权限ID列表
  * @returns {Promise<Object>} 订阅结果
  */
-export const subscribeApis = async (appId, params) => {
+export const subscribeApis = async (appId, { permissionIds }) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.SUBSCRIBE, { appId }), { method: 'POST', body: JSON.stringify(params) });
-    return result || {};
+    const response = await fetchApi(
+      buildApiUrl(API_CONFIG.APP_APIS.SUBSCRIBE, { appId }),
+      { method: 'POST', body: JSON.stringify({ permissionIds }) }
+    );
+    return response || {};
   } catch (err) {
     return {};
   }
@@ -75,14 +104,19 @@ export const subscribeApis = async (appId, params) => {
 
 /**
  * 撤回API申请
- * @param {string} appId - 应用ID
- * @param {string} subscriptionId - 订阅记录ID
- * @returns {Promise<Object>} 撤回结果
+ *
+ * @description 将待审核的API订阅申请撤回
+ * @param {string} appId - 应用标识
+ * @param {string} subscriptionId - 订阅记录标识
+ * @returns {Promise<Object>} 撤回操作结果
  */
 export const withdrawApiApplication = async (appId, subscriptionId) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.WITHDRAW, { appId, id: subscriptionId }), { method: 'POST' });
-    return result || {};
+    const response = await fetchApi(
+      buildApiUrl(API_CONFIG.APP_APIS.WITHDRAW, { appId, id: subscriptionId }),
+      { method: 'POST' }
+    );
+    return response || {};
   } catch (err) {
     return {};
   }
@@ -90,47 +124,55 @@ export const withdrawApiApplication = async (appId, subscriptionId) => {
 
 /**
  * 催办API审批
- * @param {string} id - 订阅记录ID
+ *
+ * @description 对待审核的API订阅进行催办提醒
+ * @param {string} subscriptionId - 订阅记录标识
  * @returns {Promise<Object>} 催办结果
  */
-export const remindApproval = async (id) => {
+export const remindApproval = async (subscriptionId) => {
   try {
-    const result = await fetchApi(`/approval/remind`, { method: 'POST', body: JSON.stringify({ id }) });
-    return result || {};
+    const response = await fetchApi(`/approval/remind`, {
+      method: 'POST',
+      body: JSON.stringify({ id: subscriptionId })
+    });
+    return response || {};
   } catch (err) {
     return {};
   }
 };
 
 /**
- * 删除已撤回的API订阅
- * @param {string} appId - 应用ID
- * @param {string} subscriptionId - 订阅记录ID
+ * 移除API订阅
+ *
+ * @description 删除已通过的API订阅记录
+ * @param {string} appId - 应用标识
+ * @param {string} subscriptionId - 订阅记录标识
  * @returns {Promise<Object>} 删除结果
  */
 export const deleteApiSubscription = async (appId, subscriptionId) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP_APIS.DELETE, { appId, id: subscriptionId }), { method: 'DELETE' });
-    return result || {};
+    const response = await fetchApi(
+      buildApiUrl(API_CONFIG.APP_APIS.DELETE, { appId, id: subscriptionId }),
+      { method: 'DELETE' }
+    );
+    return response || {};
   } catch (err) {
     return {};
   }
 };
 
 /**
- * 获取Tab配置原始数据（用于抽屉弹窗的两层Tab）
- * 返回Mock数据，不做数据处理
- * @param {string} searchKey - 查询标识符，传入 'CEC.open/Api.Drawer.TabsList'
- * @returns {Promise<Object>} 原始接口响应数据
+ * 获取Tab配置
+ *
+ * @description 获取API订阅抽屉的两层Tab配置数据
+ * @param {string} searchKey - 配置查询键
+ * @returns {Promise<Object>} Tab配置数据
  */
 export const fetchTabConfig = async (searchKey = 'CEC.open/Api.Drawer.TabsList') => {
   try {
     // TODO: 替换为真实接口调用
-    // const result = await fetchApi('/lookup', {
-    //   params: { searchKey }
-    // });
+    // const result = await fetchApi('/lookup', { params: { searchKey } });
 
-    // 使用Mock数据（模拟接口返回的数据结构）
     const mockResponse = {
       code: 200,
       message: 'success',

@@ -41,7 +41,7 @@ function ResourceRegister({
     if (result && result.code === '200') {
       setCategories(result.data || []);
     } else {
-      message.error(result?.message || '加载分类失败');
+      message.error(result?.messageZh || result?.message || '加载分类失败');
     }
   };
 
@@ -72,7 +72,7 @@ function ResourceRegister({
               properties: data.properties || [],
             });
           } else {
-            message.error(result?.message || '加载详情失败');
+            message.error(result?.messageZh || result?.message || '加载详情失败');
           }
         } finally {
           setLoading(false);
@@ -131,7 +131,7 @@ function ResourceRegister({
         message.success(successMessage);
         onSuccess?.();
       } else {
-        message.error(result?.message || errorMessage);
+        message.error(result?.messageZh || result?.message || errorMessage);
       }
     } catch (error) {
     } finally {

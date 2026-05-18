@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Spin, Empty, Pagination } from 'antd';
+import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
 import { fetchApiList, deleteApi } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import { useAdminList } from '../../../hooks/useAdminList';
@@ -10,51 +10,95 @@ import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import { isInAdminWhitelist } from '../../../utils/common';
 import ApiRegister from './ApiRegister';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
+import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import './ApiList.m.less';
 
+/**
+ * API列表管理页面
+ */
 function ApiList() {
   const navigate = useNavigate();
 
-  const init = async () => {
-    const canShow = await isInAdminWhitelist();
-    if (!canShow) {
+  /**
+   * 弹窗状态
+   */
+  const [removeConfirmVisible, setRemoveConfirmVisible] = useState(false);
+  const [removeTargetId, setRemoveTargetId] = useState(null);
+  const [removePending, setRemovePending] = useState(false);
+
+  /**
+   * 初始化权限校验
+   */
+  const validateAccess = async () => {
+    const hasAccess = await isInAdminWhitelist();
+    if (!hasAccess) {
       navigate('/apps');
     }
-  }
+  };
 
   useEffect(() => {
-    init();
+    validateAccess();
   }, []);
 
   const {
-    categories,
-    closeModal,
-    currentItem,
-    data: apiList,
-    handleAdd,
-    handleCategoryChange,
-    handleDelete,
-    handleEdit,
-    handlePageChange,
-    handleSearch,
-    handleStatusChange,
-    handleSuccess,
-    handleView,
-    keyword,
-    loadCategories,
     loadData,
-    loading,
-    mode,
-    modalVisible,
-    pagination,
-    setKeyword,
-    status,
+    loadCategories,
+    data: apiItems,
+    categories,
     categoryId,
+    status,
+    keyword,
+    loading,
+    pagination,
+    handleSearch,
+    handlePageChange,
+    handleCategoryChange,
+    handleStatusChange,
+    handleAdd,
+    handleEdit,
+    handleView,
+    handleSuccess,
+    modalVisible,
+    currentItem,
+    mode,
+    closeModal,
+    setKeyword,
   } = useAdminList({
-    fetchCategories: fetchCategoryTree,
-    deleteItem: deleteApi,
     fetchList: fetchApiList,
+    deleteItem: deleteApi,
+    fetchCategories: fetchCategoryTree,
   });
+
+  /**
+   * 删除确认处理
+   */
+  const openRemoveConfirm = (id) => {
+    setRemoveTargetId(id);
+    setRemoveConfirmVisible(true);
+  };
+
+  const confirmRemove = async () => {
+    if (!removeTargetId) return;
+
+    setRemovePending(true);
+    const result = await deleteApi(removeTargetId);
+
+    if (result && result.code === '200') {
+      message.success('删除成功');
+      setRemoveConfirmVisible(false);
+      setRemoveTargetId(null);
+      loadData();
+    } else {
+      message.error(result?.messageZh || result?.message || '删除失败');
+    }
+
+    setRemovePending(false);
+  };
+
+  const cancelRemove = () => {
+    setRemoveConfirmVisible(false);
+    setRemoveTargetId(null);
+  };
 
   useEffect(() => {
     loadCategories();
@@ -62,9 +106,9 @@ function ApiList() {
   }, [loadCategories, loadData]);
 
   const columns = getApiListColumns({
-    handleView,
-    handleEdit,
-    handleDelete,
+    onView: handleView,
+    onEdit: handleEdit,
+    onDelete: openRemoveConfirm,
   });
 
   return (
@@ -95,12 +139,12 @@ function ApiList() {
           />
 
           <Spin spinning={loading}>
-            {apiList.length > 0 ? (
+            {apiItems.length > 0 ? (
               <>
                 <div className="table-wrapper">
                   <Table
                     columns={columns}
-                    dataSource={apiList}
+                    dataSource={apiItems}
                     rowKey="id"
                     pagination={false}
                   />
@@ -129,6 +173,16 @@ function ApiList() {
             mode={mode}
             onSuccess={handleSuccess}
             onCancel={closeModal}
+          />
+
+          <DeleteConfirmModal
+            open={removeConfirmVisible}
+            onClose={cancelRemove}
+            onConfirm={confirmRemove}
+            type="delete"
+            title="确认删除API"
+            content="删除后无法恢复，确定要删除这个API吗？"
+            loading={removePending}
           />
         </div>
       </div>
