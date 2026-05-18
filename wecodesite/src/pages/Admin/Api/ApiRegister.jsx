@@ -14,7 +14,7 @@ import { createApi, updateApi, fetchApiDetail } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import { AUTH_TYPE_OPTIONS, HTTP_METHOD_OPTIONS } from './constants';
 import { convertToTreeData } from '../../../utils/common';
-import { PROPERTY_PRESETS } from '../../..//utils/constants';
+import { PROPERTY_PRESETS } from '../../../utils/constants';
 import ApprovalNodesConfig from '../../../components/ApprovalNodesConfig';
 import PropertiesConfig from '../../../components/PropertiesConfig';
 
