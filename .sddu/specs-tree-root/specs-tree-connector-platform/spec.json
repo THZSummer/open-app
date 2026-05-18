@@ -15,8 +15,8 @@
     "spec": "spec.md"
   },
   "summary": {
-    "userStories": 11,
-    "functionalRequirements": 44,
+    "userStories": 13,
+    "functionalRequirements": 45,
     "nonFunctionalRequirements": 22,
     "edgeCases": 12,
     "openQuestions": 6
