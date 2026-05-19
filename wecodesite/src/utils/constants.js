@@ -19,7 +19,7 @@ export const STATUS_MAP = {
   0: { text: '已撤回', color: 'default' },
   1: { text: '待审', color: 'orange' },
   2: { text: '已发布', color: 'green' },
-  3: { text: '已下线', color: 'red' }
+  3: { text: '已下线', color: 'red' },
 };
 
 export const PROPERTY_PRESETS = [
@@ -62,15 +62,15 @@ export const ADMIN_MENU_CONFIG = [
 
 export const ACTION_CONFIG = {
   delete: {
-    defaultTitle: '确认删除',
-    defaultContent: '确定要删除吗？',
+    title: '确认删除',
+    content: '确定要删除吗？',
     confirmButtonText: '确认删除',
     loadingText: '删除中...',
     dangerColor: '#ff4d4f'
   },
   withdraw: {
-    defaultTitle: '确认撤回',
-    defaultContent: '确定要撤回吗？撤回后将无法恢复。',
+    title: '确认撤回',
+    content: '确定要撤回吗？撤回后将无法恢复。',
     confirmButtonText: '确认撤回',
     loadingText: '撤回中...',
     dangerColor: '#faad14'

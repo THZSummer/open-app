@@ -43,7 +43,7 @@ function CategoryOwnerModal({
         ownerForm.resetFields();
         await loadOwners();
       } else {
-        message.error(res?.message || '添加失败');
+        message.error(res?.messageZh || res?.message || '添加失败');
       }
     } catch (error) {
       message.error('添加失败');
@@ -57,7 +57,7 @@ function CategoryOwnerModal({
         message.success('移除成功');
         await loadOwners();
       } else {
-        message.error(res?.message || '移除失败');
+        message.error(res?.messageZh || res?.message || '移除失败');
       }
     } catch (error) {
       message.error('移除失败');

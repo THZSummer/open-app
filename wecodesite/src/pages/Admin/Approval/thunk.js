@@ -29,7 +29,7 @@ export const fetchApprovalList = async (params = {}) => {
  */
 export const fetchApprovalDetail = async (id) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.DETAIL, { id }));
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.DETAIL, { id }), { method: 'GET' });
     return result || {};
   } catch (err) {
     return {};

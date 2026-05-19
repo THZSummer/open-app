@@ -13,6 +13,9 @@ const createState = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [currentDeleteId, setCurrentDeleteId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [revokeVisible, setRevokeVisible] = useState(false);
+  const [currentWithdrawId, setCurrentWithdrawId] = useState(null);
+  const [revokePending, setRevokePending] = useState(false);
 
   return {
     data, setData,
@@ -25,6 +28,9 @@ const createState = () => {
     deleteModalOpen, setDeleteModalOpen,
     currentDeleteId, setCurrentDeleteId,
     deleteLoading, setDeleteLoading,
+    revokeVisible, setRevokeVisible,
+    currentWithdrawId, setCurrentWithdrawId,
+    revokePending, setRevokePending,
   };
 };
 
@@ -34,24 +40,19 @@ const createListOperations = (state, appId, options) => {
   const loadData = useCallback(async (page = 1, size = pagination.pageSize) => {
     if (!appId) return;
     setLoading(true);
-    try {
-      const result = await options.fetchList(appId, { curPage: page, pageSize: size });
-      if (result && result.code === '200') {
-        setData(result.data || []);
-        setPagination(prev => ({
-          ...prev,
-          total: result.page?.total || 0,
-          curPage: page,
-          pageSize: size
-        }));
-      } else {
-        message.error(result?.messageZh || result?.message || '加载列表失败');
-      }
-    } catch (error) {
-      message.error('加载列表失败');
-    } finally {
-      setLoading(false);
+    const result = await options.fetchList(appId, { curPage: page, pageSize: size });
+    if (result && result.code === '200') {
+      setData(result.data || []);
+      setPagination(prev => ({
+        ...prev,
+        total: result.page?.total || 0,
+        curPage: page,
+        pageSize: size
+      }));
+    } else {
+      message.error(result?.messageZh || result?.message || '加载列表失败');
     }
+    setLoading(false);
   }, [appId, pagination.pageSize, options.fetchList]);
 
   const handlePageChange = useCallback((page, size) => {
@@ -95,20 +96,15 @@ const createSubscribeOperations = (state, appId, options) => {
       return;
     }
     setSubscribeLoading(true);
-    try {
-      const res = await options.subscribe(appId, { permissionIds });
-      if (res && res.code === '200') {
-        message.success('申请已提交');
-        loadDataRef?.(1, INIT_PAGECONFIG.pageSize);
-        setDrawerOpen(false);
-      } else {
-        message.error(res?.message || '申请失败');
-      }
-    } catch (error) {
-      message.error('申请失败');
-    } finally {
-      setSubscribeLoading(false);
+    const res = await options.subscribe(appId, { permissionIds });
+    if (res && res.code === '200') {
+      message.success('申请已提交');
+      loadDataRef?.(1, INIT_PAGECONFIG.pageSize);
+      setDrawerOpen(false);
+    } else {
+      message.error(res?.messageZh || res?.message || '申请失败');
     }
+    setSubscribeLoading(false);
   }, [appId, options.subscribe]);
 
   const setLoadData = useCallback((fn) => {
@@ -142,11 +138,11 @@ const createApprovalOperations = (state) => {
 };
 
 const createDeleteOperations = (state, appId, options) => {
-  const { setDeleteModalOpen, setCurrentDeleteId, setDeleteLoading } = state;
+  const { setDeleteModalOpen, setCurrentDeleteId, setDeleteLoading, pagination } = state;
   let loadDataRef = null;
   const deleteIdRef = useRef(null);
 
-  const handleDeleteClick = useCallback((id) => {
+  const handleDelete = useCallback((id) => {
     deleteIdRef.current = id;
     setCurrentDeleteId(id);
     setDeleteModalOpen(true);
@@ -155,21 +151,17 @@ const createDeleteOperations = (state, appId, options) => {
   const handleConfirmDelete = useCallback(async () => {
     if (!deleteIdRef.current) return;
     setDeleteLoading(true);
-    try {
-      const res = await options.deleteItem(appId, deleteIdRef.current);
-      if (res && res.code === '200') {
-        message.success('删除成功');
-        setDeleteModalOpen(false);
-        deleteIdRef.current = null;
-        loadDataRef?.(pagination.curPage);
-      } else {
-        message.error(res?.message || '删除失败');
-      }
-    } catch (error) {
-      message.error('删除失败');
-    } finally {
-      setDeleteLoading(false);
+    const res = await options.deleteItem(appId, deleteIdRef.current);
+    if (res && res.code === '200') {
+      message.success('删除成功');
+      setDeleteModalOpen(false);
+      deleteIdRef.current = null;
+      const curPageDataNum = Number(pagination.total) - pagination.pageSize * (pagination.curPage - 1) - 1;
+      loadDataRef?.(curPageDataNum === 0 ? pagination.curPage - 1 : pagination.curPage);
+    } else {
+      message.error(res?.messageZh || res?.message || '删除失败');
     }
+    setDeleteLoading(false);
   }, [appId, options.deleteItem]);
 
   const closeDeleteModal = useCallback(() => setDeleteModalOpen(false), []);
@@ -179,7 +171,7 @@ const createDeleteOperations = (state, appId, options) => {
   }, []);
 
   return {
-    handleDeleteClick,
+    handleDelete,
     handleConfirmDelete,
     closeDeleteModal,
     setLoadData,
@@ -187,29 +179,41 @@ const createDeleteOperations = (state, appId, options) => {
 };
 
 const createWithdrawOperations = (state, appId, options) => {
-  const { pagination } = state;
+  const { setCurrentWithdrawId, setRevokePending, setRevokeVisible, pagination } = state;
   let loadDataRef = null;
+  const withdrawIdRef = useRef(null);
 
-  const handleWithdraw = useCallback(async (record) => {
-    try {
-      const res = await options.withdraw(appId, record.id);
-      if (res && res.code === '200') {
-        message.success('已撤回');
-        loadDataRef?.(pagination.curPage);
-      } else {
-        message.error(res?.message || '撤回失败');
-      }
-    } catch (error) {
-      message.error('撤回失败');
+  const handleWithdraw = useCallback((id) => {
+    withdrawIdRef.current = id;
+    setCurrentWithdrawId(id);
+    setRevokeVisible(true);
+  }, []);
+
+  const handleConfirmWithdraw = useCallback(async () => {
+    if (!withdrawIdRef.current) return;
+    setRevokePending(true);
+    const res = await options.withdraw(appId, withdrawIdRef.current);
+    if (res && res.code === '200') {
+      message.success('已撤回');
+      setRevokeVisible(false);
+      withdrawIdRef.current = null;
+      loadDataRef?.(pagination.curPage);
+    } else {
+      message.error(res?.messageZh || res?.message || '撤回失败');
     }
+    setRevokePending(false);
   }, [appId, options.withdraw]);
 
   const setLoadData = useCallback((fn) => {
     loadDataRef = fn;
   }, []);
+  
+  const closeWithdrawModal = useCallback(() => setRevokeVisible(false), []);
 
   return {
+    handleConfirmWithdraw,
     handleWithdraw,
+    closeWithdrawModal,
     setLoadData,
   };
 };

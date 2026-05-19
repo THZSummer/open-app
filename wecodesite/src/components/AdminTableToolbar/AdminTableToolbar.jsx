@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Input, TreeSelect, Select } from 'antd';
 import { convertToTreeData } from '../../utils/common';
 import './AdminTableToolbar.less';
@@ -6,8 +6,6 @@ import './AdminTableToolbar.less';
 const { Search } = Input;
 
 const AdminTableToolbar = ({
-  keyword,
-  onKeywordChange,
   onSearch,
   placeholder = '搜索名称',
   categoryId,
@@ -22,14 +20,15 @@ const AdminTableToolbar = ({
   ],
   onStatusChange,
 }) => {
+  const [searchKey, setSearchKey] = useState('')
   return (
     <div className="admin-toolbar">
       <Search
         placeholder={placeholder}
-        value={keyword}
-        onChange={(e) => onKeywordChange(e.target.value)}
+        value={searchKey}
+        onChange={(e) => setSearchKey(e.target.value)}
         style={{ width: 200 }}
-        onSearch={onSearch}
+        onSearch={() => onSearch(searchKey)}
       />
       <TreeSelect
         placeholder="选择分类"

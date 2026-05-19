@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ADMIN_MENU_CONFIG } from '@/utils/constants';
-import { isInAdminWhitelist } from '@/utils/common';
+import { ADMIN_MENU_CONFIG } from '../../utils/constants';
+import { isInAdminWhitelist } from '../../utils/common';
 import './SimpleSidebar.m.less';
 
 function SimpleSidebar() {

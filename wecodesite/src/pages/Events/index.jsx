@@ -8,7 +8,7 @@ import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
 import { fetchAppEvents, deleteAppEventSubscription, withdrawApproval, subscribeEvents } from './thunk';
 import { getEventColumns } from './constants';
-import { queryParams, openUrl } from '../../utils/common';
+import { queryParams, openUrl, getSecondModalInfo } from '../../utils/common';
 import './Events.m.less';
 
 /**
@@ -20,18 +20,11 @@ function Events() {
   /**
    * 订阅抽屉状态
    */
+  const [editingEvent, setEditingEvent] = useState(null);
   const [subscriptionDrawerOpen, setSubscriptionDrawerOpen] = useState(false);
-  const [subscriptionTarget, setSubscriptionTarget] = useState(null);
-
-  /**
-   * 撤回弹窗状态
-   */
-  const [cancelModalVisible, setCancelModalVisible] = useState(false);
-  const [cancelItem, setCancelItem] = useState(null);
-  const [cancelInProgress, setCancelInProgress] = useState(false);
 
   const {
-    data: eventSubscriptions,
+    data: events,
     loading,
     pagination,
     drawerOpen,
@@ -40,13 +33,18 @@ function Events() {
     currentApprovalInfo,
     deleteModalOpen,
     deleteLoading,
+    revokePending,
+    revokeVisible,
     loadData,
     handlePageChange,
     openDrawer,
     closeDrawer,
     handleSubscribe,
     handleCopyApprovalAddress,
-    handleDeleteClick,
+    handleWithdraw,
+    handleConfirmWithdraw,
+    closeWithdrawModal,
+    handleDelete,
     handleConfirmDelete,
     closeApprovalModal,
     closeDeleteModal,
@@ -63,64 +61,30 @@ function Events() {
     }
   }, [appId, loadData]);
 
-  /**
-   * 撤回处理
-   */
-  const requestCancel = (record) => {
-    setCancelItem(record);
-    setCancelModalVisible(true);
-  };
-
-  const executeCancel = async () => {
-    if (!cancelItem) return;
-
-    setCancelInProgress(true);
-    const result = await withdrawApproval(appId, cancelItem.id);
-
-    if (result && result.code === '200') {
-      message.success('已撤回');
-      setCancelModalVisible(false);
-      setCancelItem(null);
-      loadData();
-    } else {
-      message.error(result?.messageZh || result?.message || '撤回失败');
-    }
-
-    setCancelInProgress(false);
-  };
-
-  const dismissCancel = () => {
-    setCancelModalVisible(false);
-    setCancelItem(null);
-  };
-
-  /**
-   * 编辑处理
-   */
-  const openSubscriptionDrawer = (record) => {
-    setSubscriptionTarget(record);
+  const handleEdit = (record) => {
+    setEditingEvent(record);
     setSubscriptionDrawerOpen(true);
   };
 
-  const reloadSubscriptions = async () => {
+  const handleSaveSubscription = async () => {
     loadData();
   };
 
-  const closeSubscriptionDrawer = () => {
+  const handleCloseSubscriptionDrawer = () => {
     setSubscriptionDrawerOpen(false);
-    setSubscriptionTarget(null);
+    setEditingEvent(null);
   };
 
-  const openDocLink = (url) => {
+  const handleOpenDoc = (url) => {
     openUrl(url);
   };
 
   const columns = getEventColumns({
-    openDoc: openDocLink,
-    modifyItem: openSubscriptionDrawer,
-    copyApproval: handleCopyApprovalAddress,
-    cancelSubscription: requestCancel,
-    removeItem: handleDeleteClick,
+    handleOpenDoc,
+    handleEdit,
+    handleCopyApprovalAddress,
+    handleWithdraw,
+    handleDelete,
   });
 
   return (
@@ -138,7 +102,7 @@ function Events() {
 
       <SubscriptionTable
         columns={columns}
-        dataSource={eventSubscriptions}
+        dataSource={events}
         loading={loading}
         pagination={pagination}
         onPageChange={handlePageChange}
@@ -148,16 +112,16 @@ function Events() {
         open={drawerOpen}
         onClose={closeDrawer}
         onConfirm={handleSubscribe}
-        selectedEvents={eventSubscriptions}
+        selectedEvents={events}
         subscribeLoading={subscribeLoading}
         appId={appId}
       />
 
       <EventSubscriptionDrawer
         open={subscriptionDrawerOpen}
-        onClose={closeSubscriptionDrawer}
-        onSave={reloadSubscriptions}
-        event={subscriptionTarget}
+        onClose={handleCloseSubscriptionDrawer}
+        onSave={handleSaveSubscription}
+        event={editingEvent}
       />
 
       <ApprovalAddressModal
@@ -172,16 +136,15 @@ function Events() {
         onClose={closeDeleteModal}
         onConfirm={handleConfirmDelete}
         loading={deleteLoading}
+        modalInfo={getSecondModalInfo('事件', 'delete', false)}
       />
 
       <DeleteConfirmModal
-        open={cancelModalVisible}
-        onClose={dismissCancel}
-        onConfirm={executeCancel}
-        type="withdraw"
-        title="确认撤回订阅"
-        content="撤回后将无法恢复，确定要撤回这个事件订阅吗？"
-        loading={cancelInProgress}
+        open={revokeVisible}
+        onClose={closeWithdrawModal}
+        onConfirm={handleConfirmWithdraw}
+        modalInfo={getSecondModalInfo('事件', 'withdraw', false)}
+        loading={revokePending}
       />
     </div>
   );

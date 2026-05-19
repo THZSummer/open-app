@@ -6,7 +6,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(approvalUrl).then(() => {
       message.success('审批链接已复制');
-    });
+    }).catch(() => message.error('复制失败，请检查浏览器权限'));
   };
 
   return (

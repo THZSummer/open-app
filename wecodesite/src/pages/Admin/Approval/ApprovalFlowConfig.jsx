@@ -21,7 +21,7 @@ import {
   deleteApprovalFlow,
 } from './thunk';
 import './ApprovalCenter.m.less';
-import { getApprovalFlowColumns } from './constants';
+import { getApprovalFlowColumns, secondModalInfo } from './constants';
 import ApprovalFlowFormModal from '../../../components/ApprovalFlowFormModal/ApprovalFlowFormModal';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 
@@ -204,8 +204,7 @@ function ApprovalFlowConfig() {
         onClose={() => setDeleteModalVisible(false)}
         onConfirm={handleConfirmDelete}
         requireConfirmText={deleteFlowCode}
-        title="删除审批流程"
-        content="此操作将永久删除该审批流程，无法恢复！"
+        modalInfo={secondModalInfo}
       />
     </div>
   );

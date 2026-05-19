@@ -11,7 +11,7 @@ export const NEED_REVIEW_OPTIONS = [
 export const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 export const renderSubscriptionStatus = (isSubscribed) => {
-  const { text, color } = SUBSCRIPTION_STATUS[status];
+  const { text, color } = SUBSCRIPTION_STATUS[isSubscribed];
   return <Tag color={color}>{text}</Tag>;
 };
 
@@ -98,7 +98,7 @@ export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) =
     ellipsis: true,
     render: (permission) => {
       const scope = permission?.scope || '-';
-      return <Tag color='cyan'>{scope}</Tag>
+      return <Tag color='cyan'>{scope}</Tag>;
     },
   },
   {
@@ -108,7 +108,7 @@ export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) =
     width: 100,
     render: (status) => {
       const { text, color } = STATUS_MAP[status] || STATUS_MAP[0];
-      return <Tag color={color}>{text}</Tag>
+      return <Tag color={color}>{text}</Tag>;
     },
   },
   {
@@ -116,12 +116,12 @@ export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) =
     key: 'action',
     width: 180,
     fixed: 'right',
-    render: (_, record) => {
+    render: (_, record) => (
       <Space>
-        <Button type='link' size='small' onClick={() => handleView(record)}>详情</Button>
-        {record.status !== 0 && <Button type='link' size='small' onClick={() => handleEdit(record)}>编辑</Button>}
-        <Button type='link' size='small' danger onClick={() => handleDelete(record)}>删除</Button>
+        <Button type='link' size='small' onClick={() => handleView(record.id)}>详情</Button>
+        {record.status !== 0 && <Button type='link' size='small' onClick={() => handleEdit(record.id)}>编辑</Button>}
+        <Button type='link' size='small' danger onClick={() => handleDelete(record.id)}>删除</Button>
       </Space>
-    }
+    )
   },
 ]

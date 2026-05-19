@@ -38,11 +38,10 @@ function CategoryFormModal({
   }, [visible, isEditing, parentCategory, initialValues, form]);
 
   const handleOk = async () => {
-    try {
-      const values = await form.validateFields();
-      setLoading(true);
+    const values = await form.validateFields();
+    setLoading(true);
 
-      const data = isEditing ? 
+    const data = isEditing ?
       {
         nameCn: values.nameCn,
         nameEn: values.nameEn,
@@ -55,21 +54,13 @@ function CategoryFormModal({
         sortOrder: values.sortOrder,
       };
 
-      const result = await onSubmit(data);
-      if (result && result.code === '200') {
-        form.resetFields();
-      } else {
-        message.error(result.message || '提交失败')
-      }      
-    } catch (error) {
-    } finally {
-      setLoading(false);
+    const result = await onSubmit(data);
+    if (result && result.code === '200') {
+      form.resetFields();
+    } else {
+      message.error(result.message || '提交失败')
     }
-  };
-
-  const handleCancel = () => {
-    form.resetFields();
-    onClose();
+    setLoading(false);
   };
 
   const getModalTitle = () => {
@@ -80,6 +71,11 @@ function CategoryFormModal({
       return '新增子分类';
     }
     return '新增一级分类';
+  };
+
+  const handleCancel = () => {
+    form.resetFields();
+    onClose();
   };
 
   return (

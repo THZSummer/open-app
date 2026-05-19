@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Modal,
   Form,
-  Input,
-  TreeSelect,
   Card,
-  Select,
+  Input,
+  Modal,
   Radio,
-  message,
   Button,
+  Select,
+  message,
+  TreeSelect,
 } from 'antd';
 import { fetchCategoryTree } from '../../pages/Admin/Category/thunk';
 import { convertToTreeData } from '../../utils/common';
@@ -30,9 +30,9 @@ function ResourceRegister({
 }) {
   const { fetchDetail, create, update } = thunk;
   const [form] = Form.useForm();
-  const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const config = RESOURCE_TYPES[resourceType];
 
@@ -82,7 +82,7 @@ function ResourceRegister({
       }
     };
     loadDetail();
-  }, [visible, resource, form, fetchDetail]);
+  }, [visible, form, resource, fetchDetail]);
 
   const handleSubmit = async () => {
     try {
@@ -105,9 +105,9 @@ function ResourceRegister({
         topic: values.topic,
         categoryId: values.categoryId,
         permission: {
+          scope: values.scope,
           nameCn: values.permissionNameCn,
           nameEn: values.permissionNameEn,
-          scope: values.scope,
           needApproval: values.needApproval ?? 1,
           resourceNodes: values.resourceNodes?.length > 0 ? JSON.stringify(values.resourceNodes) : null,
         },
@@ -115,17 +115,17 @@ function ResourceRegister({
       };
 
       let result;
-      let successMessage;
       let errorMessage;
+      let successMessage;
 
       if (resource?.id) {
         result = await update(resource?.id, data);
-        successMessage = '更新成功';
         errorMessage = '更新失败';
+        successMessage = '更新成功';
       } else {
         result = await create(data);
-        successMessage = '注册成功';
         errorMessage = '注册失败';
+        successMessage = '注册成功';
       }
       if (result && result.code === '200') {
         message.success(successMessage);

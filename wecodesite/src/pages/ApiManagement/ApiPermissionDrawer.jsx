@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Tabs, Table, Button, Tag, Pagination, Input, Select, message } from 'antd';
+import { Drawer, Tabs, Table, Button, Pagination, Input, Select, message } from 'antd';
 const { TabPane } = Tabs;
 import { fetchApis, fetchCategories, fetchTabConfig } from './thunk';
 import { mockAppInfo } from '../BasicInfo/mock';
-import { AUTH_TYPE, PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
+import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { NEED_REVIEW_OPTIONS } from '../../utils/commonTableConfigs';
 import {
   TAB_CONFIG_SEARCH_KEY,
   getApiPermissionDrawerColumns,
 } from './constants';
 import './ApiPermissionDrawer.m.less';
+import { openUrl } from '@/utils/common';
 
 /**
  * 将分类数据转换为模块列表格式
@@ -37,7 +38,7 @@ const transformCategoriesToModules = (categories) => {
           result.push({
             key: child.id,
             value: child.id,
-            name: child.nameCn || child.name
+            name: child.nameCn || child.nameEn
           });
         }
       });
@@ -174,7 +175,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
       setModulesData(transformedModules);
       return transformedModules;
     } else {
-      message.error(categoriesRes?.message || '加载分类失败');
+      message.error(categoriesRes?.messageZh || categoriesRes?.message || '加载分类失败');
       setModulesData([]);
       return [];
     }
@@ -219,12 +220,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     const result = await fetchApis(defaultParams);
     if (result && result.code === '200') {
       const resultData = result.data || [];
-      const resultTotal = result.total || resultData.length;
       setApisData(resultData);
-      setPagination(prev => ({ ...prev, total: resultTotal }));
-    } else if (Array.isArray(result?.data)) {
-      setApisData(result.data);
-      setPagination(prev => ({ ...prev, total: result.total || result.data.length }));
+      setPagination(prev => ({ ...prev, ...result.page }));
     } else {
       message.error(result?.messageZh || result?.message || '加载API列表失败');
       setApisData([]);
@@ -267,11 +264,11 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   /**
    * 处理模块点击事件
    */
-  const handleModuleClick = async (module) => {
+  const handleModuleClick = (module) => {
     setActiveModule(module.key);
     setPagination(INIT_PAGECONFIG);
     setSelectedRowKeys([]);
-    await loadApis({ curPage: 1 }, null, module.key);
+    loadApis({ curPage: 1 }, null, module.key);
   };
 
   /**
@@ -295,7 +292,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     // 重新加载模块列表和API列表
     if (defaultSecondLevel) {
       const modules = await loadModules(defaultSecondLevel);
-      await loadApis({
+      loadApis({
         identityType,
         apiType: defaultSecondLevel,
         keyword: '',
@@ -367,26 +364,24 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
   /**
    * 处理关键词输入变化
    */
-  const handleFilterChange = async (e) => {
+  const handleFilterChange = (e) => {
     const keyword = e.target.value;
     setFilterKeyword(keyword);
     setPagination(INIT_PAGECONFIG);
-    await loadApis({ keyword, curPage: 1 }, null, activeModule);
+    loadApis({ keyword, curPage: 1 }, null, activeModule);
   };
 
   /**
    * 处理是否需要审核筛选变化
    */
-  const handleNeedReviewChange = async (value) => {
+  const handleNeedReviewChange = (value) => {
     setFilterNeedReview(value);
     setPagination(INIT_PAGECONFIG);
-    await loadApis({ needReview: value, curPage: 1 }, null, activeModule);
+    loadApis({ needReview: value, curPage: 1 }, null, activeModule);
   };
 
   const handleOpenDoc = (docUrl) => {
-    if (docUrl) {
-      window.open(docUrl, '_blank');
-    }
+    openUrl(docUrl, '_blank')
   };
 
   const columns = getApiPermissionDrawerColumns({ handleOpenDoc });
@@ -506,23 +501,23 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
           </div>
           <div className="drawer-table">
             <Table
-              rowSelection={rowSelection}
-              columns={columns}
-              dataSource={apisData}
               rowKey="id"
-              pagination={false}
+              columns={columns}
               loading={loading}
+              pagination={false}
+              dataSource={apisData}
+              rowSelection={rowSelection}
             />
             <div className="drawer-pagination">
               <span className="pagination-total">共 {pagination.total} 条</span>
               <Pagination
+                total={pagination.total}
                 current={pagination.curPage}
                 pageSize={pagination.pageSize}
-                total={pagination.total}
-                onChange={handlePageChange}
                 showSizeChanger
-                pageSizeOptions={PAGE_SIZE_OPTIONS}
                 showQuickJumper
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
+                onChange={handlePageChange}
               />
             </div>
           </div>

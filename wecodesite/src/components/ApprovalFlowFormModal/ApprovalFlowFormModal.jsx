@@ -5,14 +5,13 @@ import {
   Input,
   Button,
   Divider,
-  Tag,
-  Space,
   message,
+  Space,
   Select,
 } from 'antd';
 import {
-  MinusCircleOutlined,
   PlusOutlined,
+  MinusCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 
@@ -57,31 +56,23 @@ function ApprovalFlowFormModal({
   }, [visible, isEditing, editingFlow, form]);
 
   const handleOk = async () => {
-    try {
-      const values = await form.validateFields();
-      setLoading(true);
+    const values = await form.validateFields();
+    setLoading(true);
 
-      const nodes = values.nodes ? values.nodes.map((node, index) => ({
-        ...node,
-        order: index + 1,
-        type: 'approver',
-      })) : [];
+    const nodes = values.nodes ? values.nodes.map((node, index) => ({
+      ...node,
+      order: index + 1,
+      type: 'approver',
+    })) : [];
 
-      const data = {
-        ...values,
-        nodes,
-      };
+    const data = {
+      ...values,
+      nodes,
+    };
 
-      const result = await onSubmit(data);
-      if (result && result.code === '200') {
-        form.resetFields();
-      } else {
-        message.error(result?.messageZh || result?.message || '操作失败');
-      }
-    } catch (error) {
-    } finally {
-      setLoading(false);
-    }
+    await onSubmit(data);
+    form.resetFields();
+    setLoading(false);
   };
 
   const handleCancel = () => {

@@ -40,7 +40,7 @@ function ApprovalCenter() {
   const [canViewFlowConfig, setCanViewFlowConfig] = useState(false);
 
   const init = async () => {
-    const canShow = await isInAdminWhitelist();
+    const canShow = await isInAdminWhitelist()
     setCanViewFlowConfig(canShow);
   }
 

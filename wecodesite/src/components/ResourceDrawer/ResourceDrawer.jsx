@@ -76,7 +76,7 @@ function ResourceDrawer({
           await loadData({ categoryId: rootId, needReview: 'all', keyword: '' });
         }
       } else {
-        message.error(categoriesRes?.message || '加载分类失败');
+        message.error(categoriesRes?.messageZh || categoriesRes?.message || '加载分类失败');
       }
     };
 

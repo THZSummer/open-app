@@ -112,7 +112,7 @@ export const addCategoryOwner = async (categoryId, owner) => {
  */
 export const removeCategoryOwner = async (categoryId, userId) => {
   try {
-    const result = await fetchApi(`/categories/${categoryId}/owners/${userId}`, { method: 'DELETE' });
+    const result = await fetchApi(buildApiUrl(API_CONFIG.CATEGORIES.REMOVEOWNER,{ id: categoryId, userId }), { method: 'DELETE' });
     return result || {};
   } catch (err) {
     return {};

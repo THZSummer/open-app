@@ -34,16 +34,17 @@ import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteCon
 import { isInAdminWhitelist } from '../../../utils/common';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import './CategoryList.m.less';
+import { secondModalInfo } from './constants';
 
 function CategoryList() {
   const navigate = useNavigate();
 
   const init = async () => {
-    const canShow = await isAdminWhitelist();
+    const canShow = await isInAdminWhitelist()
     if (!canShow) {
       navigate('/apps');
     }
-  };
+  }
 
   useEffect(() => {
     init();
@@ -115,7 +116,7 @@ function CategoryList() {
       setDeleteModalVisible(false);
       loadData();
     } else {
-      message.error(res?.message || '删除失败');
+      message.error(res?.messageZh || res?.message || '删除失败');
     }
   };
 
@@ -218,7 +219,7 @@ function CategoryList() {
         </div>
       ),
       icon: category.children && category.children.length > 0 ? <FolderOutlined /> : <FileOutlined />,
-      children: category.children ? convertToTreeData(category.children) : undefined,
+      children: convertToTreeData(category.children)
     }));
   };
 
@@ -307,8 +308,7 @@ function CategoryList() {
             onClose={() => setDeleteModalVisible(false)}
             onConfirm={handleConfirmDelete}
             requireConfirmText={deleteCategoryName}
-            title="删除分类"
-            content="此操作将永久删除该分类及其所有子分类，无法恢复！"
+            modalInfo={secondModalInfo}
           />
         </div>
       </div>

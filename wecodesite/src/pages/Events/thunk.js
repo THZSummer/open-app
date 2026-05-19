@@ -139,21 +139,6 @@ export const configEventSubscription = async (appId, eventId, params) => {
 };
 
 /**
- * 催办审批
- *
- * @param {string} id - 记录ID
- * @returns {Promise<Object>} 催办结果
- */
-export const remindApproval = async (id) => {
-  try {
-    const result = await fetchApi(`/events/${id}/remind`, { method: 'POST' });
-    return result || {};
-  } catch (err) {
-    return {};
-  }
-};
-
-/**
  * 删除事件（管理后台）
  *
  * @param {string} id - 事件ID

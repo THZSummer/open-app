@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
 import { fetchEventList, deleteEvent } from './thunk';
@@ -9,7 +9,7 @@ import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableT
 import { fetchCategoryTree } from '../Category/thunk';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-import { isInAdminWhitelist } from '../../../utils/common';
+import { getSecondModalInfo, isInAdminWhitelist } from '../../../utils/common';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import './EventList.m.less';
 
@@ -18,13 +18,6 @@ import './EventList.m.less';
  */
 function EventList() {
   const navigate = useNavigate();
-
-  /**
-   * 删除弹窗状态管理
-   */
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     checkPermission();
@@ -43,7 +36,7 @@ function EventList() {
   const {
     loadData,
     loadCategories,
-    data: eventData,
+    data: eventList,
     categories,
     categoryId,
     status,
@@ -57,9 +50,12 @@ function EventList() {
     handleAdd,
     handleEdit,
     handleView,
+    handlecancelRomove,
     handleDelete,
+    handleDeleteClick,
     handleSuccess,
     modalVisible,
+    removeConfirmVisible,
     currentItem,
     mode,
     closeModal,
@@ -70,37 +66,6 @@ function EventList() {
     fetchCategories: fetchCategoryTree,
   });
 
-  /**
-   * 删除操作处理
-   */
-  const initiateDelete = (id) => {
-    setDeletingId(id);
-    setShowDeleteDialog(true);
-  };
-
-  const proceedDelete = async () => {
-    if (!deletingId) return;
-
-    setIsDeleting(true);
-    const response = await deleteEvent(deletingId);
-
-    if (response && response.code === '200') {
-      message.success('删除成功');
-      setShowDeleteDialog(false);
-      setDeletingId(null);
-      loadData();
-    } else {
-      message.error(response?.message || '删除失败');
-    }
-
-    setIsDeleting(false);
-  };
-
-  const abortDelete = () => {
-    setShowDeleteDialog(false);
-    setDeletingId(null);
-  };
-
   useEffect(() => {
     loadCategories();
     loadData();
@@ -109,7 +74,7 @@ function EventList() {
   const columns = getEventListColumns({
     handleView,
     handleEdit,
-    handleDelete: initiateDelete,
+    handleDelete,
   });
 
   return (
@@ -140,12 +105,12 @@ function EventList() {
           />
 
           <Spin spinning={loading}>
-            {eventData.length > 0 ? (
+            {eventList.length > 0 ? (
               <>
                 <div className="table-wrapper">
                   <Table
                     columns={columns}
-                    dataSource={eventData}
+                    dataSource={eventList}
                     rowKey="id"
                     pagination={false}
                   />
@@ -177,13 +142,10 @@ function EventList() {
           />
 
           <DeleteConfirmModal
-            open={showDeleteDialog}
-            onClose={abortDelete}
-            onConfirm={proceedDelete}
-            type="delete"
-            title="确认删除事件"
-            content="删除后无法恢复，确定要删除这个事件吗？"
-            loading={isDeleting}
+            open={removeConfirmVisible}
+            onClose={handlecancelRomove}
+            onConfirm={handleDeleteClick}
+            modalInfo={getSecondModalInfo('事件', 'delete', true)}
           />
         </div>
       </div>

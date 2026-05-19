@@ -13,36 +13,27 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
 
   useEffect(() => {
     if (callback && open) {
-      form.setFieldsValue({
-        channelType: callback.channelType ?? 0,
-        channelAddress: callback.channelAddress || '',
-        authType: callback.authType ?? 0
-      });
+      form.setFieldsValue(callback);
       setChannelType(callback.channelType ?? 0);
     }
   }, [callback, open, form]);
 
   const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-      setSaving(true);
-      const res = await configCallbackSubscription(appId, callback.id, {
-        authType: values.authType,
-        channelType: values.channelType,
-        channelAddress: values.channelAddress || '',
-      });
-      if (res && res.code === '200') {
-        onSave();
-        onClose();
-        message.success('配置已保存');
-      } else {
-        message.error(res?.message || '保存失败');
-      }
-    } catch (error) {
-      message.error('保存失败');
-    } finally {
-      setSaving(false);
+    const values = await form.validateFields();
+    setSaving(true);
+    const res = await configCallbackSubscription(appId, callback.id, {
+      authType: values.authType,
+      channelType: values.channelType,
+      channelAddress: values.channelAddress || '',
+    });
+    if (res && res.code === '200') {
+      onSave();
+      onClose();
+      message.success('配置已保存');
+    } else {
+      message.error(res?.messageZh || res?.message || '保存失败');
     }
+    setSaving(false);
   };
 
   const handleChannelTypeChange = (e) => {
@@ -86,11 +77,15 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
       )}
 
       <Form form={form} layout="vertical" className="subscription-form">
-        <Form.Item name="channelType" label="通道类型">
+        <Form.Item name="channelType" label="订阅方式"
+        rules={[
+          { required: true, message: '请选择订阅方式' }
+        ]}
+        >
           <Radio.Group onChange={handleChannelTypeChange}>
-            <Radio value={1}>{CHANNEL_TYPE[0]}</Radio>
-            <Radio value={2}>{CHANNEL_TYPE[1]}</Radio>
-            <Radio value={3}>{CHANNEL_TYPE[2]}</Radio>
+            <Radio value={1}>{CHANNEL_TYPE[1]}</Radio>
+            <Radio value={2}>{CHANNEL_TYPE[2]}</Radio>
+            <Radio value={3}>{CHANNEL_TYPE[3]}</Radio>
           </Radio.Group>
         </Form.Item>
 
@@ -98,7 +93,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
           name="channelAddress"
           label="回调地址"
           rules={[
-            { required: true, message: '请输入回调地址' }
+            { required: true, message: '请输入回调地址' },
           ]}
         >
           <Input placeholder="https://your-domain.com/webhook" />

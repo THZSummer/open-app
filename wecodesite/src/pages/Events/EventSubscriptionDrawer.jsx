@@ -13,12 +13,8 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
 
   useEffect(() => {
     if (event && open) {
-      form.setFieldsValue({
-        channelType: event.channelType ?? 0,
-        channelAddress: event.channelAddress || '',
-        authType: event.authType ?? 0
-      });
-      setChannelType(event.channelType ?? 0);
+      form.setFieldsValue(event);
+      setChannelType(event.channelType);
     }
   }, [event, open, form]);
 
@@ -33,26 +29,21 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
   };
 
   const handleSave = async () => {
-    try {
-      const values = await form.validateFields();
-      setSaving(true);
-      const res = await configEventSubscription(appId, event.id, {
-        channelType: values.channelType,
-        channelAddress: values.channelAddress || '',
-        authType: values.authType
-      });
-      if (res && res.code === '200') {
-        message.success('配置已保存');
-        onSave();
-        onClose();
-      } else {
-        message.error(res?.message || '保存失败');
-      }
-    } catch (error) {
-      message.error('保存失败');
-    } finally {
-      setSaving(false);
+    const values = await form.validateFields();
+    setSaving(true);
+    const res = await configEventSubscription(appId, event.id, {
+      channelAddress: values.channelAddress || '',
+      channelType: values.channelType,
+      authType: values.authType
+    });
+    if (res && res.code === '200') {
+      message.success('配置已保存');
+      onSave();
+      onClose();
+    } else {
+      message.error(res?.messageZh || res?.message || '保存失败');
     }
+    setSaving(false);
   };
 
   return (
@@ -90,7 +81,11 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
       )}
 
       <Form form={form} layout="vertical" className="subscription-form">
-        <Form.Item name="channelType" label="通道类型">
+        <Form.Item name="channelType" label="订阅类型"
+        rules={[
+          { required: true, message: '请选择订阅方式' }
+        ]}
+        >
           <Radio.Group onChange={handleChannelTypeChange}>
             <Radio value={0}>{CHANNEL_TYPE[0]}</Radio>
             <Radio value={1}>{CHANNEL_TYPE[1]}</Radio>
@@ -112,7 +107,7 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
               name="channelAddress"
               label="请求地址"
               rules={[
-                { required: true, message: '请输入请求地址' }
+                { required: true, message: '请输入请求地址' },
               ]}
             >
               <Input placeholder="https://your-domain.com/webhook" />

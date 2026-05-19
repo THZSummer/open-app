@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, message } from 'antd';
+import { Button } from 'antd';
 import { useSubscriptionList } from '../../hooks/useSubscriptionList';
 import SubscriptionTable from '../../components/SubscriptionTable/SubscriptionTable';
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
@@ -7,7 +7,7 @@ import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfir
 import ApiPermissionDrawer from './ApiPermissionDrawer';
 import { fetchAppApis, subscribeApis, withdrawApiApplication, deleteApiSubscription } from './thunk';
 import { getApiManagementColumns } from './constants';
-import { openUrl, queryParams } from '../../utils/common';
+import { getSecondModalInfo, openUrl, queryParams } from '../../utils/common';
 import './ApiManagement.m.less';
 
 /**
@@ -16,33 +16,31 @@ import './ApiManagement.m.less';
 function ApiManagement() {
   const appId = queryParams('appId');
 
-  /**
-   * 撤回弹窗状态
-   */
-  const [revokeVisible, setRevokeVisible] = useState(false);
-  const [revokeRecord, setRevokeRecord] = useState(null);
-  const [revokePending, setRevokePending] = useState(false);
-
   const {
-    data: apiSubscriptions,
+    data: apis,
+    loadData,
+    openDrawer,
+    closeDrawer,
+    handleWithdraw,
+    handlePageChange,
+    handleDelete,
+    handleConfirmDelete,
+    handleCopyApprovalAddress,
+    closeApprovalModal,
+    closeDeleteModal,
+    handleSubscribe,
+    handleConfirmWithdraw,
+    closeWithdrawModal,
+    revokeVisible,
+    revokePending,
     loading,
     pagination,
     drawerOpen,
+    deleteModalOpen,
+    deleteLoading,
     subscribeLoading,
     approvalModalOpen,
     currentApprovalInfo,
-    deleteModalOpen,
-    deleteLoading,
-    loadData,
-    handlePageChange,
-    openDrawer,
-    closeDrawer,
-    handleSubscribe,
-    handleCopyApprovalAddress,
-    handleDeleteClick,
-    handleConfirmDelete,
-    closeApprovalModal,
-    closeDeleteModal,
   } = useSubscriptionList(appId, {
     fetchList: fetchAppApis,
     subscribe: subscribeApis,
@@ -56,46 +54,15 @@ function ApiManagement() {
     }
   }, [appId, loadData]);
 
-  /**
-   * 撤回申请处理
-   */
-  const openRevokeConfirm = (record) => {
-    setRevokeRecord(record);
-    setRevokeVisible(true);
-  };
-
-  const confirmRevoke = async () => {
-    if (!revokeRecord) return;
-
-    setRevokePending(true);
-    const result = await withdrawApiApplication(appId, revokeRecord.id);
-
-    if (result && result.code === '200') {
-      message.success('已撤回');
-      setRevokeVisible(false);
-      setRevokeRecord(null);
-      loadData();
-    } else {
-      message.error(result?.messageZh || result?.message || '撤回失败');
-    }
-
-    setRevokePending(false);
-  };
-
-  const closeRevokeDialog = () => {
-    setRevokeVisible(false);
-    setRevokeRecord(null);
-  };
-
-  const openDoc = (url) => {
+  const handleOpenDoc = (url) => {
     openUrl(url);
   };
 
   const columns = getApiManagementColumns({
-    onViewDoc: openDoc,
-    onCopyUrl: handleCopyApprovalAddress,
-    onRevoke: openRevokeConfirm,
-    onRemove: handleDeleteClick,
+    handleOpenDoc,
+    handleWithdraw,
+    handleCopyApprovalAddress,
+    handleDelete,
   });
 
   return (
@@ -108,19 +75,19 @@ function ApiManagement() {
         <Button type="primary" onClick={openDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加API</Button>
       </div>
 
-      <SubscriptionTable
-        columns={columns}
-        dataSource={apiSubscriptions}
-        loading={loading}
-        pagination={pagination}
-        onPageChange={handlePageChange}
-      />
-
       <ApiPermissionDrawer
         open={drawerOpen}
         onClose={closeDrawer}
         onConfirm={handleSubscribe}
         appId={appId}
+      />
+
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+        loading={deleteLoading}
+        modalInfo={getSecondModalInfo('API', 'delete', false)}
       />
 
       <ApprovalAddressModal
@@ -130,20 +97,19 @@ function ApiManagement() {
         approvalUrl={currentApprovalInfo.approvalUrl}
       />
 
-      <DeleteConfirmModal
-        open={deleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={handleConfirmDelete}
-        loading={deleteLoading}
+      <SubscriptionTable
+        columns={columns}
+        dataSource={apis}
+        loading={loading}
+        pagination={pagination}
+        onPageChange={handlePageChange}
       />
 
       <DeleteConfirmModal
         open={revokeVisible}
-        onClose={closeRevokeDialog}
-        onConfirm={confirmRevoke}
-        type="withdraw"
-        title="确认撤回申请"
-        content="撤回后将无法恢复，确定要撤回这个API申请吗？"
+        onClose={closeWithdrawModal}
+        onConfirm={handleConfirmWithdraw}
+        modalInfo={getSecondModalInfo('API', 'withdraw', false)}
         loading={revokePending}
       />
     </div>

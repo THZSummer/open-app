@@ -79,13 +79,13 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
 
   const getProperties = (arr) => {
     return arr?.map(prop => {
-      const findRes = PROPERTY_PRESETS.find(p => p.value === prop.propertyName);
+      const findRes = PROPERTY_PRESETS.find(p => p.value === prop.propertyName)
       return {
-        propertyName: findRes?.value || prop.propertyName,
+        propertyName: findRes ? prop.propertyName : '__custom__',
         propertyValue: prop.propertyValue,
         customPropertyName: findRes ? undefined : prop.customPropertyName,
-      };
-    });
+      }
+    }) || []
   }
 
   const handleSubmit = async () => {
@@ -152,7 +152,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
   const modalTitle = {
     'view': '查看API详情',
     'edit': '编辑API',
-    'create': '注册API',
+    'create': '注册API'
   }
 
   return (
@@ -161,14 +161,14 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
       visible={visible}
       onOk={handleSubmit}
       onCancel={onCancel}
-      width={600}
-      okButtonProps={submitting}
+      width={800}
+      confirmLoading={submitting}
       loading={loading}
       destroyOnClose
       footer={mode === 'view' ? [
         <Button key="close" onClick={onCancel}>
           关闭
-        </Button>,
+        </Button>
       ] : undefined}
     >
       <Form form={form} layout="vertical">
@@ -279,8 +279,8 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           {/* 是否需要审批 */}
           <Form.Item
             label="是否需要审批"
-            name="needApproval"
             initialValue={1}
+            name="needApproval"
             tooltip="开启后，消费方申请此权限时需要审批"
           >
             <Radio.Group disabled={mode === 'view'}>
@@ -289,11 +289,11 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
             </Radio.Group>
           </Form.Item>
 
-          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.needApproval !== cur.needApproval}>
+          <Form.Item noStyle shouldUpdate={(pre, cur) => pre.needApproval !== cur.needApproval}>
             {({ getFieldValue }) => (
               <ApprovalNodesConfig
-                form={form}
                 mode={mode}
+                form={form}
                 needApproval={getFieldValue('needApproval')}
               />
             )}
@@ -301,8 +301,8 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
         </Card>
 
         <PropertiesConfig
-          form={form}
           mode={mode}
+          form={form}
           propertyPresets={PROPERTY_PRESETS}
           title="扩展属性（可选）"
         />

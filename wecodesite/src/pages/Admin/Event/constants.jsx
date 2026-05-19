@@ -1,30 +1,26 @@
 import React from 'react';
 import { adminTableBaseColumn } from '../../../utils/commonTableConfigs';
 
-/**
- * 事件列表表格配置
- * @param {Object} callbacks - 回调函数集合
- */
-export const getEventListColumns = (callbacks) => {
-  const { handleView, handleEdit, handleDelete } = callbacks;
-  const baseColumn = adminTableBaseColumn({
-    handleView,
-    handleEdit,
-    handleDelete
-  });
-
+export const getEventListColumns = ({ handleView, handleEdit, handleDelete }) => {
+  const baseColumn = adminTableBaseColumn({ handleView, handleEdit, handleDelete });
   return [
     {
       title: '事件名称',
-      dataIndex: 'nameCn',
       key: 'nameCn',
+      dataIndex: 'nameCn',
       width: 180,
-      render: (nameCn, record) => (
+      render: (text, record) => (
         <div>
-          <div>{nameCn}</div>
+          <div>{text}</div>
           <div style={{ fontSize: 12, color: '#999' }}>{record.nameEn}</div>
         </div>
       ),
+    },
+    {
+      title: '分类',
+      dataIndex: 'categoryName',
+      key: 'categoryName',
+      width: 120,
     },
     {
       title: 'Topic',
@@ -34,12 +30,6 @@ export const getEventListColumns = (callbacks) => {
       ellipsis: true,
       render: (text) => <code>{text}</code>,
     },
-    {
-      title: '分类',
-      dataIndex: 'categoryName',
-      key: 'categoryName',
-      width: 120,
-    },
     ...baseColumn,
-  ];
-};
+  ]
+}

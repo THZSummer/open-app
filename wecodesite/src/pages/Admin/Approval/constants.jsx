@@ -1,13 +1,19 @@
 import React from 'react';
 import { Tag, Button, Space, Popconfirm } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { SUBSCRIPTION_STATUS } from '../../../utils/constants';
+import { SUBSCRIPTION_STATUS, ACTION_CONFIG } from '../../../utils/constants';
 
 export const LEVEL_MAP = {
   'resource': { text: '资源审批', color: 'blue' },
   'scene': { text: '场景审批', color: 'orange' },
   'global': { text: '全局审批', color: 'green' },
 };
+
+export const secondModalInfo = {
+  ...ACTION_CONFIG.delete,
+  title: '删除审批流程',
+  content: '此操作将永久删除该审批流程，无法恢复！'
+}
 
 export const BUSINESS_COLUMNS = [
   {
@@ -82,16 +88,16 @@ export const getApprovalColumns = ({ handleViewDetail, handleApprove, handleReje
 
 export const getMyApprovalColumns = ({ handleViewDetail }) => [
   {
-    title: '申请编号',
     dataIndex: 'id',
     key: 'id',
+    title: '申请编号',
     width: 180,
     ellipsis: true,
   },
   ...BUSINESS_COLUMNS,
   {
-    title: '操作',
     key: 'action',
+    title: '操作',
     width: 100,
     fixed: 'right',
     render: (_, record) => (

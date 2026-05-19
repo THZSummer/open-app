@@ -7,7 +7,7 @@ import { useAdminList } from '../../../hooks/useAdminList';
 import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
 import { getApiListColumns } from './constants';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-import { isInAdminWhitelist } from '../../../utils/common';
+import { getSecondModalInfo, isInAdminWhitelist } from '../../../utils/common';
 import ApiRegister from './ApiRegister';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
@@ -18,13 +18,6 @@ import './ApiList.m.less';
  */
 function ApiList() {
   const navigate = useNavigate();
-
-  /**
-   * 弹窗状态
-   */
-  const [removeConfirmVisible, setRemoveConfirmVisible] = useState(false);
-  const [removeTargetId, setRemoveTargetId] = useState(null);
-  const [removePending, setRemovePending] = useState(false);
 
   /**
    * 初始化权限校验
@@ -41,32 +34,36 @@ function ApiList() {
   }, []);
 
   const {
-    loadData,
-    loadCategories,
-    data: apiItems,
     categories,
-    categoryId,
-    status,
-    keyword,
-    loading,
-    pagination,
-    handleSearch,
-    handlePageChange,
-    handleCategoryChange,
-    handleStatusChange,
-    handleAdd,
-    handleEdit,
-    handleView,
-    handleSuccess,
-    modalVisible,
-    currentItem,
-    mode,
     closeModal,
+    currentItem,
+    data: appList,
+    handleAdd,
+    handleCategoryChange,
+    handleDelete,
+    handlecancelRomove,
+    handleDeleteClick,
+    handleEdit,
+    handlePageChange,
+    handleSearch,
+    handleStatusChange,
+    handleSuccess,
+    handleView,
+    keyword,
+    loadCategories,
+    loadData,
+    loading,
+    mode,
+    modalVisible,
+    removeConfirmVisible,
+    pagination,
     setKeyword,
+    status,
+    categoryId,
   } = useAdminList({
-    fetchList: fetchApiList,
-    deleteItem: deleteApi,
     fetchCategories: fetchCategoryTree,
+    deleteItem: deleteApi,
+    fetchList: fetchApiList,
   });
 
   /**
@@ -106,9 +103,9 @@ function ApiList() {
   }, [loadCategories, loadData]);
 
   const columns = getApiListColumns({
-    onView: handleView,
-    onEdit: handleEdit,
-    onDelete: openRemoveConfirm,
+    handleView,
+    handleEdit,
+    handleDelete,
   });
 
   return (
@@ -139,12 +136,12 @@ function ApiList() {
           />
 
           <Spin spinning={loading}>
-            {apiItems.length > 0 ? (
+            {appList.length > 0 ? (
               <>
                 <div className="table-wrapper">
                   <Table
                     columns={columns}
-                    dataSource={apiItems}
+                    dataSource={appList}
                     rowKey="id"
                     pagination={false}
                   />
@@ -177,12 +174,9 @@ function ApiList() {
 
           <DeleteConfirmModal
             open={removeConfirmVisible}
-            onClose={cancelRemove}
-            onConfirm={confirmRemove}
-            type="delete"
-            title="确认删除API"
-            content="删除后无法恢复，确定要删除这个API吗？"
-            loading={removePending}
+            onClose={handlecancelRomove}
+            onConfirm={handleDeleteClick}
+            modalInfo={getSecondModalInfo('API', 'delete', true)}
           />
         </div>
       </div>

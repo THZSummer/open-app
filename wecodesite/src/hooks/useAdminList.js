@@ -11,6 +11,7 @@ const createState = () => {
   const [status, setStatus] = useState(undefined);
   const [categories, setCategories] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
+  const [removeConfirmVisible, setRemoveConfirmVisible] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
   const [mode, setMode] = useState('create');
 
@@ -23,13 +24,14 @@ const createState = () => {
     status, setStatus,
     categories, setCategories,
     modalVisible, setModalVisible,
+    removeConfirmVisible, setRemoveConfirmVisible,
     currentItem, setCurrentItem,
     mode, setMode,
   };
 };
 
 const createListOperations = (state, options) => {
-  const { setLoading, setData, setPagination, keyword, categoryId, setCategoryId, status, setStatus, pagination, setCategories } = state;
+  const { setLoading, setData, setPagination, keyword, categoryId, setCategoryId, status, setStatus, pagination, setCategories, setKeyword } = state;
 
   const loadCategories = useCallback(async () => {
     if (!options.fetchCategories) return;
@@ -43,47 +45,50 @@ const createListOperations = (state, options) => {
 
   const loadData = useCallback(async (params = {}) => {
     setLoading(true);
-    try {
-      const finalKeyword = getFinalParam(params, 'keyword', keyword);
-      const finalCategoryId = getFinalParam(params, 'categoryId', categoryId);
-      const finalStatus = getFinalParam(params, 'status', status);
-      const finalPage = getFinalParam(params, 'curPage', pagination.curPage);
-      const finalSize = getFinalParam(params, 'pageSize', pagination.pageSize);
+    const finalKeyword = getFinalParam(params, 'keyword', keyword);
+    const finalCategoryId = getFinalParam(params, 'categoryId', categoryId);
+    const finalStatus = getFinalParam(params, 'status', status);
+    const finalPage = getFinalParam(params, 'curPage', pagination.curPage);
+    const finalSize = getFinalParam(params, 'pageSize', pagination.pageSize);
 
-      const requestParams = buildListRequestParams({
-        keyword: finalKeyword,
-        categoryId: finalCategoryId,
-        status: finalStatus,
-        curPage: finalPage,
-        pageSize: finalSize,
-      });
+    const requestParams = buildListRequestParams({
+      keyword: finalKeyword,
+      categoryId: finalCategoryId,
+      status: finalStatus,
+      curPage: finalPage,
+      pageSize: finalSize,
+    });
 
-      const result = await options.fetchList(requestParams);
+    const result = await options.fetchList(requestParams);
+    if (result && result.code === '200') {
       handleListResponse(result, setData, setPagination, finalPage, finalSize);
-    } catch (error) {
-      message.error('加载数据失败');
-    } finally {
-      setLoading(false);
+    } else {
+      message.error(result.messageZh || result.message || '加载数据失败');
     }
-  }, [keyword, categoryId, status, pagination.curPage, pagination.pageSize, options.fetchList]);
+    setLoading(false);
+  }, [keyword, categoryId, status, pagination.curPage, pagination.pageSize]);
 
-  const handleSearch = useCallback(() => {
-    loadData({ curPage: 1 });
-  }, [loadData]);
+  const handleSearch = useCallback((searchKey) => {
+    setKeyword(searchKey);
+    setPagination(INIT_PAGECONFIG);
+  }, []);
 
   const handlePageChange = useCallback((page, size) => {
-    loadData({ curPage: page, pageSize: size });
-  }, [loadData]);
+    setPagination({
+      curPage: page,
+      pageSize: size
+    })
+  }, []);
 
   const handleCategoryChange = useCallback((value) => {
     setCategoryId(value);
-    loadData({ categoryId: value });
-  }, [loadData]);
+    setPagination(INIT_PAGECONFIG);
+  }, []);
 
   const handleStatusChange = useCallback((value) => {
     setStatus(value);
-    loadData({ status: value });
-  }, [loadData]);
+    setPagination(INIT_PAGECONFIG);
+  }, []);
 
   return {
     loadData,
@@ -96,7 +101,7 @@ const createListOperations = (state, options) => {
 };
 
 const createCrudOperations = (state, options) => {
-  const { setCurrentItem, setMode, setModalVisible } = state;
+  const { currentItem, setCurrentItem, setMode, setModalVisible, setRemoveConfirmVisible, pagination } = state;
   let loadDataRef = null;
 
   const handleAdd = useCallback(() => {
@@ -105,38 +110,56 @@ const createCrudOperations = (state, options) => {
     setModalVisible(true);
   }, []);
 
-  const handleEdit = useCallback((record) => {
-    setCurrentItem({ id: record.id });
+  const handleEdit = useCallback((id) => {
+    setCurrentItem({ id });
     setMode('edit');
     setModalVisible(true);
   }, []);
 
-  const handleView = useCallback((record) => {
-    setCurrentItem({ id: record.id });
+  const handleView = useCallback((id) => {
+    setCurrentItem({ id });
     setMode('view');
     setModalVisible(true);
   }, []);
 
-  const handleDelete = useCallback(async (id) => {
+  const handleDelete = useCallback((id) => {
+    setCurrentItem({ id });
+    setRemoveConfirmVisible(true);
+  }, []);
+
+  const handlecancelRomove = useCallback(() => {
+    setCurrentItem(null);
+    setRemoveConfirmVisible(false);
+  }, []);
+
+  const handleDeleteClick = useCallback(async () => {
     if (!options.deleteItem) return;
-    const res = await options.deleteItem(id);
+    const res = await options.deleteItem(currentItem.id);
     if (res && res.code === '200') {
       message.success('删除成功');
-      loadDataRef?.();
+      setRemoveConfirmVisible(false);
+      setCurrentItem(null);
+      const curPageDataNum = Number(pagination.total) - pagination.pageSize * (pagination.curPage - 1) - 1;
+      loadDataRef?.({
+        curPage: curPageDataNum === 0 ? pagination.curPage - 1 : pagination.curPage,
+        pageSize: pagination.pageSize
+      });
     } else {
-      message.error(res?.message || '删除失败');
+      message.error(res?.messageZh || res?.message || '删除失败');
     }
-  }, [options.deleteItem]);
+  }, [currentItem, options.deleteItem]);
 
   const setLoadData = useCallback((fn) => {
     loadDataRef = fn;
-  }, []);
+  }, [currentItem, options.deleteItem]);
 
   return {
     handleAdd,
     handleEdit,
     handleView,
     handleDelete,
+    handlecancelRomove,
+    handleDeleteClick,
     setLoadData,
   };
 };

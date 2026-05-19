@@ -62,7 +62,7 @@ export const API_CONFIG = {
     APIS: '/categories/{id}/apis',
     EVENTS: '/categories/{id}/events',
     CALLBACKS: '/categories/{id}/callbacks',
-    REMOVEOWNER: 'categories/{id}/owners/{userId}'
+    REMOVEOWNER: '/categories/{id}/owners/{userId}'
   },
 
   APPROVALS: {

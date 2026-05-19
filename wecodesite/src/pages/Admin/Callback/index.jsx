@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { fetchCallbackList, deleteCallback } from './thunk';
@@ -8,7 +8,7 @@ import { useAdminList } from '../../../hooks/useAdminList';
 import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
 import { fetchCategoryTree } from '../Category/thunk';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-import { isInAdminWhitelist } from '../../../utils/common';
+import { getSecondModalInfo, isInAdminWhitelist } from '../../../utils/common';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import './CallbackList.m.less';
@@ -18,13 +18,6 @@ import './CallbackList.m.less';
  */
 function CallbackList() {
   const navigate = useNavigate();
-
-  /**
-   * 删除弹窗相关状态
-   */
-  const [delDialogVisible, setDelDialogVisible] = useState(false);
-  const [delTargetId, setDelTargetId] = useState(null);
-  const [delProcessing, setDelProcessing] = useState(false);
 
   /**
    * 页面初始化
@@ -41,11 +34,14 @@ function CallbackList() {
   }, []);
 
   const {
-    data: callbackData,
+    data: callbackList,
     loading,
     handleAdd,
     handleView,
     handleEdit,
+    handlecancelRomove,
+    handleDeleteClick,
+    handleDelete,
     handleSuccess,
     setKeyword,
     handleSearch,
@@ -54,6 +50,7 @@ function CallbackList() {
     pagination,
     handlePageChange,
     modalVisible,
+    removeConfirmVisible,
     currentItem,
     mode,
     closeModal,
@@ -69,46 +66,15 @@ function CallbackList() {
     fetchCategories: fetchCategoryTree,
   });
 
-  /**
-   * 删除相关操作
-   */
-  const triggerDelete = (id) => {
-    setDelTargetId(id);
-    setDelDialogVisible(true);
-  };
-
-  const executeDelete = async () => {
-    if (!delTargetId) return;
-
-    setDelProcessing(true);
-    const result = await deleteCallback(delTargetId);
-
-    if (result && result.code === '200') {
-      message.success('删除成功');
-      setDelDialogVisible(false);
-      setDelTargetId(null);
-      loadData();
-    } else {
-      message.error(result?.messageZh || result?.message || '删除失败');
-    }
-
-    setDelProcessing(false);
-  };
-
-  const dismissDelete = () => {
-    setDelDialogVisible(false);
-    setDelTargetId(null);
-  };
-
   useEffect(() => {
     loadCategories();
     loadData();
   }, [loadCategories, loadData]);
 
   const columns = getCallbackListColumns({
-    onView: handleView,
-    onEdit: handleEdit,
-    onDelete: triggerDelete,
+    handleView,
+    handleEdit,
+    handleDelete,
   });
 
   return (
@@ -139,12 +105,12 @@ function CallbackList() {
           />
 
           <Spin spinning={loading}>
-            {callbackData.length > 0 ? (
+            {callbackList.length > 0 ? (
               <>
                 <div className="table-wrapper">
                   <Table
                     columns={columns}
-                    dataSource={callbackData}
+                    dataSource={callbackList}
                     rowKey="id"
                     pagination={false}
                   />
@@ -176,13 +142,10 @@ function CallbackList() {
           />
 
           <DeleteConfirmModal
-            open={delDialogVisible}
-            onClose={dismissDelete}
-            onConfirm={executeDelete}
-            type="delete"
-            title="确认删除回调"
-            content="删除后无法恢复，确定要删除这个回调吗？"
-            loading={delProcessing}
+            open={removeConfirmVisible}
+            onClose={handlecancelRomove}
+            onConfirm={handleDeleteClick}
+            modalInfo={getSecondModalInfo('回调', 'delete', true)}
           />
         </div>
       </div>

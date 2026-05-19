@@ -1,37 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { ACTION_CONFIG } from '../../utils/constants';
 
-/**
- * 删除确认弹窗组件
- *
- * @param {Object} props - 组件属性
- * @param {boolean} props.open - 弹窗显示状态
- * @param {Function} props.onClose - 关闭回调
- * @param {Function} props.onConfirm - 确认回调
- * @param {string} [props.type='delete'] - 弹窗类型，支持delete/withdraw
- * @param {string} [props.title] - 自定义标题
- * @param {string} [props.content] - 自定义内容
- * @param {boolean} [props.loading] - 加载状态
- * @param {string} [props.requireConfirmText] - 需要输入确认文字
- */
 function ActionConfirmModal({
   open,
   onClose,
   onConfirm,
-  type = 'delete',
-  title,
-  content,
+  modalInfo,
   loading,
   requireConfirmText = null
 }) {
   const [confirmText, setConfirmText] = useState('');
-
-  // 获取配置
-  const config = ACTION_CONFIG[type] || ACTION_CONFIG.delete;
-  const modalTitle = title || config.defaultTitle;
-  const modalContent = content || config.defaultContent;
 
   useEffect(() => {
     if (!open) {
@@ -64,8 +43,8 @@ function ActionConfirmModal({
     >
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <ExclamationCircleOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
-        <div style={{ fontSize: 16, marginBottom: 8 }}>{modalTitle}</div>
-        <div style={{ color: '#8c8c8c' }}>{modalContent}</div>
+        <div style={{ fontSize: 16, marginBottom: 8 }}>{modalInfo.title}</div>
+        <div style={{ color: '#8c8c8c' }}>{modalInfo.content}</div>
       </div>
 
       {requireConfirmText && (
@@ -106,7 +85,7 @@ function ActionConfirmModal({
           disabled={isConfirmDisabled()}
           style={{
             padding: '6px 24px',
-            background: config.dangerColor,
+            background: modalInfo.dangerColor,
             color: '#fff',
             border: 'none',
             borderRadius: 4,
@@ -114,7 +93,7 @@ function ActionConfirmModal({
             opacity: isConfirmDisabled() ? 0.7 : 1
           }}
         >
-          {loading ? config.loadingText : config.confirmButtonText}
+          {loading ? modalInfo.loadingText : modalInfo.confirmButtonText}
         </button>
       </div>
     </Modal>
