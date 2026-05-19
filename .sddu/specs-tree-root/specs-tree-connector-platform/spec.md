@@ -168,7 +168,7 @@ graph TB
 | FR | 名称 | 描述 | 验收标准 |
 |----|------|------|---------|
 | FR-001 | 连接器创建 | 创建连接器基本信息 | • **名称**：连接器名称<br/>• **图标**：连接器图标<br/>• **描述**：连接器功能描述<br/>• **类型**：协议类型（HTTP / MySQL / Redis / Kafka / gRPC / 自定义…）<br/>• 创建后连接器基本信息和第一个版本（草稿状态）同时生成 |
-| FR-002 | 连接器编辑 | 编辑连接器基本信息 | • 支持修改名称、图标、描述、类型<br/>• 编辑基本信息不生成新版本，不影响已有版本<br/>• 已上架连接器的基本信息变更需重新审批 |
+| FR-002 | 连接器编辑 | 编辑连接器基本信息 | • 支持修改名称、图标、描述、类型<br/>• **编辑基本信息时同步更新到最新版本的 basic_info_fields**，保证使用侧始终看到最新的基本信息<br/>• **特殊：若所有版本均已发布（无草稿版本），编辑基本信息时自动创建一个新的草稿版本**，基于最新已发布版本复制连接配置，只需更新 basic_info_fields<br/>• 已上架连接器的基本信息变更需重新审批 |
 | FR-003 | 连接器删除 | 删除连接器基本信息和所有版本 | • 删除前校验：无运行中的连接流引用该连接器才允许删除<br/>• 有引用时提示影响范围，禁止删除或要求先停用关联连接流<br/>• 删除后不可恢复 |
 | FR-004 | 连接器列表查看 | 浏览可用连接器目录 | • 列表展示：连接器名称、图标、描述、类型、可见性（公共/私有）、最新版本<br/>• 公共连接器对所有应用可见，私有连接器仅创建者可见<br/>• 支持按类型、可见性过滤；支持搜索 |
 | FR-005 | 连接器上架/下架 | 控制连接器的可见范围 | • **上架为公共连接器**：通过审批后对所有应用可见，可供编排使用<br/>• **保持私有**：仅当前应用可见和使用<br/>• **下架**：从公共列表中移除，已引用该连接器的运行中连接流不受影响<br/>• 上架/下架操作与版本独立，一个连接器可反复上架/下架 |
@@ -360,8 +360,8 @@ flowchart TB
 
 | 数据实体 | 关键字段 | 说明 |
 |---------|---------|------|
-| **Connector** | id, name, icon, description, type(http/mysql/redis/kafka/grpc/…), visibility(public/private), creator_id | 连接器基本信息（连接器本身） |
-| **ConnectorVersion** | id, connector_id, version_no, status(draft/released), **basic_info_snapshot** (name/icon/description/type), protocol_type, protocol_address, auth_type, auth_config_encrypted, input_schema, output_schema, timeout, rate_limit, changelog, published_at | 连接器版本（发布时快照连接器基本信息+连接配置） |
+| **Connector** | id, name, icon, description, type(http/mysql/redis/kafka/grpc/…), visibility(public/private), creator_id | 连接器基本信息（可编辑的主副本） |
+| **ConnectorVersion** | id, connector_id, version_no, status(draft/released), **basic_info_fields** (name/icon/description/type), **connection_config_fields** (protocol_type, protocol_address, auth_type, auth_config_encrypted, input_schema, output_schema, timeout, rate_limit), changelog, published_at | 连接器版本（含基本信息快照+连接配置；编辑基本信息时同步更新最新版本的 basic_info_fields） |
 | **Flow** | id, name, description, entry_node_type(event/webhook/cron/manual), entry_node_config, status, version, creator_id | 连接流主体 |
 | **FlowNode** | id, flow_id, node_type(entry/connector/exit), connector_id, connector_version_id, config, position | 连接流节点（入口节点/连接器节点/出口节点） |
 | **FlowEdge** | id, flow_id, source_node_id, target_node_id, data_mapping | 连接流连线（数据映射） |
