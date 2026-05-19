@@ -20,9 +20,92 @@
 
 ---
 
-## 2. 表结构定义
+## 2. 通用数据库设计规范
 
-### 2.1 `cp_connector` — 连接器基本信息
+> 💡 以下规范沿用能力开放平台（CAP-OPEN-001 `plan.md §4.2`）已确立的数据库设计标准，连接器平台保持一致。
+
+### 2.1 命名规范
+
+| 规则 | 说明 | 连接器平台示例 |
+|------|------|---------------|
+| **表前缀** | 能力平台使用 `openplatform_v2_`，连接器平台使用 `cp_`（Connector Platform） | `cp_connector` |
+| **表后缀** | 统一使用 `_t` 后缀表示表 | `cp_connector_t`（此规范在连接器平台改为无后缀，**注意差异**） |
+| **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | 连接器平台暂不使用属性表模式 |
+| **命名风格** | 小写字母 + 下划线分隔 | `cp_execution_record` |
+| **索引命名** | `idx_字段名` 或 `idx_字段名1_字段名2` | `idx_connector_id`, `idx_flow_id_status` |
+| **唯一索引命名** | `uk_字段名` | `uk_connector_id`, `uk_version_id` |
+
+### 2.2 主键规范
+
+| 规则 | 说明 |
+|------|------|
+| **主键类型** | BIGINT，自增（连接器平台）/ 雪花ID（能力平台） |
+| **主键命名** | 统一使用 `id` |
+| **业务ID** | 通过独立 `varchar(32)` 字段存储业务标识（如 `connector_id`），便于分布式场景和 URL 安全 |
+| **关联字段** | 使用逻辑外键（存储关联 ID），**不使用物理外键约束**，关联关系由应用层维护 |
+
+> **禁止使用外键**：所有表关联关系通过存储逻辑字段实现，不使用数据库物理外键约束（FOREIGN KEY）。关联关系由应用层维护。— 来源：能力开放平台规范
+
+### 2.3 审计字段规范
+
+所有业务表必须包含以下审计字段：
+
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| `created_at` | DATETIME(3) | 创建时间，默认 `CURRENT_TIMESTAMP(3)` |
+| `updated_at` | DATETIME(3) | 更新时间，默认 `CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)` |
+| `created_by` | VARCHAR(64) | 创建人账号 |
+| `updated_by` | VARCHAR(64) | 更新人账号 |
+
+> 时间字段统一使用 `DATETIME(3)` 精确到毫秒，确保高并发场景下的时间精度。
+
+### 2.4 枚举字段规范
+
+| 规则 | 说明 |
+|------|------|
+| **字段类型** | 状态枚举使用 `varchar(20)`（连接器平台，可读性强）/ `TINYINT`（能力平台） |
+| **注释说明** | 在 COMMENT 中说明所有枚举值含义 |
+| **示例** | `varchar(20) NOT NULL DEFAULT 'draft' COMMENT '状态：draft / published'` |
+
+> 连接器平台选择 varchar 枚举值（替代 TINYINT），原因是：状态值可读性强、日志排查直观、API 返回值无需转换映射。— 遵循与能力平台一致的文档规范，具体实现选择适配连接器场景。
+
+### 2.5 Scope 命名规范（复用能力开放平台）
+
+连接器平台复用能力开放平台的 Scope 权限模型，Scope 命名遵循统一规范：
+
+**格式**: `{资源类型}:{模块}:{资源标识}`
+
+| 资源类型 | Scope 示例 | 说明 |
+|----------|------------|------|
+| API | `api:im:send-message` | IM 模块发送消息 API |
+| Event | `event:im:message-received` | IM 模块消息接收事件 |
+
+**命名规则**：
+
+| 部分 | 说明 | 示例 |
+|------|------|------|
+| `{资源类型}` | api / event / callback | `api` |
+| `{模块}` | 业务模块名 | `im`、`meeting`、`approval` |
+| `{资源标识}` | 具体资源的唯一标识 | `send-message`、`message-received` |
+
+> 连接器定义中若引用内部系统 API/事件，需通过 Scope 获得授权，Scope 命名必须符合上述规范，确保全局唯一。
+
+### 2.6 名称和描述字段规范
+
+涉及名称、描述场景的字段，统一使用中英文双语（与能力开放平台一致）：
+
+| 字段类型 | 字段命名 | 类型 | 说明 |
+|----------|----------|------|------|
+| **名称** | `name` | VARCHAR(100) | 名称（连接器平台暂用单字段，后续可扩展 `name_cn`/`name_en`） |
+| **描述** | `description` | VARCHAR(2000) | 描述（连接器平台暂用单字段） |
+
+> 能力开放平台使用 `name_cn`/`name_en` 双语设计。连接器平台 MVP 阶段暂用单字段 `name`/`description`，后续如需国际化可扩展为 `name_cn`/`name_en` + `description_cn`/`description_en`。
+
+---
+
+## 3. 表结构定义
+
+### 3.1 `cp_connector` — 连接器基本信息
 
 ```sql
 CREATE TABLE `cp_connector` (
@@ -50,7 +133,7 @@ CREATE TABLE `cp_connector` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器基本信息表';
 ```
 
-### 2.2 `cp_connector_version` — 连接器版本
+### 3.2 `cp_connector_version` — 连接器版本
 
 ```sql
 CREATE TABLE `cp_connector_version` (
@@ -125,10 +208,9 @@ CREATE TABLE `cp_connector_version` (
 
 ---
 
-### 2.3 `cp_flow` — 连接流基本信息
+### 3.3 `cp_flow` — 连接流基本信息
 
-```sql
-CREATE TABLE `cp_flow` (
+ CREATE TABLE `cp_flow` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `flow_id`         varchar(32)  NOT NULL                  COMMENT '业务ID（如 flow_xxxxxxxx）',
   `name`            varchar(100) NOT NULL                  COMMENT '连接流名称',
@@ -149,7 +231,7 @@ CREATE TABLE `cp_flow` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接流基本信息表';
 ```
 
-### 2.4 `cp_flow_version` — 连接流版本
+### 3.4 `cp_flow_version` — 连接流版本
 
 ```sql
 CREATE TABLE `cp_flow_version` (
@@ -240,7 +322,7 @@ CREATE TABLE `cp_flow_version` (
 
 ---
 
-### 2.5 `cp_flow_node` — 流节点定义
+### 3.5 `cp_flow_node` — 流节点定义
 
 ```sql
 CREATE TABLE `cp_flow_node` (
@@ -263,7 +345,7 @@ CREATE TABLE `cp_flow_node` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流节点定义表';
 ```
 
-### 2.6 `cp_flow_edge` — 流连线定义
+### 3.6 `cp_flow_edge` — 流连线定义
 
 ```sql
 CREATE TABLE `cp_flow_edge` (
@@ -304,7 +386,7 @@ CREATE TABLE `cp_flow_edge` (
 ]
 ```
 
-### 2.7 `cp_execution_record` — 执行记录
+### 3.7 `cp_execution_record` — 执行记录
 
 ```sql
 CREATE TABLE `cp_execution_record` (
@@ -334,7 +416,7 @@ CREATE TABLE `cp_execution_record` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行记录表';
 ```
 
-### 2.8 `cp_execution_step` — 执行步骤详情
+### 3.8 `cp_execution_step` — 执行步骤详情
 
 ```sql
 CREATE TABLE `cp_execution_step` (
@@ -361,7 +443,7 @@ CREATE TABLE `cp_execution_step` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行步骤详情表';
 ```
 
-### 2.9 `cp_connector_auth_config` — 连接器认证凭证
+### 3.9 `cp_connector_auth_config` — 连接器认证凭证
 
 ```sql
 CREATE TABLE `cp_connector_auth_config` (
@@ -387,7 +469,7 @@ CREATE TABLE `cp_connector_auth_config` (
 
 ---
 
-## 3. 表关系总览
+## 4. 表关系总览
 
 ```
 cp_connector (1) ──→ (N) cp_connector_version
@@ -404,7 +486,7 @@ cp_connector_version (1) ──→ (N) cp_connector_auth_config (N) ──→ ap
 
 ---
 
-## 4. 数据归档与清理策略
+## 5. 数据归档与清理策略
 
 | 表 | 保留策略 | 清理方式 |
 |---|---------|---------|
@@ -415,7 +497,7 @@ cp_connector_version (1) ──→ (N) cp_connector_auth_config (N) ──→ ap
 
 ---
 
-## 5. 版本号规则
+## 6. 版本号规则
 
 | 实体 | 业务ID 前缀 | 示例 |
 |------|-----------|------|
