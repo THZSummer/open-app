@@ -501,7 +501,7 @@ graph LR
 
 ### 5.1 连接器平台使用全流程
 
-从消费方视角展示从发现连接器到连接流运行的完整流程。
+从消费方视角展示从注册外部系统到连接流运行的完整流程。
 
 ```mermaid
 sequenceDiagram
@@ -513,28 +513,28 @@ sequenceDiagram
     participant Runtime as 运行时引擎
     
     rect rgb(230, 220, 255)
-        note right of Inner: 阶段 0：连接器上架（前置条件）
-        Inner->>ConnPlat: 注册平台连接器（IM/云盘/审批等）
+        note right of Inner: 阶段 0：连接器上架（注册外部依赖）
+        Inner->>ConnPlat: 注册平台连接器（IM-发送消息等）
         ConnPlat->>Operator: 提交审批
         Operator->>ConnPlat: 审批通过，平台连接器上架
-        Third->>ConnPlat: 注册连接器（ERP/CRM/OA等）
+        Third->>ConnPlat: 注册连接器（工单系统-创建工单等）
         ConnPlat->>Operator: 提交审批
         Operator->>ConnPlat: 审批通过，连接器上架
     end
     
     rect rgb(200, 230, 255)
-        note right of Third: 阶段 1：选择连接器
-        Third->>ConnPlat: 浏览已上架的连接器
-        Third->>ConnPlat: 选择流入口节点（触发器类型）
-        Third->>ConnPlat: 选择连接器节点（动作）
+        note right of Third: 阶段 1：声明依赖（选择连接器）
+        Third->>ConnPlat: 浏览已上架的连接器目录
+        Third->>ConnPlat: 选定流依赖的连接器<br/>（如：IM-发送消息、工单系统-创建工单）
     end
     
     rect rgb(230, 255, 200)
-        note right of Consumer: 阶段 2：编排连接流
+        note right of Third: 阶段 2：编排连接流
         Third->>ConnPlat: 创建连接流
-        Third->>ConnPlat: 配置触发条件
-        Third->>ConnPlat: 添加动作步骤
-        Third->>ConnPlat: 配置数据映射
+        Third->>ConnPlat: 配置流入口节点（选择触发类型+参数）
+        Third->>ConnPlat: 添加流逻辑节点<br/>（连接器节点/控制节点/数据处理节点等）
+        Third->>ConnPlat: 配置节点间数据映射与转换
+        Third->>ConnPlat: 定义流出口节点（返回值）
     end
     
     rect rgb(255, 230, 200)
@@ -542,7 +542,7 @@ sequenceDiagram
         Third->>ConnPlat: 手动触发测试运行
         ConnPlat->>Runtime: 调度执行
         Runtime->>CapPlat: 调用 API/订阅事件
-        Runtime-->>Third: 返回执行结果
+        Runtime-->>Third: 返回执行结果与日志
         Third->>Operator: 提交部署申请
         Operator->>ConnPlat: 审批通过
     end
