@@ -176,14 +176,15 @@ graph TB
 
 #### 3.1.2 连接器连接配置
 
-> 💡 **定位**：连接配置属于连接器版本的信息，定义连接器如何连接到外部系统。编辑连接配置即生成新草稿版本，可重复编辑，点击发布后生成新的已发布版本。
+> 💡 **定位**：连接配置属于连接器版本的信息，定义连接器如何连接到外部系统。编辑连接配置即编辑最新未发布的草稿版本，发布时**连接器基本信息+连接配置**一并写入版本表快照。使用侧直接使用最新版本即可。
 
 | FR | 名称 | 描述 | 验收标准 |
 |----|------|------|---------|
-| FR-007 | 连接配置定义 | 定义连接器的连接配置信息 | • **协议类型**：根据连接器类型确定（HTTP/MySQL/Redis/Kafka/gRPC 等）<br/>• **协议地址**：URL / 连接串 / 主机:端口<br/>• **认证方式**：支持 AKSK / OAuth 2.0 / Basic Auth / API Key / 无认证<br/>• **入参定义**：输入参数的 Schema（字段名、类型、是否必填）<br/>• **出参定义**：输出返回值 Schema<br/>• **超时设置**：连接超时、读取超时可配置<br/>• **限流设置**：每秒/每分钟最大请求数可配置 |
-| FR-008 | 连接配置编辑与版本管理 | 编辑连接配置生成新草稿版本 | • 编辑连接配置即创建新草稿版本，可重复编辑<br/>• 支持查看版本历史（版本号、创建时间、状态、变更说明）<br/>• 支持回滚到任意已发布版本<br/>• 已发布版本不可编辑（只读），仅草稿版本可编辑 |
-| FR-009 | 连接配置版本发布 | 将草稿版本发布为已发布版本 | • 发布前校验：连接配置完整（协议地址、认证方式、参数 Schema 等）<br/>• 发布后自动进入审批流程（复用审批引擎）<br/>• 审批通过后生成新的已发布版本，版本号递增<br/>• 已发布版本可供连接流引用，草稿版本不可引用<br/>• 已引用旧版本的连接流不受新版本发布影响 |
-| FR-010 | 连接认证凭证配置 | 配置连接器认证的具体凭证信息 | • 为连接配置的认证方式填充具体凭证（AccessKey/SecretKey、Token URL / Client ID / Client Secret 等）<br/>• 凭证加密存储，界面脱敏显示<br/>• 支持凭证的创建、编辑、删除
+| FR-007 | 连接配置查看 | 查看连接器的连接配置（默认查询最新版本） | • 默认展示最新已发布版本的连接配置<br/>• 无已发布版本时展示最新草稿版本<br/>• 展示内容：协议类型、协议地址、认证方式、入参 Schema、出参 Schema、超时设置、限流设置 |
+| FR-008 | 连接配置编辑 | 编辑连接配置（仅允许编辑最新未发布的版本） | • 编辑目标始终为「最新未发布的草稿版本」<br/>• 无草稿版本时，基于最新已发布版本创建草稿<br/>• 草稿版本可重复编辑，每次保存覆盖当前草稿<br/>• 已发布版本不可编辑（只读） |
+| FR-009 | 版本切换 | 切换查看历史版本的连接配置 | • 支持查看版本列表（版本号、发布时间、状态、变更说明）<br/>• 支持切换到任意历史版本查看其连接配置（只读）<br/>• 版本切换仅为查看操作，不改变当前编辑目标 |
+| FR-010 | 版本发布 | 发布一个新的连接器版本 | • **重要**：发布时，连接器版本表将**当时连接器基本信息**（名称、图标、描述、类型）与连接配置一并写入快照<br/>• 每次发布生成新的版本号（递增），状态变为「已发布」<br/>• 发布前校验：连接配置完整（协议地址、认证方式、参数 Schema 等）<br/>• 发布后自动进入审批流程（复用审批引擎）<br/>• 审批通过后新版可用，使用侧直接使用最新版本<br/>• 已引用旧版本的运行中连接流不受影响 |
+| FR-011 | 连接认证凭证配置 | 配置连接器认证的具体凭证信息 | • 为连接配置的认证方式填充具体凭证（AccessKey/SecretKey、Token URL / Client ID / Client Secret 等）<br/>• 凭证加密存储，界面脱敏显示<br/>• 支持凭证的创建、编辑、删除 |
 
 ### 3.2 连接流编排（消费方视角）
 
@@ -360,7 +361,7 @@ flowchart TB
 | 数据实体 | 关键字段 | 说明 |
 |---------|---------|------|
 | **Connector** | id, name, icon, description, type(http/mysql/redis/kafka/grpc/…), visibility(public/private), creator_id | 连接器基本信息（连接器本身） |
-| **ConnectorVersion** | id, connector_id, version_no, status(draft/released), protocol_type, protocol_address, auth_type, auth_config_encrypted, input_schema, output_schema, timeout, rate_limit, changelog | 连接器版本（连接配置信息） |
+| **ConnectorVersion** | id, connector_id, version_no, status(draft/released), **basic_info_snapshot** (name/icon/description/type), protocol_type, protocol_address, auth_type, auth_config_encrypted, input_schema, output_schema, timeout, rate_limit, changelog, published_at | 连接器版本（发布时快照连接器基本信息+连接配置） |
 | **Flow** | id, name, description, entry_node_type(event/webhook/cron/manual), entry_node_config, status, version, creator_id | 连接流主体 |
 | **FlowNode** | id, flow_id, node_type(entry/connector/exit), connector_id, connector_version_id, config, position | 连接流节点（入口节点/连接器节点/出口节点） |
 | **FlowEdge** | id, flow_id, source_node_id, target_node_id, data_mapping | 连接流连线（数据映射） |
@@ -524,7 +525,7 @@ flowchart TB
 
 | 需求挖掘报告需求编号 | 对应本规范 FR |
 |---------------------|--------------|
-| MH-01 平台连接器 | FR-001 ~ FR-010 |
+| MH-01 平台连接器 | FR-001 ~ FR-011 |
 | MH-02 连接器生命周期管理 | FR-001 ~ FR-006, FR-006a, FR-043 |
 | MH-03 连接流线性编排 | FR-014 ~ FR-020, FR-019a |
 | MH-04 连接流生命周期管理 | FR-021 ~ FR-026, FR-044 |
@@ -554,6 +555,7 @@ flowchart TB
 | **v2.1** | **2026-05-19** | **按业务模型修正：\"动作\"非独立业务对象，移除整个\"3.1.2 动作定义\"章节，合并 FR-009/FR-010/FR-011 为 FR-009（连接器调用方式定义，单一功能点）；全文\"动作节点\"→\"连接器节点\"；数据模型移除 ConnectorAction，FlowNode.node_type:connector_action→connector，FR 总数 44→42** | AI Assistant |
 | **v2.2** | **2026-05-19** | **§3 子目录重构成按用户角色视角组织：3.1 连接器管理（供给方视角）、3.2 连接流编排（消费方视角）、3.3 运行时与监控（运维视角）、3.4 平台治理（运营方视角）；3.2 从 6 子节合并为 2 子节，3.3 从 3+1 合并为 2 子节** | AI Assistant |
 | **v2.3** | **2026-05-19** | **§3.1 按两层模型重写：连接器基本信息（名称/图标/描述/类型）+ 连接配置（协议/认证/参数/超时/限流）属于版本；编辑连接配=新草稿版本→发布=已发布版本；上架为公共（所有应用可用）vs 私有（仅当前应用）；FR 重新编号 FR-001~FR-010，数据模型新增 ConnectorVersion，移除 ConnectorAuth** | AI Assistant |
+| **v2.4** | **2026-05-19** | **拆分 FR-007/FR-008 为 FR-007(查看) / FR-008(编辑) / FR-009(版本切换) / FR-010(发布)，FR-011(凭证配置)；发布时快照连接器基本信息+连接配置入版本表；使用侧直接使用最新版本；FR 总数 42→43** | AI Assistant |
 
 ---
 
