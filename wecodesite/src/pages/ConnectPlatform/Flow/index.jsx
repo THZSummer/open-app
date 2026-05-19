@@ -109,7 +109,7 @@ function FlowList() {
    * 新建连接流
    */
   const handleAdd = () => {
-    navigate('/admin/flows/new');
+    navigate('/connect/flows/new');
   };
 
   /**
@@ -117,7 +117,7 @@ function FlowList() {
    * @param {Object} record - 连接流记录
    */
   const handleEdit = (record) => {
-    navigate(`/admin/flows/${record.id}/edit`);
+    navigate(`/connect/flows/${record.id}/edit`);
   };
 
   /**
