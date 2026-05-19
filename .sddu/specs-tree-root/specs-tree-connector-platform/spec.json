@@ -2,12 +2,12 @@
   "feature": "connector-platform",
   "identifier": "CONN-PLAT-001",
   "name": "连接器平台",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "state": "specified",
   "priority": "P1",
   "createdAt": "2026-05-14",
   "discoveredAt": "2026-05-14",
-  "specifiedAt": "2026-05-18",
+  "specifiedAt": "2026-05-19",
   "files": {
     "discovery": "discovery-report.md",
     "discoveryAnalysis": "discovery-analysis.md",
@@ -15,17 +15,17 @@
     "spec": "spec.md"
   },
   "summary": {
-    "userStories": 13,
-    "functionalRequirements": 45,
+    "userStories": 16,
+    "functionalRequirements": 44,
     "nonFunctionalRequirements": 22,
     "edgeCases": 12,
-    "openQuestions": 6
+    "openQuestions": 7
   },
   "mvp": {
     "inScope": [
-      "预置连接器",
+      "平台连接器（纯出站端点定义）",
       "连接器生命周期管理",
-      "连接流可视化拖拽编排（线性）",
+      "连接流可视化拖拽编排（线性：流入口节点→连接器节点→流出口节点）",
       "连接流生命周期管理",
       "基础数据转换（字段映射）",
       "平台托管运行时",
@@ -33,9 +33,11 @@
       "复用能力开放平台 Scope 和审批流"
     ],
     "outOfScope": [
-      "条件分支/循环/子流程编排",
-      "代码模式编排与互转",
-      "函数库和自定义脚本",
+      "控制节点（分支/循环/并行）",
+      "数据处理节点（函数库和自定义脚本）",
+      "错误处理节点",
+      "异步节点",
+      "子流程节点",
       "连接器开发 SDK",
       "连接器市场与发现",
       "自定义连接器发布",

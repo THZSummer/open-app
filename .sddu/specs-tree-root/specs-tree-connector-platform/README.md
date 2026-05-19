@@ -11,10 +11,10 @@
 
 | 文件 | 说明 |
 |------|------|
-| [discovery-report.md](discovery-report.md) | 需求挖掘报告 (v2.2) |
+| [discovery-report.md](discovery-report.md) | 需求挖掘报告 (v3.1) |
 | [discovery-analysis.md](discovery-analysis.md) | 需求挖掘分析 |
 | [discovery-session-log.md](discovery-session-log.md) | 需求挖掘会话记录 |
-| [spec.md](spec.md) | 规范文档 |
+| [spec.md](spec.md) | 规范文档 (v2.0) |
 | [spec.json](spec.json) | Feature 元数据 |
 | [state.json](state.json) | Feature 状态 |
 
@@ -22,8 +22,8 @@
 
 | 维度 | 数量 |
 |------|------|
-| 用户故事 | 13 |
-| 功能需求 (FR) | 45 |
+| 用户故事 | 16 |
+| 功能需求 (FR) | 43（删除旧 FR-007/FR-008，新增 FR-019a） |
 | 非功能需求 (NFR) | 22 |
 | 边界情况 (EC) | 12 |
-| 开放问题 | 6 |
+| 开放问题 | 7 |
