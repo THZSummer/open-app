@@ -1,39 +1,37 @@
 /**
  * ========================================
- * 连接流管理 - 列表页面主组件
+ * 连接器管理 - 列表页面主组件
  * ========================================
  *
  * 功能：
- * - 展示连接流列表（分页、搜索）
- * - 创建新的连接流
- * - 编辑已有连接流
- * - 删除连接流
+ * - 展示连接器列表（分页、搜索）
+ * - 创建新的连接器
+ * - 编辑已有连接器
+ * - 删除连接器
  */
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message, Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { fetchFlowList, deleteFlow } from './thunk';
+import { fetchConnectorList, deleteConnector } from './thunk';
 import ConnectorSearchForm from '../../../components/ConnectorSearchForm/ConnectorSearchForm';
 import PageList from '../../../components/PageList/PageList';
-import ActionConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
+import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
-import { pageInfo, flowSearchConfig, flowStatusOptions, getFlowColumns } from './constants';
+import { pageInfo, searchConfig, connectorStatusOptions, getConnectorColumns } from './constants';
 import { INIT_PAGECONFIG } from '../../../utils/constants';
-import './Flow.m.less';
+import './Connector.m.less';
+import { getSecondModalInfo } from '../../../utils/common';
 
-/**
- * 连接流列表页面主组件
- */
-function FlowList() {
+function ConnectorList() {
   const navigate = useNavigate();
 
   /**
    * State定义
    */
 
-  // 连接流列表数据
+  // 连接器列表数据
   const [data, setData] = useState([]);
 
   // 加载状态
@@ -65,7 +63,7 @@ function FlowList() {
     };
 
     // 调用API
-    const result = await fetchFlowList(finalParams);
+    const result = await fetchConnectorList(finalParams);
 
     if (result && result.code === '200') {
       // 更新列表数据
@@ -105,23 +103,23 @@ function FlowList() {
   };
 
   /**
-   * 新建连接流
+   * 新建连接器
    */
   const handleAdd = () => {
-    navigate('/admin/flows/new');
+    navigate('/connect/connector-editor');
   };
 
   /**
-   * 编辑连接流
-   * @param {Object} record - 连接流记录
+   * 编辑连接器
+   * @param {Object} record - 连接器记录
    */
   const handleEdit = (record) => {
-    navigate(`/admin/flows/${record.id}/edit`);
+    navigate(`/connect/connector-editor?id=${record.id}`);
   };
 
   /**
    * 点击删除按钮
-   * @param {string} id - 连接流ID
+   * @param {string} id - 连接器ID
    */
   const handleDeleteClick = (id) => {
     setDeleteItemId(id);
@@ -129,13 +127,13 @@ function FlowList() {
   };
 
   /**
-   * 确认删除连接流
+   * 确认删除连接器
    */
   const handleDeleteConfirm = async () => {
     if (!deleteItemId) return;
 
     setDeleteLoading(true);
-    const res = await deleteFlow(deleteItemId);
+    const res = await deleteConnector(deleteItemId);
 
     if (res && res.code === '200') {
       message.success('删除成功');
@@ -167,7 +165,7 @@ function FlowList() {
   /**
    * 获取表格列配置
    */
-  const columns = getFlowColumns({
+  const columns = getConnectorColumns({
     handleEdit,
     handleDeleteClick,
   });
@@ -182,19 +180,14 @@ function FlowList() {
 
       {/* 主内容区 */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        <div className="flow-management-page">
+        <div className="connector-management-page">
           {/* 页面头部 */}
           <div className="page-header">
             <div className="page-header-left">
               <h4 className="page-title">{pageInfo.title}</h4>
               <span className="page-desc">{pageInfo.description}</span>
             </div>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-              style={{ justifyContent: 'center', borderRadius: 6 }}
-            >
+            <Button type="primary" onClick={handleAdd} style={{ justifyContent: 'center', borderRadius: 6 }}>
               {pageInfo.addButtonText}
             </Button>
           </div>
@@ -203,8 +196,8 @@ function FlowList() {
           <ConnectorSearchForm
             keyword={keyword}
             onSearch={handleSearch}
-            placeholder={flowSearchConfig.placeholder}
-            statusOptions={flowStatusOptions}
+            placeholder={searchConfig.placeholder}
+            statusOptions={connectorStatusOptions}
           />
 
           {/* 表格列表 */}
@@ -218,17 +211,15 @@ function FlowList() {
               total: pagination.total,
             }}
             onPageChange={handlePageChange}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1200 }}
           />
 
           {/* 删除确认弹窗 */}
-          <ActionConfirmModal
+          <DeleteConfirmModal
             open={deleteModalVisible}
             onClose={handleDeleteCancel}
             onConfirm={handleDeleteConfirm}
-            type="delete"
-            title="确认删除连接流"
-            content="删除后无法恢复，确定要删除这个连接流吗？"
+            modalInfo={getSecondModalInfo('连接器', 'delete', true)}
             loading={deleteLoading}
           />
         </div>
@@ -237,4 +228,4 @@ function FlowList() {
   );
 }
 
-export default FlowList;
+export default ConnectorList;

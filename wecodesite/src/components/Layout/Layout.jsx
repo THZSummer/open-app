@@ -19,7 +19,7 @@ const SIMPLE_CONTENT_HEIGHT = '100vh';
 
 function Layout() {
   const location = useLocation();
-  const isAdminPage = location.pathname.startsWith('/admin');
+  const isAdminPage = location.pathname.startsWith('/admin') || location.pathname.startsWith('/connect');
   const isDetailPage = location.pathname !== '/' && !isAdminPage;
   
   const contentAreaHeight = isDetailPage 

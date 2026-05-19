@@ -22,7 +22,7 @@ import {
   Divider,
   Tag,
 } from 'antd';
-import ActionConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
+import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import {
   ArrowLeftOutlined,
   PlusOutlined,
@@ -33,6 +33,7 @@ import {
 import { createConnector, updateConnector, fetchConnectorDetail } from './thunk';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import './ConnectorEditor.less';
+import { getSecondModalInfo } from '../../../utils/common';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -115,7 +116,7 @@ const ConnectorEditor = () => {
    * 返回列表页
    */
   const handleBack = () => {
-    navigate('/admin/connectors');
+    navigate('/connect/connectors');
   };
 
   /**
@@ -193,7 +194,7 @@ const ConnectorEditor = () => {
       if (isEdit) {
         setEditable(false);
       } else {
-        navigate('/admin/connectors');
+        navigate('/connect/connectors');
       }
     } else {
       message.error(result?.messageZh || result?.message || '操作失败');
@@ -671,13 +672,11 @@ const ConnectorEditor = () => {
           />
 
           {/* 删除确认弹窗 */}
-          <ActionConfirmModal
+          <DeleteConfirmModal
             open={deleteModalVisible}
             onClose={handleDeleteCancel}
             onConfirm={handleDeleteConfirm}
-            type="delete"
-            title="确认删除"
-            content={deleteType === 'trigger' ? '确定要删除这个触发事件吗？' : '确定要删除这个执行动作吗？'}
+            modalInfo={getSecondModalInfo(deleteType === 'trigger' ? '触发事件' : '执行动作'), 'delete', true}
           />
         </div>
       </div>

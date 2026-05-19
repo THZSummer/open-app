@@ -54,8 +54,8 @@ export const ADMIN_MENU_CONFIG = [
   { title: '事件列表', router: '/admin/events' },
   { title: '回调列表', router: '/admin/callbacks' },
   { title: '审批中心', router: '/admin/approvals' },
-  { title: '连接器管理', router: '/admin/connectors' },
-  { title: '连接流管理', router: '/admin/flows' }
+  { title: '连接器管理', router: '/connect/connectors' },
+  { title: '连接流管理', router: '/connect/flows' }
 ];
 
 // ==================== 操作确认弹窗配置 ====================

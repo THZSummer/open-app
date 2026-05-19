@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Input } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 
-function ActionConfirmModal({
+function DeleteConfirmModal({
   open,
   onClose,
   onConfirm,
@@ -100,4 +100,4 @@ function ActionConfirmModal({
   );
 }
 
-export default ActionConfirmModal;
+export default DeleteConfirmModal;
