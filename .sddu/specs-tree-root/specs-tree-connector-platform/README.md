@@ -1,29 +1,111 @@
-# 连接器平台
+# 目录：连接器平台
 
-**Feature ID**: CONN-PLAT-001  
-**状态**: specified  
+## 目录简介
 
-## 概述
+**连接器平台**是开放平台的组成部分，提供与 API、事件、回调同级并列的第四种开放形式。通过连接器封装和连接流可视化编排，将三方平台消费开放能力时的人工编码场景转化为低代码/零代码配置，使原有开放更便捷。
 
-连接器平台是开放平台的组成部分，提供与 API、事件、回调同级并列的第四种开放形式。通过连接器封装和连接流可视化编排，将三方平台消费开放能力时的人工编码场景转化为低代码/零代码配置，使原有开放更便捷。
+**当前状态**: 🔵 planned（技术规划完成，待任务分解）  
+**目录 ID**: CONN-PLAT-001  
+**优先级**: P1  
+**创建时间**: 2026-05-14  
+**规划时间**: 2026-05-19  
 
-## 文件清单
+### 工作流进度
 
-| 文件 | 说明 |
-|------|------|
-| [discovery-report.md](discovery-report.md) | 需求挖掘报告 (v3.1) |
-| [discovery-analysis.md](discovery-analysis.md) | 需求挖掘分析 |
-| [discovery-session-log.md](discovery-session-log.md) | 需求挖掘会话记录 |
-| [spec.md](spec.md) | 规范文档 (v2.0) |
-| [spec.json](spec.json) | Feature 元数据 |
-| [state.json](state.json) | Feature 状态 |
+| 阶段 | 状态 | 完成时间 |
+|------|------|----------|
+| 🔍 需求挖掘 (discovery) | ✅ 完成 | 2026-05-14 |
+| 📋 规范编写 (spec) | ✅ 完成 | 2026-05-18 |
+| 📐 技术规划 (plan) | ✅ 完成 | 2026-05-19 |
+| 📝 任务分解 (tasks) | ⏳ 待开始 | - |
+
+## 目录结构
+
+```
+specs-tree-connector-platform/
+├── README.md                  # 本文件 - 目录导航
+├── discovery-report.md        # 需求挖掘报告
+├── discovery-analysis.md      # 需求分析笔记
+├── discovery-session-log.md   # 会话日志
+├── spec.md                    # 产品规范文档
+├── spec.json                  # 规范元数据
+├── plan.md                    # 技术规划文档
+├── plan-page.md               # 前端页面设计文档
+├── plan-api.md                # API 接口设计文档
+├── plan-db.md                 # 数据库设计文档
+├── ADR-001.md                 # 架构决策：轻量顺序执行引擎
+├── ADR-002.md                 # 架构决策记录
+├── ADR-003.md                 # 架构决策记录
+└── state.json                 # 状态文件
+```
+
+## 文件说明
+
+### 📂 需求挖掘阶段 (discovery)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| discovery-report.md | 需求挖掘报告 - 连接器平台全面需求分析 | ✅ 已完成 |
+| discovery-analysis.md | 需求分析笔记 - 用户场景分析、需求优先级评估 | ✅ 已完成 |
+| discovery-session-log.md | 会话日志 - 原始对话记录 | ✅ 已完成 |
+
+### 📂 规范阶段 (spec)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| spec.md | 产品规范文档 - 16 个用户故事、37 项 FR、22 项 NFR、12 项 EC（543 行） | ✅ specified |
+| spec.json | 规范元数据 - Feature 基本信息和统计 | ✅ specified |
+
+### 📂 技术规划阶段 (plan)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| plan.md | 技术规划文档 - 架构分析、方案对比、技术实现规划（668 行） | ✅ planned |
+| plan-page.md | 前端页面设计 - React 18 + TypeScript + Ant Design 4 + React Flow v12 页面设计（620 行） | ✅ planned |
+| plan-api.md | API 接口设计 - 统一响应格式，管理面/执行面 API 详细设计（541 行） | ✅ planned |
+| plan-db.md | 数据库设计 - cp_ 前缀表结构、连接器/流程/执行记录表设计（432 行） | ✅ planned |
+
+### 📂 架构决策记录 (ADR)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| ADR-001.md | 轻量顺序执行引擎技术方案 - 基于现有 open-server 扩展 | ✅ accepted |
+| ADR-002.md | 架构决策记录 | ✅ accepted |
+| ADR-003.md | 架构决策记录 | ✅ accepted |
+
+### 其他
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| state.json | 状态文件 - 当前阶段 plan，状态 planned | ✅ planned |
 
 ## 规范概要
 
 | 维度 | 数量 |
 |------|------|
 | 用户故事 | 16 |
-| 功能需求 (FR) | 37（连接流按版本化模式重写，合并 16→11 FR，FR 全线重新编号 FR-001~FR-037） |
+| 功能需求 (FR) | 37（连接流按版本化模式重写，FR 全线重新编号 FR-001~FR-037） |
 | 非功能需求 (NFR) | 22 |
 | 边界情况 (EC) | 12 |
 | 开放问题 | 7 |
+
+## 核心技术决策
+
+### 方案选择
+- **推荐方案**: 轻量顺序执行引擎（基于 open-server 扩展，不引入额外框架）
+- **编排配置**: 以 JSON 存储，运行时引擎按节点顺序依次执行
+- **调度方式**: 使用消息队列进行异步调度
+- **执行上下文**: 存储在 Redis 中，执行记录持久化到 MySQL
+
+## 上级目录
+
+- [返回上级](../README.md) - SDDU 规范目录
+- [返回首页](../../README.md) - SDDU 工作空间
+
+## 下一步
+
+运行 `@sddu-tasks 连接器平台` 开始任务分解阶段。
+
+---
+
+*最后更新: 2026-05-19 | @sddu-docs 自动生成*
