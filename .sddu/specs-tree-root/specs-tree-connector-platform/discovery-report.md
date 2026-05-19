@@ -522,23 +522,17 @@ sequenceDiagram
         Operator->>ConnPlat: 审批通过，连接器上架
     end
     
-    rect rgb(200, 230, 255)
-        note right of Third: 阶段 1：声明依赖（选择连接器）
-        Third->>ConnPlat: 浏览已上架的连接器目录
-        Third->>ConnPlat: 选定流依赖的连接器<br/>（如：IM-发送消息、工单系统-创建工单）
-    end
-    
     rect rgb(230, 255, 200)
-        note right of Third: 阶段 2：编排连接流
+        note right of Third: 阶段 1：编排连接流
         Third->>ConnPlat: 创建连接流
         Third->>ConnPlat: 配置流入口节点（选择触发类型+参数）
-        Third->>ConnPlat: 添加流逻辑节点<br/>（连接器节点/控制节点/数据处理节点等）
-        Third->>ConnPlat: 配置节点间数据映射与转换
+        Third->>ConnPlat: 从连接器目录选取需要的连接器，<br/>添加为连接器节点
+        Third->>ConnPlat: 添加控制节点/数据处理节点等<br/>配置节点间数据映射与转换
         Third->>ConnPlat: 定义流出口节点（返回值）
     end
     
     rect rgb(255, 230, 200)
-        note right of Third: 阶段 3：测试与部署
+        note right of Third: 阶段 2：测试与部署
         Third->>ConnPlat: 手动触发测试运行
         ConnPlat->>Runtime: 调度执行
         Runtime->>CapPlat: 调用 API/订阅事件
@@ -548,7 +542,7 @@ sequenceDiagram
     end
     
     rect rgb(200, 255, 230)
-        note right of Third: 阶段 4：运行与监控
+        note right of Third: 阶段 3：运行与监控
         ConnPlat->>Runtime: 启用连接流
         Runtime->>CapPlat: 持续运行（事件监听/API调用）
         Runtime-->>Third: 异常告警通知
