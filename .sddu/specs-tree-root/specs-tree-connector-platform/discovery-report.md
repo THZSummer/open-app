@@ -307,64 +307,50 @@ graph TB
 | **S3** | 入职自动化 | 定时查询新员工 | ① 拉群 ② 分配权限 ③ 推送欢迎消息 | 线性+循环 | 业务人员 |
 | **S4** | 会议→云盘→IM联动 | 会议结束事件 | ① 上传录音到云盘 ② 发送总结到群 | 线性 | 业务人员 |
 
-### 3.4 触发机制
+### 3.4 流入口节点类型
 
-触发器触发时执行的是**连接流**。不同触发类型的机制不同：
+连接流的起点称为**流入口节点**（即触发器），决定了流在什么条件下开始执行。不同触发类型的区别：
 
-#### 3.4.1 事件触发（广播）
+| 类型 | 驱动模式 | 需外部系统配合 | 一次触发驱动的连接流数 |
+|---------|---------|----------------|----------------|
+| 事件订阅 | 广播 | 是（系统推送事件到事件总线） | 多条（所有订阅该事件的流） |
+| Webhook | 点对点 | 是（外部调用Webhook URL） | 一条（URL对应的流） |
+| 定时 | 独立 | 否（平台定时器自驱） | 一条 |
+| 手动 | 独立 | 否（用户主动操作） | 一条 |
 
-外部系统推送事件 → 平台事件总线 → **广播给所有订阅的连接流**：
-
-```mermaid
-flowchart LR
-    IM["IM系统"] -->|推送事件| Bus["事件总线"]
-    Bus -->|订阅| F1["连接流1<br/>IM消息→创建工单"]
-    Bus -->|订阅| F2["连接流2<br/>IM消息→发送通知"]
-
-    style IM fill:#f5f5f5,stroke:#616161
-    style Bus fill:#fff9c4,stroke:#f9a825
-    style F1 fill:#c8e6c9,stroke:#2e7d32
-    style F2 fill:#c8e6c9,stroke:#2e7d32
-```
-
-#### 3.4.2 Webhook触发（点对点）
-
-每个连接流有独立的Webhook URL，调用方（三方系统或XX平台内部模块）调哪个URL就触发哪个流：
+三种驱动模式示意：
 
 ```mermaid
 flowchart LR
-    ERP["ERP系统<br/>（三方平台）"] -->|调用URL-A| F1["连接流1<br/>ERP变更→IM通知<br/>Webhook URL-A"]
-    OA["OA审批模块<br/>（XX平台内部）"] -->|调用URL-B| F2["连接流2<br/>审批回调→同步数据<br/>Webhook URL-B"]
+    subgraph Bcast["广播（事件订阅）"]
+        IM["IM系统"] -->|推送事件| Bus["事件总线"]
+        Bus --> F1["连接流A"]
+        Bus --> F2["连接流B"]
+    end
 
-    style ERP fill:#f5f5f5,stroke:#616161
-    style OA fill:#f5f5f5,stroke:#616161
-    style F1 fill:#c8e6c9,stroke:#2e7d32
-    style F2 fill:#c8e6c9,stroke:#2e7d32
+    subgraph P2P["点对点（Webhook）"]
+        ERP["ERP系统"] -->|调用URL-A| Flow1["连接流C"]
+        OA["OA系统"] -->|调用URL-B| Flow2["连接流D"]
+    end
+
+    subgraph Self["自足（定时/手动）"]
+        Cron["定时调度器"] --> Flow3["连接流E"]
+        User["用户"] --> Flow4["连接流F"]
+    end
+
+    style Bcast fill:#e3f2fd,stroke:#1565c0
+    style P2P fill:#fff3e0,stroke:#e65100
+    style Self fill:#e8f5e9,stroke:#2e7d32
 ```
 
-#### 3.4.3 定时/手动触发（流平台自身）
+#### 3.4.4 流入口节点类型对照
 
-无需外部系统参与，由流平台按计划或用户操作触发：
-
-```mermaid
-flowchart LR
-    Cron["定时调度器"] -->|每天9:00| F1["连接流3<br/>定时发送日报"]
-    User["用户"] -->|点击执行| F2["连接流4<br/>手动数据迁移"]
-
-    style Cron fill:#e3f2fd,stroke:#1565c0
-    style User fill:#e3f2fd,stroke:#1565c0
-    style F1 fill:#c8e6c9,stroke:#2e7d32
-    style F2 fill:#c8e6c9,stroke:#2e7d32
-```
-
-#### 3.4.4 触发机制对照
-
-| 触发类型 | 定义归属 | URL/订阅归属 | 触发模式 | 一个触发能驱动几条流 |
-|---------|---------|-------------|---------|----------------|
-| 事件 | 流平台（事件总线） | 连接流订阅 | 广播 | 多条（所有订阅的流） |
-| Webhook | 流平台 | 连接流（每流独立URL） | 点对点 | 一条（URL对应的流） |
-| 定时 | 流平台 | 流平台 | 独立 | 一条 |
-| 手动 | 流平台 | 流平台 | 独立 | 一条 |
+| 类型 | 驱动模式 | 是否需外部系统配合 | 一次触发驱动几条流 |
+|---------|---------|----------------|----------------|
+| 事件订阅 | 广播 | 是（系统推送事件到事件总线） | 多条（所有订阅该事件的流） |
+| Webhook | 点对点 | 是（调用方请求Webhook URL） | 一条（URL对应的流） |
+| 定时 | 独立 | 否（平台定时器自驱） | 一条 |
+| 手动 | 独立 | 否（用户主动操作） | 一条 |
 
 > 💡 **归属说明**：在新概念模型中，所有触发器类型（事件/Webhook/定时/手动）均归**流平台**管理，不属于连接器。其中事件和 Webhook 触发需要外部系统配合（推送事件/调用 URL），定时和手动触发由平台自身独立完成。详见 3.2 核心概念分层。 |
 
@@ -574,42 +560,42 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    subgraph Conn1["连接器A：IM-发送消息"]
-        CEp1["端点：POST /v1/im/messages<br/>认证：OAuth<br/>输入：chat_id, content<br/>输出：message_id"]
+    subgraph Connectors["连接器（出站端点定义—外部依赖层）"]
+        direction TB
+        Conn1["连接器A：IM-发送消息<br/>端点：POST /v1/im/messages<br/>认证：OAuth"]
+        Conn2["连接器B：工单系统-创建工单<br/>端点：POST /v1/tickets<br/>认证：API Key"]
     end
 
-    subgraph Conn2["连接器B：工单系统-创建工单"]
-        CEp2["端点：POST /v1/tickets<br/>认证：API Key<br/>输入：title, description<br/>输出：ticket_id"]
+    subgraph Events["平台事件（流入口来源）"]
+        direction TB
+        Evt1["IM收到消息事件<br/>im.message.receive"]
+        Evt2["审批通过事件<br/>approval.passed"]
     end
 
-    subgraph Conn3["连接器C：IM-收到消息事件"]
-        CEp3["事件：im.message.receive<br/>认证：OAuth<br/>输出：sender, content"]
-    end
-    
     subgraph Flow1["连接流1：IM消息→创建工单"]
-        F1_Start[流入口：IM收到消息事件] --> F1_Map1[数据处理：消息内容→工单描述]
-        F1_Map1 --> F1_Action[连接器节点：创建工单]
-        F1_Action --> F1_Error[错误处理：重试3次]
+        F1_Start[流入口节点：IM收到消息事件] --> F1_Map[数据处理：消息内容→工单描述]
+        F1_Map --> F1_Action[连接器节点：创建工单]
+        F1_Action --> F1_Exit[流出口节点：返回工单ID]
     end
-    
+
     subgraph Flow2["连接流2：审批通过→发送IM通知"]
-        F2_Start[流入口：审批通过事件] --> F2_Map1[数据处理：审批结果→消息内容]
-        F2_Map1 --> F2_Action[连接器节点：发送消息]
-        F2_Action --> F2_Error[错误处理：重试3次]
+        F2_Start[流入口节点：审批通过事件] --> F2_Map[数据处理：审批结果→消息内容]
+        F2_Map --> F2_Action[连接器节点：发送消息]
+        F2_Action --> F2_Exit[流出口节点：返回消息ID]
     end
-    
-    CEp3 -.->|引用为流入口| F1_Start
-    CEp2 -.->|引用为节点| F1_Action
-    CEp1 -.->|引用为节点| F2_Action
-    
+
+    Evt1 -.->|引用为流入口| F1_Start
+    Evt2 -.->|引用为流入口| F2_Start
+    Conn2 -.->|引用为节点| F1_Action
+    Conn1 -.->|引用为节点| F2_Action
+
+    style Connectors fill:#e1bee7,stroke:#7b1fa2
+    style Events fill:#bbdefb,stroke:#1565c0
     style Flow1 fill:#e1f5e1,stroke:#2e7d32,stroke-width:2px
     style Flow2 fill:#e1f5e1,stroke:#2e7d32,stroke-width:2px
-    style Conn1 fill:#e1bee7,stroke:#7b1fa2
-    style Conn2 fill:#e1bee7,stroke:#7b1fa2
-    style Conn3 fill:#e1bee7,stroke:#7b1fa2
 ```
 
-> 💡 **核心逻辑**：连接器是独立的外部系统端点定义（单一功能点），连接流通过引用连接器作为节点来构建业务流程。一个连接器可被多个连接流引用。
+> 💡 **核心逻辑**：连接器是出站端点定义（调用外部系统），不包含事件监听。事件监听来自**平台事件总线**，作为流入口节点的触发源。连接流 = 平台事件（流入口）+ 连接器节点（出站调用）+ 流出口（返回值）。一个连接器可被多个连接流引用。
 
 ### 5.3 集成方向与消费形式
 
