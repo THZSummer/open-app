@@ -316,42 +316,7 @@ graph TB
 
 ## 5. 技术设计
 
-### 5.1 架构影响
-
-```mermaid
-flowchart TB
-    subgraph Web["前端 (open-web)"]
-        UI_Conn[连接器管理界面]
-        UI_Flow[连接流可视化编排器]
-        UI_Monitor[运行监控面板]
-    end
-
-    subgraph Server["后端 (open-server)"]
-        API_Conn[连接器管理 API]
-        API_Flow[连接流管理 API]
-        Engine_Orchestrate[流编排引擎]
-        Engine_Runtime[运行时引擎]
-        Engine_Schedule[调度引擎]
-    end
-
-    subgraph External["外部依赖"]
-        CapPlat[能力开放平台]
-        EventBus[事件总线]
-    end
-
-    Web --> Server
-    Server --> CapPlat
-    Server --> EventBus
-    Engine_Schedule --> Engine_Runtime
-    Engine_Runtime --> CapPlat
-    Engine_Runtime --> EventBus
-
-    style Web fill:#e3f2fd,stroke:#1565c0
-    style Server fill:#e1f5e1,stroke:#2e7d32
-    style External fill:#fff9c4,stroke:#f9a825
-```
-
-### 5.2 核心数据模型
+### 5.1 核心数据模型
 
 | 数据实体 | 关键字段 | 说明 |
 |---------|---------|------|
@@ -364,7 +329,7 @@ flowchart TB
 | **FlowExecution** | id, flow_id, trigger_type, status, start_time, end_time, error_message, flow_version_id | 连接流执行记录（记录执行时用的版本） |
 | **FlowNodeExecution** | id, execution_id, node_id, status, input_data, output_data, start_time, end_time, retry_count | 节点执行记录 |
 
-### 5.3 API 接口设计
+### 5.2 API 接口设计
 
 > 💡 以下为接口清单概要，详细接口规范在 Plan 阶段定义。
 
@@ -392,7 +357,7 @@ flowchart TB
 | 运行监控 | /api/v1/metrics | GET | 平台运行指标 |
 | Webhook | /api/v1/webhooks/{flow_id} | POST | Webhook 触发入口 |
 
-### 5.4 前端页面清单
+### 5.3 前端页面清单
 
 | 页面 | 路由 | 说明 |
 |------|------|------|
@@ -405,7 +370,7 @@ flowchart TB
 | 执行详情 | /executions/{id} | 单次执行详情，含每步输入/输出数据 |
 | 运行监控面板 | /monitor | 平台级运行指标仪表盘 |
 
-### 5.5 与能力开放平台的集成接口
+### 5.4 与能力开放平台的集成接口
 
 | 集成点 | 方向 | 说明 |
 |--------|------|------|
@@ -417,7 +382,7 @@ flowchart TB
 | 审批引擎 | 连接器平台 → 能力开放平台 | 连接器发布/连接流部署复用审批引擎 |
 | 分组管理 | 连接器平台 → 能力开放平台 | 连接器作为新资源类型挂载到能力开放平台分组体系（FR-003 扩展点） |
 
-### 5.6 第三方依赖
+### 5.5 第三方依赖
 
 | 依赖 | 用途 | 说明 |
 |------|------|------|
