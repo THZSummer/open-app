@@ -9,14 +9,122 @@
 
 ## 1. 接口规范
 
+> 💡 以下 API 设计规范沿用能力开放平台（CAP-OPEN-001）已确立的标准，确保全项目 API 风格统一。详情见 `../specs-tree-capability-open-platform/plan-api.md §0`。
+
+### 1.1 基础规范
+
 | 规范项 | 说明 |
 |--------|------|
 | 基础路径 | `/api/v1` |
-| 响应格式 | 统一 `{ "code": 0, "message": "success", "data": {...} }` |
-| 分页格式 | `{ "items": [...], "total": 100, "page": 1, "page_size": 20 }` |
 | 认证方式 | 管理面复用现有 Cookie/SSO；执行面通过连接器配置的认证凭证 |
-| 错误码 | `0`=成功, `1001`=参数错误, `1002`=未授权, `1003`=资源不存在, `1004`=状态冲突, `1005`=校验失败, `5000`=内部错误 |
 | 时间格式 | ISO 8601: `yyyy-MM-dd'T'HH:mm:ss.SSSXXX` |
+
+### 1.2 字段命名规范
+
+**规则**：接口入参和返回值字段统一使用驼峰命名（camelCase）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `connectorId` | `connector_id` |
+| `createTime` | `create_time` |
+| `versionStatus` | `version_status` |
+
+**命名约定**：
+- ID 字段：使用 `Id` 后缀，如 `connectorId`, `flowId`, `versionId`
+- 时间字段：使用 `Time` 后缀，如 `createTime`, `updateTime`；或 `At` 后缀表示时间点，如 `publishedAt`, `expiresAt`
+- 布尔字段：使用 `is` 前缀，如 `isDeleted`, `isEnabled`
+- URL 字段：使用 `Url` 后缀，如 `iconUrl`, `webhookUrl`
+
+### 1.3 路径命名规范
+
+**规则**：URL 路径使用中划线分隔多个单词（kebab-case）。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `/api/v1/connector-versions` | `/api/v1/connector_versions` |
+| `/api/v1/test-run` | `/api/v1/testRun` |
+| `/api/v1/user-authorizations` | `/api/v1/user_authorizations` |
+
+**命名约定**：
+- 资源名称使用复数形式：`/connectors`, `/flows`, `/executions`
+- 子资源使用中划线分隔：`/test-run`, `/connector-versions`
+- 路径参数使用驼峰：`/connectors/:connectorId/versions`
+
+### 1.4 数据类型规范
+
+**规则**：长整数（如主键 ID）统一返回 string 类型，避免前端接收精度丢失问题。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `"connectorId": "con_xxxxx"` | `"id": 100` |
+| `"executionId": "exec_xxxxx"` | `"executionId": 200` |
+
+**原因说明**：
+- JavaScript 的 `Number` 类型最大安全整数是 `2^53 - 1`（即 `9007199254740991`）
+- 统一使用 `string` 类型可彻底避免精度丢失问题
+
+**适用范围**：
+- 所有业务 ID 字段：`connectorId`, `flowId`, `versionId`, `executionId` 等
+- 所有外键 ID 字段：`creatorAppId`, `approvalId` 等
+
+### 1.5 响应格式规范
+
+所有接口统一使用以下响应格式：
+
+```json
+// 成功响应
+{
+  "code": "200",
+  "messageZh": "操作成功",
+  "messageEn": "Success",
+  "data": { ... },
+  "page": null
+}
+
+// 分页响应
+{
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": [ ... ],
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 123
+  }
+}
+
+// 错误响应
+{
+  "code": "400",
+  "messageZh": "参数错误",
+  "messageEn": "Bad Request",
+  "data": null,
+  "page": null
+}
+```
+
+### 1.6 分页请求规范
+
+所有列表接口统一支持分页：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| curPage | int | 否 | 当前页码，从 1 开始，默认 1 |
+| pageSize | int | 否 | 每页数量，默认 20，最大 100 |
+
+### 1.7 错误码定义
+
+| 错误码 | 说明 |
+|--------|------|
+| `200` | 成功 |
+| `400` | 参数错误 |
+| `401` | 未授权 |
+| `403` | 无权限 |
+| `404` | 资源不存在 |
+| `409` | 状态冲突 |
+| `422` | 校验失败 |
+| `500` | 内部错误 |
 
 ---
 
