@@ -16,7 +16,7 @@
   },
   "summary": {
     "userStories": 16,
-    "functionalRequirements": 42,
+    "functionalRequirements": 37,
     "nonFunctionalRequirements": 22,
     "edgeCases": 12,
     "openQuestions": 7
