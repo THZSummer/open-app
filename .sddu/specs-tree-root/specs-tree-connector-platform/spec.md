@@ -316,78 +316,58 @@ graph TB
 
 ## 5. 技术设计
 
-### 5.1 核心数据模型
+> 💡 本节的业务对象、接口、页面为概要描述，**不涉及具体表名、路径等实现细节**，详细技术设计在 Plan 阶段定义。
 
-| 数据实体 | 关键字段 | 说明 |
-|---------|---------|------|
-| **Connector** | id, name, icon, description, type(http/mysql/redis/kafka/grpc/…), visibility(public/private), creator_id | 连接器基本信息 |
-| **ConnectorVersion** | id, connector_id, version_no, status(draft/released), basic_info_fields (name/icon/description/type), connection_config_fields (protocol_type, protocol_address, auth_type, auth_config_encrypted, input_schema, output_schema, timeout, rate_limit), changelog, published_at | 连接器版本（基本信息快照+连接配置；编辑基本信息时同步更新最新版本的 basic_info_fields） |
-| **Flow** | id, name, description, creator_id, status(active/disabled) | 连接流基本信息 |
-| **FlowVersion** | id, flow_id, version_no, status(draft/released), basic_info_fields (name/description), flow_config_fields (entry_node_config, nodes[ ], edges[ ], exit_node_config), changelog, published_at | 连接流版本（基本信息快照+编排配置） |
-| **FlowNode** | id, flow_version_id, node_type(entry/connector/exit), connector_version_id, config, position | 连接流节点（归属于版本） |
-| **FlowEdge** | id, flow_version_id, source_node_id, target_node_id, data_mapping | 连接流连线（归属于版本） |
-| **FlowExecution** | id, flow_id, trigger_type, status, start_time, end_time, error_message, flow_version_id | 连接流执行记录（记录执行时用的版本） |
-| **FlowNodeExecution** | id, execution_id, node_id, status, input_data, output_data, start_time, end_time, retry_count | 节点执行记录 |
+### 5.1 核心业务对象
 
-### 5.2 API 接口设计
+| 业务对象 | 主要业务字段（概要） | 说明 |
+|---------|-------------------|------|
+| **连接器** | 名称、图标、描述、类型（HTTP/MySQL/Redis/Kafka/gRPC…）、可见性（公共/私有） | 连接器基本信息 |
+| **连接器版本** | 版本号、状态（草稿/已发布）、基本信息快照、连接配置（协议类型/地址/认证/入参/出参/超时/限流） | 发布时快照基本信息+连接配置 |
+| **连接流** | 名称、描述、状态（启用/停用） | 连接流基本信息 |
+| **连接流版本** | 版本号、状态（草稿/已发布）、基本信息快照、编排配置（入口节点/连接器节点/数据映射/出口节点） | 发布时快照基本信息+编排配置 |
+| **执行记录** | 执行ID、触发方式、执行状态（待执行/执行中/成功/失败/超时）、执行返回值 | 每次异步调度生成一条执行记录 |
 
-> 💡 以下为接口清单概要，详细接口规范在 Plan 阶段定义。
+### 5.2 接口模块
 
-| 模块 | 接口 | 方法 | 说明 |
-|------|------|------|------|
-| 连接器管理 | /api/v1/connectors | GET | 连接器列表 |
-| 连接器管理 | /api/v1/connectors | POST | 创建连接器 |
-| 连接器管理 | /api/v1/connectors/{id} | GET | 连接器详情 |
-| 连接器管理 | /api/v1/connectors/{id} | PUT | 更新连接器 |
-| 连接器管理 | /api/v1/connectors/{id}/publish | POST | 发布连接器 |
-| 连接器管理 | /api/v1/connectors/{id}/unpublish | POST | 下架连接器 |
-| 连接器管理 | /api/v1/connectors/{id}/versions | GET | 连接器版本列表 |
-| 连接流管理 | /api/v1/flows | GET | 连接流列表 |
-| 连接流管理 | /api/v1/flows | POST | 创建连接流 |
-| 连接流管理 | /api/v1/flows/{id} | GET | 连接流详情（含编排数据） |
-| 连接流管理 | /api/v1/flows/{id} | PUT | 更新连接流 |
-| 连接流管理 | /api/v1/flows/{id}/deploy | POST | 部署连接流（提交审批） |
-| 连接流管理 | /api/v1/flows/{id}/enable | POST | 启用连接流 |
-| 连接流管理 | /api/v1/flows/{id}/disable | POST | 停用连接流 |
-| 连接流管理 | /api/v1/flows/{id}/execute | POST | 手动触发/测试运行 |
-| 连接流管理 | /api/v1/flows/{id}/versions | GET | 连接流版本列表 |
-| 运行监控 | /api/v1/flows/{id}/executions | GET | 连接流执行历史 |
-| 运行监控 | /api/v1/executions/{id} | GET | 执行详情（含每步数据） |
-| 运行监控 | /api/v1/executions/{id}/retry | POST | 重试失败执行 |
-| 运行监控 | /api/v1/metrics | GET | 平台运行指标 |
-| Webhook | /api/v1/webhooks/{flow_id} | POST | Webhook 触发入口 |
+| 模块 | 主要接口 | 说明 |
+|------|---------|------|
+| 连接器管理 | 连接器CRUD、上架/下架、版本管理、连接配置查看/编辑/发布 | 供给方管理连接器 |
+| 连接流管理 | 连接流CRUD、版本管理、编排配置查看/编辑/发布、启停、测试 | 消费方管理连接流 |
+| 运行监控 | 执行历史列表、执行详情、执行状态查询、执行重试、平台运行指标 | 运维监控连接流运行 |
+| Webhook 入口 | Webhook 触发 | 外部系统通过Webhook触发连接流 |
 
-### 5.3 前端页面清单
+### 5.3 前端页面
 
-| 页面 | 路由 | 说明 |
-|------|------|------|
-| 连接器目录 | /connectors | 连接器列表浏览，支持搜索和过滤 |
-| 连接器详情 | /connectors/{id} | 连接器详情，含调用信息/认证信息 |
-| 连接器创建/编辑 | /connectors/create, /connectors/{id}/edit | 连接器创建和编辑表单 |
-| 连接流列表 | /flows | 连接流列表，含状态和快捷操作 |
-| 连接流编排 | /flows/{id}/edit | 可视化拖拽编排画布 |
-| 连接流详情 | /flows/{id} | 连接流概览、运行状态、执行历史 |
-| 执行详情 | /executions/{id} | 单次执行详情，含每步输入/输出数据 |
-| 运行监控面板 | /monitor | 平台级运行指标仪表盘 |
+| 页面 | 说明 |
+|------|------|
+| 连接器目录 | 浏览、搜索、过滤可用连接器 |
+| 连接器创建/编辑 | 创建和编辑连接器基本信息及连接配置 |
+| 连接器详情 | 查看连接器版本历史和配置详情 |
+| 连接流列表 | 浏览、搜索、管理连接流 |
+| 连接流编排画布 | 可视化拖拽编排连接流配置 |
+| 连接流详情 | 连接流概览、运行状态、版本历史、执行记录 |
+| 执行详情 | 单次执行的步骤详情和返回值 |
+| 运行监控面板 | 平台级运行指标仪表盘 |
 
-### 5.4 与能力开放平台的集成接口
+### 5.4 与能力开放平台的集成
 
 | 集成点 | 方向 | 说明 |
 |--------|------|------|
-| API 调用 | 连接器平台 → 能力开放平台 | 连接器运行时通过 API 网关调用已注册 API |
-| 事件订阅 | 连接器平台 → 能力开放平台 | 连接流流入口节点（事件触发）订阅事件总线，接收事件推送 |
-| 事件发布 | 连接器平台 → 能力开放平台 | 连接器运行时通过事件网关发布事件 |
-| 回调通知 | 连接器平台 → 能力开放平台 | 连接器运行时通过回调网关发送回调通知 |
-| Scope 鉴权 | 连接器平台 → 能力开放平台 | 运行时通过 Scope 凭证调用 API 网关鉴权 |
-| 审批引擎 | 连接器平台 → 能力开放平台 | 连接器发布/连接流部署复用审批引擎 |
-| 分组管理 | 连接器平台 → 能力开放平台 | 连接器作为新资源类型挂载到能力开放平台分组体系（FR-003 扩展点） |
+| API 调用 | → 能力开放平台 | 连接器运行时调用已注册 API |
+| 事件订阅 | → 能力开放平台 | 连接流入口节点订阅事件总线 |
+| 事件发布 | → 能力开放平台 | 连接器运行时发布事件 |
+| 回调通知 | → 能力开放平台 | 连接器运行时发送回调 |
+| Scope 鉴权 | → 能力开放平台 | 运行时通过 Scope 凭证鉴权 |
+| 审批引擎 | → 能力开放平台 | 连接器发布/流部署复用审批流程 |
+| 分组管理 | → 能力开放平台 | 连接器作为新资源类型挂载到分组体系 |
 
 ### 5.5 第三方依赖
 
 | 依赖 | 用途 | 说明 |
 |------|------|------|
-| React Flow / AntV X6 | 可视化编排画布 | 连接流可视化拖拽编排（选型待 Plan 阶段 ADR 决策） |
-| 流编排引擎 | 运行时引擎 | 自研轻量级 vs 开源引擎（选型待 Plan 阶段 ADR 决策） |
+| 可视化编排画布组件 | 连接流编排交互 | 选型待 Plan 阶段 ADR 决策 |
+| 流编排引擎 | 运行时调度执行 | 选型待 Plan 阶段 ADR 决策 |
 
 ---
 
