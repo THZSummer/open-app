@@ -33,6 +33,7 @@ specs-tree-connector-platform/
 ├── plan-page.md               # 前端页面设计文档
 ├── plan-api.md                # API 接口设计文档
 ├── plan-db.md                 # 数据库设计文档
+├── plan-code.md               # 代码规范文档
 ├── ADR-001.md                 # 架构决策：轻量顺序执行引擎
 ├── ADR-002.md                 # 架构决策记录
 ├── ADR-003.md                 # 架构决策记录
@@ -60,18 +61,19 @@ specs-tree-connector-platform/
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| plan.md | 技术规划文档 - 架构分析、方案对比、技术实现规划（668 行） | ✅ planned |
-| plan-page.md | 前端页面设计 - React 18 + TypeScript + Ant Design 4 + React Flow v12 页面设计（620 行） | ✅ planned |
-| plan-api.md | API 接口设计 - 统一响应格式，管理面/执行面 API 详细设计（541 行） | ✅ planned |
-| plan-db.md | 数据库设计 - cp_ 前缀表结构、连接器/流程/执行记录表设计（432 行） | ✅ planned |
+| plan.md | 技术规划文档 - 架构分析、方案对比、技术实现规划 | ✅ planned |
+| plan-page.md | 前端页面设计 - React 18 + Ant Design 4 + React Flow v12 页面设计 | ✅ planned |
+| plan-api.md | API 接口设计 - 18 个逻辑分组（约 33 个端点），统一响应格式，管理面/执行面 API 详细设计 | ✅ planned |
+| plan-db.md | 数据库设计 - cp_ 前缀 9 张表，含设计偏离说明 | ✅ planned |
+| plan-code.md | 代码规范 - 16 条强制规则（注释/日志/SQL/安全等），沿用能力开放平台标准 | ✅ planned |
 
 ### 📂 架构决策记录 (ADR)
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
 | ADR-001.md | 轻量顺序执行引擎技术方案 - 基于现有 open-server 扩展 | ✅ accepted |
-| ADR-002.md | 架构决策记录 | ✅ accepted |
-| ADR-003.md | 架构决策记录 | ✅ accepted |
+| ADR-002.md | React Flow 可视化编排画布 - 前端编排器技术选型 | ✅ accepted |
+| ADR-003.md | 运行时架构：单体嵌入 + 模块化隔离 - 运行时部署策略 | ✅ accepted |
 
 ### 其他
 

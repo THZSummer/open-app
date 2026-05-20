@@ -110,7 +110,41 @@ graph TB
 | 事件网关 (event-server) | 事件触发连接流 | 事件网关作为触发器事件源 |
 | API 网关 (api-server) | 连接器执行时的 API 调用路由 | 连接器通过 API 网关调用内部 API |
 
-### 1.2 连接器平台新增组件
+**现有代码引用**:
+| 代码位置 | 说明 |
+|---------|------|
+| `open-server/src/main/java/com/xxx/open/modules/` | 现有能力开放模块（category/api/event/callback/permission/approval），连接器平台在此新增 4 个模块 |
+| `wecodesite/src/pages/ConnectPlatform/` | 已有连接器目录（Connector）、连接器编辑器（ConnectorEditor）、连接流列表/编排画布（Flow）页面 |
+
+### 1.2 技术栈确认
+
+> 沿用能力开放平台（`specs-tree-capability-open-platform/plan.md §1.4`）的技术栈标准。
+
+#### 前端技术栈
+
+| 层级 | 技术选型 | 版本 |
+|------|----------|------|
+| **框架** | React | ^18.2.0 |
+| **UI 组件库** | Ant Design | ^4.x |
+| **构建工具** | Vite | ^5.0.0 |
+| **CSS 预处理器** | Less | ^4.2.0 |
+| **样式方案** | Less Module（`.m.less` / `.less`） | - |
+| **状态管理** | thunk.js 模式（现有） | - |
+| **编排画布** | @xyflow/react (React Flow) | ^12.x（wecodesite 已内置） |
+
+#### 后端技术栈
+
+| 层级 | 技术选型 | 版本 |
+|------|----------|------|
+| **语言** | Java | 21 |
+| **构建工具** | Maven | 3.9.x |
+| **框架** | Spring Boot | 3.4.6 |
+| **ORM** | MyBatis | mybatis-spring-boot-starter 3.0.4 |
+| **数据库** | MySQL | 5.7 |
+| **缓存** | Redis | 6.0 |
+| **定时调度** | Quartz Scheduler | Spring Boot 内置 |
+
+### 1.3 连接器平台新增组件
 
 ```mermaid
 graph TB
@@ -152,7 +186,7 @@ graph TB
     WebhookGW -->|调度| Runtime
 ```
 
-### 1.3 数据流分析
+### 1.4 数据流分析
 
 **连接器发布流程**:
 ```
@@ -181,7 +215,7 @@ graph TB
   → 记录执行日志/指标
 ```
 
-### 1.4 依赖关系图
+### 1.5 依赖关系图
 
 ```mermaid
 graph LR
@@ -218,104 +252,20 @@ graph LR
     MonitorLog --> DB
 ```
 
-### 1.5 核心业务对象关系
+### 1.6 核心业务对象关系
 
-```mermaid
-erDiagram
-    Connector ||--o{ ConnectorVersion : has
-    ConnectorVersion ||--o{ FlowNode : referenced_as
-    Flow ||--o{ FlowVersion : has
-    FlowVersion ||--o{ FlowNode : contains
-    FlowVersion ||--o{ FlowEdge : contains
-    Flow ||--o{ ExecutionRecord : generates
-    ExecutionRecord ||--o{ ExecutionStep : contains
+连接器平台围绕 9 个核心业务对象组织，对象间关系：
 
-    Connector {
-        string id PK
-        string name
-        string icon
-        string description
-        string type "HTTP/MySQL/Redis/Kafka/gRPC..."
-        string visibility "public/private"
-        string creator_app_id
-        datetime created_at
-        datetime updated_at
-    }
+| 关系 | 说明 |
+|------|------|
+| Connector → ConnectorVersion | 一个连接器有多个版本（1:N），发布时快照基本信息+连接配置 |
+| ConnectorVersion → FlowNode | 连接器版本被连接流节点引用（1:N） |
+| ConnectorVersion → ConnectorAuthConfig | 连接器版本按消费方应用存储独立认证凭证（1:N） |
+| Flow → FlowVersion | 一个连接流有多个版本（1:N），发布时快照基本信息+编排配置 |
+| FlowVersion → FlowNode / FlowEdge | 版本包含节点和连线（1:N），节点含 entry/connector/exit 三种类型 |
+| Flow → ExecutionRecord → ExecutionStep | 每次执行生成一条记录，记录含多个步骤（1:N:N） |
 
-    ConnectorVersion {
-        string id PK
-        string connector_id FK
-        string version_no
-        string status "draft/published"
-        json basic_info_snapshot
-        json connection_config "protocol/address/auth/params/schema/timeout/rate_limit"
-        datetime published_at
-        string approval_id
-    }
-
-    Flow {
-        string id PK
-        string name
-        string description
-        string status "enabled/disabled"
-        string creator_app_id
-        datetime created_at
-        datetime updated_at
-    }
-
-    FlowVersion {
-        string id PK
-        string flow_id FK
-        string version_no
-        string status "draft/published"
-        json basic_info_snapshot
-        json orchestration_config "entry_node/connector_nodes/data_mappings/exit_node"
-        datetime published_at
-        string approval_id
-    }
-
-    FlowNode {
-        string id PK
-        string version_id FK
-        string node_type "entry/connector/exit"
-        string connector_version_id FK "nullable"
-        json config "trigger_config/connector_params/field_mappings"
-        int position
-    }
-
-    FlowEdge {
-        string id PK
-        string version_id FK
-        string source_node_id
-        string target_node_id
-    }
-
-    ExecutionRecord {
-        string execution_id PK
-        string flow_id FK
-        string version_id FK
-        string trigger_type "event/webhook/scheduled/manual"
-        string status "pending/running/success/failed/timeout"
-        json trigger_data
-        json result_data
-        datetime started_at
-        datetime finished_at
-        int retry_count
-    }
-
-    ExecutionStep {
-        string id PK
-        string execution_id FK
-        string node_id
-        string node_name
-        string status "pending/running/success/failed"
-        json input_data
-        json output_data
-        string error_message
-        datetime started_at
-        datetime finished_at
-    }
-```
+> 完整 ER 图（含字段定义）详见 **§4.2 数据库设计** 及 `plan-db.md`
 
 ---
 
@@ -324,6 +274,45 @@ erDiagram
 ### 2.1 方案 A：轻量顺序执行引擎（推荐）
 
 **方案描述**: 基于现有 open-server 扩展，采用轻量级顺序执行引擎。连接流编排配置以 JSON 存储，运行时引擎按节点顺序依次执行。使用消息队列进行异步调度，执行上下文存储在 Redis 中，执行记录持久化到 MySQL。
+
+```mermaid
+graph TB
+    subgraph Front["前端"]
+        WCS["wecodesite (React SPA)"]
+    end
+    subgraph Backend["open-server 新增模块"]
+        Conn["connector\n连接器 CRUD\n版本管理"]
+        Flow["flow\n连接流 CRUD\n编排配置"]
+        RT["runtime\n顺序执行引擎\n调度/上下文"]
+        Mon["monitor\n指标/日志"]
+    end
+    subgraph Infra["基础设施"]
+        DB[(MySQL)]
+        Cache[(Redis)]
+        MQ[(MQS)]
+    end
+    subgraph Ext["外部依赖"]
+        ES["event-server\n事件订阅"]
+        AS["api-server\nAPI 调用"]
+    end
+
+    WCS -->|REST| Conn
+    WCS -->|REST| Flow
+    WCS -->|REST| Mon
+    Conn --> DB
+    Flow --> DB
+    RT --> DB
+    RT --> Cache
+    RT --> MQ
+    RT -->|调用 API| AS
+    RT -->|订阅事件| ES
+    Conn -.->|复用| AS
+
+    style Front fill:#e8f5e9,stroke:#2e7d32
+    style Backend fill:#e3f2fd,stroke:#1565c0
+    style Infra fill:#f3e5f5,stroke:#7b1fa2
+    style Ext fill:#fff3e0,stroke:#ef6c00
+```
 
 **核心设计**:
 - **编排层**: FlowVersion 的 orchestration_config 以 JSON 格式存储完整编排信息（入口节点配置、连接器节点列表及参数、节点间数据映射、出口节点配置）
@@ -442,6 +431,8 @@ erDiagram
 
 ## 4. 模块与文件概览
 
+> **职责说明**：本章仅描述「有哪些内容」和「详细设计在哪个文件」。具体设计（表名/字段/索引、API 路径/参数/响应、页面路由/组件树/交互）均只在对应子文档中定义，plan.md 不重复。
+
 ### 4.1 模块划分
 
 | 模块 | 所属项目 | 类型 | 说明 |
@@ -456,75 +447,237 @@ erDiagram
 
 > 各模块的**完整数据库表设计**详见 `plan-db.md`  
 > 各模块的**完整 API 接口设计**详见 `plan-api.md`  
-> 各页面组的**完整前端设计**详见 `plan-page.md`
+> 各页面组的**完整前端设计**详见 `plan-page.md`  
+> **代码规范**（16 条强制规则，沿用能力开放平台标准）详见 `plan-code.md`
 
-### 4.2 数据库表清单
+### 4.2 数据库设计
 
-| # | 表名 | 归属模块 | 说明 |
-|---|------|---------|------|
-| 1 | `cp_connector` | connector | 连接器基本信息 |
-| 2 | `cp_connector_version` | connector | 连接器版本信息（含连接配置快照） |
-| 3 | `cp_flow` | flow | 连接流基本信息 |
-| 4 | `cp_flow_version` | flow | 连接流版本信息（含编排配置快照） |
-| 5 | `cp_flow_node` | flow | 流节点定义 |
-| 6 | `cp_flow_edge` | flow | 流连线定义 |
-| 7 | `cp_execution_record` | runtime | 执行记录 |
-| 8 | `cp_execution_step` | runtime | 执行步骤详情 |
-| 9 | `cp_connector_auth_config` | runtime | 连接器认证凭证（加密存储） |
+共 **9 张表**，按模块归属：connector 模块 2 张、flow 模块 4 张、runtime 模块 3 张。统一使用 `cp_` 前缀，涵盖连接器基本信息/版本、连接流基本信息/版本/节点/连线、执行记录/步骤、认证凭证。
 
-> 详见 `plan-db.md` — 完整字段定义、索引、JSON Schema
+**核心 ER 关系**（详细字段定义、索引、JSON Schema 见 `plan-db.md`）：
 
-### 4.3 API 接口清单
+```mermaid
+erDiagram
+    Connector ||--o{ ConnectorVersion : has
+    ConnectorVersion ||--o{ FlowNode : referenced_as
+    ConnectorVersion ||--o{ ConnectorAuthConfig : has_per_app_credentials
+    Flow ||--o{ FlowVersion : has
+    FlowVersion ||--o{ FlowNode : contains
+    FlowVersion ||--o{ FlowEdge : contains
+    Flow ||--o{ ExecutionRecord : generates
+    ExecutionRecord ||--o{ ExecutionStep : contains
 
-| # | 接口 | 模块 | 方法 | 路径前缀 |
-|---|------|------|------|---------|
-| 1 | 连接器 CRUD | connector | POST/GET/PUT/DELETE | `/api/v1/connectors` |
-| 2 | 连接器版本管理 | connector | POST/GET | `/api/v1/connectors/{id}/versions` |
-| 3 | 连接器上架/下架 | connector | POST | `/api/v1/connectors/{id}/publish` |
-| 4 | 连接流 CRUD | flow | POST/GET/PUT/DELETE | `/api/v1/flows` |
-| 5 | 连接流版本管理 | flow | POST/GET | `/api/v1/flows/{id}/versions` |
-| 6 | 连接流编排配置 | flow | GET/PUT | `/api/v1/flows/{id}/versions/{v}/orchestration` |
-| 7 | 连接流启停 | flow | POST | `/api/v1/flows/{id}/[enable|disable]` |
-| 8 | 手动触发执行 | runtime | POST | `/api/v1/flows/{id}/executions` |
-| 9 | 执行状态查询 | runtime | GET | `/api/v1/executions/{execId}/status` |
-| 10 | 执行历史列表 | runtime | GET | `/api/v1/flows/{id}/executions` |
-| 11 | 执行详情查看 | runtime | GET | `/api/v1/executions/{execId}` |
-| 12 | 执行重试 | runtime | POST | `/api/v1/executions/{execId}/retry` |
-| 13 | Webhook 触发 | runtime | POST | `/api/v1/webhook/{token}` |
-| 14 | 运行指标查询 | monitor | GET | `/api/v1/monitor/metrics` |
-| 15 | 测试运行 | runtime | POST | `/api/v1/flows/{id}/test-run` |
+    Connector {
+        string id PK
+        string name "连接器名称"
+        string icon "图标URL"
+        string description "描述"
+        string type "HTTP/MySQL/Redis/Kafka/gRPC..."
+        string visibility "public/private"
+        string creator_app_id "创建者应用ID"
+    }
+    ConnectorVersion {
+        string id PK
+        string connector_id FK
+        string version_no "版本号"
+        string status "draft/published"
+        json basic_info_snapshot "基本信息快照"
+        json connection_config "连接配置(协议/认证/参数Schema/超时)"
+    }
+    Flow {
+        string id PK
+        string name "连接流名称"
+        string description "描述"
+        string status "enabled/disabled"
+        string creator_app_id "创建者应用ID"
+    }
+    FlowVersion {
+        string id PK
+        string flow_id FK
+        string version_no "版本号"
+        string status "draft/published"
+        json basic_info_snapshot "基本信息快照"
+        json orchestration_config "编排配置(入口/节点/连线/出口)"
+    }
+    FlowNode {
+        string id PK
+        string version_id FK
+        string node_type "entry/connector/exit"
+        string connector_version_id FK "nullable"
+        json config "节点配置"
+    }
+    FlowEdge {
+        string id PK
+        string version_id FK
+        string source_node_id
+        string target_node_id
+    }
+    ExecutionRecord {
+        string execution_id PK
+        string flow_id FK
+        string version_id FK
+        string trigger_type "event/webhook/scheduled/manual"
+        string status "pending/running/success/failed/timeout"
+        json trigger_data
+        json result_data
+    }
+    ExecutionStep {
+        string id PK
+        string execution_id FK
+        string node_id
+        string node_name
+        string status "pending/running/success/failed"
+        json input_data
+        json output_data
+    }
+    ConnectorAuthConfig {
+        string id PK
+        string connector_version_id FK
+        string app_id "消费方应用ID"
+        string auth_type "AKSK/OAUTH2/BASIC_AUTH/API_KEY"
+        json encrypted_credentials "AES-256-GCM加密"
+        string status "active/expired/revoked"
+    }
+```
 
-> 详见 `plan-api.md` — 完整请求/响应 Schema、错误码、鉴权方式
+> 表结构定义、字段类型、索引、JSON Schema 详见 **`plan-db.md`**
 
-### 4.4 前端页面清单
+### 4.3 API 接口设计
 
-| # | 页面 | 路由 | 状态 | 对应 FR |
-|---|------|------|------|---------|
-| 1 | 连接器目录 | `/connect/connectors` | ✅ 已有 | FR-004 |
-| 2 | 连接器创建/编辑 | `/connect/connector-editor` | ✅ 已有 | FR-001, FR-002 |
-| 3 | 连接器详情 | `/connect/connector-editor?mode=detail` | ✅ 已有（编辑器查看模式） | FR-006, FR-007, FR-009 |
-| 4 | 连接流列表 | `/connect/flows` | ✅ 已有 | FR-014 |
-| 5 | 连接流编排画布 | `/connect/flows/new` / `/connect/flows/:id/edit` | ✅ 已有 | FR-017 |
-| 6 | 连接流详情 | `/connect/flows/:id` | 🆕 需新增 | FR-016, FR-031 |
-| 7 | 执行详情 | `/connect/flows/:id/executions/:execId` | 🆕 需新增 | FR-033 |
-| 8 | 运行监控面板 | `/connect/monitor` | 🆕 需新增 | FR-034 |
+共 **18 个逻辑分组**（展开约 33 个 HTTP 端点），按模块归属：connector 模块 5 组、flow 模块 4 组、runtime 模块 7 组、monitor 模块 2 组。覆盖连接器/连接流的 CRUD、版本管理、上架下架、启停、触发执行、执行查询、测试运行、运行监控等全部功能。同时复用了能力开放平台的审批接口和 MQS 消息主题。
 
-> 详见 `plan-page.md` — 页面组件树、交互流程、状态管理
+> 完整端点定义、请求/响应 Schema、错误码、鉴权方式、MQS 主题定义详见 **`plan-api.md`**
 
-### 4.5 新增依赖
+### 4.4 前端页面设计
+
+共 **8 个页面**，5 个已有实现（wecodesite `ConnectPlatform/` 目录下）+ 3 个需新增（连接流详情、执行详情、运行监控面板）。覆盖连接器目录/编辑器、连接流列表/编排画布/详情、执行详情、监控面板六大场景。
+
+> 页面布局、组件树、交互流程、路由设计、状态管理（thunk.js）详见 **`plan-page.md`**
+
+### 4.5 目录结构规划
+
+```
+open-app/
+├── open-server/                                 # 后端管理服务（现有工程扩展）
+│   └── src/main/java/com/xxx/open/modules/
+│       ├── category/              # 现有：分类管理
+│       ├── api/                   # 现有：API 管理
+│       ├── event/                 # 现有：事件管理
+│       ├── callback/              # 现有：回调管理
+│       ├── permission/            # 现有：权限管理
+│       ├── approval/              # 现有：审批管理
+│       ├── connector/             # 🆕 连接器管理模块
+│       ├── flow/                  # 🆕 连接流管理模块
+│       ├── runtime/               # 🆕 运行时模块
+│       └── monitor/               # 🆕 监控模块
+│
+├── wecodesite/                                   # 前端应用
+│   └── src/pages/ConnectPlatform/
+│       ├── Connector/             # ✅ 已有：连接器目录页面
+│       ├── ConnectorEditor/       # ✅ 已有：连接器创建/编辑页面
+│       ├── Flow/                  # ✅ 已有：连接流列表/编排画布
+│       │   ├── FlowDetail.jsx     # 🆕 需新增：连接流详情
+│       │   ├── ExecutionDetail.jsx # 🆕 需新增：执行详情
+│       │   ├── DataMappingDialog.jsx # 🆕 需新增：数据映射弹窗
+│       │   └── TestRunDialog.jsx  # 🆕 需新增：测试运行弹窗
+│       └── Monitor/               # 🆕 需新增：运行监控面板
+│           ├── MonitorDashboard.jsx
+│           ├── index.jsx
+│           ├── constants.jsx
+│           └── thunk.js
+```
+
+### 4.6 服务职责详表
+
+| 服务 | 新增模块 | 职责 | 数据存储 | 端口 | 上下文根 | 依赖 |
+|------|---------|------|----------|------|----------|------|
+| **open-server** | connector | 连接器 CRUD、版本管理、上架/下架 | MySQL + Redis(共享) | 18080 | /open-server | category/permission/approval 模块（方法调用） |
+| **open-server** | flow | 连接流 CRUD、版本管理、编排配置存储 | MySQL + Redis(共享) | 18080 | /open-server | connector 模块、permission/approval 模块 |
+| **open-server** | runtime | 调度执行、执行上下文管理、Webhook 入口 | MySQL + Redis(共享) | 18080 | /open-server | api-server(API调用)、event-server(事件订阅)、MQS |
+| **open-server** | monitor | 运行指标统计、执行日志查询 | MySQL + Redis(共享) | 18080 | /open-server | runtime 模块（执行数据） |
+
+> 连接器平台的 4 个模块均部署在现有 open-server 中（端口 18080，上下文根 /open-server），复用 open-server 的 MySQL 和 Redis 实例。
+
+### 4.7 文件清单
+
+#### open-server — connector 模块
+
+| 文件 | 说明 |
+|------|------|
+| `modules/connector/ConnectorController.java` | 连接器 CRUD、上架/下架 |
+| `modules/connector/ConnectorService.java` | 连接器业务逻辑 |
+| `modules/connector/ConnectorVersionController.java` | 版本管理（列表/详情/发布） |
+| `modules/connector/ConnectorVersionService.java` | 版本业务逻辑 |
+| `modules/connector/entity/Connector.java` | 连接器实体 |
+| `modules/connector/entity/ConnectorVersion.java` | 连接器版本实体 |
+| `modules/connector/mapper/ConnectorMapper.java` | 连接器 Mapper |
+| `modules/connector/mapper/ConnectorVersionMapper.java` | 版本 Mapper |
+
+#### open-server — flow 模块
+
+| 文件 | 说明 |
+|------|------|
+| `modules/flow/FlowController.java` | 连接流 CRUD、启停 |
+| `modules/flow/FlowService.java` | 连接流业务逻辑 |
+| `modules/flow/FlowVersionController.java` | 版本管理、编排配置保存/发布 |
+| `modules/flow/FlowVersionService.java` | 版本业务逻辑 |
+| `modules/flow/entity/Flow.java` | 连接流实体 |
+| `modules/flow/entity/FlowVersion.java` | 连接流版本实体 |
+| `modules/flow/entity/FlowNode.java` | 流节点实体 |
+| `modules/flow/entity/FlowEdge.java` | 流连线实体 |
+| `modules/flow/mapper/FlowMapper.java` | 连接流 Mapper |
+| `modules/flow/mapper/FlowVersionMapper.java` | 版本 Mapper |
+
+#### open-server — runtime 模块
+
+| 文件 | 说明 |
+|------|------|
+| `modules/runtime/ExecutionController.java` | 手动触发、执行查询、重试 |
+| `modules/runtime/WebhookController.java` | Webhook 触发入口 |
+| `modules/runtime/SequentialExecutor.java` | 顺序执行引擎 |
+| `modules/runtime/ExecutionContext.java` | 执行上下文管理 |
+| `modules/runtime/FlowScheduler.java` | 事件/定时触发调度 |
+| `modules/runtime/NodeExecutor.java` | 节点执行器接口 |
+| `modules/runtime/entity/ExecutionRecord.java` | 执行记录实体 |
+| `modules/runtime/entity/ExecutionStep.java` | 执行步骤实体 |
+| `modules/runtime/entity/ConnectorAuthConfig.java` | 认证凭证实体 |
+| `modules/runtime/mapper/ExecutionRecordMapper.java` | 执行记录 Mapper |
+
+#### open-server — monitor 模块
+
+| 文件 | 说明 |
+|------|------|
+| `modules/monitor/MetricsController.java` | 运行指标查询 |
+| `modules/monitor/MetricsService.java` | 指标计算服务 |
+
+#### wecodesite — 新增/扩展页面
+
+| 文件 | 说明 | 状态 |
+|------|------|:---:|
+| `ConnectPlatform/Flow/FlowDetail.jsx` | 连接流详情页 | 🆕 |
+| `ConnectPlatform/Flow/ExecutionDetail.jsx` | 执行详情页 | 🆕 |
+| `ConnectPlatform/Flow/DataMappingDialog.jsx` | 数据映射弹窗 | 🆕 |
+| `ConnectPlatform/Flow/TestRunDialog.jsx` | 测试运行弹窗 | 🆕 |
+| `ConnectPlatform/Monitor/MonitorDashboard.jsx` | 监控面板 | 🆕 |
+| `ConnectPlatform/Monitor/index.jsx` | 监控入口 | 🆕 |
+| `ConnectPlatform/Connector/thunk.js` | 扩展：stats/fetchVersions 等 | 📝 扩展 |
+| `ConnectPlatform/Flow/thunk.js` | 扩展：saveCanvas/testRun 等 | 📝 扩展 |
+| `App.jsx` | 注册新路由 | 📝 修改 |
+
+### 4.8 新增依赖
 
 | 依赖 | 版本 | 用途 | 所属项目 |
 |------|------|------|---------|
 | `@xyflow/react` (React Flow) | ^12.x | 可视化编排画布 | wecodesite（已内置） |
 | Quartz Scheduler | Spring Boot 内置 | 定时触发服务 | open-server |
 
-### 4.6 文件影响统计
+### 4.9 文件影响统计
 
 | 项目 | 新增文件 | 修改文件 | 删除文件 |
 |------|:--------:|:--------:|:--------:|
 | open-server (4 个新模块) | 65 | 0 | 0 |
 | wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
-| **合计** | **93** | **2** | **0** |
+| **合计** | **74** | **2** | **0** |
 
 ---
 
@@ -572,39 +725,16 @@ erDiagram
 
 ---
 
-## 6. 技术栈决策
-
-### 6.1 前端选型
-
-| 选型项 | 决策 | 理由 |
-|-------|------|------|
-| 编排画布 | **React Flow (@xyflow/react)** | React-native, 轻量(30KB gzip), 完善的 TypeScript 支持, 支持受控模式, 可限制线性编排 |
-| 样式方案 | Less Module（现有） | 与现有项目一致 |
-| 状态管理 | Zustand（现有） | 与现有项目一致 |
-| API 请求 | Axios（现有） | 与现有项目一致 |
-
-### 6.2 后端选型
-
-| 选型项 | 决策 | 理由 |
-|-------|------|------|
-| 流执行引擎 | **轻量顺序执行器（自研）** | 不引入新框架, 与现有架构一致 |
-| 定时调度 | **Spring @Scheduled + Quartz** | Spring Boot 内置支持 |
-| 消息队列 | **现有 MQS** (复用) | 与 event-server 共享消息基础设施 |
-| 加密方案 | **AES-256-GCM** | 满足凭证安全存储需求 |
-| 执行上下文 | **Redis** (运行时) + **MySQL** (持久化) | 兼顾性能与持久性 |
-
----
-
-## 7. 版本规划
+## 6. 版本规划
 
 ### 迭代建议
 
 | 迭代 | 范围 | 周期 | 交付价值 |
 |------|------|:----:|---------|
-| **V1** | 连接器管理模块 (FR-001 ~ FR-010) | 3-4 周 | 平台连接器/连接器的创建、编辑、版本管理、上架审批 |
-| **V2** | 连接流管理模块 (FR-011 ~ FR-021) | 3-4 周 | 连接流创建、编排画布、版本管理、测试运行 |
-| **V3** | 运行时模块 (FR-022 ~ FR-030) | 2-3 周 | 四类触发调度、执行引擎、错误处理、资源配额 |
-| **V4** | 监控与治理 (FR-031 ~ FR-037) | 2-3 周 | 执行历史、运行指标、Scope 集成、审批对接 |
+| **迭代 1** | 连接器管理模块 (FR-001 ~ FR-010) | 3-4 周 | 平台连接器/连接器的创建、编辑、版本管理、上架审批 |
+| **迭代 2** | 连接流管理模块 (FR-011 ~ FR-021) | 3-4 周 | 连接流创建、编排画布、版本管理、测试运行 |
+| **迭代 3** | 运行时模块 (FR-022 ~ FR-030) | 2-3 周 | 四类触发调度、执行引擎、错误处理、资源配额 |
+| **迭代 4** | 监控与治理 (FR-031 ~ FR-037) | 2-3 周 | 执行历史、运行指标、Scope 集成、审批对接 |
 | **集成测试** | 全链路联调 + E2E | 1-2 周 | 端到端验证 |
 | **合计** | | **10-14 周** | |
 
@@ -612,15 +742,15 @@ erDiagram
 
 | 里程碑 | 时间点 | 验收标准 |
 |-------|--------|---------|
-| M1: 连接器可用 | V1 完成 | 可创建/编辑/发布连接器，通过审批上架 |
-| M2: 连接流可编排 | V2 完成 | 可拖拽创建连接流，触发配置，保存草稿 |
-| M3: 连接流可执行 | V3 完成 | 连接流可被事件/Webhook/定时/手动触发执行 |
-| M4: 可运维 | V4 完成 | 可查看执行历史、运行指标、运行状态 |
+| M1: 连接器可用 | 迭代 1 完成 | 可创建/编辑/发布连接器，通过审批上架 |
+| M2: 连接流可编排 | 迭代 2 完成 | 可拖拽创建连接流，触发配置，保存草稿 |
+| M3: 连接流可执行 | 迭代 3 完成 | 连接流可被事件/Webhook/定时/手动触发执行 |
+| M4: 可运维 | 迭代 4 完成 | 可查看执行历史、运行指标、运行状态 |
 | M5: MVP 就绪 | 集成测试完成 | 完成端到端验证，满足所有 MVP 验收标准 |
 
 ---
 
-## 8. 与能力开放平台的集成
+## 7. 与能力开放平台的集成
 
 | 集成点 | 连接器平台 | 能力开放平台 | 实现方式 |
 |--------|-----------|-------------|---------|
