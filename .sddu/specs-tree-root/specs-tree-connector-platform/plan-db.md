@@ -2,8 +2,28 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§4.2)  
-**版本**: v1.0  
-**创建日期**: 2026-05-19
+**版本**: v1.1  
+**创建日期**: 2026-05-19  
+**最后更新**: 2026-05-20  
+**更新说明**: 新增表清单汇总、枚举字段规范汇总、审计字段命名差异说明、JSON Schema 存储格式说明
+
+---
+
+## 表清单
+
+| 表名 | 类型 | 归属模块 | 说明 |
+|------|------|---------|------|
+| `cp_connector` | 主表 | connector | 连接器基本信息 |
+| `cp_connector_version` | 主表 | connector | 连接器版本信息（含连接配置快照） |
+| `cp_flow` | 主表 | flow | 连接流基本信息 |
+| `cp_flow_version` | 主表 | flow | 连接流版本信息（含编排配置快照） |
+| `cp_flow_node` | 子表 | flow | 流节点定义（entry/connector/exit） |
+| `cp_flow_edge` | 子表 | flow | 流连线定义（含数据映射） |
+| `cp_execution_record` | 主表 | runtime | 执行记录 |
+| `cp_execution_step` | 子表 | runtime | 执行步骤详情 |
+| `cp_connector_auth_config` | 主表 | runtime | 连接器认证凭证（AES-256-GCM 加密存储） |
+
+**总计**：9 张表（5 张主表 + 4 张子表），分属 connector / flow / runtime 三个模块。
 
 ---
 
@@ -57,7 +77,7 @@
 | `created_by` | VARCHAR(64) | 创建人账号 |
 | `updated_by` | VARCHAR(64) | 更新人账号 |
 
-> 时间字段统一使用 `DATETIME(3)` 精确到毫秒，确保高并发场景下的时间精度。
+> **与能力开放平台的差异**：连接器平台使用 `created_at`/`updated_at`（`_at` 后缀，表示时间点），能力开放平台使用 `create_time`/`last_update_time`（`_time` 后缀）。`_at` 后缀更精确表达"时间点"语义，且与 `started_at`/`finished_at`/`published_at`/`expires_at` 保持一致。时间字段统一使用 `DATETIME(3)` 精确到毫秒，确保高并发场景下的时间精度。
 
 ### 2.4 枚举字段规范
 
@@ -68,6 +88,22 @@
 | **示例** | `varchar(20) NOT NULL DEFAULT 'draft' COMMENT '状态：draft / published'` |
 
 > 连接器平台选择 varchar 枚举值（替代 TINYINT），原因是：状态值可读性强、日志排查直观、API 返回值无需转换映射。— 遵循与能力平台一致的文档规范，具体实现选择适配连接器场景。
+
+**枚举字段汇总**：
+
+| 枚举字段 | 适用表 | 枚举值 | 说明 |
+|----------|--------|--------|------|
+| `status` | `cp_connector` | `active` / `disabled` | 连接器启用/禁用 |
+| `visibility` | `cp_connector` | `public` / `private` | 连接器可见性 |
+| `connector_type` | `cp_connector` | `HTTP` / `MySQL` / `Redis` / `Kafka` / `gRPC` / `CUSTOM` | 连接器协议类型 |
+| `status` | `cp_connector_version`, `cp_flow_version` | `draft` / `published` | 版本状态 |
+| `status` | `cp_flow` | `enabled` / `disabled` | 连接流启停状态 |
+| `status` | `cp_execution_record` | `pending` / `running` / `success` / `failed` / `timeout` | 执行状态 |
+| `status` | `cp_execution_step` | `pending` / `running` / `success` / `failed` / `skipped` | 执行步骤状态 |
+| `status` | `cp_connector_auth_config` | `active` / `expired` / `revoked` | 凭证状态 |
+| `trigger_type` | `cp_execution_record` | `event` / `webhook` / `scheduled` / `manual` | 触发方式 |
+| `node_type` | `cp_flow_node` | `entry` / `connector` / `exit` | 节点类型 |
+| `auth_type` | `cp_connector_auth_config` | `AKSK` / `OAUTH2` / `BASIC_AUTH` / `API_KEY` | 认证类型 |
 
 ### 2.5 Scope 命名规范（复用能力开放平台）
 
@@ -108,6 +144,9 @@
 ### 3.1 `cp_connector` — 连接器基本信息
 
 ```sql
+-- ============================================
+-- 连接器基本信息表
+-- ============================================
 CREATE TABLE `cp_connector` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `connector_id`    varchar(32)  NOT NULL                  COMMENT '业务ID（如 con_xxxxxxxx）',
@@ -136,6 +175,9 @@ CREATE TABLE `cp_connector` (
 ### 3.2 `cp_connector_version` — 连接器版本
 
 ```sql
+-- ============================================
+-- 连接器版本表（发布时快照基本信息 + 连接配置）
+-- ============================================
 CREATE TABLE `cp_connector_version` (
   `id`                 bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `version_id`         varchar(32)  NOT NULL                  COMMENT '业务ID（如 cv_xxxxxxxx）',
@@ -160,6 +202,9 @@ CREATE TABLE `cp_connector_version` (
 ```
 
 **connection_config JSON Schema**:
+
+> 以下为数据库 JSON 列存储格式（snake_case）。API 响应时字段名统一转为 camelCase。
+
 ```json
 {
   "protocol": "HTTP",
@@ -211,6 +256,9 @@ CREATE TABLE `cp_connector_version` (
 ### 3.3 `cp_flow` — 连接流基本信息
 
 ```sql
+-- ============================================
+-- 连接流基本信息表
+-- ============================================
  CREATE TABLE `cp_flow` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `flow_id`         varchar(32)  NOT NULL                  COMMENT '业务ID（如 flow_xxxxxxxx）',
@@ -235,6 +283,9 @@ CREATE TABLE `cp_connector_version` (
 ### 3.4 `cp_flow_version` — 连接流版本
 
 ```sql
+-- ============================================
+-- 连接流版本表（发布时快照基本信息 + 编排配置）
+-- ============================================
 CREATE TABLE `cp_flow_version` (
   `id`                   bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `version_id`           varchar(32)  NOT NULL                  COMMENT '业务ID（如 fv_xxxxxxxx）',
@@ -259,6 +310,9 @@ CREATE TABLE `cp_flow_version` (
 ```
 
 **orchestration_config JSON Schema**:
+
+> 以下为数据库 JSON 列存储格式（snake_case）。API 响应时字段名统一转为 camelCase。
+
 ```json
 {
   "trigger": {
@@ -326,6 +380,9 @@ CREATE TABLE `cp_flow_version` (
 ### 3.5 `cp_flow_node` — 流节点定义
 
 ```sql
+-- ============================================
+-- 流节点定义表（entry / connector / exit）
+-- ============================================
 CREATE TABLE `cp_flow_node` (
   `id`                   bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `node_id`              varchar(32)  NOT NULL                  COMMENT '业务ID（如 fn_xxxxxxxx）',
@@ -349,6 +406,9 @@ CREATE TABLE `cp_flow_node` (
 ### 3.6 `cp_flow_edge` — 流连线定义
 
 ```sql
+-- ============================================
+-- 流连线定义表（含源→目标字段映射）
+-- ============================================
 CREATE TABLE `cp_flow_edge` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `edge_id`         varchar(32)  NOT NULL                  COMMENT '业务ID（如 fe_xxxxxxxx）',
@@ -390,6 +450,9 @@ CREATE TABLE `cp_flow_edge` (
 ### 3.7 `cp_execution_record` — 执行记录
 
 ```sql
+-- ============================================
+-- 执行记录表（每次触发生成一条）
+-- ============================================
 CREATE TABLE `cp_execution_record` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `execution_id`    varchar(32)  NOT NULL                  COMMENT '执行ID（如 exec_xxxxxxxx）',
@@ -420,6 +483,9 @@ CREATE TABLE `cp_execution_record` (
 ### 3.8 `cp_execution_step` — 执行步骤详情
 
 ```sql
+-- ============================================
+-- 执行步骤详情表（每次执行的每步记录）
+-- ============================================
 CREATE TABLE `cp_execution_step` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `step_id`         varchar(32)  NOT NULL                  COMMENT '步骤ID（如 step_xxxxxxxx）',
@@ -449,6 +515,9 @@ CREATE TABLE `cp_execution_step` (
 > **与 spec.md 的设计差异**：spec.md FR-008 将认证凭证作为 `connection_config` JSON 的一部分存储在连接器版本中。Plan 阶段将其抽取为独立表 `cp_connector_auth_config`，核心原因是**同一连接器版本可能被不同消费方应用使用，每个应用需要独立的认证凭证**（如各三方平台使用自己的 AKSK 调用 IM 发送消息）。这是对 spec 模型的合理扩展，遵循「连接器版本定义能力接口，消费方提供自身凭证」的职责分离原则。
 
 ```sql
+-- ============================================
+-- 连接器认证凭证表（AES-256-GCM 加密存储，按 app 隔离）
+-- ============================================
 CREATE TABLE `cp_connector_auth_config` (
   `id`                  bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `auth_id`             varchar(32)  NOT NULL                  COMMENT '业务ID（如 auth_xxxxxxxx）',
