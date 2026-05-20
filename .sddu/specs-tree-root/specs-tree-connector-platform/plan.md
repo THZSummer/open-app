@@ -1,11 +1,13 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v1.0  
+**规划版本**: v1.1  
 **创建日期**: 2026-05-19  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v3.0  
 **前置文档**: discovery-report.md (v3.1), 三方案对比分析, 国内连接器平台技术架构分析, 详细设计文档
+
+> ⚠️ **前端项目说明**：`open-web` 代码已全部迁移至 `wecodesite`，本规划中所有前端引用均以 `wecodesite` 为准。`wecodesite` 已内置 `@xyflow/react` 依赖，且 `ConnectPlatform/Connector`、`ConnectPlatform/ConnectorEditor`、`ConnectPlatform/Flow` 等页面已有实现。
 
 ---
 
@@ -13,31 +15,93 @@
 
 ### 1.1 现有系统架构
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                       前端 (open-web)                                │
-│  React 18 + TypeScript + Vite + Ant Design 4                        │
-│  现有页面: Welcome / Category / Api / Event / Callback / Permission │
-│            / Approval                                                │
-│  路由: /, /categories, /apis, /events, /callbacks, /approvals       │
-└──────────────────────────┬───────────────────────────────────────────┘
-                           │ HTTP
-┌──────────────────────────▼───────────────────────────────────────────┐
-│  api-server (API Gateway)     │  event-server (Event Gateway)        │
-│  Spring Boot 3.4.6           │  Spring Boot 3.4.6                   │
-│  Scope 鉴权 · 请求路由       │  事件分发 · 订阅管理                  │
-└──────────┬───────────────────┴──────────┬────────────────────────────┘
-           │ 内部 RPC/HTTP                 │ 内部 RPC/HTTP
-┌──────────▼──────────────────────────────▼────────────────────────────┐
-│                   open-server (核心管理服务)                          │
-│  Spring Boot 3.4.6 + MyBatis + MySQL + Redis                        │
-│  模块: api / event / callback / category / approval(engine)         │
-│        / permission / sync / app(resolver)                           │
-│  架构: 单体应用 + 模块化 Package 划分                                  │
-└──────────────────────────────────────────────────────────────────────┘
+> 💡 以下架构**沿用**能力开放平台（`specs-tree-capability-open-platform/plan.md §方案D`）的微服务架构设计。唯一差异：前端项目从 `open-web` 变更为 `wecodesite`。
+
+```mermaid
+graph TB
+    subgraph Frontend["前端层"]
+        WeCodeSite["wecodesite\n(React SPA)\n替代原 open-web"]
+    end
+    
+    subgraph Services["服务层"]
+        subgraph OpenServer["open-server\n(Spring Boot)"]
+            CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
+            ConnectorMgmt["连接器平台模块\n(新增)\n连接器/连接流/运行时/监控"]
+            AppMgmt["应用管理模块\n(现有能力)"]
+            Member["成员管理模块\n(现有能力)"]
+        end
+        ApiServer["api-server\n(Spring Boot)\nAPI认证鉴权服务\n(由外向内)"]
+        EventServer["event-server\n(Spring Boot)\n事件/回调网关服务\n(由内向外)"]
+    end
+    
+    subgraph DataLayer["数据层"]
+        MySQL[(MySQL)]
+        Redis1[(Redis\nopen-server/api-server)]
+        Redis2[(Redis\nevent-server)]
+    end
+    
+    subgraph PlatformGW["XX通讯平台网关"]
+        ApiGW["内部API网关"]
+        MsgGW["内部消息网关"]
+    end
+    
+    subgraph Consumers["消费方"]
+        Consumer1["消费方应用"]
+        Consumer2["消费方应用"]
+    end
+    
+    subgraph Providers["提供方"]
+        Provider1["提供方应用"]
+        Provider2["提供方应用"]
+    end
+    
+    %% 前端直接连接管理服务
+    WeCodeSite -->|REST API| OpenServer
+    
+    %% open-server 内部模块调用
+    CapMgmt -.->|方法调用| AppMgmt
+    CapMgmt -.->|方法调用| Member
+    ConnectorMgmt -.->|复用审批/权限| CapMgmt
+    
+    %% open-server 和 api-server 访问数据层
+    OpenServer --> MySQL
+    OpenServer --> Redis1
+    ApiServer --> MySQL
+    ApiServer --> Redis1
+    
+    %% event-server 有独立 Redis，无数据库，通过 api-server 获取数据
+    EventServer --> Redis2
+    EventServer -.->|调用接口获取数据| ApiServer
+    
+    %% API调用流程：消费方 -> 内部API网关 -> api-server认证鉴权 -> 提供方
+    Consumer1 -->|API调用| ApiGW
+    Consumer2 -->|API调用| ApiGW
+    ApiGW -.->|认证鉴权| ApiServer
+    ApiGW -->|转发请求| Provider1
+    ApiGW -->|转发请求| Provider2
+    
+    %% 事件推送流程：提供方 -> 内部消息网关 -> event-server -> 消费方
+    Provider1 -->|事件推送| MsgGW
+    Provider2 -->|事件推送| MsgGW
+    MsgGW -->|事件分发| EventServer
+    EventServer -.->|事件分发| Consumer1
+    EventServer -.->|事件分发| Consumer2
+    
+    %% 回调推送流程：提供方 -> event-server -> 消费方（不经内部消息网关）
+    Provider1 -->|回调推送| EventServer
+    Provider2 -->|回调推送| EventServer
+    EventServer -.->|回调分发| Consumer1
+    EventServer -.->|回调分发| Consumer2
+
+    style Frontend fill:#e8f5e9,stroke:#2e7d32
+    style Services fill:#e3f2fd,stroke:#1565c0
+    style DataLayer fill:#f3e5f5,stroke:#7b1fa2
+    style PlatformGW fill:#fff3e0,stroke:#ef6c00
+    style Consumers fill:#e0f7fa,stroke:#00838f
+    style Providers fill:#fce4ec,stroke:#c2185b
 ```
 
-**与连接器平台相关的现有能力**:
+**与连接器平台相关的现有能力（wecodesite 已集成连接器平台页面）**:
 | 现有能力 | 用途 | 复用方式 |
 |---------|------|---------|
 | Scope 权限模型 | 连接器调用 API/事件时的权限管控 | 直接复用，连接器定义关联 API Scope |
@@ -50,7 +114,7 @@
 
 ```mermaid
 graph TB
-    subgraph Front["前端 (open-web) - 新增页面"]
+    subgraph Front["前端 (wecodesite) - 新增页面/补充"]
         ConnDir["连接器目录\n浏览/搜索/过滤"]
         ConnForm["连接器创建/编辑\n基本信息系统+连接配置"]
         ConnDetail["连接器详情\n版本历史+配置详情"]
@@ -386,9 +450,9 @@ erDiagram
 | **flow** | open-server | 新增模块 | 连接流管理 — CRUD、版本管理、编排配置 |
 | **runtime** | open-server | 新增模块 | 运行时 — 调度执行、执行上下文、触发管理 |
 | **monitor** | open-server | 新增模块 | 监控日志 — 运行指标、执行历史查询 |
-| **connector** | open-web | 新增页面组 | 连接器目录/创建编辑/详情 |
-| **flow** | open-web | 新增页面组 | 连接流列表/编排画布/详情/执行详情 |
-| **monitor** | open-web | 新增页面组 | 运行监控面板 |
+| **connector** | wecodesite | 新增页面组 | 连接器目录/创建编辑/详情 |
+| **flow** | wecodesite | 新增页面组 | 连接流列表/编排画布/详情/执行详情 |
+| **monitor** | wecodesite | 新增页面组 | 运行监控面板 |
 
 > 各模块的**完整数据库表设计**详见 `plan-db.md`  
 > 各模块的**完整 API 接口设计**详见 `plan-api.md`  
@@ -434,16 +498,16 @@ erDiagram
 
 ### 4.4 前端页面清单
 
-| # | 页面 | 路由 | 功能模块 | 对应 FR |
-|---|------|------|---------|---------|
-| 1 | 连接器目录 | `/connectors` | connector | FR-004 |
-| 2 | 连接器创建/编辑 | `/connectors/new` / `/connectors/:id/edit` | connector | FR-001, FR-002 |
-| 3 | 连接器详情 | `/connectors/:id` | connector | FR-006, FR-007, FR-009 |
-| 4 | 连接流列表 | `/flows` | flow | FR-014 |
-| 5 | 连接流编排画布 | `/flows/:id/canvas` | flow | FR-017 |
-| 6 | 连接流详情 | `/flows/:id` | flow | FR-016, FR-031 |
-| 7 | 执行详情 | `/flows/:id/executions/:execId` | flow | FR-033 |
-| 8 | 运行监控面板 | `/monitor` | monitor | FR-034 |
+| # | 页面 | 路由 | 状态 | 对应 FR |
+|---|------|------|------|---------|
+| 1 | 连接器目录 | `/connect/connectors` | ✅ 已有 | FR-004 |
+| 2 | 连接器创建/编辑 | `/connect/connector-editor` | ✅ 已有 | FR-001, FR-002 |
+| 3 | 连接器详情 | `/connect/connector-editor?mode=detail` | ✅ 已有（编辑器查看模式） | FR-006, FR-007, FR-009 |
+| 4 | 连接流列表 | `/connect/flows` | ✅ 已有 | FR-014 |
+| 5 | 连接流编排画布 | `/connect/flows/new` / `/connect/flows/:id/edit` | ✅ 已有 | FR-017 |
+| 6 | 连接流详情 | `/connect/flows/:id` | 🆕 需新增 | FR-016, FR-031 |
+| 7 | 执行详情 | `/connect/flows/:id/executions/:execId` | 🆕 需新增 | FR-033 |
+| 8 | 运行监控面板 | `/connect/monitor` | 🆕 需新增 | FR-034 |
 
 > 详见 `plan-page.md` — 页面组件树、交互流程、状态管理
 
@@ -451,7 +515,7 @@ erDiagram
 
 | 依赖 | 版本 | 用途 | 所属项目 |
 |------|------|------|---------|
-| `@xyflow/react` (React Flow) | ^12.x | 可视化编排画布 | open-web |
+| `@xyflow/react` (React Flow) | ^12.x | 可视化编排画布 | wecodesite（已内置） |
 | Quartz Scheduler | Spring Boot 内置 | 定时触发服务 | open-server |
 
 ### 4.6 文件影响统计
@@ -459,7 +523,7 @@ erDiagram
 | 项目 | 新增文件 | 修改文件 | 删除文件 |
 |------|:--------:|:--------:|:--------:|
 | open-server (4 个新模块) | 65 | 0 | 0 |
-| open-web (6 个新页面 + 组件) | 28 | 2 | 0 |
+| wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
 | **合计** | **93** | **2** | **0** |
 
 ---
