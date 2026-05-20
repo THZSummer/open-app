@@ -42,7 +42,7 @@ export default {
     message: 'success',
     data: {
         lookups: {
-            CEC.open/Api.Drawer.TabsList: {
+            CEC.Open/Api.Drawer.TabsList: {
                 items: [
                     {
                         itemCode: 'business',

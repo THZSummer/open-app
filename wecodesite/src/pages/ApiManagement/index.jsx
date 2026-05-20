@@ -69,7 +69,7 @@ function ApiManagement() {
     <div className="api-management">
       <div className="page-header">
         <div className="page-header-left">
-          <h4 className="page-title">API管理</h4>
+          <h4 className="page-title">API权限管理</h4>
           <span className="page-desc">管理应用接口，配置API权限和调用参数</span>
         </div>
         <Button type="primary" onClick={openDrawer} style={{ justifyContent: 'center', borderRadius: 6 }}>添加API</Button>

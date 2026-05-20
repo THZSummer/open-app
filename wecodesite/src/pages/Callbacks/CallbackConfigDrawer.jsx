@@ -14,7 +14,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
   useEffect(() => {
     if (callback && open) {
       form.setFieldsValue(callback);
-      setChannelType(callback.channelType ?? 0);
+      setChannelType(callback.channelType);
     }
   }, [callback, open, form]);
 
@@ -42,7 +42,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
     form.setFieldsValue({
       channelType: newChannelType,
       channelAddress: '',
-      authType: 0
+      authType: 1
     });
   };
 
@@ -66,12 +66,12 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
       {callback && (
         <div className="callback-info">
           <div className="info-item">
-            <span className="label">回调名称:</span>
+            <span className="label">权限名称:</span>
             <span className="value">{callback.permission?.nameCn}</span>
           </div>
           <div className="info-item">
-            <span className="label">所需权限:</span>
-            <span className="value">{callback.permission?.nameCn}</span>
+            <span className="label">Scope标识:</span>
+            <span className="value">{callback.permission?.scope}</span>
           </div>
         </div>
       )}
@@ -89,36 +89,41 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
           </Radio.Group>
         </Form.Item>
 
-        <Form.Item
-          name="channelAddress"
-          label="回调地址"
-          rules={[
-            { required: true, message: '请输入回调地址' },
-            {
-              validator(_, value) {
-                if (!value) {
-                  return Promise.reject('请输入回调地址');
-                }
-                
-                const protocolPattern = channelType === 3 ? /^wss?:\/\/.+/ : /^https?:\/\/.+/;
-                const errorMessage = channelType === 3 ? 'WebSocket 回调地址必须以 ws:// 或 wss:// 开头'  : '回调地址必须以 http:// 或 https:// 开头';
-                
-                if (protocolPattern.test(value)) {
-                  return Promise.resolve();
-                }
-                return Promise.reject(errorMessage);
-              },
-            },
-          ]}
-        >
-          <Input placeholder="https://your-domain.com/webhook" />
-        </Form.Item>
-        <Form.Item name="authType" label="认证类型">
-          <Radio.Group>
-            <Radio value={0}>{AUTH_TYPE[0]}</Radio>
-            <Radio value={1}>{AUTH_TYPE[1]}</Radio>
-          </Radio.Group>
-        </Form.Item>
+        {channelType && (
+          <>
+            <Form.Item
+              name="channelAddress"
+              label="回调地址"
+              rules={[
+                { required: true, message: '请输入回调地址' },
+                {
+                  validator(_, value) {
+                    if (!value) {
+                      return Promise.reject('请输入回调地址');
+                    }
+                    
+                    const protocolPattern = channelType === 3 ? /^wss?:\/\/.+/ : /^https?:\/\/.+/;
+                    const errorMessage = channelType === 3 ? 'WebSocket 回调地址必须以 ws:// 或 wss:// 开头'  : '回调地址必须以 http:// 或 https:// 开头';
+                    
+                    if (protocolPattern.test(value)) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(errorMessage);
+                  },
+                },
+              ]}
+              validateFirst={true}
+            >
+              <Input placeholder="https://your-domain.com/webhook" />
+            </Form.Item>
+            <Form.Item name="authType" label="认证方式">
+              <Radio.Group>
+                <Radio value={1}>{AUTH_TYPE[1]}</Radio>
+              </Radio.Group>
+            </Form.Item>
+          </>
+        )}
+        
       </Form>
     </Drawer>
   );

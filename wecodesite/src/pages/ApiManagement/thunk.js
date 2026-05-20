@@ -168,7 +168,7 @@ export const deleteApiSubscription = async (appId, subscriptionId) => {
  * @param {string} searchKey - 配置查询键
  * @returns {Promise<Object>} Tab配置数据
  */
-export const fetchTabConfig = async (searchKey = 'CEC.open/Api.Drawer.TabsList') => {
+export const fetchTabConfig = async (searchKey = 'CEC.Open/Api.Drawer.TabsList') => {
   try {
     // TODO: 替换为真实接口调用
     // const result = await fetchApi('/lookup', { params: { searchKey } });
@@ -178,7 +178,7 @@ export const fetchTabConfig = async (searchKey = 'CEC.open/Api.Drawer.TabsList')
       message: 'success',
       data: {
         lookups: {
-          'CEC.open/Api.Drawer.TabsList': {
+          'CEC.Open/Api.Drawer.TabsList': {
             items: [
               {
                 itemCode: 'business',

@@ -91,7 +91,7 @@ function Events() {
     <div className="events">
       <div className="page-header">
         <div className="page-header-left">
-          <h4 className="page-title">事件配置</h4>
+          <h4 className="page-title">事件权限配置</h4>
           <span className="page-desc">
             配置事件订阅和回调地址
             <a onClick={() => navigate('/events-docs')} style={{ marginLeft: 4, cursor: 'pointer', color: '#1677ff' }}>了解更多</a>

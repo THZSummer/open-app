@@ -1,10 +1,7 @@
 import React from 'react';
 import { Tag, Button } from 'antd';
-import { CHANNEL_TYPE } from '../../utils/constants';
-import { 
-  renderStatus, 
-  createCallbackDrawerColumns 
-} from '../../utils/commonTableConfigs';
+import { CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
+import { renderStatus } from '../../utils/commonTableConfigs';
 
 /**
  * 回调列表表格列配置
@@ -12,48 +9,44 @@ import {
  */
 export const getCallbackColumns = ({ hanldeOpenDoc, handleEdit, handleCopyApprovalAddress, handleWithdraw, handleDelete }) => [
   {
-    title: '回调名称',
-    dataIndex: ['permission', 'nameCn'],
+    title: '权限名称',
     key: 'nameCn',
-    width: 200,
-    render: (text, record) => (
-      <div>
-        <div>{text}</div>
-        <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.permission?.scope}</span>
-      </div>
-    ),
-  },
-  {
-    title: '分类',
-    dataIndex: ['category', 'nameCn'],
-    key: 'category',
-    width: 120,
-  },
-  {
-    title: '所需权限',
     dataIndex: ['permission', 'nameCn'],
-    key: 'permissionName',
-    width: 150,
+    width: 180,
+  },
+  {
+    title: 'Scope标识',
+    key: 'scope',
+    dataIndex: ['permission', 'scope'],
+    width: 200,
     ellipsis: true,
+    render: (code) => <code>{code}</code>,
   },
   {
     title: '订阅方式',
-    dataIndex: 'channelType',
     key: 'channelType',
+    dataIndex: 'channelType',
     width: 100,
     render: (type) => CHANNEL_TYPE[type] || '-',
   },
   {
+    title: '认证方式',
+    key: 'authType',
+    dataIndex: 'authType',
+    width: 100,
+    render: (type) => AUTH_TYPE[type] || '-',
+  },
+  {
     title: '状态',
-    dataIndex: 'status',
     key: 'status',
+    dataIndex: 'status',
     width: 100,
     render: renderStatus,
   },
   {
     title: '操作',
     key: 'action',
-    width: 300,
+    width: 200,
     fixed: 'right',
     render: (_, record) => (
       <div>
@@ -74,19 +67,3 @@ export const getCallbackColumns = ({ hanldeOpenDoc, handleEdit, handleCopyApprov
     ),
   },
 ];
-
-/**
- * 回调选择器表格列配置
- * @param {Object} callbacks - 事件回调对象
- */
-export const getCallbackDrawerColumns = ({ handleOpenDoc }) => createCallbackDrawerColumns().map(col => {
-  if (col.key === 'action') {
-    return {
-      ...col,
-      render: (_, record) => (
-        <Button type="link" size="small" onClick={() => handleOpenDoc(record.resource.docUrl)}>查看文档</Button>
-      ),
-    };
-  }
-  return col;
-});

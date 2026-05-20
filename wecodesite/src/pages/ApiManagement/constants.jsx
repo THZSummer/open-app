@@ -1,15 +1,12 @@
 import React from 'react';
-import { Tag, Button } from 'antd';
-import { SUBSCRIPTION_STATUS, AUTH_TYPE } from '../../utils/constants';
-import {
-  renderStatus,
-  renderNeedApprovalStatus,
-} from '../../utils/commonTableConfigs';
+import { Button } from 'antd';
+import { AUTH_TYPE } from '../../utils/constants';
+import { renderStatus } from '../../utils/commonTableConfigs';
 
 /**
  * API订阅管理Tab配置键
  */
-export const TAB_CONFIG_SEARCH_KEY = 'CEC.Oopen/Api.Drawer.TabsList';
+export const TAB_CONFIG_SEARCH_KEY = 'CEC.Open/Api.Drawer.TabsList';
 
 /**
  * 生成API管理表格列配置
@@ -20,7 +17,7 @@ export const TAB_CONFIG_SEARCH_KEY = 'CEC.Oopen/Api.Drawer.TabsList';
  * @param {Function} onRevoke - 撤回申请
  * @param {Function} onRemove - 删除订阅
  */
-export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddres, handleWithdraw, handleDelete }) => [
+export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddress, handleWithdraw, handleDelete }) => [
   {
     title: '权限名称',
     dataIndex: ['permission', 'nameCn'],
@@ -28,7 +25,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
     width: 180,
   },
   {
-    title: 'scope',
+    title: 'Scope标识',
     dataIndex: ['permission', 'scope'],
     key: 'scope',
     width: 200,
@@ -65,7 +62,7 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
         <Button type="link" size="small" onClick={() => handleOpenDoc(record.api?.docUrl)}>查看文档</Button>
         {record.status === 0 && (
           <>
-            <Button type="link" size="small" onClick={() => handleCopyApprovalAddres(record)}>复制审批地址</Button>
+            <Button type="link" size="small" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
             <Button type="link" size="small" onClick={() => handleWithdraw(record.id)}>撤回审核</Button>
           </>
         )}
@@ -73,57 +70,6 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
           <Button type="link" size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
         )}
       </div>
-    ),
-  },
-];
-
-/**
- * 生成API权限选择器表格列配置
- *
- * @param {Function} handleOpenDoc - 查看文档
- */
-export const getApiPermissionDrawerColumns = ({ handleOpenDoc }) => [
-  {
-    title: '权限名称',
-    dataIndex: 'nameCn',
-    key: 'nameCn',
-    width: 180,
-    render: (text, record) => {
-      const name = record.nameCn || record.name || '-';
-      return <span>{name}</span>;
-    },
-  },
-  {
-    title: 'Scope',
-    dataIndex: 'scope',
-    key: 'scope',
-    width: 180,
-    ellipsis: true,
-    render: (scope) => <code>{scope || '-'}</code>,
-  },
-  {
-    title: '是否需要审核',
-    dataIndex: 'needApproval',
-    key: 'needApproval',
-    width: 120,
-    render: renderNeedApprovalStatus,
-  },
-  {
-    title: '订阅状态',
-    dataIndex: 'isSubscribed',
-    key: 'isSubscribed',
-    width: 100,
-    render: (isSubscribed) => {
-      const { text, color } = SUBSCRIPTION_STATUS[isSubscribed] || { text: '未订阅', color: 'default' };
-      return <Tag color={color}>{text}</Tag>;
-    }
-  },
-  {
-    title: '操作',
-    key: 'action',
-    width: 100,
-    render: (_, record) => (
-      <Button type="link" size="small" onClick={() => handleOpenDoc(record.resource.docUrl)}>查看文档</Button>
     ),
   },
 ];

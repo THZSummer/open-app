@@ -4,11 +4,8 @@ const { TabPane } = Tabs;
 import { fetchApis, fetchCategories, fetchTabConfig } from './thunk';
 import { mockAppInfo } from '../BasicInfo/mock';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
-import { NEED_REVIEW_OPTIONS } from '../../utils/commonTableConfigs';
-import {
-  TAB_CONFIG_SEARCH_KEY,
-  getApiPermissionDrawerColumns,
-} from './constants';
+import { NEED_REVIEW_OPTIONS, createDrawerColumns } from '../../utils/commonTableConfigs';
+import { TAB_CONFIG_SEARCH_KEY } from './constants';
 import './ApiPermissionDrawer.m.less';
 import { openUrl } from '@/utils/common';
 
@@ -252,6 +249,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
       }
       
       // 2. 加载模块列表
+      console.log('tabResult = ', tabResult)
       const modules = await loadModules(tabResult.firstChildTab.key);
       
       // 3. 加载API列表
@@ -384,7 +382,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     openUrl(docUrl, '_blank')
   };
 
-  const columns = getApiPermissionDrawerColumns({ handleOpenDoc });
+  const columns = createDrawerColumns('api');
 
   // 表格行选择器配置
   const rowSelection = {

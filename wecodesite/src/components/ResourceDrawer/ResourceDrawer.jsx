@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Drawer, Table, Button, Pagination, Input, Select, message } from 'antd';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { NEED_REVIEW_OPTIONS } from '../../utils/commonTableConfigs';
-import { openUrl } from '../../utils/common';
+import { createDrawerColumns } from '../../utils/commonTableConfigs';
 
 function ResourceDrawer({
   open,
@@ -13,10 +13,9 @@ function ResourceDrawer({
   appId,
   title = '添加资源',
   className = 'resource-drawer',
-  placeholder = '资源名称/标识',
   fetchCategories,
   fetchData,
-  getColumns,
+  columnType,
 }) {
   const [selectedRowKeys, setSelectedRowKeys] = useState(
     selectedItems.map(item => item.id)
@@ -115,11 +114,7 @@ function ResourceDrawer({
     await loadData({ needReview: value, curPage: 1 });
   };
 
-  const handleOpenDoc = (docUrl) => {
-    openUrl(docUrl)
-  };
-
-  const columns = getColumns({ handleOpenDoc });
+  const columns = createDrawerColumns(columnType);
 
   const rowSelection = {
     selectedRowKeys,
@@ -133,7 +128,7 @@ function ResourceDrawer({
     <Drawer
       title={title}
       placement="right"
-      width={700}
+      width={900}
       onClose={onClose}
       open={open}
       className={className}
@@ -154,7 +149,7 @@ function ResourceDrawer({
       <div className={`${className}-content`}>
         <div className={`${className}-filter`}>
           <Input
-            placeholder={placeholder}
+            placeholder='权限名称/Scope'
             value={filterKeyword}
             onChange={handleFilterChange}
             style={{ width: 200 }}

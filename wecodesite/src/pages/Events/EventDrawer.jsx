@@ -1,7 +1,6 @@
 import React from 'react';
 import ResourceDrawer from '../../components/ResourceDrawer/ResourceDrawer';
 import { fetchEventCategories, fetchEvents } from './thunk';
-import { getEventDrawerColumns } from './constants';
 import './EventDrawer.m.less';
 
 function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeLoading = false, appId }) {
@@ -18,7 +17,7 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
       placeholder="事件名称/Topic"
       fetchCategories={fetchEventCategories}
       fetchData={fetchEvents}
-      getColumns={getEventDrawerColumns}
+      columnType='event'
     />
   );
 }

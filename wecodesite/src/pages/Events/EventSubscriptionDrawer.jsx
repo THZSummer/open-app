@@ -22,9 +22,8 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
     const newChannelType = e.target.value;
     setChannelType(newChannelType);
     const updateFields = { channelType: newChannelType };
-    if (newChannelType === 1) {
-      updateFields.authType = 0;
-    }
+    updateFields.authType = newChannelType === 1 ? 1 : null;
+    updateFields.channelAddress = '';
     form.setFieldsValue(updateFields);
   };
 
@@ -66,16 +65,16 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
       {event && (
         <div className="event-info">
           <div className="info-item">
-            <span className="label">事件名称:</span>
+            <span className="label">权限名称:</span>
             <span className="value">{event.permission?.nameCn}</span>
           </div>
           <div className="info-item">
-            <span className="label">Topic:</span>
+            <span className="label">事件Topic:</span>
             <span className="value">{event.event?.topic}</span>
           </div>
           <div className="info-item">
-            <span className="label">所需权限:</span>
-            <span className="value">{event.permission?.nameCn}</span>
+            <span className="label">Scope标识:</span>
+            <span className="value">{event.permission?.scope}</span>
           </div>
         </div>
       )}
@@ -113,9 +112,8 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
             >
               <Input placeholder="https://your-domain.com/webhook" />
             </Form.Item>
-            <Form.Item name="authType" label="认证类型">
+            <Form.Item name="authType" label="认证方式">
               <Radio.Group>
-                <Radio value={0}>{AUTH_TYPE[0]}</Radio>
                 <Radio value={1}>{AUTH_TYPE[1]}</Radio>
               </Radio.Group>
             </Form.Item>

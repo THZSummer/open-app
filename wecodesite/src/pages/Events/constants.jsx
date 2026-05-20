@@ -1,25 +1,7 @@
 import React from 'react';
 import { Button } from 'antd';
-import { CHANNEL_TYPE } from '../../utils/constants';
-import {
-  renderStatus,
-  createEventDrawerColumns
-} from '../../utils/commonTableConfigs';
-
-/**
- * 事件选择器表格列配置
- */
-export const getEventDrawerColumns = ({ handleOpenDoc }) => createEventDrawerColumns().map(col => {
-  if (col.key === 'action') {
-    return {
-      ...col,
-      render: (_, record) => (
-        <Button type="link" size="small" onClick={() => handleOpenDoc(record.resource.docUrl)}>查看文档</Button>
-      ),
-    };
-  }
-  return col;
-});
+import { CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
+import { renderStatus } from '../../utils/commonTableConfigs';
 
 /**
  * 事件列表表格列配置
@@ -30,50 +12,54 @@ export const getEventDrawerColumns = ({ handleOpenDoc }) => createEventDrawerCol
  * @param {Function} handleWithdraw - 取消订阅
  * @param {Function} handleDelete - 移除条目
  */
-export const getEventColumns = ({handleOpenDoc, handleEdit, handleCopyApprovalAddress, handleWithdraw, handleDelete}) => [
+export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalAddress, handleWithdraw, handleDelete }) => [
   {
-    title: '事件名称',
-    dataIndex: ['permission', 'nameCn'],
+    title: '权限名称',
     key: 'nameCn',
-    width: 200,
-    render: (text, record) => (
-      <div>
-        <div>{text}</div>
-        <span style={{ fontSize: 12, color: '#8c8c8c' }}>{record.event?.topic}</span>
-      </div>
-    ),
-  },
-  {
-    title: '分类',
-    dataIndex: ['category', 'nameCn'],
-    key: 'category',
-    width: 120,
-  },
-  {
-    title: '所需权限',
+    width: 180,
     dataIndex: ['permission', 'nameCn'],
-    key: 'permissionName',
-    width: 150,
+  },
+  {
+    title: 'Scope标识',
+    key: 'scope',
+    width: 200,
+    dataIndex: ['permission', 'scope'],
     ellipsis: true,
+    render: (code) => <code>{code}</code>,
+  },
+  {
+    title: '事件Topic',
+    key: 'topic',
+    width: 200,
+    dataIndex: ['event', 'topic'],
+    ellipsis: true,
+    render: (topic) => <code>{topic}</code>,
   },
   {
     title: '订阅方式',
-    dataIndex: 'channelType',
     key: 'channelType',
     width: 100,
+    dataIndex: 'channelType',
     render: (type) => CHANNEL_TYPE[type] || '-',
   },
   {
+    title: '认证方式',
+    key: 'authType',
+    width: 100,
+    dataIndex: 'authType',
+    render: (type) => AUTH_TYPE[type] || '-',
+  },
+  {
     title: '状态',
+    width: 100,
     dataIndex: 'status',
     key: 'status',
-    width: 100,
     render: renderStatus,
   },
   {
     title: '操作',
-    key: 'action',
     width: 300,
+    key: 'action',
     fixed: 'right',
     render: (_, record) => (
       <div>

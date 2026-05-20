@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tag, Button, Space } from 'antd';
 import { SUBSCRIPTION_STATUS, STATUS_MAP } from './constants';
+import { openUrl } from './common';
 
 export const NEED_REVIEW_OPTIONS = [
   { value: 'all', label: '全部' },
@@ -27,25 +28,32 @@ export const renderStatus = (status) => {
   return <Tag color={color}>{text}</Tag>;
 };
 
-export const createDrawerColumns = ({ nameLabel = '名称', identifierField = 'scope', identifierPlaceholder = '' }) => {
-  return [
+export const createDrawerColumns = (type) => {
+  const baseColumns = [
     {
-      title: nameLabel,
+      title: '权限名称',
       dataIndex: 'nameCn',
       key: 'nameCn',
-      width: 200,
+      width: 180,
       render: (text, record) => {
         const name = record.nameCn || record.name || '-';
-        const identifier = record[identifierField] || '';
-        return (
-          <div>
-            <div>{name}</div>
-            {identifier && (
-              <span style={{ fontSize: 12, color: '#8c8c8c' }}>{identifier}</span>
-            )}
-          </div>
-        );
+        return <span>{name}</span>;
       },
+    },
+    {
+      title: 'Scope标识',
+      dataIndex: 'scope',
+      key: 'scope',
+      width: 150,
+      ellipsis: true,
+      render: (scope) => <code>{scope || '-'}</code>,
+    },
+    {
+      title: '事件Topic',
+      dataIndex: ['resource', 'topic'],
+      key: 'topic',
+      width: 150,
+      render: (topic) => <code>{topic || '-'}</code>,
     },
     {
       title: '是否需要审核',
@@ -66,32 +74,22 @@ export const createDrawerColumns = ({ nameLabel = '名称', identifierField = 's
       key: 'action',
       width: 100,
       render: (_, record) => (
-        <Button type="link" size="small" onClick={() => record.docUrl && window.open(record.docUrl, '_blank')}>
+        <Button type="link" size="small" onClick={() => openUrl(record.resource.docUrl)}>
           查看文档
         </Button>
       ),
     },
   ];
+  if (type === 'event') {
+    return baseColumns;
+  } else {
+    return baseColumns.filter(item => item.key !== 'topic');
+  }
 };
-
-export const createCallbackDrawerColumns = () => createDrawerColumns({
-  nameLabel: '回调名称',
-  identifierField: 'scope',
-});
-
-export const createEventDrawerColumns = () => createDrawerColumns({
-  nameLabel: '事件名称',
-  identifierField: 'topic',
-});
-
-export const createApiDrawerColumns = () => createDrawerColumns({
-  nameLabel: '权限名称',
-  identifierField: 'scope',
-});
 
 export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) => [
   {
-    title: 'Scope',
+    title: 'Scope标识',
     dataIndex: 'permission',
     key: 'scope',
     width: 200,
