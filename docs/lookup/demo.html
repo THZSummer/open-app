@@ -2371,12 +2371,7 @@
             filtered = filtered.filter(function(c) { return selectedClassifyIds.includes(c.id); });
         }
 
-        var actualExportCount = 0;
-        filtered.forEach(function(c) {
-            actualExportCount += c.items.filter(function(i) { return i.status === 1; }).length;
-        });
-        var displayCount = actualExportCount;
-        showConfirm('确认导出', '将导出 ' + displayCount + ' 条数据（包含分类和LookUp项），是否继续？', '📤', function() {
+        showConfirm('确认导出', '是否继续导出？', '📤', function() {
             var task = addTask('export', 'lookup');
             showTaskNotify('export', task.id);
 
