@@ -10,7 +10,7 @@ export const RESOURCE_TYPES = {
       scope: 'callback:approval:completed',
     },
     scopePattern: /^callback:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]+$/,
-    scopeMessage: '格式不正确，应为：callback:{模块}:{资源标识}（小写字母开头）',
+    scopeMessage: '格式不正确，应为：callback:{模块}:{资源标识}',
     scopeExtra: '格式：callback:{模块}:{资源标识}',
     baseFields: [],
   },
@@ -26,7 +26,7 @@ export const RESOURCE_TYPES = {
       topic: 'user.status',
     },
     scopePattern: /^event:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]+$/,
-    scopeMessage: '格式不正确，应为：event:{模块}:{事件标识}（小写字母开头）',
+    scopeMessage: '格式不正确，应为：event:{模块}:{事件标识}',
     scopeExtra: '格式：event:{模块}:{事件标识}',
     baseFields: [
       {
@@ -54,7 +54,7 @@ export const RESOURCE_TYPES = {
       scope: 'api:im:send-message',
     },
     scopePattern: /^api:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]+$/,
-    scopeMessage: '格式不正确，应为：api:{模块}:{资源标识}（小写字母开头）',
+    scopeMessage: '格式不正确，应为：api:{模块}:{资源标识}',
     scopeExtra: '格式：api:{模块}:{资源标识}',
     baseFields: [
       {

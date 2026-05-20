@@ -21,7 +21,7 @@ import ApprovalCenter from './pages/Admin/Approval/index';
 import ConnectorList from './pages/ConnectPlatform/Connector/index';
 import ConnectorEditor from './pages/ConnectPlatform/ConnectorEditor/index';
 import FlowList from './pages/ConnectPlatform/Flow/index';
-import FlowCanvas from './pages/ConnectPlatform/Flow/FlowCanvas';
+import FlowEditor from './pages/ConnectPlatform/FlowEditor/index';
 import 'antd/dist/antd.css';
 
 function App() {
@@ -55,8 +55,7 @@ function App() {
           <Route path="connect/connectors" element={<ConnectorList />} />
           <Route path="connect/connector-editor" element={<ConnectorEditor />} />
           <Route path="connect/flows" element={<FlowList />} />
-          <Route path="connect/flows/:id/edit" element={<FlowCanvas isNew={false} />} />
-          <Route path="connect/flows/new" element={<FlowCanvas isNew={true} />} />
+          <Route path="connect/flows/editor" element={<FlowEditor />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

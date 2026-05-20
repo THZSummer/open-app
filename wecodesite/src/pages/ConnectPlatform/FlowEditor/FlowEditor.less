@@ -1,15 +1,15 @@
 /**
- * 流程画布页面样式
+ * 连接流编辑器页面样式
  */
 
-.flow-canvas-page {
+.flow-editor-page {
   height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #fafafa;
-  
+
   // 顶部工具栏
-  .canvas-header {
+  .editor-header {
     height: 60px;
     display: flex;
     justify-content: space-between;
@@ -18,25 +18,25 @@
     background-color: #fff;
     border-bottom: 1px solid #e8e8e8;
     flex-shrink: 0;
-    
+
     .header-left {
       display: flex;
       align-items: center;
     }
-    
+
     .header-right {
       display: flex;
       align-items: center;
     }
   }
-  
-  // 画布主体
-  .canvas-content {
+
+  // 编辑器主体
+  .editor-content {
     flex: 1;
     display: flex;
     overflow: hidden;
-    
-    .flow-canvas-area {
+
+    .editor-canvas-area {
       flex: 1;
       height: 100%;
       position: relative;

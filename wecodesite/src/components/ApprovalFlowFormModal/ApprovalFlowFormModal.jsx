@@ -5,7 +5,6 @@ import {
   Input,
   Button,
   Divider,
-  message,
   Space,
   Select,
 } from 'antd';
@@ -71,7 +70,6 @@ function ApprovalFlowFormModal({
     };
 
     await onSubmit(data);
-    form.resetFields();
     setLoading(false);
   };
 

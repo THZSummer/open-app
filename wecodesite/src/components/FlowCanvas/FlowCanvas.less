@@ -11,21 +11,50 @@
   
   // ReactFlow默认样式覆盖
   .react-flow {
-    background-color: #fafafa;
+    background-color: #f0f2f5;
   }
   
   // 节点通用样式
   .react-flow__node {
     cursor: pointer;
-    transition: box-shadow 0.2s ease;
-    
-    &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    // 选中状态
+    transition: box-shadow 0.2s ease, border 0.2s ease;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.15) !important;
+    outline: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+
+    // 选中状态 - 淡蓝色阴影 + 蓝色边框
     &.selected {
-      box-shadow: 0 0 0 2px #1890ff;
+      border: 1px solid #1890ff !important;
+      box-shadow: 0 6px 16px rgba(24, 144, 255, 0.3) !important;
+    }
+
+    // 禁用所有状态的边框和轮廓
+    &:focus,
+    &:focus-visible,
+    &:active {
+      outline: none !important;
+    }
+  }
+  
+  // 覆盖ReactFlow默认节点样式
+  .react-flow__node-default,
+  .react-flow__node-input,
+  .react-flow__node-output,
+  .react-flow__node-custom {
+    outline: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  // 覆盖ReactFlow选择器 - 所有节点都应用边框
+  .react-flow__node {
+    outline: none !important;
+  }
+
+  // 确保所有节点相关元素的边框和轮廓
+  .react-flow {
+    &__node {
+      outline: none !important;
     }
   }
   

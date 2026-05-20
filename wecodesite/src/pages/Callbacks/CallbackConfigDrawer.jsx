@@ -94,6 +94,21 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
           label="回调地址"
           rules={[
             { required: true, message: '请输入回调地址' },
+            {
+              validator(_, value) {
+                if (!value) {
+                  return Promise.reject('请输入回调地址');
+                }
+                
+                const protocolPattern = channelType === 3 ? /^wss?:\/\/.+/ : /^https?:\/\/.+/;
+                const errorMessage = channelType === 3 ? 'WebSocket 回调地址必须以 ws:// 或 wss:// 开头'  : '回调地址必须以 http:// 或 https:// 开头';
+                
+                if (protocolPattern.test(value)) {
+                  return Promise.resolve();
+                }
+                return Promise.reject(errorMessage);
+              },
+            },
           ]}
         >
           <Input placeholder="https://your-domain.com/webhook" />

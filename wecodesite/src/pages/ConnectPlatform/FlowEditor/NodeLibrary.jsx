@@ -2,7 +2,7 @@
  * ========================================
  * 节点库面板组件
  * ========================================
- * 
+ *
  * 功能：
  * - 显示所有可用的节点类型分类列表
  * - 支持拖拽节点到画布
@@ -17,7 +17,7 @@ const { Panel } = Collapse;
 
 /**
  * 节点库面板组件
- * 
+ *
  * @param {Object} props
  * @param {Function} props.onDragStart - 开始拖拽回调
  */
@@ -32,10 +32,10 @@ function NodeLibrary({ onDragStart }) {
       type: nodeType,
       label: label,
     });
-    
+
     event.dataTransfer.setData('application/reactflow', nodeData);
     event.dataTransfer.effectAllowed = 'move';
-    
+
     // 调用回调函数
     if (onDragStart) {
       onDragStart(nodeType, label);
@@ -51,8 +51,8 @@ function NodeLibrary({ onDragStart }) {
       size="small"
       draggable
       onDragStart={(e) => handleDragStart(e, item.type, item.label)}
-      style={{ 
-        marginBottom: 8, 
+      style={{
+        marginBottom: 8,
         cursor: 'grab',
         userSelect: 'none',
         transition: 'all 0.2s ease',
@@ -60,8 +60,8 @@ function NodeLibrary({ onDragStart }) {
       bodyStyle={{ padding: '10px 12px' }}
       hoverable
     >
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         alignItems: 'center',
         gap: 8,
       }}>
@@ -80,16 +80,16 @@ function NodeLibrary({ onDragStart }) {
           {item.label.charAt(0)}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ 
-            fontSize: 13, 
+          <div style={{
+            fontSize: 13,
             fontWeight: 500,
             color: '#333',
           }}>
             {item.label}
           </div>
           {item.description && (
-            <div style={{ 
-              fontSize: 11, 
+            <div style={{
+              fontSize: 11,
               color: '#999',
               marginTop: 2,
             }}>
@@ -117,20 +117,20 @@ function NodeLibrary({ onDragStart }) {
   };
 
   return (
-    <div 
+    <div
       className="node-library-panel"
-      style={{ 
-        width: 260, 
-        height: '100%', 
-        backgroundColor: '#fafafa', 
-        borderRight: '1px solid #e8e8e8', 
+      style={{
+        width: 260,
+        height: '100%',
+        backgroundColor: '#fafafa',
+        borderRight: '1px solid #e8e8e8',
         overflow: 'auto',
         display: 'flex',
         flexDirection: 'column',
       }}
     >
       {/* 面板标题 */}
-      <div style={{ 
+      <div style={{
         padding: '16px 16px 12px',
         borderBottom: '1px solid #e8e8e8',
         backgroundColor: '#fff',
@@ -142,27 +142,27 @@ function NodeLibrary({ onDragStart }) {
           拖拽节点到画布进行编排
         </Text>
       </div>
-      
+
       {/* 节点分类列表 */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        <Collapse 
-          defaultActiveKey={['触发器', '执行动作', '逻辑控制']} 
+        <Collapse
+          defaultActiveKey={['触发器', '执行动作', '逻辑控制']}
           ghost
           style={{ backgroundColor: 'transparent' }}
         >
           {NODE_LIBRARY.map((category, categoryIndex) => (
-            <Panel 
+            <Panel
               header={
-                <span style={{ 
+                <span style={{
                   fontWeight: 600,
                   fontSize: 13,
                 }}>
                   {category.icon} {category.category}
                 </span>
-              } 
+              }
               key={category.category}
             >
-              {category.items.map((item, itemIndex) => 
+              {category.items.map((item, itemIndex) =>
                 renderNodeCard(item, categoryIndex, itemIndex)
               )}
             </Panel>

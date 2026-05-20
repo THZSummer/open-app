@@ -2,8 +2,8 @@
  * ========================================
  * 自定义流程节点注册
  * ========================================
- * 
- * 统一注册所有自定义节点类型，供FlowCanvas使用
+ *
+ * 统一注册所有自定义节点类型，供FlowEditor使用
  */
 
 import TriggerNode from '../../../components/CustomFlowNodes/TriggerNode';
@@ -29,17 +29,9 @@ export const nodeTypes = {
 /**
  * 节点库配置
  * 定义可在节点库面板中拖拽的节点
+ * 注意：触发器节点不在此配置中，因为每个流程只能有一个触发器
  */
 export const NODE_LIBRARY = [
-  {
-    category: '触发器',
-    icon: '⚡',
-    items: [
-      { type: 'trigger', label: '定时触发', description: '按照Cron表达式定时执行' },
-      { type: 'trigger', label: 'Webhook', description: '通过HTTP回调触发' },
-      { type: 'trigger', label: 'API触发', description: '通过API接口触发' },
-    ],
-  },
   {
     category: '执行动作',
     icon: '▶',

@@ -109,7 +109,7 @@ function FlowList() {
    * 新建连接流
    */
   const handleAdd = () => {
-    navigate('/connect/flows/new');
+    navigate('/connect/flows/editor?action=create');
   };
 
   /**
@@ -117,7 +117,15 @@ function FlowList() {
    * @param {Object} record - 连接流记录
    */
   const handleEdit = (record) => {
-    navigate(`/connect/flows/${record.id}/edit`);
+    navigate(`/connect/flows/editor?action=edit&id=${record.id}`);
+  };
+
+  /**
+   * 查看连接流详情
+   * @param {Object} record - 连接流记录
+   */
+  const handleView = (record) => {
+    navigate(`/connect/flows/editor?action=view&id=${record.id}`);
   };
 
   /**
@@ -171,6 +179,7 @@ function FlowList() {
   const columns = getFlowColumns({
     handleEdit,
     handleDeleteClick,
+    handleView,
   });
 
   /**

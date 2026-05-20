@@ -8,6 +8,7 @@
  * - 青色边框表示并行
  * - 顶部输入连接点
  * - 底部多个输出连接点（根据分支数量）
+ * - 左右两侧各添加一个连接点，支持更多连线场景
  */
 
 import React, { memo } from 'react';
@@ -25,19 +26,16 @@ import { Handle, Position } from '@xyflow/react';
 const ParallelNode = ({ data, selected }) => {
   const branches = data.config?.branches || [];
   const branchCount = Math.max(branches.length, 2);
-  
+
   return (
-    <div 
-      style={{ 
-        padding: '14px 18px', 
-        border: `2px solid ${selected ? '#13c2c2' : '#13c2c2'}`,
+    <div
+      style={{
+        padding: '14px 18px',
         borderRadius: 10,
         backgroundColor: '#fff',
         minWidth: 180,
         maxWidth: 240,
-        boxShadow: selected 
-          ? '0 4px 12px rgba(19, 194, 194, 0.4)' 
-          : '0 2px 8px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
         transition: 'all 0.2s ease',
       }}
     >
@@ -45,8 +43,8 @@ const ParallelNode = ({ data, selected }) => {
       <Handle 
         type="target" 
         position={Position.Top}
+        id="top-target"
         style={{
-          top: -6,
           background: '#13c2c2',
           border: '2px solid #fff',
           width: 12,
@@ -89,15 +87,14 @@ const ParallelNode = ({ data, selected }) => {
       </div>
       
       {/* 输出连接点 - 底部 */}
-      {branches.length > 0 ? (
+      {branches.length >= 2 ? (
         branches.map((branch, index) => (
           <Handle 
             key={index}
             type="source" 
             position={Position.Bottom}
-            id={`branch-${index}`}
+            id={`bottom-source-${index}`}
             style={{
-              bottom: -6,
               left: `${30 + index * (40 / (branches.length - 1 || 1))}%`,
               background: '#13c2c2',
               border: '2px solid #fff',
@@ -111,8 +108,8 @@ const ParallelNode = ({ data, selected }) => {
           <Handle 
             type="source" 
             position={Position.Bottom}
+            id="bottom-source-1"
             style={{
-              bottom: -6,
               left: '30%',
               background: '#13c2c2',
               border: '2px solid #fff',
@@ -123,8 +120,8 @@ const ParallelNode = ({ data, selected }) => {
           <Handle 
             type="source" 
             position={Position.Bottom}
+            id="bottom-source-2"
             style={{
-              bottom: -6,
               left: '70%',
               background: '#13c2c2',
               border: '2px solid #fff',

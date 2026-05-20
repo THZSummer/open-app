@@ -7,6 +7,7 @@
  * - 显示延时节点的标准样式
  * - 紫色边框表示延时
  * - 顶部输入连接点，底部输出连接点
+ * - 左右两侧各添加一个连接点，支持更多连线场景
  */
 
 import React, { memo } from 'react';
@@ -24,17 +25,14 @@ import { Handle, Position } from '@xyflow/react';
  */
 const DelayNode = ({ data, selected }) => {
   return (
-    <div 
-      style={{ 
-        padding: '14px 18px', 
-        border: `2px solid ${selected ? '#722ed1' : '#722ed1'}`,
+    <div
+      style={{
+        padding: '14px 18px',
         borderRadius: 10,
         backgroundColor: '#fff',
         minWidth: 160,
         maxWidth: 200,
-        boxShadow: selected 
-          ? '0 4px 12px rgba(114, 46, 209, 0.4)' 
-          : '0 2px 8px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
         transition: 'all 0.2s ease',
       }}
     >
@@ -42,8 +40,8 @@ const DelayNode = ({ data, selected }) => {
       <Handle 
         type="target" 
         position={Position.Top}
+        id="top-target"
         style={{
-          top: -6,
           background: '#722ed1',
           border: '2px solid #fff',
           width: 12,
@@ -55,8 +53,8 @@ const DelayNode = ({ data, selected }) => {
       <Handle 
         type="source" 
         position={Position.Bottom}
+        id="bottom-source"
         style={{
-          bottom: -6,
           background: '#722ed1',
           border: '2px solid #fff',
           width: 12,

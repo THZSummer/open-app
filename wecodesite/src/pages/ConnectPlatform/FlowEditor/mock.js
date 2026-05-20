@@ -1,9 +1,9 @@
 /**
  * ========================================
- * 连接流列表 - Mock数据
+ * 连接流编辑器 - Mock数据
  * ========================================
  *
- * 提供连接流列表相关API的mock数据，用于开发和测试阶段
+ * 提供连接流编辑器相关API的mock数据，用于开发和测试阶段
  * 数据结构遵循API响应格式：{ code, message, data, page }
  */
 
@@ -325,66 +325,71 @@ const generateErrorResponse = ({
 };
 
 /**
- * 获取连接流列表
- *
- * @param {Object} params - 查询参数
- * @param {string} [params.keyword] - 搜索关键词
- * @param {string} [params.type] - 流程类型筛选
- * @param {number} [params.curPage=1] - 当前页码
- * @param {number} [params.pageSize=10] - 每页条数
- * @returns {Promise<Object>}
- */
-export const mockFetchFlowList = async (params = {}) => {
-  const {
-    keyword,
-    type,
-    curPage = 1,
-    pageSize = 10
-  } = params;
-
-  // 模拟网络延迟
-  await new Promise(resolve => setTimeout(resolve, 300));
-
-  let filteredList = [...mockFlows];
-
-  // 关键词过滤
-  if (keyword) {
-    const searchKeyword = keyword.toLowerCase();
-    filteredList = filteredList.filter(
-      item =>
-        item.name.toLowerCase().includes(searchKeyword) ||
-        item.description.toLowerCase().includes(searchKeyword)
-    );
-  }
-
-  // 类型过滤
-  if (type) {
-    filteredList = filteredList.filter(item => item.type === type);
-  }
-
-  // 分页计算
-  const total = filteredList.length;
-  const startIndex = (curPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const list = filteredList.slice(startIndex, endIndex);
-
-  return generateSuccessResponse({
-    data: list,
-    page: {
-      curPage,
-      pageSize,
-      total
-    }
-  });
-};
-
-/**
- * 删除连接流
+ * 获取连接流详情
  *
  * @param {string} id - 连接流ID
  * @returns {Promise<Object>}
  */
-export const mockDeleteFlow = async (id) => {
+export const mockFetchFlowDetail = async (id) => {
+  await new Promise(resolve => setTimeout(resolve, 200));
+
+  const flow = mockFlows.find(item => item.id === id);
+
+  if (!flow) {
+    return generateErrorResponse({
+      code: '404',
+      message: '连接流不存在'
+    });
+  }
+
+  return generateSuccessResponse({
+    data: flow
+  });
+};
+
+/**
+ * 创建连接流
+ *
+ * @param {Object} data - 连接流数据
+ * @param {string} data.name - 连接流名称
+ * @param {string} [data.description] - 连接流描述
+ * @param {string} [data.type='automation'] - 流程类型
+ * @param {number} [data.status=0] - 状态（0-草稿，1-已发布）
+ * @param {Array} [data.nodes] - 节点列表
+ * @param {Array} [data.edges] - 连线列表
+ * @returns {Promise<Object>}
+ */
+export const mockCreateFlow = async (data) => {
+  await new Promise(resolve => setTimeout(resolve, 400));
+
+  const newFlow = {
+    id: `flow-${Date.now()}`,
+    name: data.name,
+    description: data.description || '',
+    type: data.type || 'automation',
+    status: 0,
+    nodes: data.nodes || [],
+    edges: data.edges || [],
+    createdAt: new Date().toLocaleString(),
+    updatedAt: new Date().toLocaleString()
+  };
+
+  mockFlows.push(newFlow);
+
+  return generateSuccessResponse({
+    data: newFlow,
+    message: '连接流创建成功'
+  });
+};
+
+/**
+ * 更新连接流
+ *
+ * @param {string} id - 连接流ID
+ * @param {Object} data - 更新数据
+ * @returns {Promise<Object>}
+ */
+export const mockUpdateFlow = async (id, data) => {
   await new Promise(resolve => setTimeout(resolve, 300));
 
   const index = mockFlows.findIndex(item => item.id === id);
@@ -396,9 +401,84 @@ export const mockDeleteFlow = async (id) => {
     });
   }
 
-  mockFlows.splice(index, 1);
+  mockFlows[index] = {
+    ...mockFlows[index],
+    ...data,
+    updatedAt: new Date().toLocaleString()
+  };
 
   return generateSuccessResponse({
-    message: '连接流删除成功'
+    data: mockFlows[index],
+    message: '连接流更新成功'
+  });
+};
+
+/**
+ * 发布连接流
+ *
+ * @param {string} id - 连接流ID
+ * @returns {Promise<Object>}
+ */
+export const mockPublishFlow = async (id) => {
+  await new Promise(resolve => setTimeout(resolve, 400));
+
+  const flow = mockFlows.find(item => item.id === id);
+
+  if (!flow) {
+    return generateErrorResponse({
+      code: '404',
+      message: '连接流不存在'
+    });
+  }
+
+  if (flow.status === 1) {
+    return generateErrorResponse({
+      code: '400',
+      message: '连接流已经发布，不能重复发布'
+    });
+  }
+
+  flow.status = 1;
+  flow.publishedAt = new Date().toLocaleString();
+  flow.updatedAt = new Date().toLocaleString();
+
+  return generateSuccessResponse({
+    data: flow,
+    message: '连接流发布成功'
+  });
+};
+
+/**
+ * 取消发布连接流
+ *
+ * @param {string} id - 连接流ID
+ * @returns {Promise<Object>}
+ */
+export const mockUnpublishFlow = async (id) => {
+  await new Promise(resolve => setTimeout(resolve, 400));
+
+  const flow = mockFlows.find(item => item.id === id);
+
+  if (!flow) {
+    return generateErrorResponse({
+      code: '404',
+      message: '连接流不存在'
+    });
+  }
+
+  if (flow.status === 0) {
+    return generateErrorResponse({
+      code: '400',
+      message: '连接流未发布，无法取消发布'
+    });
+  }
+
+  flow.status = 0;
+  flow.updatedAt = new Date().toLocaleString();
+  delete flow.publishedAt;
+
+  return generateSuccessResponse({
+    data: flow,
+    message: '连接流取消发布成功'
   });
 };

@@ -8,6 +8,7 @@
  * - 橙色边框表示条件判断
  * - 顶部输入连接点
  * - 底部两个输出连接点（条件满足/不满足）
+ * - 左右两侧各添加一个连接点，支持更多连线场景
  */
 
 import React, { memo } from 'react';
@@ -24,26 +25,23 @@ import { Handle, Position } from '@xyflow/react';
  */
 const ConditionNode = ({ data, selected }) => {
   return (
-    <div 
-      style={{ 
-        padding: '14px 18px', 
-        border: `2px solid ${selected ? '#faad14' : '#faad14'}`,
+    <div
+      style={{
+        padding: '14px 18px',
         borderRadius: 10,
         backgroundColor: '#fff',
         minWidth: 180,
         maxWidth: 220,
-        boxShadow: selected 
-          ? '0 4px 12px rgba(250, 173, 20, 0.4)' 
-          : '0 2px 8px rgba(0, 0, 0, 0.1)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
         transition: 'all 0.2s ease',
       }}
-    >
+    >      
       {/* 输入连接点 - 顶部 */}
       <Handle 
         type="target" 
         position={Position.Top}
+        id="top-target"
         style={{
-          top: -6,
           background: '#faad14',
           border: '2px solid #fff',
           width: 12,
@@ -111,7 +109,6 @@ const ConditionNode = ({ data, selected }) => {
         position={Position.Bottom}
         id="yes"
         style={{
-          bottom: -6,
           left: '30%',
           background: '#52c41a',
           border: '2px solid #fff',
@@ -124,7 +121,6 @@ const ConditionNode = ({ data, selected }) => {
         position={Position.Bottom}
         id="no"
         style={{
-          bottom: -6,
           left: '70%',
           background: '#999',
           border: '2px solid #fff',
