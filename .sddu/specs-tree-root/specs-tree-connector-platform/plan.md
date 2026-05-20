@@ -229,6 +229,7 @@ erDiagram
     FlowVersion ||--o{ FlowEdge : contains
     Flow ||--o{ ExecutionRecord : generates
     ExecutionRecord ||--o{ ExecutionStep : contains
+    ConnectorVersion ||--o{ ConnectorAuthConfig : has_per_app_credentials
 
     Connector {
         string id PK
@@ -314,6 +315,16 @@ erDiagram
         string error_message
         datetime started_at
         datetime finished_at
+    }
+
+    ConnectorAuthConfig {
+        string id PK
+        string connector_version_id FK
+        string app_id
+        string auth_type "AKSK/OAUTH2/BASIC_AUTH/API_KEY"
+        json encrypted_credentials
+        datetime expires_at
+        string status "active/expired/revoked"
     }
 ```
 
@@ -456,7 +467,8 @@ erDiagram
 
 > 各模块的**完整数据库表设计**详见 `plan-db.md`  
 > 各模块的**完整 API 接口设计**详见 `plan-api.md`  
-> 各页面组的**完整前端设计**详见 `plan-page.md`
+> 各页面组的**完整前端设计**详见 `plan-page.md`  
+> **代码规范**（16 条强制规则，沿用能力开放平台标准）详见 `plan-code.md`
 
 ### 4.2 数据库表清单
 
@@ -476,23 +488,28 @@ erDiagram
 
 ### 4.3 API 接口清单
 
+> 以下为逻辑分组摘要（每组可拆分为多个 HTTP 方法端点）。完整请求/响应 Schema、错误码、鉴权方式详见 `plan-api.md`。
+
 | # | 接口 | 模块 | 方法 | 路径前缀 |
 |---|------|------|------|---------|
 | 1 | 连接器 CRUD | connector | POST/GET/PUT/DELETE | `/api/v1/connectors` |
-| 2 | 连接器版本管理 | connector | POST/GET | `/api/v1/connectors/{id}/versions` |
-| 3 | 连接器上架/下架 | connector | POST | `/api/v1/connectors/{id}/publish` |
-| 4 | 连接流 CRUD | flow | POST/GET/PUT/DELETE | `/api/v1/flows` |
-| 5 | 连接流版本管理 | flow | POST/GET | `/api/v1/flows/{id}/versions` |
-| 6 | 连接流编排配置 | flow | GET/PUT | `/api/v1/flows/{id}/versions/{v}/orchestration` |
-| 7 | 连接流启停 | flow | POST | `/api/v1/flows/{id}/[enable|disable]` |
-| 8 | 手动触发执行 | runtime | POST | `/api/v1/flows/{id}/executions` |
-| 9 | 执行状态查询 | runtime | GET | `/api/v1/executions/{execId}/status` |
-| 10 | 执行历史列表 | runtime | GET | `/api/v1/flows/{id}/executions` |
-| 11 | 执行详情查看 | runtime | GET | `/api/v1/executions/{execId}` |
-| 12 | 执行重试 | runtime | POST | `/api/v1/executions/{execId}/retry` |
-| 13 | Webhook 触发 | runtime | POST | `/api/v1/webhook/{token}` |
-| 14 | 运行指标查询 | monitor | GET | `/api/v1/monitor/metrics` |
-| 15 | 测试运行 | runtime | POST | `/api/v1/flows/{id}/test-run` |
+| 2 | 连接器版本管理 | connector | POST/GET | `/api/v1/connectors/{connector_id}/versions` |
+| 3 | 连接器上架 | connector | POST | `/api/v1/connectors/{connector_id}/list-public` |
+| 4 | 连接器下架 | connector | POST | `/api/v1/connectors/{connector_id}/delist` |
+| 5 | 连接器使用统计 | connector | GET | `/api/v1/connectors/{connector_id}/stats` |
+| 6 | 连接流 CRUD | flow | POST/GET/PUT/DELETE | `/api/v1/flows` |
+| 7 | 连接流版本管理 | flow | POST/GET | `/api/v1/flows/{flow_id}/versions` |
+| 8 | 连接流启停 | flow | POST | `/api/v1/flows/{flow_id}/[enable|disable]` |
+| 9 | 连接流运行状态 | flow | GET | `/api/v1/flows/{flow_id}/status` |
+| 10 | 手动触发执行 | runtime | POST | `/api/v1/flows/{flow_id}/executions` |
+| 11 | 执行状态查询 | runtime | GET | `/api/v1/executions/{execution_id}/status` |
+| 12 | 执行历史列表 | runtime | GET | `/api/v1/flows/{flow_id}/executions` |
+| 13 | 执行详情查看 | runtime | GET | `/api/v1/executions/{execution_id}` |
+| 14 | 执行重试 | runtime | POST | `/api/v1/executions/{execution_id}/retry` |
+| 15 | Webhook 触发 | runtime | POST | `/api/v1/webhook/{token}` |
+| 16 | 测试运行 | runtime | POST | `/api/v1/flows/{flow_id}/test-run` |
+| 17 | 运行指标查询 | monitor | GET | `/api/v1/monitor/metrics` |
+| 18 | 按连接器统计 | monitor | GET | `/api/v1/monitor/metrics/by-connector` |
 
 > 详见 `plan-api.md` — 完整请求/响应 Schema、错误码、鉴权方式
 
@@ -524,7 +541,7 @@ erDiagram
 |------|:--------:|:--------:|:--------:|
 | open-server (4 个新模块) | 65 | 0 | 0 |
 | wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
-| **合计** | **93** | **2** | **0** |
+| **合计** | **74** | **2** | **0** |
 
 ---
 

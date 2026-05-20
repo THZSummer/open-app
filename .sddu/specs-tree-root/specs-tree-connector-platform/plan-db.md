@@ -210,6 +210,7 @@ CREATE TABLE `cp_connector_version` (
 
 ### 3.3 `cp_flow` — 连接流基本信息
 
+```sql
  CREATE TABLE `cp_flow` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `flow_id`         varchar(32)  NOT NULL                  COMMENT '业务ID（如 flow_xxxxxxxx）',
@@ -444,6 +445,8 @@ CREATE TABLE `cp_execution_step` (
 ```
 
 ### 3.9 `cp_connector_auth_config` — 连接器认证凭证
+
+> **与 spec.md 的设计差异**：spec.md FR-008 将认证凭证作为 `connection_config` JSON 的一部分存储在连接器版本中。Plan 阶段将其抽取为独立表 `cp_connector_auth_config`，核心原因是**同一连接器版本可能被不同消费方应用使用，每个应用需要独立的认证凭证**（如各三方平台使用自己的 AKSK 调用 IM 发送消息）。这是对 spec 模型的合理扩展，遵循「连接器版本定义能力接口，消费方提供自身凭证」的职责分离原则。
 
 ```sql
 CREATE TABLE `cp_connector_auth_config` (
