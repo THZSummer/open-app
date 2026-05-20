@@ -11,50 +11,42 @@
 
 | 项 | 说明 |
 |---|------|
-| 技术栈 | React 18 + TypeScript + Ant Design 4 + Zustand + Axios |
-| 新增依赖 | `@xyflow/react` (React Flow v12) |
-| 样式方案 | Less Module（`.module.less`），与现有项目一致 |
-| 布局 | 沿用现有 Layout 组件（侧边导航 + 内容区） |
-| 状态管理 | Zustand store（新增 `connectorStore`, `flowStore`, `executionStore`） |
+| 技术栈 | React 18 + Ant Design 4 + Vite + Less |
+| 前端项目 | **wecodesite**（替代原 open-web，代码已迁移） |
+| 样式方案 | Less Module（`.m.less` / `.less`），与现有项目一致 |
+| 布局 | 沿用 `wecodesite` 现有 Layout 组件（侧边导航 + 内容区） |
+| 状态管理 | `thunk.js` 模式（现有），新增 connector/flow/execution thunk |
+| API 请求 | `src/utils/` 现有工具层 |
+| 画布依赖 | `@xyflow/react`（已内置在 wecodesite `package.json`）|
 
 ---
 
 ## 2. 路由设计
 
-| 路由 | 页面组件 | 说明 |
-|------|---------|------|
-| `/connectors` | `ConnectorList` | 连接器目录 |
-| `/connectors/new` | `ConnectorForm` | 创建连接器 |
-| `/connectors/:id/edit` | `ConnectorForm` | 编辑连接器（基本信息） |
-| `/connectors/:id` | `ConnectorDetail` | 连接器详情（含版本历史） |
-| `/flows` | `FlowList` | 连接流列表 |
-| `/flows/:id/canvas` | `FlowCanvas` | 编排画布 |
-| `/flows/:id` | `FlowDetail` | 连接流详情 |
-| `/flows/:id/executions/:execId` | `ExecutionDetail` | 执行详情 |
-| `/monitor` | `MonitorDashboard` | 运行监控面板 |
+> 💡 以下路由已部分在 `wecodesite` 中实现（`ConnectPlatform` 目录），新增/补充的路由标注"需新增"。
 
-**路由配置修改** (`open-web/src/router/index.tsx`):
-```tsx
+| 路由 | 页面组件 | 已有/需新增 |
+|------|---------|------------|
+| `/connect/connectors` | `ConnectPlatform/Connector/index.jsx` | ✅ 已有 |
+| `/connect/connector-editor` | `ConnectPlatform/ConnectorEditor/index.jsx` | ✅ 已有 |
+| `/connect/flows` | `ConnectPlatform/Flow/index.jsx` | ✅ 已有 |
+| `/connect/flows/new` | `ConnectPlatform/Flow/FlowCanvas.jsx` | ✅ 已有 |
+| `/connect/flows/:id/edit` | `ConnectPlatform/Flow/FlowCanvas.jsx` | ✅ 已有 |
+| `/connect/flows/:id` | `ConnectPlatform/Flow/FlowDetail.jsx` | 🆕 需新增 |
+| `/connect/flows/:id/executions/:execId` | `ConnectPlatform/Flow/ExecutionDetail.jsx` | 🆕 需新增 |
+| `/connect/monitor` | `ConnectPlatform/Monitor/MonitorDashboard.jsx` | 🆕 需新增 |
+
+**路由配置修改** (`wecodesite/src/App.jsx`):
+```jsx
 // 新增导入
-import ConnectorList from '@/pages/connector/ConnectorList';
-import ConnectorForm from '@/pages/connector/ConnectorForm';
-import ConnectorDetail from '@/pages/connector/ConnectorDetail';
-import FlowList from '@/pages/flow/FlowList';
-import FlowCanvas from '@/pages/flow/FlowCanvas';
-import FlowDetail from '@/pages/flow/FlowDetail';
-import ExecutionDetail from '@/pages/flow/ExecutionDetail';
-import MonitorDashboard from '@/pages/monitor/MonitorDashboard';
+import FlowDetail from './pages/ConnectPlatform/Flow/FlowDetail';
+import ExecutionDetail from './pages/ConnectPlatform/Flow/ExecutionDetail';
+import MonitorDashboard from './pages/ConnectPlatform/Monitor/MonitorDashboard';
 
-// 新增路由
-<Route path="connectors" element={<ConnectorList />} />
-<Route path="connectors/new" element={<ConnectorForm />} />
-<Route path="connectors/:id/edit" element={<ConnectorForm />} />
-<Route path="connectors/:id" element={<ConnectorDetail />} />
-<Route path="flows" element={<FlowList />} />
-<Route path="flows/:id/canvas" element={<FlowCanvas />} />
-<Route path="flows/:id" element={<FlowDetail />} />
-<Route path="flows/:id/executions/:execId" element={<ExecutionDetail />} />
-<Route path="monitor" element={<MonitorDashboard />} />
+// 新增路由（在 Layout 的 Routes 内）
+<Route path="connect/flows/:id" element={<FlowDetail />} />
+<Route path="connect/flows/:id/executions/:execId" element={<ExecutionDetail />} />
+<Route path="connect/monitor" element={<MonitorDashboard />} />
 ```
 
 ---
@@ -63,7 +55,7 @@ import MonitorDashboard from '@/pages/monitor/MonitorDashboard';
 
 ### 3.1 连接器目录 (`ConnectorList`)
 
-**路由**: `/connectors`  
+**路由**: `/connect/connectors` (已有，对应 `ConnectPlatform/Connector/index.jsx`)  
 **对应 FR**: FR-004 (连接器列表查看)
 
 **页面结构**:
@@ -99,15 +91,15 @@ ConnectorList
 **交互流程**:
 1. 加载列表 → 调用 `GET /api/v1/connectors`
 2. 搜索/筛选 → 实时调用 API（带参数）
-3. 点击创建 → 跳转 `/connectors/new`
-4. 点击连接器名称 → 跳转 `/connectors/:id`
-5. 分页 → 参数 `page` / `page_size`
+3. 点击创建 → 跳转 `/connect/connector-editor`
+4. 点击连接器名称 → 跳转 `/connect/connector-editor`（编辑模式）
+5. 分页 → 参数 `curPage` / `pageSize`
 
 ---
 
-### 3.2 连接器创建/编辑 (`ConnectorForm`)
+### 3.2 连接器创建/编辑 (`ConnectorEditor`)
 
-**路由**: `/connectors/new`（创建） / `/connectors/:id/edit`（编辑）  
+**路由**: `/connect/connector-editor` (已有，对应 `ConnectPlatform/ConnectorEditor/index.jsx`)  
 **对应 FR**: FR-001 (连接器创建), FR-002 (连接器编辑)
 
 **页面结构**:
@@ -177,7 +169,7 @@ ConnectorForm
 
 ### 3.3 连接器详情 (`ConnectorDetail`)
 
-**路由**: `/connectors/:id`  
+**路由**: `/connect/connector-editor?mode=detail` (通过编辑器组件的查看模式)  
 **对应 FR**: FR-006 (使用统计), FR-007 (连接配置查看), FR-009 (版本切换)
 
 **页面结构**:
@@ -237,7 +229,7 @@ ConnectorDetail
 
 ### 3.4 连接流列表 (`FlowList`)
 
-**路由**: `/flows`  
+**路由**: `/connect/flows` (已有，对应 `ConnectPlatform/Flow/index.jsx`)  
 **对应 FR**: FR-014 (连接流列表查看)
 
 **页面结构**:
@@ -274,7 +266,7 @@ FlowList
 
 ### 3.5 连接流编排画布 (`FlowCanvas`) ⭐ 核心页面
 
-**路由**: `/flows/:id/canvas`  
+**路由**: `/connect/flows/new` / `/connect/flows/:id/edit` (已有，对应 `ConnectPlatform/Flow/FlowCanvas.jsx`)  
 **对应 FR**: FR-017 (连接流配置编辑), FR-020 (测试运行), FR-021 (测试数据模拟)
 
 **页面结构**:
@@ -366,7 +358,7 @@ FlowCanvas (全屏页面，无 Layout 侧边栏)
 
 ### 3.6 连接流详情 (`FlowDetail`)
 
-**路由**: `/flows/:id`  
+**路由**: `/connect/flows/:id` (🆕 需新增，对应 `ConnectPlatform/Flow/FlowDetail.jsx`)  
 **对应 FR**: FR-016 (配置查看), FR-031 (运行状态), FR-032 (执行历史)
 
 **页面结构**:
@@ -425,7 +417,7 @@ FlowDetail
 
 ### 3.7 执行详情 (`ExecutionDetail`)
 
-**路由**: `/flows/:id/executions/:execId`  
+**路由**: `/connect/flows/:id/executions/:execId` (🆕 需新增，对应 `ConnectPlatform/Flow/ExecutionDetail.jsx`)  
 **对应 FR**: FR-033 (执行详情查看)
 
 **页面结构**:
@@ -478,7 +470,7 @@ ExecutionDetail
 
 ### 3.8 运行监控面板 (`MonitorDashboard`)
 
-**路由**: `/monitor`  
+**路由**: `/connect/monitor` (🆕 需新增，对应 `ConnectPlatform/Monitor/MonitorDashboard.jsx`)  
 **对应 FR**: FR-034 (运行指标统计)
 
 **页面结构**:
@@ -530,91 +522,106 @@ MonitorDashboard
 
 ## 4. 新增组件
 
-### 4.1 画布相关组件 (`open-web/src/components/FlowCanvas/`)
+> 💡 **已有组件**（`wecodesite/src/pages/ConnectPlatform/` 已实现）：`Connector/index.jsx`、`ConnectorEditor/index.jsx`、`Flow/index.jsx`、`Flow/FlowCanvas.jsx`、`Flow/customNodes.jsx`、`Flow/NodeLibrary.jsx`、`Flow/NodeProperties.jsx`  
+> **以下为需新增的组件**：
 
-| 组件 | 功能 |
-|------|------|
-| `CanvasToolbar.tsx` | 顶部工具栏（保存/测试/发布按钮、自动保存指示器） |
-| `CanvasSidebar.tsx` | 左侧节点面板（可拖拽的入口/连接器/出口节点） |
-| `node-types/EntryNode.tsx` | 入口节点自定义渲染（React Flow Custom Node） |
-| `node-types/ExitNode.tsx` | 出口节点自定义渲染（React Flow Custom Node） |
-| `DataMappingDialog.tsx` | 数据映射配置弹窗（源→目标字段映射） |
-| `TestRunDialog.tsx` | 测试运行弹窗（Mock 数据输入 + 结果展示） |
+### 4.1 画布相关组件（`wecodesite/src/pages/ConnectPlatform/Flow/`）
 
-### 4.2 节点相关组件 (`open-web/src/components/ConnectorNode/`)
+| 组件 | 功能 | 状态 |
+|------|------|------|
+| `FlowDetail.jsx` | 连接流详情页面 | 🆕 需新增 |
+| `ExecutionDetail.jsx` | 执行详情页面（步骤输入/输出/返回值） | 🆕 需新增 |
+| `DataMappingDialog.jsx` | 数据映射配置弹窗（源→目标字段映射） | 🆕 需新增 |
+| `TestRunDialog.jsx` | 测试运行弹窗（Mock 数据输入 + 结果展示） | 🆕 需新增 |
 
-| 组件 | 功能 |
-|------|------|
-| `index.tsx` | 连接器节点自定义渲染（React Flow Custom Node） |
-| `ConnectorNodeConfig.tsx` | 连接器节点配置面板（选连接器、参数映射、重试策略） |
+### 4.2 监控页面（`wecodesite/src/pages/ConnectPlatform/Monitor/`）
 
----
-
-## 5. 状态管理 (Zustand Stores)
-
-### connectorStore
-```typescript
-interface ConnectorStore {
-  connectors: Connector[];
-  currentConnector: Connector | null;
-  currentVersion: ConnectorVersion | null;
-  loading: boolean;
-  // Actions
-  fetchConnectors: (params: ConnectorQuery) => Promise<void>;
-  fetchConnector: (id: string) => Promise<void>;
-  createConnector: (data: ConnectorCreateReq) => Promise<Connector>;
-  updateConnector: (id: string, data: ConnectorUpdateReq) => Promise<void>;
-  deleteConnector: (id: string) => Promise<void>;
-}
-```
-
-### flowStore
-```typescript
-interface FlowStore {
-  flows: Flow[];
-  currentFlow: Flow | null;
-  currentVersion: FlowVersion | null;
-  // React Flow state
-  nodes: Node<FlowNodeData>[];
-  edges: Edge<FlowEdgeData>[];
-  selectedNode: Node | null;
-  loading: boolean;
-  isDirty: boolean; // 是否有未保存更改
-  // Actions
-  fetchFlows: (params: FlowQuery) => Promise<void>;
-  fetchFlow: (id: string) => Promise<void>;
-  loadCanvas: (flowId: string, versionId: string) => Promise<void>;
-  saveCanvas: () => Promise<void>;
-  addNode: (type: string) => void;
-  removeNode: (nodeId: string) => void;
-  updateNodeConfig: (nodeId: string, config: any) => void;
-  onNodesChange: OnNodesChange;
-  onEdgesChange: OnEdgesChange;
-  onConnect: OnConnect;
-}
-```
-
-### executionStore
-```typescript
-interface ExecutionStore {
-  currentExecution: ExecutionRecord | null;
-  executions: ExecutionRecord[];
-  loading: boolean;
-  fetchExecution: (execId: string) => Promise<void>;
-  fetchExecutions: (flowId: string, params: ExecutionQuery) => Promise<void>;
-  triggerManual: (flowId: string, data: any) => Promise<ExecutionRecord>;
-  testRun: (flowId: string, data: any) => Promise<TestRunResult>;
-  retryExecution: (execId: string) => Promise<void>;
-}
-```
+| 组件 | 功能 | 状态 |
+|------|------|------|
+| `MonitorDashboard.jsx` | 运行监控面板 | 🆕 需新增 |
+| `index.jsx` | 页面入口 | 🆕 需新增 |
+| `constants.jsx` | 常量定义 | 🆕 需新增 |
+| `thunk.js` | 数据请求 | 🆕 需新增 |
 
 ---
 
-## 6. 服务层 API 封装 (Axios Services)
+## 5. 状态管理 (thunk.js 模式)
 
-| 文件 | 主要导出 |
-|------|---------|
-| `connector.service.ts` | `getConnectors()`, `getConnector(id)`, `createConnector()`, `updateConnector()`, `deleteConnector()`, `getVersions()`, `getVersionDetail()`, `updateVersion()`, `publishVersion()`, `listPublic()`, `delist()`, `getStats()` |
-| `flow.service.ts` | `getFlows()`, `getFlow(id)`, `createFlow()`, `updateFlow()`, `deleteFlow()`, `getVersions()`, `getVersionDetail()`, `updateVersion()`, `publishVersion()`, `enableFlow()`, `disableFlow()` |
-| `runtime.service.ts` | `triggerManual()`, `testRun()`, `getExecutionStatus()`, `getExecutionDetail()`, `getExecutionList()`, `retryExecution()` |
-| `monitor.service.ts` | `getMetrics()`, `getConnectorMetrics()` |
+> 💡 `wecodesite` 采用 `thunk.js` 模式管理数据和状态（每个页面目录下包含 `constants.jsx` + `thunk.js` + `mock.js`）。以下为新增模块的 thunk 设计。
+
+### 连接器 thunk（新增至 `wecodesite/src/pages/ConnectPlatform/Connector/`）
+
+```js
+// constants.jsx — 已存在，需补充 action types
+export const FETCH_CONNECTORS = 'FETCH_CONNECTORS';
+export const FETCH_CONNECTOR_DETAIL = 'FETCH_CONNECTOR_DETAIL';
+export const CREATE_CONNECTOR = 'CREATE_CONNECTOR';
+export const UPDATE_CONNECTOR = 'UPDATE_CONNECTOR';
+export const DELETE_CONNECTOR = 'DELETE_CONNECTOR';
+export const FETCH_VERSIONS = 'FETCH_VERSIONS';
+export const PUBLISH_VERSION = 'PUBLISH_VERSION';
+export const LIST_PUBLIC = 'LIST_PUBLIC';
+export const DELIST = 'DELIST';
+export const FETCH_STATS = 'FETCH_STATS';
+```
+
+```js
+// thunk.js — 已存在，需补充 API 调用
+export const fetchConnectors = (params) => async (dispatch) => { ... };
+export const fetchConnectorDetail = (id) => async (dispatch) => { ... };
+export const createConnector = (data) => async (dispatch) => { ... };
+export const updateConnector = (id, data) => async (dispatch) => { ... };
+export const deleteConnector = (id) => async (dispatch) => { ... };
+export const publishVersion = (id, vid) => async (dispatch) => { ... };
+export const listPublic = (id) => async (dispatch) => { ... };
+export const delist = (id) => async (dispatch) => { ... };
+export const fetchStats = (id) => async (dispatch) => { ... };
+```
+
+### 连接流 thunk（新增至 `wecodesite/src/pages/ConnectPlatform/Flow/`）
+
+```js
+// constants.jsx — 已存在，需补充 action types
+export const FETCH_FLOWS = 'FETCH_FLOWS';
+export const FETCH_FLOW_DETAIL = 'FETCH_FLOW_DETAIL';
+export const CREATE_FLOW = 'CREATE_FLOW';
+export const UPDATE_FLOW = 'UPDATE_FLOW';
+export const DELETE_FLOW = 'DELETE_FLOW';
+export const FETCH_VERSIONS = 'FETCH_VERSIONS';
+export const PUBLISH_VERSION = 'PUBLISH_VERSION';
+export const ENABLE_FLOW = 'ENABLE_FLOW';
+export const DISABLE_FLOW = 'DISABLE_FLOW';
+export const SAVE_CANVAS = 'SAVE_CANVAS';
+export const TRIGGER_MANUAL = 'TRIGGER_MANUAL';
+export const TEST_RUN = 'TEST_RUN';
+export const RETRY_EXECUTION = 'RETRY_EXECUTION';
+```
+
+```js
+// thunk.js — 已存在，需补充 API 调用
+export const fetchFlows = (params) => async (dispatch) => { ... };
+export const fetchFlowDetail = (id) => async (dispatch) => { ... };
+export const createFlow = (data) => async (dispatch) => { ... };
+export const updateFlow = (id, data) => async (dispatch) => { ... };
+export const deleteFlow = (id) => async (dispatch) => { ... };
+export const saveCanvas = (flowId, versionId, config) => async (dispatch) => { ... };
+export const publishVersion = (flowId, vid) => async (dispatch) => { ... };
+export const enableFlow = (id) => async (dispatch) => { ... };
+export const disableFlow = (id) => async (dispatch) => { ... };
+export const triggerManual = (flowId, data) => async (dispatch) => { ... };
+export const testRun = (flowId, data) => async (dispatch) => { ... };
+export const retryExecution = (execId) => async (dispatch) => { ... };
+```
+
+---
+
+## 6. 服务层 API 封装
+
+> 💡 `wecodesite` 使用 `src/utils/` 工具层进行 API 请求，遵循现有模式即可。
+
+| 模块 | 主要导出 | 位置 |
+|------|---------|------|
+| 连接器 API | `fetchConnectors`, `fetchConnectorDetail`, `createConnector`, `updateConnector`, `deleteConnector`, `fetchVersions`, `publishVersion`, `fetchStats` | `ConnectPlatform/Connector/thunk.js` |
+| 连接流 API | `fetchFlows`, `fetchFlowDetail`, `createFlow`, `updateFlow`, `deleteFlow`, `saveCanvas`, `publishVersion`, `enableFlow`, `disableFlow` | `ConnectPlatform/Flow/thunk.js` |
+| 运行时 API | `triggerManual`, `testRun`, `fetchExecutionStatus`, `fetchExecutionDetail`, `fetchExecutionList`, `retryExecution` | `ConnectPlatform/Flow/thunk.js` |
+| 监控 API | `fetchMetrics`, `fetchConnectorMetrics` | `ConnectPlatform/Monitor/thunk.js` |
