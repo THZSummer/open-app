@@ -1361,9 +1361,9 @@
     }
     
     // ======== Detail Panel ========
-    function showItemDetail(itemId) {
+    function showItemDetail(itemId, mode) {
         currentItemId = itemId;
-        detailMode = 'edit';
+        detailMode = mode || (itemId ? 'view' : 'edit');
         renderDetailPanel();
         document.getElementById('itemDetailPanel').classList.add('show');
     }
@@ -1889,11 +1889,15 @@
     function toggleClassifyStatus(id) {
         const c = getClassify(id);
         if (c) {
-            c.status = c.status === 1 ? 2 : 1;
-            c.lastUpdateBy = 'admin';
-            c.lastUpdateTime = formatNow();
-            renderClassifyList();
-            showToast(c.status === 1 ? '已生效' : '已失效');
+            var newStatus = c.status === 1 ? '失效' : '生效';
+            var actionText = c.status === 1 ? '设为失效' : '设为生效';
+            showConfirm('确认' + actionText + '？', '将把 "' + c.name + '" ' + actionText, '⚠️', function() {
+                c.status = c.status === 1 ? 2 : 1;
+                c.lastUpdateBy = 'admin';
+                c.lastUpdateTime = formatNow();
+                renderClassifyList();
+                showToast(c.status === 1 ? '已生效' : '已失效');
+            });
         }
     }
     
@@ -1961,7 +1965,7 @@
                 '<td style="color:var(--text-hint);font-size:12px;">' + (item.lastUpdateTime || '-') + '</td>' +
                 '<td>' +
                     '<div class="actions">' +
-                        '<button class="action-link" onclick="showItemDetail(' + item.id + ')">编辑</button>' +
+                        '<button class="action-link" onclick="showItemDetail(' + item.id + ', \'edit\')">编辑</button>' +
                         '<button class="action-link" onclick="toggleItemStatus(' + item.id + ')">' + (isActive ? '失效' : '生效') + '</button>' +
                         '<button class="action-link danger" onclick="deleteItem(' + item.id + ')">删除</button>' +
                     '</div>' +
@@ -1990,14 +1994,18 @@
     function toggleItemStatus(itemId) {
         const item = getItem(currentClassifyId, itemId);
         if (item) {
-            item.status = item.status === 1 ? 2 : 1;
-            item.lastUpdateBy = 'admin';
-            item.lastUpdateTime = formatNow();
-            if (currentItemId === itemId) {
-                renderDetailPanel();
-            }
-            renderItemList();
-            showToast(item.status === 1 ? '已生效' : '已失效');
+            var newStatus = item.status === 1 ? '失效' : '生效';
+            var actionText = item.status === 1 ? '设为失效' : '设为生效';
+            showConfirm('确认' + actionText + '？', '将把 "' + item.name + '" ' + actionText, '⚠️', function() {
+                item.status = item.status === 1 ? 2 : 1;
+                item.lastUpdateBy = 'admin';
+                item.lastUpdateTime = formatNow();
+                if (currentItemId === itemId) {
+                    renderDetailPanel();
+                }
+                renderItemList();
+                showToast(item.status === 1 ? '已生效' : '已失效');
+            });
         }
     }
     

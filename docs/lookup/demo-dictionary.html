@@ -718,7 +718,7 @@
 <div class="header">
     <div class="header-logo">D</div>
     <span class="header-title">数据字典管理</span>
-    <div class="breadcrumb">
+    <div class="breadcrumb" id="breadcrumb">
         <span>数据字典</span>
     </div>
     <button class="btn btn-text btn-sm" onclick="goToTaskPage()" style="margin-left:auto;">
@@ -780,6 +780,7 @@
             <table id="dataTable">
                 <thead>
                     <tr>
+                        <th style="width:40px;"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
                         <th style="width:120px;">编码</th>
                         <th style="width:140px;">名称</th>
                         <th style="width:140px;">路径</th>
@@ -985,6 +986,7 @@
     let taskList = [];
     let taskIdSeq = 1;
     let lastPageBeforeTask = 'mainPage';
+    let selectedIds = [];
 
     const mockData = [
         { id: 1, code: 'USER_STATUS', name: '用户状态', path: 'system/user/status', desc: '系统用户状态枚举值', language: 'zh_CN', status: 1, createBy: 'admin', createTime: '2024-01-15 10:30:00', lastUpdateBy: 'admin', lastUpdateTime: '2024-01-15 10:30:00' },
@@ -1063,7 +1065,7 @@
 
         const tbody = document.getElementById('dataBody');
         if (total === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:60px;color:var(--text-hint);">暂无数据</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:60px;color:var(--text-hint);">暂无数据</td></tr>';
             document.getElementById('pageBtns').innerHTML = '';
             return;
         }
@@ -1072,6 +1074,7 @@
             const isActive = item.status === 1;
             const statusHtml = '<span class="status-badge"><span class="dot ' + (isActive ? 'active' : 'inactive') + '"></span><span class="label ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? '有效' : '失效') + '</span></span>';
             return '<tr>' +
+                '<td style="width:40px;"><input type="checkbox" ' + (selectedIds.indexOf(item.id) > -1 ? 'checked' : '') + ' onchange="updateSelectedIds(' + item.id + ', this.checked)"></td>' +
                 '<td><code style="background:#f5f6f7;padding:2px 6px;border-radius:3px;font-size:12px;color:var(--primary);">' + escapeHtml(item.code) + '</code></td>' +
                 '<td>' + escapeHtml(item.name) + '</td>' +
                 '<td style="color:var(--text-secondary);font-size:12px;">' + escapeHtml(item.path || '-') + '</td>' +
@@ -1458,6 +1461,10 @@
 
         let exportData = dataStore;
 
+        if (selectedIds.length > 0) {
+            exportData = exportData.filter(function(d) { return selectedIds.indexOf(d.id) > -1; });
+        }
+
         if (codeKeyword) {
             exportData = exportData.filter(function(d) { return d.code.toLowerCase().includes(codeKeyword); });
         }
@@ -1526,6 +1533,10 @@
             }
 
             processNext();
+            
+            selectedIds = [];
+            document.getElementById('selectAll').checked = false;
+            renderTable();
         });
     }
 
@@ -1657,6 +1668,34 @@
     // Initialize
     renderTable();
 
+    function toggleSelectAll() {
+        var checkbox = document.getElementById('selectAll');
+        var filtered = getFilteredData();
+        if (checkbox.checked) {
+            selectedIds = filtered.map(function(item) { return item.id; });
+        } else {
+            selectedIds = [];
+        }
+        renderTable();
+    }
+
+    function updateSelectedIds(id, checked) {
+        var idx = selectedIds.indexOf(id);
+        if (checked) {
+            if (idx === -1) selectedIds.push(id);
+        } else {
+            if (idx > -1) selectedIds.splice(idx, 1);
+        }
+        var allCheckboxes = document.querySelectorAll('#dataBody input[type="checkbox"]');
+        var selectAllCheckbox = document.getElementById('selectAll');
+        var filtered = getFilteredData();
+        if (selectedIds.length === filtered.length && filtered.length > 0) {
+            selectAllCheckbox.checked = true;
+        } else {
+            selectAllCheckbox.checked = false;
+        }
+    }
+
     // Expose functions to global scope for onclick handlers
     window.filterData = filterData;
     window.resetFilter = resetFilter;
@@ -1680,6 +1719,8 @@
     window.resetTaskFilter = resetTaskFilter;
     window.renderTaskList = renderTaskList;
     window.downloadTaskFile = downloadTaskFile;
+    window.toggleSelectAll = toggleSelectAll;
+    window.updateSelectedIds = updateSelectedIds;
 })();
 </script>
 </body>
