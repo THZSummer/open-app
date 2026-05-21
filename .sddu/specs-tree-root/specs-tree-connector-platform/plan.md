@@ -245,35 +245,127 @@ graph TB
 
 ### 1.4 数据流分析
 
-**连接器发布流程**:
-```
-管理员创建连接器基本信息 → 配置连接配置(协议/认证/参数Schema/超时/限流) → 
-保存草稿(创建首个版本) → 发布(输入版本号) → 版本可用
-发布无需审批（NG19移至V1）
+#### 1.4.1 连接器发布流程
+
+```mermaid
+flowchart LR
+    Start([管理员开始]) --> A["创建连接器<br/>基本信息"]
+    A --> B["配置连接配置<br/>协议/认证/参数Schema<br/>超时/限流"]
+    B --> C["保存草稿<br/>创建首个版本"]
+    C --> D["发布<br/>输入版本号"]
+    D --> E([版本可用])
+
+    style D fill:#fff9c4,stroke:#f57f17
+    style E fill:#c8e6c9,stroke:#2e7d32
 ```
 
-**连接流创建与执行流程**:
-```
-管理员在 wecodesite 创建连接流 → 进入编排画布 → 配置HTTP/手动入口触发器 →
-添加连接器节点(引用已发布连接器版本) → 添加数据处理节点(字段映射) →
-配置出口节点 → 保存草稿 → 发布(输入版本号) → 部署上线
-↑（编排/发布走 open-server 管理接口）
+> 💡 发布无需审批（NG19 移至 V1）。
 
-HTTP触发 → connector-api 同步执行连接流 → 返回完整结果
-手动触发 → wecodesite 调用 open-server → open-server 调用 connector-api 调试接口 → 同步执行 → 展示完整结果
-测试运行 → wecodesite 调用 open-server → open-server 调用 connector-api 调试接口 → 同步执行 → 展示完整结果
+#### 1.4.2 连接流创建与编排流程（设计期）
+
+```mermaid
+flowchart LR
+    Start([管理员开始]) --> A["在 wecodesite<br/>创建连接流"]
+    A --> B["进入编排画布"]
+    B --> C["配置入口触发器<br/>HTTP / 手动"]
+    C --> D["添加连接器节点<br/>引用已发布<br/>连接器版本"]
+    D --> E["添加数据处理节点<br/>字段映射"]
+    E --> F["配置出口节点"]
+    F --> G["保存草稿"]
+    G --> H["发布<br/>输入版本号"]
+    H --> I([部署上线])
+
+    style H fill:#fff9c4,stroke:#f57f17
+    style I fill:#c8e6c9,stroke:#2e7d32
 ```
 
-**运行时数据流（一次同步执行，发生在 connector-api 进程内）**:
+> 💡 设计期所有编排/发布请求均经 `wecodesite → open-server` 管理接口完成，不涉及 connector-api。
+
+#### 1.4.3 连接流触发与执行流程（运行期）
+
+三种触发方式的跨服务交互对比：
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor BizSys as 内部业务系统<br/>(前期主触发方)
+    actor Consumer as 外部消费方<br/>(后期能力)
+    actor Admin as 管理员
+    participant Web as wecodesite
+    participant OpenSvr as open-server<br/>(debug-proxy)
+    participant ConnApi as connector-api<br/>(runtime)
+
+    rect rgb(255, 249, 196)
+        Note over BizSys,ConnApi: 方式1: HTTP 触发 (前期主路径)
+        BizSys->>ConnApi: HTTP 请求 触发连接流
+        ConnApi->>ConnApi: 同步执行连接流
+        ConnApi-->>BizSys: 返回完整结果
+    end
+
+    rect rgb(225, 245, 254)
+        Note over Consumer,ConnApi: HTTP 触发 (后期能力，路径同上)
+        Consumer-->>ConnApi: HTTP 请求 触发连接流
+        ConnApi-->>Consumer: 返回完整结果
+    end
+
+    rect rgb(241, 248, 233)
+        Note over Admin,ConnApi: 方式2: 手动触发 (经 open-server 调试代理)
+        Admin->>Web: 点击「手动触发」
+        Web->>OpenSvr: REST 调用
+        OpenSvr->>ConnApi: 内部 HTTP 调用调试接口
+        ConnApi->>ConnApi: 同步执行连接流
+        ConnApi-->>OpenSvr: 返回完整结果
+        OpenSvr-->>Web: 透传结果
+        Web-->>Admin: 展示完整结果
+    end
+
+    rect rgb(252, 228, 236)
+        Note over Admin,ConnApi: 方式3: 测试运行 (链路与手动触发一致，使用模拟入参)
+        Admin->>Web: 点击「测试运行」
+        Web->>OpenSvr: REST 调用<br/>(携带模拟入参)
+        OpenSvr->>ConnApi: 内部 HTTP 调用调试接口
+        ConnApi->>ConnApi: 同步执行连接流
+        ConnApi-->>OpenSvr: 返回完整结果
+        OpenSvr-->>Web: 透传结果
+        Web-->>Admin: 展示完整结果
+    end
 ```
-HTTP请求 (前期：内部业务系统；后期：外部消费方) / 调试请求 (来自 open-server)
-  → connector-api 调度器创建 ExecutionContext (含触发数据，当前请求线程)
-  → 节点1(入口): 透传触发数据
-  → 节点2(连接器): 读取上游数据 → 同步调用三方业务系统 HTTP API（前期主目标；后期可调用内部业务系统）→ 输出数据到上下文
-  → 节点3(数据处理): 读取上游数据 → 字段映射转换 → 输出数据到上下文
-  → 节点4(出口): 定义返回值
-  → 返回完整执行结果(各步骤输入/输出/耗时/状态)
-  → 异步写入执行记录到MySQL（不阻塞返回，供 open-server monitor 模块查询）
+
+#### 1.4.4 运行时单次执行内部数据流（connector-api 进程内）
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Caller as 调用方<br/>HTTP触发 / 调试请求
+    participant Sched as 调度器
+    participant N1 as 节点1<br/>入口
+    participant N2 as 节点2<br/>连接器
+    participant N3 as 节点3<br/>数据处理
+    participant N4 as 节点4<br/>出口
+    participant Target as 三方业务系统<br/>HTTP API<br/>(前期主目标)
+    participant MySQL as MySQL
+
+    Caller->>Sched: 进入 connector-api
+    Sched->>Sched: 创建 ExecutionContext<br/>(含触发数据)
+    Sched->>N1: 启动执行
+    N1->>N1: 透传触发数据到上下文
+    N1->>N2: 传递上游数据
+    N2->>N2: 读取上游数据
+    N2->>Target: 同步调用 HTTP API
+    Note right of Target: 后期可调用<br/>内部业务系统
+    Target-->>N2: 响应
+    N2->>N2: 输出数据到上下文
+    N2->>N3: 传递上游数据
+    N3->>N3: 字段映射转换<br/>输出数据到上下文
+    N3->>N4: 传递上游数据
+    N4->>N4: 定义返回值
+    N4-->>Sched: 完成
+    Sched-->>Caller: 返回完整执行结果<br/>(各步骤输入/输出/耗时/状态)
+
+    par 异步写入 (不阻塞返回)
+        Sched->>MySQL: 持久化执行记录/步骤
+        Note right of MySQL: 供 open-server<br/>monitor 模块查询
+    end
 ```
 
 ### 1.5 依赖关系图
