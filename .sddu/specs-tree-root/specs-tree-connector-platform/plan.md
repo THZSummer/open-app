@@ -1,7 +1,7 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.7.1  
+**规划版本**: v2.7.2  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
@@ -722,8 +722,8 @@ erDiagram
         bigint id PK "雪花 ID"
         varchar name_cn "中文名称"
         varchar name_en "英文名称"
-        text description_cn "中文描述（选填）"
-        text description_en "英文描述（选填）"
+        varchar description_cn "中文描述（VARCHAR(1000)，选填）"
+        varchar description_en "英文描述（VARCHAR(1000)，选填）"
         varchar icon_url "图标 URL（选填）"
         varchar tags "标签（逗号分隔，选填）"
         tinyint connector_type "1=HTTP (MVP)"
@@ -738,8 +738,8 @@ erDiagram
         bigint connector_id "关联 Connector.id（逻辑外键）"
         varchar version_no "x.x.x 三段式"
         tinyint version_status "0=draft 1=published"
-        varchar version_description_cn "选填"
-        varchar version_description_en "选填"
+        varchar version_description_cn "VARCHAR(1000)，选填"
+        varchar version_description_en "VARCHAR(1000)，选填"
         json basic_info_snapshot "发布时连接器基本信息快照"
         json connection_config "连接配置：协议/地址/认证类型 schema（不含凭证值）/入参 Schema/出参 Schema/超时/限流"
         datetime create_time
@@ -752,8 +752,8 @@ erDiagram
         bigint id PK "雪花 ID"
         varchar name_cn "中文名称"
         varchar name_en "英文名称"
-        text description_cn "中文描述（选填）"
-        text description_en "英文描述（选填）"
+        varchar description_cn "中文描述（VARCHAR(1000)，选填）"
+        varchar description_en "英文描述（VARCHAR(1000)，选填）"
         varchar tags "标签（逗号分隔，选填）"
         varchar owner_group "归属组（选填）"
         tinyint lifecycle_status "0=stopped 1=running (FR-013~015)"
@@ -768,8 +768,8 @@ erDiagram
         bigint flow_id "关联 Flow.id（逻辑外键）"
         varchar version_no "x.x.x 三段式"
         tinyint version_status "0=draft 1=published"
-        varchar version_description_cn "选填"
-        varchar version_description_en "选填"
+        varchar version_description_cn "VARCHAR(1000)，选填"
+        varchar version_description_en "VARCHAR(1000)，选填"
         json basic_info_snapshot "发布时连接流基本信息快照"
         json orchestration_config "编排配置 JSON：{trigger,nodes,edges} 显式 DAG"
         datetime create_time
@@ -913,7 +913,7 @@ erDiagram
 | 维度 | 规则 | 连接器平台落地示例 |
 |------|------|--------------------|
 | **名称字段** | `name_cn` / `name_en` 中英文双语，VARCHAR(100)，必填 | `openplatform_v2_cp_connector_t.name_cn` / `name_en` |
-| **描述字段** | `description_cn` / `description_en` TEXT，选填 | 本期直接存于主表（`connector_t` / `flow_t`），不拆属性表 |
+| **描述字段** | `description_cn` / `description_en` **VARCHAR(1000)**，选填 | 本期直接存于主表（`connector_t` / `flow_t` / `*_version_t`），不拆属性表；统一长度便于索引/排序/前端预览（1000 字符足够承载产品级描述） |
 | **主键** | BIGINT(20) 雪花 ID，应用层生成；统一命名 `id` | 所有 8 张表 |
 | **审计字段** | `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`（VARCHAR(100)） | 所有 8 张表 |
 | **枚举字段** | TINYINT(10) + 数字默认值 + COMMENT 说明 | 见 §4.3.4 |
@@ -1318,6 +1318,7 @@ open-app/
 | **v2.6** | **2026-05-22** | **凭证不持久化（MVP 极简）**：取消 `openplatform_v2_cp_credential` 表（9 张表 → 8 张），凭证仅在调用过程中通过触发请求传入 → 注入 ExecutionContext（仅内存）→ 节点执行后清除；执行记录中按 `connection_config.sensitive` 标记自动脱敏；凭证**永不进入 MySQL/Redis/对象存储**。影响：① §4.2 设计决策表「凭证存储」行重写为「凭证传递」；② §4.2 表清单删除 cp_credential（含使用说明新增"凭证传递路径 6 步"）；③ §4.2 ER 图删除 Credential 实体 + ConnectorVersion.credential_id 字段；④ §4.2 调研对应说明改为「凭证不持久化 = MVP 简化策略」；⑤ §1.6 核心业务对象关系重写（6 持久化对象 + 1 内存对象）；⑥ §2.1 方案 A 核心设计「认证凭证」描述重写；⑦ §3 关键决策「凭证明文存储」行改为「凭证存储策略=不持久化」；⑧ §4.5 目录结构 common 注释更新；⑨ §4.7 删除 open-server CredentialController/Service/Entity/Mapper（-4 文件），删除 connector-api Credential entity/CredentialRepository/CredentialCipher（-3 文件），新增 CredentialMasker + ExecutionContextCredentials（+2 文件）；⑩ §4.9 文件统计 89 → 83；⑪ §5.1 风险「认证凭证加密存储和传输」重写为「凭证传输/执行过程泄漏」；⑫ §5.4 开放问题新增 OQ-006（建议反向同步 spec.md NFR-010） | SDDU Plan Agent |
 | **v2.7** | **2026-05-22** | **数据库设计对齐能力开放平台规范**：参考 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`，连接器平台数据库设计全面对齐 openplatform_v2 规范——① 所有表名加 `_t` 后缀（如 `openplatform_v2_cp_connector` → `openplatform_v2_cp_connector_t`）；② 引入主表+属性表模式，新增 `connector_p_t` / `flow_p_t` 两张属性表（共 8 张 → **10 张**）；③ 主键 string UUID → **BIGINT(20) 雪花 ID**；④ 名称字段拆为 `name_cn` / `name_en` 双语；⑤ 描述字段拆为 `description_cn` / `description_en` 双语，存于属性表；⑥ 审计字段统一 `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`；⑦ 状态/类型枚举改用 TINYINT(10) + 数字默认值；⑧ 时间字段统一 DATETIME(3) 毫秒精度；⑨ 索引命名规范化 `idx_xxx` / `uk_xxx`；⑩ 新增 §4.3 表设计规则章节（5 个子节：命名规范、主属性表模式、字段规则、枚举字典、与能力开放平台规范的差异点）。影响：§4.2 设计决策表 +2 项（关联引用方式、遵循通用规范）；§4.2 表清单 8 张 → 10 张；§4.2 ER 图全面重写（属性表 + BIGINT 主键 + 双语字段 + TINYINT 枚举 + 审计字段）；§4.2 索引说明对齐命名规范；新增 §4.3 表设计规则；后续章节序号顺延 4.3→4.4 / 4.4→4.5 / .../ 4.9→4.10；§4.8 文件清单中 R2DBC `@Table(...)` / MyBatis entity 注释统一加 `_t` 后缀（9 处修订） | SDDU Plan Agent |
 | **v2.7.1** | **2026-05-22** | **MVP 范围收敛：移除属性表 + 取消执行表分区**——基于本期需求评估，撤销 v2.7 引入的两项可选增强项：① **不引入主表+属性表模式**：删除 `connector_p_t` / `flow_p_t` 两张属性表，所有字段（`description_cn` / `description_en` / `icon_url` / `tags` / `owner_group` 等）直接入主表（`connector_t` / `flow_t`），表数 10 → **8 张**；② **MVP 不分区**：`execution_record_t` / `execution_step_t` 本期使用普通表结构，分区方案保留为 V1 优化预案（V1 单表接近 500w 时引入按月分区+30 天冷归档）。理由：MVP 业务量小、字段可控，引入属性表/分区会增加查询关联与运维复杂度。影响：① §1.4 数据流关系描述调整；② §4.2 设计决策表「执行记录分区」改为 V1 优化项，「遵循通用规范」行去掉 `_p_t` 描述；③ §4.2 表清单 10 → 8 张（主表 connector_t / flow_t 字段补全 description/icon/tags/owner_group），新增「本期暂不引入属性表/分区」两段决策说明；④ §4.2 ER 图删除 ConnectorProp / FlowProp 实体及关系，主表字段补全，分区注释改为 V1 引入；⑤ §4.2 关键索引删除 2 张属性表索引，分区描述改为 V1 优化项；⑥ §4.3.1 命名规范「属性表后缀」标注「V1 预留，MVP 不使用」；⑦ §4.3.2 评估表全部 ❌（含 V1 演进触发条件）；⑧ §4.3.3 描述字段改为「直接入主表」，「所有 10 张表」改回「8 张」；⑨ §4.3.5 差异点新增「属性表 MVP 不引入」+「分区策略 MVP 不引入」两条；⑩ §4.10 文件影响统计 87 → 83 还原（不新增 ConnectorProperty/FlowProperty 系列文件）；⑪ 顶部版本号 v2.7 → v2.7.1 | SDDU Plan Agent |
+| **v2.7.2** | **2026-05-22** | **描述类字段类型统一：TEXT → VARCHAR(1000)**——所有描述类字段（主表 `connector_t.description_cn`/`description_en`、`flow_t.description_cn`/`description_en`，版本表 `connector_version_t.version_description_cn`/`version_description_en`、`flow_version_t.version_description_cn`/`version_description_en`）统一规约为 `VARCHAR(1000)`，便于索引/排序/前端预览，1000 字符足够承载产品级描述；避免 TEXT 类型的离行存储与全表扫描代价。影响：① §4.2 ER 图 4 处 `text description_*` → `varchar description_*`（含 VARCHAR(1000) 注释）；② §4.2 ER 图 4 处 `version_description_*` 注释补全长度；③ §4.3.3 描述字段规则 `TEXT` → `VARCHAR(1000)`（含「统一长度便于索引/排序/前端预览」理由说明）；④ 顶部版本号 v2.7.1 → v2.7.2 | SDDU Plan Agent |
 
 ---
 
