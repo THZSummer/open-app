@@ -3,25 +3,12 @@
 **Feature ID**: CONN-PLAT-001  
 **规划版本**: v2.3  
 **创建日期**: 2026-05-21  
-**最近更新**: 2026-05-22（v2.3：connector-api 全 reactive 栈——MyBatis→**R2DBC**，端到端非阻塞；v2.2：connector-api 改用 Spring WebFlux + Reactor Netty；v2.1：运行时独立部署为 `connector-api`，前端统一收归 `wecodesite`）  
+**最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v4.0  
 **前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003（ADR-003 已于 v2.1 修订）
 
 > ⚠️ **前端项目说明**：`open-web` 代码已全部迁移至 `wecodesite`，本规划中所有前端引用均以 `wecodesite` 为准。`wecodesite` 已内置 `@xyflow/react` 依赖，且 `ConnectPlatform/Connector`、`ConnectPlatform/ConnectorEditor`、`ConnectPlatform/Flow`、`ConnectPlatform/FlowEditor` 等页面已有实现。
->
-> 🆕 **v2.1 架构变更**：连接器平台运行时（同步调度执行、HTTP 触发入口、调试接口）从 `open-server` 内嵌迁出，**独立部署为 `connector-api` 服务**。`open-server` 仅承载管理类能力（CRUD/版本/监控查询）以及调试代理（转发至 connector-api 调试接口）。详见 §1.1 和 ADR-003（v2.1 修订）。
->
-> 🆕 **v2.2 技术栈变更**：`connector-api` 采用 **Spring WebFlux + Reactor Netty + WebClient（NIO 异步非阻塞栈）**；`open-server` 沿用 Spring MVC（Servlet）。
->
-> 🆕 **v2.3 技术栈变更（本次）**：`connector-api` 进一步要求 **MySQL / Redis / 下游 HTTP 调用全链路非阻塞**：
-> - 数据库：**MyBatis → R2DBC**（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 `Mono`/`Flux`
-> - Redis：spring-data-redis-reactive（已是 reactive）
-> - HTTP：WebClient（已是 reactive）
-> - 从依赖层面屏蔽阻塞栈（不引入 mybatis-spring-boot-starter / spring-boot-starter-web / spring-boot-starter-jdbc），**从源头消除阻塞 EventLoop 风险**
-> - 与 open-server 共享同一 MySQL schema，但 entity / 持久化层各服务独立维护（open-server 用 MyBatis，connector-api 用 R2DBC），通过 Flyway 统一 DDL 保证一致
->
-> 详见 §1.2 后端技术栈、§3 关键架构决策、§4.7 文件清单、§4.8 新增依赖、§5.1 技术风险。
 
 ---
 
@@ -1083,6 +1070,23 @@ open-app/
 | **connector-api Web 栈** | （v1.x 嵌入 open-server，沿用 Spring MVC） | **Spring WebFlux + Reactor Netty + WebClient**（NIO 非阻塞，匹配高并发 HTTP 转发场景）|
 | **connector-api 数据访问** | （v1.x 嵌入 open-server，沿用 MyBatis 同步 JDBC） | **R2DBC + r2dbc-mysql**（端到端非阻塞，v2.2 曾计划 MyBatis + boundedElastic 隔离方案，v2.3 改为彻底 R2DBC）|
 | **connector-api 全链路 IO 模型** | （v1.x 嵌入 open-server，整体同步阻塞） | **HTTP / DB / Redis 全 reactive 非阻塞**，从依赖层面屏蔽阻塞栈 |
+
+---
+
+## 修订记录
+
+| 版本 | 日期 | 修订内容 | 修订人 |
+|------|------|---------|--------|
+| v1.0 | 2026-05-21 | 初始版本 — 基于 spec.md v3.x 创建技术规划（异步执行模型、单体嵌入 open-server、MQS + Quartz） | SDDU Plan Agent |
+| **v2.0** | **2026-05-21** | **对齐 spec.md v4.0 重大重构**：① 执行模型从异步改为同步（移除 MQS / Quartz 依赖）；② Scope/审批集成移至 V1；③ 新增数据处理节点进入 MVP；④ FR 从 ~37 精简为 25；⑤ 监控范围收窄为执行历史查询；⑥ 新增默认错误处理(FR-023) + 限流(FR-024)；⑦ 前端从 open-web 迁移至 wecodesite | SDDU Plan Agent |
+| **v2.1** | **2026-05-22** | **运行时独立部署**：连接器平台运行时从 open-server 内嵌迁出，独立部署为 `connector-api` 服务（端口 18180）；open-server 仅保留管理类模块（connector/flow/monitor）+ 调试代理（debug→转发至 connector-api 调试接口）；前端统一收归 wecodesite；ADR-003 修订（单体嵌入 → 独立部署）。影响：§1.1 架构图、§1.3 新增组件图、§1.4 数据流、§1.5 依赖图、§2.1 方案 A 时序图、§3 关键决策、§4.1 模块划分、§4.5 目录结构、§4.6 服务职责、§4.7 文件清单、§4.9 文件统计、§5.1 风险、§6 迭代规划（新增迭代 0）、里程碑（新增 M0） | SDDU Plan Agent |
+| **v2.1a** | **2026-05-22** | **mermaid 图渲染修复**：所有 mermaid 图中节点/边标签 `\n` → `<br/>`；节点 label 内 emoji 替换为文本标记（🆕 → [新增]）；边标签语法 `-->|text|` → `-- "text" -->` 更稳健；时序图 participant 别名引号去除。影响：plan.md 中 5 张图 | SDDU Plan Agent |
+| **v2.1b** | **2026-05-22** | **架构图区分前期主路径与后期能力**：明确连接器平台「由内向外」集成定位——前期主路径：内部业务系统（触发方）→ 连接器平台 → 三方业务系统（HTTP 调用目标）；后期能力：外部消费方触发、调用内部业务系统。图中用粗实线（==>）标识主路径，细虚线（-.->）标识后期能力。影响：§1.1 系统架构图、§1.3 新增组件图、§1.4 数据流、§1.5 依赖图、§1.1 顶部说明段 | SDDU Plan Agent |
+| **v2.1c** | **2026-05-22** | **§1.4 数据流分析改用 mermaid 图**：3 段文字代码块流程 → 4 张 mermaid 图（连接器发布流程 flowchart LR、连接流创建与编排流程 flowchart LR、连接流触发与执行流程 sequenceDiagram、运行时单次执行内部数据流 sequenceDiagram）。新增 §1.4.1~1.4.4 子章节。影响：§1.4 全部重写 | SDDU Plan Agent |
+| **v2.2** | **2026-05-22** | **connector-api 采用 Spring WebFlux NIO 非阻塞栈**：运行时服务 Web 栈从 Spring MVC 改为 Spring WebFlux + Reactor Netty；HTTP 客户端从 RestTemplate 改为 WebClient；Redis 改为 spring-data-redis-reactive；数据访问保留 MyBatis + boundedElastic 调度器隔离；测试环境启用 BlockHound。影响：§1.2 后端技术栈、§2.1 方案 A、§3 关键决策、§4.7 文件清单、§4.8 依赖、§5.1 风险、§6 迭代规划 | SDDU Plan Agent |
+| **v2.3** | **2026-05-22** | **connector-api 全 reactive 栈（MyBatis → R2DBC）**：进一步要求 MySQL / Redis / 下游 HTTP 调用全链路非阻塞——数据访问从 MyBatis 同步 JDBC + boundedElastic 隔离改为 R2DBC（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 Mono/Flux；从依赖层面 exclude 阻塞栈（mybatis / spring-boot-starter-web / spring-boot-starter-jdbc）；与 open-server 共享 MySQL schema 但 entity/持久化层各自维护（MyBatis vs R2DBC），通过 Flyway 统一 DDL。影响：§1.2 技术栈对比表、§1.2 强制规则/共享数据模型策略、§3 关键决策（+4 项）、§4.7 文件清单（mapper→repository、+R2dbcConfig/Flyway/ReactiveRedisAccessor）、§4.8 依赖（+R2DBC/Flyway、-MyBatis）、§5.1 风险（+3 条、-1 条）、§6 迭代 0 工期、修订记录从顶部移至末尾 | SDDU Plan Agent |
+
+---
 
 ### 下一步
 👉 运行 `@sddu-tasks 连接器平台` 开始任务分解
