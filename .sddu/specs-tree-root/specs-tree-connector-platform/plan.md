@@ -1,7 +1,7 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.5  
+**规划版本**: v2.6  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
@@ -126,7 +126,7 @@ graph TB
 | 现有能力 | 本版本用途 | 说明 |
 |---------|----------|------|
 | MySQL / Redis | 数据持久化和缓存 | open-server 与 connector-api 共享同一 MySQL/Redis 实例 |
-| 三方业务系统 HTTP API（前期主目标） | 连接器的执行目标 | connector-api 直接配置目标 API 地址和认证凭证，不经 API 网关；前期重点封装 ERP/CRM/OA 等三方系统 |
+| 三方业务系统 HTTP API（前期主目标） | 连接器的执行目标 | connector-api 直接调用目标 API（地址来自 `connection_config`，**凭证由调用方在触发请求中传入，不落库**）；前期重点封装 ERP/CRM/OA 等三方系统 |
 | 内部业务系统 HTTP API（后期能力） | 连接器的执行目标 | 后期可扩展将内部业务系统（IM/云盘/审批等）作为提供方调用 |
 
 > ⚠️ **本版本独立运行**：连接器平台本版本不与能力开放平台集成（§5.4）。Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1。
@@ -442,16 +442,17 @@ graph LR
 
 ### 1.6 核心业务对象关系
 
-连接器平台围绕 **8 个核心业务对象**组织，对象间关系：
+连接器平台围绕 **6 个持久化业务对象** + **1 个内存对象（凭证）** 组织（详见 §4.2 数据库设计），对象间关系：
 
 | 关系 | 说明 |
 |------|------|
-| Connector → ConnectorVersion | 一个连接器有多个版本（1:N），发布时快照基本信息+连接配置 |
-| ConnectorVersion → FlowNode | 连接器版本被连接流节点引用（1:N） |
-| ConnectorVersion → ConnectorAuthConfig | 连接器版本按消费方应用存储独立认证凭证（1:N） |
-| Flow → FlowVersion | 一个连接流有多个版本（1:N），发布时快照基本信息+编排配置 |
-| FlowVersion → FlowNode / FlowEdge | 版本包含节点和连线（1:N），节点含 entry/connector/data_processor/exit 四类（MVP: connector + data_processor） |
-| Flow → ExecutionRecord → ExecutionStep | 每次执行生成一条记录，记录含多个步骤（1:N:N） |
+| Connector → ConnectorVersion | 一个连接器有多个版本（1:N），发布时快照基本信息+连接配置（含认证类型 schema，不含凭证值） |
+| ConnectorVersion ←···引用··· FlowVersion.orchestration_config.nodes[] | 连接器版本被连接流编排定义中的节点（JSON 数组元素）引用，**非物理外键**，引用关系存于 FlowVersion 的 JSON 字段内 |
+| Flow → FlowVersion | 一个连接流有多个版本（1:N），发布时快照基本信息+编排配置（`{trigger, nodes[], edges[]}` 完整 DAG，单一 JSON 字段） |
+| Flow → FlowTriggerEndpoint | 一个连接流可有一个 HTTP 触发端点（1:0..1），存随机 token + 签名密钥 + 限流配置 |
+| Flow → ExecutionRecord → ExecutionStep | 每次执行生成一条记录，记录含多个步骤（1:N:N），按月分区 |
+| ExecutionRecord / ExecutionStep ←···外置引用··· StorageBlobRef | 大字段（>64KB）的 input/output/result_data 外置到对象存储，表中只存 `*_blob_id` 引用 |
+| Credentials（内存对象，不入库） | 凭证仅在调用过程中由触发请求传入 → 注入 ExecutionContext → 节点执行后清除；写入执行记录时按 `sensitive: true` 标记**脱敏** |
 
 > 完整 ER 图（含字段定义）详见 **§4.2 数据库设计** 及 `plan-db.md`
 
@@ -507,7 +508,7 @@ sequenceDiagram
 - **执行引擎**: 反应式顺序执行器（`ReactiveSequentialExecutor`），从入口节点开始构造 `Mono` 链路（`flatMap` 串联各节点 `Mono<NodeOutput>`），最后聚合为 `Mono<ExecutionResult>`；对 HTTP 调用方仍呈现为**同步请求-响应语义**（一次请求等到完整结果再返回）
 - **调度**: 无消息队列——HTTP 触发请求进入 connector-api 的 Reactor Netty EventLoop，由执行引擎构造 reactive 链路（`Mono<ExecutionResult>`）异步编排各节点；下游 HTTP 调用通过 WebClient 完全非阻塞，单实例百级并发触发可由少量 EventLoop 线程承接，**对调用方仍呈现为同步 HTTP 请求-响应**
 - **调试通道**: connector-api 暴露内部调试接口（仅限 open-server 内网调用），open-server 收到前端调试/测试运行请求后转发到该接口，避免运行时逻辑重复实现
-- **认证凭证**: 连接器版本中存储认证配置（plan-db 设计为独立表），运行时在 connector-api 进程内自动加载注入
+- **认证凭证**: **不持久化**——调用方在触发请求中传入凭证 → connector-api 注入 `ExecutionContext.credentials`（仅内存生命周期）→ 节点执行器读取并注入 WebClient 请求 → 节点完成后从上下文清除；写入执行记录时按 `connection_config.sensitive` 标记自动脱敏
 
 **优点**:
 - 运行时独立部署（connector-api），与管理类操作进程隔离，**资源/故障/扩缩容互不影响**
@@ -612,7 +613,7 @@ sequenceDiagram
 | 触发方式 | HTTP + 手动（同步） | MVP 范围限定 |
 | 执行上下文 | 方法调用参数传递（运行时）+ MySQL 持久化 | 同步执行无需 Redis 缓存上下文 |
 | 执行记录持久化 | MySQL（异步写入，不阻塞返回） | 确保执行结果快速返回 |
-| 凭证明文存储 | AES-256 加密存储, 界面脱敏 | 满足 NFR-010 安全要求 |
+| 凭证存储策略 | **不持久化**，调用方传入 → 内存上下文 → 节点执行后清除；执行记录中脱敏 | MVP 极简（满足 NFR-010 的最小化原则）；V1 视需要再引入加密落库 |
 | HTTP 触发入口 | connector-api 新增 controller | 与运行时同进程，链路最短 |
 | **connector-api Web 栈** | **Spring WebFlux + Reactor Netty + WebClient** | 运行时高并发同步 HTTP 调用三方系统，NIO 非阻塞栈吞吐量显著优于 Servlet 同步栈；对调用方仍呈现同步语义 |
 | **connector-api 数据访问** | **R2DBC (spring-data-r2dbc + r2dbc-mysql)** | 端到端 reactive，**从源头消除阻塞 JDBC 调用风险**；不引入 MyBatis 同步栈 |
@@ -666,31 +667,37 @@ sequenceDiagram
 | **执行记录分区** | `openplatform_v2_cp_execution_record` / `openplatform_v2_cp_execution_step` 按 `created_at` 月度分区 | 5 平台共识 |
 | **计量字段（预留）** | `openplatform_v2_cp_execution_record` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes`（MVP 写入 0，V1 启用计费时直接使用） | Make `operations_consumed` + PA `billingMetrics`——避免后期加字段迁移成本 |
 | **状态机枚举** | 执行记录：`pending / running / success / failed / timeout`（MVP 5 个值；`partial` / `cancelled` 留给 V1） | 跨平台超集裁剪 |
-| **凭证存储** | 独立 `openplatform_v2_cp_credential` 表（与 connector_version 1:1，MVP 不分 per-app）；AES-256-GCM 加密 + 字段级；KMS 密钥引用 ID 存表中 | 5 平台共识；MVP 简化（per-app 凭证移至 V1） |
+| **凭证传递** | **不持久化**——凭证仅在调用过程中通过触发请求/执行上下文以参数形式传递；`connection_config` 中只声明**认证类型 schema**（如"该连接器使用 OAuth2 + Bearer Token"），具体凭证值不入库 | MVP 极简：避免凭证落库带来的加密/KMS/轮换/脱敏全套合规复杂度；执行后凭证仅存活于内存与一次执行的上下文中 |
 | **schema 主仓库** | 由 `connector-api` 维护 Flyway 迁移脚本（`db/migration/*.sql`），open-server 引入相同脚本并跑迁移 | MuleSoft Maven + PA Solution 模式启发 |
 | **数据库前缀** | 所有表统一 `openplatform_v2_cp_` 前缀 | `openplatform`=开放平台体系 / `v2`=平台第二代 / `cp`=connector platform（连接器平台子域），与现有 open-server 既有表（含其它子域）严格隔离，便于未来按子域拆库/迁移 |
 | **关联引用方式** | 字符串 UUID（雪花算法或 ULID，迭代 0 决策），不用自增 INT | R2DBC + 分布式部署考虑 |
 
-**表清单**（共 **9 张表**）：
+**表清单**（共 **8 张表**）：
 
 | # | 表名 | 类型 | 模块 | 说明 |
 |---|------|------|------|------|
 | 1 | `openplatform_v2_cp_connector` | 主表 | connector | 连接器基本信息（名称/图标/描述/类型） |
-| 2 | `openplatform_v2_cp_connector_version` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON） |
-| 3 | `openplatform_v2_cp_credential` | 主表 | connector | 连接器认证凭证（AES-256-GCM 加密） |
-| 4 | `openplatform_v2_cp_flow` | 主表 | flow | 连接流基本信息 + 当前发布版本指针 |
-| 5 | `openplatform_v2_cp_flow_version` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
-| 6 | `openplatform_v2_cp_flow_trigger_endpoint` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置） |
-| 7 | `openplatform_v2_cp_execution_record` | 主表（按月分区） | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段） |
-| 8 | `openplatform_v2_cp_execution_step` | 子表（按月分区） | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储） |
-| 9 | `openplatform_v2_cp_storage_blob_ref` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type/created_at；用于 GC 与审计） |
+| 2 | `openplatform_v2_cp_connector_version` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON，其中**仅声明认证类型 schema，不存凭证值**） |
+| 3 | `openplatform_v2_cp_flow` | 主表 | flow | 连接流基本信息 + 当前发布版本指针 |
+| 4 | `openplatform_v2_cp_flow_version` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
+| 5 | `openplatform_v2_cp_flow_trigger_endpoint` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置） |
+| 6 | `openplatform_v2_cp_execution_record` | 主表（按月分区） | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**触发数据中的凭证字段需脱敏后再落库**） |
+| 7 | `openplatform_v2_cp_execution_step` | 子表（按月分区） | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**凭证字段同样脱敏**） |
+| 8 | `openplatform_v2_cp_storage_blob_ref` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type/created_at；用于 GC 与审计） |
+
+> 🔐 **凭证传递路径（不持久化）**：
+> 1. 调用方发起触发请求时，将凭证作为请求体中的 `credentials` 字段（或 HTTP Header）传入
+> 2. connector-api 解析后注入到 `ExecutionContext.credentials`（仅内存生命周期）
+> 3. 连接器节点执行器从上下文取出凭证 → 注入到 WebClient 请求头/参数
+> 4. 节点执行完成后，凭证从 ExecutionContext 中**显式清除**（避免被后续步骤误用）
+> 5. 写入 `openplatform_v2_cp_execution_step.input_data` 时，**按 `connection_config` 中标记为 `sensitive: true` 的字段自动脱敏**（值替换为 `***`，长度信息保留）
+> 6. 凭证全程不进入 MySQL / Redis / 对象存储，**仅存活于本次 HTTP 请求的内存上下文**
 
 **核心 ER 关系**（完整字段定义、索引、JSON Schema 详见 `plan-db.md`）：
 
 ```mermaid
 erDiagram
     Connector ||--o{ ConnectorVersion : has
-    Connector ||--o{ Credential : configures
     ConnectorVersion }o--|| Connector : belongs_to
     Flow ||--o{ FlowVersion : has
     Flow ||--o| FlowTriggerEndpoint : exposes_http
@@ -717,21 +724,9 @@ erDiagram
         string version_status "draft / published"
         string version_description "中英文文本，选填"
         json basic_info_snapshot "发布时连接器基本信息快照"
-        json connection_config "连接配置：协议 / 地址 / 认证类型 / 入参 Schema / 出参 Schema / 超时 / 限流"
-        string credential_id FK "关联凭证 (nullable, 草稿态可空)"
+        json connection_config "连接配置：协议 / 地址 / 认证类型 schema (不含凭证值) / 入参 Schema / 出参 Schema / 超时 / 限流"
         datetime created_at
         datetime published_at
-    }
-    Credential {
-        string id PK
-        string connector_id FK
-        string auth_type "AKSK / OAUTH2 / BASIC_AUTH / API_KEY"
-        string kms_key_id "云 KMS 密钥引用 ID"
-        text encrypted_credentials "AES-256-GCM 密文"
-        string encryption_context "绑定上下文 (connector_id + version)"
-        string status "active / expired / revoked"
-        datetime created_at
-        datetime updated_at
     }
     Flow {
         string id PK
@@ -831,7 +826,7 @@ erDiagram
 > - 独立版本表 + current_published_version_id 指针——借鉴 PA `flowversions` + 钉钉
 > - I/O 默认外置（`_blob_id` 引用）——借鉴 PA `inputsLink/outputsLink`
 > - 预留计量字段——借鉴 Make `operations_consumed` + PA `billingMetrics`
-> - 凭证 AES-256-GCM + KMS + 加密上下文——5 平台共识
+> - **凭证不持久化（MVP 简化）**——调研中 5 平台均落库加密存储（AES-256-GCM + KMS），但 MVP 阶段我们选择极简策略：凭证仅在调用过程中传递，不进入任何持久层；待 V1 引入"连接器市场/共享凭证库"等场景再补 `openplatform_v2_cp_credential` 表
 > - HTTP 触发独立端点表 + 签名密钥——满足 NFR-011 安全要求
 
 > 完整表结构 DDL、字段类型、索引、JSON Schema、外置存储引用规范详见 **`plan-db.md`**
@@ -891,7 +886,7 @@ open-app/
 │       ├── runtime/               # 🆕 同步调度执行引擎、执行上下文、节点执行器
 │       ├── trigger/               # 🆕 HTTP 触发入口（对外）
 │       ├── debug/                 # 🆕 调试接口（对内，供 open-server 调用）
-│       └── common/                # 🆕 公共组件（认证凭证加解密、共享 entity/mapper）
+│       └── common/                # 🆕 公共组件（凭证脱敏器、执行上下文、共享 entity）
 │
 ├── wecodesite/                                   # 前端应用（连接器平台所有页面）
 │   └── src/pages/ConnectPlatform/
@@ -938,14 +933,12 @@ open-app/
 | `modules/connector/ConnectorService.java` | 连接器业务逻辑 |
 | `modules/connector/ConnectorVersionController.java` | 版本管理（列表/详情/编辑/发布） |
 | `modules/connector/ConnectorVersionService.java` | 版本业务逻辑 |
-| `modules/connector/CredentialController.java` | 🆕 凭证管理（创建/编辑/删除；明文输入界面 → 加密存储） |
-| `modules/connector/CredentialService.java` | 🆕 凭证业务逻辑（调用 connector-api 的加解密能力或共享 CredentialCipher） |
 | `modules/connector/entity/Connector.java` | 连接器实体（对应 `openplatform_v2_cp_connector`） |
-| `modules/connector/entity/ConnectorVersion.java` | 连接器版本实体（对应 `openplatform_v2_cp_connector_version`；`connection_config` 字段映射为 JSON 字符串/POJO） |
-| `modules/connector/entity/Credential.java` | 🆕 凭证实体（对应 `openplatform_v2_cp_credential`；界面展示需脱敏） |
+| `modules/connector/entity/ConnectorVersion.java` | 连接器版本实体（对应 `openplatform_v2_cp_connector_version`；`connection_config` 字段映射为 JSON 字符串/POJO，含**认证类型 schema 但不含凭证值**） |
 | `modules/connector/mapper/ConnectorMapper.java` | 连接器 Mapper |
 | `modules/connector/mapper/ConnectorVersionMapper.java` | 版本 Mapper |
-| `modules/connector/mapper/CredentialMapper.java` | 🆕 凭证 Mapper |
+
+> ❌ **不再需要的文件**：~~`CredentialController` / `CredentialService` / `Credential` entity / `CredentialMapper`~~——凭证不持久化，仅在调用过程中传递（v2.6 决策）
 
 #### open-server — flow 模块
 
@@ -987,23 +980,22 @@ open-app/
 | `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
 | `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table("openplatform_v2_cp_execution_record")` 映射；含预留计量字段） |
 | `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table("openplatform_v2_cp_execution_step")` 映射；I/O 大字段含 `*_blob_id` 外置引用） |
-| `runtime/entity/Credential.java` | 认证凭证实体（R2DBC `@Table("openplatform_v2_cp_credential")` 映射；AES-256-GCM 密文 + KMS key_id） |
 | `runtime/entity/FlowTriggerEndpoint.java` | HTTP 触发端点实体（R2DBC `@Table("openplatform_v2_cp_flow_trigger_endpoint")` 映射；含 trigger_token / signing_secret / rate_limit_config） |
 | `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("openplatform_v2_cp_storage_blob_ref")` 映射；用于 GC 与审计） |
 | `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` JSON 反序列化为 `OrchestrationConfig` 对象） |
 | `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`） |
 | `runtime/repository/ExecutionStepRepository.java` | 🆕 执行步骤 R2DBC Repository |
 | `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（按 flow_id 查 current_published_version_id） |
-| `runtime/repository/CredentialRepository.java` | 🆕 凭证 R2DBC Repository |
 | `runtime/repository/FlowTriggerEndpointRepository.java` | 🆕 HTTP 触发端点 R2DBC Repository（按 trigger_token 唯一索引查找） |
 | `runtime/repository/StorageBlobRefRepository.java` | 🆕 对象存储引用 R2DBC Repository（用于 GC 任务） |
 | `runtime/storage/BlobStorageGateway.java` | 🆕 对象存储网关：自动判定 I/O 是否超阈值需外置；`Mono<BlobRef> putIfNeeded(payload)` / `Mono<byte[]> fetch(blobId)`；后端先支持 OSS（阿里云） |
 | `runtime/storage/IOExternalizationPolicy.java` | 🆕 外置策略：默认 64KB 阈值（迭代 0 决策最终值） |
+| `runtime/security/CredentialMasker.java` | 🆕 凭证脱敏器：按 `connection_config` 中标记为 `sensitive: true` 的字段在写入 execution_record/step 前自动脱敏（值替换为 `***`，保留长度信息） |
+| `runtime/context/ExecutionContextCredentials.java` | 🆕 执行上下文凭证容器：仅内存生命周期，节点执行完成后显式 `clear()`，**永不进入任何持久层** |
 | `runtime/client/WebClientFactory.java` | 🆕 WebClient 工厂：连接池、超时、最大缓冲、TLS 等配置统一收口 |
 | `runtime/cache/ReactiveRedisAccessor.java` | 🆕 Redis reactive 访问封装（基于 `ReactiveStringRedisTemplate`） |
-| `trigger/HttpTriggerController.java` | HTTP 触发入口（WebFlux `@RestController`，返回 `Mono<TriggerResponse>`，对调用方呈现同步语义） |
-| `debug/DebugApiController.java` | 调试接口（WebFlux `@RestController`，供 open-server 调用：手动调试/测试运行） |
-| `common/CredentialCipher.java` | 认证凭证 AES-256-GCM 加解密（纯 CPU 同步操作，可直接 inline） |
+| `trigger/HttpTriggerController.java` | HTTP 触发入口（WebFlux `@RestController`，返回 `Mono<TriggerResponse>`，对调用方呈现同步语义；接收 `credentials` 字段并注入 ExecutionContext） |
+| `debug/DebugApiController.java` | 调试接口（WebFlux `@RestController`，供 open-server 调用：手动调试/测试运行；调用方在请求体中传入凭证） |
 | `common/InternalAuthFilter.java` | 内部接口鉴权 WebFilter（基于 `WebFilter`，仅允许 open-server 访问 debug-api） |
 | `common/R2dbcConfig.java` | 🆕 R2DBC `ConnectionFactory` 配置（连接池大小、获取超时、最大空闲时间等） |
 | `ConnectorApiApplication.java` | Spring Boot 启动类（WebFlux 模式） |
@@ -1055,15 +1047,15 @@ open-app/
 
 | 项目 | 新增文件 | 修改文件 | 删除文件 |
 |------|:--------:|:--------:|:--------:|
-| open-server (connector + flow + monitor + debug 4 个模块) | 约 42 | 0 | 0 |
-| connector-api 🆕（全新工程：runtime + trigger + debug + storage + common） | 约 38（含工程脚手架） | 0 | 0 |
+| open-server (connector + flow + monitor + debug 4 个模块) | 约 38 | 0 | 0 |
+| connector-api 🆕（全新工程：runtime + trigger + debug + storage + security + common） | 约 36（含工程脚手架） | 0 | 0 |
 | wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
-| **合计** | **约 89** | **2** | **0** |
+| **合计** | **约 83** | **2** | **0** |
 
-> 📌 v2.3 重新设计数据库（参考调研报告）后文件数小幅上调：
-> - open-server +7：新增 Credential / FlowTriggerEndpoint 的 entity/mapper/controller/service
-> - connector-api +8：新增 Credential / FlowTriggerEndpoint / StorageBlobRef entity + Repository、BlobStorageGateway / IOExternalizationPolicy
-> - 删除原计划的 FlowNode/FlowEdge entity/mapper（编排定义已内聚到 FlowVersion.orchestration_config JSON 字段）
+> 📌 v2.6 删除凭证持久化（cp_credential 表 + Credential 系列文件）后文件数小幅下调：
+> - open-server -4：删除 CredentialController / Service / Entity / Mapper
+> - connector-api -3：删除 Credential entity / CredentialRepository / CredentialCipher
+> - connector-api +2：新增 CredentialMasker（脱敏器）+ ExecutionContextCredentials（内存上下文容器）
 
 ---
 
@@ -1079,7 +1071,7 @@ open-app/
 | R2DBC MySQL 驱动成熟度（相比 JDBC） | 个别 SQL 特性兼容性问题 / 罕见 bug | 低-中 | 选用社区活跃的 `asyncer-io/r2dbc-mysql`（或 `dev.miku/r2dbc-mysql`）；MVP 阶段 SQL 模式相对简单（CRUD + 简单 join，无存储过程/复杂触发器）；保留向上层引擎降级回 `DatabaseClient` 原生 SQL 的能力 |
 | R2DBC 与 MyBatis 共享 schema 漂移 | open-server / connector-api 数据不一致 | 中 | 统一 DDL 迁移脚本（Flyway，**schema 主仓库由 connector-api 维护**——runtime 是数据真正消费源；open-server 作为 read-only consumer 引入相同脚本）；CI 阶段两个服务都跑迁移；任何表结构变更需同步 review 两侧 entity |
 | 可视化编排画布前端复杂度高 | 工期延误 | 中 | MVP 限制线性编排（禁用分支/循环连接），使用 React Flow 的受限模式 |
-| 认证凭证加密存储和传输 | 安全漏洞 | 低 | 使用 AES-256-GCM 加密 + HTTPS + 界面脱敏显示 |
+| 凭证在传输/执行过程中泄漏 | 安全漏洞 | 低 | HTTPS 强制；ExecutionContext 凭证容器节点执行完显式 clear()；执行记录按 `connection_config.sensitive` 标记自动脱敏（`***`，保留长度）；凭证**永不进入 MySQL/Redis/对象存储**；日志输出禁止序列化整个 ExecutionContext（Code Review 强制） |
 | HTTP 触发 URL 安全 | 非法调用 | 低 | 随机不可预测路径 + 请求签名验证 + 限流（FR-024） |
 | 同步执行下目标 API 延迟高 | 请求超时 | 中 | 可配置超时（最小 1s，最大 5min），超时返回「执行超时」状态 |
 | **open-server ↔ connector-api 内部通信失败** | 手动调试/测试运行不可用 | 低 | 内部 HTTP 加共享 token 鉴权 + 超时重试（默认 1 次）+ 熔断降级（调试不可用时前端提示重试，不影响管理面 CRUD） |
@@ -1108,6 +1100,7 @@ open-app/
 | OQ-003 | 可视化编排画布选型 | **已决策** → React Flow (@xyflow/react) | 当前 |
 | OQ-004 | 执行历史保留策略 | 默认保留 30 天（可配置），超过自动清理 | Tasks 阶段 |
 | OQ-005 | 限流阈值设定 | HTTP 触发默认 100 次/分钟，手动触发默认 10 次/分钟 | Tasks 阶段 |
+| **OQ-006** | **凭证存储与 spec.md NFR-010 的对齐** | spec.md NFR-010 原诉求是「凭证加密存储 + 界面脱敏 + HTTPS 传输」；v2.6 plan 决策为**不持久化**（仅传递）。已落实"HTTPS 传输 + 执行记录脱敏"两项；"加密存储"项**通过取消存储本身实现等价的安全收益**。**建议反向同步 spec.md**：将 NFR-010 调整为「凭证不持久化（MVP）；如有持久化场景，须 AES-256-GCM + KMS（V1）」，避免文档不一致 | spec 同步阶段 |
 
 ---
 
@@ -1201,6 +1194,7 @@ open-app/
 | **v2.3** | **2026-05-22** | **connector-api 全 reactive 栈（MyBatis → R2DBC）**：进一步要求 MySQL / Redis / 下游 HTTP 调用全链路非阻塞——数据访问从 MyBatis 同步 JDBC + boundedElastic 隔离改为 R2DBC（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 Mono/Flux；从依赖层面 exclude 阻塞栈（mybatis / spring-boot-starter-web / spring-boot-starter-jdbc）；与 open-server 共享 MySQL schema 但 entity/持久化层各自维护（MyBatis vs R2DBC），通过 Flyway 统一 DDL。影响：§1.2 技术栈对比表、§1.2 强制规则/共享数据模型策略、§3 关键决策（+4 项）、§4.7 文件清单（mapper→repository、+R2dbcConfig/Flyway/ReactiveRedisAccessor）、§4.8 依赖（+R2DBC/Flyway、-MyBatis）、§5.1 风险（+3 条、-1 条）、§6 迭代 0 工期、修订记录从顶部移至末尾 | SDDU Plan Agent |
 | **v2.4** | **2026-05-22** | **§4.2 数据库设计基于 5 平台调研报告（Zapier/Make/Power Automate/MuleSoft/钉钉）重写**：① 编排定义从拆分 FlowNode/FlowEdge 子表改为**单一 JSON 字段保存完整 DAG**（`{trigger,nodes,edges}`）——借鉴 Make/Zapier/钉钉/PA 共识；② 新增 `openplatform_v2_cp_flow_trigger_endpoint` 表存 HTTP 触发的 token+签名密钥+限流配置（满足 NFR-011 安全要求）；③ 凭证 `openplatform_v2_cp_credential` 独立成表（MVP 不分 per-app，per-app 移至 V1）；④ 执行历史 I/O **默认外置到对象存储**（>64KB 阈值），新增 `openplatform_v2_cp_storage_blob_ref` 元数据表——借鉴 PA `inputsLink/outputsLink` 模式；⑤ 预留计量字段 `operations_count` / `data_in_bytes` / `data_out_bytes`——借鉴 Make `operations_consumed` + PA `billingMetrics`，避免后期加字段迁移成本；⑥ 新增 `correlation_id` 字段支持跨服务链路追踪；⑦ 执行记录/步骤表按月分区；⑧ schema 主仓库从"open-server"改为"**connector-api**"（runtime 是数据真正消费源）；⑨ Flow 表新增 `current_published_version_id` 指针——借鉴 PA `flowversions`+钉钉模式。影响：§4.2 全面重写（含新增表清单、设计决策表、JSON 字段说明、索引说明），§4.7 open-server/connector-api 文件清单同步调整（+13 个文件、-4 个 FlowNode/FlowEdge 相关），§4.9 文件影响统计 74→89，§5.1 schema 主仓库表述统一 | SDDU Plan Agent |
 | **v2.5** | **2026-05-22** | **数据库表前缀统一调整**：从 `cp_` → **`openplatform_v2_cp_`**（openplatform=开放平台体系 / v2=平台第二代 / cp=connector platform 子域）。影响：§4.2 数据库前缀决策行说明文字、表清单 9 张表名、ER 图字段引用、索引说明；§4.7 文件清单中所有 R2DBC `@Table(...)` / MyBatis entity 注释；schema 迁移脚本目录引用；共 34 处替换 | SDDU Plan Agent |
+| **v2.6** | **2026-05-22** | **凭证不持久化（MVP 极简）**：取消 `openplatform_v2_cp_credential` 表（9 张表 → 8 张），凭证仅在调用过程中通过触发请求传入 → 注入 ExecutionContext（仅内存）→ 节点执行后清除；执行记录中按 `connection_config.sensitive` 标记自动脱敏；凭证**永不进入 MySQL/Redis/对象存储**。影响：① §4.2 设计决策表「凭证存储」行重写为「凭证传递」；② §4.2 表清单删除 cp_credential（含使用说明新增"凭证传递路径 6 步"）；③ §4.2 ER 图删除 Credential 实体 + ConnectorVersion.credential_id 字段；④ §4.2 调研对应说明改为「凭证不持久化 = MVP 简化策略」；⑤ §1.6 核心业务对象关系重写（6 持久化对象 + 1 内存对象）；⑥ §2.1 方案 A 核心设计「认证凭证」描述重写；⑦ §3 关键决策「凭证明文存储」行改为「凭证存储策略=不持久化」；⑧ §4.5 目录结构 common 注释更新；⑨ §4.7 删除 open-server CredentialController/Service/Entity/Mapper（-4 文件），删除 connector-api Credential entity/CredentialRepository/CredentialCipher（-3 文件），新增 CredentialMasker + ExecutionContextCredentials（+2 文件）；⑩ §4.9 文件统计 89 → 83；⑪ §5.1 风险「认证凭证加密存储和传输」重写为「凭证传输/执行过程泄漏」；⑫ §5.4 开放问题新增 OQ-006（建议反向同步 spec.md NFR-010） | SDDU Plan Agent |
 
 ---
 
