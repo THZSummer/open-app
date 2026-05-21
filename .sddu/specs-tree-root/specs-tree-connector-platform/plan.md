@@ -1,7 +1,7 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.7.2  
+**规划版本**: v2.7.3  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
@@ -448,8 +448,7 @@ graph LR
 |------|------|
 | Connector → ConnectorVersion | 一个连接器有多个版本（1:N），发布时快照基本信息+连接配置（含认证类型 schema，不含凭证值） |
 | ConnectorVersion ←···引用··· FlowVersion.orchestration_config.nodes[] | 连接器版本被连接流编排定义中的节点（JSON 数组元素）引用，**非物理外键**，引用关系存于 FlowVersion 的 JSON 字段内 |
-| Flow → FlowVersion | 一个连接流有多个版本（1:N），发布时快照基本信息+编排配置（`{trigger, nodes[], edges[]}` 完整 DAG，单一 JSON 字段） |
-| Flow → FlowTriggerEndpoint | 一个连接流可有一个 HTTP 触发端点（1:0..1），存随机 token + 签名密钥 + 限流配置 |
+| Flow → FlowVersion | 一个连接流有多个版本（1:N），发布时快照基本信息+编排配置（`{trigger, nodes[], edges[]}` 完整 DAG，单一 JSON 字段，**触发器配置完整内嵌于 `trigger` 节点**） |
 | Flow → ExecutionRecord → ExecutionStep | 每次执行生成一条记录，记录含多个步骤（1:N:N）；MVP 不分区，V1 按月分区 |
 | ExecutionRecord / ExecutionStep ←···外置引用··· StorageBlobRef | 大字段（>64KB）的 input/output/result_data 外置到对象存储，表中只存 `*_blob_id` 引用 |
 | Credentials（内存对象，不入库） | 凭证仅在调用过程中由触发请求传入 → 注入 ExecutionContext → 节点执行后清除；写入执行记录时按 `sensitive: true` 标记**脱敏** |
@@ -661,7 +660,7 @@ sequenceDiagram
 |--------|------|----------|
 | **编排定义存储模型** | **单一 JSON 字段保存完整 DAG**（`{ trigger{}, nodes[], edges[] }`），不拆分 FlowNode/FlowEdge 子表 | Zapier/Make/钉钉/PA 共识——便于版本快照、diff、回滚 |
 | **节点拓扑模型** | **显式 DAG（nodes + edges 两个数组）** | Make 模式——MVP 虽线性，但 V1 引入分支/循环/并行时无需 schema 迁移 |
-| **触发器存储** | 作为编排 JSON 的顶级独立字段 `trigger{}` + 独立 `openplatform_v2_cp_flow_trigger_endpoint_t` 表（存 HTTP 触发的 token、签名密钥、限流配置） | 5 平台共识 + NFR-011 安全要求 |
+| **触发器存储** | **完全内嵌于编排 JSON 的顶级 `trigger{}` 字段**，含触发类型、认证类型 schema（仅声明，不含凭证）、入参 Schema、限流配置；**不单独建表**——凭证不入库且无 token 持久化需求时，独立表已无核心价值（v2.7.3 决策） | MVP 极简 + 触发器配置本就是编排定义的一部分，跟随版本快照便于回滚 |
 | **版本管理** | 独立 `openplatform_v2_cp_flow_version_t` / `openplatform_v2_cp_connector_version_t` 表，每次发布写入完整快照；`openplatform_v2_cp_flow.current_published_version_id` 指向最新发布版 | PA `flowversions`(保留 25) + 钉钉 `flow_versions` 模式 |
 | **执行历史 I/O 外置** | 大字段（步骤 input/output、连接流 result_data）**默认写 MySQL 内嵌**，当 size > 阈值（建议 64KB，迭代 0 决策）时**自动外置到对象存储**，表中只存 `*_uri/*_size/*_hash` 引用 | PA 默认外置 + Make/钉钉条件外置 |
 | **执行记录分区**（V1 优化项） | **MVP 不分区**——`openplatform_v2_cp_execution_record_t` / `openplatform_v2_cp_execution_step_t` 使用普通表结构；V1 引入按 `create_time` 月度分区 + 30 天冷归档 | MVP 业务量小，无需引入分区运维复杂度；分区方案保留为 V1 优化预案（5 平台共识） |
@@ -673,18 +672,24 @@ sequenceDiagram
 | **关联引用方式** | **BIGINT(20) 雪花 ID**（应用层生成），使用逻辑外键（存储关联 ID），**不使用物理外键约束** | 对齐能力开放平台数据库规范（§4.2.x 主键规范） |
 | **遵循通用规范** | 所有表遵循 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`：表后缀 `_t` / 中英文双语名称（`name_cn`/`name_en`）/ 必备 4 审计字段（`create_time`/`last_update_time`/`create_by`/`last_update_by`）/ TINYINT(10) 枚举 / `DATETIME(3)` 时间精度 / `idx_xxx` `uk_xxx` 索引命名 | 复用现有规范，保证整个 openplatform_v2 体系一致 |
 
-**表清单**（共 **8 张表**：4 张主表 + 2 张版本表 + 1 张子表 + 1 张元数据表）：
+**表清单**（共 **7 张表**：4 张主表 + 2 张版本表 + 1 张子表 + 1 张元数据表，触发器配置内嵌于 `flow_version_t.orchestration_config.trigger` JSON，不单独建表）：
 
 | # | 表名 | 类型 | 模块 | 说明 |
 |---|------|------|------|------|
 | 1 | `openplatform_v2_cp_connector_t` | 主表 | connector | 连接器基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`icon_url`/`tags`/`status`/`connector_type` 等，本期字段全部入主表，不拆属性表） |
 | 2 | `openplatform_v2_cp_connector_version_t` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON，仅声明认证类型 schema，**不存凭证值**） |
 | 3 | `openplatform_v2_cp_flow_t` | 主表 | flow | 连接流基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`tags`/`owner_group`/`lifecycle_status`/`current_published_version_id` 等，本期字段全部入主表，不拆属性表） |
-| 4 | `openplatform_v2_cp_flow_version_t` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
-| 5 | `openplatform_v2_cp_flow_trigger_endpoint_t` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置；一对一，字段少） |
-| 6 | `openplatform_v2_cp_execution_record_t` | 主表 | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**MVP 不分区**，V1 引入按月分区） |
-| 7 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**MVP 不分区**，V1 引入按月分区） |
-| 8 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type；用于 GC 与审计） |
+| 4 | `openplatform_v2_cp_flow_version_t` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`，**触发器配置完整内嵌于 `trigger`：触发类型 / 认证类型 schema / 入参 Schema / 限流**） |
+| 5 | `openplatform_v2_cp_execution_record_t` | 主表 | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**MVP 不分区**，V1 引入按月分区） |
+| 6 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**MVP 不分区**，V1 引入按月分区） |
+| 7 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type；用于 GC 与审计） |
+
+> 💡 **触发器为何不单独建表**（v2.7.3 决策）：
+> - **凭证不存储**（v2.6 决策）→ 无 `signing_secret` 等需独立运维的密钥字段
+> - **触发器仅声明认证类型 schema**（不含 token） → 无 `trigger_token` 持久化需求，HTTP 路径直接用 `/trigger/{flow_id}/invoke`
+> - **触发器配置本就是编排定义的一部分** → 跟随 `flow_version_t.orchestration_config` 快照，便于版本回滚（限流变更 = 业务编排变更，发新版本生效）
+> - **HTTP 路由查询**：`flow_t.id` → `current_published_version_id` → `flow_version_t.orchestration_config.trigger`，2 次查询走主键索引，性能完全够用
+> - **V1 演进**：若出现"动态限流热更新""多端点共享 Flow""token 独立轮换"等场景，再拆出独立 `flow_trigger_endpoint_t` 表
 
 > 💡 **本期（MVP）暂不引入主表 + 属性表模式**：
 > - **决策**：MVP 阶段所有业务字段（含 description/tags/icon/owner_group 等）直接放在主表，**不拆 `*_p_t` 属性表**
@@ -711,7 +716,6 @@ sequenceDiagram
 erDiagram
     Connector ||--o{ ConnectorVersion : has
     Flow ||--o{ FlowVersion : has
-    Flow ||--o| FlowTriggerEndpoint : exposes_http
     Flow ||--o{ ExecutionRecord : generates
     ExecutionRecord ||--o{ ExecutionStep : contains
     ExecutionRecord }o--|| FlowVersion : executes_snapshot
@@ -771,22 +775,10 @@ erDiagram
         varchar version_description_cn "VARCHAR(1000)，选填"
         varchar version_description_en "VARCHAR(1000)，选填"
         json basic_info_snapshot "发布时连接流基本信息快照"
-        json orchestration_config "编排配置 JSON：{trigger,nodes,edges} 显式 DAG"
+        json orchestration_config "编排配置 JSON：{trigger,nodes,edges} 显式 DAG；trigger 内含触发类型/认证类型 schema/入参 Schema/限流，不单独建表"
         datetime create_time
         datetime last_update_time
         datetime published_time "DATETIME(3) nullable"
-        varchar create_by
-        varchar last_update_by
-    }
-    FlowTriggerEndpoint {
-        bigint id PK
-        bigint flow_id "关联 Flow.id（逻辑外键，uk_flow_id）"
-        varchar trigger_token "随机不可预测 URL 路径段（NFR-011，uk_trigger_token）"
-        varchar signing_secret "请求签名密钥（不加密落库，由 NFR-011 通过随机 token + 签名机制保证）"
-        json rate_limit_config "限流配置（FR-024 默认 100/min）"
-        tinyint status "0=disabled 1=active"
-        datetime create_time
-        datetime last_update_time
         varchar create_by
         varchar last_update_by
     }
@@ -852,15 +844,15 @@ erDiagram
 
 > 💡 **JSON 字段结构（详见 `plan-db.md`）**：
 > - `ConnectorVersion.connection_config` —— `{ protocol, base_url, auth_type, input_schema, output_schema, timeout_ms, rate_limit }`
-> - `FlowVersion.orchestration_config` —— `{ trigger:{type,config}, nodes:[{id,type,connector_version_id,params,position}], edges:[{id,source_node_id,target_node_id,data_mappings:[{source_path,target_path,transform}]}] }`
+> - `FlowVersion.orchestration_config.trigger` —— `{ type: "http"|"manual"|"test", auth_type_schema: { type: "bearer"|"api_key"|"oauth2"|"none", carrier: "header"|"query", field_name: "Authorization" }, in_param_schema: {...JSON Schema...}, rate_limit: { qpm: 100 } }`——**触发器配置完整内嵌**（v2.7.3 决策），不单独建表；凭证仅在调用时通过请求传入（v2.6 决策）
+> - `FlowVersion.orchestration_config` —— `{ trigger:{...上述结构...}, nodes:[{id,type,connector_version_id,params,position}], edges:[{id,source_node_id,target_node_id,data_mappings:[{source_path,target_path,transform}]}] }`
 > - `ExecutionRecord.trigger_data` / `result_data` —— 原始 JSON 数据，超过阈值时仅留 `{ "$externalized": "<storage_blob_ref_id>" }` 引用
 > - `ExecutionStep.input_data` / `output_data` —— 同上外置规则
 >
 > 💡 **关键索引**（命名遵循能力开放平台规范 `idx_xxx` / `uk_xxx`，详见 `plan-db.md`）：
 > - `openplatform_v2_cp_connector_version_t (connector_id, version_status, create_time DESC)` —— `idx_connector_id_version_status_create_time`
 > - `openplatform_v2_cp_flow_version_t (flow_id, version_status, create_time DESC)` —— `idx_flow_id_version_status_create_time`，查最新草稿/已发布版本
-> - `openplatform_v2_cp_flow_trigger_endpoint_t (trigger_token)` —— `uk_trigger_token` 唯一索引，HTTP 触发查找
-> - `openplatform_v2_cp_flow_trigger_endpoint_t (flow_id)` —— `uk_flow_id` 唯一索引（一对一）
+> - `openplatform_v2_cp_flow_t (current_published_version_id)` —— `idx_current_published_version_id`，HTTP 触发查找路径（`/trigger/{flow_id}` → 查 flow_t → join flow_version_t 取 trigger JSON）
 > - `openplatform_v2_cp_execution_record_t (flow_id, create_time DESC)` —— `idx_flow_id_create_time`，执行历史查询（FR-025）
 > - `openplatform_v2_cp_execution_record_t (correlation_id)` —— `idx_correlation_id`，链路追踪
 > - `openplatform_v2_cp_execution_step_t (execution_id, step_order)` —— `idx_execution_id_step_order`，步骤详情
@@ -873,7 +865,7 @@ erDiagram
 > - I/O 默认外置（`*_blob_id` 引用）——借鉴 PA `inputsLink/outputsLink`
 > - 预留计量字段——借鉴 Make `operations_consumed` + PA `billingMetrics`
 > - **凭证不持久化（MVP 简化）**——调研中 5 平台均落库加密存储（AES-256-GCM + KMS），但 MVP 阶段我们选择极简策略：凭证仅在调用过程中传递，不进入任何持久层；待 V1 引入"连接器市场/共享凭证库"等场景再补 `openplatform_v2_cp_credential_t` 表
-> - HTTP 触发独立端点表 + 签名密钥——满足 NFR-011 安全要求
+> - **触发器配置内嵌编排 JSON（v2.7.3 MVP 简化）**——5 平台中 Zapier/PA/钉钉将触发器存独立表（含 token/secret），Make 嵌入 scenarios.trigger；由于本平台**凭证不持久化**且**触发器仅声明认证类型 schema**，独立表的两个核心理由（token 独立运维、B+ 树查找）均失效，因此采用 Make 模式内嵌；V1 若需"动态限流热更新""token 独立轮换"再拆 `openplatform_v2_cp_flow_trigger_endpoint_t`
 
 > 完整表结构 DDL、字段类型、索引、JSON Schema、外置存储引用规范详见 **`plan-db.md`**
 
@@ -888,7 +880,7 @@ erDiagram
 | **完整前缀** | `openplatform_v2_cp_` | `openplatform_v2_cp_connector_t` |
 | **表后缀** | 主表/版本表/子表统一 `_t` | `openplatform_v2_cp_flow_version_t` |
 | **属性表后缀** | `_p_t`（V1 预留，MVP 不使用） | 能力开放平台规范预留命名空间，本期不引入 |
-| **命名风格** | 小写字母 + 下划线 | `flow_trigger_endpoint` |
+| **命名风格** | 小写字母 + 下划线 | `connector_version` / `execution_step` |
 
 #### 4.3.2 主表 + 属性表模式（MVP 不引入，V1 演进项）
 
@@ -914,8 +906,8 @@ erDiagram
 |------|------|--------------------|
 | **名称字段** | `name_cn` / `name_en` 中英文双语，VARCHAR(100)，必填 | `openplatform_v2_cp_connector_t.name_cn` / `name_en` |
 | **描述字段** | `description_cn` / `description_en` **VARCHAR(1000)**，选填 | 本期直接存于主表（`connector_t` / `flow_t` / `*_version_t`），不拆属性表；统一长度便于索引/排序/前端预览（1000 字符足够承载产品级描述） |
-| **主键** | BIGINT(20) 雪花 ID，应用层生成；统一命名 `id` | 所有 8 张表 |
-| **审计字段** | `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`（VARCHAR(100)） | 所有 8 张表 |
+| **主键** | BIGINT(20) 雪花 ID，应用层生成；统一命名 `id` | 所有 7 张表 |
+| **审计字段** | `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`（VARCHAR(100)） | 所有 7 张表 |
 | **枚举字段** | TINYINT(10) + 数字默认值 + COMMENT 说明 | 见 §4.3.4 |
 | **物理外键** | ❌ 禁用，所有关联通过逻辑字段（`xxx_id` BIGINT）实现 | 全表遵循 |
 | **索引命名** | `idx_字段名[_字段名2]` / `uk_字段名` | 见 §4.2 关键索引 |
@@ -929,7 +921,6 @@ erDiagram
 | `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
 | `flow_t` | `lifecycle_status` | 0=stopped, 1=running | 对应 FR-013~015 部署/启动/停止 |
 | `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
-| `flow_trigger_endpoint_t` | `status` | 0=disabled, 1=active | HTTP 触发端点开关 |
 | `execution_record_t` | `trigger_type` | 1=http, 2=manual, 3=test | 触发方式 |
 | `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | MVP 5 个值（partial/cancelled 留 V1） |
 | `execution_step_t` | `status` | 0=success, 1=failed | 步骤执行结果 |
@@ -1065,18 +1056,16 @@ open-app/
 |------|------|
 | `modules/flow/FlowController.java` | 连接流 CRUD、部署/启停 |
 | `modules/flow/FlowService.java` | 连接流业务逻辑 |
-| `modules/flow/FlowVersionController.java` | 版本管理、编排配置保存/发布 |
-| `modules/flow/FlowVersionService.java` | 版本业务逻辑 |
-| `modules/flow/FlowTriggerEndpointController.java` | 🆕 HTTP 触发端点管理（生成 trigger_token / 重置 signing_secret / 配置限流） |
-| `modules/flow/FlowTriggerEndpointService.java` | 🆕 触发端点业务逻辑 |
+| `modules/flow/FlowVersionController.java` | 版本管理、编排配置保存/发布（**触发器配置作为 orchestration_config.trigger 子节点，与版本一同管理，不需要独立的触发端点 API**） |
+| `modules/flow/FlowVersionService.java` | 版本业务逻辑（含 trigger 配置的 schema 校验） |
 | `modules/flow/entity/Flow.java` | 连接流实体（对应 `openplatform_v2_cp_flow_t`；含 `current_published_version_id` 指针） |
-| `modules/flow/entity/FlowVersion.java` | 连接流版本实体（对应 `openplatform_v2_cp_flow_version_t`；`orchestration_config` 字段映射为 `OrchestrationConfig` POJO，包含 `trigger / nodes / edges`） |
-| `modules/flow/entity/FlowTriggerEndpoint.java` | 🆕 HTTP 触发端点实体（对应 `openplatform_v2_cp_flow_trigger_endpoint_t`） |
+| `modules/flow/entity/FlowVersion.java` | 连接流版本实体（对应 `openplatform_v2_cp_flow_version_t`；`orchestration_config` 字段映射为 `OrchestrationConfig` POJO，包含 `trigger { type, auth_type_schema, in_param_schema, rate_limit } / nodes / edges`） |
 | `modules/flow/mapper/FlowMapper.java` | 连接流 Mapper |
 | `modules/flow/mapper/FlowVersionMapper.java` | 版本 Mapper |
-| `modules/flow/mapper/FlowTriggerEndpointMapper.java` | 🆕 触发端点 Mapper |
 
-> ❌ **不再需要的实体**：~~`FlowNode.java`~~ / ~~`FlowEdge.java`~~ / ~~`FlowNodeMapper.java`~~ / ~~`FlowEdgeMapper.java`~~——编排定义已全部内聚到 `FlowVersion.orchestration_config` JSON 字段（依据 §4.2 调研结论，单一 JSON 字段便于版本快照、diff、回滚）
+> ❌ **不再需要的实体**：
+> - ~~`FlowNode.java`~~ / ~~`FlowEdge.java`~~ / ~~`FlowNodeMapper.java`~~ / ~~`FlowEdgeMapper.java`~~——编排定义已全部内聚到 `FlowVersion.orchestration_config` JSON 字段
+> - ~~`FlowTriggerEndpointController.java`~~ / ~~`FlowTriggerEndpointService.java`~~ / ~~`FlowTriggerEndpoint.java`~~ / ~~`FlowTriggerEndpointMapper.java`~~ —— **v2.7.3 决策**：触发器配置完整内嵌于 `orchestration_config.trigger`，不单独建表/实体/Controller/Service/Mapper（凭证不存储 + 无 token 持久化 → 独立表已无必要）
 
 #### open-server — runtime 调试代理模块（debug）
 
@@ -1099,13 +1088,11 @@ open-app/
 | `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
 | `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table("openplatform_v2_cp_execution_record_t")` 映射；含预留计量字段） |
 | `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table("openplatform_v2_cp_execution_step_t")` 映射；I/O 大字段含 `*_blob_id` 外置引用） |
-| `runtime/entity/FlowTriggerEndpoint.java` | HTTP 触发端点实体（R2DBC `@Table("openplatform_v2_cp_flow_trigger_endpoint_t")` 映射；含 trigger_token / signing_secret / rate_limit_config） |
 | `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("openplatform_v2_cp_storage_blob_ref_t")` 映射；用于 GC 与审计） |
-| `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` JSON 反序列化为 `OrchestrationConfig` 对象） |
+| `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` JSON 反序列化为 `OrchestrationConfig` 对象，含 `trigger { type, auth_type_schema, in_param_schema, rate_limit }`） |
 | `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`） |
 | `runtime/repository/ExecutionStepRepository.java` | 🆕 执行步骤 R2DBC Repository |
-| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（按 flow_id 查 current_published_version_id） |
-| `runtime/repository/FlowTriggerEndpointRepository.java` | 🆕 HTTP 触发端点 R2DBC Repository（按 trigger_token 唯一索引查找） |
+| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（按 flow_id 查 current_published_version_id，HTTP 触发取 trigger 配置走这个 Repository） |
 | `runtime/repository/StorageBlobRefRepository.java` | 🆕 对象存储引用 R2DBC Repository（用于 GC 任务） |
 | `runtime/storage/BlobStorageGateway.java` | 🆕 对象存储网关：自动判定 I/O 是否超阈值需外置；`Mono<BlobRef> putIfNeeded(payload)` / `Mono<byte[]> fetch(blobId)`；后端先支持 OSS（阿里云） |
 | `runtime/storage/IOExternalizationPolicy.java` | 🆕 外置策略：默认 64KB 阈值（迭代 0 决策最终值） |
@@ -1166,12 +1153,18 @@ open-app/
 
 | 项目 | 新增文件 | 修改文件 | 删除文件 |
 |------|:--------:|:--------:|:--------:|
-| open-server (connector + flow + monitor + debug 4 个模块) | 约 38 | 0 | 0 |
-| connector-api 🆕（全新工程：runtime + trigger + debug + storage + security + common） | 约 36（含工程脚手架） | 0 | 0 |
+| open-server (connector + flow + monitor + debug 4 个模块) | 约 33 | 0 | 0 |
+| connector-api 🆕（全新工程：runtime + trigger + debug + storage + security + common） | 约 34（含工程脚手架） | 0 | 0 |
 | wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
-| **合计** | **约 83** | **2** | **0** |
+| **合计** | **约 78** | **2** | **0** |
 
-> 📌 v2.7.1 决策：**MVP 不引入主表+属性表模式**，所有 description/icon/tags/owner_group 字段直接入主表（`connector_t` / `flow_t`），文件数恢复至 83（不新增 ConnectorProperty / FlowProperty 系列文件）
+> 📌 v2.7.3 决策：**触发器配置完整内嵌于 `flow_version_t.orchestration_config.trigger` JSON，不单独建表**——
+> - open-server -5：删除 FlowTriggerEndpointController / Service / Entity / Mapper（4 个）+ 减少了 1 个独立 API 端点的相关 DTO
+> - connector-api -2：删除 FlowTriggerEndpoint R2DBC entity / Repository
+> - 触发器配置逻辑并入 FlowVersionService（仅多 1 个 trigger schema 校验方法，不需新增文件）
+> - 合计减少约 5 个文件（83 → 78）
+>
+> 📌 v2.7.1 决策：**MVP 不引入主表+属性表模式**，所有 description/icon/tags/owner_group 字段直接入主表（`connector_t` / `flow_t`），不新增 ConnectorProperty / FlowProperty 系列文件
 >
 > 📌 v2.6 删除凭证持久化（cp_credential 表 + Credential 系列文件）后文件数同步下调：
 > - open-server -4：删除 CredentialController / Service / Entity / Mapper
@@ -1319,6 +1312,7 @@ open-app/
 | **v2.7** | **2026-05-22** | **数据库设计对齐能力开放平台规范**：参考 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`，连接器平台数据库设计全面对齐 openplatform_v2 规范——① 所有表名加 `_t` 后缀（如 `openplatform_v2_cp_connector` → `openplatform_v2_cp_connector_t`）；② 引入主表+属性表模式，新增 `connector_p_t` / `flow_p_t` 两张属性表（共 8 张 → **10 张**）；③ 主键 string UUID → **BIGINT(20) 雪花 ID**；④ 名称字段拆为 `name_cn` / `name_en` 双语；⑤ 描述字段拆为 `description_cn` / `description_en` 双语，存于属性表；⑥ 审计字段统一 `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`；⑦ 状态/类型枚举改用 TINYINT(10) + 数字默认值；⑧ 时间字段统一 DATETIME(3) 毫秒精度；⑨ 索引命名规范化 `idx_xxx` / `uk_xxx`；⑩ 新增 §4.3 表设计规则章节（5 个子节：命名规范、主属性表模式、字段规则、枚举字典、与能力开放平台规范的差异点）。影响：§4.2 设计决策表 +2 项（关联引用方式、遵循通用规范）；§4.2 表清单 8 张 → 10 张；§4.2 ER 图全面重写（属性表 + BIGINT 主键 + 双语字段 + TINYINT 枚举 + 审计字段）；§4.2 索引说明对齐命名规范；新增 §4.3 表设计规则；后续章节序号顺延 4.3→4.4 / 4.4→4.5 / .../ 4.9→4.10；§4.8 文件清单中 R2DBC `@Table(...)` / MyBatis entity 注释统一加 `_t` 后缀（9 处修订） | SDDU Plan Agent |
 | **v2.7.1** | **2026-05-22** | **MVP 范围收敛：移除属性表 + 取消执行表分区**——基于本期需求评估，撤销 v2.7 引入的两项可选增强项：① **不引入主表+属性表模式**：删除 `connector_p_t` / `flow_p_t` 两张属性表，所有字段（`description_cn` / `description_en` / `icon_url` / `tags` / `owner_group` 等）直接入主表（`connector_t` / `flow_t`），表数 10 → **8 张**；② **MVP 不分区**：`execution_record_t` / `execution_step_t` 本期使用普通表结构，分区方案保留为 V1 优化预案（V1 单表接近 500w 时引入按月分区+30 天冷归档）。理由：MVP 业务量小、字段可控，引入属性表/分区会增加查询关联与运维复杂度。影响：① §1.4 数据流关系描述调整；② §4.2 设计决策表「执行记录分区」改为 V1 优化项，「遵循通用规范」行去掉 `_p_t` 描述；③ §4.2 表清单 10 → 8 张（主表 connector_t / flow_t 字段补全 description/icon/tags/owner_group），新增「本期暂不引入属性表/分区」两段决策说明；④ §4.2 ER 图删除 ConnectorProp / FlowProp 实体及关系，主表字段补全，分区注释改为 V1 引入；⑤ §4.2 关键索引删除 2 张属性表索引，分区描述改为 V1 优化项；⑥ §4.3.1 命名规范「属性表后缀」标注「V1 预留，MVP 不使用」；⑦ §4.3.2 评估表全部 ❌（含 V1 演进触发条件）；⑧ §4.3.3 描述字段改为「直接入主表」，「所有 10 张表」改回「8 张」；⑨ §4.3.5 差异点新增「属性表 MVP 不引入」+「分区策略 MVP 不引入」两条；⑩ §4.10 文件影响统计 87 → 83 还原（不新增 ConnectorProperty/FlowProperty 系列文件）；⑪ 顶部版本号 v2.7 → v2.7.1 | SDDU Plan Agent |
 | **v2.7.2** | **2026-05-22** | **描述类字段类型统一：TEXT → VARCHAR(1000)**——所有描述类字段（主表 `connector_t.description_cn`/`description_en`、`flow_t.description_cn`/`description_en`，版本表 `connector_version_t.version_description_cn`/`version_description_en`、`flow_version_t.version_description_cn`/`version_description_en`）统一规约为 `VARCHAR(1000)`，便于索引/排序/前端预览，1000 字符足够承载产品级描述；避免 TEXT 类型的离行存储与全表扫描代价。影响：① §4.2 ER 图 4 处 `text description_*` → `varchar description_*`（含 VARCHAR(1000) 注释）；② §4.2 ER 图 4 处 `version_description_*` 注释补全长度；③ §4.3.3 描述字段规则 `TEXT` → `VARCHAR(1000)`（含「统一长度便于索引/排序/前端预览」理由说明）；④ 顶部版本号 v2.7.1 → v2.7.2 | SDDU Plan Agent |
+| **v2.7.3** | **2026-05-22** | **触发器配置合并到编排 JSON，删除独立触发端点表**——基于 v2.6（凭证不持久化）+ v2.4（仅声明认证类型 schema）两个前提，独立 `flow_trigger_endpoint_t` 表已无核心价值（不存 token 故无独立轮换需求 / 无 token 查找路径故不需要 B+ 树 `uk_trigger_token`），决定完全删除，触发器配置内嵌于 `flow_version_t.orchestration_config.trigger` JSON。HTTP 触发 URL 改为 `/trigger/{flow_id}/invoke`（flow_id 雪花数字标识）。表数 **8 → 7 张**，文件数 **83 → 78** 个。涉及变更：① §1.4 数据流删除 Flow→FlowTriggerEndpoint 关系，FlowVersion 补充「触发器配置完整内嵌」说明；② §4.2 设计决策「触发器存储」重写为 JSON 合并方案；③ §4.2 表清单 8 → 7（删 `flow_trigger_endpoint_t`），新增「触发器为何不单独建表」决策说明；④ §4.2 ER 图删除 FlowTriggerEndpoint 实体与 Flow→FlowTriggerEndpoint 关系；⑤ §4.2 JSON 字段说明补全 `orchestration_config.trigger` 完整结构（type/auth_type_schema/in_param_schema/rate_limit）；⑥ §4.2 关键索引删除 2 条 trigger_endpoint 索引，新增 `flow_t.current_published_version_id` 索引（HTTP 触发查找路径）；⑦ §4.2 调研对应说明改为「Make 模式内嵌」+ V1 演进条件；⑧ §4.3.1 命名风格示例改为 `connector_version`/`execution_step`；⑨ §4.3.3 「8 张表」改为「7 张表」（主键/审计字段两行）；⑩ §4.3.4 删除 `flow_trigger_endpoint_t.status` 枚举行；⑪ §4.8 open-server 文件清单删除 FlowTriggerEndpointController/Service/Entity/Mapper（4 个），FlowVersionService 补充「触发器配置 schema 校验」说明；⑫ §4.8 connector-api 文件清单删除 FlowTriggerEndpoint R2DBC entity/Repository，FlowVersionReadRepository 补充「HTTP 触发取 trigger 配置走这个 Repository」说明；⑬ §4.10 文件影响统计 83 → 78（-5）；⑭ plan-api.md §4.2 HTTP 触发 URL 从 `/trigger/{flowId}/{triggerToken}` 改为 `/trigger/{flowId}/invoke`，签名验证段重写为认证说明（凭证调用方携带 + auth_type_schema 校验 + rate_limit 限流），新增 403 错误码（连接流未启用）；⑮ plan-api.md §6 接口编号总表 API-024 路径同步；⑯ 顶部版本号 v2.7.2 → v2.7.3 | SDDU Plan Agent |
 
 ---
 

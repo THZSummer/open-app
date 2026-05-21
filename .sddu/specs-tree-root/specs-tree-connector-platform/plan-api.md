@@ -549,12 +549,20 @@
 
 | 方法 | 路径 | 说明 | FR |
 |------|------|------|----|
-| `POST` | `/api/v1/trigger/{flowId}/{triggerToken}` | HTTP 触发连接流 | FR-021 |
+| `POST` | `/api/v1/trigger/{flowId}/invoke` | HTTP 触发连接流（同步执行，返回结果） | FR-021 |
 
-**triggerToken 生成规则**: `tr_` + 32 位随机字符串（不可预测），每个已部署的 HTTP 触发连接流分配唯一 token。
+**触发器配置位置**: 触发器配置（含触发类型、认证类型 schema、入参 Schema、限流）完整内嵌于 `flow_version_t.orchestration_config.trigger` JSON（v2.7.3 决策），**不单独维护触发端点表**。HTTP 触发查找路径：`flow_id` → `flow_t.current_published_version_id` → `flow_version_t.orchestration_config.trigger`，全程主键索引查询。
+
+**触发前置校验**：
+1. `flow_t.lifecycle_status = 1`（running 状态，FR-013~015 控制）
+2. `current_published_version_id` 非空（至少有一个已发布版本）
+3. 请求凭证（由调用方在 Header/Query 中携带，不存储）匹配 `trigger.auth_type_schema` 声明的类型
+4. 触发频率未超 `trigger.rate_limit.qpm` 阈值
 
 ```json
-// Request — 由外部系统发送，格式由 version 的 trigger schema 定义
+// Request — 由外部系统发送
+// Header: Authorization: Bearer xxxxxx （凭证由调用方携带，不在数据库存储；具体认证类型由 trigger.auth_type_schema 声明）
+// Body 格式由 trigger.in_param_schema 校验
 {
   "sender": "external_system",
   "content": "这是一条外部消息"
@@ -568,17 +576,20 @@
   "durationMs": 2250
 }
 
-// Response 401（签名验证失败）
-{ "code": "401", "messageZh": "签名验证失败", "messageEn": "Signature verification failed" }
+// Response 401（认证失败）
+{ "code": "401", "messageZh": "认证失败", "messageEn": "Authentication failed" }
+
+// Response 403（连接流未启用或未发布）
+{ "code": "403", "messageZh": "连接流未启用或无已发布版本", "messageEn": "Flow not running or no published version" }
 
 // Response 429（超过限流阈值 FR-024）
 { "code": "429", "messageZh": "请求频率超限，请稍后重试", "messageEn": "Too many requests" }
 ```
 
-**HTTP 触发签名验证**:
-- 请求头: `X-Trigger-Signature: {hmac_sha256(secret, body)}`
-- 平台使用预共享 secret 验证签名
-- 支持限流：单 token 每分钟最多 100 次请求（FR-024 默认限流）
+**HTTP 触发认证说明**:
+- 认证凭证（如 Bearer Token / API Key / OAuth2 Access Token）由调用方在请求中携带（Header 或 Query），**平台不存储任何凭证**（v2.6 决策）
+- 平台仅根据 `trigger.auth_type_schema` 校验凭证格式合法性（如类型、长度、是否必填）；具体凭证有效性由下游连接器调用时验证
+- 限流：基于 `trigger.rate_limit.qpm`，按 `flow_id` 维度限流（V1 可扩展为按 IP / 凭证维度）
 
 ---
 
@@ -655,7 +666,7 @@
 | API-021 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | flow | open-server | FR-019 |
 | API-022 | POST | `/api/v1/flows/{flowId}/executions` | runtime（手动调试） | **open-server** debug 代理 → **connector-api** debug-api | FR-022 |
 | API-023 | POST | `/api/v1/flows/{flowId}/test-run` | runtime（测试运行） | **open-server** debug 代理 → **connector-api** debug-api | FR-020 |
-| API-024 | POST | `/api/v1/trigger/{flowId}/{triggerToken}` | runtime（HTTP 触发） | **connector-api** http-trigger（对外消费方直连） | FR-021 |
+| API-024 | POST | `/api/v1/trigger/{flowId}/invoke` | runtime（HTTP 触发） | **connector-api** http-trigger（对外消费方直连） | FR-021 |
 | API-025 | GET | `/api/v1/flows/{flowId}/executions` | monitor（执行列表查询） | **open-server** monitor | FR-025 |
 | API-026 | GET | `/api/v1/executions/{executionId}` | monitor（执行详情查询） | **open-server** monitor | FR-025 |
 
