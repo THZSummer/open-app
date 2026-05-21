@@ -1,7 +1,7 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.7.4  
+**规划版本**: v2.7.5  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
@@ -682,7 +682,7 @@ sequenceDiagram
 | 4 | `openplatform_v2_cp_flow_version_t` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`，**触发器配置完整内嵌于 `trigger`：触发类型 / 认证类型 schema / 入参 Schema / 限流**） |
 | 5 | `openplatform_v2_cp_execution_record_t` | 主表 | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**MVP 不分区**，V1 引入按月分区） |
 | 6 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**MVP 不分区**，V1 引入按月分区） |
-| 7 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type；用于 GC 与审计） |
+| 7 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（**external_resource_id**（外部系统资源 ID，按需使用）/ uri / size / hash / content_type；用于 GC、审计与外部系统反查溯源） |
 
 > 💡 **触发器为何不单独建表**（v2.7.3 决策）：
 > - **凭证不存储**（v2.6 决策）→ 无 `signing_secret` 等需独立运维的密钥字段
@@ -828,6 +828,7 @@ erDiagram
     }
     StorageBlobRef {
         bigint id PK
+        varchar external_resource_id "外部系统资源 ID（按需使用，可空）：当大字段数据来源于外部系统时，存外部系统对该数据的标识（如钉钉 media_id / 第三方 file_id），便于反查溯源；纯内部生成留空"
         varchar uri "对象存储 URI（如 oss://bucket/path/xxx.json）"
         bigint size_bytes "字节数"
         varchar content_hash "SHA-256 校验"
@@ -1089,7 +1090,7 @@ open-app/
 | `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
 | `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table("openplatform_v2_cp_execution_record_t")` 映射；含预留计量字段） |
 | `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table("openplatform_v2_cp_execution_step_t")` 映射；I/O 大字段含 `*_blob_id` 外置引用） |
-| `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("openplatform_v2_cp_storage_blob_ref_t")` 映射；用于 GC 与审计） |
+| `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("openplatform_v2_cp_storage_blob_ref_t")` 映射；含 `external_resource_id`（外部系统资源 ID，按需使用，可空）+ uri/size/hash/content_type；用于 GC、审计与外部系统反查溯源） |
 | `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` TEXT 字段，应用层 Jackson 反序列化为 `OrchestrationConfig` 对象，含 `trigger { type, auth_type_schema, in_param_schema, rate_limit }`） |
 | `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`） |
 | `runtime/repository/ExecutionStepRepository.java` | 🆕 执行步骤 R2DBC Repository |
@@ -1315,6 +1316,7 @@ open-app/
 | **v2.7.2** | **2026-05-22** | **描述类字段类型统一：TEXT → VARCHAR(1000)**——所有描述类字段（主表 `connector_t.description_cn`/`description_en`、`flow_t.description_cn`/`description_en`，版本表 `connector_version_t.version_description_cn`/`version_description_en`、`flow_version_t.version_description_cn`/`version_description_en`）统一规约为 `VARCHAR(1000)`，便于索引/排序/前端预览，1000 字符足够承载产品级描述；避免 TEXT 类型的离行存储与全表扫描代价。影响：① §4.2 ER 图 4 处 `text description_*` → `varchar description_*`（含 VARCHAR(1000) 注释）；② §4.2 ER 图 4 处 `version_description_*` 注释补全长度；③ §4.3.3 描述字段规则 `TEXT` → `VARCHAR(1000)`（含「统一长度便于索引/排序/前端预览」理由说明）；④ 顶部版本号 v2.7.1 → v2.7.2 | SDDU Plan Agent |
 | **v2.7.3** | **2026-05-22** | **触发器配置合并到编排 JSON，删除独立触发端点表**——基于 v2.6（凭证不持久化）+ v2.4（仅声明认证类型 schema）两个前提，独立 `flow_trigger_endpoint_t` 表已无核心价值（不存 token 故无独立轮换需求 / 无 token 查找路径故不需要 B+ 树 `uk_trigger_token`），决定完全删除，触发器配置内嵌于 `flow_version_t.orchestration_config.trigger` JSON。HTTP 触发 URL 改为 `/trigger/{flow_id}/invoke`（flow_id 雪花数字标识）。表数 **8 → 7 张**，文件数 **83 → 78** 个。涉及变更：① §1.4 数据流删除 Flow→FlowTriggerEndpoint 关系，FlowVersion 补充「触发器配置完整内嵌」说明；② §4.2 设计决策「触发器存储」重写为 JSON 合并方案；③ §4.2 表清单 8 → 7（删 `flow_trigger_endpoint_t`），新增「触发器为何不单独建表」决策说明；④ §4.2 ER 图删除 FlowTriggerEndpoint 实体与 Flow→FlowTriggerEndpoint 关系；⑤ §4.2 JSON 字段说明补全 `orchestration_config.trigger` 完整结构（type/auth_type_schema/in_param_schema/rate_limit）；⑥ §4.2 关键索引删除 2 条 trigger_endpoint 索引，新增 `flow_t.current_published_version_id` 索引（HTTP 触发查找路径）；⑦ §4.2 调研对应说明改为「Make 模式内嵌」+ V1 演进条件；⑧ §4.3.1 命名风格示例改为 `connector_version`/`execution_step`；⑨ §4.3.3 「8 张表」改为「7 张表」（主键/审计字段两行）；⑩ §4.3.4 删除 `flow_trigger_endpoint_t.status` 枚举行；⑪ §4.8 open-server 文件清单删除 FlowTriggerEndpointController/Service/Entity/Mapper（4 个），FlowVersionService 补充「触发器配置 schema 校验」说明；⑫ §4.8 connector-api 文件清单删除 FlowTriggerEndpoint R2DBC entity/Repository，FlowVersionReadRepository 补充「HTTP 触发取 trigger 配置走这个 Repository」说明；⑬ §4.10 文件影响统计 83 → 78（-5）；⑭ plan-api.md §4.2 HTTP 触发 URL 从 `/trigger/{flowId}/{triggerToken}` 改为 `/trigger/{flowId}/invoke`，签名验证段重写为认证说明（凭证调用方携带 + auth_type_schema 校验 + rate_limit 限流），新增 403 错误码（连接流未启用）；⑮ plan-api.md §6 接口编号总表 API-024 路径同步；⑯ 顶部版本号 v2.7.2 → v2.7.3 | SDDU Plan Agent |
 | **v2.7.4** | **2026-05-22** | **JSON 数据字段类型统一：禁用 MySQL JSON 原生类型，全部改 TEXT 存 JSON 字符串**——新增表设计规则：所有承载 JSON 数据的字段统一使用 TEXT 类型（具体长度 TEXT/MEDIUMTEXT/LONGTEXT 由 plan-db.md 按字段实际大小选定），应用层负责 JSON 序列化（Jackson）、反序列化、格式校验；不使用 MySQL 的 `JSON_EXTRACT`/`JSON_TABLE` 等原生函数，需要查询时由应用层解析后过滤。理由：跨数据库通用（PG/Oracle/SQLServer 都支持）/ ORM 与工具兼容性最好 / 避免 MySQL 5.7/8.0 JSON 类型方言差异 / R2DBC 映射简单。影响 9 个字段：`connector_version_t.basic_info_snapshot`/`connection_config`、`flow_version_t.basic_info_snapshot`/`orchestration_config`、`execution_record_t.trigger_data`/`result_data`、`execution_step_t.input_data`/`output_data`/`error_info`。涉及变更：① §1.4 数据流 `FlowVersion.orchestration_config` 引用描述加 TEXT 说明；② §2.1 编排层描述补充 TEXT 存 JSON 字符串说明；③ §4.2 设计决策「编排定义存储模型」补充字段类型决策；④ §4.2 ER 图 9 处 `json XXX` → `text XXX`（含 TEXT 存 JSON 字符串注释）；⑤ §4.2 JSON 字段结构说明顶部加 TEXT 类型决策提示；⑥ §4.3.3 新增「JSON 数据字段」规则行；⑦ §4.3.5 差异点「JSON 大字段」行重写（含 TEXT 类型说明 + 删除 v2.7.3 已移除的 `rate_limit_config`）；⑧ §4.8 ConnectorVersion / FlowVersion / runtime FlowVersion 三个实体描述统一为「TEXT 字段 + Jackson 序列化/反序列化」；⑨ 顶部版本号 v2.7.3 → v2.7.4。**外置策略不变**（大字段 > 64KB 仍走对象存储 `*_blob_id` 引用） | SDDU Plan Agent |
+| **v2.7.5** | **2026-05-22** | **`storage_blob_ref_t` 新增 `external_resource_id` 字段（外部系统资源 ID）**——支持"大字段数据来源于外部系统时，存外部系统对该数据的标识"场景（如连接器调用钉钉返回 `media_id`、调用第三方返回 `file_id` 等），便于反查溯源。字段定义：`VARCHAR(64)` / 可空（按需使用，纯内部生成 blob 留空）/ 不建索引（仅作为引用标签字段，不支持高频反查）/ 位置在 `uri` 字段之前 / 仅 `storage_blob_ref_t` 加（业务表不动）。背景：用户提出"url 字段前加一个 batch_id 字段，按需使用"，澄清后理解为"大字段对应数据在业务/外部系统中的 ID"，重命名为 `external_resource_id` 避免与"批次 ID"语义混淆。涉及变更：① §4.2 表清单第 7 行说明补充 `external_resource_id` 描述；② §4.2 ER 图 `StorageBlobRef` 实体新增 `external_resource_id` 字段（uri 之前）；③ §4.8 connector-api `runtime/entity/StorageBlobRef.java` 实体描述补充字段说明；④ 顶部版本号 v2.7.4 → v2.7.5 | SDDU Plan Agent |
 
 ---
 
