@@ -1,9 +1,9 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.1  
+**规划版本**: v2.2  
 **创建日期**: 2026-05-21  
-**最近更新**: 2026-05-22（v2.1：运行时独立部署为 `connector-api`，前端统一收归 `wecodesite`）  
+**最近更新**: 2026-05-22（v2.2：connector-api 改用 Spring WebFlux + Reactor Netty NIO 非阻塞栈；架构图区分前期主路径与后期能力；v2.1：运行时独立部署为 `connector-api`，前端统一收归 `wecodesite`）  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v4.0  
 **前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003（ADR-003 已于 v2.1 修订）
@@ -11,6 +11,8 @@
 > ⚠️ **前端项目说明**：`open-web` 代码已全部迁移至 `wecodesite`，本规划中所有前端引用均以 `wecodesite` 为准。`wecodesite` 已内置 `@xyflow/react` 依赖，且 `ConnectPlatform/Connector`、`ConnectPlatform/ConnectorEditor`、`ConnectPlatform/Flow`、`ConnectPlatform/FlowEditor` 等页面已有实现。
 >
 > 🆕 **v2.1 架构变更**：连接器平台运行时（同步调度执行、HTTP 触发入口、调试接口）从 `open-server` 内嵌迁出，**独立部署为 `connector-api` 服务**。`open-server` 仅承载管理类能力（CRUD/版本/监控查询）以及调试代理（转发至 connector-api 调试接口）。详见 §1.1 和 ADR-003（v2.1 修订）。
+>
+> 🆕 **v2.2 技术栈变更**：`connector-api`（运行时服务）改用 **Spring WebFlux + Reactor Netty + WebClient（NIO 异步非阻塞栈）**，匹配运行时高并发同步 HTTP 调用三方业务系统的场景；`open-server`（管理服务）沿用 Spring MVC（Servlet）。MyBatis 同步 JDBC 通过统一 `DbAccessor` 封装 + `boundedElastic` 调度器隔离，测试环境启用 BlockHound 防误用。详见 §1.2 后端技术栈、§2.1 方案 A 核心设计、§5.1 技术风险。
 
 ---
 
@@ -158,17 +160,36 @@ graph TB
 
 #### 后端技术栈
 
-| 层级 | 技术选型 | 版本 |
-|------|----------|------|
-| **语言** | Java | 21 |
-| **构建工具** | Maven | 3.9.x |
-| **框架** | Spring Boot | 3.4.6 |
-| **ORM** | MyBatis | mybatis-spring-boot-starter 3.0.4 |
-| **数据库** | MySQL | 5.7 |
-| **缓存** | Redis | 6.0 |
+> 📌 **服务分栈策略**：`open-server`（管理服务）沿用现有的 **Spring MVC（同步 Servlet 栈）**；`connector-api`（运行时服务）采用 **Spring WebFlux + Reactor Netty（NIO 异步非阻塞栈）**，匹配运行时高并发同步 HTTP 调用场景。
+
+| 层级 | open-server（管理服务） | connector-api（运行时服务） | 说明 |
+|------|------------------------|---------------------------|------|
+| **语言** | Java 21 | Java 21 | 一致 |
+| **构建工具** | Maven 3.9.x | Maven 3.9.x | 一致 |
+| **应用框架** | Spring Boot 3.4.6 | Spring Boot 3.4.6 | 一致 |
+| **Web 栈** | **Spring MVC**（spring-boot-starter-web，Tomcat Servlet 同步） | **Spring WebFlux**（spring-boot-starter-webflux，Reactor Netty NIO 异步非阻塞） | 🆕 运行时改用 WebFlux |
+| **HTTP 客户端**（调用下游 API） | RestTemplate（现有） | **WebClient**（reactive，基于 Reactor Netty） | 🆕 与 WebFlux 栈一致，端到端非阻塞 |
+| **数据访问** | MyBatis（mybatis-spring-boot-starter 3.0.4，同步 JDBC） | MyBatis（同步 JDBC，包在 `boundedElastic` 调度器隔离）；执行记录的异步写入使用 `Mono.fromCallable(...).subscribeOn(Schedulers.boundedElastic())` | 🆕 WebFlux 下 JDBC 需调度器隔离避免阻塞事件循环；后续可评估迁移到 R2DBC |
+| **数据库** | MySQL 5.7 | MySQL 5.7 | 共享同一实例 |
+| **缓存** | Redis 6.0（spring-data-redis，同步） | Redis 6.0（**spring-data-redis-reactive**，Lettuce reactive 驱动） | 🆕 与 WebFlux 栈一致 |
+| **并发模型** | 一请求一线程（Tomcat 线程池，默认 200） | 事件循环 + Reactor 调度器（少量 EventLoop 线程承接百级以上并发 HTTP 调用） | 🆕 IO 密集型场景吞吐量显著优于同步栈 |
 
 > ❌ **本版本移除的依赖**：~~能力开放平台 Scope 权限模型~~、~~审批引擎~~、~~事件网关~~、~~Quartz 定时调度~~（触发器不在此版本内）
 > ✅ **仅复用**：MySQL / Redis 基础设施
+> 🆕 **运行时服务新增依赖**：`spring-boot-starter-webflux`、`spring-boot-starter-data-redis-reactive`、`reactor-core`（随 Spring Boot 自带）
+
+> 💡 **为什么 connector-api 选 WebFlux？**
+> - **场景匹配**：运行时核心动作是「同步 HTTP 调用三方业务系统」并发会等待下游响应，是典型 IO 密集型场景，NIO 非阻塞模型可用极少的线程承接高并发触发
+> - **吞吐量**：同等硬件资源下，WebFlux + WebClient 较 Spring MVC + RestTemplate 在高并发 HTTP 转发场景下吞吐量提升通常在 2-5 倍，更易达到 NFR 并发指标
+> - **背压（Backpressure）**：Reactor 的背压机制天然适配「上游触发速度 vs 下游响应速度」的速率匹配，避免连接器平台被慢下游打垮
+> - **不影响调用方编程模型**：connector-api 对外仍暴露**同步 HTTP 端点**（请求-响应一一对应），调用方（包括 open-server debug-proxy、内部业务系统）无需感知内部 reactive 实现
+> - **隔离风险**：WebFlux 仅用于 connector-api，open-server 不动，避免对现有管理后台造成栈级风险
+>
+> ⚠️ **WebFlux 注意事项（已在 plan-code 沉淀为强制规则）**：
+> - 严禁在 reactive 链路中直接调用阻塞 API（JDBC/同步 Redis/Thread.sleep）；MyBatis 调用必须包裹在 `subscribeOn(Schedulers.boundedElastic())`
+> - 节点执行器（`NodeExecutor`）签名返回 `Mono<NodeOutput>`，而非同步返回值
+> - `WebClient` 必须配置超时（连接 / 读 / 写）和最大内存缓冲（防大响应体打爆堆）
+> - 异常处理使用 `.onErrorResume(...)`，避免裸 try-catch 吃掉 reactive 异常信号
 
 ### 1.3 连接器平台新增组件
 
@@ -387,8 +408,8 @@ sequenceDiagram
 **核心设计**:
 - **服务拆分**: `connector-api` 独立 Spring Boot 工程，仅承载运行时与调试接口；`open-server` 承载所有管理类能力（CRUD/版本/监控查询）
 - **编排层**: FlowVersion 的 orchestration_config 以 JSON 格式存储完整编排信息（由 open-server 写入，connector-api 只读）
-- **执行引擎**: 顺序同步执行器（SyncSequentialExecutor），从入口节点开始，依次执行每个节点，最后执行出口节点，**同步返回结果**
-- **调度**: 无消息队列——HTTP 触发直接在请求线程中执行（通过异步执行器防止长时间阻塞 Tomcat 线程）
+- **执行引擎**: 反应式顺序执行器（`ReactiveSequentialExecutor`），从入口节点开始构造 `Mono` 链路（`flatMap` 串联各节点 `Mono<NodeOutput>`），最后聚合为 `Mono<ExecutionResult>`；对 HTTP 调用方仍呈现为**同步请求-响应语义**（一次请求等到完整结果再返回）
+- **调度**: 无消息队列——HTTP 触发请求进入 connector-api 的 Reactor Netty EventLoop，由执行引擎构造 reactive 链路（`Mono<ExecutionResult>`）异步编排各节点；下游 HTTP 调用通过 WebClient 完全非阻塞，单实例百级并发触发可由少量 EventLoop 线程承接，**对调用方仍呈现为同步 HTTP 请求-响应**
 - **调试通道**: connector-api 暴露内部调试接口（仅限 open-server 内网调用），open-server 收到前端调试/测试运行请求后转发到该接口，避免运行时逻辑重复实现
 - **认证凭证**: 连接器版本中存储认证配置（plan-db 设计为独立表），运行时在 connector-api 进程内自动加载注入
 
@@ -404,7 +425,7 @@ sequenceDiagram
 **缺点**:
 - 新增一个独立服务（connector-api），运维实例数 +1
 - open-server 与 connector-api 之间需新增一条内部 HTTP 调用链路（调试接口），需做好鉴权与重试
-- 长时间运行的连接流会阻塞 connector-api 的请求线程（通过超时机制+异步执行器缓解）
+- 长时间运行的连接流虽然不会阻塞 EventLoop（WebFlux 非阻塞），但单条连接流执行端到端超时仍需控制（避免下游慢响应占用 WebClient 连接池资源），通过 WebClient 超时 + Reactor `.timeout(...)` 双重保障
 - 高并发场景下，单实例执行器可能成为瓶颈（MVP 阶段目标：≥10 并发，可接受；可通过水平扩容 connector-api 实例缓解）
 - 缺乏标准化的流程定义格式（非 BPMN 标准）
 - 复杂编排场景（并行/分支/循环）需要在 V1 重构执行器
@@ -497,6 +518,8 @@ sequenceDiagram
 | 执行记录持久化 | MySQL（异步写入，不阻塞返回） | 确保执行结果快速返回 |
 | 凭证明文存储 | AES-256 加密存储, 界面脱敏 | 满足 NFR-010 安全要求 |
 | HTTP 触发入口 | connector-api 新增 controller | 与运行时同进程，链路最短 |
+| **connector-api Web 栈** | **Spring WebFlux + Reactor Netty + WebClient** | 运行时高并发同步 HTTP 调用三方系统，NIO 非阻塞栈吞吐量显著优于 Servlet 同步栈；对调用方仍呈现同步语义 |
+| open-server Web 栈 | 沿用 Spring MVC（Servlet） | 管理类操作以 CRUD 为主，并发不高，沿用现有栈避免改造成本 |
 | Scope 权限 | **不集成**（移至 NG18，V1） | 本版本独立运行 |
 | 审批流程 | **不集成**（移至 NG19，V1） | 版本发布无需审批 |
 | 数据处理节点 | **加入 MVP** | spec v4.0 将数据处理节点纳入 MVP 范围 |
@@ -754,22 +777,24 @@ open-app/
 
 | 文件 | 说明 |
 |------|------|
-| `runtime/SyncSequentialExecutor.java` | 同步顺序执行引擎 |
-| `runtime/ExecutionContext.java` | 执行上下文管理 |
-| `runtime/NodeExecutor.java` | 节点执行器接口 |
-| `runtime/ConnectorNodeExecutor.java` | 连接器节点执行器 |
-| `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器 |
+| `runtime/ReactiveSequentialExecutor.java` | 反应式顺序执行引擎（基于 `Mono` 链路串联节点；对外仍同步返回 HTTP 响应） |
+| `runtime/ExecutionContext.java` | 执行上下文管理（不可变快照 + 步骤累加） |
+| `runtime/NodeExecutor.java` | 节点执行器接口，签名 `Mono<NodeOutput> execute(NodeInput, ExecutionContext)` |
+| `runtime/ConnectorNodeExecutor.java` | 连接器节点执行器（基于 WebClient 异步调用下游 HTTP API） |
+| `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
 | `runtime/entity/ExecutionRecord.java` | 执行记录实体 |
 | `runtime/entity/ExecutionStep.java` | 执行步骤实体 |
 | `runtime/entity/ConnectorAuthConfig.java` | 认证凭证实体 |
-| `runtime/mapper/ExecutionRecordMapper.java` | 执行记录 Mapper |
+| `runtime/mapper/ExecutionRecordMapper.java` | 执行记录 Mapper（MyBatis 同步 JDBC，调用方需 `subscribeOn(boundedElastic)`） |
 | `runtime/mapper/FlowVersionReadMapper.java` | FlowVersion 只读 Mapper（读取 orchestration_config） |
-| `trigger/HttpTriggerController.java` | HTTP 触发入口（同步调用） |
-| `debug/DebugApiController.java` | 调试接口（供 open-server 调用：手动调试/测试运行） |
+| `runtime/db/DbAccessor.java` | 🆕 统一封装 MyBatis 调用 → `Mono<T>`，强制 `boundedElastic` 调度器隔离 |
+| `runtime/client/WebClientFactory.java` | 🆕 WebClient 工厂：连接池、超时、最大缓冲、TLS 等配置统一收口 |
+| `trigger/HttpTriggerController.java` | HTTP 触发入口（WebFlux `@RestController`，返回 `Mono<TriggerResponse>`，对调用方呈现同步语义） |
+| `debug/DebugApiController.java` | 调试接口（WebFlux `@RestController`，供 open-server 调用：手动调试/测试运行） |
 | `common/CredentialCipher.java` | 认证凭证 AES-256-GCM 加解密 |
-| `common/InternalAuthFilter.java` | 内部接口鉴权（仅允许 open-server 访问 debug-api） |
-| `ConnectorApiApplication.java` | Spring Boot 启动类 |
-| `pom.xml` / `application.yml` | 工程配置 |
+| `common/InternalAuthFilter.java` | 内部接口鉴权 WebFilter（基于 `WebFilter`，仅允许 open-server 访问 debug-api） |
+| `ConnectorApiApplication.java` | Spring Boot 启动类（WebFlux 模式） |
+| `pom.xml` / `application.yml` | 工程配置（启用 webflux + data-redis-reactive，测试 profile 启用 BlockHound） |
 
 #### open-server — monitor 模块
 
@@ -798,10 +823,17 @@ open-app/
 | 依赖 | 版本 | 用途 | 所属项目 |
 |------|------|------|---------|
 | `@xyflow/react` (React Flow) | ^12.x | 可视化编排画布 | wecodesite（已内置） |
+| `spring-boot-starter-webflux` | 随 Spring Boot 3.4.6 | Reactor Netty + WebFlux Web 栈 | connector-api（🆕 运行时服务） |
+| `spring-boot-starter-data-redis-reactive` | 随 Spring Boot 3.4.6 | Redis reactive 驱动（Lettuce） | connector-api |
+| `reactor-core` | 随 Spring Boot 3.4.6（reactor-bom） | reactive 编程核心 | connector-api（传递依赖） |
+| `mybatis-spring-boot-starter` | 3.0.4 | MyBatis（同步 JDBC，需配合 `boundedElastic` 调度器使用） | connector-api（共享 entity/mapper） |
+| `blockhound`（测试 scope） | ^1.0.x | reactive 链路中阻塞调用检测 | connector-api（仅 test/staging 环境启用） |
 
 > ❌ **本版本不再引入的依赖**（与 spec v3.x 版 plan 的差异）：
 > - ~~Quartz Scheduler~~（定时触发移至 NG17，V1 阶段）
 > - ~~MQS 消息队列~~（同步执行无需消息队列）
+>
+> 🆕 **后续可评估升级**：将 connector-api 的 MyBatis 替换为 **R2DBC**（端到端 reactive），彻底消除 `boundedElastic` 调度器隔离的开销，V1 阶段再决策。
 
 ### 4.9 文件影响统计
 
@@ -822,7 +854,9 @@ open-app/
 
 | 风险 | 影响 | 概率 | 缓解措施 |
 |------|------|:----:|---------|
-| 同步执行长时间阻塞 connector-api Tomcat 线程 | 影响 connector-api 其他请求响应（不影响 open-server 管理面） | 中 | connector-api 使用独立线程池执行（`@Async`/`CompletableFuture`），设置超时（默认 30s，最大 5min），超时强制终止；可水平扩容 connector-api 实例 |
+| 同步执行下游慢响应占用 WebClient 连接池 | connector-api 吞吐量下降 | 中 | connector-api 基于 **WebFlux + Reactor Netty** NIO 非阻塞栈，少量 EventLoop 线程即可承接百级并发；WebClient 配置连接池上限 + 连接/读/写超时 + Reactor `.timeout(默认 30s，最大 5min)` 双重保障；超时强制终止；可水平扩容 connector-api 实例 |
+| WebFlux 反应式编程团队学习成本 | 工期延误 / 代码质量 | 中 | plan-code 沉淀强制规则（禁阻塞调用、JDBC 必须 `boundedElastic`、必配超时等）；迭代 0 安排 2-3 天技术演练；Code Review 重点把关 reactive 链路；保留 `BlockHound` 在测试环境检测意外阻塞调用 |
+| MyBatis 同步 JDBC 在 reactive 链路中被误用 | 阻塞 EventLoop 导致全局吞吐崩塌 | 中 | 统一封装 `DbAccessor`，内部强制 `Mono.fromCallable(...).subscribeOn(Schedulers.boundedElastic())`；测试环境启用 BlockHound 拦截裸调用；后续可评估迁移到 R2DBC 彻底消除 |
 | 可视化编排画布前端复杂度高 | 工期延误 | 中 | MVP 限制线性编排（禁用分支/循环连接），使用 React Flow 的受限模式 |
 | 认证凭证加密存储和传输 | 安全漏洞 | 低 | 使用 AES-256-GCM 加密 + HTTPS + 界面脱敏显示 |
 | HTTP 触发 URL 安全 | 非法调用 | 低 | 随机不可预测路径 + 请求签名验证 + 限流（FR-024） |
@@ -862,13 +896,13 @@ open-app/
 
 | 迭代 | 范围 | FR 范围 | 周期 | 交付价值 |
 |------|------|---------|:----:|---------|
-| **迭代 0** | 🆕 connector-api 工程脚手架（Spring Boot 工程初始化、共享 entity/mapper、内部鉴权、部署流水线） | — | 0.5-1 周 | connector-api 可启动、可被 open-server 调通 |
+| **迭代 0** | 🆕 connector-api 工程脚手架（**Spring WebFlux 工程初始化、WebClient 工厂、DbAccessor、BlockHound 接入**、共享 entity/mapper、内部鉴权、部署流水线）+ **团队 WebFlux/Reactor 技术演练** | — | 1-1.5 周 | connector-api 可启动、可被 open-server 调通；团队掌握 reactive 强制规则 |
 | **迭代 1** | 连接器管理模块（open-server） | FR-001 ~ FR-008 | 2-3 周 | 可创建/编辑/发布连接器，浏览连接器目录 |
 | **迭代 2** | 连接流管理模块（open-server） | FR-009 ~ FR-020 | 3-4 周 | 可创建连接流、拖拽编排、保存草稿、发布版本 |
 | **迭代 3** | 运行时模块（connector-api：runtime + http-trigger + debug-api）+ open-server 调试代理（debug） | FR-021 ~ FR-024 | 2-3 周 | 可同步执行连接流（HTTP 触发+手动触发），错误处理+限流 |
 | **迭代 4** | 监控模块（open-server） | FR-025 | 1-2 周 | 可查看执行历史、执行详情、步骤输入输出 |
 | **集成测试** | 全链路联调 + E2E（含 open-server ↔ connector-api 通信） | 全部 | 1-2 周 | 端到端验证 |
-| **合计** | | | **8.5-13 周** | |
+| **合计** | | | **9-13.5 周** | |
 
 ### 关键里程碑
 
@@ -920,12 +954,13 @@ open-app/
 | 监控范围 | 全指标仪表盘 | 执行历史查询 |
 | 错误处理 | 审批流程处理 | 默认错误处理（FR-023） |
 | 限流 | 无 | 默认限流（FR-024） |
-| 预估工期 | 10-14 周 | **8.5-13 周** |
+| 预估工期 | 10-14 周 | **9-13.5 周** |
 | 新增依赖 | Quartz + MQS | 无额外依赖 |
 | **运行时部署** | 嵌入 open-server | **独立服务 `connector-api`**（与 open-server 拆分） |
 | **服务数量** | 1（open-server 单体） | 2（open-server + connector-api） |
 | **调试/测试运行链路** | open-server 内部调用 | open-server → connector-api 调试接口（内部 HTTP） |
 | **前端归属** | 散落（含 open-web） | 统一在 wecodesite |
+| **connector-api Web 栈** | （v1.x 嵌入 open-server，沿用 Spring MVC） | **Spring WebFlux + Reactor Netty + WebClient**（NIO 非阻塞，匹配高并发 HTTP 转发场景）|
 
 ### 下一步
 👉 运行 `@sddu-tasks 连接器平台` 开始任务分解
