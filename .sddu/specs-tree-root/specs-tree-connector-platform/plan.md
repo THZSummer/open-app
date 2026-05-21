@@ -1,9 +1,9 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.2  
+**规划版本**: v2.3  
 **创建日期**: 2026-05-21  
-**最近更新**: 2026-05-22（v2.2：connector-api 改用 Spring WebFlux + Reactor Netty NIO 非阻塞栈；架构图区分前期主路径与后期能力；v2.1：运行时独立部署为 `connector-api`，前端统一收归 `wecodesite`）  
+**最近更新**: 2026-05-22（v2.3：connector-api 全 reactive 栈——MyBatis→**R2DBC**，端到端非阻塞；v2.2：connector-api 改用 Spring WebFlux + Reactor Netty；v2.1：运行时独立部署为 `connector-api`，前端统一收归 `wecodesite`）  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v4.0  
 **前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003（ADR-003 已于 v2.1 修订）
@@ -12,7 +12,16 @@
 >
 > 🆕 **v2.1 架构变更**：连接器平台运行时（同步调度执行、HTTP 触发入口、调试接口）从 `open-server` 内嵌迁出，**独立部署为 `connector-api` 服务**。`open-server` 仅承载管理类能力（CRUD/版本/监控查询）以及调试代理（转发至 connector-api 调试接口）。详见 §1.1 和 ADR-003（v2.1 修订）。
 >
-> 🆕 **v2.2 技术栈变更**：`connector-api`（运行时服务）改用 **Spring WebFlux + Reactor Netty + WebClient（NIO 异步非阻塞栈）**，匹配运行时高并发同步 HTTP 调用三方业务系统的场景；`open-server`（管理服务）沿用 Spring MVC（Servlet）。MyBatis 同步 JDBC 通过统一 `DbAccessor` 封装 + `boundedElastic` 调度器隔离，测试环境启用 BlockHound 防误用。详见 §1.2 后端技术栈、§2.1 方案 A 核心设计、§5.1 技术风险。
+> 🆕 **v2.2 技术栈变更**：`connector-api` 采用 **Spring WebFlux + Reactor Netty + WebClient（NIO 异步非阻塞栈）**；`open-server` 沿用 Spring MVC（Servlet）。
+>
+> 🆕 **v2.3 技术栈变更（本次）**：`connector-api` 进一步要求 **MySQL / Redis / 下游 HTTP 调用全链路非阻塞**：
+> - 数据库：**MyBatis → R2DBC**（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 `Mono`/`Flux`
+> - Redis：spring-data-redis-reactive（已是 reactive）
+> - HTTP：WebClient（已是 reactive）
+> - 从依赖层面屏蔽阻塞栈（不引入 mybatis-spring-boot-starter / spring-boot-starter-web / spring-boot-starter-jdbc），**从源头消除阻塞 EventLoop 风险**
+> - 与 open-server 共享同一 MySQL schema，但 entity / 持久化层各服务独立维护（open-server 用 MyBatis，connector-api 用 R2DBC），通过 Flyway 统一 DDL 保证一致
+>
+> 详见 §1.2 后端技术栈、§3 关键架构决策、§4.7 文件清单、§4.8 新增依赖、§5.1 技术风险。
 
 ---
 
@@ -160,7 +169,7 @@ graph TB
 
 #### 后端技术栈
 
-> 📌 **服务分栈策略**：`open-server`（管理服务）沿用现有的 **Spring MVC（同步 Servlet 栈）**；`connector-api`（运行时服务）采用 **Spring WebFlux + Reactor Netty（NIO 异步非阻塞栈）**，匹配运行时高并发同步 HTTP 调用场景。
+> 📌 **服务分栈策略**：`open-server`（管理服务）沿用现有的 **Spring MVC（同步 Servlet 栈）**；`connector-api`（运行时服务）采用 **Spring WebFlux + Reactor Netty（NIO 异步非阻塞栈）**，并要求 **MySQL（R2DBC）/ Redis（reactive）/ 下游 HTTP 调用（WebClient）全链路非阻塞**，匹配运行时高并发 HTTP 调用场景。
 
 | 层级 | open-server（管理服务） | connector-api（运行时服务） | 说明 |
 |------|------------------------|---------------------------|------|
@@ -169,27 +178,35 @@ graph TB
 | **应用框架** | Spring Boot 3.4.6 | Spring Boot 3.4.6 | 一致 |
 | **Web 栈** | **Spring MVC**（spring-boot-starter-web，Tomcat Servlet 同步） | **Spring WebFlux**（spring-boot-starter-webflux，Reactor Netty NIO 异步非阻塞） | 🆕 运行时改用 WebFlux |
 | **HTTP 客户端**（调用下游 API） | RestTemplate（现有） | **WebClient**（reactive，基于 Reactor Netty） | 🆕 与 WebFlux 栈一致，端到端非阻塞 |
-| **数据访问** | MyBatis（mybatis-spring-boot-starter 3.0.4，同步 JDBC） | MyBatis（同步 JDBC，包在 `boundedElastic` 调度器隔离）；执行记录的异步写入使用 `Mono.fromCallable(...).subscribeOn(Schedulers.boundedElastic())` | 🆕 WebFlux 下 JDBC 需调度器隔离避免阻塞事件循环；后续可评估迁移到 R2DBC |
+| **数据访问** | MyBatis（mybatis-spring-boot-starter 3.0.4，同步 JDBC） | **R2DBC**（spring-boot-starter-data-r2dbc + r2dbc-mysql + Spring Data R2DBC repository）；执行 SQL 全部返回 `Mono<T>` / `Flux<T>`，端到端非阻塞 | 🆕 connector-api 全 reactive，**不使用 MyBatis 同步 JDBC**，从根本上消除阻塞调用风险 |
 | **数据库** | MySQL 5.7 | MySQL 5.7 | 共享同一实例 |
 | **缓存** | Redis 6.0（spring-data-redis，同步） | Redis 6.0（**spring-data-redis-reactive**，Lettuce reactive 驱动） | 🆕 与 WebFlux 栈一致 |
 | **并发模型** | 一请求一线程（Tomcat 线程池，默认 200） | 事件循环 + Reactor 调度器（少量 EventLoop 线程承接百级以上并发 HTTP 调用） | 🆕 IO 密集型场景吞吐量显著优于同步栈 |
 
 > ❌ **本版本移除的依赖**：~~能力开放平台 Scope 权限模型~~、~~审批引擎~~、~~事件网关~~、~~Quartz 定时调度~~（触发器不在此版本内）
-> ✅ **仅复用**：MySQL / Redis 基础设施
-> 🆕 **运行时服务新增依赖**：`spring-boot-starter-webflux`、`spring-boot-starter-data-redis-reactive`、`reactor-core`（随 Spring Boot 自带）
+> ✅ **仅复用基础设施**：MySQL / Redis 实例（与 open-server 共享）
+> 🆕 **运行时服务新增依赖**：`spring-boot-starter-webflux`、`spring-boot-starter-data-r2dbc`、`r2dbc-mysql`、`spring-boot-starter-data-redis-reactive`、`reactor-core`（随 Spring Boot 自带）
+> ❌ **运行时服务不引入**：~~mybatis-spring-boot-starter~~、~~spring-boot-starter-jdbc~~、~~spring-boot-starter-web~~（避免同步栈污染）
 
-> 💡 **为什么 connector-api 选 WebFlux？**
+> 💡 **为什么 connector-api 选 WebFlux + R2DBC 全 reactive？**
 > - **场景匹配**：运行时核心动作是「同步 HTTP 调用三方业务系统」并发会等待下游响应，是典型 IO 密集型场景，NIO 非阻塞模型可用极少的线程承接高并发触发
-> - **吞吐量**：同等硬件资源下，WebFlux + WebClient 较 Spring MVC + RestTemplate 在高并发 HTTP 转发场景下吞吐量提升通常在 2-5 倍，更易达到 NFR 并发指标
+> - **端到端非阻塞**：HTTP 入口（WebFlux）→ 编排引擎（Reactor）→ 下游调用（WebClient）→ 数据库（R2DBC）→ 缓存（Redis reactive）全链路无阻塞调用，**从根本上消除"误用阻塞 API 拖垮 EventLoop"的风险**
+> - **吞吐量**：同等硬件资源下，WebFlux + WebClient + R2DBC 较 Spring MVC + RestTemplate + JDBC 在高并发 HTTP 转发场景下吞吐量提升通常在 2-5 倍，更易达到 NFR 并发指标
 > - **背压（Backpressure）**：Reactor 的背压机制天然适配「上游触发速度 vs 下游响应速度」的速率匹配，避免连接器平台被慢下游打垮
 > - **不影响调用方编程模型**：connector-api 对外仍暴露**同步 HTTP 端点**（请求-响应一一对应），调用方（包括 open-server debug-proxy、内部业务系统）无需感知内部 reactive 实现
-> - **隔离风险**：WebFlux 仅用于 connector-api，open-server 不动，避免对现有管理后台造成栈级风险
->
-> ⚠️ **WebFlux 注意事项（已在 plan-code 沉淀为强制规则）**：
-> - 严禁在 reactive 链路中直接调用阻塞 API（JDBC/同步 Redis/Thread.sleep）；MyBatis 调用必须包裹在 `subscribeOn(Schedulers.boundedElastic())`
+> - **隔离风险**：WebFlux + R2DBC 仅用于 connector-api，open-server 不动，避免对现有管理后台造成栈级风险
+
+> ⚠️ **全 reactive 栈强制规则（已在 plan-code 沉淀）**：
+> - **严禁**在 reactive 链路中直接调用任何阻塞 API：JDBC、MyBatis、`RestTemplate`、同步 Redis、`Thread.sleep`、`File IO`、传统 `synchronized` 长等待等
+> - 数据库访问**只能用 R2DBC** 的 `Mono<T>` / `Flux<T>` 接口；如需复杂查询使用 `R2dbcEntityTemplate` 或 `DatabaseClient`
+> - Redis 访问**只能用 `ReactiveRedisTemplate` / `ReactiveStringRedisTemplate`**
+> - HTTP 调用**只能用 `WebClient`**，禁止引入 `RestTemplate` / `OkHttp` 同步客户端
 > - 节点执行器（`NodeExecutor`）签名返回 `Mono<NodeOutput>`，而非同步返回值
-> - `WebClient` 必须配置超时（连接 / 读 / 写）和最大内存缓冲（防大响应体打爆堆）
+> - `WebClient` / R2DBC ConnectionFactory 必须配置超时与池上限（防大响应体打爆堆 / 防连接耗尽）
 > - 异常处理使用 `.onErrorResume(...)`，避免裸 try-catch 吃掉 reactive 异常信号
+> - 测试环境启用 **BlockHound** 主动拦截任何意外阻塞调用，CI 流水线必跑
+
+> 🔄 **共享数据模型策略**：connector-api 与 open-server **共用同一套 MySQL 表 schema**（详见 plan-db.md），但 **entity / 持久化层各自维护**（open-server 用 MyBatis entity + Mapper，connector-api 用 R2DBC entity + Repository），避免 ORM 跨栈耦合。共享的"表结构契约"通过统一的 DDL 迁移脚本（Flyway / Liquibase 之一，迭代 0 决定）保证一致性。
 
 ### 1.3 连接器平台新增组件
 
@@ -362,9 +379,9 @@ sequenceDiagram
     N4-->>Sched: 完成
     Sched-->>Caller: 返回完整执行结果<br/>(各步骤输入/输出/耗时/状态)
 
-    par 异步写入 (不阻塞返回)
+    par 异步写入 (不阻塞返回，R2DBC reactive)
         Sched->>MySQL: 持久化执行记录/步骤
-        Note right of MySQL: 供 open-server<br/>monitor 模块查询
+        Note right of MySQL: 通过 R2DBC<br/>(Mono.subscribe)<br/>供 open-server<br/>monitor 模块查询
     end
 ```
 
@@ -611,6 +628,10 @@ sequenceDiagram
 | 凭证明文存储 | AES-256 加密存储, 界面脱敏 | 满足 NFR-010 安全要求 |
 | HTTP 触发入口 | connector-api 新增 controller | 与运行时同进程，链路最短 |
 | **connector-api Web 栈** | **Spring WebFlux + Reactor Netty + WebClient** | 运行时高并发同步 HTTP 调用三方系统，NIO 非阻塞栈吞吐量显著优于 Servlet 同步栈；对调用方仍呈现同步语义 |
+| **connector-api 数据访问** | **R2DBC (spring-data-r2dbc + r2dbc-mysql)** | 端到端 reactive，**从源头消除阻塞 JDBC 调用风险**；不引入 MyBatis 同步栈 |
+| **connector-api 缓存访问** | **spring-data-redis-reactive (Lettuce reactive)** | 与 reactive 栈一致 |
+| **connector-api 下游 HTTP 调用** | **WebClient** | 禁止 RestTemplate / OkHttp 同步客户端 |
+| **schema 共享策略** | 同一 MySQL 表 schema，entity / 持久化层各服务独立维护 | open-server (MyBatis) + connector-api (R2DBC) 各用其语言惯用 ORM，通过 Flyway 统一 DDL 保证一致 |
 | open-server Web 栈 | 沿用 Spring MVC（Servlet） | 管理类操作以 CRUD 为主，并发不高，沿用现有栈避免改造成本 |
 | Scope 权限 | **不集成**（移至 NG18，V1） | 本版本独立运行 |
 | 审批流程 | **不集成**（移至 NG19，V1） | 版本发布无需审批 |
@@ -874,19 +895,22 @@ open-app/
 | `runtime/NodeExecutor.java` | 节点执行器接口，签名 `Mono<NodeOutput> execute(NodeInput, ExecutionContext)` |
 | `runtime/ConnectorNodeExecutor.java` | 连接器节点执行器（基于 WebClient 异步调用下游 HTTP API） |
 | `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
-| `runtime/entity/ExecutionRecord.java` | 执行记录实体 |
-| `runtime/entity/ExecutionStep.java` | 执行步骤实体 |
-| `runtime/entity/ConnectorAuthConfig.java` | 认证凭证实体 |
-| `runtime/mapper/ExecutionRecordMapper.java` | 执行记录 Mapper（MyBatis 同步 JDBC，调用方需 `subscribeOn(boundedElastic)`） |
-| `runtime/mapper/FlowVersionReadMapper.java` | FlowVersion 只读 Mapper（读取 orchestration_config） |
-| `runtime/db/DbAccessor.java` | 🆕 统一封装 MyBatis 调用 → `Mono<T>`，强制 `boundedElastic` 调度器隔离 |
+| `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table` 映射） |
+| `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table` 映射） |
+| `runtime/entity/ConnectorAuthConfig.java` | 认证凭证实体（R2DBC `@Table` 映射） |
+| `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`，全部返回 `Mono`/`Flux`） |
+| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（读取 orchestration_config） |
+| `runtime/repository/ConnectorAuthConfigRepository.java` | 🆕 认证凭证 R2DBC Repository |
 | `runtime/client/WebClientFactory.java` | 🆕 WebClient 工厂：连接池、超时、最大缓冲、TLS 等配置统一收口 |
+| `runtime/cache/ReactiveRedisAccessor.java` | 🆕 Redis reactive 访问封装（基于 `ReactiveStringRedisTemplate`） |
 | `trigger/HttpTriggerController.java` | HTTP 触发入口（WebFlux `@RestController`，返回 `Mono<TriggerResponse>`，对调用方呈现同步语义） |
 | `debug/DebugApiController.java` | 调试接口（WebFlux `@RestController`，供 open-server 调用：手动调试/测试运行） |
-| `common/CredentialCipher.java` | 认证凭证 AES-256-GCM 加解密 |
+| `common/CredentialCipher.java` | 认证凭证 AES-256-GCM 加解密（纯 CPU 同步操作，可直接 inline） |
 | `common/InternalAuthFilter.java` | 内部接口鉴权 WebFilter（基于 `WebFilter`，仅允许 open-server 访问 debug-api） |
+| `common/R2dbcConfig.java` | 🆕 R2DBC `ConnectionFactory` 配置（连接池大小、获取超时、最大空闲时间等） |
 | `ConnectorApiApplication.java` | Spring Boot 启动类（WebFlux 模式） |
-| `pom.xml` / `application.yml` | 工程配置（启用 webflux + data-redis-reactive，测试 profile 启用 BlockHound） |
+| `pom.xml` / `application.yml` | 工程配置（webflux + r2dbc + r2dbc-mysql + data-redis-reactive；测试 profile 启用 BlockHound） |
+| `db/migration/*.sql` | 🆕 数据库迁移脚本（Flyway，与 open-server 共享 schema；schema 主仓库由 open-server 维护，connector-api 仅维护 R2DBC 视角的 SQL） |
 
 #### open-server — monitor 模块
 
@@ -916,16 +940,18 @@ open-app/
 |------|------|------|---------|
 | `@xyflow/react` (React Flow) | ^12.x | 可视化编排画布 | wecodesite（已内置） |
 | `spring-boot-starter-webflux` | 随 Spring Boot 3.4.6 | Reactor Netty + WebFlux Web 栈 | connector-api（🆕 运行时服务） |
+| `spring-boot-starter-data-r2dbc` | 随 Spring Boot 3.4.6 | Spring Data R2DBC（reactive 数据库访问） | connector-api（🆕 替代 MyBatis） |
+| `r2dbc-mysql`（asyncer-io） | ^1.x（或 dev.miku/r2dbc-mysql） | MySQL R2DBC 驱动 | connector-api（🆕） |
 | `spring-boot-starter-data-redis-reactive` | 随 Spring Boot 3.4.6 | Redis reactive 驱动（Lettuce） | connector-api |
 | `reactor-core` | 随 Spring Boot 3.4.6（reactor-bom） | reactive 编程核心 | connector-api（传递依赖） |
-| `mybatis-spring-boot-starter` | 3.0.4 | MyBatis（同步 JDBC，需配合 `boundedElastic` 调度器使用） | connector-api（共享 entity/mapper） |
-| `blockhound`（测试 scope） | ^1.0.x | reactive 链路中阻塞调用检测 | connector-api（仅 test/staging 环境启用） |
+| `flyway-core` + `flyway-mysql` | ^10.x | 数据库 schema 迁移（与 open-server 共享 schema 契约） | connector-api（🆕，迭代 0 选定） |
+| `blockhound`（测试 scope） | ^1.0.x | reactive 链路中阻塞调用检测 | connector-api（test/staging 环境启用） |
 
 > ❌ **本版本不再引入的依赖**（与 spec v3.x 版 plan 的差异）：
 > - ~~Quartz Scheduler~~（定时触发移至 NG17，V1 阶段）
 > - ~~MQS 消息队列~~（同步执行无需消息队列）
 >
-> 🆕 **后续可评估升级**：将 connector-api 的 MyBatis 替换为 **R2DBC**（端到端 reactive），彻底消除 `boundedElastic` 调度器隔离的开销，V1 阶段再决策。
+> ❌ **connector-api 明确不引入**：~~mybatis-spring-boot-starter~~、~~spring-boot-starter-jdbc~~、~~spring-boot-starter-web~~（避免同步栈/阻塞 API 污染 reactive 链路；v2.2 曾计划保留 MyBatis + boundedElastic 隔离方案，**v2.3 已彻底改为 R2DBC**）
 
 ### 4.9 文件影响统计
 
@@ -947,8 +973,10 @@ open-app/
 | 风险 | 影响 | 概率 | 缓解措施 |
 |------|------|:----:|---------|
 | 同步执行下游慢响应占用 WebClient 连接池 | connector-api 吞吐量下降 | 中 | connector-api 基于 **WebFlux + Reactor Netty** NIO 非阻塞栈，少量 EventLoop 线程即可承接百级并发；WebClient 配置连接池上限 + 连接/读/写超时 + Reactor `.timeout(默认 30s，最大 5min)` 双重保障；超时强制终止；可水平扩容 connector-api 实例 |
-| WebFlux 反应式编程团队学习成本 | 工期延误 / 代码质量 | 中 | plan-code 沉淀强制规则（禁阻塞调用、JDBC 必须 `boundedElastic`、必配超时等）；迭代 0 安排 2-3 天技术演练；Code Review 重点把关 reactive 链路；保留 `BlockHound` 在测试环境检测意外阻塞调用 |
-| MyBatis 同步 JDBC 在 reactive 链路中被误用 | 阻塞 EventLoop 导致全局吞吐崩塌 | 中 | 统一封装 `DbAccessor`，内部强制 `Mono.fromCallable(...).subscribeOn(Schedulers.boundedElastic())`；测试环境启用 BlockHound 拦截裸调用；后续可评估迁移到 R2DBC 彻底消除 |
+| 全 reactive 栈（WebFlux + R2DBC + Redis reactive）团队学习成本 | 工期延误 / 代码质量 | 中-高 | plan-code 沉淀强制规则（禁阻塞 API、统一返回 `Mono`/`Flux`、必配超时等）；迭代 0 安排 3-5 天技术演练（含 R2DBC 实战）；Code Review 重点把关 reactive 链路；CI 流水线强制启用 BlockHound |
+| 误用阻塞 API（如裸调用 `RestTemplate` / 引入 JDBC 库） | 阻塞 EventLoop 导致全局吞吐崩塌 | 低 | 从依赖层面屏蔽：`pom.xml` 显式 exclude `spring-boot-starter-web` / `spring-boot-starter-jdbc` / `mybatis-spring-boot-starter`，发现引入即编译失败；测试/staging 启用 BlockHound 主动拦截；Code Review checklist |
+| R2DBC MySQL 驱动成熟度（相比 JDBC） | 个别 SQL 特性兼容性问题 / 罕见 bug | 低-中 | 选用社区活跃的 `asyncer-io/r2dbc-mysql`（或 `dev.miku/r2dbc-mysql`）；MVP 阶段 SQL 模式相对简单（CRUD + 简单 join，无存储过程/复杂触发器）；保留向上层引擎降级回 `DatabaseClient` 原生 SQL 的能力 |
+| R2DBC 与 MyBatis 共享 schema 漂移 | open-server / connector-api 数据不一致 | 中 | 统一 DDL 迁移脚本（Flyway，schema 主仓库由 open-server 维护）；CI 阶段两个服务都跑迁移；任何表结构变更需同步 review 两侧 entity |
 | 可视化编排画布前端复杂度高 | 工期延误 | 中 | MVP 限制线性编排（禁用分支/循环连接），使用 React Flow 的受限模式 |
 | 认证凭证加密存储和传输 | 安全漏洞 | 低 | 使用 AES-256-GCM 加密 + HTTPS + 界面脱敏显示 |
 | HTTP 触发 URL 安全 | 非法调用 | 低 | 随机不可预测路径 + 请求签名验证 + 限流（FR-024） |
@@ -988,13 +1016,13 @@ open-app/
 
 | 迭代 | 范围 | FR 范围 | 周期 | 交付价值 |
 |------|------|---------|:----:|---------|
-| **迭代 0** | 🆕 connector-api 工程脚手架（**Spring WebFlux 工程初始化、WebClient 工厂、DbAccessor、BlockHound 接入**、共享 entity/mapper、内部鉴权、部署流水线）+ **团队 WebFlux/Reactor 技术演练** | — | 1-1.5 周 | connector-api 可启动、可被 open-server 调通；团队掌握 reactive 强制规则 |
+| **迭代 0** | 🆕 connector-api 工程脚手架：**Spring WebFlux 初始化 + R2DBC ConnectionFactory + r2dbc-mysql + WebClient 工厂 + ReactiveRedisAccessor + Flyway 迁移脚本 + BlockHound 接入 + 内部鉴权 WebFilter + 部署流水线**；R2DBC entity / Repository 样例；与 open-server 共享 schema 联调 + **团队 WebFlux/Reactor/R2DBC 技术演练（3-5 天）** | — | 1.5-2 周 | connector-api 可启动、可被 open-server 调通；reactive 端到端样例跑通（HTTP 触发 → R2DBC 查询 → WebClient 调用 → 写入执行记录）；团队掌握 reactive 强制规则 |
 | **迭代 1** | 连接器管理模块（open-server） | FR-001 ~ FR-008 | 2-3 周 | 可创建/编辑/发布连接器，浏览连接器目录 |
 | **迭代 2** | 连接流管理模块（open-server） | FR-009 ~ FR-020 | 3-4 周 | 可创建连接流、拖拽编排、保存草稿、发布版本 |
 | **迭代 3** | 运行时模块（connector-api：runtime + http-trigger + debug-api）+ open-server 调试代理（debug） | FR-021 ~ FR-024 | 2-3 周 | 可同步执行连接流（HTTP 触发+手动触发），错误处理+限流 |
 | **迭代 4** | 监控模块（open-server） | FR-025 | 1-2 周 | 可查看执行历史、执行详情、步骤输入输出 |
 | **集成测试** | 全链路联调 + E2E（含 open-server ↔ connector-api 通信） | 全部 | 1-2 周 | 端到端验证 |
-| **合计** | | | **9-13.5 周** | |
+| **合计** | | | **9.5-14 周** | |
 
 ### 关键里程碑
 
@@ -1046,13 +1074,15 @@ open-app/
 | 监控范围 | 全指标仪表盘 | 执行历史查询 |
 | 错误处理 | 审批流程处理 | 默认错误处理（FR-023） |
 | 限流 | 无 | 默认限流（FR-024） |
-| 预估工期 | 10-14 周 | **9-13.5 周** |
+| 预估工期 | 10-14 周 | **9.5-14 周** |
 | 新增依赖 | Quartz + MQS | 无额外依赖 |
 | **运行时部署** | 嵌入 open-server | **独立服务 `connector-api`**（与 open-server 拆分） |
 | **服务数量** | 1（open-server 单体） | 2（open-server + connector-api） |
 | **调试/测试运行链路** | open-server 内部调用 | open-server → connector-api 调试接口（内部 HTTP） |
 | **前端归属** | 散落（含 open-web） | 统一在 wecodesite |
 | **connector-api Web 栈** | （v1.x 嵌入 open-server，沿用 Spring MVC） | **Spring WebFlux + Reactor Netty + WebClient**（NIO 非阻塞，匹配高并发 HTTP 转发场景）|
+| **connector-api 数据访问** | （v1.x 嵌入 open-server，沿用 MyBatis 同步 JDBC） | **R2DBC + r2dbc-mysql**（端到端非阻塞，v2.2 曾计划 MyBatis + boundedElastic 隔离方案，v2.3 改为彻底 R2DBC）|
+| **connector-api 全链路 IO 模型** | （v1.x 嵌入 open-server，整体同步阻塞） | **HTTP / DB / Redis 全 reactive 非阻塞**，从依赖层面屏蔽阻塞栈 |
 
 ### 下一步
 👉 运行 `@sddu-tasks 连接器平台` 开始任务分解
