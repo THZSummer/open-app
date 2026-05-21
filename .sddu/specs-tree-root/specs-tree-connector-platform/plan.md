@@ -19,6 +19,8 @@
 ### 1.1 系统架构设计
 
 > 💡 以下架构**沿用**能力开放平台（`specs-tree-capability-open-platform/plan.md §方案D`）的微服务架构基础，并**新增独立的 `connector-api` 运行时服务**承载连接流的执行（同步调度、HTTP 触发入口、执行上下文等）。**管理类能力（连接器/连接流/监控的 CRUD）仍在 `open-server`，前端统一在 `wecodesite`**。**本版本不与能力开放平台集成**——Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1 阶段。
+>
+> 🎯 **前期定位（集成方向）**：连接器平台承担"**由内向外（同步主动调用）**"的角色，前期主路径是「**内部业务系统（触发方） → 连接器平台 → 三方业务系统（HTTP 接口目标）**」，例如内部 IM/云盘/审批等业务模块通过连接器把数据同步到三方 ERP/CRM/OA。外部消费方直接触发连接流、以及连接器调用内部业务系统作为提供方，作为后期能力（图中以虚线表示），与 api-server「由外向内」、event-server「由内向外（事件/回调）」共同构成完整的内↔外集成矩阵。
 
 ```mermaid
 graph TB
@@ -47,14 +49,19 @@ graph TB
         ApiGW["内部API网关"]
     end
 
-    subgraph Consumers["消费方"]
-        Consumer1["消费方应用"]
-        Consumer2["消费方应用"]
+    subgraph InternalBiz["内部业务系统 [前期主触发方]"]
+        BizSys1["内部业务系统A<br/>IM/云盘/审批等"]
+        BizSys2["内部业务系统B"]
     end
 
     subgraph Providers["提供方"]
-        Provider1["提供方应用"]
-        Provider2["提供方应用"]
+        ThirdParty1["三方业务系统<br/>ERP/CRM/OA等<br/>[前期主调用目标]"]
+        ThirdParty2["三方业务系统"]
+        InternalAsProvider["内部业务系统<br/>作为提供方<br/>[后期能力]"]
+    end
+
+    subgraph Consumers["外部消费方 [后期能力]"]
+        Consumer1["外部消费方应用"]
     end
 
     %% 前端直接连接管理服务
@@ -74,29 +81,41 @@ graph TB
     ApiServer --> MySQL
     ApiServer --> Redis1
 
-    %% 运行时同步调用 API（直接调用提供方，不经 API 网关——本版本连接器直接配置目标 API 地址）
-    ConnectorApi -. "直接HTTP调用" .-> Provider1
-    ConnectorApi -. "直接HTTP调用" .-> Provider2
+    %% === 前期主路径：内部业务系统 → connector-api → 三方业务系统 ===
+    BizSys1 ==> |"HTTP触发 连接流 [前期主路径]"| ConnectorApi
+    BizSys2 ==> |"HTTP触发 连接流 [前期主路径]"| ConnectorApi
+    ConnectorApi ==> |"直接HTTP调用 [前期主路径]"| ThirdParty1
+    ConnectorApi ==> |"直接HTTP调用 [前期主路径]"| ThirdParty2
 
-    %% 消费方通过 connector-api 触发连接流执行
-    Consumer1 -- "HTTP触发 连接流" --> ConnectorApi
-    Consumer2 -- "HTTP触发 连接流" --> ConnectorApi
+    %% === 后期能力：外部消费方触发 & 调用内部业务系统 ===
+    Consumer1 -. "HTTP触发 [后期能力]" .-> ConnectorApi
+    ConnectorApi -. "直接HTTP调用 [后期能力]" .-> InternalAsProvider
 
-    %% API调用流程
+    %% 现有 API 调用流程（不变）
     Consumer1 -- "API调用" --> ApiGW
-    Consumer2 -- "API调用" --> ApiGW
     ApiGW -. "认证鉴权" .-> ApiServer
-    ApiGW -- "转发请求" --> Provider1
-    ApiGW -- "转发请求" --> Provider2
+    ApiGW -- "转发请求" --> ThirdParty1
+    ApiGW -- "转发请求" --> InternalAsProvider
 
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
     style ConnectorApi fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     style DataLayer fill:#f3e5f5,stroke:#7b1fa2
     style PlatformGW fill:#fff3e0,stroke:#ef6c00
-    style Consumers fill:#e0f7fa,stroke:#00838f
+    style Consumers fill:#e0f7fa,stroke:#00838f,stroke-dasharray:5 5
     style Providers fill:#fce4ec,stroke:#c2185b
+    style InternalBiz fill:#fffde7,stroke:#f9a825,stroke-width:2px
+    style InternalAsProvider stroke-dasharray:5 5
+    style BizSys1 fill:#fff9c4
+    style BizSys2 fill:#fff9c4
+    style ThirdParty1 fill:#ffe0b2
+    style ThirdParty2 fill:#ffe0b2
 ```
+
+> 📌 **方向说明（前期定位）**：
+> - **粗实线（==>）** 标识的是**前期主路径**：内部业务系统作为触发方调用连接器平台 → 连接器平台调用三方业务系统的 HTTP 接口（典型场景：内部 IM/云盘/审批等业务模块通过连接器把数据同步到三方 ERP/CRM/OA）
+> - **细虚线（-.->）** 标识的是**后期能力**：外部消费方直接触发连接流、以及连接器调用内部业务系统作为提供方（仍可在 MVP 技术上支持，但前期不作为推广重点）
+> - 这与 api-server「由外向内」、event-server「由内向外（事件/回调）」形成完整的"内↔外"集成矩阵，连接器平台承担"**由内向外（同步主动调用）**"的角色
 
 **服务职责划分**：
 | 服务 | 类型 | 职责 |
@@ -109,7 +128,8 @@ graph TB
 | 现有能力 | 本版本用途 | 说明 |
 |---------|----------|------|
 | MySQL / Redis | 数据持久化和缓存 | open-server 与 connector-api 共享同一 MySQL/Redis 实例 |
-| 内部业务系统 HTTP API | 连接器的执行目标 | connector-api 直接配置目标 API 地址和认证凭证，不经 API 网关 |
+| 三方业务系统 HTTP API（前期主目标） | 连接器的执行目标 | connector-api 直接配置目标 API 地址和认证凭证，不经 API 网关；前期重点封装 ERP/CRM/OA 等三方系统 |
+| 内部业务系统 HTTP API（后期能力） | 连接器的执行目标 | 后期可扩展将内部业务系统（IM/云盘/审批等）作为提供方调用 |
 
 > ⚠️ **本版本独立运行**：连接器平台本版本不与能力开放平台集成（§5.4）。Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1。
 
@@ -183,7 +203,7 @@ graph TB
         Redis_cache[(Redis)]
     end
 
-    HTTP_Providers["内部业务系统 API"]
+    HTTP_Providers["三方业务系统 HTTP API<br/>[前期主目标]<br/>内部业务系统 API 为后期能力"]
 
     Front -- "HTTP 管理类" --> BackendMgmt
     BackendMgmt -- "内部 HTTP 调试/测试运行" --> BackendRuntime
@@ -225,10 +245,10 @@ HTTP触发 → connector-api 同步执行连接流 → 返回完整结果
 
 **运行时数据流（一次同步执行，发生在 connector-api 进程内）**:
 ```
-HTTP请求 (外部消费方) / 调试请求 (来自 open-server)
+HTTP请求 (前期：内部业务系统；后期：外部消费方) / 调试请求 (来自 open-server)
   → connector-api 调度器创建 ExecutionContext (含触发数据，当前请求线程)
   → 节点1(入口): 透传触发数据
-  → 节点2(连接器): 读取上游数据 → 同步调用外部HTTP API → 输出数据到上下文
+  → 节点2(连接器): 读取上游数据 → 同步调用三方业务系统 HTTP API（前期主目标；后期可调用内部业务系统）→ 输出数据到上下文
   → 节点3(数据处理): 读取上游数据 → 字段映射转换 → 输出数据到上下文
   → 节点4(出口): 定义返回值
   → 返回完整执行结果(各步骤输入/输出/耗时/状态)
@@ -256,10 +276,14 @@ graph LR
         DebugSvc["调试接口"]
     end
 
-    subgraph Deps["外部依赖"]
-        BizSys["内部业务系统<br/>IM/云盘/审批等<br/>直接HTTP调用"]
-        ThirdSys["三方业务系统<br/>ERP/CRM/OA等<br/>直接HTTP调用"]
-        Consumer["外部消费方<br/>HTTP触发"]
+    subgraph TriggerSrc["触发方"]
+        BizSys["内部业务系统<br/>IM/云盘/审批等<br/>[前期主触发方]"]
+        Consumer["外部消费方<br/>[后期能力]"]
+    end
+
+    subgraph TargetSys["目标系统"]
+        ThirdSys["三方业务系统<br/>ERP/CRM/OA等<br/>[前期主调用目标]"]
+        InternalAsTarget["内部业务系统<br/>作为提供方<br/>[后期能力]"]
     end
 
     subgraph Infra["基础设施"]
@@ -272,17 +296,32 @@ graph LR
     UI -- "REST" --> MonitorLog
     UI -- "REST 手动调试/测试运行" --> DebugProxy
     DebugProxy -- "内部HTTP" --> DebugSvc
-    Consumer -- "HTTP触发" --> HttpTriggerSvc
+
+    %% === 前期主路径（粗实线）===
+    BizSys ==> |"HTTP触发 [前期主路径]"| HttpTriggerSvc
+    RuntimeExe ==> |"直接HTTP调用 [前期主路径]"| ThirdSys
+
+    %% === 后期能力（虚线）===
+    Consumer -. "HTTP触发 [后期能力]" .-> HttpTriggerSvc
+    RuntimeExe -. "直接HTTP调用 [后期能力]" .-> InternalAsTarget
+
     HttpTriggerSvc --> RuntimeExe
     DebugSvc --> RuntimeExe
-    RuntimeExe -- "直接HTTP调用" --> BizSys
-    RuntimeExe -- "直接HTTP调用" --> ThirdSys
     ConnMgmt --> DB
     FlowMgmt --> DB
     MonitorLog --> DB
     RuntimeExe --> DB
     RuntimeExe --> Cache
+
+    style BizSys fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    style ThirdSys fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px
+    style Consumer stroke-dasharray:5 5
+    style InternalAsTarget stroke-dasharray:5 5
 ```
+
+> 📌 **方向说明（前期定位）**：
+> - **粗实线（==>）** = 前期主路径：内部业务系统作为触发方 → 连接器平台 → 三方业务系统作为调用目标
+> - **细虚线（-.->）** = 后期能力：外部消费方触发、连接器调用内部业务系统作为提供方
 
 ### 1.6 核心业务对象关系
 
