@@ -23,49 +23,49 @@
 ```mermaid
 graph TB
     subgraph Frontend["前端层"]
-        WeCodeSite["wecodesite\n(React SPA)\n统一前端\n(连接器平台所有页面)"]
+        WeCodeSite["wecodesite<br/>(React SPA)<br/>统一前端<br/>连接器平台所有页面"]
     end
-    
+
     subgraph Services["服务层"]
-        subgraph OpenServer["open-server\n(Spring Boot)"]
-            CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
-            ConnectorMgmt["连接器平台管理模块\n(新增)\n连接器/连接流/监控\n(不含运行时)"]
-            AppMgmt["应用管理模块\n(现有能力)"]
-            Member["成员管理模块\n(现有能力)"]
+        subgraph OpenServer["open-server (Spring Boot)"]
+            CapMgmt["能力开放模块<br/>分类/API/事件/回调<br/>权限/审批"]
+            ConnectorMgmt["连接器平台管理模块 [新增]<br/>连接器/连接流/监控<br/>不含运行时"]
+            AppMgmt["应用管理模块<br/>现有能力"]
+            Member["成员管理模块<br/>现有能力"]
         end
-        ConnectorApi["connector-api\n(Spring Boot)\n🆕 连接器运行时服务\n同步调度执行\n+HTTP触发入口\n+调试接口"]
-        ApiServer["api-server\n(Spring Boot)\nAPI认证鉴权服务\n(由外向内)"]
-        EventServer["event-server\n(Spring Boot)\n事件/回调网关服务\n(由内向外)"]
+        ConnectorApi["connector-api (Spring Boot) [新增]<br/>连接器运行时服务<br/>同步调度执行<br/>+ HTTP触发入口<br/>+ 调试接口"]
+        ApiServer["api-server (Spring Boot)<br/>API认证鉴权服务<br/>由外向内"]
+        EventServer["event-server (Spring Boot)<br/>事件/回调网关服务<br/>由内向外"]
     end
-    
+
     subgraph DataLayer["数据层"]
         MySQL[(MySQL)]
-        Redis1[(Redis\nopen-server/api-server)]
+        Redis1[(Redis<br/>open-server/api-server)]
     end
-    
+
     subgraph PlatformGW["XX通讯平台网关"]
         ApiGW["内部API网关"]
     end
-    
+
     subgraph Consumers["消费方"]
         Consumer1["消费方应用"]
         Consumer2["消费方应用"]
     end
-    
+
     subgraph Providers["提供方"]
         Provider1["提供方应用"]
         Provider2["提供方应用"]
     end
-    
+
     %% 前端直接连接管理服务
-    WeCodeSite -->|REST API\n(管理类)| OpenServer
-    
+    WeCodeSite -- "REST API 管理类" --> OpenServer
+
     %% open-server 调用 connector-api 提供的调试接口
-    OpenServer -->|调试接口\n(手动调试/测试运行)| ConnectorApi
-    
+    OpenServer -- "调试接口 手动调试/测试运行" --> ConnectorApi
+
     %% open-server 内部模块调用
-    ConnectorMgmt -->|无依赖| CapMgmt
-    
+    ConnectorMgmt -- "无依赖" --> CapMgmt
+
     %% 服务访问数据层
     OpenServer --> MySQL
     OpenServer --> Redis1
@@ -73,22 +73,22 @@ graph TB
     ConnectorApi --> Redis1
     ApiServer --> MySQL
     ApiServer --> Redis1
-    
+
     %% 运行时同步调用 API（直接调用提供方，不经 API 网关——本版本连接器直接配置目标 API 地址）
-    ConnectorApi -.->|直接HTTP调用| Provider1
-    ConnectorApi -.->|直接HTTP调用| Provider2
-    
+    ConnectorApi -. "直接HTTP调用" .-> Provider1
+    ConnectorApi -. "直接HTTP调用" .-> Provider2
+
     %% 消费方通过 connector-api 触发连接流执行
-    Consumer1 -->|HTTP触发\n连接流| ConnectorApi
-    Consumer2 -->|HTTP触发\n连接流| ConnectorApi
-    
+    Consumer1 -- "HTTP触发 连接流" --> ConnectorApi
+    Consumer2 -- "HTTP触发 连接流" --> ConnectorApi
+
     %% API调用流程
-    Consumer1 -->|API调用| ApiGW
-    Consumer2 -->|API调用| ApiGW
-    ApiGW -.->|认证鉴权| ApiServer
-    ApiGW -->|转发请求| Provider1
-    ApiGW -->|转发请求| Provider2
-    
+    Consumer1 -- "API调用" --> ApiGW
+    Consumer2 -- "API调用" --> ApiGW
+    ApiGW -. "认证鉴权" .-> ApiServer
+    ApiGW -- "转发请求" --> Provider1
+    ApiGW -- "转发请求" --> Provider2
+
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
     style ConnectorApi fill:#fff9c4,stroke:#f57f17,stroke-width:2px
@@ -154,44 +154,46 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph Front["前端 (wecodesite) - 新增页面/补充"]
-        ConnDir["连接器目录\n浏览/搜索/过滤"]
-        ConnForm["连接器创建/编辑\n基本信息+连接配置"]
-        ConnDetail["连接器详情\n版本历史+配置详情"]
-        FlowList["连接流列表\n浏览/搜索/管理"]
-        FlowCanvas["连接流编排画布\n可视化拖拽编排"]
-        FlowDetail["连接流详情\n概览+运行状态+版本历史+执行记录"]
-        ExecDetail["执行详情\n步骤详情+返回值"]
-        MonitorPanel["监控面板\n执行历史查询"]
+    subgraph Front["前端 wecodesite — 新增页面/补充"]
+        ConnDir["连接器目录<br/>浏览/搜索/过滤"]
+        ConnForm["连接器创建/编辑<br/>基本信息+连接配置"]
+        ConnDetail["连接器详情<br/>版本历史+配置详情"]
+        FlowList["连接流列表<br/>浏览/搜索/管理"]
+        FlowCanvas["连接流编排画布<br/>可视化拖拽编排"]
+        FlowDetail["连接流详情<br/>概览+运行状态<br/>+版本历史+执行记录"]
+        ExecDetail["执行详情<br/>步骤详情+返回值"]
+        MonitorPanel["监控面板<br/>执行历史查询"]
     end
 
-    subgraph BackendMgmt["open-server - 新增管理模块"]
-        Connector["connector 模块\n连接器 CRUD+版本管理"]
-        Flow["flow 模块\n连接流 CRUD+版本管理+编排配置"]
-        MonitorModule["monitor 模块\n执行记录查询+统计"]
-        DebugProxy["debug-proxy 模块\n🆕 调用 connector-api\n调试接口（手动调试/测试运行）"]
+    subgraph BackendMgmt["open-server — 新增管理模块"]
+        Connector["connector 模块<br/>连接器 CRUD + 版本管理"]
+        Flow["flow 模块<br/>连接流 CRUD + 版本管理 + 编排配置"]
+        MonitorModule["monitor 模块<br/>执行记录查询 + 统计"]
+        DebugProxy["debug-proxy 模块 [新增]<br/>调用 connector-api 调试接口<br/>手动调试/测试运行"]
     end
 
-    subgraph BackendRuntime["connector-api - 🆕 独立运行时服务"]
-        Runtime["runtime 模块\n同步调度执行+执行上下文\n+节点执行器"]
-        HttpTrigger["http-trigger 模块\nHTTP 触发入口\n(对外同步调用端点)"]
-        DebugApi["debug-api 模块\n🆕 调试接口\n(供 open-server 调用)"]
+    subgraph BackendRuntime["connector-api — 独立运行时服务 [新增]"]
+        Runtime["runtime 模块<br/>同步调度执行 + 执行上下文<br/>+ 节点执行器"]
+        HttpTrigger["http-trigger 模块<br/>HTTP 触发入口<br/>对外同步调用端点"]
+        DebugApi["debug-api 模块 [新增]<br/>调试接口<br/>供 open-server 调用"]
     end
 
-    subgraph Existing["现有基础设施 - 复用"]
+    subgraph Existing["现有基础设施 — 复用"]
         MySQL_db[(MySQL)]
         Redis_cache[(Redis)]
     end
 
-    Front -->|HTTP\n(管理类)| BackendMgmt
-    BackendMgmt -->|内部 HTTP\n(调试/测试运行)| BackendRuntime
+    HTTP_Providers["内部业务系统 API"]
+
+    Front -- "HTTP 管理类" --> BackendMgmt
+    BackendMgmt -- "内部 HTTP 调试/测试运行" --> BackendRuntime
     BackendMgmt --> MySQL_db
     BackendMgmt --> Redis_cache
     BackendRuntime --> MySQL_db
     BackendRuntime --> Redis_cache
-    Runtime -->|同步HTTP调用| HTTP_Providers["内部业务系统 API"]
-    HttpTrigger -->|同步调度| Runtime
-    DebugApi -->|同步调度| Runtime
+    Runtime -- "同步HTTP调用" --> HTTP_Providers
+    HttpTrigger -- "同步调度" --> Runtime
+    DebugApi -- "同步调度" --> Runtime
 ```
 
 > 💡 **运行时单独部署的理由**：
@@ -245,19 +247,19 @@ graph LR
         ConnMgmt["连接器管理"]
         FlowMgmt["连接流管理"]
         MonitorLog["监控日志查询"]
-        DebugProxy["调试代理\n(手动调试/测试运行)"]
+        DebugProxy["调试代理<br/>手动调试/测试运行"]
     end
 
     subgraph ConnApi["connector-api (运行时服务)"]
-        RuntimeExe["运行时执行\n(同步)"]
+        RuntimeExe["运行时执行<br/>同步"]
         HttpTriggerSvc["HTTP 触发入口"]
         DebugSvc["调试接口"]
     end
 
     subgraph Deps["外部依赖"]
-        BizSys["内部业务系统\n(IM/云盘/审批等)\n直接HTTP调用"]
-        ThirdSys["三方业务系统\n(ERP/CRM/OA等)\n直接HTTP调用"]
-        Consumer["外部消费方\n(HTTP触发)"]
+        BizSys["内部业务系统<br/>IM/云盘/审批等<br/>直接HTTP调用"]
+        ThirdSys["三方业务系统<br/>ERP/CRM/OA等<br/>直接HTTP调用"]
+        Consumer["外部消费方<br/>HTTP触发"]
     end
 
     subgraph Infra["基础设施"]
@@ -265,16 +267,16 @@ graph LR
         Cache[(Redis)]
     end
 
-    UI -->|REST| ConnMgmt
-    UI -->|REST| FlowMgmt
-    UI -->|REST| MonitorLog
-    UI -->|REST\n(手动调试/测试运行)| DebugProxy
-    DebugProxy -->|内部HTTP| DebugSvc
-    Consumer -->|HTTP触发| HttpTriggerSvc
+    UI -- "REST" --> ConnMgmt
+    UI -- "REST" --> FlowMgmt
+    UI -- "REST" --> MonitorLog
+    UI -- "REST 手动调试/测试运行" --> DebugProxy
+    DebugProxy -- "内部HTTP" --> DebugSvc
+    Consumer -- "HTTP触发" --> HttpTriggerSvc
     HttpTriggerSvc --> RuntimeExe
     DebugSvc --> RuntimeExe
-    RuntimeExe -->|直接HTTP调用| BizSys
-    RuntimeExe -->|直接HTTP调用| ThirdSys
+    RuntimeExe -- "直接HTTP调用" --> BizSys
+    RuntimeExe -- "直接HTTP调用" --> ThirdSys
     ConnMgmt --> DB
     FlowMgmt --> DB
     MonitorLog --> DB
@@ -307,38 +309,38 @@ graph LR
 
 ```mermaid
 sequenceDiagram
-    participant Client as "消费方/管理员"
-    participant Web as "wecodesite"
-    participant OpenSvr as "open-server\n(管理服务)"
-    participant ConnApi as "connector-api\n(运行时服务)"
-    participant Redis as "Redis"
-    participant MySQL as "MySQL"
-    participant Target as "目标 API"
+    participant Client as 消费方/管理员
+    participant Web as wecodesite
+    participant OpenSvr as open-server (管理服务)
+    participant ConnApi as connector-api (运行时服务)
+    participant Redis as Redis
+    participant MySQL as MySQL
+    participant Target as 目标 API
 
     alt 外部 HTTP 触发
         Client->>ConnApi: HTTP 触发请求
     else 手动调试 / 测试运行
         Client->>Web: 点击调试/测试运行
         Web->>OpenSvr: REST 调用
-        OpenSvr->>ConnApi: 内部 HTTP\n(调用调试接口)
+        OpenSvr->>ConnApi: 内部 HTTP 调用调试接口
     end
-    
+
     Note over ConnApi: 创建 ExecutionContext
-    
-    ConnApi->>ConnApi: 节点1(入口): 透传触发数据
-    
-    ConnApi->>Target: 节点2(连接器): 同步调用 API
+
+    ConnApi->>ConnApi: 节点1 入口：透传触发数据
+
+    ConnApi->>Target: 节点2 连接器：同步调用 API
     Target-->>ConnApi: API 响应
-    
-    ConnApi->>ConnApi: 节点3(数据处理): 字段映射
-    
-    ConnApi->>ConnApi: 节点4(出口): 构造返回值
-    
-    ConnApi-->>Client: 同步返回执行结果(含各步骤详情)
-    Note right of ConnApi: (调试/测试运行场景下\n结果沿 open-server → web 回传)
-    
+
+    ConnApi->>ConnApi: 节点3 数据处理：字段映射
+
+    ConnApi->>ConnApi: 节点4 出口：构造返回值
+
+    ConnApi-->>Client: 同步返回执行结果（含各步骤详情）
+    Note right of ConnApi: 调试/测试运行场景下<br/>结果沿 open-server → web 回传
+
     par 异步写入
-        ConnApi->>Redis: 缓存执行记录(加速查询)
+        ConnApi->>Redis: 缓存执行记录（加速查询）
         ConnApi->>MySQL: 持久化执行记录/步骤
     end
 ```
