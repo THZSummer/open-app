@@ -1,7 +1,7 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.4  
+**规划版本**: v2.5  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
@@ -660,30 +660,30 @@ sequenceDiagram
 |--------|------|----------|
 | **编排定义存储模型** | **单一 JSON 字段保存完整 DAG**（`{ trigger{}, nodes[], edges[] }`），不拆分 FlowNode/FlowEdge 子表 | Zapier/Make/钉钉/PA 共识——便于版本快照、diff、回滚 |
 | **节点拓扑模型** | **显式 DAG（nodes + edges 两个数组）** | Make 模式——MVP 虽线性，但 V1 引入分支/循环/并行时无需 schema 迁移 |
-| **触发器存储** | 作为编排 JSON 的顶级独立字段 `trigger{}` + 独立 `cp_flow_trigger_endpoint` 表（存 HTTP 触发的 token、签名密钥、限流配置） | 5 平台共识 + NFR-011 安全要求 |
-| **版本管理** | 独立 `cp_flow_version` / `cp_connector_version` 表，每次发布写入完整快照；`cp_flow.current_published_version_id` 指向最新发布版 | PA `flowversions`(保留 25) + 钉钉 `flow_versions` 模式 |
+| **触发器存储** | 作为编排 JSON 的顶级独立字段 `trigger{}` + 独立 `openplatform_v2_cp_flow_trigger_endpoint` 表（存 HTTP 触发的 token、签名密钥、限流配置） | 5 平台共识 + NFR-011 安全要求 |
+| **版本管理** | 独立 `openplatform_v2_cp_flow_version` / `openplatform_v2_cp_connector_version` 表，每次发布写入完整快照；`openplatform_v2_cp_flow.current_published_version_id` 指向最新发布版 | PA `flowversions`(保留 25) + 钉钉 `flow_versions` 模式 |
 | **执行历史 I/O 外置** | 大字段（步骤 input/output、连接流 result_data）**默认写 MySQL 内嵌**，当 size > 阈值（建议 64KB，迭代 0 决策）时**自动外置到对象存储**，表中只存 `*_uri/*_size/*_hash` 引用 | PA 默认外置 + Make/钉钉条件外置 |
-| **执行记录分区** | `cp_execution_record` / `cp_execution_step` 按 `created_at` 月度分区 | 5 平台共识 |
-| **计量字段（预留）** | `cp_execution_record` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes`（MVP 写入 0，V1 启用计费时直接使用） | Make `operations_consumed` + PA `billingMetrics`——避免后期加字段迁移成本 |
+| **执行记录分区** | `openplatform_v2_cp_execution_record` / `openplatform_v2_cp_execution_step` 按 `created_at` 月度分区 | 5 平台共识 |
+| **计量字段（预留）** | `openplatform_v2_cp_execution_record` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes`（MVP 写入 0，V1 启用计费时直接使用） | Make `operations_consumed` + PA `billingMetrics`——避免后期加字段迁移成本 |
 | **状态机枚举** | 执行记录：`pending / running / success / failed / timeout`（MVP 5 个值；`partial` / `cancelled` 留给 V1） | 跨平台超集裁剪 |
-| **凭证存储** | 独立 `cp_credential` 表（与 connector_version 1:1，MVP 不分 per-app）；AES-256-GCM 加密 + 字段级；KMS 密钥引用 ID 存表中 | 5 平台共识；MVP 简化（per-app 凭证移至 V1） |
+| **凭证存储** | 独立 `openplatform_v2_cp_credential` 表（与 connector_version 1:1，MVP 不分 per-app）；AES-256-GCM 加密 + 字段级；KMS 密钥引用 ID 存表中 | 5 平台共识；MVP 简化（per-app 凭证移至 V1） |
 | **schema 主仓库** | 由 `connector-api` 维护 Flyway 迁移脚本（`db/migration/*.sql`），open-server 引入相同脚本并跑迁移 | MuleSoft Maven + PA Solution 模式启发 |
-| **数据库前缀** | 所有表统一 `cp_` 前缀（connector platform） | 避免与现有 open-server 表冲突 |
+| **数据库前缀** | 所有表统一 `openplatform_v2_cp_` 前缀 | `openplatform`=开放平台体系 / `v2`=平台第二代 / `cp`=connector platform（连接器平台子域），与现有 open-server 既有表（含其它子域）严格隔离，便于未来按子域拆库/迁移 |
 | **关联引用方式** | 字符串 UUID（雪花算法或 ULID，迭代 0 决策），不用自增 INT | R2DBC + 分布式部署考虑 |
 
 **表清单**（共 **9 张表**）：
 
 | # | 表名 | 类型 | 模块 | 说明 |
 |---|------|------|------|------|
-| 1 | `cp_connector` | 主表 | connector | 连接器基本信息（名称/图标/描述/类型） |
-| 2 | `cp_connector_version` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON） |
-| 3 | `cp_credential` | 主表 | connector | 连接器认证凭证（AES-256-GCM 加密） |
-| 4 | `cp_flow` | 主表 | flow | 连接流基本信息 + 当前发布版本指针 |
-| 5 | `cp_flow_version` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
-| 6 | `cp_flow_trigger_endpoint` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置） |
-| 7 | `cp_execution_record` | 主表（按月分区） | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段） |
-| 8 | `cp_execution_step` | 子表（按月分区） | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储） |
-| 9 | `cp_storage_blob_ref` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type/created_at；用于 GC 与审计） |
+| 1 | `openplatform_v2_cp_connector` | 主表 | connector | 连接器基本信息（名称/图标/描述/类型） |
+| 2 | `openplatform_v2_cp_connector_version` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON） |
+| 3 | `openplatform_v2_cp_credential` | 主表 | connector | 连接器认证凭证（AES-256-GCM 加密） |
+| 4 | `openplatform_v2_cp_flow` | 主表 | flow | 连接流基本信息 + 当前发布版本指针 |
+| 5 | `openplatform_v2_cp_flow_version` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
+| 6 | `openplatform_v2_cp_flow_trigger_endpoint` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置） |
+| 7 | `openplatform_v2_cp_execution_record` | 主表（按月分区） | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段） |
+| 8 | `openplatform_v2_cp_execution_step` | 子表（按月分区） | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储） |
+| 9 | `openplatform_v2_cp_storage_blob_ref` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type/created_at；用于 GC 与审计） |
 
 **核心 ER 关系**（完整字段定义、索引、JSON Schema 详见 `plan-db.md`）：
 
@@ -819,12 +819,12 @@ erDiagram
 > - `ExecutionStep.input_data` / `output_data` —— 同上外置规则
 >
 > 💡 **关键索引**（详见 `plan-db.md`）：
-> - `cp_flow_version (flow_id, version_status, created_at DESC)` —— 查最新草稿/已发布版本
-> - `cp_flow_trigger_endpoint (trigger_token)` UNIQUE —— HTTP 触发查找
-> - `cp_execution_record (flow_id, created_at DESC)` —— 执行历史查询（FR-025）
-> - `cp_execution_record (correlation_id)` —— 链路追踪
-> - `cp_execution_step (execution_id, step_order)` —— 步骤详情
-> - 按月分区：`cp_execution_record` / `cp_execution_step` 按 `created_at` 分区，30 天后转冷归档
+> - `openplatform_v2_cp_flow_version (flow_id, version_status, created_at DESC)` —— 查最新草稿/已发布版本
+> - `openplatform_v2_cp_flow_trigger_endpoint (trigger_token)` UNIQUE —— HTTP 触发查找
+> - `openplatform_v2_cp_execution_record (flow_id, created_at DESC)` —— 执行历史查询（FR-025）
+> - `openplatform_v2_cp_execution_record (correlation_id)` —— 链路追踪
+> - `openplatform_v2_cp_execution_step (execution_id, step_order)` —— 步骤详情
+> - 按月分区：`openplatform_v2_cp_execution_record` / `openplatform_v2_cp_execution_step` 按 `created_at` 分区，30 天后转冷归档
 >
 > 💡 **与调研结论的对应**：
 > - 显式 DAG（`{nodes[], edges[]}`）——借鉴 Make
@@ -940,9 +940,9 @@ open-app/
 | `modules/connector/ConnectorVersionService.java` | 版本业务逻辑 |
 | `modules/connector/CredentialController.java` | 🆕 凭证管理（创建/编辑/删除；明文输入界面 → 加密存储） |
 | `modules/connector/CredentialService.java` | 🆕 凭证业务逻辑（调用 connector-api 的加解密能力或共享 CredentialCipher） |
-| `modules/connector/entity/Connector.java` | 连接器实体（对应 `cp_connector`） |
-| `modules/connector/entity/ConnectorVersion.java` | 连接器版本实体（对应 `cp_connector_version`；`connection_config` 字段映射为 JSON 字符串/POJO） |
-| `modules/connector/entity/Credential.java` | 🆕 凭证实体（对应 `cp_credential`；界面展示需脱敏） |
+| `modules/connector/entity/Connector.java` | 连接器实体（对应 `openplatform_v2_cp_connector`） |
+| `modules/connector/entity/ConnectorVersion.java` | 连接器版本实体（对应 `openplatform_v2_cp_connector_version`；`connection_config` 字段映射为 JSON 字符串/POJO） |
+| `modules/connector/entity/Credential.java` | 🆕 凭证实体（对应 `openplatform_v2_cp_credential`；界面展示需脱敏） |
 | `modules/connector/mapper/ConnectorMapper.java` | 连接器 Mapper |
 | `modules/connector/mapper/ConnectorVersionMapper.java` | 版本 Mapper |
 | `modules/connector/mapper/CredentialMapper.java` | 🆕 凭证 Mapper |
@@ -957,9 +957,9 @@ open-app/
 | `modules/flow/FlowVersionService.java` | 版本业务逻辑 |
 | `modules/flow/FlowTriggerEndpointController.java` | 🆕 HTTP 触发端点管理（生成 trigger_token / 重置 signing_secret / 配置限流） |
 | `modules/flow/FlowTriggerEndpointService.java` | 🆕 触发端点业务逻辑 |
-| `modules/flow/entity/Flow.java` | 连接流实体（对应 `cp_flow`；含 `current_published_version_id` 指针） |
-| `modules/flow/entity/FlowVersion.java` | 连接流版本实体（对应 `cp_flow_version`；`orchestration_config` 字段映射为 `OrchestrationConfig` POJO，包含 `trigger / nodes / edges`） |
-| `modules/flow/entity/FlowTriggerEndpoint.java` | 🆕 HTTP 触发端点实体（对应 `cp_flow_trigger_endpoint`） |
+| `modules/flow/entity/Flow.java` | 连接流实体（对应 `openplatform_v2_cp_flow`；含 `current_published_version_id` 指针） |
+| `modules/flow/entity/FlowVersion.java` | 连接流版本实体（对应 `openplatform_v2_cp_flow_version`；`orchestration_config` 字段映射为 `OrchestrationConfig` POJO，包含 `trigger / nodes / edges`） |
+| `modules/flow/entity/FlowTriggerEndpoint.java` | 🆕 HTTP 触发端点实体（对应 `openplatform_v2_cp_flow_trigger_endpoint`） |
 | `modules/flow/mapper/FlowMapper.java` | 连接流 Mapper |
 | `modules/flow/mapper/FlowVersionMapper.java` | 版本 Mapper |
 | `modules/flow/mapper/FlowTriggerEndpointMapper.java` | 🆕 触发端点 Mapper |
@@ -985,11 +985,11 @@ open-app/
 | `runtime/NodeExecutor.java` | 节点执行器接口，签名 `Mono<NodeOutput> execute(NodeInput, ExecutionContext)` |
 | `runtime/ConnectorNodeExecutor.java` | 连接器节点执行器（基于 WebClient 异步调用下游 HTTP API） |
 | `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
-| `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table("cp_execution_record")` 映射；含预留计量字段） |
-| `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table("cp_execution_step")` 映射；I/O 大字段含 `*_blob_id` 外置引用） |
-| `runtime/entity/Credential.java` | 认证凭证实体（R2DBC `@Table("cp_credential")` 映射；AES-256-GCM 密文 + KMS key_id） |
-| `runtime/entity/FlowTriggerEndpoint.java` | HTTP 触发端点实体（R2DBC `@Table("cp_flow_trigger_endpoint")` 映射；含 trigger_token / signing_secret / rate_limit_config） |
-| `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("cp_storage_blob_ref")` 映射；用于 GC 与审计） |
+| `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table("openplatform_v2_cp_execution_record")` 映射；含预留计量字段） |
+| `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table("openplatform_v2_cp_execution_step")` 映射；I/O 大字段含 `*_blob_id` 外置引用） |
+| `runtime/entity/Credential.java` | 认证凭证实体（R2DBC `@Table("openplatform_v2_cp_credential")` 映射；AES-256-GCM 密文 + KMS key_id） |
+| `runtime/entity/FlowTriggerEndpoint.java` | HTTP 触发端点实体（R2DBC `@Table("openplatform_v2_cp_flow_trigger_endpoint")` 映射；含 trigger_token / signing_secret / rate_limit_config） |
+| `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("openplatform_v2_cp_storage_blob_ref")` 映射；用于 GC 与审计） |
 | `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` JSON 反序列化为 `OrchestrationConfig` 对象） |
 | `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`） |
 | `runtime/repository/ExecutionStepRepository.java` | 🆕 执行步骤 R2DBC Repository |
@@ -1008,7 +1008,7 @@ open-app/
 | `common/R2dbcConfig.java` | 🆕 R2DBC `ConnectionFactory` 配置（连接池大小、获取超时、最大空闲时间等） |
 | `ConnectorApiApplication.java` | Spring Boot 启动类（WebFlux 模式） |
 | `pom.xml` / `application.yml` | 工程配置（webflux + r2dbc + r2dbc-mysql + data-redis-reactive；测试 profile 启用 BlockHound） |
-| `db/migration/V*__*.sql` | 🆕 Flyway 数据库迁移脚本（**connector-api 为 schema 主仓库**：负责 `cp_*` 全部 9 张表的 DDL 演进；open-server 引入相同脚本作为 read-only consumer，仅负责 MyBatis entity/Mapper 适配） |
+| `db/migration/V*__*.sql` | 🆕 Flyway 数据库迁移脚本（**connector-api 为 schema 主仓库**：负责 `openplatform_v2_cp_*` 全部 9 张表的 DDL 演进；open-server 引入相同脚本作为 read-only consumer，仅负责 MyBatis entity/Mapper 适配） |
 
 #### open-server — monitor 模块
 
@@ -1199,7 +1199,8 @@ open-app/
 | **v2.1c** | **2026-05-22** | **§1.4 数据流分析改用 mermaid 图**：3 段文字代码块流程 → 4 张 mermaid 图（连接器发布流程 flowchart LR、连接流创建与编排流程 flowchart LR、连接流触发与执行流程 sequenceDiagram、运行时单次执行内部数据流 sequenceDiagram）。新增 §1.4.1~1.4.4 子章节。影响：§1.4 全部重写 | SDDU Plan Agent |
 | **v2.2** | **2026-05-22** | **connector-api 采用 Spring WebFlux NIO 非阻塞栈**：运行时服务 Web 栈从 Spring MVC 改为 Spring WebFlux + Reactor Netty；HTTP 客户端从 RestTemplate 改为 WebClient；Redis 改为 spring-data-redis-reactive；数据访问保留 MyBatis + boundedElastic 调度器隔离；测试环境启用 BlockHound。影响：§1.2 后端技术栈、§2.1 方案 A、§3 关键决策、§4.7 文件清单、§4.8 依赖、§5.1 风险、§6 迭代规划 | SDDU Plan Agent |
 | **v2.3** | **2026-05-22** | **connector-api 全 reactive 栈（MyBatis → R2DBC）**：进一步要求 MySQL / Redis / 下游 HTTP 调用全链路非阻塞——数据访问从 MyBatis 同步 JDBC + boundedElastic 隔离改为 R2DBC（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 Mono/Flux；从依赖层面 exclude 阻塞栈（mybatis / spring-boot-starter-web / spring-boot-starter-jdbc）；与 open-server 共享 MySQL schema 但 entity/持久化层各自维护（MyBatis vs R2DBC），通过 Flyway 统一 DDL。影响：§1.2 技术栈对比表、§1.2 强制规则/共享数据模型策略、§3 关键决策（+4 项）、§4.7 文件清单（mapper→repository、+R2dbcConfig/Flyway/ReactiveRedisAccessor）、§4.8 依赖（+R2DBC/Flyway、-MyBatis）、§5.1 风险（+3 条、-1 条）、§6 迭代 0 工期、修订记录从顶部移至末尾 | SDDU Plan Agent |
-| **v2.4** | **2026-05-22** | **§4.2 数据库设计基于 5 平台调研报告（Zapier/Make/Power Automate/MuleSoft/钉钉）重写**：① 编排定义从拆分 FlowNode/FlowEdge 子表改为**单一 JSON 字段保存完整 DAG**（`{trigger,nodes,edges}`）——借鉴 Make/Zapier/钉钉/PA 共识；② 新增 `cp_flow_trigger_endpoint` 表存 HTTP 触发的 token+签名密钥+限流配置（满足 NFR-011 安全要求）；③ 凭证 `cp_credential` 独立成表（MVP 不分 per-app，per-app 移至 V1）；④ 执行历史 I/O **默认外置到对象存储**（>64KB 阈值），新增 `cp_storage_blob_ref` 元数据表——借鉴 PA `inputsLink/outputsLink` 模式；⑤ 预留计量字段 `operations_count` / `data_in_bytes` / `data_out_bytes`——借鉴 Make `operations_consumed` + PA `billingMetrics`，避免后期加字段迁移成本；⑥ 新增 `correlation_id` 字段支持跨服务链路追踪；⑦ 执行记录/步骤表按月分区；⑧ schema 主仓库从"open-server"改为"**connector-api**"（runtime 是数据真正消费源）；⑨ Flow 表新增 `current_published_version_id` 指针——借鉴 PA `flowversions`+钉钉模式。影响：§4.2 全面重写（含新增表清单、设计决策表、JSON 字段说明、索引说明），§4.7 open-server/connector-api 文件清单同步调整（+13 个文件、-4 个 FlowNode/FlowEdge 相关），§4.9 文件影响统计 74→89，§5.1 schema 主仓库表述统一 | SDDU Plan Agent |
+| **v2.4** | **2026-05-22** | **§4.2 数据库设计基于 5 平台调研报告（Zapier/Make/Power Automate/MuleSoft/钉钉）重写**：① 编排定义从拆分 FlowNode/FlowEdge 子表改为**单一 JSON 字段保存完整 DAG**（`{trigger,nodes,edges}`）——借鉴 Make/Zapier/钉钉/PA 共识；② 新增 `openplatform_v2_cp_flow_trigger_endpoint` 表存 HTTP 触发的 token+签名密钥+限流配置（满足 NFR-011 安全要求）；③ 凭证 `openplatform_v2_cp_credential` 独立成表（MVP 不分 per-app，per-app 移至 V1）；④ 执行历史 I/O **默认外置到对象存储**（>64KB 阈值），新增 `openplatform_v2_cp_storage_blob_ref` 元数据表——借鉴 PA `inputsLink/outputsLink` 模式；⑤ 预留计量字段 `operations_count` / `data_in_bytes` / `data_out_bytes`——借鉴 Make `operations_consumed` + PA `billingMetrics`，避免后期加字段迁移成本；⑥ 新增 `correlation_id` 字段支持跨服务链路追踪；⑦ 执行记录/步骤表按月分区；⑧ schema 主仓库从"open-server"改为"**connector-api**"（runtime 是数据真正消费源）；⑨ Flow 表新增 `current_published_version_id` 指针——借鉴 PA `flowversions`+钉钉模式。影响：§4.2 全面重写（含新增表清单、设计决策表、JSON 字段说明、索引说明），§4.7 open-server/connector-api 文件清单同步调整（+13 个文件、-4 个 FlowNode/FlowEdge 相关），§4.9 文件影响统计 74→89，§5.1 schema 主仓库表述统一 | SDDU Plan Agent |
+| **v2.5** | **2026-05-22** | **数据库表前缀统一调整**：从 `cp_` → **`openplatform_v2_cp_`**（openplatform=开放平台体系 / v2=平台第二代 / cp=connector platform 子域）。影响：§4.2 数据库前缀决策行说明文字、表清单 9 张表名、ER 图字段引用、索引说明；§4.7 文件清单中所有 R2DBC `@Table(...)` / MyBatis entity 注释；schema 迁移脚本目录引用；共 34 处替换 | SDDU Plan Agent |
 
 ---
 
