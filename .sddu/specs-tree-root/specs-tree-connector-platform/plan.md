@@ -1,12 +1,12 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.3  
+**规划版本**: v2.4  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v4.0  
-**前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003（ADR-003 已于 v2.1 修订）
+**前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003（ADR-003 已于 v2.1 修订），docs/connector-flow-storage-research/ 5 平台调研报告（v2.4 数据库设计依据）
 
 > ⚠️ **前端项目说明**：`open-web` 代码已全部迁移至 `wecodesite`，本规划中所有前端引用均以 `wecodesite` 为准。`wecodesite` 已内置 `@xyflow/react` 依赖，且 `ConnectPlatform/Connector`、`ConnectPlatform/ConnectorEditor`、`ConnectPlatform/Flow`、`ConnectPlatform/FlowEditor` 等页面已有实现。
 
@@ -652,94 +652,189 @@ sequenceDiagram
 
 ### 4.2 数据库设计
 
-共 **9 张表**，按模块归属：connector 模块 2 张、flow 模块 4 张、runtime 模块 3 张。统一使用 `cp_` 前缀，涵盖连接器基本信息/版本、连接流基本信息/版本/节点/连线、执行记录/步骤、认证凭证。
+> 📚 **设计依据**：基于 `docs/connector-flow-storage-research/` 5 个平台（Zapier / Make / Power Automate / MuleSoft / 钉钉）调研结论，结合本平台约束（MySQL 5.7 + R2DBC、MVP 仅 HTTP 协议、同步执行、不做上架/下架/资源配额/失败重试）综合设计。
 
-**核心 ER 关系**（详细字段定义、索引、JSON Schema 见 `plan-db.md`）：
+**核心设计决策**（取舍依据见调研报告 §九 MVP 存储方案核心建议）：
+
+| 决策点 | 选择 | 调研出处 |
+|--------|------|----------|
+| **编排定义存储模型** | **单一 JSON 字段保存完整 DAG**（`{ trigger{}, nodes[], edges[] }`），不拆分 FlowNode/FlowEdge 子表 | Zapier/Make/钉钉/PA 共识——便于版本快照、diff、回滚 |
+| **节点拓扑模型** | **显式 DAG（nodes + edges 两个数组）** | Make 模式——MVP 虽线性，但 V1 引入分支/循环/并行时无需 schema 迁移 |
+| **触发器存储** | 作为编排 JSON 的顶级独立字段 `trigger{}` + 独立 `cp_flow_trigger_endpoint` 表（存 HTTP 触发的 token、签名密钥、限流配置） | 5 平台共识 + NFR-011 安全要求 |
+| **版本管理** | 独立 `cp_flow_version` / `cp_connector_version` 表，每次发布写入完整快照；`cp_flow.current_published_version_id` 指向最新发布版 | PA `flowversions`(保留 25) + 钉钉 `flow_versions` 模式 |
+| **执行历史 I/O 外置** | 大字段（步骤 input/output、连接流 result_data）**默认写 MySQL 内嵌**，当 size > 阈值（建议 64KB，迭代 0 决策）时**自动外置到对象存储**，表中只存 `*_uri/*_size/*_hash` 引用 | PA 默认外置 + Make/钉钉条件外置 |
+| **执行记录分区** | `cp_execution_record` / `cp_execution_step` 按 `created_at` 月度分区 | 5 平台共识 |
+| **计量字段（预留）** | `cp_execution_record` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes`（MVP 写入 0，V1 启用计费时直接使用） | Make `operations_consumed` + PA `billingMetrics`——避免后期加字段迁移成本 |
+| **状态机枚举** | 执行记录：`pending / running / success / failed / timeout`（MVP 5 个值；`partial` / `cancelled` 留给 V1） | 跨平台超集裁剪 |
+| **凭证存储** | 独立 `cp_credential` 表（与 connector_version 1:1，MVP 不分 per-app）；AES-256-GCM 加密 + 字段级；KMS 密钥引用 ID 存表中 | 5 平台共识；MVP 简化（per-app 凭证移至 V1） |
+| **schema 主仓库** | 由 `connector-api` 维护 Flyway 迁移脚本（`db/migration/*.sql`），open-server 引入相同脚本并跑迁移 | MuleSoft Maven + PA Solution 模式启发 |
+| **数据库前缀** | 所有表统一 `cp_` 前缀（connector platform） | 避免与现有 open-server 表冲突 |
+| **关联引用方式** | 字符串 UUID（雪花算法或 ULID，迭代 0 决策），不用自增 INT | R2DBC + 分布式部署考虑 |
+
+**表清单**（共 **9 张表**）：
+
+| # | 表名 | 类型 | 模块 | 说明 |
+|---|------|------|------|------|
+| 1 | `cp_connector` | 主表 | connector | 连接器基本信息（名称/图标/描述/类型） |
+| 2 | `cp_connector_version` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON） |
+| 3 | `cp_credential` | 主表 | connector | 连接器认证凭证（AES-256-GCM 加密） |
+| 4 | `cp_flow` | 主表 | flow | 连接流基本信息 + 当前发布版本指针 |
+| 5 | `cp_flow_version` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
+| 6 | `cp_flow_trigger_endpoint` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置） |
+| 7 | `cp_execution_record` | 主表（按月分区） | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段） |
+| 8 | `cp_execution_step` | 子表（按月分区） | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储） |
+| 9 | `cp_storage_blob_ref` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type/created_at；用于 GC 与审计） |
+
+**核心 ER 关系**（完整字段定义、索引、JSON Schema 详见 `plan-db.md`）：
 
 ```mermaid
 erDiagram
     Connector ||--o{ ConnectorVersion : has
-    ConnectorVersion ||--o{ FlowNode : referenced_as
-    ConnectorVersion ||--o{ ConnectorAuthConfig : has_per_app_credentials
+    Connector ||--o{ Credential : configures
+    ConnectorVersion }o--|| Connector : belongs_to
     Flow ||--o{ FlowVersion : has
-    FlowVersion ||--o{ FlowNode : contains
-    FlowVersion ||--o{ FlowEdge : contains
+    Flow ||--o| FlowTriggerEndpoint : exposes_http
     Flow ||--o{ ExecutionRecord : generates
     ExecutionRecord ||--o{ ExecutionStep : contains
+    ExecutionRecord }o--|| FlowVersion : executes_snapshot
+    ExecutionStep }o--o| StorageBlobRef : may_externalize_io
+    ExecutionRecord }o--o| StorageBlobRef : may_externalize_result
 
     Connector {
         string id PK
         string name "连接器名称"
         string icon "图标URL"
         string description "描述"
-        string connector_type "HTTP(MVP)"
-        string status "active/disabled"
+        string connector_type "HTTP (MVP)"
+        string status "active / disabled"
+        datetime created_at
+        datetime updated_at
     }
     ConnectorVersion {
         string id PK
         string connector_id FK
-        string version_no "版本号"
-        string status "draft/published"
-        json basic_info_snapshot "基本信息快照"
-        json connection_config "连接配置(协议/认证/参数Schema/超时/限流)"
+        string version_no "x.x.x 三段式"
+        string version_status "draft / published"
+        string version_description "中英文文本，选填"
+        json basic_info_snapshot "发布时连接器基本信息快照"
+        json connection_config "连接配置：协议 / 地址 / 认证类型 / 入参 Schema / 出参 Schema / 超时 / 限流"
+        string credential_id FK "关联凭证 (nullable, 草稿态可空)"
+        datetime created_at
+        datetime published_at
+    }
+    Credential {
+        string id PK
+        string connector_id FK
+        string auth_type "AKSK / OAUTH2 / BASIC_AUTH / API_KEY"
+        string kms_key_id "云 KMS 密钥引用 ID"
+        text encrypted_credentials "AES-256-GCM 密文"
+        string encryption_context "绑定上下文 (connector_id + version)"
+        string status "active / expired / revoked"
+        datetime created_at
+        datetime updated_at
     }
     Flow {
         string id PK
         string name "连接流名称"
         string description "描述"
-        string status "enabled/disabled"
+        string lifecycle_status "running / stopped (FR-013~015)"
+        string current_published_version_id FK "当前部署的已发布版本 (nullable)"
+        datetime created_at
+        datetime updated_at
     }
     FlowVersion {
         string id PK
         string flow_id FK
-        string version_no "版本号"
-        string status "draft/published"
-        json basic_info_snapshot "基本信息快照"
-        json orchestration_config "编排配置(入口/节点/连线/出口)"
+        string version_no "x.x.x 三段式"
+        string version_status "draft / published"
+        string version_description "中英文文本，选填"
+        json basic_info_snapshot "发布时连接流基本信息快照"
+        json orchestration_config "编排配置 JSON：{trigger{},nodes[],edges[]} 显式 DAG"
+        datetime created_at
+        datetime published_at
     }
-    FlowNode {
+    FlowTriggerEndpoint {
         string id PK
-        string version_id FK
-        string node_type "entry/connector/data_processor/exit"
-        string connector_version_id FK "nullable"
-        json config "节点配置"
-    }
-    FlowEdge {
-        string id PK
-        string version_id FK
-        string source_node_id
-        string target_node_id
-        json data_mappings "字段映射配置"
+        string flow_id FK
+        string trigger_token "随机不可预测 URL 路径段 (NFR-011)"
+        string signing_secret "请求签名密钥 (加密存储)"
+        json rate_limit_config "限流配置 (FR-024 默认 100/min)"
+        string status "active / disabled"
+        datetime created_at
     }
     ExecutionRecord {
         string execution_id PK
         string flow_id FK
-        string version_id FK
-        string trigger_type "http/manual/test"
-        string status "success/failed/timeout"
-        json trigger_data
-        json result_data
+        string flow_version_id FK "执行时使用的版本"
+        string trigger_type "http / manual / test"
+        string status "pending / running / success / failed / timeout"
+        string correlation_id "跨服务链路追踪 ID"
+        json trigger_data "触发输入数据 (小字段) — 大字段走 trigger_data_blob_id"
+        string trigger_data_blob_id FK "trigger_data 外置引用 (nullable)"
+        json result_data "出口节点返回值 (小字段) — 大字段走 result_data_blob_id"
+        string result_data_blob_id FK "result_data 外置引用 (nullable)"
+        int operations_count "预留计量：操作数 (MVP 写 0)"
+        bigint data_in_bytes "预留计量：入流量"
+        bigint data_out_bytes "预留计量：出流量"
+        bigint duration_ms "总耗时"
+        datetime started_at
+        datetime completed_at
+        datetime created_at "分区键，按月分区"
     }
     ExecutionStep {
         string id PK
         string execution_id FK
-        string node_id
-        string node_name
-        string status "success/failed"
-        json input_data
-        json output_data
+        int step_order "节点执行序号"
+        string node_id "对应 orchestration_config.nodes[].id"
+        string node_type "entry / connector / data_processor / exit"
+        string node_name "节点显示名称"
+        string status "success / failed"
+        json input_data "上游输入 (小字段)"
+        string input_data_blob_id FK "input_data 外置引用 (nullable)"
+        json output_data "节点输出 (小字段)"
+        string output_data_blob_id FK "output_data 外置引用 (nullable)"
+        json error_info "错误详情 (失败时)"
+        bigint duration_ms "节点耗时"
+        datetime started_at
+        datetime completed_at
+        datetime created_at "分区键，按月分区"
     }
-    ConnectorAuthConfig {
+    StorageBlobRef {
         string id PK
-        string connector_version_id FK
-        string app_id "消费方应用ID"
-        string auth_type "AKSK/OAUTH2/BASIC_AUTH/API_KEY"
-        json encrypted_credentials "AES-256-GCM加密"
-        string status "active/expired/revoked"
+        string uri "对象存储 URI (如 oss://bucket/path/xxx.json)"
+        bigint size_bytes "字节数"
+        string content_hash "SHA-256 校验"
+        string content_type "MIME 类型"
+        string owner_type "execution_record / execution_step / trigger_data / result_data"
+        string owner_id "所属业务 ID (用于 GC)"
+        datetime created_at
+        datetime expires_at "TTL (用于自动清理)"
     }
 ```
 
-> 表结构定义、字段类型、索引、JSON Schema 详见 **`plan-db.md`**
+> 💡 **JSON 字段结构（详见 `plan-db.md`）**：
+> - `ConnectorVersion.connection_config` —— `{ protocol, base_url, auth_type, input_schema, output_schema, timeout_ms, rate_limit }`
+> - `FlowVersion.orchestration_config` —— `{ trigger:{type,config}, nodes:[{id,type,connector_version_id,params,position}], edges:[{id,source_node_id,target_node_id,data_mappings:[{source_path,target_path,transform}]}] }`
+> - `ExecutionRecord.trigger_data` / `result_data` —— 原始 JSON 数据，超过阈值时仅留 `{ "$externalized": "blob_id_xxx" }` 引用
+> - `ExecutionStep.input_data` / `output_data` —— 同上外置规则
+>
+> 💡 **关键索引**（详见 `plan-db.md`）：
+> - `cp_flow_version (flow_id, version_status, created_at DESC)` —— 查最新草稿/已发布版本
+> - `cp_flow_trigger_endpoint (trigger_token)` UNIQUE —— HTTP 触发查找
+> - `cp_execution_record (flow_id, created_at DESC)` —— 执行历史查询（FR-025）
+> - `cp_execution_record (correlation_id)` —— 链路追踪
+> - `cp_execution_step (execution_id, step_order)` —— 步骤详情
+> - 按月分区：`cp_execution_record` / `cp_execution_step` 按 `created_at` 分区，30 天后转冷归档
+>
+> 💡 **与调研结论的对应**：
+> - 显式 DAG（`{nodes[], edges[]}`）——借鉴 Make
+> - 独立版本表 + current_published_version_id 指针——借鉴 PA `flowversions` + 钉钉
+> - I/O 默认外置（`_blob_id` 引用）——借鉴 PA `inputsLink/outputsLink`
+> - 预留计量字段——借鉴 Make `operations_consumed` + PA `billingMetrics`
+> - 凭证 AES-256-GCM + KMS + 加密上下文——5 平台共识
+> - HTTP 触发独立端点表 + 签名密钥——满足 NFR-011 安全要求
+
+> 完整表结构 DDL、字段类型、索引、JSON Schema、外置存储引用规范详见 **`plan-db.md`**
 
 ### 4.3 API 接口设计
 
@@ -843,10 +938,14 @@ open-app/
 | `modules/connector/ConnectorService.java` | 连接器业务逻辑 |
 | `modules/connector/ConnectorVersionController.java` | 版本管理（列表/详情/编辑/发布） |
 | `modules/connector/ConnectorVersionService.java` | 版本业务逻辑 |
-| `modules/connector/entity/Connector.java` | 连接器实体 |
-| `modules/connector/entity/ConnectorVersion.java` | 连接器版本实体 |
+| `modules/connector/CredentialController.java` | 🆕 凭证管理（创建/编辑/删除；明文输入界面 → 加密存储） |
+| `modules/connector/CredentialService.java` | 🆕 凭证业务逻辑（调用 connector-api 的加解密能力或共享 CredentialCipher） |
+| `modules/connector/entity/Connector.java` | 连接器实体（对应 `cp_connector`） |
+| `modules/connector/entity/ConnectorVersion.java` | 连接器版本实体（对应 `cp_connector_version`；`connection_config` 字段映射为 JSON 字符串/POJO） |
+| `modules/connector/entity/Credential.java` | 🆕 凭证实体（对应 `cp_credential`；界面展示需脱敏） |
 | `modules/connector/mapper/ConnectorMapper.java` | 连接器 Mapper |
 | `modules/connector/mapper/ConnectorVersionMapper.java` | 版本 Mapper |
+| `modules/connector/mapper/CredentialMapper.java` | 🆕 凭证 Mapper |
 
 #### open-server — flow 模块
 
@@ -856,12 +955,16 @@ open-app/
 | `modules/flow/FlowService.java` | 连接流业务逻辑 |
 | `modules/flow/FlowVersionController.java` | 版本管理、编排配置保存/发布 |
 | `modules/flow/FlowVersionService.java` | 版本业务逻辑 |
-| `modules/flow/entity/Flow.java` | 连接流实体 |
-| `modules/flow/entity/FlowVersion.java` | 连接流版本实体 |
-| `modules/flow/entity/FlowNode.java` | 流节点实体 |
-| `modules/flow/entity/FlowEdge.java` | 流连线实体 |
+| `modules/flow/FlowTriggerEndpointController.java` | 🆕 HTTP 触发端点管理（生成 trigger_token / 重置 signing_secret / 配置限流） |
+| `modules/flow/FlowTriggerEndpointService.java` | 🆕 触发端点业务逻辑 |
+| `modules/flow/entity/Flow.java` | 连接流实体（对应 `cp_flow`；含 `current_published_version_id` 指针） |
+| `modules/flow/entity/FlowVersion.java` | 连接流版本实体（对应 `cp_flow_version`；`orchestration_config` 字段映射为 `OrchestrationConfig` POJO，包含 `trigger / nodes / edges`） |
+| `modules/flow/entity/FlowTriggerEndpoint.java` | 🆕 HTTP 触发端点实体（对应 `cp_flow_trigger_endpoint`） |
 | `modules/flow/mapper/FlowMapper.java` | 连接流 Mapper |
 | `modules/flow/mapper/FlowVersionMapper.java` | 版本 Mapper |
+| `modules/flow/mapper/FlowTriggerEndpointMapper.java` | 🆕 触发端点 Mapper |
+
+> ❌ **不再需要的实体**：~~`FlowNode.java`~~ / ~~`FlowEdge.java`~~ / ~~`FlowNodeMapper.java`~~ / ~~`FlowEdgeMapper.java`~~——编排定义已全部内聚到 `FlowVersion.orchestration_config` JSON 字段（依据 §4.2 调研结论，单一 JSON 字段便于版本快照、diff、回滚）
 
 #### open-server — runtime 调试代理模块（debug）
 
@@ -882,12 +985,20 @@ open-app/
 | `runtime/NodeExecutor.java` | 节点执行器接口，签名 `Mono<NodeOutput> execute(NodeInput, ExecutionContext)` |
 | `runtime/ConnectorNodeExecutor.java` | 连接器节点执行器（基于 WebClient 异步调用下游 HTTP API） |
 | `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
-| `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table` 映射） |
-| `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table` 映射） |
-| `runtime/entity/ConnectorAuthConfig.java` | 认证凭证实体（R2DBC `@Table` 映射） |
-| `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`，全部返回 `Mono`/`Flux`） |
-| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（读取 orchestration_config） |
-| `runtime/repository/ConnectorAuthConfigRepository.java` | 🆕 认证凭证 R2DBC Repository |
+| `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table("cp_execution_record")` 映射；含预留计量字段） |
+| `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table("cp_execution_step")` 映射；I/O 大字段含 `*_blob_id` 外置引用） |
+| `runtime/entity/Credential.java` | 认证凭证实体（R2DBC `@Table("cp_credential")` 映射；AES-256-GCM 密文 + KMS key_id） |
+| `runtime/entity/FlowTriggerEndpoint.java` | HTTP 触发端点实体（R2DBC `@Table("cp_flow_trigger_endpoint")` 映射；含 trigger_token / signing_secret / rate_limit_config） |
+| `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("cp_storage_blob_ref")` 映射；用于 GC 与审计） |
+| `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` JSON 反序列化为 `OrchestrationConfig` 对象） |
+| `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`） |
+| `runtime/repository/ExecutionStepRepository.java` | 🆕 执行步骤 R2DBC Repository |
+| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（按 flow_id 查 current_published_version_id） |
+| `runtime/repository/CredentialRepository.java` | 🆕 凭证 R2DBC Repository |
+| `runtime/repository/FlowTriggerEndpointRepository.java` | 🆕 HTTP 触发端点 R2DBC Repository（按 trigger_token 唯一索引查找） |
+| `runtime/repository/StorageBlobRefRepository.java` | 🆕 对象存储引用 R2DBC Repository（用于 GC 任务） |
+| `runtime/storage/BlobStorageGateway.java` | 🆕 对象存储网关：自动判定 I/O 是否超阈值需外置；`Mono<BlobRef> putIfNeeded(payload)` / `Mono<byte[]> fetch(blobId)`；后端先支持 OSS（阿里云） |
+| `runtime/storage/IOExternalizationPolicy.java` | 🆕 外置策略：默认 64KB 阈值（迭代 0 决策最终值） |
 | `runtime/client/WebClientFactory.java` | 🆕 WebClient 工厂：连接池、超时、最大缓冲、TLS 等配置统一收口 |
 | `runtime/cache/ReactiveRedisAccessor.java` | 🆕 Redis reactive 访问封装（基于 `ReactiveStringRedisTemplate`） |
 | `trigger/HttpTriggerController.java` | HTTP 触发入口（WebFlux `@RestController`，返回 `Mono<TriggerResponse>`，对调用方呈现同步语义） |
@@ -897,7 +1008,7 @@ open-app/
 | `common/R2dbcConfig.java` | 🆕 R2DBC `ConnectionFactory` 配置（连接池大小、获取超时、最大空闲时间等） |
 | `ConnectorApiApplication.java` | Spring Boot 启动类（WebFlux 模式） |
 | `pom.xml` / `application.yml` | 工程配置（webflux + r2dbc + r2dbc-mysql + data-redis-reactive；测试 profile 启用 BlockHound） |
-| `db/migration/*.sql` | 🆕 数据库迁移脚本（Flyway，与 open-server 共享 schema；schema 主仓库由 open-server 维护，connector-api 仅维护 R2DBC 视角的 SQL） |
+| `db/migration/V*__*.sql` | 🆕 Flyway 数据库迁移脚本（**connector-api 为 schema 主仓库**：负责 `cp_*` 全部 9 张表的 DDL 演进；open-server 引入相同脚本作为 read-only consumer，仅负责 MyBatis entity/Mapper 适配） |
 
 #### open-server — monitor 模块
 
@@ -944,12 +1055,15 @@ open-app/
 
 | 项目 | 新增文件 | 修改文件 | 删除文件 |
 |------|:--------:|:--------:|:--------:|
-| open-server (connector + flow + monitor + debug 4 个模块) | 约 35 | 0 | 0 |
-| connector-api 🆕（全新工程：runtime + trigger + debug + common） | 约 30（含工程脚手架） | 0 | 0 |
+| open-server (connector + flow + monitor + debug 4 个模块) | 约 42 | 0 | 0 |
+| connector-api 🆕（全新工程：runtime + trigger + debug + storage + common） | 约 38（含工程脚手架） | 0 | 0 |
 | wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
-| **合计** | **约 74** | **2** | **0** |
+| **合计** | **约 89** | **2** | **0** |
 
-> 📌 新增 connector-api 独立工程后，原"60 个 open-server 新增文件"被重新划分为：约 35 个留在 open-server（管理 + 调试代理），约 30 个迁移/新建到 connector-api（运行时 + 工程脚手架）。
+> 📌 v2.3 重新设计数据库（参考调研报告）后文件数小幅上调：
+> - open-server +7：新增 Credential / FlowTriggerEndpoint 的 entity/mapper/controller/service
+> - connector-api +8：新增 Credential / FlowTriggerEndpoint / StorageBlobRef entity + Repository、BlobStorageGateway / IOExternalizationPolicy
+> - 删除原计划的 FlowNode/FlowEdge entity/mapper（编排定义已内聚到 FlowVersion.orchestration_config JSON 字段）
 
 ---
 
@@ -963,7 +1077,7 @@ open-app/
 | 全 reactive 栈（WebFlux + R2DBC + Redis reactive）团队学习成本 | 工期延误 / 代码质量 | 中-高 | plan-code 沉淀强制规则（禁阻塞 API、统一返回 `Mono`/`Flux`、必配超时等）；迭代 0 安排 3-5 天技术演练（含 R2DBC 实战）；Code Review 重点把关 reactive 链路；CI 流水线强制启用 BlockHound |
 | 误用阻塞 API（如裸调用 `RestTemplate` / 引入 JDBC 库） | 阻塞 EventLoop 导致全局吞吐崩塌 | 低 | 从依赖层面屏蔽：`pom.xml` 显式 exclude `spring-boot-starter-web` / `spring-boot-starter-jdbc` / `mybatis-spring-boot-starter`，发现引入即编译失败；测试/staging 启用 BlockHound 主动拦截；Code Review checklist |
 | R2DBC MySQL 驱动成熟度（相比 JDBC） | 个别 SQL 特性兼容性问题 / 罕见 bug | 低-中 | 选用社区活跃的 `asyncer-io/r2dbc-mysql`（或 `dev.miku/r2dbc-mysql`）；MVP 阶段 SQL 模式相对简单（CRUD + 简单 join，无存储过程/复杂触发器）；保留向上层引擎降级回 `DatabaseClient` 原生 SQL 的能力 |
-| R2DBC 与 MyBatis 共享 schema 漂移 | open-server / connector-api 数据不一致 | 中 | 统一 DDL 迁移脚本（Flyway，schema 主仓库由 open-server 维护）；CI 阶段两个服务都跑迁移；任何表结构变更需同步 review 两侧 entity |
+| R2DBC 与 MyBatis 共享 schema 漂移 | open-server / connector-api 数据不一致 | 中 | 统一 DDL 迁移脚本（Flyway，**schema 主仓库由 connector-api 维护**——runtime 是数据真正消费源；open-server 作为 read-only consumer 引入相同脚本）；CI 阶段两个服务都跑迁移；任何表结构变更需同步 review 两侧 entity |
 | 可视化编排画布前端复杂度高 | 工期延误 | 中 | MVP 限制线性编排（禁用分支/循环连接），使用 React Flow 的受限模式 |
 | 认证凭证加密存储和传输 | 安全漏洞 | 低 | 使用 AES-256-GCM 加密 + HTTPS + 界面脱敏显示 |
 | HTTP 触发 URL 安全 | 非法调用 | 低 | 随机不可预测路径 + 请求签名验证 + 限流（FR-024） |
@@ -1085,6 +1199,7 @@ open-app/
 | **v2.1c** | **2026-05-22** | **§1.4 数据流分析改用 mermaid 图**：3 段文字代码块流程 → 4 张 mermaid 图（连接器发布流程 flowchart LR、连接流创建与编排流程 flowchart LR、连接流触发与执行流程 sequenceDiagram、运行时单次执行内部数据流 sequenceDiagram）。新增 §1.4.1~1.4.4 子章节。影响：§1.4 全部重写 | SDDU Plan Agent |
 | **v2.2** | **2026-05-22** | **connector-api 采用 Spring WebFlux NIO 非阻塞栈**：运行时服务 Web 栈从 Spring MVC 改为 Spring WebFlux + Reactor Netty；HTTP 客户端从 RestTemplate 改为 WebClient；Redis 改为 spring-data-redis-reactive；数据访问保留 MyBatis + boundedElastic 调度器隔离；测试环境启用 BlockHound。影响：§1.2 后端技术栈、§2.1 方案 A、§3 关键决策、§4.7 文件清单、§4.8 依赖、§5.1 风险、§6 迭代规划 | SDDU Plan Agent |
 | **v2.3** | **2026-05-22** | **connector-api 全 reactive 栈（MyBatis → R2DBC）**：进一步要求 MySQL / Redis / 下游 HTTP 调用全链路非阻塞——数据访问从 MyBatis 同步 JDBC + boundedElastic 隔离改为 R2DBC（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 Mono/Flux；从依赖层面 exclude 阻塞栈（mybatis / spring-boot-starter-web / spring-boot-starter-jdbc）；与 open-server 共享 MySQL schema 但 entity/持久化层各自维护（MyBatis vs R2DBC），通过 Flyway 统一 DDL。影响：§1.2 技术栈对比表、§1.2 强制规则/共享数据模型策略、§3 关键决策（+4 项）、§4.7 文件清单（mapper→repository、+R2dbcConfig/Flyway/ReactiveRedisAccessor）、§4.8 依赖（+R2DBC/Flyway、-MyBatis）、§5.1 风险（+3 条、-1 条）、§6 迭代 0 工期、修订记录从顶部移至末尾 | SDDU Plan Agent |
+| **v2.4** | **2026-05-22** | **§4.2 数据库设计基于 5 平台调研报告（Zapier/Make/Power Automate/MuleSoft/钉钉）重写**：① 编排定义从拆分 FlowNode/FlowEdge 子表改为**单一 JSON 字段保存完整 DAG**（`{trigger,nodes,edges}`）——借鉴 Make/Zapier/钉钉/PA 共识；② 新增 `cp_flow_trigger_endpoint` 表存 HTTP 触发的 token+签名密钥+限流配置（满足 NFR-011 安全要求）；③ 凭证 `cp_credential` 独立成表（MVP 不分 per-app，per-app 移至 V1）；④ 执行历史 I/O **默认外置到对象存储**（>64KB 阈值），新增 `cp_storage_blob_ref` 元数据表——借鉴 PA `inputsLink/outputsLink` 模式；⑤ 预留计量字段 `operations_count` / `data_in_bytes` / `data_out_bytes`——借鉴 Make `operations_consumed` + PA `billingMetrics`，避免后期加字段迁移成本；⑥ 新增 `correlation_id` 字段支持跨服务链路追踪；⑦ 执行记录/步骤表按月分区；⑧ schema 主仓库从"open-server"改为"**connector-api**"（runtime 是数据真正消费源）；⑨ Flow 表新增 `current_published_version_id` 指针——借鉴 PA `flowversions`+钉钉模式。影响：§4.2 全面重写（含新增表清单、设计决策表、JSON 字段说明、索引说明），§4.7 open-server/connector-api 文件清单同步调整（+13 个文件、-4 个 FlowNode/FlowEdge 相关），§4.9 文件影响统计 74→89，§5.1 schema 主仓库表述统一 | SDDU Plan Agent |
 
 ---
 
