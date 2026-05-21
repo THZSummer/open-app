@@ -1,7 +1,7 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.7  
+**规划版本**: v2.7.1  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
@@ -450,7 +450,7 @@ graph LR
 | ConnectorVersion ←···引用··· FlowVersion.orchestration_config.nodes[] | 连接器版本被连接流编排定义中的节点（JSON 数组元素）引用，**非物理外键**，引用关系存于 FlowVersion 的 JSON 字段内 |
 | Flow → FlowVersion | 一个连接流有多个版本（1:N），发布时快照基本信息+编排配置（`{trigger, nodes[], edges[]}` 完整 DAG，单一 JSON 字段） |
 | Flow → FlowTriggerEndpoint | 一个连接流可有一个 HTTP 触发端点（1:0..1），存随机 token + 签名密钥 + 限流配置 |
-| Flow → ExecutionRecord → ExecutionStep | 每次执行生成一条记录，记录含多个步骤（1:N:N），按月分区 |
+| Flow → ExecutionRecord → ExecutionStep | 每次执行生成一条记录，记录含多个步骤（1:N:N）；MVP 不分区，V1 按月分区 |
 | ExecutionRecord / ExecutionStep ←···外置引用··· StorageBlobRef | 大字段（>64KB）的 input/output/result_data 外置到对象存储，表中只存 `*_blob_id` 引用 |
 | Credentials（内存对象，不入库） | 凭证仅在调用过程中由触发请求传入 → 注入 ExecutionContext → 节点执行后清除；写入执行记录时按 `sensitive: true` 标记**脱敏** |
 
@@ -664,33 +664,37 @@ sequenceDiagram
 | **触发器存储** | 作为编排 JSON 的顶级独立字段 `trigger{}` + 独立 `openplatform_v2_cp_flow_trigger_endpoint_t` 表（存 HTTP 触发的 token、签名密钥、限流配置） | 5 平台共识 + NFR-011 安全要求 |
 | **版本管理** | 独立 `openplatform_v2_cp_flow_version_t` / `openplatform_v2_cp_connector_version_t` 表，每次发布写入完整快照；`openplatform_v2_cp_flow.current_published_version_id` 指向最新发布版 | PA `flowversions`(保留 25) + 钉钉 `flow_versions` 模式 |
 | **执行历史 I/O 外置** | 大字段（步骤 input/output、连接流 result_data）**默认写 MySQL 内嵌**，当 size > 阈值（建议 64KB，迭代 0 决策）时**自动外置到对象存储**，表中只存 `*_uri/*_size/*_hash` 引用 | PA 默认外置 + Make/钉钉条件外置 |
-| **执行记录分区** | `openplatform_v2_cp_execution_record_t` / `openplatform_v2_cp_execution_step_t` 按 `created_at` 月度分区 | 5 平台共识 |
+| **执行记录分区**（V1 优化项） | **MVP 不分区**——`openplatform_v2_cp_execution_record_t` / `openplatform_v2_cp_execution_step_t` 使用普通表结构；V1 引入按 `create_time` 月度分区 + 30 天冷归档 | MVP 业务量小，无需引入分区运维复杂度；分区方案保留为 V1 优化预案（5 平台共识） |
 | **计量字段（预留）** | `openplatform_v2_cp_execution_record_t` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes`（MVP 写入 0，V1 启用计费时直接使用） | Make `operations_consumed` + PA `billingMetrics`——避免后期加字段迁移成本 |
 | **状态机枚举** | 执行记录：`pending / running / success / failed / timeout`（MVP 5 个值；`partial` / `cancelled` 留给 V1） | 跨平台超集裁剪 |
 | **凭证传递** | **不持久化**——凭证仅在调用过程中通过触发请求/执行上下文以参数形式传递；`connection_config` 中只声明**认证类型 schema**（如"该连接器使用 OAuth2 + Bearer Token"），具体凭证值不入库 | MVP 极简：避免凭证落库带来的加密/KMS/轮换/脱敏全套合规复杂度；执行后凭证仅存活于内存与一次执行的上下文中 |
 | **schema 主仓库** | 由 `connector-api` 维护 Flyway 迁移脚本（`db/migration/*.sql`），open-server 引入相同脚本并跑迁移 | MuleSoft Maven + PA Solution 模式启发 |
 | **数据库前缀** | 所有表统一 `openplatform_v2_cp_` 前缀 | `openplatform`=开放平台体系 / `v2`=平台第二代 / `cp`=connector platform（连接器平台子域），与现有 open-server 既有表（含其它子域）严格隔离，便于未来按子域拆库/迁移 |
 | **关联引用方式** | **BIGINT(20) 雪花 ID**（应用层生成），使用逻辑外键（存储关联 ID），**不使用物理外键约束** | 对齐能力开放平台数据库规范（§4.2.x 主键规范） |
-| **遵循通用规范** | 所有表遵循 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`：表后缀 `_t` / 属性表后缀 `_p_t` / 中英文双语名称（`name_cn`/`name_en`）/ 必备 4 审计字段（`create_time`/`last_update_time`/`create_by`/`last_update_by`）/ TINYINT(10) 枚举 / `DATETIME(3)` 时间精度 / `idx_xxx` `uk_xxx` 索引命名 | 复用现有规范，保证整个 openplatform_v2 体系一致 |
+| **遵循通用规范** | 所有表遵循 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`：表后缀 `_t` / 中英文双语名称（`name_cn`/`name_en`）/ 必备 4 审计字段（`create_time`/`last_update_time`/`create_by`/`last_update_by`）/ TINYINT(10) 枚举 / `DATETIME(3)` 时间精度 / `idx_xxx` `uk_xxx` 索引命名 | 复用现有规范，保证整个 openplatform_v2 体系一致 |
 
-**表清单**（共 **10 张表**：2 张属性表 + 8 张主表/版本表/子表）：
+**表清单**（共 **8 张表**：4 张主表 + 2 张版本表 + 1 张子表 + 1 张元数据表）：
 
 | # | 表名 | 类型 | 模块 | 说明 |
 |---|------|------|------|------|
-| 1 | `openplatform_v2_cp_connector_t` | 主表 | connector | 连接器基本信息（列表展示字段：`name_cn`/`name_en`/`status`/`connector_type` 等） |
-| 2 | `openplatform_v2_cp_connector_p_t` | 属性表 | connector | 连接器扩展属性（KV 模式，存 `icon_url`/`description_cn`/`description_en`/`tags` 等详情字段，避免主表字段膨胀） |
-| 3 | `openplatform_v2_cp_connector_version_t` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON，仅声明认证类型 schema，**不存凭证值**） |
-| 4 | `openplatform_v2_cp_flow_t` | 主表 | flow | 连接流基本信息（列表展示字段：`name_cn`/`name_en`/`lifecycle_status`/`current_published_version_id` 等） |
-| 5 | `openplatform_v2_cp_flow_p_t` | 属性表 | flow | 连接流扩展属性（KV 模式，存 `description_cn`/`description_en`/`tags`/`owner_group` 等详情字段） |
-| 6 | `openplatform_v2_cp_flow_version_t` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
-| 7 | `openplatform_v2_cp_flow_trigger_endpoint_t` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置；一对一，字段少，**不拆属性表**） |
-| 8 | `openplatform_v2_cp_execution_record_t` | 主表（按月分区） | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**高频写入按月分区，不拆属性表**） |
-| 9 | `openplatform_v2_cp_execution_step_t` | 子表（按月分区） | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**高频写入按月分区，不拆属性表**） |
-| 10 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type；用于 GC 与审计；元数据少，**不拆属性表**） |
+| 1 | `openplatform_v2_cp_connector_t` | 主表 | connector | 连接器基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`icon_url`/`tags`/`status`/`connector_type` 等，本期字段全部入主表，不拆属性表） |
+| 2 | `openplatform_v2_cp_connector_version_t` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON，仅声明认证类型 schema，**不存凭证值**） |
+| 3 | `openplatform_v2_cp_flow_t` | 主表 | flow | 连接流基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`tags`/`owner_group`/`lifecycle_status`/`current_published_version_id` 等，本期字段全部入主表，不拆属性表） |
+| 4 | `openplatform_v2_cp_flow_version_t` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`） |
+| 5 | `openplatform_v2_cp_flow_trigger_endpoint_t` | 主表 | flow | HTTP 触发端点（随机不可预测 token + 签名密钥 + 限流配置；一对一，字段少） |
+| 6 | `openplatform_v2_cp_execution_record_t` | 主表 | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**MVP 不分区**，V1 引入按月分区） |
+| 7 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**MVP 不分区**，V1 引入按月分区） |
+| 8 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（uri/size/hash/content_type；用于 GC 与审计） |
 
-> 💡 **主表 + 属性表模式适用性评估**：
-> - **使用主表 + 属性表的对象**：连接器（`connector`）、连接流（`flow`）—— 因为基本信息可能逐步扩展（如未来加 icon/tags/owner_group/分类等），用属性表避免主表 schema 频繁变更
-> - **不使用属性表的对象**：连接器版本、连接流版本（字段固定且 JSON 字段已承载扩展空间）、HTTP 触发端点（一对一固定字段）、执行记录/步骤（高频写入按月分区，关联开销不划算）、对象存储引用（元数据少）
+> 💡 **本期（MVP）暂不引入主表 + 属性表模式**：
+> - **决策**：MVP 阶段所有业务字段（含 description/tags/icon/owner_group 等）直接放在主表，**不拆 `*_p_t` 属性表**
+> - **理由**：本期需求字段明确且数量可控，主表能完整承载；引入属性表会增加查询关联开销与 entity/mapper 维护成本
+> - **未来演进**：V1 阶段若出现高频扩展字段（如分类体系、自定义元数据等），再按能力开放平台规范引入 `connector_p_t` / `flow_p_t`，能力开放平台规范的属性表后缀 `_p_t` 命名空间已为此预留
+>
+> 💡 **MVP 暂不引入按月分区**：
+> - **决策**：`execution_record_t` / `execution_step_t` 本期使用普通表结构，**不做分区**
+> - **理由**：MVP 业务量小（预估 < 10w 行/月），普通表性能完全够用；分区会引入额外的运维复杂度（分区维护脚本、跨分区查询优化等）
+> - **未来演进**：V1 阶段当单表行数接近 500w 或查询性能下降时，引入按 `create_time` 月度分区 + 30 天冷归档（5 平台共识方案）
 
 
 > 🔐 **凭证传递路径（不持久化）**：
@@ -705,9 +709,7 @@ sequenceDiagram
 
 ```mermaid
 erDiagram
-    Connector ||--o{ ConnectorProp : extends_props
     Connector ||--o{ ConnectorVersion : has
-    Flow ||--o{ FlowProp : extends_props
     Flow ||--o{ FlowVersion : has
     Flow ||--o| FlowTriggerEndpoint : exposes_http
     Flow ||--o{ ExecutionRecord : generates
@@ -718,25 +720,18 @@ erDiagram
 
     Connector {
         bigint id PK "雪花 ID"
-        varchar name_cn "中文名称（列表展示）"
-        varchar name_en "英文名称（列表展示）"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
+        text description_cn "中文描述（选填）"
+        text description_en "英文描述（选填）"
+        varchar icon_url "图标 URL（选填）"
+        varchar tags "标签（逗号分隔，选填）"
         tinyint connector_type "1=HTTP (MVP)"
         tinyint status "0=disabled 1=active"
         datetime create_time "DATETIME(3)"
         datetime last_update_time "DATETIME(3)"
         varchar create_by "创建人账号"
         varchar last_update_by "更新人账号"
-    }
-    ConnectorProp {
-        bigint id PK "雪花 ID"
-        bigint parent_id "关联 Connector.id（逻辑外键，建 idx_parent_id）"
-        varchar property_name "如 icon_url / description_cn / description_en / tags"
-        text property_value
-        tinyint status "0=禁用 1=启用"
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
     }
     ConnectorVersion {
         bigint id PK "雪花 ID"
@@ -745,7 +740,7 @@ erDiagram
         tinyint version_status "0=draft 1=published"
         varchar version_description_cn "选填"
         varchar version_description_en "选填"
-        json basic_info_snapshot "发布时连接器基本信息+属性快照"
+        json basic_info_snapshot "发布时连接器基本信息快照"
         json connection_config "连接配置：协议/地址/认证类型 schema（不含凭证值）/入参 Schema/出参 Schema/超时/限流"
         datetime create_time
         datetime last_update_time
@@ -755,21 +750,14 @@ erDiagram
     }
     Flow {
         bigint id PK "雪花 ID"
-        varchar name_cn "中文名称（列表展示）"
-        varchar name_en "英文名称（列表展示）"
+        varchar name_cn "中文名称"
+        varchar name_en "英文名称"
+        text description_cn "中文描述（选填）"
+        text description_en "英文描述（选填）"
+        varchar tags "标签（逗号分隔，选填）"
+        varchar owner_group "归属组（选填）"
         tinyint lifecycle_status "0=stopped 1=running (FR-013~015)"
         bigint current_published_version_id "当前部署的已发布版本 ID（逻辑外键，nullable）"
-        datetime create_time
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    FlowProp {
-        bigint id PK
-        bigint parent_id "关联 Flow.id（逻辑外键，建 idx_parent_id）"
-        varchar property_name "如 description_cn / description_en / tags / owner_group"
-        text property_value
-        tinyint status "0=禁用 1=启用"
         datetime create_time
         datetime last_update_time
         varchar create_by
@@ -782,7 +770,7 @@ erDiagram
         tinyint version_status "0=draft 1=published"
         varchar version_description_cn "选填"
         varchar version_description_en "选填"
-        json basic_info_snapshot "发布时连接流基本信息+属性快照"
+        json basic_info_snapshot "发布时连接流基本信息快照"
         json orchestration_config "编排配置 JSON：{trigger,nodes,edges} 显式 DAG"
         datetime create_time
         datetime last_update_time
@@ -819,7 +807,7 @@ erDiagram
         bigint duration_ms "总耗时"
         datetime started_time
         datetime completed_time
-        datetime create_time "分区键，按月分区"
+        datetime create_time "MVP 不分区，V1 引入按月分区"
         datetime last_update_time
         varchar create_by
         varchar last_update_by
@@ -841,7 +829,7 @@ erDiagram
         bigint duration_ms "节点耗时"
         datetime started_time
         datetime completed_time
-        datetime create_time "分区键，按月分区"
+        datetime create_time "MVP 不分区，V1 引入按月分区"
         datetime last_update_time
         varchar create_by
         varchar last_update_by
@@ -869,8 +857,6 @@ erDiagram
 > - `ExecutionStep.input_data` / `output_data` —— 同上外置规则
 >
 > 💡 **关键索引**（命名遵循能力开放平台规范 `idx_xxx` / `uk_xxx`，详见 `plan-db.md`）：
-> - `openplatform_v2_cp_connector_p_t (parent_id)` —— `idx_parent_id`（属性表标准）
-> - `openplatform_v2_cp_flow_p_t (parent_id)` —— `idx_parent_id`
 > - `openplatform_v2_cp_connector_version_t (connector_id, version_status, create_time DESC)` —— `idx_connector_id_version_status_create_time`
 > - `openplatform_v2_cp_flow_version_t (flow_id, version_status, create_time DESC)` —— `idx_flow_id_version_status_create_time`，查最新草稿/已发布版本
 > - `openplatform_v2_cp_flow_trigger_endpoint_t (trigger_token)` —— `uk_trigger_token` 唯一索引，HTTP 触发查找
@@ -879,7 +865,7 @@ erDiagram
 > - `openplatform_v2_cp_execution_record_t (correlation_id)` —— `idx_correlation_id`，链路追踪
 > - `openplatform_v2_cp_execution_step_t (execution_id, step_order)` —— `idx_execution_id_step_order`，步骤详情
 > - `openplatform_v2_cp_storage_blob_ref_t (owner_type, owner_id)` —— `idx_owner_type_owner_id`，GC 任务扫描
-> - 按月分区：`openplatform_v2_cp_execution_record_t` / `openplatform_v2_cp_execution_step_t` 按 `create_time` 分区，30 天后转冷归档
+> - **分区策略（V1 优化项）**：MVP 阶段 `openplatform_v2_cp_execution_record_t` / `openplatform_v2_cp_execution_step_t` 使用普通表结构；V1 阶段当单表行数接近 500w 时，引入按 `create_time` 月度分区 + 30 天冷归档
 >
 > 💡 **与调研结论的对应**：
 > - 显式 DAG（`{nodes[], edges[]}`）——借鉴 Make
@@ -901,30 +887,35 @@ erDiagram
 |------|------|------|
 | **完整前缀** | `openplatform_v2_cp_` | `openplatform_v2_cp_connector_t` |
 | **表后缀** | 主表/版本表/子表统一 `_t` | `openplatform_v2_cp_flow_version_t` |
-| **属性表后缀** | `_p_t` | `openplatform_v2_cp_connector_p_t` |
+| **属性表后缀** | `_p_t`（V1 预留，MVP 不使用） | 能力开放平台规范预留命名空间，本期不引入 |
 | **命名风格** | 小写字母 + 下划线 | `flow_trigger_endpoint` |
 
-#### 4.3.2 主表 + 属性表模式（已在 §4.2 评估）
+#### 4.3.2 主表 + 属性表模式（MVP 不引入，V1 演进项）
 
-| 业务对象 | 是否用属性表 | 说明 |
-|---------|:------------:|------|
-| 连接器（`connector`） | ✅ | 基本信息可能扩展（icon/tags/分类等），用 `connector_p_t` 避免主表频繁变更 |
-| 连接流（`flow`） | ✅ | 同上，用 `flow_p_t` |
+| 业务对象 | 本期（MVP）是否用属性表 | 说明 |
+|---------|:----------------------:|------|
+| 连接器（`connector`） | ❌ | 本期需求字段明确（含 description/icon/tags 等），直接入主表；V1 若出现高频扩展再引入 `connector_p_t` |
+| 连接流（`flow`） | ❌ | 同上，本期 description/tags/owner_group 直接入主表；V1 若出现高频扩展再引入 `flow_p_t` |
 | 连接器版本 / 连接流版本 | ❌ | 字段固定且 JSON 字段已承载扩展空间 |
 | HTTP 触发端点 | ❌ | 一对一固定字段 |
-| 执行记录 / 步骤 | ❌ | 高频写入按月分区，关联开销不划算 |
+| 执行记录 / 步骤 | ❌ | 高频写入，关联开销不划算 |
 | 对象存储引用 | ❌ | 元数据少 |
 
-属性表字段定义完全沿用能力开放平台规范的 9 字段标准（`id` / `parent_id` / `property_name` / `property_value` / `status` / `create_time` / `last_update_time` / `create_by` / `last_update_by`）。
+> 💡 **MVP 决策理由**：本期所有业务字段数量可控、主表能完整承载，引入属性表会增加查询关联开销与 entity/mapper 维护成本，因此**全表不拆属性表**。能力开放平台规范的属性表后缀 `_p_t` 命名空间已为 V1 演进预留。
+
+> 💡 **V1 演进触发条件**：当出现以下情况之一时，按能力开放平台规范引入 `*_p_t` 属性表：
+> - 单张主表新增字段频率高于每季度 3 次
+> - 出现租户/用户级自定义元数据需求（无法预定义 schema）
+> - 出现需要按属性键模糊查询的场景
 
 #### 4.3.3 名称、描述、审计、主键、枚举（全量沿用）
 
 | 维度 | 规则 | 连接器平台落地示例 |
 |------|------|--------------------|
 | **名称字段** | `name_cn` / `name_en` 中英文双语，VARCHAR(100)，必填 | `openplatform_v2_cp_connector_t.name_cn` / `name_en` |
-| **描述字段** | `description_cn` / `description_en` TEXT，选填 | 存于 `connector_p_t` / `flow_p_t` 属性表 |
-| **主键** | BIGINT(20) 雪花 ID，应用层生成；统一命名 `id` | 所有 10 张表 |
-| **审计字段** | `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`（VARCHAR(100)） | 所有 10 张表 |
+| **描述字段** | `description_cn` / `description_en` TEXT，选填 | 本期直接存于主表（`connector_t` / `flow_t`），不拆属性表 |
+| **主键** | BIGINT(20) 雪花 ID，应用层生成；统一命名 `id` | 所有 8 张表 |
+| **审计字段** | `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`（VARCHAR(100)） | 所有 8 张表 |
 | **枚举字段** | TINYINT(10) + 数字默认值 + COMMENT 说明 | 见 §4.3.4 |
 | **物理外键** | ❌ 禁用，所有关联通过逻辑字段（`xxx_id` BIGINT）实现 | 全表遵循 |
 | **索引命名** | `idx_字段名[_字段名2]` / `uk_字段名` | 见 §4.2 关键索引 |
@@ -951,7 +942,8 @@ erDiagram
 |----|------------|----------|----------|
 | **表前缀** | `openplatform_v2_` | `openplatform_v2_cp_` | 增加 `cp_` 子域标识，便于未来按子域拆库 |
 | **大字段外置** | 未涉及（管理类业务） | I/O 大字段（>64KB）外置到对象存储，表中存 `*_blob_id` | 运行时业务有大量执行 I/O 数据，借鉴 Power Automate inputsLink/outputsLink 模式 |
-| **分区策略** | 未涉及 | `execution_record_t` / `execution_step_t` 按 `create_time` 月度分区 | 执行历史高频写入，分区避免大表性能衰减 |
+| **分区策略** | 未涉及 | **MVP 不分区**；V1 阶段 `execution_record_t` / `execution_step_t` 按 `create_time` 月度分区 | MVP 业务量小（< 10w 行/月）无需分区；V1 单表接近 500w 时引入（5 平台共识） |
+| **属性表模式** | 通用规范定义了 `_p_t` 命名 | **MVP 不引入**；所有字段直接入主表；V1 出现高频扩展时再按规范引入 `*_p_t` | MVP 字段可控，主表完整承载；避免关联开销与 entity/mapper 维护成本 |
 | **JSON 大字段** | 较少使用 | `connection_config` / `orchestration_config` / `trigger_data` / `result_data` / `input_data` / `output_data` / `error_info` / `basic_info_snapshot` / `rate_limit_config` 大量使用 JSON | 借鉴 Zapier/Make/钉钉 JSON 灵活存储编排数据 |
 | **预留计量字段** | 未涉及 | `execution_record_t` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes` | 借鉴 Make/PA，避免后期加字段迁移成本 |
 | **schema 主仓库** | 由 open-server 维护 | 由 **connector-api** 维护 Flyway 迁移脚本（open-server 引入相同脚本） | runtime 是数据真正消费源 |
@@ -1174,14 +1166,12 @@ open-app/
 
 | 项目 | 新增文件 | 修改文件 | 删除文件 |
 |------|:--------:|:--------:|:--------:|
-| open-server (connector + flow + monitor + debug 4 个模块) | 约 40 | 0 | 0 |
-| connector-api 🆕（全新工程：runtime + trigger + debug + storage + security + common） | 约 38（含工程脚手架） | 0 | 0 |
+| open-server (connector + flow + monitor + debug 4 个模块) | 约 38 | 0 | 0 |
+| connector-api 🆕（全新工程：runtime + trigger + debug + storage + security + common） | 约 36（含工程脚手架） | 0 | 0 |
 | wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
-| **合计** | **约 87** | **2** | **0** |
+| **合计** | **约 83** | **2** | **0** |
 
-> 📌 v2.7 引入主表+属性表模式（新增 `connector_p_t` / `flow_p_t` 两张属性表）后文件数微增：
-> - open-server +2：新增 ConnectorProperty / FlowProperty 的 entity + mapper
-> - connector-api +2：新增 ConnectorProperty / FlowProperty 的 R2DBC entity + Repository（如果需要在 runtime 读取属性表的话；纯只读访问可不建实体）
+> 📌 v2.7.1 决策：**MVP 不引入主表+属性表模式**，所有 description/icon/tags/owner_group 字段直接入主表（`connector_t` / `flow_t`），文件数恢复至 83（不新增 ConnectorProperty / FlowProperty 系列文件）
 >
 > 📌 v2.6 删除凭证持久化（cp_credential 表 + Credential 系列文件）后文件数同步下调：
 > - open-server -4：删除 CredentialController / Service / Entity / Mapper
@@ -1327,6 +1317,7 @@ open-app/
 | **v2.5** | **2026-05-22** | **数据库表前缀统一调整**：从 `cp_` → **`openplatform_v2_cp_`**（openplatform=开放平台体系 / v2=平台第二代 / cp=connector platform 子域）。影响：§4.2 数据库前缀决策行说明文字、表清单 9 张表名、ER 图字段引用、索引说明；§4.7 文件清单中所有 R2DBC `@Table(...)` / MyBatis entity 注释；schema 迁移脚本目录引用；共 34 处替换 | SDDU Plan Agent |
 | **v2.6** | **2026-05-22** | **凭证不持久化（MVP 极简）**：取消 `openplatform_v2_cp_credential` 表（9 张表 → 8 张），凭证仅在调用过程中通过触发请求传入 → 注入 ExecutionContext（仅内存）→ 节点执行后清除；执行记录中按 `connection_config.sensitive` 标记自动脱敏；凭证**永不进入 MySQL/Redis/对象存储**。影响：① §4.2 设计决策表「凭证存储」行重写为「凭证传递」；② §4.2 表清单删除 cp_credential（含使用说明新增"凭证传递路径 6 步"）；③ §4.2 ER 图删除 Credential 实体 + ConnectorVersion.credential_id 字段；④ §4.2 调研对应说明改为「凭证不持久化 = MVP 简化策略」；⑤ §1.6 核心业务对象关系重写（6 持久化对象 + 1 内存对象）；⑥ §2.1 方案 A 核心设计「认证凭证」描述重写；⑦ §3 关键决策「凭证明文存储」行改为「凭证存储策略=不持久化」；⑧ §4.5 目录结构 common 注释更新；⑨ §4.7 删除 open-server CredentialController/Service/Entity/Mapper（-4 文件），删除 connector-api Credential entity/CredentialRepository/CredentialCipher（-3 文件），新增 CredentialMasker + ExecutionContextCredentials（+2 文件）；⑩ §4.9 文件统计 89 → 83；⑪ §5.1 风险「认证凭证加密存储和传输」重写为「凭证传输/执行过程泄漏」；⑫ §5.4 开放问题新增 OQ-006（建议反向同步 spec.md NFR-010） | SDDU Plan Agent |
 | **v2.7** | **2026-05-22** | **数据库设计对齐能力开放平台规范**：参考 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`，连接器平台数据库设计全面对齐 openplatform_v2 规范——① 所有表名加 `_t` 后缀（如 `openplatform_v2_cp_connector` → `openplatform_v2_cp_connector_t`）；② 引入主表+属性表模式，新增 `connector_p_t` / `flow_p_t` 两张属性表（共 8 张 → **10 张**）；③ 主键 string UUID → **BIGINT(20) 雪花 ID**；④ 名称字段拆为 `name_cn` / `name_en` 双语；⑤ 描述字段拆为 `description_cn` / `description_en` 双语，存于属性表；⑥ 审计字段统一 `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`；⑦ 状态/类型枚举改用 TINYINT(10) + 数字默认值；⑧ 时间字段统一 DATETIME(3) 毫秒精度；⑨ 索引命名规范化 `idx_xxx` / `uk_xxx`；⑩ 新增 §4.3 表设计规则章节（5 个子节：命名规范、主属性表模式、字段规则、枚举字典、与能力开放平台规范的差异点）。影响：§4.2 设计决策表 +2 项（关联引用方式、遵循通用规范）；§4.2 表清单 8 张 → 10 张；§4.2 ER 图全面重写（属性表 + BIGINT 主键 + 双语字段 + TINYINT 枚举 + 审计字段）；§4.2 索引说明对齐命名规范；新增 §4.3 表设计规则；后续章节序号顺延 4.3→4.4 / 4.4→4.5 / .../ 4.9→4.10；§4.8 文件清单中 R2DBC `@Table(...)` / MyBatis entity 注释统一加 `_t` 后缀（9 处修订） | SDDU Plan Agent |
+| **v2.7.1** | **2026-05-22** | **MVP 范围收敛：移除属性表 + 取消执行表分区**——基于本期需求评估，撤销 v2.7 引入的两项可选增强项：① **不引入主表+属性表模式**：删除 `connector_p_t` / `flow_p_t` 两张属性表，所有字段（`description_cn` / `description_en` / `icon_url` / `tags` / `owner_group` 等）直接入主表（`connector_t` / `flow_t`），表数 10 → **8 张**；② **MVP 不分区**：`execution_record_t` / `execution_step_t` 本期使用普通表结构，分区方案保留为 V1 优化预案（V1 单表接近 500w 时引入按月分区+30 天冷归档）。理由：MVP 业务量小、字段可控，引入属性表/分区会增加查询关联与运维复杂度。影响：① §1.4 数据流关系描述调整；② §4.2 设计决策表「执行记录分区」改为 V1 优化项，「遵循通用规范」行去掉 `_p_t` 描述；③ §4.2 表清单 10 → 8 张（主表 connector_t / flow_t 字段补全 description/icon/tags/owner_group），新增「本期暂不引入属性表/分区」两段决策说明；④ §4.2 ER 图删除 ConnectorProp / FlowProp 实体及关系，主表字段补全，分区注释改为 V1 引入；⑤ §4.2 关键索引删除 2 张属性表索引，分区描述改为 V1 优化项；⑥ §4.3.1 命名规范「属性表后缀」标注「V1 预留，MVP 不使用」；⑦ §4.3.2 评估表全部 ❌（含 V1 演进触发条件）；⑧ §4.3.3 描述字段改为「直接入主表」，「所有 10 张表」改回「8 张」；⑨ §4.3.5 差异点新增「属性表 MVP 不引入」+「分区策略 MVP 不引入」两条；⑩ §4.10 文件影响统计 87 → 83 还原（不新增 ConnectorProperty/FlowProperty 系列文件）；⑪ 顶部版本号 v2.7 → v2.7.1 | SDDU Plan Agent |
 
 ---
 
