@@ -1,35 +1,39 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.0  
+**规划版本**: v2.1  
 **创建日期**: 2026-05-21  
+**最近更新**: 2026-05-22（v2.1：运行时独立部署为 `connector-api`，前端统一收归 `wecodesite`）  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v4.0  
-**前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003
+**前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003（ADR-003 已于 v2.1 修订）
 
 > ⚠️ **前端项目说明**：`open-web` 代码已全部迁移至 `wecodesite`，本规划中所有前端引用均以 `wecodesite` 为准。`wecodesite` 已内置 `@xyflow/react` 依赖，且 `ConnectPlatform/Connector`、`ConnectPlatform/ConnectorEditor`、`ConnectPlatform/Flow`、`ConnectPlatform/FlowEditor` 等页面已有实现。
+>
+> 🆕 **v2.1 架构变更**：连接器平台运行时（同步调度执行、HTTP 触发入口、调试接口）从 `open-server` 内嵌迁出，**独立部署为 `connector-api` 服务**。`open-server` 仅承载管理类能力（CRUD/版本/监控查询）以及调试代理（转发至 connector-api 调试接口）。详见 §1.1 和 ADR-003（v2.1 修订）。
 
 ---
 
 ## 1. 架构分析
 
-### 1.1 现有系统架构
+### 1.1 系统架构设计
 
-> 💡 以下架构**沿用**能力开放平台（`specs-tree-capability-open-platform/plan.md §方案D`）的微服务架构设计，仅复用基础设施层（MySQL/Redis/MQS）。**本版本不与能力开放平台集成**——Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1 阶段。
+> 💡 以下架构**沿用**能力开放平台（`specs-tree-capability-open-platform/plan.md §方案D`）的微服务架构基础，并**新增独立的 `connector-api` 运行时服务**承载连接流的执行（同步调度、HTTP 触发入口、执行上下文等）。**管理类能力（连接器/连接流/监控的 CRUD）仍在 `open-server`，前端统一在 `wecodesite`**。**本版本不与能力开放平台集成**——Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1 阶段。
 
 ```mermaid
 graph TB
     subgraph Frontend["前端层"]
-        WeCodeSite["wecodesite\n(React SPA)\n替代原 open-web"]
+        WeCodeSite["wecodesite\n(React SPA)\n统一前端\n(连接器平台所有页面)"]
     end
     
     subgraph Services["服务层"]
         subgraph OpenServer["open-server\n(Spring Boot)"]
             CapMgmt["能力开放模块\n(分类/API/事件/回调\n权限/审批)"]
-            ConnectorMgmt["连接器平台模块\n(新增)\n连接器/连接流/运行时/监控"]
+            ConnectorMgmt["连接器平台管理模块\n(新增)\n连接器/连接流/监控\n(不含运行时)"]
             AppMgmt["应用管理模块\n(现有能力)"]
             Member["成员管理模块\n(现有能力)"]
         end
+        ConnectorApi["connector-api\n(Spring Boot)\n🆕 连接器运行时服务\n同步调度执行\n+HTTP触发入口\n+调试接口"]
         ApiServer["api-server\n(Spring Boot)\nAPI认证鉴权服务\n(由外向内)"]
         EventServer["event-server\n(Spring Boot)\n事件/回调网关服务\n(由内向外)"]
     end
@@ -54,20 +58,29 @@ graph TB
     end
     
     %% 前端直接连接管理服务
-    WeCodeSite -->|REST API| OpenServer
+    WeCodeSite -->|REST API\n(管理类)| OpenServer
+    
+    %% open-server 调用 connector-api 提供的调试接口
+    OpenServer -->|调试接口\n(手动调试/测试运行)| ConnectorApi
     
     %% open-server 内部模块调用
     ConnectorMgmt -->|无依赖| CapMgmt
     
-    %% open-server 访问数据层
+    %% 服务访问数据层
     OpenServer --> MySQL
     OpenServer --> Redis1
+    ConnectorApi --> MySQL
+    ConnectorApi --> Redis1
     ApiServer --> MySQL
     ApiServer --> Redis1
     
     %% 运行时同步调用 API（直接调用提供方，不经 API 网关——本版本连接器直接配置目标 API 地址）
-    ConnectorMgmt -.->|直接HTTP调用| Provider1
-    ConnectorMgmt -.->|直接HTTP调用| Provider2
+    ConnectorApi -.->|直接HTTP调用| Provider1
+    ConnectorApi -.->|直接HTTP调用| Provider2
+    
+    %% 消费方通过 connector-api 触发连接流执行
+    Consumer1 -->|HTTP触发\n连接流| ConnectorApi
+    Consumer2 -->|HTTP触发\n连接流| ConnectorApi
     
     %% API调用流程
     Consumer1 -->|API调用| ApiGW
@@ -78,17 +91,25 @@ graph TB
     
     style Frontend fill:#e8f5e9,stroke:#2e7d32
     style Services fill:#e3f2fd,stroke:#1565c0
+    style ConnectorApi fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     style DataLayer fill:#f3e5f5,stroke:#7b1fa2
     style PlatformGW fill:#fff3e0,stroke:#ef6c00
     style Consumers fill:#e0f7fa,stroke:#00838f
     style Providers fill:#fce4ec,stroke:#c2185b
 ```
 
+**服务职责划分**：
+| 服务 | 类型 | 职责 |
+|------|------|------|
+| **wecodesite** | 前端 | 连接器平台**所有**前端页面（连接器目录/编辑器、连接流列表/编排画布/详情、执行详情、监控面板等） |
+| **open-server** | 后端管理服务 | 连接器/连接流的 CRUD 与版本管理、编排配置存储、监控查询；**手动调试/测试运行通过调用 connector-api 的调试接口完成** |
+| **connector-api** | 🆕 后端运行时服务 | 同步调度执行引擎、HTTP 触发入口、执行上下文管理、节点执行器（连接器/数据处理）、**对内提供调试接口**（供 open-server 调用） |
+
 **与连接器平台相关的现有能力**（本版本**不集成**，仅复用基础设施）：
 | 现有能力 | 本版本用途 | 说明 |
 |---------|----------|------|
-| MySQL / Redis | 数据持久化和缓存 | 复用现有实例 |
-| 内部业务系统 HTTP API | 连接器的执行目标 | 连接器直接配置目标 API 地址和认证凭证，不经 API 网关 |
+| MySQL / Redis | 数据持久化和缓存 | open-server 与 connector-api 共享同一 MySQL/Redis 实例 |
+| 内部业务系统 HTTP API | 连接器的执行目标 | connector-api 直接配置目标 API 地址和认证凭证，不经 API 网关 |
 
 > ⚠️ **本版本独立运行**：连接器平台本版本不与能力开放平台集成（§5.4）。Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1。
 
@@ -96,7 +117,8 @@ graph TB
 | 代码位置 | 说明 |
 |---------|------|
 | `open-server/src/main/java/com/xxx/open/modules/` | 现有能力开放模块（category/api/event/callback/permission/approval），连接器平台在本版本中**不依赖**这些模块 |
-| `wecodesite/src/pages/ConnectPlatform/` | 已有连接器目录（Connector）、连接器编辑器（ConnectorEditor）、连接流列表/编排画布（Flow/FlowEditor）页面 |
+| `connector-api/` | 🆕 新增独立 Spring Boot 工程，承载运行时与调试接口 |
+| `wecodesite/src/pages/ConnectPlatform/` | 已有连接器目录（Connector）、连接器编辑器（ConnectorEditor）、连接流列表/编排画布（Flow/FlowEditor）页面，本版本继续扩展（新增详情/执行详情/监控等页面） |
 
 ### 1.2 技术栈确认
 
@@ -143,15 +165,17 @@ graph TB
         MonitorPanel["监控面板\n执行历史查询"]
     end
 
-    subgraph Backend["open-server - 新增模块"]
+    subgraph BackendMgmt["open-server - 新增管理模块"]
         Connector["connector 模块\n连接器 CRUD+版本管理"]
         Flow["flow 模块\n连接流 CRUD+版本管理+编排配置"]
-        Runtime["runtime 模块\n同步调度执行+执行上下文"]
-        MonitorModule["monitor 模块\n执行记录+统计"]
+        MonitorModule["monitor 模块\n执行记录查询+统计"]
+        DebugProxy["debug-proxy 模块\n🆕 调用 connector-api\n调试接口（手动调试/测试运行）"]
     end
 
-    subgraph Gateway["网关 - 新增入口"]
-        HttpTrigger["HTTP 触发入口\n(open-server 新增)\n同步调用端点"]
+    subgraph BackendRuntime["connector-api - 🆕 独立运行时服务"]
+        Runtime["runtime 模块\n同步调度执行+执行上下文\n+节点执行器"]
+        HttpTrigger["http-trigger 模块\nHTTP 触发入口\n(对外同步调用端点)"]
+        DebugApi["debug-api 模块\n🆕 调试接口\n(供 open-server 调用)"]
     end
 
     subgraph Existing["现有基础设施 - 复用"]
@@ -159,13 +183,22 @@ graph TB
         Redis_cache[(Redis)]
     end
 
-    Front -->|HTTP| Backend
-    Front -->|HTTP| Gateway
-    Backend --> MySQL_db
-    Backend --> Redis_cache
+    Front -->|HTTP\n(管理类)| BackendMgmt
+    BackendMgmt -->|内部 HTTP\n(调试/测试运行)| BackendRuntime
+    BackendMgmt --> MySQL_db
+    BackendMgmt --> Redis_cache
+    BackendRuntime --> MySQL_db
+    BackendRuntime --> Redis_cache
     Runtime -->|同步HTTP调用| HTTP_Providers["内部业务系统 API"]
     HttpTrigger -->|同步调度| Runtime
+    DebugApi -->|同步调度| Runtime
 ```
+
+> 💡 **运行时单独部署的理由**：
+> - **职责隔离**：管理类操作（CRUD）与运行时执行（高并发、长耗时同步调用）资源特征不同，独立部署便于针对性扩缩容
+> - **故障隔离**：运行时阻塞或异常不影响管理后台的可用性
+> - **演进友好**：V1 引入异步执行/MQS 时只需改造 connector-api，open-server 保持稳定
+> - **调试接口收口**：手动调试、测试运行等流程统一通过 connector-api 提供的调试接口完成，避免运行时逻辑在 open-server 与 connector-api 重复实现
 
 ### 1.4 数据流分析
 
@@ -178,40 +211,53 @@ graph TB
 
 **连接流创建与执行流程**:
 ```
-管理员创建连接流 → 进入编排画布 → 配置HTTP/手动入口触发器 →
+管理员在 wecodesite 创建连接流 → 进入编排画布 → 配置HTTP/手动入口触发器 →
 添加连接器节点(引用已发布连接器版本) → 添加数据处理节点(字段映射) →
 配置出口节点 → 保存草稿 → 发布(输入版本号) → 部署上线
+↑（编排/发布走 open-server 管理接口）
 
-HTTP触发 → 同步执行连接流 → 返回完整结果
-手动触发 → 同步执行连接流 → 展示完整结果
+HTTP触发 → connector-api 同步执行连接流 → 返回完整结果
+手动触发 → wecodesite 调用 open-server → open-server 调用 connector-api 调试接口 → 同步执行 → 展示完整结果
+测试运行 → wecodesite 调用 open-server → open-server 调用 connector-api 调试接口 → 同步执行 → 展示完整结果
 ```
 
-**运行时数据流（一次同步执行）**:
+**运行时数据流（一次同步执行，发生在 connector-api 进程内）**:
 ```
-HTTP请求 / 手动触发
-  → 调度器创建 ExecutionContext (含触发数据，当前请求线程)
+HTTP请求 (外部消费方) / 调试请求 (来自 open-server)
+  → connector-api 调度器创建 ExecutionContext (含触发数据，当前请求线程)
   → 节点1(入口): 透传触发数据
   → 节点2(连接器): 读取上游数据 → 同步调用外部HTTP API → 输出数据到上下文
   → 节点3(数据处理): 读取上游数据 → 字段映射转换 → 输出数据到上下文
   → 节点4(出口): 定义返回值
   → 返回完整执行结果(各步骤输入/输出/耗时/状态)
-  → 异步写入执行记录到MySQL（不阻塞返回）
+  → 异步写入执行记录到MySQL（不阻塞返回，供 open-server monitor 模块查询）
 ```
 
 ### 1.5 依赖关系图
 
 ```mermaid
 graph LR
-    subgraph ConnPlat["连接器平台 (MVP)"]
+    subgraph WeCodeSite["wecodesite (前端)"]
+        UI["连接器平台全部页面"]
+    end
+
+    subgraph OpenSvr["open-server (管理服务)"]
         ConnMgmt["连接器管理"]
         FlowMgmt["连接流管理"]
+        MonitorLog["监控日志查询"]
+        DebugProxy["调试代理\n(手动调试/测试运行)"]
+    end
+
+    subgraph ConnApi["connector-api (运行时服务)"]
         RuntimeExe["运行时执行\n(同步)"]
-        MonitorLog["监控日志"]
+        HttpTriggerSvc["HTTP 触发入口"]
+        DebugSvc["调试接口"]
     end
 
     subgraph Deps["外部依赖"]
         BizSys["内部业务系统\n(IM/云盘/审批等)\n直接HTTP调用"]
         ThirdSys["三方业务系统\n(ERP/CRM/OA等)\n直接HTTP调用"]
+        Consumer["外部消费方\n(HTTP触发)"]
     end
 
     subgraph Infra["基础设施"]
@@ -219,13 +265,21 @@ graph LR
         Cache[(Redis)]
     end
 
+    UI -->|REST| ConnMgmt
+    UI -->|REST| FlowMgmt
+    UI -->|REST| MonitorLog
+    UI -->|REST\n(手动调试/测试运行)| DebugProxy
+    DebugProxy -->|内部HTTP| DebugSvc
+    Consumer -->|HTTP触发| HttpTriggerSvc
+    HttpTriggerSvc --> RuntimeExe
+    DebugSvc --> RuntimeExe
     RuntimeExe -->|直接HTTP调用| BizSys
     RuntimeExe -->|直接HTTP调用| ThirdSys
     ConnMgmt --> DB
     FlowMgmt --> DB
+    MonitorLog --> DB
     RuntimeExe --> DB
     RuntimeExe --> Cache
-    MonitorLog --> DB
 ```
 
 ### 1.6 核心业务对象关系
@@ -249,54 +303,68 @@ graph LR
 
 ### 2.1 方案 A：轻量同步执行引擎（推荐）
 
-**方案描述**: 基于现有 open-server 扩展，采用轻量级**同步**执行引擎。连接流编排配置以 JSON 存储，运行时引擎接收 HTTP 请求（或手动触发）后，在当前线程中按节点顺序依次同步执行，执行完成后返回完整结果，之后异步写入执行记录。
+**方案描述**: **运行时单独部署为 `connector-api` 服务**（与 open-server 进程隔离），采用轻量级**同步**执行引擎。连接流编排配置以 JSON 存储（由 open-server 写入 MySQL），运行时引擎接收 HTTP 触发请求（或来自 open-server 的调试请求）后，在当前线程中按节点顺序依次同步执行，执行完成后返回完整结果，之后异步写入执行记录。**open-server 的手动调试/测试运行流程通过调用 connector-api 的调试接口实现**。
 
 ```mermaid
 sequenceDiagram
     participant Client as "消费方/管理员"
-    participant OpenSvr as "open-server\nruntime 模块"
+    participant Web as "wecodesite"
+    participant OpenSvr as "open-server\n(管理服务)"
+    participant ConnApi as "connector-api\n(运行时服务)"
     participant Redis as "Redis"
     participant MySQL as "MySQL"
     participant Target as "目标 API"
 
-    Client->>OpenSvr: HTTP 请求 / 手动触发
+    alt 外部 HTTP 触发
+        Client->>ConnApi: HTTP 触发请求
+    else 手动调试 / 测试运行
+        Client->>Web: 点击调试/测试运行
+        Web->>OpenSvr: REST 调用
+        OpenSvr->>ConnApi: 内部 HTTP\n(调用调试接口)
+    end
     
-    Note over OpenSvr: 创建 ExecutionContext
+    Note over ConnApi: 创建 ExecutionContext
     
-    OpenSvr->>OpenSvr: 节点1(入口): 透传触发数据
+    ConnApi->>ConnApi: 节点1(入口): 透传触发数据
     
-    OpenSvr->>Target: 节点2(连接器): 同步调用 API
-    Target-->>OpenSvr: API 响应
+    ConnApi->>Target: 节点2(连接器): 同步调用 API
+    Target-->>ConnApi: API 响应
     
-    OpenSvr->>OpenSvr: 节点3(数据处理): 字段映射
+    ConnApi->>ConnApi: 节点3(数据处理): 字段映射
     
-    OpenSvr->>OpenSvr: 节点4(出口): 构造返回值
+    ConnApi->>ConnApi: 节点4(出口): 构造返回值
     
-    OpenSvr-->>Client: 同步返回执行结果(含各步骤详情)
+    ConnApi-->>Client: 同步返回执行结果(含各步骤详情)
+    Note right of ConnApi: (调试/测试运行场景下\n结果沿 open-server → web 回传)
     
     par 异步写入
-        OpenSvr->>Redis: 缓存执行记录(加速查询)
-        OpenSvr->>MySQL: 持久化执行记录/步骤
+        ConnApi->>Redis: 缓存执行记录(加速查询)
+        ConnApi->>MySQL: 持久化执行记录/步骤
     end
 ```
 
 **核心设计**:
-- **编排层**: FlowVersion 的 orchestration_config 以 JSON 格式存储完整编排信息
+- **服务拆分**: `connector-api` 独立 Spring Boot 工程，仅承载运行时与调试接口；`open-server` 承载所有管理类能力（CRUD/版本/监控查询）
+- **编排层**: FlowVersion 的 orchestration_config 以 JSON 格式存储完整编排信息（由 open-server 写入，connector-api 只读）
 - **执行引擎**: 顺序同步执行器（SyncSequentialExecutor），从入口节点开始，依次执行每个节点，最后执行出口节点，**同步返回结果**
 - **调度**: 无消息队列——HTTP 触发直接在请求线程中执行（通过异步执行器防止长时间阻塞 Tomcat 线程）
-- **认证凭证**: 连接器版本中存储认证配置（plan-db 设计为独立表），运行时自动加载注入
+- **调试通道**: connector-api 暴露内部调试接口（仅限 open-server 内网调用），open-server 收到前端调试/测试运行请求后转发到该接口，避免运行时逻辑重复实现
+- **认证凭证**: 连接器版本中存储认证配置（plan-db 设计为独立表），运行时在 connector-api 进程内自动加载注入
 
 **优点**:
-- 与现有单体架构完全兼容，开发成本最低
+- 运行时独立部署（connector-api），与管理类操作进程隔离，**资源/故障/扩缩容互不影响**
+- 调试接口收口在 connector-api，避免运行时逻辑在 open-server / connector-api 两边重复
 - 无额外框架依赖（无 MQS，无 Quartz），团队熟悉现有技术栈
 - 同步执行模型简化了所有数据流——无需处理异步回调/状态查询
 - 执行上下文清晰，调试简单——单线程顺序执行，输入输出可追踪
 - 执行性能可预测（线性 O(n) 复杂度）
-- 可平滑演进到 V1（增加异步分支/循环时再引入 MQS）
+- 可平滑演进到 V1（增加异步分支/循环时只需改造 connector-api，open-server 保持稳定）
 
 **缺点**:
-- 长时间运行的连接流会阻塞请求线程（通过超时机制+异步执行器缓解）
-- 高并发场景下，单实例执行器可能成为瓶颈（MVP 阶段目标：≥10 并发，可接受）
+- 新增一个独立服务（connector-api），运维实例数 +1
+- open-server 与 connector-api 之间需新增一条内部 HTTP 调用链路（调试接口），需做好鉴权与重试
+- 长时间运行的连接流会阻塞 connector-api 的请求线程（通过超时机制+异步执行器缓解）
+- 高并发场景下，单实例执行器可能成为瓶颈（MVP 阶段目标：≥10 并发，可接受；可通过水平扩容 connector-api 实例缓解）
 - 缺乏标准化的流程定义格式（非 BPMN 标准）
 - 复杂编排场景（并行/分支/循环）需要在 V1 重构执行器
 
@@ -365,9 +433,9 @@ sequenceDiagram
 
 2. **同步执行简化架构**: 相比 spec v3.x 的异步执行模型，v4.0 的同步执行大幅降低了运行时复杂度——无需消息队列、无需事件订阅、无需状态轮询。执行结果直接通过 HTTP 响应返回，调用方无需等待异步回调。
 
-3. **最小化技术债务**: 不引入额外框架（Spring StateMachine / MQS），使用纯 Java 实现，与现有架构一致。
+3. **最小化技术债务**: 不引入额外框架（Spring StateMachine / MQS），使用纯 Java 实现，与现有架构一致；同时**通过将运行时拆为独立服务 `connector-api`，避免管理与执行混在同一进程**导致后期难以拆分。
 
-4. **开发效率最优**: 团队可在现有 open-server 中新增 connector/flow/runtime/monitor 四个模块，复用已有的 MyBatis/MySQL/Redis 基础设施。
+4. **开发效率最优**: 团队可在现有 open-server 中新增 connector/flow/monitor 三个管理模块，同时启动 `connector-api` 新工程（基于现有 Spring Boot 脚手架）承载 runtime/http-trigger/debug-api 模块，复用已有的 MyBatis/MySQL/Redis 基础设施；前端所有页面统一落在 `wecodesite`，无需协调多前端项目。
 
 5. **调试友好**: 同步执行的每步输入/输出清晰，测试运行时可逐步验证，排查问题直观。
 
@@ -379,13 +447,15 @@ sequenceDiagram
 |-------|------|------|
 | 流引擎 | 轻量同步执行器（自研） | MVP 仅需线性同步编排，最简方案 |
 | 编排画布 | React Flow (@xyflow/react) | React-native, 轻量, TS 支持好 |
-| 运行时部署 | 嵌入 open-server（异步线程池隔离） | MVP 避免过早拆分，预留抽取路径 |
+| **运行时部署** | **独立服务 `connector-api`**（与 open-server 分离） | 职责隔离、故障隔离、独立扩缩容、便于 V1 演进 |
+| 调试/测试运行通道 | open-server 调用 connector-api 内部调试接口 | 运行时逻辑收口在 connector-api，避免双份实现 |
+| 前端归属 | 全部页面统一放在 wecodesite | 用户侧只对接一个前端入口 |
 | 执行模型 | **同步**（请求线程内执行） | spec v4.0 明确同步执行 |
 | 触发方式 | HTTP + 手动（同步） | MVP 范围限定 |
 | 执行上下文 | 方法调用参数传递（运行时）+ MySQL 持久化 | 同步执行无需 Redis 缓存上下文 |
 | 执行记录持久化 | MySQL（异步写入，不阻塞返回） | 确保执行结果快速返回 |
 | 凭证明文存储 | AES-256 加密存储, 界面脱敏 | 满足 NFR-010 安全要求 |
-| HTTP 触发入口 | open-server 新增 controller | 简单场景无需独立服务 |
+| HTTP 触发入口 | connector-api 新增 controller | 与运行时同进程，链路最短 |
 | Scope 权限 | **不集成**（移至 NG18，V1） | 本版本独立运行 |
 | 审批流程 | **不集成**（移至 NG19，V1） | 版本发布无需审批 |
 | 数据处理节点 | **加入 MVP** | spec v4.0 将数据处理节点纳入 MVP 范围 |
@@ -402,8 +472,11 @@ sequenceDiagram
 |------|---------|------|------|
 | **connector** | open-server | 新增模块 | 连接器管理 — CRUD、版本管理、连接配置管理 |
 | **flow** | open-server | 新增模块 | 连接流管理 — CRUD、版本管理、编排配置 |
-| **runtime** | open-server | 新增模块 | 运行时 — 同步调度执行、HTTP 触发入口、执行上下文 |
 | **monitor** | open-server | 新增模块 | 监控日志 — 执行历史查询 |
+| **debug-proxy** | open-server | 新增模块 | 调试代理 — 接收前端手动调试/测试运行请求并转发至 connector-api 调试接口 |
+| **runtime** | **connector-api** 🆕 | 新增模块 | 运行时 — 同步调度执行、执行上下文、节点执行器（连接器/数据处理） |
+| **http-trigger** | **connector-api** 🆕 | 新增模块 | HTTP 触发入口 — 对外暴露同步触发端点 |
+| **debug-api** | **connector-api** 🆕 | 新增模块 | 调试接口 — 供 open-server 内部调用（手动调试/测试运行） |
 | **connector** | wecodesite | 已有页面组 | 连接器目录/创建编辑/详情（已有实现，需补充） |
 | **flow** | wecodesite | 已有页面组 | 连接流列表/编排画布/详情/执行详情（已有实现，需补充） |
 | **monitor** | wecodesite | 新增页面组 | 执行历史查询面板 |
@@ -506,7 +579,11 @@ erDiagram
 
 ### 4.3 API 接口设计
 
-共 **14 个逻辑分组**（约 25 个 HTTP 端点），按模块归属：connector 模块 5 组、flow 模块 4 组、runtime 模块 3 组、monitor 模块 2 组。覆盖连接器/连接流的 CRUD、版本管理、连接配置/编排配置编辑与发布、HTTP 触发执行、手动触发执行、测试运行、执行历史查询等全部功能。
+共 **14 个逻辑分组**（约 25 个 HTTP 端点），按服务归属：
+- **open-server**: connector 模块 5 组、flow 模块 4 组、monitor 模块 2 组、debug-proxy 模块（对前端暴露的"手动调试/测试运行"等接口，内部转发至 connector-api）
+- **connector-api**: http-trigger 模块（对外同步触发）、debug-api 模块（对内调试接口）
+
+覆盖连接器/连接流的 CRUD、版本管理、连接配置/编排配置编辑与发布、HTTP 触发执行、手动触发执行、测试运行、执行历史查询等全部功能。
 
 > **与 spec v3.x 版 plan 的差异**：
 > - ❌ 移除 Scope 权限集成接口
@@ -547,10 +624,17 @@ open-app/
 │       ├── approval/              # 现有：审批管理（本版本不依赖）
 │       ├── connector/             # 🆕 连接器管理模块
 │       ├── flow/                  # 🆕 连接流管理模块
-│       ├── runtime/               # 🆕 运行时模块
-│       └── monitor/               # 🆕 监控模块
+│       ├── monitor/               # 🆕 监控模块
+│       └── debug/                 # 🆕 调试代理模块（转发至 connector-api 调试接口）
 │
-├── wecodesite/                                   # 前端应用
+├── connector-api/                                # 🆕 连接器运行时服务（新增独立工程）
+│   └── src/main/java/com/xxx/connector/
+│       ├── runtime/               # 🆕 同步调度执行引擎、执行上下文、节点执行器
+│       ├── trigger/               # 🆕 HTTP 触发入口（对外）
+│       ├── debug/                 # 🆕 调试接口（对内，供 open-server 调用）
+│       └── common/                # 🆕 公共组件（认证凭证加解密、共享 entity/mapper）
+│
+├── wecodesite/                                   # 前端应用（连接器平台所有页面）
 │   └── src/pages/ConnectPlatform/
 │       ├── Connector/             # ✅ 已有：连接器目录页面
 │       ├── ConnectorEditor/       # ✅ 已有：连接器创建/编辑页面
@@ -573,10 +657,17 @@ open-app/
 |------|---------|------|----------|------|----------|------|
 | **open-server** | connector | 连接器 CRUD、版本管理、连接配置管理 | MySQL + Redis(共享) | 18080 | /open-server | 无（不依赖其他模块） |
 | **open-server** | flow | 连接流 CRUD、版本管理、编排配置存储 | MySQL + Redis(共享) | 18080 | /open-server | connector 模块（引用连接器版本） |
-| **open-server** | runtime | 同步调度执行、HTTP 触发入口、执行上下文 | MySQL + Redis(共享) | 18080 | /open-server | flow 模块（读取编排配置） |
-| **open-server** | monitor | 执行历史查询、统计 | MySQL + Redis(共享) | 18080 | /open-server | runtime 模块（执行数据） |
+| **open-server** | monitor | 执行历史查询、统计（读取 connector-api 写入的执行记录） | MySQL + Redis(共享) | 18080 | /open-server | 共享 MySQL 中由 connector-api 写入的数据 |
+| **open-server** | debug | 调试代理：接收前端手动调试/测试运行请求并转发至 connector-api | — | 18080 | /open-server | connector-api（内部 HTTP） |
+| **connector-api** 🆕 | runtime | 同步调度执行、执行上下文、节点执行器（连接器/数据处理） | MySQL + Redis(共享) | 18180 | /connector-api | flow 数据（只读 MySQL 中的 orchestration_config） |
+| **connector-api** 🆕 | http-trigger | 对外 HTTP 触发入口，同步调用执行引擎 | — | 18180 | /connector-api | runtime 模块 |
+| **connector-api** 🆕 | debug-api | 内部调试接口，供 open-server 的 debug 模块调用 | — | 18180 | /connector-api | runtime 模块 |
 
-> 连接器平台的 4 个模块均部署在现有 open-server 中（端口 18080，上下文根 /open-server），复用 open-server 的 MySQL 和 Redis 实例。
+> **部署说明**：
+> - `open-server` 部署 connector/flow/monitor/debug 四个管理类模块，端口 18080
+> - `connector-api` 为**新增独立 Spring Boot 工程**，部署 runtime/http-trigger/debug-api 三个运行时模块，端口建议 18180（可调整），上下文根 `/connector-api`
+> - 两个服务**共享同一 MySQL 与 Redis 实例**，通过数据库实现状态共享（编排配置、执行记录）
+> - `open-server → connector-api` 走内网 HTTP，建议加共享 token 鉴权（具体方案详见 plan-api.md）
 
 ### 4.7 文件清单
 
@@ -608,21 +699,36 @@ open-app/
 | `modules/flow/mapper/FlowMapper.java` | 连接流 Mapper |
 | `modules/flow/mapper/FlowVersionMapper.java` | 版本 Mapper |
 
-#### open-server — runtime 模块
+#### open-server — runtime 调试代理模块（debug）
+
+> 运行时本体已迁移到 connector-api。open-server 仅保留**调试代理**：接收前端的手动调试/测试运行请求，转发至 connector-api 调试接口。
 
 | 文件 | 说明 |
 |------|------|
-| `modules/runtime/ExecutionController.java` | 手动触发、测试运行 |
-| `modules/runtime/HttpTriggerController.java` | HTTP 触发入口（同步调用） |
-| `modules/runtime/SyncSequentialExecutor.java` | 同步顺序执行引擎 |
-| `modules/runtime/ExecutionContext.java` | 执行上下文管理 |
-| `modules/runtime/NodeExecutor.java` | 节点执行器接口 |
-| `modules/runtime/ConnectorNodeExecutor.java` | 连接器节点执行器 |
-| `modules/runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器 |
-| `modules/runtime/entity/ExecutionRecord.java` | 执行记录实体 |
-| `modules/runtime/entity/ExecutionStep.java` | 执行步骤实体 |
-| `modules/runtime/entity/ConnectorAuthConfig.java` | 认证凭证实体 |
-| `modules/runtime/mapper/ExecutionRecordMapper.java` | 执行记录 Mapper |
+| `modules/debug/DebugController.java` | 前端入口：手动调试、测试运行 |
+| `modules/debug/DebugProxyService.java` | 调用 connector-api 调试接口（内部 HTTP 客户端） |
+| `modules/debug/client/ConnectorApiClient.java` | connector-api HTTP 客户端封装（含鉴权/重试/超时） |
+
+#### connector-api — 🆕 独立运行时服务（全新工程）
+
+| 文件 | 说明 |
+|------|------|
+| `runtime/SyncSequentialExecutor.java` | 同步顺序执行引擎 |
+| `runtime/ExecutionContext.java` | 执行上下文管理 |
+| `runtime/NodeExecutor.java` | 节点执行器接口 |
+| `runtime/ConnectorNodeExecutor.java` | 连接器节点执行器 |
+| `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器 |
+| `runtime/entity/ExecutionRecord.java` | 执行记录实体 |
+| `runtime/entity/ExecutionStep.java` | 执行步骤实体 |
+| `runtime/entity/ConnectorAuthConfig.java` | 认证凭证实体 |
+| `runtime/mapper/ExecutionRecordMapper.java` | 执行记录 Mapper |
+| `runtime/mapper/FlowVersionReadMapper.java` | FlowVersion 只读 Mapper（读取 orchestration_config） |
+| `trigger/HttpTriggerController.java` | HTTP 触发入口（同步调用） |
+| `debug/DebugApiController.java` | 调试接口（供 open-server 调用：手动调试/测试运行） |
+| `common/CredentialCipher.java` | 认证凭证 AES-256-GCM 加解密 |
+| `common/InternalAuthFilter.java` | 内部接口鉴权（仅允许 open-server 访问 debug-api） |
+| `ConnectorApiApplication.java` | Spring Boot 启动类 |
+| `pom.xml` / `application.yml` | 工程配置 |
 
 #### open-server — monitor 模块
 
@@ -660,9 +766,12 @@ open-app/
 
 | 项目 | 新增文件 | 修改文件 | 删除文件 |
 |------|:--------:|:--------:|:--------:|
-| open-server (4 个新模块) | 60 | 0 | 0 |
+| open-server (connector + flow + monitor + debug 4 个模块) | 约 35 | 0 | 0 |
+| connector-api 🆕（全新工程：runtime + trigger + debug + common） | 约 30（含工程脚手架） | 0 | 0 |
 | wecodesite（已有页面 + 新增补充） | 6（新增） + 3（已有需扩展） | 2 | 0 |
-| **合计** | **69** | **2** | **0** |
+| **合计** | **约 74** | **2** | **0** |
+
+> 📌 新增 connector-api 独立工程后，原"60 个 open-server 新增文件"被重新划分为：约 35 个留在 open-server（管理 + 调试代理），约 30 个迁移/新建到 connector-api（运行时 + 工程脚手架）。
 
 ---
 
@@ -672,11 +781,13 @@ open-app/
 
 | 风险 | 影响 | 概率 | 缓解措施 |
 |------|------|:----:|---------|
-| 同步执行长时间阻塞 Tomcat 线程 | 影响其他请求响应 | 中 | 使用异步线程池执行（`@Async`/`CompletableFuture`），设置超时（默认 30s，最大 5min），超时强制终止 |
+| 同步执行长时间阻塞 connector-api Tomcat 线程 | 影响 connector-api 其他请求响应（不影响 open-server 管理面） | 中 | connector-api 使用独立线程池执行（`@Async`/`CompletableFuture`），设置超时（默认 30s，最大 5min），超时强制终止；可水平扩容 connector-api 实例 |
 | 可视化编排画布前端复杂度高 | 工期延误 | 中 | MVP 限制线性编排（禁用分支/循环连接），使用 React Flow 的受限模式 |
 | 认证凭证加密存储和传输 | 安全漏洞 | 低 | 使用 AES-256-GCM 加密 + HTTPS + 界面脱敏显示 |
 | HTTP 触发 URL 安全 | 非法调用 | 低 | 随机不可预测路径 + 请求签名验证 + 限流（FR-024） |
 | 同步执行下目标 API 延迟高 | 请求超时 | 中 | 可配置超时（最小 1s，最大 5min），超时返回「执行超时」状态 |
+| **open-server ↔ connector-api 内部通信失败** | 手动调试/测试运行不可用 | 低 | 内部 HTTP 加共享 token 鉴权 + 超时重试（默认 1 次）+ 熔断降级（调试不可用时前端提示重试，不影响管理面 CRUD） |
+| **connector-api 独立工程引入运维负担** | 部署/监控成本增加 | 低 | 复用 open-server 的部署流水线模板；MySQL/Redis 复用同一实例；接入现有监控告警 |
 
 ### 5.2 依赖风险
 
@@ -710,20 +821,22 @@ open-app/
 
 | 迭代 | 范围 | FR 范围 | 周期 | 交付价值 |
 |------|------|---------|:----:|---------|
-| **迭代 1** | 连接器管理模块 | FR-001 ~ FR-008 | 2-3 周 | 可创建/编辑/发布连接器，浏览连接器目录 |
-| **迭代 2** | 连接流管理模块 | FR-009 ~ FR-020 | 3-4 周 | 可创建连接流、拖拽编排、保存草稿、发布版本 |
-| **迭代 3** | 运行时模块 | FR-021 ~ FR-024 | 2-3 周 | 可同步执行连接流（HTTP 触发+手动触发），错误处理+限流 |
-| **迭代 4** | 监控模块 | FR-025 | 1-2 周 | 可查看执行历史、执行详情、步骤输入输出 |
-| **集成测试** | 全链路联调 + E2E | 全部 | 1-2 周 | 端到端验证 |
-| **合计** | | | **8-12 周** | |
+| **迭代 0** | 🆕 connector-api 工程脚手架（Spring Boot 工程初始化、共享 entity/mapper、内部鉴权、部署流水线） | — | 0.5-1 周 | connector-api 可启动、可被 open-server 调通 |
+| **迭代 1** | 连接器管理模块（open-server） | FR-001 ~ FR-008 | 2-3 周 | 可创建/编辑/发布连接器，浏览连接器目录 |
+| **迭代 2** | 连接流管理模块（open-server） | FR-009 ~ FR-020 | 3-4 周 | 可创建连接流、拖拽编排、保存草稿、发布版本 |
+| **迭代 3** | 运行时模块（connector-api：runtime + http-trigger + debug-api）+ open-server 调试代理（debug） | FR-021 ~ FR-024 | 2-3 周 | 可同步执行连接流（HTTP 触发+手动触发），错误处理+限流 |
+| **迭代 4** | 监控模块（open-server） | FR-025 | 1-2 周 | 可查看执行历史、执行详情、步骤输入输出 |
+| **集成测试** | 全链路联调 + E2E（含 open-server ↔ connector-api 通信） | 全部 | 1-2 周 | 端到端验证 |
+| **合计** | | | **8.5-13 周** | |
 
 ### 关键里程碑
 
 | 里程碑 | 时间点 | 验收标准 |
 |-------|--------|---------|
+| M0: connector-api 可联调 | 迭代 0 完成 | connector-api 工程启动成功，open-server 可通过内部 HTTP 调通调试接口（mock 实现） |
 | M1: 连接器可用 | 迭代 1 完成 | 可创建/编辑/发布连接器，连接配置完整 |
 | M2: 连接流可编排 | 迭代 2 完成 | 可拖拽创建连接流（含数据处理节点），保存草稿，发布版本 |
-| M3: 连接流可执行 | 迭代 3 完成 | 连接流可被 HTTP/手动触发同步执行，返回完整结果 |
+| M3: 连接流可执行 | 迭代 3 完成 | 连接流可被 HTTP（connector-api 直连）/手动调试（open-server → connector-api 调试接口）同步执行，返回完整结果 |
 | M4: 可运维 | 迭代 4 完成 | 可查看执行历史、步骤详情 |
 | M5: MVP 就绪 | 集成测试完成 | 完成端到端验证，满足所有 MVP 验收标准 |
 
@@ -749,9 +862,9 @@ open-app/
 |-----|------|------|
 | `ADR-001.md` | 轻量顺序执行引擎技术方案 | ACCEPTED |
 | `ADR-002.md` | React Flow 可视化编排画布 | ACCEPTED |
-| `ADR-003.md` | 运行时架构：单体嵌入 + 模块化隔离 | ACCEPTED |
+| `ADR-003.md` | 运行时架构：**独立部署 `connector-api` 服务**（v2.0 修订，原"单体嵌入 + 模块化隔离"已 SUPERSEDED） | ACCEPTED（v2.0） |
 
-> 💡 现有 ADR 的核心决策（轻量顺序引擎 / React Flow / 单体嵌入）仍然有效，无需更改。主要变更点：执行模型从异步改为同步（已在方案和架构中更新）。
+> 💡 现有 ADR-001 / ADR-002 的核心决策（轻量顺序引擎 / React Flow）仍然有效，无需更改。**ADR-003 已在 v2.0 修订**：运行时从「嵌入 open-server」改为「独立部署为 `connector-api` 服务」，open-server 通过内部调试接口调用 connector-api 完成手动调试/测试运行，前端统一收归 wecodesite。其它变更点：执行模型从异步改为同步（已在方案和架构中更新）。
 
 ### 与 spec v3.x 版 plan 的主要变更
 
@@ -766,8 +879,12 @@ open-app/
 | 监控范围 | 全指标仪表盘 | 执行历史查询 |
 | 错误处理 | 审批流程处理 | 默认错误处理（FR-023） |
 | 限流 | 无 | 默认限流（FR-024） |
-| 预估工期 | 10-14 周 | **8-12 周** |
+| 预估工期 | 10-14 周 | **8.5-13 周** |
 | 新增依赖 | Quartz + MQS | 无额外依赖 |
+| **运行时部署** | 嵌入 open-server | **独立服务 `connector-api`**（与 open-server 拆分） |
+| **服务数量** | 1（open-server 单体） | 2（open-server + connector-api） |
+| **调试/测试运行链路** | open-server 内部调用 | open-server → connector-api 调试接口（内部 HTTP） |
+| **前端归属** | 散落（含 open-web） | 统一在 wecodesite |
 
 ### 下一步
 👉 运行 `@sddu-tasks 连接器平台` 开始任务分解

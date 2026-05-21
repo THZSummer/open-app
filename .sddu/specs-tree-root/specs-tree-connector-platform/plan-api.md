@@ -630,38 +630,42 @@
 
 ## 6. 接口编号总表
 
-| 编号 | 方法 | 路径 | 所属模块 | FR |
-|------|------|------|---------|----|
-| API-001 | POST | `/api/v1/connectors` | connector | FR-001 |
-| API-002 | GET | `/api/v1/connectors` | connector | FR-004 |
-| API-003 | GET | `/api/v1/connectors/{connectorId}` | connector | FR-004 |
-| API-004 | PUT | `/api/v1/connectors/{connectorId}` | connector | FR-002 |
-| API-005 | DELETE | `/api/v1/connectors/{connectorId}` | connector | FR-003 |
-| API-006 | GET | `/api/v1/connectors/{connectorId}/versions` | connector | FR-007 |
-| API-007 | GET | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | FR-005 |
-| API-008 | PUT | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | FR-006 |
-| API-009 | POST | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | connector | FR-008 |
-| API-010 | POST | `/api/v1/flows` | flow | FR-009 |
-| API-011 | GET | `/api/v1/flows` | flow | FR-012 |
-| API-012 | GET | `/api/v1/flows/{flowId}` | flow | FR-016 |
-| API-013 | PUT | `/api/v1/flows/{flowId}` | flow | FR-010 |
-| API-014 | DELETE | `/api/v1/flows/{flowId}` | flow | FR-011 |
-| API-015 | POST | `/api/v1/flows/{flowId}/deploy` | flow | FR-013 |
-| API-016 | POST | `/api/v1/flows/{flowId}/start` | flow | FR-014 |
-| API-017 | POST | `/api/v1/flows/{flowId}/stop` | flow | FR-015 |
-| API-018 | GET | `/api/v1/flows/{flowId}/versions` | flow | FR-018 |
-| API-019 | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | FR-016 |
-| API-020 | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | FR-017 |
-| API-021 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | flow | FR-019 |
-| API-022 | POST | `/api/v1/flows/{flowId}/executions` | runtime | FR-022 |
-| API-023 | POST | `/api/v1/flows/{flowId}/test-run` | runtime | FR-020 |
-| API-024 | POST | `/api/v1/trigger/{flowId}/{triggerToken}` | runtime | FR-021 |
-| API-025 | GET | `/api/v1/flows/{flowId}/executions` | runtime | FR-025 |
-| API-026 | GET | `/api/v1/executions/{executionId}` | runtime | FR-025 |
+| 编号 | 方法 | 路径 | 所属模块 | 所属服务 | FR |
+|------|------|------|---------|---------|----|
+| API-001 | POST | `/api/v1/connectors` | connector | open-server | FR-001 |
+| API-002 | GET | `/api/v1/connectors` | connector | open-server | FR-004 |
+| API-003 | GET | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-004 |
+| API-004 | PUT | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-002 |
+| API-005 | DELETE | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-003 |
+| API-006 | GET | `/api/v1/connectors/{connectorId}/versions` | connector | open-server | FR-007 |
+| API-007 | GET | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | open-server | FR-005 |
+| API-008 | PUT | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | open-server | FR-006 |
+| API-009 | POST | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | connector | open-server | FR-008 |
+| API-010 | POST | `/api/v1/flows` | flow | open-server | FR-009 |
+| API-011 | GET | `/api/v1/flows` | flow | open-server | FR-012 |
+| API-012 | GET | `/api/v1/flows/{flowId}` | flow | open-server | FR-016 |
+| API-013 | PUT | `/api/v1/flows/{flowId}` | flow | open-server | FR-010 |
+| API-014 | DELETE | `/api/v1/flows/{flowId}` | flow | open-server | FR-011 |
+| API-015 | POST | `/api/v1/flows/{flowId}/deploy` | flow | open-server | FR-013 |
+| API-016 | POST | `/api/v1/flows/{flowId}/start` | flow | open-server | FR-014 |
+| API-017 | POST | `/api/v1/flows/{flowId}/stop` | flow | open-server | FR-015 |
+| API-018 | GET | `/api/v1/flows/{flowId}/versions` | flow | open-server | FR-018 |
+| API-019 | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | open-server | FR-016 |
+| API-020 | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | open-server | FR-017 |
+| API-021 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | flow | open-server | FR-019 |
+| API-022 | POST | `/api/v1/flows/{flowId}/executions` | runtime（手动调试） | **open-server** debug 代理 → **connector-api** debug-api | FR-022 |
+| API-023 | POST | `/api/v1/flows/{flowId}/test-run` | runtime（测试运行） | **open-server** debug 代理 → **connector-api** debug-api | FR-020 |
+| API-024 | POST | `/api/v1/trigger/{flowId}/{triggerToken}` | runtime（HTTP 触发） | **connector-api** http-trigger（对外消费方直连） | FR-021 |
+| API-025 | GET | `/api/v1/flows/{flowId}/executions` | monitor（执行列表查询） | **open-server** monitor | FR-025 |
+| API-026 | GET | `/api/v1/executions/{executionId}` | monitor（执行详情查询） | **open-server** monitor | FR-025 |
 
 > **总计**：26 个 HTTP 端点，覆盖 25 个 FR（FR-025 对应 2 个端点：执行列表 + 执行详情）
 >
-> **与 v1.x 的差异**：从 ~33 个端点精简为 26 个，移除审批集成（3 个）、Scope 集成（1 个）、MQS 主题（4 个）、监控仪表盘（2 个）、事件/定时/Webhook 触发接口（3 个）
+> **端点服务归属**（plan.md v2.0 修订后）：
+> - **open-server**（端口 18080，上下文根 `/open-server`）：API-001 ~ API-021（管理）+ API-022/API-023（前端调试代理）+ API-025/API-026（监控查询）
+> - **connector-api**（端口 18180，上下文根 `/connector-api`）：API-024（对外 HTTP 触发）+ 内部调试接口（被 API-022/API-023 转发调用，端点路径详见 plan-api §debug-api 章节后续补充）
+>
+> **与 v1.x 的差异**：从 ~33 个端点精简为 26 个，移除审批集成（3 个）、Scope 集成（1 个）、MQS 主题（4 个）、监控仪表盘（2 个）、事件/定时/Webhook 触发接口（3 个）；同时**新增 1 条内部调试接口**（connector-api 暴露给 open-server 内网调用）
 
 ---
 
