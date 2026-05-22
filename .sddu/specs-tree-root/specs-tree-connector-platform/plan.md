@@ -758,7 +758,7 @@ erDiagram
         varchar description_cn "中文描述（VARCHAR(1000)，选填）"
         varchar description_en "英文描述（VARCHAR(1000)，选填）"
         varchar icon_file_id "图标文件 ID（VARCHAR(128)，选填）"
-        tinyint lifecycle_status "0=stopped 1=running (FR-013~015)"
+        tinyint lifecycle_status "0=undeployed 1=running 2=stopped (FR-013~015)"
         bigint current_published_version_id "当前部署的已发布版本 ID（逻辑外键，nullable）"
         datetime create_time
         datetime last_update_time
@@ -919,7 +919,7 @@ erDiagram
 | `connector_t` | `connector_type` | 1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1） | 协议类型 |
 | `connector_t` | `status` | 0=disabled, 1=active | 连接器启用状态 |
 | `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
-| `flow_t` | `lifecycle_status` | 0=stopped, 1=running | 对应 FR-013~015 部署/启动/停止 |
+| `flow_t` | `lifecycle_status` | 0=undeployed, 1=running, 2=stopped | 对应 FR-013~015 部署/启动/停止 |
 | `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
 | `execution_record_t` | `trigger_type` | 1=http, 2=manual, 3=test | 触发方式 |
 | `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | MVP 5 个值（partial/cancelled 留 V1） |

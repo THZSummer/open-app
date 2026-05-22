@@ -98,7 +98,7 @@
 | `connector_t` | `connector_type` | 1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1） | 协议类型 |
 | `connector_t` | `status` | 0=disabled, 1=active | 连接器启用状态 |
 | `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
-| `flow_t` | `lifecycle_status` | 0=stopped, 1=running | 对应 FR-013~015 部署/启动/停止 |
+| `flow_t` | `lifecycle_status` | 0=undeployed（未部署）, 1=running（运行中）, 2=stopped（已停止） | 对应 FR-013~015 部署/启动/停止；初始态 0，撤除部署回到 0 |
 | `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
 | `execution_record_t` | `trigger_type` | 1=http, 2=manual, 3=test | 触发方式（MVP） |
 | `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | **MVP 5 个值**（partial/cancelled 留 V1） |
@@ -334,7 +334,7 @@ CREATE TABLE `openplatform_v2_cp_flow_t` (
   `description_cn`                  varchar(1000) DEFAULT NULL              COMMENT '中文描述（选填）',
   `description_en`                  varchar(1000) DEFAULT NULL              COMMENT '英文描述（选填）',
   `icon_file_id`                    varchar(128)  DEFAULT NULL              COMMENT '图标文件 ID（选填；系统解析为可访问 URL）',
-  `lifecycle_status`                tinyint(10)   NOT NULL DEFAULT 0        COMMENT '生命周期状态：0=stopped, 1=running（对应 FR-013~015 部署/启动/停止）',
+  `lifecycle_status`                tinyint(10)   NOT NULL DEFAULT 0        COMMENT '生命周期状态：0=undeployed（未部署）, 1=running（运行中）, 2=stopped（已停止）；对应 FR-013~015 部署/启动/停止',
   `current_published_version_id`    bigint(20)    DEFAULT NULL              COMMENT '当前部署的已发布版本 ID（逻辑外键，nullable，HTTP 触发查找路径）',
   `create_time`                     datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `last_update_time`                datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -347,27 +347,36 @@ CREATE TABLE `openplatform_v2_cp_flow_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接流基本信息表';
 ```
 
-**lifecycle_status 状态机**（对应 FR-013 部署 / FR-014 启动 / FR-015 停止）：
+**lifecycle_status 状态机**（对应 FR-013 部署 / FR-014 启动 / FR-015 停止 / 撤除部署）：
 
 ```mermaid
 stateDiagram-v2
-    [*] --> stopped : 创建（默认 stopped=0）
-    stopped --> running : 部署 deploy（API-015，设置 current_published_version_id 并启动）
-    stopped --> running : 启动 start（API-016，需 current_published_version_id 非空）
-    running --> stopped : 停止 stop（API-017）
-    running --> running : 部署新版本（API-015，热切换 current_published_version_id）
+    [*] --> undeployed : 创建（默认 undeployed=0）
+    undeployed --> running : 部署 deploy（API-015，设置 current_published_version_id 并进入 running）
+    undeployed --> [*] : 删除（物理删除，从未部署过）
+    running --> stopped : 停止 stop（API-017，停止但不撤除指针）
+    stopped --> running : 启动 start（API-016，重新进入 running）
+    running --> undeployed : 撤除部署（API-015 undeploy，清空 current_published_version_id，回到初始态）
+    stopped --> undeployed : 撤除部署（同上）
     stopped --> [*] : 删除（物理删除，含所有版本与执行记录）
+    running --> running : 部署新版本（API-015，热切换 current_published_version_id，保持 running）
 ```
 
-| 状态 | 数字 | 业务含义 | HTTP 触发 | 允许的操作 |
-|------|:----:|---------|:--------:|-----------|
-| `stopped` | 0 | 已停止，未部署或主动停止 | ❌ 拒绝（返回 403）| 编辑 / 部署 / 启动 / 删除 |
-| `running` | 1 | 运行中，可接收 HTTP 触发 | ✅ 接受 | 编辑 / 部署新版本（热切换）/ 停止 |
+| 状态 | 数字 | 类型 | 业务含义 | HTTP 触发 | 允许的操作 |
+|------|:----:|:----:|---------|:--------:|-----------|
+| `undeployed` | 0 | **初始态/回归态** | 从未部署过，或撤除部署后回到此状态；`current_published_version_id` 为空 | ❌ 拒绝 | 编辑 / 部署 / 删除 |
+| `running` | 1 | **活跃态** | 部署后运行中，可接收 HTTP 触发；`current_published_version_id` 非空 | ✅ 接受 | 编辑 / 部署新版本（热切换）/ 停止 / 撤除部署 |
+| `stopped` | 2 | **挂起态** | 曾部署过但主动停止；`current_published_version_id` 保留指针但 HTTP 触发返回 403 | ❌ 拒绝（返回 403） | 编辑 / 启动 / 部署新版本 / 撤除部署 / 删除 |
 
-> 💡 **部署 = 启动**（FR-013/014 合并）：部署一个版本即设置 `current_published_version_id` 指针 + 切换为 running 状态；可单独 start/stop（API-016/017）切换运行状态而不变更指针。
+> 💡 **部署与撤除**：
+> - **部署**（deploy）：没有 `current_published_version_id` 时 → 设指针 + 进入 running
+> - **热切换**（deploy 新版本）：已有指针的 running/stopped → 仅改指针值，保持原状态
+> - **启动**（start）：仅 stopped → running，不改指针
+> - **停止**（stop）：仅 running → stopped，不改指针
+> - **撤除部署**（undeploy）：清空 `current_published_version_id` → 回到 undeployed 初始态
 
 
-> **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `flow_id varchar(32)`；③ `name` → `name_cn`/`name_en` 双语；④ `description varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语；⑤ `status enabled/disabled` → `lifecycle_status` TINYINT (0=stopped, 1=running)；⑥ **新增 `current_published_version_id` 指针**（v2.4，HTTP 触发查找路径，借鉴 PA flowversions + 钉钉模式）；⑦ 删除 `is_deleted`；⑧ 索引 `idx_current_published_version_id` 用于 HTTP 触发查找。
+> **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `flow_id varchar(32)`；③ `name` → `name_cn`/`name_en` 双语；④ `description varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语；⑤ `status enabled/disabled` → `lifecycle_status` TINYINT (0=undeployed, 1=running, 2=stopped)；⑥ **新增 `current_published_version_id` 指针**（v2.4，HTTP 触发查找路径，借鉴 PA flowversions + 钉钉模式）；⑦ 删除 `is_deleted`；⑧ 索引 `idx_current_published_version_id` 用于 HTTP 触发查找。
 
 ### 3.4 openplatform_v2_cp_flow_version_t — 连接流版本（含编排配置 + 触发器内嵌）
 
