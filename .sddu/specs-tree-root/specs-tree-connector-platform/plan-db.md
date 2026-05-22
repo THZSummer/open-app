@@ -97,7 +97,7 @@
 | 表 | 字段 | 枚举值 | 说明 |
 |----|------|--------|------|
 | `connector_t` | `connector_type` | 1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1） | 协议类型 |
-| `connector_t` | `status` | 0=disabled, 1=active | 连接器启用状态 |
+| `connector_t` | `status` | 保留字段（默认 1），本期不定义业务语义 | 未来可用于控制连接器是否可被连接流引用等 |
 | `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
 | `flow_t` | `lifecycle_status` | 0=undeployed（未部署）, 1=running（运行中）, 2=stopped（已停止） | 对应 FR-013~015 部署/启动/停止；初始态 0，撤除部署回到 0 |
 | `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
@@ -187,7 +187,7 @@ CREATE TABLE `openplatform_v2_cp_connector_t` (
   `description_en`    varchar(1000) DEFAULT NULL              COMMENT '英文描述（选填）',
   `icon_file_id`      varchar(128)  DEFAULT NULL              COMMENT '图标文件 ID（选填；系统解析为可访问 URL）',
   `connector_type`    tinyint(10)   NOT NULL DEFAULT 1        COMMENT '协议类型：1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1）',
-  `status`            tinyint(10)   NOT NULL DEFAULT 1        COMMENT '状态：0=disabled, 1=active',
+  `status`            tinyint(10)   NOT NULL DEFAULT 1        COMMENT '状态：预留字段（默认 1），本期不使用，未来可用于控制连接器是否可被连接流引用等业务',
   `create_time`       datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `last_update_time`  datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   `create_by`         varchar(100)  DEFAULT NULL,
@@ -199,26 +199,10 @@ CREATE TABLE `openplatform_v2_cp_connector_t` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器基本信息表';
 ```
 
-**status 状态机**：
-
-```mermaid
-stateDiagram-v2
-    [*] --> active : 创建（默认 active=1）
-    active --> disabled : 管理员禁用
-    disabled --> active : 管理员启用
-    active --> [*] : 删除（物理删除）
-    disabled --> [*] : 删除（物理删除）
-```
-
-| 状态 | 数字 | 业务含义 | 允许的操作 |
-|------|:----:|---------|-----------|
-| `active` | 1 | 连接器启用，可被连接流引用、可创建新版本 | 编辑基本信息 / 创建版本 / 禁用 / 删除 |
-| `disabled` | 0 | 连接器禁用，已被引用的版本仍可执行（保持向后兼容），但不可被新连接流引用 | 启用 / 删除 |
-
-> 💡 **MVP 简化**：禁用不影响已部署的连接流执行（凭证不存储，连接器版本本身是不可变快照）；V1 可扩展"禁用即阻止执行"模式。
+**status 状态**：字段预留，本期不定义具体流转逻辑，默认值 `1`。未来可按业务需要定义（如 `0=不可用` / `1=可用`，控制连接器是否可被连接流引用等）。
 
 
-> **变更说明**（相对 v2.0）：① 表名加 `openplatform_v2_cp_` 前缀 + `_t` 后缀；② 删除 `connector_id varchar(32)`（直接用 BIGINT `id` 作业务标识）；③ `name` → `name_cn`/`name_en` 双语；④ `description varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语；⑤ `connector_type`/`status` 从 varchar 改为 TINYINT(10)；⑥ 审计字段 `created_at/updated_at/created_by/updated_by` → `create_time/last_update_time/create_by/last_update_by`；⑦ 删除 `is_deleted`（MVP 物理删除）。
+> **变更说明**（相对 v2.0）：① 表名加 `openplatform_v2_cp_` 前缀 + `_t` 后缀；② 删除 `connector_id varchar(32)`（直接用 BIGINT `id` 作业务标识）；③ `name` → `name_cn`/`name_en` 双语；④ `description varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语；⑤ `connector_type`/`status` 从 varchar 改为 TINYINT(10)，`status` 改为预留字段（默认 1）；⑥ 审计字段 `created_at/updated_at/created_by/updated_by` → `create_time/last_update_time/create_by/last_update_by`；⑦ 删除 `is_deleted`（MVP 物理删除）。
 
 ### 3.2 openplatform_v2_cp_connector_version_t — 连接器版本
 
