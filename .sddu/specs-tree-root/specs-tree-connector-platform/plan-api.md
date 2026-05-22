@@ -919,30 +919,27 @@
       "descriptionEn": "Auto notify OA system upon receiving IM messages"
     },
     "orchestrationConfig": {
-      "trigger": {
-        "type": "http",
-        "authTypeSchema": {
-          "type": "SYSTOKEN",
-          "fields": [
-            { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-          ]
-        },
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "sender": { "type": "string" },
-            "content": { "type": "string" }
-          },
-          "required": ["sender", "content"]
-        },
-        "rateLimit": { "maxQps": 100 }
-      },
       "nodes": [
         {
-          "id": "node_entry",
-          "type": "entry",
+          "id": "node_trigger",
+          "type": "trigger",
           "labelCn": "接收请求",
           "labelEn": "Receive Request",
+          "authTypeSchema": {
+            "type": "SYSTOKEN",
+            "fields": [
+              { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+            ]
+          },
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "sender": { "type": "string" },
+              "content": { "type": "string" }
+            },
+            "required": ["sender", "content"]
+          },
+          "rateLimit": { "maxQps": 100 },
           "position": { "x": 100, "y": 200 }
         },
         {
@@ -967,7 +964,7 @@
         }
       ],
       "edges": [
-        { "id": "e1", "sourceNodeId": "node_entry", "targetNodeId": "node_1" },
+        { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
         { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit" }
       ]
     },
@@ -982,38 +979,83 @@
 
 #### #20 PUT /api/v1/flows/{flowId}/versions/{versionId} — 保存编排配置
 
-> ⚠️ **触发器配置内嵌于编排 JSON**（v2.7.3 决策，不单独建表）：`orchestrationConfig.trigger` 包含触发类型、认证类型 schema（**仅声明类型，不含凭证值**）、入参 Schema、限流。
+> ⚠️ **触发器配置内嵌于编排 JSON**（v2.7.3 决策，不单独建表）：`orchestrationConfig.nodes` 中 `type="trigger"` 的节点包含触发类型、认证类型 schema（**仅声明类型，不含凭证值**）、入参 Schema、限流。
 
 ```json
 // Request — orchestrationConfig 全文替换
 {
   "orchestrationConfig": {
-    "trigger": {
-      "type": "http",
-      "authTypeSchema": {
-        "type": "SYSTOKEN",
-        "fields": [
-          { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-        ]
-      },
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "sender": { "type": "string" },
-          "content": { "type": "string" }
+    "nodes": [
+      {
+        "id": "node_trigger",
+        "type": "trigger",
+        "labelCn": "接收请求",
+        "labelEn": "Receive Request",
+        "authTypeSchema": {
+          "type": "SYSTOKEN",
+          "fields": [
+            { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+          ]
         },
-        "required": ["sender", "content"]
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sender": { "type": "string" },
+            "content": { "type": "string" }
+          },
+          "required": ["sender", "content"]
+        },
+        "rateLimit": { "maxQps": 100 },
+        "position": { "x": 100, "y": 200 }
       },
-      "rateLimit": {
-        "maxQps": 100
+      {
+        "id": "node_1",
+        "type": "connector",
+        "labelCn": "发送通知",
+        "labelEn": "Send Notification",
+        "connectorVersionId": "9876543210123456789",
+        "inputMapping": {
+          "receiver": "${trigger.sender}",
+          "content": "${trigger.content}"
+        },
+        "position": { "x": 350, "y": 200 }
+      },
+      {
+        "id": "node_exit",
+        "type": "exit",
+        "labelCn": "返回结果",
+        "labelEn": "Return Result",
+        "outputFields": ["result.msgId", "result.code"],
+        "position": { "x": 650, "y": 200 }
       }
+    ],
+    "edges": [
+      { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
+      { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit" }
+    ]
+  }
     },
     "nodes": [
       {
-        "id": "node_entry",
-        "type": "entry",
+        "id": "node_trigger",
+        "type": "trigger",
         "labelCn": "接收请求",
         "labelEn": "Receive Request",
+        "authTypeSchema": {
+          "type": "SYSTOKEN",
+          "fields": [
+            { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+          ]
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sender": { "type": "string" },
+            "content": { "type": "string" }
+          },
+          "required": ["sender", "content"]
+        },
+        "rateLimit": { "maxQps": 100 },
         "position": { "x": 100, "y": 200 }
       },
       {
@@ -1051,7 +1093,7 @@
       }
     ],
     "edges": [
-      { "id": "e1", "sourceNodeId": "node_entry", "targetNodeId": "node_1" },
+      { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
       { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_2" },
       { "id": "e3", "sourceNodeId": "node_2", "targetNodeId": "node_exit" }
     ]
@@ -1071,7 +1113,7 @@
 }
 ```
 
-> 💡 **节点/连线 id 字段说明**：编排内部使用字符串 UUID（如 `node_entry`/`node_1`/`e1`），由前端编排画布生成，仅在单个 orchestrationConfig 内部唯一（参考 plan-db.md §6.2）。
+> 💡 **节点/连线 id 字段说明**：编排内部使用字符串 UUID（如 `node_trigger`/`node_1`/`e1`），由前端编排画布生成，仅在单个 orchestrationConfig 内部唯一（参考 plan-db.md §6.2）。
 
 > 💡 **连接器版本引用 `connectorVersionId`**：使用 BIGINT 雪花 ID 转 string，对应 `connector_version_t.id`。
 
@@ -1147,7 +1189,7 @@
       {
         "stepId": "2233445566778899001",
         "stepOrder": 1,
-        "nodeId": "node_entry",
+        "nodeId": "node_trigger",
         "nodeNameCn": "接收请求",
         "nodeNameEn": "Receive Request",
         "nodeType": 1,
@@ -1216,7 +1258,7 @@
     "status": 3,
     "errorMessage": "节点 '发送通知' 执行失败: HTTP 503 服务不可用",
     "steps": [
-      { "nodeId": "node_entry", "status": 0, "...": "..." },
+      { "nodeId": "node_trigger", "status": 0, "...": "..." },
       {
         "nodeId": "node_1",
         "nodeNameCn": "发送通知",
@@ -1399,7 +1441,7 @@
       {
         "stepId": "2233445566778899001",
         "stepOrder": 1,
-        "nodeId": "node_entry",
+        "nodeId": "node_trigger",
         "nodeNameCn": "接收请求",
         "nodeNameEn": "Receive Request",
         "nodeType": 1,

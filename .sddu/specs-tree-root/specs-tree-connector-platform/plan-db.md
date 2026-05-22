@@ -421,32 +421,29 @@ stateDiagram-v2
 
 ```json
 {
-  "trigger": {
-    "type": "http",
-    "authTypeSchema": {
-      "type": "SYSTOKEN",
-      "fields": [
-        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-      ]
-    },
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "sender": { "type": "string" },
-        "content": { "type": "string" }
-      },
-      "required": ["sender", "content"]
-    },
-    "rateLimit": {
-      "maxQps": 100
-    }
-  },
   "nodes": [
     {
-      "id": "node_entry",
-      "type": "entry",
+      "id": "node_trigger",
+      "type": "trigger",
       "labelCn": "接收请求",
       "labelEn": "Receive Request",
+      "authTypeSchema": {
+        "type": "SYSTOKEN",
+        "fields": [
+          { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+        ]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sender": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": ["sender", "content"]
+      },
+      "rateLimit": {
+        "maxQps": 100
+      },
       "position": { "x": 100, "y": 200 }
     },
     {
@@ -484,7 +481,7 @@ stateDiagram-v2
     }
   ],
   "edges": [
-    { "id": "e1", "sourceNodeId": "node_entry", "targetNodeId": "node_1" },
+    { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
     { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_2" },
     { "id": "e3", "sourceNodeId": "node_2", "targetNodeId": "node_exit" }
   ]
@@ -502,7 +499,7 @@ stateDiagram-v2
 > - 凭证不持久化（v2.6 决策）→ 无 `signing_secret`/`trigger_token` 等独立运维字段
 > - 触发器仅声明认证类型 schema → 无需独立 B+ 树索引查找
 > - 触发器配置本就是编排定义的一部分 → 跟随 `flow_version_t` 快照便于回滚
-> - HTTP 路由查找：`flow_id` → `flow_t.current_published_version_id` → `flow_version_t.orchestration_config.trigger`，2 次主键索引查询，性能完全够用
+> - HTTP 路由查找：`flow_id` → `flow_t.current_published_version_id` → `flow_version_t.orchestration_config.nodes` 中 `type="trigger"` 的节点，2 次主键索引查询，性能完全够用
 > - V1 演进：若出现动态限流热更新 / 多端点共享 Flow / token 独立轮换等场景，再拆 `openplatform_v2_cp_flow_trigger_endpoint_t`
 >
 > ❌ **本版本移除的触发类型**：`event` / `webhook` / `scheduled`（V1 阶段引入，NG14/NG15/NG17）
@@ -712,7 +709,7 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 | 项 | 规则 |
 |----|------|
 | **来源** | `flow_version_t.orchestration_config.nodes[].id` / `edges[].id` —— 字符串 UUID，由前端编排画布生成 |
-| **示例** | `node_entry` / `node_1` / `node_2` / `node_exit` / `e1` / `e2` |
+| **示例** | `node_trigger` / `node_1` / `node_2` / `node_exit` / `e1` / `e2` |
 | **唯一性** | 仅在单个 `orchestration_config` JSON 内部唯一（编排级 ID 空间），不跨版本/跨流复用 |
 | **执行时引用** | `execution_step_t.node_id VARCHAR(64)` 存这个字符串 UUID |
 
@@ -786,7 +783,7 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 |----|------|
 | **删除原因** | 借鉴 Make/Zapier/钉钉/PA 共识，编排定义采用**单一字段保存完整 DAG**（`{trigger, nodes[], edges[]}`），便于版本快照、diff、回滚 |
 | **替代方案** | 节点/连线定义全部内聚到 `flow_version_t.orchestration_config` MEDIUMTEXT 字段（JSON 字符串） |
-| **节点 ID 空间** | 编排 JSON 内部使用字符串 UUID（如 `node_entry`/`node_1`），由前端编排画布生成；不对外暴露为业务 ID |
+| **节点 ID 空间** | 编排 JSON 内部使用字符串 UUID（如 `node_trigger`/`node_1`），由前端编排画布生成；不对外暴露为业务 ID |
 | **执行时引用** | `execution_step_t.node_id` 存字符串 UUID 引用 orchestration_config.nodes[].id |
 
 
