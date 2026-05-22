@@ -64,6 +64,7 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:openapp:schema:authTypeSchema:v1",
   "title": "authTypeSchema",
   "description": "认证类型声明，声明调用方需携带的认证凭证",
   "type": "object",
@@ -132,6 +133,7 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:openapp:schema:rateLimit:v1",
   "title": "rateLimit",
   "description": "限流配置，触发器和连接器复用同一结构",
   "type": "object",
@@ -170,6 +172,7 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:openapp:schema:dataSchema:v1",
   "title": "dataSchema",
   "description": "数据契约，描述输入/输出的数据结构。遵循 JSON Schema draft-07 子集",
   "type": "object",
@@ -234,6 +237,7 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:openapp:schema:triggerConfig:v1",
   "title": "triggerConfig",
   "description": "触发器节点配置，外部系统触发连接流的入口",
   "type": "object",
@@ -295,6 +299,7 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:openapp:schema:connectionConfig:v1",
   "title": "connectionConfig",
   "description": "连接器配置，声明如何调用下游 API",
   "type": "object",
@@ -333,38 +338,37 @@
 
 ```json
 {
-  "connectionConfig": {
-    "protocol": "HTTP",
-    "protocolConfig": {
-      "url": "https://api.example.com/im/send",
-      "method": "POST",
-      "headers": { "Content-Type": "application/json" }
+  "$schemaName": "connectionConfig/v1",
+  "protocol": "HTTP",
+  "protocolConfig": {
+    "url": "https://api.example.com/im/send",
+    "method": "POST",
+    "headers": { "Content-Type": "application/json" }
+  },
+  "authTypeSchema": {
+    "type": "SYSTOKEN",
+    "fields": [
+      { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+    ]
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "receiver": { "type": "string", "description": "接收者 ID" },
+      "content": { "type": "string", "description": "消息内容" }
     },
-"authTypeSchema": {
-      "type": "SYSTOKEN",
-      "fields": [
-        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-      ]
-    },
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "receiver": { "type": "string", "description": "接收者 ID" },
-        "content": { "type": "string", "description": "消息内容" }
-      },
-      "required": ["receiver", "content"]
-    },
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "msgId": { "type": "string", "description": "消息 ID" }
-      }
-    },
-    "timeoutMs": 30000,
-    "rateLimit": {
-      "maxQps": 10,
-      "maxConcurrency": 5
+    "required": ["receiver", "content"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "msgId": { "type": "string", "description": "消息 ID" }
     }
+  },
+  "timeoutMs": 30000,
+  "rateLimit": {
+    "maxQps": 10,
+    "maxConcurrency": 5
   }
 }
 ```
@@ -376,6 +380,7 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:openapp:schema:orchestrationConfig:v1",
   "title": "orchestrationConfig",
   "type": "object",
   "properties": {
@@ -450,6 +455,7 @@
 
 ```json
 {
+  "$schemaName": "orchestrationConfig/v1",
   "nodes": [
     {
       "id": "node_trigger",
@@ -510,6 +516,7 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:openapp:schema:errorInfo:v1",
   "title": "errorInfo",
   "type": "object",
   "properties": {
@@ -539,6 +546,7 @@
 
 // errorInfo（失败时）
 {
+  "$schemaName": "errorInfo/v1",
   "code": "DOWNSTREAM_UNAVAILABLE",
   "message": "HTTP 503 服务不可用",
   "downstreamStatus": 503,
