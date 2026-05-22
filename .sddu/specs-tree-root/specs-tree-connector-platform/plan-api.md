@@ -535,7 +535,7 @@
         ]
       },
       "timeoutMs": 30000,
-      "rateLimit": { "maxPerSecond": 10, "maxConcurrent": 5 }
+      "rateLimit": { "maxQps": 10, "maxConcurrency": 5 }
     },
     "publishedTime": "2026-05-21T10:00:00.000+08:00",
     "createTime": "2026-05-21T09:00:00.000+08:00"
@@ -584,8 +584,8 @@
     },
     "timeoutMs": 30000,
     "rateLimit": {
-      "maxPerSecond": 10,
-      "maxConcurrent": 5
+      "maxQps": 10,
+      "maxConcurrency": 5
     }
   }
 }
@@ -929,7 +929,7 @@
           "fieldName": "Authorization",
           "required": true
         },
-        "inParamSchema": {
+        "inputSchema": {
           "type": "object",
           "properties": {
             "sender": { "type": "string" },
@@ -937,7 +937,7 @@
           },
           "required": ["sender", "content"]
         },
-        "rateLimit": { "qpm": 100 }
+        "rateLimit": { "maxQps": 100 }
       },
       "nodes": [
         {
@@ -998,7 +998,7 @@
         "fieldName": "Authorization",
         "required": true
       },
-      "inParamSchema": {
+      "inputSchema": {
         "type": "object",
         "properties": {
           "sender": { "type": "string" },
@@ -1007,7 +1007,7 @@
         "required": ["sender", "content"]
       },
       "rateLimit": {
-        "qpm": 100
+        "maxQps": 100
       }
     },
     "nodes": [
@@ -1282,12 +1282,12 @@
 1. `flow_t.lifecycleStatus = 1`（running 状态，FR-013~015 控制）
 2. `currentPublishedVersionId` 非空（至少有一个已发布版本）
 3. 请求凭证（由调用方在 Header/Query 中携带，不存储）匹配 `trigger.authTypeSchema` 声明的类型
-4. 触发频率未超 `trigger.rateLimit.qpm` 阈值
+4. 触发频率未超 `trigger.rateLimit.maxQps` 阈值
 
 ```json
 // Request — 由外部系统发送
 // Header: Authorization: Bearer xxxxxx （凭证由调用方携带，不在数据库存储；具体认证类型由 trigger.authTypeSchema 声明）
-// Body 格式由 trigger.inParamSchema 校验
+// Body 格式由 trigger.inputSchema 校验
 {
   "sender": "external_system",
   "content": "这是一条外部消息"
@@ -1319,7 +1319,7 @@
 **HTTP 触发认证说明**:
 - 认证凭证（如 Bearer Token / API Key / OAuth2 Access Token）由调用方在请求中携带（Header 或 Query），**平台不存储任何凭证**（v2.6 决策）
 - 平台仅根据 `trigger.authTypeSchema` 校验凭证格式合法性（如类型、字段名、carrier 位置、是否必填）；具体凭证有效性由下游连接器调用时验证
-- 限流：基于 `trigger.rateLimit.qpm`，按 `flowId` 维度限流（V1 可扩展为按 IP / 凭证维度）
+- 限流：基于 `trigger.rateLimit.maxQps`，按 `flowId` 维度限流（V1 可扩展为按 IP / 凭证维度）
 
 ---
 
@@ -1454,7 +1454,7 @@
 |------|------|---------|--------|
 | **v2.0** | 2026-05-21 | 初始版本——对齐 spec.md v4.0：移除 Scope/审批/事件/定时触发，执行改为同步，FR 重编号 1~25 | SDDU Plan Agent |
 | **v2.7.3** | 2026-05-22 | HTTP 触发 URL 从 `/trigger/{flowId}/{triggerToken}` 改为 `/trigger/{flowId}/invoke`（flowId 雪花数字），签名验证段重写为认证说明（凭证调用方携带 + authTypeSchema 校验 + rateLimit 限流），新增 403 错误码（连接流未启用）；§6 接口编号总表 API-024 路径同步 | SDDU Plan Agent |
-| **v2.7.5** | **2026-05-22** | **全面对齐 plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）**，本次为彻底对齐重写。核心变更：① **§0 重写**版本对齐说明，列出全部 v2.0 → v2.7.5 变更项；② **§1.2 字段命名规范**新增双语字段约定（`*Cn`/`*En`）+ snake_case 到 camelCase 映射表；③ **§1.4 数据类型规范**重写：BIGINT 雪花 ID 必须返回 string（避免 JS 精度丢失）+ 枚举字段统一返回 TINYINT 数字（与数据库一致）+ 完整枚举数字字典；④ **§2.1 连接器 CRUD** 所有 Request/Response 示例：ID 改用数字 string、名称改双语 `nameCn`/`nameEn`、描述改双语 `descriptionCn`/`descriptionEn`、状态改数字、`icon` → `iconUrl`、新增 `tags`、`createdAt` → `createTime`、统一响应格式（`code`/`messageZh`/`messageEn`/`data`/`page`）；⑤ **§2.2 连接器版本编辑**：`connectionConfig.auth` → `authTypeSchema`（仅声明类型不含凭证值，v2.6）、`auth.config` 凭证字段移除（改为 `fields` 数组含 `sensitive: true` 标记）；⑥ **§2.2 连接器版本发布**：`changeLog` → `versionDescriptionCn`/`versionDescriptionEn` 双语 VARCHAR(1000)；⑦ **§3.1 连接流 CRUD**：同 §2.1 命名/类型/响应统一调整，新增 `ownerGroup`、`deployedVersionId` → `currentPublishedVersionId`（与数据库对齐）；⑧ **§3.2 编排配置 PUT**：节点/连线 `nodeId`/`edgeId` → 内部 `id`（字符串 UUID）、`nodeType` → `type`、`label` → `labelCn`/`labelEn` 双语、节点连接器引用 `connectorVersionId` 用数字 string、连线 `source`/`target` → `sourceNodeId`/`targetNodeId`、触发器 `trigger.config.schema` → `trigger.inParamSchema` + `trigger.authTypeSchema`（v2.7.3 + v2.6）+ `trigger.rateLimit.qpm`；⑨ **§4.1 手动触发**：请求新增 `credentials` 顶层字段（按 `connectorVersionId` 分组凭证）、响应 ID 用数字 string、状态/触发方式/节点类型/步骤状态用 TINYINT 数字、新增 `correlationId`、`startedAt`/`finishedAt` → `startedTime`/`completedTime`、`nodeName` → `nodeNameCn`/`nodeNameEn` 双语、新增 `stepOrder`、`errorMessage` → `errorInfo` 结构化（含 code/message/downstreamStatus/downstreamBody）、脱敏示例 `"***（12）"`；⑩ **§4.2 HTTP 触发**：`auth_type_schema`/`in_param_schema`/`rate_limit` → camelCase `authTypeSchema`/`inParamSchema`/`rateLimit`，统一响应格式；⑪ **§5 执行历史**：字段名/类型/响应格式统一；⑫ **§7 状态枚举**全部重写为数字字典（含 v2.0 与 v2.7.5 差异说明，特别说明执行状态枚举从 3 个扩为 5 个保留 pending/running 的理由）；⑬ 顶部版本号 v2.0 → v2.7.5；⑭ 修订记录追加 v2.7.5 条目。**未变更项**：§1.1 基础规范 / §1.3 路径命名 / §1.5 响应格式 / §1.6 分页 / §1.7 错误码 / §6 接口编号总表（v2.7.3 已对齐）/ §2.1 §2.2 §3.1 §3.2 §4.1 §4.2 §5 的 URL 路径 与 FR 编号 | SDDU Plan Agent |
+| **v2.7.5** | **2026-05-22** | **全面对齐 plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）**，本次为彻底对齐重写。核心变更：① **§0 重写**版本对齐说明，列出全部 v2.0 → v2.7.5 变更项；② **§1.2 字段命名规范**新增双语字段约定（`*Cn`/`*En`）+ snake_case 到 camelCase 映射表；③ **§1.4 数据类型规范**重写：BIGINT 雪花 ID 必须返回 string（避免 JS 精度丢失）+ 枚举字段统一返回 TINYINT 数字（与数据库一致）+ 完整枚举数字字典；④ **§2.1 连接器 CRUD** 所有 Request/Response 示例：ID 改用数字 string、名称改双语 `nameCn`/`nameEn`、描述改双语 `descriptionCn`/`descriptionEn`、状态改数字、`icon` → `iconUrl`、新增 `tags`、`createdAt` → `createTime`、统一响应格式（`code`/`messageZh`/`messageEn`/`data`/`page`）；⑤ **§2.2 连接器版本编辑**：`connectionConfig.auth` → `authTypeSchema`（仅声明类型不含凭证值，v2.6）、`auth.config` 凭证字段移除（改为 `fields` 数组含 `sensitive: true` 标记）；⑥ **§2.2 连接器版本发布**：`changeLog` → `versionDescriptionCn`/`versionDescriptionEn` 双语 VARCHAR(1000)；⑦ **§3.1 连接流 CRUD**：同 §2.1 命名/类型/响应统一调整，新增 `ownerGroup`、`deployedVersionId` → `currentPublishedVersionId`（与数据库对齐）；⑧ **§3.2 编排配置 PUT**：节点/连线 `nodeId`/`edgeId` → 内部 `id`（字符串 UUID）、`nodeType` → `type`、`label` → `labelCn`/`labelEn` 双语、节点连接器引用 `connectorVersionId` 用数字 string、连线 `source`/`target` → `sourceNodeId`/`targetNodeId`、触发器 `trigger.config.schema` → `trigger.inputSchema` + `trigger.authTypeSchema`（v2.7.3 + v2.6）+ `trigger.rateLimit.maxQps`；⑨ **§4.1 手动触发**：请求新增 `credentials` 顶层字段（按 `connectorVersionId` 分组凭证）、响应 ID 用数字 string、状态/触发方式/节点类型/步骤状态用 TINYINT 数字、新增 `correlationId`、`startedAt`/`finishedAt` → `startedTime`/`completedTime`、`nodeName` → `nodeNameCn`/`nodeNameEn` 双语、新增 `stepOrder`、`errorMessage` → `errorInfo` 结构化（含 code/message/downstreamStatus/downstreamBody）、脱敏示例 `"***（12）"`；⑩ **§4.2 HTTP 触发**：`auth_type_schema`/`in_param_schema`/`rate_limit` → camelCase `authTypeSchema`/`inputSchema`/`rateLimit`，统一响应格式；⑪ **§5 执行历史**：字段名/类型/响应格式统一；⑫ **§7 状态枚举**全部重写为数字字典（含 v2.0 与 v2.7.5 差异说明，特别说明执行状态枚举从 3 个扩为 5 个保留 pending/running 的理由）；⑬ 顶部版本号 v2.0 → v2.7.5；⑭ 修订记录追加 v2.7.5 条目。**未变更项**：§1.1 基础规范 / §1.3 路径命名 / §1.5 响应格式 / §1.6 分页 / §1.7 错误码 / §6 接口编号总表（v2.7.3 已对齐）/ §2.1 §2.2 §3.1 §3.2 §4.1 §4.2 §5 的 URL 路径 与 FR 编号 | SDDU Plan Agent |
 | **v2.7.6** | **2026-05-22** | **章节结构重组（参考 capability-open-platform/plan-api.md 风格）**——按用户指示调整为「设计规范 → 接口清单 → 接口详细定义」三段式：① **§1 设计规范**：合并原 §1 接口规范（7 子节：基础规范/字段命名/路径命名/数据类型/响应格式/分页/错误码）+ 原 §7 状态枚举（作为 §1.8 含 9 个子节 1.8.1~1.8.9），共 8 子节；② **§2 接口清单**：提升原 §6 接口编号总表为正式 §2，含 26 个端点的完整路由表（编号 / 方法 / 路径 / 所属模块 / 所属服务 / FR）；③ **§3 接口详细定义**：合并原 §2 连接器管理 / §3 连接流管理 / §4 运行时执行 / §5 执行历史 4 个顶级章节为统一的 §3，7 个子节（3.1 连接器 CRUD / 3.2 连接器版本管理 / 3.3 连接流 CRUD / 3.4 连接流版本管理 / 3.5 执行操作（同步）/ 3.6 HTTP 触发（同步）/ 3.7 执行历史）；④ **删除各模块头部的小清单**（7 处 `\| 方法 \| 路径 \| 说明 \| FR \|` 表格，合计 41 行），所有路由信息统一在 §2 接口清单中维护，避免双源；⑤ 顶部版本号 v2.7.5 → v2.7.6；⑥ 修订记录追加 v2.7.6 条目。**未变更项**：所有接口的请求/响应示例正文、URL 路径、FR 编号、字段命名（v2.7.5 已对齐）。**变更统计**：971 → 934 行（-37 行净精简，删除小清单 -41 + 新增 §3 总标题 +4） | SDDU Plan Agent |
 | **v2.7.6a** | **2026-05-22** | **§2 接口清单格式优化**（参考 capability-open-platform/plan-api.md §1 风格）——按用户指示，列结构从 6 列改为 7 列：① **新列结构**：`# / 服务 / 模块 / Method / Path / 说明 / FR`（原为 `编号 / 方法 / 路径 / 所属模块 / 所属服务 / FR`）；② **编号简化**：`API-001 ~ API-026` → `1 ~ 26`（与参考文档一致）；③ **服务列简化**：纯净的 `open-server` / `connector-api` 两个值（原嵌套描述如 "open-server debug 代理 → connector-api debug-api" 移至下方汇总表）；④ **模块列重新分组**：连接器管理（#1~5）/ 连接器版本（#6~9）/ 连接流管理（#10~17）/ 连接流版本（#18~21）/ 调试代理（#22~23）/ HTTP 触发（#24）/ 监控查询（#25~26）共 7 个模块，每个模块只在首行显示名称（合并单元格效果）；⑤ **说明列优化**：补全语义化描述（如 "查询连接器列表" "部署连接流（切换 currentPublishedVersionId 并启动）"）；⑥ **新增「服务部署归属」汇总表**（替代原 5 行文字说明）：服务 / 端口 / 上下文根 / 接口数 / 接口范围 5 列；⑦ **新增「路径前缀」说明**：明确 Path 列省略上下文根，给出完整 URL 拼接公式与示例。**未变更项**：26 个端点的方法、路径、FR 编号（仅展示格式优化，无路由变更） | SDDU Plan Agent |
 | **v2.7.6b** | **2026-05-22** | **补全 §3 全部缺失的接口定义 + 标题加编号**——按用户指示，为 §3 接口详细定义所有接口标题添加清单编号（#1~#26）。补全 15 个此前缺失的接口详细定义：① §3.1 连接器 CRUD — 新增 #3 GET 详情 / #4 PUT 更新 / #5 DELETE 删除；② §3.2 连接器版本管理 — 新增 #6 GET 版本列表 / #7 GET 版本详情（含 connectionConfig 完整示例）；③ §3.3 连接流 CRUD — 新增 #11 GET 列表 / #12 GET 详情 / #13 PUT 更新 / #14 DELETE 删除 / #16 POST 启动 / #17 POST 停止；④ §3.4 连接流版本管理 — 新增 #18 GET 版本列表 / #19 GET 版本详情（含 orchestrationConfig 完整示例）；⑤ §3.6 HTTP 触发 — 新增 #24 POST 标题（原为无标题直接展开，现加 `#### #24 POST /api/v1/trigger/{flowId}/invoke — HTTP 触发`）；⑥ §3.7 执行历史 — 新增 #26 GET 执行详情（含 steps 数组完整示例）。**变更统计**：941 → 1472 行（+531 行，15 个新增接口 + 编号追加），接口覆盖率 26/26 | SDDU Plan Agent |
