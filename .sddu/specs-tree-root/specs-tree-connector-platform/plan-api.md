@@ -612,10 +612,9 @@
 |------|------|------------------|
 | `NONE` | 无需认证 | — |
 | `AKSK` | AccessKey/SecretKey | `accessKey`, `secretKey` |
-| `OAUTH2_CLIENT` | OAuth2 Client Credentials | `accessToken`（调用方完成 OAuth2 授权流后传入） |
-| `BASIC_AUTH` | HTTP Basic Auth | `username`, `password` |
-| `API_KEY` | API Key (header/query) | `keyValue`（位置由 schema 的 `carrier`/`fieldName` 声明） |
-| `BEARER` | Bearer Token | `token` |
+| `SYSTOKEN` | 🆕 系统 Token 认证 | `token` / `systoken` |
+
+> 💡 **来源说明**：沿用开放平台 `AuthTypeEnum.java` 中的 `NONE(4)` / `AKSK(5)`，新增连接器平台专用 `SYSTOKEN(7)`；其余 `AuthTypeEnum` 枚举（COOKIE/SOA/APIG/IAM/CLITOKEN）不用于连接器平台认证声明。实际 MVP 仅使用此三种。
 
 #### #9 POST /api/v1/connectors/{connectorId}/versions/{versionId}/publish — 发布
 
@@ -917,7 +916,7 @@
       "trigger": {
         "type": "http",
         "authTypeSchema": {
-          "type": "BEARER",
+          "type": "SYSTOKEN",
           "carrier": "header",
           "fieldName": "Authorization",
           "required": true
@@ -986,7 +985,7 @@
     "trigger": {
       "type": "http",
       "authTypeSchema": {
-        "type": "BEARER",
+        "type": "SYSTOKEN",
         "carrier": "header",
         "fieldName": "Authorization",
         "required": true

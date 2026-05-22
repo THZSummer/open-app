@@ -308,18 +308,15 @@ stateDiagram-v2
 
 > 🔐 **凭证不持久化**（v2.6 决策）：`auth_type_schema` 仅声明认证类型与字段 schema（含 `sensitive: true` 标记），**不存储任何凭证值**；凭证由调用方在触发请求时携带，注入 ExecutionContext（仅内存），节点执行后清除。写入 execution_record/step 时按 `sensitive: true` 标记自动脱敏（值替换为 `***`）。
 
-**auth_type 枚举**（写入 `authTypeSchema.type`，统一参考现有代码 `AuthTypeEnum.java`）：
+**auth_type 枚举**（写入 `authTypeSchema.type`，沿用现有 `AuthTypeEnum.java` + 新增 SYSTOKEN）：
 
-| 代码 | 枚举名 | 说明 | 调用方需携带字段 | 适用场景 |
-|:----:|--------|------|-----------------|---------|
-| 4 | `NONE` | 无需认证 | — | 免认证公开接口 |
-| 5 | `AKSK` | AccessKey / SecretKey | `accessKey`, `secretKey` | 开放平台 AKSK 认证连接器 |
-| 7 | `BASIC_AUTH` | HTTP Basic Auth | `username`, `password` | 第三方 HTTP Basic 认证 |
-| 8 | `API_KEY` | API Key（header/query） | `keyValue`（位置由 schema `carrier`/`fieldName` 声明）| 第三方 API Key 认证 |
-| 9 | `BEARER` | Bearer Token | `token` | OAuth2 / JWT Bearer Token |
-| 10 | `OAUTH2_CLIENT` | OAuth2 Client Credentials | `accessToken`（调用方完成 OAuth2 授权流后传入）| OAuth2 客户端凭证模式 |
+| 代码 | 枚举名 | 说明 | 调用方需携带字段 | 实际使用 |
+|:----:|--------|------|-----------------|:--------:|
+| 4 | `NONE` | 无需认证 | — | ⭐ 预计使用 |
+| 5 | `AKSK` | AccessKey / SecretKey | `accessKey`, `secretKey` | ⭐ 预计使用 |
+| 7 | `SYSTOKEN` | 🆕 系统 Token 认证 | `token` 或 `systoken` | ⭐ 预计使用 |
 
-> 💡 **代码对齐说明**：代码 0~6 已用于开放平台现有 `AuthTypeEnum.java`（0=COOKIE / 1=SOA / 2=APIG / 3=IAM / 4=NONE / 5=AKSK / 6=CLITOKEN）。连接器平台专属的认证类型（BASIC_AUTH / API_KEY / BEARER / OAUTH2_CLIENT）从 **7** 开始编码，避免与现有枚举冲突。`connection_config.authTypeSchema.type` 的值使用枚举名（如 `"AKSK"` / `"BEARER"`），TINYINT 代码用于数据库持久化（计划 V1）。
+> 💡 **代码对齐说明**：代码 0~6 已用于开放平台现有 `AuthTypeEnum.java`（0=COOKIE / 1=SOA / 2=APIG / 3=IAM / 4=NONE / 5=AKSK / 6=CLITOKEN）。连接器平台额外新增 `SYSTOKEN(7)`，其余枚举无当前需求，不预先定义。实际 MVP 阶段预期只使用 `NONE(4)` / `AKSK(5)` / `SYSTOKEN(7)` 三种。
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `approval_id`（无审批，NG19）；④ 删除 `change_log varchar(2000)` → 改用 `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；⑤ `status` → `version_status` TINYINT；⑥ `published_at` → `published_time`；⑦ `basic_info_snapshot`/`connection_config` 从 `json` → `mediumtext`（v2.7.4 决策）；⑧ `connection_config.auth` → `auth_type_schema`（仅 schema 不含凭证值，v2.6 决策）；⑨ 索引重命名 `idx_connector_id_version_status_create_time`；⑩ `uk_version_id` → `uk_connector_id_version_no`（业务唯一约束更准确）。
 
@@ -435,7 +432,7 @@ stateDiagram-v2
   "trigger": {
     "type": "http",
     "authTypeSchema": {
-      "type": "BEARER",
+      "type": "SYSTOKEN",
       "carrier": "header",
       "fieldName": "Authorization",
       "required": true
