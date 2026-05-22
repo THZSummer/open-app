@@ -2,29 +2,23 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§4.5), plan-api.md (§2-§5), plan-db.md  
-**版本**: v2.7.5  
+**版本**: v2.8.0  
 **创建日期**: 2026-05-21  
 **最后更新**: 2026-05-22  
-**对齐基线**: plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）
+**对齐基线**: plan.md v2.8.0（对齐 spec.md v5.0 MVP 单版本模型）
 
 ---
 
 ## 0. 版本对齐说明
 
-| 维度 | v2.0 | v2.7.5 | 决策来源 |
-|------|------|--------|---------|
-| 触发器类型 | 事件/Webhook/定时/手动 | **HTTP / 手动 / 测试** | v2.0 |
-| MVP 节点类型 | 连接器节点 | 连接器节点 + **数据处理节点** | v2.0 |
-| 监控面板 | 全指标仪表盘 | **执行历史查询 + 精简统计** | v2.0 |
-| 编排画布触发器配置 | 含事件/Webhook/Cron 配置表单 | **仅 HTTP/手动配置 + 认证类型 schema 配置**（不输入凭证值） | v2.0 + v2.6 |
-| 执行模型 | 异步（轮询状态） | **同步（直接展示结果）** | v2.0 |
-| **名称/描述** | 单语 `name`/`description` | **双语 `nameCn`/`nameEn` + `descriptionCn`/`descriptionEn`** | v2.7 |
-| **凭证输入界面** | 连接器编辑器内输入 AccessKey/SecretKey 等凭证值并保存 | **❌ 移除凭证输入**——连接器编辑器仅配置 `authTypeSchema`（声明类型与字段名）；凭证由**调用方在触发请求时携带**（手动调试/测试运行时在弹窗输入并仅当次使用） | v2.6 |
-| **触发器配置** | 触发器单独管理（含 token） | **触发器配置内嵌于编排 JSON**，与编排同保存/发布 | v2.7.3 |
-| **ID 显示** | 业务前缀 ID（如 `con_xxxx`） | **数字 ID** 直接显示（必要时显示前 12 位 + ...）；内部传递用 string 类型 | v2.7 + API 决策 |
-| **状态展示** | 字符串直接展示 | **API 返回 TINYINT 数字，前端通过字典转译为本地化标签** | API 决策 |
-| **执行详情** | 步骤输入/输出直接展示 | 新增**大字段外置感知**：检测 `{"$externalized": "<blobId>"}` 标记时显示"查看完整内容（外置）"按钮；新增 **`externalResourceId` 标识展示**（外部资源 ID 用于反查溯源） | v2.4 + v2.7.5 |
-| FR 引用 | FR-001~FR-037 | **FR-001~FR-025** | v2.0 |
+| 维度 | v2.7.5 | v2.8.0 | 决策来源 |
+|------|--------|--------|---------|
+| 触发器类型 | HTTP / 手动 / 测试 | **HTTP + 测试**（手动→NG20） | spec v5.0 |
+| 监控面板 | 执行历史查询 + 精简统计 | ❌ 移除（NG21） | spec v5.0 |
+| 执行详情 | 大字段外置感知 | ❌ 移除（NG21） | spec v5.0 |
+| 版本管理 | 版本列表/发布/切换 | **单版本模型**（编辑即生效，无版本 UI） | spec v5.0 |
+| 编排画布触发器配置 | 仅 HTTP/手动配置 | **仅 HTTP 配置** | spec v5.0 |
+| FR 引用 | FR-001~FR-025 | **FR-001~006, FR-009~017, FR-020~021, FR-023~024**（19 个 FR） | spec v5.0 |
 
 ---
 
@@ -54,20 +48,14 @@
 | `/connect/flows/new` | `ConnectPlatform/FlowEditor/index.jsx` | ✅ 已有 |
 | `/connect/flows/:id/edit` | `ConnectPlatform/FlowEditor/index.jsx` | ✅ 已有 |
 | `/connect/flows/:id` | `ConnectPlatform/FlowDetail.jsx` | 🆕 需新增 |
-| `/connect/flows/:id/executions/:execId` | `ConnectPlatform/ExecutionDetail.jsx` | 🆕 需新增 |
-| `/connect/monitor` | `ConnectPlatform/Monitor/MonitorDashboard.jsx` | 🆕 需新增 |
 
 **路由配置修改** (`wecodesite/src/App.jsx`):
 ```jsx
 // 新增导入
 import FlowDetail from './pages/ConnectPlatform/FlowDetail';
-import ExecutionDetail from './pages/ConnectPlatform/ExecutionDetail';
-import MonitorDashboard from './pages/ConnectPlatform/Monitor/MonitorDashboard';
 
 // 新增路由（在 Layout 的 Routes 内）
 <Route path="connect/flows/:id" element={<FlowDetail />} />
-<Route path="connect/flows/:id/executions/:execId" element={<ExecutionDetail />} />
-<Route path="connect/monitor" element={<MonitorDashboard />} />
 ```
 
 ---
@@ -422,7 +410,7 @@ FlowCanvas (全屏页面，无 Layout 侧边栏)
 │  状态: ● 运行中  |  版本: v1.0.0  |  已部署                     │
 │  最后执行: 2026-05-21 10:00:03                                  │
 │                                                                 │
-│  ┌─ Tab: 概览 ── 版本历史 ── 执行记录 ────────────────┐       │
+│  └─ Tab: 概览 ──────────────────────────────────┐       │
 │  │                                                        │       │
 │  │  触发器: HTTP 触发                                     │       │
 │  │  触发 URL: https://open.xxx.com/api/v1/trigger/        │       │
@@ -459,157 +447,11 @@ FlowDetail
     │   ├── TriggerInfo (触发方式 + HTTP URL)
     │   ├── FlowPreview (只读 Mini ReactFlow)
     │   ├── UsedConnectors (连接器引用列表)
-    │   └── RecentExecutions (最近执行摘要，链接到执行记录 Tab)
-    ├── Tab: 版本历史 (VersionHistory)
-    │   └── VersionTimeline
-    └── Tab: 执行记录 (ExecutionHistory)
-        ├── FilterBar (时间范围, 状态)
-        ├── Table (executionId, triggerType, time, status, duration)
-        │   └── Row → Link to /connect/flows/:id/executions/:execId
-        └── Pagination
+    │   └── StatusBadge (运行/已停止)
+└── 操作: 启动 / 停止 / 删除 / 编辑画布
 ```
 
----
-
-### 3.7 执行详情 (`ExecutionDetail`)
-
-**路由**: `/connect/flows/:id/executions/:execId` (🆕 需新增)  
-**对应 FR**: FR-025 (执行详情)
-
-**页面结构**:
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  ← 返回连接流详情                                               │
-│                                                                 │
-│  执行 ID: 1122334455667788990  [📋 复制]                       │
-│  状态: ✓ 成功(status=2)  |  触发方式: HTTP(triggerType=1)      │
-│  耗时: 2.25s  |  时间: 2026-05-21 10:00:01                     │
-│  CorrelationId: corr_abc123  [🔗 查看全链路]                   │
-│                                                                 │
-│  ┌─ 执行步骤 ──────────────────────────────────────────────┐  │
-│  │                                                          │  │
-│  │  ✓ Step 1: 接收请求 / Receive Request  [entry]   10ms   │  │
-│  │     ├─ 输入: {"sender":"user_001","content":"你好"}     │  │
-│  │     └─ 输出: {"sender":"user_001","content":"你好"}     │  │
-│  │                                                          │  │
-│  │  ✓ Step 2: 发送通知 / Send Notification  [connector] 2.21s │
-│  │     ├─ 输入: {"receiver":"user_001","content":"你好",    │  │
-│  │     │         "accessKey":"***(12)","secretKey":"***(32)"}│  │
-│  │     │     💡 敏感字段已自动脱敏                          │  │
-│  │     └─ 输出: {"$externalized": "9988776655443322110"}    │  │
-│  │             [📥 查看完整输出（外置 2.3MB，OSS）]         │  │
-│  │             外部资源 ID: msg_xxxx_dingtalk_media_id      │  │
-│  │                                                          │  │
-│  │  ✓ Step 3: 格式化消息 / Format Message [data_processor] 15ms │
-│  │     ├─ 输入: {"msgId":"msg_xxxx"}                        │  │
-│  │     └─ 输出: {"result":{"id":"msg_xxxx","status":"ok"}}  │  │
-│  │                                                          │  │
-│  │  ✓ Step 4: 返回结果 / Return Result  [exit]      5ms    │  │
-│  │     ├─ 输入: {"result":{"id":"msg_xxxx","status":"ok"}}  │  │
-│  │     └─ 输出: {"result":{"id":"msg_xxxx","status":"ok"}}  │  │
-│  │                                                          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│  返回值: {"result":{"id":"msg_xxxx","status":"ok"}}             │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-**组件树**:
-```
-ExecutionDetail
-├── PageHeader (executionId, status badge—数字→标签转译)
-│   ├── CopyIdButton (复制完整数字 ID)
-│   └── CorrelationLink (跨服务链路追踪)
-├── SummaryCards (status, triggerType, durationMs, time)
-├── ExecutionTimeline (Ant Design Steps: vertical)
-│   └── ExecutionStep (status icon, stepOrder, nodeNameCn/En, nodeType—数字→标签转译, durationMs)
-│       ├── Collapse: 输入数据 (DataViewer)
-│       │   ├── InlineJsonView (小字段直接 JSON 展示)
-│       │   ├── ExternalizedBadge (检测 {"$externalized": "<blobId>"} 标记 → 显示"查看完整内容（外置 N MB）"按钮)
-│       │   │   └── BlobViewer (点击后调 GET /api/v1/blobs/{blobId} 拉取 OSS 内容预览)
-│       │   ├── ExternalResourceIdBadge (若 blob 含 externalResourceId → 显示"外部资源 ID: xxx" + 提供复制按钮)
-│       │   └── MaskedFieldIndicator (检测 *** 模式 → 提示"敏感字段已脱敏")
-│       └── Collapse: 输出数据 (同上)
-│       └── Collapse: 错误信息 (失败时；展示 errorInfo 结构化字段：code/message/downstreamStatus/downstreamBody)
-├── ResultDisplay (返回值 JSON，同样支持外置感知)
-```
-
-**关键交互**：
-
-| 场景 | 前端行为 |
-|------|---------|
-| 数据小于 64KB | 直接 inline 展示 JSON |
-| 数据 ≥ 64KB（`{"$externalized": "<blobId>"}`）| 显示"📥 查看完整内容（外置 N MB，OSS）"按钮 → 点击调 `GET /api/v1/blobs/{blobId}` 拉取 |
-| Blob 有 `externalResourceId` | 在 blob 展示区显示"外部资源 ID: xxx"标签（用于反查溯源，可点击复制） |
-| 敏感字段（值为 `***(N)` 模式） | 显示锁图标 + "敏感字段已脱敏" tooltip，告知用户原值长度但不展示原值 |
-| 步骤失败 | 错误信息 Collapse 默认展开，结构化展示 `errorInfo.code` / `message` / `downstreamStatus` / `downstreamBody` |
-
-> **与 v2.0 的差异**：
-> - 执行模型改为同步（数据是一次性返回的，不需要轮询状态）
-> - 新的步骤类型 `data_processor` 显示
-> - 状态/类型从字符串改为数字 + 前端字典转译展示
-> - **新增大字段外置感知**（v2.4）：检测 `$externalized` 标记并提供 BlobViewer 按需拉取
-> - **新增外部资源 ID 展示**（v2.7.5）：blob 含 `externalResourceId` 时展示并提供复制（用于反查外部系统）
-> - **新增敏感字段脱敏指示器**（v2.6）：检测 `***` 模式提示用户
-> - 节点名称双语显示 `nodeNameCn`/`nodeNameEn`
-> - 新增 `correlationId` 链路追踪入口
-> - 步骤新增 `stepOrder` 显示
-> - 错误信息从单一 `errorMessage` 字符串升级为结构化 `errorInfo` JSON 展示
-> - 移除"重试执行"按钮（失败重试 NG15，V1 阶段引入）
-
----
-
-### 3.8 监控面板 (`MonitorDashboard`)
-
-**路由**: `/connect/monitor` (🆕 需新增)  
-**对应 FR**: FR-025 (执行历史查询)
-
-> ⚠️ **与 v2.0 的差异**：监控面板从全指标仪表盘**简化为执行历史查询 + 精简统计**（spec v4.0 FR-025 仅定义执行历史查询）。全指标仪表盘（活跃流/总执行/成功率/平均耗时/执行趋势图表/按连接器统计）移至 V1。
-
-**页面结构**:
-```
-┌──────────────────────────────────────────────────────────────┐
-│  执行历史监控                     [时间范围: 最近 7 天 ▼]    │
-│                                                              │
-│  ┌─ 统计概览（精简版）──────────────────────────────────┐  │
-│  │  总执行次数: 4,523  |  成功(status=2): 4,455           │  │
-│  │  失败(status=3): 45 |  超时(status=4): 23              │  │
-│  │  成功率: 98.5%      |  平均耗时: 1.85s                 │  │
-│  └─────────────────────────────────────────────────────────┘  │
-│                                                              │
-│  ┌─ 执行列表 ──────────────────────────────────────────────┐  │
-│  │  [状态筛选: 全部▼] [触发方式筛选: 全部▼]                 │  │
-│  │                                                          │  │
-│  │  执行ID         时间              触发方式  状态   耗时   │  │
-│  │  1122334455...  2026-05-21 10:00  HTTP      ✓ 成功 2.2s  │  │
-│  │  1122334456...  2026-05-21 09:55  HTTP      ✓ 成功 1.8s  │  │
-│  │  1122334457...  2026-05-21 09:50  手动      ✕ 失败 5.0s  │  │
-│  │                                                          │  │
-│  │  [分页: < 1 2 3 ... 15 >]                                │  │
-│  └─────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**组件树**:
-```
-MonitorDashboard
-├── TimeRangeSelector (Select: 24h/7d/30d)
-├── StatSummary (精简统计行：总执行/成功/失败/超时/成功率/平均耗时；前端基于查询结果聚合)
-└── ExecutionHistoryTable
-    ├── FilterBar (status TINYINT filter, triggerType TINYINT filter)
-    ├── Table
-    │   ├── Column: executionId (Link → /connect/flows/:flowId/executions/:id；显示前 12 位 + ... 截断)
-    │   ├── Column: startedTime
-    │   ├── Column: triggerType (Tag: 数字→标签转译，1→HTTP, 2→手动, 3→测试)
-    │   ├── Column: status (Badge: 数字→标签 + 颜色，2→绿✓成功, 3→红✕失败, 4→橙⏱超时)
-    │   └── Column: durationMs
-    └── Pagination
-```
-
-> **与 v2.0 的差异**：
-> - 列表字段名/类型对齐 API：`executionId` 数字 string、`startedTime` 替代 `startedAt`、`triggerType`/`status` 用 TINYINT 数字 + 前端字典转译
-> - ID 显示截断（前 12 位 + ...），完整 ID 在 Tooltip 或详情页展示
-> - 移除复杂指标图表（移至 V1）
+> ⚠️ **MVP v5.0 简化**：无版本历史，无执行记录。执行结果仅同步返回（测试运行/HTTP 触发），不持久化展示。
 
 ---
 
@@ -718,29 +560,22 @@ export const FETCH_BLOB = 'FETCH_BLOB';            // GET /api/v1/blobs/{blobId}
 // thunk.js — 补充 API 调用
 export const fetchFlows = (params) => async (dispatch) => { /* GET /api/v1/flows */ };
 export const fetchFlowDetail = (id) => async (dispatch) => { /* GET /api/v1/flows/{id} */ };
-export const createFlow = (data) => async (dispatch) => { /* POST /api/v1/flows，body 含 nameCn/nameEn/descriptionCn/descriptionEn */ };
+export const createFlow = (data) => async (dispatch) => { /* POST /api/v1/flows */ };
 export const updateFlow = (id, data) => async (dispatch) => { /* PUT /api/v1/flows/{id} */ };
 export const deleteFlow = (id) => async (dispatch) => { /* DELETE /api/v1/flows/{id} */ };
-export const saveOrchestrationConfig = (flowId, versionId, orchestrationConfig) => async (dispatch) => { /* PUT .../versions/{vid}，trigger 内嵌于 orchestrationConfig.trigger */ };
-export const publishVersion = (flowId, versionId, payload) => async (dispatch) => { /* POST .../publish */ };
-export const deployFlow = (flowId, versionId) => async (dispatch) => { /* POST .../deploy */ };
+export const saveOrchestrationConfig = (flowId, orchestrationConfig) => async (dispatch) => { /* PUT .../config，编辑即生效 */ };
 export const startFlow = (id) => async (dispatch) => { /* POST .../start */ };
 export const stopFlow = (id) => async (dispatch) => { /* POST .../stop */ };
-export const manualExecute = (flowId, payload) => async (dispatch) => { /* POST .../executions，body 含 triggerData + credentials（按 connectorVersionId 分组）*/ };
-export const testRun = (flowId, payload) => async (dispatch) => { /* POST .../test-run，body 含 mockTriggerData + credentials */ };
-export const fetchExecutions = (flowId, params) => async (dispatch) => { /* GET .../executions */ };
-export const fetchExecutionDetail = (execId) => async (dispatch) => { /* GET /executions/{execId} */ };
-export const fetchBlob = (blobId) => async (dispatch) => { /* GET /api/v1/blobs/{blobId}（懒加载大字段外置内容）*/ };
+export const testRun = (flowId, payload) => async (dispatch) => { /* POST .../test-run */ };
 ```
 
-> **与 v2.0 差异**：
-> - 移除 `ENABLE_FLOW` / `DISABLE_FLOW` → 拆分为 `START_FLOW` / `STOP_FLOW`
-> - 移除 `TRIGGER_MANUAL` → 改为 `MANUAL_EXECUTE`（同步，请求体含 `credentials`，v2.6）
-> - 新增 `DEPLOY_FLOW`
-> - 新增 `FETCH_EXECUTIONS`, `FETCH_EXECUTION_DETAIL`
-> - **新增 `FETCH_BLOB`**（v2.4 大字段外置感知；ExecutionDetail 页面按需调用）
-> - `SAVE_CANVAS` → `SAVE_ORCHESTRATION_CONFIG`（语义更准确；触发器配置内嵌于 `orchestrationConfig.trigger`，v2.7.3）
-> - `testRun` / `manualExecute` 请求体新增 `credentials` 字段（按 connectorVersionId 分组）
+> **v5.0 差异**：
+> - ❌ 移除 `publishVersion`（MVP 单版本）
+> - ❌ 移除 `deployFlow`（编辑即运行）
+> - ❌ 移除 `manualExecute`（手动触发→NG20）
+> - ❌ 移除 `fetchExecutions` / `fetchExecutionDetail`（执行历史→NG21）
+> - 🔄 `saveOrchestrationConfig` 路径从 `.../versions/{vid}` 改为 `.../config`（单版本）
+> - 保留 `testRun` / `startFlow` / `stopFlow`
 
 ---
 
@@ -762,3 +597,4 @@ export const fetchBlob = (blobId) => async (dispatch) => { /* GET /api/v1/blobs/
 |------|------|---------|--------|
 | **v2.0** | 2026-05-21 | 初始版本——对齐 spec.md v4.0：触发器仅 HTTP/手动，新增数据处理节点，监控简化为执行历史查询，FR 重编号 | SDDU Plan Agent |
 | **v2.7.5** | **2026-05-22** | **全面对齐 plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）**，本次为彻底对齐重写。核心变更：① **§0 重写**版本对齐说明，列出全部 v2.0 → v2.7.5 变更项；② **§3.2 连接器编辑器** 基本信息表单加双语字段（`nameCn`/`nameEn` + `descriptionCn`/`descriptionEn`）+ `iconUrl` + `tags`；**❌ 凭证值输入字段彻底移除**（v2.6），改为认证类型 schema 字段声明表（仅声明字段名/必填/敏感标记）；③ **§3.3 连接器详情** 加双语展示 + `AuthInfo (脱敏展示)` → `AuthTypeSchemaViewer`（只展示字段声明，无需脱敏）+ 版本历史含 `versionDescriptionCn`/`En`；④ **§3.5 编排画布** 触发器配置增加 `authTypeSchema` 子面板（v2.7.3）；**TestRunDialog 新增凭证临时输入区**（v2.6，扫描连接器节点 authTypeSchema 让用户填入临时凭证仅当次使用）；保存改为 `saveOrchestrationConfig`（trigger 内嵌于 orchestrationConfig）；版本号弹窗加双语 `versionDescription`；⑤ **§3.7 执行详情** 新增大字段外置感知（检测 `{"$externalized": "<blobId>"}` 显示 BlobViewer 按需拉取）+ **`externalResourceId` 标识展示**（v2.7.5，外部资源 ID 反查溯源）+ 敏感字段脱敏指示器（v2.6，检测 `***` 模式）+ 状态/类型从字符串改为 TINYINT 数字 + 前端字典转译展示 + 节点名称双语 `nodeNameCn`/`En` + `correlationId` 链路追踪 + `stepOrder` + `errorMessage` 升级为结构化 `errorInfo`；⑥ **§3.8 监控面板** 精简版（保留统计概览 + 执行列表，移除复杂图表）；ID 显示前 12 位 + ... 截断；状态/触发方式用 TINYINT 数字 + 前端字典转译；⑦ **§4 新增组件清单**重组为 4.1 页面级 / 4.2 编排画布扩展 / **4.3 通用辅助组件**（新增 8 个通用组件：`BilingualTextInput`/`BilingualTextViewer`/`EnumLabelMapper`/`BigintIdDisplay`/`BlobViewer`/`ExternalResourceIdBadge`/`MaskedFieldIndicator`/`StructuredErrorViewer`）；⑧ **§5 状态管理**：thunk action types/方法签名全面对齐 API（`SAVE_CANVAS` → `SAVE_ORCHESTRATION_CONFIG`、新增 `MANUAL_EXECUTE`/`FETCH_BLOB`、`testRun`/`manualExecute` 入参新增 `credentials` 按 connectorVersionId 分组）；**移除凭证持久化相关 action**（无 `SAVE_CREDENTIAL`/`FETCH_CREDENTIALS`）；⑨ **§6 服务层** 字段对齐；⑩ 顶部版本号 v2.0 → v2.7.5；⑪ 修订记录追加 v2.7.5 条目。**未变更项**：§1 设计总则 / §2 路由设计 / §3.1 连接器目录 / §3.4 连接流列表 / §3.6 连接流详情（基础结构） | SDDU Plan Agent |
+| **v2.8.0** | **2026-05-22** | **对齐 spec.md v5.0 MVP 单版本模型**：① §0 版本对齐表重写；② §2 路由精简（移除执行详情/监控面板）；③ §3.6 连接流详情移除版本历史/执行记录 Tab；④ ❌ 移除 §3.7 执行详情、§3.8 监控面板全部内容；⑤ §5 状态管理移除 publishVersion/deployFlow/manualExecute/fetchExecutions/fetchExecutionDetail；⑥ §6 服务层运行时 API 仅保留 testRun；⑦ 顶部版本号 v2.7.5 → v2.8.0；⑧ 修订记录追加。**变更统计**：764 → 599 行（-165 行） | SDDU Plan Agent |

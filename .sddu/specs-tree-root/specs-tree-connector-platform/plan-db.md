@@ -2,10 +2,10 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md（§4.2 数据库设计 + §4.3 表设计规则）  
-**版本**: v2.7.6  
+**版本**: v2.8.0  
 **创建日期**: 2026-05-21  
 **最后更新**: 2026-05-22  
-**对齐基线**: plan.md v2.7.6（含 v2.0 → v2.7.6 全部决策）
+**对齐基线**: plan.md v2.8.0（对齐 spec v5.0 MVP 单版本模型）
 
 ---
 
@@ -98,11 +98,11 @@
 |----|------|--------|------|
 | `connector_t` | `connector_type` | 1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1） | 协议类型 |
 | `connector_t` | `status` | 保留字段（默认 1），本期不定义业务语义 | 未来可用于控制连接器是否可被连接流引用等 |
-| `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
-| `flow_t` | `lifecycle_status` | 0=undeployed（未部署）, 1=running（运行中）, 2=stopped（已停止） | 对应 FR-013~015 部署/启动/停止；初始态 0，撤除部署回到 0 |
-| `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
-| `execution_record_t` | `trigger_type` | 1=http, 2=manual, 3=test | 触发方式（MVP） |
-| `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | **MVP 5 个值**（partial/cancelled 留 V1） |
+| `connector_version_t` | `version_status` | ⚠️ **MVP 不区分**（字段保留，默认 1；V1 启用 0=draft, 1=published） | MVP 单版本模型 |
+| `flow_t` | `lifecycle_status` | 1=running（默认创建态）, 2=stopped | MVP 简化：编辑即运行，无 undeployed 状态；仅 stop/start |
+| `flow_version_t` | `version_status` | ⚠️ **MVP 不区分**（字段保留，V1 启用） | MVP 单版本模型 |
+| `execution_record_t` | `trigger_type` | 1=http, 3=test | ~~2=manual~~ 移至 spec NG20；⚠️ MVP 不写入此表 |
+| `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | ⚠️ V1 保留表，MVP 不写入 |
 | `execution_step_t` | `status` | 0=success, 1=failed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=entry, 2=connector, 3=data_processor, 4=exit | 节点类型（MVP） |
 | `storage_blob_ref_t` | `owner_type` | 1=execution_record_trigger, 2=execution_record_result, 3=execution_step_input, 4=execution_step_output | 用于 GC 任务分类扫描 |
@@ -129,7 +129,9 @@
 | 6 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（I/O 大字段支持外置到对象存储；**MVP 不分区**）|
 | 7 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（**`external_resource_id`**（外部系统资源 ID，按需使用）/ `uri` / `size_bytes` / `content_hash` / `content_type`；用于 GC、审计与外部系统反查溯源）|
 
-**总计**：**7 张表**（2 主表 + 2 版本表 + 2 运行时表 + 1 元数据表），分属 connector / flow / runtime 三个模块。
+**总计**：**7 张表**（2 主表 + 2 配置表 + 3 张 V1 设计保留运行时表），分属 connector / flow / runtime 三个模块。
+
+> ⚠️ **MVP v5.0 使用范围**：连接器和连接流的 4 张表（1~4）完整使用；3 张运行时表（5~7）定义保留，MVP 不写入（执行结果仅同步返回，不持久化；spec FR-025 执行历史→NG21）。
 
 ---
 

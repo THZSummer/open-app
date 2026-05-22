@@ -1,12 +1,12 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.7.6  
+**规划版本**: v2.8.0  
 **创建日期**: 2026-05-21  
 **最近更新**: 2026-05-22  
 **规划作者**: SDDU Plan Agent  
-**规范版本**: spec.md v4.0  
-**前置文档**: discovery-report.md (v3.1), spec.md v4.0, plan-v1.md (废弃), ADR-001~003（ADR-003 已于 v2.1 修订），docs/connector-flow-storage-research/ 5 平台调研报告（v2.4 数据库设计依据），specs-tree-capability-open-platform/plan.md §4.2 表设计规则（v2.7 数据库规范依据）
+**规范版本**: spec.md v5.0  
+**前置文档**: discovery-report.md (v3.1), spec.md v5.0, ADR-001~003（ADR-003 已于 v2.1 修订），docs/connector-flow-storage-research/ 5 平台调研报告（v2.4 数据库设计依据），specs-tree-capability-open-platform/plan.md §4.2 表设计规则（v2.7 数据库规范依据）
 
 > ⚠️ **前端项目说明**：`open-web` 代码已全部迁移至 `wecodesite`，本规划中所有前端引用均以 `wecodesite` 为准。`wecodesite` 已内置 `@xyflow/react` 依赖，且 `ConnectPlatform/Connector`、`ConnectPlatform/ConnectorEditor`、`ConnectPlatform/Flow`、`ConnectPlatform/FlowEditor` 等页面已有实现。
 
@@ -16,9 +16,11 @@
 
 ### 1.1 系统架构设计
 
-> 💡 以下架构**沿用**能力开放平台（`specs-tree-capability-open-platform/plan.md §方案D`）的微服务架构基础，并**新增独立的 `connector-api` 运行时服务**承载连接流的执行（同步调度、HTTP 触发入口、执行上下文等）。**管理类能力（连接器/连接流/监控的 CRUD）仍在 `open-server`，前端统一在 `wecodesite`**。**本版本不与能力开放平台集成**——Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1 阶段。
+> 💡 以下架构**沿用**能力开放平台（`specs-tree-capability-open-platform/plan.md §方案D`）的微服务架构基础，并**新增独立的 `connector-api` 运行时服务**承载连接流的执行（同步调度、HTTP 触发入口、测试执行等）。**管理类能力（连接器/连接流的 CRUD）仍在 `open-server`，前端统一在 `wecodesite`**。**本版本不与能力开放平台集成**——Scope 权限复用（NG18）和审批流独立管理（NG19）移至 V1 阶段。
 >
-> 🎯 **前期定位（集成方向）**：连接器平台承担"**由内向外（同步主动调用）**"的角色，前期主路径是「**内部业务系统（触发方） → 连接器平台 → 三方业务系统（HTTP 接口目标）**」，例如内部 IM/云盘/审批等业务模块通过连接器把数据同步到三方 ERP/CRM/OA。外部消费方直接触发连接流、以及连接器调用内部业务系统作为提供方，作为后期能力（图中以虚线表示），与 api-server「由外向内」、event-server「由内向外（事件/回调）」共同构成完整的内↔外集成矩阵。
+> 🎯 **MVP v5.0 简化**：① **单版本模型**——每连接器/连接流仅一个版本，编辑即生效，不区分草稿/已发布；② **执行结果不持久化**——测试执行/HTTP 执行结果仅同步返回，不写入 execution_record_t（表设计保留至 V1）；③ **仅 HTTP 触发 + 测试执行**——手动触发移至 NG20。
+>
+> 🎯 **前期定位（集成方向）**：连接器平台承担"**由内向外（同步主动调用）**"的角色，前期主路径是「**内部业务系统（触发方） → 连接器平台 → 三方业务系统（HTTP 接口目标）**」。
 
 ```mermaid
 graph TB
@@ -118,9 +120,9 @@ graph TB
 **服务职责划分**：
 | 服务 | 类型 | 职责 |
 |------|------|------|
-| **wecodesite** | 前端 | 连接器平台**所有**前端页面（连接器目录/编辑器、连接流列表/编排画布/详情、执行详情、监控面板等） |
-| **open-server** | 后端管理服务 | 连接器/连接流的 CRUD 与版本管理、编排配置存储、监控查询；**手动调试/测试运行通过调用 connector-api 的调试接口完成** |
-| **connector-api** | 🆕 后端运行时服务 | 同步调度执行引擎、HTTP 触发入口、执行上下文管理、节点执行器（连接器/数据处理）、**对内提供调试接口**（供 open-server 调用） |
+| **wecodesite** | 前端 | 连接器平台**所有**前端页面（连接器目录/编辑器、连接流列表/编排画布/详情、测试执行结果等） |
+| **open-server** | 后端管理服务 | 连接器/连接流的 CRUD、编排配置存储；**测试运行通过调用 connector-api 的调试接口完成** |
+| **connector-api** | 🆕 后端运行时服务 | 同步调度执行引擎、HTTP 触发入口、执行上下文管理、节点执行器（连接器/数据处理）、**对内提供测试执行接口**（供 open-server 转发调用） |
 
 **与连接器平台相关的现有能力**（本版本**不集成**，仅复用基础设施）：
 | 现有能力 | 本版本用途 | 说明 |
@@ -136,7 +138,7 @@ graph TB
 |---------|------|
 | `open-server/src/main/java/com/xxx/open/modules/` | 现有能力开放模块（category/api/event/callback/permission/approval），连接器平台在本版本中**不依赖**这些模块 |
 | `connector-api/` | 🆕 新增独立 Spring Boot 工程，承载运行时与调试接口 |
-| `wecodesite/src/pages/ConnectPlatform/` | 已有连接器目录（Connector）、连接器编辑器（ConnectorEditor）、连接流列表/编排画布（Flow/FlowEditor）页面，本版本继续扩展（新增详情/执行详情/监控等页面） |
+| `wecodesite/src/pages/ConnectPlatform/` | 已有连接器目录（Connector）、连接器编辑器（ConnectorEditor）、连接流列表/编排画布（Flow/FlowEditor）页面，本版本继续扩展（新增 FlowDetail 详情页等） |
 
 ### 1.2 技术栈确认
 
@@ -202,25 +204,22 @@ graph TB
     subgraph Front["前端 wecodesite — 新增页面/补充"]
         ConnDir["连接器目录<br/>浏览/搜索/过滤"]
         ConnForm["连接器创建/编辑<br/>基本信息+连接配置"]
-        ConnDetail["连接器详情<br/>版本历史+配置详情"]
+        ConnDetail["连接器详情<br/>基本信息+配置详情"]
         FlowList["连接流列表<br/>浏览/搜索/管理"]
         FlowCanvas["连接流编排画布<br/>可视化拖拽编排"]
-        FlowDetail["连接流详情<br/>概览+运行状态<br/>+版本历史+执行记录"]
-        ExecDetail["执行详情<br/>步骤详情+返回值"]
-        MonitorPanel["监控面板<br/>执行历史查询"]
+        FlowDetail["连接流详情<br/>概览+运行状态"]
     end
 
     subgraph BackendMgmt["open-server — 新增管理模块"]
-        Connector["connector 模块<br/>连接器 CRUD + 版本管理"]
-        Flow["flow 模块<br/>连接流 CRUD + 版本管理 + 编排配置"]
-        MonitorModule["monitor 模块<br/>执行记录查询 + 统计"]
-        DebugProxy["debug-proxy 模块 [新增]<br/>调用 connector-api 调试接口<br/>手动调试/测试运行"]
+        Connector["connector 模块<br/>连接器 CRUD + 配置管理"]
+        Flow["flow 模块<br/>连接流 CRUD + 编排配置"]
+        DebugProxy["debug-proxy 模块<br/>调用 connector-api 测试接口<br/>测试运行转发"]
     end
 
     subgraph BackendRuntime["connector-api — 独立运行时服务 [新增]"]
         Runtime["runtime 模块<br/>同步调度执行 + 执行上下文<br/>+ 节点执行器"]
         HttpTrigger["http-trigger 模块<br/>HTTP 触发入口<br/>对外同步调用端点"]
-        DebugApi["debug-api 模块 [新增]<br/>调试接口<br/>供 open-server 调用"]
+        TestApi["test-api 模块<br/>测试执行接口<br/>供 open-server 转发调用"]
     end
 
     subgraph Existing["现有基础设施 — 复用"]
@@ -231,39 +230,36 @@ graph TB
     HTTP_Providers["三方业务系统 HTTP API<br/>[前期主目标]<br/>内部业务系统 API 为后期能力"]
 
     Front -- "HTTP 管理类" --> BackendMgmt
-    BackendMgmt -- "内部 HTTP 调试/测试运行" --> BackendRuntime
+    BackendMgmt -- "内部 HTTP 测试运行转发" --> BackendRuntime
     BackendMgmt --> MySQL_db
     BackendMgmt --> Redis_cache
     BackendRuntime --> MySQL_db
     BackendRuntime --> Redis_cache
     Runtime -- "同步HTTP调用" --> HTTP_Providers
     HttpTrigger -- "同步调度" --> Runtime
-    DebugApi -- "同步调度" --> Runtime
+    TestApi -- "同步调度" --> Runtime
 ```
 
 > 💡 **运行时单独部署的理由**：
 > - **职责隔离**：管理类操作（CRUD）与运行时执行（高并发、长耗时同步调用）资源特征不同，独立部署便于针对性扩缩容
 > - **故障隔离**：运行时阻塞或异常不影响管理后台的可用性
 > - **演进友好**：V1 引入异步执行/MQS 时只需改造 connector-api，open-server 保持稳定
-> - **调试接口收口**：手动调试、测试运行等流程统一通过 connector-api 提供的调试接口完成，避免运行时逻辑在 open-server 与 connector-api 重复实现
+> - **测试接口收口**：测试运行等流程统一通过 connector-api 提供的测试接口完成，避免运行时逻辑在 open-server 与 connector-api 重复实现
 
 ### 1.4 数据流分析
 
-#### 1.4.1 连接器发布流程
+#### 1.4.1 连接器配置流程（MVP 单版本）
 
 ```mermaid
 flowchart LR
     Start([管理员开始]) --> A["创建连接器<br/>基本信息"]
-    A --> B["配置连接配置<br/>协议/认证/参数Schema<br/>超时/限流"]
-    B --> C["保存草稿<br/>创建首个版本"]
-    C --> D["发布<br/>输入版本号"]
-    D --> E([版本可用])
+    A --> B["编辑连接配置<br/>协议/认证/参数Schema<br/>超时/限流<br/>编辑即生效"]
+    B --> C([配置生效<br/>可被连接流引用])
 
-    style D fill:#fff9c4,stroke:#f57f17
-    style E fill:#c8e6c9,stroke:#2e7d32
+    style C fill:#c8e6c9,stroke:#2e7d32
 ```
 
-> 💡 发布无需审批（NG19 移至 V1）。
+> 💡 MVP 单版本模型：编辑即生效，无草稿/发布/审批流程。
 
 #### 1.4.2 连接流创建与编排流程（设计期）
 
@@ -271,29 +267,24 @@ flowchart LR
 flowchart LR
     Start([管理员开始]) --> A["在 wecodesite<br/>创建连接流"]
     A --> B["进入编排画布"]
-    B --> C["配置入口触发器<br/>HTTP / 手动"]
-    C --> D["添加连接器节点<br/>引用已发布<br/>连接器版本"]
+    B --> C["配置入口触发器<br/>HTTP"]
+    C --> D["添加连接器节点<br/>引用连接器"]
     D --> E["添加数据处理节点<br/>字段映射"]
     E --> F["配置出口节点"]
-    F --> G["保存草稿"]
-    G --> H["发布<br/>输入版本号"]
-    H --> I([部署上线])
+    F --> G["保存编排配置<br/>编辑即生效"]
+    G --> H([配置生效<br/>可测试/HTTP触发])
 
-    style H fill:#fff9c4,stroke:#f57f17
-    style I fill:#c8e6c9,stroke:#2e7d32
+    style H fill:#c8e6c9,stroke:#2e7d32
 ```
 
-> 💡 设计期所有编排/发布请求均经 `wecodesite → open-server` 管理接口完成，不涉及 connector-api。
+> 💡 MVP 单版本模型：保存即生效。创建连接流后默认进入 running 状态，可立即测试运行或 HTTP 触发。设计期所有请求均经 `wecodesite → open-server` 管理接口完成，不涉及 connector-api。
 
 #### 1.4.3 连接流触发与执行流程（运行期）
-
-三种触发方式的跨服务交互对比：
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor BizSys as 内部业务系统<br/>(前期主触发方)
-    actor Consumer as 外部消费方<br/>(后期能力)
     actor Admin as 管理员
     participant Web as wecodesite
     participant OpenSvr as open-server<br/>(debug-proxy)
@@ -306,28 +297,11 @@ sequenceDiagram
         ConnApi-->>BizSys: 返回完整结果
     end
 
-    rect rgb(225, 245, 254)
-        Note over Consumer,ConnApi: HTTP 触发 (后期能力，路径同上)
-        Consumer-->>ConnApi: HTTP 请求 触发连接流
-        ConnApi-->>Consumer: 返回完整结果
-    end
-
     rect rgb(241, 248, 233)
-        Note over Admin,ConnApi: 方式2: 手动触发 (经 open-server 调试代理)
-        Admin->>Web: 点击「手动触发」
-        Web->>OpenSvr: REST 调用
-        OpenSvr->>ConnApi: 内部 HTTP 调用调试接口
-        ConnApi->>ConnApi: 同步执行连接流
-        ConnApi-->>OpenSvr: 返回完整结果
-        OpenSvr-->>Web: 透传结果
-        Web-->>Admin: 展示完整结果
-    end
-
-    rect rgb(252, 228, 236)
-        Note over Admin,ConnApi: 方式3: 测试运行 (链路与手动触发一致，使用模拟入参)
+        Note over Admin,ConnApi: 方式2: 测试运行 (经 open-server 转发)
         Admin->>Web: 点击「测试运行」
         Web->>OpenSvr: REST 调用<br/>(携带模拟入参)
-        OpenSvr->>ConnApi: 内部 HTTP 调用调试接口
+        OpenSvr->>ConnApi: 内部 HTTP 调用测试接口
         ConnApi->>ConnApi: 同步执行连接流
         ConnApi-->>OpenSvr: 返回完整结果
         OpenSvr-->>Web: 透传结果
@@ -340,14 +314,13 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Caller as 调用方<br/>HTTP触发 / 调试请求
+    participant Caller as 调用方<br/>HTTP触发 / 测试请求
     participant Sched as 调度器
     participant N1 as 节点1<br/>入口
     participant N2 as 节点2<br/>连接器
     participant N3 as 节点3<br/>数据处理
     participant N4 as 节点4<br/>出口
     participant Target as 三方业务系统<br/>HTTP API<br/>(前期主目标)
-    participant MySQL as MySQL
 
     Caller->>Sched: 进入 connector-api
     Sched->>Sched: 创建 ExecutionContext<br/>(含触发数据)
@@ -356,7 +329,6 @@ sequenceDiagram
     N1->>N2: 传递上游数据
     N2->>N2: 读取上游数据
     N2->>Target: 同步调用 HTTP API
-    Note right of Target: 后期可调用<br/>内部业务系统
     Target-->>N2: 响应
     N2->>N2: 输出数据到上下文
     N2->>N3: 传递上游数据
@@ -365,11 +337,9 @@ sequenceDiagram
     N4->>N4: 定义返回值
     N4-->>Sched: 完成
     Sched-->>Caller: 返回完整执行结果<br/>(各步骤输入/输出/耗时/状态)
+```
 
-    par 异步写入 (不阻塞返回，R2DBC reactive)
-        Sched->>MySQL: 持久化执行记录/步骤
-        Note right of MySQL: 通过 R2DBC<br/>(Mono.subscribe)<br/>供 open-server<br/>monitor 模块查询
-    end
+> 💡 **MVP v5.0 简化**：执行结果同步返回调用方，**不持久化到 execution_record_t**（表设计保留至 V1）。
 ```
 
 ### 1.5 依赖关系图
@@ -383,14 +353,13 @@ graph LR
     subgraph OpenSvr["open-server (管理服务)"]
         ConnMgmt["连接器管理"]
         FlowMgmt["连接流管理"]
-        MonitorLog["监控日志查询"]
-        DebugProxy["调试代理<br/>手动调试/测试运行"]
+        DebugProxy["测试代理<br/>测试运行转发"]
     end
 
     subgraph ConnApi["connector-api (运行时服务)"]
         RuntimeExe["运行时执行<br/>同步"]
         HttpTriggerSvc["HTTP 触发入口"]
-        DebugSvc["调试接口"]
+        TestSvc["测试执行接口"]
     end
 
     subgraph TriggerSrc["触发方"]
@@ -410,9 +379,8 @@ graph LR
 
     UI -- "REST" --> ConnMgmt
     UI -- "REST" --> FlowMgmt
-    UI -- "REST" --> MonitorLog
-    UI -- "REST 手动调试/测试运行" --> DebugProxy
-    DebugProxy -- "内部HTTP" --> DebugSvc
+    UI -- "REST 测试运行" --> DebugProxy
+    DebugProxy -- "内部HTTP" --> TestSvc
 
     %% === 前期主路径（粗实线）===
     BizSys ==> |"HTTP触发 [前期主路径]"| HttpTriggerSvc
@@ -423,10 +391,9 @@ graph LR
     RuntimeExe -. "直接HTTP调用 [后期能力]" .-> InternalAsTarget
 
     HttpTriggerSvc --> RuntimeExe
-    DebugSvc --> RuntimeExe
+    TestSvc --> RuntimeExe
     ConnMgmt --> DB
     FlowMgmt --> DB
-    MonitorLog --> DB
     RuntimeExe --> DB
     RuntimeExe --> Cache
 
@@ -442,16 +409,15 @@ graph LR
 
 ### 1.6 核心业务对象关系
 
-连接器平台围绕 **6 个持久化业务对象** + **1 个内存对象（凭证）** 组织（详见 §4.2 数据库设计），对象间关系：
+连接器平台围绕 **4 个持久化业务对象** + **1 个内存对象（凭证）** + **3 个 V1 设计保留表** 组织（详见 §4.2 数据库设计），对象间关系：
 
 | 关系 | 说明 |
 |------|------|
-| Connector → ConnectorVersion | 一个连接器有多个版本（1:N），发布时快照基本信息+连接配置（含认证类型 schema，不含凭证值） |
-| ConnectorVersion ←···引用··· FlowVersion.orchestration_config.nodes[] | 连接器版本被连接流编排定义中的节点（JSON 数组元素）引用，**非物理外键**，引用关系存于 FlowVersion 的 `orchestration_config` TEXT 字段（JSON 字符串）内 |
-| Flow → FlowVersion | 一个连接流有多个版本（1:N），发布时快照基本信息+编排配置（`{trigger, nodes[], edges[]}` 完整 DAG，单一 JSON 字段，**触发器配置完整内嵌于 `trigger` 节点**） |
-| Flow → ExecutionRecord → ExecutionStep | 每次执行生成一条记录，记录含多个步骤（1:N:N）；MVP 不分区，V1 按月分区 |
-| ExecutionRecord / ExecutionStep ←···外置引用··· StorageBlobRef | 大字段（>64KB）的 input/output/result_data 外置到对象存储，表中只存 `*_blob_id` 引用 |
-| Credentials（内存对象，不入库） | 凭证仅在调用过程中由触发请求传入 → 注入 ExecutionContext → 节点执行后清除；写入执行记录时按 `sensitive: true` 标记**脱敏** |
+| Connector → ConnectorVersion | **MVP 单版本**：一个连接器仅有一条版本记录，存储连接配置（含认证类型 schema，不含凭证值）。V1 扩展为 1:N 多版本 |
+| ConnectorVersion ←···引用··· FlowVersion.orchestration_config.nodes[] | 连接器被连接流编排定义中的节点（JSON 数组元素）引用，**非物理外键** |
+| Flow → FlowVersion | **MVP 单版本**：一个连接流仅有一条版本记录，存储`{trigger, nodes[], edges[]}` 完整 DAG，触发器配置完整内嵌于 `trigger` 节点。V1 扩展为 1:N 多版本 |
+| ExecutionRecord / ExecutionStep / StorageBlobRef | ⚠️ **V1 设计保留**：表定义存在，MVP 不写入（执行结果仅同步返回，不持久化） |
+| Credentials（内存对象，不入库） | 凭证仅在调用过程中由触发请求传入 → 注入 ExecutionContext → 节点执行后清除 |
 
 > 完整 ER 图（含字段定义）详见 **§4.2 数据库设计** 及 `plan-db.md`
 
@@ -557,7 +523,7 @@ sequenceDiagram
 **方案描述**: 以消息队列为核心，将每个连接器节点封装为独立的消息消费者，流程执行为消息在消费者间的流转。
 
 **不适用的理由**:
-- spec v4.0 明确同步执行（FR-021/FR-022），消息驱动引入不必要的异步延迟
+- spec v5.0 明确同步执行（HTTP 触发 + 测试运行），消息驱动引入不必要的异步延迟
 - 同步场景下消息队列的序列化/反序列化开销反而降低性能
 - 本版本无事件/定时触发，消息队列无必要
 - 增加运维复杂度
@@ -587,7 +553,7 @@ sequenceDiagram
 
 **推荐理由**:
 
-1. **MVP 范围精确匹配**: 规范明确 MVP 仅支持**同步**线性编排（HTTP/手动触发器 → 连接器节点/数据处理节点 → 流出口节点），顺序同步执行器是满足需求的最简方案。
+1. **MVP 范围精确匹配**: 规范明确 MVP 仅支持**同步**线性编排（HTTP 触发器 → 连接器节点/数据处理节点 → 流出口节点），顺序同步执行器是满足需求的最简方案。
 
 2. **同步执行简化架构**: 相比 spec v3.x 的异步执行模型，v4.0 的同步执行大幅降低了运行时复杂度——无需消息队列、无需事件订阅、无需状态轮询。执行结果直接通过 HTTP 响应返回，调用方无需等待异步回调。
 
@@ -606,23 +572,24 @@ sequenceDiagram
 | 流引擎 | 轻量同步执行器（自研） | MVP 仅需线性同步编排，最简方案 |
 | 编排画布 | React Flow (@xyflow/react) | React-native, 轻量, TS 支持好 |
 | **运行时部署** | **独立服务 `connector-api`**（与 open-server 分离） | 职责隔离、故障隔离、独立扩缩容、便于 V1 演进 |
-| 调试/测试运行通道 | open-server 调用 connector-api 内部调试接口 | 运行时逻辑收口在 connector-api，避免双份实现 |
+| 测试运行通道 | open-server 调用 connector-api 内部测试接口 | 运行时逻辑收口在 connector-api，避免双份实现 |
 | 前端归属 | 全部页面统一放在 wecodesite | 用户侧只对接一个前端入口 |
-| 执行模型 | **同步**（请求线程内执行） | spec v4.0 明确同步执行 |
-| 触发方式 | HTTP + 手动（同步） | MVP 范围限定 |
-| 执行上下文 | 方法调用参数传递（运行时）+ MySQL 持久化 | 同步执行无需 Redis 缓存上下文 |
-| 执行记录持久化 | MySQL（异步写入，不阻塞返回） | 确保执行结果快速返回 |
-| 凭证存储策略 | **不持久化**，调用方传入 → 内存上下文 → 节点执行后清除；执行记录中脱敏 | MVP 极简（满足 NFR-010 的最小化原则）；V1 视需要再引入加密落库 |
+| 执行模型 | **同步**（请求线程内执行） | spec v5.0 明确同步执行 |
+| 触发方式 | HTTP + 测试（同步） | MVP v5.0 范围（手动触发→NG20） |
+| 版本模型 | **MVP 单版本**（编辑即生效，无草稿/已发布） | spec v5.0 简化；V1 扩展为多版本管理 |
+| 执行记录持久化 | **MVP 不写入**（结果仅同步返回） | spec v5.0 移除 FR-025；三张运行时表设计保留至 V1 |
+| 执行上下文 | 方法调用参数传递（内存） | 同步执行无需持久化上下文 |
+| 凭证存储策略 | **不持久化**，调用方传入 → 内存上下文 → 节点执行后清除 | MVP 极简（满足 NFR-010 的最小化原则） |
 | HTTP 触发入口 | connector-api 新增 controller | 与运行时同进程，链路最短 |
-| **connector-api Web 栈** | **Spring WebFlux + Reactor Netty + WebClient** | 运行时高并发同步 HTTP 调用三方系统，NIO 非阻塞栈吞吐量显著优于 Servlet 同步栈；对调用方仍呈现同步语义 |
-| **connector-api 数据访问** | **R2DBC (spring-data-r2dbc + r2dbc-mysql)** | 端到端 reactive，**从源头消除阻塞 JDBC 调用风险**；不引入 MyBatis 同步栈 |
+| **connector-api Web 栈** | **Spring WebFlux + Reactor Netty + WebClient** | 运行时高并发同步 HTTP 调用三方系统，NIO 非阻塞 |
+| **connector-api 数据访问** | **R2DBC (spring-data-r2dbc + r2dbc-mysql)** | 端到端 reactive |
 | **connector-api 缓存访问** | **spring-data-redis-reactive (Lettuce reactive)** | 与 reactive 栈一致 |
 | **connector-api 下游 HTTP 调用** | **WebClient** | 禁止 RestTemplate / OkHttp 同步客户端 |
-| **schema 共享策略** | 同一 MySQL 表 schema，entity / 持久化层各服务独立维护 | open-server (MyBatis) + connector-api (R2DBC) 各用其语言惯用 ORM，通过 Flyway 统一 DDL 保证一致 |
-| open-server Web 栈 | 沿用 Spring MVC（Servlet） | 管理类操作以 CRUD 为主，并发不高，沿用现有栈避免改造成本 |
+| **schema 共享策略** | 同一 MySQL 表 schema，entity / 持久化层各服务独立维护 | open-server (MyBatis) + connector-api (R2DBC) |
+| open-server Web 栈 | 沿用 Spring MVC（Servlet） | 管理类 CRUD 操作，复用现有栈 |
 | Scope 权限 | **不集成**（移至 NG18，V1） | 本版本独立运行 |
-| 审批流程 | **不集成**（移至 NG19，V1） | 版本发布无需审批 |
-| 数据处理节点 | **加入 MVP** | spec v4.0 将数据处理节点纳入 MVP 范围 |
+| 审批流程 | **不集成**（移至 NG19，V1） | 编辑即生效，无需审批 |
+| 数据处理节点 | **加入 MVP** | spec v5.0 保留 |
 
 ---
 
@@ -634,16 +601,14 @@ sequenceDiagram
 
 | 模块 | 所属项目 | 类型 | 说明 |
 |------|---------|------|------|
-| **connector** | open-server | 新增模块 | 连接器管理 — CRUD、版本管理、连接配置管理 |
-| **flow** | open-server | 新增模块 | 连接流管理 — CRUD、版本管理、编排配置 |
-| **monitor** | open-server | 新增模块 | 监控日志 — 执行历史查询 |
-| **debug-proxy** | open-server | 新增模块 | 调试代理 — 接收前端手动调试/测试运行请求并转发至 connector-api 调试接口 |
+| **connector** | open-server | 新增模块 | 连接器管理 — CRUD、连接配置管理（MVP 单版本） |
+| **flow** | open-server | 新增模块 | 连接流管理 — CRUD、编排配置（MVP 单版本） |
+| **debug-proxy** | open-server | 新增模块 | 测试代理 — 接收前端测试运行请求并转发至 connector-api 测试接口 |
 | **runtime** | **connector-api** 🆕 | 新增模块 | 运行时 — 同步调度执行、执行上下文、节点执行器（连接器/数据处理） |
 | **http-trigger** | **connector-api** 🆕 | 新增模块 | HTTP 触发入口 — 对外暴露同步触发端点 |
-| **debug-api** | **connector-api** 🆕 | 新增模块 | 调试接口 — 供 open-server 内部调用（手动调试/测试运行） |
+| **test-api** | **connector-api** 🆕 | 新增模块 | 测试执行接口 — 供 open-server 内部转发调用 |
 | **connector** | wecodesite | 已有页面组 | 连接器目录/创建编辑/详情（已有实现，需补充） |
-| **flow** | wecodesite | 已有页面组 | 连接流列表/编排画布/详情/执行详情（已有实现，需补充） |
-| **monitor** | wecodesite | 新增页面组 | 执行历史查询面板 |
+| **flow** | wecodesite | 已有页面组 | 连接流列表/编排画布/详情（已有实现，需补充） |
 
 > 各模块的**完整数据库表设计**详见 `plan-db.md`  
 > 各模块的**完整 API 接口设计**详见 `plan-api.md`  
@@ -658,10 +623,11 @@ sequenceDiagram
 
 | 决策点 | 选择 | 调研出处 |
 |--------|------|----------|
-| **编排定义存储模型** | **单一字段保存完整 DAG**（`{ trigger{}, nodes[], edges[] }`），不拆分 FlowNode/FlowEdge 子表；字段类型采用 **TEXT 存 JSON 字符串**（v2.7.4 决策——不使用 MySQL JSON 原生类型） | Zapier/Make/钉钉/PA 共识（单一字段便于版本快照、diff、回滚）+ TEXT 跨数据库通用、ORM/工具兼容性最好 |
+| **编排定义存储模型** | **单一字段保存完整 DAG**（`{ trigger{}, nodes[], edges[] }`），不拆分 FlowNode/FlowEdge 子表；字段类型采用 **TEXT 存 JSON 字符串** | Zapier/Make/钉钉/PA 共识 + TEXT 跨数据库通用 |
 | **节点拓扑模型** | **显式 DAG（nodes + edges 两个数组）** | Make 模式——MVP 虽线性，但 V1 引入分支/循环/并行时无需 schema 迁移 |
-| **触发器存储** | **完全内嵌于编排 JSON 的顶级 `trigger{}` 字段**，含触发类型、认证类型 schema（仅声明，不含凭证）、入参 Schema、限流配置；**不单独建表**——凭证不入库且无 token 持久化需求时，独立表已无核心价值（v2.7.3 决策） | MVP 极简 + 触发器配置本就是编排定义的一部分，跟随版本快照便于回滚 |
-| **版本管理** | 独立 `openplatform_v2_cp_flow_version_t` / `openplatform_v2_cp_connector_version_t` 表，每次发布写入完整快照；`openplatform_v2_cp_flow.current_published_version_id` 指向最新发布版 | PA `flowversions`(保留 25) + 钉钉 `flow_versions` 模式 |
+| **触发器存储** | **完全内嵌于编排 JSON 的顶级 `trigger{}` 字段**，含触发类型、认证类型 schema（仅声明，不含凭证）、入参 Schema、限流配置；**不单独建表** | MVP 极简 + 触发器配置本就是编排定义的一部分 |
+| **版本管理** | **MVP 单版本模型**——`connector_version_t` / `flow_version_t` 每实体仅一条记录（无 `version_status` / `version_no` 业务驱动），V1 扩展为多版本 | spec v5.0 简化 |
+| **🆕 执行记录持久化** | **MVP 不写入**——`execution_record_t` / `execution_step_t` / `storage_blob_ref_t` 三张表定义保留，MVP 不执行写入逻辑；执行结果仅同步返回调用方 | spec v5.0 移除 FR-025（执行历史→NG21），表设计保留至 V1 |
 | **执行历史 I/O 外置** | 大字段（步骤 input/output、连接流 result_data）**默认写 MySQL 内嵌**，当 size > 阈值（建议 64KB，迭代 0 决策）时**自动外置到对象存储**，表中只存 `*_uri/*_size/*_hash` 引用 | PA 默认外置 + Make/钉钉条件外置 |
 | **执行记录分区**（V1 优化项） | **MVP 不分区**——`openplatform_v2_cp_execution_record_t` / `openplatform_v2_cp_execution_step_t` 使用普通表结构；V1 引入按 `create_time` 月度分区 + 30 天冷归档 | MVP 业务量小，无需引入分区运维复杂度；分区方案保留为 V1 优化预案（5 平台共识） |
 | **计量字段（预留）** | `openplatform_v2_cp_execution_record_t` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes`（MVP 写入 0，V1 启用计费时直接使用） | Make `operations_consumed` + PA `billingMetrics`——避免后期加字段迁移成本 |
@@ -672,23 +638,23 @@ sequenceDiagram
 | **关联引用方式** | **BIGINT(20) 雪花 ID**（应用层生成），使用逻辑外键（存储关联 ID），**不使用物理外键约束** | 对齐能力开放平台数据库规范（§4.2.x 主键规范） |
 | **遵循通用规范** | 所有表遵循 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`：表后缀 `_t` / 中英文双语名称（`name_cn`/`name_en`）/ 必备 4 审计字段（`create_time`/`last_update_time`/`create_by`/`last_update_by`）/ TINYINT(10) 枚举 / `DATETIME(3)` 时间精度 / `idx_xxx` `uk_xxx` 索引命名 | 复用现有规范，保证整个 openplatform_v2 体系一致 |
 
-**表清单**（共 **7 张表**：4 张主表 + 2 张版本表 + 1 张子表 + 1 张元数据表，触发器配置内嵌于 `flow_version_t.orchestration_config.trigger` JSON，不单独建表）：
+**表清单**（共 **7 张表**：2 张主表 + 2 张配置表 + 3 张 V1 设计保留表，触发器配置内嵌于 `flow_version_t.orchestration_config.trigger` JSON，不单独建表）：
 
 | # | 表名 | 类型 | 模块 | 说明 |
 |---|------|------|------|------|
-| 1 | `openplatform_v2_cp_connector_t` | 主表 | connector | 连接器基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`icon_file_id`/`status`/`connector_type` 等，本期字段全部入主表，不拆属性表） |
-| 2 | `openplatform_v2_cp_connector_version_t` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON，仅声明认证类型 schema，**不存凭证值**） |
-| 3 | `openplatform_v2_cp_flow_t` | 主表 | flow | 连接流基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`icon_file_id`/`lifecycle_status`/`current_published_version_id` 等，本期字段全部入主表，不拆属性表） |
-| 4 | `openplatform_v2_cp_flow_version_t` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`，**触发器配置完整内嵌于 `trigger`：触发类型 / 认证类型 schema / 入参 Schema / 限流**） |
-| 5 | `openplatform_v2_cp_execution_record_t` | 主表 | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**MVP 不分区**，V1 引入按月分区） |
-| 6 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**MVP 不分区**，V1 引入按月分区） |
-| 7 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（**external_resource_id**（外部系统资源 ID，按需使用）/ uri / size / hash / content_type；用于 GC、审计与外部系统反查溯源） |
+| 1 | `openplatform_v2_cp_connector_t` | 主表 | connector | 连接器基本信息 |
+| 2 | `openplatform_v2_cp_connector_version_t` | 配置表 | connector | 连接器配置（含基本信息快照 + 连接配置 JSON，仅声明认证类型 schema，**不存凭证值**）；**MVP 单版本，每 connector 仅一条记录** |
+| 3 | `openplatform_v2_cp_flow_t` | 主表 | flow | 连接流基本信息（`lifecycle_status` MVP 简化：创建后默认 running，仅支持 stop/start） |
+| 4 | `openplatform_v2_cp_flow_version_t` | 配置表 | flow | 连接流配置（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}` 完整 DAG）；**MVP 单版本，每 flow 仅一条记录** |
+| 5 | `openplatform_v2_cp_execution_record_t` | ⚠️ 保留表 | runtime | 执行记录（**V1 设计保留，MVP 不写入**） |
+| 6 | `openplatform_v2_cp_execution_step_t` | ⚠️ 保留表 | runtime | 执行步骤详情（**V1 设计保留，MVP 不写入**） |
+| 7 | `openplatform_v2_cp_storage_blob_ref_t` | ⚠️ 保留表 | runtime | 对象存储引用元数据（**V1 设计保留，MVP 不写入**） |
 
 > 💡 **触发器为何不单独建表**（v2.7.3 决策）：
 > - **凭证不存储**（v2.6 决策）→ 无 `signing_secret` 等需独立运维的密钥字段
 > - **触发器仅声明认证类型 schema**（不含 token） → 无 `trigger_token` 持久化需求，HTTP 路径直接用 `/trigger/{flow_id}/invoke`
 > - **触发器配置本就是编排定义的一部分** → 跟随 `flow_version_t.orchestration_config` 快照，便于版本回滚（限流变更 = 业务编排变更，发新版本生效）
-> - **HTTP 路由查询**：`flow_t.id` → `current_published_version_id` → `flow_version_t.orchestration_config.trigger`，2 次查询走主键索引，性能完全够用
+> - **HTTP 路由查询**（MVP 单版本）：`flow_t.id` → `flow_version_t.orchestration_config.trigger`（flow_t 与 flow_version_t 1:1 关联），一次 JOIN 查询走主键索引，性能完全够用
 > - **V1 演进**：若出现"动态限流热更新""多端点共享 Flow""token 独立轮换"等场景，再拆出独立 `flow_trigger_endpoint_t` 表
 
 > 💡 **本期（MVP）暂不引入主表 + 属性表模式**：
@@ -696,10 +662,10 @@ sequenceDiagram
 > - **理由**：本期需求字段明确且数量可控，主表能完整承载；引入属性表会增加查询关联开销与 entity/mapper 维护成本
 > - **未来演进**：V1 阶段若出现高频扩展字段（如分类体系、自定义元数据等），再按能力开放平台规范引入 `connector_p_t` / `flow_p_t`，能力开放平台规范的属性表后缀 `_p_t` 命名空间已为此预留
 >
-> 💡 **MVP 暂不引入按月分区**：
-> - **决策**：`execution_record_t` / `execution_step_t` 本期使用普通表结构，**不做分区**
-> - **理由**：MVP 业务量小（预估 < 10w 行/月），普通表性能完全够用；分区会引入额外的运维复杂度（分区维护脚本、跨分区查询优化等）
-> - **未来演进**：V1 阶段当单表行数接近 500w 或查询性能下降时，引入按 `create_time` 月度分区 + 30 天冷归档（5 平台共识方案）
+> 💡 **MVP 不写入执行记录**：
+> - **决策**：`execution_record_t` / `execution_step_t` / `storage_blob_ref_t` 三张表定义保留，**MVP 不执行写入逻辑**
+> - **理由**：spec v5.0 移除 FR-025（执行历史→NG21），执行结果仅同步返回调用方
+> - **未来演进**：V1 引入执行记录持久化时，启用三张表 + 按月分区 + 30 天冷归档（5 平台共识方案）
 
 
 > 🔐 **凭证传递路径（不持久化）**：
@@ -710,44 +676,34 @@ sequenceDiagram
 > 5. 写入 `openplatform_v2_cp_execution_step_t.input_data` 时，**按 `connection_config` 中标记为 `sensitive: true` 的字段自动脱敏**（值替换为 `***`，长度信息保留）
 > 6. 凭证全程不进入 MySQL / Redis / 对象存储，**仅存活于本次 HTTP 请求的内存上下文**
 
-**核心 ER 关系**（完整字段定义、索引、JSON Schema 详见 `plan-db.md`）：
+**核心 ER 关系**（MVP 单版本，执行表 V1 保留。完整字段定义、索引、JSON Schema 详见 `plan-db.md`）：
 
 ```mermaid
 erDiagram
-    Connector ||--o{ ConnectorVersion : has
-    Flow ||--o{ FlowVersion : has
-    Flow ||--o{ ExecutionRecord : generates
-    ExecutionRecord ||--o{ ExecutionStep : contains
-    ExecutionRecord }o--|| FlowVersion : executes_snapshot
-    ExecutionStep }o--o| StorageBlobRef : may_externalize_io
-    ExecutionRecord }o--o| StorageBlobRef : may_externalize_result
+    Connector ||--|| ConnectorVersion : "has (MVP 1:1)"
+    Flow ||--|| FlowVersion : "has (MVP 1:1)"
+    FlowVersion }o..o{ ConnectorVersion : "references via orchestration_config JSON"
 
     Connector {
         bigint id PK "雪花 ID"
         varchar name_cn "中文名称"
         varchar name_en "英文名称"
-        varchar description_cn "中文描述（VARCHAR(1000)，选填）"
-        varchar description_en "英文描述（VARCHAR(1000)，选填）"
-        varchar icon_file_id "图标文件 ID（VARCHAR(128)，选填）"
+        varchar description_cn "中文描述"
+        varchar description_en "英文描述"
+        varchar icon_file_id "图标文件 ID"
         tinyint connector_type "1=HTTP (MVP)"
-        tinyint status "0=disabled 1=active"
-        datetime create_time "DATETIME(3)"
-        datetime last_update_time "DATETIME(3)"
-        varchar create_by "创建人账号"
-        varchar last_update_by "更新人账号"
+        tinyint status "预留字段"
+        datetime create_time
+        datetime last_update_time
+        varchar create_by
+        varchar last_update_by
     }
     ConnectorVersion {
         bigint id PK "雪花 ID"
-        bigint connector_id "关联 Connector.id（逻辑外键）"
-        varchar version_no "x.x.x 三段式"
-        tinyint version_status "0=draft 1=published"
-        varchar version_description_cn "VARCHAR(1000)，选填"
-        varchar version_description_en "VARCHAR(1000)，选填"
-        text basic_info_snapshot "TEXT 存 JSON 字符串：发布时连接器基本信息快照"
-        text connection_config "TEXT 存 JSON 字符串：连接配置：协议/地址/认证类型 schema（不含凭证值）/入参 Schema/出参 Schema/超时/限流"
+        bigint connector_id "关联 Connector.id"
+        text connection_config "连接配置 JSON: 协议/地址/认证类型 schema/入参/出参/超时/限流"
         datetime create_time
         datetime last_update_time
-        datetime published_time "DATETIME(3) nullable"
         varchar create_by
         varchar last_update_by
     }
@@ -755,11 +711,10 @@ erDiagram
         bigint id PK "雪花 ID"
         varchar name_cn "中文名称"
         varchar name_en "英文名称"
-        varchar description_cn "中文描述（VARCHAR(1000)，选填）"
-        varchar description_en "英文描述（VARCHAR(1000)，选填）"
-        varchar icon_file_id "图标文件 ID（VARCHAR(128)，选填）"
-        tinyint lifecycle_status "0=undeployed 1=running 2=stopped (FR-013~015)"
-        bigint current_published_version_id "当前部署的已发布版本 ID（逻辑外键，nullable）"
+        varchar description_cn "中文描述"
+        varchar description_en "英文描述"
+        varchar icon_file_id "图标文件 ID"
+        tinyint lifecycle_status "1=running 2=stopped（MVP 创建后默认 running）"
         datetime create_time
         datetime last_update_time
         varchar create_by
@@ -767,92 +722,23 @@ erDiagram
     }
     FlowVersion {
         bigint id PK
-        bigint flow_id "关联 Flow.id（逻辑外键）"
-        varchar version_no "x.x.x 三段式"
-        tinyint version_status "0=draft 1=published"
-        varchar version_description_cn "VARCHAR(1000)，选填"
-        varchar version_description_en "VARCHAR(1000)，选填"
-        text basic_info_snapshot "TEXT 存 JSON 字符串：发布时连接流基本信息快照"
-        text orchestration_config "TEXT 存 JSON 字符串：编排配置 {trigger,nodes,edges} 显式 DAG；trigger 内含触发类型/认证类型 schema/入参 Schema/限流，不单独建表"
+        bigint flow_id "关联 Flow.id"
+        text orchestration_config "编排配置 JSON: {trigger,nodes,edges} 完整 DAG"
         datetime create_time
         datetime last_update_time
-        datetime published_time "DATETIME(3) nullable"
-        varchar create_by
-        varchar last_update_by
-    }
-    ExecutionRecord {
-        bigint id PK "execution_id，雪花 ID"
-        bigint flow_id "关联 Flow.id（逻辑外键）"
-        bigint flow_version_id "执行时使用的版本 ID（逻辑外键）"
-        tinyint trigger_type "1=http 2=manual 3=test"
-        tinyint status "0=pending 1=running 2=success 3=failed 4=timeout（MVP 5 个值）"
-        varchar correlation_id "跨服务链路追踪 ID（idx_correlation_id）"
-        text trigger_data "TEXT 存 JSON 字符串：触发输入数据（小字段）— 大字段走 trigger_data_blob_id"
-        bigint trigger_data_blob_id "外置引用，关联 StorageBlobRef.id（nullable）"
-        text result_data "TEXT 存 JSON 字符串：出口节点返回值（小字段）— 大字段走 result_data_blob_id"
-        bigint result_data_blob_id "外置引用（nullable）"
-        int operations_count "预留计量：操作数（MVP 写 0）"
-        bigint data_in_bytes "预留计量：入流量"
-        bigint data_out_bytes "预留计量：出流量"
-        bigint duration_ms "总耗时"
-        datetime started_time
-        datetime completed_time
-        datetime create_time "MVP 不分区，V1 引入按月分区"
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    ExecutionStep {
-        bigint id PK
-        bigint execution_id "关联 ExecutionRecord.id（逻辑外键，idx_execution_id_step_order）"
-        int step_order "节点执行序号"
-        varchar node_id "对应 orchestration_config.nodes[].id（字符串 UUID，来自编排 JSON 内部 ID 空间）"
-        tinyint node_type "1=entry 2=connector 3=data_processor 4=exit"
-        varchar node_name_cn "节点中文名"
-        varchar node_name_en "节点英文名"
-        tinyint status "0=success 1=failed"
-        text input_data "TEXT 存 JSON 字符串：上游输入（小字段）"
-        bigint input_data_blob_id "外置引用（nullable）"
-        text output_data "TEXT 存 JSON 字符串：节点输出（小字段）"
-        bigint output_data_blob_id "外置引用（nullable）"
-        text error_info "TEXT 存 JSON 字符串：错误详情（失败时）"
-        bigint duration_ms "节点耗时"
-        datetime started_time
-        datetime completed_time
-        datetime create_time "MVP 不分区，V1 引入按月分区"
-        datetime last_update_time
-        varchar create_by
-        varchar last_update_by
-    }
-    StorageBlobRef {
-        bigint id PK
-        varchar external_resource_id "外部系统资源 ID（按需使用，可空）：当大字段数据来源于外部系统时，存外部系统对该数据的标识（如钉钉 media_id / 第三方 file_id），便于反查溯源；纯内部生成留空"
-        varchar uri "对象存储 URI（如 oss://bucket/path/xxx.json）"
-        bigint size_bytes "字节数"
-        varchar content_hash "SHA-256 校验"
-        varchar content_type "MIME 类型"
-        tinyint owner_type "1=execution_record_trigger 2=execution_record_result 3=execution_step_input 4=execution_step_output"
-        bigint owner_id "所属业务 ID（用于 GC，idx_owner_type_owner_id）"
-        datetime create_time
-        datetime last_update_time
-        datetime expires_time "TTL（用于自动清理，nullable）"
         varchar create_by
         varchar last_update_by
     }
 ```
 
-> 💡 **JSON 字段结构（v2.7.4 起统一使用 TEXT 类型存 JSON 字符串，详见 §4.3.3 字段规则与 `plan-db.md`）**：
-> - `ConnectorVersion.connection_config` —— `{ protocol, baseUrl, auth_type, inputSchema, outputSchema, timeoutMs, rateLimit }`
-> - `FlowVersion.orchestration_config.trigger` —— `{ type: "http"|"manual"|"test", authTypeSchema: { type: "bearer"|"api_key"|"oauth2"|"none", carrier: "header"|"query", field_name: "Authorization" }, inputSchema: {...JSON Schema...}, rateLimit: { maxQps: 100 } }`——**触发器配置完整内嵌**（v2.7.3 决策），不单独建表；凭证仅在调用时通过请求传入（v2.6 决策）
-> - `FlowVersion.orchestration_config` —— `{ trigger:{...上述结构...}, nodes:[{id,type,connector_version_id,params,position}], edges:[{id,source_node_id,target_node_id,data_mappings:[{source_path,target_path,transform}]}] }`
-> - `ExecutionRecord.trigger_data` / `result_data` —— 原始 JSON 数据，超过阈值时仅留 `{ "$externalized": "<storage_blob_ref_id>" }` 引用
-> - `ExecutionStep.input_data` / `output_data` —— 同上外置规则
+> ⚠️ **V1 设计保留表**（MVP 定义但不写入）：`execution_record_t` / `execution_step_t` / `storage_blob_ref_t` 详见 `plan-db.md`
+
+---
 >
 > 💡 **关键索引**（命名遵循能力开放平台规范 `idx_xxx` / `uk_xxx`，详见 `plan-db.md`）：
-> - `openplatform_v2_cp_connector_version_t (connector_id, version_status, create_time DESC)` —— `idx_connector_id_version_status_create_time`
-> - `openplatform_v2_cp_flow_version_t (flow_id, version_status, create_time DESC)` —— `idx_flow_id_version_status_create_time`，查最新草稿/已发布版本
-> - `openplatform_v2_cp_flow_t (current_published_version_id)` —— `idx_current_published_version_id`，HTTP 触发查找路径（`/trigger/{flow_id}` → 查 flow_t → join flow_version_t 取 trigger JSON）
-> - `openplatform_v2_cp_execution_record_t (flow_id, create_time DESC)` —— `idx_flow_id_create_time`，执行历史查询（FR-025）
+> - `openplatform_v2_cp_connector_version_t (connector_id)` —— `idx_connector_id_create_time`，查连接器配置
+> - `openplatform_v2_cp_flow_version_t (flow_id)` —— `idx_flow_id_create_time`，查连接流配置（含 HTTP 触发路径 `/trigger/{flow_id}` → 查 flow_t → join flow_version_t 取 trigger JSON）
+> - ~~`openplatform_v2_cp_execution_record_t (flow_id, create_time DESC)`~~ —— ⚠️ MVP 不写入（V1 启用）
 > - `openplatform_v2_cp_execution_record_t (correlation_id)` —— `idx_correlation_id`，链路追踪
 > - `openplatform_v2_cp_execution_step_t (execution_id, step_order)` —— `idx_execution_id_step_order`，步骤详情
 > - `openplatform_v2_cp_storage_blob_ref_t (owner_type, owner_id)` —— `idx_owner_type_owner_id`，GC 任务扫描
@@ -860,7 +746,7 @@ erDiagram
 >
 > 💡 **与调研结论的对应**：
 > - 显式 DAG（`{nodes[], edges[]}`）——借鉴 Make
-> - 独立版本表 + `current_published_version_id` 指针——借鉴 PA `flowversions` + 钉钉
+> - MVP 单版本模型——借鉴调研平台实践，V1 扩展为多版本管理
 > - I/O 默认外置（`*_blob_id` 引用）——借鉴 PA `inputsLink/outputsLink`
 > - 预留计量字段——借鉴 Make `operations_consumed` + PA `billingMetrics`
 > - **凭证不持久化（MVP 简化）**——调研中 5 平台均落库加密存储（AES-256-GCM + KMS），但 MVP 阶段我们选择极简策略：凭证仅在调用过程中传递，不进入任何持久层；待 V1 引入"连接器市场/共享凭证库"等场景再补 `openplatform_v2_cp_credential_t` 表
@@ -918,11 +804,11 @@ erDiagram
 |----|------|--------|------|
 | `connector_t` | `connector_type` | 1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1） | 协议类型 |
 | `connector_t` | `status` | 保留字段（默认 1），本期不定义业务语义 | 未来可用于控制连接器是否可被连接流引用等 |
-| `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
-| `flow_t` | `lifecycle_status` | 0=undeployed, 1=running, 2=stopped | 对应 FR-013~015 部署/启动/停止 |
-| `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
-| `execution_record_t` | `trigger_type` | 1=http, 2=manual, 3=test | 触发方式 |
-| `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | MVP 5 个值（partial/cancelled 留 V1） |
+| `connector_version_t` | `version_status` | ⚠️ MVP 不区分（字段保留，V1 启用 0=draft, 1=published） | MVP 单版本模型 |
+| `flow_t` | `lifecycle_status` | 1=running（默认）, 2=stopped | MVP 创建后默认 running，仅 stop/start |
+| `flow_version_t` | `version_status` | ⚠️ MVP 不区分（字段保留，V1 启用） | MVP 单版本模型 |
+| `execution_record_t` | `trigger_type` | 1=http, 3=test | ~~2=manual~~ 移至 NG20 |
+| `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | ⚠️ V1 保留表，MVP 不写入 |
 | `execution_step_t` | `status` | 0=success, 1=failed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=entry, 2=connector, 3=data_processor, 4=exit | 节点类型 |
 | `storage_blob_ref_t` | `owner_type` | 1=execution_record_trigger, 2=execution_record_result, 3=execution_step_input, 4=execution_step_output | 用于 GC 任务分类扫描 |
@@ -932,8 +818,8 @@ erDiagram
 | 项 | 能力开放平台 | 连接器平台 | 差异原因 |
 |----|------------|----------|----------|
 | **表前缀** | `openplatform_v2_` | `openplatform_v2_cp_` | 增加 `cp_` 子域标识，便于未来按子域拆库 |
-| **大字段外置** | 未涉及（管理类业务） | I/O 大字段（>64KB）外置到对象存储，表中存 `*_blob_id` | 运行时业务有大量执行 I/O 数据，借鉴 Power Automate inputsLink/outputsLink 模式 |
-| **分区策略** | 未涉及 | **MVP 不分区**；V1 阶段 `execution_record_t` / `execution_step_t` 按 `create_time` 月度分区 | MVP 业务量小（< 10w 行/月）无需分区；V1 单表接近 500w 时引入（5 平台共识） |
+| **大字段外置** | 未涉及（管理类业务） | I/O 大字段（>64KB）外置到对象存储，表中存 `*_blob_id` | ⚠️ V1 设计保留，MVP 不写入执行记录 |
+| **分区策略** | 未涉及 | **MVP 不写入执行记录**；V1 阶段启用 `execution_record_t` / `execution_step_t` 时引入 `create_time` 月度分区 | MVP 无需持久化执行记录（spec v5.0 FR-025→NG21）；V1 单表接近 500w 时引入（5 平台共识） |
 | **属性表模式** | 通用规范定义了 `_p_t` 命名 | **MVP 不引入**；所有字段直接入主表；V1 出现高频扩展时再按规范引入 `*_p_t` | MVP 字段可控，主表完整承载；避免关联开销与 entity/mapper 维护成本 |
 | **JSON 大字段** | 较少使用 | `connection_config` / `orchestration_config` / `trigger_data` / `result_data` / `input_data` / `output_data` / `error_info` / `basic_info_snapshot` 大量使用 JSON 数据；**统一 TEXT 类型存储 JSON 字符串**（v2.7.4 决策），不使用 MySQL JSON 原生类型 | 借鉴 Zapier/Make/钉钉 JSON 灵活存储编排数据，但类型选 TEXT 而非 JSON：跨数据库通用 + ORM/工具兼容性最好 + 避免 MySQL JSON 方言差异 |
 | **预留计量字段** | 未涉及 | `execution_record_t` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes` | 借鉴 Make/PA，避免后期加字段迁移成本 |
@@ -943,21 +829,21 @@ erDiagram
 
 ### 4.4 API 接口设计
 
-共 **14 个逻辑分组**（约 25 个 HTTP 端点），按服务归属：
-- **open-server**: connector 模块 5 组、flow 模块 4 组、monitor 模块 2 组、debug-proxy 模块（对前端暴露的"手动调试/测试运行"等接口，内部转发至 connector-api）
-- **connector-api**: http-trigger 模块（对外同步触发）、debug-api 模块（对内调试接口）
+共 **18 个 HTTP 端点**（v5.0 从 26 精简），按服务归属：
+- **open-server**: connector 模块（CRUD + 配置管理）、flow 模块（CRUD + 配置管理 + 启停）、debug-proxy 模块（测试运行转发至 connector-api）
+- **connector-api**: http-trigger 模块（对外同步触发）、test-api 模块（对内测试接口）
 
-覆盖连接器/连接流的 CRUD、版本管理、连接配置/编排配置编辑与发布、HTTP 触发执行、手动触发执行、测试运行、执行历史查询等全部功能。
+覆盖连接器/连接流的 CRUD、配置管理、编排配置编辑、HTTP 触发执行、测试运行等全部功能。
 
-> **与 spec v3.x 版 plan 的差异**：
-> - ❌ 移除 Scope 权限集成接口
-> - ❌ 移除审批集成接口  
-> - ❌ 移除事件/定时/Webhook 触发接口
-> - 🔄 HTTP 触发改为同步返回（非异步 202）
-> - 🔄 执行状态查询接口简化（同步执行无需轮询）
-> - ✅ 新增同步执行接口（HTTP 触发 + 手动触发 + 测试运行均同步返回）
+> **与 spec v4.0 版 plan 的差异（v5.0）**：
+> - ❌ 移除版本管理接口（版本列表/发布/版本切换）
+> - ❌ 移除手动触发接口（NG20）
+> - ❌ 移除执行历史查询接口（NG21）
+> - ❌ 移除部署接口（编辑即运行）
+> - 🔄 简化版本概念为单版本模型（编辑即生效）
+> - ✅ 保留 HTTP 触发 + 测试运行（同步返回）
 > - ✅ 新增数据处理节点配置接口
-> - 📋 FR 编号更新为 v4.0 的 FR-001~FR-025
+> - 📋 FR 编号更新为 v5.0 的 19 个 FR（FR-001~006, FR-009~017, FR-020~021, FR-023~024）
 
 > 完整端点定义、请求/响应 Schema、错误码、鉴权方式详见 **`plan-api.md`**
 
@@ -1058,7 +944,7 @@ open-app/
 | `modules/flow/FlowService.java` | 连接流业务逻辑 |
 | `modules/flow/FlowVersionController.java` | 版本管理、编排配置保存/发布（**触发器配置作为 orchestration_config.trigger 子节点，与版本一同管理，不需要独立的触发端点 API**） |
 | `modules/flow/FlowVersionService.java` | 版本业务逻辑（含 trigger 配置的 schema 校验） |
-| `modules/flow/entity/Flow.java` | 连接流实体（对应 `openplatform_v2_cp_flow_t`；含 `current_published_version_id` 指针） |
+| `modules/flow/entity/Flow.java` | 连接流实体（对应 `openplatform_v2_cp_flow_t`；MVP 不含 `current_published_version_id`，flow_t:flow_version_t 为 1:1） |
 | `modules/flow/entity/FlowVersion.java` | 连接流版本实体（对应 `openplatform_v2_cp_flow_version_t`；`orchestration_config` TEXT 字段，应用层 Jackson 反序列化为 `OrchestrationConfig` POJO，包含 `trigger { type, authTypeSchema, inputSchema, rateLimit } / nodes / edges`） |
 | `modules/flow/mapper/FlowMapper.java` | 连接流 Mapper |
 | `modules/flow/mapper/FlowVersionMapper.java` | 版本 Mapper |
@@ -1092,7 +978,7 @@ open-app/
 | `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` TEXT 字段，应用层 Jackson 反序列化为 `OrchestrationConfig` 对象，含 `trigger { type, authTypeSchema, inputSchema, rateLimit }`） |
 | `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`） |
 | `runtime/repository/ExecutionStepRepository.java` | 🆕 执行步骤 R2DBC Repository |
-| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（按 flow_id 查 current_published_version_id，HTTP 触发取 trigger 配置走这个 Repository） |
+| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（按 flow_id 查 orchestration_config，HTTP 触发取 trigger 配置走这个 Repository） |
 | `runtime/repository/StorageBlobRefRepository.java` | 🆕 对象存储引用 R2DBC Repository（用于 GC 任务） |
 | `runtime/storage/BlobStorageGateway.java` | 🆕 对象存储网关：自动判定 I/O 是否超阈值需外置；`Mono<BlobRef> putIfNeeded(payload)` / `Mono<byte[]> fetch(blobId)`；后端先支持 OSS（阿里云） |
 | `runtime/storage/IOExternalizationPolicy.java` | 🆕 外置策略：默认 64KB 阈值（迭代 0 决策最终值） |
@@ -1213,7 +1099,7 @@ open-app/
 | OQ-002 | 流编排引擎选型 | **已决策** → 轻量同步执行器（方案 A） | 当前 |
 | OQ-003 | 可视化编排画布选型 | **已决策** → React Flow (@xyflow/react) | 当前 |
 | OQ-004 | 执行历史保留策略 | 默认保留 30 天（可配置），超过自动清理 | Tasks 阶段 |
-| OQ-005 | 限流阈值设定 | HTTP 触发默认 100 次/分钟，手动触发默认 10 次/分钟 | Tasks 阶段 |
+| OQ-005 | 限流阈值设定 | HTTP 触发默认限流阈值 | Tasks 阶段 |
 | **OQ-006** | **凭证存储与 spec.md NFR-010 的对齐** | spec.md NFR-010 原诉求是「凭证加密存储 + 界面脱敏 + HTTPS 传输」；v2.6 plan 决策为**不持久化**（仅传递）。已落实"HTTPS 传输 + 执行记录脱敏"两项；"加密存储"项**通过取消存储本身实现等价的安全收益**。**建议反向同步 spec.md**：将 NFR-010 调整为「凭证不持久化（MVP）；如有持久化场景，须 AES-256-GCM + KMS（V1）」，避免文档不一致 | spec 同步阶段 |
 
 ---
@@ -1227,8 +1113,7 @@ open-app/
 | **迭代 0** | 🆕 connector-api 工程脚手架：**Spring WebFlux 初始化 + R2DBC ConnectionFactory + r2dbc-mysql + WebClient 工厂 + ReactiveRedisAccessor + Flyway 迁移脚本 + BlockHound 接入 + 内部鉴权 WebFilter + 部署流水线**；R2DBC entity / Repository 样例；与 open-server 共享 schema 联调 + **团队 WebFlux/Reactor/R2DBC 技术演练（3-5 天）** | — | 1.5-2 周 | connector-api 可启动、可被 open-server 调通；reactive 端到端样例跑通（HTTP 触发 → R2DBC 查询 → WebClient 调用 → 写入执行记录）；团队掌握 reactive 强制规则 |
 | **迭代 1** | 连接器管理模块（open-server） | FR-001 ~ FR-008 | 2-3 周 | 可创建/编辑/发布连接器，浏览连接器目录 |
 | **迭代 2** | 连接流管理模块（open-server） | FR-009 ~ FR-020 | 3-4 周 | 可创建连接流、拖拽编排、保存草稿、发布版本 |
-| **迭代 3** | 运行时模块（connector-api：runtime + http-trigger + debug-api）+ open-server 调试代理（debug） | FR-021 ~ FR-024 | 2-3 周 | 可同步执行连接流（HTTP 触发+手动触发），错误处理+限流 |
-| **迭代 4** | 监控模块（open-server） | FR-025 | 1-2 周 | 可查看执行历史、执行详情、步骤输入输出 |
+| **迭代 3** | 运行时模块（connector-api：runtime + http-trigger + test-api）+ open-server 测试代理（debug-proxy） | FR-020 ~ FR-021, FR-023 ~ FR-024 | 2-3 周 | 可同步执行连接流（HTTP 触发+测试运行），错误处理+限流 |
 | **集成测试** | 全链路联调 + E2E（含 open-server ↔ connector-api 通信） | 全部 | 1-2 周 | 端到端验证 |
 | **合计** | | | **9.5-14 周** | |
 
