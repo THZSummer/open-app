@@ -1254,7 +1254,8 @@ open-app/
 | 文档 | 说明 |
 |------|------|
 | `.sddu/.../specs-tree-connector-platform/plan.md` | **技术总纲**（架构·方案·风险评估·版本规划） |
-| `.sddu/.../specs-tree-connector-platform/plan-db.md` | **数据库设计**（表结构·索引·JSON Schema） |
+| `.sddu/.../specs-tree-connector-platform/plan-db.md` | **数据库设计**（表结构·索引） |
+| `.sddu/.../specs-tree-connector-platform/plan-json-schema.md` | **JSON Schema 设计规范**（共享组件·各上下文 Schema 定义·演进规则） |
 | `.sddu/.../specs-tree-connector-platform/plan-api.md` | **API 接口设计**（端点·请求/响应·鉴权·命名规范） |
 | `.sddu/.../specs-tree-connector-platform/plan-page.md` | **前端页面设计**（组件树·交互流程·路由） |
 | `.sddu/.../specs-tree-connector-platform/plan-code.md` | **代码规范**（注释·日志·SQL·安全·16 条强制规则） |
