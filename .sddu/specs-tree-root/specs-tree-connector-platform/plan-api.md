@@ -608,13 +608,17 @@
 
 **authTypeSchema.type 枚举**（仅声明类型，凭证值由调用方携带）：
 
-| 类型 | 说明 | 调用方需携带的字段 |
-|------|------|------------------|
-| `NONE` | 无需认证 | — |
-| `AKSK` | AccessKey/SecretKey | `accessKey`, `secretKey` |
-| `SYSTOKEN` | 🆕 系统 Token 认证 | `token` / `systoken` |
+**authTypeSchema.type 枚举**（沿用 `AuthTypeEnum.java` + 新增 SYSTOKEN，按优先级排序）：
 
-> 💡 **来源说明**：沿用开放平台 `AuthTypeEnum.java` 中的 `NONE(4)` / `AKSK(5)`，新增连接器平台专用 `SYSTOKEN(7)`；其余 `AuthTypeEnum` 枚举（COOKIE/SOA/APIG/IAM/CLITOKEN）不用于连接器平台认证声明。实际 MVP 仅使用此三种。
+| 代码 | 类型 | 说明 | 调用方需携带的字段 | 本版本优先级 |
+|:----:|------|------|------------------|:-----------:|
+| 7 | `SYSTOKEN` | 🆕 系统 Token 认证 | `token` / `systoken` | ⭐ **最高** |
+| 4 | `NONE` | 无需认证 | — | ★★ |
+| 5 | `AKSK` | AccessKey/SecretKey | `accessKey`, `secretKey` | ★★ |
+| 1 | `SOA` | SOA 认证（开放平台已有） | 视具体场景 | ☆ 排 7 之后 |
+| 2 | `APIG` | API 网关认证（开放平台已有） | 视具体场景 | ☆ 排 7 之后 |
+
+> 💡 **说明**：仅声明认证类型与字段名，**不存储任何凭证值**；调用方在触发请求时携带凭证，运行时注入 ExecutionContext（仅内存生命周期）。代码 0~6 对齐开放平台 `AuthTypeEnum.java`（0=COOKIE/1=SOA/2=APIG/3=IAM/4=NONE/5=AKSK/6=CLITOKEN），新增 `SYSTOKEN(7)`。本版本优先支持 SYSTOKEN(7)，NONE/AKSK 次之。
 
 #### #9 POST /api/v1/connectors/{connectorId}/versions/{versionId}/publish — 发布
 
