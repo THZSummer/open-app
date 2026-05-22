@@ -264,40 +264,45 @@
 
 ## 2. 接口清单
 
-| 编号 | 方法 | 路径 | 所属模块 | 所属服务 | FR |
-|------|------|------|---------|---------|----|
-| API-001 | POST | `/api/v1/connectors` | connector | open-server | FR-001 |
-| API-002 | GET | `/api/v1/connectors` | connector | open-server | FR-004 |
-| API-003 | GET | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-004 |
-| API-004 | PUT | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-002 |
-| API-005 | DELETE | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-003 |
-| API-006 | GET | `/api/v1/connectors/{connectorId}/versions` | connector | open-server | FR-007 |
-| API-007 | GET | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | open-server | FR-005 |
-| API-008 | PUT | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | open-server | FR-006 |
-| API-009 | POST | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | connector | open-server | FR-008 |
-| API-010 | POST | `/api/v1/flows` | flow | open-server | FR-009 |
-| API-011 | GET | `/api/v1/flows` | flow | open-server | FR-012 |
-| API-012 | GET | `/api/v1/flows/{flowId}` | flow | open-server | FR-016 |
-| API-013 | PUT | `/api/v1/flows/{flowId}` | flow | open-server | FR-010 |
-| API-014 | DELETE | `/api/v1/flows/{flowId}` | flow | open-server | FR-011 |
-| API-015 | POST | `/api/v1/flows/{flowId}/deploy` | flow | open-server | FR-013 |
-| API-016 | POST | `/api/v1/flows/{flowId}/start` | flow | open-server | FR-014 |
-| API-017 | POST | `/api/v1/flows/{flowId}/stop` | flow | open-server | FR-015 |
-| API-018 | GET | `/api/v1/flows/{flowId}/versions` | flow | open-server | FR-018 |
-| API-019 | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | open-server | FR-016 |
-| API-020 | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | open-server | FR-017 |
-| API-021 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | flow | open-server | FR-019 |
-| API-022 | POST | `/api/v1/flows/{flowId}/executions` | runtime（手动调试） | **open-server** debug 代理 → **connector-api** debug-api | FR-022 |
-| API-023 | POST | `/api/v1/flows/{flowId}/test-run` | runtime（测试运行） | **open-server** debug 代理 → **connector-api** debug-api | FR-020 |
-| API-024 | POST | `/api/v1/trigger/{flowId}/invoke` | runtime（HTTP 触发） | **connector-api** http-trigger（对外消费方直连） | FR-021 |
-| API-025 | GET | `/api/v1/flows/{flowId}/executions` | monitor（执行列表查询） | **open-server** monitor | FR-025 |
-| API-026 | GET | `/api/v1/executions/{executionId}` | monitor（执行详情查询） | **open-server** monitor | FR-025 |
+| # | 服务 | 模块 | Method | Path | 说明 | FR |
+|---|------|------|--------|------|------|-----|
+| 1 | **open-server** | **连接器管理** | POST | `/api/v1/connectors` | 创建连接器 | FR-001 |
+| 2 | | | GET | `/api/v1/connectors` | 查询连接器列表 | FR-004 |
+| 3 | | | GET | `/api/v1/connectors/{connectorId}` | 查询连接器详情 | FR-004 |
+| 4 | | | PUT | `/api/v1/connectors/{connectorId}` | 更新连接器基本信息 | FR-002 |
+| 5 | | | DELETE | `/api/v1/connectors/{connectorId}` | 删除连接器 | FR-003 |
+| 6 | | **连接器版本** | GET | `/api/v1/connectors/{connectorId}/versions` | 获取连接器版本列表 | FR-007 |
+| 7 | | | GET | `/api/v1/connectors/{connectorId}/versions/{versionId}` | 获取连接器版本详情（含连接配置） | FR-005 |
+| 8 | | | PUT | `/api/v1/connectors/{connectorId}/versions/{versionId}` | 编辑草稿版本配置 | FR-006 |
+| 9 | | | POST | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | 发布连接器版本 | FR-008 |
+| 10 | | **连接流管理** | POST | `/api/v1/flows` | 创建连接流 | FR-009 |
+| 11 | | | GET | `/api/v1/flows` | 查询连接流列表 | FR-012 |
+| 12 | | | GET | `/api/v1/flows/{flowId}` | 查询连接流详情 | FR-016 |
+| 13 | | | PUT | `/api/v1/flows/{flowId}` | 更新连接流基本信息 | FR-010 |
+| 14 | | | DELETE | `/api/v1/flows/{flowId}` | 删除连接流 | FR-011 |
+| 15 | | | POST | `/api/v1/flows/{flowId}/deploy` | 部署连接流（切换 currentPublishedVersionId 并启动） | FR-013 |
+| 16 | | | POST | `/api/v1/flows/{flowId}/start` | 启动连接流 | FR-014 |
+| 17 | | | POST | `/api/v1/flows/{flowId}/stop` | 停止连接流 | FR-015 |
+| 18 | | **连接流版本** | GET | `/api/v1/flows/{flowId}/versions` | 获取连接流版本列表 | FR-018 |
+| 19 | | | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | 获取连接流版本详情（含编排配置） | FR-016 |
+| 20 | | | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | 保存编排配置（草稿） | FR-017 |
+| 21 | | | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | 发布连接流版本 | FR-019 |
+| 22 | | **调试代理**<br/>（转发 connector-api debug-api） | POST | `/api/v1/flows/{flowId}/executions` | 手动触发执行（同步） | FR-022 |
+| 23 | | | POST | `/api/v1/flows/{flowId}/test-run` | 测试运行（同步） | FR-020 |
+| 24 | **connector-api** | **HTTP 触发**<br/>（对外消费方直连） | POST | `/api/v1/trigger/{flowId}/invoke` | HTTP 触发连接流（同步执行，返回结果） | FR-021 |
+| 25 | **open-server** | **监控查询** | GET | `/api/v1/flows/{flowId}/executions` | 获取执行历史列表 | FR-025 |
+| 26 | | | GET | `/api/v1/executions/{executionId}` | 获取执行详情（含步骤） | FR-025 |
 
 > **总计**：26 个 HTTP 端点，覆盖 25 个 FR（FR-025 对应 2 个端点：执行列表 + 执行详情）
 >
-> **端点服务归属**（plan.md v2.0 修订后）：
-> - **open-server**（端口 18080，上下文根 `/open-server`）：API-001 ~ API-021（管理）+ API-022/API-023（前端调试代理）+ API-025/API-026（监控查询）
-> - **connector-api**（端口 18180，上下文根 `/connector-api`）：API-024（对外 HTTP 触发）+ 内部调试接口（被 API-022/API-023 转发调用，端点路径详见 plan-api §debug-api 章节后续补充）
+> **服务部署归属**（plan.md v2.0 修订后）：
+>
+> | 服务 | 端口 | 上下文根 | 接口数 | 接口范围 |
+> |------|------|---------|:------:|---------|
+> | **open-server**（管理类） | 18080 | `/open-server` | 25 | #1~#23 管理类 + 调试代理（转发 connector-api）<br/>#25~#26 监控查询 |
+> | **connector-api**（运行时） | 18180 | `/connector-api` | 1（对外） | #24 HTTP 触发（对外消费方直连）<br/>+ 内部 debug-api 接口（被 #22/#23 转发调用，端点详见 §3.5 后续补充） |
+>
+> **路径前缀**：表中 Path 列省略了服务上下文根；完整 URL = `服务部署域名` + `上下文根` + Path（如 #1 完整路径为 `https://open-server.example.com/open-server/api/v1/connectors`）。
 >
 > **与 v1.x 的差异**：从 ~33 个端点精简为 26 个，移除审批集成（3 个）、Scope 集成（1 个）、MQS 主题（4 个）、监控仪表盘（2 个）、事件/定时/Webhook 触发接口（3 个）；同时**新增 1 条内部调试接口**（connector-api 暴露给 open-server 内网调用）
 
@@ -933,3 +938,4 @@
 | **v2.7.3** | 2026-05-22 | HTTP 触发 URL 从 `/trigger/{flowId}/{triggerToken}` 改为 `/trigger/{flowId}/invoke`（flowId 雪花数字），签名验证段重写为认证说明（凭证调用方携带 + authTypeSchema 校验 + rateLimit 限流），新增 403 错误码（连接流未启用）；§6 接口编号总表 API-024 路径同步 | SDDU Plan Agent |
 | **v2.7.5** | **2026-05-22** | **全面对齐 plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）**，本次为彻底对齐重写。核心变更：① **§0 重写**版本对齐说明，列出全部 v2.0 → v2.7.5 变更项；② **§1.2 字段命名规范**新增双语字段约定（`*Cn`/`*En`）+ snake_case 到 camelCase 映射表；③ **§1.4 数据类型规范**重写：BIGINT 雪花 ID 必须返回 string（避免 JS 精度丢失）+ 枚举字段统一返回 TINYINT 数字（与数据库一致）+ 完整枚举数字字典；④ **§2.1 连接器 CRUD** 所有 Request/Response 示例：ID 改用数字 string、名称改双语 `nameCn`/`nameEn`、描述改双语 `descriptionCn`/`descriptionEn`、状态改数字、`icon` → `iconUrl`、新增 `tags`、`createdAt` → `createTime`、统一响应格式（`code`/`messageZh`/`messageEn`/`data`/`page`）；⑤ **§2.2 连接器版本编辑**：`connectionConfig.auth` → `authTypeSchema`（仅声明类型不含凭证值，v2.6）、`auth.config` 凭证字段移除（改为 `fields` 数组含 `sensitive: true` 标记）；⑥ **§2.2 连接器版本发布**：`changeLog` → `versionDescriptionCn`/`versionDescriptionEn` 双语 VARCHAR(1000)；⑦ **§3.1 连接流 CRUD**：同 §2.1 命名/类型/响应统一调整，新增 `ownerGroup`、`deployedVersionId` → `currentPublishedVersionId`（与数据库对齐）；⑧ **§3.2 编排配置 PUT**：节点/连线 `nodeId`/`edgeId` → 内部 `id`（字符串 UUID）、`nodeType` → `type`、`label` → `labelCn`/`labelEn` 双语、节点连接器引用 `connectorVersionId` 用数字 string、连线 `source`/`target` → `sourceNodeId`/`targetNodeId`、触发器 `trigger.config.schema` → `trigger.inParamSchema` + `trigger.authTypeSchema`（v2.7.3 + v2.6）+ `trigger.rateLimit.qpm`；⑨ **§4.1 手动触发**：请求新增 `credentials` 顶层字段（按 `connectorVersionId` 分组凭证）、响应 ID 用数字 string、状态/触发方式/节点类型/步骤状态用 TINYINT 数字、新增 `correlationId`、`startedAt`/`finishedAt` → `startedTime`/`completedTime`、`nodeName` → `nodeNameCn`/`nodeNameEn` 双语、新增 `stepOrder`、`errorMessage` → `errorInfo` 结构化（含 code/message/downstreamStatus/downstreamBody）、脱敏示例 `"***（12）"`；⑩ **§4.2 HTTP 触发**：`auth_type_schema`/`in_param_schema`/`rate_limit` → camelCase `authTypeSchema`/`inParamSchema`/`rateLimit`，统一响应格式；⑪ **§5 执行历史**：字段名/类型/响应格式统一；⑫ **§7 状态枚举**全部重写为数字字典（含 v2.0 与 v2.7.5 差异说明，特别说明执行状态枚举从 3 个扩为 5 个保留 pending/running 的理由）；⑬ 顶部版本号 v2.0 → v2.7.5；⑭ 修订记录追加 v2.7.5 条目。**未变更项**：§1.1 基础规范 / §1.3 路径命名 / §1.5 响应格式 / §1.6 分页 / §1.7 错误码 / §6 接口编号总表（v2.7.3 已对齐）/ §2.1 §2.2 §3.1 §3.2 §4.1 §4.2 §5 的 URL 路径 与 FR 编号 | SDDU Plan Agent |
 | **v2.7.6** | **2026-05-22** | **章节结构重组（参考 capability-open-platform/plan-api.md 风格）**——按用户指示调整为「设计规范 → 接口清单 → 接口详细定义」三段式：① **§1 设计规范**：合并原 §1 接口规范（7 子节：基础规范/字段命名/路径命名/数据类型/响应格式/分页/错误码）+ 原 §7 状态枚举（作为 §1.8 含 9 个子节 1.8.1~1.8.9），共 8 子节；② **§2 接口清单**：提升原 §6 接口编号总表为正式 §2，含 26 个端点的完整路由表（编号 / 方法 / 路径 / 所属模块 / 所属服务 / FR）；③ **§3 接口详细定义**：合并原 §2 连接器管理 / §3 连接流管理 / §4 运行时执行 / §5 执行历史 4 个顶级章节为统一的 §3，7 个子节（3.1 连接器 CRUD / 3.2 连接器版本管理 / 3.3 连接流 CRUD / 3.4 连接流版本管理 / 3.5 执行操作（同步）/ 3.6 HTTP 触发（同步）/ 3.7 执行历史）；④ **删除各模块头部的小清单**（7 处 `\| 方法 \| 路径 \| 说明 \| FR \|` 表格，合计 41 行），所有路由信息统一在 §2 接口清单中维护，避免双源；⑤ 顶部版本号 v2.7.5 → v2.7.6；⑥ 修订记录追加 v2.7.6 条目。**未变更项**：所有接口的请求/响应示例正文、URL 路径、FR 编号、字段命名（v2.7.5 已对齐）。**变更统计**：971 → 934 行（-37 行净精简，删除小清单 -41 + 新增 §3 总标题 +4） | SDDU Plan Agent |
+| **v2.7.6a** | **2026-05-22** | **§2 接口清单格式优化**（参考 capability-open-platform/plan-api.md §1 风格）——按用户指示，列结构从 6 列改为 7 列：① **新列结构**：`# / 服务 / 模块 / Method / Path / 说明 / FR`（原为 `编号 / 方法 / 路径 / 所属模块 / 所属服务 / FR`）；② **编号简化**：`API-001 ~ API-026` → `1 ~ 26`（与参考文档一致）；③ **服务列简化**：纯净的 `open-server` / `connector-api` 两个值（原嵌套描述如 "open-server debug 代理 → connector-api debug-api" 移至下方汇总表）；④ **模块列重新分组**：连接器管理（#1~5）/ 连接器版本（#6~9）/ 连接流管理（#10~17）/ 连接流版本（#18~21）/ 调试代理（#22~23）/ HTTP 触发（#24）/ 监控查询（#25~26）共 7 个模块，每个模块只在首行显示名称（合并单元格效果）；⑤ **说明列优化**：补全语义化描述（如 "查询连接器列表" "部署连接流（切换 currentPublishedVersionId 并启动）"）；⑥ **新增「服务部署归属」汇总表**（替代原 5 行文字说明）：服务 / 端口 / 上下文根 / 接口数 / 接口范围 5 列；⑦ **新增「路径前缀」说明**：明确 Path 列省略上下文根，给出完整 URL 拼接公式与示例。**未变更项**：26 个端点的方法、路径、FR 编号（仅展示格式优化，无路由变更） | SDDU Plan Agent |
