@@ -252,7 +252,7 @@
 | `1` | running（运行中，可接收 HTTP 触发） |
 | `2` | stopped（已停止，挂起，HTTP 触发返回 403） |
 
-> **流转说明**：`undeployed → running`（部署 FR-013）、`running → stopped`（停止 FR-015）、`stopped → running`（启动 FR-014）、`running/stopped → undeployed`（撤除部署）。
+> **流转说明**：`undeployed → running`（部署 FR-013）、`running → stopped`（停止 FR-015）、`stopped → running`（启动 FR-014）。当前不提供从 running/stopped 回到 undeployed 的 API（路径预留）。
 
 #### 1.8.9 对象存储归属类型 (storageBlobRef.ownerType)
 
@@ -816,7 +816,7 @@
 
 #### #16 POST /api/v1/flows/{flowId}/start — 启动连接流
 
-> **说明**：将连接流 lifecycleStatus 从 `stopped(2)` 切换为 `running(1)`（FR-014）。需 `currentPublishedVersionId` 非空（至少有一个已发布的版本被部署过）。启动后该流可接收 HTTP 触发请求。若当前状态为 `undeployed(0)`，需先部署（#15）再启动。
+> **说明**：将连接流 lifecycleStatus 从 `stopped(2)` 切换为 `running(1)`（FR-014）。需 `currentPublishedVersionId` 非空（`undeployed(0)` 状态需先 #15 部署）。启动后该流可接收 HTTP 触发请求。
 
 **响应示例**：
 
@@ -838,7 +838,7 @@
 
 #### #17 POST /api/v1/flows/{flowId}/stop — 停止连接流
 
-> **说明**：将连接流 lifecycleStatus 从 `running(1)` 切换为 `stopped(2)`（FR-015）。`currentPublishedVersionId` 指针保留（不删除），可后续启动（#16）恢复运行。停止后 HTTP 触发入口返回 403。如需彻底清零，可调用撤除部署接口。
+> **说明**：将连接流 lifecycleStatus 从 `running(1)` 切换为 `stopped(2)`（FR-015）。`currentPublishedVersionId` 指针保留（不删除），可后续启动（#16）恢复运行。停止后 HTTP 触发入口返回 403。
 
 **响应示例**：
 
