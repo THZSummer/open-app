@@ -56,7 +56,8 @@
 - ID 字段：使用 `Id` 后缀，如 `connectorId`, `flowId`, `versionId`, `executionId`, `stepId`, `blobId`
 - 时间字段：使用 `Time` 后缀，如 `createTime`, `lastUpdateTime`, `startedTime`, `completedTime`, `publishedTime`
 - 布尔字段：使用 `is` 前缀，如 `isDeleted`, `isTest`
-- URL 字段：使用 `Url` 后缀，如 `iconUrl`
+- 图标字段：使用 `FileId` 后缀（文件 ID，值由系统解析为可访问 URL），如 `iconFileId`
+- URL 字段：使用 `Url` 后缀，如 `triggerUrl`
 - **双语字段**：使用 `Cn`/`En` 后缀，如 `nameCn`/`nameEn`, `descriptionCn`/`descriptionEn`, `labelCn`/`labelEn`, `versionDescriptionCn`/`versionDescriptionEn`
 
 **数据库 snake_case → API camelCase 映射**：
@@ -324,7 +325,7 @@
 {
   "nameCn": "IM 发送消息",
   "nameEn": "IM Send Message",
-  "iconUrl": "https://cdn.xxx.com/icons/im.svg",
+  "iconFileId": "file_im_send_message",
   "descriptionCn": "封装 IM 消息发送能力",
   "descriptionEn": "Encapsulated IM messaging capability",
   "connectorType": 1
@@ -362,7 +363,7 @@
       "connectorId": "1234567890123456789",
       "nameCn": "IM 发送消息",
       "nameEn": "IM Send Message",
-      "iconUrl": "https://cdn.xxx.com/icons/im.svg",
+      "iconFileId": "file_im_send_message",
       "descriptionCn": "封装 IM 消息发送能力",
       "descriptionEn": "Encapsulated IM messaging capability",
       "connectorType": 1,
@@ -395,7 +396,7 @@
     "connectorId": "1234567890123456789",
     "nameCn": "IM 发送消息",
     "nameEn": "IM Send Message",
-    "iconUrl": "https://cdn.xxx.com/icons/im.svg",
+    "iconFileId": "file_im_send_message",
     "descriptionCn": "封装 IM 消息发送能力",
     "descriptionEn": "Encapsulated IM messaging capability",
     "connectorType": 1,
@@ -418,7 +419,7 @@
   "nameEn": "IM Send Message (New)",
   "descriptionCn": "更新后的 IM 消息发送能力",
   "descriptionEn": "Updated IM messaging capability",
-  "iconUrl": "https://cdn.xxx.com/icons/im-v2.svg",
+  "iconFileId": "file_im_send_message_v2",
   "connectorType": 1
 }
 
@@ -516,7 +517,7 @@
       "nameEn": "IM Send Message",
       "descriptionCn": "封装 IM 消息发送能力",
       "descriptionEn": "Encapsulated IM messaging capability",
-      "iconUrl": "https://cdn.xxx.com/icons/im.svg",
+      "iconFileId": "file_im_send_message",
       "connectorType": 1
     },
     "connectionConfig": {
@@ -532,6 +533,20 @@
           { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true },
           { "name": "secretKey", "carrier": "header", "fieldName": "SK", "required": true, "sensitive": true }
         ]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "receiver": { "type": "string", "description": "接收者 ID" },
+          "content": { "type": "string", "description": "消息内容" }
+        },
+        "required": ["receiver", "content"]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "msgId": { "type": "string", "description": "消息 ID" }
+        }
       },
       "timeoutMs": 30000,
       "rateLimit": { "maxQps": 10, "maxConcurrency": 5 }
@@ -940,7 +955,7 @@
             "required": ["sender", "content"]
           },
           "rateLimit": { "maxQps": 100 },
-          "position": { "x": 100, "y": 200 }
+          "position": { "x": 100.0, "y": 200.0 }
         },
         {
           "id": "node_1",
@@ -952,7 +967,7 @@
             "receiver": "${trigger.sender}",
             "content": "${trigger.content}"
           },
-          "position": { "x": 350, "y": 200 }
+          "position": { "x": 350.0, "y": 200.0 }
         },
         {
           "id": "node_exit",
@@ -960,12 +975,12 @@
           "labelCn": "返回结果",
           "labelEn": "Return Result",
           "outputFields": ["result.msgId", "result.code"],
-          "position": { "x": 650, "y": 200 }
+          "position": { "x": 650.0, "y": 200.0 }
         }
       ],
       "edges": [
-        { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
-        { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit" }
+        { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1", "type": "default", "label": "触发" },
+        { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit", "type": "default", "label": "发送完成" }
       ]
     },
     "publishedTime": "2026-05-21T10:00:00.000+08:00",
@@ -1006,7 +1021,7 @@
           "required": ["sender", "content"]
         },
         "rateLimit": { "maxQps": 100 },
-        "position": { "x": 100, "y": 200 }
+        "position": { "x": 100.0, "y": 200.0 }
       },
       {
         "id": "node_1",
@@ -1018,7 +1033,7 @@
           "receiver": "${trigger.sender}",
           "content": "${trigger.content}"
         },
-        "position": { "x": 350, "y": 200 }
+        "position": { "x": 350.0, "y": 200.0 }
       },
       {
         "id": "node_exit",
@@ -1026,76 +1041,12 @@
         "labelCn": "返回结果",
         "labelEn": "Return Result",
         "outputFields": ["result.msgId", "result.code"],
-        "position": { "x": 650, "y": 200 }
+        "position": { "x": 650.0, "y": 200.0 }
       }
     ],
     "edges": [
-      { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
-      { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit" }
-    ]
-  }
-    },
-    "nodes": [
-      {
-        "id": "node_trigger",
-        "type": "trigger",
-        "labelCn": "接收请求",
-        "labelEn": "Receive Request",
-        "authTypeSchema": {
-          "type": "SYSTOKEN",
-          "fields": [
-            { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-          ]
-        },
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "sender": { "type": "string" },
-            "content": { "type": "string" }
-          },
-          "required": ["sender", "content"]
-        },
-        "rateLimit": { "maxQps": 100 },
-        "position": { "x": 100, "y": 200 }
-      },
-      {
-        "id": "node_1",
-        "type": "connector",
-        "labelCn": "发送通知",
-        "labelEn": "Send Notification",
-        "connectorVersionId": "9876543210123456789",
-        "inputMapping": {
-          "receiver": "${trigger.sender}",
-          "content": "${trigger.content}"
-        },
-        "position": { "x": 350, "y": 200 }
-      },
-      {
-        "id": "node_2",
-        "type": "data_processor",
-        "labelCn": "格式化消息",
-        "labelEn": "Format Message",
-        "config": {
-          "fieldMappings": [
-            { "source": "${node_1.msgId}", "target": "result.id" },
-            { "source": "constant:success", "target": "result.status" }
-          ]
-        },
-        "position": { "x": 500, "y": 200 }
-      },
-      {
-        "id": "node_exit",
-        "type": "exit",
-        "labelCn": "返回结果",
-        "labelEn": "Return Result",
-        "outputFields": ["result.id", "result.status"],
-        "position": { "x": 650, "y": 200 }
-      }
-    ],
-    "edges": [
-      { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
-      { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_2" },
-      { "id": "e3", "sourceNodeId": "node_2", "targetNodeId": "node_exit" }
+      { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1", "type": "default", "label": "触发" },
+      { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit", "type": "default", "label": "发送完成" }
     ]
   }
 }
