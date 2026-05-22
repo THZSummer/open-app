@@ -284,8 +284,8 @@ stateDiagram-v2
   },
   "timeoutMs": 30000,
   "rateLimit": {
-    "maxPerSecond": 10,
-    "maxConcurrent": 5
+    "maxQps": 10,
+    "maxConcurrency": 5
   }
 }
 ```
@@ -385,7 +385,7 @@ CREATE TABLE `openplatform_v2_cp_flow_version_t` (
   `version_description_cn`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（中文）',
   `version_description_en`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（英文）',
   `basic_info_snapshot`      mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：发布时连接流基本信息快照 {nameCn,nameEn,descriptionCn,descriptionEn,iconFileId}',
-  `orchestration_config`     mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：编排配置 {trigger,nodes,edges} 完整 DAG；trigger 内含触发类型/认证类型 schema/入参 Schema/限流，内部字段名用驼峰（如 authTypeSchema/inParamSchema/rateLimit），不单独建表',
+  `orchestration_config`     mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：编排配置 {trigger,nodes,edges} 完整 DAG；trigger 内含触发类型/认证类型 schema/入参 Schema/限流，内部字段名用驼峰（如 authTypeSchema/inputSchema/rateLimit），不单独建表',
   `published_time`           datetime(3)   DEFAULT NULL              COMMENT '发布时间',
   `create_time`              datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `last_update_time`         datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -430,7 +430,7 @@ stateDiagram-v2
       "fieldName": "Authorization",
       "required": true
     },
-    "inParamSchema": {
+    "inputSchema": {
       "type": "object",
       "properties": {
         "sender": { "type": "string" },
@@ -439,7 +439,7 @@ stateDiagram-v2
       "required": ["sender", "content"]
     },
     "rateLimit": {
-      "qpm": 100
+      "maxQps": 100
     }
   },
   "nodes": [
@@ -496,7 +496,7 @@ stateDiagram-v2
 
 | 类型 | 说明 | 必填配置 |
 |------|------|---------|
-| `http` | HTTP 触发（FR-021） | `authTypeSchema`（认证类型 schema，不含凭证值）+ `inParamSchema`（请求体 Schema）+ `rateLimit.qpm`（默认 100/min） |
+| `http` | HTTP 触发（FR-021） | `authTypeSchema`（认证类型 schema，不含凭证值）+ `inputSchema`（请求体 Schema）+ `rateLimit.maxQps`（默认 100/min） |
 | `manual` | 手动触发（FR-022） | —（无需额外配置）|
 
 > 💡 **触发器配置内嵌于编排 JSON 的决策依据**（v2.7.3）：
