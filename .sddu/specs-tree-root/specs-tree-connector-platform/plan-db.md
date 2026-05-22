@@ -59,10 +59,7 @@
 | **审计字段** | 每表必备 `create_time` / `last_update_time` / `create_by` / `last_update_by`（v2.7 命名规范） |
 | **属性表模式** | MVP 不引入 `*_p_t`，所有字段直接入主表；V1 演进项 |
 | **执行表分区** | MVP 不分区；V1 单表接近 500w 时按 `create_time` 月度分区 + 30 天冷归档 |
-
-
-
-
+| **文件/图标字段** | 不直接存储完整 URL，统一使用 **文件 ID**（如 `icon_file_id`）存储，`VARCHAR(128)`，选填；系统层负责将文件 ID 解析为可访问 URL。关联 `storage_blob_ref_t` 或独立文件服务（V1） |
 
 ### 1.2 命名规范
 
@@ -217,7 +214,7 @@ CREATE TABLE `openplatform_v2_cp_connector_t` (
   `name_en`           varchar(100)  NOT NULL                  COMMENT '连接器英文名称',
   `description_cn`    varchar(1000) DEFAULT NULL              COMMENT '中文描述（选填）',
   `description_en`    varchar(1000) DEFAULT NULL              COMMENT '英文描述（选填）',
-  `icon_url`          varchar(500)  DEFAULT NULL              COMMENT '图标 URL（选填）',
+  `icon_file_id`      varchar(128)  DEFAULT NULL              COMMENT '图标文件 ID（选填；系统解析为可访问 URL）',
   `connector_type`    tinyint(10)   NOT NULL DEFAULT 1        COMMENT '协议类型：1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1）',
   `status`            tinyint(10)   NOT NULL DEFAULT 1        COMMENT '状态：0=disabled, 1=active',
   `create_time`       datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -266,7 +263,7 @@ CREATE TABLE `openplatform_v2_cp_connector_version_t` (
   `version_status`           tinyint(10)   NOT NULL DEFAULT 0        COMMENT '版本状态：0=draft, 1=published',
   `version_description_cn`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（中文）',
   `version_description_en`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（英文）',
-  `basic_info_snapshot`      mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：发布时连接器基本信息快照 {name_cn,name_en,description_cn,description_en,icon_url,connector_type}',
+  `basic_info_snapshot`      mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：发布时连接器基本信息快照 {name_cn,name_en,description_cn,description_en,icon_file_id,connector_type}',
   `connection_config`        mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：连接配置 {protocol, base_url/protocol_config, auth_type_schema(仅声明类型，不含凭证值), input_schema, output_schema, timeout_ms, rate_limit}',
   `published_time`           datetime(3)   DEFAULT NULL              COMMENT '发布时间',
   `create_time`              datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
