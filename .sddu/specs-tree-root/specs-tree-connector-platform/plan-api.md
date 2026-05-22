@@ -1,24 +1,30 @@
 # API 接口设计：连接器平台
 
 **Feature ID**: CONN-PLAT-001  
-**关联文档**: plan.md (§4.3)  
-**版本**: v2.0  
+**关联文档**: plan.md (§4.4), plan-db.md (§3 表结构)  
+**版本**: v2.7.5  
 **创建日期**: 2026-05-21  
-**更新说明**: 对齐 spec.md v4.0——移除 Scope/审批/事件/定时触发，执行改为同步，FR 重编号 1~25
+**最后更新**: 2026-05-22  
+**对齐基线**: plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）
 
 ---
 
-## 0. 主要变更说明（与 v1.x 的差异）
+## 0. 版本对齐说明
 
-| 变更项 | v1.x（基于 spec v3.x） | v2.0（基于 spec v4.0） |
-|--------|----------------------|----------------------|
-| 执行接口 | **异步**（返回 202 + 轮询状态） | **同步**（直接返回执行结果） |
-| 触发方式 | 事件/Webhook/定时/手动 | HTTP/手动 |
-| Scope 权限 | ✅ 有 Scope 集成章节 | ❌ 移除（NG18，V1） |
-| 审批集成 | ✅ 有审批集成章节 | ❌ 移除（NG19，V1） |
-| MQS 主题 | 4 个主题 | ❌ 移除（无 MQS） |
-| 监控 API | 全指标仪表盘 | 执行历史查询 |
-| FR 引用 | ~37 个 | 25 个 |
+| 维度 | v2.0 | v2.7.5 | 决策来源 |
+|------|------|--------|---------|
+| 执行接口 | 异步（202 + 轮询） | **同步**（直接返回执行结果） | v2.0 |
+| 触发方式 | 事件/Webhook/定时/手动 | **HTTP / 手动 / 测试** | v2.0 |
+| Scope 权限 | ✅ | ❌ 移除（NG18，V1） | v2.0 |
+| 审批集成 | ✅ | ❌ 移除（NG19，V1） | v2.0 |
+| **ID 表示** | `varchar(32)` 业务前缀（如 `con_xxxx`/`flow_xxxx`） | **BIGINT 雪花 ID → API 响应转 string**（如 `"1234567890123456789"`） | v2.7（数据库主键变更）+ 用户决策 |
+| **枚举对外** | 字符串字面量（如 `"success"`/`"http"`） | **TINYINT 数字**（如 `0/1/2/3`，与数据库一致） | 用户决策 |
+| **名称字段** | `name` 单语 | **`nameCn` / `nameEn` 双语** | v2.7 |
+| **描述字段** | `description` 单语 | **`descriptionCn` / `descriptionEn` 双语 VARCHAR(1000)** | v2.7 + v2.7.2 |
+| **凭证传递** | 持久化在 `cp_connector_auth_config` 表 | **不持久化**——调用方在请求 Header/Body 携带；服务端按 `auth_type_schema.sensitive` 标记脱敏 | v2.6 |
+| **触发器 URL** | `/trigger/{flowId}/{triggerToken}` | **`/trigger/{flowId}/invoke`**（flowId 雪花数字 string，凭证由调用方携带） | v2.7.3 |
+| **HTTP 触发认证** | 平台维护 signing_secret 签名验证 | **凭证调用方携带，平台仅按 `trigger.authTypeSchema` 校验格式** | v2.6 + v2.7.3 |
+| FR 引用 | ~37 | **25** | v2.0 |
 
 ---
 
@@ -43,12 +49,27 @@
 | `connectorId` | `connector_id` |
 | `createTime` | `create_Time` |
 | `versionStatus` | `version_status` |
+| `nameCn` / `nameEn` | `name_cn` / `name_en` |
+| `currentPublishedVersionId` | `current_published_version_id` |
 
 **命名约定**：
-- ID 字段：使用 `Id` 后缀，如 `connectorId`, `flowId`, `versionId`
-- 时间字段：使用 `Time` 后缀，如 `createTime`, `updateTime`；或 `At` 后缀表示时间点，如 `publishedAt`, `expiresAt`
-- 布尔字段：使用 `is` 前缀，如 `isDeleted`, `isEnabled`
-- URL 字段：使用 `Url` 后缀，如 `iconUrl`, `webhookUrl`
+- ID 字段：使用 `Id` 后缀，如 `connectorId`, `flowId`, `versionId`, `executionId`, `stepId`, `blobId`
+- 时间字段：使用 `Time` 后缀，如 `createTime`, `lastUpdateTime`, `startedTime`, `completedTime`, `publishedTime`
+- 布尔字段：使用 `is` 前缀，如 `isDeleted`, `isTest`
+- URL 字段：使用 `Url` 后缀，如 `iconUrl`
+- **双语字段**：使用 `Cn`/`En` 后缀，如 `nameCn`/`nameEn`, `descriptionCn`/`descriptionEn`, `labelCn`/`labelEn`, `versionDescriptionCn`/`versionDescriptionEn`
+
+**数据库 snake_case → API camelCase 映射**：
+
+| 数据库列名 | API 字段名 |
+|-----------|----------|
+| `name_cn` | `nameCn` |
+| `description_en` | `descriptionEn` |
+| `connector_version_id` | `connectorVersionId` |
+| `current_published_version_id` | `currentPublishedVersionId` |
+| `external_resource_id` | `externalResourceId` |
+| `trigger_data_blob_id` | `triggerDataBlobId` |
+| `operations_count` / `data_in_bytes` / `data_out_bytes` | `operationsCount` / `dataInBytes` / `dataOutBytes` |
 
 ### 1.3 路径命名规范
 
@@ -66,16 +87,36 @@
 
 ### 1.4 数据类型规范
 
-**规则**：长整数（如主键 ID）统一返回 string 类型，避免前端接收精度丢失问题。
+**规则**：
 
-| ✅ 正确示例 | ❌ 错误示例 |
-|------------|------------|
-| `"connectorId": "con_xxxxx"` | `"id": 100` |
-| `"executionId": "exec_xxxxx"` | `"executionId": 200` |
+1. **长整数（BIGINT 雪花 ID）统一返回 string 类型**，避免前端接收精度丢失问题（v2.7 数据库主键变更为 BIGINT 雪花 ID 后必须遵守）
+2. **枚举字段统一返回 TINYINT 数字**，与数据库存储一致；前端维护数字 ↔ 标签映射字典（用户决策）
+3. **时间字段**返回 ISO 8601 字符串（含毫秒 + 时区）
 
-**适用范围**：
-- 所有业务 ID 字段：`connectorId`, `flowId`, `versionId`, `executionId` 等
-- 所有外键 ID 字段：`creatorAppId`, `approvalId` 等
+| ✅ 正确示例 | ❌ 错误示例 | 说明 |
+|------------|------------|------|
+| `"connectorId": "1234567890123456789"` | `"connectorId": 1234567890123456789` | BIGINT 必须转 string |
+| `"status": 2` | `"status": "success"` | 枚举用数字（参考 plan-db.md §2.6 枚举字典） |
+| `"triggerType": 1` | `"triggerType": "http"` | 同上 |
+| `"createTime": "2026-05-21T10:00:00.000+08:00"` | `"createTime": 1716264000000` | 时间用 ISO 8601 |
+
+**适用范围**（ID 字段必须返回 string）：
+- 所有主键 ID：`id`, `connectorId`, `flowId`, `versionId`, `executionId`, `stepId`, `blobId`
+- 所有外键 ID：`connectorVersionId`, `flowVersionId`, `currentPublishedVersionId`, `triggerDataBlobId`, `resultDataBlobId`, `inputDataBlobId`, `outputDataBlobId`
+
+**枚举数字字典**（前端需维护，详见 plan-db.md §2.6）：
+
+| 字段 | 数字 → 含义 |
+|------|------------|
+| `connector_t.status` | `0=disabled, 1=active` |
+| `connector_t.connectorType` | `1=HTTP`（MVP） |
+| `connectorVersion.versionStatus` / `flowVersion.versionStatus` | `0=draft, 1=published` |
+| `flow_t.lifecycleStatus` | `0=stopped, 1=running` |
+| `executionRecord.status` | `0=pending, 1=running, 2=success, 3=failed, 4=timeout` |
+| `executionRecord.triggerType` | `1=http, 2=manual, 3=test` |
+| `executionStep.status` | `0=success, 1=failed` |
+| `executionStep.nodeType` | `1=entry, 2=connector, 3=data_processor, 4=exit` |
+| `storageBlobRef.ownerType` | `1=executionRecordTrigger, 2=executionRecordResult, 3=executionStepInput, 4=executionStepOutput` |
 
 ### 1.5 响应格式规范
 
@@ -156,44 +197,63 @@
 ```json
 // Request
 {
-  "name": "IM 发送消息",
-  "icon": "https://cdn.xxx.com/icons/im.svg",
-  "description": "封装 IM 消息发送能力",
-  "connectorType": "HTTP"
+  "nameCn": "IM 发送消息",
+  "nameEn": "IM Send Message",
+  "iconUrl": "https://cdn.xxx.com/icons/im.svg",
+  "descriptionCn": "封装 IM 消息发送能力",
+  "descriptionEn": "Encapsulated IM messaging capability",
+  "tags": "messaging,im",
+  "connectorType": 1
 }
 
 // Response 201
 {
-  "connectorId": "con_a1b2c3d4",
-  "name": "IM 发送消息",
-  "connectorType": "HTTP",
-  "createdAt": "2026-05-21T10:00:00.000+08:00"
+  "code": "200",
+  "messageZh": "创建成功",
+  "messageEn": "Created",
+  "data": {
+    "connectorId": "1234567890123456789",
+    "nameCn": "IM 发送消息",
+    "nameEn": "IM Send Message",
+    "connectorType": 1,
+    "status": 1,
+    "createTime": "2026-05-21T10:00:00.000+08:00"
+  }
 }
-// 注意：创建后仅生成连接器基本信息，不自动生成草稿版本
+// 注意：创建后仅生成连接器基本信息，不自动生成草稿版本（需用户主动创建版本）
 ```
 
 #### GET /api/v1/connectors — 查询列表
 
 ```json
-// Query params: ?curPage=1&pageSize=20&connectorType=HTTP&keyword=IM
+// Query params: ?curPage=1&pageSize=20&connectorType=1&keyword=IM
 
 // Response
 {
-  "items": [
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": [
     {
-      "connectorId": "con_a1b2c3d4",
-      "name": "IM 发送消息",
-      "icon": "https://cdn.xxx.com/icons/im.svg",
-      "description": "封装 IM 消息发送能力",
-      "connectorType": "HTTP",
+      "connectorId": "1234567890123456789",
+      "nameCn": "IM 发送消息",
+      "nameEn": "IM Send Message",
+      "iconUrl": "https://cdn.xxx.com/icons/im.svg",
+      "descriptionCn": "封装 IM 消息发送能力",
+      "descriptionEn": "Encapsulated IM messaging capability",
+      "tags": "messaging,im",
+      "connectorType": 1,
+      "status": 1,
       "latestVersionNo": "1.2.0",
-      "latestVersionStatus": "published",
-      "createdAt": "2026-05-21T10:00:00.000+08:00"
+      "latestVersionStatus": 1,
+      "createTime": "2026-05-21T10:00:00.000+08:00"
     }
   ],
-  "total": 1,
-  "curPage": 1,
-  "pageSize": 20
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 1
+  }
 }
 ```
 
@@ -208,6 +268,8 @@
 
 #### PUT /api/v1/connectors/{connectorId}/versions/{versionId} — 编辑连接配置
 
+> ⚠️ **凭证不持久化**（v2.6 决策）：`connectionConfig.authTypeSchema` 仅声明认证类型与字段 schema（含 `sensitive: true` 标记），**不接受任何凭证值**；凭证由调用方在触发请求时携带，运行时注入 ExecutionContext（仅内存生命周期）。
+
 ```json
 // Request — connectionConfig 全文替换
 {
@@ -218,12 +280,13 @@
       "method": "POST",
       "headers": { "Content-Type": "application/json" }
     },
-    "auth": {
+    "authTypeSchema": {
       "type": "AKSK",
-      "config": {
-        "accessKey": "ak_xxxx",
-        "secretKey": "sk_xxxx"
-      }
+      "carrier": "header",
+      "fields": [
+        { "name": "accessKey", "required": true, "sensitive": true },
+        { "name": "secretKey", "required": true, "sensitive": true }
+      ]
     },
     "inputSchema": {
       "type": "object",
@@ -248,8 +311,28 @@
 }
 
 // Response 200
-{ "versionId": "cv_e5f6g7h8", "status": "draft", "updatedAt": "2026-05-21T10:00:00.000+08:00" }
+{
+  "code": "200",
+  "messageZh": "保存成功",
+  "messageEn": "Saved",
+  "data": {
+    "versionId": "9876543210123456789",
+    "versionStatus": 0,
+    "lastUpdateTime": "2026-05-21T10:00:00.000+08:00"
+  }
+}
 ```
+
+**authTypeSchema.type 枚举**（仅声明类型，凭证值由调用方携带）：
+
+| 类型 | 说明 | 调用方需携带的字段 |
+|------|------|------------------|
+| `NONE` | 无需认证 | — |
+| `AKSK` | AccessKey/SecretKey | `accessKey`, `secretKey` |
+| `OAUTH2_CLIENT` | OAuth2 Client Credentials | `accessToken`（调用方完成 OAuth2 授权流后传入） |
+| `BASIC_AUTH` | HTTP Basic Auth | `username`, `password` |
+| `API_KEY` | API Key (header/query) | `keyValue`（位置由 schema 的 `carrier`/`fieldName` 声明） |
+| `BEARER` | Bearer Token | `token` |
 
 #### POST /api/v1/connectors/{connectorId}/versions/{versionId}/publish — 发布
 
@@ -257,18 +340,28 @@
 // Request
 {
   "versionNo": "1.0.0",
-  "changeLog": "初始版本，支持文本消息发送"
+  "versionDescriptionCn": "初始版本，支持文本消息发送",
+  "versionDescriptionEn": "Initial version, supports text messaging"
 }
 
 // Response 200
 {
-  "versionId": "cv_e5f6g7h8",
-  "versionNo": "1.0.0",
-  "status": "published",
-  "publishedAt": "2026-05-21T10:00:00.000+08:00"
+  "code": "200",
+  "messageZh": "发布成功",
+  "messageEn": "Published",
+  "data": {
+    "versionId": "9876543210123456789",
+    "versionNo": "1.0.0",
+    "versionStatus": 1,
+    "publishedTime": "2026-05-21T10:00:00.000+08:00"
+  }
 }
 // 注意：本版本发布无需审批（NG19，V1 阶段引入）
 ```
+
+**auth_type 枚举（已合并到 §"PUT 编辑连接配置"小节，本节不再重复）**
+
+> ❌ **不再需要的 API**（v2.0 → v2.7.5）：~~`POST /connectors/{id}/versions/{vid}/credentials`~~ —— 凭证不持久化（v2.6 决策），无凭证创建/更新接口；调用方在触发请求时携带
 
 ---
 
@@ -292,18 +385,28 @@
 ```json
 // Request
 {
-  "name": "新消息自动通知",
-  "description": "收到 IM 消息后自动发送通知到OA系统"
+  "nameCn": "新消息自动通知",
+  "nameEn": "Auto Message Notification",
+  "descriptionCn": "收到 IM 消息后自动发送通知到OA系统",
+  "descriptionEn": "Auto notify OA system upon receiving IM messages",
+  "tags": "notification,im",
+  "ownerGroup": "biz-platform"
 }
 
 // Response 201
 {
-  "flowId": "flow_i9j0k1l2",
-  "name": "新消息自动通知",
-  "status": "disabled",
-  "createdAt": "2026-05-21T10:00:00.000+08:00"
+  "code": "200",
+  "messageZh": "创建成功",
+  "messageEn": "Created",
+  "data": {
+    "flowId": "1234567890123456789",
+    "nameCn": "新消息自动通知",
+    "nameEn": "Auto Message Notification",
+    "lifecycleStatus": 0,
+    "createTime": "2026-05-21T10:00:00.000+08:00"
+  }
 }
-// 注意：创建后仅生成连接流基本信息，不自动生成草稿版本
+// 注意：创建后仅生成连接流基本信息，不自动生成草稿版本（需用户主动创建版本）
 ```
 
 #### POST /api/v1/flows/{flowId}/deploy — 部署
@@ -311,17 +414,23 @@
 ```json
 // Request
 {
-  "versionId": "fv_m3n4o5p6"
+  "versionId": "9876543210123456789"
 }
 
 // Response 200
 {
-  "flowId": "flow_i9j0k1l2",
-  "deployedVersionId": "fv_m3n4o5p6",
-  "status": "enabled",
-  "deployedAt": "2026-05-21T10:00:00.000+08:00"
+  "code": "200",
+  "messageZh": "部署成功",
+  "messageEn": "Deployed",
+  "data": {
+    "flowId": "1234567890123456789",
+    "currentPublishedVersionId": "9876543210123456789",
+    "lifecycleStatus": 1,
+    "lastUpdateTime": "2026-05-21T10:00:00.000+08:00"
+  }
 }
 // 注意：部署无需审批（NG19，V1 阶段引入）
+// 部署即更新 flow_t.current_published_version_id 指针，HTTP 触发即生效
 ```
 
 ### 3.2 连接流版本管理
@@ -335,35 +444,46 @@
 
 #### PUT /api/v1/flows/{flowId}/versions/{versionId} — 保存编排配置
 
+> ⚠️ **触发器配置内嵌于编排 JSON**（v2.7.3 决策，不单独建表）：`orchestrationConfig.trigger` 包含触发类型、认证类型 schema（**仅声明类型，不含凭证值**）、入参 Schema、限流。
+
 ```json
 // Request — orchestrationConfig 全文替换
 {
   "orchestrationConfig": {
     "trigger": {
-      "type": "http",     
-      "config": {
-        "method": "POST",
-        "schema": {
-          "type": "object",
-          "properties": {
-            "sender": { "type": "string" },
-            "content": { "type": "string" }
-          }
-        }
+      "type": "http",
+      "authTypeSchema": {
+        "type": "BEARER",
+        "carrier": "header",
+        "fieldName": "Authorization",
+        "required": true
+      },
+      "inParamSchema": {
+        "type": "object",
+        "properties": {
+          "sender": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": ["sender", "content"]
+      },
+      "rateLimit": {
+        "qpm": 100
       }
     },
     "nodes": [
       {
-        "nodeId": "node_entry",
-        "nodeType": "entry",
-        "label": "接收请求",
+        "id": "node_entry",
+        "type": "entry",
+        "labelCn": "接收请求",
+        "labelEn": "Receive Request",
         "position": { "x": 100, "y": 200 }
       },
       {
-        "nodeId": "node_1",
-        "nodeType": "connector",
-        "label": "发送通知",
-        "connectorVersionId": "cv_e5f6g7h8",
+        "id": "node_1",
+        "type": "connector",
+        "labelCn": "发送通知",
+        "labelEn": "Send Notification",
+        "connectorVersionId": "9876543210123456789",
         "inputMapping": {
           "receiver": "${trigger.sender}",
           "content": "${trigger.content}"
@@ -371,9 +491,10 @@
         "position": { "x": 350, "y": 200 }
       },
       {
-        "nodeId": "node_2",
-        "nodeType": "data_processor",
-        "label": "格式化消息",
+        "id": "node_2",
+        "type": "data_processor",
+        "labelCn": "格式化消息",
+        "labelEn": "Format Message",
         "config": {
           "fieldMappings": [
             { "source": "${node_1.msgId}", "target": "result.id" },
@@ -383,24 +504,38 @@
         "position": { "x": 500, "y": 200 }
       },
       {
-        "nodeId": "node_exit",
-        "nodeType": "exit",
-        "label": "返回结果",
+        "id": "node_exit",
+        "type": "exit",
+        "labelCn": "返回结果",
+        "labelEn": "Return Result",
         "outputFields": ["result.id", "result.status"],
         "position": { "x": 650, "y": 200 }
       }
     ],
     "edges": [
-      { "edgeId": "e1", "source": "node_entry", "target": "node_1" },
-      { "edgeId": "e2", "source": "node_1", "target": "node_2" },
-      { "edgeId": "e3", "source": "node_2", "target": "node_exit" }
+      { "id": "e1", "sourceNodeId": "node_entry", "targetNodeId": "node_1" },
+      { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_2" },
+      { "id": "e3", "sourceNodeId": "node_2", "targetNodeId": "node_exit" }
     ]
   }
 }
 
 // Response 200
-{ "versionId": "fv_m3n4o5p6", "status": "draft", "updatedAt": "2026-05-21T10:00:00.000+08:00" }
+{
+  "code": "200",
+  "messageZh": "保存成功",
+  "messageEn": "Saved",
+  "data": {
+    "versionId": "9876543210123456789",
+    "versionStatus": 0,
+    "lastUpdateTime": "2026-05-21T10:00:00.000+08:00"
+  }
+}
 ```
+
+> 💡 **节点/连线 id 字段说明**：编排内部使用字符串 UUID（如 `node_entry`/`node_1`/`e1`），由前端编排画布生成，仅在单个 orchestrationConfig 内部唯一（参考 plan-db.md §6.2）。
+
+> 💡 **连接器版本引用 `connectorVersionId`**：使用 BIGINT 雪花 ID 转 string，对应 `connector_version_t.id`。
 
 #### POST /api/v1/flows/{flowId}/versions/{versionId}/publish — 发布
 
@@ -408,15 +543,21 @@
 // Request
 {
   "versionNo": "1.0.0",
-  "changeLog": "初始版本"
+  "versionDescriptionCn": "初始版本",
+  "versionDescriptionEn": "Initial version"
 }
 
 // Response 200
 {
-  "versionId": "fv_m3n4o5p6",
-  "versionNo": "1.0.0",
-  "status": "published",
-  "publishedAt": "2026-05-21T10:00:00.000+08:00"
+  "code": "200",
+  "messageZh": "发布成功",
+  "messageEn": "Published",
+  "data": {
+    "versionId": "9876543210123456789",
+    "versionNo": "1.0.0",
+    "versionStatus": 1,
+    "publishedTime": "2026-05-21T10:00:00.000+08:00"
+  }
 }
 // 注意：本版本发布无需审批（NG19，V1 阶段引入）
 ```
@@ -436,93 +577,132 @@
 
 #### POST /api/v1/flows/{flowId}/executions — 手动触发（同步）
 
+> ⚠️ **凭证由调用方携带**（v2.6 决策）：手动触发时若涉及连接器需要认证，在请求体 `credentials` 字段携带；运行时注入 ExecutionContext 仅内存生命周期，节点执行完成后清除；写入 execution_step/record 时按 `connectionConfig.authTypeSchema.sensitive` 自动脱敏（值 → `***`）。
+
 ```json
 // Request
 {
   "triggerData": {
     "sender": "user_001",
     "content": "你好，这是一条测试消息"
+  },
+  "credentials": {
+    "9876543210123456789": {
+      "accessKey": "ak_xxxx",
+      "secretKey": "sk_xxxx"
+    }
   }
 }
+// credentials 顶层键为 connectorVersionId（string），值为该连接器认证字段键值对
 
 // Response 200（同步返回完整执行结果）
 {
-  "executionId": "exec_y5z6a7b8",
-  "flowId": "flow_i9j0k1l2",
-  "status": "success",
-  "triggerType": "manual",
-  "startedAt": "2026-05-21T10:00:01.000+08:00",
-  "finishedAt": "2026-05-21T10:00:03.250+08:00",
-  "durationMs": 2250,
-  "resultData": { "msgId": "msg_xxxx" },
-  "steps": [
-    {
-      "stepId": "step_c9d0e1f2",
-      "nodeId": "node_entry",
-      "nodeName": "接收请求",
-      "nodeType": "entry",
-      "status": "success",
-      "inputData": { "sender": "user_001", "content": "你好" },
-      "outputData": { "sender": "user_001", "content": "你好" },
-      "startedAt": "2026-05-21T10:00:01.000+08:00",
-      "finishedAt": "2026-05-21T10:00:01.010+08:00",
-      "durationMs": 10
-    },
-    {
-      "stepId": "step_d0e1f2g3",
-      "nodeId": "node_1",
-      "nodeName": "发送通知",
-      "nodeType": "connector",
-      "status": "success",
-      "inputData": { "receiver": "user_001", "content": "你好" },
-      "outputData": { "msgId": "msg_xxxx", "code": 0 },
-      "startedAt": "2026-05-21T10:00:01.020+08:00",
-      "finishedAt": "2026-05-21T10:00:03.230+08:00",
-      "durationMs": 2210,
-      "errorMessage": null
-    },
-    {
-      "stepId": "step_e1f2g3h4",
-      "nodeId": "node_exit",
-      "nodeName": "返回结果",
-      "nodeType": "exit",
-      "status": "success",
-      "inputData": { "msgId": "msg_xxxx" },
-      "outputData": { "msgId": "msg_xxxx" },
-      "startedAt": "2026-05-21T10:00:03.235+08:00",
-      "finishedAt": "2026-05-21T10:00:03.240+08:00",
-      "durationMs": 5
-    }
-  ]
+  "code": "200",
+  "messageZh": "执行成功",
+  "messageEn": "Success",
+  "data": {
+    "executionId": "1122334455667788990",
+    "flowId": "1234567890123456789",
+    "flowVersionId": "9876543210123456789",
+    "status": 2,
+    "triggerType": 2,
+    "correlationId": "corr_abc123",
+    "startedTime": "2026-05-21T10:00:01.000+08:00",
+    "completedTime": "2026-05-21T10:00:03.250+08:00",
+    "durationMs": 2250,
+    "resultData": { "msgId": "msg_xxxx" },
+    "steps": [
+      {
+        "stepId": "2233445566778899001",
+        "stepOrder": 1,
+        "nodeId": "node_entry",
+        "nodeNameCn": "接收请求",
+        "nodeNameEn": "Receive Request",
+        "nodeType": 1,
+        "status": 0,
+        "inputData": { "sender": "user_001", "content": "你好" },
+        "outputData": { "sender": "user_001", "content": "你好" },
+        "startedTime": "2026-05-21T10:00:01.000+08:00",
+        "completedTime": "2026-05-21T10:00:01.010+08:00",
+        "durationMs": 10
+      },
+      {
+        "stepId": "2233445566778899002",
+        "stepOrder": 2,
+        "nodeId": "node_1",
+        "nodeNameCn": "发送通知",
+        "nodeNameEn": "Send Notification",
+        "nodeType": 2,
+        "status": 0,
+        "inputData": { "receiver": "user_001", "content": "你好", "accessKey": "***(12)", "secretKey": "***(32)" },
+        "outputData": { "msgId": "msg_xxxx", "code": 0 },
+        "startedTime": "2026-05-21T10:00:01.020+08:00",
+        "completedTime": "2026-05-21T10:00:03.230+08:00",
+        "durationMs": 2210,
+        "errorInfo": null
+      },
+      {
+        "stepId": "2233445566778899003",
+        "stepOrder": 3,
+        "nodeId": "node_exit",
+        "nodeNameCn": "返回结果",
+        "nodeNameEn": "Return Result",
+        "nodeType": 4,
+        "status": 0,
+        "inputData": { "msgId": "msg_xxxx" },
+        "outputData": { "msgId": "msg_xxxx" },
+        "startedTime": "2026-05-21T10:00:03.235+08:00",
+        "completedTime": "2026-05-21T10:00:03.240+08:00",
+        "durationMs": 5
+      }
+    ]
+  }
 }
 
 // Response 200（执行超时）
 {
-  "executionId": "exec_y5z6a7b8",
-  "status": "timeout",
-  "startedAt": "2026-05-21T10:00:01.000+08:00",
-  "finishedAt": "2026-05-21T10:05:01.000+08:00",
-  "durationMs": 300000,
-  "errorMessage": "执行超时，已强制终止"
+  "code": "200",
+  "messageZh": "执行超时",
+  "messageEn": "Timeout",
+  "data": {
+    "executionId": "1122334455667788990",
+    "status": 4,
+    "startedTime": "2026-05-21T10:00:01.000+08:00",
+    "completedTime": "2026-05-21T10:05:01.000+08:00",
+    "durationMs": 300000,
+    "errorMessage": "执行超时，已强制终止"
+  }
 }
 
-// Response 200（执行失败—默认错误处理 FR-023）
+// Response 200（执行失败 — 默认错误处理 FR-023）
 {
-  "executionId": "exec_y5z6a7b8",
-  "status": "failed",
-  "errorMessage": "节点 '发送通知' 执行失败: HTTP 503 服务不可用",
-  "steps": [
-    { "nodeId": "node_entry", "status": "success", ... },
-    {
-      "nodeId": "node_1",
-      "nodeName": "发送通知",
-      "status": "failed",
-      "errorMessage": "HTTP 503 服务不可用",
-      ...
-    }
-  ]
+  "code": "200",
+  "messageZh": "执行失败",
+  "messageEn": "Failed",
+  "data": {
+    "executionId": "1122334455667788990",
+    "status": 3,
+    "errorMessage": "节点 '发送通知' 执行失败: HTTP 503 服务不可用",
+    "steps": [
+      { "nodeId": "node_entry", "status": 0, "...": "..." },
+      {
+        "nodeId": "node_1",
+        "nodeNameCn": "发送通知",
+        "status": 1,
+        "errorInfo": {
+          "code": "DOWNSTREAM_UNAVAILABLE",
+          "message": "HTTP 503 服务不可用",
+          "downstreamStatus": 503,
+          "downstreamBody": "Service Unavailable"
+        },
+        "...": "..."
+      }
+    ]
+  }
 }
 ```
+
+> 💡 **脱敏示例**：`accessKey: "***(12)"` 表示原值长度为 12 字符的 access_key 被脱敏；前端展示时去掉数字保留 `***`。
 
 #### POST /api/v1/flows/{flowId}/test-run — 测试运行（同步）
 
@@ -532,16 +712,28 @@
   "mockTriggerData": {
     "sender": "test_user",
     "content": "测试消息"
+  },
+  "credentials": {
+    "9876543210123456789": {
+      "accessKey": "test_ak",
+      "secretKey": "test_sk"
+    }
   }
 }
 
 // Response 200（同步返回）
 {
-  "executionId": "exec_test_xxxx",
-  "status": "success",
-  "isTest": true,
-  "steps": [ /* 同执行详情 steps */ ],
-  "durationMs": 1250
+  "code": "200",
+  "messageZh": "测试运行成功",
+  "messageEn": "Success",
+  "data": {
+    "executionId": "1122334455667788990",
+    "status": 2,
+    "triggerType": 3,
+    "isTest": true,
+    "steps": [ "..."],
+    "durationMs": 1250
+  }
 }
 ```
 
@@ -549,12 +741,20 @@
 
 | 方法 | 路径 | 说明 | FR |
 |------|------|------|----|
-| `POST` | `/api/v1/trigger/{flowId}/{triggerToken}` | HTTP 触发连接流 | FR-021 |
+| `POST` | `/api/v1/trigger/{flowId}/invoke` | HTTP 触发连接流（同步执行，返回结果） | FR-021 |
 
-**triggerToken 生成规则**: `tr_` + 32 位随机字符串（不可预测），每个已部署的 HTTP 触发连接流分配唯一 token。
+**触发器配置位置**: 触发器配置（含触发类型、认证类型 schema、入参 Schema、限流）完整内嵌于 `flow_version_t.orchestration_config.trigger` JSON（v2.7.3 决策），**不单独维护触发端点表**。HTTP 触发查找路径：`flowId` → `flow_t.currentPublishedVersionId` → `flow_version_t.orchestrationConfig.trigger`，全程主键索引查询。
+
+**触发前置校验**：
+1. `flow_t.lifecycleStatus = 1`（running 状态，FR-013~015 控制）
+2. `currentPublishedVersionId` 非空（至少有一个已发布版本）
+3. 请求凭证（由调用方在 Header/Query 中携带，不存储）匹配 `trigger.authTypeSchema` 声明的类型
+4. 触发频率未超 `trigger.rateLimit.qpm` 阈值
 
 ```json
-// Request — 由外部系统发送，格式由 version 的 trigger schema 定义
+// Request — 由外部系统发送
+// Header: Authorization: Bearer xxxxxx （凭证由调用方携带，不在数据库存储；具体认证类型由 trigger.authTypeSchema 声明）
+// Body 格式由 trigger.inParamSchema 校验
 {
   "sender": "external_system",
   "content": "这是一条外部消息"
@@ -562,23 +762,31 @@
 
 // Response 200（同步执行完成）
 {
-  "executionId": "exec_xxxx",
-  "status": "success",
-  "resultData": { "msgId": "msg_xxxx" },
-  "durationMs": 2250
+  "code": "200",
+  "messageZh": "执行成功",
+  "messageEn": "Success",
+  "data": {
+    "executionId": "1122334455667788990",
+    "status": 2,
+    "resultData": { "msgId": "msg_xxxx" },
+    "durationMs": 2250
+  }
 }
 
-// Response 401（签名验证失败）
-{ "code": "401", "messageZh": "签名验证失败", "messageEn": "Signature verification failed" }
+// Response 401（认证失败）
+{ "code": "401", "messageZh": "认证失败", "messageEn": "Authentication failed", "data": null, "page": null }
+
+// Response 403（连接流未启用或未发布）
+{ "code": "403", "messageZh": "连接流未启用或无已发布版本", "messageEn": "Flow not running or no published version", "data": null, "page": null }
 
 // Response 429（超过限流阈值 FR-024）
-{ "code": "429", "messageZh": "请求频率超限，请稍后重试", "messageEn": "Too many requests" }
+{ "code": "429", "messageZh": "请求频率超限，请稍后重试", "messageEn": "Too many requests", "data": null, "page": null }
 ```
 
-**HTTP 触发签名验证**:
-- 请求头: `X-Trigger-Signature: {hmac_sha256(secret, body)}`
-- 平台使用预共享 secret 验证签名
-- 支持限流：单 token 每分钟最多 100 次请求（FR-024 默认限流）
+**HTTP 触发认证说明**:
+- 认证凭证（如 Bearer Token / API Key / OAuth2 Access Token）由调用方在请求中携带（Header 或 Query），**平台不存储任何凭证**（v2.6 决策）
+- 平台仅根据 `trigger.authTypeSchema` 校验凭证格式合法性（如类型、字段名、carrier 位置、是否必填）；具体凭证有效性由下游连接器调用时验证
+- 限流：基于 `trigger.rateLimit.qpm`，按 `flowId` 维度限流（V1 可扩展为按 IP / 凭证维度）
 
 ---
 
@@ -592,35 +800,43 @@
 #### GET /api/v1/flows/{flowId}/executions — 执行历史列表
 
 ```json
-// Query params: ?curPage=1&pageSize=20&status=failed&from=2026-05-01&to=2026-05-21
+// Query params: ?curPage=1&pageSize=20&status=3&from=2026-05-01&to=2026-05-21
 
 // Response
 {
-  "items": [
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": [
     {
-      "executionId": "exec_y5z6a7b8",
-      "flowId": "flow_i9j0k1l2",
-      "triggerType": "http",
-      "status": "success",
-      "startedAt": "2026-05-21T10:00:01.000+08:00",
-      "finishedAt": "2026-05-21T10:00:03.250+08:00",
+      "executionId": "1122334455667788990",
+      "flowId": "1234567890123456789",
+      "flowVersionId": "9876543210123456789",
+      "triggerType": 1,
+      "status": 2,
+      "correlationId": "corr_abc123",
+      "startedTime": "2026-05-21T10:00:01.000+08:00",
+      "completedTime": "2026-05-21T10:00:03.250+08:00",
       "durationMs": 2250,
       "resultData": { "msgId": "msg_xxxx" }
     },
     {
-      "executionId": "exec_a1b2c3d4",
-      "flowId": "flow_i9j0k1l2",
-      "triggerType": "manual",
-      "status": "failed",
-      "startedAt": "2026-05-21T09:55:01.000+08:00",
-      "finishedAt": "2026-05-21T09:55:05.120+08:00",
+      "executionId": "1122334455667788991",
+      "flowId": "1234567890123456789",
+      "flowVersionId": "9876543210123456789",
+      "triggerType": 2,
+      "status": 3,
+      "startedTime": "2026-05-21T09:55:01.000+08:00",
+      "completedTime": "2026-05-21T09:55:05.120+08:00",
       "durationMs": 4120,
       "errorMessage": "节点 '发送通知' 执行失败: 连接超时"
     }
   ],
-  "total": 2,
-  "curPage": 1,
-  "pageSize": 20
+  "page": {
+    "curPage": 1,
+    "pageSize": 20,
+    "total": 2
+  }
 }
 ```
 
@@ -630,92 +846,131 @@
 
 ## 6. 接口编号总表
 
-| 编号 | 方法 | 路径 | 所属模块 | FR |
-|------|------|------|---------|----|
-| API-001 | POST | `/api/v1/connectors` | connector | FR-001 |
-| API-002 | GET | `/api/v1/connectors` | connector | FR-004 |
-| API-003 | GET | `/api/v1/connectors/{connectorId}` | connector | FR-004 |
-| API-004 | PUT | `/api/v1/connectors/{connectorId}` | connector | FR-002 |
-| API-005 | DELETE | `/api/v1/connectors/{connectorId}` | connector | FR-003 |
-| API-006 | GET | `/api/v1/connectors/{connectorId}/versions` | connector | FR-007 |
-| API-007 | GET | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | FR-005 |
-| API-008 | PUT | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | FR-006 |
-| API-009 | POST | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | connector | FR-008 |
-| API-010 | POST | `/api/v1/flows` | flow | FR-009 |
-| API-011 | GET | `/api/v1/flows` | flow | FR-012 |
-| API-012 | GET | `/api/v1/flows/{flowId}` | flow | FR-016 |
-| API-013 | PUT | `/api/v1/flows/{flowId}` | flow | FR-010 |
-| API-014 | DELETE | `/api/v1/flows/{flowId}` | flow | FR-011 |
-| API-015 | POST | `/api/v1/flows/{flowId}/deploy` | flow | FR-013 |
-| API-016 | POST | `/api/v1/flows/{flowId}/start` | flow | FR-014 |
-| API-017 | POST | `/api/v1/flows/{flowId}/stop` | flow | FR-015 |
-| API-018 | GET | `/api/v1/flows/{flowId}/versions` | flow | FR-018 |
-| API-019 | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | FR-016 |
-| API-020 | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | FR-017 |
-| API-021 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | flow | FR-019 |
-| API-022 | POST | `/api/v1/flows/{flowId}/executions` | runtime | FR-022 |
-| API-023 | POST | `/api/v1/flows/{flowId}/test-run` | runtime | FR-020 |
-| API-024 | POST | `/api/v1/trigger/{flowId}/{triggerToken}` | runtime | FR-021 |
-| API-025 | GET | `/api/v1/flows/{flowId}/executions` | runtime | FR-025 |
-| API-026 | GET | `/api/v1/executions/{executionId}` | runtime | FR-025 |
+| 编号 | 方法 | 路径 | 所属模块 | 所属服务 | FR |
+|------|------|------|---------|---------|----|
+| API-001 | POST | `/api/v1/connectors` | connector | open-server | FR-001 |
+| API-002 | GET | `/api/v1/connectors` | connector | open-server | FR-004 |
+| API-003 | GET | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-004 |
+| API-004 | PUT | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-002 |
+| API-005 | DELETE | `/api/v1/connectors/{connectorId}` | connector | open-server | FR-003 |
+| API-006 | GET | `/api/v1/connectors/{connectorId}/versions` | connector | open-server | FR-007 |
+| API-007 | GET | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | open-server | FR-005 |
+| API-008 | PUT | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | open-server | FR-006 |
+| API-009 | POST | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | connector | open-server | FR-008 |
+| API-010 | POST | `/api/v1/flows` | flow | open-server | FR-009 |
+| API-011 | GET | `/api/v1/flows` | flow | open-server | FR-012 |
+| API-012 | GET | `/api/v1/flows/{flowId}` | flow | open-server | FR-016 |
+| API-013 | PUT | `/api/v1/flows/{flowId}` | flow | open-server | FR-010 |
+| API-014 | DELETE | `/api/v1/flows/{flowId}` | flow | open-server | FR-011 |
+| API-015 | POST | `/api/v1/flows/{flowId}/deploy` | flow | open-server | FR-013 |
+| API-016 | POST | `/api/v1/flows/{flowId}/start` | flow | open-server | FR-014 |
+| API-017 | POST | `/api/v1/flows/{flowId}/stop` | flow | open-server | FR-015 |
+| API-018 | GET | `/api/v1/flows/{flowId}/versions` | flow | open-server | FR-018 |
+| API-019 | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | open-server | FR-016 |
+| API-020 | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | open-server | FR-017 |
+| API-021 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | flow | open-server | FR-019 |
+| API-022 | POST | `/api/v1/flows/{flowId}/executions` | runtime（手动调试） | **open-server** debug 代理 → **connector-api** debug-api | FR-022 |
+| API-023 | POST | `/api/v1/flows/{flowId}/test-run` | runtime（测试运行） | **open-server** debug 代理 → **connector-api** debug-api | FR-020 |
+| API-024 | POST | `/api/v1/trigger/{flowId}/invoke` | runtime（HTTP 触发） | **connector-api** http-trigger（对外消费方直连） | FR-021 |
+| API-025 | GET | `/api/v1/flows/{flowId}/executions` | monitor（执行列表查询） | **open-server** monitor | FR-025 |
+| API-026 | GET | `/api/v1/executions/{executionId}` | monitor（执行详情查询） | **open-server** monitor | FR-025 |
 
 > **总计**：26 个 HTTP 端点，覆盖 25 个 FR（FR-025 对应 2 个端点：执行列表 + 执行详情）
 >
-> **与 v1.x 的差异**：从 ~33 个端点精简为 26 个，移除审批集成（3 个）、Scope 集成（1 个）、MQS 主题（4 个）、监控仪表盘（2 个）、事件/定时/Webhook 触发接口（3 个）
+> **端点服务归属**（plan.md v2.0 修订后）：
+> - **open-server**（端口 18080，上下文根 `/open-server`）：API-001 ~ API-021（管理）+ API-022/API-023（前端调试代理）+ API-025/API-026（监控查询）
+> - **connector-api**（端口 18180，上下文根 `/connector-api`）：API-024（对外 HTTP 触发）+ 内部调试接口（被 API-022/API-023 转发调用，端点路径详见 plan-api §debug-api 章节后续补充）
+>
+> **与 v1.x 的差异**：从 ~33 个端点精简为 26 个，移除审批集成（3 个）、Scope 集成（1 个）、MQS 主题（4 个）、监控仪表盘（2 个）、事件/定时/Webhook 触发接口（3 个）；同时**新增 1 条内部调试接口**（connector-api 暴露给 open-server 内网调用）
 
 ---
 
-## 7. 状态枚举定义
+## 7. 状态枚举定义（对外 API 形式：TINYINT 数字）
 
-### 执行状态 (ExecutionRecord.status)
+> 💡 对外 API 返回的枚举值统一为 TINYINT 数字，与数据库存储一致；前端维护数字 → 标签映射字典。详细枚举字典见 plan-db.md §2.6。
 
-| 枚举值 | 说明 | 使用场景 |
-|--------|------|---------|
-| `success` | 执行成功 | 所有节点执行成功，正常返回 |
-| `failed` | 执行失败 | 某个节点执行失败（FR-023 默认错误处理） |
-| `timeout` | 执行超时 | 执行超过配置的超时时间，强制终止 |
+### 执行状态 (executionRecord.status)
 
-> **与 v1.x 的差异**：移除 `pending` / `running` 状态——同步执行在执行完成前不写入记录，only success/failed/timeout 三种终态。
+| 数字 | 含义 | 使用场景 |
+|:----:|------|---------|
+| `0` | `pending` | 同步执行中刚创建记录、节点未开始（瞬时） |
+| `1` | `running` | 同步执行中节点正在执行（瞬时，超时强制终止时回填） |
+| `2` | `success` | 所有节点执行成功，正常返回 |
+| `3` | `failed` | 某个节点执行失败（FR-023 默认错误处理） |
+| `4` | `timeout` | 执行超过配置的超时时间，强制终止 |
 
-### 执行步骤状态 (ExecutionStep.status)
+> **与 v2.0 的差异**：v2.0 仅 3 个值（success/failed/timeout），v2.7.5 扩为 5 个值——**保留 pending/running 用于同步执行过程中的瞬时状态写入与回填**（如执行超时时上下文需记录"running 中超时"，便于排查）
 
-| 枚举值 | 说明 |
-|--------|------|
-| `success` | 步骤执行成功 |
-| `failed` | 步骤执行失败 |
+### 执行步骤状态 (executionStep.status)
 
-### 触发方式 (trigger_type)
+| 数字 | 含义 |
+|:----:|------|
+| `0` | success（步骤执行成功） |
+| `1` | failed（步骤执行失败） |
 
-| 枚举值 | 说明 | MVP |
-|--------|------|:---:|
-| `http` | HTTP 触发（FR-021） | ✅ |
-| `manual` | 手动触发（FR-022） | ✅ |
-| `test` | 测试运行（FR-020） | ✅ |
+### 触发方式 (triggerType)
 
-> **与 v1.x 的差异**：移除 `event` / `webhook` / `scheduled` 类型（V1 阶段引入）
+| 数字 | 含义 | 说明 | MVP |
+|:----:|------|------|:---:|
+| `1` | `http` | HTTP 触发（FR-021） | ✅ |
+| `2` | `manual` | 手动触发（FR-022） | ✅ |
+| `3` | `test` | 测试运行（FR-020） | ✅ |
 
-### 版本状态
+> **V1 扩展**：4=event / 5=webhook / 6=scheduled（V1 阶段引入，NG14/NG15/NG17）
 
-| 枚举值 | 说明 |
-|--------|------|
-| `draft` | 草稿版本（可编辑） |
-| `published` | 已发布版本（只读，可被引用） |
+### 版本状态 (versionStatus)
 
-### 连接器协议类型
+| 数字 | 含义 |
+|:----:|------|
+| `0` | draft（草稿版本，可编辑） |
+| `1` | published（已发布版本，只读，可被引用） |
 
-| 枚举值 | 说明 | MVP |
-|--------|------|:---:|
-| `HTTP` | HTTP 协议 | ✅ |
+### 连接器协议类型 (connectorType)
 
-> **与 v1.x 的差异**：移除 `MySQL` / `Redis` / `Kafka` / `gRPC` 等非 HTTP 协议（NG12，V1 阶段）
+| 数字 | 含义 | MVP |
+|:----:|------|:---:|
+| `1` | HTTP | ✅ |
 
-### 节点类型
+> **V1 扩展**：2=MySQL / 3=Redis / 4=Kafka / 5=gRPC 等（NG12，V1 阶段）
 
-| 枚举值 | 说明 | MVP |
-|--------|------|:---:|
-| `entry` | 入口节点 | ✅ |
-| `connector` | 连接器节点 | ✅ |
-| `data_processor` | 数据处理节点 | ✅ |
-| `exit` | 出口节点 | ✅ |
+### 节点类型 (nodeType)
 
-> **与 v1.x 的差异**：新增 `data_processor` 节点类型（spec v4.0 将其纳入 MVP 范围）
+| 数字 | 含义 | MVP |
+|:----:|------|:---:|
+| `1` | entry（入口节点） | ✅ |
+| `2` | connector（连接器节点） | ✅ |
+| `3` | data_processor（数据处理节点） | ✅ |
+| `4` | exit（出口节点） | ✅ |
+
+### 连接器状态 (connector.status)
+
+| 数字 | 含义 |
+|:----:|------|
+| `0` | disabled（禁用） |
+| `1` | active（启用） |
+
+### 连接流生命周期 (flow.lifecycleStatus)
+
+| 数字 | 含义 |
+|:----:|------|
+| `0` | stopped（已停止，未部署或已停止运行） |
+| `1` | running（运行中，可接收 HTTP 触发） |
+
+### 对象存储归属类型 (storageBlobRef.ownerType)
+
+| 数字 | 含义 |
+|:----:|------|
+| `1` | executionRecordTrigger（执行记录的触发数据外置） |
+| `2` | executionRecordResult（执行记录的返回值外置） |
+| `3` | executionStepInput（执行步骤的输入数据外置） |
+| `4` | executionStepOutput（执行步骤的输出数据外置） |
+
+---
+
+## 附录 A：修订记录
+
+| 版本 | 日期 | 修订内容 | 修订人 |
+|------|------|---------|--------|
+| **v2.0** | 2026-05-21 | 初始版本——对齐 spec.md v4.0：移除 Scope/审批/事件/定时触发，执行改为同步，FR 重编号 1~25 | SDDU Plan Agent |
+| **v2.7.3** | 2026-05-22 | HTTP 触发 URL 从 `/trigger/{flowId}/{triggerToken}` 改为 `/trigger/{flowId}/invoke`（flowId 雪花数字），签名验证段重写为认证说明（凭证调用方携带 + authTypeSchema 校验 + rateLimit 限流），新增 403 错误码（连接流未启用）；§6 接口编号总表 API-024 路径同步 | SDDU Plan Agent |
+| **v2.7.5** | **2026-05-22** | **全面对齐 plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）**，本次为彻底对齐重写。核心变更：① **§0 重写**版本对齐说明，列出全部 v2.0 → v2.7.5 变更项；② **§1.2 字段命名规范**新增双语字段约定（`*Cn`/`*En`）+ snake_case 到 camelCase 映射表；③ **§1.4 数据类型规范**重写：BIGINT 雪花 ID 必须返回 string（避免 JS 精度丢失）+ 枚举字段统一返回 TINYINT 数字（与数据库一致）+ 完整枚举数字字典；④ **§2.1 连接器 CRUD** 所有 Request/Response 示例：ID 改用数字 string、名称改双语 `nameCn`/`nameEn`、描述改双语 `descriptionCn`/`descriptionEn`、状态改数字、`icon` → `iconUrl`、新增 `tags`、`createdAt` → `createTime`、统一响应格式（`code`/`messageZh`/`messageEn`/`data`/`page`）；⑤ **§2.2 连接器版本编辑**：`connectionConfig.auth` → `authTypeSchema`（仅声明类型不含凭证值，v2.6）、`auth.config` 凭证字段移除（改为 `fields` 数组含 `sensitive: true` 标记）；⑥ **§2.2 连接器版本发布**：`changeLog` → `versionDescriptionCn`/`versionDescriptionEn` 双语 VARCHAR(1000)；⑦ **§3.1 连接流 CRUD**：同 §2.1 命名/类型/响应统一调整，新增 `ownerGroup`、`deployedVersionId` → `currentPublishedVersionId`（与数据库对齐）；⑧ **§3.2 编排配置 PUT**：节点/连线 `nodeId`/`edgeId` → 内部 `id`（字符串 UUID）、`nodeType` → `type`、`label` → `labelCn`/`labelEn` 双语、节点连接器引用 `connectorVersionId` 用数字 string、连线 `source`/`target` → `sourceNodeId`/`targetNodeId`、触发器 `trigger.config.schema` → `trigger.inParamSchema` + `trigger.authTypeSchema`（v2.7.3 + v2.6）+ `trigger.rateLimit.qpm`；⑨ **§4.1 手动触发**：请求新增 `credentials` 顶层字段（按 `connectorVersionId` 分组凭证）、响应 ID 用数字 string、状态/触发方式/节点类型/步骤状态用 TINYINT 数字、新增 `correlationId`、`startedAt`/`finishedAt` → `startedTime`/`completedTime`、`nodeName` → `nodeNameCn`/`nodeNameEn` 双语、新增 `stepOrder`、`errorMessage` → `errorInfo` 结构化（含 code/message/downstreamStatus/downstreamBody）、脱敏示例 `"***（12）"`；⑩ **§4.2 HTTP 触发**：`auth_type_schema`/`in_param_schema`/`rate_limit` → camelCase `authTypeSchema`/`inParamSchema`/`rateLimit`，统一响应格式；⑪ **§5 执行历史**：字段名/类型/响应格式统一；⑫ **§7 状态枚举**全部重写为数字字典（含 v2.0 与 v2.7.5 差异说明，特别说明执行状态枚举从 3 个扩为 5 个保留 pending/running 的理由）；⑬ 顶部版本号 v2.0 → v2.7.5；⑭ 修订记录追加 v2.7.5 条目。**未变更项**：§1.1 基础规范 / §1.3 路径命名 / §1.5 响应格式 / §1.6 分页 / §1.7 错误码 / §6 接口编号总表（v2.7.3 已对齐）/ §2.1 §2.2 §3.1 §3.2 §4.1 §4.2 §5 的 URL 路径 与 FR 编号 | SDDU Plan Agent |
