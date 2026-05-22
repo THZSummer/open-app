@@ -917,7 +917,7 @@ erDiagram
 | 表 | 字段 | 枚举值 | 说明 |
 |----|------|--------|------|
 | `connector_t` | `connector_type` | 1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1） | 协议类型 |
-| `connector_t` | `status` | 0=disabled, 1=active | 连接器启用状态 |
+| `connector_t` | `status` | 保留字段（默认 1），本期不定义业务语义 | 未来可用于控制连接器是否可被连接流引用等 |
 | `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
 | `flow_t` | `lifecycle_status` | 0=undeployed, 1=running, 2=stopped | 对应 FR-013~015 部署/启动/停止 |
 | `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
