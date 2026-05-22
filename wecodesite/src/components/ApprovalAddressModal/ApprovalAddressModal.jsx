@@ -1,12 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
+import { remindPeople } from '../../../routes-redBlue/api-manage/thunk';
+import { queryParams } from '../../../utils/common';
 
 function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
+  const [remindLoading, setRemindLoading] = useState(false);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(approvalUrl).then(() => {
       message.success('审批链接已复制');
     }).catch(() => message.error('复制失败，请检查浏览器权限'));
+  };
+
+  /**
+   * 处理催办按钮点击事件
+   * 从审批链接中提取 eflowId 并调用催办接口
+   */
+  const handleRemind = async () => {
+    const eflowId = queryParams('eflowId');
+    
+    if (!eflowId) {
+      message.error('无法提取审批ID');
+      return;
+    }
+    
+    setRemindLoading(true);
+    
+    const result = await remindPeople({ eflowId });
+    
+    if (result && result.code === '200') {
+      message.success('催办成功');
+      onClose();
+    } else {
+      message.error('催办失败');
+    }
+    
+    setRemindLoading(false);
   };
 
   return (
@@ -15,6 +45,14 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
       open={open}
       onCancel={onClose}
       footer={[
+        <Button
+          key="remind"
+          type="primary"
+          onClick={handleRemind}
+          loading={remindLoading}
+        >
+          催办
+        </Button>,
         <Button key="cancel" onClick={onClose}>关闭</Button>
       ]}
       centered
