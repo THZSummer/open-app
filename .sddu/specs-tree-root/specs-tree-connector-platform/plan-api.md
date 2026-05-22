@@ -202,7 +202,6 @@
   "iconUrl": "https://cdn.xxx.com/icons/im.svg",
   "descriptionCn": "封装 IM 消息发送能力",
   "descriptionEn": "Encapsulated IM messaging capability",
-  "tags": "messaging,im",
   "connectorType": 1
 }
 
@@ -241,7 +240,6 @@
       "iconUrl": "https://cdn.xxx.com/icons/im.svg",
       "descriptionCn": "封装 IM 消息发送能力",
       "descriptionEn": "Encapsulated IM messaging capability",
-      "tags": "messaging,im",
       "connectorType": 1,
       "status": 1,
       "latestVersionNo": "1.2.0",
@@ -388,9 +386,7 @@
   "nameCn": "新消息自动通知",
   "nameEn": "Auto Message Notification",
   "descriptionCn": "收到 IM 消息后自动发送通知到OA系统",
-  "descriptionEn": "Auto notify OA system upon receiving IM messages",
-  "tags": "notification,im",
-  "ownerGroup": "biz-platform"
+  "descriptionEn": "Auto notify OA system upon receiving IM messages"
 }
 
 // Response 201
