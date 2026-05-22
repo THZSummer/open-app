@@ -8,6 +8,9 @@ import ClassifyList from './routeRedBlue/lookup-classify';
 import ItemList from './routeRedBlue/lookup-item';
 import TaskList from './routeRedBlue/task-center';
 
+// 数据字典管理
+import DictionaryList from '@/pages/dictionary';
+
 /**
  * 路由配置
  *
@@ -16,6 +19,7 @@ import TaskList from './routeRedBlue/task-center';
  * - /lookup-classify: LookUp 分类管理
  * - /lookup-item: LookUp 项管理
  * - /task-center: 任务中心
+ * - /dictionary: 数据字典管理
  * - /404: 404 页面
  */
 const Router = () => {
@@ -26,6 +30,7 @@ const Router = () => {
         <Route path="lookup-classify" element={<ClassifyList />} />
         <Route path="lookup-item" element={<ItemList />} />
         <Route path="task-center" element={<TaskList />} />
+        <Route path="dictionary" element={<DictionaryList />} />
         <Route path="404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Route>

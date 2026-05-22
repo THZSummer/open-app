@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.dictionary.mapper.DictionaryMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.dictionary.domain.entity.DictionaryEntity">
+        <id column="id" property="id"/>
+        <result column="code" property="code"/>
+        <result column="name" property="name"/>
+        <result column="value" property="value"/>
+        <result column="description" property="description"/>
+        <result column="path" property="path"/>
+        <result column="language" property="language"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        id, code, name, value, description, path, language, status,
+        create_by, create_time, last_update_by, last_update_time
+    </sql>
+
+    <!-- 插入数据字典 -->
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.dictionary.domain.entity.DictionaryEntity"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO openplatform_property_t (
+            code, name, value, description, path, language, status,
+            create_by, create_time, last_update_by, last_update_time
+        ) VALUES (
+            #{code}, #{name}, #{value}, #{description}, #{path}, #{language}, #{status},
+            #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
+        )
+    </insert>
+
+    <!-- 批量插入数据字典 -->
+    <insert id="batchInsert">
+        INSERT INTO openplatform_property_t (
+            code, name, value, description, path, language, status,
+            create_by, create_time, last_update_by, last_update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (
+                #{item.code}, #{item.name}, #{item.value}, #{item.description},
+                #{item.path}, #{item.language}, #{item.status},
+                #{item.createBy}, #{item.createTime}, #{item.lastUpdateBy}, #{item.lastUpdateTime}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 根据ID查询数据字典 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_property_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据路径和编码查询数据字典 -->
+    <select id="selectByPathAndCode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_property_t
+        WHERE path = #{path}
+          AND code = #{code}
+    </select>
+
+    <!-- 查询数据字典列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_property_t
+        <where>
+            <if test="code != null and code != ''">
+                AND code LIKE CONCAT('%', #{code}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="path != null and path != ''">
+                AND path LIKE CONCAT('%', #{path}, '%')
+            </if>
+            <if test="language != null">
+                AND language = #{language}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计数据字典总数 -->
+    <select id="countList" resultType="long">
+        SELECT COUNT(*)
+        FROM openplatform_property_t
+        <where>
+            <if test="code != null and code != ''">
+                AND code LIKE CONCAT('%', #{code}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="path != null and path != ''">
+                AND path LIKE CONCAT('%', #{path}, '%')
+            </if>
+            <if test="language != null">
+                AND language = #{language}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!-- 根据ID列表查询数据字典 -->
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_property_t
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询数据字典用于导出 -->
+    <select id="selectForExport" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_property_t
+        <where>
+            <if test="code != null and code != ''">
+                AND code LIKE CONCAT('%', #{code}, '%')
+            </if>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="path != null and path != ''">
+                AND path LIKE CONCAT('%', #{path}, '%')
+            </if>
+            <if test="language != null">
+                AND language = #{language}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT 1000
+    </select>
+
+    <!-- 更新数据字典 -->
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.dictionary.domain.entity.DictionaryEntity">
+        UPDATE openplatform_property_t
+        SET name = #{name},
+            value = #{value},
+            description = #{description},
+            path = #{path},
+            <if test="status != null">
+                status = #{status},
+            </if>
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除数据字典 -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_property_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 检查编码是否存在（同路径下） -->
+    <select id="checkCodeExists" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_property_t
+        WHERE path = #{path}
+          AND code = #{code}
+          <if test="excludeId != null">
+              AND id != #{excludeId}
+          </if>
+    </select>
+
+</mapper>
