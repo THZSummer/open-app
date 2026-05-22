@@ -1,7 +1,7 @@
 # 数据库设计：连接器平台
 
 **Feature ID**: CONN-PLAT-001  
-**关联文档**: plan.md (§4.2, §4.3)  
+**关联文档**: plan.md（§4.2 数据库设计 + §4.3 表设计规则）  
 **版本**: v2.7.6  
 **创建日期**: 2026-05-21  
 **最后更新**: 2026-05-22  
@@ -9,41 +9,11 @@
 
 ---
 
-## 0. 版本对齐说明
+## 0. 设计规范
 
-本版本对齐 plan.md v2.7.5 全部数据库决策，相对 v2.0 的核心变更：
+> 💡 本章合并原 §1 设计原则 + §2 通用规范（现统编为 §0 设计规范）。全面对齐能力开放平台（CAP-OPEN-001 `plan.md §4.2 表设计规则`），连接器平台子域作为 openplatform_v2 体系一部分严格遵循。
 
-| 维度 | v2.0 | v2.7.5 |
-|------|------|--------|
-| 表前缀 | `cp_` | **`openplatform_v2_cp_`**（v2.5）|
-| 表后缀 | 无 | **`_t`**（v2.7）|
-| 主键 | `bigint id + varchar(32) business_id` | **BIGINT(20) 雪花 ID，应用层生成；仅 `id` 一个主键**（v2.7）|
-| 名称字段 | 单语 `name varchar(100)` | **`name_cn` / `name_en` 双语 VARCHAR(100)**（v2.7）|
-| 描述字段 | `description varchar(2000)` | **`description_cn` / `description_en` VARCHAR(1000) 双语**（v2.7.2）|
-| 审计字段 | `created_at/updated_at/created_by/updated_by` | **`create_time/last_update_time/create_by/last_update_by`**（v2.7）|
-| 枚举字段 | `varchar(20)` 字符串 | **TINYINT(10) + 数字默认值**（v2.7）|
-| JSON 字段 | MySQL `json` 原生类型 | **TEXT 存 JSON 字符串**（v2.7.4，禁用 MySQL JSON）|
-| 节点/连线 | 独立 `cp_flow_node` / `cp_flow_edge` 表 | **全部内聚到 `flow_version_t.orchestration_config` JSON**（v2.4）|
-| 触发器 | （无单表） | **内嵌 `orchestration_config.trigger`，不单独建表**（v2.7.3）|
-| 凭证 | `cp_connector_auth_config` 独立加密表 | **凭证不持久化，删除该表**（v2.6）|
-| 大字段外置 | 无 | **新增 `storage_blob_ref_t` 元数据表**（v2.4）|
-| 外部资源标识 | 无 | **`storage_blob_ref_t.external_resource_id`**（v2.7.5）|
-| 执行状态枚举 | 3 个（success/failed/timeout） | **5 个：0=pending/1=running/2=success/3=failed/4=timeout**（v2.4）|
-| 触发方式枚举 | varchar 字符串 | **TINYINT：1=http/2=manual/3=test**（v2.7）|
-| 预留计量字段 | 无 | **`operations_count`/`data_in_bytes`/`data_out_bytes`**（v2.4）|
-| 链路追踪 | 无 | **新增 `correlation_id`**（v2.4）|
-| current_published_version_id | 无 | **`flow_t` 新增指针字段**（v2.4）|
-| 分区策略 | 提到分区 | **MVP 不分区**（v2.7.1，V1 单表接近 500w 时按月分区）|
-| 属性表模式 | 未考虑 | **MVP 不引入 `*_p_t`**（v2.7.1，V1 演进项）|
-| 表数量 | 9 张 | **7 张**（v2.7.3）|
-
----
-
-## 1. 设计规范
-
-> 💡 本章合并原 §1 设计原则 + §2 通用规范，统一为「设计规范」章节。全面对齐能力开放平台（CAP-OPEN-001 `plan.md §4.2 表设计规则`），连接器平台子域作为 openplatform_v2 体系一部分严格遵循。
-
-### 1.1 核心设计原则
+### 0.1 核心设计原则
 
 | 原则 | 说明 |
 |------|------|
@@ -61,7 +31,7 @@
 | **执行表分区** | MVP 不分区；V1 单表接近 500w 时按 `create_time` 月度分区 + 30 天冷归档 |
 | **文件/图标字段** | 不直接存储完整 URL，统一使用 **文件 ID**（如 `icon_file_id`）存储，`VARCHAR(128)`，选填；系统层负责将文件 ID 解析为可访问 URL。关联 `storage_blob_ref_t` 或独立文件服务（V1） |
 
-### 1.2 命名规范
+### 0.2 命名规范
 
 | 规则 | 说明 | 连接器平台示例 |
 |------|------|---------------|
@@ -71,7 +41,7 @@
 | **索引命名** | `idx_字段名[_字段名2[_字段名3]]` | `idx_connector_id_version_status_create_time` |
 | **唯一索引命名** | `uk_字段名[_字段名2]` | `uk_flow_id_version_no` |
 
-### 1.3 主键规范
+### 0.3 主键规范
 
 | 规则 | 说明 |
 |------|------|
@@ -82,7 +52,7 @@
 
 > **禁止使用外键**：所有表关联关系通过存储逻辑字段实现，不使用数据库物理外键约束（FOREIGN KEY）。
 
-### 1.4 审计字段规范
+### 0.4 审计字段规范
 
 所有业务表必须包含以下 4 个审计字段：
 
@@ -93,7 +63,7 @@
 | `create_by` | VARCHAR(100) | 创建人账号 |
 | `last_update_by` | VARCHAR(100) | 更新人账号 |
 
-### 1.5 描述字段规范
+### 0.5 描述字段规范
 
 | 规则 | 说明 |
 |------|------|
@@ -101,7 +71,7 @@
 | **双语** | `description_cn` / `description_en`，均选填 |
 | **理由** | 行内存储+可索引+前端预览友好，避免 TEXT 离行存储与全表扫描代价；1000 字符足够承载产品级描述 |
 
-### 1.6 JSON 字段规范（v2.7.4）
+### 0.6 JSON 字段规范（v2.7.4）
 
 | 规则 | 说明 |
 |------|------|
@@ -112,7 +82,7 @@
 | **理由** | 跨数据库通用（PG/Oracle/SQLServer 都支持） / ORM 与工具兼容性最好 / 避免 MySQL 5.7/8.0 JSON 方言差异 / R2DBC 映射简单 |
 | **本平台长度选择** | 编排/连接配置类（`orchestration_config`、`connection_config`、`basic_info_snapshot`）：**MEDIUMTEXT**（最多 16MB，预留 DAG 扩展空间）；执行 I/O 类（`trigger_data`/`result_data`/`input_data`/`output_data`/`error_info`）：**TEXT**（最多 64KB，超阈值走对象存储外置） |
 
-### 1.7 枚举字段规范
+### 0.7 枚举字段规范
 
 | 规则 | 说明 |
 |------|------|
@@ -146,7 +116,7 @@
 ---
 
 
-## 2. 表清单
+## 1. 表清单
 
 | # | 表名 | 类型 | 归属模块 | 说明 |
 |---|------|------|---------|------|
@@ -162,7 +132,7 @@
 
 ---
 
-## 3. 表关系总览
+## 2. 表关系总览
 
 ```mermaid
 erDiagram
@@ -197,11 +167,11 @@ erDiagram
 
 ---
 
-## 4. 表结构定义
+## 3. 表结构定义
 
 > 💡 以下 DDL 全部遵循 §1 设计原则与 §2 通用规范：BIGINT 雪花 ID 主键、双语名称、VARCHAR(1000) 描述、4 审计字段、TINYINT(10) 枚举、TEXT 存 JSON 字符串、idx_xxx/uk_xxx 索引命名、不使用物理外键。
 
-### 4.1 openplatform_v2_cp_connector_t — 连接器基本信息
+### 3.1 openplatform_v2_cp_connector_t — 连接器基本信息
 
 ```sql
 -- ============================================
@@ -249,7 +219,7 @@ stateDiagram-v2
 
 > **变更说明**（相对 v2.0）：① 表名加 `openplatform_v2_cp_` 前缀 + `_t` 后缀；② 删除 `connector_id varchar(32)`（直接用 BIGINT `id` 作业务标识）；③ `name` → `name_cn`/`name_en` 双语；④ `description varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语；⑤ `connector_type`/`status` 从 varchar 改为 TINYINT(10)；⑥ 审计字段 `created_at/updated_at/created_by/updated_by` → `create_time/last_update_time/create_by/last_update_by`；⑦ 删除 `is_deleted`（MVP 物理删除）。
 
-### 4.2 openplatform_v2_cp_connector_version_t — 连接器版本
+### 3.2 openplatform_v2_cp_connector_version_t — 连接器版本
 
 ```sql
 -- ============================================
@@ -350,7 +320,7 @@ stateDiagram-v2
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `approval_id`（无审批，NG19）；④ 删除 `change_log varchar(2000)` → 改用 `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；⑤ `status` → `version_status` TINYINT；⑥ `published_at` → `published_time`；⑦ `basic_info_snapshot`/`connection_config` 从 `json` → `mediumtext`（v2.7.4 决策）；⑧ `connection_config.auth` → `auth_type_schema`（仅 schema 不含凭证值，v2.6 决策）；⑨ 索引重命名 `idx_connector_id_version_status_create_time`；⑩ `uk_version_id` → `uk_connector_id_version_no`（业务唯一约束更准确）。
 
-### 4.3 openplatform_v2_cp_flow_t — 连接流基本信息
+### 3.3 openplatform_v2_cp_flow_t — 连接流基本信息
 
 ```sql
 -- ============================================
@@ -399,7 +369,7 @@ stateDiagram-v2
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `flow_id varchar(32)`；③ `name` → `name_cn`/`name_en` 双语；④ `description varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语；⑤ `status enabled/disabled` → `lifecycle_status` TINYINT (0=stopped, 1=running)；⑥ **新增 `current_published_version_id` 指针**（v2.4，HTTP 触发查找路径，借鉴 PA flowversions + 钉钉模式）；⑦ 删除 `is_deleted`；⑧ 索引 `idx_current_published_version_id` 用于 HTTP 触发查找。
 
-### 4.4 openplatform_v2_cp_flow_version_t — 连接流版本（含编排配置 + 触发器内嵌）
+### 3.4 openplatform_v2_cp_flow_version_t — 连接流版本（含编排配置 + 触发器内嵌）
 
 ```sql
 -- ============================================
@@ -540,7 +510,7 @@ stateDiagram-v2
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `change_log` → `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；④ 删除 `approval_id`（NG19）；⑤ `basic_info_snapshot`/`orchestration_config` 从 `json` → `mediumtext`（v2.7.4）；⑥ `orchestration_config.trigger` 内嵌完整触发器配置（含 `auth_type_schema`/`in_param_schema`/`rate_limit`，v2.7.3 决策）；⑦ 节点/连线从子表（cp_flow_node/cp_flow_edge）内聚到 `nodes[]`/`edges[]`（v2.4）；⑧ 节点引用连接器版本字段从 `connector_version_id varchar(32)` 改为 BIGINT 雪花 ID；⑨ 索引重命名 `idx_flow_id_version_status_create_time` + 新增 `uk_flow_id_version_no`。
 
-### 4.5 openplatform_v2_cp_execution_record_t — 执行记录
+### 3.5 openplatform_v2_cp_execution_record_t — 执行记录
 
 ```sql
 -- ============================================
@@ -614,7 +584,7 @@ stateDiagram-v2
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `execution_id varchar(32)`；③ `flow_id`/`version_id` → BIGINT，`version_id` 重命名为 `flow_version_id` 明确含义；④ `trigger_type` varchar → TINYINT；⑤ `status` 枚举从 3 个（success/failed/timeout）扩为 **5 个**（0=pending/1=running/2=success/3=failed/4=timeout，**保留 pending/running 用于同步执行过程中的瞬时状态写入与回填**）；⑥ `trigger_data`/`result_data` 从 json → TEXT（v2.7.4），**新增 `*_blob_id` 外置引用**（v2.4，>64KB 自动外置）；⑦ **新增 `correlation_id`**（v2.4，链路追踪）；⑧ **新增预留计量字段** `operations_count`/`data_in_bytes`/`data_out_bytes`（v2.4，借鉴 Make/PA，避免后期加字段迁移）；⑨ `started_at`/`finished_at` → `started_time`/`completed_time`；⑩ `duration_ms` int → bigint；⑪ `error_message` varchar(5000) → varchar(2000)；⑫ 删除 `max_retries`/`retry_count`（NG15）；⑬ 审计字段重命名；⑭ **MVP 不分区**（v2.7.1，V1 按 create_time 月度分区）；⑮ 索引重命名 `idx_flow_id_create_time` 用于 FR-025 执行历史查询。
 
-### 4.6 openplatform_v2_cp_execution_step_t — 执行步骤详情
+### 3.6 openplatform_v2_cp_execution_step_t — 执行步骤详情
 
 ```sql
 -- ============================================
@@ -651,7 +621,7 @@ CREATE TABLE `openplatform_v2_cp_execution_step_t` (
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `step_id varchar(32)`；③ `execution_id`/`node_id` 类型调整：`execution_id` 改为 BIGINT 雪花 ID 引用，`node_id` 保留 VARCHAR（因其来自 orchestration_config JSON 内部 ID 空间，是字符串 UUID）；④ `node_type` varchar → TINYINT；⑤ `status` varchar → TINYINT；⑥ 新增 `step_order`（节点执行序号，索引 `idx_execution_id_step_order`）；⑦ 新增 `node_name_cn`/`node_name_en` 双语；⑧ `input_data`/`output_data` 从 json → TEXT，**新增 `*_blob_id` 外置引用**（v2.4）；⑨ `error_message varchar(5000)` → `error_info text` 存 JSON（含结构化错误码/堆栈摘要）；⑩ `duration_ms` int → bigint；⑪ `started_at`/`finished_at` → `started_time`/`completed_time`；⑫ 删除 `retry_attempts`（NG15）；⑬ 审计字段重命名 + 新增 `last_update_time`/`create_by`/`last_update_by`；⑭ **MVP 不分区**。
 
-### 4.7 openplatform_v2_cp_storage_blob_ref_t — 对象存储引用元数据（🆕 v2.4 新增）
+### 3.7 openplatform_v2_cp_storage_blob_ref_t — 对象存储引用元数据（🆕 v2.4 新增）
 
 ```sql
 -- ============================================
@@ -712,34 +682,7 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 >   - 当 `execution_step_t` 记录被清理时，按 `owner_type=3|4 AND owner_id=step_id` 删除
 > - 通过 `idx_expires_time` 扫描，定时清理已过期的 blob（无业务关联场景，如临时调试 blob）
 
-### 4.8 ❌ 已删除的表（凭证不持久化）
-
-**`openplatform_v2_cp_connector_auth_config_t`**（原 `cp_connector_auth_config`）—— **v2.6 决策删除**
-
-| 项 | 说明 |
-|----|------|
-| **删除原因** | 凭证不持久化，仅在调用过程中通过触发请求传入 → 注入 ExecutionContext（仅内存）→ 节点执行后清除；凭证**永不进入 MySQL/Redis/对象存储** |
-| **替代方案** | 在 `connector_version_t.connection_config.auth_type_schema` 中**仅声明认证类型与字段 schema**（含 `sensitive: true` 标记），不存储任何凭证值 |
-| **调用方职责** | HTTP 触发时在请求 Header/Body 携带凭证；手动调试时在调试 API 请求体的 `credentials` 字段携带 |
-| **运行时职责** | connector-api 解析后注入到 `ExecutionContext.credentials`（仅内存生命周期）；节点执行完成后**显式清除**；写入 execution_step/record 时按 `sensitive: true` 标记自动脱敏（值 → `***`，保留长度） |
-| **V1 演进** | 若引入"连接器市场/共享凭证库"等场景，再补 `openplatform_v2_cp_credential_t` 表（AES-256-GCM + KMS） |
-| **spec 同步** | 已记录为 OQ-006，建议反向同步 spec.md NFR-010：「凭证不持久化（MVP）；如有持久化场景，须 AES-256-GCM + KMS（V1）」 |
-
-### 4.9 ❌ 已删除的表（编排定义内聚）
-
-**`cp_flow_node` / `cp_flow_edge`** —— **v2.4 决策删除**
-
-| 项 | 说明 |
-|----|------|
-| **删除原因** | 借鉴 Make/Zapier/钉钉/PA 共识，编排定义采用**单一字段保存完整 DAG**（`{trigger, nodes[], edges[]}`），便于版本快照、diff、回滚 |
-| **替代方案** | 节点/连线定义全部内聚到 `flow_version_t.orchestration_config` MEDIUMTEXT 字段（JSON 字符串） |
-| **节点 ID 空间** | 编排 JSON 内部使用字符串 UUID（如 `node_entry`/`node_1`），由前端编排画布生成；不对外暴露为业务 ID |
-| **执行时引用** | `execution_step_t.node_id` 存字符串 UUID 引用 orchestration_config.nodes[].id |
-
-
----
-
-## 5. 数据归档与清理策略
+## 4. 数据归档与清理策略
 
 | 表 | 保留策略 | 清理方式 |
 |----|---------|---------|
@@ -754,9 +697,9 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 
 ---
 
-## 6. ID 与版本号规则
+## 5. ID 与版本号规则
 
-### 6.1 主键 ID 规则（v2.7 变更）
+### 5.1 主键 ID 规则（v2.7 变更）
 
 | 项 | 规则 |
 |----|------|
@@ -765,7 +708,7 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 | **业务暴露** | 直接以 BIGINT 数值作为业务标识对外暴露；**API 响应统一转为 string** 避免 JS Number 精度丢失（plan-api.md §1.4 数据类型规范） |
 | **❌ 不再使用** | ~~`varchar(32)` 业务 ID 前缀~~（v2.0 的 `con_xxxx`/`flow_xxxx`/`cv_xxxx`/`exec_xxxx`/`step_xxxx` 等命名空间全部废弃） |
 
-### 6.2 节点/连线内部 ID 规则
+### 5.2 节点/连线内部 ID 规则
 
 | 项 | 规则 |
 |----|------|
@@ -774,7 +717,7 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 | **唯一性** | 仅在单个 `orchestration_config` JSON 内部唯一（编排级 ID 空间），不跨版本/跨流复用 |
 | **执行时引用** | `execution_step_t.node_id VARCHAR(64)` 存这个字符串 UUID |
 
-### 6.3 版本号格式
+### 5.3 版本号格式
 
 `{major}.{minor}.{patch}`（如 `1.0.0`, `1.1.0`, `2.0.0`），存于 `*_version_t.version_no VARCHAR(20)`，由用户在发布时输入。
 
@@ -787,3 +730,67 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 | **v2.0** | 2026-05-21 | 初始版本——对齐 spec.md v4.0：移除审批字段、更新执行状态枚举、新增 data_processor 节点类型、更新触发方式枚举、移除 MQS 引用；9 张表（5 主表 + 4 子表） | SDDU Plan Agent |
 | **v2.7.5** | **2026-05-22** | **全面对齐 plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）**，本次为彻底重写。核心变更：① **表前缀** `cp_` → `openplatform_v2_cp_`（v2.5）+ **`_t` 后缀**（v2.7）；② **主键** `bigint id + varchar(32) business_id` → 单一 BIGINT(20) 雪花 ID（v2.7），业务标识直接用 `id`；③ **名称字段** 单语 `name` → `name_cn`/`name_en` 双语（v2.7）；④ **描述字段** `varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语（v2.7.2）；⑤ **审计字段** `created_at/updated_at/created_by/updated_by` → `create_time/last_update_time/create_by/last_update_by`（v2.7）；⑥ **枚举字段** `varchar(20)` → TINYINT(10) + 数字默认值（v2.7）；⑦ **JSON 字段** MySQL `json` → TEXT/MEDIUMTEXT 存 JSON 字符串（v2.7.4）；⑧ **节点/连线表删除** `cp_flow_node`/`cp_flow_edge` → 全部内聚到 `flow_version_t.orchestration_config` JSON（v2.4）；⑨ **触发器不单独建表** → 内嵌 `orchestration_config.trigger`（v2.7.3）；⑩ **凭证表删除** `cp_connector_auth_config` → 凭证不持久化（v2.6），仅声明 `auth_type_schema`；⑪ **新增 `storage_blob_ref_t`** 元数据表（v2.4），用于 I/O 大字段（>64KB）外置到对象存储；⑫ **`storage_blob_ref_t` 新增 `external_resource_id`**（v2.7.5）；⑬ **`execution_record_t` 新增** `correlation_id`（链路追踪）+ 预留计量字段 `operations_count`/`data_in_bytes`/`data_out_bytes`（v2.4）；⑭ **`execution_record_t.status` 枚举** 3 个（success/failed/timeout）→ 5 个（0=pending/1=running/2=success/3=failed/4=timeout）（v2.4）；⑮ **`flow_t` 新增** `current_published_version_id` 指针（v2.4，HTTP 触发查找路径）；⑯ **执行表 MVP 不分区**，V1 接近 500w 时按月分区（v2.7.1）；⑰ **MVP 不引入属性表** `*_p_t`（v2.7.1）；⑱ **删除 `is_deleted`**（MVP 物理删除）；⑲ **删除 `varchar(32)` 业务 ID 命名空间**（`con_*`/`flow_*`/`cv_*`/`exec_*`/`step_*` 等全部废弃）。**表数 9 → 7**（删 2 节点连线表 + 1 凭证表，新增 1 元数据表） | SDDU Plan Agent |
 | **v2.7.6** | **2026-05-22** | **章节结构重组 + 状态机图 + 字段精简**——① **章节顺序调整**：原 §1 设计原则 + §2 通用规范合并为新 **§1 设计规范**（含 1.1 核心设计原则 + 1.2~1.7 命名/主键/审计/描述/JSON/枚举 6 子节）；原"表清单"提升为 **§2 表清单**；原 §4 表关系总览提升为 **§3 表关系总览**；原 §3 表结构定义改为 **§4 表结构定义**；新顺序：设计规范 → 表清单 → 表关系 → 表定义 → 数据归档 → ID 规则。② **5 张表新增状态机图**（mermaid stateDiagram-v2）：`connector_t.status`（active ⇄ disabled）、`connector_version_t.version_status`（draft → published 不可逆）、`flow_t.lifecycle_status`（stopped ⇄ running，含部署/启动/停止流转）、`flow_version_t.version_status`（同 connector_version）、`execution_record_t.status`（pending → running → success/failed/timeout，含瞬时状态保留理由说明）；每张状态机图配套状态含义表格（数字 / 类型 / 业务含义 / 允许操作）。③ **字段精简**：删除 `connector_t.tags`、`flow_t.tags`、`flow_t.owner_group`（MVP 范围收敛，避免引入未明确需求的"标签 / 归属组"概念，V1 出现需求时再加）；同步更新 `connector_t` 变更说明、`flow_t` 变更说明、`flow_version_t.basic_info_snapshot` JSON 字段注释、级联同步 plan.md 表清单 + ER 图、plan-api.md 3 处 API 示例、plan-page.md 表单字段说明 + 2 处 thunk createXxx 注释。④ 顶部版本号 v2.7.5 → v2.7.6。**mermaid 校验**：plan-db.md 6/6 通过（1 张 ER 图 + 5 张状态机图） | SDDU Plan Agent |
+## 附录 B：版本对齐说明
+
+### B.1 设计历程回顾
+
+本版本对齐 plan.md v2.7.5 全部数据库决策，相对 v2.0 的核心变更：
+
+| 维度 | v2.0 | v2.7.5 |
+|------|------|--------|
+| 表前缀 | `cp_` | **`openplatform_v2_cp_`**（v2.5）|
+| 表后缀 | 无 | **`_t`**（v2.7）|
+| 主键 | `bigint id + varchar(32) business_id` | **BIGINT(20) 雪花 ID，应用层生成；仅 `id` 一个主键**（v2.7）|
+| 名称字段 | 单语 `name varchar(100)` | **`name_cn` / `name_en` 双语 VARCHAR(100)**（v2.7）|
+| 描述字段 | `description varchar(2000)` | **`description_cn` / `description_en` VARCHAR(1000) 双语**（v2.7.2）|
+| 审计字段 | `created_at/updated_at/created_by/updated_by` | **`create_time/last_update_time/create_by/last_update_by`**（v2.7）|
+| 枚举字段 | `varchar(20)` 字符串 | **TINYINT(10) + 数字默认值**（v2.7）|
+| JSON 字段 | MySQL `json` 原生类型 | **TEXT 存 JSON 字符串**（v2.7.4，禁用 MySQL JSON）|
+| 节点/连线 | 独立 `cp_flow_node` / `cp_flow_edge` 表 | **全部内聚到 `flow_version_t.orchestration_config` JSON**（v2.4）|
+| 触发器 | （无单表） | **内嵌 `orchestration_config.trigger`，不单独建表**（v2.7.3）|
+| 凭证 | `cp_connector_auth_config` 独立加密表 | **凭证不持久化，删除该表**（v2.6）|
+| 大字段外置 | 无 | **新增 `storage_blob_ref_t` 元数据表**（v2.4）|
+| 外部资源标识 | 无 | **`storage_blob_ref_t.external_resource_id`**（v2.7.5）|
+| 执行状态枚举 | 3 个（success/failed/timeout） | **5 个：0=pending/1=running/2=success/3=failed/4=timeout**（v2.4）|
+| 触发方式枚举 | varchar 字符串 | **TINYINT：1=http/2=manual/3=test**（v2.7）|
+| 预留计量字段 | 无 | **`operations_count`/`data_in_bytes`/`data_out_bytes`**（v2.4）|
+| 链路追踪 | 无 | **新增 `correlation_id`**（v2.4）|
+| current_published_version_id | 无 | **`flow_t` 新增指针字段**（v2.4）|
+| 分区策略 | 提到分区 | **MVP 不分区**（v2.7.1，V1 单表接近 500w 时按月分区）|
+| 属性表模式 | 未考虑 | **MVP 不引入 `*_p_t`**（v2.7.1，V1 演进项）|
+| 表数量 | 9 张 | **7 张**（v2.7.3）|
+
+---
+
+## 附录 C：已删除的表
+
+> 以下表在演进过程中因决策变更被删除，保留于此以供历史追溯。
+
+### C.1 凭证表（已删除）
+
+**`openplatform_v2_cp_connector_auth_config_t`**（原 `cp_connector_auth_config`）—— **v2.6 决策删除**
+
+| 项 | 说明 |
+|----|------|
+| **删除原因** | 凭证不持久化，仅在调用过程中通过触发请求传入 → 注入 ExecutionContext（仅内存）→ 节点执行后清除；凭证**永不进入 MySQL/Redis/对象存储** |
+| **替代方案** | 在 `connector_version_t.connection_config.auth_type_schema` 中**仅声明认证类型与字段 schema**（含 `sensitive: true` 标记），不存储任何凭证值 |
+| **调用方职责** | HTTP 触发时在请求 Header/Body 携带凭证；手动调试时在调试 API 请求体的 `credentials` 字段携带 |
+| **运行时职责** | connector-api 解析后注入到 `ExecutionContext.credentials`（仅内存生命周期）；节点执行完成后**显式清除**；写入 execution_step/record 时按 `sensitive: true` 标记自动脱敏（值 → `***`，保留长度） |
+| **V1 演进** | 若引入"连接器市场/共享凭证库"等场景，再补 `openplatform_v2_cp_credential_t` 表（AES-256-GCM + KMS） |
+| **spec 同步** | 已记录为 OQ-006，建议反向同步 spec.md NFR-010：「凭证不持久化（MVP）；如有持久化场景，须 AES-256-GCM + KMS（V1）」 |
+
+### C.2 节点/连线表（已删除）
+
+**`cp_flow_node` / `cp_flow_edge`** —— **v2.4 决策删除**
+
+| 项 | 说明 |
+|----|------|
+| **删除原因** | 借鉴 Make/Zapier/钉钉/PA 共识，编排定义采用**单一字段保存完整 DAG**（`{trigger, nodes[], edges[]}`），便于版本快照、diff、回滚 |
+| **替代方案** | 节点/连线定义全部内聚到 `flow_version_t.orchestration_config` MEDIUMTEXT 字段（JSON 字符串） |
+| **节点 ID 空间** | 编排 JSON 内部使用字符串 UUID（如 `node_entry`/`node_1`），由前端编排画布生成；不对外暴露为业务 ID |
+| **执行时引用** | `execution_step_t.node_id` 存字符串 UUID 引用 orchestration_config.nodes[].id |
+
+
+---
+
+| **v2.7.6c** | **2026-05-22** | **章节结构再次优化**（过程性内容移至附录）——按用户指示，将过程性/历史性章节移出主流程：① §0 版本对齐说明 → **附录 B**（"附录 B：版本对齐说明"，保留设计历程回顾）；② §4.8/§4.9 已删除的表 → **附录 C**（"附录 C：已删除的表"，含 C.1 凭证表 + C.2 节点/连线表两个小节）；③ 主章节重新编号：设计规范 §1 → **§0**，表清单 §2 → **§1**，表关系 §3 → **§2**，表结构定义 §4 → **§3**（子节 4.x → 3.x），数据归档 §5 → **§4**，ID 规则 §6 → **§5**（子节 6.x → 5.x）；④ 附录 C 子节号重编排：原 4.8/4.9 → C.1/C.2。**未变更项**：所有 DDL、状态机图、字段定义。**mermaid 校验**：6/6 通过。**变更统计**：章节 9→11（6 主章 + 3 附录），行数 789→795（+6 行附录标题） | SDDU Plan Agent |
