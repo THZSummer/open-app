@@ -608,17 +608,24 @@
 
 **authTypeSchema.type 枚举**（仅声明类型，凭证值由调用方携带）：
 
-**authTypeSchema.type 枚举**（沿用 `AuthTypeEnum.java` + 新增 SYSTOKEN，按优先级排序）：
+**连接器认证枚举**（`connectionConfig.authTypeSchema.type`，调用下游 API 时使用，沿用 `AuthTypeEnum.java`）：
 
 | 代码 | 类型 | 说明 | 调用方需携带的字段 | 本版本优先级 |
 |:----:|------|------|------------------|:-----------:|
-| 7 | `SYSTOKEN` | 🆕 系统 Token 认证 | `token` / `systoken` | ⭐ **最高** |
-| 4 | `NONE` | 无需认证 | — | ★★ |
-| 5 | `AKSK` | AccessKey/SecretKey | `accessKey`, `secretKey` | ★★ |
-| 1 | `SOA` | SOA 认证（开放平台已有） | 视具体场景 | ☆ 排 7 之后 |
-| 2 | `APIG` | API 网关认证（开放平台已有） | 视具体场景 | ☆ 排 7 之后 |
+| 1 | `SOA` | SOA 认证 | 由开放平台统一颁发 | ⭐ **最高** |
+| 2 | `APIG` | API 网关认证 | 由 APIG 网关统一管理 | ⭐ **最高** |
+| 4 | `NONE` | 无需认证 | — | ★★ 按需 |
+| 5 | `AKSK` | AccessKey/SecretKey | `accessKey`, `secretKey` | ★★ 按需 |
 
-> 💡 **说明**：仅声明认证类型与字段名，**不存储任何凭证值**；调用方在触发请求时携带凭证，运行时注入 ExecutionContext（仅内存生命周期）。代码 0~6 对齐开放平台 `AuthTypeEnum.java`（0=COOKIE/1=SOA/2=APIG/3=IAM/4=NONE/5=AKSK/6=CLITOKEN），新增 `SYSTOKEN(7)`。本版本优先支持 SYSTOKEN(7)，NONE/AKSK 次之。
+> 💡 **说明**：仅声明认证类型与字段名，**不存储任何凭证值**；调用方在触发请求时携带。代码 0~6 对齐 `AuthTypeEnum.java`（0=COOKIE/1=SOA/2=APIG/3=IAM/4=NONE/5=AKSK/6=CLITOKEN）。连接器认证优先支持 SOA(1)/APIG(2)，NONE/AKSK 按需接入。
+
+**触发器认证枚举**（`trigger.authTypeSchema.type`，外部调用方触发连接流时携带）：
+
+| 代码 | 类型 | 说明 | 调用方需携带的字段 | 本版本优先级 |
+|:----:|------|------|------------------|:-----------:|
+| 7 | `SYSTOKEN` | 🆕 系统 Token 认证 | `token` / `systoken`（Header 或 Query） | ✅ **本版本支持** |
+
+> 💡 **说明**：本版本触发器认证仅支持 SYSTOKEN(7)，其余类型按需后续扩展。`connection_config` 与 `trigger` 中的 `authTypeSchema` 结构一致，但枚举值范围不同。
 
 #### #9 POST /api/v1/connectors/{connectorId}/versions/{versionId}/publish — 发布
 

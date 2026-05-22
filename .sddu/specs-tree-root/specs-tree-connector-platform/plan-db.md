@@ -308,17 +308,24 @@ stateDiagram-v2
 
 > 🔐 **凭证不持久化**（v2.6 决策）：`auth_type_schema` 仅声明认证类型与字段 schema（含 `sensitive: true` 标记），**不存储任何凭证值**；凭证由调用方在触发请求时携带，注入 ExecutionContext（仅内存），节点执行后清除。写入 execution_record/step 时按 `sensitive: true` 标记自动脱敏（值替换为 `***`）。
 
-**auth_type 枚举**（写入 `authTypeSchema.type`，沿用现有 `AuthTypeEnum.java` + 新增 SYSTOKEN）：
+**连接器认证枚举**（写入 `connection_config.authTypeSchema.type`，调用下游 API 时使用，沿用 `AuthTypeEnum.java`）：
 
 | 代码 | 枚举名 | 说明 | 调用方需携带字段 | 本版本优先级 |
 |:----:|--------|------|-----------------|:-----------:|
-| 7 | `SYSTOKEN` | 🆕 **系统 Token 认证** | `token` / `systoken` | ⭐ **最高** |
-| 4 | `NONE` | 无需认证 | — | ★★ |
-| 5 | `AKSK` | AccessKey / SecretKey | `accessKey`, `secretKey` | ★★ |
-| 1 | `SOA` | SOA 认证（开放平台已有） | — | ☆ 排 7 之后 |
-| 2 | `APIG` | API 网关认证（开放平台已有） | — | ☆ 排 7 之后 |
+| 1 | `SOA` | SOA 认证 | 由开放平台统一颁发 | ⭐ **最高** |
+| 2 | `APIG` | API 网关认证 | 由 APIG 网关统一管理 | ⭐ **最高** |
+| 4 | `NONE` | 无需认证 | — | ★★ 按需 |
+| 5 | `AKSK` | AccessKey / SecretKey | `accessKey`, `secretKey` | ★★ 按需 |
 
-> 💡 **代码对齐说明**：代码 0~6 已用于开放平台现有 `AuthTypeEnum.java`（0=COOKIE / 1=SOA / 2=APIG / 3=IAM / 4=NONE / 5=AKSK / 6=CLITOKEN）。连接器平台额外新增 `SYSTOKEN(7)`。**本版本优先支持 SYSTOKEN(7)**，NONE/AKSK 次之，SOA/APIG（开放平台已有类型）优先级在 7 之后，按需接入。
+> 💡 **代码对齐**：代码 0~6 来自开放平台 `AuthTypeEnum.java`（0=COOKIE / 1=SOA / 2=APIG / 3=IAM / 4=NONE / 5=AKSK / 6=CLITOKEN）。连接器调用下游 API 时，**优先支持 SOA(1) 和 APIG(2)**，NONE/AKSK 按需接入。`authTypeSchema.type` 使用枚举名字符串（如 `"SOA"`），TINYINT 代码用于数据库持久化（计划 V1）。
+
+**触发器认证枚举**（写入 `orchestration_config.trigger.authTypeSchema.type`，外部调用方触发连接流时携带）：
+
+| 代码 | 枚举名 | 说明 | 调用方需携带字段 | 本版本优先级 |
+|:----:|--------|------|-----------------|:-----------:|
+| 7 | `SYSTOKEN` | 🆕 **系统 Token 认证** | `token` / `systoken`（Header 或 Query） | ✅ **本版本支持** |
+
+> 💡 **说明**：SYSTOKEN(7) 为连接器平台新增类型。本版本触发器认证仅支持 SYSTOKEN，其余类型按需后续扩展。`connection_config` 与 `trigger` 中的 `authTypeSchema` 结构一致（均声明类型 carrier fieldName 等），但枚举值范围不同——连接器认证用 SOA/APIG 接入开放平台认证体系，触发器认证用 SYSTOKEN 供外部系统带入令牌。
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `approval_id`（无审批，NG19）；④ 删除 `change_log varchar(2000)` → 改用 `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；⑤ `status` → `version_status` TINYINT；⑥ `published_at` → `published_time`；⑦ `basic_info_snapshot`/`connection_config` 从 `json` → `mediumtext`（v2.7.4 决策）；⑧ `connection_config.auth` → `auth_type_schema`（仅 schema 不含凭证值，v2.6 决策）；⑨ 索引重命名 `idx_connector_id_version_status_create_time`；⑩ `uk_version_id` → `uk_connector_id_version_no`（业务唯一约束更准确）。
 
