@@ -678,7 +678,7 @@ sequenceDiagram
 |---|------|------|------|------|
 | 1 | `openplatform_v2_cp_connector_t` | 主表 | connector | 连接器基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`icon_file_id`/`status`/`connector_type` 等，本期字段全部入主表，不拆属性表） |
 | 2 | `openplatform_v2_cp_connector_version_t` | 版本表 | connector | 连接器版本（含基本信息快照 + 连接配置 JSON，仅声明认证类型 schema，**不存凭证值**） |
-| 3 | `openplatform_v2_cp_flow_t` | 主表 | flow | 连接流基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`lifecycle_status`/`current_published_version_id` 等，本期字段全部入主表，不拆属性表） |
+| 3 | `openplatform_v2_cp_flow_t` | 主表 | flow | 连接流基本信息（`name_cn`/`name_en`/`description_cn`/`description_en`/`icon_file_id`/`lifecycle_status`/`current_published_version_id` 等，本期字段全部入主表，不拆属性表） |
 | 4 | `openplatform_v2_cp_flow_version_t` | 版本表 | flow | 连接流版本（含基本信息快照 + 编排配置 JSON：`{trigger,nodes,edges}`，**触发器配置完整内嵌于 `trigger`：触发类型 / 认证类型 schema / 入参 Schema / 限流**） |
 | 5 | `openplatform_v2_cp_execution_record_t` | 主表 | runtime | 执行记录（含触发数据、最终返回值、状态、耗时、预留计量字段；**MVP 不分区**，V1 引入按月分区） |
 | 6 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（input/output 大字段支持外置到对象存储；**MVP 不分区**，V1 引入按月分区） |
@@ -757,6 +757,7 @@ erDiagram
         varchar name_en "英文名称"
         varchar description_cn "中文描述（VARCHAR(1000)，选填）"
         varchar description_en "英文描述（VARCHAR(1000)，选填）"
+        varchar icon_file_id "图标文件 ID（VARCHAR(128)，选填）"
         tinyint lifecycle_status "0=stopped 1=running (FR-013~015)"
         bigint current_published_version_id "当前部署的已发布版本 ID（逻辑外键，nullable）"
         datetime create_time
