@@ -39,7 +39,7 @@
   trigger 不需要 timeoutMs（引擎统一控制）
   trigger 不需要 outputSchema（由编排 exit 节点定义）
 
-原则三：DAG 边也是数据，需要语义
+原则三：DAG（有向无环图）的边也是数据，需要语义
   edge 不仅是"谁连到谁"，还承载执行条件（condition）/ 错误路由（error）/ 优先级
   MVP 仅用 default 边，但数据结构须为 V1 分支/容错/并行留好扩展槽
 ```
@@ -85,6 +85,44 @@
 ## 3. definitions 聚合段（🆕 v3.0）
 
 > 💡 **v3.0 新增**：所有 `$ref` 引用的共享组件在此聚合。以下 §4 节中的各上下文 Schema 通过 `#/definitions/xxx` 引用这些组件，保证 `$ref` 路径可解析。
+>
+> ### §3.0 字段名 ↔ 校验类型映射
+>
+> 为避免「字段名与 Schema 名相同」产生的歧义，本规范区分两者：
+> - **字段名（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authTypeSchema`、`rateLimit`）
+> - **校验类型（definition key）**：definitions 中的组件键名，描述「用什么规则校验」（如 `authTypeDeclaration`、`rateLimitConfig`）
+>
+> ```mermaid
+> graph LR
+>     subgraph Fields["JSON 字段名<br/>（数据侧）"]
+>         F1["authTypeSchema<br/>认证 schema 数据"]
+>         F2["rateLimit<br/>限流数据"]
+>         F3["inputSchema<br/>入参 schema 数据"]
+>         F4["outputSchema<br/>出参 schema 数据"]
+>         F5["errorInfo<br/>错误信息数据"]
+>         F6["position<br/>画布坐标数据"]
+>     end
+>
+>     subgraph Defs["definitions 校验类型<br/>（规则侧）"]
+>         D1["authTypeDeclaration<br/>校验认证类型声明"]
+>         D2["rateLimitConfig<br/>校验限流配置"]
+>         D3["dataContract<br/>校验数据契约结构"]
+>         D5["errorDetail<br/>校验错误详情"]
+>         D6["canvasPosition<br/>校验画布坐标"]
+>     end
+>
+>     F1 -- "$ref" --> D1
+>     F2 -- "$ref" --> D2
+>     F3 -- "$ref" --> D3
+>     F4 -- "$ref" --> D3
+>     F5 -- "$ref" --> D5
+>     F6 -- "$ref" --> D6
+>
+>     style Fields fill:#e3f2fd,stroke:#1565c0
+>     style Defs fill:#fff3e0,stroke:#ef6c00
+> ```
+>
+> **副作用**：以下 Schema 定义中，你会看到 `"authTypeSchema": { "$ref": "#/definitions/authTypeDeclaration" }`——左侧是字段名，右侧是校验类型，两者语义关联但字面不同。
 
 ```json
 {
@@ -95,10 +133,10 @@
 
   "definitions": {
 
-    "authTypeSchema": {
-      "$id": "urn:openapp:schema:authTypeSchema:v1",
-      "title": "authTypeSchema",
-      "description": "认证类型声明，声明调用方需携带的认证凭证。type 使用字符串枚举（见 §2.1 例外说明）",
+    "authTypeDeclaration": {
+      "$id": "urn:openapp:schema:authTypeDeclaration:v1",
+      "title": "authTypeDeclaration",
+      "description": "认证类型声明。校验 JSON 字段 authTypeSchema 的数据结构，声明调用方需携带的认证凭证。type 使用字符串枚举（见 §2.1 例外说明）",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -127,10 +165,10 @@
       "required": ["type"]
     },
 
-    "rateLimit": {
-      "$id": "urn:openapp:schema:rateLimit:v1",
-      "title": "rateLimit",
-      "description": "限流配置，触发器和连接器复用同一结构",
+    "rateLimitConfig": {
+      "$id": "urn:openapp:schema:rateLimitConfig:v1",
+      "title": "rateLimitConfig",
+      "description": "限流配置。校验 JSON 字段 rateLimit 的数据结构，触发器和连接器复用同一类型",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -149,10 +187,10 @@
       }
     },
 
-    "inputSchema": {
-      "$id": "urn:openapp:schema:dataSchema:v1",
-      "title": "dataSchema",
-      "description": "数据契约，描述输入/输出的数据结构。遵循 JSON Schema draft-07 子集",
+    "dataContract": {
+      "$id": "urn:openapp:schema:dataContract:v1",
+      "title": "dataContract",
+      "description": "数据契约。校验 JSON 字段 inputSchema / outputSchema 的数据结构，遵循 JSON Schema draft-07 子集",
       "type": "object",
       "properties": {
         "type": {
@@ -186,13 +224,15 @@
       "required": ["type", "properties"]
     },
 
-    "outputSchema": {
-      "$ref": "urn:openapp:schema:dataSchema:v1"
+"dataContractAlias": {
+      "$ref": "urn:openapp:schema:dataContract:v1",
+      "description": "outputSchema 字段与 inputSchema 共用同一个数据契约校验类型"
     },
 
-    "errorInfo": {
-      "$id": "urn:openapp:schema:errorInfo:v1",
-      "title": "errorInfo",
+    "errorDetail": {
+      "$id": "urn:openapp:schema:errorDetail:v1",
+      "title": "errorDetail",
+      "description": "错误详情。校验 JSON 字段 errorInfo 的数据结构",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -212,10 +252,10 @@
       ]
     },
 
-    "position": {
-      "$id": "urn:openapp:schema:position:v1",
-      "title": "position",
-      "description": "画布坐标，React Flow (@xyflow/react) 使用浮点坐标",
+    "canvasPosition": {
+      "$id": "urn:openapp:schema:canvasPosition:v1",
+      "title": "canvasPosition",
+      "description": "画布坐标。校验 JSON 字段 position 的数据结构，React Flow (@xyflow/react) 使用浮点坐标",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -256,15 +296,15 @@
       "enum": ["http", "manual", "test"]
     },
     "authTypeSchema": {
-      "$ref": "#/definitions/authTypeSchema",
+      "$ref": "#/definitions/authTypeDeclaration",
       "description": "HTTP 触发时声明外部调用方需携带的认证凭证类型（仅声明 schema，不含凭证值）"
     },
     "inputSchema": {
-      "$ref": "#/definitions/inputSchema",
+      "$ref": "#/definitions/dataContract",
       "description": "触发请求体的 JSON Schema（HTTP 触发时校验请求体）"
     },
     "rateLimit": {
-      "$ref": "#/definitions/rateLimit"
+      "$ref": "#/definitions/rateLimitConfig"
     }
   },
   "required": ["type"],
@@ -377,9 +417,9 @@
       },
       "required": ["url", "method"]
     },
-    "authTypeSchema": { "$ref": "#/definitions/authTypeSchema" },
-    "inputSchema": { "$ref": "#/definitions/inputSchema" },
-    "outputSchema": { "$ref": "#/definitions/outputSchema" },
+    "authTypeSchema": { "$ref": "#/definitions/authTypeDeclaration" },
+    "inputSchema": { "$ref": "#/definitions/dataContract" },
+    "outputSchema": { "$ref": "#/definitions/dataContract" },
     "timeoutMs": {
       "type": "integer",
       "description": "单次调用超时（毫秒）",
@@ -387,7 +427,7 @@
       "minimum": 1000,
       "maximum": 300000
     },
-    "rateLimit": { "$ref": "#/definitions/rateLimit" }
+    "rateLimit": { "$ref": "#/definitions/rateLimitConfig" }
   },
   "required": ["protocol", "protocolConfig"]
 }
@@ -437,7 +477,9 @@
 
 ### 4.3 编排配置 — orchestrationConfig
 
-> 🎯 **DAG 编排设计思路**：连接流编排采用 **显式 DAG（nodes + edges）** 模型，参考 Make 平台的模块+路由表模式。
+> 🎯 **DAG（Directed Acyclic Graph，有向无环图）编排设计思路**
+>
+> 连接流编排的本质是将一个业务流程建模为有向无环图：每个节点执行一个原子操作（调用 API、转换数据），边决定操作的执行顺序和条件。连接流平台采用 **显式 DAG（nodes + edges）** 模型，参考 Make 平台的模块+路由表模式。
 >
 > ```
 > DAG = 节点（做什么）+ 边（何时做、以什么条件做）
@@ -491,15 +533,15 @@
           "labelEn": { "type": "string", "description": "节点英文标签" },
 
           "authTypeSchema": {
-            "$ref": "#/definitions/authTypeSchema",
+            "$ref": "#/definitions/authTypeDeclaration",
             "description": "trigger 节点专属：认证类型声明"
           },
           "inputSchema": {
-            "$ref": "#/definitions/inputSchema",
+            "$ref": "#/definitions/dataContract",
             "description": "trigger 节点专属：入参 Schema"
           },
           "rateLimit": {
-            "$ref": "#/definitions/rateLimit",
+            "$ref": "#/definitions/rateLimitConfig",
             "description": "trigger 节点专属：触发频率限制"
           },
 
@@ -549,7 +591,7 @@
             "minItems": 1
           },
 
-          "position": { "$ref": "#/definitions/position" }
+          "position": { "$ref": "#/definitions/canvasPosition" }
         },
         "required": ["id", "type"]
       }
@@ -721,8 +763,8 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:openapp:schema:errorInfo:v1",
-  "title": "errorInfo",
+  "$id": "urn:openapp:schema:errorDetail:v1",
+  "title": "errorDetail",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -778,7 +820,7 @@
 
 ---
 
-## 5. DAG 编排演进路线图
+## 5. DAG（Directed Acyclic Graph）编排演进路线图
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
