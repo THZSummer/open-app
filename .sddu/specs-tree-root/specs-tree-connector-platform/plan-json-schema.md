@@ -225,15 +225,17 @@
 
 ## 4. 各上下文 Schema 定义
 
-### 4.1 触发器 — orchestrationConfig.trigger
+### 4.1 触发器 — node type="trigger" 专属配置
+
+该 Schema 定义了 `orchestrationConfig.nodes` 中 `type="trigger"` 节点的配置结构。
 
 **Schema 定义**：
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "trigger",
-  "description": "触发器定义，外部系统触发连接流的入口配置",
+  "title": "triggerConfig",
+  "description": "触发器节点配置，外部系统触发连接流的入口",
   "type": "object",
   "properties": {
     "type": {
@@ -255,34 +257,36 @@
 }
 ```
 
-**示例**：
+**示例**（作为 `nodes` 中的一个 trigger 节点）：
 
 ```json
 {
-  "trigger": {
-    "type": "http",
-    "authTypeSchema": {
-      "type": "SYSTOKEN",
-      "fields": [
-        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-      ]
+  "id": "node_trigger",
+  "type": "trigger",
+  "labelCn": "接收请求",
+  "labelEn": "Receive Request",
+  "authTypeSchema": {
+    "type": "SYSTOKEN",
+    "fields": [
+      { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+    ]
+  },
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "sender": { "type": "string", "description": "发送者 ID" },
+      "content": { "type": "string", "description": "消息内容" }
     },
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "sender": { "type": "string", "description": "发送者 ID" },
-        "content": { "type": "string", "description": "消息内容" }
-      },
-      "required": ["sender", "content"]
-    },
-    "rateLimit": {
-      "maxQps": 100
-    }
-  }
+    "required": ["sender", "content"]
+  },
+  "rateLimit": {
+    "maxQps": 100
+  },
+  "position": { "x": 100, "y": 200 }
 }
 ```
 
-> 💡 触发器不含 protocolConfig（HTTP 端点固定），不含 timeoutMs（引擎统一），不含 outputSchema（由编排 exit 节点定义）。
+> 💡 触发器节点不含 protocolConfig（HTTP 端点固定），不含 timeoutMs（引擎统一），不含 outputSchema（由编排 exit 节点定义）。
 
 ### 4.2 连接器 — connectionConfig
 
@@ -375,17 +379,6 @@
   "title": "orchestrationConfig",
   "type": "object",
   "properties": {
-    "trigger": {
-      "type": "object",
-      "description": "触发器定义，见 §4.1 trigger schema",
-      "properties": {
-        "type": { "$ref": "#/definitions/triggerType" },
-        "authTypeSchema": { "$ref": "#/definitions/authTypeSchema" },
-        "inputSchema": { "$ref": "#/definitions/inputSchema" },
-        "rateLimit": { "$ref": "#/definitions/rateLimit" }
-      },
-      "required": ["type"]
-    },
     "nodes": {
       "type": "array",
       "items": {
@@ -394,10 +387,13 @@
           "id": { "type": "string", "description": "节点 ID，编排内部唯一" },
           "type": {
             "type": "string",
-            "enum": ["entry", "connector", "data_processor", "exit"]
+            "enum": ["trigger", "connector", "data_processor", "exit"]
           },
           "labelCn": { "type": "string" },
           "labelEn": { "type": "string" },
+          "authTypeSchema": { "$ref": "#/definitions/authTypeSchema", "description": "trigger 节点专属" },
+          "inputSchema": { "$ref": "#/definitions/inputSchema", "description": "trigger 节点专属" },
+          "rateLimit": { "$ref": "#/definitions/rateLimit", "description": "trigger 节点专属" },
           "connectorVersionId": { "type": "string", "description": "connector 节点专属：引用的连接器版本 ID" },
           "inputMapping": { "type": "object", "description": "connector 节点专属：参数映射" },
           "config": {
@@ -446,7 +442,7 @@
       }
     }
   },
-  "required": ["trigger", "nodes", "edges"]
+  "required": ["nodes", "edges"]
 }
 ```
 
@@ -454,30 +450,27 @@
 
 ```json
 {
-  "trigger": {
-    "type": "http",
-    "authTypeSchema": {
-      "type": "SYSTOKEN",
-      "fields": [
-        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-      ]
-    },
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "sender": { "type": "string" },
-        "content": { "type": "string" }
-      },
-      "required": ["sender", "content"]
-    },
-    "rateLimit": { "maxQps": 100 }
-  },
   "nodes": [
     {
-      "id": "node_entry",
-      "type": "entry",
+      "id": "node_trigger",
+      "type": "trigger",
       "labelCn": "接收请求",
       "labelEn": "Receive Request",
+      "authTypeSchema": {
+        "type": "SYSTOKEN",
+        "fields": [
+          { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+        ]
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sender": { "type": "string" },
+          "content": { "type": "string" }
+        },
+        "required": ["sender", "content"]
+      },
+      "rateLimit": { "maxQps": 100 },
       "position": { "x": 100, "y": 200 }
     },
     {
@@ -502,7 +495,7 @@
     }
   ],
   "edges": [
-    { "id": "e1", "sourceNodeId": "node_entry", "targetNodeId": "node_1" },
+    { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
     { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit" }
   ]
 }
