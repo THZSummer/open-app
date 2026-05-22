@@ -79,7 +79,8 @@
 | **禁用** | ❌ MySQL JSON 原生类型 |
 | **序列化** | 应用层负责（Jackson 序列化/反序列化、格式校验） |
 | **查询** | ❌ 不使用 `JSON_EXTRACT` / `JSON_TABLE` 等原生函数；需要查询时由应用层解析后过滤 |
-| **理由** | 跨数据库通用（PG/Oracle/SQLServer 都支持） / ORM 与工具兼容性最好 / 避免 MySQL 5.7/8.0 JSON 方言差异 / R2DBC 映射简单 |
+| **内部字段命名** | JSON 内部字段统一使用 **camelCase**（驼峰），与 API 响应命名规范一致（见 plan-api.md §1.2）。即数据库 TEXT/MEDIUMTEXT 字段中存储的 JSON 字符串，其键名采用 `nameCn`/`descriptionEn`/`connectorVersionId` 等格式，**而非** `name_cn`/`description_en`/`connector_version_id` |
+| **理由** | 跨数据库通用（PG/Oracle/SQLServer 都支持） / ORM 与工具兼容性最好 / 避免 MySQL 5.7/8.0 JSON 类型方言差异 / R2DBC 映射简单 |
 | **本平台长度选择** | 编排/连接配置类（`orchestration_config`、`connection_config`、`basic_info_snapshot`）：**MEDIUMTEXT**（最多 16MB，预留 DAG 扩展空间）；执行 I/O 类（`trigger_data`/`result_data`/`input_data`/`output_data`/`error_info`）：**TEXT**（最多 64KB，超阈值走对象存储外置） |
 
 ### 0.7 枚举字段规范
@@ -233,8 +234,8 @@ CREATE TABLE `openplatform_v2_cp_connector_version_t` (
   `version_status`           tinyint(10)   NOT NULL DEFAULT 0        COMMENT '版本状态：0=draft, 1=published',
   `version_description_cn`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（中文）',
   `version_description_en`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（英文）',
-  `basic_info_snapshot`      mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：发布时连接器基本信息快照 {name_cn,name_en,description_cn,description_en,icon_file_id,connector_type}',
-  `connection_config`        mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：连接配置 {protocol, base_url/protocol_config, auth_type_schema(仅声明类型，不含凭证值), input_schema, output_schema, timeout_ms, rate_limit}',
+  `basic_info_snapshot`      mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：发布时连接器基本信息快照 {nameCn,nameEn,descriptionCn,descriptionEn,iconFileId,connectorType}',
+  `connection_config`        mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：连接配置 {protocol, baseUrl/protocolConfig, authTypeSchema(仅声明类型，不含凭证值), inputSchema, outputSchema, timeoutMs, rateLimit}',
   `published_time`           datetime(3)   DEFAULT NULL              COMMENT '发布时间',
   `create_time`              datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `last_update_time`         datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -265,49 +266,49 @@ stateDiagram-v2
 > 💡 **不可逆原则**：`draft → published` 是单向流转，借鉴 PA `flowversions` + 钉钉模式。发布后任何修改需新建版本（version_no 递增），保证已部署的连接流引用稳定。
 
 
-**connection_config JSON Schema**（应用层 Jackson 序列化/反序列化）：
+**connection_config JSON Schema**（应用层 Jackson 序列化/反序列化；内部字段统一 camelCase，§0.6）：
 
 ```json
 {
   "protocol": "HTTP",
-  "protocol_config": {
+  "protocolConfig": {
     "url": "https://api.example.com/im/send",
     "method": "POST",
     "headers": { "Content-Type": "application/json" }
   },
-  "auth_type_schema": {
+  "authTypeSchema": {
     "type": "AKSK",
     "carrier": "header",
     "fields": [
-      { "name": "access_key", "required": true, "sensitive": true },
-      { "name": "secret_key", "required": true, "sensitive": true }
+      { "name": "accessKey", "required": true, "sensitive": true },
+      { "name": "secretKey", "required": true, "sensitive": true }
     ]
   },
-  "input_schema": {
+  "inputSchema": {
     "type": "object",
     "properties": {
       "message": { "type": "string", "description": "消息内容" }
     },
     "required": ["message"]
   },
-  "output_schema": {
+  "outputSchema": {
     "type": "object",
     "properties": {
       "code": { "type": "integer" },
       "data": { "type": "object" }
     }
   },
-  "timeout_ms": 30000,
-  "rate_limit": {
-    "max_per_second": 10,
-    "max_concurrent": 5
+  "timeoutMs": 30000,
+  "rateLimit": {
+    "maxPerSecond": 10,
+    "maxConcurrent": 5
   }
 }
 ```
 
 > 🔐 **凭证不持久化**（v2.6 决策）：`auth_type_schema` 仅声明认证类型与字段 schema（含 `sensitive: true` 标记），**不存储任何凭证值**；凭证由调用方在触发请求时携带，注入 ExecutionContext（仅内存），节点执行后清除。写入 execution_record/step 时按 `sensitive: true` 标记自动脱敏（值替换为 `***`）。
 
-**auth_type 枚举**（写入 `auth_type_schema.type`）：
+**auth_type 枚举**（写入 `authTypeSchema.type`）：
 
 | 类型 | 说明 | 必填字段（调用方携带） |
 |------|------|---------------------|
@@ -393,8 +394,8 @@ CREATE TABLE `openplatform_v2_cp_flow_version_t` (
   `version_status`           tinyint(10)   NOT NULL DEFAULT 0        COMMENT '版本状态：0=draft, 1=published',
   `version_description_cn`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（中文）',
   `version_description_en`   varchar(1000) DEFAULT NULL              COMMENT '版本变更说明（英文）',
-  `basic_info_snapshot`      mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：发布时连接流基本信息快照 {name_cn,name_en,description_cn,description_en,icon_file_id}',
-  `orchestration_config`     mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：编排配置 {trigger,nodes,edges} 完整 DAG；trigger 内含触发类型/认证类型 schema/入参 Schema/限流，不单独建表',
+  `basic_info_snapshot`      mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：发布时连接流基本信息快照 {nameCn,nameEn,descriptionCn,descriptionEn,iconFileId}',
+  `orchestration_config`     mediumtext    DEFAULT NULL              COMMENT 'TEXT 存 JSON：编排配置 {trigger,nodes,edges} 完整 DAG；trigger 内含触发类型/认证类型 schema/入参 Schema/限流，内部字段名用驼峰（如 authTypeSchema/inParamSchema/rateLimit），不单独建表',
   `published_time`           datetime(3)   DEFAULT NULL              COMMENT '发布时间',
   `create_time`              datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `last_update_time`         datetime(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
@@ -427,19 +428,19 @@ stateDiagram-v2
 
 **orchestration_config JSON Schema**（应用层 Jackson 序列化/反序列化）：
 
-> 数据库 JSON 列存储格式（snake_case）。API 响应时字段名统一转为 camelCase（详见 plan-api.md §1.2）。
+> 数据库 JSON 字段内部同样使用 camelCase，与 API 响应命名规范一致（详见 plan-api.md §1.2、§0.6）。
 
 ```json
 {
   "trigger": {
     "type": "http",
-    "auth_type_schema": {
+    "authTypeSchema": {
       "type": "BEARER",
       "carrier": "header",
-      "field_name": "Authorization",
+      "fieldName": "Authorization",
       "required": true
     },
-    "in_param_schema": {
+    "inParamSchema": {
       "type": "object",
       "properties": {
         "sender": { "type": "string" },
@@ -447,7 +448,7 @@ stateDiagram-v2
       },
       "required": ["sender", "content"]
     },
-    "rate_limit": {
+    "rateLimit": {
       "qpm": 100
     }
   },
@@ -455,17 +456,17 @@ stateDiagram-v2
     {
       "id": "node_entry",
       "type": "entry",
-      "label_cn": "接收请求",
-      "label_en": "Receive Request",
+      "labelCn": "接收请求",
+      "labelEn": "Receive Request",
       "position": { "x": 100, "y": 200 }
     },
     {
       "id": "node_1",
       "type": "connector",
-      "label_cn": "发送消息",
-      "label_en": "Send Message",
-      "connector_version_id": 1234567890123456789,
-      "input_mapping": {
+      "labelCn": "发送消息",
+      "labelEn": "Send Message",
+      "connectorVersionId": "1234567890123456789",
+      "inputMapping": {
         "receiver": "${trigger.sender}",
         "content": "${trigger.content}"
       },
@@ -474,11 +475,11 @@ stateDiagram-v2
     {
       "id": "node_2",
       "type": "data_processor",
-      "label_cn": "格式化消息",
-      "label_en": "Format Message",
+      "labelCn": "格式化消息",
+      "labelEn": "Format Message",
       "config": {
-        "field_mappings": [
-          { "source": "${node_1.msg_id}", "target": "result.id" },
+        "fieldMappings": [
+          { "source": "${node_1.msgId}", "target": "result.id" },
           { "source": "constant:success", "target": "result.status" }
         ]
       },
@@ -487,16 +488,16 @@ stateDiagram-v2
     {
       "id": "node_exit",
       "type": "exit",
-      "label_cn": "返回结果",
-      "label_en": "Return Result",
-      "output_fields": ["result.id", "result.status"],
+      "labelCn": "返回结果",
+      "labelEn": "Return Result",
+      "outputFields": ["result.id", "result.status"],
       "position": { "x": 650, "y": 200 }
     }
   ],
   "edges": [
-    { "id": "e1", "source_node_id": "node_entry", "target_node_id": "node_1" },
-    { "id": "e2", "source_node_id": "node_1", "target_node_id": "node_2" },
-    { "id": "e3", "source_node_id": "node_2", "target_node_id": "node_exit" }
+    { "id": "e1", "sourceNodeId": "node_entry", "targetNodeId": "node_1" },
+    { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_2" },
+    { "id": "e3", "sourceNodeId": "node_2", "targetNodeId": "node_exit" }
   ]
 }
 ```
@@ -505,7 +506,7 @@ stateDiagram-v2
 
 | 类型 | 说明 | 必填配置 |
 |------|------|---------|
-| `http` | HTTP 触发（FR-021） | `auth_type_schema`（认证类型 schema，不含凭证值）+ `in_param_schema`（请求体 Schema）+ `rate_limit.qpm`（默认 100/min） |
+| `http` | HTTP 触发（FR-021） | `authTypeSchema`（认证类型 schema，不含凭证值）+ `inParamSchema`（请求体 Schema）+ `rateLimit.qpm`（默认 100/min） |
 | `manual` | 手动触发（FR-022） | —（无需额外配置）|
 
 > 💡 **触发器配置内嵌于编排 JSON 的决策依据**（v2.7.3）：
