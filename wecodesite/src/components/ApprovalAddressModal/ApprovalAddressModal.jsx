@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { remindPeople } from '../../../routes-redBlue/api-manage/thunk';
-import { queryParams } from '../../../utils/common';
+import { queryParams } from '../../utils/common';
 
 function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
   const [remindLoading, setRemindLoading] = useState(false);
