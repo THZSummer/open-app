@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Form,
   Input,
@@ -19,58 +19,59 @@ import {
   deleteDictionary,
   downloadImportTemplate,
   submitImportTask,
-  submitExportTask,
-  type Dictionary,
-  type DictionaryForm,
-  type DictionaryQueryParams
-} from '@/api/dictionary';
+  submitExportTask
+} from './thunk';
+import {
+  DEFAULT_SEARCH_VALUES,
+  STATUS_MAP,
+  TABLE_COLUMN_WIDTHS,
+  PAGINATION_CONFIG,
+  IMPORT_CONFIG,
+  EXPORT_CONFIG,
+  TASK_NOTIFY_TYPE_IMPORT,
+  TASK_NOTIFY_TYPE_EXPORT
+} from './constant';
 import styles from './index.module.less';
 
 const { TextArea } = Input;
 
-const statusMap = {
-  1: { text: '有效', dotClass: styles.dotActive, labelClass: styles.labelActive },
-  0: { text: '失效', dotClass: styles.dotInactive, labelClass: styles.labelInactive }
-};
-
-const DictionaryList: React.FC = () => {
+/**
+ * 数据字典列表页面组件
+ * 提供字典的增删改查、导入导出功能
+ */
+const DictionaryList = () => {
   const navigate = useNavigate();
   const [detailForm] = Form.useForm();
 
   const [loading, setLoading] = useState(false);
-  const [dataSource, setDataSource] = useState<Dictionary[]>([]);
+  const [dataSource, setDataSource] = useState([]);
   const [pagination, setPagination] = useState({
     current: 1,
-    pageSize: 10,
+    pageSize: PAGINATION_CONFIG.defaultPageSize,
     total: 0
   });
 
-  const [queryParams, setQueryParams] = useState<DictionaryQueryParams>({
+  const [queryParams, setQueryParams] = useState({
     pageNum: 1,
-    pageSize: 10
+    pageSize: PAGINATION_CONFIG.defaultPageSize
   });
 
-  const [searchValues, setSearchValues] = useState({
-    code: '',
-    name: '',
-    path: '',
-    status: ''
-  });
+  const [searchValues, setSearchValues] = useState(DEFAULT_SEARCH_VALUES);
 
   const [detailVisible, setDetailVisible] = useState(false);
-  const [detailMode, setDetailMode] = useState<'view' | 'edit'>('view');
-  const [currentItem, setCurrentItem] = useState<Dictionary | null>(null);
+  const [detailMode, setDetailMode] = useState('view');
+  const [currentItem, setCurrentItem] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const [taskNotifyVisible, setTaskNotifyVisible] = useState(false);
-  const [taskNotifyType, setTaskNotifyType] = useState<'import' | 'export'>('import');
+  const [taskNotifyType, setTaskNotifyType] = useState(TASK_NOTIFY_TYPE_IMPORT);
   const [currentTaskId, setCurrentTaskId] = useState('');
 
   const [importModalVisible, setImportModalVisible] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importFile, setImportFile] = useState(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
       const res = await getDictionaryList(queryParams);
@@ -86,11 +87,11 @@ const DictionaryList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [queryParams]);
+  };
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [queryParams]);
 
   useEffect(() => {
     if (detailVisible && currentItem && detailMode === 'edit') {
@@ -105,7 +106,7 @@ const DictionaryList: React.FC = () => {
   }, [detailVisible, currentItem, detailMode, detailForm]);
 
   const handleSearch = () => {
-    const newParams: DictionaryQueryParams = {
+    const newParams = {
       pageNum: 1,
       pageSize: queryParams.pageSize
     };
@@ -117,19 +118,14 @@ const DictionaryList: React.FC = () => {
   };
 
   const handleReset = () => {
-    setSearchValues({
-      code: '',
-      name: '',
-      path: '',
-      status: ''
-    });
+    setSearchValues(DEFAULT_SEARCH_VALUES);
     setQueryParams({
       pageNum: 1,
       pageSize: queryParams.pageSize
     });
   };
 
-  const handlePageChange = (page: number, pageSize?: number) => {
+  const handlePageChange = (page, pageSize) => {
     const newParams = {
       ...queryParams,
       pageNum: page,
@@ -145,14 +141,14 @@ const DictionaryList: React.FC = () => {
     setDetailVisible(true);
   };
 
-  const handleView = (record: Dictionary) => {
+  const handleView = (record) => {
     setCurrentItem(record);
     setDetailMode('view');
     detailForm.resetFields();
     setDetailVisible(true);
   };
 
-  const handleEdit = (record: Dictionary) => {
+  const handleEdit = (record) => {
     setCurrentItem(record);
     setDetailMode('edit');
     setDetailVisible(true);
@@ -162,7 +158,7 @@ const DictionaryList: React.FC = () => {
     setDetailMode('edit');
   };
 
-  const handleSave = async (values: DictionaryForm) => {
+  const handleSave = async (values) => {
     setSaving(true);
     try {
       const submitData = currentItem ? values : { ...values, language: 1 };
@@ -175,7 +171,7 @@ const DictionaryList: React.FC = () => {
       }
       setDetailVisible(false);
       fetchData();
-    } catch (error: any) {
+    } catch (error) {
       console.error('保存字典失败:', error);
       message.error(error?.message || error?.response?.data?.messageZh || '保存失败，请重试');
     } finally {
@@ -183,7 +179,7 @@ const DictionaryList: React.FC = () => {
     }
   };
 
-  const handleDelete = async (record: Dictionary) => {
+  const handleDelete = async (record) => {
     try {
       await deleteDictionary(record.id);
       message.success('删除成功');
@@ -196,7 +192,7 @@ const DictionaryList: React.FC = () => {
     }
   };
 
-  const handleToggleStatus = (record: Dictionary) => {
+  const handleToggleStatus = (record) => {
     const newStatus = record.status === 1 ? 0 : 1;
     const actionText = newStatus === 1 ? '生效' : '失效';
     Modal.confirm({
@@ -229,7 +225,7 @@ const DictionaryList: React.FC = () => {
   const handleExport = () => {
     Modal.confirm({
       title: '确认导出',
-      content: '单次最多导出1000条数据，是否继续？',
+      content: `单次最多导出${EXPORT_CONFIG.maxCount}条数据，是否继续？`,
       okText: '确认',
       cancelText: '取消',
       onOk: async () => {
@@ -237,7 +233,7 @@ const DictionaryList: React.FC = () => {
           const res = await submitExportTask();
           const taskId = String(res.data.data.taskId);
           setCurrentTaskId(taskId);
-          setTaskNotifyType('export');
+          setTaskNotifyType(TASK_NOTIFY_TYPE_EXPORT);
           setTaskNotifyVisible(true);
           message.loading({ content: '正在提交导出任务...', key: 'export' });
         } catch (error) {
@@ -253,17 +249,17 @@ const DictionaryList: React.FC = () => {
   };
 
   const handleDownloadTemplate = () => {
-    downloadImportTemplate().then((blob: any) => {
+    downloadImportTemplate().then((blob) => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'dictionary_import_template.xlsx';
+      a.download = IMPORT_CONFIG.templateName;
       a.click();
       window.URL.revokeObjectURL(url);
     });
   };
 
-  const handleFileChange = (info: any) => {
+  const handleFileChange = (info) => {
     const file = info.file.originFileObj || info.file;
     if (file) {
       setImportFile(file);
@@ -280,7 +276,7 @@ const DictionaryList: React.FC = () => {
       const res = await submitImportTask(importFile);
       const taskId = String(res.data.data.taskId);
       setCurrentTaskId(taskId);
-      setTaskNotifyType('import');
+      setTaskNotifyType(TASK_NOTIFY_TYPE_IMPORT);
       setTaskNotifyVisible(true);
       setImportModalVisible(false);
       setImportFile(null);
@@ -297,50 +293,50 @@ const DictionaryList: React.FC = () => {
     {
       title: <input type="checkbox" className={styles.checkbox} />,
       key: 'checkbox',
-      width: 40,
+      width: TABLE_COLUMN_WIDTHS.checkbox,
       render: () => <span onClick={(e) => e.stopPropagation()}><input type="checkbox" className={styles.checkbox} /></span>
     },
     {
       title: '编码',
       dataIndex: 'code',
       key: 'code',
-      width: 120
+      width: TABLE_COLUMN_WIDTHS.code
     },
     {
       title: '名称',
       dataIndex: 'name',
       key: 'name',
-      width: 140
+      width: TABLE_COLUMN_WIDTHS.name
     },
     {
       title: '值',
       dataIndex: 'value',
       key: 'value',
-      width: 150,
+      width: TABLE_COLUMN_WIDTHS.value,
       ellipsis: true,
-      render: (text: string) => text || '-'
+      render: (text) => text || '-'
     },
     {
       title: '描述',
       dataIndex: 'description',
       key: 'description',
       ellipsis: true,
-      render: (text: string) => text || '-'
+      render: (text) => text || '-'
     },
     {
       title: '路径',
       dataIndex: 'path',
       key: 'path',
-      width: 120,
-      render: (text: string) => text || '-'
+      width: TABLE_COLUMN_WIDTHS.path,
+      render: (text) => text || '-'
     },
     {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 80,
-      render: (status: number) => {
-        const statusInfo = statusMap[status as keyof typeof statusMap];
+      width: TABLE_COLUMN_WIDTHS.status,
+      render: (status) => {
+        const statusInfo = STATUS_MAP[status];
         return (
           <div className={styles.statusBadge}>
             <span className={`${styles.dot} ${statusInfo?.dotClass || ''}`}></span>
@@ -355,32 +351,32 @@ const DictionaryList: React.FC = () => {
       title: '创建人',
       dataIndex: 'createBy',
       key: 'createBy',
-      width: 90
+      width: TABLE_COLUMN_WIDTHS.createBy
     },
     {
       title: '创建时间',
       dataIndex: 'createTime',
       key: 'createTime',
-      width: 160
+      width: TABLE_COLUMN_WIDTHS.createTime
     },
     {
       title: '修改人',
       dataIndex: 'lastUpdateBy',
       key: 'lastUpdateBy',
-      width: 90
+      width: TABLE_COLUMN_WIDTHS.lastUpdateBy
     },
     {
       title: '修改时间',
       dataIndex: 'lastUpdateTime',
       key: 'lastUpdateTime',
-      width: 160
+      width: TABLE_COLUMN_WIDTHS.lastUpdateTime
     },
     {
       title: '操作',
       key: 'action',
-      width: 140,
-      fixed: 'right' as const,
-      render: (_: any, record: Dictionary) => (
+      width: TABLE_COLUMN_WIDTHS.action,
+      fixed: 'right',
+      render: (_, record) => (
         <div className={styles.actions}>
           <button className={styles.actionLink} onClick={(e) => { e.stopPropagation(); handleEdit(record); }}>
             编辑
@@ -388,8 +384,8 @@ const DictionaryList: React.FC = () => {
           <button className={styles.actionLink} onClick={(e) => { e.stopPropagation(); handleToggleStatus(record); }}>
             {record.status === 1 ? '失效' : '生效'}
           </button>
-          <button 
-            className={`${styles.actionLink} ${styles.danger}`} 
+          <button
+            className={`${styles.actionLink} ${styles.danger}`}
             onClick={(e) => {
               e.stopPropagation();
               if (record.status === 1) {
@@ -493,7 +489,7 @@ const DictionaryList: React.FC = () => {
               <tr>
                 {columns.map((col, index) => (
                   <th key={index} style={{ width: col.width }}>
-                    {col.title as string}
+                    {col.title}
                   </th>
                 ))}
               </tr>
@@ -529,9 +525,9 @@ const DictionaryList: React.FC = () => {
                     <td>{record.path || '-'}</td>
                     <td>
                       <div className={styles.statusBadge}>
-                        <span className={`${styles.dot} ${statusMap[record.status as keyof typeof statusMap]?.dotClass || ''}`}></span>
-                        <span className={`${styles.label} ${statusMap[record.status as keyof typeof statusMap]?.labelClass || ''}`}>
-                          {statusMap[record.status as keyof typeof statusMap]?.text || '-'}
+                        <span className={`${styles.dot} ${STATUS_MAP[record.status]?.dotClass || ''}`}></span>
+                        <span className={`${styles.label} ${STATUS_MAP[record.status]?.labelClass || ''}`}>
+                          {STATUS_MAP[record.status]?.text || '-'}
                         </span>
                       </div>
                     </td>
@@ -547,8 +543,8 @@ const DictionaryList: React.FC = () => {
                         <button className={styles.actionLink} onClick={(e) => { e.stopPropagation(); handleToggleStatus(record); }}>
                           {record.status === 1 ? '失效' : '生效'}
                         </button>
-                        <button 
-                          className={`${styles.actionLink} ${styles.danger}`} 
+                        <button
+                          className={`${styles.actionLink} ${styles.danger}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (record.status === 1) {
@@ -590,7 +586,7 @@ const DictionaryList: React.FC = () => {
               showSizeChanger
               showQuickJumper
               onChange={handlePageChange}
-              pageSizeOptions={['10', '20', '50', '100', '200', '500', '1000']}
+              pageSizeOptions={PAGINATION_CONFIG.pageSizeOptions}
             />
           </div>
         </div>
@@ -731,10 +727,10 @@ const DictionaryList: React.FC = () => {
       >
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>
-            {taskNotifyType === 'import' ? '📥' : '📤'}
+            {taskNotifyType === TASK_NOTIFY_TYPE_IMPORT ? '📥' : '📤'}
           </div>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '8px' }}>
-            {taskNotifyType === 'import' ? '导入任务已提交' : '导出任务已提交'}
+            {taskNotifyType === TASK_NOTIFY_TYPE_IMPORT ? '导入任务已提交' : '导出任务已提交'}
           </div>
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
             任务ID: {currentTaskId}
@@ -742,8 +738,8 @@ const DictionaryList: React.FC = () => {
           <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
             请在任务中心查看进度
           </div>
-          <Button 
-            type="primary" 
+          <Button
+            type="primary"
             style={{ marginTop: '20px' }}
             onClick={() => {
               setTaskNotifyVisible(false);
@@ -770,7 +766,7 @@ const DictionaryList: React.FC = () => {
       >
         <div style={{ padding: '8px 0' }}>
           <div style={{ textAlign: 'right', marginBottom: '12px' }}>
-            <a 
+            <a
               onClick={handleDownloadTemplate}
               style={{ color: 'var(--primary)', cursor: 'pointer', fontSize: '13px', textDecoration: 'none' }}
               onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
@@ -782,7 +778,7 @@ const DictionaryList: React.FC = () => {
           </div>
           <Upload.Dragger
             name="file"
-            accept=".xlsx,.xls"
+            accept={IMPORT_CONFIG.acceptTypes.join(',')}
             showUploadList={false}
             onChange={handleFileChange}
             beforeUpload={() => false}
@@ -793,7 +789,7 @@ const DictionaryList: React.FC = () => {
                 点击选择或拖拽 Excel 文件到此处
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-hint)' }}>
-                支持 .xlsx / .xls 格式，单次最多导入1000条数据
+                支持 {IMPORT_CONFIG.acceptTypes.join(' / ')} 格式，单次最多导入{IMPORT_CONFIG.maxCount}条数据
               </div>
             </div>
           </Upload.Dragger>

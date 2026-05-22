@@ -23,12 +23,18 @@ import {
   importItemsAsync,
   downloadImportTemplate
 } from '../lookup-item/thunk';
+import {
+  DEFAULT_SEARCH_VALUES,
+  MODAL_TITLE_ADD,
+  MODAL_TITLE_EDIT,
+  TASK_NOTIFY_TYPE_IMPORT,
+  TASK_NOTIFY_TYPE_EXPORT,
+  STATUS_MAP,
+  FORM_VALIDATION_RULES,
+  TABLE_COLUMN_WIDTHS
+} from './constant';
+import { DEFAULT_PAGINATION, DEFAULT_QUERY_PARAMS, PAGE_SIZE_OPTIONS } from '../../../utils/constant';
 import styles from './index.module.less';
-
-const statusMap = {
-  1: { text: '有效', dotClass: styles.dotActive, labelClass: styles.labelActive },
-  0: { text: '失效', dotClass: styles.dotInactive, labelClass: styles.labelInactive }
-};
 
 const ClassifyList = () => {
   const navigate = useNavigate();
@@ -37,26 +43,14 @@ const ClassifyList = () => {
 
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState([]);
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
-  });
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
 
-  const [queryParams, setQueryParams] = useState({
-    pageNum: 1,
-    pageSize: 10
-  });
+  const [queryParams, setQueryParams] = useState(DEFAULT_QUERY_PARAMS);
 
-  const [searchValues, setSearchValues] = useState({
-    classifyCode: '',
-    classifyName: '',
-    classifyDesc: '',
-    status: ''
-  });
+  const [searchValues, setSearchValues] = useState(DEFAULT_SEARCH_VALUES);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalTitle, setModalTitle] = useState('新增分类');
+  const [modalTitle, setModalTitle] = useState(MODAL_TITLE_ADD);
   const [editingId, setEditingId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -312,9 +306,9 @@ const ClassifyList = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 80,
+      width: TABLE_COLUMN_WIDTHS.status,
       render: (status) => {
-        const statusInfo = statusMap[status];
+        const statusInfo = STATUS_MAP[status];
         return React.createElement('div', { className: styles.statusBadge },
           React.createElement('span', { className: `${styles.dot} ${statusInfo?.dotClass || ''}` }),
           React.createElement('span', { className: `${styles.label} ${statusInfo?.labelClass || ''}` },
@@ -474,9 +468,9 @@ const ClassifyList = () => {
         React.createElement('td', null, record.classifyDesc || '-'),
         React.createElement('td', null,
           React.createElement('div', { className: styles.statusBadge },
-            React.createElement('span', { className: `${styles.dot} ${statusMap[record.status]?.dotClass || ''}` }),
-            React.createElement('span', { className: `${styles.label} ${statusMap[record.status]?.labelClass || ''}` },
-              statusMap[record.status]?.text || '-'
+            React.createElement('span', { className: `${styles.dot} ${STATUS_MAP[record.status]?.dotClass || ''}` }),
+            React.createElement('span', { className: `${styles.label} ${STATUS_MAP[record.status]?.labelClass || ''}` },
+              STATUS_MAP[record.status]?.text || '-'
             )
           )
         ),
@@ -588,10 +582,10 @@ const ClassifyList = () => {
     },
       React.createElement('div', { style: { textAlign: 'center', padding: '20px 0' } },
         React.createElement('div', { style: { fontSize: '48px', marginBottom: '16px' } },
-          taskNotifyType === 'import' ? '📥' : '📤'
+          taskNotifyType === TASK_NOTIFY_TYPE_IMPORT ? '📥' : '📤'
         ),
         React.createElement('div', { style: { fontSize: '16px', fontWeight: 600, marginBottom: '8px' } },
-          taskNotifyType === 'import' ? '导入任务已提交' : '导出任务已提交'
+          taskNotifyType === TASK_NOTIFY_TYPE_IMPORT ? '导入任务已提交' : '导出任务已提交'
         ),
         React.createElement('div', { style: { fontSize: '13px', color: 'var(--text-secondary)' } },
           '任务ID: ', currentTaskId
@@ -693,7 +687,7 @@ const ClassifyList = () => {
             showSizeChanger: true,
             showQuickJumper: true,
             onChange: handlePageChange,
-            pageSizeOptions: ['10', '20', '50', '100', '200', '500', '1000']
+            pageSizeOptions: PAGE_SIZE_OPTIONS
           })
         )
       )

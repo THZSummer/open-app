@@ -8,43 +8,27 @@ import {
 import {
   downloadTaskResult
 } from '../lookup-item/thunk';
+import {
+  TASK_TYPE_MAP,
+  BIZ_TYPE_MAP,
+  STATUS_MAP,
+  DEFAULT_FILTERS,
+  TASK_TYPE_OPTIONS,
+  BIZ_TYPE_OPTIONS,
+  STATUS_OPTIONS,
+  TABLE_COLUMN_WIDTHS
+} from './constant';
+import { DEFAULT_PAGINATION, DEFAULT_QUERY_PARAMS, TASK_PAGE_SIZE_OPTIONS } from '../../../utils/constant';
 import styles from './index.module.less';
-
-const taskTypeMap = {
-  1: { text: '导入', className: styles.tagImport },
-  2: { text: '导出', className: styles.tagExport }
-};
-
-const bizTypeMap = {
-  1: { text: 'LookUp', className: styles.tagLookup }
-};
-
-const statusMap = {
-  0: { text: '待处理', dotClass: styles.dotPending, labelClass: styles.labelPending },
-  1: { text: '处理中', dotClass: styles.dotProcessing, labelClass: styles.labelProcessing },
-  2: { text: '已完成', dotClass: styles.dotCompleted, labelClass: styles.labelCompleted },
-  3: { text: '失败', dotClass: styles.dotFailed, labelClass: styles.labelFailed }
-};
 
 const TaskList = () => {
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState([]);
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
-  });
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
 
-  const [queryParams, setQueryParams] = useState({
-    pageNum: 1,
-    pageSize: 10
-  });
+  const [queryParams, setQueryParams] = useState(DEFAULT_QUERY_PARAMS);
 
-  const [filters, setFilters] = useState({
-    taskType: '',
-    bizType: '',
-    status: ''
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
   const fetchData = async () => {
     setLoading(true);
@@ -129,14 +113,14 @@ const TaskList = () => {
   };
 
   const columns = [
-    { title: '任务ID', key: 'taskId', width: 180 },
-    { title: '业务类型', key: 'bizType', width: 100 },
-    { title: '类型', key: 'taskType', width: 80 },
-    { title: '状态', key: 'status', width: 100 },
+    { title: '任务ID', key: 'taskId', width: TABLE_COLUMN_WIDTHS.taskId },
+    { title: '业务类型', key: 'bizType', width: TABLE_COLUMN_WIDTHS.bizType },
+    { title: '类型', key: 'taskType', width: TABLE_COLUMN_WIDTHS.taskType },
+    { title: '状态', key: 'status', width: TABLE_COLUMN_WIDTHS.status },
     { title: '结果', key: 'result' },
-    { title: '创建时间', key: 'createTime', width: 160 },
-    { title: '完成时间', key: 'lastUpdateTime', width: 160 },
-    { title: '操作', key: 'action', width: 100 }
+    { title: '创建时间', key: 'createTime', width: TABLE_COLUMN_WIDTHS.createTime },
+    { title: '完成时间', key: 'lastUpdateTime', width: TABLE_COLUMN_WIDTHS.lastUpdateTime },
+    { title: '操作', key: 'action', width: TABLE_COLUMN_WIDTHS.action }
   ];
 
   const renderTableBody = () => {
@@ -162,23 +146,23 @@ const TaskList = () => {
         React.createElement('td', { className: styles.taskIdCell }, record.taskId),
         React.createElement('td', null,
           React.createElement('span', {
-            className: `${styles.tag} ${bizTypeMap[record.bizType]?.className || ''}`
+            className: `${styles.tag} ${BIZ_TYPE_MAP[record.bizType]?.className || ''}`
           },
-            bizTypeMap[record.bizType]?.text || '-'
+            BIZ_TYPE_MAP[record.bizType]?.text || '-'
           )
         ),
         React.createElement('td', null,
           React.createElement('span', {
-            className: `${styles.tag} ${taskTypeMap[record.taskType]?.className || ''}`
+            className: `${styles.tag} ${TASK_TYPE_MAP[record.taskType]?.className || ''}`
           },
-            taskTypeMap[record.taskType]?.text || '-'
+            TASK_TYPE_MAP[record.taskType]?.text || '-'
           )
         ),
         React.createElement('td', null,
           React.createElement('div', { className: styles.statusBadge },
-            React.createElement('span', { className: `${styles.dot} ${statusMap[record.status]?.dotClass || ''}` }),
-            React.createElement('span', { className: `${styles.label} ${statusMap[record.status]?.labelClass || ''}` },
-              statusMap[record.status]?.text || '-'
+            React.createElement('span', { className: `${styles.dot} ${STATUS_MAP[record.status]?.dotClass || ''}` }),
+            React.createElement('span', { className: `${styles.label} ${STATUS_MAP[record.status]?.labelClass || ''}` },
+              STATUS_MAP[record.status]?.text || '-'
             )
           )
         ),
@@ -281,7 +265,7 @@ const TaskList = () => {
             showSizeChanger: true,
             showQuickJumper: true,
             onChange: handlePageChange,
-            pageSizeOptions: ['5', '10', '20', '50']
+            pageSizeOptions: TASK_PAGE_SIZE_OPTIONS
           })
         )
       )

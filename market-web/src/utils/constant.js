@@ -11,6 +11,18 @@ export const DEFAULT_QUERY_PARAMS = {
   pageSize: 10
 };
 
+// 通用状态映射（有效/失效）
+export const COMMON_STATUS_MAP = {
+  1: { text: '有效', color: 'success' },
+  0: { text: '失效', color: 'default' }
+};
+
+// 状态映射（带样式类名）
+export const COMMON_STATUS_MAP_WITH_CLASS = {
+  1: { text: '有效', dotClass: null, labelClass: null },
+  0: { text: '失效', dotClass: null, labelClass: null }
+};
+
 // 页面大小选项
 export const PAGE_SIZE_OPTIONS = ['10', '20', '50', '100', '200', '500', '1000'];
 
@@ -23,9 +35,3 @@ export const STATUS_OPTIONS = [
   { value: 1, label: '有效' },
   { value: 0, label: '失效' }
 ];
-
-// 通用状态映射（有效/失效）
-export const COMMON_STATUS_MAP = {
-  1: { text: '有效', color: 'success' },
-  0: { text: '失效', color: 'default' }
-};

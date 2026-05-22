@@ -52,6 +52,22 @@ export const API_CONFIG = {
     DETAIL: '/lookup/tasks/{taskId}',
     CREATE: '/lookup/tasks',
     UPDATE_STATUS: '/lookup/tasks/{taskId}/status',
+    PROGRESS: '/lookup/task/progress/{taskId}',
+    DOWNLOAD: '/lookup/tasks/{taskId}/download',
+  },
+
+  /**
+   * 数据字典 API 配置
+   */
+  DICTIONARY: {
+    LIST: '/dictionary/list',
+    DETAIL: '/dictionary/{id}',
+    CREATE: '/dictionary',
+    UPDATE: '/dictionary/{id}',
+    DELETE: '/dictionary/{id}',
+    IMPORT_TEMPLATE: '/dictionary/import/template',
+    IMPORT_ASYNC: '/dictionary/import/async',
+    EXPORT_ASYNC: '/dictionary/export/async',
   },
 };
 
@@ -76,7 +92,7 @@ export const buildApiUrl = (template, params = {}) => {
  * @returns {Promise<Object>} API 响应数据
  */
 export const fetchApi = async (url, options = {}) => {
-  const { params, ...fetchOptions } = options;
+  const { params, body, ...fetchOptions } = options;
   let fullUrl = `${API_CONFIG.BASE_URL}${url}`;
   
   // 处理查询参数
@@ -92,6 +108,7 @@ export const fetchApi = async (url, options = {}) => {
   const response = await fetch(fullUrl, {
     ...fetchOptions,
     credentials: 'include', // 确保请求携带 Cookie
+    body: body ? JSON.stringify(body) : undefined,
     headers: {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),

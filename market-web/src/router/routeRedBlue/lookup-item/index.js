@@ -20,14 +20,19 @@ import {
   updateItem,
   deleteItem
 } from './thunk';
+import {
+  DEFAULT_SEARCH_VALUES,
+  DETAIL_MODE_VIEW,
+  DETAIL_MODE_EDIT,
+  STATUS_MAP,
+  FORM_VALIDATION_RULES,
+  DRAWER_WIDTH,
+  TABLE_COLUMN_WIDTHS
+} from './constant';
+import { DEFAULT_PAGINATION, DEFAULT_QUERY_PARAMS, PAGE_SIZE_OPTIONS } from '../../../utils/constant';
 import styles from './index.module.less';
 
 const { TextArea } = Input;
-
-const statusMap = {
-  1: { text: '有效', color: 'success' },
-  0: { text: '失效', color: 'default' }
-};
 
 const ItemList = () => {
   const navigate = useNavigate();
@@ -42,23 +47,16 @@ const ItemList = () => {
 
   const [loading, setLoading] = useState(false);
   const [dataSource, setDataSource] = useState([]);
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0
-  });
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
 
-  const [queryParams, setQueryParams] = useState({
-    pageNum: 1,
-    pageSize: 10
-  });
+  const [queryParams, setQueryParams] = useState(DEFAULT_QUERY_PARAMS);
 
-  const [searchItemCode, setSearchItemCode] = useState('');
-  const [searchItemName, setSearchItemName] = useState('');
-  const [searchStatus, setSearchStatus] = useState(undefined);
+  const [searchItemCode, setSearchItemCode] = useState(DEFAULT_SEARCH_VALUES.itemCode);
+  const [searchItemName, setSearchItemName] = useState(DEFAULT_SEARCH_VALUES.itemName);
+  const [searchStatus, setSearchStatus] = useState(DEFAULT_SEARCH_VALUES.status);
 
   const [detailVisible, setDetailVisible] = useState(false);
-  const [detailMode, setDetailMode] = useState('view');
+  const [detailMode, setDetailMode] = useState(DETAIL_MODE_VIEW);
   const [currentItem, setCurrentItem] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -91,7 +89,7 @@ const ItemList = () => {
   }, [queryParams]);
 
   useEffect(() => {
-    if (detailVisible && currentItem && detailMode === 'edit') {
+    if (detailVisible && currentItem && detailMode === DETAIL_MODE_EDIT) {
       detailForm.setFieldsValue({
         itemCode: currentItem.itemCode,
         itemName: currentItem.itemName,
@@ -120,9 +118,9 @@ const ItemList = () => {
   };
 
   const handleReset = () => {
-    setSearchItemCode('');
-    setSearchItemName('');
-    setSearchStatus(undefined);
+    setSearchItemCode(DEFAULT_SEARCH_VALUES.itemCode);
+    setSearchItemName(DEFAULT_SEARCH_VALUES.itemName);
+    setSearchStatus(DEFAULT_SEARCH_VALUES.status);
     const newParams = {
       pageNum: 1,
       pageSize: queryParams.pageSize
@@ -276,8 +274,8 @@ const ItemList = () => {
       key: 'status',
       width: 80,
       render: (status) => React.createElement(Badge, {
-        status: statusMap[status]?.color,
-        text: statusMap[status]?.text
+        status: STATUS_MAP[status]?.color,
+        text: STATUS_MAP[status]?.text
       })
     },
     {
@@ -678,19 +676,19 @@ const ItemList = () => {
     React.createElement(Drawer, {
       title: React.createElement('div', { className: styles.drawerTitle },
         React.createElement('span', null, currentItem ? 'LookUp项详情' : '新增LookUp项'),
-        currentItem && detailMode === 'view' && React.createElement(Button, {
+        currentItem && detailMode === DETAIL_MODE_VIEW && React.createElement(Button, {
           type: 'link',
           icon: React.createElement(EditOutlined),
           onClick: switchToEdit
         }, '编辑')
       ),
-      width: 520,
+      width: DRAWER_WIDTH,
       onClose: () => setDetailVisible(false),
       open: detailVisible,
       bodyStyle: { padding: 0 },
       footer: renderDrawerFooter()
     },
-      detailMode === 'view' && currentItem ? renderDetailView() : renderDetailEdit()
+      detailMode === DETAIL_MODE_VIEW && currentItem ? renderDetailView() : renderDetailEdit()
     )
   );
 };

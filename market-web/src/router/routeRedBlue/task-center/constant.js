@@ -2,13 +2,13 @@
 
 // 任务类型映射
 export const TASK_TYPE_MAP = {
-  1: { text: '导入', type: 'import' },
-  2: { text: '导出', type: 'export' }
+  1: { text: '导入', type: 'import', className: null },
+  2: { text: '导出', type: 'export', className: null }
 };
 
 // 业务类型映射
 export const BIZ_TYPE_MAP = {
-  1: { text: 'LookUp', type: 'lookup' }
+  1: { text: 'LookUp', type: 'lookup', className: null }
 };
 
 // 任务状态映射
