@@ -163,22 +163,6 @@
 
 **总计**：**7 张表**（2 主表 + 2 版本表 + 2 运行时表 + 1 元数据表），分属 connector / flow / runtime 三个模块。
 
-### 2.1 与 v2.0 表清单的差异
-
-| 表 | v2.0 | v2.7.5 | 变更原因 |
-|----|------|--------|----------|
-| `cp_connector` | ✅ | → `openplatform_v2_cp_connector_t` | 前缀对齐 + `_t` 后缀（v2.5/v2.7）|
-| `cp_connector_version` | ✅ | → `openplatform_v2_cp_connector_version_t` | 同上 |
-| `cp_flow` | ✅ | → `openplatform_v2_cp_flow_t` | 同上，新增 `current_published_version_id` 指针 |
-| `cp_flow_version` | ✅ | → `openplatform_v2_cp_flow_version_t` | 同上 |
-| `cp_flow_node` | ✅ | ❌ **删除** | 节点定义内聚到 `flow_version_t.orchestration_config.nodes[]`（v2.4）|
-| `cp_flow_edge` | ✅ | ❌ **删除** | 连线定义内聚到 `flow_version_t.orchestration_config.edges[]`（v2.4）|
-| `cp_execution_record` | ✅ | → `openplatform_v2_cp_execution_record_t` | 前缀+后缀对齐，新增计量字段与 `correlation_id` |
-| `cp_execution_step` | ✅ | → `openplatform_v2_cp_execution_step_t` | 同上，新增 `*_blob_id` 外置引用 |
-| `cp_connector_auth_config` | ✅ | ❌ **删除** | 凭证不持久化（v2.6），仅通过请求传递，节点执行后清除 |
-| `cp_flow_trigger_endpoint` | （未引入过）| ❌ 不引入 | 触发器内嵌 `orchestration_config.trigger`（v2.7.3）|
-| **`openplatform_v2_cp_storage_blob_ref_t`** | ❌ | ✅ **新增** | I/O 大字段（>64KB）外置到对象存储的元数据表（v2.4），含 `external_resource_id`（v2.7.5）|
-
 ---
 
 ## 3. 表关系总览
