@@ -528,10 +528,9 @@
       },
       "authTypeSchema": {
         "type": "AKSK",
-        "carrier": "header",
         "fields": [
-          { "name": "accessKey", "required": true, "sensitive": true },
-          { "name": "secretKey", "required": true, "sensitive": true }
+          { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true },
+          { "name": "secretKey", "carrier": "header", "fieldName": "SK", "required": true, "sensitive": true }
         ]
       },
       "timeoutMs": 30000,
@@ -562,10 +561,9 @@
     },
     "authTypeSchema": {
       "type": "AKSK",
-      "carrier": "header",
       "fields": [
-        { "name": "accessKey", "required": true, "sensitive": true },
-        { "name": "secretKey", "required": true, "sensitive": true }
+        { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true },
+        { "name": "secretKey", "carrier": "header", "fieldName": "SK", "required": true, "sensitive": true }
       ]
     },
     "inputSchema": {
@@ -925,9 +923,9 @@
         "type": "http",
         "authTypeSchema": {
           "type": "SYSTOKEN",
-          "carrier": "header",
-          "fieldName": "Authorization",
-          "required": true
+          "fields": [
+            { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+          ]
         },
         "inputSchema": {
           "type": "object",
@@ -994,9 +992,9 @@
       "type": "http",
       "authTypeSchema": {
         "type": "SYSTOKEN",
-        "carrier": "header",
-        "fieldName": "Authorization",
-        "required": true
+        "fields": [
+          { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+        ]
       },
       "inputSchema": {
         "type": "object",
@@ -1318,7 +1316,7 @@
 
 **HTTP 触发认证说明**:
 - 认证凭证（如 Bearer Token / API Key / OAuth2 Access Token）由调用方在请求中携带（Header 或 Query），**平台不存储任何凭证**（v2.6 决策）
-- 平台仅根据 `trigger.authTypeSchema` 校验凭证格式合法性（如类型、字段名、carrier 位置、是否必填）；具体凭证有效性由下游连接器调用时验证
+- 平台仅根据 `trigger.authTypeSchema`（`type` + `fields[]` 中的 `carrier`/`fieldName` 声明）校验凭证格式合法性；具体凭证有效性由下游连接器调用时验证
 - 限流：基于 `trigger.rateLimit.maxQps`，按 `flowId` 维度限流（V1 可扩展为按 IP / 凭证维度）
 
 ---

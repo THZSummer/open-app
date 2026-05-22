@@ -262,10 +262,9 @@ stateDiagram-v2
   },
   "authTypeSchema": {
     "type": "AKSK",
-    "carrier": "header",
     "fields": [
-      { "name": "accessKey", "required": true, "sensitive": true },
-      { "name": "secretKey", "required": true, "sensitive": true }
+      { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true },
+      { "name": "secretKey", "carrier": "header", "fieldName": "SK", "required": true, "sensitive": true }
     ]
   },
   "inputSchema": {
@@ -309,7 +308,7 @@ stateDiagram-v2
 |:----:|--------|------|-----------------|:-----------:|
 | 7 | `SYSTOKEN` | 🆕 **系统 Token 认证** | `token` / `systoken`（Header 或 Query） | ✅ **本版本支持** |
 
-> 💡 **说明**：SYSTOKEN(7) 为连接器平台新增类型。本版本触发器认证仅支持 SYSTOKEN，其余类型按需后续扩展。`connection_config` 与 `trigger` 中的 `authTypeSchema` 结构一致（均声明类型 carrier fieldName 等），但枚举值范围不同——连接器认证用 SOA/APIG 接入开放平台认证体系，触发器认证用 SYSTOKEN 供外部系统带入令牌。
+> 💡 **说明**：SYSTOKEN(7) 为连接器平台新增类型。本版本触发器认证仅支持 SYSTOKEN，其余类型按需后续扩展。`connection_config` 与 `trigger` 中的 `authTypeSchema` 结构一致（均含 type + fields[]），但枚举值范围不同——连接器认证用 SOA/APIG 接入开放平台认证体系，触发器认证用 SYSTOKEN 供外部系统带入令牌。
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `approval_id`（无审批，NG19）；④ 删除 `change_log varchar(2000)` → 改用 `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；⑤ `status` → `version_status` TINYINT；⑥ `published_at` → `published_time`；⑦ `basic_info_snapshot`/`connection_config` 从 `json` → `mediumtext`（v2.7.4 决策）；⑧ `connection_config.auth` → `auth_type_schema`（仅 schema 不含凭证值，v2.6 决策）；⑨ 索引重命名 `idx_connector_id_version_status_create_time`；⑩ `uk_version_id` → `uk_connector_id_version_no`（业务唯一约束更准确）。
 
@@ -426,9 +425,9 @@ stateDiagram-v2
     "type": "http",
     "authTypeSchema": {
       "type": "SYSTOKEN",
-      "carrier": "header",
-      "fieldName": "Authorization",
-      "required": true
+      "fields": [
+        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+      ]
     },
     "inputSchema": {
       "type": "object",
