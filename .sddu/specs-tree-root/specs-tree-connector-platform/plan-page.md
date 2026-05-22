@@ -172,7 +172,7 @@ ConnectorList
 ```
 
 **关键交互变更**（v2.0 → v2.7.5）：
-- **基本信息表单**：`name` 单输入框 → `nameCn`/`nameEn` 两个输入框；`description` 单输入框 → `descriptionCn`/`descriptionEn` 两个输入框（建议用 Tabs 切换语言）；新增 `tags` 标签输入器
+- **基本信息表单**：`name` 单输入框 → `nameCn`/`nameEn` 两个输入框；`description` 单输入框 → `descriptionCn`/`descriptionEn` 两个输入框（建议用 Tabs 切换语言）
 - **❌ 凭证值输入字段移除**：原 `AccessKey: [______]` / `SecretKey: [______]` 输入框 → 改为字段声明表（仅声明字段名 + 必填 + 敏感标记）
 - **认证类型选择联动**：选择不同 `authTypeSchema.type` 时，预设默认字段声明（AKSK → `accessKey`/`secretKey`；BASIC_AUTH → `username`/`password`；BEARER → `token`；API_KEY → `keyValue`），用户可调整
 
@@ -383,7 +383,7 @@ FlowCanvas (全屏页面，无 Layout 侧边栏)
 2. **添加节点**: 从左侧面板拖拽节点到画布 → React Flow 的 `onNodesChange` 处理
 3. **连接节点**: 从一个节点的 handle 拖拽连线到另一个节点 → MVP 限制为单向线性
 4. **入口节点配置**: 点击入口节点 → 右侧面板 → 选择 HTTP 或手动触发
-   - HTTP: 配置 `authTypeSchema`（认证类型 schema，仅声明类型/字段名/必填/敏感，**不输入凭证值**）+ `inParamSchema`（请求体 Schema，JSON Editor）+ `rateLimit.qpm`（限流）
+   - HTTP: 配置 `authTypeSchema`（认证类型 schema，仅声明类型/字段名/必填/敏感，**不输入凭证值**）+ `inputSchema`（请求体 Schema，JSON Editor）+ `rateLimit.maxQps`（限流）
    - 手动: 无需额外配置（管理员通过界面手动触发）
 5. **连接器节点配置**: 点击连接器节点 → 选择已发布连接器版本 → 配置输入参数映射；**节点详情面板展示该连接器需要的凭证字段声明（仅 schema，不输入值）**，提示用户"测试运行/触发时需提供"
 6. **数据处理节点配置**: 🆕 点击数据处理节点 → 配置源→目标字段映射
@@ -392,7 +392,7 @@ FlowCanvas (全屏页面，无 Layout 侧边栏)
 9. **保存草稿**: 点击保存 → 调用 `PUT /api/v1/flows/{id}/versions/{vid}`（全量保存 orchestrationConfig）
 10. **测试运行**: 
     - 点击测试运行 → 弹出 **TestRunDialog**（必须包含两个输入区）：
-      - **Mock 触发数据**：基于 `trigger.inParamSchema` 生成模板
+      - **Mock 触发数据**：基于 `trigger.inputSchema` 生成模板
       - **凭证输入区**（v2.6 决策）：扫描所有连接器节点的 `authTypeSchema`，按 `connectorVersionId` 分组渲染凭证字段输入框（敏感字段用 password input + 复制按钮），用户填写后**仅当次使用**
     - 调用 `POST /api/v1/flows/{id}/test-run`（同步执行）
     - 展示测试结果（步骤列表 + 输入/输出，敏感字段已脱敏为 `***`）
@@ -680,7 +680,7 @@ export const PUBLISH_VERSION = 'PUBLISH_VERSION';
 // thunk.js — 补充 API 调用
 export const fetchConnectors = (params) => async (dispatch) => { /* GET /api/v1/connectors */ };
 export const fetchConnectorDetail = (id) => async (dispatch) => { /* GET /api/v1/connectors/{id} */ };
-export const createConnector = (data) => async (dispatch) => { /* POST /api/v1/connectors，body 含 nameCn/nameEn/descriptionCn/descriptionEn/iconUrl/tags/connectorType */ };
+export const createConnector = (data) => async (dispatch) => { /* POST /api/v1/connectors，body 含 nameCn/nameEn/descriptionCn/descriptionEn/iconUrl/connectorType */ };
 export const updateConnector = (id, data) => async (dispatch) => { /* PUT /api/v1/connectors/{id} */ };
 export const deleteConnector = (id) => async (dispatch) => { /* DELETE /api/v1/connectors/{id} */ };
 export const updateVersionConfig = (connectorId, versionId, connectionConfig) => async (dispatch) => { /* PUT .../versions/{vid}，含 authTypeSchema 但不含凭证值 */ };
@@ -718,7 +718,7 @@ export const FETCH_BLOB = 'FETCH_BLOB';            // GET /api/v1/blobs/{blobId}
 // thunk.js — 补充 API 调用
 export const fetchFlows = (params) => async (dispatch) => { /* GET /api/v1/flows */ };
 export const fetchFlowDetail = (id) => async (dispatch) => { /* GET /api/v1/flows/{id} */ };
-export const createFlow = (data) => async (dispatch) => { /* POST /api/v1/flows，body 含 nameCn/nameEn/descriptionCn/descriptionEn/tags/ownerGroup */ };
+export const createFlow = (data) => async (dispatch) => { /* POST /api/v1/flows，body 含 nameCn/nameEn/descriptionCn/descriptionEn */ };
 export const updateFlow = (id, data) => async (dispatch) => { /* PUT /api/v1/flows/{id} */ };
 export const deleteFlow = (id) => async (dispatch) => { /* DELETE /api/v1/flows/{id} */ };
 export const saveOrchestrationConfig = (flowId, versionId, orchestrationConfig) => async (dispatch) => { /* PUT .../versions/{vid}，trigger 内嵌于 orchestrationConfig.trigger */ };
