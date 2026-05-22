@@ -172,7 +172,7 @@ ConnectorList
 ```
 
 **关键交互变更**（v2.0 → v2.7.5）：
-- **基本信息表单**：`name` 单输入框 → `nameCn`/`nameEn` 两个输入框；`description` 单输入框 → `descriptionCn`/`descriptionEn` 两个输入框（建议用 Tabs 切换语言）；新增 `tags` 标签输入器
+- **基本信息表单**：`name` 单输入框 → `nameCn`/`nameEn` 两个输入框；`description` 单输入框 → `descriptionCn`/`descriptionEn` 两个输入框（建议用 Tabs 切换语言）
 - **❌ 凭证值输入字段移除**：原 `AccessKey: [______]` / `SecretKey: [______]` 输入框 → 改为字段声明表（仅声明字段名 + 必填 + 敏感标记）
 - **认证类型选择联动**：选择不同 `authTypeSchema.type` 时，预设默认字段声明（AKSK → `accessKey`/`secretKey`；BASIC_AUTH → `username`/`password`；BEARER → `token`；API_KEY → `keyValue`），用户可调整
 
@@ -680,7 +680,7 @@ export const PUBLISH_VERSION = 'PUBLISH_VERSION';
 // thunk.js — 补充 API 调用
 export const fetchConnectors = (params) => async (dispatch) => { /* GET /api/v1/connectors */ };
 export const fetchConnectorDetail = (id) => async (dispatch) => { /* GET /api/v1/connectors/{id} */ };
-export const createConnector = (data) => async (dispatch) => { /* POST /api/v1/connectors，body 含 nameCn/nameEn/descriptionCn/descriptionEn/iconUrl/tags/connectorType */ };
+export const createConnector = (data) => async (dispatch) => { /* POST /api/v1/connectors，body 含 nameCn/nameEn/descriptionCn/descriptionEn/iconUrl/connectorType */ };
 export const updateConnector = (id, data) => async (dispatch) => { /* PUT /api/v1/connectors/{id} */ };
 export const deleteConnector = (id) => async (dispatch) => { /* DELETE /api/v1/connectors/{id} */ };
 export const updateVersionConfig = (connectorId, versionId, connectionConfig) => async (dispatch) => { /* PUT .../versions/{vid}，含 authTypeSchema 但不含凭证值 */ };
@@ -718,7 +718,7 @@ export const FETCH_BLOB = 'FETCH_BLOB';            // GET /api/v1/blobs/{blobId}
 // thunk.js — 补充 API 调用
 export const fetchFlows = (params) => async (dispatch) => { /* GET /api/v1/flows */ };
 export const fetchFlowDetail = (id) => async (dispatch) => { /* GET /api/v1/flows/{id} */ };
-export const createFlow = (data) => async (dispatch) => { /* POST /api/v1/flows，body 含 nameCn/nameEn/descriptionCn/descriptionEn/tags/ownerGroup */ };
+export const createFlow = (data) => async (dispatch) => { /* POST /api/v1/flows，body 含 nameCn/nameEn/descriptionCn/descriptionEn */ };
 export const updateFlow = (id, data) => async (dispatch) => { /* PUT /api/v1/flows/{id} */ };
 export const deleteFlow = (id) => async (dispatch) => { /* DELETE /api/v1/flows/{id} */ };
 export const saveOrchestrationConfig = (flowId, versionId, orchestrationConfig) => async (dispatch) => { /* PUT .../versions/{vid}，trigger 内嵌于 orchestrationConfig.trigger */ };
