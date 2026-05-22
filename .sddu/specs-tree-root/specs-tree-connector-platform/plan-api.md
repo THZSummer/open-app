@@ -248,8 +248,11 @@
 
 | 数字 | 含义 |
 |:----:|------|
-| `0` | stopped（已停止，未部署或已停止运行） |
+| `0` | undeployed（未部署，`currentPublishedVersionId` 为空） |
 | `1` | running（运行中，可接收 HTTP 触发） |
+| `2` | stopped（已停止，挂起，HTTP 触发返回 403） |
+
+> **流转说明**：`undeployed → running`（部署 FR-013）、`running → stopped`（停止 FR-015）、`stopped → running`（启动 FR-014）、`running/stopped → undeployed`（撤除部署）。
 
 #### 1.8.9 对象存储归属类型 (storageBlobRef.ownerType)
 
@@ -280,9 +283,9 @@
 | 12 | | | GET | `/api/v1/flows/{flowId}` | 查询连接流详情 | FR-016 |
 | 13 | | | PUT | `/api/v1/flows/{flowId}` | 更新连接流基本信息 | FR-010 |
 | 14 | | | DELETE | `/api/v1/flows/{flowId}` | 删除连接流 | FR-011 |
-| 15 | | | POST | `/api/v1/flows/{flowId}/deploy` | 部署连接流（切换 currentPublishedVersionId 并启动） | FR-013 |
-| 16 | | | POST | `/api/v1/flows/{flowId}/start` | 启动连接流 | FR-014 |
-| 17 | | | POST | `/api/v1/flows/{flowId}/stop` | 停止连接流 | FR-015 |
+| 15 | | | POST | `/api/v1/flows/{flowId}/deploy` | 部署连接流（undeployed → running 或热切换 currentPublishedVersionId） | FR-013 |
+| 16 | | | POST | `/api/v1/flows/{flowId}/start` | 启动连接流（stopped → running） | FR-014 |
+| 17 | | | POST | `/api/v1/flows/{flowId}/stop` | 停止连接流（running → stopped，保留指针） | FR-015 |
 | 18 | | **连接流版本** | GET | `/api/v1/flows/{flowId}/versions` | 获取连接流版本列表 | FR-018 |
 | 19 | | | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | 获取连接流版本详情（含编排配置） | FR-016 |
 | 20 | | | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | 保存编排配置（草稿） | FR-017 |
@@ -805,13 +808,15 @@
 }
 // 注意：部署无需审批（NG19，V1 阶段引入）
 // 部署即更新 flow_t.current_published_version_id 指针，HTTP 触发即生效
+// 若当前状态为 undeployed(0)，部署同时切换到 running(1)；若已是 running(1) 或 stopped(2)，
+// 部署新版本仅热切换指针，状态保持不变
 ```
 
 ---
 
 #### #16 POST /api/v1/flows/{flowId}/start — 启动连接流
 
-> **说明**：将连接流 lifecycle_status 切换为 running（FR-014）。需 `current_published_version_id` 非空（至少有一个已发布的版本被部署过）。启动后该流可接收 HTTP 触发请求。
+> **说明**：将连接流 lifecycleStatus 从 `stopped(2)` 切换为 `running(1)`（FR-014）。需 `currentPublishedVersionId` 非空（至少有一个已发布的版本被部署过）。启动后该流可接收 HTTP 触发请求。若当前状态为 `undeployed(0)`，需先部署（#15）再启动。
 
 **响应示例**：
 
@@ -833,7 +838,7 @@
 
 #### #17 POST /api/v1/flows/{flowId}/stop — 停止连接流
 
-> **说明**：将连接流 lifecycle_status 切换为 stopped（FR-015）。停止后 HTTP 触发入口返回 403。
+> **说明**：将连接流 lifecycleStatus 从 `running(1)` 切换为 `stopped(2)`（FR-015）。`currentPublishedVersionId` 指针保留（不删除），可后续启动（#16）恢复运行。停止后 HTTP 触发入口返回 403。如需彻底清零，可调用撤除部署接口。
 
 **响应示例**：
 
