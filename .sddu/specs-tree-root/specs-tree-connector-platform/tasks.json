@@ -1,0 +1,179 @@
+{
+  "feature": "连接器平台",
+  "featureId": "CONN-PLAT-001",
+  "createdAt": "2026-05-22",
+  "baseline": {
+    "spec": "v5.0",
+    "plan": "v2.8.0",
+    "planApi": "v2.8.0",
+    "planDb": "v2.8.0",
+    "planPage": "v2.8.0"
+  },
+  "summary": {
+    "totalTasks": 12,
+    "complexityS": 3,
+    "complexityM": 7,
+    "complexityL": 2,
+    "waves": 4
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "name": "数据库 DDL + Flyway 迁移脚本",
+      "complexity": "L",
+      "dependencies": [],
+      "wave": 1,
+      "module": "Database",
+      "fr": [],
+      "files": [
+        "open-server/src/main/resources/db/migration/connector-platform/V1__init_connector_platform.sql",
+        "connector-api/src/main/resources/db/migration/connector-platform/V1__init_connector_platform.sql",
+        "connector-api/src/main/resources/application.yml"
+      ]
+    },
+    {
+      "id": "TASK-002",
+      "name": "connector-api 项目脚手架 + R2DBC Entity",
+      "complexity": "M",
+      "dependencies": ["TASK-001"],
+      "wave": 1,
+      "module": "connector-api",
+      "fr": [],
+      "files": [
+        "connector-api/pom.xml",
+        "connector-api/src/main/java/.../ConnectorApiApplication.java",
+        "connector-api/src/main/java/.../entity/ConnectorEntity.java",
+        "connector-api/src/main/java/.../entity/FlowEntity.java",
+        "connector-api/src/main/java/.../repository/ConnectorVersionReadRepository.java",
+        "connector-api/src/main/java/.../repository/FlowVersionReadRepository.java"
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "name": "open-server 连接器管理模块（Connector CRUD + Config）",
+      "complexity": "M",
+      "dependencies": ["TASK-001"],
+      "wave": 2,
+      "module": "open-server",
+      "fr": ["FR-001", "FR-002", "FR-003", "FR-004", "FR-005", "FR-006"],
+      "apiEndpoints": ["#1", "#2", "#3", "#4", "#5", "#6", "#7"]
+    },
+    {
+      "id": "TASK-004",
+      "name": "open-server 连接流管理模块（Flow CRUD + Config + Lifecycle）",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003"],
+      "wave": 2,
+      "module": "open-server",
+      "fr": ["FR-009", "FR-010", "FR-011", "FR-012", "FR-014", "FR-015", "FR-016", "FR-017"],
+      "apiEndpoints": ["#8", "#9", "#10", "#11", "#12", "#13", "#14", "#15", "#16"]
+    },
+    {
+      "id": "TASK-005",
+      "name": "connector-api 运行时引擎 + 节点执行器",
+      "complexity": "L",
+      "dependencies": ["TASK-002"],
+      "wave": 2,
+      "module": "connector-api",
+      "fr": ["FR-020", "FR-021", "FR-023"],
+      "files": [
+        "connector-api/src/main/java/.../runtime/ReactiveSequentialExecutor.java",
+        "connector-api/src/main/java/.../runtime/ExecutionContext.java",
+        "connector-api/src/main/java/.../runtime/node/ConnectorNodeExecutor.java",
+        "connector-api/src/main/java/.../runtime/node/DataProcessorExecutor.java",
+        "connector-api/src/main/java/.../runtime/node/ExitNodeExecutor.java"
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "name": "connector-api HTTP 触发端点",
+      "complexity": "M",
+      "dependencies": ["TASK-005"],
+      "wave": 3,
+      "module": "connector-api",
+      "fr": ["FR-021"],
+      "apiEndpoints": ["#18"]
+    },
+    {
+      "id": "TASK-007",
+      "name": "connector-api 测试执行端点",
+      "complexity": "S",
+      "dependencies": ["TASK-005"],
+      "wave": 3,
+      "module": "connector-api",
+      "fr": ["FR-020"]
+    },
+    {
+      "id": "TASK-008",
+      "name": "open-server 调试代理模块（debug-proxy）",
+      "complexity": "S",
+      "dependencies": ["TASK-004", "TASK-007"],
+      "wave": 3,
+      "module": "open-server",
+      "fr": ["FR-020"],
+      "apiEndpoints": ["#17"]
+    },
+    {
+      "id": "TASK-009",
+      "name": "wecodesite 连接器前端页面",
+      "complexity": "M",
+      "dependencies": ["TASK-003"],
+      "wave": 3,
+      "module": "wecodesite",
+      "fr": ["FR-001", "FR-002", "FR-004", "FR-005", "FR-006"]
+    },
+    {
+      "id": "TASK-010",
+      "name": "wecodesite 连接流前端页面 + 编排画布",
+      "complexity": "L",
+      "dependencies": ["TASK-004"],
+      "wave": 3,
+      "module": "wecodesite",
+      "fr": ["FR-009", "FR-012", "FR-016", "FR-017", "FR-020"]
+    },
+    {
+      "id": "TASK-011",
+      "name": "默认错误处理 + 限流 + 审计日志",
+      "complexity": "M",
+      "dependencies": ["TASK-005", "TASK-006"],
+      "wave": 4,
+      "module": "connector-api + open-server",
+      "fr": ["FR-023", "FR-024"]
+    },
+    {
+      "id": "TASK-012",
+      "name": "端到端集成测试 + E2E 冒烟",
+      "complexity": "M",
+      "dependencies": ["TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010", "TASK-011"],
+      "wave": 4,
+      "module": "Integration",
+      "fr": []
+    }
+  ],
+  "waves": {
+    "1": {
+      "description": "基础设施（并行）",
+      "tasks": ["TASK-001", "TASK-002"],
+      "parallel": true
+    },
+    "2": {
+      "description": "后端核心逻辑（并行）",
+      "tasks": ["TASK-003", "TASK-004", "TASK-005"],
+      "parallel": true
+    },
+    "3": {
+      "description": "运行时端点 + 调试代理 + 前端页面",
+      "tasks": ["TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"],
+      "subGroup": {
+        "backend": ["TASK-006", "TASK-007", "TASK-008"],
+        "frontend": ["TASK-009", "TASK-010"],
+        "parallelBetweenGroups": true
+      }
+    },
+    "4": {
+      "description": "增强与集成（串行）",
+      "tasks": ["TASK-011", "TASK-012"],
+      "parallel": false
+    }
+  }
+}
