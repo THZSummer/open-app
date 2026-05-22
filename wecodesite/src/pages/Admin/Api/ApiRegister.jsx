@@ -265,10 +265,10 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
           </Form.Item>
 
           <Form.Item
-            label="Scope标识"
+            label="ScopeId"
             name="scope"
             rules={[
-              { required: true, message: '请输入Scope标识' },
+              { required: true, message: '请输入ScopeId' },
               { pattern: /^api:[a-z][a-z0-9_]*:[a-z][a-z0-9_-]+$/, message: '格式不正确，应为：api:{模块}:{资源标识}' }
             ]}
             extra="格式：api:{模块}:{资源标识}"

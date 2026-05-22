@@ -20,7 +20,7 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
     dataIndex: ['permission', 'nameCn'],
   },
   {
-    title: 'Scope标识',
+    title: 'ScopeId',
     key: 'scope',
     width: 200,
     dataIndex: ['permission', 'scope'],

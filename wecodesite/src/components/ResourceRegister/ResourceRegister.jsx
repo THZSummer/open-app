@@ -243,10 +243,10 @@ function ResourceRegister({
           </Form.Item>
 
           <Form.Item
-            label="Scope标识"
+            label="ScopeId"
             name="scope"
             rules={[
-              { required: true, message: '请输入Scope标识' },
+              { required: true, message: '请输入ScopeId' },
               { pattern: config.scopePattern, message: config.scopeMessage }
             ]}
             extra={config.scopeExtra}

@@ -15,7 +15,7 @@ export const getCallbackColumns = ({ hanldeOpenDoc, handleEdit, handleCopyApprov
     width: 180,
   },
   {
-    title: 'Scope标识',
+    title: 'ScopeId',
     key: 'scope',
     dataIndex: ['permission', 'scope'],
     width: 200,

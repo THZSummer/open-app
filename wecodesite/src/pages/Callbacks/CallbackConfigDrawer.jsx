@@ -70,7 +70,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
             <span className="value">{callback.permission?.nameCn}</span>
           </div>
           <div className="info-item">
-            <span className="label">Scope标识:</span>
+            <span className="label">ScopeId:</span>
             <span className="value">{callback.permission?.scope}</span>
           </div>
         </div>
@@ -94,8 +94,8 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
             <Form.Item
               name="channelAddress"
               label="回调地址"
+              validateStatus={null}
               rules={[
-                { required: true, message: '请输入回调地址' },
                 {
                   validator(_, value) {
                     if (!value) {
@@ -112,7 +112,6 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
                   },
                 },
               ]}
-              validateFirst={true}
             >
               <Input placeholder="https://your-domain.com/webhook" />
             </Form.Item>

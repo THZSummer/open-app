@@ -69,12 +69,12 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
             <span className="value">{event.permission?.nameCn}</span>
           </div>
           <div className="info-item">
-            <span className="label">事件Topic:</span>
-            <span className="value">{event.event?.topic}</span>
+            <span className="label">ScopeId:</span>
+            <span className="value">{event.permission?.scope}</span>
           </div>
           <div className="info-item">
-            <span className="label">Scope标识:</span>
-            <span className="value">{event.permission?.scope}</span>
+            <span className="label">事件Topic:</span>
+            <span className="value">{event.event?.topic}</span>
           </div>
         </div>
       )}

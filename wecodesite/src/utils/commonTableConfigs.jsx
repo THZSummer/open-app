@@ -41,7 +41,7 @@ export const createDrawerColumns = (type) => {
       },
     },
     {
-      title: 'Scope标识',
+      title: 'ScopeId',
       dataIndex: 'scope',
       key: 'scope',
       width: 150,
@@ -89,7 +89,7 @@ export const createDrawerColumns = (type) => {
 
 export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) => [
   {
-    title: 'Scope标识',
+    title: 'ScopeId',
     dataIndex: 'permission',
     key: 'scope',
     width: 200,

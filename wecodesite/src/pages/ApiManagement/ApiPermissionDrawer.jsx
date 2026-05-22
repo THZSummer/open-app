@@ -7,7 +7,6 @@ import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { NEED_REVIEW_OPTIONS, createDrawerColumns } from '../../utils/commonTableConfigs';
 import { TAB_CONFIG_SEARCH_KEY } from './constants';
 import './ApiPermissionDrawer.m.less';
-import { openUrl } from '@/utils/common';
 
 /**
  * 将分类数据转换为模块列表格式
@@ -378,10 +377,6 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     loadApis({ needReview: value, curPage: 1 }, null, activeModule);
   };
 
-  const handleOpenDoc = (docUrl) => {
-    openUrl(docUrl, '_blank')
-  };
-
   const columns = createDrawerColumns('api');
 
   // 表格行选择器配置
@@ -395,7 +390,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
 
   /**
    * 渲染第一层Tab（身份权限Tab）
-   * 仅在一级Tab数量大于0时显示
+   * 仅在一级Tab数量大于1时显示
    */
   const renderFirstLevelTabs = () => {
     if (!enableIdentityPermission) {
@@ -403,7 +398,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     }
     
     const tabs = tabConfig.firstLevelTabs;
-    if (!tabs || tabs.length <= 0) {
+    if (!tabs || tabs.length <= 1) {
       return null;
     }
     
