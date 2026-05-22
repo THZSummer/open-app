@@ -4,13 +4,8 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   AppstoreOutlined,
-  ApiOutlined,
-  ThunderboltOutlined,
-  NotificationOutlined,
-  SafetyOutlined,
-  CheckSquareOutlined,
-  UserOutlined,
   BookOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import useGlobalStore from '@/stores/global.store';
 import styles from './index.module.less';
@@ -27,44 +22,14 @@ const menuItems = [
     label: '首页',
   },
   {
-    key: '/categories',
-    icon: <AppstoreOutlined />,
-    label: '分类管理',
-  },
-  {
-    key: '/lookup/classify',
+    key: '/lookup-classify',
     icon: <BookOutlined />,
     label: 'LookUp管理',
   },
   {
-    key: '/lookup/task',
+    key: '/task-center',
     icon: <BookOutlined />,
     label: '任务中心',
-  },
-  {
-    key: '/apis',
-    icon: <ApiOutlined />,
-    label: 'API 管理',
-  },
-  {
-    key: '/events',
-    icon: <ThunderboltOutlined />,
-    label: '事件管理',
-  },
-  {
-    key: '/callbacks',
-    icon: <NotificationOutlined />,
-    label: '回调管理',
-  },
-  {
-    key: '/permissions',
-    icon: <SafetyOutlined />,
-    label: '权限申请',
-  },
-  {
-    key: '/approvals',
-    icon: <CheckSquareOutlined />,
-    label: '审批中心',
   },
 ];
 
