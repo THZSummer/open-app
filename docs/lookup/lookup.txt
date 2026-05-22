@@ -39,4 +39,38 @@ CREATE TABLE openplatform_lookup_item_t (
 PRIMARY KEY (`item_id`) USING BTREE,
 UNIQUE KEY `idxu_cid_icode` (`classify_id`,`item_code`) USING BTREE,
 KEY `idx_cid_iname` (`classify_id`,`item_name`) USING BTREE   
-) ENGINE = InnoDB COMMENT = 'lookup明细表'
+) ENGINE = InnoDB COMMENT = 'lookup明细表';
+
+CREATE TABLE `openplatform_lookup_file_t` (
+  `file_id` bigint NOT NULL AUTO_INCREMENT COMMENT '文件ID',
+  `file_name` varchar(255) NOT NULL COMMENT '文件名称',
+  `file_path` varchar(500) NOT NULL COMMENT '文件路径',
+  `file_size` bigint DEFAULT NULL COMMENT '文件大小（字节）',
+  `file_type` varchar(100) DEFAULT NULL COMMENT '文件类型',
+  `biz_type` int DEFAULT NULL COMMENT '业务类型：1-LookUp，2-数据字典',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `last_update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+  PRIMARY KEY (`file_id`),
+  KEY `idx_biz_type` (`biz_type`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='LookUp文件表';
+
+CREATE TABLE `openplatform_lookup_task_t` (
+  `task_id` bigint NOT NULL AUTO_INCREMENT COMMENT '任务ID',
+  `task_type` tinyint NOT NULL COMMENT '任务类型：1-导入，2-导出',
+  `biz_type` tinyint NOT NULL COMMENT '业务类型：1-LookUp，2-数据字典',
+  `status` tinyint NOT NULL DEFAULT '0' COMMENT '状态：0-待处理，1-处理中，2-已完成，3-失败',
+  `file_id` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'OBS文件ID',
+  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '文件名',
+  `result` varchar(2000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `create_by` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `last_update_by` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '最后更新人',
+  `last_update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+  PRIMARY KEY (`task_id`),
+  KEY `idx_task_type` (`task_type`),
+  KEY `idx_biz_type` (`biz_type`),
+  KEY `idx_status` (`status`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB AUTO_INCREMENT=84 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='LookUp任务表';

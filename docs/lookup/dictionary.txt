@@ -2,6 +2,7 @@ CREATE TABLE `openplatform_property_t` (
   `id` bigint(20) NOT NULL COMMENT '主键Id',
   `code` VARCHAR(100) NOT NULL COMMENT '编码',
   `name` varchar(100) DEFAULT NULL COMMENT '名称',
+  `value` varchar(2000) DEFAULT NULL COMMENT '值',
   `description` varchar(4000) DEFAULT NULL COMMENT '描述',
   `path` varchar(100) DEFAULT NULL COMMENT '路径',
   `language` TINYINT(10) NOT NULL DEFAULT '1' COMMENT '语言: 1-中文 2-英文',

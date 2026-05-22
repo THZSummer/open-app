@@ -2069,16 +2069,29 @@
             try {
                 var data = new Uint8Array(e.target.result);
                 var workbook = XLSX.read(data, { type: 'array' });
-                var sheet = workbook.Sheets[workbook.SheetNames[0]];
-                var json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                
+                var classifySheet = workbook.Sheets['分类信息'];
+                var itemSheet = workbook.Sheets['项信息'];
+                
+                if (!classifySheet || !itemSheet) {
+                    showToast('Excel 文件必须包含"分类信息"和"项信息"两个工作表', 'error');
+                    return;
+                }
+                
+                var classifyJson = XLSX.utils.sheet_to_json(classifySheet, { defval: '' });
+                var itemJson = XLSX.utils.sheet_to_json(itemSheet, { defval: '' });
 
-                if (!json || json.length === 0) {
-                    showToast('Excel 文件中没有数据', 'error');
+                if (!classifyJson || classifyJson.length === 0) {
+                    showToast('"分类信息"工作表中没有数据', 'error');
+                    return;
+                }
+                if (!itemJson || itemJson.length === 0) {
+                    showToast('"项信息"工作表中没有数据', 'error');
                     return;
                 }
 
                 closeClassifyImportModal();
-                doClassifyImportWithData(json);
+                doClassifyImportWithData(classifyJson, itemJson);
             } catch (err) {
                 showToast('解析 Excel 失败: ' + err.message, 'error');
             }
@@ -2086,18 +2099,18 @@
         reader.readAsArrayBuffer(file);
     }
 
-    function doClassifyImportWithData(rows) {
+    function doClassifyImportWithData(classifyRows, itemRows) {
         var task = addTask('import', 'lookup');
         showTaskNotify('import', task.id);
         
         var classifySuccess = 0, classifySkip = 0;
         var itemSuccess = 0, itemFail = 0, itemSkipExist = 0;
-        var total = rows.length;
+        var total = itemRows.length;
         var now = formatNow();
         var importResults = [];
 
         var classifyMap = {};
-        rows.forEach(function(row) {
+        classifyRows.forEach(function(row) {
             var classifyCode = (row['分类编码'] || '').toString().trim();
             if (classifyCode) {
                 if (!classifyMap[classifyCode]) {
@@ -2119,7 +2132,7 @@
                     code: classifyCode,
                     name: firstRow['分类名称'] || classifyCode,
                     path: firstRow['路径'] || '',
-                    desc: firstRow['描述'] || '',
+                    desc: firstRow['分类描述'] || '',
                     status: firstRow['状态'] === '失效' ? 2 : 1,
                     createBy: 'admin',
                     createTime: now,
@@ -2160,7 +2173,7 @@
                 return;
             }
 
-            var row = rows[processed];
+            var row = itemRows[processed];
             var classifyCode = (row['分类编码'] || '').toString().trim();
             var itemCode = (row['项编码'] || '').toString().trim();
             var itemName = (row['项名称'] || '').toString().trim();
@@ -2186,7 +2199,7 @@
                             name: itemName,
                             value: (row['项值'] || '').toString(),
                             index: parseInt(row['排序']) || null,
-                            desc: row['描述'] || '',
+                            desc: row['项描述'] || '',
                             attr1: row['扩展属性1'] || '',
                             attr2: row['扩展属性2'] || '',
                             attr3: row['扩展属性3'] || '',
@@ -2230,21 +2243,32 @@
 
     function downloadClassifyImportTemplate() {
         var wb = XLSX.utils.book_new();
-        var data = [
-            { '分类编码': 'USER_TYPE', '分类名称': '用户类型', '路径': 'system/user', '分类描述': '用户身份分类', '状态': '有效', '项编码': 'ADMIN', '项名称': '管理员', '项值': '1', '排序': 1, '项描述': '系统管理员', '扩展属性1': 'super', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '' },
-            { '分类编码': 'USER_TYPE', '分类名称': '用户类型', '路径': 'system/user', '分类描述': '用户身份分类', '状态': '有效', '项编码': 'USER', '项名称': '普通用户', '项值': '2', '排序': 2, '项描述': '注册用户', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '' },
-            { '分类编码': 'USER_TYPE', '分类名称': '用户类型', '路径': 'system/user', '分类描述': '用户身份分类', '状态': '有效', '项编码': 'GUEST', '项名称': '游客', '项值': '3', '排序': 3, '项描述': '未登录访客', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '' },
-            { '分类编码': 'GENDER', '分类名称': '性别', '路径': 'system', '分类描述': '性别枚举', '状态': '有效', '项编码': 'MALE', '项名称': '男', '项值': 'M', '排序': 1, '项描述': '', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '' },
-            { '分类编码': 'GENDER', '分类名称': '性别', '路径': 'system', '分类描述': '性别枚举', '状态': '有效', '项编码': 'FEMALE', '项名称': '女', '项值': 'F', '排序': 2, '项描述': '', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '' }
+        
+        var classifyDataSheet = [
+            { '分类编码': 'USER_TYPE', '分类名称': '用户类型', '路径': 'system/user', '分类描述': '用户身份分类', '状态': '有效' },
+            { '分类编码': 'GENDER', '分类名称': '性别', '路径': 'system', '分类描述': '性别枚举', '状态': '有效' }
         ];
-        var ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [
-            { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 8 },
-            { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 8 },
+        var ws1 = XLSX.utils.json_to_sheet(classifyDataSheet);
+        ws1['!cols'] = [
+            { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 8 }
+        ];
+        XLSX.utils.book_append_sheet(wb, ws1, '分类信息');
+        
+        var itemDataSheet = [
+            { '分类编码': 'USER_TYPE', '路径': 'system/user', '项编码': 'ADMIN', '项名称': '管理员', '项值': '1', '排序': 1, '项描述': '系统管理员', '扩展属性1': 'super', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '', '状态': '有效' },
+            { '分类编码': 'USER_TYPE', '路径': 'system/user', '项编码': 'USER', '项名称': '普通用户', '项值': '2', '排序': 2, '项描述': '注册用户', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '', '状态': '有效' },
+            { '分类编码': 'USER_TYPE', '路径': 'system/user', '项编码': 'GUEST', '项名称': '游客', '项值': '3', '排序': 3, '项描述': '未登录访客', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '', '状态': '有效' },
+            { '分类编码': 'GENDER', '路径': 'system', '项编码': 'MALE', '项名称': '男', '项值': 'M', '排序': 1, '项描述': '', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '', '状态': '有效' },
+            { '分类编码': 'GENDER', '路径': 'system', '项编码': 'FEMALE', '项名称': '女', '项值': 'F', '排序': 2, '项描述': '', '扩展属性1': '', '扩展属性2': '', '扩展属性3': '', '扩展属性4': '', '扩展属性5': '', '扩展属性6': '', '状态': '有效' }
+        ];
+        var ws2 = XLSX.utils.json_to_sheet(itemDataSheet);
+        ws2['!cols'] = [
+            { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 8 },
             { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
             { wch: 10 }, { wch: 10 }, { wch: 10 }
         ];
-        XLSX.utils.book_append_sheet(wb, ws, 'LookUp数据');
+        XLSX.utils.book_append_sheet(wb, ws2, '项信息');
+        
         XLSX.writeFile(wb, 'lookup-import-template.xlsx');
     }
 
@@ -2390,10 +2414,7 @@
                 c.items.filter(function(i) { return i.status === 1; }).forEach(function(item) {
                     allItems.push({
                         '分类编码': c.code,
-                        '分类名称': c.name,
                         '路径': c.path || '',
-                        '分类描述': c.desc || '',
-                        '状态': c.status === 1 ? '有效' : '失效',
                         '项编码': item.code,
                         '项名称': item.name,
                         '项值': item.value || '',
@@ -2404,7 +2425,8 @@
                         '扩展属性3': item.attr3 || '',
                         '扩展属性4': item.attr4 || '',
                         '扩展属性5': item.attr5 || '',
-                        '扩展属性6': item.attr6 || ''
+                        '扩展属性6': item.attr6 || '',
+                        '状态': item.status === 1 ? '有效' : '失效'
                     });
                 });
             });
@@ -2413,14 +2435,29 @@
             var fileName = 'LookUp_All_' + timestamp + '.xlsx';
 
             var wb = XLSX.utils.book_new();
-            var ws = XLSX.utils.json_to_sheet(allItems);
-            ws['!cols'] = [
-                { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 8 },
-                { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 8 },
+            
+            var classifySheet = filtered.map(function(c) {
+                return {
+                    '分类编码': c.code,
+                    '分类名称': c.name,
+                    '路径': c.path || '',
+                    '分类描述': c.desc || '',
+                    '状态': c.status === 1 ? '有效' : '失效'
+                };
+            });
+            var ws1 = XLSX.utils.json_to_sheet(classifySheet);
+            ws1['!cols'] = [
+                { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 8 }
+            ];
+            XLSX.utils.book_append_sheet(wb, ws1, '分类信息');
+            
+            var ws2 = XLSX.utils.json_to_sheet(allItems);
+            ws2['!cols'] = [
+                { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 8 },
                 { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 10 },
                 { wch: 10 }, { wch: 10 }, { wch: 10 }
             ];
-            XLSX.utils.book_append_sheet(wb, ws, 'LookUp数据');
+            XLSX.utils.book_append_sheet(wb, ws2, '项信息');
 
             var wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
             task.fileData = wbout;
