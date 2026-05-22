@@ -2,10 +2,9 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§4.2)  
-**版本**: v1.1  
-**创建日期**: 2026-05-19  
-**最后更新**: 2026-05-20  
-**更新说明**: 新增表清单汇总、枚举字段规范汇总、审计字段命名差异说明、JSON Schema 存储格式说明
+**版本**: v2.0  
+**创建日期**: 2026-05-21  
+**更新说明**: 对齐 spec.md v4.0——移除审批字段、更新执行状态枚举、新增 data_processor 节点类型、更新触发方式枚举、移除 MQS 引用
 
 ---
 
@@ -17,7 +16,7 @@
 | `cp_connector_version` | 主表 | connector | 连接器版本信息（含连接配置快照） |
 | `cp_flow` | 主表 | flow | 连接流基本信息 |
 | `cp_flow_version` | 主表 | flow | 连接流版本信息（含编排配置快照） |
-| `cp_flow_node` | 子表 | flow | 流节点定义（entry/connector/exit） |
+| `cp_flow_node` | 子表 | flow | 流节点定义（entry/connector/data_processor/exit） |
 | `cp_flow_edge` | 子表 | flow | 流连线定义（含数据映射） |
 | `cp_execution_record` | 主表 | runtime | 执行记录 |
 | `cp_execution_step` | 子表 | runtime | 执行步骤详情 |
@@ -48,9 +47,7 @@
 
 | 规则 | 说明 | 连接器平台示例 |
 |------|------|---------------|
-| **表前缀** | 能力平台使用 `openplatform_v2_`，连接器平台使用 `cp_`（Connector Platform） | `cp_connector` |
-| **表后缀** | 统一使用 `_t` 后缀表示表 | `cp_connector_t`（此规范在连接器平台改为无后缀，**注意差异**） |
-| **属性表后缀** | 扩展属性表使用 `_p_t` 后缀 | 连接器平台暂不使用属性表模式 |
+| **表前缀** | 能力平台使用 `openplatform_v2_`，连接器平台使用 `cp_` | `cp_connector` |
 | **命名风格** | 小写字母 + 下划线分隔 | `cp_execution_record` |
 | **索引命名** | `idx_字段名` 或 `idx_字段名1_字段名2` | `idx_connector_id`, `idx_flow_id_status` |
 | **唯一索引命名** | `uk_字段名` | `uk_connector_id`, `uk_version_id` |
@@ -59,12 +56,12 @@
 
 | 规则 | 说明 |
 |------|------|
-| **主键类型** | BIGINT，自增（连接器平台）/ 雪花ID（能力平台） |
+| **主键类型** | BIGINT，自增 |
 | **主键命名** | 统一使用 `id` |
-| **业务ID** | 通过独立 `varchar(32)` 字段存储业务标识（如 `connector_id`），便于分布式场景和 URL 安全 |
+| **业务ID** | 通过独立 `varchar(32)` 字段存储业务标识（如 `connector_id`）|
 | **关联字段** | 使用逻辑外键（存储关联 ID），**不使用物理外键约束**，关联关系由应用层维护 |
 
-> **禁止使用外键**：所有表关联关系通过存储逻辑字段实现，不使用数据库物理外键约束（FOREIGN KEY）。关联关系由应用层维护。— 来源：能力开放平台规范
+> **禁止使用外键**：所有表关联关系通过存储逻辑字段实现，不使用数据库物理外键约束（FOREIGN KEY）。
 
 ### 2.3 审计字段规范
 
@@ -77,65 +74,34 @@
 | `created_by` | VARCHAR(64) | 创建人账号 |
 | `updated_by` | VARCHAR(64) | 更新人账号 |
 
-> **与能力开放平台的差异**：连接器平台使用 `created_at`/`updated_at`（`_at` 后缀，表示时间点），能力开放平台使用 `create_time`/`last_update_time`（`_time` 后缀）。`_at` 后缀更精确表达"时间点"语义，且与 `started_at`/`finished_at`/`published_at`/`expires_at` 保持一致。时间字段统一使用 `DATETIME(3)` 精确到毫秒，确保高并发场景下的时间精度。
-
 ### 2.4 枚举字段规范
 
 | 规则 | 说明 |
 |------|------|
-| **字段类型** | 状态枚举使用 `varchar(20)`（连接器平台，可读性强）/ `TINYINT`（能力平台） |
+| **字段类型** | 状态枚举使用 `varchar(20)` |
 | **注释说明** | 在 COMMENT 中说明所有枚举值含义 |
 | **示例** | `varchar(20) NOT NULL DEFAULT 'draft' COMMENT '状态：draft / published'` |
-
-> 连接器平台选择 varchar 枚举值（替代 TINYINT），原因是：状态值可读性强、日志排查直观、API 返回值无需转换映射。— 遵循与能力平台一致的文档规范，具体实现选择适配连接器场景。
 
 **枚举字段汇总**：
 
 | 枚举字段 | 适用表 | 枚举值 | 说明 |
 |----------|--------|--------|------|
 | `status` | `cp_connector` | `active` / `disabled` | 连接器启用/禁用 |
-| `visibility` | `cp_connector` | `public` / `private` | 连接器可见性 |
-| `connector_type` | `cp_connector` | `HTTP` / `MySQL` / `Redis` / `Kafka` / `gRPC` / `CUSTOM` | 连接器协议类型 |
+| `connector_type` | `cp_connector` | `HTTP`（MVP） | 连接器协议类型（V1 扩展 MySQL/Redis/Kafka 等） |
 | `status` | `cp_connector_version`, `cp_flow_version` | `draft` / `published` | 版本状态 |
 | `status` | `cp_flow` | `enabled` / `disabled` | 连接流启停状态 |
-| `status` | `cp_execution_record` | `pending` / `running` / `success` / `failed` / `timeout` | 执行状态 |
-| `status` | `cp_execution_step` | `pending` / `running` / `success` / `failed` / `skipped` | 执行步骤状态 |
+| `status` | `cp_execution_record` | `success` / `failed` / `timeout` | **同步执行终态**（无 pending/running） |
+| `status` | `cp_execution_step` | `success` / `failed` | 步骤执行状态 |
 | `status` | `cp_connector_auth_config` | `active` / `expired` / `revoked` | 凭证状态 |
-| `trigger_type` | `cp_execution_record` | `event` / `webhook` / `scheduled` / `manual` | 触发方式 |
-| `node_type` | `cp_flow_node` | `entry` / `connector` / `exit` | 节点类型 |
+| `trigger_type` | `cp_execution_record` | `http` / `manual` / `test` | 触发方式（MVP） |
+| `node_type` | `cp_flow_node` | `entry` / `connector` / `data_processor` / `exit` | 节点类型（MVP） |
 | `auth_type` | `cp_connector_auth_config` | `AKSK` / `OAUTH2` / `BASIC_AUTH` / `API_KEY` | 认证类型 |
 
-### 2.5 Scope 命名规范（复用能力开放平台）
-
-连接器平台复用能力开放平台的 Scope 权限模型，Scope 命名遵循统一规范：
-
-**格式**: `{资源类型}:{模块}:{资源标识}`
-
-| 资源类型 | Scope 示例 | 说明 |
-|----------|------------|------|
-| API | `api:im:send-message` | IM 模块发送消息 API |
-| Event | `event:im:message-received` | IM 模块消息接收事件 |
-
-**命名规则**：
-
-| 部分 | 说明 | 示例 |
-|------|------|------|
-| `{资源类型}` | api / event / callback | `api` |
-| `{模块}` | 业务模块名 | `im`、`meeting`、`approval` |
-| `{资源标识}` | 具体资源的唯一标识 | `send-message`、`message-received` |
-
-> 连接器定义中若引用内部系统 API/事件，需通过 Scope 获得授权，Scope 命名必须符合上述规范，确保全局唯一。
-
-### 2.6 名称和描述字段规范
-
-涉及名称、描述场景的字段，统一使用中英文双语（与能力开放平台一致）：
-
-| 字段类型 | 字段命名 | 类型 | 说明 |
-|----------|----------|------|------|
-| **名称** | `name` | VARCHAR(100) | 名称（连接器平台暂用单字段，后续可扩展 `name_cn`/`name_en`） |
-| **描述** | `description` | VARCHAR(2000) | 描述（连接器平台暂用单字段） |
-
-> 能力开放平台使用 `name_cn`/`name_en` 双语设计。连接器平台 MVP 阶段暂用单字段 `name`/`description`，后续如需国际化可扩展为 `name_cn`/`name_en` + `description_cn`/`description_en`。
+> **与 v1.x 的差异**：
+> - `cp_execution_record.status`：移除 `pending` / `running`（同步执行无中间状态）
+> - `trigger_type`：移除 `event` / `webhook` / `scheduled`，新增 `http` / `test`（MVP 触发方式）
+> - `node_type`：新增 `data_processor`（数据处理节点纳入 MVP）
+> - `connector_type`：MVP 仅支持 `HTTP`（移除 MySQL/Redis/Kafka/gRPC）
 
 ---
 
@@ -153,10 +119,7 @@ CREATE TABLE `cp_connector` (
   `name`            varchar(100) NOT NULL                  COMMENT '连接器名称',
   `icon`            varchar(500) DEFAULT NULL              COMMENT '连接器图标 URL',
   `description`     varchar(2000) DEFAULT NULL             COMMENT '连接器描述',
-  `connector_type`  varchar(50)  NOT NULL                  COMMENT '类型：HTTP / MySQL / Redis / Kafka / gRPC / CUSTOM',
-  `visibility`      varchar(20)  NOT NULL DEFAULT 'private' COMMENT '可见性：public / private',
-  `creator_app_id`  varchar(32)  NOT NULL                  COMMENT '创建者应用ID',
-  `creator_user_id` varchar(64)  DEFAULT NULL              COMMENT '创建者用户ID',
+  `connector_type`  varchar(50)  NOT NULL                  COMMENT '类型：HTTP（MVP）',
   `status`          varchar(20)  NOT NULL DEFAULT 'active' COMMENT '状态：active / disabled',
   `is_deleted`      tinyint(1)   NOT NULL DEFAULT 0        COMMENT '软删除标记',
   `created_at`      datetime(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -165,12 +128,12 @@ CREATE TABLE `cp_connector` (
   `updated_by`      varchar(64)  DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_connector_id` (`connector_id`),
-  KEY `idx_creator_app_id` (`creator_app_id`),
-  KEY `idx_visibility_status` (`visibility`, `status`),
   KEY `idx_connector_type` (`connector_type`),
   KEY `idx_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器基本信息表';
 ```
+
+> **变更说明**：移除 `visibility`, `creator_app_id`, `creator_user_id` 字段。MVP 角色统一为平台管理员（无需区分应用/用户），可见性无概念（无上架/下架 NG13）
 
 ### 3.2 `cp_connector_version` — 连接器版本
 
@@ -187,7 +150,6 @@ CREATE TABLE `cp_connector_version` (
   `basic_info_snapshot` json         DEFAULT NULL              COMMENT '基本信息快照（name/icon/description/type）',
   `connection_config`  json         DEFAULT NULL              COMMENT '连接配置（见下方 JSON Schema）',
   `change_log`         varchar(2000) DEFAULT NULL             COMMENT '版本变更说明',
-  `approval_id`        varchar(32)  DEFAULT NULL              COMMENT '关联审批单ID（已发布版本）',
   `published_at`       datetime(3)  DEFAULT NULL              COMMENT '发布时间',
   `created_at`         datetime(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `created_by`         varchar(64)  DEFAULT NULL,
@@ -201,15 +163,15 @@ CREATE TABLE `cp_connector_version` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器版本表';
 ```
 
-**connection_config JSON Schema**:
+> **变更说明**：移除 `approval_id` 字段（本版本发布无需审批 NG19，V1 阶段引入）
 
-> 以下为数据库 JSON 列存储格式（snake_case）。API 响应时字段名统一转为 camelCase。
+**connection_config JSON Schema**：
 
 ```json
 {
   "protocol": "HTTP",
   "protocol_config": {
-    "base_url": "https://api.example.com",
+    "url": "https://api.example.com/im/send",
     "method": "POST",
     "headers": { "Content-Type": "application/json" }
   },
@@ -259,14 +221,12 @@ CREATE TABLE `cp_connector_version` (
 -- ============================================
 -- 连接流基本信息表
 -- ============================================
- CREATE TABLE `cp_flow` (
+CREATE TABLE `cp_flow` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `flow_id`         varchar(32)  NOT NULL                  COMMENT '业务ID（如 flow_xxxxxxxx）',
   `name`            varchar(100) NOT NULL                  COMMENT '连接流名称',
   `description`     varchar(2000) DEFAULT NULL             COMMENT '连接流描述',
   `status`          varchar(20)  NOT NULL DEFAULT 'disabled' COMMENT '运行状态：enabled / disabled',
-  `creator_app_id`  varchar(32)  NOT NULL                  COMMENT '创建者应用ID',
-  `creator_user_id` varchar(64)  DEFAULT NULL              COMMENT '创建者用户ID',
   `is_deleted`      tinyint(1)   NOT NULL DEFAULT 0        COMMENT '软删除标记',
   `created_at`      datetime(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `created_by`      varchar(64)  DEFAULT NULL,
@@ -274,11 +234,12 @@ CREATE TABLE `cp_connector_version` (
   `updated_by`      varchar(64)  DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_flow_id` (`flow_id`),
-  KEY `idx_creator_app_id` (`creator_app_id`),
   KEY `idx_status` (`status`),
   KEY `idx_name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接流基本信息表';
 ```
+
+> **变更说明**：移除 `creator_app_id`, `creator_user_id` 字段（角色统一为平台管理员）
 
 ### 3.4 `cp_flow_version` — 连接流版本
 
@@ -295,7 +256,6 @@ CREATE TABLE `cp_flow_version` (
   `basic_info_snapshot`  json         DEFAULT NULL              COMMENT '基本信息快照（name/description）',
   `orchestration_config` json         DEFAULT NULL              COMMENT '编排配置（见下方 JSON Schema）',
   `change_log`           varchar(2000) DEFAULT NULL             COMMENT '版本变更说明',
-  `approval_id`          varchar(32)  DEFAULT NULL              COMMENT '关联审批单ID',
   `published_at`         datetime(3)  DEFAULT NULL              COMMENT '发布时间',
   `created_at`           datetime(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `created_by`           varchar(64)  DEFAULT NULL,
@@ -309,23 +269,23 @@ CREATE TABLE `cp_flow_version` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接流版本表';
 ```
 
-**orchestration_config JSON Schema**:
+> **变更说明**：移除 `approval_id` 字段（本版本发布无需审批 NG19）
+
+**orchestration_config JSON Schema**：
 
 > 以下为数据库 JSON 列存储格式（snake_case）。API 响应时字段名统一转为 camelCase。
 
 ```json
 {
   "trigger": {
-    "type": "event",
+    "type": "http",
     "config": {
-      "event_source": "im:message:receive",
-      "scope": "im:message:receive",
+      "method": "POST",
       "schema": {
         "type": "object",
         "properties": {
           "sender": { "type": "string" },
-          "content": { "type": "string" },
-          "timestamp": { "type": "integer" }
+          "content": { "type": "string" }
         }
       }
     }
@@ -334,7 +294,7 @@ CREATE TABLE `cp_flow_version` (
     {
       "node_id": "node_entry",
       "node_type": "entry",
-      "label": "收到消息",
+      "label": "接收请求",
       "position": { "x": 100, "y": 200 }
     },
     {
@@ -345,35 +305,43 @@ CREATE TABLE `cp_flow_version` (
       "input_mapping": {
         "message": "${trigger.content}"
       },
-      "retry_policy": {
-        "max_retries": 3,
-        "interval_ms": 1000,
-        "backoff_multiplier": 2.0
-      },
       "position": { "x": 350, "y": 200 }
+    },
+    {
+      "node_id": "node_2",
+      "node_type": "data_processor",
+      "label": "格式化消息",
+      "config": {
+        "field_mappings": [
+          { "source": "${node_1.msg_id}", "target": "result.id" },
+          { "source": "constant:success", "target": "result.status" }
+        ]
+      },
+      "position": { "x": 500, "y": 200 }
     },
     {
       "node_id": "node_exit",
       "node_type": "exit",
-      "label": "返回值",
-      "output_fields": ["result.code", "result.data"],
-      "position": { "x": 600, "y": 200 }
+      "label": "返回结果",
+      "output_fields": ["result.id", "result.status"],
+      "position": { "x": 650, "y": 200 }
     }
   ],
   "edges": [
     { "edge_id": "e1", "source": "node_entry", "target": "node_1" },
-    { "edge_id": "e2", "source": "node_1", "target": "node_exit" }
+    { "edge_id": "e2", "source": "node_1", "target": "node_2" },
+    { "edge_id": "e3", "source": "node_2", "target": "node_exit" }
   ]
 }
 ```
 
-**trigger.type 枚举**:
+**trigger.type 枚举（MVP）**:
 | 类型 | 说明 | config 关键字段 |
 |------|------|-----------------|
-| `event` | 事件触发 | `event_source` — 事件源标识, `scope` — 所需 Scope |
-| `webhook` | Webhook 触发 | `webhook_path` — 自动生成唯一路径 |
-| `scheduled` | 定时触发 | `cron` — Cron 表达式, `timezone` — 时区 |
+| `http` | HTTP 触发 | `method` — 请求方法, `schema` — 请求体 Schema |
 | `manual` | 手动触发 | —（无需额外配置） |
+
+> **变更说明**：移除 `event`, `webhook`, `scheduled` 类型（V1 阶段引入）
 
 ---
 
@@ -381,13 +349,13 @@ CREATE TABLE `cp_flow_version` (
 
 ```sql
 -- ============================================
--- 流节点定义表（entry / connector / exit）
+-- 流节点定义表（entry / connector / data_processor / exit）
 -- ============================================
 CREATE TABLE `cp_flow_node` (
   `id`                   bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `node_id`              varchar(32)  NOT NULL                  COMMENT '业务ID（如 fn_xxxxxxxx）',
   `version_id`           varchar(32)  NOT NULL                  COMMENT '所属连接流版本ID',
-  `node_type`            varchar(30)  NOT NULL                  COMMENT '节点类型：entry / connector / exit',
+  `node_type`            varchar(30)  NOT NULL                  COMMENT '节点类型：entry / connector / data_processor / exit',
   `label`                varchar(100) DEFAULT NULL              COMMENT '节点显示名称',
   `connector_version_id` varchar(32)  DEFAULT NULL              COMMENT '引用的连接器版本ID（connector类型）',
   `config_json`          json         DEFAULT NULL              COMMENT '节点配置（见下方）',
@@ -402,6 +370,8 @@ CREATE TABLE `cp_flow_node` (
   KEY `idx_node_type` (`node_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流节点定义表';
 ```
+
+> **变更说明**：`node_type` 枚举新增 `data_processor`（数据处理节点纳入 MVP）
 
 ### 3.6 `cp_flow_edge` — 流连线定义
 
@@ -447,27 +417,27 @@ CREATE TABLE `cp_flow_edge` (
 ]
 ```
 
+---
+
 ### 3.7 `cp_execution_record` — 执行记录
 
 ```sql
 -- ============================================
--- 执行记录表（每次触发生成一条）
+-- 执行记录表（每次同步执行后生成）
 -- ============================================
 CREATE TABLE `cp_execution_record` (
   `id`              bigint       NOT NULL AUTO_INCREMENT  COMMENT '自增主键',
   `execution_id`    varchar(32)  NOT NULL                  COMMENT '执行ID（如 exec_xxxxxxxx）',
   `flow_id`         varchar(32)  NOT NULL                  COMMENT '所属连接流ID',
   `version_id`      varchar(32)  NOT NULL                  COMMENT '执行的版本ID',
-  `trigger_type`    varchar(20)  NOT NULL                  COMMENT '触发方式：event/webhook/scheduled/manual',
-  `status`          varchar(20)  NOT NULL DEFAULT 'pending' COMMENT '执行状态：pending/running/success/failed/timeout',
+  `trigger_type`    varchar(20)  NOT NULL                  COMMENT '触发方式：http / manual / test',
+  `status`          varchar(20)  NOT NULL DEFAULT 'success' COMMENT '执行状态：success / failed / timeout',
   `trigger_data`    json         DEFAULT NULL              COMMENT '触发数据快照',
   `result_data`     json         DEFAULT NULL              COMMENT '执行返回值（出口节点输出）',
   `error_message`   varchar(5000) DEFAULT NULL             COMMENT '失败原因',
   `started_at`      datetime(3)  DEFAULT NULL              COMMENT '执行开始时间',
   `finished_at`     datetime(3)  DEFAULT NULL              COMMENT '执行结束时间',
   `duration_ms`     int          DEFAULT NULL              COMMENT '执行耗时（毫秒）',
-  `retry_count`     int          NOT NULL DEFAULT 0        COMMENT '重试次数',
-  `max_retries`     int          NOT NULL DEFAULT 0        COMMENT '最大重试次数',
   `created_at`      datetime(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at`      datetime(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
@@ -479,6 +449,11 @@ CREATE TABLE `cp_execution_record` (
   KEY `idx_flow_status` (`flow_id`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行记录表';
 ```
+
+> **变更说明**：
+> - `status` 枚举：移除 `pending` / `running`（同步执行无中间状态）
+> - 移除 `max_retries`, `retry_count` 字段（失败重试 NG15，V1 阶段引入）
+> - `trigger_type` 枚举：`http` / `manual` / `test`
 
 ### 3.8 `cp_execution_step` — 执行步骤详情
 
@@ -492,15 +467,14 @@ CREATE TABLE `cp_execution_step` (
   `execution_id`    varchar(32)  NOT NULL                  COMMENT '所属执行记录ID',
   `node_id`         varchar(32)  NOT NULL                  COMMENT '对应节点ID',
   `node_name`       varchar(100) DEFAULT NULL              COMMENT '节点显示名称',
-  `node_type`       varchar(30)  NOT NULL                  COMMENT '节点类型：entry/connector/exit',
-  `status`          varchar(20)  NOT NULL DEFAULT 'pending' COMMENT '步骤状态：pending/running/success/failed/skipped',
+  `node_type`       varchar(30)  NOT NULL                  COMMENT '节点类型：entry/connector/data_processor/exit',
+  `status`          varchar(20)  NOT NULL DEFAULT 'success' COMMENT '步骤状态：success / failed',
   `input_data`      json         DEFAULT NULL              COMMENT '步骤输入数据',
   `output_data`     json         DEFAULT NULL              COMMENT '步骤输出数据',
   `error_message`   varchar(5000) DEFAULT NULL             COMMENT '错误信息',
   `started_at`      datetime(3)  DEFAULT NULL              COMMENT '步骤开始时间',
   `finished_at`     datetime(3)  DEFAULT NULL              COMMENT '步骤结束时间',
   `duration_ms`     int          DEFAULT NULL              COMMENT '步骤耗时',
-  `retry_attempts`  int          NOT NULL DEFAULT 0        COMMENT '重试次数',
   `created_at`      datetime(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_step_id` (`step_id`),
@@ -510,9 +484,11 @@ CREATE TABLE `cp_execution_step` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行步骤详情表';
 ```
 
+> **变更说明**：移除 `retry_attempts` 字段（失败重试 NG15，V1 阶段引入）。`node_type` 新增 `data_processor`。
+
 ### 3.9 `cp_connector_auth_config` — 连接器认证凭证
 
-> **与 spec.md 的设计差异**：spec.md FR-008 将认证凭证作为 `connection_config` JSON 的一部分存储在连接器版本中。Plan 阶段将其抽取为独立表 `cp_connector_auth_config`，核心原因是**同一连接器版本可能被不同消费方应用使用，每个应用需要独立的认证凭证**（如各三方平台使用自己的 AKSK 调用 IM 发送消息）。这是对 spec 模型的合理扩展，遵循「连接器版本定义能力接口，消费方提供自身凭证」的职责分离原则。
+> **与 spec.md 的设计差异**：spec.md FR-006 说明认证凭证作为 `connection_config` JSON 的一部分存储在连接器版本中。Plan 阶段将其抽取为独立表 `cp_connector_auth_config`，核心原因是**同一连接器版本可能被不同消费方使用，每个消费方需要独立的认证凭证**。这是对 spec 模型的合理扩展，遵循「连接器版本定义能力接口，消费方提供自身凭证」的职责分离原则。（虽然本版本角色统一为平台管理员，但保留此设计为 V1 多应用场景预留扩展点）
 
 ```sql
 -- ============================================
@@ -564,7 +540,7 @@ cp_connector_version (1) ──→ (N) cp_connector_auth_config (N) ──→ ap
 |---|---------|---------|
 | `cp_execution_record` | 默认 30 天（可配置） | 定时任务清理已完成的记录 |
 | `cp_execution_step` | 随父记录一同清理 | 按 `execution_id` 级联删除 |
-| `cp_connector_version` | 永久保留 | 软标记下架版本 |
+| `cp_connector_version` | 永久保留 | — |
 | `cp_connector_auth_config` | 过期凭证保留 90 天后清理 | 定时任务清理过期凭证 |
 
 ---
@@ -582,5 +558,24 @@ cp_connector_version (1) ──→ (N) cp_connector_auth_config (N) ──→ ap
 | 执行记录 | `exec_` | `exec_y5z6a7b8` |
 | 执行步骤 | `step_` | `step_c9d0e1f2` |
 | 认证凭据 | `auth_` | `auth_g3h4i5j6` |
+| HTTP 触发 Token | `tr_` | `tr_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6` |
 
 **版本号格式**: `{major}.{minor}.{patch}` (如 `1.0.0`, `1.1.0`, `2.0.0`)
+
+---
+
+## 附录 A：变更日志（v1.x → v2.0）
+
+| 变更项 | v1.x | v2.0（基于 spec v4.0） | 原因 |
+|--------|------|----------------------|------|
+| `cp_connector` 字段 | 含 `visibility`, `creator_app_id`, `creator_user_id` | 移除这些字段 | 角色统一为平台管理员，无上架/下架 |
+| `cp_connector_version` 字段 | 含 `approval_id` | 移除 | 版本发布无需审批（NG19） |
+| `cp_flow` 字段 | 含 `creator_app_id`, `creator_user_id` | 移除 | 角色统一为平台管理员 |
+| `cp_flow_version` 字段 | 含 `approval_id` | 移除 | 版本发布无需审批（NG19） |
+| `cp_execution_record.status` | `pending/running/success/failed/timeout` | `success/failed/timeout` | 同步执行无中间状态 |
+| `cp_execution_record.trigger_type` | `event/webhook/scheduled/manual` | `http/manual/test` | MVP 仅 HTTP/手动触发 |
+| `cp_execution_record` 字段 | 含 `retry_count`, `max_retries` | 移除 | 失败重试移至 NG15，V1 |
+| `cp_execution_step` 字段 | 含 `retry_attempts` | 移除 | 同上 |
+| `cp_execution_step.node_type` | `entry/connector/exit` | `entry/connector/data_processor/exit` | 数据处理节点纳入 MVP |
+| `cp_flow_node.node_type` | `entry/connector/exit` | `entry/connector/data_processor/exit` | 同上 |
+| `cp_connector.connector_type` | `HTTP/MySQL/Redis/Kafka/gRPC` | `HTTP`（MVP） | NG12，V1 扩展 |

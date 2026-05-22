@@ -2,10 +2,23 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§4.3)  
-**版本**: v1.1  
-**创建日期**: 2026-05-19  
-**最后更新**: 2026-05-20  
-**更新说明**: 全文字段名统一为 camelCase（对齐 §1.2 命名规范）；新增接口编号总表、状态枚举定义
+**版本**: v2.0  
+**创建日期**: 2026-05-21  
+**更新说明**: 对齐 spec.md v4.0——移除 Scope/审批/事件/定时触发，执行改为同步，FR 重编号 1~25
+
+---
+
+## 0. 主要变更说明（与 v1.x 的差异）
+
+| 变更项 | v1.x（基于 spec v3.x） | v2.0（基于 spec v4.0） |
+|--------|----------------------|----------------------|
+| 执行接口 | **异步**（返回 202 + 轮询状态） | **同步**（直接返回执行结果） |
+| 触发方式 | 事件/Webhook/定时/手动 | HTTP/手动 |
+| Scope 权限 | ✅ 有 Scope 集成章节 | ❌ 移除（NG18，V1） |
+| 审批集成 | ✅ 有审批集成章节 | ❌ 移除（NG19，V1） |
+| MQS 主题 | 4 个主题 | ❌ 移除（无 MQS） |
+| 监控 API | 全指标仪表盘 | 执行历史查询 |
+| FR 引用 | ~37 个 | 25 个 |
 
 ---
 
@@ -18,7 +31,7 @@
 | 规范项 | 说明 |
 |--------|------|
 | 基础路径 | `/api/v1` |
-| 认证方式 | 管理面复用现有 Cookie/SSO；执行面通过连接器配置的认证凭证 |
+| 认证方式 | 管理面复用现有 Cookie/SSO；执行面 HTTP 触发通过签名验证 |
 | 时间格式 | ISO 8601: `yyyy-MM-dd'T'HH:mm:ss.SSSXXX` |
 
 ### 1.2 字段命名规范
@@ -27,9 +40,9 @@
 
 | ✅ 正确示例 | ❌ 错误示例 |
 |------------|------------|
-| `connectorId` | `connectorId` |
-| `createTime` | `create_time` |
-| `versionStatus` | `versionStatus` |
+| `connectorId` | `connector_id` |
+| `createTime` | `create_Time` |
+| `versionStatus` | `version_status` |
 
 **命名约定**：
 - ID 字段：使用 `Id` 后缀，如 `connectorId`, `flowId`, `versionId`
@@ -45,7 +58,6 @@
 |------------|------------|
 | `/api/v1/connector-versions` | `/api/v1/connector_versions` |
 | `/api/v1/test-run` | `/api/v1/testRun` |
-| `/api/v1/user-authorizations` | `/api/v1/user_authorizations` |
 
 **命名约定**：
 - 资源名称使用复数形式：`/connectors`, `/flows`, `/executions`
@@ -60,10 +72,6 @@
 |------------|------------|
 | `"connectorId": "con_xxxxx"` | `"id": 100` |
 | `"executionId": "exec_xxxxx"` | `"executionId": 200` |
-
-**原因说明**：
-- JavaScript 的 `Number` 类型最大安全整数是 `2^53 - 1`（即 `9007199254740991`）
-- 统一使用 `string` 类型可彻底避免精度丢失问题
 
 **适用范围**：
 - 所有业务 ID 字段：`connectorId`, `flowId`, `versionId`, `executionId` 等
@@ -126,6 +134,7 @@
 | `404` | 资源不存在 |
 | `409` | 状态冲突 |
 | `422` | 校验失败 |
+| `429` | 触发频率超限（FR-024 默认限流） |
 | `500` | 内部错误 |
 
 ---
@@ -141,8 +150,6 @@
 | `GET` | `/api/v1/connectors/{connectorId}` | 查询连接器详情 | FR-004 |
 | `PUT` | `/api/v1/connectors/{connectorId}` | 更新连接器基本信息 | FR-002 |
 | `DELETE` | `/api/v1/connectors/{connectorId}` | 删除连接器 | FR-003 |
-| `POST` | `/api/v1/connectors/{connectorId}/list-public` | 上架为公共连接器 | FR-005 |
-| `POST` | `/api/v1/connectors/{connectorId}/delist` | 下架连接器 | FR-005 |
 
 #### POST /api/v1/connectors — 创建连接器
 
@@ -152,26 +159,23 @@
   "name": "IM 发送消息",
   "icon": "https://cdn.xxx.com/icons/im.svg",
   "description": "封装 IM 消息发送能力",
-  "connectorType": "HTTP",
-  "visibility": "private"
+  "connectorType": "HTTP"
 }
 
 // Response 201
 {
   "connectorId": "con_a1b2c3d4",
-  "latestVersion": {
-    "versionId": "cv_e5f6g7h8",
-    "versionNo": "0.0.1",
-    "status": "draft"
-  }
+  "name": "IM 发送消息",
+  "connectorType": "HTTP",
+  "createdAt": "2026-05-21T10:00:00.000+08:00"
 }
+// 注意：创建后仅生成连接器基本信息，不自动生成草稿版本
 ```
 
 #### GET /api/v1/connectors — 查询列表
 
 ```json
-// Query params
-// ?curPage=1&pageSize=20&visibility=public&connectorType=HTTP&keyword=IM
+// Query params: ?curPage=1&pageSize=20&connectorType=HTTP&keyword=IM
 
 // Response
 {
@@ -182,14 +186,13 @@
       "icon": "https://cdn.xxx.com/icons/im.svg",
       "description": "封装 IM 消息发送能力",
       "connectorType": "HTTP",
-      "visibility": "public",
-      "latestVersion": "1.2.0",
-      "versionStatus": "published",
-      "createdAt": "2026-05-19T10:00:00.000+08:00"
+      "latestVersionNo": "1.2.0",
+      "latestVersionStatus": "published",
+      "createdAt": "2026-05-21T10:00:00.000+08:00"
     }
   ],
   "total": 1,
-  "page": 1,
+  "curPage": 1,
   "pageSize": 20
 }
 ```
@@ -198,20 +201,20 @@
 
 | 方法 | 路径 | 说明 | FR |
 |------|------|------|----|
-| `GET` | `/api/v1/connectors/{connectorId}/versions` | 版本列表 | FR-009 |
-| `GET` | `/api/v1/connectors/{connectorId}/versions/{versionId}` | 版本详情（含连接配置） | FR-007 |
-| `PUT` | `/api/v1/connectors/{connectorId}/versions/{versionId}` | 编辑草稿版本配置 | FR-008 |
-| `POST` | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | 发布版本 | FR-010 |
+| `GET` | `/api/v1/connectors/{connectorId}/versions` | 版本列表 | FR-007 |
+| `GET` | `/api/v1/connectors/{connectorId}/versions/{versionId}` | 版本详情（含连接配置） | FR-005 |
+| `PUT` | `/api/v1/connectors/{connectorId}/versions/{versionId}` | 编辑草稿版本配置 | FR-006 |
+| `POST` | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | 发布版本 | FR-008 |
 
 #### PUT /api/v1/connectors/{connectorId}/versions/{versionId} — 编辑连接配置
 
 ```json
-// Request
+// Request — connectionConfig 全文替换
 {
   "connectionConfig": {
     "protocol": "HTTP",
     "protocolConfig": {
-      "baseUrl": "https://openapi.xxx.com/im",
+      "url": "https://openapi.xxx.com/im/send",
       "method": "POST",
       "headers": { "Content-Type": "application/json" }
     },
@@ -225,59 +228,46 @@
     "inputSchema": {
       "type": "object",
       "properties": {
-        "receiver": { "type": "string" },
-        "content": { "type": "string" }
+        "receiver": { "type": "string", "description": "接收者ID" },
+        "content": { "type": "string", "description": "消息内容" }
       },
       "required": ["receiver", "content"]
     },
     "outputSchema": {
       "type": "object",
       "properties": {
-        "msgId": { "type": "string" }
+        "msgId": { "type": "string", "description": "消息ID" }
       }
     },
-    "timeoutMs": 30000
+    "timeoutMs": 30000,
+    "rateLimit": {
+      "maxPerSecond": 10,
+      "maxConcurrent": 5
+    }
   }
 }
 
 // Response 200
-{ "versionId": "cv_e5f6g7h8", "status": "draft", "updatedAt": "..." }
+{ "versionId": "cv_e5f6g7h8", "status": "draft", "updatedAt": "2026-05-21T10:00:00.000+08:00" }
 ```
 
 #### POST /api/v1/connectors/{connectorId}/versions/{versionId}/publish — 发布
 
 ```json
-// Request (optional)
-{ "changeLog": "新增消息撤回能力" }
+// Request
+{
+  "versionNo": "1.0.0",
+  "changeLog": "初始版本，支持文本消息发送"
+}
 
-// Response 200 (触发审批)
+// Response 200
 {
   "versionId": "cv_e5f6g7h8",
-  "status": "pendingApproval",
-  "approvalId": "apr_xxxx"
+  "versionNo": "1.0.0",
+  "status": "published",
+  "publishedAt": "2026-05-21T10:00:00.000+08:00"
 }
-```
-
-### 2.3 连接器使用统计
-
-| 方法 | 路径 | 说明 | FR |
-|------|------|------|----|
-| `GET` | `/api/v1/connectors/{connectorId}/stats` | 连接器使用统计 | FR-006 |
-
-```json
-// Response
-{
-  "connectorId": "con_a1b2c3d4",
-  "referencedByFlows": [
-    { "flowId": "flow_xxx", "flowName": "消息通知流", "status": "enabled" }
-  ],
-  "totalInvocations": 1523,
-  "invocationsByVersion": [
-    { "versionNo": "1.0.0", "count": 800 },
-    { "versionNo": "1.1.0", "count": 723 }
-  ],
-  "statsPeriod": { "from": "2026-05-01", "to": "2026-05-19" }
-}
+// 注意：本版本发布无需审批（NG19，V1 阶段引入）
 ```
 
 ---
@@ -288,13 +278,14 @@
 
 | 方法 | 路径 | 说明 | FR |
 |------|------|------|----|
-| `POST` | `/api/v1/flows` | 创建连接流 | FR-011 |
-| `GET` | `/api/v1/flows` | 查询连接流列表 | FR-014 |
-| `GET` | `/api/v1/flows/{flowId}` | 查询连接流详情 | FR-016 |
-| `PUT` | `/api/v1/flows/{flowId}` | 更新连接流基本信息 | FR-012 |
-| `DELETE` | `/api/v1/flows/{flowId}` | 删除连接流 | FR-013 |
-| `POST` | `/api/v1/flows/{flowId}/enable` | 启用连接流 | FR-015 |
-| `POST` | `/api/v1/flows/{flowId}/disable` | 停用连接流 | FR-015 |
+| `POST` | `/api/v1/flows` | 创建连接流 | FR-009 |
+| `GET` | `/api/v1/flows` | 查询连接流列表 | FR-012 |
+| `GET` | `/api/v1/flows/{flowId}` | 查询连接流详情 | FR-016（配置查看） |
+| `PUT` | `/api/v1/flows/{flowId}` | 更新连接流基本信息 | FR-010 |
+| `DELETE` | `/api/v1/flows/{flowId}` | 删除连接流 | FR-011 |
+| `POST` | `/api/v1/flows/{flowId}/deploy` | 部署连接流 | FR-013 |
+| `POST` | `/api/v1/flows/{flowId}/start` | 启动连接流 | FR-014 |
+| `POST` | `/api/v1/flows/{flowId}/stop` | 停止连接流 | FR-015 |
 
 #### POST /api/v1/flows — 创建连接流
 
@@ -308,12 +299,29 @@
 // Response 201
 {
   "flowId": "flow_i9j0k1l2",
-  "latestVersion": {
-    "versionId": "fv_m3n4o5p6",
-    "versionNo": "0.0.1",
-    "status": "draft"
-  }
+  "name": "新消息自动通知",
+  "status": "disabled",
+  "createdAt": "2026-05-21T10:00:00.000+08:00"
 }
+// 注意：创建后仅生成连接流基本信息，不自动生成草稿版本
+```
+
+#### POST /api/v1/flows/{flowId}/deploy — 部署
+
+```json
+// Request
+{
+  "versionId": "fv_m3n4o5p6"
+}
+
+// Response 200
+{
+  "flowId": "flow_i9j0k1l2",
+  "deployedVersionId": "fv_m3n4o5p6",
+  "status": "enabled",
+  "deployedAt": "2026-05-21T10:00:00.000+08:00"
+}
+// 注意：部署无需审批（NG19，V1 阶段引入）
 ```
 
 ### 3.2 连接流版本管理
@@ -328,14 +336,13 @@
 #### PUT /api/v1/flows/{flowId}/versions/{versionId} — 保存编排配置
 
 ```json
-// Request — orcherstration_config 全文替换
+// Request — orchestrationConfig 全文替换
 {
   "orchestrationConfig": {
     "trigger": {
-      "type": "event",
+      "type": "http",     
       "config": {
-        "eventSource": "im:message:receive",
-        "scope": "im:message:receive",
+        "method": "POST",
         "schema": {
           "type": "object",
           "properties": {
@@ -349,7 +356,7 @@
       {
         "nodeId": "node_entry",
         "nodeType": "entry",
-        "label": "收到消息",
+        "label": "接收请求",
         "position": { "x": 100, "y": 200 }
       },
       {
@@ -357,45 +364,77 @@
         "nodeType": "connector",
         "label": "发送通知",
         "connectorVersionId": "cv_e5f6g7h8",
-        "inputMapping": { "receiver": "${trigger.sender}", "content": "${trigger.content}" },
-        "retryPolicy": { "maxRetries": 3, "intervalMs": 1000 },
+        "inputMapping": {
+          "receiver": "${trigger.sender}",
+          "content": "${trigger.content}"
+        },
         "position": { "x": 350, "y": 200 }
+      },
+      {
+        "nodeId": "node_2",
+        "nodeType": "data_processor",
+        "label": "格式化消息",
+        "config": {
+          "fieldMappings": [
+            { "source": "${node_1.msgId}", "target": "result.id" },
+            { "source": "constant:success", "target": "result.status" }
+          ]
+        },
+        "position": { "x": 500, "y": 200 }
       },
       {
         "nodeId": "node_exit",
         "nodeType": "exit",
-        "label": "输出",
-        "outputFields": ["msgId"],
-        "position": { "x": 600, "y": 200 }
+        "label": "返回结果",
+        "outputFields": ["result.id", "result.status"],
+        "position": { "x": 650, "y": 200 }
       }
     ],
     "edges": [
       { "edgeId": "e1", "source": "node_entry", "target": "node_1" },
-      { "edgeId": "e2", "source": "node_1", "target": "node_exit" }
+      { "edgeId": "e2", "source": "node_1", "target": "node_2" },
+      { "edgeId": "e3", "source": "node_2", "target": "node_exit" }
     ]
   }
 }
 
 // Response 200
-{ "versionId": "fv_m3n4o5p6", "status": "draft", "updatedAt": "..." }
+{ "versionId": "fv_m3n4o5p6", "status": "draft", "updatedAt": "2026-05-21T10:00:00.000+08:00" }
+```
+
+#### POST /api/v1/flows/{flowId}/versions/{versionId}/publish — 发布
+
+```json
+// Request
+{
+  "versionNo": "1.0.0",
+  "changeLog": "初始版本"
+}
+
+// Response 200
+{
+  "versionId": "fv_m3n4o5p6",
+  "versionNo": "1.0.0",
+  "status": "published",
+  "publishedAt": "2026-05-21T10:00:00.000+08:00"
+}
+// 注意：本版本发布无需审批（NG19，V1 阶段引入）
 ```
 
 ---
 
 ## 4. 运行时执行 API
 
-### 4.1 执行操作
+### 4.1 执行操作（同步）
 
 | 方法 | 路径 | 说明 | FR |
 |------|------|------|----|
-| `POST` | `/api/v1/flows/{flowId}/executions` | 手动触发执行（异步） | FR-025 |
-| `POST` | `/api/v1/flows/{flowId}/test-run` | 测试运行 | FR-020 |
-| `GET` | `/api/v1/executions/{executionId}/status` | 查询执行状态 | FR-025a |
-| `GET` | `/api/v1/flows/{flowId}/executions` | 执行历史列表 | FR-032 |
-| `GET` | `/api/v1/executions/{executionId}` | 执行详情（含步骤） | FR-033 |
-| `POST` | `/api/v1/executions/{executionId}/retry` | 重试失败执行 | FR-030 |
+| `POST` | `/api/v1/flows/{flowId}/executions` | 手动触发执行（同步） | FR-022 |
+| `POST` | `/api/v1/flows/{flowId}/test-run` | 测试运行（同步） | FR-020 |
+| `GET` | `/api/v1/executions/{executionId}` | 执行详情 | FR-025 |
+| `GET` | `/api/v1/flows/{flowId}/executions` | 执行历史列表 | FR-025 |
 
-#### POST /api/v1/flows/{flowId}/executions — 手动触发
+#### POST /api/v1/flows/{flowId}/executions — 手动触发（同步）
 
 ```json
 // Request
@@ -406,75 +445,27 @@
   }
 }
 
-// Response 202 (异步执行，立即返回)
-{
-  "executionId": "exec_y5z6a7b8",
-  "status": "pending",
-  "createdAt": "2026-05-19T10:00:00.000+08:00"
-}
-```
-
-#### GET /api/v1/executions/{executionId}/status — 查询执行状态
-
-```json
-// Response
+// Response 200（同步返回完整执行结果）
 {
   "executionId": "exec_y5z6a7b8",
   "flowId": "flow_i9j0k1l2",
-  "status": "running",
-  "triggerType": "manual",
-  "startedAt": "2026-05-19T10:00:01.000+08:00",
-  "finishedAt": null,
-  "resultData": null,
-  "progress": {
-    "totalNodes": 3,
-    "completedNodes": 1,
-    "currentNode": "node_1",
-    "currentNodeLabel": "发送通知"
-  }
-}
-```
-
-```json
-// Response (执行成功)
-{
-  "executionId": "exec_y5z6a7b8",
   "status": "success",
-  "startedAt": "2026-05-19T10:00:01.000+08:00",
-  "finishedAt": "2026-05-19T10:00:03.250+08:00",
+  "triggerType": "manual",
+  "startedAt": "2026-05-21T10:00:01.000+08:00",
+  "finishedAt": "2026-05-21T10:00:03.250+08:00",
   "durationMs": 2250,
-  "resultData": {
-    "msgId": "msg_xxxx"
-  }
-}
-```
-
-#### GET /api/v1/executions/{executionId} — 执行详情
-
-```json
-// Response
-{
-  "executionId": "exec_y5z6a7b8",
-  "flowId": "flow_i9j0k1l2",
-  "versionId": "fv_m3n4o5p6",
-  "status": "success",
-  "triggerType": "manual",
-  "triggerData": { "sender": "user_001", "content": "你好" },
   "resultData": { "msgId": "msg_xxxx" },
-  "startedAt": "2026-05-19T10:00:01.000+08:00",
-  "finishedAt": "2026-05-19T10:00:03.250+08:00",
-  "durationMs": 2250,
   "steps": [
     {
       "stepId": "step_c9d0e1f2",
       "nodeId": "node_entry",
-      "nodeName": "收到消息",
+      "nodeName": "接收请求",
       "nodeType": "entry",
       "status": "success",
       "inputData": { "sender": "user_001", "content": "你好" },
       "outputData": { "sender": "user_001", "content": "你好" },
-      "startedAt": "2026-05-19T10:00:01.000+08:00",
-      "finishedAt": "2026-05-19T10:00:01.010+08:00",
+      "startedAt": "2026-05-21T10:00:01.000+08:00",
+      "finishedAt": "2026-05-21T10:00:01.010+08:00",
       "durationMs": 10
     },
     {
@@ -485,167 +476,246 @@
       "status": "success",
       "inputData": { "receiver": "user_001", "content": "你好" },
       "outputData": { "msgId": "msg_xxxx", "code": 0 },
-      "startedAt": "2026-05-19T10:00:01.020+08:00",
-      "finishedAt": "2026-05-19T10:00:03.230+08:00",
+      "startedAt": "2026-05-21T10:00:01.020+08:00",
+      "finishedAt": "2026-05-21T10:00:03.230+08:00",
       "durationMs": 2210,
-      "retryAttempts": 0
+      "errorMessage": null
     },
     {
       "stepId": "step_e1f2g3h4",
       "nodeId": "node_exit",
-      "nodeName": "输出",
+      "nodeName": "返回结果",
       "nodeType": "exit",
       "status": "success",
-      "inputData": { "msgId": "msg_xxxx", "code": 0 },
+      "inputData": { "msgId": "msg_xxxx" },
       "outputData": { "msgId": "msg_xxxx" },
-      "startedAt": "2026-05-19T10:00:03.235+08:00",
-      "finishedAt": "2026-05-19T10:00:03.240+08:00",
+      "startedAt": "2026-05-21T10:00:03.235+08:00",
+      "finishedAt": "2026-05-21T10:00:03.240+08:00",
       "durationMs": 5
     }
   ]
 }
-```
 
-#### POST /api/v1/flows/{flowId}/test-run — 测试运行
-
-```json
-// Request
+// Response 200（执行超时）
 {
-  "mock_triggerData": {
-    "sender": "test_user",
-    "content": "这是一条测试消息"
-  }
+  "executionId": "exec_y5z6a7b8",
+  "status": "timeout",
+  "startedAt": "2026-05-21T10:00:01.000+08:00",
+  "finishedAt": "2026-05-21T10:05:01.000+08:00",
+  "durationMs": 300000,
+  "errorMessage": "执行超时，已强制终止"
 }
 
-// Response 200 (同步返回测试结果，超时自动转为异步)
+// Response 200（执行失败—默认错误处理 FR-023）
 {
-  "executionId": "exec_test_xxxx",
-  "status": "success",
-  "steps": [ /* 同执行详情 steps */ ],
-  "durationMs": 1250,
-  "isTest": true
-}
-```
-
-### 4.2 Webhook 触发
-
-| 方法 | 路径 | 说明 | FR |
-|------|------|------|----|
-| `POST` | `/api/v1/webhook/{webhookToken}` | Webhook 触发连接流 | FR-023 |
-
-**webhookToken 生成规则**: `wh_` + 32 位随机字符串（不可预测）
-
-```json
-// Request — 由外部系统发送，格式由 flow 的 trigger schema 定义
-{
-  "event": "order.created",
-  "orderId": "ORD-20260519-0001",
-  "amount": 99.99
-}
-
-// Response 202
-{ "executionId": "exec_xxxx", "status": "pending" }
-
-// Response 401（签名验证失败）
-{ "code": 1002, "message": "signature verification failed" }
-```
-
-**Webhook 签名验证**:
-- 请求头: `X-Webhook-Signature: {hmac_sha256(secret, body)}`
-- 平台使用预共享 secret 验证签名
-- 支持限流：单 token 每分钟最多 100 次请求
-
-### 4.3 定时触发配置
-
-**定时触发在编排配置中声明**，运行时由 `ScheduledTriggerService` 管理：
-
-```json
-{
-  "trigger": {
-    "type": "scheduled",
-    "config": {
-      "cron": "0 0 9 * * ?",
-      "timezone": "Asia/Shanghai",
-      "description": "每天上午9点执行"
+  "executionId": "exec_y5z6a7b8",
+  "status": "failed",
+  "errorMessage": "节点 '发送通知' 执行失败: HTTP 503 服务不可用",
+  "steps": [
+    { "nodeId": "node_entry", "status": "success", ... },
+    {
+      "nodeId": "node_1",
+      "nodeName": "发送通知",
+      "status": "failed",
+      "errorMessage": "HTTP 503 服务不可用",
+      ...
     }
-  }
-}
-```
-
-| Cron 区域 | 说明 |
-|-----------|------|
-| 启用/停用 | 连接流启用时自动注册定时任务，停用时自动取消 |
-| 可视化配置 | 前端提供 Cron 表达式辅助配置（每天/每周/每月/自定义） |
-| 高可用 | 定时任务通过分布式锁确保单次触发仅执行一次 |
-
----
-
-## 5. 监控 API
-
-| 方法 | 路径 | 说明 | FR |
-|------|------|------|----|
-| `GET` | `/api/v1/monitor/metrics` | 平台运行指标 | FR-034 |
-| `GET` | `/api/v1/monitor/metrics/by-connector` | 按连接器统计 | FR-034 |
-| `GET` | `/api/v1/flows/{flowId}/status` | 连接流运行状态 | FR-031 |
-
-#### GET /api/v1/monitor/metrics — 运行指标
-
-```json
-// Query params
-// ?period=7d  (1h/24h/7d/30d)
-
-// Response
-{
-  "activeFlows": 12,
-  "totalExecutions": 4523,
-  "successRate": 98.5,
-  "avg_durationMs": 1850,
-  "p99_durationMs": 5200,
-  "executionsByStatus": {
-    "success": 4455,
-    "failed": 45,
-    "timeout": 23
-  },
-  "executionsByHour": [
-    { "time": "2026-05-19T08:00", "count": 120 },
-    { "time": "2026-05-19T09:00", "count": 350 }
   ]
 }
 ```
 
+#### POST /api/v1/flows/{flowId}/test-run — 测试运行（同步）
+
+```json
+// Request
+{
+  "mockTriggerData": {
+    "sender": "test_user",
+    "content": "测试消息"
+  }
+}
+
+// Response 200（同步返回）
+{
+  "executionId": "exec_test_xxxx",
+  "status": "success",
+  "isTest": true,
+  "steps": [ /* 同执行详情 steps */ ],
+  "durationMs": 1250
+}
+```
+
+### 4.2 HTTP 触发（同步）
+
+| 方法 | 路径 | 说明 | FR |
+|------|------|------|----|
+| `POST` | `/api/v1/trigger/{flowId}/{triggerToken}` | HTTP 触发连接流 | FR-021 |
+
+**triggerToken 生成规则**: `tr_` + 32 位随机字符串（不可预测），每个已部署的 HTTP 触发连接流分配唯一 token。
+
+```json
+// Request — 由外部系统发送，格式由 version 的 trigger schema 定义
+{
+  "sender": "external_system",
+  "content": "这是一条外部消息"
+}
+
+// Response 200（同步执行完成）
+{
+  "executionId": "exec_xxxx",
+  "status": "success",
+  "resultData": { "msgId": "msg_xxxx" },
+  "durationMs": 2250
+}
+
+// Response 401（签名验证失败）
+{ "code": "401", "messageZh": "签名验证失败", "messageEn": "Signature verification failed" }
+
+// Response 429（超过限流阈值 FR-024）
+{ "code": "429", "messageZh": "请求频率超限，请稍后重试", "messageEn": "Too many requests" }
+```
+
+**HTTP 触发签名验证**:
+- 请求头: `X-Trigger-Signature: {hmac_sha256(secret, body)}`
+- 平台使用预共享 secret 验证签名
+- 支持限流：单 token 每分钟最多 100 次请求（FR-024 默认限流）
+
 ---
 
-## 6. 审批集成 API
+## 5. 执行历史 API
 
-复用能力开放平台现有审批接口，新增审批场景类型：
+| 方法 | 路径 | 说明 | FR |
+|------|------|------|----|
+| `GET` | `/api/v1/flows/{flowId}/executions` | 执行历史列表 | FR-025 |
+| `GET` | `/api/v1/executions/{executionId}` | 执行详情（含步骤） | FR-025 |
 
-| 现有接口 | 连接器平台使用方式 |
-|---------|------------------|
-| `POST /api/v1/approvals` | 创建审批单（场景: `connector_publish` / `flow_deploy`） |
-| `GET /api/v1/approvals/{id}` | 查询审批状态 |
-| `POST /api/v1/approvals/{id}/approve` | 审批通过 → 自动更新版本状态为 `published` |
-| `POST /api/v1/approvals/{id}/reject` | 审批驳回 → 版本保持 `draft` 状态 |
+#### GET /api/v1/flows/{flowId}/executions — 执行历史列表
+
+```json
+// Query params: ?curPage=1&pageSize=20&status=failed&from=2026-05-01&to=2026-05-21
+
+// Response
+{
+  "items": [
+    {
+      "executionId": "exec_y5z6a7b8",
+      "flowId": "flow_i9j0k1l2",
+      "triggerType": "http",
+      "status": "success",
+      "startedAt": "2026-05-21T10:00:01.000+08:00",
+      "finishedAt": "2026-05-21T10:00:03.250+08:00",
+      "durationMs": 2250,
+      "resultData": { "msgId": "msg_xxxx" }
+    },
+    {
+      "executionId": "exec_a1b2c3d4",
+      "flowId": "flow_i9j0k1l2",
+      "triggerType": "manual",
+      "status": "failed",
+      "startedAt": "2026-05-21T09:55:01.000+08:00",
+      "finishedAt": "2026-05-21T09:55:05.120+08:00",
+      "durationMs": 4120,
+      "errorMessage": "节点 '发送通知' 执行失败: 连接超时"
+    }
+  ],
+  "total": 2,
+  "curPage": 1,
+  "pageSize": 20
+}
+```
+
+> 💡 **与 v1.x 的差异**：监控范围精简为执行历史查询（FR-025），移除全指标仪表盘 API。
 
 ---
 
-## 7. MQS 主题定义
+## 6. 接口编号总表
 
-| 主题 | 用途 | 生产者 | 消费者 | 消息格式 |
-|------|------|--------|--------|---------|
-| `cp_trigger_event` | 事件触发连接流 | event-server | FlowScheduler | `{ "eventSource": "...", "eventData": {...}, "timestamp": ... }` |
-| `cp_trigger_manual` | 手动触发消息 | ManualTriggerController | FlowScheduler | `{ "flowId": "...", "triggerData": {...}, "executionId": "..." }` |
-| `cp_trigger_webhook` | Webhook 触发消息 | WebhookTriggerController | FlowScheduler | `{ "flowId": "...", "webhookData": {...}, "executionId": "..." }` |
-| `cp_execution_result` | 执行完成通知 | SequentialExecutor | MonitorService | `{ "executionId": "...", "status": "...", "durationMs": ... }` |
+| 编号 | 方法 | 路径 | 所属模块 | FR |
+|------|------|------|---------|----|
+| API-001 | POST | `/api/v1/connectors` | connector | FR-001 |
+| API-002 | GET | `/api/v1/connectors` | connector | FR-004 |
+| API-003 | GET | `/api/v1/connectors/{connectorId}` | connector | FR-004 |
+| API-004 | PUT | `/api/v1/connectors/{connectorId}` | connector | FR-002 |
+| API-005 | DELETE | `/api/v1/connectors/{connectorId}` | connector | FR-003 |
+| API-006 | GET | `/api/v1/connectors/{connectorId}/versions` | connector | FR-007 |
+| API-007 | GET | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | FR-005 |
+| API-008 | PUT | `/api/v1/connectors/{connectorId}/versions/{versionId}` | connector | FR-006 |
+| API-009 | POST | `/api/v1/connectors/{connectorId}/versions/{versionId}/publish` | connector | FR-008 |
+| API-010 | POST | `/api/v1/flows` | flow | FR-009 |
+| API-011 | GET | `/api/v1/flows` | flow | FR-012 |
+| API-012 | GET | `/api/v1/flows/{flowId}` | flow | FR-016 |
+| API-013 | PUT | `/api/v1/flows/{flowId}` | flow | FR-010 |
+| API-014 | DELETE | `/api/v1/flows/{flowId}` | flow | FR-011 |
+| API-015 | POST | `/api/v1/flows/{flowId}/deploy` | flow | FR-013 |
+| API-016 | POST | `/api/v1/flows/{flowId}/start` | flow | FR-014 |
+| API-017 | POST | `/api/v1/flows/{flowId}/stop` | flow | FR-015 |
+| API-018 | GET | `/api/v1/flows/{flowId}/versions` | flow | FR-018 |
+| API-019 | GET | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | FR-016 |
+| API-020 | PUT | `/api/v1/flows/{flowId}/versions/{versionId}` | flow | FR-017 |
+| API-021 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/publish` | flow | FR-019 |
+| API-022 | POST | `/api/v1/flows/{flowId}/executions` | runtime | FR-022 |
+| API-023 | POST | `/api/v1/flows/{flowId}/test-run` | runtime | FR-020 |
+| API-024 | POST | `/api/v1/trigger/{flowId}/{triggerToken}` | runtime | FR-021 |
+| API-025 | GET | `/api/v1/flows/{flowId}/executions` | runtime | FR-025 |
+| API-026 | GET | `/api/v1/executions/{executionId}` | runtime | FR-025 |
+
+> **总计**：26 个 HTTP 端点，覆盖 25 个 FR（FR-025 对应 2 个端点：执行列表 + 执行详情）
+>
+> **与 v1.x 的差异**：从 ~33 个端点精简为 26 个，移除审批集成（3 个）、Scope 集成（1 个）、MQS 主题（4 个）、监控仪表盘（2 个）、事件/定时/Webhook 触发接口（3 个）
 
 ---
 
-## 8. Scope 权限集成
+## 7. 状态枚举定义
 
-连接器平台复用能力开放平台的 Scope 权限模型：
+### 执行状态 (ExecutionRecord.status)
 
-| 场景 | Scope 验证方式 |
-|------|---------------|
-| 连接器定义引用内部 API | 连接器创建时校验当前应用是否已有该 API 的 Scope |
-| 连接流入口节点使用事件触发 | 版本发布时校验是否已订阅该事件 Scope |
-| 运行时连接器调用内部 API | SequentialExecutor 调用 API 网关时携带应用 Scope 凭证 |
-| 运行时事件触发匹配连接流 | FlowScheduler 校验连接流对应的 Scope 订阅是否有效 |
+| 枚举值 | 说明 | 使用场景 |
+|--------|------|---------|
+| `success` | 执行成功 | 所有节点执行成功，正常返回 |
+| `failed` | 执行失败 | 某个节点执行失败（FR-023 默认错误处理） |
+| `timeout` | 执行超时 | 执行超过配置的超时时间，强制终止 |
+
+> **与 v1.x 的差异**：移除 `pending` / `running` 状态——同步执行在执行完成前不写入记录，only success/failed/timeout 三种终态。
+
+### 执行步骤状态 (ExecutionStep.status)
+
+| 枚举值 | 说明 |
+|--------|------|
+| `success` | 步骤执行成功 |
+| `failed` | 步骤执行失败 |
+
+### 触发方式 (trigger_type)
+
+| 枚举值 | 说明 | MVP |
+|--------|------|:---:|
+| `http` | HTTP 触发（FR-021） | ✅ |
+| `manual` | 手动触发（FR-022） | ✅ |
+| `test` | 测试运行（FR-020） | ✅ |
+
+> **与 v1.x 的差异**：移除 `event` / `webhook` / `scheduled` 类型（V1 阶段引入）
+
+### 版本状态
+
+| 枚举值 | 说明 |
+|--------|------|
+| `draft` | 草稿版本（可编辑） |
+| `published` | 已发布版本（只读，可被引用） |
+
+### 连接器协议类型
+
+| 枚举值 | 说明 | MVP |
+|--------|------|:---:|
+| `HTTP` | HTTP 协议 | ✅ |
+
+> **与 v1.x 的差异**：移除 `MySQL` / `Redis` / `Kafka` / `gRPC` 等非 HTTP 协议（NG12，V1 阶段）
+
+### 节点类型
+
+| 枚举值 | 说明 | MVP |
+|--------|------|:---:|
+| `entry` | 入口节点 | ✅ |
+| `connector` | 连接器节点 | ✅ |
+| `data_processor` | 数据处理节点 | ✅ |
+| `exit` | 出口节点 | ✅ |
+
+> **与 v1.x 的差异**：新增 `data_processor` 节点类型（spec v4.0 将其纳入 MVP 范围）
