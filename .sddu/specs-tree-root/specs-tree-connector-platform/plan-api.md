@@ -111,7 +111,7 @@
 | `connector_t.status` | `0=disabled, 1=active` |
 | `connector_t.connectorType` | `1=HTTP`（MVP） |
 | `connectorVersion.versionStatus` / `flowVersion.versionStatus` | `0=draft, 1=published` |
-| `flow_t.lifecycleStatus` | `0=stopped, 1=running` |
+| `flow_t.lifecycleStatus` | `0=undeployed, 1=running, 2=stopped` |
 | `executionRecord.status` | `0=pending, 1=running, 2=success, 3=failed, 4=timeout` |
 | `executionRecord.triggerType` | `1=http, 2=manual, 3=test` |
 | `executionStep.status` | `0=success, 1=failed` |
@@ -854,7 +854,7 @@
   "messageEn": "Success",
   "data": {
     "flowId": "1234567890123456789",
-    "lifecycleStatus": 0,
+    "lifecycleStatus": 2,
     "lastUpdateTime": "2026-05-21T12:05:00.000+08:00"
   },
   "page": null
