@@ -481,18 +481,21 @@
 >
 > 连接流编排的本质是将一个业务流程建模为有向无环图：每个节点执行一个原子操作（调用 API、转换数据），边决定操作的执行顺序和条件。连接流平台采用 **显式 DAG（nodes + edges）** 模型，参考 Make 平台的模块+路由表模式。
 >
-> ```
-> DAG = 节点（做什么）+ 边（何时做、以什么条件做）
->
-> 节点（nodes[]）：
->   - trigger      = DAG 入口，声明触发条件和入参契约
->   - connector    = 数据获取/操作节点，引用已发布的连接器版本
->   - data_processor = 管道节点，原地转换数据不改变拓扑（字段映射/表达式计算）
->   - exit         = DAG 出口，声明对外暴露的返回值字段
->
-> 边（edges[]）：
->   - 承载执行语义（default / condition / error / always）
->   - MVP 仅 default（无条件顺序执行），V1 扩展条件分支/错误路由
+> ```mermaid
+> graph TD
+>     subgraph DAG["DAG = 节点（做什么）+ 边（何时做、以什么条件做）"]
+>         subgraph Nodes["节点（nodes[]）"]
+>             N1["trigger<br/>DAG 入口<br/>声明触发条件和入参契约"]
+>             N2["connector<br/>数据获取/操作节点<br/>引用已发布的连接器版本"]
+>             N3["data_processor<br/>管道节点<br/>原地转换数据，不改变拓扑<br/>（字段映射/表达式计算）"]
+>             N4["exit<br/>DAG 出口<br/>声明对外暴露的返回值字段"]
+>         end
+>         subgraph Edges["边（edges[]）"]
+>             E1["承载执行语义<br/>default / condition / error / always"]
+>             E2["MVP 仅 default<br/>（无条件顺序执行）"]
+>             E3["V1 扩展<br/>条件分支 / 错误路由"]
+>         end
+>     end
 > ```
 >
 > **为什么是显式 edges 而非隐式顺序？**
@@ -654,33 +657,42 @@
 
 #### 4.3.2 DAG 拓扑排序与执行模型
 
+```mermaid
+graph TD
+    subgraph Kahn["拓扑排序（Kahn 算法）"]
+        direction TB
+        S1["① 计算每个节点的入度"]
+        S2["② 入度为 0 的节点入队<br/>（必定是 trigger）"]
+        S3["③ 依次出队执行<br/>将其所有后继节点的入度减 1"]
+        S4["④ 入度变为 0 的后继节点入队"]
+        S5["⑤ 直到队列为空"]
+        S1 --> S2 --> S3 --> S4 --> S5
+    end
 ```
-执行引擎依赖拓扑排序结果决定节点执行顺序：
 
-  拓扑排序（Kahn 算法）：
-    1. 计算每个节点的入度
-    2. 入度为 0 的节点入队（必定是 trigger）
-    3. 依次出队执行，将其所有后继节点的入度减 1
-    4. 入度变为 0 的后继节点入队
-    5. 直到队列为空
+```mermaid
+flowchart LR
+    subgraph MVP["MVP 线性 DAG"]
+        direction LR
+        T["trigger<br/>入度: 0"] --> C["connector<br/>入度: 1"] --> D["data_processor<br/>入度: 1"] --> E["exit<br/>入度: 1"]
+    end
+    MVP_Result["排序结果: [trigger, connector, data_processor, exit]"]
+    MVP --> MVP_Result
 
-  MVP 线性 DAG：
-    trigger → connector → data_processor → exit
-    入度:  [0, 1, 1, 1]
-    排序:  [trigger, connector, data_processor, exit]  ← 唯一结果
+    subgraph V1["V1 并行 DAG（相同数据结构，不同执行策略）"]
+        direction LR
+        T1["trigger<br/>入度: 0"] --> A["connector:A<br/>入度: 1"] & B["connector:B<br/>入度: 1"]
+        A & B --> EX["exit<br/>入度: 2"]
+    end
+    V1_Result["排序结果: [trigger] → [connector:A, connector:B]（同层并行）→ [exit]"]
+    V1 --> V1_Result
+```
 
-  V1 并行 DAG（相同数据结构，不同执行策略）：
-               ┌→ connector:A ─┐
-    trigger ──┤                ├──→ exit
-               └→ connector:B ─┘
-    入度:  [0, 1, 1, 2]
-    排序:  [trigger] → [connector:A, connector:B]（同层并行）→ [exit]
-
-  WebFlux 并行执行：
-    Mono.when(
-      executeNode("connector:A"),
-      executeNode("connector:B")
-    ).flatMap(results -> executeNode("exit"))
+```mermaid
+flowchart LR
+    subgraph WebFlux["WebFlux 并行执行"]
+        WF["Mono.when(<br/>  executeNode('connector:A'),<br/>  executeNode('connector:B')<br/>).flatMap(results -> executeNode('exit'))"]
+    end
 ```
 
 **示例**（MVP 线性 DAG）：
@@ -822,26 +834,41 @@
 
 ## 5. DAG（Directed Acyclic Graph）编排演进路线图
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│  MVP (v1.0)                     V1 (v1.1)                V2+        │
-├─────────────────────────────────────────────────────────────────────┤
-│  拓扑: 线性链                    拓扑: DAG(分支+并行)      拓扑: DAG(循环+子流)  │
-│                                                                     │
-│  edge.type: [default]           edge.type: [+condition,   edge.type: [+error, │
-│                                            error]                  always]   │
-│                                                                     │
-│  节点类型:                       节点类型: +router,          节点类型: +iterator,│
-│    trigger, connector,            aggregator,            sub_flow,  │
-│    data_processor, exit           error_handler           parallel   │
-│                                                                     │
-│  执行: for 循环串行              执行: 拓扑层级并行         执行: 事件驱动+背压  │
-│                                   WebFlux Mono.when()     Reactor groupBy    │
-│                                                                     │
-│  数据流: 全量透传                 数据流: 条件路由+聚合      数据流: 流式+窗口    │
-├─────────────────────────────────────────────────────────────────────┤
-│  数据结构不变: nodes[] + edges[] — 只增字段，不删不改，向后兼容        │
-└─────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph MVP["MVP (v1.0)"]
+        direction TB
+        M1["拓扑: 线性链"]
+        M2["edge.type: [default]"]
+        M3["节点类型: trigger, connector, data_processor, exit"]
+        M4["执行: for 循环串行"]
+        M5["数据流: 全量透传"]
+    end
+
+    subgraph V1["V1 (v1.1)"]
+        direction TB
+        V1_1["拓扑: DAG（分支+并行）"]
+        V1_2["edge.type: [+condition, error]"]
+        V1_3["节点类型: +router, aggregator, error_handler"]
+        V1_4["执行: 拓扑层级并行<br/>WebFlux Mono.when()"]
+        V1_5["数据流: 条件路由+聚合"]
+    end
+
+    subgraph V2["V2+"]
+        direction TB
+        V2_1["拓扑: DAG（循环+子流）"]
+        V2_2["edge.type: [+error, always]"]
+        V2_3["节点类型: +iterator, sub_flow, parallel"]
+        V2_4["执行: 事件驱动+背压<br/>Reactor groupBy"]
+        V2_5["数据流: 流式+窗口"]
+    end
+
+    MVP --> V1 --> V2
+
+    Foundation["数据结构不变: nodes[] + edges[]<br/>— 只增字段，不删不改，向后兼容"]
+    MVP -.-> Foundation
+    V1 -.-> Foundation
+    V2 -.-> Foundation
 ```
 
 关键设计决策：
