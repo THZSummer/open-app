@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.lookup.mapper.LookUpTaskMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.lookup.entity.LookUpTaskEntity">
+        <id column="task_id" property="taskId"/>
+        <result column="task_type" property="taskType"/>
+        <result column="biz_type" property="bizType"/>
+        <result column="status" property="status"/>
+        <result column="file_id" property="fileId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="result" property="result"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- 基础列 -->
+    <sql id="Base_Column_List">
+        task_id, task_type, biz_type, status, file_id, file_name, result,
+        create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- 插入任务 -->
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.lookup.entity.LookUpTaskEntity"
+            useGeneratedKeys="true" keyProperty="taskId">
+        INSERT INTO openplatform_lookup_task_t (
+            task_type, biz_type, status, file_id, file_name, result,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{taskType}, #{bizType}, #{status}, #{fileId}, #{fileName}, #{result},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- 根据ID查询任务 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_lookup_task_t
+        WHERE task_id = #{taskId}
+    </select>
+
+    <!-- 查询任务列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_lookup_task_t
+        <where>
+            <if test="taskType != null">
+                AND task_type = #{taskType}
+            </if>
+            <if test="bizType != null">
+                AND biz_type = #{bizType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计任务总数 -->
+    <select id="countList" resultType="long">
+        SELECT COUNT(*)
+        FROM openplatform_lookup_task_t
+        <where>
+            <if test="taskType != null">
+                AND task_type = #{taskType}
+            </if>
+            <if test="bizType != null">
+                AND biz_type = #{bizType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!-- 更新任务 -->
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.lookup.entity.LookUpTaskEntity">
+        UPDATE openplatform_lookup_task_t
+        SET task_type = #{taskType},
+            biz_type = #{bizType},
+            status = #{status},
+            file_id = #{fileId},
+            file_name = #{fileName},
+            result = #{result},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE task_id = #{taskId}
+    </update>
+
+    <!-- 更新任务状态和结果 -->
+    <update id="updateStatus">
+        UPDATE openplatform_lookup_task_t
+        SET status = #{status},
+            result = #{result},
+            <if test="fileId != null">
+            file_id = #{fileId},
+            </if>
+            last_update_time = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <!-- 删除任务 -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_lookup_task_t
+        WHERE task_id = #{taskId}
+    </delete>
+
+</mapper>

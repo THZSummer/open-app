@@ -1,0 +1,75 @@
+server:
+  port: 18080
+  servlet:
+    encoding:
+      charset: utf-8
+      enabled: true
+      force: true
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/openapp?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: "123456"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  redis:
+    # 单机模式（开发环境）
+    host: localhost
+    port: 6379
+    # password: openapp
+    database: 0
+    timeout: 5000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-wait: -1ms
+        max-idle: 8
+        min-idle: 0
+    
+    # 集群模式（切换时取消注释，注释上方单机配置）
+    # cluster:
+    #   nodes:
+    #     - 192.168.3.201:6379
+    #     - 192.168.3.202:6379
+    #     - 192.168.3.203:6379
+    #     - 192.168.3.204:6379
+    #     - 192.168.3.205:6379
+    #   max-redirects: 3
+    # database: 0
+    # timeout: 5000ms
+    # lettuce:
+    #   pool:
+    #     max-active: 8
+    #     max-wait: -1ms
+    #     max-idle: 8
+    #     min-idle: 0
+# MyBatis 配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+
+# 健康检查配置（不检查数据库和 Redis）
+management:
+  health:
+    db:
+      enabled: false
+    redis:
+      enabled: false
+
+# 日志配置（开发环境）
+logging:
+  level:
+    root: INFO
+    com.xxx.open: DEBUG
+    org.springframework.web: DEBUG
+
+
+# 平台配置（开发环境）
+platform:
+  approval-url-prefix: http://localhost:3000/approval/

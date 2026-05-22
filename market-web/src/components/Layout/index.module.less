@@ -1,0 +1,80 @@
+.layout {
+  min-height: 100vh;
+}
+
+.sider {
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+
+  .logo {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 0;
+    overflow: hidden;
+
+    img {
+      width: 32px;
+      height: 32px;
+      margin-right: 8px;
+    }
+
+    span {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+  }
+}
+
+.header {
+  padding: 0 16px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  z-index: 9;
+
+  .trigger {
+    font-size: 18px;
+    line-height: 64px;
+    padding: 0 24px;
+    cursor: pointer;
+    transition: color 0.3s;
+
+    &:hover {
+      color: #1890ff;
+    }
+  }
+
+  .headerRight {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .userInfo {
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+
+    &:hover {
+      background-color: #f5f5f5;
+    }
+  }
+}
+
+.content {
+  margin: 16px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 4px;
+  min-height: 280px;
+  overflow: auto;
+}
