@@ -65,43 +65,31 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "authTypeSchema",
-  "description": "认证类型声明，声明调用方需携带的认证信息",
+  "description": "认证类型声明，声明调用方需携带的认证凭证",
   "type": "object",
   "properties": {
     "type": {
       "type": "string",
-      "description": "认证类型枚举：SOA / APIG / SYSTOKEN / AKSK / NONE",
+      "description": "认证类型枚举",
       "enum": ["SOA", "APIG", "SYSTOKEN", "AKSK", "NONE"]
-    },
-    "carrier": {
-      "type": "string",
-      "description": "凭证传递位置",
-      "enum": ["header", "query"]
-    },
-    "fieldName": {
-      "type": "string",
-      "description": "凭证字段名，如 Authorization / X-Sys-Token"
-    },
-    "required": {
-      "type": "boolean",
-      "description": "该认证是否强制",
-      "default": true
     },
     "fields": {
       "type": "array",
-      "description": "凭证字段声明列表（用于 AKSK 等多字段认证）",
+      "description": "凭证字段列表，每个元素定义一个凭证字段的完整信息",
       "items": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "字段名" },
+          "name": { "type": "string", "description": "字段名，程序内部标识" },
+          "carrier": { "type": "string", "description": "传递位置", "enum": ["header", "query"] },
+          "fieldName": { "type": "string", "description": "实际携带时的字段名，如 Authorization / X-Sys-Token" },
           "required": { "type": "boolean", "default": true },
           "sensitive": { "type": "boolean", "default": false, "description": "运行时脱敏" }
         },
-        "required": ["name"]
+        "required": ["name", "carrier", "fieldName"]
       }
     }
   },
-  "required": ["type", "carrier", "fieldName"]
+  "required": ["type"]
 }
 ```
 
@@ -111,9 +99,21 @@
 {
   "authTypeSchema": {
     "type": "SYSTOKEN",
-    "carrier": "header",
-    "fieldName": "X-Sys-Token",
-    "required": true
+    "fields": [
+      { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true }
+    ]
+  }
+}
+```
+
+```json
+{
+  "authTypeSchema": {
+    "type": "AKSK",
+    "fields": [
+      { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true },
+      { "name": "secretKey", "carrier": "header", "fieldName": "SK", "required": true, "sensitive": true }
+    ]
   }
 }
 ```
@@ -263,8 +263,9 @@
     "type": "http",
     "authTypeSchema": {
       "type": "SYSTOKEN",
-      "carrier": "header",
-      "fieldName": "X-Sys-Token"
+      "fields": [
+        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+      ]
     },
     "inputSchema": {
       "type": "object",
@@ -335,10 +336,11 @@
       "method": "POST",
       "headers": { "Content-Type": "application/json" }
     },
-    "authTypeSchema": {
-      "type": "SOA",
-      "carrier": "header",
-      "fieldName": "Authorization"
+"authTypeSchema": {
+      "type": "SYSTOKEN",
+      "fields": [
+        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+      ]
     },
     "inputSchema": {
       "type": "object",
@@ -456,8 +458,9 @@
     "type": "http",
     "authTypeSchema": {
       "type": "SYSTOKEN",
-      "carrier": "header",
-      "fieldName": "X-Sys-Token"
+      "fields": [
+        { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+      ]
     },
     "inputSchema": {
       "type": "object",
