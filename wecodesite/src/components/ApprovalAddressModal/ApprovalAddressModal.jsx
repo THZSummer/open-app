@@ -2,7 +2,18 @@ import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { remindPeople } from '../../../routes-redBlue/api-manage/thunk';
-import { queryParams } from '../../utils/common';
+
+/**
+ * 从审批链接中提取 eflowId
+ * @param {string} url - 审批地址URL
+ * @returns {string} eflowId 值或空字符串
+ */
+const extractEflowId = (url) => {
+  if (!url) return '';
+  
+  const match = url.match(/eflowId=([^&]+)/);
+  return match ? match[1] : '';
+};
 
 function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
   const [remindLoading, setRemindLoading] = useState(false);
@@ -18,7 +29,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
    * 从审批链接中提取 eflowId 并调用催办接口
    */
   const handleRemind = async () => {
-    const eflowId = queryParams('eflowId');
+    const eflowId = extractEflowId(approvalUrl);
     
     if (!eflowId) {
       message.error('无法提取审批ID');
