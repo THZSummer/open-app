@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -ex
 # connector-api 一键启动脚本
 # 连接器平台运行时服务 (Spring WebFlux + R2DBC)
 

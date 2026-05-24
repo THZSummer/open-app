@@ -36,7 +36,7 @@
 
 ### CAP-OPEN-001: 能力开放平台
 
-**状态**: ✅ validated（全流程完成 — 需求挖掘 → 规范 → 规划 → 任务分解 → 实现 → 审查 → 验证）  
+**状态**: ✅ validated（全流程完成 — 需求挖掘 → 规范 → 规划 → 任务分解 → 实现 → 审查 → 验证）
 
 **文档**:
 - [需求挖掘报告](./specs-tree-capability-open-platform/discovery-report.md) - 需求挖掘报告（615 行）
@@ -61,7 +61,7 @@
 
 ### CONN-PLAT-001: 连接器平台
 
-**状态**: ✅ validated（全流程完成 — 需求挖掘 → 规范 → 规划 → 任务分解 → 实现 → 审查 → 验证）  
+**状态**: ✅ validated（全流程完成 — 需求挖掘 → 规范 → 规划 → 任务分解 → 实现 → 审查 → 验证）
 
 **文档**:
 - [需求挖掘报告](./specs-tree-connector-platform/discovery-report.md) - 连接器平台需求分析
@@ -88,7 +88,7 @@
 
 ### DATA-OPEN-001: 数据开放平台
 
-**状态**: ✅ specified（规范编写完成，待技术规划）  
+**状态**: ✅ specified（规范编写完成，待技术规划）
 
 **文档**:
 - [需求挖掘报告 v1.18](./specs-tree-data-open-platform/discovery-report.md) - 需求挖掘报告（1101 行）

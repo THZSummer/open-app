@@ -13,6 +13,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -115,7 +116,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         try {
             WebClient.RequestBodySpec requestSpec = webClient
-                    .method(org.springframework.http.HttpMethod.valueOf(method.toUpperCase()))
+                    .method(org.springframework.http.HttpMethod.valueOf(method.toUpperCase(Locale.ROOT)))
                     .uri(URI.create(url))
                     .headers(h -> headers.forEach(h::set));
 
