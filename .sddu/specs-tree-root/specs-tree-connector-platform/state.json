@@ -1,17 +1,35 @@
 {
   "feature_id": "CONN-PLAT-001",
   "feature_name": "连接器平台",
-  "current_phase": "plan",
-  "status": "planned",
+  "current_phase": "validate",
+  "status": "validated",
+  "review_status": "passed",
+  "validation_status": "passed",
   "created_at": "2026-05-14T10:00:00+08:00",
-  "updated_at": "2026-05-24T12:00:00+08:00",
+  "updated_at": "2026-05-24T20:30:00+08:00",
   "plan_version": "v2.8.1",
   "spec_version": "v5.0",
   "progress": {
-    "total_tasks": 0,
-    "completed_tasks": 0,
+    "total_tasks": 10,
+    "completed_tasks": 10,
     "pending_tasks": 0,
-    "percentage": 0
+    "percentage": 100
+  },
+  "review_summary": {
+    "result": "passed",
+    "blocking_issues": 0,
+    "improvements": 3,
+    "test_count": 79,
+    "fr_coverage": "100%",
+    "adr_compliance": "100%"
+  },
+  "validation_summary": {
+    "result": "passed",
+    "fr_coverage": "100%",
+    "nfr_coverage": "87.5%",
+    "ec_coverage": "100%",
+    "drift_items": 5,
+    "blocking_issues": 0
   },
   "artifacts": {
     "discovery_report": "discovery-report.md",
@@ -25,7 +43,9 @@
     "plan_code": "plan-code.md",
     "adr_001": "ADR-001.md",
     "adr_002": "ADR-002.md",
-    "adr_003": "ADR-003.md"
+    "adr_003": "ADR-003.md",
+    "review": "review.md",
+    "validation_report": "validation-report.md"
   },
   "plan_changes": [
     {
@@ -40,6 +60,8 @@
     }
   ],
   "next_steps": [
-    "运行 @sddu-tasks 连接器平台 开始任务分解"
+    "Feature 验证通过，工作流已完成",
+    "可关闭 Feature 或归档",
+    "V1 计划可由此 Baseline 继续"
   ]
 }
