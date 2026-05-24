@@ -1,9 +1,9 @@
 # 技术规划：连接器平台（Connector Platform）
 
 **Feature ID**: CONN-PLAT-001  
-**规划版本**: v2.8.0  
+**规划版本**: v2.8.1  
 **创建日期**: 2026-05-21  
-**最近更新**: 2026-05-22  
+**最近更新**: 2026-05-24  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v5.0  
 **前置文档**: discovery-report.md (v3.1), spec.md v5.0, ADR-001~003（ADR-003 已于 v2.1 修订），docs/connector-flow-storage-research/ 5 平台调研报告（v2.4 数据库设计依据），specs-tree-capability-open-platform/plan.md §4.2 表设计规则（v2.7 数据库规范依据）
@@ -195,7 +195,7 @@ graph TB
 > - 异常处理使用 `.onErrorResume(...)`，避免裸 try-catch 吃掉 reactive 异常信号
 > - 测试环境启用 **BlockHound** 主动拦截任何意外阻塞调用，CI 流水线必跑
 
-> 🔄 **共享数据模型策略**：connector-api 与 open-server **共用同一套 MySQL 表 schema**（详见 plan-db.md），但 **entity / 持久化层各自维护**（open-server 用 MyBatis entity + Mapper，connector-api 用 R2DBC entity + Repository），避免 ORM 跨栈耦合。共享的"表结构契约"通过统一的 DDL 迁移脚本（Flyway / Liquibase 之一，迭代 0 决定）保证一致性。
+> 🔄 **共享数据模型策略**：connector-api 与 open-server **共用同一套 MySQL 表 schema**（详见 plan-db.md），但 **entity / 持久化层各自维护**（open-server 用 MyBatis entity + Mapper，connector-api 用 R2DBC entity + Repository），避免 ORM 跨栈耦合。共享的"表结构契约"由 open-server 统一存放 DDL 脚本保证一致性：脚本位于 `open-server/src/main/resources/db/migration/`，文件名采用 FlywayDB 风格（如 `V2__init_connector_platform_schema.sql`）；仅采用目录与命名风格，open-server 不新增 Flyway 依赖，也不在本规划中考虑自动执行机制。
 
 ### 1.3 连接器平台新增组件
 
@@ -632,7 +632,7 @@ sequenceDiagram
 | **计量字段（预留）** | `openplatform_v2_cp_execution_record_t` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes`（MVP 写入 0，V1 启用计费时直接使用） | Make `operations_consumed` + PA `billingMetrics`——避免后期加字段迁移成本 |
 | **状态机枚举** | 执行记录：`pending / running / success / failed / timeout`（MVP 5 个值；`partial` / `cancelled` 留给 V1） | 跨平台超集裁剪 |
 | **凭证传递** | **不持久化**——凭证仅在调用过程中通过触发请求/执行上下文以参数形式传递；`connection_config` 中只声明**认证类型 schema**（如"该连接器使用 OAuth2 + Bearer Token"），具体凭证值不入库 | MVP 极简：避免凭证落库带来的加密/KMS/轮换/脱敏全套合规复杂度；执行后凭证仅存活于内存与一次执行的上下文中 |
-| **schema 主仓库** | 由 `connector-api` 维护 Flyway 迁移脚本（`db/migration/*.sql`），open-server 引入相同脚本并跑迁移 | MuleSoft Maven + PA Solution 模式启发 |
+| **schema 脚本存放** | 由 `open-server` 统一存放 DDL 脚本：`open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`；按 FlywayDB 风格命名，但 open-server 不新增 Flyway 依赖、不考虑自动执行 | 开放平台同一业务共库，管理端统一归口 SQL；connector-api 仅消费共库 schema |
 | **数据库前缀** | 所有表统一 `openplatform_v2_cp_` 前缀 | `openplatform`=开放平台体系 / `v2`=平台第二代 / `cp`=connector platform（连接器平台子域），与现有 open-server 既有表（含其它子域）严格隔离，便于未来按子域拆库/迁移 |
 | **关联引用方式** | **BIGINT(20) 雪花 ID**（应用层生成），使用逻辑外键（存储关联 ID），**不使用物理外键约束** | 对齐能力开放平台数据库规范（§4.2.x 主键规范） |
 | **遵循通用规范** | 所有表遵循 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`：表后缀 `_t` / 中英文双语名称（`name_cn`/`name_en`）/ 必备 4 审计字段（`create_time`/`last_update_time`/`create_by`/`last_update_by`）/ TINYINT(10) 枚举 / `DATETIME(3)` 时间精度 / `idx_xxx` `uk_xxx` 索引命名 | 复用现有规范，保证整个 openplatform_v2 体系一致 |
@@ -822,7 +822,7 @@ erDiagram
 | **属性表模式** | 通用规范定义了 `_p_t` 命名 | **MVP 不引入**；所有字段直接入主表；V1 出现高频扩展时再按规范引入 `*_p_t` | MVP 字段可控，主表完整承载；避免关联开销与 entity/mapper 维护成本 |
 | **JSON 大字段** | 较少使用 | `connection_config` / `orchestration_config` / `trigger_data` / `result_data` / `input_data` / `output_data` / `error_info` / `basic_info_snapshot` 大量使用 JSON 数据；**统一 TEXT 类型存储 JSON 字符串**（v2.7.4 决策），不使用 MySQL JSON 原生类型 | 借鉴 Zapier/Make/钉钉 JSON 灵活存储编排数据，但类型选 TEXT 而非 JSON：跨数据库通用 + ORM/工具兼容性最好 + 避免 MySQL JSON 方言差异 |
 | **预留计量字段** | 未涉及 | `execution_record_t` 预留 `operations_count` / `data_in_bytes` / `data_out_bytes` | 借鉴 Make/PA，避免后期加字段迁移成本 |
-| **schema 主仓库** | 由 open-server 维护 | 由 **connector-api** 维护 Flyway 迁移脚本（open-server 引入相同脚本） | runtime 是数据真正消费源 |
+| **schema 脚本存放** | 由 open-server 维护 | 仍由 **open-server** 统一存放 DDL 脚本（`open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`），仅采用 FlywayDB 目录/命名风格，不引入 Flyway 依赖 | 开放平台同一业务共库，connector-api 仅通过 R2DBC 消费已初始化表 |
 
 > 💡 R2DBC entity（connector-api）与 MyBatis entity（open-server）的字段映射规则、JSON 序列化策略详见 `plan-code.md`。
 
@@ -991,7 +991,7 @@ open-app/
 | `common/R2dbcConfig.java` | 🆕 R2DBC `ConnectionFactory` 配置（连接池大小、获取超时、最大空闲时间等） |
 | `ConnectorApiApplication.java` | Spring Boot 启动类（WebFlux 模式） |
 | `pom.xml` / `application.yml` | 工程配置（webflux + r2dbc + r2dbc-mysql + data-redis-reactive；测试 profile 启用 BlockHound） |
-| `db/migration/V*__*.sql` | 🆕 Flyway 数据库迁移脚本（**connector-api 为 schema 主仓库**：负责 `openplatform_v2_cp_*` 全部 9 张表的 DDL 演进；open-server 引入相同脚本作为 read-only consumer，仅负责 MyBatis entity/Mapper 适配） |
+| `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql` | 🆕 连接器平台 DDL 脚本（由 open-server 统一存放；采用 FlywayDB 目录与命名风格；不新增 Flyway 依赖，不考虑自动执行机制；connector-api 不存放 DDL，仅负责 R2DBC entity/Repository 适配） |
 
 #### open-server — monitor 模块
 
@@ -1068,7 +1068,7 @@ open-app/
 | 全 reactive 栈（WebFlux + R2DBC + Redis reactive）团队学习成本 | 工期延误 / 代码质量 | 中-高 | plan-code 沉淀强制规则（禁阻塞 API、统一返回 `Mono`/`Flux`、必配超时等）；迭代 0 安排 3-5 天技术演练（含 R2DBC 实战）；Code Review 重点把关 reactive 链路；CI 流水线强制启用 BlockHound |
 | 误用阻塞 API（如裸调用 `RestTemplate` / 引入 JDBC 库） | 阻塞 EventLoop 导致全局吞吐崩塌 | 低 | 从依赖层面屏蔽：`pom.xml` 显式 exclude `spring-boot-starter-web` / `spring-boot-starter-jdbc` / `mybatis-spring-boot-starter`，发现引入即编译失败；测试/staging 启用 BlockHound 主动拦截；Code Review checklist |
 | R2DBC MySQL 驱动成熟度（相比 JDBC） | 个别 SQL 特性兼容性问题 / 罕见 bug | 低-中 | 选用社区活跃的 `asyncer-io/r2dbc-mysql`（或 `dev.miku/r2dbc-mysql`）；MVP 阶段 SQL 模式相对简单（CRUD + 简单 join，无存储过程/复杂触发器）；保留向上层引擎降级回 `DatabaseClient` 原生 SQL 的能力 |
-| R2DBC 与 MyBatis 共享 schema 漂移 | open-server / connector-api 数据不一致 | 中 | 统一 DDL 迁移脚本（Flyway，**schema 主仓库由 connector-api 维护**——runtime 是数据真正消费源；open-server 作为 read-only consumer 引入相同脚本）；CI 阶段两个服务都跑迁移；任何表结构变更需同步 review 两侧 entity |
+| R2DBC 与 MyBatis 共享 schema 漂移 | open-server / connector-api entity 映射不一致 | 中 | DDL 脚本由 open-server 统一存放在 `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`，仅采用 FlywayDB 目录/命名风格；open-server 不新增 Flyway 依赖，不考虑自动执行机制；connector-api 不保存 DDL，仅通过 R2DBC 消费共库表；任何表结构变更需同步 review 两侧 entity |
 | 可视化编排画布前端复杂度高 | 工期延误 | 中 | MVP 限制线性编排（禁用分支/循环连接），使用 React Flow 的受限模式 |
 | 凭证在传输/执行过程中泄漏 | 安全漏洞 | 低 | HTTPS 强制；ExecutionContext 凭证容器节点执行完显式 clear()；执行记录按 `connection_config.sensitive` 标记自动脱敏（`***`，保留长度）；凭证**永不进入 MySQL/Redis/对象存储**；日志输出禁止序列化整个 ExecutionContext（Code Review 强制） |
 | HTTP 触发 URL 安全 | 非法调用 | 低 | 随机不可预测路径 + 请求签名验证 + 限流（FR-024） |
@@ -1109,7 +1109,7 @@ open-app/
 
 | 迭代 | 范围 | FR 范围 | 周期 | 交付价值 |
 |------|------|---------|:----:|---------|
-| **迭代 0** | 🆕 connector-api 工程脚手架：**Spring WebFlux 初始化 + R2DBC ConnectionFactory + r2dbc-mysql + WebClient 工厂 + ReactiveRedisAccessor + Flyway 迁移脚本 + BlockHound 接入 + 内部鉴权 WebFilter + 部署流水线**；R2DBC entity / Repository 样例；与 open-server 共享 schema 联调 + **团队 WebFlux/Reactor/R2DBC 技术演练（3-5 天）** | — | 1.5-2 周 | connector-api 可启动、可被 open-server 调通；reactive 端到端样例跑通（HTTP 触发 → R2DBC 查询 → WebClient 调用 → 写入执行记录）；团队掌握 reactive 强制规则 |
+| **迭代 0** | 🆕 connector-api 工程脚手架：**Spring WebFlux 初始化 + R2DBC ConnectionFactory + r2dbc-mysql + WebClient 工厂 + ReactiveRedisAccessor + BlockHound 接入 + 内部鉴权 WebFilter + 部署流水线**；open-server 侧按 FlywayDB 风格存放 DDL 脚本（不新增 Flyway 依赖、不考虑自动执行）；R2DBC entity / Repository 样例；与 open-server 共享 schema 联调 + **团队 WebFlux/Reactor/R2DBC 技术演练（3-5 天）** | — | 1.5-2 周 | connector-api 可启动、可被 open-server 调通；reactive 端到端样例跑通（HTTP 触发 → R2DBC 查询 → WebClient 调用 → 同步返回执行结果）；团队掌握 reactive 强制规则 |
 | **迭代 1** | 连接器管理模块（open-server） | FR-001 ~ FR-008 | 2-3 周 | 可创建/编辑/发布连接器，浏览连接器目录 |
 | **迭代 2** | 连接流管理模块（open-server） | FR-009 ~ FR-020 | 3-4 周 | 可创建连接流、拖拽编排、保存草稿、发布版本 |
 | **迭代 3** | 运行时模块（connector-api：runtime + http-trigger + test-api）+ open-server 测试代理（debug-proxy） | FR-020 ~ FR-021, FR-023 ~ FR-024 | 2-3 周 | 可同步执行连接流（HTTP 触发+测试运行），错误处理+限流 |
@@ -1190,8 +1190,8 @@ open-app/
 | **v2.1b** | **2026-05-22** | **架构图区分前期主路径与后期能力**：明确连接器平台「由内向外」集成定位——前期主路径：内部业务系统（触发方）→ 连接器平台 → 三方业务系统（HTTP 调用目标）；后期能力：外部消费方触发、调用内部业务系统。图中用粗实线（==>）标识主路径，细虚线（-.->）标识后期能力。影响：§1.1 系统架构图、§1.3 新增组件图、§1.4 数据流、§1.5 依赖图、§1.1 顶部说明段 | SDDU Plan Agent |
 | **v2.1c** | **2026-05-22** | **§1.4 数据流分析改用 mermaid 图**：3 段文字代码块流程 → 4 张 mermaid 图（连接器发布流程 flowchart LR、连接流创建与编排流程 flowchart LR、连接流触发与执行流程 sequenceDiagram、运行时单次执行内部数据流 sequenceDiagram）。新增 §1.4.1~1.4.4 子章节。影响：§1.4 全部重写 | SDDU Plan Agent |
 | **v2.2** | **2026-05-22** | **connector-api 采用 Spring WebFlux NIO 非阻塞栈**：运行时服务 Web 栈从 Spring MVC 改为 Spring WebFlux + Reactor Netty；HTTP 客户端从 RestTemplate 改为 WebClient；Redis 改为 spring-data-redis-reactive；数据访问保留 MyBatis + boundedElastic 调度器隔离；测试环境启用 BlockHound。影响：§1.2 后端技术栈、§2.1 方案 A、§3 关键决策、§4.7 文件清单、§4.8 依赖、§5.1 风险、§6 迭代规划 | SDDU Plan Agent |
-| **v2.3** | **2026-05-22** | **connector-api 全 reactive 栈（MyBatis → R2DBC）**：进一步要求 MySQL / Redis / 下游 HTTP 调用全链路非阻塞——数据访问从 MyBatis 同步 JDBC + boundedElastic 隔离改为 R2DBC（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 Mono/Flux；从依赖层面 exclude 阻塞栈（mybatis / spring-boot-starter-web / spring-boot-starter-jdbc）；与 open-server 共享 MySQL schema 但 entity/持久化层各自维护（MyBatis vs R2DBC），通过 Flyway 统一 DDL。影响：§1.2 技术栈对比表、§1.2 强制规则/共享数据模型策略、§3 关键决策（+4 项）、§4.7 文件清单（mapper→repository、+R2dbcConfig/Flyway/ReactiveRedisAccessor）、§4.8 依赖（+R2DBC/Flyway、-MyBatis）、§5.1 风险（+3 条、-1 条）、§6 迭代 0 工期、修订记录从顶部移至末尾 | SDDU Plan Agent |
-| **v2.4** | **2026-05-22** | **§4.2 数据库设计基于 5 平台调研报告（Zapier/Make/Power Automate/MuleSoft/钉钉）重写**：① 编排定义从拆分 FlowNode/FlowEdge 子表改为**单一 JSON 字段保存完整 DAG**（`{trigger,nodes,edges}`）——借鉴 Make/Zapier/钉钉/PA 共识；② 新增 `openplatform_v2_cp_flow_trigger_endpoint_t` 表存 HTTP 触发的 token+签名密钥+限流配置（满足 NFR-011 安全要求）；③ 凭证 `openplatform_v2_cp_credential` 独立成表（MVP 不分 per-app，per-app 移至 V1）；④ 执行历史 I/O **默认外置到对象存储**（>64KB 阈值），新增 `openplatform_v2_cp_storage_blob_ref_t` 元数据表——借鉴 PA `inputsLink/outputsLink` 模式；⑤ 预留计量字段 `operations_count` / `data_in_bytes` / `data_out_bytes`——借鉴 Make `operations_consumed` + PA `billingMetrics`，避免后期加字段迁移成本；⑥ 新增 `correlation_id` 字段支持跨服务链路追踪；⑦ 执行记录/步骤表按月分区；⑧ schema 主仓库从"open-server"改为"**connector-api**"（runtime 是数据真正消费源）；⑨ Flow 表新增 `current_published_version_id` 指针——借鉴 PA `flowversions`+钉钉模式。影响：§4.2 全面重写（含新增表清单、设计决策表、JSON 字段说明、索引说明），§4.7 open-server/connector-api 文件清单同步调整（+13 个文件、-4 个 FlowNode/FlowEdge 相关），§4.9 文件影响统计 74→89，§5.1 schema 主仓库表述统一 | SDDU Plan Agent |
+| **v2.3** | **2026-05-22** | **connector-api 全 reactive 栈（MyBatis → R2DBC）**：进一步要求 MySQL / Redis / 下游 HTTP 调用全链路非阻塞——数据访问从 MyBatis 同步 JDBC + boundedElastic 隔离改为 R2DBC（spring-data-r2dbc + r2dbc-mysql），全部 SQL 返回 Mono/Flux；从依赖层面 exclude 阻塞栈（mybatis / spring-boot-starter-web / spring-boot-starter-jdbc）；与 open-server 共享 MySQL schema 但 entity/持久化层各自维护（MyBatis vs R2DBC），DDL 脚本由 open-server 统一存放。影响：§1.2 技术栈对比表、§1.2 强制规则/共享数据模型策略、§3 关键决策（+4 项）、§4.7 文件清单（mapper→repository、+R2dbcConfig/ReactiveRedisAccessor）、§4.8 依赖（+R2DBC、-MyBatis）、§5.1 风险（+3 条、-1 条）、§6 迭代 0 工期、修订记录从顶部移至末尾 | SDDU Plan Agent |
+| **v2.4** | **2026-05-22** | **§4.2 数据库设计基于 5 平台调研报告（Zapier/Make/Power Automate/MuleSoft/钉钉）重写**：① 编排定义从拆分 FlowNode/FlowEdge 子表改为**单一 JSON 字段保存完整 DAG**（`{trigger,nodes,edges}`）——借鉴 Make/Zapier/钉钉/PA 共识；② 新增 `openplatform_v2_cp_flow_trigger_endpoint_t` 表存 HTTP 触发的 token+签名密钥+限流配置（满足 NFR-011 安全要求）；③ 凭证 `openplatform_v2_cp_credential` 独立成表（MVP 不分 per-app，per-app 移至 V1）；④ 执行历史 I/O **默认外置到对象存储**（>64KB 阈值），新增 `openplatform_v2_cp_storage_blob_ref_t` 元数据表——借鉴 PA `inputsLink/outputsLink` 模式；⑤ 预留计量字段 `operations_count` / `data_in_bytes` / `data_out_bytes`——借鉴 Make `operations_consumed` + PA `billingMetrics`，避免后期加字段迁移成本；⑥ 新增 `correlation_id` 字段支持跨服务链路追踪；⑦ 执行记录/步骤表按月分区；⑧ schema 脚本统一由 open-server 存放（connector-api 仅消费共库 schema）；⑨ Flow 表新增 `current_published_version_id` 指针——借鉴 PA `flowversions`+钉钉模式。影响：§4.2 全面重写（含新增表清单、设计决策表、JSON 字段说明、索引说明），§4.7 open-server/connector-api 文件清单同步调整（+13 个文件、-4 个 FlowNode/FlowEdge 相关），§4.9 文件影响统计 74→89，§5.1 schema 脚本存放表述统一 | SDDU Plan Agent |
 | **v2.5** | **2026-05-22** | **数据库表前缀统一调整**：从 `cp_` → **`openplatform_v2_cp_`**（openplatform=开放平台体系 / v2=平台第二代 / cp=connector platform 子域）。影响：§4.2 数据库前缀决策行说明文字、表清单 9 张表名、ER 图字段引用、索引说明；§4.7 文件清单中所有 R2DBC `@Table(...)` / MyBatis entity 注释；schema 迁移脚本目录引用；共 34 处替换 | SDDU Plan Agent |
 | **v2.6** | **2026-05-22** | **凭证不持久化（MVP 极简）**：取消 `openplatform_v2_cp_credential` 表（9 张表 → 8 张），凭证仅在调用过程中通过触发请求传入 → 注入 ExecutionContext（仅内存）→ 节点执行后清除；执行记录中按 `connection_config.sensitive` 标记自动脱敏；凭证**永不进入 MySQL/Redis/对象存储**。影响：① §4.2 设计决策表「凭证存储」行重写为「凭证传递」；② §4.2 表清单删除 cp_credential（含使用说明新增"凭证传递路径 6 步"）；③ §4.2 ER 图删除 Credential 实体 + ConnectorVersion.credential_id 字段；④ §4.2 调研对应说明改为「凭证不持久化 = MVP 简化策略」；⑤ §1.6 核心业务对象关系重写（6 持久化对象 + 1 内存对象）；⑥ §2.1 方案 A 核心设计「认证凭证」描述重写；⑦ §3 关键决策「凭证明文存储」行改为「凭证存储策略=不持久化」；⑧ §4.5 目录结构 common 注释更新；⑨ §4.7 删除 open-server CredentialController/Service/Entity/Mapper（-4 文件），删除 connector-api Credential entity/CredentialRepository/CredentialCipher（-3 文件），新增 CredentialMasker + ExecutionContextCredentials（+2 文件）；⑩ §4.9 文件统计 89 → 83；⑪ §5.1 风险「认证凭证加密存储和传输」重写为「凭证传输/执行过程泄漏」；⑫ §5.4 开放问题新增 OQ-006（建议反向同步 spec.md NFR-010） | SDDU Plan Agent |
 | **v2.7** | **2026-05-22** | **数据库设计对齐能力开放平台规范**：参考 `specs-tree-capability-open-platform/plan.md §4.2 表设计规则`，连接器平台数据库设计全面对齐 openplatform_v2 规范——① 所有表名加 `_t` 后缀（如 `openplatform_v2_cp_connector` → `openplatform_v2_cp_connector_t`）；② 引入主表+属性表模式，新增 `connector_p_t` / `flow_p_t` 两张属性表（共 8 张 → **10 张**）；③ 主键 string UUID → **BIGINT(20) 雪花 ID**；④ 名称字段拆为 `name_cn` / `name_en` 双语；⑤ 描述字段拆为 `description_cn` / `description_en` 双语，存于属性表；⑥ 审计字段统一 `create_time` / `last_update_time`（DATETIME(3)）+ `create_by` / `last_update_by`；⑦ 状态/类型枚举改用 TINYINT(10) + 数字默认值；⑧ 时间字段统一 DATETIME(3) 毫秒精度；⑨ 索引命名规范化 `idx_xxx` / `uk_xxx`；⑩ 新增 §4.3 表设计规则章节（5 个子节：命名规范、主属性表模式、字段规则、枚举字典、与能力开放平台规范的差异点）。影响：§4.2 设计决策表 +2 项（关联引用方式、遵循通用规范）；§4.2 表清单 8 张 → 10 张；§4.2 ER 图全面重写（属性表 + BIGINT 主键 + 双语字段 + TINYINT 枚举 + 审计字段）；§4.2 索引说明对齐命名规范；新增 §4.3 表设计规则；后续章节序号顺延 4.3→4.4 / 4.4→4.5 / .../ 4.9→4.10；§4.8 文件清单中 R2DBC `@Table(...)` / MyBatis entity 注释统一加 `_t` 后缀（9 处修订） | SDDU Plan Agent |
@@ -1201,6 +1201,7 @@ open-app/
 | **v2.7.4** | **2026-05-22** | **JSON 数据字段类型统一：禁用 MySQL JSON 原生类型，全部改 TEXT 存 JSON 字符串**——新增表设计规则：所有承载 JSON 数据的字段统一使用 TEXT 类型（具体长度 TEXT/MEDIUMTEXT/LONGTEXT 由 plan-db.md 按字段实际大小选定），应用层负责 JSON 序列化（Jackson）、反序列化、格式校验；不使用 MySQL 的 `JSON_EXTRACT`/`JSON_TABLE` 等原生函数，需要查询时由应用层解析后过滤。理由：跨数据库通用（PG/Oracle/SQLServer 都支持）/ ORM 与工具兼容性最好 / 避免 MySQL 5.7/8.0 JSON 类型方言差异 / R2DBC 映射简单。影响 9 个字段：`connector_version_t.basic_info_snapshot`/`connection_config`、`flow_version_t.basic_info_snapshot`/`orchestration_config`、`execution_record_t.trigger_data`/`result_data`、`execution_step_t.input_data`/`output_data`/`error_info`。涉及变更：① §1.4 数据流 `FlowVersion.orchestration_config` 引用描述加 TEXT 说明；② §2.1 编排层描述补充 TEXT 存 JSON 字符串说明；③ §4.2 设计决策「编排定义存储模型」补充字段类型决策；④ §4.2 ER 图 9 处 `json XXX` → `text XXX`（含 TEXT 存 JSON 字符串注释）；⑤ §4.2 JSON 字段结构说明顶部加 TEXT 类型决策提示；⑥ §4.3.3 新增「JSON 数据字段」规则行；⑦ §4.3.5 差异点「JSON 大字段」行重写（含 TEXT 类型说明 + 删除 v2.7.3 已移除的 `rateLimit_config`）；⑧ §4.8 ConnectorVersion / FlowVersion / runtime FlowVersion 三个实体描述统一为「TEXT 字段 + Jackson 序列化/反序列化」；⑨ 顶部版本号 v2.7.3 → v2.7.4。**外置策略不变**（大字段 > 64KB 仍走对象存储 `*_blob_id` 引用） | SDDU Plan Agent |
 | **v2.7.5** | **2026-05-22** | **`storage_blob_ref_t` 新增 `external_resource_id` 字段（外部系统资源 ID）**——支持"大字段数据来源于外部系统时，存外部系统对该数据的标识"场景（如连接器调用钉钉返回 `media_id`、调用第三方返回 `file_id` 等），便于反查溯源。字段定义：`VARCHAR(64)` / 可空（按需使用，纯内部生成 blob 留空）/ 不建索引（仅作为引用标签字段，不支持高频反查）/ 位置在 `uri` 字段之前 / 仅 `storage_blob_ref_t` 加（业务表不动）。背景：用户提出"url 字段前加一个 batch_id 字段，按需使用"，澄清后理解为"大字段对应数据在业务/外部系统中的 ID"，重命名为 `external_resource_id` 避免与"批次 ID"语义混淆。涉及变更：① §4.2 表清单第 7 行说明补充 `external_resource_id` 描述；② §4.2 ER 图 `StorageBlobRef` 实体新增 `external_resource_id` 字段（uri 之前）；③ §4.8 connector-api `runtime/entity/StorageBlobRef.java` 实体描述补充字段说明；④ 顶部版本号 v2.7.4 → v2.7.5 | SDDU Plan Agent |
 | **v2.7.6** | **2026-05-22** | **字段精简 + 子文档结构优化（plan.md 同步变更）**——主要变更落在 plan-db.md（详见其修订记录 v2.7.6），plan.md 本次同步：① §4.2 表清单第 1 行（connector_t）字段说明删除 `tags`；② §4.2 表清单第 3 行（flow_t）字段说明删除 `tags`/`owner_group`；③ §4.2 ER 图 Connector 实体删除 `tags` 字段；④ §4.2 ER 图 Flow 实体删除 `tags`/`owner_group` 字段；⑤ 顶部版本号 v2.7.5 → v2.7.6。**理由**：MVP 范围收敛，避免引入未明确需求的「标签 / 归属组」概念，V1 出现需求时再加。plan-db.md 同步做了「章节结构重组（设计规范→表清单→表关系→表定义）」+「5 张表新增状态机图」+「字段精简」三项变更；plan-api.md 同步删除 3 处 API 示例中的 `tags`/`ownerGroup`；plan-page.md 同步删除表单 tags 输入器描述 + 2 处 thunk createXxx 注释。**mermaid 校验**：plan.md 9/9 通过；plan-db.md 6/6 通过（含 5 张新增状态机图） | SDDU Plan Agent |
+| **v2.8.1** | **2026-05-24** | **SQL 脚本存放策略调整**：DDL 脚本统一由 open-server 存放到 `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`；仅采用 FlywayDB 目录与命名风格，open-server 不新增 Flyway 依赖，不考虑脚本自动执行机制；connector-api 不存放 DDL / migration 脚本，仅通过 R2DBC 访问开放平台共库表。同步更新共享数据模型策略、数据库设计决策、文件清单、风险缓解措施与迭代 0 范围。 | SDDU Tasks Agent |
 
 ---
 

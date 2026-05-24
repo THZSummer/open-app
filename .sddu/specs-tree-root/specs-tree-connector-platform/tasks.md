@@ -2,7 +2,7 @@
 
 **Feature ID**: CONN-PLAT-001  
 **创建日期**: 2026-05-22  
-**对齐基线**: spec.md v5.0 / plan.md v2.8.0 / plan-api.md v2.8.0 / plan-db.md v2.8.0 / plan-page.md v2.8.0  
+**对齐基线**: spec.md v5.0 / plan.md v2.8.1 / plan-api.md v2.8.0 / plan-db.md v2.8.1 / plan-page.md v2.8.0  
 **FR 覆盖**: 全量 19 个 FR  
 
 ---
@@ -19,38 +19,40 @@
 
 ---
 
-## TASK-001: 数据库 DDL + Flyway 迁移脚本
+## TASK-001: open-server 连接器平台 DDL 脚本
 
 **复杂度**: L  
 **前置依赖**: 无  
 **执行波次**: 1  
 
 ### 描述
-在 open-server 和 connector-api 各自工程中创建统一的 Flyway 迁移脚本，包含 7 张表（4 张活跃 + 3 张 V1 预留）。
+在 open-server 工程内按照 FlywayDB 的目录与命名风格新增连接器平台 DDL 脚本，包含 7 张表（4 张活跃 + 3 张 V1 预留）。该脚本仅作为开放平台共库 SQL 的标准化存放方式；open-server 不新增 Flyway 依赖，本任务不考虑脚本自动执行机制。connector-api 不存放 DDL，不执行数据库迁移，仅通过 R2DBC 访问已初始化的共库表。
 
 ### 涉及文件
-- [NEW] `open-server/src/main/resources/db/migration/connector-platform/V1__init_connector_platform.sql`
-- [NEW] `connector-api/src/main/resources/db/migration/connector-platform/V1__init_connector_platform.sql`
-- [NEW] `connector-api/src/main/resources/application.yml` (R2DBC datasource 配置)
+- [NEW] `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`
 
 ### 验收标准
+- [ ] SQL 脚本存放在 `open-server/src/main/resources/db/migration/`
+- [ ] 文件名符合 FlywayDB 风格：`V2__init_connector_platform_schema.sql`
+- [ ] 不创建 `connector-platform/` 业务子目录
+- [ ] open-server 不新增 Flyway 相关依赖
+- [ ] connector-api 不新增任何 DDL / migration 脚本
 - [ ] `openplatform_v2_cp_connector_t` 表创建（BIGINT 雪花 ID 主键，双语名称/描述，TINYINT 枚举，4 审计字段）
 - [ ] `openplatform_v2_cp_connector_version_t` 表创建（1:1 关联 connector_t，MEDIUMTEXT connection_config JSON，无物理外键）
 - [ ] `openplatform_v2_cp_flow_t` 表创建（lifecycle_status 默认 1=running，含 TINYINT 枚举，4 审计字段）
 - [ ] `openplatform_v2_cp_flow_version_t` 表创建（1:1 关联 flow_t，MEDIUMTEXT orchestration_config JSON，触发器内嵌）
-- [ ] `openplatform_v2_cp_execution_record_t` 表创建（⚠️ V1 预留，MVP 不写入）
-- [ ] `openplatform_v2_cp_execution_step_t` 表创建（⚠️ V1 预留，MVP 不写入）
-- [ ] `openplatform_v2_cp_storage_blob_ref_t` 表创建（⚠️ V1 预留，MVP 不写入）
+- [ ] `openplatform_v2_cp_execution_record_t` 表创建（V1 预留，MVP 不写入）
+- [ ] `openplatform_v2_cp_execution_step_t` 表创建（V1 预留，MVP 不写入）
+- [ ] `openplatform_v2_cp_storage_blob_ref_t` 表创建（V1 预留，MVP 不写入）
 - [ ] 所有表符合 `plan-db.md §0` 规范：`openplatform_v2_cp_` 前缀 + `_t` 后缀 + 4 审计字段 + idx_xxx/uk_xxx 索引 + 无物理外键
-- [ ] open-server（MyBatis JDBC）和 connector-api（R2DBC）各自可正常连接并执行迁移
+- [ ] SQL 语法可被 MySQL 正常解析执行
 
 ### 验证命令
 ```bash
-# open-server 启动验证表创建
-curl http://localhost:18080/open-server/actuator/health
+# 仅验证 SQL 脚本可执行与表结构存在，不验证 Flyway 自动执行
+mysql -h <host> -P <port> -u <user> -p <database> < open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql
 
-# connector-api 启动验证 R2DBC 连接
-curl http://localhost:18180/connector-api/actuator/health
+mysql -h <host> -P <port> -u <user> -p <database> -e "SHOW TABLES LIKE 'openplatform_v2_cp_%';"
 ```
 
 ---
@@ -58,11 +60,11 @@ curl http://localhost:18180/connector-api/actuator/health
 ## TASK-002: connector-api 项目脚手架 + R2DBC Entity
 
 **复杂度**: M  
-**前置依赖**: TASK-001  
+**前置依赖**: 无（联调验证依赖 TASK-001 完成共库初始化）  
 **执行波次**: 1  
 
 ### 描述
-创建 `connector-api` 独立 Spring Boot 工程，配置 Spring WebFlux + R2DBC + Redis Reactive，定义 4 张活跃表的 R2DBC Entity + Repository。
+创建 `connector-api` 独立 Spring Boot 工程，配置 Spring WebFlux + R2DBC + Redis Reactive，定义 4 张活跃表的 R2DBC Entity + Repository。connector-api 不维护 DDL 脚本，不执行数据库迁移；仅配置 R2DBC 连接访问开放平台共库表。
 
 ### 涉及文件
 - [NEW] `connector-api/pom.xml`（spring-boot-starter-webflux, r2dbc-mysql, spring-data-r2dbc, spring-data-redis-reactive, reactor-core）
@@ -82,6 +84,7 @@ curl http://localhost:18180/connector-api/actuator/health
 - [ ] R2DBC 连接 MySQL 正常，可执行简单 SELECT
 - [ ] ReactiveRedisTemplate 可用
 - [ ] Entity 字段对齐 `plan-db.md` DDL（BIGINT ID / 双语字段 / TINYINT 枚举 / MEDIUMTEXT JSON）
+- [ ] connector-api 工程内不存在 DDL / Flyway migration 脚本
 - [ ] 严格遵守全 reactive 栈规则：禁止 JDBC/MyBatis/RestTemplate/synchronized
 
 ### 验证命令
