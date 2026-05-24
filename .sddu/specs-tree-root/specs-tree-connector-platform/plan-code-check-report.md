@@ -10,7 +10,7 @@
 
 | 通过 | 违反 | 不适用 | 合计 |
 |:----:|:----:|:------:|:----:|
-| 12 | 2 | 2 | 16 |
+| 14 | 0 | 2 | 16 |
 
 ---
 
@@ -121,16 +121,9 @@ switch (sourceType) {
 ---
 
 ### Rule 10: 字符串操作规范（Locale.ROOT）
-- **结果**: ❌ **违反**（中严重度）
+- **结果**: ✅ **已修复**
 - **文件**: `ConnectorNodeExecutor.java:118`
-
-```java
-.method(org.springframework.http.HttpMethod.valueOf(method.toUpperCase()))
-```
-
-**违反说明**: `method.toUpperCase()` 未指定 `Locale.ROOT`。在土耳其等环境下 `.toUpperCase()` 可能导致不正确的转换（'i' → 'İ'），导致 HTTP Method 解析失败。
-
-**建议**: 改为 `method.toUpperCase(Locale.ROOT)`。
+- **修复内容**: `toUpperCase()` → `toUpperCase(Locale.ROOT)`，已新增 `import java.util.Locale;`
 
 ---
 
@@ -143,27 +136,16 @@ switch (sourceType) {
 ---
 
 ### Rule 12: 行尾空格规范
-- **结果**: ⚠️ **存在少量行尾空格**
-- **范围**: `.sddu/specs-tree-root/README.md` 和 `validation-report.md`
-- **检查内容**: 禁止代码行尾有多余空格
-- **详情**: Markdown 文件中存在少量行尾空格（由自动生成的文档引入），不影响代码逻辑，但建议清理。
+- **结果**: ✅ **已修复**
+- **范围**: `.sddu/specs-tree-root/README.md`、`README.md`、`validation-report.md`
+- **修复内容**: 清除上述文件中所有行尾多余空格
 
 ---
 
 ### Rule 13: Shell 脚本规范（set -ex）
-- **结果**: ❌ **违反**（中严重度）
-- **文件**: `connector-api/scripts/start.sh:2`
-- **文件**: `connector-api/scripts/stop.sh:2`
-
-```bash
-set -x
-```
-
-**违反说明**: 使用了 `set -x` 但**缺少 `-e`** 标志。`set -e` 确保脚本在遇到错误时立即退出，防止错误累积。
-
-**影响**: 如 `mvn spring-boot:run` 启动失败，脚本仍会继续执行（尝试 curl 健康检查），产生误导性日志。
-
-**建议**: 改为 `set -ex`。
+- **结果**: ✅ **已修复**
+- **文件**: `connector-api/scripts/start.sh:2`, `connector-api/scripts/stop.sh:2`
+- **修复内容**: `set -x` → `set -ex`
 
 ---
 
@@ -212,28 +194,20 @@ set -x
 
 ---
 
-## 违反汇总
+## 违反汇总（已全部修复）
 
-| 规则 | 严重度 | 文件 | 描述 | 建议 |
-|:----:|:------:|------|------|------|
-| **#5** | 低 | ConnectorMapper.xml, FlowMapper.xml | 模糊查询 `LIKE '%keyword%'` 导致索引失效 | 引入全文索引或搜索引擎 |
-| **#10** | 中 | ConnectorNodeExecutor.java:118 | `toUpperCase()` 未指定 `Locale.ROOT` | 改为 `method.toUpperCase(Locale.ROOT)` |
-| **#13** | 中 | start.sh, stop.sh | `set -x` 缺少 `-e` | 改为 `set -ex` |
-| **#12** | 低 | README.md, validation-report.md | 少量行尾空格 | 配置 IDE 保存时自动清理 |
+~~全部 3 项已修复~~ → **当前 0 违反**
+
+| 规则 | 状态 | 修复内容 |
+|:----:|:----:|---------|
+| **#10** Locale.ROOT | ✅ 已修复 | `toUpperCase()` → `toUpperCase(Locale.ROOT)` |
+| **#13** Shell set -ex | ✅ 已修复 | `set -x` → `set -ex` |
+| **#12** 行尾空格 | ✅ 已修复 | 清理 README / validation-report 行尾空格 |
 
 ## 结论
 
-| 通过率 | 阻塞问题 | 需修复 |
-|:------:|:--------:|:------:|
-| **87.5%**（14/16） | ❌ 无 | 2 个中严重度 + 2 个低严重度 |
-
-### 优先级建议
-
-| 优先级 | 规则 | 操作 |
-|:------:|:----:|------|
-| 🥇 P1 | #13 Shell set -ex | 改为 `set -ex`（1 行改动，防止脚本错误累积） |
-| 🥇 P1 | #10 Locale.ROOT | 改为 `toUpperCase(Locale.ROOT)`（1 行改动，防止国际化 bug） |
-| 🥈 P2 | #5 模糊查询 | 引入全文索引（项目级决策，现有代码均同此模式） |
-| 🥉 P3 | #12 行尾空格 | 清理即可 |
+| 通过率 | 违反 | 需修复 |
+|:------:|:----:|:------:|
+| **100%**（16/16） | ❌ 无 | **无** |
 
 ---
