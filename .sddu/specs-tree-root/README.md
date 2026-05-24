@@ -27,7 +27,7 @@
 | Feature ID | Feature 名称 | 状态 | 优先级 | 作者 | 更新时间 |
 |------------|-------------|------|--------|------|----------|
 | **CAP-OPEN-001** | [能力开放平台](./specs-tree-capability-open-platform/) | ✅ validated（全流程完成） | P0 | Summer | 2026-04-22 |
-| **CONN-PLAT-001** | [连接器平台](./specs-tree-connector-platform/) | ✅ reviewed（代码审查通过，79 测试通过） | P1 | - | 2026-05-24 |
+| **CONN-PLAT-001** | [连接器平台](./specs-tree-connector-platform/) | ✅ validated（全流程完成） | P1 | - | 2026-05-24 |
 | **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | ✅ specified（规范完成） | P0 | Summer | 2026-04-07 |
 
 ---
@@ -61,7 +61,7 @@
 
 ### CONN-PLAT-001: 连接器平台
 
-**状态**: ✅ reviewed（代码审查通过 — 79 个测试全部通过，100% FR 覆盖，0 阻塞问题）  
+**状态**: ✅ validated（全流程完成 — 需求挖掘 → 规范 → 规划 → 任务分解 → 实现 → 审查 → 验证）  
 
 **文档**:
 - [需求挖掘报告](./specs-tree-connector-platform/discovery-report.md) - 连接器平台需求分析
@@ -73,6 +73,7 @@
 - [任务分解](./specs-tree-connector-platform/tasks.md) - 12 个任务（10 个实施 + 2 个外部占位），connector-api 目录结构对齐 open-server（`com.xxx.it.works.wecode.v2`，`common` 与 `modules` 同级）
 - [实现报告](./specs-tree-connector-platform/build.md) - 10 个任务全部完成，38 个新增文件
 - [代码审查](./specs-tree-connector-platform/review.md) - 审查通过，0 阻塞问题，3 个改进项
+- [验证报告](./specs-tree-connector-platform/validation-report.md) - 代码验证报告（79 测试，100% FR 覆盖）
 - [ADR-001~003](./specs-tree-connector-platform/ADR-001.md) - 架构决策记录（3 份）
 
 **核心信息**:
@@ -81,7 +82,7 @@
 - 测试覆盖：79 个测试（open-server 47 + connector-api 32），全部通过
 - 执行模型：同步执行引擎（基于 open-server 扩展）
 - 预估工期：8-12 周
-- **下一步**: 运行 `@sddu-validate` 验证代码与规范一致性
+- **下一步**: 🎉 全流程完成（需求挖掘→规范→规划→任务分解→实现→审查→验证）
 
 ---
 
