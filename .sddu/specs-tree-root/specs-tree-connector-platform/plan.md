@@ -558,7 +558,7 @@ sequenceDiagram
 
 3. **最小化技术债务**: 不引入额外框架（Spring StateMachine / MQS），使用纯 Java 实现，与现有架构一致；同时**通过将运行时拆为独立服务 `connector-api`，避免管理与执行混在同一进程**导致后期难以拆分。
 
-4. **开发效率最优**: 团队可在现有 open-server 中新增 connector/flow/monitor 三个管理模块，同时启动 `connector-api` 新工程（基于现有 Spring Boot 脚手架）承载 runtime/http-trigger/debug-api 模块，复用已有的 MyBatis/MySQL/Redis 基础设施；前端所有页面统一落在 `wecodesite`，无需协调多前端项目。
+4. **开发效率最优**: 团队可在现有 open-server 中新增 connector/flow/monitor 三个管理模块，同时启动 `connector-api` 新工程（基于现有 Spring Boot 脚手架）承载 runtime/trigger/debug 模块；connector-api 包结构对齐 open-server，统一采用 `com.xxx.it.works.wecode.v2/common` 与 `com.xxx.it.works.wecode.v2/modules` 同级结构；前端所有页面统一落在 `wecodesite`，无需协调多前端项目。
 
 5. **调试友好**: 同步执行的每步输入/输出清晰，测试运行时可逐步验证，排查问题直观。
 
@@ -864,24 +864,36 @@ erDiagram
 ```
 open-app/
 ├── open-server/                                 # 后端管理服务（现有工程扩展）
-│   └── src/main/java/com/xxx/open/modules/
-│       ├── category/              # 现有：分类管理
-│       ├── api/                   # 现有：API 管理
-│       ├── event/                 # 现有：事件管理
-│       ├── callback/              # 现有：回调管理
-│       ├── permission/            # 现有：权限管理（本版本不依赖）
-│       ├── approval/              # 现有：审批管理（本版本不依赖）
-│       ├── connector/             # 🆕 连接器管理模块
-│       ├── flow/                  # 🆕 连接流管理模块
-│       ├── monitor/               # 🆕 监控模块
-│       └── debug/                 # 🆕 调试代理模块（转发至 connector-api 调试接口）
+│   └── src/main/java/com/xxx/it/works/wecode/v2/
+│       ├── common/                # 公共能力：config/context/controller/enums/exception/id/interceptor/model/security/user
+│       └── modules/               # 业务模块
+│           ├── category/          # 现有：分类管理
+│           ├── api/               # 现有：API 管理
+│           ├── event/             # 现有：事件管理
+│           ├── callback/          # 现有：回调管理
+│           ├── permission/        # 现有：权限管理（本版本不依赖）
+│           ├── approval/          # 现有：审批管理（本版本不依赖）
+│           ├── connector/         # 🆕 连接器管理模块
+│           ├── flow/              # 🆕 连接流管理模块
+│           ├── monitor/           # 🆕 监控模块
+│           └── debug/             # 🆕 调试代理模块（转发至 connector-api 调试接口）
 │
 ├── connector-api/                                # 🆕 连接器运行时服务（新增独立工程）
-│   └── src/main/java/com/xxx/connector/
-│       ├── runtime/               # 🆕 同步调度执行引擎、执行上下文、节点执行器
-│       ├── trigger/               # 🆕 HTTP 触发入口（对外）
-│       ├── debug/                 # 🆕 调试接口（对内，供 open-server 调用）
-│       └── common/                # 🆕 公共组件（凭证脱敏器、执行上下文、共享 entity）
+│   └── src/main/java/com/xxx/it/works/wecode/v2/
+│       ├── ConnectorApiApplication.java
+│       ├── common/                # 公共能力，与 modules 同级；不放在 modules 内
+│       │   ├── config/            # R2DBC / Redis / WebClient 配置
+│       │   ├── context/           # 请求上下文、运行时上下文公共部分
+│       │   ├── exception/         # 全局异常与默认错误处理
+│       │   ├── interceptor/       # 限流、内部拦截器
+│       │   ├── model/             # 通用响应/错误模型
+│       │   └── security/          # 内部鉴权、凭证脱敏等安全能力
+│       └── modules/               # 业务模块，结构对齐 open-server modules
+│           ├── connector/         # 连接器只读模型与 R2DBC Repository
+│           ├── flow/              # 连接流只读模型与 R2DBC Repository
+│           ├── runtime/           # 同步调度执行引擎、执行上下文、节点执行器
+│           ├── trigger/           # HTTP 触发入口（对外）
+│           └── debug/             # 调试接口（对内，供 open-server 调用）
 │
 ├── wecodesite/                                   # 前端应用（连接器平台所有页面）
 │   └── src/pages/ConnectPlatform/
@@ -900,6 +912,8 @@ open-app/
 │           └── thunk.js
 ```
 
+> **connector-api 包结构约束**：参考 open-server，包名前缀统一为 `com.xxx.it.works.wecode.v2`；`common` 与 `modules` 必须同级；`common` 存放公共配置、异常、上下文、安全、模型等能力；`modules` 仅存放 connector / flow / runtime / trigger / debug 等业务模块代码。
+
 ### 4.7 服务职责详表
 
 | 服务 | 新增模块 | 职责 | 数据存储 | 端口 | 上下文根 | 依赖 |
@@ -908,13 +922,13 @@ open-app/
 | **open-server** | flow | 连接流 CRUD、版本管理、编排配置存储 | MySQL + Redis(共享) | 18080 | /open-server | connector 模块（引用连接器版本） |
 | **open-server** | monitor | 执行历史查询、统计（读取 connector-api 写入的执行记录） | MySQL + Redis(共享) | 18080 | /open-server | 共享 MySQL 中由 connector-api 写入的数据 |
 | **open-server** | debug | 调试代理：接收前端手动调试/测试运行请求并转发至 connector-api | — | 18080 | /open-server | connector-api（内部 HTTP） |
-| **connector-api** 🆕 | runtime | 同步调度执行、执行上下文、节点执行器（连接器/数据处理） | MySQL + Redis(共享) | 18180 | /connector-api | flow 数据（只读 MySQL 中的 orchestration_config） |
-| **connector-api** 🆕 | http-trigger | 对外 HTTP 触发入口，同步调用执行引擎 | — | 18180 | /connector-api | runtime 模块 |
-| **connector-api** 🆕 | debug-api | 内部调试接口，供 open-server 的 debug 模块调用 | — | 18180 | /connector-api | runtime 模块 |
+| **connector-api** 🆕 | modules/runtime | 同步调度执行、执行上下文、节点执行器（连接器/数据处理） | MySQL + Redis(共享) | 18180 | /connector-api | flow 数据（只读 MySQL 中的 orchestration_config） |
+| **connector-api** 🆕 | modules/trigger | 对外 HTTP 触发入口，同步调用执行引擎 | — | 18180 | /connector-api | runtime 模块 |
+| **connector-api** 🆕 | modules/debug | 内部调试接口，供 open-server 的 debug 模块调用 | — | 18180 | /connector-api | runtime 模块 |
 
 > **部署说明**：
 > - `open-server` 部署 connector/flow/monitor/debug 四个管理类模块，端口 18080
-> - `connector-api` 为**新增独立 Spring Boot 工程**，部署 runtime/http-trigger/debug-api 三个运行时模块，端口建议 18180（可调整），上下文根 `/connector-api`
+> - `connector-api` 为**新增独立 Spring Boot 工程**，部署 modules/runtime、modules/trigger、modules/debug 三个运行时业务模块，端口建议 18180（可调整），上下文根 `/connector-api`；包结构对齐 open-server：`common` 与 `modules` 同级
 > - 两个服务**共享同一 MySQL 与 Redis 实例**，通过数据库实现状态共享（编排配置、执行记录）
 > - `open-server → connector-api` 走内网 HTTP，建议加共享 token 鉴权（具体方案详见 plan-api.md）
 
@@ -962,36 +976,51 @@ open-app/
 | `modules/debug/DebugProxyService.java` | 调用 connector-api 调试接口（内部 HTTP 客户端） |
 | `modules/debug/client/ConnectorApiClient.java` | connector-api HTTP 客户端封装（含鉴权/重试/超时） |
 
-#### connector-api — 🆕 独立运行时服务（全新工程）
+#### connector-api — 独立运行时服务（全新工程，包结构对齐 open-server）
+
+> 包名前缀统一为 `com.xxx.it.works.wecode.v2`；`common` 与 `modules` 同级。下表路径均相对 `connector-api/src/main/java/com/xxx/it/works/wecode/v2/`。
 
 | 文件 | 说明 |
 |------|------|
-| `runtime/ReactiveSequentialExecutor.java` | 反应式顺序执行引擎（基于 `Mono` 链路串联节点；对外仍同步返回 HTTP 响应） |
-| `runtime/ExecutionContext.java` | 执行上下文管理（不可变快照 + 步骤累加） |
-| `runtime/NodeExecutor.java` | 节点执行器接口，签名 `Mono<NodeOutput> execute(NodeInput, ExecutionContext)` |
-| `runtime/ConnectorNodeExecutor.java` | 连接器节点执行器（基于 WebClient 异步调用下游 HTTP API） |
-| `runtime/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
-| `runtime/entity/ExecutionRecord.java` | 执行记录实体（R2DBC `@Table("openplatform_v2_cp_execution_record_t")` 映射；含预留计量字段） |
-| `runtime/entity/ExecutionStep.java` | 执行步骤实体（R2DBC `@Table("openplatform_v2_cp_execution_step_t")` 映射；I/O 大字段含 `*_blob_id` 外置引用） |
-| `runtime/entity/StorageBlobRef.java` | 对象存储引用元数据实体（R2DBC `@Table("openplatform_v2_cp_storage_blob_ref_t")` 映射；含 `external_resource_id`（外部系统资源 ID，按需使用，可空）+ uri/size/hash/content_type；用于 GC、审计与外部系统反查溯源） |
-| `runtime/entity/FlowVersion.java` | 连接流版本实体（R2DBC 只读视图；`orchestration_config` TEXT 字段，应用层 Jackson 反序列化为 `OrchestrationConfig` 对象，含 `trigger { type, authTypeSchema, inputSchema, rateLimit }`） |
-| `runtime/repository/ExecutionRecordRepository.java` | 🆕 执行记录 R2DBC Repository（`ReactiveCrudRepository`） |
-| `runtime/repository/ExecutionStepRepository.java` | 🆕 执行步骤 R2DBC Repository |
-| `runtime/repository/FlowVersionReadRepository.java` | 🆕 FlowVersion 只读 R2DBC Repository（按 flow_id 查 orchestration_config，HTTP 触发取 trigger 配置走这个 Repository） |
-| `runtime/repository/StorageBlobRefRepository.java` | 🆕 对象存储引用 R2DBC Repository（用于 GC 任务） |
-| `runtime/storage/BlobStorageGateway.java` | 🆕 对象存储网关：自动判定 I/O 是否超阈值需外置；`Mono<BlobRef> putIfNeeded(payload)` / `Mono<byte[]> fetch(blobId)`；后端先支持 OSS（阿里云） |
-| `runtime/storage/IOExternalizationPolicy.java` | 🆕 外置策略：默认 64KB 阈值（迭代 0 决策最终值） |
-| `runtime/security/CredentialMasker.java` | 🆕 凭证脱敏器：按 `connection_config` 中标记为 `sensitive: true` 的字段在写入 execution_record/step 前自动脱敏（值替换为 `***`，保留长度信息） |
-| `runtime/context/ExecutionContextCredentials.java` | 🆕 执行上下文凭证容器：仅内存生命周期，节点执行完成后显式 `clear()`，**永不进入任何持久层** |
-| `runtime/client/WebClientFactory.java` | 🆕 WebClient 工厂：连接池、超时、最大缓冲、TLS 等配置统一收口 |
-| `runtime/cache/ReactiveRedisAccessor.java` | 🆕 Redis reactive 访问封装（基于 `ReactiveStringRedisTemplate`） |
-| `trigger/HttpTriggerController.java` | HTTP 触发入口（WebFlux `@RestController`，返回 `Mono<TriggerResponse>`，对调用方呈现同步语义；接收 `credentials` 字段并注入 ExecutionContext） |
-| `debug/DebugApiController.java` | 调试接口（WebFlux `@RestController`，供 open-server 调用：手动调试/测试运行；调用方在请求体中传入凭证） |
-| `common/InternalAuthFilter.java` | 内部接口鉴权 WebFilter（基于 `WebFilter`，仅允许 open-server 访问 debug-api） |
-| `common/R2dbcConfig.java` | 🆕 R2DBC `ConnectionFactory` 配置（连接池大小、获取超时、最大空闲时间等） |
 | `ConnectorApiApplication.java` | Spring Boot 启动类（WebFlux 模式） |
+| `common/config/R2dbcConfig.java` | R2DBC `ConnectionFactory` 配置（连接池大小、获取超时、最大空闲时间等） |
+| `common/config/ReactiveRedisConfig.java` | Redis reactive 配置（基于 `ReactiveStringRedisTemplate` / `ReactiveRedisTemplate`） |
+| `common/config/WebClientConfig.java` | WebClient 连接池、超时、最大缓冲、TLS 等公共配置 |
+| `common/security/InternalAuthFilter.java` | 内部接口鉴权 WebFilter（仅允许 open-server 访问 debug-api） |
+| `common/security/CredentialMasker.java` | 凭证脱敏器：按 `connection_config` 中 `sensitive: true` 标记自动脱敏 |
+| `common/exception/DefaultErrorHandler.java` | 全局默认错误处理与统一错误响应 |
+| `common/interceptor/RateLimitFilter.java` | 限流拦截器 / WebFilter（按 flowId 维度） |
+| `common/model/ApiResponse.java` | 通用响应模型（如需要与 open-server 响应格式对齐） |
+| `modules/connector/entity/ConnectorEntity.java` | 连接器实体（R2DBC `@Table("openplatform_v2_cp_connector_t")`） |
+| `modules/connector/entity/ConnectorVersionEntity.java` | 连接器版本实体（`connection_config` TEXT 字段，Jackson 反序列化） |
+| `modules/connector/repository/ConnectorVersionReadRepository.java` | 连接器版本只读 R2DBC Repository（按 connector_id 查 connection_config） |
+| `modules/flow/entity/FlowEntity.java` | 连接流实体（R2DBC `@Table("openplatform_v2_cp_flow_t")`） |
+| `modules/flow/entity/FlowVersionEntity.java` | 连接流版本实体（`orchestration_config` TEXT 字段，Jackson 反序列化） |
+| `modules/flow/repository/FlowVersionReadRepository.java` | 连接流版本只读 R2DBC Repository（按 flow_id 查 orchestration_config） |
+| `modules/runtime/executor/ReactiveSequentialExecutor.java` | 反应式顺序执行引擎（基于 `Mono` 链路串联节点；对外仍同步返回 HTTP 响应） |
+| `modules/runtime/executor/NodeExecutor.java` | 节点执行器接口，签名 `Mono<NodeOutput> execute(NodeInput, ExecutionContext)` |
+| `modules/runtime/context/ExecutionContext.java` | 执行上下文管理（不可变快照 + 步骤累加） |
+| `modules/runtime/context/ExecutionContextCredentials.java` | 执行上下文凭证容器：仅内存生命周期，节点执行完成后显式 `clear()` |
+| `modules/runtime/node/ConnectorNodeExecutor.java` | 连接器节点执行器（基于 WebClient 异步调用下游 HTTP API） |
+| `modules/runtime/node/DataProcessorNodeExecutor.java` | 数据处理节点执行器（纯 CPU 计算，直接返回 `Mono.just(...)`） |
+| `modules/runtime/node/EntryNodeExecutor.java` | 入口节点执行器，透传触发数据到执行上下文 |
+| `modules/runtime/node/ExitNodeExecutor.java` | 出口节点执行器，按 outputFields 构造返回值 |
+| `modules/runtime/model/NodeOutput.java` | 节点输出模型 |
+| `modules/runtime/model/ExecutionResult.java` | 执行结果模型 |
+| `modules/runtime/entity/ExecutionRecordEntity.java` | 执行记录实体（V1 预留，MVP 不写入） |
+| `modules/runtime/entity/ExecutionStepEntity.java` | 执行步骤实体（V1 预留，MVP 不写入） |
+| `modules/runtime/entity/StorageBlobRefEntity.java` | 对象存储引用元数据实体（V1 预留，含 `external_resource_id`） |
+| `modules/runtime/repository/ExecutionRecordRepository.java` | 执行记录 R2DBC Repository（V1 预留） |
+| `modules/runtime/repository/ExecutionStepRepository.java` | 执行步骤 R2DBC Repository（V1 预留） |
+| `modules/runtime/repository/StorageBlobRefRepository.java` | 对象存储引用 R2DBC Repository（V1 预留） |
+| `modules/runtime/storage/BlobStorageGateway.java` | 对象存储网关（V1 预留，大字段外置） |
+| `modules/runtime/storage/IOExternalizationPolicy.java` | 外置策略：默认 64KB 阈值（V1 预留） |
+| `modules/trigger/controller/TriggerController.java` | HTTP 触发入口（WebFlux `@RestController`，返回 `Mono<TriggerResponse>`） |
+| `modules/trigger/service/TriggerService.java` | HTTP 触发服务，校验触发器配置并调用运行时执行引擎 |
+| `modules/debug/controller/TestRunController.java` | 内部测试执行接口，供 open-server debug-proxy 调用 |
+| `modules/debug/service/TestRunService.java` | 测试执行服务，注入 mockTriggerData / credentials 后调用运行时执行引擎 |
 | `pom.xml` / `application.yml` | 工程配置（webflux + r2dbc + r2dbc-mysql + data-redis-reactive；测试 profile 启用 BlockHound） |
-| `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql` | 🆕 连接器平台 DDL 脚本（由 open-server 统一存放；采用 FlywayDB 目录与命名风格；不新增 Flyway 依赖，不考虑自动执行机制；connector-api 不存放 DDL，仅负责 R2DBC entity/Repository 适配） |
+| `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql` | 连接器平台 DDL 脚本（由 open-server 统一存放；采用 FlywayDB 目录与命名风格；不新增 Flyway 依赖；connector-api 不存放 DDL） |
 
 #### open-server — monitor 模块
 
@@ -1199,7 +1228,7 @@ open-app/
 | **v2.7.2** | **2026-05-22** | **描述类字段类型统一：TEXT → VARCHAR(1000)**——所有描述类字段（主表 `connector_t.description_cn`/`description_en`、`flow_t.description_cn`/`description_en`，版本表 `connector_version_t.version_description_cn`/`version_description_en`、`flow_version_t.version_description_cn`/`version_description_en`）统一规约为 `VARCHAR(1000)`，便于索引/排序/前端预览，1000 字符足够承载产品级描述；避免 TEXT 类型的离行存储与全表扫描代价。影响：① §4.2 ER 图 4 处 `text description_*` → `varchar description_*`（含 VARCHAR(1000) 注释）；② §4.2 ER 图 4 处 `version_description_*` 注释补全长度；③ §4.3.3 描述字段规则 `TEXT` → `VARCHAR(1000)`（含「统一长度便于索引/排序/前端预览」理由说明）；④ 顶部版本号 v2.7.1 → v2.7.2 | SDDU Plan Agent |
 | **v2.7.3** | **2026-05-22** | **触发器配置合并到编排 JSON，删除独立触发端点表**——基于 v2.6（凭证不持久化）+ v2.4（仅声明认证类型 schema）两个前提，独立 `flow_trigger_endpoint_t` 表已无核心价值（不存 token 故无独立轮换需求 / 无 token 查找路径故不需要 B+ 树 `uk_trigger_token`），决定完全删除，触发器配置内嵌于 `flow_version_t.orchestration_config.trigger` JSON。HTTP 触发 URL 改为 `/trigger/{flow_id}/invoke`（flow_id 雪花数字标识）。表数 **8 → 7 张**，文件数 **83 → 78** 个。涉及变更：① §1.4 数据流删除 Flow→FlowTriggerEndpoint 关系，FlowVersion 补充「触发器配置完整内嵌」说明；② §4.2 设计决策「触发器存储」重写为 JSON 合并方案；③ §4.2 表清单 8 → 7（删 `flow_trigger_endpoint_t`），新增「触发器为何不单独建表」决策说明；④ §4.2 ER 图删除 FlowTriggerEndpoint 实体与 Flow→FlowTriggerEndpoint 关系；⑤ §4.2 JSON 字段说明补全 `orchestration_config.trigger` 完整结构（type/authTypeSchema/inputSchema/rateLimit）；⑥ §4.2 关键索引删除 2 条 trigger_endpoint 索引，新增 `flow_t.current_published_version_id` 索引（HTTP 触发查找路径）；⑦ §4.2 调研对应说明改为「Make 模式内嵌」+ V1 演进条件；⑧ §4.3.1 命名风格示例改为 `connector_version`/`execution_step`；⑨ §4.3.3 「8 张表」改为「7 张表」（主键/审计字段两行）；⑩ §4.3.4 删除 `flow_trigger_endpoint_t.status` 枚举行；⑪ §4.8 open-server 文件清单删除 FlowTriggerEndpointController/Service/Entity/Mapper（4 个），FlowVersionService 补充「触发器配置 schema 校验」说明；⑫ §4.8 connector-api 文件清单删除 FlowTriggerEndpoint R2DBC entity/Repository，FlowVersionReadRepository 补充「HTTP 触发取 trigger 配置走这个 Repository」说明；⑬ §4.10 文件影响统计 83 → 78（-5）；⑭ plan-api.md §4.2 HTTP 触发 URL 从 `/trigger/{flowId}/{triggerToken}` 改为 `/trigger/{flowId}/invoke`，签名验证段重写为认证说明（凭证调用方携带 + authTypeSchema 校验 + rateLimit 限流），新增 403 错误码（连接流未启用）；⑮ plan-api.md §6 接口编号总表 API-024 路径同步；⑯ 顶部版本号 v2.7.2 → v2.7.3 | SDDU Plan Agent |
 | **v2.7.4** | **2026-05-22** | **JSON 数据字段类型统一：禁用 MySQL JSON 原生类型，全部改 TEXT 存 JSON 字符串**——新增表设计规则：所有承载 JSON 数据的字段统一使用 TEXT 类型（具体长度 TEXT/MEDIUMTEXT/LONGTEXT 由 plan-db.md 按字段实际大小选定），应用层负责 JSON 序列化（Jackson）、反序列化、格式校验；不使用 MySQL 的 `JSON_EXTRACT`/`JSON_TABLE` 等原生函数，需要查询时由应用层解析后过滤。理由：跨数据库通用（PG/Oracle/SQLServer 都支持）/ ORM 与工具兼容性最好 / 避免 MySQL 5.7/8.0 JSON 类型方言差异 / R2DBC 映射简单。影响 9 个字段：`connector_version_t.basic_info_snapshot`/`connection_config`、`flow_version_t.basic_info_snapshot`/`orchestration_config`、`execution_record_t.trigger_data`/`result_data`、`execution_step_t.input_data`/`output_data`/`error_info`。涉及变更：① §1.4 数据流 `FlowVersion.orchestration_config` 引用描述加 TEXT 说明；② §2.1 编排层描述补充 TEXT 存 JSON 字符串说明；③ §4.2 设计决策「编排定义存储模型」补充字段类型决策；④ §4.2 ER 图 9 处 `json XXX` → `text XXX`（含 TEXT 存 JSON 字符串注释）；⑤ §4.2 JSON 字段结构说明顶部加 TEXT 类型决策提示；⑥ §4.3.3 新增「JSON 数据字段」规则行；⑦ §4.3.5 差异点「JSON 大字段」行重写（含 TEXT 类型说明 + 删除 v2.7.3 已移除的 `rateLimit_config`）；⑧ §4.8 ConnectorVersion / FlowVersion / runtime FlowVersion 三个实体描述统一为「TEXT 字段 + Jackson 序列化/反序列化」；⑨ 顶部版本号 v2.7.3 → v2.7.4。**外置策略不变**（大字段 > 64KB 仍走对象存储 `*_blob_id` 引用） | SDDU Plan Agent |
-| **v2.7.5** | **2026-05-22** | **`storage_blob_ref_t` 新增 `external_resource_id` 字段（外部系统资源 ID）**——支持"大字段数据来源于外部系统时，存外部系统对该数据的标识"场景（如连接器调用钉钉返回 `media_id`、调用第三方返回 `file_id` 等），便于反查溯源。字段定义：`VARCHAR(64)` / 可空（按需使用，纯内部生成 blob 留空）/ 不建索引（仅作为引用标签字段，不支持高频反查）/ 位置在 `uri` 字段之前 / 仅 `storage_blob_ref_t` 加（业务表不动）。背景：用户提出"url 字段前加一个 batch_id 字段，按需使用"，澄清后理解为"大字段对应数据在业务/外部系统中的 ID"，重命名为 `external_resource_id` 避免与"批次 ID"语义混淆。涉及变更：① §4.2 表清单第 7 行说明补充 `external_resource_id` 描述；② §4.2 ER 图 `StorageBlobRef` 实体新增 `external_resource_id` 字段（uri 之前）；③ §4.8 connector-api `runtime/entity/StorageBlobRef.java` 实体描述补充字段说明；④ 顶部版本号 v2.7.4 → v2.7.5 | SDDU Plan Agent |
+| **v2.7.5** | **2026-05-22** | **`storage_blob_ref_t` 新增 `external_resource_id` 字段（外部系统资源 ID）**——支持"大字段数据来源于外部系统时，存外部系统对该数据的标识"场景（如连接器调用钉钉返回 `media_id`、调用第三方返回 `file_id` 等），便于反查溯源。字段定义：`VARCHAR(64)` / 可空（按需使用，纯内部生成 blob 留空）/ 不建索引（仅作为引用标签字段，不支持高频反查）/ 位置在 `uri` 字段之前 / 仅 `storage_blob_ref_t` 加（业务表不动）。背景：用户提出"url 字段前加一个 batch_id 字段，按需使用"，澄清后理解为"大字段对应数据在业务/外部系统中的 ID"，重命名为 `external_resource_id` 避免与"批次 ID"语义混淆。涉及变更：① §4.2 表清单第 7 行说明补充 `external_resource_id` 描述；② §4.2 ER 图 `StorageBlobRef` 实体新增 `external_resource_id` 字段（uri 之前）；③ §4.8 connector-api `modules/runtime/entity/StorageBlobRefEntity.java` 实体描述补充字段说明；④ 顶部版本号 v2.7.4 → v2.7.5 | SDDU Plan Agent |
 | **v2.7.6** | **2026-05-22** | **字段精简 + 子文档结构优化（plan.md 同步变更）**——主要变更落在 plan-db.md（详见其修订记录 v2.7.6），plan.md 本次同步：① §4.2 表清单第 1 行（connector_t）字段说明删除 `tags`；② §4.2 表清单第 3 行（flow_t）字段说明删除 `tags`/`owner_group`；③ §4.2 ER 图 Connector 实体删除 `tags` 字段；④ §4.2 ER 图 Flow 实体删除 `tags`/`owner_group` 字段；⑤ 顶部版本号 v2.7.5 → v2.7.6。**理由**：MVP 范围收敛，避免引入未明确需求的「标签 / 归属组」概念，V1 出现需求时再加。plan-db.md 同步做了「章节结构重组（设计规范→表清单→表关系→表定义）」+「5 张表新增状态机图」+「字段精简」三项变更；plan-api.md 同步删除 3 处 API 示例中的 `tags`/`ownerGroup`；plan-page.md 同步删除表单 tags 输入器描述 + 2 处 thunk createXxx 注释。**mermaid 校验**：plan.md 9/9 通过；plan-db.md 6/6 通过（含 5 张新增状态机图） | SDDU Plan Agent |
 | **v2.8.1** | **2026-05-24** | **SQL 脚本存放策略调整**：DDL 脚本统一由 open-server 存放到 `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`；仅采用 FlywayDB 目录与命名风格，open-server 不新增 Flyway 依赖，不考虑脚本自动执行机制；connector-api 不存放 DDL / migration 脚本，仅通过 R2DBC 访问开放平台共库表。同步更新共享数据模型策略、数据库设计决策、文件清单、风险缓解措施与迭代 0 范围。 | SDDU Tasks Agent |
 

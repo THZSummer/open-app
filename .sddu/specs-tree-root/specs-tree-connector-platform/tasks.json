@@ -49,16 +49,22 @@
       "fr": [],
       "files": [
         "connector-api/pom.xml",
-        "connector-api/src/main/java/.../ConnectorApiApplication.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/ConnectorApiApplication.java",
         "connector-api/src/main/resources/application.yml",
-        "connector-api/src/main/java/.../entity/ConnectorEntity.java",
-        "connector-api/src/main/java/.../entity/FlowEntity.java",
-        "connector-api/src/main/java/.../repository/ConnectorVersionReadRepository.java",
-        "connector-api/src/main/java/.../repository/FlowVersionReadRepository.java"
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/R2dbcConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/ReactiveRedisConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorVersionEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/repository/ConnectorVersionReadRepository.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/entity/FlowEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/entity/FlowVersionEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/repository/FlowVersionReadRepository.java"
       ],
       "notes": [
         "connector-api 仅配置 R2DBC 访问开放平台共库",
-        "connector-api 不维护 DDL/Flyway migration"
+        "connector-api 不维护 DDL/Flyway migration",
+        "connector-api 包结构对齐 open-server：com.xxx.it.works.wecode.v2/common 与 modules 同级",
+        "common 放公共能力，modules 仅放业务模块代码"
       ]
     },
     {
@@ -90,11 +96,12 @@
       "module": "connector-api",
       "fr": ["FR-020", "FR-021", "FR-023"],
       "files": [
-        "connector-api/src/main/java/.../runtime/ReactiveSequentialExecutor.java",
-        "connector-api/src/main/java/.../runtime/ExecutionContext.java",
-        "connector-api/src/main/java/.../runtime/node/ConnectorNodeExecutor.java",
-        "connector-api/src/main/java/.../runtime/node/DataProcessorExecutor.java",
-        "connector-api/src/main/java/.../runtime/node/ExitNodeExecutor.java"
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/ReactiveSequentialExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/context/ExecutionContext.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/NodeExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ConnectorNodeExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/DataProcessorExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ExitNodeExecutor.java"
       ]
     },
     {
@@ -105,7 +112,11 @@
       "wave": 3,
       "module": "connector-api",
       "fr": ["FR-021"],
-      "apiEndpoints": ["#18"]
+      "apiEndpoints": ["#18"],
+      "files": [
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/service/TriggerService.java"
+      ]
     },
     {
       "id": "TASK-007",
@@ -114,7 +125,11 @@
       "dependencies": ["TASK-005"],
       "wave": 3,
       "module": "connector-api",
-      "fr": ["FR-020"]
+      "fr": ["FR-020"],
+      "files": [
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/controller/TestRunController.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/service/TestRunService.java"
+      ]
     },
     {
       "id": "TASK-008",
@@ -159,7 +174,13 @@
       "dependencies": ["TASK-005", "TASK-006"],
       "wave": 4,
       "module": "connector-api + open-server",
-      "fr": ["FR-023", "FR-024"]
+      "fr": ["FR-023", "FR-024"],
+      "files": [
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/exception/DefaultErrorHandler.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/RateLimitFilter.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java",
+        "open-server/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/AuditLogAspect.java"
+      ]
     },
     {
       "id": "TASK-012",

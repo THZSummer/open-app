@@ -64,19 +64,20 @@ mysql -h <host> -P <port> -u <user> -p <database> -e "SHOW TABLES LIKE 'openplat
 **执行波次**: 1  
 
 ### 描述
-创建 `connector-api` 独立 Spring Boot 工程，配置 Spring WebFlux + R2DBC + Redis Reactive，定义 4 张活跃表的 R2DBC Entity + Repository。connector-api 不维护 DDL 脚本，不执行数据库迁移；仅配置 R2DBC 连接访问开放平台共库表。
+创建 `connector-api` 独立 Spring Boot 工程，配置 Spring WebFlux + R2DBC + Redis Reactive，定义 4 张活跃表的 R2DBC Entity + Repository。connector-api 不维护 DDL 脚本，不执行数据库迁移；仅配置 R2DBC 连接访问开放平台共库表。目录结构必须对齐 open-server：包名前缀统一为 `com.xxx.it.works.wecode.v2`，`common` 与 `modules` 同级；`common` 放公共能力，`modules` 仅放业务模块代码。
 
 ### 涉及文件
 - [NEW] `connector-api/pom.xml`（spring-boot-starter-webflux, r2dbc-mysql, spring-data-r2dbc, spring-data-redis-reactive, reactor-core）
-- [NEW] `connector-api/src/main/java/.../ConnectorApiApplication.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/ConnectorApiApplication.java`
 - [NEW] `connector-api/src/main/resources/application.yml`
-- [NEW] `connector-api/src/main/java/.../entity/ConnectorEntity.java`
-- [NEW] `connector-api/src/main/java/.../entity/ConnectorVersionEntity.java`
-- [NEW] `connector-api/src/main/java/.../entity/FlowEntity.java`
-- [NEW] `connector-api/src/main/java/.../entity/FlowVersionEntity.java`
-- [NEW] `connector-api/src/main/java/.../repository/ConnectorVersionReadRepository.java`（R2DBC Repository，按 connector_id 查 connection_config）
-- [NEW] `connector-api/src/main/java/.../repository/FlowVersionReadRepository.java`（R2DBC Repository，按 flow_id 查 orchestration_config）
-- [NEW] `connector-api/src/main/java/.../config/R2dbcConfig.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/R2dbcConfig.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/ReactiveRedisConfig.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorEntity.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorVersionEntity.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/repository/ConnectorVersionReadRepository.java`（R2DBC Repository，按 connector_id 查 connection_config）
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/entity/FlowEntity.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/entity/FlowVersionEntity.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/repository/FlowVersionReadRepository.java`（R2DBC Repository，按 flow_id 查 orchestration_config）
 
 ### 验收标准
 - [ ] Maven 构建成功，无 spring-boot-starter-web / mybatis / jdbc 依赖泄露
@@ -84,6 +85,8 @@ mysql -h <host> -P <port> -u <user> -p <database> -e "SHOW TABLES LIKE 'openplat
 - [ ] R2DBC 连接 MySQL 正常，可执行简单 SELECT
 - [ ] ReactiveRedisTemplate 可用
 - [ ] Entity 字段对齐 `plan-db.md` DDL（BIGINT ID / 双语字段 / TINYINT 枚举 / MEDIUMTEXT JSON）
+- [ ] Java 包结构对齐 open-server：`com.xxx.it.works.wecode.v2/common` 与 `com.xxx.it.works.wecode.v2/modules` 同级
+- [ ] `common` 不在 `modules` 内；公共配置/异常/上下文/安全/模型放 `common`，业务代码放 `modules/{module}`
 - [ ] connector-api 工程内不存在 DDL / Flyway migration 脚本
 - [ ] 严格遵守全 reactive 栈规则：禁止 JDBC/MyBatis/RestTemplate/synchronized
 
@@ -203,15 +206,15 @@ curl -X POST http://localhost:18080/open-server/api/v1/flows/1234567890123456789
 在 connector-api 中实现轻量同步执行引擎：ReactiveSequentialExecutor、ExecutionContext、ConnectorNodeExecutor（HTTP 调用）、DataProcessorExecutor（字段映射）、ExitNodeExecutor。
 
 ### 涉及文件
-- [NEW] `connector-api/src/main/java/.../runtime/ReactiveSequentialExecutor.java`
-- [NEW] `connector-api/src/main/java/.../runtime/ExecutionContext.java`
-- [NEW] `connector-api/src/main/java/.../runtime/NodeExecutor.java`（接口，返回 `Mono<NodeOutput>`）
-- [NEW] `connector-api/src/main/java/.../runtime/node/ConnectorNodeExecutor.java`
-- [NEW] `connector-api/src/main/java/.../runtime/node/DataProcessorExecutor.java`
-- [NEW] `connector-api/src/main/java/.../runtime/node/ExitNodeExecutor.java`
-- [NEW] `connector-api/src/main/java/.../runtime/node/EntryNodeExecutor.java`
-- [NEW] `connector-api/src/main/java/.../runtime/dto/NodeOutput.java`
-- [NEW] `connector-api/src/main/java/.../runtime/dto/ExecutionResult.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/ReactiveSequentialExecutor.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/context/ExecutionContext.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/NodeExecutor.java`（接口，返回 `Mono<NodeOutput>`）
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ConnectorNodeExecutor.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/DataProcessorExecutor.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ExitNodeExecutor.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/EntryNodeExecutor.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/model/NodeOutput.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/model/ExecutionResult.java`
 
 ### 验收标准
 - [ ] ReactiveSequentialExecutor 从入口节点开始，按 edges 拓扑顺序 flatMap 串联各节点 `Mono<NodeOutput>`
@@ -250,8 +253,8 @@ cd connector-api && mvn test -Dtest=ReactiveSequentialExecutorTest
 实现 `POST /api/v1/trigger/{flowId}/invoke` 对外 HTTP 触发端点，响应外部系统请求并同步执行连接流。
 
 ### 涉及文件
-- [NEW] `connector-api/src/main/java/.../http/TriggerController.java`
-- [NEW] `connector-api/src/main/java/.../http/TriggerService.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/service/TriggerService.java`
 
 ### 验收标准
 - [ ] `POST /api/v1/trigger/{flowId}/invoke` 接收请求后校验 lifecycleStatus=running
@@ -283,8 +286,8 @@ curl -X POST http://localhost:18180/connector-api/api/v1/trigger/123456789012345
 在 connector-api 中暴露内部测试接口，供 open-server debug-proxy 转发调用，支持传入模拟触发数据和 credentials。
 
 ### 涉及文件
-- [NEW] `connector-api/src/main/java/.../test/TestRunController.java`
-- [NEW] `connector-api/src/main/java/.../test/TestRunService.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/controller/TestRunController.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/service/TestRunService.java`
 
 ### 验收标准
 - [ ] 内部端点接收 mockTriggerData + credentials（按 connectorVersionId 分组）
@@ -364,10 +367,10 @@ curl -X POST http://localhost:18080/open-server/api/v1/flows/1234567890123456789
 在 connector-api 中实现平台默认错误处理、限流拦截器，在 open-server 中实现关键操作审计日志。
 
 ### 涉及文件
-- [NEW] `connector-api/src/main/java/.../runtime/handler/DefaultErrorHandler.java`
-- [NEW] `connector-api/src/main/java/.../runtime/filter/RateLimitFilter.java`
-- [MODIFY] `connector-api/src/main/java/.../http/TriggerController.java`（接入限流 Filter）
-- [NEW] `open-server/src/main/java/.../modules/common/AuditLogAspect.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/exception/DefaultErrorHandler.java`
+- [NEW] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/RateLimitFilter.java`
+- [MODIFY] `connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java`（接入限流 Filter）
+- [NEW] `open-server/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/AuditLogAspect.java`
 
 ### 验收标准
 - [ ] FR-023 默认错误处理：单节点失败标记 failed，连接流整体标记 failed，失败上下文保留
