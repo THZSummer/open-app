@@ -8,7 +8,7 @@
 **目录 ID**: CONN-PLAT-001  
 **优先级**: P1  
 **创建时间**: 2026-05-14  
-**最新更新**: 2026-05-24（plan.md/plan-db.md 更新至 v2.8.1，DDL 策略改为 FlywayDB 风格）
+**最新更新**: 2026-05-24（plan.md 更新至 v2.8.1，DDL 策略改为 FlywayDB 风格；tasks.md/tasks.json 更新：connector-api 目录结构对齐 open-server，包名前缀统一为 `com.xxx.it.works.wecode.v2`，`common` 与 `modules` 同级）
 
 ### 工作流进度
 
@@ -17,7 +17,7 @@
 | 🔍 需求挖掘 (discovery) | ✅ 完成 | 2026-05-14 |
 | 📋 规范编写 (spec) | ✅ 完成 | 2026-05-18 (v1.0) → 2026-05-21 (v4.0) |
 | 📐 技术规划 (plan) | ✅ 完成 | 2026-05-19 (v1.x) → 2026-05-24 (v2.8.1) |
-| 📝 任务分解 (tasks) | ✅ 完成 | 2026-05-22（12 个任务，对齐 v5.0） |
+| 📝 任务分解 (tasks) | ✅ 完成 | 2026-05-24（12 个任务，connector-api 目录结构对齐 open-server 完成） |
 
 ## 目录结构
 
@@ -88,13 +88,14 @@ specs-tree-connector-platform/
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| tasks.md | **任务分解文档** — 12 个任务、4 个波次、10 个当前实施 + 2 个外部占位 | ✅ tasked |
-| tasks.json | **任务元数据** — 任务结构化数据，供工具读取 | ✅ tasked |
+| tasks.md | **任务分解文档** — 12 个任务、4 个波次、10 个当前实施 + 2 个外部占位；connector-api 包结构对齐 open-server（`com.xxx.it.works.wecode.v2`，`common` 与 `modules` 同级） | ✅ tasked |
+| tasks.json | **任务元数据** — 任务结构化数据，含 connector-api 目录结构信息（`common`/`modules` 同级） | ✅ tasked |
 
 **任务概要**:
 - **当前实施任务（10 个）**: TASK-001~TASK-008, TASK-011~TASK-012
 - **外部占位任务（2 个）**: TASK-009（wecodesite 连接器前端页面）、TASK-010（wecodesite 连接流前端页面 + 编排画布）— 由其他渠道并行完成，不作为 SDDU build 实施链路强依赖
 - **执行波次**: Wave 1 基础设施 → Wave 2 后端核心 → Wave 3 运行时+调试 → Wave 4 增强与集成
+- **connector-api 目录结构**: 包名前缀统一 `com.xxx.it.works.wecode.v2`；`common`（公共能力）与 `modules`（业务模块）同级
 
 ### 📂 架构决策记录 (ADR)
 
@@ -164,4 +165,4 @@ specs-tree-connector-platform/
 
 ---
 
-*最后更新: 2026-05-22 | @sddu-docs 自动更新*
+*最后更新: 2026-05-24 | @sddu-docs 自动更新*

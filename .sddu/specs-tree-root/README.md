@@ -27,7 +27,7 @@
 | Feature ID | Feature 名称 | 状态 | 优先级 | 作者 | 更新时间 |
 |------------|-------------|------|--------|------|----------|
 | **CAP-OPEN-001** | [能力开放平台](./specs-tree-capability-open-platform/) | ✅ validated（全流程完成） | P0 | Summer | 2026-04-22 |
-| **CONN-PLAT-001** | [连接器平台](./specs-tree-connector-platform/) | 🔵 tasked（任务分解完成） | P1 | - | 2026-05-24 |
+| **CONN-PLAT-001** | [连接器平台](./specs-tree-connector-platform/) | 🔵 tasked（任务分解完成，connector-api 对齐 open-server） | P1 | - | 2026-05-24 |
 | **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | ✅ specified（规范完成） | P0 | Summer | 2026-04-07 |
 
 ---
@@ -61,7 +61,7 @@
 
 ### CONN-PLAT-001: 连接器平台
 
-**状态**: 🔵 tasked（任务分解完成 — 12 个任务、4 个波次，DDL 脚本采用 FlywayDB 命名风格）  
+**状态**: 🔵 tasked（任务分解完成 — 12 个任务、4 个波次；connector-api 包结构对齐 open-server，目录结构重构为 `common` 与 `modules` 同级）  
 
 **文档**:
 - [需求挖掘报告](./specs-tree-connector-platform/discovery-report.md) - 连接器平台需求分析
@@ -70,7 +70,7 @@
 - [技术规划 v2.8.1](./specs-tree-connector-platform/plan.md) - 同步执行引擎架构，DDL 脚本 FlywayDB 命名风格
 - [接口设计 v2.0](./specs-tree-connector-platform/plan-api.md) - 26 个端点
 - [数据库设计 v2.8.1](./specs-tree-connector-platform/plan-db.md) - SQL 脚本存放于 open-server `db/migration/V2__init_connector_platform_schema.sql`，FlywayDB 命名风格
-- [任务分解](./specs-tree-connector-platform/tasks.md) - 12 个任务（10 个实施 + 2 个外部占位）
+- [任务分解](./specs-tree-connector-platform/tasks.md) - 12 个任务（10 个实施 + 2 个外部占位），connector-api 目录结构对齐 open-server（`com.xxx.it.works.wecode.v2`，`common` 与 `modules` 同级）
 - [ADR-001~003](./specs-tree-connector-platform/ADR-001.md) - 架构决策记录（3 份）
 
 **核心信息**:
