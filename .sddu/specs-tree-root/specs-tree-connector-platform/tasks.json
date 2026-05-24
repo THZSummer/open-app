@@ -11,8 +11,10 @@
   },
   "summary": {
     "totalTasks": 12,
-    "complexityS": 3,
-    "complexityM": 7,
+    "currentImplementationTasks": 10,
+    "externalPlaceholderTasks": 2,
+    "complexityS": 2,
+    "complexityM": 6,
     "complexityL": 2,
     "waves": 4
   },
@@ -116,20 +118,28 @@
     {
       "id": "TASK-009",
       "name": "wecodesite 连接器前端页面",
-      "complexity": "M",
-      "dependencies": ["TASK-003"],
+      "type": "external-placeholder",
+      "implementationScope": "不在此 Tasks 文档实施",
+      "executionMode": "由其他渠道并行完成",
+      "buildExecutable": false,
+      "strongDependency": false,
       "wave": 3,
       "module": "wecodesite",
-      "fr": ["FR-001", "FR-002", "FR-004", "FR-005", "FR-006"]
+      "fr": ["FR-001", "FR-002", "FR-004", "FR-005", "FR-006"],
+      "note": "仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令。"
     },
     {
       "id": "TASK-010",
       "name": "wecodesite 连接流前端页面 + 编排画布",
-      "complexity": "L",
-      "dependencies": ["TASK-004"],
+      "type": "external-placeholder",
+      "implementationScope": "不在此 Tasks 文档实施",
+      "executionMode": "由其他渠道并行完成",
+      "buildExecutable": false,
+      "strongDependency": false,
       "wave": 3,
       "module": "wecodesite",
-      "fr": ["FR-009", "FR-012", "FR-016", "FR-017", "FR-020"]
+      "fr": ["FR-009", "FR-012", "FR-016", "FR-017", "FR-020"],
+      "note": "仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令。"
     },
     {
       "id": "TASK-011",
@@ -144,7 +154,8 @@
       "id": "TASK-012",
       "name": "端到端集成测试 + E2E 冒烟",
       "complexity": "M",
-      "dependencies": ["TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010", "TASK-011"],
+      "dependencies": ["TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-011"],
+      "externalCollaboration": ["TASK-009", "TASK-010"],
       "wave": 4,
       "module": "Integration",
       "fr": []
@@ -162,11 +173,11 @@
       "parallel": true
     },
     "3": {
-      "description": "运行时端点 + 调试代理 + 前端页面",
+      "description": "运行时端点 + 调试代理 + 前端占位",
       "tasks": ["TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"],
       "subGroup": {
         "backend": ["TASK-006", "TASK-007", "TASK-008"],
-        "frontend": ["TASK-009", "TASK-010"],
+        "externalPlaceholders": ["TASK-009", "TASK-010"],
         "parallelBetweenGroups": true
       }
     },

@@ -9,9 +9,9 @@
 
 ## 任务汇总
 
-| 总计 | S | M | L | 波次 |
-|------|:--:|:--:|:--:|:----:|
-| 12 | 3 | 7 | 2 | 4 |
+| 总计 | 当前实施任务 | 外部占位任务 | S | M | L | 波次 |
+|------|:------------:|:------------:|:--:|:--:|:--:|:----:|
+| 12 | 10 | 2 | 2 | 6 | 2 | 4 |
 
 ---
 
@@ -233,7 +233,7 @@ cd connector-api && mvn test -Dtest=ReactiveSequentialExecutorTest
 
 ---
 
-## Wave 3：运行时端点 + 调试代理 + 前端页面（5 任务 · 并行子组）
+## Wave 3：运行时端点 + 调试代理 + 前端占位（3 个当前实施任务 + 2 个外部占位）
 
 ---
 
@@ -329,83 +329,21 @@ curl -X POST http://localhost:18080/open-server/api/v1/flows/1234567890123456789
 
 ## TASK-009: wecodesite 连接器前端页面
 
-**复杂度**: M  
-**前置依赖**: TASK-003  
-**执行波次**: 3  
+**类型**: 外部占位任务  
+**实施范围**: 不在此 Tasks 文档实施  
+**执行方式**: 由其他渠道并行完成  
 
-### 描述
-在 wecodesite `ConnectPlatform` 目录中补充/完善连接器目录、创建/编辑、详情 3 个页面。
-
-### 涉及文件
-- [MODIFY] `wecodesite/src/pages/ConnectPlatform/Connector/index.jsx`（已有实现，补充搜索/过滤/分页）
-- [MODIFY] `wecodesite/src/pages/ConnectPlatform/ConnectorEditor/index.jsx`（已有实现，补充连接配置编辑）
-- [NEW] `wecodesite/src/pages/ConnectPlatform/ConnectorDetail.jsx`
-- [NEW] `wecodesite/src/pages/ConnectPlatform/Connector/thunk.js`（API 调用封装）
-
-### 验收标准
-- [ ] 连接器目录（FR-004）：列表展示名称/图标/类型，支持 connectorType 过滤 + keyword 搜索 + 分页
-- [ ] 连接器创建/编辑（FR-001~002）：双语表单（nameCn/nameEn/descriptionCn/descriptionEn/iconFileId/connectorType=HTTP）
-- [ ] 连接配置编辑（FR-006）：认证类型 Schema 声明面板（不输入凭证值），协议地址/方法/headers，入参/出参 Schema 编辑器，超时/限流配置
-- [ ] 连接器详情（FR-005）：展示基本信息和连接配置（只读模式）
-- [ ] 删除确认：校验无引用后执行
-- [ ] ID 字段 string 类型传递，TINYINT 枚举前端字典转译，时间 ISO 8601 显示
-- [ ] 响应格式对齐 `plan-api.md §1.5`
-
-### 验证命令
-```bash
-cd wecodesite && npm run dev
-# 浏览器访问：
-# /connect/connectors — 连接器目录
-# /connect/connector-editor — 创建/编辑连接器
-# /connect/connectors/:id — 连接器详情
-```
+> 说明：仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令；不作为当前 SDDU build 阶段的实施任务或强依赖。
 
 ---
 
 ## TASK-010: wecodesite 连接流前端页面 + 编排画布
 
-**复杂度**: L  
-**前置依赖**: TASK-004  
-**执行波次**: 3  
+**类型**: 外部占位任务  
+**实施范围**: 不在此 Tasks 文档实施  
+**执行方式**: 由其他渠道并行完成  
 
-### 描述
-在 wecodesite 中补充/完善连接流列表、编排画布、详情 3 个页面。编排画布为核心功能，基于 @xyflow/react 实现拖拽编排。
-
-### 涉及文件
-- [MODIFY] `wecodesite/src/pages/ConnectPlatform/Flow/index.jsx`（已有实现，补充 lifecycle 过滤/search/分页）
-- [MODIFY] `wecodesite/src/pages/ConnectPlatform/FlowEditor/index.jsx`（已有实现，补充完整编排功能）
-- [NEW] `wecodesite/src/pages/ConnectPlatform/FlowDetail.jsx`
-- [NEW] `wecodesite/src/pages/ConnectPlatform/Flow/thunk.js`（saveOrchestrationConfig/testRun/startFlow/stopFlow）
-- [NEW] `wecodesite/src/pages/ConnectPlatform/FlowEditor/nodes/TriggerNode.jsx`（HTTP 触发配置面板）
-- [NEW] `wecodesite/src/pages/ConnectPlatform/FlowEditor/nodes/ConnectorNode.jsx`（连接器节点配置面板）
-- [NEW] `wecodesite/src/pages/ConnectPlatform/FlowEditor/nodes/DataProcessorNode.jsx`（字段映射配置面板）
-- [NEW] `wecodesite/src/pages/ConnectPlatform/FlowEditor/nodes/ExitNode.jsx`（出口节点配置面板）
-- [NEW] `wecodesite/src/pages/ConnectPlatform/FlowEditor/TestRunDialog.jsx`（测试运行弹窗）
-
-### 验收标准
-- [ ] 连接流列表（FR-012）：展示名称/lifecycleStatus，支持状态过滤 + keyword 搜索 + 分页
-- [ ] 编排画布（FR-017）：三区域布局（入口区→编排区→出口区），支持拖拽/缩放/平移/删除
-  - TriggerNode：HTTP 触发配置面板（SYSTOKEN 认证类型 Schema / inputSchema / rateLimit.maxQps）
-  - ConnectorNode：选择已有连接器（connectorVersionId），配置 inputMapping 字段引用
-  - DataProcessorNode：fieldMappings 配置（source→target / 常量 / 路径引用）
-  - ExitNode：outputFields 列表定义
-  - Edges：节点间连线，支持 sourceNodeId→targetNodeId 拖动连接
-- [ ] 保存编排配置（FR-017）：PUT /api/v1/flows/{flowId}/config，编辑即生效
-- [ ] 连接流详情（FR-016）：概览信息 + lifecycleStatus 状态徽标
-- [ ] 启停操作（FR-014~015）：启动（stopped→running）/ 停止（running→stopped）按钮 + 确认
-- [ ] 测试运行弹窗（FR-020）：mockTriggerData JSON 输入 + credentials 按 connectorVersionId 输入 → POST test-run → 展示步骤详情/耗时/结果
-- [ ] 同上：ID string / 枚举 TINYINT 字典转译 / 时间 ISO 8601 / 统一响应格式
-
-### 验证命令
-```bash
-cd wecodesite && npm run dev
-# 浏览器访问：
-# /connect/flows — 连接流列表
-# /connect/flows/new — 新建编排
-# /connect/flows/:id/edit — 编辑编排
-# /connect/flows/:id — 连接流详情
-# 测试：拖拽 Trigger → Connector → DataProcessor → Exit 四个节点，连线 → 保存 → 测试运行
-```
+> 说明：仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令；不作为当前 SDDU build 阶段的实施任务或强依赖。
 
 ---
 
@@ -450,7 +388,8 @@ done
 ## TASK-012: 端到端集成测试 + E2E 冒烟
 
 **复杂度**: M  
-**前置依赖**: TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-009, TASK-010, TASK-011  
+**前置依赖**: TASK-003, TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-011  
+**外部协同**: TASK-009, TASK-010（wecodesite 占位任务，由其他渠道并行完成，不作为当前实施强依赖）  
 **执行波次**: 4  
 
 ### 描述
@@ -483,13 +422,13 @@ cd connector-api && mvn test -Dtest=ConnectorFlowE2ETest
 
 | FR | TASK | 波次 |
 |----|------|:----:|
-| FR-001~004 连接器 CRUD | TASK-003, TASK-009 | 2, 3 |
-| FR-005~006 连接配置 | TASK-003, TASK-009 | 2, 3 |
-| FR-009~012 连接流 CRUD | TASK-004, TASK-010 | 2, 3 |
+| FR-001~004 连接器 CRUD | TASK-003；TASK-009（外部占位） | 2, 3 |
+| FR-005~006 连接配置 | TASK-003；TASK-009（外部占位） | 2, 3 |
+| FR-009~012 连接流 CRUD | TASK-004；TASK-010（外部占位） | 2, 3 |
 | FR-013 部署（编辑即运行） | TASK-004（简化） | 2 |
-| FR-014~015 启停 | TASK-004, TASK-010 | 2, 3 |
-| FR-016~017 流配置/编排 | TASK-004, TASK-010 | 2, 3 |
-| FR-020 测试执行 | TASK-005, TASK-007, TASK-008, TASK-010 | 2, 3 |
+| FR-014~015 启停 | TASK-004；TASK-010（外部占位） | 2, 3 |
+| FR-016~017 流配置/编排 | TASK-004；TASK-010（外部占位） | 2, 3 |
+| FR-020 测试执行 | TASK-005, TASK-007, TASK-008；TASK-010（外部占位） | 2, 3 |
 | FR-021 HTTP 触发 | TASK-005, TASK-006 | 2, 3 |
 | FR-023~024 错误/限流 | TASK-005, TASK-011 | 2, 4 |
 
@@ -505,16 +444,18 @@ Wave 2:  [TASK-003 连接器模块] ←────────┤─(并行)
                 │       │
 Wave 3:  ┌──────┤       ├──────┐
          │      │       │      │
-    [TASK-006  [TASK-007 [TASK-009
-     HTTP触发]  测试端点]  连接器页面]
+    [TASK-006  [TASK-007 [TASK-009 外部占位]
+     HTTP触发]  测试端点]  [TASK-010 外部占位]
          │        │         │
-    [TASK-008 debug-proxy]  │
-         │        │         │
-         └────────┤─────────┘
+    [TASK-008 debug-proxy]  │（由其他渠道并行完成）
+         │        │
+         └────────┤
                   │
 Wave 4:  [TASK-011 错误/限流/审计]
                   │
          [TASK-012 E2E集成测试]
+
+注：TASK-009/TASK-010 为 wecodesite 外部占位任务，不作为当前 SDDU build 实施链路的强依赖。
 ```
 
 ---
