@@ -71,7 +71,11 @@ public class ExecutionContext {
                 if (nodeOutput != null) {
                     return resolveNestedField(nodeOutput, parts[1]);
                 }
+                // 引用节点不存在时返回null
+                return null;
             }
+            // 格式不合法 (如 ${nodeId} 无字段名) 返回null
+            return null;
         }
 
         // 常量值直接返回
