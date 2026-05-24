@@ -340,7 +340,6 @@ sequenceDiagram
 ```
 
 > 💡 **MVP v5.0 简化**：执行结果同步返回调用方，**不持久化到 execution_record_t**（表设计保留至 V1）。
-```
 
 ### 1.5 依赖关系图
 
