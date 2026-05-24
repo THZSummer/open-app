@@ -1,0 +1,37 @@
+package com.xxx.it.works.wecode.v2.modules.flow.dto;
+
+import lombok.Data;
+
+/**
+ * 连接流列表响应项
+ * <p>
+ * API #9: GET /api/v1/flows
+ * </p>
+ */
+@Data
+public class FlowListResponse {
+
+    /** 连接流ID (string格式返回) */
+    private String id;
+
+    /** 中文名称 */
+    private String nameCn;
+
+    /** 英文名称 */
+    private String nameEn;
+
+    /** 中文描述 */
+    private String descriptionCn;
+
+    /** 英文描述 */
+    private String descriptionEn;
+
+    /** 生命周期状态 (TINYINT数字) */
+    private Integer lifecycleStatus;
+
+    /** 创建时间 (ISO 8601) */
+    private String createTime;
+
+    /** 最后更新时间 (ISO 8601) */
+    private String lastUpdateTime;
+}
