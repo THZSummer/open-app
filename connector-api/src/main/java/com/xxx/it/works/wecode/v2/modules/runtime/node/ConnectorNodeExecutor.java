@@ -2,13 +2,11 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ExecutionContextProvider;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
@@ -48,7 +46,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Mono<NodeOutput> execute(ExecutionContextProvider provider, Object nodeConfig) {
+    public Mono<NodeOutput> execute(ExecutionContext context, Object nodeConfig) {
         return Mono.fromCallable(() -> {
             Map<String, Object> config;
             if (nodeConfig instanceof Map) {
@@ -57,7 +55,6 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                 config = objectMapper.convertValue(nodeConfig, Map.class);
             }
 
-            ExecutionContext context = provider.getContext();
             String nodeId = (String) config.get("id");
 
             log.debug("Connector node executing: nodeId={}", nodeId);
@@ -117,17 +114,13 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         output.setNodeType("connector");
 
         try {
-            // 构建请求
-            WebClient.RequestBodySpec requestSpec;
-            if ("GET".equalsIgnoreCase(method)) {
-                requestSpec = webClient.get()
-                        .uri(URI.create(url))
-                        .headers(h -> headers.forEach(h::set));
-            } else {
-                requestSpec = webClient.method(org.springframework.http.HttpMethod.valueOf(method.toUpperCase()))
-                        .uri(URI.create(url))
-                        .headers(h -> headers.forEach(h::set))
-                        .bodyValue(body != null ? body : new HashMap<>());
+            WebClient.RequestBodySpec requestSpec = webClient
+                    .method(org.springframework.http.HttpMethod.valueOf(method.toUpperCase()))
+                    .uri(URI.create(url))
+                    .headers(h -> headers.forEach(h::set));
+
+            if (!"GET".equalsIgnoreCase(method)) {
+                requestSpec.bodyValue(body != null ? body : new HashMap<>());
             }
 
             // 执行请求并等待响应 (同步获取, 因为有超时保障)
@@ -135,13 +128,9 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                     .retrieve()
                     .bodyToMono(String.class)
                     .timeout(Duration.ofMillis(timeoutMs))
-                    .onErrorResume(WebClientResponseException.class, e -> {
-                        log.warn("Connector HTTP call failed: url={}, status={}", url, e.getStatusCode());
-                        return Mono.just("{\"error\":\"HTTP " + e.getStatusCode().value() + "\"}");
-                    })
                     .onErrorResume(e -> {
-                        log.warn("Connector HTTP call timeout or error: url={}, error={}", url, e.getMessage());
-                        return Mono.just("{\"error\":\"timeout\"}");
+                        log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
+                        return Mono.just("{\"error\":\"" + e.getMessage() + "\"}");
                     })
                     .block(Duration.ofMillis(timeoutMs + 5000)); // 额外5秒缓冲
 

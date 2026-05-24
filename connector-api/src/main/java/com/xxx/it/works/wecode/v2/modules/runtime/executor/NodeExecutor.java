@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.executor;
 
+import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import reactor.core.publisher.Mono;
 
@@ -15,11 +16,11 @@ public interface NodeExecutor {
     /**
      * 执行节点
      *
-     * @param context 执行上下文 (含触发数据/节点输出/凭证)
-     * @param nodeConfig 节点配置JSON (deserialized as Map)
+     * @param context    执行上下文 (含触发数据/节点输出/凭证)
+     * @param nodeConfig 节点配置 (deserialized as Map)
      * @return Mono<NodeOutput> 节点执行输出
      */
-    Mono<NodeOutput> execute(ExecutionContextProvider context, Object nodeConfig);
+    Mono<NodeOutput> execute(ExecutionContext context, Object nodeConfig);
 
     /**
      * 获取当前节点类型标识

@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ExecutionContextProvider;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
@@ -39,7 +38,7 @@ public class DataProcessorExecutor implements NodeExecutor {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Mono<NodeOutput> execute(ExecutionContextProvider provider, Object nodeConfig) {
+    public Mono<NodeOutput> execute(ExecutionContext context, Object nodeConfig) {
         return Mono.fromCallable(() -> {
             Map<String, Object> config;
             if (nodeConfig instanceof Map) {
@@ -48,7 +47,6 @@ public class DataProcessorExecutor implements NodeExecutor {
                 config = objectMapper.convertValue(nodeConfig, Map.class);
             }
 
-            ExecutionContext context = provider.getContext();
             String nodeId = (String) config.get("id");
 
             log.debug("DataProcessor node executing: nodeId={}", nodeId);

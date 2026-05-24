@@ -7,9 +7,9 @@ spring:
 
   # R2DBC 数据源配置 (Reactive MySQL)
   r2dbc:
-    url: r2dbc:mysql://localhost:3306/openplatform_v2?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: r2dbc:mysql://localhost:3306/openapp?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    username: openapp
+    password: openapp
     pool:
       max-size: 20
       initial-size: 5
@@ -21,6 +21,7 @@ spring:
     redis:
       host: localhost
       port: 6379
+      password: openapp
       timeout: 5000
       lettuce:
         pool:
@@ -28,8 +29,13 @@ spring:
           max-idle: 8
           min-idle: 4
 
-# Actuator 健康检查
+# 健康检查配置（不检查数据库和 Redis，避免因外部依赖未就绪导致启动检测失败）
 management:
+  health:
+    db:
+      enabled: false
+    redis:
+      enabled: false
   endpoints:
     web:
       exposure:

@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.executor;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
@@ -16,7 +15,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * 反应式顺序执行器
@@ -50,7 +48,7 @@ public class ReactiveSequentialExecutor {
     /**
      * 执行连接流
      *
-     * @param context 执行上下文
+     * @param context                 执行上下文
      * @param orchestrationConfigJson 编排配置JSON字符串
      * @return Mono<ExecutionResult> 完整执行结果
      */
@@ -69,119 +67,121 @@ public class ReactiveSequentialExecutor {
                     // 构建拓扑顺序: 从 entry 节点开始, 按 edges 确定顺序
                     List<JsonNode> orderedNodes = topologicalSort(nodes, edges);
 
-                    // 按顺序 flatMap 执行
+                    // 使用 reduce 累积执行: 从起始节点开始, 按顺序串联
+                    NodeOutput startMarker = new NodeOutput("__start__", "__start__", new HashMap<>());
                     return Flux.fromIterable(orderedNodes)
-                            .reduce(Mono.<NodeOutput>just(new NodeOutput("__start__", "__start__", new HashMap<>())),
-                                    (prevMono, nodeConfig) -> prevMono.flatMap(prevOutput -> {
-                                        // 将上一个节点输出写入上下文
-                                        if (!"__start__".equals(prevOutput.getNodeId())) {
-                                            context.setNodeOutput(prevOutput.getNodeId(), prevOutput.getOutputData());
-                                        }
-
-                                        // 找对应执行器
-                                        String nodeType = nodeConfig.get("type").asText();
-                                        NodeExecutor executor = executorMap.get(nodeType);
-                                        if (executor == null) {
-                                            log.warn("Unknown node type: {}, skipping", nodeType);
-                                            return Mono.just(new NodeOutput(
-                                                    nodeConfig.get("id").asText(),
-                                                    nodeType,
-                                                    new HashMap<>()));
-                                        }
-
-                                        // 执行节点
-                                        long nodeStart = System.currentTimeMillis();
-                                        return executor.execute(context, nodeConfig)
-                                                .doOnNext(output -> {
-                                                    output.setDurationMs(System.currentTimeMillis() - nodeStart);
-                                                    log.debug("Node {} executed: status={}, duration={}ms",
-                                                            output.getNodeId(), output.getStatus(), output.getDurationMs());
-                                                });
-                                    }))
-                            .flatMap(lastOutput -> {
-                                // 最后一个节点的输出
-                                context.setNodeOutput(lastOutput.getNodeId(), lastOutput.getOutputData());
-
-                                // 构建执行结果
-                                ExecutionResult result = new ExecutionResult();
-                                result.setExecutionId(context.getExecutionId());
-                                result.setFlowId(context.getFlowId());
-                                result.setTest(context.isTest());
-                                result.setTotalDurationMs(System.currentTimeMillis() - startTime);
-
-                                // 收集所有步骤详情
-                                boolean anyFailed = false;
-                                for (JsonNode node : orderedNodes) {
-                                    String nodeId = node.get("id").asText();
-                                    String nodeType = node.get("type").asText();
-                                    Map<String, Object> nodeOutput = context.getNodeOutput(nodeId);
-
-                                    ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
-                                    step.setNodeId(nodeId);
-                                    step.setNodeType(nodeType);
-
-                                    JsonNode labelCn = node.get("labelCn");
-                                    JsonNode labelEn = node.get("labelEn");
-                                    if (labelCn != null) step.setNodeLabelCn(labelCn.asText());
-                                    if (labelEn != null) step.setNodeLabelEn(labelEn.asText());
-
-                                    step.setOutputData(nodeOutput);
-
-                                    // 检查节点执行状态 (从上下文中获取)
-                                    String nodeStatus = "success";
-                                    if (nodeOutput != null && nodeOutput.containsKey("__status")) {
-                                        nodeStatus = (String) nodeOutput.get("__status");
-                                        if ("failed".equals(nodeStatus) || "timeout".equals(nodeStatus)) {
-                                            anyFailed = true;
-                                            step.setErrorMessage((String) nodeOutput.get("__error"));
-                                        }
-                                    }
-                                    step.setStatus(nodeStatus);
-
-                                    // 获取原始input
-                                    if (nodeOutput != null && nodeOutput.containsKey("__input")) {
-                                        @SuppressWarnings("unchecked")
-                                        Map<String, Object> input = (Map<String, Object>) nodeOutput.get("__input");
-                                        step.setInputData(input);
-                                    }
-
-                                    result.addStep(step);
-                                }
-
-                                // 状态设为最后一个节点的...不对, 应该按是否有失败判断
-                                // 因为最后一个是 exit 节点
-                                if (anyFailed) {
-                                    result.setStatus("failed");
-                                } else {
-                                    result.setStatus("success");
-                                }
-
-                                // resultData 取 exit 节点的输出 (不含 __status/__input 等元字段)
-                                if (lastOutput != null && lastOutput.getOutputData() != null) {
-                                    Map<String, Object> cleanOutput = new HashMap<>(lastOutput.getOutputData());
-                                    cleanOutput.remove("__status");
-                                    cleanOutput.remove("__input");
-                                    cleanOutput.remove("__error");
-                                    result.setResultData(cleanOutput);
-                                }
-
-                                // 清除凭证
-                                context.clearCredentials();
-
-                                return Mono.just(result);
-                            });
+                            .reduce(Mono.just(startMarker), (prevMono, nodeConfig) ->
+                                    prevMono.flatMap(prevOutput -> executeNode(context, prevOutput, nodeConfig, startTime)))
+                            .flatMap(mono -> mono) // 展平 Mono<Mono<NodeOutput>> → Mono<NodeOutput>
+                            .flatMap(lastOutput -> buildResult(context, orderedNodes, lastOutput, startTime));
                 })
                 .onErrorResume(e -> {
                     log.error("Flow execution error: {}", e.getMessage(), e);
-                    ExecutionResult errorResult = new ExecutionResult();
-                    errorResult.setExecutionId(context.getExecutionId());
-                    errorResult.setFlowId(context.getFlowId());
-                    errorResult.setStatus("failed");
-                    errorResult.setErrorMessage(e.getMessage());
-                    errorResult.setTotalDurationMs(System.currentTimeMillis() - startTime);
-                    errorResult.setTest(context.isTest());
-                    return Mono.just(errorResult);
+                    return Mono.just(buildErrorResult(context, e.getMessage(), startTime));
                 });
+    }
+
+    /**
+     * 执行单个节点
+     */
+    private Mono<NodeOutput> executeNode(ExecutionContext context, NodeOutput prevOutput,
+                                          JsonNode nodeConfig, long startTime) {
+        // 将上一个节点输出写入上下文 (跳过起始标记)
+        if (!"__start__".equals(prevOutput.getNodeId())) {
+            context.setNodeOutput(prevOutput.getNodeId(), prevOutput.getOutputData());
+        }
+
+        String nodeType = nodeConfig.get("type").asText();
+        NodeExecutor executor = executorMap.get(nodeType);
+        if (executor == null) {
+            log.warn("Unknown node type: {}, skipping", nodeType);
+            return Mono.just(new NodeOutput(
+                    nodeConfig.get("id").asText(), nodeType, new HashMap<>()));
+        }
+
+        long nodeStart = System.currentTimeMillis();
+        // 将 JsonNode 转为 Map 传递给执行器
+        Map<String, Object> configMap = objectMapper.convertValue(nodeConfig, Map.class);
+        return executor.execute(context, configMap)
+                .doOnNext(output -> {
+                    output.setDurationMs(System.currentTimeMillis() - nodeStart);
+                    log.debug("Node {} executed: status={}, duration={}ms",
+                            output.getNodeId(), output.getStatus(), output.getDurationMs());
+                });
+    }
+
+    /**
+     * 构建执行结果
+     */
+    private Mono<ExecutionResult> buildResult(ExecutionContext context, List<JsonNode> orderedNodes,
+                                               NodeOutput lastOutput, long startTime) {
+        // 最后一个节点的输出写入上下文
+        if (!"__start__".equals(lastOutput.getNodeId())) {
+            context.setNodeOutput(lastOutput.getNodeId(), lastOutput.getOutputData());
+        }
+
+        ExecutionResult result = new ExecutionResult();
+        result.setExecutionId(context.getExecutionId());
+        result.setFlowId(context.getFlowId());
+        result.setTest(context.isTest());
+        result.setTotalDurationMs(System.currentTimeMillis() - startTime);
+
+        boolean anyFailed = false;
+
+        // 收集所有步骤详情
+        for (JsonNode node : orderedNodes) {
+            String nodeId = node.get("id").asText();
+            String nodeType = node.get("type").asText();
+            Map<String, Object> nodeOutput = context.getNodeOutput(nodeId);
+
+            ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
+            step.setNodeId(nodeId);
+            step.setNodeType(nodeType);
+
+            JsonNode labelCn = node.get("labelCn");
+            JsonNode labelEn = node.get("labelEn");
+            if (labelCn != null) step.setNodeLabelCn(labelCn.asText());
+            if (labelEn != null) step.setNodeLabelEn(labelEn.asText());
+
+            step.setOutputData(nodeOutput);
+
+            // 检查节点执行状态
+            String nodeStatus = "success";
+            if (nodeOutput != null && nodeOutput.containsKey("__status")) {
+                nodeStatus = (String) nodeOutput.get("__status");
+                if ("failed".equals(nodeStatus) || "timeout".equals(nodeStatus)) {
+                    anyFailed = true;
+                    step.setErrorMessage((String) nodeOutput.get("__error"));
+                }
+            }
+            step.setStatus(nodeStatus);
+
+            // 获取原始 input
+            if (nodeOutput != null && nodeOutput.containsKey("__input")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> input = (Map<String, Object>) nodeOutput.get("__input");
+                step.setInputData(input);
+            }
+
+            result.addStep(step);
+        }
+
+        // 设置整体状态
+        result.setStatus(anyFailed ? "failed" : "success");
+
+        // resultData 取最后一个输出 (不含 __status/__input 等元字段)
+        if (lastOutput != null && lastOutput.getOutputData() != null) {
+            Map<String, Object> cleanOutput = new HashMap<>(lastOutput.getOutputData());
+            cleanOutput.remove("__status");
+            cleanOutput.remove("__input");
+            cleanOutput.remove("__error");
+            result.setResultData(cleanOutput);
+        }
+
+        // 清除凭证
+        context.clearCredentials();
+
+        return Mono.just(result);
     }
 
     /**
@@ -189,13 +189,11 @@ public class ReactiveSequentialExecutor {
      * MVP 线性编排, 按 edges 顺序 flatMap 串联
      */
     private List<JsonNode> topologicalSort(JsonNode nodes, JsonNode edges) {
-        // 构建 nodeId → nodeConfig 映射
         Map<String, JsonNode> nodeMap = new LinkedHashMap<>();
         for (JsonNode node : nodes) {
             nodeMap.put(node.get("id").asText(), node);
         }
 
-        // MVP 仅支持线性顺序: 先找到入口节点, 然后按 edges 的 source→target 遍历
         List<JsonNode> ordered = new ArrayList<>();
 
         // 找 entry 节点
@@ -208,7 +206,6 @@ public class ReactiveSequentialExecutor {
         }
 
         if (entryNode == null) {
-            // 没有显式 entry 节点, 按原始顺序
             nodes.forEach(ordered::add);
             return ordered;
         }
@@ -216,15 +213,12 @@ public class ReactiveSequentialExecutor {
         ordered.add(entryNode);
 
         if (edges == null || !edges.isArray()) {
-            // 无 edges, 直接返回已有顺序
             return ordered;
         }
 
-        // 按 edges 串联: 从 entry 的 target 开始, 找下一个
         Set<String> visited = new HashSet<>();
         visited.add(entryNode.get("id").asText());
 
-        // 构建 source→target 列表
         Map<String, String> edgeMap = new HashMap<>();
         for (JsonNode edge : edges) {
             edgeMap.put(edge.get("sourceNodeId").asText(), edge.get("targetNodeId").asText());
@@ -233,7 +227,7 @@ public class ReactiveSequentialExecutor {
         String currentId = entryNode.get("id").asText();
         while (edgeMap.containsKey(currentId)) {
             String nextId = edgeMap.get(currentId);
-            if (visited.contains(nextId)) break; // 防止循环
+            if (visited.contains(nextId)) break;
             visited.add(nextId);
             JsonNode nextNode = nodeMap.get(nextId);
             if (nextNode != null) {
@@ -242,7 +236,7 @@ public class ReactiveSequentialExecutor {
             currentId = nextId;
         }
 
-        // 添加尚未加入的节点 (确保所有节点都被包含)
+        // 添加尚未加入的节点
         for (JsonNode node : nodes) {
             if (!visited.contains(node.get("id").asText())) {
                 ordered.add(node);

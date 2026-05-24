@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ExecutionContextProvider;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
@@ -36,36 +35,33 @@ public class EntryNodeExecutor implements NodeExecutor {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Mono<NodeOutput> execute(ExecutionContextProvider provider, Object nodeConfig) {
-        return Mono.fromCallable(() -> {
-            ExecutionContext context = provider.getContext();
-            Map<String, Object> config;
-            if (nodeConfig instanceof Map) {
-                config = (Map<String, Object>) nodeConfig;
-            } else {
-                config = objectMapper.convertValue(nodeConfig, Map.class);
-            }
+    public Mono<NodeOutput> execute(ExecutionContext context, Object nodeConfig) {
+        Map<String, Object> config;
+        if (nodeConfig instanceof Map) {
+            config = (Map<String, Object>) nodeConfig;
+        } else {
+            config = objectMapper.convertValue(nodeConfig, Map.class);
+        }
 
-            log.debug("Entry node executing: nodeId={}", config.get("id"));
+        log.debug("Entry node executing: nodeId={}", config.get("id"));
 
-            // 透传触发数据作为输出
-            Map<String, Object> outputData = new HashMap<>();
-            if (context.getTriggerData() != null) {
-                outputData.putAll(context.getTriggerData());
-            }
+        // 透传触发数据作为输出
+        Map<String, Object> outputData = new HashMap<>();
+        if (context.getTriggerData() != null) {
+            outputData.putAll(context.getTriggerData());
+        }
 
-            // 标记元数据
-            outputData.put("__status", "success");
+        // 标记元数据
+        outputData.put("__status", "success");
 
-            NodeOutput output = new NodeOutput(
-                    (String) config.get("id"),
-                    "entry",
-                    outputData
-            );
-            output.setStatus("success");
+        NodeOutput output = new NodeOutput(
+                (String) config.get("id"),
+                "entry",
+                outputData
+        );
+        output.setStatus("success");
 
-            log.debug("Entry node completed: nodeId={}", config.get("id"));
-            return output;
-        });
+        log.debug("Entry node completed: nodeId={}", config.get("id"));
+        return Mono.just(output);
     }
 }
