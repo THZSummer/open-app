@@ -4,9 +4,9 @@
   "createdAt": "2026-05-22",
   "baseline": {
     "spec": "v5.0",
-    "plan": "v2.8.0",
+    "plan": "v2.8.1",
     "planApi": "v2.8.0",
-    "planDb": "v2.8.0",
+    "planDb": "v2.8.1",
     "planPage": "v2.8.0"
   },
   "summary": {
@@ -21,33 +21,44 @@
   "tasks": [
     {
       "id": "TASK-001",
-      "name": "数据库 DDL + Flyway 迁移脚本",
+      "name": "open-server 连接器平台 DDL 脚本",
       "complexity": "L",
       "dependencies": [],
       "wave": 1,
-      "module": "Database",
+      "module": "open-server",
       "fr": [],
       "files": [
-        "open-server/src/main/resources/db/migration/connector-platform/V1__init_connector_platform.sql",
-        "connector-api/src/main/resources/db/migration/connector-platform/V1__init_connector_platform.sql",
-        "connector-api/src/main/resources/application.yml"
+        "open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql"
+      ],
+      "notes": [
+        "按 FlywayDB 目录与命名风格存放 SQL",
+        "open-server 不新增 Flyway 依赖",
+        "不考虑脚本自动执行机制",
+        "不创建业务子目录",
+        "connector-api 不保存 DDL"
       ]
     },
     {
       "id": "TASK-002",
       "name": "connector-api 项目脚手架 + R2DBC Entity",
       "complexity": "M",
-      "dependencies": ["TASK-001"],
+      "dependencies": [],
+      "dependencyNotes": "联调验证依赖 TASK-001 完成共库初始化",
       "wave": 1,
       "module": "connector-api",
       "fr": [],
       "files": [
         "connector-api/pom.xml",
         "connector-api/src/main/java/.../ConnectorApiApplication.java",
+        "connector-api/src/main/resources/application.yml",
         "connector-api/src/main/java/.../entity/ConnectorEntity.java",
         "connector-api/src/main/java/.../entity/FlowEntity.java",
         "connector-api/src/main/java/.../repository/ConnectorVersionReadRepository.java",
         "connector-api/src/main/java/.../repository/FlowVersionReadRepository.java"
+      ],
+      "notes": [
+        "connector-api 仅配置 R2DBC 访问开放平台共库",
+        "connector-api 不维护 DDL/Flyway migration"
       ]
     },
     {

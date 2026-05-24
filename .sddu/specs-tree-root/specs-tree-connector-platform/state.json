@@ -4,9 +4,9 @@
   "current_phase": "plan",
   "status": "planned",
   "created_at": "2026-05-14T10:00:00+08:00",
-  "updated_at": "2026-05-21T22:00:00+08:00",
-  "plan_version": "v2.0",
-  "spec_version": "v4.0",
+  "updated_at": "2026-05-24T12:00:00+08:00",
+  "plan_version": "v2.8.1",
+  "spec_version": "v5.0",
   "progress": {
     "total_tasks": 0,
     "completed_tasks": 0,
@@ -27,11 +27,18 @@
     "adr_002": "ADR-002.md",
     "adr_003": "ADR-003.md"
   },
-  "plan_changes": {
-    "from_version": "v1.x",
-    "to_version": "v2.0",
-    "summary": "对齐 spec.md v4.0——执行模型从异步改为同步；移除 Scope/审批集成；触发器仅 HTTP/手动；新增数据处理节点入 MVP；监控简化为执行历史查询；FR 从 ~37 精简至 25"
-  },
+  "plan_changes": [
+    {
+      "from_version": "v1.x",
+      "to_version": "v2.0",
+      "summary": "对齐 spec.md v4.0——执行模型从异步改为同步；移除 Scope/审批集成；触发器仅 HTTP/手动；新增数据处理节点入 MVP；监控简化为执行历史查询；FR 从 ~37 精简至 25"
+    },
+    {
+      "from_version": "v2.0",
+      "to_version": "v2.8.1",
+      "summary": "对齐 spec.md v5.0——DDL 脚本存放策略改为 open-server db/migration/V2__init_connector_platform_schema.sql（FlywayDB 命名风格，不引入 Flyway 依赖），connector-api 不存放 DDL"
+    }
+  ],
   "next_steps": [
     "运行 @sddu-tasks 连接器平台 开始任务分解"
   ]

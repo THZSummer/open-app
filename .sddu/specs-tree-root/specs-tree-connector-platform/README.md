@@ -8,7 +8,7 @@
 **目录 ID**: CONN-PLAT-001  
 **优先级**: P1  
 **创建时间**: 2026-05-14  
-**最新更新**: 2026-05-22（任务分解完成，对齐 spec.md v5.0 / plan.md v2.8.0）
+**最新更新**: 2026-05-24（plan.md/plan-db.md 更新至 v2.8.1，DDL 策略改为 FlywayDB 风格）
 
 ### 工作流进度
 
@@ -16,7 +16,7 @@
 |------|------|----------|
 | 🔍 需求挖掘 (discovery) | ✅ 完成 | 2026-05-14 |
 | 📋 规范编写 (spec) | ✅ 完成 | 2026-05-18 (v1.0) → 2026-05-21 (v4.0) |
-| 📐 技术规划 (plan) | ✅ 完成 | 2026-05-19 (v1.x) → 2026-05-21 (v2.0) |
+| 📐 技术规划 (plan) | ✅ 完成 | 2026-05-19 (v1.x) → 2026-05-24 (v2.8.1) |
 | 📝 任务分解 (tasks) | ✅ 完成 | 2026-05-22（12 个任务，对齐 v5.0） |
 
 ## 目录结构
@@ -31,13 +31,13 @@ specs-tree-connector-platform/
 ├── spec-v3.2.md               # 产品规范 v3.2（历史版本）
 ├── spec-v4.0.md               # 产品规范 v4.0（历史版本）
 ├── spec.json                  # 规范元数据
-├── plan.md                    # 技术规划文档（v2.0）
+├── plan.md                    # 技术规划文档（v2.8.1）
 ├── plan-v2.7.6.md             # 技术规划 v2.7.6（历史版本）
 ├── plan-page.md               # 前端页面设计文档（v2.0）
 ├── plan-page-v2.7.5.md        # 前端页面设计 v2.7.5（历史版本）
 ├── plan-api.md                # API 接口设计文档（v2.0）
 ├── plan-api-v2.7.6.md         # API 接口设计 v2.7.6（历史版本）
-├── plan-db.md                 # 数据库设计文档（v2.0）
+├── plan-db.md                 # 数据库设计文档（v2.8.1）
 ├── plan-db-v2.7.6.md          # 数据库设计 v2.7.6（历史版本）
 ├── plan-code.md               # 代码规范文档
 ├── plan-json-schema.md        # JSON Schema 设计
@@ -72,13 +72,13 @@ specs-tree-connector-platform/
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| plan.md | **技术规划 v2.0（当前）** — 同步执行引擎架构、8-12 周迭代计划 | ✅ planned |
+| plan.md | **技术规划 v2.8.1（当前）** — 同步执行引擎架构、DDL 脚本统一 FlywayDB 命名风格 | ✅ planned |
 | plan-v2.7.6.md | 技术规划 v2.7.6 — 历史版本 | 📁 历史版本 |
 | plan-page.md | **前端页面设计 v2.0** — 触发器仅 HTTP/手动、数据处理节点入 MVP | ✅ planned |
 | plan-page-v2.7.5.md | 前端页面设计 v2.7.5 — 历史版本 | 📁 历史版本 |
 | plan-api.md | **API 接口设计 v2.0** — 26 个端点覆盖 25 个 FR | ✅ planned |
 | plan-api-v2.7.6.md | API 接口设计 v2.7.6 — 历史版本 | 📁 历史版本 |
-| plan-db.md | **数据库设计 v2.0** — 9 张表，对齐 spec v4.0 | ✅ planned |
+| plan-db.md | **数据库设计 v2.8.1** — SQL 脚本存放于 `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`，FlywayDB 命名风格，connector-api 不存放 DDL | ✅ planned |
 | plan-db-v2.7.6.md | 数据库设计 v2.7.6 — 历史版本 | 📁 历史版本 |
 | plan-code.md | **代码规范** — 16 条强制规则，沿用能力开放平台标准 | ✅ planned |
 | plan-json-schema.md | JSON Schema 设计（当前） | ✅ planned |
