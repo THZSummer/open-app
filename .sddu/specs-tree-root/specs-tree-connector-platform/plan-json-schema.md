@@ -89,15 +89,15 @@
 
 ---
 
-## 3. definitions 聚合段（🆕 v3.0）
+## 3. JSON 定义
 
 > 💡 **v3.0 新增**：所有 `$ref` 引用的共享组件在此聚合。以下 §4 节中的各上下文 Schema 通过 `#/definitions/xxx` 引用这些组件，保证 `$ref` 路径可解析。
 >
-> ### §3.0 字段名 ↔ 校验类型映射
+> ### §3.0 JSON 字段 ↔ 定义映射
 >
-> 为避免「字段名与 Schema 名相同」产生的歧义，本规范区分两者：
-> - **字段名（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`、`rateLimitConfig`）
-> - **校验类型（definition key）**：definitions 中的组件键名，描述「用什么规则校验」（如 `authConfigDef`、`rateLimitDef`）
+> 为避免「JSON 字段名与定义名相同」的歧义，本规范区分两者：
+> - **JSON 字段（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`、`rateLimitConfig`）
+> - **定义名（definition key）**：JSON 定义中的组件键名，描述「用什么规则校验」（如 `authConfigDef`、`rateLimitDef`）
 >
 > ```mermaid
 > graph LR
@@ -110,7 +110,7 @@
 >         F6["position<br/>画布坐标数据"]
 >     end
 >
->     subgraph Defs["definitions 校验类型<br/>（规则侧）"]
+>     subgraph Defs["JSON 定义名<br/>（规则侧）"]
 >         D1["authConfigDef<br/>校验认证类型声明"]
 >         D2["rateLimitDef<br/>校验限流配置"]
 >         D3["dataContractDef<br/>校验数据契约结构"]
@@ -129,16 +129,16 @@
 >     style Defs fill:#fff3e0,stroke:#ef6c00
 > ```
 >
-> **副作用**：以下 Schema 定义中，你会看到 `"authConfig": { "$ref": "#/definitions/authConfigDef" }`——左侧是字段名，右侧是校验类型，两者语义关联但字面不同。
+> **副作用**：以下 JSON 定义中，你会看到 `"authConfig": { "$ref": "#/definitions/authConfigDef" }`——左侧是 JSON 字段，右侧是定义名，两者语义关联但字面不同。
 >
-> **v4.0 新增**：本 definitions 聚合段新增 `nodeDataSchema` / `triggerData` / `connectorData` / `dataProcessorData` / `exitData` 共 5 个组件，用于 §4.3 orchestrationConfig 中 `node.data` 的按类型校验。
+> **v4.0 新增**：本 definitions 聚合段新增 `nodeDataDef` / `triggerDataDef` / `connectorDataDef` / `dataProcessorDataDef` / `exitDataDef` 共 5 个组件，用于 §4.3 orchestrationConfig 中 `node.data` 的按类型校验。
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "urn:openapp:schema:definitions:v2",
   "title": "共享 Schema 组件聚合",
-  "description": "所有上下文 Schema 共用的组件定义。v2：新增 nodeDataSchema 及四种节点数据子定义",
+  "description": "所有上下文 Schema 共用的组件定义。v2：新增 nodeDataDef 及四种节点数据子定义",
 
   "definitions": {
 
@@ -273,34 +273,34 @@
       }
     },
 
-    "nodeDataSchema": {
-      "$id": "urn:openapp:schema:nodeDataSchema:v1",
-      "title": "nodeDataSchema",
+    "nodeDataDef": {
+      "$id": "urn:openapp:schema:nodeDataDef:v1",
+      "title": "nodeDataDef",
       "description": "节点业务数据 Schema。按 node.type 区分四种场景，通过 oneOf 确保不同类型的节点携带正确的业务字段。该 Schema 被 §4.3 orchestrationConfig 的 node.data 通过 $ref 引用",
       "type": "object",
       "oneOf": [
         {
-          "$ref": "#/definitions/triggerData",
-          "description": "当 node.type='trigger' 时，data 必须符合 triggerData 结构"
+          "$ref": "#/definitions/triggerDataDef",
+          "description": "当 node.type='trigger' 时，data 必须符合 triggerDataDef 结构"
         },
         {
-          "$ref": "#/definitions/connectorData",
-          "description": "当 node.type='connector' 时，data 必须符合 connectorData 结构"
+          "$ref": "#/definitions/connectorDataDef",
+          "description": "当 node.type='connector' 时，data 必须符合 connectorDataDef 结构"
         },
         {
-          "$ref": "#/definitions/dataProcessorData",
-          "description": "当 node.type='data_processor' 时，data 必须符合 dataProcessorData 结构"
+          "$ref": "#/definitions/dataProcessorDataDef",
+          "description": "当 node.type='data_processor' 时，data 必须符合 dataProcessorDataDef 结构"
         },
         {
-          "$ref": "#/definitions/exitData",
-          "description": "当 node.type='exit' 时，data 必须符合 exitData 结构"
+          "$ref": "#/definitions/exitDataDef",
+          "description": "当 node.type='exit' 时，data 必须符合 exitDataDef 结构"
         }
       ]
     },
 
-    "triggerData": {
-      "$id": "urn:openapp:schema:triggerData:v1",
-      "title": "triggerData",
+    "triggerDataDef": {
+      "$id": "urn:openapp:schema:triggerDataDef:v1",
+      "title": "triggerDataDef",
       "description": "触发器节点业务数据。定义 node.type='trigger' 时 node.data 内的数据结构",
       "type": "object",
       "additionalProperties": false,
@@ -361,9 +361,9 @@
       ]
     },
 
-    "connectorData": {
-      "$id": "urn:openapp:schema:connectorData:v1",
-      "title": "connectorData",
+    "connectorDataDef": {
+      "$id": "urn:openapp:schema:connectorDataDef:v1",
+      "title": "connectorDataDef",
       "description": "连接器节点业务数据。定义 node.type='connector' 时 node.data 内的数据结构",
       "type": "object",
       "additionalProperties": false,
@@ -383,9 +383,9 @@
       "required": ["connectorVersionId", "inputMapping"]
     },
 
-    "dataProcessorData": {
-      "$id": "urn:openapp:schema:dataProcessorData:v1",
-      "title": "dataProcessorData",
+    "dataProcessorDataDef": {
+      "$id": "urn:openapp:schema:dataProcessorDataDef:v1",
+      "title": "dataProcessorDataDef",
       "description": "数据处理器节点业务数据。定义 node.type='data_processor' 时 node.data 内的数据结构",
       "type": "object",
       "additionalProperties": false,
@@ -424,9 +424,9 @@
       "required": ["config"]
     },
 
-    "exitData": {
-      "$id": "urn:openapp:schema:exitData:v1",
-      "title": "exitData",
+    "exitDataDef": {
+      "$id": "urn:openapp:schema:exitDataDef:v1",
+      "title": "exitDataDef",
       "description": "出口节点业务数据。定义 node.type='exit' 时 node.data 内的数据结构",
       "type": "object",
       "additionalProperties": false,
@@ -452,7 +452,7 @@
 
 > 💡 以下每个 Schema 均为独立校验单元。所有 `$ref` 路径引用 §3 definitions 中的共享组件，保证引用可解析。
 
-### 4.1 触发器 — triggerData（node.data 子结构）
+### 4.1 触发器 — triggerDataDef（node.data 子结构）
 
 该 Schema 定义了 `orchestrationConfig.nodes` 中 `type="trigger"` 节点 `node.data` 内的配置结构。
 
@@ -463,8 +463,8 @@
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:openapp:schema:triggerData:v1",
-  "title": "triggerData",
+  "$id": "urn:openapp:schema:triggerDataDef:v1",
+  "title": "triggerDataDef",
   "description": "触发器节点业务数据。定义 node.type='trigger' 时 node.data 内的数据结构",
   "type": "object",
   "additionalProperties": false,
@@ -725,8 +725,8 @@
             "description": "节点画布坐标。React Flow 框架字段"
           },
           "data": {
-            "$ref": "#/definitions/nodeDataSchema",
-            "description": "节点业务数据。React Flow 业务拓展槽（V12 data container），存放所有与框架无关的业务字段。具体结构由 node.type 决定，通过 nodeDataSchema 的 oneOf 校验"
+            "$ref": "#/definitions/nodeDataDef",
+            "description": "节点业务数据。React Flow 业务拓展槽（V12 data container），存放所有与框架无关的业务字段。具体结构由 node.type 决定，通过 nodeDataDef 的 oneOf 校验"
           }
         },
         "required": ["id", "type", "position", "data"]
@@ -986,35 +986,35 @@ flowchart LR
 
 ---
 
-### 4.5 Node 业务数据 Schema（nodeDataSchema）
+### 4.5 Node 业务数据定义（nodeDataDef）
 
-> 💡 **v4.0 新增**：独立抽取 `nodeDataSchema` 用于 `node.data` 的按类型校验。该 Schema 在 §3 definitions 中定义，§4.3 orchestrationConfig 的 `node.data` 通过 `$ref` 引用。
+> 💡 **v4.0 新增**：独立抽取 `nodeDataDef` 用于 `node.data` 的按类型校验。该 Schema 在 §3 definitions 中定义，§4.3 orchestrationConfig 的 `node.data` 通过 `$ref` 引用。
 
-**Schema 定义**（完整定义见 §3 definitions → `nodeDataSchema`）：
+**Schema 定义**（完整定义见 §3 definitions → `nodeDataDef`）：
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:openapp:schema:nodeDataSchema:v1",
-  "title": "nodeDataSchema",
+  "$id": "urn:openapp:schema:nodeDataDef:v1",
+  "title": "nodeDataDef",
   "description": "节点业务数据 Schema。按 node.type 区分四种场景，通过 oneOf 确保不同类型的节点携带正确的业务字段。该 Schema 被 §4.3 orchestrationConfig 的 node.data 通过 $ref 引用",
   "type": "object",
   "oneOf": [
     {
-      "$ref": "#/definitions/triggerData",
-      "description": "当 node.type='trigger' 时，data 必须符合 triggerData 结构"
+      "$ref": "#/definitions/triggerDataDef",
+      "description": "当 node.type='trigger' 时，data 必须符合 triggerDataDef 结构"
     },
     {
-      "$ref": "#/definitions/connectorData",
-      "description": "当 node.type='connector' 时，data 必须符合 connectorData 结构"
+      "$ref": "#/definitions/connectorDataDef",
+      "description": "当 node.type='connector' 时，data 必须符合 connectorDataDef 结构"
     },
     {
-      "$ref": "#/definitions/dataProcessorData",
-      "description": "当 node.type='data_processor' 时，data 必须符合 dataProcessorData 结构"
+      "$ref": "#/definitions/dataProcessorDataDef",
+      "description": "当 node.type='data_processor' 时，data 必须符合 dataProcessorDataDef 结构"
     },
     {
-      "$ref": "#/definitions/exitData",
-      "description": "当 node.type='exit' 时，data 必须符合 exitData 结构"
+      "$ref": "#/definitions/exitDataDef",
+      "description": "当 node.type='exit' 时，data 必须符合 exitDataDef 结构"
     }
   ]
 }
@@ -1024,10 +1024,10 @@ flowchart LR
 
 | 子 Schema | 适用节点类型 | 必填字段 | 说明 |
 |-----------|------------|:--------:|------|
-| `triggerData` | `trigger` | `type` | 触发子类型 + 可选的认证/入参/限流 |
-| `connectorData` | `connector` | `connectorVersionId`, `inputMapping` | 引用已发布的连接器版本 |
-| `dataProcessorData` | `data_processor` | `config` | 管道转换配置（字段映射列表） |
-| `exitData` | `exit` | `outputFields` | 对外暴露的返回值字段列表 |
+| `triggerDataDef` | `trigger` | `type` | 触发子类型 + 可选的认证/入参/限流 |
+| `connectorDataDef` | `connector` | `connectorVersionId`, `inputMapping` | 引用已发布的连接器版本 |
+| `dataProcessorDataDef` | `data_processor` | `config` | 管道转换配置（字段映射列表） |
+| `exitDataDef` | `exit` | `outputFields` | 对外暴露的返回值字段列表 |
 
 ---
 
@@ -1237,7 +1237,7 @@ const nodeTypes = {
 | **v3.4** | 2026-05-25 | **§7.2.2 示例丰富**：JSON 示例从单一 `default` 类型扩展为覆盖全部四种内置类型（`input`/`default`/`output`/`group`）；新增「React Flow 内置节点类型」对照表（Handle 预设位置 + 典型用途）；持久化提示字段清单补全 | SDDU Plan Agent |
 | **v3.5** | 2026-05-25 | **§8 消歧**：可视化对比加注 `connector` 等为项目自定义类型非 React Flow 内置；§7 定位说明加入 §7.1；修正 §8 中三处失效的 §7 交叉引用（§7.2→§7.2.1） | SDDU Plan Agent |
 | **v4.0** | 2026-05-25 | **React Flow 官方格式全文档对齐**：node.data 嵌套（所有业务字段迁入 node.data）、edge.source/target（React Flow 标准命名）、edge.type/edge.data 语义分离（type=渲染样式，data.businessType=业务语义）、nodeDataSchema 独立抽取（§4.5）、§7 精简（保留核心接口定义，移除 §7.2.2 完整示例）、§8 精简至仅保留决策记录 | SDDU Plan Agent |
-| **v4.1** | 2026-05-25 | **字段命名体系重构**：统一字段后缀约定（Config/Contract/Mapping/Info/Fields/Id），字段名去「Schema」歧义——authTypeSchema→authConfig, inputSchema→inputContract, outputSchema→outputContract, rateLimit→rateLimitConfig；definitions 键名统一 `Def` 后缀（authTypeSchemaDef→authConfigDef）；同步更新 §3.0 映射图、Mermaid 图、描述文字、示例 JSON 及所有 `$ref` 引用 | SDDU Plan Agent |
+| **v4.1** | 2026-05-25 | **字段命名体系重构**：统一字段后缀约定（Config/Contract/Mapping/Info/Fields/Id），字段名去「Schema」歧义——authTypeSchema→authConfig, inputSchema→inputContract, outputSchema→outputContract, rateLimit→rateLimitConfig；definitions 键名统一 `Def` 后缀（authTypeSchemaDef→authConfigDef, triggerData→triggerDataDef, connectorData→connectorDataDef, dataProcessorData→dataProcessorDataDef, exitData→exitDataDef, nodeDataSchema→nodeDataDef）；章节标题及 §3.0 文字优化——「definitions 聚合段」→「JSON 定义」、「字段名」→「JSON 字段」、「校验类型」→「定义名」；同步更新映射图、Mermaid 图、描述文字、示例 JSON 及所有 `$ref` 引用 | SDDU Plan Agent |
 
 ## 附录 B：v3.0 审查问题修复对照表
 
