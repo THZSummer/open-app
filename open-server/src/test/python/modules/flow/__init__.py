@@ -1,0 +1,1 @@
+# connector platform integration tests
