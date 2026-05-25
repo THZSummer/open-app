@@ -60,11 +60,12 @@
 
 ## 三、文件结构
 
+### open-server（#1~#17 + L4 契约）
+
 ```
 open-server/src/test/python/
 └── inspect/
-    ├── client.py                   ← 公共模块：BASE_URL + 请求/响应打印函数
-    │
+    ├── client.py                   ← 公共模块：BASE_URL (localhost:18080) + 请求/响应打印
     ├── connector_create.py         ← 创建连接器
     ├── connector_list.py           ← 查询连接器列表
     ├── connector_detail.py         ← 查询连接器详情
@@ -82,17 +83,26 @@ open-server/src/test/python/
     ├── flow_config_get.py          ← 获取编排配置
     ├── flow_config_set.py          ← 保存编排配置
     ├── debug_test_run.py           ← 测试运行
-    ├── trigger_invoke.py           ← HTTP 触发
-    ├── contract_response.py        ← 响应格式校验
-    │
-    └── all.py                      ← 全量回归（串行执行所有用例）
+    ├── contract_response.py        ← L4 响应格式校验
+    └── all.py                      ← 全量回归执行器
 ```
 
-每个文件独立可执行，文件名即操作名：
+### connector-api（#18 + L4 契约）
+
+```
+connector-api/src/test/python/
+└── inspect/
+    ├── client.py                   ← 公共模块：BASE_URL (localhost:18180) + 请求/响应打印
+    ├── trigger_invoke.py           ← HTTP 触发
+    ├── contract_response.py        ← L4 响应格式校验
+    └── all.py                      ← 全量回归执行器
+```
+
+各文件独立可执行，文件名即操作名：
 - `connector_create.py` = 创建连接器
-- `flow_start.py` = 启动流
 - `trigger_invoke.py` = HTTP 触发
 - 不需要记编号，文件名就是接口名
+
 
 ---
 
@@ -297,6 +307,7 @@ open-server/src/test/python/
 每个接口一个文件，运行后默认打印完整请求/响应：
 
 ```bash
+# open-server 接口
 cd open-server/src/test/python
 
 # 创建连接器（显示完整请求 Header/Body + 响应 Header/Body/状态码）
@@ -310,6 +321,10 @@ python3 inspect/flow_start.py
 
 # 静默模式（只输出 PASS/FAIL 一行）
 python3 inspect/connector_create.py --quiet
+
+# connector-api 接口
+cd connector-api/src/test/python
+python3 inspect/trigger_invoke.py
 ```
 
 输出示例（默认）：
@@ -387,9 +402,11 @@ DELETE FROM openplatform_v2_cp_flow_t WHERE name_cn LIKE '%IT_%';
 
 ## 八、文件清单
 
+### open-server（20 个文件）
+
 | # | 文件名 | 覆盖接口 | 说明 |
 |---|--------|---------|------|
-| 1 | `client.py` | — | 公共模块：BASE_URL + 请求/响应打印 |
+| 1 | `client.py` | — | 公共模块：BASE_URL (18080) + 请求/响应打印 |
 | 2 | `connector_create.py` | #1 | 创建连接器（含异常场景） |
 | 3 | `connector_list.py` | #2 | 查询列表（分页/过滤/搜索/空结果） |
 | 4 | `connector_detail.py` | #3 | 查询详情（正常/不存在/ID类型） |
@@ -407,7 +424,18 @@ DELETE FROM openplatform_v2_cp_flow_t WHERE name_cn LIKE '%IT_%';
 | 16 | `flow_config_get.py` | #15 | 编排配置（正常/不存在） |
 | 17 | `flow_config_set.py` | #16 | 保存编排（正常/空/null） |
 | 18 | `debug_test_run.py` | #17 | 测试运行（flow不存在/未配置） |
-| 19 | `trigger_invoke.py` | #18 | HTTP触发（无凭证/flow不存在/未运行） |
-| 20 | `contract_response.py` | L4 | 响应格式/BIGINT ID/枚举/时间/camelCase |
-| 21 | `all.py` | #1~#18+L4 | 全量回归执行器 |
-| **合计** | **21 个文件** | **59 个用例** | **零安装零依赖** |
+| 19 | `contract_response.py` | L4 | 响应格式/BIGINT ID/枚举/时间/camelCase |
+| 20 | `all.py` | #1~#17+L4 | 全量回归执行器 |
+
+### connector-api（4 个文件）
+
+| # | 文件名 | 覆盖接口 | 说明 |
+|---|--------|---------|------|
+| 1 | `client.py` | — | 公共模块：BASE_URL (18180) + 请求/响应打印 |
+| 2 | `trigger_invoke.py` | #18 | HTTP触发（无凭证/flow不存在/未运行） |
+| 3 | `contract_response.py` | L4 | 响应格式/BIGINT ID/枚举/时间/camelCase |
+| 4 | `all.py` | #18+L4 | 全量回归执行器 |
+
+### 合计
+- open-server: **20 个文件**，覆盖 **#1~#17 + L4**
+- connector-api: **4 个文件**，覆盖 **#18 + L4**

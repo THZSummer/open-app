@@ -40,8 +40,6 @@ SCRIPTS = [
     "flow_config_set.py",
     # \u8c03\u8bd5 + \u89e6\u53d1 + \u5951\u7ea6
     "debug_test_run.py",
-    "trigger_invoke.py",
-    "contract_response.py",
 ]
 
 quiet = "--quiet" in sys.argv
@@ -69,7 +67,7 @@ for script in SCRIPTS:
 
     # Parse output
     output = result.stdout + result.stderr
-    if "PASS" in output:
+    if result.returncode == 0:
         passed += 1
         results.append((name, "PASS"))
     elif "SKIP" in output:

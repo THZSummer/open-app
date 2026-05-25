@@ -42,10 +42,7 @@ def request(method, path, body=None, headers=None):
     if not is_quiet():
         _print_request(method, url, h, body)
         _print_response(resp, elapsed)
-    else:
-        ok = _is_pass(resp)
-        tag = "PASS" if ok else "FAIL"
-        print(f"[{tag}] {method} {path} ({resp.status_code})")
+    # quiet mode: suppress all per-call output
 
     return resp
 
@@ -74,8 +71,7 @@ def connector_api_request(method, path, body=None, headers=None):
     if not is_quiet():
         _print_request(method, url, h, body)
         _print_response(resp, elapsed)
-    else:
-        print(f"[PASS] {method} {path} ({resp.status_code})")
+    # quiet mode: suppress output
 
     return resp
 
