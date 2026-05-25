@@ -18,25 +18,22 @@ import {
   Button,
   Space,
   message,
-  Select,
   Divider,
-  Tag,
+  InputNumber,
+  Radio,
+  Card,
 } from 'antd';
-import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import {
   ArrowLeftOutlined,
-  PlusOutlined,
-  DeleteOutlined,
   EditOutlined,
   SaveOutlined,
 } from '@ant-design/icons';
 import { createConnector, updateConnector, fetchConnectorDetail } from './thunk';
+import SchemaEditor from '../../../components/SchemaEditor/SchemaEditor.jsx';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import './ConnectorEditor.less';
-import { getSecondModalInfo } from '../../../utils/common';
 
 const { TextArea } = Input;
-const { Option } = Select;
 
 /**
  * 连接器编辑页面组件
@@ -57,23 +54,6 @@ const ConnectorEditor = () => {
 
   // 是否可编辑状态
   const [editable, setEditable] = useState(!isEdit);
-
-  // 触发事件列表
-  const [triggers, setTriggers] = useState([]);
-
-  // 执行动作列表
-  const [actions, setActions] = useState([]);
-
-  // 当前编辑的触发事件
-  const [editingTrigger, setEditingTrigger] = useState(null);
-
-  // 当前编辑的执行动作
-  const [editingAction, setEditingAction] = useState(null);
-
-  // 删除确认弹窗
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteType, setDeleteType] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
 
   /**
    * 副作用 - 加载连接器详情
@@ -100,11 +80,16 @@ const ConnectorEditor = () => {
         name: connectorData.name,
         description: connectorData.description,
         status: connectorData.status === 1,
+        apiConfig: connectorData.apiConfig || {
+          protocolType: 'GET',
+          protocolAddress: '',
+          authType: 'SOA',
+          requestSchema: [],
+          responseSchema: [],
+          timeout: 30000,
+          rateLimit: 100,
+        },
       });
-
-      // 设置触发事件和执行动作列表
-      setTriggers(connectorData.triggers || []);
-      setActions(connectorData.actions || []);
     } else {
       message.error(result?.messageZh || result?.message || '加载连接器详情失败');
     }
@@ -127,43 +112,6 @@ const ConnectorEditor = () => {
   };
 
   /**
-   * 点击删除按钮
-   * @param {string} type - 删除类型（trigger/action）
-   * @param {string} id - 删除项ID
-   */
-  const handleDeleteClick = (type, id) => {
-    setDeleteType(type);
-    setDeleteId(id);
-    setDeleteModalVisible(true);
-  };
-
-  /**
-   * 确认删除
-   */
-  const handleDeleteConfirm = () => {
-    if (deleteId) {
-      if (deleteType === 'trigger') {
-        setTriggers(triggers.filter(t => t.id !== deleteId));
-      } else if (deleteType === 'action') {
-        setActions(actions.filter(a => a.id !== deleteId));
-      }
-      message.success('删除成功');
-    }
-    setDeleteModalVisible(false);
-    setDeleteType(null);
-    setDeleteId(null);
-  };
-
-  /**
-   * 取消删除
-   */
-  const handleDeleteCancel = () => {
-    setDeleteModalVisible(false);
-    setDeleteType(null);
-    setDeleteId(null);
-  };
-
-  /**
    * 提交表单
    */
   const handleSubmit = async () => {
@@ -180,8 +128,7 @@ const ConnectorEditor = () => {
       name: values.name,
       description: values.description || '',
       status: values.status ? 1 : 0,
-      triggers,
-      actions,
+      apiConfig: values.apiConfig,
     };
 
     // 调用API
@@ -204,93 +151,132 @@ const ConnectorEditor = () => {
   };
 
   /**
-   * 触发事件管理 - 新增
+   * 渲染接口配置表单
    */
-  const handleAddTrigger = () => {
-    setEditingTrigger({
-      id: null,
-      name: '',
-      description: '',
-      type: 'webhook',
-      config: {},
-    });
-  };
+  const renderApiConfig = () => {
+    const apiConfig = form.getFieldValue('apiConfig') || {
+      protocolType: 'GET',
+      protocolAddress: '',
+      authType: 'SOA',
+      requestSchema: [],
+      responseSchema: [],
+      timeout: 30000,
+      rateLimit: 100,
+    };
 
-  /**
-   * 触发事件管理 - 编辑
-   */
-  const handleEditTrigger = (trigger) => {
-    setEditingTrigger({ ...trigger });
-  };
+    const handleConfigChange = (field, value) => {
+      const newConfig = { ...apiConfig, [field]: value };
+      form.setFieldValue('apiConfig', newConfig);
+    };
 
-  /**
-   * 触发事件管理 - 保存
-   */
-  const handleSaveTrigger = () => {
-    if (!editingTrigger.name || !editingTrigger.name.trim()) {
-      message.error('请输入触发事件名称');
-      return;
-    }
+    return (
+      <div className="api-config-form">
+        <Card
+          title="接口配置"
+          size="small"
+          style={{
+            marginBottom: 16,
+            borderRadius: 8,
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Form.Item
+              label="协议类型"
+              style={{ marginBottom: 12 }}
+            >
+              <Radio.Group
+                value={apiConfig.protocolType}
+                onChange={(e) => handleConfigChange('protocolType', e.target.value)}
+                disabled={!editable}
+              >
+                <Radio.Button value="GET">GET</Radio.Button>
+                <Radio.Button value="POST">POST</Radio.Button>
+                <Radio.Button value="PUT">PUT</Radio.Button>
+                <Radio.Button value="DELETE">DELETE</Radio.Button>
+                <Radio.Button value="PATCH">PATCH</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
 
-    if (editingTrigger.id) {
-      setTriggers(triggers.map(t =>
-        t.id === editingTrigger.id ? editingTrigger : t
-      ));
-    } else {
-      setTriggers([...triggers, {
-        ...editingTrigger,
-        id: `trigger_${Date.now()}`
-      }]);
-    }
+            <Form.Item
+              label="认证方式"
+              style={{ marginBottom: 12 }}
+            >
+              <Radio.Group
+                value={apiConfig.authType}
+                onChange={(e) => handleConfigChange('authType', e.target.value)}
+                disabled={!editable}
+              >
+                <Radio value="SOA">SOA</Radio>
+                <Radio value="APIG">APIG</Radio>
+              </Radio.Group>
+            </Form.Item>
+          </div>
 
-    setEditingTrigger(null);
-    message.success('保存成功');
-  };
+          <Form.Item label="协议地址" style={{ marginBottom: 0 }}>
+            <Input
+              value={apiConfig.protocolAddress}
+              onChange={(e) => handleConfigChange('protocolAddress', e.target.value)}
+              placeholder="https://api.example.com/endpoint"
+              disabled={!editable}
+              style={{ borderRadius: 6 }}
+            />
+          </Form.Item>
+        </Card>
 
-  /**
-   * 执行动作管理 - 新增
-   */
-  const handleAddAction = () => {
-    setEditingAction({
-      id: null,
-      name: '',
-      description: '',
-      method: 'GET',
-      endpoint: '',
-      requestSchema: {},
-      responseSchema: {},
-    });
-  };
+        <Card
+          title="性能配置"
+          size="small"
+          style={{
+            marginBottom: 16,
+            borderRadius: 8,
+            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+          }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <Form.Item label="超时限制（ms）" style={{ marginBottom: 0 }}>
+              <InputNumber
+                value={apiConfig.timeout || 30000}
+                onChange={(val) => handleConfigChange('timeout', val)}
+                min={1000}
+                max={300000}
+                style={{ width: '100%', borderRadius: 6 }}
+                disabled={!editable}
+                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(value) => value.replace(/\$\s?|(,*)/g, '')}
+              />
+            </Form.Item>
 
-  /**
-   * 执行动作管理 - 编辑
-   */
-  const handleEditAction = (action) => {
-    setEditingAction({ ...action });
-  };
+            <Form.Item label="限流限制（QPS）" style={{ marginBottom: 0 }}>
+              <InputNumber
+                value={apiConfig.rateLimit || 100}
+                onChange={(val) => handleConfigChange('rateLimit', val)}
+                min={1}
+                max={10000}
+                style={{ width: '100%', borderRadius: 6 }}
+                disabled={!editable}
+                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(value) => value.replace(/\$\s?|(,*)/g, '')}
+              />
+            </Form.Item>
+          </div>
+        </Card>
 
-  /**
-   * 执行动作管理 - 保存
-   */
-  const handleSaveAction = () => {
-    if (!editingAction.name || !editingAction.name.trim()) {
-      message.error('请输入执行动作名称');
-      return;
-    }
+        <Divider>入参Schema</Divider>
+        <SchemaEditor
+          form={form}
+          schemaType="requestSchema"
+          editable={editable}
+        />
 
-    if (editingAction.id) {
-      setActions(actions.map(a =>
-        a.id === editingAction.id ? editingAction : a
-      ));
-    } else {
-      setActions([...actions, {
-        ...editingAction,
-        id: `action_${Date.now()}`
-      }]);
-    }
-
-    setEditingAction(null);
-    message.success('保存成功');
+        <Divider>出参Schema</Divider>
+        <SchemaEditor
+          form={form}
+          schemaType="responseSchema"
+          editable={editable}
+        />
+      </div>
+    );
   };
 
   /**
@@ -303,14 +289,9 @@ const ConnectorEditor = () => {
       children: renderBasicInfo(),
     },
     {
-      key: 'triggers',
-      label: `触发事件 (${triggers.length})`,
-      children: renderTriggerForm(),
-    },
-    {
-      key: 'actions',
-      label: `执行动作 (${actions.length})`,
-      children: renderActionForm(),
+      key: 'apiConfig',
+      label: '接口配置',
+      children: renderApiConfig(),
     },
   ];
 
@@ -369,246 +350,6 @@ const ConnectorEditor = () => {
   );
 
   /**
-   * 渲染触发事件表单
-   */
-  const renderTriggerForm = () => (
-    <div className="trigger-form">
-      {triggers.map(trigger => (
-        <div key={trigger.id} className="trigger-item">
-          <div className="trigger-item-content">
-            <div className="trigger-item-info">
-              <span className="trigger-name">{trigger.name}</span>
-              <span className="trigger-type">
-                {trigger.type === 'webhook' ? 'Webhook' :
-                  trigger.type === 'api' ? 'API轮询' : '定时触发'}
-              </span>
-            </div>
-            {trigger.description && (
-              <div className="trigger-desc">{trigger.description}</div>
-            )}
-          </div>
-          {editable && (
-            <Space>
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => handleEditTrigger(trigger)}
-              >
-                编辑
-              </Button>
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleDeleteClick('trigger', trigger.id)}
-              >
-                删除
-              </Button>
-            </Space>
-          )}
-        </div>
-      ))}
-
-      {editable && (
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          onClick={handleAddTrigger}
-          block
-          style={{ marginTop: 16 }}
-        >
-          添加触发事件
-        </Button>
-      )}
-
-      {editingTrigger && (
-        <div className="trigger-edit-form">
-          <Divider>编辑触发事件</Divider>
-          <Form layout="vertical">
-            <Form.Item label="事件名称" required>
-              <Input
-                value={editingTrigger.name}
-                onChange={e => setEditingTrigger({
-                  ...editingTrigger,
-                  name: e.target.value
-                })}
-                placeholder="例如：用户创建事件"
-              />
-            </Form.Item>
-
-            <Form.Item label="事件描述">
-              <Input
-                value={editingTrigger.description}
-                onChange={e => setEditingTrigger({
-                  ...editingTrigger,
-                  description: e.target.value
-                })}
-                placeholder="请输入事件描述"
-              />
-            </Form.Item>
-
-            <Form.Item label="触发类型">
-              <Select
-                value={editingTrigger.type}
-                onChange={val => setEditingTrigger({
-                  ...editingTrigger,
-                  type: val
-                })}
-              >
-                <Option value="webhook">Webhook</Option>
-                <Option value="api">API轮询</Option>
-                <Option value="schedule">定时触发</Option>
-              </Select>
-            </Form.Item>
-          </Form>
-
-          <Space>
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSaveTrigger}
-            >
-              保存
-            </Button>
-            <Button onClick={() => setEditingTrigger(null)}>取消</Button>
-          </Space>
-        </div>
-      )}
-    </div>
-  );
-
-  /**
-   * 渲染执行动作表单
-   */
-  const renderActionForm = () => (
-    <div className="action-form">
-      {actions.map(action => (
-        <div key={action.id} className="action-item">
-          <div className="action-item-content">
-            <div className="action-item-info">
-              <span className="action-name">{action.name}</span>
-              <span className="action-method">
-                <Tag color={
-                  action.method === 'GET' ? 'green' :
-                    action.method === 'POST' ? 'blue' :
-                      action.method === 'PUT' ? 'orange' : 'red'
-                }>
-                  {action.method}
-                </Tag>
-                <span className="action-endpoint">{action.endpoint}</span>
-              </span>
-            </div>
-            {action.description && (
-              <div className="action-desc">{action.description}</div>
-            )}
-          </div>
-          {editable && (
-            <Space>
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => handleEditAction(action)}
-              >
-                编辑
-              </Button>
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleDeleteClick('action', action.id)}
-              >
-                删除
-              </Button>
-            </Space>
-          )}
-        </div>
-      ))}
-
-      {editable && (
-        <Button
-          type="dashed"
-          icon={<PlusOutlined />}
-          onClick={handleAddAction}
-          block
-          style={{ marginTop: 16 }}
-        >
-          添加执行动作
-        </Button>
-      )}
-
-      {editingAction && (
-        <div className="action-edit-form">
-          <Divider>编辑执行动作</Divider>
-          <Form layout="vertical">
-            <Form.Item label="动作名称" required>
-              <Input
-                value={editingAction.name}
-                onChange={e => setEditingAction({
-                  ...editingAction,
-                  name: e.target.value
-                })}
-                placeholder="例如：发送消息"
-              />
-            </Form.Item>
-
-            <Form.Item label="动作描述">
-              <Input
-                value={editingAction.description}
-                onChange={e => setEditingAction({
-                  ...editingAction,
-                  description: e.target.value
-                })}
-                placeholder="请输入动作描述"
-              />
-            </Form.Item>
-
-            <Form.Item label="请求方法">
-              <Select
-                value={editingAction.method}
-                onChange={val => setEditingAction({
-                  ...editingAction,
-                  method: val
-                })}
-              >
-                <Option value="GET">GET</Option>
-                <Option value="POST">POST</Option>
-                <Option value="PUT">PUT</Option>
-                <Option value="DELETE">DELETE</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item label="API端点">
-              <Input
-                value={editingAction.endpoint}
-                onChange={e => setEditingAction({
-                  ...editingAction,
-                  endpoint: e.target.value
-                })}
-                placeholder="/api/v1/xxx"
-              />
-            </Form.Item>
-          </Form>
-
-          <Space>
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSaveAction}
-            >
-              保存
-            </Button>
-            <Button onClick={() => setEditingAction(null)}>取消</Button>
-          </Space>
-        </div>
-      )}
-    </div>
-  );
-
-  /**
    * 渲染
    */
   return (
@@ -637,7 +378,7 @@ const ConnectorEditor = () => {
               </Button>
               <div className="page-header-title">
                 <h4 className="page-title">{isEdit ? '连接器详情' : '新建连接器'}</h4>
-                <span className="page-desc">{isEdit ? '查看连接器的基本信息、触发事件和执行动作' : '创建新的连接器，配置触发事件和执行动作'}</span>
+                <span className="page-desc">{isEdit ? '查看连接器的基本信息和接口配置' : '创建新的连接器，配置接口信息'}</span>
               </div>
             </div>
             <Space>
@@ -669,14 +410,6 @@ const ConnectorEditor = () => {
           <Tabs
             items={renderTabItems()}
             defaultActiveKey="basic"
-          />
-
-          {/* 删除确认弹窗 */}
-          <DeleteConfirmModal
-            open={deleteModalVisible}
-            onClose={handleDeleteCancel}
-            onConfirm={handleDeleteConfirm}
-            modalInfo={getSecondModalInfo(deleteType === 'trigger' ? '触发事件' : '执行动作'), 'delete', true}
           />
         </div>
       </div>

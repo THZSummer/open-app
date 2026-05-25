@@ -31,14 +31,14 @@ export const generateEdgeId = () => {
 
 /**
  * 初始化节点位置（网格对齐）
- * 将节点位置对齐到20px的网格
+ * 将节点位置对齐到10px的网格
  * @param {number} x - X坐标
  * @param {number} y - Y坐标
  * @returns {{x: number, y: number}} 对齐后的坐标
  */
 export const getInitialNodePosition = (x = 100, y = 100) => ({
-  x: Math.round(x / 20) * 20,
-  y: Math.round(y / 20) * 20,
+  x: Math.round(x / 10) * 10,
+  y: Math.round(y / 10) * 10,
 });
 
 /**
@@ -182,4 +182,118 @@ export const validateFlowConfig = (nodes = [], edges = []) => {
     errors,
     warnings,
   };
+};
+
+/**
+ * 获取节点的所有上游节点（去重）
+ * @param {string} nodeId - 当前节点ID
+ * @param {Array} nodes - 节点列表
+ * @param {Array} edges - 连线列表
+ * @returns {Array} 上游节点数组
+ */
+export const getUpstreamNodes = (nodeId, nodes = [], edges = []) => {
+  const visited = new Set();
+  const result = [];
+
+  function traverse(currentId) {
+    if (visited.has(currentId)) return;
+    visited.add(currentId);
+
+    const incomingEdges = edges.filter(e => e.target === currentId);
+    for (const edge of incomingEdges) {
+      const upstreamNode = nodes.find(n => n.id === edge.source);
+      if (upstreamNode && !visited.has(upstreamNode.id)) {
+        result.push(upstreamNode);
+        traverse(upstreamNode.id);
+      }
+    }
+  }
+
+  traverse(nodeId);
+  return result;
+};
+
+/**
+ * 获取节点的输出参数
+ * @param {Object} node - 节点对象
+ * @returns {Array} 参数数组
+ */
+export const getNodeOutputParams = (node) => {
+  if (!node) return [];
+
+  const { type, data } = node;
+
+  switch (type) {
+    case 'trigger':
+      return data.config?.inputParams || [];
+    case 'action':
+      return data.config?.outputParams || [];
+    case 'condition':
+      return [
+        { paramName: data.config?.trueOutput || 'trueOutput', paramType: 'string', description: '条件满足时输出' },
+        { paramName: data.config?.falseOutput || 'falseOutput', paramType: 'string', description: '条件不满足时输出' },
+      ];
+    case 'loop':
+      return [
+        { paramName: data.config?.loopVariable || 'loopIndex', paramType: 'number', description: '循环计数器' },
+      ];
+    case 'dataTransform':
+      return data.config?.mappings?.map(m => ({
+        paramName: m.targetField,
+        paramType: 'string',
+        description: `映射自 ${m.sourceField}`,
+      })) || [];
+    default:
+      return [];
+  }
+};
+
+/**
+ * 递归平铺参数（处理嵌套的 object/array 类型）
+ * @param {Array} params - 参数数组
+ * @param {string} prefix - 路径前缀
+ * @returns {Array} 平铺后的参数数组
+ */
+export const flattenParams = (params = [], prefix = '') => {
+  const result = [];
+
+  for (const param of params) {
+    const fullPath = prefix ? `${prefix}.${param.paramName}` : param.paramName;
+
+    result.push({
+      paramName: param.paramName,
+      paramPath: fullPath,
+      paramType: param.paramType,
+      description: param.description || '',
+    });
+
+    if ((param.paramType === 'object' || param.paramType === 'array') && param.children?.length > 0) {
+      result.push(...flattenParams(param.children, fullPath));
+    }
+  }
+
+  return result;
+};
+
+/**
+ * 获取节点的上游参数列表（按节点分组）
+ * @param {string} nodeId - 当前节点ID
+ * @param {Array} nodes - 节点列表
+ * @param {Array} edges - 连线列表
+ * @returns {Array} 按节点分组的参数列表 [{ nodeName, nodeId, params: [] }]
+ */
+export const getUpstreamParams = (nodeId, nodes = [], edges = []) => {
+  const upstreamNodes = getUpstreamNodes(nodeId, nodes, edges);
+
+  return upstreamNodes.map(node => {
+    const outputParams = getNodeOutputParams(node);
+    const flattenedParams = flattenParams(outputParams);
+
+    return {
+      nodeName: node.data?.label || node.id,
+      nodeId: node.id,
+      nodeType: node.type,
+      params: flattenedParams,
+    };
+  });
 };

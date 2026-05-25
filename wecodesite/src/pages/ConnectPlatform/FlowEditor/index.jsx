@@ -15,7 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, message, Modal, Input, Space, Tag } from 'antd';
+import { Button, message, Modal, Input, Space, Tag, Drawer } from 'antd';
 import { SaveOutlined, CloseOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { ReactFlow, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
 import FlowCanvasWrapper from '../../../components/FlowCanvas/FlowCanvasWrapper';
@@ -83,7 +83,7 @@ function FlowEditor() {
     const triggerNode = {
       id: generateNodeId('trigger'),
       type: 'trigger',
-      position: { x: 250, y: 50 },
+      position: { x: 240, y: 40 },
       data: {
         label: '触发器',
         config: {
@@ -446,13 +446,32 @@ function FlowEditor() {
             nodeTypes={nodeTypes}
           />
         </div>
-
-        {/* 右侧属性面板 */}
-        <NodeProperties
-          selectedNode={selectedNode}
-          onUpdateNode={handleUpdateNode}
-        />
       </div>
+
+      {/* 节点配置抽屉 */}
+      <Drawer
+        title="节点配置"
+        placement="right"
+        open={!!selectedNode}
+        onClose={() => setSelectedNode(null)}
+        width={600}
+        destroyOnClose
+        mask={false}
+        styles={{
+          body: {
+            padding: 0,
+          },
+        }}
+      >
+        {selectedNode && (
+          <NodeProperties
+            selectedNode={selectedNode}
+            onUpdateNode={handleUpdateNode}
+            nodes={nodes}
+            edges={edges}
+          />
+        )}
+      </Drawer>
     </div>
   );
 }

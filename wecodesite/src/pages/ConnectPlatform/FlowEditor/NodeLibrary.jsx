@@ -4,16 +4,17 @@
  * ========================================
  *
  * 功能：
- * - 显示所有可用的节点类型分类列表
+ * - 显示所有可用的节点类型列表
  * - 支持拖拽节点到画布
+ * - 只显示 visible=true 的节点
  */
 
 import React from 'react';
-import { Card, Collapse, Typography } from 'antd';
+import { Card, Typography, Tooltip } from 'antd';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 import { NODE_LIBRARY } from './customNodes';
 
 const { Title, Text } = Typography;
-const { Panel } = Collapse;
 
 /**
  * 节点库面板组件
@@ -45,9 +46,9 @@ function NodeLibrary({ onDragStart }) {
   /**
    * 渲染节点卡片
    */
-  const renderNodeCard = (item, categoryIndex, itemIndex) => (
+  const renderNodeCard = (item, index) => (
     <Card
-      key={`${categoryIndex}-${itemIndex}`}
+      key={`${item.type}-${index}`}
       size="small"
       draggable
       onDragStart={(e) => handleDragStart(e, item.type, item.label)}
@@ -79,7 +80,7 @@ function NodeLibrary({ onDragStart }) {
         }}>
           {item.label.charAt(0)}
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{
             fontSize: 13,
             fontWeight: 500,
@@ -88,13 +89,9 @@ function NodeLibrary({ onDragStart }) {
             {item.label}
           </div>
           {item.description && (
-            <div style={{
-              fontSize: 11,
-              color: '#999',
-              marginTop: 2,
-            }}>
-              {item.description}
-            </div>
+            <Tooltip title={item.description}>
+              <QuestionCircleOutlined style={{ fontSize: 12, color: '#999', cursor: 'help' }} />
+            </Tooltip>
           )}
         </div>
       </div>
@@ -112,15 +109,22 @@ function NodeLibrary({ onDragStart }) {
       delay: '#722ed1',
       parallel: '#13c2c2',
       loop: '#eb2f96',
+      dataTransform: '#1890ff',
+      dataOutput: '#fa8c16',
     };
     return colors[type] || '#999';
   };
+
+  /**
+   * 过滤出 visible=true 的节点
+   */
+  const visibleNodes = NODE_LIBRARY.filter(item => item.visible !== false);
 
   return (
     <div
       className="node-library-panel"
       style={{
-        width: 260,
+        width: 200,
         height: '100%',
         backgroundColor: '#fafafa',
         borderRight: '1px solid #e8e8e8',
@@ -143,31 +147,11 @@ function NodeLibrary({ onDragStart }) {
         </Text>
       </div>
 
-      {/* 节点分类列表 */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <Collapse
-          defaultActiveKey={['触发器', '执行动作', '逻辑控制']}
-          ghost
-          style={{ backgroundColor: 'transparent' }}
-        >
-          {NODE_LIBRARY.map((category, categoryIndex) => (
-            <Panel
-              header={
-                <span style={{
-                  fontWeight: 600,
-                  fontSize: 13,
-                }}>
-                  {category.icon} {category.category}
-                </span>
-              }
-              key={category.category}
-            >
-              {category.items.map((item, itemIndex) =>
-                renderNodeCard(item, categoryIndex, itemIndex)
-              )}
-            </Panel>
-          ))}
-        </Collapse>
+      {/* 节点列表 */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+        {visibleNodes.map((item, index) =>
+          renderNodeCard(item, index)
+        )}
       </div>
     </div>
   );
