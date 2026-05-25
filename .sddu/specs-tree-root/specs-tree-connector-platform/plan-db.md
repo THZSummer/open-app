@@ -2,10 +2,29 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md（§4.2 数据库设计 + §4.3 表设计规则）  
-**版本**: v2.7.6  
+**版本**: v2.8.1  
 **创建日期**: 2026-05-21  
-**最后更新**: 2026-05-22  
-**对齐基线**: plan.md v2.7.6（含 v2.0 → v2.7.6 全部决策）
+**最后更新**: 2026-05-24  
+**对齐基线**: plan.md v2.8.1（对齐 spec v5.0 MVP 单版本模型）
+
+---
+
+## SQL 脚本输出位置
+
+连接器平台 DDL 脚本统一存放在 open-server 工程内，采用 FlywayDB 的目录与文件命名风格，但 **open-server 不新增 Flyway 依赖**，本规划也 **不考虑脚本自动执行机制**。
+
+**输出路径**：
+
+```text
+open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql
+```
+
+约束：
+
+- 不在 `connector-api` 中存放 DDL / migration 脚本；
+- 不创建 `connector-platform/` 业务子目录；
+- 目录按 FlywayDB 默认风格统一为 `db/migration/`，文件名体现模块；
+- connector-api 仅通过 R2DBC 访问已初始化的开放平台共库表。
 
 ---
 
@@ -98,11 +117,11 @@
 |----|------|--------|------|
 | `connector_t` | `connector_type` | 1=HTTP（MVP）；2/3/4… 预留 MySQL/Redis/Kafka/gRPC（NG12，V1） | 协议类型 |
 | `connector_t` | `status` | 保留字段（默认 1），本期不定义业务语义 | 未来可用于控制连接器是否可被连接流引用等 |
-| `connector_version_t` | `version_status` | 0=draft, 1=published | 草稿/已发布 |
-| `flow_t` | `lifecycle_status` | 0=undeployed（未部署）, 1=running（运行中）, 2=stopped（已停止） | 对应 FR-013~015 部署/启动/停止；初始态 0，撤除部署回到 0 |
-| `flow_version_t` | `version_status` | 0=draft, 1=published | 同上 |
-| `execution_record_t` | `trigger_type` | 1=http, 2=manual, 3=test | 触发方式（MVP） |
-| `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | **MVP 5 个值**（partial/cancelled 留 V1） |
+| `connector_version_t` | `version_status` | ⚠️ **MVP 不区分**（字段保留，默认 1；V1 启用 0=draft, 1=published） | MVP 单版本模型 |
+| `flow_t` | `lifecycle_status` | 1=running（默认创建态）, 2=stopped | MVP 简化：编辑即运行，无 undeployed 状态；仅 stop/start |
+| `flow_version_t` | `version_status` | ⚠️ **MVP 不区分**（字段保留，V1 启用） | MVP 单版本模型 |
+| `execution_record_t` | `trigger_type` | 1=http, 3=test | ~~2=manual~~ 移至 spec NG20；⚠️ MVP 不写入此表 |
+| `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | ⚠️ V1 保留表，MVP 不写入 |
 | `execution_step_t` | `status` | 0=success, 1=failed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=entry, 2=connector, 3=data_processor, 4=exit | 节点类型（MVP） |
 | `storage_blob_ref_t` | `owner_type` | 1=execution_record_trigger, 2=execution_record_result, 3=execution_step_input, 4=execution_step_output | 用于 GC 任务分类扫描 |
@@ -129,7 +148,9 @@
 | 6 | `openplatform_v2_cp_execution_step_t` | 子表 | runtime | 执行步骤详情（I/O 大字段支持外置到对象存储；**MVP 不分区**）|
 | 7 | `openplatform_v2_cp_storage_blob_ref_t` | 元数据表 | runtime | 对象存储引用元数据（**`external_resource_id`**（外部系统资源 ID，按需使用）/ `uri` / `size_bytes` / `content_hash` / `content_type`；用于 GC、审计与外部系统反查溯源）|
 
-**总计**：**7 张表**（2 主表 + 2 版本表 + 2 运行时表 + 1 元数据表），分属 connector / flow / runtime 三个模块。
+**总计**：**7 张表**（2 主表 + 2 配置表 + 3 张 V1 设计保留运行时表），分属 connector / flow / runtime 三个模块。
+
+> ⚠️ **MVP v5.0 使用范围**：连接器和连接流的 4 张表（1~4）完整使用；3 张运行时表（5~7）定义保留，MVP 不写入（执行结果仅同步返回，不持久化；spec FR-025 执行历史→NG21）。
 
 ---
 
@@ -726,6 +747,9 @@ CREATE TABLE `openplatform_v2_cp_storage_blob_ref_t` (
 | **v2.0** | 2026-05-21 | 初始版本——对齐 spec.md v4.0：移除审批字段、更新执行状态枚举、新增 data_processor 节点类型、更新触发方式枚举、移除 MQS 引用；9 张表（5 主表 + 4 子表） | SDDU Plan Agent |
 | **v2.7.5** | **2026-05-22** | **全面对齐 plan.md v2.7.5（含 v2.0 → v2.7.5 全部决策）**，本次为彻底重写。核心变更：① **表前缀** `cp_` → `openplatform_v2_cp_`（v2.5）+ **`_t` 后缀**（v2.7）；② **主键** `bigint id + varchar(32) business_id` → 单一 BIGINT(20) 雪花 ID（v2.7），业务标识直接用 `id`；③ **名称字段** 单语 `name` → `name_cn`/`name_en` 双语（v2.7）；④ **描述字段** `varchar(2000)` → `description_cn`/`description_en` VARCHAR(1000) 双语（v2.7.2）；⑤ **审计字段** `created_at/updated_at/created_by/updated_by` → `create_time/last_update_time/create_by/last_update_by`（v2.7）；⑥ **枚举字段** `varchar(20)` → TINYINT(10) + 数字默认值（v2.7）；⑦ **JSON 字段** MySQL `json` → TEXT/MEDIUMTEXT 存 JSON 字符串（v2.7.4）；⑧ **节点/连线表删除** `cp_flow_node`/`cp_flow_edge` → 全部内聚到 `flow_version_t.orchestration_config` JSON（v2.4）；⑨ **触发器不单独建表** → 内嵌 `orchestration_config.trigger`（v2.7.3）；⑩ **凭证表删除** `cp_connector_auth_config` → 凭证不持久化（v2.6），仅声明 `auth_type_schema`；⑪ **新增 `storage_blob_ref_t`** 元数据表（v2.4），用于 I/O 大字段（>64KB）外置到对象存储；⑫ **`storage_blob_ref_t` 新增 `external_resource_id`**（v2.7.5）；⑬ **`execution_record_t` 新增** `correlation_id`（链路追踪）+ 预留计量字段 `operations_count`/`data_in_bytes`/`data_out_bytes`（v2.4）；⑭ **`execution_record_t.status` 枚举** 3 个（success/failed/timeout）→ 5 个（0=pending/1=running/2=success/3=failed/4=timeout）（v2.4）；⑮ **`flow_t` 新增** `current_published_version_id` 指针（v2.4，HTTP 触发查找路径）；⑯ **执行表 MVP 不分区**，V1 接近 500w 时按月分区（v2.7.1）；⑰ **MVP 不引入属性表** `*_p_t`（v2.7.1）；⑱ **删除 `is_deleted`**（MVP 物理删除）；⑲ **删除 `varchar(32)` 业务 ID 命名空间**（`con_*`/`flow_*`/`cv_*`/`exec_*`/`step_*` 等全部废弃）。**表数 9 → 7**（删 2 节点连线表 + 1 凭证表，新增 1 元数据表） | SDDU Plan Agent |
 | **v2.7.6** | **2026-05-22** | **章节结构重组 + 状态机图 + 字段精简**——① **章节顺序调整**：原 §1 设计原则 + §2 通用规范合并为新 **§1 设计规范**（含 1.1 核心设计原则 + 1.2~1.7 命名/主键/审计/描述/JSON/枚举 6 子节）；原"表清单"提升为 **§2 表清单**；原 §4 表关系总览提升为 **§3 表关系总览**；原 §3 表结构定义改为 **§4 表结构定义**；新顺序：设计规范 → 表清单 → 表关系 → 表定义 → 数据归档 → ID 规则。② **5 张表新增状态机图**（mermaid stateDiagram-v2）：`connector_t.status`（active ⇄ disabled）、`connector_version_t.version_status`（draft → published 不可逆）、`flow_t.lifecycle_status`（stopped ⇄ running，含部署/启动/停止流转）、`flow_version_t.version_status`（同 connector_version）、`execution_record_t.status`（pending → running → success/failed/timeout，含瞬时状态保留理由说明）；每张状态机图配套状态含义表格（数字 / 类型 / 业务含义 / 允许操作）。③ **字段精简**：删除 `connector_t.tags`、`flow_t.tags`、`flow_t.owner_group`（MVP 范围收敛，避免引入未明确需求的"标签 / 归属组"概念，V1 出现需求时再加）；同步更新 `connector_t` 变更说明、`flow_t` 变更说明、`flow_version_t.basic_info_snapshot` JSON 字段注释、级联同步 plan.md 表清单 + ER 图、plan-api.md 3 处 API 示例、plan-page.md 表单字段说明 + 2 处 thunk createXxx 注释。④ 顶部版本号 v2.7.5 → v2.7.6。**mermaid 校验**：plan-db.md 6/6 通过（1 张 ER 图 + 5 张状态机图） | SDDU Plan Agent |
+| **v2.7.6c** | **2026-05-22** | **章节结构再次优化**（过程性内容移至附录）——按用户指示，将过程性/历史性章节移出主流程：① §0 版本对齐说明 → **附录 B**（"附录 B：版本对齐说明"，保留设计历程回顾）；② §4.8/§4.9 已删除的表 → **附录 C**（"附录 C：已删除的表"，含 C.1 凭证表 + C.2 节点/连线表两个小节）；③ 主章节重新编号：设计规范 §1 → **§0**，表清单 §2 → **§1**，表关系 §3 → **§2**，表结构定义 §4 → **§3**（子节 4.x → 3.x），数据归档 §5 → **§4**，ID 规则 §6 → **§5**（子节 6.x → 5.x）；④ 附录 C 子节号重编排：原 4.8/4.9 → C.1/C.2。**未变更项**：所有 DDL、状态机图、字段定义。**mermaid 校验**：6/6 通过。**变更统计**：章节 9→11（6 主章 + 3 附录），行数 789→795（+6 行附录标题） | SDDU Plan Agent |
+| **v2.8.1** | **2026-05-24** | **SQL 脚本输出位置调整**：连接器平台 DDL 统一存放到 open-server 工程内 `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`；采用 FlywayDB 目录与命名风格，但 open-server 不新增 Flyway 依赖，本规划不考虑脚本自动执行机制；connector-api 不存放 DDL / migration 脚本，仅通过 R2DBC 访问开放平台共库表；不创建 `connector-platform/` 业务子目录。 | SDDU Tasks Agent |
+
 ## 附录 B：版本对齐说明
 
 ### B.1 设计历程回顾
