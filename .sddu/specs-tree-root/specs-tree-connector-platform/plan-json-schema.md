@@ -974,57 +974,128 @@ interface Edge<TData = Record<string, unknown>> {
 
 ---
 
-### 7.2 React Flow `type` 字段的语义边界
-
-这是理解 React Flow 格式的关键概念，也是容易产生混淆的地方。
+### 7.2 React Flow `type` 字段的语义
 
 #### 7.2.1 `node.type` 在框架中的真实角色
 
-在 React Flow 中，`node.type` **仅是一个任意字符串**。React Flow 本身**不定义**任何内置的业务节点类型。框架的行为如下：
+在 React Flow 中，`node.type` **仅是一个任意字符串**。React Flow 本身**只提供一个内置类型**，其余全部由使用方自行注册。框架的行为如下：
 
 | 场景 | React Flow 行为 |
 |------|----------------|
-| `type: 'trigger'` | 在 `nodeTypes` 注册表中查找名为 `'trigger'` 的 React 组件 → 渲染之 |
-| `type: 'connector'` | 查找名为 `'connector'` 的组件 → 渲染 |
-| `type: 'foo_bar'` | 查找名为 `'foo_bar'` 的组件 → 若找到则渲染，否则 fallback 到内置 `'default'` 类型 |
-| `type: 'default'` | React Flow **唯一内置 fallback**：一个简单的灰色方框 |
+| `type: 'default'` | React Flow **唯一内置类型**：一个带有选中/拖拽交互的灰色方框 |
+| `type: 'some_custom_type'` | 在 `nodeTypes` 注册表中查找名为 `'some_custom_type'` 的 React 组件 → 渲染之；若未注册，fallback 到 `'default'` |
 
 ```typescript
-// wecodesite 中的注册示例 (customNodes.jsx)
-export const nodeTypes = {
-  trigger: TriggerNode,          // 注册：字符串 'trigger' → TriggerNode 组件
-  connector: ConnectorNode,      // 注册：字符串 'connector' → ConnectorNode 组件
-  data_processor: DataProcessorNode,
-  exit: ExitNode,
+// 泛化示例：任何项目注册自定义节点类型的方式
+// React Flow 仅内置 'default' 类型；其余类型需自行注册
+import { ReactFlow } from '@xyflow/react';
+import CustomNodeA from './CustomNodeA';
+import CustomNodeB from './CustomNodeB';
+
+const nodeTypes = {
+  custom_a: CustomNodeA,
+  custom_b: CustomNodeB,
 };
+
+// <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} />
 ```
 
-#### 7.2.2 我们的项目对此字段的"语义过载"
+> ⚠️ React Flow **不定义**任何业务语义的节点类型。`'trigger'`、`'connector'`、`'exit'` 等字符串不是 React Flow 的一部分——它们是使用方自行注册的自定义类型。框架只负责根据 `node.type` 字符串在 `nodeTypes` 映射表中查找对应的 React 组件并渲染。
 
-连接器平台对这个字段施加了**双重语义**，这是有意为之的设计：
+#### 7.2.2 完整的 React Flow 画布产物示例
 
+以下展示一个 React Flow 画布在运行时实际持有的 JavaScript 对象结构——这是 `JSON.stringify(nodes) + JSON.stringify(edges)` 得到的完整数据。此示例**仅使用 React Flow 内置的 `default` 类型**，不涉及任何项目的自定义节点类型，展示框架自身的完整字段集合。
+
+```json
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "default",
+      "position": { "x": 0, "y": 0 },
+      "data": { "label": "Node 1" },
+      "width": 150,
+      "height": 40,
+      "selected": false,
+      "dragging": false,
+      "sourcePosition": "right",
+      "targetPosition": "left"
+    },
+    {
+      "id": "2",
+      "type": "default",
+      "position": { "x": 250, "y": 0 },
+      "data": { "label": "Node 2" },
+      "width": 150,
+      "height": 40,
+      "selected": true,
+      "dragging": false,
+      "sourcePosition": "right",
+      "targetPosition": "left"
+    },
+    {
+      "id": "3",
+      "type": "default",
+      "position": { "x": 500, "y": 100 },
+      "data": { "label": "Node 3" },
+      "width": 150,
+      "height": 40,
+      "selected": false,
+      "dragging": false,
+      "sourcePosition": "right",
+      "targetPosition": "left"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1-2",
+      "source": "1",
+      "target": "2",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "animated": false,
+      "selected": false
+    },
+    {
+      "id": "e2-3",
+      "source": "2",
+      "target": "3",
+      "sourceHandle": null,
+      "targetHandle": null,
+      "animated": false,
+      "selected": false
+    }
+  ]
+}
 ```
-node.type = "connector"
-           │
-           ├──▶ React Flow 视角：用 ConnectorNode 组件渲染
-           │
-           └──▶ 运行时引擎视角：用 ConnectorNodeExecutor 执行
-```
 
-| 维度 | React Flow 框架 | 我们的项目 |
-|------|:---:|:---:|
-| `type: 'trigger'` | 框架无感知 | 业务含义：DAG 入口节点，声明触发条件和入参契约 |
-| `type: 'connector'` | 框架无感知 | 业务含义：调用下游 API 的节点，引用 `connectorVersionId` |
-| `type: 'data_processor'` | 框架无感知 | 业务含义：纯管道转换节点，不改 DAG 拓扑 |
-| `type: 'exit'` | 框架无感知 | 业务含义：DAG 出口节点，声明返回值字段 |
-| `type` 值从何而来 | 用户拖拽时前端代码指定 | 与 `customNodes.jsx` 注册的键名一致 |
+**示例字段说明**：
 
-#### 7.2.3 关键结论
+| 字段 | 所属 | 类型 | 说明 |
+|------|------|------|------|
+| `id` | node | `string` | 节点唯一标识，React Flow 内部用此 ID 关联边的 source/target |
+| `type` | node | `string` | 映射到 `nodeTypes` 注册的组件；此处为 React Flow 内置的 `default` |
+| `position` | node | `{ x: number, y: number }` | 画布坐标，原点为左上角 |
+| `data` | node | `object` | **用户自定义数据的唯一容器**；`label` 是 `default` 节点用来显示文字的约定键 |
+| `width`, `height` | node | `number` | 节点渲染后的像素尺寸（运行时计算，非用户指定） |
+| `selected` | node | `boolean` | 是否被用户框选或点击选中（运行时状态） |
+| `dragging` | node | `boolean` | 是否正在被拖拽（运行时状态） |
+| `sourcePosition` | node | `string` | 出边 Handle 的位置（`'right'` / `'left'` / `'top'` / `'bottom'`） |
+| `targetPosition` | node | `string` | 入边 Handle 的位置 |
+| `source` | edge | `string` | 源节点的 `id`——React Flow 固定字段名 |
+| `target` | edge | `string` | 目标节点的 `id`——React Flow 固定字段名 |
+| `sourceHandle`, `targetHandle` | edge | `string \| null` | Handle 锚点 ID，`null` 表示自动连接最近的可连接 Handle |
+| `animated` | edge | `boolean` | 是否显示流动动画（运行时状态） |
+| `id` | edge | `string` | 边唯一标识 |
 
-1. **React Flow 标准格式中不存在 `trigger` / `connector` / `data_processor` / `exit` 这些类型**。它们是**本项目通过 `nodeTypes` 注册表自行注册**的自定义类型。
-2. 这些字符串值的选择是**项目的命名约定**，不影响 React Flow 的功能——任何字符串都可以，只要与注册表中的键名一致。
-3. 存储格式中 `type` 字段的值 = 注册表中的键名 = 运行时的业务分类。三者必须一致。
-4. 当前前后端在这个值上的不一致（前端 `action` vs 后端 `connector`）是**命名约定问题**，不是格式问题。详见 §8.2.3。
+> 💡 **持久化提示**：上述字段中，仅 `id`、`type`、`position`、`data`（节点）和 `id`、`source`、`target`（边）是存储时需要保留的。`selected`、`dragging`、`width`、`height`、`animated` 等运行时状态字段**不应持久化**到数据库（详见 §8.5）。
+
+> 📎 此示例结构可通过 React Flow 官方文档中的任何可运行示例验证——打开浏览器 DevTools，查看 React Flow 组件内部 state 即可确认 `nodes` / `edges` 数组的完整字段集合。来源：https://reactflow.dev/api-reference/types/node / https://reactflow.dev/api-reference/types/edge
+
+此示例说明了 React Flow 数据格式的核心要点：
+1. **顶层结构**：`nodes` 数组 + `edges` 数组，这是 React Flow 的标准数据模型
+2. **`node.data` 容器**：所有自定义业务数据必须嵌套在 `data` 内；框架字段（`id`、`type`、`position`）与业务字段在结构上隔离
+3. **运行时字段混合**：`selected`、`dragging`、`width` 等运行时状态字段与存储字段在同一个对象中共存——持久化时必须过滤
 
 ---
 
@@ -1102,6 +1173,34 @@ React Flow 的 `node.type` 同时承担两个职责（见 §7.2.2）：
 | — | `exit` | 🟡 前端尚未注册此类型 |
 
 > ⚠️ **前端现有代码用 `action`，后端 Schema 用 `connector`**。需要统一。建议以规范对齐为准：后端 Schema 的 `connector` / `data_processor` / `exit` 是业务层面的精确分类，前端 `nodeTypes` 注册时应使用相同值。
+
+
+#### 8.1.4 项目的语义过载（从 §7 迁移）
+
+连接器平台对 `node.type` 字段施加了**双重语义**，这是有意为之的设计：
+
+```
+node.type = "connector"
+           │
+           ├──▶ React Flow 视角：用 ConnectorNode 组件渲染
+           │
+           └──▶ 运行时引擎视角：用 ConnectorNodeExecutor 执行
+```
+
+| 维度 | React Flow 框架 | 我们的项目 |
+|------|:---:|:---:|
+| `type: 'trigger'` | 框架无感知 | 业务含义：DAG 入口节点，声明触发条件和入参契约 |
+| `type: 'connector'` | 框架无感知 | 业务含义：调用下游 API 的节点，引用 `connectorVersionId` |
+| `type: 'data_processor'` | 框架无感知 | 业务含义：纯管道转换节点，不改 DAG 拓扑 |
+| `type: 'exit'` | 框架无感知 | 业务含义：DAG 出口节点，声明返回值字段 |
+| `type` 值从何而来 | 用户拖拽时前端代码指定 | 与 `customNodes.jsx` 注册的键名一致 |
+
+#### 8.1.5 关键结论
+
+1. **React Flow 标准格式中不存在 `trigger` / `connector` / `data_processor` / `exit` 这些类型**。它们是**本项目通过 `nodeTypes` 注册表自行注册**的自定义类型（见 §7.2.1）。
+2. 这些字符串值的选择是**项目的命名约定**，不影响 React Flow 的功能——任何字符串都可以，只要与注册表中的键名一致。
+3. 存储格式中 `type` 字段的值 = 注册表中的键名 = 运行时的业务分类。三者必须一致。
+4. 当前前后端在这个值上的不一致（前端 `action` vs 后端 `connector`）是**命名约定问题**，不是格式问题，详见上表。
 
 ---
 
