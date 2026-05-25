@@ -326,10 +326,10 @@ connector-api/src/test/python/
 |------|---------|---------|
 | Python 3 | >= 3.10 | 系统自带 |
 | python3-venv | 与 Python 版本匹配 | `sudo apt install python3.12-venv`（**必装**，否则 venv 创建失败） |
-| MySQL | 8.0+ | `docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:8` |
-| Redis | 7.0+ | `docker run -p 6379:6379 redis:7` |
-| Java | 17+ | 项目要求 |
-| Maven | 3.8+ | 项目要求 |
+| MySQL | 8.0+ | 与 open-server / connector-api 共用同一数据库实例 |
+| Redis | 7.0+ | 与 open-server / connector-api 共用同一 Redis 实例 |
+| Java | 17+ | 项目运行环境 |
+| Maven | 3.8+ | 项目构建工具 |
 
 **Python 包**（在 venv 中安装）:
 - `requests` — HTTP 客户端
