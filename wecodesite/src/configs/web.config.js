@@ -73,6 +73,7 @@ export const API_CONFIG = {
     CANCEL: '/approvals/{id}/cancel',
     BATCH_APPROVE: '/approvals/batch-approve',
     BATCH_REJECT: '/approvals/batch-reject',
+    REMIND_APPROVE: '/approvals/${id}/urge',
   },
 
   APPROVAL_FLOWS: {

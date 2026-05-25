@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
-import { remindPeople } from '../../../routes-redBlue/api-manage/thunk';
+import { remindPeople } from '../../pages/Admin/Approval/thunk';
 
 /**
  * 从审批链接中提取 eflowId
