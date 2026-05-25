@@ -30,6 +30,7 @@ import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
  * <li>#50 POST /service/open/v2/approvals/:id/cancel - 撤销审批</li>
  * <li>#51 POST /service/open/v2/approvals/batch-approve - 批量同意审批</li>
  * <li>#52 POST /service/open/v2/approvals/batch-reject - 批量驳回审批</li>
+ * <li>#53 POST /service/open/v2/approvals/:id/urge - 催办审批</li>
  * </ul>
  *
  * @author SDDU Build Agent
@@ -316,6 +317,25 @@ public class ApprovalController {
         String operator = UserContextHolder.getUserId();
 
         BatchApprovalResponse data = approvalService.batchReject(request, operatorId, operatorName, operator);
+        return ApiResponse.success(data);
+    }
+
+    // ==================== 催办 (#53) ====================
+
+    /**
+     * #53 催办审批
+     *
+     * <p>申请人催办当前审批人，发送卡片消息通知</p>
+     *
+     * @param id 审批记录ID
+     * @return 催办结果
+     */
+    @PostMapping("/approvals/{id}/urge")
+    public ApiResponse<ApprovalActionResponse> urge(@PathVariable String id) {
+        log.info("Urge approval: id={}", id);
+
+        String operator = UserContextHolder.getUserId();
+        ApprovalActionResponse data = approvalService.urge(Long.parseLong(id), operator);
         return ApiResponse.success(data);
     }
 }

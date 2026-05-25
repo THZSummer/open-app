@@ -74,6 +74,7 @@ public class ApprovalService {
     private final CallbackMapper callbackMapper;
     private final SubscriptionMapper subscriptionMapper;
     private final PermissionMapper permissionMapper;
+    private final ApprovalNotifyService approvalNotifyService;
 
     // ==================== 审批流程模板管理 ====================
 
@@ -639,6 +640,67 @@ public class ApprovalService {
                 .build();
     }
 
+    // ==================== 催办 ====================
+
+    /**
+     * #53 催办审批
+     *
+     * <p>申请人催办当前审批节点的审批人，发送卡片消息通知，
+     * 并将返回的 cardId 持久化到 combinedNodes 对应节点的 cardIds 列表中。</p>
+     *
+     * @param id       审批记录ID
+     * @param operator 当前操作用户ID
+     * @return 催办结果
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ApprovalActionResponse urge(Long id, String operator) {
+
+        // 1. 查询待审批状态的记录（SQL 条件：id=? AND status=0）
+        ApprovalRecord record = recordMapper.selectPendingById(id);
+        if (record == null) {
+            throw new BusinessException("400", "审批记录不存在", "Approval record not found");
+        }
+
+        // 2. 校验申请人身份
+        if (!record.getApplicantId().equals(operator)) {
+            throw new BusinessException("403", "只有申请人可以催办", "Only the applicant can urge the approval");
+        }
+
+        // 3. 解析 combinedNodes，获取当前审批节点的审批人
+        List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
+        ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
+
+        // 4. 调用第三方发送催办卡片消息
+        String cardId = approvalNotifyService.sendUrgeCard(
+                currentNode.getUserId(),
+                currentNode.getUserName(),
+                id,
+                record.getBusinessType(),
+                record.getBusinessId(),
+                record.getApplicantName()
+        );
+
+        // 5. 将 cardId 追加到当前节点的 cardIds 列表
+        if (currentNode.getCardIds() == null) {
+            currentNode.setCardIds(new ArrayList<>());
+        }
+        currentNode.getCardIds().add(cardId);
+
+        // 6. 重新序列化 combinedNodes 并更新数据库
+        record.setCombinedNodes(approvalEngine.serializeNodes(nodes));
+        record.setLastUpdateTime(new Date());
+        recordMapper.updateCombinedNodes(record);
+
+        log.info("Urge approval: id={}, approver={}, cardId={}", id, currentNode.getUserId(), cardId);
+
+        // 7. 返回结果
+        return ApprovalActionResponse.builder()
+                .id(String.valueOf(id))
+                .status(record.getStatus())
+                .message("已通知审批人 " + currentNode.getUserName() + " 尽快处理")
+                .build();
+    }
+
     // ==================== 辅助方法 ====================
 
     /**
@@ -834,6 +896,8 @@ public class ApprovalService {
                 return "撤销";
             case 3:
                 return "转交";
+            case 4:
+                return "催办";
             default:
                 return "未知";
         }
