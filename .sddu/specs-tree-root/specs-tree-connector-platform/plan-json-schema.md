@@ -907,6 +907,19 @@ flowchart LR
 
 React Flow（@xyflow/react v12）是连接流编排画布的前端技术选型。本节记录框架公开的 TypeScript 类型定义——这些字段是 React Flow 画布产物的**固定结构**。
 
+> 💡 **React Flow 的定位**：React Flow 是一个**画布引擎**，不是业务框架。它管的是：「节点怎么拖、线怎么连、画布怎么缩放」，**不管**「节点长什么样、节点里有什么字段、节点之间数据怎么流转」。
+>
+> | React Flow 管的（框架层） | 业务自己管的（应用层） |
+> |---|---|
+> | `node.id`、`node.position`、`node.type` 等框架字段 | `node.data` 里的一切（字段结构、节点配置） |
+> | 拖拽、选中、连线、Handle 交互 | 节点长什么样（图标、颜色、表单） |
+> | 画布缩放、平移、小地图 | 节点间的数据流转逻辑 |
+> | 边的渲染样式（贝塞尔/折线/动画） | 运行时 DAG 拓扑排序与执行 |
+>
+> `node.type` 这个字符串是两层之间的**唯一交汇点**——React Flow 用它找到对应的 React 组件来渲染，应用层恰好也能拿它当业务分类用。但这个恰好是应用层的设计选择，框架本身不感知。
+>
+> 因此：React Flow 的四种内置类型（`input`/`default`/`output`/`group`）只是 Handle 位置不同的空白壳子——所有业务节点（如 Zapier 的 trigger、n8n 的 HTTP Request）**全部是应用自行注册的自定义类型**。React Flow 不知道你在画审批流还是 ETL 管道，这些语义完全由 `node.data` 承载。
+
 > 📎 **官方来源**：
 > - **React Flow 类型系统总览**：https://reactflow.dev/api-reference/types
 > - **Node 类型定义**：https://reactflow.dev/api-reference/types/node
