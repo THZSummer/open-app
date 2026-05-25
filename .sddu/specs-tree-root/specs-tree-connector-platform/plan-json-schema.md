@@ -24,20 +24,20 @@
 | 标准 | 参考程度 | 说明 |
 |------|---------|------|
 | JSON Schema (draft-07) | ⭐⭐⭐ 核心 | `type` / `properties` / `required` / `description` / `definitions` / `oneOf` / `allOf` / `if`-`then` 等元字段直接复用 |
-| OpenAPI 3.0 components/schemas | ⭐⭐⭐ 结构 | 可复用组件（authTypeSchema / rateLimit）+ 按场景组合的思想 |
+| OpenAPI 3.0 components/schemas | ⭐⭐⭐ 结构 | 可复用组件（authConfig / rateLimitConfig）+ 按场景组合的思想 |
 
 ### 1.3 核心原则
 
 ```
 原则一：同一事物同一个名
-  authTypeSchema → 触发器和连接器用同一结构
-  rateLimit      → 入站和出站限流用同一结构
-  inputSchema    → 触发器和连接器统一命名
+  authConfig → 触发器和连接器用同一结构
+  rateLimitConfig      → 入站和出站限流用同一结构
+  inputContract    → 触发器和连接器统一命名
 
 原则二：不用的字段不出现
   trigger 不需要 protocolConfig（HTTP 端点固定）
   trigger 不需要 timeoutMs（引擎统一控制）
-  trigger 不需要 outputSchema（由编排 exit 节点定义）
+  trigger 不需要 outputContract（由编排 exit 节点定义）
 
 原则三：DAG（有向无环图）的边也是数据，需要语义
   edge 不仅是"谁连到谁"，还承载执行条件（condition）/ 错误路由（error）/ 优先级
@@ -56,7 +56,7 @@
 
 | 上下文 | 规则 | 示例 |
 |--------|------|------|
-| JSON 内部所有键名 | camelCase | `nameCn` / `authTypeSchema` / `connectorVersionId` |
+| JSON 内部所有键名 | camelCase | `nameCn` / `authConfig` / `connectorVersionId` |
 | 引用外部资源 ID | `*Id` 后缀 + string 类型 | `connectorVersionId: "1234567890"` |
 | 时间字段 | `*Time` 后缀 | `createTime` / `publishedTime` |
 | 布尔字段 | `is*` 前缀 | `isDeleted` / `isTest` |
@@ -67,7 +67,7 @@
 
 ### 2.1 JSON 内嵌枚举使用字符串的例外说明
 
-> ⚠️ **设计决策**：`authTypeSchema.type` 作为存储在 `MEDIUMTEXT` JSON 字段内的嵌套值，使用**字符串枚举**而非 TINYINT 数字。这与 `plan-db.md` §0.7「所有枚举字段统一 TINYINT(10)」规则表面冲突，但属于**有意为之的例外**：
+> ⚠️ **设计决策**：`authConfig.type` 作为存储在 `MEDIUMTEXT` JSON 字段内的嵌套值，使用**字符串枚举**而非 TINYINT 数字。这与 `plan-db.md` §0.7「所有枚举字段统一 TINYINT(10)」规则表面冲突，但属于**有意为之的例外**：
 >
 > | 维度 | 数据库列级枚举 | JSON 内嵌枚举 |
 > |------|--------------|-------------|
@@ -96,26 +96,26 @@
 > ### §3.0 字段名 ↔ 校验类型映射
 >
 > 为避免「字段名与 Schema 名相同」产生的歧义，本规范区分两者：
-> - **字段名（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authTypeSchema`、`rateLimit`）
-> - **校验类型（definition key）**：definitions 中的组件键名，描述「用什么规则校验」（如 `authTypeDeclaration`、`rateLimitConfig`）
+> - **字段名（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`、`rateLimitConfig`）
+> - **校验类型（definition key）**：definitions 中的组件键名，描述「用什么规则校验」（如 `authConfigDef`、`rateLimitDef`）
 >
 > ```mermaid
 > graph LR
 >     subgraph Fields["JSON 字段名<br/>（数据侧）"]
->         F1["authTypeSchema<br/>认证 schema 数据"]
->         F2["rateLimit<br/>限流数据"]
->         F3["inputSchema<br/>入参 schema 数据"]
->         F4["outputSchema<br/>出参 schema 数据"]
+>         F1["authConfig<br/>认证 schema 数据"]
+>         F2["rateLimitConfig<br/>限流数据"]
+>         F3["inputContract<br/>入参 schema 数据"]
+>         F4["outputContract<br/>出参 schema 数据"]
 >         F5["errorInfo<br/>错误信息数据"]
 >         F6["position<br/>画布坐标数据"]
 >     end
 >
 >     subgraph Defs["definitions 校验类型<br/>（规则侧）"]
->         D1["authTypeDeclaration<br/>校验认证类型声明"]
->         D2["rateLimitConfig<br/>校验限流配置"]
->         D3["dataContract<br/>校验数据契约结构"]
->         D5["errorDetail<br/>校验错误详情"]
->         D6["canvasPosition<br/>校验画布坐标"]
+>         D1["authConfigDef<br/>校验认证类型声明"]
+>         D2["rateLimitDef<br/>校验限流配置"]
+>         D3["dataContractDef<br/>校验数据契约结构"]
+>         D5["errorInfoDef<br/>校验错误详情"]
+>         D6["positionDef<br/>校验画布坐标"]
 >     end
 >
 >     F1 -- "$ref" --> D1
@@ -129,7 +129,7 @@
 >     style Defs fill:#fff3e0,stroke:#ef6c00
 > ```
 >
-> **副作用**：以下 Schema 定义中，你会看到 `"authTypeSchema": { "$ref": "#/definitions/authTypeDeclaration" }`——左侧是字段名，右侧是校验类型，两者语义关联但字面不同。
+> **副作用**：以下 Schema 定义中，你会看到 `"authConfig": { "$ref": "#/definitions/authConfigDef" }`——左侧是字段名，右侧是校验类型，两者语义关联但字面不同。
 >
 > **v4.0 新增**：本 definitions 聚合段新增 `nodeDataSchema` / `triggerData` / `connectorData` / `dataProcessorData` / `exitData` 共 5 个组件，用于 §4.3 orchestrationConfig 中 `node.data` 的按类型校验。
 
@@ -142,10 +142,10 @@
 
   "definitions": {
 
-    "authTypeDeclaration": {
-      "$id": "urn:openapp:schema:authTypeDeclaration:v1",
-      "title": "authTypeDeclaration",
-      "description": "认证类型声明。校验 JSON 字段 authTypeSchema 的数据结构，声明调用方需携带的认证凭证。type 使用字符串枚举（见 §2.1 例外说明）",
+    "authConfigDef": {
+      "$id": "urn:openapp:schema:authConfigDef:v1",
+      "title": "authConfigDef",
+      "description": "认证类型声明。校验 JSON 字段 authConfig 的数据结构，声明调用方需携带的认证凭证。type 使用字符串枚举（见 §2.1 例外说明）",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -174,10 +174,10 @@
       "required": ["type"]
     },
 
-    "rateLimitConfig": {
-      "$id": "urn:openapp:schema:rateLimitConfig:v1",
-      "title": "rateLimitConfig",
-      "description": "限流配置。校验 JSON 字段 rateLimit 的数据结构，触发器和连接器复用同一类型",
+    "rateLimitDef": {
+      "$id": "urn:openapp:schema:rateLimitDef:v1",
+      "title": "rateLimitDef",
+      "description": "限流配置。校验 JSON 字段 rateLimitConfig 的数据结构，触发器和连接器复用同一类型",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -196,10 +196,10 @@
       }
     },
 
-    "dataContract": {
-      "$id": "urn:openapp:schema:dataContract:v1",
-      "title": "dataContract",
-      "description": "数据契约。校验 JSON 字段 inputSchema / outputSchema 的数据结构，遵循 JSON Schema draft-07 子集",
+    "dataContractDef": {
+      "$id": "urn:openapp:schema:dataContractDef:v1",
+      "title": "dataContractDef",
+      "description": "数据契约。校验 JSON 字段 inputContract / outputContract 的数据结构，遵循 JSON Schema draft-07 子集",
       "type": "object",
       "properties": {
         "type": {
@@ -233,14 +233,14 @@
       "required": ["type", "properties"]
     },
 
-    "dataContractAlias": {
-      "$ref": "urn:openapp:schema:dataContract:v1",
-      "description": "outputSchema 字段与 inputSchema 共用同一个数据契约校验类型"
+    "dataContractDefAlias": {
+      "$ref": "urn:openapp:schema:dataContractDef:v1",
+      "description": "outputContract 字段与 inputContract 共用同一个数据契约校验类型"
     },
 
-    "errorDetail": {
-      "$id": "urn:openapp:schema:errorDetail:v1",
-      "title": "errorDetail",
+    "errorInfoDef": {
+      "$id": "urn:openapp:schema:errorInfoDef:v1",
+      "title": "errorInfoDef",
       "description": "错误详情。校验 JSON 字段 errorInfo 的数据结构",
       "type": "object",
       "additionalProperties": false,
@@ -261,9 +261,9 @@
       ]
     },
 
-    "canvasPosition": {
-      "$id": "urn:openapp:schema:canvasPosition:v1",
-      "title": "canvasPosition",
+    "positionDef": {
+      "$id": "urn:openapp:schema:positionDef:v1",
+      "title": "positionDef",
       "description": "画布坐标。校验 JSON 字段 position 的数据结构，React Flow (@xyflow/react) 使用浮点坐标",
       "type": "object",
       "additionalProperties": false,
@@ -312,16 +312,16 @@
           "description": "触发子类型。定义触发方式",
           "enum": ["http", "manual", "test"]
         },
-        "authTypeSchema": {
-          "$ref": "#/definitions/authTypeDeclaration",
+        "authConfig": {
+          "$ref": "#/definitions/authConfigDef",
           "description": "HTTP 触发时声明外部调用方需携带的认证凭证类型（仅声明 schema，不含凭证值）"
         },
-        "inputSchema": {
-          "$ref": "#/definitions/dataContract",
+        "inputContract": {
+          "$ref": "#/definitions/dataContractDef",
           "description": "触发请求体的 JSON Schema（HTTP 触发时校验请求体）"
         },
-        "rateLimit": {
-          "$ref": "#/definitions/rateLimitConfig"
+        "rateLimitConfig": {
+          "$ref": "#/definitions/rateLimitDef"
         }
       },
       "required": ["type"],
@@ -332,7 +332,7 @@
             "required": ["type"]
           },
           "then": {
-            "required": ["authTypeSchema", "inputSchema"],
+            "required": ["authConfig", "inputContract"],
             "description": "HTTP 触发必须声明认证类型 schema 和入参 schema"
           }
         },
@@ -343,8 +343,8 @@
           },
           "then": {
             "properties": {
-              "authTypeSchema": false,
-              "inputSchema": false
+              "authConfig": false,
+              "inputContract": false
             },
             "description": "手动触发不需要认证和入参 schema（管理员手动填写参数）"
           }
@@ -377,7 +377,7 @@
         },
         "inputMapping": {
           "type": "object",
-          "description": "上游数据字段 → 连接器 inputSchema 字段的映射。key 为连接器 inputSchema 字段名，value 为表达式（如 ${trigger.sender}）"
+          "description": "上游数据字段 → 连接器 inputContract 字段的映射。key 为连接器 inputContract 字段名，value 为表达式（如 ${trigger.sender}）"
         }
       },
       "required": ["connectorVersionId", "inputMapping"]
@@ -476,16 +476,16 @@
       "description": "触发子类型。定义触发方式",
       "enum": ["http", "manual", "test"]
     },
-    "authTypeSchema": {
-      "$ref": "#/definitions/authTypeDeclaration",
+    "authConfig": {
+      "$ref": "#/definitions/authConfigDef",
       "description": "HTTP 触发时声明外部调用方需携带的认证凭证类型（仅声明 schema，不含凭证值）"
     },
-    "inputSchema": {
-      "$ref": "#/definitions/dataContract",
+    "inputContract": {
+      "$ref": "#/definitions/dataContractDef",
       "description": "触发请求体的 JSON Schema（HTTP 触发时校验请求体）"
     },
-    "rateLimit": {
-      "$ref": "#/definitions/rateLimitConfig"
+    "rateLimitConfig": {
+      "$ref": "#/definitions/rateLimitDef"
     }
   },
   "required": ["type"],
@@ -496,7 +496,7 @@
         "required": ["type"]
       },
       "then": {
-        "required": ["authTypeSchema", "inputSchema"],
+        "required": ["authConfig", "inputContract"],
         "description": "HTTP 触发必须声明认证类型 schema 和入参 schema"
       }
     },
@@ -507,8 +507,8 @@
       },
       "then": {
         "properties": {
-          "authTypeSchema": false,
-          "inputSchema": false
+          "authConfig": false,
+          "inputContract": false
         },
         "description": "手动触发不需要认证和入参 schema（管理员手动填写参数）"
       }
@@ -537,13 +537,13 @@
     "labelCn": "接收请求",
     "labelEn": "Receive Request",
     "type": "http",
-    "authTypeSchema": {
+    "authConfig": {
       "type": "SYSTOKEN",
       "fields": [
         { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
       ]
     },
-    "inputSchema": {
+    "inputContract": {
       "type": "object",
       "properties": {
         "sender": { "type": "string", "description": "发送者 ID" },
@@ -551,12 +551,12 @@
       },
       "required": ["sender", "content"]
     },
-    "rateLimit": { "maxQps": 100 }
+    "rateLimitConfig": { "maxQps": 100 }
   }
 }
 ```
 
-> 💡 触发器节点不含 protocolConfig（HTTP 端点固定）、不含 timeoutMs（引擎统一控制）、不含 outputSchema（由编排 exit 节点定义）。
+> 💡 触发器节点不含 protocolConfig（HTTP 端点固定）、不含 timeoutMs（引擎统一控制）、不含 outputContract（由编排 exit 节点定义）。
 
 **type 枚举上下文**：
 
@@ -603,9 +603,9 @@
       },
       "required": ["url", "method"]
     },
-    "authTypeSchema": { "$ref": "#/definitions/authTypeDeclaration" },
-    "inputSchema": { "$ref": "#/definitions/dataContract" },
-    "outputSchema": { "$ref": "#/definitions/dataContract" },
+    "authConfig": { "$ref": "#/definitions/authConfigDef" },
+    "inputContract": { "$ref": "#/definitions/dataContractDef" },
+    "outputContract": { "$ref": "#/definitions/dataContractDef" },
     "timeoutMs": {
       "type": "integer",
       "description": "单次调用超时（毫秒）",
@@ -613,7 +613,7 @@
       "minimum": 1000,
       "maximum": 300000
     },
-    "rateLimit": { "$ref": "#/definitions/rateLimitConfig" }
+    "rateLimitConfig": { "$ref": "#/definitions/rateLimitDef" }
   },
   "required": ["protocol", "protocolConfig"]
 }
@@ -631,13 +631,13 @@
     "method": "POST",
     "headers": { "Content-Type": "application/json" }
   },
-  "authTypeSchema": {
+  "authConfig": {
     "type": "SYSTOKEN",
     "fields": [
       { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
     ]
   },
-  "inputSchema": {
+  "inputContract": {
     "type": "object",
     "properties": {
       "receiver": { "type": "string", "description": "接收者 ID" },
@@ -645,14 +645,14 @@
     },
     "required": ["receiver", "content"]
   },
-  "outputSchema": {
+  "outputContract": {
     "type": "object",
     "properties": {
       "msgId": { "type": "string", "description": "消息 ID" }
     }
   },
   "timeoutMs": 30000,
-  "rateLimit": {
+  "rateLimitConfig": {
     "maxQps": 10,
     "maxConcurrency": 5
   }
@@ -721,7 +721,7 @@
             "description": "节点类型。React Flow 框架字段，映射到 nodeTypes 注册表中对应的 React 组件；同时承载业务分类（运行时决定 NodeExecutor）。trigger=入口, connector=连接器调用, data_processor=管道转换, exit=出口"
           },
           "position": {
-            "$ref": "#/definitions/canvasPosition",
+            "$ref": "#/definitions/positionDef",
             "description": "节点画布坐标。React Flow 框架字段"
           },
           "data": {
@@ -853,13 +853,13 @@ flowchart LR
         "labelCn": "接收请求",
         "labelEn": "Receive Request",
         "type": "http",
-        "authTypeSchema": {
+        "authConfig": {
           "type": "SYSTOKEN",
           "fields": [
             { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
           ]
         },
-        "inputSchema": {
+        "inputContract": {
           "type": "object",
           "properties": {
             "sender": { "type": "string" },
@@ -867,7 +867,7 @@ flowchart LR
           },
           "required": ["sender", "content"]
         },
-        "rateLimit": { "maxQps": 100 }
+        "rateLimitConfig": { "maxQps": 100 }
       }
     },
     {
@@ -922,15 +922,15 @@ flowchart LR
 
 ### 4.4 执行数据 — executionRecord / executionStep
 
-> 执行数据的结构由对应节点的 inputSchema / outputSchema 动态决定，不在数据库层约束。errorInfo 统一使用结构化格式。
+> 执行数据的结构由对应节点的 inputContract / outputContract 动态决定，不在数据库层约束。errorInfo 统一使用结构化格式。
 
 **errorInfo Schema 定义**（同 §3 definitions）：
 
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "urn:openapp:schema:errorDetail:v1",
-  "title": "errorDetail",
+  "$id": "urn:openapp:schema:errorInfoDef:v1",
+  "title": "errorInfoDef",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -1237,6 +1237,7 @@ const nodeTypes = {
 | **v3.4** | 2026-05-25 | **§7.2.2 示例丰富**：JSON 示例从单一 `default` 类型扩展为覆盖全部四种内置类型（`input`/`default`/`output`/`group`）；新增「React Flow 内置节点类型」对照表（Handle 预设位置 + 典型用途）；持久化提示字段清单补全 | SDDU Plan Agent |
 | **v3.5** | 2026-05-25 | **§8 消歧**：可视化对比加注 `connector` 等为项目自定义类型非 React Flow 内置；§7 定位说明加入 §7.1；修正 §8 中三处失效的 §7 交叉引用（§7.2→§7.2.1） | SDDU Plan Agent |
 | **v4.0** | 2026-05-25 | **React Flow 官方格式全文档对齐**：node.data 嵌套（所有业务字段迁入 node.data）、edge.source/target（React Flow 标准命名）、edge.type/edge.data 语义分离（type=渲染样式，data.businessType=业务语义）、nodeDataSchema 独立抽取（§4.5）、§7 精简（保留核心接口定义，移除 §7.2.2 完整示例）、§8 精简至仅保留决策记录 | SDDU Plan Agent |
+| **v4.1** | 2026-05-25 | **字段命名体系重构**：统一字段后缀约定（Config/Contract/Mapping/Info/Fields/Id），字段名去「Schema」歧义——authTypeSchema→authConfig, inputSchema→inputContract, outputSchema→outputContract, rateLimit→rateLimitConfig；definitions 键名统一 `Def` 后缀（authTypeSchemaDef→authConfigDef）；同步更新 §3.0 映射图、Mermaid 图、描述文字、示例 JSON 及所有 `$ref` 引用 | SDDU Plan Agent |
 
 ## 附录 B：v3.0 审查问题修复对照表
 
