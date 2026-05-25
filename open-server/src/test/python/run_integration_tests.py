@@ -712,7 +712,7 @@ def generate_report():
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     report_path = "/home/usb/workspace/wks-open-app/open-app/.sddu/specs-tree-root/specs-tree-connector-platform/test-report-integration.md"
     with open(report_path, "w", encoding="utf-8") as f:
-        f.write("# [CHART] \u96c6\u6210\u6d4b\u8bd5\u62a5\u544a -- Python \u771f\u8c03\u6d4b\u8bd5\n\n")
+        f.write("# \u96c6\u6210\u6d4b\u8bd5\u62a5\u544a\uff1a\u8fde\u63a5\u5668\u5e73\u53f0\n\n")
         f.write("**\u6d4b\u8bd5\u65e5\u671f**: " + now + "  \n")
         f.write("**\u6d4b\u8bd5\u7c7b\u578b**: L3 \u96c6\u6210\u6d4b\u8bd5\uff08\u771f\u5b9e\u670d\u52a1 + \u771f\u5b9e\u6570\u636e\u5e93\uff09  \n")
         f.write("**\u670d\u52a1**: open-server (:18080) / connector-api (:18180)\n\n")
@@ -744,7 +744,7 @@ def _report_failures(result):
                 break
         if not detail:
             detail = lines[-1].strip() if lines else ''
-        report(f"  [X] FAIL: {test_name} -- {detail[:200]}")
+        report(f"  - FAIL {test_name}: {detail[:200]}")
 
     for test_case, trace in result.errors:
         test_name = test_case._testMethodName
@@ -761,7 +761,7 @@ def _report_failures(result):
                     break
             if not detail and lines:
                 detail = lines[-1].strip()[:200]
-        report(f"  [!] ERROR: {test_name} -- {detail[:200]}")
+        report(f"  - ERROR {test_name}: {detail[:200]}")
 
 
 def run_tests():

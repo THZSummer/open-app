@@ -1,6 +1,6 @@
-# [CHART] 集成测试报告 -- Python 真调测试
+# 集成测试报告：连接器平台
 
-**测试日期**: 2026-05-25 14:01:09  
+**测试日期**: 2026-05-25 14:10:38  
 **测试类型**: L3 集成测试（真实服务 + 真实数据库）  
 **服务**: open-server (:18080) / connector-api (:18180)
 
@@ -59,26 +59,26 @@
   ✅ PASS: IT-057 -- 时间字段为ISO 8601格式
   ✅ PASS: IT-058 -- 字段名为camelCase规范
   ✅ PASS: IT-059 -- 错误码在预期范围内
-  [X] FAIL: test_it_003_create_invalid_connector_type -- self.assertNotEqual(data["code"], "200")
-  [X] FAIL: test_it_004_create_name_cn_too_long -- self.assertIn(resp.status_code, (400, 422))
-  [X] FAIL: test_it_009_list_empty_result -- self.assertEqual(data["page"]["total"], 0)
-  [X] FAIL: test_it_011_detail_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_014_update_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_016_delete_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_019_config_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_029_list_flows_empty -- self.assertEqual(data["page"]["total"], 0)
-  [X] FAIL: test_it_031_flow_detail_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_033_update_flow_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_034_delete_flow -- self.assertEqual(data["code"], "200")
-  [X] FAIL: test_it_035_delete_flow_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_038_start_flow_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_040_stop_flow_already_stopped -- self.assertIn(data["code"], ("400", "409"))
-  [X] FAIL: test_it_041_stop_flow_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_043_flow_config_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_044_save_flow_config -- self.assertEqual(data["code"], "200")
-  [X] FAIL: test_it_047_test_run_flow_not_found -- self.assertEqual(data["code"], "404")
-  [X] FAIL: test_it_048_test_run_no_config -- self.assertIn(data["code"], ("400", "422", "404"))
-  [X] FAIL: test_it_055_bigint_id_as_string -- self.assertIsInstance(item[key], str)
+  - FAIL test_it_003_create_invalid_connector_type: self.assertNotEqual(data["code"], "200")
+  - FAIL test_it_004_create_name_cn_too_long: self.assertIn(resp.status_code, (400, 422))
+  - FAIL test_it_009_list_empty_result: self.assertEqual(data["page"]["total"], 0)
+  - FAIL test_it_011_detail_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_014_update_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_016_delete_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_019_config_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_029_list_flows_empty: self.assertEqual(data["page"]["total"], 0)
+  - FAIL test_it_031_flow_detail_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_033_update_flow_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_034_delete_flow: self.assertEqual(data["code"], "200")
+  - FAIL test_it_035_delete_flow_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_038_start_flow_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_040_stop_flow_already_stopped: self.assertIn(data["code"], ("400", "409"))
+  - FAIL test_it_041_stop_flow_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_043_flow_config_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_044_save_flow_config: self.assertEqual(data["code"], "200")
+  - FAIL test_it_047_test_run_flow_not_found: self.assertEqual(data["code"], "404")
+  - FAIL test_it_048_test_run_no_config: self.assertIn(data["code"], ("400", "422", "404"))
+  - FAIL test_it_055_bigint_id_as_string: self.assertIsInstance(item[key], str)
 
 ---
 
