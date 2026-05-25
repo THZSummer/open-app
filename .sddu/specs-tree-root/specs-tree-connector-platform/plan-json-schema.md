@@ -1,10 +1,10 @@
 # JSON Schema 设计规范：连接器平台
 
 **关联文档**: plan.md, plan-db.md (§3 表结构定义), plan-api.md (§3 接口详细定义)  
-**版本**: v3.3
+**版本**: v3.4
 **创建日期**: 2026-05-22  
 **最后更新**: 2026-05-25
-**修订说明**: v3.3 — v3.0 修复 14 个设计问题 + v3.1~v3.3 React Flow 格式对齐系列（§7 纯框架标准含完整 JSON 示例 + §8 差异分析及存储决策）
+**修订说明**: v3.4 — v3.0 修复 14 个设计问题 + v3.1~v3.4 React Flow 格式对齐系列（§7.2.2 四种内置类型示例 + input/default/output/group 类型表 + §8 差异分析）
 
 ---
 
@@ -1004,16 +1004,16 @@ const nodeTypes = {
 
 #### 7.2.2 完整的 React Flow 画布产物示例
 
-以下展示一个 React Flow 画布在运行时实际持有的 JavaScript 对象结构——这是 `JSON.stringify(nodes) + JSON.stringify(edges)` 得到的完整数据。此示例**仅使用 React Flow 内置的 `default` 类型**，不涉及任何项目的自定义节点类型，展示框架自身的完整字段集合。
+以下展示一个 React Flow 画布在运行时实际持有的 JavaScript 对象结构——这是 `JSON.stringify(nodes) + JSON.stringify(edges)` 得到的完整数据。此示例**涵盖 React Flow 全部四种内置节点类型**：`input`（入口，仅有出边 Handle）、`default`（中间节点，有入出双边 Handle）、`output`（出口，仅有入边 Handle）、`group`（分组容器）。不涉及任何项目的自定义节点类型。
 
 ```json
 {
   "nodes": [
     {
       "id": "1",
-      "type": "default",
+      "type": "input",
       "position": { "x": 0, "y": 0 },
-      "data": { "label": "Node 1" },
+      "data": { "label": "入口节点" },
       "width": 150,
       "height": 40,
       "selected": false,
@@ -1025,7 +1025,7 @@ const nodeTypes = {
       "id": "2",
       "type": "default",
       "position": { "x": 250, "y": 0 },
-      "data": { "label": "Node 2" },
+      "data": { "label": "中间节点" },
       "width": 150,
       "height": 40,
       "selected": true,
@@ -1035,15 +1035,26 @@ const nodeTypes = {
     },
     {
       "id": "3",
-      "type": "default",
-      "position": { "x": 500, "y": 100 },
-      "data": { "label": "Node 3" },
+      "type": "output",
+      "position": { "x": 500, "y": 0 },
+      "data": { "label": "出口节点" },
       "width": 150,
       "height": 40,
       "selected": false,
       "dragging": false,
       "sourcePosition": "right",
       "targetPosition": "left"
+    },
+    {
+      "id": "4",
+      "type": "group",
+      "position": { "x": 100, "y": 150 },
+      "data": { "label": "分组容器" },
+      "width": 400,
+      "height": 200,
+      "selected": false,
+      "dragging": false,
+      "style": { "backgroundColor": "rgba(240,240,240,0.5)" }
     }
   ],
   "edges": [
@@ -1069,14 +1080,27 @@ const nodeTypes = {
 }
 ```
 
+**React Flow 内置节点类型**：
+
+React Flow 自带四种内置节点类型，均基于 `DefaultNode` 组件渲染，区别在于 Handle（连接点）的预设位置不同：
+
+| 内置类型 | 源 Handle（出边） | 目标 Handle（入边） | 典型用途 |
+|:--------:|:---:|:---:|------|
+| `input` | ✅ 有（默认 right） | ❌ 无 | 流起点——只能作为边的 `source`，不可作为 `target` |
+| `default` | ✅ 有（默认 right） | ✅ 有（默认 left） | 流中间节点——既可接收上游也可连接下游 |
+| `output` | ❌ 无 | ✅ 有（默认 left） | 流终点——只能作为边的 `target`，不可作为 `source` |
+| `group` | 无 Handle | 无 Handle | 分组容器——可包含子节点，用于画布布局组织 |
+
+> ⚠️ 上述四种是 React Flow **框架本身提供**的节点类型，直接可用无需注册。任何其他字符串（如 `'trigger'`、`'connector'`）均为**使用方通过 `nodeTypes` 自行注册**的自定义类型，不属于 React Flow 框架的一部分。
+
 **示例字段说明**：
 
 | 字段 | 所属 | 类型 | 说明 |
 |------|------|------|------|
 | `id` | node | `string` | 节点唯一标识，React Flow 内部用此 ID 关联边的 source/target |
-| `type` | node | `string` | 映射到 `nodeTypes` 注册的组件；此处为 React Flow 内置的 `default` |
+| `type` | node | `string` | 映射到 `nodeTypes` 注册的组件；`input`/`default`/`output`/`group` 为 React Flow 内置，无需注册 |
 | `position` | node | `{ x: number, y: number }` | 画布坐标，原点为左上角 |
-| `data` | node | `object` | **用户自定义数据的唯一容器**；`label` 是 `default` 节点用来显示文字的约定键 |
+| `data` | node | `object` | **用户自定义数据的唯一容器**；`label` 是内置节点用来显示文字的约定键 |
 | `width`, `height` | node | `number` | 节点渲染后的像素尺寸（运行时计算，非用户指定） |
 | `selected` | node | `boolean` | 是否被用户框选或点击选中（运行时状态） |
 | `dragging` | node | `boolean` | 是否正在被拖拽（运行时状态） |
@@ -1088,14 +1112,15 @@ const nodeTypes = {
 | `animated` | edge | `boolean` | 是否显示流动动画（运行时状态） |
 | `id` | edge | `string` | 边唯一标识 |
 
-> 💡 **持久化提示**：上述字段中，仅 `id`、`type`、`position`、`data`（节点）和 `id`、`source`、`target`（边）是存储时需要保留的。`selected`、`dragging`、`width`、`height`、`animated` 等运行时状态字段**不应持久化**到数据库（详见 §8.5）。
+> 💡 **持久化提示**：上述字段中，仅 `id`、`type`、`position`、`data`（节点）和 `id`、`source`、`target`（边）是存储时需要保留的。`selected`、`dragging`、`width`、`height`、`animated`、`sourcePosition`、`targetPosition`、`sourceHandle`、`targetHandle` 等运行时/渲染状态字段**不应持久化**到数据库（详见 §8.5）。
 
 > 📎 此示例结构可通过 React Flow 官方文档中的任何可运行示例验证——打开浏览器 DevTools，查看 React Flow 组件内部 state 即可确认 `nodes` / `edges` 数组的完整字段集合。来源：https://reactflow.dev/api-reference/types/node / https://reactflow.dev/api-reference/types/edge
 
 此示例说明了 React Flow 数据格式的核心要点：
 1. **顶层结构**：`nodes` 数组 + `edges` 数组，这是 React Flow 的标准数据模型
-2. **`node.data` 容器**：所有自定义业务数据必须嵌套在 `data` 内；框架字段（`id`、`type`、`position`）与业务字段在结构上隔离
-3. **运行时字段混合**：`selected`、`dragging`、`width` 等运行时状态字段与存储字段在同一个对象中共存——持久化时必须过滤
+2. **四种内置类型**：`input`（有出无入）、`default`（出入双全）、`output`（有入无出）、`group`（无 Handle 容器），直接可用无需注册
+3. **`node.data` 容器**：所有自定义业务数据必须嵌套在 `data` 内；框架字段（`id`、`type`、`position`）与业务字段在结构上隔离
+4. **运行时字段混合**：`selected`、`dragging`、`width` 等运行时状态字段与存储字段在同一个对象中共存——持久化时必须过滤
 
 ---
 
@@ -1478,6 +1503,7 @@ React Flow 的 `nodes` 和 `edges` 数组中包含大量运行时状态字段（
 | **v3.1** | 2026-05-25 | **React Flow 格式对齐**：新增 §7 React Flow 格式对齐指南——记录框架标准 Node/Edge 接口（含官方来源链接），分析三大差异（edge 字段名、node.data 嵌套、type 枚举值），给出场景分析和存储格式建议，附字段映射对照表 + 持久化过滤策略 + 各模块变更影响评估 + 决策记录 | SDDU Plan Agent |
 | **v3.2** | 2026-05-25 | **章节重构**：§7 拆为纯框架标准（§7.1~§7.2，仅记录 React Flow Node/Edge 接口与 type 字段语义边界）；新增 §8 承载所有差异分析、场景评估、存储格式建议、变更影响、决策记录。明确 `trigger`/`connector`/`data_processor`/`exit` 为项目自定义注册类型而非 React Flow 内置 | SDDU Plan Agent |
 | **v3.3** | 2026-05-25 | **§7 纯净化**：§7.2.1 替换为泛化示例（去除 customNodes.jsx）；§7.2.2 新增纯 React Flow JSON 示例（仅用 `default` 类型 + 完整字段表 + 持久化提示）；原 §7.2.2 语义过载 + §7.2.3 关键结论迁移至 §8.1.4~§8.1.5 | SDDU Plan Agent |
+| **v3.4** | 2026-05-25 | **§7.2.2 示例丰富**：JSON 示例从单一 `default` 类型扩展为覆盖全部四种内置类型（`input`/`default`/`output`/`group`）；新增「React Flow 内置节点类型」对照表（Handle 预设位置 + 典型用途）；持久化提示字段清单补全 | SDDU Plan Agent |
 
 ## 附录 B：v3.0 审查问题修复对照表
 
