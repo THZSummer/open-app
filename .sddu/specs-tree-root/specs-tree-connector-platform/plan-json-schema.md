@@ -1,10 +1,10 @@
 # JSON Schema 设计规范：连接器平台
 
 **关联文档**: plan.md, plan-db.md (§3 表结构定义), plan-api.md (§3 接口详细定义)  
-**版本**: v3.4
+**版本**: v3.5
 **创建日期**: 2026-05-22  
 **最后更新**: 2026-05-25
-**修订说明**: v3.4 — v3.0 修复 14 个设计问题 + v3.1~v3.4 React Flow 格式对齐系列（§7.2.2 四种内置类型示例 + input/default/output/group 类型表 + §8 差异分析）
+**修订说明**: v3.5 — v3.0 修复 14 个设计问题 + v3.1~v3.5 React Flow 格式对齐系列（§7 React Flow 标准含四种内置类型 + §8 差异分析及存储决策，去除项目类型歧义）
 
 ---
 
@@ -1519,6 +1519,7 @@ React Flow 的 `nodes` 和 `edges` 数组中包含大量运行时状态字段（
 | **v3.2** | 2026-05-25 | **章节重构**：§7 拆为纯框架标准（§7.1~§7.2，仅记录 React Flow Node/Edge 接口与 type 字段语义边界）；新增 §8 承载所有差异分析、场景评估、存储格式建议、变更影响、决策记录。明确 `trigger`/`connector`/`data_processor`/`exit` 为项目自定义注册类型而非 React Flow 内置 | SDDU Plan Agent |
 | **v3.3** | 2026-05-25 | **§7 纯净化**：§7.2.1 替换为泛化示例（去除 customNodes.jsx）；§7.2.2 新增纯 React Flow JSON 示例（仅用 `default` 类型 + 完整字段表 + 持久化提示）；原 §7.2.2 语义过载 + §7.2.3 关键结论迁移至 §8.1.4~§8.1.5 | SDDU Plan Agent |
 | **v3.4** | 2026-05-25 | **§7.2.2 示例丰富**：JSON 示例从单一 `default` 类型扩展为覆盖全部四种内置类型（`input`/`default`/`output`/`group`）；新增「React Flow 内置节点类型」对照表（Handle 预设位置 + 典型用途）；持久化提示字段清单补全 | SDDU Plan Agent |
+| **v3.5** | 2026-05-25 | **§8 消歧**：可视化对比加注 `connector` 等为项目自定义类型非 React Flow 内置；§7 定位说明加入 §7.1；修正 §8 中三处失效的 §7 交叉引用（§7.2→§7.2.1） | SDDU Plan Agent |
 
 ## 附录 B：v3.0 审查问题修复对照表
 
