@@ -4,7 +4,7 @@ import com.xxx.event.common.channel.WebSocketChannel;
 import com.xxx.event.common.model.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,10 +24,10 @@ import java.util.Set;
 @Tag(name = "WebSocket 管理", description = "WebSocket 连接状态查询接口")
 @RestController
 @RequestMapping("/ws")
-@RequiredArgsConstructor
 public class WebSocketController {
 
-    private final WebSocketChannel webSocketChannel;
+    @Autowired
+    private WebSocketChannel webSocketChannel;
 
     /**
      * 查询 WebSocket 连接状态

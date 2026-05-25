@@ -7,7 +7,7 @@ import com.xxx.event.gateway.service.EventGatewayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,10 +29,10 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "事件网关", description = "事件发布与分发")
 @RestController
 @RequestMapping("/gateway/events")
-@RequiredArgsConstructor
 public class EventGatewayController {
 
-    private final EventGatewayService eventGatewayService;
+    @Autowired
+    private EventGatewayService eventGatewayService;
 
     /**
      * 事件发布接口

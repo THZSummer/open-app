@@ -3,7 +3,7 @@ package com.xxx.event.common.channel;
 import com.xxx.event.common.auth.AuthContext;
 import com.xxx.event.common.auth.AuthHandler;
 import com.xxx.event.common.auth.AuthTypeEnum;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
@@ -38,11 +38,12 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class WebHookChannel {
 
-    private final RestTemplate restTemplate;
-    private final AuthHandler authHandler;
+    @Autowired
+    private RestTemplate restTemplate;
+    @Autowired
+    private AuthHandler authHandler;
 
     /**
      * 发送事件到 WebHook 地址
