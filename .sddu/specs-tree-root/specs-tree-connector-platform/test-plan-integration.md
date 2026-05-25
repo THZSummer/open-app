@@ -348,12 +348,17 @@ cd connector-api && nohup mvn spring-boot:run > logs/server.log 2>&1 &
 curl -s http://localhost:18080/open-server/actuator/health
 curl -s http://localhost:18180/actuator/health
 
+> **注意**: 当前系统缺少 `python3-venv` 包。`python3 -m venv` 不可用。
+> 使用 `virtualenv` 替代。如果希望使用标准 venv，请先安装：
+> `sudo apt install python3.12-venv`
 # ---- Python 环境准备（venv） ----
 # 注意: Ubuntu 24.04 / Python 3.12 禁止 pip 直接安装系统级包 (PEP 668)
 # 必须使用虚拟环境
 
 # 1. 创建 venv（项目本地）
-python3 -m venv open-server/src/test/python/.venv
+# 方式 A: 使用 virtualenv（推荐）
+pip3 install virtualenv --user --break-system-packages
+virtualenv open-server/src/test/python/.venv
 
 # 2. 激活 venv 并安装依赖
 source open-server/src/test/python/.venv/bin/activate

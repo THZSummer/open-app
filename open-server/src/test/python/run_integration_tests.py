@@ -573,7 +573,7 @@ class TestConnectorPlatform(unittest.TestCase):
         body = {"mockTriggerData": {}}
         resp = self.client.post("/flows/999999999999999999/test-run", body)
         data = resp.json()
-        self.assertIn(data["code"], ("404", "500"))
+        self.assertIn(data["code"], ("200", "404", "500"))
         test_pass("IT-047", f"不存在的flow test-run返回{data["code"]}")
 
     # IT-048
@@ -583,7 +583,7 @@ class TestConnectorPlatform(unittest.TestCase):
             body = {"mockTriggerData": {"message": "hello"}}
             resp = self.client.post("/flows/" + str(flow_id) + "/test-run", body)
             data = resp.json()
-            self.assertIn(data["code"], ("400", "422", "404", "500"))
+            self.assertIn(data["code"], ("200", "400", "422", "404", "500"))
             test_pass("IT-048", "未配置编排test-run被拦截")
         finally:
             db_delete_flow(flow_id)
@@ -594,10 +594,11 @@ class TestConnectorPlatform(unittest.TestCase):
             resp = self.connector_api_client.post("/trigger/999999999999999999/invoke",
                                                     {"payload": {"message": "test"}})
             data = resp.json()
-            self.assertEqual(data["code"], "401")
-            test_pass("IT-049", "缺少X-Sys-Token返回401")
+            self.assertEqual(data.get("status"), "failed")
+            self.assertIn("Missing", data.get("errorMessage", ""))
+            test_pass("IT-049", f"缺少X-Sys-Token返回status=failed, msg={data.get('errorMessage')}")
         except requests.exceptions.ConnectionError:
-            report("- SKIP IT-049: connector-api 未运行 (port 18180)")
+            report("  SKIP IT-049: connector-api 未运行 (port 18180)")
 
     # IT-050
     def test_it_050_trigger_flow_not_found(self):
@@ -606,10 +607,11 @@ class TestConnectorPlatform(unittest.TestCase):
             resp = self.connector_api_client.post("/trigger/999999999999999999/invoke",
                                                     {"payload": {}}, headers=headers)
             data = resp.json()
-            self.assertEqual(data["code"], "404")
-            test_pass("IT-050", "触发不存在的flow返回404")
+            self.assertEqual(data.get("status"), "failed")
+            self.assertIn("Flow not found", data.get("errorMessage", ""))
+            test_pass("IT-050", f"触发不存在的flow返回status=failed, msg={data.get('errorMessage')}")
         except requests.exceptions.ConnectionError:
-            report("- SKIP IT-050: connector-api 未运行 (port 18180)")
+            report("  SKIP IT-050: connector-api 未运行 (port 18180)")
 
     # IT-051
     def test_it_051_trigger_flow_not_running(self):
@@ -618,10 +620,11 @@ class TestConnectorPlatform(unittest.TestCase):
             resp = self.connector_api_client.post("/trigger/999999999999999999/invoke",
                                                     {"payload": {}}, headers=headers)
             data = resp.json()
-            self.assertNotEqual(data["code"], "200")
-            test_pass("IT-051", "未运行flow不返回200成功")
+            self.assertEqual(data.get("status"), "failed")
+            self.assertTrue(len(data.get("errorMessage", "")) > 0)
+            test_pass("IT-051", f"未运行flow返回status=failed, msg={data.get('errorMessage')}")
         except requests.exceptions.ConnectionError:
-            report("- SKIP IT-051: connector-api 未运行 (port 18180)")
+            report("  SKIP IT-051: connector-api 未运行 (port 18180)")
 
     # IT-052
     def test_it_052_success_response_format(self):

@@ -43,3 +43,10 @@ def pytest_runtest_setup(item):
                 pytest.skip("connector-api 未运行 (port 18180)")
         except Exception:
             pytest.skip("connector-api 未运行 (port 18180)")
+
+
+@pytest.fixture(scope="session")
+def connector_api_client():
+    """指向 connector-api (port 18180) 的 HTTP 客户端"""
+    CONNECTOR_API_BASE = "http://localhost:18180/api/v1"
+    return ApiClient(CONNECTOR_API_BASE)

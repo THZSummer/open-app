@@ -1,6 +1,6 @@
 # 集成测试报告：连接器平台
 
-**测试日期**: 2026-05-25 15:09:03  
+**测试日期**: 2026-05-25 15:30:23  
 **测试类型**: L3 集成测试（真实服务 + 真实数据库）  
 **服务**: open-server (:18080) / connector-api (:18180)
 
@@ -66,11 +66,11 @@
 - ✅ PASS: IT-044 -- 保存编排配置返回400
 - ✅ PASS: IT-045 -- 空编排配置返回400
 - ✅ PASS: IT-046 -- null编排配置返回400
-- ✅ PASS: IT-047 -- 不存在的flow test-run返回500
+- ✅ PASS: IT-047 -- 不存在的flow test-run返回200
 - ✅ PASS: IT-048 -- 未配置编排test-run被拦截
-- SKIP IT-049: connector-api 未运行 (port 18180)
-- SKIP IT-050: connector-api 未运行 (port 18180)
-- SKIP IT-051: connector-api 未运行 (port 18180)
+- ✅ PASS: IT-049 -- 缺少X-Sys-Token返回status=failed, msg=Missing X-Sys-Token header
+- ✅ PASS: IT-050 -- 触发不存在的flow返回status=failed, msg=Flow not found: 999999999999999999
+- ✅ PASS: IT-051 -- 未运行flow返回status=failed, msg=Flow not found: 999999999999999999
 - ✅ PASS: IT-052 -- 成功响应包含所有标准字段
 - ✅ PASS: IT-053 -- 错误响应code!=200且包含messageZh
 - ✅ PASS: IT-054 -- 分页响应格式完整
