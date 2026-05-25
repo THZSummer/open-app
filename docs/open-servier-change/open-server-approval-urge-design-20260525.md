@@ -1,6 +1,6 @@
 # Open-Server 审批催办接口设计文档
 
-**文档版本**：1.1  
+**文档版本**：1.3  
 **创建日期**：2026-05-25  
 **接口编号**：#53
 
@@ -20,7 +20,7 @@ open-server 审批模块当前支持以下操作：
 
 缺少**催办能力**。申请人提交审批后，若审批人长时间未处理，无法通过系统提醒审批人尽快处理。
 
-**需求**：补充催办接口，查询待审批状态的审批记录 → 获取当前审批节点的审批人 → 调用第三方接口发送卡片消息 → 将返回的 cardId 持久化到审批节点的 `cardIds` 属性中。重复催办 = 重复调用本接口，每次追加一个 cardId。
+**需求**：补充催办接口，根据业务ID（businessId）查询最新待审批记录（按创建时间倒序取第一条）→ 获取当前审批节点的审批人 → 调用第三方接口发送卡片消息 → 将返回的 cardId 持久化到审批节点的 `cardIds` 属性中。重复催办 = 重复调用本接口，每次追加一个 cardId。
 
 ---
 
@@ -40,7 +40,7 @@ open-server 审批模块当前支持以下操作：
 
 | 参数 | 位置 | 类型 | 必填 | 说明 |
 |------|------|------|:----:|------|
-| `id` | Path | String | 是 | 审批记录 ID |
+| `id` | Path | String | 是 | 业务ID（对应 `openplatform_v2_approval_record_t.business_id`） |
 
 ### 请求示例
 
@@ -56,7 +56,7 @@ POST /service/open/v2/approvals/1234567890/urge
     "messageZh": "催办成功",
     "messageEn": "Urge sent successfully",
     "data": {
-        "id": "1234567890",
+        "id": "9876543210",
         "status": 0,
         "message": "已通知审批人 张三 尽快处理"
     }
@@ -67,7 +67,7 @@ POST /service/open/v2/approvals/1234567890/urge
 
 | 场景 | code | messageZh | messageEn |
 |------|:----:|-----------|-----------|
-| 记录不存在或非待审状态 | 400 | 审批记录不存在 | Approval record not found or not pending |
+| 记录不存在或非待审状态 | 400 | 审批记录不存在 | Approval record not found |
 | 非申请人催办 | 403 | 只有申请人可以催办 | Only the applicant can urge the approval |
 
 ---
@@ -77,8 +77,10 @@ POST /service/open/v2/approvals/1234567890/urge
 ```
 请求 POST /service/open/v2/approvals/{id}/urge
   │
-  ├─ 1. 查询待审批状态的审批记录
-  │     SQL: SELECT * FROM approval_record_t WHERE id = ? AND status = 0
+  ├─ 1. 根据 id（即 business_id）查询最新待审批记录
+  │     SQL: SELECT <Base_Column_List> FROM approval_record_t
+  │          WHERE business_id = ? AND status = 0
+  │          ORDER BY create_time DESC LIMIT 1
   │     └─ null → 抛出 400："审批记录不存在"
   │
   ├─ 2. 校验申请人身份
@@ -217,9 +219,9 @@ POST /service/open/v2/approvals/1234567890/urge
 | 2 | `ApprovalEngine.java` | 修改 | `Action` 类新增 `URGE = 4` 常量 |
 | 3 | `ApprovalNotifyService.java` | **新建** | 催办通知接口（定义发送卡片方法签名） |
 | 4 | `DefaultApprovalNotifyService.java` | **新建** | 默认实现（返回 mock cardId，预留对接实际 IM） |
-| 5 | `ApprovalRecordMapper.java` | 修改 | 新增 `selectPendingById` 和 `updateCombinedNodes` 方法 |
+| 5 | `ApprovalRecordMapper.java` | 修改 | 新增 `selectLatestPendingByBusinessId` 和 `updateCombinedNodes` 方法 |
 | 6 | `ApprovalRecordMapper.xml` | 修改 | 新增对应的 SQL 语句 |
-| 7 | `ApprovalService.java` | 修改 | 注入 `ApprovalNotifyService`，新增 `urge()` 方法 |
+| 7 | `ApprovalService.java` | 修改 | 注入 `ApprovalNotifyService`，新增 `urge(businessId)` 方法 |
 | 8 | `ApprovalController.java` | 修改 | 新增 `POST /approvals/{id}/urge` 端点 |
 
 > **无需新建 DTO**：入参无 Body，响应复用现有 `ApprovalActionResponse`。
@@ -310,19 +312,21 @@ public class DefaultApprovalNotifyService implements ApprovalNotifyService {
 
 ```java
 /**
- * 根据ID查询待审批状态的记录
+ * 根据业务ID查询最新待审批状态的记录（催办专用）
  *
- * @param id 审批记录ID
- * @return 审批记录（仅 status=0 的记录），不存在或非待审返回 null
+ * <p>按创建时间倒序取第一条 status=0（待审）的记录</p>
+ *
+ * @param businessId 业务ID
+ * @return 审批记录，不存在或非待审返回 null
  */
-ApprovalRecord selectPendingById(@Param("id") Long id);
+ApprovalRecord selectLatestPendingByBusinessId(@Param("businessId") Long businessId);
 
 /**
  * 更新审批记录的 combined_nodes 字段
  *
  * @param record 审批记录（仅更新 combined_nodes 和 last_update_time）
  */
-void updateCombinedNodes(ApprovalRecord record);
+int updateCombinedNodes(ApprovalRecord record);
 ```
 
 ### 6.6 ApprovalRecordMapper.xml — 修改
@@ -332,11 +336,13 @@ void updateCombinedNodes(ApprovalRecord record);
 在现有 SQL 之后新增两条：
 
 ```xml
-<!-- 根据ID查询待审批状态的记录（催办专用） -->
-<select id="selectPendingById" resultMap="BaseResultMap">
+<!-- 根据业务ID查询最新待审批状态的记录（催办专用） -->
+<select id="selectLatestPendingByBusinessId" resultMap="BaseResultMap">
     SELECT <include refid="Base_Column_List"/>
     FROM openplatform_v2_approval_record_t
-    WHERE id = #{id} AND status = 0
+    WHERE business_id = #{businessId} AND status = 0
+    ORDER BY create_time DESC
+    LIMIT 1
 </select>
 
 <!-- 更新审批记录的 combined_nodes（催办持久化 cardId 专用） -->
@@ -364,20 +370,22 @@ private final ApprovalNotifyService approvalNotifyService;
 /**
  * #53 催办审批
  *
- * <p>查询待审批记录 → 获取当前审批节点审批人 → 调用第三方发送卡片消息 →
+ * <p>根据 businessId 查询最新待审批记录（按创建时间倒序取第一条）→
+ * 获取当前审批节点审批人 → 调用第三方发送卡片消息 →
  * 将 cardId 持久化到 combinedNodes 对应节点的 cardIds 列表</p>
  *
- * @param id       审批记录ID
- * @param operator 当前操作用户ID（需为申请人）
+ * @param businessId 业务ID
+ * @param operator   当前操作用户ID（需为申请人）
  * @return 催办结果
  */
 @Transactional
-public ApprovalActionResponse urge(Long id, String operator) {
-    // 1. 查询待审批状态的记录（SQL: WHERE id=? AND status=0）
-    ApprovalRecord record = recordMapper.selectPendingById(id);
+public ApprovalActionResponse urge(Long businessId, String operator) {
+    // 1. 根据 businessId 查询最新待审批记录
+    //    SQL: WHERE business_id=? AND status=0 ORDER BY create_time DESC LIMIT 1
+    ApprovalRecord record = recordMapper.selectLatestPendingByBusinessId(businessId);
     if (record == null) {
         throw BusinessException.badRequest(
-            "审批记录不存在", "Approval record not found or not pending");
+            "审批记录不存在", "Approval record not found");
     }
 
     // 2. 校验身份（仅申请人可催办）
@@ -396,7 +404,7 @@ public ApprovalActionResponse urge(Long id, String operator) {
     String cardId = approvalNotifyService.sendUrgeCard(
         currentNode.getUserId(),
         currentNode.getUserName(),
-        id,
+        record.getId(),
         record.getBusinessType(),
         record.getBusinessId(),
         record.getApplicantName()
@@ -415,7 +423,7 @@ public ApprovalActionResponse urge(Long id, String operator) {
 
     // 7. 返回结果
     return ApprovalActionResponse.builder()
-        .id(String.valueOf(id))
+        .id(String.valueOf(record.getId()))
         .status(record.getStatus())
         .message("已通知审批人 " + currentNode.getUserName() + " 尽快处理")
         .build();
@@ -432,13 +440,14 @@ public ApprovalActionResponse urge(Long id, String operator) {
 /**
  * #53 催办审批
  *
- * <p>申请人催办当前审批人，调用第三方发送卡片消息通知</p>
+ * <p>申请人催办当前审批人，调用第三方发送卡片消息通知。
+ * 根据 id（即 business_id）查询最新待审批记录（按创建时间倒序）。</p>
  */
 @PostMapping("/approvals/{id}/urge")
 @Operation(summary = "#53 催办审批",
            description = "申请人催办当前审批人，发送卡片消息通知")
 public ApiResponse<ApprovalActionResponse> urge(@PathVariable String id) {
-    log.info("Urge approval: id={}", id);
+    log.info("Urge approval: businessId={}", id);
 
     String operator = UserContextHolder.getUserId();
     ApprovalActionResponse data = approvalService.urge(
@@ -453,13 +462,25 @@ public ApiResponse<ApprovalActionResponse> urge(@PathVariable String id) {
 
 | # | 场景 | 预期结果 |
 |:-:|------|---------|
-| 1 | 对待审记录调用催办（currentNode=0） | 返回 200，DB 中 `combined_nodes` 第 1 个节点含 `cardIds: ["mock_card_xxx"]` |
-| 2 | 对同一记录再次催办 | 返回 200，`cardIds` 列表追加第二个元素 |
-| 3 | 对已通过记录催办 | 返回 400："审批记录不存在"（SQL 查不到 status=0 的记录） |
-| 4 | 对已拒绝记录催办 | 返回 400："审批记录不存在" |
-| 5 | 对已撤销记录催办 | 返回 400："审批记录不存在" |
-| 6 | 对不存在的 ID 催办 | 返回 400："审批记录不存在" |
-| 7 | 非申请人身份催办 | 返回 403："只有申请人可以催办" |
-| 8 | 催办后查询审批详情 | `combinedNodes` 中 currentNode 对应节点包含 `cardIds` 列表 |
-| 9 | currentNode=1 时催办 | cardIds 添加到第 2 个节点，其他节点不受影响 |
-| 10 | currentNode=2 时催办 | cardIds 添加到第 3 个节点，其他节点不受影响 |
+| 1 | 对有效 businessId 调用催办（currentNode=0） | 返回 200，DB 中 `combined_nodes` 第 1 个节点含 `cardIds: ["mock_card_xxx"]` |
+| 2 | 对同一 businessId 再次催办 | 返回 200，`cardIds` 列表追加第二个元素 |
+| 3 | 同一 businessId 有多条待审记录 | 取 `create_time` 最新的一条进行催办 |
+| 4 | businessId 对应记录均为已通过状态 | 返回 400："审批记录不存在" |
+| 5 | businessId 对应记录均为已拒绝状态 | 返回 400："审批记录不存在" |
+| 6 | businessId 对应记录均为已撤销状态 | 返回 400："审批记录不存在" |
+| 7 | 对不存在的 businessId 催办 | 返回 400："审批记录不存在" |
+| 8 | 非申请人身份催办 | 返回 403："只有申请人可以催办" |
+| 9 | 催办后查询审批详情 | `combinedNodes` 中 currentNode 对应节点包含 `cardIds` 列表 |
+| 10 | currentNode=1 时催办 | cardIds 添加到第 2 个节点，其他节点不受影响 |
+| 11 | currentNode=2 时催办 | cardIds 添加到第 3 个节点，其他节点不受影响 |
+
+---
+
+## 八、变更日志
+
+| 版本 | 日期 | 变更内容 |
+|:----:|:----:|---------|
+| 1.0 | 2026-05-25 | 初始版本 |
+| 1.1 | 2026-05-25 | 根据用户反馈修正查询逻辑：status=PENDING 合并到 SQL 条件；补充 currentNode=1/2 场景 |
+| 1.2 | 2026-05-25 | 入参改为 businessId，查询改为按 business_id + create_time DESC 取最新记录 |
+| 1.3 | 2026-05-25 | 接口路径恢复为 `/approvals/{id}/urge`，id 语义为 business_id |

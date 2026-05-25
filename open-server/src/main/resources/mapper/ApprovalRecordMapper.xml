@@ -176,11 +176,13 @@
         LIMIT 1
     </select>
 
-    <!-- 根据ID查询待审批状态的记录（催办专用） -->
-    <select id="selectPendingById" resultMap="BaseResultMap">
+    <!-- 根据业务ID查询最新待审批状态的记录（催办专用） -->
+    <select id="selectLatestPendingByBusinessId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_approval_record_t
-        WHERE id = #{id} AND status = 0
+        WHERE business_id = #{businessId} AND status = 0
+        ORDER BY create_time DESC
+        LIMIT 1
     </select>
 
     <!-- 更新审批记录的 combined_nodes 字段（催办持久化 cardId 专用） -->

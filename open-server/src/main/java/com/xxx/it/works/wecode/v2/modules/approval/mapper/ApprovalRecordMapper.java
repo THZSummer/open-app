@@ -94,14 +94,14 @@ public interface ApprovalRecordMapper {
             @Param("businessId") Long businessId);
 
     /**
-     * 根据ID查询待审批状态的记录（催办专用）
+     * 根据业务ID查询最新待审批状态的记录（催办专用）
      *
-     * <p>仅返回 status=0（待审）的记录</p>
+     * <p>按创建时间倒序取第一条 status=0（待审）的记录</p>
      *
-     * @param id 审批记录ID
+     * @param businessId 业务ID
      * @return 审批记录，不存在或非待审返回 null
      */
-    ApprovalRecord selectPendingById(@Param("id") Long id);
+    ApprovalRecord selectLatestPendingByBusinessId(@Param("businessId") Long businessId);
 
     /**
      * 更新审批记录的 combined_nodes 字段（催办持久化 cardId 专用）

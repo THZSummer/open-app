@@ -647,16 +647,17 @@ public class ApprovalService {
      *
      * <p>申请人催办当前审批节点的审批人，发送卡片消息通知，
      * 并将返回的 cardId 持久化到 combinedNodes 对应节点的 cardIds 列表中。</p>
+     * <p>根据 businessId 查询最新待审批记录（按创建时间倒序取第一条）。</p>
      *
-     * @param id       审批记录ID
-     * @param operator 当前操作用户ID
+     * @param businessId 业务ID
+     * @param operator   当前操作用户ID
      * @return 催办结果
      */
     @Transactional(rollbackFor = Exception.class)
-    public ApprovalActionResponse urge(Long id, String operator) {
+    public ApprovalActionResponse urge(Long businessId, String operator) {
 
-        // 1. 查询待审批状态的记录（SQL 条件：id=? AND status=0）
-        ApprovalRecord record = recordMapper.selectPendingById(id);
+        // 1. 根据 businessId 查询最新待审批记录（status=0, ORDER BY create_time DESC LIMIT 1）
+        ApprovalRecord record = recordMapper.selectLatestPendingByBusinessId(businessId);
         if (record == null) {
             throw new BusinessException("400", "审批记录不存在", "Approval record not found");
         }
@@ -674,7 +675,7 @@ public class ApprovalService {
         String cardId = approvalNotifyService.sendUrgeCard(
                 currentNode.getUserId(),
                 currentNode.getUserName(),
-                id,
+                record.getId(),
                 record.getBusinessType(),
                 record.getBusinessId(),
                 record.getApplicantName()
@@ -691,11 +692,12 @@ public class ApprovalService {
         record.setLastUpdateTime(new Date());
         recordMapper.updateCombinedNodes(record);
 
-        log.info("Urge approval: id={}, approver={}, cardId={}", id, currentNode.getUserId(), cardId);
+        log.info("Urge approval: id={}, businessId={}, approver={}, cardId={}",
+                record.getId(), businessId, currentNode.getUserId(), cardId);
 
         // 7. 返回结果
         return ApprovalActionResponse.builder()
-                .id(String.valueOf(id))
+                .id(String.valueOf(record.getId()))
                 .status(record.getStatus())
                 .message("已通知审批人 " + currentNode.getUserName() + " 尽快处理")
                 .build();
