@@ -95,9 +95,9 @@
 >
 > ### §3.0 JSON 字段 ↔ 定义映射
 >
-> 为避免「JSON 字段名与定义名相同」的歧义，本规范区分两者：
+> 为避免「JSON 字段与 JSON 字段定义同名」的歧义，本规范区分两者：
 > - **JSON 字段（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`、`rateLimitConfig`）
-> - **定义名（definition key）**：JSON 定义中的组件键名，描述「用什么规则校验」（如 `authConfigDef`、`rateLimitDef`）
+> - **JSON 字段定义（definition key）**：JSON 定义中的组件键名，描述「用什么规则校验」（如 `authConfigDef`、`rateLimitDef`）
 >
 > ```mermaid
 > graph LR
@@ -110,7 +110,7 @@
 >         F6["position<br/>画布坐标数据"]
 >     end
 >
->     subgraph Defs["JSON 定义名<br/>（规则侧）"]
+>     subgraph Defs["JSON 字段定义<br/>（规则侧）"]
 >         D1["authConfigDef<br/>校验认证类型声明"]
 >         D2["rateLimitDef<br/>校验限流配置"]
 >         D3["dataContractDef<br/>校验数据契约结构"]
@@ -129,7 +129,7 @@
 >     style Defs fill:#fff3e0,stroke:#ef6c00
 > ```
 >
-> **副作用**：以下 JSON 定义中，你会看到 `"authConfig": { "$ref": "#/definitions/authConfigDef" }`——左侧是 JSON 字段，右侧是定义名，两者语义关联但字面不同。
+> **副作用**：以下 JSON 定义中，你会看到 `"authConfig": { "$ref": "#/definitions/authConfigDef" }`——左侧是 JSON 字段，右侧是 JSON 字段定义，两者语义关联但字面不同。
 >
 > **v4.0 新增**：本 definitions 聚合段新增 `nodeDataDef` / `triggerDataDef` / `connectorDataDef` / `dataProcessorDataDef` / `exitDataDef` 共 5 个组件，用于 §4.3 orchestrationConfig 中 `node.data` 的按类型校验。
 
@@ -1237,7 +1237,7 @@ const nodeTypes = {
 | **v3.4** | 2026-05-25 | **§7.2.2 示例丰富**：JSON 示例从单一 `default` 类型扩展为覆盖全部四种内置类型（`input`/`default`/`output`/`group`）；新增「React Flow 内置节点类型」对照表（Handle 预设位置 + 典型用途）；持久化提示字段清单补全 | SDDU Plan Agent |
 | **v3.5** | 2026-05-25 | **§8 消歧**：可视化对比加注 `connector` 等为项目自定义类型非 React Flow 内置；§7 定位说明加入 §7.1；修正 §8 中三处失效的 §7 交叉引用（§7.2→§7.2.1） | SDDU Plan Agent |
 | **v4.0** | 2026-05-25 | **React Flow 官方格式全文档对齐**：node.data 嵌套（所有业务字段迁入 node.data）、edge.source/target（React Flow 标准命名）、edge.type/edge.data 语义分离（type=渲染样式，data.businessType=业务语义）、nodeDataSchema 独立抽取（§4.5）、§7 精简（保留核心接口定义，移除 §7.2.2 完整示例）、§8 精简至仅保留决策记录 | SDDU Plan Agent |
-| **v4.1** | 2026-05-25 | **字段命名体系重构**：统一字段后缀约定（Config/Contract/Mapping/Info/Fields/Id），字段名去「Schema」歧义——authTypeSchema→authConfig, inputSchema→inputContract, outputSchema→outputContract, rateLimit→rateLimitConfig；definitions 键名统一 `Def` 后缀（authTypeSchemaDef→authConfigDef, triggerData→triggerDataDef, connectorData→connectorDataDef, dataProcessorData→dataProcessorDataDef, exitData→exitDataDef, nodeDataSchema→nodeDataDef）；章节标题及 §3.0 文字优化——「definitions 聚合段」→「JSON 定义」、「字段名」→「JSON 字段」、「校验类型」→「定义名」；同步更新映射图、Mermaid 图、描述文字、示例 JSON 及所有 `$ref` 引用 | SDDU Plan Agent |
+| **v4.1** | 2026-05-25 | **字段命名体系重构**：统一字段后缀约定（Config/Contract/Mapping/Info/Fields/Id），字段名去「Schema」歧义——authTypeSchema→authConfig, inputSchema→inputContract, outputSchema→outputContract, rateLimit→rateLimitConfig；definitions 键名统一 `Def` 后缀（authTypeSchemaDef→authConfigDef, triggerData→triggerDataDef, connectorData→connectorDataDef, dataProcessorData→dataProcessorDataDef, exitData→exitDataDef, nodeDataSchema→nodeDataDef）；章节标题及 §3.0 文字优化——「definitions 聚合段」→「JSON 定义」、「字段名」→「JSON 字段」、「校验类型」→「JSON 字段定义」；同步更新映射图、Mermaid 图、描述文字、示例 JSON 及所有 `$ref` 引用 | SDDU Plan Agent |
 
 ## 附录 B：v3.0 审查问题修复对照表
 
