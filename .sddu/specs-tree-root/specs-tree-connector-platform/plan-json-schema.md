@@ -899,6 +899,488 @@ flowchart LR
 
 ---
 
+## 7. React Flow 格式对齐指南
+
+> 🎯 **本章目标**：阐明 React Flow 画布库的标准数据格式与后端 JSON Schema 之间的差异，给出各场景下的处理策略。本章**不修改**前文 §1~§6 的现有 Schema 定义，而是作为格式差异的权威解释和决策依据。
+
+### 7.1 React Flow 标准格式
+
+React Flow（@xyflow/react v12）是连接流编排画布的前端技术选型。用户拖拽节点、连线操作产生的数据结构遵循 React Flow 的 **Node** 和 **Edge** 标准接口。
+> 📎 **官方来源**：
+> - **React Flow 类型系统总览**：https://reactflow.dev/api-reference/types
+> - **Node 类型定义**：https://reactflow.dev/api-reference/types/node
+> - **Edge 类型定义**：https://reactflow.dev/api-reference/types/edge
+> - **GitHub 源码（NodeBase）**：https://github.com/xyflow/xyflow/blob/main/packages/system/src/types/nodes.ts
+> - **GitHub 源码（Edge）**：https://github.com/xyflow/xyflow/blob/main/packages/react/src/types/edges.ts
+> - **API 参考入口**：https://reactflow.dev/api-reference
+
+#### 7.1.1 Node 接口
+
+```typescript
+// React Flow 标准 Node 接口（简化，仅列出与存储相关的字段）
+interface Node<TData = Record<string, unknown>> {
+  id: string;                    // 节点唯一标识，React Flow 内部使用
+  type: string;                  // 映射到注册的 React 组件名（如 'trigger', 'connector'）
+  position: {                    // 画布坐标（浮点数）
+    x: number;
+    y: number;
+  };
+  data: TData;                   // ⚠️ 所有自定义业务数据必须嵌套在此字段内
+  // 以下为 React Flow 内部运行时字段，不应持久化：
+  // selected?: boolean;         // 是否被选中
+  // dragging?: boolean;         // 是否正在拖拽
+  // measured?: { width, height }; // 渲染后的尺寸
+  // width?, height?;            // 节点尺寸
+  // draggable?, selectable?, connectable?; // 交互控制
+  // style?, className?;         // 样式
+  // sourcePosition?, targetPosition?; // Handle 位置
+  // zIndex?;                    // 层级
+}
+> 📎 来源：https://reactflow.dev/api-reference/types/node
+```
+
+**关键约束**：
+- `data` 是用户自定义数据的唯一入口。React Flow 不会触碰 `data` 的内容，但**所有非框架字段必须放在 `data` 内**。
+- `type` 决定了 React Flow 使用哪个 React 组件来渲染该节点。它同时承载了「前端渲染」和「业务分类」双重语义。
+- `id`、`type`、`position` 是框架级字段，不可放入 `data`。
+
+#### 7.1.2 Edge 接口
+
+```typescript
+// React Flow 标准 Edge 接口（简化）
+interface Edge<TData = Record<string, unknown>> {
+  id: string;                    // 边唯一标识
+  source: string;                // ⚠️ 源节点 ID（注意：叫 source，不是 sourceNodeId）
+  target: string;                // ⚠️ 目标节点 ID（注意：叫 target，不是 targetNodeId）
+  type?: string;                 // 边类型，决定渲染样式（'default', 'smoothstep', 'straight' 等）
+  // 以下为可选/运行时字段，不应持久化：
+  // sourceHandle?, targetHandle?; // Handle 锚点 ID
+  // animated?: boolean;
+  // style?, className?;
+  // label?, labelStyle?, labelBgStyle?;
+  // markerStart?, markerEnd?;
+  // selected?, deletable?, focusable?;
+  // data?: TData;               // V12 支持 edge.data，可存放业务扩展数据
+}
+> 📎 来源：https://reactflow.dev/api-reference/types/edge
+```
+
+**关键约束**：
+- 连接引用字段名为 `source` 和 `target`，不是 `sourceNodeId` / `targetNodeId`。
+- React Flow 的 `edge.type` 用于渲染样式，与后端业务语义（`default` / `condition` / `error`）不在一个维度。
+
+#### 7.1.3 完整的 React Flow 画布产物示例
+
+以下是从 FlowEditor 画布直接 `JSON.stringify(nodes) + JSON.stringify(edges)` 会得到的数据结构：
+
+```json
+{
+  "nodes": [
+    {
+      "id": "node_a1b2c3",
+      "type": "trigger",
+      "position": { "x": 100.0, "y": 200.0 },
+      "data": {
+        "labelCn": "接收请求",
+        "labelEn": "Receive Request",
+        "authTypeSchema": {
+          "type": "SYSTOKEN",
+          "fields": [{ "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }]
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sender": { "type": "string" },
+            "content": { "type": "string" }
+          },
+          "required": ["sender", "content"]
+        },
+        "rateLimit": { "maxQps": 100 }
+      }
+    },
+    {
+      "id": "node_d4e5f6",
+      "type": "connector",
+      "position": { "x": 350.0, "y": 200.0 },
+      "data": {
+        "labelCn": "发送通知",
+        "labelEn": "Send Notification",
+        "connectorVersionId": "9876543210123456789",
+        "inputMapping": {
+          "receiver": "${trigger.sender}",
+          "content": "${trigger.content}"
+        }
+      }
+    },
+    {
+      "id": "node_g7h8i9",
+      "type": "data_processor",
+      "position": { "x": 600.0, "y": 200.0 },
+      "data": {
+        "labelCn": "格式化消息",
+        "labelEn": "Format Message",
+        "config": {
+          "fieldMappings": [
+            { "source": "${node_d4e5f6.msgId}", "target": "result.id" },
+            { "source": "constant:success", "target": "result.status" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node_exit",
+      "type": "exit",
+      "position": { "x": 850.0, "y": 200.0 },
+      "data": {
+        "labelCn": "返回结果",
+        "labelEn": "Return Result",
+        "outputFields": ["result.id", "result.status"]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "node_a1b2c3", "target": "node_d4e5f6", "type": "default", "label": "触发" },
+    { "id": "e2", "source": "node_d4e5f6", "target": "node_g7h8i9", "type": "default", "label": "发送完成" },
+    { "id": "e3", "source": "node_g7h8i9", "target": "node_exit",  "type": "default", "label": "格式化完成" }
+  ]
+}
+```
+
+---
+
+### 7.2 当前 Schema 与 React Flow 格式的差异
+
+下文将前文 §4.3 中定义的 orchestrationConfig Schema（以下简称「**现有 Schema**」）与 React Flow 标准格式逐一对比。
+
+#### 7.2.1 Edge 字段名差异
+
+| 维度 | React Flow 标准 | 现有 Schema (§4.3) | 差异 |
+|------|:---:|:---:|------|
+| 源节点引用 | `source` | `sourceNodeId` | 字段名不同 |
+| 目标节点引用 | `target` | `targetNodeId` | 字段名不同 |
+
+**影响**：前端从画布拿到的 `edge.source` 必须翻译为 `sourceNodeId` 才能存入后端，加载时再逆向翻译。这是纯粹的字段名映射，数据结构完全等价。
+
+```diff
+// React Flow 画布产物       vs       现有 Schema 存储格式
+- { "id": "e1", "source": "node_a", "target": "node_b" }
++ { "id": "e1", "sourceNodeId": "node_a", "targetNodeId": "node_b" }
+```
+
+#### 7.2.2 Node 业务数据位置差异（⚠️ 结构性差异）
+
+这是最关键的差异——不是字段名的不同，而是**数据嵌套层级**不同：
+
+| 维度 | React Flow 标准 | 现有 Schema (§4.3) | 差异 |
+|------|:---:|:---:|------|
+| 框架字段 | `id`, `type`, `position` — 顶层 | `id`, `type`, `position` — 顶层 | ✅ 一致 |
+| 业务字段 | **所有**在 `node.data` 内嵌套 | **平铺**在 node 顶层 | 🔴 结构不同 |
+
+**可视化对比**：
+
+```
+React Flow 格式（前端直接产物）          现有 Schema（后端定义）
+┌─────────────────────────┐            ┌─────────────────────────┐
+│ node                     │            │ node                     │
+│ ├── id: "node_1"        │            │ ├── id: "node_1"        │
+│ ├── type: "connector"   │            │ ├── type: "connector"   │
+│ ├── position: {x,y}     │            │ ├── position: {x,y}     │
+│ └── data: {             │⚠️          │ ├── labelCn: "..."      │⚠️
+│       ├── labelCn: "..." │  嵌套      │ ├── connectorVersionId  │  平铺
+│       ├── connectorVersionId         │ ├── inputMapping        │
+│       └── inputMapping   │            │ └── ...                 │
+│     }                    │            │                         │
+└─────────────────────────┘            └─────────────────────────┘
+```
+
+**影响**：
+- 前端保存时：需要 `{ id, type, position, data: { labelCn, connectorVersionId, ... } }` → 展平为 `{ id, type, position, labelCn, connectorVersionId, ... }` 再发送
+- 前端加载时：需要反向嵌套回 `data`
+- 后端运行时（connector-api）：读取路径从 `node.connectorVersionId` 变为 `node.data.connectorVersionId`（或反之，取决于最终存储格式）
+
+#### 7.2.3 Node type 的双重语义
+
+React Flow 的 `node.type` 同时承担两个职责：
+
+| 职责 | React Flow 视角 | 业务视角 |
+|------|:---:|:---:|
+| **前端渲染** | 映射到 `nodeTypes` 注册表中对应的 React 组件 | 不关心 |
+| **业务分类** | 不关心 | 决定运行时执行哪个 NodeExecutor |
+
+**当前代码中的 type 值对比**：
+
+| 现有前端代码（customNodes.jsx） | 后端 Schema (§4.3) | 是否一致 |
+|------|------|:---:|
+| `trigger` | `trigger` | ✅ |
+| `action` | `connector` | 🔴 不一致 |
+| `condition` / `delay` / `parallel` / `loop` | —（MVP 无） | — |
+| — | `data_processor` | 🟡 前端尚未注册此类型 |
+| — | `exit` | 🟡 前端尚未注册此类型 |
+
+> ⚠️ **前端现有代码用 `action`，后端 Schema 用 `connector`**。需要统一。建议以规范对齐为准：后端 Schema 的 `connector` / `data_processor` / `exit` 是业务层面的精确分类，前端 `nodeTypes` 注册时应使用相同值。
+
+---
+
+### 7.3 场景分析
+
+以下分析在不同技术场景中，应使用哪种格式、在何处做转换。
+
+#### 场景一：前端保存 → 后端存储 → 前端加载（理想路径）
+
+```
+┌──────────────┐      PUT /flows/{id}/config       ┌──────────────┐
+│  wecodesite  │ ─────────────────────────────────▶ │  open-server  │
+│  React Flow  │     orchestrationConfig JSON        │  flow_version_t
+│  nodes/edges │                                     │  .orchestration_config
+│  (原生格式)  │ ◀───────────────────────────────── │  (MEDIUMTEXT) │
+└──────────────┘      GET /flows/{id}/config         └──────────────┘
+```
+
+**推荐策略**：后端存储 React Flow 原生格式。
+
+- ✅ 前端零翻译层：`JSON.stringify(reactFlowNodes)` 直接作为请求体，加载时直接 `setNodes(response.orchestrationConfig.nodes)` 渲染
+- ✅ 减少 bug 面：不需要维护双向的序列化/反序列化适配器
+- ✅ 调试友好：数据库中存的 JSON 与浏览器 DevTools 中看到的完全一致
+- ✅ React Flow 版本升级：新版本如果增加框架字段（如 `node.data` 下新增字段），不会与业务字段冲突
+
+**代价**：
+- 后端 JSON Schema 校验需要将业务字段放在 `properties.data.properties` 下
+- connector-api 运行时读取路径多一层 `node.data.xxx`
+
+**如果继续使用现有 Schema（业务字段平铺）**，则需要在前端 thunk.js 中加入转换层：
+
+```javascript
+// 保存时：React Flow → 现有 Schema
+const toBackendFormat = (nodes) => nodes.map(n => ({
+  id: n.id,
+  type: n.type,
+  position: n.position,
+  ...n.data           // ← 展平 data 到顶层
+}));
+
+// 加载时：现有 Schema → React Flow
+const toReactFlowFormat = (nodes) => nodes.map(n => ({
+  id: n.id,
+  type: n.type,
+  position: n.position,
+  data: {             // ← 收集业务字段回 data
+    labelCn: n.labelCn,
+    labelEn: n.labelEn,
+    authTypeSchema: n.authTypeSchema,
+    // ... 需要显式列出所有业务字段
+  }
+}));
+```
+
+> ⚠️ 转换层的风险：增删业务字段时需要同步维护 `toBackendFormat` 和 `toReactFlowFormat` 两个函数，容易产生「改了 Schema 但忘了更新转换函数」的 bug。
+
+#### 场景二：后端运行时（connector-api）读取执行
+
+```
+┌────────────────┐     R2DBC 读取      ┌────────────────────┐
+│ connector-api  │ ◀────────────────── │ flow_version_t      │
+│ runtime 引擎   │  orchestration_config│ .orchestration_config│
+│                │  JSON → Jackson POJO │ (MEDIUMTEXT)        │
+└────────────────┘                     └────────────────────┘
+```
+
+运行时引擎需要从节点配置中提取关键信息来执行连接流。如果存储 React Flow 格式，读取路径为：
+
+| 运行时需要的信息 | 存储格式 (React Flow) | 读取路径 |
+|------|------|------|
+| 节点 ID | `node.id` | `node.getId()` |
+| 节点业务类型 | `node.type` 或 `node.data.nodeType`？ | 见下文决策 |
+| 引用的连接器版本 | `node.data.connectorVersionId` | `node.getData().getConnectorVersionId()` |
+| 字段映射配置 | `node.data.inputMapping` | `node.getData().getInputMapping()` |
+| DAG 拓扑关系 | `edge.source` → `edge.target` | 拓扑排序的输入 |
+
+> 💡 运行时引擎的读取开销增加极小（仅多一层 `getData()` 调用），Jackson 反序列化到强类型 POJO 后，IDE 自动补全和编译期检查仍然有效。
+
+#### 场景三：API 响应给前端
+
+前端期望的是 React Flow 原生格式——可以直接 `setNodes()` 渲染。如果后端存储的就是 React Flow 格式，API 响应**直接透传**即可，无需任何转换。
+
+---
+
+### 7.4 建议的存储格式：React Flow 原生格式
+
+基于以上分析，建议 `flow_version_t.orchestration_config` 存储 **React Flow 原生格式**，即业务字段全部嵌套在 `node.data` 下，边使用 `source` / `target`。
+
+```json
+{
+  "nodes": [
+    {
+      "id": "node_a1b2c3",
+      "type": "trigger",
+      "position": { "x": 100.0, "y": 200.0 },
+      "data": {
+        "labelCn": "接收请求",
+        "labelEn": "Receive Request",
+        "authTypeSchema": {
+          "type": "SYSTOKEN",
+          "fields": [{ "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true }]
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sender": { "type": "string", "description": "发送者 ID" },
+            "content": { "type": "string", "description": "消息内容" }
+          },
+          "required": ["sender", "content"]
+        },
+        "rateLimit": { "maxQps": 100 }
+      }
+    },
+    {
+      "id": "node_d4e5f6",
+      "type": "connector",
+      "position": { "x": 350.0, "y": 200.0 },
+      "data": {
+        "labelCn": "发送通知",
+        "labelEn": "Send Notification",
+        "connectorVersionId": "9876543210123456789",
+        "inputMapping": {
+          "receiver": "${trigger.sender}",
+          "content": "${trigger.content}"
+        }
+      }
+    },
+    {
+      "id": "node_g7h8i9",
+      "type": "data_processor",
+      "position": { "x": 600.0, "y": 200.0 },
+      "data": {
+        "labelCn": "格式化消息",
+        "labelEn": "Format Message",
+        "config": {
+          "fieldMappings": [
+            { "source": "${node_d4e5f6.msgId}", "target": "result.id" },
+            { "source": "constant:success", "target": "result.status" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node_exit",
+      "type": "exit",
+      "position": { "x": 850.0, "y": 200.0 },
+      "data": {
+        "labelCn": "返回结果",
+        "labelEn": "Return Result",
+        "outputFields": ["result.id", "result.status"]
+      }
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "node_a1b2c3", "target": "node_d4e5f6", "type": "default", "label": "触发" },
+    { "id": "e2", "source": "node_d4e5f6", "target": "node_g7h8i9", "type": "default", "label": "发送完成" },
+    { "id": "e3", "source": "node_g7h8i9", "target": "node_exit",  "type": "default", "label": "格式化完成" }
+  ]
+}
+```
+
+---
+
+### 7.5 字段映射对照表
+
+以下表格完整列出 React Flow 格式与现有 Schema 的字段对应关系，便于未来统一 Schema 时参考。
+
+#### 7.5.1 Node 顶层字段
+
+| React Flow 字段 | 现有 Schema 字段 | 说明 | 变更方向 |
+|------|------|------|:---:|
+| `id` | `id` | 节点唯一 ID | ✅ 无变更 |
+| `type` | `type` | 节点类型枚举 | ⚠️ 值需统一（见 §7.2.3） |
+| `position` | `position` | 画布坐标 | ✅ 无变更 |
+| `data` | —（业务字段平铺在顶层） | 业务数据容器 | 🔴 新增嵌套层 |
+
+#### 7.5.2 Node.data 内业务字段（按节点类型）
+
+| 节点类型 | React Flow 路径 | 现有 Schema 路径 | 说明 |
+|------|------|------|------|
+| trigger | `node.data.labelCn` | `node.labelCn` | 中文标签 |
+| trigger | `node.data.labelEn` | `node.labelEn` | 英文标签 |
+| trigger | `node.data.authTypeSchema` | `node.authTypeSchema` | 认证类型声明 |
+| trigger | `node.data.inputSchema` | `node.inputSchema` | 入参 Schema |
+| trigger | `node.data.rateLimit` | `node.rateLimit` | 限流配置 |
+| connector | `node.data.connectorVersionId` | `node.connectorVersionId` | 引用连接器版本 |
+| connector | `node.data.inputMapping` | `node.inputMapping` | 字段映射 |
+| data_processor | `node.data.config.fieldMappings` | `node.config.fieldMappings` | 管道转换配置 |
+| exit | `node.data.outputFields` | `node.outputFields` | 返回值字段列表 |
+
+#### 7.5.3 Edge 字段
+
+| React Flow 字段 | 现有 Schema 字段 | 说明 | 变更方向 |
+|------|------|------|:---:|
+| `id` | `id` | 边唯一 ID | ✅ 无变更 |
+| `source` | `sourceNodeId` | 源节点 ID | 🔴 字段名改名 |
+| `target` | `targetNodeId` | 目标节点 ID | 🔴 字段名改名 |
+| `type` | `type` | 边业务类型（default/condition/error） | ✅ 无变更 |
+| `label` | `label` | 边显示标签 | ✅ 无变更 |
+| `data` | —（不存在） | 边扩展数据（V1 预留）🆕 | 🟢 V12 新能力 |
+
+---
+
+### 7.6 持久化时的字段过滤
+
+React Flow 的 `nodes` 和 `edges` 数组中包含大量运行时状态字段（如 `selected`、`dragging`、`measured`、`style` 等），这些字段**不应持久化**到数据库。
+
+**处理策略**：
+- **方案 A（推荐）**：后端接收时只校验已知业务字段，通过 `additionalProperties: false` 在 JSON Schema 层面拒绝未知字段。前端传多余字段会触发 422 校验失败。
+- **方案 B**：前端保存前做 `pick` 过滤，只保留白名单字段。风险是白名单维护成本高。
+- **方案 C**：前端不做过滤，后端做 `@JsonIgnore` 忽略未知字段。存在存储膨胀风险，但开发体验最好。
+
+> **MVP 建议**：方案 A（JSON Schema 严格校验），既保证存储整洁，又在保存失败时给前端明确的错误提示，促使前端在 thunk 中做 `pick`。
+
+**React Flow 运行时字段清单**（不应持久化）：
+
+| 字段 | 所属 | 说明 |
+|------|------|------|
+| `selected` | node | 是否被选中 |
+| `dragging` | node | 是否正在拖拽 |
+| `measured` | node | 渲染后的尺寸对象 |
+| `width`, `height` | node | 节点尺寸（V12 可能是 measured 的子字段） |
+| `draggable`, `selectable`, `connectable` | node | 交互控制 |
+| `style`, `className` | node | 样式 |
+| `sourcePosition`, `targetPosition` | node | Handle 位置 |
+| `zIndex` | node | 层级 |
+| `animated` | edge | 动画状态 |
+| `style` | edge | 样式 |
+| `markerStart`, `markerEnd` | edge | 箭头样式 |
+| `selected` | edge | 是否被选中 |
+| `deletable`, `focusable` | edge | 交互控制 |
+| `sourceHandle`, `targetHandle` | edge | Handle 锚点 ID |
+
+---
+
+### 7.7 各模块变更影响评估
+
+如果采用「React Flow 原生格式存储」，各模块的变更范围：
+
+| 模块 | 影响 | 工作量 | 说明 |
+|------|------|:---:|------|
+| **plan-json-schema.md** | 需重写 §4.3 的 `orchestrationConfig` Schema | 中 | 业务字段迁入 `node.data`；edges 字段改为 `source`/`target` |
+| **wecodesite FlowEditor** | **几乎零变更** | ✅ 零 | 画布产物直接就是目标格式；如果前端代码中有做过 `toBackendFormat` 转换应删除 |
+| **wecodesite mock.js** | 示例数据微调 | 轻 | 当前 mock 数据已经是 React Flow 格式（`data` 嵌套 + `source`/`target`），仅需对齐 `type` 枚举值和 `data` 内的字段名 |
+| **plan-api.md** | 请求/响应示例更新 | 轻 | GET/PUT config 接口的 JSON 示例需对齐 |
+| **open-server** | JSON Schema 校验规则更新 | 轻 | 校验路径从 `node.labelCn` 变为 `node.data.labelCn` |
+| **connector-api runtime** | 读取路径加一层 `data` | 轻 | `node.getConnectorVersionId()` → `node.getData().getConnectorVersionId()`；拓扑排序的 `edge.source` 字段名简化 |
+| **plan-db.md** | 示例 JSON 更新 | 轻 | `orchestration_config` 注释示例对齐 |
+| **plan-page.md** | 无影响 | 无 | 页面设计不涉及存储格式细节 |
+
+**总评估**：前端零改动，后端轻量调整（JSON Schema 校验 + 运行时读取路径）。最大收益是消除了维护双向转换层的长期成本。
+
+---
+
+### 7.8 决策记录
+
+| 决策项 | 选择 | 理由 |
+|-------|------|------|
+| 存储格式 | **React Flow 原生格式**（`node.data` 嵌套 + `edge.source`/`target`） | DAG 的编辑器就是 React Flow，其格式是事实标准；前端零翻译层，消除维护成本 |
+| 字段过滤 | JSON Schema `additionalProperties: false`（方案 A） | 编译期保证 + 明确错误提示 |
+| Node type 统一 | 以后端 Schema 为准：`trigger` / `connector` / `data_processor` / `exit` | 后端的分类更贴近业务语义；前端 `nodeTypes` 注册时对齐即可 |
+| 现有 Schema 处理 | 本章为差异分析文档，**不修改** §4.3 现有 Schema | 待团队对齐后，统一发出 v4.0 版本正式重写 Schema |
+
 ## 附录 A：修订记录
 
 | 版本 | 日期 | 修订内容 | 修订人 |
