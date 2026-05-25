@@ -325,6 +325,7 @@ connector-api/src/test/python/
 | 依赖 | 版本要求 | 安装方式 |
 |------|---------|---------|
 | Python 3 | >= 3.10 | 系统自带 |
+| python3-venv | 与 Python 版本匹配 | `sudo apt install python3.12-venv`（**必装**，否则 venv 创建失败） |
 | MySQL | 8.0+ | `docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:8` |
 | Redis | 7.0+ | `docker run -p 6379:6379 redis:7` |
 | Java | 17+ | 项目要求 |
@@ -348,17 +349,13 @@ cd connector-api && nohup mvn spring-boot:run > logs/server.log 2>&1 &
 curl -s http://localhost:18080/open-server/actuator/health
 curl -s http://localhost:18180/actuator/health
 
-> **注意**: 当前系统缺少 `python3-venv` 包。`python3 -m venv` 不可用。
-> 使用 `virtualenv` 替代。如果希望使用标准 venv，请先安装：
-> `sudo apt install python3.12-venv`
 # ---- Python 环境准备（venv） ----
 # 注意: Ubuntu 24.04 / Python 3.12 禁止 pip 直接安装系统级包 (PEP 668)
+# python3-venv 是前置依赖，需先安装: sudo apt install python3.12-venv
 # 必须使用虚拟环境
 
 # 1. 创建 venv（项目本地）
-# 方式 A: 使用 virtualenv（推荐）
-pip3 install virtualenv --user --break-system-packages
-virtualenv open-server/src/test/python/.venv
+python3 -m venv open-server/src/test/python/.venv
 
 # 2. 激活 venv 并安装依赖
 source open-server/src/test/python/.venv/bin/activate
@@ -376,49 +373,3 @@ python -m pytest modules/ common/ -v 2>&1 | tee test-output.log
 # 4. 退出 venv
 deactivate
 
-# ---- 备选：独立脚本方式（不需要 venv） ----
-# 如果无法创建 venv，可使用独立脚本（基于内置 unittest）
-python3 open-server/src/test/python/run_integration_tests.py
-```
-
-
----
-
-## 六、与现有测试的关系
-
-| 维度 | 已有 MockMvc 测试（test-plan.md） | 本次真调集成测试（本方案） |
-|------|----------------------------------|--------------------------|
-| 测试层次 | L2 接口层 | L3 集成测试 |
-| 依赖 | 无（全 Mock） | 需 MySQL + Redis + 服务启动 |
-| 执行速度 | 毫秒级（~3s 全部） | 秒级（~30s~2min） |
-| 执行频率 | 每次提交 CI 运行 | 每日构建 / 预发布运行 |
-| 发现问题 | 序列化、校验注解遗漏 | SQL 错误、事务问题、真实数据流 |
-| 文件位置 | `src/test/java/` | `src/test/python/` |
-| 工具 | JUnit + MockMvc + Mockito | pytest + requests + PyMySQL |
-
----
-
-## 七、风险与假设
-
-| 风险 | 影响 | 缓解措施 |
-|------|------|---------|
-| 测试数据残留 | 影响后续测试或生产数据 | 每次执行强制 cleanup，失败时也执行 |
-| 服务启动失败 | 所有用例阻塞 | 启动前 health check，失败时快速反馈 |
-| 数据库表结构变更 | 测试 SQL 脚本失效 | 测试 SQL 与迁移脚本同步维护 |
-| 并发执行冲突 | 数据相互干扰 | 使用时间戳后缀隔离，CI 串行执行 |
-| 网络/端口冲突 | 服务无法启动 | 先检查端口占用，kill 已有进程 |
-
----
-
-## 八、文件清单
-
-| # | 文件路径 | 覆盖接口 | 用例数 |
-|---|---------|---------|:------:|
-| 1 | `open-server/src/test/python/modules/connector/controller/test_connector.py` | #1~#7 | ~22 |
-| 2 | `open-server/src/test/python/modules/flow/controller/test_flow.py` | #8~#16 | ~24 |
-| 3 | `open-server/src/test/python/modules/debug/test_debug.py` | #17 | ~2 |
-| 4 | `connector-api/src/test/python/modules/trigger/controller/test_trigger.py` | #18 | ~3 |
-| 5 | `connector-api/src/test/python/common/test_contract.py` | L4 契约 | ~8 |
-| 6 | `open-server/src/test/python/conftest.py` | 全局配置 + DB 工具 | — |
-| 7 | `connector-api/src/test/python/conftest.py` | 全局配置 | — |
-| **合计** | **7 个文件** | **#1~#18 + 契约** | **~59 个用例** |
