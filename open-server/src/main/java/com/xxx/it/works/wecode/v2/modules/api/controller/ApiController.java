@@ -1,5 +1,9 @@
 package com.xxx.it.works.wecode.v2.modules.api.controller;
 
+import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
+import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
+import com.xxx.it.works.wecode.v2.common.enums.OperateObjectEnum;
+import com.xxx.it.works.wecode.v2.common.enums.OperateTypeEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.api.dto.*;
 import com.xxx.it.works.wecode.v2.modules.api.service.ApiService;
@@ -106,6 +110,11 @@ public class ApiController {
      */
     @PostMapping
     @PlatformAdminPermission
+    @AuditLog(operateType = OperateTypeEnum.CREATE,
+              operateObject = OperateObjectEnum.API,
+              descCn = "注册API",
+              descEn = "Register API",
+              appIdSource = AppIdSourceEnum.PLATFORM)
     @Operation(summary = "#11 注册 API",
                description = "注册 API 成功，同时创建权限资源")
     public ApiResponse<ApiDetailResponse> createApi(
@@ -128,6 +137,12 @@ public class ApiController {
      */
     @PutMapping("/{id}")
     @PlatformAdminPermission
+    @AuditLog(operateType = OperateTypeEnum.UPDATE,
+              operateObject = OperateObjectEnum.API,
+              descCn = "更新API",
+              descEn = "Update API",
+              appIdSource = AppIdSourceEnum.PLATFORM,
+              resourceIdParam = "id")
     @Operation(summary = "#12 更新 API",
                description = "更新 API 成功，核心属性变更触发审批")
     public ApiResponse<ApiDetailResponse> updateApi(
@@ -151,6 +166,12 @@ public class ApiController {
      */
     @DeleteMapping("/{id}")
     @PlatformAdminPermission
+    @AuditLog(operateType = OperateTypeEnum.DELETE,
+              operateObject = OperateObjectEnum.API,
+              descCn = "删除API",
+              descEn = "Delete API",
+              appIdSource = AppIdSourceEnum.PLATFORM,
+              resourceIdParam = "id")
     @Operation(summary = "#13 删除 API",
                description = "删除 API，检查订阅关系")
     public ApiResponse<Void> deleteApi(
@@ -173,6 +194,12 @@ public class ApiController {
      */
     @PostMapping("/{id}/withdraw")
     @PlatformAdminPermission
+    @AuditLog(operateType = OperateTypeEnum.WITHDRAW,
+              operateObject = OperateObjectEnum.API,
+              descCn = "撤回API",
+              descEn = "Withdraw API",
+              appIdSource = AppIdSourceEnum.PLATFORM,
+              resourceIdParam = "id")
     @Operation(summary = "#14 撤回审核中的 API",
                description = "撤回审核中的 API，状态变为草稿")
     public ApiResponse<ApiDetailResponse> withdrawApi(

@@ -4,6 +4,7 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * 能力开放平台 - 管理服务
@@ -17,6 +18,7 @@ import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
     RedisAutoConfiguration.class
 })
 @MapperScan("com.xxx.it.works.wecode.v2.modules.*.mapper")
+@EnableAsync
 public class OpenServerApplication {
 
     public static void main(String[] args) {
