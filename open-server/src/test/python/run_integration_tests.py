@@ -106,19 +106,19 @@ def report(msg: str):
 def test_pass(name: str, detail: str = ""):
     global PASS_COUNT
     PASS_COUNT += 1
-    report("  \u2705 PASS: " + name + (" -- " + detail if detail else ""))
+    report("- \u2705 PASS: " + name + (" -- " + detail if detail else ""))
 
 
 def test_fail(name: str, detail: str):
     global FAIL_COUNT
     FAIL_COUNT += 1
-    report("  \u274c FAIL: " + name + " -- " + detail)
+    report("- \u274c FAIL: " + name + " -- " + detail)
 
 
 def test_error(name: str, detail: str):
     global ERROR_COUNT
     ERROR_COUNT += 1
-    report("  \u26a0\ufe0f ERROR: " + name + " -- " + detail)
+    report("- \u26a0\ufe0f ERROR: " + name + " -- " + detail)
 
 
 class TestConnectorPlatform(unittest.TestCase):
@@ -599,7 +599,7 @@ class TestConnectorPlatform(unittest.TestCase):
             self.assertEqual(data["code"], "401")
             test_pass("IT-049", "缺少X-Sys-Token返回401")
         except requests.exceptions.ConnectionError:
-            report("  SKIP IT-049: connector-api 未运行 (port 18180)")
+            report("- SKIP IT-049: connector-api 未运行 (port 18180)")
 
     # IT-050
     def test_it_050_trigger_flow_not_found(self):
@@ -611,7 +611,7 @@ class TestConnectorPlatform(unittest.TestCase):
             self.assertEqual(data["code"], "404")
             test_pass("IT-050", "触发不存在的flow返回404")
         except requests.exceptions.ConnectionError:
-            report("  SKIP IT-050: connector-api 未运行 (port 18180)")
+            report("- SKIP IT-050: connector-api 未运行 (port 18180)")
 
     # IT-051
     def test_it_051_trigger_flow_not_running(self):
@@ -623,7 +623,7 @@ class TestConnectorPlatform(unittest.TestCase):
             self.assertNotEqual(data["code"], "200")
             test_pass("IT-051", "未运行flow不返回200成功")
         except requests.exceptions.ConnectionError:
-            report("  SKIP IT-051: connector-api 未运行 (port 18180)")
+            report("- SKIP IT-051: connector-api 未运行 (port 18180)")
 
     # IT-052
     def test_it_052_success_response_format(self):
@@ -744,7 +744,7 @@ def _report_failures(result):
                 break
         if not detail:
             detail = lines[-1].strip() if lines else ''
-        report(f"  - FAIL {test_name}: {detail[:200]}")
+        report(f"- FAIL {test_name}: {detail[:200]}")
 
     for test_case, trace in result.errors:
         test_name = test_case._testMethodName
@@ -761,7 +761,7 @@ def _report_failures(result):
                     break
             if not detail and lines:
                 detail = lines[-1].strip()[:200]
-        report(f"  - ERROR {test_name}: {detail[:200]}")
+        report(f"- ERROR {test_name}: {detail[:200]}")
 
 
 def run_tests():
