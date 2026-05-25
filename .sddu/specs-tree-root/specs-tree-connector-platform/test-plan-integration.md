@@ -44,11 +44,10 @@
 
 | 组件 | 选型 | 理由 |
 |------|------|------|
-| 脚本语言 | **Python 3** + `requests` | 断言灵活、结构化、与 Java 包结构镜像 |
-| 测试框架 | **pytest** | fixture 管理、参数化、报告插件 |
-| 数据库操作 | **PyMySQL** | 直连 MySQL 做数据准备/清理 |
-| 报告生成 | pytest-html 或 自定义 MD | 生成可读的测试报告 |
-
+| 脚本语言 | **Python 3** + `requests` | 系统自带，零安装零依赖 |
+| 接口文件 | 每个接口一个独立 `.py` 文件 | 文件名即接口名，一看就懂，直接 `python3 xxx.py` 执行 |
+| 公共模块 | `client.py` | 统一 BASE_URL、请求发送、响应打印 |
+| 输出控制 | `--quiet` 参数 | 默认打印完整请求/响应；`--quiet` 只输出 PASS/FAIL |
 ### 2.3 数据策略
 
 | 阶段 | 操作 | 说明 |
@@ -59,56 +58,44 @@
 
 ---
 
-## 三、Python 文件结构（镜像 Java 包结构）
-
-### open-server（#1~#17）
+## 三、文件结构
 
 ```
 open-server/src/test/python/
-├── conftest.py                        # pytest 全局配置
-│   ├── BASE_URL = "http://localhost:18080/open-server"
-│   ├── pytest_configure() → 生成测试报告
-│   └── db_helper() fixture → 数据准备/清理
-│
-└── modules/
-    ├── connector/
-    │   └── controller/
-    │       └── test_connector.py      # API #1~#7  Connector CRUD + 配置
+└── inspect/
+    ├── client.py                   ← 公共模块：BASE_URL + 请求/响应打印函数
     │
-    ├── flow/
-    │   └── controller/
-    │       └── test_flow.py           # API #8~#16 Flow CRUD + 启停 + 配置
+    ├── connector_create.py         ← 创建连接器
+    ├── connector_list.py           ← 查询连接器列表
+    ├── connector_detail.py         ← 查询连接器详情
+    ├── connector_update.py         ← 更新连接器
+    ├── connector_delete.py         ← 删除连接器
+    ├── connector_config_get.py     ← 获取连接配置
+    ├── connector_config_set.py     ← 编辑连接配置
+    ├── flow_create.py              ← 创建连接流
+    ├── flow_list.py                ← 查询流列表
+    ├── flow_detail.py              ← 查询流详情
+    ├── flow_update.py              ← 更新流
+    ├── flow_delete.py              ← 删除流
+    ├── flow_start.py               ← 启动流
+    ├── flow_stop.py                ← 停止流
+    ├── flow_config_get.py          ← 获取编排配置
+    ├── flow_config_set.py          ← 保存编排配置
+    ├── debug_test_run.py           ← 测试运行
+    ├── trigger_invoke.py           ← HTTP 触发
+    ├── contract_response.py        ← 响应格式校验
     │
-    └── debug/
-        └── test_debug.py             # API #17    测试代理
+    └── all.py                      ← 全量回归（串行执行所有用例）
 ```
 
-### connector-api（#18 + 契约）
-
-```
-connector-api/src/test/python/
-├── conftest.py                        # BASE_URL = "http://localhost:18180"
-│
-├── modules/
-│   └── trigger/
-│       └── controller/
-│           └── test_trigger.py        # API #18    HTTP 触发
-│
-└── common/
-    └── test_contract.py               # L4 契约：响应格式、ID 类型、枚举值
-```
-
-### Java ↔ Python 对应关系
-
-| Java 源文件（main） | Python 测试文件 |
-|---|---|
-| `modules/connector/controller/ConnectorController.java` | `modules/connector/controller/test_connector.py` |
-| `modules/flow/controller/FlowController.java` | `modules/flow/controller/test_flow.py` |
-| `modules/debug/DebugProxyController.java` | `modules/debug/test_debug.py` |
-| `modules/trigger/controller/TriggerController.java` | `modules/trigger/controller/test_trigger.py` |
-| `common/ContractSchemaTest.java` | `common/test_contract.py` |
+每个文件独立可执行，文件名即操作名：
+- `connector_create.py` = 创建连接器
+- `flow_start.py` = 启动流
+- `trigger_invoke.py` = HTTP 触发
+- 不需要记编号，文件名就是接口名
 
 ---
+
 
 ## 四、测试用例（按接口分组）
 
@@ -292,84 +279,135 @@ connector-api/src/test/python/
 
 ---
 
-## 五、执行流程
-
-### 步骤
-
-```
-┌──────────────────────────────────────────────┐
-│  1. 启动后端服务                               │
-│     ├── open-server  →  mvn spring-boot:run   │
-│     └── connector-api →  mvn spring-boot:run  │
-├──────────────────────────────────────────────┤
-│  2. 数据准备                                   │
-│     ├── 连接 PyMySQL 直连 MySQL               │
-│     ├── 插入测试连接器（时间戳后缀防冲突）       │
-│     └── 记录所有插入 ID 用于后续引用             │
-├──────────────────────────────────────────────┤
-│  3. 执行 pytest                                │
-│     ├── 每个模块独立文件                        │
-│     ├── 用例间按顺序执行（CRUD 依赖）            │
-│     └── 实时输出 pass/fail                      │
-├──────────────────────────────────────────────┤
-│  4. 数据清理                                   │
-│     └── DELETE 按 ID 范围清理所有测试数据        │
-├──────────────────────────────────────────────┤
-│  5. 生成测试报告                               │
-│     └── test-report-integration.md             │
-└──────────────────────────────────────────────┘
-```
+## 五、使用方式
 
 ### 前置依赖
 
 | 依赖 | 版本要求 | 安装方式 |
 |------|---------|---------|
 | Python 3 | >= 3.10 | 系统自带 |
-| python3-venv | 与 Python 版本匹配 | `sudo apt install python3.12-venv`（**必装**，否则 venv 创建失败） |
-| MySQL | 8.0+ | 与 open-server / connector-api 共用同一数据库实例 |
-| Redis | 7.0+ | 与 open-server / connector-api 共用同一 Redis 实例 |
-| Java | 17+ | 项目运行环境 |
-| Maven | 3.8+ | 项目构建工具 |
+| requests | 任意版本 | 系统已安装（`python3 -c "import requests"` 验证） |
+| open-server | — | 已启动在 `:18080` |
+| connector-api | — | 已启动在 `:18180`（可选，未启动时触发测试自动跳过） |
 
-**Python 包**（在 venv 中安装）:
-- `requests` — HTTP 客户端
-- `PyMySQL` — MySQL 直连（数据准备/清理）
-- `pytest` — 测试框架
+**零安装、零依赖** — 不需要创建 venv，不需要 pip install。
 
-### 启动方式
+### 单接口调试
+
+每个接口一个文件，运行后默认打印完整请求/响应：
 
 ```bash
-# 启动 open-server（后台）
-cd open-server && nohup mvn spring-boot:run > logs/server.log 2>&1 &
-
-# 启动 connector-api（后台）
-cd connector-api && nohup mvn spring-boot:run > logs/server.log 2>&1 &
-
-# 等待服务就绪
-curl -s http://localhost:18080/open-server/actuator/health
-curl -s http://localhost:18180/actuator/health
-
-# ---- Python 环境准备（venv） ----
-# 注意: Ubuntu 24.04 / Python 3.12 禁止 pip 直接安装系统级包 (PEP 668)
-# python3-venv 是前置依赖，需先安装: sudo apt install python3.12-venv
-# 必须使用虚拟环境
-
-# 1. 创建 venv（项目本地）
-python3 -m venv open-server/src/test/python/.venv
-
-# 2. 激活 venv 并安装依赖
-source open-server/src/test/python/.venv/bin/activate
-pip install requests PyMySQL pytest
-
-# 3. 执行测试
-# open-server 接口测试
 cd open-server/src/test/python
-python -m pytest modules/ -v 2>&1 | tee test-output.log
 
-# connector-api 接口测试（#18 + 契约）
-cd ../../../connector-api/src/test/python
-python -m pytest modules/ common/ -v 2>&1 | tee test-output.log
+# 创建连接器（显示完整请求 Header/Body + 响应 Header/Body/状态码）
+python3 inspect/connector_create.py
 
-# 4. 退出 venv
-deactivate
+# 查询连接器列表
+python3 inspect/connector_list.py
 
+# 启动连接流
+python3 inspect/flow_start.py
+
+# 静默模式（只输出 PASS/FAIL 一行）
+python3 inspect/connector_create.py --quiet
+```
+
+输出示例（默认）：
+```
+============================================================
+🟢 请求
+  POST http://localhost:18080/open-server/api/v1/connectors
+  Headers: Content-Type: application/json
+  Body: {"nameCn":"IM消息","nameEn":"IM Send Message","connectorType":1}
+============================================================
+🟢 响应 200
+  Headers: Content-Type: application/json
+  Body: {"code":"200","data":{"id":"317311223559356416"},"messageZh":"操作成功"}
+============================================================
+✅ PASS (0.23s)
+```
+
+### 全量回归
+
+```bash
+# 全部 59 个用例，每个显示详细请求/响应
+python3 inspect/all.py
+
+# 全部 59 个用例，只输出摘要
+python3 inspect/all.py --quiet
+```
+
+全量回归自动执行顺序：
+1. 连接器 CRUD + 配置（IT-001~022）
+2. 连接流 CRUD + 启停 + 配置（IT-023~046）
+3. 调试代理（IT-047~048）
+4. HTTP 触发（IT-049~051，connector-api 未启动时跳过）
+5. 契约校验（IT-052~059）
+
+默认输出每条用例的完整交互详情。`--quiet` 模式汇总输出：
+```
+✅✅✅✅✅...✅✅ (59/59 PASS, 0 FAIL, 0 SKIP)
+```
+
+### 自动化测试 + 报告生成
+
+```bash
+# 全量回归 + 生成测试报告
+python3 inspect/all.py --report
+
+# 输出会同时写入 test-report-integration.md
+```
+
+### 清理
+
+全量回归和单接口调试均使用独立的雪花 ID，测试数据自动清理。也可以通过以下命令清理残留：
+
+```bash
+mysql -u openapp -popenapp openapp -e "
+DELETE FROM openplatform_v2_cp_connector_t WHERE name_cn LIKE '%IT_%';
+DELETE FROM openplatform_v2_cp_flow_t WHERE name_cn LIKE '%IT_%';
+"
+```
+
+---
+
+## 六、与现有测试的关系
+
+| 维度 | 已有 Java 测试（test-plan.md） | inspect 真调测试（本方案） |
+|------|-------------------------------|--------------------------|
+| 测试层次 | L2 接口层（MockMvc） | L3 集成测试 |
+| 依赖 | 无（全 Mock） | 需 MySQL + Redis + 服务启动 |
+| 执行速度 | 毫秒级 | 秒级 |
+| 使用方式 | IDE 运行 JUnit | `python3 inspect/xxx.py` 命令行 |
+| 输出 | IDE 测试报告 | 完整请求/响应（默认）/ PASS/FAIL（--quiet）|
+| 文件位置 | `src/test/java/` | `src/test/python/inspect/` |
+| 工具 | JUnit + MockMvc + Mockito | Python 3 + requests（零安装）|
+
+---
+
+## 八、文件清单
+
+| # | 文件名 | 覆盖接口 | 说明 |
+|---|--------|---------|------|
+| 1 | `client.py` | — | 公共模块：BASE_URL + 请求/响应打印 |
+| 2 | `connector_create.py` | #1 | 创建连接器（含异常场景） |
+| 3 | `connector_list.py` | #2 | 查询列表（分页/过滤/搜索/空结果） |
+| 4 | `connector_detail.py` | #3 | 查询详情（正常/不存在/ID类型） |
+| 5 | `connector_update.py` | #4 | 更新（正常/不存在） |
+| 6 | `connector_delete.py` | #5 | 删除（正常/不存在） |
+| 7 | `connector_config_get.py` | #6 | 获取配置（已配置/未配置/不存在） |
+| 8 | `connector_config_set.py` | #7 | 编辑配置（正常/空/null） |
+| 9 | `flow_create.py` | #8 | 创建流（正常/缺nameCn/缺nameEn） |
+| 10 | `flow_list.py` | #9 | 流列表（分页/过滤/搜索/空结果） |
+| 11 | `flow_detail.py` | #10 | 流详情（正常/不存在） |
+| 12 | `flow_update.py` | #11 | 更新流（正常/不存在） |
+| 13 | `flow_delete.py` | #12 | 删除流（正常/不存在） |
+| 14 | `flow_start.py` | #13 | 启动流（正常/重复/不存在） |
+| 15 | `flow_stop.py` | #14 | 停止流（正常/重复/不存在） |
+| 16 | `flow_config_get.py` | #15 | 编排配置（正常/不存在） |
+| 17 | `flow_config_set.py` | #16 | 保存编排（正常/空/null） |
+| 18 | `debug_test_run.py` | #17 | 测试运行（flow不存在/未配置） |
+| 19 | `trigger_invoke.py` | #18 | HTTP触发（无凭证/flow不存在/未运行） |
+| 20 | `contract_response.py` | L4 | 响应格式/BIGINT ID/枚举/时间/camelCase |
+| 21 | `all.py` | #1~#18+L4 | 全量回归执行器 |
+| **合计** | **21 个文件** | **59 个用例** | **零安装零依赖** |
