@@ -91,47 +91,51 @@
 
 ## 3. JSON 定义
 
-> 💡 **v3.0 新增**：所有 `$ref` 引用的共享组件在此聚合。以下 §4 节中的各上下文 Schema 通过 `#/definitions/xxx` 引用这些组件，保证 `$ref` 路径可解析。
->
-> ### §3.0 JSON 字段 ↔ 定义映射
->
-> 为避免「JSON 字段与 JSON 字段定义同名」的歧义，本规范区分两者：
-> - **JSON 字段（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`、`rateLimitConfig`）
-> - **JSON 字段定义（definition key）**：JSON 定义中的组件键名，描述「用什么规则校验」（如 `authConfigDef`、`rateLimitDef`）
->
-> ```mermaid
-> graph LR
->     subgraph Fields["JSON 字段名<br/>（数据侧）"]
->         F1["authConfig<br/>认证 schema 数据"]
->         F2["rateLimitConfig<br/>限流数据"]
->         F3["inputContract<br/>入参 schema 数据"]
->         F4["outputContract<br/>出参 schema 数据"]
->         F5["errorInfo<br/>错误信息数据"]
->         F6["position<br/>画布坐标数据"]
->     end
->
->     subgraph Defs["JSON 字段定义<br/>（规则侧）"]
->         D1["authConfigDef<br/>校验认证类型声明"]
->         D2["rateLimitDef<br/>校验限流配置"]
->         D3["dataContractDef<br/>校验数据契约结构"]
->         D5["errorInfoDef<br/>校验错误详情"]
->         D6["positionDef<br/>校验画布坐标"]
->     end
->
->     F1 -- "$ref" --> D1
->     F2 -- "$ref" --> D2
->     F3 -- "$ref" --> D3
->     F4 -- "$ref" --> D3
->     F5 -- "$ref" --> D5
->     F6 -- "$ref" --> D6
->
->     style Fields fill:#e3f2fd,stroke:#1565c0
->     style Defs fill:#fff3e0,stroke:#ef6c00
-> ```
->
-> **副作用**：以下 JSON 定义中，你会看到 `"authConfig": { "$ref": "#/definitions/authConfigDef" }`——左侧是 JSON 字段，右侧是 JSON 字段定义，两者语义关联但字面不同。
->
-> **v4.0 新增**：本 definitions 聚合段新增 `nodeDataDef` / `triggerDataDef` / `connectorDataDef` / `dataProcessorDataDef` / `exitDataDef` 共 5 个组件，用于 §4.3 orchestrationConfig 中 `node.data` 的按类型校验。
+### 3.1 设计思路
+
+💡 **v3.0 新增**：所有 `$ref` 引用的共享组件在此聚合。以下 §4 节中的各上下文 Schema 通过 `#/definitions/xxx` 引用这些组件，保证 `$ref` 路径可解析。
+
+#### §3.1.1 JSON 字段 ↔ 定义映射
+
+为避免「JSON 字段与 JSON 字段定义同名」的歧义，本规范区分两者：
+- **JSON 字段（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`、`rateLimitConfig`）
+- **JSON 字段定义（definition key）**：JSON 定义中的组件键名，描述「用什么规则校验」（如 `authConfigDef`、`rateLimitDef`）
+
+```mermaid
+graph LR
+    subgraph Fields["JSON 字段名<br/>（数据侧）"]
+        F1["authConfig<br/>认证 schema 数据"]
+        F2["rateLimitConfig<br/>限流数据"]
+        F3["inputContract<br/>入参 schema 数据"]
+        F4["outputContract<br/>出参 schema 数据"]
+        F5["errorInfo<br/>错误信息数据"]
+        F6["position<br/>画布坐标数据"]
+    end
+
+    subgraph Defs["JSON 字段定义<br/>（规则侧）"]
+        D1["authConfigDef<br/>校验认证类型声明"]
+        D2["rateLimitDef<br/>校验限流配置"]
+        D3["dataContractDef<br/>校验数据契约结构"]
+        D5["errorInfoDef<br/>校验错误详情"]
+        D6["positionDef<br/>校验画布坐标"]
+    end
+
+    F1 -- "$ref" --> D1
+    F2 -- "$ref" --> D2
+    F3 -- "$ref" --> D3
+    F4 -- "$ref" --> D3
+    F5 -- "$ref" --> D5
+    F6 -- "$ref" --> D6
+
+    style Fields fill:#e3f2fd,stroke:#1565c0
+    style Defs fill:#fff3e0,stroke:#ef6c00
+```
+
+**副作用**：以下 JSON 定义中，你会看到 `"authConfig": { "$ref": "#/definitions/authConfigDef" }`——左侧是 JSON 字段，右侧是 JSON 字段定义，两者语义关联但字面不同。
+
+**v4.0 新增**：本 definitions 聚合段新增 `nodeDataDef` / `triggerDataDef` / `connectorDataDef` / `dataProcessorDataDef` / `exitDataDef` 共 5 个组件，用于 §4.3 orchestrationConfig 中 `node.data` 的按类型校验。
+
+### 3.2 完整组件 Schema
 
 ```json
 {
@@ -249,7 +253,7 @@
         "message": { "type": "string", "description": "错误描述" },
         "cause": {
           "type": "string",
-          "description": "根因描述，非下游错误时使用（如 'JSON 解析失败：unexpected token at line 3'、'字段映射失败：source 字段不存在'）"
+          "description": "根因描述，非下游错误时使用（如 'JSON 解析失败：unexpected token at line 3'、'字段映射失败：source 字段 ${node_1.msgId} 不存在'）"
         },
         "downstreamStatus": { "type": "integer", "description": "下游 HTTP 状态码（下游调用失败时）" },
         "downstreamBody": { "type": "string", "description": "下游响应体片段（截断到 512 字符）" }
@@ -407,7 +411,7 @@
                 "properties": {
                   "source": {
                     "type": "string",
-                    "pattern": "^(\\$\\{[a-zA-Z0-9_.]+\\}|constant:[a-zA-Z0-9_]+)$",
+                    "pattern": "^(\$\{[a-zA-Z0-9_.]+\}|constant:[a-zA-Z0-9_]+)$",
                     "description": "数据来源表达式。${nodeId.fieldPath} 引用上游节点输出，constant:xxx 为固定值"
                   },
                   "target": {
@@ -446,7 +450,583 @@
 }
 ```
 
----
+### 3.3 字段定义详解
+
+#### 3.3.1 authConfigDef
+
+##### 3.3.1.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:authConfigDef:v1",
+  "title": "authConfigDef",
+  "description": "认证类型声明。校验 JSON 字段 authConfig 的数据结构，声明调用方需携带的认证凭证。type 使用字符串枚举（见 §2.1 例外说明）",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "认证类型枚举（JSON 内嵌字段用字符串，非 TINYINT；参见 §2.1）",
+      "enum": ["SOA", "APIG", "SYSTOKEN", "AKSK", "NONE"]
+    },
+    "fields": {
+      "type": "array",
+      "description": "凭证字段列表，每个元素定义一个凭证字段的完整信息",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "description": "字段名，程序内部标识" },
+          "carrier": { "type": "string", "description": "传递位置", "enum": ["header", "query"] },
+          "fieldName": { "type": "string", "description": "实际携带时的字段名，如 Authorization / X-Sys-Token" },
+          "required": { "type": "boolean", "default": true },
+          "sensitive": { "type": "boolean", "default": false, "description": "运行时脱敏" }
+        },
+        "required": ["name", "carrier", "fieldName"]
+      }
+    }
+  },
+  "required": ["type"]
+}
+```
+
+##### 3.3.1.2 def 的示例数据
+
+```json
+{
+  "type": "SYSTOKEN",
+  "fields": [
+    { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
+  ]
+}
+```
+
+##### 3.3.1.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| type | string | ✅ | 认证类型枚举：`SOA` / `APIG` / `SYSTOKEN` / `AKSK` / `NONE` |
+| fields[] | array | ❌ | 凭证字段列表，每项定义一个凭证字段 |
+| fields[].name | string | ✅ | 字段名，程序内部标识 |
+| fields[].carrier | string | ✅ | 传递位置：`header` / `query` |
+| fields[].fieldName | string | ✅ | 实际携带时的 HTTP 字段名，如 `X-Sys-Token` |
+| fields[].required | boolean | ❌ | 是否必填，默认 `true` |
+| fields[].sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
+
+#### 3.3.2 rateLimitDef
+
+##### 3.3.2.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:rateLimitDef:v1",
+  "title": "rateLimitDef",
+  "description": "限流配置。校验 JSON 字段 rateLimitConfig 的数据结构，触发器和连接器复用同一类型",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "maxQps": {
+      "type": "integer",
+      "description": "每秒最大请求数（1-10000）",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "maxConcurrency": {
+      "type": "integer",
+      "description": "最大并发数（1-1000）",
+      "minimum": 1,
+      "maximum": 1000
+    }
+  }
+}
+```
+
+##### 3.3.2.2 def 的示例数据
+
+```json
+{
+  "maxQps": 100,
+  "maxConcurrency": 10
+}
+```
+
+##### 3.3.2.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
+| maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
+
+#### 3.3.3 dataContractDef
+
+##### 3.3.3.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:dataContractDef:v1",
+  "title": "dataContractDef",
+  "description": "数据契约。校验 JSON 字段 inputContract / outputContract 的数据结构，遵循 JSON Schema draft-07 子集",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "description": "顶层固定为 object",
+      "enum": ["object"]
+    },
+    "properties": {
+      "type": "object",
+      "description": "字段定义，value 为标准 JSON Schema 字段规则",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "description": { "type": "string" },
+          "items": { "type": "object" },
+          "enum": { "type": "array" },
+          "default": {},
+          "minimum": { "type": "number" },
+          "maximum": { "type": "number" }
+        },
+        "required": ["type"]
+      }
+    },
+    "required": {
+      "type": "array",
+      "description": "必填字段列表",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["type", "properties"]
+}
+```
+
+##### 3.3.3.2 def 的示例数据
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sender": {
+      "type": "string",
+      "description": "发送者 ID"
+    },
+    "content": {
+      "type": "string",
+      "description": "消息内容"
+    }
+  },
+  "required": ["sender", "content"]
+}
+```
+
+##### 3.3.3.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| type | string | ✅ | 顶层固定为 `object` |
+| properties | object | ✅ | 字段定义集合，key 为字段名，value 为字段规则 |
+| properties.{key}.type | string | ✅ | 字段类型：`string` / `integer` / `boolean` / `array` / `object` |
+| properties.{key}.description | string | ❌ | 字段描述 |
+| properties.{key}.items | object | ❌ | 数组元素定义（当 type=array 时） |
+| properties.{key}.enum | array | ❌ | 枚举值列表 |
+| properties.{key}.default | any | ❌ | 默认值 |
+| properties.{key}.minimum | number | ❌ | 最小值 |
+| properties.{key}.maximum | number | ❌ | 最大值 |
+| required | string[] | ✅ | 必填字段名列表 |
+
+#### 3.3.4 errorInfoDef
+
+##### 3.3.4.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:errorInfoDef:v1",
+  "title": "errorInfoDef",
+  "description": "错误详情。校验 JSON 字段 errorInfo 的数据结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "code": { "type": "string", "description": "错误码" },
+    "message": { "type": "string", "description": "错误描述" },
+    "cause": {
+      "type": "string",
+      "description": "根因描述，非下游错误时使用（如 'JSON 解析失败：unexpected token at line 3'）"
+    },
+    "downstreamStatus": { "type": "integer", "description": "下游 HTTP 状态码（下游调用失败时）" },
+    "downstreamBody": { "type": "string", "description": "下游响应体片段（截断到 512 字符）" }
+  },
+  "required": ["code", "message"],
+  "oneOf": [
+    { "required": ["cause"], "description": "内部错误" },
+    { "required": ["downstreamStatus"], "description": "下游错误" }
+  ]
+}
+```
+
+##### 3.3.4.2 def 的示例数据
+
+```json
+// 下游调用失败
+{
+  "code": "DOWNSTREAM_UNAVAILABLE",
+  "message": "HTTP 503 服务不可用",
+  "downstreamStatus": 503,
+  "downstreamBody": "Service Unavailable"
+}
+
+// 内部错误
+{
+  "code": "FIELD_MAPPING_FAILED",
+  "message": "字段映射失败",
+  "cause": "source 字段 ${node_1.msgId} 在上游节点输出中不存在"
+}
+```
+
+##### 3.3.4.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| code | string | ✅ | 错误码，如 `DOWNSTREAM_UNAVAILABLE` |
+| message | string | ✅ | 错误描述 |
+| cause | string | ❌ ⚡ | 根因描述（内部错误时必填，满足 oneOf） |
+| downstreamStatus | integer | ❌ ⚡ | 下游 HTTP 状态码（下游错误时必填，满足 oneOf） |
+| downstreamBody | string | ❌ | 下游响应体片段，截断到 512 字符 |
+
+#### 3.3.5 positionDef
+
+##### 3.3.5.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:positionDef:v1",
+  "title": "positionDef",
+  "description": "画布坐标。校验 JSON 字段 position 的数据结构，React Flow (@xyflow/react) 使用浮点坐标",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "x": { "type": "number", "description": "画布 X 坐标" },
+    "y": { "type": "number", "description": "画布 Y 坐标" }
+  }
+}
+```
+
+##### 3.3.5.2 def 的示例数据
+
+```json
+{ "x": 100.0, "y": 200.0 }
+```
+
+##### 3.3.5.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| x | number | ❌ | 画布 X 坐标（浮点数） |
+| y | number | ❌ | 画布 Y 坐标（浮点数） |
+
+#### 3.3.6 nodeDataDef
+
+##### 3.3.6.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:nodeDataDef:v1",
+  "title": "nodeDataDef",
+  "description": "节点业务数据 Schema。按 node.type 区分四种场景，通过 oneOf 确保不同类型的节点携带正确的业务字段。该 Schema 被 §4.3 orchestrationConfig 的 node.data 通过 $ref 引用",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "#/definitions/triggerDataDef",
+      "description": "当 node.type='trigger' 时，data 必须符合 triggerDataDef 结构"
+    },
+    {
+      "$ref": "#/definitions/connectorDataDef",
+      "description": "当 node.type='connector' 时，data 必须符合 connectorDataDef 结构"
+    },
+    {
+      "$ref": "#/definitions/dataProcessorDataDef",
+      "description": "当 node.type='data_processor' 时，data 必须符合 dataProcessorDataDef 结构"
+    },
+    {
+      "$ref": "#/definitions/exitDataDef",
+      "description": "当 node.type='exit' 时，data 必须符合 exitDataDef 结构"
+    }
+  ]
+}
+```
+
+##### 3.3.6.2 def 的示例数据
+
+nodeDataDef 本身是 oneOf 路由定义，没有独立的数据示例。各子类型的示例见对应定义（§3.3.7-3.3.10）。
+
+##### 3.3.6.3 def 字段说明
+
+| 路由条件 | 目标定义 | 说明 |
+|----------|---------|------|
+| `node.type` = `"trigger"` | `triggerDataDef`（§3.3.7） | 触发器节点业务数据 |
+| `node.type` = `"connector"` | `connectorDataDef`（§3.3.8） | 连接器节点业务数据 |
+| `node.type` = `"data_processor"` | `dataProcessorDataDef`（§3.3.9） | 数据处理器节点业务数据 |
+| `node.type` = `"exit"` | `exitDataDef`（§3.3.10） | 出口节点业务数据 |
+
+#### 3.3.7 triggerDataDef
+
+##### 3.3.7.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:triggerDataDef:v1",
+  "title": "triggerDataDef",
+  "description": "触发器节点业务数据。定义 node.type='trigger' 时 node.data 内的数据结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string", "description": "节点中文标签" },
+    "labelEn": { "type": "string", "description": "节点英文标签" },
+    "type": {
+      "type": "string",
+      "description": "触发子类型。定义触发方式",
+      "enum": ["http", "manual", "test"]
+    },
+    "authConfig": {
+      "$ref": "#/definitions/authConfigDef",
+      "description": "HTTP 触发时声明外部调用方需携带的认证凭证类型"
+    },
+    "inputContract": {
+      "$ref": "#/definitions/dataContractDef",
+      "description": "触发请求体的 JSON Schema（HTTP 触发时校验请求体）"
+    },
+    "rateLimitConfig": {
+      "$ref": "#/definitions/rateLimitDef"
+    }
+  },
+  "required": ["type"],
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "http" } }, "required": ["type"] },
+      "then": {
+        "required": ["authConfig", "inputContract"],
+        "description": "HTTP 触发必须声明认证配置和入参契约"
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "manual" } }, "required": ["type"] },
+      "then": {
+        "properties": { "authConfig": false, "inputContract": false },
+        "description": "手动触发不需要认证和入参契约（管理员手动填写参数）"
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "test" } }, "required": ["type"] },
+      "then": {
+        "description": "测试运行使用草稿编排配置，入参由管理员在 wecodesite 中填写模拟数据"
+      }
+    }
+  ]
+}
+```
+
+##### 3.3.7.2 def 的示例数据
+
+```json
+{
+  "labelCn": "接收请求",
+  "labelEn": "Receive Request",
+  "type": "http",
+  "authConfig": {
+    "type": "SYSTOKEN",
+    "fields": [
+      { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+    ]
+  },
+  "inputContract": {
+    "type": "object",
+    "properties": {
+      "sender": { "type": "string", "description": "发送者 ID" },
+      "content": { "type": "string", "description": "消息内容" }
+    },
+    "required": ["sender", "content"]
+  },
+  "rateLimitConfig": { "maxQps": 100 }
+}
+```
+
+##### 3.3.7.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| type | string | ✅ | 触发子类型：`http` / `manual` / `test` |
+| authConfig | object | ❌ ⚡ | 认证配置（HTTP 触发时必填），见 §3.3.1 |
+| inputContract | object | ❌ ⚡ | 入参数据契约（HTTP 触发时必填），见 §3.3.3 |
+| rateLimitConfig | object | ❌ | 限流配置，见 §3.3.2 |
+
+#### 3.3.8 connectorDataDef
+
+##### 3.3.8.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:connectorDataDef:v1",
+  "title": "connectorDataDef",
+  "description": "连接器节点业务数据。定义 node.type='connector' 时 node.data 内的数据结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string", "description": "节点中文标签" },
+    "labelEn": { "type": "string", "description": "节点英文标签" },
+    "connectorVersionId": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{15,19}$",
+      "description": "引用的连接器版本 ID（BIGINT 雪花 ID 转 string，18-20 位数字）"
+    },
+    "inputMapping": {
+      "type": "object",
+      "description": "上游数据字段 → 连接器 inputContract 字段的映射。key 为连接器 inputContract 字段名，value 为表达式（如 ${trigger.sender}）"
+    }
+  },
+  "required": ["connectorVersionId", "inputMapping"]
+}
+```
+
+##### 3.3.8.2 def 的示例数据
+
+```json
+{
+  "labelCn": "发送消息",
+  "labelEn": "Send Message",
+  "connectorVersionId": "1234567890123456789",
+  "inputMapping": {
+    "receiver": "${trigger.sender}",
+    "content": "${trigger.content}"
+  }
+}
+```
+
+##### 3.3.8.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| connectorVersionId | string | ✅ | 引用的连接器版本 ID，雪花 ID 转 string，18-20 位数字 |
+| inputMapping | object | ✅ | 字段映射，key 为 inputContract 字段名，value 为表达式 |
+
+#### 3.3.9 dataProcessorDataDef
+
+##### 3.3.9.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:dataProcessorDataDef:v1",
+  "title": "dataProcessorDataDef",
+  "description": "数据处理器节点业务数据。定义 node.type='data_processor' 时 node.data 内的数据结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string", "description": "节点中文标签" },
+    "labelEn": { "type": "string", "description": "节点英文标签" },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "管道转换配置。data_processor 不改 DAG 拓扑，仅做原地数据转换",
+      "properties": {
+        "fieldMappings": {
+          "type": "array",
+          "description": "字段映射列表。source 支持 ${nodeId.fieldPath} 或 constant:value 表达式",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "type": "string",
+                "pattern": "^(\$\{[a-zA-Z0-9_.]+\}|constant:[a-zA-Z0-9_]+)$",
+                "description": "数据来源表达式。${nodeId.fieldPath} 引用上游节点输出，constant:xxx 为固定值"
+              },
+              "target": {
+                "type": "string",
+                "description": "目标字段路径，如 result.id / result.status"
+              }
+            },
+            "required": ["source", "target"]
+          }
+        }
+      }
+    }
+  },
+  "required": ["config"]
+}
+```
+
+##### 3.3.9.2 def 的示例数据
+
+```json
+{
+  "labelCn": "格式化消息",
+  "labelEn": "Format Message",
+  "config": {
+    "fieldMappings": [
+      { "source": "${node_1.msgId}", "target": "result.id" },
+      { "source": "constant:success", "target": "result.status" }
+    ]
+  }
+}
+```
+
+##### 3.3.9.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| config | object | ✅ | 管道转换配置 |
+| config.fieldMappings[] | array | ✅ | 字段映射列表，至少 1 项 |
+| config.fieldMappings[].source | string | ✅ | 数据来源表达式：`${nodeId.fieldPath}` 或 `constant:xxx` |
+| config.fieldMappings[].target | string | ✅ | 目标字段路径，如 `result.id` |
+
+#### 3.3.10 exitDataDef
+
+##### 3.3.10.1 def
+
+```json
+{
+  "$id": "urn:openapp:schema:exitDataDef:v1",
+  "title": "exitDataDef",
+  "description": "出口节点业务数据。定义 node.type='exit' 时 node.data 内的数据结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string", "description": "节点中文标签" },
+    "labelEn": { "type": "string", "description": "节点英文标签" },
+    "outputFields": {
+      "type": "array",
+      "description": "对外暴露的返回值字段列表（如 ['result.msgId', 'result.code']）",
+      "items": { "type": "string" },
+      "minItems": 1
+    }
+  },
+  "required": ["outputFields"]
+}
+```
+
+##### 3.3.10.2 def 的示例数据
+
+```json
+{
+  "labelCn": "返回结果",
+  "labelEn": "Return Result",
+  "outputFields": ["result.id", "result.status"]
+}
+```
+
+##### 3.3.10.3 def 字段说明
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| outputFields[] | string[] | ✅ | 对外暴露的返回值字段路径列表，至少 1 项 |
+
 
 ## 4. 各上下文 Schema 定义
 
@@ -454,7 +1034,7 @@
 
 ### 4.1 触发器 — triggerDataDef（node.data 子结构）
 
-该 Schema 定义了 `orchestrationConfig.nodes` 中 `type="trigger"` 节点 `node.data` 内的配置结构。
+该 Schema 定义了 `orchestrationConfig.nodes` 中 `type="trigger"` 节点 `node.data` 内的配置结构。与 §3.3.7 相同。
 
 > 💡 **trigger ⇄ entry 命名映射**：编排配置中的 `type="trigger"` 对应执行记录 `execution_step_t.node_type = 1 (entry)`。两者语义等价——"trigger" 强调配置视角（声明触发方式），"entry" 强调运行时视角（DAG 入口节点）。跨文档命名已统一见 plan-db.md §0.7 枚举表。
 
@@ -569,6 +1149,7 @@
 
 ### 4.2 连接器 — connectionConfig
 
+> 本配置中引用的各字段定义详见 §3.3：`authConfig`（§3.3.1）、`rateLimitConfig`（§3.3.2）、`inputContract`/`outputContract`（§3.3.3）、`errorInfo`（§3.3.4）、`position`（§3.3.5）。
 > 💡 此配置独立存储于 `connector_version_t.connection_config`，不受 React Flow 格式约束。该 JSON 为连接器版本自身的对外 API 声明，不是 React Flow 画布产物。
 
 **Schema 定义**：
@@ -924,7 +1505,7 @@ flowchart LR
 
 > 执行数据的结构由对应节点的 inputContract / outputContract 动态决定，不在数据库层约束。errorInfo 统一使用结构化格式。
 
-**errorInfo Schema 定义**（同 §3 definitions）：
+**errorInfo Schema 定义**（同 §3.3.4）：
 
 ```json
 {
@@ -989,8 +1570,10 @@ flowchart LR
 ### 4.5 Node 业务数据定义（nodeDataDef）
 
 > 💡 **v4.0 新增**：独立抽取 `nodeDataDef` 用于 `node.data` 的按类型校验。该 Schema 在 §3 definitions 中定义，§4.3 orchestrationConfig 的 `node.data` 通过 `$ref` 引用。
+>
+> 与 §3.3.6 相同。
 
-**Schema 定义**（完整定义见 §3 definitions → `nodeDataDef`）：
+**Schema 定义**（完整定义见 §3.2 → `nodeDataDef`，详细说明见 §3.3.6）：
 
 ```json
 {
