@@ -320,6 +320,21 @@ connector-api/src/test/python/
 └──────────────────────────────────────────────┘
 ```
 
+### 前置依赖
+
+| 依赖 | 版本要求 | 安装方式 |
+|------|---------|---------|
+| Python 3 | >= 3.10 | 系统自带 |
+| MySQL | 8.0+ | `docker run -p 3306:3306 -e MYSQL_ROOT_PASSWORD=root mysql:8` |
+| Redis | 7.0+ | `docker run -p 6379:6379 redis:7` |
+| Java | 17+ | 项目要求 |
+| Maven | 3.8+ | 项目要求 |
+
+**Python 包**（在 venv 中安装）:
+- `requests` — HTTP 客户端
+- `PyMySQL` — MySQL 直连（数据准备/清理）
+- `pytest` — 测试框架
+
 ### 启动方式
 
 ```bash
@@ -333,13 +348,34 @@ cd connector-api && nohup mvn spring-boot:run > logs/server.log 2>&1 &
 curl -s http://localhost:18080/open-server/actuator/health
 curl -s http://localhost:18180/actuator/health
 
-# 安装 Python 依赖
+# ---- Python 环境准备（venv） ----
+# 注意: Ubuntu 24.04 / Python 3.12 禁止 pip 直接安装系统级包 (PEP 668)
+# 必须使用虚拟环境
+
+# 1. 创建 venv（项目本地）
+python3 -m venv open-server/src/test/python/.venv
+
+# 2. 激活 venv 并安装依赖
+source open-server/src/test/python/.venv/bin/activate
 pip install requests PyMySQL pytest
 
-# 执行测试
-cd open-server/src/test/python && python -m pytest -v 2>&1 | tee test-output.log
-cd connector-api/src/test/python && python -m pytest -v 2>&1 | tee test-output.log
+# 3. 执行测试
+# open-server 接口测试
+cd open-server/src/test/python
+python -m pytest modules/ -v 2>&1 | tee test-output.log
+
+# connector-api 接口测试（#18 + 契约）
+cd ../../../connector-api/src/test/python
+python -m pytest modules/ common/ -v 2>&1 | tee test-output.log
+
+# 4. 退出 venv
+deactivate
+
+# ---- 备选：独立脚本方式（不需要 venv） ----
+# 如果无法创建 venv，可使用独立脚本（基于内置 unittest）
+python3 open-server/src/test/python/run_integration_tests.py
 ```
+
 
 ---
 

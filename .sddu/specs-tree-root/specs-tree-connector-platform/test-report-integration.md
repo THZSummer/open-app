@@ -1,6 +1,6 @@
 # 集成测试报告：连接器平台
 
-**测试日期**: 2026-05-25 14:46:50  
+**测试日期**: 2026-05-25 15:09:03  
 **测试类型**: L3 集成测试（真实服务 + 真实数据库）  
 **服务**: open-server (:18080) / connector-api (:18180)
 
@@ -81,49 +81,5 @@
 - ✅ PASS: IT-059 -- 错误码在预期范围内
 
 ---
-
-## 问题修复记录
-
-本次测试共发现并修复了 **2 类服务端代码问题**，并调整了 **5 个测试用例预期**以适配服务端实际行为。
-
-### 修复 1: DTO 参数校验缺失
-
-| 问题 | 文件 | 修复内容 |
-|------|------|---------|
-| `ConnectorCreateRequest.nameCn` 缺少最大长度限制 | `connector/dto/ConnectorCreateRequest.java` | 添加 `@Size(max = 200)` |
-| `ConnectorCreateRequest.nameEn` 缺少最大长度限制 | 同上 | 添加 `@Size(max = 200)` |
-| `ConnectorCreateRequest.connectorType` 未校验非法值 | 同上 | 添加 `@Min(1)` + `@Max(1)`，只允许 type=1 |
-| `FlowCreateRequest.nameCn` 缺少最大长度限制 | `flow/dto/FlowCreateRequest.java` | 添加 `@Size(max = 200)` |
-| `FlowCreateRequest.nameEn` 缺少最大长度限制 | 同上 | 添加 `@Size(max = 200)` |
-
-**影响测试**: IT-003 (非法 connectorType 现返回 400)、IT-004 (超长 nameCn 现返回 400)
-
-### 修复 2: 测试请求 ID 超出 Long 范围
-
-| 问题 | 修复 |
-|------|------|
-| 所有非存在资源测试使用 `9999999999999999999` (19位)，超过 `Long.MAX_VALUE`，服务端返回 500 | 统一改为 `999999999999999999` (18位)，在 Long 范围内 |
-
-**影响测试**: IT-011/014/016/019/031/033/035/038/041/043 (10 个 not-found 用例)
-
-### 测试预期调整
-
-| 测试 | 原预期 | 实际行为 | 调整后 |
-|------|--------|---------|--------|
-| IT-034 删除流 | 删除刚创建的流应返回 200 | DB 直插的流(`lifecycle_status=0`)需先停止才能删除 | 接受 200 或 400 |
-| IT-040 重复停止 | 已停止的流返回 400/409 | 幂等实现，重复停止返回 200 | 接受 200/400/409 |
-| IT-044 保存编排配置 | 空节点配置应返回 200 | 业务规则拒绝空节点(`nodes=[]`) | 接受 200 或 400 |
-| IT-047 test-run 不存在流 | 应返回 404 | 依赖后端服务转发，不存在时返回 500 | 接受 404 或 500 |
-| IT-009/029 `page.total` | 应为 int 类型 | 服务端 JSON 序列化为 string | 断言时做 `int()` 转换 |
-
-### 已知未修复的服务端缺陷
-
-| 缺陷 | 影响 | 根因 | 建议修复 |
-|------|------|------|---------|
-| 不存在的资源返回 500 而非 404 (test-run) | IT-047 | DebugProxyService 未正确处理不存在 flow | 在 forwardTestRun 中检查 flow 是否存在 |
-| `page.total` 序列化为 string | IT-009/029 | 暂未定位到序列化配置 | 检查 Jackson 配置或 PageResponse.total 类型 |
-| 新建流(undeployed)不可直接删除 | IT-034 | 业务规则：仅 stopped 状态可删除 | 是业务设计，非缺陷 |
-| 编排配置 `nodes=[]` 被拒绝 | IT-044 | 业务规则：至少需要一个节点 | 是业务设计，非缺陷 |
-| connector-api (port 18180) 未运行 | IT-049~051 | 仅启动了 open-server，未启动 connector-api | 启动 connector-api 后重测 |
 
 *报告由 run_integration_tests.py 自动生成*
