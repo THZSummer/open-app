@@ -1,8 +1,7 @@
 package com.xxx.it.works.wecode.v2.common.annotation;
 
 import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
-import com.xxx.it.works.wecode.v2.common.enums.OperateObjectEnum;
-import com.xxx.it.works.wecode.v2.common.enums.OperateTypeEnum;
+import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 
 import java.lang.annotation.*;
 
@@ -14,14 +13,13 @@ import java.lang.annotation.*;
  *
  * <p>使用示例：</p>
  * <pre>
- * &#64;AuditLog(operateType = OperateTypeEnum.CREATE,
- *           operateObject = OperateObjectEnum.API,
- *           descCn = "注册API",
- *           descEn = "Register API")
+ * &#64;AuditLog(OperateEnum.SUBSCRIBE_API_PERMISSION, resourceIdParam = "appId")
+ * &#64;AuditLog(OperateEnum.WITHDRAW_API_PERMISSION)
+ * &#64;AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION, appIdSource = AppIdSourceEnum.ENTITY)
  * </pre>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 2.0.0
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -29,40 +27,25 @@ import java.lang.annotation.*;
 public @interface AuditLog {
 
     /**
-     * 操作类型
+     * 操作枚举值（包含 operateType / operateObject / descCn / descEn）
      */
-    OperateTypeEnum operateType();
+    OperateEnum value();
 
     /**
-     * 操作对象
-     */
-    OperateObjectEnum operateObject();
-
-    /**
-     * 中文描述（写入 operate_desc_cn 字段）
-     */
-    String descCn() default "";
-
-    /**
-     * 英文描述（写入 operate_desc_en 字段）
-     */
-    String descEn() default "";
-
-    /**
-     * app_id 取值方式
+     * app_id 来源策略
      * <ul>
-     *   <li>PLATFORM：固定值 "platform"（资源管理接口）</li>
-     *   <li>PATH_VARIABLE：从方法参数 appId 获取（权限订阅接口）</li>
+     *   <li>PATH_VARIABLE（默认）：从方法参数 appId 直接获取（已是 openplatform_app_t.app_id）</li>
+     *   <li>ENTITY：从实体快照中提取 numeric app_id，再通过 AppContextResolver.toExternalId() 转换</li>
      * </ul>
      */
-    AppIdSourceEnum appIdSource() default AppIdSourceEnum.PLATFORM;
+    AppIdSourceEnum appIdSource() default AppIdSourceEnum.PATH_VARIABLE;
 
     /**
      * 资源 ID 参数名
      *
      * <p>用于从方法参数中提取资源 ID，以加载实体快照（before_data / after_data）</p>
      * <p>默认 "id" 匹配现有 Controller 的 @PathVariable String id</p>
-     * <p>CREATE 操作忽略此参数（实体尚未存在）</p>
+     * <p>SUBSCRIBE 操作设为 "appId"（批量操作无单一实体 ID）</p>
      */
     String resourceIdParam() default "id";
 }

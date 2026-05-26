@@ -1,9 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.callback.controller;
 
-import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
-import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
-import com.xxx.it.works.wecode.v2.common.enums.OperateObjectEnum;
-import com.xxx.it.works.wecode.v2.common.enums.OperateTypeEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.callback.dto.*;
 import com.xxx.it.works.wecode.v2.modules.callback.service.CallbackService;
@@ -105,11 +101,6 @@ public class CallbackController {
      */
     @PlatformAdminPermission
     @PostMapping
-    @AuditLog(operateType = OperateTypeEnum.CREATE,
-              operateObject = OperateObjectEnum.CALLBACK,
-              descCn = "注册回调",
-              descEn = "Register Callback",
-              appIdSource = AppIdSourceEnum.PLATFORM)
     @Operation(summary = "#23 注册回调",
                description = "注册回调成功，同时创建权限资源。Scope 格式：callback:{module}:{identifier}")
     public ApiResponse<CallbackResponse> createCallback(
@@ -138,12 +129,6 @@ public class CallbackController {
      */
     @PlatformAdminPermission
     @PutMapping("/{id}")
-    @AuditLog(operateType = OperateTypeEnum.UPDATE,
-              operateObject = OperateObjectEnum.CALLBACK,
-              descCn = "更新回调",
-              descEn = "Update Callback",
-              appIdSource = AppIdSourceEnum.PLATFORM,
-              resourceIdParam = "id")
     @Operation(summary = "#24 更新回调",
                description = "更新回调成功")
     public ApiResponse<CallbackResponse> updateCallback(
@@ -167,12 +152,6 @@ public class CallbackController {
      */
     @PlatformAdminPermission
     @DeleteMapping("/{id}")
-    @AuditLog(operateType = OperateTypeEnum.DELETE,
-              operateObject = OperateObjectEnum.CALLBACK,
-              descCn = "删除回调",
-              descEn = "Delete Callback",
-              appIdSource = AppIdSourceEnum.PLATFORM,
-              resourceIdParam = "id")
     @Operation(summary = "#25 删除回调",
                description = "删除回调，检查订阅关系。已订阅的回调无法删除，需先取消所有订阅。")
     public ApiResponse<Void> deleteCallback(
@@ -195,12 +174,6 @@ public class CallbackController {
      */
     @PlatformAdminPermission
     @PostMapping("/{id}/withdraw")
-    @AuditLog(operateType = OperateTypeEnum.WITHDRAW,
-              operateObject = OperateObjectEnum.CALLBACK,
-              descCn = "撤回回调",
-              descEn = "Withdraw Callback",
-              appIdSource = AppIdSourceEnum.PLATFORM,
-              resourceIdParam = "id")
     @Operation(summary = "#26 撤回审核中的回调",
                description = "仅状态为待审的回调可撤回，撤回后状态变为草稿")
     public ApiResponse<CallbackResponse> withdrawCallback(

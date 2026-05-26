@@ -1,9 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.event.controller;
 
-import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
-import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
-import com.xxx.it.works.wecode.v2.common.enums.OperateObjectEnum;
-import com.xxx.it.works.wecode.v2.common.enums.OperateTypeEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.event.dto.*;
 import com.xxx.it.works.wecode.v2.modules.event.service.EventService;
@@ -103,11 +99,6 @@ public class EventController {
      */
     @PlatformAdminPermission
     @PostMapping
-    @AuditLog(operateType = OperateTypeEnum.CREATE,
-              operateObject = OperateObjectEnum.EVENT,
-              descCn = "注册事件",
-              descEn = "Register Event",
-              appIdSource = AppIdSourceEnum.PLATFORM)
     @Operation(summary = "#17 注册事件",
                description = "注册事件成功，同时创建权限资源，Topic 唯一性校验")
     public ApiResponse<EventResponse> createEvent(
@@ -131,12 +122,6 @@ public class EventController {
      */
     @PlatformAdminPermission
     @PutMapping("/{id}")
-    @AuditLog(operateType = OperateTypeEnum.UPDATE,
-              operateObject = OperateObjectEnum.EVENT,
-              descCn = "更新事件",
-              descEn = "Update Event",
-              appIdSource = AppIdSourceEnum.PLATFORM,
-              resourceIdParam = "id")
     @Operation(summary = "#18 更新事件",
                description = "更新事件成功")
     public ApiResponse<EventResponse> updateEvent(
@@ -160,12 +145,6 @@ public class EventController {
      */
     @PlatformAdminPermission
     @DeleteMapping("/{id}")
-    @AuditLog(operateType = OperateTypeEnum.DELETE,
-              operateObject = OperateObjectEnum.EVENT,
-              descCn = "删除事件",
-              descEn = "Delete Event",
-              appIdSource = AppIdSourceEnum.PLATFORM,
-              resourceIdParam = "id")
     @Operation(summary = "#19 删除事件",
                description = "删除事件，检查订阅关系")
     public ApiResponse<Void> deleteEvent(
@@ -188,12 +167,6 @@ public class EventController {
      */
     @PlatformAdminPermission
     @PostMapping("/{id}/withdraw")
-    @AuditLog(operateType = OperateTypeEnum.WITHDRAW,
-              operateObject = OperateObjectEnum.EVENT,
-              descCn = "撤回事件",
-              descEn = "Withdraw Event",
-              appIdSource = AppIdSourceEnum.PLATFORM,
-              resourceIdParam = "id")
     @Operation(summary = "#20 撤回事件",
                description = "撤回审核中的事件")
     public ApiResponse<EventResponse> withdrawEvent(
