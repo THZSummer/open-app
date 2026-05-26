@@ -88,7 +88,7 @@ public class PermissionController {
      * #29 申请 API 权限（支持批量）
      */
     @PostMapping("/service/open/v2/apps/{appId}/apis/subscribe")
-    @AuditLog(OperateEnum.SUBSCRIBE_API_PERMISSION, resourceIdParam = "appId")
+    @AuditLog(value = OperateEnum.SUBSCRIBE_API_PERMISSION)
     @Operation(summary = "#29 申请 API 权限",
                description = "申请 API 权限，支持批量提交，每条权限申请生成独立审批单")
     public ApiResponse<PermissionSubscribeResponse> subscribeApiPermissions(
@@ -106,7 +106,7 @@ public class PermissionController {
      * #30 撤回审核中的 API 权限申请
      */
     @PostMapping("/service/open/v2/apps/{appId}/apis/{id}/withdraw")
-    @AuditLog(OperateEnum.WITHDRAW_API_PERMISSION)
+    @AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION)
     @Operation(summary = "#30 撤回 API 权限申请",
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawApiSubscription(
@@ -125,7 +125,7 @@ public class PermissionController {
      * #31 删除 API 权限订阅记录
      */
     @DeleteMapping("/service/open/v2/apps/{appId}/apis/{id}")
-    @AuditLog(OperateEnum.DELETE_API_PERMISSION)
+    @AuditLog(value = OperateEnum.DELETE_API_PERMISSION)
     @Operation(summary = "#31 删除 API 权限订阅记录",
                description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
     public ApiResponse<WithdrawResponse> deleteApiSubscription(
@@ -196,7 +196,7 @@ public class PermissionController {
      * #34 申请事件权限（支持批量）
      */
     @PostMapping("/service/open/v2/apps/{appId}/events/subscribe")
-    @AuditLog(OperateEnum.SUBSCRIBE_EVENT_PERMISSION, resourceIdParam = "appId")
+    @AuditLog(value = OperateEnum.SUBSCRIBE_EVENT_PERMISSION)
     @Operation(summary = "#34 申请事件权限",
                description = "申请事件权限，支持批量提交")
     public ApiResponse<PermissionSubscribeResponse> subscribeEventPermissions(
@@ -214,7 +214,7 @@ public class PermissionController {
      * #35 配置事件消费参数
      */
     @PutMapping("/service/open/v2/apps/{appId}/events/{id}/config")
-    @AuditLog(OperateEnum.CONFIG_EVENT_PERMISSION)
+    @AuditLog(value = OperateEnum.CONFIG_EVENT_PERMISSION)
     @Operation(summary = "#35 配置事件消费参数",
                description = "配置事件消费参数（通道/地址/认证）")
     public ApiResponse<WithdrawResponse> configEventSubscription(
@@ -234,7 +234,7 @@ public class PermissionController {
      * #36 撤回审核中的事件权限申请
      */
     @PostMapping("/service/open/v2/apps/{appId}/events/{id}/withdraw")
-    @AuditLog(OperateEnum.WITHDRAW_EVENT_PERMISSION)
+    @AuditLog(value = OperateEnum.WITHDRAW_EVENT_PERMISSION)
     @Operation(summary = "#36 撤回事件权限申请",
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawEventSubscription(
@@ -253,7 +253,7 @@ public class PermissionController {
      * #37 删除事件权限订阅记录
      */
     @DeleteMapping("/service/open/v2/apps/{appId}/events/{id}")
-    @AuditLog(OperateEnum.DELETE_EVENT_PERMISSION)
+    @AuditLog(value = OperateEnum.DELETE_EVENT_PERMISSION)
     @Operation(summary = "#37 删除事件权限订阅记录",
                description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
     public ApiResponse<WithdrawResponse> deleteEventSubscription(
@@ -324,7 +324,7 @@ public class PermissionController {
      * #40 申请回调权限（支持批量）
      */
     @PostMapping("/service/open/v2/apps/{appId}/callbacks/subscribe")
-    @AuditLog(OperateEnum.SUBSCRIBE_CALLBACK_PERMISSION, resourceIdParam = "appId")
+    @AuditLog(value = OperateEnum.SUBSCRIBE_CALLBACK_PERMISSION)
     @Operation(summary = "#40 申请回调权限",
                description = "申请回调权限，支持批量提交")
     public ApiResponse<PermissionSubscribeResponse> subscribeCallbackPermissions(
@@ -342,7 +342,7 @@ public class PermissionController {
      * #41 配置回调消费参数
      */
     @PutMapping("/service/open/v2/apps/{appId}/callbacks/{id}/config")
-    @AuditLog(OperateEnum.CONFIG_CALLBACK_PERMISSION)
+    @AuditLog(value = OperateEnum.CONFIG_CALLBACK_PERMISSION)
     @Operation(summary = "#41 配置回调消费参数",
                description = "配置回调消费参数")
     public ApiResponse<WithdrawResponse> configCallbackSubscription(
@@ -362,7 +362,7 @@ public class PermissionController {
      * #42 撤回审核中的回调权限申请
      */
     @PostMapping("/service/open/v2/apps/{appId}/callbacks/{id}/withdraw")
-    @AuditLog(OperateEnum.WITHDRAW_CALLBACK_PERMISSION)
+    @AuditLog(value = OperateEnum.WITHDRAW_CALLBACK_PERMISSION)
     @Operation(summary = "#42 撤回回调权限申请",
                description = "撤回审核中的申请")
     public ApiResponse<WithdrawResponse> withdrawCallbackSubscription(
@@ -381,7 +381,7 @@ public class PermissionController {
      * #43 删除回调权限订阅记录
      */
     @DeleteMapping("/service/open/v2/apps/{appId}/callbacks/{id}")
-    @AuditLog(OperateEnum.DELETE_CALLBACK_PERMISSION)
+    @AuditLog(value = OperateEnum.DELETE_CALLBACK_PERMISSION)
     @Operation(summary = "#43 删除回调权限订阅记录",
                description = "删除终态订阅记录（已授权/已拒绝/已取消），审核中的申请不支持删除")
     public ApiResponse<WithdrawResponse> deleteCallbackSubscription(

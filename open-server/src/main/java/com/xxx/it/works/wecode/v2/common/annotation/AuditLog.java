@@ -13,13 +13,13 @@ import java.lang.annotation.*;
  *
  * <p>使用示例：</p>
  * <pre>
- * &#64;AuditLog(OperateEnum.SUBSCRIBE_API_PERMISSION, resourceIdParam = "appId")
- * &#64;AuditLog(OperateEnum.WITHDRAW_API_PERMISSION)
+ * &#64;AuditLog(value = OperateEnum.SUBSCRIBE_API_PERMISSION)
+ * &#64;AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION)
  * &#64;AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION, appIdSource = AppIdSourceEnum.ENTITY)
  * </pre>
  *
  * @author SDDU Build Agent
- * @version 2.0.0
+ * @version 2.1.0
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -45,7 +45,8 @@ public @interface AuditLog {
      *
      * <p>用于从方法参数中提取资源 ID，以加载实体快照（before_data / after_data）</p>
      * <p>默认 "id" 匹配现有 Controller 的 @PathVariable String id</p>
-     * <p>SUBSCRIBE 操作设为 "appId"（批量操作无单一实体 ID）</p>
+     * <p>SUBSCRIBE 操作无需指定（批量操作无单一实体 ID，resourceId 为 null，
+     * afterData 从 ApiResponse.data 提取响应对象）</p>
      */
     String resourceIdParam() default "id";
 }

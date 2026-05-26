@@ -1,6 +1,6 @@
 # Open-Server 审计日志技术方案
 
-> 版本：v2.2.0 | 日期：2026-05-26 | 作者：SDDU Build Agent
+> 版本：v2.3.0 | 日期：2026-05-26 | 作者：SDDU Build Agent
 
 ---
 
@@ -91,10 +91,10 @@ Client Request
 PermissionController Method (@AuditLog)
     |
     v
-OperateLogAspect (@Around)
+OperateLogV2Aspect (@Around)
     |-- 1. 从注解获取 OperateEnum → 解析 operateType / operateObject / descCn / descEn
     |-- 2. 从方法参数提取资源 ID (resourceIdParam)
-    |-- 3. 加载 before_data (WITHDRAW/DELETE/CONFIG → subscriptionMapper.selectById)
+    |-- 3. 加载 before_data (WITHDRAW/DELETE/CONFIG → EntitySnapshotLoader 策略路由)
     |-- 4. 解析 app_id (openplatform_app_t.app_id)
     |       |-- PATH_VARIABLE: 直接从方法参数 {appId} 获取（已是 varchar 外部 ID）
     |       |-- ENTITY: 从 before_data 提取 numeric app_id → AppContextResolver.toExternalId() 转换
@@ -102,8 +102,8 @@ OperateLogAspect (@Around)
     |       |-- 成功: 继续
     |       |-- 失败: 记录 status=0, 重新抛出异常
     |-- 6. 加载 after_data
-    |       |-- SUBSCRIBE: null (批量操作无单一实体)
-    |       |-- WITHDRAW/CONFIG: subscriptionMapper.selectById 重新查询
+    |       |-- SUBSCRIBE: 从 ApiResponse.data 提取响应对象 JSON（含创建的订阅记录）
+    |       |-- WITHDRAW/CONFIG: EntitySnapshotLoader 重新查询
     |       |-- DELETE: null (实体已删除)
     |-- 7. 提取 IP (X-Forwarded-For -> X-Real-IP -> getRemoteAddr)
     |-- 8. 提取用户 (UserContextHolder.getUserName())
@@ -123,7 +123,7 @@ OperateLogMapper.insert() -> openplateform_operate_log_t
 | 切面 | 职责 | 优先级 |
 |------|------|:------:|
 | `AuditLogAspect` | 连接流 SLF4J 日志（startFlow/stopFlow/deleteFlow） | - |
-| `OperateLogAspect` | 操作日志 DB 持久化（11 个权限订阅接口） | `@Order(2)` |
+| `OperateLogV2Aspect` | 操作日志 DB 持久化（11 个权限订阅接口） | `@Order(2)` |
 
 两个切面互不影响，各自独立运行。
 
@@ -143,13 +143,16 @@ OperateLogMapper.insert() -> openplateform_operate_log_t
 | 6 | `resources/mapper/OperateLogMapper.xml` | 不变 | Mapper XML |
 | 7 | `common/config/AsyncConfig.java` | 不变 | 线程池配置 |
 | 8 | `modules/auditlog/service/AuditLogService.java` | 不变 | 异步持久化服务 |
-| 9 | `common/interceptor/OperateLogAspect.java` | 修改 | 移除 ApiMapper/EventMapper/CallbackMapper，支持两种 appId 策略 |
-| 10 | `modules/permission/controller/PermissionController.java` | 修改 | 11 个 @AuditLog 改用 OperateEnum |
-| 11 | `modules/api/controller/ApiController.java` | **回退** | 移除 4 个 @AuditLog |
-| 12 | `modules/event/controller/EventController.java` | **回退** | 移除 4 个 @AuditLog |
-| 13 | `modules/callback/controller/CallbackController.java` | **回退** | 移除 4 个 @AuditLog |
-| 14 | `common/enums/OperateTypeEnum.java` | **删除** | 合并入 OperateEnum |
-| 15 | `common/enums/OperateObjectEnum.java` | **删除** | 合并入 OperateEnum |
+| 9 | `common/snapshot/EntitySnapshotLoader.java` | **新建** | 实体快照加载接口（策略抽象） |
+| 10 | `common/snapshot/SubscriptionSnapshotLoader.java` | **新建** | 订阅表快照加载实现 |
+| 11 | `common/snapshot/EntitySnapshotLoaderFactory.java` | **新建** | 策略工厂（根据 operateObject 路由） |
+| 12 | `common/interceptor/OperateLogV2Aspect.java` | **重命名** | 原 OperateLogAspect 重命名；移除 subscriptionMapper 直接依赖，改用 EntitySnapshotLoaderFactory；新增 extractEntityFromResult() |
+| 13 | `modules/permission/controller/PermissionController.java` | 修改 | 11 个 @AuditLog 添加 `value =`；SUBSCRIBE 移除 `resourceIdParam = "appId"` |
+| 14 | `modules/api/controller/ApiController.java` | **回退** | 移除 4 个 @AuditLog |
+| 15 | `modules/event/controller/EventController.java` | **回退** | 移除 4 个 @AuditLog |
+| 16 | `modules/callback/controller/CallbackController.java` | **回退** | 移除 4 个 @AuditLog |
+| 17 | `common/enums/OperateTypeEnum.java` | **删除** | 合并入 OperateEnum |
+| 18 | `common/enums/OperateObjectEnum.java` | **删除** | 合并入 OperateEnum |
 
 ---
 
@@ -216,10 +219,12 @@ public enum OperateEnum {
 
     /**
      * 判断是否需要加载 after_data 实体快照
+     *
+     * <p>SUBSCRIBE: 从 ApiResponse.data 提取创建的订阅记录</p>
+     * <p>DELETE: 操作后实体已删除，无需加载</p>
      */
     public boolean needsAfterData() {
-        return !"SUBSCRIBE".equals(operateType)
-                && !"DELETE".equals(operateType);
+        return !"DELETE".equals(operateType);
     }
 }
 ```
@@ -337,7 +342,8 @@ public @interface AuditLog {
      *
      * <p>用于从方法参数中提取资源 ID，加载实体快照（before_data / after_data）</p>
      * <p>默认 "id" 匹配 @PathVariable String id</p>
-     * <p>SUBSCRIBE 操作设为 "appId"（批量操作无单一实体 ID）</p>
+     * <p>SUBSCRIBE 操作无需指定（批量操作无单一实体 ID，resourceId 为 null，
+     * afterData 从 ApiResponse.data 提取响应对象）</p>
      */
     String resourceIdParam() default "id";
 }
@@ -346,9 +352,9 @@ public @interface AuditLog {
 **使用示例**：
 
 ```java
-// 路径含 {appId}：直接从参数获取（默认策略）
-@AuditLog(OperateEnum.SUBSCRIBE_API_PERMISSION, resourceIdParam = "appId")
-@AuditLog(OperateEnum.WITHDRAW_API_PERMISSION)       // appIdSource 默认 PATH_VARIABLE
+// 路径含 {appId}：直接从参数获取（默认策略），使用 value = 语法
+@AuditLog(value = OperateEnum.SUBSCRIBE_API_PERMISSION)        // SUBSCRIBE 无需 resourceIdParam
+@AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION)         // appIdSource 默认 PATH_VARIABLE
 
 // 路径无 {appId}：从实体快照获取（扩展用法）
 @AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION,
@@ -489,27 +495,28 @@ public class AuditLogService {
 | 内部 try-catch | `log.error()` | 异常不向调用方传播 |
 | `IdGeneratorStrategy` | 雪花算法 | 分布式唯一 ID |
 
-### 5.8 OperateLogAspect -- AOP 切面（简化）
+### 5.8 OperateLogV2Aspect -- AOP 切面（重命名 + 可扩展）
 
 ```java
 @Aspect
 @Component
 @RequiredArgsConstructor
 @Order(2)
-public class OperateLogAspect {
+public class OperateLogV2Aspect {
 
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
-    private final SubscriptionMapper subscriptionMapper;
+    private final EntitySnapshotLoaderFactory snapshotLoaderFactory;
     private final AppContextResolver appContextResolver;  // 用于 ENTITY 策略的 appId 转换
 }
 ```
 
-**相比 v1.0 的变化**：
-- 移除 `ApiMapper`、`EventMapper`、`CallbackMapper` 依赖（资源管理类接口不再审计）
+**相比 v2.2 的变化**：
+- 类名从 `OperateLogAspect` 重命名为 `OperateLogV2Aspect`（避免与已有类冲突）
+- 移除 `SubscriptionMapper` 直接依赖，改用 `EntitySnapshotLoaderFactory` 策略路由
+- 新增 `extractEntityFromResult()` 方法，SUBSCRIBE 操作从返回值提取 afterData
 - 使用 `OperateEnum` 替代分散的 operateType / operateObject 判断
 - 保留 `AppIdSourceEnum` 双策略支持（PATH_VARIABLE / ENTITY），确保可扩展性
-- 新增 `AppContextResolver` 依赖，用于 ENTITY 策略中将 numeric internalId 转换为 varchar externalId
 
 **依赖说明**：
 
@@ -517,8 +524,80 @@ public class OperateLogAspect {
 |------|------|
 | `AuditLogService` | 异步保存审计日志 |
 | `ObjectMapper` | JSON 序列化/反序列化实体快照 |
-| `SubscriptionMapper` | 查询订阅实体快照（before_data / after_data） |
+| `EntitySnapshotLoaderFactory` | 根据 operateObject 策略路由到对应 Loader |
 | `AppContextResolver` | ENTITY 策略：numeric internalId → varchar externalId |
+
+#### 5.8.1 EntitySnapshotLoader -- 实体快照加载策略（新增）
+
+**接口设计**：
+
+```java
+/**
+ * 实体快照加载器接口
+ *
+ * <p>每个实现类负责从特定数据表加载实体快照。
+ * Spring 自动注册所有实现到 EntitySnapshotLoaderFactory。</p>
+ */
+public interface EntitySnapshotLoader {
+    /** 返回该 Loader 支持的 operateObject 列表 */
+    List<String> supportedObjects();
+    /** 根据 ID 加载实体，返回 null 表示未找到 */
+    Object loadById(Long id);
+}
+```
+
+**SubscriptionSnapshotLoader 实现**（当前唯一实现）：
+
+```java
+@Component
+@RequiredArgsConstructor
+public class SubscriptionSnapshotLoader implements EntitySnapshotLoader {
+
+    private final SubscriptionMapper subscriptionMapper;
+
+    @Override
+    public List<String> supportedObjects() {
+        return List.of("API_PERMISSION", "EVENT_PERMISSION", "CALLBACK_PERMISSION");
+    }
+
+    @Override
+    public Object loadById(Long id) {
+        return subscriptionMapper.selectById(id);
+    }
+}
+```
+
+**EntitySnapshotLoaderFactory 工厂**：
+
+```java
+@Component
+@RequiredArgsConstructor
+public class EntitySnapshotLoaderFactory {
+
+    private final List<EntitySnapshotLoader> loaders;
+    private Map<String, EntitySnapshotLoader> loaderMap;
+
+    @PostConstruct
+    public void init() {
+        loaderMap = new HashMap<>();
+        for (EntitySnapshotLoader loader : loaders) {
+            for (String obj : loader.supportedObjects()) {
+                loaderMap.put(obj, loader);
+            }
+        }
+    }
+
+    public EntitySnapshotLoader getLoader(String operateObject) {
+        return loaderMap.get(operateObject);
+    }
+}
+```
+
+**扩展方式**：后续新增资源类型时，只需：
+1. 新增 `XxxSnapshotLoader` 实现类（注入对应 Mapper）
+2. 在 `OperateEnum` 中添加枚举值
+
+切面代码无需修改。
 
 #### 核心 @Around 流程
 
@@ -533,8 +612,8 @@ public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Th
 
     // Step 2: 加载 before_data（ENTITY 策略同时用于提取 appId）
     String beforeData = null;
-    if (op.needsBeforeData() && resourceId != null) {
-        beforeData = loadSubscriptionSnapshot(resourceId);
+    if ((op.needsBeforeData() || appIdSource == AppIdSourceEnum.ENTITY) && resourceId != null) {
+        beforeData = loadEntitySnapshot(resourceId, op.getOperateObject());
     }
 
     // Step 3: 解析 app_id
@@ -559,8 +638,14 @@ public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Th
 
     // Step 5: 加载 after_data
     String afterData = null;
-    if (op.needsAfterData() && resourceId != null) {
-        afterData = loadSubscriptionSnapshot(resourceId);
+    if (op.needsAfterData()) {
+        if (resourceId != null) {
+            // WITHDRAW/CONFIG: 从数据库重新查询
+            afterData = loadEntitySnapshot(resourceId, op.getOperateObject());
+        } else {
+            // SUBSCRIBE: 从返回值提取（resourceId 为 null）
+            afterData = extractEntityFromResult(result);
+        }
     }
 
     // Step 6: 保存审计日志
@@ -569,17 +654,51 @@ public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Th
 }
 ```
 
-#### 实体快照加载
+#### 实体快照加载（策略路由）
 
-当前所有操作对象均为 `*_PERMISSION`，统一使用 `subscriptionMapper`：
+通过 `EntitySnapshotLoaderFactory` 根据 `operateObject` 路由到对应 Loader：
 
 ```java
-private String loadSubscriptionSnapshot(Long id) {
+private String loadEntitySnapshot(Long id, String operateObject) {
     try {
-        Object entity = subscriptionMapper.selectById(id);
+        EntitySnapshotLoader loader = snapshotLoaderFactory.getLoader(operateObject);
+        if (loader == null) {
+            log.warn("[OPERATE_LOG] No snapshot loader for: {}", operateObject);
+            return null;
+        }
+        Object entity = loader.loadById(id);
         return entity != null ? objectMapper.writeValueAsString(entity) : null;
     } catch (Exception e) {
-        log.warn("[OPERATE_LOG] Subscription snapshot load failed: id={}", id, e);
+        log.warn("[OPERATE_LOG] Entity snapshot load failed: id={}, object={}", id, operateObject, e);
+        return null;
+    }
+}
+```
+
+#### 从返回值提取 afterData（SUBSCRIBE 场景）
+
+SUBSCRIBE 操作是批量操作，`resourceId` 为 null，但返回的 `PermissionSubscribeResponse` 包含创建的订阅记录列表：
+
+```java
+/**
+ * 从 ApiResponse 返回值中提取实体数据作为 afterData
+ *
+ * <p>适用于 SUBSCRIBE 等批量操作，resourceId 为 null 的场景</p>
+ */
+private String extractEntityFromResult(Object result) {
+    if (result == null) {
+        return null;
+    }
+    try {
+        // ApiResponse<T> 结构：{ code, messageZh, messageEn, data }
+        // 提取 data 字段序列化
+        if (result instanceof ApiResponse<?> apiResponse) {
+            Object data = apiResponse.getData();
+            return data != null ? objectMapper.writeValueAsString(data) : null;
+        }
+        return objectMapper.writeValueAsString(result);
+    } catch (Exception e) {
+        log.warn("[OPERATE_LOG] Failed to extract entity from result", e);
         return null;
     }
 }
@@ -660,27 +779,27 @@ X-Forwarded-For  ->  X-Real-IP  ->  request.getRemoteAddr()
 
 | 接口# | 方法 | @AuditLog 配置 |
 |:-----:|------|----------------|
-| #29 | `subscribeApiPermissions` | `@AuditLog(OperateEnum.SUBSCRIBE_API_PERMISSION, resourceIdParam = "appId")` |
-| #30 | `withdrawApiSubscription` | `@AuditLog(OperateEnum.WITHDRAW_API_PERMISSION)` |
-| #31 | `deleteApiSubscription` | `@AuditLog(OperateEnum.DELETE_API_PERMISSION)` |
+| #29 | `subscribeApiPermissions` | `@AuditLog(value = OperateEnum.SUBSCRIBE_API_PERMISSION)` |
+| #30 | `withdrawApiSubscription` | `@AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION)` |
+| #31 | `deleteApiSubscription` | `@AuditLog(value = OperateEnum.DELETE_API_PERMISSION)` |
 
 ### 6.2 事件权限订阅（4 个接口）
 
 | 接口# | 方法 | @AuditLog 配置 |
 |:-----:|------|----------------|
-| #34 | `subscribeEventPermissions` | `@AuditLog(OperateEnum.SUBSCRIBE_EVENT_PERMISSION, resourceIdParam = "appId")` |
-| #35 | `configEventSubscription` | `@AuditLog(OperateEnum.CONFIG_EVENT_PERMISSION)` |
-| #36 | `withdrawEventSubscription` | `@AuditLog(OperateEnum.WITHDRAW_EVENT_PERMISSION)` |
-| #37 | `deleteEventSubscription` | `@AuditLog(OperateEnum.DELETE_EVENT_PERMISSION)` |
+| #34 | `subscribeEventPermissions` | `@AuditLog(value = OperateEnum.SUBSCRIBE_EVENT_PERMISSION)` |
+| #35 | `configEventSubscription` | `@AuditLog(value = OperateEnum.CONFIG_EVENT_PERMISSION)` |
+| #36 | `withdrawEventSubscription` | `@AuditLog(value = OperateEnum.WITHDRAW_EVENT_PERMISSION)` |
+| #37 | `deleteEventSubscription` | `@AuditLog(value = OperateEnum.DELETE_EVENT_PERMISSION)` |
 
 ### 6.3 回调权限订阅（4 个接口）
 
 | 接口# | 方法 | @AuditLog 配置 |
 |:-----:|------|----------------|
-| #40 | `subscribeCallbackPermissions` | `@AuditLog(OperateEnum.SUBSCRIBE_CALLBACK_PERMISSION, resourceIdParam = "appId")` |
-| #41 | `configCallbackSubscription` | `@AuditLog(OperateEnum.CONFIG_CALLBACK_PERMISSION)` |
-| #42 | `withdrawCallbackSubscription` | `@AuditLog(OperateEnum.WITHDRAW_CALLBACK_PERMISSION)` |
-| #43 | `deleteCallbackSubscription` | `@AuditLog(OperateEnum.DELETE_CALLBACK_PERMISSION)` |
+| #40 | `subscribeCallbackPermissions` | `@AuditLog(value = OperateEnum.SUBSCRIBE_CALLBACK_PERMISSION)` |
+| #41 | `configCallbackSubscription` | `@AuditLog(value = OperateEnum.CONFIG_CALLBACK_PERMISSION)` |
+| #42 | `withdrawCallbackSubscription` | `@AuditLog(value = OperateEnum.WITHDRAW_CALLBACK_PERMISSION)` |
+| #43 | `deleteCallbackSubscription` | `@AuditLog(value = OperateEnum.DELETE_CALLBACK_PERMISSION)` |
 
 ---
 
@@ -688,10 +807,10 @@ X-Forwarded-For  ->  X-Real-IP  ->  request.getRemoteAddr()
 
 | OperateEnum 前缀 | before_data | after_data | 说明 |
 |:-----------------:|:-----------:|:----------:|------|
-| **SUBSCRIBE_*** | null | null | 批量操作，无单一实体 |
-| **WITHDRAW_*** | `subscriptionMapper.selectById(id)` | `subscriptionMapper.selectById(id)` | 操作前后分别查询 |
-| **DELETE_*** | `subscriptionMapper.selectById(id)` | null | 操作后实体已删除 |
-| **CONFIG_*** | `subscriptionMapper.selectById(id)` | `subscriptionMapper.selectById(id)` | 操作前后分别查询 |
+| **SUBSCRIBE_*** | null | `ApiResponse.data` JSON（含创建的订阅记录列表） | 批量操作，从返回值提取 |
+| **WITHDRAW_*** | `EntitySnapshotLoader.loadById(id)` | `EntitySnapshotLoader.loadById(id)` | 操作前后分别查询 |
+| **DELETE_*** | `EntitySnapshotLoader.loadById(id)` | null | 操作后实体已删除 |
+| **CONFIG_*** | `EntitySnapshotLoader.loadById(id)` | `EntitySnapshotLoader.loadById(id)` | 操作前后分别查询 |
 
 ---
 
@@ -716,12 +835,14 @@ OpenServerApplication (@EnableAsync)
     +-- AsyncConfig (@Configuration)
     |       └── auditLogExecutor (ThreadPoolTaskExecutor)
     |
-    +-- OperateLogAspect (@Aspect @Component @Order(2))
+    +-- OperateLogV2Aspect (@Aspect @Component @Order(2))
     |       ├── AuditLogService
     |       │       ├── OperateLogMapper
     |       │       └── IdGeneratorStrategy
     |       ├── ObjectMapper (Spring 内置)
-    |       ├── SubscriptionMapper
+    |       ├── EntitySnapshotLoaderFactory
+    |       │       └── SubscriptionSnapshotLoader (当前唯一实现)
+    |       │               └── SubscriptionMapper
     |       └── AppContextResolver (ENTITY 策略: internalId → externalId)
     |
     +-- PermissionController (@AuditLog 注解, 11 个方法)
@@ -743,7 +864,7 @@ Body: { "permissionIds": [1, 2, 3] }
   - operate_object = "API_PERMISSION"
   - operate_desc_cn = "申请API权限"
   - before_data = null
-  - after_data = null
+  - after_data = { "successCount": 3, "failedCount": 0, "records": [...], "failedRecords": [] }
   - status = 1
 ```
 
@@ -809,3 +930,4 @@ Body: { "channel": "HTTP", "url": "https://...", ... }
 | v2.0.0 | 2026-05-26 | 移除资源管理类接口（无 appId），仅保留 11 个权限订阅接口；合并 OperateTypeEnum + OperateObjectEnum + descCn + descEn 为统一 OperateEnum；移除 AppIdSourceEnum；简化切面依赖 |
 | v2.1.0 | 2026-05-26 | 恢复 AppIdSourceEnum（PATH_VARIABLE / ENTITY 双策略），保留 appId 解析扩展性；ENTITY 策略支持从实体快照 JSON 中提取 app_id，适用于接口无直接 appId 参数的场景 |
 | v2.2.0 | 2026-05-26 | 明确 app_id 取 openplatform_app_t.app_id (varchar 外部业务 ID)；新增 app_id 数据链路说明（openplatform_app_t → subscription → audit log）；ENTITY 策略改用 AppContextResolver.toExternalId() 将 numeric internalId 转换为 varchar externalId；OperateLogAspect 新增 AppContextResolver 依赖 |
+| v2.3.0 | 2026-05-26 | ① OperateLogAspect 重命名为 OperateLogV2Aspect；② @AuditLog 注解统一使用 `value =` 语法；③ SUBSCRIBE 移除 `resourceIdParam = "appId"`，afterData 改为从 ApiResponse.data 提取创建的订阅记录；④ 实体快照加载改为策略模式（EntitySnapshotLoader + Factory），支持不同资源类型从不同表加载 |

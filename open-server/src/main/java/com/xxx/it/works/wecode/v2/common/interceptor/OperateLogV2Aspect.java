@@ -7,10 +7,11 @@ import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
 import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoader;
+import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoaderFactory;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
 import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
-import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,26 +27,29 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.Date;
 
 /**
- * 操作日志持久化切面
+ * 操作日志持久化切面 V2
  *
  * <p>基于 @AuditLog 注解的 @Around 切面，自动捕获操作前后实体快照、
  * 用户信息和 IP 地址，异步写入 openplateform_operate_log_t 表</p>
  *
  * <p>与 AuditLogAspect（连接流 SLF4J 日志）互不影响</p>
  *
+ * <p>实体快照加载采用策略模式（EntitySnapshotLoader + Factory），
+ * 根据 OperateEnum.operateObject 路由到对应的 Loader 实现，支持不同资源类型从不同表加载</p>
+ *
  * @author SDDU Build Agent
- * @version 2.0.0
+ * @version 2.1.0
  */
 @Slf4j
 @Aspect
 @Component
 @RequiredArgsConstructor
 @Order(2)
-public class OperateLogAspect {
+public class OperateLogV2Aspect {
 
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
-    private final SubscriptionMapper subscriptionMapper;
+    private final EntitySnapshotLoaderFactory snapshotLoaderFactory;
     private final AppContextResolver appContextResolver;
 
     /**
@@ -68,7 +72,7 @@ public class OperateLogAspect {
         // 2. 加载 before_data（WITHDRAW/DELETE/CONFIG 需要操作前实体快照；ENTITY 策略同时用于提取 appId）
         String beforeData = null;
         if ((op.needsBeforeData() || appIdSource == AppIdSourceEnum.ENTITY) && resourceId != null) {
-            beforeData = loadSubscriptionSnapshot(resourceId);
+            beforeData = loadEntitySnapshot(resourceId, op.getOperateObject());
         }
 
         // 3. 解析 app_id（openplatform_app_t.app_id，varchar 外部业务 ID）
@@ -94,8 +98,14 @@ public class OperateLogAspect {
 
         // 5. 加载 after_data
         String afterData = null;
-        if (op.needsAfterData() && resourceId != null) {
-            afterData = loadSubscriptionSnapshot(resourceId);
+        if (op.needsAfterData()) {
+            if (resourceId != null) {
+                // WITHDRAW/CONFIG: 从数据库重新查询操作后实体
+                afterData = loadEntitySnapshot(resourceId, op.getOperateObject());
+            } else {
+                // SUBSCRIBE: 从返回值提取创建的订阅记录（resourceId 为 null）
+                afterData = extractEntityFromResult(result);
+            }
         }
 
         // 6. 保存审计日志
@@ -227,16 +237,47 @@ public class OperateLogAspect {
     }
 
     /**
-     * 加载订阅实体快照（JSON 序列化）
+     * 通过策略工厂加载实体快照（JSON 序列化）
      *
-     * <p>当前所有操作对象均为 *_PERMISSION，统一使用 subscriptionMapper</p>
+     * <p>根据 operateObject 路由到对应的 EntitySnapshotLoader 实现</p>
+     *
+     * @param id             资源 ID
+     * @param operateObject  操作对象标识（如 API_PERMISSION / EVENT_PERMISSION）
+     * @return 实体 JSON 字符串，未找到或加载失败返回 null
      */
-    private String loadSubscriptionSnapshot(Long id) {
+    private String loadEntitySnapshot(Long id, String operateObject) {
         try {
-            Object entity = subscriptionMapper.selectById(id);
+            EntitySnapshotLoader loader = snapshotLoaderFactory.getLoader(operateObject);
+            if (loader == null) {
+                log.warn("[OPERATE_LOG] No snapshot loader for: {}", operateObject);
+                return null;
+            }
+            Object entity = loader.loadById(id);
             return entity != null ? objectMapper.writeValueAsString(entity) : null;
         } catch (Exception e) {
-            log.warn("[OPERATE_LOG] Subscription snapshot load failed: id={}", id, e);
+            log.warn("[OPERATE_LOG] Entity snapshot load failed: id={}, object={}", id, operateObject, e);
+            return null;
+        }
+    }
+
+    /**
+     * 从 ApiResponse 返回值中提取实体数据作为 afterData
+     *
+     * <p>适用于 SUBSCRIBE 等批量操作，resourceId 为 null 的场景。
+     * 返回的 PermissionSubscribeResponse 包含创建的订阅记录列表。</p>
+     */
+    private String extractEntityFromResult(Object result) {
+        if (result == null) {
+            return null;
+        }
+        try {
+            if (result instanceof ApiResponse<?> apiResponse) {
+                Object data = apiResponse.getData();
+                return data != null ? objectMapper.writeValueAsString(data) : null;
+            }
+            return objectMapper.writeValueAsString(result);
+        } catch (Exception e) {
+            log.warn("[OPERATE_LOG] Failed to extract entity from result", e);
             return null;
         }
     }

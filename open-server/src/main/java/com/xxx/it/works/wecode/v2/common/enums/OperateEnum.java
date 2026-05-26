@@ -68,9 +68,11 @@ public enum OperateEnum {
 
     /**
      * 判断是否需要加载 after_data 实体快照
+     *
+     * <p>SUBSCRIBE: 从 ApiResponse.data 提取创建的订阅记录</p>
+     * <p>DELETE: 操作后实体已删除，无需加载</p>
      */
     public boolean needsAfterData() {
-        return !"SUBSCRIBE".equals(operateType)
-                && !"DELETE".equals(operateType);
+        return !"DELETE".equals(operateType);
     }
 }
