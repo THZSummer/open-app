@@ -2696,21 +2696,3 @@ const nodeTypes = {
 | **v5.3** | 2026-05-26 | 从 triggerDataDef.type 枚举中移除 `test`：test 是运行时调用模式（调试/测试运行），与 http/manual 触发类型不在同一维度。任何触发类型的连接流均应支持 test 调试模式，不应将 test 硬编码为一种「触发类型」。同时删除 allOf 中 type==="test" 的条件块。executionRecord.triggerType 中的 test(3) 保持不变（运行时记录维度）。 | SDDU Plan Agent |
 | **v5.4** | 2026-05-26 | **节点间传值映射重构**：① 新增 §1.4 节点间传值映射——设计态（Schema 定义）vs 运行态（实际对象）双层模型 + JSON 节点上下文对象 + JSON Path 表达式体系（`${$.node.{id}.{input/output}.xxx}`）；② connectorDataDef.inputMapping 从扁平 key-value 改为分段结构（结构镜像连接器 inputContract 协议，Schema 层不硬编码）；③ exitDataDef.outputFields（数组）→ outputMapping（object），支持 header/body 分段映射及返回值重命名；④ 全文档示例表达式更新为 JSON Path 格式 | SDDU Plan Agent |
 
-## 附录 B：v3.0 审查问题修复对照表
-
-| # | 严重度 | 问题 | 修复位置 |
-|---|:---:|------|---------|
-| P1 | 🔴 | `$ref` 悬空 — definitions 不存在 | §3 新增 definitions 聚合段 |
-| P2 | 🔴 | authTypeSchema 枚举类型 vs DB TINYINT 冲突 | §2.1 新增例外说明 + 枚举对照表 |
-| P3 | 🔴 | `outputSchema` 引用目标不存在 | §3 definitions 中 `outputSchema` 指向 `dataSchema` |
-| P4 | 🟡 | `trigger` vs `entry` 命名不统一 | §5.3.1 triggerDataDef 增加命名映射说明 |
-| P5 | 🟡 | `$schemaName` 示例中有但 Schema 中无 | 移除示例中的 `$schemaName`，改为注释说明 |
-| P6 | 🟡 | lifecycleStatus 枚举字典跨文档冲突 | 标注权威定义以 plan-db.md 为准 |
-| P7 | 🟡 | fieldMappings 缺少 required 和格式约束 | 增加 `required` + `pattern` 表达式校验 |
-| P8 | 🟡 | `position.x/y` 应为 number 非 integer | 改为 `number` + 新增 `position` definition |
-| P9 | 🟢 | 缺少 `additionalProperties: false` | 全部 Schema 增加此约束 |
-| P10 | 🟢 | errorInfo 缺少 cause/stackTrace | 新增 `cause` 字段 + `oneOf` 约束 |
-| P11 | 🟢 | rateLimit 无最大值约束 | 增加 `maximum` |
-| P12 | 🟢 | trigger.type 条件必填未约束 | 增加 `allOf` + `if`-`then` |
-| P13 | 🟢 | connectorVersionId 无格式约束 | 增加 `pattern` 雪花 ID 正则 |
-| P14 | 🟢 | DAG 约束仅靠注释说明 | 新增 §5.5 拓扑约束规则表 |
