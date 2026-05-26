@@ -4,7 +4,7 @@
 **版本**: v5.4
 **创建日期**: 2026-05-22  
 **最后更新**: 2026-05-26
-**修订说明**: v5.4 — 节点间传值映射重构：① 新增 §1.4 节点间传值映射（设计态/运行态双层模型 + JSON 节点上下文对象 + JSON Path 表达式）；② connectorDataDef.inputMapping 改为分段结构（header/query/body），Schema 不硬编码协议；③ exitDataDef.outputFields → outputMapping，数组改 object 支持 header/body 分段，表达式改为 JSON Path 格式（${$.node.{id}.{input|output}.xxx}）
+**修订说明**: v5.4 — 节点间传值映射重构：① 新增 §1.4 节点间传值映射（设计态/运行态双层模型 + JSON 节点上下文对象 + JSON Path 表达式）；② connectorDataDef.inputMapping 改为分段结构（header/query/body），Schema 不硬编码协议；③ exitDataDef.outputFields → outputMapping，数组改 object 支持 header/body 分段，表达式改为 JSON Path 格式（${$.node.{id}.{input/output}.xxx}）
 
 ---
 
@@ -196,7 +196,7 @@ node_1 的 JSON 上下文对象                   exit 需要的字段
 
 | 表达式 | 含义 | 示例 |
 |--------|------|------|
-| `${$.node.{nodeId}.{input|output}.xxx.yyy}` | 引用某节点的 JSON 上下文对象中指定路径的值 | `${$.node.trigger.input.sender}`、`${$.node.node_1.output.result.msgId}` |
+| `${$.node.{nodeId}.{input/output}.xxx.yyy}` | 引用某节点的 JSON 上下文对象中指定路径的值 | `${$.node.trigger.input.sender}`、`${$.node.node_1.output.result.msgId}` |
 | `${$.system.xxx.yyy}` | 引用系统级上下文（环境变量、全局常量等，V2） | `${$.system.env.region}`（V2） |
 | `constant:value` | 固定字面值，不依赖上下文 | `constant:0`、`constant:success` |
 
@@ -208,7 +208,7 @@ node_1 的 JSON 上下文对象                   exit 需要的字段
 
 2. **Schema 不硬编码协议**：JSON Schema 层面将 inputMapping / outputMapping 定义为 `"type": "object"`（不做 additionalProperties 限制），具体的分段结构（header/query/body）由应用层根据连接器的协议类型动态校验。这样 REDIS、MySQL 等未来协议可直接扩展各自的映射结构，无需改 Schema
 
-3. **表达式体系统一**：所有节点的映射值使用相同的 JSON Path 表达式语法（`${$.node.{nodeId}.{input|output}.xxx.yyy}` / `constant:xxx`），不因节点类型而异
+3. **表达式体系统一**：所有节点的映射值使用相同的 JSON Path 表达式语法（`${$.node.{nodeId}.{input/output}.xxx.yyy}` / `constant:xxx`），不因节点类型而异
 
 4. **必填检查在应用层**：mapping 中的字段是否覆盖了 inputContract 中声明的 required 字段，由应用层在保存/发布时校验，JSON Schema 不做跨对象约束
 
@@ -2674,7 +2674,7 @@ const nodeTypes = {
 | **v5.1** | 2026-05-26 | **入参出参协议感知重构**：① 删除 `dataContractDef` / `dataContractDefAlias`，新增 `jsonSchemaObjectDef`（纯字段形状复用组件）、`httpInputContractDef`（HTTP入参 header/query/body）、`httpOutputContractDef`（HTTP出参 header/body）、`inputContractDef` / `outputContractDef`（oneOf 协议路由器）；② connectionConfig / triggerDataDef 的 `$ref` 链从 dataContractDef 迁移至 inputContractDef / outputContractDef；③ 全文档交叉引用编号更新（§3.3.3-§3.3.7 新增，§3.3.8-§3.3.14 顺延）；④ 示例数据全部更新为新格式 | SDDU Plan Agent |
 | **v5.2** | 2026-05-26 | **三项优化**：① errorInfoDef 重构 — code 从 `UPPER_SNAKE_CASE` 改为数字字符串（与 plan-api.md §1.5 对齐），message 拆为双语 messageZh/messageEn，新增错误码字典（§3.3.8.4）区分来源（4xx/5xx=下游, 6xxxx=内部）；② 删除 positionDef（仅在 React Flow 框架中使用），内联到 §5.2.1 和 §5.4，§3.3 编号从 14 节缩减为 13 节（§3.3.10-14→§3.3.9-13）；③ httpInputContractDef 示例增加 query 段（§3.3.4.2） | SDDU Plan Agent |
 | **v5.3** | 2026-05-26 | 从 triggerDataDef.type 枚举中移除 `test`：test 是运行时调用模式（调试/测试运行），与 http/manual 触发类型不在同一维度。任何触发类型的连接流均应支持 test 调试模式，不应将 test 硬编码为一种「触发类型」。同时删除 allOf 中 type==="test" 的条件块。executionRecord.triggerType 中的 test(3) 保持不变（运行时记录维度）。 | SDDU Plan Agent |
-| **v5.4** | 2026-05-26 | **节点间传值映射重构**：① 新增 §1.4 节点间传值映射——设计态（Schema 定义）vs 运行态（实际对象）双层模型 + JSON 节点上下文对象 + JSON Path 表达式体系（`${$.node.{id}.{input|output}.xxx}`）；② connectorDataDef.inputMapping 从扁平 key-value 改为分段结构（结构镜像连接器 inputContract 协议，Schema 层不硬编码）；③ exitDataDef.outputFields（数组）→ outputMapping（object），支持 header/body 分段映射及返回值重命名；④ 全文档示例表达式更新为 JSON Path 格式 | SDDU Plan Agent |
+| **v5.4** | 2026-05-26 | **节点间传值映射重构**：① 新增 §1.4 节点间传值映射——设计态（Schema 定义）vs 运行态（实际对象）双层模型 + JSON 节点上下文对象 + JSON Path 表达式体系（`${$.node.{id}.{input/output}.xxx}`）；② connectorDataDef.inputMapping 从扁平 key-value 改为分段结构（结构镜像连接器 inputContract 协议，Schema 层不硬编码）；③ exitDataDef.outputFields（数组）→ outputMapping（object），支持 header/body 分段映射及返回值重命名；④ 全文档示例表达式更新为 JSON Path 格式 | SDDU Plan Agent |
 
 ## 附录 B：v3.0 审查问题修复对照表
 
