@@ -10,27 +10,39 @@
 
 ## 0. 核心概念速览
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  设计态（Design-time）               运行态（Runtime）              │
-│  ────────────────────               ────────────────               │
-│  存于 DB MEDIUMTEXT 字段             存于内存，不持久化               │
-│  由管理员在 wecodesite 配置          由引擎在每次执行时构造           │
-│  定义「应该有什么字段、什么类型」       填充「实际值」                  │
-│                                                                  │
-│  举例：                             举例：                         │
-│  inputContract.body.properties      trigger.context.input          │
-│    .sender = { type: "string" }       .sender = "user_001"        │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph DT["设计态（Design-time）"]
+        direction TB
+        D1["存于 DB MEDIUMTEXT 字段"]
+        D2["由管理员在 wecodesite 配置"]
+        D3["定义「应该有什么字段、什么类型」"]
+        D1 --- D2 --- D3
+    end
+    subgraph RT["运行态（Runtime）"]
+        direction TB
+        R1["存于内存，不持久化"]
+        R2["由引擎在每次执行时构造"]
+        R3["填充「实际值」"]
+        R1 --- R2 --- R3
+    end
+    DT -- "inputContract.body.properties<br/>.sender = { type: string }" --> RT
+    RT -- "trigger.context.input<br/>.sender = 'user_001'" --> DT
 ```
 
 每个节点执行完成后，其输入输出被抽象为一个 **JSON 节点上下文对象**（Node Context Object）：
 
-```
-NodeContext {
-  input:  { ... }   // 节点收到的输入数据（key-value）
-  output: { ... }   // 节点执行后的输出数据（key-value）
-}
+```mermaid
+classDiagram
+    class NodeContext {
+        +String nodeId
+        +String nodeType
+        +Map~String,Object~ input
+        +Map~String,Object~ output
+        +NodeStatus status
+        +ErrorInfo errorInfo
+        +long durationMs
+    }
 ```
 
 下游节点**可见**其所有前置节点的 NodeContext 的全部字段。表达式 `${$.node.{nodeId}.{input/output}.xxx}` 即引用这些字段。
@@ -114,15 +126,18 @@ ConnectionConfig config = ConnectionConfig.builder()
 
 orchestrationConfig 是 React Flow 格式的 DAG，框架字段与业务字段分离：
 
-```
-node: {
-  id, type, position   ← React Flow 框架渲染层（画布坐标、组件注册表映射）
-  data: { ... }        ← 业务拓展层（本平台所有业务字段）
-}
-edge: {
-  id, source, target, type, label  ← React Flow 框架渲染层（连线拓扑、样式）
-  data: { businessType }           ← 业务拓展层（执行语义）
-}
+```mermaid
+flowchart TB
+    subgraph Node["node 结构"]
+        direction LR
+        NF["id, type, position"] --> NLabel["← React Flow 框架渲染层<br/>（画布坐标、组件注册表映射）"]
+        ND["data: { ... }"] --> DLabel["← 业务拓展层<br/>（本平台所有业务字段）"]
+    end
+    subgraph Edge["edge 结构"]
+        direction LR
+        EF["id, source, target, type, label"] --> ELabel["← React Flow 框架渲染层<br/>（连线拓扑、样式）"]
+        ED["data: { businessType }"] --> BLabel["← 业务拓展层<br/>（执行语义）"]
+    end
 ```
 
 #### 构建步骤
@@ -706,88 +721,42 @@ public Map<String, Object> resolveMapping(
 
 ### 运行态构建（内存中依次构造）
 
-```
-外部 HTTP 请求进入：
-  POST /api/v1/trigger/{flowId}/invoke
-  Header: X-Sys-Token: tok_abc123
-  Body:   { "sender": "user_001", "content": "你好" }
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Caller as 调用方
+    participant Engine as 编排引擎
+    participant DB as MySQL
+    participant Target as 下游 API
 
-═══════════════════════════════════════════════════════════════════
+    Note over Caller, Target: HTTP 触发请求进入：POST /trigger/{flowId}/invoke<br/>Header: X-Sys-Token: tok_abc123<br/>Body: {"sender":"user_001","content":"你好"}
 
-Step 1: 执行 trigger
-─────────────────────
-  NodeContext["node_trigger"].input  = {
-    sender: "user_001",
-    content: "你好",
-    authToken: "tok_abc123"         ← 从请求头提取，按 authConfig 声明
-  }
-  NodeContext["node_trigger"].output = (null 或同 input)
-  status = SUCCESS
+    Caller->>Engine: HTTP 触发请求
+    Engine->>DB: 加载编排配置 (orchestration_config)
+    DB-->>Engine: nodes[] + edges[]
+    Engine->>Engine: 拓扑排序 → [trigger, connector, exit]
 
-═══════════════════════════════════════════════════════════════════
+    rect rgb(232, 245, 233)
+        Note over Engine: ═══ Step 1: 执行 trigger ═══
+        Engine->>Engine: 构造 NodeContext["node_trigger"]<br/>input = {sender:"user_001", content:"你好", authToken:"tok_abc123"}
+    end
 
-Step 2: 执行 connector（加载 connectionConfig → 解析 inputMapping → HTTP 调用）
-─────────────────────
-  解析 inputMapping.body:
-    "${$.node.trigger.input.sender}"  → "user_001"
-    "${$.node.trigger.input.content}" → "你好"
-  解析 inputMapping.query:
-    "constant:1" → 1
-  解析 inputMapping.header:
-    "${$.node.trigger.input.authToken}" → "tok_abc123"
+    rect rgb(255, 249, 196)
+        Note over Engine, Target: ═══ Step 2: 执行 connector ═══
+        Engine->>DB: 加载 connectionConfig (connectorVersionId)
+        DB-->>Engine: protocolConfig + inputContract + authConfig + outputContract
+        Engine->>Engine: 解析 inputMapping 表达式<br/>${$.node.trigger.input.sender} → "user_001"<br/>${$.node.trigger.input.content} → "你好"<br/>constant:1 → 1
+        Engine->>Target: POST /im/send?page=1<br/>Headers: Content-Type + Authorization + X-Sys-Token<br/>Body: {receiver:"user_001", content:"你好"}
+        Target-->>Engine: 200 OK<br/>Headers: {X-Request-Id: req-001}<br/>Body: {msgId:"m001", code:0}
+        Engine->>Engine: 按 outputContract 提取响应<br/>构造 NodeContext["node_1"]<br/>input={header:{...}, query:{page:1}, body:{...}}<br/>output={header:{X-Request-Id:"req-001"}, body:{msgId:"m001",code:0}}
+    end
 
-  构造 HTTP 请求：
-    POST https://api.example.com/im/send?page=1
-    Headers:
-      Content-Type: application/json    ← protocolConfig 固定头
-      Authorization: tok_abc123          ← headerParams
-      X-Sys-Token: tok_abc123           ← authConfig 注入
-    Body:
-      { "receiver": "user_001", "content": "你好" }
+    rect rgb(227, 242, 253)
+        Note over Engine, Caller: ═══ Step 3: 执行 exit ═══
+        Engine->>Engine: 解析 outputMapping<br/>${$.node.node_1.output.header.X-Request-Id} → "req-001"<br/>${$.node.node_1.output.body.msgId} → "m001"<br/>constant:0 → 0
+    end
 
-  下游响应：
-    Status: 200
-    Headers: { X-Request-Id: req-001 }
-    Body: { "msgId": "m001", "code": 0 }
-
-  按 outputContract 提取：
-    output.header = { "X-Request-Id": "req-001" }
-    output.body   = { "msgId": "m001", "code": 0 }
-
-  NodeContext["node_1"].input  = {
-    header: { Authorization: "tok_abc123" },
-    query:  { page: 1 },
-    body:   { receiver: "user_001", content: "你好" }
-  }
-  NodeContext["node_1"].output = {
-    header: { X-Request-Id: "req-001" },
-    body:   { msgId: "m001", code: 0 }
-  }
-  status = SUCCESS
-
-═══════════════════════════════════════════════════════════════════
-
-Step 3: 执行 exit（解析 outputMapping → 构造最终响应）
-─────────────────────
-  解析 outputMapping.header:
-    "${$.node.node_1.output.header.X-Request-Id}" → "req-001"
-  解析 outputMapping.body:
-    "${$.node.node_1.output.body.msgId}" → "m001"
-    "constant:0" → 0
-
-  NodeContext["node_exit"].input  = {
-    header: { X-Request-Id: "req-001" },
-    body:   { msgId: "m001", code: 0 }
-  }
-  NodeContext["node_exit"].output = (同 input)
-  status = SUCCESS
-
-═══════════════════════════════════════════════════════════════════
-
-最终 HTTP 响应返回给调用方：
-  Status: 200
-  Headers: { X-Request-Id: req-001 }
-  Body:    { "msgId": "m001", "code": 0, "executionId": "1122334455667788990" }
+    Engine-->>Caller: 200 OK<br/>Headers: {X-Request-Id: req-001}<br/>Body: {msgId:"m001", code:0, executionId:"..."}
 ```
 
 ---
