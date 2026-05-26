@@ -1,0 +1,222 @@
+{
+  "feature": "连接器平台",
+  "featureId": "CONN-PLAT-001",
+  "createdAt": "2026-05-22",
+  "baseline": {
+    "spec": "v5.0",
+    "plan": "v2.8.1",
+    "planApi": "v2.8.0",
+    "planDb": "v2.8.1",
+    "planPage": "v2.8.0"
+  },
+  "summary": {
+    "totalTasks": 12,
+    "currentImplementationTasks": 10,
+    "externalPlaceholderTasks": 2,
+    "complexityS": 2,
+    "complexityM": 6,
+    "complexityL": 2,
+    "waves": 4
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "name": "open-server 连接器平台 DDL 脚本",
+      "complexity": "L",
+      "dependencies": [],
+      "wave": 1,
+      "module": "open-server",
+      "fr": [],
+      "files": [
+        "open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql"
+      ],
+      "notes": [
+        "按 FlywayDB 目录与命名风格存放 SQL",
+        "open-server 不新增 Flyway 依赖",
+        "不考虑脚本自动执行机制",
+        "不创建业务子目录",
+        "connector-api 不保存 DDL"
+      ]
+    },
+    {
+      "id": "TASK-002",
+      "name": "connector-api 项目脚手架 + R2DBC Entity",
+      "complexity": "M",
+      "dependencies": [],
+      "dependencyNotes": "联调验证依赖 TASK-001 完成共库初始化",
+      "wave": 1,
+      "module": "connector-api",
+      "fr": [],
+      "files": [
+        "connector-api/pom.xml",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/ConnectorApiApplication.java",
+        "connector-api/src/main/resources/application.yml",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/R2dbcConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/ReactiveRedisConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorVersionEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/repository/ConnectorVersionReadRepository.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/entity/FlowEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/entity/FlowVersionEntity.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/repository/FlowVersionReadRepository.java"
+      ],
+      "notes": [
+        "connector-api 仅配置 R2DBC 访问开放平台共库",
+        "connector-api 不维护 DDL/Flyway migration",
+        "connector-api 包结构对齐 open-server：com.xxx.it.works.wecode.v2/common 与 modules 同级",
+        "common 放公共能力，modules 仅放业务模块代码"
+      ]
+    },
+    {
+      "id": "TASK-003",
+      "name": "open-server 连接器管理模块（Connector CRUD + Config）",
+      "complexity": "M",
+      "dependencies": ["TASK-001"],
+      "wave": 2,
+      "module": "open-server",
+      "fr": ["FR-001", "FR-002", "FR-003", "FR-004", "FR-005", "FR-006"],
+      "apiEndpoints": ["#1", "#2", "#3", "#4", "#5", "#6", "#7"]
+    },
+    {
+      "id": "TASK-004",
+      "name": "open-server 连接流管理模块（Flow CRUD + Config + Lifecycle）",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003"],
+      "wave": 2,
+      "module": "open-server",
+      "fr": ["FR-009", "FR-010", "FR-011", "FR-012", "FR-014", "FR-015", "FR-016", "FR-017"],
+      "apiEndpoints": ["#8", "#9", "#10", "#11", "#12", "#13", "#14", "#15", "#16"]
+    },
+    {
+      "id": "TASK-005",
+      "name": "connector-api 运行时引擎 + 节点执行器",
+      "complexity": "L",
+      "dependencies": ["TASK-002"],
+      "wave": 2,
+      "module": "connector-api",
+      "fr": ["FR-020", "FR-021", "FR-023"],
+      "files": [
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/ReactiveSequentialExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/context/ExecutionContext.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/NodeExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ConnectorNodeExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/DataProcessorExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ExitNodeExecutor.java"
+      ]
+    },
+    {
+      "id": "TASK-006",
+      "name": "connector-api HTTP 触发端点",
+      "complexity": "M",
+      "dependencies": ["TASK-005"],
+      "wave": 3,
+      "module": "connector-api",
+      "fr": ["FR-021"],
+      "apiEndpoints": ["#18"],
+      "files": [
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/service/TriggerService.java"
+      ]
+    },
+    {
+      "id": "TASK-007",
+      "name": "connector-api 测试执行端点",
+      "complexity": "S",
+      "dependencies": ["TASK-005"],
+      "wave": 3,
+      "module": "connector-api",
+      "fr": ["FR-020"],
+      "files": [
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/controller/TestRunController.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/service/TestRunService.java"
+      ]
+    },
+    {
+      "id": "TASK-008",
+      "name": "open-server 调试代理模块（debug-proxy）",
+      "complexity": "S",
+      "dependencies": ["TASK-004", "TASK-007"],
+      "wave": 3,
+      "module": "open-server",
+      "fr": ["FR-020"],
+      "apiEndpoints": ["#17"]
+    },
+    {
+      "id": "TASK-009",
+      "name": "wecodesite 连接器前端页面",
+      "type": "external-placeholder",
+      "implementationScope": "不在此 Tasks 文档实施",
+      "executionMode": "由其他渠道并行完成",
+      "buildExecutable": false,
+      "strongDependency": false,
+      "wave": 3,
+      "module": "wecodesite",
+      "fr": ["FR-001", "FR-002", "FR-004", "FR-005", "FR-006"],
+      "note": "仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令。"
+    },
+    {
+      "id": "TASK-010",
+      "name": "wecodesite 连接流前端页面 + 编排画布",
+      "type": "external-placeholder",
+      "implementationScope": "不在此 Tasks 文档实施",
+      "executionMode": "由其他渠道并行完成",
+      "buildExecutable": false,
+      "strongDependency": false,
+      "wave": 3,
+      "module": "wecodesite",
+      "fr": ["FR-009", "FR-012", "FR-016", "FR-017", "FR-020"],
+      "note": "仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令。"
+    },
+    {
+      "id": "TASK-011",
+      "name": "默认错误处理 + 限流 + 审计日志",
+      "complexity": "M",
+      "dependencies": ["TASK-005", "TASK-006"],
+      "wave": 4,
+      "module": "connector-api + open-server",
+      "fr": ["FR-023", "FR-024"],
+      "files": [
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/exception/DefaultErrorHandler.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/RateLimitFilter.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java",
+        "open-server/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/AuditLogAspect.java"
+      ]
+    },
+    {
+      "id": "TASK-012",
+      "name": "端到端集成测试 + E2E 冒烟",
+      "complexity": "M",
+      "dependencies": ["TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-011"],
+      "externalCollaboration": ["TASK-009", "TASK-010"],
+      "wave": 4,
+      "module": "Integration",
+      "fr": []
+    }
+  ],
+  "waves": {
+    "1": {
+      "description": "基础设施（并行）",
+      "tasks": ["TASK-001", "TASK-002"],
+      "parallel": true
+    },
+    "2": {
+      "description": "后端核心逻辑（并行）",
+      "tasks": ["TASK-003", "TASK-004", "TASK-005"],
+      "parallel": true
+    },
+    "3": {
+      "description": "运行时端点 + 调试代理 + 前端占位",
+      "tasks": ["TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"],
+      "subGroup": {
+        "backend": ["TASK-006", "TASK-007", "TASK-008"],
+        "externalPlaceholders": ["TASK-009", "TASK-010"],
+        "parallelBetweenGroups": true
+      }
+    },
+    "4": {
+      "description": "增强与集成（串行）",
+      "tasks": ["TASK-011", "TASK-012"],
+      "parallel": false
+    }
+  }
+}
