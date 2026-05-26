@@ -34,7 +34,7 @@
     <!-- 插入操作记录 -->
     <insert id="insert"
             parameterType="com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog">
-        INSERT INTO openplateform_operate_log_t (
+        INSERT INTO openplatform_operate_log_t (
             id, app_id, operate_type, operate_object,
             operate_desc_cn, operate_desc_en,
             operate_user, ip_address, before_data, after_data, status,

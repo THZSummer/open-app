@@ -9,7 +9,7 @@ import java.lang.annotation.*;
  * 审计日志注解
  *
  * <p>标记在 Controller 方法上，AOP 切面自动捕获操作前后实体快照、用户信息和 IP 地址，
- * 异步写入 openplateform_operate_log_t 表</p>
+ * 异步写入 openplatform_operate_log_t 表</p>
  *
  * <p>使用示例：</p>
  * <pre>

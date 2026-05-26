@@ -7,7 +7,7 @@ import lombok.Getter;
  * 审计日志统一操作枚举
  *
  * <p>每个枚举值代表一个具体的审计操作场景，包含 operateType / operateObject / descCn / descEn 四个属性，
- * 写入 openplateform_operate_log_t 表</p>
+ * 写入 openplatform_operate_log_t 表</p>
  *
  * @author SDDU Build Agent
  * @version 2.0.0

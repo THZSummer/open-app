@@ -8,7 +8,7 @@ import java.util.Date;
 /**
  * 操作记录实体
  *
- * <p>对应表 openplateform_operate_log_t</p>
+ * <p>对应表 openplatform_operate_log_t</p>
  *
  * @author SDDU Build Agent
  * @version 1.0.0

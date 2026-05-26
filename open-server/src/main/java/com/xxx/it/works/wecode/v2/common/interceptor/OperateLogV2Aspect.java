@@ -30,15 +30,18 @@ import java.util.Date;
  * 操作日志持久化切面 V2
  *
  * <p>基于 @AuditLog 注解的 @Around 切面，自动捕获操作前后实体快照、
- * 用户信息和 IP 地址，异步写入 openplateform_operate_log_t 表</p>
+ * 用户信息和 IP 地址，异步写入 openplatform_operate_log_t 表</p>
  *
  * <p>与 AuditLogAspect（连接流 SLF4J 日志）互不影响</p>
  *
  * <p>实体快照加载采用策略模式（EntitySnapshotLoader + Factory），
  * 根据 OperateEnum.operateObject 路由到对应的 Loader 实现，支持不同资源类型从不同表加载</p>
  *
+ * <p><b>错误隔离原则</b>：切面任何环节的异常均不得影响主业务接口，
+ * 所有非 proceed 操作均包裹在 try-catch 中，异常仅记录日志并跳过审计</p>
+ *
  * @author SDDU Build Agent
- * @version 2.1.0
+ * @version 2.2.0
  */
 @Slf4j
 @Aspect
@@ -53,63 +56,83 @@ public class OperateLogV2Aspect {
     private final AppContextResolver appContextResolver;
 
     /**
+     * 审计上下文，用于在 before / proceed / after 阶段之间传递中间状态
+     */
+    private static class AuditContext {
+        OperateEnum op;
+        Long resourceId;
+        String beforeData;
+        String appId;
+    }
+
+    /**
      * 拦截所有标注 @AuditLog 注解的方法
+     *
+     * <p>错误隔离策略：
+     * <ul>
+     *   <li>Phase 1（before proceed）：审计准备异常 → 仅记录日志，主方法照常执行</li>
+     *   <li>Phase 2（proceed）：主方法异常 → 记录 status=0 审计日志后重新抛出</li>
+     *   <li>Phase 3（after proceed）：审计后处理异常 → 仅记录日志，主方法结果正常返回</li>
+     * </ul>
+     * </p>
      *
      * @param joinPoint 连接点
      * @param auditLog  注解实例
      * @return 目标方法返回值
-     * @throws Throwable 目标方法抛出的异常
+     * @throws Throwable 目标方法抛出的异常（审计日志不影响异常传播）
      */
     @Around("@annotation(auditLog)")
     public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {
 
-        OperateEnum op = auditLog.value();
-        AppIdSourceEnum appIdSource = auditLog.appIdSource();
+        // Phase 1: 审计前准备 —— 任何异常不影响主方法执行
+        AuditContext ctx = new AuditContext();
+        ctx.op = auditLog.value();
+        try {
+            ctx.resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
 
-        // 1. 提取资源 ID（从方法参数中按 resourceIdParam 名称匹配）
-        Long resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
+            if ((ctx.op.needsBeforeData() || auditLog.appIdSource() == AppIdSourceEnum.ENTITY)
+                    && ctx.resourceId != null) {
+                ctx.beforeData = loadEntitySnapshot(ctx.resourceId, ctx.op.getOperateObject());
+            }
 
-        // 2. 加载 before_data（WITHDRAW/DELETE/CONFIG 需要操作前实体快照；ENTITY 策略同时用于提取 appId）
-        String beforeData = null;
-        if ((op.needsBeforeData() || appIdSource == AppIdSourceEnum.ENTITY) && resourceId != null) {
-            beforeData = loadEntitySnapshot(resourceId, op.getOperateObject());
+            if (auditLog.appIdSource() == AppIdSourceEnum.PATH_VARIABLE) {
+                ctx.appId = extractAppIdFromParams(joinPoint);
+            } else {
+                ctx.appId = extractAppIdFromEntity(ctx.beforeData);
+            }
+        } catch (Exception e) {
+            log.error("[OPERATE_LOG] Pre-proceed audit logic failed, skipping audit for this request", e);
+            return joinPoint.proceed();
         }
 
-        // 3. 解析 app_id（openplatform_app_t.app_id，varchar 外部业务 ID）
-        String appId;
-        if (appIdSource == AppIdSourceEnum.PATH_VARIABLE) {
-            appId = extractAppIdFromParams(joinPoint);
-        } else {
-            // ENTITY 策略：从 before_data 实体快照中提取 numeric app_id，再转换为 varchar app_id
-            appId = extractAppIdFromEntity(beforeData);
-        }
-
-        // 4. 执行目标方法
+        // Phase 2: 执行目标方法
         Object result;
-        int status = 1; // 1=成功
+        int status = 1;
         try {
             result = joinPoint.proceed();
         } catch (Throwable ex) {
-            // 主操作失败，记录 status=0 的审计日志
             status = 0;
-            saveOperateLog(op, appId, joinPoint, beforeData, null, status);
+            // 主操作失败，记录 status=0 的审计日志（saveOperateLog 内部有 try-catch）
+            saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, null, status);
             throw ex; // 重新抛出，由全局异常处理器处理
         }
 
-        // 5. 加载 after_data
+        // Phase 3: 审计后处理 —— 任何异常不影响主方法返回
         String afterData = null;
-        if (op.needsAfterData()) {
-            if (resourceId != null) {
-                // WITHDRAW/CONFIG: 从数据库重新查询操作后实体
-                afterData = loadEntitySnapshot(resourceId, op.getOperateObject());
-            } else {
-                // SUBSCRIBE: 从返回值提取创建的订阅记录（resourceId 为 null）
-                afterData = extractEntityFromResult(result);
+        try {
+            if (ctx.op.needsAfterData()) {
+                if (ctx.resourceId != null) {
+                    afterData = loadEntitySnapshot(ctx.resourceId, ctx.op.getOperateObject());
+                } else {
+                    afterData = extractEntityFromResult(result);
+                }
             }
+        } catch (Exception e) {
+            log.warn("[OPERATE_LOG] Post-proceed snapshot extraction failed", e);
         }
 
-        // 6. 保存审计日志
-        saveOperateLog(op, appId, joinPoint, beforeData, afterData, status);
+        // Phase 4: 保存审计日志
+        saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, afterData, status);
 
         return result;
     }
@@ -118,6 +141,8 @@ public class OperateLogV2Aspect {
 
     /**
      * 构造并保存操作日志
+     *
+     * <p>整体包裹 try-catch，任何异常仅记录日志，不影响主业务</p>
      */
     private void saveOperateLog(OperateEnum op, String appId, ProceedingJoinPoint joinPoint,
                                 String beforeData, String afterData, int status) {
@@ -131,8 +156,9 @@ public class OperateLogV2Aspect {
             logEntry.setOperateDescCn(op.getDescCn());
             logEntry.setOperateDescEn(op.getDescEn());
 
-            // 用户信息
-            logEntry.setOperateUser(UserContextHolder.getUserName());
+            // 用户信息（取 userId）
+            String userId = UserContextHolder.getUserId();
+            logEntry.setOperateUser(userId);
             logEntry.setIpAddress(extractIpAddress());
 
             // 前后数据
@@ -142,9 +168,8 @@ public class OperateLogV2Aspect {
 
             // 时间戳和操作人
             Date now = new Date();
-            String user = logEntry.getOperateUser();
-            logEntry.setCreateBy(user);
-            logEntry.setLastUpdateBy(user);
+            logEntry.setCreateBy(userId);
+            logEntry.setLastUpdateBy(userId);
             logEntry.setCreateTime(now);
             logEntry.setLastUpdateTime(now);
 
@@ -152,7 +177,7 @@ public class OperateLogV2Aspect {
             auditLogService.saveAsync(logEntry);
 
         } catch (Exception e) {
-            log.error("[OPERATE_LOG] Failed to construct log entry", e);
+            log.error("[OPERATE_LOG] Failed to construct/save log entry", e);
         }
     }
 

@@ -1,6 +1,6 @@
 # Open-Server 审计日志技术方案
 
-> 版本：v2.3.0 | 日期：2026-05-26 | 作者：SDDU Build Agent
+> 版本：v2.4.0 | 日期：2026-05-27 | 作者：SDDU Build Agent
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### 1.1 背景
 
-能力开放平台（open-server）需要对权限订阅管理的 **11 个非 GET 接口** 实现审计日志持久化，记录应用对 API / 事件 / 回调权限的订阅、撤回、删除、配置操作，写入 `openplateform_operate_log_t` 表，用于安全审计与合规追溯。
+能力开放平台（open-server）需要对权限订阅管理的 **11 个非 GET 接口** 实现审计日志持久化，记录应用对 API / 事件 / 回调权限的订阅、撤回、删除、配置操作，写入 `openplatform_operate_log_t` 表，用于安全审计与合规追溯。
 
 API / 事件 / 回调的资源管理接口（ApiController / EventController / CallbackController）因无 appId 关联，不纳入审计日志。
 
@@ -35,7 +35,7 @@ API / 事件 / 回调的资源管理接口（ApiController / EventController / C
 ## 2. 数据库表结构
 
 ```sql
-CREATE TABLE `openplateform_operate_log_t` (
+CREATE TABLE `openplatform_operate_log_t` (
   `id`               bigint(20)    NOT NULL              COMMENT '主键',
   `app_id`           varchar(100)  NOT NULL              COMMENT '应用ID',
   `operate_type`     varchar(10)   NOT NULL              COMMENT '操作类型',
@@ -106,7 +106,7 @@ OperateLogV2Aspect (@Around)
     |       |-- WITHDRAW/CONFIG: EntitySnapshotLoader 重新查询
     |       |-- DELETE: null (实体已删除)
     |-- 7. 提取 IP (X-Forwarded-For -> X-Real-IP -> getRemoteAddr)
-    |-- 8. 提取用户 (UserContextHolder.getUserName())
+    |-- 8. 提取用户 (UserContextHolder.getUserId())
     |
     v
 AuditLogService.saveAsync()  [异步调用]
@@ -115,7 +115,7 @@ AuditLogService.saveAsync()  [异步调用]
     |-- IdGeneratorStrategy.nextId() 生成雪花 ID
     |
     v
-OperateLogMapper.insert() -> openplateform_operate_log_t
+OperateLogMapper.insert() -> openplatform_operate_log_t
 ```
 
 ### 3.2 与现有切面的关系
@@ -363,7 +363,7 @@ public @interface AuditLog {
 
 ### 5.4 OperateLog 实体（不变）
 
-映射 `openplateform_operate_log_t` 表。
+映射 `openplatform_operate_log_t` 表。
 
 ```java
 @Data
@@ -374,7 +374,7 @@ public class OperateLog implements Serializable {
     private String operateObject; // 操作对象 (API_PERMISSION/EVENT_PERMISSION/CALLBACK_PERMISSION)
     private String operateDescCn; // 中文描述
     private String operateDescEn; // 英文描述
-    private String operateUser;   // 操作人
+    private String operateUser;   // 操作人（userId）
     private String ipAddress;     // 客户端 IP
     private String beforeData;    // 操作前数据（JSON）
     private String afterData;     // 操作后数据（JSON）
@@ -399,7 +399,7 @@ public interface OperateLogMapper {
 
 ```xml
 <insert id="insert" parameterType="...OperateLog">
-    INSERT INTO openplateform_operate_log_t (
+    INSERT INTO openplatform_operate_log_t (
         id, app_id, operate_type, operate_object,
         operate_desc_cn, operate_desc_en,
         operate_user, ip_address, before_data, after_data, status,
@@ -601,58 +601,72 @@ public class EntitySnapshotLoaderFactory {
 
 #### 核心 @Around 流程
 
+切面采用 **四阶段错误隔离** 设计，确保审计逻辑的任何异常都不影响主业务接口：
+
 ```java
 @Around("@annotation(auditLog)")
 public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {
-    OperateEnum op = auditLog.value();
-    AppIdSourceEnum appIdSource = auditLog.appIdSource();
 
-    // Step 1: 提取资源 ID
-    Long resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
+    // Phase 1: 审计前准备 —— 任何异常不影响主方法执行
+    AuditContext ctx = new AuditContext();
+    ctx.op = auditLog.value();
+    try {
+        ctx.resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
 
-    // Step 2: 加载 before_data（ENTITY 策略同时用于提取 appId）
-    String beforeData = null;
-    if ((op.needsBeforeData() || appIdSource == AppIdSourceEnum.ENTITY) && resourceId != null) {
-        beforeData = loadEntitySnapshot(resourceId, op.getOperateObject());
+        if ((ctx.op.needsBeforeData() || auditLog.appIdSource() == AppIdSourceEnum.ENTITY)
+                && ctx.resourceId != null) {
+            ctx.beforeData = loadEntitySnapshot(ctx.resourceId, ctx.op.getOperateObject());
+        }
+
+        if (auditLog.appIdSource() == AppIdSourceEnum.PATH_VARIABLE) {
+            ctx.appId = extractAppIdFromParams(joinPoint);
+        } else {
+            ctx.appId = extractAppIdFromEntity(ctx.beforeData);
+        }
+    } catch (Exception e) {
+        log.error("[OPERATE_LOG] Pre-proceed audit failed, skipping audit", e);
+        return joinPoint.proceed(); // 审计准备失败，主方法照常执行
     }
 
-    // Step 3: 解析 app_id
-    String appId;
-    if (appIdSource == AppIdSourceEnum.PATH_VARIABLE) {
-        appId = extractAppIdFromParams(joinPoint);
-    } else {
-        // ENTITY 策略：从 before_data 实体快照中提取
-        appId = extractAppIdFromEntity(beforeData);
-    }
-
-    // Step 4: 执行目标方法
+    // Phase 2: 执行目标方法
     Object result;
     int status = 1;
     try {
         result = joinPoint.proceed();
     } catch (Throwable ex) {
         status = 0;
-        saveOperateLog(op, appId, joinPoint, beforeData, null, status);
+        saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, null, status);
         throw ex;
     }
 
-    // Step 5: 加载 after_data
+    // Phase 3: 审计后处理 —— 任何异常不影响主方法返回
     String afterData = null;
-    if (op.needsAfterData()) {
-        if (resourceId != null) {
-            // WITHDRAW/CONFIG: 从数据库重新查询
-            afterData = loadEntitySnapshot(resourceId, op.getOperateObject());
-        } else {
-            // SUBSCRIBE: 从返回值提取（resourceId 为 null）
-            afterData = extractEntityFromResult(result);
+    try {
+        if (ctx.op.needsAfterData()) {
+            if (ctx.resourceId != null) {
+                afterData = loadEntitySnapshot(ctx.resourceId, ctx.op.getOperateObject());
+            } else {
+                afterData = extractEntityFromResult(result);
+            }
         }
+    } catch (Exception e) {
+        log.warn("[OPERATE_LOG] Post-proceed snapshot extraction failed", e);
     }
 
-    // Step 6: 保存审计日志
-    saveOperateLog(op, appId, joinPoint, beforeData, afterData, status);
+    // Phase 4: 保存审计日志
+    saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, afterData, status);
     return result;
 }
 ```
+
+**错误隔离矩阵**：
+
+| 阶段 | 范围 | 异常处理 | 对主业务的影响 |
+|------|------|---------|--------------|
+| Phase 1 | before proceed | catch → log + skip audit | 无：主方法照常执行 |
+| Phase 2 | proceed | catch → record status=0 → re-throw | 无：异常正常传播给全局处理器 |
+| Phase 3 | after proceed | catch → log + afterData=null | 无：主方法结果正常返回 |
+| Phase 4 | save log | saveOperateLog 内部 catch | 无：异步写入失败仅记录日志 |
 
 #### 实体快照加载（策略路由）
 
@@ -816,14 +830,20 @@ X-Forwarded-For  ->  X-Real-IP  ->  request.getRemoteAddr()
 
 ## 8. 错误处理策略
 
-| 场景 | 处理方式 | 影响范围 |
-|------|---------|---------|
-| 主操作成功，审计日志写入失败 | `saveAsync()` 内部 catch，`log.error()` | 主请求不受影响，审计日志丢失 |
-| 主操作失败（抛异常） | 切面 catch 记录 `status=0` + `afterData=null`，re-throw | 审计日志记录失败操作，异常由全局异常处理器处理 |
-| 实体快照加载失败 | 返回 null，`log.warn()` | 审计日志以部分数据保存 |
-| 异步线程池队列满 | `CallerRunsPolicy` 由调用线程同步执行 | 无数据丢失，主请求变慢 |
-| HttpServletRequest 不可用 | IP 设为 null | DDL 允许 NULL |
-| UserContextHolder 无用户信息 | operateUser 为 null | 切面构造日志时 catch |
+**核心原则：切面任何环节的异常均不得影响主业务接口。**
+
+切面采用四阶段错误隔离设计（详见 5.8 节核心流程），各阶段的异常处理方式如下：
+
+| 阶段 | 场景 | 处理方式 | 对主业务的影响 |
+|------|------|---------|--------------|
+| Phase 1 | 审计前准备异常（快照加载、appId 解析等） | `catch → log.error + joinPoint.proceed()` | 无：主方法照常执行，审计跳过 |
+| Phase 2 | 主操作失败（抛异常） | `catch → record status=0 → re-throw` | 无：异常正常传播给全局异常处理器 |
+| Phase 3 | 审计后处理异常（afterData 提取） | `catch → log.warn + afterData=null` | 无：主方法结果正常返回 |
+| Phase 4 | 审计日志写入失败 | `saveOperateLog()` 整体 try-catch | 无：仅 log.error |
+| Phase 4 | 异步线程池队列满 | `CallerRunsPolicy` 由调用线程同步执行 | 无数据丢失，主请求变慢 |
+| - | HttpServletRequest 不可用 | IP 设为 null | DDL 允许 NULL |
+| - | UserContextHolder 无用户信息 | userId 为默认值 | 切面构造日志时 catch |
+| UserContextHolder 无用户信息 | operateUser 为 userId 默认值 | 切面构造日志时 catch |
 
 ---
 
@@ -858,7 +878,7 @@ OpenServerApplication (@EnableAsync)
 POST /service/open/v2/apps/APP001/apis/subscribe
 Body: { "permissionIds": [1, 2, 3] }
 
-预期: openplateform_operate_log_t 新增一条记录
+预期: openplatform_operate_log_t 新增一条记录
   - app_id = "APP001"
   - operate_type = "SUBSCRIBE"
   - operate_object = "API_PERMISSION"
@@ -931,3 +951,4 @@ Body: { "channel": "HTTP", "url": "https://...", ... }
 | v2.1.0 | 2026-05-26 | 恢复 AppIdSourceEnum（PATH_VARIABLE / ENTITY 双策略），保留 appId 解析扩展性；ENTITY 策略支持从实体快照 JSON 中提取 app_id，适用于接口无直接 appId 参数的场景 |
 | v2.2.0 | 2026-05-26 | 明确 app_id 取 openplatform_app_t.app_id (varchar 外部业务 ID)；新增 app_id 数据链路说明（openplatform_app_t → subscription → audit log）；ENTITY 策略改用 AppContextResolver.toExternalId() 将 numeric internalId 转换为 varchar externalId；OperateLogAspect 新增 AppContextResolver 依赖 |
 | v2.3.0 | 2026-05-26 | ① OperateLogAspect 重命名为 OperateLogV2Aspect；② @AuditLog 注解统一使用 `value =` 语法；③ SUBSCRIBE 移除 `resourceIdParam = "appId"`，afterData 改为从 ApiResponse.data 提取创建的订阅记录；④ 实体快照加载改为策略模式（EntitySnapshotLoader + Factory），支持不同资源类型从不同表加载 |
+| v2.4.0 | 2026-05-27 | ① 修正表名拼写 `openplateform_operate_log_t` → `openplatform_operate_log_t`；② `operate_user` 改为取 `UserContextHolder.getUserId()` 而非 `getUserName()`；③ 切面重构为四阶段错误隔离设计（Phase 1~4），确保审计逻辑任何异常均不影响主业务接口 |
