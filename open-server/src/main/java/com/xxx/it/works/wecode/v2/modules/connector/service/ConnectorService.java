@@ -191,7 +191,7 @@ public class ConnectorService {
 
     /**
      * API #6: GET /api/v1/connectors/{connectorId}/config
-     * 查看连接配置 (请求/响应 Schema/认证类型/超时/限流)
+     * 查看连接配置 (authConfig/inputContract/outputContract/rateLimitConfig/超时)
      */
     public ApiResponse<ConnectorConfigResponse> getConnectorConfig(Long connectorId) {
         Connector connector = connectorMapper.selectById(connectorId);
@@ -211,7 +211,7 @@ public class ConnectorService {
 
     /**
      * API #7: PUT /api/v1/connectors/{connectorId}/config
-     * 编辑连接配置 (编辑即生效, connectionConfig 全文替换)
+     * 编辑连接配置 (编辑即生效，connectionConfig JSON 全文替换，支持 authConfig/inputContract/outputContract/rateLimitConfig)
      */
     @Transactional
     public ApiResponse<Void> updateConnectorConfig(Long connectorId, ConnectorConfigUpdateRequest request) {

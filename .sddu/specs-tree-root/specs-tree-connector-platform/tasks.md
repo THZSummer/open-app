@@ -395,11 +395,11 @@ cd connector-api && mvn test
 - `open-server/.../common/interceptor/AuditLogAspect.java`
 
 ### 验收标准
-- [ ] `DefaultErrorHandler`：构造 `errorInfo` 使用新格式 —— `code` 为数字字符串（如 `"6001"`），`message` 拆为 `messageZh`/`messageEn`
-- [ ] `DefaultErrorHandler`：内部错误（6xxxx）携带 `cause`，下游错误（4xx/5xx）携带 `downstreamStatus` + `downstreamBody`（截断 512 字符）
-- [ ] `RateLimitFilter`：读取 `trigger.data.rateLimitConfig.maxQps`（非旧名 `rateLimit`）
-- [ ] `RateLimitFilter`：限流拒绝时 errorInfo 返回 `code: "429"` + `messageZh: "请求频率超限"` + `messageEn: "Too many requests"`
-- [ ] `AuditLogAspect`：记录启停操作时正确引用新字段路径
+- [x] `DefaultErrorHandler`：构造 `errorInfo` 使用新格式 —— `code` 为数字字符串（如 `"6001"`），`message` 拆为 `messageZh`/`messageEn`
+- [x] `DefaultErrorHandler`：内部错误（6xxxx）携带 `cause`，下游错误（4xx/5xx）携带 `downstreamStatus` + `downstreamBody`（截断 512 字符）
+- [x] `RateLimitFilter`：读取 `trigger.data.rateLimitConfig.maxQps`（非旧名 `rateLimit`）
+- [x] `RateLimitFilter`：限流拒绝时 errorInfo 返回 `code: "429"` + `messageZh: "请求频率超限"` + `messageEn: "Too many requests"`
+- [x] `AuditLogAspect`：记录启停操作时正确引用新字段路径
 
 ### 验证命令
 ```bash

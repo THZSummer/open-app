@@ -248,7 +248,7 @@ class FlowServiceTest {
         void testGetFlowConfig_HasConfig() {
             FlowVersion version = new FlowVersion();
             version.setFlowId(100L);
-            version.setOrchestrationConfig("{\"nodes\":[{}],\"edges\":[]}");
+            version.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":0,\"y\":0},\"data\":{}}],\"edges\":[]}");
 
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
             when(flowVersionMapper.selectByFlowId(100L)).thenReturn(version);
@@ -271,7 +271,7 @@ class FlowServiceTest {
         @DisplayName("保存配置 - 校验通过")
         void testUpdateFlowConfig_Valid() throws Exception {
             FlowConfigUpdateRequest request = new FlowConfigUpdateRequest();
-            request.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\"}],\"edges\":[]}");
+            request.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"entry\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"入口\"}}],\"edges\":[]}");
 
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
             when(flowVersionMapper.selectByFlowId(100L)).thenReturn(null);

@@ -1,10 +1,14 @@
 package com.xxx.it.works.wecode.v2.modules.flow.entity;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 连接流版本/配置 R2DBC Entity
@@ -65,4 +69,49 @@ public class FlowVersionEntity {
 
     public String getLastUpdateBy() { return lastUpdateBy; }
     public void setLastUpdateBy(String lastUpdateBy) { this.lastUpdateBy = lastUpdateBy; }
+
+    // ===== Transient Helpers (v5.5) =====
+
+    /**
+     * 解析 orchestrationConfig JSON 为 JsonNode
+     */
+    public JsonNode parseOrchestrationConfig(ObjectMapper mapper) {
+        if (this.orchestrationConfig == null || this.orchestrationConfig.isBlank()) {
+            return mapper.createObjectNode();
+        }
+        try {
+            return mapper.readTree(this.orchestrationConfig);
+        } catch (Exception e) {
+            return mapper.createObjectNode();
+        }
+    }
+
+    /**
+     * 解析 orchestrationConfig JSON 为 Map
+     */
+    public Map<String, Object> parseOrchestrationConfigAsMap(ObjectMapper mapper) {
+        if (this.orchestrationConfig == null || this.orchestrationConfig.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return mapper.readValue(this.orchestrationConfig,
+                    new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            return Map.of();
+        }
+    }
+
+    /**
+     * 获取 trigger 配置; v5.5 字段名: authConfig, inputContract, outputContract, rateLimitConfig
+     */
+    public Map<String, Object> getTriggerConfig(ObjectMapper mapper) {
+        Map<String, Object> config = parseOrchestrationConfigAsMap(mapper);
+        Object trigger = config.get("trigger");
+        if (trigger instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) trigger;
+            return result;
+        }
+        return Map.of();
+    }
 }

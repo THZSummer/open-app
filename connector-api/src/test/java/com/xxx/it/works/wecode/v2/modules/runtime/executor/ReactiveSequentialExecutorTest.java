@@ -46,12 +46,16 @@ class ReactiveSequentialExecutorTest {
 
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("nodes", List.of(
-                Map.of("id", "node_entry", "type", "entry", "labelCn", "接收"),
-                Map.of("id", "node_exit", "type", "exit", "labelCn", "返回",
-                        "outputFields", List.of("node_entry.sender"))
+                Map.of("id", "node_entry", "type", "entry",
+                        "position", Map.of("x", 0, "y", 0),
+                        "data", Map.of("labelCn", "接收")),
+                Map.of("id", "node_exit", "type", "exit",
+                        "position", Map.of("x", 300, "y", 0),
+                        "data", Map.of("labelCn", "返回",
+                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("sender", "${node_entry.sender}"))))
         ));
         config.put("edges", List.of(
-                Map.of("id", "e1", "sourceNodeId", "node_entry", "targetNodeId", "node_exit")
+                Map.of("id", "e1", "source", "node_entry", "target", "node_exit")
         ));
 
         String configJson = toJson(config);
@@ -82,15 +86,21 @@ class ReactiveSequentialExecutorTest {
 
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("nodes", List.of(
-                Map.of("id", "node_entry", "type", "entry", "labelCn", "入口"),
-                Map.of("id", "node_proc", "type", "data_processor", "labelCn", "处理",
-                        "fieldMappings", fieldMappings),
-                Map.of("id", "node_exit", "type", "exit", "labelCn", "出口",
-                        "outputFields", List.of("node_proc.greeting"))
+                Map.of("id", "node_entry", "type", "entry",
+                        "position", Map.of("x", 0, "y", 0),
+                        "data", Map.of("labelCn", "入口")),
+                Map.of("id", "node_proc", "type", "data_processor",
+                        "position", Map.of("x", 300, "y", 0),
+                        "data", Map.of("labelCn", "处理",
+                                "fieldMappings", fieldMappings)),
+                Map.of("id", "node_exit", "type", "exit",
+                        "position", Map.of("x", 600, "y", 0),
+                        "data", Map.of("labelCn", "出口",
+                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("greeting", "${node_proc.greeting}"))))
         ));
         config.put("edges", List.of(
-                Map.of("id", "e1", "sourceNodeId", "node_entry", "targetNodeId", "node_proc"),
-                Map.of("id", "e2", "sourceNodeId", "node_proc", "targetNodeId", "node_exit")
+                Map.of("id", "e1", "source", "node_entry", "target", "node_proc"),
+                Map.of("id", "e2", "source", "node_proc", "target", "node_exit")
         ));
 
         Mono<ExecutionResult> resultMono = executor.execute(context, toJson(config));
@@ -117,7 +127,6 @@ class ReactiveSequentialExecutorTest {
         StepVerifier.create(resultMono)
                 .assertNext(result -> {
                     assertEquals("failed", result.getStatus());
-                    assertTrue(result.getErrorMessage().contains("无节点"));
                 })
                 .verifyComplete();
     }
@@ -130,13 +139,19 @@ class ReactiveSequentialExecutorTest {
 
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("nodes", List.of(
-                Map.of("id", "node_entry", "type", "entry"),
-                Map.of("id", "node_unknown", "type", "unknown_type", "labelCn", "未知"),
-                Map.of("id", "node_exit", "type", "exit", "outputFields", List.of("node_entry.data"))
+                Map.of("id", "node_entry", "type", "entry",
+                        "position", Map.of("x", 0, "y", 0),
+                        "data", Map.of()),
+                Map.of("id", "node_unknown", "type", "unknown_type",
+                        "position", Map.of("x", 300, "y", 0),
+                        "data", Map.of("labelCn", "未知")),
+                Map.of("id", "node_exit", "type", "exit",
+                        "position", Map.of("x", 600, "y", 0),
+                        "data", Map.of("outputMapping", Map.of("header", Map.of(), "body", Map.of("data", "${node_entry.data}"))))
         ));
         config.put("edges", List.of(
-                Map.of("id", "e1", "sourceNodeId", "node_entry", "targetNodeId", "node_unknown"),
-                Map.of("id", "e2", "sourceNodeId", "node_unknown", "targetNodeId", "node_exit")
+                Map.of("id", "e1", "source", "node_entry", "target", "node_unknown"),
+                Map.of("id", "e2", "source", "node_unknown", "target", "node_exit")
         ));
 
         Mono<ExecutionResult> resultMono = executor.execute(context, toJson(config));

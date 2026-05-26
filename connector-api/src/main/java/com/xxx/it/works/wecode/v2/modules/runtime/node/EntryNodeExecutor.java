@@ -14,8 +14,8 @@ import java.util.Map;
 /**
  * 入口节点执行器
  * <p>
- * 透传触发数据到 ExecutionContext
- * 触发数据作为下游节点的输入
+ * v5.5: 触发数据作为 {@code input} 分区, {@code output} 分区记录执行元数据.
+ * 透传触发数据到 ExecutionContext.
  * </p>
  */
 public class EntryNodeExecutor implements NodeExecutor {
@@ -43,25 +43,26 @@ public class EntryNodeExecutor implements NodeExecutor {
             config = objectMapper.convertValue(nodeConfig, Map.class);
         }
 
-        log.debug("Entry node executing: nodeId={}", config.get("id"));
+        // v5.5: React Flow 格式 — 节点配置在 data 字段内
+        Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
 
-        // 透传触发数据作为输出
-        Map<String, Object> outputData = new HashMap<>();
+        String nodeId = (String) config.get("id");
+        log.debug("Entry node executing: nodeId={}", nodeId);
+
+        // input 分区: 触发数据
+        Map<String, Object> input = new HashMap<>();
         if (context.getTriggerData() != null) {
-            outputData.putAll(context.getTriggerData());
+            input.putAll(context.getTriggerData());
         }
 
-        // 标记元数据
-        outputData.put("__status", "success");
+        // output 分区: 元数据
+        Map<String, Object> output = new HashMap<>();
+        output.put("__status", "success");
 
-        NodeOutput output = new NodeOutput(
-                (String) config.get("id"),
-                "entry",
-                outputData
-        );
-        output.setStatus("success");
+        NodeOutput result = new NodeOutput(nodeId, "entry", input, output);
+        result.setStatus("success");
 
-        log.debug("Entry node completed: nodeId={}", config.get("id"));
-        return Mono.just(output);
+        log.debug("Entry node completed: nodeId={}", nodeId);
+        return Mono.just(result);
     }
 }

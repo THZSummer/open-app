@@ -236,6 +236,7 @@ public class FlowService {
 
     /**
      * API #15: GET /api/v1/flows/{flowId}/config
+     * 查看编排配置 (React Flow 格式：nodes/edges/trigger 完整 DAG)
      */
     public ApiResponse<FlowConfigResponse> getFlowConfig(Long flowId) {
         Flow flow = flowMapper.selectById(flowId);
@@ -255,8 +256,8 @@ public class FlowService {
 
     /**
      * API #16: PUT /api/v1/flows/{flowId}/config
-     * 保存编排配置 (编辑即生效)
-     * 编排校验: 无节点时拒绝保存
+     * 保存编排配置 (React Flow 格式：nodes/edges/trigger，编辑即生效)
+     * 编排校验: 检查 React Flow nodes 数组，无节点时拒绝保存
      */
     @Transactional
     public ApiResponse<Void> updateFlowConfig(Long flowId, FlowConfigUpdateRequest request) {

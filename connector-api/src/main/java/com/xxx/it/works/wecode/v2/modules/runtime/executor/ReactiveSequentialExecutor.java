@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.runtime.executor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
@@ -19,8 +20,15 @@ import java.util.*;
 /**
  * 反应式顺序执行器
  * <p>
- * 从入口节点开始, 按 edges 拓扑顺序 flatMap 串联各节点 Mono<NodeOutput>
- * 对调用方呈现为同步请求-响应语义
+ * v5.5:
+ * <ul>
+ *   <li>使用 {@link NodeContext} 替代旧 {@code Map<String, Map<String, Object>>} 存储节点数据</li>
+ *   <li>edges 中 {@code sourceNodeId} → {@code source}, {@code targetNodeId} → {@code target}</li>
+ *   <li>节点配置访问 {@code node.data.xxx} (React Flow 格式)</li>
+ *   <li>{@link ExecutionResult.StepDetail} 使用 {@code errorInfo} Map 和 {@code labelCn}/{@code labelEn}</li>
+ * </ul>
+ * 从入口节点开始, 按 edges 拓扑顺序 flatMap 串联各节点 Mono&lt;NodeOutput&gt;.
+ * 对调用方呈现为同步请求-响应语义.
  * </p>
  */
 public class ReactiveSequentialExecutor {
@@ -49,8 +57,8 @@ public class ReactiveSequentialExecutor {
      * 执行连接流
      *
      * @param context                 执行上下文
-     * @param orchestrationConfigJson 编排配置JSON字符串
-     * @return Mono<ExecutionResult> 完整执行结果
+     * @param orchestrationConfigJson 编排配置JSON字符串 (v5.5 React Flow 格式)
+     * @return Mono&lt;ExecutionResult&gt; 完整执行结果
      */
     public Mono<ExecutionResult> execute(ExecutionContext context, String orchestrationConfigJson) {
         long startTime = System.currentTimeMillis();
@@ -61,19 +69,20 @@ public class ReactiveSequentialExecutor {
                     JsonNode edges = config.get("edges");
 
                     if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
-                        return Mono.just(buildErrorResult(context, "编排配置无节点", startTime));
+                        return Mono.just(buildErrorResult(context, null, startTime));
                     }
 
                     // 构建拓扑顺序: 从 entry 节点开始, 按 edges 确定顺序
                     List<JsonNode> orderedNodes = topologicalSort(nodes, edges);
 
                     // 使用 reduce 累积执行: 从起始节点开始, 按顺序串联
-                    NodeOutput startMarker = new NodeOutput("__start__", "__start__", new HashMap<>());
+                    NodeOutput startMarker = new NodeOutput("__start__", "__start__",
+                            new HashMap<>(), new HashMap<>());
                     return Flux.fromIterable(orderedNodes)
                             .reduce(Mono.just(startMarker), (prevMono, nodeConfig) ->
                                     prevMono.flatMap(prevOutput -> executeNode(context, prevOutput, nodeConfig, startTime)))
                             .flatMap(mono -> mono) // 展平 Mono<Mono<NodeOutput>> → Mono<NodeOutput>
-                            .flatMap(lastOutput -> buildResult(context, orderedNodes, lastOutput, startTime));
+                            .flatMap(lastOutput -> buildResult(context, orderedNodes, lastOutput, startTime, edges));
                 })
                 .onErrorResume(e -> {
                     log.error("Flow execution error: {}", e.getMessage(), e);
@@ -88,7 +97,7 @@ public class ReactiveSequentialExecutor {
                                           JsonNode nodeConfig, long startTime) {
         // 将上一个节点输出写入上下文 (跳过起始标记)
         if (!"__start__".equals(prevOutput.getNodeId())) {
-            context.setNodeOutput(prevOutput.getNodeId(), prevOutput.getOutputData());
+            storeNodeOutputToContext(context, prevOutput);
         }
 
         String nodeType = nodeConfig.get("type").asText();
@@ -96,11 +105,12 @@ public class ReactiveSequentialExecutor {
         if (executor == null) {
             log.warn("Unknown node type: {}, skipping", nodeType);
             return Mono.just(new NodeOutput(
-                    nodeConfig.get("id").asText(), nodeType, new HashMap<>()));
+                    nodeConfig.get("id").asText(), nodeType,
+                    new HashMap<>(), new HashMap<>()));
         }
 
         long nodeStart = System.currentTimeMillis();
-        // 将 JsonNode 转为 Map 传递给执行器
+        // v5.5: 传递完整 config (含 data 字段), executor 自行提取 data.xxx
         Map<String, Object> configMap = objectMapper.convertValue(nodeConfig, Map.class);
         return executor.execute(context, configMap)
                 .doOnNext(output -> {
@@ -111,13 +121,30 @@ public class ReactiveSequentialExecutor {
     }
 
     /**
+     * 将 NodeOutput 转换为 NodeContext 并存入上下文
+     */
+    @SuppressWarnings("unchecked")
+    private void storeNodeOutputToContext(ExecutionContext context, NodeOutput output) {
+        NodeContext ctx = new NodeContext();
+        ctx.setNodeId(output.getNodeId());
+        ctx.setNodeType(output.getNodeType());
+        ctx.setInput(output.getInput());
+        ctx.setOutput(output.getOutput());
+        ctx.setStatus(output.getStatus());
+        ctx.setDurationMs(output.getDurationMs());
+        ctx.setErrorInfo(output.getErrorInfo());
+        context.setNodeContext(ctx);
+    }
+
+    /**
      * 构建执行结果
      */
+    @SuppressWarnings("unchecked")
     private Mono<ExecutionResult> buildResult(ExecutionContext context, List<JsonNode> orderedNodes,
-                                               NodeOutput lastOutput, long startTime) {
+                                               NodeOutput lastOutput, long startTime, JsonNode edges) {
         // 最后一个节点的输出写入上下文
         if (!"__start__".equals(lastOutput.getNodeId())) {
-            context.setNodeOutput(lastOutput.getNodeId(), lastOutput.getOutputData());
+            storeNodeOutputToContext(context, lastOutput);
         }
 
         ExecutionResult result = new ExecutionResult();
@@ -132,35 +159,66 @@ public class ReactiveSequentialExecutor {
         for (JsonNode node : orderedNodes) {
             String nodeId = node.get("id").asText();
             String nodeType = node.get("type").asText();
-            Map<String, Object> nodeOutput = context.getNodeOutput(nodeId);
+
+            // v5.5: 从 NodeContext 获取数据
+            NodeContext nodeCtx = context.getNodeContext(nodeId);
 
             ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
             step.setNodeId(nodeId);
             step.setNodeType(nodeType);
 
-            JsonNode labelCn = node.get("labelCn");
-            JsonNode labelEn = node.get("labelEn");
-            if (labelCn != null) step.setNodeLabelCn(labelCn.asText());
-            if (labelEn != null) step.setNodeLabelEn(labelEn.asText());
+            // v5.5: 从 data.labelCn/data.labelEn 读取标签
+            JsonNode data = node.get("data");
+            if (data != null) {
+                JsonNode labelCn = data.get("labelCn");
+                JsonNode labelEn = data.get("labelEn");
+                if (labelCn != null) step.setLabelCn(labelCn.asText());
+                if (labelEn != null) step.setLabelEn(labelEn.asText());
+            }
 
-            step.setOutputData(nodeOutput);
+            // 兼容旧格式: 直接在 node 上读取
+            if (step.getLabelCn() == null) {
+                JsonNode labelCn = node.get("labelCn");
+                if (labelCn != null) step.setLabelCn(labelCn.asText());
+            }
+            if (step.getLabelEn() == null) {
+                JsonNode labelEn = node.get("labelEn");
+                if (labelEn != null) step.setLabelEn(labelEn.asText());
+            }
 
-            // 检查节点执行状态
-            String nodeStatus = "success";
-            if (nodeOutput != null && nodeOutput.containsKey("__status")) {
-                nodeStatus = (String) nodeOutput.get("__status");
+            if (nodeCtx != null) {
+                // v5.5: input/output 双分区
+                step.setInputData(nodeCtx.getInput());
+                step.setOutputData(nodeCtx.getOutput());
+
+                // 状态
+                step.setStatus(nodeCtx.getStatus());
+                step.setDurationMs(nodeCtx.getDurationMs());
+                step.setErrorInfo(nodeCtx.getErrorInfo());
+
+                // 检查失败状态
+                String nodeStatus = nodeCtx.getStatus();
                 if ("failed".equals(nodeStatus) || "timeout".equals(nodeStatus)) {
                     anyFailed = true;
-                    step.setErrorMessage((String) nodeOutput.get("__error"));
                 }
-            }
-            step.setStatus(nodeStatus);
+            } else {
+                // 降级: 通过旧版 getNodeOutput 获取
+                Map<String, Object> nodeOutput = context.getNodeOutput(nodeId);
+                step.setOutputData(nodeOutput);
 
-            // 获取原始 input
-            if (nodeOutput != null && nodeOutput.containsKey("__input")) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> input = (Map<String, Object>) nodeOutput.get("__input");
-                step.setInputData(input);
+                String nodeStatus = "success";
+                if (nodeOutput != null && nodeOutput.containsKey("__status")) {
+                    nodeStatus = (String) nodeOutput.get("__status");
+                    if ("failed".equals(nodeStatus) || "timeout".equals(nodeStatus)) {
+                        anyFailed = true;
+                    }
+                }
+                step.setStatus(nodeStatus);
+
+                // 旧格式 input
+                if (nodeOutput != null && nodeOutput.containsKey("__input")) {
+                    step.setInputData((Map<String, Object>) nodeOutput.get("__input"));
+                }
             }
 
             result.addStep(step);
@@ -169,12 +227,16 @@ public class ReactiveSequentialExecutor {
         // 设置整体状态
         result.setStatus(anyFailed ? "failed" : "success");
 
-        // resultData 取最后一个输出 (不含 __status/__input 等元字段)
-        if (lastOutput != null && lastOutput.getOutputData() != null) {
-            Map<String, Object> cleanOutput = new HashMap<>(lastOutput.getOutputData());
-            cleanOutput.remove("__status");
-            cleanOutput.remove("__input");
-            cleanOutput.remove("__error");
+        // resultData 取最后一个输出 (不含 __status/__input/__error 等元字段)
+        if (lastOutput != null) {
+            Map<String, Object> cleanOutput = new HashMap<>();
+            Map<String, Object> outputData = lastOutput.getOutput();
+            if (outputData != null) {
+                cleanOutput.putAll(outputData);
+                cleanOutput.remove("__status");
+                cleanOutput.remove("__input");
+                cleanOutput.remove("__error");
+            }
             result.setResultData(cleanOutput);
         }
 
@@ -186,7 +248,7 @@ public class ReactiveSequentialExecutor {
 
     /**
      * 拓扑排序: 按 edges 确定节点执行顺序
-     * MVP 线性编排, 按 edges 顺序 flatMap 串联
+     * v5.5: 使用 {@code source}/{@code target} 替代 {@code sourceNodeId}/{@code targetNodeId}
      */
     private List<JsonNode> topologicalSort(JsonNode nodes, JsonNode edges) {
         Map<String, JsonNode> nodeMap = new LinkedHashMap<>();
@@ -219,9 +281,14 @@ public class ReactiveSequentialExecutor {
         Set<String> visited = new HashSet<>();
         visited.add(entryNode.get("id").asText());
 
+        // v5.5: 使用 source/target 替代 sourceNodeId/targetNodeId
         Map<String, String> edgeMap = new HashMap<>();
         for (JsonNode edge : edges) {
-            edgeMap.put(edge.get("sourceNodeId").asText(), edge.get("targetNodeId").asText());
+            String source = getEdgeField(edge, "source", "sourceNodeId");
+            String target = getEdgeField(edge, "target", "targetNodeId");
+            if (source != null && target != null) {
+                edgeMap.put(source, target);
+            }
         }
 
         String currentId = entryNode.get("id").asText();
@@ -246,12 +313,31 @@ public class ReactiveSequentialExecutor {
         return ordered;
     }
 
+    /**
+     * 兼容读取 edge 字段: 先读 v5.5 新字段名, 再读旧字段名
+     */
+    private String getEdgeField(JsonNode edge, String newField, String oldField) {
+        JsonNode val = edge.get(newField);
+        if (val != null) return val.asText();
+        val = edge.get(oldField);
+        if (val != null) return val.asText();
+        return null;
+    }
+
     private ExecutionResult buildErrorResult(ExecutionContext context, String errorMessage, long startTime) {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(context.getExecutionId());
         result.setFlowId(context.getFlowId());
         result.setStatus("failed");
-        result.setErrorMessage(errorMessage);
+
+        String msg = (errorMessage != null) ? errorMessage : "Orchestration config has no nodes";
+        Map<String, Object> errorInfo = new HashMap<>();
+        errorInfo.put("code", "EXECUTION_ERROR");
+        errorInfo.put("message", msg);
+        errorInfo.put("messageEn", msg);
+        errorInfo.put("messageZh", msg);
+        result.setErrorInfo(errorInfo);
+
         result.setTotalDurationMs(System.currentTimeMillis() - startTime);
         result.setTest(context.isTest());
         return result;

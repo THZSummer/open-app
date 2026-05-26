@@ -45,7 +45,7 @@ class TriggerServiceTest {
     void testInvokeFlow_Success() {
         FlowVersionEntity flowVersion = new FlowVersionEntity();
         flowVersion.setFlowId(100L);
-        flowVersion.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"exit\"}],\"edges\":[]}");
+        flowVersion.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"结束\"}}],\"edges\":[]}");
 
         ExecutionResult mockResult = new ExecutionResult();
         mockResult.setExecutionId("exec-001");
@@ -77,7 +77,9 @@ class TriggerServiceTest {
         StepVerifier.create(resultMono)
                 .assertNext(result -> {
                     assertEquals("failed", result.getStatus());
-                    assertNotNull(result.getErrorMessage());
+                    assertNotNull(result.getErrorInfo());
+                    assertNotNull(result.getErrorInfo().get("messageZh"),
+                            "errorInfo should contain messageZh");
                 })
                 .verifyComplete();
     }
@@ -87,7 +89,8 @@ class TriggerServiceTest {
     void testInvokeFlow_ExecutionError() {
         FlowVersionEntity flowVersion = new FlowVersionEntity();
         flowVersion.setFlowId(100L);
-        flowVersion.setOrchestrationConfig("{}");
+        // Use a valid orchestrationConfig so TriggerService reaches the executor
+        flowVersion.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"结束\"}}],\"edges\":[]}");
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(executor.execute(any(), anyString())).thenReturn(Mono.error(new RuntimeException("Execution error")));

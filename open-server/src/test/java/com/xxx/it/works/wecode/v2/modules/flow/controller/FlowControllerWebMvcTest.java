@@ -405,7 +405,7 @@ class FlowControllerWebMvcTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
-                                        "orchestrationConfig": "{\\"nodes\\":[{\\"id\\":\\"n1\\",\\"type\\":\\"entry\\"}],\\"edges\\":[]}"
+                                        "orchestrationConfig": "{\\"nodes\\":[{\\"id\\":\\"n1\\",\\"type\\":\\"entry\\",\\"position\\":{\\"x\\":0,\\"y\\":0},\\"data\\":{\\"labelCn\\":\\"入口\\"}}],\\"edges\\":[]}"
                                     }
                                     """))
                     .andExpect(status().isOk())

@@ -36,9 +36,13 @@ public class DebugProxyService {
 
     /**
      * 转发测试运行请求到 connector-api
+     * <p>
+     * 构建请求体时透传 mockTriggerData（v5.5 新字段格式：authConfig/inputContract/outputContract/rateLimitConfig）
+     * 和 credentials 至 connector-api 的 POST /api/v1/internal/test-run/{flowId}。
+     * </p>
      *
      * @param flowId 连接流ID
-     * @param mockTriggerData 模拟触发数据
+     * @param mockTriggerData 模拟触发数据（含新 v5.5 字段名）
      * @param credentials 凭证 (按 connectorVersionId 分组)
      * @return 转发结果
      */
@@ -52,7 +56,7 @@ public class DebugProxyService {
         log.info("Forwarding test run to connector-api: flowId={}, url={}", flowId, url);
 
         try {
-            // 构建请求体
+            // 构建请求体 - 透传 mockTriggerData（已使用 v5.5 新字段名：authConfig/inputContract/outputContract/rateLimitConfig）
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("mockTriggerData", mockTriggerData != null ? mockTriggerData : new HashMap<>());
             requestBody.put("credentials", credentials != null ? credentials : new HashMap<>());

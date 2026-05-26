@@ -41,8 +41,9 @@ class NodeExecutorsTest {
         assertEquals("node_entry", output.getNodeId());
         assertEquals("entry", output.getNodeType());
         assertEquals("success", output.getStatus());
-        assertEquals("test_user", output.getOutputData().get("sender"));
-        assertEquals("hello", output.getOutputData().get("content"));
+        // v5.5: 触发数据放入 input 分区, output 分区仅存元数据
+        assertEquals("test_user", output.getInput().get("sender"));
+        assertEquals("hello", output.getInput().get("content"));
     }
 
     @Test
@@ -106,24 +107,33 @@ class NodeExecutorsTest {
     }
 
     @Test
-    @DisplayName("ExitNodeExecutor - 按outputFields提取")
+    @DisplayName("ExitNodeExecutor - 按outputMapping提取")
     void testExitNodeExecutor_WithOutputFields() {
         context.setNodeOutput("node_upstream", Map.of("result", "ok", "count", 42));
 
         ExitNodeExecutor executor = new ExitNodeExecutor(objectMapper);
 
+        // v5.5: 使用 data.outputMapping.{header, body} 替代扁平 outputFields
+        Map<String, Object> data = new HashMap<>();
+        Map<String, Object> bodyMapping = new HashMap<>();
+        bodyMapping.put("result", "${node_upstream.result}");
+        bodyMapping.put("count", "${node_upstream.count}");
+        data.put("outputMapping", Map.of("body", bodyMapping));
+
         Map<String, Object> nodeConfig = new HashMap<>();
         nodeConfig.put("id", "node_exit");
         nodeConfig.put("type", "exit");
-        nodeConfig.put("outputFields", List.of("node_upstream.result", "node_upstream.count"));
+        nodeConfig.put("data", data);
 
         NodeOutput output = executor.execute(context, nodeConfig).block();
 
         assertNotNull(output);
         assertEquals("success", output.getStatus());
-        // outputFields 取值后取最后一个字段名
-        assertEquals("ok", output.getOutputData().get("result"));
-        assertEquals(42, output.getOutputData().get("count"));
+        // v5.5: outputMapping.body 映射到 output 分区的 body 字段
+        Map<String, Object> body = (Map<String, Object>) output.getOutput().get("body");
+        assertNotNull(body);
+        assertEquals("ok", body.get("result"));
+        assertEquals(42, body.get("count"));
     }
 
     @Test

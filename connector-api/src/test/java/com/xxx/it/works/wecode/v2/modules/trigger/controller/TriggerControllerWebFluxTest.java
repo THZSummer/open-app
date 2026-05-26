@@ -1,7 +1,9 @@
 package com.xxx.it.works.wecode.v2.modules.trigger.controller;
 
+import com.xxx.it.works.wecode.v2.modules.flow.repository.FlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.TriggerService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,6 +36,15 @@ class TriggerControllerWebFluxTest {
 
     @MockitoBean
     private TriggerService triggerService;
+
+    @MockitoBean
+    private FlowVersionReadRepository flowVersionReadRepository;
+
+    @BeforeEach
+    void setUp() {
+        // Prevent RateLimitFilter from failing when it calls findByFlowId
+        when(flowVersionReadRepository.findByFlowId(anyLong())).thenReturn(Mono.empty());
+    }
 
     @Nested
     @DisplayName("#18 POST /api/v1/trigger/{flowId}/invoke")
@@ -77,8 +88,8 @@ class TriggerControllerWebFluxTest {
                     .expectStatus().isOk()
                     .expectBody()
                     .jsonPath("$.status").isEqualTo("failed")
-                    .jsonPath("$.errorMessage").value(msg -> 
-                        ((String)msg).contains("Missing X-Sys-Token"));
+                    .jsonPath("$.errorInfo.messageZh").value(msg -> 
+                        ((String)msg).contains("缺少认证令牌"));
         }
 
         @Test

@@ -12,7 +12,7 @@ subprocess.run([
 try:
     print("=== IT-044: 正常保存 ===")
     request("PUT", f"/flows/{snow_id}/config",
-            {"orchestrationConfig": '{"nodes":[{"id":"n1","type":"entry"}],"edges":[]}'})
+            {"orchestrationConfig": '{"nodes":[{"id":"n1","type":"entry","position":{"x":100,"y":200},"data":{"labelCn":"入口","labelEn":"Entry"}}],"edges":[]}'})
 
     print("=== IT-045: orchestrationConfig 为空字符串 ===")
     request("PUT", f"/flows/{snow_id}/config", {"orchestrationConfig": ""})

@@ -114,7 +114,7 @@ public class ConnectorController {
     @GetMapping("/{connectorId}/config")
     @PlatformAdminPermission
     @Operation(summary = "#6 查看连接配置",
-               description = "查看连接配置（请求/响应 Schema/认证类型/超时/限流）")
+               description = "查看连接配置（authConfig/inputContract/outputContract/rateLimitConfig/超时）")
     public ApiResponse<ConnectorConfigResponse> getConnectorConfig(
             @Parameter(description = "连接器ID")
             @PathVariable Long connectorId) {
@@ -127,7 +127,7 @@ public class ConnectorController {
     @PutMapping("/{connectorId}/config")
     @PlatformAdminPermission
     @Operation(summary = "#7 编辑连接配置",
-               description = "编辑连接配置，编辑即生效，connectionConfig 全文替换")
+               description = "编辑连接配置，编辑即生效，connectionConfig JSON 全文替换（authConfig/inputContract/outputContract/rateLimitConfig）")
     public ApiResponse<Void> updateConnectorConfig(
             @Parameter(description = "连接器ID")
             @PathVariable Long connectorId,

@@ -14,8 +14,15 @@ import java.time.format.DateTimeFormatter;
 /**
  * 审计日志切面
  * <p>
- * NFR-013: 连接流启停等关键操作记录审计日志
- * 记录: createBy + action + time + flowId
+ * NFR-013: 连接流启停等关键操作记录审计日志.
+ * v5.5 字段路径:
+ * <ul>
+ *   <li>{@code flowId}: FlowVersionEntity.flowId (连接流ID)</li>
+ *   <li>{@code createBy}: UserContextHolder.getUserName() (操作人, 对应实体字段 {@code createBy})</li>
+ *   <li>{@code action}: 方法名映射 (start_flow / stop_flow / delete_flow)</li>
+ *   <li>{@code time}: LocalDateTime.now() (操作时间, 格式 yyyy-MM-dd HH:mm:ss)</li>
+ * </ul>
+ * 审计日志格式: {@code [AUDIT] action={} | flowId={} | createBy={} | time={}}
  * </p>
  */
 @Slf4j

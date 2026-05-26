@@ -12,7 +12,7 @@ subprocess.run([
 try:
     print("=== IT-020: 正常编辑 ===")
     request("PUT", f"/connectors/{snow_id}/config",
-            {"connectionConfig": '{"protocol":"HTTP","url":"https://api.test.com"}'})
+            {"connectionConfig": '{"protocol":"HTTP","url":"https://api.test.com","authConfig":{"type":"none"},"inputContract":{"protocol":"HTTP","body":{"type":"json","schema":{"type":"object","properties":{}}}},"outputContract":{"protocol":"HTTP","body":{"type":"json","schema":{"type":"object","properties":{}}}},"rateLimitConfig":{"maxQps":10}}'})
 
     print("=== IT-021: connectionConfig 为空字符串 ===")
     request("PUT", f"/connectors/{snow_id}/config", {"connectionConfig": ""})

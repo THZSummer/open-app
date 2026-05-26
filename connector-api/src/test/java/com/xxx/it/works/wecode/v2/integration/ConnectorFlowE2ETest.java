@@ -47,28 +47,40 @@ class ConnectorFlowE2ETest {
     private Map<String, Object> createSimpleOrchestrationConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
 
-        // 入口节点
+        // 入口节点 (v5.5 React Flow 格式)
         Map<String, Object> entryNode = new LinkedHashMap<>();
         entryNode.put("id", "node_entry");
         entryNode.put("type", "entry");
-        entryNode.put("labelCn", "接收");
-        entryNode.put("labelEn", "Receive");
+        entryNode.put("position", Map.of("x", 0, "y", 0));
+        entryNode.put("data", Map.of(
+                "labelCn", "接收",
+                "labelEn", "Receive"
+        ));
 
-        // 出口节点
+        // 出口节点 (v5.5 React Flow 格式)
         Map<String, Object> exitNode = new LinkedHashMap<>();
         exitNode.put("id", "node_exit");
         exitNode.put("type", "exit");
-        exitNode.put("labelCn", "返回");
-        exitNode.put("labelEn", "Return");
-        exitNode.put("outputFields", List.of("node_entry.sender", "node_entry.content"));
+        exitNode.put("position", Map.of("x", 300, "y", 0));
+        exitNode.put("data", Map.of(
+                "labelCn", "返回",
+                "labelEn", "Return",
+                "outputMapping", Map.of(
+                        "header", Map.of(),
+                        "body", Map.of(
+                                "sender", "${node_entry.sender}",
+                                "content", "${node_entry.content}"
+                        )
+                )
+        ));
 
         config.put("nodes", List.of(entryNode, exitNode));
 
-        // Edges
+        // Edges (v5.5: source/target 替代 sourceNodeId/targetNodeId)
         Map<String, Object> edge = new LinkedHashMap<>();
         edge.put("id", "e1");
-        edge.put("sourceNodeId", "node_entry");
-        edge.put("targetNodeId", "node_exit");
+        edge.put("source", "node_entry");
+        edge.put("target", "node_exit");
 
         config.put("edges", List.of(edge));
 
@@ -78,49 +90,67 @@ class ConnectorFlowE2ETest {
     private Map<String, Object> createConnectorNodeOrchestrationConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
 
-        // 入口节点
+        // 入口节点 (v5.5 React Flow 格式)
         Map<String, Object> entryNode = new LinkedHashMap<>();
         entryNode.put("id", "node_entry");
         entryNode.put("type", "entry");
-        entryNode.put("labelCn", "接收");
-        entryNode.put("labelEn", "Receive");
+        entryNode.put("position", Map.of("x", 0, "y", 0));
+        entryNode.put("data", Map.of(
+                "labelCn", "接收",
+                "labelEn", "Receive"
+        ));
 
-        // 连接器节点
+        // 连接器节点 (v5.5: data 字段存放节点配置)
         Map<String, Object> connectorNode = new LinkedHashMap<>();
         connectorNode.put("id", "node_connector");
         connectorNode.put("type", "connector");
-        connectorNode.put("labelCn", "IM发送消息");
-        connectorNode.put("labelEn", "IM Send");
-        connectorNode.put("connectorId", "1234567890123456789");
-        connectorNode.put("url", "https://httpbin.org/post");
-        connectorNode.put("method", "POST");
-        connectorNode.put("timeoutMs", 5000);
+        connectorNode.put("position", Map.of("x", 300, "y", 0));
+        connectorNode.put("data", Map.of(
+                "labelCn", "IM发送消息",
+                "labelEn", "IM Send",
+                "connectorId", "1234567890123456789",
+                "url", "https://httpbin.org/post",
+                "method", "POST",
+                "timeoutMs", 5000
+        ));
 
-        // 数据处理节点 (字段映射)
+        // 数据处理节点 (字段映射) (v5.5: data 字段存放节点配置)
         Map<String, Object> processorNode = new LinkedHashMap<>();
         processorNode.put("id", "node_processor");
         processorNode.put("type", "data_processor");
-        processorNode.put("labelCn", "字段映射");
-        processorNode.put("labelEn", "Field Mapping");
-        processorNode.put("fieldMappings", List.of(
-                Map.of("targetField", "result", "sourceValue", "${node_connector.data}", "sourceType", "reference")
+        processorNode.put("position", Map.of("x", 600, "y", 0));
+        processorNode.put("data", Map.of(
+                "labelCn", "字段映射",
+                "labelEn", "Field Mapping",
+                "fieldMappings", List.of(
+                        Map.of("targetField", "result", "sourceValue", "${node_connector.data}", "sourceType", "reference")
+                )
         ));
 
-        // 出口节点
+        // 出口节点 (v5.5: data.outputMapping 替代 outputFields)
         Map<String, Object> exitNode = new LinkedHashMap<>();
         exitNode.put("id", "node_exit");
         exitNode.put("type", "exit");
-        exitNode.put("labelCn", "返回");
-        exitNode.put("labelEn", "Return");
-        exitNode.put("outputFields", List.of("node_entry.sender", "node_processor.result"));
+        exitNode.put("position", Map.of("x", 900, "y", 0));
+        exitNode.put("data", Map.of(
+                "labelCn", "返回",
+                "labelEn", "Return",
+                "outputMapping", Map.of(
+                        "header", Map.of(),
+                        "body", Map.of(
+                                "sender", "${node_entry.sender}",
+                                "result", "${node_processor.result}"
+                        )
+                )
+        ));
 
         config.put("nodes", List.of(entryNode, connectorNode, processorNode, exitNode));
 
-        // Edges (线性)
+        // Edges (v5.5: source/target 替代 sourceNodeId/targetNodeId)
         config.put("edges", List.of(
-                Map.of("id", "e1", "sourceNodeId", "node_entry", "targetNodeId", "node_connector"),
-                Map.of("id", "e2", "sourceNodeId", "node_connector", "targetNodeId", "node_processor"),
-                Map.of("id", "e3", "sourceNodeId", "node_processor", "targetNodeId", "node_exit")
+                Map.of("id", "e1", "source", "node_entry", "target", "node_connector"),
+                Map.of("id", "e2", "source", "node_connector", "target", "node_processor"),
+                Map.of("id", "e3", "source", "node_processor", "target", "node_exit")
         ));
 
         return config;
@@ -265,9 +295,11 @@ class ConnectorFlowE2ETest {
                 .assertNext(result -> {
                     assertEquals("failed", result.getStatus(),
                             "Empty orchestration should fail");
-                    assertTrue(result.getErrorMessage() != null &&
-                                    result.getErrorMessage().contains("无节点"),
-                            "Error message should indicate no nodes");
+                    assertNotNull(result.getErrorInfo(),
+                            "Error info should not be null");
+                    Object msgZh = result.getErrorInfo().get("messageZh");
+                    assertTrue(msgZh != null && ((String) msgZh).contains("Orchestration config has no nodes"),
+                            "Error messageZh should indicate no nodes, got: " + msgZh);
                 })
                 .verifyComplete();
     }

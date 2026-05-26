@@ -19,10 +19,20 @@ import java.util.Map;
  * 内部测试接口, 供 open-server debug-proxy 转发调用
  * 仅限内网调用
  * </p>
+ * <p>
+ * v5.5:
+ * <ul>
+ *   <li>使用 {@code mockTriggerData} 作为触发输入</li>
+ *   <li>{@code triggerType = 3} (运行时记录维度, 非编排 JSON 中)</li>
+ *   <li>{@code isTest = true}</li>
+ *   <li>凭证从 {@code data.authConfig} 声明读取</li>
+ *   <li>响应 {@code errorInfo} 使用结构化格式 {@code {code, messageZh, messageEn}}</li>
+ * </ul>
+ * </p>
  */
 @RestController
 @RequestMapping("/api/v1/internal/test-run")
-@Tag(name = "测试执行", description = "内部测试执行接口，供 open-server debug-proxy 调用")
+@Tag(name = "测试执行", description = "内部测试执行接口，供 open-server debug-proxy 调用 (v5.5)")
 public class TestRunController {
 
     private static final Logger log = LoggerFactory.getLogger(TestRunController.class);
@@ -37,12 +47,18 @@ public class TestRunController {
      * 执行测试运行
      * <p>
      * 接收 mockTriggerData + credentials (按 connectorVersionId 分组)
-     * 标记 isTest=true, triggerType=3
+     * <ul>
+     *   <li>{@code triggerType = 3} (运行时记录维度)</li>
+     *   <li>{@code isTest = true}</li>
+     *   <li>触发数据从 {@code request.mockTriggerData} 读取</li>
+     *   <li>凭证从 {@code request.credentials} 按连接器版本分组</li>
+     * </ul>
      * </p>
      */
     @PostMapping(value = "/{flowId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "执行测试运行",
-               description = "内部端点，接收模拟触发数据和凭证，同步执行连接流并返回结果")
+    @Operation(summary = "执行测试运行 (v5.5)",
+               description = "内部端点，接收模拟触发数据和凭证，同步执行连接流并返回结果."
+                           + " triggerType=3 (运行时记录维度), isTest=true.")
     public Mono<ExecutionResult> executeTestRun(
             @Parameter(description = "连接流ID")
             @PathVariable Long flowId,
@@ -58,7 +74,11 @@ public class TestRunController {
     }
 
     /**
-     * 测试运行请求体
+     * 测试运行请求体 (v5.5)
+     * <p>
+     * {@code mockTriggerData}: 模拟触发数据, 存入 {@code NodeContext.input} 分区<br>
+     * {@code credentials}: 按 connectorVersionId 分组的凭证, 执行时注入认证头
+     * </p>
      */
     public static class TestRunRequest {
         private Map<String, Object> mockTriggerData;

@@ -141,7 +141,7 @@ public class FlowController {
     @GetMapping("/{flowId}/config")
     @PlatformAdminPermission
     @Operation(summary = "#15 查看编排配置",
-               description = "查看编排配置（含 trigger/nodes/edges 完整 DAG）")
+               description = "查看编排配置（React Flow 格式：nodes/edges/trigger 完整 DAG）")
     public ApiResponse<FlowConfigResponse> getFlowConfig(
             @Parameter(description = "连接流ID")
             @PathVariable Long flowId) {
@@ -154,7 +154,7 @@ public class FlowController {
     @PutMapping("/{flowId}/config")
     @PlatformAdminPermission
     @Operation(summary = "#16 保存编排配置",
-               description = "编辑即生效，含 HTTP trigger 配置/连接器节点/数据处理节点/edges")
+               description = "编辑即生效，React Flow 格式：nodes/edges 含 trigger/connector/exit 节点")
     public ApiResponse<Void> updateFlowConfig(
             @Parameter(description = "连接流ID")
             @PathVariable Long flowId,

@@ -32,7 +32,8 @@ public class DebugProxyController {
      * 测试运行
      * <p>
      * POST /api/v1/flows/{flowId}/test-run
-     * 接收前端请求（含 mockTriggerData + credentials）
+     * 接收前端请求（含 mockTriggerData（新 v5.5 字段格式）+ credentials）
+     * mockTriggerData 使用新的字段名：authConfig/inputContract/outputContract/rateLimitConfig
      * 转发至 connector-api 测试接口
      * 透传 connector-api 返回的 ExecutionResult
      * </p>

@@ -1,10 +1,13 @@
 package com.xxx.it.works.wecode.v2.modules.connector.entity;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 连接器版本/配置 R2DBC Entity
@@ -63,4 +66,102 @@ public class ConnectorVersionEntity {
 
     public String getLastUpdateBy() { return lastUpdateBy; }
     public void setLastUpdateBy(String lastUpdateBy) { this.lastUpdateBy = lastUpdateBy; }
+
+    // ===== Transient Helpers (v5.5) =====
+
+    /**
+     * 解析 connectionConfig JSON 为 Map; v5.5 字段名: authConfig, inputContract, outputContract, rateLimitConfig
+     */
+    public Map<String, Object> parseConnectionConfig(ObjectMapper mapper) {
+        if (this.connectionConfig == null || this.connectionConfig.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return mapper.readValue(this.connectionConfig,
+                    new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            return Map.of();
+        }
+    }
+
+    /**
+     * 获取 authConfig (v5.5 字段, 对应旧 authTypeSchema)
+     */
+    public Map<String, Object> getAuthConfig(ObjectMapper mapper) {
+        Map<String, Object> config = parseConnectionConfig(mapper);
+        Object auth = config.get("authConfig");
+        if (auth instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) auth;
+            return result;
+        }
+        // 向后兼容: authTypeSchema
+        Object legacy = config.get("authTypeSchema");
+        if (legacy instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) legacy;
+            return result;
+        }
+        return Map.of();
+    }
+
+    /**
+     * 获取 inputContract (v5.5 字段, 对应旧 inputSchema)
+     */
+    public Map<String, Object> getInputContract(ObjectMapper mapper) {
+        Map<String, Object> config = parseConnectionConfig(mapper);
+        Object contract = config.get("inputContract");
+        if (contract instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) contract;
+            return result;
+        }
+        Object legacy = config.get("inputSchema");
+        if (legacy instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) legacy;
+            return result;
+        }
+        return Map.of();
+    }
+
+    /**
+     * 获取 outputContract (v5.5 字段, 对应旧 outputSchema)
+     */
+    public Map<String, Object> getOutputContract(ObjectMapper mapper) {
+        Map<String, Object> config = parseConnectionConfig(mapper);
+        Object contract = config.get("outputContract");
+        if (contract instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) contract;
+            return result;
+        }
+        Object legacy = config.get("outputSchema");
+        if (legacy instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) legacy;
+            return result;
+        }
+        return Map.of();
+    }
+
+    /**
+     * 获取 rateLimitConfig (v5.5 字段, 对应旧 rateLimit)
+     */
+    public Map<String, Object> getRateLimitConfig(ObjectMapper mapper) {
+        Map<String, Object> config = parseConnectionConfig(mapper);
+        Object rate = config.get("rateLimitConfig");
+        if (rate instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) rate;
+            return result;
+        }
+        Object legacy = config.get("rateLimit");
+        if (legacy instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = (Map<String, Object>) legacy;
+            return result;
+        }
+        return Map.of();
+    }
 }
