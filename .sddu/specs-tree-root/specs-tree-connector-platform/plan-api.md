@@ -2,23 +2,21 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§4.4), plan-db.md (§3 表结构)  
-**版本**: v2.8.0  
+**版本**: v3.0  
 **创建日期**: 2026-05-21  
-**最后更新**: 2026-05-22  
-**对齐基线**: plan.md v2.8.0 + spec.md v5.0（MVP 单版本模型）
+**最后更新**: 2026-05-26  
+**对齐基线**: plan-json-schema.md v5.5 + plan-db.md v3.0
 
 ---
 
 ## 0. 版本对齐说明
 
-| 维度 | v2.7.5 | v2.8.0 | 决策来源 |
-|------|--------|--------|---------|
-| **版本模型** | 多版本（draft→published） | **单版本**（编辑即生效，无草稿/发布） | spec v5.0 |
-| **版本管理 API** | 版本列表 + 发布 | ❌ 移除 | spec v5.0 (FR-007/008/018/019) |
-| **部署 API** | deploy 独立操作 | ❌ 移除（编辑即运行） | spec v5.0 |
-| **手动触发** | ✅ | ❌ 移除（NG20，V1） | spec v5.0 (FR-022) |
-| **执行历史** | ✅ | ❌ 移除（NG21，V1） | spec v5.0 (FR-025) |
-| 端点总数 | 26 | **18** | — |
+| 维度 | 说明 | 决策来源 |
+|------|------|---------|
+| **版本模型** | **单版本**（编辑即生效，无草稿/发布） | spec v5.0 |
+| **JSON 字段结构** | 对齐 [plan-json-schema.md v5.5](./plan-json-schema.md)：React Flow 格式 / 字段重命名（`authConfig`/`inputContract`/`outputContract`/`rateLimitConfig`）/ 协议感知 contract / inputMapping-outputMapping 分段 / JSON Path 表达式 | plan-json-schema.md v5.4~v5.5 |
+| **JSON 示例** | 展示完整请求/响应体，冗余以独立可读；详细 Schema 见 plan-json-schema.md | 本文档 |
+| 端点总数 | **18** | — |
 
 ---
 
@@ -200,13 +198,23 @@
 
 #### 1.8.3 触发方式 (triggerType)
 
+> ⚠️ **区分两个维度**：编排 JSON 中 `trigger` 节点的 `node.data.type` 为字符串枚举（`"http"` / `"manual"`），不含 `test`（test 是运行时调用模式，非触发类型）。执行记录中 `execution_record_t.trigger_type` 为 TINYINT 数字枚举，包含 `test=3`（运行时记录维度）。
+
+**编排 JSON `node.data.type`（字符串）**：
+
+| 值 | 说明 | MVP |
+|------|------|:---:|
+| `"http"` | HTTP 触发（FR-021） | ✅ |
+| `"manual"` | 手动触发（FR-022） | ✅ |
+
+**执行记录 `execution_record_t.trigger_type`（TINYINT）**：
+
 | 数字 | 含义 | 说明 | MVP |
 |:----:|------|------|:---:|
 | `1` | `http` | HTTP 触发（FR-021） | ✅ |
-| `2` | `manual` | 手动触发（FR-022） | ✅ |
 | `3` | `test` | 测试运行（FR-020） | ✅ |
 
-> **V1 扩展**：4=event / 5=webhook / 6=scheduled（V1 阶段引入，NG14/NG15/NG17）
+> **V1 扩展**：4=event / 5=webhook / 6=scheduled（V1 阶段引入，NG14/NG15/NG17）。manual(2) 移至 NG20。
 
 #### 1.8.4 版本状态 (versionStatus)
 
@@ -231,6 +239,8 @@
 | `2` | connector（连接器节点） | ✅ |
 | `3` | data_processor（数据处理节点） | ✅ |
 | `4` | exit（出口节点） | ✅ |
+
+> 💡 **两个维度**：执行记录中 `execution_step_t.node_type` 使用 TINYINT 数字（如上表）。编排 JSON 中 `node.type` 使用字符串（`"trigger"` / `"connector"` / `"data_processor"` / `"exit"`，React Flow 框架字段），与 `entry` 的映射：`"trigger"`（配置视角）↔ `entry: 1`（运行时视角）。
 
 #### 1.8.7 连接器状态 (connector.status)
 
@@ -431,29 +441,41 @@
       "method": "POST",
       "headers": { "Content-Type": "application/json" }
     },
-    "authTypeSchema": {
+    "authConfig": {
       "type": "AKSK",
       "fields": [
         { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true },
         { "name": "secretKey", "carrier": "header", "fieldName": "SK", "required": true, "sensitive": true }
       ]
     },
-    "inputSchema": {
-      "type": "object",
-      "properties": {
-        "receiver": { "type": "string", "description": "接收者ID" },
-        "content": { "type": "string", "description": "消息内容" }
+    "inputContract": {
+      "protocol": "HTTP",
+      "header": {
+        "type": "object",
+        "properties": {
+          "Authorization": { "type": "string", "description": "Bearer token" }
+        }
       },
-      "required": ["receiver", "content"]
+      "body": {
+        "type": "object",
+        "properties": {
+          "receiver": { "type": "string", "description": "接收者ID" },
+          "content": { "type": "string", "description": "消息内容" }
+        },
+        "required": ["receiver", "content"]
+      }
     },
-    "outputSchema": {
-      "type": "object",
-      "properties": {
-        "msgId": { "type": "string", "description": "消息ID" }
+    "outputContract": {
+      "protocol": "HTTP",
+      "body": {
+        "type": "object",
+        "properties": {
+          "msgId": { "type": "string", "description": "消息ID" }
+        }
       }
     },
     "timeoutMs": 30000,
-    "rateLimit": {
+    "rateLimitConfig": {
       "maxQps": 10,
       "maxConcurrency": 5
     }
@@ -473,26 +495,26 @@
 }
 ```
 
-**authTypeSchema.type 枚举**（仅声明类型，凭证值由调用方携带）：
+**authConfig.type 枚举**（JSON 内嵌字段使用字符串；与 DB 列级 TINYINT 枚举的映射见 plan-json-schema.md §2.1）：
 
-**连接器认证枚举**（`connectionConfig.authTypeSchema.type`，调用下游 API 时使用，沿用 `AuthTypeEnum.java`）：
+**连接器认证枚举**（`connectionConfig.authConfig.type`，调用下游 API 时使用）：
 
-| 代码 | 类型 | 说明 | 调用方需携带的字段 | 本版本优先级 |
-|:----:|------|------|------------------|:-----------:|
-| 1 | `SOA` | SOA 认证 | 由开放平台统一颁发 | ⭐ **最高** |
-| 2 | `APIG` | API 网关认证 | 由 APIG 网关统一管理 | ⭐ **最高** |
-| 4 | `NONE` | 无需认证 | — | ★★ 按需 |
-| 5 | `AKSK` | AccessKey/SecretKey | `accessKey`, `secretKey` | ★★ 按需 |
+| JSON 字符串 | TINYINT | 说明 | 本版本优先级 |
+|------------|:-------:|------|:-----------:|
+| `SOA` | 1 | SOA 认证 | ⭐ **最高** |
+| `APIG` | 2 | API 网关认证 | ⭐ **最高** |
+| `NONE` | 4 | 无需认证 | ★★ 按需 |
+| `AKSK` | 5 | AccessKey/SecretKey | ★★ 按需 |
 
-> 💡 **说明**：仅声明认证类型与字段名，**不存储任何凭证值**；调用方在触发请求时携带。代码 0~6 对齐 `AuthTypeEnum.java`（0=COOKIE/1=SOA/2=APIG/3=IAM/4=NONE/5=AKSK/6=CLITOKEN）。连接器认证优先支持 SOA(1)/APIG(2)，NONE/AKSK 按需接入。
+> 💡 **说明**：仅声明认证类型与字段名，**不存储任何凭证值**；调用方在触发请求时携带。
 
-**触发器认证枚举**（`trigger.authTypeSchema.type`，外部调用方触发连接流时携带）：
+**触发器认证枚举**（编排中 trigger 节点的 `data.authConfig.type`，外部调用方触发连接流时携带）：
 
-| 代码 | 类型 | 说明 | 调用方需携带的字段 | 本版本优先级 |
-|:----:|------|------|------------------|:-----------:|
-| 7 | `SYSTOKEN` | 🆕 系统 Token 认证 | `token` / `systoken`（Header 或 Query） | ✅ **本版本支持** |
+| JSON 字符串 | TINYINT | 说明 | 本版本优先级 |
+|------------|:-------:|------|:-----------:|
+| `SYSTOKEN` | 7 | 🆕 系统 Token 认证 | ✅ **本版本支持** |
 
-> 💡 **说明**：本版本触发器认证仅支持 SYSTOKEN(7)，其余类型按需后续扩展。`connection_config` 与 `trigger` 中的 `authTypeSchema` 结构一致，但枚举值范围不同。
+> 💡 **说明**：本版本触发器认证仅支持 SYSTOKEN(7)。`connectionConfig` 与 trigger 节点中的 `authConfig` 结构一致，但枚举值范围不同。
 
 > ❌ **不再需要的 API**（v2.8.0）：~~`GET .../versions`~~ / ~~`POST .../publish`~~ (MVP 单版本)；~~`POST .../credentials`~~ (凭证不持久化)
 
@@ -699,34 +721,80 @@
         {
           "id": "node_trigger",
           "type": "trigger",
-          "labelCn": "接收请求",
-          "labelEn": "Receive Request",
-          "authTypeSchema": { "type": "SYSTOKEN", "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}] },
-          "inputSchema": { "type": "object", "properties": { "sender": {"type": "string"}, "content": {"type": "string"} }, "required": ["sender", "content"] },
-          "rateLimit": { "maxQps": 100 },
-          "position": { "x": 100.0, "y": 200.0 }
+          "position": { "x": 100.0, "y": 200.0 },
+          "data": {
+            "labelCn": "接收请求",
+            "labelEn": "Receive Request",
+            "type": "http",
+            "authConfig": {
+              "type": "SYSTOKEN",
+              "fields": [
+                { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
+              ]
+            },
+            "inputContract": {
+              "protocol": "HTTP",
+              "body": {
+                "type": "object",
+                "properties": {
+                  "sender": { "type": "string" },
+                  "content": { "type": "string" }
+                },
+                "required": ["sender", "content"]
+              }
+            },
+            "rateLimitConfig": { "maxQps": 100 }
+          }
         },
         {
           "id": "node_1",
           "type": "connector",
-          "labelCn": "发送通知",
-          "labelEn": "Send Notification",
-          "connectorVersionId": "9876543210123456789",
-          "inputMapping": { "receiver": "${trigger.sender}", "content": "${trigger.content}" },
-          "position": { "x": 350.0, "y": 200.0 }
+          "position": { "x": 350.0, "y": 200.0 },
+          "data": {
+            "labelCn": "发送通知",
+            "labelEn": "Send Notification",
+            "connectorVersionId": "9876543210123456789",
+            "inputMapping": {
+              "body": {
+                "receiver": "${$.node.trigger.input.sender}",
+                "content": "${$.node.trigger.input.content}"
+              }
+            }
+          }
         },
         {
           "id": "node_exit",
           "type": "exit",
-          "labelCn": "返回结果",
-          "labelEn": "Return Result",
-          "outputFields": ["result.msgId", "result.code"],
-          "position": { "x": 650.0, "y": 200.0 }
+          "position": { "x": 650.0, "y": 200.0 },
+          "data": {
+            "labelCn": "返回结果",
+            "labelEn": "Return Result",
+            "outputMapping": {
+              "body": {
+                "msgId": "${$.node.node_1.output.msgId}",
+                "code": "constant:0"
+              }
+            }
+          }
         }
       ],
       "edges": [
-        { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
-        { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_exit" }
+        {
+          "id": "e1",
+          "source": "node_trigger",
+          "target": "node_1",
+          "type": "smoothstep",
+          "label": "触发",
+          "data": { "businessType": "default" }
+        },
+        {
+          "id": "e2",
+          "source": "node_1",
+          "target": "node_exit",
+          "type": "smoothstep",
+          "label": "发送完成",
+          "data": { "businessType": "default" }
+        }
       ]
     },
     "lastUpdateTime": "2026-05-21T10:00:00.000+08:00"
@@ -738,10 +806,10 @@
 #### #16 PUT /api/v1/flows/{flowId}/config — 保存编排配置（编辑即生效）
 
 ```json
-// Request — orchestrationConfig 全文替换
+// Request — orchestrationConfig 全文替换（结构同 GET 响应，遵循 React Flow 格式：node.data 嵌套 + edge.source/target）
 {
   "orchestrationConfig": {
-    "nodes": [ /* ...同 GET 响应结构... */ ],
+    "nodes": [ /* ...同 GET 响应结构，详见 plan-json-schema.md §5.7... */ ],
     "edges": [ /* ... */ ]
   }
 }
@@ -759,6 +827,8 @@
 ```
 
 > 💡 **编辑即生效**：保存后立即生效。运行中的连接流在下次触发时使用新配置。
+>
+> 📐 **orchestrationConfig JSON 结构定义**：完整的 JSON Schema 和字段说明见 **[plan-json-schema.md §5 连接流编排配置](./plan-json-schema.md#5-连接流编排配置-schema)**。节点间传值映射（`inputMapping`/`outputMapping`）说明见 **[plan-json-schema.md §1.4](./plan-json-schema.md#14-节点间传值映射)**。完整示例见 **[plan-json-schema.md §5.7](./plan-json-schema.md#57-完整编排配置示例)**。
 
 ---
 

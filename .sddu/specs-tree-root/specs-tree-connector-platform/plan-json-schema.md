@@ -1,10 +1,10 @@
 # JSON Schema 设计规范：连接器平台
 
 **关联文档**: plan.md, plan-db.md (§3 表结构定义), plan-api.md (§3 接口详细定义)  
-**版本**: v5.4
+**版本**: v5.5
 **创建日期**: 2026-05-22  
 **最后更新**: 2026-05-26
-**修订说明**: v5.4 — 节点间传值映射重构：① 新增 §1.4 节点间传值映射（设计态/运行态双层模型 + JSON 节点上下文对象 + JSON Path 表达式）；② connectorDataDef.inputMapping 改为分段结构（header/query/body），Schema 不硬编码协议；③ exitDataDef.outputFields → outputMapping，数组改 object 支持 header/body 分段，表达式改为 JSON Path 格式（${$.node.{id}.{input/output}.xxx}）
+**修订说明**: v5.5 — triggerDataDef.type 枚举移除 test（test 是运行时调用模式，非触发类型）；§3.2 与 §5.3 两处定义同步修复
 
 ---
 
@@ -559,8 +559,8 @@ graph LR
         "labelEn": { "type": "string", "description": "节点英文标签" },
         "type": {
           "type": "string",
-          "description": "触发子类型。定义触发方式",
-          "enum": ["http", "manual", "test"]
+          "description": "触发子类型。定义触发方式。注：test 非触发类型，是运行时调用模式",
+          "enum": ["http", "manual"]
         },
         "authConfig": {
           "$ref": "#/definitions/authConfigDef",
@@ -597,15 +597,6 @@ graph LR
               "inputContract": false
             },
             "description": "手动触发不需要认证和入参 schema（管理员手动填写参数）"
-          }
-        },
-        {
-          "if": {
-            "properties": { "type": { "const": "test" } },
-            "required": ["type"]
-          },
-          "then": {
-            "description": "测试运行使用草稿编排配置，入参由管理员在 wecodesite 中填写模拟数据"
           }
         }
       ]
@@ -1774,8 +1765,8 @@ graph TB
     "labelEn": { "type": "string", "description": "节点英文标签" },
     "type": {
       "type": "string",
-      "description": "触发子类型。定义触发方式",
-      "enum": ["http", "manual", "test"]
+      "description": "触发子类型。定义触发方式。注：test 非触发类型，是运行时调用模式",
+      "enum": ["http", "manual"]
     },
     "authConfig": {
       "$ref": "#/definitions/authConfigDef",
@@ -1803,12 +1794,6 @@ graph TB
       "then": {
         "properties": { "authConfig": false, "inputContract": false },
         "description": "手动触发不需要认证和入参 schema（管理员手动填写参数）"
-      }
-    },
-    {
-      "if": { "properties": { "type": { "const": "test" } }, "required": ["type"] },
-      "then": {
-        "description": "测试运行使用草稿编排配置，入参由管理员在 wecodesite 中填写模拟数据"
       }
     }
   ]

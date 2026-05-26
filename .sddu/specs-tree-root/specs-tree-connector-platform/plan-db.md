@@ -2,10 +2,10 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md（§4.2 数据库设计 + §4.3 表设计规则）  
-**版本**: v2.8.1  
+**版本**: v3.0  
 **创建日期**: 2026-05-21  
-**最后更新**: 2026-05-24  
-**对齐基线**: plan.md v2.8.1（对齐 spec v5.0 MVP 单版本模型）
+**最后更新**: 2026-05-26  
+**对齐基线**: plan-json-schema.md v5.5（JSON 字段结构权威定义）
 
 ---
 
@@ -101,6 +101,7 @@ open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.s
 | **内部字段命名** | JSON 内部字段统一使用 **camelCase**（驼峰），与 API 响应命名规范一致（见 plan-api.md §1.2）。即数据库 TEXT/MEDIUMTEXT 字段中存储的 JSON 字符串，其键名采用 `nameCn`/`descriptionEn`/`connectorVersionId` 等格式，**而非** `name_cn`/`description_en`/`connector_version_id` |
 | **理由** | 跨数据库通用（PG/Oracle/SQLServer 都支持） / ORM 与工具兼容性最好 / 避免 MySQL 5.7/8.0 JSON 类型方言差异 / R2DBC 映射简单 |
 | **本平台长度选择** | 编排/连接配置类（`orchestration_config`、`connection_config`、`basic_info_snapshot`）：**MEDIUMTEXT**（最多 16MB，预留 DAG 扩展空间）；执行 I/O 类（`trigger_data`/`result_data`/`input_data`/`output_data`/`error_info`）：**TEXT**（最多 64KB，超阈值走对象存储外置） |
+| **JSON 结构定义源** | 所有 MEDIUMTEXT/TEXT 字段中存储的 JSON 对象内部结构，以 **[plan-json-schema.md](./plan-json-schema.md)** 为**权威定义**。本文档仅定义数据库列级属性（列名、类型、索引），JSON 内部字段结构不在此重复 |
 
 ### 0.7 枚举字段规范
 
@@ -251,6 +252,7 @@ CREATE TABLE `openplatform_v2_cp_connector_version_t` (
   KEY `idx_connector_id_version_status_create_time` (`connector_id`, `version_status`, `create_time` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器版本表';
 ```
+> 📐 `connection_config` JSON 字段详细结构见 **[plan-json-schema.md §4](./plan-json-schema.md#4-连接器配置-schema)**。
 
 **version_status 状态机**：
 
@@ -271,67 +273,30 @@ stateDiagram-v2
 > 💡 **不可逆原则**：`draft → published` 是单向流转，借鉴 PA `flowversions` + 钉钉模式。发布后任何修改需新建版本（version_no 递增），保证已部署的连接流引用稳定。
 
 
-**connection_config JSON Schema**（应用层 Jackson 序列化/反序列化；内部字段统一 camelCase，§0.6）：
+**connection_config JSON**（应用层 Jackson 序列化/反序列化；内部字段统一 camelCase，§0.6）：
 
-```json
-{
-  "protocol": "HTTP",
-  "protocolConfig": {
-    "url": "https://api.example.com/im/send",
-    "method": "POST",
-    "headers": { "Content-Type": "application/json" }
-  },
-  "authTypeSchema": {
-    "type": "AKSK",
-    "fields": [
-      { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true },
-      { "name": "secretKey", "carrier": "header", "fieldName": "SK", "required": true, "sensitive": true }
-    ]
-  },
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "message": { "type": "string", "description": "消息内容" }
-    },
-    "required": ["message"]
-  },
-  "outputSchema": {
-    "type": "object",
-    "properties": {
-      "code": { "type": "integer" },
-      "data": { "type": "object" }
-    }
-  },
-  "timeoutMs": 30000,
-  "rateLimit": {
-    "maxQps": 10,
-    "maxConcurrency": 5
-  }
-}
-```
+> 📐 **JSON 结构权威定义**：`connection_config` 中存储的 JSON 对象完整结构见 **[plan-json-schema.md §4 连接器配置 Schema](./plan-json-schema.md#4-连接器配置-schema)**。顶层字段：`protocol` / `protocolConfig` / `authConfig` / `inputContract` / `outputContract` / `timeoutMs` / `rateLimitConfig`。详细示例以该文档为准。
 
-> 🔐 **凭证不持久化**（v2.6 决策）：`auth_type_schema` 仅声明认证类型与字段 schema（含 `sensitive: true` 标记），**不存储任何凭证值**；凭证由调用方在触发请求时携带，注入 ExecutionContext（仅内存），节点执行后清除。写入 execution_record/step 时按 `sensitive: true` 标记自动脱敏（值替换为 `***`）。
+> 🔐 **凭证不持久化**（v2.6 决策）：`authConfig` 仅声明认证类型与字段 schema（含 `sensitive: true` 标记），**不存储任何凭证值**；凭证由调用方在触发请求时携带，注入 ExecutionContext（仅内存），节点执行后清除。写入 execution_record/step 时按 `sensitive: true` 标记自动脱敏（值替换为 `***`）。
 
-**连接器认证枚举**（写入 `connection_config.authTypeSchema.type`，调用下游 API 时使用，沿用 `AuthTypeEnum.java`）：
+**连接器认证枚举**（JSON 内嵌字段 `authConfig.type` 使用字符串枚举；DB 列级枚举用 TINYINT。映射关系详见 [plan-json-schema.md §2.1](./plan-json-schema.md#21-json-内嵌枚举使用字符串的例外说明)）：
 
-| 代码 | 枚举名 | 说明 | 调用方需携带字段 | 本版本优先级 |
-|:----:|--------|------|-----------------|:-----------:|
-| 1 | `SOA` | SOA 认证 | 由开放平台统一颁发 | ⭐ **最高** |
-| 2 | `APIG` | API 网关认证 | 由 APIG 网关统一管理 | ⭐ **最高** |
-| 4 | `NONE` | 无需认证 | — | ★★ 按需 |
-| 5 | `AKSK` | AccessKey / SecretKey | `accessKey`, `secretKey` | ★★ 按需 |
+| JSON 字符串 | TINYINT 代码 | 说明 | 本版本优先级 |
+|------------|:-----------:|------|:-----------:|
+| `SOA` | 1 | SOA 认证 | ⭐ **最高** |
+| `APIG` | 2 | API 网关认证 | ⭐ **最高** |
+| `NONE` | 4 | 无需认证 | ★★ 按需 |
+| `AKSK` | 5 | AccessKey / SecretKey | ★★ 按需 |
 
-> 💡 **代码对齐**：代码 0~6 来自开放平台 `AuthTypeEnum.java`（0=COOKIE / 1=SOA / 2=APIG / 3=IAM / 4=NONE / 5=AKSK / 6=CLITOKEN）。连接器调用下游 API 时，**优先支持 SOA(1) 和 APIG(2)**，NONE/AKSK 按需接入。`authTypeSchema.type` 使用枚举名字符串（如 `"SOA"`），TINYINT 代码用于数据库持久化（计划 V1）。
+**触发器认证枚举**（写入 `orchestration_config` 中 trigger 节点的 `data.authConfig.type`）：
 
-**触发器认证枚举**（写入 `orchestration_config.trigger.authTypeSchema.type`，外部调用方触发连接流时携带）：
+| JSON 字符串 | TINYINT 代码 | 说明 | 本版本优先级 |
+|------------|:-----------:|------|:-----------:|
+| `SYSTOKEN` | 7 | 🆕 系统 Token 认证 | ✅ **本版本支持** |
 
-| 代码 | 枚举名 | 说明 | 调用方需携带字段 | 本版本优先级 |
-|:----:|--------|------|-----------------|:-----------:|
-| 7 | `SYSTOKEN` | 🆕 **系统 Token 认证** | `token` / `systoken`（Header 或 Query） | ✅ **本版本支持** |
+> 💡 **说明**：本版本触发器认证仅支持 SYSTOKEN(7)。`connectionConfig` 与 trigger 节点中的 `authConfig` 结构一致（均含 type + fields[]），但枚举值范围不同——连接器认证用 SOA/APIG 接入开放平台认证体系，触发器认证用 SYSTOKEN 供外部系统带入令牌。
 
-> 💡 **说明**：SYSTOKEN(7) 为连接器平台新增类型。本版本触发器认证仅支持 SYSTOKEN，其余类型按需后续扩展。`connection_config` 与 `trigger` 中的 `authTypeSchema` 结构一致（均含 type + fields[]），但枚举值范围不同——连接器认证用 SOA/APIG 接入开放平台认证体系，触发器认证用 SYSTOKEN 供外部系统带入令牌。
-
-> **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `approval_id`（无审批，NG19）；④ 删除 `change_log varchar(2000)` → 改用 `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；⑤ `status` → `version_status` TINYINT；⑥ `published_at` → `published_time`；⑦ `basic_info_snapshot`/`connection_config` 从 `json` → `mediumtext`（v2.7.4 决策）；⑧ `connection_config.auth` → `auth_type_schema`（仅 schema 不含凭证值，v2.6 决策）；⑨ 索引重命名 `idx_connector_id_version_status_create_time`；⑩ `uk_version_id` → `uk_connector_id_version_no`（业务唯一约束更准确）。
+> **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `approval_id`（无审批，NG19）；④ 删除 `change_log varchar(2000)` → 改用 `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；⑤ `status` → `version_status` TINYINT；⑥ `published_at` → `published_time`；⑦ `basic_info_snapshot`/`connection_config` 从 `json` → `mediumtext`（v2.7.4 决策）；⑧ `connection_config` JSON 字段重命名：`authTypeSchema`→`authConfig`，`inputSchema`→`inputContract`，`outputSchema`→`outputContract`，`rateLimit`→`rateLimitConfig`（详见 plan-json-schema.md v5.0+）；⑨ 索引重命名 `idx_connector_id_version_status_create_time`；⑩ `uk_version_id` → `uk_connector_id_version_no`（业务唯一约束更准确）。
 
 ### 3.3 openplatform_v2_cp_flow_t — 连接流基本信息
 
@@ -416,6 +381,7 @@ CREATE TABLE `openplatform_v2_cp_flow_version_t` (
   KEY `idx_flow_id_version_status_create_time` (`flow_id`, `version_status`, `create_time` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接流版本表';
 ```
+> 📐 `orchestration_config` JSON 字段详细结构见 **[plan-json-schema.md §5](./plan-json-schema.md#5-连接流编排配置-schema)**。
 
 **version_status 状态机**（与 connector_version_t 同构）：
 
@@ -436,94 +402,14 @@ stateDiagram-v2
 > 💡 **部署引用关系**：`flow_t.current_published_version_id` 指向某个 `published` 版本，作为 HTTP 触发的查找路径；切换部署版本即修改这个指针（热切换，无需停机）。
 
 
-**orchestration_config JSON Schema**（应用层 Jackson 序列化/反序列化）：
+**orchestration_config JSON**（应用层 Jackson 序列化/反序列化；内部字段统一 camelCase，§0.6）：
 
-> 数据库 JSON 字段内部同样使用 camelCase，与 API 响应命名规范一致（详见 plan-api.md §1.2、§0.6）。
-
-```json
-{
-  "nodes": [
-    {
-      "id": "node_trigger",
-      "type": "trigger",
-      "labelCn": "接收请求",
-      "labelEn": "Receive Request",
-      "authTypeSchema": {
-        "type": "SYSTOKEN",
-        "fields": [
-          { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }
-        ]
-      },
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "sender": { "type": "string" },
-          "content": { "type": "string" }
-        },
-        "required": ["sender", "content"]
-      },
-      "rateLimit": {
-        "maxQps": 100
-      },
-      "position": { "x": 100, "y": 200 }
-    },
-    {
-      "id": "node_1",
-      "type": "connector",
-      "labelCn": "发送消息",
-      "labelEn": "Send Message",
-      "connectorVersionId": "1234567890123456789",
-      "inputMapping": {
-        "receiver": "${trigger.sender}",
-        "content": "${trigger.content}"
-      },
-      "position": { "x": 350, "y": 200 }
-    },
-    {
-      "id": "node_2",
-      "type": "data_processor",
-      "labelCn": "格式化消息",
-      "labelEn": "Format Message",
-      "config": {
-        "fieldMappings": [
-          { "source": "${node_1.msgId}", "target": "result.id" },
-          { "source": "constant:success", "target": "result.status" }
-        ]
-      },
-      "position": { "x": 500, "y": 200 }
-    },
-    {
-      "id": "node_exit",
-      "type": "exit",
-      "labelCn": "返回结果",
-      "labelEn": "Return Result",
-      "outputFields": ["result.id", "result.status"],
-      "position": { "x": 650, "y": 200 }
-    }
-  ],
-  "edges": [
-    { "id": "e1", "sourceNodeId": "node_trigger", "targetNodeId": "node_1" },
-    { "id": "e2", "sourceNodeId": "node_1", "targetNodeId": "node_2" },
-    { "id": "e3", "sourceNodeId": "node_2", "targetNodeId": "node_exit" }
-  ]
-}
-```
-
-**trigger.type 枚举（MVP）**:
-
-| 类型 | 说明 | 必填配置 |
-|------|------|---------|
-| `http` | HTTP 触发（FR-021） | `authTypeSchema`（认证类型 schema，不含凭证值）+ `inputSchema`（请求体 Schema）+ `rateLimit.maxQps`（默认 100/min） |
-| `manual` | 手动触发（FR-022） | —（无需额外配置）|
-
-> 💡 **触发器配置内嵌于编排 JSON 的决策依据**（v2.7.3）：
-> - 凭证不持久化（v2.6 决策）→ 无 `signing_secret`/`trigger_token` 等独立运维字段
-> - 触发器仅声明认证类型 schema → 无需独立 B+ 树索引查找
-> - 触发器配置本就是编排定义的一部分 → 跟随 `flow_version_t` 快照便于回滚
-> - HTTP 路由查找：`flow_id` → `flow_t.current_published_version_id` → `flow_version_t.orchestration_config.nodes` 中 `type="trigger"` 的节点，2 次主键索引查询，性能完全够用
-> - V1 演进：若出现动态限流热更新 / 多端点共享 Flow / token 独立轮换等场景，再拆 `openplatform_v2_cp_flow_trigger_endpoint_t`
->
-> ❌ **本版本移除的触发类型**：`event` / `webhook` / `scheduled`（V1 阶段引入，NG14/NG15/NG17）
+> 📐 **JSON 结构权威定义**：`orchestration_config` 中存储的 JSON 对象完整结构见 **[plan-json-schema.md §5 连接流编排配置 Schema](./plan-json-schema.md#5-连接流编排配置-schema)**，具体包括：
+> - **[§5.2](./plan-json-schema.md#52-react-flow-框架渲染层)** React Flow 框架渲染层（`node.id`/`node.type`/`node.position`、`edge.source`/`edge.target`/`edge.type`）
+> - **[§5.3](./plan-json-schema.md#53-业务拓展层)** 业务拓展层（`node.data` 按 `type` 路由到 4 种节点类型定义；`edge.data` 承载业务语义）
+> - **[§5.4](./plan-json-schema.md#54-完整编排配置-schemaorchestrationconfig)** 完整 `orchestrationConfig` JSON Schema
+> - **[§5.7](./plan-json-schema.md#57-完整编排配置示例)** 完整编排配置示例（MVP 线性 DAG）
+> - **[§1.4](./plan-json-schema.md#14-节点间传值映射)** 节点间传值映射（`inputMapping`/`outputMapping` 的分段结构 + JSON Path 表达式语法）
 
 > **变更说明**（相对 v2.0）：① 表名前缀+后缀对齐；② 删除 `version_id varchar(32)`；③ 删除 `change_log` → `version_description_cn`/`version_description_en` VARCHAR(1000) 双语；④ 删除 `approval_id`（NG19）；⑤ `basic_info_snapshot`/`orchestration_config` 从 `json` → `mediumtext`（v2.7.4）；⑥ `orchestration_config.trigger` 内嵌完整触发器配置（含 `auth_type_schema`/`in_param_schema`/`rate_limit`，v2.7.3 决策）；⑦ 节点/连线从子表（cp_flow_node/cp_flow_edge）内聚到 `nodes[]`/`edges[]`（v2.4）；⑧ 节点引用连接器版本字段从 `connector_version_id varchar(32)` 改为 BIGINT 雪花 ID；⑨ 索引重命名 `idx_flow_id_version_status_create_time` + 新增 `uk_flow_id_version_no`。
 
