@@ -80,6 +80,19 @@ class TriggerControllerWebFluxTest {
         @Test
         @DisplayName("❌ TC-073: 缺少 X-Sys-Token（返回 failed 非 401）")
         void testInvokeNoToken() throws Exception {
+            // Mock the service to return an auth error (no X-Sys-Token in headers)
+            ExecutionResult authError = new ExecutionResult();
+            authError.setExecutionId("N/A");
+            authError.setFlowId("2000000000000000001");
+            authError.setStatus("failed");
+            java.util.Map<String, Object> errInfo = new java.util.HashMap<>();
+            errInfo.put("code", "6001");
+            errInfo.put("messageZh", "缺少认证令牌");
+            errInfo.put("messageEn", "Missing authentication token");
+            authError.setErrorInfo(errInfo);
+            when(triggerService.invokeFlow(eq(2000000000000000001L), any(), any(), any()))
+                    .thenReturn(Mono.just(authError));
+
             webTestClient.post()
                     .uri("/api/v1/trigger/{flowId}/invoke", "2000000000000000001")
                     .contentType(MediaType.APPLICATION_JSON)

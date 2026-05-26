@@ -85,83 +85,53 @@ public class ConnectorVersionEntity {
     }
 
     /**
+     * 按新/旧字段名双名字段提取泛型方法 (DRY 模板方法)
+     *
+     * @param mapper   ObjectMapper
+     * @param newField v5.5 新字段名 (如 "authConfig")
+     * @param oldField 旧字段名 (如 "authTypeSchema")
+     * @return 提取到的 Map, 无匹配时返回空 Map
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> getConfigField(ObjectMapper mapper, String newField, String oldField) {
+        Map<String, Object> config = parseConnectionConfig(mapper);
+        Object val = config.get(newField);
+        if (val instanceof Map) {
+            return (Map<String, Object>) val;
+        }
+        // 向后兼容: 尝试旧字段名
+        Object legacy = config.get(oldField);
+        if (legacy instanceof Map) {
+            return (Map<String, Object>) legacy;
+        }
+        return Map.of();
+    }
+
+    /**
      * 获取 authConfig (v5.5 字段, 对应旧 authTypeSchema)
      */
     public Map<String, Object> getAuthConfig(ObjectMapper mapper) {
-        Map<String, Object> config = parseConnectionConfig(mapper);
-        Object auth = config.get("authConfig");
-        if (auth instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) auth;
-            return result;
-        }
-        // 向后兼容: authTypeSchema
-        Object legacy = config.get("authTypeSchema");
-        if (legacy instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) legacy;
-            return result;
-        }
-        return Map.of();
+        return getConfigField(mapper, "authConfig", "authTypeSchema");
     }
 
     /**
      * 获取 inputContract (v5.5 字段, 对应旧 inputSchema)
      */
     public Map<String, Object> getInputContract(ObjectMapper mapper) {
-        Map<String, Object> config = parseConnectionConfig(mapper);
-        Object contract = config.get("inputContract");
-        if (contract instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) contract;
-            return result;
-        }
-        Object legacy = config.get("inputSchema");
-        if (legacy instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) legacy;
-            return result;
-        }
-        return Map.of();
+        return getConfigField(mapper, "inputContract", "inputSchema");
     }
 
     /**
      * 获取 outputContract (v5.5 字段, 对应旧 outputSchema)
      */
     public Map<String, Object> getOutputContract(ObjectMapper mapper) {
-        Map<String, Object> config = parseConnectionConfig(mapper);
-        Object contract = config.get("outputContract");
-        if (contract instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) contract;
-            return result;
-        }
-        Object legacy = config.get("outputSchema");
-        if (legacy instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) legacy;
-            return result;
-        }
-        return Map.of();
+        return getConfigField(mapper, "outputContract", "outputSchema");
     }
 
     /**
      * 获取 rateLimitConfig (v5.5 字段, 对应旧 rateLimit)
      */
     public Map<String, Object> getRateLimitConfig(ObjectMapper mapper) {
-        Map<String, Object> config = parseConnectionConfig(mapper);
-        Object rate = config.get("rateLimitConfig");
-        if (rate instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) rate;
-            return result;
-        }
-        Object legacy = config.get("rateLimit");
-        if (legacy instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) legacy;
-            return result;
-        }
-        return Map.of();
+        return getConfigField(mapper, "rateLimitConfig", "rateLimit");
     }
 }

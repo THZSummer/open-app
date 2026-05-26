@@ -48,8 +48,8 @@ public class TriggerController {
      * HTTP 触发连接流执行
      * <p>
      * POST /api/v1/trigger/{flowId}/invoke
+     * 认证校验已移至 TriggerService 中按 data.authConfig.type 动态处理。
      * <ul>
-     *   <li>请求头: X-Sys-Token (SYSTOKEN 认证, 验证 {@code data.authConfig} 声明)</li>
      *   <li>请求体: 触发数据 JSON (按 {@code data.inputContract} JSON Schema 校验)</li>
      *   <li>触发数据存入 {@code nodeContexts["node_trigger"].input}</li>
      * </ul>
@@ -64,27 +64,11 @@ public class TriggerController {
             @PathVariable Long flowId,
             @Parameter(description = "触发数据 (按 inputContract 校验)")
             @RequestBody(required = false) Map<String, Object> triggerData,
-            @RequestHeader(value = "X-Sys-Token", required = false) String sysToken,
             @RequestHeader Map<String, String> allHeaders) {
 
         log.info("HTTP trigger invoke: flowId={}", flowId);
 
-        // 校验 X-Sys-Token (SYSTOKEN 认证) — 前置快速校验，完整 authConfig 校验在 TriggerService 中进行
-        if (sysToken == null || sysToken.isEmpty()) {
-            ExecutionResult errorResult = new ExecutionResult();
-            errorResult.setExecutionId("N/A");
-            errorResult.setFlowId(String.valueOf(flowId));
-            errorResult.setStatus("failed");
-            // v5.5: 使用结构化 errorInfo
-            java.util.Map<String, Object> errInfo = new java.util.HashMap<>();
-            errInfo.put("code", "6001");
-            errInfo.put("messageZh", "缺少认证令牌");
-            errInfo.put("messageEn", "Missing authentication token");
-            errInfo.put("cause", "X-Sys-Token header is required");
-            errorResult.setErrorInfo(errInfo);
-            return Mono.just(errorResult);
-        }
-
+        // 认证/限流/入参校验全部由 TriggerService 根据编排配置中的 data.authConfig/data.rateLimitConfig/data.inputContract 动态处理
         return triggerService.invokeFlow(flowId, triggerData, allHeaders, null);
     }
 }

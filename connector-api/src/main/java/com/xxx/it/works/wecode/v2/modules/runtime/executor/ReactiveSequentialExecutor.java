@@ -332,7 +332,7 @@ public class ReactiveSequentialExecutor {
 
         String msg = (errorMessage != null) ? errorMessage : "Orchestration config has no nodes";
         Map<String, Object> errorInfo = new HashMap<>();
-        errorInfo.put("code", "EXECUTION_ERROR");
+        errorInfo.put("code", "6001");
         errorInfo.put("message", msg);
         errorInfo.put("messageEn", msg);
         errorInfo.put("messageZh", msg);
