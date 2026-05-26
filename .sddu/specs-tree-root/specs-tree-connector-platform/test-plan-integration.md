@@ -87,14 +87,15 @@ open-server/src/test/python/
     └── all.py                      ← 全量回归执行器
 ```
 
-### connector-api（#18 + L4 契约）
+### connector-api（5 个文件）
 
 ```
 connector-api/src/test/python/
 └── inspect/
-    ├── client.py                   ← 公共模块：BASE_URL (localhost:18180) + 请求/响应打印
-    ├── trigger_invoke.py           ← HTTP 触发
-    ├── contract_response.py        ← L4 响应格式校验
+    ├── client.py                   ← 公共模块：BASE_URL (localhost:18180) + 请求/响应打印 + PASS/FAIL 判断
+    ├── trigger_invoke.py           ← HTTP 触发全部场景（IT-049~051 + IT-060~061 + IT-064~065）
+    ├── test_run.py                 ← 内部测试运行（IT-070~073）[NEW]
+    ├── contract_response.py        ← L4 + 执行响应格式校验（IT-052~059 + IT-066~068）
     └── all.py                      ← 全量回归执行器
 ```
 
@@ -266,11 +267,17 @@ connector-api/src/test/python/
 
 #### #18 POST /api/v1/trigger/{flowId}/invoke — HTTP 触发
 
-| 编号 | 场景 | 预期 |
-|------|------|:----:|
-| IT-049 | ❌ 凭证缺失（无 X-Sys-Token） | 401 |
-| IT-050 | ❌ flow 不存在 | 404 |
-| IT-051 | ❌ flow 未运行（stopped） | 403 |
+| 编号 | 场景 | 输入/条件 | 预期 | 验证点 |
+|------|------|----------|:----:|--------|
+| IT-049 | ❌ 凭证缺失（无 X-Sys-Token） | 无 Header | 401 | `code="401"`, `data: null` |
+| IT-050 | ❌ flow 不存在 | flowId=999... | 404 | `code="404"`, `data: null` |
+| IT-051 | ❌ flow 未运行（stopped） | lifecycleStatus=0 | 403 | `code="403"`, `data: null` |
+| IT-060 | ✅ 正常同步执行（entry→exit，无连接器） | 构造完整 flow + flow_version 数据；触发请求体合法 | 200 | `data.executionId` 为 string；`data.status` 为 int；`data.durationMs` 为 int > 0 |
+| IT-061 | ❌ 触发请求体不符合 inputContract | 请求体缺少必填字段 | 422/400 | 校验失败提示 |
+| IT-064 | ❌ 超过限流阈值 → 429 | 并发发送 10+ 请求，超过 maxQps=5 | 429 | `code="429"`; `messageZh="请求频率超限"`; `messageEn="Too many requests"` |
+| IT-065 | ✅ 限流阈值内正常执行 | 单次请求，低于 maxQps | 200 | 正常返回执行结果 |
+
+> 💡 **数据准备**：脚本内生成 snow_id → INSERT flow_t（lifecycleStatus=1）→ INSERT flow_version_t（orchestration_config 含 entry→exit 简单编排 + rateLimitConfig.maxQps）→ 发起触发 → 验证响应 → 清理数据。
 
 ---
 
@@ -278,7 +285,7 @@ connector-api/src/test/python/
 
 | 编号 | 场景 | 验证点 |
 |------|------|--------|
-| IT-052 | ✅ 成功响应格式 | `{code, messageZh, messageEn, data, page}` |
+| IT-052 | ✅ 成功响应格式 | `{code, messageZh, messageEn, data}` |
 | IT-053 | ✅ 错误响应格式 | `code != "200"`, `data: null` |
 | IT-054 | ✅ 分页响应格式 | `page{curPage, pageSize, total}` |
 | IT-055 | ✅ BIGINT ID 为 string 类型 | 所有 id 字段 JSON 类型为 string |
@@ -286,6 +293,31 @@ connector-api/src/test/python/
 | IT-057 | ✅ 时间为 ISO 8601 格式 | createTime/lastUpdateTime 格式校验 |
 | IT-058 | ✅ camelCase 字段命名 | 字段名正则 `^[a-z]+[A-Za-z0-9]*$` |
 | IT-059 | ✅ 错误码覆盖率 | 400/401/403/404/409/422/429/500 |
+
+---
+
+### 4.8 测试运行内部端点 — TestRunController
+
+> ⚠️ 注：本端点为 connector-api 内部接口（`POST /api/v1/internal/test-run/{flowId}`），供 open-server 的 debug-proxy 转发调用。open-server 侧的 IT-047~048 测试的是转发链路，本部分直接测试 connector-api 内部端点。
+
+| 编号 | 场景 | 条件 | 预期 | 验证点 |
+|------|------|------|:----:|--------|
+| IT-070 | ❌ flow 不存在 | flowId=999... | 404 | `code="404"`, `data: null` |
+| IT-071 | ❌ flow 未运行（stopped） | lifecycleStatus=0 | 403 | `code="403"`, `data: null` |
+| IT-072 | ✅ 正常测试运行（entry→exit） | 构造完整 flow 数据，传入 mockTriggerData | 200 | `data.executionId` 为 string；`data.isTest=true`；`data.triggerType=3`；`data.steps[]` 数组含 nodeId/nodeType/status/durationMs |
+| IT-073 | ✅ 空 mockTriggerData | `mockTriggerData: {}` | 200 | 正常返回 |
+
+> 💡 **数据准备**：同 IT-060 模式，脚本内生成 snow_id → INSERT flow_t/flow_version_t → 发起请求 → 验证 → 清理。
+
+---
+
+### 4.9 响应格式校验（connector-api 专用）
+
+| 编号 | 场景 | 验证点 |
+|------|------|--------|
+| IT-066 | ✅ 执行成功响应格式 | `data.executionId` 为 string；`data.status` 为 int（TINYINT）；`data.resultData` 为 object；`data.durationMs` 为 int > 0 |
+| IT-067 | ✅ 执行失败 errorInfo 格式 | `data` 为 null；`code` 为数字字符串；`messageZh`/`messageEn` 非空；oneOf 约束（6xxxx 含 `cause` / 4xx/5xx 含 `downstreamStatus`）|
+| IT-068 | ✅ 限流拒绝 errorInfo 格式 | `code="429"`；`messageZh="请求频率超限"`；`messageEn="Too many requests"`；`data: null` |
 
 ---
 
@@ -427,15 +459,16 @@ DELETE FROM openplatform_v2_cp_flow_t WHERE name_cn LIKE '%IT_%';
 | 19 | `contract_response.py` | L4 | 响应格式/BIGINT ID/枚举/时间/camelCase |
 | 20 | `all.py` | #1~#17+L4 | 全量回归执行器 |
 
-### connector-api（4 个文件）
+### connector-api（5 个文件）
 
 | # | 文件名 | 覆盖接口 | 说明 |
 |---|--------|---------|------|
-| 1 | `client.py` | — | 公共模块：BASE_URL (18180) + 请求/响应打印 |
-| 2 | `trigger_invoke.py` | #18 | HTTP触发（无凭证/flow不存在/未运行） |
-| 3 | `contract_response.py` | L4 | 响应格式/BIGINT ID/枚举/时间/camelCase |
-| 4 | `all.py` | #18+L4 | 全量回归执行器 |
+| 1 | `client.py` | — | 公共模块：BASE_URL (18180) + 请求/响应打印 + PASS/FAIL 判断 |
+| 2 | `trigger_invoke.py` | #18 | HTTP触发（凭证缺失/flow不存在/未运行 + 快乐路径 + inputContract校验 + 限流测试）|
+| 3 | `test_run.py` | 内部测试运行 | 测试运行内部端点（flow不存在/未运行 + 快乐路径含steps格式 + 空mockTriggerData）|
+| 4 | `contract_response.py` | L4 + 执行响应 | 响应格式/BIGINT ID/枚举/时间/camelCase + 执行响应格式 + errorInfo |
+| 5 | `all.py` | 全量 | 全量回归执行器 |
 
 ### 合计
 - open-server: **20 个文件**，覆盖 **#1~#17 + L4**
-- connector-api: **4 个文件**，覆盖 **#18 + L4**
+- connector-api: **5 个文件**，覆盖 **#18 + 内部 test-run + L4**

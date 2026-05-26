@@ -5,6 +5,7 @@
 用法:
   python3 inspect/all.py           # 每个接口显示完整详情
   python3 inspect/all.py --quiet   # 只输出摘要
+  python3 inspect/all.py --report  # 全量 + 生成测试报告
 """
 import sys
 import subprocess
@@ -13,6 +14,7 @@ from datetime import datetime
 
 SCRIPTS = [
     "trigger_invoke.py",
+    "test_run.py",
     "contract_response.py",
 ]
 
@@ -62,3 +64,32 @@ if failed == 0:
 else:
     print(f"  通过率: {passed/total*100:.1f}%")
 print(f"{'='*60}")
+
+# Generate report
+if generate_report:
+    report_path = os.path.join(
+        base_dir,
+        "../../../../.sddu/specs-tree-root/specs-tree-connector-platform/test-report-integration.md"
+    )
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(report_path, "w") as f:
+        f.write(f"# 集成测试报告：连接器平台\n\n")
+        f.write(f"**测试日期**: {now}  \n")
+        f.write(f"**测试类型**: L3 集成测试（真实服务 + 真实数据库）  \n")
+        f.write(f"**服务**: connector-api (:18180)\n\n")
+        f.write(f"---\n\n")
+        f.write(f"## 执行结果摘要\n\n")
+        f.write(f"| 指标 | 数值 |\n")
+        f.write(f"|------|:----:|\n")
+        f.write(f"| 总用例数 | {total} |\n")
+        f.write(f"| PASS | {passed} |\n")
+        f.write(f"| FAIL | {failed} |\n")
+        f.write(f"| SKIP | {skipped} |\n")
+        f.write(f"| 通过率 | {passed/total*100:.1f}% |\n\n")
+        f.write(f"---\n\n")
+        f.write(f"## 详细结果\n\n")
+        for sname, status in results:
+            f.write(f"- {status}: {sname}\n")
+        f.write(f"\n---\n\n")
+        f.write(f"*报告由 all.py 自动生成*\n")
+    print(f"  报告已生成: {report_path}")
