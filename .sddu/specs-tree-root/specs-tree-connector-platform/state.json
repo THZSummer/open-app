@@ -45,7 +45,8 @@
     "adr_002": "ADR-002.md",
     "adr_003": "ADR-003.md",
     "review": "review.md",
-    "validation_report": "validation-report.md"
+    "validation_report": "validation-report.md",
+    "plan_multi_module_build": "plan-multi-module-build.md"
   },
   "plan_changes": [
     {
