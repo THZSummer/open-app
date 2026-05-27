@@ -8,10 +8,10 @@ import com.xxx.api.approval.dto.ApprovalCardContent;
 import com.xxx.api.approval.entity.ApprovalLog;
 import com.xxx.api.approval.entity.ApprovalNode;
 import com.xxx.api.approval.entity.ApprovalRecord;
+import com.xxx.api.approval.handler.ApprovalCallbackHandler;
+import com.xxx.api.approval.handler.ApprovalCallbackHandlerFactory;
 import com.xxx.api.approval.mapper.ApprovalLogMapper;
 import com.xxx.api.approval.mapper.ApprovalRecordMapper;
-import com.xxx.api.common.entity.Subscription;
-import com.xxx.api.common.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,14 +33,15 @@ import java.util.List;
  *   <li>解析 content JSON → 提取审批动作（data: "1"=同意, "0"=驳回）</li>
  *   <li>查询待审批记录（businessType + businessId 命中 idx_business 索引）</li>
  *   <li>操作人校验（accountId == currentNode.userId）</li>
+ *   <li>获取策略处理器（ApprovalCallbackHandlerFactory）</li>
  *   <li>插入审批日志</li>
- *   <li>执行审批通过/驳回</li>
+ *   <li>执行审批通过/驳回 + 策略回调</li>
  *   <li>构造响应（人工实现）</li>
  * </ol>
  * </p>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 2.0.0
  */
 @Service
 @RequiredArgsConstructor
@@ -49,15 +50,14 @@ public class ApprovalCallbackService {
 
     private final ApprovalRecordMapper approvalRecordMapper;
     private final ApprovalLogMapper approvalLogMapper;
-    private final SubscriptionMapper subscriptionMapper;
     private final ObjectMapper objectMapper;
+    private final ApprovalCallbackHandlerFactory handlerFactory;
 
     /** 审批动作常量 */
     private static final int ACTION_APPROVE = 0;
     private static final int ACTION_REJECT = 1;
 
     /** 审批状态常量 */
-    private static final int STATUS_PENDING = 0;
     private static final int STATUS_APPROVED = 1;
     private static final int STATUS_REJECTED = 2;
 
@@ -65,7 +65,7 @@ public class ApprovalCallbackService {
      * 处理审批卡片回调
      *
      * @param businessId   业务ID（对应审批记录的 business_id）
-     * @param businessType 业务类型（如 api_permission_apply）
+     * @param businessType 业务类型（如 api_permission_apply / event_permission_apply / callback_permission_apply）
      * @param request      回调请求体
      * @return 自定义回调响应
      */
@@ -87,7 +87,6 @@ public class ApprovalCallbackService {
                 .selectLatestPendingByBusiness(businessType, businessId);
         if (record == null) {
             log.warn("No pending approval record found: businessType={}, businessId={}", businessType, businessId);
-            // TODO: 返回错误响应（人工构造）
             return buildErrorResponse(400, 40001,
                     "审批记录不存在或已处理", "Approval record not found or already processed");
         }
@@ -111,22 +110,30 @@ public class ApprovalCallbackService {
         if (!currentNode.getUserId().equals(request.getAccountId())) {
             log.warn("Operator mismatch: expected={}, actual={}, recordId={}",
                     currentNode.getUserId(), request.getAccountId(), record.getId());
-            // TODO: 返回 403 错误响应（人工构造）
             return buildErrorResponse(403, 40301,
                     "只有当前审批人可以操作", "Only the current approver can perform this action");
         }
 
-        // 5. 插入审批日志
-        insertApprovalLog(record, currentNode, request, action);
-
-        // 6. 执行审批
-        if (action == ACTION_APPROVE) {
-            handleApprove(record, nodes, currentNodeIndex);
-        } else {
-            handleReject(record);
+        // 5. 获取策略处理器
+        ApprovalCallbackHandler handler = handlerFactory.getHandler(businessType);
+        if (handler == null) {
+            log.error("No handler registered for businessType: {}", businessType);
+            return buildErrorResponse(400, 40002,
+                    "不支持的业务类型: " + businessType,
+                    "Unsupported business type: " + businessType);
         }
 
-        // 7. 构造响应（人工实现）
+        // 6. 插入审批日志
+        insertApprovalLog(record, currentNode, request, action);
+
+        // 7. 执行审批 + 策略回调
+        if (action == ACTION_APPROVE) {
+            handleApprove(record, nodes, currentNodeIndex, handler);
+        } else {
+            handleReject(record, handler);
+        }
+
+        // 8. 构造响应（人工实现）
         // TODO: implement response construction
         return buildSuccessResponse(record);
     }
@@ -194,18 +201,6 @@ public class ApprovalCallbackService {
     }
 
     /**
-     * 序列化审批节点
-     */
-    private String serializeNodes(List<ApprovalNode> nodes) {
-        try {
-            return objectMapper.writeValueAsString(nodes);
-        } catch (Exception e) {
-            log.error("Failed to serialize approval nodes", e);
-            return "[]";
-        }
-    }
-
-    /**
      * 插入审批日志
      */
     private void insertApprovalLog(ApprovalRecord record, ApprovalNode currentNode,
@@ -233,11 +228,12 @@ public class ApprovalCallbackService {
      *
      * <p>参考 open-server ApprovalEngine.approve：</p>
      * <ul>
-     *   <li>最后一个节点：审批通过，更新订阅状态为已授权</li>
-     *   <li>非最后节点：推进到下一节点</li>
+     *   <li>最后一个节点：审批通过 → 策略回调 handler.onApproved()</li>
+     *   <li>非最后节点：推进到下一节点（无策略回调）</li>
      * </ul>
      */
-    private void handleApprove(ApprovalRecord record, List<ApprovalNode> nodes, int currentNodeIndex) {
+    private void handleApprove(ApprovalRecord record, List<ApprovalNode> nodes,
+                                int currentNodeIndex, ApprovalCallbackHandler handler) {
         Date now = new Date();
 
         if (currentNodeIndex >= nodes.size() - 1) {
@@ -248,10 +244,11 @@ public class ApprovalCallbackService {
             record.setLastUpdateBy(record.getApplicantId());
             approvalRecordMapper.update(record);
 
-            // 更新订阅状态为已授权
-            updateSubscriptionStatus(record, 1, now);
+            // 策略回调：审批通过后的业务副作用
+            handler.onApproved(record);
 
-            log.info("Approval approved: recordId={}, businessId={}", record.getId(), record.getBusinessId());
+            log.info("Approval approved: recordId={}, businessType={}, businessId={}",
+                    record.getId(), record.getBusinessType(), record.getBusinessId());
         } else {
             // 进入下一个审批节点
             record.setCurrentNode(currentNodeIndex + 1);
@@ -267,9 +264,10 @@ public class ApprovalCallbackService {
      * 处理审批驳回
      *
      * <p>参考 open-server ApprovalEngine.reject：
-     * 驳回是终态操作，直接标记为已拒绝，不推进节点链</p>
+     * 驳回是终态操作，直接标记为已拒绝，不推进节点链。
+     * 驳回后调用策略回调 handler.onRejected()。</p>
      */
-    private void handleReject(ApprovalRecord record) {
+    private void handleReject(ApprovalRecord record, ApprovalCallbackHandler handler) {
         Date now = new Date();
 
         record.setStatus(STATUS_REJECTED);
@@ -278,38 +276,11 @@ public class ApprovalCallbackService {
         record.setLastUpdateBy(record.getApplicantId());
         approvalRecordMapper.update(record);
 
-        // 更新订阅状态为已拒绝
-        updateSubscriptionStatus(record, 2, null);
+        // 策略回调：审批驳回后的业务副作用
+        handler.onRejected(record);
 
-        log.info("Approval rejected: recordId={}, businessId={}", record.getId(), record.getBusinessId());
-    }
-
-    /**
-     * 更新订阅审批状态
-     *
-     * @param record              审批记录
-     * @param subscriptionStatus  订阅状态：1=已授权, 2=已拒绝
-     * @param approvedAt          授权时间（驳回时为 null）
-     */
-    private void updateSubscriptionStatus(ApprovalRecord record, int subscriptionStatus, Date approvedAt) {
-        Subscription subscription = subscriptionMapper.selectById(record.getBusinessId());
-        if (subscription == null) {
-            log.warn("Subscription not found, cannot update status: businessId={}", record.getBusinessId());
-            return;
-        }
-
-        subscription.setStatus(subscriptionStatus);
-        subscription.setLastUpdateTime(new Date());
-        subscription.setLastUpdateBy(record.getApplicantId());
-
-        if (subscriptionStatus == 1) {
-            // 已授权
-            subscription.setApprovedAt(approvedAt);
-            subscription.setApprovedBy(record.getApplicantId());
-        }
-
-        subscriptionMapper.updateApprovalStatus(subscription);
-        log.info("Updated subscription status: subscriptionId={}, status={}", subscription.getId(), subscriptionStatus);
+        log.info("Approval rejected: recordId={}, businessType={}, businessId={}",
+                record.getId(), record.getBusinessType(), record.getBusinessId());
     }
 
     /**

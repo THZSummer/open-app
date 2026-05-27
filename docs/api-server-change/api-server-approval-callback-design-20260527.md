@@ -1,13 +1,16 @@
 # API-Server 审批卡片回调接口技术方案
 
-**文档版本**：1.0
+**文档版本**：2.0
 **创建日期**：2026-05-27
+**更新日期**：2026-05-27
 
 ---
 
 ## 概述
 
 催办功能发送 IM 卡片消息后，审批人直接在卡片上点击"同意/驳回"，IM 平台回调 api-server 的接口完成审批操作。该接口在 api-server 中自行实现完整审批业务逻辑，直接操作同库审批表。
+
+**v2 变更**：引入策略模式，支持 API / 事件 / 回调三种权限订阅审批场景。审批通过/驳回后的业务副作用（更新订阅状态等）由策略处理器实现，核心审批流程由 Service 统一编排。
 
 **核心差异**：
 - open-server 审批接口：Web 端调用，操作人从 `UserContextHolder` 获取
@@ -123,7 +126,7 @@ POST /api/v1/approvals/callback?businessId=xxx&businessType=api_permission_apply
 
 ## 文件清单
 
-### 新建文件（12 个）
+### 新建文件（17 个）
 
 | # | 文件路径 | 说明 |
 |:-:|---------|------|
@@ -138,7 +141,12 @@ POST /api/v1/approvals/callback?businessId=xxx&businessType=api_permission_apply
 | 9 | `approval/mapper/ApprovalLogMapper.java` | 审批日志 Mapper 接口 |
 | 10 | `resources/mapper/ApprovalRecordMapper.xml` | 审批记录 Mapper XML |
 | 11 | `resources/mapper/ApprovalLogMapper.xml` | 审批日志 Mapper XML |
-| 12 | `approval/service/ApprovalCallbackService.java` | 回调业务逻辑 Service |
+| 12 | `approval/service/ApprovalCallbackService.java` | 回调业务逻辑 Service（核心流程编排） |
+| 13 | `approval/handler/ApprovalCallbackHandler.java` | 策略接口 |
+| 14 | `approval/handler/ApprovalCallbackHandlerFactory.java` | 策略工厂（Map 路由） |
+| 15 | `approval/handler/ApiPermissionApplyHandler.java` | api_permission_apply 处理器 |
+| 16 | `approval/handler/EventPermissionApplyHandler.java` | event_permission_apply 处理器 |
+| 17 | `approval/handler/CallbackPermissionApplyHandler.java` | callback_permission_apply 处理器 |
 
 > 路径前缀：`api-server/src/main/java/com/xxx/api/`
 
@@ -509,3 +517,4 @@ int updateApprovalStatus(Subscription subscription);
 | 版本 | 日期 | 变更内容 |
 |------|------|---------|
 | 1.0 | 2026-05-27 | 初始版本 |
+| 2.0 | 2026-05-27 | 引入策略模式：新增 ApprovalCallbackHandler 接口 + Factory + 三个处理器（API/事件/回调），Service 移除 SubscriptionMapper 直接依赖，通过策略回调执行业务副作用 |
