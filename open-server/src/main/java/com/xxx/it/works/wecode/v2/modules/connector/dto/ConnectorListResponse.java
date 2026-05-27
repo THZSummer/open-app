@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 连接器列表响应项
  * <p>
- * API #2: GET /api/v1/connectors
+ * API #2: GET /service/open/v2/connectors
  * </p>
  */
 @Data

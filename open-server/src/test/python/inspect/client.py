@@ -10,7 +10,7 @@ import requests
 import time
 
 # ── 配置 ──────────────────────────────────────────────
-OPEN_SERVER = "http://localhost:18080/open-server/api/v1"
+OPEN_SERVER = "http://localhost:18080/open-server/service/open/v2"
 CONNECTOR_API = "http://localhost:18180/api/v1"
 
 

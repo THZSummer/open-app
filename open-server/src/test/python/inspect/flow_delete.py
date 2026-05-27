@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """删除流 (IT-034~035)"""
 from client import *
-import subprocess, time, requests
+import subprocess, time
 
 snow_id = int(time.time() * 1000000) % 100000000000000000
 subprocess.run([
@@ -10,17 +10,7 @@ subprocess.run([
 ], capture_output=True)
 
 print("=== IT-034: 删除流 ===")
-resp = requests.delete(f"{OPEN_SERVER}/flows/{snow_id}", headers={"Content-Type": "application/json"})
-if not is_quiet():
-    _print_response(resp, 0)
-else:
-    code = resp.json().get("code", "unknown")
-    print(f"[PASS] DELETE /flows/{snow_id} ({resp.status_code})")
-    print(f"  RESULT: code={code}")
+resp = request("DELETE", f"/flows/{snow_id}")
 
 print("=== IT-035: flowId 不存在 ===")
-resp = requests.delete(f"{OPEN_SERVER}/flows/999999999999999999", headers={"Content-Type": "application/json"})
-if not is_quiet():
-    _print_response(resp, 0)
-else:
-    print(f"[PASS] DELETE /flows/999999999999999999 ({resp.status_code})")
+request("DELETE", "/flows/999999999999999999")

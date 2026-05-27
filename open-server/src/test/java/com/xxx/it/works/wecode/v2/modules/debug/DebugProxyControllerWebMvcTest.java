@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * DebugProxyController 接口层测试 (WebMvcTest)
  *
  * <p>测试目标: HTTP 请求绑定 + 响应序列化 + 代理转发
- * 接口: #17 POST /api/v1/flows/{flowId}/test-run
+ * 接口: #17 POST /service/open/v2/flows/{flowId}/test-run
  * 测试层次: L2 接口层
  * </p>
  */
@@ -36,7 +36,7 @@ class DebugProxyControllerWebMvcTest {
     private DebugProxyService debugProxyService;
 
     @Nested
-    @DisplayName("#17 POST /api/v1/flows/{flowId}/test-run")
+    @DisplayName("#17 POST /service/open/v2/flows/{flowId}/test-run")
     class TestRun {
 
         @Test
@@ -50,7 +50,7 @@ class DebugProxyControllerWebMvcTest {
             when(debugProxyService.forwardTestRun(eq(100L), any(), any()))
                     .thenReturn(ApiResponse.success(resultData));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/test-run", "100")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -77,7 +77,7 @@ class DebugProxyControllerWebMvcTest {
             when(debugProxyService.forwardTestRun(eq(100L), any(), any()))
                     .thenReturn(ApiResponse.success(Map.of("status", "success")));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/test-run", "100")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isOk())
@@ -90,7 +90,7 @@ class DebugProxyControllerWebMvcTest {
             when(debugProxyService.forwardTestRun(eq(999L), any(), any()))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/test-run", "999")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "999")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"mockTriggerData": {"sender": "test"}}
@@ -106,7 +106,7 @@ class DebugProxyControllerWebMvcTest {
                     .thenReturn(ApiResponse.error("500", "测试运行转发失败: Connection refused",
                             "Test run forwarding failed: Connection refused"));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/test-run", "100")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"mockTriggerData": {"sender": "test"}}

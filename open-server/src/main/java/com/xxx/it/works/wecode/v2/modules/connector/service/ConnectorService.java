@@ -41,7 +41,7 @@ public class ConnectorService {
     // ==================== #1 创建连接器 ====================
 
     /**
-     * API #1: POST /api/v1/connectors
+     * API #1: POST /service/open/v2/connectors
      * 创建连接器基本信息, 连接配置默认为空
      */
     @Transactional
@@ -80,7 +80,7 @@ public class ConnectorService {
     // ==================== #2 列表查询 ====================
 
     /**
-     * API #2: GET /api/v1/connectors
+     * API #2: GET /service/open/v2/connectors
      * 列表查询, 支持 type 过滤 + keyword 搜索 + 分页
      */
     public ApiResponse<List<ConnectorListResponse>> getConnectorList(ConnectorListRequest request) {
@@ -115,7 +115,7 @@ public class ConnectorService {
     // ==================== #3 详情查询 ====================
 
     /**
-     * API #3: GET /api/v1/connectors/{connectorId}
+     * API #3: GET /service/open/v2/connectors/{connectorId}
      * 详情查询, 含基本信息
      */
     public ApiResponse<ConnectorDetailResponse> getConnectorDetail(Long connectorId) {
@@ -129,7 +129,7 @@ public class ConnectorService {
     // ==================== #4 编辑基本信息 ====================
 
     /**
-     * API #4: PUT /api/v1/connectors/{connectorId}
+     * API #4: PUT /service/open/v2/connectors/{connectorId}
      * 编辑基本信息 (直接更新字段, 不创建新版本)
      */
     @Transactional
@@ -160,7 +160,7 @@ public class ConnectorService {
     // ==================== #5 删除连接器 ====================
 
     /**
-     * API #5: DELETE /api/v1/connectors/{connectorId}
+     * API #5: DELETE /service/open/v2/connectors/{connectorId}
      * 删除前校验无运行中连接流引用
      */
     @Transactional
@@ -190,7 +190,7 @@ public class ConnectorService {
     // ==================== #6 查看连接配置 ====================
 
     /**
-     * API #6: GET /api/v1/connectors/{connectorId}/config
+     * API #6: GET /service/open/v2/connectors/{connectorId}/config
      * 查看连接配置 (authConfig/inputContract/outputContract/rateLimitConfig/超时)
      */
     public ApiResponse<ConnectorConfigResponse> getConnectorConfig(Long connectorId) {
@@ -210,7 +210,7 @@ public class ConnectorService {
     // ==================== #7 编辑连接配置 ====================
 
     /**
-     * API #7: PUT /api/v1/connectors/{connectorId}/config
+     * API #7: PUT /service/open/v2/connectors/{connectorId}/config
      * 编辑连接配置 (编辑即生效，connectionConfig JSON 全文替换，支持 authConfig/inputContract/outputContract/rateLimitConfig)
      */
     @Transactional

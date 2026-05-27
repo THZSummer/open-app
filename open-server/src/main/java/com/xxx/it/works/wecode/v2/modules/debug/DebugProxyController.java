@@ -16,12 +16,12 @@ import java.util.Map;
  * 调试代理 Controller
  * <p>
  * 接收前端测试运行请求并转发至 connector-api 内部测试接口
- * API: POST /api/v1/flows/{flowId}/test-run
+ * API: POST /service/open/v2/flows/{flowId}/test-run
  * </p>
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/flows")
+@RequestMapping("/service/open/v2/flows")
 @RequiredArgsConstructor
 @Tag(name = "调试代理", description = "测试运行代理，转发至 connector-api 内部测试接口")
 public class DebugProxyController {
@@ -31,7 +31,7 @@ public class DebugProxyController {
     /**
      * 测试运行
      * <p>
-     * POST /api/v1/flows/{flowId}/test-run
+     * POST /service/open/v2/flows/{flowId}/test-run
      * 接收前端请求（含 mockTriggerData（新 v5.5 字段格式）+ credentials）
      * mockTriggerData 使用新的字段名：authConfig/inputContract/outputContract/rateLimitConfig
      * 转发至 connector-api 测试接口
@@ -47,7 +47,7 @@ public class DebugProxyController {
             @PathVariable Long flowId,
             @RequestBody TestRunRequest request) {
 
-        log.info("POST /api/v1/flows/{}/test-run", flowId);
+        log.info("POST /service/open/v2/flows/{}/test-run", flowId);
 
         return debugProxyService.forwardTestRun(
                 flowId,

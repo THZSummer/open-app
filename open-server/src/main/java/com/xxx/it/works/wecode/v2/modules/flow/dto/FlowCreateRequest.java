@@ -7,7 +7,7 @@ import lombok.Data;
 /**
  * 创建连接流请求
  * <p>
- * API #8: POST /api/v1/flows
+ * API #8: POST /service/open/v2/flows
  * 创建后默认 lifecycle_status=1 running
  * </p>
  */

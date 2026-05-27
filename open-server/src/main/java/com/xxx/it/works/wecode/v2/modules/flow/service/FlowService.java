@@ -47,7 +47,7 @@ public class FlowService {
     // ==================== #8 创建连接流 ====================
 
     /**
-     * API #8: POST /api/v1/flows
+     * API #8: POST /service/open/v2/flows
      * 创建后默认 lifecycle_status=1 running
      */
     @Transactional
@@ -82,7 +82,7 @@ public class FlowService {
     // ==================== #9 列表查询 ====================
 
     /**
-     * API #9: GET /api/v1/flows
+     * API #9: GET /service/open/v2/flows
      * 列表查询, 支持 lifecycleStatus 过滤 + keyword 搜索 + 分页
      */
     public ApiResponse<List<FlowListResponse>> getFlowList(FlowListRequest request) {
@@ -117,7 +117,7 @@ public class FlowService {
     // ==================== #10 详情查询 ====================
 
     /**
-     * API #10: GET /api/v1/flows/{flowId}
+     * API #10: GET /service/open/v2/flows/{flowId}
      */
     public ApiResponse<FlowDetailResponse> getFlowDetail(Long flowId) {
         Flow flow = flowMapper.selectById(flowId);
@@ -130,7 +130,7 @@ public class FlowService {
     // ==================== #11 编辑基本信息 ====================
 
     /**
-     * API #11: PUT /api/v1/flows/{flowId}
+     * API #11: PUT /service/open/v2/flows/{flowId}
      */
     @Transactional
     public ApiResponse<Void> updateFlow(Long flowId, FlowUpdateRequest request) {
@@ -159,7 +159,7 @@ public class FlowService {
     // ==================== #12 删除连接流 ====================
 
     /**
-     * API #12: DELETE /api/v1/flows/{flowId}
+     * API #12: DELETE /service/open/v2/flows/{flowId}
      * 仅 stopped 状态可删除
      */
     @Transactional
@@ -185,7 +185,7 @@ public class FlowService {
     // ==================== #13 启动 ====================
 
     /**
-     * API #13: POST /api/v1/flows/{flowId}/start
+     * API #13: POST /service/open/v2/flows/{flowId}/start
      * 启动 (stopped→running)
      */
     @Transactional
@@ -210,7 +210,7 @@ public class FlowService {
     // ==================== #14 停止 ====================
 
     /**
-     * API #14: POST /api/v1/flows/{flowId}/stop
+     * API #14: POST /service/open/v2/flows/{flowId}/stop
      * 停止 (running→stopped)
      */
     @Transactional
@@ -235,7 +235,7 @@ public class FlowService {
     // ==================== #15 查看编排配置 ====================
 
     /**
-     * API #15: GET /api/v1/flows/{flowId}/config
+     * API #15: GET /service/open/v2/flows/{flowId}/config
      * 查看编排配置 (React Flow 格式：nodes/edges/trigger 完整 DAG)
      */
     public ApiResponse<FlowConfigResponse> getFlowConfig(Long flowId) {
@@ -255,7 +255,7 @@ public class FlowService {
     // ==================== #16 保存编排配置 ====================
 
     /**
-     * API #16: PUT /api/v1/flows/{flowId}/config
+     * API #16: PUT /service/open/v2/flows/{flowId}/config
      * 保存编排配置 (React Flow 格式：nodes/edges/trigger，编辑即生效)
      * 编排校验: 检查 React Flow nodes 数组，无节点时拒绝保存
      */

@@ -8,7 +8,7 @@ import lombok.Data;
 /**
  * 创建连接器请求
  * <p>
- * API #1: POST /api/v1/connectors
+ * API #1: POST /service/open/v2/connectors
  * </p>
  */
 @Data

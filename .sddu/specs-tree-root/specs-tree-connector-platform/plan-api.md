@@ -28,7 +28,7 @@
 
 | 规范项 | 说明 |
 |--------|------|
-| 基础路径 | `/api/v1` |
+| 基础路径 | `/service/open/v2` (open-server 管理面) / `/api/v1` (connector-api 执行面) |
 | 认证方式 | 管理面复用现有 Cookie/SSO；执行面 HTTP 触发通过签名验证 |
 | 时间格式 | ISO 8601: `yyyy-MM-dd'T'HH:mm:ss.SSSXXX` |
 
@@ -70,8 +70,8 @@
 
 | ✅ 正确示例 | ❌ 错误示例 |
 |------------|------------|
-| `/api/v1/connector-versions` | `/api/v1/connector_versions` |
-| `/api/v1/test-run` | `/api/v1/testRun` |
+| `/service/open/v2/connector-versions` | `/service/open/v2/connector_versions` |
+| `/service/open/v2/test-run` | `/service/open/v2/testRun` |
 
 **命名约定**：
 - 资源名称使用复数形式：`/connectors`, `/flows`, `/executions`
@@ -271,23 +271,23 @@
 
 | # | 服务 | 模块 | Method | Path | 说明 | FR |
 |---|------|------|--------|------|------|-----|
-| 1 | **open-server** | **连接器管理** | POST | `/api/v1/connectors` | 创建连接器 | FR-001 |
-| 2 | | | GET | `/api/v1/connectors` | 查询连接器列表 | FR-004 |
-| 3 | | | GET | `/api/v1/connectors/{connectorId}` | 查询连接器详情 | FR-004 |
-| 4 | | | PUT | `/api/v1/connectors/{connectorId}` | 更新连接器基本信息 | FR-002 |
-| 5 | | | DELETE | `/api/v1/connectors/{connectorId}` | 删除连接器 | FR-003 |
-| 6 | | **连接器配置** | GET | `/api/v1/connectors/{connectorId}/config` | 获取连接器配置（单版本） | FR-005 |
-| 7 | | | PUT | `/api/v1/connectors/{connectorId}/config` | 编辑连接器配置（编辑即生效） | FR-006 |
-| 8 | | **连接流管理** | POST | `/api/v1/flows` | 创建连接流 | FR-009 |
-| 9 | | | GET | `/api/v1/flows` | 查询连接流列表 | FR-012 |
-| 10 | | | GET | `/api/v1/flows/{flowId}` | 查询连接流详情 | FR-016 |
-| 11 | | | PUT | `/api/v1/flows/{flowId}` | 更新连接流基本信息 | FR-010 |
-| 12 | | | DELETE | `/api/v1/flows/{flowId}` | 删除连接流 | FR-011 |
-| 13 | | | POST | `/api/v1/flows/{flowId}/start` | 启动连接流 | FR-014 |
-| 14 | | | POST | `/api/v1/flows/{flowId}/stop` | 停止连接流 | FR-015 |
-| 15 | | **连接流配置** | GET | `/api/v1/flows/{flowId}/config` | 获取连接流编排配置（单版本） | FR-016 |
-| 16 | | | PUT | `/api/v1/flows/{flowId}/config` | 保存编排配置（编辑即生效） | FR-017 |
-| 17 | | **测试代理** | POST | `/api/v1/flows/{flowId}/test-run` | 测试运行（同步，转发至 connector-api） | FR-020 |
+| 1 | **open-server** | **连接器管理** | POST | `/service/open/v2/connectors` | 创建连接器 | FR-001 |
+| 2 | | | GET | `/service/open/v2/connectors` | 查询连接器列表 | FR-004 |
+| 3 | | | GET | `/service/open/v2/connectors/{connectorId}` | 查询连接器详情 | FR-004 |
+| 4 | | | PUT | `/service/open/v2/connectors/{connectorId}` | 更新连接器基本信息 | FR-002 |
+| 5 | | | DELETE | `/service/open/v2/connectors/{connectorId}` | 删除连接器 | FR-003 |
+| 6 | | **连接器配置** | GET | `/service/open/v2/connectors/{connectorId}/config` | 获取连接器配置（单版本） | FR-005 |
+| 7 | | | PUT | `/service/open/v2/connectors/{connectorId}/config` | 编辑连接器配置（编辑即生效） | FR-006 |
+| 8 | | **连接流管理** | POST | `/service/open/v2/flows` | 创建连接流 | FR-009 |
+| 9 | | | GET | `/service/open/v2/flows` | 查询连接流列表 | FR-012 |
+| 10 | | | GET | `/service/open/v2/flows/{flowId}` | 查询连接流详情 | FR-016 |
+| 11 | | | PUT | `/service/open/v2/flows/{flowId}` | 更新连接流基本信息 | FR-010 |
+| 12 | | | DELETE | `/service/open/v2/flows/{flowId}` | 删除连接流 | FR-011 |
+| 13 | | | POST | `/service/open/v2/flows/{flowId}/start` | 启动连接流 | FR-014 |
+| 14 | | | POST | `/service/open/v2/flows/{flowId}/stop` | 停止连接流 | FR-015 |
+| 15 | | **连接流配置** | GET | `/service/open/v2/flows/{flowId}/config` | 获取连接流编排配置（单版本） | FR-016 |
+| 16 | | | PUT | `/service/open/v2/flows/{flowId}/config` | 保存编排配置（编辑即生效） | FR-017 |
+| 17 | | **测试代理** | POST | `/service/open/v2/flows/{flowId}/test-run` | 测试运行（同步，转发至 connector-api） | FR-020 |
 | 18 | **connector-api** | **HTTP 触发** | POST | `/api/v1/trigger/{flowId}/invoke` | HTTP 触发连接流（同步执行，返回结果） | FR-021 |
 
 > **总计**：18 个 HTTP 端点（从 v2.7.6 的 26 个精简）
@@ -312,7 +312,7 @@
 ### 3.1 连接器 CRUD
 
 
-#### #1 POST /api/v1/connectors — 创建连接器
+#### #1 POST /service/open/v2/connectors — 创建连接器
 
 ```json
 // Request
@@ -342,7 +342,7 @@
 // 注意：创建后仅生成连接器基本信息，不自动生成草稿版本（需用户主动创建版本）
 ```
 
-#### #2 GET /api/v1/connectors — 查询列表
+#### #2 GET /service/open/v2/connectors — 查询列表
 
 ```json
 // Query params: ?curPage=1&pageSize=20&connectorType=1&keyword=IM
@@ -377,7 +377,7 @@
 
 ---
 
-#### #3 GET /api/v1/connectors/{connectorId} — 查询连接器详情
+#### #3 GET /service/open/v2/connectors/{connectorId} — 查询连接器详情
 
 **响应示例**：
 
@@ -404,7 +404,7 @@
 
 ---
 
-#### #4 PUT /api/v1/connectors/{connectorId} — 更新连接器基本信息
+#### #4 PUT /service/open/v2/connectors/{connectorId} — 更新连接器基本信息
 
 ```json
 // Request
@@ -523,7 +523,7 @@
 ### 3.3 连接流 CRUD
 
 
-#### #8 POST /api/v1/flows — 创建连接流
+#### #8 POST /service/open/v2/flows — 创建连接流
 
 ```json
 // Request
@@ -552,7 +552,7 @@
 
 ---
 
-#### #9 GET /api/v1/flows — 查询连接流列表
+#### #9 GET /service/open/v2/flows — 查询连接流列表
 
 ```json
 // Query params: ?curPage=1&pageSize=20&lifecycleStatus=1&keyword=通知
@@ -585,7 +585,7 @@
 
 ---
 
-#### #10 GET /api/v1/flows/{flowId} — 查询连接流详情
+#### #10 GET /service/open/v2/flows/{flowId} — 查询连接流详情
 
 **响应示例**：
 
@@ -611,7 +611,7 @@
 
 ---
 
-#### #11 PUT /api/v1/flows/{flowId} — 更新连接流基本信息
+#### #11 PUT /service/open/v2/flows/{flowId} — 更新连接流基本信息
 
 ```json
 // Request
@@ -638,7 +638,7 @@
 
 ---
 
-#### #12 DELETE /api/v1/flows/{flowId} — 删除连接流
+#### #12 DELETE /service/open/v2/flows/{flowId} — 删除连接流
 
 > **说明**：物理删除。删除前检查是否处于 running 状态（需先 stop）。级联删除关联的所有版本与执行记录（应用层事务保证）。
 
@@ -658,7 +658,7 @@
 
 > 💡 **MVP v5.0 简化**：创建连接流后默认运行状态。编辑即运行，无需显式部署操作。
 
-#### #13 POST /api/v1/flows/{flowId}/start — 启动连接流
+#### #13 POST /service/open/v2/flows/{flowId}/start — 启动连接流
 
 > **说明**：将连接流 lifecycleStatus 从 `stopped(2)` 切换为 `running(1)`（FR-014）。需 `currentPublishedVersionId` 非空（`undeployed(0)` 状态需先 #15 部署）。启动后该流可接收 HTTP 触发请求。
 
@@ -680,7 +680,7 @@
 
 ---
 
-#### #14 POST /api/v1/flows/{flowId}/stop — 停止连接流
+#### #14 POST /service/open/v2/flows/{flowId}/stop — 停止连接流
 
 > **说明**：将连接流 lifecycleStatus 从 `running(1)` 切换为 `stopped(2)`（FR-015）。`currentPublishedVersionId` 指针保留（不删除），可后续启动（#16）恢复运行。停止后 HTTP 触发入口返回 403。
 
@@ -706,7 +706,7 @@
 
 > 💡 **MVP v5.0 单版本模型**：每个连接流仅有一份编排配置，`GET/PUT .../config` 直接操作，编辑即生效。无版本列表、版本切换、发布操作。
 
-#### #15 GET /api/v1/flows/{flowId}/config — 获取编排配置
+#### #15 GET /service/open/v2/flows/{flowId}/config — 获取编排配置
 
 ```json
 // Response 200
@@ -803,7 +803,7 @@
 }
 ```
 
-#### #16 PUT /api/v1/flows/{flowId}/config — 保存编排配置（编辑即生效）
+#### #16 PUT /service/open/v2/flows/{flowId}/config — 保存编排配置（编辑即生效）
 
 ```json
 // Request — orchestrationConfig 全文替换（结构同 GET 响应，遵循 React Flow 格式：node.data 嵌套 + edge.source/target）
@@ -834,7 +834,7 @@
 
 ### 3.5 执行与触发
 
-#### #17 POST /api/v1/flows/{flowId}/test-run — 测试运行（同步）
+#### #17 POST /service/open/v2/flows/{flowId}/test-run — 测试运行（同步）
 
 > ⚠️ **凭证由调用方携带**：若涉及连接器需要认证，在请求体 `credentials` 字段携带；运行时注入 ExecutionContext 仅内存生命周期。
 

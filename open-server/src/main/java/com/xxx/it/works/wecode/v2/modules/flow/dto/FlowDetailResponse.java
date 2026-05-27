@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 连接流详情响应
  * <p>
- * API #10: GET /api/v1/flows/{flowId}
+ * API #10: GET /service/open/v2/flows/{flowId}
  * </p>
  */
 @Data

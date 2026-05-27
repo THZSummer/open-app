@@ -23,7 +23,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/flows")
+@RequestMapping("/service/open/v2/flows")
 @RequiredArgsConstructor
 @Tag(name = "连接流管理", description = "连接流 CRUD、编排配置及生命周期管理接口")
 public class FlowController {
@@ -39,7 +39,7 @@ public class FlowController {
                description = "创建后默认 lifecycle_status=1 running，自动创建 flow_version 记录")
     public ApiResponse<FlowCreateResponse> createFlow(
             @Valid @RequestBody FlowCreateRequest request) {
-        log.info("POST /api/v1/flows - create flow: nameCn={}", request.getNameCn());
+        log.info("POST /service/open/v2/flows - create flow: nameCn={}", request.getNameCn());
         return flowService.createFlow(request);
     }
 

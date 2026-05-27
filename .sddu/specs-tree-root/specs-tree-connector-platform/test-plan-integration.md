@@ -112,7 +112,7 @@ connector-api/src/test/python/
 
 ### 4.1 连接器 CRUD — ConnectorController（#1~#5）
 
-#### #1 POST /api/v1/connectors — 创建连接器
+#### #1 POST /service/open/v2/connectors — 创建连接器
 
 | 编号 | 场景 | 输入 | 预期 | 验证点 |
 |------|------|------|:----:|--------|
@@ -121,7 +121,7 @@ connector-api/src/test/python/
 | IT-003 | ❌ connectorType 非法 | connectorType=99 | 422 | 校验失败提示 |
 | IT-004 | ❌ nameCn 超长（>500 字符） | 超长字符串 | 422 | 字段长度校验 |
 
-#### #2 GET /api/v1/connectors — 查询列表
+#### #2 GET /service/open/v2/connectors — 查询列表
 
 | 编号 | 场景 | 输入 | 预期 | 验证点 |
 |------|------|------|:----:|--------|
@@ -131,7 +131,7 @@ connector-api/src/test/python/
 | IT-008 | ✅ 自定义分页 | `?curPage=2&pageSize=10` | 200 | 分页参数正确 |
 | IT-009 | ✅ 空结果 | `?keyword=NONEXISTENT_XYZ` | 200 | `data=[]`, `page.total=0` |
 
-#### #3 GET /api/v1/connectors/{connectorId} — 查询详情
+#### #3 GET /service/open/v2/connectors/{connectorId} — 查询详情
 
 | 编号 | 场景 | 预期 | 验证点 |
 |------|------|:----:|--------|
@@ -139,14 +139,14 @@ connector-api/src/test/python/
 | IT-011 | ❌ connectorId 不存在 | 404 | 资源不存在提示 |
 | IT-012 | ✅ 雪花 ID 为 string 类型 | 200 | JSON 中 id 为字符串非数字 |
 
-#### #4 PUT /api/v1/connectors/{connectorId} — 更新
+#### #4 PUT /service/open/v2/connectors/{connectorId} — 更新
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
 | IT-013 | ✅ 正常更新（nameCn） | 200 |
 | IT-014 | ❌ 不存在的连接器 | 404 |
 
-#### #5 DELETE /api/v1/connectors/{connectorId} — 删除
+#### #5 DELETE /service/open/v2/connectors/{connectorId} — 删除
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -157,7 +157,7 @@ connector-api/src/test/python/
 
 ### 4.2 连接器配置 — ConnectorController（#6~#7）
 
-#### #6 GET /api/v1/connectors/{connectorId}/config — 获取连接配置
+#### #6 GET /service/open/v2/connectors/{connectorId}/config — 获取连接配置
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -165,7 +165,7 @@ connector-api/src/test/python/
 | IT-018 | ✅ 未配置（新建连接器的初始状态） | 200, `hasConfig=false` |
 | IT-019 | ❌ 连接器不存在 | 404 |
 
-#### #7 PUT /api/v1/connectors/{connectorId}/config — 编辑连接配置
+#### #7 PUT /service/open/v2/connectors/{connectorId}/config — 编辑连接配置
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -177,7 +177,7 @@ connector-api/src/test/python/
 
 ### 4.3 连接流 CRUD — FlowController（#8~#14）
 
-#### #8 POST /api/v1/flows — 创建连接流
+#### #8 POST /service/open/v2/flows — 创建连接流
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -185,7 +185,7 @@ connector-api/src/test/python/
 | IT-024 | ❌ 缺少必填 nameCn | 400 |
 | IT-025 | ❌ 缺少必填 nameEn | 400 |
 
-#### #9 GET /api/v1/flows — 查询流列表
+#### #9 GET /service/open/v2/flows — 查询流列表
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -194,28 +194,28 @@ connector-api/src/test/python/
 | IT-028 | ✅ keyword 搜索 | 200 |
 | IT-029 | ✅ 空结果 | data=[], total=0 |
 
-#### #10 GET /api/v1/flows/{flowId} — 查看流详情
+#### #10 GET /service/open/v2/flows/{flowId} — 查看流详情
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
 | IT-030 | ✅ 正常 | 200, 完整字段 |
 | IT-031 | ❌ 不存在 | 404 |
 
-#### #11 PUT /api/v1/flows/{flowId} — 更新流信息
+#### #11 PUT /service/open/v2/flows/{flowId} — 更新流信息
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
 | IT-032 | ✅ 正常更新 | 200 |
 | IT-033 | ❌ 不存在 | 404 |
 
-#### #12 DELETE /api/v1/flows/{flowId} — 删除流
+#### #12 DELETE /service/open/v2/flows/{flowId} — 删除流
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
 | IT-034 | ✅ stopped 状态可删除 | 200 |
 | IT-035 | ❌ 不存在 | 404 |
 
-#### #13 POST /api/v1/flows/{flowId}/start — 启动
+#### #13 POST /service/open/v2/flows/{flowId}/start — 启动
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -223,7 +223,7 @@ connector-api/src/test/python/
 | IT-037 | ❌ 已是 running（重复） | 409 |
 | IT-038 | ❌ 不存在 | 404 |
 
-#### #14 POST /api/v1/flows/{flowId}/stop — 停止
+#### #14 POST /service/open/v2/flows/{flowId}/stop — 停止
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -235,14 +235,14 @@ connector-api/src/test/python/
 
 ### 4.4 连接流配置 — FlowController（#15~#16）
 
-#### #15 GET /api/v1/flows/{flowId}/config — 获取编排配置
+#### #15 GET /service/open/v2/flows/{flowId}/config — 获取编排配置
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
 | IT-042 | ✅ 空配置（初始） | 200, `hasConfig=false` |
 | IT-043 | ❌ flow 不存在 | 404 |
 
-#### #16 PUT /api/v1/flows/{flowId}/config — 保存编排配置
+#### #16 PUT /service/open/v2/flows/{flowId}/config — 保存编排配置
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -254,7 +254,7 @@ connector-api/src/test/python/
 
 ### 4.5 测试代理 — DebugProxyController（#17）
 
-#### #17 POST /api/v1/flows/{flowId}/test-run — 测试运行
+#### #17 POST /service/open/v2/flows/{flowId}/test-run — 测试运行
 
 | 编号 | 场景 | 预期 |
 |------|------|:----:|
@@ -363,7 +363,7 @@ python3 inspect/trigger_invoke.py
 ```
 ============================================================
 🟢 请求
-  POST http://localhost:18080/open-server/api/v1/connectors
+  POST http://localhost:18080/open-server/service/open/v2/connectors
   Headers: Content-Type: application/json
   Body: {"nameCn":"IM消息","nameEn":"IM Send Message","connectorType":1}
 ============================================================

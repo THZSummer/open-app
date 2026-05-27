@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 更新连接器基本信息请求
  * <p>
- * API #4: PUT /api/v1/connectors/{connectorId}
+ * API #4: PUT /service/open/v2/connectors/{connectorId}
  * </p>
  */
 @Data

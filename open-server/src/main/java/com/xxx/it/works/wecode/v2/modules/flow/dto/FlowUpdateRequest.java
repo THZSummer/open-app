@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 更新连接流基本信息请求
  * <p>
- * API #11: PUT /api/v1/flows/{flowId}
+ * API #11: PUT /service/open/v2/flows/{flowId}
  * </p>
  */
 @Data

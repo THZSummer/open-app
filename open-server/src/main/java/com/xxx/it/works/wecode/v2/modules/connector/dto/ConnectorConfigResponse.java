@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 连接配置响应
  * <p>
- * API #6: GET /api/v1/connectors/{connectorId}/config
+ * API #6: GET /service/open/v2/connectors/{connectorId}/config
  * 无配置时提示"暂无配置"
  * </p>
  */

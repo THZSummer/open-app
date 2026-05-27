@@ -40,7 +40,7 @@ class FlowControllerWebMvcTest {
     // ==================== #8 创建连接流 ====================
 
     @Nested
-    @DisplayName("#8 POST /api/v1/flows")
+    @DisplayName("#8 POST /service/open/v2/flows")
     class CreateFlow {
 
         @Test
@@ -50,7 +50,7 @@ class FlowControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(
                             FlowCreateResponse.builder().id("2000000000000000001").build()));
 
-            mockMvc.perform(post("/api/v1/flows")
+            mockMvc.perform(post("/service/open/v2/flows")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -66,7 +66,7 @@ class FlowControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-034: 缺少必填 nameCn")
         void testCreateMissingNameCn() throws Exception {
-            mockMvc.perform(post("/api/v1/flows")
+            mockMvc.perform(post("/service/open/v2/flows")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"nameEn": "Test Flow"}
@@ -78,7 +78,7 @@ class FlowControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-035: 缺少必填 nameEn")
         void testCreateMissingNameEn() throws Exception {
-            mockMvc.perform(post("/api/v1/flows")
+            mockMvc.perform(post("/service/open/v2/flows")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"nameCn": "测试流"}
@@ -91,7 +91,7 @@ class FlowControllerWebMvcTest {
     // ==================== #9 查询列表 ====================
 
     @Nested
-    @DisplayName("#9 GET /api/v1/flows")
+    @DisplayName("#9 GET /service/open/v2/flows")
     class GetFlowList {
 
         @Test
@@ -107,7 +107,7 @@ class FlowControllerWebMvcTest {
                             ApiResponse.PageResponse.builder()
                                     .curPage(1).pageSize(20).total(1L).totalPages(1).build()));
 
-            mockMvc.perform(get("/api/v1/flows"))
+            mockMvc.perform(get("/service/open/v2/flows"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
                     .andExpect(jsonPath("$.data").isArray())
@@ -124,7 +124,7 @@ class FlowControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(List.of(),
                             ApiResponse.PageResponse.builder().curPage(1).pageSize(20).total(0L).totalPages(0).build()));
 
-            mockMvc.perform(get("/api/v1/flows")
+            mockMvc.perform(get("/service/open/v2/flows")
                             .param("lifecycleStatus", "1"))
                     .andExpect(status().isOk());
         }
@@ -136,7 +136,7 @@ class FlowControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(List.of(),
                             ApiResponse.PageResponse.builder().curPage(1).pageSize(20).total(0L).totalPages(0).build()));
 
-            mockMvc.perform(get("/api/v1/flows")
+            mockMvc.perform(get("/service/open/v2/flows")
                             .param("keyword", "通知"))
                     .andExpect(status().isOk());
         }
@@ -148,7 +148,7 @@ class FlowControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(List.of(),
                             ApiResponse.PageResponse.builder().curPage(1).pageSize(20).total(0L).totalPages(0).build()));
 
-            mockMvc.perform(get("/api/v1/flows")
+            mockMvc.perform(get("/service/open/v2/flows")
                             .param("keyword", "NONEXISTENT"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.length()").value(0))
@@ -159,7 +159,7 @@ class FlowControllerWebMvcTest {
     // ==================== #10 查询详情 ====================
 
     @Nested
-    @DisplayName("#10 GET /api/v1/flows/{flowId}")
+    @DisplayName("#10 GET /service/open/v2/flows/{flowId}")
     class GetFlowDetail {
 
         @Test
@@ -174,7 +174,7 @@ class FlowControllerWebMvcTest {
             when(flowService.getFlowDetail(2000000000000000001L))
                     .thenReturn(ApiResponse.success(detail));
 
-            mockMvc.perform(get("/api/v1/flows/{flowId}", "2000000000000000001"))
+            mockMvc.perform(get("/service/open/v2/flows/{flowId}", "2000000000000000001"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.id").isString())
                     .andExpect(jsonPath("$.data.lifecycleStatus").isNumber());
@@ -186,7 +186,7 @@ class FlowControllerWebMvcTest {
             when(flowService.getFlowDetail(999L))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(get("/api/v1/flows/{flowId}", "999"))
+            mockMvc.perform(get("/service/open/v2/flows/{flowId}", "999"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("404"));
         }
@@ -195,7 +195,7 @@ class FlowControllerWebMvcTest {
     // ==================== #11 编辑 ====================
 
     @Nested
-    @DisplayName("#11 PUT /api/v1/flows/{flowId}")
+    @DisplayName("#11 PUT /service/open/v2/flows/{flowId}")
     class UpdateFlow {
 
         @Test
@@ -204,7 +204,7 @@ class FlowControllerWebMvcTest {
             when(flowService.updateFlow(eq(100L), any()))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(put("/api/v1/flows/{flowId}", "100")
+            mockMvc.perform(put("/service/open/v2/flows/{flowId}", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"nameCn": "更新后的名称"}
@@ -219,7 +219,7 @@ class FlowControllerWebMvcTest {
             when(flowService.updateFlow(eq(999L), any()))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(put("/api/v1/flows/{flowId}", "999")
+            mockMvc.perform(put("/service/open/v2/flows/{flowId}", "999")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"nameCn\": \"测试\"}"))
                     .andExpect(status().isOk())
@@ -230,7 +230,7 @@ class FlowControllerWebMvcTest {
     // ==================== #12 删除 ====================
 
     @Nested
-    @DisplayName("#12 DELETE /api/v1/flows/{flowId}")
+    @DisplayName("#12 DELETE /service/open/v2/flows/{flowId}")
     class DeleteFlow {
 
         @Test
@@ -239,7 +239,7 @@ class FlowControllerWebMvcTest {
             when(flowService.deleteFlow(100L))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(delete("/api/v1/flows/{flowId}", "100"))
+            mockMvc.perform(delete("/service/open/v2/flows/{flowId}", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"));
         }
@@ -250,7 +250,7 @@ class FlowControllerWebMvcTest {
             when(flowService.deleteFlow(100L))
                     .thenReturn(ApiResponse.error("400", "仅已停止状态的连接流可删除", "Only stopped flows can be deleted"));
 
-            mockMvc.perform(delete("/api/v1/flows/{flowId}", "100"))
+            mockMvc.perform(delete("/service/open/v2/flows/{flowId}", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("400"));
         }
@@ -261,7 +261,7 @@ class FlowControllerWebMvcTest {
             when(flowService.deleteFlow(999L))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(delete("/api/v1/flows/{flowId}", "999"))
+            mockMvc.perform(delete("/service/open/v2/flows/{flowId}", "999"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("404"));
         }
@@ -270,7 +270,7 @@ class FlowControllerWebMvcTest {
     // ==================== #13 启动 ====================
 
     @Nested
-    @DisplayName("#13 POST /api/v1/flows/{flowId}/start")
+    @DisplayName("#13 POST /service/open/v2/flows/{flowId}/start")
     class StartFlow {
 
         @Test
@@ -279,7 +279,7 @@ class FlowControllerWebMvcTest {
             when(flowService.startFlow(100L))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/start", "100"))
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/start", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"));
         }
@@ -290,7 +290,7 @@ class FlowControllerWebMvcTest {
             when(flowService.startFlow(100L))
                     .thenReturn(ApiResponse.error("400", "连接流已处于运行中状态", "Flow is already running"));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/start", "100"))
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/start", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("400"));
         }
@@ -301,7 +301,7 @@ class FlowControllerWebMvcTest {
             when(flowService.startFlow(999L))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/start", "999"))
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/start", "999"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("404"));
         }
@@ -310,7 +310,7 @@ class FlowControllerWebMvcTest {
     // ==================== #14 停止 ====================
 
     @Nested
-    @DisplayName("#14 POST /api/v1/flows/{flowId}/stop")
+    @DisplayName("#14 POST /service/open/v2/flows/{flowId}/stop")
     class StopFlow {
 
         @Test
@@ -319,7 +319,7 @@ class FlowControllerWebMvcTest {
             when(flowService.stopFlow(100L))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/stop", "100"))
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/stop", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"));
         }
@@ -330,7 +330,7 @@ class FlowControllerWebMvcTest {
             when(flowService.stopFlow(100L))
                     .thenReturn(ApiResponse.error("400", "连接流已处于已停止状态", "Flow is already stopped"));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/stop", "100"))
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/stop", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("400"));
         }
@@ -341,7 +341,7 @@ class FlowControllerWebMvcTest {
             when(flowService.stopFlow(999L))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(post("/api/v1/flows/{flowId}/stop", "999"))
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/stop", "999"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("404"));
         }
@@ -350,7 +350,7 @@ class FlowControllerWebMvcTest {
     // ==================== #15 查看编排配置 ====================
 
     @Nested
-    @DisplayName("#15 GET /api/v1/flows/{flowId}/config")
+    @DisplayName("#15 GET /service/open/v2/flows/{flowId}/config")
     class GetFlowConfig {
 
         @Test
@@ -360,7 +360,7 @@ class FlowControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(
                             FlowConfigResponse.of("{\\\"nodes\\\":[],\\\"edges\\\":[]}")));
 
-            mockMvc.perform(get("/api/v1/flows/{flowId}/config", "100"))
+            mockMvc.perform(get("/service/open/v2/flows/{flowId}/config", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.hasConfig").value(true))
                     .andExpect(jsonPath("$.data.orchestrationConfig").isString());
@@ -372,7 +372,7 @@ class FlowControllerWebMvcTest {
             when(flowService.getFlowConfig(100L))
                     .thenReturn(ApiResponse.success(FlowConfigResponse.empty()));
 
-            mockMvc.perform(get("/api/v1/flows/{flowId}/config", "100"))
+            mockMvc.perform(get("/service/open/v2/flows/{flowId}/config", "100"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.hasConfig").value(false));
         }
@@ -383,7 +383,7 @@ class FlowControllerWebMvcTest {
             when(flowService.getFlowConfig(999L))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(get("/api/v1/flows/{flowId}/config", "999"))
+            mockMvc.perform(get("/service/open/v2/flows/{flowId}/config", "999"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("404"));
         }
@@ -392,7 +392,7 @@ class FlowControllerWebMvcTest {
     // ==================== #16 保存编排配置 ====================
 
     @Nested
-    @DisplayName("#16 PUT /api/v1/flows/{flowId}/config")
+    @DisplayName("#16 PUT /service/open/v2/flows/{flowId}/config")
     class UpdateFlowConfig {
 
         @Test
@@ -401,7 +401,7 @@ class FlowControllerWebMvcTest {
             when(flowService.updateFlowConfig(eq(100L), any()))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(put("/api/v1/flows/{flowId}/config", "100")
+            mockMvc.perform(put("/service/open/v2/flows/{flowId}/config", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -415,7 +415,7 @@ class FlowControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-060: orchestrationConfig 为空字符串")
         void testUpdateConfigEmpty() throws Exception {
-            mockMvc.perform(put("/api/v1/flows/{flowId}/config", "100")
+            mockMvc.perform(put("/service/open/v2/flows/{flowId}/config", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"orchestrationConfig": ""}
@@ -427,7 +427,7 @@ class FlowControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-061: orchestrationConfig 为 null")
         void testUpdateConfigNull() throws Exception {
-            mockMvc.perform(put("/api/v1/flows/{flowId}/config", "100")
+            mockMvc.perform(put("/service/open/v2/flows/{flowId}/config", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().isBadRequest())

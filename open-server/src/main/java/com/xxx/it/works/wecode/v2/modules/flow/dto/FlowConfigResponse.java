@@ -5,7 +5,7 @@ import lombok.Data;
 /**
  * 编排配置响应
  * <p>
- * API #15: GET /api/v1/flows/{flowId}/config
+ * API #15: GET /service/open/v2/flows/{flowId}/config
  * 无配置时提示"暂无配置"
  * </p>
  */
