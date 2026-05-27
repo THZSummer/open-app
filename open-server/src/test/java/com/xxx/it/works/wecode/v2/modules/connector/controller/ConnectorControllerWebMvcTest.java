@@ -2,7 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.connector.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
-import com.xxx.it.works.wecode.v2.modules.connector.service.ConnectorService;
+import com.xxx.it.works.wecode.v2.modules.connector.service.OpConnectorService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,22 +20,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * ConnectorController 接口层测试 (WebMvcTest)
+ * OpConnectorController 接口层测试 (WebMvcTest)
  *
  * <p>测试目标: HTTP 请求绑定 + 响应序列化 + 状态码
  * 接口范围: #1 ~ #7
  * 测试层次: L2 接口层
  * </p>
  */
-@WebMvcTest(ConnectorController.class)
-@DisplayName("ConnectorController WebMvcTest")
-class ConnectorControllerWebMvcTest {
+@WebMvcTest(OpConnectorController.class)
+@DisplayName("OpConnectorController WebMvcTest")
+class OpConnectorControllerWebMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ConnectorService connectorService;
+    private OpConnectorService connectorService;
 
     // ==================== #1 创建连接器 ====================
 

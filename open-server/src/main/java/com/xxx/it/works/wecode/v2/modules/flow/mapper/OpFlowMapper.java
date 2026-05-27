@@ -13,7 +13,7 @@ import java.util.List;
  * </p>
  */
 @Mapper
-public interface FlowMapper {
+public interface OpFlowMapper {
 
     /**
      * 插入连接流

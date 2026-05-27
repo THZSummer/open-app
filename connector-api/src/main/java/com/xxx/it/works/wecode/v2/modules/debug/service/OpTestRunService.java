@@ -2,7 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.debug.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.FlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
@@ -34,18 +34,18 @@ import java.util.UUID;
  * </p>
  */
 @Service
-public class TestRunService {
+public class OpTestRunService {
 
-    private static final Logger log = LoggerFactory.getLogger(TestRunService.class);
+    private static final Logger log = LoggerFactory.getLogger(OpTestRunService.class);
 
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
-    private final FlowVersionReadRepository flowVersionReadRepository;
+    private final OpFlowVersionReadRepository flowVersionReadRepository;
 
-    public TestRunService(
+    public OpTestRunService(
             ObjectMapper objectMapper,
             ReactiveSequentialExecutor executor,
-            FlowVersionReadRepository flowVersionReadRepository) {
+            OpFlowVersionReadRepository flowVersionReadRepository) {
         this.objectMapper = objectMapper;
         this.executor = executor;
         this.flowVersionReadRepository = flowVersionReadRepository;

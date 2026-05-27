@@ -2,7 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.connector.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
-import com.xxx.it.works.wecode.v2.modules.connector.service.ConnectorService;
+import com.xxx.it.works.wecode.v2.modules.connector.service.OpConnectorService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,14 +18,14 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ConnectorController 测试")
-class ConnectorControllerTest {
+@DisplayName("OpConnectorController 测试")
+class OpConnectorControllerTest {
 
     @Mock
-    private ConnectorService connectorService;
+    private OpConnectorService connectorService;
 
     @InjectMocks
-    private ConnectorController connectorController;
+    private OpConnectorController connectorController;
 
     @Nested
     @DisplayName("#1 创建连接器")

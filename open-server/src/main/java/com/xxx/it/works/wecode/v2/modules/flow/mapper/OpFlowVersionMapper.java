@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Param;
  * </p>
  */
 @Mapper
-public interface FlowVersionMapper {
+public interface OpFlowVersionMapper {
 
     /**
      * 插入连接流版本

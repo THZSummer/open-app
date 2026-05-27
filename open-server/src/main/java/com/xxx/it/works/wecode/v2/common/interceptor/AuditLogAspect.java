@@ -35,15 +35,15 @@ public class AuditLogAspect {
     // ===== 切点定义 =====
 
     /** 启动连接流操作 */
-    @Pointcut("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.FlowService.startFlow(..))")
+    @Pointcut("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.OpFlowService.startFlow(..))")
     public void startFlowOperation() {}
 
     /** 停止连接流操作 */
-    @Pointcut("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.FlowService.stopFlow(..))")
+    @Pointcut("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.OpFlowService.stopFlow(..))")
     public void stopFlowOperation() {}
 
     /** 删除连接流操作 */
-    @Pointcut("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.FlowService.deleteFlow(..))")
+    @Pointcut("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.OpFlowService.deleteFlow(..))")
     public void deleteFlowOperation() {}
 
     // ===== 通知 =====

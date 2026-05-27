@@ -2,7 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.trigger.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.FlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
@@ -32,20 +32,20 @@ import java.util.UUID;
  * </p>
  */
 @Service
-public class TriggerService {
+public class OpTriggerService {
 
-    private static final Logger log = LoggerFactory.getLogger(TriggerService.class);
+    private static final Logger log = LoggerFactory.getLogger(OpTriggerService.class);
 
     private static final String TRIGGER_NODE_ID = "node_trigger";
 
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
-    private final FlowVersionReadRepository flowVersionReadRepository;
+    private final OpFlowVersionReadRepository flowVersionReadRepository;
 
-    public TriggerService(
+    public OpTriggerService(
             ObjectMapper objectMapper,
             ReactiveSequentialExecutor executor,
-            FlowVersionReadRepository flowVersionReadRepository) {
+            OpFlowVersionReadRepository flowVersionReadRepository) {
         this.objectMapper = objectMapper;
         this.executor = executor;
         this.flowVersionReadRepository = flowVersionReadRepository;
@@ -114,7 +114,7 @@ public class TriggerService {
                             if (maxQps <= 0) {
                                 return Mono.error(new RuntimeException("Rate limit maxQps must be positive"));
                             }
-                            // 实际限流在 RateLimitFilter 中通过 Redis 滑动窗口实现
+                            // 实际限流在 OpRateLimitFilter 中通过 Redis 滑动窗口实现
                         }
                     }
 

@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,11 +23,11 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/flows")
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "调试代理", description = "测试运行代理，转发至 connector-api 内部测试接口")
-public class DebugProxyController {
+public class OpDebugProxyController {
 
-    private final DebugProxyService debugProxyService;
+    private final OpDebugProxyService debugProxyService;
 
     /**
      * 测试运行

@@ -13,7 +13,7 @@ import java.util.List;
  * </p>
  */
 @Mapper
-public interface ConnectorMapper {
+public interface OpConnectorMapper {
 
     /**
      * 插入连接器

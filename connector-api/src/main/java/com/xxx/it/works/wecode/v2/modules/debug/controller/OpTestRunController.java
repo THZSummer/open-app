@@ -1,6 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.debug.controller;
 
-import com.xxx.it.works.wecode.v2.modules.debug.service.TestRunService;
+import com.xxx.it.works.wecode.v2.modules.debug.service.OpTestRunService;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,13 +33,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/internal/test-run")
 @Tag(name = "测试执行", description = "内部测试执行接口，供 open-server debug-proxy 调用 (v5.5)")
-public class TestRunController {
+public class OpTestRunController {
 
-    private static final Logger log = LoggerFactory.getLogger(TestRunController.class);
+    private static final Logger log = LoggerFactory.getLogger(OpTestRunController.class);
 
-    private final TestRunService testRunService;
+    private final OpTestRunService testRunService;
 
-    public TestRunController(TestRunService testRunService) {
+    public OpTestRunController(OpTestRunService testRunService) {
         this.testRunService = testRunService;
     }
 

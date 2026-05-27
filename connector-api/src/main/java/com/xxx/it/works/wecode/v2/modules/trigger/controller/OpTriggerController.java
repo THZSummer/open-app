@@ -1,7 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.trigger.controller;
 
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
-import com.xxx.it.works.wecode.v2.modules.trigger.service.TriggerService;
+import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,13 +34,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/trigger")
 @Tag(name = "HTTP 触发", description = "对外 HTTP 触发端点，同步执行连接流 (v5.5)")
-public class TriggerController {
+public class OpTriggerController {
 
-    private static final Logger log = LoggerFactory.getLogger(TriggerController.class);
+    private static final Logger log = LoggerFactory.getLogger(OpTriggerController.class);
 
-    private final TriggerService triggerService;
+    private final OpTriggerService triggerService;
 
-    public TriggerController(TriggerService triggerService) {
+    public OpTriggerController(OpTriggerService triggerService) {
         this.triggerService = triggerService;
     }
 
@@ -48,7 +48,7 @@ public class TriggerController {
      * HTTP 触发连接流执行
      * <p>
      * POST /api/v1/trigger/{flowId}/invoke
-     * 认证校验已移至 TriggerService 中按 data.authConfig.type 动态处理。
+     * 认证校验已移至 OpTriggerService 中按 data.authConfig.type 动态处理。
      * <ul>
      *   <li>请求体: 触发数据 JSON (按 {@code data.inputContract} JSON Schema 校验)</li>
      *   <li>触发数据存入 {@code nodeContexts["node_trigger"].input}</li>
@@ -68,7 +68,7 @@ public class TriggerController {
 
         log.info("HTTP trigger invoke: flowId={}", flowId);
 
-        // 认证/限流/入参校验全部由 TriggerService 根据编排配置中的 data.authConfig/data.rateLimitConfig/data.inputContract 动态处理
+        // 认证/限流/入参校验全部由 OpTriggerService 根据编排配置中的 data.authConfig/data.rateLimitConfig/data.inputContract 动态处理
         return triggerService.invokeFlow(flowId, triggerData, allHeaders, null);
     }
 }

@@ -18,22 +18,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * DebugProxyController 接口层测试 (WebMvcTest)
+ * OpDebugProxyController 接口层测试 (WebMvcTest)
  *
  * <p>测试目标: HTTP 请求绑定 + 响应序列化 + 代理转发
  * 接口: #17 POST /service/open/v2/flows/{flowId}/test-run
  * 测试层次: L2 接口层
  * </p>
  */
-@WebMvcTest(DebugProxyController.class)
-@DisplayName("DebugProxyController WebMvcTest")
-class DebugProxyControllerWebMvcTest {
+@WebMvcTest(OpDebugProxyController.class)
+@DisplayName("OpDebugProxyController WebMvcTest")
+class OpDebugProxyControllerWebMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private DebugProxyService debugProxyService;
+    private OpDebugProxyService debugProxyService;
 
     @Nested
     @DisplayName("#17 POST /service/open/v2/flows/{flowId}/test-run")

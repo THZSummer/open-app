@@ -2,10 +2,10 @@ package com.xxx.it.works.wecode.v2.modules.trigger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.FlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
-import com.xxx.it.works.wecode.v2.modules.trigger.service.TriggerService;
+import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,22 +22,22 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("TriggerService 测试")
-class TriggerServiceTest {
+@DisplayName("OpTriggerService 测试")
+class OpTriggerServiceTest {
 
     @Mock
-    private FlowVersionReadRepository flowVersionReadRepository;
+    private OpFlowVersionReadRepository flowVersionReadRepository;
 
     @Mock
     private ReactiveSequentialExecutor executor;
 
     private ObjectMapper objectMapper;
-    private TriggerService triggerService;
+    private OpTriggerService triggerService;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        triggerService = new TriggerService(objectMapper, executor, flowVersionReadRepository);
+        triggerService = new OpTriggerService(objectMapper, executor, flowVersionReadRepository);
     }
 
     @Test
@@ -89,7 +89,7 @@ class TriggerServiceTest {
     void testInvokeFlow_ExecutionError() {
         FlowVersionEntity flowVersion = new FlowVersionEntity();
         flowVersion.setFlowId(100L);
-        // Use a valid orchestrationConfig so TriggerService reaches the executor
+        // Use a valid orchestrationConfig so OpTriggerService reaches the executor
         flowVersion.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"结束\"}}],\"edges\":[]}");
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
