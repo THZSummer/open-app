@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Param;
  * </p>
  */
 @Mapper
-public interface ConnectorVersionMapper {
+public interface OpConnectorVersionMapper {
 
     /**
      * 插入连接器版本

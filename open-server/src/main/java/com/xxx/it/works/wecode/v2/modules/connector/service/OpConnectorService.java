@@ -8,9 +8,10 @@ import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.Connector;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorMapper;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorMapper;
+import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorVersionMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +30,13 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class ConnectorService {
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
+public class OpConnectorService {
 
     private static final SimpleDateFormat ISO_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
-    private final ConnectorMapper connectorMapper;
-    private final ConnectorVersionMapper connectorVersionMapper;
+    private final OpConnectorMapper connectorMapper;
+    private final OpConnectorVersionMapper connectorVersionMapper;
     private final IdGeneratorStrategy idGenerator;
 
     // ==================== #1 创建连接器 ====================

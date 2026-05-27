@@ -2,7 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.flow.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
-import com.xxx.it.works.wecode.v2.modules.flow.service.FlowService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.OpFlowService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,14 +18,14 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("FlowController 测试")
-class FlowControllerTest {
+@DisplayName("OpFlowController 测试")
+class OpFlowControllerTest {
 
     @Mock
-    private FlowService flowService;
+    private OpFlowService flowService;
 
     @InjectMocks
-    private FlowController flowController;
+    private OpFlowController flowController;
 
     @Test
     @DisplayName("#8 创建连接流")

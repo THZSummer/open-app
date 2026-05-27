@@ -2,7 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.flow.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
-import com.xxx.it.works.wecode.v2.modules.flow.service.FlowService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.OpFlowService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,22 +20,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * FlowController 接口层测试 (WebMvcTest)
+ * OpFlowController 接口层测试 (WebMvcTest)
  *
  * <p>测试目标: HTTP 请求绑定 + 响应序列化 + 状态码
  * 接口范围: #8 ~ #16
  * 测试层次: L2 接口层
  * </p>
  */
-@WebMvcTest(FlowController.class)
-@DisplayName("FlowController WebMvcTest")
-class FlowControllerWebMvcTest {
+@WebMvcTest(OpFlowController.class)
+@DisplayName("OpFlowController WebMvcTest")
+class OpFlowControllerWebMvcTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private FlowService flowService;
+    private OpFlowService flowService;
 
     // ==================== #8 创建连接流 ====================
 

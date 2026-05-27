@@ -6,8 +6,8 @@ import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.FlowMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.FlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,14 +25,14 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("FlowService 测试")
-class FlowServiceTest {
+@DisplayName("OpFlowService 测试")
+class OpFlowServiceTest {
 
     @Mock
-    private FlowMapper flowMapper;
+    private OpFlowMapper flowMapper;
 
     @Mock
-    private FlowVersionMapper flowVersionMapper;
+    private OpFlowVersionMapper flowVersionMapper;
 
     @Mock
     private IdGeneratorStrategy idGenerator;
@@ -41,7 +41,7 @@ class FlowServiceTest {
     private ObjectMapper objectMapper;
 
     @InjectMocks
-    private FlowService flowService;
+    private OpFlowService flowService;
 
     private Flow existingFlow;
 
@@ -51,7 +51,7 @@ class FlowServiceTest {
         existingFlow.setId(100L);
         existingFlow.setNameCn("原始流");
         existingFlow.setNameEn("Original Flow");
-        existingFlow.setLifecycleStatus(FlowService.LIFECYCLE_RUNNING);
+        existingFlow.setLifecycleStatus(OpFlowService.LIFECYCLE_RUNNING);
         existingFlow.setCreateTime(new Date());
         existingFlow.setLastUpdateTime(new Date());
         existingFlow.setCreateBy("admin");
@@ -78,7 +78,7 @@ class FlowServiceTest {
             assertEquals("200", response.getData().getId());
 
             verify(flowMapper).insert(argThat(f ->
-                    f.getLifecycleStatus() == FlowService.LIFECYCLE_RUNNING &&
+                    f.getLifecycleStatus() == OpFlowService.LIFECYCLE_RUNNING &&
                     "新流".equals(f.getNameCn())
             ));
         }
@@ -172,7 +172,7 @@ class FlowServiceTest {
         @Test
         @DisplayName("stopped 状态可删除")
         void testDeleteFlow_Stopped() {
-            existingFlow.setLifecycleStatus(FlowService.LIFECYCLE_STOPPED);
+            existingFlow.setLifecycleStatus(OpFlowService.LIFECYCLE_STOPPED);
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
             when(flowVersionMapper.deleteByFlowId(100L)).thenReturn(1);
             when(flowMapper.deleteById(100L)).thenReturn(1);
@@ -204,11 +204,11 @@ class FlowServiceTest {
         @Test
         @DisplayName("启动 stopped→running")
         void testStartFlow() {
-            existingFlow.setLifecycleStatus(FlowService.LIFECYCLE_STOPPED);
+            existingFlow.setLifecycleStatus(OpFlowService.LIFECYCLE_STOPPED);
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
 
             assertEquals("200", flowService.startFlow(100L).getCode());
-            verify(flowMapper).updateLifecycleStatus(eq(100L), eq(FlowService.LIFECYCLE_RUNNING), any(), any());
+            verify(flowMapper).updateLifecycleStatus(eq(100L), eq(OpFlowService.LIFECYCLE_RUNNING), any(), any());
         }
 
         @Test
@@ -225,13 +225,13 @@ class FlowServiceTest {
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
 
             assertEquals("200", flowService.stopFlow(100L).getCode());
-            verify(flowMapper).updateLifecycleStatus(eq(100L), eq(FlowService.LIFECYCLE_STOPPED), any(), any());
+            verify(flowMapper).updateLifecycleStatus(eq(100L), eq(OpFlowService.LIFECYCLE_STOPPED), any(), any());
         }
 
         @Test
         @DisplayName("已经停止再停止返回400")
         void testStopFlow_AlreadyStopped() {
-            existingFlow.setLifecycleStatus(FlowService.LIFECYCLE_STOPPED);
+            existingFlow.setLifecycleStatus(OpFlowService.LIFECYCLE_STOPPED);
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
 
             assertEquals("400", flowService.stopFlow(100L).getCode());

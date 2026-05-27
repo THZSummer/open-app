@@ -3,12 +3,13 @@ package com.xxx.it.works.wecode.v2.modules.flow.controller;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
-import com.xxx.it.works.wecode.v2.modules.flow.service.FlowService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.OpFlowService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,11 +25,11 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/flows")
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接流管理", description = "连接流 CRUD、编排配置及生命周期管理接口")
-public class FlowController {
+public class OpFlowController {
 
-    private final FlowService flowService;
+    private final OpFlowService flowService;
 
     /**
      * #8 创建连接流

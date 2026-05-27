@@ -3,7 +3,7 @@ package com.xxx.it.works.wecode.v2.common.interceptor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.FlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
@@ -37,12 +37,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * </p>
  */
 @Component
-public class RateLimitFilter implements WebFilter {
+public class OpRateLimitFilter implements WebFilter {
 
-    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(OpRateLimitFilter.class);
 
     private final ObjectMapper objectMapper;
-    private final FlowVersionReadRepository flowVersionReadRepository;
+    private final OpFlowVersionReadRepository flowVersionReadRepository;
 
     /** 限流桶缓存: flowId → Bucket */
     private final Map<String, Bucket> bucketCache = new ConcurrentHashMap<>();
@@ -50,8 +50,8 @@ public class RateLimitFilter implements WebFilter {
     /** 默认限流: 10 QPS (当未配置限流时) */
     private static final int DEFAULT_MAX_QPS = 10;
 
-    public RateLimitFilter(ObjectMapper objectMapper,
-                           FlowVersionReadRepository flowVersionReadRepository) {
+    public OpRateLimitFilter(ObjectMapper objectMapper,
+                           OpFlowVersionReadRepository flowVersionReadRepository) {
         this.objectMapper = objectMapper;
         this.flowVersionReadRepository = flowVersionReadRepository;
     }

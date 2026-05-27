@@ -21,16 +21,16 @@ import java.util.Map;
  * </p>
  */
 @Service
-public class DebugProxyService {
+public class OpDebugProxyService {
 
-    private static final Logger log = LoggerFactory.getLogger(DebugProxyService.class);
+    private static final Logger log = LoggerFactory.getLogger(OpDebugProxyService.class);
 
     private final RestTemplate restTemplate;
 
     @Value("${connector-api.base-url:http://localhost:18180}")
     private String connectorApiBaseUrl;
 
-    public DebugProxyService(RestTemplate restTemplate) {
+    public OpDebugProxyService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 

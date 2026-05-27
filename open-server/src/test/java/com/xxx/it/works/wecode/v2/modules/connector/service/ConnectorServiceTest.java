@@ -5,8 +5,8 @@ import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.Connector;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorMapper;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorMapper;
+import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorVersionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,20 +24,20 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ConnectorService 测试")
-class ConnectorServiceTest {
+@DisplayName("OpConnectorService 测试")
+class OpConnectorServiceTest {
 
     @Mock
-    private ConnectorMapper connectorMapper;
+    private OpConnectorMapper connectorMapper;
 
     @Mock
-    private ConnectorVersionMapper connectorVersionMapper;
+    private OpConnectorVersionMapper connectorVersionMapper;
 
     @Mock
     private IdGeneratorStrategy idGenerator;
 
     @InjectMocks
-    private ConnectorService connectorService;
+    private OpConnectorService connectorService;
 
     private Connector existingConnector;
 

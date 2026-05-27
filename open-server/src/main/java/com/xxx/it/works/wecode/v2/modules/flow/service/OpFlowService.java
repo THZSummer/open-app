@@ -9,9 +9,10 @@ import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.FlowMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.FlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,8 +31,8 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
-public class FlowService {
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
+public class OpFlowService {
 
     private static final SimpleDateFormat ISO_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 
@@ -39,8 +40,8 @@ public class FlowService {
     public static final int LIFECYCLE_RUNNING = 1;
     public static final int LIFECYCLE_STOPPED = 2;
 
-    private final FlowMapper flowMapper;
-    private final FlowVersionMapper flowVersionMapper;
+    private final OpFlowMapper flowMapper;
+    private final OpFlowVersionMapper flowVersionMapper;
     private final IdGeneratorStrategy idGenerator;
     private final ObjectMapper objectMapper;
 

@@ -3,12 +3,13 @@ package com.xxx.it.works.wecode.v2.modules.connector.controller;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
-import com.xxx.it.works.wecode.v2.modules.connector.service.ConnectorService;
+import com.xxx.it.works.wecode.v2.modules.connector.service.OpConnectorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,11 +25,11 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/connectors")
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接器管理", description = "连接器 CRUD 及连接配置管理接口")
-public class ConnectorController {
+public class OpConnectorController {
 
-    private final ConnectorService connectorService;
+    private final OpConnectorService connectorService;
 
     /**
      * #1 创建连接器

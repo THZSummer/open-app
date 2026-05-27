@@ -1,7 +1,7 @@
 package com.xxx.it.works.wecode.v2.common.interceptor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.FlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,16 +15,16 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.ArgumentMatchers.*;
 
-@DisplayName("RateLimitFilter 测试")
-class RateLimitFilterTest {
+@DisplayName("OpRateLimitFilter 测试")
+class OpRateLimitFilterTest {
 
     private ObjectMapper objectMapper;
-    private FlowVersionReadRepository flowVersionReadRepository;
+    private OpFlowVersionReadRepository flowVersionReadRepository;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        flowVersionReadRepository = mock(FlowVersionReadRepository.class);
+        flowVersionReadRepository = mock(OpFlowVersionReadRepository.class);
         // Default mock: findByFlowId returns empty (no config found → DEFAULT_MAX_QPS)
         when(flowVersionReadRepository.findByFlowId(anyLong())).thenReturn(Mono.empty());
     }
@@ -32,7 +32,7 @@ class RateLimitFilterTest {
     @Test
     @DisplayName("非触发端点直接放行")
     void testNonTriggerPath_PassesThrough() {
-        RateLimitFilter filter = new RateLimitFilter(objectMapper, flowVersionReadRepository);
+        OpRateLimitFilter filter = new OpRateLimitFilter(objectMapper, flowVersionReadRepository);
         MockServerHttpRequest request = MockServerHttpRequest
                 .get("http://localhost:18180/api/v1/flows")
                 .build();
@@ -49,7 +49,7 @@ class RateLimitFilterTest {
     @Test
     @DisplayName("触发端点 - 速率内放行（非阻塞）")
     void testTriggerPath_UnderLimit() {
-        RateLimitFilter filter = new RateLimitFilter(objectMapper, flowVersionReadRepository);
+        OpRateLimitFilter filter = new OpRateLimitFilter(objectMapper, flowVersionReadRepository);
         MockServerHttpRequest request = MockServerHttpRequest
                 .post("http://localhost:18180/api/v1/trigger/123/invoke")
                 .build();
@@ -68,7 +68,7 @@ class RateLimitFilterTest {
     @Test
     @DisplayName("触发端点 - 同flowId发送多请求至少部分通过")
     void testTriggerPath_OverLimit() {
-        RateLimitFilter filter = new RateLimitFilter(objectMapper, flowVersionReadRepository);
+        OpRateLimitFilter filter = new OpRateLimitFilter(objectMapper, flowVersionReadRepository);
         WebFilterChain chain = mock(WebFilterChain.class);
         when(chain.filter(any())).thenReturn(Mono.empty());
 
@@ -88,7 +88,7 @@ class RateLimitFilterTest {
     @Test
     @DisplayName("不同 flowId 独立限流（各自独立计数）")
     void testDifferentFlowId_IndependentRateLimit() {
-        RateLimitFilter filter = new RateLimitFilter(objectMapper, flowVersionReadRepository);
+        OpRateLimitFilter filter = new OpRateLimitFilter(objectMapper, flowVersionReadRepository);
         WebFilterChain chain = mock(WebFilterChain.class);
         when(chain.filter(any())).thenReturn(Mono.empty());
 

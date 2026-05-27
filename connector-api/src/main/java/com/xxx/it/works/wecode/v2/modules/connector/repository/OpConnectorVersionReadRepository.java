@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
  * </p>
  */
 @Repository
-public interface ConnectorVersionReadRepository extends ReactiveCrudRepository<ConnectorVersionEntity, Long> {
+public interface OpConnectorVersionReadRepository extends ReactiveCrudRepository<ConnectorVersionEntity, Long> {
 
     /**
      * 按连接器ID查询最新版本配置

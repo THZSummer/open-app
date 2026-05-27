@@ -1,8 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.trigger.controller;
 
-import com.xxx.it.works.wecode.v2.modules.flow.repository.FlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
-import com.xxx.it.works.wecode.v2.modules.trigger.service.TriggerService;
+import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,29 +20,29 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 /**
- * TriggerController 接口层测试 (WebFluxTest)
+ * OpTriggerController 接口层测试 (WebFluxTest)
  *
  * <p>测试目标: HTTP 请求绑定 + 响应序列化 + 认证校验
  * 接口: #18 POST /api/v1/trigger/{flowId}/invoke
  * 测试层次: L2 接口层
  * </p>
  */
-@WebFluxTest(TriggerController.class)
-@DisplayName("TriggerController WebFluxTest")
-class TriggerControllerWebFluxTest {
+@WebFluxTest(OpTriggerController.class)
+@DisplayName("OpTriggerController WebFluxTest")
+class OpTriggerControllerWebFluxTest {
 
     @Autowired
     private WebTestClient webTestClient;
 
     @MockitoBean
-    private TriggerService triggerService;
+    private OpTriggerService triggerService;
 
     @MockitoBean
-    private FlowVersionReadRepository flowVersionReadRepository;
+    private OpFlowVersionReadRepository flowVersionReadRepository;
 
     @BeforeEach
     void setUp() {
-        // Prevent RateLimitFilter from failing when it calls findByFlowId
+        // Prevent OpRateLimitFilter from failing when it calls findByFlowId
         when(flowVersionReadRepository.findByFlowId(anyLong())).thenReturn(Mono.empty());
     }
 
