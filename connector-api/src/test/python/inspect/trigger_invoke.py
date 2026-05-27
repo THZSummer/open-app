@@ -355,9 +355,10 @@ try:
         rd = body.get("resultData")
         check("resultData 为 dict", isinstance(rd, dict))
         if isinstance(rd, dict):
-            check("resultData.echo == test_user",
-                  rd.get("echo") == "test_user",
-                  f"actual echo={rd.get('echo')}")
+            result_body = rd.get("body", {}) if isinstance(rd.get("body"), dict) else {}
+            check("resultData.body.echo == test_user",
+                  result_body.get("echo") == "test_user",
+                  f"actual echo={result_body.get('echo')}, full body keys={list(result_body.keys())}")
 
         # steps
         steps = body.get("steps")
@@ -520,11 +521,12 @@ try:
                       and "echo" in output_data,
                       f"output keys: {list(output_data.keys()) if isinstance(output_data, dict) else type(output_data)}")
 
-        # exit outputMapping 引用 connector output
         rd = body.get("resultData")
         if isinstance(rd, dict):
-            check("exit resultData 存在 echo 字段",
-                  bool(rd.get("echoFullName") or rd.get("echoUserId")))
+            result_body = rd.get("body", {}) if isinstance(rd.get("body"), dict) else {}
+            check("exit resultData.body 存在 echo 字段",
+                  bool(result_body.get("echoFullName") or result_body.get("echoUserId")),
+                  f"echoFullName={result_body.get('echoFullName')}, echoUserId={result_body.get('echoUserId')}")
 finally:
     if vid_063:
         cleanup_flow(sid_063, vid_063)
