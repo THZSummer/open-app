@@ -326,19 +326,20 @@ public class ApprovalController {
      * #53 催办审批
      *
      * <p>申请人催办当前审批人，发送卡片消息通知。
-     * 根据 businessId 查询最新待审批记录（按创建时间倒序）。</p>
+     * 根据 businessId + businessType 查询最新待审批记录（命中 idx_business 索引）。</p>
      *
-     * @param id 业务ID（business_id）
+     * @param id      路径参数（保持不变）
+     * @param request 请求体（businessId + businessType）
      * @return 催办结果
      */
     @PostMapping("/approvals/{id}/urge")
     public ApiResponse<ApprovalActionResponse> urge(
             @PathVariable String id,
-            @RequestParam String businessType) {
-        log.info("Urge approval: businessId={}, businessType={}", id, businessType);
+            @RequestBody UrgeRequest request) {
+        log.info("Urge approval: id={}, businessId={}, businessType={}", id, request.getBusinessId(), request.getBusinessType());
 
         String operator = UserContextHolder.getUserId();
-        ApprovalActionResponse data = approvalService.urge(Long.parseLong(id), businessType, operator);
+        ApprovalActionResponse data = approvalService.urge(request.getBusinessId(), request.getBusinessType(), operator);
         return ApiResponse.success(data);
     }
 }
