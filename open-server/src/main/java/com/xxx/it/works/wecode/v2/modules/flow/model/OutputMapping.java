@@ -26,8 +26,8 @@ public class OutputMapping implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** Header 段映射: {输出字段名 -> 源表达式} */
-    private Map<String, String> header;
+    private Map<String, Object> header;
 
     /** Body 段映射: {输出字段名 -> 源表达式} */
-    private Map<String, String> body;
+    private Map<String, Object> body;
 }

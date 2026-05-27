@@ -9,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -76,26 +78,22 @@ public class ExitNodeExecutor implements NodeExecutor {
                 // 处理 header 映射
                 Object headerMapping = outputMapping.get("header");
                 Map<String, Object> responseHeaders = new HashMap<>();
-                if (headerMapping instanceof Map) {
-                    Map<String, Object> headerMap = (Map<String, Object>) headerMapping;
-                    for (Map.Entry<String, Object> entry : headerMap.entrySet()) {
-                        Object resolved = resolveValue(context, entry.getValue());
-                        if (resolved != null) {
-                            responseHeaders.put(entry.getKey(), resolved);
-                        }
+                Map<String, Object> headerMap = normalizeMappingSegment(headerMapping);
+                for (Map.Entry<String, Object> entry : headerMap.entrySet()) {
+                    Object resolved = resolveValue(context, entry.getValue());
+                    if (resolved != null) {
+                        responseHeaders.put(entry.getKey(), resolved);
                     }
                 }
 
                 // 处理 body 映射
                 Object bodyMapping = outputMapping.get("body");
                 Map<String, Object> responseBody = new HashMap<>();
-                if (bodyMapping instanceof Map) {
-                    Map<String, Object> bodyMap = (Map<String, Object>) bodyMapping;
-                    for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
-                        Object resolved = resolveValue(context, entry.getValue());
-                        if (resolved != null) {
-                            responseBody.put(entry.getKey(), resolved);
-                        }
+                Map<String, Object> bodyMap = normalizeMappingSegment(bodyMapping);
+                for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
+                    Object resolved = resolveValue(context, entry.getValue());
+                    if (resolved != null) {
+                        responseBody.put(entry.getKey(), resolved);
                     }
                 }
 
@@ -137,6 +135,39 @@ public class ExitNodeExecutor implements NodeExecutor {
         });
     }
 
+
+    /**
+     * v5.6: 从映射字段提取值（{type, value} 对象）
+     */
+    @SuppressWarnings("unchecked")
+    private Object extractMappedValue(Object fieldDef) {
+        if (fieldDef instanceof Map) {
+            return ((Map<String, Object>) fieldDef).get("value");
+        }
+        return null;
+    }
+    /**
+     * v5.6: 规范化映射段（{type, properties: {key: {type, value}}}）
+     * 返回 {字段名 -> 表达式值} 的 Map
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> normalizeMappingSegment(Object segment) {
+        if (!(segment instanceof Map)) {
+            return Collections.emptyMap();
+        }
+        Map<String, Object> segMap = (Map<String, Object>) segment;
+        
+        Object props = segMap.get("properties");
+        if (props instanceof Map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) props).entrySet()) {
+                result.put(entry.getKey(), extractMappedValue(entry.getValue()));
+            }
+            return result;
+        }
+        
+        return Collections.emptyMap();
+    }
     @SuppressWarnings("unchecked")
     private Object resolveValue(ExecutionContext context, Object value) {
         if (value instanceof String) {
