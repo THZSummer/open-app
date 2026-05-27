@@ -137,22 +137,17 @@ public class ExitNodeExecutor implements NodeExecutor {
 
 
     /**
-     * v5.6: 从映射字段提取值，兼容旧格式（裸字符串）和新格式（{type, value} 对象）
+     * v5.6: 从映射字段提取值（{type, value} 对象）
      */
     @SuppressWarnings("unchecked")
     private Object extractMappedValue(Object fieldDef) {
-        if (fieldDef instanceof String) {
-            return fieldDef;
-        }
         if (fieldDef instanceof Map) {
-            Map<String, Object> def = (Map<String, Object>) fieldDef;
-            return def.get("value");
+            return ((Map<String, Object>) fieldDef).get("value");
         }
         return null;
     }
-
     /**
-     * v5.6: 规范化映射段，兼容旧格式（裸 key-value）和新 mapped 格式（{type, properties: {key: {type, value}}}）
+     * v5.6: 规范化映射段（{type, properties: {key: {type, value}}}）
      * 返回 {字段名 -> 表达式值} 的 Map
      */
     @SuppressWarnings("unchecked")
@@ -171,9 +166,8 @@ public class ExitNodeExecutor implements NodeExecutor {
             return result;
         }
         
-        return segMap;
+        return Collections.emptyMap();
     }
-
     @SuppressWarnings("unchecked")
     private Object resolveValue(ExecutionContext context, Object value) {
         if (value instanceof String) {

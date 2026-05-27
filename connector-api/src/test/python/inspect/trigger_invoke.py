@@ -171,7 +171,12 @@ def setup_flow(snow_id_val, lifecycle_status=1,
                 "url": connector_url,
                 "method": connector_method,
                 "inputMapping": connector_input_mapping or {
-                    "body": {"user": "${$.node.node_entry.input.sender}"}
+                    "body": {
+                        "type": "object",
+                        "properties": {
+                            "user": {"type": "string", "description": "用户名", "value": "${$.node.node_entry.input.sender}"}
+                        }
+                    }
                 }
             }
         }
@@ -190,7 +195,12 @@ def setup_flow(snow_id_val, lifecycle_status=1,
                 "labelCn": "返回",
                 "labelEn": "Return",
                 "outputMapping": exit_output_mapping or {
-                    "body": {"echo": "${$.node.node_connector.output.echo.user}"}
+                    "body": {
+                        "type": "object",
+                        "properties": {
+                            "echo": {"type": "string", "description": "回显", "value": "${$.node.node_connector.output.echo.user}"}
+                        }
+                    }
                 }
             }
         }
@@ -209,7 +219,12 @@ def setup_flow(snow_id_val, lifecycle_status=1,
                 "labelCn": "返回",
                 "labelEn": "Return",
                 "outputMapping": exit_output_mapping or {
-                    "body": {"echo": "${$.node.node_entry.input.sender}"}
+                    "body": {
+                        "type": "object",
+                        "properties": {
+                            "echo": {"type": "string", "description": "回显", "value": "${$.node.node_entry.input.sender}"}
+                        }
+                    }
                 }
             }
         }
@@ -476,14 +491,20 @@ try:
         connector_url=f"{MOCK_BASE}/api/echo",
         connector_input_mapping={
             "body": {
-                "fullName": "constant:John Doe",
-                "userId": "${$.node.node_entry.input.sender}"
+                "type": "object",
+                "properties": {
+                    "fullName": {"type": "string", "description": "姓名", "value": "${$.constant:John Doe}"},
+                    "userId": {"type": "string", "description": "用户ID", "value": "${$.node.node_entry.input.sender}"}
+                }
             }
         },
         exit_output_mapping={
             "body": {
-                "echoFullName": "${$.node.node_connector.output.echo.fullName}",
-                "echoUserId": "${$.node.node_connector.output.echo.userId}"
+                "type": "object",
+                "properties": {
+                    "echoFullName": {"type": "string", "description": "回显姓名", "value": "${$.node.node_connector.output.echo.fullName}"},
+                    "echoUserId": {"type": "string", "description": "回显用户ID", "value": "${$.node.node_connector.output.echo.userId}"}
+                }
             }
         }
     )

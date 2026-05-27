@@ -73,7 +73,12 @@ def setup_flow(snow_id_val, lifecycle_status=1):
                     "labelCn": "返回",
                     "labelEn": "Return",
                     "outputMapping": {
-                        "body": {"echo": "${$.node.node_trigger.input.sender}"}
+                        "body": {
+                            "type": "object",
+                            "properties": {
+                                "echo": {"type": "string", "description": "回显", "value": "${$.node.node_trigger.input.sender}"}
+                            }
+                        }
                     }
                 }
             }
