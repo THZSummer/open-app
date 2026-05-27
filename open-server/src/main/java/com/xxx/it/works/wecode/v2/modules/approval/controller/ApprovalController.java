@@ -332,11 +332,13 @@ public class ApprovalController {
      * @return 催办结果
      */
     @PostMapping("/approvals/{id}/urge")
-    public ApiResponse<ApprovalActionResponse> urge(@PathVariable String id) {
-        log.info("Urge approval: businessId={}", id);
+    public ApiResponse<ApprovalActionResponse> urge(
+            @PathVariable String id,
+            @RequestParam String businessType) {
+        log.info("Urge approval: businessId={}, businessType={}", id, businessType);
 
         String operator = UserContextHolder.getUserId();
-        ApprovalActionResponse data = approvalService.urge(Long.parseLong(id), operator);
+        ApprovalActionResponse data = approvalService.urge(Long.parseLong(id), businessType, operator);
         return ApiResponse.success(data);
     }
 }

@@ -1031,6 +1031,7 @@ public class PermissionService {
                 .id(String.valueOf(subscription.getId()))
                 .appId(appContextResolver.toExternalId(subscription.getAppId()))
                 .permissionId(String.valueOf(subscription.getPermissionId()))
+                .applicantId(subscription.getCreateBy())
                 .permission(permissionInfo)
                 .api(apiInfo)
                 .category(categoryInfo)

@@ -654,10 +654,10 @@ public class ApprovalService {
      * @return 催办结果
      */
     @Transactional(rollbackFor = Exception.class)
-    public ApprovalActionResponse urge(Long businessId, String operator) {
+    public ApprovalActionResponse urge(Long businessId, String businessType, String operator) {
 
-        // 1. 根据 businessId 查询最新待审批记录（status=0, ORDER BY create_time DESC LIMIT 1）
-        ApprovalRecord record = recordMapper.selectLatestPendingByBusinessId(businessId);
+        // 1. 根据 businessType + businessId 查询最新待审批记录（命中 idx_business 索引）
+        ApprovalRecord record = recordMapper.selectLatestPendingByBusiness(businessType, businessId);
         if (record == null) {
             throw new BusinessException("400", "审批记录不存在", "Approval record not found");
         }
