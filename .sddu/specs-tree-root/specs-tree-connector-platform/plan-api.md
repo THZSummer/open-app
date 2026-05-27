@@ -2,10 +2,10 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§4.4), plan-db.md (§3 表结构)  
-**版本**: v3.0  
+**版本**: v3.1  
 **创建日期**: 2026-05-21  
-**最后更新**: 2026-05-26  
-**对齐基线**: plan-json-schema.md v5.5 + plan-db.md v3.0
+**最后更新**: 2026-05-27  
+**对齐基线**: plan-json-schema.md v5.6 + plan-db.md v3.0
 
 ---
 
@@ -14,7 +14,7 @@
 | 维度 | 说明 | 决策来源 |
 |------|------|---------|
 | **版本模型** | **单版本**（编辑即生效，无草稿/发布） | spec v5.0 |
-| **JSON 字段结构** | 对齐 [plan-json-schema.md v5.5](./plan-json-schema.md)：React Flow 格式 / 字段重命名（`authConfig`/`inputContract`/`outputContract`/`rateLimitConfig`）/ 协议感知 contract / inputMapping-outputMapping 分段 / JSON Path 表达式 | plan-json-schema.md v5.4~v5.5 |
+| **JSON 字段结构** | 对齐 [plan-json-schema.md v5.6](./plan-json-schema.md)：React Flow 格式 / 字段重命名（`authConfig`/`inputContract`/`outputContract`/`rateLimitConfig`）/ 协议感知 contract / inputMapping-outputMapping 分段 / JSON Path 表达式 | plan-json-schema.md v5.4~v5.6 |
 | **JSON 示例** | 展示完整请求/响应体，冗余以独立可读；详细 Schema 见 plan-json-schema.md | 本文档 |
 | 端点总数 | **18** | — |
 
@@ -756,8 +756,11 @@
             "connectorVersionId": "9876543210123456789",
             "inputMapping": {
               "body": {
-                "receiver": "${$.node.trigger.input.sender}",
-                "content": "${$.node.trigger.input.content}"
+                "type": "object",
+                "properties": {
+                  "receiver": { "type": "string", "description": "接收者", "value": "${$.node.trigger.input.sender}" },
+                  "content":  { "type": "string", "description": "消息内容", "value": "${$.node.trigger.input.content}" }
+                }
               }
             }
           }
@@ -771,8 +774,11 @@
             "labelEn": "Return Result",
             "outputMapping": {
               "body": {
-                "msgId": "${$.node.node_1.output.msgId}",
-                "code": "constant:0"
+                "type": "object",
+                "properties": {
+                  "msgId": { "type": "string", "description": "消息ID", "value": "${$.node.node_1.output.msgId}" },
+                  "code":  { "type": "integer", "description": "状态码", "value": "${$.constant:0}" }
+                }
               }
             }
           }
@@ -959,3 +965,4 @@
 | **v2.7.6b** | **2026-05-22** | **补全 §3 全部缺失的接口定义 + 标题加编号**——按用户指示，为 §3 接口详细定义所有接口标题添加清单编号（#1~#26）。补全 15 个此前缺失的接口详细定义：① §3.1 连接器 CRUD — 新增 #3 GET 详情 / #4 PUT 更新 / #5 DELETE 删除；② §3.2 连接器版本管理 — 新增 #6 GET 版本列表 / #7 GET 版本详情（含 connectionConfig 完整示例）；③ §3.3 连接流 CRUD — 新增 #11 GET 列表 / #12 GET 详情 / #13 PUT 更新 / #14 DELETE 删除 / #16 POST 启动 / #17 POST 停止；④ §3.4 连接流版本管理 — 新增 #18 GET 版本列表 / #19 GET 版本详情（含 orchestrationConfig 完整示例）；⑤ §3.6 HTTP 触发 — 新增 #24 POST 标题（原为无标题直接展开，现加 `#### #24 POST /api/v1/trigger/{flowId}/invoke — HTTP 触发`）；⑥ §3.7 执行历史 — 新增 #26 GET 执行详情（含 steps 数组完整示例）。**变更统计**：941 → 1472 行（+531 行，15 个新增接口 + 编号追加），接口覆盖率 26/26 | SDDU Plan Agent |
 | **v5.0** | **2026-05-22** | **对齐 spec.md v5.0 MVP 单版本模型精简**：① 端点总数 26→18；② 移除版本列表/发布/部署/手动触发/执行历史 共 8 个端点；③ 版本管理端点点改为直接 `.../config` 路径；④ 所有英文、中文标题、编号、FR 引用对齐 v5.0；⑤ §0 版本对齐表重写；⑥ 修订记录追加 v5.0 条目。**变更统计**：~1335 → 887 行（-448 行） | SDDU Plan Agent |
 | **v3.0** | **2026-05-26** | **对齐 plan-json-schema.md v5.5**：① JSON 示例全面重写——连接器配置 `connectionConfig` 字段重命名（`authTypeSchema`→`authConfig` / `inputSchema`→`inputContract` / `outputSchema`→`outputContract` / `rateLimit`→`rateLimitConfig`）+ `inputContract`/`outputContract` 改为协议感知格式（HTTP: header/query/body）；② 编排配置 `orchestrationConfig` 全面重写为 React Flow 格式（`node.data` 嵌套 + `edge.source`/`target`）+ `inputMapping`/`outputMapping` 分段结构 + 表达式升级为 JSON Path（`${$.node.{id}.{input/output}.xxx}`）；③ §1.8.3 triggerType 拆为两个维度——编排 JSON（字符串 http/manual）vs 执行记录（TINYINT 含 test=3）；④ §1.8.6 nodeType 新增两个维度说明；⑤ 认证枚举段更新 `authTypeSchema`→`authConfig`；⑥ §3.4 末尾新增交叉引用块。 | SDDU Plan Agent |
+| **v3.1** | **2026-05-27** | **对齐 plan-json-schema.md v5.6 映射字段结构化重构**：① #15 GET config 响应中 inputMapping/outputMapping 示例更新为 mappedJsonSchemaObjectDef 格式（每个叶子字段含 type + value）；② 表达式常量格式 `constant:xxx` → `${$.constant:xxx}` | SDDU Plan Agent |
