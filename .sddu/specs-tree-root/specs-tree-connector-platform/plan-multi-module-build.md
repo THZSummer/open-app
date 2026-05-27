@@ -2,7 +2,7 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§1.2 技术栈确认, §4.6 目录结构规划), plan-code.md (§1~§16 代码规范)  
-**版本**: v2.0  
+**版本**: v2.1  
 **创建日期**: 2026-05-27  
 **最后更新**: 2026-05-27  
 **对齐基线**: plan.md v2.8.1
@@ -539,38 +539,143 @@ public class OpenAppApplication {
 
 ## 8. 代码迁移清单
 
-### 8.1 包路径映射
+### 8.1 迁移分类总览
 
-| 原服务 | 原包路径 | 新包路径 |
-|--------|---------|---------|
-| api-server | `com.xxx.api.*` | `com.xxx.open.api.*` |
-| connector-api | `com.xxx.it.works.wecode.v2.*` | `com.xxx.open.connector.*` |
-| open-server | `com.xxx.it.works.wecode.v2.*` | `com.xxx.open.open.*` |
-| event-server | `com.xxx.event.*` | `com.xxx.open.event.*` |
+并非所有代码都能直接搬移。核心业务逻辑无需改动，但存在 **4 类必须处理的冲突**。
 
-> ⚠️ connector-api 和 open-server 原来共享 `com.xxx.it.works.wecode.v2` 包前缀，合并后需拆分到不同的子包以避免类名冲突。
+```
+总文件数:    ~80 个 Java 文件
+────────────────────────────────────
+✅ 零改动搬移:  ~60 个（Controller/Service/Entity/Mapper/Repository）
+❌ 需改包路径:  ~34 个（connector-api 全部文件，从 v2 包迁出）
+❌ 需合并删除:  ~5 个（重复类 + 多余启动类）
+❌ 需合并配置:  1 个 application.yml（从 4 份合成 1 份）
+────────────────────────────────────
+纯体力活，预计一个下午可完成。
+```
 
-### 8.2 需要合并的重复类
+### 8.2 ✅ 直接搬（零改动）
 
-| 类 | 原位置 | 新位置（合并为一份） |
-|----|--------|---------------------|
-| `ApiResponse` | api-server, open-server | `com.xxx.open.common.model.ApiResponse` |
-| `BusinessException` | api-server, open-server | `com.xxx.open.common.exception.BusinessException` |
-| `SignatureUtil` | api-server | `com.xxx.open.common.util.SignatureUtil` |
-| `JacksonConfig` | api-server, connector-api | `com.xxx.open.common.config.JacksonConfig` |
-| `GlobalExceptionHandler` | api-server（`@RestControllerAdvice`） | `com.xxx.open.common.exception.GlobalExceptionHandler` |
+以下代码只需拷贝到新工程对应目录，**不需要任何修改**。
 
-### 8.3 各服务需保留的独立配置
+| 类别 | 示例 | 原因 |
+|------|------|------|
+| **Controller** | `ApiGatewayController`, `ScopeController`, `TriggerController`, `FlowController` 等 | 内部逻辑不变，只是换目录 |
+| **Service** | `ApiGatewayService`, `ScopeService`, `TriggerService`, `DataQueryService` 等 | 同上 |
+| **MyBatis Mapper 接口** | `PermissionMapper`, `SubscriptionMapper`, `ConnectorMapper` 等 | 包路径不变，`@MapperScan` 指向不变 |
+| **MyBatis XML** | `resources/mapper/*.xml` | 文件路径和 namespace 都不变 |
+| **JDBC Entity** | `Permission.java`, `Connector.java` 等 | 不依赖其它包的引用 |
+| **R2DBC Entity** | `ConnectorEntity`, `FlowVersionEntity`, `FlowEntity` | 等同上 |
+| **R2DBC Repository** | `ConnectorVersionReadRepository`, `FlowVersionReadRepository` | 等同上 |
+| **核心执行引擎** | `ExpressionResolver`, `ReactiveSequentialExecutor`, `ExecutionContext`, `NodeExecutor` | 纯业务逻辑，无外部框架依赖 |
+| **限流** | `RateLimitFilter` (Bucket4j WebFilter) | 独立组件 |
+| **DTO** | `ApiGatewayRequest`, `ExecutionResult`, `NodeOutput` 等 | 纯数据类 |
 
-| 配置项 | 说明 |
-|--------|------|
-| `RedisConfig`（同步） | api-server 的自定义 RedisTemplate 配置 |
-| `ReactiveRedisConfig` | connector-api 的 ReactiveRedisTemplate 配置 |
-| `R2dbcConfig` | connector-api 的 R2DBC ConnectionFactory 配置 |
-| `RateLimitFilter` | connector-api 的 Bucket4j WebFilter |
-| `WebSocketConfig` | event-server 的 WebSocket STOMP 配置 |
-| `MyBatis Mapper XML` | api-server + open-server 的 XML mapper，路径不变 |
+### 8.3 ❌ 必须改（4 类冲突）
 
+#### 冲突 1：connector-api 和 open-server 包路径重叠
+
+两个服务原来共享 `com.xxx.it.works.wecode.v2` 包前缀，合并到同一工程后出现同名类冲突：
+
+```
+connector-api:
+  com.xxx.it.works.wecode.v2.common.config.JacksonConfig
+  com.xxx.it.works.wecode.v2.common.config.R2dbcConfig
+  com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorEntity
+  ...
+
+open-server:
+  com.xxx.it.works.wecode.v2.common.config.JacksonConfig    ← 同名！
+  com.xxx.it.works.wecode.v2.modules.connector.ConnectorController
+  ...
+```
+
+**解决**：connector-api 的代码迁到新包 `com.xxx.open.connector`：
+
+| 原包路径 | 新包路径 |
+|---------|---------|
+| `com.xxx.it.works.wecode.v2.common.*` | `com.xxx.open.connector.common.*` |
+| `com.xxx.it.works.wecode.v2.modules.connector.*` | `com.xxx.open.connector.entity.*` |
+| `com.xxx.it.works.wecode.v2.modules.flow.*` | `com.xxx.open.connector.flow.*` |
+| `com.xxx.it.works.wecode.v2.modules.runtime.*` | `com.xxx.open.connector.runtime.*` |
+| `com.xxx.it.works.wecode.v2.modules.trigger.*` | `com.xxx.open.connector.trigger.*` |
+| `com.xxx.it.works.wecode.v2.modules.debug.*` | `com.xxx.open.connector.debug.*` |
+
+> 📌 connector-api 约 34 个文件，批量 `sed` 替换包路径即可，不需要逐个手动改。
+
+#### 冲突 2：公共类重复
+
+| 类 | 重复位置 | 处理方式 |
+|----|---------|---------|
+| `ApiResponse` | api-server + open-server | 合并到 `com.xxx.open.common.model`，各模块删本地 |
+| `BusinessException` | api-server + open-server | 合并到 `com.xxx.open.common.exception` |
+| `SignatureUtil` | api-server | 移到 `com.xxx.open.common.util` |
+| `GlobalExceptionHandler` | api-server | 移到 `com.xxx.open.common.exception`（现在进程统一了，一个 handler 收口全部异常） |
+| `JacksonConfig` | api-server + connector-api | 合并为一份到 `com.xxx.open.common.config` |
+
+#### 冲突 3：4 个启动类 → 1 个
+
+| 原启动类 | 处理 |
+|---------|------|
+| `api-server/.../ApiServerApplication.java` | ❌ 删除 |
+| `connector-api/.../ConnectorApiApplication.java` | ❌ 删除 |
+| `open-server/.../OpenServerApplication.java` | ❌ 删除 |
+| `event-server/.../EventServerApplication.java` | ❌ 删除 |
+| — | 🆕 新建 `OpenAppApplication.java` |
+
+新建的启动类合并所有注解：
+
+```java
+@SpringBootApplication
+@MapperScan({"com.xxx.open.api.*.mapper", "com.xxx.open.open.*.mapper"})
+@EnableR2dbcRepositories("com.xxx.open.connector")
+public class OpenAppApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(OpenAppApplication.class, args);
+    }
+}
+```
+
+⚠️ 注意：原来 api-server 的 `@SpringBootApplication` 有 `exclude = {RedisAutoConfiguration.class}`，需评估是否保留这个排除。
+
+#### 冲突 4：4 份 application.yml → 1 份
+
+| 原配置 | 关键内容 | 合并后的处理 |
+|--------|---------|-------------|
+| api-server `application.yml` | port 18081, context-path `/api-server`, MyBatis, Redis | 端口统一 → 18080，去掉 context-path |
+| connector-api `application.yml` | port 18180, R2DBC, Redis Reactive | R2DBC 配置保留到统一 yml |
+| open-server `application.yml` | port 18080, MyBatis, Redis, AOP | JDBC 数据源 + MyBatis 配置保留 |
+| event-server `application.yml` | port 18083, WebSocket, Redis | WebSocket 配置保留 |
+
+合并后的 `application.yml` 结构见 §5.1 对应的配置文件说明。各 profile（dev/prod）同理合并。
+
+### 8.4 不动（与本次合并无关）
+
+| 内容 | 原因 |
+|------|------|
+| wecodesite / open-web 前端代码 | 独立 npm 项目，不参与 Java 合并 |
+| `scripts/start.sh` / `stop.sh` | 合并后重写一份即可 |
+| 测试代码 | 后续统一整理 |
+| DDL SQL 脚本 | 数据库不变，SQL 不动 |
+
+### 8.5 改动量一览
+
+```
+┌─────────────────────┬──────────┬──────────────────────────────┐
+│ 操作                │ 文件数    │ 方式                         │
+├─────────────────────┼──────────┼──────────────────────────────┤
+│ 直接拷贝（零改动）   │ ~60      │ cp -r                        │
+│ 批量替换包路径       │ ~34      │ sed / IDE refactor           │
+│ 合并删除重复类       │ ~5       │ 手动合并 + 删旧              │
+│ 删除多余启动类       │ 3        │ rm                           │
+│ 新建统一启动类       │ 1        │ 新建                         │
+│ 合并配置文件         │ 1        │ 手动整合（从 4 份 → 1 份）    │
+├─────────────────────┼──────────┼──────────────────────────────┤
+│ 合计                 │ ~104     │ 预计一个下午                 │
+└─────────────────────┴──────────┴──────────────────────────────┘
+```
+
+> 💡 **核心业务逻辑不需要改动**。connector-api 的 Runtime / Trigger / Debug 模块、api-server 的 Gateway / Scope / Data 模块、open-server 的 Connector / Flow 模块——全部原样可用。
 ---
 
 ## 9. 实施计划
@@ -701,6 +806,7 @@ Phase 1         Phase 2           Phase 3           Phase 4
 |------|------|---------|--------|
 | v1.0 | 2026-05-27 | 初始版本 —— Maven 多模块独立进程方案 | SDDU |
 | **v2.0** | **2026-05-27** | **方案重构**：从多模块独立进程改为单进程聚合部署。新增 §6 技术栈共存分析（Tomcat+WebFlux/JDBC+R2DBC/Redis共存）、§7 冲突解决方案、ADR-005/006 | SDDU |
+| **v2.1** | **2026-05-27** | **§8 重写**：代码迁移清单按"零改动搬移 / 必须改的 4 类冲突（包路径重叠 / 公共类重复 / 启动类合并 / 配置文件合并）"重新组织，新增改动量一览表 | SDDU |
 
 ---
 
