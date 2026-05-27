@@ -26,11 +26,11 @@ public class InputMapping implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** Header 段映射: {源表达式 -> 目标字段名} */
-    private Map<String, String> header;
+    private Map<String, Object> header;
 
     /** Query 段映射: {源表达式 -> 目标字段名} */
-    private Map<String, String> query;
+    private Map<String, Object> query;
 
     /** Body 段映射: {源表达式 -> 目标字段名} */
-    private Map<String, String> body;
+    private Map<String, Object> body;
 }

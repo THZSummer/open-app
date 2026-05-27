@@ -7,10 +7,11 @@ import java.util.Map;
 /**
  * 表达式解析器
  * <p>
- * v5.5: 支持三种模式:
+ * v5.6: 支持四种模式:
  * <ol>
  *   <li>{@code constant:xxx} — 直接返回字面量 {@code "xxx"}</li>
  *   <li>{@code ${$.node.{nodeId}.{input/output}.{path}}} — 从 NodeContext 的 input 或 output 分区解析</li>
+ *   <li>{@code ${$.constant:value}} — 常量字面值 (v5.6)</li>
  *   <li>向后兼容: {@code ${nodeId.fieldPath}} — 默认从 output 分区解析</li>
  * </ol>
  * 方法签名: {@code resolve(String expression, Map<String, NodeContext> nodeContexts) -> Object}
@@ -23,7 +24,7 @@ public class ExpressionResolver {
     /**
      * 解析表达式并返回结果值
      *
-     * @param expression   表达式字符串 (e.g. "constant:hello", "${$.node.n1.output.name}", "${n1.name}")
+     * @param expression   表达式字符串 (e.g. "constant:hello", "${$.node.n1.output.name}", "${$.constant:value}", "${n1.name}")
      * @param nodeContexts 所有已执行节点的上下文 Map (nodeId → NodeContext)
      * @return 解析后的值, 无法解析或表达式为空时返回 null
      */
@@ -33,21 +34,26 @@ public class ExpressionResolver {
             return null;
         }
 
-        // 1. 常量模式: "constant:xxx"
+        // 1. 常量模式: "constant:xxx" (向后兼容)
         if (expression.startsWith(CONSTANT_PREFIX)) {
             return expression.substring(CONSTANT_PREFIX.length());
         }
 
-        // 2. & 3. 路径引用模式: "${...}"
+        // 2. & 3. & 4. 路径引用模式: "${...}"
         if (expression.startsWith("${") && expression.endsWith("}")) {
             String ref = expression.substring(2, expression.length() - 1).trim();
 
-            // 2. v5.5 新语法: "$.node.{nodeId}.{input/output}.{path}"
+            // 2. v5.6 常量: "${$.constant:xxx}"
+            if (ref.startsWith("$.constant:")) {
+                return ref.substring("$.constant:".length());
+            }
+
+            // 3. v5.5 新语法: "$.node.{nodeId}.{input/output}.{path}"
             if (ref.startsWith("$.node.")) {
                 return resolveNewSyntax(ref, nodeContexts);
             }
 
-            // 3. 向后兼容: "${nodeId.fieldPath}" -> 默认从 output 分区解析
+            // 4. 向后兼容: "${nodeId.fieldPath}" -> 默认从 output 分区解析
             return resolveLegacySyntax(ref, nodeContexts);
         }
 
