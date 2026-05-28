@@ -14,7 +14,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ul>
  * 存储单次连接流执行的上下文数据.
  * 支持线程安全的数据读写 (ConcurrentHashMap).
- * credentials 仅内存生命周期, 节点执行后从上下文中清除.
  * </p>
  */
 public class ExecutionContext {
@@ -31,8 +30,6 @@ public class ExecutionContext {
     /** 节点上下文缓存 (nodeId → NodeContext), 替代旧 nodeOutputs */
     private final Map<String, NodeContext> nodeContexts;
 
-    /** 凭证 (仅内存生命周期, 执行后清除) */
-    private Map<String, Map<String, String>> credentials;
 
     /** 是否测试运行 */
     private boolean isTest;
@@ -44,7 +41,6 @@ public class ExecutionContext {
         this.executionId = executionId;
         this.flowId = flowId;
         this.nodeContexts = new ConcurrentHashMap<>();
-        this.credentials = new ConcurrentHashMap<>();
     }
 
     /**
@@ -63,13 +59,6 @@ public class ExecutionContext {
         }
     }
 
-    /**
-     * 清除凭证 (节点执行后调用)
-     */
-    public void clearCredentials() {
-        this.credentials = null;
-    }
-
     // ===== Getters & Setters =====
 
     public String getExecutionId() { return executionId; }
@@ -79,9 +68,6 @@ public class ExecutionContext {
     public void setTriggerData(Map<String, Object> triggerData) { this.triggerData = triggerData; }
 
     public Map<String, NodeContext> getNodeContexts() { return nodeContexts; }
-
-    public Map<String, Map<String, String>> getCredentials() { return credentials; }
-    public void setCredentials(Map<String, Map<String, String>> credentials) { this.credentials = credentials; }
 
     public boolean isTest() { return isTest; }
     public void setTest(boolean test) { isTest = test; }
