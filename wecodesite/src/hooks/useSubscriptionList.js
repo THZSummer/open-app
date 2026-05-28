@@ -124,7 +124,8 @@ const createApprovalOperations = (state) => {
     setCurrentApprovalInfo({
       id: record.id,
       approver: `${record.approver?.userName} ${record.approver?.userId}` || '待分配',
-      approvalUrl: record.approvalUrl || ''
+      approvalUrl: record.approvalUrl || '',
+      approvalUser: record.applicantId,
     });
     setApprovalModalOpen(true);
   }, []);

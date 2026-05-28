@@ -5,7 +5,7 @@
  *
  * 定义连接流管理页面的配置信息、表格列配置、状态映射等
  */
-
+import React from 'react';
 import { Badge, Button, Space, Tooltip } from 'antd';
 
 /**

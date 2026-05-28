@@ -14,7 +14,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message, Button, Table, Pagination } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import { fetchConnectorList, deleteConnector, createConnector, updateConnector } from './thunk';
 import ConnectorSearchForm from '../../../components/ConnectorSearchForm/ConnectorSearchForm';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
