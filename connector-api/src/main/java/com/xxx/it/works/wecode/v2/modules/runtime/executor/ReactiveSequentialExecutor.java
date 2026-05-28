@@ -137,6 +137,64 @@ public class ReactiveSequentialExecutor {
     }
 
     /**
+     * 构建单个步骤详情
+     */
+    private ExecutionResult.StepDetail buildStepDetail(JsonNode node, ExecutionContext context) {
+        String nodeId = node.get("id").asText();
+        String nodeType = node.get("type").asText();
+        NodeContext nodeCtx = context.getNodeContext(nodeId);
+
+        ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
+        step.setNodeId(nodeId);
+        step.setNodeType(nodeType);
+
+        // 读取标签
+        JsonNode data = node.get("data");
+        if (data != null) {
+            JsonNode labelCn = data.get("labelCn");
+            JsonNode labelEn = data.get("labelEn");
+            step.setLabelCn(labelCn != null ? labelCn.asText() : null);
+            step.setLabelEn(labelEn != null ? labelEn.asText() : null);
+        }
+        // 兼容旧格式
+        if (step.getLabelCn() == null && node.get("labelCn") != null) {
+            step.setLabelCn(node.get("labelCn").asText());
+        }
+        if (step.getLabelEn() == null && node.get("labelEn") != null) {
+            step.setLabelEn(node.get("labelEn").asText());
+        }
+
+        // 填充运行时数据
+        if (nodeCtx != null) {
+            applyNodeContextToStep(step, nodeCtx);
+        } else {
+            applyFallbackOutputToStep(step, context.getNodeOutput(nodeId));
+        }
+        return step;
+    }
+
+    private void applyNodeContextToStep(ExecutionResult.StepDetail step, NodeContext nodeCtx) {
+        step.setInputData(nodeCtx.getInput());
+        step.setOutputData(nodeCtx.getOutput());
+        step.setStatus(nodeCtx.getStatus());
+        step.setDurationMs(nodeCtx.getDurationMs());
+        step.setErrorInfo(nodeCtx.getErrorInfo());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyFallbackOutputToStep(ExecutionResult.StepDetail step, Map<String, Object> nodeOutput) {
+        step.setOutputData(nodeOutput);
+        String nodeStatus = "success";
+        if (nodeOutput != null && nodeOutput.containsKey("__status")) {
+            nodeStatus = (String) nodeOutput.get("__status");
+        }
+        step.setStatus(nodeStatus);
+        if (nodeOutput != null && nodeOutput.containsKey("__input")) {
+            step.setInputData((Map<String, Object>) nodeOutput.get("__input"));
+        }
+    }
+
+    /**
      * 构建执行结果
      */
     @SuppressWarnings("unchecked")
@@ -157,68 +215,11 @@ public class ReactiveSequentialExecutor {
 
         // 收集所有步骤详情
         for (JsonNode node : orderedNodes) {
-            String nodeId = node.get("id").asText();
-            String nodeType = node.get("type").asText();
+            ExecutionResult.StepDetail step = buildStepDetail(node, context);
 
-            // v5.5: 从 NodeContext 获取数据
-            NodeContext nodeCtx = context.getNodeContext(nodeId);
-
-            ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
-            step.setNodeId(nodeId);
-            step.setNodeType(nodeType);
-
-            // v5.5: 从 data.labelCn/data.labelEn 读取标签
-            JsonNode data = node.get("data");
-            if (data != null) {
-                JsonNode labelCn = data.get("labelCn");
-                JsonNode labelEn = data.get("labelEn");
-                if (labelCn != null) step.setLabelCn(labelCn.asText());
-                if (labelEn != null) step.setLabelEn(labelEn.asText());
-            }
-
-            // 兼容旧格式: 直接在 node 上读取
-            if (step.getLabelCn() == null) {
-                JsonNode labelCn = node.get("labelCn");
-                if (labelCn != null) step.setLabelCn(labelCn.asText());
-            }
-            if (step.getLabelEn() == null) {
-                JsonNode labelEn = node.get("labelEn");
-                if (labelEn != null) step.setLabelEn(labelEn.asText());
-            }
-
-            if (nodeCtx != null) {
-                // v5.5: input/output 双分区
-                step.setInputData(nodeCtx.getInput());
-                step.setOutputData(nodeCtx.getOutput());
-
-                // 状态
-                step.setStatus(nodeCtx.getStatus());
-                step.setDurationMs(nodeCtx.getDurationMs());
-                step.setErrorInfo(nodeCtx.getErrorInfo());
-
-                // 检查失败状态
-                String nodeStatus = nodeCtx.getStatus();
-                if ("failed".equals(nodeStatus) || "timeout".equals(nodeStatus)) {
-                    anyFailed = true;
-                }
-            } else {
-                // 降级: 通过旧版 getNodeOutput 获取
-                Map<String, Object> nodeOutput = context.getNodeOutput(nodeId);
-                step.setOutputData(nodeOutput);
-
-                String nodeStatus = "success";
-                if (nodeOutput != null && nodeOutput.containsKey("__status")) {
-                    nodeStatus = (String) nodeOutput.get("__status");
-                    if ("failed".equals(nodeStatus) || "timeout".equals(nodeStatus)) {
-                        anyFailed = true;
-                    }
-                }
-                step.setStatus(nodeStatus);
-
-                // 旧格式 input
-                if (nodeOutput != null && nodeOutput.containsKey("__input")) {
-                    step.setInputData((Map<String, Object>) nodeOutput.get("__input"));
-                }
+            // 检查失败状态
+            if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
+                anyFailed = true;
             }
 
             result.addStep(step);

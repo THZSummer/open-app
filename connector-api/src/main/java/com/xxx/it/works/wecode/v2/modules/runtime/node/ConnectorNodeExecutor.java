@@ -89,46 +89,14 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                 timeoutMs = timeout;
             }
 
-            // v5.5: 从 data.inputMapping 结构化配置构建请求
-            // inputMapping 格式: {header: {...}, query: {...}, body: {...}}
-            Map<String, String> headers = new HashMap<>();
-            Map<String, Object> queryParams = new HashMap<>();
-            Map<String, Object> requestBody = new HashMap<>();
-
-            Object inputMappingObj = data.get("inputMapping");
-            if (inputMappingObj instanceof Map) {
-                Map<String, Object> inputMapping = (Map<String, Object>) inputMappingObj;
-
-                // 处理 header 映射
-                Object headerMapping = inputMapping.get("header");
-                Map<String, Object> headerMap = normalizeMappingSegment(headerMapping);
-                for (Map.Entry<String, Object> entry : headerMap.entrySet()) {
-                    Object resolved = resolveValue(context, entry.getValue());
-                    if (resolved != null) {
-                        headers.put(entry.getKey(), String.valueOf(resolved));
-                    }
-                }
-
-                // 处理 query 映射
-                Object queryMapping = inputMapping.get("query");
-                Map<String, Object> queryMap = normalizeMappingSegment(queryMapping);
-                for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
-                    Object resolved = resolveValue(context, entry.getValue());
-                    if (resolved != null) {
-                        queryParams.put(entry.getKey(), resolved);
-                    }
-                }
-
-                // 处理 body 映射
-                Object bodyMapping = inputMapping.get("body");
-                Map<String, Object> bodyMap = normalizeMappingSegment(bodyMapping);
-                for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
-                    Object resolved = resolveValue(context, entry.getValue());
-                    if (resolved != null) {
-                        requestBody.put(entry.getKey(), resolved);
-                    }
-                }
-            }
+            // v5.6: 从 data.inputMapping 结构化配置构建请求
+            Map<String, Object> params = buildRequestParams(data, context);
+            @SuppressWarnings("unchecked")
+            Map<String, String> headers = (Map<String, String>) params.get("headers");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
 
             // 注入凭证到请求头
             if (credentials != null) {
@@ -201,6 +169,51 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         return Collections.emptyMap();
     }
+    /**
+     * 构建 HTTP 请求参数 (从 inputMapping 提取)
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildRequestParams(Map<String, Object> data, ExecutionContext context) {
+        Map<String, String> headers = new HashMap<>();
+        Map<String, Object> queryParams = new HashMap<>();
+        Map<String, Object> requestBody = new HashMap<>();
+
+        Object inputMappingObj = data.get("inputMapping");
+        if (!(inputMappingObj instanceof Map)) {
+            return Map.of("headers", headers, "queryParams", queryParams, "requestBody", requestBody);
+        }
+        Map<String, Object> inputMapping = (Map<String, Object>) inputMappingObj;
+
+        // 处理 header 映射
+        Map<String, Object> headerMap = normalizeMappingSegment(inputMapping.get("header"));
+        for (Map.Entry<String, Object> entry : headerMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                headers.put(entry.getKey(), String.valueOf(resolved));
+            }
+        }
+
+        // 处理 query 映射
+        Map<String, Object> queryMap = normalizeMappingSegment(inputMapping.get("query"));
+        for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                queryParams.put(entry.getKey(), resolved);
+            }
+        }
+
+        // 处理 body 映射
+        Map<String, Object> bodyMap = normalizeMappingSegment(inputMapping.get("body"));
+        for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                requestBody.put(entry.getKey(), resolved);
+            }
+        }
+
+        return Map.of("headers", headers, "queryParams", queryParams, "requestBody", requestBody);
+    }
+
     @SuppressWarnings("unchecked")
     private Object resolveValue(ExecutionContext context, Object value) {
         if (value instanceof String) {

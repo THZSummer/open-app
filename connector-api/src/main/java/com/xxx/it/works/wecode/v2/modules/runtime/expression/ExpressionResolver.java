@@ -120,29 +120,37 @@ public class ExpressionResolver {
 
         // 如果路径上有数组索引
         if (value instanceof java.util.List) {
-            java.util.List<Object> list = (java.util.List<Object>) value;
-            String remainingPath = parts[1];
-            // 检查是否以 [index] 开头
-            if (remainingPath.startsWith("[")) {
-                int endBracket = remainingPath.indexOf(']');
-                if (endBracket > 0) {
-                    try {
-                        int index = Integer.parseInt(remainingPath.substring(1, endBracket));
-                        String afterIndex = remainingPath.substring(endBracket + 1);
-                        if (index >= 0 && index < list.size()) {
-                            Object element = list.get(index);
-                            if (afterIndex.startsWith(".") && element instanceof Map) {
-                                return resolveNestedField((Map<String, Object>) element, afterIndex.substring(1));
-                            }
-                            return element;
-                        }
-                    } catch (NumberFormatException ignored) {
-                        // ignore
-                    }
-                }
-            }
+            return resolveListElement((java.util.List<Object>) value, parts[1]);
         }
 
         return null;
+    }
+
+    /**
+     * 解析 List 元素索引 (如 "items[0].name")
+     */
+    @SuppressWarnings("unchecked")
+    private Object resolveListElement(java.util.List<Object> list, String remainingPath) {
+        if (!remainingPath.startsWith("[")) {
+            return null;
+        }
+        int endBracket = remainingPath.indexOf(']');
+        if (endBracket <= 0) {
+            return null;
+        }
+        try {
+            int index = Integer.parseInt(remainingPath.substring(1, endBracket));
+            String afterIndex = remainingPath.substring(endBracket + 1);
+            if (index < 0 || index >= list.size()) {
+                return null;
+            }
+            Object element = list.get(index);
+            if (afterIndex.startsWith(".") && element instanceof Map) {
+                return resolveNestedField((Map<String, Object>) element, afterIndex.substring(1));
+            }
+            return element;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

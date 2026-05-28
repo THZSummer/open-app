@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
@@ -101,25 +102,7 @@ public class ExitNodeExecutor implements NodeExecutor {
                 outputData.put("body", responseBody);
 
             } else {
-                // 向后兼容: 无 outputMapping 时, 尝试收集所有节点输出
-                for (Map.Entry<String, ? extends Object> entry : context.getNodeContexts().entrySet()) {
-                    String nodeId2 = entry.getKey();
-                    Object nodeCtx = entry.getValue();
-                    if (nodeCtx instanceof com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext) {
-                        com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext nc =
-                                (com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext) nodeCtx;
-                        Map<String, Object> nodeOutput = nc.getOutput();
-                        if (nodeOutput != null) {
-                            for (Map.Entry<String, Object> field : nodeOutput.entrySet()) {
-                                if (!field.getKey().startsWith("__")) { // 跳过元数据
-                                    outputData.put(nodeId2 + "_" + field.getKey(), field.getValue());
-                                }
-                            }
-                        }
-                    }
-                }
-
-                outputData.put("__collectMode", true);
+                outputData = collectFallbackOutputs(context);
                 input.put("outputMapping", null);
             }
 
@@ -135,6 +118,31 @@ public class ExitNodeExecutor implements NodeExecutor {
         });
     }
 
+
+    /**
+     * 降级收集所有节点输出 (无 outputMapping 时)
+     */
+    private Map<String, Object> collectFallbackOutputs(ExecutionContext context) {
+        Map<String, Object> outputData = new HashMap<>();
+        for (Map.Entry<String, ? extends Object> entry : context.getNodeContexts().entrySet()) {
+            Object nodeCtx = entry.getValue();
+            if (!(nodeCtx instanceof NodeContext)) {
+                continue;
+            }
+            NodeContext nc = (NodeContext) nodeCtx;
+            Map<String, Object> nodeOutput = nc.getOutput();
+            if (nodeOutput == null) {
+                continue;
+            }
+            for (Map.Entry<String, Object> field : nodeOutput.entrySet()) {
+                if (!field.getKey().startsWith("__")) {
+                    outputData.put(entry.getKey() + "_" + field.getKey(), field.getValue());
+                }
+            }
+        }
+        outputData.put("__collectMode", true);
+        return outputData;
+    }
 
     /**
      * v5.6: 从映射字段提取值（{type, value} 对象）
