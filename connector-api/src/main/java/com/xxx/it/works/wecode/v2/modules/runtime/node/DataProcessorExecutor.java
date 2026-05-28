@@ -63,7 +63,7 @@ public class DataProcessorExecutor implements NodeExecutor {
             // v5.5: React Flow 格式 — 节点配置在 data 字段内
             Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
 
-            log.debug("DataProcessor node executing: nodeId={}", nodeId);
+            log.info("DataProcessor node executing: nodeId={}", nodeId);
 
             Map<String, Object> inputRecords = new HashMap<>();
             Map<String, Object> outputData = new HashMap<>();
@@ -111,7 +111,7 @@ public class DataProcessorExecutor implements NodeExecutor {
             NodeOutput result = new NodeOutput(nodeId, "data_processor", inputRecords, outputData);
             result.setStatus("success");
 
-            log.debug("DataProcessor node completed: nodeId={}, fields={}", nodeId, outputData.keySet());
+            log.info("DataProcessor node completed: nodeId={}, fields={}", nodeId, outputData.keySet());
             return result;
         });
     }

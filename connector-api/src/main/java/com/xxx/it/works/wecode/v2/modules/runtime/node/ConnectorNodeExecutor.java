@@ -70,7 +70,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             // v5.5: React Flow 格式 — 节点配置在 data 字段内
             Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
 
-            log.debug("Connector node executing: nodeId={}", nodeId);
+            log.info("Connector node executing: nodeId={}", nodeId);
 
             long timeoutMs = DEFAULT_TIMEOUT_MS;
 

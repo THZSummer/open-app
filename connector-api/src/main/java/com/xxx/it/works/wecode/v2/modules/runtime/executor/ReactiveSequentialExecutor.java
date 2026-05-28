@@ -115,7 +115,7 @@ public class ReactiveSequentialExecutor {
         return executor.execute(context, configMap)
                 .doOnNext(output -> {
                     output.setDurationMs(System.currentTimeMillis() - nodeStart);
-                    log.debug("Node {} executed: status={}, duration={}ms",
+                    log.info("Node {} executed: status={}, duration={}ms",
                             output.getNodeId(), output.getStatus(), output.getDurationMs());
                 });
     }

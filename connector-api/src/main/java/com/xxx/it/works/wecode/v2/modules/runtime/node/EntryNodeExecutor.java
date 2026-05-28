@@ -47,7 +47,7 @@ public class EntryNodeExecutor implements NodeExecutor {
         Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
 
         String nodeId = (String) config.get("id");
-        log.debug("Entry node executing: nodeId={}", nodeId);
+        log.info("Entry node executing: nodeId={}", nodeId);
 
         // input 分区: 触发数据
         Map<String, Object> input = new HashMap<>();
@@ -62,7 +62,7 @@ public class EntryNodeExecutor implements NodeExecutor {
         NodeOutput result = new NodeOutput(nodeId, "entry", input, output);
         result.setStatus("success");
 
-        log.debug("Entry node completed: nodeId={}", nodeId);
+        log.info("Entry node completed: nodeId={}", nodeId);
         return Mono.just(result);
     }
 }
