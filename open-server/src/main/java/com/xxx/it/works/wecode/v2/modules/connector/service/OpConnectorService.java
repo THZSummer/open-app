@@ -16,7 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,7 +35,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpConnectorService {
 
-    private static final SimpleDateFormat ISO_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneId.of("UTC"));
 
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
@@ -289,6 +291,6 @@ public class OpConnectorService {
     }
 
     private String formatIso(Date date) {
-        return date != null ? ISO_FORMAT.format(date) : null;
+        return date != null ? ISO_FORMATTER.format(date.toInstant()) : null;
     }
 }
