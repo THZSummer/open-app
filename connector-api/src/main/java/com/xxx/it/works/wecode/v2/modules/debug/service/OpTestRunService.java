@@ -21,7 +21,7 @@ import java.util.UUID;
  * 测试执行服务 (v5.5)
  * <p>
  * 供 open-server debug-proxy 内部转发调用
- * 支持传入模拟触发数据和 credentials
+ * 支持传入模拟触发数据
  * <br>
  * v5.5 变更:
  * <ul>
@@ -56,14 +56,12 @@ public class OpTestRunService {
      *
      * @param flowId 连接流ID
      * @param mockTriggerData 模拟触发数据 (存入 NodeContext.input 分区)
-     * @param credentials 按 connectorVersionId 分组的凭证
      * @return ExecutionResult 含各步骤详情
      */
     @SuppressWarnings("unchecked")
     public Mono<ExecutionResult> executeTestRun(
             Long flowId,
-            Map<String, Object> mockTriggerData,
-            Map<String, Map<String, String>> credentials) {
+            Map<String, Object> mockTriggerData) {
 
         String executionId = UUID.randomUUID().toString().replace("-", "");
 
@@ -78,7 +76,6 @@ public class OpTestRunService {
                     // 2. 创建执行上下文 (标记为测试模式)
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(mockTriggerData != null ? mockTriggerData : Map.of());
-                    context.setCredentials(credentials != null ? credentials : Map.of());
                     // v5.5: triggerType = 3 (运行时记录维度, 非编排 JSON 中的 trigger.type)
                     context.setTriggerType(3);
                     context.setTest(true);

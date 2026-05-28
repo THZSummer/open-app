@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
@@ -25,8 +26,8 @@ public class RuntimeConfig {
     }
 
     @Bean
-    public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient) {
-        return new ConnectorNodeExecutor(objectMapper, webClient);
+    public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient, CredentialInjectorRegistry credentialInjectorRegistry) {
+        return new ConnectorNodeExecutor(objectMapper, webClient, credentialInjectorRegistry);
     }
 
     @Bean

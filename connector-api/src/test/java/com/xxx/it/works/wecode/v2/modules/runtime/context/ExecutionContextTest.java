@@ -72,22 +72,6 @@ class ExecutionContextTest {
     }
 
     @Test
-    @DisplayName("凭证设置与清除")
-    void testCredentialsLifecycle() {
-        ExecutionContext ctx = new ExecutionContext("exec-006", "flow-001");
-        Map<String, Map<String, String>> credentials = Map.of(
-                "connector_1", Map.of("AK", "secret-key")
-        );
-
-        ctx.setCredentials(credentials);
-        assertNotNull(ctx.getCredentials());
-        assertEquals("secret-key", ctx.getCredentials().get("connector_1").get("AK"));
-
-        ctx.clearCredentials();
-        assertNull(ctx.getCredentials());
-    }
-
-    @Test
     @DisplayName("测试模式和触发类型")
     void testModeAndTriggerType() {
         ExecutionContext ctx = new ExecutionContext("exec-007", "flow-001");

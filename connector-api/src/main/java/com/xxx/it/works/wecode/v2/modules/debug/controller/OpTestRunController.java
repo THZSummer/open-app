@@ -51,7 +51,6 @@ public class OpTestRunController {
      *   <li>{@code triggerType = 3} (运行时记录维度)</li>
      *   <li>{@code isTest = true}</li>
      *   <li>触发数据从 {@code request.mockTriggerData} 读取</li>
-     *   <li>凭证从 {@code request.credentials} 按连接器版本分组</li>
      * </ul>
      * </p>
      */
@@ -68,26 +67,20 @@ public class OpTestRunController {
 
         return testRunService.executeTestRun(
                 flowId,
-                request != null ? request.getMockTriggerData() : null,
-                request != null ? request.getCredentials() : null
-        );
+                request != null ? request.getMockTriggerData() : null);
     }
 
     /**
      * 测试运行请求体 (v5.5)
      * <p>
      * {@code mockTriggerData}: 模拟触发数据, 存入 {@code NodeContext.input} 分区<br>
-     * {@code credentials}: 按 connectorVersionId 分组的凭证, 执行时注入认证头
      * </p>
      */
     public static class TestRunRequest {
         private Map<String, Object> mockTriggerData;
-        private Map<String, Map<String, String>> credentials;
 
         public Map<String, Object> getMockTriggerData() { return mockTriggerData; }
         public void setMockTriggerData(Map<String, Object> mockTriggerData) { this.mockTriggerData = mockTriggerData; }
 
-        public Map<String, Map<String, String>> getCredentials() { return credentials; }
-        public void setCredentials(Map<String, Map<String, String>> credentials) { this.credentials = credentials; }
     }
 }

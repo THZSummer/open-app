@@ -6,6 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.EntryNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +31,8 @@ class ReactiveSequentialExecutorTest {
         WebClient webClient = WebClient.builder().build();
 
         EntryNodeExecutor entryExecutor = new EntryNodeExecutor(objectMapper);
-        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient);
+        CredentialInjectorRegistry mockRegistry = new CredentialInjectorRegistry(List.of());
+        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockRegistry);
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 
