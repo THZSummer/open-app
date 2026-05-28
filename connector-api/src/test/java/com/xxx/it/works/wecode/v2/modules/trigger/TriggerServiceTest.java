@@ -6,6 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepos
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
+import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,13 +32,16 @@ class OpTriggerServiceTest {
     @Mock
     private ReactiveSequentialExecutor executor;
 
+    @Mock
+    private AuthValidatorRegistry authValidatorRegistry;
+
     private ObjectMapper objectMapper;
     private OpTriggerService triggerService;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        triggerService = new OpTriggerService(objectMapper, executor, flowVersionReadRepository);
+        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, executor, flowVersionReadRepository);
     }
 
     @Test
