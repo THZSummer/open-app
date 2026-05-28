@@ -130,10 +130,11 @@ export const transformAuthFieldsToParams = (fields) => {
   }
 
   // 将后端认证字段数组转换为 SchemaEditor 参数格式
+  // 获取时：将 name 和 fieldName 的值交换回来（fieldName -> paramName, name -> fieldName）
   return fields.map(field => ({
-    paramName: field.name || '',      // 认证参数字段名
+    paramName: field.fieldName || '', // 获取时：fieldName 映射为 paramName
     paramType: 'string',              // 认证参数类型固定为 string
-    fieldName: field.fieldName || '', // 字段名称映射
+    fieldName: field.name || '',      // 获取时：name 映射为 fieldName
     carrier: field.carrier || 'header', // 参数载体，默认 header
     children: [],                     // 认证参数无子参数
   }));
@@ -260,12 +261,13 @@ export const transformAuthFields = (authParams) => {
   }
 
   // 过滤有效的认证参数，并转换为后端格式
+  // 提交时：将 paramName 和 fieldName 的值交换（paramName -> fieldName, fieldName -> name）
   return authParams
     .filter(param => param.paramName)  // 只保留有参数名的
     .map(param => ({
-      name: param.paramName,              // 认证参数字段名
+      name: param.fieldName || '',       // 提交时：fieldName 映射为 name
       carrier: param.carrier || 'header', // 载体类型，默认 header
-      fieldName: param.fieldName,         // 字段名称映射
+      fieldName: param.paramName,         // 提交时：paramName 映射为 fieldName
     }));
 };
 

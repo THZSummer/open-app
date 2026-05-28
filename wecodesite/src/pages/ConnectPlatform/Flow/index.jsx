@@ -45,10 +45,10 @@ function FlowList() {
   // 搜索关键词
   const [keyword, setKeyword] = useState('');
 
-  // 删除确认弹窗相关状态
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  // 操作确认弹窗相关状态（统一管理删除/停止等操作）
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionItem, setActionItem] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // 当前操作类型（delete/stop）
   const [currentActionType, setCurrentActionType] = useState(null);
@@ -57,11 +57,6 @@ function FlowList() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
-
-  // 停止确认弹窗相关状态
-  const [stopModalVisible, setStopModalVisible] = useState(false);
-  const [stopItem, setStopItem] = useState(null);
-  const [stopLoading, setStopLoading] = useState(false);
 
   /**
    * 数据加载
@@ -151,16 +146,11 @@ function FlowList() {
     if (action === 'start') {
       // 启动操作直接执行
       executeAction(record, 'start');
-    } else if (action === 'delete') {
-      // 删除操作显示确认弹窗
-      setCurrentActionType('delete');
-      setDeleteItem(record);
-      setDeleteModalVisible(true);
-    } else if (action === 'stop') {
-      // 停止操作显示确认弹窗
-      setCurrentActionType('stop');
-      setStopItem(record);
-      setStopModalVisible(true);
+    } else {
+      // 删除/停止操作显示确认弹窗
+      setCurrentActionType(action);
+      setActionItem(record);
+      setActionModalVisible(true);
     }
   };
 
@@ -180,13 +170,13 @@ function FlowList() {
         apiFunc = deleteFlow;
         successMsg = '删除成功';
         errorMsg = '删除失败';
-        setLoading = setDeleteLoading;
+        setLoading = setActionLoading;
         break;
       case 'stop':
         apiFunc = stopFlow;
         successMsg = '停止成功';
         errorMsg = '停止失败';
-        setLoading = setStopLoading;
+        setLoading = setActionLoading;
         break;
       case 'start':
         apiFunc = startFlow;
@@ -198,7 +188,7 @@ function FlowList() {
         return;
     }
 
-    setLoading(true);
+    if (setLoading) setLoading(true);
 
     const res = await apiFunc(record.id);
 
@@ -218,24 +208,17 @@ function FlowList() {
    * 确认删除/停止操作
    */
   const handleActionConfirm = () => {
-    if (currentActionType === 'delete' && deleteItem) {
-      executeAction(deleteItem, 'delete');
-    } else if (currentActionType === 'stop' && stopItem) {
-      executeAction(stopItem, 'stop');
+    if (currentActionType && actionItem) {
+      executeAction(actionItem, currentActionType);
     }
   };
 
   /**
-   * 关闭删除/停止确认弹窗
+   * 关闭操作确认弹窗
    */
   const handleActionCancel = () => {
-    if (currentActionType === 'delete') {
-      setDeleteModalVisible(false);
-      setDeleteItem(null);
-    } else if (currentActionType === 'stop') {
-      setStopModalVisible(false);
-      setStopItem(null);
-    }
+    setActionModalVisible(false);
+    setActionItem(null);
     setCurrentActionType(null);
   };
 
@@ -349,22 +332,13 @@ function FlowList() {
             />
           </div>
 
-          {/* 删除确认弹窗 */}
+          {/* 操作确认弹窗（删除/停止） */}
           <DeleteConfirmModal
-            open={deleteModalVisible}
+            open={actionModalVisible}
             onClose={handleActionCancel}
             onConfirm={handleActionConfirm}
-            modalInfo={deleteFlowModalInfo}
-            loading={deleteLoading}
-          />
-
-          {/* 停止确认弹窗 */}
-          <DeleteConfirmModal
-            open={stopModalVisible}
-            onClose={handleActionCancel}
-            onConfirm={handleActionConfirm}
-            modalInfo={stopFlowModalInfo}
-            loading={stopLoading}
+            modalInfo={currentActionType === 'delete' ? deleteFlowModalInfo : stopFlowModalInfo}
+            loading={actionLoading}
           />
 
           {/* 创建/编辑弹窗 */}

@@ -479,6 +479,47 @@ const parseMappingValue = (value) => {
 };
 
 /**
+ * 递归处理嵌套属性，生成 children 数组
+ * 支持无限层级的嵌套结构
+ * @param {Object} propertiesObj - 属性对象
+ * @param {string} carrier - 载体类型 (header/query/body)
+ * @returns {Array} 子参数数组
+ */
+const processNestedProperties = (propertiesObj, carrier) => {
+  if (!propertiesObj || typeof propertiesObj !== 'object') {
+    return [];
+  }
+
+  const children = [];
+
+  Object.entries(propertiesObj).forEach(([paramName, paramObj]) => {
+    if (!paramObj || typeof paramObj !== 'object') return;
+
+    const processedValue = parseMappingValue(paramObj.value);
+    const isComplex = paramObj.type === 'object' || paramObj.type === 'array';
+
+    const item = {
+      carrier,
+      paramName,
+      paramType: paramObj.type || 'string',
+      sourceType: processedValue.sourceType,
+      paramValue: processedValue.paramValue,
+      description: paramObj.description || '',
+      referencePath: processedValue.referencePath,
+      children: [],
+    };
+
+    if (isComplex && paramObj.properties) {
+      item.children = processNestedProperties(paramObj.properties, carrier);
+    }
+
+    children.push(item);
+  });
+
+  return children;
+};
+
+/**
  * 处理单个 carrier 下的字段列表
  * @param {Array} result - 结果数组
  * @param {string} carrier - 载体类型 (header/query/body)
@@ -491,34 +532,21 @@ const processMappingCarrierFields = (result, carrier, fields) => {
     if (!paramObj || typeof paramObj !== 'object') return;
 
     const processedValue = parseMappingValue(paramObj.value);
+    const isComplex = paramObj.type === 'object' || paramObj.type === 'array';
 
     const item = {
       carrier,
       paramName,
-      children: [],
       paramType: paramObj.type || 'string',
       sourceType: processedValue.sourceType,
       paramValue: processedValue.paramValue,
       description: paramObj.description || '',
       referencePath: processedValue.referencePath,
+      children: [],
     };
 
-    if (paramObj.properties) {
-      Object.entries(paramObj.properties).forEach(([childName, childObj]) => {
-        if (childObj && typeof childObj === 'object') {
-          const childProcessedValue = parseMappingValue(childObj.value);
-          item.children.push({
-            carrier,
-            children: [],
-            paramName: childName,
-            paramType: childObj.type || 'string',
-            description: childObj.description || '',
-            sourceType: childProcessedValue.sourceType,
-            referencePath: childProcessedValue.referencePath,
-            paramValue: childProcessedValue.paramValue,
-          });
-        }
-      });
+    if (isComplex && paramObj.properties) {
+      item.children = processNestedProperties(paramObj.properties, carrier);
     }
 
     result.push(item);
