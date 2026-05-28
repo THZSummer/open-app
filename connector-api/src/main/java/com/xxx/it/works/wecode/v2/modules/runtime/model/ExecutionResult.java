@@ -10,7 +10,7 @@ import java.util.Map;
  * 执行结果
  * <p>
  * 连接流单次执行的完整结果.
- * v5.5: 
+ * v5.5:
  * <ul>
  *   <li>{@code errorMessage} → {@code errorInfo} 结构化 Map</li>
  *   <li>{@code StepDetail} 中 {@code errorMessage/downstreamStatusCode} → {@code errorInfo} Map</li>
@@ -145,7 +145,7 @@ public class ExecutionResult {
                 Object code = errorInfo.get("downstreamStatusCode");
                 if (code instanceof Number) return ((Number) code).intValue();
                 if (code instanceof String) {
-                    try { return Integer.parseInt((String) code); } catch (NumberFormatException ignored) {}
+                    try { return Integer.parseInt((String) code); } catch (NumberFormatException ignored) { return null; }
                 }
             }
             return null;

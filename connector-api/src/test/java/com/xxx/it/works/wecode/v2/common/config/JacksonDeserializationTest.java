@@ -183,13 +183,16 @@ class JacksonDeserializationTest {
     }
 
     @Test
-    @DisplayName("旧表达式格式兼容: ${nodeId.fieldPath}")
+    @DisplayName("v5.6 表达式格式: ${$.node.{id}.output.{path}}")
     void testExpressionOldFormat() throws Exception {
-        String expr = "${node_entry.sender}";
+        String expr = "${$.node.node_entry.output.sender}";
         String inner = expr.substring(2, expr.length() - 1);
         String[] parts = inner.split("\\.");
-        assertEquals("node_entry", parts[0]);
-        assertEquals("sender", parts[1]);
+        assertEquals("$", parts[0]);
+        assertEquals("node", parts[1]);
+        assertEquals("node_entry", parts[2]);
+        assertEquals("output", parts[3]);
+        assertEquals("sender", parts[4]);
     }
 
     @Test

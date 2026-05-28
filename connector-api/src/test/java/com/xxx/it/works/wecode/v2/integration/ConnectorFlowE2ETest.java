@@ -68,8 +68,8 @@ class ConnectorFlowE2ETest {
                 "outputMapping", Map.of(
                         "header", Map.of(),
                         "body", Map.of(
-                                "sender", "${node_entry.sender}",
-                                "content", "${node_entry.content}"
+                                "sender", "${$.node.node_entry.output.sender}",
+                                "content", "${$.node.node_entry.output.content}"
                         )
                 )
         ));
@@ -123,7 +123,7 @@ class ConnectorFlowE2ETest {
                 "labelCn", "字段映射",
                 "labelEn", "Field Mapping",
                 "fieldMappings", List.of(
-                        Map.of("targetField", "result", "sourceValue", "${node_connector.data}", "sourceType", "reference")
+                        Map.of("targetField", "result", "sourceValue", "${$.node.node_connector.output.data}", "sourceType", "reference")
                 )
         ));
 
@@ -138,8 +138,8 @@ class ConnectorFlowE2ETest {
                 "outputMapping", Map.of(
                         "header", Map.of(),
                         "body", Map.of(
-                                "sender", "${node_entry.sender}",
-                                "result", "${node_processor.result}"
+                                "sender", "${$.node.node_entry.output.sender}",
+                                "result", "${$.node.node_processor.output.result}"
                         )
                 )
         ));
@@ -327,13 +327,13 @@ class ConnectorFlowE2ETest {
 
         ctx.setNodeOutput("node_1", Map.of("data", "value1"));
 
-        Object resolved = ctx.resolveFieldReference("${node_1.data}");
+        Object resolved = ctx.resolveFieldReference("${$.node.node_1.output.data}");
         assertEquals("value1", resolved, "Field reference resolution should work");
 
         // 测试嵌套字段
         Map<String, Object> nested = Map.of("user", Map.of("name", "Alice"));
         ctx.setNodeOutput("node_2", nested);
-        Object nestedRef = ctx.resolveFieldReference("${node_2.user.name}");
+        Object nestedRef = ctx.resolveFieldReference("${$.node.node_2.output.user.name}");
         assertEquals("Alice", nestedRef, "Nested field reference should work");
 
         log.info("ExecutionContext thread safety test passed");

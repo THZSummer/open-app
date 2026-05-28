@@ -244,6 +244,8 @@ public class OpTriggerService {
                                             "Field '" + fieldName + "' must be object, got: " + value.getClass().getSimpleName());
                                 }
                                 break;
+                            default:
+                                break;
                         }
                     }
                 }

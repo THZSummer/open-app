@@ -70,8 +70,8 @@ class NodeExecutorsTest {
 
         @SuppressWarnings("unchecked")
         List<Map<String, String>> fieldMappings = List.of(
-                Map.of("targetField", "userName", "sourceValue", "${node_upstream.name}", "sourceType", "reference"),
-                Map.of("targetField", "userAge", "sourceValue", "${node_upstream.age}", "sourceType", "reference")
+                Map.of("targetField", "userName", "sourceValue", "${$.node.node_upstream.output.name}", "sourceType", "reference"),
+                Map.of("targetField", "userAge", "sourceValue", "${$.node.node_upstream.output.age}", "sourceType", "reference")
         );
 
         Map<String, Object> nodeConfig = new HashMap<>();
@@ -113,11 +113,11 @@ class NodeExecutorsTest {
 
         ExitNodeExecutor executor = new ExitNodeExecutor(objectMapper);
 
-        // v5.5: 使用 data.outputMapping.{header, body} 替代扁平 outputFields
+        // v5.6: 使用 mappedJsonSchemaObjectDef 格式
         Map<String, Object> data = new HashMap<>();
-        Map<String, Object> bodyMapping = new HashMap<>();
-        bodyMapping.put("result", "${node_upstream.result}");
-        bodyMapping.put("count", "${node_upstream.count}");
+        Map<String, Object> resultField = Map.of("type", "string", "value", "${$.node.node_upstream.output.result}");
+        Map<String, Object> countField = Map.of("type", "integer", "value", "${$.node.node_upstream.output.count}");
+        Map<String, Object> bodyMapping = Map.of("type", "object", "properties", Map.of("result", resultField, "count", countField));
         data.put("outputMapping", Map.of("body", bodyMapping));
 
         Map<String, Object> nodeConfig = new HashMap<>();

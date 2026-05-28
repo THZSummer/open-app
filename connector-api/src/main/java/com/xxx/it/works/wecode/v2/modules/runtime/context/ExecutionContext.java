@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 执行上下文
  * <p>
- * v5.5: 
+ * v5.5:
  * <ul>
  *   <li>{@code nodeOutputs} → {@code nodeContexts} ({@code Map<String, NodeContext>})</li>
  *   <li>移除内联的 {@code resolveFieldReference()} — 移至 {@code ExpressionResolver}</li>
