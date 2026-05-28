@@ -152,7 +152,7 @@ public class OperateLogV2Aspect {
             // 基础字段（从 OperateEnum 统一获取）
             logEntry.setAppId(appId);
             logEntry.setOperateType(op.getOperateType());
-            logEntry.setOperateObject(op.getOperateObject());
+            logEntry.setOperateObject(op.getOperateObjectCn());
             logEntry.setOperateDescCn(op.getDescCn());
             logEntry.setOperateDescEn(op.getDescEn());
 
