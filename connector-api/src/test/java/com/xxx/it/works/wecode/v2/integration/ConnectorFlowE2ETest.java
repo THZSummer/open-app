@@ -232,11 +232,6 @@ class ConnectorFlowE2ETest {
         context.setTriggerData(Map.of("sender", "ext_system", "message", "test message"));
         context.setTest(true);
 
-        // 传入凭证
-        Map<String, Map<String, String>> credentials = new HashMap<>();
-        credentials.put("1234567890123456789", Map.of("AK", "test-ak", "SK", "test-sk"));
-        context.setCredentials(credentials);
-
         // Act
         Mono<ExecutionResult> resultMono = executor.execute(context, configJson);
 
@@ -339,18 +334,5 @@ class ConnectorFlowE2ETest {
         log.info("ExecutionContext thread safety test passed");
     }
 
-    /**
-     * 验证凭证清除
-     */
-    @Test
-    void testCredentialsCleanup() {
-        com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext ctx =
-                new com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext("test-cred-001", "test-flow-cred");
 
-        ctx.setCredentials(Map.of("connector_1", Map.of("AK", "secret")));
-        assertNotNull(ctx.getCredentials(), "Credentials should be set");
-
-        ctx.clearCredentials();
-        assertNull(ctx.getCredentials(), "Credentials should be cleared after cleanup");
-    }
 }

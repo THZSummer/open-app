@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -39,14 +40,16 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
     private final ExpressionResolver expressionResolver;
+    private final CredentialInjectorRegistry credentialInjectorRegistry;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
-    public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient) {
+    public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient, CredentialInjectorRegistry credentialInjectorRegistry) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
         this.expressionResolver = new ExpressionResolver();
+        this.credentialInjectorRegistry = credentialInjectorRegistry;
     }
 
     @Override
@@ -74,13 +77,6 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
             long timeoutMs = DEFAULT_TIMEOUT_MS;
 
-            // 获取凭证
-            String connectorId = (String) data.get("connectorId");
-            Map<String, String> credentials = null;
-            if (context.getCredentials() != null && connectorId != null) {
-                credentials = context.getCredentials().get(connectorId);
-            }
-
             // v5.5: 从 data 字段读取 url/method/timeoutMs
             String url = (String) data.get("url");
             String method = (String) data.getOrDefault("method", "POST");
@@ -98,12 +94,9 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             @SuppressWarnings("unchecked")
             Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
 
-            // 注入凭证到请求头
-            if (credentials != null) {
-                for (Map.Entry<String, String> entry : credentials.entrySet()) {
-                    headers.put(entry.getKey(), entry.getValue());
-                }
-            }
+            // 注入凭证到请求头 (策略模式)
+            Map<String, Object> authConfig = (Map<String, Object>) data.get("authConfig");
+            credentialInjectorRegistry.inject(authConfig, headers);
 
             // 构建 input 分区: 记录本节点的输入
             Map<String, Object> input = new HashMap<>();
@@ -268,6 +261,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                 .bodyToMono(String.class)
                 .timeout(Duration.ofMillis(timeoutMs))
                 .map(responseBody -> {
+                    log.info("Connector HTTP call succeeded: nodeId={}, status=success", nodeId);
                     // 解析响应为 output 分区
                     Map<String, Object> outputData = new HashMap<>();
                     if (responseBody != null) {

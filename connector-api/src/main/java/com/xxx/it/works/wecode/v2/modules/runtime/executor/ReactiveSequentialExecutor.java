@@ -74,6 +74,7 @@ public class ReactiveSequentialExecutor {
 
                     // 构建拓扑顺序: 从 entry 节点开始, 按 edges 确定顺序
                     List<JsonNode> orderedNodes = topologicalSort(nodes, edges);
+                    log.info("Flow execution start: nodeCount={}, edgeCount={}", orderedNodes.size(), edges != null ? edges.size() : 0);
 
                     // 使用 reduce 累积执行: 从起始节点开始, 按顺序串联
                     NodeOutput startMarker = new NodeOutput("__start__", "__start__",
@@ -112,7 +113,9 @@ public class ReactiveSequentialExecutor {
         long nodeStart = System.currentTimeMillis();
         // v5.5: 传递完整 config (含 data 字段), executor 自行提取 data.xxx
         Map<String, Object> configMap = objectMapper.convertValue(nodeConfig, Map.class);
-        return executor.execute(context, configMap)
+        log.info("Executing node: id={}, type={}", nodeConfig.get("id"), nodeConfig.get("type"));
+                            log.info("Executing node: id={}, type={}", nodeConfig.get("id"), nodeConfig.get("type"));
+                    return executor.execute(context, configMap)
                 .doOnNext(output -> {
                     output.setDurationMs(System.currentTimeMillis() - nodeStart);
                     log.info("Node {} executed: status={}, duration={}ms",
@@ -227,6 +230,7 @@ public class ReactiveSequentialExecutor {
 
         // 设置整体状态
         result.setStatus(anyFailed ? "failed" : "success");
+        log.info("Flow execution complete: status={}, totalDurationMs={}", result.getStatus(), result.getTotalDurationMs());
 
         // resultData 取最后一个输出 (不含 __status/__input/__error 等元字段)
         if (lastOutput != null) {
@@ -241,8 +245,6 @@ public class ReactiveSequentialExecutor {
             result.setResultData(cleanOutput);
         }
 
-        // 清除凭证
-        context.clearCredentials();
 
         return Mono.just(result);
     }

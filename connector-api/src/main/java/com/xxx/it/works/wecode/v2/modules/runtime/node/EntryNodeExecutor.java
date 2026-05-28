@@ -54,6 +54,7 @@ public class EntryNodeExecutor implements NodeExecutor {
         if (context.getTriggerData() != null) {
             input.putAll(context.getTriggerData());
         }
+            log.info("Entry node trigger data: {}", input);
 
         // output 分区: 元数据
         Map<String, Object> output = new HashMap<>();
