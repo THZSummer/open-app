@@ -59,7 +59,7 @@ public class ExitNodeExecutor implements NodeExecutor {
             // v5.5: React Flow 格式 — 节点配置在 data 字段内
             Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
 
-            log.debug("Exit node executing: nodeId={}", nodeId);
+            log.info("Exit node executing: nodeId={}", nodeId);
 
             // input 分区: 记录配的 outputMapping
             Map<String, Object> input = new HashMap<>();
@@ -113,7 +113,7 @@ public class ExitNodeExecutor implements NodeExecutor {
             NodeOutput result = new NodeOutput(nodeId, "exit", input, outputData);
             result.setStatus("success");
 
-            log.debug("Exit node completed: nodeId={}, outputFields={}", nodeId, outputData.keySet());
+            log.info("Exit node completed: nodeId={}, outputFields={}", nodeId, outputData.keySet());
             return result;
         });
     }
