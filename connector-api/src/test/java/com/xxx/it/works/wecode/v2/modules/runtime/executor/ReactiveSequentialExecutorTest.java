@@ -52,7 +52,7 @@ class ReactiveSequentialExecutorTest {
                 Map.of("id", "node_exit", "type", "exit",
                         "position", Map.of("x", 300, "y", 0),
                         "data", Map.of("labelCn", "返回",
-                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("sender", "${node_entry.sender}"))))
+                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("sender", "${$.node.node_entry.output.sender}"))))
         ));
         config.put("edges", List.of(
                 Map.of("id", "e1", "source", "node_entry", "target", "node_exit")
@@ -81,7 +81,7 @@ class ReactiveSequentialExecutorTest {
         context.setTriggerData(Map.of("name", "Alice"));
 
         List<Map<String, Object>> fieldMappings = List.of(
-                Map.of("targetField", "greeting", "sourceValue", "${node_entry.name}", "sourceType", "reference")
+                Map.of("targetField", "greeting", "sourceValue", "${$.node.node_entry.output.name}", "sourceType", "reference")
         );
 
         Map<String, Object> config = new LinkedHashMap<>();
@@ -96,7 +96,7 @@ class ReactiveSequentialExecutorTest {
                 Map.of("id", "node_exit", "type", "exit",
                         "position", Map.of("x", 600, "y", 0),
                         "data", Map.of("labelCn", "出口",
-                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("greeting", "${node_proc.greeting}"))))
+                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("greeting", "${$.node.node_proc.output.greeting}"))))
         ));
         config.put("edges", List.of(
                 Map.of("id", "e1", "source", "node_entry", "target", "node_proc"),
@@ -147,7 +147,7 @@ class ReactiveSequentialExecutorTest {
                         "data", Map.of("labelCn", "未知")),
                 Map.of("id", "node_exit", "type", "exit",
                         "position", Map.of("x", 600, "y", 0),
-                        "data", Map.of("outputMapping", Map.of("header", Map.of(), "body", Map.of("data", "${node_entry.data}"))))
+                        "data", Map.of("outputMapping", Map.of("header", Map.of(), "body", Map.of("data", "${$.node.node_entry.output.data}"))))
         ));
         config.put("edges", List.of(
                 Map.of("id", "e1", "source", "node_entry", "target", "node_unknown"),

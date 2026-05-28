@@ -156,7 +156,7 @@ public class ExitNodeExecutor implements NodeExecutor {
             return Collections.emptyMap();
         }
         Map<String, Object> segMap = (Map<String, Object>) segment;
-        
+
         Object props = segMap.get("properties");
         if (props instanceof Map) {
             Map<String, Object> result = new LinkedHashMap<>();
@@ -165,7 +165,7 @@ public class ExitNodeExecutor implements NodeExecutor {
             }
             return result;
         }
-        
+
         return Collections.emptyMap();
     }
     @SuppressWarnings("unchecked")

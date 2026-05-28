@@ -22,7 +22,7 @@ import java.util.Map;
 /**
  * 连接器节点执行器
  * <p>
- * v5.5: 
+ * v5.5:
  * <ul>
  *   <li>访问 {@code data.inputMapping} 结构化 {@code {header, query, body}} 替代扁平 {@code inputMappings}</li>
  *   <li>NodeConfig 位于 {@code config.data.*} (React Flow 格式)</li>
@@ -189,7 +189,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             return Collections.emptyMap();
         }
         Map<String, Object> segMap = (Map<String, Object>) segment;
-        
+
         Object props = segMap.get("properties");
         if (props instanceof Map) {
             Map<String, Object> result = new LinkedHashMap<>();
@@ -198,7 +198,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             }
             return result;
         }
-        
+
         return Collections.emptyMap();
     }
     @SuppressWarnings("unchecked")
