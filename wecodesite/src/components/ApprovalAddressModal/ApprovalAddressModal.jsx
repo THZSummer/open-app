@@ -44,7 +44,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
       message.success('催办成功');
       onClose();
     } else {
-      message.error('催办失败');
+      message.error(result.messageZh || '催办失败');
     }
     
     setRemindLoading(false);

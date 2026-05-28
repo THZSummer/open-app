@@ -12,7 +12,8 @@
 import React from 'react';
 import { Card, Typography, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import { NODE_LIBRARY } from './customNodes';
+import { NODE_LIBRARY, NODE_COLORS } from './constants';
+import './NodeLibrary.m.less';
 
 const { Title, Text } = Typography;
 
@@ -21,13 +22,22 @@ const { Title, Text } = Typography;
  *
  * @param {Object} props
  * @param {Function} props.onDragStart - 开始拖拽回调
+ * @param {Array} props.nodes - 当前画布中的节点列表
  */
-function NodeLibrary({ onDragStart }) {
+function NodeLibrary({ onDragStart, nodes = [] }) {
+  // 判断画布中是否已存在触发器节点
+  const hasTriggerNode = nodes.some(node => node.type === 'trigger');
 
   /**
    * 处理拖拽开始
    */
   const handleDragStart = (event, nodeType, label) => {
+    // 如果是触发器类型且画布中已存在触发器，则不允许添加
+    if (nodeType === 'trigger' && hasTriggerNode) {
+      event.preventDefault();
+      return;
+    }
+
     // 将节点数据存储到拖拽事件中
     const nodeData = JSON.stringify({
       type: nodeType,
@@ -46,73 +56,48 @@ function NodeLibrary({ onDragStart }) {
   /**
    * 渲染节点卡片
    */
-  const renderNodeCard = (item, index) => (
-    <Card
-      key={`${item.type}-${index}`}
-      size="small"
-      draggable
-      onDragStart={(e) => handleDragStart(e, item.type, item.label)}
-      style={{
-        marginBottom: 8,
-        cursor: 'grab',
-        userSelect: 'none',
-        transition: 'all 0.2s ease',
-      }}
-      bodyStyle={{ padding: '10px 12px' }}
-      hoverable
-    >
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-      }}>
-        <div style={{
-          width: 28,
-          height: 28,
-          borderRadius: 6,
-          backgroundColor: getNodeColor(item.type),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#fff',
-          fontSize: 12,
-          fontWeight: 600,
-        }}>
-          {item.label.charAt(0)}
-        </div>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{
-            fontSize: 13,
-            fontWeight: 500,
-            color: '#333',
-          }}>
-            {item.label}
-          </div>
-          {item.description && (
-            <Tooltip title={item.description}>
-              <QuestionCircleOutlined style={{ fontSize: 12, color: '#999', cursor: 'help' }} />
-            </Tooltip>
-          )}
-        </div>
-      </div>
-    </Card>
-  );
+  const renderNodeCard = (item, index) => {
+    // 触发器节点特殊处理：如果已存在触发器则禁用
+    const isTriggerDisabled = item.type === 'trigger' && hasTriggerNode;
 
-  /**
-   * 获取节点类型对应的颜色
-   */
-  const getNodeColor = (type) => {
-    const colors = {
-      trigger: '#1890ff',
-      action: '#52c41a',
-      condition: '#faad14',
-      delay: '#722ed1',
-      parallel: '#13c2c2',
-      loop: '#eb2f96',
-      dataTransform: '#1890ff',
-      dataOutput: '#fa8c16',
-    };
-    return colors[type] || '#999';
+    return (
+      <Card
+        key={`${item.type}-${index}`}
+        size="small"
+        draggable={!isTriggerDisabled}
+        onDragStart={(e) => handleDragStart(e, item.type, item.label)}
+        className="node-card"
+        style={{
+          cursor: isTriggerDisabled ? 'not-allowed' : 'grab',
+          opacity: isTriggerDisabled ? 0.5 : 1,
+          backgroundColor: isTriggerDisabled ? '#f5f5f5' : '#fff',
+        }}
+        bodyStyle={{ padding: '10px 12px' }}
+        hoverable={!isTriggerDisabled}
+      >
+        <div className="node-content">
+          <div
+            className="node-icon"
+            style={{ backgroundColor: NODE_COLORS[item.type] || '#999' }}
+          >
+            {item.label.charAt(0)}
+          </div>
+          <div className="node-info">
+            <div style={{ color: isTriggerDisabled ? '#999' : '#333' }}>
+              {item.label}
+              {isTriggerDisabled && (
+                <span className="node-label-added">(已添加)</span>
+              )}
+            </div>
+            {item.description && (
+              <Tooltip title={isTriggerDisabled ? '每个流程只能添加一个触发器' : item.description}>
+                <QuestionCircleOutlined className="node-help-icon" />
+              </Tooltip>
+            )}
+          </div>
+        </div>
+      </Card>
+    );
   };
 
   /**
@@ -121,34 +106,19 @@ function NodeLibrary({ onDragStart }) {
   const visibleNodes = NODE_LIBRARY.filter(item => item.visible !== false);
 
   return (
-    <div
-      className="node-library-panel"
-      style={{
-        width: 200,
-        height: '100%',
-        backgroundColor: '#fafafa',
-        borderRight: '1px solid #e8e8e8',
-        overflow: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <div className="node-library-panel">
       {/* 面板标题 */}
-      <div style={{
-        padding: '16px 16px 12px',
-        borderBottom: '1px solid #e8e8e8',
-        backgroundColor: '#fff',
-      }}>
-        <Title level={5} style={{ margin: 0 }}>
+      <div className="panel-header">
+        <Title level={5} className="panel-title">
           节点库
         </Title>
-        <Text type="secondary" style={{ fontSize: 12 }}>
+        <Text type="secondary" className="panel-desc">
           拖拽节点到画布进行编排
         </Text>
       </div>
 
       {/* 节点列表 */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
+      <div className="node-list">
         {visibleNodes.map((item, index) =>
           renderNodeCard(item, index)
         )}

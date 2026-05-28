@@ -8,81 +8,48 @@
  * - 蓝色边框表示起始节点
  * - 底部输出连接点
  * - 左右两侧各添加一个连接点，支持更多连线场景
+ * - 节点名称支持中英文显示
  */
 
 import React, { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
+import './FlowNodes.m.less';
 
 /**
  * 触发器节点组件
- * 
+ *
  * @param {Object} props
  * @param {Object} props.data - 节点数据
- * @param {string} props.data.label - 节点显示名称
+ * @param {string} props.data.label - 节点显示名称（中文）
+ * @param {string} props.data.labelEn - 节点英文名称
  * @param {Object} props.data.config - 节点配置
  * @param {boolean} props.selected - 是否被选中
  */
 const TriggerNode = ({ data, selected }) => {
   return (
-    <div
-      style={{
-        padding: '14px 18px',
-        borderRadius: 10,
-        backgroundColor: '#fff',
-        minWidth: 160,
-        maxWidth: 200,
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      
+    <div className="triggerNode">
       {/* 输出连接点 - 底部 */}
-      <Handle 
-        type="source" 
+      <Handle
+        type="source"
         position={Position.Bottom}
         id="bottom-source"
-        style={{
-          background: '#1890ff',
-          border: '2px solid #fff',
-          width: 12,
-          height: 12,
-        }}
+        className="handleTrigger"
       />
-      
+
       {/* 节点类型标签 */}
-      <div style={{ 
-        fontSize: 11, 
-        color: '#1890ff', 
-        marginBottom: 6,
-        fontWeight: 600,
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-      }}>
+      <div className="nodeTypeLabel">
         触发器
       </div>
-      
+
       {/* 节点名称 */}
-      <div style={{ 
-        fontSize: 14, 
-        fontWeight: 600, 
-        color: '#333',
-        marginBottom: 4,
-      }}>
-        {data.label || '触发器'}
+      <div className="nodeName">
+        {data.labelCn}
       </div>
-      
+
       {/* 触发类型 */}
       {data.config?.triggerType && (
-        <div style={{ 
-          fontSize: 11, 
-          color: '#666',
-          backgroundColor: '#e6f7ff',
-          padding: '2px 6px',
-          borderRadius: 3,
-          display: 'inline-block',
-        }}>
-          {data.config.triggerType === 'schedule' ? '定时触发' :
-           data.config.triggerType === 'webhook' ? 'Webhook' : 'API触发'}
+        <div className="nodeInfo">
+          {data.config.triggerType.toUpperCase()}
         </div>
       )}
     </div>

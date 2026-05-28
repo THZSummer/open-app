@@ -11,6 +11,27 @@ export const API_CONFIG = {
     CATEGORIES: '/categories',
   },
 
+  CONNECTORS: {
+    LIST: '/connectors',
+    DETAIL: '/connectors/{connectorId}',
+    CREATE: '/connectors',
+    UPDATE: '/connectors/{connectorId}',
+    DELETE: '/connectors/{connectorId}',
+    CONFIG: '/connectors/{connectorId}/config',
+    CONFIG_UPDATE: '/connectors/{connectorId}/config',
+  },
+
+  FLOWS: {
+    LIST: '/flows',
+    DETAIL: '/flows/{flowId}',
+    CREATE: '/flows',
+    UPDATE: '/flows/{flowId}',
+    DELETE: '/flows/{flowId}',
+    START: '/flows/{flowId}/start',
+    STOP: '/flows/{flowId}/stop',
+    CONFIG: '/flows/{flowId}/config',
+  },
+
   EVENTS: {
     LIST: '/events',
     DETAIL: '/events/{id}',
@@ -73,7 +94,7 @@ export const API_CONFIG = {
     CANCEL: '/approvals/{id}/cancel',
     BATCH_APPROVE: '/approvals/batch-approve',
     BATCH_REJECT: '/approvals/batch-reject',
-    REMIND_APPROVE: '/approvals/${id}/urge',
+    REMIND_APPROVE: '/approvals/{id}/urge',
   },
 
   APPROVAL_FLOWS: {

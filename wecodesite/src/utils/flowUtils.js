@@ -4,8 +4,91 @@
  * ========================================
  * 
  * 提供连接器和连接流管理功能所需的核心工具函数
- * 包括节点ID生成、位置计算、验证等功能
+ * 包括节点ID生成、位置计算、验证、数据结构转换等功能
  */
+import { CARRIER_OPTIONS, CARRIER_OPTIONS_OUTPUT, NODE_TYPE_TO_MAPPING_KEY } from "../pages/ConnectPlatform/FlowEditor/constants";
+
+/**
+ * 节点类型常量
+ * 定义支持的4种节点类型
+ */
+export const NODE_TYPES = {
+  TRIGGER: 'trigger',           // 触发器节点
+  CONNECTOR: 'connector',       // 连接器节点（文档标准名称）
+  EXIT: 'exit',                // 出口节点
+};
+
+/**
+ * 将properties数组转换为JSON Schema格式的key-value对象
+ * 用于保存到后端时符合文档规范
+ * 
+ * 输入格式: [{ paramName: 'sender', paramType: 'string', description: '...', ... }]
+ * 输出格式: { sender: { type: 'string', description: '...' }, ... }
+ * 
+ * @param {Array} propertiesArray - properties参数数组
+ * @returns {Object} JSON Schema格式的properties对象
+ */
+export const transformPropertiesToSchema = (propertiesArray = []) => {
+  const result = {};
+  
+  propertiesArray.forEach(param => {
+    if (param.paramName) {
+      const isComplex = param.paramType === 'object' || param.paramType === 'array';
+      const schemaEntry = {
+        type: param.paramType || 'string',
+      };
+      
+      if (param.description) {
+        schemaEntry.description = param.description;
+      }
+      
+      // 如果是复杂类型，递归处理子属性
+      if (isComplex && param.children && param.children.length > 0) {
+        schemaEntry.properties = transformPropertiesToSchema(param.children);
+      }
+      
+      result[param.paramName] = schemaEntry;
+    }
+  });
+  
+  return result;
+};
+
+/**
+ * 将JSON Schema格式的properties对象转换为数组格式
+ * 用于从后端加载数据时转换为编辑器可用的格式
+ * 
+ * 输入格式: { sender: { type: 'string', description: '...' }, ... }
+ * 输出格式: [{ paramName: 'sender', paramType: 'string', description: '...', ... }]
+ * 
+ * @param {Object} propertiesObj - JSON Schema格式的properties对象
+ * @returns {Array} properties参数数组
+ */
+export const transformPropertiesFromSchema = (propertiesObj = {}) => {
+  const result = [];
+  
+  Object.entries(propertiesObj).forEach(([name, schema]) => {
+    if (name && typeof schema === 'object') {
+      const isComplex = schema.type === 'object' || schema.type === 'array';
+      let children = [];
+      
+      // 如果是复杂类型且有嵌套属性，递归处理
+      if (isComplex && schema.properties) {
+        children = transformPropertiesFromSchema(schema.properties);
+      }
+      
+      result.push({
+        paramName: name,
+        paramType: schema.type || 'string',
+        description: schema.description || '',
+        carrier: schema.carrier || 'body',
+        children: children,
+      });
+    }
+  });
+  
+  return result;
+};
 
 /**
  * 生成唯一的节点ID
@@ -42,149 +125,6 @@ export const getInitialNodePosition = (x = 100, y = 100) => ({
 });
 
 /**
- * 节点类型常量
- * 定义支持的6种节点类型
- */
-export const NODE_TYPES = {
-  TRIGGER: 'trigger',    // 触发器节点
-  ACTION: 'action',      // 执行动作节点
-  CONDITION: 'condition', // 条件分支节点
-  DELAY: 'delay',        // 延时节点
-  PARALLEL: 'parallel',  // 并行执行节点
-  LOOP: 'loop',          // 循环执行节点
-};
-
-/**
- * 验证节点配置
- * @param {Object} node - 节点对象
- * @returns {{valid: boolean, errors: Array}} 验证结果
- */
-export const validateNodeConfig = (node) => {
-  const errors = [];
-  const { type, data } = node;
-  
-  switch (type) {
-    case NODE_TYPES.TRIGGER:
-      if (!data.config?.triggerType) {
-        errors.push('请选择触发类型');
-      }
-      if (data.config?.triggerType === 'schedule' && !data.config?.cronExpression) {
-        errors.push('定时触发需要配置Cron表达式');
-      }
-      if (data.config?.triggerType === 'webhook' && !data.config?.webhookPath) {
-        errors.push('Webhook触发需要配置Webhook路径');
-      }
-      break;
-      
-    case NODE_TYPES.ACTION:
-      if (!data.config?.connectorId) {
-        errors.push('请选择连接器');
-      }
-      if (!data.config?.actionId) {
-        errors.push('请选择执行动作');
-      }
-      break;
-      
-    case NODE_TYPES.CONDITION:
-      if (!data.config?.conditions || data.config.conditions.length === 0) {
-        errors.push('请至少添加一个条件');
-      }
-      break;
-      
-    case NODE_TYPES.PARALLEL:
-      if (!data.config?.branches || data.config.branches.length < 2) {
-        errors.push('并行执行至少需要2个分支');
-      }
-      break;
-      
-    case NODE_TYPES.LOOP:
-      if (data.config?.loopType === 'times') {
-        if (!data.config?.maxIterations || data.config.maxIterations < 1) {
-          errors.push('循环次数必须大于0');
-        }
-        if (data.config.maxIterations > 1000) {
-          errors.push('循环次数不能超过1000');
-        }
-      }
-      break;
-      
-    case NODE_TYPES.DELAY:
-      if (!data.config?.duration || data.config.duration < 1) {
-        errors.push('延时时长必须大于0秒');
-      }
-      if (data.config?.duration > 86400) {
-        errors.push('延时时长不能超过24小时（86400秒）');
-      }
-      break;
-  }
-  
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
-};
-
-/**
- * 验证流程配置
- * 检查流程是否包含必需的节点和有效的连线
- * @param {Array} nodes - 节点数组
- * @param {Array} edges - 连线数组
- * @returns {{valid: boolean, errors: Array, warnings: Array}} 验证结果
- */
-export const validateFlowConfig = (nodes = [], edges = []) => {
-  const errors = [];
-  const warnings = [];
-  
-  // 检查是否有触发器节点
-  const hasTrigger = nodes.some(node => node.type === NODE_TYPES.TRIGGER);
-  if (!hasTrigger) {
-    errors.push('流程必须包含至少一个触发器节点');
-  }
-  
-  // 检查是否有孤立节点
-  const connectedNodeIds = new Set();
-  edges.forEach(edge => {
-    connectedNodeIds.add(edge.source);
-    connectedNodeIds.add(edge.target);
-  });
-  
-  nodes.forEach(node => {
-    if (node.type !== NODE_TYPES.TRIGGER && !connectedNodeIds.has(node.id)) {
-      warnings.push(`节点 "${node.data?.label || node.id}" 未连接到流程`);
-    }
-  });
-  
-  // 检查每个节点的配置
-  nodes.forEach(node => {
-    const nodeValidation = validateNodeConfig(node);
-    if (!nodeValidation.valid) {
-      nodeValidation.errors.forEach(error => {
-        errors.push(`节点 "${node.data?.label || node.id}"：${error}`);
-      });
-    }
-  });
-  
-  // 检查连线是否有效
-  edges.forEach(edge => {
-    const sourceNode = nodes.find(n => n.id === edge.source);
-    const targetNode = nodes.find(n => n.id === edge.target);
-    
-    if (!sourceNode) {
-      errors.push(`连线起点 "${edge.source}" 不存在`);
-    }
-    if (!targetNode) {
-      errors.push(`连线终点 "${edge.target}" 不存在`);
-    }
-  });
-  
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-  };
-};
-
-/**
  * 获取节点的所有上游节点（去重）
  * @param {string} nodeId - 当前节点ID
  * @param {Array} nodes - 节点列表
@@ -214,6 +154,40 @@ export const getUpstreamNodes = (nodeId, nodes = [], edges = []) => {
 };
 
 /**
+ * 递归处理对象形式的 properties（键值对结构），返回平铺的数组
+ * @param {Object} propertiesObj - properties 对象（键值对形式）
+ * @param {string} carrier - 参数载体类型（body/header/query）
+ * @param {string} parentPath - 父级路径
+ * @returns {Array} 平铺后的参数数组
+ */
+const flattenObjectProperties = (propertiesObj, carrier, parentPath = '') => {
+  const result = [];
+
+  Object.entries(propertiesObj).forEach(([paramName, paramDef]) => {
+    const fullPath = parentPath ? `${parentPath}.${paramName}` : paramName;
+
+    // 创建基本参数对象
+    const paramObj = {
+      paramName: paramName,
+      paramType: paramDef.type || 'string',
+      description: paramDef.description || '',
+      carrier: carrier,
+      paramPath: fullPath,
+    };
+
+    result.push(paramObj);
+
+    // 如果有嵌套的 properties，递归处理
+    if (paramDef.properties && typeof paramDef.properties === 'object') {
+      const nestedParams = flattenObjectProperties(paramDef.properties, carrier, fullPath);
+      result.push(...nestedParams);
+    }
+  });
+
+  return result;
+};
+
+/**
  * 获取节点的输出参数
  * @param {Object} node - 节点对象
  * @returns {Array} 参数数组
@@ -224,55 +198,44 @@ export const getNodeOutputParams = (node) => {
   const { type, data } = node;
 
   switch (type) {
-    case 'trigger':
-      return data.config?.inputParams || [];
-    case 'action':
-      return data.config?.outputParams || [];
-    case 'condition':
-      return [
-        { paramName: data.config?.trueOutput || 'trueOutput', paramType: 'string', description: '条件满足时输出' },
-        { paramName: data.config?.falseOutput || 'falseOutput', paramType: 'string', description: '条件不满足时输出' },
-      ];
-    case 'loop':
-      return [
-        { paramName: data.config?.loopVariable || 'loopIndex', paramType: 'number', description: '循环计数器' },
-      ];
-    case 'dataTransform':
-      return data.config?.mappings?.map(m => ({
-        paramName: m.targetField,
-        paramType: 'string',
-        description: `映射自 ${m.sourceField}`,
-      })) || [];
+    case 'trigger': {
+      // Trigger 格式：{ header: { fieldName: { type, description } } }
+      const inputContract = data.inputContract || {};
+      const allParams = [];
+
+      // 合并 body、header、query 三种类型的参数
+      CARRIER_OPTIONS.forEach(carrier => {
+        const carrierData = inputContract[carrier];
+        const flattenedParams = flattenObjectProperties(carrierData, carrier);
+        allParams.push(...flattenedParams);
+      });
+
+      return allParams;
+    }
+    case 'connector': {
+      // connector 节点的 outputParams 包含 body、header、query 两种类型的参数
+      const outputParams = data.outputParams || {};
+      const allParams = [];
+
+      // 合并 body、header、query 三种类型的参数
+      CARRIER_OPTIONS.forEach(carrier => {
+        const carrierData = outputParams[carrier];
+        if (carrierData?.properties) {
+          // properties 可能是一个对象（键值对形式）或者数组
+          const properties = carrierData.properties;
+          const flattenedParams = flattenObjectProperties(properties, carrier);
+          allParams.push(...flattenedParams);
+        }
+      });
+
+      return allParams;
+    }
+    case 'exit':
+      // exit 节点的 outputMapping
+      return data.outputMapping || [];
     default:
       return [];
   }
-};
-
-/**
- * 递归平铺参数（处理嵌套的 object/array 类型）
- * @param {Array} params - 参数数组
- * @param {string} prefix - 路径前缀
- * @returns {Array} 平铺后的参数数组
- */
-export const flattenParams = (params = [], prefix = '') => {
-  const result = [];
-
-  for (const param of params) {
-    const fullPath = prefix ? `${prefix}.${param.paramName}` : param.paramName;
-
-    result.push({
-      paramName: param.paramName,
-      paramPath: fullPath,
-      paramType: param.paramType,
-      description: param.description || '',
-    });
-
-    if ((param.paramType === 'object' || param.paramType === 'array') && param.children?.length > 0) {
-      result.push(...flattenParams(param.children, fullPath));
-    }
-  }
-
-  return result;
 };
 
 /**
@@ -287,13 +250,322 @@ export const getUpstreamParams = (nodeId, nodes = [], edges = []) => {
 
   return upstreamNodes.map(node => {
     const outputParams = getNodeOutputParams(node);
-    const flattenedParams = flattenParams(outputParams);
 
     return {
-      nodeName: node.data?.label || node.id,
+      nodeName: node.data?.labelCn || node.id,
       nodeId: node.id,
       nodeType: node.type,
-      params: flattenedParams,
+      params: outputParams,
     };
   });
+};
+
+/**
+ * 从后端数据转换为React Flow渲染格式（进入编排页时调用）
+ * 根据文档5.7节示例，将后端返回的orchestrationConfig转换为React Flow可用的nodes和edges
+ * 
+ * @param {Object} orchestrationConfig - 后端返回的编排配置
+ * @returns {Object} { nodes, edges } React Flow格式的数据
+ */
+export const transformFromBackend = (orchestrationConfig) => {
+  if (!orchestrationConfig) {
+    return { nodes: [], edges: [] };
+  }
+
+  const nodes = orchestrationConfig.nodes || [];
+
+  const edges = orchestrationConfig.edges || [];
+
+  return { nodes, edges };
+};
+
+/**
+ * 根据 carrier 获取对应的目标对象
+ * @param {Object} result - 包含 header/query/body 的结果对象
+ * @param {string} carrier - 载体类型 (header/query/body)
+ * @returns {Object} 目标对象
+ */
+const getMappingTargetByCarrier = (result, carrier) => {
+  const carrierMap = {
+    header: result.header,
+    query: result.query,
+    body: result.body,
+  };
+  return carrierMap[carrier] || result.body;
+};
+
+/**
+ * 递归处理 mapping item 及其嵌套的 children
+ * @param {Object} result - 包含 header/query/body 的结果对象
+ * @param {Object} item - mapping 数组中的单个元素
+ * @param {string} parentPath - 父级路径前缀
+ * @param {Object} parentTarget - 父级目标对象，用于存放子节点
+ */
+const processMappingItem = (result, item, parentPath = '', parentTarget = null) => {
+  const {
+    sourceType,
+    paramName,
+    paramType,
+    description,
+    referencePath,
+    paramValue,
+    carrier,
+    children
+  } = item;
+
+  if (!paramName || !carrier) {
+    return;
+  }
+
+  // 计算当前字段的完整路径
+  const currentPath = parentPath ? `${parentPath}.${paramName}` : paramName;
+
+  let placeholder;
+  if (sourceType === 'reference') {
+    placeholder = '${$.node.' + (referencePath || currentPath) + '}';
+  } else {
+    placeholder = '${$.constant:' + (paramValue || '') + '}';
+  }
+
+  // 确定添加到的目标对象
+  const target = parentTarget || getMappingTargetByCarrier(result, carrier);
+
+  // 创建当前项的基本结构
+  const itemEntry = {
+    type: paramType || 'string',
+    description: description || '',
+    value: placeholder,
+  };
+
+  // 如果存在 children 且为数组或对象类型，递归处理子属性
+  if (children && Array.isArray(children) && children.length > 0) {
+    const isComplexType = paramType === 'object' || paramType === 'array';
+    
+    if (isComplexType) {
+      // 创建子属性的容器
+      itemEntry.properties = {};
+      
+      // 递归处理每个子节点，将结果添加到 properties 下
+      children.forEach(childItem => {
+        processMappingItem(result, childItem, currentPath, itemEntry.properties);
+      });
+    }
+  }
+
+  // 将当前项添加到目标对象
+  target[paramName] = itemEntry;
+};
+
+/**
+ * 转换 mapping 数组到新格式
+ * 根据 sourceType 生成对应的占位符字符串参数
+ * 
+ * @param {Object} options - 转换选项
+ * @param {Array} options.mappingArray - mapping 数组，每个元素包含 sourceType, paramName, paramType, description, referencePath/paramValue
+ * @returns {Object} 新格式的 mapping 对象 { header: {...}, body: {...}, query: {...} }
+ */
+export const transformMappingToNewFormat = ({
+  mappingArray = []
+} = {}) => {
+  const result = {
+    header: {},
+    query: {},
+    body: {},
+  };
+
+  mappingArray.forEach(item => {
+    processMappingItem(result, item);
+  });
+
+  return result;
+};
+
+/**
+ * @param {Array} nodes - React Flow节点列表
+ * @param {Array} edges - React Flow连线列表
+ * @returns {Object} orchestrationConfig 后端格式的编排配置
+ */
+export const transformToBackend = (nodes = [], edges = []) => {
+  const transformedNodes = nodes.map(node => {
+    const { data } = node;
+    
+    const transformedData = { ...data };
+    delete transformedData.config;
+    
+    const mappingKey = NODE_TYPE_TO_MAPPING_KEY[node.type];
+    if (mappingKey) {
+      const mappingData = data[mappingKey];
+      if (Array.isArray(mappingData) && mappingData.length > 0) {
+        transformedData[mappingKey] = transformMappingToNewFormat({
+          mappingArray: mappingData,
+        });
+      }
+    }
+
+    return {
+      ...node,
+      data: transformedData,
+    };
+  });
+
+  const transformedEdges = edges.map(edge => ({
+    ...edge,
+    type: edge.type || 'smoothstep',
+    data: edge.data || { businessType: 'default' },
+  }));
+
+  return {
+    nodes: transformedNodes,
+    edges: transformedEdges,
+  };
+};
+
+/**
+ * 转换inputMapping从旧格式到新格式
+ * 旧格式：数组形式 [{ name, carrier, value }]
+ * 新格式：{ header: {...}, query: {...}, body: {...} }
+ * 
+ * @param {Array} oldMapping - 旧的inputMapping数组
+ * @returns {Object} 新的inputMapping对象
+ */
+export const transformInputMappingFromOld = (oldMapping = []) => {
+  const result = {
+    header: {},
+    query: {},
+    body: {},
+  };
+
+  oldMapping.forEach?.((item) => {
+    if (item.carrier && item.name) {
+      result[item.carrier] = result[item.carrier] || {};
+      result[item.carrier][item.name] = item.value || '';
+    }
+  });
+
+  return result;
+};
+
+/**
+ * 解析 mapping value 为 sourceType、referencePath、paramValue
+ * @param {string} value - 占位符值，如 ${$.node.xxx} 或 ${$.constant:xxx}
+ * @returns {Object} { sourceType, referencePath, paramValue }
+ */
+const parseMappingValue = (value) => {
+  if (!value || typeof value !== 'string') {
+    return { sourceType: 'static', referencePath: '', paramValue: '' };
+  }
+
+  if (value.startsWith('${$.node.')) {
+    return {
+      sourceType: 'reference',
+      referencePath: value.replace('${$.node.', '').replace('}', ''),
+      paramValue: '',
+    };
+  }
+
+  if (value.startsWith('${$.constant:')) {
+    return {
+      sourceType: 'static',
+      referencePath: '',
+      paramValue: value.replace('${$.constant:', '').replace('}', ''),
+    };
+  }
+
+  return {
+    sourceType: 'static',
+    referencePath: '',
+    paramValue: value,
+  };
+};
+
+/**
+ * 处理单个 carrier 下的字段列表
+ * @param {Array} result - 结果数组
+ * @param {string} carrier - 载体类型 (header/query/body)
+ * @param {Object} fields - carrier 下的字段对象
+ */
+const processMappingCarrierFields = (result, carrier, fields) => {
+  if (!fields || typeof fields !== 'object') return;
+
+  Object.entries(fields).forEach(([paramName, paramObj]) => {
+    if (!paramObj || typeof paramObj !== 'object') return;
+
+    const processedValue = parseMappingValue(paramObj.value);
+
+    const item = {
+      carrier,
+      paramName,
+      children: [],
+      paramType: paramObj.type || 'string',
+      sourceType: processedValue.sourceType,
+      paramValue: processedValue.paramValue,
+      description: paramObj.description || '',
+      referencePath: processedValue.referencePath,
+    };
+
+    if (paramObj.properties) {
+      Object.entries(paramObj.properties).forEach(([childName, childObj]) => {
+        if (childObj && typeof childObj === 'object') {
+          const childProcessedValue = parseMappingValue(childObj.value);
+          item.children.push({
+            carrier,
+            children: [],
+            paramName: childName,
+            paramType: childObj.type || 'string',
+            description: childObj.description || '',
+            sourceType: childProcessedValue.sourceType,
+            referencePath: childProcessedValue.referencePath,
+            paramValue: childProcessedValue.paramValue,
+          });
+        }
+      });
+    }
+
+    result.push(item);
+  });
+};
+
+/**
+ * 将接口返回的嵌套 mapping 格式转换为 SchemaEditor 可用的数组格式（通用函数）
+ * 接口返回格式：{ header: {}, query: {}, body: { paramName: { type, description, value, properties } } }
+ * SchemaEditor 格式：[{ paramName, paramType, description, carrier, sourceType, referencePath, paramValue, children }]
+ *
+ * @param {Object} mappingObj - 接口返回的嵌套对象格式
+ * @param {Array} carriers - 要处理的 carrier 列表，如 ['header', 'query', 'body']
+ * @returns {Array} SchemaEditor 格式的数组
+ */
+const transformMappingFromNested = (mappingObj, carriers) => {
+  const result = [];
+
+  carriers.forEach(carrier => {
+    if (mappingObj[carrier]) {
+      processMappingCarrierFields(result, carrier, mappingObj[carrier]);
+    }
+  });
+
+  return result;
+};
+
+/**
+ * 将接口返回的嵌套 inputMapping 格式转换为 SchemaEditor 可用的数组格式
+ * 接口返回格式：{ header: {}, query: {}, body: { paramName: { type, description, value, properties } } }
+ * SchemaEditor 格式：[{ paramName, paramType, description, carrier, sourceType, referencePath, paramValue, children }]
+ *
+ * @param {Object} inputMappingObj - 接口返回的嵌套对象格式
+ * @returns {Array} SchemaEditor 格式的数组
+ */
+export const transformInputMappingFromNested = (inputMappingObj = {}) => {
+  return transformMappingFromNested(inputMappingObj, CARRIER_OPTIONS);
+};
+
+/**
+ * 将接口返回的嵌套 outputMapping 格式转换为 SchemaEditor 可用的数组格式
+ * 接口返回格式：{ header: {}, body: { paramName: { type, description, value, properties } } }
+ * SchemaEditor 格式：[{ paramName, paramType, description, carrier, sourceType, referencePath, paramValue, children }]
+ *
+ * @param {Object} outputMappingObj - 接口返回的嵌套对象格式
+ * @returns {Array} SchemaEditor 格式的数组
+ */
+export const transformOutputMappingFromNested = (outputMappingObj = {}) => {
+  return transformMappingFromNested(outputMappingObj, CARRIER_OPTIONS_OUTPUT);
 };

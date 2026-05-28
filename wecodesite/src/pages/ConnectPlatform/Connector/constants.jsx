@@ -7,35 +7,48 @@
  */
 
 import React from 'react';
-import { Tag, Badge, Button, Space, Tooltip } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
+
+/**
+ * 渲染文本单元格
+ * 用于表格中显示文本内容，支持tooltip和空值显示
+ * @param {string} text - 单元格文本
+ * @returns {React.ReactNode} 渲染的单元格组件
+ */
+const renderTextCell = (text) => (
+  <Tooltip title={text}>
+    <span>{text || '-'}</span>
+  </Tooltip>
+);
 
 /**
  * 页面配置信息
  * 定义连接器管理页面的标题、描述等基本信息
  */
 export const pageInfo = {
-  title: '连接器管理',
-  description: '管理平台的连接器配置，包括触发事件和执行动作的定义',
   addButtonText: '新建连接器',
+  description: '管理平台的连接器配置，包括触发事件和执行动作的定义',
+  title: '连接器管理',
 };
 
 /**
- * 连接器状态映射
- * 用于表格中的状态显示
+ * 删除确认弹窗配置
  */
-export const CONNECTOR_STATUS_MAP = {
-  0: { text: '禁用', color: 'default' },
-  1: { text: '启用', color: 'success' },
+export const deleteConnectorModalInfo = {
+  confirmButtonText: '确认删除',
+  content: '删除后将无法恢复，确认要删除这个连接器吗？',
+  dangerColor: '#ff4d4f',
+  loadingText: '删除中...',
+  title: '确认删除连接器吗？',
 };
 
 /**
- * 连接器状态选项
- * 用于搜索表单下拉选择
+ * 连接器类型映射
+ * 用于表格中的类型显示
  */
-export const connectorStatusOptions = [
-  { value: 1, label: '启用' },
-  { value: 0, label: '禁用' },
-];
+export const CONNECTOR_TYPE_MAP = {
+  1: { text: 'HTTP' },
+};
 
 /**
  * 获取表格列配置
@@ -43,89 +56,84 @@ export const connectorStatusOptions = [
  * @param {Object} callbacks - 回调函数对象
  * @param {Function} callbacks.handleEdit - 编辑回调
  * @param {Function} callbacks.handleDeleteClick - 删除按钮点击回调
+ * @param {Function} callbacks.handleConfigClick - 配置按钮点击回调（跳转到配置页面）
  * @returns {Array} 表格列配置数组
  */
-export const getConnectorColumns = ({ handleEdit, handleDeleteClick }) => [
+export const getConnectorColumns = ({ handleEdit, handleDeleteClick, handleConfigClick }) => [
   {
-    title: '连接器名称',
-    dataIndex: 'name',
-    key: 'name',
+    title: '中文名称',
+    dataIndex: 'nameCn',
+    key: 'nameCn',
     width: 200,
-  },
-  {
-    title: '描述',
-    dataIndex: 'description',
-    key: 'description',
     ellipsis: true,
-    render: (text) => (
-      <Tooltip title={text}>
-        <span>{text || '-'}</span>
-      </Tooltip>
-    ),
+    render: renderTextCell,
   },
   {
-    title: '触发事件',
-    dataIndex: 'triggers',
-    key: 'triggers',
+    title: '英文名称',
+    dataIndex: 'nameEn',
+    key: 'nameEn',
+    width: 200,
+    ellipsis: true,
+    render: renderTextCell,
+  },
+  {
+    title: '类型',
+    dataIndex: 'connectorType',
+    key: 'connectorType',
     width: 100,
     align: 'center',
-    render: (triggers) => (
-      <Tag color="blue">{triggers?.length || 0}</Tag>
-    ),
-  },
-  {
-    title: '执行动作',
-    dataIndex: 'actions',
-    key: 'actions',
-    width: 100,
-    align: 'center',
-    render: (actions) => (
-      <Tag color="green">{actions?.length || 0}</Tag>
-    ),
-  },
-  {
-    title: '状态',
-    dataIndex: 'status',
-    key: 'status',
-    width: 80,
-    align: 'center',
-    render: (status) => {
-      const config = CONNECTOR_STATUS_MAP[status] || { text: '未知', color: 'default' };
-      return <Badge status={config.color === 'success' ? 'success' : 'default'} text={config.text} />;
+    ellipsis: true,
+    render: (connectorType) => {
+      const config = CONNECTOR_TYPE_MAP[connectorType] || { text: '-' };
+      return <span>{config.text}</span>;
     },
   },
   {
+    title: '中文描述',
+    dataIndex: 'descriptionCn',
+    key: 'descriptionCn',
+    width: 200,
+    ellipsis: true,
+    render: renderTextCell,
+  },
+  {
+    title: '英文描述',
+    dataIndex: 'descriptionEn',
+    key: 'descriptionEn',
+    width: 200,
+    ellipsis: true,
+    render: renderTextCell,
+  },
+  {
     title: '创建时间',
-    dataIndex: 'createdAt',
-    key: 'createdAt',
+    dataIndex: 'createTime',
+    key: 'createTime',
     width: 180,
+    ellipsis: true,
+    render: renderTextCell,
   },
   {
     title: '更新时间',
-    dataIndex: 'updatedAt',
-    key: 'updatedAt',
+    dataIndex: 'lastUpdateTime',
+    key: 'lastUpdateTime',
     width: 180,
+    ellipsis: true,
+    render: renderTextCell,
   },
   {
     title: '操作',
     key: 'action',
-    width: 150,
+    width: 200,
     fixed: 'right',
     render: (_, record) => (
       <Space size="small">
-        <Button
-          type="link"
-          size="small"
-          onClick={() => handleEdit(record)}
-        >
-          查看
+        <Button type="link" size="small" onClick={() => handleEdit(record)} >
+          编辑
         </Button>
-        <Button
-          type="link"
-          size="small"
-          danger
-          onClick={() => handleDeleteClick(record.id)}
-        >
+        <Button type="link" size="small" onClick={() => handleConfigClick(record)}>
+          配置
+        </Button>
+        <Button type="link" size="small" danger onClick={() => handleDeleteClick(record.id)}>
           删除
         </Button>
       </Space>
@@ -137,5 +145,5 @@ export const getConnectorColumns = ({ handleEdit, handleDeleteClick }) => [
  * 搜索配置
  */
 export const searchConfig = {
-  placeholder: '搜索连接器名称或描述',
+  placeholder: '搜索连接器中英文名称或描述',
 };

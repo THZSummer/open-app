@@ -2,8 +2,14 @@
  * 连接流编辑器页面样式
  */
 
-.flow-editor-page {
+.page-container {
+  display: flex;
   height: 100vh;
+  overflow: hidden;
+}
+
+.flow-editor-page {
+  height: 100%;
   display: flex;
   flex-direction: column;
   background-color: #fafafa;
@@ -22,11 +28,25 @@
     .header-left {
       display: flex;
       align-items: center;
+
+      .back-btn {
+        margin-right: 16px;
+      }
+
+      .flow-name {
+        font-size: 16px;
+        font-weight: 500;
+      }
     }
 
     .header-right {
       display: flex;
       align-items: center;
+
+      .node-count {
+        color: #999;
+        font-size: 12px;
+      }
     }
   }
 
@@ -42,4 +62,11 @@
       position: relative;
     }
   }
+}
+
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }

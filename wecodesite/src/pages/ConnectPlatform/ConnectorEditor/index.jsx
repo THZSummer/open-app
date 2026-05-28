@@ -1,97 +1,115 @@
 /**
  * ========================================
- * 连接器管理 - 编辑页面
+ * 连接器管理 - 接口配置页面
  * ========================================
  *
  * 功能：
- * - 创建新连接器
- * - 编辑已有连接器
+ * - 编辑连接器接口配置
+ * - 保存连接器接口配置
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Form,
   Input,
-  Switch,
-  Tabs,
   Button,
   Space,
   message,
   Divider,
-  InputNumber,
   Radio,
   Card,
 } from 'antd';
 import {
-  ArrowLeftOutlined,
-  EditOutlined,
-  SaveOutlined,
-} from '@ant-design/icons';
-import { createConnector, updateConnector, fetchConnectorDetail } from './thunk';
+  fetchConnectorConfig,
+  saveConnectorConfig,
+  transformFromSchemaFormat,
+  transformToSchemaFormat,
+} from './thunk';
 import SchemaEditor from '../../../components/SchemaEditor/SchemaEditor.jsx';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
-import './ConnectorEditor.less';
-
-const { TextArea } = Input;
+import {
+  DEFAULT_API_CONFIG,
+  AUTH_SCHEMA_MAP,
+  HTTP_METHOD_OPTIONS,
+  AUTH_TYPE_OPTIONS,
+  AUTH_REQUEST_SCHEMA_CONFIG,
+  REQUEST_SCHEMA_CONFIG,
+  RESPONSE_SCHEMA_CONFIG,
+} from './constants';
+import { queryParams } from '../../../utils/common';
+import './ConnectorEditor.m.less';
 
 /**
  * 连接器编辑页面组件
  */
 const ConnectorEditor = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-  const connectorId = searchParams.get('id');
-  const isEdit = !!connectorId;
+  const connectorId = queryParams('id');
 
   /**
    * State定义
    */
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [detailLoading, setDetailLoading] = useState(isEdit);
+  const [detailLoading, setDetailLoading] = useState(!!connectorId);
 
-  // 是否可编辑状态
-  const [editable, setEditable] = useState(!isEdit);
+  // API配置状态（用于触发重新渲染）
+  const [apiConfig, setApiConfig] = useState(DEFAULT_API_CONFIG);
+
+  /**
+   * 处理认证方式变化
+   * @param {string} newAuthType - 新的认证方式
+   */
+  const handleAuthTypeChange = (newAuthType) => {
+    const currentConfig = form.getFieldValue('apiConfig') || {};
+    const newAuthSchema = AUTH_SCHEMA_MAP[newAuthType] || [];
+
+    const newConfig = {
+      ...currentConfig,
+      authType: newAuthType,
+      authRequestSchema: newAuthSchema,
+    };
+
+    setApiConfig(newConfig);
+    form.setFieldValue('apiConfig', newConfig);
+  };
 
   /**
    * 副作用 - 加载连接器详情
    */
   useEffect(() => {
-    if (isEdit && connectorId) {
+    if (connectorId) {
       loadDetail(connectorId);
     }
   }, [connectorId]);
 
   /**
-   * 加载连接器详情
+   * 加载连接器接口配置
    * @param {string} id - 连接器ID
    */
   const loadDetail = async (id) => {
     setDetailLoading(true);
-    const result = await fetchConnectorDetail(id);
+
+    const result = await fetchConnectorConfig(id);
 
     if (result && result.code === '200') {
-      const connectorData = result.data;
-
-      // 设置表单数据
-      form.setFieldsValue({
-        name: connectorData.name,
-        description: connectorData.description,
-        status: connectorData.status === 1,
-        apiConfig: connectorData.apiConfig || {
-          protocolType: 'GET',
-          protocolAddress: '',
-          authType: 'SOA',
-          requestSchema: [],
-          responseSchema: [],
-          timeout: 30000,
-          rateLimit: 100,
-        },
-      });
+      // 检查是否有配置且 connectionConfig 存在
+      if (result.data?.hasConfig && result.data?.connectionConfig) {
+        try {
+          // 解析 connectionConfig JSON 字符串为对象
+          const parsedConfig = JSON.parse(result.data.connectionConfig);
+          // 将解析后的数据转换为表单可编辑的格式
+          const config = transformFromSchemaFormat(parsedConfig);
+          setApiConfig(config);
+          form.setFieldValue('apiConfig', config);
+        } catch (error) {
+          message.error('解析接口配置失败');
+        }
+      }
+      // 没有配置或解析失败时，保持默认状态（初始值即为默认值）
     } else {
-      message.error(result?.messageZh || result?.message || '加载连接器详情失败');
+      message.error(result?.messageZh || '加载接口配置失败');
     }
 
     setDetailLoading(false);
@@ -105,46 +123,27 @@ const ConnectorEditor = () => {
   };
 
   /**
-   * 点击编辑按钮
-   */
-  const handleEdit = () => {
-    setEditable(true);
-  };
-
-  /**
    * 提交表单
    */
   const handleSubmit = async () => {
-    if (!editable) {
-      return;
-    }
-
-    // 表单验证
-    const values = await form.validateFields();
     setLoading(true);
 
-    // 构建提交数据
-    const payload = {
-      name: values.name,
-      description: values.description || '',
-      status: values.status ? 1 : 0,
-      apiConfig: values.apiConfig,
+    // 获取接口配置数据
+    const apiConfig = form.getFieldValue('apiConfig') || {};
+
+    // 转换为符合文档4.3示例的数据格式
+    const params = {
+      connectionConfig: JSON.stringify(transformToSchemaFormat(apiConfig)),
     };
 
-    // 调用API
-    const api = isEdit ? updateConnector : createConnector;
-    const apiParams = isEdit ? [connectorId, payload] : [payload];
-    const result = await api(...apiParams);
+    // 调用API保存接口配置
+    const result = await saveConnectorConfig(connectorId, params);
 
     if (result && result.code === '200') {
-      message.success(isEdit ? '更新成功' : '创建成功');
-      if (isEdit) {
-        setEditable(false);
-      } else {
-        navigate('/connect/connectors');
-      }
+      message.success('保存成功');
+      handleBack();
     } else {
-      message.error(result?.messageZh || result?.message || '操作失败');
+      message.error(result?.messageZh || '保存失败');
     }
 
     setLoading(false);
@@ -154,18 +153,10 @@ const ConnectorEditor = () => {
    * 渲染接口配置表单
    */
   const renderApiConfig = () => {
-    const apiConfig = form.getFieldValue('apiConfig') || {
-      protocolType: 'GET',
-      protocolAddress: '',
-      authType: 'SOA',
-      requestSchema: [],
-      responseSchema: [],
-      timeout: 30000,
-      rateLimit: 100,
-    };
-
     const handleConfigChange = (field, value) => {
-      const newConfig = { ...apiConfig, [field]: value };
+      const currentConfig = form.getFieldValue('apiConfig') || {};
+      const newConfig = { ...currentConfig, [field]: value };
+      setApiConfig(newConfig);
       form.setFieldValue('apiConfig', newConfig);
     };
 
@@ -174,243 +165,130 @@ const ConnectorEditor = () => {
         <Card
           title="接口配置"
           size="small"
-          style={{
-            marginBottom: 16,
-            borderRadius: 8,
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-          }}
+          className="api-config-card"
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Form.Item
-              label="协议类型"
-              style={{ marginBottom: 12 }}
+          <Form.Item label="协议类型" className="form-item-spacing">
+            <Radio.Group
+              value={apiConfig.protocolType}
+              onChange={(e) => handleConfigChange('protocolType', e.target.value)}
             >
-              <Radio.Group
-                value={apiConfig.protocolType}
-                onChange={(e) => handleConfigChange('protocolType', e.target.value)}
-                disabled={!editable}
-              >
-                <Radio.Button value="GET">GET</Radio.Button>
-                <Radio.Button value="POST">POST</Radio.Button>
-                <Radio.Button value="PUT">PUT</Radio.Button>
-                <Radio.Button value="DELETE">DELETE</Radio.Button>
-                <Radio.Button value="PATCH">PATCH</Radio.Button>
-              </Radio.Group>
-            </Form.Item>
+              {HTTP_METHOD_OPTIONS.map(method => (
+                <Radio.Button key={method} value={method}>
+                  {method}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+          </Form.Item>
 
-            <Form.Item
-              label="认证方式"
-              style={{ marginBottom: 12 }}
-            >
-              <Radio.Group
-                value={apiConfig.authType}
-                onChange={(e) => handleConfigChange('authType', e.target.value)}
-                disabled={!editable}
-              >
-                <Radio value="SOA">SOA</Radio>
-                <Radio value="APIG">APIG</Radio>
-              </Radio.Group>
-            </Form.Item>
-          </div>
-
-          <Form.Item label="协议地址" style={{ marginBottom: 0 }}>
+          <Form.Item label="协议地址" className="form-item-no-spacing">
             <Input
               value={apiConfig.protocolAddress}
               onChange={(e) => handleConfigChange('protocolAddress', e.target.value)}
               placeholder="https://api.example.com/endpoint"
-              disabled={!editable}
-              style={{ borderRadius: 6 }}
+              className="input-border-radius"
             />
           </Form.Item>
         </Card>
 
         <Card
-          title="性能配置"
+          title="认证方式配置"
           size="small"
-          style={{
-            marginBottom: 16,
-            borderRadius: 8,
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-          }}
+          className="auth-config-card"
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <Form.Item label="超时限制（ms）" style={{ marginBottom: 0 }}>
-              <InputNumber
-                value={apiConfig.timeout || 30000}
-                onChange={(val) => handleConfigChange('timeout', val)}
-                min={1000}
-                max={300000}
-                style={{ width: '100%', borderRadius: 6 }}
-                disabled={!editable}
-                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={(value) => value.replace(/\$\s?|(,*)/g, '')}
-              />
-            </Form.Item>
+          <Form.Item label="认证方式" className="form-item-spacing">
+            <Radio.Group
+              value={apiConfig.authType}
+              onChange={(e) => handleAuthTypeChange(e.target.value)}
+            >
+              {AUTH_TYPE_OPTIONS.map(option => (
+                <Radio key={option.value} value={option.value}>
+                  {option.label}
+                </Radio>
+              ))}
+            </Radio.Group>
+          </Form.Item>
 
-            <Form.Item label="限流限制（QPS）" style={{ marginBottom: 0 }}>
-              <InputNumber
-                value={apiConfig.rateLimit || 100}
-                onChange={(val) => handleConfigChange('rateLimit', val)}
-                min={1}
-                max={10000}
-                style={{ width: '100%', borderRadius: 6 }}
-                disabled={!editable}
-                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={(value) => value.replace(/\$\s?|(,*)/g, '')}
-              />
-            </Form.Item>
-          </div>
+          <Divider className="divider-spacing">认证参数配置</Divider>
+          {apiConfig.authType ? (
+            <SchemaEditor
+              form={form}
+              apiConfig={apiConfig}
+              {...AUTH_REQUEST_SCHEMA_CONFIG}
+            />
+          ) : (
+            <div className="placeholder-text">
+              请先选择认证方式
+            </div>
+          )}
         </Card>
 
-        <Divider>入参Schema</Divider>
-        <SchemaEditor
-          form={form}
-          schemaType="requestSchema"
-          editable={editable}
-        />
+        <Card
+          title="入参配置"
+          size="small"
+          className="request-config-card"
+        >
+          <SchemaEditor
+            form={form}
+            apiConfig={apiConfig}
+            {...REQUEST_SCHEMA_CONFIG}
+          />
+        </Card>
 
-        <Divider>出参Schema</Divider>
-        <SchemaEditor
-          form={form}
-          schemaType="responseSchema"
-          editable={editable}
-        />
+        <Card
+          title="出参配置"
+          size="small"
+          className="response-config-card"
+        >
+          <SchemaEditor
+            form={form}
+            apiConfig={apiConfig}
+            {...RESPONSE_SCHEMA_CONFIG}
+          />
+        </Card>
       </div>
     );
   };
 
   /**
-   * 渲染Tab内容
-   */
-  const renderTabItems = () => [
-    {
-      key: 'basic',
-      label: '基本信息',
-      children: renderBasicInfo(),
-    },
-    {
-      key: 'apiConfig',
-      label: '接口配置',
-      children: renderApiConfig(),
-    },
-  ];
-
-  /**
-   * 渲染基本信息表单
-   */
-  const renderBasicInfo = () => (
-    <Form
-      form={form}
-      layout="vertical"
-      className="basic-info-form"
-      disabled={!editable}
-    >
-      <Form.Item
-        name="name"
-        label="连接器名称"
-        rules={[
-          { required: true, message: '请输入连接器名称' },
-          { max: 50, message: '名称不能超过50个字符' }
-        ]}
-      >
-        <Input
-          placeholder="请输入连接器名称"
-          maxLength={50}
-          showCount
-        />
-      </Form.Item>
-
-      <Form.Item
-        name="description"
-        label="连接器描述"
-        rules={[
-          { max: 500, message: '描述不能超过500个字符' }
-        ]}
-      >
-        <TextArea
-          placeholder="请输入连接器描述"
-          maxLength={500}
-          showCount
-          rows={4}
-        />
-      </Form.Item>
-
-      <Form.Item
-        name="status"
-        label="状态"
-        valuePropName="checked"
-        tooltip="启用后，该连接器可以在流程中被使用"
-      >
-        <Switch
-          checkedChildren="启用"
-          unCheckedChildren="禁用"
-        />
-      </Form.Item>
-    </Form>
-  );
-
-  /**
    * 渲染
    */
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div className="connector-editor-wrapper">
       {/* 左侧导航栏 */}
       <SimpleSidebar />
 
       {/* 主内容区 */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="editor-main-content">
         <div
-          className="connector-editor-page"
-          style={{
-            opacity: detailLoading ? 0.6 : 1,
-            pointerEvents: detailLoading ? 'none' : 'auto'
-          }}
+          className={`connector-editor-page ${detailLoading ? 'loading' : ''}`}
         >
           {/* 页面头部 */}
           <div className="page-header">
-            <div className="page-header-left">
-              <Button
-                className="back-button"
-                icon={<ArrowLeftOutlined />}
-                onClick={handleBack}
-              >
-                返回
-              </Button>
-              <div className="page-header-title">
-                <h4 className="page-title">{isEdit ? '连接器详情' : '新建连接器'}</h4>
-                <span className="page-desc">{isEdit ? '查看连接器的基本信息和接口配置' : '创建新的连接器，配置接口信息'}</span>
-              </div>
+            <div className="page-header-title">
+              <h4 className="page-title">接口配置</h4>
+              <span className="page-desc">编辑连接器的接口配置信息</span>
             </div>
-            <Space>
-              {isEdit && !editable && (
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={handleEdit}
-                  style={{ borderRadius: 6 }}
-                >
-                  编辑
-                </Button>
-              )}
-              {editable && (
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  onClick={handleSubmit}
-                  loading={loading}
-                  style={{ borderRadius: 6 }}
-                >
-                  保存
-                </Button>
-              )}
-            </Space>
           </div>
 
-          {/* Tabs 内容区域 */}
-          <Tabs
-            items={renderTabItems()}
-            defaultActiveKey="basic"
-          />
+          {/* 接口配置内容 */}
+          {renderApiConfig()}
+
+          {/* 操作按钮区域 */}
+          <div className="action-bar">
+            <Button
+              className="back-button"
+              onClick={handleBack}
+            >
+              返回
+            </Button>
+            <Button
+              type="primary"
+              onClick={handleSubmit}
+              loading={loading}
+            >
+              保存
+            </Button>
+          </div>
         </div>
       </div>
     </div>

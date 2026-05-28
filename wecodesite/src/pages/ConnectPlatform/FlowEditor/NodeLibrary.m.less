@@ -1,0 +1,85 @@
+/**
+ * 节点库面板样式
+ */
+
+.node-library-panel {
+  width: 200px;
+  height: 100%;
+  background-color: #fafafa;
+  border-right: 1px solid #e8e8e8;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+
+  .panel-header {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid #e8e8e8;
+    background-color: #fff;
+
+    .panel-title {
+      margin: 0;
+    }
+
+    .panel-desc {
+      font-size: 12px;
+    }
+  }
+
+  .node-list {
+    flex: 1;
+    overflow: auto;
+    padding: 12px;
+  }
+
+  .node-card {
+    margin-bottom: 8px;
+    user-select: none;
+    transition: all 0.2s ease;
+
+    .node-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .node-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .node-info {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      .node-label {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .node-label-disabled {
+        color: #999;
+      }
+
+      .node-label-added {
+        font-size: 11px;
+        color: #999;
+        margin-left: 4px;
+      }
+
+      .node-help-icon {
+        font-size: 12px;
+        color: #999;
+        cursor: help;
+      }
+    }
+  }
+}
