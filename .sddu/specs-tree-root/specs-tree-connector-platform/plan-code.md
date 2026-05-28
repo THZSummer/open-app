@@ -792,6 +792,44 @@ public class WebhookController {
 
 ---
 
+## 17. 日期格式化规范
+
+**规则**：禁止使用 `SimpleDateFormat`，必须使用 `DateTimeFormatter`。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `DateTimeFormatter.ISO_LOCAL_DATE_TIME` | `new SimpleDateFormat("yyyy-MM-dd")` |
+| `LocalDateTime.now().format(formatter)` | `new SimpleDateFormat("yyyy-MM-dd").format(new Date())` |
+
+```java
+// ✅ 正确示例
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+public String formatTime(LocalDateTime time) {
+    return time.format(FORMATTER);
+}
+
+// ❌ 错误示例
+import java.text.SimpleDateFormat;
+
+private static final SimpleDateFormat SDF = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+public String formatTime(Date date) {
+    return SDF.format(date);
+}
+```
+
+**原因**：
+- `SimpleDateFormat` 不是线程安全的，多线程环境下可能产生错误结果
+- `DateTimeFormatter` 是线程安全的，由 `java.time` 包提供
+- Java 8+ 推荐使用 `java.time` API
+- 避免并发环境下的日期格式化问题
+
+---
+
 ## 总结
 
 以上 16 条规范为连接器平台项目的**强制要求**，所有代码提交前必须确保符合规范。

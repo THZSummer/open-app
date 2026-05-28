@@ -94,29 +94,10 @@ public class OpTriggerService {
                     String triggerNodeId = (String) triggerNode.get("id");
 
                     // 4. 校验 authConfig
-                    Map<String, Object> authConfig = (Map<String, Object>) nodeData.get("authConfig");
-                    if (authConfig != null) {
-                        String authType = (String) authConfig.get("type");
-                        if ("SYSTOKEN".equals(authType) && headers != null) {
-                            String token = headers.get("X-Sys-Token");
-                            if (token == null || token.isEmpty()) {
-                                return Mono.error(new RuntimeException("Missing X-Sys-Token for SYSTOKEN auth"));
-                            }
-                        }
-                    }
+                    validateAuthConfig(nodeData, headers);
 
                     // 5. 校验 rateLimitConfig
-                    Map<String, Object> rateLimitConfig = (Map<String, Object>) nodeData.get("rateLimitConfig");
-                    if (rateLimitConfig != null) {
-                        Object maxQpsObj = rateLimitConfig.get("maxQps");
-                        if (maxQpsObj instanceof Number) {
-                            int maxQps = ((Number) maxQpsObj).intValue();
-                            if (maxQps <= 0) {
-                                return Mono.error(new RuntimeException("Rate limit maxQps must be positive"));
-                            }
-                            // 实际限流在 OpRateLimitFilter 中通过 Redis 滑动窗口实现
-                        }
-                    }
+                    validateRateLimitConfig(nodeData);
 
                     // 6. 校验 inputContract (基础类型检查)
                     Map<String, Object> inputContract = (Map<String, Object>) nodeData.get("inputContract");
@@ -218,38 +199,80 @@ public class OpTriggerService {
                 if (propSchema != null) {
                     String expectedType = (String) propSchema.get("type");
                     if (expectedType != null && value != null) {
-                        switch (expectedType) {
-                            case "string":
-                                if (!(value instanceof String)) {
-                                    throw new IllegalArgumentException(
-                                            "Field '" + fieldName + "' must be string, got: " + value.getClass().getSimpleName());
-                                }
-                                break;
-                            case "integer":
-                            case "number":
-                                if (!(value instanceof Number)) {
-                                    throw new IllegalArgumentException(
-                                            "Field '" + fieldName + "' must be number, got: " + value.getClass().getSimpleName());
-                                }
-                                break;
-                            case "boolean":
-                                if (!(value instanceof Boolean)) {
-                                    throw new IllegalArgumentException(
-                                            "Field '" + fieldName + "' must be boolean, got: " + value.getClass().getSimpleName());
-                                }
-                                break;
-                            case "object":
-                                if (!(value instanceof Map)) {
-                                    throw new IllegalArgumentException(
-                                            "Field '" + fieldName + "' must be object, got: " + value.getClass().getSimpleName());
-                                }
-                                break;
-                            default:
-                                break;
-                        }
+                        validateFieldType(fieldName, expectedType, value);
                     }
                 }
             }
         }
     }
+
+    /**
+     * 校验单个字段类型
+     */
+    private void validateFieldType(String fieldName, String expectedType, Object value) {
+        switch (expectedType) {
+            case "string":
+                if (!(value instanceof String)) {
+                    throw new IllegalArgumentException(
+                            "Field '" + fieldName + "' must be string, got: " + value.getClass().getSimpleName());
+                }
+                break;
+            case "integer":
+            case "number":
+                if (!(value instanceof Number)) {
+                    throw new IllegalArgumentException(
+                            "Field '" + fieldName + "' must be number, got: " + value.getClass().getSimpleName());
+                }
+                break;
+            case "boolean":
+                if (!(value instanceof Boolean)) {
+                    throw new IllegalArgumentException(
+                            "Field '" + fieldName + "' must be boolean, got: " + value.getClass().getSimpleName());
+                }
+                break;
+            case "object":
+                if (!(value instanceof Map)) {
+                    throw new IllegalArgumentException(
+                            "Field '" + fieldName + "' must be object, got: " + value.getClass().getSimpleName());
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    /**
+     * 校验 authConfig
+     */
+    @SuppressWarnings("unchecked")
+    private void validateAuthConfig(Map<String, Object> nodeData, Map<String, String> headers) {
+        Map<String, Object> authConfig = (Map<String, Object>) nodeData.get("authConfig");
+        if (authConfig == null) {
+            return;
+        }
+        String authType = (String) authConfig.get("type");
+        if (!"SYSTOKEN".equals(authType) || headers == null) {
+            return;
+        }
+        String token = headers.get("X-Sys-Token");
+        if (token == null || token.isEmpty()) {
+            throw new RuntimeException("Missing X-Sys-Token for SYSTOKEN auth");
+        }
+    }
+
+    /**
+     * 校验 rateLimitConfig
+     */
+    @SuppressWarnings("unchecked")
+    private void validateRateLimitConfig(Map<String, Object> nodeData) {
+        Map<String, Object> rateLimitConfig = (Map<String, Object>) nodeData.get("rateLimitConfig");
+        if (rateLimitConfig == null) {
+            return;
+        }
+        Object maxQpsObj = rateLimitConfig.get("maxQps");
+        if (maxQpsObj instanceof Number && ((Number) maxQpsObj).intValue() <= 0) {
+            throw new RuntimeException("Rate limit maxQps must be positive");
+        }
+    }
+
 }
