@@ -9,6 +9,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExe
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -40,13 +41,16 @@ public class OpTriggerService {
 
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
+    private final AuthValidatorRegistry authValidatorRegistry;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
 
     public OpTriggerService(
             ObjectMapper objectMapper,
+            AuthValidatorRegistry authValidatorRegistry,
             ReactiveSequentialExecutor executor,
             OpFlowVersionReadRepository flowVersionReadRepository) {
         this.objectMapper = objectMapper;
+        this.authValidatorRegistry = authValidatorRegistry;
         this.executor = executor;
         this.flowVersionReadRepository = flowVersionReadRepository;
     }
@@ -247,17 +251,7 @@ public class OpTriggerService {
     @SuppressWarnings("unchecked")
     private void validateAuthConfig(Map<String, Object> nodeData, Map<String, String> headers) {
         Map<String, Object> authConfig = (Map<String, Object>) nodeData.get("authConfig");
-        if (authConfig == null) {
-            return;
-        }
-        String authType = (String) authConfig.get("type");
-        if (!"SYSTOKEN".equals(authType) || headers == null) {
-            return;
-        }
-        String token = headers.get("X-Sys-Token");
-        if (token == null || token.isEmpty()) {
-            throw new RuntimeException("Missing X-Sys-Token for SYSTOKEN auth");
-        }
+        authValidatorRegistry.validate(authConfig, headers);
     }
 
     /**
