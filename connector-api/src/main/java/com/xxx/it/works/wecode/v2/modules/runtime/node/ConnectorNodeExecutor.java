@@ -2,6 +2,8 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
+import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -12,8 +14,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import org.springframework.web.util.UriComponentsBuilder;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -23,14 +25,13 @@ import java.util.Map;
 /**
  * 连接器节点执行器
  * <p>
- * v5.5:
+ * v5.7:
  * <ul>
- *   <li>访问 {@code data.inputMapping} 结构化 {@code {header, query, body}} 替代扁平 {@code inputMappings}</li>
- *   <li>NodeConfig 位于 {@code config.data.*} (React Flow 格式)</li>
- *   <li>使用 {@link ExpressionResolver} 解析表达式</li>
- *   <li>错误信息使用 {@code errorInfo} 结构化 Map</li>
+ *   <li>从 {@code data.connectorVersionId} 查找 {@code connector_version_t.connection_config}</li>
+ *   <li>从 connectionConfig 提取 {@code protocolConfig.url/method}、{@code authConfig}、{@code timeoutMs}</li>
+ *   <li>从 {@code data.inputMapping} 结构化配置构建请求参数</li>
+ *   <li>向后兼容: 无 connectorVersionId 时从 data 直接读取 url/method</li>
  * </ul>
- * 通过 WebClient reactive 调用下游 HTTP API (全 reactive 无 .block()).
  * </p>
  */
 public class ConnectorNodeExecutor implements NodeExecutor {
@@ -41,15 +42,19 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final WebClient webClient;
     private final ExpressionResolver expressionResolver;
     private final CredentialInjectorRegistry credentialInjectorRegistry;
+    private final OpConnectorVersionReadRepository connectorVersionReadRepository;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
-    public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient, CredentialInjectorRegistry credentialInjectorRegistry) {
+    public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
+                                  CredentialInjectorRegistry credentialInjectorRegistry,
+                                  OpConnectorVersionReadRepository connectorVersionReadRepository) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
         this.expressionResolver = new ExpressionResolver();
         this.credentialInjectorRegistry = credentialInjectorRegistry;
+        this.connectorVersionReadRepository = connectorVersionReadRepository;
     }
 
     @Override
@@ -57,77 +62,157 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         return "connector";
     }
 
-@Override
+    @Override
     @SuppressWarnings("unchecked")
     public Mono<NodeOutput> execute(ExecutionContext context, Object nodeConfig) {
-        return Mono.fromCallable(() -> {
-            Map<String, Object> config;
-            if (nodeConfig instanceof Map) {
-                config = (Map<String, Object>) nodeConfig;
+        Map<String, Object> config;
+        if (nodeConfig instanceof Map) {
+            config = (Map<String, Object>) nodeConfig;
+        } else {
+            config = objectMapper.convertValue(nodeConfig, Map.class);
+        }
+
+        String nodeId = (String) config.get("id");
+
+        // v5.5: React Flow 格式 — 节点配置在 data 字段内
+        Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
+
+        log.info("Connector node executing: nodeId={}", nodeId);
+
+        // v5.7: 从 connectorVersionId 查找连接器配置
+        Object connectorVersionIdObj = data.get("connectorVersionId");
+        if (connectorVersionIdObj != null) {
+            Long connectorVersionId;
+            if (connectorVersionIdObj instanceof Number) {
+                connectorVersionId = ((Number) connectorVersionIdObj).longValue();
             } else {
-                config = objectMapper.convertValue(nodeConfig, Map.class);
+                connectorVersionId = Long.valueOf(connectorVersionIdObj.toString());
             }
+            return connectorVersionReadRepository.findById(connectorVersionId)
+                    .flatMap(versionEntity -> executeWithConnectionConfig(context, config, data, nodeId, versionEntity))
+                    .switchIfEmpty(Mono.defer(() -> executeLegacy(context, config, data, nodeId)));
+        }
 
-            String nodeId = (String) config.get("id");
-
-            // v5.5: React Flow 格式 — 节点配置在 data 字段内
-            Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
-
-            log.info("Connector node executing: nodeId={}", nodeId);
-
-            long timeoutMs = DEFAULT_TIMEOUT_MS;
-
-            // v5.5: 从 data 字段读取 url/method/timeoutMs
-            String url = (String) data.get("url");
-            String method = (String) data.getOrDefault("method", "POST");
-            Integer timeout = (Integer) data.get("timeoutMs");
-            if (timeout != null && timeout > 0) {
-                timeoutMs = timeout;
-            }
-
-            // v5.6: 从 data.inputMapping 结构化配置构建请求
-            Map<String, Object> params = buildRequestParams(data, context);
-            @SuppressWarnings("unchecked")
-            Map<String, String> headers = (Map<String, String>) params.get("headers");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
-
-            // 注入凭证到请求头 (策略模式)
-            Map<String, Object> authConfig = (Map<String, Object>) data.get("authConfig");
-            credentialInjectorRegistry.inject(authConfig, headers);
-
-            // 构建 input 分区: 记录本节点的输入
-            Map<String, Object> input = new HashMap<>();
-            input.put("url", url);
-            input.put("method", method);
-            input.put("headers", new HashMap<>(headers));
-            input.put("body", new HashMap<>(requestBody));
-            if (queryParams != null && !queryParams.isEmpty()) {
-                input.put("query", new HashMap<>(queryParams));
-            }
-
-            long startTime = System.currentTimeMillis();
-
-            // 返回参数元组用于后续 reactive 调用
-            return Arrays.asList(nodeId, url, method, headers, queryParams, requestBody, timeoutMs, context, input, startTime);
-        }).flatMap(params -> {
-            // 解包参数并执行 HTTP 调用 (全 reactive 方式)
-            String nodeId = (String) params.get(0);
-            String url = (String) params.get(1);
-            String method = (String) params.get(2);
-            Map<String, String> headers = (Map<String, String>) params.get(3);
-            Map<String, Object> queryParams = (Map<String, Object>) params.get(4);
-            Map<String, Object> requestBody = (Map<String, Object>) params.get(5);
-            long timeoutMs = (Long) params.get(6);
-            ExecutionContext ctx = (ExecutionContext) params.get(7);
-            Map<String, Object> input = (Map<String, Object>) params.get(8);
-            long startTime = (Long) params.get(9);
-            return executeHttpCallReactive(nodeId, url, method, headers, queryParams, requestBody, timeoutMs, ctx, input, startTime);
-        });
+        // 向后兼容: 无 connectorVersionId 时从 data 直接读取
+        return executeLegacy(context, config, data, nodeId);
     }
 
+    /**
+     * v5.7: 从 connectionConfig 提取配置并执行
+     */
+    @SuppressWarnings("unchecked")
+    private Mono<NodeOutput> executeWithConnectionConfig(ExecutionContext context,
+                                                          Map<String, Object> config,
+                                                          Map<String, Object> data,
+                                                          String nodeId,
+                                                          ConnectorVersionEntity versionEntity) {
+        Map<String, Object> connectionConfig = versionEntity.parseConnectionConfig(objectMapper);
+        if (connectionConfig.isEmpty()) {
+            log.warn("Connector version {} has empty connectionConfig, falling back to legacy", versionEntity.getId());
+            return executeLegacy(context, config, data, nodeId);
+        }
+
+        // 提取 protocolConfig
+        Map<String, Object> protocolConfig = (Map<String, Object>) connectionConfig.get("protocolConfig");
+        String url = null;
+        String method = "POST";
+        if (protocolConfig != null) {
+            url = (String) protocolConfig.get("url");
+            Object m = protocolConfig.get("method");
+            if (m != null) {
+                method = m.toString();
+            }
+        } else {
+            // 向后兼容: protocolConfig 可能直接在顶层
+            url = (String) connectionConfig.get("url");
+            Object m = connectionConfig.get("method");
+            if (m != null) {
+                method = m.toString();
+            }
+        }
+
+        if (url == null || url.isBlank()) {
+            log.warn("No url found in connectionConfig for connector version {}, falling back to legacy",
+                    versionEntity.getId());
+            return executeLegacy(context, config, data, nodeId);
+        }
+
+        // 提取 timeoutMs
+        long timeoutMs = DEFAULT_TIMEOUT_MS;
+        Object timeoutObj = connectionConfig.get("timeoutMs");
+        if (timeoutObj instanceof Number) {
+            timeoutMs = ((Number) timeoutObj).longValue();
+        }
+
+        // 提取 authConfig
+        Map<String, Object> authConfig = versionEntity.getAuthConfig(objectMapper);
+
+        // v5.6: 从 data.inputMapping 结构化配置构建请求
+        Map<String, Object> params = buildRequestParams(data, context);
+        Map<String, String> headers = (Map<String, String>) params.get("headers");
+        Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
+        Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
+
+        // 注入凭证到请求头
+        credentialInjectorRegistry.inject(authConfig, headers);
+
+        // 构建 input 分区
+        Map<String, Object> input = new HashMap<>();
+        input.put("url", url);
+        input.put("method", method);
+        input.put("connectorVersionId", versionEntity.getId());
+        input.put("headers", new HashMap<>(headers));
+        input.put("body", new HashMap<>(requestBody));
+        if (queryParams != null && !queryParams.isEmpty()) {
+            input.put("query", new HashMap<>(queryParams));
+        }
+
+        long startTime = System.currentTimeMillis();
+        String finalUrl = url;
+        String finalMethod = method;
+
+        return executeHttpCallReactive(nodeId, finalUrl, finalMethod, headers, queryParams,
+                requestBody, timeoutMs, context, input, startTime);
+    }
+
+    /**
+     * 向后兼容: 从 data 直接读取 url/method (旧格式)
+     */
+    @SuppressWarnings("unchecked")
+    private Mono<NodeOutput> executeLegacy(ExecutionContext context, Map<String, Object> config,
+                                            Map<String, Object> data, String nodeId) {
+        log.info("Connector node executing (legacy mode): nodeId={}", nodeId);
+
+        long timeoutMs = DEFAULT_TIMEOUT_MS;
+
+        String url = (String) data.get("url");
+        String method = (String) data.getOrDefault("method", "POST");
+        Integer timeout = (Integer) data.get("timeoutMs");
+        if (timeout != null && timeout > 0) {
+            timeoutMs = timeout;
+        }
+
+        Map<String, Object> params = buildRequestParams(data, context);
+        Map<String, String> headers = (Map<String, String>) params.get("headers");
+        Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
+        Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
+
+        Map<String, Object> authConfig = (Map<String, Object>) data.get("authConfig");
+        credentialInjectorRegistry.inject(authConfig, headers);
+
+        Map<String, Object> input = new HashMap<>();
+        input.put("url", url);
+        input.put("method", method);
+        input.put("headers", new HashMap<>(headers));
+        input.put("body", new HashMap<>(requestBody));
+        if (queryParams != null && !queryParams.isEmpty()) {
+            input.put("query", new HashMap<>(queryParams));
+        }
+
+        long startTime = System.currentTimeMillis();
+        return executeHttpCallReactive(nodeId, url, method, headers, queryParams,
+                requestBody, timeoutMs, context, input, startTime);
+    }
 
     /**
      * v5.6: 从映射字段提取值，兼容旧格式（裸字符串）和新格式（{type, value} 对象）
@@ -162,6 +247,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         return Collections.emptyMap();
     }
+
     /**
      * 构建 HTTP 请求参数 (从 inputMapping 提取)
      */
@@ -231,19 +317,16 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         output.setNodeType("connector");
         output.setInput(input);
 
-        // 构建 URI，包含 query 参数
-        String requestUri = url;
+        // 构建 URI，包含 query 参数（UriComponentsBuilder 自动处理 URL 编码）
+        String requestUri;
         if (queryParams != null && !queryParams.isEmpty()) {
-            StringBuilder uriBuilder = new StringBuilder(url);
-            boolean first = !url.contains("?");
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
             for (Map.Entry<String, Object> entry : queryParams.entrySet()) {
-                uriBuilder.append(first ? '?' : '&')
-                        .append(entry.getKey())
-                        .append('=')
-                        .append(entry.getValue());
-                first = false;
+                uriBuilder.queryParam(entry.getKey(), entry.getValue());
             }
-            requestUri = uriBuilder.toString();
+            requestUri = uriBuilder.build(true).toUriString();
+        } else {
+            requestUri = url;
         }
 
         WebClient.RequestBodySpec requestSpec = webClient
@@ -251,8 +334,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                 .uri(URI.create(requestUri))
                 .headers(h -> headers.forEach(h::set));
 
-        if (!"GET".equalsIgnoreCase(method)) {
-            requestSpec.bodyValue(body != null && !body.isEmpty() ? body : new HashMap<>());
+        if (!"GET".equalsIgnoreCase(method) && body != null && !body.isEmpty()) {
+            requestSpec.bodyValue(body);
         }
 
         // 全 reactive 链: 无 .block()
@@ -262,7 +345,6 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                 .timeout(Duration.ofMillis(timeoutMs))
                 .map(responseBody -> {
                     log.info("Connector HTTP call succeeded: nodeId={}, status=success", nodeId);
-                    // 解析响应为 output 分区
                     Map<String, Object> outputData = new HashMap<>();
                     if (responseBody != null) {
                         try {
@@ -281,7 +363,6 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                 .onErrorResume(e -> {
                     log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
 
-                    // v5.5: 使用结构化 errorInfo
                     Map<String, Object> errorInfo = new HashMap<>();
                     errorInfo.put("code", "6001");
                     errorInfo.put("message", e.getMessage());
