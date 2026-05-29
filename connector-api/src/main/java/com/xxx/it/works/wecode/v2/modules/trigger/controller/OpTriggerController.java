@@ -58,7 +58,8 @@ public class OpTriggerController {
     @PostMapping(value = "/{flowId}/invoke", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "HTTP 触发连接流 (v5.5)",
                description = "接收外部系统请求并同步执行连接流，返回完整执行结果。"
-                           + "请求体按 data.inputContract 校验，认证按 data.authConfig 校验，限流按 data.rateLimitConfig.maxQps.")
+                           + "请求体按 data.inputContract 校验，认证按 data.authConfig 校验，限流按 data.rateLimitConfig.maxQps."
+                           + "请求头 hasSteps=true 时返回各步骤详情，默认不返回。")
     public Mono<ExecutionResult> invokeFlow(
             @Parameter(description = "连接流ID")
             @PathVariable Long flowId,
@@ -69,6 +70,12 @@ public class OpTriggerController {
         log.info("HTTP trigger invoke: flowId={}", flowId);
 
         // 认证/限流/入参校验全部由 OpTriggerService 根据编排配置中的 data.authConfig/data.rateLimitConfig/data.inputContract 动态处理
-        return triggerService.invokeFlow(flowId, triggerData, allHeaders, null);
+        return triggerService.invokeFlow(flowId, triggerData, allHeaders, null)
+                .map(result -> {
+                    if (!"true".equalsIgnoreCase(allHeaders.get("hasSteps"))) {
+                        result.getSteps().clear();
+                    }
+                    return result;
+                });
     }
 }

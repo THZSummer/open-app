@@ -35,7 +35,7 @@ public class ExecutionResult {
     /** 总耗时(毫秒) */
     private long totalDurationMs;
 
-    /** 各步骤详情 */
+    /** 各步骤详情 (仅 hasSteps=true 时返回) */
     private List<StepDetail> steps;
 
     /** 结构化错误信息 (整体失败时): {code, messageZh, messageEn, ...} */

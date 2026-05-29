@@ -382,9 +382,11 @@ class OpConnectorControllerWebMvcTest {
         @Test
         @DisplayName("✅ TC-024: 已配置")
         void testConfigHasConfig() throws Exception {
+            ConnectorConfigResponse mockResp = new ConnectorConfigResponse();
+            mockResp.setHasConfig(true);
+            mockResp.setConnectionConfig("{\"protocol\":\"HTTP\",\"url\":\"https://example.com\"}");
             when(connectorService.getConnectorConfig(100L))
-                    .thenReturn(ApiResponse.success(ConnectorConfigResponse.of(
-                            "{\\\"protocol\\\":\\\"HTTP\\\",\\\"url\\\":\\\"https://example.com\\\"}")));
+                    .thenReturn(ApiResponse.success(mockResp));
 
             mockMvc.perform(get("/service/open/v2/connectors/{connectorId}/config", "100"))
                     .andExpect(status().isOk())

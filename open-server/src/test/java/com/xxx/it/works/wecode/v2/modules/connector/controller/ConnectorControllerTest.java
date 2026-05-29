@@ -126,8 +126,10 @@ class OpConnectorControllerTest {
         @Test
         @DisplayName("查看配置委托给 service")
         void testGetConnectorConfig() {
+            ConnectorConfigResponse configResp = new ConnectorConfigResponse();
+            configResp.setHasConfig(true);
             when(connectorService.getConnectorConfig(100L))
-                    .thenReturn(ApiResponse.success(ConnectorConfigResponse.of("{}")));
+                    .thenReturn(ApiResponse.success(configResp));
 
             ApiResponse<ConnectorConfigResponse> response = connectorController.getConnectorConfig(100L);
             assertTrue(response.getData().isHasConfig());
