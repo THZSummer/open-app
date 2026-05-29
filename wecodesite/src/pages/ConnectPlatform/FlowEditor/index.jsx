@@ -152,7 +152,14 @@ const loadFlowDetail = async (id) => {
         return;
       }
 
+      // 删除节点
       setNodes((nds) => nds.filter((node) => node.id !== nodeIdToDelete));
+
+      // 删除与该节点相关的连线
+      setEdges((eds) => eds.filter(
+        (edge) => edge.source !== nodeIdToDelete && edge.target !== nodeIdToDelete
+      ));
+
       setSelectedNode(null);
       return;
     }

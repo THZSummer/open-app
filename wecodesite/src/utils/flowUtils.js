@@ -163,6 +163,10 @@ export const getUpstreamNodes = (nodeId, nodes = [], edges = []) => {
 const flattenObjectProperties = (propertiesObj, carrier, parentPath = '') => {
   const result = [];
 
+  if (!propertiesObj || typeof propertiesObj !== 'object') {
+    return result;
+  }
+
   Object.entries(propertiesObj).forEach(([paramName, paramDef]) => {
     const fullPath = parentPath ? `${parentPath}.${paramName}` : paramName;
 

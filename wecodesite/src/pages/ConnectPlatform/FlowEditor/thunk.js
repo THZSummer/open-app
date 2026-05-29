@@ -7,6 +7,54 @@
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
+import { transformConnectorConfigToInputMapping } from '../ConnectorEditor/thunk';
+
+/**
+ * 比较两个值是否发生变化
+ *
+ * @param {*} newValue - 新值
+ * @param {*} currentValue - 当前值
+ * @returns {boolean} 是否发生变化
+ */
+export const hasChanged = (newValue, currentValue) => {
+  return JSON.stringify(newValue) !== JSON.stringify(currentValue);
+};
+
+/**
+ * 从连接器配置中提取需要更新的字段
+ * 根据配置内容判断 inputMapping 和 outputParams 是否需要更新
+ *
+ * @param {Object} params - 函数参数
+ * @param {Object} params.parsedConnectionConfig - 解析后的连接器配置
+ * @param {Object} params.currentNode - 当前节点数据
+ * @returns {Object} 需要更新的字段对象
+ */
+export const extractUpdatedFields = ({
+  parsedConnectionConfig,
+  currentNode,
+}) => {
+  const updatedFields = {};
+
+  if (parsedConnectionConfig.inputContract) {
+    const newInputMapping = transformConnectorConfigToInputMapping(parsedConnectionConfig);
+    const currentInputMapping = currentNode.data.inputMapping;
+
+    if (!currentInputMapping || hasChanged(newInputMapping, currentInputMapping)) {
+      updatedFields.inputMapping = newInputMapping;
+    }
+  }
+
+  if (parsedConnectionConfig.outputContract) {
+    const newOutputParams = parsedConnectionConfig.outputContract || [];
+    const currentOutputParams = currentNode.data.outputParams;
+
+    if (hasChanged(newOutputParams, currentOutputParams)) {
+      updatedFields.outputParams = newOutputParams;
+    }
+  }
+
+  return updatedFields;
+};
 
 /**
  * 获取连接流详情

@@ -173,7 +173,7 @@ export const getFlowColumns = ({ handleEdit, handleView, handleActionClick }) =>
  * 搜索配置
  */
 export const flowSearchConfig = {
-  placeholder: '搜索流程名称或描述',
+  placeholder: '搜索连接流中英文名称',
 };
 
 /**

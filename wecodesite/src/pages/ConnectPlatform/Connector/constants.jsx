@@ -145,5 +145,5 @@ export const getConnectorColumns = ({ handleEdit, handleDeleteClick, handleConfi
  * 搜索配置
  */
 export const searchConfig = {
-  placeholder: '搜索连接器中英文名称或描述',
+  placeholder: '搜索连接器中英文名称',
 };

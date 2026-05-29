@@ -31,6 +31,7 @@ import SchemaEditor from '../../../components/SchemaEditor/SchemaEditor.jsx';
 import { getUpstreamParams, transformInputMappingFromNested, transformOutputMappingFromNested } from '../../../utils/flowUtils';
 import { fetchConnectorList } from '../Connector/thunk';
 import { fetchConnectorConfig, transformConnectorConfigToInputMapping } from '../ConnectorEditor/thunk';
+import { extractUpdatedFields } from './thunk';
 import './NodeProperties.m.less';
 
 const { Title, Text, Paragraph } = Typography;
@@ -106,15 +107,18 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
 
       setConnectorConfig(parsedConnectionConfig);
 
-      if (parsedConnectionConfig.inputContract && !currentNode.data.inputMapping) {
-        const inputMapping = transformConnectorConfigToInputMapping(parsedConnectionConfig);
-        const outputParams = parsedConnectionConfig.outputContract || [];
+      const updatedFields = extractUpdatedFields({
+        parsedConnectionConfig,
+        currentNode,
+      });
+
+      // 如果有需要更新的字段，统一调用一次 onUpdateNode
+      if (Object.keys(updatedFields).length > 0) {
         onUpdateNode({
           ...currentNode,
           data: {
             ...currentNode.data,
-            inputMapping,
-            outputParams,
+            ...updatedFields,
           },
         });
       }
