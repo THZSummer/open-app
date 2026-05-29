@@ -229,6 +229,7 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
 
   /**
    * 当 selectedNode 是 connector 类型时获取连接器列表和配置
+   * 只有当 connectorId 变化时才重新加载配置，避免覆盖用户的手动修改
    */
   useEffect(() => {
     if (!selectedNode || selectedNode.type !== 'connector') {
@@ -238,8 +239,15 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
     const connectorId = selectedNode.data.connectorVersionId || selectedNode.data.config?.connectorId;
 
     loadConnectors();
-    loadConnectorConfig(connectorId, selectedNode);
-  }, [selectedNode]);
+
+    /** 仅当 connectorId 存在时才加载配置 */
+    if (connectorId) {
+      loadConnectorConfig(connectorId, selectedNode);
+    }
+  }, [
+    selectedNode?.data?.connectorVersionId,
+    selectedNode?.data?.config?.connectorId
+  ]);
 
   /**
    * 当 selectedNode 变化时，初始化 Form 数据
