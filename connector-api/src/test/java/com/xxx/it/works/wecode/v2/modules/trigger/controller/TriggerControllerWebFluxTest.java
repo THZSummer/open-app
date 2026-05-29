@@ -66,6 +66,7 @@ class OpTriggerControllerWebFluxTest {
             webTestClient.post()
                     .uri("/api/v1/trigger/{flowId}/invoke", "2000000000000000001")
                     .header("X-Sys-Token", "valid-token")
+                    .header("hasSteps", "true")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{\"sender\":\"external_system\",\"content\":\"test\"}")
                     .exchange()
@@ -114,6 +115,7 @@ class OpTriggerControllerWebFluxTest {
             webTestClient.post()
                     .uri("/api/v1/trigger/{flowId}/invoke", "999")
                     .header("X-Sys-Token", "valid-token")
+                    .header("hasSteps", "true")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{\"sender\":\"test\"}")
                     .exchange()
@@ -121,7 +123,7 @@ class OpTriggerControllerWebFluxTest {
         }
 
         @Test
-        @DisplayName("✅ TC-075: 同步返回完整执行结果")
+        @DisplayName("✅ TC-075: hasSteps=true 时返回步骤详情")
         void testInvokeWithSteps() throws Exception {
             ExecutionResult result = new ExecutionResult();
             result.setExecutionId("exec-001");
@@ -142,6 +144,7 @@ class OpTriggerControllerWebFluxTest {
             webTestClient.post()
                     .uri("/api/v1/trigger/{flowId}/invoke", "200")
                     .header("X-Sys-Token", "valid-token")
+                    .header("hasSteps", "true")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{}")
                     .exchange()
