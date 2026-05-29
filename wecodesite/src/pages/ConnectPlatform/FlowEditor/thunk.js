@@ -23,6 +23,7 @@ export const hasChanged = (newValue, currentValue) => {
 /**
  * 从连接器配置中提取需要更新的字段
  * 根据配置内容判断 inputMapping 和 outputParams 是否需要更新
+ * 注意：只有在字段为空时才进行初始化，不会覆盖已存在的用户配置
  *
  * @param {Object} params - 函数参数
  * @param {Object} params.parsedConnectionConfig - 解析后的连接器配置
@@ -39,7 +40,8 @@ export const extractUpdatedFields = ({
     const newInputMapping = transformConnectorConfigToInputMapping(parsedConnectionConfig);
     const currentInputMapping = currentNode.data.inputMapping;
 
-    if (!currentInputMapping || hasChanged(newInputMapping, currentInputMapping)) {
+    /** 仅当 inputMapping 为空时才初始化，不会覆盖已存在的配置 */
+    if (!currentInputMapping) {
       updatedFields.inputMapping = newInputMapping;
     }
   }
@@ -48,7 +50,8 @@ export const extractUpdatedFields = ({
     const newOutputParams = parsedConnectionConfig.outputContract || [];
     const currentOutputParams = currentNode.data.outputParams;
 
-    if (hasChanged(newOutputParams, currentOutputParams)) {
+    /** 仅当 outputParams 为空时才初始化，不会覆盖已存在的配置 */
+    if (!currentOutputParams) {
       updatedFields.outputParams = newOutputParams;
     }
   }
