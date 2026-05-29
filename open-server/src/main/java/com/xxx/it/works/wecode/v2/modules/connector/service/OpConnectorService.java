@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpConnectorService {
 
-    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneId.of("UTC"));
+    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").withZone(ZoneId.of("Asia/Shanghai"));
 
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
@@ -207,7 +207,10 @@ public class OpConnectorService {
             return ApiResponse.success(ConnectorConfigResponse.empty());
         }
 
-        return ApiResponse.success(ConnectorConfigResponse.of(version.getConnectionConfig()));
+        return ApiResponse.success(ConnectorConfigResponse.of(
+                version,
+                formatIso(version.getCreateTime()),
+                formatIso(version.getLastUpdateTime())));
     }
 
     // ==================== #7 编辑连接配置 ====================
