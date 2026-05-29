@@ -163,7 +163,7 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
 
     /** 切换连接器时，需要清空旧的inputMapping和outputParams，重新根据新连接器生成 */
     const updatedData = {
-      connectorVersionId: connectorId,
+      connectorId,
       connector: connector || null,
     };
 
@@ -236,7 +236,7 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
       return;
     }
 
-    const connectorId = selectedNode.data.connectorVersionId || selectedNode.data.config?.connectorId;
+    const connectorId = selectedNode.data.connectorId || selectedNode.data.config?.connectorId;
 
     loadConnectors();
 
@@ -245,7 +245,8 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
       loadConnectorConfig(connectorId, selectedNode);
     }
   }, [
-    selectedNode?.data?.connectorVersionId,
+    selectedNode?.id,
+    selectedNode?.data?.connectorId,
     selectedNode?.data?.config?.connectorId
   ]);
 
@@ -305,11 +306,7 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
   const handleConfigChange = (configField, value) => {
     const updatedData = { ...data };
 
-    if (configField === 'connectorId') {
-      updatedData.connectorVersionId = value;
-    } else {
-      updatedData[configField] = value;
-    }
+    updatedData[configField] = value;
 
     onUpdateNode({
       ...selectedNode,
@@ -378,7 +375,7 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
   const renderActionConfig = () => {
     const upstreamParams = getUpstreamParams(id, nodes, edges);
 
-    const connectorId = data.connectorVersionId || data.config?.connectorId;
+    const connectorId = data.connectorId || data.config?.connectorId;
 
     return (
       <>

@@ -276,7 +276,7 @@ export const transformFromBackend = (orchestrationConfig) => {
     return { nodes: [], edges: [] };
   }
 
-  const nodes = orchestrationConfig.nodes || [];
+  const nodes = extractPropertiesFromNodes(orchestrationConfig.nodes || []);
 
   const edges = orchestrationConfig.edges || [];
 
@@ -291,11 +291,11 @@ export const transformFromBackend = (orchestrationConfig) => {
  */
 const getMappingTargetByCarrier = (result, carrier) => {
   const carrierMap = {
-    header: result.header,
-    query: result.query,
-    body: result.body,
+    header: result.header.properties,
+    query: result.query.properties,
+    body: result.body.properties,
   };
-  return carrierMap[carrier] || result.body;
+  return carrierMap[carrier] || result.body.properties;
 };
 
 /**
@@ -372,9 +372,9 @@ export const transformMappingToNewFormat = ({
   mappingArray = []
 } = {}) => {
   const result = {
-    header: {},
-    query: {},
-    body: {},
+    header: { type: 'object', properties: {} },
+    query: { type: 'object', properties: {} },
+    body: { type: 'object', properties: {} },
   };
 
   mappingArray.forEach(item => {
@@ -600,4 +600,94 @@ export const transformInputMappingFromNested = (inputMappingObj = {}) => {
  */
 export const transformOutputMappingFromNested = (outputMappingObj = {}) => {
   return transformMappingFromNested(outputMappingObj, CARRIER_OPTIONS_OUTPUT);
+};
+
+/**
+ * 将 carrier 字段（header/query/body）的值从 { type: 'object', properties: {...} } 转换为 {...}
+ * 用于处理后端返回的数据结构，将嵌套的 properties 层提取出来
+ *
+ * @param {Object} carrierData - carrier 数据，可能是 { type: 'object', properties: {...} } 或直接是 {...}
+ * @returns {Object} 转换后的数据
+ */
+const extractPropertiesFromCarrier = (carrierData) => {
+  if (!carrierData || typeof carrierData !== 'object') {
+    return carrierData;
+  }
+
+  // 如果有 type 和 properties 字段，提取 properties
+  if (carrierData.type === 'object' && carrierData.properties) {
+    return carrierData.properties;
+  }
+
+  // 否则直接返回原数据
+  return carrierData;
+};
+
+/**
+ * 处理单个节点的 header/query/body 字段，提取 properties 层
+ *
+ * @param {Object} mappingData - 包含 header/query/body 的数据对象
+ * @returns {Object} 转换后的数据对象
+ */
+const extractPropertiesFromMappingData = (mappingData) => {
+  if (!mappingData || typeof mappingData !== 'object') {
+    return mappingData;
+  }
+
+  const result = {};
+
+  // 处理 header, query, body
+  ['header', 'query', 'body'].forEach(carrier => {
+    if (mappingData[carrier]) {
+      result[carrier] = extractPropertiesFromCarrier(mappingData[carrier]);
+    }
+  });
+
+  return result;
+};
+
+/**
+ * 将 nodes 中的 inputContract、inputMapping、outputParams、outputMapping
+ * 的 header、body、query 值从 { type: 'object', properties: {...} } 转换为 {...}
+ *
+ * 后端返回格式：{ header: { type: 'object', properties: {...} }, query: {...} }
+ * 转换后格式：{ header: {...}, query: {...} }
+ *
+ * @param {Array} nodes - React Flow 节点列表
+ * @returns {Array} 转换后的节点列表
+ */
+export const extractPropertiesFromNodes = (nodes = []) => {
+  if (!Array.isArray(nodes)) {
+    return nodes;
+  }
+
+  return nodes.map(node => {
+    const { type, data } = node;
+
+    if (!data) {
+      return node;
+    }
+
+    const transformedData = { ...data };
+
+    // 处理 trigger 节点的 inputContract
+    if (type === 'trigger' && data.inputContract) {
+      transformedData.inputContract = extractPropertiesFromMappingData(data.inputContract);
+    }
+
+    // 处理 connector 节点的 inputMapping 和 outputParams
+    if (type === 'connector' && data.inputMapping) {
+      transformedData.inputMapping = extractPropertiesFromMappingData(data.inputMapping);
+    }
+
+    // 处理 exit 节点的 outputMapping
+    if (type === 'exit' && data.outputMapping) {
+      transformedData.outputMapping = extractPropertiesFromMappingData(data.outputMapping);
+    }
+
+    return {
+      ...node,
+      data: transformedData,
+    };
+  });
 };
