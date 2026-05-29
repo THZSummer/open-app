@@ -204,8 +204,13 @@ export const getNodeOutputParams = (node) => {
   switch (type) {
     case 'trigger': {
       // Trigger 格式：{ header: { fieldName: { type, description } } }
-      const inputContract = data.inputContract || {};
       const allParams = [];
+      let inputContract = data.inputContract || {};
+      if (Array.isArray(data.inputContract)) {
+        // 将数组转为带有 header、body、query的可递归对象
+        const inputContractObject = transformMappingToNewFormat({mappingArray: data.inputContract});
+        inputContract = extractPropertiesFromMappingData(inputContractObject);
+      }
 
       // 合并 body、header、query 三种类型的参数
       CARRIER_OPTIONS.forEach(carrier => {
@@ -227,7 +232,7 @@ export const getNodeOutputParams = (node) => {
         if (carrierData?.properties) {
           // properties 可能是一个对象（键值对形式）或者数组
           const properties = carrierData.properties;
-          const flattenedParams = flattenObjectProperties(properties, carrier);
+          const flattenedParams = flattenObjectProperties(properties, carrier, 'output');
           allParams.push(...flattenedParams);
         }
       });
