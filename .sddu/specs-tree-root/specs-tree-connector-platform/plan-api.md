@@ -2,9 +2,9 @@
 
 **Feature ID**: CONN-PLAT-001  
 **关联文档**: plan.md (§4.4), plan-db.md (§3 表结构)  
-**版本**: v3.1  
+**版本**: v3.2  
 **创建日期**: 2026-05-21  
-**最后更新**: 2026-05-27  
+**最后更新**: 2026-05-29  
 **对齐基线**: plan-json-schema.md v5.6 + plan-db.md v3.0
 
 ---
@@ -429,7 +429,60 @@
 }
 ```
 
+#### #5 DELETE /service/open/v2/connectors/{connectorId} — 删除连接器
+
+```json
+// Response 200
+{
+  "code": "200",
+  "messageZh": "删除成功",
+  "messageEn": "Deleted",
+  "data": null
+}
+```
+
+> 💡 **删除前置校验**：检查无运行中连接流引用该连接器，否则拒绝删除。
+
+---
+
+#### #6 GET /service/open/v2/connectors/{connectorId}/config — 获取连接器配置
+
+```json
+// Response 200 — 有配置
+{
+  "code": "200",
+  "messageZh": "成功",
+  "messageEn": "Success",
+  "data": {
+    "connectorId": "1234567890123456789",
+    "connectorVersionId": "9876543210123456789",
+    "connectionConfig": "{"protocol":"HTTP","protocolConfig":{"url":"https://openapi.xxx.com/im/send","method":"POST","headers":{"Content-Type":"application/json"}},"authConfig":{"type":"AKSK","fields":[{"name":"accessKey","carrier":"header","fieldName":"AK","required":true,"sensitive":true},{"name":"secretKey","carrier":"header","fieldName":"SK","required":true,"sensitive":true}]},"inputContract":{"protocol":"HTTP","header":{"type":"object","properties":{"Authorization":{"type":"string"}}},"body":{"type":"object","properties":{"receiver":{"type":"string"},"content":{"type":"string"}},"required":["receiver","content"]}},"outputContract":{"protocol":"HTTP","body":{"type":"object","properties":{"msgId":{"type":"string"}}}},"timeoutMs":30000,"rateLimitConfig":{"maxQps":10,"maxConcurrency":5}}",
+    "hasConfig": true,
+    "createTime": "2026-05-29T10:00:00.000+08:00",
+    "lastUpdateTime": "2026-05-29T11:00:00.000+08:00"
+  }
+}
+
+// Response 200 — 无配置
+{
+  "code": "200",
+  "messageZh": "成功",
+  "messageEn": "Success",
+  "data": {
+    "hasConfig": false
+  }
+}
+```
+
+> 💡 **字段说明**：`connectorId`/`connectorVersionId` 为雪花 ID 转 string（避免 JS 精度丢失）。`connectionConfig` 为完整的连接配置 JSON 字符串，与 #7 编辑接口格式一致。编排中 connector 节点通过 `connectorVersionId` 引用此配置。
+
+
+---
+
+#### #7 PUT /service/open/v2/connectors/{connectorId}/config — 编辑连接器配置
+
 > 💡 **编辑即生效**：MVP 单版本模型，保存后立即生效。已引用该连接器的运行中连接流在下次触发时使用新配置。
+
 
 ```json
 // Request — connectionConfig 全文替换
@@ -966,3 +1019,4 @@
 | **v5.0** | **2026-05-22** | **对齐 spec.md v5.0 MVP 单版本模型精简**：① 端点总数 26→18；② 移除版本列表/发布/部署/手动触发/执行历史 共 8 个端点；③ 版本管理端点点改为直接 `.../config` 路径；④ 所有英文、中文标题、编号、FR 引用对齐 v5.0；⑤ §0 版本对齐表重写；⑥ 修订记录追加 v5.0 条目。**变更统计**：~1335 → 887 行（-448 行） | SDDU Plan Agent |
 | **v3.0** | **2026-05-26** | **对齐 plan-json-schema.md v5.5**：① JSON 示例全面重写——连接器配置 `connectionConfig` 字段重命名（`authTypeSchema`→`authConfig` / `inputSchema`→`inputContract` / `outputSchema`→`outputContract` / `rateLimit`→`rateLimitConfig`）+ `inputContract`/`outputContract` 改为协议感知格式（HTTP: header/query/body）；② 编排配置 `orchestrationConfig` 全面重写为 React Flow 格式（`node.data` 嵌套 + `edge.source`/`target`）+ `inputMapping`/`outputMapping` 分段结构 + 表达式升级为 JSON Path（`${$.node.{id}.{input/output}.xxx}`）；③ §1.8.3 triggerType 拆为两个维度——编排 JSON（字符串 http/manual）vs 执行记录（TINYINT 含 test=3）；④ §1.8.6 nodeType 新增两个维度说明；⑤ 认证枚举段更新 `authTypeSchema`→`authConfig`；⑥ §3.4 末尾新增交叉引用块。 | SDDU Plan Agent |
 | **v3.1** | **2026-05-27** | **对齐 plan-json-schema.md v5.6 映射字段结构化重构**：① #15 GET config 响应中 inputMapping/outputMapping 示例更新为 mappedJsonSchemaObjectDef 格式（每个叶子字段含 type + value）；② 表达式常量格式 `constant:xxx` → `${$.constant:xxx}` | SDDU Plan Agent |
+| **v3.2** | **2026-05-29** | **补全 #5 DELETE / #6 GET config 接口文档**：① 新增 #5 DELETE 接口定义；② 新增 #6 GET config 响应字段 `connectorId`/`connectorVersionId`/`createTime`/`lastUpdateTime`（对齐代码实现）；③ #7 PUT 补全标题。 | SDDU Build Agent |
