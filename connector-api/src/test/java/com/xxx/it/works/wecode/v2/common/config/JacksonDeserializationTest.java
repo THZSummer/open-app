@@ -185,12 +185,12 @@ class JacksonDeserializationTest {
     @Test
     @DisplayName("v5.6 表达式格式: ${$.node.{id}.output.{path}}")
     void testExpressionOldFormat() throws Exception {
-        String expr = "${$.node.node_entry.output.sender}";
+        String expr = "${$.node.node_trigger.output.sender}";
         String inner = expr.substring(2, expr.length() - 1);
         String[] parts = inner.split("\\.");
         assertEquals("$", parts[0]);
         assertEquals("node", parts[1]);
-        assertEquals("node_entry", parts[2]);
+        assertEquals("node_trigger", parts[2]);
         assertEquals("output", parts[3]);
         assertEquals("sender", parts[4]);
     }

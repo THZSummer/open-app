@@ -8,7 +8,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
-import com.xxx.it.works.wecode.v2.modules.runtime.node.EntryNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,14 +40,14 @@ public class ReactiveSequentialExecutor {
 
     public ReactiveSequentialExecutor(
             ObjectMapper objectMapper,
-            EntryNodeExecutor entryNodeExecutor,
+            TriggerNodeExecutor triggerNodeExecutor,
             ConnectorNodeExecutor connectorNodeExecutor,
             DataProcessorExecutor dataProcessorExecutor,
             ExitNodeExecutor exitNodeExecutor) {
 
         this.objectMapper = objectMapper;
         this.executorMap = new HashMap<>();
-        executorMap.put("entry", entryNodeExecutor);
+        executorMap.put("trigger", triggerNodeExecutor);
         executorMap.put("connector", connectorNodeExecutor);
         executorMap.put("data_processor", dataProcessorExecutor);
         executorMap.put("exit", exitNodeExecutor);
@@ -72,7 +72,7 @@ public class ReactiveSequentialExecutor {
                         return Mono.just(buildErrorResult(context, null, startTime));
                     }
 
-                    // 构建拓扑顺序: 从 entry 节点开始, 按 edges 确定顺序
+                    // 构建拓扑顺序: 从 trigger 节点开始, 按 edges 确定顺序
                     List<JsonNode> orderedNodes = topologicalSort(nodes, edges);
                     log.info("Flow execution start: nodeCount={}, edgeCount={}", orderedNodes.size(), edges != null ? edges.size() : 0);
 
@@ -261,10 +261,10 @@ public class ReactiveSequentialExecutor {
 
         List<JsonNode> ordered = new ArrayList<>();
 
-        // 找 entry 节点
+        // 找 trigger 节点作为 DAG 入口
         JsonNode entryNode = null;
         for (JsonNode node : nodes) {
-            if ("entry".equals(node.get("type").asText())) {
+            if ("trigger".equals(node.get("type").asText())) {
                 entryNode = node;
                 break;
             }

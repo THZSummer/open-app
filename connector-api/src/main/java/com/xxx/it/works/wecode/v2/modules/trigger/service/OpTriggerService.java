@@ -121,7 +121,7 @@ public class OpTriggerService {
                     // 8. 建立触发节点的 NodeContext (触发数据作为 input 分区)
                     NodeContext triggerNodeCtx = new NodeContext();
                     triggerNodeCtx.setNodeId(triggerNodeId);
-                    triggerNodeCtx.setNodeType("entry");
+                    triggerNodeCtx.setNodeType("trigger");
                     Map<String, Object> input = new HashMap<>();
                     if (triggerData != null) {
                         input.putAll(triggerData);
@@ -152,24 +152,17 @@ public class OpTriggerService {
     }
 
     /**
-     * 从 nodes 数组中查找 trigger/entry 节点
-     * <p>
-     * 优先匹配 type="trigger", 其次 type="entry", 最后 nodes[0]
-     * </p>
+     * 从 nodes 数组中查找 trigger 节点
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> findTriggerNode(List<Map<String, Object>> nodes) {
-        Map<String, Object> firstEntry = null;
         for (Map<String, Object> node : nodes) {
             String type = (String) node.get("type");
             if ("trigger".equals(type)) {
                 return node;
             }
-            if ("entry".equals(type) && firstEntry == null) {
-                firstEntry = node;
-            }
         }
-        return firstEntry != null ? firstEntry : (nodes.isEmpty() ? null : nodes.get(0));
+        return nodes.isEmpty() ? null : nodes.get(0);
     }
 
     /**

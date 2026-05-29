@@ -26,20 +26,20 @@ class NodeExecutorsTest {
     }
 
     @Test
-    @DisplayName("EntryNodeExecutor - 透传触发数据")
-    void testEntryNodeExecutor() {
-        EntryNodeExecutor executor = new EntryNodeExecutor(objectMapper);
+    @DisplayName("TriggerNodeExecutor - 透传触发数据")
+    void testTriggerNodeExecutor() {
+        TriggerNodeExecutor executor = new TriggerNodeExecutor(objectMapper);
         context.setTriggerData(Map.of("sender", "test_user", "content", "hello"));
 
         Map<String, Object> nodeConfig = new HashMap<>();
-        nodeConfig.put("id", "node_entry");
-        nodeConfig.put("type", "entry");
+        nodeConfig.put("id", "node_trigger");
+        nodeConfig.put("type", "trigger");
 
         NodeOutput output = executor.execute(context, nodeConfig).block();
 
         assertNotNull(output);
-        assertEquals("node_entry", output.getNodeId());
-        assertEquals("entry", output.getNodeType());
+        assertEquals("node_trigger", output.getNodeId());
+        assertEquals("trigger", output.getNodeType());
         assertEquals("success", output.getStatus());
         // v5.5: 触发数据放入 input 分区, output 分区仅存元数据
         assertEquals("test_user", output.getInput().get("sender"));
@@ -47,13 +47,13 @@ class NodeExecutorsTest {
     }
 
     @Test
-    @DisplayName("EntryNodeExecutor - 无触发数据时输出为空")
-    void testEntryNodeExecutor_NoTriggerData() {
-        EntryNodeExecutor executor = new EntryNodeExecutor(objectMapper);
+    @DisplayName("TriggerNodeExecutor - 无触发数据时输出为空")
+    void testTriggerNodeExecutor_NoTriggerData() {
+        TriggerNodeExecutor executor = new TriggerNodeExecutor(objectMapper);
 
         Map<String, Object> nodeConfig = new HashMap<>();
-        nodeConfig.put("id", "node_entry");
-        nodeConfig.put("type", "entry");
+        nodeConfig.put("id", "node_trigger");
+        nodeConfig.put("type", "trigger");
 
         NodeOutput output = executor.execute(context, nodeConfig).block();
         assertNotNull(output);

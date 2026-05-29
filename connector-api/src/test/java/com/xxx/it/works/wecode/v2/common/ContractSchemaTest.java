@@ -182,7 +182,7 @@ class ContractSchemaTest {
         Map<String, int[]> enumRanges = new LinkedHashMap<>();
         enumRanges.put("connectorType", new int[]{1});     // MVP 仅 HTTP=1
         enumRanges.put("lifecycleStatus", new int[]{0, 1, 2}); // undeployed/running/stopped
-        enumRanges.put("nodeType", new int[]{1, 2, 3, 4}); // entry/connector/data_processor/exit
+        enumRanges.put("nodeType", new int[]{1, 2, 3, 4}); // trigger/connector/data_processor/exit
         enumRanges.put("triggerType", new int[]{1, 2, 3}); // http/manual/test
 
         // 验证每个枚举在其范围内

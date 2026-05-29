@@ -84,7 +84,7 @@ public class OpTestRunService {
                     if (triggerNodeId != null) {
                         NodeContext triggerNodeCtx = new NodeContext();
                         triggerNodeCtx.setNodeId(triggerNodeId);
-                        triggerNodeCtx.setNodeType("entry");
+                        triggerNodeCtx.setNodeType("trigger");
                         Map<String, Object> input = new HashMap<>();
                         if (mockTriggerData != null) {
                             input.putAll(mockTriggerData);
@@ -117,23 +117,14 @@ public class OpTestRunService {
     }
 
     /**
-     * 解析触发节点ID (优先 type=trigger, 其次 type=entry, 最后 nodes[0])
+     * 解析触发节点ID (匹配 type=trigger)
      */
     @SuppressWarnings("unchecked")
     private String resolveTriggerNodeId(List<Map<String, Object>> nodes) {
         if (nodes == null || nodes.isEmpty()) return null;
-        // 优先 trigger 类型
         for (Map<String, Object> node : nodes) {
             String type = (String) node.get("type");
             if ("trigger".equals(type)) {
-                Object id = node.get("id");
-                return id != null ? id.toString() : null;
-            }
-        }
-        // 其次 entry 类型
-        for (Map<String, Object> node : nodes) {
-            String type = (String) node.get("type");
-            if ("entry".equals(type)) {
                 Object id = node.get("id");
                 return id != null ? id.toString() : null;
             }

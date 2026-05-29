@@ -130,8 +130,8 @@ class OpTriggerControllerWebFluxTest {
             result.setTotalDurationMs(1270);
 
             ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
-            step.setNodeId("node_entry");
-            step.setNodeType("entry");
+            step.setNodeId("node_trigger");
+            step.setNodeType("trigger");
             step.setStatus("success");
             step.setDurationMs(10);
             result.addStep(step);
@@ -150,7 +150,7 @@ class OpTriggerControllerWebFluxTest {
                     .jsonPath("$.executionId").isEqualTo("exec-001")
                     .jsonPath("$.status").isEqualTo("success")
                     .jsonPath("$.steps.length()").isEqualTo(1)
-                    .jsonPath("$.steps[0].nodeId").isEqualTo("node_entry");
+                    .jsonPath("$.steps[0].nodeId").isEqualTo("node_trigger");
         }
 
         @Test

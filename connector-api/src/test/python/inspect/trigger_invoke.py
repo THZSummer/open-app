@@ -123,10 +123,10 @@ def setup_flow(snow_id_val, lifecycle_status=1,
         f"{lifecycle_status}, 'tester', 'tester')"
     ], check=True, capture_output=True)
 
-    # ---- entry node (CRITICAL: type must be "entry", not "trigger") ----
+    # ---- trigger node ----
     entry_node = {
-        "id": "node_entry",
-        "type": "entry",
+        "id": "node_trigger",
+        "type": "trigger",
         "position": {"x": 100, "y": 200},
         "data": {
             "labelCn": "接收",
@@ -174,7 +174,7 @@ def setup_flow(snow_id_val, lifecycle_status=1,
                     "body": {
                         "type": "object",
                         "properties": {
-                            "user": {"type": "string", "description": "用户名", "value": "${$.node.node_entry.input.sender}"}
+                            "user": {"type": "string", "description": "用户名", "value": "${$.node.node_trigger.input.sender}"}
                         }
                     }
                 }
@@ -182,7 +182,7 @@ def setup_flow(snow_id_val, lifecycle_status=1,
         }
         nodes.append(connector_node)
         edges.append({
-            "id": "e1", "source": "node_entry", "target": "node_connector",
+            "id": "e1", "source": "node_trigger", "target": "node_connector",
             "type": "smoothstep", "data": {"businessType": "default"}
         })
 
@@ -222,7 +222,7 @@ def setup_flow(snow_id_val, lifecycle_status=1,
                     "body": {
                         "type": "object",
                         "properties": {
-                            "echo": {"type": "string", "description": "回显", "value": "${$.node.node_entry.input.sender}"}
+                            "echo": {"type": "string", "description": "回显", "value": "${$.node.node_trigger.input.sender}"}
                         }
                     }
                 }
@@ -230,7 +230,7 @@ def setup_flow(snow_id_val, lifecycle_status=1,
         }
         nodes.append(exit_node)
         edges.append({
-            "id": "e1", "source": "node_entry", "target": "node_exit",
+            "id": "e1", "source": "node_trigger", "target": "node_exit",
             "type": "smoothstep", "data": {"businessType": "default"}
         })
 
@@ -494,7 +494,7 @@ try:
                 "type": "object",
                 "properties": {
                     "fullName": {"type": "string", "description": "姓名", "value": "${$.constant:John Doe}"},
-                    "userId": {"type": "string", "description": "用户ID", "value": "${$.node.node_entry.input.sender}"}
+                    "userId": {"type": "string", "description": "用户ID", "value": "${$.node.node_trigger.input.sender}"}
                 }
             }
         },

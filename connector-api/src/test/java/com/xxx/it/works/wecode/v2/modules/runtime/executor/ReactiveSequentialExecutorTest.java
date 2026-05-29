@@ -5,7 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
-import com.xxx.it.works.wecode.v2.modules.runtime.node.EntryNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,34 +30,34 @@ class ReactiveSequentialExecutorTest {
         objectMapper = new ObjectMapper();
         WebClient webClient = WebClient.builder().build();
 
-        EntryNodeExecutor entryExecutor = new EntryNodeExecutor(objectMapper);
+        TriggerNodeExecutor triggerExecutor = new TriggerNodeExecutor(objectMapper);
         CredentialInjectorRegistry mockRegistry = new CredentialInjectorRegistry(List.of());
         ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockRegistry);
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 
         executor = new ReactiveSequentialExecutor(
-                objectMapper, entryExecutor, connectorExecutor, dataProcessor, exitExecutor);
+                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor);
     }
 
     @Test
-    @DisplayName("简单线性执行: entry → exit")
+    @DisplayName("简单线性执行: trigger → exit")
     void testSimpleLinearFlow_EntryToExit() {
         ExecutionContext context = new ExecutionContext("test-exec-1", "test-flow");
         context.setTriggerData(Map.of("sender", "test_user", "content", "hello"));
 
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("nodes", List.of(
-                Map.of("id", "node_entry", "type", "entry",
+                Map.of("id", "node_trigger", "type", "trigger",
                         "position", Map.of("x", 0, "y", 0),
                         "data", Map.of("labelCn", "接收")),
                 Map.of("id", "node_exit", "type", "exit",
                         "position", Map.of("x", 300, "y", 0),
                         "data", Map.of("labelCn", "返回",
-                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("sender", "${$.node.node_entry.output.sender}"))))
+                                "outputMapping", Map.of("header", Map.of(), "body", Map.of("sender", "${$.node.node_trigger.output.sender}"))))
         ));
         config.put("edges", List.of(
-                Map.of("id", "e1", "source", "node_entry", "target", "node_exit")
+                Map.of("id", "e1", "source", "node_trigger", "target", "node_exit")
         ));
 
         String configJson = toJson(config);
@@ -70,25 +70,25 @@ class ReactiveSequentialExecutorTest {
                     assertNotNull(result.getResultData());
                     assertTrue(result.getTotalDurationMs() >= 0);
                     assertEquals(2, result.getSteps().size());
-                    assertEquals("node_entry", result.getSteps().get(0).getNodeId());
+                    assertEquals("node_trigger", result.getSteps().get(0).getNodeId());
                     assertEquals("node_exit", result.getSteps().get(1).getNodeId());
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("含数据处理节点: entry → processor → exit")
+    @DisplayName("含数据处理节点: trigger → processor → exit")
     void testFlowWithDataProcessor() {
         ExecutionContext context = new ExecutionContext("test-exec-2", "test-flow");
         context.setTriggerData(Map.of("name", "Alice"));
 
         List<Map<String, Object>> fieldMappings = List.of(
-                Map.of("targetField", "greeting", "sourceValue", "${$.node.node_entry.output.name}", "sourceType", "reference")
+                Map.of("targetField", "greeting", "sourceValue", "${$.node.node_trigger.output.name}", "sourceType", "reference")
         );
 
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("nodes", List.of(
-                Map.of("id", "node_entry", "type", "entry",
+                Map.of("id", "node_trigger", "type", "trigger",
                         "position", Map.of("x", 0, "y", 0),
                         "data", Map.of("labelCn", "入口")),
                 Map.of("id", "node_proc", "type", "data_processor",
@@ -101,7 +101,7 @@ class ReactiveSequentialExecutorTest {
                                 "outputMapping", Map.of("header", Map.of(), "body", Map.of("greeting", "${$.node.node_proc.output.greeting}"))))
         ));
         config.put("edges", List.of(
-                Map.of("id", "e1", "source", "node_entry", "target", "node_proc"),
+                Map.of("id", "e1", "source", "node_trigger", "target", "node_proc"),
                 Map.of("id", "e2", "source", "node_proc", "target", "node_exit")
         ));
 
@@ -141,7 +141,7 @@ class ReactiveSequentialExecutorTest {
 
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("nodes", List.of(
-                Map.of("id", "node_entry", "type", "entry",
+                Map.of("id", "node_trigger", "type", "trigger",
                         "position", Map.of("x", 0, "y", 0),
                         "data", Map.of()),
                 Map.of("id", "node_unknown", "type", "unknown_type",
@@ -149,10 +149,10 @@ class ReactiveSequentialExecutorTest {
                         "data", Map.of("labelCn", "未知")),
                 Map.of("id", "node_exit", "type", "exit",
                         "position", Map.of("x", 600, "y", 0),
-                        "data", Map.of("outputMapping", Map.of("header", Map.of(), "body", Map.of("data", "${$.node.node_entry.output.data}"))))
+                        "data", Map.of("outputMapping", Map.of("header", Map.of(), "body", Map.of("data", "${$.node.node_trigger.output.data}"))))
         ));
         config.put("edges", List.of(
-                Map.of("id", "e1", "source", "node_entry", "target", "node_unknown"),
+                Map.of("id", "e1", "source", "node_trigger", "target", "node_unknown"),
                 Map.of("id", "e2", "source", "node_unknown", "target", "node_exit")
         ));
 

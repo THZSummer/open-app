@@ -48,11 +48,11 @@ class ConnectorFlowE2ETest {
         Map<String, Object> config = new LinkedHashMap<>();
 
         // 入口节点 (v5.5 React Flow 格式)
-        Map<String, Object> entryNode = new LinkedHashMap<>();
-        entryNode.put("id", "node_entry");
-        entryNode.put("type", "entry");
-        entryNode.put("position", Map.of("x", 0, "y", 0));
-        entryNode.put("data", Map.of(
+        Map<String, Object> triggerNode = new LinkedHashMap<>();
+        triggerNode.put("id", "node_trigger");
+        triggerNode.put("type", "trigger");
+        triggerNode.put("position", Map.of("x", 0, "y", 0));
+        triggerNode.put("data", Map.of(
                 "labelCn", "接收",
                 "labelEn", "Receive"
         ));
@@ -68,18 +68,18 @@ class ConnectorFlowE2ETest {
                 "outputMapping", Map.of(
                         "header", Map.of(),
                         "body", Map.of(
-                                "sender", "${$.node.node_entry.output.sender}",
-                                "content", "${$.node.node_entry.output.content}"
+                                "sender", "${$.node.node_trigger.output.sender}",
+                                "content", "${$.node.node_trigger.output.content}"
                         )
                 )
         ));
 
-        config.put("nodes", List.of(entryNode, exitNode));
+        config.put("nodes", List.of(triggerNode, exitNode));
 
         // Edges (v5.5: source/target 替代 sourceNodeId/targetNodeId)
         Map<String, Object> edge = new LinkedHashMap<>();
         edge.put("id", "e1");
-        edge.put("source", "node_entry");
+        edge.put("source", "node_trigger");
         edge.put("target", "node_exit");
 
         config.put("edges", List.of(edge));
@@ -91,11 +91,11 @@ class ConnectorFlowE2ETest {
         Map<String, Object> config = new LinkedHashMap<>();
 
         // 入口节点 (v5.5 React Flow 格式)
-        Map<String, Object> entryNode = new LinkedHashMap<>();
-        entryNode.put("id", "node_entry");
-        entryNode.put("type", "entry");
-        entryNode.put("position", Map.of("x", 0, "y", 0));
-        entryNode.put("data", Map.of(
+        Map<String, Object> triggerNode = new LinkedHashMap<>();
+        triggerNode.put("id", "node_trigger");
+        triggerNode.put("type", "trigger");
+        triggerNode.put("position", Map.of("x", 0, "y", 0));
+        triggerNode.put("data", Map.of(
                 "labelCn", "接收",
                 "labelEn", "Receive"
         ));
@@ -138,17 +138,17 @@ class ConnectorFlowE2ETest {
                 "outputMapping", Map.of(
                         "header", Map.of(),
                         "body", Map.of(
-                                "sender", "${$.node.node_entry.output.sender}",
+                                "sender", "${$.node.node_trigger.output.sender}",
                                 "result", "${$.node.node_processor.output.result}"
                         )
                 )
         ));
 
-        config.put("nodes", List.of(entryNode, connectorNode, processorNode, exitNode));
+        config.put("nodes", List.of(triggerNode, connectorNode, processorNode, exitNode));
 
         // Edges (v5.5: source/target 替代 sourceNodeId/targetNodeId)
         config.put("edges", List.of(
-                Map.of("id", "e1", "source", "node_entry", "target", "node_connector"),
+                Map.of("id", "e1", "source", "node_trigger", "target", "node_connector"),
                 Map.of("id", "e2", "source", "node_connector", "target", "node_processor"),
                 Map.of("id", "e3", "source", "node_processor", "target", "node_exit")
         ));
@@ -159,7 +159,7 @@ class ConnectorFlowE2ETest {
     // ==================== 测试用例 ====================
 
     /**
-     * US-04: 编排与测试 — 简单线性执行 (entry → exit)
+     * US-04: 编排与测试 — 简单线性执行 (trigger → exit)
      * 验证: 触发数据透传, 出口节点返回正确字段
      */
     @Test
@@ -194,12 +194,12 @@ class ConnectorFlowE2ETest {
                     // 验证步骤数量
                     assertNotNull(result.getSteps());
                     assertEquals(2, result.getSteps().size(),
-                            "Should have 2 steps (entry + exit)");
+                            "Should have 2 steps (trigger + exit)");
 
                     // 验证入口节点
-                    ExecutionResult.StepDetail entryStep = result.getSteps().get(0);
-                    assertEquals("node_entry", entryStep.getNodeId());
-                    assertEquals("entry", entryStep.getNodeType());
+                    ExecutionResult.StepDetail triggerStep = result.getSteps().get(0);
+                    assertEquals("node_trigger", triggerStep.getNodeId());
+                    assertEquals("trigger", triggerStep.getNodeType());
 
                     // 验证出口节点
                     ExecutionResult.StepDetail exitStep = result.getSteps().get(1);
