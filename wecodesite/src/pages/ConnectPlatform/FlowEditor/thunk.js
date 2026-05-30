@@ -129,7 +129,10 @@ const smartMergeMapping = (newMapping, currentMapping) => {
  * @param {Object} currentProperties - 当前节点的属性
  * @returns {Object|null} 合并后的属性，如果没有变化则返回 null
  */
-const smartMergeNestedProperties = (newProperties, currentProperties) => {
+const smartMergeNestedProperties = (
+  newProperties,
+  currentProperties
+) => {
   const merged = { ...newProperties };
   let hasChanges = false;
 
@@ -145,6 +148,17 @@ const smartMergeNestedProperties = (newProperties, currentProperties) => {
         description: newParam.description,
       };
       hasChanges = true;
+
+      if (newParam.properties || currentParam.properties) {
+        const mergedChildren = smartMergeNestedProperties(
+          newParam.properties || {},
+          currentParam.properties || {}
+        );
+        if (mergedChildren) {
+          merged[paramName].properties = mergedChildren;
+          hasChanges = true;
+        }
+      }
     } else {
       hasChanges = true;
     }
