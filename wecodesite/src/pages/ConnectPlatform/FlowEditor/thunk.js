@@ -30,10 +30,13 @@ export const extractUpdatedFields = ({
     if (!currentInputMapping) {
       updatedFields.inputMapping = newInputMapping;
     } else {
-      updatedFields.inputMapping = smartMergeRecursive(
+      const mergedInputMapping = smartMergeMapping(
         newInputMapping,
         currentInputMapping
       );
+      if (mergedInputMapping) {
+        updatedFields.inputMapping = mergedInputMapping;
+      }
     }
   }
 
@@ -58,44 +61,118 @@ export const extractUpdatedFields = ({
 };
 
 /**
- * 智能递归合并配置
+ * 智能合并 mapping 配置
  * 保留用户的值配置，只补充缺失参数和更新元数据
- * 支持任意深度的嵌套 properties 结构
  *
- * @param {Object} newData - 接口返回的新配置
- * @param {Object} currentData - 当前节点的配置
+ * @param {Object} newMapping - 接口返回的新配置
+ * @param {Object} currentMapping - 当前节点的配置
  * @returns {Object|null} 合并后的配置，如果没有变化则返回 null
  */
-const smartMergeRecursive = (newData, currentData) => {
-  const merged = JSON.parse(JSON.stringify(newData));
+const smartMergeMapping = (newMapping, currentMapping) => {
+  const merged = JSON.parse(JSON.stringify(newMapping));
+  let hasChanges = false;
 
-  for (const key of Object.keys(newData)) {
-    const newItem = newData[key];
+  for (const carrier of Object.keys(newMapping)) {
+    const newCarrierParams = newMapping[carrier] || {};
+    const currentCarrierParams = currentMapping?.[carrier] || {};
 
-    if (currentData[key]) {
-      const currentItem = currentData[key];
+    for (const paramName of Object.keys(newCarrierParams)) {
+      const newParam = newCarrierParams[paramName];
 
-      merged[key] = {
-        ...currentItem,
-        type: newItem.type,
-        description: newItem.description,
-      };
+      if (currentCarrierParams[paramName]) {
+        const currentParam = currentCarrierParams[paramName];
 
-      if (newItem.properties || currentItem.properties) {
-        const mergedChildren = smartMergeRecursive(
-          newItem.properties || {},
-          currentItem.properties || {}
-        );
-        if (mergedChildren) {
-          merged[key].properties = mergedChildren;
+        merged[carrier][paramName] = {
+          ...currentParam,
+          type: newParam.type,
+          description: newParam.description,
+        };
+        hasChanges = true;
+
+        if (newParam.properties || currentParam.properties) {
+          const mergedChildren = smartMergeNestedProperties(
+            newParam.properties || {},
+            currentParam.properties || {}
+          );
+          if (mergedChildren) {
+            merged[carrier][paramName].properties = mergedChildren;
+            hasChanges = true;
+          }
         }
+      } else {
+        hasChanges = true;
+      }
+    }
+
+    for (const paramName of Object.keys(currentCarrierParams)) {
+      if (!newCarrierParams[paramName]) {
+        delete merged[carrier][paramName];
+        hasChanges = true;
       }
     }
   }
 
-  return merged;
+  for (const carrier of Object.keys(currentMapping || {})) {
+    if (!newMapping[carrier]) {
+      delete merged[carrier];
+      hasChanges = true;
+    }
+  }
+
+  return hasChanges ? merged : null;
 };
 
+/**
+ * 智能合并嵌套属性配置
+ *
+ * @param {Object} newProperties - 接口返回的新属性
+ * @param {Object} currentProperties - 当前节点的属性
+ * @returns {Object|null} 合并后的属性，如果没有变化则返回 null
+ */
+const smartMergeNestedProperties = (
+  newProperties,
+  currentProperties
+) => {
+  const merged = { ...newProperties };
+  let hasChanges = false;
+
+  for (const paramName of Object.keys(newProperties)) {
+    const newParam = newProperties[paramName];
+
+    if (currentProperties[paramName]) {
+      const currentParam = currentProperties[paramName];
+
+      merged[paramName] = {
+        ...currentParam,
+        type: newParam.type,
+        description: newParam.description,
+      };
+      hasChanges = true;
+
+      if (newParam.properties || currentParam.properties) {
+        const mergedChildren = smartMergeNestedProperties(
+          newParam.properties || {},
+          currentParam.properties || {}
+        );
+        if (mergedChildren) {
+          merged[paramName].properties = mergedChildren;
+          hasChanges = true;
+        }
+      }
+    } else {
+      hasChanges = true;
+    }
+  }
+
+  for (const paramName of Object.keys(currentProperties)) {
+    if (!newProperties[paramName]) {
+      delete merged[paramName];
+      hasChanges = true;
+    }
+  }
+
+  return hasChanges ? merged : null;
+};
 
 /**
  * 智能合并 outputParams 配置
