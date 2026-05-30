@@ -141,11 +141,12 @@ export const NODE_TRANSFORM_CONFIG = {
 };
 
 /**
- * 节点类型到 Mapping 字段名的映射
+ * 节点类型到 Mapping 字段名的映射（数组形式）
  * 用于 transformToBackend 中统一处理不同节点的 mapping 转换
+ * 每个节点类型可以有多个需要处理的字段
  */
 export const NODE_TYPE_TO_MAPPING_KEY = {
-  trigger: 'inputContract',
-  connector: 'inputMapping',
-  exit: 'outputMapping',
+  trigger: ['inputContract'],
+  connector: ['inputMapping', 'outputParams'],
+  exit: ['outputMapping'],
 };

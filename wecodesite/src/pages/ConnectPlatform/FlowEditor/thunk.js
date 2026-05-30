@@ -7,8 +7,7 @@
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
-import { transformConnectorConfigToInputMapping } from '../ConnectorEditor/thunk';
-
+import { extractPropertiesFromMappingData } from '../../../utils/flowUtils';
 /**
  * 从连接器配置中提取需要更新的字段
  * 使用智能合并策略：保留用户配置，只补充缺失参数和更新元数据
@@ -25,7 +24,7 @@ export const extractUpdatedFields = ({
   const updatedFields = {};
 
   if (parsedConnectionConfig.inputContract) {
-    const newInputMapping = transformConnectorConfigToInputMapping(parsedConnectionConfig);
+    const newInputMapping = extractPropertiesFromMappingData(parsedConnectionConfig);
     const currentInputMapping = currentNode.data.inputMapping;
 
     if (!currentInputMapping) {

@@ -215,7 +215,7 @@ export const getNodeOutputParams = (node) => {
       // 合并 body、header、query 三种类型的参数
       CARRIER_OPTIONS.forEach(carrier => {
         const carrierData = inputContract[carrier];
-        const flattenedParams = flattenObjectProperties(carrierData, carrier);
+        const flattenedParams = flattenObjectProperties(carrierData, carrier, 'input');
         allParams.push(...flattenedParams);
       });
 
@@ -368,10 +368,10 @@ const processMappingItem = (result, item, parentPath = '', parentTarget = null) 
 /**
  * 转换 mapping 数组到新格式
  * 根据 sourceType 生成对应的占位符字符串参数
- * 
+ *
  * @param {Object} options - 转换选项
  * @param {Array} options.mappingArray - mapping 数组，每个元素包含 sourceType, paramName, paramType, description, referencePath/paramValue
- * @returns {Object} 新格式的 mapping 对象 { header: {...}, body: {...}, query: {...} }
+ * @returns {Object} 新格式的 mapping 对象 { header: { type: 'object', properties: {...} }, body: { type: 'object', properties: {...} }, query: { type: 'object', properties: {...} } }
  */
 export const transformMappingToNewFormat = ({
   mappingArray = []
@@ -390,6 +390,56 @@ export const transformMappingToNewFormat = ({
 };
 
 /**
+ * 确保 carrier 数据被包装成 { type: 'object', properties: {...} } 格式
+ * 如果数据已经是这种格式，则直接返回
+ * 如果数据是普通对象，则包装成 { type: 'object', properties: {...} } 格式
+ *
+ * @param {Object} carrierData - carrier 数据
+ * @returns {Object} 包装后的数据
+ */
+const wrapCarrierData = (carrierData) => {
+  if (!carrierData || typeof carrierData !== 'object') {
+    return { type: 'object', properties: {} };
+  }
+
+  // 如果已经是 { type: 'object', properties: {...} } 格式，直接返回
+  if (carrierData.type === 'object' && carrierData.properties) {
+    return carrierData;
+  }
+
+  // 否则包装成 { type: 'object', properties: carrierData } 格式
+  return {
+    type: 'object',
+    properties: carrierData,
+  };
+};
+
+/**
+ * 处理 mapping 数据的 carrier 包装
+ * 将 { header: {...}, query: {...}, body: {...} }
+ * 转换为 { header: { type: 'object', properties: {...} }, ... }
+ *
+ * @param {Object} mappingData - 包含 header/query/body 的数据对象
+ * @returns {Object} 包装后的数据对象
+ */
+const wrapMappingDataCarriers = (mappingData) => {
+  if (!mappingData || typeof mappingData !== 'object') {
+    return mappingData;
+  }
+
+  const result = {};
+
+  // 处理 header, query, body
+  ['header', 'query', 'body'].forEach(carrier => {
+    if (mappingData[carrier]) {
+      result[carrier] = wrapCarrierData(mappingData[carrier]);
+    }
+  });
+
+  return result;
+};
+
+/**
  * @param {Array} nodes - React Flow节点列表
  * @param {Array} edges - React Flow连线列表
  * @returns {Object} orchestrationConfig 后端格式的编排配置
@@ -397,19 +447,27 @@ export const transformMappingToNewFormat = ({
 export const transformToBackend = (nodes = [], edges = []) => {
   const transformedNodes = nodes.map(node => {
     const { data } = node;
-    
+
     const transformedData = { ...data };
     delete transformedData.config;
-    
-    const mappingKey = NODE_TYPE_TO_MAPPING_KEY[node.type];
-    if (mappingKey) {
+
+    // 通过 NODE_TYPE_TO_MAPPING_KEY 获取需要处理的 mapping 字段（支持数组）
+    const mappingKeys = NODE_TYPE_TO_MAPPING_KEY[node.type] || [];
+
+    // 统一处理 mapping 字段（trigger/inputContract, connector/inputMapping/outputParams, exit/outputMapping）
+    mappingKeys.forEach(mappingKey => {
       const mappingData = data[mappingKey];
-      if (Array.isArray(mappingData) && mappingData.length > 0) {
-        transformedData[mappingKey] = transformMappingToNewFormat({
-          mappingArray: mappingData,
-        });
+
+      if (mappingData) {
+        if (Array.isArray(mappingData)) {
+          transformedData[mappingKey] = transformMappingToNewFormat({
+            mappingArray: mappingData,
+          });
+        } else if (typeof mappingData === 'object') {
+          transformedData[mappingKey] = wrapMappingDataCarriers(mappingData);
+        }
       }
-    }
+    });
 
     return {
       ...node,
@@ -634,7 +692,7 @@ const extractPropertiesFromCarrier = (carrierData) => {
  * @param {Object} mappingData - 包含 header/query/body 的数据对象
  * @returns {Object} 转换后的数据对象
  */
-const extractPropertiesFromMappingData = (mappingData) => {
+export const extractPropertiesFromMappingData = (mappingData) => {
   if (!mappingData || typeof mappingData !== 'object') {
     return mappingData;
   }
