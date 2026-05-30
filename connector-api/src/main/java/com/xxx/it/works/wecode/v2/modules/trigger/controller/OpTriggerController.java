@@ -65,12 +65,14 @@ public class OpTriggerController {
             @PathVariable Long flowId,
             @Parameter(description = "触发数据 (按 inputContract 校验)")
             @RequestBody(required = false) Map<String, Object> triggerData,
-            @RequestHeader Map<String, String> allHeaders) {
+            @RequestHeader Map<String, String> allHeaders,
+            @Parameter(description = "URL Query 参数")
+            @RequestParam(required = false) Map<String, String> queryParams) {
 
         log.info("HTTP trigger invoke: flowId={}", flowId);
 
         // 认证/限流/入参校验全部由 OpTriggerService 根据编排配置中的 data.authConfig/data.rateLimitConfig/data.inputContract 动态处理
-        return triggerService.invokeFlow(flowId, triggerData, allHeaders, null)
+        return triggerService.invokeFlow(flowId, triggerData, allHeaders, queryParams)
                 .map(result -> {
                     if (!"true".equalsIgnoreCase(allHeaders.get("hasSteps"))) {
                         result.getSteps().clear();

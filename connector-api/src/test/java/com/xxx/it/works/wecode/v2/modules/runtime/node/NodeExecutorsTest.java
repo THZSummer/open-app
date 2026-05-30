@@ -26,7 +26,7 @@ class NodeExecutorsTest {
     }
 
     @Test
-    @DisplayName("TriggerNodeExecutor - 透传触发数据")
+    @DisplayName("TriggerNodeExecutor - 结构化触发数据 {header, query, body}")
     void testTriggerNodeExecutor() {
         TriggerNodeExecutor executor = new TriggerNodeExecutor(objectMapper);
         context.setTriggerData(Map.of("sender", "test_user", "content", "hello"));
@@ -41,9 +41,13 @@ class NodeExecutorsTest {
         assertEquals("node_trigger", output.getNodeId());
         assertEquals("trigger", output.getNodeType());
         assertEquals("success", output.getStatus());
-        // v5.5: 触发数据放入 input 分区, output 分区仅存元数据
-        assertEquals("test_user", output.getInput().get("sender"));
-        assertEquals("hello", output.getInput().get("content"));
+        // v5.7: 结构化 input = {header, query, body}
+        Map<String, Object> body = (Map<String, Object>) output.getInput().get("body");
+        assertNotNull(body, "input 应有 body 分区");
+        assertEquals("test_user", body.get("sender"));
+        assertEquals("hello", body.get("content"));
+        assertTrue(output.getInput().containsKey("header"), "input 应有 header 分区");
+        assertTrue(output.getInput().containsKey("query"), "input 应有 query 分区");
     }
 
     @Test

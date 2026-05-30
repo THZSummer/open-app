@@ -8,6 +8,7 @@ import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -102,15 +103,18 @@ public class FlowVersionEntity {
     }
 
     /**
-     * 获取 trigger 配置; v5.5 字段名: authConfig, inputContract, outputContract, rateLimitConfig
+     * 获取 trigger 节点配置; 遍历 nodes[] 查找 type='trigger' 的节点
      */
+    @SuppressWarnings("unchecked")
     public Map<String, Object> getTriggerConfig(ObjectMapper mapper) {
         Map<String, Object> config = parseOrchestrationConfigAsMap(mapper);
-        Object trigger = config.get("trigger");
-        if (trigger instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> result = (Map<String, Object>) trigger;
-            return result;
+        List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
+        if (nodes != null) {
+            for (Map<String, Object> node : nodes) {
+                if ("trigger".equals(node.get("type"))) {
+                    return node;
+                }
+            }
         }
         return Map.of();
     }
