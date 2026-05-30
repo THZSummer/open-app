@@ -30,7 +30,7 @@ import { NODE_TYPE_META, SCHEMA_EDITOR_CONFIG, NODE_TRANSFORM_CONFIG } from './c
 import SchemaEditor from '../../../components/SchemaEditor/SchemaEditor.jsx';
 import { getUpstreamParams, transformInputMappingFromNested, transformOutputMappingFromNested } from '../../../utils/flowUtils';
 import { fetchConnectorList } from '../Connector/thunk';
-import { fetchConnectorConfig, transformConnectorConfigToInputMapping } from '../ConnectorEditor/thunk';
+import { fetchConnectorConfig } from '../ConnectorEditor/thunk';
 import { extractUpdatedFields } from './thunk';
 import './NodeProperties.m.less';
 
@@ -142,35 +142,27 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
 
   /**
    * 处理连接器切换
-   * 切换连接器时清空旧的inputMapping和outputParams，重新根据新连接器生成
+   * 切换连接器时清空旧的inputMapping和outputParams，useEffect会自动加载新配置
    *
    * @param {string} connectorId - 新选择的连接器ID
    * @param {Object} selectedNode - 当前选中的节点
    * @param {Object} data - 节点数据
-   * @param {Array} connectors - 连接器列表
-   * @param {Function} onUpdateNode - 更新节点回调
-   * @param {Function} setConnectorConfig - 设置连接器配置的回调
    */
-  const handleConnectorChange = async (
+  const handleConnectorChange = (
     connectorId,
     selectedNode,
     data,
-    connectors,
-    onUpdateNode,
-    setConnectorConfig
   ) => {
-    const connector = connectors.find(c => c.id === connectorId);
-
     /** 切换连接器时，需要清空旧的inputMapping和outputParams，重新根据新连接器生成 */
     const updatedData = {
       connectorId,
-      connector: connector || null,
+      connector: null,
     };
 
-    /** 清空当前的connectorConfig，触发重新加载 */
+    /** 清空当前的connectorConfig，useEffect会自动加载新的 */
     setConnectorConfig(null);
 
-    /** 先更新节点数据，清空旧的mapping配置 */
+    /** 更新节点数据，清空旧的mapping配置，useEffect会自动重新加载配置 */
     onUpdateNode({
       ...selectedNode,
       data: {
@@ -180,51 +172,6 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
         outputParams: null,
       },
     });
-
-    /** 手动加载新的connector配置 */
-    if (connectorId) {
-      const config = await fetchConnectorConfig(connectorId);
-
-      if (config && config.code === '200') {
-        let parsedConnectionConfig = {};
-
-        /** 优先从connectionConfig字段获取配置 */
-        if (config.data?.connectionConfig) {
-          try {
-            parsedConnectionConfig = typeof config.data.connectionConfig === 'string'
-              ? JSON.parse(config.data.connectionConfig)
-              : config.data.connectionConfig;
-          } catch (err) {
-            message.error('解析连接器配置失败');
-            setConnectorConfig(null);
-            return;
-          }
-        }
-
-        setConnectorConfig(parsedConnectionConfig);
-
-        /** 从连接器配置生成新的inputMapping */
-        if (parsedConnectionConfig.inputContract) {
-          const inputMapping = transformConnectorConfigToInputMapping(parsedConnectionConfig);
-          const outputParams = parsedConnectionConfig.outputContract || [];
-
-          /** 更新节点，添加新的inputMapping和outputParams */
-          onUpdateNode({
-            ...selectedNode,
-            data: {
-              ...data,
-              ...updatedData,
-              inputMapping,
-              outputParams,
-            },
-          });
-        }
-      } else {
-        const errorMsg = config?.messageZh || '获取连接器配置失败';
-        message.error(errorMsg);
-        setConnectorConfig(null);
-      }
-    }
   };
 
   /**
@@ -384,14 +331,7 @@ function NodeProperties({ selectedNode, onUpdateNode, nodes = [], edges = [] }) 
         >
           <Select
             value={connectorId}
-            onChange={(val) => handleConnectorChange(
-              val,
-              selectedNode,
-              data,
-              connectors,
-              onUpdateNode,
-              setConnectorConfig
-            )}
+            onChange={(val) => handleConnectorChange(val, selectedNode, data)}
             placeholder="请选择连接器"
           >
             {connectors.map(connector => (

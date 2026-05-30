@@ -24,7 +24,7 @@ export const extractUpdatedFields = ({
   const updatedFields = {};
 
   if (parsedConnectionConfig.inputContract) {
-    const newInputMapping = extractPropertiesFromMappingData(parsedConnectionConfig);
+    const newInputMapping = extractPropertiesFromMappingData(parsedConnectionConfig.inputContract);
     const currentInputMapping = currentNode.data.inputMapping;
 
     if (!currentInputMapping) {
@@ -69,51 +69,38 @@ export const extractUpdatedFields = ({
  * @returns {Object|null} 合并后的配置，如果没有变化则返回 null
  */
 const smartMergeMapping = (newMapping, currentMapping) => {
-  const merged = JSON.parse(JSON.stringify(currentMapping));
+  const merged = JSON.parse(JSON.stringify(newMapping));
   let hasChanges = false;
 
   for (const carrier of Object.keys(newMapping)) {
-    if (!merged[carrier]) {
-      merged[carrier] = {};
-    }
-
     const newCarrierParams = newMapping[carrier] || {};
-    const currentCarrierParams = merged[carrier] || {};
+    const currentCarrierParams = currentMapping?.[carrier] || {};
 
     for (const paramName of Object.keys(newCarrierParams)) {
       const newParam = newCarrierParams[paramName];
 
-      if (!currentCarrierParams[paramName]) {
-        merged[carrier][paramName] = newParam;
-        hasChanges = true;
-      } else {
+      if (currentCarrierParams[paramName]) {
         const currentParam = currentCarrierParams[paramName];
 
-        if (
-          currentParam.type !== newParam.type ||
-          currentParam.description !== newParam.description
-        ) {
-          merged[carrier][paramName] = {
-            ...currentParam,
-            type: newParam.type,
-            description: newParam.description,
-          };
-          hasChanges = true;
-        }
+        merged[carrier][paramName] = {
+          ...currentParam,
+          type: newParam.type,
+          description: newParam.description,
+        };
+        hasChanges = true;
 
-        if (currentParam.properties && newParam.properties) {
+        if (newParam.properties || currentParam.properties) {
           const mergedChildren = smartMergeNestedProperties(
-            newParam.properties,
-            currentParam.properties
+            newParam.properties || {},
+            currentParam.properties || {}
           );
           if (mergedChildren) {
             merged[carrier][paramName].properties = mergedChildren;
             hasChanges = true;
           }
-        } else if (newParam.properties && !currentParam.properties) {
-          merged[carrier][paramName].properties = newParam.properties;
-          hasChanges = true;
         }
+      } else {
+        hasChanges = true;
       }
     }
 
@@ -122,6 +109,13 @@ const smartMergeMapping = (newMapping, currentMapping) => {
         delete merged[carrier][paramName];
         hasChanges = true;
       }
+    }
+  }
+
+  for (const carrier of Object.keys(currentMapping || {})) {
+    if (!newMapping[carrier]) {
+      delete merged[carrier];
+      hasChanges = true;
     }
   }
 
@@ -136,29 +130,23 @@ const smartMergeMapping = (newMapping, currentMapping) => {
  * @returns {Object|null} 合并后的属性，如果没有变化则返回 null
  */
 const smartMergeNestedProperties = (newProperties, currentProperties) => {
-  const merged = { ...currentProperties };
+  const merged = { ...newProperties };
   let hasChanges = false;
 
   for (const paramName of Object.keys(newProperties)) {
     const newParam = newProperties[paramName];
 
-    if (!currentProperties[paramName]) {
-      merged[paramName] = newParam;
-      hasChanges = true;
-    } else {
+    if (currentProperties[paramName]) {
       const currentParam = currentProperties[paramName];
 
-      if (
-        currentParam.type !== newParam.type ||
-        currentParam.description !== newParam.description
-      ) {
-        merged[paramName] = {
-          ...currentParam,
-          type: newParam.type,
-          description: newParam.description,
-        };
-        hasChanges = true;
-      }
+      merged[paramName] = {
+        ...currentParam,
+        type: newParam.type,
+        description: newParam.description,
+      };
+      hasChanges = true;
+    } else {
+      hasChanges = true;
     }
   }
 

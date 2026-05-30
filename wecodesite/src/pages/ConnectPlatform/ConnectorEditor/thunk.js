@@ -272,36 +272,6 @@ export const transformAuthFields = (authParams) => {
 };
 
 /**
- * 将连接器配置转换为连接流编排页面的入参映射格式
- * - 将inputContract中的参数转换为可编辑的inputMapping格式
- * - 添加sourceType字段，默认值为'static'
- * - 保持carrier字段不可编辑
- * @param {Object} connectorConfig - 连接器配置
- * @returns {Array} 入参映射格式的参数数组
- */
-export const transformConnectorConfigToInputMapping = (connectorConfig) => {
-  // 参数校验：connectorConfig 必须存在且包含 inputContract
-  if (!connectorConfig || !connectorConfig.inputContract) {
-    return [];
-  }
-
-  // 定义连接流需要的额外字段
-  const extraFields = {
-    sourceType: 'static',    // 数据源类型默认为静态
-    paramValue: '',          // 静态值初始化为空
-    referencePath: '',       // 引用路径初始化为空
-  };
-
-  // 处理入参配置，支持 header、query、body 三种载体，并添加额外字段
-  return processContract(
-    connectorConfig.inputContract,
-    [],
-    ['header', 'query', 'body'],
-    extraFields
-  );
-};
-
-/**
  * 将apiConfig转换为符合文档4.3示例的数据格式
  * @param {Object} apiConfig - 当前表单收集的apiConfig
  * @returns {Object} 符合文档要求的数据格式
