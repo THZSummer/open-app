@@ -27,9 +27,14 @@ public class ExecutionContext {
     /** 触发数据 (来自HTTP请求体或测试模拟数据) */
     private Map<String, Object> triggerData;
 
+    /** 触发时 HTTP 请求头 (v5.7) */
+    private Map<String, String> triggerHeaders;
+
+    /** 触发时 URL Query 参数 (v5.7) */
+    private Map<String, String> triggerQueryParams;
+
     /** 节点上下文缓存 (nodeId → NodeContext), 替代旧 nodeOutputs */
     private final Map<String, NodeContext> nodeContexts;
-
 
     /** 是否测试运行 */
     private boolean isTest;
@@ -66,6 +71,12 @@ public class ExecutionContext {
 
     public Map<String, Object> getTriggerData() { return triggerData; }
     public void setTriggerData(Map<String, Object> triggerData) { this.triggerData = triggerData; }
+
+    public Map<String, String> getTriggerHeaders() { return triggerHeaders; }
+    public void setTriggerHeaders(Map<String, String> triggerHeaders) { this.triggerHeaders = triggerHeaders; }
+
+    public Map<String, String> getTriggerQueryParams() { return triggerQueryParams; }
+    public void setTriggerQueryParams(Map<String, String> triggerQueryParams) { this.triggerQueryParams = triggerQueryParams; }
 
     public Map<String, NodeContext> getNodeContexts() { return nodeContexts; }
 

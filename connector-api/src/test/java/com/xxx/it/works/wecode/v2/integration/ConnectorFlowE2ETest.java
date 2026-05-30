@@ -68,8 +68,8 @@ class ConnectorFlowE2ETest {
                 "outputMapping", Map.of(
                         "header", Map.of(),
                         "body", Map.of(
-                                "sender", "${$.node.node_trigger.output.sender}",
-                                "content", "${$.node.node_trigger.output.content}"
+                                "sender", "${$.node.node_trigger.input.body.sender}",
+                                "content", "${$.node.node_trigger.input.body.content}"
                         )
                 )
         ));
@@ -138,7 +138,7 @@ class ConnectorFlowE2ETest {
                 "outputMapping", Map.of(
                         "header", Map.of(),
                         "body", Map.of(
-                                "sender", "${$.node.node_trigger.output.sender}",
+                                "sender", "${$.node.node_trigger.input.body.sender}",
                                 "result", "${$.node.node_processor.output.result}"
                         )
                 )

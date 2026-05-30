@@ -38,6 +38,17 @@ class OpTriggerServiceTest {
     private ObjectMapper objectMapper;
     private OpTriggerService triggerService;
 
+    /**
+     * v5.7 有效的编排配置: 包含 trigger 节点 (type=http, authConfig, inputContract) + exit 节点
+     */
+    private static final String VALID_ORCHESTRATION_CONFIG =
+            "{\"nodes\":["
+            + "{\"id\":\"node_trigger\",\"type\":\"trigger\",\"position\":{\"x\":0,\"y\":0},"
+            + "\"data\":{\"type\":\"http\",\"authConfig\":{\"type\":\"SYSTOKEN\"},\"inputContract\":{\"body\":{}}}},"
+            + "{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":300,\"y\":0},"
+            + "\"data\":{\"labelCn\":\"结束\"}}"
+            + "],\"edges\":[]}";
+
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
@@ -49,7 +60,7 @@ class OpTriggerServiceTest {
     void testInvokeFlow_Success() {
         FlowVersionEntity flowVersion = new FlowVersionEntity();
         flowVersion.setFlowId(100L);
-        flowVersion.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"结束\"}}],\"edges\":[]}");
+        flowVersion.setOrchestrationConfig(VALID_ORCHESTRATION_CONFIG);
 
         ExecutionResult mockResult = new ExecutionResult();
         mockResult.setExecutionId("exec-001");
@@ -60,7 +71,7 @@ class OpTriggerServiceTest {
         when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
 
         Mono<ExecutionResult> resultMono = triggerService.invokeFlow(
-                100L, Map.of("sender", "test"), Map.of(), null);
+                100L, Map.of("sender", "test"), Map.of(), Map.of());
 
         StepVerifier.create(resultMono)
                 .assertNext(result -> {
@@ -76,7 +87,7 @@ class OpTriggerServiceTest {
         when(flowVersionReadRepository.findByFlowId(999L)).thenReturn(Mono.empty());
 
         Mono<ExecutionResult> resultMono = triggerService.invokeFlow(
-                999L, Map.of(), Map.of(), null);
+                999L, Map.of(), Map.of(), Map.of());
 
         StepVerifier.create(resultMono)
                 .assertNext(result -> {
@@ -93,14 +104,13 @@ class OpTriggerServiceTest {
     void testInvokeFlow_ExecutionError() {
         FlowVersionEntity flowVersion = new FlowVersionEntity();
         flowVersion.setFlowId(100L);
-        // Use a valid orchestrationConfig so OpTriggerService reaches the executor
-        flowVersion.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"结束\"}}],\"edges\":[]}");
+        flowVersion.setOrchestrationConfig(VALID_ORCHESTRATION_CONFIG);
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(executor.execute(any(), anyString())).thenReturn(Mono.error(new RuntimeException("Execution error")));
 
         Mono<ExecutionResult> resultMono = triggerService.invokeFlow(
-                100L, Map.of(), Map.of(), null);
+                100L, Map.of(), Map.of(), Map.of());
 
         StepVerifier.create(resultMono)
                 .assertNext(result -> assertEquals("failed", result.getStatus()))
