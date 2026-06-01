@@ -17,9 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,8 +32,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpFlowService {
-
-    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneId.of("UTC"));
 
     /** 生命周期状态常量 */
     public static final int LIFECYCLE_RUNNING = 1;
@@ -317,8 +312,8 @@ public class OpFlowService {
         r.setDescriptionCn(f.getDescriptionCn());
         r.setDescriptionEn(f.getDescriptionEn());
         r.setLifecycleStatus(f.getLifecycleStatus());
-        r.setCreateTime(formatIso(f.getCreateTime()));
-        r.setLastUpdateTime(formatIso(f.getLastUpdateTime()));
+        r.setCreateTime(f.getCreateTime());
+        r.setLastUpdateTime(f.getLastUpdateTime());
         return r;
     }
 
@@ -331,12 +326,8 @@ public class OpFlowService {
         r.setDescriptionEn(f.getDescriptionEn());
         r.setIconFileId(f.getIconFileId());
         r.setLifecycleStatus(f.getLifecycleStatus());
-        r.setCreateTime(formatIso(f.getCreateTime()));
-        r.setLastUpdateTime(formatIso(f.getLastUpdateTime()));
+        r.setCreateTime(f.getCreateTime());
+        r.setLastUpdateTime(f.getLastUpdateTime());
         return r;
-    }
-
-    private String formatIso(Date date) {
-        return date != null ? ISO_FORMATTER.format(date.toInstant()) : null;
     }
 }

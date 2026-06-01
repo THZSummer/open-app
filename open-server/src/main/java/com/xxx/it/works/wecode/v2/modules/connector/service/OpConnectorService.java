@@ -16,9 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,8 +31,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpConnectorService {
-
-    private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX").withZone(ZoneId.of("Asia/Shanghai"));
 
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
@@ -209,8 +204,8 @@ public class OpConnectorService {
 
         return ApiResponse.success(ConnectorConfigResponse.of(
                 version,
-                formatIso(version.getCreateTime()),
-                formatIso(version.getLastUpdateTime())));
+                version.getCreateTime(),
+                version.getLastUpdateTime()));
     }
 
     // ==================== #7 编辑连接配置 ====================
@@ -274,8 +269,8 @@ public class OpConnectorService {
         r.setDescriptionEn(c.getDescriptionEn());
         r.setIconFileId(c.getIconFileId());
         r.setConnectorType(c.getConnectorType());
-        r.setCreateTime(formatIso(c.getCreateTime()));
-        r.setLastUpdateTime(formatIso(c.getLastUpdateTime()));
+        r.setCreateTime(c.getCreateTime());
+        r.setLastUpdateTime(c.getLastUpdateTime());
         return r;
     }
 
@@ -288,12 +283,8 @@ public class OpConnectorService {
         r.setDescriptionEn(c.getDescriptionEn());
         r.setIconFileId(c.getIconFileId());
         r.setConnectorType(c.getConnectorType());
-        r.setCreateTime(formatIso(c.getCreateTime()));
-        r.setLastUpdateTime(formatIso(c.getLastUpdateTime()));
+        r.setCreateTime(c.getCreateTime());
+        r.setLastUpdateTime(c.getLastUpdateTime());
         return r;
-    }
-
-    private String formatIso(Date date) {
-        return date != null ? ISO_FORMATTER.format(date.toInstant()) : null;
     }
 }

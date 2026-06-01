@@ -3,13 +3,13 @@
 from client import *
 
 print("=== IT-026: 默认分页 ===")
-request("GET", "/flows")
+request("GET", "/service/open/v2/flows")
 
 print("=== IT-027: lifecycleStatus=0 过滤 ===")
-request("GET", "/flows", {"lifecycleStatus": 0})
+request("GET", "/service/open/v2/flows", {"lifecycleStatus": 0})
 
 print("=== IT-028: keyword 搜索 ===")
-request("GET", "/flows", {"keyword": "通知"})
+request("GET", "/service/open/v2/flows", {"keyword": "通知"})
 
 print("=== IT-029: 空结果 ===")
-request("GET", "/flows", {"keyword": "NONEXISTENT_FLOW_9999"})
+request("GET", "/service/open/v2/flows", {"keyword": "NONEXISTENT_FLOW_9999"})
