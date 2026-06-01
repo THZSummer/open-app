@@ -325,14 +325,21 @@ public class ApiService {
             throw new BusinessException("404", "API 不存在", "API not found");
         }
 
-        // TODO: 检查订阅关系（需要 Subscription 表）
-        // 目前先跳过，等 TASK-008 实现后再补充
+        // 检查订阅关系
+        Permission permission = permissionMapper.selectByResource("api", apiId);
+        if (permission != null) {
+            long subscriptionCount = permissionMapper.countSubscriptionsByPermissionId(permission.getId());
+            if (subscriptionCount > 0) {
+                throw new BusinessException("409",
+                        "API 被 " + subscriptionCount + " 个应用订阅，无法删除",
+                        "API is subscribed by " + subscriptionCount + " apps, cannot delete");
+            }
+        }
 
         // 删除属性
         apiPropertyMapper.deleteByParentId(apiId);
 
         // 删除权限属性
-        Permission permission = permissionMapper.selectByResource("api", apiId);
         if (permission != null) {
             permissionPropertyMapper.deleteByParentId(permission.getId());
             permissionMapper.deleteById(permission.getId());
