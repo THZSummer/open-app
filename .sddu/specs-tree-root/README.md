@@ -27,7 +27,8 @@
 | Feature ID | Feature 名称 | 状态 | 优先级 | 作者 | 更新时间 |
 |------------|-------------|------|--------|------|----------|
 | **CAP-OPEN-001** | [能力开放平台](./specs-tree-capability-open-platform/) | ✅ validated（全流程完成） | P0 | Summer | 2026-04-22 |
-| **CONN-PLAT-001** | [连接器平台](./specs-tree-connector-platform/) | ✅ validated（全流程完成） | P1 | - | 2026-05-24 |
+| **CONN-PLAT-001** | [连接器平台 V1](./specs-tree-connector-platform/) | ✅ validated（全流程完成） | P1 | - | 2026-05-24 |
+| **CONN-PLAT-002** | [连接器平台 V2 — 多版本与增强](./specs-tree-connector-platform-v2/) | 🔶 discovery-enhanced（规范完成 — 深度需求挖掘） | P1 | Summer | 2026-06-02 |
 | **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | ✅ specified（规范完成） | P0 | Summer | 2026-04-07 |
 
 ---
@@ -83,6 +84,40 @@
 - 执行模型：同步执行引擎（基于 open-server 扩展）
 - 预估工期：8-12 周
 - **下一步**: 🎉 全流程完成（需求挖掘→规范→规划→任务分解→实现→审查→验证）
+
+---
+
+### CONN-PLAT-002: 连接器平台 V2 — 多版本与增强
+
+**状态**: 🔶 discovery-enhanced（规范完成 — 深度需求挖掘完成，待任务分解）
+**规范版本**: v2.3-discovery
+**依赖**: CONN-PLAT-001（V1 MVP — 已建成并验证）
+
+**文档**:
+- [产品规范 v2.3-discovery](./specs-tree-connector-platform-v2/spec.md) - 产品规范（1448 行），经 sddu-discovery 深度挖掘
+- [技术规划 v1.0](./specs-tree-connector-platform-v2/plan.md) - 技术规划（1191 行），6 个 ADR（PROPOSED）
+- [状态文件](./specs-tree-connector-platform-v2/state.json) - discovery-enhanced / v2.3-discovery
+
+**核心能力**（三大升级方向）：
+
+| 方向 | 关键能力 |
+|------|---------|
+| **G1: 多版本及生命周期** | 5 状态状态机（草稿→已发布→已弃用→已退役→已归档）、SemVer 规则、版本快照/对比/回滚、双凭据轮转零停机、全量审计日志 |
+| **G2: 连接配置增强** | 7 种认证方式（含 mTLS）、三级超时模型、令牌桶限流、Fork-Join 并行编排（≤ 5 分支）、3 种失败/合并策略 |
+| **G3: 运行时与监控** | 执行历史（7 状态，30 天保留）、5 级可配运行日志、重试+指数退避+熔断器+死信队列 |
+
+**范围亮点**:
+- **52 项功能需求**（FR-001 ~ FR-052），**37 项非功能需求**（NFR-001 ~ NFR-037）
+- **4 角色用户画像**：连接器开发者 / 集成工程师 / SRE 工程师 / 业务用户
+- **10 个用户故事**、**25 个边界情况**、**12 个开放问题**
+- **Gherkin 场景**：版本发布、版本弃用、凭据轮转、失败重试与熔断
+- **36 个 API 端点**（V1 保留 15 + 修改 3 + 新增 17）
+- **6 个 ADR**：完整快照存储、SemVer+递增序号、Reactor 并行调度、MySQL 存储执行历史、OAuth2 按需刷新、MySQL LIKE 搜索
+- **5 批次交付**：多版本(3-4w) → 认证(2-3w) → 并行(3-4w) → 历史(2-3w) → 重试(1-2w) → GA(2w)
+
+**下一步**:
+1. 运行 `@sddu-tasks connector-platform-v2` 进行任务分解
+2. ADR 评审：6 个 PROPOSED ADR 待 Review 后转为 ACCEPTED
 
 ---
 
