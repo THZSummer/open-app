@@ -1,0 +1,157 @@
+// LookUp项详情抽屉样式
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drawerFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.detailPanelBody {
+  flex: 1;
+  overflow-y: auto;
+
+  .detailCard {
+    background: #fafafa;
+    border-radius: 6px;
+    border: 1px solid #e5e6eb;
+    margin-bottom: 16px;
+
+    .detailCardTitle {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e6eb;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1d2129;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .detailCardBody {
+      padding: 12px 16px;
+
+      .detailRow {
+        display: flex;
+        padding: 8px 0;
+        border-bottom: 1px dashed #e5e6eb;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        .detailLabel {
+          width: 80px;
+          flex-shrink: 0;
+          color: #86909c;
+          font-size: 12px;
+        }
+
+        .detailValue {
+          flex: 1;
+          color: #1d2129;
+          font-size: 13px;
+          word-break: break-all;
+
+          .statusBadge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 500;
+
+            .dot {
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              display: inline-block;
+
+              &.dotActive {
+                background: #00b578;
+                box-shadow: 0 0 0 3px rgba(0, 181, 120, 0.15);
+              }
+
+              &.dotInactive {
+                background: #c9cdd4;
+              }
+            }
+
+            .labelActive {
+              color: #00b578;
+            }
+
+            .labelInactive {
+              color: #86909c;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.editForm {
+  padding: 16px 20px;
+
+  :global {
+    .ant-form-item {
+      margin-bottom: 16px;
+    }
+
+    .ant-form-item-label > label {
+      font-size: 13px;
+      color: #4e5969;
+      font-weight: 500;
+    }
+
+    .ant-input,
+    .ant-input-number,
+    .ant-select-selector {
+      border-radius: 6px !important;
+    }
+
+    .ant-input {
+      font-size: 13px;
+      padding: 8px 12px;
+    }
+
+    .ant-input TextArea {
+      font-size: 13px;
+    }
+  }
+
+  .editFormRow {
+    display: flex;
+    gap: 16px;
+
+    .editFormItem {
+      flex: 1;
+      min-width: 0;
+      margin-bottom: 0;
+    }
+  }
+
+  .extendedAttrsDivider {
+    border-top: 1px solid #e5e6eb;
+    margin: 12px 0;
+    padding-top: 12px;
+
+    .extendedAttrsLabel {
+      font-size: 12px;
+      color: #86909c;
+      font-weight: 500;
+    }
+  }
+
+  .extendedAttrTextarea {
+    width: 100%;
+    resize: vertical;
+  }
+}

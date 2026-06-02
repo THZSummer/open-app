@@ -1,0 +1,41 @@
+:root {
+  --primary: #2b5ff5;
+  --primary-hover: #1e4fd9;
+  --primary-light: #eef2ff;
+  --danger: #f54a45;
+  --danger-hover: #d93832;
+  --success: #00b578;
+  --warning: #ff9f00;
+  --text-main: #1d2129;
+  --text-secondary: #4e5969;
+  --text-hint: #86909c;
+  --border: #e5e6eb;
+  --bg-page: #f2f3f5;
+  --bg-card: #ffffff;
+  --radius: 6px;
+  --radius-lg: 8px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-main);
+  font-size: 14px;
+  background: var(--bg-page);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--primary);
+  color: #fff;
+}

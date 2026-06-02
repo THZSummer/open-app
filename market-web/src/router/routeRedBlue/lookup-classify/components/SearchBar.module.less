@@ -1,0 +1,184 @@
+// 分类搜索栏样式
+.toolbar {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e6eb;
+  flex-wrap: wrap;
+  background: #fafafa;
+
+  .toolbarLeft {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    .searchWrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .searchLabel {
+        font-size: 13px;
+        color: #4e5969;
+        white-space: nowrap;
+      }
+
+      .searchInput {
+        width: 120px;
+        padding: 6px 10px;
+        border: 1px solid #e5e6eb;
+        border-radius: 6px;
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.2s;
+        background: #fff;
+
+        &:focus {
+          border-color: #2b5ff5;
+        }
+
+        &::placeholder {
+          color: #86909c;
+        }
+
+        &.descInput {
+          width: 100px;
+        }
+      }
+
+      .filterSelect {
+        padding: 6px 28px 6px 10px;
+        border: 1px solid #e5e6eb;
+        border-radius: 6px;
+        font-size: 13px;
+        outline: none;
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2386909c' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center;
+        cursor: pointer;
+        transition: border-color 0.2s;
+        appearance: none;
+
+        &:focus {
+          border-color: #2b5ff5;
+        }
+      }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+      padding: 0 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      gap: 5px;
+      white-space: nowrap;
+
+      &:active {
+        transform: scale(0.98);
+      }
+
+      &.btnPrimary {
+        background: #2b5ff5;
+        color: #fff;
+
+        &:hover {
+          background: #4d7af5;
+        }
+      }
+
+      &.btnOutline {
+        background: #fff;
+        color: #4e5969;
+        border: 1px solid #e5e6eb;
+
+        &:hover {
+          border-color: #2b5ff5;
+          color: #2b5ff5;
+        }
+      }
+
+      &.btnSm {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      &.btnIcon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  .toolbarRight {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+      padding: 0 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      gap: 5px;
+      white-space: nowrap;
+
+      &:active {
+        transform: scale(0.98);
+      }
+
+      &.btnPrimary {
+        background: #2b5ff5;
+        color: #fff;
+
+        &:hover {
+          background: #4d7af5;
+        }
+      }
+
+      &.btnOutline {
+        background: #fff;
+        color: #4e5969;
+        border: 1px solid #e5e6eb;
+
+        &:hover {
+          border-color: #2b5ff5;
+          color: #2b5ff5;
+        }
+      }
+
+      &.btnSm {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      &.btnIcon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}

@@ -1,0 +1,635 @@
+// ============================================
+// LookUp 项管理页面样式
+// 设计参考: demo.html
+// ============================================
+
+// 整体容器
+.container {
+  padding: 12px 16px;
+  background: #f2f3f5;
+  display: flex;
+  flex-direction: column;
+}
+
+// 页面主体
+.page {
+  width: 100%;
+  background: #ffffff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e6eb;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+// 页面头部
+.pageHead {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e6eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.pageHeadLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pageHeadTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+// 返回按钮
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  background: #fff;
+  color: #4e5969;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #2b5ff5;
+    color: #2b5ff5;
+  }
+}
+
+// 分类信息
+.classifyInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.infoTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: #f2f3f5;
+  border: 1px solid #e5e6eb;
+  border-radius: 14px;
+}
+
+.infoLabel {
+  color: #86909c;
+}
+
+.infoValue {
+  color: #2b5ff5;
+  font-weight: 600;
+  display: inline-block;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 主内容区域(包含列表和详情面板)
+.mainContent {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+// 列表面板
+.listPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+// 工具栏
+.toolbar {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e6eb;
+  background: #fafafa;
+  flex-wrap: wrap;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbarRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+// 搜索区域
+.searchArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.searchItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.searchLabel {
+  font-size: 13px;
+  color: #4e5969;
+  white-space: nowrap;
+}
+
+.searchInput {
+  width: 120px;
+  padding: 6px 10px;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #fff;
+
+  &:focus {
+    border-color: #2b5ff5;
+  }
+
+  &::placeholder {
+    color: #86909c;
+  }
+}
+
+.filterSelect {
+  padding: 6px 28px 6px 10px;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2386909c' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+
+  &:focus {
+    border-color: #2b5ff5;
+  }
+}
+
+// 按钮样式
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 5px;
+  white-space: nowrap;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.btnPrimary {
+  background: #2b5ff5;
+  color: #fff;
+
+  &:hover {
+    background: #4d7af5;
+  }
+}
+
+.btnOutline {
+  background: #fff;
+  color: #4e5969;
+  border: 1px solid #e5e6eb;
+
+  &:hover {
+    border-color: #2b5ff5;
+    color: #2b5ff5;
+  }
+}
+
+.btnSm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.btnReset {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #86909c;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    color: #4e5969;
+    background: #f2f3f5;
+  }
+}
+
+// 表格区域
+.tableWrap {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c9cdd4;
+    border-radius: 3px;
+  }
+}
+
+// 表格
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 500;
+    font-size: 13px;
+    color: #4e5969;
+    background: #fafafa;
+    border-bottom: 1px solid #e5e6eb;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 14px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f2f3f5;
+    color: #1d2129;
+  }
+
+  tr {
+    transition: background 0.15s;
+
+    &:hover td {
+      background: #f8f9fb;
+    }
+  }
+}
+
+// 状态徽章
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotActive {
+  background: #00b578;
+  box-shadow: 0 0 0 3px rgba(0, 181, 120, 0.15);
+}
+
+.dotInactive {
+  background: #c9cdd4;
+}
+
+.labelActive {
+  color: #00b578;
+}
+
+.labelInactive {
+  color: #86909c;
+}
+
+// 操作按钮
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionLink {
+  color: #2b5ff5;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.15s;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &.danger {
+    color: #f54a45;
+  }
+}
+
+// 链接文字
+.linkText {
+  color: #2b5ff5;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// 分页
+.pagination {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #e5e6eb;
+  flex-shrink: 0;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fafafa;
+}
+
+.paginationLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #86909c;
+}
+
+.paginationRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paginationInfo {
+  font-size: 13px;
+  color: #86909c;
+}
+
+// 右侧详情/编辑面板
+.detailPanel {
+  width: 520px;
+  background: #ffffff;
+  border-left: 1px solid #e5e6eb;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 10;
+
+  &.show {
+    transform: translateX(0);
+  }
+}
+
+.detailPanelHead {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e6eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.detailPanelTitle {
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailPanelClose {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #86909c;
+  font-size: 18px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #f2f3f5;
+    color: #1d2129;
+  }
+}
+
+.editBtnHead {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2b5ff5;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #eef2ff;
+  }
+}
+
+.detailPanelBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.detailCard {
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #e5e6eb;
+  margin-bottom: 16px;
+}
+
+.detailCardTitle {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e6eb;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d2129;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detailCardBody {
+  padding: 12px 16px;
+}
+
+.detailRow {
+  display: flex;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e5e6eb;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.detailLabel {
+  width: 80px;
+  flex-shrink: 0;
+  color: #86909c;
+  font-size: 12px;
+}
+
+.detailValue {
+  flex: 1;
+  color: #1d2129;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+// 详情面板底部按钮
+.detailPanelFooter {
+  padding: 12px 20px;
+  border-top: 1px solid #e5e6eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+// 抽屉样式
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// 复选框
+.checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #2b5ff5;
+}
+
+// 空状态
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 0;
+  color: #86909c;
+
+  .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+
+// Drawer 样式优化
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+// 分页容器
+.paginationWrapper {
+  margin-top: 16px;
+  text-align: right;
+}
+
+// 表格样式
+.cellLink {
+  color: #2b5ff5;
+  cursor: pointer;
+}
+
+.statusActive {
+  color: #52c41a;
+}
+
+.statusInactive {
+  color: #999;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.actionButton {
+  color: #2b5ff5;
+  cursor: pointer;
+}
+
+.actionButtonDanger {
+  color: #ff4d4f;
+  cursor: pointer;
+}

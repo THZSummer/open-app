@@ -1,0 +1,58 @@
+// 确认弹窗内容区域
+.confirm-modal-content {
+  text-align: center;
+  padding: 20px 0;
+  
+  .confirm-icon {
+    font-size: 48px;
+    color: #faad14;
+    margin-bottom: 16px;
+  }
+  
+  .confirm-title {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+  
+  .confirm-text {
+    color: #8c8c8c;
+  }
+}
+
+// 确认弹窗底部按钮区域
+.confirm-modal-footer {
+  text-align: center;
+  padding-bottom: 16px;
+  
+  .cancel-button {
+    margin-right: 8px;
+    padding: 6px 24px;
+    border: 1px solid #d9d9d9;
+    background: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    
+    &:hover {
+      color: #1677ff;
+      border-color: #1677ff;
+    }
+  }
+  
+  .confirm-button {
+    padding: 6px 24px;
+    background: #ff4d4f;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    
+    &:hover:not(:disabled) {
+      background: #ff7875;
+    }
+    
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+  }
+}

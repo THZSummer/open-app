@@ -164,6 +164,7 @@ function FlowList() {
     let successMsg;
     let errorMsg;
     let setLoading;
+    let currentPage;
 
     switch (action) {
       case 'delete':
@@ -171,18 +172,21 @@ function FlowList() {
         successMsg = '删除成功';
         errorMsg = '删除失败';
         setLoading = setActionLoading;
+        currentPage = INIT_PAGECONFIG;
         break;
       case 'stop':
         apiFunc = stopFlow;
         successMsg = '停止成功';
         errorMsg = '停止失败';
         setLoading = setActionLoading;
+        currentPage = pagination;
         break;
       case 'start':
         apiFunc = startFlow;
         successMsg = '启动成功';
         errorMsg = '启动失败';
         setLoading = null;
+        currentPage = INIT_PAGECONFIG;
         break;
       default:
         return;
@@ -196,7 +200,7 @@ function FlowList() {
        message.success(successMsg);
        // 关闭弹窗并清理状态
        handleActionCancel();
-       loadData(INIT_PAGECONFIG);
+       loadData(currentPage);
      } else {
        message.error(res?.messageZh || errorMsg);
      }

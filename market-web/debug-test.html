@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Test</title>
+</head>
+<body>
+  <div id="root">Loading...</div>
+  <script type="module">
+    console.log('Script starting...');
+    import('/market-web/src/main.tsx').then(m => {
+      console.log('Module loaded:', m);
+      document.getElementById('root').textContent = 'Module loaded!';
+    }).catch(err => {
+      console.error('Import failed:', err);
+      document.getElementById('root').textContent = 'Import failed: ' + err.message;
+    });
+  </script>
+</body>
+</html>
