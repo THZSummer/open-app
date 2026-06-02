@@ -1,6 +1,6 @@
 package com.xxx.event.common.channel;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -26,10 +26,10 @@ import java.net.URI;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class WebSocketHandler extends TextWebSocketHandler {
 
-    private final WebSocketChannel webSocketChannel;
+    @Autowired
+    private WebSocketChannel webSocketChannel;
 
     /**
      * 连接建立后调用

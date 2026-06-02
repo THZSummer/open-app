@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xxx.api.approval.mapper.ApprovalRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.api.approval.entity.ApprovalRecord">
+        <id column="id" property="id"/>
+        <result column="combined_nodes" property="combinedNodes"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_id" property="businessId"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="status" property="status"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="completed_at" property="completedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, combined_nodes, business_type, business_id, applicant_id, applicant_name,
+        status, current_node, create_time, last_update_time, create_by, last_update_by, completed_at
+    </sql>
+
+    <!-- 按 businessType + businessId 查询最新待审批记录（命中 idx_business 索引） -->
+    <select id="selectLatestPendingByBusiness" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_record_t
+        WHERE business_type = #{businessType} AND business_id = #{businessId} AND status = 0
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 更新审批记录（status / currentNode / combinedNodes / completedAt） -->
+    <update id="update" parameterType="com.xxx.api.approval.entity.ApprovalRecord">
+        UPDATE openplatform_v2_approval_record_t
+        SET status = #{status},
+            current_node = #{currentNode},
+            combined_nodes = #{combinedNodes},
+            completed_at = #{completedAt},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

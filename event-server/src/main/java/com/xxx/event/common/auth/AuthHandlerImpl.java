@@ -1,6 +1,6 @@
 package com.xxx.event.common.auth;
 
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -20,10 +20,10 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class AuthHandlerImpl implements AuthHandler {
 
-    private final CredentialProvider credentialProvider;
+    @Autowired
+    private CredentialProvider credentialProvider;
 
     @Override
     public void applyAuth(HttpHeaders headers, String appId, AuthTypeEnum authType) {

@@ -6,7 +6,7 @@ import com.xxx.event.common.channel.MessageQueueChannel;
 import com.xxx.event.common.channel.WebHookChannel;
 import com.xxx.event.gateway.dto.EventPublishRequest;
 import com.xxx.event.gateway.dto.EventPublishResponse;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -39,13 +39,16 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class EventGatewayService {
 
-    private final ApiServerClient apiServerClient;
-    private final WebHookChannel webHookChannel;
-    private final MessageQueueChannel messageQueueChannel;
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private ApiServerClient apiServerClient;
+    @Autowired
+    private WebHookChannel webHookChannel;
+    @Autowired
+    private MessageQueueChannel messageQueueChannel;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     /**
      * Redis 缓存键前缀
