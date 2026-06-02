@@ -1,0 +1,64 @@
+package com.xxx.it.works.wecode.v2.modules.lookup.dto.classify;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+import java.io.Serializable;
+
+/**
+ * 编辑分类请求DTO
+ *
+ * @author SDDU Build Agent
+ * @version 1.0.0
+ */
+@JsonIgnoreProperties(ignoreUnknown = true)
+@Data
+@Schema(description = "编辑分类请求")
+public class ClassifyUpdateDTO implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 分类ID
+     */
+    @Schema(description = "分类ID",
+            example = "1")
+    private Long classifyId;
+
+    /**
+     * 分类名称
+     */
+    @NotBlank(message = "分类名称不能为空")
+    @Size(max = 100, message = "分类名称长度不能超过100字符")
+    @Schema(description = "分类名称，必填，1-100字符",
+            requiredMode = Schema.RequiredMode.REQUIRED,
+            example = "用户类型")
+    private String classifyName;
+
+    /**
+     * 路径
+     */
+    @Size(max = 100, message = "路径长度不能超过100字符")
+    @Schema(description = "路径，用于层级归类，0-100字符",
+            example = "system/user")
+    private String path;
+
+    /**
+     * 分类描述
+     */
+    @Size(max = 4000, message = "分类描述长度不能超过4000字符")
+    @Schema(description = "分类描述，0-4000字符",
+            example = "用户身份分类")
+    private String classifyDesc;
+
+    /**
+     * 状态：0-失效，1-有效
+     */
+    @Schema(description = "状态：0-失效，1-有效，不传则不修改状态",
+            allowableValues = {"0", "1"},
+            example = "1")
+    private Integer status;
+}
