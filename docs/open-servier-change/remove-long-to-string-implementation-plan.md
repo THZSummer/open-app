@@ -1,10 +1,10 @@
-# 删除 Long→String 全局序列化策略 — 修改方案与测试用例（v2）
+# 删除 Long→String 全局序列化策略 — 修改方案与测试用例（v3）
 
 > 日期：2026-06-02
 >
-> 基于影响分析 v3 结论：项目所有响应 DTO 的 ID 字段已定义为 `String` 类型，不存在雪花 ID 精度丢失风险。实际影响仅 `PageResponse.total`（计数值）和 Sync 模块内部 DTO（旧系统自增 ID）。
+> 基于影响分析 v4 结论：open-server / api-server / event-server 所有响应 DTO 的 ID 字段已定义为 `String` 类型，不存在雪花 ID 精度丢失风险。market-server 的 VO 类直接使用 `Long` 类型，但 ID 为数据库自增，无精度丢失风险。
 >
-> **v2 更新**：基于最新代码校准。open-server JacksonConfig 包含 `DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES` 配置，需在改后代码中保留。
+> **v3 更新**：新增 market-server 微服务修改方案和测试用例。
 
 ---
 
@@ -312,13 +312,156 @@ public class JacksonConfig {
 
 ---
 
-### 1.4 修改汇总
+### 1.4 market-server JacksonConfig（新增）
+
+**文件**：`market-server/src/main/java/com/xxx/it/works/wecode/v2/common/config/JacksonConfig.java`
+
+#### 改前（当前代码）
+
+```java
+package com.xxx.it.works.wecode.v2.common.config;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.TimeZone;
+
+@Configuration
+@AutoConfigureBefore(JacksonAutoConfiguration.class)
+public class JacksonConfig {
+
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
+
+        SimpleModule customModule = new SimpleModule();
+        customModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer());
+        customModule.addSerializer(LocalDate.class, new LocalDateSerializer());
+        objectMapper.registerModule(customModule);
+
+        // Long 类型序列化为 String
+        SimpleModule longModule = new SimpleModule();
+        longModule.addSerializer(Long.class, ToStringSerializer.instance);
+        longModule.addSerializer(Long.TYPE, ToStringSerializer.instance);
+        objectMapper.registerModule(longModule);
+
+        return objectMapper;
+    }
+
+    @Bean
+    public HttpMessageConverters customHttpMessageConverters(ObjectMapper objectMapper) {
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setObjectMapper(objectMapper);
+        return new HttpMessageConverters((HttpMessageConverter<?>) converter);
+    }
+
+    // ... LocalDateTimeSerializer / LocalDateSerializer inner classes unchanged
+}
+```
+
+#### 改后
+
+```java
+package com.xxx.it.works.wecode.v2.common.config;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
+
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.TimeZone;
+
+@Configuration
+@AutoConfigureBefore(JacksonAutoConfiguration.class)
+public class JacksonConfig {
+
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
+
+        SimpleModule customModule = new SimpleModule();
+        customModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer());
+        customModule.addSerializer(LocalDate.class, new LocalDateSerializer());
+        objectMapper.registerModule(customModule);
+
+        return objectMapper;
+    }
+
+    @Bean
+    public HttpMessageConverters customHttpMessageConverters(ObjectMapper objectMapper) {
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setObjectMapper(objectMapper);
+        return new HttpMessageConverters((HttpMessageConverter<?>) converter);
+    }
+
+    // ... LocalDateTimeSerializer / LocalDateSerializer inner classes unchanged
+}
+```
+
+#### 变更说明
+
+| 操作 | 内容 |
+|------|------|
+| 删除 import | `import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;` |
+| 删除代码 | `SimpleModule longModule = new SimpleModule();` |
+| 删除代码 | `longModule.addSerializer(Long.class, ToStringSerializer.instance);` |
+| 删除代码 | `longModule.addSerializer(Long.TYPE, ToStringSerializer.instance);` |
+| 删除代码 | `objectMapper.registerModule(longModule);` |
+| 删除注释 | `// Long 类型序列化为 String` |
+| **保留** | `@AutoConfigureBefore(JacksonAutoConfiguration.class)` ✅ |
+| **保留** | `LocalDateTimeSerializer` / `LocalDateSerializer` ✅ |
+| **保留** | `HttpMessageConverters` Bean ✅ |
+| **保留** | `setTimeZone("Asia/Shanghai")` ✅ |
+
+---
+
+### 1.5 修改汇总
 
 | # | 模块 | 文件 | 删除 import | 删除代码 | 保留配置 |
 |:-:|------|------|:---:|:---:|------|
-| 1 | open-server | `JacksonConfig.java` | 2 行 | 5 行（含注释） | JavaTimeModule + 时区 + **FAIL_ON_UNKNOWN_PROPERTIES** |
+| 1 | open-server | `JacksonConfig.java` | 2 行 | 5 行（含注释） | JavaTimeModule + 时区 + FAIL_ON_UNKNOWN_PROPERTIES |
 | 2 | api-server | `JacksonConfig.java` | 2 行 | 5 行（含注释） | JavaTimeModule |
 | 3 | event-server | `JacksonConfig.java` | 2 行 | 5 行（含注释） | JavaTimeModule |
+| 4 | **market-server** | **`JacksonConfig.java`** | **1 行** | **5 行（含注释）** | **日期序列化器 + HttpMessageConverters + 时区** |
 
 ---
 
@@ -679,7 +822,106 @@ public class JacksonConfig {
 
 ---
 
-### 2.9 TC-09：FAIL_ON_UNKNOWN_PROPERTIES 保持生效
+### 2.9 TC-09：market-server 分页 `page.total` 返回 Number 类型
+
+**目标**：验证 market-server 分页接口的 `total` 从字符串变为数字
+
+**测试接口**：`GET /service/open/v2/lookup/classify/list?curPage=1&pageSize=20`
+
+**预期响应**：
+
+```json
+{
+  "code": "200",
+  "data": {
+    "total": 5,
+    "list": [
+      { "classifyId": 1, "name": "分类A" }
+    ]
+  }
+}
+```
+
+| 检查点 | 期望值 |
+|--------|--------|
+| `data.total` 类型 | `number` |
+| `data.list[].classifyId` 类型 | `number` |
+
+**覆盖接口**（3 个分页接口）：
+
+| # | 接口 |
+|:-:|------|
+| 1 | `GET /service/open/v2/lookup/classify/list` |
+| 2 | `GET /service/open/v2/lookup/classify/{classifyId}/items` |
+| 3 | `GET /service/open/v2/dictionary/list` |
+
+---
+
+### 2.10 TC-10：market-server VO ID 字段返回 Number 类型
+
+**目标**：验证 market-server VO 类的 `Long` ID 字段从字符串变为数字
+
+**测试接口**：`GET /service/open/v2/lookup/classify/{classifyId}`
+
+**预期响应**：
+
+```json
+{
+  "code": "200",
+  "data": {
+    "classifyId": 123,
+    "name": "分类A",
+    "description": "测试分类"
+  }
+}
+```
+
+| 检查点 | 期望值 | 说明 |
+|--------|--------|------|
+| `data.classifyId` 类型 | `number` | VO 定义为 `Long`，删除转换后为数字 |
+| `data.classifyId` 值 | 等于 DB 自增 ID | 值域小，无精度问题 |
+
+**覆盖接口**（6 个查询接口）：
+
+| # | 接口 | 验证的 Long 字段 |
+|:-:|------|-----------------|
+| 1 | `GET /service/open/v2/lookup/classify/list` | `list[].classifyId` |
+| 2 | `GET /service/open/v2/lookup/classify/{classifyId}` | `classifyId` |
+| 3 | `GET /service/open/v2/lookup/classify/{classifyId}/items` | `list[].itemId`, `list[].classifyId` |
+| 4 | `GET /service/open/v2/lookup/items/{itemId}` | `itemId`, `classifyId` |
+| 5 | `GET /service/open/v2/dictionary/list` | `list[].id` |
+| 6 | `GET /service/open/v2/dictionary/{id}` | `id` |
+
+---
+
+### 2.11 TC-11：market-server 日期序列化格式保持不变
+
+**目标**：验证 market-server 自定义日期格式化器不受 Long→String 删除影响
+
+**测试接口**：`GET /service/open/v2/lookup/classify/{classifyId}`
+
+**预期响应**：
+
+```json
+{
+  "code": "200",
+  "data": {
+    "classifyId": 123,
+    "name": "分类A",
+    "createTime": "2026-06-02 10:30:00",
+    "updateDate": "2026-06-02"
+  }
+}
+```
+
+| 检查点 | 期望值 | 说明 |
+|--------|--------|------|
+| `createTime` 格式 | `yyyy-MM-dd HH:mm:ss` | `LocalDateTimeSerializer` 保留 |
+| `updateDate` 格式 | `yyyy-MM-dd` | `LocalDateSerializer` 保留 |
+
+---
+
+### 2.12 TC-12：FAIL_ON_UNKNOWN_PROPERTIES 保持生效
 
 **目标**：验证 open-server 的反序列化兼容性配置未被误删
 
@@ -729,8 +971,11 @@ public class JacksonConfig {
 | TC-06 | api-server | 业务 ID 保持 String | 5 | `typeof id === 'string'` |
 | TC-07 | event-server | 接口无 Long 泄露 | 6 | 响应正常，无 Long 字段 |
 | TC-08 | connector-api | 行为无变化 | 2 | `durationMs` 仍为 number |
-| TC-09 | open-server | `FAIL_ON_UNKNOWN_PROPERTIES` 保持 | 1 | 额外字段不报错 |
-| | | **合计** | **54** | |
+| TC-09 | **market-server** | **分页 `total` → Number** | **3** | **`typeof total === 'number'`** |
+| TC-10 | **market-server** | **VO ID → Number** | **6** | **`typeof classifyId === 'number'`** |
+| TC-11 | **market-server** | **日期格式保持不变** | **1** | **`createTime` 格式 `yyyy-MM-dd HH:mm:ss`** |
+| TC-12 | open-server | `FAIL_ON_UNKNOWN_PROPERTIES` 保持 | 1 | 额外字段不报错 |
+| | | **合计** | **64** | |
 
 ---
 
@@ -741,20 +986,23 @@ public class JacksonConfig {
 | # | 场景 | 预期结果 | 优先级 |
 |:-:|------|---------|:---:|
 | R-01 | 前端分页组件正常渲染 | `page.total` 为 number，组件直接使用无需 `parseInt` | P0 |
-| R-02 | 列表行点击跳转详情 | `id` 为 string，URL 拼接正常：`/detail/${id}` | P0 |
+| R-02 | 列表行点击跳转详情 | `id` 为 string/number，URL 拼接正常 | P0 |
 | R-03 | 订阅/撤回/删除操作 | 响应中 `id` 为 string，前端状态管理正常 | P0 |
 | R-04 | 审批通过/驳回/撤销 | 响应中 `id` 为 string，列表刷新正常 | P0 |
 | R-05 | 向后兼容（旧客户端发送额外字段） | 请求正常处理，未知字段被忽略 | P0 |
-| R-06 | 分类树展开/折叠 | `id` / `parentId` 为 string，树结构正确 | P1 |
-| R-07 | 批量审批操作 | 响应中所有 `id` 为 string | P1 |
-| R-08 | API 权限列表筛选 | `page.total` 为 number，分页正确 | P1 |
+| R-06 | **market-server 分类/字典/字典项列表** | **`total` 为 number，`classifyId`/`itemId`/`id` 为 number** | **P0** |
+| R-07 | 分类树展开/折叠 | `id` / `parentId` 为 string，树结构正确 | P1 |
+| R-08 | 批量审批操作 | 响应中所有 `id` 为 string | P1 |
+| R-09 | API 权限列表筛选 | `page.total` 为 number，分页正确 | P1 |
 
 ### 4.2 前端需同步修改项
 
 | # | 修改点 | 改前 | 改后 | 影响范围 |
 |:-:|--------|------|------|---------|
-| 1 | 分页 `total` 类型定义 | `total: string` | `total: number` | TypeScript 接口定义 |
+| 1 | 分页 `total` 类型定义 | `total: string` | `total: number` | TypeScript 接口定义（4 个模块） |
 | 2 | 分页组件 `total` props | `parseInt(page.total)` 或 `Number(page.total)` | 直接传 `page.total` | 分页组件调用处 |
 | 3 | `total` 条件判断 | `total > "0"` (字符串比较) | `total > 0` (数字比较) | 业务逻辑层 |
+| 4 | **market-server VO ID 类型** | **`classifyId: string`** | **`classifyId: number`** | **market-server 前端 TS 类型定义** |
+| 5 | **market-server 列表 key** | **`key={item.classifyId}`** (string) | **`key={item.classifyId}`** (number) | **React key 通常兼容，但需验证** |
 
-> **无需修改**：所有 `id`、`appId`、`permissionId` 等业务 ID 字段的类型定义，因为 DTO 层已定义为 `String`，删除 Jackson 全局转换不影响这些字段。
+> **无需修改**：open-server / api-server / event-server 的 `id`、`appId`、`permissionId` 等业务 ID 字段的类型定义，因为 DTO 层已定义为 `String`。
