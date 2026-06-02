@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 /**
  * 审批节点 DTO
@@ -73,4 +74,11 @@ public class ApprovalNodeDto implements Serializable {
      * 记录该节点的审批意见，用于前端显示审批详情
      */
     private String comment;
+
+    /**
+     * 催办卡片ID列表
+     *
+     * 每催办一次追加一个第三方返回的卡片ID
+     */
+    private List<String> cardIds;
 }

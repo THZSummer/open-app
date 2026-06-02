@@ -92,4 +92,24 @@ public interface ApprovalRecordMapper {
     ApprovalRecord selectLatestByBusiness(
             @Param("businessType") String businessType,
             @Param("businessId") Long businessId);
+
+    /**
+     * 根据业务类型和业务ID查询最新待审批状态的记录（催办专用）
+     *
+     * <p>按创建时间倒序取第一条 status=0（待审）的记录。
+     * WHERE 条件包含 business_type，命中 idx_business(business_type, business_id) 联合索引</p>
+     *
+     * @param businessType 业务类型（如 api_permission_apply）
+     * @param businessId   业务ID
+     * @return 审批记录，不存在或非待审返回 null
+     */
+    ApprovalRecord selectLatestPendingByBusiness(@Param("businessType") String businessType,
+                                                  @Param("businessId") Long businessId);
+
+    /**
+     * 更新审批记录的 combined_nodes 字段（催办持久化 cardId 专用）
+     *
+     * @param record 审批记录（仅更新 combined_nodes 和 last_update_time）
+     */
+    int updateCombinedNodes(ApprovalRecord record);
 }

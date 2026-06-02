@@ -7,7 +7,7 @@ import com.xxx.event.common.channel.WebHookChannel;
 import com.xxx.event.common.channel.WebSocketChannel;
 import com.xxx.event.gateway.dto.CallbackInvokeRequest;
 import com.xxx.event.gateway.dto.CallbackInvokeResponse;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -40,14 +40,18 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CallbackGatewayService {
 
-    private final ApiServerClient apiServerClient;
-    private final WebHookChannel webHookChannel;
-    private final SseChannel sseChannel;
-    private final WebSocketChannel webSocketChannel;
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private ApiServerClient apiServerClient;
+    @Autowired
+    private WebHookChannel webHookChannel;
+    @Autowired
+    private SseChannel sseChannel;
+    @Autowired
+    private WebSocketChannel webSocketChannel;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     /**
      * Redis 缓存键前缀

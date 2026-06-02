@@ -3,6 +3,8 @@ package com.xxx.it.works.wecode.v2.modules.connector.dto;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * 连接配置响应
  * <p>
@@ -25,11 +27,11 @@ public class ConnectorConfigResponse {
     /** 是否有配置 */
     private boolean hasConfig;
 
-    /** 配置创建时间 (ISO 8601) */
-    private String createTime;
+    /** 配置创建时间 */
+    private Date createTime;
 
-    /** 配置最后更新时间 (ISO 8601) */
-    private String lastUpdateTime;
+    /** 配置最后更新时间 */
+    private Date lastUpdateTime;
 
     public static ConnectorConfigResponse empty() {
         ConnectorConfigResponse resp = new ConnectorConfigResponse();
@@ -41,10 +43,10 @@ public class ConnectorConfigResponse {
      * 从 ConnectorVersion 构建响应
      *
      * @param version       连接器版本实体
-     * @param createTime    格式化后的创建时间
-     * @param lastUpdateTime 格式化后的更新时间
+     * @param createTime    创建时间
+     * @param lastUpdateTime 更新时间
      */
-    public static ConnectorConfigResponse of(ConnectorVersion version, String createTime, String lastUpdateTime) {
+    public static ConnectorConfigResponse of(ConnectorVersion version, Date createTime, Date lastUpdateTime) {
         ConnectorConfigResponse resp = new ConnectorConfigResponse();
         resp.setConnectorId(String.valueOf(version.getConnectorId()));
         resp.setConnectorVersionId(String.valueOf(version.getId()));

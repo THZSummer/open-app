@@ -30,6 +30,7 @@ import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
  * <li>#50 POST /service/open/v2/approvals/:id/cancel - 撤销审批</li>
  * <li>#51 POST /service/open/v2/approvals/batch-approve - 批量同意审批</li>
  * <li>#52 POST /service/open/v2/approvals/batch-reject - 批量驳回审批</li>
+ * <li>#53 POST /service/open/v2/approvals/:id/urge - 催办审批</li>
  * </ul>
  *
  * @author SDDU Build Agent
@@ -316,6 +317,29 @@ public class ApprovalController {
         String operator = UserContextHolder.getUserId();
 
         BatchApprovalResponse data = approvalService.batchReject(request, operatorId, operatorName, operator);
+        return ApiResponse.success(data);
+    }
+
+    // ==================== 催办 (#53) ====================
+
+    /**
+     * #53 催办审批
+     *
+     * <p>申请人催办当前审批人，发送卡片消息通知。
+     * 根据 businessId + businessType 查询最新待审批记录（命中 idx_business 索引）。</p>
+     *
+     * @param id      路径参数（保持不变）
+     * @param request 请求体（businessId + businessType）
+     * @return 催办结果
+     */
+    @PostMapping("/approvals/{id}/urge")
+    public ApiResponse<ApprovalActionResponse> urge(
+            @PathVariable String id,
+            @RequestBody UrgeRequest request) {
+        log.info("Urge approval: id={}, businessId={}, businessType={}", id, request.getBusinessId(), request.getBusinessType());
+
+        String operator = UserContextHolder.getUserId();
+        ApprovalActionResponse data = approvalService.urge(request.getBusinessId(), request.getBusinessType(), operator);
         return ApiResponse.success(data);
     }
 }

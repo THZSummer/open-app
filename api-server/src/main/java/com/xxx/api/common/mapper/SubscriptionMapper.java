@@ -34,7 +34,7 @@ public interface SubscriptionMapper {
 
     /**
      * 根据应用ID和Scope查询回调订阅配置
-     * 
+     *
      * @param appId 应用ID
      * @param scope 权限标识
      * @return 订阅配置
@@ -42,4 +42,20 @@ public interface SubscriptionMapper {
     Subscription selectCallbackConfigByAppIdAndScope(
             @Param("appId") Long appId,
             @Param("scope") String scope);
+
+    /**
+     * 根据ID查询订阅记录
+     *
+     * @param id 订阅ID
+     * @return 订阅记录
+     */
+    Subscription selectById(@Param("id") Long id);
+
+    /**
+     * 更新订阅审批状态
+     *
+     * @param subscription 订阅记录（更新 status / approvedAt / approvedBy）
+     * @return 影响行数
+     */
+    int updateApprovalStatus(Subscription subscription);
 }

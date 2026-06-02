@@ -79,6 +79,8 @@ public class ApprovalEngine {
         public static final int APPROVE = 0;  // 同意
         public static final int REJECT = 1;   // 拒绝
         public static final int CANCEL = 2;   // 撤销
+        public static final int TRANSFER = 3; // 转交
+        public static final int URGE = 4;     // 催办
     }
 
     /**
