@@ -2,20 +2,28 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
  * 出口节点执行器
  * <p>
- * 按 outputFields 从上下文提取字段构造返回值
+ * v5.5:
+ * <ul>
+ *   <li>访问 {@code data.outputMapping} 结构化 {@code {header, body}} 替代扁平 {@code outputFields}</li>
+ *   <li>使用 {@link ExpressionResolver} 解析表达式</li>
+ *   <li>构建包含 {@code header}/{@code body} 分区的响应</li>
+ * </ul>
  * </p>
  */
 public class ExitNodeExecutor implements NodeExecutor {
@@ -23,9 +31,11 @@ public class ExitNodeExecutor implements NodeExecutor {
     private static final Logger log = LoggerFactory.getLogger(ExitNodeExecutor.class);
 
     private final ObjectMapper objectMapper;
+    private final ExpressionResolver expressionResolver;
 
     public ExitNodeExecutor(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+        this.expressionResolver = new ExpressionResolver();
     }
 
     @Override
@@ -46,44 +56,132 @@ public class ExitNodeExecutor implements NodeExecutor {
 
             String nodeId = (String) config.get("id");
 
-            log.debug("Exit node executing: nodeId={}", nodeId);
+            // v5.5: React Flow 格式 — 节点配置在 data 字段内
+            Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
 
+            log.info("Exit node executing: nodeId={}", nodeId);
+
+            // input 分区: 记录配的 outputMapping
+            Map<String, Object> input = new HashMap<>();
+
+            // output 分区: 构建最终响应
             Map<String, Object> outputData = new HashMap<>();
 
-            // 按 outputFields 从上下文提取
-            Object outputFields = config.get("outputFields");
-            if (outputFields instanceof List) {
-                List<String> fields = (List<String>) outputFields;
-                for (String field : fields) {
-                    Object value = context.resolveFieldReference("${" + field + "}");
-                    if (value != null) {
-                        String fieldName = field.contains(".") ? field.substring(field.lastIndexOf('.') + 1) : field;
-                        outputData.put(fieldName, value);
+            // v5.5: 从 data.outputMapping 结构化配置构建响应
+            // outputMapping 格式: {header: {...}, body: {...}}
+            Object outputMappingObj = data.get("outputMapping");
+            if (outputMappingObj instanceof Map) {
+                Map<String, Object> outputMapping = (Map<String, Object>) outputMappingObj;
+
+                // 存储原始 outputMapping 配置到 input 分区
+                input.put("outputMapping", new HashMap<>(outputMapping));
+
+                // 处理 header 映射
+                Object headerMapping = outputMapping.get("header");
+                Map<String, Object> responseHeaders = new HashMap<>();
+                Map<String, Object> headerMap = normalizeMappingSegment(headerMapping);
+                for (Map.Entry<String, Object> entry : headerMap.entrySet()) {
+                    Object resolved = resolveValue(context, entry.getValue());
+                    if (resolved != null) {
+                        responseHeaders.put(entry.getKey(), resolved);
                     }
                 }
+
+                // 处理 body 映射
+                Object bodyMapping = outputMapping.get("body");
+                Map<String, Object> responseBody = new HashMap<>();
+                Map<String, Object> bodyMap = normalizeMappingSegment(bodyMapping);
+                for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
+                    Object resolved = resolveValue(context, entry.getValue());
+                    if (resolved != null) {
+                        responseBody.put(entry.getKey(), resolved);
+                    }
+                }
+
+                outputData.put("header", responseHeaders);
+                outputData.put("body", responseBody);
+
             } else {
-                // 无 outputFields 配置, 尝试收集所有节点输出
-                for (Map.Entry<String, Map<String, Object>> entry : context.getNodeOutputs().entrySet()) {
-                    String nodeId2 = entry.getKey();
-                    Map<String, Object> nodeData = entry.getValue();
-                    if (nodeData != null) {
-                        for (Map.Entry<String, Object> field : nodeData.entrySet()) {
-                            if (!field.getKey().startsWith("__")) { // 跳过元数据
-                                outputData.put(nodeId2 + "_" + field.getKey(), field.getValue());
-                            }
-                        }
-                    }
-                }
+                outputData = collectFallbackOutputs(context);
+                input.put("outputMapping", null);
             }
 
             // 标记元数据
             outputData.put("__status", "success");
 
-            NodeOutput output = new NodeOutput(nodeId, "exit", outputData);
-            output.setStatus("success");
+            // v5.5: input/output 双分区 NodeOutput
+            NodeOutput result = new NodeOutput(nodeId, "exit", input, outputData);
+            result.setStatus("success");
 
-            log.debug("Exit node completed: nodeId={}, outputFields={}", nodeId, outputData.keySet());
-            return output;
+            log.info("Exit node completed: nodeId={}, outputFields={}", nodeId, outputData.keySet());
+            return result;
         });
+    }
+
+
+    /**
+     * 降级收集所有节点输出 (无 outputMapping 时)
+     */
+    private Map<String, Object> collectFallbackOutputs(ExecutionContext context) {
+        Map<String, Object> outputData = new HashMap<>();
+        for (Map.Entry<String, ? extends Object> entry : context.getNodeContexts().entrySet()) {
+            Object nodeCtx = entry.getValue();
+            if (!(nodeCtx instanceof NodeContext)) {
+                continue;
+            }
+            NodeContext nc = (NodeContext) nodeCtx;
+            Map<String, Object> nodeOutput = nc.getOutput();
+            if (nodeOutput == null) {
+                continue;
+            }
+            for (Map.Entry<String, Object> field : nodeOutput.entrySet()) {
+                if (!field.getKey().startsWith("__")) {
+                    outputData.put(entry.getKey() + "_" + field.getKey(), field.getValue());
+                }
+            }
+        }
+        outputData.put("__collectMode", true);
+        return outputData;
+    }
+
+    /**
+     * v5.6: 从映射字段提取值（{type, value} 对象）
+     */
+    @SuppressWarnings("unchecked")
+    private Object extractMappedValue(Object fieldDef) {
+        if (fieldDef instanceof Map) {
+            return ((Map<String, Object>) fieldDef).get("value");
+        }
+        return null;
+    }
+    /**
+     * v5.6: 规范化映射段（{type, properties: {key: {type, value}}}）
+     * 返回 {字段名 -> 表达式值} 的 Map
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> normalizeMappingSegment(Object segment) {
+        if (!(segment instanceof Map)) {
+            return Collections.emptyMap();
+        }
+        Map<String, Object> segMap = (Map<String, Object>) segment;
+
+        Object props = segMap.get("properties");
+        if (props instanceof Map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) props).entrySet()) {
+                result.put(entry.getKey(), extractMappedValue(entry.getValue()));
+            }
+            return result;
+        }
+
+        return Collections.emptyMap();
+    }
+    @SuppressWarnings("unchecked")
+    private Object resolveValue(ExecutionContext context, Object value) {
+        if (value instanceof String) {
+            String expr = (String) value;
+            return expressionResolver.resolve(expr, context.getNodeContexts());
+        }
+        return value;
     }
 }

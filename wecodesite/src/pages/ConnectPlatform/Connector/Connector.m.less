@@ -2,6 +2,19 @@
  * 连接器管理页面样式
  */
 
+// 页面最外层容器
+.connector-page-wrapper {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+// 主内容区域
+.main-content {
+  flex: 1;
+  overflow: auto;
+}
+
 .connector-management-page {
   padding: 24px;
   background: #fff;
@@ -17,6 +30,11 @@
       display: flex;
       flex-direction: column;
       gap: 4px;
+    }
+
+    // 主按钮样式
+    :global(.ant-btn-primary) {
+      border-radius: 6px;
     }
   }
 }

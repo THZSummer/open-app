@@ -1,147 +1,197 @@
-# Build 实现报告：连接器平台
+# 任务实现报告：TASK-U01
 
 **Feature ID**: CONN-PLAT-001  
-**创建日期**: 2026-05-24  
-**规范版本**: spec.md v5.0  
-**规划版本**: plan.md v2.8.1  
-**任务基线**: tasks.md (12 tasks, 10 实施 + 2 外部占位)
+**执行波次**: Wave 1  
+**日期**: 2026-05-26  
 
 ---
 
-## 执行总览
+## ✅ TASK-U01 实现完成
 
-| 波次 | 任务 | 状态 | 描述 |
-|:----:|:----:|:----:|------|
-| W1 | TASK-001 | ✅ 完成 | open-server 连接器平台 DDL 脚本 |
-| W1 | TASK-002 | ✅ 完成 | connector-api 项目脚手架 + R2DBC Entity |
-| W2 | TASK-003 | ✅ 完成 | open-server 连接器管理模块 |
-| W2 | TASK-004 | ✅ 完成 | open-server 连接流管理模块 |
-| W2 | TASK-005 | ✅ 完成 | connector-api 运行时引擎 + 节点执行器 |
-| W3 | TASK-006 | ✅ 完成 | connector-api HTTP 触发端点 |
-| W3 | TASK-007 | ✅ 完成 | connector-api 测试执行端点 |
-| W3 | TASK-008 | ✅ 完成 | open-server 调试代理模块 |
-| W4 | TASK-011 | ✅ 完成 | 默认错误处理 + 限流 + 审计日志 |
-| W4 | TASK-012 | ✅ 完成 | 端到端集成测试 + E2E 冒烟 |
+### 验收标准满足情况
 
-**外部占位任务（不实施）**: TASK-009 (wecodesite 连接器前端页面), TASK-010 (wecodesite 连接流前端页面 + 编排画布)
+| 验收标准 | 状态 | 说明 |
+|:---------|:----:|:-----|
+| `connectionConfig` POJO 字段重命名 + 分段结构 | ✅ | `ConnectionConfig` + `AuthConfig` + `ContractSchema` + `RateLimitConfig` |
+| `inputContract/outputContract` 协议感知分段 | ✅ | `ContractSchema.protocol` + `header/query/body` 三段结构 |
+| `orchestrationConfig` React Flow 格式 | ✅ | `OrchestrationConfig{nodes, edges}` + `FlowNode{id,type,position,data}` |
+| 边 `sourceNodeId/targetNodeId` → `source/target` | ✅ | `FlowEdge` with `@JsonAlias` backward compat |
+| `inputMapping` 分段结构化 | ✅ | `InputMapping{header, query, body}` each `Map<String,String>` |
+| `outputMapping` 结构化 | ✅ | `OutputMapping{header, body}` each `Map<String,String>` |
+| `triggerData.type` 枚举移除 test | ✅ | `TriggerData.type` String, only `http`/`manual` |
+| `authConfig.type` 字符串 | ✅ | `AuthConfig.type` String |
+| `errorInfo` POJO 新格式 | ✅ | `ErrorInfo{code, messageZh, messageEn, cause, downstreamStatus, downstreamBody}` |
+| 编译通过 | ✅ | 186 files, 0 errors |
 
----
+### 新建的文件 (10个)
 
-## 文件变更清单
+| 文件 | 包 | 说明 |
+|:-----|:---|:-----|
+| `ConnectionConfig.java` | `connector.model` | 连接配置 v5.5 主 POJO |
+| `AuthConfig.java` | `connector.model` | 认证配置 (type 字符串 + fields) |
+| `AuthField.java` | `connector.model` | 认证字段定义 |
+| `ContractSchema.java` | `connector.model` | 契约 Schema (协议感知分段) |
+| `ContractBody.java` | `connector.model` | 契约 Body 段 |
+| `ContractProperty.java` | `connector.model` | 契约字段属性 |
+| `RateLimitConfig.java` | `connector.model` | 限流配置 |
+| `OrchestrationConfig.java` | `flow.model` | 编排配置 (React Flow 格式) |
+| `FlowNode.java` | `flow.model` | 编排节点 |
+| `NodePosition.java` | `flow.model` | 节点位置坐标 |
+| `NodeData.java` | `flow.model` | 节点数据 (类型差异化) |
+| `FlowEdge.java` | `flow.model` | 编排边 |
+| `EdgeData.java` | `flow.model` | 边数据 |
+| `InputMapping.java` | `flow.model` | 输入映射 (分段) |
+| `OutputMapping.java` | `flow.model` | 输出映射 (分段) |
+| `ErrorInfo.java` | `common.model` | 错误信息 (v5.5 格式) |
+| `TriggerData.java` | `trigger.model` | 触发数据 |
 
-### 新增文件 (38 个)
+### 修改的文件 (3个)
 
-#### open-server (15 个文件)
+| 文件 | 变更 |
+|:-----|:-----|
+| `ConnectorVersion.java` | 新增 `getConnectionConfigObj()` / `setConnectionConfigObj()` 瞬态方法 |
+| `FlowVersion.java` | 新增 `getOrchestrationConfigObj()` / `setOrchestrationConfigObj()` 瞬态方法 |
+| `JacksonConfig.java` | 新增 `DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES = false` 配置 |
 
-| 文件 | 所属任务 |
-|------|:--------:|
-| `src/main/resources/db/migration/V2__init_connector_platform_schema.sql` | TASK-001 |
-| `.../modules/connector/entity/Connector.java` | TASK-003 |
-| `.../modules/connector/entity/ConnectorVersion.java` | TASK-003 |
-| `.../modules/connector/mapper/ConnectorMapper.java` | TASK-003 |
-| `.../modules/connector/mapper/ConnectorVersionMapper.java` | TASK-003 |
-| `.../modules/connector/service/ConnectorService.java` | TASK-003 |
-| `.../modules/connector/controller/ConnectorController.java` | TASK-003 |
-| `.../modules/connector/dto/*.java` (7 个 DTO) | TASK-003 |
-| `.../modules/flow/entity/Flow.java` | TASK-004 |
-| `.../modules/flow/entity/FlowVersion.java` | TASK-004 |
-| `.../modules/flow/mapper/FlowMapper.java` | TASK-004 |
-| `.../modules/flow/mapper/FlowVersionMapper.java` | TASK-004 |
-| `.../modules/flow/service/FlowService.java` | TASK-004 |
-| `.../modules/flow/controller/FlowController.java` | TASK-004 |
-| `.../modules/flow/dto/*.java` (7 个 DTO) | TASK-004 |
-| `.../modules/debug/DebugProxyController.java` | TASK-008 |
-| `.../modules/debug/DebugProxyService.java` | TASK-008 |
-| `.../common/config/HttpClientConfig.java` | TASK-008 |
-| `.../common/interceptor/AuditLogAspect.java` | TASK-011 |
-| `src/main/resources/mapper/ConnectorMapper.xml` | TASK-003 |
-| `src/main/resources/mapper/ConnectorVersionMapper.xml` | TASK-003 |
-| `src/main/resources/mapper/FlowMapper.xml` | TASK-004 |
-| `src/main/resources/mapper/FlowVersionMapper.xml` | TASK-004 |
+### 向后兼容设计
 
-#### connector-api (19 个文件)
+所有 POJO 已通过 `@JsonAlias` 注解支持旧字段名：
+- `authConfig` ← `authTypeSchema`
+- `inputContract` ← `inputSchema`
+- `outputContract` ← `outputSchema`
+- `rateLimitConfig` ← `rateLimit`
+- `source` ← `sourceNodeId`
+- `target` ← `targetNodeId`
+- `TriggerData.type` ← `triggerType`
 
-| 文件 | 所属任务 |
-|------|:--------:|
-| `pom.xml` | TASK-002 |
-| `.../ConnectorApiApplication.java` | TASK-002 |
-| `src/main/resources/application.yml` | TASK-002 |
-| `.../common/config/R2dbcConfig.java` | TASK-002 |
-| `.../common/config/ReactiveRedisConfig.java` | TASK-002 |
-| `.../modules/connector/entity/ConnectorEntity.java` | TASK-002 |
-| `.../modules/connector/entity/ConnectorVersionEntity.java` | TASK-002 |
-| `.../modules/connector/repository/ConnectorVersionReadRepository.java` | TASK-002 |
-| `.../modules/flow/entity/FlowEntity.java` | TASK-002 |
-| `.../modules/flow/entity/FlowVersionEntity.java` | TASK-002 |
-| `.../modules/flow/repository/FlowVersionReadRepository.java` | TASK-002 |
-| `.../modules/runtime/model/NodeOutput.java` | TASK-005 |
-| `.../modules/runtime/model/ExecutionResult.java` | TASK-005 |
-| `.../modules/runtime/context/ExecutionContext.java` | TASK-005 |
-| `.../modules/runtime/executor/ReactiveSequentialExecutor.java` | TASK-005 |
-| `.../modules/runtime/executor/NodeExecutor.java` | TASK-005 |
-| `.../modules/runtime/executor/ExecutionContextProvider.java` | TASK-005 |
-| `.../modules/runtime/node/EntryNodeExecutor.java` | TASK-005 |
-| `.../modules/runtime/node/ConnectorNodeExecutor.java` | TASK-005 |
-| `.../modules/runtime/node/DataProcessorExecutor.java` | TASK-005 |
-| `.../modules/runtime/node/ExitNodeExecutor.java` | TASK-005 |
-| `.../modules/trigger/controller/TriggerController.java` | TASK-006 |
-| `.../modules/trigger/service/TriggerService.java` | TASK-006 |
-| `.../modules/debug/controller/TestRunController.java` | TASK-007 |
-| `.../modules/debug/service/TestRunService.java` | TASK-007 |
-| `.../common/exception/DefaultErrorHandler.java` | TASK-011 |
-| `.../common/interceptor/RateLimitFilter.java` | TASK-011 |
-| `src/test/.../integration/ConnectorFlowE2ETest.java` | TASK-012 |
+### 验证命令
 
-#### 文档 (1 个文件)
-
-| 文件 | 所属任务 |
-|------|:--------:|
-| `docs/connector-platform-test/e2e-test-cases.md` | TASK-012 |
-
-### 修改文件
-- `state.json` — current_phase → `build`, status → `built`, next_steps → review/validate
+```bash
+cd open-server && mvn compile
+# 结果: BUILD SUCCESS (186 files, 0 errors)
+```
 
 ---
 
-## 实现的功能
+## 编译结果
 
-### 数据库层 (TASK-001)
-- 7 张表 DDL 脚本 (4 张活跃 + 3 张 V1 预留)
-- 遵循 FlywayDB 命名风格: `V2__init_connector_platform_schema.sql`
-- 符合规范: `openplatform_v2_cp_` 前缀 + `_t` 后缀 + 4 审计字段 + 无物理外键
-
-### 运行时的 React 栈 (TASK-002 + 005)
-- connector-api 独立 Spring Boot 工程
-- Spring WebFlux + R2DBC + Reactive Redis 全 reactive 栈
-- 4 张活跃表的 R2DBC Entity + Repository（只读）
-- `ReactiveSequentialExecutor`: 按 edges 拓扑顺序 flatMap 串联各节点
-- 4 种节点执行器: Entry / Connector / DataProcessor / Exit
-- `ExecutionContext`: 线程安全数据读写，凭证仅内存生命周期
-
-### 管理面 API (TASK-003 + 004)
-- **连接器 CRUD** (#1~#5): 创建/列表/详情/编辑/删除（含引用校验）
-- **连接配置管理** (#6~#7): 查看/编辑 connection_config 全文替换
-- **连接流 CRUD** (#8~#12): 创建/列表/详情/编辑/删除（仅 stopped 可删）
-- **生命周期管理** (#13~#14): 启停切换 lifecycle_status
-- **编排配置管理** (#15~#16): 查看/保存，校验无节点时拒绝保存
-- 所有 ID 返回 string，枚举返回 TINYINT 数字，时间 ISO 8601，统一响应格式
-
-### 运行时端点 (TASK-006 + 007 + 008)
-- **HTTP 触发** `POST /api/v1/trigger/{flowId}/invoke` (connector-api)
-- **测试执行** `POST /api/v1/internal/test-run/{flowId}` (connector-api)
-- **调试代理** `POST /api/v1/flows/{flowId}/test-run` (open-server → connector-api)
-
-### 横切能力 (TASK-011)
-- **默认错误处理**: 单节点失败标记 failed，连接流整体标记 failed，失败上下文保留
-- **限流**: Token Bucket 算法 (Bucket4j)，按 flowId 维度，返回 429
-- **审计日志**: AOP 切面记录启停操作 (createBy + action + time + flowId)
-
-### 测试 (TASK-012)
-- E2E 测试用例文档 (5 个 TC 场景)
-- Java E2E 测试类 (7 个测试方法)
+```
+[INFO] BUILD SUCCESS
+[INFO] Total time: 3.190 s
+[INFO] Finished at: 2026-05-26T18:18:07+08:00
+```
 
 ---
 
-## 下一步
-- 运行 `@sddu-review` 审查代码质量和规范符合性
-- 运行 `@sddu-validate` 验证代码与规范一致性
+## ✅ TASK-U09 实现完成 — Java 单元测试 JSON 数据对齐
+
+### 修改的测试文件 (8个)
+
+| 模块 | 文件 | 变更内容 |
+|:-----|:-----|:---------|
+| `connector-api` | `ReactiveSequentialExecutorTest.java` | Node/edge 格式升级: `source/target` 替代 `sourceNodeId/targetNodeId`, React Flow `position`/`data` 包裹, `outputMapping` 替代 `outputFields` |
+| `connector-api` | `ConnectorFlowE2ETest.java` | 同上 + `errorMessage` → `errorInfo` Map 断言 |
+| `connector-api` | `TriggerServiceTest.java` | orchestrationConfig JSON 升级 v5.5 格式 + `getErrorMessage()` → `getErrorInfo()` |
+| `connector-api` | `TriggerControllerWebFluxTest.java` | `$.errorMessage` → `$.errorInfo.message` jsonPath |
+| `connector-api` | `NodeExecutorsTest.java` | 数据映射 + exit node outputMapping v5.5 格式适配 |
+| `connector-api` | `RateLimitFilterTest.java` | 构造参数增加 `FlowVersionReadRepository` 依赖 |
+| `open-server` | `FlowControllerWebMvcTest.java` | orchestrationConfig JSON React Flow 格式 |
+| `open-server` | `FlowServiceTest.java` | orchestrationConfig JSON React Flow 格式 |
+
+### v5.5 字段映射清单
+
+| v4.0 旧字段 | v5.5 新字段 | 测试文件更新数 |
+|:------------|:------------|:-------------|
+| `sourceNodeId` / `targetNodeId` | `source` / `target` | 3 |
+| `outputFields` 扁平数组 | `outputMapping` {header, body} | 3 |
+| `errorMessage` String | `errorInfo` Map {code, message, messageEn, messageZh} | 3 |
+| 节点扁平字段 | `position:{x,y}` + `data:{labelCn,labelEn,...}` React Flow 格式 | 4 |
+
+### 测试编译结果
+
+```
+# connector-api
+[INFO] BUILD SUCCESS
+[INFO] Total time: 1.401 s
+
+# open-server
+[INFO] BUILD SUCCESS
+[INFO] Total time: 3.789 s
+```
+
+### 下一步
+- 运行 `@sddu-review` 审查当前实现
+- 或运行 `@sddu-validate` 验证代码与规范一致性
+
+---
+
+## ✅ TASK-U11 实现完成 — Python 真调接口测试 JSON 数据对齐
+
+### 修改的文件 (2个)
+
+| 文件 | 变更内容 |
+|:-----|:---------|
+| `connector_config_set.py` | IT-020 `connectionConfig` JSON 升级 v5.5 字段名: `authConfig`(替代`authTypeSchema`)、`inputContract`(替代`inputSchema`, 含 `protocol`+`body`)、`outputContract`(替代`outputSchema`, 含 `protocol`+`body`)、`rateLimitConfig`(替代`rateLimit`) |
+| `flow_config_set.py` | IT-044 `orchestrationConfig` JSON 升级 React Flow 格式: 节点增加 `position:{x,y}` + `data:{labelCn,labelEn}` 包裹结构 |
+
+### v5.5 连接配置字段映射 (connector_config_set.py IT-020)
+
+| v2.8.1 旧字段 | v5.5 新字段 | JSON 值 |
+|:---------------|:------------|:---------|
+| (无) | `authConfig` | `{"type":"none"}` |
+| `inputSchema` | `inputContract` | `{"protocol":"HTTP","body":{"type":"json","schema":{"type":"object","properties":{}}}}` |
+| `outputSchema` | `outputContract` | `{"protocol":"HTTP","body":{"type":"json","schema":{"type":"object","properties":{}}}}` |
+| `rateLimit` | `rateLimitConfig` | `{"maxQps":10}` |
+
+### v5.5 编排配置格式升级 (flow_config_set.py IT-044)
+
+| v2.8.1 旧格式 | v5.5 新格式 |
+|:--------------|:------------|
+| `{"id":"n1","type":"entry"}` | `{"id":"n1","type":"entry","position":{"x":100,"y":200},"data":{"labelCn":"入口","labelEn":"Entry"}}` |
+
+### Python 语法检查结果
+
+所有 19 个 Python 文件通过语法编译检查:
+```
+OK: all.py
+OK: client.py
+OK: connector_config_get.py
+OK: connector_config_set.py
+OK: connector_create.py
+OK: connector_delete.py
+OK: connector_detail.py
+OK: connector_list.py
+OK: connector_update.py
+OK: debug_test_run.py
+OK: flow_config_get.py
+OK: flow_config_set.py
+OK: flow_create.py
+OK: flow_delete.py
+OK: flow_detail.py
+OK: flow_list.py
+OK: flow_start.py
+OK: flow_stop.py
+OK: flow_update.py
+```
+
+### 未修改文件说明
+
+| 文件 | 未修改原因 |
+|:-----|:----------|
+| `connector_config_get.py` | 仅执行 GET 请求，无硬编码 JSON 字段断言 |
+| `flow_config_get.py` | 仅执行 GET 请求，无硬编码 JSON 字段断言 |
+| `debug_test_run.py` | `mockTriggerData` 字段名未变更 |
+| `all.py` | 仅编排执行顺序，无 JSON 字段 |
+| CRUD 文件 (connector_*, flow_*) | 仅使用 `nameCn`/`nameEn`/`connectorType`/`lifecycleStatus` 等基础字段，v5.5 未变更 |
+
+### 验证命令
+
+```bash
+python3 -m py_compile open-server/src/test/python/inspect/connector_config_set.py
+python3 -m py_compile open-server/src/test/python/inspect/flow_config_set.py
+# 结果: 均通过
+```
+
+### 下一步
+- 运行 `@sddu-review` 审查当前实现
+- 或运行 Python 集成测试: `python3 open-server/src/test/python/inspect/all.py`

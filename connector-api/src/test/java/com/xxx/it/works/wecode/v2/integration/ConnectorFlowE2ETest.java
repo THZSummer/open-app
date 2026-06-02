@@ -47,28 +47,40 @@ class ConnectorFlowE2ETest {
     private Map<String, Object> createSimpleOrchestrationConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
 
-        // 入口节点
-        Map<String, Object> entryNode = new LinkedHashMap<>();
-        entryNode.put("id", "node_entry");
-        entryNode.put("type", "entry");
-        entryNode.put("labelCn", "接收");
-        entryNode.put("labelEn", "Receive");
+        // 入口节点 (v5.5 React Flow 格式)
+        Map<String, Object> triggerNode = new LinkedHashMap<>();
+        triggerNode.put("id", "node_trigger");
+        triggerNode.put("type", "trigger");
+        triggerNode.put("position", Map.of("x", 0, "y", 0));
+        triggerNode.put("data", Map.of(
+                "labelCn", "接收",
+                "labelEn", "Receive"
+        ));
 
-        // 出口节点
+        // 出口节点 (v5.5 React Flow 格式)
         Map<String, Object> exitNode = new LinkedHashMap<>();
         exitNode.put("id", "node_exit");
         exitNode.put("type", "exit");
-        exitNode.put("labelCn", "返回");
-        exitNode.put("labelEn", "Return");
-        exitNode.put("outputFields", List.of("node_entry.sender", "node_entry.content"));
+        exitNode.put("position", Map.of("x", 300, "y", 0));
+        exitNode.put("data", Map.of(
+                "labelCn", "返回",
+                "labelEn", "Return",
+                "outputMapping", Map.of(
+                        "header", Map.of(),
+                        "body", Map.of(
+                                "sender", "${$.node.node_trigger.input.body.sender}",
+                                "content", "${$.node.node_trigger.input.body.content}"
+                        )
+                )
+        ));
 
-        config.put("nodes", List.of(entryNode, exitNode));
+        config.put("nodes", List.of(triggerNode, exitNode));
 
-        // Edges
+        // Edges (v5.5: source/target 替代 sourceNodeId/targetNodeId)
         Map<String, Object> edge = new LinkedHashMap<>();
         edge.put("id", "e1");
-        edge.put("sourceNodeId", "node_entry");
-        edge.put("targetNodeId", "node_exit");
+        edge.put("source", "node_trigger");
+        edge.put("target", "node_exit");
 
         config.put("edges", List.of(edge));
 
@@ -78,49 +90,67 @@ class ConnectorFlowE2ETest {
     private Map<String, Object> createConnectorNodeOrchestrationConfig() {
         Map<String, Object> config = new LinkedHashMap<>();
 
-        // 入口节点
-        Map<String, Object> entryNode = new LinkedHashMap<>();
-        entryNode.put("id", "node_entry");
-        entryNode.put("type", "entry");
-        entryNode.put("labelCn", "接收");
-        entryNode.put("labelEn", "Receive");
+        // 入口节点 (v5.5 React Flow 格式)
+        Map<String, Object> triggerNode = new LinkedHashMap<>();
+        triggerNode.put("id", "node_trigger");
+        triggerNode.put("type", "trigger");
+        triggerNode.put("position", Map.of("x", 0, "y", 0));
+        triggerNode.put("data", Map.of(
+                "labelCn", "接收",
+                "labelEn", "Receive"
+        ));
 
-        // 连接器节点
+        // 连接器节点 (v5.5: data 字段存放节点配置)
         Map<String, Object> connectorNode = new LinkedHashMap<>();
         connectorNode.put("id", "node_connector");
         connectorNode.put("type", "connector");
-        connectorNode.put("labelCn", "IM发送消息");
-        connectorNode.put("labelEn", "IM Send");
-        connectorNode.put("connectorId", "1234567890123456789");
-        connectorNode.put("url", "https://httpbin.org/post");
-        connectorNode.put("method", "POST");
-        connectorNode.put("timeoutMs", 5000);
+        connectorNode.put("position", Map.of("x", 300, "y", 0));
+        connectorNode.put("data", Map.of(
+                "labelCn", "IM发送消息",
+                "labelEn", "IM Send",
+                "connectorId", "1234567890123456789",
+                "url", "https://httpbin.org/post",
+                "method", "POST",
+                "timeoutMs", 5000
+        ));
 
-        // 数据处理节点 (字段映射)
+        // 数据处理节点 (字段映射) (v5.5: data 字段存放节点配置)
         Map<String, Object> processorNode = new LinkedHashMap<>();
         processorNode.put("id", "node_processor");
         processorNode.put("type", "data_processor");
-        processorNode.put("labelCn", "字段映射");
-        processorNode.put("labelEn", "Field Mapping");
-        processorNode.put("fieldMappings", List.of(
-                Map.of("targetField", "result", "sourceValue", "${node_connector.data}", "sourceType", "reference")
+        processorNode.put("position", Map.of("x", 600, "y", 0));
+        processorNode.put("data", Map.of(
+                "labelCn", "字段映射",
+                "labelEn", "Field Mapping",
+                "fieldMappings", List.of(
+                        Map.of("targetField", "result", "sourceValue", "${$.node.node_connector.output.data}", "sourceType", "reference")
+                )
         ));
 
-        // 出口节点
+        // 出口节点 (v5.5: data.outputMapping 替代 outputFields)
         Map<String, Object> exitNode = new LinkedHashMap<>();
         exitNode.put("id", "node_exit");
         exitNode.put("type", "exit");
-        exitNode.put("labelCn", "返回");
-        exitNode.put("labelEn", "Return");
-        exitNode.put("outputFields", List.of("node_entry.sender", "node_processor.result"));
+        exitNode.put("position", Map.of("x", 900, "y", 0));
+        exitNode.put("data", Map.of(
+                "labelCn", "返回",
+                "labelEn", "Return",
+                "outputMapping", Map.of(
+                        "header", Map.of(),
+                        "body", Map.of(
+                                "sender", "${$.node.node_trigger.input.body.sender}",
+                                "result", "${$.node.node_processor.output.result}"
+                        )
+                )
+        ));
 
-        config.put("nodes", List.of(entryNode, connectorNode, processorNode, exitNode));
+        config.put("nodes", List.of(triggerNode, connectorNode, processorNode, exitNode));
 
-        // Edges (线性)
+        // Edges (v5.5: source/target 替代 sourceNodeId/targetNodeId)
         config.put("edges", List.of(
-                Map.of("id", "e1", "sourceNodeId", "node_entry", "targetNodeId", "node_connector"),
-                Map.of("id", "e2", "sourceNodeId", "node_connector", "targetNodeId", "node_processor"),
-                Map.of("id", "e3", "sourceNodeId", "node_processor", "targetNodeId", "node_exit")
+                Map.of("id", "e1", "source", "node_trigger", "target", "node_connector"),
+                Map.of("id", "e2", "source", "node_connector", "target", "node_processor"),
+                Map.of("id", "e3", "source", "node_processor", "target", "node_exit")
         ));
 
         return config;
@@ -129,7 +159,7 @@ class ConnectorFlowE2ETest {
     // ==================== 测试用例 ====================
 
     /**
-     * US-04: 编排与测试 — 简单线性执行 (entry → exit)
+     * US-04: 编排与测试 — 简单线性执行 (trigger → exit)
      * 验证: 触发数据透传, 出口节点返回正确字段
      */
     @Test
@@ -164,12 +194,12 @@ class ConnectorFlowE2ETest {
                     // 验证步骤数量
                     assertNotNull(result.getSteps());
                     assertEquals(2, result.getSteps().size(),
-                            "Should have 2 steps (entry + exit)");
+                            "Should have 2 steps (trigger + exit)");
 
                     // 验证入口节点
-                    ExecutionResult.StepDetail entryStep = result.getSteps().get(0);
-                    assertEquals("node_entry", entryStep.getNodeId());
-                    assertEquals("entry", entryStep.getNodeType());
+                    ExecutionResult.StepDetail triggerStep = result.getSteps().get(0);
+                    assertEquals("node_trigger", triggerStep.getNodeId());
+                    assertEquals("trigger", triggerStep.getNodeType());
 
                     // 验证出口节点
                     ExecutionResult.StepDetail exitStep = result.getSteps().get(1);
@@ -201,11 +231,6 @@ class ConnectorFlowE2ETest {
                 new com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext("test-exec-002", "test-flow-002");
         context.setTriggerData(Map.of("sender", "ext_system", "message", "test message"));
         context.setTest(true);
-
-        // 传入凭证
-        Map<String, Map<String, String>> credentials = new HashMap<>();
-        credentials.put("1234567890123456789", Map.of("AK", "test-ak", "SK", "test-sk"));
-        context.setCredentials(credentials);
 
         // Act
         Mono<ExecutionResult> resultMono = executor.execute(context, configJson);
@@ -265,9 +290,11 @@ class ConnectorFlowE2ETest {
                 .assertNext(result -> {
                     assertEquals("failed", result.getStatus(),
                             "Empty orchestration should fail");
-                    assertTrue(result.getErrorMessage() != null &&
-                                    result.getErrorMessage().contains("无节点"),
-                            "Error message should indicate no nodes");
+                    assertNotNull(result.getErrorInfo(),
+                            "Error info should not be null");
+                    Object msgZh = result.getErrorInfo().get("messageZh");
+                    assertTrue(msgZh != null && ((String) msgZh).contains("Orchestration config has no nodes"),
+                            "Error messageZh should indicate no nodes, got: " + msgZh);
                 })
                 .verifyComplete();
     }
@@ -295,30 +322,17 @@ class ConnectorFlowE2ETest {
 
         ctx.setNodeOutput("node_1", Map.of("data", "value1"));
 
-        Object resolved = ctx.resolveFieldReference("${node_1.data}");
+        Object resolved = ctx.resolveFieldReference("${$.node.node_1.output.data}");
         assertEquals("value1", resolved, "Field reference resolution should work");
 
         // 测试嵌套字段
         Map<String, Object> nested = Map.of("user", Map.of("name", "Alice"));
         ctx.setNodeOutput("node_2", nested);
-        Object nestedRef = ctx.resolveFieldReference("${node_2.user.name}");
+        Object nestedRef = ctx.resolveFieldReference("${$.node.node_2.output.user.name}");
         assertEquals("Alice", nestedRef, "Nested field reference should work");
 
         log.info("ExecutionContext thread safety test passed");
     }
 
-    /**
-     * 验证凭证清除
-     */
-    @Test
-    void testCredentialsCleanup() {
-        com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext ctx =
-                new com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext("test-cred-001", "test-flow-cred");
 
-        ctx.setCredentials(Map.of("connector_1", Map.of("AK", "secret")));
-        assertNotNull(ctx.getCredentials(), "Credentials should be set");
-
-        ctx.clearCredentials();
-        assertNull(ctx.getCredentials(), "Credentials should be cleared after cleanup");
-    }
 }

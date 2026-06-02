@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.connector.entity.Connector">
+        <id column="id" property="id"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="description_cn" property="descriptionCn"/>
+        <result column="description_en" property="descriptionEn"/>
+        <result column="icon_file_id" property="iconFileId"/>
+        <result column="connector_type" property="connectorType"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- Base Column -->
+    <sql id="Base_Column_List">
+        id, name_cn, name_en, description_cn, description_en, icon_file_id,
+        connector_type, status, create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.connector.entity.Connector">
+        INSERT INTO openplatform_v2_cp_connector_t (
+            id, name_cn, name_en, description_cn, description_en, icon_file_id,
+            connector_type, status, create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{nameCn}, #{nameEn}, #{descriptionCn}, #{descriptionEn}, #{iconFileId},
+            #{connectorType}, #{status}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- Select By ID -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- Update -->
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.connector.entity.Connector">
+        UPDATE openplatform_v2_cp_connector_t
+        SET name_cn          = #{nameCn},
+            name_en          = #{nameEn},
+            description_cn   = #{descriptionCn},
+            description_en   = #{descriptionEn},
+            icon_file_id     = #{iconFileId},
+            connector_type   = #{connectorType},
+            status           = #{status},
+            last_update_time = #{lastUpdateTime},
+            last_update_by   = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete By ID -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_cp_connector_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- Select List -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_t
+        <where>
+            <if test="connectorType != null">
+                AND connector_type = #{connectorType}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR name_en LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- Count List -->
+    <select id="countList" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_cp_connector_t
+        <where>
+            <if test="connectorType != null">
+                AND connector_type = #{connectorType}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR name_en LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <!-- Count Flow References -->
+    <select id="countFlowReferences" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_cp_flow_version_t fv
+        WHERE fv.orchestration_config LIKE CONCAT('%', #{connectorId}, '%')
+    </select>
+
+</mapper>

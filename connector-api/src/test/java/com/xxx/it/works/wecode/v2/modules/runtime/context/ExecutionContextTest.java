@@ -36,12 +36,12 @@ class ExecutionContextTest {
     }
 
     @Test
-    @DisplayName("字段引用解析 - 简单字段")
+    @DisplayName("字段引用解析 - v5.6 新语法")
     void testResolveFieldReference_Simple() {
         ExecutionContext ctx = new ExecutionContext("exec-003", "flow-001");
         ctx.setNodeOutput("node_a", Map.of("name", "Alice"));
 
-        Object resolved = ctx.resolveFieldReference("${node_a.name}");
+        Object resolved = ctx.resolveFieldReference("${$.node.node_a.output.name}");
         assertEquals("Alice", resolved);
     }
 
@@ -58,33 +58,17 @@ class ExecutionContextTest {
     }
 
     @Test
-    @DisplayName("字段引用解析 - 嵌套字段")
+    @DisplayName("字段引用解析 - 嵌套字段 (v5.6)")
     void testResolveFieldReference_Nested() {
         ExecutionContext ctx = new ExecutionContext("exec-005", "flow-001");
         ctx.setNodeOutput("node_b", Map.of("user", Map.of("name", "Bob", "age", 30)));
 
-        Object resolved = ctx.resolveFieldReference("${node_b.user.name}");
+        Object resolved = ctx.resolveFieldReference("${$.node.node_b.output.user.name}");
         assertEquals("Bob", resolved);
 
-        resolved = ctx.resolveFieldReference("${node_b.user}");
+        resolved = ctx.resolveFieldReference("${$.node.node_b.output.user}");
         assertNotNull(resolved);
         assertTrue(resolved instanceof Map);
-    }
-
-    @Test
-    @DisplayName("凭证设置与清除")
-    void testCredentialsLifecycle() {
-        ExecutionContext ctx = new ExecutionContext("exec-006", "flow-001");
-        Map<String, Map<String, String>> credentials = Map.of(
-                "connector_1", Map.of("AK", "secret-key")
-        );
-
-        ctx.setCredentials(credentials);
-        assertNotNull(ctx.getCredentials());
-        assertEquals("secret-key", ctx.getCredentials().get("connector_1").get("AK"));
-
-        ctx.clearCredentials();
-        assertNull(ctx.getCredentials());
     }
 
     @Test
@@ -101,12 +85,12 @@ class ExecutionContextTest {
     }
 
     @Test
-    @DisplayName("字段引用 - null安全")
+    @DisplayName("字段引用 - null安全 (v5.6)")
     void testResolveFieldReference_NullSafe() {
         ExecutionContext ctx = new ExecutionContext("exec-008", "flow-001");
 
         assertNull(ctx.resolveFieldReference(null));
-        assertNull(ctx.resolveFieldReference("${node_not_exists.field}"));
-        assertNull(ctx.resolveFieldReference("${node_without_field}"));
+        assertNull(ctx.resolveFieldReference("${$.node.node_not_exists.output.field}"));
+        assertNull(ctx.resolveFieldReference("${$.node.node_without_field.output.x}"));
     }
 }

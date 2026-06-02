@@ -212,3 +212,19 @@ export const deleteApprovalFlow = async (id) => {
     return {};
   }
 };
+
+/**
+ * 复制审批地址催办
+ * @param {string} eflowId - 审批流ID
+ * @returns {Promise<Object>} 包含 code、messageZh 的响应对象
+ */
+export const remindPeople = async (eflowId) => {
+  try {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.REMIND_APPROVE, { id: eflowId }), {
+      method: 'POST',
+    });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};

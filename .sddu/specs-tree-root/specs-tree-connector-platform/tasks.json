@@ -1,23 +1,35 @@
 {
   "feature": "连接器平台",
   "featureId": "CONN-PLAT-001",
-  "createdAt": "2026-05-22",
+  "createdAt": "2026-05-26",
   "baseline": {
     "spec": "v5.0",
     "plan": "v2.8.1",
-    "planApi": "v2.8.0",
-    "planDb": "v2.8.1",
+    "planJsonSchema": "v5.5",
+    "planJsonSchemaImpl": "v1.0",
+    "planDb": "v3.0",
+    "planApi": "v3.0",
     "planPage": "v2.8.0"
   },
   "summary": {
-    "totalTasks": 12,
-    "currentImplementationTasks": 10,
-    "externalPlaceholderTasks": 2,
+    "totalTasks": 13,
     "complexityS": 2,
-    "complexityM": 6,
-    "complexityL": 2,
+    "complexityM": 8,
+    "complexityL": 3,
     "waves": 4
   },
+  "designDecisions": [
+    "React Flow 格式：node.data 嵌套，edge.source/edge.target，edge.type=渲染样式，edge.data.businessType=业务语义",
+    "字段重命名：authTypeSchema→authConfig，inputSchema→inputContract，outputSchema→outputContract，rateLimit→rateLimitConfig，outputFields[]→outputMapping{}",
+    "协议感知：inputContract/outputContract 含 protocol:'HTTP' + header/query/body 分段结构",
+    "inputMapping 分段：connector 节点 inputMapping 镜像 inputContract 分段（header/query/body）",
+    "表达式升级：${$.node.trigger.input.sender} JSON Path 格式，constant:xxx 不变",
+    "trigger.type 枚举：编排 JSON 中仅 http/manual，test 为运行时调用模式",
+    "authConfig.type：JSON 内嵌字段使用字符串枚举（SOA/AKSK/SYSTOKEN/NONE）",
+    "凭证不持久化：authConfig 仅声明类型 schema，凭证值由调用方携带，仅内存生命周期",
+    "data_processor 表达式：向后兼容旧 ${nodeId.fieldPath} + 新 ${$.node.{id}.{input/output}.{path}}",
+    "errorInfo 结构：code 数字字符串，messageZh/messageEn 双语，oneOf 约束（6xxxx→cause，4xx/5xx→downstreamStatus）"
+  ],
   "tasks": [
     {
       "id": "TASK-001",
@@ -31,16 +43,16 @@
         "open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql"
       ],
       "notes": [
+        "JSON 字段 COMMENT 注释使用新字段名：authConfig/inputContract/outputContract/rateLimitConfig",
         "按 FlywayDB 目录与命名风格存放 SQL",
         "open-server 不新增 Flyway 依赖",
-        "不考虑脚本自动执行机制",
-        "不创建业务子目录",
-        "connector-api 不保存 DDL"
+        "connector-api 不保存 DDL",
+        "7 张表：4 活跃 + 3 V1 预留"
       ]
     },
     {
       "id": "TASK-002",
-      "name": "connector-api 项目脚手架 + R2DBC Entity",
+      "name": "connector-api 项目脚手架 + R2DBC Entity + 共享模型",
       "complexity": "M",
       "dependencies": [],
       "dependencyNotes": "联调验证依赖 TASK-001 完成共库初始化",
@@ -53,6 +65,21 @@
         "connector-api/src/main/resources/application.yml",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/R2dbcConfig.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/config/ReactiveRedisConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/OrchestrationConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/Node.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/Edge.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/TriggerData.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/ConnectorData.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/DataProcessorData.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/ExitData.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/ConnectionConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/AuthConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/RateLimitConfig.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/InputContract.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/design/OutputContract.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/runtime/NodeContext.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/runtime/ExecutionContext.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/runtime/ErrorInfo.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorEntity.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/entity/ConnectorVersionEntity.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/connector/repository/ConnectorVersionReadRepository.java",
@@ -61,10 +88,12 @@
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/flow/repository/FlowVersionReadRepository.java"
       ],
       "notes": [
-        "connector-api 仅配置 R2DBC 访问开放平台共库",
-        "connector-api 不维护 DDL/Flyway migration",
-        "connector-api 包结构对齐 open-server：com.xxx.it.works.wecode.v2/common 与 modules 同级",
-        "common 放公共能力，modules 仅放业务模块代码"
+        "共享模型严格对齐 plan-json-schema.md v5.5 命名",
+        "authConfig.type 为 Java enum 序列化为字符串（非 TINYINT）",
+        "errorInfo.code 为 String（数字字符串），含 messageZh/messageEn",
+        "NodeContext.input/output 支持分段存储（header/query/body）",
+        "全 reactive 栈：禁用 JDBC/MyBatis/RestTemplate",
+        "BlockHound 测试环境启用"
       ]
     },
     {
@@ -75,7 +104,27 @@
       "wave": 2,
       "module": "open-server",
       "fr": ["FR-001", "FR-002", "FR-003", "FR-004", "FR-005", "FR-006"],
-      "apiEndpoints": ["#1", "#2", "#3", "#4", "#5", "#6", "#7"]
+      "apiEndpoints": ["#1", "#2", "#3", "#4", "#5", "#6", "#7"],
+      "files": [
+        "open-server/src/main/java/.../modules/connector/entity/Connector.java",
+        "open-server/src/main/java/.../modules/connector/entity/ConnectorVersion.java",
+        "open-server/src/main/java/.../modules/connector/mapper/ConnectorMapper.java",
+        "open-server/src/main/java/.../modules/connector/mapper/ConnectorVersionMapper.java",
+        "open-server/src/main/java/.../modules/connector/service/ConnectorService.java",
+        "open-server/src/main/java/.../modules/connector/controller/ConnectorController.java",
+        "open-server/src/main/java/.../modules/connector/model/ConnectionConfigDTO.java",
+        "open-server/src/main/java/.../modules/connector/model/AuthConfigDTO.java",
+        "open-server/src/main/java/.../modules/connector/model/InputContractDTO.java",
+        "open-server/src/main/java/.../modules/connector/model/OutputContractDTO.java",
+        "open-server/src/main/java/.../modules/connector/model/RateLimitConfigDTO.java"
+      ],
+      "notes": [
+        "connectionConfig 使用新字段名：authConfig/inputContract/outputContract/rateLimitConfig",
+        "authConfig.type 为字符串枚举（SOA/APIG/AKSK/SYSTOKEN/NONE）",
+        "inputContract/outputContract 协议感知（protocol + header/query/body 或 header/body）",
+        "凭证不持久化——authConfig 仅声明类型 schema",
+        "BIGINT ID 返回 string，避免 JS 精度丢失"
+      ]
     },
     {
       "id": "TASK-004",
@@ -85,7 +134,28 @@
       "wave": 2,
       "module": "open-server",
       "fr": ["FR-009", "FR-010", "FR-011", "FR-012", "FR-014", "FR-015", "FR-016", "FR-017"],
-      "apiEndpoints": ["#8", "#9", "#10", "#11", "#12", "#13", "#14", "#15", "#16"]
+      "apiEndpoints": ["#8", "#9", "#10", "#11", "#12", "#13", "#14", "#15", "#16"],
+      "files": [
+        "open-server/src/main/java/.../modules/flow/entity/Flow.java",
+        "open-server/src/main/java/.../modules/flow/entity/FlowVersion.java",
+        "open-server/src/main/java/.../modules/flow/mapper/FlowMapper.java",
+        "open-server/src/main/java/.../modules/flow/mapper/FlowVersionMapper.java",
+        "open-server/src/main/java/.../modules/flow/service/FlowService.java",
+        "open-server/src/main/java/.../modules/flow/controller/FlowController.java",
+        "open-server/src/main/java/.../modules/flow/model/OrchestrationConfigDTO.java",
+        "open-server/src/main/java/.../modules/flow/model/NodeDTO.java",
+        "open-server/src/main/java/.../modules/flow/model/EdgeDTO.java",
+        "open-server/src/main/java/.../modules/flow/util/FlowValidationUtil.java"
+      ],
+      "notes": [
+        "orchestrationConfig 严格遵循 React Flow 格式",
+        "node.data 嵌套业务字段（框架/业务分离）",
+        "edge.source/edge.target（非 sourceNodeId/targetNodeId）",
+        "edge.type 渲染样式，edge.data.businessType 业务语义",
+        "inputMapping/outputMapping 按协议分段（HTTP: header/query/body 或 header/body）",
+        "表达式格式 ${$.node.xxx}，trigger.type 仅 http/manual",
+        "编排校验：无节点拒绝保存、DAG 环检测、inputContract required 覆盖"
+      ]
     },
     {
       "id": "TASK-005",
@@ -97,11 +167,26 @@
       "fr": ["FR-020", "FR-021", "FR-023"],
       "files": [
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/ReactiveSequentialExecutor.java",
-        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/context/ExecutionContext.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/NodeExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/EntryNodeExecutor.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ConnectorNodeExecutor.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/DataProcessorExecutor.java",
-        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ExitNodeExecutor.java"
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/node/ExitNodeExecutor.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/executor/ExpressionResolver.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/model/NodeOutput.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/runtime/model/ExecutionResult.java",
+        "connector-api/src/test/java/.../runtime/ExpressionResolverTest.java",
+        "connector-api/src/test/java/.../runtime/ReactiveSequentialExecutorTest.java"
+      ],
+      "notes": [
+        "ExpressionResolver 完整支持 JSON Path ${$.node.{id}.{input/output}.{path}}",
+        "constant:xxx 直接返回字面值",
+        "inputMapping/outputMapping 分协议段解析（header/query/body）",
+        "connector 节点：加载 connectionConfig，按 authConfig.fields 注入凭证",
+        "connector 节点：固定头+动态头+认证头三合并到 HTTP 请求",
+        "data_processor 向后兼容旧 ${nodeId.fieldPath} 格式",
+        "errorInfo 符合 oneOf 约束",
+        "全部 Mono<T> 无阻塞"
       ]
     },
     {
@@ -115,7 +200,15 @@
       "apiEndpoints": ["#18"],
       "files": [
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java",
-        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/service/TriggerService.java"
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/service/TriggerService.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/validation/TriggerValidator.java"
+      ],
+      "notes": [
+        "校验 flow.lifecycleStatus=1（running）",
+        "校验凭证匹配 trigger.data.authConfig（SYSTOKEN 字符串枚举）",
+        "校验 rateLimitConfig.maxQps 限流",
+        "凭证从 HTTP Header 提取到 ExecutionContext（仅内存）",
+        "返回 executionId(string)/status(TINYINT)/resultData/durationMs"
       ]
     },
     {
@@ -129,6 +222,11 @@
       "files": [
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/controller/TestRunController.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/debug/service/TestRunService.java"
+      ],
+      "notes": [
+        "接收 mockTriggerData + credentials（按 connectorVersionId 分组）",
+        "标记 isTest=true, triggerType=3",
+        "仅限内网调用"
       ]
     },
     {
@@ -139,36 +237,102 @@
       "wave": 3,
       "module": "open-server",
       "fr": ["FR-020"],
-      "apiEndpoints": ["#17"]
+      "apiEndpoints": ["#17"],
+      "files": [
+        "open-server/src/main/java/.../modules/debug/DebugProxyController.java",
+        "open-server/src/main/java/.../modules/debug/DebugProxyService.java"
+      ],
+      "notes": [
+        "接收前端请求 → 转发 connector-api 测试端点",
+        "透传 ExecutionResult（含步骤详情）"
+      ]
     },
     {
       "id": "TASK-009",
-      "name": "wecodesite 连接器前端页面",
-      "type": "external-placeholder",
-      "implementationScope": "不在此 Tasks 文档实施",
-      "executionMode": "由其他渠道并行完成",
-      "buildExecutable": false,
-      "strongDependency": false,
+      "name": "wecodesite 连接器前端页面更新",
+      "complexity": "M",
+      "dependencies": ["TASK-003"],
       "wave": 3,
       "module": "wecodesite",
       "fr": ["FR-001", "FR-002", "FR-004", "FR-005", "FR-006"],
-      "note": "仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令。"
+      "files": [
+        "wecodesite/src/pages/ConnectPlatform/Connector/index.jsx",
+        "wecodesite/src/pages/ConnectPlatform/Connector/constants.jsx",
+        "wecodesite/src/pages/ConnectPlatform/Connector/thunk.js",
+        "wecodesite/src/pages/ConnectPlatform/ConnectorEditor/index.jsx",
+        "wecodesite/src/pages/ConnectPlatform/ConnectorEditor/constants.jsx",
+        "wecodesite/src/pages/ConnectPlatform/ConnectorEditor/thunk.js",
+        "wecodesite/src/pages/ConnectPlatform/common/AuthConfigEditor.jsx",
+        "wecodesite/src/pages/ConnectPlatform/common/ContractEditor.jsx",
+        "wecodesite/src/pages/ConnectPlatform/common/RateLimitEditor.jsx"
+      ],
+      "notes": [
+        "更新现有页面对齐新 JSON 字段命名",
+        "凭证不持久化——认证配置仅声明类型 schema，无凭证值输入",
+        "协议感知入参出参编辑器（分段 header/query/body）",
+        "双语字段对齐（nameCn/nameEn/descriptionCn/descriptionEn）"
+      ]
     },
     {
       "id": "TASK-010",
-      "name": "wecodesite 连接流前端页面 + 编排画布",
-      "type": "external-placeholder",
-      "implementationScope": "不在此 Tasks 文档实施",
-      "executionMode": "由其他渠道并行完成",
-      "buildExecutable": false,
-      "strongDependency": false,
+      "name": "wecodesite 连接流前端列表 + 详情页面",
+      "complexity": "M",
+      "dependencies": ["TASK-004"],
       "wave": 3,
       "module": "wecodesite",
-      "fr": ["FR-009", "FR-012", "FR-016", "FR-017", "FR-020"],
-      "note": "仅保留标题占位，不展开描述、涉及文件、验收标准、验证命令。"
+      "fr": ["FR-009", "FR-010", "FR-011", "FR-012", "FR-014", "FR-015", "FR-016"],
+      "files": [
+        "wecodesite/src/pages/ConnectPlatform/Flow/index.jsx",
+        "wecodesite/src/pages/ConnectPlatform/Flow/constants.jsx",
+        "wecodesite/src/pages/ConnectPlatform/Flow/thunk.js",
+        "wecodesite/src/pages/ConnectPlatform/FlowDetail.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowDetail.m.less",
+        "wecodesite/src/App.jsx"
+      ],
+      "notes": [
+        "列表页 lifecycleStatus 过滤 + keyword 搜索 + 启停操作",
+        "FlowDetail 详情页：触发信息/预览图/连接器引用/启停开关",
+        "API 字段命名对齐新标准"
+      ]
     },
     {
       "id": "TASK-011",
+      "name": "wecodesite 编排画布前端核心（FlowEditor）",
+      "complexity": "L",
+      "dependencies": ["TASK-004", "TASK-009"],
+      "wave": 3,
+      "module": "wecodesite",
+      "fr": ["FR-017", "FR-020"],
+      "files": [
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/index.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/customNodes.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/NodeLibrary.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/NodeProperties.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/thunk.js",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/FlowEditor.less",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/DataProcessorConfig.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/InputMappingEditor.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/OutputMappingEditor.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/ExpressionEditor.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/TestRunDialog.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/TriggerConfig.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/ConnectorConfig.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/ExitConfig.jsx",
+        "wecodesite/src/pages/ConnectPlatform/FlowEditor/FlowValidationUtil.js"
+      ],
+      "notes": [
+        "React Flow 格式严格分离框架/业务字段（node.data 嵌套）",
+        "edge 使用 source/target（非 sourceNodeId/targetNodeId）",
+        "4 种节点类型配置面板：Trigger/Connector/DataProcessor/Exit",
+        "inputMapping 分段编辑器（header/query/body）",
+        "outputMapping 分段编辑器（header/body）",
+        "表达式编辑器支持 JSON Path + 向后兼容格式",
+        "TestRunDialog 含凭证临时输入区",
+        "保存编排配置编辑即生效"
+      ]
+    },
+    {
+      "id": "TASK-012",
       "name": "默认错误处理 + 限流 + 审计日志",
       "complexity": "M",
       "dependencies": ["TASK-005", "TASK-006"],
@@ -178,19 +342,39 @@
       "files": [
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/exception/DefaultErrorHandler.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/RateLimitFilter.java",
+        "connector-api/src/main/java/com/xxx/it/works/wecode/v2/common/model/runtime/ErrorInfo.java",
         "connector-api/src/main/java/com/xxx/it/works/wecode/v2/modules/trigger/controller/TriggerController.java",
-        "open-server/src/main/java/com/xxx/it/works/wecode/v2/common/interceptor/AuditLogAspect.java"
+        "open-server/src/main/java/.../common/interceptor/AuditLogAspect.java"
+      ],
+      "notes": [
+        "errorInfo 符合 plan-json-schema.md v5.5 errorInfoDef",
+        "code 数字字符串，messageZh/messageEn 双语",
+        "oneOf 约束：6xxxx→cause，4xx/5xx→downstreamStatus",
+        "限流按 flowId 维度（Redis）",
+        "审计日志记录启停操作"
       ]
     },
     {
-      "id": "TASK-012",
+      "id": "TASK-013",
       "name": "端到端集成测试 + E2E 冒烟",
       "complexity": "M",
-      "dependencies": ["TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-011"],
-      "externalCollaboration": ["TASK-009", "TASK-010"],
+      "dependencies": ["TASK-003", "TASK-004", "TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-011", "TASK-012"],
       "wave": 4,
       "module": "Integration",
-      "fr": []
+      "fr": [],
+      "files": [
+        "docs/connector-platform-test/e2e-test-cases.md",
+        "connector-api/src/test/java/.../integration/ConnectorFlowE2ETest.java"
+      ],
+      "notes": [
+        "覆盖 US-01~US-04 完整链路",
+        "验证所有 JSON 字段对齐 plan-json-schema.md v5.5",
+        "验证 React Flow 格式（node.data/edge.source/edge.target）",
+        "验证协议感知 contract/mapping",
+        "验证表达式解析（新格式+向后兼容）",
+        "验证 trigger.type 枚举和 authConfig.type 字符串枚举",
+        "验证 errorInfo oneOf 约束"
+      ]
     }
   ],
   "waves": {
@@ -205,17 +389,17 @@
       "parallel": true
     },
     "3": {
-      "description": "运行时端点 + 调试代理 + 前端占位",
-      "tasks": ["TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010"],
+      "description": "运行时端点 + 调试代理 + 前端（并行组）",
+      "tasks": ["TASK-006", "TASK-007", "TASK-008", "TASK-009", "TASK-010", "TASK-011"],
       "subGroup": {
         "backend": ["TASK-006", "TASK-007", "TASK-008"],
-        "externalPlaceholders": ["TASK-009", "TASK-010"],
+        "frontend": ["TASK-009", "TASK-010", "TASK-011"],
         "parallelBetweenGroups": true
       }
     },
     "4": {
       "description": "增强与集成（串行）",
-      "tasks": ["TASK-011", "TASK-012"],
+      "tasks": ["TASK-012", "TASK-013"],
       "parallel": false
     }
   }

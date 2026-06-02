@@ -16,6 +16,7 @@ import com.xxx.it.works.wecode.v2.modules.category.entity.Category;
 import com.xxx.it.works.wecode.v2.modules.category.mapper.CategoryMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
+import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class CallbackService {
     private final CallbackMapper callbackMapper;
     private final CallbackPropertyMapper callbackPropertyMapper;
     private final PermissionMapper permissionMapper;
+    private final PermissionPropertyMapper permissionPropertyMapper;
     private final CategoryMapper categoryMapper;
     private final IdGeneratorStrategy idGenerator;
     private final ApprovalEngine approvalEngine;
@@ -332,6 +334,9 @@ public class CallbackService {
                         "回调被 " + subscriptionCount + " 个应用订阅，无法删除",
                         "Callback is subscribed by " + subscriptionCount + " applications, cannot delete");
             }
+
+            // 删除权限属性
+            permissionPropertyMapper.deleteByParentId(permission.getId());
 
             // 删除权限
             permissionMapper.deleteById(permission.getId());

@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * 创建连接器响应
  * <p>
- * API #1: POST /api/v1/connectors
+ * API #1: POST /service/open/v2/connectors
  * 返回创建的连接器ID (string)
  * </p>
  */

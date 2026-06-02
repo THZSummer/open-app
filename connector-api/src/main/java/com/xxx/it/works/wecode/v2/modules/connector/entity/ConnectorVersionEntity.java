@@ -1,10 +1,13 @@
 package com.xxx.it.works.wecode.v2.modules.connector.entity;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * 连接器版本/配置 R2DBC Entity
@@ -63,4 +66,72 @@ public class ConnectorVersionEntity {
 
     public String getLastUpdateBy() { return lastUpdateBy; }
     public void setLastUpdateBy(String lastUpdateBy) { this.lastUpdateBy = lastUpdateBy; }
+
+    // ===== Transient Helpers (v5.5) =====
+
+    /**
+     * 解析 connectionConfig JSON 为 Map; v5.5 字段名: authConfig, inputContract, outputContract, rateLimitConfig
+     */
+    public Map<String, Object> parseConnectionConfig(ObjectMapper mapper) {
+        if (this.connectionConfig == null || this.connectionConfig.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return mapper.readValue(this.connectionConfig,
+                    new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            return Map.of();
+        }
+    }
+
+    /**
+     * 按新/旧字段名双名字段提取泛型方法 (DRY 模板方法)
+     *
+     * @param mapper   ObjectMapper
+     * @param newField v5.5 新字段名 (如 "authConfig")
+     * @param oldField 旧字段名 (如 "authTypeSchema")
+     * @return 提取到的 Map, 无匹配时返回空 Map
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> getConfigField(ObjectMapper mapper, String newField, String oldField) {
+        Map<String, Object> config = parseConnectionConfig(mapper);
+        Object val = config.get(newField);
+        if (val instanceof Map) {
+            return (Map<String, Object>) val;
+        }
+        // 向后兼容: 尝试旧字段名
+        Object legacy = config.get(oldField);
+        if (legacy instanceof Map) {
+            return (Map<String, Object>) legacy;
+        }
+        return Map.of();
+    }
+
+    /**
+     * 获取 authConfig (v5.5 字段, 对应旧 authTypeSchema)
+     */
+    public Map<String, Object> getAuthConfig(ObjectMapper mapper) {
+        return getConfigField(mapper, "authConfig", "authTypeSchema");
+    }
+
+    /**
+     * 获取 inputContract (v5.5 字段, 对应旧 inputSchema)
+     */
+    public Map<String, Object> getInputContract(ObjectMapper mapper) {
+        return getConfigField(mapper, "inputContract", "inputSchema");
+    }
+
+    /**
+     * 获取 outputContract (v5.5 字段, 对应旧 outputSchema)
+     */
+    public Map<String, Object> getOutputContract(ObjectMapper mapper) {
+        return getConfigField(mapper, "outputContract", "outputSchema");
+    }
+
+    /**
+     * 获取 rateLimitConfig (v5.5 字段, 对应旧 rateLimit)
+     */
+    public Map<String, Object> getRateLimitConfig(ObjectMapper mapper) {
+        return getConfigField(mapper, "rateLimitConfig", "rateLimit");
+    }
 }

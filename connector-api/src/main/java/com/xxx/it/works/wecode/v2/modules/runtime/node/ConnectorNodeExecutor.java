@@ -1,7 +1,11 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
+import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
@@ -10,19 +14,24 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import org.springframework.web.util.UriComponentsBuilder;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
 /**
  * 连接器节点执行器
  * <p>
- * 通过 WebClient 同步调用下游 HTTP API
- * - 读取 connectionConfig.protocolConfig.url/method/headers
- * - 注入 credentials 到请求头
- * - WebClient timeout + .timeout(Duration) 双重保障
+ * v5.7:
+ * <ul>
+ *   <li>从 {@code data.connectorVersionId} 查找 {@code connector_version_t.connection_config}</li>
+ *   <li>从 connectionConfig 提取 {@code protocolConfig.url/method}、{@code authConfig}、{@code timeoutMs}</li>
+ *   <li>从 {@code data.inputMapping} 结构化配置构建请求参数</li>
+ *   <li>向后兼容: 无 connectorVersionId 时从 data 直接读取 url/method</li>
+ * </ul>
  * </p>
  */
 public class ConnectorNodeExecutor implements NodeExecutor {
@@ -31,13 +40,21 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
+    private final ExpressionResolver expressionResolver;
+    private final CredentialInjectorRegistry credentialInjectorRegistry;
+    private final OpConnectorVersionReadRepository connectorVersionReadRepository;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
-    public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient) {
+    public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
+                                  CredentialInjectorRegistry credentialInjectorRegistry,
+                                  OpConnectorVersionReadRepository connectorVersionReadRepository) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
+        this.expressionResolver = new ExpressionResolver();
+        this.credentialInjectorRegistry = credentialInjectorRegistry;
+        this.connectorVersionReadRepository = connectorVersionReadRepository;
     }
 
     @Override
@@ -48,144 +65,317 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     @Override
     @SuppressWarnings("unchecked")
     public Mono<NodeOutput> execute(ExecutionContext context, Object nodeConfig) {
-        return Mono.fromCallable(() -> {
-            Map<String, Object> config;
-            if (nodeConfig instanceof Map) {
-                config = (Map<String, Object>) nodeConfig;
+        Map<String, Object> config;
+        if (nodeConfig instanceof Map) {
+            config = (Map<String, Object>) nodeConfig;
+        } else {
+            config = objectMapper.convertValue(nodeConfig, Map.class);
+        }
+
+        String nodeId = (String) config.get("id");
+
+        // v5.5: React Flow 格式 — 节点配置在 data 字段内
+        Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
+
+        log.info("Connector node executing: nodeId={}", nodeId);
+
+        // v5.7: 从 connectorVersionId 查找连接器配置
+        Object connectorVersionIdObj = data.get("connectorVersionId");
+        if (connectorVersionIdObj != null) {
+            Long connectorVersionId;
+            if (connectorVersionIdObj instanceof Number) {
+                connectorVersionId = ((Number) connectorVersionIdObj).longValue();
             } else {
-                config = objectMapper.convertValue(nodeConfig, Map.class);
+                connectorVersionId = Long.valueOf(connectorVersionIdObj.toString());
             }
+            return connectorVersionReadRepository.findById(connectorVersionId)
+                    .flatMap(versionEntity -> executeWithConnectionConfig(context, config, data, nodeId, versionEntity))
+                    .switchIfEmpty(Mono.defer(() -> executeLegacy(context, config, data, nodeId)));
+        }
 
-            String nodeId = (String) config.get("id");
-
-            log.debug("Connector node executing: nodeId={}", nodeId);
-
-            // 构建 WebClient 请求
-            String connectorId = (String) config.get("connectorId");
-            long timeoutMs = DEFAULT_TIMEOUT_MS;
-
-            // 获取上游输入数据
-            Map<String, Object> inputData = collectInputData(context, config);
-
-            // 获取凭证
-            Map<String, String> credentials = null;
-            if (context.getCredentials() != null && connectorId != null) {
-                credentials = context.getCredentials().get(connectorId);
-            }
-
-            // 从 connectionConfig 提取协议信息 (需从 DB 查询或由编排配置传入)
-            // MVP 简化: 连接器配置的 URL/method/headers 在编排节点配置中
-            String url = (String) config.get("url");
-            String method = (String) config.getOrDefault("method", "POST");
-            Integer timeout = (Integer) config.get("timeoutMs");
-            if (timeout != null && timeout > 0) {
-                timeoutMs = timeout;
-            }
-
-            Map<String, String> headers = new HashMap<>();
-            Object headersObj = config.get("headers");
-            if (headersObj instanceof Map) {
-                headers.putAll((Map<String, String>) headersObj);
-            }
-
-            // 注入凭证到请求头
-            if (credentials != null) {
-                for (Map.Entry<String, String> entry : credentials.entrySet()) {
-                    headers.put(entry.getKey(), entry.getValue());
-                }
-            }
-
-            // 执行 HTTP 调用
-            return executeHttpCall(nodeId, url, method, headers, inputData, timeoutMs, context);
-        }).flatMap(output -> Mono.just(output));
+        // 向后兼容: 无 connectorVersionId 时从 data 直接读取
+        return executeLegacy(context, config, data, nodeId);
     }
 
     /**
-     * 执行 HTTP 调用
+     * v5.7: 从 connectionConfig 提取配置并执行
      */
     @SuppressWarnings("unchecked")
-    private NodeOutput executeHttpCall(
-            String nodeId, String url, String method,
-            Map<String, String> headers, Map<String, Object> body,
-            long timeoutMs, ExecutionContext context) {
+    private Mono<NodeOutput> executeWithConnectionConfig(ExecutionContext context,
+                                                          Map<String, Object> config,
+                                                          Map<String, Object> data,
+                                                          String nodeId,
+                                                          ConnectorVersionEntity versionEntity) {
+        Map<String, Object> connectionConfig = versionEntity.parseConnectionConfig(objectMapper);
+        if (connectionConfig.isEmpty()) {
+            log.warn("Connector version {} has empty connectionConfig, falling back to legacy", versionEntity.getId());
+            return executeLegacy(context, config, data, nodeId);
+        }
+
+        // 提取 protocolConfig
+        Map<String, Object> protocolConfig = (Map<String, Object>) connectionConfig.get("protocolConfig");
+        String url = null;
+        String method = "POST";
+        if (protocolConfig != null) {
+            url = (String) protocolConfig.get("url");
+            Object m = protocolConfig.get("method");
+            if (m != null) {
+                method = m.toString();
+            }
+        } else {
+            // 向后兼容: protocolConfig 可能直接在顶层
+            url = (String) connectionConfig.get("url");
+            Object m = connectionConfig.get("method");
+            if (m != null) {
+                method = m.toString();
+            }
+        }
+
+        if (url == null || url.isBlank()) {
+            log.warn("No url found in connectionConfig for connector version {}, falling back to legacy",
+                    versionEntity.getId());
+            return executeLegacy(context, config, data, nodeId);
+        }
+
+        // 提取 timeoutMs
+        long timeoutMs = DEFAULT_TIMEOUT_MS;
+        Object timeoutObj = connectionConfig.get("timeoutMs");
+        if (timeoutObj instanceof Number) {
+            timeoutMs = ((Number) timeoutObj).longValue();
+        }
+
+        // 提取 authConfig
+        Map<String, Object> authConfig = versionEntity.getAuthConfig(objectMapper);
+
+        // v5.6: 从 data.inputMapping 结构化配置构建请求
+        Map<String, Object> params = buildRequestParams(data, context);
+        Map<String, String> headers = (Map<String, String>) params.get("headers");
+        Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
+        Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
+
+        // 注入凭证到请求头
+        credentialInjectorRegistry.inject(authConfig, headers);
+
+        // 构建 input 分区
+        Map<String, Object> input = new HashMap<>();
+        input.put("url", url);
+        input.put("method", method);
+        input.put("connectorVersionId", versionEntity.getId());
+        input.put("headers", new HashMap<>(headers));
+        input.put("body", new HashMap<>(requestBody));
+        if (queryParams != null && !queryParams.isEmpty()) {
+            input.put("query", new HashMap<>(queryParams));
+        }
 
         long startTime = System.currentTimeMillis();
+        String finalUrl = url;
+        String finalMethod = method;
+
+        return executeHttpCallReactive(nodeId, finalUrl, finalMethod, headers, queryParams,
+                requestBody, timeoutMs, context, input, startTime);
+    }
+
+    /**
+     * 向后兼容: 从 data 直接读取 url/method (旧格式)
+     */
+    @SuppressWarnings("unchecked")
+    private Mono<NodeOutput> executeLegacy(ExecutionContext context, Map<String, Object> config,
+                                            Map<String, Object> data, String nodeId) {
+        log.info("Connector node executing (legacy mode): nodeId={}", nodeId);
+
+        long timeoutMs = DEFAULT_TIMEOUT_MS;
+
+        String url = (String) data.get("url");
+        String method = (String) data.getOrDefault("method", "POST");
+        Integer timeout = (Integer) data.get("timeoutMs");
+        if (timeout != null && timeout > 0) {
+            timeoutMs = timeout;
+        }
+
+        Map<String, Object> params = buildRequestParams(data, context);
+        Map<String, String> headers = (Map<String, String>) params.get("headers");
+        Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
+        Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
+
+        Map<String, Object> authConfig = (Map<String, Object>) data.get("authConfig");
+        credentialInjectorRegistry.inject(authConfig, headers);
+
+        Map<String, Object> input = new HashMap<>();
+        input.put("url", url);
+        input.put("method", method);
+        input.put("headers", new HashMap<>(headers));
+        input.put("body", new HashMap<>(requestBody));
+        if (queryParams != null && !queryParams.isEmpty()) {
+            input.put("query", new HashMap<>(queryParams));
+        }
+
+        long startTime = System.currentTimeMillis();
+        return executeHttpCallReactive(nodeId, url, method, headers, queryParams,
+                requestBody, timeoutMs, context, input, startTime);
+    }
+
+    /**
+     * v5.6: 从映射字段提取值，兼容旧格式（裸字符串）和新格式（{type, value} 对象）
+     */
+    @SuppressWarnings("unchecked")
+    private Object extractMappedValue(Object fieldDef) {
+        if (fieldDef instanceof Map) {
+            return ((Map<String, Object>) fieldDef).get("value");
+        }
+        return null;
+    }
+
+    /**
+     * v5.6: 规范化映射段（{type, properties: {key: {type, value}}}）
+     * 返回 {字段名 -> 表达式值} 的 Map
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> normalizeMappingSegment(Object segment) {
+        if (!(segment instanceof Map)) {
+            return Collections.emptyMap();
+        }
+        Map<String, Object> segMap = (Map<String, Object>) segment;
+
+        Object props = segMap.get("properties");
+        if (props instanceof Map) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : ((Map<String, Object>) props).entrySet()) {
+                result.put(entry.getKey(), extractMappedValue(entry.getValue()));
+            }
+            return result;
+        }
+
+        return Collections.emptyMap();
+    }
+
+    /**
+     * 构建 HTTP 请求参数 (从 inputMapping 提取)
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildRequestParams(Map<String, Object> data, ExecutionContext context) {
+        Map<String, String> headers = new HashMap<>();
+        Map<String, Object> queryParams = new HashMap<>();
+        Map<String, Object> requestBody = new HashMap<>();
+
+        Object inputMappingObj = data.get("inputMapping");
+        if (!(inputMappingObj instanceof Map)) {
+            return Map.of("headers", headers, "queryParams", queryParams, "requestBody", requestBody);
+        }
+        Map<String, Object> inputMapping = (Map<String, Object>) inputMappingObj;
+
+        // 处理 header 映射
+        Map<String, Object> headerMap = normalizeMappingSegment(inputMapping.get("header"));
+        for (Map.Entry<String, Object> entry : headerMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                headers.put(entry.getKey(), String.valueOf(resolved));
+            }
+        }
+
+        // 处理 query 映射
+        Map<String, Object> queryMap = normalizeMappingSegment(inputMapping.get("query"));
+        for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                queryParams.put(entry.getKey(), resolved);
+            }
+        }
+
+        // 处理 body 映射
+        Map<String, Object> bodyMap = normalizeMappingSegment(inputMapping.get("body"));
+        for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                requestBody.put(entry.getKey(), resolved);
+            }
+        }
+
+        return Map.of("headers", headers, "queryParams", queryParams, "requestBody", requestBody);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object resolveValue(ExecutionContext context, Object value) {
+        if (value instanceof String) {
+            String expr = (String) value;
+            return expressionResolver.resolve(expr, context.getNodeContexts());
+        }
+        return value;
+    }
+
+    /**
+     * 全 reactive 方式执行 HTTP 调用
+     */
+    private Mono<NodeOutput> executeHttpCallReactive(
+            String nodeId, String url, String method,
+            Map<String, String> headers, Map<String, Object> queryParams,
+            Map<String, Object> body,
+            long timeoutMs, ExecutionContext context, Map<String, Object> input,
+            long startTime) {
+
         NodeOutput output = new NodeOutput();
         output.setNodeId(nodeId);
         output.setNodeType("connector");
+        output.setInput(input);
 
-        try {
-            WebClient.RequestBodySpec requestSpec = webClient
-                    .method(org.springframework.http.HttpMethod.valueOf(method.toUpperCase(Locale.ROOT)))
-                    .uri(URI.create(url))
-                    .headers(h -> headers.forEach(h::set));
-
-            if (!"GET".equalsIgnoreCase(method)) {
-                requestSpec.bodyValue(body != null ? body : new HashMap<>());
+        // 构建 URI，包含 query 参数（UriComponentsBuilder 自动处理 URL 编码）
+        String requestUri;
+        if (queryParams != null && !queryParams.isEmpty()) {
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
+            for (Map.Entry<String, Object> entry : queryParams.entrySet()) {
+                uriBuilder.queryParam(entry.getKey(), entry.getValue());
             }
-
-            // 执行请求并等待响应 (同步获取, 因为有超时保障)
-            String responseBody = requestSpec
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(Duration.ofMillis(timeoutMs))
-                    .onErrorResume(e -> {
-                        log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
-                        return Mono.just("{\"error\":\"" + e.getMessage() + "\"}");
-                    })
-                    .block(Duration.ofMillis(timeoutMs + 5000)); // 额外5秒缓冲
-
-            // 解析响应
-            Map<String, Object> outputData = new HashMap<>();
-            if (responseBody != null) {
-                try {
-                    Map<String, Object> parsed = objectMapper.readValue(responseBody, Map.class);
-                    outputData.putAll(parsed);
-                } catch (Exception e) {
-                    outputData.put("rawResponse", responseBody);
-                }
-            }
-
-            outputData.put("__status", "success");
-            output.setOutputData(outputData);
-            output.setStatus("success");
-
-        } catch (Exception e) {
-            log.error("Connector node execution failed: nodeId={}, url={}, error={}", nodeId, url, e.getMessage());
-
-            Map<String, Object> errorData = new HashMap<>();
-            errorData.put("__status", "failed");
-            errorData.put("__error", e.getMessage());
-            output.setOutputData(errorData);
-            output.setStatus("failed");
-            output.setErrorMessage(e.getMessage());
+            requestUri = uriBuilder.build(true).toUriString();
+        } else {
+            requestUri = url;
         }
 
-        output.setDurationMs(System.currentTimeMillis() - startTime);
-        return output;
-    }
+        WebClient.RequestBodySpec requestSpec = webClient
+                .method(org.springframework.http.HttpMethod.valueOf(method.toUpperCase(Locale.ROOT)))
+                .uri(URI.create(requestUri))
+                .headers(h -> headers.forEach(h::set));
 
-    /**
-     * 收集上游输入数据
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> collectInputData(ExecutionContext context, Map<String, Object> config) {
-        Map<String, Object> inputData = new HashMap<>();
-
-        // 获取输入映射配置
-        Object inputMappings = config.get("inputMappings");
-        if (inputMappings instanceof List) {
-            List<Map<String, String>> mappings = (List<Map<String, String>>) inputMappings;
-            for (Map<String, String> mapping : mappings) {
-                String source = mapping.get("source");
-                String target = mapping.get("target");
-                if (source != null && target != null) {
-                    Object value = context.resolveFieldReference(source);
-                    inputData.put(target, value);
-                }
-            }
+        if (!"GET".equalsIgnoreCase(method) && body != null && !body.isEmpty()) {
+            requestSpec.bodyValue(body);
         }
 
-        return inputData;
+        // 全 reactive 链: 无 .block()
+        return requestSpec
+                .retrieve()
+                .bodyToMono(String.class)
+                .timeout(Duration.ofMillis(timeoutMs))
+                .map(responseBody -> {
+                    log.info("Connector HTTP call succeeded: nodeId={}, status=success", nodeId);
+                    Map<String, Object> outputData = new HashMap<>();
+                    if (responseBody != null) {
+                        try {
+                            Map<String, Object> parsed = objectMapper.readValue(responseBody, Map.class);
+                            outputData.putAll(parsed);
+                        } catch (Exception e) {
+                            outputData.put("rawResponse", responseBody);
+                        }
+                    }
+                    outputData.put("__status", "success");
+                    output.setOutput(outputData);
+                    output.setStatus("success");
+                    output.setDurationMs(System.currentTimeMillis() - startTime);
+                    return output;
+                })
+                .onErrorResume(e -> {
+                    log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
+
+                    Map<String, Object> errorInfo = new HashMap<>();
+                    errorInfo.put("code", "6001");
+                    errorInfo.put("message", e.getMessage());
+                    errorInfo.put("messageEn", e.getMessage());
+                    errorInfo.put("messageZh", e.getMessage());
+
+                    Map<String, Object> outputData = new HashMap<>();
+                    outputData.put("__status", "failed");
+                    output.setOutput(outputData);
+                    output.setStatus("failed");
+                    output.setErrorInfo(errorInfo);
+                    output.setDurationMs(System.currentTimeMillis() - startTime);
+                    return Mono.just(output);
+                });
     }
 }

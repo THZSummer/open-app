@@ -2,10 +2,12 @@ package com.xxx.it.works.wecode.v2.modules.flow.dto;
 
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * 连接流列表响应项
  * <p>
- * API #9: GET /api/v1/flows
+ * API #9: GET /service/open/v2/flows
  * </p>
  */
 @Data
@@ -29,9 +31,9 @@ public class FlowListResponse {
     /** 生命周期状态 (TINYINT数字) */
     private Integer lifecycleStatus;
 
-    /** 创建时间 (ISO 8601) */
-    private String createTime;
+    /** 创建时间 */
+    private Date createTime;
 
-    /** 最后更新时间 (ISO 8601) */
-    private String lastUpdateTime;
+    /** 最后更新时间 */
+    private Date lastUpdateTime;
 }

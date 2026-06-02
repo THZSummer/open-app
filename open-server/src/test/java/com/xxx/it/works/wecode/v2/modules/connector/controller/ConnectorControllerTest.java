@@ -2,7 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.connector.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
-import com.xxx.it.works.wecode.v2.modules.connector.service.ConnectorService;
+import com.xxx.it.works.wecode.v2.modules.connector.service.OpConnectorService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -18,14 +18,14 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ConnectorController 测试")
-class ConnectorControllerTest {
+@DisplayName("OpConnectorController 测试")
+class OpConnectorControllerTest {
 
     @Mock
-    private ConnectorService connectorService;
+    private OpConnectorService connectorService;
 
     @InjectMocks
-    private ConnectorController connectorController;
+    private OpConnectorController connectorController;
 
     @Nested
     @DisplayName("#1 创建连接器")
@@ -126,8 +126,10 @@ class ConnectorControllerTest {
         @Test
         @DisplayName("查看配置委托给 service")
         void testGetConnectorConfig() {
+            ConnectorConfigResponse configResp = new ConnectorConfigResponse();
+            configResp.setHasConfig(true);
             when(connectorService.getConnectorConfig(100L))
-                    .thenReturn(ApiResponse.success(ConnectorConfigResponse.of("{}")));
+                    .thenReturn(ApiResponse.success(configResp));
 
             ApiResponse<ConnectorConfigResponse> response = connectorController.getConnectorConfig(100L);
             assertTrue(response.getData().isHasConfig());

@@ -1,0 +1,43 @@
+server:
+  port: 18080
+  servlet:
+    context-path: /market-server
+
+spring:
+  profiles:
+    active: dev
+  application:
+    name: market-server
+  web:
+    resources:
+      static-locations: file:${java.io.tmpdir}/
+# SpringDoc OpenAPI 配置
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+
+# Actuator 配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.xxx.it.works.wecode.v2: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+
+# 平台配置
+platform:
+  approval-url-prefix: https://platform.example.com/approval/

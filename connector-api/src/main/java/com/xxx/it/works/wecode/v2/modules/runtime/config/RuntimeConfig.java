@@ -1,10 +1,12 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
-import com.xxx.it.works.wecode.v2.modules.runtime.node.EntryNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,13 +22,15 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class RuntimeConfig {
 
     @Bean
-    public EntryNodeExecutor entryNodeExecutor(ObjectMapper objectMapper) {
-        return new EntryNodeExecutor(objectMapper);
+    public TriggerNodeExecutor triggerNodeExecutor(ObjectMapper objectMapper) {
+        return new TriggerNodeExecutor(objectMapper);
     }
 
     @Bean
-    public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient) {
-        return new ConnectorNodeExecutor(objectMapper, webClient);
+    public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
+                                                        CredentialInjectorRegistry credentialInjectorRegistry,
+                                                        OpConnectorVersionReadRepository connectorVersionReadRepository) {
+        return new ConnectorNodeExecutor(objectMapper, webClient, credentialInjectorRegistry, connectorVersionReadRepository);
     }
 
     @Bean
@@ -42,13 +46,13 @@ public class RuntimeConfig {
     @Bean
     public ReactiveSequentialExecutor reactiveSequentialExecutor(
             ObjectMapper objectMapper,
-            EntryNodeExecutor entryNodeExecutor,
+            TriggerNodeExecutor triggerNodeExecutor,
             ConnectorNodeExecutor connectorNodeExecutor,
             DataProcessorExecutor dataProcessorExecutor,
             ExitNodeExecutor exitNodeExecutor) {
         return new ReactiveSequentialExecutor(
                 objectMapper,
-                entryNodeExecutor,
+                triggerNodeExecutor,
                 connectorNodeExecutor,
                 dataProcessorExecutor,
                 exitNodeExecutor);

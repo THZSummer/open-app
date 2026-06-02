@@ -5,12 +5,12 @@
  *
  * 功能：
  * - 提供统一的搜索表单
- * - 支持关键词、状态等筛选条件
+ * - 支持关键词筛选
  * - 搜索按钮触发搜索，重置按钮清空条件
  */
 
 import React from 'react';
-import { Form, Input, Select, Button } from 'antd';
+import { Form, Input, Button } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import './ConnectorSearchForm.less';
 
@@ -21,17 +21,11 @@ import './ConnectorSearchForm.less';
  * @param {string} props.keyword - 关键词值
  * @param {Function} props.onSearch - 搜索回调，接收表单值对象
  * @param {string} [props.placeholder='搜索名称'] - 搜索框占位符
- * @param {*} [props.status] - 状态值
- * @param {Array} [props.statusOptions=[]] - 状态选项列表
- * @param {Function} [props.onStatusChange] - 状态变化回调
  */
 const ConnectorSearchForm = ({
   keyword,
   onSearch,
   placeholder = '搜索名称',
-  status,
-  statusOptions = [],
-  onStatusChange,
 }) => {
   const [form] = Form.useForm();
 
@@ -67,25 +61,9 @@ const ConnectorSearchForm = ({
             <Input
               placeholder={placeholder}
               defaultValue={keyword}
-              style={{ width: 200 }}
+              style={{ width: 300 }}
               allowClear
             />
-          </Form.Item>
-
-          <Form.Item name="status" className="form-item-status">
-            <Select
-              placeholder="选择状态"
-              value={status}
-              onChange={onStatusChange}
-              style={{ width: 120 }}
-              allowClear
-            >
-              {statusOptions.map(option => (
-                <Select.Option key={option.value} value={option.value}>
-                  {option.label}
-                </Select.Option>
-              ))}
-            </Select>
           </Form.Item>
         </div>
 

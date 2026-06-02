@@ -24,6 +24,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path,
       },
+      '/api/v1': {
+        target: 'http://localhost:18080/open-server',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
     },
   },
 });

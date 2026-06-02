@@ -2,10 +2,12 @@ package com.xxx.it.works.wecode.v2.modules.connector.dto;
 
 import lombok.Data;
 
+import java.util.Date;
+
 /**
  * 连接器详情响应
  * <p>
- * API #3: GET /api/v1/connectors/{connectorId}
+ * API #3: GET /service/open/v2/connectors/{connectorId}
  * </p>
  */
 @Data
@@ -32,9 +34,9 @@ public class ConnectorDetailResponse {
     /** 连接器类型 (TINYINT数字) */
     private Integer connectorType;
 
-    /** 创建时间 (ISO 8601) */
-    private String createTime;
+    /** 创建时间 */
+    private Date createTime;
 
-    /** 最后更新时间 (ISO 8601) */
-    private String lastUpdateTime;
+    /** 最后更新时间 */
+    private Date lastUpdateTime;
 }

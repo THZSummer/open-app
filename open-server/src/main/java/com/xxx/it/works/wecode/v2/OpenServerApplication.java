@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2;
 
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
@@ -17,7 +16,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @SpringBootApplication(exclude = {
     RedisAutoConfiguration.class
 })
-@MapperScan("com.xxx.it.works.wecode.v2.modules.*.mapper")
 @EnableAsync
 public class OpenServerApplication {
 

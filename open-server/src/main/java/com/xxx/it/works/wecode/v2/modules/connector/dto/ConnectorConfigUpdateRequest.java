@@ -6,7 +6,7 @@ import lombok.Data;
 /**
  * 更新连接配置请求
  * <p>
- * API #7: PUT /api/v1/connectors/{connectorId}/config
+ * API #7: PUT /service/open/v2/connectors/{connectorId}/config
  * 编辑即生效, connection_config 全文替换
  * </p>
  */

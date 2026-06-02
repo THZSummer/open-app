@@ -10,42 +10,36 @@
  * - 支持节点拖拽添加
  * - 支持节点连线
  * - 支持节点属性配置
- * - 支持流程验证
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, message, Modal, Input, Space, Tag } from 'antd';
-import { SaveOutlined, CloseOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { Button, message, Modal, Space, Drawer } from 'antd';
+import { SaveOutlined, CloseOutlined } from '@ant-design/icons';
 import { ReactFlow, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
 import FlowCanvasWrapper from '../../../components/FlowCanvas/FlowCanvasWrapper';
 import NodeLibrary from './NodeLibrary';
 import NodeProperties from './NodeProperties';
-import { nodeTypes } from './customNodes';
-import { generateNodeId, generateEdgeId, getInitialNodePosition, validateFlowConfig } from '../../../utils/flowUtils';
-import { createFlow, updateFlow, fetchFlowDetail } from './thunk';
-import './FlowEditor.less';
+import { nodeTypes } from './constants';
+import { generateNodeId, generateEdgeId, getInitialNodePosition, transformFromBackend, transformToBackend } from '../../../utils/flowUtils';
+import { fetchFlowDetail, saveFlowConfig } from './thunk';
+import { queryParams } from '../../../utils/common';
+import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
+import './FlowEditor.m.less';
 
 /**
  * 连接流编辑器页面组件
  */
 function FlowEditor() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   /**
    * State定义
    */
 
   // 获取 URL 参数
-  const flowId = searchParams.get('id');
-  const action = searchParams.get('action') || 'create';
-
-  // 判断是否为新建模式
-  const isNew = action === 'create' || !flowId;
-
-  // 判断是否为查看模式
-  const isViewMode = action === 'view';
+  const flowId = queryParams('id');
+  const flowName = queryParams('name') || '未命名流程';
 
   // 节点列表
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -59,63 +53,47 @@ function FlowEditor() {
   // 加载状态
   const [loading, setLoading] = useState(false);
 
-  // 流程基本信息
-  const [flowName, setFlowName] = useState('');
-  const [flowDescription, setFlowDescription] = useState('');
-
   /**
    * 副作用
    */
   useEffect(() => {
-    if (!isNew && flowId) {
+    if (flowId) {
       loadFlowDetail(flowId);
-    } else if (isNew) {
-      // 新建模式：自动创建一个默认的触发器节点
-      initializeTriggerNode();
-    }
-  }, [flowId, isNew]);
-
-  /**
-   * 初始化触发器节点
-   * 每个连接流必须且仅有一个触发器
-   */
-  const initializeTriggerNode = () => {
-    const triggerNode = {
-      id: generateNodeId('trigger'),
-      type: 'trigger',
-      position: { x: 250, y: 50 },
-      data: {
-        label: '触发器',
-        config: {
-          triggerType: 'schedule',
-          cronExpression: '0 0 * * * ?',
-          timezone: 'Asia/Shanghai',
-        },
-      },
-    };
-    setNodes([triggerNode]);
-  };
-
-  /**
-   * 加载流程详情（编辑模式）
-   */
-  const loadFlowDetail = async (id) => {
-    const result = await fetchFlowDetail(id);
-
-    if (result && result.code === '200') {
-      const flowData = result.data;
-
-      setFlowName(flowData.name);
-      setFlowDescription(flowData.description || '');
-      setNodes(flowData.nodes || []);
-      setEdges(flowData.edges || []);
     } else {
-      message.error(result?.message || '加载流程详情失败');
+      // 没有flowId时，返回连接流列表页
+      message.error('缺少连接流ID参数');
+      navigate('/connect/flows');
     }
-  };
+  }, [flowId]);
 
   /**
-   * 处理连接创建
+ * 加载流程详情
+ * @param {string} id - 流程ID
+ */
+const loadFlowDetail = async (id) => {
+  const result = await fetchFlowDetail(id);
+
+  if (result && result.code === '200') {
+    const flowData = result.data;
+
+    let configObj;
+    try {
+      configObj = JSON.parse(flowData.orchestrationConfig);
+    } catch (parseError) {
+      message.error('加载流程配置失败：配置数据格式错误');
+      return;
+    }
+
+    const transformed = transformFromBackend(configObj);
+    setNodes(transformed.nodes);
+    setEdges(transformed.edges);
+  } else {
+    message.error(result?.messageZh || '加载流程详情失败');
+  }
+};
+
+  /**
+   * 处理节点间连接创建
    */
   const onConnect = (params) => {
     const newEdge = {
@@ -161,13 +139,6 @@ function FlowEditor() {
   };
 
   /**
-   * 处理画布点击（取消选中）
-   */
-  const handlePaneClick = () => {
-    setSelectedNode(null);
-  };
-
-  /**
    * 更新节点
    */
   const handleUpdateNode = (updatedNode) => {
@@ -181,7 +152,14 @@ function FlowEditor() {
         return;
       }
 
+      // 删除节点
       setNodes((nds) => nds.filter((node) => node.id !== nodeIdToDelete));
+
+      // 删除与该节点相关的连线
+      setEdges((eds) => eds.filter(
+        (edge) => edge.source !== nodeIdToDelete && edge.target !== nodeIdToDelete
+      ));
+
       setSelectedNode(null);
       return;
     }
@@ -203,131 +181,24 @@ function FlowEditor() {
   };
 
   /**
-   * 流程验证
-   */
-  const handleValidate = () => {
-    const validation = validateFlowConfig(nodes, edges);
-
-    if (validation.valid) {
-      if (validation.warnings.length > 0) {
-        Modal.warning({
-          title: '验证通过（有警告）',
-          content: (
-            <div>
-              <p style={{ color: '#52c41a', fontWeight: 'bold' }}>✓ 流程配置验证通过</p>
-              {validation.warnings.length > 0 && (
-                <>
-                  <p>但发现以下问题：</p>
-                  <ul style={{ color: '#faad14' }}>
-                    {validation.warnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </div>
-          ),
-        });
-      } else {
-        message.success('✓ 流程配置验证通过');
-      }
-    } else {
-      Modal.error({
-        title: '验证失败',
-        content: (
-          <div>
-            <p>以下问题需要修复：</p>
-            <ul style={{ color: '#ff4d4f' }}>
-              {validation.errors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        ),
-      });
-    }
-  };
-
-  /**
    * 保存流程
    */
   const handleSave = async () => {
-    // 验证流程名称
-    if (!flowName.trim()) {
-      message.error('请输入流程名称');
-      return;
-    }
-
-    // 验证流程配置
-    const validation = validateFlowConfig(nodes, edges);
-
-    if (!validation.valid) {
-      Modal.error({
-        title: '流程配置错误',
-        content: (
-          <div>
-            <p>以下问题需要修复：</p>
-            <ul style={{ color: '#ff4d4f' }}>
-              {validation.errors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        ),
-      });
-      return;
-    }
-
-    // 显示警告（如果有）
-    if (validation.warnings.length > 0) {
-      const confirmed = await new Promise((resolve) => {
-        Modal.confirm({
-          title: '流程配置警告',
-          content: (
-            <div>
-              <p>发现以下问题：</p>
-              <ul style={{ color: '#faad14' }}>
-                {validation.warnings.map((warning, index) => (
-                  <li key={index}>{warning}</li>
-                ))}
-              </ul>
-              <p>是否仍要保存？</p>
-            </div>
-          ),
-          onOk: () => resolve(true),
-          onCancel: () => resolve(false),
-        });
-      });
-
-      if (!confirmed) {
-        return;
-      }
-    }
-
     setLoading(true);
 
-    // 构建保存数据
+    const transformedData = transformToBackend(nodes, edges);
+    
     const payload = {
-      name: flowName,
-      description: flowDescription,
-      status: 0, // 草稿状态
-      nodes,
-      edges,
+      orchestrationConfig: JSON.stringify(transformedData),
     };
 
-    // 调用API
-    let result;
-    if (isNew) {
-      result = await createFlow(payload);
-    } else {
-      result = await updateFlow(flowId, payload);
-    }
+    const result = await saveFlowConfig(flowId, payload);
 
     if (result && result.code === '200') {
-      message.success(isNew ? '创建成功' : '保存成功');
-      navigate('/connect/flows');
+      message.success('保存成功');
+      handleClose();
     } else {
-      message.error(result?.message || '操作失败');
+      message.error(result?.messageZh || '保存失败');
     }
 
     setLoading(false);
@@ -337,80 +208,38 @@ function FlowEditor() {
    * 关闭画布
    */
   const handleClose = () => {
-    if (isViewMode) {
-      navigate('/connect/flows');
-      return;
-    }
-
-    Modal.confirm({
-      title: '确认离开',
-      content: '确定要离开吗？未保存的更改将丢失',
-      onOk: () => navigate('/connect/flows'),
-    });
-  };
-
-  /**
-   * 渲染页面标题
-   */
-  const renderPageTitle = () => {
-    const titles = {
-      create: '新建连接流',
-      edit: '编辑连接流',
-      view: '查看连接流',
-    };
-    return titles[action] || '连接流编辑器';
+    navigate('/connect/flows');
   };
 
   /**
    * 渲染
    */
   return (
-    <div className="flow-editor-page">
-      {/* 顶部工具栏 */}
-      <div className="editor-header">
-        <div className="header-left">
-          <Button
-            type="text"
-            icon={<CloseOutlined />}
-            onClick={handleClose}
-            style={{ marginRight: 16 }}
-          >
-            返回
-          </Button>
-          {isViewMode ? (
-            <span style={{ fontSize: 16, fontWeight: 500 }}>{flowName}</span>
-          ) : (
-            <>
-              <Input
-                value={flowName}
-                onChange={(e) => setFlowName(e.target.value)}
-                placeholder="请输入流程名称"
-                style={{ width: 300 }}
-              />
-            </>
-          )}
-        </div>
-        <div className="header-right">
-          <Space>
-            <span style={{ color: '#999', fontSize: 12 }}>
-              {nodes.length} 个节点 · {edges.length} 条连线
-            </span>
-            {isViewMode && (
+    <div className="page-container">
+      {/* 左侧导航栏 */}
+      <SimpleSidebar />
+
+      {/* 主内容区 */}
+      <div className="main-content">
+        <div className="flow-editor-page">
+          {/* 顶部工具栏 */}
+          <div className="editor-header">
+            <div className="header-left">
               <Button
-                icon={<CheckCircleOutlined />}
-                onClick={handleValidate}
+                type="text"
+                icon={<CloseOutlined />}
+                onClick={handleClose}
+                className="back-btn"
               >
-                验证
+                返回
               </Button>
-            )}
-            {!isViewMode && (
-              <>
-                <Button
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleValidate}
-                >
-                  验证
-                </Button>
+              <span className="flow-name">{flowName}</span>
+            </div>
+            <div className="header-right">
+              <Space>
+                <span className="node-count">
+                  {nodes.length} 个节点 · {edges.length} 条连线
+                </span>
                 <Button
                   type="primary"
                   icon={<SaveOutlined />}
@@ -419,39 +248,52 @@ function FlowEditor() {
                 >
                   保存
                 </Button>
-              </>
+              </Space>
+            </div>
+          </div>
+
+          {/* 画布主体 */}
+          <div className="editor-content">
+            {/* 左侧节点库 */}
+            <NodeLibrary nodes={nodes} />
+
+            {/* 中央画布 */}
+            <div className="editor-canvas-area">
+              <FlowCanvasWrapper
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={handleNodeClick}
+                onNodeDrop={handleNodeDrop}
+                selectedNodeId={selectedNode?.id}
+                canDeleteNode={canDeleteNode}
+                nodeTypes={nodeTypes}
+              />
+            </div>
+          </div>
+
+          {/* 节点配置抽屉 */}
+          <Drawer
+            title="节点配置"
+            placement="right"
+            open={!!selectedNode}
+            onClose={() => setSelectedNode(null)}
+            width={600}
+            destroyOnClose
+            mask={false}
+          >
+            {selectedNode && (
+              <NodeProperties
+                selectedNode={selectedNode}
+                onUpdateNode={handleUpdateNode}
+                nodes={nodes}
+                edges={edges}
+              />
             )}
-          </Space>
+          </Drawer>
         </div>
-      </div>
-
-      {/* 画布主体 */}
-      <div className="editor-content">
-        {/* 左侧节点库 */}
-        <NodeLibrary />
-
-        {/* 中央画布 */}
-        <div className="editor-canvas-area">
-          <FlowCanvasWrapper
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={handleNodeClick}
-            onNodeDrop={handleNodeDrop}
-            selectedNodeId={selectedNode?.id}
-            disableNodeInteraction={isViewMode}
-            canDeleteNode={canDeleteNode}
-            nodeTypes={nodeTypes}
-          />
-        </div>
-
-        {/* 右侧属性面板 */}
-        <NodeProperties
-          selectedNode={selectedNode}
-          onUpdateNode={handleUpdateNode}
-        />
       </div>
     </div>
   );

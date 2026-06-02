@@ -1,0 +1,184 @@
+/**
+ * ========================================
+ * 流程节点样式文件
+ * ========================================
+ *
+ * 包含所有自定义流程节点组件的样式定义：
+ * - 基础节点容器样式
+ * - 节点类型标签样式
+ * - 节点名称样式
+ * - 节点信息展示样式
+ * - Handle 连接点样式
+ */
+
+// 基础节点容器样式 - 三个节点共用的样式
+@node-padding: 14px 18px;
+@node-border-radius: 10px;
+@node-background: #fff;
+@node-min-width: 160px;
+@node-max-width: 200px;
+@node-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+@node-transition: all 0.2s ease;
+
+// Handle 连接点样式
+@handle-size: 12px;
+@handle-border: 2px solid #fff;
+
+// 节点类型标签样式
+@label-font-size: 11px;
+@label-font-weight: 600;
+@label-text-transform: uppercase;
+@label-letter-spacing: 0.5px;
+@label-margin-bottom: 6px;
+
+// 节点名称样式
+@name-font-size: 11px;
+@name-color: #8c8c8c;
+@name-margin-bottom: 4px;
+
+// 信息标签样式
+@info-font-size: 11px;
+@info-color: #666;
+@info-padding: 2px 6px;
+@info-border-radius: 3px;
+@info-display: inline-block;
+
+// 触发器节点样式
+@trigger-color: #1890ff;
+@trigger-bg: #e6f7ff;
+
+// 连接器节点样式
+@connector-color: #52c41a;
+@connector-bg: #f6ffed;
+
+// 数据输出节点样式
+@data-output-color: #fa8c16;
+@data-output-bg: #fff7e6;
+
+/**
+ * 基础节点容器
+ */
+.flowNodeContainer {
+  padding: @node-padding;
+  border-radius: @node-border-radius;
+  background-color: @node-background;
+  min-width: @node-min-width;
+  max-width: @node-max-width;
+  box-shadow: @node-box-shadow;
+  transition: @node-transition;
+}
+
+/**
+ * 节点类型标签 - 通用样式
+ */
+.nodeTypeLabel {
+  font-size: @label-font-size;
+  margin-bottom: @label-margin-bottom;
+  font-weight: @label-font-weight;
+  text-transform: @label-text-transform;
+  letter-spacing: @label-letter-spacing;
+}
+
+/**
+ * 节点名称 - 通用样式
+ */
+.nodeName {
+  font-size: @name-font-size;
+  color: @name-color;
+  margin-bottom: @name-margin-bottom;
+}
+
+/**
+ * 节点信息标签 - 通用样式
+ */
+.nodeInfo {
+  font-size: @info-font-size;
+  color: @info-color;
+  padding: @info-padding;
+  border-radius: @info-border-radius;
+  display: @info-display;
+}
+
+/**
+ * 触发器节点样式
+ */
+.triggerNode {
+  .flowNodeContainer;
+
+  // 触发器类型标签
+  .nodeTypeLabel {
+    color: @trigger-color;
+  }
+}
+
+/**
+ * 连接器节点样式
+ */
+.actionNode {
+  .flowNodeContainer;
+
+  // 连接器类型标签
+  .nodeTypeLabel {
+    color: @connector-color;
+  }
+
+  // 连接器信息背景
+  .nodeInfo {
+    background-color: @connector-bg;
+  }
+}
+
+/**
+ * 数据输出节点样式
+ */
+.dataOutputNode {
+  .flowNodeContainer;
+
+  // 数据输出类型标签
+  .nodeTypeLabel {
+    color: @data-output-color;
+  }
+
+  // 数据输出信息背景
+  .nodeInfo {
+    background-color: @data-output-bg;
+  }
+}
+
+/**
+ * Handle 连接点样式类
+ */
+
+// 触发器节点 Handle（蓝色）
+.handleTrigger {
+  background: @trigger-color;
+  border: @handle-border;
+  width: @handle-size;
+  height: @handle-size;
+}
+
+// 连接器节点 Handle（绿色）
+.handleAction {
+  background: @connector-color;
+  border: @handle-border;
+  width: @handle-size;
+  height: @handle-size;
+}
+
+// 数据输出节点 Handle（橙色）
+.handleDataOutput {
+  background: @data-output-color;
+  border: @handle-border;
+  width: @handle-size;
+  height: @handle-size;
+}
+
+/**
+ * 数据输出节点特殊样式 - API 信息文本截断
+ */
+.apiInfoText {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
-import { remindPeople } from '../../../routes-redBlue/api-manage/thunk';
+import { remindPeople } from '../../pages/Admin/Approval/thunk';
 
 /**
  * 从审批链接中提取 eflowId
@@ -44,7 +44,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
       message.success('催办成功');
       onClose();
     } else {
-      message.error('催办失败');
+      message.error(result.messageZh || '催办失败');
     }
     
     setRemindLoading(false);

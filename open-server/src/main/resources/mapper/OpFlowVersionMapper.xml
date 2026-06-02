@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion">
+        <id column="id" property="id"/>
+        <result column="flow_id" property="flowId"/>
+        <result column="orchestration_config" property="orchestrationConfig"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- Base Column -->
+    <sql id="Base_Column_List">
+        id, flow_id, orchestration_config, create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion">
+        INSERT INTO openplatform_v2_cp_flow_version_t (
+            id, flow_id, orchestration_config, create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{flowId}, #{orchestrationConfig}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- Select By FlowId -->
+    <select id="selectByFlowId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_flow_version_t
+        WHERE flow_id = #{flowId}
+        LIMIT 1
+    </select>
+
+    <!-- Update -->
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion">
+        UPDATE openplatform_v2_cp_flow_version_t
+        SET orchestration_config = #{orchestrationConfig},
+            last_update_time     = #{lastUpdateTime},
+            last_update_by       = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete By FlowId -->
+    <delete id="deleteByFlowId">
+        DELETE FROM openplatform_v2_cp_flow_version_t
+        WHERE flow_id = #{flowId}
+    </delete>
+
+</mapper>

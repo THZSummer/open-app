@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.common.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -19,6 +20,7 @@ import java.util.TimeZone;
  *   <li>所有 ID 字段（Long/BigInteger）返回 string 类型，避免 JavaScript 精度丢失</li>
  *   <li>Java 8 时间类型序列化支持</li>
  *   <li>禁用日期序列化为时间戳</li>
+ *   <li>忽略未知 JSON 属性，支持向后兼容（新旧字段共存）</li>
  * </ul>
  *
  * @author SDDU Build Agent
@@ -36,6 +38,9 @@ public class JacksonConfig {
 
         // 禁用日期序列化为时间戳
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+
+        // 忽略未知 JSON 属性（支持向后兼容，新旧字段共存时不会报错）
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
 
         // 设置时区为北京时间
         objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));

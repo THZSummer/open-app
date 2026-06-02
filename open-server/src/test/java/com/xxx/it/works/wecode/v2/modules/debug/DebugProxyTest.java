@@ -17,14 +17,14 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("DebugProxyService 测试")
-class DebugProxyServiceTest {
+@DisplayName("OpDebugProxyService 测试")
+class OpDebugProxyServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
 
     @InjectMocks
-    private DebugProxyService debugProxyService;
+    private OpDebugProxyService debugProxyService;
 
     @Test
     @DisplayName("转发成功")
@@ -56,19 +56,19 @@ class DebugProxyServiceTest {
 }
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("DebugProxyController 测试")
-class DebugProxyControllerTest {
+@DisplayName("OpDebugProxyController 测试")
+class OpDebugProxyControllerTest {
 
     @Mock
-    private DebugProxyService debugProxyService;
+    private OpDebugProxyService debugProxyService;
 
     @InjectMocks
-    private DebugProxyController debugProxyController;
+    private OpDebugProxyController debugProxyController;
 
     @Test
     @DisplayName("测试运行委托给 service")
     void testTestRun() {
-        DebugProxyController.TestRunRequest request = new DebugProxyController.TestRunRequest();
+        OpDebugProxyController.TestRunRequest request = new OpDebugProxyController.TestRunRequest();
         request.setMockTriggerData(Map.of("key", "val"));
 
         when(debugProxyService.forwardTestRun(eq(100L), any(), any()))
