@@ -118,7 +118,7 @@ function Sidebar({ sidebarMainHeight }) {
   ];
 
   return (
-    <div className="sidebar" style={{ height: sidebarMainHeight || '100%', overflowY: 'auto' }}>
+    <div className="sidebar" style={{ overflowY: 'auto' }}>
       <div className="sidebar-nav">
         {dynamicMenuItems.map((group, index) => (
           <div key={index} className="sidebar-category">

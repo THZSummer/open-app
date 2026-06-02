@@ -58,6 +58,12 @@ export const ADMIN_MENU_CONFIG = [
   { title: '连接流管理', router: '/connect/flows' }
 ];
 
+export const REMIND_BUSINESSTYPE = {
+  api: 'api_permission_apply',
+  event: 'event_permission_apply',
+  callback: 'callback_permission_apply',
+}
+
 // ==================== 操作确认弹窗配置 ====================
 
 export const ACTION_CONFIG = {

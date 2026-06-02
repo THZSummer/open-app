@@ -157,8 +157,7 @@ const createDeleteOperations = (state, appId, options) => {
       message.success('删除成功');
       setDeleteModalOpen(false);
       deleteIdRef.current = null;
-      const curPageDataNum = Number(pagination.total) - pagination.pageSize * (pagination.curPage - 1) - 1;
-      loadDataRef?.(curPageDataNum === 0 ? pagination.curPage - 1 : pagination.curPage);
+      loadDataRef?.(INIT_PAGECONFIG);
     } else {
       message.error(res?.messageZh || res?.message || '删除失败');
     }

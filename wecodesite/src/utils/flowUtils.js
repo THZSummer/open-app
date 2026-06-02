@@ -9,88 +9,6 @@
 import { CARRIER_OPTIONS, CARRIER_OPTIONS_OUTPUT, NODE_TYPE_TO_MAPPING_KEY } from "../pages/ConnectPlatform/FlowEditor/constants";
 
 /**
- * 节点类型常量
- * 定义支持的4种节点类型
- */
-export const NODE_TYPES = {
-  TRIGGER: 'trigger',           // 触发器节点
-  CONNECTOR: 'connector',       // 连接器节点（文档标准名称）
-  EXIT: 'exit',                // 出口节点
-};
-
-/**
- * 将properties数组转换为JSON Schema格式的key-value对象
- * 用于保存到后端时符合文档规范
- * 
- * 输入格式: [{ paramName: 'sender', paramType: 'string', description: '...', ... }]
- * 输出格式: { sender: { type: 'string', description: '...' }, ... }
- * 
- * @param {Array} propertiesArray - properties参数数组
- * @returns {Object} JSON Schema格式的properties对象
- */
-export const transformPropertiesToSchema = (propertiesArray = []) => {
-  const result = {};
-  
-  propertiesArray.forEach(param => {
-    if (param.paramName) {
-      const isComplex = param.paramType === 'object' || param.paramType === 'array';
-      const schemaEntry = {
-        type: param.paramType || 'string',
-      };
-      
-      if (param.description) {
-        schemaEntry.description = param.description;
-      }
-      
-      // 如果是复杂类型，递归处理子属性
-      if (isComplex && param.children && param.children.length > 0) {
-        schemaEntry.properties = transformPropertiesToSchema(param.children);
-      }
-      
-      result[param.paramName] = schemaEntry;
-    }
-  });
-  
-  return result;
-};
-
-/**
- * 将JSON Schema格式的properties对象转换为数组格式
- * 用于从后端加载数据时转换为编辑器可用的格式
- * 
- * 输入格式: { sender: { type: 'string', description: '...' }, ... }
- * 输出格式: [{ paramName: 'sender', paramType: 'string', description: '...', ... }]
- * 
- * @param {Object} propertiesObj - JSON Schema格式的properties对象
- * @returns {Array} properties参数数组
- */
-export const transformPropertiesFromSchema = (propertiesObj = {}) => {
-  const result = [];
-  
-  Object.entries(propertiesObj).forEach(([name, schema]) => {
-    if (name && typeof schema === 'object') {
-      const isComplex = schema.type === 'object' || schema.type === 'array';
-      let children = [];
-      
-      // 如果是复杂类型且有嵌套属性，递归处理
-      if (isComplex && schema.properties) {
-        children = transformPropertiesFromSchema(schema.properties);
-      }
-      
-      result.push({
-        paramName: name,
-        paramType: schema.type || 'string',
-        description: schema.description || '',
-        carrier: schema.carrier || 'body',
-        children: children,
-      });
-    }
-  });
-  
-  return result;
-};
-
-/**
  * 生成唯一的节点ID
  * @param {string} prefix - ID前缀，默认为'node'
  * @returns {string} 格式：prefix_timestamp_randomString
@@ -485,31 +403,6 @@ export const transformToBackend = (nodes = [], edges = []) => {
     nodes: transformedNodes,
     edges: transformedEdges,
   };
-};
-
-/**
- * 转换inputMapping从旧格式到新格式
- * 旧格式：数组形式 [{ name, carrier, value }]
- * 新格式：{ header: {...}, query: {...}, body: {...} }
- * 
- * @param {Array} oldMapping - 旧的inputMapping数组
- * @returns {Object} 新的inputMapping对象
- */
-export const transformInputMappingFromOld = (oldMapping = []) => {
-  const result = {
-    header: {},
-    query: {},
-    body: {},
-  };
-
-  oldMapping.forEach?.((item) => {
-    if (item.carrier && item.name) {
-      result[item.carrier] = result[item.carrier] || {};
-      result[item.carrier][item.name] = item.value || '';
-    }
-  });
-
-  return result;
 };
 
 /**

@@ -10,6 +10,7 @@ import SubscriptionTable from '../../components/SubscriptionTable/SubscriptionTa
 import ApprovalAddressModal from '../../components/ApprovalAddressModal/ApprovalAddressModal';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import { fetchAppCallbacks, deleteAppCallbackSubscription, withdrawApproval, subscribeCallbacks } from './thunk';
+import { REMIND_BUSINESSTYPE } from '../../utils/constants';
 
 /**
  * 回调配置管理页面
@@ -123,8 +124,9 @@ function Callbacks() {
         open={approvalModalOpen}
         onClose={closeApprovalModal}
         approver={currentApprovalInfo.approver}
+        approvalUser={currentApprovalInfo.approvalUser}
         approvalUrl={currentApprovalInfo.approvalUrl}
-        appId={appId}
+        businessType={REMIND_BUSINESSTYPE.callback}
       />
 
       <CallbackConfigDrawer

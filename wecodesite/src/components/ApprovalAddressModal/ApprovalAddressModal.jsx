@@ -15,7 +15,7 @@ const extractEflowId = (url) => {
   return match ? match[1] : '';
 };
 
-function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
+function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessType, approvalUser }) {
   const [remindLoading, setRemindLoading] = useState(false);
 
   const handleCopy = () => {
@@ -37,6 +37,10 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
     }
     
     setRemindLoading(true);
+    const params = {
+      businessId: eflowId,
+      businessType,
+    }
     
     const result = await remindPeople({ eflowId });
     
@@ -49,6 +53,18 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl }) {
     
     setRemindLoading(false);
   };
+
+  // 根据条件构建footer按钮
+  const footButtons = [
+    <Button 
+    key="remind" 
+    type="primary" 
+    onClick={handleRemind} 
+    loading={remindLoading}>
+      催办
+    </Button>,
+    <Button key="cancel" onClick={onClose}>关闭</Button>
+  ]
 
   return (
     <Modal

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
+import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { fetchEventList, deleteEvent } from './thunk';
 import { getEventListColumns } from './constants';
 import EventRegister from './EventRegister';

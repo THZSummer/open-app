@@ -7,7 +7,7 @@ import { renderStatus } from '../../utils/commonTableConfigs';
  * 回调列表表格列配置
  * @param {Object} callbacks - 事件回调对象
  */
-export const getCallbackColumns = ({ hanldeOpenDoc, handleEdit, handleCopyApprovalAddress, handleWithdraw, handleDelete }) => [
+export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalAddress, handleWithdraw, handleDelete }) => [
   {
     title: '权限名称',
     key: 'nameCn',
@@ -50,7 +50,7 @@ export const getCallbackColumns = ({ hanldeOpenDoc, handleEdit, handleCopyApprov
     fixed: 'right',
     render: (_, record) => (
       <div>
-        <Button type="link" onClick={() => hanldeOpenDoc(record.callback?.docUrl || record.docUrl)}>查看文档</Button>
+        <Button type="link" onClick={() => handleOpenDoc(record.callback?.docUrl || record.docUrl)}>查看文档</Button>
         {record.status === 1 && (
           <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
         )}
