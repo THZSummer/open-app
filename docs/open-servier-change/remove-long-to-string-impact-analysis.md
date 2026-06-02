@@ -1,36 +1,45 @@
-# 删除 Long→String 全局序列化策略 — 影响分析（v3）
+# 删除 Long→String 全局序列化策略 — 影响分析（v4）
 
 > 日期：2026-06-02
 >
-> 背景：当前 `open-server` / `api-server` / `event-server` 三个模块的 `JacksonConfig` 全局注册了 `ToStringSerializer`，将所有 `Long` / `long` 字段序列化为 JSON 字符串。前端现在要求强校验 Long 类型，需要删除该转换策略，恢复为 JSON 数字输出。
+> 背景：当前 `open-server` / `api-server` / `event-server` / `market-server` 四个模块的 `JacksonConfig` 全局注册了 `ToStringSerializer`，将所有 `Long` / `long` 字段序列化为 JSON 字符串。前端现在要求强校验 Long 类型，需要删除该转换策略，恢复为 JSON 数字输出。
 >
-> **v3 更新**：基于最新代码重新校准。open-server JacksonConfig 新增了 `DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES` 配置（反序列化忽略未知属性），该配置与 Long→String 无关，删除转换策略时需保留。
+> **v4 更新**：新增 market-server 微服务分析。market-server 的 VO 类直接使用 `Long` 类型定义 ID 字段（与其他三个模块 DTO 层使用 `String` 不同），删除转换后 ID 字段会直接从字符串变为数字。但 ID 为数据库自增（非雪花 ID），值域小，无精度丢失风险。
 
 ---
 
 ## 一、关键发现
 
-**项目所有 HTTP 响应 DTO 的 ID 字段均为 `String` 类型**，Entity 中的 Long 字段经过 Service 层的 `String.valueOf()` / DTO Builder 转换后才返回前端。
+**open-server / api-server / event-server** 所有 HTTP 响应 DTO 的 ID 字段均为 `String` 类型，Entity 中的 Long 字段经过 Service 层转换后才返回前端。
+
+**market-server** 的 VO 类直接使用 `Long` 类型定义 ID 字段（`classifyId`, `itemId`, `id`），删除转换后这些字段会从字符串变为数字。
+
+| 模块 | ID 字段定义方式 | 删除后影响 |
+|------|:---:|------|
+| open-server | DTO 层 `String` | 无变化 |
+| api-server | DTO 层 `String` | 无变化 |
+| event-server | DTO 层 `String` | 无变化 |
+| **market-server** | **VO 层 `Long`** | **ID 从字符串变为数字** |
 
 因此，删除 Long→String 全局策略后：
 
 | 类别 | 影响 |
 |------|------|
-| 雪花 ID 精度丢失 | ✅ **无风险** — Entity Long 不直接序列化到 HTTP 响应 |
-| 前端接口契约变更 | ⚠️ 仅影响 `PageResponse.total`（计数值）和 Sync 模块内部 DTO |
+| 雪花 ID 精度丢失 | ✅ **无风险** — 雪花 ID 不经过 Long 序列化 |
+| 前端接口契约变更 | ⚠️ `PageResponse.total`（4 个模块）+ market-server VO ID 字段 |
 | 审计日志 JSON 格式 | ⚠️ Entity 快照序列化格式变化（内部存储，非接口响应，可忽略） |
 
 ---
 
-## 二、当前 JacksonConfig 配置详情（3 个模块）
+## 二、当前 JacksonConfig 配置详情（4 个模块）
 
-### 2.1 open-server（最新代码）
+### 2.1 open-server
 
 | 配置项 | 值 | 与 Long→String 相关？ |
 |--------|---|:---:|
 | `JavaTimeModule` | 注册 | ❌ |
 | `WRITE_DATES_AS_TIMESTAMPS` | 禁用 | ❌ |
-| **`FAIL_ON_UNKNOWN_PROPERTIES`** | **禁用** | **❌（新增配置，需保留）** |
+| **`FAIL_ON_UNKNOWN_PROPERTIES`** | **禁用** | **❌（需保留）** |
 | `setTimeZone("Asia/Shanghai")` | 设置 | ❌ |
 | `Long.class → ToStringSerializer` | 注册 | ✅ **删除** |
 | `Long.TYPE → ToStringSerializer` | 注册 | ✅ **删除** |
@@ -50,6 +59,19 @@
 |--------|---|:---:|
 | `JavaTimeModule` | 注册 | ❌ |
 | `WRITE_DATES_AS_TIMESTAMPS` | 禁用 | ❌ |
+| `Long.class → ToStringSerializer` | 注册 | ✅ **删除** |
+| `Long.TYPE → ToStringSerializer` | 注册 | ✅ **删除** |
+
+### 2.4 market-server（新增）
+
+| 配置项 | 值 | 与 Long→String 相关？ |
+|--------|---|:---:|
+| `@AutoConfigureBefore(JacksonAutoConfiguration.class)` | 注解 | ❌ |
+| `WRITE_DATES_AS_TIMESTAMPS` | 禁用 | ❌ |
+| `setTimeZone("Asia/Shanghai")` | 设置 | ❌ |
+| `LocalDateTimeSerializer`（`yyyy-MM-dd HH:mm:ss`） | 自定义序列化器 | ❌ |
+| `LocalDateSerializer`（`yyyy-MM-dd`） | 自定义序列化器 | ❌ |
+| `HttpMessageConverters` Bean | 注册自定义 Converter | ❌ |
 | `Long.class → ToStringSerializer` | 注册 | ✅ **删除** |
 | `Long.TYPE → ToStringSerializer` | 注册 | ✅ **删除** |
 
@@ -91,6 +113,14 @@
 |:-:|------|------|------|
 | 10 | GET | `/api/v1/user-authorizations` | 用户授权列表 |
 
+#### market-server 分页接口（3 个）
+
+| # | 方法 | 路径 | 说明 |
+|:-:|------|------|------|
+| 11 | GET | `/service/open/v2/lookup/classify/list` | 分类列表 |
+| 12 | GET | `/service/open/v2/lookup/classify/{classifyId}/items` | 字典项列表 |
+| 13 | GET | `/service/open/v2/dictionary/list` | 字典列表 |
+
 > event-server 无分页接口。
 
 ---
@@ -120,7 +150,53 @@
 
 ---
 
-### 3.3 前端契约变更接口汇总（无精度丢失风险）
+### 3.3 market-server VO 类 Long 字段（新增，10 个字段，8 个接口）
+
+> market-server 与其他三个模块不同：VO 类直接使用 `Long` 类型定义 ID 字段，删除 Long→String 后这些字段会从字符串变为数字。
+>
+> **无精度丢失风险**：ID 为数据库自增（非雪花 ID），值域远小于 `2^53`。
+
+#### 受影响的 VO 字段
+
+| VO 类 | 字段 | 类型 | 语义 |
+|--------|------|------|------|
+| `DictionaryListVO` | `id` | `Long` | 字典主键（自增） |
+| `DictionaryVO` | `id` | `Long` | 字典主键（自增） |
+| `ClassifyListVO` | `classifyId` | `Long` | 分类主键（自增） |
+| `ClassifyVO` | `classifyId` | `Long` | 分类主键（自增） |
+| `ItemListVO` | `itemId` | `Long` | 字典项主键（自增） |
+| `ItemListVO` | `classifyId` | `Long` | 分类外键 |
+| `ItemDetailVO` | `itemId` | `Long` | 字典项主键（自增） |
+| `ItemDetailVO` | `classifyId` | `Long` | 分类外键 |
+| `PageVO` | `total` | `Long` | 分页总数 |
+| `ApiResponse.PageResponse` | `total` | `Long` | 分页总数 |
+
+#### 受影响的接口（8 个）
+
+| # | 方法 | 路径 | 返回类型 | 变化的 Long 字段 |
+|:-:|------|------|---------|-----------------|
+| 1 | GET | `/service/open/v2/lookup/classify/list` | `ApiResponse<PageVO<ClassifyListVO>>` | `total` + `list[].classifyId` |
+| 2 | GET | `/service/open/v2/lookup/classify/{classifyId}` | `ApiResponse<ClassifyVO>` | `classifyId` |
+| 3 | GET | `/service/open/v2/lookup/classify/{classifyId}/items` | `ApiResponse<PageVO<ItemListVO>>` | `total` + `list[].itemId` + `list[].classifyId` |
+| 4 | GET | `/service/open/v2/lookup/items/{itemId}` | `ApiResponse<ItemDetailVO>` | `itemId` + `classifyId` |
+| 5 | GET | `/service/open/v2/dictionary/list` | `ApiResponse<PageVO<DictionaryListVO>>` | `total` + `list[].id` |
+| 6 | GET | `/service/open/v2/dictionary/{id}` | `ApiResponse<DictionaryVO>` | `id` |
+| 7 | POST | `/service/open/v2/lookup/classify` | `ApiResponse<Void>` | 无（响应无数据） |
+| 8 | POST | `/service/open/v2/lookup/classify/{classifyId}/items` | `ApiResponse<Void>` | 无（响应无数据） |
+
+#### 响应示例
+
+```json
+// 改前
+{ "code": "200", "data": { "classifyId": "123", "name": "分类A" } }
+
+// 改后
+{ "code": "200", "data": { "classifyId": 123, "name": "分类A" } }
+```
+
+---
+
+### 3.4 前端契约变更接口汇总（无精度丢失风险）
 
 **以下所有接口的 ID 字段均为 `String` 类型定义，不受 Long→String 删除影响。**
 
@@ -347,6 +423,47 @@
 
 ---
 
+#### market-server（17 个接口，完整列表，新增）
+
+##### HealthController
+
+| # | 方法 | 路径 | 返回类型 | Long 字段 |
+|:-:|------|------|---------|----------|
+| 103 | GET | `/service/open/v2/health` | `ApiResponse<Map>` | 无 |
+| 104 | GET | `/service/open/v2/user-info` | `ApiResponse<Map>` | 无 |
+
+##### ClassifyController
+
+| # | 方法 | 路径 | 返回类型 | Long 字段 |
+|:-:|------|------|---------|----------|
+| 105 | GET | `/service/open/v2/lookup/classify/list` | `ApiResponse<PageVO<ClassifyListVO>>` | **`total`** + **`list[].classifyId`** |
+| 106 | POST | `/service/open/v2/lookup/classify` | `ApiResponse<Void>` | 无 |
+| 107 | PUT | `/service/open/v2/lookup/classify/{classifyId}` | `ApiResponse<Void>` | 无 |
+| 108 | DELETE | `/service/open/v2/lookup/classify/{classifyId}` | `ApiResponse<Void>` | 无 |
+| 109 | GET | `/service/open/v2/lookup/classify/{classifyId}` | `ApiResponse<ClassifyVO>` | **`classifyId`** |
+
+##### LookUpItemController
+
+| # | 方法 | 路径 | 返回类型 | Long 字段 |
+|:-:|------|------|---------|----------|
+| 110 | GET | `/service/open/v2/lookup/classify/{classifyId}/items` | `ApiResponse<PageVO<ItemListVO>>` | **`total`** + **`list[].itemId`** + **`list[].classifyId`** |
+| 111 | POST | `/service/open/v2/lookup/classify/{classifyId}/items` | `ApiResponse<Void>` | 无 |
+| 112 | PUT | `/service/open/v2/lookup/items/{itemId}` | `ApiResponse<Void>` | 无 |
+| 113 | DELETE | `/service/open/v2/lookup/items/{itemId}` | `ApiResponse<Void>` | 无 |
+| 114 | GET | `/service/open/v2/lookup/items/{itemId}` | `ApiResponse<ItemDetailVO>` | **`itemId`** + **`classifyId`** |
+
+##### DictionaryController
+
+| # | 方法 | 路径 | 返回类型 | Long 字段 |
+|:-:|------|------|---------|----------|
+| 115 | GET | `/service/open/v2/dictionary/list` | `ApiResponse<PageVO<DictionaryListVO>>` | **`total`** + **`list[].id`** |
+| 116 | POST | `/service/open/v2/dictionary` | `ApiResponse<Void>` | 无 |
+| 117 | GET | `/service/open/v2/dictionary/{id}` | `ApiResponse<DictionaryVO>` | **`id`** |
+| 118 | PUT | `/service/open/v2/dictionary/{id}` | `ApiResponse<Void>` | 无 |
+| 119 | DELETE | `/service/open/v2/dictionary/{id}` | `ApiResponse<Void>` | 无 |
+
+---
+
 ## 四、精度丢失风险评估
 
 ### ✅ 结论：无精度丢失风险
@@ -407,19 +524,21 @@
 
 | 变更类型 | 影响接口数 | 涉及字段 |
 |---------|:---:|---------|
-| `page.total`: String → Number | 10 个分页接口 | `ApiResponse.PageResponse.total` |
+| `page.total`: String → Number | 13 个分页接口 | `ApiResponse.PageResponse.total` / `PageVO.total` |
 | Sync DTO `id`: Long(String) → Long(Number) | 4 个 Sync 接口 | `SyncDetail.id`, `EmergencyDetail.id` |
-| **合计** | **14 个** | |
+| **market-server VO ID**: Long(String) → Long(Number) | **6 个查询接口** | **`classifyId`, `itemId`, `id`** |
+| **合计** | **23 个** | |
 
 ### 无精度丢失风险
 
 | 类别 | 接口数 | 原因 |
 |------|:---:|------|
-| 雪花 ID（业务接口） | 88 个 | DTO 层 ID 已定义为 String，不经过 Jackson Long 序列化 |
-| 分页 total | 10 个 | 计数值远小于 `2^53` |
+| 雪花 ID（open/api/event 业务接口） | 88 个 | DTO 层 ID 已定义为 String，不经过 Jackson Long 序列化 |
+| 分页 total | 13 个 | 计数值远小于 `2^53` |
 | Sync 模块 ID | 4 个 | 旧系统自增 ID，值域小 |
+| **market-server VO ID** | **6 个** | **数据库自增 ID，值域小** |
 | connector-api | 2 个 | 原本就无转换 |
-| **合计** | **102 个** | **全部无风险** |
+| **合计** | **119 个** | **全部无风险** |
 
 ### 内部影响
 
