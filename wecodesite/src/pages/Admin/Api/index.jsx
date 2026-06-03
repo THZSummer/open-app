@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
+import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { fetchApiList, deleteApi } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import { useAdminList } from '../../../hooks/useAdminList';
@@ -65,37 +65,6 @@ function ApiList() {
     deleteItem: deleteApi,
     fetchList: fetchApiList,
   });
-
-  /**
-   * 删除确认处理
-   */
-  const openRemoveConfirm = (id) => {
-    setRemoveTargetId(id);
-    setRemoveConfirmVisible(true);
-  };
-
-  const confirmRemove = async () => {
-    if (!removeTargetId) return;
-
-    setRemovePending(true);
-    const result = await deleteApi(removeTargetId);
-
-    if (result && result.code === '200') {
-      message.success('删除成功');
-      setRemoveConfirmVisible(false);
-      setRemoveTargetId(null);
-      loadData();
-    } else {
-      message.error(result?.messageZh || result?.message || '删除失败');
-    }
-
-    setRemovePending(false);
-  };
-
-  const cancelRemove = () => {
-    setRemoveConfirmVisible(false);
-    setRemoveTargetId(null);
-  };
 
   useEffect(() => {
     loadCategories();

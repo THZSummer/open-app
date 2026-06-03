@@ -39,6 +39,11 @@ public class CallbackSubscriptionListResponse implements Serializable {
     private String permissionId;
 
     /**
+     * 审批创建人ID（订阅发起人，用于前端催办按钮权限控制）
+     */
+    private String applicantId;
+
+    /**
      * 权限信息
      */
     private PermissionInfo permission;

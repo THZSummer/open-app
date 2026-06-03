@@ -7,7 +7,7 @@ import com.xxx.event.gateway.service.CallbackGatewayService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,10 +29,10 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "回调网关", description = "回调触发与分发")
 @RestController
 @RequestMapping("/gateway/callbacks")
-@RequiredArgsConstructor
 public class CallbackGatewayController {
 
-    private final CallbackGatewayService callbackGatewayService;
+    @Autowired
+    private CallbackGatewayService callbackGatewayService;
 
     /**
      * 回调触发接口

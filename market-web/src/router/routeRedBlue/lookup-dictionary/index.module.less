@@ -1,0 +1,527 @@
+// ============================================
+// 数据字典管理页面样式
+// 设计参考: Lookup 模块
+// ============================================
+
+.container {
+  padding: 12px 16px;
+  background: #f2f3f5;
+}
+
+.page {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e5e6eb;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+.pageHead {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e6eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.pageHeadLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pageHeadTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+.toolbar {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e6eb;
+  flex-wrap: wrap;
+  background: #fafafa;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbarRight {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.searchLabel {
+  font-size: 13px;
+  color: #4e5969;
+  white-space: nowrap;
+}
+
+.searchInput {
+  width: 120px;
+  padding: 6px 10px;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #fff;
+
+  &:focus {
+    border-color: #2b5ff5;
+  }
+
+  &::placeholder {
+    color: #86909c;
+  }
+}
+
+.filterSelect {
+  padding: 6px 28px 6px 10px;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2386909c' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+
+  &:focus {
+    border-color: #2b5ff5;
+  }
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  gap: 5px;
+  white-space: nowrap;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.btnPrimary {
+  background: #2b5ff5;
+  color: #fff;
+
+  &:hover {
+    background: #4d7af5;
+  }
+}
+
+.btnOutline {
+  background: #fff;
+  color: #4e5969;
+  border: 1px solid #e5e6eb;
+
+  &:hover {
+    border-color: #2b5ff5;
+    color: #2b5ff5;
+  }
+}
+
+.btnSm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.tableWrap {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #c9cdd4;
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 500;
+    font-size: 13px;
+    color: #4e5969;
+    background: #fafafa;
+    border-bottom: 1px solid #e5e6eb;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 14px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f2f3f5;
+    color: #1d2129;
+  }
+
+  tr {
+    transition: background 0.15s;
+
+    &:hover td {
+      background: #f8f9fb;
+    }
+  }
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotActive {
+  background: #00b578;
+  box-shadow: 0 0 0 3px rgba(0, 181, 120, 0.15);
+}
+
+.dotInactive {
+  background: #c9cdd4;
+}
+
+.label {
+  color: #4e5969;
+}
+
+.labelActive {
+  color: #00b578;
+}
+
+.labelInactive {
+  color: #86909c;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionLink {
+  color: #2b5ff5;
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+  font-family: inherit;
+
+  &:hover {
+    background: #eef2ff;
+  }
+
+  &.danger {
+    color: #f54a45;
+
+    &:hover {
+      background: #fff2f0;
+    }
+  }
+}
+
+.pagination {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #e5e6eb;
+  flex-shrink: 0;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fafafa;
+}
+
+.paginationLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #86909c;
+}
+
+.paginationRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.paginationInfo {
+  font-size: 13px;
+  color: #86909c;
+}
+
+.empty {
+  text-align: center;
+  padding: 80px 20px;
+  color: #86909c;
+
+  .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+  }
+
+  p {
+    font-size: 14px;
+  }
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #2b5ff5;
+}
+
+.linkText {
+  color: #2b5ff5;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.detailPanelBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.detailCard {
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #e5e6eb;
+  margin-bottom: 16px;
+}
+
+.detailCardTitle {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e6eb;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1d2129;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detailCardBody {
+  padding: 12px 16px;
+}
+
+.detailRow {
+  display: flex;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e5e6eb;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.detailLabel {
+  width: 80px;
+  flex-shrink: 0;
+  color: #86909c;
+  font-size: 12px;
+}
+
+.detailValue {
+  flex: 1;
+  color: #1d2129;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.formSelect {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: #fff;
+  cursor: pointer;
+
+  &:focus {
+    border-color: #2b5ff5;
+  }
+}
+
+// 分页容器
+.paginationWrapper {
+  margin-top: 16px;
+  text-align: right;
+}
+
+// 表格样式
+.cellLink {
+  color: #2b5ff5;
+  cursor: pointer;
+}
+
+.statusActive {
+  color: #52c41a;
+}
+
+.statusInactive {
+  color: #999;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.actionButton {
+  color: #2b5ff5;
+  cursor: pointer;
+}
+
+.actionButtonDanger {
+  color: #ff4d4f;
+  cursor: pointer;
+}
+
+:global {
+  .ant-modal-content {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .ant-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e6eb;
+  }
+
+  .ant-modal-body {
+    padding: 20px;
+  }
+
+  .ant-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #e5e6eb;
+  }
+
+  .ant-form-item-label > label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #4e5969;
+  }
+
+  .ant-input,
+  .ant-input-affix-wrapper {
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  .ant-input:focus,
+  .ant-input-focused,
+  .ant-input-affix-wrapper:focus,
+  .ant-input-affix-wrapper-focused {
+    border-color: #2b5ff5;
+    box-shadow: 0 0 0 2px rgba(43, 95, 245, 0.1);
+  }
+
+  .ant-select-selector {
+    border-radius: 6px !important;
+    font-size: 13px !important;
+  }
+
+  .ant-select-focused .ant-select-selector {
+    border-color: #2b5ff5 !important;
+    box-shadow: 0 0 0 2px rgba(43, 95, 245, 0.1) !important;
+  }
+
+  .ant-pagination {
+    display: flex;
+    align-items: center;
+  }
+
+  .ant-pagination-item {
+    border-radius: 6px;
+    border-color: #e5e6eb;
+    
+    &:hover {
+      border-color: #2b5ff5;
+    }
+
+    &.ant-pagination-item-active {
+      background: #2b5ff5;
+      border-color: #2b5ff5;
+
+      a {
+        color: #fff;
+      }
+    }
+  }
+}

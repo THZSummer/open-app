@@ -57,4 +57,22 @@
           AND p.resource_type = 'callback'
     </select>
 
+    <!-- 根据ID查询订阅记录 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_subscription_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- 更新订阅审批状态 -->
+    <update id="updateApprovalStatus" parameterType="com.xxx.api.common.entity.Subscription">
+        UPDATE openplatform_v2_subscription_t
+        SET status = #{status},
+            last_update_time = #{lastUpdateTime},
+            last_update_by = #{lastUpdateBy},
+            approved_at = #{approvedAt},
+            approved_by = #{approvedBy}
+        WHERE id = #{id}
+    </update>
+
 </mapper>

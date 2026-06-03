@@ -3,7 +3,7 @@ package com.xxx.event.client;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.event.common.model.ApiResponse;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -26,7 +26,6 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class ApiServerClient {
 
     @Value("${api-server.url:http://localhost:18081}")
@@ -35,8 +34,10 @@ public class ApiServerClient {
     @Value("${api-server.auth.enabled:true}")
     private boolean authEnabled;
 
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    @Autowired
+    private RestTemplate restTemplate;
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /**
      * 获取 API Server 认证凭证（预留）

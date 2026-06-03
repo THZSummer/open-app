@@ -37,7 +37,7 @@ const createState = () => {
 const createListOperations = (state, appId, options) => {
   const { setLoading, setData, setPagination, pagination } = state;
 
-  const loadData = useCallback(async (page = 1, size = pagination.pageSize) => {
+  const loadData = useCallback(async (page = pagination.curPage, size = pagination.pageSize) => {
     if (!appId) return;
     setLoading(true);
     const result = await options.fetchList(appId, { curPage: page, pageSize: size });
@@ -53,10 +53,13 @@ const createListOperations = (state, appId, options) => {
       message.error(result?.messageZh || result?.message || '加载列表失败');
     }
     setLoading(false);
-  }, [appId, pagination.pageSize, options.fetchList]);
+  }, [appId, pagination.curPage, pagination.pageSize, options.fetchList]);
 
   const handlePageChange = useCallback((page, size) => {
-    loadData(page, size);
+    setPagination({
+      curPage: page,
+      pageSize: size
+    })
   }, [loadData]);
 
   return {
@@ -157,8 +160,7 @@ const createDeleteOperations = (state, appId, options) => {
       message.success('删除成功');
       setDeleteModalOpen(false);
       deleteIdRef.current = null;
-      const curPageDataNum = Number(pagination.total) - pagination.pageSize * (pagination.curPage - 1) - 1;
-      loadDataRef?.(curPageDataNum === 0 ? pagination.curPage - 1 : pagination.curPage);
+      loadDataRef?.(INIT_PAGECONFIG);
     } else {
       message.error(res?.messageZh || res?.message || '删除失败');
     }
@@ -198,7 +200,7 @@ const createWithdrawOperations = (state, appId, options) => {
       message.success('已撤回');
       setRevokeVisible(false);
       withdrawIdRef.current = null;
-      loadDataRef?.(pagination.curPage);
+      loadDataRef?.();
     } else {
       message.error(res?.messageZh || res?.message || '撤回失败');
     }

@@ -10,6 +10,7 @@ import { fetchAppEvents, deleteAppEventSubscription, withdrawApproval, subscribe
 import { getEventColumns } from './constants';
 import { queryParams, openUrl, getSecondModalInfo } from '../../utils/common';
 import './Events.m.less';
+import { REMIND_BUSINESSTYPE } from '../../utils/constants';
 
 /**
  * 事件订阅管理页面
@@ -129,6 +130,8 @@ function Events() {
         onClose={closeApprovalModal}
         approver={currentApprovalInfo.approver}
         approvalUrl={currentApprovalInfo.approvalUrl}
+        approvalUser={currentApprovalInfo.approvalUser}
+        businessType={REMIND_BUSINESSTYPE.event}
       />
 
       <DeleteConfirmModal

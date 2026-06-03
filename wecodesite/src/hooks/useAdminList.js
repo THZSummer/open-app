@@ -139,11 +139,7 @@ const createCrudOperations = (state, options) => {
       message.success('删除成功');
       setRemoveConfirmVisible(false);
       setCurrentItem(null);
-      const curPageDataNum = Number(pagination.total) - pagination.pageSize * (pagination.curPage - 1) - 1;
-      loadDataRef?.({
-        curPage: curPageDataNum === 0 ? pagination.curPage - 1 : pagination.curPage,
-        pageSize: pagination.pageSize
-      });
+      loadDataRef?.(INIT_PAGECONFIG);
     } else {
       message.error(res?.messageZh || res?.message || '删除失败');
     }

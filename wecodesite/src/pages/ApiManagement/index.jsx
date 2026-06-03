@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Button } from 'antd';
 import { useSubscriptionList } from '../../hooks/useSubscriptionList';
 import SubscriptionTable from '../../components/SubscriptionTable/SubscriptionTable';
@@ -9,6 +9,7 @@ import { fetchAppApis, subscribeApis, withdrawApiApplication, deleteApiSubscript
 import { getApiManagementColumns } from './constants';
 import { getSecondModalInfo, openUrl, queryParams } from '../../utils/common';
 import './ApiManagement.m.less';
+import { REMIND_BUSINESSTYPE } from '../../utils/constants';
 
 /**
  * API权限管理页面
@@ -93,8 +94,10 @@ function ApiManagement() {
       <ApprovalAddressModal
         open={approvalModalOpen}
         onClose={closeApprovalModal}
+        approvalUser={currentApprovalInfo.approvalUser}
         approver={currentApprovalInfo.approver}
         approvalUrl={currentApprovalInfo.approvalUrl}
+        businessType={REMIND_BUSINESSTYPE.api}
       />
 
       <SubscriptionTable
