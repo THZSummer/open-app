@@ -271,9 +271,200 @@ interface FlowPersistenceAPI {
            循环子节点2       异常处理子节点2    同时执行
 ```
 
-## 注意事项
+## 备选方案：容器渲染（方案 A）
 
-1. **循环/异常处理子节点**：通过右侧 Handle 连接，形成独立的子节点链
-2. **条件/并行多出口**：多个出口 Handle，支持分支连接
-3. **上下文传播**：循环输出最后节点结果，异常处理输出正常执行结果
-4. **嵌套支持**：循环和异常处理可嵌套
+> 方案 B（连线式）为推荐方案，此处记录方案 A 的实现细节供参考。
+
+### 核心思路
+
+循环/异常处理节点作为**容器节点**，内部渲染子节点画布。父子关系通过**空间位置**判定，而非连线。
+
+### 数据结构
+
+```typescript
+// 容器节点扩展数据
+interface ContainerNodeData extends BaseNodeData {
+  childIds: string[];           // 子节点ID列表
+  bounds: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  };
+  expanded: boolean;             // 是否展开
+}
+
+// 子节点结构
+interface ChildNode {
+  id: string;
+  parentId: string;              // 父容器节点ID
+  position: { x: number; y: number };  // 相对于父容器的坐标
+  type: 'action' | 'condition' | 'forLoop' | 'tryCatch' | 'parallel' | 'output';
+  data: any;
+}
+```
+
+### 父子关系判定逻辑
+
+```typescript
+/**
+ * 判断节点归属于哪个容器
+ * @param nodePosition 待判断节点的位置
+ * @param containers 所有容器节点
+ * @returns 父容器ID（取最内层匹配）
+ */
+function findParentContainer(
+  nodePosition: { x: number; y: number },
+  containers: Array<{ id: string; bounds: ContainerBounds }>
+): string | null {
+  // 从后往前遍历，保证取到最内层容器
+  for (let i = containers.length - 1; i >= 0; i--) {
+    const container = containers[i];
+    const { left, top, width, height } = container.bounds;
+
+    // 判断节点是否在容器范围内（留出边距）
+    const padding = 20;
+    if (
+      nodePosition.x >= left + padding &&
+      nodePosition.x <= left + width - padding &&
+      nodePosition.y >= top + padding &&
+      nodePosition.y <= top + height - padding
+    ) {
+      return container.id;
+    }
+  }
+  return null;
+}
+```
+
+### 容器尺寸自适应
+
+```typescript
+/**
+ * 计算容器尺寸，基于子节点的包围盒
+ * @param childNodes 子节点列表
+ * @param padding 内边距
+ * @returns 新的容器尺寸
+ */
+function calculateContainerBounds(
+  childNodes: ChildNode[],
+  padding: number = 40
+): ContainerBounds {
+  if (childNodes.length === 0) {
+    return { left: 0, top: 0, width: 200, height: 150 };
+  }
+
+  // 计算子节点包围盒
+  const nodeWidth = 180;
+  const nodeHeight = 80;
+
+  let minX = Infinity, minY = Infinity;
+  let maxX = -Infinity, maxY = -Infinity;
+
+  for (const node of childNodes) {
+    minX = Math.min(minX, node.position.x);
+    minY = Math.min(minY, node.position.y);
+    maxX = Math.max(maxX, node.position.x + nodeWidth);
+    maxY = Math.max(maxY, node.position.y + nodeHeight);
+  }
+
+  // 添加内边距
+  return {
+    left: minX - padding,
+    top: minY - padding,
+    width: maxX - minX + padding * 2,
+    height: maxY - minY + padding * 2,
+  };
+}
+```
+
+### React Flow 集成
+
+```tsx
+// 容器节点组件
+const ForLoopNode = ({ data, selected }) => {
+  const { childNodes, updateBounds } = useContainerChildren(data.id);
+
+  // 子节点移动时，重新计算容器尺寸
+  const handleChildNodeDrag = useCallback(() => {
+    const newBounds = calculateContainerBounds(childNodes);
+    updateBounds(newBounds);
+  }, [childNodes, updateBounds]);
+
+  return (
+    <div
+      className="container-node"
+      style={{
+        width: data.bounds.width,
+        height: data.bounds.height,
+      }}
+    >
+      <div className="container-header">
+        <span>For 循环</span>
+        <span>{data.iterable}</span>
+      </div>
+
+      {/* 子节点渲染区域 */}
+      <div className="container-body">
+        <ReactFlow
+          nodes={childNodes}
+          edges={childEdges}
+          onNodeDrag={handleChildNodeDrag}
+          // 禁用主画布的交互，只作为渲染容器
+          nodesDraggable={true}
+          nodesConnectable={false}
+          panEnabled={false}
+          zoomEnabled={false}
+        />
+      </div>
+    </div>
+  );
+};
+```
+
+### 嵌套层级判断
+
+```typescript
+/**
+ * 获取节点的最顶层父容器（用于嵌套场景）
+ * @param nodeId 节点ID
+ * @param allNodes 所有节点
+ * @returns 父容器链
+ */
+function getParentChain(
+  nodeId: string,
+  allNodes: FlowNode[]
+): string[] {
+  const chain: string[] = [];
+  let currentId: string | null = nodeId;
+
+  while (currentId) {
+    const node = allNodes.find(n => n.id === currentId);
+    if (node?.data.parentId) {
+      chain.unshift(node.data.parentId);
+      currentId = node.data.parentId;
+    } else {
+      break;
+    }
+  }
+
+  return chain;
+}
+```
+
+### 方案对比
+
+| 特性 | 方案 A（容器） | 方案 B（连线） |
+|------|---------------|---------------|
+| 父子关系 | 空间位置判定 | 连线定义 |
+| 嵌套层级 | 需额外计算 | 无需处理 |
+| 实现复杂度 | 高 | 低 |
+| 视觉直观性 | 高 | 中 |
+| 子节点布局 | 受容器限制 | 自由摆放 |
+| 推荐度 | 备选 | **推荐** |
+
+### 何时选用方案 A
+
+- 对视觉层次要求极高，需要一眼看出父子关系
+- 子节点数量少，嵌套深度不超过 2 层
+- 愿意投入更多开发时间
