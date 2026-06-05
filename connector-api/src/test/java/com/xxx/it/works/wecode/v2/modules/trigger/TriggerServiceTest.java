@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -35,6 +37,12 @@ class OpTriggerServiceTest {
     @Mock
     private AuthValidatorRegistry authValidatorRegistry;
 
+    @Mock
+    private ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
+
+    @Mock
+    private CacheToggle cacheToggle;
+
     private ObjectMapper objectMapper;
     private OpTriggerService triggerService;
 
@@ -52,7 +60,8 @@ class OpTriggerServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, executor, flowVersionReadRepository);
+        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, executor,
+                flowVersionReadRepository, reactiveRedisTemplate, cacheToggle);
     }
 
     @Test

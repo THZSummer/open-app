@@ -11,6 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
 import org.springframework.stereotype.Service;
+import java.time.Duration;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
@@ -43,16 +46,51 @@ public class OpTriggerService {
     private final ReactiveSequentialExecutor executor;
     private final AuthValidatorRegistry authValidatorRegistry;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
+    private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
+    private final CacheToggle cacheToggle;
 
     public OpTriggerService(
             ObjectMapper objectMapper,
             AuthValidatorRegistry authValidatorRegistry,
             ReactiveSequentialExecutor executor,
-            OpFlowVersionReadRepository flowVersionReadRepository) {
+            OpFlowVersionReadRepository flowVersionReadRepository,
+            ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+            CacheToggle cacheToggle) {
         this.objectMapper = objectMapper;
         this.authValidatorRegistry = authValidatorRegistry;
         this.executor = executor;
         this.flowVersionReadRepository = flowVersionReadRepository;
+        this.reactiveRedisTemplate = reactiveRedisTemplate;
+        this.cacheToggle = cacheToggle;
+    }
+
+    /**
+     * 加载流版本配置（带 Redis 缓存 read-through）
+     * <p>
+     * 缓存 Key: {@code cp:flow:config:{flowId}}, TTL 120s.
+     * 命中时用缓存的 orchestrationConfig 重建最小 entity, 跳过 R2DBC.
+     * 未命中时 R2DBC 查询 → 回填 Redis.
+     * {@code connector.cache.enabled=false} 时直接穿透 R2DBC.
+     * </p>
+     */
+    private Mono<FlowVersionEntity> loadFlowVersion(Long flowId) {
+        if (!cacheToggle.isEnabled()) {
+            return flowVersionReadRepository.findByFlowId(flowId);
+        }
+        String key = "cp:flow:config:" + flowId;
+        return reactiveRedisTemplate.opsForValue().get(key)
+                .flatMap(cachedJson -> {
+                    FlowVersionEntity entity = new FlowVersionEntity();
+                    entity.setOrchestrationConfig(cachedJson);
+                    entity.setFlowId(flowId);
+                    return Mono.just(entity);
+                })
+                .switchIfEmpty(
+                    flowVersionReadRepository.findByFlowId(flowId)
+                            .flatMap(entity -> reactiveRedisTemplate.opsForValue()
+                                    .set(key, entity.getOrchestrationConfig(), Duration.ofSeconds(120))
+                                    .thenReturn(entity))
+                );
     }
 
     /**
@@ -78,7 +116,7 @@ public class OpTriggerService {
                                              Map<String, String> headers, Map<String, String> queryParams) {
         String executionId = UUID.randomUUID().toString().replace("-", "");
 
-        return flowVersionReadRepository.findByFlowId(flowId)
+        return loadFlowVersion(flowId)
                 .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
                 .flatMap(flowVersion -> {
                     // 1. 解析编排配置 (React Flow 格式)

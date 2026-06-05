@@ -25,7 +25,7 @@ def snow_id():
 def setup_flow(snow_id_val, lifecycle_status=1):
     version_id = snow_id()
     subprocess.run([
-        "mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({snow_id_val}, 'IT_测试运行', 'IT_TestRun', "
@@ -90,7 +90,7 @@ def setup_flow(snow_id_val, lifecycle_status=1):
     }
 
     subprocess.run([
-        "mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, "
         f"create_by, last_update_by) "
@@ -100,7 +100,7 @@ def setup_flow(snow_id_val, lifecycle_status=1):
     ], check=True, capture_output=True)
 
     subprocess.run([
-        "mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
         f"UPDATE openplatform_v2_cp_flow_t "
         f"SET lifecycle_status = {lifecycle_status} "
         f"WHERE id = {snow_id_val}"
@@ -110,10 +110,10 @@ def setup_flow(snow_id_val, lifecycle_status=1):
 
 
 def cleanup_flow(flow_id_val, version_id_val):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_version_t "
                     f"WHERE id = {version_id_val}"], capture_output=True)
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_t "
                     f"WHERE id = {flow_id_val}"], capture_output=True)
 

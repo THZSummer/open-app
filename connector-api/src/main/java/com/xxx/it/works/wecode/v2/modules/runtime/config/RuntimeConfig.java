@@ -3,6 +3,8 @@ package com.xxx.it.works.wecode.v2.modules.runtime.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
 import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
@@ -29,8 +31,11 @@ public class RuntimeConfig {
     @Bean
     public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
                                                         CredentialInjectorRegistry credentialInjectorRegistry,
-                                                        OpConnectorVersionReadRepository connectorVersionReadRepository) {
-        return new ConnectorNodeExecutor(objectMapper, webClient, credentialInjectorRegistry, connectorVersionReadRepository);
+                                                        OpConnectorVersionReadRepository connectorVersionReadRepository,
+                                                        ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+                                                        CacheToggle cacheToggle) {
+        return new ConnectorNodeExecutor(objectMapper, webClient, credentialInjectorRegistry,
+                connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle);
     }
 
     @Bean
