@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接平台管理 - Demo首页</title>
+    <style>
+        /* ========================================
+           全局样式
+           ======================================== */
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-tertiary: #8c8c8c;
+            --border-color: #d9d9d9;
+            --bg-light: #fafafa;
+            --bg-white: #ffffff;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 6px 16px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5715;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ========================================
+           页面容器
+           ======================================== */
+        .demo-container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 40px;
+        }
+
+        .demo-header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .demo-title {
+            font-size: 42px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .demo-subtitle {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 300;
+        }
+
+        /* ========================================
+           功能卡片网格
+           ======================================== */
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .demo-card {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .demo-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), #722ed1);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .demo-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .demo-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon.connector {
+            background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+            color: #fff;
+        }
+
+        .card-icon.connector-config {
+            background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+            color: #fff;
+        }
+
+        .card-icon.flow {
+            background: linear-gradient(135deg, #722ed1 0%, #531dab 100%);
+            color: #fff;
+        }
+
+        .card-icon.flow-editor {
+            background: linear-gradient(135deg, #fa8c16 0%, #d46b08 100%);
+            color: #fff;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .card-description {
+            font-size: 14px;
+            color: var(--text-tertiary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .card-tag {
+            padding: 4px 12px;
+            background: var(--bg-light);
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .card-arrow {
+            position: absolute;
+            right: 24px;
+            bottom: 24px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--bg-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            transition: all 0.3s ease;
+        }
+
+        .demo-card:hover .card-arrow {
+            background: var(--primary-color);
+            color: #fff;
+            transform: translateX(4px);
+        }
+
+        /* ========================================
+           底部信息
+           ======================================== */
+        .demo-footer {
+            text-align: center;
+            margin-top: 48px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+        }
+
+        .demo-footer a {
+            color: #fff;
+            text-decoration: none;
+        }
+
+        .demo-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ========================================
+           响应式
+           ======================================== */
+        @media (max-width: 768px) {
+            .demo-container {
+                padding: 24px;
+            }
+
+            .demo-title {
+                font-size: 32px;
+            }
+
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- 页面标题 -->
+        <div class="demo-header">
+            <h1 class="demo-title">连接平台管理 Demo</h1>
+            <p class="demo-subtitle">展示连接器和连接流的完整管理功能，包含列表页和配置编辑器</p>
+        </div>
+
+        <!-- 功能卡片网格 -->
+        <div class="demo-grid">
+            <!-- 连接器列表 -->
+            <div class="demo-card" onclick="navigateTo('connector-list.html')">
+                <div class="card-icon connector">⚡</div>
+                <h3 class="card-title">连接器列表</h3>
+                <p class="card-description">
+                    展示所有连接器，支持新建、编辑、删除操作，点击配置按钮可进入连接器配置页面
+                </p>
+                <div class="card-tags">
+                    <span class="card-tag">列表展示</span>
+                    <span class="card-tag">搜索筛选</span>
+                    <span class="card-tag">分页功能</span>
+                    <span class="card-tag">CRUD操作</span>
+                </div>
+                <div class="card-arrow">→</div>
+            </div>
+
+            <!-- 连接器配置 -->
+            <div class="demo-card" onclick="navigateTo('connector-editor.html')">
+                <div class="card-icon connector-config">⚙️</div>
+                <h3 class="card-title">连接器配置</h3>
+                <p class="card-description">
+                    配置连接器的接口信息、认证方式、入参出参定义等
+                </p>
+                <div class="card-tags">
+                    <span class="card-tag">接口配置</span>
+                    <span class="card-tag">认证方式</span>
+                    <span class="card-tag">Schema编辑</span>
+                </div>
+                <div class="card-arrow">→</div>
+            </div>
+
+            <!-- 连接流列表 -->
+            <div class="demo-card" onclick="navigateTo('flow-list.html')">
+                <div class="card-icon flow">🔗</div>
+                <h3 class="card-title">连接流列表</h3>
+                <p class="card-description">
+                    展示所有连接流，支持状态管理（未部署/运行中/已停止），点击配置按钮进入流程编辑器
+                </p>
+                <div class="card-tags">
+                    <span class="card-tag">列表展示</span>
+                    <span class="card-tag">状态管理</span>
+                    <span class="card-tag">启停控制</span>
+                </div>
+                <div class="card-arrow">→</div>
+            </div>
+
+            <!-- 连接流编辑器 -->
+            <div class="demo-card" onclick="navigateTo('flow-editor.html')">
+                <div class="card-icon flow-editor">🎨</div>
+                <h3 class="card-title">连接流编辑器</h3>
+                <p class="card-description">
+                    可视化流程编排，支持拖拽节点、连接线、节点属性配置
+                </p>
+                <div class="card-tags">
+                    <span class="card-tag">节点拖拽</span>
+                    <span class="card-tag">连线编辑</span>
+                    <span class="card-tag">属性配置</span>
+                    <span class="card-tag">节点库</span>
+                </div>
+                <div class="card-arrow">→</div>
+            </div>
+        </div>
+
+        <!-- 底部信息 -->
+        <div class="demo-footer">
+            <p>基于 Ant Design 组件库 · 纯原生 HTML/CSS/JavaScript 实现</p>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * 页面导航
+         * @param {string} page - 目标页面路径
+         */
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+    </script>
+</body>
+</html>

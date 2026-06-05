@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接口配置 - 连接平台</title>
+    <style>
+        /* ========================================
+           全局样式变量
+           ======================================== */
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-tertiary: #8c8c8c;
+            --border-color: #d9d9d9;
+            --bg-light: #fafafa;
+            --bg-white: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5715;
+            color: var(--text-primary);
+            background: var(--bg-light);
+        }
+
+        /* ========================================
+           页面布局
+           ======================================== */
+        .page-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           左侧导航栏
+           ======================================== */
+        .sidebar {
+            width: 220px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 0;
+            flex: 1;
+        }
+
+        .sidebar-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .sidebar-item.active {
+            background: #e6f7ff;
+            color: var(--primary-color);
+            font-weight: 500;
+            border-right: 3px solid var(--primary-color);
+        }
+
+        /* ========================================
+           主内容区域
+           ======================================== */
+        .main-content {
+            flex: 1;
+            overflow: auto;
+            background: #ffffff;
+        }
+
+        .editor-page {
+            padding: 24px;
+            background: #ffffff;
+            min-height: 100%;
+            margin-bottom: 80px;
+        }
+
+        /* ========================================
+           页面头部
+           ======================================== */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .page-header-title {
+            display: flex;
+            flex-direction: column;  /* 改为纵向排列 */
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            margin: 0;
+        }
+
+        .page-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            white-space: nowrap;
+        }
+
+        /* ========================================
+           按钮样式
+           ======================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+            color: #fff;
+        }
+
+        /* ========================================
+           配置卡片
+           ======================================== */
+        .config-card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .config-card-header {
+            padding: 12px 16px;
+            background: var(--bg-light);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .config-card-body {
+            padding: 16px;
+        }
+
+        /* ========================================
+           表单样式
+           ======================================== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        /* 协议类型按钮组 */
+        .radio-group {
+            display: inline-flex;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .radio-group-item {
+            padding: 6px 16px;
+            border: none;
+            border-right: 1px solid var(--border-color);
+            background: var(--bg-white);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .radio-group-item:last-child {
+            border-right: none;
+        }
+
+        .radio-group-item:hover {
+            background: var(--bg-light);
+        }
+
+        .radio-group-item.active {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        /* Checkbox样式 */
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        /* Schema编辑器 */
+        .schema-list {
+            /* 移除了边框和固定定位，由容器控制 */
+        }
+
+        /* 入参配置区域容器 - 固定在底部 */
+        .request-tab-wrapper {
+            position: fixed;
+            bottom: 0;
+            left: 220px;
+            right: 0;
+            background: var(--bg-white);
+            border-top: 1px solid var(--border-color);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .request-tab-wrapper .schema-list {
+            flex: 1;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .param-item {
+            padding-top: 8px;
+        }
+
+        .param-item .param-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .param-item .param-row input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .param-item .param-row input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .param-item .param-row .param-name {
+            width: 120px;
+            flex: none;
+        }
+
+        .param-item .param-row .param-type {
+            width: 100px;
+            flex: none;
+        }
+
+        .param-item .param-row .param-carrier {
+            width: 90px;
+            flex: none;
+        }
+
+        .param-item .param-row .param-desc {
+            flex: 2;
+        }
+
+        .param-remove-btn {
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            color: var(--error-color);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .param-remove-btn:hover {
+            background: #fff1f0;
+        }
+
+        .add-param-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border: 1px dashed var(--border-color);
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+            margin-top: 0;
+            height: 32px;
+            flex-shrink: 0;
+        }
+
+        .add-param-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .add-item-btn {
+            padding: 4px 8px;
+            border: 1px dashed var(--border-color);
+            background: transparent;
+            color: var(--primary-color);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .add-item-btn:hover {
+            border-color: var(--primary-color);
+            background: #e6f7ff;
+        }
+
+        /* Tab样式 */
+        .param-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+            background: var(--bg-light);
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            background: #e6f7ff;
+            font-weight: 500;
+        }
+
+        .param-tab-content .tab-panel {
+            display: none;
+        }
+
+        .param-tab-content .tab-panel.active {
+            display: block;
+        }
+
+        /* 分隔线 */
+        .divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 16px 0;
+        }
+
+        /* 操作栏 */
+        .action-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: fixed;
+            bottom: 0;
+            left: 220px;
+            padding: 24px;
+            background-color: #ffffff;
+            width: calc(100% - 220px - 24px);
+        }
+
+        /* Toast消息 */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 24px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-md);
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--success-color);
+        }
+
+        .toast.error {
+            background: var(--error-color);
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面主容器 -->
+    <div class="page-container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">连接平台</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item active">
+                    <span>⚡</span>
+                    <span>连接器管理</span>
+                </li>
+                <li class="sidebar-item" onclick="navigateTo('flow-list.html')">
+                    <span>🔗</span>
+                    <span>连接流管理</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <div class="editor-page">
+                <!-- 页面头部 -->
+                <div class="page-header">
+                    <div class="page-header-title">
+                        <h3 class="page-title">接口配置</h3>
+                        <span class="page-desc">编辑连接器的接口配置信息</span>
+                    </div>
+                </div>
+
+                <!-- 版本选择区域 - 移到接口配置表单之前 -->
+                <div class="config-card">
+                    <div class="config-card-header">版本选择</div>
+                    <div class="config-card-body">
+                        <select class="form-input" id="versionSelect" onchange="handleVersionChange(this.value)" style="max-width: 300px;">
+                            <option value="v1">v1.0.0 (2024-01-15) [草稿]</option>
+                            <option value="v2">v0.9.0 (2024-01-10) [已发布]</option>
+                            <option value="v3">v0.8.0 (2024-01-05) [已失效]</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 接口配置表单 -->
+                <div class="config-card">
+                    <div class="config-card-header">接口配置</div>
+                    <div class="config-card-body">
+                        <div class="form-group">
+                            <label class="form-label">协议类型</label>
+                            <div class="radio-group" id="protocolTypeGroup">
+                                <button type="button" class="radio-group-item active" data-value="GET">GET</button>
+                                <button type="button" class="radio-group-item" data-value="POST">POST</button>
+                                <button type="button" class="radio-group-item" data-value="PUT">PUT</button>
+                                <button type="button" class="radio-group-item" data-value="DELETE">DELETE</button>
+                                <button type="button" class="radio-group-item" data-value="PATCH">PATCH</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">协议地址</label>
+                            <input type="text" class="form-input" id="protocolAddress" placeholder="https://api.example.com/endpoint">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 认证方式配置 -->
+                <div class="config-card">
+                    <div class="config-card-header">认证方式配置</div>
+                    <div class="config-card-body">
+                        <div class="form-group">
+                            <label class="form-label">认证方式（可多选）</label>
+                            <div class="checkbox-group" id="authTypeGroup">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="SOA" onchange="handleAuthTypeChange()"> SOA
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="APIG" onchange="handleAuthTypeChange()"> APIG
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="COOKIE" onchange="handleAuthTypeChange()"> Cookie
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="SIGNATURE" onchange="handleAuthTypeChange()"> 数字签名
+                                </label>
+                            </div>
+                        </div>
+                        <div class="divider"></div>
+                        <div id="authParamsContainer">
+                            <p style="color: var(--text-tertiary); font-size: 13px;">请先选择认证方式</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 入参配置 -->
+                <div class="config-card">
+                    <div class="config-card-header">入参配置</div>
+                    <div class="config-card-body">
+                        <!-- Tab导航 -->
+                        <div class="param-tabs" id="requestParamTabs">
+                            <button class="tab-btn active" data-tab="header" onclick="switchRequestTab('header')">HTTP请求头</button>
+                            <button class="tab-btn" data-tab="body" onclick="switchRequestTab('body')">HTTP请求体</button>
+                            <button class="tab-btn" data-tab="query" onclick="switchRequestTab('query')">URL查询参数</button>
+                        </div>
+                        <!-- Tab内容 -->
+                        <div class="param-tab-content" id="requestTabContent">
+                            <div class="tab-panel active" data-tab="header">
+                                <div class="schema-list" id="requestParams-header">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <button type="button" class="add-param-btn request-add-btn" onclick="addCurrentRequestParam()" data-tab="header" style="display: none;">
+                                    添加参数
+                                </button>
+                            </div>
+                            <div class="tab-panel" data-tab="body">
+                                <div class="schema-list" id="requestParams-body">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <button type="button" class="add-param-btn request-add-btn" onclick="addCurrentRequestParam()" data-tab="body" style="display: none;">
+                                    添加参数
+                                </button>
+                            </div>
+                            <div class="tab-panel" data-tab="query">
+                                <div class="schema-list" id="requestParams-query">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <button type="button" class="add-param-btn request-add-btn" onclick="addCurrentRequestParam()" data-tab="query" style="display: none;">
+                                    添加参数
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 出参配置 -->
+                <div class="config-card">
+                    <div class="config-card-header">出参配置</div>
+                    <div class="config-card-body">
+                        <!-- Tab导航 -->
+                        <div class="param-tabs" id="responseParamTabs">
+                            <button class="tab-btn active" data-tab="header" onclick="switchResponseTab('header')">HTTP请求头</button>
+                            <button class="tab-btn" data-tab="body" onclick="switchResponseTab('body')">HTTP请求体</button>
+                        </div>
+                        <!-- Tab内容 -->
+                        <div class="param-tab-content" id="responseTabContent">
+                            <div class="tab-panel active" data-tab="header">
+                                <div class="schema-list" id="responseParams-header">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <button type="button" class="add-param-btn response-add-btn" onclick="addCurrentResponseParam()" data-tab="header" style="display: none;">
+                                    添加参数
+                                </button>
+                            </div>
+                            <div class="tab-panel" data-tab="body">
+                                <div class="schema-list" id="responseParams-body">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <button type="button" class="add-param-btn response-add-btn" onclick="addCurrentResponseParam()" data-tab="body" style="display: none;">
+                                    添加参数
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="action-bar">
+                    <button class="btn" onclick="handleBack()">返回</button>
+                    <button class="btn btn-primary" onclick="handleSave()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ========================================
+        // 配置数据
+        // ========================================
+
+        // 版本状态常量
+        const VERSION_STATUS = {
+            DRAFT: 'draft',
+            PUBLISHED: 'published',
+            INVALID: 'invalid'
+        };
+
+        // 模拟版本数据
+        let versionData = {
+            currentVersion: 'v1',
+            versions: [
+                { id: 'v1', name: 'v1.0.0', createdAt: '2024-01-15 10:30:00', status: VERSION_STATUS.DRAFT },
+                { id: 'v2', name: 'v0.9.0', createdAt: '2024-01-10 09:15:00', status: VERSION_STATUS.PUBLISHED },
+                { id: 'v3', name: 'v0.8.0', createdAt: '2024-01-05 14:20:00', status: VERSION_STATUS.INVALID }
+            ]
+        };
+
+        /**
+         * 认证Schema映射
+         * 根据认证类型返回对应的默认参数配置
+         */
+        const AUTH_SCHEMA_MAP = {
+            SOA: [
+                {
+                    paramName: 'X-Huawei-Auth',
+                    paramType: 'string',
+                    description: '',
+                    carrier: 'header',
+                    children: []
+                }
+            ],
+            APIG: [
+                {
+                    paramName: 'X-HW-ID',
+                    paramType: 'string',
+                    description: '',
+                    carrier: 'header',
+                    children: []
+                },
+                {
+                    paramName: 'X-HW-APPKEY',
+                    paramType: 'string',
+                    description: '',
+                    carrier: 'header',
+                    children: []
+                }
+            ],
+            COOKIE: [
+                {
+                    paramName: 'Cookie-Token',
+                    paramType: 'string',
+                    description: '',
+                    carrier: 'header',
+                    children: []
+                }
+            ],
+            SIGNATURE: [
+                {
+                    paramName: 'X-Signature',
+                    paramType: 'string',
+                    description: '',
+                    carrier: 'header',
+                    isFixed: true,
+                    children: []
+                }
+            ]
+        };
+
+        // 选中的认证类型
+        let selectedAuthTypes = [];
+
+        let connectorConfig = {
+            protocolType: 'GET',
+            protocolAddress: '',
+            authType: 'SOA',
+            authRequestSchema: [],
+            requestSchema: [],
+            responseSchema: []
+        };
+
+        // ========================================
+        // 工具函数
+        // ========================================
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function generateId() {
+            return 'p' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // ========================================
+        // 版本控制
+        // ========================================
+
+        /**
+         * 版本切换函数
+         * 当用户选择不同版本时调用，更新当前版本并刷新按钮状态
+         * @param {string} versionId - 选择的版本ID
+         */
+        function handleVersionChange(versionId) {
+            versionData.currentVersion = versionId;
+            updateVersionButtons();
+            showToast(`已切换到版本: ${versionId}`, 'success');
+        }
+
+        /**
+         * 根据版本状态更新按钮
+         * 根据当前版本的状态（草稿/已发布/已失效）显示不同的操作按钮
+         */
+        function updateVersionButtons() {
+            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
+            if (!currentVersion) return;
+
+            const status = currentVersion.status;
+            const actionBar = document.querySelector('.action-bar');
+
+            let buttons = '';
+            if (status === VERSION_STATUS.DRAFT) {
+                buttons = `
+                    <button class="btn" onclick="handleBack()">返回</button>
+                    <button class="btn" onclick="handleSaveDraft()">保存草稿</button>
+                    <button class="btn btn-primary" onclick="handlePublish()">发布</button>
+                `;
+            } else if (status === VERSION_STATUS.PUBLISHED) {
+                buttons = `
+                    <button class="btn" onclick="handleBack()">返回</button>
+                    <button class="btn" onclick="handleNewDraft()">新增草稿版本</button>
+                    <button class="btn" onclick="handleInvalidate()">失效</button>
+                `;
+            } else if (status === VERSION_STATUS.INVALID) {
+                buttons = `
+                    <button class="btn" onclick="handleBack()">返回</button>
+                    <button class="btn" onclick="handleNewDraft()">新增草稿版本</button>
+                    <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                `;
+            }
+
+            actionBar.innerHTML = buttons;
+        }
+
+        // 版本操作函数（占位，后续完善）
+        function handleSaveDraft() {
+            showToast('保存草稿功能待实现', 'success');
+        }
+
+        function handlePublish() {
+            showToast('发布功能待实现', 'success');
+        }
+
+        function handleNewDraft() {
+            showToast('新增草稿版本功能待实现', 'success');
+        }
+
+        function handleInvalidate() {
+            showToast('失效功能待实现', 'success');
+        }
+
+        function handleDeleteVersion() {
+            showToast('删除版本功能待实现', 'success');
+        }
+
+        // ========================================
+        // 协议类型切换
+        // ========================================
+        function initProtocolTypeGroup() {
+            const group = document.getElementById('protocolTypeGroup');
+            group.querySelectorAll('.radio-group-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    group.querySelectorAll('.radio-group-item').forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    connectorConfig.protocolType = item.dataset.value;
+                });
+            });
+        }
+
+        // ========================================
+        // 认证方式切换
+        // ========================================
+
+        /**
+         * 处理认证类型变化
+         * 当用户勾选/取消认证类型时调用，更新选中的认证类型并重新渲染参数
+         */
+        function handleAuthTypeChange() {
+            const checkboxes = document.querySelectorAll('#authTypeGroup input[type="checkbox"]');
+            selectedAuthTypes = [];
+
+            checkboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    selectedAuthTypes.push(checkbox.value);
+                }
+            });
+
+            renderAuthParams();
+        }
+
+        /**
+         * 获取认证类型显示名称
+         * @param {string} type - 认证类型值
+         * @returns {string} 认证类型的中文名称
+         */
+        function getAuthTypeName(type) {
+            const names = {
+                SOA: 'SOA认证',
+                APIG: 'APIG认证',
+                COOKIE: 'Cookie认证',
+                SIGNATURE: '数字签名认证'
+            };
+            return names[type] || type;
+        }
+
+        /**
+         * 渲染认证参数列表
+         * 根据选择的多种认证类型展示对应的认证参数，支持SOA、APIG、Cookie和数字签名
+         */
+        function renderAuthParams() {
+            const container = document.getElementById('authParamsContainer');
+
+            if (selectedAuthTypes.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-tertiary); font-size: 13px;">请先选择认证方式</p>';
+                return;
+            }
+
+            let html = '';
+
+            selectedAuthTypes.forEach(authType => {
+                const authSchema = AUTH_SCHEMA_MAP[authType] || [];
+                const isSignature = authType === 'SIGNATURE';
+
+                html += `
+                    <div class="auth-type-section" data-type="${authType}" style="margin-bottom: 24px;">
+                        <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--text-primary); font-weight: 600;">
+                            ${getAuthTypeName(authType)}
+                        </h4>
+                `;
+
+                authSchema.forEach((param, index) => {
+                    const isFixed = param.isFixed || isSignature;
+
+                    html += `
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                <input type="text"
+                                       style="flex: 1; min-width: 120px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; ${isFixed ? 'background: var(--bg-light);' : ''}"
+                                       value="${param.paramName}"
+                                       ${isFixed ? 'disabled' : ''}
+                                       placeholder="参数名称">
+                                <select disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);">
+                                    <option value="string" selected>string</option>
+                                </select>
+                                <select style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; ${isFixed ? 'background: var(--bg-light);' : ''}">
+                                    <option value="header" ${param.carrier === 'header' ? 'selected' : ''}>header</option>
+                                    <option value="body" ${param.carrier === 'body' ? 'selected' : ''}>body</option>
+                                    <option value="query" ${param.carrier === 'query' ? 'selected' : ''}>query</option>
+                                </select>
+                                <input type="text"
+                                       style="flex: 2; min-width: 150px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
+                                       placeholder="参数值（${isSignature ? '固定值' : '可选'}）">
+                                <input type="text"
+                                       style="flex: 2; min-width: 150px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
+                                       placeholder="参数描述">
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        /**
+         * 初始化认证方式（兼容旧代码）
+         */
+        function initAuthTypeGroup() {
+            // 现在使用checkbox，不需要初始化单选按钮
+            renderAuthParams();
+        }
+
+        /**
+         * 更新认证参数描述
+         * @param {number} index - 参数索引
+         * @param {string} value - 新的描述值
+         */
+        function updateAuthParamDesc(index, value) {
+            if (connectorConfig.authRequestSchema[index]) {
+                connectorConfig.authRequestSchema[index].description = value;
+            }
+        }
+
+        // ========================================
+        // 参数配置
+        // ========================================
+
+        /**
+         * 判断参数类型是否为复杂类型（object 或 array）
+         * @param {string} paramType - 参数类型
+         * @returns {boolean} 是否为复杂类型
+         */
+        function isComplexType(paramType) {
+            return paramType === 'object' || paramType === 'array';
+        }
+
+        /**
+         * 获取carrier选项HTML
+         * @param {boolean} isRequest - 是否为请求参数
+         * @param {string} currentCarrier - 当前选中的carrier值
+         * @returns {string} carrier选项HTML
+         */
+        function getCarrierOptions(isRequest, currentCarrier) {
+            const options = isRequest
+                ? ['header', 'body', 'query']
+                : ['header', 'body'];
+            return options.map(opt =>
+                `<option value="${opt}" ${currentCarrier === opt ? 'selected' : ''}>${opt}</option>`
+            ).join('');
+        }
+
+        // ========================================
+        // Tab切换功能
+        // ========================================
+
+        /**
+         * Tab切换函数（入参）
+         * 切换入参配置的不同Tab页面
+         * @param {string} tabName - Tab名称（header/body/query）
+         */
+        function switchRequestTab(tabName) {
+            // 更新Tab按钮状态
+            document.querySelectorAll('#requestParamTabs .tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+
+            // 更新Tab内容显示
+            document.querySelectorAll('#requestTabContent .tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tab === tabName);
+            });
+
+            // 更新底部工具栏
+            updateRequestToolbar();
+        }
+
+        /**
+         * 更新入参配置添加按钮的显示状态
+         * 根据当前Tab的参数数量决定是否显示添加按钮
+         */
+        function updateRequestToolbar() {
+            const activePanel = document.querySelector('#requestTabContent .tab-panel.active');
+            if (!activePanel) return;
+
+            const schemaList = activePanel.querySelector('.schema-list');
+            const paramCount = schemaList ? schemaList.querySelectorAll(':scope > .param-item').length : 0;
+            const addBtn = activePanel.querySelector('.request-add-btn');
+
+            if (addBtn) {
+                // 仅当没有参数时显示添加按钮
+                addBtn.style.display = paramCount === 0 ? 'block' : 'none';
+            }
+        }
+
+        /**
+         * 在当前Tab添加参数
+         */
+        function addCurrentRequestParam() {
+            const activePanel = document.querySelector('#requestTabContent .tab-panel.active');
+            if (activePanel) {
+                const schemaList = activePanel.querySelector('.schema-list');
+                if (schemaList) {
+                    const newParam = renderParamItem({}, true, 0);
+                    schemaList.insertAdjacentHTML('beforeend', newParam);
+                    updateRequestToolbar();
+                }
+            }
+        }
+
+        /**
+         * 添加同级参数
+         * @param {HTMLElement} btn - 添加按钮元素
+         */
+        function addSiblingParam(btn) {
+            const paramItem = btn.closest('.param-item');
+            const parent = paramItem.parentElement;
+            const requestTabContent = paramItem.closest('#requestTabContent');
+            const isRequest = requestTabContent !== null;
+
+            if (parent.classList.contains('children-container')) {
+                // 在children-container中添加同级参数
+                const newParam = renderParamItem({}, isRequest, parseInt(paramItem.dataset.depth) || 0);
+                parent.insertAdjacentHTML('beforeend', newParam);
+            } else {
+                // 在主schema-list中添加同级参数
+                const schemaList = btn.closest('.schema-list');
+                if (schemaList) {
+                    const newParam = renderParamItem({}, isRequest, 0);
+                    schemaList.insertAdjacentHTML('beforeend', newParam);
+                    if (isRequest) {
+                        updateRequestToolbar();
+                    } else {
+                        updateResponseToolbar();
+                    }
+                }
+            }
+        }
+
+        /**
+         * Tab切换函数（出参）
+         * 切换出参配置的不同Tab页面
+         * @param {string} tabName - Tab名称（header/body）
+         */
+        function switchResponseTab(tabName) {
+            document.querySelectorAll('#responseParamTabs .tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+
+            document.querySelectorAll('#responseTabContent .tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tab === tabName);
+            });
+
+            // 更新底部工具栏
+            updateResponseToolbar();
+        }
+
+        /**
+         * 更新出参配置添加按钮的显示状态
+         * 根据当前Tab的参数数量决定是否显示添加按钮
+         */
+        function updateResponseToolbar() {
+            const activePanel = document.querySelector('#responseTabContent .tab-panel.active');
+            if (!activePanel) return;
+
+            const schemaList = activePanel.querySelector('.schema-list');
+            const paramCount = schemaList ? schemaList.querySelectorAll(':scope > .param-item').length : 0;
+            const addBtn = activePanel.querySelector('.response-add-btn');
+
+            if (addBtn) {
+                // 仅当没有参数时显示添加按钮
+                addBtn.style.display = paramCount === 0 ? 'block' : 'none';
+            }
+        }
+
+        /**
+         * 在当前Tab添加出参参数
+         */
+        function addCurrentResponseParam() {
+            const activePanel = document.querySelector('#responseTabContent .tab-panel.active');
+            if (activePanel) {
+                const schemaList = activePanel.querySelector('.schema-list');
+                if (schemaList) {
+                    const newParam = renderParamItem({}, false, 0);
+                    schemaList.insertAdjacentHTML('beforeend', newParam);
+                    updateResponseToolbar();
+                }
+            }
+        }
+
+        /**
+         * 递归渲染参数项（支持无限层级嵌套）
+         * @param {Object} param - 参数配置对象
+         * @param {boolean} isRequest - 是否为请求参数
+         * @param {number} depth - 当前层级深度
+         * @returns {string} 参数项HTML字符串
+         */
+        function renderParamItem(param, isRequest, depth = 0) {
+            const id = param.id || generateId();
+            const paramType = param.paramType || 'string';
+            const carrier = param.carrier || 'body';
+            const isComplex = isComplexType(paramType);
+            const childrenParams = param.children || [];
+
+            // 根据层级决定间距
+            const indent = 24 + (depth * 16);
+            const fontSize = '13px';
+            const rowPadding = '6px 10px';
+            const nameWidth = '120px';
+            const descWidth = '100px';
+
+            // 递归渲染子参数
+            const childrenHtml = isComplex && childrenParams.length > 0
+                ? childrenParams.map((child, index) => renderParamItem(child, isRequest, depth + 1)).join('')
+                : '';
+
+            // 子参数容器（不显示左侧竖线）
+            const childrenContainerHtml = isComplex
+                ? `<div class="children-container" style="margin-left: ${indent}px;">
+                    ${childrenHtml}
+                   </div>`
+                : '';
+
+            // 入参配置不显示carrier下拉框
+            const carrierSelectHtml = isRequest
+                ? ''
+                : `<select class="param-carrier" style="padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: ${fontSize}; width: 80px;">
+                    ${getCarrierOptions(isRequest, carrier)}
+                   </select>`;
+
+            // 根据类型决定添加按钮的行为
+            // 基础类型点击直接添加兄弟节点，object/array点击有下拉框
+            const addButtonHtml = isComplex
+                ? `<div class="dropdown-menu" style="position: relative; display: inline-block;">
+                    <button type="button" class="add-item-btn" onclick="toggleItemDropdown(this)" style="padding: ${rowPadding}; border: none; background: transparent;">
+                        添加
+                    </button>
+                    <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
+                        <button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                            添加子节点
+                        </button>
+                        <button type="button" onclick="addChildParam(this, 'sibling')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                            添加兄弟节点
+                        </button>
+                    </div>
+                   </div>`
+                : `<button type="button" class="add-item-btn" onclick="addSiblingParam(this)" style="padding: ${rowPadding}; border: none; background: transparent;">添加</button>`;
+
+            return `
+                <div class="param-item" data-id="${id}" data-param-type="${paramType}" data-depth="${depth}">
+                    <div class="param-row" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="text" class="param-name" placeholder="参数名称" value="${param.paramName || ''}"
+                            style="width: ${nameWidth}; padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: ${fontSize};">
+                        <select class="param-type" style="padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: ${fontSize}; width: 90px;" onchange="handleParamTypeChange(this)">
+                            <option value="string" ${paramType === 'string' ? 'selected' : ''}>string</option>
+                            <option value="number" ${paramType === 'number' ? 'selected' : ''}>number</option>
+                            <option value="boolean" ${paramType === 'boolean' ? 'selected' : ''}>boolean</option>
+                            <option value="object" ${paramType === 'object' ? 'selected' : ''}>object</option>
+                            <option value="array" ${paramType === 'array' ? 'selected' : ''}>array</option>
+                        </select>
+                        ${carrierSelectHtml}
+                        <input type="text" class="param-desc" placeholder="描述" value="${param.description || ''}"
+                            style="width: ${descWidth}; padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: ${fontSize};">
+                        ${addButtonHtml}
+                        <button type="button" class="param-remove-btn" onclick="removeParamItem(this)">删除</button>
+                    </div>
+                    ${childrenContainerHtml}
+                </div>
+            `;
+        }
+
+        /**
+         * 创建顶层参数项HTML（兼容原有函数）
+         * @param {Object} param - 参数配置对象
+         * @param {boolean} isRequest - 是否为请求参数
+         * @returns {string} 参数项HTML字符串
+         */
+        function createParamItem(param = {}, isRequest = true) {
+            return renderParamItem(param, isRequest, 0);
+        }
+
+        /**
+         * 处理参数类型变更（支持递归层级）
+         * @param {HTMLElement} selectElement - 类型选择器元素
+         */
+        function handleParamTypeChange(selectElement) {
+            const paramItem = selectElement.closest('.param-item');
+            const paramRow = paramItem.querySelector('.param-row');
+            const newType = selectElement.value;
+            const isComplex = isComplexType(newType);
+            const depth = parseInt(paramItem.dataset.depth) || 0;
+            const rowPadding = depth === 0 ? '6px 10px' : '4px 8px';
+
+            // 移除现有的子参数容器
+            const existingChildren = paramItem.querySelector('.children-container');
+            if (existingChildren) existingChildren.remove();
+
+            // 更新添加按钮：根据新类型决定按钮行为
+            const existingAddBtn = paramRow.querySelector('.add-item-btn');
+            if (existingAddBtn) {
+                const parentDropdown = existingAddBtn.closest('.dropdown-menu');
+                if (isComplex) {
+                    // 复杂类型：需要下拉框
+                    if (!parentDropdown) {
+                        // 替换为带下拉框的按钮
+                        const newAddBtn = document.createElement('div');
+                        newAddBtn.className = 'dropdown-menu';
+                        newAddBtn.style.cssText = 'position: relative; display: inline-block;';
+                        newAddBtn.innerHTML = `
+                            <button type="button" class="add-item-btn" onclick="toggleItemDropdown(this)" style="padding: ${rowPadding}; border: none; background: transparent;">
+                                添加
+                            </button>
+                            <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
+                                <button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                    添加子节点
+                                </button>
+                                <button type="button" onclick="addChildParam(this, 'sibling')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                    添加兄弟节点
+                                </button>
+                            </div>
+                        `;
+                        existingAddBtn.replaceWith(newAddBtn);
+                    } else {
+                        // 已经是下拉框，更新按钮文字
+                        parentDropdown.querySelector('.add-item-btn').innerHTML = '添加';
+                    }
+                } else {
+                    // 基础类型：直接添加兄弟节点
+                    if (parentDropdown) {
+                        // 替换为普通按钮
+                        const newAddBtn = document.createElement('button');
+                        newAddBtn.type = 'button';
+                        newAddBtn.className = 'add-item-btn';
+                        newAddBtn.onclick = function() { addSiblingParam(this); };
+                        newAddBtn.style.cssText = `padding: ${rowPadding}; border: none; background: transparent;`;
+                        newAddBtn.textContent = '添加';
+                        parentDropdown.replaceWith(newAddBtn);
+                    }
+                }
+            }
+
+            // 如果是复杂类型，添加子参数容器
+            if (isComplex) {
+                const indent = 24 + (depth * 16);
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'children-container';
+                childrenContainer.style.cssText = `margin-left: ${indent}px;`;
+                paramItem.appendChild(childrenContainer);
+            }
+
+            // 更新data属性
+            paramItem.dataset.paramType = newType;
+        }
+
+        /**
+         * 切换下拉菜单
+         * @param {HTMLElement} btn - 按钮元素
+         */
+        function toggleChildDropdown(btn) {
+            const dropdown = btn.closest('.dropdown-menu').querySelector('.dropdown-content');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        /**
+         * 切换添加按钮下拉菜单
+         * @param {HTMLElement} btn - 按钮元素
+         */
+        function toggleItemDropdown(btn) {
+            const dropdown = btn.closest('.dropdown-menu').querySelector('.dropdown-content');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        /**
+         * 添加子参数或同级参数（支持Tab和递归层级）
+         * @param {HTMLElement} btn - 添加按钮元素
+         * @param {string} type - 添加类型（'child' 或 'sibling'）
+         */
+        function addChildParam(btn, type) {
+            // 关闭下拉菜单
+            btn.closest('.dropdown-content').style.display = 'none';
+
+            const paramItem = btn.closest('.param-item');
+            const requestTabContent = paramItem.closest('#requestTabContent');
+            const isRequest = requestTabContent !== null;
+
+            if (type === 'child') {
+                // 添加到children-container
+                const childrenContainer = paramItem.querySelector('.children-container');
+                if (childrenContainer) {
+                    const childHtml = renderParamItem({}, isRequest, 1);
+                    childrenContainer.insertAdjacentHTML('beforeend', childHtml);
+                }
+            } else {
+                // 添加到同级（parent的children-container或主容器）
+                const parent = paramItem.parentElement;
+                if (parent.classList.contains('children-container')) {
+                    const childHtml = renderParamItem({}, isRequest, parseInt(paramItem.dataset.depth) || 0);
+                    parent.insertAdjacentHTML('beforeend', childHtml);
+                } else {
+                    // 在Tab环境下，添加到当前Tab的容器
+                    const tabContent = isRequest ? '#requestTabContent' : '#responseTabContent';
+                    const activePanel = document.querySelector(`${tabContent} .tab-panel.active`);
+                    if (activePanel) {
+                        const schemaList = activePanel.querySelector('.schema-list');
+                        if (schemaList) {
+                            const childHtml = renderParamItem({}, isRequest, 0);
+                            schemaList.insertAdjacentHTML('beforeend', childHtml);
+                            if (isRequest) {
+                                updateRequestToolbar();
+                            } else {
+                                updateResponseToolbar();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * 移除参数项
+         * @param {HTMLElement} btn - 移除按钮元素
+         */
+        function removeParamItem(btn) {
+            const paramItem = btn.closest('.param-item');
+            const isRequest = paramItem.closest('#requestTabContent') !== null;
+            paramItem.remove();
+            // 更新底部工具栏
+            if (isRequest) {
+                updateRequestToolbar();
+            } else {
+                updateResponseToolbar();
+            }
+        }
+
+        /**
+         * 添加请求参数（支持Tab）
+         * @param {string} tabName - Tab名称（header/body/query）
+         */
+        function addRequestParam(tabName) {
+            const container = document.getElementById(`requestParams-${tabName}`);
+            if (container) {
+                const newParam = renderParamItem({}, true, 0);
+                container.insertAdjacentHTML('beforeend', newParam);
+                updateRequestToolbar();
+            }
+        }
+
+        /**
+         * 添加响应参数
+         * @param {string} tabName - Tab名称（header/body）
+         */
+        function addResponseParam(tabName) {
+            const container = document.getElementById(`responseParams-${tabName}`);
+            if (container) {
+                const newParam = renderParamItem({}, false, 0);
+                container.insertAdjacentHTML('beforeend', newParam);
+            }
+        }
+
+        /**
+         * 移除参数（兼容原有函数）
+         * @param {HTMLElement} btn - 移除按钮元素
+         */
+        function removeParam(btn) {
+            removeParamItem(btn);
+        }
+
+        /**
+         * 递归收集参数数据
+         * @param {HTMLElement} container - 容器元素
+         * @returns {Array} 参数字数组
+         */
+        function collectParamItems(container) {
+            const paramItems = container.querySelectorAll(':scope > .param-item');
+            const params = [];
+
+            paramItems.forEach(item => {
+                const name = item.querySelector('.param-name').value.trim();
+                const paramType = item.querySelector('.param-type').value;
+                const isComplex = isComplexType(paramType);
+
+                if (name) {
+                    const paramData = {
+                        paramName: name,
+                        paramType: paramType,
+                        carrier: item.querySelector('.param-carrier').value,
+                        description: item.querySelector('.param-desc').value.trim(),
+                        children: []
+                    };
+
+                    // 递归收集子参数
+                    if (isComplex) {
+                        const childrenContainer = item.querySelector('.children-container');
+                        if (childrenContainer) {
+                            paramData.children = collectParamItems(childrenContainer);
+                        }
+                    }
+
+                    params.push(paramData);
+                }
+            });
+
+            return params;
+        }
+
+        /**
+         * 渲染参数列表
+         * @param {string} containerId - 容器ID
+         * @param {Array} params - 参数数组
+         * @param {boolean} isRequest - 是否为请求参数
+         */
+        function renderParams(containerId, params, isRequest = true) {
+            const container = document.getElementById(containerId);
+            if (params.length === 0) {
+                container.innerHTML = '';
+            } else {
+                container.innerHTML = params.map(p => createParamItem(p, isRequest)).join('');
+            }
+        }
+
+        /**
+         * 收集参数数据（兼容原有函数）
+         * @param {string} containerId - 容器ID
+         * @returns {Array} 参数字数组
+         */
+        function collectParams(containerId) {
+            const container = document.getElementById(containerId);
+            return collectParamItems(container);
+        }
+
+        // ========================================
+        // 保存配置
+        // ========================================
+
+        /**
+         * 保存配置
+         * 收集所有配置数据并进行验证
+         */
+        function handleSave() {
+            connectorConfig.protocolAddress = document.getElementById('protocolAddress').value.trim();
+            connectorConfig.requestSchema = collectParams('requestParams');
+            connectorConfig.responseSchema = collectParams('responseParams');
+
+            if (!connectorConfig.protocolAddress) {
+                showToast('请输入协议地址', 'error');
+                return;
+            }
+
+            // 模拟保存
+            console.log('保存配置:', connectorConfig);
+            showToast('保存成功', 'success');
+
+            setTimeout(() => {
+                handleBack();
+            }, 1000);
+        }
+
+        /**
+         * 返回列表页
+         */
+        function handleBack() {
+            window.location.href = 'connector-list.html';
+        }
+
+        /**
+         * 导航到指定页面
+         * @param {string} page - 目标页面路径
+         */
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // ========================================
+        // 初始化
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initProtocolTypeGroup();
+            initAuthTypeGroup();
+            renderAuthParams();
+            // 渲染入参配置（header/body/query）
+            renderParams('requestParams-header', connectorConfig.requestSchema?.header || [], true);
+            renderParams('requestParams-body', connectorConfig.requestSchema?.body || [], true);
+            renderParams('requestParams-query', connectorConfig.requestSchema?.query || [], true);
+            // 渲染出参配置（header/body）
+            renderParams('responseParams-header', connectorConfig.responseSchema?.header || [], false);
+            renderParams('responseParams-body', connectorConfig.responseSchema?.body || [], false);
+            // 初始化底部工具栏状态
+            updateRequestToolbar();
+            updateResponseToolbar();
+        });
+    </script>
+</body>
+</html>

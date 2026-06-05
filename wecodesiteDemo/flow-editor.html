@@ -1,0 +1,3391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接流编辑器 - 连接平台</title>
+    <style>
+        /* ========================================
+           全局样式变量
+           ======================================== */
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-tertiary: #8c8c8c;
+            --border-color: #d9d9d9;
+            --bg-light: #fafafa;
+            --bg-white: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5715;
+            color: var(--text-primary);
+            background: var(--bg-light);
+            overflow: hidden;
+        }
+
+        /* ========================================
+           页面布局
+           ======================================== */
+        .page-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           左侧导航栏
+           ======================================== */
+        .sidebar {
+            width: 220px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 0;
+            flex: 1;
+        }
+
+        .sidebar-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .sidebar-item.active {
+            background: #e6f7ff;
+            color: var(--primary-color);
+            font-weight: 500;
+            border-right: 3px solid var(--primary-color);
+        }
+
+        /* ========================================
+           主内容区域
+           ======================================== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           编辑器头部
+           ======================================== */
+        .editor-header {
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            background-color: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            flex-shrink: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.3s;
+        }
+
+        .back-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .flow-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .node-count {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        /* ========================================
+           按钮样式
+           ======================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+            color: #fff;
+        }
+
+        /* ========================================
+           编辑器主体
+           ======================================== */
+        .editor-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           节点库面板
+           ======================================== */
+        .node-library {
+            width: 260px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .node-library-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .node-library-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .node-library-desc {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .node-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .node-card {
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: grab;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .node-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .node-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .node-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .node-icon.trigger { background: linear-gradient(135deg, #1890ff, #096dd9); }
+        .node-icon.action { background: linear-gradient(135deg, #52c41a, #389e0d); }
+        .node-icon.condition { background: linear-gradient(135deg, #faad14, #d48806); }
+        .node-icon.data { background: linear-gradient(135deg, #722ed1, #531dab); }
+        .node-icon.output { background: linear-gradient(135deg, #eb2f96, #c41d7f); }
+        .node-icon.error { background: linear-gradient(135deg, #ff4d4f, #cf1322); }
+
+        /* ========================================
+           参数配置样式
+           ======================================== */
+        .schema-list {
+            margin-bottom: 12px;
+        }
+
+        .param-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-color);
+            background: var(--bg-light);
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            background: #e6f7ff;
+            font-weight: 500;
+        }
+
+        .param-tab-content .tab-panel {
+            display: none;
+        }
+
+        .param-tab-content .tab-panel.active {
+            display: block;
+        }
+
+        .param-item .param-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .add-param-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border: 1px dashed var(--border-color);
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: all 0.3s;
+        }
+
+        .add-param-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .add-item-btn {
+            padding: 4px 8px;
+            border: 1px dashed var(--border-color);
+            background: transparent;
+            color: var(--primary-color);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .add-item-btn:hover {
+            border-color: var(--primary-color);
+            background: #e6f7ff;
+        }
+
+        .param-remove-btn {
+            padding: 4px 8px;
+            border: none;
+            background: transparent;
+            color: var(--error-color);
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .param-remove-btn:hover {
+            background: #fff1f0;
+        }
+
+        /* 配置按钮样式 */
+        .param-config-btn {
+            border: none;
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .param-config-btn:hover {
+            border-color: var(--primary-color);
+            background: #e6f7ff;
+        }
+
+        /* ========================================
+           SYSTOKEN凭证白名单样式
+           ======================================== */
+        .systoken-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .systoken-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .systoken-item input {
+            flex: 1;
+        }
+
+        .systoken-add-btn {
+            margin-top: 8px;
+        }
+
+        .node-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .node-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .node-desc {
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+
+        .node-added {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-left: 4px;
+        }
+
+        /* ========================================
+           画布区域
+           ======================================== */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: var(--bg-light);
+            background-image:
+                radial-gradient(circle, #d9d9d9 1px, transparent 1px);
+            background-size: 20px 20px;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 流程节点 */
+        .flow-node {
+            position: absolute;
+            min-width: 160px;
+            background: var(--bg-white);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            cursor: move;
+            transition: box-shadow 0.3s, border-color 0.3s;
+        }
+
+        .flow-node:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .flow-node.selected {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        .flow-node.trigger {
+            border-color: #1890ff;
+        }
+
+        .flow-node.action {
+            border-color: #52c41a;
+        }
+
+        .flow-node.condition {
+            border-color: #faad14;
+        }
+
+        .flow-node.data {
+            border-color: #722ed1;
+        }
+
+        .flow-node.output {
+            border-color: #eb2f96;
+        }
+
+        .node-header {
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .node-header-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #fff;
+        }
+
+        .node-header-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .node-body {
+            padding: 10px 12px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* 连接点 */
+        .node-port {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: var(--bg-white);
+            border: 2px solid var(--primary-color);
+            border-radius: 50%;
+            cursor: crosshair;
+            z-index: 10;
+        }
+
+        .node-port.top {
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .node-port.bottom {
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .node-port:hover {
+            background: var(--primary-color);
+        }
+
+        /* 连接线 */
+        .flow-edge {
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .flow-edge path {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 2;
+        }
+
+        .flow-edge.animated path {
+            stroke-dasharray: 5;
+            animation: dash 0.5s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+
+        /* ========================================
+           节点配置抽屉
+           ======================================== */
+        .config-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 600px;
+            height: 100vh;
+            background: var(--bg-white);
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-drawer.active {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .drawer-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .drawer-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .drawer-close:hover {
+            background: var(--bg-light);
+            color: var(--text-primary);
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .drawer-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+            transition: all 0.3s;
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--bg-white);
+            cursor: pointer;
+        }
+
+        /* ========================================
+           Toast消息
+           ======================================== */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 24px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-md);
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--success-color);
+        }
+
+        .toast.error {
+            background: var(--error-color);
+        }
+
+        /* ========================================
+           空状态
+           ======================================== */
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+        }
+
+        /* ========================================
+           弹窗样式
+           ======================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-light);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* 引用参数项样式 */
+        .reference-param-item {
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-bottom: 4px;
+        }
+
+        .reference-param-item:hover {
+            background: var(--bg-light);
+        }
+
+        .reference-param-item.selected {
+            background: #e6f7ff;
+            border: 1px solid var(--primary-color);
+        }
+
+        .reference-param-item .param-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .reference-param-item .param-type {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面主容器 -->
+    <div class="page-container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">连接平台</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item" onclick="navigateTo('connector-list.html')">
+                    <span>⚡</span>
+                    <span>连接器管理</span>
+                </li>
+                <li class="sidebar-item active">
+                    <span>🔗</span>
+                    <span>连接流管理</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 编辑器头部 -->
+            <div class="editor-header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="handleBack()">
+                        ← 返回
+                    </button>
+                    <span class="flow-name" id="flowName">未命名流程</span>
+                    <div class="version-selector" style="margin-left: 16px;">
+                        <label style="font-size: 13px; color: var(--text-secondary); margin-right: 8px;">版本:</label>
+                        <select id="flowVersionSelect" onchange="handleVersionChange(this.value)" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; cursor: pointer;">
+                            <option value="v1">v1.0.0 (2024-01-15) [草稿]</option>
+                            <option value="v2">v0.9.0 (2024-01-10) [已发布]</option>
+                            <option value="v3">v0.8.0 (2024-01-05) [已失效]</option>
+                            <option value="v4">v0.7.0 (2024-01-01) [审批中]</option>
+                            <option value="v5">v0.6.0 (2023-12-28) [已驳回]</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <span class="node-count" id="nodeCount">0 个节点 · 0 条连线</span>
+                    <div class="version-actions" id="versionActions" style="display: flex; gap: 8px;">
+                        <!-- 动态生成按钮 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 编辑器主体 -->
+            <div class="editor-content">
+                <!-- 节点库 -->
+                <div class="node-library">
+                    <div class="node-library-header">
+                        <div class="node-library-title">节点库</div>
+                        <div class="node-library-desc">拖拽节点到画布进行编排</div>
+                    </div>
+                    <div class="node-list" id="nodeList">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 画布区域 -->
+                <div class="canvas-area">
+                    <div class="canvas-container" id="canvas">
+                        <!-- 节点和连线渲染在这里 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 节点配置抽屉 -->
+    <div class="config-drawer" id="configDrawer">
+        <div class="drawer-header">
+            <h3 class="drawer-title">节点配置</h3>
+            <button class="drawer-close" onclick="closeDrawer()">✕</button>
+        </div>
+        <div class="drawer-body" id="drawerBody">
+            <!-- 动态表单 -->
+        </div>
+        <div class="drawer-footer">
+            <button class="btn" onclick="closeDrawer()">取消</button>
+            <button class="btn btn-primary" onclick="saveNodeConfig()">保存</button>
+        </div>
+    </div>
+
+    <!-- 更多配置抽屉 -->
+    <div class="config-drawer" id="moreConfigDrawer">
+        <div class="drawer-header">
+            <h3 class="drawer-title">更多配置</h3>
+            <button class="drawer-close" onclick="closeMoreConfigDrawer()">✕</button>
+        </div>
+        <div class="drawer-body">
+            <!-- 限流配置 -->
+            <div class="form-group">
+                <label class="form-label">限流配置</label>
+                <select class="form-select" id="rateLimitSelect" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px;">
+                    <option value="10">10 请求/秒</option>
+                    <option value="20">20 请求/秒</option>
+                    <option value="50">50 请求/秒</option>
+                    <option value="100">100 请求/秒</option>
+                </select>
+            </div>
+
+            <div class="divider" style="height: 1px; background: var(--border-color); margin: 16px 0;"></div>
+
+            <!-- 缓存配置 -->
+            <div class="form-group">
+                <label class="form-label">缓存配置</label>
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="cacheEnabled" onchange="toggleCacheConfig(this.checked)">
+                        <span>开启缓存</span>
+                    </label>
+                </div>
+                <div id="cacheConfig" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">缓存时间（秒）</label>
+                        <input type="number" class="form-input" id="cacheTime" placeholder="请输入缓存时间" min="1" value="60">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">缓存Key</label>
+                        <select class="form-select" id="cacheKeySelect" style="width: 100%;">
+                            <option value="">从触发器入参中选择</option>
+                            <option value="param1">param1</option>
+                            <option value="param1+param2">param1 + param2</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="drawer-footer">
+            <button class="btn" onclick="closeMoreConfigDrawer()">取消</button>
+            <button class="btn btn-primary" onclick="saveMoreConfig()">保存</button>
+        </div>
+    </div>
+
+    <!-- 调试弹窗 -->
+    <div class="modal-overlay" id="debugModal">
+        <div class="modal" style="max-width: 600px; max-height: 80vh;">
+            <div class="modal-header">
+                <h3 class="modal-title">调试 - <span id="debugFlowName">连接流</span></h3>
+                <div class="modal-close" onclick="closeDebugModal()">✕</div>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">入参配置（参数名称和类型不可编辑）</label>
+                    <div id="debugParamsList" style="margin-top: 12px;">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 24px;">
+                    <button class="btn btn-primary" onclick="executeDebug()" style="width: 100%;">
+                        立即调试
+                    </button>
+                </div>
+
+                <div class="form-group" style="margin-top: 24px;">
+                    <label class="form-label" style="font-weight: 600;">执行输出</label>
+                    <div id="debugOutput" style="margin-top: 12px; padding: 16px; background: #1e1e1e; border-radius: 6px; color: #d4d4d4; font-family: monospace; font-size: 13px; min-height: 150px; white-space: pre-wrap;">
+                        <span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeDebugModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 参数配置弹窗（用于连接器节点和数据输出节点） -->
+    <div class="modal-overlay" id="paramConfigModal">
+        <div class="modal" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 class="modal-title">参数配置</h3>
+                <div class="modal-close" onclick="closeParamConfigModal()">✕</div>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">参数名称</label>
+                    <input type="text" class="form-input" id="paramConfigName" readonly style="background: var(--bg-light);">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">参数类型</label>
+                    <input type="text" class="form-input" id="paramConfigType" readonly style="background: var(--bg-light);">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">配置方式</label>
+                    <div style="display: flex; gap: 16px; margin-top: 8px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="paramConfigType" value="fixed" id="configTypeFixed" onchange="handleParamConfigTypeChange()">
+                            <span>固定值</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="radio" name="paramConfigType" value="reference" id="configTypeReference" onchange="handleParamConfigTypeChange()">
+                            <span>引用参数</span>
+                        </label>
+                    </div>
+                </div>
+                <!-- 固定值输入区域 -->
+                <div class="form-group" id="paramConfigFixedArea" style="display: none;">
+                    <label class="form-label">固定值</label>
+                    <input type="text" class="form-input" id="paramConfigFixedValue" placeholder="请输入固定值">
+                </div>
+                <!-- 引用参数选择区域 -->
+                <div class="form-group" id="paramConfigReferenceArea" style="display: none;">
+                    <label class="form-label">选择引用参数</label>
+                    <div id="paramConfigReferenceList" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px;">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeParamConfigModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveParamConfig()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // 参数配置辅助函数（从connector-editor.html复用）
+        // ========================================
+
+        /**
+         * 判断参数类型是否为复杂类型（object 或 array）
+         * @param {string} paramType - 参数类型
+         * @returns {boolean} 是否为复杂类型
+         */
+        function isComplexType(paramType) {
+            return paramType === 'object' || paramType === 'array';
+        }
+
+        /**
+         * 递归渲染参数项（支持无限层级嵌套）
+         * @param {Object} param - 参数配置对象
+         * @param {number} depth - 当前层级深度
+         * @returns {string} 参数项HTML字符串
+         */
+        function renderParamItem(param, depth = 0) {
+            const id = param.id || generateId();
+            const paramType = param.paramType || 'string';
+            const isComplex = isComplexType(paramType);
+            const childrenParams = param.children || [];
+
+            const indent = 24 + (depth * 16);
+            const rowPadding = depth === 0 ? '6px 10px' : '4px 8px';
+
+            const childrenHtml = isComplex && childrenParams.length > 0
+                ? childrenParams.map(child => renderParamItem(child, depth + 1)).join('')
+                : '';
+
+            const childrenContainerHtml = isComplex
+                ? `<div class="children-container" style="margin-left: ${indent}px;">
+                    ${childrenHtml}
+                   </div>`
+                : '';
+
+            // 复杂类型（object/array）显示下拉菜单添加按钮，简单类型显示普通添加按钮
+            const addButtonHtml = isComplex
+                ? `<div class="dropdown-menu" style="position: relative; display: inline-block;">
+                    <button type="button" class="add-item-btn" onclick="toggleItemDropdown(this)" style="padding: ${rowPadding}; border: none; background: transparent;">
+                        添加
+                    </button>
+                    <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
+                        <button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                            添加子节点
+                        </button>
+                        <button type="button" onclick="addChildParam(this, 'sibling')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                            添加兄弟节点
+                        </button>
+                    </div>
+                   </div>`
+                : `<button type="button" class="add-item-btn" onclick="addSiblingParam(this)" style="padding: ${rowPadding}; border: none; background: transparent;">添加</button>`;
+
+            return `
+                <div class="param-item" data-id="${id}" data-param-type="${paramType}" data-depth="${depth}">
+                    <div class="param-row" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="text" class="param-name" placeholder="参数名称" value="${param.paramName || ''}"
+                            style="width: 100px; padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        <select class="param-type" style="padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 80px;" onchange="handleParamTypeChange(this)">
+                            <option value="string" ${paramType === 'string' ? 'selected' : ''}>string</option>
+                            <option value="number" ${paramType === 'number' ? 'selected' : ''}>number</option>
+                            <option value="boolean" ${paramType === 'boolean' ? 'selected' : ''}>boolean</option>
+                            <option value="object" ${paramType === 'object' ? 'selected' : ''}>object</option>
+                            <option value="array" ${paramType === 'array' ? 'selected' : ''}>array</option>
+                        </select>
+                        <input type="text" class="param-desc" placeholder="描述" value="${param.description || ''}"
+                            style="flex: 1; min-width: 80px; padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        ${addButtonHtml}
+                        <button type="button" class="param-remove-btn" onclick="removeParamItem(this)">删除</button>
+                    </div>
+                    ${childrenContainerHtml}
+                </div>
+            `;
+        }
+
+        /**
+         * 切换添加按钮下拉菜单
+         * @param {HTMLElement} btn - 按钮元素
+         */
+        function toggleItemDropdown(btn) {
+            const dropdown = btn.closest('.dropdown-menu').querySelector('.dropdown-content');
+            dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        }
+
+        /**
+         * 添加子参数或同级参数
+         * @param {HTMLElement} btn - 添加按钮元素
+         * @param {string} type - 添加类型（'child' 或 'sibling'）
+         */
+        function addChildParam(btn, type) {
+            btn.closest('.dropdown-content').style.display = 'none';
+            const paramItem = btn.closest('.param-item');
+            const depth = parseInt(paramItem.dataset.depth) || 0;
+            const tabPanel = btn.closest('.tab-panel');
+
+            if (type === 'child') {
+                const childrenContainer = paramItem.querySelector('.children-container');
+                if (childrenContainer) {
+                    const childHtml = renderParamItem({}, depth + 1);
+                    childrenContainer.insertAdjacentHTML('beforeend', childHtml);
+                }
+            } else {
+                // 添加兄弟节点：找到参数列表容器并添加
+                const parent = paramItem.parentElement;
+                let targetContainer;
+
+                if (parent.classList.contains('children-container')) {
+                    // 在children-container中，添加同级的兄弟节点
+                    targetContainer = parent;
+                } else if (parent.classList.contains('param-row')) {
+                    // 上一级是param-row，继续向上找
+                    const grandParent = parent.parentElement;
+                    if (grandParent?.classList.contains('children-container')) {
+                        targetContainer = grandParent;
+                    }
+                }
+
+                if (targetContainer) {
+                    const siblingHtml = renderParamItem({}, depth);
+                    targetContainer.insertAdjacentHTML('beforeend', siblingHtml);
+                } else {
+                    // 兜底：使用schema-list容器
+                    const schemaList = btn.closest('.schema-list');
+                    if (schemaList) {
+                        const siblingHtml = renderParamItem({}, 0);
+                        schemaList.insertAdjacentHTML('beforeend', siblingHtml);
+                    }
+                }
+            }
+
+            // 更新触发器节点添加按钮的显示状态
+            if (tabPanel?.closest('#triggerInputContent')) {
+                const tabName = tabPanel?.dataset.tab || 'header';
+                updateTriggerAddParamBtnVisibility(tabName);
+            }
+        }
+
+        /**
+         * 添加同级参数
+         * @param {HTMLElement} btn - 添加按钮元素
+         */
+        function addSiblingParam(btn) {
+            const paramItem = btn.closest('.param-item');
+            const parent = paramItem.parentElement;
+            const tabPanel = btn.closest('.tab-panel');
+            const tabName = tabPanel?.dataset.tab || 'header';
+
+            if (parent.classList.contains('children-container')) {
+                const newParam = renderParamItem({}, parseInt(paramItem.dataset.depth) || 0);
+                parent.insertAdjacentHTML('beforeend', newParam);
+            } else {
+                const schemaList = btn.closest('.schema-list');
+                if (schemaList) {
+                    const newParam = renderParamItem({}, 0);
+                    schemaList.insertAdjacentHTML('beforeend', newParam);
+                }
+            }
+
+            // 更新触发器节点添加按钮的显示状态
+            if (tabPanel?.closest('#triggerInputContent')) {
+                updateTriggerAddParamBtnVisibility(tabName);
+            }
+        }
+
+        /**
+         * 移除参数项
+         * @param {HTMLElement} btn - 移除按钮元素
+         */
+        function removeParamItem(btn) {
+            // 获取当前激活的tab
+            const tabPanel = btn.closest('.tab-panel');
+            const tabName = tabPanel?.dataset.tab || 'header';
+
+            btn.closest('.param-item').remove();
+
+            // 更新触发器节点添加按钮的显示状态
+            if (tabPanel?.closest('#triggerInputContent')) {
+                updateTriggerAddParamBtnVisibility(tabName);
+            }
+        }
+
+        /**
+         * 处理参数类型变更
+         * @param {HTMLElement} selectElement - 类型选择器元素
+         */
+        function handleParamTypeChange(selectElement) {
+            const paramItem = selectElement.closest('.param-item');
+            const newType = selectElement.value;
+            const isComplex = isComplexType(newType);
+            const depth = parseInt(paramItem.dataset.depth) || 0;
+            const rowPadding = depth === 0 ? '6px 10px' : '4px 8px';
+
+            const existingChildren = paramItem.querySelector('.children-container');
+            if (existingChildren) existingChildren.remove();
+
+            const existingAddBtn = paramItem.querySelector('.add-item-btn');
+            const parentDropdown = existingAddBtn?.closest('.dropdown-menu');
+
+            if (isComplex) {
+                if (!parentDropdown) {
+                    const newAddBtn = document.createElement('div');
+                    newAddBtn.className = 'dropdown-menu';
+                    newAddBtn.style.cssText = 'position: relative; display: inline-block;';
+                    newAddBtn.innerHTML = `
+                        <button type="button" class="add-item-btn" onclick="toggleItemDropdown(this)" style="padding: ${rowPadding}; border: none; background: transparent;">
+                            添加
+                        </button>
+                        <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
+                            <button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                添加子节点
+                            </button>
+                            <button type="button" onclick="addChildParam(this, 'sibling')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                添加兄弟节点
+                            </button>
+                        </div>
+                    `;
+                    existingAddBtn.replaceWith(newAddBtn);
+                }
+            } else {
+                if (parentDropdown) {
+                    const newAddBtn = document.createElement('button');
+                    newAddBtn.type = 'button';
+                    newAddBtn.className = 'add-item-btn';
+                    newAddBtn.onclick = function() { addSiblingParam(this); };
+                    newAddBtn.style.cssText = `padding: ${rowPadding}; border: none; background: transparent;`;
+                    newAddBtn.textContent = '添加';
+                    parentDropdown.replaceWith(newAddBtn);
+                }
+            }
+
+            if (isComplex) {
+                const indent = 24 + (depth * 16);
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'children-container';
+                childrenContainer.style.cssText = `margin-left: ${indent}px;`;
+                paramItem.appendChild(childrenContainer);
+            }
+
+            paramItem.dataset.paramType = newType;
+        }
+
+        /**
+         * 递归收集参数数据
+         * @param {HTMLElement} container - 容器元素
+         * @returns {Array} 参数字数组
+         */
+        function collectParams(container) {
+            if (!container) return [];
+
+            const paramItems = container.querySelectorAll(':scope > .param-item');
+            const params = [];
+
+            paramItems.forEach(item => {
+                const name = item.querySelector('.param-name').value.trim();
+                const paramType = item.querySelector('.param-type').value;
+                const isComplex = isComplexType(paramType);
+
+                if (name) {
+                    const paramData = {
+                        id: item.dataset.id,
+                        paramName: name,
+                        paramType: paramType,
+                        description: item.querySelector('.param-desc').value.trim(),
+                        children: []
+                    };
+
+                    if (isComplex) {
+                        const childrenContainer = item.querySelector('.children-container');
+                        if (childrenContainer) {
+                            paramData.children = collectParams(childrenContainer);
+                        }
+                    }
+
+                    params.push(paramData);
+                }
+            });
+
+            return params;
+        }
+
+        /**
+         * 渲染参数列表
+         * @param {string} containerId - 容器ID
+         * @param {Array} params - 参数数组
+         */
+        function renderParams(containerId, params) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (params.length === 0) {
+                container.innerHTML = '';
+            } else {
+                container.innerHTML = params.map(p => renderParamItem(p, 0)).join('');
+            }
+        }
+
+        /**
+         * 渲染连接器出参配置（只读模式，有配置按钮）
+         * @param {string} containerId - 容器ID
+         * @param {Array} params - 参数数组
+         */
+        function renderConnectorOutputParams(containerId, params) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (params.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-tertiary); font-size: 13px; padding: 8px 0;">暂无出参配置</div>';
+            } else {
+                container.innerHTML = params.map(p => renderConnectorOutputParamItem(p, 0)).join('');
+            }
+        }
+
+        /**
+         * 渲染单个连接器出参配置项（只读模式）
+         * @param {Object} param - 参数配置对象
+         * @param {number} depth - 当前层级深度
+         * @returns {string} 参数项HTML字符串
+         */
+        function renderConnectorOutputParamItem(param, depth = 0) {
+            const id = param.id || generateId();
+            const paramType = param.paramType || 'string';
+            const isComplex = isComplexType(paramType);
+            const childrenParams = param.children || [];
+            const config = param.config || {};
+
+            const indent = 24 + (depth * 16);
+            const paddingLeft = depth === 0 ? '0' : `${indent}px`;
+
+            const childrenHtml = isComplex && childrenParams.length > 0
+                ? childrenParams.map(child => renderConnectorOutputParamItem(child, depth + 1)).join('')
+                : '';
+
+            const childrenContainerHtml = isComplex
+                ? `<div class="children-container" style="margin-left: ${indent}px;">
+                    ${childrenHtml}
+                   </div>`
+                : '';
+
+            // 获取配置显示文本
+            let configText = '配置';
+            if (config.type === 'fixed') {
+                configText = `固定值: ${config.value || '-'}`;
+            } else if (config.type === 'reference') {
+                configText = `引用: ${config.refName || '-'}`;
+            }
+
+            return `
+                <div class="param-item" data-id="${id}" data-param-type="${paramType}" data-depth="${depth}" style="margin-bottom: 8px;">
+                    <div class="param-row" style="display: flex; align-items: center; gap: 8px; padding-left: ${paddingLeft};">
+                        <input type="text" class="param-name" placeholder="参数名称" value="${param.paramName || ''}" readonly
+                            style="width: 100px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);">
+                        <select class="param-type" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 80px; background: var(--bg-light);" disabled>
+                            <option value="string" ${paramType === 'string' ? 'selected' : ''}>string</option>
+                            <option value="number" ${paramType === 'number' ? 'selected' : ''}>number</option>
+                            <option value="boolean" ${paramType === 'boolean' ? 'selected' : ''}>boolean</option>
+                            <option value="object" ${paramType === 'object' ? 'selected' : ''}>object</option>
+                            <option value="array" ${paramType === 'array' ? 'selected' : ''}>array</option>
+                        </select>
+                        <button type="button" class="param-config-btn" onclick="openParamConfigModal('${id}', '${param.paramName || ''}', '${paramType}', 'connector')"
+                            style="padding: 4px 8px; background: transparent; color: var(--primary-color); cursor: pointer; font-size: 13px;">
+                            ${configText}
+                        </button>
+                    </div>
+                    ${childrenContainerHtml}
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染数据输出节点参数组装配置（带配置按钮）
+         * @param {string} containerId - 容器ID
+         * @param {Array} params - 参数数组
+         */
+        function renderOutputAssembleParams(containerId, params) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (params.length === 0) {
+                container.innerHTML = '';
+            } else {
+                container.innerHTML = params.map(p => renderOutputAssembleParamItem(p, 0, containerId)).join('');
+            }
+
+            // 更新添加按钮显示状态
+            updateOutputAddParamBtnVisibility(containerId);
+        }
+
+        /**
+         * 渲染单个数据输出节点参数组装项（带配置按钮）
+         * @param {Object} param - 参数配置对象
+         * @param {number} depth - 当前层级深度
+         * @param {string} containerId - 容器ID
+         * @returns {string} 参数项HTML字符串
+         */
+        function renderOutputAssembleParamItem(param, depth = 0, containerId = '') {
+            const id = param.id || generateId();
+            const paramType = param.paramType || 'string';
+            const isComplex = isComplexType(paramType);
+            const childrenParams = param.children || [];
+            const config = param.config || {};
+
+            const indent = 24 + (depth * 16);
+            const rowPadding = depth === 0 ? '6px 10px' : '4px 8px';
+
+            const childrenHtml = isComplex && childrenParams.length > 0
+                ? childrenParams.map(child => renderOutputAssembleParamItem(child, depth + 1, containerId)).join('')
+                : '';
+
+            const childrenContainerHtml = isComplex
+                ? `<div class="children-container" style="margin-left: ${indent}px;">
+                    ${childrenHtml}
+                   </div>`
+                : '';
+
+            // 获取配置显示文本
+            let configText = '配置';
+            if (config.type === 'fixed') {
+                configText = `固定值: ${config.value || '-'}`;
+            } else if (config.type === 'reference') {
+                configText = `引用: ${config.refName || '-'}`;
+            }
+
+            // 添加按钮HTML（复杂类型显示下拉菜单）
+            const addButtonHtml = isComplex
+                ? `<div class="dropdown-menu" style="position: relative; display: inline-block;">
+                    <button type="button" class="add-item-btn" onclick="toggleItemDropdown(this)" style="padding: ${rowPadding}; border: none; background: transparent;">
+                        添加
+                    </button>
+                    <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
+                        <button type="button" onclick="addOutputAssembleChildParam(this, 'child', '${containerId}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                            添加子节点
+                        </button>
+                        <button type="button" onclick="addOutputAssembleChildParam(this, 'sibling', '${containerId}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                            添加兄弟节点
+                        </button>
+                    </div>
+                   </div>`
+                : `<button type="button" class="add-item-btn" onclick="addOutputAssembleSiblingParam(this, '${containerId}')" style="padding: ${rowPadding}; border: none; background: transparent;">添加</button>`;
+
+            return `
+                <div class="param-item" data-id="${id}" data-param-type="${paramType}" data-depth="${depth}">
+                    <div class="param-row" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="text" class="param-name" placeholder="参数名称" value="${param.paramName || ''}"
+                            style="width: 100px; padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        <select class="param-type" style="padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 80px;" onchange="handleOutputAssembleParamTypeChange(this, '${containerId}')">
+                            <option value="string" ${paramType === 'string' ? 'selected' : ''}>string</option>
+                            <option value="number" ${paramType === 'number' ? 'selected' : ''}>number</option>
+                            <option value="boolean" ${paramType === 'boolean' ? 'selected' : ''}>boolean</option>
+                            <option value="object" ${paramType === 'object' ? 'selected' : ''}>object</option>
+                            <option value="array" ${paramType === 'array' ? 'selected' : ''}>array</option>
+                        </select>
+                        <input type="text" class="param-desc" placeholder="描述" value="${param.description || ''}"
+                            style="flex: 1; min-width: 80px; padding: ${rowPadding}; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                        <button type="button" class="param-config-btn" onclick="openParamConfigModal('${id}', '${param.paramName || ''}', '${paramType}', 'output')"
+                            style="padding: ${rowPadding}; background: transparent; color: var(--primary-color); cursor: pointer; border-radius: 4px; font-size: 13px;">
+                            ${configText}
+                        </button>
+                        ${addButtonHtml}
+                        <button type="button" class="param-remove-btn" onclick="removeOutputAssembleParamItem(this, '${containerId}')">删除</button>
+                    </div>
+                    ${childrenContainerHtml}
+                </div>
+            `;
+        }
+
+        /**
+         * 更新数据输出节点添加参数按钮的显示状态
+         * @param {string} containerId - 容器ID
+         */
+        function updateOutputAddParamBtnVisibility(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const addBtn = container.closest('.tab-panel').querySelector('.output-add-param-btn');
+            if (!addBtn) return;
+
+            const hasParams = container.querySelectorAll('.param-item').length > 0;
+            addBtn.style.display = hasParams ? 'none' : 'inline-flex';
+        }
+
+        /**
+         * 添加数据输出节点参数组装子参数
+         * @param {HTMLElement} btn - 添加按钮元素
+         * @param {string} type - 添加类型（'child' 或 'sibling'）
+         * @param {string} containerId - 容器ID
+         */
+        function addOutputAssembleChildParam(btn, type, containerId) {
+            btn.closest('.dropdown-content').style.display = 'none';
+            const paramItem = btn.closest('.param-item');
+            const paramType = paramItem.dataset.paramType;
+            const isComplex = isComplexType(paramType);
+            const depth = parseInt(paramItem.dataset.depth) || 0;
+
+            if (type === 'child' && isComplex) {
+                const childrenContainer = paramItem.querySelector('.children-container');
+                if (childrenContainer) {
+                    const childHtml = renderOutputAssembleParamItem({}, depth + 1);
+                    childrenContainer.insertAdjacentHTML('beforeend', childHtml);
+                }
+            } else {
+                // 添加兄弟节点：找到参数列表容器并添加
+                const parent = paramItem.parentElement;
+                let targetContainer;
+
+                if (parent.classList.contains('children-container')) {
+                    // 在children-container中，添加同级的兄弟节点
+                    targetContainer = parent;
+                } else if (parent.classList.contains('param-row')) {
+                    // 上一级是param-row，继续向上找
+                    const grandParent = parent.parentElement;
+                    if (grandParent?.classList.contains('children-container')) {
+                        targetContainer = grandParent;
+                    }
+                }
+
+                if (targetContainer) {
+                    const siblingHtml = renderOutputAssembleParamItem({}, depth);
+                    targetContainer.insertAdjacentHTML('beforeend', siblingHtml);
+                } else {
+                    // 兜底：使用schema-list容器
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        const siblingHtml = renderOutputAssembleParamItem({}, 0);
+                        container.insertAdjacentHTML('beforeend', siblingHtml);
+                    }
+                }
+            }
+
+            updateOutputAddParamBtnVisibility(containerId);
+        }
+
+        /**
+         * 添加数据输出节点参数组装同级参数
+         * @param {HTMLElement} btn - 添加按钮元素
+         * @param {string} containerId - 容器ID
+         */
+        function addOutputAssembleSiblingParam(btn, containerId) {
+            const paramItem = btn.closest('.param-item');
+            const parent = paramItem.parentElement;
+
+            if (parent.classList.contains('children-container')) {
+                const depth = parseInt(paramItem.dataset.depth) || 0;
+                const newParam = renderOutputAssembleParamItem({}, depth);
+                parent.insertAdjacentHTML('beforeend', newParam);
+            } else {
+                const container = document.getElementById(containerId);
+                if (container) {
+                    const newParam = renderOutputAssembleParamItem({}, 0);
+                    container.insertAdjacentHTML('beforeend', newParam);
+                }
+            }
+
+            updateOutputAddParamBtnVisibility(containerId);
+        }
+
+        /**
+         * 移除数据输出节点参数组装项
+         * @param {HTMLElement} btn - 移除按钮元素
+         * @param {string} containerId - 容器ID
+         */
+        function removeOutputAssembleParamItem(btn, containerId) {
+            btn.closest('.param-item').remove();
+            updateOutputAddParamBtnVisibility(containerId);
+        }
+
+        /**
+         * 处理数据输出节点参数类型变更
+         * @param {HTMLElement} selectElement - 类型选择器元素
+         * @param {string} containerId - 容器ID
+         */
+        function handleOutputAssembleParamTypeChange(selectElement, containerId) {
+            const paramItem = selectElement.closest('.param-item');
+            const newType = selectElement.value;
+            const isComplex = isComplexType(newType);
+            const depth = parseInt(paramItem.dataset.depth) || 0;
+            const rowPadding = depth === 0 ? '6px 10px' : '4px 8px';
+
+            const existingChildren = paramItem.querySelector('.children-container');
+            if (existingChildren) existingChildren.remove();
+
+            const existingAddBtn = paramItem.querySelector('.add-item-btn');
+            const parentDropdown = existingAddBtn?.closest('.dropdown-menu');
+
+            if (isComplex) {
+                if (!parentDropdown) {
+                    const newAddBtn = document.createElement('div');
+                    newAddBtn.className = 'dropdown-menu';
+                    newAddBtn.style.cssText = 'position: relative; display: inline-block;';
+                    newAddBtn.innerHTML = `
+                        <button type="button" class="add-item-btn" onclick="toggleItemDropdown(this)" style="padding: ${rowPadding}; border: none; background: transparent;">
+                            添加
+                        </button>
+                        <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
+                            <button type="button" onclick="addOutputAssembleChildParam(this, 'child', '${containerId}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                添加子节点
+                            </button>
+                            <button type="button" onclick="addOutputAssembleChildParam(this, 'sibling', '${containerId}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                添加兄弟节点
+                            </button>
+                        </div>
+                    `;
+                    existingAddBtn.replaceWith(newAddBtn);
+                }
+
+                // 添加子容器
+                const indent = 24 + (depth * 16);
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'children-container';
+                childrenContainer.style.cssText = `margin-left: ${indent}px;`;
+                paramItem.appendChild(childrenContainer);
+            } else {
+                if (parentDropdown) {
+                    const newAddBtn = document.createElement('button');
+                    newAddBtn.type = 'button';
+                    newAddBtn.className = 'add-item-btn';
+                    newAddBtn.onclick = function() { addOutputAssembleSiblingParam(this, containerId); };
+                    newAddBtn.style.cssText = `padding: ${rowPadding}; border: none; background: transparent;`;
+                    newAddBtn.textContent = '添加';
+                    parentDropdown.replaceWith(newAddBtn);
+                }
+            }
+
+            paramItem.dataset.paramType = newType;
+        }
+
+        /**
+         * 打开参数配置弹窗
+         * @param {string} paramId - 参数ID
+         * @param {string} paramName - 参数名称
+         * @param {string} paramType - 参数类型
+         * @param {string} sourceType - 来源类型（'connector' 或 'output'）
+         */
+        function openParamConfigModal(paramId, paramName, paramType, sourceType) {
+            const modal = document.getElementById('paramConfigModal');
+            const nameInput = document.getElementById('paramConfigName');
+            const typeInput = document.getElementById('paramConfigType');
+            const fixedRadio = document.getElementById('configTypeFixed');
+            const referenceRadio = document.getElementById('configTypeReference');
+            const fixedArea = document.getElementById('paramConfigFixedArea');
+            const referenceArea = document.getElementById('paramConfigReferenceArea');
+            const fixedValueInput = document.getElementById('paramConfigFixedValue');
+
+            // 保存当前配置参数信息
+            window.currentParamConfig = { paramId, paramName, paramType, sourceType };
+
+            // 设置基本信息
+            nameInput.value = paramName;
+            typeInput.value = paramType;
+
+            // 获取当前参数配置
+            let currentConfig = { type: '', value: '', refName: '' };
+            if (sourceType === 'connector') {
+                // 从连接器出参中获取配置
+                const paramItem = document.querySelector(`.param-item[data-id="${paramId}"]`);
+                if (paramItem) {
+                    const param = findParamById(getConnectorOutputParams(), paramId);
+                    if (param && param.config) {
+                        currentConfig = param.config;
+                    }
+                }
+            } else if (sourceType === 'output') {
+                // 从数据输出节点参数中获取配置
+                const paramItem = document.querySelector(`.param-item[data-id="${paramId}"]`);
+                if (paramItem) {
+                    const param = findParamById(getOutputAssembleParams(), paramId);
+                    if (param && param.config) {
+                        currentConfig = param.config;
+                    }
+                }
+            }
+
+            // 重置选择
+            fixedRadio.checked = false;
+            referenceRadio.checked = false;
+            fixedArea.style.display = 'none';
+            referenceArea.style.display = 'none';
+            fixedValueInput.value = '';
+
+            // 如果有配置，恢复配置
+            if (currentConfig.type === 'fixed') {
+                fixedRadio.checked = true;
+                fixedArea.style.display = 'block';
+                fixedValueInput.value = currentConfig.value || '';
+            } else if (currentConfig.type === 'reference') {
+                referenceRadio.checked = true;
+                referenceArea.style.display = 'block';
+                // 高亮选中的引用参数
+                setTimeout(() => {
+                    const refItems = document.querySelectorAll('.reference-param-item');
+                    refItems.forEach(item => {
+                        item.classList.toggle('selected', item.dataset.paramName === currentConfig.refName);
+                    });
+                }, 0);
+            }
+
+            // 渲染引用参数列表
+            renderReferenceParamList(sourceType);
+
+            modal.classList.add('active');
+        }
+
+        /**
+         * 关闭参数配置弹窗
+         */
+        function closeParamConfigModal() {
+            document.getElementById('paramConfigModal').classList.remove('active');
+            window.currentParamConfig = null;
+        }
+
+        /**
+         * 处理参数配置类型变更
+         */
+        function handleParamConfigTypeChange() {
+            const fixedRadio = document.getElementById('configTypeFixed');
+            const fixedArea = document.getElementById('paramConfigFixedArea');
+            const referenceArea = document.getElementById('paramConfigReferenceArea');
+
+            if (fixedRadio.checked) {
+                fixedArea.style.display = 'block';
+                referenceArea.style.display = 'none';
+            } else {
+                fixedArea.style.display = 'none';
+                referenceArea.style.display = 'block';
+            }
+        }
+
+        /**
+         * 渲染引用参数列表
+         * @param {string} sourceType - 来源类型
+         */
+        function renderReferenceParamList(sourceType) {
+            const container = document.getElementById('paramConfigReferenceList');
+            let params = [];
+
+            // 获取可引用的参数列表
+            if (sourceType === 'output') {
+                // 数据输出节点：引用连接器节点的出参
+                params = getConnectorOutputParams();
+            }
+
+            if (params.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-tertiary); font-size: 13px; text-align: center; padding: 16px;">暂无可引用的参数</div>';
+            } else {
+                container.innerHTML = params.map(p => `
+                    <div class="reference-param-item" data-param-name="${p.paramName}" data-param-type="${p.paramType}"
+                         onclick="selectReferenceParam(this)">
+                        <span class="param-name">${p.paramName}</span>
+                        <span class="param-type">(${p.paramType})</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        /**
+         * 选择引用参数
+         * @param {HTMLElement} item - 参数项元素
+         */
+        function selectReferenceParam(item) {
+            const items = document.querySelectorAll('.reference-param-item');
+            items.forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+        }
+
+        /**
+         * 保存参数配置
+         */
+        function saveParamConfig() {
+            const { paramId, sourceType } = window.currentParamConfig;
+            if (!paramId) return;
+
+            const fixedRadio = document.getElementById('configTypeFixed');
+            const fixedValueInput = document.getElementById('paramConfigFixedValue');
+
+            let config = { type: '', value: '', refName: '' };
+
+            if (fixedRadio.checked) {
+                config.type = 'fixed';
+                config.value = fixedValueInput.value;
+            } else {
+                config.type = 'reference';
+                const selectedItem = document.querySelector('.reference-param-item.selected');
+                if (selectedItem) {
+                    config.refName = selectedItem.dataset.paramName;
+                }
+            }
+
+            // 更新参数配置
+            if (sourceType === 'connector') {
+                updateConnectorOutputParamConfig(paramId, config);
+            } else if (sourceType === 'output') {
+                updateOutputAssembleParamConfig(paramId, config);
+            }
+
+            closeParamConfigModal();
+        }
+
+        /**
+         * 获取连接器节点出参配置
+         * @returns {Array} 参数数组
+         */
+        function getConnectorOutputParams() {
+            const headerParams = collectConnectorOutputParams(document.getElementById('connector-output-params-header'));
+            const bodyParams = collectConnectorOutputParams(document.getElementById('connector-output-params-body'));
+            return [...headerParams, ...bodyParams];
+        }
+
+        /**
+         * 递归收集连接器出参配置（包含config）
+         * @param {HTMLElement} container - 容器元素
+         * @returns {Array} 参数字数组
+         */
+        function collectConnectorOutputParams(container) {
+            if (!container) return [];
+
+            const paramItems = container.querySelectorAll(':scope > .param-item');
+            const params = [];
+
+            paramItems.forEach(item => {
+                const name = item.querySelector('.param-name').value.trim();
+                const paramType = item.querySelector('.param-type').value;
+                const isComplex = isComplexType(paramType);
+                const configBtn = item.querySelector('.btn');
+
+                // 获取配置信息
+                let config = { type: '', value: '', refName: '' };
+                if (configBtn) {
+                    const btnText = configBtn.textContent;
+                    if (btnText.includes('固定值:')) {
+                        config.type = 'fixed';
+                        config.value = btnText.replace('固定值:', '').trim();
+                    } else if (btnText.includes('引用:')) {
+                        config.type = 'reference';
+                        config.refName = btnText.replace('引用:', '').trim();
+                    }
+                }
+
+                if (name) {
+                    const paramData = {
+                        id: item.dataset.id,
+                        paramName: name,
+                        paramType: paramType,
+                        config: config,
+                        children: []
+                    };
+
+                    if (isComplex) {
+                        const childrenContainer = item.querySelector('.children-container');
+                        if (childrenContainer) {
+                            paramData.children = collectConnectorOutputParams(childrenContainer);
+                        }
+                    }
+
+                    params.push(paramData);
+                }
+            });
+
+            return params;
+        }
+
+        /**
+         * 获取数据输出节点参数组装配置
+         * @returns {Array} 参数数组
+         */
+        function getOutputAssembleParams() {
+            const headerParams = collectOutputAssembleParams(document.getElementById('output-assemble-params-header'));
+            const bodyParams = collectOutputAssembleParams(document.getElementById('output-assemble-params-body'));
+            return [...headerParams, ...bodyParams];
+        }
+
+        /**
+         * 递归收集数据输出节点参数配置（包含config）
+         * @param {HTMLElement} container - 容器元素
+         * @returns {Array} 参数字数组
+         */
+        function collectOutputAssembleParams(container) {
+            if (!container) return [];
+
+            const paramItems = container.querySelectorAll(':scope > .param-item');
+            const params = [];
+
+            paramItems.forEach(item => {
+                const name = item.querySelector('.param-name').value.trim();
+                const paramType = item.querySelector('.param-type').value;
+                const isComplex = isComplexType(paramType);
+                const desc = item.querySelector('.param-desc').value.trim();
+                const configBtn = item.querySelector('.btn');
+
+                // 获取配置信息
+                let config = { type: '', value: '', refName: '' };
+                if (configBtn) {
+                    const btnText = configBtn.textContent;
+                    if (btnText.includes('固定值:')) {
+                        config.type = 'fixed';
+                        config.value = btnText.replace('固定值:', '').trim();
+                    } else if (btnText.includes('引用:')) {
+                        config.type = 'reference';
+                        config.refName = btnText.replace('引用:', '').trim();
+                    }
+                }
+
+                if (name) {
+                    const paramData = {
+                        id: item.dataset.id,
+                        paramName: name,
+                        paramType: paramType,
+                        description: desc,
+                        config: config,
+                        children: []
+                    };
+
+                    if (isComplex) {
+                        const childrenContainer = item.querySelector('.children-container');
+                        if (childrenContainer) {
+                            paramData.children = collectOutputAssembleParams(childrenContainer);
+                        }
+                    }
+
+                    params.push(paramData);
+                }
+            });
+
+            return params;
+        }
+
+        /**
+         * 根据ID查找参数
+         * @param {Array} params - 参数数组
+         * @param {string} paramId - 参数ID
+         * @returns {Object|null} 找到的参数或null
+         */
+        function findParamById(params, paramId) {
+            for (const param of params) {
+                if (param.id === paramId) return param;
+                if (param.children && param.children.length > 0) {
+                    const found = findParamById(param.children, paramId);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        /**
+         * 更新连接器出参配置
+         * @param {string} paramId - 参数ID
+         * @param {Object} config - 配置对象
+         */
+        function updateConnectorOutputParamConfig(paramId, config) {
+            const paramItem = document.querySelector(`#connector-output-params-header .param-item[data-id="${paramId}"], #connector-output-params-body .param-item[data-id="${paramId}"]`);
+            if (!paramItem) return;
+
+            let configText = '配置';
+            if (config.type === 'fixed') {
+                configText = `固定值: ${config.value || '-'}`;
+            } else if (config.type === 'reference') {
+                configText = `引用: ${config.refName || '-'}`;
+            }
+
+            const configBtn = paramItem.querySelector('.btn');
+            if (configBtn) {
+                configBtn.textContent = configText;
+                // 更新onclick以保存新的配置
+                configBtn.onclick = function() {
+                    openParamConfigModal(paramId, paramItem.querySelector('.param-name').value, paramItem.querySelector('.param-type').value, 'connector');
+                };
+            }
+        }
+
+        /**
+         * 更新数据输出节点参数配置
+         * @param {string} paramId - 参数ID
+         * @param {Object} config - 配置对象
+         */
+        function updateOutputAssembleParamConfig(paramId, config) {
+            const paramItem = document.querySelector(`#output-assemble-params-header .param-item[data-id="${paramId}"], #output-assemble-params-body .param-item[data-id="${paramId}"]`);
+            if (!paramItem) return;
+
+            let configText = '配置';
+            if (config.type === 'fixed') {
+                configText = `固定值: ${config.value || '-'}`;
+            } else if (config.type === 'reference') {
+                configText = `引用: ${config.refName || '-'}`;
+            }
+
+            const configBtn = paramItem.querySelector('.btn');
+            if (configBtn) {
+                configBtn.textContent = configText;
+                // 更新onclick以保存新的配置
+                configBtn.onclick = function() {
+                    openParamConfigModal(paramId, paramItem.querySelector('.param-name').value, paramItem.querySelector('.param-type').value, 'output');
+                };
+            }
+        }
+
+        // ========================================
+        // 连接器模拟数据
+        // ========================================
+        const CONNECTOR_DATA = {
+            'c1': {
+                id: 'c1',
+                name: 'HTTP请求连接器',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        outputParams: {
+                            header: [
+                                { id: 'p1', paramName: 'Content-Type', paramType: 'string', carrier: 'header', description: '内容类型' }
+                            ],
+                            body: [
+                                { id: 'p2', paramName: 'code', paramType: 'number', carrier: 'body', description: '状态码' },
+                                { id: 'p3', paramName: 'data', paramType: 'object', carrier: 'body', description: '响应数据', children: [
+                                    { id: 'p4', paramName: 'id', paramType: 'number', carrier: 'body', description: '数据ID' },
+                                    { id: 'p5', paramName: 'name', paramType: 'string', carrier: 'body', description: '数据名称' }
+                                ]}
+                            ]
+                        }
+                    },
+                    {
+                        id: 'v2',
+                        name: 'v0.9.0',
+                        outputParams: {
+                            header: [],
+                            body: [
+                                { id: 'p6', paramName: 'result', paramType: 'string', carrier: 'body', description: '结果' }
+                            ]
+                        }
+                    }
+                ]
+            },
+            'c2': {
+                id: 'c2',
+                name: '数据库连接器',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        outputParams: {
+                            header: [],
+                            body: [
+                                { id: 'p7', paramName: 'rows', paramType: 'array', carrier: 'body', description: '查询结果', children: [] }
+                            ]
+                        }
+                    }
+                ]
+            },
+            'c3': {
+                id: 'c3',
+                name: 'Redis缓存连接器',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        outputParams: {
+                            header: [],
+                            body: [
+                                { id: 'p8', paramName: 'value', paramType: 'string', carrier: 'body', description: '缓存值' }
+                            ]
+                        }
+                    }
+                ]
+            }
+        };
+
+        // ========================================
+        // 节点类型定义
+        // ========================================
+        const NODE_TYPES = [
+            {
+                type: 'trigger',
+                name: '触发器',
+                desc: '流程入口节点',
+                icon: '⚡'
+            },
+            {
+                type: 'action',
+                name: '连接器',
+                desc: '连接器节点',
+                icon: '⚙️'
+            },
+            {
+                type: 'output',
+                name: '数据输出',
+                desc: '返回处理结果',
+                icon: '📤'
+            },
+            {
+                type: 'data',
+                name: '数据处理',
+                desc: '数据转换和处理节点',
+                icon: '🔮'
+            },
+            {
+                type: 'error',
+                name: '异常处理',
+                desc: '处理流程异常',
+                icon: '❌'
+            }
+        ];
+
+        // ========================================
+        // 状态管理
+        // ========================================
+        let nodes = [];
+        let edges = [];
+        let selectedNode = null;
+        let isDragging = false;
+        let dragNode = null;
+        let dragOffset = { x: 0, y: 0 };
+        let isConnecting = false;
+        let connectStart = null;
+
+        // 版本状态常量
+        const FLOW_VERSION_STATUS = {
+            DRAFT: 'draft',
+            PUBLISHED: 'published',
+            INVALID: 'invalid',
+            PENDING: 'pending',
+            REJECTED: 'rejected'
+        };
+
+        // 连接流版本模拟数据
+        let flowVersionData = {
+            currentVersion: 'v1',
+            versions: [
+                { id: 'v1', name: 'v1.0.0', createdAt: '2024-01-15 10:30:00', status: FLOW_VERSION_STATUS.DRAFT },
+                { id: 'v2', name: 'v0.9.0', createdAt: '2024-01-10 09:15:00', status: FLOW_VERSION_STATUS.PUBLISHED },
+                { id: 'v3', name: 'v0.8.0', createdAt: '2024-01-05 14:20:00', status: FLOW_VERSION_STATUS.INVALID },
+                { id: 'v4', name: 'v0.7.0', createdAt: '2024-01-01 11:30:00', status: FLOW_VERSION_STATUS.PENDING },
+                { id: 'v5', name: 'v0.6.0', createdAt: '2023-12-28 16:45:00', status: FLOW_VERSION_STATUS.REJECTED }
+            ]
+        };
+
+        // 版本状态显示名称
+        const VERSION_STATUS_TEXT = {
+            [FLOW_VERSION_STATUS.DRAFT]: '草稿',
+            [FLOW_VERSION_STATUS.PUBLISHED]: '已发布',
+            [FLOW_VERSION_STATUS.INVALID]: '已失效',
+            [FLOW_VERSION_STATUS.PENDING]: '审批中',
+            [FLOW_VERSION_STATUS.REJECTED]: '已驳回'
+        };
+
+        // ========================================
+        // 工具函数
+        // ========================================
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function generateId() {
+            return 'n' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function getUrlParam(name) {
+            const params = new URLSearchParams(window.location.search);
+            return params.get(name);
+        }
+
+        // ========================================
+        // 版本控制
+        // ========================================
+
+        /**
+         * 版本切换
+         * 当用户选择不同版本时调用，更新当前版本并刷新按钮状态和画布状态
+         * @param {string} versionId - 选择的版本ID
+         */
+        function handleVersionChange(versionId) {
+            flowVersionData.currentVersion = versionId;
+            const version = flowVersionData.versions.find(v => v.id === versionId);
+
+            if (version) {
+                updateVersionActions(version.status);
+                updateCanvasState(version.status);
+                showToast(`已切换到版本: ${version.name}`, 'success');
+            }
+        }
+
+        /**
+         * 根据版本状态更新按钮
+         * 根据当前版本的状态（草稿/已发布/已失效/审批中/已驳回）显示不同的操作按钮
+         */
+        function updateVersionActions(status) {
+            const container = document.getElementById('versionActions');
+            let buttons = '';
+
+            switch (status) {
+                case FLOW_VERSION_STATUS.DRAFT:
+                    buttons = `
+                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                        <button class="btn" onclick="openDebugModal()">调试</button>
+                        <button class="btn" onclick="handleSaveFlow()">保存</button>
+                        <button class="btn btn-primary" onclick="handlePublishFlow()">发布</button>
+                    `;
+                    break;
+                case FLOW_VERSION_STATUS.PUBLISHED:
+                    buttons = `
+                        <button class="btn" onclick="handleNewDraftVersion()">新增草稿</button>
+                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                        <button class="btn" onclick="openDebugModal()">调试</button>
+                        <button class="btn" style="color: var(--warning-color);" onclick="handleInvalidateVersion()">失效</button>
+                    `;
+                    break;
+                case FLOW_VERSION_STATUS.INVALID:
+                    buttons = `
+                        <button class="btn" onclick="handleNewDraftVersion()">新增草稿</button>
+                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                    `;
+                    break;
+                case FLOW_VERSION_STATUS.PENDING:
+                    buttons = `
+                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                        <button class="btn" style="color: var(--warning-color);" onclick="handleWithdrawVersion()">撤回</button>
+                    `;
+                    break;
+                case FLOW_VERSION_STATUS.REJECTED:
+                    buttons = `
+                        <button class="btn" onclick="handleNewDraftVersion()">新增草稿</button>
+                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                    `;
+                    break;
+            }
+
+            container.innerHTML = buttons;
+        }
+
+        /**
+         * 更新画布状态（根据版本状态）
+         * 非草稿版本时画布只读，草稿版本时可编辑
+         * @param {string} status - 版本状态
+         */
+        function updateCanvasState(status) {
+            const canvas = document.getElementById('canvas');
+            const isEditable = status === FLOW_VERSION_STATUS.DRAFT;
+
+            // 禁用/启用节点拖拽
+            if (!isEditable) {
+                canvas.style.pointerEvents = 'none';
+                canvas.style.opacity = '0.8';
+
+                // 添加只读提示
+                const existingMsg = document.querySelector('.canvas-readonly-msg');
+                if (!existingMsg) {
+                    const msg = document.createElement('div');
+                    msg.className = 'canvas-readonly-msg';
+                    msg.style.cssText = 'position: absolute; top: 10px; right: 10px; background: var(--warning-color); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 50;';
+                    msg.textContent = '当前版本只读，不可编辑';
+                    canvas.appendChild(msg);
+                }
+            } else {
+                canvas.style.pointerEvents = 'auto';
+                canvas.style.opacity = '1';
+
+                // 移除只读提示
+                const existingMsg = document.querySelector('.canvas-readonly-msg');
+                if (existingMsg) existingMsg.remove();
+            }
+        }
+
+        // 版本操作函数
+        function handleNewDraftVersion() {
+            const newVersion = {
+                id: 'v' + Date.now(),
+                name: 'v' + (flowVersionData.versions.length + 1) + '.0',
+                createdAt: new Date().toLocaleString('zh-CN'),
+                status: FLOW_VERSION_STATUS.DRAFT
+            };
+
+            flowVersionData.versions.unshift(newVersion);
+            flowVersionData.currentVersion = newVersion.id;
+
+            // 更新下拉框
+            const select = document.getElementById('flowVersionSelect');
+            const option = document.createElement('option');
+            option.value = newVersion.id;
+            option.textContent = `${newVersion.name} (${newVersion.createdAt}) [草稿]`;
+            select.insertBefore(option, select.firstChild);
+            select.value = newVersion.id;
+
+            updateVersionActions(FLOW_VERSION_STATUS.DRAFT);
+            updateCanvasState(FLOW_VERSION_STATUS.DRAFT);
+            showToast('已创建新草稿版本', 'success');
+        }
+
+        function handlePublishFlow() {
+            showToast('版本发布功能待实现', 'success');
+        }
+
+        function handleInvalidateVersion() {
+            showConfirm(
+                '确认失效此版本？',
+                '失效后版本将无法再次编辑和部署，是否继续？',
+                '#faad14',
+                '确认失效',
+                () => {
+                    const version = flowVersionData.versions.find(v => v.id === flowVersionData.currentVersion);
+                    if (version) {
+                        version.status = FLOW_VERSION_STATUS.INVALID;
+                        showToast('版本已失效', 'success');
+                        updateVersionActions(FLOW_VERSION_STATUS.INVALID);
+                    }
+                }
+            );
+        }
+
+        function handleDeleteVersion() {
+            showConfirm(
+                '确认删除此版本？',
+                '删除后版本数据将无法恢复，是否继续？',
+                '#ff4d4f',
+                '确认删除',
+                () => {
+                    flowVersionData.versions = flowVersionData.versions.filter(
+                        v => v.id !== flowVersionData.currentVersion
+                    );
+                    showToast('版本已删除', 'success');
+
+                    // 切换到第一个可用版本
+                    if (flowVersionData.versions.length > 0) {
+                        const firstVersion = flowVersionData.versions[0];
+                        flowVersionData.currentVersion = firstVersion.id;
+                        document.getElementById('flowVersionSelect').value = firstVersion.id;
+                        updateVersionActions(firstVersion.status);
+                        updateCanvasState(firstVersion.status);
+                    }
+                }
+            );
+        }
+
+        function handleWithdrawVersion() {
+            const version = flowVersionData.versions.find(v => v.id === flowVersionData.currentVersion);
+            if (version) {
+                version.status = FLOW_VERSION_STATUS.DRAFT;
+                showToast('版本已撤回', 'success');
+                updateVersionActions(FLOW_VERSION_STATUS.DRAFT);
+                updateCanvasState(FLOW_VERSION_STATUS.DRAFT);
+            }
+        }
+
+        function handleSaveFlow() {
+            handleSave();
+        }
+
+        // 更多配置抽屉功能
+        function openMoreConfig() {
+            document.getElementById('moreConfigDrawer').classList.add('active');
+        }
+
+        function closeMoreConfigDrawer() {
+            document.getElementById('moreConfigDrawer').classList.remove('active');
+        }
+
+        function toggleCacheConfig(enabled) {
+            document.getElementById('cacheConfig').style.display = enabled ? 'block' : 'none';
+        }
+
+        function saveMoreConfig() {
+            const rateLimit = document.getElementById('rateLimitSelect').value;
+            const cacheEnabled = document.getElementById('cacheEnabled').checked;
+            const cacheTime = document.getElementById('cacheTime').value;
+            const cacheKey = document.getElementById('cacheKeySelect').value;
+
+            // 模拟保存
+            console.log('保存更多配置:', {
+                rateLimit,
+                cacheEnabled,
+                cacheTime,
+                cacheKey
+            });
+
+            closeMoreConfigDrawer();
+            showToast('配置已保存', 'success');
+        }
+
+        // 调试弹窗功能
+        function openDebugModal() {
+            // 获取触发器节点的入参配置
+            const triggerNode = nodes.find(n => n.type === 'trigger');
+
+            if (!triggerNode) {
+                showToast('未找到触发器节点', 'error');
+                return;
+            }
+
+            const inputParams = triggerNode.data.inputParams || { header: [], body: [], query: [] };
+            const allParams = [...inputParams.header, ...inputParams.body, ...inputParams.query];
+
+            if (allParams.length === 0) {
+                showToast('触发器未配置入参', 'error');
+                return;
+            }
+
+            const paramsList = document.getElementById('debugParamsList');
+            paramsList.innerHTML = allParams.map(param => `
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                    <div style="flex: 1;">
+                        <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px;">
+                            ${param.paramName} <span style="color: var(--text-tertiary); font-weight: normal;">(${param.paramType})</span>
+                        </div>
+                        <input type="text"
+                               class="debug-param-value"
+                               data-param-name="${param.paramName}"
+                               data-param-type="${param.paramType}"
+                               placeholder="请输入参数值"
+                               style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
+                    </div>
+                </div>
+            `).join('');
+
+            // 清空输出
+            document.getElementById('debugOutput').innerHTML = '<span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>';
+
+            openModal('debugModal');
+        }
+
+        function closeDebugModal() {
+            closeModal('debugModal');
+        }
+
+        function executeDebug() {
+            // 收集参数值
+            const paramInputs = document.querySelectorAll('.debug-param-value');
+            const params = {};
+
+            paramInputs.forEach(input => {
+                params[input.dataset.paramName] = {
+                    value: input.value,
+                    type: input.dataset.paramType
+                };
+            });
+
+            // 模拟调试接口调用
+            console.log('执行调试，参数:', params);
+
+            // 显示加载状态
+            const output = document.getElementById('debugOutput');
+            output.innerHTML = '<span style="color: var(--primary-color);">正在执行调试...</span>';
+
+            // 模拟异步返回结果
+            setTimeout(() => {
+                const result = {
+                    code: 200,
+                    message: 'success',
+                    data: {
+                        result: '这是调试执行的输出结果',
+                        timestamp: new Date().toLocaleString()
+                    }
+                };
+
+                output.innerHTML = `<span style="color: var(--success-color);">执行成功 ✓</span>\n\n${JSON.stringify(result, null, 2)}`;
+                showToast('调试执行成功', 'success');
+            }, 1000);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function showConfirm(title, message, color, btnText, callback) {
+            if (confirm(message)) {
+                callback();
+            }
+        }
+
+        // ========================================
+        // 节点库渲染
+        // ========================================
+        function renderNodeLibrary() {
+            const container = document.getElementById('nodeList');
+            const hasTrigger = nodes.some(n => n.type === 'trigger');
+
+            container.innerHTML = NODE_TYPES.map(node => {
+                const isDisabled = node.type === 'trigger' && hasTrigger;
+                return `
+                    <div class="node-card ${isDisabled ? 'disabled' : ''}"
+                         draggable="${!isDisabled}"
+                         data-type="${node.type}"
+                         ondragstart="handleDragStart(event, '${node.type}')">
+                        <div class="node-icon ${node.type}">${node.icon}</div>
+                        <div class="node-info">
+                            <div class="node-name">
+                                ${node.name}
+                                ${isDisabled ? '<span class="node-added">(已添加)</span>' : ''}
+                            </div>
+                            <div class="node-desc">${node.desc}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ========================================
+        // 画布渲染
+        // ========================================
+        function renderCanvas() {
+            const canvas = document.getElementById('canvas');
+
+            // 渲染节点
+            let nodesHtml = nodes.map(node => {
+                const nodeType = NODE_TYPES.find(t => t.type === node.type);
+                return `
+                    <div class="flow-node ${node.type} ${selectedNode?.id === node.id ? 'selected' : ''}"
+                         id="node-${node.id}"
+                         style="left: ${node.x}px; top: ${node.y}px;"
+                         onmousedown="handleNodeMouseDown(event, '${node.id}')"
+                         onclick="handleNodeClick('${node.id}')">
+                        <div class="node-port top" onmouseup="handlePortMouseUp(event, '${node.id}', 'top')"></div>
+                        <div class="node-header">
+                            <div class="node-header-icon" style="background: ${getNodeColor(node.type)}">${nodeType?.icon || '?'}</div>
+                            <div class="node-header-title">${node.data.label || nodeType?.name || '未命名'}</div>
+                        </div>
+                        <div class="node-body">${node.data.description || nodeType?.desc || ''}</div>
+                        <div class="node-port bottom" onmouseup="handlePortMouseUp(event, '${node.id}', 'bottom')"></div>
+                    </div>
+                `;
+            }).join('');
+
+            // 渲染连线
+            let edgesHtml = edges.map(edge => {
+                const sourceNode = nodes.find(n => n.id === edge.source);
+                const targetNode = nodes.find(n => n.id === edge.target);
+                if (!sourceNode || !targetNode) return '';
+
+                const startX = sourceNode.x + 80;
+                const startY = sourceNode.y + 80;
+                const endX = targetNode.x + 80;
+                const endY = targetNode.y;
+
+                const path = generateBezierPath(startX, startY, endX, endY);
+                return `
+                    <svg class="flow-edge animated" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible;">
+                        <path d="${path}" />
+                    </svg>
+                `;
+            }).join('');
+
+            // 空状态
+            const emptyState = nodes.length === 0 ? `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text">从左侧拖拽节点到此处开始编排流程</div>
+                </div>
+            ` : '';
+
+            canvas.innerHTML = edgesHtml + nodesHtml + emptyState;
+
+            // 更新节点计数
+            document.getElementById('nodeCount').textContent = `${nodes.length} 个节点 · ${edges.length} 条连线`;
+        }
+
+        function getNodeColor(type) {
+            const colors = {
+                trigger: '#1890ff',
+                action: '#52c41a',
+                condition: '#faad14',
+                data: '#722ed1',
+                output: '#eb2f96',
+                error: '#ff4d4f'
+            };
+            return colors[type] || '#999';
+        }
+
+        function generateBezierPath(x1, y1, x2, y2) {
+            const midY = (y1 + y2) / 2;
+            return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+        }
+
+        // ========================================
+        // 节点拖拽
+        // ========================================
+        function handleDragStart(event, type) {
+            const nodeType = NODE_TYPES.find(t => t.type === type);
+            if (!nodeType) return;
+
+            // 检查触发器是否已存在
+            if (type === 'trigger' && nodes.some(n => n.type === 'trigger')) {
+                event.preventDefault();
+                return;
+            }
+
+            event.dataTransfer.setData('text/plain', JSON.stringify({
+                type,
+                label: nodeType.name,
+                description: nodeType.desc
+            }));
+        }
+
+        document.getElementById('canvas').addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.getElementById('canvas').addEventListener('drop', (e) => {
+            e.preventDefault();
+            const data = e.dataTransfer.getData('text/plain');
+            if (!data) return;
+
+            try {
+                const nodeData = JSON.parse(data);
+                const canvas = document.getElementById('canvas');
+                const rect = canvas.getBoundingClientRect();
+
+                const newNode = {
+                    id: generateId(),
+                    type: nodeData.type,
+                    x: e.clientX - rect.left - 80,
+                    y: e.clientY - rect.top - 40,
+                    data: {
+                        label: nodeData.label,
+                        description: nodeData.description,
+                        config: {}
+                    }
+                };
+
+                nodes.push(newNode);
+                renderCanvas();
+                renderNodeLibrary();
+            } catch (err) {
+                console.error('解析节点数据失败', err);
+            }
+        });
+
+        // ========================================
+        // 节点移动
+        // ========================================
+        function handleNodeMouseDown(event, nodeId) {
+            if (event.target.classList.contains('node-port')) return;
+
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+
+            isDragging = true;
+            dragNode = node;
+
+            const nodeEl = document.getElementById(`node-${nodeId}`);
+            const rect = nodeEl.getBoundingClientRect();
+
+            dragOffset.x = event.clientX - rect.left;
+            dragOffset.y = event.clientY - rect.top;
+
+            event.preventDefault();
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !dragNode) return;
+
+            const canvas = document.getElementById('canvas');
+            const rect = canvas.getBoundingClientRect();
+
+            dragNode.x = e.clientX - rect.left - dragOffset.x;
+            dragNode.y = e.clientY - rect.top - dragOffset.y;
+
+            // 边界限制
+            dragNode.x = Math.max(0, Math.min(dragNode.x, rect.width - 160));
+            dragNode.y = Math.max(0, Math.min(dragNode.y, rect.height - 80));
+
+            renderCanvas();
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragNode = null;
+        });
+
+        // ========================================
+        // 节点点击和配置
+        // ========================================
+        function handleNodeClick(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+
+            selectedNode = node;
+            renderCanvas();
+            openDrawer(node);
+        }
+
+        function openDrawer(node) {
+            const drawer = document.getElementById('configDrawer');
+            const body = document.getElementById('drawerBody');
+
+            let configHtml = '';
+
+            // 根据节点类型生成配置表单
+            if (node.type === 'trigger') {
+                // 触发器节点配置
+                const systokenList = (node.data.systokenWhitelist || []).map((item, index) => `
+                    <div class="systoken-item">
+                        <input type="text" class="form-input systoken-input" value="${item.value || ''}" placeholder="请输入凭证值">
+                        <button type="button" class="btn" onclick="this.parentElement.remove()" style="padding: 6px 12px;">删除</button>
+                    </div>
+                `).join('');
+
+                const inputParams = node.data.inputParams || { header: [], body: [], query: [] };
+
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">触发方式</label>
+                        <select class="form-select" id="nodeTriggerType">
+                            <option value="http" ${node.data.triggerType === 'http' ? 'selected' : ''}>HTTP触发</option>
+                            <option value="schedule" ${node.data.triggerType === 'schedule' ? 'selected' : ''}>定时触发</option>
+                            <option value="event" ${node.data.triggerType === 'event' ? 'selected' : ''}>事件触发</option>
+                        </select>
+                    </div>
+
+                    <!-- SYSTOKEN凭证白名单 -->
+                    <div class="form-group" style="margin-top: 24px;">
+                        <label class="form-label" style="font-weight: 600;">SYSTOKEN凭证白名单</label>
+                        <div class="systoken-list" id="systokenList">
+                            ${systokenList}
+                        </div>
+                        <button type="button" class="add-param-btn systoken-add-btn" onclick="addSystokenItem()">
+                            + 添加凭证
+                        </button>
+                    </div>
+
+                    <!-- 入参配置 -->
+                    <div class="form-group" style="margin-top: 24px;">
+                        <label class="form-label" style="font-weight: 600;">入参配置</label>
+                        <div class="param-tabs" id="triggerInputTabs">
+                            <button class="tab-btn active" onclick="switchTriggerInputTab('header')">HTTP请求头</button>
+                            <button class="tab-btn" onclick="switchTriggerInputTab('body')">HTTP请求体</button>
+                            <button class="tab-btn" onclick="switchTriggerInputTab('query')">URL查询参数</button>
+                        </div>
+                        <div class="param-tab-content" id="triggerInputContent">
+                            <div class="tab-panel active" data-tab="header">
+                                <div class="schema-list" id="trigger-input-params-header"></div>
+                                <button type="button" class="add-param-btn trigger-add-param-btn" data-tab="header" onclick="addTriggerInputParam('header')">+ 添加参数</button>
+                            </div>
+                            <div class="tab-panel" data-tab="body">
+                                <div class="schema-list" id="trigger-input-params-body"></div>
+                                <button type="button" class="add-param-btn trigger-add-param-btn" data-tab="body" onclick="addTriggerInputParam('body')">+ 添加参数</button>
+                            </div>
+                            <div class="tab-panel" data-tab="query">
+                                <div class="schema-list" id="trigger-input-params-query"></div>
+                                <button type="button" class="add-param-btn trigger-add-param-btn" data-tab="query" onclick="addTriggerInputParam('query')">+ 添加参数</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (node.type === 'action') {
+                // 连接器节点配置
+                const connectorOptions = Object.values(CONNECTOR_DATA).map(c =>
+                    `<option value="${c.id}" ${node.data.connectorId === c.id ? 'selected' : ''}>${c.name}</option>`
+                ).join('');
+
+                const currentConnector = CONNECTOR_DATA[node.data.connectorId];
+                const versionOptions = currentConnector
+                    ? currentConnector.versions.map(v =>
+                        `<option value="${v.id}" ${node.data.connectorVersionId === v.id ? 'selected' : ''}>${v.name}</option>`
+                      ).join('')
+                    : '<option value="">请先选择连接器</option>';
+
+                const displayParams = currentConnector
+                    ? (currentConnector.versions.find(v => v.id === node.data.connectorVersionId)?.outputParams || { header: [], body: [] })
+                    : { header: [], body: [] };
+
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">选择连接器</label>
+                        <select class="form-select" id="nodeConnector" onchange="handleConnectorChange(this.value)">
+                            <option value="">请选择连接器</option>
+                            ${connectorOptions}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">选择版本</label>
+                        <select class="form-select" id="nodeConnectorVersion" onchange="handleConnectorVersionChange(this.value)">
+                            ${versionOptions || '<option value="">请先选择连接器</option>'}
+                        </select>
+                    </div>
+
+                    <!-- 出参配置 -->
+                    <div class="form-group" style="margin-top: 24px;">
+                        <label class="form-label" style="font-weight: 600;">出参配置</label>
+                        <div class="param-tabs" id="connectorOutputTabs">
+                            <button class="tab-btn active" onclick="switchConnectorOutputTab('header')">HTTP请求头</button>
+                            <button class="tab-btn" onclick="switchConnectorOutputTab('body')">HTTP请求体</button>
+                        </div>
+                        <div class="param-tab-content" id="connectorOutputContent">
+                            <div class="tab-panel active" data-tab="header">
+                                <div class="schema-list" id="connector-output-params-header"></div>
+                            </div>
+                            <div class="tab-panel" data-tab="body">
+                                <div class="schema-list" id="connector-output-params-body"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                body.innerHTML = configHtml + `
+                    <div class="form-group" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                        <button class="btn" style="color: var(--error-color); border-color: var(--error-color);" onclick="deleteSelectedNode()">
+                            删除节点
+                        </button>
+                    </div>
+                `;
+
+                drawer.classList.add('active');
+
+                // 渲染出参配置（只读模式，不显示添加删除按钮）
+                renderConnectorOutputParams('connector-output-params-header', displayParams.header || []);
+                renderConnectorOutputParams('connector-output-params-body', displayParams.body || []);
+
+                return;
+            } else if (node.type === 'output') {
+                // 数据输出节点配置
+                const assembleParams = node.data.assembleParams || { header: [], body: [] };
+
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+
+                    <!-- 参数组装配置 -->
+                    <div class="form-group" style="margin-top: 24px;">
+                        <label class="form-label" style="font-weight: 600;">参数组装配置</label>
+                        <div class="param-tabs" id="outputAssembleTabs">
+                            <button class="tab-btn active" onclick="switchOutputAssembleTab('header')">HTTP请求头</button>
+                            <button class="tab-btn" onclick="switchOutputAssembleTab('body')">HTTP请求体</button>
+                        </div>
+                        <div class="param-tab-content" id="outputAssembleContent">
+                            <div class="tab-panel active" data-tab="header">
+                                <div class="schema-list" id="output-assemble-params-header"></div>
+                                <button type="button" class="add-param-btn output-add-param-btn" data-tab="header" onclick="addOutputAssembleParam('header')">+ 添加参数</button>
+                            </div>
+                            <div class="tab-panel" data-tab="body">
+                                <div class="schema-list" id="output-assemble-params-body"></div>
+                                <button type="button" class="add-param-btn output-add-param-btn" data-tab="body" onclick="addOutputAssembleParam('body')">+ 添加参数</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (node.type === 'error') {
+                // 异常处理节点配置
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">异常处理类型</label>
+                        <select class="form-select" id="nodeErrorType">
+                            <option value="continue" ${node.data.errorType === 'continue' ? 'selected' : ''}>继续执行</option>
+                            <option value="abort" ${node.data.errorType === 'abort' ? 'selected' : ''}>终止流程</option>
+                            <option value="retry" ${node.data.errorType === 'retry' ? 'selected' : ''}>重试</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">错误码</label>
+                        <input type="text" class="form-input" id="nodeErrorCode" value="${node.data.errorCode || ''}" placeholder="请输入错误码">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">错误信息</label>
+                        <input type="text" class="form-input" id="nodeErrorMessage" value="${node.data.errorMessage || ''}" placeholder="请输入错误信息">
+                    </div>
+                `;
+            } else if (node.type === 'data') {
+                // 数据处理节点配置
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">数据转换表达式</label>
+                        <textarea class="form-textarea" id="nodeDataTransform" placeholder="如: input.map(item => item.value)">${node.data.transform || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">输出字段</label>
+                        <input type="text" class="form-input" id="nodeOutputField" value="${node.data.outputField || ''}" placeholder="请输入输出字段名">
+                    </div>
+                `;
+            } else if (node.type === 'condition') {
+                // 条件节点配置
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">条件表达式</label>
+                        <textarea class="form-textarea" id="nodeCondition" placeholder="如: params.status == 'active'">${node.data.condition || ''}</textarea>
+                    </div>
+                `;
+            }
+
+            // 通用底部删除按钮（除触发器外都可删除）
+            const deleteButton = (node.type !== 'trigger') ? `
+                <div class="form-group" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                    <button class="btn" style="color: var(--error-color); border-color: var(--error-color);" onclick="deleteSelectedNode()">
+                        删除节点
+                    </button>
+                </div>
+            ` : '';
+
+            body.innerHTML = configHtml + deleteButton;
+
+            drawer.classList.add('active');
+
+            // 触发器节点：渲染入参配置
+            if (node.type === 'trigger') {
+                const inputParams = node.data.inputParams || { header: [], body: [], query: [] };
+                renderParams('trigger-input-params-header', inputParams.header || []);
+                renderParams('trigger-input-params-body', inputParams.body || []);
+                renderParams('trigger-input-params-query', inputParams.query || []);
+                // 更新添加按钮显示状态
+                updateTriggerAddParamBtnVisibility('header');
+                updateTriggerAddParamBtnVisibility('body');
+                updateTriggerAddParamBtnVisibility('query');
+            }
+
+            // 数据输出节点：渲染参数组装配置
+            if (node.type === 'output') {
+                const assembleParams = node.data.assembleParams || { header: [], body: [] };
+                renderOutputAssembleParams('output-assemble-params-header', assembleParams.header || []);
+                renderOutputAssembleParams('output-assemble-params-body', assembleParams.body || []);
+            }
+        }
+
+        function closeDrawer() {
+            document.getElementById('configDrawer').classList.remove('active');
+            selectedNode = null;
+            renderCanvas();
+        }
+
+        function saveNodeConfig() {
+            if (!selectedNode) return;
+
+            // 基础配置
+            selectedNode.data.label = document.getElementById('nodeLabel')?.value || '';
+            selectedNode.data.description = document.getElementById('nodeDesc')?.value || '';
+
+            // 根据节点类型保存特定配置
+            if (selectedNode.type === 'trigger') {
+                // 触发器配置
+                selectedNode.data.triggerType = document.getElementById('nodeTriggerType')?.value;
+
+                // SYSTOKEN凭证白名单
+                const systokenInputs = document.querySelectorAll('.systoken-input');
+                selectedNode.data.systokenWhitelist = Array.from(systokenInputs).map((input, index) => ({
+                    id: `t${index}`,
+                    value: input.value.trim()
+                })).filter(item => item.value);
+
+                // 入参配置
+                selectedNode.data.inputParams = {
+                    header: collectParams(document.getElementById('trigger-input-params-header')),
+                    body: collectParams(document.getElementById('trigger-input-params-body')),
+                    query: collectParams(document.getElementById('trigger-input-params-query'))
+                };
+            } else if (selectedNode.type === 'action') {
+                // 连接器配置
+                selectedNode.data.connectorId = document.getElementById('nodeConnector')?.value;
+                selectedNode.data.connectorVersionId = document.getElementById('nodeConnectorVersion')?.value;
+                selectedNode.data.outputParams = {
+                    header: collectConnectorOutputParams(document.getElementById('connector-output-params-header')),
+                    body: collectConnectorOutputParams(document.getElementById('connector-output-params-body'))
+                };
+            } else if (selectedNode.type === 'output') {
+                // 数据输出配置
+                selectedNode.data.assembleParams = {
+                    header: collectOutputAssembleParams(document.getElementById('output-assemble-params-header')),
+                    body: collectOutputAssembleParams(document.getElementById('output-assemble-params-body'))
+                };
+            } else if (selectedNode.type === 'error') {
+                // 异常处理配置
+                selectedNode.data.errorType = document.getElementById('nodeErrorType')?.value;
+                selectedNode.data.errorCode = document.getElementById('nodeErrorCode')?.value;
+                selectedNode.data.errorMessage = document.getElementById('nodeErrorMessage')?.value;
+            } else if (selectedNode.type === 'data') {
+                // 数据处理配置
+                selectedNode.data.transform = document.getElementById('nodeDataTransform')?.value;
+                selectedNode.data.outputField = document.getElementById('nodeOutputField')?.value;
+            } else if (selectedNode.type === 'condition') {
+                // 条件配置
+                selectedNode.data.condition = document.getElementById('nodeCondition')?.value;
+            }
+
+            closeDrawer();
+            renderCanvas();
+            showToast('配置已保存', 'success');
+        }
+
+        function deleteSelectedNode() {
+            if (!selectedNode) return;
+
+            // 触发器不能删除
+            if (selectedNode.type === 'trigger') {
+                showToast('触发器节点不能删除', 'error');
+                return;
+            }
+
+            // 删除节点
+            nodes = nodes.filter(n => n.id !== selectedNode.id);
+
+            // 删除相关连线
+            edges = edges.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id);
+
+            closeDrawer();
+            renderCanvas();
+            renderNodeLibrary();
+            showToast('节点已删除', 'success');
+        }
+
+        // ========================================
+        // 连接线
+        // ========================================
+        function handlePortMouseUp(event, nodeId, portType) {
+            if (!isConnecting) {
+                isConnecting = true;
+                connectStart = { nodeId, portType };
+            } else {
+                // 创建连线
+                if (connectStart.nodeId !== nodeId) {
+                    const edge = {
+                        id: generateId(),
+                        source: connectStart.nodeId,
+                        target: nodeId
+                    };
+
+                    // 检查是否已存在相同连线
+                    const exists = edges.some(e =>
+                        e.source === edge.source && e.target === edge.target
+                    );
+
+                    if (!exists) {
+                        edges.push(edge);
+                        renderCanvas();
+                    }
+                }
+
+                isConnecting = false;
+                connectStart = null;
+            }
+        }
+
+        // ========================================
+        // 保存和返回
+        // ========================================
+        function handleSave() {
+            const config = {
+                nodes: nodes.map(n => ({
+                    id: n.id,
+                    type: n.type,
+                    position: { x: n.x, y: n.y },
+                    data: n.data
+                })),
+                edges: edges.map(e => ({
+                    source: e.source,
+                    target: e.target
+                }))
+            };
+
+            console.log('保存流程配置:', config);
+            showToast('保存成功', 'success');
+        }
+
+        function handleBack() {
+            window.location.href = 'flow-list.html';
+        }
+
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // ========================================
+        // 初始化
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // 设置流程名称
+            const flowName = getUrlParam('name');
+            if (flowName) {
+                document.getElementById('flowName').textContent = decodeURIComponent(flowName);
+            }
+
+            // 初始化版本按钮状态
+            const firstVersion = flowVersionData.versions.find(v => v.id === flowVersionData.currentVersion);
+            if (firstVersion) {
+                updateVersionActions(firstVersion.status);
+                updateCanvasState(firstVersion.status);
+            }
+
+            // 初始化节点库
+            renderNodeLibrary();
+
+            // 初始化画布
+            renderCanvas();
+
+            // ESC键关闭抽屉
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeDrawer();
+                }
+            });
+        });
+
+        // ========================================
+        // Tab切换和参数添加辅助函数
+        // ========================================
+
+        /**
+         * 切换触发器入参Tab
+         * @param {string} tabName - Tab名称
+         */
+        function switchTriggerInputTab(tabName) {
+            document.querySelectorAll('#triggerInputTabs .tab-btn').forEach(btn => {
+                btn.classList.toggle('active',
+                    (tabName === 'header' && btn.textContent === 'HTTP请求头') ||
+                    (tabName === 'body' && btn.textContent === 'HTTP请求体') ||
+                    (tabName === 'query' && btn.textContent === 'URL查询参数'));
+            });
+            document.querySelectorAll('#triggerInputContent .tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tab === tabName);
+            });
+        }
+
+        /**
+         * 添加触发器入参参数
+         * @param {string} tabName - Tab名称
+         */
+        function addTriggerInputParam(tabName) {
+            const container = document.getElementById(`trigger-input-params-${tabName}`);
+            if (container) {
+                container.insertAdjacentHTML('beforeend', renderParamItem({}, 0));
+                // 添加后隐藏添加按钮
+                updateTriggerAddParamBtnVisibility(tabName);
+            }
+        }
+
+        /**
+         * 更新触发器节点添加参数按钮的显示状态
+         * @param {string} tabName - Tab名称
+         */
+        function updateTriggerAddParamBtnVisibility(tabName) {
+            const container = document.getElementById(`trigger-input-params-${tabName}`);
+            if (!container) return;
+
+            const addBtn = container.closest('.tab-panel').querySelector('.trigger-add-param-btn');
+            if (!addBtn) return;
+
+            const hasParams = container.querySelectorAll('.param-item').length > 0;
+            addBtn.style.display = hasParams ? 'none' : 'inline-flex';
+        }
+
+        /**
+         * 切换连接器出参Tab
+         * @param {string} tabName - Tab名称
+         */
+        function switchConnectorOutputTab(tabName) {
+            document.querySelectorAll('#connectorOutputTabs .tab-btn').forEach(btn => {
+                btn.classList.toggle('active',
+                    (tabName === 'header' && btn.textContent === 'HTTP请求头') ||
+                    (tabName === 'body' && btn.textContent === 'HTTP请求体'));
+            });
+            document.querySelectorAll('#connectorOutputContent .tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tab === tabName);
+            });
+        }
+
+        /**
+         * 添加连接器出参参数（已禁用，连接器出参不能手动添加）
+         * @param {string} tabName - Tab名称
+         */
+        function addConnectorOutputParam(tabName) {
+            // 连接器出参配置不允许手动添加/删除参数
+            // 此函数保留但不做任何操作
+        }
+
+        /**
+         * 切换数据输出参数组装Tab
+         * @param {string} tabName - Tab名称
+         */
+        function switchOutputAssembleTab(tabName) {
+            document.querySelectorAll('#outputAssembleTabs .tab-btn').forEach(btn => {
+                btn.classList.toggle('active',
+                    (tabName === 'header' && btn.textContent === 'HTTP请求头') ||
+                    (tabName === 'body' && btn.textContent === 'HTTP请求体'));
+            });
+            document.querySelectorAll('#outputAssembleContent .tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tab === tabName);
+            });
+        }
+
+        /**
+         * 添加数据输出参数组装参数
+         * @param {string} tabName - Tab名称
+         */
+        function addOutputAssembleParam(tabName) {
+            const containerId = `output-assemble-params-${tabName}`;
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.insertAdjacentHTML('beforeend', renderOutputAssembleParamItem({}, 0, containerId));
+                // 更新添加按钮显示状态
+                updateOutputAddParamBtnVisibility(containerId);
+            }
+        }
+
+        /**
+         * 添加SYSTOKEN凭证项
+         */
+        function addSystokenItem() {
+            const list = document.getElementById('systokenList');
+            if (list) {
+                const item = document.createElement('div');
+                item.className = 'systoken-item';
+                item.innerHTML = `
+                    <input type="text" class="form-input systoken-input" placeholder="请输入凭证值">
+                    <button type="button" class="btn" onclick="this.parentElement.remove()" style="padding: 6px 12px;">删除</button>
+                `;
+                list.appendChild(item);
+            }
+        }
+
+        /**
+         * 处理连接器变更
+         * @param {string} connectorId - 连接器ID
+         */
+        function handleConnectorChange(connectorId) {
+            const versionSelect = document.getElementById('nodeConnectorVersion');
+            const connector = CONNECTOR_DATA[connectorId];
+
+            if (connector) {
+                versionSelect.innerHTML = connector.versions.map(v =>
+                    `<option value="${v.id}">${v.name}</option>`
+                ).join('');
+                // 渲染第一个版本的出参配置（只读模式，带配置按钮）
+                const firstVersion = connector.versions[0];
+                if (firstVersion) {
+                    renderConnectorOutputParams('connector-output-params-header', firstVersion.outputParams.header || []);
+                    renderConnectorOutputParams('connector-output-params-body', firstVersion.outputParams.body || []);
+                }
+            } else {
+                versionSelect.innerHTML = '<option value="">请先选择连接器</option>';
+            }
+        }
+
+        /**
+         * 处理连接器版本变更
+         * @param {string} versionId - 版本ID
+         */
+        function handleConnectorVersionChange(versionId) {
+            const connectorId = document.getElementById('nodeConnector').value;
+            const connector = CONNECTOR_DATA[connectorId];
+            const version = connector?.versions.find(v => v.id === versionId);
+
+            if (version) {
+                renderConnectorOutputParams('connector-output-params-header', version.outputParams.header || []);
+                renderConnectorOutputParams('connector-output-params-body', version.outputParams.body || []);
+            }
+        }
+    </script>
+</body>
+</html>

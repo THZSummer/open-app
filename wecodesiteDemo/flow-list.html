@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接流管理 - 连接平台</title>
+    <style>
+        /* ========================================
+           全局样式变量
+           ======================================== */
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-tertiary: #8c8c8c;
+            --border-color: #d9d9d9;
+            --bg-light: #fafafa;
+            --bg-white: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5715;
+            color: var(--text-primary);
+            background: var(--bg-light);
+        }
+
+        /* ========================================
+           页面布局
+           ======================================== */
+        .page-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           左侧导航栏
+           ======================================== */
+        .sidebar {
+            width: 220px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 0;
+            flex: 1;
+        }
+
+        .sidebar-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .sidebar-item.active {
+            background: #e6f7ff;
+            color: var(--primary-color);
+            font-weight: 500;
+            border-right: 3px solid var(--primary-color);
+        }
+
+        /* ========================================
+           主内容区域
+           ======================================== */
+        .main-content {
+            flex: 1;
+            overflow: auto;
+            background: var(--bg-light);
+        }
+
+        .management-page {
+            padding: 24px;
+            background: var(--bg-white);
+            min-height: 100%;
+        }
+
+        /* ========================================
+           页面头部
+           ======================================== */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .page-header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .page-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        /* ========================================
+           按钮样式
+           ======================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+            color: #fff;
+        }
+
+        .btn-link {
+            background: transparent;
+            border: none;
+            padding: 4px 8px;
+            color: var(--primary-color);
+        }
+
+        .btn-link:hover {
+            color: var(--primary-hover);
+        }
+
+        .btn-link.danger {
+            color: var(--error-color);
+        }
+
+        .btn-link.danger:hover {
+            color: #ff7875;
+        }
+
+        /* ========================================
+           搜索表单
+           ======================================== */
+        .search-form {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 300px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        /* ========================================
+           表格样式
+           ======================================== */
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-white);
+        }
+
+        .data-table thead {
+            background: var(--bg-light);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-light);
+        }
+
+        .data-table .action-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* ========================================
+           状态徽章
+           ======================================== */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .status-badge.success {
+            background: #f6ffed;
+            color: var(--success-color);
+        }
+
+        .status-badge.error {
+            background: #fff2f0;
+            color: var(--error-color);
+        }
+
+        .status-badge.default {
+            background: #f5f5f5;
+            color: var(--text-tertiary);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status-dot.success {
+            background: var(--success-color);
+        }
+
+        .status-dot.error {
+            background: var(--error-color);
+        }
+
+        .status-dot.default {
+            background: var(--text-tertiary);
+        }
+
+        /* ========================================
+           分页器
+           ======================================== */
+        .pagination {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-right: 16px;
+        }
+
+        .page-btn {
+            min-width: 32px;
+            height: 32px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .page-size-select {
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        /* ========================================
+           模态框
+           ======================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            width: 90%;
+            max-width: 520px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            transition: color 0.3s;
+            font-size: 16px;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        /* ========================================
+           表单样式
+           ======================================== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-label .required {
+            color: var(--error-color);
+            margin-left: 2px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+            transition: all 0.3s;
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        /* ========================================
+           确认弹窗
+           ======================================== */
+        .confirm-content {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .confirm-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .confirm-icon.warning {
+            background: #fffbe6;
+            color: var(--warning-color);
+        }
+
+        .confirm-text h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .confirm-text p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ========================================
+           Toast消息
+           ======================================== */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 24px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-md);
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--success-color);
+        }
+
+        .toast.error {
+            background: var(--error-color);
+        }
+
+        /* ========================================
+           菜单项样式
+           ======================================== */
+        .more-menu .menu-item:hover {
+            background: var(--bg-light);
+        }
+
+        .more-menu .menu-item:first-child {
+            border-radius: 4px 4px 0 0;
+        }
+
+        .more-menu .menu-item:last-child {
+            border-radius: 0 0 4px 4px;
+        }
+
+        /* ========================================
+           工具类
+           ======================================== */
+        .text-ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+            display: inline-block;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面主容器 -->
+    <div class="page-container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">连接平台</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item" onclick="navigateTo('connector-list.html')">
+                    <span>⚡</span>
+                    <span>连接器管理</span>
+                </li>
+                <li class="sidebar-item active">
+                    <span>🔗</span>
+                    <span>连接流管理</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <div class="management-page">
+                <!-- 页面头部 -->
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h3 class="page-title">连接流管理</h3>
+                        <span class="page-desc">管理平台的连接流配置，支持可视化流程编排</span>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddModal()">
+                        <span>+</span>
+                        新建连接流
+                    </button>
+                </div>
+
+                <!-- 搜索表单 -->
+                <div class="search-form">
+                    <input
+                        type="text"
+                        class="search-input"
+                        id="searchInput"
+                        placeholder="搜索连接流中英文名称"
+                        onkeydown="if(event.key==='Enter') handleSearch()"
+                    >
+                    <button class="btn btn-primary" onclick="handleSearch()">搜索</button>
+                    <button class="btn" onclick="handleReset()">重置</button>
+                </div>
+
+                <!-- 表格列表 -->
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>中文名称</th>
+                                <th>英文名称</th>
+                                <th>中文描述</th>
+                                <th>英文描述</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>更新时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- 动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 分页器 -->
+                <div class="pagination" id="pagination">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑连接流弹窗 -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="formModalTitle">新建连接流</h3>
+                <div class="modal-close" onclick="closeModal('formModal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <form id="flowForm">
+                    <input type="hidden" id="editId">
+                    <div class="form-group">
+                        <label class="form-label">中文名称 <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="nameCn" placeholder="请输入中文名称" maxlength="128">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">英文名称 <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="nameEn" placeholder="请输入英文名称" maxlength="128">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">中文描述</label>
+                        <textarea class="form-textarea" id="descCn" placeholder="请输入中文描述" maxlength="500"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">英文描述</label>
+                        <textarea class="form-textarea" id="descEn" placeholder="请输入英文描述" maxlength="512"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('formModal')">取消</button>
+                <button class="btn btn-primary" onclick="submitForm()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认弹窗 -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="confirmTitle2">确认操作</h3>
+                <div class="modal-close" onclick="closeModal('confirmModal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-content">
+                    <div class="confirm-icon warning">!</div>
+                    <div class="confirm-text">
+                        <h4 id="confirmTitle">确认操作</h4>
+                        <p id="confirmMessage">确认要执行此操作吗？</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('confirmModal')">取消</button>
+                <button class="btn btn-primary" id="confirmOkBtn">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 部署弹窗 -->
+    <div class="modal-overlay" id="deployModal">
+        <div class="modal" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 class="modal-title">选择部署版本</h3>
+                <div class="modal-close" onclick="closeModal('deployModal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <div class="version-list" id="deployVersionList">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('deployModal')">取消</button>
+                <button class="btn btn-primary" onclick="confirmDeploy()">确认部署</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ========================================
+        // 模拟数据
+        // ========================================
+        const STATUS_MAP = {
+            0: { text: '未部署', color: 'default' },
+            1: { text: '运行中', color: 'success' },
+            2: { text: '已停止', color: 'error' }
+        };
+
+        let flowData = [
+            {
+                id: 'f1',
+                nameCn: '用户注册流程',
+                nameEn: 'user-registration-flow',
+                descriptionCn: '处理新用户注册的业务流程',
+                descriptionEn: 'Process new user registration workflow',
+                lifecycleStatus: 1,
+                createTime: '2024-01-15 10:30:00',
+                lastUpdateTime: '2024-01-20 14:25:00'
+            },
+            {
+                id: 'f2',
+                nameCn: '订单处理流程',
+                nameEn: 'order-processing-flow',
+                descriptionCn: '自动化订单处理和状态更新',
+                descriptionEn: 'Automated order processing and status updates',
+                lifecycleStatus: 2,
+                createTime: '2024-01-10 09:15:00',
+                lastUpdateTime: '2024-01-18 16:40:00'
+            },
+            {
+                id: 'f3',
+                nameCn: '消息通知流程',
+                nameEn: 'notification-flow',
+                descriptionCn: '发送各类系统通知消息',
+                descriptionEn: 'Send various system notification messages',
+                lifecycleStatus: 0,
+                createTime: '2024-01-20 11:20:00',
+                lastUpdateTime: '2024-01-20 11:20:00'
+            },
+            {
+                id: 'f4',
+                nameCn: '数据同步流程',
+                nameEn: 'data-sync-flow',
+                descriptionCn: '跨系统的数据同步和更新',
+                descriptionEn: 'Cross-system data synchronization and updates',
+                lifecycleStatus: 1,
+                createTime: '2024-01-08 14:00:00',
+                lastUpdateTime: '2024-01-19 10:30:00'
+            },
+            {
+                id: 'f5',
+                nameCn: '支付处理流程',
+                nameEn: 'payment-processing-flow',
+                descriptionCn: '集成第三方支付网关的处理流程',
+                descriptionEn: 'Integrated third-party payment gateway processing flow',
+                lifecycleStatus: 1,
+                createTime: '2024-01-12 15:45:00',
+                lastUpdateTime: '2024-01-21 09:15:00'
+            },
+            {
+                id: 'f6',
+                nameCn: '邮件营销流程',
+                nameEn: 'email-marketing-flow',
+                descriptionCn: '自动化邮件营销和追踪流程',
+                descriptionEn: 'Automated email marketing and tracking workflow',
+                lifecycleStatus: 2,
+                createTime: '2024-01-05 08:30:00',
+                lastUpdateTime: '2024-01-17 13:20:00'
+            }
+        ];
+
+        // 分页配置
+        const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+        let pagination = {
+            curPage: 1,
+            pageSize: 10,
+            total: flowData.length
+        };
+
+        // 确认弹窗状态
+        let confirmCallback = null;
+
+        // ========================================
+        // 工具函数
+        // ========================================
+        function generateId() {
+            return 'f' + Date.now().toString(36);
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // ========================================
+        // 更多菜单功能
+        // ========================================
+
+        /**
+         * 切换更多菜单
+         * 点击更多按钮时显示/隐藏下拉菜单
+         * @param {HTMLElement} btn - 更多按钮元素
+         * @param {string} flowId - 连接流ID
+         */
+        function toggleMoreMenu(btn, flowId) {
+            // 关闭其他菜单
+            document.querySelectorAll('.more-menu').forEach(menu => {
+                if (menu !== btn.nextElementSibling) {
+                    menu.style.display = 'none';
+                }
+            });
+
+            const menu = btn.nextElementSibling;
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+
+        /**
+         * 复制流
+         * 调用复制接口，创建新流数据并刷新列表
+         * @param {string} flowId - 连接流ID
+         */
+        function handleCopyFlow(flowId) {
+            const flow = flowData.find(item => item.id === flowId);
+            if (!flow) return;
+
+            // 模拟复制接口
+            const newFlow = {
+                ...flow,
+                id: generateId(),
+                nameCn: flow.nameCn + ' (副本)',
+                nameEn: flow.nameEn + '-copy',
+                lifecycleStatus: 0,
+                createTime: new Date().toLocaleString('zh-CN'),
+                lastUpdateTime: new Date().toLocaleString('zh-CN')
+            };
+
+            flowData.unshift(newFlow);
+            showToast('复制成功', 'success');
+
+            // 关闭菜单并刷新表格
+            document.querySelectorAll('.more-menu').forEach(menu => menu.style.display = 'none');
+            renderTable();
+        }
+
+        /**
+         * 复制ID
+         * 复制连接流ID到剪贴板
+         * @param {string} flowId - 连接流ID
+         */
+        function handleCopyId(flowId) {
+            navigator.clipboard.writeText(flowId).then(() => {
+                showToast('ID已复制到剪贴板', 'success');
+            }).catch(() => {
+                showToast('复制失败', 'error');
+            });
+
+            // 关闭菜单
+            document.querySelectorAll('.more-menu').forEach(menu => menu.style.display = 'none');
+        }
+
+        /**
+         * 部署
+         * 打开部署弹窗
+         * @param {string} flowId - 连接流ID
+         */
+        function handleDeploy(flowId) {
+            // 关闭菜单
+            document.querySelectorAll('.more-menu').forEach(menu => menu.style.display = 'none');
+
+            // 打开部署弹窗
+            openDeployModal(flowId);
+        }
+
+        /**
+         * 打开部署弹窗
+         * @param {string} flowId - 连接流ID
+         */
+        let deployFlowId = null;
+        let selectedDeployVersion = null;
+
+        function openDeployModal(flowId) {
+            deployFlowId = flowId;
+            selectedDeployVersion = null;
+
+            // 模拟版本数据
+            const versions = [
+                { id: 'v1', name: 'v1.0.0', createdAt: '2024-01-15 10:30:00', status: 'draft' },
+                { id: 'v2', name: 'v0.9.0', createdAt: '2024-01-10 09:15:00', status: 'published' },
+                { id: 'v3', name: 'v0.8.0', createdAt: '2024-01-05 14:20:00', status: 'invalid' }
+            ];
+
+            const versionList = document.getElementById('deployVersionList');
+            versionList.innerHTML = versions.map(v => `
+                <label class="version-item" style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 8px; cursor: pointer;">
+                    <input type="radio" name="deployVersion" value="${v.id}" onchange="selectedDeployVersion = '${v.id}'">
+                    <div style="flex: 1;">
+                        <div style="font-size: 14px; font-weight: 500;">${v.name}</div>
+                        <div style="font-size: 12px; color: var(--text-tertiary);">${v.createdAt}</div>
+                    </div>
+                    <span class="status-badge ${v.status === 'published' ? 'success' : v.status === 'draft' ? 'default' : 'error'}">
+                        ${v.status === 'published' ? '已发布' : v.status === 'draft' ? '草稿' : '已失效'}
+                    </span>
+                </label>
+            `).join('');
+
+            openModal('deployModal');
+        }
+
+        /**
+         * 确认部署
+         * 执行部署操作
+         */
+        function confirmDeploy() {
+            if (!selectedDeployVersion) {
+                showToast('请选择要部署的版本', 'error');
+                return;
+            }
+
+            // 模拟部署接口调用
+            console.log(`部署连接流 ${deployFlowId} 的版本 ${selectedDeployVersion}`);
+            showToast('部署成功', 'success');
+
+            closeModal('deployModal');
+            deployFlowId = null;
+            selectedDeployVersion = null;
+        }
+
+        // ========================================
+        // 表格渲染
+        // ========================================
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const searchKeyword = document.getElementById('searchInput').value.toLowerCase();
+
+            // 过滤数据
+            let filteredData = flowData;
+            if (searchKeyword) {
+                filteredData = flowData.filter(item =>
+                    item.nameCn.toLowerCase().includes(searchKeyword) ||
+                    item.nameEn.toLowerCase().includes(searchKeyword)
+                );
+            }
+
+            // 计算分页
+            const startIndex = (pagination.curPage - 1) * pagination.pageSize;
+            const endIndex = startIndex + pagination.pageSize;
+            const pageData = filteredData.slice(startIndex, endIndex);
+            pagination.total = filteredData.length;
+
+            // 渲染表格
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
+                            暂无数据
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = pageData.map(item => {
+                    const status = STATUS_MAP[item.lifecycleStatus];
+                    return `
+                        <tr>
+                            <td class="text-center" title="${item.nameCn}">${item.nameCn}</td>
+                            <td class="text-center" title="${item.nameEn}">${item.nameEn}</td>
+                            <td class="text-center" title="${item.descriptionCn}">${item.descriptionCn || '-'}</td>
+                            <td class="text-center" title="${item.descriptionEn}">${item.descriptionEn || '-'}</td>
+                            <td>
+                                <span class="status-badge ${status.color}">
+                                    <span class="status-dot ${status.color}"></span>
+                                    ${status.text}
+                                </span>
+                            </td>
+                            <td>${item.createTime}</td>
+                            <td>${item.lastUpdateTime}</td>
+                            <td>
+                                <div class="action-cell">
+                                    <button class="btn btn-link" onclick="editFlow('${item.id}')">编辑</button>
+                                    <button class="btn btn-link" onclick="configFlow('${item.id}')">配置</button>
+                                    <div class="more-actions" style="position: relative; display: inline-block;">
+                                        <button class="btn btn-link" onclick="toggleMoreMenu(this, '${item.id}')">
+                                            更多 <span>▼</span>
+                                        </button>
+                                        <div class="more-menu" style="display: none; position: absolute; right: 0; top: 100%; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 100; min-width: 120px;">
+                                            <button class="menu-item" onclick="handleCopyFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">
+                                                复制流
+                                            </button>
+                                            <button class="menu-item" onclick="handleCopyId('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">
+                                                复制ID
+                                            </button>
+                                            <button class="menu-item" onclick="handleDeploy('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">
+                                                部署
+                                            </button>
+                                            ${item.lifecycleStatus === 1 ?
+                                                `<button class="menu-item" onclick="stopFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">停止</button>` :
+                                                `<button class="menu-item" onclick="startFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">启动</button>`
+                                            }
+                                            <button class="menu-item" onclick="deleteFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--error-color);">
+                                                删除
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const paginationEl = document.getElementById('pagination');
+            const totalPages = Math.ceil(pagination.total / pagination.pageSize) || 1;
+
+            let html = `<span class="pagination-info">共 ${pagination.total} 条</span>`;
+            html += `<button class="page-btn" onclick="changePage(${pagination.curPage - 1})" ${pagination.curPage <= 1 ? 'disabled' : ''}>上一页</button>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (totalPages <= 7 || Math.abs(i - pagination.curPage) <= 2 || i === 1 || i === totalPages) {
+                    html += `<button class="page-btn ${i === pagination.curPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+                } else if (i === 2 || i === totalPages - 1) {
+                    html += `<span style="padding: 0 4px;">...</span>`;
+                }
+            }
+
+            html += `<button class="page-btn" onclick="changePage(${pagination.curPage + 1})" ${pagination.curPage >= totalPages ? 'disabled' : ''}>下一页</button>`;
+            html += `<select class="page-size-select" onchange="changePageSize(this.value)">`;
+            PAGE_SIZE_OPTIONS.forEach(size => {
+                html += `<option value="${size}" ${size === pagination.pageSize ? 'selected' : ''}>${size}条/页</option>`;
+            });
+            html += `</select>`;
+
+            paginationEl.innerHTML = html;
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(pagination.total / pagination.pageSize) || 1;
+            if (page < 1 || page > totalPages) return;
+            pagination.curPage = page;
+            renderTable();
+        }
+
+        function changePageSize(size) {
+            pagination.pageSize = parseInt(size);
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        // ========================================
+        // 搜索和重置
+        // ========================================
+        function handleSearch() {
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        function handleReset() {
+            document.getElementById('searchInput').value = '';
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        // ========================================
+        // 表单操作
+        // ========================================
+        function openAddModal() {
+            document.getElementById('formModalTitle').textContent = '新建连接流';
+            document.getElementById('flowForm').reset();
+            document.getElementById('editId').value = '';
+            openModal('formModal');
+        }
+
+        function editFlow(id) {
+            const flow = flowData.find(item => item.id === id);
+            if (!flow) return;
+
+            document.getElementById('formModalTitle').textContent = '编辑连接流';
+            document.getElementById('editId').value = id;
+            document.getElementById('nameCn').value = flow.nameCn;
+            document.getElementById('nameEn').value = flow.nameEn;
+            document.getElementById('descCn').value = flow.descriptionCn || '';
+            document.getElementById('descEn').value = flow.descriptionEn || '';
+
+            openModal('formModal');
+        }
+
+        function submitForm() {
+            const editId = document.getElementById('editId').value;
+            const nameCn = document.getElementById('nameCn').value.trim();
+            const nameEn = document.getElementById('nameEn').value.trim();
+            const descCn = document.getElementById('descCn').value.trim();
+            const descEn = document.getElementById('descEn').value.trim();
+
+            if (!nameCn) {
+                showToast('请输入中文名称', 'error');
+                return;
+            }
+            if (!nameEn) {
+                showToast('请输入英文名称', 'error');
+                return;
+            }
+
+            if (editId) {
+                const flow = flowData.find(item => item.id === editId);
+                if (flow) {
+                    flow.nameCn = nameCn;
+                    flow.nameEn = nameEn;
+                    flow.descriptionCn = descCn;
+                    flow.descriptionEn = descEn;
+                    flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
+                    showToast('编辑成功', 'success');
+                }
+            } else {
+                flowData.unshift({
+                    id: generateId(),
+                    nameCn,
+                    nameEn,
+                    descriptionCn: descCn,
+                    descriptionEn: descEn,
+                    lifecycleStatus: 0,
+                    createTime: new Date().toLocaleString('zh-CN'),
+                    lastUpdateTime: new Date().toLocaleString('zh-CN')
+                });
+                showToast('创建成功', 'success');
+            }
+
+            closeModal('formModal');
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        function configFlow(id) {
+            const flow = flowData.find(item => item.id === id);
+            if (flow) {
+                window.location.href = `flow-editor.html?id=${id}&name=${encodeURIComponent(flow.nameCn)}`;
+            }
+        }
+
+        // ========================================
+        // 状态操作
+        // ========================================
+        function startFlow(id) {
+            const flow = flowData.find(item => item.id === id);
+            if (flow) {
+                flow.lifecycleStatus = 1;
+                flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
+                showToast('启动成功', 'success');
+                renderTable();
+            }
+        }
+
+        function stopFlow(id) {
+            showConfirm(
+                '确认停止连接流吗？',
+                '停止后将无法接收HTTP触发请求，确认要停止这个连接流吗？',
+                '#faad14',
+                '确认停止',
+                () => {
+                    const flow = flowData.find(item => item.id === id);
+                    if (flow) {
+                        flow.lifecycleStatus = 2;
+                        flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
+                        showToast('停止成功', 'success');
+                        renderTable();
+                    }
+                }
+            );
+        }
+
+        function deleteFlow(id) {
+            showConfirm(
+                '确认删除连接流吗？',
+                '删除后将无法恢复，确认要删除这个连接流吗？',
+                '#ff4d4f',
+                '确认删除',
+                () => {
+                    flowData = flowData.filter(item => item.id !== id);
+                    showToast('删除成功', 'success');
+                    renderTable();
+                }
+            );
+        }
+
+        // ========================================
+        // 确认弹窗
+        // ========================================
+        function showConfirm(title, message, color, btnText, callback) {
+            document.getElementById('confirmTitle').textContent = title;
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmOkBtn').textContent = btnText;
+            document.getElementById('confirmOkBtn').style.cssText = `background: ${color}; border-color: ${color};`;
+            confirmCallback = callback;
+            openModal('confirmModal');
+        }
+
+        document.getElementById('confirmOkBtn').addEventListener('click', () => {
+            if (confirmCallback) {
+                confirmCallback();
+                confirmCallback = null;
+            }
+            closeModal('confirmModal');
+        });
+
+        // ========================================
+        // 页面导航
+        // ========================================
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // ========================================
+        // 初始化
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTable();
+
+            // 点击遮罩关闭弹窗
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        overlay.classList.remove('active');
+                    }
+                });
+            });
+
+            // 点击外部关闭菜单
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.more-actions')) {
+                    document.querySelectorAll('.more-menu').forEach(menu => {
+                        menu.style.display = 'none';
+                    });
+                }
+            });
+
+            // ESC键关闭弹窗
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                        modal.classList.remove('active');
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
