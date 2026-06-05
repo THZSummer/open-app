@@ -558,7 +558,7 @@ def snow_id():
 
 
 def _mysql_exec(sql):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e", sql],
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e", sql],
                    check=True, capture_output=True)
 
 
@@ -587,10 +587,10 @@ def setup_connector(connection_config=None):
 
 
 def cleanup_connector(connector_id, version_id):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}"],
                    capture_output=True)
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}"],
                    capture_output=True)
 
@@ -615,10 +615,10 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None,
 
 
 def cleanup_flow(flow_id, flow_version_id, connector_id=None, connector_version_id=None):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}"],
                    capture_output=True)
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}"],
                    capture_output=True)
     if connector_id and connector_version_id:
