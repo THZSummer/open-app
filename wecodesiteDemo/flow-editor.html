@@ -276,10 +276,12 @@
 
         .node-icon.trigger { background: linear-gradient(135deg, #1890ff, #096dd9); }
         .node-icon.action { background: linear-gradient(135deg, #52c41a, #389e0d); }
-        .node-icon.condition { background: linear-gradient(135deg, #faad14, #d48806); }
+        .node-icon.condition { background: linear-gradient(135deg, #fa8c16, #d46b08); }
         .node-icon.data { background: linear-gradient(135deg, #722ed1, #531dab); }
         .node-icon.output { background: linear-gradient(135deg, #eb2f96, #c41d7f); }
         .node-icon.error { background: linear-gradient(135deg, #ff4d4f, #cf1322); }
+        .node-icon.forLoop { background: linear-gradient(135deg, #13c2c2, #08979c); }
+        .node-icon.parallel { background: linear-gradient(135deg, #597ef7, #4030a8); }
 
         /* ========================================
            参数配置样式
@@ -502,6 +504,38 @@
             border-color: #eb2f96;
         }
 
+        /* 循环节点 */
+        .flow-node.forLoop {
+            border-color: #13c2c2;
+        }
+
+        .flow-node.forLoop .node-header-icon {
+            background: linear-gradient(135deg, #13c2c2, #08979c);
+        }
+
+        /* 条件分支节点 */
+        .flow-node.condition {
+            border-color: #fa8c16;
+        }
+
+        .flow-node.condition .node-header-icon {
+            background: linear-gradient(135deg, #fa8c16, #d46b08);
+        }
+
+        /* 并行节点 */
+        .flow-node.parallel {
+            border-color: #597ef7;
+        }
+
+        .flow-node.parallel .node-header-icon {
+            background: linear-gradient(135deg, #597ef7, #4030a8);
+        }
+
+        /* 异常处理节点 */
+        .flow-node.error .node-header-icon {
+            background: linear-gradient(135deg, #ff4d4f, #cf1322);
+        }
+
         .node-header {
             padding: 10px 12px;
             display: flex;
@@ -534,6 +568,14 @@
             color: var(--text-tertiary);
         }
 
+        /* 节点内容区域 */
+        .node-content {
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border-top: 1px dashed var(--border-color);
+        }
+
         /* 连接点 */
         .node-port {
             position: absolute;
@@ -556,6 +598,22 @@
             bottom: -6px;
             left: 50%;
             transform: translateX(-50%);
+        }
+
+        /* 右侧 Handle（用于循环和异常处理的子节点入口） */
+        .node-port.right {
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* 多出口 Handle（用于条件分支和并行，放置在底部） */
+        .node-port.multi-output {
+            width: 10px;
+            height: 10px;
+            bottom: -5px;
+            border-radius: 2px;
+            background: var(--bg-white);
         }
 
         .node-port:hover {
@@ -2171,8 +2229,8 @@
             },
             {
                 type: 'action',
-                name: '连接器',
-                desc: '连接器节点',
+                name: '动作节点',
+                desc: '执行动作的节点',
                 icon: '⚙️'
             },
             {
@@ -2191,9 +2249,61 @@
                 type: 'error',
                 name: '异常处理',
                 desc: '处理流程异常',
-                icon: '❌'
+                icon: '❌',
+                hasBodyHandle: true  // 有子节点入口
+            },
+            {
+                type: 'forLoop',
+                name: '循环',
+                desc: '循环执行子节点',
+                icon: '🔄',
+                hasBodyHandle: true  // 有子节点入口
+            },
+            {
+                type: 'condition',
+                name: '条件分支',
+                desc: '根据条件选择分支',
+                icon: '🔀',
+                multiOutput: true  // 多出口
+            },
+            {
+                type: 'parallel',
+                name: '并行',
+                desc: '并行执行多个分支',
+                icon: '⫴',
+                multiOutput: true  // 多出口
             }
         ];
+
+        // 节点类型元数据
+        const NODE_META = {
+            forLoop: {
+                // 循环配置
+                iterable: '',       // 迭代对象，如 ${ctx.items}
+                itemName: 'item'   // 循环变量名
+            },
+            error: {
+                // 异常处理配置
+                strategy: 'ignore', // retry | ignore
+                retryCount: 3       // 重试次数
+            },
+            condition: {
+                // 条件分支配置
+                conditions: [
+                    { id: 'cond1', label: '条件1', expression: '' },
+                    { id: 'cond2', label: '条件2', expression: '' },
+                    { id: 'else', label: 'else', expression: '' }
+                ]
+            },
+            parallel: {
+                // 并行配置
+                branches: [
+                    { id: 'branch1', label: '分支1' },
+                    { id: 'branch2', label: '分支2' },
+                    { id: 'branch3', label: '分支3' }
+                ]
+            }
+        };
 
         // ========================================
         // 状态管理
@@ -2598,25 +2708,147 @@
         // ========================================
         // 画布渲染
         // ========================================
+
+        /**
+         * 生成节点的 Handle HTML
+         * @param {Object} node - 节点对象
+         * @param {Object} nodeType - 节点类型定义
+         * @returns {string} Handle HTML 字符串
+         */
+        function generateNodeHandles(node, nodeType) {
+            let handles = '';
+
+            // 上 Handle（主流程入口）
+            handles += `<div class="node-port top" onmouseup="handlePortMouseUp(event, '${node.id}', 'top')"></div>`;
+
+            // 右侧 Handle（循环/异常处理的子节点入口）
+            if (nodeType.hasBodyHandle) {
+                handles += `<div class="node-port right" onmouseup="handlePortMouseUp(event, '${node.id}', 'body')"></div>`;
+            }
+
+            // 多出口 Handle（条件分支/并行）- 放在底部
+            if (nodeType.multiOutput) {
+                const branches = node.data.conditions || node.data.branches || [];
+                const spacing = 30; // 分支间距
+                const startX = 40; // 第一个分支的左偏移
+
+                branches.forEach((branch, index) => {
+                    const leftOffset = startX + (index * spacing);
+                    const handleId = branch.id;
+                    handles += `<div class="node-port multi-output"
+                        style="left: ${leftOffset}px;"
+                        onmouseup="handlePortMouseUp(event, '${node.id}', '${handleId}')"
+                        title="${branch.label || '分支' + (index + 1)}"></div>`;
+                });
+            }
+
+            // 下 Handle（主流程出口）
+            // 条件分支和并行节点没有单一的下 Handle（用多出口）
+            if (!nodeType.multiOutput) {
+                handles += `<div class="node-port bottom" onmouseup="handlePortMouseUp(event, '${node.id}', 'bottom')"></div>`;
+            }
+
+            return handles;
+        }
+
+        /**
+         * 生成节点内容区域
+         * @param {Object} node - 节点对象
+         * @param {Object} nodeType - 节点类型定义
+         * @returns {string} 节点内容 HTML 字符串
+         */
+        function generateNodeContent(node, nodeType) {
+            let content = '';
+
+            // 循环节点显示迭代配置
+            if (node.type === 'forLoop') {
+                const iterable = node.data.iterable || '';
+                const itemName = node.data.itemName || 'item';
+                content += `<div class="node-content">迭代: ${iterable || '未配置'} | 变量: ${itemName}</div>`;
+            }
+
+            // 异常处理节点显示策略
+            if (node.type === 'error') {
+                const strategy = node.data.strategy || 'ignore';
+                const strategyText = strategy === 'retry' ? '重试' : '忽略';
+                content += `<div class="node-content">策略: ${strategyText}</div>`;
+            }
+
+            // 条件分支节点显示条件
+            if (node.type === 'condition') {
+                const conditions = node.data.conditions || [];
+                const conditionTexts = conditions.map(c => c.label || '条件').join(', ');
+                content += `<div class="node-content">分支: ${conditionTexts || '未配置'}</div>`;
+            }
+
+            // 并行节点显示分支
+            if (node.type === 'parallel') {
+                const branches = node.data.branches || [];
+                const branchTexts = branches.map(b => b.label || '分支').join(', ');
+                content += `<div class="node-content">分支: ${branchTexts || '未配置'}</div>`;
+            }
+
+            return content;
+        }
+
+        /**
+         * 生成多出口节点的高度（条件分支/并行）
+         * @param {Object} node - 节点对象
+         * @param {Object} nodeType - 节点类型定义
+         * @returns {number} 节点高度
+         */
+        function getMultiOutputNodeHeight(node, nodeType) {
+            if (!nodeType.multiOutput) {
+                return 0;
+            }
+            const branches = node.data.conditions || node.data.branches || [];
+            const baseHeight = 80; // 基础高度
+            const branchHeight = 30; // 每个分支增加的高度
+            return baseHeight + (branches.length * branchHeight);
+        }
+
+        /**
+         * 获取节点底部 Y 坐标（用于主流程连线）
+         * @param {Object} node - 节点对象
+         * @param {Object} nodeType - 节点类型定义
+         * @returns {number} 底部 Y 坐标
+         */
+        function getNodeBottomY(node, nodeType) {
+            const nodeHeight = 80;
+            if (nodeType.multiOutput) {
+                return node.y + getMultiOutputNodeHeight(node, nodeType);
+            }
+            return node.y + nodeHeight;
+        }
+
         function renderCanvas() {
             const canvas = document.getElementById('canvas');
 
             // 渲染节点
             let nodesHtml = nodes.map(node => {
                 const nodeType = NODE_TYPES.find(t => t.type === node.type);
+                if (!nodeType) return '';
+
+                const nodeHeight = nodeType.multiOutput
+                    ? getMultiOutputNodeHeight(node, nodeType)
+                    : 80;
+
+                const handles = generateNodeHandles(node, nodeType);
+                const content = generateNodeContent(node, nodeType);
+
                 return `
                     <div class="flow-node ${node.type} ${selectedNode?.id === node.id ? 'selected' : ''}"
                          id="node-${node.id}"
-                         style="left: ${node.x}px; top: ${node.y}px;"
+                         style="left: ${node.x}px; top: ${node.y}px; height: ${nodeHeight}px;"
                          onmousedown="handleNodeMouseDown(event, '${node.id}')"
                          onclick="handleNodeClick('${node.id}')">
-                        <div class="node-port top" onmouseup="handlePortMouseUp(event, '${node.id}', 'top')"></div>
+                        ${handles}
                         <div class="node-header">
                             <div class="node-header-icon" style="background: ${getNodeColor(node.type)}">${nodeType?.icon || '?'}</div>
                             <div class="node-header-title">${node.data.label || nodeType?.name || '未命名'}</div>
                         </div>
                         <div class="node-body">${node.data.description || nodeType?.desc || ''}</div>
-                        <div class="node-port bottom" onmouseup="handlePortMouseUp(event, '${node.id}', 'bottom')"></div>
+                        ${content}
                     </div>
                 `;
             }).join('');
@@ -2627,15 +2859,54 @@
                 const targetNode = nodes.find(n => n.id === edge.target);
                 if (!sourceNode || !targetNode) return '';
 
-                const startX = sourceNode.x + 80;
-                const startY = sourceNode.y + 80;
-                const endX = targetNode.x + 80;
-                const endY = targetNode.y;
+                const sourceType = NODE_TYPES.find(t => t.type === sourceNode.type);
+                const targetType = NODE_TYPES.find(t => t.type === targetNode.type);
+
+                // 计算起点和终点坐标
+                let startX, startY, endX, endY;
+
+                // 起点：从源节点的指定 Handle 出发
+                if (edge.sourceHandle === 'body') {
+                    // 从右侧 Handle 出发（循环/异常处理的子节点入口）
+                    startX = sourceNode.x + 160;
+                    startY = sourceNode.y + 40;
+                } else if (sourceType?.multiOutput && edge.sourceHandle) {
+                    // 从多出口节点的分支出发（handle 在底部）
+                    const branches = sourceNode.data.conditions || sourceNode.data.branches || [];
+                    const branchIndex = branches.findIndex(b => b.id === edge.sourceHandle);
+                    const nodeHeight = getMultiOutputNodeHeight(sourceNode, sourceType);
+                    // 底部分支 handle 左偏移: 40 + index * 30
+                    startX = sourceNode.x + 40 + (branchIndex >= 0 ? branchIndex * 30 : 0);
+                    startY = sourceNode.y + nodeHeight;
+                } else {
+                    // 从底部 Handle 出发
+                    startX = sourceNode.x + 80;
+                    startY = sourceNode.y + (sourceType?.multiOutput
+                        ? getMultiOutputNodeHeight(sourceNode, sourceType)
+                        : 80);
+                }
+
+                // 终点：连接到目标节点的指定 Handle
+                if (edge.targetHandle === 'body') {
+                    // 连接到目标节点的右侧 Handle（循环/异常处理的子节点入口）
+                    endX = targetNode.x;
+                    endY = targetNode.y + 40;
+                } else {
+                    // 连接到顶部 Handle
+                    endX = targetNode.x + 80;
+                    endY = targetNode.y;
+                }
 
                 const path = generateBezierPath(startX, startY, endX, endY);
+
+                // 根据 Handle 类型设置连线颜色
+                const edgeColor = edge.sourceHandle === 'body' || edge.targetHandle === 'body'
+                    ? '#13c2c2' // 循环/异常处理的连线颜色
+                    : (edge.sourceHandle ? '#fa8c16' : '#1890ff'); // 分支连线颜色
+
                 return `
                     <svg class="flow-edge animated" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible;">
-                        <path d="${path}" />
+                        <path d="${path}" stroke="${edgeColor}" />
                     </svg>
                 `;
             }).join('');
@@ -2658,16 +2929,23 @@
             const colors = {
                 trigger: '#1890ff',
                 action: '#52c41a',
-                condition: '#faad14',
+                condition: '#fa8c16',
                 data: '#722ed1',
                 output: '#eb2f96',
-                error: '#ff4d4f'
+                error: '#ff4d4f',
+                forLoop: '#13c2c2',
+                parallel: '#597ef7'
             };
             return colors[type] || '#999';
         }
 
         function generateBezierPath(x1, y1, x2, y2) {
             const midY = (y1 + y2) / 2;
+            // 如果是水平连接（右侧 Handle），使用水平曲线
+            if (Math.abs(y1 - y2) < 10) {
+                const midX = (x1 + x2) / 2;
+                return `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`;
+            }
             return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
         }
 
@@ -2705,16 +2983,40 @@
                 const canvas = document.getElementById('canvas');
                 const rect = canvas.getBoundingClientRect();
 
+                // 初始化新节点数据
+                const newNodeData = {
+                    label: nodeData.label,
+                    description: nodeData.description,
+                    config: {}
+                };
+
+                // 根据节点类型初始化特定数据
+                if (nodeData.type === 'forLoop') {
+                    newNodeData.iterable = '';
+                    newNodeData.itemName = 'item';
+                } else if (nodeData.type === 'error') {
+                    newNodeData.strategy = 'ignore';
+                    newNodeData.retryCount = 3;
+                } else if (nodeData.type === 'condition') {
+                    newNodeData.conditions = [
+                        { id: 'cond1', label: '条件1', expression: '' },
+                        { id: 'cond2', label: '条件2', expression: '' },
+                        { id: 'else', label: 'else', expression: '' }
+                    ];
+                } else if (nodeData.type === 'parallel') {
+                    newNodeData.branches = [
+                        { id: 'branch1', label: '分支1' },
+                        { id: 'branch2', label: '分支2' },
+                        { id: 'branch3', label: '分支3' }
+                    ];
+                }
+
                 const newNode = {
                     id: generateId(),
                     type: nodeData.type,
                     x: e.clientX - rect.left - 80,
                     y: e.clientY - rect.top - 40,
-                    data: {
-                        label: nodeData.label,
-                        description: nodeData.description,
-                        config: {}
-                    }
+                    data: newNodeData
                 };
 
                 nodes.push(newNode);
@@ -2958,6 +3260,9 @@
                 `;
             } else if (node.type === 'error') {
                 // 异常处理节点配置
+                const strategy = node.data.strategy || 'ignore';
+                const retryCount = node.data.retryCount || 3;
+
                 configHtml = `
                     <div class="form-group">
                         <label class="form-label">节点名称</label>
@@ -2968,20 +3273,23 @@
                         <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">异常处理类型</label>
-                        <select class="form-select" id="nodeErrorType">
-                            <option value="continue" ${node.data.errorType === 'continue' ? 'selected' : ''}>继续执行</option>
-                            <option value="abort" ${node.data.errorType === 'abort' ? 'selected' : ''}>终止流程</option>
-                            <option value="retry" ${node.data.errorType === 'retry' ? 'selected' : ''}>重试</option>
+                        <label class="form-label">异常处理策略</label>
+                        <select class="form-select" id="nodeErrorType" onchange="toggleRetryConfig(this.value)">
+                            <option value="ignore" ${strategy === 'ignore' ? 'selected' : ''}>忽略（继续执行）</option>
+                            <option value="retry" ${strategy === 'retry' ? 'selected' : ''}>重试</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">错误码</label>
-                        <input type="text" class="form-input" id="nodeErrorCode" value="${node.data.errorCode || ''}" placeholder="请输入错误码">
+                    <div class="form-group" id="retryConfigGroup" style="display: ${strategy === 'retry' ? 'block' : 'none'};">
+                        <label class="form-label">重试次数</label>
+                        <input type="number" class="form-input" id="nodeRetryCount" value="${retryCount}" min="1" max="10" style="width: 120px;">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">错误信息</label>
-                        <input type="text" class="form-input" id="nodeErrorMessage" value="${node.data.errorMessage || ''}" placeholder="请输入错误信息">
+                    <div class="form-group" style="margin-top: 16px; padding: 12px; background: #fff1f0; border-radius: 6px; border: 1px solid #ff4d4f;">
+                        <label class="form-label" style="color: #ff4d4f; font-weight: 500;">连线说明</label>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                            <div>• 上 Handle：主流程入口</div>
+                            <div>• 右 Handle：连接异常处理的子节点</div>
+                            <div>• 下 Handle：处理完成后继续主流程</div>
+                        </div>
                     </div>
                 `;
             } else if (node.type === 'data') {
@@ -3006,6 +3314,44 @@
                 `;
             } else if (node.type === 'condition') {
                 // 条件节点配置
+                const conditions = node.data.conditions || [
+                    { id: 'cond1', label: '条件1', expression: '' },
+                    { id: 'cond2', label: '条件2', expression: '' },
+                    { id: 'else', label: 'else', expression: '' }
+                ];
+
+                const conditionsHtml = conditions.map((cond, index) => `
+                    <div class="form-group" style="margin-bottom: 12px; padding: 12px; background: var(--bg-light); border-radius: 6px;">
+                        <div class="param-row" style="margin-bottom: 8px;">
+                            <input type="text" class="form-input" id="condLabel${index}" value="${cond.label || ''}"
+                                placeholder="分支名称" style="flex: 1;">
+                            <button type="button" class="param-remove-btn" onclick="removeCondition(${index})">删除</button>
+                        </div>
+                        <textarea class="form-textarea" id="condExpr${index}" placeholder="条件表达式，如: ${ctx.status} == 'active'">${cond.expression || ''}</textarea>
+                    </div>
+                `).join('');
+
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label class="form-label" style="font-weight: 600;">分支条件</label>
+                        <div id="conditionList">
+                            ${conditionsHtml}
+                        </div>
+                        <button type="button" class="add-param-btn" onclick="addCondition()" style="margin-top: 8px;">
+                            + 添加分支
+                        </button>
+                    </div>
+                `;
+            } else if (node.type === 'forLoop') {
+                // 循环节点配置
                 configHtml = `
                     <div class="form-group">
                         <label class="form-label">节点名称</label>
@@ -3016,8 +3362,71 @@
                         <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">条件表达式</label>
-                        <textarea class="form-textarea" id="nodeCondition" placeholder="如: params.status == 'active'">${node.data.condition || ''}</textarea>
+                        <label class="form-label">迭代对象</label>
+                        <input type="text" class="form-input" id="nodeIterable" value="${node.data.iterable || ''}" placeholder="如: ${ctx.items}">
+                        <small style="color: var(--text-tertiary); display: block; margin-top: 4px;">
+                            支持上下文变量引用，如 <code>${'{ctx.items}'}</code>
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">循环变量名</label>
+                        <input type="text" class="form-input" id="nodeItemName" value="${node.data.itemName || 'item'}" placeholder="如: item">
+                        <small style="color: var(--text-tertiary); display: block; margin-top: 4px;">
+                            在循环体中可通过此变量名访问当前迭代项
+                        </small>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px; padding: 12px; background: #e6fffb; border-radius: 6px; border: 1px solid #13c2c2;">
+                        <label class="form-label" style="color: #13c2c2; font-weight: 500;">连线说明</label>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                            <div>• 上 Handle：主流程入口</div>
+                            <div>• 右 Handle：连接循环体节点</div>
+                            <div>• 下 Handle：循环完成后继续主流程</div>
+                        </div>
+                    </div>
+                `;
+            } else if (node.type === 'parallel') {
+                // 并行节点配置
+                const branches = node.data.branches || [
+                    { id: 'branch1', label: '分支1' },
+                    { id: 'branch2', label: '分支2' },
+                    { id: 'branch3', label: '分支3' }
+                ];
+
+                const branchesHtml = branches.map((branch, index) => `
+                    <div class="form-group" style="margin-bottom: 12px; padding: 12px; background: var(--bg-light); border-radius: 6px;">
+                        <div class="param-row">
+                            <input type="text" class="form-input" id="branchLabel${index}" value="${branch.label || ''}"
+                                placeholder="分支名称" style="flex: 1;">
+                            <button type="button" class="param-remove-btn" onclick="removeBranch(${index})">删除</button>
+                        </div>
+                    </div>
+                `).join('');
+
+                configHtml = `
+                    <div class="form-group">
+                        <label class="form-label">节点名称</label>
+                        <input type="text" class="form-input" id="nodeLabel" value="${node.data.label || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">节点描述</label>
+                        <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label class="form-label" style="font-weight: 600;">并行分支</label>
+                        <div id="branchList">
+                            ${branchesHtml}
+                        </div>
+                        <button type="button" class="add-param-btn" onclick="addBranch()" style="margin-top: 8px;">
+                            + 添加分支
+                        </button>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px; padding: 12px; background: #f0f5ff; border-radius: 6px; border: 1px solid #597ef7;">
+                        <label class="form-label" style="color: #597ef7; font-weight: 500;">连线说明</label>
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+                            <div>• 上 Handle：主流程入口</div>
+                            <div>• 底部分支 Handle：分别连接各分支的起始节点</div>
+                            <div>• 所有分支将同时执行</div>
+                        </div>
                     </div>
                 `;
             }
@@ -3052,6 +3461,118 @@
                 const assembleParams = node.data.assembleParams || { header: [], body: [] };
                 renderOutputAssembleParams('output-assemble-params-header', assembleParams.header || []);
                 renderOutputAssembleParams('output-assemble-params-body', assembleParams.body || []);
+            }
+        }
+
+        // ========================================
+        // 条件分支和并行节点配置辅助函数
+        // ========================================
+
+        /**
+         * 添加条件分支
+         */
+        function addCondition() {
+            const list = document.getElementById('conditionList');
+            if (!list) return;
+
+            const index = list.children.length;
+            const newCondition = `
+                <div class="form-group" style="margin-bottom: 12px; padding: 12px; background: var(--bg-light); border-radius: 6px;">
+                    <div class="param-row" style="margin-bottom: 8px;">
+                        <input type="text" class="form-input" id="condLabel${index}" value=""
+                            placeholder="分支名称" style="flex: 1;">
+                        <button type="button" class="param-remove-btn" onclick="removeCondition(${index})">删除</button>
+                    </div>
+                    <textarea class="form-textarea" id="condExpr${index}" placeholder="条件表达式，如: ${'{ctx.status}'} == 'active'"></textarea>
+                </div>
+            `;
+            list.insertAdjacentHTML('beforeend', newCondition);
+        }
+
+        /**
+         * 移除条件分支
+         */
+        function removeCondition(index) {
+            const list = document.getElementById('conditionList');
+            if (!list || !list.children[index]) return;
+            list.children[index].remove();
+            // 重新编号
+            updateConditionNumbers();
+        }
+
+        /**
+         * 更新条件编号
+         */
+        function updateConditionNumbers() {
+            const list = document.getElementById('conditionList');
+            if (!list) return;
+
+            Array.from(list.children).forEach((item, index) => {
+                const labelInput = item.querySelector('input[id^="condLabel"]');
+                const exprInput = item.querySelector('textarea[id^="condExpr"]');
+                const removeBtn = item.querySelector('.param-remove-btn');
+
+                if (labelInput) labelInput.id = `condLabel${index}`;
+                if (exprInput) exprInput.id = `condExpr${index}`;
+                if (removeBtn) removeBtn.setAttribute('onclick', `removeCondition(${index})`);
+            });
+        }
+
+        /**
+         * 添加并行分支
+         */
+        function addBranch() {
+            const list = document.getElementById('branchList');
+            if (!list) return;
+
+            const index = list.children.length;
+            const newBranch = `
+                <div class="form-group" style="margin-bottom: 12px; padding: 12px; background: var(--bg-light); border-radius: 6px;">
+                    <div class="param-row">
+                        <input type="text" class="form-input" id="branchLabel${index}" value=""
+                            placeholder="分支名称" style="flex: 1;">
+                        <button type="button" class="param-remove-btn" onclick="removeBranch(${index})">删除</button>
+                    </div>
+                </div>
+            `;
+            list.insertAdjacentHTML('beforeend', newBranch);
+        }
+
+        /**
+         * 移除并行分支
+         */
+        function removeBranch(index) {
+            const list = document.getElementById('branchList');
+            if (!list || !list.children[index]) return;
+            list.children[index].remove();
+            // 重新编号
+            updateBranchNumbers();
+        }
+
+        /**
+         * 更新分支编号
+         */
+        function updateBranchNumbers() {
+            const list = document.getElementById('branchList');
+            if (!list) return;
+
+            Array.from(list.children).forEach((item, index) => {
+                const labelInput = item.querySelector('input[id^="branchLabel"]');
+                const removeBtn = item.querySelector('.param-remove-btn');
+
+                if (labelInput) labelInput.id = `branchLabel${index}`;
+                if (removeBtn) removeBtn.setAttribute('onclick', `removeBranch(${index})`);
+            });
+        }
+
+        /**
+         * 切换重试配置显示
+         * @param {string} strategy - 异常处理策略
+         */
+        function toggleRetryConfig(strategy) {
+            const retryConfigGroup = document.getElementById('retryConfigGroup');
+            if (retryConfigGroup) {
+                retryConfigGroup.style.display = strategy === 'retry' ? 'block' : 'none';
             }
         }
 
@@ -3102,16 +3623,50 @@
                 };
             } else if (selectedNode.type === 'error') {
                 // 异常处理配置
-                selectedNode.data.errorType = document.getElementById('nodeErrorType')?.value;
-                selectedNode.data.errorCode = document.getElementById('nodeErrorCode')?.value;
-                selectedNode.data.errorMessage = document.getElementById('nodeErrorMessage')?.value;
+                selectedNode.data.strategy = document.getElementById('nodeErrorType')?.value === 'retry' ? 'retry' : 'ignore';
+                selectedNode.data.retryCount = parseInt(document.getElementById('nodeRetryCount')?.value) || 3;
             } else if (selectedNode.type === 'data') {
                 // 数据处理配置
                 selectedNode.data.transform = document.getElementById('nodeDataTransform')?.value;
                 selectedNode.data.outputField = document.getElementById('nodeOutputField')?.value;
             } else if (selectedNode.type === 'condition') {
-                // 条件配置
-                selectedNode.data.condition = document.getElementById('nodeCondition')?.value;
+                // 条件分支配置
+                const conditionList = document.getElementById('conditionList');
+                if (conditionList) {
+                    const conditions = [];
+                    Array.from(conditionList.children).forEach((item, index) => {
+                        const labelInput = document.getElementById(`condLabel${index}`);
+                        const exprInput = document.getElementById(`condExpr${index}`);
+                        if (labelInput && labelInput.value.trim()) {
+                            conditions.push({
+                                id: `cond${index + 1}`,
+                                label: labelInput.value.trim(),
+                                expression: exprInput?.value || ''
+                            });
+                        }
+                    });
+                    selectedNode.data.conditions = conditions;
+                }
+            } else if (selectedNode.type === 'forLoop') {
+                // 循环配置
+                selectedNode.data.iterable = document.getElementById('nodeIterable')?.value || '';
+                selectedNode.data.itemName = document.getElementById('nodeItemName')?.value || 'item';
+            } else if (selectedNode.type === 'parallel') {
+                // 并行配置
+                const branchList = document.getElementById('branchList');
+                if (branchList) {
+                    const branches = [];
+                    Array.from(branchList.children).forEach((item, index) => {
+                        const labelInput = document.getElementById(`branchLabel${index}`);
+                        if (labelInput && labelInput.value.trim()) {
+                            branches.push({
+                                id: `branch${index + 1}`,
+                                label: labelInput.value.trim()
+                            });
+                        }
+                    });
+                    selectedNode.data.branches = branches;
+                }
             }
 
             closeDrawer();
@@ -3143,22 +3698,68 @@
         // ========================================
         // 连接线
         // ========================================
+
+        /**
+         * 处理端口鼠标释放事件，创建连线
+         * 支持多种 Handle 类型：
+         * - top/bottom: 主流程上下 Handle
+         * - body: 循环/异常处理的子节点入口 Handle
+         * - 分支ID: 条件分支/并行的多出口 Handle
+         */
         function handlePortMouseUp(event, nodeId, portType) {
+            event.stopPropagation();
+
             if (!isConnecting) {
+                // 开始连线
                 isConnecting = true;
                 connectStart = { nodeId, portType };
+
+                // 添加连线中的视觉反馈
+                document.body.style.cursor = 'crosshair';
             } else {
-                // 创建连线
+                // 结束连线
+                document.body.style.cursor = 'default';
+
                 if (connectStart.nodeId !== nodeId) {
+                    // 确定 source 和 target
+                    let source, target, sourceHandle, targetHandle;
+
+                    const sourceNode = nodes.find(n => n.id === connectStart.nodeId);
+                    const targetNode = nodes.find(n => n.id === nodeId);
+                    const sourceType = sourceNode ? NODE_TYPES.find(t => t.type === sourceNode.type) : null;
+                    const targetType = targetNode ? NODE_TYPES.find(t => t.type === targetNode.type) : null;
+
+                    // 判断连线方向和 Handle
+                    // 规则：从上/右/多出口 Handle 出，连接到下/右 Handle 入
+                    if (connectStart.portType === 'top' || connectStart.portType === 'body' ||
+                        (sourceType?.multiOutput && connectStart.portType !== 'bottom')) {
+                        // 从起始节点的指定 Handle 出发
+                        source = connectStart.nodeId;
+                        sourceHandle = connectStart.portType === 'top' ? null : connectStart.portType;
+                        target = nodeId;
+                        targetHandle = portType === 'body' ? 'body' : null;
+                    } else {
+                        // 反向连线
+                        source = nodeId;
+                        sourceHandle = portType === 'top' ? null : portType;
+                        target = connectStart.nodeId;
+                        targetHandle = connectStart.portType === 'body' ? 'body' : null;
+                    }
+
                     const edge = {
                         id: generateId(),
-                        source: connectStart.nodeId,
-                        target: nodeId
+                        source: source,
+                        target: target,
+                        sourceHandle: sourceHandle,
+                        targetHandle: targetHandle
                     };
 
-                    // 检查是否已存在相同连线
+                    // 检查是否已存在相同连线（考虑 Handle 类型）
                     const exists = edges.some(e =>
-                        e.source === edge.source && e.target === edge.target
+                        e.source === edge.source &&
+                        e.target === edge.target &&
+                        e.sourceHandle === edge.sourceHandle &&
+                        e.targetHandle === edge.targetHandle
                     );
 
                     if (!exists) {
