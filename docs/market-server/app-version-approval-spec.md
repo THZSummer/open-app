@@ -126,7 +126,7 @@ GET /service/open/v2/approvals/pending
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
 | curPage | Integer | 否 | 当前页，默认 1 |
-| pageSize | Integer | 否 | 每页条数，默认 10 |
+| pageSize | Integer | 否 | 每页条数，默认 10，前端可选 10/20/50 |
 
 > **说明**：当前不提供搜索/过滤参数，后续迭代按需增加。
 
@@ -235,7 +235,7 @@ GET /service/open/v2/approvals/published
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
 | curPage | Integer | 否 | 当前页，默认 1 |
-| pageSize | Integer | 否 | 每页条数，默认 10 |
+| pageSize | Integer | 否 | 每页条数，默认 10，前端可选 10/20/50 |
 
 > **注意**: 无 status 筛选参数，固定查询 APPROVED(1) 状态，按应用去重取最新。
 
@@ -531,6 +531,12 @@ export const APPROVAL_ACTION = {
   APPROVE: 0,
   REJECT: 1,
 };
+
+export const PAGE_SIZE_OPTIONS = [
+  { label: '10 条/页', value: 10 },
+  { label: '20 条/页', value: 20 },
+  { label: '50 条/页', value: 50 },
+];
 
 // 待审批 Tab 列定义
 export const getPendingColumns = ({ renderAppName, renderAction }) => [
