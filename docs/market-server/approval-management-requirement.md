@@ -66,7 +66,7 @@
 | 信息完整 | 列表展示应用中英文名、版本号、关联能力等完整信息，辅助审批决策 |
 | 已上架可查 | 独立已上架应用页面，按应用维度展示最新已上架版本，便于管理员了解当前线上版本状态 |
 | 可扩展 | 策略模式架构，后续新增审批类型（API 权限、事件权限等）只需新增 Handler + Resolver，核心引擎无需修改 |
-| 操作追溯 | 审批日志完整记录操作人、操作类型、审批意见，满足审计要求 |
+| 操作追溯 | 审批日志完整记录操作人、操作类型，满足审计要求 |
 | 状态机清晰 | 定义完整的审批状态流转（PENDING → APPROVED/REJECTED/CANCELLED），便于理解和维护 |
 
 ### 如果不做的影响
@@ -122,7 +122,7 @@ graph TB
 | 应用版本管理 | 查看待审批列表 | 审批人进入待审批应用页面，查看当前待处理的审批记录列表 | 审批人 |
 | 应用版本管理 | 查看已上架应用列表 | 审批人进入已上架应用页面，查看每个应用最新已上架版本信息 | 审批人 |
 | 应用版本管理 | 审批通过 | 审批人点击"同意"，二次确认后完成审批通过操作 | 审批人 |
-| 应用版本管理 | 审批驳回 | 审批人点击"拒绝"，填写驳回原因后完成驳回操作 | 审批人 |
+| 应用版本管理 | 审批驳回 | 审批人点击"拒绝"，二次确认后完成驳回操作 | 审批人 |
 | 应用版本管理 | 查看应用详情 | 审批人点击"查看"，window.open 新开浏览器标签页跳转到应用详情页 | 审批人 |
 | 应用版本管理 | 多节点审批推进 | 多节点审批场景下，非最后节点通过后自动推进到下一节点 | 系统 |
 
@@ -175,7 +175,7 @@ graph TB
 | 审批人 | UC-01 查看待审批列表 | 进入待审批应用页面，加载待审批列表 | 否 |
 | 审批人 | UC-02 查看已上架应用列表 | 进入已上架应用页面，查看每个应用最新已上架版本 | 否 |
 | 审批人 | UC-03 审批通过 | 点击"同意"→ 二次确认 → 调用接口 → 刷新列表 | 是 |
-| 审批人 | UC-04 审批驳回 | 点击"拒绝"→ 弹窗填写原因 → 调用接口 → 刷新列表 | 是 |
+| 审批人 | UC-04 审批驳回 | 点击"拒绝"→ 二次确认 → 调用接口 → 刷新列表 | 是 |
 | 审批人 | UC-05 查看应用详情 | 点击"查看"→ window.open 新开标签页跳转到应用详情页 | 否 |
 | 审批人 | UC-06 切换语言 | 切换中/英文，应用名称列随之切换 | 否 |
 
@@ -219,7 +219,7 @@ graph TB
 
 #### UC-04 审批驳回
 
-**【简要说明】**：审批人对某条待审批记录执行驳回操作，必须填写驳回原因，系统校验后更新审批状态并触发业务回调。
+**【简要说明】**：审批人对某条待审批记录执行驳回操作，二次确认后系统校验并更新审批状态，触发业务回调。
 
 **【Actor】**：审批人
 
@@ -231,21 +231,20 @@ graph TB
 
 **【主成功场景】**：
 1. 审批人点击某条记录的"拒绝"按钮
-2. 前端弹出 Modal，展示 TextArea（拒绝原因，必填）
-3. 审批人输入驳回原因，点击"确认拒绝"
-4. 前端校验 TextArea 非空 → 调用 `POST /approvals/{id}/process`，body: `{ action: 1, comment: "原因" }`
-5. 后端校验记录存在、状态为 PENDING、操作人匹配、comment 非空
-6. 后端插入 ApprovalLog（action=REJECT, comment=原因）
+2. 前端弹出 Modal.confirm 二次确认框，展示应用名称、版本号、申请账号信息
+3. 审批人点击"确认拒绝"
+4. 前端调用 `POST /approvals/{id}/process`，body: `{ action: 1 }`
+5. 后端校验记录存在、状态为 PENDING、操作人匹配
+6. 后端插入 ApprovalLog（action=REJECT）
 7. 后端更新 status=REJECTED + 触发 handler.onRejected
 8. 后端返回 `{ code: "200" }`
-9. 前端展示 `message.success('已拒绝')`，关闭 Modal，刷新列表
+9. 前端展示 `message.success('已拒绝')`，刷新列表
 
 **【扩展场景】**：
-- **E1 TextArea 为空**：前端校验拦截，TextArea 边框变红，提示必填，不发起请求
-- **E2 后端 comment 为空**：后端返回 code=40005，前端展示错误信息
-- **E3-E5**：同 UC-03 的 E1-E3
+- **E1-E3**：同 UC-03 的 E1-E3
+- **E4 审批人取消确认**：Modal 关闭，不发起请求
 
-**【DFX属性】**：安全（操作人身份校验 + 驳回原因必填）、可靠性（事务保证）
+**【DFX属性】**：安全（操作人身份校验）、可靠性（事务保证）
 
 #### 2.3 影响的功能列表和需求分解
 
@@ -325,7 +324,7 @@ graph TD
         col_pending["应用名称 | 应用能力 | 版本号<br/>应用ID | 申请账号 | 申请时间"]
         action_pending["操作列<br/>查看 | 同意 | 拒绝"]
         confirm["Modal.confirm<br/>同意确认"]
-        reject["Modal + TextArea<br/>拒绝弹窗"]
+        reject["Modal.confirm<br/>拒绝确认"]
     end
     
     subgraph 已上架应用页
@@ -522,13 +521,13 @@ sequenceDiagram
     participant FE as 前端
     participant MS as market-server
 
-    FE->>MS: POST /approvals/{id}/process<br/>{ action: 0/1, comment? }
+    FE->>MS: POST /approvals/{id}/process<br/>{ action: 0/1 }
     MS->>MS: 1. selectById(id)
     MS->>MS: 2. 校验 status == PENDING
     MS->>MS: 3. parseNodes(combinedNodes)
     MS->>MS: 4. 校验 currentNode.userId == operatorId
     MS->>MS: 5. handlerFactory.getHandler(businessType)
-    MS->>MS: 6. insertLog(record, action, comment)
+    MS->>MS: 6. insertLog(record, action)
     alt action == 0 (通过)
         alt 最后节点
             MS->>MS: 7a. status = APPROVED<br/>handler.onApproved
@@ -536,8 +535,7 @@ sequenceDiagram
             MS->>MS: 7b. currentNode++
         end
     else action == 1 (驳回)
-        MS->>MS: 7c. 校验 comment 非空
-        MS->>MS: status = REJECTED<br/>handler.onRejected
+        MS->>MS: 7c. status = REJECTED<br/>handler.onRejected
     end
     MS->>MS: 8. update(record)
     MS-->>FE: { code: "200" }
@@ -560,7 +558,6 @@ sequenceDiagram
 | 字段 | 类型 | 必填 | 格式 | 说明 |
 |------|------|:----:|------|------|
 | action | Integer | 是 | 0 或 1 | 0=通过, 1=驳回 |
-| comment | String | action=1 时必填 | UTF-8 文本，最大 2000 字符 | 审批意见 |
 
 **返回值**：
 
@@ -571,8 +568,7 @@ sequenceDiagram
 | 40002 | 审批记录已处理，当前状态：{status} | status != PENDING |
 | 40003 | 当前节点审批人不匹配 | userId 校验失败 |
 | 40004 | 不支持的业务类型：{businessType} | handler 未注册 |
-| 40005 | 驳回时必须填写审批意见 | action=1 且 comment 为空 |
-| 40006 | 无效的操作类型：{action} | action 不是 0 或 1 |
+| 40005 | 无效的操作类型：{action} | action 不是 0 或 1 |
 
 ---
 
@@ -661,7 +657,7 @@ graph TD
 | 切换语言 | 点击"中文"/"EN" | 应用名称列在中英文名间切换 |
 | 点击查看 | 操作列"查看"链接 | `window.open('/app-detail/' + record.appId, '_blank')` 新开浏览器标签页 |
 | 点击同意 | 操作列"同意"链接 | Modal.confirm 二次确认 → POST process(action=0) → 成功刷新 |
-| 点击拒绝 | 操作列"拒绝"链接 | Modal + TextArea（必填）→ POST process(action=1, comment) → 成功刷新 |
+| 点击拒绝 | 操作列"拒绝"链接 | Modal.confirm 二次确认 → POST process(action=1) → 成功刷新 |
 
 ##### 3.5 架构元素影响列表
 
@@ -754,7 +750,7 @@ graph TD
 | 接口鉴权 | @AuthRole 注解，未登录返回 401 |
 | 操作人校验 | UserContextHolder.getUserId() 与审批节点 userId 比对 |
 | 越权防护 | 只能操作自己是当前审批人的记录 |
-| 输入校验 | action 值校验（0/1），comment 驳回必填 |
+| 输入校验 | action 值校验（0/1） |
 
 ### 7.3 兼容性
 

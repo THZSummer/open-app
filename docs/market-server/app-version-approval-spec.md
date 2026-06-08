@@ -315,15 +315,13 @@ POST /service/open/v2/approvals/{id}/process
 **请求 Body**：
 ```json
 {
-  "action": 0,
-  "comment": "同意发布"
+  "action": 0
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
 | action | Integer | 是 | 0=通过（APPROVE）, 1=驳回（REJECT） |
-| comment | String | 驳回时必填 | 审批意见 |
 
 **响应**：
 ```json
@@ -344,7 +342,7 @@ POST /service/open/v2/approvals/{id}/process
 4. 获取 currentNode 索引对应的节点
 5. 校验操作人（UserContextHolder.getUserId()）== 节点 userId
 6. 校验 action 值（0 或 1）
-7. 插入 ApprovalLog（action=请求体 action, comment=请求体 comment）
+7. 插入 ApprovalLog（action=请求体 action）
 8. 按 action 分支：
    ┌─ action=0（通过）:
    │    判断是否最后一个节点：
@@ -354,7 +352,6 @@ POST /service/open/v2/approvals/{id}/process
    │    更新 ApprovalRecord
    │
    └─ action=1（驳回）:
-        校验 comment 非空（否则返回 40005）
         record.status = REJECTED(2), record.completedAt = now
         handler.onRejected(record)   // 策略回调
         更新 ApprovalRecord
@@ -368,8 +365,7 @@ POST /service/open/v2/approvals/{id}/process
 | 40002 | 审批记录已处理，当前状态：{status} | status != PENDING |
 | 40003 | 当前节点审批人不匹配 | userId 校验失败 |
 | 40004 | 不支持的业务类型：{businessType} | handler 未注册 |
-| 40005 | 驳回时必须填写审批意见 | action=1 且 comment 为空 |
-| 40006 | 无效的操作类型：{action} | action 不是 0 或 1 |
+| 40005 | 无效的操作类型：{action} | action 不是 0 或 1 |
 
 ---
 
@@ -459,7 +455,7 @@ APPROVAL_PROCESS: '/market-web/service/open/v2/approvals/{id}/process',
 |------|:--------:|:--------:|------|
 | 查看 | ✓ | ✓ | `window.open('/app-detail/' + record.appId, '_blank')` — 新开浏览器标签页跳转应用详情 |
 | 同意 | ✓ | — | `Modal.confirm` 二次确认 → 调用 process API（action=0）→ 成功后 `message.success('审批通过')` + `fetchData()` |
-| 拒绝 | ✓ | — | `Modal` 弹窗 + TextArea（拒绝原因必填）→ 调用 process API（action=1）→ 成功后 `message.success('已拒绝')` + `fetchData()` |
+| 拒绝 | ✓ | — | `Modal.confirm` 二次确认 → 调用 process API（action=1）→ 成功后 `message.success('已拒绝')` + `fetchData()` |
 
 **语言切换逻辑**：
 
@@ -474,20 +470,21 @@ const renderAppName = (text, record) => {
 ```
 同意操作:
   1. 点击"同意"按钮
-  2. Modal.confirm 弹出确认框
+  2. Modal.confirm 弹出确认框，展示应用名称、版本号、申请账号
   3. 用户确认 → 调用 thunk.processApproval(id, { action: 0 })
   4. 检查 result.code === '200'
   5. 成功 → message.success('审批通过') + fetchData() 刷新列表
   6. 失败 → message.error({ content: result?.messageZh || '操作失败' })
+  7. 取消 → Modal 关闭，无操作
 
 拒绝操作:
   1. 点击"拒绝"按钮
-  2. Modal 弹窗显示 TextArea
-  3. 用户输入拒绝原因（必填校验）→ 点击"确认拒绝"
-  4. 调用 thunk.processApproval(id, { action: 1, comment })
-  5. 检查 result.code === '200'
-  6. 成功 → message.success('已拒绝') + 关闭 Modal + fetchData() 刷新列表
-  7. 失败 → message.error({ content: result?.messageZh || '操作失败' })
+  2. Modal.confirm 弹出确认框，展示应用名称、版本号、申请账号
+  3. 用户确认 → 调用 thunk.processApproval(id, { action: 1 })
+  4. 检查 result.code === '200'
+  5. 成功 → message.success('已拒绝') + fetchData() 刷新列表
+  6. 失败 → message.error({ content: result?.messageZh || '操作失败' })
+  7. 取消 → Modal 关闭，无操作
 
 查看操作:
   1. 点击"查看"按钮
@@ -576,9 +573,6 @@ export const getTableColumns = ({ renderAppName, renderAction }) => [
 const [dataSource, setDataSource] = useState([]);
 const [loading, setLoading] = useState(false);
 const [pagination, setPagination] = useState({ curPage: 1, pageSize: 10, total: 0 });
-const [rejectModalVisible, setRejectModalVisible] = useState(false);
-const [currentRecord, setCurrentRecord] = useState(null);
-const [rejectComment, setRejectComment] = useState('');
 const [currentLang, setCurrentLang] = useState(localStorage.getItem('lang') || 'zh');
 
 // 事件处理
@@ -589,7 +583,7 @@ const handleView = (record) => {
 const handleApprove = (record) => {
   Modal.confirm({
     title: '确认审批通过',
-    content: `应用：${record.appNameCn}，版本：${record.versionNo}`,
+    content: `应用：${record.appNameCn}，版本：${record.versionNo}，申请账号：${record.applicantId}`,
     onOk: async () => {
       const result = await processApproval(record.id, { action: APPROVAL_ACTION.APPROVE });
       if (result.code === '200') {
@@ -603,24 +597,20 @@ const handleApprove = (record) => {
 };
 
 const handleReject = (record) => {
-  setCurrentRecord(record);
-  setRejectModalVisible(true);
-};
-
-const handleRejectConfirm = async () => {
-  if (!rejectComment?.trim()) return; // TextArea 必填校验
-  const result = await processApproval(currentRecord.id, {
-    action: APPROVAL_ACTION.REJECT,
-    comment: rejectComment,
+  Modal.confirm({
+    title: '确认审批拒绝',
+    content: `应用：${record.appNameCn}，版本：${record.versionNo}，申请账号：${record.applicantId}`,
+    okType: 'danger',
+    onOk: async () => {
+      const result = await processApproval(record.id, { action: APPROVAL_ACTION.REJECT });
+      if (result.code === '200') {
+        message.success('已拒绝');
+        fetchData();
+      } else {
+        message.error(result?.messageZh || '操作失败');
+      }
+    },
   });
-  if (result.code === '200') {
-    message.success('已拒绝');
-    setRejectModalVisible(false);
-    setRejectComment('');
-    fetchData();
-  } else {
-    message.error(result?.messageZh || '操作失败');
-  }
 };
 ```
 
@@ -865,7 +855,7 @@ public class BusinessDataResolverFactory {
 
 | 方法 | 说明 | 对应 open-server |
 |------|------|-----------------|
-| `process(recordId, action, comment)` | 统一审批操作（通过/驳回） | `approve()` + `reject()` 合并 |
+| `process(recordId, action)` | 统一审批操作（通过/驳回） | `approve()` + `reject()` 合并 |
 
 **不包含**（open-server 有但 market-server 不需要）：
 - `composeApprovalNodes()` — 审批流由 open-server 创建
@@ -877,7 +867,7 @@ public class BusinessDataResolverFactory {
 
 ```java
 @Transactional(rollbackFor = Exception.class)
-public void process(Long recordId, int action, String comment) {
+public void process(Long recordId, int action) {
     // 1. 查询记录
     ApprovalRecord record = recordMapper.selectById(recordId);
     if (record == null) throw new BizException(40001, "审批记录不存在");
@@ -901,7 +891,7 @@ public void process(Long recordId, int action, String comment) {
     }
 
     // 5. 插入日志
-    insertLog(record, currentNode, action, comment);
+    insertLog(record, currentNode, action);
 
     // 6. 按 action 分支处理
     Date now = new Date();
@@ -916,15 +906,12 @@ public void process(Long recordId, int action, String comment) {
             recordMapper.update(record);
         }
     } else if (action == ACTION_REJECT) {
-        if (comment == null || comment.isBlank()) {
-            throw new BizException(40005, "驳回时必须填写审批意见");
-        }
         record.setStatus(STATUS_REJECTED);
         record.setCompletedAt(now);
         recordMapper.update(record);
         handler.onRejected(record);
     } else {
-        throw new BizException(40006, "无效的操作类型：" + action);
+        throw new BizException(40005, "无效的操作类型：" + action);
     }
 }
 ```
@@ -1049,7 +1036,7 @@ stateDiagram-v2
 | 14 | `approval/mapper/ApprovalFlowMapper.java` | Mapper 接口 |
 | 15 | `approval/dto/ApprovalNodeDto.java` | 节点 DTO |
 | 16 | `approval/dto/ApprovalListRequest.java` | 列表查询请求（curPage, pageSize） |
-| 17 | `approval/dto/ApprovalProcessRequest.java` | 审批操作请求（action + comment） |
+| 17 | `approval/dto/ApprovalProcessRequest.java` | 审批操作请求（action） |
 | 18 | `approval/vo/ApprovalListVo.java` | 列表展示 VO（含 appNameCn, appNameEn, versionNo, appId, capabilityNames, applicantId, createTime） |
 | 19 | `approval/constant/ApprovalConstants.java` | 状态/操作常量 |
 
@@ -1109,10 +1096,10 @@ stateDiagram-v2
 | T-09 | POST process action=0 — 正常通过（单节点） | status → APPROVED(1), completedAt 非空, handler.onApproved 执行 |
 | T-10 | POST process action=0 — 多节点非最后 | currentNode += 1, status 仍为 PENDING(0), handler 不触发 |
 | T-11 | POST process action=0 — 多节点最后节点 | status → APPROVED(1), handler.onApproved 执行 |
-| T-12 | POST process action=1 — 正常驳回 | status → REJECTED(2), log.comment 有值, handler.onRejected 执行 |
-| T-13 | POST process action=1 — comment 为空 | code=40005, messageZh="驳回时必须填写审批意见" |
-| T-14 | POST process — record 不存在 | code=40001 |
-| T-15 | POST process — 非 PENDING 状态 | code=40002, messageZh 含当前状态 |
+| T-12 | POST process action=1 — 正常驳回 | status → REJECTED(2), handler.onRejected 执行 |
+| T-13 | POST process — record 不存在 | code=40001 |
+| T-14 | POST process — 非 PENDING 状态 | code=40002, messageZh 含当前状态 |
+| T-15 | POST process — 无效 action | code=40005, messageZh 含 action 值 |
 
 ### 7.2 前端测试用例（15 条）
 
@@ -1127,9 +1114,9 @@ stateDiagram-v2
 | F-07 | 已上架页点击"查看"按钮 | `window.open` 新开浏览器标签页，URL 为 `/app-detail/{appId}` |
 | F-08 | 待审批页点击"同意"按钮 → 确认 | Modal.confirm 弹出 → 确认 → 调用 process(action=0) → success toast + 列表刷新 |
 | F-09 | 待审批页点击"同意"按钮 → 取消 | Modal 关闭，无操作 |
-| F-10 | 待审批页点击"拒绝"按钮 | 弹出 Modal，显示 TextArea |
-| F-11 | 待审批页拒绝 Modal — TextArea 为空点击确认 | TextArea 边框变红，提示必填 |
-| F-12 | 待审批页拒绝 Modal — 输入原因后确认 | 调用 process(action=1, comment) → success toast + Modal 关闭 + 列表刷新 |
+| F-10 | 待审批页点击"拒绝"按钮 | Modal.confirm 弹出确认框，展示应用名称、版本号、申请账号 |
+| F-11 | 待审批页点击"拒绝"按钮 → 确认 | Modal.confirm 弹出 → 确认 → 调用 process(action=1) → success toast + 列表刷新 |
+| F-12 | 待审批页点击"拒绝"按钮 → 取消 | Modal 关闭，无操作 |
 | F-13 | 已上架页操作列 | 仅显示"查看"按钮，无同意/拒绝按钮 |
 | F-14 | 待审批页时间列标题 | 显示"申请时间" |
 | F-15 | 已上架页时间列标题 | 显示"创建时间" |
@@ -1151,7 +1138,7 @@ stateDiagram-v2
   - 操作按钮：查看（蓝色链接）、同意（绿色链接）、拒绝（红色链接）
 - **分页组件**：页码 + 每页条数选择
 - **同意确认弹窗**：Modal.confirm 样式，显示审批信息摘要
-- **拒绝弹窗**：Modal + TextArea（拒绝原因必填），确认拒绝按钮
+- **拒绝确认弹窗**：Modal.confirm 样式，展示应用信息摘要，确认拒绝按钮
 - **Toast 提示**：操作成功后的顶部提示条
 
 ### 8.2 已上架应用页
