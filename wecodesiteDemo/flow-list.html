@@ -1065,9 +1065,10 @@
                                             <button class="menu-item" onclick="handleCopyId('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">
                                                 复制ID
                                             </button>
-                                            <button class="menu-item" onclick="handleDeploy('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">
-                                                部署
-                                            </button>
+                                            ${item.lifecycleStatus === 3 ?
+                                                `<button class="menu-item" onclick="deleteFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--error-color);">删除</button>` :
+                                                `<button class="menu-item" onclick="handleDeploy('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">部署</button>`
+                                            }
                                             ${item.lifecycleStatus === 1 ?
                                                 `<button class="menu-item" onclick="stopFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">停止</button>` : ''
                                             }
@@ -1076,9 +1077,6 @@
                                             }
                                             ${item.lifecycleStatus === 0 || item.lifecycleStatus === 2 ?
                                                 `<button class="menu-item" onclick="invalidFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">失效</button>` : ''
-                                            }
-                                            ${item.lifecycleStatus === 3 ?
-                                                `<button class="menu-item" onclick="deleteFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--error-color);">删除</button>` : ''
                                             }
                                         </div>
                                     </div>

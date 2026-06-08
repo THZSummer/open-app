@@ -717,6 +717,28 @@
             justify-content: flex-end;
         }
 
+        /* ========================================
+           调试抽屉（无蒙层，右侧滑出）
+           ======================================== */
+        .debug-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 480px;
+            height: 100vh;
+            background: var(--bg-white);
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+            z-index: 200;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .debug-drawer.active {
+            transform: translateX(0);
+        }
+
         /* 表单样式 */
         .form-group {
             margin-bottom: 16px;
@@ -1050,10 +1072,61 @@
                 <label class="form-label">修改时间</label>
                 <div id="detailModifiedAt" style="padding: 8px 0; color: var(--text-primary);">-</div>
             </div>
-            <div class="form-group" id="detailRejectReasonGroup" style="display: none;">
-                <label class="form-label">驳回理由</label>
-                <div id="detailRejectReason" style="padding: 8px 0; color: var(--error-color);">-</div>
+
+            <!-- 审批信息区域（审批中状态显示） -->
+            <div class="detail-approval-section" id="detailApprovalSection" style="display: none;">
+                <div style="height: 1px; background: var(--border-color); margin: 16px 0;"></div>
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600; margin-bottom: 8px;">审批信息</label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">审批人</label>
+                    <div id="detailApprover" style="padding: 8px 0; color: var(--text-primary);">-</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">审批地址</label>
+                    <div id="detailApprovalUrl" style="padding: 8px 0; color: var(--primary-color); word-break: break-all;">-</div>
+                </div>
             </div>
+
+            <!-- 驳回信息区域（已驳回状态显示） -->
+            <div class="detail-reject-section" id="detailRejectSection" style="display: none;">
+                <div style="height: 1px; background: var(--border-color); margin: 16px 0;"></div>
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600; margin-bottom: 8px;">驳回信息</label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">驳回人</label>
+                    <div id="detailRejector" style="padding: 8px 0; color: var(--text-primary);">-</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">驳回理由</label>
+                    <div id="detailRejectReason" style="padding: 8px 0; color: var(--error-color);">-</div>
+                </div>
+            </div>
+
+            <!-- 撤回信息区域（已撤回状态显示） -->
+            <div class="detail-withdraw-section" id="detailWithdrawSection" style="display: none;">
+                <div style="height: 1px; background: var(--border-color); margin: 16px 0;"></div>
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600; margin-bottom: 8px;">撤回信息</label>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">撤回人</label>
+                    <div id="detailWithdrawor" style="padding: 8px 0; color: var(--text-primary);">-</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">撤回时间</label>
+                    <div id="detailWithdrawTime" style="padding: 8px 0; color: var(--text-primary);">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="drawer-footer" id="versionDetailFooter">
+            <!-- 催办按钮（审批中状态显示） -->
+            <button class="btn btn-primary" id="urgeApprovalBtn" onclick="handleUrgeApproval()" style="display: none;">
+                催办
+            </button>
+            <button class="btn" onclick="closeVersionDetailDrawer()">关闭</button>
         </div>
     </div>
 
@@ -1120,37 +1193,45 @@
         </div>
     </div>
 
-    <!-- 调试弹窗 -->
-    <div class="modal-overlay" id="debugModal">
-        <div class="modal" style="max-width: 600px; max-height: 80vh;">
-            <div class="modal-header">
-                <h3 class="modal-title">调试 - <span id="debugFlowName">连接流</span></h3>
-                <div class="modal-close" onclick="closeDebugModal()">✕</div>
-            </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <div class="form-group">
-                    <label class="form-label" style="font-weight: 600;">入参配置（参数名称和类型不可编辑）</label>
-                    <div id="debugParamsList" style="margin-top: 12px;">
-                        <!-- 动态生成 -->
+    <!-- 调试抽屉（右侧滑出，无蒙层） -->
+    <div class="debug-drawer" id="debugDrawer">
+        <div class="drawer-header">
+            <h3 class="drawer-title">保存并调试 - <span id="debugFlowName">连接流</span></h3>
+            <button class="drawer-close" onclick="closeDebugDrawer()">✕</button>
+        </div>
+        <div class="drawer-body">
+            <!-- 入参配置区域 -->
+            <div class="form-group">
+                <label class="form-label" style="font-weight: 600;">入参配置</label>
+                <div class="param-tabs" id="debugInputTabs">
+                    <button class="tab-btn active" onclick="switchDebugInputTab('header')">HTTP请求头</button>
+                    <button class="tab-btn" onclick="switchDebugInputTab('body')">HTTP请求体</button>
+                    <button class="tab-btn" onclick="switchDebugInputTab('query')">URL查询参数</button>
+                </div>
+                <div class="param-tab-content" id="debugInputContent">
+                    <div class="tab-panel active" data-tab="header">
+                        <div class="schema-list" id="debug-input-params-header"></div>
+                    </div>
+                    <div class="tab-panel" data-tab="body">
+                        <div class="schema-list" id="debug-input-params-body"></div>
+                    </div>
+                    <div class="tab-panel" data-tab="query">
+                        <div class="schema-list" id="debug-input-params-query"></div>
                     </div>
                 </div>
+            </div>
 
-                <div class="form-group" style="margin-top: 24px;">
-                    <button class="btn btn-primary" onclick="executeDebug()" style="width: 100%;">
-                        立即调试
-                    </button>
-                </div>
-
-                <div class="form-group" style="margin-top: 24px;">
-                    <label class="form-label" style="font-weight: 600;">执行输出</label>
-                    <div id="debugOutput" style="margin-top: 12px; padding: 16px; background: #1e1e1e; border-radius: 6px; color: #d4d4d4; font-family: monospace; font-size: 13px; min-height: 150px; white-space: pre-wrap;">
-                        <span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>
-                    </div>
+            <!-- 执行输出区域 -->
+            <div class="form-group" style="margin-top: 24px;">
+                <label class="form-label" style="font-weight: 600;">执行输出</label>
+                <div id="debugOutput" style="margin-top: 12px; padding: 16px; background: #1e1e1e; border-radius: 6px; color: #d4d4d4; font-family: monospace; font-size: 13px; min-height: 150px; white-space: pre-wrap;">
+                    <span style="color: var(--text-tertiary);">点击"开始调试"查看执行结果...</span>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn" onclick="closeDebugModal()">关闭</button>
-            </div>
+        </div>
+        <div class="drawer-footer">
+            <button class="btn" onclick="closeDebugDrawer()">关闭</button>
+            <button class="btn btn-primary" onclick="executeDebug()">开始调试</button>
         </div>
     </div>
 
@@ -3262,7 +3343,7 @@
                     // 草稿状态：有编辑按钮（编辑/保存）
                     buttons = `
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugModal()">调试</button>
+                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
                         ${isEditing
                             ? `<button class="btn" onclick="handleSaveEdit()">保存</button>`
                             : `<button class="btn" onclick="handleEdit()">编辑</button>`
@@ -3274,7 +3355,7 @@
                     // 已发布状态：复制到草稿、失效
                     buttons = `
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugModal()">调试</button>
+                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
                         <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
                         <button class="btn" style="color: var(--warning-color);" onclick="handleInvalidateVersion()">失效</button>
                     `;
@@ -3283,7 +3364,7 @@
                     // 已失效状态：复制到草稿、删除
                     buttons = `
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugModal()">调试</button>
+                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
                         <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
                         <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
                     `;
@@ -3292,32 +3373,24 @@
                     // 审批中状态：撤回
                     buttons = `
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugModal()">调试</button>
+                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
                         <button class="btn" style="color: var(--warning-color);" onclick="handleWithdrawVersion()">撤回</button>
                     `;
                     break;
                 case FLOW_VERSION_STATUS.REJECTED:
-                    // 已驳回状态：有编辑按钮（编辑/保存）
+                    // 已驳回状态：复制到草稿（回到草稿状态重新编辑发布）
                     buttons = `
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugModal()">调试</button>
-                        ${isEditing
-                            ? `<button class="btn" onclick="handleSaveEdit()">保存</button>`
-                            : `<button class="btn" onclick="handleEdit()">编辑</button>`
-                        }
-                        <button class="btn btn-primary" onclick="handlePublishFlow()">发布</button>
+                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
+                        <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
                     `;
                     break;
                 case FLOW_VERSION_STATUS.WITHDRAWN:
-                    // 已撤回状态：有编辑按钮（编辑/保存）
+                    // 已撤回状态：复制到草稿（回到草稿状态重新编辑发布）
                     buttons = `
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugModal()">调试</button>
-                        ${isEditing
-                            ? `<button class="btn" onclick="handleSaveEdit()">保存</button>`
-                            : `<button class="btn" onclick="handleEdit()">编辑</button>`
-                        }
-                        <button class="btn btn-primary" onclick="handlePublishFlow()">发布</button>
+                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
+                        <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
                     `;
                     break;
             }
@@ -3551,17 +3624,48 @@
             document.getElementById('detailModifier').textContent = version.modifier || '-';
             document.getElementById('detailModifiedAt').textContent = version.modifiedAt || '-';
 
-            // 显示/隐藏驳回理由
-            const rejectReasonGroup = document.getElementById('detailRejectReasonGroup');
-            const rejectReason = document.getElementById('detailRejectReason');
-            if (version.status === FLOW_VERSION_STATUS.REJECTED && version.rejectReason) {
-                rejectReasonGroup.style.display = 'block';
-                rejectReason.textContent = version.rejectReason;
-            } else {
-                rejectReasonGroup.style.display = 'none';
+            // 隐藏所有信息区域
+            document.getElementById('detailApprovalSection').style.display = 'none';
+            document.getElementById('detailRejectSection').style.display = 'none';
+            document.getElementById('detailWithdrawSection').style.display = 'none';
+            document.getElementById('urgeApprovalBtn').style.display = 'none';
+
+            // 根据版本状态显示对应信息
+            if (version.status === FLOW_VERSION_STATUS.PENDING) {
+                // 审批中状态：显示审批人、审批地址、催办按钮
+                document.getElementById('detailApprovalSection').style.display = 'block';
+                document.getElementById('detailApprover').textContent = version.approver || '-';
+                document.getElementById('detailApprovalUrl').textContent = version.approvalUrl || '-';
+                document.getElementById('urgeApprovalBtn').style.display = 'inline-flex';
+            } else if (version.status === FLOW_VERSION_STATUS.REJECTED) {
+                // 已驳回状态：显示驳回人、驳回理由
+                document.getElementById('detailRejectSection').style.display = 'block';
+                document.getElementById('detailRejector').textContent = version.rejector || '-';
+                document.getElementById('detailRejectReason').textContent = version.rejectReason || '-';
+            } else if (version.status === FLOW_VERSION_STATUS.WITHDRAWN) {
+                // 已撤回状态：显示撤回人、撤回时间
+                document.getElementById('detailWithdrawSection').style.display = 'block';
+                document.getElementById('detailWithdrawor').textContent = version.withdrawor || '-';
+                document.getElementById('detailWithdrawTime').textContent = version.withdrawTime || '-';
             }
 
             document.getElementById('versionDetailDrawer').classList.add('active');
+        }
+
+        /**
+         * 催办审批
+         * 审批中状态下向审批人发送催办通知
+         */
+        function handleUrgeApproval() {
+            const version = flowVersionData.versions.find(v => v.id === flowVersionData.currentVersion);
+            if (!version || version.status !== FLOW_VERSION_STATUS.PENDING) {
+                showToast('当前版本不在审批中状态', 'error');
+                return;
+            }
+
+            // 模拟催办接口调用
+            console.log('催办审批:', version.id);
+            showToast('已向审批人发送催办通知', 'success');
         }
 
         /**
@@ -3607,7 +3711,11 @@
         }
 
         // 调试弹窗功能
-        function openDebugModal() {
+        /**
+         * 打开调试抽屉
+         * 获取触发器节点的入参配置并展示
+         */
+        function openDebugDrawer() {
             // 获取触发器节点的入参配置
             const triggerNode = nodes.find(n => n.type === 'trigger');
 
@@ -3617,50 +3725,152 @@
             }
 
             const inputParams = triggerNode.data.inputParams || { header: [], body: [], query: [] };
-            const allParams = [...inputParams.header, ...inputParams.body, ...inputParams.query];
+            const headerParams = inputParams.header || [];
+            const bodyParams = inputParams.body || [];
+            const queryParams = inputParams.query || [];
 
-            if (allParams.length === 0) {
+            // 检查是否有任何入参
+            if (headerParams.length === 0 && bodyParams.length === 0 && queryParams.length === 0) {
                 showToast('触发器未配置入参', 'error');
                 return;
             }
 
-            const paramsList = document.getElementById('debugParamsList');
-            paramsList.innerHTML = allParams.map(param => `
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <div style="flex: 1;">
-                        <div style="font-size: 13px; font-weight: 500; margin-bottom: 4px;">
-                            ${param.paramName} <span style="color: var(--text-tertiary); font-weight: normal;">(${param.paramType})</span>
-                        </div>
-                        <input type="text"
-                               class="debug-param-value"
-                               data-param-name="${param.paramName}"
-                               data-param-type="${param.paramType}"
-                               placeholder="请输入参数值"
-                               style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;">
-                    </div>
-                </div>
-            `).join('');
+            // 更新流程名称
+            document.getElementById('debugFlowName').textContent = triggerNode.data.label || '连接流';
+
+            // 渲染各Tab的入参配置
+            renderDebugInputParams('debug-input-params-header', headerParams);
+            renderDebugInputParams('debug-input-params-body', bodyParams);
+            renderDebugInputParams('debug-input-params-query', queryParams);
 
             // 清空输出
-            document.getElementById('debugOutput').innerHTML = '<span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>';
+            document.getElementById('debugOutput').innerHTML = '<span style="color: var(--text-tertiary);">点击"开始调试"查看执行结果...</span>';
 
-            openModal('debugModal');
+            // 打开抽屉
+            document.getElementById('debugDrawer').classList.add('active');
         }
 
-        function closeDebugModal() {
-            closeModal('debugModal');
+        /**
+         * 关闭调试抽屉
+         */
+        function closeDebugDrawer() {
+            document.getElementById('debugDrawer').classList.remove('active');
         }
 
+        /**
+         * 切换调试入参Tab
+         * @param {string} tab - Tab标识(header/body/query)
+         */
+        function switchDebugInputTab(tab) {
+            // 更新Tab按钮状态
+            const tabs = document.querySelectorAll('#debugInputTabs .tab-btn');
+            tabs.forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.includes(
+                    tab === 'header' ? 'HTTP请求头' :
+                    tab === 'body' ? 'HTTP请求体' : 'URL查询参数'
+                ));
+            });
+
+            // 更新Tab面板显示
+            const panels = document.querySelectorAll('#debugInputContent .tab-panel');
+            panels.forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tab === tab);
+            });
+        }
+
+        /**
+         * 渲染调试入参配置项（带配置输入功能）
+         * @param {string} containerId - 容器ID
+         * @param {Array} params - 参数数组
+         */
+        function renderDebugInputParams(containerId, params) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (params.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-tertiary); font-size: 13px; padding: 8px 0;">暂无参数</div>';
+            } else {
+                container.innerHTML = params.map(p => renderDebugInputParamItem(p, 0)).join('');
+            }
+        }
+
+        /**
+         * 渲染单个调试入参配置项
+         * @param {Object} param - 参数配置对象
+         * @param {number} depth - 当前层级深度
+         * @returns {string} 参数项HTML字符串
+         */
+        function renderDebugInputParamItem(param, depth = 0) {
+            const id = param.id || generateId();
+            const paramType = param.paramType || 'string';
+            const isComplex = isComplexType(paramType);
+            const childrenParams = param.children || [];
+            const config = param.config || { type: 'fixed', value: '', refName: '' };
+
+            const indent = 20;
+            const paddingLeft = depth === 0 ? '0' : `${indent}px`;
+
+            const childrenHtml = isComplex && childrenParams.length > 0
+                ? childrenParams.map(child => renderDebugInputParamItem(child, depth + 1)).join('')
+                : '';
+
+            const childrenContainerHtml = isComplex
+                ? `<div class="children-container" style="margin-left: ${indent}px;">
+                    ${childrenHtml}
+                   </div>`
+                : '';
+
+            // 固定值输入框HTML
+            const fixedInputHtml = `
+                <input type="text" class="debug-param-value" data-param-id="${id}"
+                    placeholder="请输入参数值"
+                    value="${config.value || ''}"
+                    style="width: 100%; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; box-sizing: border-box;">
+            `;
+
+            // 根据配置类型显示对应的输入控件
+            const configInputHtml = fixedInputHtml;
+
+            return `
+                <div class="param-item" data-id="${id}" data-param-type="${paramType}" data-depth="${depth}" style="margin-bottom: 8px;">
+                    <div class="param-row" style="display: flex; align-items: center; gap: 8px; padding-left: ${paddingLeft}; flex-wrap: wrap;">
+                        <input type="text" class="param-name" placeholder="参数名称" value="${param.paramName || ''}" readonly
+                            style="width: 100px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);">
+                        <select class="param-type" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 80px; background: var(--bg-light);" disabled>
+                            <option value="string" ${paramType === 'string' ? 'selected' : ''}>string</option>
+                            <option value="number" ${paramType === 'number' ? 'selected' : ''}>number</option>
+                            <option value="boolean" ${paramType === 'boolean' ? 'selected' : ''}>boolean</option>
+                            <option value="object" ${paramType === 'object' ? 'selected' : ''}>object</option>
+                            <option value="array" ${paramType === 'array' ? 'selected' : ''}>array</option>
+                        </select>
+                        <div class="debug-param-input-container" data-param-id="${id}" style="flex: 1;">
+                            ${configInputHtml}
+                        </div>
+                    </div>
+                    ${childrenContainerHtml}
+                </div>
+            `;
+        }
+
+        /**
+         * 执行调试
+         * 收集入参并执行调试操作
+         */
         function executeDebug() {
-            // 收集参数值
-            const paramInputs = document.querySelectorAll('.debug-param-value');
+            // 收集所有参数值
             const params = {};
+            const paramInputs = document.querySelectorAll('.debug-param-value');
 
             paramInputs.forEach(input => {
-                params[input.dataset.paramName] = {
-                    value: input.value,
-                    type: input.dataset.paramType
-                };
+                const paramId = input.dataset.paramId;
+                const paramItem = input.closest('.param-item');
+                if (paramItem && paramId) {
+                    params[paramId] = {
+                        value: input.value,
+                        paramName: paramItem.querySelector('.param-name')?.value || '',
+                        paramType: paramItem.dataset.paramType || 'string'
+                    };
+                }
             });
 
             // 模拟调试接口调用
