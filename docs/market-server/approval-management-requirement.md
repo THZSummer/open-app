@@ -5,7 +5,7 @@
 | 版本 | 日期 | 修改人 | 修改说明 |
 |------|------|--------|---------|
 | v1.0 | 2026-06-04 | SDDU Build Agent | 初稿，基于 app-version-approval-spec.md v8.0 |
-| v2.0 | 2026-06-08 | SDDU Build Agent | 基于 spec v9.0 更新：Tab 页拆分为两个独立页面（待审批应用 + 已上架应用）；已审批改为已上架应用列表；查看按钮改为 window.open 新开标签页；新增审批状态机 |
+| v2.0 | 2026-06-08 | SDDU Build Agent | 基于 spec v9.0 更新：单页面双 Tab（待审批应用 + 已上架应用）；已审批改为已上架应用列表；查看按钮改为 window.open 新开标签页；同意和拒绝均使用 Modal.confirm 二次确认；新增审批状态机 |
 
 ## 目录
 - 1 需求价值和概述
@@ -34,7 +34,7 @@
 
 ## Abstract 摘要：
 
-**中文**：本需求在 market-server（后端）和 market-web（前端）中实现通用审批管理模块。审批人通过 Web 页面查看待审批应用列表和已上架应用列表，对待审批请求执行通过/驳回操作。后端采用策略模式（ApprovalHandler + BusinessDataResolver），支持按 businessType 扩展不同审批类型；前端提供两个独立页面：待审批应用页（表格 + 查看/同意/拒绝操作）和已上架应用页（表格 + 查看操作），已上架列表按应用分组展示最新已上架版本。当前固定为应用版本发布审批，后续新增类型时创建独立的待审批/已上架页面。
+**中文**：本需求在 market-server（后端）和 market-web（前端）中实现通用审批管理模块。审批人通过 Web 页面查看待审批应用列表和已上架应用列表（单页面双 Tab 切换），对待审批请求执行通过/驳回操作。后端采用策略模式（ApprovalHandler + BusinessDataResolver），支持按 businessType 扩展不同审批类型；前端提供单个审批管理页面，包含"待审批应用"和"已上架应用"两个 Tab，已上架列表按应用分组展示最新已上架版本。当前固定为应用版本发布审批，后续新增类型时创建独立的审批管理页面。
 
 **English**: This requirement implements a generic approval management module in market-server (backend) and market-web (frontend). Approvers view pending approval lists and published app lists on the Web page and perform approve/reject operations. The backend adopts the Strategy Pattern (ApprovalHandler + BusinessDataResolver) to support extensibility by businessType. The frontend provides two independent pages: Pending Approvals page (table + view/approve/reject actions) and Published Apps page (table + view action only), with the published list showing each app's latest approved version. Currently fixed to app version publish approval; new types will have independent pending/published pages.
 
@@ -150,16 +150,15 @@ graph TB
 | 特性 | 说明 |
 |------|------|
 | 审批管理模块 | market-server 新增 approval 包（controller / service / engine / handler / resolver / entity / mapper / dto / vo / constant） |
-| 待审批应用页面 | market-web 新增 approval-pending 模块（index.js / index.module.less / constant.js / thunk.js） |
-| 已上架应用页面 | market-web 新增 approval-published 模块（index.js / index.module.less / constant.js / thunk.js） |
+| 审批管理页面 | market-web 新增 approval 模块（index.js / index.module.less / constant.js / thunk.js），单页面双 Tab 结构 |
 | 审批状态机 | 定义完整的审批状态流转（PENDING → APPROVED/REJECTED/CANCELLED），包含状态图、转移条件、生命周期 |
 
 **【修改】**：
 
 | 特性 | 影响说明 |
 |------|---------|
-| market-web 路由 | 新增 `/approval-pending` 和 `/approval-published` 两条路由 |
-| market-web 菜单 | Layout 菜单新增"待审批应用"和"已上架应用"两个菜单项 |
+| market-web 路由 | 新增 `/approval` 路由 |
+| market-web 菜单 | Layout 菜单新增"审批管理"菜单项（AuditOutlined 图标） |
 | market-web API 配置 | web.config.js 新增 3 个 API URL（PENDING_LIST, PUBLISHED_LIST, PROCESS） |
 
 **【删除】**：不涉及
@@ -255,9 +254,8 @@ graph TB
 | F-03 | 审批操作 | 统一接口处理通过/驳回，按 action 字段分支 | 新增 | IR-001 | 执行审批 | 校验 → 日志 → 状态更新 → 策略回调 |
 | F-04 | 策略路由 | ApprovalHandlerFactory 按 businessType 路由 | 新增 | IR-001 | 策略扩展 | Handler 接口 + Factory 工厂，支持多 businessType |
 | F-05 | 业务数据解析 | BusinessDataResolver 解析业务展示数据 | 新增 | IR-001 | 数据展示 | Resolver 接口 + Factory，按 businessType 解析展示字段 |
-| F-06 | 前端待审批页面 | React 页面（表格 + 查看/同意/拒绝操作 + 分页） | 新增 | IR-001 | 待审批应用页面 | 列表展示 + 同意/拒绝操作 + window.open 查看 + 语言切换 |
-| F-07 | 前端已上架页面 | React 页面（表格 + 查看操作 + 分页） | 新增 | IR-001 | 已上架应用页面 | 列表展示 + window.open 查看 + 语言切换 |
-| F-08 | 路由/菜单/配置 | 路由、菜单、API URL 配置 | 修改 | IR-001 | 页面接入 | 新增 2 条路由、2 个菜单项、3 个 API 配置 |
+| F-06 | 前端审批页面 | React 单页面（Tabs + 表格 + 弹窗 + 分页） | 新增 | IR-001 | 审批管理页面 | 双 Tab 切换 + 列表展示 + 同意/拒绝操作 + window.open 查看 + 语言切换 |
+| F-07 | 路由/菜单/配置 | 路由、菜单、API URL 配置 | 修改 | IR-001 | 页面接入 | 新增 1 条路由、1 个菜单项、3 个 API 配置 |
 
 ---
 
@@ -315,11 +313,12 @@ graph TD
 
 ```mermaid
 graph TD
-    layout["Layout<br/>菜单: 待审批应用 / 已上架应用"]
+    layout["Layout<br/>菜单: 审批管理"]
+    route["/approval<br/>路由"]
+    approval["Approval 页面"]
+    tabs["Tabs<br/>待审批应用 / 已上架应用"]
     
-    subgraph 待审批应用页
-        route_pending["/approval-pending<br/>路由"]
-        pending["ApprovalPending 页面"]
+    subgraph 待审批应用 Tab
         table_pending["Table<br/>列表展示"]
         col_pending["应用名称 | 应用能力 | 版本号<br/>应用ID | 申请账号 | 申请时间"]
         action_pending["操作列<br/>查看 | 同意 | 拒绝"]
@@ -327,20 +326,17 @@ graph TD
         reject["Modal.confirm<br/>拒绝确认"]
     end
     
-    subgraph 已上架应用页
-        route_published["/approval-published<br/>路由"]
-        published["ApprovalPublished 页面"]
+    subgraph 已上架应用 Tab
         table_published["Table<br/>列表展示"]
         col_published["应用名称 | 应用能力 | 版本号<br/>应用ID | 申请账号 | 创建时间"]
         action_published["操作列<br/>仅查看"]
     end
 
-    layout --> route_pending
-    layout --> route_published
-    route_pending --> pending
-    route_published --> published
-    pending --> table_pending
-    published --> table_published
+    layout --> route
+    route --> approval
+    approval --> tabs
+    tabs --> table_pending
+    tabs --> table_published
     table_pending --> col_pending
     table_pending --> action_pending
     published --> col_published
@@ -612,11 +608,11 @@ public interface BusinessDataResolver {
 
 ---
 
-#### F-06 前端待审批应用页面
+#### F-06 前端审批管理页面
 
 ##### 实现思路
 
-遵循 market-web 现有页面模式：index.js（useState 状态管理）+ index.module.less（CSS Modules）+ constant.js（常量）+ thunk.js（API 调用）。通过 webFetch.js 的 `fetchApi()` + `buildApiUrl()` 发起请求。
+遵循 market-web 现有页面模式：index.js（useState 状态管理）+ index.module.less（CSS Modules）+ constant.js（常量）+ thunk.js（API 调用）。通过 webFetch.js 的 `fetchApi()` + `buildApiUrl()` 发起请求。单个页面通过 Tabs 切换待审批应用和已上架应用两个视图。
 
 ##### 界面原型
 
@@ -626,20 +622,22 @@ public interface BusinessDataResolver {
 
 ```mermaid
 graph TD
-    subgraph 待审批应用页面
-        header["页面标题: 待审批应用 + 语言切换<br/>中文 | EN"]
+    subgraph 审批管理页面
+        header["页面标题: 审批管理 + 语言切换<br/>中文 | EN"]
+        tabs["Tabs<br/>待审批应用 | 已上架应用"]
         table["数据表格"]
         col1["应用名称<br/>中/英文切换"]
         col2["应用能力"]
         col3["版本号"]
         col4["应用ID"]
         col5["申请账号"]
-        col6["申请时间"]
-        col7["操作<br/>查看|同意|拒绝"]
+        col6["申请时间/创建时间<br/>(按Tab切换)"]
+        col7["操作<br/>查看|同意|拒绝<br/>(待审批Tab)<br/>仅查看(已上架Tab)"]
         pagination["分页组件<br/>共X条 &lt; 1 &gt;"]
     end
 
-    header --> table
+    header --> tabs
+    tabs --> table
     table --> col1
     table --> col2
     table --> col3
@@ -654,63 +652,24 @@ graph TD
 
 | 操作 | 触发 | 行为 |
 |------|------|------|
+| 切换 Tab | 点击"待审批应用"/"已上架应用" | 重置分页并加载对应数据，待审批 Tab 显示同意/拒绝按钮，已上架 Tab 仅显示查看 |
 | 切换语言 | 点击"中文"/"EN" | 应用名称列在中英文名间切换 |
 | 点击查看 | 操作列"查看"链接 | `window.open('/app-detail/' + record.appId, '_blank')` 新开浏览器标签页 |
-| 点击同意 | 操作列"同意"链接 | Modal.confirm 二次确认 → POST process(action=0) → 成功刷新 |
-| 点击拒绝 | 操作列"拒绝"链接 | Modal.confirm 二次确认 → POST process(action=1) → 成功刷新 |
+| 点击同意 | 操作列"同意"链接（仅待审批 Tab） | Modal.confirm 二次确认 → POST process(action=0) → 成功刷新 |
+| 点击拒绝 | 操作列"拒绝"链接（仅待审批 Tab） | Modal.confirm 二次确认 → POST process(action=1) → 成功刷新 |
 
 ##### 3.5 架构元素影响列表
 
 | 元素 | 变更类型 | 说明 |
 |------|---------|------|
-| `market-web/src/router/index.tsx` | 修改 | 新增 `/approval-pending` 和 `/approval-published` 路由 |
-| `market-web/src/components/Layout/index.js` | 修改 | 菜单新增"待审批应用"和"已上架应用"两个菜单项 |
+| `market-web/src/router/index.tsx` | 修改 | 新增 `/approval` 路由 |
+| `market-web/src/components/Layout/index.js` | 修改 | 菜单新增"审批管理"菜单项 |
 | `market-web/src/configs/web.config.js` | 修改 | 新增 3 个 API URL（PENDING_LIST, PUBLISHED_LIST, PROCESS） |
-| `market-web/src/router/routeRedBlue/approval-pending/` | 新增 | 4 个文件（index.js, index.module.less, constant.js, thunk.js） |
-| `market-web/src/router/routeRedBlue/approval-published/` | 新增 | 4 个文件（index.js, index.module.less, constant.js, thunk.js） |
+| `market-web/src/router/routeRedBlue/approval/` | 新增 | 4 个文件（index.js, index.module.less, constant.js, thunk.js） |
 
 ---
 
-#### F-07 前端已上架应用页面
-
-##### 实现思路
-
-与待审批页面采用相同的文件结构模式，但更为简单——仅包含列表展示和查看操作，无审批操作弹窗。
-
-##### 页面结构
-
-```mermaid
-graph TD
-    subgraph 已上架应用页面
-        header["页面标题: 已上架应用 + 语言切换<br/>中文 | EN"]
-        table["数据表格"]
-        col1["应用名称<br/>中/英文切换"]
-        col2["应用能力"]
-        col3["版本号"]
-        col4["应用ID"]
-        col5["申请账号"]
-        col6["创建时间"]
-        col7["操作<br/>仅查看"]
-        pagination["分页组件<br/>共X条 &lt; 1 &gt;"]
-    end
-
-    header --> table
-    table --> col1
-    table --> col2
-    table --> col3
-    table --> col4
-    table --> col5
-    table --> col6
-    table --> col7
-    table --> pagination
-```
-
-**交互说明**：
-
-| 操作 | 触发 | 行为 |
-|------|------|------|
-| 切换语言 | 点击"中文"/"EN" | 应用名称列在中英文名间切换 |
-| 点击查看 | 操作列"查看"链接 | `window.open('/app-detail/' + record.appId, '_blank')` 新开浏览器标签页 |
+#### F-07 路由/菜单/配置
 
 ##### 3.7 功能实现分解分配清单
 
@@ -725,11 +684,10 @@ graph TD
 | 7 | 审批引擎 | market-server | ApprovalEngine.process() — 统一审批操作 |
 | 8 | 审批 Service | market-server | ApprovalService + ApprovalServiceImpl — 列表查询编排 + 能力名称补查 |
 | 9 | 审批 Controller | market-server | ApprovalController — 3 个端点（pending, published, process） |
-| 10 | 前端常量 + API 配置 | market-web | constant.js（两个页面各一份）+ web.config.js 修改 |
-| 11 | 前端 API 调用层 | market-web | thunk.js（两个页面各一份）— fetchPendingList / fetchPublishedList / processApproval |
-| 12 | 前端待审批页面 | market-web | approval-pending/index.js + index.module.less — 表格 + 同意/拒绝弹窗 + 分页 |
-| 13 | 前端已上架页面 | market-web | approval-published/index.js + index.module.less — 表格 + 分页 |
-| 14 | 前端路由/菜单 | market-web | router/index.tsx（+2 路由）+ Layout/index.js（+2 菜单项） |
+| 10 | 前端常量 + API 配置 | market-web | constant.js + web.config.js 修改 |
+| 11 | 前端 API 调用层 | market-web | thunk.js — fetchPendingList / fetchPublishedList / processApproval |
+| 12 | 前端审批页面 | market-web | approval/index.js + index.module.less — Tabs + 表格 + 弹窗 + 分页 |
+| 13 | 前端路由/菜单 | market-web | router/index.tsx（+1 路由）+ Layout/index.js（+1 菜单项） |
 
 ---
 
@@ -793,7 +751,7 @@ graph TD
 | 可扩展性设计 | ✅ | 策略模式（Handler + Resolver），新增类型零修改核心代码 |
 | 前后端技术栈一致 | ✅ | 后端 Spring Boot 3.4.6 / Java 21 / MyBatis；前端 React 18 / AntD v4 / JS |
 | 测试用例覆盖 | ✅ | 后端 15 条 + 前端 15 条 |
-| 文件清单完整 | ✅ | 后端 21 个文件 + 前端 8 新建 + 3 修改 |
+| 文件清单完整 | ✅ | 后端 21 个文件 + 前端 4 新建 + 3 修改 |
 | #PLACEHOLDER 标记 | ✅ | 业务表（app_t / version_t / capability_t）已标记待其他 spec 提供 |
 | 审批状态机定义 | ✅ | spec 5.6 章节定义了完整的状态流转图、状态定义表、转移条件和生命周期 |
 | 已上架展示规则 | ✅ | 按应用分组取最新已上架版本，v1通过+v2驳回仍展示v1，仅驳回不展示 |

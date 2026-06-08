@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>审批管理 - 效果图 v9</title>
+<title>审批管理 - 效果图 v9.1</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -12,8 +12,7 @@
   }
   :root {
     --primary: #2b5ff5; --primary-hover: #4b7aff;
-    --success: #00b578; --success-bg: #e6f7f0;
-    --danger: #f54a45; --danger-bg: #fde8e8;
+    --success: #00b578; --danger: #f54a45;
     --warning: #ff9f00; --warning-bg: #fff5e0;
     --text-primary: #333; --text-secondary: #666; --text-hint: #999;
     --border: #e8e8e8; --radius: 6px;
@@ -40,9 +39,7 @@
   .page-title { font-size: 18px; font-weight: 600; color: var(--text-primary); }
 
   /* ===== Language Switch ===== */
-  .lang-switch {
-    display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
-  }
+  .lang-switch { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .lang-btn {
     padding: 4px 12px; font-size: 12px; cursor: pointer; border: none;
     background: #fff; color: var(--text-secondary); transition: all 0.2s;
@@ -52,6 +49,15 @@
 
   /* ===== Card ===== */
   .card { background: #fff; border-radius: var(--radius); box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 16px 20px; }
+
+  /* ===== Tabs ===== */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .tab {
+    padding: 8px 16px; cursor: pointer; font-size: 14px; color: var(--text-secondary);
+    border-bottom: 2px solid transparent; transition: all 0.2s;
+  }
+  .tab:hover { color: var(--primary); }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 500; }
 
   /* ===== Buttons ===== */
   .btn {
@@ -84,9 +90,7 @@
     font-size: 13px; color: var(--text-primary); vertical-align: middle;
   }
   table tr:hover td { background: #f5f7ff; }
-  .text-ellipsis {
-    max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
-  }
+  .text-ellipsis { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
 
   /* ===== Pagination ===== */
   .pagination { display: flex; align-items: center; justify-content: flex-end; margin-top: 16px; gap: 4px; }
@@ -139,28 +143,29 @@
 <aside class="sidebar">
   <div class="sidebar-logo">Market Server</div>
   <ul class="sidebar-menu">
-    <li class="active" id="menuPending" onclick="switchPage('pending')">
-      <span class="icon">&#9744;</span> 待审批应用
-    </li>
-    <li id="menuPublished" onclick="switchPage('published')">
-      <span class="icon">&#10004;</span> 已上架应用
-    </li>
+    <li class="active"><span class="icon">&#9744;</span> 审批管理</li>
   </ul>
 </aside>
 
 <!-- ===== Main ===== -->
 <main class="main">
-
-  <!-- ===== Pending Page ===== -->
-  <div id="pendingPage">
-    <div class="page-header">
-      <div class="page-title">待审批应用</div>
-      <div class="lang-switch">
-        <button class="lang-btn active" id="langZh1" onclick="switchLang('zh')">中文</button>
-        <button class="lang-btn" id="langEn1" onclick="switchLang('en')">EN</button>
-      </div>
+  <div class="page-header">
+    <div class="page-title">审批管理</div>
+    <div class="lang-switch">
+      <button class="lang-btn active" id="langZh" onclick="switchLang('zh')">中文</button>
+      <button class="lang-btn" id="langEn" onclick="switchLang('en')">EN</button>
     </div>
-    <div class="card">
+  </div>
+
+  <div class="card">
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab active" id="tabPending" onclick="switchTab('pending')">待审批应用</div>
+      <div class="tab" id="tabPublished" onclick="switchTab('published')">已上架应用</div>
+    </div>
+
+    <!-- ===== Pending Tab ===== -->
+    <div id="pendingContent">
       <div class="table-wrapper">
         <table>
           <thead>
@@ -174,7 +179,7 @@
               <th>操作</th>
             </tr>
           </thead>
-          <tbody id="pendingBody">
+          <tbody>
             <tr>
               <td><span class="app-name" data-cn="订单管理应用" data-en="Order Management App">订单管理应用</span></td>
               <td><span class="text-ellipsis" title="订单查询, 订单创建, 订单取消">订单查询, 订单创建, 订单取消</span></td>
@@ -251,18 +256,9 @@
         <select><option>10 条/页</option><option>20 条/页</option><option>50 条/页</option></select>
       </div>
     </div>
-  </div>
 
-  <!-- ===== Published Page ===== -->
-  <div id="publishedPage" style="display:none;">
-    <div class="page-header">
-      <div class="page-title">已上架应用</div>
-      <div class="lang-switch">
-        <button class="lang-btn active" id="langZh2" onclick="switchLang('zh')">中文</button>
-        <button class="lang-btn" id="langEn2" onclick="switchLang('en')">EN</button>
-      </div>
-    </div>
-    <div class="card">
+    <!-- ===== Published Tab ===== -->
+    <div id="publishedContent" style="display:none;">
       <div class="table-wrapper">
         <table>
           <thead>
@@ -276,7 +272,7 @@
               <th>操作</th>
             </tr>
           </thead>
-          <tbody id="publishedBody">
+          <tbody>
             <tr>
               <td><span class="app-name" data-cn="商品管理应用" data-en="Product Management App">商品管理应用</span></td>
               <td><span class="text-ellipsis" title="商品查询, 商品上架">商品查询, 商品上架</span></td>
@@ -324,8 +320,8 @@
         <select><option>10 条/页</option><option>20 条/页</option><option>50 条/页</option></select>
       </div>
     </div>
-  </div>
 
+  </div>
 </main>
 
 <!-- ===== Approve Confirm Modal ===== -->
@@ -340,11 +336,7 @@
         <span class="confirm-icon warn">?</span>
         <span>确定要通过此审批申请吗？</span>
       </div>
-      <div class="confirm-content" id="approveSummary">
-        应用名称：<strong>订单管理应用</strong><br/>
-        版本号：<strong>v2.1.0</strong><br/>
-        申请账号：<strong>u001</strong>
-      </div>
+      <div class="confirm-content" id="approveSummary"></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('approveModal')">取消</button>
@@ -365,11 +357,7 @@
         <span class="confirm-icon err">!</span>
         <span>确定要拒绝此审批申请吗？</span>
       </div>
-      <div class="confirm-content" id="rejectSummary">
-        应用名称：<strong>订单管理应用</strong><br/>
-        版本号：<strong>v2.1.0</strong><br/>
-        申请账号：<strong>u001</strong>
-      </div>
+      <div class="confirm-content" id="rejectSummary"></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('rejectModal')">取消</button>
@@ -381,48 +369,42 @@
 <script>
   let currentLang = 'zh';
 
-  // ===== Page Switch (模拟两个独立页面) =====
-  function switchPage(page) {
-    const isPending = page === 'pending';
-    document.getElementById('pendingPage').style.display = isPending ? '' : 'none';
-    document.getElementById('publishedPage').style.display = isPending ? 'none' : '';
-    document.getElementById('menuPending').classList.toggle('active', isPending);
-    document.getElementById('menuPublished').classList.toggle('active', !isPending);
+  // ===== Tab Switch =====
+  function switchTab(tab) {
+    const isPending = tab === 'pending';
+    document.getElementById('tabPending').classList.toggle('active', isPending);
+    document.getElementById('tabPublished').classList.toggle('active', !isPending);
+    document.getElementById('pendingContent').style.display = isPending ? '' : 'none';
+    document.getElementById('publishedContent').style.display = isPending ? 'none' : '';
   }
 
   // ===== Language Switch =====
   function switchLang(lang) {
     currentLang = lang;
-    // 更新所有语言切换按钮状态
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-      btn.classList.toggle('active', (lang === 'zh' && btn.textContent === '中文') || (lang === 'en' && btn.textContent === 'EN'));
-    });
-    // 切换应用名称
+    document.getElementById('langZh').classList.toggle('active', lang === 'zh');
+    document.getElementById('langEn').classList.toggle('active', lang === 'en');
     document.querySelectorAll('.app-name').forEach(el => {
       el.textContent = lang === 'en' ? el.dataset.en : el.dataset.cn;
     });
   }
 
-  // ===== View (window.open 新开标签页) =====
+  // ===== View =====
   function doView(appId) {
-    // 模拟新开标签页
     showToast('新开标签页: /app-detail/' + appId, 'primary');
   }
 
-  // ===== Get row data from button =====
+  // ===== Get row data =====
   function getRowData(btn) {
     const row = btn.closest('tr');
     const cells = row.querySelectorAll('td');
     return {
       appName: cells[0].textContent,
-      capability: cells[1].textContent,
       version: cells[2].textContent,
-      appId: cells[3].textContent,
       applicant: cells[4].textContent,
     };
   }
 
-  // ===== Show Confirm Modal (approve / reject) =====
+  // ===== Show Confirm Modal =====
   function showConfirm(type, btn) {
     const d = getRowData(btn);
     const summary =
@@ -439,13 +421,11 @@
     }
   }
 
-  // ===== Approve =====
   function doApprove() {
     closeModal('approveModal');
     showToast('审批通过', 'success');
   }
 
-  // ===== Reject =====
   function doReject() {
     closeModal('rejectModal');
     showToast('已拒绝', 'danger');
