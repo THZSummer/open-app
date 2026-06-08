@@ -364,10 +364,12 @@ sequenceDiagram
     participant DB as MySQL
 
     FE->>MS: GET /approvals/pending?curPage=1&pageSize=10
-    MS->>DB: SELECT r.id, r.business_type, v.version_no, a.name_cn...<br/>FROM approval_record_t r<br/>LEFT JOIN app_version_t v<br/>LEFT JOIN app_t a<br/>WHERE r.status = 0
+    MS->>DB: SELECT r.id, r.business_type, v.version_code, a.app_name_cn...<br/>FROM openplatform_v2_approval_record_t r<br/>LEFT JOIN openplatform_app_version_t v<br/>LEFT JOIN openplatform_app_t a<br/>WHERE r.status = 0
     DB-->>MS: 记录列表
-    MS->>DB: [Java 补查] SELECT c.name_cn<br/>FROM app_capability_rel_t acr<br/>LEFT JOIN capability_t c<br/>WHERE acr.version_id = ?
+    MS->>DB: [Java 补查] SELECT ab.ability_name_cn<br/>FROM openplatform_app_ability_relation_t acr<br/>LEFT JOIN openplatform_ability_t ab<br/>WHERE acr.app_id = ?
     DB-->>MS: 能力名称
+    MS->>DB: [Java 补查] SELECT property_value<br/>FROM openplatform_app_p_t<br/>WHERE parent_id = ? AND property_name = 'third_party_app_id'
+    DB-->>MS: 第三方应用ID
     MS->>MS: 组装 VO + 计数
     MS-->>FE: ApiResponse { data, page }
 ```
@@ -414,12 +416,13 @@ sequenceDiagram
 |------|------|---------|
 | `openplatform_v2_approval_record_t` | 审批记录主表 | SELECT, UPDATE |
 | `openplatform_v2_approval_log_t` | 审批操作日志 | INSERT |
-| `app_t` | 应用主表 | SELECT |
-| `app_version_t` | 版本表 | SELECT |
-| `app_capability_rel_t` | 版本-能力关联表 | SELECT |
-| `capability_t` | 能力表 | SELECT |
+| `openplatform_app_t` | 应用主表（app_name_cn, app_name_en, app_id） | SELECT |
+| `openplatform_app_version_t` | 版本表（version_code, app_id 外键） | SELECT |
+| `openplatform_app_ability_relation_t` | 应用-能力关联表 | SELECT |
+| `openplatform_ability_t` | 能力表（ability_name_cn） | SELECT |
+| `openplatform_app_p_t` | 应用属性表（KV 结构，存第三方应用 ID） | SELECT |
 
-`app_t` / `app_version_t` / `app_capability_rel_t` / `capability_t` 为 `#PLACEHOLDER`，实际 DDL 由其他需求提供。
+> 完整 DDL 见 `docs/market-server/app.sql`。
 
 ---
 
@@ -445,10 +448,12 @@ sequenceDiagram
     participant DB as MySQL
 
     FE->>MS: GET /approvals/published?curPage=1&pageSize=10
-    MS->>DB: SELECT r.id, r.business_type, v.version_no, a.name_cn...<br/>FROM approval_record_t r<br/>INNER JOIN (子查询: MAX(id) GROUP BY app_id) latest<br/>LEFT JOIN app_version_t v<br/>LEFT JOIN app_t a<br/>WHERE r.status = 1
+    MS->>DB: SELECT r.id, r.business_type, v.version_code, a.app_name_cn...<br/>FROM openplatform_v2_approval_record_t r<br/>INNER JOIN (子查询: MAX(id) GROUP BY app_id) latest<br/>LEFT JOIN openplatform_app_version_t v<br/>LEFT JOIN openplatform_app_t a<br/>WHERE r.status = 1
     DB-->>MS: 每个应用最新已上架记录
-    MS->>DB: [Java 补查] SELECT c.name_cn<br/>FROM app_capability_rel_t acr<br/>LEFT JOIN capability_t c<br/>WHERE acr.version_id IN (...)
+    MS->>DB: [Java 补查] SELECT ab.ability_name_cn<br/>FROM openplatform_app_ability_relation_t acr<br/>LEFT JOIN openplatform_ability_t ab<br/>WHERE acr.app_id IN (...)
     DB-->>MS: 能力名称（批量查询）
+    MS->>DB: [Java 补查] SELECT property_value<br/>FROM openplatform_app_p_t<br/>WHERE parent_id IN (...) AND property_name = 'third_party_app_id'
+    DB-->>MS: 第三方应用ID（批量查询）
     MS->>MS: 组装 VO + 计数
     MS-->>FE: ApiResponse { data, page }
 ```
@@ -476,18 +481,18 @@ sequenceDiagram
 SELECT
     r.id, r.business_type, r.business_id, r.applicant_id,
     r.status, r.current_node, r.create_time,
-    v.version_no, a.app_id, a.name_cn, a.name_en
+    v.version_code, a.app_id, a.app_name_cn, a.app_name_en
 FROM openplatform_v2_approval_record_t r
 INNER JOIN (
     SELECT MAX(r2.id) AS max_id
     FROM openplatform_v2_approval_record_t r2
-    INNER JOIN app_version_t v2 ON r2.business_id = v2.id
+    INNER JOIN openplatform_app_version_t v2 ON r2.business_id = v2.id
     WHERE r2.status = 1
       AND r2.business_type = 'app_version_publish'
     GROUP BY v2.app_id
 ) latest ON r.id = latest.max_id
-LEFT JOIN app_version_t v ON r.business_id = v.id
-LEFT JOIN app_t a ON v.app_id = a.id
+LEFT JOIN openplatform_app_version_t v ON r.business_id = v.id
+LEFT JOIN openplatform_app_t a ON v.app_id = a.id
 ORDER BY r.create_time DESC
 LIMIT #{offset}, #{pageSize}
 ```
@@ -752,6 +757,6 @@ graph TD
 | 前后端技术栈一致 | ✅ | 后端 Spring Boot 3.4.6 / Java 21 / MyBatis；前端 React 18 / AntD v4 / JS |
 | 测试用例覆盖 | ✅ | 后端 15 条 + 前端 15 条 |
 | 文件清单完整 | ✅ | 后端 21 个文件 + 前端 4 新建 + 3 修改 |
-| #PLACEHOLDER 标记 | ✅ | 业务表（app_t / version_t / capability_t）已标记待其他 spec 提供 |
+| 业务表结构 | ✅ | 业务表（openplatform_app_t / app_version_t / ability_t / app_ability_relation_t / app_p_t）DDL 见 docs/market-server/app.sql |
 | 审批状态机定义 | ✅ | spec 5.6 章节定义了完整的状态流转图、状态定义表、转移条件和生命周期 |
 | 已上架展示规则 | ✅ | 按应用分组取最新已上架版本，v1通过+v2驳回仍展示v1，仅驳回不展示 |
