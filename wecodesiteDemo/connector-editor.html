@@ -106,10 +106,9 @@
         }
 
         .editor-page {
-            padding: 24px;
+            padding: 80px 24px 24px;
             background: #ffffff;
             min-height: 100%;
-            margin-bottom: 80px;
         }
 
         /* ========================================
@@ -118,8 +117,12 @@
         .page-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 24px;
+            padding-bottom: 24px;
+            position: fixed;
+            top: 0;
+            width: calc(100vw - 268px);
+            background-color: #ffffff;
+            z-index: 10;
         }
 
         .page-header-title {
@@ -127,6 +130,7 @@
             flex-direction: column;  /* 改为纵向排列 */
             align-items: flex-start;
             gap: 8px;
+            margin-left: 24px;
         }
 
         .page-title {
@@ -286,11 +290,6 @@
             width: 16px;
             height: 16px;
             cursor: pointer;
-        }
-
-        /* Schema编辑器 */
-        .schema-list {
-            /* 移除了边框和固定定位，由容器控制 */
         }
 
         /* 入参配置区域容器 - 固定在底部 */
@@ -462,12 +461,56 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            position: fixed;
-            bottom: 0;
-            left: 220px;
-            padding: 24px;
-            background-color: #ffffff;
-            width: calc(100% - 220px - 24px);
+            padding: 0;
+        }
+
+        /* 编辑状态下表单禁用样式（版本选择器除外） */
+        .editor-disabled .form-input:not(#versionSelect),
+        .editor-disabled .radio-group,
+        .editor-disabled .checkbox-group,
+        .editor-disabled .checkbox-group input,
+        .editor-disabled .param-item input,
+        .editor-disabled .param-item select,
+        .editor-disabled .param-item .add-item-btn,
+        .editor-disabled .param-item .param-remove-btn,
+        .editor-disabled .add-param-btn,
+        .editor-disabled .tab-btn {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .editor-disabled .radio-group-item {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .editor-disabled .checkbox-item {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* 版本选择器始终可编辑 */
+        #versionSelect {
+            pointer-events: auto;
+            opacity: 1;
+        }
+
+        /* 禁用状态下认证参数配置区域也不可编辑 */
+        .editor-disabled #authParamsContainer input,
+        .editor-disabled #authParamsContainer select {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* 隐藏添加按钮 */
+        .editor-disabled .request-add-btn,
+        .editor-disabled .response-add-btn {
+            display: none !important;
+        }
+
+        /* 隐藏底部入参配置区域 */
+        .request-tab-wrapper.hidden {
+            display: none;
         }
 
         /* Toast消息 */
@@ -522,6 +565,7 @@
             <div class="editor-page">
                 <!-- 页面头部 -->
                 <div class="page-header">
+                    <button class="btn" onclick="handleBack()">返回</button>
                     <div class="page-header-title">
                         <h3 class="page-title">接口配置</h3>
                         <span class="page-desc">编辑连接器的接口配置信息</span>
@@ -531,12 +575,22 @@
                 <!-- 版本选择区域 - 移到接口配置表单之前 -->
                 <div class="config-card">
                     <div class="config-card-header">版本选择</div>
-                    <div class="config-card-body">
+                    <div class="config-card-body" style="display: flex; align-items: center; gap: 12px;">
                         <select class="form-input" id="versionSelect" onchange="handleVersionChange(this.value)" style="max-width: 300px;">
                             <option value="v1">v1.0.0 (2024-01-15) [草稿]</option>
                             <option value="v2">v0.9.0 (2024-01-10) [已发布]</option>
                             <option value="v3">v0.8.0 (2024-01-05) [已失效]</option>
                         </select>
+                        <!-- 编辑/保存按钮 -->
+                        <button class="btn btn-primary" id="editBtn" onclick="handleEdit()">编辑</button>
+                        <!-- 发布按钮（仅草稿版本时显示） -->
+                        <button class="btn" id="publishBtn" onclick="handlePublish()" style="display: none;">发布</button>
+                        <!-- 复制到草稿按钮（仅非草稿版本时显示） -->
+                        <button class="btn" id="copyToDraftBtn" onclick="handleCopyToDraft()" style="display: none;">复制到草稿</button>
+                        <!-- 失效按钮（仅已发布版本时显示） -->
+                        <button class="btn" id="invalidateBtn" onclick="handleInvalidate()" style="display: none;">失效</button>
+                        <!-- 删除按钮（仅已失效版本时显示） -->
+                        <button class="btn" id="deleteBtn" onclick="handleDeleteVersion()" style="display: none; color: var(--error-color);">删除</button>
                     </div>
                 </div>
 
@@ -659,12 +713,6 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- 操作按钮 -->
-                <div class="action-bar">
-                    <button class="btn" onclick="handleBack()">返回</button>
-                    <button class="btn btn-primary" onclick="handleSave()">保存</button>
-                </div>
             </div>
         </div>
     </div>
@@ -740,6 +788,7 @@
                     description: '',
                     carrier: 'header',
                     isFixed: true,
+                    signatureKey: '',
                     children: []
                 }
             ]
@@ -747,6 +796,9 @@
 
         // 选中的认证类型
         let selectedAuthTypes = [];
+
+        // 页面编辑状态
+        let isEditing = false;
 
         let connectorConfig = {
             protocolType: 'GET',
@@ -781,7 +833,17 @@
          * @param {string} versionId - 选择的版本ID
          */
         function handleVersionChange(versionId) {
+            // 如果正在编辑状态，先退出编辑
+            if (isEditing) {
+                exitEditMode();
+            }
             versionData.currentVersion = versionId;
+
+            // 重置编辑按钮样式为默认状态
+            const editBtn = document.getElementById('editBtn');
+            editBtn.textContent = '编辑';
+            editBtn.classList.add('btn-primary');
+
             updateVersionButtons();
             showToast(`已切换到版本: ${versionId}`, 'success');
         }
@@ -795,30 +857,100 @@
             if (!currentVersion) return;
 
             const status = currentVersion.status;
-            const actionBar = document.querySelector('.action-bar');
+            const editBtn = document.getElementById('editBtn');
+            const publishBtn = document.getElementById('publishBtn');
+            const copyToDraftBtn = document.getElementById('copyToDraftBtn');
+            const invalidateBtn = document.getElementById('invalidateBtn');
+            const deleteBtn = document.getElementById('deleteBtn');
 
-            let buttons = '';
+            // 更新编辑按钮（确保样式统一为primary）
+            editBtn.style.display = 'inline-flex';
+            editBtn.textContent = '编辑';
+            editBtn.classList.add('btn-primary');
+
+            // 根据版本状态显示不同按钮
             if (status === VERSION_STATUS.DRAFT) {
-                buttons = `
-                    <button class="btn" onclick="handleBack()">返回</button>
-                    <button class="btn" onclick="handleSaveDraft()">保存草稿</button>
-                    <button class="btn btn-primary" onclick="handlePublish()">发布</button>
-                `;
+                // 草稿版本：显示编辑按钮和发布按钮
+                publishBtn.style.display = 'inline-flex';
+                copyToDraftBtn.style.display = 'none';
+                invalidateBtn.style.display = 'none';
+                deleteBtn.style.display = 'none';
             } else if (status === VERSION_STATUS.PUBLISHED) {
-                buttons = `
-                    <button class="btn" onclick="handleBack()">返回</button>
-                    <button class="btn" onclick="handleNewDraft()">新增草稿版本</button>
-                    <button class="btn" onclick="handleInvalidate()">失效</button>
-                `;
+                // 已发布版本：显示复制到草稿按钮和失效按钮
+                publishBtn.style.display = 'none';
+                copyToDraftBtn.style.display = 'inline-flex';
+                copyToDraftBtn.textContent = '复制到草稿';
+                invalidateBtn.style.display = 'inline-flex';
+                deleteBtn.style.display = 'none';
             } else if (status === VERSION_STATUS.INVALID) {
-                buttons = `
-                    <button class="btn" onclick="handleBack()">返回</button>
-                    <button class="btn" onclick="handleNewDraft()">新增草稿版本</button>
-                    <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
-                `;
+                // 已失效版本：显示复制到草稿按钮和删除按钮
+                publishBtn.style.display = 'none';
+                copyToDraftBtn.style.display = 'inline-flex';
+                copyToDraftBtn.textContent = '复制到草稿';
+                invalidateBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-flex';
             }
+        }
 
-            actionBar.innerHTML = buttons;
+        /**
+         * 处理编辑按钮点击
+         * 切换页面的编辑状态
+         */
+        function handleEdit() {
+            const editBtn = document.getElementById('editBtn');
+            const editorPage = document.querySelector('.editor-page');
+
+            if (isEditing) {
+                // 保存配置
+                connectorConfig.protocolAddress = document.getElementById('protocolAddress').value.trim();
+                connectorConfig.requestSchema = collectParams('requestParams');
+                connectorConfig.responseSchema = collectParams('responseParams');
+
+                // 模拟保存
+                console.log('保存配置:', connectorConfig);
+                showToast('保存成功', 'success');
+
+                // 退出编辑模式
+                exitEditMode();
+            } else {
+                // 进入编辑模式
+                isEditing = true;
+                editBtn.textContent = '保存';
+                editBtn.classList.remove('btn-primary');
+                if (editorPage) {
+                    editorPage.classList.remove('editor-disabled');
+                }
+                // 显示入参配置区域的添加按钮
+                document.querySelectorAll('.request-add-btn, .response-add-btn').forEach(btn => {
+                    btn.style.display = 'block';
+                });
+                // 显示底部入参配置区域
+                const requestTabWrapper = document.querySelector('.request-tab-wrapper');
+                if (requestTabWrapper) {
+                    requestTabWrapper.classList.remove('hidden');
+                }
+            }
+        }
+
+        /**
+         * 退出编辑模式
+         */
+        function exitEditMode() {
+            if (!isEditing) return;
+
+            isEditing = false;
+            const editBtn = document.getElementById('editBtn');
+            const editorPage = document.querySelector('.editor-page');
+
+            editBtn.textContent = '编辑';
+            editBtn.classList.add('btn-primary');
+            if (editorPage) {
+                editorPage.classList.add('editor-disabled');
+            }
+            // 隐藏添加按钮
+            document.querySelectorAll('.request-add-btn, .response-add-btn').forEach(btn => {
+                btn.style.display = 'none';
+            });
         }
 
         // 版本操作函数（占位，后续完善）
@@ -830,16 +962,98 @@
             showToast('发布功能待实现', 'success');
         }
 
-        function handleNewDraft() {
-            showToast('新增草稿版本功能待实现', 'success');
+        /**
+         * 将当前版本设为已发布状态
+         */
+        function handlePublish() {
+            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
+            if (!currentVersion) return;
+
+            currentVersion.status = VERSION_STATUS.PUBLISHED;
+            updateVersionSelect();
+            updateVersionButtons();
+            showToast('版本已发布', 'success');
         }
 
+        /**
+         * 复制到草稿
+         * 将当前版本复制为新的草稿版本
+         */
+        function handleCopyToDraft() {
+            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
+            if (!currentVersion) return;
+
+            // 生成新的草稿版本ID
+            const newVersionId = 'v' + Date.now().toString(36);
+            const newVersionName = currentVersion.name.replace(/\(\d{4}-\d{2}-\d{2}\)/, `(${new Date().toISOString().split('T')[0]})`);
+
+            // 添加新草稿版本
+            const newVersion = {
+                id: newVersionId,
+                name: newVersionName,
+                createdAt: new Date().toLocaleString('zh-CN'),
+                status: VERSION_STATUS.DRAFT
+            };
+            versionData.versions.unshift(newVersion);
+            versionData.currentVersion = newVersionId;
+
+            // 更新下拉框
+            updateVersionSelect();
+            updateVersionButtons();
+            showToast('已复制为新的草稿版本', 'success');
+        }
+
+        /**
+         * 将当前版本设为失效
+         */
         function handleInvalidate() {
-            showToast('失效功能待实现', 'success');
+            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
+            if (!currentVersion) return;
+
+            currentVersion.status = VERSION_STATUS.INVALID;
+            updateVersionSelect();
+            updateVersionButtons();
+            showToast('版本已失效', 'success');
         }
 
+        /**
+         * 删除当前版本
+         */
         function handleDeleteVersion() {
-            showToast('删除版本功能待实现', 'success');
+            // 从版本列表中移除当前版本
+            const index = versionData.versions.findIndex(v => v.id === versionData.currentVersion);
+            if (index === -1) return;
+
+            versionData.versions.splice(index, 1);
+
+            // 检查是否还有其他版本
+            if (versionData.versions.length === 0) {
+                // 没有其他版本，返回连接器列表页
+                showToast('版本已删除', 'success');
+                setTimeout(() => {
+                    handleBack();
+                }, 500);
+                return;
+            }
+
+            // 切换到第一个版本
+            versionData.currentVersion = versionData.versions[0].id;
+            updateVersionSelect();
+            updateVersionButtons();
+            showToast('版本已删除', 'success');
+        }
+
+        /**
+         * 更新版本下拉框选项
+         */
+        function updateVersionSelect() {
+            const select = document.getElementById('versionSelect');
+            select.innerHTML = versionData.versions.map(v => {
+                const statusText = v.status === VERSION_STATUS.DRAFT ? '草稿'
+                    : v.status === VERSION_STATUS.PUBLISHED ? '已发布' : '已失效';
+                return `<option value="${v.id}">${v.name} (${v.createdAt.split(' ')[0]}) [${statusText}]</option>`;
+            }).join('');
+            select.value = versionData.currentVersion;
         }
 
         // ========================================
@@ -908,6 +1122,8 @@
 
             selectedAuthTypes.forEach(authType => {
                 const authSchema = AUTH_SCHEMA_MAP[authType] || [];
+                const isSoaOrApig = authType === 'SOA' || authType === 'APIG';
+                const isCookie = authType === 'COOKIE';
                 const isSignature = authType === 'SIGNATURE';
 
                 html += `
@@ -918,33 +1134,60 @@
                 `;
 
                 authSchema.forEach((param, index) => {
-                    const isFixed = param.isFixed || isSignature;
-
-                    html += `
-                        <div class="form-group" style="margin-bottom: 12px;">
-                            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                                <input type="text"
-                                       style="flex: 1; min-width: 120px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; ${isFixed ? 'background: var(--bg-light);' : ''}"
-                                       value="${param.paramName}"
-                                       ${isFixed ? 'disabled' : ''}
-                                       placeholder="参数名称">
-                                <select disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);">
-                                    <option value="string" selected>string</option>
-                                </select>
-                                <select style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; ${isFixed ? 'background: var(--bg-light);' : ''}">
-                                    <option value="header" ${param.carrier === 'header' ? 'selected' : ''}>header</option>
-                                    <option value="body" ${param.carrier === 'body' ? 'selected' : ''}>body</option>
-                                    <option value="query" ${param.carrier === 'query' ? 'selected' : ''}>query</option>
-                                </select>
-                                <input type="text"
-                                       style="flex: 2; min-width: 150px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
-                                       placeholder="参数值（${isSignature ? '固定值' : '可选'}）">
-                                <input type="text"
-                                       style="flex: 2; min-width: 150px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
-                                       placeholder="参数描述">
+                    if (isSignature) {
+                        // 数字签名：参数名称（可编辑）、类型（不可编辑，默认为string）、位置、签名值、签名密钥
+                        html += `
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <input type="text"
+                                           style="width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
+                                           value="${param.paramName}"
+                                           placeholder="参数名称">
+                                    <select disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light); width: 90px;">
+                                        <option value="string" selected>string</option>
+                                    </select>
+                                    <select style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 90px;">
+                                        <option value="header" ${param.carrier === 'header' ? 'selected' : ''}>header</option>
+                                        <option value="body" ${param.carrier === 'body' ? 'selected' : ''}>body</option>
+                                        <option value="query" ${param.carrier === 'query' ? 'selected' : ''}>query</option>
+                                    </select>
+                                    <input type="text"
+                                           style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
+                                           placeholder="签名值">
+                                    <input type="text"
+                                           style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
+                                           placeholder="签名密钥">
+                                </div>
                             </div>
-                        </div>
-                    `;
+                        `;
+                    } else {
+                        // SOA、APIG和Cookie：参数名称（可编辑）、类型（不可编辑）、位置、值来源（Cookie可编辑，SOA和APIG不可编辑）
+                        const valueSourceEditable = isCookie;
+                        const valueSourceValue = isCookie ? '' : param.paramName;
+                        html += `
+                            <div class="form-group" style="margin-bottom: 12px;">
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <input type="text"
+                                           style="width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
+                                           value=""
+                                           placeholder="参数名称">
+                                    <select disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light); width: 90px;">
+                                        <option value="string" selected>string</option>
+                                    </select>
+                                    <select style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 90px;">
+                                        <option value="header" ${param.carrier === 'header' ? 'selected' : ''}>header</option>
+                                        <option value="body" ${param.carrier === 'body' ? 'selected' : ''}>body</option>
+                                        <option value="query" ${param.carrier === 'query' ? 'selected' : ''}>query</option>
+                                    </select>
+                                    <input type="text"
+                                           style="flex: 1; min-width: 180px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; ${!valueSourceEditable ? 'background: var(--bg-light);' : ''}"
+                                           value="${valueSourceValue}"
+                                           ${!valueSourceEditable ? 'disabled' : ''}
+                                           placeholder="值来源">
+                                </div>
+                            </div>
+                        `;
+                    }
                 });
 
                 html += '</div>';
@@ -1474,6 +1717,9 @@
          */
         function collectParams(containerId) {
             const container = document.getElementById(containerId);
+            if (!container) {
+                return [];
+            }
             return collectParamItems(container);
         }
 
@@ -1499,15 +1745,18 @@
             console.log('保存配置:', connectorConfig);
             showToast('保存成功', 'success');
 
-            setTimeout(() => {
-                handleBack();
-            }, 1000);
+            // 退出编辑模式
+            exitEditMode();
         }
 
         /**
          * 返回列表页
          */
         function handleBack() {
+            // 如果正在编辑状态，先退出编辑
+            if (isEditing) {
+                exitEditMode();
+            }
             window.location.href = 'connector-list.html';
         }
 
@@ -1533,9 +1782,27 @@
             // 渲染出参配置（header/body）
             renderParams('responseParams-header', connectorConfig.responseSchema?.header || [], false);
             renderParams('responseParams-body', connectorConfig.responseSchema?.body || [], false);
+            // 初始化版本下拉框
+            updateVersionSelect();
             // 初始化底部工具栏状态
             updateRequestToolbar();
             updateResponseToolbar();
+            // 初始化按钮状态
+            updateVersionButtons();
+            // 初始化页面为禁用状态
+            const editorPage = document.querySelector('.editor-page');
+            if (editorPage) {
+                editorPage.classList.add('editor-disabled');
+            }
+            // 隐藏添加按钮
+            document.querySelectorAll('.request-add-btn, .response-add-btn').forEach(btn => {
+                btn.style.display = 'none';
+            });
+            // 隐藏底部入参配置区域
+            const requestTabWrapper = document.querySelector('.request-tab-wrapper');
+            if (requestTabWrapper) {
+                requestTabWrapper.classList.add('hidden');
+            }
         });
     </script>
 </body>

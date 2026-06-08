@@ -601,6 +601,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th>连接器ID</th>
                                 <th>中文名称</th>
                                 <th>英文名称</th>
                                 <th>类型</th>
@@ -684,7 +685,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('confirmModal')">取消</button>
-                <button class="btn btn-primary" style="background: var(--error-color); border-color: var(--error-color);" onclick="confirmDelete()">确认删除</button>
+                <button class="btn btn-primary" id="confirmOkBtn" onclick="handleConfirm()">确认</button>
             </div>
         </div>
     </div>
@@ -805,7 +806,7 @@
             if (pageData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
+                        <td colspan="9" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
                             暂无数据
                         </td>
                     </tr>
@@ -813,6 +814,7 @@
             } else {
                 tbody.innerHTML = pageData.map(item => `
                     <tr>
+                        <td class="text-center">${item.id}</td>
                         <td class="text-center" title="${item.nameCn}">${item.nameCn}</td>
                         <td class="text-center" title="${item.nameEn}">${item.nameEn}</td>
                         <td class="text-center">HTTP</td>
@@ -824,7 +826,10 @@
                             <div class="action-cell">
                                 <button class="btn btn-link" onclick="editConnector('${item.id}')">编辑</button>
                                 <button class="btn btn-link" onclick="configConnector('${item.id}')">配置</button>
-                                <button class="btn btn-link danger" onclick="deleteConnector('${item.id}')">删除</button>
+                                ${item.invalid === 1 ? 
+                                    `<button class="btn btn-link danger" onclick="deleteConnector('${item.id}')">删除</button>` :
+                                    `<button class="btn btn-link" onclick="invalidConnector('${item.id}')">失效</button>`
+                                }
                             </div>
                         </td>
                     </tr>
@@ -966,15 +971,73 @@
         }
 
         // ========================================
-        // 删除操作
+        // 删除与失效操作
         // ========================================
         let deleteId = null;
+        let invalidId = null;
 
-        function deleteConnector(id) {
-            deleteId = id;
+        /**
+         * 失效连接器
+         * 将连接器状态设置为失效，需要二次确认
+         * @param {string} id - 连接器ID
+         */
+        function invalidConnector(id) {
+            invalidId = id;
+            const connector = connectorData.find(item => item.id === id);
+            
+            // 配置确认弹窗内容
+            document.getElementById('confirmTitle').textContent = '确认失效连接器';
+            document.getElementById('confirmMessage').textContent = `确认要将「${connector?.nameCn}」设为失效状态吗？失效后可删除该连接器。`;
+            document.getElementById('confirmOkBtn').textContent = '确认失效';
+            document.getElementById('confirmOkBtn').style.cssText = 'background: #faad14; border-color: #faad14;';
+            
             openModal('confirmModal');
         }
 
+        /**
+         * 确认失效操作
+         * 执行连接器失效
+         */
+        function confirmInvalid() {
+            if (invalidId) {
+                const connector = connectorData.find(item => item.id === invalidId);
+                if (connector) {
+                    connector.invalid = 1;
+                    connector.lastUpdateTime = new Date().toLocaleString('zh-CN');
+                    showToast('失效成功', 'success');
+                }
+                closeModal('confirmModal');
+                renderTable();
+                invalidId = null;
+            }
+        }
+
+        /**
+         * 删除连接器
+         * 只有已失效的连接器才能删除
+         * @param {string} id - 连接器ID
+         */
+        function deleteConnector(id) {
+            const connector = connectorData.find(item => item.id === id);
+            
+            // 未失效的连接器不能删除
+            if (connector && connector.invalid !== 1) {
+                showToast('请先失效连接器后再删除', 'error');
+                return;
+            }
+            
+            deleteId = id;
+            document.getElementById('confirmTitle').textContent = '确认删除连接器';
+            document.getElementById('confirmMessage').textContent = `删除后将无法恢复，确认要删除这个连接器吗？`;
+            document.getElementById('confirmOkBtn').textContent = '确认删除';
+            document.getElementById('confirmOkBtn').style.cssText = 'background: var(--error-color); border-color: var(--error-color);';
+            openModal('confirmModal');
+        }
+
+        /**
+         * 确认删除操作
+         * 执行连接器删除
+         */
         function confirmDelete() {
             if (deleteId) {
                 connectorData = connectorData.filter(item => item.id !== deleteId);
@@ -982,6 +1045,18 @@
                 closeModal('confirmModal');
                 renderTable();
                 deleteId = null;
+            }
+        }
+
+        /**
+         * 处理确认操作
+         * 根据当前操作类型调用对应的确认函数
+         */
+        function handleConfirm() {
+            if (invalidId) {
+                confirmInvalid();
+            } else if (deleteId) {
+                confirmDelete();
             }
         }
 
