@@ -429,6 +429,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_storage_blob_ref_t` (
     INDEX `idx_status`      (`storage_status`)         COMMENT '按存储状态过滤',
     INDEX `idx_expire_time` (`expire_time`)            COMMENT '按过期时间扫描清理'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='对象存储引用元数据表（V2暂不启用）';
+```
 
 ---
 
