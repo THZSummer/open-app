@@ -337,24 +337,92 @@ ALTER TABLE openplatform_v2_approval_flow_t
 
 ### 3.7 openplatform_v2_cp_execution_record_t（NEW）
 
-**启用理由**：V1 预留表结构完整，V2 启用写入。新增列支持调试触发方式标记和版本追溯。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。运行记录由系统自动生成（非用户操作），不含 `create_by`/`last_update_by` 审计字段。
 
 ```sql
-ALTER TABLE openplatform_v2_cp_execution_record_t
-    ADD COLUMN trigger_type TINYINT(10) NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
-    ADD COLUMN flow_version_id BIGINT(20) NULL COMMENT '执行的连接流版本ID（用于追溯执行时使用的版本快照）',
-    ADD INDEX idx_flow_trigger_time (flow_id, trigger_time) COMMENT '按连接流+时间范围查询运行记录',
-    ADD INDEX idx_trigger_time (trigger_time) COMMENT '定时清理时按时间范围扫描';
+CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
+    `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
+    `flow_id`           BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
+    `flow_version_id`   BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID（追溯执行时的版本快照）',
+    `trigger_type`      TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
+    `execution_status`  TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=pending, 1=running, 2=success, 3=failed, 4=timeout',
+    `trigger_data`      MEDIUMTEXT   DEFAULT NULL COMMENT '触发输入数据JSON',
+    `result_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '执行结果数据JSON',
+    `error_message`     TEXT         DEFAULT NULL COMMENT '错误信息',
+    `duration_ms`       INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
+    `trigger_time`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
+    `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    `last_update_time`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_flow_trigger_time` (`flow_id`, `trigger_time`) COMMENT '按连接流+时间查询运行记录',
+    INDEX `idx_trigger_time`       (`trigger_time`)           COMMENT '定时清理时按时间范围扫描',
+    INDEX `idx_execution_status`   (`execution_status`)       COMMENT '按执行状态过滤'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行记录表';
 ```
 
 | 列 | 类型 | 说明 |
 |----|------|------|
-| `trigger_type` | TINYINT(10) | 区分 HTTP 触发(1) 和调试触发(2) |
-| `flow_version_id` | BIGINT(20) | 追溯执行时的版本快照，用于审计和分析 |
+| `flow_id` | BIGINT(20) | 连接流 ID |
+| `flow_version_id` | BIGINT(20) | 执行的版本 ID，追溯快照 |
+| `trigger_type` | TINYINT(10) | 1=http, 2=debug |
+| `execution_status` | TINYINT(10) | 0=pending, 1=running, 2=success, 3=failed, 4=timeout |
+| `trigger_time` | DATETIME(3) | 触发时间，用于排序和定时清理 |
+| `duration_ms` | INT | 总耗时 |
+
+> ⚠️ 不含 `create_by`/`last_update_by`——运行记录为系统自动生成，无用户操作入口。
 
 ### 3.8 openplatform_v2_cp_execution_step_t（NEW）
 
-**启用理由**：V1 预留表结构完整（含 `input_data`/`output_data` JSON 列 + `storage_blob_ref_t` 外置支持），V2 直接启用，无需 DDL 变更。V2 新增 `node_type=3 (data_processor)` 枚举值。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。`node_type` 使用 TINYINT 枚举（非 VARCHAR），与规范一致。
+
+```sql
+CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
+    `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
+    `execution_id`      BIGINT(20)   NOT NULL COMMENT '关联执行记录ID',
+    `step_order`        INT(11)      NOT NULL COMMENT '步骤序号 (从1开始)',
+    `node_id`           VARCHAR(64)  NOT NULL COMMENT '节点ID (对应编排配置中的节点ID)',
+    `node_type`         TINYINT(10)  NOT NULL COMMENT '节点类型：1=trigger, 2=connector, 3=data_processor, 4=exit',
+    `node_label_cn`     VARCHAR(128) DEFAULT NULL COMMENT '节点中文名称 (执行时快照)',
+    `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
+    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed',
+    `input_data`        MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输入数据JSON',
+    `output_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输出数据JSON',
+    `error_message`     TEXT         DEFAULT NULL COMMENT '步骤错误信息',
+    `duration_ms`       INT(11)      DEFAULT NULL COMMENT '步骤耗时(毫秒)',
+    `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_execution_id`           (`execution_id`)            COMMENT '按执行记录ID查询全部步骤',
+    INDEX `idx_execution_step_order`   (`execution_id`,`step_order`) COMMENT '按执行记录ID+步骤序号查询'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行步骤详情表';
+```
+
+| 列 | 类型 | 说明 |
+|----|------|------|
+| `execution_id` | BIGINT(20) | 关联 execution_record_t.id |
+| `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
+| `step_status` | TINYINT(10) | 0=success, 1=failed |
+| `input_data` / `output_data` | MEDIUMTEXT | 超过 64KB 时外置到 storage_blob_ref_t |
+
+### 3.9 openplatform_v2_cp_storage_blob_ref_t（REUSE）
+
+**说明**：V1 预留的大字段外置引用表。V2 运行日志全部走 MySQL 存储，此表暂不启用，保留供后续扩展。
+
+```sql
+CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_storage_blob_ref_t` (
+    `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
+    `owner_type`        TINYINT(10)  NOT NULL COMMENT '所有者类型：1=execution_step_input, 2=execution_step_output, 3=execution_result_data',
+    `owner_id`          BIGINT(20)   NOT NULL COMMENT '所有者记录ID',
+    `blob_uri`          VARCHAR(512) NOT NULL COMMENT '对象存储URI',
+    `blob_size`         INT(11)      DEFAULT NULL COMMENT '数据大小/字节',
+    `blob_hash`         VARCHAR(64)  DEFAULT NULL COMMENT '数据SHA256',
+    `storage_status`    TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '存储状态：1=active, 2=archived, 3=deleted',
+    `expire_time`       DATETIME(3)  DEFAULT NULL COMMENT '过期时间 (用于自动清理)',
+    `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_owner`       (`owner_type`, `owner_id`) COMMENT '按所有者查询/GC扫描',
+    INDEX `idx_status`      (`storage_status`)         COMMENT '按存储状态过滤',
+    INDEX `idx_expire_time` (`expire_time`)            COMMENT '按过期时间扫描清理'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='对象存储引用元数据表（V2暂不启用）';
 
 ---
 
@@ -436,7 +504,7 @@ V1 为内部验证 MVP，无真实用户数据，V2 **不执行数据迁移**：
 
 - 已存在的 V1 表（connector_t / connector_version_t / flow_t / flow_version_t）：通过 §3 的 `ALTER TABLE` 变更
 - V2 新建表（connector_version_ref_t）：通过 `CREATE TABLE` 新建
-- V1 预留表（execution_record_t / execution_step_t）：V1 仅保留 DDL 未实际使用，V2 通过 §3 的 `ALTER TABLE` 修正后全新启用
+- V1 预留表（execution_record_t / execution_step_t）：V1 仅保留 DDL 未实际使用，V2 全新 `CREATE TABLE`（含完整修正）
 - 初始数据（审批流模板等）在现有平台手动注册，不需要脚本
 
 > 💡 无需编写 V1→V2 数据回填 SQL，也无需备份 V1 数据。
@@ -527,6 +595,6 @@ edge.id: "e1" / "e2" / "reactflow__edge-xxx"      — React Flow 生成
 | `flow_version_t` | V1 同名表 | ALTER：移除唯一约束 + 新增版本号/7状态/flow_config/审批列 |
 | `connector_version_ref_t` | — | **V2 全新建表** |
 | `approval_flow_t` | V1 能力开放平台 | ALTER：新增 `app_id`；uk_code → uk_code_app；新增 businessType 模板 |
-| `execution_record_t` | V1 预留 DDL（未使用） | NEW：V2 全新启用，修正枚举值，新增 `trigger_type`/`flow_version_id` |
-| `execution_step_t` | V1 预留 DDL（未使用） | NEW：V2 全新启用；`node_type` VARCHAR→TINYINT |
-| `storage_blob_ref_t` | V1 预留表 | V2 暂不启用 |
+| `execution_record_t` | V1 预留 DDL（未使用） | NEW：V2 全新 `CREATE TABLE`，修正枚举值、审计字段 |
+| `execution_step_t` | V1 预留 DDL（未使用） | NEW：V2 全新 `CREATE TABLE`；`node_type` VARCHAR→TINYINT |
+| `storage_blob_ref_t` | V1 预留 DDL（未使用） | REUSE：V2 暂不启用（运行日志全部走 MySQL） |
