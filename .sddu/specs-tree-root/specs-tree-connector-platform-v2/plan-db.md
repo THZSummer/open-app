@@ -144,7 +144,7 @@ open-server/src/main/resources/db/migration/
 | 1 | `openplatform_v2_cp_connector_t` | MODIFY | connector | 启用 `status` 4状态流转；新增 `app_id` 应用归属 |
 | 2 | `openplatform_v2_cp_connector_version_t` | MODIFY | connector | 1:1→1:N；新增 `version_number`/`status`/`published_time`/`published_by` |
 | 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`deployed_version_number`（冗余，避免列表 JOIN）/`app_id` |
-| 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`/7状态`status`/`flow_config`/审批字段 |
+| 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`、7状态`status`、`flow_config`（流级超时/限流/缓存 JSON）、`submitted_time`/`published_time`/`published_by`（审批时间戳） |
 | 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N），编排保存时同步维护 |
 | 6 | `openplatform_v2_cp_execution_record_t` | NEW | runtime | 运行记录表（V1 预留 DDL 但未使用），V2 全新启用并修正枚举值 |
 | 7 | `openplatform_v2_cp_execution_step_t` | NEW | runtime | 运行日志表（V1 预留 DDL 但未使用），V2 全新启用；`node_type` VARCHAR→TINYINT |
