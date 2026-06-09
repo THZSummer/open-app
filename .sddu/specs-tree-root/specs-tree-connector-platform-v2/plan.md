@@ -250,14 +250,14 @@ open-app/
 | open-server 后端 | ~15 | ~15 |
 | connector-api 运行时 | ~15 | ~8 |
 | 前端 wecodesite | ~14 | ~15 |
-| 数据库迁移 | 1 (V3) | — |
+| 数据库 | 3 CREATE + 6 ALTER | URL 白名单复用字典表，不单独建表 |
 | ADR | 4 | — |
 
 ### 3.5 子文档索引
 
 | 文档 | 内容 |
 |------|------|
-| [plan-db.md](./plan-db.md) | **数据库设计** — 完整 DDL、列级注释、枚举字典、V1→V2 迁移 SQL、归档策略 |
+| [plan-db.md](./plan-db.md) | **数据库设计** — 4 MODIFY + 3 NEW + 2 ENABLE，完整 DDL、枚举字典、归档策略，URL 白名单复用字典表 |
 | [plan-api.md](./plan-api.md) | **API 接口设计** — 49 端点完整定义、请求/响应示例、错误码、枚举字典 |
 | [plan-page.md](./plan-page.md) | **前端页面设计** — 路由设计、版本历史/审批/调试/运行记录/白名单页面详设 |
 | [plan-runtime.md](./plan-runtime.md) | **运行时引擎设计** — 版本解析、并行分支、限流、缓存、日志、调试、认证注入器 |
