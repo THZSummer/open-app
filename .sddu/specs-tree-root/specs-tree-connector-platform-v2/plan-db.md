@@ -120,7 +120,7 @@ open-server/src/main/resources/db/migration/
 | `flow_version_t` | `status` | 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除 | V2 新增 |
 | `execution_record_t` | `trigger_type` | 1=http, 2=debug | V2 启用 |
 | `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | V2 启用 |
-| `execution_step_t` | `status` | 0=success, 1=failed | 步骤执行结果 |
+| `execution_step_t` | `step_status` | 0=success, 1=failed, 2=timeout | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
 
 ### 0.8 V2 规范变更（相对 V1）
@@ -336,18 +336,18 @@ ALTER TABLE openplatform_v2_approval_flow_t
 
 ### 3.7 openplatform_v2_cp_execution_record_t（NEW）
 
-**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。运行记录由系统自动生成，`create_by`/`last_update_by` 固定为 `SYSTEM`。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。运行记录仅存储列表查询所需字段（元数据），节点级 I/O 详情全部走 `execution_step_t`，不在本表冗余。`flow_name_cn`/`flow_name_en` 快照确保连接流被删除后记录仍可读。
 
 ```sql
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
     `flow_id`           BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
     `flow_version_id`   BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID（追溯执行时的版本快照）',
+    `flow_name_cn`      VARCHAR(100) NOT NULL COMMENT '连接流中文名称（触发时快照，连接流删除后记录仍可读）',
+    `flow_name_en`      VARCHAR(100) NOT NULL COMMENT '连接流英文名称（触发时快照）',
     `trigger_type`      TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
     `execution_status`  TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=pending, 1=running, 2=success, 3=failed, 4=timeout',
-    `trigger_data`      MEDIUMTEXT   DEFAULT NULL COMMENT '触发输入数据JSON',
-    `result_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '执行结果数据JSON',
-    `error_message`     TEXT         DEFAULT NULL COMMENT '错误信息',
+    `error_message`     TEXT         DEFAULT NULL COMMENT '错误信息（整体摘要，节点级详情在 execution_step_t）',
     `duration_ms`       INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
     `trigger_time`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
     `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
@@ -365,6 +365,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 |----|------|------|
 | `flow_id` | BIGINT(20) | 连接流 ID |
 | `flow_version_id` | BIGINT(20) | 执行的版本 ID，追溯快照 |
+| `flow_name_cn` / `flow_name_en` | VARCHAR(100) | 触发时快照，连接流删除后记录仍可读 |
 | `trigger_type` | TINYINT(10) | 1=http, 2=debug |
 | `execution_status` | TINYINT(10) | 0=pending, 1=running, 2=success, 3=failed, 4=timeout |
 | `trigger_time` | DATETIME(3) | 触发时间，用于排序和定时清理 |
@@ -383,7 +384,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `node_type`         TINYINT(10)  NOT NULL COMMENT '节点类型：1=trigger, 2=connector, 3=data_processor, 4=exit',
     `node_label_cn`     VARCHAR(128) DEFAULT NULL COMMENT '节点中文名称 (执行时快照)',
     `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
-    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed',
+    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout',
     `input_data`        MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输入数据JSON',
     `output_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输出数据JSON',
     `error_message`     TEXT         DEFAULT NULL COMMENT '步骤错误信息',
@@ -402,7 +403,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 |----|------|------|
 | `execution_id` | BIGINT(20) | 关联 execution_record_t.id |
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
-| `step_status` | TINYINT(10) | 0=success, 1=failed |
+| `step_status` | TINYINT(10) | 0=success, 1=failed, 2=timeout |
 | `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON，最大 16MB |
 
 ---

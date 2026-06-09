@@ -1413,6 +1413,7 @@
   "data": [
     {
       "executionId": "1234567890123456789",
+      "flowNameCn": "新消息自动通知",
       "triggerTime": "2026-06-09T10:00:01.000+08:00",
       "status": 2,
       "durationMs": 234,
@@ -1487,8 +1488,7 @@
         "outputData": { "msgId": "m001", "code": 0 },
         "errorInfo": null
       }
-    ],
-    "resultData": { "msgId": "m001", "code": 0 }
+    ]
   },
   "page": null
 }
