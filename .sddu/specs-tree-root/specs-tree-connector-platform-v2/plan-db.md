@@ -153,9 +153,8 @@ open-server/src/main/resources/db/migration/
 | 10 | `openplatform_property_t` | REUSE | security | URL 白名单规则（code=key, value=正则），复用现有字典表 |
 | 11 | `openplatform_lookup_classify_t` | REUSE | security | 应用白名单分组（classify_code=`cp_app_whitelist`），复用现有 LookUp 分类表 |
 | 12 | `openplatform_lookup_item_t` | REUSE | security | 应用白名单数据（classify_id + itemCode=appId），复用现有 LookUp 项表 |
-| 13 | `openplatform_v2_cp_storage_blob_ref_t` | REUSE | runtime | 大字段外置引用表（V1 预留，V2 暂不使用——运行日志全部走 MySQL） |
 
-**总计**：**13 张表**（5 MODIFY + 3 NEW + 5 REUSE）。
+**总计**：**12 张表**（5 MODIFY + 3 NEW + 4 REUSE）。
 
 ---
 
@@ -404,32 +403,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | `execution_id` | BIGINT(20) | 关联 execution_record_t.id |
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
 | `step_status` | TINYINT(10) | 0=success, 1=failed |
-| `input_data` / `output_data` | MEDIUMTEXT | 超过 64KB 时外置到 storage_blob_ref_t |
-
-### 3.9 openplatform_v2_cp_storage_blob_ref_t（REUSE）
-
-**说明**：V1 预留的大字段外置引用表。V2 运行日志全部走 MySQL 存储，此表暂不启用，保留供后续扩展。
-
-```sql
-CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_storage_blob_ref_t` (
-    `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
-    `owner_type`        TINYINT(10)  NOT NULL COMMENT '所有者类型：1=execution_step_input, 2=execution_step_output, 3=execution_result_data',
-    `owner_id`          BIGINT(20)   NOT NULL COMMENT '所有者记录ID',
-    `blob_uri`          VARCHAR(512) NOT NULL COMMENT '对象存储URI',
-    `blob_size`         INT(11)      DEFAULT NULL COMMENT '数据大小/字节',
-    `blob_hash`         VARCHAR(64)  DEFAULT NULL COMMENT '数据SHA256',
-    `storage_status`    TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '存储状态：1=active, 2=archived, 3=deleted',
-    `expire_time`       DATETIME(3)  DEFAULT NULL COMMENT '过期时间 (用于自动清理)',
-    `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-    `last_update_time`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
-    `create_by`         VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
-    `last_update_by`    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
-    PRIMARY KEY (`id`),
-    INDEX `idx_owner`       (`owner_type`, `owner_id`) COMMENT '按所有者查询/GC扫描',
-    INDEX `idx_status`      (`storage_status`)         COMMENT '按存储状态过滤',
-    INDEX `idx_expire_time` (`expire_time`)            COMMENT '按过期时间扫描清理'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='对象存储引用元数据表（V2暂不启用）';
-```
+| `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON，最大 16MB |
 
 ---
 
@@ -604,4 +578,3 @@ edge.id: "e1" / "e2" / "reactflow__edge-xxx"      — React Flow 生成
 | `approval_flow_t` | V1 能力开放平台 | ALTER：新增 `app_id`；uk_code → uk_code_app；新增 businessType 模板 |
 | `execution_record_t` | V1 预留 DDL（未使用） | NEW：V2 全新 `CREATE TABLE`，修正枚举值、审计字段 |
 | `execution_step_t` | V1 预留 DDL（未使用） | NEW：V2 全新 `CREATE TABLE`；`node_type` VARCHAR→TINYINT |
-| `storage_blob_ref_t` | V1 预留 DDL（未使用） | REUSE：V2 暂不启用（运行日志全部走 MySQL） |
