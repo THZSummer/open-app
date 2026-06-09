@@ -343,8 +343,8 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
     `flow_id`           BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
     `flow_version_id`   BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID（追溯执行时的版本快照）',
-    `flow_name_cn`      VARCHAR(100) NOT NULL COMMENT '连接流中文名称（触发时快照，连接流删除后记录仍可读）',
-    `flow_name_en`      VARCHAR(100) NOT NULL COMMENT '连接流英文名称（触发时快照）',
+    `flow_name_cn`      VARCHAR(128) NOT NULL COMMENT '连接流中文名称（触发时快照，连接流删除后记录仍可读）',
+    `flow_name_en`      VARCHAR(128) NOT NULL COMMENT '连接流英文名称（触发时快照）',
     `trigger_type`      TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
     `trigger_account`   VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识，debug=调试用户）',
     `execution_status`  TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=pending, 1=running, 2=success, 3=failed, 4=timeout',
@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 |----|------|------|
 | `flow_id` | BIGINT(20) | 连接流 ID |
 | `flow_version_id` | BIGINT(20) | 执行的版本 ID，追溯快照 |
-| `flow_name_cn` / `flow_name_en` | VARCHAR(100) | 触发时快照，连接流删除后记录仍可读 |
+| `flow_name_cn` / `flow_name_en` | VARCHAR(128) | 触发时快照，与 flow_t.name_cn/name_en 长度一致 |
 | `trigger_type` | TINYINT(10) | 1=http, 2=debug |
 | `trigger_account` | VARCHAR(100) | 触发账号，HTTP=调用方凭证标识，debug=调试用户 |
 | `execution_status` | TINYINT(10) | 0=pending, 1=running, 2=success, 3=failed, 4=timeout |
