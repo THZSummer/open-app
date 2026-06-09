@@ -145,7 +145,7 @@ open-server/src/main/resources/db/migration/
 | 2 | `openplatform_v2_cp_connector_version_t` | MODIFY | connector | 1:1→1:N；新增 `version_number`/`status`/`published_time`（首次发布时刻）/`published_by`（发布操作人） |
 | 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`deployed_version_number`（冗余，避免列表 JOIN）/`app_id` |
 | 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`、7状态`status`、`published_time`（发布时间，审批通过时刻）、`published_by`（发布人，提交审批的人） |
-| 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N），编排保存时同步维护 |
+| 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N）；含 `flow_id`/`connector_id` 冗余，不含 `node_id` |
 | 6 | `openplatform_v2_cp_execution_record_t` | NEW | runtime | 运行记录表（V1 预留 DDL 但未使用），V2 全新启用并修正枚举值 |
 | 7 | `openplatform_v2_cp_execution_step_t` | NEW | runtime | 运行日志表（V1 预留 DDL 但未使用），V2 全新启用；`node_type` VARCHAR→TINYINT |
 | 8 | `openplatform_v2_approval_flow_t` | MODIFY | approval | 新增 `app_id` 字段；uk_code → uk_code_app；新增 `connector_flow_version_publish` 业务模板 |
@@ -179,6 +179,8 @@ erDiagram
 | `flow_t` → `deployed_version` | 1:0..1 | `flow_t.deployed_version_id` 指针 |
 | `flow_version_t` → `connector_version_ref_t` | 1:N | 中间表 `flow_version_id` |
 | `connector_version_ref_t` → `connector_version_t` | M:1 | 中间表 `connector_version_id` |
+| `connector_version_ref_t` → `flow_t` | M:1 | 冗余字段 `flow_id`（免 JOIN flow_version_t） |
+| `connector_version_ref_t` → `connector_t` | M:1 | 冗余字段 `connector_id`（免 JOIN connector_version_t） |
 | `flow_t` → `execution_record_t` | 1:N | `execution_record_t.flow_id` |
 | `execution_record_t` → `execution_step_t` | 1:N | `execution_step_t.execution_id` |
 
@@ -277,29 +279,32 @@ ALTER TABLE openplatform_v2_cp_flow_version_t
 
 ### 3.5 openplatform_v2_cp_connector_version_ref_t（NEW）
 
-**建表理由**：编排中 connector 节点引用特定 ConnectorVersion，需要显式管理引用关系以支持「标记版本失效/删除」的前置「被引用」校验（ADR-007）。编排保存时同步写入，编排删除时级联清理。
+**建表理由**：编排中 connector 节点引用特定 ConnectorVersion，需要显式管理引用关系以支持「标记版本失效/删除」的前置「被引用」校验（ADR-007）。`flow_id`/`connector_id` 冗余避免 JOIN 穿透版本表。编排保存时同步写入，编排删除时级联清理。
 
 ```sql
 CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
     id BIGINT(20) NOT NULL COMMENT '雪花ID',
     flow_version_id BIGINT(20) NOT NULL COMMENT '连接流版本ID',
+    flow_id BIGINT(20) NOT NULL COMMENT '连接流ID（冗余，避免 JOIN flow_version_t）',
     connector_version_id BIGINT(20) NOT NULL COMMENT '连接器版本ID',
-    node_id VARCHAR(64) NOT NULL COMMENT '编排节点ID（React Flow node id，用于错误提示定位具体节点）',
+    connector_id BIGINT(20) NOT NULL COMMENT '连接器ID（冗余，避免 JOIN connector_version_t）',
     create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_flow_version (flow_version_id) COMMENT '按流版本查询其全部引用',
+    INDEX idx_flow (flow_id) COMMENT '按连接流查询其全部引用',
     INDEX idx_connector_version (connector_version_id) COMMENT '按连接器版本查询被哪些流引用',
-    UNIQUE KEY uk_flow_node (flow_version_id, node_id) COMMENT '同一流版本的同一节点唯一引用'
+    INDEX idx_connector (connector_id) COMMENT '按连接器查询被哪些流引用（失效/删除前置校验）'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器版本引用中间表（M:N，编排保存时同步维护，不含审计字段——纯中间表，无人工操作）';
 ```
 
 | 列 | 类型 | 说明 |
 |----|------|------|
 | `flow_version_id` | BIGINT(20) | 引用的连接流版本 ID |
+| `flow_id` | BIGINT(20) | 冗余字段，直接定位连接流，避免 JOIN flow_version_t |
 | `connector_version_id` | BIGINT(20) | 被引用的连接器版本 ID |
-| `node_id` | VARCHAR(64) | 编排画布中的节点 ID，用于错误提示定位 |
+| `connector_id` | BIGINT(20) | 冗余字段，直接定位连接器，避免 JOIN connector_version_t |
 
-> ⚠️ **不含审计字段**：此表为纯中间表，由编排保存/删除时自动同步维护，无人工操作入口，故不需要 `create_by`/`last_update_by`。
+> 💡 不存储 `node_id`——引用表不耦合编排配置的具体节点结构，仅记录"谁引用了谁"。
 
 ### 3.6 openplatform_v2_approval_flow_t（MODIFY）
 
