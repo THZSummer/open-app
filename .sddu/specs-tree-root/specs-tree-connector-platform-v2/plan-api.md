@@ -206,11 +206,11 @@
 
 | 数字 | 含义 |
 |:--:|------|
-| 0 | pending（瞬时） |
-| 1 | running（瞬时） |
-| 2 | success |
-| 3 | failed |
-| 4 | timeout |
+| 0 | success |
+| 1 | failed |
+| 2 | timeout |
+
+> 💡 同步执行模型，仅终态持久化。
 
 #### 1.8.6 触发方式 (executionRecord.triggerType)
 
