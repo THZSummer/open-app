@@ -146,15 +146,15 @@ open-server/src/main/resources/db/migration/
 | 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`app_id` |
 | 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`/7状态`status`/`flow_config`/审批字段 |
 | 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N），编排保存时同步维护 |
-| 6 | `openplatform_v2_cp_execution_record_t` | ENABLE | runtime | 启用 V1 预留表；修正枚举值 |
-| 7 | `openplatform_v2_cp_execution_step_t` | ENABLE | runtime | 启用 V1 预留表；`node_type` VARCHAR→TINYINT |
+| 6 | `openplatform_v2_cp_execution_record_t` | NEW | runtime | 运行记录表（V1 预留 DDL 但未使用），V2 全新启用并修正枚举值 |
+| 7 | `openplatform_v2_cp_execution_step_t` | NEW | runtime | 运行日志表（V1 预留 DDL 但未使用），V2 全新启用；`node_type` VARCHAR→TINYINT |
 | 8 | `openplatform_v2_approval_flow_t` | MODIFY | approval | 新增 `app_id` 字段；uk_code → uk_code_app；新增 `connector_flow_version_publish` 业务模板 |
 | 9 | `openplatform_operate_log_t` | REUSE | audit | 操作日志（扩展 OperateEnum 枚举值），复用现有表，表结构不变 |
 | 10 | `openplatform_property_t` | REUSE | security | URL 白名单规则（code=key, value=正则），复用现有字典表 |
 | 11 | `openplatform_lookup_classify_t` | REUSE | security | 应用白名单分组（classify_code=`cp_app_whitelist`），复用现有 LookUp 分类表 |
 | 12 | `openplatform_lookup_item_t` | REUSE | security | 应用白名单数据（classify_id + itemCode=appId），复用现有 LookUp 项表 |
 
-**总计**：**12 张表**（5 MODIFY + 1 NEW + 2 ENABLE + 4 REUSE）。
+**总计**：**12 张表**（5 MODIFY + 3 NEW + 4 REUSE）。
 
 ---
 
@@ -189,7 +189,7 @@ erDiagram
 
 ## 3. 表结构定义
 
-> 💡 以下 DDL 全部遵循 §0 设计规范：BIGINT 雪花 ID 主键、TINYINT 枚举、MEDIUMTEXT 存 JSON、idx_xxx/uk_xxx 索引命名、不使用物理外键。MODIFY 表示在 V1 表基础上 ALTER；NEW 表示新 CREATE；ENABLE 表示 V1 已建表、V2 启用+追加列。
+> 💡 以下 DDL 全部遵循 §0 设计规范：BIGINT 雪花 ID 主键、TINYINT 枚举、MEDIUMTEXT 存 JSON、idx_xxx/uk_xxx 索引命名、不使用物理外键。MODIFY 表示在 V1 表基础上 ALTER；NEW 表示 V2 新建（含 V1 预留 DDL 但未实际使用的表）。
 
 ### 3.1 openplatform_v2_cp_connector_t（MODIFY）
 
@@ -333,7 +333,7 @@ VALUES (..., '连接流版本发布审批', 'Flow Version Publish Approval', 'co
 
 > 💡 连接器平台的审批人配置管理复用 `open-server` 现有的 `ApprovalController` CRUD，仅新增 `connector_flow_version_publish` 业务类型模板。前端审批人配置页面调用现有 `/service/open/v2/approval-flows` 接口。
 
-### 3.7 openplatform_v2_cp_execution_record_t（ENABLE + MODIFY）
+### 3.7 openplatform_v2_cp_execution_record_t（NEW）
 
 **启用理由**：V1 预留表结构完整，V2 启用写入。新增列支持调试触发方式标记和版本追溯。
 
@@ -350,7 +350,7 @@ ALTER TABLE openplatform_v2_cp_execution_record_t
 | `trigger_type` | TINYINT(10) | 区分 HTTP 触发(1) 和调试触发(2) |
 | `flow_version_id` | BIGINT(20) | 追溯执行时的版本快照，用于审计和分析 |
 
-### 3.8 openplatform_v2_cp_execution_step_t（ENABLE）
+### 3.8 openplatform_v2_cp_execution_step_t（NEW）
 
 **启用理由**：V1 预留表结构完整（含 `input_data`/`output_data` JSON 列 + `storage_blob_ref_t` 外置支持），V2 直接启用，无需 DDL 变更。V2 新增 `node_type=3 (data_processor)` 枚举值。
 
@@ -434,7 +434,7 @@ V1 为内部验证 MVP，无真实用户数据，V2 **不执行数据迁移**：
 
 - 已存在的 V1 表（connector_t / connector_version_t / flow_t / flow_version_t）：通过 §3 的 `ALTER TABLE` 变更
 - V2 新建表（connector_version_ref_t）：通过 `CREATE TABLE` 新建
-- V1 预留表（execution_record_t / execution_step_t）：表结构已存在，通过 §3 的 `ALTER TABLE` 修正
+- V1 预留表（execution_record_t / execution_step_t）：V1 仅保留 DDL 未实际使用，V2 通过 §3 的 `ALTER TABLE` 修正后全新启用
 - 初始数据（审批流模板、默认审批人等）：通过独立 SQL 脚本灌入，不在本文档范围
 
 > 💡 无需编写 V1→V2 数据回填 SQL，也无需备份 V1 数据。
@@ -525,6 +525,6 @@ edge.id: "e1" / "e2" / "reactflow__edge-xxx"      — React Flow 生成
 | `flow_version_t` | V1 同名表 | ALTER：移除唯一约束 + 新增版本号/7状态/flow_config/审批列 |
 | `connector_version_ref_t` | — | **V2 全新建表** |
 | `approval_flow_t` | V1 能力开放平台 | ALTER：新增 `app_id`；uk_code → uk_code_app；新增 businessType 模板 |
-| `execution_record_t` | V1 预留表 | ENABLE：新增 `trigger_type`/`flow_version_id`，其余列沿用 |
-| `execution_step_t` | V1 预留表 | ENABLE：无 DDL 变更，V2 新增 node_type=3 |
+| `execution_record_t` | V1 预留 DDL（未使用） | NEW：V2 全新启用，修正枚举值，新增 `trigger_type`/`flow_version_id` |
+| `execution_step_t` | V1 预留 DDL（未使用） | NEW：V2 全新启用；`node_type` VARCHAR→TINYINT |
 | `storage_blob_ref_t` | V1 预留表 | V2 暂不启用 |
