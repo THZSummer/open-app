@@ -69,7 +69,7 @@ graph TB
 | **画布** | @xyflow/react (React Flow) | v12.10.1 |
 | **后端管理面** | Spring Boot (open-server) + MyBatis | 3.4.6 |
 | **后端运行时** | Spring Boot (connector-api) + WebFlux + R2DBC | 3.5.14 |
-| **数据库** | MySQL | 8.0 |
+| **数据库** | MySQL | 5.7 |
 | **缓存** | Redis (Lettuce) | — |
 | **构建** | Maven | — |
 | **语言** | Java 21 + JavaScript/JSX | — |
@@ -170,6 +170,8 @@ V2 的 8 个开放问题（OQ-001~008）在规划阶段全部决策完成。
 | A: MySQL + 定时清理 | 启用 V1 预留表 + 30 天清理 | ✅ **选用**（ADR-006） |
 | B: Elasticsearch | 独立日志存储 | ❌ 引入新组件 |
 | C: MySQL + 对象存储 | 热冷分层 | ❌ V2 日志量可控，预留扩展点 |
+
+> ⚠️ V1 预留表（`execution_record_t` / `execution_step_t` / `storage_blob_ref_t`）未经生产验证，V2 启用前需重新审视：① 列级枚举值偏移修正；② `node_type` 从 VARCHAR 改为 TINYINT；③ 审计字段 `VARCHAR(50)` → `VARCHAR(100)`；④ 索引引用列存在性校验。详见 ADR-006。
 
 **OQ-008 连接流复制版本历史**：完整复制所有版本（所有状态）。
 
