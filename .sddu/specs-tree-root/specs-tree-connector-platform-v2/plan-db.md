@@ -337,7 +337,7 @@ ALTER TABLE openplatform_v2_approval_flow_t
 
 ### 3.7 openplatform_v2_cp_execution_record_t（NEW）
 
-**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。运行记录由系统自动生成（非用户操作），不含 `create_by`/`last_update_by` 审计字段。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。运行记录由系统自动生成，`create_by`/`last_update_by` 固定为 `SYSTEM`。
 
 ```sql
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
@@ -353,6 +353,8 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `trigger_time`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
     `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
     `last_update_time`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+    `create_by`         VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
+    `last_update_by`    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
     PRIMARY KEY (`id`),
     INDEX `idx_flow_trigger_time` (`flow_id`, `trigger_time`) COMMENT '按连接流+时间查询运行记录',
     INDEX `idx_trigger_time`       (`trigger_time`)           COMMENT '定时清理时按时间范围扫描',
@@ -368,8 +370,6 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | `execution_status` | TINYINT(10) | 0=pending, 1=running, 2=success, 3=failed, 4=timeout |
 | `trigger_time` | DATETIME(3) | 触发时间，用于排序和定时清理 |
 | `duration_ms` | INT | 总耗时 |
-
-> ⚠️ 不含 `create_by`/`last_update_by`——运行记录为系统自动生成，无用户操作入口。
 
 ### 3.8 openplatform_v2_cp_execution_step_t（NEW）
 
@@ -390,6 +390,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `error_message`     TEXT         DEFAULT NULL COMMENT '步骤错误信息',
     `duration_ms`       INT(11)      DEFAULT NULL COMMENT '步骤耗时(毫秒)',
     `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    `last_update_time`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+    `create_by`         VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
+    `last_update_by`    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
     PRIMARY KEY (`id`),
     INDEX `idx_execution_id`           (`execution_id`)            COMMENT '按执行记录ID查询全部步骤',
     INDEX `idx_execution_step_order`   (`execution_id`,`step_order`) COMMENT '按执行记录ID+步骤序号查询'
@@ -418,6 +421,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_storage_blob_ref_t` (
     `storage_status`    TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '存储状态：1=active, 2=archived, 3=deleted',
     `expire_time`       DATETIME(3)  DEFAULT NULL COMMENT '过期时间 (用于自动清理)',
     `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    `last_update_time`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+    `create_by`         VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
+    `last_update_by`    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
     PRIMARY KEY (`id`),
     INDEX `idx_owner`       (`owner_type`, `owner_id`) COMMENT '按所有者查询/GC扫描',
     INDEX `idx_status`      (`storage_status`)         COMMENT '按存储状态过滤',
