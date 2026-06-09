@@ -257,7 +257,7 @@ open-app/
 
 | 文档 | 内容 |
 |------|------|
-| [plan-db.md](./plan-db.md) | **数据库设计** — 5 MODIFY + 1 NEW + 2 ENABLE，URL白名单/应用白名单/审批人配置均复用现有表 |
+| [plan-db.md](./plan-db.md) | **数据库设计** — 11 张表（5 MODIFY + 1 NEW + 2 ENABLE + 1 EXTEND + 2 REUSE），URL白名单/应用白名单/审批人均复用 |
 | [plan-api.md](./plan-api.md) | **API 接口设计** — 49 端点完整定义、请求/响应示例、错误码、枚举字典 |
 | [plan-page.md](./plan-page.md) | **前端页面设计** — 路由设计、版本历史/审批/调试/运行记录/白名单页面详设 |
 | [plan-runtime.md](./plan-runtime.md) | **运行时引擎设计** — 版本解析、并行分支、限流、缓存、日志、调试、认证注入器 |
@@ -349,4 +349,4 @@ Week 5:   联调 + 数据迁移验证 + 灰度上线
 | 调试 | 必须发布部署后验证 | 草稿/已发布版本直接调试 |
 | 审计 | 无 | 变更操作日志 |
 | 端点总数 | 18 | 45 |
-| 表数量 | 7（4 启用 + 3 预留） | 9（5 MODIFY + 1 NEW + 2 ENABLE + 1 EXTEND） |
+| 表数量 | 7（4 启用 + 3 预留） | 11（5 MODIFY + 1 NEW + 2 ENABLE + 1 EXTEND + 2 REUSE） |

@@ -150,11 +150,10 @@ open-server/src/main/resources/db/migration/
 | 7 | `openplatform_v2_cp_execution_step_t` | ENABLE | runtime | 启用 V1 预留表；`node_type` VARCHAR→TINYINT |
 | 8 | `openplatform_v2_approval_flow_t` | MODIFY | approval | 新增 `app_id` 字段；uk_code → uk_code_app；新增 `connector_flow_version_publish` 业务模板 |
 | 9 | `openplatform_operate_log_t` | EXTEND | audit | OperateEnum 扩展（复用现有操作日志表，不新增表） |
-| — | `openplatform_property_t` | REUSE | security | URL 白名单规则（code=key, value=正则），复用现有字典表 |
-| — | `openplatform_lookup_item_t` | REUSE | security | 应用白名单（classify 分组 + itemCode/itemValue），复用现有 LookUp |
-| — | `openplatform_v2_approval_flow_t` | REUSE | approval | 三级审批人配置（新增 `app_id` 字段），复用现有审批流模板表 |
+| 10 | `openplatform_property_t` | REUSE | security | URL 白名单规则（code=key, value=正则），复用现有字典表 |
+| 11 | `openplatform_lookup_item_t` | REUSE | security | 应用白名单（classify 分组 + itemCode/itemValue），复用现有 LookUp |
 
-**总计**：**9 张表**（5 MODIFY + 1 NEW + 2 ENABLE + 1 EXTEND），另复用 3 张现有表。
+**总计**：**11 张表**（5 MODIFY + 1 NEW + 2 ENABLE + 1 EXTEND + 2 REUSE）。
 
 ---
 
