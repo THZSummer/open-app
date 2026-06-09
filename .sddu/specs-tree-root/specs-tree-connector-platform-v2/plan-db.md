@@ -153,8 +153,9 @@ open-server/src/main/resources/db/migration/
 | 10 | `openplatform_property_t` | REUSE | security | URL 白名单规则（code=key, value=正则），复用现有字典表 |
 | 11 | `openplatform_lookup_classify_t` | REUSE | security | 应用白名单分组（classify_code=`cp_app_whitelist`），复用现有 LookUp 分类表 |
 | 12 | `openplatform_lookup_item_t` | REUSE | security | 应用白名单数据（classify_id + itemCode=appId），复用现有 LookUp 项表 |
+| 13 | `openplatform_v2_cp_storage_blob_ref_t` | REUSE | runtime | 大字段外置引用表（V1 预留，V2 暂不使用——运行日志全部走 MySQL） |
 
-**总计**：**12 张表**（5 MODIFY + 3 NEW + 4 REUSE）。
+**总计**：**13 张表**（5 MODIFY + 3 NEW + 5 REUSE）。
 
 ---
 
