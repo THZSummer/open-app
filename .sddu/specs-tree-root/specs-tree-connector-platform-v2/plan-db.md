@@ -54,7 +54,7 @@ open-server/src/main/resources/db/migration/
 |------|------|---------|
 | **完整前缀** | `openplatform_v2_cp_` | `openplatform_v2_cp_connector_t` |
 | **表后缀** | 统一 `_t` | `openplatform_v2_cp_connector_url_whitelist_t` |
-| **命名风格** | 小写字母 + 下划线分隔 | `connector_version_ref` / `app_whitelist` |
+| **命名风格** | 小写字母 + 下划线分隔 | `connector_version_ref` / `approver_config` |
 | **索引命名** | `idx_字段1_字段2` | `idx_connector_version` / `idx_app_status` |
 | **唯一索引命名** | `uk_字段1_字段2` | `uk_flow_node` / `uk_level_app` |
 
@@ -147,13 +147,12 @@ open-server/src/main/resources/db/migration/
 | 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`app_id` |
 | 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`/7状态`status`/`flow_config`/审批字段 |
 | 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N），编排保存时同步维护 |
-| 6 | `openplatform_v2_cp_app_whitelist_t` | **NEW** | security | 应用白名单准入 |
-| 7 | `openplatform_v2_cp_approver_config_t` | **NEW** | approval | 三级审批人配置（应用级/平台级/全局级） |
+| 6 | `openplatform_v2_cp_approver_config_t` | **NEW** | approval | 三级审批人配置（应用级/平台级/全局级） |
 | 8 | `openplatform_v2_cp_execution_record_t` | ENABLE | runtime | 启用 V1 预留表；修正枚举值 |
 | 9 | `openplatform_v2_cp_execution_step_t` | ENABLE | runtime | 启用 V1 预留表；`node_type` VARCHAR→TINYINT |
 | 10 | `openplatform_operate_log_t` | EXTEND | audit | OperateEnum 扩展（复用现有操作日志表，不新增表） |
 
-**总计**：**10 张表**（4 MODIFY + 3 NEW + 2 ENABLE + 1 EXTEND）。URL 白名单规则复用现有 `openplatform_property_t` 字典表（code=key, value=正则规则），不单独建表。
+**总计**：**9 张表**（4 MODIFY + 2 NEW + 2 ENABLE + 1 EXTEND）。URL 白名单规则复用现有 `openplatform_property_t` 字典表（key-value）；应用白名单复用现有 `openplatform_lookup_item_t`（classify 分组 + itemCode/itemValue 键值对）。
 
 ---
 
@@ -168,7 +167,6 @@ erDiagram
     ExecutionRecord ||--o{ ExecutionStep : "1:N"
     FlowVersion ||--o{ ConnectorVersionRef : "1:N"
     ConnectorVersionRef }o--|| ConnectorVersion : "M:1"
-    AppWhitelist ||--|| App : "1:1"
     ApproverConfig }o--o| App : "0..1:1 (level=1 only)"
 ```
 
@@ -301,26 +299,7 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
 
 > ⚠️ **不含审计字段**：此表为纯中间表，由编排保存/删除时自动同步维护，无人工操作入口，故不需要 `create_by`/`last_update_by`。
 
-### 3.6 openplatform_v2_cp_app_whitelist_t（NEW）
-
-**建表理由**：FR-045 要求平台管理员维护可开通连接器功能的应用白名单，白名单内应用才可使用连接器平台全部功能。
-
-```sql
-CREATE TABLE openplatform_v2_cp_app_whitelist_t (
-    id BIGINT(20) NOT NULL COMMENT '雪花ID',
-    app_id BIGINT(20) NOT NULL COMMENT '应用ID',
-    create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-    create_by VARCHAR(100) NOT NULL COMMENT '创建人（平台管理员）',
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_app_id (app_id) COMMENT '同一应用不可重复添加'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器平台应用白名单（白名单内应用可使用连接器平台；移出白名单后已有数据保留、新操作拒绝）';
-```
-
-| 列 | 类型 | 说明 |
-|----|------|------|
-| `app_id` | BIGINT(20) | 唯一约束，同一应用不可重复添加 |
-
-### 3.7 openplatform_v2_cp_approver_config_t（NEW）
+### 3.6 openplatform_v2_cp_approver_config_t（NEW）
 
 **建表理由**：FR-032 要求平台管理员配置连接流版本发布的三级审批人，审批人可配置多人（任一审批即通过）。`level=1` 按应用独立配置。
 
@@ -343,7 +322,7 @@ CREATE TABLE openplatform_v2_cp_approver_config_t (
 | `app_id` | BIGINT(20) | 仅 level=1 时填充；level=2/3 为 NULL，唯一约束自动处理多 NULL |
 | `approver_ids` | JSON | MySQL 原生 JSON 类型（仅此例外——数组结构简单，不需要 TEXT） |
 
-### 3.8 openplatform_v2_cp_execution_record_t（ENABLE + MODIFY）
+### 3.7 openplatform_v2_cp_execution_record_t（ENABLE + MODIFY）
 
 **启用理由**：V1 预留表结构完整，V2 启用写入。新增列支持调试触发方式标记和版本追溯。
 
@@ -360,7 +339,7 @@ ALTER TABLE openplatform_v2_cp_execution_record_t
 | `trigger_type` | TINYINT(10) | 区分 HTTP 触发(1) 和调试触发(2) |
 | `flow_version_id` | BIGINT(20) | 追溯执行时的版本快照，用于审计和分析 |
 
-### 3.9 openplatform_v2_cp_execution_step_t（ENABLE）
+### 3.8 openplatform_v2_cp_execution_step_t（ENABLE）
 
 **启用理由**：V1 预留表结构完整（含 `input_data`/`output_data` JSON 列 + `storage_blob_ref_t` 外置支持），V2 直接启用，无需 DDL 变更。V2 新增 `node_type=3 (data_processor)` 枚举值。
 
@@ -443,7 +422,7 @@ ALTER TABLE openplatform_v2_cp_execution_record_t
 V1 为内部验证 MVP，无真实用户数据，V2 **不执行数据迁移**：
 
 - 已存在的 V1 表（connector_t / connector_version_t / flow_t / flow_version_t）：通过 §3 的 `ALTER TABLE` 变更
-- V2 新建表（connector_version_ref_t / url_whitelist_t / app_whitelist_t / approver_config_t）：通过 `CREATE TABLE` 新建
+- V2 新建表（connector_version_ref_t / approver_config_t）：通过 `CREATE TABLE` 新建
 - V1 预留表（execution_record_t / execution_step_t）：表结构已存在，通过 §3 的 `ALTER TABLE` 修正
 - 初始数据（审批流模板、默认审批人等）：通过独立 SQL 脚本灌入，不在本文档范围
 
@@ -534,8 +513,6 @@ edge.id: "e1" / "e2" / "reactflow__edge-xxx"      — React Flow 生成
 | `flow_t` | V1 同名表 | ALTER：新增 `deployed_version_id`/`app_id` + 修改 `lifecycle_status` |
 | `flow_version_t` | V1 同名表 | ALTER：移除唯一约束 + 新增版本号/7状态/flow_config/审批列 |
 | `connector_version_ref_t` | — | **V2 全新建表** |
-| `connector_url_whitelist_t` | — | 复用现有 `openplatform_property_t` 字典表，不新建 |
-| `app_whitelist_t` | — | **V2 全新建表** |
 | `approver_config_t` | — | **V2 全新建表** |
 | `execution_record_t` | V1 预留表 | ENABLE：新增 `trigger_type`/`flow_version_id`，其余列沿用 |
 | `execution_step_t` | V1 预留表 | ENABLE：无 DDL 变更，V2 新增 node_type=3 |
