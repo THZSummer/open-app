@@ -119,8 +119,8 @@ open-server/src/main/resources/db/migration/
 | `flow_t` | `lifecycle_status` | 1=待部署, 2=运行中, 3=已停止, 4=已失效, 5=物理删除 | V2 扩展 |
 | `flow_version_t` | `status` | 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除 | V2 新增 |
 | `execution_record_t` | `trigger_type` | 1=http, 2=debug | V2 启用 |
-| `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | V2 启用 |
-| `execution_step_t` | `step_status` | 0=success, 1=failed, 2=timeout, 3=not_executed | 步骤执行结果 |
+| `execution_record_t` | `status` | 0=success, 1=failed, 2=timeout | V2 启用 |
+| `execution_step_t` | `status` | 0=success, 1=failed, 2=timeout, 3=not_executed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
 
 ### 0.8 V2 规范变更（相对 V1）
@@ -342,13 +342,14 @@ ALTER TABLE openplatform_v2_approval_flow_t
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `id`                      BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
     `flow_id`                 BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
-    `flow_version_id`         BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID（追溯执行时的版本快照）',
+    `flow_version_id`         BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID',
+    `flow_version_number`     INT          DEFAULT NULL COMMENT '关联连接流版本号（冗余，避免列表 JOIN）',
     `flow_version_snapshot`   MEDIUMTEXT   DEFAULT NULL COMMENT '执行时版本完整快照JSON（orchestrationConfig + flowConfig），版本删除后仍可还原执行现场',
     `flow_name_cn`            VARCHAR(128) NOT NULL COMMENT '连接流中文名称（触发时快照）',
     `flow_name_en`            VARCHAR(128) NOT NULL COMMENT '连接流英文名称（触发时快照）',
     `trigger_type`            TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
     `trigger_account`         VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识，debug=调试用户）',
-    `execution_status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=success, 1=failed, 2=timeout',
+    `status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=success, 1=failed, 2=timeout',
     `error_message`           VARCHAR(1000) DEFAULT NULL COMMENT '错误信息（整体摘要，节点级详情在 execution_step_t）',
     `duration_ms`             INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
     `trigger_time`            DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
@@ -359,7 +360,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     PRIMARY KEY (`id`),
     INDEX `idx_flow_trigger_time` (`flow_id`, `trigger_time`) COMMENT '按连接流+时间查询运行记录',
     INDEX `idx_trigger_time`       (`trigger_time`)           COMMENT '定时清理时按时间范围扫描',
-    INDEX `idx_execution_status`   (`execution_status`)       COMMENT '按执行状态过滤'
+    INDEX `idx_status`   (`status`)       COMMENT '按执行状态过滤'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行记录表';
 ```
 
@@ -367,11 +368,12 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 |----|------|------|
 | `flow_id` | BIGINT(20) | 连接流 ID |
 | `flow_version_id` | BIGINT(20) | 执行的版本 ID |
+| `flow_version_number` | INT | 冗余，列表查询免 JOIN flow_version_t |
 | `flow_version_snapshot` | MEDIUMTEXT | 执行时版本快照（编排拓扑 + flowConfig），版本删除后仍可还原 |
 | `flow_name_cn` / `flow_name_en` | VARCHAR(128) | 触发时快照 |
 | `trigger_type` | TINYINT(10) | 1=http, 2=debug |
 | `trigger_account` | VARCHAR(100) | 触发账号 |
-| `execution_status` | TINYINT(10) | 0=success, 1=failed, 2=timeout |
+| `status` | TINYINT(10) | 0=success, 1=failed, 2=timeout |
 | `trigger_time` | DATETIME(3) | 触发时间 |
 | `duration_ms` | INT | 总耗时 |
 
@@ -388,7 +390,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `node_label_cn`     VARCHAR(128) DEFAULT NULL COMMENT '节点中文名称 (执行时快照)',
     `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
     `iteration`         INT(11)      NOT NULL DEFAULT 0 COMMENT '循环轮次（0=首次或非循环，>0=第N轮循环）',
-    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=not_executed（未执行，如分支未走到）',
+    `status`            TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=not_executed（未执行，如分支未走到）',
     `input_data`        MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输入数据JSON',
     `output_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输出数据JSON',
     `error_message`     TEXT         DEFAULT NULL COMMENT '步骤错误信息',
@@ -409,7 +411,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | `node_id` | VARCHAR(64) | 节点 ID，匹配 flow_version_snapshot.nodes[].id |
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
 | `iteration` | INT | 循环轮次（预留），默认 0 |
-| `step_status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=not_executed |
+| `status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=not_executed |
 | `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON |
 | `error_code` | VARCHAR(20) | 结构化错误码，方便告警分类 |
 

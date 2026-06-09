@@ -228,6 +228,15 @@
 | 3 | data_processor（数据处理节点） |
 | 4 | exit（出口节点） |
 
+#### 1.8.7b 执行步骤状态 (executionStep.status)
+
+| 数字 | 含义 |
+|:--:|------|
+| 0 | success（步骤执行成功） |
+| 1 | failed（步骤执行失败） |
+| 2 | timeout（步骤执行超时） |
+| 3 | not_executed（未执行，如分支未走到） |
+
 #### 1.8.8 审批节点状态 (approvalNode.status)
 
 | 数字 | 含义 |
@@ -1414,29 +1423,34 @@
     {
       "executionId": "1234567890123456789",
       "flowNameCn": "新消息自动通知",
+      "flowNameEn": "Auto Message Notification",
       "triggerTime": "2026-06-09T10:00:01.000+08:00",
       "triggerType": 1,
       "triggerAccount": "token_abc123",
-      "status": 2,
+      "status": 0,
       "durationMs": 234,
-      "triggerType": 1,
       "flowVersionNumber": 2
     },
     {
       "executionId": "1234567890123456780",
+      "flowNameCn": "新消息自动通知",
+      "flowNameEn": "Auto Message Notification",
       "triggerTime": "2026-06-09T10:00:00.000+08:00",
-      "status": 3,
-      "durationMs": 5023,
       "triggerType": 2,
+      "triggerAccount": "zhangsan",
+      "status": 1,
+      "durationMs": 5023,
       "flowVersionNumber": 4
     },
     {
       "executionId": "1234567890123456779",
+      "flowNameCn": "新消息自动通知",
+      "flowNameEn": "Auto Message Notification",
       "triggerTime": "2026-06-09T09:59:58.000+08:00",
-      "status": 4,
-      "durationMs": 30001,
       "triggerType": 1,
-      "flowVersionNumber": 2
+      "triggerAccount": "token_xyz789",
+      "status": 2,
+      "flowVersionNumber": 4
     }
   ],
   "page": { "curPage": 1, "pageSize": 20, "total": 150 }
@@ -1454,41 +1468,54 @@
   "data": {
     "executionId": "1234567890123456789",
     "flowId": "4444444444444444444",
+    "flowNameCn": "新消息自动通知",
+    "flowNameEn": "Auto Message Notification",
     "flowVersionId": "6666666666666666666",
     "flowVersionNumber": 2,
     "triggerType": 1,
+    "triggerAccount": "token_abc123",
     "triggerTime": "2026-06-09T10:00:01.000+08:00",
-    "status": 2,
+    "status": 0,
     "durationMs": 234,
+    "errorMessage": null,
     "steps": [
       {
         "nodeId": "node_trigger",
         "nodeType": 1,
         "nodeLabelCn": "接收请求",
-        "status": 2,
+        "nodeLabelEn": "Receive Request",
+        "iteration": 0,
+        "status": 0,
         "durationMs": 2,
         "inputData": {},
         "outputData": { "sender": "u001", "content": "测试消息" },
-        "errorInfo": null
+        "errorMessage": null,
+        "errorCode": null
       },
       {
         "nodeId": "node_1",
         "nodeType": 2,
         "nodeLabelCn": "发送通知",
-        "status": 2,
+        "nodeLabelEn": "Send Notification",
+        "iteration": 0,
+        "status": 0,
         "durationMs": 230,
         "inputData": { "receiver": "u001", "content": "测试消息" },
         "outputData": { "msgId": "m001", "code": 0 },
-        "errorInfo": null
+        "errorMessage": null,
+        "errorCode": null
       },
       {
         "nodeId": "node_exit",
         "nodeType": 4,
         "nodeLabelCn": "返回结果",
-        "status": 2,
+        "nodeLabelEn": "Return Result",
+        "iteration": 0,
+        "status": 0,
         "durationMs": 2,
         "outputData": { "msgId": "m001", "code": 0 },
-        "errorInfo": null
+        "errorMessage": null,
+        "errorCode": null
       }
     ]
   },
@@ -1656,7 +1683,7 @@
   "messageEn": "Success",
   "data": {
     "executionId": "1234567890123456789",
-    "status": 2,
+    "status": 0,
     "resultData": { "msgId": "msg_xxxx", "code": 0 },
     "durationMs": 234
   },
@@ -1693,14 +1720,16 @@
   "messageEn": "Debug execution success",
   "data": {
     "executionId": "1234567890123456789",
-    "status": 2,
+    "status": 0,
     "durationMs": 237,
     "nodes": [
       {
         "nodeId": "node_trigger",
         "nodeType": 1,
         "nodeLabelCn": "接收请求",
-        "status": 2,
+        "nodeLabelEn": "Receive Request",
+        "iteration": 0,
+        "status": 0,
         "durationMs": 2,
         "inputData": {},
         "outputData": { "sender": "test_user", "content": "调试测试消息" }
@@ -1709,7 +1738,9 @@
         "nodeId": "node_1",
         "nodeType": 2,
         "nodeLabelCn": "发送通知",
-        "status": 2,
+        "nodeLabelEn": "Send Notification",
+        "iteration": 0,
+        "status": 0,
         "durationMs": 234,
         "inputData": { "receiver": "test_user", "content": "调试测试消息" },
         "outputData": { "msgId": "m001", "code": 0 }
@@ -1718,7 +1749,9 @@
         "nodeId": "node_exit",
         "nodeType": 4,
         "nodeLabelCn": "返回结果",
-        "status": 2,
+        "nodeLabelEn": "Return Result",
+        "iteration": 0,
+        "status": 0,
         "durationMs": 1,
         "outputData": { "msgId": "m001", "code": 0 }
       }
