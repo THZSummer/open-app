@@ -467,69 +467,16 @@ ALTER TABLE openplatform_v2_cp_execution_record_t
 
 ---
 
-## 5. V1→V2 数据迁移 SQL
+## 5. 数据初始化说明
 
-### 5.1 迁移步骤
+V1 为内部验证 MVP，无真实用户数据，V2 **不执行数据迁移**：
 
-```
-1. 备份 V1 数据库
-2. 测试环境执行迁移 + 验证
-3. 生产环境：DDL（ADD COLUMN 允许 NULL）→ 应用部署 → 数据回填 → 加固 NOT NULL 约束
-```
+- 已存在的 V1 表（connector_t / connector_version_t / flow_t / flow_version_t）：通过 §3 的 `ALTER TABLE` 变更
+- V2 新建表（connector_version_ref_t / url_whitelist_t / app_whitelist_t / approver_config_t）：通过 `CREATE TABLE` 新建
+- V1 预留表（execution_record_t / execution_step_t）：表结构已存在，通过 §3 的 `ALTER TABLE` 修正
+- 初始数据（审批流模板、默认审批人等）：通过独立 SQL 脚本灌入，不在本文档范围
 
-### 5.2 回填 SQL
-
-```sql
--- ============================================
--- 步骤：回填数据（在 DDL 执行后运行）
--- ============================================
-
--- 1. 连接器版本：现有版本标记为 v1「已发布」
-UPDATE openplatform_v2_cp_connector_version_t
-SET version_number = 1,
-    status = 2,
-    published_time = COALESCE(published_time, create_time),
-    published_by = COALESCE(published_by, create_by)
-WHERE status IS NULL OR status = 0;
-
--- 2. 连接器：根据是否已有已发布版本设置状态
-UPDATE openplatform_v2_cp_connector_t c
-SET status = CASE
-    WHEN EXISTS (
-        SELECT 1 FROM openplatform_v2_cp_connector_version_t v
-        WHERE v.connector_id = c.id AND v.status = 2
-    ) THEN 2
-    ELSE 1
-END
-WHERE status IS NULL OR status NOT IN (1,2,3,4);
-
--- 3. 连接流版本：现有版本标记为 v1「已发布」
-UPDATE openplatform_v2_cp_flow_version_t
-SET version_number = 1,
-    status = 5,
-    published_time = COALESCE(published_time, create_time),
-    published_by = COALESCE(published_by, create_by)
-WHERE status IS NULL OR status = 0;
-
--- 4. 连接流：设置 deployed_version_id + 转换 lifecycle_status
-UPDATE openplatform_v2_cp_flow_t f
-SET deployed_version_id = (
-    SELECT id FROM openplatform_v2_cp_flow_version_t v
-    WHERE v.flow_id = f.id AND v.status = 5
-    LIMIT 1
-),
-lifecycle_status = CASE
-    WHEN lifecycle_status = 1 THEN 2   -- V1 running → V2 运行中
-    WHEN lifecycle_status = 2 THEN 3   -- V1 stopped → V2 已停止
-    ELSE lifecycle_status
-END
-WHERE lifecycle_status IN (1, 2);
-
--- 5. 连接器版本引用回填（从现有 FlowVersion JSON 中提取）
--- 遍历所有已发布 FlowVersion，解析 orchestrationConfig.nodes[].data.connectorVersionId
--- 写入 connector_version_ref_t
--- 此步骤需应用层脚本执行，非纯 SQL 可完成
-```
+> 💡 无需编写 V1→V2 数据回填 SQL，也无需备份 V1 数据。
 
 ---
 
