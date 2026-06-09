@@ -346,6 +346,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `flow_name_cn`      VARCHAR(100) NOT NULL COMMENT '连接流中文名称（触发时快照，连接流删除后记录仍可读）',
     `flow_name_en`      VARCHAR(100) NOT NULL COMMENT '连接流英文名称（触发时快照）',
     `trigger_type`      TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
+    `trigger_account`   VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识，debug=调试用户）',
     `execution_status`  TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=pending, 1=running, 2=success, 3=failed, 4=timeout',
     `error_message`     VARCHAR(1000) DEFAULT NULL COMMENT '错误信息（整体摘要，节点级详情在 execution_step_t）',
     `duration_ms`       INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
@@ -367,6 +368,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | `flow_version_id` | BIGINT(20) | 执行的版本 ID，追溯快照 |
 | `flow_name_cn` / `flow_name_en` | VARCHAR(100) | 触发时快照，连接流删除后记录仍可读 |
 | `trigger_type` | TINYINT(10) | 1=http, 2=debug |
+| `trigger_account` | VARCHAR(100) | 触发账号，HTTP=调用方凭证标识，debug=调试用户 |
 | `execution_status` | TINYINT(10) | 0=pending, 1=running, 2=success, 3=failed, 4=timeout |
 | `trigger_time` | DATETIME(3) | 触发时间，用于排序和定时清理 |
 | `duration_ms` | INT | 总耗时 |

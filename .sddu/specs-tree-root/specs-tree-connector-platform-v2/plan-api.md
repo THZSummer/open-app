@@ -1415,6 +1415,8 @@
       "executionId": "1234567890123456789",
       "flowNameCn": "新消息自动通知",
       "triggerTime": "2026-06-09T10:00:01.000+08:00",
+      "triggerType": 1,
+      "triggerAccount": "token_abc123",
       "status": 2,
       "durationMs": 234,
       "triggerType": 1,
