@@ -317,18 +317,16 @@ ALTER TABLE openplatform_v2_approval_flow_t
     ADD UNIQUE KEY uk_code_app (code, app_id);
 ```
 
-**连接器平台审批流模板数据**（通过 INSERT 灌入）：
+**连接器平台审批流模板配置**（在现有平台手动注册，不需要脚本）：
 
-```sql
--- 全局审批模板（app_id=NULL，平台级+全局级审批人）
-INSERT INTO openplatform_v2_approval_flow_t (id, name_cn, name_en, code, nodes, status, create_by, last_update_by)
-VALUES (..., '连接流版本发布审批', 'Flow Version Publish Approval', 'connector_flow_version_publish',
-    '[{"level":1,"levelName":"应用级","approverIds":[]},{"level":2,"levelName":"平台连接流级","approverIds":[]},{"level":3,"levelName":"全局级","approverIds":[]}]',
-    1, 'system', 'system');
-
--- 应用级审批模板（app_id=具体应用ID，覆盖 level=1 的审批人）
--- 通过复制全局模板并指定 app_id + 修改 nodes[0].approverIds 实现
-```
+| 字段 | 值 | 说明 |
+|------|------|------|
+| `code` | `connector_flow_version_publish` | 业务类型编码 |
+| `name_cn` | `连接流版本发布审批` | — |
+| `name_en` | `Flow Version Publish Approval` | — |
+| `nodes` | 三级审批节点 JSON（应用级 → 平台连接流级 → 全局级） | 审批人按应用配置时指定 `app_id` |
+| `app_id` | NULL（全局默认）/ 具体应用ID | 全局模板 app_id=NULL；应用级覆盖时指定 app_id |
+| `status` | 1 | 启用 |
 
 | 列 | 类型 | 变更 | 说明 |
 |----|------|:--:|------|
@@ -439,7 +437,7 @@ V1 为内部验证 MVP，无真实用户数据，V2 **不执行数据迁移**：
 - 已存在的 V1 表（connector_t / connector_version_t / flow_t / flow_version_t）：通过 §3 的 `ALTER TABLE` 变更
 - V2 新建表（connector_version_ref_t）：通过 `CREATE TABLE` 新建
 - V1 预留表（execution_record_t / execution_step_t）：V1 仅保留 DDL 未实际使用，V2 通过 §3 的 `ALTER TABLE` 修正后全新启用
-- 初始数据（审批流模板、默认审批人等）：通过独立 SQL 脚本灌入，不在本文档范围
+- 初始数据（审批流模板等）在现有平台手动注册，不需要脚本
 
 > 💡 无需编写 V1→V2 数据回填 SQL，也无需备份 V1 数据。
 
