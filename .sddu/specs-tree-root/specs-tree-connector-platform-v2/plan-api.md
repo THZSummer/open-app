@@ -1170,12 +1170,12 @@
     "flowId": "4444444444444444444",
     "versionNumber": 2,
     "status": 5,
-    "flowConfig": {
-      "timeout": { "perNode": 10, "global": 60 },
-      "rateLimit": { "mode": "QPS", "value": 100 },
-      "cache": { "enabled": true, "keyTemplate": "${$.node.trigger.input.userId}", "ttl": 300 }
-    },
     "orchestrationConfig": {
+      "flowConfig": {
+        "timeout": { "perNode": 10, "global": 60 },
+        "rateLimit": { "mode": "QPS", "value": 100 },
+        "cache": { "enabled": true, "keyTemplate": "${$.node.trigger.input.userId}", "ttl": 300 }
+      },
       "nodes": [
         {
           "id": "node_trigger",
@@ -1247,15 +1247,15 @@
 #### #32 PUT /service/open/v2/flows/{id}/versions/{vid} — 编辑草稿保存
 
 ```json
-// Request — 编排配置全文替换
+// Request — 编排配置全文替换（flowConfig 嵌套在 orchestrationConfig 内）
 {
   "orchestrationConfig": {
+    "flowConfig": {
+      "timeout": { "perNode": 10, "global": 60 },
+      "rateLimit": { "mode": "QPS", "value": 100 }
+    },
     "nodes": [ /* ... 完整 nodes 数组 ... */ ],
     "edges": [ /* ... 完整 edges 数组 ... */ ]
-  },
-  "flowConfig": {
-    "timeout": { "perNode": 10, "global": 60 },
-    "rateLimit": { "mode": "QPS", "value": 100 }
   }
 }
 

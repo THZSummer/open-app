@@ -112,7 +112,7 @@ public Mono<ParallelResult> execute(NodeContext ctx, List<Branch> branches) {
 
 ### 3.2 解析时机
 
-- HTTP 触发请求到达时，从 `FlowVersion.flowConfig` JSON 解析
+- HTTP 触发请求到达时，从 `FlowVersion.orchestrationConfig.flowConfig` JSON 解析
 - 解析结果注入 `ExecutionContext`，供后续节点获取
 - 解析失败 → 使用默认值（无超时/无限流/无缓存），记录告警日志
 
