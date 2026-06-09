@@ -143,7 +143,7 @@ open-server/src/main/resources/db/migration/
 |---|------|:---:|---------|------|
 | 1 | `openplatform_v2_cp_connector_t` | MODIFY | connector | 启用 `status` 4状态流转；新增 `app_id` 应用归属 |
 | 2 | `openplatform_v2_cp_connector_version_t` | MODIFY | connector | 1:1→1:N；新增 `version_number`/`status`/`published_time`/`published_by` |
-| 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`app_id` |
+| 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`deployed_version_number`（冗余，避免列表 JOIN）/`app_id` |
 | 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`/7状态`status`/`flow_config`/审批字段 |
 | 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N），编排保存时同步维护 |
 | 6 | `openplatform_v2_cp_execution_record_t` | NEW | runtime | 运行记录表（V1 预留 DDL 但未使用），V2 全新启用并修正枚举值 |
@@ -238,6 +238,7 @@ ALTER TABLE openplatform_v2_cp_connector_version_t
 ```sql
 ALTER TABLE openplatform_v2_cp_flow_t
     ADD COLUMN deployed_version_id BIGINT(20) NULL COMMENT '当前部署的版本ID（运行时按此指针读取编排快照）',
+    ADD COLUMN deployed_version_number INT NULL COMMENT '当前部署的版本号（冗余，避免列表查询 JOIN flow_version_t）',
     ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID',
     MODIFY COLUMN lifecycle_status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '生命周期：1=待部署, 2=运行中, 3=已停止, 4=已失效, 5=物理删除',
     ADD INDEX idx_deployed_version (deployed_version_id),
@@ -247,6 +248,7 @@ ALTER TABLE openplatform_v2_cp_flow_t
 | 列 | 类型 | 变更 | 说明 |
 |----|------|:--:|------|
 | `deployed_version_id` | BIGINT(20) | NEW | 指向当前部署的 FlowVersion.id，运行时读取入口 |
+| `deployed_version_number` | INT | NEW | 冗余字段，与 `deployed_version_id` 对应的版本号同步更新，列表查询无需 JOIN |
 | `app_id` | BIGINT(20) | NEW | 归属应用 ID，实现 G13 应用数据隔离 |
 | `lifecycle_status` | TINYINT(10) | MODIFY | V1: 1=running, 2=stopped → V2: 5 状态 |
 

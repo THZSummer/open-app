@@ -56,6 +56,7 @@
 | `name_cn` | `nameCn` |
 | `description_en` | `descriptionEn` |
 | `deployed_version_id` | `deployedVersionId` |
+| `deployed_version_number` | `deployedVersionNumber` |
 | `connector_version_id` | `connectorVersionId` |
 | `lifecycle_status` | `lifecycleStatus` |
 | `version_number` | `versionNumber` |
