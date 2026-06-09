@@ -2853,4 +2853,80 @@ const nodeTypes = {
 | **v5.4** | 2026-05-26 | **节点间传值映射重构**：① 新增 §1.4 节点间传值映射——设计态（Schema 定义）vs 运行态（实际对象）双层模型 + JSON 节点上下文对象 + JSON Path 表达式体系（`${$.node.{id}.{input/output}.xxx}`）；② connectorDataDef.inputMapping 从扁平 key-value 改为分段结构（结构镜像连接器 inputContract 协议，Schema 层不硬编码）；③ exitDataDef.outputFields（数组）→ outputMapping（object），支持 header/body 分段映射及返回值重命名；④ 全文档示例表达式更新为 JSON Path 格式 | SDDU Plan Agent |
 | **v5.5** | 2026-05-26 | triggerDataDef.type 枚举移除 test（test 是运行时调用模式，非触发类型）；§3.2 与 §5.3 两处定义同步修复 | SDDU Plan Agent |
 | **v5.6** | 2026-05-27 | **映射字段结构化重构**：① inputMapping/outputMapping 改为 mappedJsonSchemaObjectDef（镜像连接器 inputContract/outputContract 结构，每个叶子字段声明 type + value）；② 新增 mappedFieldDef / mappedJsonSchemaObjectDef 递归组件，支持嵌套 object/array；③ 表达式体系统一：constant:value → ${$.constant:value} | SDDU Plan Agent |
+| **v6.0** | 2026-06-09 | **V2 增量对齐**：① authConfigDef.type 枚举新增 `DIGITAL_SIGN`/`COOKIE`/`MULTI`（认证多选）；② authConfigDef.fields 新增 `sort` 字段（多选排序）；③ connectorDataDef 明确 `connectorVersionId` 引用语义（已发布版本）；④ triggerDataDef.authConfig 新增 `systokenWhitelist` 字段；⑤ 新增 `flowConfigDef`（超时/限流/缓存流级配置）；⑥ dataProcessorDataDef 重构：fieldMappings→outputFields，值来源三模式（constant/reference/function），函数递归嵌套；⑦ 新增 §11 FR-047 数据结构类型严格校验规则；⑧ 新增 §12 edge.data 并行边 connectionMode 定义 | SDDU Plan Agent |
+
+---
+
+## 11. V2 增量：FR-047 数据结构类型严格校验规则
+
+> 💡 FR-047 是 V2 跨连接器和连接流的通用数据模型层约束。以下规则对所有 JSON Schema 定义的数据结构生效。
+
+### 11.1 基本类型限定
+
+| 规则 | 说明 |
+|------|------|
+| 允许的基本类型 | `string`、`number`、`boolean`（仅三种） |
+| null | **不作为合法字段类型** |
+| number | **不区分** integer/float（统一为 `number`） |
+
+### 11.2 object 类型约束
+
+- object 类型字段 **必须定义子字段结构**（`properties` 非空）
+- **禁止**无子结构的空 object（`{ "type": "object" }` 不合法）
+- 每个子字段递归展开到基本类型
+
+### 11.3 array 类型约束
+
+- array 类型字段 **必须声明 `items` 元素类型**
+- 若 items 为 object，需继续递归展开子字段到基本类型
+- items 内各子字段的 value 表达式，**最多只能引用一个上游 array 类型字段**
+- 禁止同时引用两个不同 array 源的字段（避免数组长度不一致歧义）
+- 若 items 内所有 value 表达式均未引用任何 array 类型字段，数组最终长度为 1
+
+### 11.4 映射引用约束
+
+- **禁止**非基本类型（object/array）通过 value 表达式整体引用赋值
+- object/array **必须逐字段展开**，每个叶子字段各自引用基本类型字段
+- value 表达式引用的上游字段类型 **必须与当前字段声明的 type 一致**
+- 类型必须严格匹配：`string→string`、`number→number`、`boolean→boolean`
+- **严禁**隐式类型转换（string↔number 等跨类型赋值）
+- 所有映射表达式的引用路径终点 **必须可解析到基本类型字段**
+
+### 11.5 设计态校验时机
+
+| 校验时机 | 校验内容 |
+|---------|---------|
+| Schema 编辑器输入 | object 无子字段 / array 无 items → **实时标红** |
+| 连接器版本发布 | 入参/出参 Schema 合规性校验 → 不满足则 **禁止发布** |
+| 连接流编排保存 | 所有节点间数据结构定义合规性校验 → 不满足则 **禁止保存** |
+| 映射赋值检查 | value 表达式引用路径终点为 object/array → **标红禁止保存** |
+| 类型一致性检查 | 引用源类型与声明类型不一致 → **标红提示具体不匹配字段** |
+
+---
+
+## 12. V2 增量：edge.data 并行边定义
+
+V2 新增并行分支能力，通过 edge.data 承载：
+
+```json
+{
+  "edge": {
+    "id": "e1-2",
+    "source": "trigger_1",
+    "target": "connector_1",
+    "type": "smoothstep",
+    "data": {
+      "connectionMode": "parallel",
+      "description": "与 edge e1-3 并行执行"
+    }
+  }
+}
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|:--:|------|
+| `data.connectionMode` | string | `"serial"` | 连接模式：`"serial"`（串行）或 `"parallel"`（并行） |
+
+- 同一节点的多条 `connectionMode = "parallel"` 出边 → 对应分支并发执行
+- 前端并行边用**虚线 + 不同颜色**渲染，与串行实线区分
 
