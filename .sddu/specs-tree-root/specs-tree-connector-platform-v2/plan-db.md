@@ -151,9 +151,10 @@ open-server/src/main/resources/db/migration/
 | 8 | `openplatform_v2_approval_flow_t` | MODIFY | approval | 新增 `app_id` 字段；uk_code → uk_code_app；新增 `connector_flow_version_publish` 业务模板 |
 | 9 | `openplatform_operate_log_t` | EXTEND | audit | OperateEnum 扩展（复用现有操作日志表，不新增表） |
 | 10 | `openplatform_property_t` | REUSE | security | URL 白名单规则（code=key, value=正则），复用现有字典表 |
-| 11 | `openplatform_lookup_item_t` | REUSE | security | 应用白名单（classify 分组 + itemCode/itemValue），复用现有 LookUp |
+| 11 | `openplatform_lookup_classify_t` | REUSE | security | 应用白名单分组（classify_code=`cp_app_whitelist`），复用现有 LookUp 分类表 |
+| 12 | `openplatform_lookup_item_t` | REUSE | security | 应用白名单数据（classify_id + itemCode=appId），复用现有 LookUp 项表 |
 
-**总计**：**11 张表**（5 MODIFY + 1 NEW + 2 ENABLE + 1 EXTEND + 2 REUSE）。
+**总计**：**12 张表**（5 MODIFY + 1 NEW + 2 ENABLE + 1 EXTEND + 3 REUSE）。
 
 ---
 
