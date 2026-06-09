@@ -120,7 +120,7 @@ open-server/src/main/resources/db/migration/
 | `flow_version_t` | `status` | 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除 | V2 新增 |
 | `execution_record_t` | `trigger_type` | 1=http, 2=debug | V2 启用 |
 | `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | V2 启用 |
-| `execution_step_t` | `step_status` | 0=success, 1=failed, 2=timeout, 3=skipped | 步骤执行结果 |
+| `execution_step_t` | `step_status` | 0=success, 1=failed, 2=timeout, 3=not_executed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
 
 ### 0.8 V2 规范变更（相对 V1）
@@ -377,7 +377,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 
 ### 3.8 openplatform_v2_cp_execution_step_t（NEW）
 
-**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。步骤表专注记录每个节点的执行现场（输入/输出/耗时/状态），拓扑还原依赖 `execution_record_t.flow_version_snapshot` 中的 `nodes[]` + `edges[]`。`iteration` 预留循环场景，`skipped` 覆盖条件分支未走到的节点。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。步骤表专注记录每个节点的执行现场（输入/输出/耗时/状态），拓扑还原依赖 `execution_record_t.flow_version_snapshot` 中的 `nodes[]` + `edges[]`。`iteration` 预留循环场景，`not_executed` 覆盖条件分支未走到的节点。
 
 ```sql
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
@@ -388,7 +388,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `node_label_cn`     VARCHAR(128) DEFAULT NULL COMMENT '节点中文名称 (执行时快照)',
     `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
     `iteration`         INT(11)      NOT NULL DEFAULT 0 COMMENT '循环轮次（0=首次或非循环，>0=第N轮循环）',
-    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=skipped（分支未走到）',
+    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=not_executed（未执行，如分支未走到）',
     `input_data`        MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输入数据JSON',
     `output_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输出数据JSON',
     `error_message`     TEXT         DEFAULT NULL COMMENT '步骤错误信息',
@@ -409,7 +409,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | `node_id` | VARCHAR(64) | 节点 ID，匹配 flow_version_snapshot.nodes[].id |
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
 | `iteration` | INT | 循环轮次（预留），默认 0 |
-| `step_status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=skipped |
+| `step_status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=not_executed |
 | `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON |
 | `error_code` | VARCHAR(20) | 结构化错误码，方便告警分类 |
 
