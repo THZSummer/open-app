@@ -120,7 +120,7 @@ open-server/src/main/resources/db/migration/
 | `flow_version_t` | `status` | 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除 | V2 新增 |
 | `execution_record_t` | `trigger_type` | 1=http, 2=debug | V2 启用 |
 | `execution_record_t` | `status` | 0=pending, 1=running, 2=success, 3=failed, 4=timeout | V2 启用 |
-| `execution_step_t` | `step_status` | 0=success, 1=failed, 2=timeout | 步骤执行结果 |
+| `execution_step_t` | `step_status` | 0=success, 1=failed, 2=timeout, 3=skipped | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
 
 ### 0.8 V2 规范变更（相对 V1）
@@ -336,25 +336,26 @@ ALTER TABLE openplatform_v2_approval_flow_t
 
 ### 3.7 openplatform_v2_cp_execution_record_t（NEW）
 
-**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。运行记录仅存储列表查询所需字段（元数据），节点级 I/O 详情全部走 `execution_step_t`，不在本表冗余。`flow_name_cn`/`flow_name_en` 快照确保连接流被删除后记录仍可读。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。运行记录仅存储列表查询所需字段（元数据），节点级 I/O 详情全部走 `execution_step_t`。`flow_version_snapshot` 冗余完整版本快照（编排拓扑 + 流级配置），确保版本删除后仍可还原执行现场。
 
 ```sql
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
-    `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
-    `flow_id`           BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
-    `flow_version_id`   BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID（追溯执行时的版本快照）',
-    `flow_name_cn`      VARCHAR(128) NOT NULL COMMENT '连接流中文名称（触发时快照，连接流删除后记录仍可读）',
-    `flow_name_en`      VARCHAR(128) NOT NULL COMMENT '连接流英文名称（触发时快照）',
-    `trigger_type`      TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
-    `trigger_account`   VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识，debug=调试用户）',
-    `execution_status`  TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=pending, 1=running, 2=success, 3=failed, 4=timeout',
-    `error_message`     VARCHAR(1000) DEFAULT NULL COMMENT '错误信息（整体摘要，节点级详情在 execution_step_t）',
-    `duration_ms`       INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
-    `trigger_time`      DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
-    `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
-    `last_update_time`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
-    `create_by`         VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
-    `last_update_by`    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
+    `id`                      BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
+    `flow_id`                 BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
+    `flow_version_id`         BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID（追溯执行时的版本快照）',
+    `flow_version_snapshot`   MEDIUMTEXT   DEFAULT NULL COMMENT '执行时版本完整快照JSON（orchestrationConfig + flowConfig），版本删除后仍可还原执行现场',
+    `flow_name_cn`            VARCHAR(128) NOT NULL COMMENT '连接流中文名称（触发时快照）',
+    `flow_name_en`            VARCHAR(128) NOT NULL COMMENT '连接流英文名称（触发时快照）',
+    `trigger_type`            TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
+    `trigger_account`         VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识，debug=调试用户）',
+    `execution_status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=pending, 1=running, 2=success, 3=failed, 4=timeout',
+    `error_message`           VARCHAR(1000) DEFAULT NULL COMMENT '错误信息（整体摘要，节点级详情在 execution_step_t）',
+    `duration_ms`             INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
+    `trigger_time`            DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
+    `create_time`             DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    `last_update_time`        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+    `create_by`               VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
+    `last_update_by`          VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
     PRIMARY KEY (`id`),
     INDEX `idx_flow_trigger_time` (`flow_id`, `trigger_time`) COMMENT '按连接流+时间查询运行记录',
     INDEX `idx_trigger_time`       (`trigger_time`)           COMMENT '定时清理时按时间范围扫描',
@@ -365,48 +366,52 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | 列 | 类型 | 说明 |
 |----|------|------|
 | `flow_id` | BIGINT(20) | 连接流 ID |
-| `flow_version_id` | BIGINT(20) | 执行的版本 ID，追溯快照 |
-| `flow_name_cn` / `flow_name_en` | VARCHAR(128) | 触发时快照，与 flow_t.name_cn/name_en 长度一致 |
+| `flow_version_id` | BIGINT(20) | 执行的版本 ID |
+| `flow_version_snapshot` | MEDIUMTEXT | 执行时版本快照（编排拓扑 + flowConfig），版本删除后仍可还原 |
+| `flow_name_cn` / `flow_name_en` | VARCHAR(128) | 触发时快照 |
 | `trigger_type` | TINYINT(10) | 1=http, 2=debug |
-| `trigger_account` | VARCHAR(100) | 触发账号，HTTP=调用方凭证标识，debug=调试用户 |
+| `trigger_account` | VARCHAR(100) | 触发账号 |
 | `execution_status` | TINYINT(10) | 0=pending, 1=running, 2=success, 3=failed, 4=timeout |
-| `trigger_time` | DATETIME(3) | 触发时间，用于排序和定时清理 |
+| `trigger_time` | DATETIME(3) | 触发时间 |
 | `duration_ms` | INT | 总耗时 |
 
 ### 3.8 openplatform_v2_cp_execution_step_t（NEW）
 
-**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。`node_type` 使用 TINYINT 枚举（非 VARCHAR），与规范一致。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。步骤表专注记录每个节点的执行现场（输入/输出/耗时/状态），拓扑还原依赖 `execution_record_t.flow_version_snapshot` 中的 `nodes[]` + `edges[]`。`iteration` 预留循环场景，`skipped` 覆盖条件分支未走到的节点。
 
 ```sql
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `id`                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
     `execution_id`      BIGINT(20)   NOT NULL COMMENT '关联执行记录ID',
-    `step_order`        INT(11)      NOT NULL COMMENT '步骤序号 (从1开始)',
-    `node_id`           VARCHAR(64)  NOT NULL COMMENT '节点ID (对应编排配置中的节点ID)',
+    `node_id`           VARCHAR(64)  NOT NULL COMMENT '节点ID（对应 flow_version_snapshot.nodes[].id）',
     `node_type`         TINYINT(10)  NOT NULL COMMENT '节点类型：1=trigger, 2=connector, 3=data_processor, 4=exit',
     `node_label_cn`     VARCHAR(128) DEFAULT NULL COMMENT '节点中文名称 (执行时快照)',
     `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
-    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout',
+    `iteration`         INT(11)      NOT NULL DEFAULT 0 COMMENT '循环轮次（0=首次或非循环，>0=第N轮循环）',
+    `step_status`       TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=skipped（分支未走到）',
     `input_data`        MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输入数据JSON',
     `output_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输出数据JSON',
     `error_message`     TEXT         DEFAULT NULL COMMENT '步骤错误信息',
+    `error_code`        VARCHAR(20)  DEFAULT NULL COMMENT '错误码（4xx=下游客户端, 5xx=下游服务端, 6xxxx=引擎内部）',
     `duration_ms`       INT(11)      DEFAULT NULL COMMENT '步骤耗时(毫秒)',
     `create_time`       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
     `last_update_time`  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
     `create_by`         VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
     `last_update_by`    VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
     PRIMARY KEY (`id`),
-    INDEX `idx_execution_id`           (`execution_id`)            COMMENT '按执行记录ID查询全部步骤',
-    INDEX `idx_execution_step_order`   (`execution_id`,`step_order`) COMMENT '按执行记录ID+步骤序号查询'
+    INDEX `idx_execution_id` (`execution_id`) COMMENT '按执行记录ID查询全部步骤'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行步骤详情表';
 ```
 
 | 列 | 类型 | 说明 |
 |----|------|------|
 | `execution_id` | BIGINT(20) | 关联 execution_record_t.id |
+| `node_id` | VARCHAR(64) | 节点 ID，匹配 flow_version_snapshot.nodes[].id |
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
-| `step_status` | TINYINT(10) | 0=success, 1=failed, 2=timeout |
-| `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON，最大 16MB |
+| `iteration` | INT | 循环轮次（预留），默认 0 |
+| `step_status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=skipped |
+| `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON |
+| `error_code` | VARCHAR(20) | 结构化错误码，方便告警分类 |
 
 ---
 
