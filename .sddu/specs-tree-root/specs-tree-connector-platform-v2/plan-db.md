@@ -142,9 +142,9 @@ open-server/src/main/resources/db/migration/
 | # | 表名 | 变更类型 | 归属模块 | 说明 |
 |---|------|:---:|---------|------|
 | 1 | `openplatform_v2_cp_connector_t` | MODIFY | connector | 启用 `status` 4状态流转；新增 `app_id` 应用归属 |
-| 2 | `openplatform_v2_cp_connector_version_t` | MODIFY | connector | 1:1→1:N；新增 `version_number`/`status`/`published_time`/`published_by` |
+| 2 | `openplatform_v2_cp_connector_version_t` | MODIFY | connector | 1:1→1:N；新增 `version_number`/`status`/`published_time`（首次发布时刻）/`published_by`（发布操作人） |
 | 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`deployed_version_number`（冗余，避免列表 JOIN）/`app_id` |
-| 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`、7状态`status`、`published_time`（审批通过时刻）、`published_by`（提交审批人） |
+| 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`、7状态`status`、`published_time`（发布时间，审批通过时刻）、`published_by`（发布人，提交审批的人） |
 | 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N），编排保存时同步维护 |
 | 6 | `openplatform_v2_cp_execution_record_t` | NEW | runtime | 运行记录表（V1 预留 DDL 但未使用），V2 全新启用并修正枚举值 |
 | 7 | `openplatform_v2_cp_execution_step_t` | NEW | runtime | 运行日志表（V1 预留 DDL 但未使用），V2 全新启用；`node_type` VARCHAR→TINYINT |
@@ -217,8 +217,8 @@ ALTER TABLE openplatform_v2_cp_connector_version_t
     DROP INDEX uk_connector_id,
     ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增',
     ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=已发布, 3=已失效, 4=物理删除',
-    ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（首次发布时填充）',
-    ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人账号',
+    ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（首次发布时刻）',
+    ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人（发布操作人）',
     ADD INDEX idx_connector_version (connector_id, version_number),
     ADD INDEX idx_connector_status (connector_id, status);
 ```
@@ -227,8 +227,8 @@ ALTER TABLE openplatform_v2_cp_connector_version_t
 |----|------|:--:|------|
 | `version_number` | INT | NEW | 版本号，实体内递增（ADR-004），发布时沿用 |
 | `status` | TINYINT(10) | NEW | 4 状态：草稿→已发布→已失效→物理删除 |
-| `published_time` | DATETIME(3) | NEW | 首次发布时填充，版本恢复后不更新 |
-| `published_by` | VARCHAR(100) | NEW | 发布人，恢复后不更新 |
+| `published_time` | DATETIME(3) | NEW | 发布时间（首次发布时刻） |
+| `published_by` | VARCHAR(100) | NEW | 发布人（发布操作人） |
 | `uk_connector_id` | — | DROP | 移除 1:1 约束，允许多版本 |
 
 ### 3.3 openplatform_v2_cp_flow_t（MODIFY）
@@ -271,8 +271,8 @@ ALTER TABLE openplatform_v2_cp_flow_version_t
 |----|------|:--:|------|
 | `version_number` | INT | NEW | 版本号，实体内递增 |
 | `status` | TINYINT(10) | NEW | 7 状态（含审批中间态：待审批/已撤回/已驳回） |
-| `published_time` | DATETIME(3) | NEW | 审批通过的时刻——与 connector_version 字段名和语义完全一致 |
-| `published_by` | VARCHAR(100) | NEW | 提交审批的人——与 connector_version 字段名和语义完全一致 |
+| `published_time` | DATETIME(3) | NEW | 发布时间（审批通过的时刻）——与 connector_version 字段名一致 |
+| `published_by` | VARCHAR(100) | NEW | 发布人（提交审批的人）——与 connector_version 字段名一致 |
 | `uk_flow_id` | — | DROP | 移除 1:1 约束 |
 
 ### 3.5 openplatform_v2_cp_connector_version_ref_t（NEW）
