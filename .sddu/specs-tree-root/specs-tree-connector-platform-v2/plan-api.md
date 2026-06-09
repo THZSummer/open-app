@@ -45,7 +45,7 @@
 
 **命名约定**：
 - ID 字段：使用 `Id` 后缀，如 `connectorId`, `flowId`, `versionId`, `executionId`
-- 时间字段：使用 `Time` 后缀，如 `createTime`, `publishedTime`, `submittedTime`
+- 时间字段：使用 `Time` 后缀，如 `createTime`, `publishedTime`
 - 布尔字段：使用 `is` 前缀，如 `isDeleted`
 - **双语字段**：使用 `Cn`/`En` 后缀，如 `nameCn`/`nameEn`, `descriptionCn`/`descriptionEn`, `labelCn`/`labelEn`
 
@@ -61,7 +61,6 @@
 | `lifecycle_status` | `lifecycleStatus` |
 | `version_number` | `versionNumber` |
 | `published_time` | `publishedTime` |
-| `submitted_time` | `submittedTime` |
 
 ### 1.3 路径命名规范
 
@@ -1295,8 +1294,7 @@
     "versionId": "8888888888888888888",
     "versionNumber": 4,
     "status": 2,
-    "approvalId": "9999999999999999999",
-    "submittedTime": "2026-06-09T10:30:00.000+08:00"
+    "approvalId": "9999999999999999999"
   },
   "page": null
 }
