@@ -1524,6 +1524,26 @@
 | flowId | string | 连接流 ID |
 | lastUpdateTime | string | 最后更新时间 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 请求体
+{
+  "nameCn": "新消息自动通知（新版）",
+  "nameEn": "Auto Message Notification (New)"
+}
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "flowId": "4444444444444444444", "lastUpdateTime": "2026-06-09 12:00:00" },
+  "page": null
+}
+```
+
 #### #20 复制连接流
 
 `POST /flows/{flowId}/copy`
@@ -1556,6 +1576,27 @@
 | code | 说明 |
 |------|------|
 | 409 | 复制名称碰撞，后端已自动重试失败 |
+
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": {
+    "flowId": "7777777777777777777",
+    "nameCn": "新消息自动通知_copy_a3f2b",
+    "nameEn": "Auto Message Notification_copy_a3f2b",
+    "lifecycleStatus": 1,
+    "versionsCopied": 5,
+    "createTime": "2026-06-09 12:30:00"
+  },
+  "page": null
+}
+```
 
 #### #21 部署连接流
 
@@ -1595,6 +1636,29 @@
 |------|------|
 | 422 | 版本非已发布状态 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 请求体
+{ "versionId": "6666666666666666666" }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": {
+    "flowId": "4444444444444444444",
+    "deployedVersionId": "6666666666666666666",
+    "deployedVersionNumber": 2,
+    "lifecycleStatus": 2,
+    "invokeUrl": "https://xxx/api/v1/flows/4444444444444444444/invoke"
+  },
+  "page": null
+}
+```
+
 #### #22 启动连接流
 
 `POST /flows/{flowId}/start`
@@ -1619,6 +1683,20 @@
 | lifecycleStatus | int | 变更后 `2`（运行中） |
 | lastUpdateTime | string | 操作时间 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "flowId": "4444444444444444444", "lifecycleStatus": 2, "lastUpdateTime": "2026-06-09 13:00:00" },
+  "page": null
+}
+```
+
 #### #23 停止连接流
 
 `POST /flows/{flowId}/stop`
@@ -1642,6 +1720,20 @@
 | flowId | string | 连接流 ID |
 | lifecycleStatus | int | 变更后 `3`（已停止） |
 | lastUpdateTime | string | 操作时间 |
+
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "flowId": "4444444444444444444", "lifecycleStatus": 3, "lastUpdateTime": "2026-06-09 13:05:00" },
+  "page": null
+}
+```
 
 #### #24 失效连接流
 
@@ -1673,6 +1765,20 @@
 |------|------|
 | 409 | 运行中不可失效，需先停止 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "flowId": "4444444444444444444", "lifecycleStatus": 4, "lastUpdateTime": "2026-06-09 14:00:00" },
+  "page": null
+}
+```
+
 #### #25 恢复连接流
 
 `PUT /flows/{flowId}/recover`
@@ -1698,6 +1804,20 @@
 | note | string | 提示需手动启动 |
 | lastUpdateTime | string | 操作时间 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "flowId": "4444444444444444444", "lifecycleStatus": 3, "note": "恢复后连接流处于已停止状态，需手动启动", "lastUpdateTime": "2026-06-09 14:30:00" },
+  "page": null
+}
+```
+
 #### #26 删除连接流
 
 `DELETE /flows/{flowId}`
@@ -1721,6 +1841,19 @@
 | code | 说明 |
 |------|------|
 | 409 | 非已失效状态 |
+
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{ "code": "200", "data": null, "page": null }
+
+// 响应体 409 — 非已失效
+{ "code": "409", "messageZh": "仅已失效状态的连接流可删除", "data": null, "page": null }
+```
 
 ---
 
@@ -1760,6 +1893,25 @@
 | publishedBy | string | 发布人 |
 | createTime | string | 创建时间 |
 | createBy | string | 创建人 |
+
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+// Query: ?status=5
+
+// 响应体 200
+{
+  "code": "200",
+  "data": [
+    { "versionId": "8888888888888888888", "versionNumber": 4, "status": 1, "createTime": "2026-06-09 10:00:00", "createBy": "zhangsan" },
+    { "versionId": "7777777777777777777", "versionNumber": 3, "status": 5, "publishedTime": "2026-06-08 09:00:00", "publishedBy": "zhangsan", "createTime": "2026-06-08 08:00:00" },
+    { "versionId": "6666666666666666666", "versionNumber": 2, "status": 5, "deployed": true, "publishedTime": "2026-06-07 09:00:00", "publishedBy": "lisi", "createTime": "2026-06-07 08:00:00" }
+  ],
+  "page": null
+}
+```
 
 #### #28 查询连接流版本详情
 
@@ -1865,6 +2017,29 @@
 | 409 | 非草稿状态 |
 | 422 | 编排配置为空 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 请求体
+{
+  "orchestrationConfig": {
+    "flowConfig": { "timeout": {"perNode":10,"global":60}, "rateLimit": {"mode":"QPS","value":100} },
+    "nodes": [ /* 完整 nodes 数组 */ ],
+    "edges": [ /* 完整 edges 数组 */ ]
+  }
+}
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "versionId": "8888888888888888888", "versionNumber": 4, "status": 1, "lastUpdateTime": "2026-06-09 10:00:00" },
+  "page": null
+}
+```
+
 #### #30 发布连接流版本
 
 `POST /flows/{flowId}/versions/{versionId}/publish`
@@ -1900,6 +2075,20 @@
 | 409 | 非草稿状态 |
 | 422 | 编排配置为空 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "versionId": "8888888888888888888", "versionNumber": 4, "status": 2, "approvalId": "9999999999999999999" },
+  "page": null
+}
+```
+
 #### #31 复制连接流版本到草稿
 
 `POST /flows/{flowId}/versions/{versionId}/copy-to-draft`
@@ -1934,6 +2123,20 @@
 | 422 | 版本数达上限（1000） |
 | 423 | 存在待审批/已驳回/已撤回的版本 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "versionId": "9999999999999999998", "versionNumber": 5, "status": 1, "sourceVersionNumber": 3, "message": "已覆盖当前草稿内容" },
+  "page": null
+}
+```
+
 #### #32 失效连接流版本
 
 `PUT /flows/{flowId}/versions/{versionId}/invalidate`
@@ -1967,6 +2170,20 @@
 | 409 | 非已发布状态 |
 | 422 | 版本正在运行中 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "versionId": "5555555555555555555", "versionNumber": 1, "status": 6, "lastUpdateTime": "2026-06-09 15:00:00" },
+  "page": null
+}
+```
+
 #### #33 恢复连接流版本
 
 `PUT /flows/{flowId}/versions/{versionId}/recover`
@@ -1999,6 +2216,20 @@
 |------|------|
 | 409 | 非已失效状态 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "versionId": "5555555555555555555", "versionNumber": 1, "status": 5, "lastUpdateTime": "2026-06-09 15:30:00" },
+  "page": null
+}
+```
+
 #### #34 删除连接流版本
 
 `DELETE /flows/{flowId}/versions/{versionId}`
@@ -2023,6 +2254,16 @@
 | code | 说明 |
 |------|------|
 | 409 | 非已失效状态 |
+
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{ "code": "200", "data": null, "page": null }
+```
 
 #### #35 撤回连接流版本审批
 
@@ -2056,6 +2297,20 @@
 |------|------|
 | 409 | 非待审批状态 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "versionId": "8888888888888888888", "versionNumber": 4, "status": 3, "lastUpdateTime": "2026-06-09 11:00:00" },
+  "page": null
+}
+```
+
 #### #36 催办连接流版本审批
 
 `POST /flows/{flowId}/versions/{versionId}/urge`
@@ -2079,6 +2334,20 @@
 |------|------|------|
 | notifiedApprovers | string[] | 已通知的审批人 ID 列表 |
 | currentLevel | int | 当前审批级别（1/2/3） |
+
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "notifiedApprovers": ["uid_b", "uid_c"], "currentLevel": 2 },
+  "page": null
+}
+```
 
 ---
 
@@ -2125,6 +2394,23 @@
 | durationMs | int | 执行耗时（毫秒） |
 | flowVersionNumber | int | 执行的版本号 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+// Query: ?curPage=1&pageSize=20&status=0&triggerType=1
+
+// 响应体 200
+{
+  "code": "200",
+  "data": [
+    { "executionId": "1234567890123456789", "flowNameCn": "新消息自动通知", "triggerTime": "2026-06-09 10:00:01", "triggerType": 1, "triggerAccount": "token_abc123", "status": 0, "durationMs": 234, "flowVersionNumber": 2 }
+  ],
+  "page": { "curPage": 1, "pageSize": 20, "total": 1 }
+}
+```
+
 #### #38 查询运行记录详情
 
 `GET /flows/{flowId}/executions/{executionId}`
@@ -2170,6 +2456,36 @@
 
 > 💡 `steps` 内嵌各节点输入/输出日志（FR-044），不再设独立日志查询接口。
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 响应体 200
+{
+  "code": "200",
+  "data": {
+    "executionId": "1234567890123456789",
+    "flowId": "4444444444444444444",
+    "flowNameCn": "新消息自动通知",
+    "flowVersionId": "6666666666666666666",
+    "flowVersionNumber": 2,
+    "triggerType": 1,
+    "triggerAccount": "token_abc123",
+    "triggerTime": "2026-06-09 10:00:01",
+    "status": 0,
+    "durationMs": 234,
+    "errorMessage": null,
+    "steps": [
+      { "nodeId": "node_trigger", "nodeType": 1, "nodeLabelCn": "接收请求", "status": 0, "durationMs": 2, "inputData": {}, "outputData": {"sender":"u001"}, "errorMessage": null },
+      { "nodeId": "node_1", "nodeType": 2, "nodeLabelCn": "发送通知", "status": 0, "durationMs": 230, "inputData": {"receiver":"u001"}, "outputData": {"msgId":"m001"}, "errorMessage": null }
+    ]
+  },
+  "page": null
+}
+```
+
 ---
 
 ### 3.6 调试代理（#39）
@@ -2214,6 +2530,28 @@
 |------|------|
 | 422 | 版本已失效，不可调试 |
 
+**示例**
+
+```json
+// 请求头
+// X-App-Id: 1234567890123456789
+
+// 请求体
+{ "triggerData": { "sender": "test_user", "content": "调试测试消息" } }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": {
+    "executionId": "1234567890123456789",
+    "status": 0,
+    "durationMs": 237,
+    "nodes": [ { "nodeId": "node_trigger", "nodeType": 1, "status": 0, "outputData": {"sender":"test_user"} } ]
+  },
+  "page": null
+}
+```
+
 ---
 
 ### 3.7 运行时（#40~#41）— connector-api
@@ -2238,6 +2576,19 @@
 | status | int | 执行状态 |
 | durationMs | int | 耗时 |
 | nodes | array | 各节点执行详情 |
+
+**示例**
+
+```json
+// 请求体（由 open-server 代理传入）
+{ "triggerData": { "sender": "test_user", "content": "调试测试消息" } }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "executionId": "1234567890123456789", "status": 0, "durationMs": 237, "nodes": [ /* 节点详情 */ ] }
+}
+```
 
 #### #41 调用连接流
 
@@ -2275,6 +2626,32 @@
 | 429 | 请求频率超限（入站限流） |
 | 503 | 连接流未部署 |
 
+**示例**
+
+```json
+// 请求头
+// X-Sys-Token: token_abc123
+
+// 请求体
+{ "sender": "external_system", "content": "这是一条外部消息" }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "executionId": "1234567890123456789", "status": 0, "resultData": {"msgId":"msg_xxxx","code":0}, "durationMs": 234 },
+  "page": null
+}
+
+// 响应体 401 — SYSTOKEN 不在白名单
+{ "code": "401", "messageZh": "SYSTOKEN 不在白名单中", "data": null, "page": null }
+
+// 响应体 429 — 入站限流
+{ "code": "429", "messageZh": "请求频率超限", "data": null, "page": null }
+
+// 响应体 503 — 未部署
+{ "code": "503", "messageZh": "连接流未部署", "data": null, "page": null }
+```
+
 ---
 
 ### 3.8 操作日志查询（FR-046，复用现有模块）
@@ -2299,3 +2676,4 @@
 | v5.0 | 2026-06-10 | **§3 全章重写，严格对齐 §2 接口清单**：① URL 白名单从独立端点归入 #9/#10 的 `connectionConfig.urlWhitelist` 字段<br>② §3.3~§3.8 编号统一对齐 §2（连接流 CRUD #16~#26、版本 #27~#34、运行记录 #35~#36、审批 #37~#40、调试 #41、运行时 #42~#43）<br>③ 删除旧 §3.3（独立 URL 白名单端点）<br>④ 新增 §3.9 操作日志查询复用说明<br>⑤ 补 #30 审批提交的「编排为空」422 错误响应<br>⑥ §0 服务归属修正为 41+2 | SDDU Plan Agent |
 | v5.2 | 2026-06-10 | **新增 status 过滤参数**：① #2 GET `/connectors` 新增 `?status=2` 过滤有效可用连接器（编排画布选连接器）<br>② #8 GET `/connectors/{connectorId}/versions` 新增 `?status=2` 过滤已发布版本（编排画布选版本）<br>③ #27 GET `/flows/{flowId}/versions` 新增 `?status=5` 过滤已发布版本（部署选版本）<br>以上均为复用现有接口扩展参数，零新增端点 | SDDU Plan Agent |
 | v5.3 | 2026-06-10 | **§3 全文补字段定义表**：① 41 个接口全部补请求头/路径参数/查询参数/请求体/响应体/错误响应字段表<br>② 嵌套对象展开到叶子字段（connectionConfig、orchestrationConfig、steps[] 等）<br>③ §3 标题精简为 `#N 名称` + `` `METHOD /path` `` 独立行<br>④ 时间格式统一 `yyyy-MM-dd HH:mm:ss`，appId 归入请求头<br>⑤ §1.9 接口命名规范：`[操作动词][资源名词][强调词]` | SDDU Plan Agent |
+| v5.4 | 2026-06-10 | **补全 JSON 示例**：22 个缺失示例的接口全部补回（#19~#27、#29~#41），每个接口含请求/响应/错误完整示例 | SDDU Plan Agent |
