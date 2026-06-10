@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord">
+        <id column="id" property="id"/>
+        <result column="business_type" property="businessType"/>
+        <result column="business_id" property="businessId"/>
+        <result column="applicant_id" property="applicantId"/>
+        <result column="applicant_name" property="applicantName"/>
+        <result column="status" property="status"/>
+        <result column="current_node" property="currentNode"/>
+        <result column="combined_nodes" property="combinedNodes"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="completed_at" property="completedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, business_type, business_id, applicant_id, applicant_name,
+        status, current_node, combined_nodes,
+        create_time, last_update_time, create_by, last_update_by, completed_at
+    </sql>
+
+    <!-- ==================== selectById ==================== -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_record_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- ==================== selectPendingList (3-table JOIN) ==================== -->
+    <select id="selectPendingList" resultMap="BaseResultMap">
+        SELECT r.id, r.business_type, r.business_id, r.applicant_id,
+               r.status, r.current_node, r.create_time, r.last_update_time,
+               v.version_code, a.app_id, a.app_name_cn, a.app_name_en
+        FROM openplatform_v2_approval_record_t r
+        LEFT JOIN openplatform_app_version_t v ON r.business_id = v.id
+        LEFT JOIN openplatform_app_t a ON v.app_id = a.id
+        WHERE r.status = 0
+          AND r.business_type = 'app_version_publish'
+        ORDER BY r.last_update_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- ==================== countPendingList ==================== -->
+    <select id="countPendingList" resultType="long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_approval_record_t
+        WHERE status = 0
+          AND business_type = 'app_version_publish'
+    </select>
+
+    <!-- ==================== selectPublishedList (app_t main + subquery) ==================== -->
+    <select id="selectPublishedList" resultType="java.util.Map">
+        SELECT a.id AS app_pk_id, a.app_id, a.app_name_cn, a.app_name_en,
+               a.create_time, a.last_update_time,
+               v.id AS version_id, v.version_code
+        FROM openplatform_app_t a
+        INNER JOIN (
+            SELECT v2.app_id, MAX(v2.version_code) AS max_version_code
+            FROM openplatform_app_version_t v2
+            WHERE v2.status = 4
+            GROUP BY v2.app_id
+        ) latest ON a.id = latest.app_id
+        INNER JOIN openplatform_app_version_t v
+          ON a.id = v.app_id AND v.version_code = latest.max_version_code
+        WHERE a.status = 1 AND a.app_type = 1
+        ORDER BY a.last_update_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- ==================== countPublishedList ==================== -->
+    <select id="countPublishedList" resultType="long">
+        SELECT COUNT(DISTINCT v.app_id)
+        FROM openplatform_app_version_t v
+        INNER JOIN openplatform_app_t a ON v.app_id = a.id
+        WHERE v.status = 4
+          AND a.status = 1
+          AND a.app_type = 1
+    </select>
+
+    <!-- ==================== update ==================== -->
+    <update id="update">
+        UPDATE openplatform_v2_approval_record_t
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="currentNode != null">current_node = #{currentNode},</if>
+            <if test="completedAt != null">completed_at = #{completedAt},</if>
+            <if test="lastUpdateTime != null">last_update_time = #{lastUpdateTime},</if>
+            <if test="lastUpdateBy != null">last_update_by = #{lastUpdateBy},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== selectApplicantByVersionId ==================== -->
+    <select id="selectApplicantByVersionId" resultType="java.lang.String">
+        SELECT applicant_id
+        FROM openplatform_v2_approval_record_t
+        WHERE business_id = #{versionId}
+          AND status = 1
+          AND business_type = 'app_version_publish'
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <!-- ==================== selectCapabilityNames ==================== -->
+    <select id="selectCapabilityNames" resultType="string">
+        SELECT ab.ability_name_cn
+        FROM openplatform_app_ability_relation_t acr
+        LEFT JOIN openplatform_ability_t ab ON acr.ability_id = ab.id
+        WHERE acr.app_id = #{appPkId}
+    </select>
+
+    <!-- ==================== selectThirdPartyAppId ==================== -->
+    <select id="selectThirdPartyAppId" resultType="string">
+        SELECT property_value
+        FROM openplatform_app_p_t
+        WHERE parent_id = #{appPkId} AND property_name = 'third_party_app_id'
+    </select>
+
+</mapper>

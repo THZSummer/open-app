@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog">
+        <id column="id" property="id"/>
+        <result column="record_id" property="recordId"/>
+        <result column="node_code" property="nodeCode"/>
+        <result column="action" property="action"/>
+        <result column="operator_id" property="operatorId"/>
+        <result column="operator_name" property="operatorName"/>
+        <result column="comment" property="comment"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, record_id, node_code, action, operator_id, operator_name, comment, create_time
+    </sql>
+
+    <!-- ==================== insert ==================== -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO openplatform_v2_approval_log_t (
+            record_id, node_code, action, operator_id, operator_name, comment, create_time
+        ) VALUES (
+            #{recordId}, #{nodeCode}, #{action}, #{operatorId}, #{operatorName}, #{comment}, #{createTime}
+        )
+    </insert>
+
+</mapper>

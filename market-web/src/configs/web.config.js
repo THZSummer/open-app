@@ -24,4 +24,9 @@ export default {
   DICTIONARY_CREATE: '/market-web/service/open/v2/dictionary',
   DICTIONARY_UPDATE: '/market-web/service/open/v2/dictionary/{id}',
   DICTIONARY_DELETE: '/market-web/service/open/v2/dictionary/{id}',
+
+  // 审批管理 API 配置
+  APPROVAL_PENDING_LIST: '/market-web/service/open/v2/approvals/app-pending',
+  APPROVAL_PUBLISHED_LIST: '/market-web/service/open/v2/approvals/app-published',
+  APPROVAL_PROCESS: '/market-web/service/open/v2/approvals/app-process',
 };
