@@ -29,12 +29,12 @@
 
 ### 1.3 核心原则
 
-| 原则 | 规则 | 示例 |
-|------|------|------|
-| **一：同名同构** | 同一语义的字段在不同上下文中使用同一 Schema 组件，不重复定义 | `authConfig` → 触发器和连接器共用 `authConfigDef`；`rateLimitConfig` → 入站和出站共用 `rateLimitDef`；`inputContract` → 触发器和连接器统一走 `inputContractDef` |
-| **二：无用不存** | 不适用于当前场景的字段不出现在 JSON 中，由 Schema 的 `if`-`then` + `additionalProperties: false` 约束 | trigger 不含 `protocolConfig`（端点固定）、不含 `timeoutMs`（引擎控制）、不含 `outputContract`（由 exit 定义）；manual 触发不含 `authConfig` |
-| **三：边即语义** | edge 不仅描述"谁连到谁"，还承载控制流语义——执行条件、错误路由、并行标记 | `businessType`: default/condition/error/loop_entry/loop_exit；`connectionMode`: serial/parallel；`isStructural`: 辅助边标记 |
-| **四：框业分离** | React Flow 框架字段（id/type/position/source/target 等）不进 data，业务字段全在 data 内，两者不互串 | `node.id/node.type/node.position` 框架字段 vs `node.data.*` 业务字段；`edge.source/edge.target` 框架字段 vs `edge.data.*` 业务字段 |
+| # | 原则 | 规则 | 示例 |
+|:---:|------|------|------|
+| 一 | **同名同构** | 同一语义的字段在不同上下文中使用同一 Schema 组件，不重复定义 | ① `authConfig` → 触发器和连接器共用 `authConfigDef`<br>② `rateLimitConfig` → 入站和出站共用 `rateLimitDef`<br>③ `inputContract` → 触发器和连接器统一走 `inputContractDef` |
+| 二 | **无用不存** | 不适用于当前场景的字段不出现在 JSON 中，由 Schema 的 `if`-`then` + `additionalProperties: false` 约束 | ① trigger 不含 `protocolConfig`（端点固定）<br>② trigger 不含 `timeoutMs`（引擎控制）<br>③ trigger 不含 `outputContract`（由 exit 定义）<br>④ manual 触发不含 `authConfig` |
+| 三 | **边即语义** | edge 不仅描述"谁连到谁"，还承载控制流语义——执行条件、错误路由、并行标记 | ① `businessType`：default / condition / error / loop_entry / loop_exit<br>② `connectionMode`：serial / parallel<br>③ `isStructural`：结构辅助边标记 |
+| 四 | **框业分离** | React Flow 框架字段（id/type/position/source/target 等）不进 data，业务字段全在 data 内，两者不互串 | ① `node.id` / `node.type` / `node.position` → 框架字段<br>② `node.data.*` → 业务字段<br>③ `edge.source` / `edge.target` → 框架字段<br>④ `edge.data.*` → 业务字段 |
 
 ### 1.4 数据流模型
 
