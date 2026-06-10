@@ -273,13 +273,15 @@
 | 6 | | | PUT | `/service/open/v2/connectors/{connectorId}/restore` | 新增 | 恢复连接器 | FR-002 |
 | 7 | | | DELETE | `/service/open/v2/connectors/{connectorId}` | 修改 | 删除连接器（仅已失效状态可删） | FR-004 |
 | 8 | | **连接器版本** | GET | `/service/open/v2/connectors/{connectorId}/versions` | 新增 | 版本列表 | FR-008 |
-| 9 | | | GET | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 版本详情（只读快照） | FR-008 |
-| 10 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 编辑草稿保存 | FR-005 |
+| 9 | | | GET | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 版本详情，替换 V1 `GET /config` | FR-008 |
+| 10 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 编辑草稿，替换 V1 `PUT /config` | FR-005 |
 | 11 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/publish` | 新增 | 发布版本 | FR-007 |
 | 12 | | | POST | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | FR-006 |
 | 13 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/invalidate` | 新增 | 标记版本失效 | FR-009 |
 | 14 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/restore` | 新增 | 恢复版本 | FR-011 |
 | 15 | | | DELETE | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 删除版本（物理删除） | FR-010 |
+| — | | **已删除** | GET | `/service/open/v2/connectors/{connectorId}/config` | 删除 | V1 获取连接器配置 → V2 由 #9 替代 | — |
+| — | | | PUT | `/service/open/v2/connectors/{connectorId}/config` | 删除 | V1 编辑连接器配置 → V2 由 #10 替代 | — |
 | 16 | | **连接流 CRUD** | POST | `/service/open/v2/flows` | 修改 | 创建连接流（V2 自动生成空草稿版本） | FR-016 |
 | 17 | | | GET | `/service/open/v2/flows` | 修改 | 查询连接流列表（新增 appId/lifecycleStatus 过滤） | — |
 | 18 | | | GET | `/service/open/v2/flows/{flowId}` | 沿用 | 查询连接流详情 | — |
@@ -292,13 +294,15 @@
 | 25 | | | PUT | `/service/open/v2/flows/{flowId}/restore` | 新增 | 恢复连接流 | FR-021 |
 | 26 | | | DELETE | `/service/open/v2/flows/{flowId}` | 修改 | 删除连接流（仅已失效状态可删） | FR-023 |
 | 27 | | **连接流版本** | GET | `/service/open/v2/flows/{flowId}/versions` | 新增 | 版本列表 | FR-027 |
-| 28 | | | GET | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 版本详情（只读快照） | FR-027 |
-| 29 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 编辑草稿保存 | FR-024 |
+| 28 | | | GET | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 版本详情，替换 V1 `GET /config` | FR-027 |
+| 29 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 编辑草稿，替换 V1 `PUT /config` | FR-024 |
 | 30 | | | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/submit-approval` | 新增 | 提交审批 | FR-026 |
 | 31 | | | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | FR-025 |
 | 32 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}/invalidate` | 新增 | 标记版本失效 | FR-028 |
 | 33 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}/restore` | 新增 | 恢复版本 | FR-030 |
 | 34 | | | DELETE | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 删除版本（物理删除） | FR-029 |
+| — | | **已删除** | GET | `/service/open/v2/flows/{flowId}/config` | 删除 | V1 获取编排配置 → V2 由 #28 替代 | — |
+| — | | | PUT | `/service/open/v2/flows/{flowId}/config` | 删除 | V1 保存编排配置 → V2 由 #29 替代 | — |
 | 35 | | **运行记录** | GET | `/service/open/v2/flows/{flowId}/executions` | 新增 | 运行记录列表（分页+过滤） | FR-042 |
 | 36 | | | GET | `/service/open/v2/flows/{flowId}/executions/{executionId}` | 新增 | 运行记录详情（含节点日志） | FR-042 |
 | 37 | | **审批管理** | POST | `/service/open/v2/connector-platform/approvals/{versionId}/urge` | 新增 | 一键催办 | FR-033 |
@@ -312,6 +316,8 @@
 > 💡 **应用隔离**：open-server 管理面接口（#1~#41）统一通过 `Header: X-App-Id` 传递应用 ID，三层校验：① 白名单准入（`AppWhitelistInterceptor`）；② 用户权限（`UserAppPermissionInterceptor`）；③ 数据归属（Service 层）。connector-api 运行时接口（#42~#43）从 flow 上下文自动获取 `app_id`，无需传入。
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
 > 💡 审批提交/通过/驳回/撤回复用现有 `ApprovalController` 接口（`/service/open/v2/approvals/*`），不新增专用端点。#30 提交审批时系统调用 `ApprovalEngine.createApproval()` 创建审批实例。
+
+**端点统计**：新增 32 + 修改 8 + 沿用 5 + 删除 4 = 43 个有效端点。
 
 **服务部署归属**：
 
