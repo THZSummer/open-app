@@ -30,6 +30,7 @@
 |--------|------|
 | 基础路径 | `/service/open/v2` (open-server 管理面) / `/api/v1` (connector-api 执行面) |
 | 认证方式 | 管理面复用现有 Cookie/SSO；执行面 HTTP 触发通过 SYSTOKEN 签名验证 |
+| 应用隔离 | open-server 管理面接口（#1~#41）统一通过 `Header: X-App-Id` 传递应用 ID，`AppWhitelistInterceptor` 校验白名单准入 + 数据归属；connector-api 运行时接口（#42~#43）从 `flow_t.app_id` 自动获取 |
 | 时间格式 | ISO 8601: `yyyy-MM-dd'T'HH:mm:ss.SSSXXX` |
 
 ### 1.2 字段命名规范
@@ -302,7 +303,7 @@
 | 42 | connector-api | **运行时** | POST | `/api/v1/flows/{flowId}/invoke` | 修改 | 调用已部署的连接流（外部系统直接触发，按 deployed_version_id 执行） | G11 |
 | 43 | | | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | 新增 | 调试指定版本（由 open-server 代理调用） | FR-041 |
 
-> 💡 **URL 白名单**（FR-015）：数据存储在 `openplatform_property_t` 字典表，复用 market-web 现有字典 CRUD，运行时直接读取，不新增接口。
+> 💡 **应用隔离**：open-server 管理面接口（#1~#41）统一通过 `Header: X-App-Id` 传递应用 ID，由 `AppWhitelistInterceptor` 校验：① 应用是否在连接器平台白名单内；② 操作资源是否归属该应用。connector-api 运行时接口（#42~#43）从 flow 上下文自动获取 `app_id`，无需传入。
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
 > 💡 审批提交/通过/驳回/撤回复用现有 `ApprovalController` 接口（`/service/open/v2/approvals/*`），不新增专用端点。#30 提交审批时系统调用 `ApprovalEngine.createApproval()` 创建审批实例。
 
