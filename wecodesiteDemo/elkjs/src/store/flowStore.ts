@@ -192,10 +192,12 @@ function createParallelBranchNodes(params: {
   branchId: string;
   /** 分支序号 */
   branchIndex: number;
+  /** 分支文案前缀 */
+  branchLabelPrefix: string;
   /** 分支初始位置 */
   position: { x: number; y: number };
 }) {
-  const { parallelGroupId, branchId, branchIndex, position } = params;
+  const { parallelGroupId, branchId, branchIndex, branchLabelPrefix, position } = params;
   const branchStartId = nanoid(10);
   const branchEndId = nanoid(10);
 
@@ -205,7 +207,7 @@ function createParallelBranchNodes(params: {
     type: NodeType.TEXT,
     position,
     data: {
-      label: `分支${branchIndex}开始`,
+      label: `${branchLabelPrefix}${branchIndex}开始`,
       type: NodeType.TEXT,
       config: {
         parallelGroupId,
@@ -222,7 +224,7 @@ function createParallelBranchNodes(params: {
     type: NodeType.TEXT,
     position: { x: position.x, y: position.y + 200 },
     data: {
-      label: `分支${branchIndex}结束`,
+      label: `${branchLabelPrefix}${branchIndex}结束`,
       type: NodeType.TEXT,
       config: {
         parallelGroupId,
@@ -292,6 +294,32 @@ function createParallelBranchEdges(params: {
       }
     }
   ] as FlowEdge[];
+}
+
+/**
+ * 获取多分支结构的展示文案
+ */
+function getParallelStructureText(params: {
+  /** 多分支结构节点类型 */
+  nodeType: NodeType;
+}) {
+  const { nodeType } = params;
+
+  if (nodeType === NodeType.CONDITION_BRANCH) {
+    return {
+      main: '条件分支节点',
+      description: '多条件分支处理结构',
+      branchLabelPrefix: '条件',
+      merge: '条件分支合并'
+    };
+  }
+
+  return {
+    main: '并行处理节点',
+    description: '多分支并行处理结构',
+    branchLabelPrefix: '分支',
+    merge: '并行合并'
+  };
 }
 
 export const useFlowStore = create<FlowState>((set, get) => ({
@@ -364,7 +392,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         }
       }
 
-      if (currentNode.type === NodeType.PARALLEL) {
+      if (currentNode.type === NodeType.PARALLEL || currentNode.type === NodeType.CONDITION_BRANCH) {
         for (const node of nodes) {
           const isParallelChild = node.data.config?.parallelGroupId === currentNode.id;
           const isParallelBranchChild = node.data.config?.parentParallelGroupId === currentNode.id;
@@ -913,11 +941,11 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   },
 
   /**
-   * 插入并行处理节点
-   * 在主流程连线上创建默认两条分支和并行合并文本节点
+   * 插入多分支结构节点
+   * 在主流程连线上创建默认两条分支和合并文本节点
    */
   insertParallel: (params) => {
-    const { edgeId, position } = params;
+    const { edgeId, position, nodeType = NodeType.PARALLEL } = params;
     const { nodes, edges } = get();
 
     // 找到要拆分的主流程连线
@@ -933,20 +961,21 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       sourceNode,
       targetNode
     });
+    const structureText = getParallelStructureText({ nodeType });
     const parallelId = nanoid(10);
     const mergeId = nanoid(10);
     const branchOneId = nanoid(10);
     const branchTwoId = nanoid(10);
 
-    // 创建并行处理主节点，点击该节点可继续添加分支
+    // 创建多分支结构主节点，点击该节点可继续添加分支
     const parallelNode: FlowNode = {
       id: parallelId,
-      type: NodeType.PARALLEL,
+      type: nodeType,
       position,
       data: {
-        label: '并行处理节点',
-        type: NodeType.PARALLEL,
-        description: '多分支并行处理结构',
+        label: structureText.main,
+        type: nodeType,
+        description: structureText.description,
         config: {
           ...parallelBranchConfig,
           parallelGroupId: parallelId,
@@ -959,12 +988,14 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       parallelGroupId: parallelId,
       branchId: branchOneId,
       branchIndex: 1,
+      branchLabelPrefix: structureText.branchLabelPrefix,
       position: { x: position.x, y: position.y + 160 }
     });
     const branchTwo = createParallelBranchNodes({
       parallelGroupId: parallelId,
       branchId: branchTwoId,
       branchIndex: 2,
+      branchLabelPrefix: structureText.branchLabelPrefix,
       position: { x: position.x + 320, y: position.y + 160 }
     });
 
@@ -974,7 +1005,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       type: NodeType.TEXT,
       position: { x: position.x + 160, y: position.y + 420 },
       data: {
-        label: '并行合并',
+        label: structureText.merge,
         type: NodeType.TEXT,
         config: {
           parallelGroupId: parallelId,
@@ -1059,12 +1090,16 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       parallelGroupId: parallelId,
       nodes
     });
+    const structureText = getParallelStructureText({
+      nodeType: parallelNode.type as NodeType
+    });
     const nextBranchIndex = branches.length + 1;
     const branchId = nanoid(10);
     const branchNodes = createParallelBranchNodes({
       parallelGroupId: parallelId,
       branchId,
       branchIndex: nextBranchIndex,
+      branchLabelPrefix: structureText.branchLabelPrefix,
       position: {
         x: parallelNode.position.x + (nextBranchIndex - 1) * 320,
         y: parallelNode.position.y + 160
@@ -1098,6 +1133,11 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     if (branches.length <= 2) {
       return;
     }
+
+    const parallelNode = nodes.find((node) => node.id === parallelGroupId);
+    const structureText = getParallelStructureText({
+      nodeType: (parallelNode?.type as NodeType) || NodeType.PARALLEL
+    });
 
     const branchNodeIds = new Set(
       nodes
@@ -1155,9 +1195,9 @@ export const useFlowStore = create<FlowState>((set, get) => ({
         const role = node.data.config?.parallelRole;
         const label =
           role === 'branch-start'
-            ? `分支${nextBranchIndex}开始`
+            ? `${structureText.branchLabelPrefix}${nextBranchIndex}开始`
             : role === 'branch-end'
-              ? `分支${nextBranchIndex}结束`
+              ? `${structureText.branchLabelPrefix}${nextBranchIndex}结束`
               : node.data.label;
 
         // 删除分支后对剩余分支重新编号，保持显示顺序连续

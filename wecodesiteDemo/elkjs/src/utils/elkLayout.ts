@@ -62,6 +62,13 @@ function isLoopV2ChildNode(node?: FlowNode): boolean {
 }
 
 /**
+ * 判断节点是否为多分支结构主节点
+ */
+function isParallelStructureNode(node?: FlowNode): boolean {
+  return Boolean(node?.type === NodeType.PARALLEL || node?.type === NodeType.CONDITION_BRANCH);
+}
+
+/**
  * 判断节点是否为并行结构内部文本节点
  */
 function isParallelChildNode(node?: FlowNode): boolean {
@@ -527,7 +534,7 @@ function applyParallelChildrenLayout(params: {
 }): FlowNode[] {
   const { nodes, edges } = params;
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-  const parallelNodes = nodes.filter((node) => node.type === NodeType.PARALLEL);
+  const parallelNodes = nodes.filter((node) => isParallelStructureNode(node));
   let layoutedNodes = nodes;
 
   /**
@@ -538,7 +545,7 @@ function applyParallelChildrenLayout(params: {
       return parallelLayoutConfig.textNodeWidth;
     }
 
-    if (isLoopV2StructureNode(node) || node.type === NodeType.PARALLEL) {
+    if (isLoopV2StructureNode(node) || isParallelStructureNode(node)) {
       return parallelLayoutConfig.nestedStructureWidth;
     }
 
@@ -565,7 +572,7 @@ function applyParallelChildrenLayout(params: {
       return Math.max(getNodeSize(node).height, loopBottomY - node.position.y);
     }
 
-    if (node.type === NodeType.PARALLEL) {
+    if (isParallelStructureNode(node)) {
       const parallelChildren = layoutedNodes.filter(
         (child) => child.data.config?.parallelGroupId === node.id
       );
@@ -585,7 +592,7 @@ function applyParallelChildrenLayout(params: {
    * 嵌套结构后方保留常规间距，确保结构出口到父级分支结束节点之间有插入空间
    */
   const getBranchItemGap = (node?: FlowNode): number => {
-    if (node && (isLoopV2StructureNode(node) || node.type === NodeType.PARALLEL)) {
+    if (node && (isLoopV2StructureNode(node) || isParallelStructureNode(node))) {
       return parallelLayoutConfig.branchNodeGap;
     }
 
@@ -601,7 +608,7 @@ function applyParallelChildrenLayout(params: {
       return undefined;
     }
 
-    if (node.type === NodeType.PARALLEL) {
+    if (isParallelStructureNode(node)) {
       const mergeNode = layoutedNodes.find(
         (child) =>
           child.data.config?.parallelGroupId === node.id &&
@@ -867,7 +874,7 @@ function getMainFlowNodeBottomY(params: {
   const { node, groupBottomYMap } = params;
 
   // 结构节点作为主流程节点时，需要使用整组最低点作为底部
-  if (isLoopV2StructureNode(node) || node.type === NodeType.PARALLEL) {
+  if (isLoopV2StructureNode(node) || isParallelStructureNode(node)) {
     return groupBottomYMap.get(node.id) ?? node.position.y + getNodeSize(node).height;
   }
 
@@ -894,7 +901,7 @@ function isMainFlowCascadeNode(node?: FlowNode): boolean {
 function getLoopV2GroupBottomYMap(nodes: FlowNode[]): Map<string, number> {
   const groupBottomYMap = new Map<string, number>();
   const loopV2Nodes = nodes.filter((node) => isLoopV2StructureNode(node));
-  const parallelNodes = nodes.filter((node) => node.type === NodeType.PARALLEL);
+  const parallelNodes = nodes.filter((node) => isParallelStructureNode(node));
 
   for (const loopV2Node of loopV2Nodes) {
     const groupId = loopV2Node.id;

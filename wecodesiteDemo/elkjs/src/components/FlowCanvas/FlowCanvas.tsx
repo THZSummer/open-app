@@ -214,10 +214,11 @@ const FlowCanvas: React.FC = () => {
         position: insertContext.position,
         nodeType: type
       });
-    } else if (type === NodeType.PARALLEL) {
+    } else if (type === NodeType.PARALLEL || type === NodeType.CONDITION_BRANCH) {
       insertParallel({
         edgeId: insertContext.edgeId,
-        position: insertContext.position
+        position: insertContext.position,
+        nodeType: type
       });
     } else {
       insertNodeOnEdge({

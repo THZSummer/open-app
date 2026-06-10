@@ -13,7 +13,8 @@ export const nodeTypes: NodeTypes = {
   text: TextNode,
   'loop-v2': BaseNode,
   'error-handler': BaseNode,
-  parallel: BaseNode
+  parallel: BaseNode,
+  'condition-branch': BaseNode
 };
 
 /**
@@ -38,6 +39,11 @@ export const defaultNodeTypes = [
   {
     type: NodeType.PARALLEL,
     label: '并行处理节点',
+    color: 'var(--node-action)'
+  },
+  {
+    type: NodeType.CONDITION_BRANCH,
+    label: '条件分支节点',
     color: 'var(--node-action)'
   }
 ];

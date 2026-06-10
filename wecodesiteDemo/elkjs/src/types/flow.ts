@@ -12,7 +12,9 @@ export enum NodeType {
   /** 错误处理节点，复用循环结构交互逻辑 */
   ERROR_HANDLER = 'error-handler',
   /** 并行处理节点，支持多分支处理和汇合 */
-  PARALLEL = 'parallel'
+  PARALLEL = 'parallel',
+  /** 条件分支节点，复用多分支处理和汇合交互 */
+  CONDITION_BRANCH = 'condition-branch'
 }
 
 // 节点数据接口
@@ -117,8 +119,10 @@ export interface FlowState {
   insertParallel: (params: {
     /** 被拆分的连线 ID */
     edgeId: string;
-    /** 并行处理节点的初始位置 */
+    /** 多分支结构节点的初始位置 */
     position: { x: number; y: number };
+    /** 多分支结构节点类型，默认插入并行处理节点 */
+    nodeType?: NodeType;
   }) => void;
   addParallelBranch: (params: {
     /** 并行处理主节点 ID */

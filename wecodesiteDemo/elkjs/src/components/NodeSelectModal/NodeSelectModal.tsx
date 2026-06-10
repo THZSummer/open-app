@@ -91,7 +91,8 @@ function getNodeIcon(type: string): string {
     action: '🔧',
     'loop-v2': '🔄',
     'error-handler': '⚠️',
-    parallel: '☷'
+    parallel: '☷',
+    'condition-branch': '◇'
   };
   return icons[type] || '📦';
 }
@@ -104,7 +105,8 @@ function getNodeDescription(type: string): string {
     action: '执行具体动作',
     'loop-v2': '循环执行节点',
     'error-handler': '错误处理节点',
-    parallel: '并行处理节点'
+    parallel: '并行处理节点',
+    'condition-branch': '条件分支节点'
   };
   return descriptions[type] || '';
 }

@@ -25,7 +25,8 @@ const BaseNode: React.FC<NodeProps<FlowNodeData>> = ({
       [NodeType.TEXT]: 'transparent',
       [NodeType.LOOP_V2]: 'var(--node-loop)',
       [NodeType.ERROR_HANDLER]: 'var(--node-loop)',
-      [NodeType.PARALLEL]: 'var(--node-action)'
+      [NodeType.PARALLEL]: 'var(--node-action)',
+      [NodeType.CONDITION_BRANCH]: 'var(--node-action)'
     };
     return colors[type] || 'var(--node-action)';
   };
@@ -39,7 +40,8 @@ const BaseNode: React.FC<NodeProps<FlowNodeData>> = ({
       [NodeType.TEXT]: '',
       [NodeType.LOOP_V2]: '🔄',
       [NodeType.ERROR_HANDLER]: '⚠️',
-      [NodeType.PARALLEL]: '☷'
+      [NodeType.PARALLEL]: '☷',
+      [NodeType.CONDITION_BRANCH]: '◇'
     };
     return icons[type] || '📦';
   };
@@ -50,15 +52,17 @@ const BaseNode: React.FC<NodeProps<FlowNodeData>> = ({
     NodeType.ACTION,
     NodeType.LOOP_V2,
     NodeType.ERROR_HANDLER,
-    NodeType.PARALLEL
+    NodeType.PARALLEL,
+    NodeType.CONDITION_BRANCH
   ].includes(data.type);
 
   /**
    * 处理基础节点点击
-   * 并行处理节点被点击时直接新增一个分支
+   * 多分支结构节点被点击时直接新增一个分支
    */
   const handleNodeClick = (event: React.MouseEvent) => {
-    if (data.type !== NodeType.PARALLEL) {
+    const canAddBranch = [NodeType.PARALLEL, NodeType.CONDITION_BRANCH].includes(data.type);
+    if (!canAddBranch) {
       return;
     }
 
