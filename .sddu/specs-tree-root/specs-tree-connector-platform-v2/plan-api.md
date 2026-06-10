@@ -15,8 +15,8 @@
 | **版本模型** | **多版本**（草稿→发布→失效→删除），最多 1000 个版本 | spec v2.15 |
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
 | **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md)：React Flow 格式 / 认证多选 / inputMapping-outputMapping 分段 / JSON Path 表达式 / FR-047 类型严格约束 | plan-json-schema.md v6.0 |
-| **服务归属** | open-server（管理面 39 个） + connector-api（运行时 2 个） | plan.md §1 |
-| 端点总数 | **41**（open-server 39 + connector-api 2） | — |
+| **服务归属** | open-server（管理面 49 个） + connector-api（运行时 2 个） | plan.md §1 |
+| 端点总数 | **51**（open-server 49 + connector-api 2） | — |
 
 ---
 
@@ -30,7 +30,7 @@
 |--------|------|
 | 基础路径 | `/service/open/v2` (open-server 管理面) / `/api/v1` (connector-api 执行面) |
 | 认证方式 | 管理面复用现有 Cookie/SSO；执行面 HTTP 触发通过 SYSTOKEN 签名验证 |
-| 应用隔离 | open-server 管理面接口（#1~#39）统一通过 `Header: X-App-Id` 传递，三层校验：白名单准入 → 用户权限 → 数据归属<br>connector-api 运行时（#40~#41）从 flow 自动获取 |
+| 应用隔离 | open-server 管理面接口（#1~#49）统一通过 `Header: X-App-Id` 传递，三层校验：白名单准入 → 用户权限 → 数据归属<br>connector-api 运行时（#50~#51）从 flow 自动获取 |
 | 时间格式 | `yyyy-MM-dd HH:mm:ss` |
 
 ### 1.2 字段命名规范
@@ -275,78 +275,92 @@
 
 ## 2. 接口清单
 
-> ⚠️ **应用隔离**：以下 open-server 管理面接口（#1~#41）统一通过 `Header: X-App-Id` 传递应用 ID，三层校验：
+> ⚠️ **应用隔离**：以下 open-server 管理面接口（#1~#49）统一通过 `Header: X-App-Id` 传递应用 ID，三层校验：
 > ① 白名单准入（`AppWhitelistInterceptor`）：校验应用是否在连接器平台白名单内<br>
 > ② 用户权限（`UserAppPermissionInterceptor`）：校验当前用户是否有该应用的操作权限<br>
 > ③ 数据归属（Service 层）：校验操作的资源是否归属该应用。
-> connector-api 运行时（#40~#41）从 `flow_t.app_id` 自动获取，无需传入。
+> connector-api 运行时（#50~#51）从 `flow_t.app_id` 自动获取，无需传入。
 >
 > Path 前缀：`/service/open/v2`（open-server），`/api/v1`（connector-api）。
+>
+> **改动点编号**：① 三层权限校验 ② 行为变更 ③ 路径变更 ④ 新增接口 ⑤ 接口删除 ⑥ 替换旧接口
 
-**改动点编号**：① 三层权限校验 ② 行为变更 ③ 路径变更 ④ 新增接口 ⑤ 接口删除 ⑥ 替换旧接口
-
-| # | Method | Path | 接口名称 | 改动点 |
-|---|--------|------|---------|--------|
-| — | — | open-server — **连接器 CRUD** | — | — |
-| 1 | POST | `/connectors` | 创建连接器 | ① 三层权限校验<br>② 自动创建空草稿版本 |
-| 2 | GET | `/connectors` | 查询连接器列表 | ① 三层权限校验<br>② 新增 appId/status 过滤（status=2 有效可用） |
-| 3 | GET | `/connectors/{connectorId}` | 查询连接器详情 | ① 三层权限校验 |
-| 4 | PUT | `/connectors/{connectorId}` | 更新连接器 | ① 三层权限校验 |
-| 5 | PUT | `/connectors/{connectorId}/invalidate` | 失效连接器 | ① 三层权限校验<br>④ 新增接口 |
-| 6 | PUT | `/connectors/{connectorId}/recover` | 恢复连接器 | ① 三层权限校验<br>④ 新增接口 |
-| 7 | DELETE | `/connectors/{connectorId}` | 删除连接器 | ① 三层权限校验<br>② 仅已失效状态可删 |
-| — | — | open-server — **连接器版本** | — | — |
-| 8 | GET | `/connectors/{connectorId}/versions` | 查询连接器版本列表 | ① 三层权限校验<br>② 新增 status 过滤（status=2 已发布）<br>④ 新增接口 |
-| 9 | GET | `/connectors/{connectorId}/versions/{versionId}` | 查询连接器版本详情 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `GET /config` |
-| 10 | PUT | `/connectors/{connectorId}/versions/{versionId}` | 更新连接器版本 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `PUT /config` |
-| 11 | PUT | `/connectors/{connectorId}/versions/{versionId}/publish` | 发布连接器版本 | ① 三层权限校验<br>④ 新增接口 |
-| 12 | POST | `/connectors/{connectorId}/versions/{versionId}/copy-to-draft` | 复制连接器版本到草稿 | ① 三层权限校验<br>④ 新增接口 |
-| 13 | PUT | `/connectors/{connectorId}/versions/{versionId}/invalidate` | 失效连接器版本 | ① 三层权限校验<br>④ 新增接口 |
-| 14 | PUT | `/connectors/{connectorId}/versions/{versionId}/recover` | 恢复连接器版本 | ① 三层权限校验<br>④ 新增接口 |
-| 15 | DELETE | `/connectors/{connectorId}/versions/{versionId}` | 删除连接器版本 | ① 三层权限校验<br>④ 新增接口 |
-| — | — | `/connectors/{connectorId}/config` (已删除) | — | — |
-| — | — | `/connectors/{connectorId}/config` (已删除) | 获取连接器配置 | ⑤ V1 接口，V2 由 #9 替代 |
-| — | — | — | 编辑连接器配置 | ⑤ V1 接口，V2 由 #10 替代 |
-| — | — | open-server — **连接流 CRUD** | — | — |
-| 16 | POST | `/flows` | 创建连接流 | ① 三层权限校验<br>② 自动创建空草稿版本 |
-| 17 | GET | `/flows` | 查询连接流列表 | ① 三层权限校验<br>② 新增 appId/lifecycleStatus 过滤 |
-| 18 | GET | `/flows/{flowId}` | 查询连接流详情 | ① 三层权限校验 |
-| 19 | PUT | `/flows/{flowId}` | 更新连接流 | ① 三层权限校验 |
-| 20 | POST | `/flows/{flowId}/copy` | 复制连接流 | ① 三层权限校验<br>④ 新增接口 |
-| 21 | POST | `/flows/{flowId}/deploy` | 部署连接流 | ① 三层权限校验<br>④ 新增接口 |
-| 22 | POST | `/flows/{flowId}/start` | 启动连接流 | ① 三层权限校验<br>② V2 状态模型变更 |
-| 23 | POST | `/flows/{flowId}/stop` | 停止连接流 | ① 三层权限校验 |
-| 24 | PUT | `/flows/{flowId}/invalidate` | 失效连接流 | ① 三层权限校验<br>④ 新增接口 |
-| 25 | PUT | `/flows/{flowId}/recover` | 恢复连接流 | ① 三层权限校验<br>④ 新增接口 |
-| 26 | DELETE | `/flows/{flowId}` | 删除连接流 | ① 三层权限校验<br>② 仅已失效状态可删 |
-| — | — | open-server — **连接流版本** | — | — |
-| 27 | GET | `/flows/{flowId}/versions` | 查询连接流版本列表 | ① 三层权限校验<br>② 新增 status 过滤（status=5 已发布）<br>④ 新增接口 |
-| 28 | GET | `/flows/{flowId}/versions/{versionId}` | 查询连接流版本详情 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `GET /config` |
-| 29 | PUT | `/flows/{flowId}/versions/{versionId}` | 更新连接流版本 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `PUT /config` |
-| 30 | POST | `/flows/{flowId}/versions/{versionId}/publish` | 发布连接流版本 | ① 三层权限校验<br>④ 新增接口 |
-| 31 | POST | `/flows/{flowId}/versions/{versionId}/copy-to-draft` | 复制连接流版本到草稿 | ① 三层权限校验<br>④ 新增接口 |
-| 32 | PUT | `/flows/{flowId}/versions/{versionId}/invalidate` | 失效连接流版本 | ① 三层权限校验<br>④ 新增接口 |
-| 33 | PUT | `/flows/{flowId}/versions/{versionId}/recover` | 恢复连接流版本 | ① 三层权限校验<br>④ 新增接口 |
-| 34 | DELETE | `/flows/{flowId}/versions/{versionId}` | 删除连接流版本 | ① 三层权限校验<br>④ 新增接口 |
-| — | — | open-server — **连接流版本·审批操作** | — | — |
-| 35 | POST | `/flows/{flowId}/versions/{versionId}/cancel` | 撤回连接流版本审批 | ① 三层权限校验<br>④ 新增接口 |
-| 36 | POST | `/flows/{flowId}/versions/{versionId}/urge` | 催办连接流版本审批 | ① 三层权限校验<br>④ 新增接口 |
-| — | — | `/flows/{flowId}/config` (已删除) | — | — |
-| — | — | `/flows/{flowId}/config` (已删除) | 获取编排配置 | ⑤ V1 接口，V2 由 #28 替代 |
-| — | — | — | 保存编排配置 | ⑤ V1 接口，V2 由 #29 替代 |
-| — | — | open-server — **运行记录** | — | — |
-| 37 | GET | `/flows/{flowId}/executions` | 查询运行记录列表 | ① 三层权限校验<br>④ 新增接口 |
-| 38 | GET | `/flows/{flowId}/executions/{executionId}` | 查询运行记录详情 | ① 三层权限校验<br>④ 新增接口 |
-| — | — | open-server — **调试代理** | — | — |
-| 39 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试连接流版本（代理） | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 test-run |
-| — | — | connector-api — **运行时** | — | — |
-| 40 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试连接流版本 | ④ 新增接口（由 open-server #39 代理调用） |
-| 41 | POST | `/flows/{flowId}/invoke` | 调用连接流 | ② 路径变更<br>③ 替换 V1 trigger invoke |
+| # | Method | Path | 接口名称 | V2 变更 | 改动点 |
+|---|--------|------|---------|:---:|--------|
+| — | — | **open-server — 连接器 CRUD** | — | — | — |
+| 1 | POST | `/connectors` | 创建连接器 | 改造 | ① 三层权限校验<br>② 自动创建空草稿版本 |
+| 2 | GET | `/connectors` | 查询连接器列表 | 改造 | ① 三层权限校验<br>② 新增 appId/status 过滤（status=2 有效可用） |
+| 3 | GET | `/connectors/{connectorId}` | 查询连接器详情 | 改造 | ① 三层权限校验 |
+| 4 | PUT | `/connectors/{connectorId}` | 更新连接器 | 改造 | ① 三层权限校验 |
+| 5 | PUT | `/connectors/{connectorId}/invalidate` | 失效连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 6 | PUT | `/connectors/{connectorId}/recover` | 恢复连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 7 | DELETE | `/connectors/{connectorId}` | 删除连接器 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
+| — | — | **open-server — 连接器版本** | — | — | — |
+| 8 | GET | `/connectors/{connectorId}/versions` | 查询连接器版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤（status=2 已发布）<br>④ 新增接口 |
+| 9 | GET | `/connectors/{connectorId}/versions/{versionId}` | 查询连接器版本详情 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `GET /config` |
+| 10 | PUT | `/connectors/{connectorId}/versions/{versionId}` | 更新连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `PUT /config` |
+| 11 | PUT | `/connectors/{connectorId}/versions/{versionId}/publish` | 发布连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 12 | POST | `/connectors/{connectorId}/versions/{versionId}/copy-to-draft` | 复制连接器版本到草稿 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 13 | PUT | `/connectors/{connectorId}/versions/{versionId}/invalidate` | 失效连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 14 | PUT | `/connectors/{connectorId}/versions/{versionId}/recover` | 恢复连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 15 | DELETE | `/connectors/{connectorId}/versions/{versionId}` | 删除连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| — | GET | `/connectors/{connectorId}/config` | 获取连接器配置 | 删除 | ⑤ V1 接口，V2 由 #9 替代 |
+| — | PUT | `/connectors/{connectorId}/config` | 编辑连接器配置 | 删除 | ⑤ V1 接口，V2 由 #10 替代 |
+| — | — | **open-server — 连接流 CRUD** | — | — | — |
+| 16 | POST | `/flows` | 创建连接流 | 改造 | ① 三层权限校验<br>② 自动创建空草稿版本 |
+| 17 | GET | `/flows` | 查询连接流列表 | 改造 | ① 三层权限校验<br>② 新增 appId/lifecycleStatus 过滤 |
+| 18 | GET | `/flows/{flowId}` | 查询连接流详情 | 改造 | ① 三层权限校验 |
+| 19 | PUT | `/flows/{flowId}` | 更新连接流 | 改造 | ① 三层权限校验 |
+| 20 | POST | `/flows/{flowId}/copy` | 复制连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 21 | POST | `/flows/{flowId}/deploy` | 部署连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 22 | POST | `/flows/{flowId}/start` | 启动连接流 | 改造 | ① 三层权限校验<br>② V2 状态模型变更 |
+| 23 | POST | `/flows/{flowId}/stop` | 停止连接流 | 改造 | ① 三层权限校验 |
+| 24 | PUT | `/flows/{flowId}/invalidate` | 失效连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 25 | PUT | `/flows/{flowId}/recover` | 恢复连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 26 | DELETE | `/flows/{flowId}` | 删除连接流 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
+| — | — | **open-server — 连接流版本** | — | — | — |
+| 27 | GET | `/flows/{flowId}/versions` | 查询连接流版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤（status=5 已发布）<br>④ 新增接口 |
+| 28 | GET | `/flows/{flowId}/versions/{versionId}` | 查询连接流版本详情 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `GET /config` |
+| 29 | PUT | `/flows/{flowId}/versions/{versionId}` | 更新连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `PUT /config` |
+| 30 | POST | `/flows/{flowId}/versions/{versionId}/publish` | 发布连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 31 | POST | `/flows/{flowId}/versions/{versionId}/copy-to-draft` | 复制连接流版本到草稿 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 32 | PUT | `/flows/{flowId}/versions/{versionId}/invalidate` | 失效连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 33 | PUT | `/flows/{flowId}/versions/{versionId}/recover` | 恢复连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 34 | DELETE | `/flows/{flowId}/versions/{versionId}` | 删除连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| — | GET | `/flows/{flowId}/config` | 获取编排配置 | 删除 | ⑤ V1 接口，V2 由 #28 替代 |
+| — | PUT | `/flows/{flowId}/config` | 保存编排配置 | 删除 | ⑤ V1 接口，V2 由 #29 替代 |
+| — | POST | `/flows/{flowId}/test-run` | 测试运行 | 删除 | ⑤ V1 接口，V2 由 #49 替代 |
+| — | — | **open-server — 连接流版本·审批操作** | — | — | — |
+| 35 | POST | `/flows/{flowId}/versions/{versionId}/cancel` | 撤回连接流版本审批 | 新增 | ④ 新增接口 |
+| 36 | POST | `/flows/{flowId}/versions/{versionId}/urge` | 催办连接流版本审批 | 新增 | ④ 新增接口 |
+| — | — | **open-server — 审批记录（扩展 businessType）** | — | — | — |
+| 37 | GET | `/approvals/pending` | 查询审批列表 | 改造 | ② 新增 `businessType=connector_flow_version_publish` 过滤 |
+| 38 | GET | `/approvals/{id}` | 查询审批详情 | 改造 | ② businessData 新增连接流版本信息 |
+| 39 | POST | `/approvals/{id}/approve` | 审批通过 | 改造 | ② 回调中 FlowVersion 状态→已发布 |
+| 40 | POST | `/approvals/{id}/reject` | 审批驳回 | 改造 | ② 回调中 FlowVersion 状态→已驳回 |
+| 41 | POST | `/approvals/batch-approve` | 批量审批通过 | 改造 | ② 支持 `connector_flow_version_publish` 业务类型 |
+| 42 | POST | `/approvals/batch-reject` | 批量审批驳回 | 改造 | ② 支持 `connector_flow_version_publish` 业务类型 |
+| — | — | **open-server — 审批流模板配置（新增 appId 字段）** | — | — | — |
+| 43 | GET | `/approval-flows` | 查询审批流模板列表 | 改造 | ② 查询参数新增 `?appId` |
+| 44 | GET | `/approval-flows/{id}` | 查询审批流模板详情 | 改造 | ② 响应新增 `appId` 字段 |
+| 45 | POST | `/approval-flows` | 创建审批流模板 | 改造 | ② 请求体新增 `appId` 字段<br>② 支持创建 `connector_flow_version_publish` 模板 |
+| 46 | PUT | `/approval-flows/{id}` | 更新审批流模板 | 改造 | ② 请求体新增 `appId` 字段 |
+| — | — | **open-server — 运行记录** | — | — | — |
+| 47 | GET | `/flows/{flowId}/executions` | 查询运行记录列表 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 48 | GET | `/flows/{flowId}/executions/{executionId}` | 查询运行记录详情 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| — | — | **open-server — 调试代理** | — | — | — |
+| 49 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试连接流版本（代理） | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 test-run |
+| — | — | **connector-api — 运行时** | — | — | — |
+| 50 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试执行 | 新增 | ④ 新增接口（由 open-server #49 代理调用） |
+| 51 | POST | `/flows/{flowId}/invoke` | 调用连接流 | 改造 | ③ 路径变更<br>⑥ 替换 V1 trigger invoke |
 
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
-> 💡 **审批管理**（FR-031~033）：审批提交/通过/驳回复用现有 `ApprovalController` 接口（`/service/open/v2/approvals/*`），审批人配置复用现有审批流配置模块。V2 仅新增面向连接流版本的两个操作接口：#35 撤回、#36 催办。#30 发布版本时系统调用 `ApprovalEngine.createApproval()` 创建审批实例。
+> 💡 **审批提交** 在 #30 发布版本时由后端自动调用 `ApprovalEngine.createApproval()` 创建审批实例，不暴露为独立端点。
+> 💡 **#35 撤回** 走版本侧路径，与现有 `POST /approvals/{id}/cancel`（审批中心路径）并存，未来审批中心加撤回功能后可在该路径触发。
+> 💡 **#37~#42** 是现有 ApprovalController 接口，V2 扩展 `businessType=connector_flow_version_publish` 场景和业务回调（审批通过→FlowVersion 已发布，驳回→已驳回）。
+> 💡 **#43~#46** 是现有审批流模板接口，V2 新增 `appId` 字段支持应用隔离。
 
-**端点统计**：新增 30 + 修改 8 + 沿用 3 + 删除 7 = 41 个有效端点（open-server 39 + connector-api 2）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
+**端点统计**：新增 30 + 改造 16 + 删除 5 = 51 个（open-server 49 + connector-api 2）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
 
 ---
 
@@ -2351,9 +2365,274 @@
 
 ---
 
-### 3.5 运行记录（#37~#38）
+### 3.5 审批记录（#37~#42）
 
-#### #37 查询运行记录列表
+> 💡 #37~#42 是现有 `ApprovalController` 接口，V2 扩展 `businessType=connector_flow_version_publish` 场景。主要改造点：查询过滤新增业务类型、审批通过/驳回回调中触发 FlowVersion 状态变更。
+
+#### #37 查询审批列表
+
+`GET /approvals/pending`
+
+> 🔧 **V2 改造**：查询参数新增 `businessType=connector_flow_version_publish` 支持。
+
+**请求头**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| X-App-Id | string | ❌ | 审批查询不强制应用隔离 |
+
+**查询参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| businessType | string | ❌ | 业务类型，V2 新增 `connector_flow_version_publish` |
+| status | int | ❌ | 审批状态：`0` 待审 / `1` 已通过 / `2` 已驳回 / `3` 已撤销 |
+| applicantId | string | ❌ | 申请人 ID |
+| approverId | string | ❌ | 审批人 ID |
+| keyword | string | ❌ | 关键词搜索（业务名称） |
+| curPage | int | ❌ | 页码，默认 1 |
+| pageSize | int | ❌ | 每页数量，默认 20 |
+
+**响应体 `data[]`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 审批记录 ID |
+| businessType | string | 业务类型 |
+| businessId | string | 业务对象 ID（连接流版本 ID） |
+| businessName | string | 业务对象名称（连接流名称 + 版本号） |
+| applicantId | string | 申请人 ID |
+| applicantName | string | 申请人姓名 |
+| status | int | 审批状态 |
+| currentNode | int | 当前审批节点索引 |
+| createTime | string | 创建时间 |
+
+#### #38 查询审批详情
+
+`GET /approvals/{id}`
+
+> 🔧 **V2 改造**：`businessData` 新增连接流版本信息（版本号、编排快照摘要等）。
+
+**路径参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | string | ✅ | 审批记录 ID |
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 审批记录 ID |
+| businessType | string | 业务类型 |
+| businessId | string | 业务对象 ID |
+| businessData | object | 业务数据，V2 连接流版本发布场景包含 `{ flowId, flowNameCn, versionId, versionNumber, orchestrationSummary }` |
+| applicantId | string | 申请人 ID |
+| applicantName | string | 申请人姓名 |
+| status | int | 审批状态 |
+| currentNode | int | 当前审批节点索引 |
+| nodes[] | array | 审批节点详情（含 `level`/`userId`/`userName`/`status`/`comment`） |
+| logs[] | array | 审批操作日志 |
+
+#### #39 审批通过
+
+`POST /approvals/{id}/approve`
+
+> 🔧 **V2 改造**：审批通过回调中，若 `businessType=connector_flow_version_publish`，触发 FlowVersion 状态变更：待审批→已发布。
+
+**路径参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | string | ✅ | 审批记录 ID |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| comment | string | ❌ | 审批意见 |
+
+**错误响应**
+
+| code | 说明 |
+|------|------|
+| 409 | 非当前审批节点操作人 |
+
+#### #40 审批驳回
+
+`POST /approvals/{id}/reject`
+
+> 🔧 **V2 改造**：驳回回调中，若 `businessType=connector_flow_version_publish`，触发 FlowVersion 状态变更：待审批→已驳回。
+
+**路径参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | string | ✅ | 审批记录 ID |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| comment | string | ✅ | 驳回原因 |
+
+#### #41 批量审批通过
+
+`POST /approvals/batch-approve`
+
+> 🔧 **V2 改造**：支持 `connector_flow_version_publish` 业务类型批量操作。
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| approvalIds | string[] | ✅ | 审批记录 ID 列表 |
+| comment | string | ❌ | 统一审批意见 |
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| successCount | int | 成功数量 |
+| failedCount | int | 失败数量 |
+| failedItems[] | array | 失败项（含 id 和失败原因） |
+
+#### #42 批量审批驳回
+
+`POST /approvals/batch-reject`
+
+> 🔧 **V2 改造**：支持 `connector_flow_version_publish` 业务类型批量操作。
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| approvalIds | string[] | ✅ | 审批记录 ID 列表 |
+| comment | string | ✅ | 统一驳回原因 |
+
+**响应体** 同 #41。
+
+---
+
+### 3.6 审批流模板配置（#43~#46）
+
+> 💡 #43~#46 是现有审批流模板 CRUD 接口，V2 改造：新增 `appId` 字段实现应用级审批人隔离。`appId=NULL` 为全局配置，`appId=具体值` 为指定应用配置。
+
+#### #43 查询审批流模板列表
+
+`GET /approval-flows`
+
+> 🔧 **V2 改造**：查询参数新增 `?appId`。
+
+**请求头**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| X-App-Id | string | ❌ | 模板查询不强制应用隔离 |
+
+**查询参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| appId | string | ❌ | V2 新增，`NULL` 查全局模板，传入查指定应用模板 |
+| code | string | ❌ | 流程编码，V2 新增 `connector_flow_version_publish` |
+| keyword | string | ❌ | 关键词（名称模糊搜索） |
+| curPage | int | ❌ | 页码 |
+| pageSize | int | ❌ | 每页数量 |
+
+**响应体 `data[]`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 模板 ID |
+| nameCn | string | 中文名称 |
+| nameEn | string | 英文名称 |
+| code | string | 流程编码 |
+| appId | string | V2 新增，应用 ID（`null`=全局） |
+| status | int | `0` 禁用 / `1` 启用 |
+| nodes[] | array | 审批节点配置 |
+
+#### #44 查询审批流模板详情
+
+`GET /approval-flows/{id}`
+
+> 🔧 **V2 改造**：响应新增 `appId` 字段。
+
+**路径参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | string | ✅ | 模板 ID |
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 模板 ID |
+| nameCn | string | 中文名称 |
+| nameEn | string | 英文名称 |
+| code | string | 流程编码 |
+| appId | string | V2 新增，应用 ID（`null`=全局） |
+| descriptionCn | string | 中文描述 |
+| descriptionEn | string | 英文描述 |
+| status | int | `0` 禁用 / `1` 启用 |
+| nodes[] | array | 审批节点（含 `level`/`userId`/`userName`/`order`） |
+
+#### #45 创建审批流模板
+
+`POST /approval-flows`
+
+> 🔧 **V2 改造**：请求体新增 `appId` 字段；支持创建 `code=connector_flow_version_publish` 三级审批模板。
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| nameCn | string | ✅ | 中文名称 |
+| nameEn | string | ✅ | 英文名称 |
+| code | string | ✅ | 流程编码，V2 新增 `connector_flow_version_publish` |
+| appId | string | ❌ | V2 新增，`null`=全局配置，非 `null`=指定应用 |
+| descriptionCn | string | ❌ | 中文描述 |
+| descriptionEn | string | ❌ | 英文描述 |
+| nodes[] | array | ✅ | 审批节点配置 |
+| nodes[].level | string | ❌ | V2 新增，审批级别：`app` / `platform_flow` / `global` |
+| nodes[].userId | string | ✅ | 审批人 ID |
+| nodes[].userName | string | ✅ | 审批人姓名 |
+| nodes[].order | int | ✅ | 审批顺序 |
+
+**错误响应**
+
+| code | 说明 |
+|------|------|
+| 409 | `code` + `appId` 组合已存在（唯一约束冲突） |
+
+#### #46 更新审批流模板
+
+`PUT /approval-flows/{id}`
+
+> 🔧 **V2 改造**：请求体新增 `appId` 字段。
+
+**路径参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | string | ✅ | 模板 ID |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| nameCn | string | ❌ | 中文名称 |
+| nameEn | string | ❌ | 英文名称 |
+| appId | string | ❌ | V2 新增，应用 ID |
+| status | int | ❌ | `0` 禁用 / `1` 启用 |
+| nodes[] | array | ❌ | 审批节点配置 |
+
+---
+
+### 3.7 运行记录（#47~#48）
+
+#### #47 查询运行记录列表
 
 `GET /flows/{flowId}/executions`
 
@@ -2411,7 +2690,7 @@
 }
 ```
 
-#### #38 查询运行记录详情
+#### #48 查询运行记录详情
 
 `GET /flows/{flowId}/executions/{executionId}`
 
@@ -2488,13 +2767,13 @@
 
 ---
 
-### 3.6 调试代理（#39）
+### 3.8 调试代理（#49）
 
-#### #39 调试连接流版本（代理）
+#### #49 调试连接流版本（代理）
 
 `POST /flows/{flowId}/versions/{versionId}/debug`
 
-前端调用 open-server，open-server 代理转发到 connector-api #40。
+前端调用 open-server，open-server 代理转发到 connector-api #50。
 
 **请求头**
 
@@ -2554,13 +2833,13 @@
 
 ---
 
-### 3.7 运行时（#40~#41）— connector-api
+### 3.9 运行时（#50~#51）— connector-api
 
-#### #40 调试连接流版本
+#### #50 调试连接流版本
 
 `POST /api/v1/flows/{flowId}/versions/{versionId}/debug`
 
-由 open-server #39 代理调用，不直接暴露给前端。
+由 open-server #49 代理调用，不直接暴露给前端。
 
 **请求体**
 
@@ -2590,7 +2869,7 @@
 }
 ```
 
-#### #41 调用连接流
+#### #51 调用连接流
 
 `POST /api/v1/flows/{flowId}/invoke`
 
@@ -2654,7 +2933,7 @@
 
 ---
 
-### 3.8 操作日志查询（FR-046，复用现有模块）
+### 3.10 操作日志查询（FR-046，复用现有模块）
 
 > 💡 FR-046 要求的操作日志查询复用应用现有 `OperateLog` 模块，不新增专用端点。前端通过以下现有接口查询：
 
@@ -2677,3 +2956,4 @@
 | v5.2 | 2026-06-10 | **新增 status 过滤参数**：① #2 GET `/connectors` 新增 `?status=2` 过滤有效可用连接器（编排画布选连接器）<br>② #8 GET `/connectors/{connectorId}/versions` 新增 `?status=2` 过滤已发布版本（编排画布选版本）<br>③ #27 GET `/flows/{flowId}/versions` 新增 `?status=5` 过滤已发布版本（部署选版本）<br>以上均为复用现有接口扩展参数，零新增端点 | SDDU Plan Agent |
 | v5.3 | 2026-06-10 | **§3 全文补字段定义表**：① 41 个接口全部补请求头/路径参数/查询参数/请求体/响应体/错误响应字段表<br>② 嵌套对象展开到叶子字段（connectionConfig、orchestrationConfig、steps[] 等）<br>③ §3 标题精简为 `#N 名称` + `` `METHOD /path` `` 独立行<br>④ 时间格式统一 `yyyy-MM-dd HH:mm:ss`，appId 归入请求头<br>⑤ §1.9 接口命名规范：`[操作动词][资源名词][强调词]` | SDDU Plan Agent |
 | v5.4 | 2026-06-10 | **补全 JSON 示例**：22 个缺失示例的接口全部补回（#19~#27、#29~#41），每个接口含请求/响应/错误完整示例 | SDDU Plan Agent |
+| v5.5 | 2026-06-10 | **补全审批域接口**：① §2 新增「审批记录」（#37~#42，扩展 businessType）和「审批流模板配置」（#43~#46，新增 appId 字段）两个分组，共 10 个接口<br>② 端点从 41→51 重新编号（#37~#51），V1 已删除接口在表中独立成行不占编号<br>③ 改动点列恢复 ①②③④⑤⑥ 编号格式，与 V2 变更列（新增/改造/删除）独立<br>④ §3 新增 §3.5（#37~#42）、§3.6（#43~#46），§3.5→§3.7~§3.10 顺延重新编号<br>⑤ 跨引用编号同步更新（§0/#49/#50 等）<br>⑥ plan.md 接口数同步更新为 49+2 | SDDU Plan Agent |
