@@ -334,16 +334,16 @@
 | 35 | POST | `/flows/{flowId}/versions/{versionId}/cancel` | 撤回连接流版本审批 | 新增 | ④ 新增接口 |
 | 36 | POST | `/flows/{flowId}/versions/{versionId}/urge` | 催办连接流版本审批 | 新增 | ④ 新增接口 |
 | — | — | **open-server — 审批记录（扩展 businessType）** | — | — | — |
-| 37 | GET | `/approvals/pending` | 查询审批列表 | 改造 | ② 新增 `businessType=connector_flow_version_publish` 过滤 |
+| 37 | GET | `/approvals/pending` | 查询审批列表 | 改造 | ② 新增 businessType 过滤<br>（connector_flow_version_publish） |
 | 38 | GET | `/approvals/{id}` | 查询审批详情 | 改造 | ② businessData 新增连接流版本信息 |
 | 39 | POST | `/approvals/{id}/approve` | 审批通过 | 改造 | ② 回调中 FlowVersion 状态→已发布 |
 | 40 | POST | `/approvals/{id}/reject` | 审批驳回 | 改造 | ② 回调中 FlowVersion 状态→已驳回 |
-| 41 | POST | `/approvals/batch-approve` | 批量审批通过 | 改造 | ② 支持 `connector_flow_version_publish` 业务类型 |
-| 42 | POST | `/approvals/batch-reject` | 批量审批驳回 | 改造 | ② 支持 `connector_flow_version_publish` 业务类型 |
+| 41 | POST | `/approvals/batch-approve` | 批量审批通过 | 改造 | ② 支持业务类型<br>connector_flow_version_publish |
+| 42 | POST | `/approvals/batch-reject` | 批量审批驳回 | 改造 | ② 支持业务类型<br>connector_flow_version_publish |
 | — | — | **open-server — 审批流模板配置（新增 appId 字段）** | — | — | — |
 | 43 | GET | `/approval-flows` | 查询审批流模板列表 | 改造 | ② 查询参数新增 `?appId` |
 | 44 | GET | `/approval-flows/{id}` | 查询审批流模板详情 | 改造 | ② 响应新增 `appId` 字段 |
-| 45 | POST | `/approval-flows` | 创建审批流模板 | 改造 | ② 请求体新增 `appId` 字段<br>② 支持创建 `connector_flow_version_publish` 模板 |
+| 45 | POST | `/approval-flows` | 创建审批流模板 | 改造 | ② 请求体新增 appId 字段<br>② 支持创建新业务模板<br>（connector_flow_version_publish） |
 | 46 | PUT | `/approval-flows/{id}` | 更新审批流模板 | 改造 | ② 请求体新增 `appId` 字段 |
 | — | — | **open-server — 运行记录** | — | — | — |
 | 47 | GET | `/flows/{flowId}/executions` | 查询运行记录列表 | 新增 | ① 三层权限校验<br>④ 新增接口 |
