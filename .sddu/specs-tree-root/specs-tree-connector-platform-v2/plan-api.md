@@ -16,7 +16,7 @@
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
 | **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md)：React Flow 格式 / 认证多选 / inputMapping-outputMapping 分段 / JSON Path 表达式 / FR-047 类型严格约束 | plan-json-schema.md v6.0 |
 | **服务归属** | open-server（管理面 40 个） + connector-api（运行时 5 个） | plan.md §1 |
-| 端点总数 | **43** | — |
+| 端点总数 | **42** | — |
 
 ---
 
@@ -300,7 +300,6 @@
 | 40 | | PUT | `/service/open/v2/approval-flows` | 修改 | 更新审批人配置（复用现有接口） | FR-032 |
 | 41 | connector-api | POST | `/api/v1/trigger/flow/{flowId}` | 修改 | HTTP 触发连接流（路径/认证变更） | G11 |
 | 42 | | POST | `/api/v1/debug/execute` | 修改 | 调试触发（V1 为 test-run，更名） | FR-041 |
-| 43 | | GET | `/api/v1/health` | 沿用 | 健康检查 | — |
 
 > 💡 **URL 白名单**（FR-015）：数据存储在 `openplatform_property_t` 字典表，复用 market-web 现有字典 CRUD，运行时直接读取，不新增接口。
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
@@ -311,7 +310,7 @@
 | 服务 | 端口 | 接口数 | 接口范围 |
 |------|------|:---:|---------|
 | open-server（管理类） | 18080 | 40 | #1~#40 |
-| connector-api（运行时） | 18180 | 3 | #41~#43 |
+| connector-api（运行时） | 18180 | 2 | #41~#42 |
 
 ---
 
@@ -1655,7 +1654,7 @@
 
 ---
 
-### 3.9 运行时·触发与调试（#47~#49）
+### 3.9 运行时·触发与调试（#41~#42）
 
 #### #47 POST /api/v1/trigger/flow/{flowId} — HTTP 触发连接流
 
@@ -1765,19 +1764,6 @@
 }
 ```
 
-#### #49 GET /api/v1/health — 健康检查
-
-```json
-// Response 200
-{
-  "code": "200",
-  "messageZh": "服务正常",
-  "messageEn": "Healthy",
-  "data": { "status": "UP", "timestamp": "2026-06-09T10:00:00.000+08:00" },
-  "page": null
-}
-```
-
 ---
 
 ## 附录：修订记录
@@ -1785,4 +1771,4 @@
 | 版本 | 日期 | 修订内容 | 修订人 |
 |------|------|---------|--------|
 | v1.0 | 2026-06-09 | 初始版本 — 对齐 spec.md v2.15，端点 45 个，6 个示例 | SDDU Plan Agent |
-| v3.0 | 2026-06-09 | **对齐 plan-db REUSE 约束**：① 删除 URL 白名单 CRUD（#16~18），复用现有字典表；② 删除应用白名单 CRUD（#44~46），复用现有 LookUp；③ 审批人配置合并到现有 approval-flows 接口（#39~40）；④ 端点 49→43 | SDDU Plan Agent |
+| v3.0 | 2026-06-09 | **对齐 plan-db REUSE 约束 + 精简**：① 删 URL 白名单 CRUD；② 删应用白名单 CRUD；③ 审批人配置合并到现有接口；④ 删 health 检查（无关变动）；⑤ 端点 49→42 | SDDU Plan Agent |
