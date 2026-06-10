@@ -263,6 +263,19 @@
 > ③ 数据归属（Service 层）：校验操作的资源是否归属该应用。
 > connector-api 运行时接口（#42~#43）从 `flow_t.app_id` 自动获取，无需传入。
 
+**改动点编号说明**：
+
+| 编号 | 含义 |
+|:--:|------|
+| ① | 三层权限校验（`Header: X-App-Id`） |
+| ② | 行为变更（参数/返回值/业务逻辑变化） |
+| ③ | 路径变更 |
+| ④ | 新增接口 |
+| ⑤ | 接口删除 |
+| ⑥ | 替换旧接口（注明被替换的 V1 接口） |
+
+> 💡 编号可组合，如 `①②` 表示同时涉及权限校验 + 行为变更。
+
 | # | 服务 | 模块 | Method | Path | 变更 | 说明 | 改动点 | FR |
 |:--:|------|------|--------|------|:--:|------|:--:|:--:|
 | 1 | open-server | **连接器 CRUD** | POST | `/service/open/v2/connectors` | 修改 | 创建连接器 | ①② | FR-001 |
@@ -313,20 +326,6 @@
 | 42 | connector-api | **运行时** | POST | `/api/v1/flows/{flowId}/invoke` | 修改 | 调用已部署的连接流（替换 V1 trigger invoke） | ②③⑥ | G11 |
 | 43 | | | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | 新增 | 调试指定版本（由 open-server 代理调用） | ④ | FR-041 |
 
-**改动点编号说明**：
-
-| 编号 | 含义 |
-|:--:|------|
-| ① | 三层权限校验（`Header: X-App-Id`，白名单准入 → 用户权限 → 数据归属） |
-| ② | 行为变更（参数/返回值/业务逻辑变化） |
-| ③ | 路径变更 |
-| ④ | 新增接口 |
-| ⑤ | 接口删除 |
-| ⑥ | 替换旧接口（注明被替换的 V1 接口） |
-
-> 💡 编号可组合，如 `①②` 表示同时涉及权限校验 + 行为变更。
-
-> 💡 **应用隔离**：open-server 管理面接口（#1~#41）统一通过 `Header: X-App-Id` 传递应用 ID，三层校验：① 白名单准入（`AppWhitelistInterceptor`）；② 用户权限（`UserAppPermissionInterceptor`）；③ 数据归属（Service 层）。connector-api 运行时接口（#42~#43）从 flow 上下文自动获取 `app_id`，无需传入。
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
 > 💡 审批提交/通过/驳回/撤回复用现有 `ApprovalController` 接口（`/service/open/v2/approvals/*`），不新增专用端点。#30 提交审批时系统调用 `ApprovalEngine.createApproval()` 创建审批实例。
 
