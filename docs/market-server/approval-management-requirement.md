@@ -6,6 +6,7 @@
 |------|------|--------|---------|
 | v1.0 | 2026-06-04 | SDDU Build Agent | 初稿，基于 app-version-approval-spec.md v8.0 |
 | v2.0 | 2026-06-08 | SDDU Build Agent | 基于 spec v9.0 更新：单页面双 Tab（待审批应用 + 已上架应用）；已审批改为已上架应用列表；查看按钮改为 window.open 新开标签页；同意和拒绝均使用 Modal.confirm 二次确认；新增审批状态机 |
+| v3.0 | 2026-06-08 | SDDU Build Agent | 基于 spec v9.1 更新：标注为历史功能重建；API URL 重命名为自描述命名（app-pending / app-published / app-process）；待审批列表增加 businessType 过滤并按 last_update_time 排序；已上架列表完全重构为以 app_t 为主表 + 子查询取最新已上架版本（MAX(version_code)） |
 
 ## 目录
 - 1 需求价值和概述
@@ -53,6 +54,8 @@
 ## 1 需求价值和概述
 
 ### 需求背景与来源
+
+应用版本审批管理功能此前已在 market-server / market-web 中实现过，但历史代码已不存在。本次为**从零重建**该功能，页面展示和功能与历史版本完全一致。
 
 开放平台（OpenPlatform v2）支持第三方应用接入，应用发布新版本、申请 API/事件/回调权限等操作需要经过审批流程。当前 open-server 已实现审批流创建、审批节点编排、IM 卡片催办等能力，但 **market-server 侧缺少 Web 端审批操作界面**，审批人无法通过管理后台直接完成审批。
 
@@ -201,7 +204,7 @@ graph TB
 1. 审批人点击某条记录的"同意"按钮
 2. 前端弹出 Modal.confirm 二次确认框，展示应用名称、版本号、申请人信息
 3. 审批人点击"确认通过"
-4. 前端调用 `POST /approvals/{id}/process`，body: `{ action: 0 }`
+4. 前端调用 `POST /approvals/app-process/{id}`，body: `{ action: 0 }`
 5. 后端校验记录存在、状态为 PENDING、操作人匹配
 6. 后端插入 ApprovalLog（action=APPROVE）
 7. 后端判断最后节点 → 更新 status=APPROVED + 触发 handler.onApproved
@@ -232,7 +235,7 @@ graph TB
 1. 审批人点击某条记录的"拒绝"按钮
 2. 前端弹出 Modal.confirm 二次确认框，展示应用名称、版本号、申请账号信息
 3. 审批人点击"确认拒绝"
-4. 前端调用 `POST /approvals/{id}/process`，body: `{ action: 1 }`
+4. 前端调用 `POST /approvals/app-process/{id}`，body: `{ action: 1 }`
 5. 后端校验记录存在、状态为 PENDING、操作人匹配
 6. 后端插入 ApprovalLog（action=REJECT）
 7. 后端更新 status=REJECTED + 触发 handler.onRejected
@@ -249,8 +252,8 @@ graph TB
 
 | 功能编号 | 功能名称 | 功能规格描述 | 类型 | 需求标号 | 需求名称 | 需求描述 |
 |---------|---------|------------|------|---------|---------|---------|
-| F-01 | 待审批列表查询 | 分页查询 status=0 的审批记录，关联应用信息 | 新增 | IR-001 | 查看待审批 | 查询审批记录 + 关联应用/版本信息 + Service 层补查能力名称 |
-| F-02 | 已上架应用列表查询 | 按应用分组查询最新已上架版本（status=1），分页展示 | 新增 | IR-001 | 查看已上架 | 子查询按 app_id 分组取 MAX(id)，外层 JOIN 获取展示数据 |
+| F-01 | 待审批列表查询 | 分页查询 status=0 且 business_type='app_version_publish' 的审批记录，按 last_update_time DESC 排序，关联应用信息 | 新增 | IR-001 | 查看待审批 | 查询审批记录 + 关联应用/版本信息 + Service 层补查能力名称和第三方应用ID |
+| F-02 | 已上架应用列表查询 | 以 app_t 为主表查询有效业务应用，子查询取最新已上架版本（MAX(version_code)），分页展示 | 新增 | IR-001 | 查看已上架 | app_t 主表 + 子查询取 MAX(version_code)，appId 直接从 app_t 获取 |
 | F-03 | 审批操作 | 统一接口处理通过/驳回，按 action 字段分支 | 新增 | IR-001 | 执行审批 | 校验 → 日志 → 状态更新 → 策略回调 |
 | F-04 | 策略路由 | ApprovalHandlerFactory 按 businessType 路由 | 新增 | IR-001 | 策略扩展 | Handler 接口 + Factory 工厂，支持多 businessType |
 | F-05 | 业务数据解析 | BusinessDataResolver 解析业务展示数据 | 新增 | IR-001 | 数据展示 | Resolver 接口 + Factory，按 businessType 解析展示字段 |
@@ -297,7 +300,7 @@ graph TD
 
     web -- "HTTP (REST)" --> controller
     controller --> service
-    service -- "列表查询" --> db_query["主查询<br/>3 表 JOIN:<br/>record + version + app"]
+    service -- "列表查询" --> db_query["主查询<br/>待审批: 3 表 JOIN<br/>record + version + app<br/>已上架: app_t 主表<br/>+ 子查询取最新版本"]
     service --> db_query2["Service 层补查<br/>能力名称<br/>2 表查询"]
     service -- "审批操作" --> engine
     engine --> log["插入 ApprovalLog"]
@@ -363,8 +366,8 @@ sequenceDiagram
     participant MS as market-server
     participant DB as MySQL
 
-    FE->>MS: GET /approvals/pending?curPage=1&pageSize=10
-    MS->>DB: SELECT r.id, r.business_type, v.version_code, a.app_name_cn...<br/>FROM openplatform_v2_approval_record_t r<br/>LEFT JOIN openplatform_app_version_t v<br/>LEFT JOIN openplatform_app_t a<br/>WHERE r.status = 0
+    FE->>MS: GET /approvals/app-pending?curPage=1&pageSize=10
+    MS->>DB: SELECT r.id, r.business_type, v.version_code, a.app_name_cn...<br/>FROM openplatform_v2_approval_record_t r<br/>LEFT JOIN openplatform_app_version_t v<br/>LEFT JOIN openplatform_app_t a<br/>WHERE r.status = 0 AND r.business_type = 'app_version_publish'<br/>ORDER BY r.last_update_time DESC
     DB-->>MS: 记录列表
     MS->>DB: [Java 补查] SELECT ab.ability_name_cn<br/>FROM openplatform_app_ability_relation_t acr<br/>LEFT JOIN openplatform_ability_t ab<br/>WHERE acr.app_id = ?
     DB-->>MS: 能力名称
@@ -378,7 +381,7 @@ sequenceDiagram
 
 | URL | Method | 功能 | 增删改查 | 鉴权 | TPS | 时延 |
 |-----|--------|------|---------|------|-----|------|
-| `/service/open/v2/approvals/pending` | GET | 待审批列表 | 查 | @AuthRole | 50 | <200ms |
+| `/service/open/v2/approvals/app-pending` | GET | 待审批列表 | 查 | @AuthRole | 50 | <200ms |
 
 **输入参数**：
 
@@ -430,13 +433,13 @@ sequenceDiagram
 
 ##### 实现思路
 
-已上架列表按应用维度展示，每个应用只展示一行，显示其**最新已上架（APPROVED）版本**。SQL 通过子查询按 `app_id` 分组取 `MAX(id)` 获取每个应用最新的已通过审批记录，外层再 JOIN 获取完整展示数据。
+已上架列表以**应用主表 `openplatform_app_t` 为主表**（筛选 status=1 且 app_type=1），通过子查询获取每个应用最新已上架版本（MAX(version_code)）。与待审批列表不同，已上架列表的 `appId` 直接从 `app_t.app_id` 获取，无需从属性表补查。`applicantId` 由 Service 层根据版本 ID 从审批记录中补查。
 
 **关键规则**（由 open-server 保证）：每个应用同时只能有一个 PENDING 状态的审批请求，只有审批通过或驳回后才能发起新版本。
 
 **SQL 合规验证**：
 - 无 SELECT * ✓
-- JOIN ≤ 3 表：外层 r+v+a=3，子查询 r2+v2=2 ✓
+- JOIN ≤ 3 表：外层 a + v + latest(子查询结果) = 3，子查询 v2 + r2 = 2 ✓
 - 子查询嵌套 1 层 ✓
 
 ##### 实现设计
@@ -447,13 +450,13 @@ sequenceDiagram
     participant MS as market-server
     participant DB as MySQL
 
-    FE->>MS: GET /approvals/published?curPage=1&pageSize=10
-    MS->>DB: SELECT r.id, r.business_type, v.version_code, a.app_name_cn...<br/>FROM openplatform_v2_approval_record_t r<br/>INNER JOIN (子查询: MAX(id) GROUP BY app_id) latest<br/>LEFT JOIN openplatform_app_version_t v<br/>LEFT JOIN openplatform_app_t a<br/>WHERE r.status = 1
-    DB-->>MS: 每个应用最新已上架记录
+    FE->>MS: GET /approvals/app-published?curPage=1&pageSize=10
+    MS->>DB: SELECT a.id, a.app_id, a.app_name_cn, v.version_code...<br/>FROM openplatform_app_t a<br/>INNER JOIN (子查询: MAX(version_code) GROUP BY app_id) latest<br/>INNER JOIN openplatform_app_version_t v<br/>WHERE a.status = 1 AND a.app_type = 1<br/>ORDER BY a.last_update_time DESC
+    DB-->>MS: 每个应用最新已上架版本
+    MS->>DB: [Java 补查] SELECT applicant_id<br/>FROM openplatform_v2_approval_record_t<br/>WHERE business_id = ? AND status = 1
+    DB-->>MS: 申请人ID
     MS->>DB: [Java 补查] SELECT ab.ability_name_cn<br/>FROM openplatform_app_ability_relation_t acr<br/>LEFT JOIN openplatform_ability_t ab<br/>WHERE acr.app_id IN (...)
     DB-->>MS: 能力名称（批量查询）
-    MS->>DB: [Java 补查] SELECT property_value<br/>FROM openplatform_app_p_t<br/>WHERE parent_id IN (...) AND property_name = 'third_party_app_id'
-    DB-->>MS: 第三方应用ID（批量查询）
     MS->>MS: 组装 VO + 计数
     MS-->>FE: ApiResponse { data, page }
 ```
@@ -462,7 +465,7 @@ sequenceDiagram
 
 | URL | Method | 功能 | 增删改查 | 鉴权 | TPS | 时延 |
 |-----|--------|------|---------|------|-----|------|
-| `/service/open/v2/approvals/published` | GET | 已上架应用列表 | 查 | @AuthRole | 50 | <200ms |
+| `/service/open/v2/approvals/app-published` | GET | 已上架应用列表 | 查 | @AuthRole | 50 | <200ms |
 
 **输入参数**：
 
@@ -471,29 +474,48 @@ sequenceDiagram
 | curPage | Integer | 否 | 正整数，默认 1 | 当前页码 |
 | pageSize | Integer | 否 | 正整数，默认 10，前端可选 10/20/50 | 每页条数 |
 
-> **注意**：无 status 筛选参数，固定查询 APPROVED(1) 状态，按应用去重取最新。
+> **注意**：无 status 筛选参数，固定查询有效(status=1)的业务应用(app_type=1)，按应用去重取最新已上架版本。
 
-**返回值**：同 F-01 结构。
+**返回值**：同 F-01 结构（字段来源不同，见下方说明）。
+
+**响应字段差异说明**：
+
+| 字段 | 待审批列表来源 | 已上架列表来源 |
+|------|-------------|-------------|
+| id | approval_record_t.id | app_t.id（应用主键） |
+| appId | app_p_t.property_value（Service 补查） | app_t.app_id（主查询直接获取） |
+| appNameCn/En | app_t（JOIN 获取） | app_t（主表直接获取） |
+| versionNo | app_version_t.version_code | app_version_t.version_code（子查询匹配） |
+| applicantId | approval_record_t.applicant_id（主查询） | approval_record_t.applicant_id（Service 补查） |
+| createTime | approval_record_t.create_time | app_t.create_time（应用创建时间） |
 
 **主查询 SQL**：
 
 ```sql
 SELECT
-    r.id, r.business_type, r.business_id, r.applicant_id,
-    r.status, r.current_node, r.create_time,
-    v.version_code, a.app_id, a.app_name_cn, a.app_name_en
-FROM openplatform_v2_approval_record_t r
+    a.id AS app_pk_id,
+    a.app_id,
+    a.app_name_cn,
+    a.app_name_en,
+    a.create_time,
+    a.last_update_time,
+    v.id AS version_id,
+    v.version_code
+FROM openplatform_app_t a
 INNER JOIN (
-    SELECT MAX(r2.id) AS max_id
-    FROM openplatform_v2_approval_record_t r2
-    INNER JOIN openplatform_app_version_t v2 ON r2.business_id = v2.id
+    SELECT v2.app_id, MAX(v2.version_code) AS max_version_code
+    FROM openplatform_app_version_t v2
+    INNER JOIN openplatform_v2_approval_record_t r2
+      ON v2.id = r2.business_id
     WHERE r2.status = 1
       AND r2.business_type = 'app_version_publish'
     GROUP BY v2.app_id
-) latest ON r.id = latest.max_id
-LEFT JOIN openplatform_app_version_t v ON r.business_id = v.id
-LEFT JOIN openplatform_app_t a ON v.app_id = a.id
-ORDER BY r.create_time DESC
+) latest ON a.id = latest.app_id
+INNER JOIN openplatform_app_version_t v
+  ON a.id = v.app_id AND v.version_code = latest.max_version_code
+WHERE a.status = 1
+  AND a.app_type = 1
+ORDER BY a.last_update_time DESC
 LIMIT #{offset}, #{pageSize}
 ```
 
@@ -502,10 +524,10 @@ LIMIT #{offset}, #{pageSize}
 | 应用 | 版本 | 审批状态 | 是否在已上架列表展示 | 说明 |
 |------|------|---------|:-------------------:|------|
 | App-A | v1.0 | APPROVED | ✓ | 展示 v1.0 |
-| App-A | v2.0 | APPROVED | ✓ | 展示 v2.0（更新，替代 v1.0） |
+| App-A | v2.0 | APPROVED | ✓ | 展示 v2.0（version_code 更大，替代 v1.0） |
 | App-B | v1.0 | APPROVED | ✓ | 展示 v1.0 |
-| App-B | v2.0 | REJECTED | ✓ | 仍展示 v1.0（最新已上架版本） |
-| App-C | v1.0 | REJECTED | ✗ | 无已上架版本，不展示 |
+| App-B | v2.0 | REJECTED | ✓ | 仍展示 v1.0（v2 被驳回，v1 是最新已上架版本） |
+| App-C | v1.0 | REJECTED | ✗ | 无已上架版本，INNER JOIN 过滤掉 |
 
 ---
 
@@ -522,7 +544,7 @@ sequenceDiagram
     participant FE as 前端
     participant MS as market-server
 
-    FE->>MS: POST /approvals/{id}/process<br/>{ action: 0/1 }
+    FE->>MS: POST /approvals/app-process/{id}<br/>{ action: 0/1 }
     MS->>MS: 1. selectById(id)
     MS->>MS: 2. 校验 status == PENDING
     MS->>MS: 3. parseNodes(combinedNodes)
@@ -546,7 +568,7 @@ sequenceDiagram
 
 | URL | Method | 功能 | 增删改查 | 鉴权 | TPS | 时延 |
 |-----|--------|------|---------|------|-----|------|
-| `/service/open/v2/approvals/{id}/process` | POST | 审批操作 | 改 | @AuthRole | 20 | <300ms |
+| `/service/open/v2/approvals/app-process/{id}` | POST | 审批操作 | 改 | @AuthRole | 20 | <300ms |
 
 **路径参数**：
 
@@ -660,8 +682,8 @@ graph TD
 | 切换 Tab | 点击"待审批应用"/"已上架应用" | 重置分页并加载对应数据，待审批 Tab 显示同意/拒绝按钮，已上架 Tab 仅显示查看 |
 | 切换语言 | 点击"中文"/"EN" | 应用名称列在中英文名间切换 |
 | 点击查看 | 操作列"查看"链接 | `window.open('/app-detail/' + record.appId, '_blank')` 新开浏览器标签页 |
-| 点击同意 | 操作列"同意"链接（仅待审批 Tab） | Modal.confirm 二次确认 → POST process(action=0) → 成功刷新 |
-| 点击拒绝 | 操作列"拒绝"链接（仅待审批 Tab） | Modal.confirm 二次确认 → POST process(action=1) → 成功刷新 |
+| 点击同意 | 操作列"同意"链接（仅待审批 Tab） | Modal.confirm 二次确认 → POST app-process(action=0) → 成功刷新 |
+| 点击拒绝 | 操作列"拒绝"链接（仅待审批 Tab） | Modal.confirm 二次确认 → POST app-process(action=1) → 成功刷新 |
 
 ##### 3.5 架构元素影响列表
 
@@ -669,7 +691,7 @@ graph TD
 |------|---------|------|
 | `market-web/src/router/index.tsx` | 修改 | 新增 `/approval` 路由 |
 | `market-web/src/components/Layout/index.js` | 修改 | 菜单新增"审批管理"菜单项 |
-| `market-web/src/configs/web.config.js` | 修改 | 新增 3 个 API URL（PENDING_LIST, PUBLISHED_LIST, PROCESS） |
+| `market-web/src/configs/web.config.js` | 修改 | 新增 3 个 API URL（APP_PENDING_LIST, APP_PUBLISHED_LIST, APP_PROCESS） |
 | `market-web/src/router/routeRedBlue/approval/` | 新增 | 4 个文件（index.js, index.module.less, constant.js, thunk.js） |
 
 ---
@@ -688,8 +710,8 @@ graph TD
 | 6 | 策略接口 + 工厂 | market-server | ApprovalHandler + ApprovalHandlerFactory + BusinessDataResolver + BusinessDataResolverFactory |
 | 7 | 审批引擎 | market-server | ApprovalEngine.process() — 统一审批操作 |
 | 8 | 审批 Service | market-server | ApprovalService + ApprovalServiceImpl — 列表查询编排 + 能力名称补查 |
-| 9 | 审批 Controller | market-server | ApprovalController — 3 个端点（pending, published, process） |
-| 10 | 前端常量 + API 配置 | market-web | constant.js + web.config.js 修改 |
+| 9 | 审批 Controller | market-server | ApprovalController — 3 个端点（app-pending, app-published, app-process） |
+| 10 | 前端常量 + API 配置 | market-web | constant.js + web.config.js 修改（APP_PENDING_LIST, APP_PUBLISHED_LIST, APP_PROCESS） |
 | 11 | 前端 API 调用层 | market-web | thunk.js — fetchPendingList / fetchPublishedList / processApproval |
 | 12 | 前端审批页面 | market-web | approval/index.js + index.module.less — Tabs + 表格 + 弹窗 + 分页 |
 | 13 | 前端路由/菜单 | market-web | router/index.tsx（+1 路由）+ Layout/index.js（+1 菜单项） |
