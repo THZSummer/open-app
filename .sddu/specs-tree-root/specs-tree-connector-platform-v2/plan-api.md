@@ -2407,6 +2407,31 @@
 | currentNode | int | 当前审批节点索引 |
 | createTime | string | 创建时间 |
 
+**示例**
+
+```json
+// Query: ?businessType=connector_flow_version_publish&status=0&curPage=1&pageSize=20
+
+// 响应体 200
+{
+  "code": "200",
+  "data": [
+    {
+      "id": "9876543210987654321",
+      "businessType": "connector_flow_version_publish",
+      "businessId": "8888888888888888888",
+      "businessName": "新消息通知 v3",
+      "applicantId": "user_zhangsan",
+      "applicantName": "张三",
+      "status": 0,
+      "currentNode": 1,
+      "createTime": "2026-06-09 09:00:00"
+    }
+  ],
+  "page": { "curPage": 1, "pageSize": 20, "total": 1 }
+}
+```
+
 #### #38 查询审批详情
 
 `GET /approvals/{id}`
@@ -2434,6 +2459,40 @@
 | nodes[] | array | 审批节点详情（含 `level`/`userId`/`userName`/`status`/`comment`） |
 | logs[] | array | 审批操作日志 |
 
+**示例**
+
+```json
+// 响应体 200
+{
+  "code": "200",
+  "data": {
+    "id": "9876543210987654321",
+    "businessType": "connector_flow_version_publish",
+    "businessId": "8888888888888888888",
+    "businessData": {
+      "flowId": "7777777777777777777",
+      "flowNameCn": "新消息通知",
+      "versionId": "8888888888888888888",
+      "versionNumber": 3,
+      "orchestrationSummary": "触发器→发送通知→返回结果"
+    },
+    "applicantId": "user_zhangsan",
+    "applicantName": "张三",
+    "status": 0,
+    "currentNode": 1,
+    "nodes": [
+      { "level": "app", "userId": "user_lisi", "userName": "李四", "order": 1, "status": 1, "comment": "同意" },
+      { "level": "platform_flow", "userId": "user_wangwu", "userName": "王五", "order": 2, "status": 0 },
+      { "level": "global", "userId": "user_admin", "userName": "管理员", "order": 3, "status": -1 }
+    ],
+    "logs": [
+      { "level": "app", "operatorId": "user_lisi", "operatorName": "李四", "action": 0, "actionName": "同意", "comment": "同意", "createTime": "2026-06-09 09:30:00" }
+    ]
+  },
+  "page": null
+}
+```
+
 #### #39 审批通过
 
 `POST /approvals/{id}/approve`
@@ -2458,6 +2517,20 @@
 |------|------|
 | 409 | 非当前审批节点操作人 |
 
+**示例**
+
+```json
+// 请求体
+{ "comment": "同意发布" }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "id": "9876543210987654321", "status": 1, "message": "审批通过" },
+  "page": null
+}
+```
+
 #### #40 审批驳回
 
 `POST /approvals/{id}/reject`
@@ -2475,6 +2548,20 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | comment | string | ✅ | 驳回原因 |
+
+**示例**
+
+```json
+// 请求体
+{ "comment": "编排配置有问题，请修改后重新提交" }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "id": "9876543210987654321", "status": 2, "message": "已驳回" },
+  "page": null
+}
+```
 
 #### #41 批量审批通过
 
@@ -2497,6 +2584,20 @@
 | failedCount | int | 失败数量 |
 | failedItems[] | array | 失败项（含 id 和失败原因） |
 
+**示例**
+
+```json
+// 请求体
+{ "approvalIds": ["9876543210987654321", "9876543210987654322"], "comment": "批量同意" }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "successCount": 2, "failedCount": 0, "failedItems": [] },
+  "page": null
+}
+```
+
 #### #42 批量审批驳回
 
 `POST /approvals/batch-reject`
@@ -2511,6 +2612,20 @@
 | comment | string | ✅ | 统一驳回原因 |
 
 **响应体** 同 #41。
+
+**示例**
+
+```json
+// 请求体
+{ "approvalIds": ["9876543210987654321"], "comment": "批量驳回" }
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "successCount": 1, "failedCount": 0, "failedItems": [] },
+  "page": null
+}
+```
 
 ---
 
@@ -2552,6 +2667,33 @@
 | status | int | `0` 禁用 / `1` 启用 |
 | nodes[] | array | 审批节点配置 |
 
+**示例**
+
+```json
+// Query: ?code=connector_flow_version_publish&curPage=1&pageSize=20
+
+// 响应体 200
+{
+  "code": "200",
+  "data": [
+    {
+      "id": "1111111111111111111",
+      "nameCn": "连接流版本发布审批",
+      "nameEn": "Flow Version Publish Approval",
+      "code": "connector_flow_version_publish",
+      "appId": null,
+      "status": 1,
+      "nodes": [
+        { "level": "app", "userId": "user_lisi", "userName": "李四", "order": 1 },
+        { "level": "platform_flow", "userId": "user_wangwu", "userName": "王五", "order": 2 },
+        { "level": "global", "userId": "user_admin", "userName": "管理员", "order": 3 }
+      ]
+    }
+  ],
+  "page": { "curPage": 1, "pageSize": 20, "total": 1 }
+}
+```
+
 #### #44 查询审批流模板详情
 
 `GET /approval-flows/{id}`
@@ -2577,6 +2719,31 @@
 | descriptionEn | string | 英文描述 |
 | status | int | `0` 禁用 / `1` 启用 |
 | nodes[] | array | 审批节点（含 `level`/`userId`/`userName`/`order`） |
+
+**示例**
+
+```json
+// 响应体 200
+{
+  "code": "200",
+  "data": {
+    "id": "1111111111111111111",
+    "nameCn": "连接流版本发布审批",
+    "nameEn": "Flow Version Publish Approval",
+    "code": "connector_flow_version_publish",
+    "appId": null,
+    "descriptionCn": "连接流版本发布需经过应用级、平台连接流级、全局级三级审批",
+    "descriptionEn": "Three-level approval for flow version publishing",
+    "status": 1,
+    "nodes": [
+      { "level": "app", "userId": "user_lisi", "userName": "李四", "order": 1 },
+      { "level": "platform_flow", "userId": "user_wangwu", "userName": "王五", "order": 2 },
+      { "level": "global", "userId": "user_admin", "userName": "管理员", "order": 3 }
+    ]
+  },
+  "page": null
+}
+```
 
 #### #45 创建审批流模板
 
@@ -2606,6 +2773,31 @@
 |------|------|
 | 409 | `code` + `appId` 组合已存在（唯一约束冲突） |
 
+**示例**
+
+```json
+// 请求体
+{
+  "nameCn": "连接流版本发布审批",
+  "nameEn": "Flow Version Publish Approval",
+  "code": "connector_flow_version_publish",
+  "descriptionCn": "连接流版本发布需三级审批",
+  "descriptionEn": "Three-level approval for flow version publishing",
+  "nodes": [
+    { "level": "app", "userId": "user_lisi", "userName": "李四", "order": 1 },
+    { "level": "platform_flow", "userId": "user_wangwu", "userName": "王五", "order": 2 },
+    { "level": "global", "userId": "user_admin", "userName": "管理员", "order": 3 }
+  ]
+}
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "id": "1111111111111111111", "code": "connector_flow_version_publish", "status": 1 },
+  "page": null
+}
+```
+
 #### #46 更新审批流模板
 
 `PUT /approval-flows/{id}`
@@ -2627,6 +2819,23 @@
 | appId | string | ❌ | V2 新增，应用 ID |
 | status | int | ❌ | `0` 禁用 / `1` 启用 |
 | nodes[] | array | ❌ | 审批节点配置 |
+
+**示例**
+
+```json
+// 请求体
+{ "nameCn": "连接流版本发布审批v2", "nodes": [
+  { "level": "app", "userId": "user_zhao", "userName": "赵六", "order": 1 },
+  { "level": "platform_flow", "userId": "user_wangwu", "userName": "王五", "order": 2 }
+]}
+
+// 响应体 200
+{
+  "code": "200",
+  "data": { "id": "1111111111111111111", "status": 1 },
+  "page": null
+}
+```
 
 ---
 
