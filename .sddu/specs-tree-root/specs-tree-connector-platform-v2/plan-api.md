@@ -2,7 +2,7 @@
 
 **Feature ID**: CONN-PLAT-002
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
-**版本**: v2.0
+**版本**: v5.0
 **创建日期**: 2026-06-09
 **对齐基线**: spec.md v2.15-draft + plan.md + plan-db.md
 
@@ -15,8 +15,8 @@
 | **版本模型** | **多版本**（草稿→发布→失效→删除），最多 1000 个版本 | spec v2.15 |
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
 | **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md)：React Flow 格式 / 认证多选 / inputMapping-outputMapping 分段 / JSON Path 表达式 / FR-047 类型严格约束 | plan-json-schema.md v6.0 |
-| **服务归属** | open-server（管理面 40 个） + connector-api（运行时 5 个） | plan.md §1 |
-| 端点总数 | **43** | — |
+| **服务归属** | open-server（管理面 41 个） + connector-api（运行时 2 个） | plan.md §1 |
+| 端点总数 | **43**（open-server 41 + connector-api 2） | — |
 
 ---
 
@@ -337,6 +337,8 @@
 ## 3. 接口详细定义
 
 > 💡 接口清单见 §2，本章为每个接口的请求/响应详细定义。所有接口的字段命名、数据类型、响应格式、状态枚举均遵循 §1 设计规范。
+> 💡 **URL 白名单**（FR-015）作为 `connectionConfig.urlWhitelist` 字段内嵌在连接器版本配置中，由 #9 / #10 读写，不设独立端点。
+> 💡 **操作日志查询**（FR-046）复用现有 OperateLog 模块，详见 §3.9，不新增专用端点。
 
 ### 3.1 连接器 CRUD（#1~#7）
 
@@ -403,7 +405,7 @@
 }
 ```
 
-#### #3 GET /service/open/v2/connectors/{id} — 查询连接器详情
+#### #3 GET /service/open/v2/connectors/{connectorId} — 查询连接器详情
 
 ```json
 // Response 200
@@ -427,7 +429,7 @@
 }
 ```
 
-#### #4 PUT /service/open/v2/connectors/{id} — 更新连接器基本信息
+#### #4 PUT /service/open/v2/connectors/{connectorId} — 更新连接器基本信息
 
 ```json
 // Request
@@ -451,7 +453,7 @@
 }
 ```
 
-#### #5 PUT /service/open/v2/connectors/{id}/invalidate — 标记连接器失效
+#### #5 PUT /service/open/v2/connectors/{connectorId}/invalidate — 标记连接器失效
 
 ```json
 // Request: 无 body
@@ -477,7 +479,7 @@
 }
 ```
 
-#### #6 PUT /service/open/v2/connectors/{id}/restore — 恢复连接器
+#### #6 PUT /service/open/v2/connectors/{connectorId}/restore — 恢复连接器
 
 ```json
 // Request: 无 body
@@ -495,7 +497,7 @@
 }
 ```
 
-#### #7 DELETE /service/open/v2/connectors/{id} — 删除连接器（物理删除）
+#### #7 DELETE /service/open/v2/connectors/{connectorId} — 删除连接器（物理删除）
 
 ```json
 // Request: 无 body
@@ -521,7 +523,7 @@
 
 ### 3.2 连接器版本（#8~#15）
 
-#### #8 GET /service/open/v2/connectors/{id}/versions — 版本列表
+#### #8 GET /service/open/v2/connectors/{connectorId}/versions — 版本列表
 
 ```json
 // Response 200
@@ -557,7 +559,7 @@
 }
 ```
 
-#### #9 GET /service/open/v2/connectors/{id}/versions/{vid} — 版本详情
+#### #9 GET /service/open/v2/connectors/{connectorId}/versions/{versionId} — 版本详情
 
 ```json
 // Response 200
@@ -584,6 +586,10 @@
           { "name": "signature", "carrier": "header", "fieldName": "X-Signature", "required": true, "sensitive": true, "sort": 2 }
         ]
       },
+      "urlWhitelist": [
+        { "pattern": "^https://api\\.example\\.com/v1/.*", "description": "内部 API 网关" },
+        { "pattern": "^https://internal\\.xxx\\.com/.*", "description": "内部服务" }
+      ],
       "inputContract": {
         "protocol": "HTTP",
         "body": {
@@ -613,7 +619,9 @@
 }
 ```
 
-#### #10 PUT /service/open/v2/connectors/{id}/versions/{vid} — 编辑草稿保存
+> 💡 `urlWhitelist`（FR-015）：正则规则数组。空数组 = 不限制（允许任意地址）。保存时校验正则语法，不合法返回 400。
+
+#### #10 PUT /service/open/v2/connectors/{connectorId}/versions/{versionId} — 编辑草稿保存
 
 ```json
 // Request — connectionConfig 全文替换
@@ -632,6 +640,9 @@
         { "name": "signature", "carrier": "header", "fieldName": "X-Signature", "required": true, "sensitive": true, "sort": 2 }
       ]
     },
+    "urlWhitelist": [
+      { "pattern": "^https://api\\.example\\.com/v2/.*", "description": "新版 API" }
+    ],
     "inputContract": { "protocol": "HTTP", "body": { "type": "object", "properties": { "receiver": { "type": "string" }, "content": { "type": "string" } }, "required": ["receiver", "content"] } },
     "outputContract": { "protocol": "HTTP", "body": { "type": "object", "properties": { "msgId": { "type": "string" } } } }
   }
@@ -658,9 +669,19 @@
   "data": null,
   "page": null
 }
+// 错误 — URL 白名单正则语法错误
+{
+  "code": "400",
+  "messageZh": "URL 白名单正则表达式语法错误：第 2 条规则",
+  "messageEn": "Invalid regex pattern in URL whitelist: rule 2",
+  "data": null,
+  "page": null
+}
 ```
 
-#### #11 PUT /service/open/v2/connectors/{id}/versions/{vid}/publish — 发布版本
+> 💡 `urlWhitelist` 校验规则：① 每条 `pattern` 必须为合法的 Java 正则表达式；② 空数组 = 不限制；③ 保存时校验不通过返回 400；④ 运行时每次连接器调用前以实际 URL 逐条匹配。
+
+#### #11 PUT /service/open/v2/connectors/{connectorId}/versions/{versionId}/publish — 发布版本
 
 ```json
 // Request: 无 body
@@ -688,7 +709,7 @@
 }
 ```
 
-#### #12 POST /service/open/v2/connectors/{id}/versions/{vid}/copy-to-draft — 复制到草稿
+#### #12 POST /service/open/v2/connectors/{connectorId}/versions/{versionId}/copy-to-draft — 复制到草稿
 
 ```json
 // Request: 无 body
@@ -716,7 +737,7 @@
 }
 ```
 
-#### #13 PUT /service/open/v2/connectors/{id}/versions/{vid}/invalidate — 标记版本失效
+#### #13 PUT /service/open/v2/connectors/{connectorId}/versions/{versionId}/invalidate — 标记版本失效
 
 ```json
 // Request: 无 body
@@ -744,7 +765,7 @@
 }
 ```
 
-#### #14 PUT /service/open/v2/connectors/{id}/versions/{vid}/restore — 恢复版本
+#### #14 PUT /service/open/v2/connectors/{connectorId}/versions/{versionId}/restore — 恢复版本
 
 ```json
 // Request: 无 body
@@ -764,7 +785,7 @@
 }
 ```
 
-#### #15 DELETE /service/open/v2/connectors/{id}/versions/{vid} — 删除版本
+#### #15 DELETE /service/open/v2/connectors/{connectorId}/versions/{versionId} — 删除版本
 
 ```json
 // Request: 无 body
@@ -788,76 +809,9 @@
 
 ---
 
-### 3.3 URL 白名单（#16~#18）
+### 3.3 连接流 CRUD（#16~#26）
 
-#### #16 GET /service/open/v2/connectors/{id}/url-whitelist — 查询规则列表
-
-```json
-// Response 200
-{
-  "code": "200",
-  "messageZh": "查询成功",
-  "messageEn": "Success",
-  "data": [
-    {
-      "ruleId": "1234567890123456789",
-      "pattern": "^https://api\\.example\\.com/v1/.*",
-      "description": "内部 API 网关",
-      "createTime": "2026-06-09T10:00:00.000+08:00"
-    }
-  ],
-  "page": null
-}
-```
-
-#### #17 POST /service/open/v2/connectors/{id}/url-whitelist — 新增规则
-
-```json
-// Request
-{
-  "pattern": "^https://internal\\.xxx\\.com/.*",
-  "description": "内部服务"
-}
-
-// Response 200
-{
-  "code": "200",
-  "messageZh": "添加成功",
-  "messageEn": "Added",
-  "data": {
-    "ruleId": "9876543210987654321",
-    "pattern": "^https://internal\\.xxx\\.com/.*"
-  },
-  "page": null
-}
-// 错误 — 正则语法错误
-{
-  "code": "400",
-  "messageZh": "正则表达式语法错误",
-  "messageEn": "Invalid regex pattern",
-  "data": null,
-  "page": null
-}
-```
-
-#### #18 DELETE /service/open/v2/connectors/{id}/url-whitelist/{rid} — 删除规则
-
-```json
-// Response 200
-{
-  "code": "200",
-  "messageZh": "删除成功",
-  "messageEn": "Deleted",
-  "data": null,
-  "page": null
-}
-```
-
----
-
-### 3.4 连接流 CRUD（#19~#29）
-
-#### #19 POST /service/open/v2/flows — 创建连接流
+#### #16 POST /service/open/v2/flows — 创建连接流
 
 ```json
 // Request
@@ -891,7 +845,7 @@
 }
 ```
 
-#### #20 GET /service/open/v2/flows — 查询连接流列表
+#### #17 GET /service/open/v2/flows — 查询连接流列表
 
 ```json
 // Query: ?curPage=1&pageSize=20&lifecycleStatus=2&keyword=通知&appId=1234567890123456789
@@ -919,7 +873,7 @@
 }
 ```
 
-#### #21 GET /service/open/v2/flows/{id} — 查询连接流详情
+#### #18 GET /service/open/v2/flows/{flowId} — 查询连接流详情
 
 ```json
 // Response 200
@@ -945,7 +899,7 @@
 }
 ```
 
-#### #22 PUT /service/open/v2/flows/{id} — 更新连接流基本信息
+#### #19 PUT /service/open/v2/flows/{flowId} — 更新连接流基本信息
 
 ```json
 // Request
@@ -968,7 +922,7 @@
 }
 ```
 
-#### #23 POST /service/open/v2/flows/{id}/copy — 一键复制连接流
+#### #20 POST /service/open/v2/flows/{flowId}/copy — 一键复制连接流
 
 ```json
 // Request: 无 body
@@ -997,7 +951,7 @@
 }
 ```
 
-#### #24 POST /service/open/v2/flows/{id}/deploy — 部署+启动
+#### #21 POST /service/open/v2/flows/{flowId}/deploy — 部署+启动
 
 ```json
 // Request
@@ -1029,7 +983,7 @@
 }
 ```
 
-#### #25 POST /service/open/v2/flows/{id}/start — 启动连接流
+#### #22 POST /service/open/v2/flows/{flowId}/start — 启动连接流
 
 ```json
 // Request: 无 body
@@ -1047,7 +1001,7 @@
 }
 ```
 
-#### #26 POST /service/open/v2/flows/{id}/stop — 停止连接流
+#### #23 POST /service/open/v2/flows/{flowId}/stop — 停止连接流
 
 ```json
 // Request: 无 body
@@ -1065,7 +1019,7 @@
 }
 ```
 
-#### #27 PUT /service/open/v2/flows/{id}/invalidate — 标记连接流失效
+#### #24 PUT /service/open/v2/flows/{flowId}/invalidate — 标记连接流失效
 
 ```json
 // Request: 无 body
@@ -1091,7 +1045,7 @@
 }
 ```
 
-#### #28 PUT /service/open/v2/flows/{id}/restore — 恢复连接流
+#### #25 PUT /service/open/v2/flows/{flowId}/restore — 恢复连接流
 
 ```json
 // Request: 无 body
@@ -1110,7 +1064,7 @@
 }
 ```
 
-#### #29 DELETE /service/open/v2/flows/{id} — 删除连接流
+#### #26 DELETE /service/open/v2/flows/{flowId} — 删除连接流
 
 ```json
 // Response 200
@@ -1133,9 +1087,9 @@
 
 ---
 
-### 3.5 连接流版本（#30~#37）
+### 3.4 连接流版本（#27~#34）
 
-#### #30 GET /service/open/v2/flows/{id}/versions — 版本列表
+#### #27 GET /service/open/v2/flows/{flowId}/versions — 版本列表
 
 ```json
 // Response 200
@@ -1180,7 +1134,7 @@
 }
 ```
 
-#### #31 GET /service/open/v2/flows/{id}/versions/{vid} — 版本详情
+#### #28 GET /service/open/v2/flows/{flowId}/versions/{versionId} — 版本详情
 
 ```json
 // Response 200
@@ -1267,7 +1221,7 @@
 }
 ```
 
-#### #32 PUT /service/open/v2/flows/{id}/versions/{vid} — 编辑草稿保存
+#### #29 PUT /service/open/v2/flows/{flowId}/versions/{versionId} — 编辑草稿保存
 
 ```json
 // Request — 编排配置全文替换（flowConfig 嵌套在 orchestrationConfig 内）
@@ -1305,7 +1259,7 @@
 }
 ```
 
-#### #33 POST /service/open/v2/flows/{id}/versions/{vid}/submit-approval — 提交审批
+#### #30 POST /service/open/v2/flows/{flowId}/versions/{versionId}/submit-approval — 提交审批
 
 ```json
 // Request: 无 body
@@ -1330,9 +1284,19 @@
   "data": null,
   "page": null
 }
+// 错误 — 编排为空
+{
+  "code": "422",
+  "messageZh": "请先完成编排配置",
+  "messageEn": "Please complete orchestration configuration",
+  "data": null,
+  "page": null
+}
 ```
 
-#### #34 POST /service/open/v2/flows/{id}/versions/{vid}/copy-to-draft — 复制到草稿
+> 💡 提交审批后系统调用 `ApprovalEngine.createApproval()` 创建审批实例，复用现有审批流程。审批通过/驳回/撤回复用 `POST/PUT /service/open/v2/approvals/{approvalId}/*`（现有接口）。
+
+#### #31 POST /service/open/v2/flows/{flowId}/versions/{versionId}/copy-to-draft — 复制到草稿
 
 ```json
 // Request: 无 body
@@ -1360,7 +1324,7 @@
 }
 ```
 
-#### #35 PUT /service/open/v2/flows/{id}/versions/{vid}/invalidate — 标记版本失效
+#### #32 PUT /service/open/v2/flows/{flowId}/versions/{versionId}/invalidate — 标记版本失效
 
 ```json
 // Request: 无 body
@@ -1387,7 +1351,7 @@
 }
 ```
 
-#### #36 PUT /service/open/v2/flows/{id}/versions/{vid}/restore — 恢复版本
+#### #33 PUT /service/open/v2/flows/{flowId}/versions/{versionId}/restore — 恢复版本
 
 ```json
 // Request: 无 body
@@ -1406,7 +1370,7 @@
 }
 ```
 
-#### #37 DELETE /service/open/v2/flows/{id}/versions/{vid} — 删除版本
+#### #34 DELETE /service/open/v2/flows/{flowId}/versions/{versionId} — 删除版本
 
 ```json
 // Request: 无 body
@@ -1422,9 +1386,9 @@
 
 ---
 
-### 3.6 运行记录（#38~#39）
+### 3.5 运行记录（#35~#36）
 
-#### #38 GET /service/open/v2/flows/{id}/executions — 运行记录列表
+#### #35 GET /service/open/v2/flows/{flowId}/executions — 运行记录列表
 
 ```json
 // Query: ?curPage=1&pageSize=20&status=2&triggerType=1&startTime=2026-06-08T00:00:00.000+08:00&endTime=2026-06-09T23:59:59.000+08:00
@@ -1472,7 +1436,7 @@
 }
 ```
 
-#### #39 GET /service/open/v2/flows/{id}/executions/{eid} — 运行记录详情
+#### #36 GET /service/open/v2/flows/{flowId}/executions/{executionId} — 运行记录详情
 
 ```json
 // Response 200
@@ -1538,9 +1502,11 @@
 }
 ```
 
+> 💡 `steps` 内嵌了各节点的输入/输出日志（FR-044），不再设独立日志查询接口。
+
 ---
 
-### 3.8 审批管理（#37~#40）
+### 3.6 审批管理（#37~#40）
 
 #### #37 POST /service/open/v2/connector-platform/approvals/{versionId}/urge — 一键催办
 
@@ -1591,11 +1557,11 @@
 
 ---
 
-### 3.9 运行时·触发与调试（#41~#43）
+### 3.7 调试代理（#41）
 
-#### #41 POST /service/open/v2/flows/{flowId}/versions/{versionId}/debug — 调试代理（open-server）
+#### #41 POST /service/open/v2/flows/{flowId}/versions/{versionId}/debug — 调试指定版本（open-server）
 
-前端调用 open-server，open-server 代理转发到 connector-api。
+前端调用 open-server，open-server 代理转发到 connector-api #43。
 
 ```json
 // Request
@@ -1641,7 +1607,11 @@
 }
 ```
 
-#### #42 POST /api/v1/flows/{flowId}/invoke — 调用已部署的连接流（connector-api）
+---
+
+### 3.8 运行时（#42~#43）— connector-api
+
+#### #42 POST /api/v1/flows/{flowId}/invoke — 调用已部署的连接流
 
 外部系统直接调用，运行时按 `flow_t.deployed_version_id` 执行。
 
@@ -1682,7 +1652,7 @@
 { "code": "503", "messageZh": "连接流未部署", "messageEn": "Flow not deployed", "data": null, "page": null }
 ```
 
-#### #43 POST /api/v1/flows/{flowId}/versions/{versionId}/debug — 调试执行（connector-api）
+#### #43 POST /api/v1/flows/{flowId}/versions/{versionId}/debug — 调试执行
 
 由 open-server #41 代理调用，不直接暴露给前端。
 
@@ -1709,9 +1679,23 @@
 
 ---
 
+### 3.9 操作日志查询（FR-046，复用现有模块）
+
+> 💡 FR-046 要求的操作日志查询复用应用现有 `OperateLog` 模块，不新增专用端点。前端通过以下现有接口查询：
+
+| 资源 | 复用接口 | 说明 |
+|------|---------|------|
+| 连接器 | `GET /service/open/v2/operate-logs?targetType=connector&targetId={connectorId}` | 现有接口，按 targetType 过滤 |
+| 连接流 | `GET /service/open/v2/operate-logs?targetType=flow&targetId={flowId}` | 现有接口，按 targetType 过滤 |
+
+支持分页参数 `curPage` / `pageSize`。日志内容包含：操作人、操作时间、操作类型、变更前后快照。V2 扩展的 `OperateEnum` 操作类型（创建、编辑、删除、恢复、发布、失效、部署、启动、停止、复制、提交审批、审批通过、审批驳回、撤回审批等）由后端自动记录，前端无需感知。
+
+---
+
 ## 附录：修订记录
 
 | 版本 | 日期 | 修订内容 | 修订人 |
 |------|------|---------|--------|
 | v1.0 | 2026-06-09 | 初始版本 — 对齐 spec.md v2.15，端点 45 个，6 个示例 | SDDU Plan Agent |
 | v4.0 | 2026-06-09 | **路径语义化 + 调试代理补全**：① 占位符统一命名（{id}→{connectorId}/{flowId}，{vid}→{versionId}）<br>② 调试拆为 open-server 代理（#41）+ connector-api 执行（#43）双接口<br>③ invoke 路径改为 `/api/v1/flows/{flowId}/invoke` | SDDU Plan Agent |
+| v5.0 | 2026-06-10 | **§3 全章重写，严格对齐 §2 接口清单**：① URL 白名单从独立端点归入 #9/#10 的 `connectionConfig.urlWhitelist` 字段<br>② §3.3~§3.8 编号统一对齐 §2（连接流 CRUD #16~#26、版本 #27~#34、运行记录 #35~#36、审批 #37~#40、调试 #41、运行时 #42~#43）<br>③ 删除旧 §3.3（独立 URL 白名单端点）<br>④ 新增 §3.9 操作日志查询复用说明<br>⑤ 补 #30 审批提交的「编排为空」422 错误响应<br>⑥ §0 服务归属修正为 41+2 | SDDU Plan Agent |
