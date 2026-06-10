@@ -257,6 +257,8 @@
 
 ## 2. 接口清单
 
+> ⚠️ **应用隔离**：以下 open-server 管理面接口（#1~#41）统一通过 `Header: X-App-Id` 传递应用 ID，`AppWhitelistInterceptor` 校验白名单准入 + 数据归属。connector-api 运行时接口（#42~#43）从 `flow_t.app_id` 自动获取，无需传入。
+
 | # | 服务 | 模块 | Method | Path | 变更 | 说明 | FR |
 |:--:|------|------|--------|------|:--:|------|:--:|
 | 1 | open-server | **连接器 CRUD** | POST | `/service/open/v2/connectors` | 修改 | 创建连接器（V2 自动生成空草稿版本） | FR-001 |
