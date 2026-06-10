@@ -126,7 +126,7 @@ CREATE TABLE `openplatform_app_version_t` (
 	`version_desc_en` varchar(2000) DEFAULT NULL COMMENT '版本英文描述',
 	`version_code` varchar(100) NOT NULL COMMENT '版本号',
 	`tenant_id` varchar(64) NOT NULL DEFAULT '' COMMENT '租户id',
-  `status` tinyint DEFAULT '1' COMMENT '状态：0=失效, 1=有效',
+  `status` tinyint DEFAULT '1' COMMENT '版本状态：1=草稿, 2=流程中(待审批), 3=驳回, 4=审批通过, 5=取消申请',
   `create_by` varchar(100) DEFAULT NULL COMMENT '创建人',
   `create_time` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   `last_update_by` varchar(100) DEFAULT NULL COMMENT '最后更新人',

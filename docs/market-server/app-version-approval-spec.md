@@ -1,8 +1,10 @@
 # market-server 通用审批管理模块 — 技术规格书（Spec）
 
-> **版本**: v9.1 | **日期**: 2026-06-08 | **状态**: 待评审
+> **版本**: v9.2 | **日期**: 2026-06-08 | **状态**: 待评审
 >
 > **效果图**: 浏览器打开 [`approval-page-mockup.html`](./approval-page-mockup.html) 可交互预览
+>
+> **v9.2 变更摘要**: 新增应用版本状态枚举 AppVersionStatusEnum（5 种状态）；已上架列表 SQL 简化为直接查询 version.status=4（APPROVED），不再 JOIN approval_record_t；计数 SQL 简化为 COUNT(DISTINCT)；新增审批操作与版本状态联动说明；更新测试用例 T-04~T-08
 >
 > **v9.1 变更摘要**: 标注为历史功能重建；API URL 重命名为自描述命名（app-pending / app-published / app-process）；待审批列表增加 businessType 过滤并按 last_update_time 排序；已上架列表完全重构为以 app_t 为主表 + 子查询取最新已上架版本
 >
@@ -248,7 +250,7 @@ WHERE status = 0
 GET /service/open/v2/approvals/app-published
 ```
 
-> **v9.1 变更**: 完全重构查询逻辑。主表从 `approval_record_t` 改为 `app_t`，通过子查询获取每个应用最新已上架版本（MAX(version_code)）。`appId` 直接从 `app_t.app_id` 获取（不再从属性表补查）。
+> **v9.2 变更**: 已上架列表不再 JOIN `approval_record_t`，改为直接查询 `openplatform_app_version_t.status = 4`（APPROVED）的版本。子查询仅涉及 1 张表（version），外层 JOIN 2 张表（a + v + 子查询结果）。`applicantId` 由 Service 层根据 version_id 从 approval_record 补查。
 
 **请求参数**：
 
@@ -257,7 +259,7 @@ GET /service/open/v2/approvals/app-published
 | curPage | Integer | 否 | 当前页，默认 1 |
 | pageSize | Integer | 否 | 每页条数，默认 10，前端可选 10/20/50 |
 
-> **注意**: 无 status 筛选参数，固定查询有效(status=1)的业务应用(app_type=1)，按应用去重取最新已上架版本。
+> **注意**: 无 status 筛选参数，固定查询有效(status=1)的业务应用(app_type=1)，按应用去重取最新已上架版本（version.status=4 即 APPROVED）。
 
 **响应**：同 API-1 结构。
 
@@ -271,35 +273,25 @@ GET /service/open/v2/approvals/app-published
 | appNameEn | String | 应用英文名（`app_t.app_name_en`） |
 | versionNo | String | 版本号（最新已上架版本的 `version_code`） |
 | capabilityNames | String | 应用关联能力中文名（逗号分隔），由 Service 层补查 `#CODE_ENRICH` |
-| applicantId | String | 申请人账号 ID（从审批记录获取，Service 层补查） |
+| applicantId | String | 申请人账号 ID（Service 层根据 version_id 查询 approval_record WHERE business_id = version_id AND status = 1 补查） |
 | createTime | String | 应用创建时间（`app_t.create_time`） |
 
-**主查询 SQL**（子查询取每个应用最新已上架版本，3 表 JOIN + 子查询）：
+**主查询 SQL**（子查询取每个应用最新已上架版本，2 表 JOIN + 子查询）：
 
 ```sql
-SELECT
-    a.id AS app_pk_id,
-    a.app_id,
-    a.app_name_cn,
-    a.app_name_en,
-    a.create_time,
-    a.last_update_time,
-    v.id AS version_id,
-    v.version_code
+SELECT a.id AS app_pk_id, a.app_id, a.app_name_cn, a.app_name_en,
+       a.create_time, a.last_update_time,
+       v.id AS version_id, v.version_code
 FROM openplatform_app_t a
 INNER JOIN (
     SELECT v2.app_id, MAX(v2.version_code) AS max_version_code
     FROM openplatform_app_version_t v2
-    INNER JOIN openplatform_v2_approval_record_t r2
-      ON v2.id = r2.business_id
-    WHERE r2.status = 1
-      AND r2.business_type = 'app_version_publish'
+    WHERE v2.status = 4
     GROUP BY v2.app_id
 ) latest ON a.id = latest.app_id
-INNER JOIN openplatform_app_version_t v
+INNER JOIN openplatform_app_version_t v 
   ON a.id = v.app_id AND v.version_code = latest.max_version_code
-WHERE a.status = 1
-  AND a.app_type = 1
+WHERE a.status = 1 AND a.app_type = 1
 ORDER BY a.last_update_time DESC
 LIMIT #{offset}, #{pageSize}
 ```
@@ -309,10 +301,10 @@ LIMIT #{offset}, #{pageSize}
 | 规则 | 结果 | 说明 |
 |------|:----:|------|
 | 无 SELECT * | ✓ | 所有字段明确列出 |
-| JOIN ≤ 3 表 | ✓ | 外层: a + v + latest(子查询结果) = 3 表；子查询: v2 + r2 = 2 表 |
+| JOIN ≤ 3 表 | ✓ | 外层: a + v + latest(子查询结果) = 2 JOIN；子查询: 仅 v2 = 1 表 |
 | 子查询嵌套 ≤ 3 层 | ✓ | 仅 1 层 FROM 子查询 |
 
-> **设计说明**：由于一个应用可能有多个已上架版本，使用子查询按 `app_id` 分组取 `MAX(version_code)` 确保每个应用只返回最新已上架版本。外层通过 `INNER JOIN` 子查询结果和版本表精确匹配到该版本记录。
+> **设计说明**：由于一个应用可能有多个已上架版本，使用子查询按 `app_id` 分组取 `MAX(version_code)` 确保每个应用只返回最新已上架版本。子查询仅过滤 `v2.status = 4`（APPROVED），不再依赖 approval_record_t 表。外层通过 `INNER JOIN` 子查询结果和版本表精确匹配到该版本记录。
 
 **Service 层补查**：
 
@@ -341,19 +333,10 @@ WHERE acr.app_id = #{appPkId}
 **计数 SQL**：
 
 ```sql
-SELECT COUNT(*)
-FROM openplatform_app_t a
-INNER JOIN (
-    SELECT v2.app_id
-    FROM openplatform_app_version_t v2
-    INNER JOIN openplatform_v2_approval_record_t r2
-      ON v2.id = r2.business_id
-    WHERE r2.status = 1
-      AND r2.business_type = 'app_version_publish'
-    GROUP BY v2.app_id
-) latest ON a.id = latest.app_id
-WHERE a.status = 1
-  AND a.app_type = 1
+SELECT COUNT(DISTINCT v.app_id)
+FROM openplatform_app_version_t v
+INNER JOIN openplatform_app_t a ON v.app_id = a.id
+WHERE v.status = 4 AND a.status = 1 AND a.app_type = 1
 ```
 
 #### API-3: 审批操作（通过/驳回统一接口）
@@ -814,7 +797,7 @@ CREATE TABLE `openplatform_app_version_t` (
   `version_desc_en` varchar(2000) DEFAULT NULL COMMENT '版本英文描述',
   `version_code` varchar(100) NOT NULL COMMENT '版本号',
   `tenant_id` varchar(64) NOT NULL DEFAULT '' COMMENT '租户id',
-  `status` tinyint DEFAULT '1' COMMENT '状态：0=失效, 1=有效',
+  `status` tinyint DEFAULT '1' COMMENT '版本状态：1=草稿, 2=流程中(待审批), 3=驳回, 4=审批通过, 5=取消申请',
   `create_by` varchar(100) DEFAULT NULL COMMENT '创建人',
   `create_time` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   `last_update_by` varchar(100) DEFAULT NULL COMMENT '最后更新人',
@@ -890,7 +873,8 @@ CREATE TABLE `openplatform_app_p_t` (
 > - **待审批列表**：响应 VO 中的 `appId` = `openplatform_app_p_t.property_value`（Service 层补查），因为主表是 approval_record
 > - **已上架列表**：响应 VO 中的 `appId` = `openplatform_app_t.app_id`（直接从主表获取，无需补查），因为主表是 app_t
 > - 响应 VO 中的 `versionNo` 对应数据库字段 `openplatform_app_version_t.version_code`
-> - **已上架列表设计要点**：主表为 `openplatform_app_t`（筛选 status=1, app_type=1），通过子查询取每个应用最新已上架版本（MAX(version_code)），applicantId 由 Service 层从 approval_record 补查
+> - **已上架列表设计要点**：主表为 `openplatform_app_t`（筛选 status=1, app_type=1），通过子查询取每个应用最新已上架版本（version.status=4 即 APPROVED，MAX(version_code)），applicantId 由 Service 层从 approval_record 补查
+> - **版本状态枚举**：`openplatform_app_version_t.status` 使用 `AppVersionStatusEnum`（1=草稿, 2=流程中, 3=驳回, 4=审批通过, 5=取消申请），详见 5.7 节
 
 ---
 
@@ -904,7 +888,7 @@ ApprovalController（3 个端点）
     ▼
 ApprovalServiceImpl（流程编排）
     ├─ 1a. 待审批主查询（3 表 JOIN: record + version + app，按 business_type 过滤）
-    ├─ 1b. 已上架主查询（app_t 主表 + 子查询取 MAX(version_code)）
+    ├─ 1b. 已上架主查询（app_t 主表 + 子查询取 MAX(version_code) WHERE v.status=4）
     ├─ 2. Service 层补查能力名称（单独查询，不增加主查询表数）
     ├─ 3. 组装 VO（含 appNameCn/appNameEn/versionNo/appId/capabilityNames/applicantId）
     │
@@ -922,7 +906,7 @@ ApprovalServiceImpl（流程编排）
     │                │         │          │
     │                ▼         ▼          ▼
     │          版本状态更新   subscription  subscription
-    │          (未来实现)    status 更新    status 更新
+    │          (v.status=4/3) status 更新    status 更新
 ```
 
 ### 5.2 核心接口设计
@@ -1168,11 +1152,48 @@ stateDiagram-v2
 
 > **说明**：market-server 仅负责审批操作（process），不负责审批记录创建和流程编排（由 open-server 负责）。
 
+#### 审批操作与版本状态联动
+
+```
+开发者创建版本 → version.status = DRAFT(1)
+提交审批申请 → version.status = IN_PROCESS(2), 创建 PENDING 审批记录
+审批通过 → version.status = APPROVED(4) [handler.onApproved]
+审批驳回 → version.status = REJECTED(3) [handler.onRejected]
+取消申请 → version.status = CANCELLED(5) [后续迭代]
+```
+
+> **说明**：`openplatform_app_version_t.status` 为版本自身状态，与 `openplatform_v2_approval_record_t.status`（审批记录状态）是两套独立的状态体系。已上架列表查询使用版本状态（`v.status = 4`），待审批列表查询使用审批记录状态（`r.status = 0`）。
+
+### 5.7 应用版本状态枚举
+
+```java
+public enum AppVersionStatusEnum {
+    DRAFT(1, "草稿"),
+    IN_PROCESS(2, "流程中（待审批）"),
+    REJECTED(3, "驳回"),
+    APPROVED(4, "审批通过"),
+    CANCELLED(5, "取消申请");
+
+    private final int value;
+    private final String description;
+}
+```
+
+| 状态 | 值 | 说明 | 触发时机 |
+|------|:--:|------|---------|
+| DRAFT | 1 | 草稿，版本刚创建 | 开发者在 open-server 创建新版本 |
+| IN_PROCESS | 2 | 流程中（待审批） | 开发者提交审批申请，open-server 更新版本状态 |
+| REJECTED | 3 | 驳回 | market-server handler.onRejected() 回调 |
+| APPROVED | 4 | 审批通过 | market-server handler.onApproved() 回调 |
+| CANCELLED | 5 | 取消申请 | 后续迭代（撤回功能） |
+
+> **注意**：此枚举定义在 market-server 的 `approval/constant/AppVersionStatusEnum.java` 中，用于已上架列表 SQL 过滤（`WHERE v2.status = 4`）和 Handler 回调中更新版本状态。
+
 ---
 
 ## 6. File Manifest（文件清单）
 
-### 6.1 后端新建文件（19 个）
+### 6.1 后端新建文件（20 个）
 
 > 路径前缀：`market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/`
 
@@ -1197,12 +1218,13 @@ stateDiagram-v2
 | 17 | `approval/dto/ApprovalProcessRequest.java` | 审批操作请求（action） |
 | 18 | `approval/vo/ApprovalListVo.java` | 列表展示 VO（含 appNameCn, appNameEn, versionNo, appId, capabilityNames, applicantId, createTime） |
 | 19 | `approval/constant/ApprovalConstants.java` | 状态/操作常量 |
+| 20 | `approval/constant/AppVersionStatusEnum.java` | 应用版本状态枚举（DRAFT/IN_PROCESS/REJECTED/APPROVED/CANCELLED） |
 
 > MyBatis XML（路径前缀 `market-server/src/main/resources/mapper/`）：
 
 | # | 文件路径 | 说明 |
 |:-:|---------|------|
-| 20 | `approval/ApprovalRecordMapper.xml` | SQL（selectPendingList, selectPublishedList, selectById, update, countPending, countPublished）— 所有查询明确列出字段，JOIN ≤ 3 表；已上架列表以 app_t 为主表 + 子查询取 MAX(version_code) |
+| 20 | `approval/ApprovalRecordMapper.xml` | SQL（selectPendingList, selectPublishedList, selectById, update, countPending, countPublished）— 所有查询明确列出字段，JOIN ≤ 3 表；已上架列表以 app_t 为主表 + 子查询取 MAX(version_code) WHERE v.status=4（APPROVED），不再 JOIN approval_record_t |
 | 21 | `approval/ApprovalLogMapper.xml` | SQL（insert） |
 
 ### 6.2 前端新建文件（4 个）
@@ -1237,11 +1259,11 @@ stateDiagram-v2
 | T-01 | GET app-pending — 无参数 | 返回所有 status=0 且 business_type='app_version_publish' 的记录，含 appNameCn/appNameEn/versionNo/appId/capabilityNames/applicantId，按 lastUpdateTime DESC 排序 |
 | T-02 | GET app-pending — 分页 curPage=2, pageSize=5 | 返回第 6-10 条记录，page.total 正确 |
 | T-03 | GET app-pending — 无记录 | data=[], page.total=0 |
-| T-04 | GET app-published — 无参数 | 返回所有 status=1 且 app_type=1 的应用及其最新 APPROVED 版本，按 lastUpdateTime DESC 排序，appId 来自 app_t.app_id |
-| T-05 | GET app-published — 同一应用多个 APPROVED 版本 | 仅返回 version_code 最大的版本（子查询 MAX(version_code)） |
-| T-06 | GET app-published — 同一应用 v1(APPROVED) + v2(REJECTED) | 返回 v1（最新已上架版本），v2 被驳回不影响 v1 展示 |
-| T-07 | GET app-published — 应用仅有 REJECTED 记录 | 该应用不出现在结果中（子查询无匹配记录，INNER JOIN 过滤掉） |
-| T-08 | GET app-published — 分页 | 以应用维度分页（非审批记录维度），page.total = 有已上架版本的应用数 |
+| T-04 | GET app-published — 无参数 | 返回所有 status=1 且 app_type=1 的应用及其最新已上架版本（version.status=4），按 lastUpdateTime DESC 排序，appId 来自 app_t.app_id。子查询仅过滤 version.status=4，不 JOIN approval_record_t |
+| T-05 | GET app-published — 同一应用多个已上架版本 | 仅返回 version_code 最大的版本（子查询 MAX(version_code) WHERE v.status=4） |
+| T-06 | GET app-published — 同一应用 v1(status=4) + v2(status=3) | 返回 v1（最新已上架版本），v2 被驳回（status=3）不影响 v1 展示 |
+| T-07 | GET app-published — 应用仅有 status=3(REJECTED) 的版本 | 该应用不出现在结果中（子查询无 status=4 的记录，INNER JOIN 过滤掉） |
+| T-08 | GET app-published — 分页 | 以应用维度分页（非审批记录维度），page.total = COUNT(DISTINCT v.app_id) WHERE v.status=4 AND a.status=1 AND a.app_type=1 |
 
 #### 审批操作
 
