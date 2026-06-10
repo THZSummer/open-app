@@ -342,20 +342,20 @@ WHERE v.status = 4 AND a.status = 1 AND a.app_type = 1
 #### API-3: 审批操作（通过/驳回统一接口）
 
 ```
-POST /service/open/v2/approvals/app-process/{id}
+POST /service/open/v2/approvals/app-process
 ```
-
-**路径参数**：`id` — ApprovalRecord ID
 
 **请求 Body**：
 ```json
 {
+  "id": "123",
   "action": 0
 }
 ```
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
+| id | String | 是 | 审批记录 ID（Controller 接收 String，Service 层转换为 Long） |
 | action | Integer | 是 | 0=通过（APPROVE）, 1=驳回（REJECT） |
 
 **响应**：
@@ -446,7 +446,7 @@ src/router/routeRedBlue/
 // 审批管理
 APPROVAL_PENDING_LIST: '/market-web/service/open/v2/approvals/app-pending',
 APPROVAL_PUBLISHED_LIST: '/market-web/service/open/v2/approvals/app-published',
-APPROVAL_PROCESS: '/market-web/service/open/v2/approvals/app-process/{id}',
+APPROVAL_PROCESS: '/market-web/service/open/v2/approvals/app-process',
 ```
 
 #### 2.2.4 页面设计
@@ -503,7 +503,7 @@ const renderAppName = (text, record) => {
 同意操作:
   1. 点击"同意"按钮
   2. Modal.confirm 弹出确认框，展示应用名称、版本号、申请账号
-  3. 用户确认 → 调用 thunk.processApproval(id, { action: 0 })
+  3. 用户确认 → 调用 thunk.processApproval({ id: record.id, action: 0 })
   4. 检查 result.code === '200'
   5. 成功 → message.success('审批通过') + fetchData() 刷新列表
   6. 失败 → message.error({ content: result?.messageZh || '操作失败' })
@@ -512,7 +512,7 @@ const renderAppName = (text, record) => {
 拒绝操作:
   1. 点击"拒绝"按钮
   2. Modal.confirm 弹出确认框，展示应用名称、版本号、申请账号
-  3. 用户确认 → 调用 thunk.processApproval(id, { action: 1 })
+  3. 用户确认 → 调用 thunk.processApproval({ id: record.id, action: 1 })
   4. 检查 result.code === '200'
   5. 成功 → message.success('已拒绝') + fetchData() 刷新列表
   6. 失败 → message.error({ content: result?.messageZh || '操作失败' })
@@ -544,12 +544,12 @@ export const fetchPublishedList = async (params = {}) => {
   } catch (err) { return {}; }
 };
 
-export const processApproval = async (id, data) => {
+export const processApproval = async (data) => {
   try {
-    return await fetchApi(
-      buildApiUrl(API_CONFIG.PROCESS, { id }),
-      { method: 'POST', body: JSON.stringify(data) }
-    ) || {};
+    return await fetchApi(API_CONFIG.PROCESS, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }) || {};
   } catch (err) { return {}; }
 };
 ```
@@ -632,7 +632,7 @@ const handleApprove = (record) => {
     title: '确认审批通过',
     content: `应用：${record.appNameCn}，版本：${record.versionNo}，申请账号：${record.applicantId}`,
     onOk: async () => {
-      const result = await processApproval(record.id, { action: APPROVAL_ACTION.APPROVE });
+      const result = await processApproval({ id: String(record.id), action: APPROVAL_ACTION.APPROVE });
       if (result.code === '200') {
         message.success('审批通过');
         fetchData();
@@ -649,7 +649,7 @@ const handleReject = (record) => {
     content: `应用：${record.appNameCn}，版本：${record.versionNo}，申请账号：${record.applicantId}`,
     okType: 'danger',
     onOk: async () => {
-      const result = await processApproval(record.id, { action: APPROVAL_ACTION.REJECT });
+      const result = await processApproval({ id: String(record.id), action: APPROVAL_ACTION.REJECT });
       if (result.code === '200') {
         message.success('已拒绝');
         fetchData();
@@ -1215,7 +1215,7 @@ public enum AppVersionStatusEnum {
 | 14 | `approval/mapper/ApprovalFlowMapper.java` | Mapper 接口 |
 | 15 | `approval/dto/ApprovalNodeDto.java` | 节点 DTO |
 | 16 | `approval/dto/ApprovalListRequest.java` | 列表查询请求（curPage, pageSize） |
-| 17 | `approval/dto/ApprovalProcessRequest.java` | 审批操作请求（action） |
+| 17 | `approval/dto/ApprovalProcessRequest.java` | 审批操作请求（id: String, action: Integer） |
 | 18 | `approval/vo/ApprovalListVo.java` | 列表展示 VO（含 appNameCn, appNameEn, versionNo, appId, capabilityNames, applicantId, createTime） |
 | 19 | `approval/constant/ApprovalConstants.java` | 状态/操作常量 |
 | 20 | `approval/constant/AppVersionStatusEnum.java` | 应用版本状态枚举（DRAFT/IN_PROCESS/REJECTED/APPROVED/CANCELLED） |

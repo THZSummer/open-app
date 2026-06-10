@@ -205,7 +205,7 @@ graph TB
 1. 审批人点击某条记录的"同意"按钮
 2. 前端弹出 Modal.confirm 二次确认框，展示应用名称、版本号、申请人信息
 3. 审批人点击"确认通过"
-4. 前端调用 `POST /approvals/app-process/{id}`，body: `{ action: 0 }`
+4. 前端调用 `POST /approvals/app-process`，body: `{ id: "123", action: 0 }`
 5. 后端校验记录存在、状态为 PENDING、操作人匹配
 6. 后端插入 ApprovalLog（action=APPROVE）
 7. 后端判断最后节点 → 更新 status=APPROVED + 触发 handler.onApproved
@@ -236,7 +236,7 @@ graph TB
 1. 审批人点击某条记录的"拒绝"按钮
 2. 前端弹出 Modal.confirm 二次确认框，展示应用名称、版本号、申请账号信息
 3. 审批人点击"确认拒绝"
-4. 前端调用 `POST /approvals/app-process/{id}`，body: `{ action: 1 }`
+4. 前端调用 `POST /approvals/app-process`，body: `{ id: "123", action: 1 }`
 5. 后端校验记录存在、状态为 PENDING、操作人匹配
 6. 后端插入 ApprovalLog（action=REJECT）
 7. 后端更新 status=REJECTED + 触发 handler.onRejected
@@ -556,7 +556,8 @@ sequenceDiagram
     participant FE as 前端
     participant MS as market-server
 
-    FE->>MS: POST /approvals/app-process/{id}<br/>{ action: 0/1 }
+    FE->>MS: POST /approvals/app-process<br/>{ id: "123", action: 0/1 }
+    MS->>MS: 0. String id → Long id（Service层转换）
     MS->>MS: 1. selectById(id)
     MS->>MS: 2. 校验 status == PENDING
     MS->>MS: 3. parseNodes(combinedNodes)
@@ -580,18 +581,13 @@ sequenceDiagram
 
 | URL | Method | 功能 | 增删改查 | 鉴权 | TPS | 时延 |
 |-----|--------|------|---------|------|-----|------|
-| `/service/open/v2/approvals/app-process/{id}` | POST | 审批操作 | 改 | @AuthRole | 20 | <300ms |
-
-**路径参数**：
-
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| id | Long | 审批记录 ID |
+| `/service/open/v2/approvals/app-process` | POST | 审批操作 | 改 | @AuthRole | 20 | <300ms |
 
 **请求 Body**：
 
 | 字段 | 类型 | 必填 | 格式 | 说明 |
 |------|------|:----:|------|------|
+| id | String | 是 | 数字字符串 | 审批记录 ID（Service 层转换为 Long） |
 | action | Integer | 是 | 0 或 1 | 0=通过, 1=驳回 |
 
 **返回值**：
