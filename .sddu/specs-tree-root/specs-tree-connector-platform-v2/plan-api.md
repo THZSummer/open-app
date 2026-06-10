@@ -263,68 +263,55 @@
 > ③ 数据归属（Service 层）：校验操作的资源是否归属该应用。
 > connector-api 运行时接口（#42~#43）从 `flow_t.app_id` 自动获取，无需传入。
 
-**改动点编号说明**：
-
-| 编号 | 含义 |
-|:--:|------|
-| ① | 三层权限校验（`Header: X-App-Id`） |
-| ② | 行为变更（参数/返回值/业务逻辑变化） |
-| ③ | 路径变更 |
-| ④ | 新增接口 |
-| ⑤ | 接口删除 |
-| ⑥ | 替换旧接口（注明被替换的 V1 接口） |
-
-> 💡 编号可组合，如 `①②` 表示同时涉及权限校验 + 行为变更。
-
-| # | 服务 | 模块 | Method | Path | 变更 | 说明 | 改动点 | FR |
-|:--:|------|------|--------|------|:--:|------|:--:|:--:|
-| 1 | open-server | **连接器 CRUD** | POST | `/service/open/v2/connectors` | 修改 | 创建连接器 | ①② | FR-001 |
-| 2 | | | GET | `/service/open/v2/connectors` | 修改 | 查询连接器列表 | ① | — |
-| 3 | | | GET | `/service/open/v2/connectors/{connectorId}` | 沿用 | 查询连接器详情 | ① | — |
-| 4 | | | PUT | `/service/open/v2/connectors/{connectorId}` | 沿用 | 更新连接器基本信息 | ① | — |
-| 5 | | | PUT | `/service/open/v2/connectors/{connectorId}/invalidate` | 新增 | 标记连接器失效 | ①④ | FR-003 |
-| 6 | | | PUT | `/service/open/v2/connectors/{connectorId}/restore` | 新增 | 恢复连接器 | ①④ | FR-002 |
-| 7 | | | DELETE | `/service/open/v2/connectors/{connectorId}` | 修改 | 删除连接器 | ①② | FR-004 |
-| 8 | | **连接器版本** | GET | `/service/open/v2/connectors/{connectorId}/versions` | 新增 | 版本列表 | ①④ | FR-008 |
-| 9 | | | GET | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 版本详情，替换 V1 `GET /config` | ①④⑥ | FR-008 |
-| 10 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 编辑草稿，替换 V1 `PUT /config` | ①④⑥ | FR-005 |
-| 11 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/publish` | 新增 | 发布版本 | ①④ | FR-007 |
-| 12 | | | POST | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | ①④ | FR-006 |
-| 13 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/invalidate` | 新增 | 标记版本失效 | ①④ | FR-009 |
-| 14 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/restore` | 新增 | 恢复版本 | ①④ | FR-011 |
-| 15 | | | DELETE | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 删除版本 | ①④ | FR-010 |
-| — | | **已删除** | GET | `/service/open/v2/connectors/{connectorId}/config` | 删除 | V1 获取连接器配置 → V2 由 #9 替代 | ⑤ | — |
-| — | | | PUT | `/service/open/v2/connectors/{connectorId}/config` | 删除 | V1 编辑连接器配置 → V2 由 #10 替代 | ⑤ | — |
-| 16 | | **连接流 CRUD** | POST | `/service/open/v2/flows` | 修改 | 创建连接流 | ①② | FR-016 |
-| 17 | | | GET | `/service/open/v2/flows` | 修改 | 查询连接流列表 | ①② | — |
-| 18 | | | GET | `/service/open/v2/flows/{flowId}` | 沿用 | 查询连接流详情 | ① | — |
-| 19 | | | PUT | `/service/open/v2/flows/{flowId}` | 沿用 | 更新连接流基本信息 | ① | — |
-| 20 | | | POST | `/service/open/v2/flows/{flowId}/copy` | 新增 | 一键复制连接流 | ①④ | FR-017 |
-| 21 | | | POST | `/service/open/v2/flows/{flowId}/deploy` | 新增 | 部署+启动（选择已发布版本） | ①④ | FR-018 |
-| 22 | | | POST | `/service/open/v2/flows/{flowId}/start` | 修改 | 启动连接流（V2 状态模型变更） | ①② | FR-019 |
-| 23 | | | POST | `/service/open/v2/flows/{flowId}/stop` | 沿用 | 停止连接流 | ① | FR-020 |
-| 24 | | | PUT | `/service/open/v2/flows/{flowId}/invalidate` | 新增 | 标记连接流失效 | ①④ | FR-022 |
-| 25 | | | PUT | `/service/open/v2/flows/{flowId}/restore` | 新增 | 恢复连接流 | ①④ | FR-021 |
-| 26 | | | DELETE | `/service/open/v2/flows/{flowId}` | 修改 | 删除连接流 | ①② | FR-023 |
-| 27 | | **连接流版本** | GET | `/service/open/v2/flows/{flowId}/versions` | 新增 | 版本列表 | ①④ | FR-027 |
-| 28 | | | GET | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 版本详情，替换 V1 `GET /config` | ①④⑥ | FR-027 |
-| 29 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 编辑草稿，替换 V1 `PUT /config` | ①④⑥ | FR-024 |
-| 30 | | | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/submit-approval` | 新增 | 提交审批 | ①④ | FR-026 |
-| 31 | | | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | ①④ | FR-025 |
-| 32 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}/invalidate` | 新增 | 标记版本失效 | ①④ | FR-028 |
-| 33 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}/restore` | 新增 | 恢复版本 | ①④ | FR-030 |
-| 34 | | | DELETE | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 删除版本 | ①④ | FR-029 |
-| — | | **已删除** | GET | `/service/open/v2/flows/{flowId}/config` | 删除 | V1 获取编排配置 → V2 由 #28 替代 | ⑤ | — |
-| — | | | PUT | `/service/open/v2/flows/{flowId}/config` | 删除 | V1 保存编排配置 → V2 由 #29 替代 | ⑤ | — |
-| 35 | | **运行记录** | GET | `/service/open/v2/flows/{flowId}/executions` | 新增 | 运行记录列表（分页+过滤） | ①④ | FR-042 |
-| 36 | | | GET | `/service/open/v2/flows/{flowId}/executions/{executionId}` | 新增 | 运行记录详情 | ①④ | FR-042 |
-| 37 | | **审批管理** | POST | `/service/open/v2/connector-platform/approvals/{versionId}/urge` | 新增 | 一键催办 | ①④ | FR-033 |
-| 38 | | | GET | `/service/open/v2/connector-platform/approvals/{versionId}/status` | 新增 | 查询审批状态 | ①④ | FR-031 |
-| 39 | | | GET | `/service/open/v2/approval-flows` | 修改 | 查询审批人配置 | ①② | FR-032 |
-| 40 | | | PUT | `/service/open/v2/approval-flows` | 修改 | 更新审批人配置 | ①② | FR-032 |
-| 41 | open-server | **调试代理** | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/debug` | 新增 | 调试指定版本（替换 V1 test-run） | ①④⑥ | FR-041 |
-| 42 | connector-api | **运行时** | POST | `/api/v1/flows/{flowId}/invoke` | 修改 | 调用已部署的连接流 | ②③⑥ | G11 |
-| 43 | | | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | 新增 | 调试指定版本 | ④ | FR-041 |
+| # | 服务 | 模块 | Method | Path | 变更 | 接口名称 | 改动点 | FR |
+|:--:|------|------|--------|------|:--:|------|------|:--:|
+| 1 | open-server | **连接器 CRUD** | POST | `/service/open/v2/connectors` | 修改 | 创建连接器 | 1. 三层权限校验<br>2. 自动创建空草稿版本 | FR-001 |
+| 2 | | | GET | `/service/open/v2/connectors` | 修改 | 查询连接器列表 | 1. 三层权限校验<br>2. 新增 appId 过滤 | — |
+| 3 | | | GET | `/service/open/v2/connectors/{connectorId}` | 沿用 | 查询连接器详情 | 1. 三层权限校验 | — |
+| 4 | | | PUT | `/service/open/v2/connectors/{connectorId}` | 沿用 | 更新连接器基本信息 | 1. 三层权限校验 | — |
+| 5 | | | PUT | `/service/open/v2/connectors/{connectorId}/invalidate` | 新增 | 标记连接器失效 | 1. 三层权限校验<br>2. 新增接口 | FR-003 |
+| 6 | | | PUT | `/service/open/v2/connectors/{connectorId}/restore` | 新增 | 恢复连接器 | 1. 三层权限校验<br>2. 新增接口 | FR-002 |
+| 7 | | | DELETE | `/service/open/v2/connectors/{connectorId}` | 修改 | 删除连接器 | 1. 三层权限校验<br>2. 仅已失效状态可删 | FR-004 |
+| 8 | | **连接器版本** | GET | `/service/open/v2/connectors/{connectorId}/versions` | 新增 | 版本列表 | 1. 三层权限校验<br>2. 新增接口 | FR-008 |
+| 9 | | | GET | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 版本详情 | 1. 三层权限校验<br>2. 新增接口<br>3. 替换 V1 `GET /config` | FR-008 |
+| 10 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 编辑草稿 | 1. 三层权限校验<br>2. 新增接口<br>3. 替换 V1 `PUT /config` | FR-005 |
+| 11 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/publish` | 新增 | 发布版本 | 1. 三层权限校验<br>2. 新增接口 | FR-007 |
+| 12 | | | POST | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/copy-to-draft` | 新增 | 复制到草稿 | 1. 三层权限校验<br>2. 新增接口 | FR-006 |
+| 13 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/invalidate` | 新增 | 标记版本失效 | 1. 三层权限校验<br>2. 新增接口 | FR-009 |
+| 14 | | | PUT | `/service/open/v2/connectors/{connectorId}/versions/{versionId}/restore` | 新增 | 恢复版本 | 1. 三层权限校验<br>2. 新增接口 | FR-011 |
+| 15 | | | DELETE | `/service/open/v2/connectors/{connectorId}/versions/{versionId}` | 新增 | 删除版本 | 1. 三层权限校验<br>2. 新增接口 | FR-010 |
+| — | | **已删除** | GET | `/service/open/v2/connectors/{connectorId}/config` | 删除 | 获取连接器配置 | V1 接口，V2 由 #9 替代 | — |
+| — | | | PUT | `/service/open/v2/connectors/{connectorId}/config` | 删除 | 编辑连接器配置 | V1 接口，V2 由 #10 替代 | — |
+| 16 | | **连接流 CRUD** | POST | `/service/open/v2/flows` | 修改 | 创建连接流 | 1. 三层权限校验<br>2. 自动创建空草稿版本 | FR-016 |
+| 17 | | | GET | `/service/open/v2/flows` | 修改 | 查询连接流列表 | 1. 三层权限校验<br>2. 新增 appId/lifecycleStatus 过滤 | — |
+| 18 | | | GET | `/service/open/v2/flows/{flowId}` | 沿用 | 查询连接流详情 | 1. 三层权限校验 | — |
+| 19 | | | PUT | `/service/open/v2/flows/{flowId}` | 沿用 | 更新连接流基本信息 | 1. 三层权限校验 | — |
+| 20 | | | POST | `/service/open/v2/flows/{flowId}/copy` | 新增 | 一键复制连接流 | 1. 三层权限校验<br>2. 新增接口 | FR-017 |
+| 21 | | | POST | `/service/open/v2/flows/{flowId}/deploy` | 新增 | 部署+启动 | 1. 三层权限校验<br>2. 新增接口，选择已发布版本 | FR-018 |
+| 22 | | | POST | `/service/open/v2/flows/{flowId}/start` | 修改 | 启动连接流 | 1. 三层权限校验<br>2. V2 状态模型变更 | FR-019 |
+| 23 | | | POST | `/service/open/v2/flows/{flowId}/stop` | 沿用 | 停止连接流 | 1. 三层权限校验 | FR-020 |
+| 24 | | | PUT | `/service/open/v2/flows/{flowId}/invalidate` | 新增 | 标记连接流失效 | 1. 三层权限校验<br>2. 新增接口 | FR-022 |
+| 25 | | | PUT | `/service/open/v2/flows/{flowId}/restore` | 新增 | 恢复连接流 | 1. 三层权限校验<br>2. 新增接口 | FR-021 |
+| 26 | | | DELETE | `/service/open/v2/flows/{flowId}` | 修改 | 删除连接流 | 1. 三层权限校验<br>2. 仅已失效状态可删 | FR-023 |
+| 27 | | **连接流版本** | GET | `/service/open/v2/flows/{flowId}/versions` | 新增 | 版本列表 | 1. 三层权限校验<br>2. 新增接口 | FR-027 |
+| 28 | | | GET | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 版本详情 | 1. 三层权限校验<br>2. 新增接口<br>3. 替换 V1 `GET /config` | FR-027 |
+| 29 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 编辑草稿 | 1. 三层权限校验<br>2. 新增接口<br>3. 替换 V1 `PUT /config` | FR-024 |
+| 30 | | | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/submit-approval` | 新增 | 提交审批 | 1. 三层权限校验<br>2. 新增接口 | FR-026 |
+| 31 | | | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/copy-to-draft` | 新增 | 复制到草稿 | 1. 三层权限校验<br>2. 新增接口 | FR-025 |
+| 32 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}/invalidate` | 新增 | 标记版本失效 | 1. 三层权限校验<br>2. 新增接口 | FR-028 |
+| 33 | | | PUT | `/service/open/v2/flows/{flowId}/versions/{versionId}/restore` | 新增 | 恢复版本 | 1. 三层权限校验<br>2. 新增接口 | FR-030 |
+| 34 | | | DELETE | `/service/open/v2/flows/{flowId}/versions/{versionId}` | 新增 | 删除版本 | 1. 三层权限校验<br>2. 新增接口 | FR-029 |
+| — | | **已删除** | GET | `/service/open/v2/flows/{flowId}/config` | 删除 | 获取编排配置 | V1 接口，V2 由 #28 替代 | — |
+| — | | | PUT | `/service/open/v2/flows/{flowId}/config` | 删除 | 保存编排配置 | V1 接口，V2 由 #29 替代 | — |
+| 35 | | **运行记录** | GET | `/service/open/v2/flows/{flowId}/executions` | 新增 | 运行记录列表 | 1. 三层权限校验<br>2. 新增接口 | FR-042 |
+| 36 | | | GET | `/service/open/v2/flows/{flowId}/executions/{executionId}` | 新增 | 运行记录详情 | 1. 三层权限校验<br>2. 新增接口 | FR-042 |
+| 37 | | **审批管理** | POST | `/service/open/v2/connector-platform/approvals/{versionId}/urge` | 新增 | 一键催办 | 1. 三层权限校验<br>2. 新增接口 | FR-033 |
+| 38 | | | GET | `/service/open/v2/connector-platform/approvals/{versionId}/status` | 新增 | 查询审批状态 | 1. 三层权限校验<br>2. 新增接口 | FR-031 |
+| 39 | | | GET | `/service/open/v2/approval-flows` | 修改 | 查询审批人配置 | 1. 三层权限校验<br>2. 复用现有接口，新增 `connector_flow_version_publish` 模板 | FR-032 |
+| 40 | | | PUT | `/service/open/v2/approval-flows` | 修改 | 更新审批人配置 | 1. 三层权限校验<br>2. 复用现有接口 | FR-032 |
+| 41 | open-server | **调试代理** | POST | `/service/open/v2/flows/{flowId}/versions/{versionId}/debug` | 新增 | 调试指定版本 | 1. 三层权限校验<br>2. 新增接口<br>3. 替换 V1 test-run | FR-041 |
+| 42 | connector-api | **运行时** | POST | `/api/v1/flows/{flowId}/invoke` | 修改 | 调用已部署的连接流 | 1. 路径变更（原 `/api/v1/trigger/{flowId}/invoke`）<br>2. 替换 V1 trigger invoke | G11 |
+| 43 | | | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | 新增 | 调试指定版本 | 1. 新增接口（由 open-server #41 代理调用） | FR-041 |
 
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
 > 💡 审批提交/通过/驳回/撤回复用现有 `ApprovalController` 接口（`/service/open/v2/approvals/*`），不新增专用端点。#30 提交审批时系统调用 `ApprovalEngine.createApproval()` 创建审批实例。
