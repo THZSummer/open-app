@@ -256,50 +256,50 @@
 
 ## 2. 接口清单
 
-| # | 服务 | Method | Path | 变更 | 说明 | FR |
-|:--:|------|--------|------|:--:|------|:--:|
-| 1 | open-server | POST | `/service/open/v2/connectors` | 修改 | 创建连接器（V2 自动生成空草稿版本） | FR-001 |
-| 2 | | GET | `/service/open/v2/connectors` | 修改 | 查询连接器列表（新增 appId 过滤） | — |
-| 3 | | GET | `/service/open/v2/connectors/{id}` | 沿用 | 查询连接器详情 | — |
-| 4 | | PUT | `/service/open/v2/connectors/{id}` | 沿用 | 更新连接器基本信息 | — |
-| 5 | | PUT | `/service/open/v2/connectors/{id}/invalidate` | 新增 | 标记连接器失效 | FR-003 |
-| 6 | | PUT | `/service/open/v2/connectors/{id}/restore` | 新增 | 恢复连接器 | FR-002 |
-| 7 | | DELETE | `/service/open/v2/connectors/{id}` | 修改 | 删除连接器（仅已失效状态可删） | FR-004 |
-| 8 | | GET | `/service/open/v2/connectors/{id}/versions` | 新增 | 版本列表 | FR-008 |
-| 9 | | GET | `/service/open/v2/connectors/{id}/versions/{vid}` | 新增 | 版本详情（只读快照） | FR-008 |
-| 10 | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}` | 新增 | 编辑草稿保存 | FR-005 |
-| 11 | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}/publish` | 新增 | 发布版本 | FR-007 |
-| 12 | | POST | `/service/open/v2/connectors/{id}/versions/{vid}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | FR-006 |
-| 13 | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}/invalidate` | 新增 | 标记版本失效 | FR-009 |
-| 14 | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}/restore` | 新增 | 恢复版本 | FR-011 |
-| 15 | | DELETE | `/service/open/v2/connectors/{id}/versions/{vid}` | 新增 | 删除版本（物理删除） | FR-010 |
-| 16 | | POST | `/service/open/v2/flows` | 修改 | 创建连接流（V2 自动生成空草稿版本） | FR-016 |
-| 17 | | GET | `/service/open/v2/flows` | 修改 | 查询连接流列表（新增 appId/lifecycleStatus 过滤） | — |
-| 18 | | GET | `/service/open/v2/flows/{id}` | 沿用 | 查询连接流详情 | — |
-| 19 | | PUT | `/service/open/v2/flows/{id}` | 沿用 | 更新连接流基本信息 | — |
-| 20 | | POST | `/service/open/v2/flows/{id}/copy` | 新增 | 一键复制连接流 | FR-017 |
-| 21 | | POST | `/service/open/v2/flows/{id}/deploy` | 新增 | 部署+启动（选择已发布版本） | FR-018 |
-| 22 | | POST | `/service/open/v2/flows/{id}/start` | 修改 | 启动连接流（V2 状态模型变更） | FR-019 |
-| 23 | | POST | `/service/open/v2/flows/{id}/stop` | 沿用 | 停止连接流 | FR-020 |
-| 24 | | PUT | `/service/open/v2/flows/{id}/invalidate` | 新增 | 标记连接流失效 | FR-022 |
-| 25 | | PUT | `/service/open/v2/flows/{id}/restore` | 新增 | 恢复连接流 | FR-021 |
-| 26 | | DELETE | `/service/open/v2/flows/{id}` | 修改 | 删除连接流（仅已失效状态可删） | FR-023 |
-| 27 | | GET | `/service/open/v2/flows/{id}/versions` | 新增 | 版本列表 | FR-027 |
-| 28 | | GET | `/service/open/v2/flows/{id}/versions/{vid}` | 新增 | 版本详情（只读快照） | FR-027 |
-| 29 | | PUT | `/service/open/v2/flows/{id}/versions/{vid}` | 新增 | 编辑草稿保存 | FR-024 |
-| 30 | | POST | `/service/open/v2/flows/{id}/versions/{vid}/submit-approval` | 新增 | 提交审批 | FR-026 |
-| 31 | | POST | `/service/open/v2/flows/{id}/versions/{vid}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | FR-025 |
-| 32 | | PUT | `/service/open/v2/flows/{id}/versions/{vid}/invalidate` | 新增 | 标记版本失效 | FR-028 |
-| 33 | | PUT | `/service/open/v2/flows/{id}/versions/{vid}/restore` | 新增 | 恢复版本 | FR-030 |
-| 34 | | DELETE | `/service/open/v2/flows/{id}/versions/{vid}` | 新增 | 删除版本（物理删除） | FR-029 |
-| 35 | | GET | `/service/open/v2/flows/{id}/executions` | 新增 | 运行记录列表（分页+过滤） | FR-042 |
-| 36 | | GET | `/service/open/v2/flows/{id}/executions/{eid}` | 新增 | 运行记录详情（含节点日志） | FR-042 |
-| 37 | | POST | `/service/open/v2/connector-platform/approvals/{vid}/urge` | 新增 | 一键催办 | FR-033 |
-| 38 | | GET | `/service/open/v2/connector-platform/approvals/{vid}/status` | 新增 | 查询审批状态 | FR-031 |
-| 39 | | GET | `/service/open/v2/approval-flows` | 修改 | 查询审批人配置（复用现有接口，新增 `connector_flow_version_publish` 模板） | FR-032 |
-| 40 | | PUT | `/service/open/v2/approval-flows` | 修改 | 更新审批人配置（复用现有接口） | FR-032 |
-| 41 | connector-api | POST | `/api/v1/trigger/flow/{flowId}` | 修改 | HTTP 触发连接流（路径/认证变更） | G11 |
-| 42 | | POST | `/api/v1/debug/execute` | 修改 | 调试触发（V1 为 test-run，更名） | FR-041 |
+| # | 服务 | 模块 | Method | Path | 变更 | 说明 | FR |
+|:--:|------|------|--------|------|:--:|------|:--:|
+| 1 | open-server | **连接器 CRUD** | POST | `/service/open/v2/connectors` | 修改 | 创建连接器（V2 自动生成空草稿版本） | FR-001 |
+| 2 | | | GET | `/service/open/v2/connectors` | 修改 | 查询连接器列表（新增 appId 过滤） | — |
+| 3 | | | GET | `/service/open/v2/connectors/{id}` | 沿用 | 查询连接器详情 | — |
+| 4 | | | PUT | `/service/open/v2/connectors/{id}` | 沿用 | 更新连接器基本信息 | — |
+| 5 | | | PUT | `/service/open/v2/connectors/{id}/invalidate` | 新增 | 标记连接器失效 | FR-003 |
+| 6 | | | PUT | `/service/open/v2/connectors/{id}/restore` | 新增 | 恢复连接器 | FR-002 |
+| 7 | | | DELETE | `/service/open/v2/connectors/{id}` | 修改 | 删除连接器（仅已失效状态可删） | FR-004 |
+| 8 | | **连接器版本** | GET | `/service/open/v2/connectors/{id}/versions` | 新增 | 版本列表 | FR-008 |
+| 9 | | | GET | `/service/open/v2/connectors/{id}/versions/{vid}` | 新增 | 版本详情（只读快照） | FR-008 |
+| 10 | | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}` | 新增 | 编辑草稿保存 | FR-005 |
+| 11 | | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}/publish` | 新增 | 发布版本 | FR-007 |
+| 12 | | | POST | `/service/open/v2/connectors/{id}/versions/{vid}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | FR-006 |
+| 13 | | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}/invalidate` | 新增 | 标记版本失效 | FR-009 |
+| 14 | | | PUT | `/service/open/v2/connectors/{id}/versions/{vid}/restore` | 新增 | 恢复版本 | FR-011 |
+| 15 | | | DELETE | `/service/open/v2/connectors/{id}/versions/{vid}` | 新增 | 删除版本（物理删除） | FR-010 |
+| 16 | | **连接流 CRUD** | POST | `/service/open/v2/flows` | 修改 | 创建连接流（V2 自动生成空草稿版本） | FR-016 |
+| 17 | | | GET | `/service/open/v2/flows` | 修改 | 查询连接流列表（新增 appId/lifecycleStatus 过滤） | — |
+| 18 | | | GET | `/service/open/v2/flows/{id}` | 沿用 | 查询连接流详情 | — |
+| 19 | | | PUT | `/service/open/v2/flows/{id}` | 沿用 | 更新连接流基本信息 | — |
+| 20 | | | POST | `/service/open/v2/flows/{id}/copy` | 新增 | 一键复制连接流 | FR-017 |
+| 21 | | | POST | `/service/open/v2/flows/{id}/deploy` | 新增 | 部署+启动（选择已发布版本） | FR-018 |
+| 22 | | | POST | `/service/open/v2/flows/{id}/start` | 修改 | 启动连接流（V2 状态模型变更） | FR-019 |
+| 23 | | | POST | `/service/open/v2/flows/{id}/stop` | 沿用 | 停止连接流 | FR-020 |
+| 24 | | | PUT | `/service/open/v2/flows/{id}/invalidate` | 新增 | 标记连接流失效 | FR-022 |
+| 25 | | | PUT | `/service/open/v2/flows/{id}/restore` | 新增 | 恢复连接流 | FR-021 |
+| 26 | | | DELETE | `/service/open/v2/flows/{id}` | 修改 | 删除连接流（仅已失效状态可删） | FR-023 |
+| 27 | | **连接流版本** | GET | `/service/open/v2/flows/{id}/versions` | 新增 | 版本列表 | FR-027 |
+| 28 | | | GET | `/service/open/v2/flows/{id}/versions/{vid}` | 新增 | 版本详情（只读快照） | FR-027 |
+| 29 | | | PUT | `/service/open/v2/flows/{id}/versions/{vid}` | 新增 | 编辑草稿保存 | FR-024 |
+| 30 | | | POST | `/service/open/v2/flows/{id}/versions/{vid}/submit-approval` | 新增 | 提交审批 | FR-026 |
+| 31 | | | POST | `/service/open/v2/flows/{id}/versions/{vid}/copy-to-draft` | 新增 | 复制已发布版本到草稿 | FR-025 |
+| 32 | | | PUT | `/service/open/v2/flows/{id}/versions/{vid}/invalidate` | 新增 | 标记版本失效 | FR-028 |
+| 33 | | | PUT | `/service/open/v2/flows/{id}/versions/{vid}/restore` | 新增 | 恢复版本 | FR-030 |
+| 34 | | | DELETE | `/service/open/v2/flows/{id}/versions/{vid}` | 新增 | 删除版本（物理删除） | FR-029 |
+| 35 | | **运行记录** | GET | `/service/open/v2/flows/{id}/executions` | 新增 | 运行记录列表（分页+过滤） | FR-042 |
+| 36 | | | GET | `/service/open/v2/flows/{id}/executions/{eid}` | 新增 | 运行记录详情（含节点日志） | FR-042 |
+| 37 | | **审批管理** | POST | `/service/open/v2/connector-platform/approvals/{vid}/urge` | 新增 | 一键催办 | FR-033 |
+| 38 | | | GET | `/service/open/v2/connector-platform/approvals/{vid}/status` | 新增 | 查询审批状态 | FR-031 |
+| 39 | | | GET | `/service/open/v2/approval-flows` | 修改 | 查询审批人配置（复用现有接口，新增 `connector_flow_version_publish` 模板） | FR-032 |
+| 40 | | | PUT | `/service/open/v2/approval-flows` | 修改 | 更新审批人配置（复用现有接口） | FR-032 |
+| 41 | connector-api | **运行时** | POST | `/api/v1/trigger/flow/{flowId}` | 修改 | HTTP 触发连接流（路径/认证变更） | G11 |
+| 42 | | | POST | `/api/v1/debug/execute` | 修改 | 调试触发（V1 为 test-run，更名） | FR-041 |
 
 > 💡 **URL 白名单**（FR-015）：数据存储在 `openplatform_property_t` 字典表，复用 market-web 现有字典 CRUD，运行时直接读取，不新增接口。
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
