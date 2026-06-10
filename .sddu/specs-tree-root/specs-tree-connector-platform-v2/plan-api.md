@@ -289,14 +289,14 @@
 |---|--------|------|---------|:---:|--------|
 | — | — | **open-server — 连接器 CRUD** | — | — | — |
 | 1 | POST | `/connectors` | 创建连接器 | 改造 | ① 三层权限校验<br>② 自动创建空草稿版本 |
-| 2 | GET | `/connectors` | 查询连接器列表 | 改造 | ① 三层权限校验<br>② 新增 appId/status 过滤（status=2 有效可用） |
+| 2 | GET | `/connectors` | 查询连接器列表 | 改造 | ① 三层权限校验<br>② 新增 appId/status 过滤<br>（status=2 有效可用） |
 | 3 | GET | `/connectors/{connectorId}` | 查询连接器详情 | 改造 | ① 三层权限校验 |
 | 4 | PUT | `/connectors/{connectorId}` | 更新连接器 | 改造 | ① 三层权限校验 |
 | 5 | PUT | `/connectors/{connectorId}/invalidate` | 失效连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 6 | PUT | `/connectors/{connectorId}/recover` | 恢复连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 7 | DELETE | `/connectors/{connectorId}` | 删除连接器 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
 | — | — | **open-server — 连接器版本** | — | — | — |
-| 8 | GET | `/connectors/{connectorId}/versions` | 查询连接器版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤（status=2 已发布）<br>④ 新增接口 |
+| 8 | GET | `/connectors/{connectorId}/versions` | 查询连接器版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤<br>（status=2 已发布）<br>④ 新增接口 |
 | 9 | GET | `/connectors/{connectorId}/versions/{versionId}` | 查询连接器版本详情 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `GET /config` |
 | 10 | PUT | `/connectors/{connectorId}/versions/{versionId}` | 更新连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `PUT /config` |
 | 11 | PUT | `/connectors/{connectorId}/versions/{versionId}/publish` | 发布连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
@@ -319,7 +319,7 @@
 | 25 | PUT | `/flows/{flowId}/recover` | 恢复连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 26 | DELETE | `/flows/{flowId}` | 删除连接流 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
 | — | — | **open-server — 连接流版本** | — | — | — |
-| 27 | GET | `/flows/{flowId}/versions` | 查询连接流版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤（status=5 已发布）<br>④ 新增接口 |
+| 27 | GET | `/flows/{flowId}/versions` | 查询连接流版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤<br>（status=5 已发布）<br>④ 新增接口 |
 | 28 | GET | `/flows/{flowId}/versions/{versionId}` | 查询连接流版本详情 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `GET /config` |
 | 29 | PUT | `/flows/{flowId}/versions/{versionId}` | 更新连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 `PUT /config` |
 | 30 | POST | `/flows/{flowId}/versions/{versionId}/publish` | 发布连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
@@ -351,7 +351,7 @@
 | — | — | **open-server — 调试代理** | — | — | — |
 | 49 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试连接流版本（代理） | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 test-run |
 | — | — | **connector-api — 运行时** | — | — | — |
-| 50 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试执行 | 新增 | ④ 新增接口（由 open-server #49 代理调用） |
+| 50 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试执行 | 新增 | ④ 新增接口<br>（由 open-server #49 代理调用） |
 | 51 | POST | `/flows/{flowId}/invoke` | 调用连接流 | 改造 | ③ 路径变更<br>⑥ 替换 V1 trigger invoke |
 
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
