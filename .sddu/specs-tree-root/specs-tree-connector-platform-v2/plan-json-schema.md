@@ -133,21 +133,29 @@
 
 ### 3.1 值来源总览
 
-| # | 作用域 | 性质 | 语法 | 示例 | 可用时机 |
+| # | 作用域 | 性质 | 语法 | 示例 | 说明 |
 |:---:|------|:---:|------|------|------|
-| 1 | `node` | 设计态 | `${$.node.{id}.{input\|output}.path}` | `${$.node.trigger.input.sender}` | 任意节点 |
-| 2 | `constant` | 设计态 | `${$.constant:value}` | `${$.constant:0}` | 任意节点 |
-| 3 | `system` | 设计态 | `${$.system.{key}}` | `${$.system.env.region}` | 任意节点 |
-| 4 | `system.fn` | 设计态 | `${$.system.fn.{name}(args)}` | `${$.system.fn.upper(...)}` | 任意节点 |
-| 5 | `script` | 设计态 | `${$.script.{name}(args)}` | `${$.script.transform(...)}` | 任意节点 |
-| 6 | `loop` | 运行时注入 | `${$.loop.item}` / `.index` / `.total` | `${$.loop.item.id}` | 循环体内 |
-| 7 | `error` | 运行时注入 | `${$.error.code}` / `.messageZh` / `.messageEn` / `.cause` / `.nodeId` | `${$.error.message}` | 错误处理体内 |
-| 8 | `execution` | 运行时注入 | `${$.execution.id}` / `.flowId` / `.triggerTime` | `${$.execution.flowId}` | 任意节点 |
+| 1 | `node` | 设计态 | `${$.node.{id}.{input\|output\|current}.path}` | `${$.node.trigger.input.sender}` | 引用任意节点的输入/输出字段；结构节点（loop/error_handler）的运行时上下文通过 `.current` 子路径引用 |
+| 2 | `constant` | 设计态 | `${$.constant:value}` | `${$.constant:0}` | 编排设计者填入的固定值 |
+| 3 | `system` | 设计态 | `${$.system.{key}}` | `${$.system.env.region}`、`${$.system.apiKey}` | 平台环境变量 / 配置 / 密钥；`system.fn.{name}(args)` 引用内置函数 |
+| 4 | `script` | 设计态 | `${$.script.{name}(args)}` | `${$.script.transform(...)}` | 用户预定义脚本，按名引用传参 |
+| 5 | `execution` | 运行时注入 | `${$.execution.id}` / `.flowId` / `.triggerTime` | `${$.execution.flowId}` | 引擎每次执行时注入的运行时元数据 |
 
-> 表达式层级：`$.` = 根 → `node`/`constant`/`system`/`script`/`loop`/`error`/`execution` = 作用域 → 具体路径或参数。
+> 表达式层级：`$.` = 根 → `node`/`constant`/`system`/`script`/`execution` = 作用域 → 具体路径或参数。
 
-**设计态（1~5）**：编排设计阶段写入 JSON 配置，值在设计时已知或引用已知路径。
-**运行时注入（6~8）**：路径在设计态可声明（结构已知），值由引擎在运行时注入（数据未知）。
+**结构节点运行时上下文引用**：`loop_v2` / `error_handler` 结构体内的节点可通过 `node.{id}.current` 引用当前执行上下文：
+
+| 场景 | 写法 | 说明 |
+|------|------|------|
+| 循环体内引用当前迭代元素 | `${$.node.{loopNodeId}.current.item}` | 引擎每次迭代注入 |
+| 循环体内引用当前索引 | `${$.node.{loopNodeId}.current.index}` | 0-based |
+| 循环体内引用迭代总数 | `${$.node.{loopNodeId}.current.total}` | — |
+| 错误处理体内引用错误码 | `${$.node.{errorNodeId}.current.code}` | 跟随 `errorInfoDef` 结构（见 §4.4.8） |
+| 错误处理体内引用错误消息 | `${$.node.{errorNodeId}.current.messageZh}` / `.messageEn` | — |
+
+> `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
+
+> `loop_v2` / `error_handler` 节点的 `output` 字段结构（持久化属性）和 `current` 下可用字段的完整列表，待 §4.4.14 `structureNodeDataDef.config` 专项细化后确定。
 
 ### 3.2 设计原则
 
@@ -155,7 +163,7 @@
 |:---:|------|------|
 | 1 | **映射结构镜像需求结构** | connector 的 inputContract 分 header/query/body，则 inputMapping 也分 header/query/body |
 | 2 | **Schema 不硬编码协议** | inputMapping/outputMapping 定义为 `"type": "object"`，具体分段由应用层按协议校验 |
-| 3 | **表达式体系统一** | 8 种值来源共用同一套 `${$.scope.path}` 语法，不因来源不同而异 |
+| 3 | **表达式体系统一** | 5 种值来源共用同一套 `${$.scope.path}` 语法，不因来源不同而异 |
 | 4 | **必填检查在应用层** | mapping 是否覆盖 required 字段，由应用层校验，JSON Schema 不做跨对象约束 |
 
 ### 3.3 节点数据引用详述
