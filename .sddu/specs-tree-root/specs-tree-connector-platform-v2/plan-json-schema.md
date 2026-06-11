@@ -570,9 +570,10 @@ graph TB
                 "description": "叶子字段：基本类型 + 可选 value",
                 "type": "object",
                 "properties": {
-                  "type":        { "type": "string", "enum": ["string", "integer", "number", "boolean"] },
+                  "type":        { "type": "string", "enum": ["string", "number", "boolean"] },
                   "description": { "type": "string" },
                   "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
+                  "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
                   "enum":        { "type": "array" },
                   "default":     {},
                   "minimum":     { "type": "number" },
@@ -918,30 +919,50 @@ graph TB
 
 #### 4.4.3 jsonObjectDef
 
-纯字段形状描述组件，不包含协议位置信息。被 httpInputDef / httpOutputDef 引用。
+> 基础复用组件。value 可选——有值=编排映射场景，无值=纯声明场景。支持递归嵌套 object/array。
 
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:jsonObjectDef:v1",
+  "$id": "urn:openapp:schema:jsonObjectDef:v2",
   "type": "object",
   "properties": {
     "type": { "type": "string", "enum": ["object"] },
     "properties": {
       "type": "object",
       "additionalProperties": {
-        "type": "object",
-        "properties": {
-          "type": { "type": "string" },
-          "description": { "type": "string" },
-          "items": { "type": "object" },
-          "enum": { "type": "array" },
-          "default": {},
-          "minimum": { "type": "number" },
-          "maximum": { "type": "number" }
-        },
-        "required": ["type"]
+        "oneOf": [
+          {
+            "description": "叶子字段：基本类型 + 可选 value / sensitive",
+            "type": "object",
+            "properties": {
+              "type":        { "type": "string", "enum": ["string", "number", "boolean"] },
+              "description": { "type": "string" },
+              "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
+              "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
+              "enum":        { "type": "array" },
+              "default":     {},
+              "minimum":     { "type": "number" },
+              "maximum":     { "type": "number" }
+            },
+            "required": ["type"]
+          },
+          {
+            "description": "嵌套 object：递归引用自身",
+            "$ref": "#/definitions/jsonObjectDef"
+          },
+          {
+            "description": "数组字段：items 递归引用此组件",
+            "type": "object",
+            "properties": {
+              "type":        { "type": "string", "enum": ["array"] },
+              "description": { "type": "string" },
+              "items":       { "$ref": "#/definitions/jsonObjectDef" }
+            },
+            "required": ["type", "items"]
+          }
+        ]
       }
     },
     "required": { "type": "array", "items": { "type": "string" } }
@@ -950,16 +971,47 @@ graph TB
 }
 ```
 
-> **示例** — 定义一个 `sender`(string) + `content`(string)，均必填：
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| type | string | ✅ | 顶层固定 `"object"` |
+| properties | object | ✅ | 字段定义集合，key=字段名，value=字段规则（叶子/嵌套/数组三选一） |
+| properties.{key}.type | string | ✅ | 字段类型：`string` / `number` / `boolean` / `array` / `object`（后两种递归引用自身） |
+| properties.{key}.value | string | ❌ | 映射表达式（编排场景）。遵循 §3 值表达式体系 |
+| properties.{key}.sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
+| properties.{key}.description | string | ❌ | 字段描述 |
+| properties.{key}.enum | array | ❌ | 枚举值列表 |
+| properties.{key}.default | any | ❌ | 默认值 |
+| properties.{key}.minimum | number | ❌ | 最小值 |
+| properties.{key}.maximum | number | ❌ | 最大值 |
+| required | string[] | ✅ | 必填字段名列表 |
+
+> **示例** — 声明 sender/content 必填 + phone 脱敏：
 
 ```json
 {
   "type": "object",
   "properties": {
     "sender":  { "type": "string", "description": "发送者 ID" },
-    "content": { "type": "string", "description": "消息内容" }
+    "content": { "type": "string", "description": "消息内容" },
+    "phone":   { "type": "string", "description": "手机号", "sensitive": true }
   },
   "required": ["sender", "content"]
+}
+```
+
+> **示例** — 带 value 映射（编排 inputMapping）：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receiver": { "type": "string", "value": "${$.node.trigger.input.body.sender}" },
+    "content":  { "type": "string", "value": "${$.node.trigger.input.body.content}" },
+    "phone":    { "type": "string", "value": "${$.node.trigger.input.body.phone}", "sensitive": true }
+  },
+  "required": ["receiver", "content"]
 }
 ```
 
