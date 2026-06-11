@@ -570,10 +570,11 @@ graph TB
                 "description": "叶子字段：基本类型 + 可选 value",
                 "type": "object",
                 "properties": {
-                  "type":        { "type": "string", "enum": ["string", "number", "boolean"] },
-                  "description": { "type": "string" },
-                  "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
-                  "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
+                   "type":        { "type": "string", "enum": ["string", "number", "boolean"] },
+                   "description": { "type": "string" },
+                   "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
+                   "required":    { "type": "boolean", "default": false, "description": "是否必填" },
+                   "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
                   "enum":        { "type": "array" },
                   "default":     {},
                   "minimum":     { "type": "number" },
@@ -591,14 +592,14 @@ graph TB
                 "properties": {
                   "type":        { "type": "string", "enum": ["array"] },
                   "description": { "type": "string" },
+                  "required":    { "type": "boolean", "default": false },
                   "items":       { "$ref": "#/definitions/jsonObjectDef" }
                 },
                 "required": ["type", "items"]
               }
             ]
           }
-        },
-        "required": { "type": "array", "items": { "type": "string" } }
+        }
       },
       "required": ["type", "properties"]
     },
@@ -916,10 +917,9 @@ graph TB
 ```json
 { "maxQps": 100, "maxConcurrency": 10 }
 ```
-
 #### 4.4.3 jsonObjectDef
 
-> 基础复用组件。value 可选——有值=编排映射场景，无值=纯声明场景。支持递归嵌套 object/array。
+> 基础复用组件。value 可选——有值=编排映射场景，无值=纯声明场景。每个字段自维护所有属性（required/sensitive/value 等），不做顶层 `required` 数组。
 
 > **Def**
 
@@ -934,12 +934,13 @@ graph TB
       "additionalProperties": {
         "oneOf": [
           {
-            "description": "叶子字段：基本类型 + 可选 value / sensitive",
+            "description": "叶子字段：基本类型",
             "type": "object",
             "properties": {
               "type":        { "type": "string", "enum": ["string", "number", "boolean"] },
               "description": { "type": "string" },
               "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
+              "required":    { "type": "boolean", "default": false, "description": "是否必填" },
               "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
               "enum":        { "type": "array" },
               "default":     {},
@@ -953,19 +954,19 @@ graph TB
             "$ref": "#/definitions/jsonObjectDef"
           },
           {
-            "description": "数组字段：items 递归引用此组件",
+            "description": "数组字段",
             "type": "object",
             "properties": {
               "type":        { "type": "string", "enum": ["array"] },
               "description": { "type": "string" },
+              "required":    { "type": "boolean", "default": false },
               "items":       { "$ref": "#/definitions/jsonObjectDef" }
             },
             "required": ["type", "items"]
           }
         ]
       }
-    },
-    "required": { "type": "array", "items": { "type": "string" } }
+    }
   },
   "required": ["type", "properties"]
 }
@@ -976,28 +977,47 @@ graph TB
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | type | string | ✅ | 顶层固定 `"object"` |
-| properties | object | ✅ | 字段定义集合，key=字段名，value=字段规则（叶子/嵌套/数组三选一） |
-| properties.{key}.type | string | ✅ | 字段类型：`string` / `number` / `boolean` / `array` / `object`（后两种递归引用自身） |
-| properties.{key}.value | string | ❌ | 映射表达式（编排场景）。遵循 §3 值表达式体系 |
+| properties | object | ✅ | 字段定义集合，每个字段自维护所有属性 |
+| properties.{key}.type | string | ✅ | 字段类型：`string` / `number` / `boolean` / `object`（递归）/ `array` |
+| properties.{key}.required | boolean | ❌ | 是否必填，默认 `false`。字段级别自声明 |
+| properties.{key}.value | string | ❌ | 映射表达式。遵循 §3 值表达式体系 |
 | properties.{key}.sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
 | properties.{key}.description | string | ❌ | 字段描述 |
 | properties.{key}.enum | array | ❌ | 枚举值列表 |
 | properties.{key}.default | any | ❌ | 默认值 |
 | properties.{key}.minimum | number | ❌ | 最小值 |
 | properties.{key}.maximum | number | ❌ | 最大值 |
-| required | string[] | ✅ | 必填字段名列表 |
+| properties.{key}.items | object | ❌ | 数组元素定义（type=array 时必填） |
 
-> **示例** — 声明 sender/content 必填 + phone 脱敏：
+> **示例** — sender/content 必填，phone 脱敏，全部字段级声明：
 
 ```json
 {
   "type": "object",
   "properties": {
-    "sender":  { "type": "string", "description": "发送者 ID" },
-    "content": { "type": "string", "description": "消息内容" },
-    "phone":   { "type": "string", "description": "手机号", "sensitive": true }
-  },
-  "required": ["sender", "content"]
+    "sender":  { "type": "string", "required": true,  "description": "发送者 ID" },
+    "content": { "type": "string", "required": true,  "description": "消息内容" },
+    "phone":   { "type": "string", "required": false, "description": "手机号", "sensitive": true }
+  }
+}
+```
+
+> **示例** — 带 value 映射 + 嵌套 object：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receiver": { "type": "string", "required": true, "value": "${$.node.trigger.input.body.sender}" },
+    "content":  { "type": "string", "required": true, "value": "${$.node.trigger.input.body.content}" },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source":    { "type": "string", "required": true,  "value": "${$.constant:openplatform}" },
+        "timestamp": { "type": "string", "required": false, "value": "${$.node.trigger.input.body.ts}" }
+      }
+    }
+  }
 }
 ```
 
