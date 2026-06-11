@@ -902,6 +902,12 @@ graph LR
 | maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
 | maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
 
+示例：
+
+```json
+{ "maxQps": 100, "maxConcurrency": 10 }
+```
+
 #### 4.4.3 jsonSchemaObjectDef
 
 纯字段形状描述组件，不包含协议位置信息。被 httpInputContractDef / httpOutputContractDef 引用。
@@ -931,6 +937,19 @@ graph LR
     "required": { "type": "array", "items": { "type": "string" } }
   },
   "required": ["type", "properties"]
+}
+```
+
+示例 — 定义一个 `sender`(string) + `content`(string)，均必填：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sender":  { "type": "string", "description": "发送者 ID" },
+    "content": { "type": "string", "description": "消息内容" }
+  },
+  "required": ["sender", "content"]
 }
 ```
 
@@ -967,6 +986,27 @@ HTTP 入参契约，按传输位置分为 header / query / body 三段。
 
 ⚡ = anyOf：必须至少声明 header / query / body 其中之一。
 
+示例 — 声明 Query 参数 `page`(integer, 必填) 和 Body 参数 `receiver`/`content`(string, 必填)：
+
+```json
+{
+  "protocol": "HTTP",
+  "query": {
+    "type": "object",
+    "properties": { "page": { "type": "integer", "description": "页码" } },
+    "required": ["page"]
+  },
+  "body": {
+    "type": "object",
+    "properties": {
+      "receiver": { "type": "string", "description": "接收者 ID" },
+      "content":  { "type": "string", "description": "消息内容" }
+    },
+    "required": ["receiver", "content"]
+  }
+}
+```
+
 #### 4.4.5 httpOutputContractDef
 
 HTTP 出参契约，按传输位置分为 header / body 两段。
@@ -996,6 +1036,25 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | body | object | ❌ ⚡ | 响应体字段定义 |
 
 ⚡ = anyOf：必须至少声明 header / body 其中之一。
+
+示例 — 声明响应头 `X-Request-Id`(string) + 响应体 `msgId`/`code`：
+
+```json
+{
+  "protocol": "HTTP",
+  "header": {
+    "type": "object",
+    "properties": { "X-Request-Id": { "type": "string", "description": "请求追踪 ID" } }
+  },
+  "body": {
+    "type": "object",
+    "properties": {
+      "msgId": { "type": "string", "description": "消息 ID" },
+      "code":  { "type": "integer", "description": "状态码" }
+    }
+  }
+}
+```
 
 #### 4.4.6 inputContractDef
 
@@ -1085,6 +1144,16 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | `6003` | 编排执行超时 | Orchestration Timeout | internal |
 | `6004` | 连接器版本未找到 | Connector Version Not Found | internal |
 
+示例：
+
+```json
+// 下游调用失败
+{ "code": "503", "messageZh": "下游服务不可用", "messageEn": "Service Unavailable", "downstreamStatus": 503 }
+
+// 内部错误
+{ "code": "6001", "messageZh": "字段映射失败", "messageEn": "Field Mapping Failed", "cause": "source 字段 ${node_1.msgId} 不存在" }
+```
+
 #### 4.4.9 nodeDataDef（路由汇总）
 
 节点业务数据路由器，根据 `node.type` 选择对应的 data Schema。V2 扩展至 **7 分支**：
@@ -1111,6 +1180,31 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 ⚡ = `type="http"` 时必填。
 
+示例 — HTTP 触发，SYSTOKEN 认证，限流 100 QPS：
+
+```json
+{
+  "labelCn": "接收请求",
+  "type": "http",
+  "authConfig": {
+    "type": "SYSTOKEN",
+    "fields": [{ "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }]
+  },
+  "inputContract": {
+    "protocol": "HTTP",
+    "body": {
+      "type": "object",
+      "properties": {
+        "sender":  { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["sender", "content"]
+    }
+  },
+  "rateLimitConfig": { "maxQps": 100 }
+}
+```
+
 #### 4.4.11 connectorDataDef
 
 | JSON 字段 | 类型 | 必填 | 说明 |
@@ -1119,6 +1213,25 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | labelEn | string | ❌ | 节点英文标签 |
 | connectorVersionId | string | ✅ | 引用的连接器版本 ID（18-20 位数字，必须为已发布版本） |
 | inputMapping | object | ✅ | 字段映射，结构镜像连接器 inputContract 协议，value 遵循 §3 值表达式体系 |
+
+示例 — 将 trigger 的 sender/content 映射到下游 API 的 receiver/content：
+
+```json
+{
+  "labelCn": "发送消息",
+  "connectorVersionId": "1234567890123456789",
+  "inputMapping": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "receiver": { "type": "string", "value": "${$.node.trigger.input.body.sender}" },
+        "content":  { "type": "string", "value": "${$.node.trigger.input.body.content}" }
+      },
+      "required": ["receiver", "content"]
+    }
+  }
+}
+```
 
 #### 4.4.12 dataProcessorDataDef
 
@@ -1131,6 +1244,21 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | config.fieldMappings[].source | string | ✅ | 值表达式，遵循 §3 值表达式体系 |
 | config.fieldMappings[].target | string | ✅ | 目标字段路径 |
 
+示例 — 引用 conn_1 返回值 + 系统函数 + 常量：
+
+```json
+{
+  "labelCn": "格式化输出",
+  "config": {
+    "fieldMappings": [
+      { "source": "${$.system.fn.upper($.node.conn_1.output.body.name)}", "target": "upperName" },
+      { "source": "${$.node.conn_1.output.body.msgId}",                   "target": "id" },
+      { "source": "${$.constant:processed}",                               "target": "status" }
+    ]
+  }
+}
+```
+
 #### 4.4.13 exitDataDef
 
 | JSON 字段 | 类型 | 必填 | 说明 |
@@ -1138,6 +1266,23 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | labelCn | string | ❌ | 节点中文标签 |
 | labelEn | string | ❌ | 节点英文标签 |
 | outputMapping | object | ✅ | 字段映射，结构镜像连接器 outputContract 协议，value 遵循 §3 值表达式体系 |
+
+示例 — 将 conn_1 的返回值映射到 HTTP 响应体：
+
+```json
+{
+  "labelCn": "返回结果",
+  "outputMapping": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "msgId":  { "type": "string",  "value": "${$.node.conn_1.output.body.msgId}" },
+        "status": { "type": "string",  "value": "${$.constant:success}" }
+      }
+    }
+  }
+}
+```
 
 #### 4.4.14 structureNodeDataDef（V2 新增）
 
@@ -1148,6 +1293,12 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | type | string | ✅ | 结构体类型：`loop_v2` / `parallel` / `condition_branch` / `error_handler` |
 | config | object | ❌ | 结构体配置（预留槽） |
 
+示例 — 循环节点（config 待细化）：
+
+```json
+{ "labelCn": "遍历处理", "type": "loop_v2", "config": {} }
+```
+
 #### 4.4.15 textMarkerDataDef（V2 新增）
 
 | JSON 字段 | 类型 | 必填 | 说明 |
@@ -1156,6 +1307,12 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | labelEn | string | ❌ | 节点展示英文文本 |
 | type | string | ✅ | 固定为 `text` |
 | config | object | ❌ | 结构归属配置（预留槽） |
+
+示例 — 循环区域标记：
+
+```json
+{ "labelCn": "循环开始", "type": "text", "config": {} }
+```
 
 ---
 
