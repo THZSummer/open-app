@@ -438,14 +438,14 @@ graph LR
     end
     subgraph Defs["JSON 字段定义（规则侧）"]
         D1["authConfigDef"]  D2["rateLimitDef"]
-        D3["inputContractDef --oneOf--> httpInputContractDef"]
-        D4["outputContractDef --oneOf--> httpOutputContractDef"]
-        D0["jsonSchemaObjectDef（复用）"]  D5["errorInfoDef"]
+        D3["inputContractDef<br/>(oneOf→httpInputContractDef)"]
+        D4["outputContractDef<br/>(oneOf→httpOutputContractDef)"]
+        D0["jsonSchemaObjectDef<br/>（复用）"]  D5["errorInfoDef"]
     end
-    F1 --"$ref"--> D1  F2 --"$ref"--> D2
-    F3 --"$ref"--> D3  F4 --"$ref"--> D4
-    D3 --"引用"--> D0  D4 --"引用"--> D0
-    F5 --"$ref"--> D5
+    F1 -- "$ref" --> D1  F2 -- "$ref" --> D2
+    F3 -- "$ref" --> D3  F4 -- "$ref" --> D4
+    D3 -- "引用" --> D0  D4 -- "引用" --> D0
+    F5 -- "$ref" --> D5
     style Fields fill:#e3f2fd,stroke:#1565c0
     style Defs fill:#fff3e0,stroke:#ef6c00
 ```
