@@ -163,6 +163,70 @@
 | 多重循环同时引用外层 | — | — | `${$.node.loop_outer.current.item}` |
 | 错误处理体内错误码 | — | — | `${$.node.err_1.current.code}` |
 
+**全场景综合示例**：以下编排 JSON 覆盖全部值来源——触发器、循环、连接器、数据处理器（含内置函数 + 自定义脚本）、错误处理、执行元数据：
+
+```json
+{
+  "nodes": [
+    {
+      "id": "trigger", "type": "trigger",
+      "data": {
+        "type": "http",
+        "inputContract": { "protocol": "HTTP", "body": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "string" } }, "region": { "type": "string" } } } }
+      }
+    },
+    {
+      "id": "loop_1", "type": "loop_v2",
+      "data": { "type": "loop_v2", "config": {} }
+    },
+    {
+      "id": "conn_1", "type": "connector",
+      "data": {
+        "connectorVersionId": "1111111111111111111",
+        "inputMapping": {
+          "header": { "type": "object", "properties": { "Authorization": { "type": "string", "description": "Bearer", "value": "${$.system.apiKey}" } } },
+          "body":   { "type": "object", "properties": { "itemId": { "type": "string", "description": "当前迭代元素", "value": "${$.node.loop_1.current.item}" }, "size": { "type": "integer", "description": "固定页大小", "value": "${$.constant:20}" }, "source": { "type": "string", "value": "${$.system.env.region}" } } }
+        }
+      }
+    },
+    {
+      "id": "proc_1", "type": "data_processor",
+      "data": {
+        "config": {
+          "fieldMappings": [
+            { "source": "${$.system.fn.upper($.node.conn_1.output.name)}", "target": "upperName" },
+            { "source": "${$.script.normalize($.node.conn_1.output.data, $.system.env.locale)}", "target": "normalized" },
+            { "source": "${$.node.loop_1.current.index}", "target": "loopIndex" },
+            { "source": "${$.constant:processed}", "target": "status" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "err_1", "type": "error_handler",
+      "data": { "type": "error_handler", "config": {} }
+    },
+    {
+      "id": "err_conn", "type": "connector",
+      "data": {
+        "connectorVersionId": "2222222222222222222",
+        "inputMapping": {
+          "body": { "type": "object", "properties": { "errorCode": { "type": "string", "value": "${$.node.err_1.current.code}" }, "errorMsg": { "type": "string", "value": "${$.node.err_1.current.messageZh}" }, "item": { "type": "string", "value": "${$.node.loop_1.current.item}" }, "flowId": { "type": "string", "value": "${$.execution.flowId}" } } }
+        }
+      }
+    },
+    {
+      "id": "exit", "type": "exit",
+      "data": {
+        "outputMapping": { "body": { "type": "object", "properties": { "total": { "type": "integer", "value": "${$.node.loop_1.current.total}" }, "execId": { "type": "string", "value": "${$.execution.id}" } } } }
+      }
+    }
+  ]
+}
+```
+
+> 上例覆盖全部 5 类值来源——① `node.{id}.input/output/current`（触发器入参、连接器返回值、循环迭代变量、错误信息）；② `constant`（固定值 20、processed）；③ `system`（apiKey 密钥、env.region 环境变量、fn.upper 内置函数）；④ `script`（normalize 自定义脚本）；⑤ `execution`（flowId、id 运行元数据）。
+
 > `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径，与 `input`/`output` 平级。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
 
 > `loop_v2` / `error_handler` 节点的 `output` 字段结构（持久化属性）和 `current` 下可用字段的完整列表，待 §4.4.14 `structureNodeDataDef.config` 专项细化后确定。
