@@ -401,56 +401,75 @@ ${$.system.fn.format($.node.err_1.current.messageZh, $.execution.flowId)}
 
 > 以下 §5（连接器配置）和 §6（连接流编排配置）均引用本章定义的共享组件。
 
-### 4.1 组件速查表
-
-| # | 组件名 | 用途 | 被引用方 |
-|:---:|--------|------|---------|
-| 1 | `authConfigDef` | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.4.10 triggerDataDef |
-| 2 | `rateLimitConfigDef` | 限流配置（QPS + 并发） | §5 connectionConfig, §4.4.10 triggerDataDef |
-| 3 | `jsonSchemaObjectDef` | 纯字段形状描述（类型 + 属性 + 必填） | §4.4.4 httpInputDef, §4.4.5 httpOutputDef |
-| 4 | `httpInputDef` | HTTP 入参契约（header/query/body 三段式） | §4.4.6 nodeInputDef |
-| 5 | `httpOutputDef` | HTTP 出参契约（header/body 两段式） | §4.4.7 nodeOutputDef |
-| 6 | `nodeInputDef` | 入参契约路由器（oneOf 按协议分发） | §5 connectionConfig, §4.4.10 triggerDataDef |
-| 7 | `nodeOutputDef` | 出参契约路由器（oneOf 按协议分发） | §5 connectionConfig |
-| 8 | `errorInfoDef` | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
-| 9 | `nodeDataDef` | 节点 data 路由器（oneOf 按 node.type 分发至 7 种 data Schema） | §6.4 orchestrationConfig |
-| 10 | `triggerDataDef` | 触发器节点业务数据（触发类型 + 认证 + 入参契约） | §4.4.9 nodeDataDef |
-| 11 | `connectorDataDef` | 连接器节点业务数据（版本引用 + 字段映射） | §4.4.9 nodeDataDef |
-| 12 | `dataProcessorDataDef` | 数据处理器节点业务数据（字段映射管道） | §4.4.9 nodeDataDef |
-| 13 | `exitDataDef` | 出口节点业务数据（出参字段映射） | §4.4.9 nodeDataDef |
-| 14 | `structureNodeDataDef` | 结构体主节点业务数据（循环/并行/条件/错误处理，config 预留） | §4.4.9 nodeDataDef |
-| 15 | `textMarkerDataDef` | text 标记节点数据（纯渲染，不参与执行，config 预留） | §4.4.9 nodeDataDef |
-| — | `mappedFieldDef` | 带映射值的字段定义（叶子/嵌套/数组递归） | connectorDataDef.inputMapping, exitDataDef.outputMapping |
-| — | `mappedJsonSchemaObjectDef` | 带映射值的对象字段定义（递归容器） | mappedFieldDef（递归引用） |
-
-### 4.2 设计思路与字段↔定义映射
+### 4.1 设计思路与整体架构
 
 为避免「JSON 字段与 JSON 字段定义同名」的歧义，本规范区分两者：
 - **JSON 字段（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`）
 - **JSON 字段定义（definition key）**：校验规则组件键名（如 `authConfigDef`）
+- **命名规则**：有对应字段的取 **字段全名 + `Def`**，无对应字段的复用组件语义化名 + `Def`
 
-**定义命名规则**：有直接对应 JSON 字段的，取 **字段全名 + `Def`** 后缀（`authConfig` → `authConfigDef`、`rateLimitConfig` → `rateLimitConfigDef`）。无直接对应字段的复用组件（`jsonSchemaObjectDef`、`mappedFieldDef` 等）使用语义化名称 + `Def`，不加 `Contract`/`Schema` 等额外后缀。
+**17 个组件的关系全景**：
 
 ```mermaid
-graph LR
-    subgraph Fields["JSON 字段名（数据侧）"]
-        F1["authConfig"]  F2["rateLimitConfig"]
-        F3["nodeInput"]  F4["nodeOutput"]
-        F5["errorInfo"]
+graph TB
+    subgraph Layer1["第一层：协议无关路由器（oneOf 按协议分发）"]
+        ND["nodeDataDef<br/>按 node.type 路由到 7 种 data"]
+        NI["nodeInputDef<br/>按 protocol 路由到入参定义"]
+        NO["nodeOutputDef<br/>按 protocol 路由到出参定义"]
     end
-    subgraph Defs["JSON 字段定义（规则侧）"]
-        D1["authConfigDef"]  D2["rateLimitConfigDef"]
-        D3["nodeInputDef<br/>(oneOf→httpInputDef)"]
-        D4["nodeOutputDef<br/>(oneOf→httpOutputDef)"]
-        D0["jsonSchemaObjectDef<br/>（复用）"]  D5["errorInfoDef"]
+
+    subgraph Layer2["第二层：7 种节点 data 定义"]
+        TD["triggerDataDef"]  CD["connectorDataDef"]
+        DD["dataProcessorDataDef"]  ED["exitDataDef"]
+        SD["structureNodeDataDef"]  MD["textMarkerDataDef"]
     end
-    F1 -- "$ref" --> D1  F2 -- "$ref" --> D2
-    F3 -- "$ref" --> D3  F4 -- "$ref" --> D4
-    D3 -- "引用" --> D0  D4 -- "引用" --> D0
-    F5 -- "$ref" --> D5
-    style Fields fill:#e3f2fd,stroke:#1565c0
-    style Defs fill:#fff3e0,stroke:#ef6c00
+
+    subgraph Layer3["第三层：协议具体实现"]
+        HI["httpInputDef<br/>(header/query/body)"]
+        HO["httpOutputDef<br/>(header/body)"]
+    end
+
+    subgraph Layer4["第四层：基础复用组件"]
+        JS["jsonSchemaObjectDef<br/>纯字段形状"]
+        MF["mappedFieldDef<br/>带映射值的字段"]
+        MO["mappedJsonSchemaObjectDef<br/>带映射值的对象"]
+    end
+
+    subgraph LayerX["横跨层"]
+        AU["authConfigDef<br/>认证声明"]
+        RL["rateLimitConfigDef<br/>限流配置"]
+        ER["errorInfoDef<br/>错误详情"]
+    end
+
+    ND -->|oneOf| TD & CD & DD & ED & SD & MD
+    NI -->|oneOf| HI
+    NO -->|oneOf| HO
+    HI -->|"$ref"| JS
+    HO -->|"$ref"| JS
+    CD -->|"$ref(inputMapping)"| MO
+    ED -->|"$ref(outputMapping)"| MO
+    MO -->|"递归引用"| MF
+    MF -->|"递归引用"| MO
+    TD -->|"$ref(authConfig)"| AU
+    TD -->|"$ref(nodeInput)"| NI
+    CD -->|"$ref(connectorVersionId)"| NI
+
+    style Layer1 fill:#e8eaf6,stroke:#3f51b5
+    style Layer2 fill:#e3f2fd,stroke:#1565c0
+    style Layer3 fill:#fff3e0,stroke:#ef6c00
+    style Layer4 fill:#f3e5f5,stroke:#7b1fa2
+    style LayerX fill:#e8f5e9,stroke:#2e7d32
 ```
+
+| 层 | 职责 | 组件 |
+|:--:|------|------|
+| 第一层 | 路由器（oneOf 按类型/协议分发） | `nodeDataDef`、`nodeInputDef`、`nodeOutputDef` |
+| 第二层 | 7 种节点 data 定义（业务数据载体） | `triggerDataDef` ~ `textMarkerDataDef` |
+| 第三层 | 协议具体实现（HTTP header/query/body） | `httpInputDef`、`httpOutputDef` |
+| 第四层 | 基础复用组件（被上层引用） | `jsonSchemaObjectDef`、`mappedFieldDef`、`mappedJsonSchemaObjectDef` |
+| 横跨层 | 多场景复用（认证/限流/错误） | `authConfigDef`、`rateLimitConfigDef`、`errorInfoDef` |
+
+### 4.2 组件速查表
 
 ### 4.3 完整组件定义
 
