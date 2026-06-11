@@ -478,6 +478,26 @@ graph TB
 
 ### 4.2 组件速查表
 
+| # | 组件名 | 用途 | 被引用方 |
+|:---:|--------|------|---------|
+| 1 | `authConfigDef` | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.4.10 triggerDataDef |
+| 2 | `rateLimitConfigDef` | 限流配置（QPS + 并发） | §5 connectionConfig, §4.4.10 triggerDataDef |
+| 3 | `jsonSchemaObjectDef` | 纯字段形状描述（类型 + 属性 + 必填） | §4.4.4 httpInputDef, §4.4.5 httpOutputDef |
+| 4 | `httpInputDef` | HTTP 入参声明（header/query/body 三段式） | §4.4.6 nodeInputDef |
+| 5 | `httpOutputDef` | HTTP 出参声明（header/body 两段式） | §4.4.7 nodeOutputDef |
+| 6 | `nodeInputDef` | 入参路由器（oneOf 按协议分发） | §5 connectionConfig, §4.4.10 triggerDataDef |
+| 7 | `nodeOutputDef` | 出参路由器（oneOf 按协议分发） | §5 connectionConfig |
+| 8 | `errorInfoDef` | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
+| 9 | `nodeDataDef` | 节点 data 路由器（oneOf 按 node.type 分发至 7 种 data） | §6.4 orchestrationConfig |
+| 10 | `triggerDataDef` | 触发器节点业务数据 | §4.4.9 nodeDataDef |
+| 11 | `connectorDataDef` | 连接器节点业务数据（版本引用 + 字段映射） | §4.4.9 nodeDataDef |
+| 12 | `dataProcessorDataDef` | 数据处理器节点业务数据（字段映射管道） | §4.4.9 nodeDataDef |
+| 13 | `exitDataDef` | 出口节点业务数据（出参字段映射） | §4.4.9 nodeDataDef |
+| 14 | `structureNodeDataDef` | 结构体主节点业务数据（config 预留） | §4.4.9 nodeDataDef |
+| 15 | `textMarkerDataDef` | text 标记节点数据（config 预留） | §4.4.9 nodeDataDef |
+| — | `mappedFieldDef` | 带映射值的字段定义（叶子/嵌套/数组递归） | connectorDataDef.inputMapping, exitDataDef.outputMapping |
+| — | `mappedJsonSchemaObjectDef` | 带映射值的对象字段定义（递归容器） | mappedFieldDef（递归引用） |
+
 ### 4.3 完整组件定义
 
 以下 JSON 为所有共享组件定义的聚合，是整个文档中 JSON Schema 定义的唯一权威来源。各组件通过 `#/definitions/xxx` 路径被 §5 和 §6 引用。
