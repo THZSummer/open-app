@@ -1376,6 +1376,52 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | timeoutMs | integer | ❌ | 单次调用超时（毫秒），默认 3000 | — |
 | rateLimitConfig | object | ❌ | 限流配置 | §4.4.2 |
 
+### 5.4 示例
+
+完整的连接器配置 JSON（HTTP POST，SYSTOKEN 认证，声明入参 receiver/content、出参 msgId）：
+
+```json
+{
+  "labelCn": "发送消息",
+  "labelEn": "Send Message",
+  "protocol": "HTTP",
+  "protocolConfig": {
+    "url": "https://api.example.com/im/send",
+    "method": "POST",
+    "headers": { "Content-Type": "application/json" }
+  },
+  "authConfig": {
+    "type": "SYSTOKEN",
+    "fields": [
+      { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
+    ]
+  },
+  "inputContract": {
+    "protocol": "HTTP",
+    "body": {
+      "type": "object",
+      "properties": {
+        "receiver": { "type": "string", "description": "接收者 ID" },
+        "content":  { "type": "string", "description": "消息内容" }
+      },
+      "required": ["receiver", "content"]
+    }
+  },
+  "outputContract": {
+    "protocol": "HTTP",
+    "body": {
+      "type": "object",
+      "properties": {
+        "msgId": { "type": "string", "description": "消息 ID" },
+        "code":  { "type": "integer", "description": "状态码" }
+      }
+    }
+  },
+  "timeoutMs": 5000,
+  "rateLimitConfig": { "maxQps": 10, "maxConcurrency": 5 }
+}
+```
+
 ---
 
 ## 6. 连接流编排配置 Schema
