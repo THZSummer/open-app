@@ -1429,27 +1429,162 @@ graph TB
 }
 ```
 
-> **循环结构的 5 个 node + 7 条 edge 完整示例**（主节点 + 4 个 text 标记，text 的 structConfig 定义见 §4.3.16）
+> **循环结构的 5 个 node + 7 条 edge 完整示例**（来源：前端 FlowCanvas 持久化数据，已对齐 Schema 命名）
 
 ```json
-// nodes（5 个）:
-[
-  { "id":"loop-1",        "type":"loop-v2", "data":{ "type":"loop-v2",       "labelCn":"循环节点",     "structConfig":{ "loopV2GroupId":"loop-1" } } },
-  { "id":"loop-region-1", "type":"text",    "data":{ "type":"text",          "labelCn":"循环区域",     "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"region" } } },
-  { "id":"loop-start-1",  "type":"text",    "data":{ "type":"text",          "labelCn":"循环开始",     "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"start" } } },
-  { "id":"loop-end-1",    "type":"text",    "data":{ "type":"text",          "labelCn":"循环结束",     "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"end" } } },
-  { "id":"loop-break-1",  "type":"text",    "data":{ "type":"text",          "labelCn":"循环跳出",     "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"break" } } }
-]
-
-// edges（7 条，isStructural 边引擎跳过）:
-//   upstream → loop-1                         （入口，可插入）
-//   loop-1 → loop-region-1  [isStructural]    （辅助边）
-//   loop-1 → loop-start-1   [isStructural]    （辅助边，标记循环体入口）
-//   loop-start-1 → ...循环体内节点... → loop-end-1  （可编辑链路，引擎在此执行迭代）
-//   loop-region-1 → loop-break-1  [isStructural]   （辅助边）
-//   loop-end-1 → loop-break-1  [isStructural]       （辅助边，标记循环体出口）
-//   loop-break-1 → downstream                     （出口，可插入）
+{
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "trigger",
+      "position": { "x": 250, "y": 50 },
+      "data": {
+        "type": "trigger",
+        "labelCn": "触发器",
+        "labelEn": "Trigger",
+        "structConfig": {}
+      }
+    },
+    {
+      "id": "loop-1",
+      "type": "loop-v2",
+      "position": { "x": 250, "y": 160 },
+      "data": {
+        "type": "loop-v2",
+        "labelCn": "循环节点",
+        "labelEn": "Loop",
+        "structConfig": {
+          "loopV2GroupId": "loop-1"
+        }
+      }
+    },
+    {
+      "id": "loop-region-1",
+      "type": "text",
+      "position": { "x": -10, "y": 300 },
+      "data": {
+        "type": "text",
+        "labelCn": "循环区域",
+        "labelEn": "Loop Region",
+        "structConfig": {
+          "loopV2GroupId": "loop-1",
+          "loopV2Role": "region"
+        }
+      }
+    },
+    {
+      "id": "loop-start-1",
+      "type": "text",
+      "position": { "x": 510, "y": 300 },
+      "data": {
+        "type": "text",
+        "labelCn": "循环开始",
+        "labelEn": "Loop Start",
+        "structConfig": {
+          "loopV2GroupId": "loop-1",
+          "loopV2Role": "start"
+        }
+      }
+    },
+    {
+      "id": "loop-end-1",
+      "type": "text",
+      "position": { "x": 510, "y": 500 },
+      "data": {
+        "type": "text",
+        "labelCn": "循环结束",
+        "labelEn": "Loop End",
+        "structConfig": {
+          "loopV2GroupId": "loop-1",
+          "loopV2Role": "end"
+        }
+      }
+    },
+    {
+      "id": "loop-break-1",
+      "type": "text",
+      "position": { "x": 250, "y": 580 },
+      "data": {
+        "type": "text",
+        "labelCn": "循环跳出",
+        "labelEn": "Loop Break",
+        "structConfig": {
+          "loopV2GroupId": "loop-1",
+          "loopV2Role": "break"
+        }
+      }
+    },
+    {
+      "id": "end-1",
+      "type": "exit",
+      "position": { "x": 250, "y": 740 },
+      "data": {
+        "type": "exit",
+        "labelCn": "结束",
+        "labelEn": "End",
+        "output": {},
+        "structConfig": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-trigger-loop",
+      "source": "trigger-1",
+      "target": "loop-1",
+      "type": "smoothstep",
+      "data": { "businessType": "default", "connectionMode": "serial" }
+    },
+    {
+      "id": "edge-loop-region",
+      "source": "loop-1",
+      "target": "loop-region-1",
+      "type": "smoothstep",
+      "data": { "isStructural": true }
+    },
+    {
+      "id": "edge-loop-start",
+      "source": "loop-1",
+      "target": "loop-start-1",
+      "type": "smoothstep",
+      "data": { "isStructural": true }
+    },
+    {
+      "id": "edge-start-end",
+      "source": "loop-start-1",
+      "target": "loop-end-1",
+      "type": "smoothstep",
+      "data": { "businessType": "loop_entry", "iterationVar": "item" }
+    },
+    {
+      "id": "edge-region-break",
+      "source": "loop-region-1",
+      "target": "loop-break-1",
+      "type": "smoothstep",
+      "data": { "isStructural": true }
+    },
+    {
+      "id": "edge-end-break",
+      "source": "loop-end-1",
+      "target": "loop-break-1",
+      "type": "smoothstep",
+      "data": { "isStructural": true }
+    },
+    {
+      "id": "edge-break-end",
+      "source": "loop-break-1",
+      "target": "end-1",
+      "type": "smoothstep",
+      "data": { "businessType": "default", "connectionMode": "serial" }
+    }
+  ]
+}
 ```
+
+> **引擎解析逻辑**：
+> 1. 过滤 `node.type === "text"` 的标记节点，过滤 `edge.data.isStructural === true` 的辅助边
+> 2. 剩余节点中，从 `loop-start-1 → loop-end-1` 之间的子图即为循环体
+> 3. 对循环体中的每个节点按 Kahn 算法拓扑排序后，按 `iterationVar` 声明的变量名进行迭代执行
 
 #### 4.3.13 parallelNodeDataDef（V2 新增）
 
