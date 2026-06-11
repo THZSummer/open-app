@@ -1,7 +1,7 @@
 # JSON Schema 设计规范：连接器平台 V2
 
 **关联文档**: plan.md, plan-db.md (§3 表结构定义), plan-api.md (§3 接口详细定义)  
-**版本**: v8.3
+**版本**: v8.4
 **创建日期**: 2026-05-22  
 **最后更新**: 2026-06-11
 **修订说明**: v8.3 — 删除 nodeInputDef/nodeOutputDef（单协议无存在价值），$ref 直指 httpInputDef/httpOutputDef；组件 15→13
@@ -899,7 +899,49 @@ graph TB
 }
 ```
 
-#### 4.3.7 triggerNodeDataDef
+#### 4.3.7 nodeDataBaseDef
+
+> 所有节点 data 的公共基类。定义 `type`（业务节点类型）、`labelCn`/`labelEn`、`structConfig`（结构体预留）。子 Def 通过 `allOf` 继承。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:nodeDataBaseDef:v1",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["trigger", "connector", "dataProcessor", "exit", "loop", "parallel", "conditionBranch", "errorHandler", "text"],
+      "description": "业务节点类型。与 React Flow node.type（渲染组件名）分离"
+    },
+    "labelCn": { "type": "string", "description": "节点中文标签" },
+    "labelEn": { "type": "string", "description": "节点英文标签" },
+    "structConfig": {
+      "type": "object",
+      "description": "结构体配置（预留）。未来承载循环/并行/条件分支的结构化渲染逻辑"
+    }
+  },
+  "required": ["type"]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| type | string | ✅ | 业务节点类型：`trigger` / `connector` / `dataProcessor` / `exit` / `loop` / `parallel` / `conditionBranch` / `errorHandler` / `text` |
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| structConfig | object | ❌ | 结构体配置（预留） |
+
+> **示例**
+
+```json
+{ "type": "trigger", "labelCn": "接收请求", "labelEn": "Receive Request" }
+```
+
+#### 4.3.8 triggerNodeDataDef
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展触发器独有字段。
 
@@ -968,7 +1010,7 @@ graph TB
 }
 ```
 
-#### 4.3.8 connectorNodeDataDef
+#### 4.3.9 connectorNodeDataDef
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展连接器独有字段。
 
@@ -1032,7 +1074,7 @@ graph TB
 }
 ```
 
-#### 4.3.9 dataProcessorNodeDataDef
+#### 4.3.10 dataProcessorNodeDataDef
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展数据管道独有字段。
 
@@ -1098,7 +1140,7 @@ graph TB
 }
 ```
 
-#### 4.3.10 exitNodeDataDef
+#### 4.3.11 exitNodeDataDef
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展出口独有字段。
 
@@ -1154,7 +1196,7 @@ graph TB
 }
 ```
 
-#### 4.3.11 structureNodeDataDef（V2 新增）
+#### 4.3.12 structureNodeDataDef（V2 新增）
 
 > **Def**
 
@@ -1188,7 +1230,7 @@ graph TB
 { "labelCn": "遍历处理", "type": "loop_v2", "config": {} }
 ```
 
-#### 4.3.12 textMarkerNodeDataDef（V2 新增）
+#### 4.3.13 textMarkerNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig）。
 
@@ -1225,7 +1267,7 @@ graph TB
 { "type": "text", "labelCn": "循环开始", "config": {} }
 ```
 
-#### 4.3.13 nodeDataDef（路由汇总）
+#### 4.3.14 nodeDataDef（路由汇总）
 
 > 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
 
@@ -1237,7 +1279,7 @@ graph TB
 | `exit` | exitNodeDataDef | `#/definitions/exitNodeDataDef` | §4.3.10 |
 | `loop_v2` / `parallel` / `condition_branch` / `error_handler` | structureNodeDataDef | `#/definitions/structureNodeDataDef` | §4.3.11 |
 | `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.3.12 |
-#### 4.3.13 nodeDataDef（路由汇总）
+#### 4.3.14 nodeDataDef（路由汇总）
 
 > 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
 
