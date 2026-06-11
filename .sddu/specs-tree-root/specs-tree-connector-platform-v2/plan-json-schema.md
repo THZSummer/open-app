@@ -1091,7 +1091,17 @@ graph TB
 
 #### 4.3.7 nodeDataBaseDef
 
-> 所有节点 data 的公共基类。定义 `type`（业务节点类型）、`labelCn`/`labelEn`。子 Def 通过 `allOf` 继承。
+> 所有节点 data 的公共基类。`type` 为**业务节点类型**，与 React Flow 框架层的 `node.type`（渲染组件名）**分属两层**。
+
+> **两层 type 对照**
+
+| | React Flow `node.type` | `node.data.type`（本 Def 的 `type`） |
+|------|------|------|
+| 层 | 框架渲染层 | 业务数据层 |
+| 用途 | 映射到注册的 React 组件，决定渲染样式 | 业务语义分类，引擎按此路由执行逻辑 |
+| 命名风格 | 前端约定（如 `data_processor`） | camelCase（如 `dataProcessor`） |
+| 结构节点 | `loop-v2` | `loop-v2`（两者通常一致） |
+| trigger 子类型 | `trigger` | `http` / `manual`（在 triggerNodeDataDef 中进一步细分） |
 
 > **Def**
 
@@ -2713,7 +2723,7 @@ graph TB
       "id": "conn_1", "type": "connector",
       "position": { "x": 760, "y": 300 },
       "data": {
-        "labelCn": "获取详情", "connectorVersionId": "1234567890123456789",
+        "labelCn": "获取详情", "type": "connector", "connectorVersionId": "1234567890123456789",
         "input": { "body": { "type": "object", "properties": { "itemId": { "type":"string","value":"${$.node.loop_1.current.item}" } } } },
         "structConfig": { "parentLoopV2GroupId":"loop_1","parentLoopV2Role":"right-column-node" }
       }
@@ -2723,6 +2733,7 @@ graph TB
       "position": { "x": 760, "y": 460 },
       "data": {
         "labelCn": "格式化结果",
+        "type": "dataProcessor",
         "output": { "type": "object", "properties": { "upperName": { "type":"string","value":"${$.system.fn.upper($.node.conn_1.output.body.name)}" } } },
         "structConfig": { "parentLoopV2GroupId":"loop_1","parentLoopV2Role":"right-column-node" }
       }
@@ -2737,7 +2748,7 @@ graph TB
       "id": "conn_retry", "type": "connector",
       "position": { "x": 1260, "y": 760 },
       "data": {
-        "labelCn": "重试请求", "connectorVersionId": "1234567890123456789",
+        "labelCn": "重试请求", "type": "connector", "connectorVersionId": "1234567890123456789",
         "input": { "body": { "type": "object", "properties": { "itemId": { "type":"string","value":"${$.node.loop_1.current.item}" } } } },
         "structConfig": { "parentLoopV2GroupId":"err_1","parentLoopV2Role":"right-column-node" }
       }
@@ -2754,7 +2765,7 @@ graph TB
       "id": "node_exit", "type": "exit",
       "position": { "x": 250, "y": 1320 },
       "data": {
-        "labelCn": "返回结果",
+        "labelCn": "返回结果", "type": "exit",
         "output": { "body": { "type": "object", "properties": { "count": { "type":"integer","value":"${$.node.loop_1.current.total}" } } } }
       }
     }
