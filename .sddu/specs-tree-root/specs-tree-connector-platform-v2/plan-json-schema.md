@@ -415,11 +415,11 @@ ${$.system.fn.format($.node.err_1.current.messageZh, $.execution.flowId)}
 | # | 规则 | 适用对象 | 示例 |
 |:---:|------|------|------|
 | 1 | **字段全名 + `Def`** | 有直接对应 JSON 字段的组件 | `authConfig` → `authConfigDef`、`rateLimitConfig` → `rateLimitConfigDef`、`nodeInput` → `httpInputDef`、`errorInfo` → `errorInfoDef` |
-| 2 | **`{type}NodeDataDef`** | 第二层节点 data 定义，与第一层路由器 `nodeDataDef` 呼应 | `triggerNodeDataDef`、`connectorNodeDataDef`、`exitNodeDataDef` |
+| 2 | **`{type}NodeDataDef`** | 第二层节点 data 定义，通过 allOf 继承 `nodeDataBaseDef` | `triggerNodeDataDef`、`connectorNodeDataDef`、`exitNodeDataDef` 等 |
 | 3 | **`{协议}InputDef` / `{协议}OutputDef`** | 第三层协议具体实现，不额外加 `Contract`/`Schema` 后缀 | `httpInputDef`、`httpOutputDef` |
 | 4 | **语义化名 + `Def`** | 第四层基础复用组件，无直接对应 JSON 字段 | `jsonObjectDef`（v2 合并 mappedFieldDef/mappedJsonSchemaObjectDef，value 可选） |
 
-**15 个组件的关系全景**：
+**14 个组件的关系全景**：
 
 ```mermaid
 graph TB
@@ -448,6 +448,7 @@ graph TB
     subgraph LX["横跨层"]
         AU["authConfigDef"]
         RL["rateLimitConfigDef"]
+        NB["nodeDataBaseDef"]
         ER["errorInfoDef"]
     end
 
@@ -476,7 +477,7 @@ graph TB
 | 第二层 | 7 种节点 data 定义（业务数据载体） | `triggerNodeDataDef` ~ `textMarkerNodeDataDef` |
 | 第三层 | 协议具体实现（HTTP header/query/body） | `httpInputDef`、`httpOutputDef` |
 | 第四层 | 基础复用组件（被上层引用） | `jsonObjectDef`（v2 合并 mappedFieldDef/mappedJsonSchemaObjectDef，value 可选） |
-| 横跨层 | 多场景复用（认证/限流/错误） | `authConfigDef`、`rateLimitConfigDef`、`errorInfoDef` |
+| 横跨层 | 多场景复用（认证/限流/基类/错误） | `authConfigDef`、`rateLimitConfigDef`、`nodeDataBaseDef`、`errorInfoDef` |
 
 ### 4.2 组件速查表
 
@@ -486,6 +487,7 @@ graph TB
 | 2 | `authConfigDef` | 横跨 | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
 | 3 | `rateLimitConfigDef` | 横跨 | 限流配置（QPS + 并发） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
 | 4 | `errorInfoDef` | 横跨 | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
+| 5 | `nodeDataBaseDef` | 横跨 | 节点 data 公共基类（type / labelCn / labelEn / structConfig） | 全部节点 data 子 Def（allOf 继承） |
 | 5 | `httpInputDef` | 第三层 | HTTP 入参声明（header/query/body 三段式） | §4.3.8 nodeInputDef |
 | 6 | `httpOutputDef` | 第三层 | HTTP 出参声明（header/body 两段式） | §4.3.5 nodeOutputDef |
 | 7 | `nodeInputDef` | 第一层 | 入参路由器（oneOf 按协议分发） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
@@ -899,23 +901,23 @@ graph TB
 
 #### 4.3.7 triggerNodeDataDef
 
+> 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展触发器独有字段。
+
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:triggerNodeDataDef:v2",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "type": { "type": "string", "enum": ["http", "manual"] },
-    "authConfig": { "$ref": "#/definitions/authConfigDef" },
-    "nodeInput": { "$ref": "#/definitions/httpInputDef" },
-    "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
-  },
-  "required": ["type"],
   "allOf": [
+    { "$ref": "#/definitions/nodeDataBaseDef" },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "authConfig": { "$ref": "#/definitions/authConfigDef" },
+        "nodeInput": { "$ref": "#/definitions/httpInputDef" },
+        "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
+      }
+    },
     {
       "if": { "properties": { "type": { "const": "http" } }, "required": ["type"] },
       "then": { "required": ["authConfig", "nodeInput"] }
@@ -930,23 +932,24 @@ graph TB
 
 > **字段说明**
 
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| type | string | ✅ | 触发子类型：`http` / `manual` |
-| authConfig | object | ❌ ⚡ | 认证配置（HTTP 触发时必填），见 §4.3.1 |
-| nodeInput | object | ❌ ⚡ | 入参声明（HTTP 触发时必填），见 §4.3.7 |
-| rateLimitConfig | object | ❌ | 限流配置，见 §4.3.2 |
+| JSON 字段 | 类型 | 必填 | 来源 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 基类 | `"trigger"`。HTTP 触发下子类型为 `http` / `manual`（应用层校验） |
+| labelCn | string | ❌ | 基类 | 节点中文标签 |
+| labelEn | string | ❌ | 基类 | 节点英文标签 |
+| structConfig | object | ❌ | 基类 | 结构体配置（预留） |
+| authConfig | object | ❌ ⚡ | 独有 | 认证配置。HTTP 触发时必填，见 §4.3.2 |
+| nodeInput | object | ❌ ⚡ | 独有 | 入参声明。HTTP 触发时必填，见 §4.3.5 |
+| rateLimitConfig | object | ❌ | 独有 | 限流配置，见 §4.3.3 |
 
 ⚡ = `type="http"` 时必填。
 
-> **示例** — HTTP 触发，SYSTOKEN 认证，限流 100 QPS：
+> **示例** — HTTP 触发，SYSTOKEN 认证：
 
 ```json
 {
+  "type": "trigger",
   "labelCn": "接收请求",
-  "type": "http",
   "authConfig": {
     "type": "SYSTOKEN",
     "fields": [{ "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }]
@@ -956,10 +959,9 @@ graph TB
     "body": {
       "type": "object",
       "properties": {
-        "sender":  { "type": "string" },
-        "content": { "type": "string" }
-      },
-      "required": ["sender", "content"]
+        "sender":  { "type": "string", "required": true },
+        "content": { "type": "string", "required": true }
+      }
     }
   },
   "rateLimitConfig": { "maxQps": 100 }
@@ -968,57 +970,63 @@ graph TB
 
 #### 4.3.8 connectorNodeDataDef
 
+> 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展连接器独有字段。
+
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:connectorNodeDataDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "connectorVersionId": {
-      "type": "string",
-      "pattern": "^[1-9][0-9]{15,19}$",
-      "description": "引用的连接器版本 ID，必须为已发布版本"
-    },
-    "inputMapping": {
+  "allOf": [
+    { "$ref": "#/definitions/nodeDataBaseDef" },
+    {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "header": { "$ref": "#/definitions/jsonObjectDef" },
-        "query":  { "$ref": "#/definitions/jsonObjectDef" },
-        "body":   { "$ref": "#/definitions/jsonObjectDef" }
-      }
+        "connectorVersionId": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{15,19}$",
+          "description": "引用的连接器版本 ID，必须为已发布版本"
+        },
+        "inputMapping": {
+          "type": "object",
+          "properties": {
+            "header": { "$ref": "#/definitions/jsonObjectDef" },
+            "query":  { "$ref": "#/definitions/jsonObjectDef" },
+            "body":   { "$ref": "#/definitions/jsonObjectDef" }
+          }
+        }
+      },
+      "required": ["connectorVersionId", "inputMapping"]
     }
-  },
-  "required": ["connectorVersionId", "inputMapping"]
+  ]
 }
 ```
 
 > **字段说明**
 
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| connectorVersionId | string | ✅ | 引用的连接器版本 ID（18-20 位数字，必须为已发布版本） |
-| inputMapping | object | ✅ | 字段映射，镜像连接器 nodeInput 结构，value 遵循 §3 值表达式体系 |
+| JSON 字段 | 类型 | 必填 | 来源 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 基类 | `"connector"` |
+| labelCn | string | ❌ | 基类 | 节点中文标签 |
+| labelEn | string | ❌ | 基类 | 节点英文标签 |
+| structConfig | object | ❌ | 基类 | 结构体配置（预留） |
+| connectorVersionId | string | ✅ | 独有 | 引用的连接器版本 ID |
+| inputMapping | object | ✅ | 独有 | 字段映射，value 遵循 §3 值表达式体系 |
 
-> **示例** — 将 trigger 的 sender/content 映射到下游 API：
+> **示例**
 
 ```json
 {
+  "type": "connector",
   "labelCn": "发送消息",
   "connectorVersionId": "1234567890123456789",
   "inputMapping": {
     "body": {
       "type": "object",
       "properties": {
-        "receiver": { "type": "string", "value": "${$.node.trigger.input.body.sender}" },
-        "content":  { "type": "string", "value": "${$.node.trigger.input.body.content}" }
-      },
-      "required": ["receiver", "content"]
+        "receiver": { "type": "string", "required": true, "value": "${$.node.trigger.input.body.sender}" },
+        "content":  { "type": "string", "required": true, "value": "${$.node.trigger.input.body.content}" }
+      }
     }
   }
 }
@@ -1026,61 +1034,65 @@ graph TB
 
 #### 4.3.9 dataProcessorNodeDataDef
 
+> 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展数据管道独有字段。
+
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:dataProcessorNodeDataDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "config": {
+  "allOf": [
+    { "$ref": "#/definitions/nodeDataBaseDef" },
+    {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "fieldMappings": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "source": { "type": "string", "description": "值表达式，遵循 §3 值表达式体系" },
-              "target": { "type": "string" }
-            },
-            "required": ["source", "target"]
+        "config": {
+          "type": "object",
+          "properties": {
+            "fieldMappings": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "source": { "type": "string", "description": "值表达式，遵循 §3 值表达式体系" },
+                  "target": { "type": "string" }
+                },
+                "required": ["source", "target"]
+              }
+            }
           }
         }
-      }
+      },
+      "required": ["config"]
     }
-  },
-  "required": ["config"]
+  ]
 }
 ```
 
 > **字段说明**
 
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| config | object | ✅ | 管道转换配置 |
-| config.fieldMappings[] | array | ✅ | 字段映射列表，至少 1 项 |
-| config.fieldMappings[].source | string | ✅ | 值表达式，遵循 §3 值表达式体系 |
-| config.fieldMappings[].target | string | ✅ | 目标字段路径 |
+| JSON 字段 | 类型 | 必填 | 来源 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 基类 | `"dataProcessor"` |
+| labelCn | string | ❌ | 基类 | 节点中文标签 |
+| labelEn | string | ❌ | 基类 | 节点英文标签 |
+| structConfig | object | ❌ | 基类 | 结构体配置（预留） |
+| config | object | ✅ | 独有 | 管道转换配置 |
+| config.fieldMappings[].source | string | ✅ | 独有 | 值表达式 |
+| config.fieldMappings[].target | string | ✅ | 独有 | 目标字段路径 |
 
-> **示例** — 引用 conn_1 返回值 + 系统函数 + 常量：
+> **示例**
 
 ```json
 {
+  "type": "dataProcessor",
   "labelCn": "格式化输出",
   "config": {
     "fieldMappings": [
       { "source": "${$.system.fn.upper($.node.conn_1.output.body.name)}", "target": "upperName" },
-      { "source": "${$.node.conn_1.output.body.msgId}",                   "target": "id" },
-      { "source": "${$.constant:processed}",                               "target": "status" }
+      { "source": "${$.node.conn_1.output.body.msgId}", "target": "id" },
+      { "source": "${$.constant:processed}", "target": "status" }
     ]
   }
 }
@@ -1088,49 +1100,54 @@ graph TB
 
 #### 4.3.10 exitNodeDataDef
 
+> 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展出口独有字段。
+
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:exitNodeDataDef:v1",
-  "title": "exitNodeDataDef",
-  "description": "出口节点业务数据。node.type='exit' 时 node.data 内的结构",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "outputMapping": {
+  "allOf": [
+    { "$ref": "#/definitions/nodeDataBaseDef" },
+    {
       "type": "object",
+      "additionalProperties": false,
       "properties": {
-        "header": { "$ref": "#/definitions/jsonObjectDef" },
-        "body":   { "$ref": "#/definitions/jsonObjectDef" }
-      }
+        "outputMapping": {
+          "type": "object",
+          "properties": {
+            "header": { "$ref": "#/definitions/jsonObjectDef" },
+            "body":   { "$ref": "#/definitions/jsonObjectDef" }
+          }
+        }
+      },
+      "required": ["outputMapping"]
     }
-  },
-  "required": ["outputMapping"]
+  ]
 }
 ```
 
 > **字段说明**
 
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| outputMapping | object | ✅ | 字段映射，镜像 nodeOutput 结构（HTTP: header/body），value 遵循 §3 值表达式体系 |
+| JSON 字段 | 类型 | 必填 | 来源 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 基类 | `"exit"` |
+| labelCn | string | ❌ | 基类 | 节点中文标签 |
+| labelEn | string | ❌ | 基类 | 节点英文标签 |
+| structConfig | object | ❌ | 基类 | 结构体配置（预留） |
+| outputMapping | object | ✅ | 独有 | 字段映射，value 遵循 §3 值表达式体系 |
 
-> **示例** — 将 conn_1 的返回值映射到 HTTP 响应体：
+> **示例**
 
 ```json
 {
+  "type": "exit",
   "labelCn": "返回结果",
   "outputMapping": {
     "body": {
       "type": "object",
       "properties": {
-        "msgId":  { "type": "string", "value": "${$.node.conn_1.output.body.msgId}" },
-        "status": { "type": "string", "value": "${$.constant:success}" }
+        "msgId":  { "type": "string",  "value": "${$.node.conn_1.output.body.msgId}" },
+        "status": { "type": "string",  "value": "${$.constant:success}" }
       }
     }
   }
@@ -1173,37 +1190,53 @@ graph TB
 
 #### 4.3.12 textMarkerNodeDataDef（V2 新增）
 
+> 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig）。
+
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:textMarkerNodeDataDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "type": { "type": "string", "const": "text" },
-    "config": { "type": "object", "description": "归属配置（预留槽）" }
-  }
+  "allOf": [
+    { "$ref": "#/definitions/nodeDataBaseDef" },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config": { "type": "object", "description": "归属配置（预留槽）" }
+      }
+    }
+  ]
 }
 ```
 
 > **字段说明**
 
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点展示中文文本 |
-| labelEn | string | ❌ | 节点展示英文文本 |
-| type | string | ✅ | 固定为 `text` |
-| config | object | ❌ | 结构归属配置（预留槽） |
+| JSON 字段 | 类型 | 必填 | 来源 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 基类 | `"text"` |
+| labelCn | string | ❌ | 基类 | 节点展示中文文本 |
+| labelEn | string | ❌ | 基类 | 节点展示英文文本 |
+| structConfig | object | ❌ | 基类 | 结构体配置（预留） |
+| config | object | ❌ | 独有 | 结构归属配置（预留槽） |
 
-> **示例** — 循环区域标记：
+> **示例**
 
 ```json
-{ "labelCn": "循环开始", "type": "text", "config": {} }
+{ "type": "text", "labelCn": "循环开始", "config": {} }
 ```
 
+#### 4.3.13 nodeDataDef（路由汇总）
+
+> 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
+
+| `node.type` 值 | 对应 data Schema | $ref 目标 | 详见 |
+|----------------|-----------------|-----------|:--:|
+| `trigger` | triggerNodeDataDef | `#/definitions/triggerNodeDataDef` | §4.3.7 |
+| `connector` | connectorNodeDataDef | `#/definitions/connectorNodeDataDef` | §4.3.8 |
+| `data_processor` | dataProcessorNodeDataDef | `#/definitions/dataProcessorNodeDataDef` | §4.3.9 |
+| `exit` | exitNodeDataDef | `#/definitions/exitNodeDataDef` | §4.3.10 |
+| `loop_v2` / `parallel` / `condition_branch` / `error_handler` | structureNodeDataDef | `#/definitions/structureNodeDataDef` | §4.3.11 |
+| `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.3.12 |
 #### 4.3.13 nodeDataDef（路由汇总）
 
 > 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
