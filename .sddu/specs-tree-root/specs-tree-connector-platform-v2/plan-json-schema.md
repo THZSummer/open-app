@@ -412,53 +412,60 @@ ${$.system.fn.format($.node.err_1.current.messageZh, $.execution.flowId)}
 
 ```mermaid
 graph TB
-    subgraph Layer1["第一层：协议无关路由器（oneOf 按协议分发）"]
-        ND["nodeDataDef<br/>按 node.type 路由到 7 种 data"]
-        NI["nodeInputDef<br/>按 protocol 路由到入参定义"]
-        NO["nodeOutputDef<br/>按 protocol 路由到出参定义"]
+    subgraph L1["第一层：协议无关路由器"]
+        ND["nodeDataDef<br/>按 node.type 分发"]
+        NI["nodeInputDef<br/>按 protocol 分发"]
+        NO["nodeOutputDef<br/>按 protocol 分发"]
     end
 
-    subgraph Layer2["第二层：7 种节点 data 定义"]
-        TD["triggerDataDef"]  CD["connectorDataDef"]
-        DD["dataProcessorDataDef"]  ED["exitDataDef"]
-        SD["structureNodeDataDef"]  MD["textMarkerDataDef"]
+    subgraph L2["第二层：节点 data 定义"]
+        TD["triggerDataDef"]
+        CD["connectorDataDef"]
+        DD["dataProcessorDataDef"]
+        ED["exitDataDef"]
+        SD["structureNodeDataDef"]
+        MD["textMarkerDataDef"]
     end
 
-    subgraph Layer3["第三层：协议具体实现"]
-        HI["httpInputDef<br/>(header/query/body)"]
-        HO["httpOutputDef<br/>(header/body)"]
+    subgraph L3["第三层：协议实现"]
+        HI["httpInputDef"]
+        HO["httpOutputDef"]
     end
 
-    subgraph Layer4["第四层：基础复用组件"]
-        JS["jsonSchemaObjectDef<br/>纯字段形状"]
-        MF["mappedFieldDef<br/>带映射值的字段"]
-        MO["mappedJsonSchemaObjectDef<br/>带映射值的对象"]
+    subgraph L4["第四层：基础复用"]
+        JS["jsonSchemaObjectDef"]
+        MF["mappedFieldDef"]
+        MO["mappedJsonSchemaObjectDef"]
     end
 
-    subgraph LayerX["横跨层"]
-        AU["authConfigDef<br/>认证声明"]
-        RL["rateLimitConfigDef<br/>限流配置"]
-        ER["errorInfoDef<br/>错误详情"]
+    subgraph LX["横跨层"]
+        AU["authConfigDef"]
+        RL["rateLimitConfigDef"]
+        ER["errorInfoDef"]
     end
 
-    ND -->|oneOf| TD & CD & DD & ED & SD & MD
-    NI -->|oneOf| HI
-    NO -->|oneOf| HO
-    HI -->|"$ref"| JS
-    HO -->|"$ref"| JS
-    CD -->|"$ref(inputMapping)"| MO
-    ED -->|"$ref(outputMapping)"| MO
-    MO -->|"递归引用"| MF
-    MF -->|"递归引用"| MO
-    TD -->|"$ref(authConfig)"| AU
-    TD -->|"$ref(nodeInput)"| NI
-    CD -->|"$ref(connectorVersionId)"| NI
+    ND --> TD
+    ND --> CD
+    ND --> DD
+    ND --> ED
+    ND --> SD
+    ND --> MD
+    NI --> HI
+    NO --> HO
+    HI --> JS
+    HO --> JS
+    CD --> MO
+    ED --> MO
+    MO --> MF
+    MF --> MO
+    TD --> AU
+    TD --> NI
 
-    style Layer1 fill:#e8eaf6,stroke:#3f51b5
-    style Layer2 fill:#e3f2fd,stroke:#1565c0
-    style Layer3 fill:#fff3e0,stroke:#ef6c00
-    style Layer4 fill:#f3e5f5,stroke:#7b1fa2
-    style LayerX fill:#e8f5e9,stroke:#2e7d32
+    style L1 fill:#e8eaf6,stroke:#3f51b5
+    style L2 fill:#e3f2fd,stroke:#1565c0
+    style L3 fill:#fff3e0,stroke:#ef6c00
+    style L4 fill:#f3e5f5,stroke:#7b1fa2
+    style LX fill:#e8f5e9,stroke:#2e7d32
 ```
 
 | 层 | 职责 | 组件 |
