@@ -31,7 +31,7 @@
 
 | # | 原则 | 规则 | 示例 |
 |:---:|------|------|------|
-| 一 | **同名同构** | 同一语义的字段在不同上下文中使用同一 Schema 组件，不重复定义 | ① `authConfig` → 触发器和连接器共用 `authConfigDef`<br>② `rateLimitConfig` → 入站和出站共用 `rateLimitDef`<br>③ `inputContract` → 触发器和连接器统一走 `inputContractDef` |
+| 一 | **同名同构** | 同一语义的字段在不同上下文中使用同一 Schema 组件，不重复定义 | ① `authConfig` → 触发器和连接器共用 `authConfigDef`<br>② `rateLimitConfig` → 入站和出站共用 `rateLimitConfigDef`<br>③ `inputContract` → 触发器和连接器统一走 `inputContractDef` |
 | 二 | **无用不存** | 不适用于当前场景的字段不出现在 JSON 中，由 Schema 的 `if`-`then` + `additionalProperties: false` 约束 | ① trigger 不含 `protocolConfig`（端点固定）<br>② trigger 不含 `timeoutMs`（引擎控制）<br>③ trigger 不含 `outputContract`（由 exit 定义）<br>④ manual 触发不含 `authConfig` |
 | 三 | **边即语义** | edge 不仅描述"谁连到谁"，还承载控制流语义——执行条件、错误路由、并行标记 | ① `businessType`：default / condition / error / loop_entry / loop_exit<br>② `connectionMode`：serial / parallel<br>③ `isStructural`：结构辅助边标记 |
 | 四 | **框业分离** | React Flow 框架字段（id/type/position/source/target 等）不进 data，业务字段全在 data 内，两者不互串 | ① `node.id` / `node.type` / `node.position` → 框架字段<br>② `node.data.*` → 业务字段<br>③ `edge.source` / `edge.target` → 框架字段<br>④ `edge.data.*` → 业务字段 |
@@ -406,10 +406,10 @@ ${$.system.fn.format($.node.err_1.current.messageZh, $.execution.flowId)}
 | # | 组件名 | 用途 | 被引用方 |
 |:---:|--------|------|---------|
 | 1 | `authConfigDef` | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.4.10 triggerDataDef |
-| 2 | `rateLimitDef` | 限流配置（QPS + 并发） | §5 connectionConfig, §4.4.10 triggerDataDef |
-| 3 | `jsonSchemaObjectDef` | 纯字段形状描述（类型 + 属性 + 必填） | §4.4.4 httpInputContractDef, §4.4.5 httpOutputContractDef |
-| 4 | `httpInputContractDef` | HTTP 入参契约（header/query/body 三段式） | §4.4.6 inputContractDef |
-| 5 | `httpOutputContractDef` | HTTP 出参契约（header/body 两段式） | §4.4.7 outputContractDef |
+| 2 | `rateLimitConfigDef` | 限流配置（QPS + 并发） | §5 connectionConfig, §4.4.10 triggerDataDef |
+| 3 | `jsonSchemaObjectDef` | 纯字段形状描述（类型 + 属性 + 必填） | §4.4.4 httpInputDef, §4.4.5 httpOutputDef |
+| 4 | `httpInputDef` | HTTP 入参契约（header/query/body 三段式） | §4.4.6 inputContractDef |
+| 5 | `httpOutputDef` | HTTP 出参契约（header/body 两段式） | §4.4.7 outputContractDef |
 | 6 | `inputContractDef` | 入参契约路由器（oneOf 按协议分发） | §5 connectionConfig, §4.4.10 triggerDataDef |
 | 7 | `outputContractDef` | 出参契约路由器（oneOf 按协议分发） | §5 connectionConfig |
 | 8 | `errorInfoDef` | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
@@ -429,6 +429,8 @@ ${$.system.fn.format($.node.err_1.current.messageZh, $.execution.flowId)}
 - **JSON 字段（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`）
 - **JSON 字段定义（definition key）**：校验规则组件键名（如 `authConfigDef`）
 
+**定义命名规则**：有直接对应 JSON 字段的，取 **字段全名 + `Def`** 后缀（`authConfig` → `authConfigDef`、`rateLimitConfig` → `rateLimitConfigDef`）。无直接对应字段的复用组件（`jsonSchemaObjectDef`、`mappedFieldDef` 等）使用语义化名称 + `Def`，不加 `Contract`/`Schema` 等额外后缀。
+
 ```mermaid
 graph LR
     subgraph Fields["JSON 字段名（数据侧）"]
@@ -437,9 +439,9 @@ graph LR
         F5["errorInfo"]
     end
     subgraph Defs["JSON 字段定义（规则侧）"]
-        D1["authConfigDef"]  D2["rateLimitDef"]
-        D3["inputContractDef<br/>(oneOf→httpInputContractDef)"]
-        D4["outputContractDef<br/>(oneOf→httpOutputContractDef)"]
+        D1["authConfigDef"]  D2["rateLimitConfigDef"]
+        D3["inputContractDef<br/>(oneOf→httpInputDef)"]
+        D4["outputContractDef<br/>(oneOf→httpOutputDef)"]
         D0["jsonSchemaObjectDef<br/>（复用）"]  D5["errorInfoDef"]
     end
     F1 -- "$ref" --> D1  F2 -- "$ref" --> D2
@@ -494,9 +496,9 @@ graph LR
       "required": ["type"]
     },
 
-    "rateLimitDef": {
-      "$id": "urn:openapp:schema:rateLimitDef:v1",
-      "title": "rateLimitDef",
+    "rateLimitConfigDef": {
+      "$id": "urn:openapp:schema:rateLimitConfigDef:v1",
+      "title": "rateLimitConfigDef",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -591,9 +593,9 @@ graph LR
       "required": ["type", "properties"]
     },
 
-    "httpInputContractDef": {
-      "$id": "urn:openapp:schema:httpInputContractDef:v1",
-      "title": "httpInputContractDef",
+    "httpInputDef": {
+      "$id": "urn:openapp:schema:httpInputDef:v1",
+      "title": "httpInputDef",
       "description": "HTTP 入参契约——header / query / body 三段式",
       "type": "object",
       "additionalProperties": false,
@@ -611,9 +613,9 @@ graph LR
       ]
     },
 
-    "httpOutputContractDef": {
-      "$id": "urn:openapp:schema:httpOutputContractDef:v1",
-      "title": "httpOutputContractDef",
+    "httpOutputDef": {
+      "$id": "urn:openapp:schema:httpOutputDef:v1",
+      "title": "httpOutputDef",
       "description": "HTTP 出参契约——header / body 两段式",
       "type": "object",
       "additionalProperties": false,
@@ -635,7 +637,7 @@ graph LR
       "description": "入参契约路由器——oneOf 按协议类型分发",
       "type": "object",
       "oneOf": [
-        { "$ref": "#/definitions/httpInputContractDef" }
+        { "$ref": "#/definitions/httpInputDef" }
       ]
     },
 
@@ -645,7 +647,7 @@ graph LR
       "description": "出参契约路由器——oneOf 按协议类型分发",
       "type": "object",
       "oneOf": [
-        { "$ref": "#/definitions/httpOutputContractDef" }
+        { "$ref": "#/definitions/httpOutputDef" }
       ]
     },
 
@@ -700,7 +702,7 @@ graph LR
         "type": { "type": "string", "enum": ["http", "manual"] },
         "authConfig": { "$ref": "#/definitions/authConfigDef" },
         "inputContract": { "$ref": "#/definitions/inputContractDef" },
-        "rateLimitConfig": { "$ref": "#/definitions/rateLimitDef" }
+        "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
       },
       "required": ["type"],
       "allOf": [
@@ -883,11 +885,11 @@ graph LR
 | fields[].required | boolean | ❌ | 是否必填，默认 `true` |
 | fields[].sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
 
-#### 4.4.2 rateLimitDef
+#### 4.4.2 rateLimitConfigDef
 
 ```json
 {
-  "$id": "urn:openapp:schema:rateLimitDef:v1",
+  "$id": "urn:openapp:schema:rateLimitConfigDef:v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -910,7 +912,7 @@ graph LR
 
 #### 4.4.3 jsonSchemaObjectDef
 
-纯字段形状描述组件，不包含协议位置信息。被 httpInputContractDef / httpOutputContractDef 引用。
+纯字段形状描述组件，不包含协议位置信息。被 httpInputDef / httpOutputDef 引用。
 
 ```json
 {
@@ -953,13 +955,13 @@ graph LR
 }
 ```
 
-#### 4.4.4 httpInputContractDef
+#### 4.4.4 httpInputDef
 
 HTTP 入参契约，按传输位置分为 header / query / body 三段。
 
 ```json
 {
-  "$id": "urn:openapp:schema:httpInputContractDef:v1",
+  "$id": "urn:openapp:schema:httpInputDef:v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -1007,13 +1009,13 @@ HTTP 入参契约，按传输位置分为 header / query / body 三段。
 }
 ```
 
-#### 4.4.5 httpOutputContractDef
+#### 4.4.5 httpOutputDef
 
 HTTP 出参契约，按传输位置分为 header / body 两段。
 
 ```json
 {
-  "$id": "urn:openapp:schema:httpOutputContractDef:v1",
+  "$id": "urn:openapp:schema:httpOutputDef:v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -1065,14 +1067,14 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
   "$id": "urn:openapp:schema:inputContractDef:v1",
   "type": "object",
   "oneOf": [
-    { "$ref": "#/definitions/httpInputContractDef" }
+    { "$ref": "#/definitions/httpInputDef" }
   ]
 }
 ```
 
 | 协议 | 目标定义 | 说明 |
 |------|---------|------|
-| `HTTP` | `httpInputContractDef`（§4.4.4） | header / query / body |
+| `HTTP` | `httpInputDef`（§4.4.4） | header / query / body |
 | `REDIS`（V1） | `redisInputContractDef` | 待定义 |
 | `MYSQL`（V1） | `mysqlInputContractDef` | 待定义 |
 
@@ -1085,14 +1087,14 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
   "$id": "urn:openapp:schema:outputContractDef:v1",
   "type": "object",
   "oneOf": [
-    { "$ref": "#/definitions/httpOutputContractDef" }
+    { "$ref": "#/definitions/httpOutputDef" }
   ]
 }
 ```
 
 | 协议 | 目标定义 | 说明 |
 |------|---------|------|
-| `HTTP` | `httpOutputContractDef`（§4.4.5） | header / body |
+| `HTTP` | `httpOutputDef`（§4.4.5） | header / body |
 | `REDIS`（V1） | `redisOutputContractDef` | 待定义 |
 
 #### 4.4.8 errorInfoDef
@@ -1356,7 +1358,7 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
     "inputContract": { "$ref": "#/definitions/inputContractDef" },
     "outputContract": { "$ref": "#/definitions/outputContractDef" },
     "timeoutMs": { "type": "integer", "default": 3000, "minimum": 1000, "maximum": 300000 },
-    "rateLimitConfig": { "$ref": "#/definitions/rateLimitDef" }
+    "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
   },
   "required": ["protocol", "protocolConfig"]
 }
