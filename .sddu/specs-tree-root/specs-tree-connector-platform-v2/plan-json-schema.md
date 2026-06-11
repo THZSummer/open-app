@@ -165,27 +165,75 @@
 
 ### 3.2 运行时上下文对象
 
-表达式 `${$.node.trigger.input.sender}` 中的 `$` 代表引擎构造的**运行时上下文 JSON 根对象**。以下为该对象在某一执行时刻的完整结构，标注了每条 Path 的解析结果：
+表达式 `${$.node.trigger.input.body.sender}` 中的 `$` 代表引擎构造的**运行时上下文 JSON 根对象**。以下按 HTTP 协议场景完整展开 trigger（入参三段式）、connector（入参三段式 + 出参两段式）、exit（出参两段式）、loop/error_handler（current 运行时上下文）：
 
 ```json
 {
   "node": {
     "trigger": {
       "input": {
-        "sender": "u001",
-        "content": "你好",
-        "items": ["a", "b", "c"]
+        "header": {
+          "Authorization": "Bearer token-xxx",
+          "Content-Type": "application/json"
+        },
+        "query": {
+          "page": "1",
+          "size": "20"
+        },
+        "body": {
+          "sender": "u001",
+          "content": "你好",
+          "items": ["a", "b", "c"]
+        }
+      }
+    },
+    "conn_1": {
+      "input": {
+        "header": {
+          "Authorization": "Bearer sk-xxxxxxxxxxxx"
+        },
+        "query": {
+          "page": "1"
+        },
+        "body": {
+          "itemId": "b",
+          "size": 20
+        }
+      },
+      "output": {
+        "header": {
+          "X-Request-Id": "req-001",
+          "X-RateLimit-Remaining": "99"
+        },
+        "body": {
+          "msgId": "msg_001",
+          "name": "alice",
+          "data": "raw data"
+        }
+      }
+    },
+    "exit": {
+      "output": {
+        "header": {
+          "X-Trace-Id": "trace-abc"
+        },
+        "body": {
+          "total": 3,
+          "execId": "exec-2026-001"
+        }
       }
     },
     "loop_1": {
       "output": { "items": ["a", "b", "c"] },
       "current": { "item": "b", "index": 1, "total": 3 }
     },
-    "conn_1": {
-      "output": { "msgId": "msg_001", "name": "alice", "data": "raw data" }
-    },
     "err_1": {
-      "current": { "code": "503", "messageZh": "下游服务不可用", "messageEn": "Service Unavailable" }
+      "current": {
+        "code": "503",
+        "messageZh": "下游服务不可用",
+        "messageEn": "Service Unavailable",
+        "cause": "连接超时"
+      }
     }
   },
   "system": {
@@ -195,33 +243,59 @@
   },
   "script": { "normalize": "(user-defined)" },
   "constant": { "20": 20, "processed": "processed" },
-  "execution": { "id": "exec-2026-001", "flowId": "flow-12345" }
+  "execution": { "id": "exec-2026-001", "flowId": "flow-12345", "triggerTime": "2026-06-10T10:00:00Z" }
 }
 ```
 
-**Path 解析对照**：
+**各节点的数据面**：
 
-| JSON Path | 解析结果 |
-|-----------|---------|
-| `$.node.trigger.input.sender` | `"u001"` |
-| `$.node.trigger.input.items` | `["a", "b", "c"]` |
-| `$.node.loop_1.current.item` | `"b"` |
-| `$.node.loop_1.current.index` | `1` |
-| `$.node.loop_1.current.total` | `3` |
-| `$.node.loop_1.output.items` | `["a", "b", "c"]` |
-| `$.node.conn_1.output.name` | `"alice"` |
-| `$.node.conn_1.output.data` | `"raw data"` |
-| `$.node.err_1.current.code` | `"503"` |
-| `$.node.err_1.current.messageZh` | `"下游服务不可用"` |
-| `$.system.apiKey` | `"sk-xxxxxxxxxxxx"` |
-| `$.system.env.region` | `"cn-east"` |
-| `$.system.env.locale` | `"zh-CN"` |
-| `$.system.fn.upper($.node.conn_1.output.name)` | `"ALICE"` |
-| `$.script.normalize($.node.conn_1.output.data, $.system.env.locale)` | `"normalized raw data"` |
-| `$.constant:20` | `20` |
-| `$.constant:processed` | `"processed"` |
-| `$.execution.flowId` | `"flow-12345"` |
-| `$.execution.id` | `"exec-2026-001"` |
+| 节点类型 | `input` | `output` | `current` | 说明 |
+|---------|:------:|:------:|:------:|------|
+| trigger | ✅ header / query / body | — | — | 仅入参，HTTP 请求的三段 |
+| connector | ✅ header / query / body（镜像 inputContract） | ✅ header / body（镜像 outputContract） | — | 入参 + 出参 |
+| exit | — | ✅ header / body | — | 仅出参，对外 HTTP 响应 |
+| loop_v2 | — | ✅（原始数组等） | ✅ item / index / total | output 为持久化属性，current 为迭代上下文 |
+| error_handler | — | ✅（错误统计等） | ✅ code / messageZh / messageEn / cause | current 跟随 errorInfoDef |
+
+**Path 解析对照 — 按作用域分组**：
+
+| JSON Path | 解析结果 | 作用域 |
+|-----------|---------|:---:|
+| `$.node.trigger.input.header.Authorization` | `"Bearer token-xxx"` | node : input |
+| `$.node.trigger.input.header.Content-Type` | `"application/json"` | node : input |
+| `$.node.trigger.input.query.page` | `"1"` | node : input |
+| `$.node.trigger.input.query.size` | `"20"` | node : input |
+| `$.node.trigger.input.body.sender` | `"u001"` | node : input |
+| `$.node.trigger.input.body.content` | `"你好"` | node : input |
+| `$.node.trigger.input.body.items` | `["a", "b", "c"]` | node : input |
+| `$.node.conn_1.input.header.Authorization` | `"Bearer sk-xxxxxxxxxxxx"` | node : input |
+| `$.node.conn_1.input.query.page` | `"1"` | node : input |
+| `$.node.conn_1.input.body.itemId` | `"b"` | node : input |
+| `$.node.conn_1.input.body.size` | `20` | node : input |
+| `$.node.conn_1.output.header.X-Request-Id` | `"req-001"` | node : output |
+| `$.node.conn_1.output.header.X-RateLimit-Remaining` | `"99"` | node : output |
+| `$.node.conn_1.output.body.msgId` | `"msg_001"` | node : output |
+| `$.node.conn_1.output.body.name` | `"alice"` | node : output |
+| `$.node.conn_1.output.body.data` | `"raw data"` | node : output |
+| `$.node.exit.output.header.X-Trace-Id` | `"trace-abc"` | node : output |
+| `$.node.exit.output.body.total` | `3` | node : output |
+| `$.node.exit.output.body.execId` | `"exec-2026-001"` | node : output |
+| `$.node.loop_1.current.item` | `"b"` | node : current |
+| `$.node.loop_1.current.index` | `1` | node : current |
+| `$.node.loop_1.current.total` | `3` | node : current |
+| `$.node.err_1.current.code` | `"503"` | node : current |
+| `$.node.err_1.current.messageZh` | `"下游服务不可用"` | node : current |
+| `$.node.err_1.current.cause` | `"连接超时"` | node : current |
+| `$.system.apiKey` | `"sk-xxxxxxxxxxxx"` | system |
+| `$.system.env.region` | `"cn-east"` | system |
+| `$.system.env.locale` | `"zh-CN"` | system |
+| `$.system.fn.upper($.node.conn_1.output.body.name)` | `"ALICE"` | system.fn |
+| `$.script.normalize($.node.conn_1.output.body.data, $.system.env.locale)` | `"normalized raw data"` | script |
+| `$.constant:20` | `20` | constant |
+| `$.constant:processed` | `"processed"` | constant |
+| `$.execution.id` | `"exec-2026-001"` | execution |
+| `$.execution.flowId` | `"flow-12345"` | execution |
+| `$.execution.triggerTime` | `"2026-06-10T10:00:00Z"` | execution |
 
 > `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径，与 `input`/`output` 平级。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
 >
