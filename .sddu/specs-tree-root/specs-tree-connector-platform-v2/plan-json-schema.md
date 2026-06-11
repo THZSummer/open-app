@@ -443,7 +443,7 @@ graph TB
         DD["dataProcessorNodeDataDef"]
         ED["exitNodeDataDef"]
         SD["structureNodeDataDef"]
-        MD["textMarkerNodeDataDef"]
+        MD["textNodeDataDef"]
     end
 
     subgraph L3["第三层：协议实现"]
@@ -484,7 +484,7 @@ graph TB
 | 层 | 职责 | 组件 |
 |:--:|------|------|
 | 第一层 | 路由器（oneOf 按 node.type 分发） | `nodeDataDef` |
-| 第二层 | 7 种节点 data 定义（业务数据载体） | `triggerNodeDataDef` ~ `textMarkerNodeDataDef` |
+| 第二层 | 7 种节点 data 定义（业务数据载体） | `triggerNodeDataDef` ~ `textNodeDataDef` |
 | 第三层 | 协议具体实现（HTTP header/query/body） | `httpInputDef`、`httpOutputDef` |
 | 第四层 | 基础复用组件（被上层引用） | `jsonObjectDef`（v2 合并 mappedFieldDef/mappedJsonSchemaObjectDef，value 可选） |
 | 横跨层 | 多场景复用（认证/限流/基类/错误） | `authConfigDef`、`rateLimitConfigDef`、`nodeDataBaseDef`、`errorInfoDef` |
@@ -510,7 +510,7 @@ graph TB
 | 14 | `parallelNodeDataDef` | 第二层 | 并行节点业务数据（继承 nodeDataBaseDef） | §4.3.13 |
 | 15 | `conditionBranchNodeDataDef` | 第二层 | 条件分支节点业务数据（继承 nodeDataBaseDef） | §4.3.14 |
 | 16 | `errorHandlerNodeDataDef` | 第二层 | 错误处理节点业务数据（继承 nodeDataBaseDef） | §4.3.15 |
-| 17 | `textMarkerNodeDataDef` | 第二层 | text 标记节点数据（继承 nodeDataBaseDef） | §4.3.16 |
+| 17 | `textNodeDataDef` | 第二层 | text 标记节点数据（继承 nodeDataBaseDef） | §4.3.16 |
 | 18 | `nodeDataDef` | 第一层 | 节点 data 路由器（oneOf 按 node.type 分发至 9 种 data） | §4.3.17 |
 
 ### 4.3 组件详解
@@ -1727,9 +1727,9 @@ graph TB
 }
 ```
 
-#### 4.3.16 textMarkerNodeDataDef（V2 新增）
+#### 4.3.16 textNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。纯渲染标记节点，**不参与 DAG 执行**（引擎拓扑排序时过滤），但**参与数据持久化**。`structConfig` 承载其与结构主节点的归属关系和角色标识。两套分组体系：
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。**结构节点的标记节点**——循环/错误处理中的"循环区域""循环开始""循环结束""循环跳出"，并行/条件分支中的"分支开始""分支结束""并行合并"。
 
 **循环/错误处理** — `loopV2GroupId` + `loopV2Role`：
 
@@ -1798,7 +1798,7 @@ graph TB
 | `parallel` | parallelNodeDataDef | §4.3.13 |
 | `condition-branch` | conditionBranchNodeDataDef | §4.3.14 |
 | `error-handler` | errorHandlerNodeDataDef | §4.3.15 |
-| `text` | textMarkerNodeDataDef | §4.3.16 |
+| `text` | textNodeDataDef | §4.3.16 |
 ### 4.4 完整组件定义
 
 以下 JSON 为所有共享组件定义的聚合，是整个文档中 JSON Schema 定义的唯一权威来源。各组件通过 `#/definitions/xxx` 路径被 §5 和 §6 引用。
@@ -2021,7 +2021,7 @@ graph TB
         { "$ref": "#/definitions/parallelNodeDataDef",           "description": "node.type='parallel'" },
         { "$ref": "#/definitions/conditionBranchNodeDataDef",    "description": "node.type='condition-branch'" },
         { "$ref": "#/definitions/errorHandlerNodeDataDef",       "description": "node.type='error-handler'" },
-        { "$ref": "#/definitions/textMarkerNodeDataDef",         "description": "node.type='text'" }
+        { "$ref": "#/definitions/textNodeDataDef",         "description": "node.type='text'" }
       ]
     },
 
@@ -2160,9 +2160,9 @@ graph TB
       "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
     },
 
-    "textMarkerNodeDataDef": {
-      "$id": "urn:openapp:schema:textMarkerNodeDataDef:v1",
-      "title": "textMarkerNodeDataDef",
+    "textNodeDataDef": {
+      "$id": "urn:openapp:schema:textNodeDataDef:v1",
+      "title": "textNodeDataDef",
       "description": "text 标记节点数据。继承 nodeDataBaseDef，纯渲染，不参与 DAG 执行",
       "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
     }
@@ -2400,7 +2400,7 @@ graph TB
 | `parallel` | parallelNodeDataDef | type | 并行主节点 |
 | `condition-branch` | conditionBranchNodeDataDef | type | 条件分支主节点 |
 | `error-handler` | errorHandlerNodeDataDef | type | 错误处理主节点 |
-| `text` | textMarkerNodeDataDef | — | 纯渲染标记（引擎跳过） |
+| `text` | textNodeDataDef | — | 纯渲染标记（引擎跳过） |
 ⍟ = HTTP 触发时必填。各 data Schema 完整定义见 §4.3.15 ~ §4.3.15。
 #### 6.3.2 edge.data 配置
 ```json
