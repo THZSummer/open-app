@@ -2300,7 +2300,7 @@ graph TB
 
 ### 5.4 示例
 
-完整的连接器配置 JSON（HTTP POST，SYSTOKEN 认证，声明入参 receiver/content、出参 msgId）：
+完整连接器配置（HTTP POST，SOA + COOKIE 双认证，声明入参 receiver/content、出参 msgId）：
 
 ```json
 {
@@ -2314,19 +2314,36 @@ graph TB
   },
   "authConfigs": [
     {
-      "type": "SYSTOKEN",
+      "type": "SOA",
       "header": {
         "type": "object",
         "properties": {
-          "X-Sys-Token": {
+          "X-Soa-Token": {
             "type": "string",
             "required": true,
             "sensitive": true,
-            "description": "系统凭证令牌"
+            "value": "${$.system.env.soaToken}",
+            "description": "SOA 认证令牌。值来源：凭据库"
           }
+        }
+      }
+    },
+    {
+      "type": "COOKIE",
+      "header": {
+        "type": "object",
+        "properties": {
+          "Cookie": {
+            "type": "string",
+            "required": true,
+            "sensitive": true,
+            "value": "${$.node.trigger.input.header.Cookie}",
+            "description": "Cookie 请求头。值来源：上游触发器"
+          }
+        }
       }
     }
-  },
+  ],
   "nodeInput": {
     "protocol": "HTTP",
     "body": {
