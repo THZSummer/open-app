@@ -2275,8 +2275,8 @@ graph TB
       "minItems": 1,
       "items": { "$ref": "#/definitions/authConfigDef" }
     },
-    "nodeInput": { "$ref": "#/definitions/httpInputDef" },
-    "nodeOutput": { "$ref": "#/definitions/httpOutputDef" },
+    "input": { "$ref": "#/definitions/httpInputDef" },
+    "output": { "$ref": "#/definitions/httpOutputDef" },
     "timeoutMs": { "type": "integer", "default": 3000, "minimum": 1000, "maximum": 300000 },
     "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
   },
@@ -2292,9 +2292,9 @@ graph TB
 | labelEn | string | ❌ | 连接器英文标签 | — |
 | protocol | string | ✅ | 协议类型，MVP 仅 `HTTP` | — |
 | protocolConfig | object | ✅ | 协议配置（url / method / headers） | — |
-| authConfigs[] | array | ❌ | 认证配置列表，minItems 1。每项见 §4.3.2 authConfigDef。支持多选，按序附加 |
-| nodeInput | object | ❌ | 入参契约 | §4.3.7 |
-| nodeOutput | object | ❌ | 出参契约 | §4.3.8 |
+| authConfigs[] | array | ❌ | 认证配置列表，minItems 1。每项见 §4.3.2 authConfigDef。支持多选，按序附加 | — |
+| input | object | ❌ | 入参声明（仅 HTTP），见 §4.3.5 httpInputDef | §4.3.5 |
+| output | object | ❌ | 出参声明（仅 HTTP），见 §4.3.6 httpOutputDef | §4.3.6 |
 | timeoutMs | integer | ❌ | 单次调用超时（毫秒），默认 3000 | — |
 | rateLimitConfig | object | ❌ | 限流配置 | §4.3.2 |
 
@@ -2344,7 +2344,7 @@ graph TB
       }
     }
   ],
-  "nodeInput": {
+  "input": {
     "protocol": "HTTP",
     "body": {
       "type": "object",
@@ -2355,7 +2355,7 @@ graph TB
       "required": ["receiver", "content"]
     }
   },
-  "nodeOutput": {
+  "output": {
     "protocol": "HTTP",
     "body": {
       "type": "object",
