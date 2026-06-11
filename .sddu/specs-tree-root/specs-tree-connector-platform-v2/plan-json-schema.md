@@ -484,21 +484,21 @@ graph TB
 
 | # | 组件名 | 层 | 用途 | 被引用方 |
 |:---:|--------|:---:|------|---------|
-| 1 | `authConfigDef` | 横跨 | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.4.10 triggerNodeDataDef |
-| 2 | `rateLimitConfigDef` | 横跨 | 限流配置（QPS + 并发） | §5 connectionConfig, §4.4.10 triggerNodeDataDef |
-| 3 | `jsonObjectDef` | 第四层 | 纯字段形状描述（类型 + 属性 + 必填） | §4.4.4 httpInputDef, §4.4.5 httpOutputDef |
-| 4 | `httpInputDef` | 第三层 | HTTP 入参声明（header/query/body 三段式） | §4.4.6 nodeInputDef |
-| 5 | `httpOutputDef` | 第三层 | HTTP 出参声明（header/body 两段式） | §4.4.7 nodeOutputDef |
-| 6 | `nodeInputDef` | 第一层 | 入参路由器（oneOf 按协议分发） | §5 connectionConfig, §4.4.10 triggerNodeDataDef |
-| 7 | `nodeOutputDef` | 第一层 | 出参路由器（oneOf 按协议分发） | §5 connectionConfig |
-| 8 | `errorInfoDef` | 横跨 | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
-| 9 | `nodeDataDef` | 第一层 | 节点 data 路由器（oneOf 按 node.type 分发至 7 种 data） | §6.4 orchestrationConfig |
-| 10 | `triggerNodeDataDef` | 第二层 | 触发器节点业务数据 | §4.4.9 nodeDataDef |
-| 11 | `connectorNodeDataDef` | 第二层 | 连接器节点业务数据（版本引用 + 字段映射） | §4.4.9 nodeDataDef |
-| 12 | `dataProcessorNodeDataDef` | 第二层 | 数据处理器节点业务数据（字段映射管道） | §4.4.9 nodeDataDef |
-| 13 | `exitNodeDataDef` | 第二层 | 出口节点业务数据（出参字段映射） | §4.4.9 nodeDataDef |
-| 14 | `structureNodeDataDef` | 第二层 | 结构体主节点业务数据（config 预留） | §4.4.9 nodeDataDef |
-| 15 | `textMarkerNodeDataDef` | 第二层 | text 标记节点数据（config 预留） | §4.4.9 nodeDataDef |
+| 1 | `jsonObjectDef` | 第四层 | 基础复用：字段定义（value 可选，递归嵌套） | §6.4 orchestrationConfig 等全部组件 |
+| 2 | `authConfigDef` | 横跨 | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.4.15 triggerNodeDataDef |
+| 3 | `rateLimitConfigDef` | 横跨 | 限流配置（QPS + 并发） | §5 connectionConfig, §4.4.15 triggerNodeDataDef |
+| 4 | `errorInfoDef` | 横跨 | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
+| 5 | `httpInputDef` | 第三层 | HTTP 入参声明（header/query/body 三段式） | §4.4.8 nodeInputDef |
+| 6 | `httpOutputDef` | 第三层 | HTTP 出参声明（header/body 两段式） | §4.4.5 nodeOutputDef |
+| 7 | `nodeInputDef` | 第一层 | 入参路由器（oneOf 按协议分发） | §5 connectionConfig, §4.4.15 triggerNodeDataDef |
+| 8 | `nodeOutputDef` | 第一层 | 出参路由器（oneOf 按协议分发） | §5 connectionConfig |
+| 9 | `triggerNodeDataDef` | 第二层 | 触发器节点业务数据 | §4.4.15 nodeDataDef |
+| 10 | `connectorNodeDataDef` | 第二层 | 连接器节点业务数据（版本引用 + 字段映射） | §4.4.15 nodeDataDef |
+| 11 | `dataProcessorNodeDataDef` | 第二层 | 数据处理器节点业务数据（字段映射管道） | §4.4.15 nodeDataDef |
+| 12 | `exitNodeDataDef` | 第二层 | 出口节点业务数据（出参字段映射） | §4.4.15 nodeDataDef |
+| 13 | `structureNodeDataDef` | 第二层 | 结构体主节点业务数据（config 预留） | §4.4.15 nodeDataDef |
+| 14 | `textMarkerNodeDataDef` | 第二层 | text 标记节点数据（config 预留） | §4.4.15 nodeDataDef |
+| 15 | `nodeDataDef` | 第一层 | 节点 data 路由器（oneOf 按 node.type 分发至 7 种 data） | §6.4 orchestrationConfig |
 
 ### 4.3 完整组件定义
 
@@ -839,89 +839,11 @@ graph TB
 }
 ```
 
-#### 4.4.1 authConfigDef
+### 4.4 组件详解
 
-> **Def**
+> 以 `jsonObjectDef` 为基础，按依赖关系逐层展开。
 
-```json
-{
-  "$id": "urn:openapp:schema:authConfigDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "type": { "type": "string", "enum": ["SOA", "APIG", "SYSTOKEN", "AKSK", "NONE"] },
-    "fields": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "name": { "type": "string" },
-          "carrier": { "type": "string", "enum": ["header", "query"] },
-          "fieldName": { "type": "string" },
-          "required": { "type": "boolean", "default": true },
-          "sensitive": { "type": "boolean", "default": false }
-        },
-        "required": ["name", "carrier", "fieldName"]
-      }
-    }
-  },
-  "required": ["type"]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| type | string | ✅ | 认证类型：`SOA` / `APIG` / `SYSTOKEN` / `AKSK` / `NONE` |
-| fields[] | array | ❌ | 凭证字段列表 |
-| fields[].name | string | ✅ | 字段名，程序内部标识 |
-| fields[].carrier | string | ✅ | 传递位置：`header` / `query` |
-| fields[].fieldName | string | ✅ | 实际 HTTP 字段名，如 `X-Sys-Token` |
-| fields[].required | boolean | ❌ | 是否必填，默认 `true` |
-| fields[].sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
-
-> **示例**
-
-```json
-{
-  "type": "SYSTOKEN",
-  "fields": [
-    { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
-  ]
-}
-```
-
-#### 4.4.2 rateLimitConfigDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:rateLimitConfigDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "maxQps": { "type": "integer", "minimum": 1, "maximum": 10000 },
-    "maxConcurrency": { "type": "integer", "minimum": 1, "maximum": 1000 }
-  }
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
-| maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
-
-> **示例**
-
-```json
-{ "maxQps": 100, "maxConcurrency": 10 }
-```
-#### 4.4.3 jsonObjectDef
+#### 4.4.1 jsonObjectDef
 
 > 基础复用组件。value 可选——有值=编排映射场景，无值=纯声明场景。每个字段自维护所有属性（required/sensitive/value 等），不做顶层 `required` 数组。
 
@@ -1059,29 +981,35 @@ graph TB
 }
 ```
 
-#### 4.4.4 httpInputDef
 
-> HTTP 入参，按传输位置分为 header / query / body 三段。
+#### 4.4.2 authConfigDef
 
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:httpInputDef:v1",
+  "$id": "urn:openapp:schema:authConfigDef:v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "protocol": { "type": "string", "const": "HTTP" },
-    "header": { "$ref": "#/definitions/jsonObjectDef" },
-    "query":  { "$ref": "#/definitions/jsonObjectDef" },
-    "body":   { "$ref": "#/definitions/jsonObjectDef" }
+    "type": { "type": "string", "enum": ["SOA", "APIG", "SYSTOKEN", "AKSK", "NONE"] },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "carrier": { "type": "string", "enum": ["header", "query"] },
+          "fieldName": { "type": "string" },
+          "required": { "type": "boolean", "default": true },
+          "sensitive": { "type": "boolean", "default": false }
+        },
+        "required": ["name", "carrier", "fieldName"]
+      }
+    }
   },
-  "required": ["protocol"],
-  "anyOf": [
-    { "required": ["header"] },
-    { "required": ["query"] },
-    { "required": ["body"] }
-  ]
+  "required": ["type"]
 }
 ```
 
@@ -1089,55 +1017,39 @@ graph TB
 
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
-| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
-| header | object | ❌ ⚡ | 请求头参数定义 |
-| query | object | ❌ ⚡ | Query 参数定义 |
-| body | object | ❌ ⚡ | 请求体参数定义 |
-
-⚡ = anyOf：必须至少声明 header / query / body 其中之一。
+| type | string | ✅ | 认证类型：`SOA` / `APIG` / `SYSTOKEN` / `AKSK` / `NONE` |
+| fields[] | array | ❌ | 凭证字段列表 |
+| fields[].name | string | ✅ | 字段名，程序内部标识 |
+| fields[].carrier | string | ✅ | 传递位置：`header` / `query` |
+| fields[].fieldName | string | ✅ | 实际 HTTP 字段名，如 `X-Sys-Token` |
+| fields[].required | boolean | ❌ | 是否必填，默认 `true` |
+| fields[].sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
 
 > **示例**
 
 ```json
 {
-  "protocol": "HTTP",
-  "query": {
-    "type": "object",
-    "properties": { "page": { "type": "integer", "description": "页码" } },
-    "required": ["page"]
-  },
-  "body": {
-    "type": "object",
-    "properties": {
-      "receiver": { "type": "string", "description": "接收者 ID" },
-      "content":  { "type": "string", "description": "消息内容" }
-    },
-    "required": ["receiver", "content"]
-  }
+  "type": "SYSTOKEN",
+  "fields": [
+    { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
+  ]
 }
 ```
 
-#### 4.4.5 httpOutputDef
 
-> HTTP 出参，按传输位置分为 header / body 两段。
+#### 4.4.3 rateLimitConfigDef
 
 > **Def**
 
 ```json
 {
-  "$id": "urn:openapp:schema:httpOutputDef:v1",
+  "$id": "urn:openapp:schema:rateLimitConfigDef:v1",
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "protocol": { "type": "string", "const": "HTTP" },
-    "header": { "$ref": "#/definitions/jsonObjectDef" },
-    "body":   { "$ref": "#/definitions/jsonObjectDef" }
-  },
-  "required": ["protocol"],
-  "anyOf": [
-    { "required": ["header"] },
-    { "required": ["body"] }
-  ]
+    "maxQps": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "maxConcurrency": { "type": "integer", "minimum": 1, "maximum": 1000 }
+  }
 }
 ```
 
@@ -1145,110 +1057,16 @@ graph TB
 
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
-| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
-| header | object | ❌ ⚡ | 响应头字段定义 |
-| body | object | ❌ ⚡ | 响应体字段定义 |
-
-⚡ = anyOf：必须至少声明 header / body 其中之一。
+| maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
+| maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
 
 > **示例**
 
 ```json
-{
-  "protocol": "HTTP",
-  "header": {
-    "type": "object",
-    "properties": { "X-Request-Id": { "type": "string", "description": "请求追踪 ID" } }
-  },
-  "body": {
-    "type": "object",
-    "properties": {
-      "msgId": { "type": "string", "description": "消息 ID" },
-      "code":  { "type": "integer", "description": "状态码" }
-    }
-  }
-}
+{ "maxQps": 100, "maxConcurrency": 10 }
 ```
 
-#### 4.4.6 nodeInputDef
-
-> 入参路由器。通过 oneOf 按协议类型分发到对应协议实现。
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:nodeInputDef:v1",
-  "type": "object",
-  "oneOf": [
-    { "$ref": "#/definitions/httpInputDef" }
-  ]
-}
-```
-
-**协议路由**：
-
-| 协议 | 目标定义 | 说明 |
-|------|---------|------|
-| `HTTP` | `httpInputDef`（§4.4.4） | header / query / body |
-| `REDIS`（V1） | `redisInputDef` | 待定义 |
-| `MYSQL`（V1） | `mysqlInputDef` | 待定义 |
-
-> **示例** — HTTP 协议入参：
-
-```json
-{
-  "protocol": "HTTP",
-  "body": {
-    "type": "object",
-    "properties": {
-      "receiver": { "type": "string" },
-      "content":  { "type": "string" }
-    },
-    "required": ["receiver", "content"]
-  }
-}
-```
-
-#### 4.4.7 nodeOutputDef
-
-> 出参路由器。通过 oneOf 按协议类型分发到对应协议实现。
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:nodeOutputDef:v1",
-  "type": "object",
-  "oneOf": [
-    { "$ref": "#/definitions/httpOutputDef" }
-  ]
-}
-```
-
-**协议路由**：
-
-| 协议 | 目标定义 | 说明 |
-|------|---------|------|
-| `HTTP` | `httpOutputDef`（§4.4.5） | header / body |
-| `REDIS`（V1） | `redisOutputDef` | 待定义 |
-
-> **示例** — HTTP 协议出参：
-
-```json
-{
-  "protocol": "HTTP",
-  "body": {
-    "type": "object",
-    "properties": {
-      "msgId": { "type": "string" },
-      "code":  { "type": "integer" }
-    }
-  }
-}
-```
-
-#### 4.4.8 errorInfoDef
+#### 4.4.4 errorInfoDef
 
 > **Def**
 
@@ -1311,20 +1129,201 @@ graph TB
 { "code": "6001", "messageZh": "字段映射失败", "messageEn": "Field Mapping Failed", "cause": "source 字段 ${node_1.msgId} 不存在" }
 ```
 
-#### 4.4.9 nodeDataDef（路由汇总）
 
-> 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
+#### 4.4.5 httpInputDef
 
-| `node.type` 值 | 对应 data Schema | $ref 目标 | 详见 |
-|----------------|-----------------|-----------|:--:|
-| `trigger` | triggerNodeDataDef | `#/definitions/triggerNodeDataDef` | §4.4.10 |
-| `connector` | connectorNodeDataDef | `#/definitions/connectorNodeDataDef` | §4.4.11 |
-| `data_processor` | dataProcessorNodeDataDef | `#/definitions/dataProcessorNodeDataDef` | §4.4.12 |
-| `exit` | exitNodeDataDef | `#/definitions/exitNodeDataDef` | §4.4.13 |
-| `loop_v2` / `parallel` / `condition_branch` / `error_handler` | structureNodeDataDef | `#/definitions/structureNodeDataDef` | §4.4.14 |
-| `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.4.15 |
+> HTTP 入参，按传输位置分为 header / query / body 三段。
 
-#### 4.4.10 triggerNodeDataDef
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:httpInputDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol": { "type": "string", "const": "HTTP" },
+    "header": { "$ref": "#/definitions/jsonObjectDef" },
+    "query":  { "$ref": "#/definitions/jsonObjectDef" },
+    "body":   { "$ref": "#/definitions/jsonObjectDef" }
+  },
+  "required": ["protocol"],
+  "anyOf": [
+    { "required": ["header"] },
+    { "required": ["query"] },
+    { "required": ["body"] }
+  ]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
+| header | object | ❌ ⚡ | 请求头参数定义 |
+| query | object | ❌ ⚡ | Query 参数定义 |
+| body | object | ❌ ⚡ | 请求体参数定义 |
+
+⚡ = anyOf：必须至少声明 header / query / body 其中之一。
+
+> **示例**
+
+```json
+{
+  "protocol": "HTTP",
+  "query": {
+    "type": "object",
+    "properties": { "page": { "type": "integer", "description": "页码" } },
+    "required": ["page"]
+  },
+  "body": {
+    "type": "object",
+    "properties": {
+      "receiver": { "type": "string", "description": "接收者 ID" },
+      "content":  { "type": "string", "description": "消息内容" }
+    },
+    "required": ["receiver", "content"]
+  }
+}
+```
+
+
+#### 4.4.6 httpOutputDef
+
+> HTTP 出参，按传输位置分为 header / body 两段。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:httpOutputDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol": { "type": "string", "const": "HTTP" },
+    "header": { "$ref": "#/definitions/jsonObjectDef" },
+    "body":   { "$ref": "#/definitions/jsonObjectDef" }
+  },
+  "required": ["protocol"],
+  "anyOf": [
+    { "required": ["header"] },
+    { "required": ["body"] }
+  ]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
+| header | object | ❌ ⚡ | 响应头字段定义 |
+| body | object | ❌ ⚡ | 响应体字段定义 |
+
+⚡ = anyOf：必须至少声明 header / body 其中之一。
+
+> **示例**
+
+```json
+{
+  "protocol": "HTTP",
+  "header": {
+    "type": "object",
+    "properties": { "X-Request-Id": { "type": "string", "description": "请求追踪 ID" } }
+  },
+  "body": {
+    "type": "object",
+    "properties": {
+      "msgId": { "type": "string", "description": "消息 ID" },
+      "code":  { "type": "integer", "description": "状态码" }
+    }
+  }
+}
+```
+
+
+#### 4.4.7 nodeInputDef
+
+> 入参路由器。通过 oneOf 按协议类型分发到对应协议实现。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:nodeInputDef:v1",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/definitions/httpInputDef" }
+  ]
+}
+```
+
+**协议路由**：
+
+| 协议 | 目标定义 | 说明 |
+|------|---------|------|
+| `HTTP` | `httpInputDef`（§4.4.5） | header / query / body |
+| `REDIS`（V1） | `redisInputDef` | 待定义 |
+| `MYSQL`（V1） | `mysqlInputDef` | 待定义 |
+
+> **示例** — HTTP 协议入参：
+
+```json
+{
+  "protocol": "HTTP",
+  "body": {
+    "type": "object",
+    "properties": {
+      "receiver": { "type": "string" },
+      "content":  { "type": "string" }
+    },
+    "required": ["receiver", "content"]
+  }
+}
+```
+
+
+#### 4.4.8 nodeOutputDef
+
+> 出参路由器。通过 oneOf 按协议类型分发到对应协议实现。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:nodeOutputDef:v1",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/definitions/httpOutputDef" }
+  ]
+}
+```
+
+**协议路由**：
+
+| 协议 | 目标定义 | 说明 |
+|------|---------|------|
+| `HTTP` | `httpOutputDef`（§4.4.6） | header / body |
+| `REDIS`（V1） | `redisOutputDef` | 待定义 |
+
+> **示例** — HTTP 协议出参：
+
+```json
+{
+  "protocol": "HTTP",
+  "body": {
+    "type": "object",
+    "properties": {
+      "msgId": { "type": "string" },
+      "code":  { "type": "integer" }
+    }
+  }
+}
+```
+
+
+#### 4.4.9 triggerNodeDataDef
 
 > **Def**
 
@@ -1363,7 +1362,7 @@ graph TB
 | labelEn | string | ❌ | 节点英文标签 |
 | type | string | ✅ | 触发子类型：`http` / `manual` |
 | authConfig | object | ❌ ⚡ | 认证配置（HTTP 触发时必填），见 §4.4.1 |
-| nodeInput | object | ❌ ⚡ | 入参声明（HTTP 触发时必填），见 §4.4.6 |
+| nodeInput | object | ❌ ⚡ | 入参声明（HTTP 触发时必填），见 §4.4.7 |
 | rateLimitConfig | object | ❌ | 限流配置，见 §4.4.2 |
 
 ⚡ = `type="http"` 时必填。
@@ -1393,7 +1392,8 @@ graph TB
 }
 ```
 
-#### 4.4.11 connectorNodeDataDef
+
+#### 4.4.10 connectorNodeDataDef
 
 > **Def**
 
@@ -1451,7 +1451,8 @@ graph TB
 }
 ```
 
-#### 4.4.12 dataProcessorNodeDataDef
+
+#### 4.4.11 dataProcessorNodeDataDef
 
 > **Def**
 
@@ -1513,7 +1514,8 @@ graph TB
 }
 ```
 
-#### 4.4.13 exitNodeDataDef
+
+#### 4.4.12 exitNodeDataDef
 
 > **Def**
 
@@ -1564,7 +1566,8 @@ graph TB
 }
 ```
 
-#### 4.4.14 structureNodeDataDef（V2 新增）
+
+#### 4.4.13 structureNodeDataDef（V2 新增）
 
 > **Def**
 
@@ -1598,7 +1601,8 @@ graph TB
 { "labelCn": "遍历处理", "type": "loop_v2", "config": {} }
 ```
 
-#### 4.4.15 textMarkerNodeDataDef（V2 新增）
+
+#### 4.4.14 textMarkerNodeDataDef（V2 新增）
 
 > **Def**
 
@@ -1635,6 +1639,21 @@ graph TB
 
 | 维度 | 说明 |
 |------|------|
+
+#### 4.4.15 nodeDataDef（路由汇总）
+
+> 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
+
+| `node.type` 值 | 对应 data Schema | $ref 目标 | 详见 |
+|----------------|-----------------|-----------|:--:|
+| `trigger` | triggerNodeDataDef | `#/definitions/triggerNodeDataDef` | §4.4.15 |
+| `connector` | connectorNodeDataDef | `#/definitions/connectorNodeDataDef` | §4.4.11 |
+| `data_processor` | dataProcessorNodeDataDef | `#/definitions/dataProcessorNodeDataDef` | §4.4.12 |
+| `exit` | exitNodeDataDef | `#/definitions/exitNodeDataDef` | §4.4.13 |
+| `loop_v2` / `parallel` / `condition_branch` / `error_handler` | structureNodeDataDef | `#/definitions/structureNodeDataDef` | §4.4.14 |
+| `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.4.15 |
+
+
 | 存储位置 | connector_version_t.connection_config (MEDIUMTEXT) |
 | 框架归属 | 无 — 与 React Flow 完全无关 |
 | 数据性质 | 连接器版本自身的对外 API 声明 |
@@ -1684,8 +1703,8 @@ graph TB
 | protocol | string | ✅ | 协议类型，MVP 仅 `HTTP` | — |
 | protocolConfig | object | ✅ | 协议配置（url / method / headers） | — |
 | authConfig | object | ❌ | 认证类型声明 | §4.4.1 |
-| nodeInput | object | ❌ | 入参契约 | §4.4.6 |
-| nodeOutput | object | ❌ | 出参契约 | §4.4.7 |
+| nodeInput | object | ❌ | 入参契约 | §4.4.7 |
+| nodeOutput | object | ❌ | 出参契约 | §4.4.8 |
 | timeoutMs | integer | ❌ | 单次调用超时（毫秒），默认 3000 | — |
 | rateLimitConfig | object | ❌ | 限流配置 | §4.4.2 |
 
@@ -1848,7 +1867,7 @@ graph TB
 | `error_handler` | structureNodeDataDef | type | 错误处理主节点 |
 | `text` | textMarkerNodeDataDef | — | 纯渲染标记（引擎跳过） |
 
-⍟ = HTTP 触发时必填。各 data Schema 完整定义见 §4.4.10 ~ §4.4.15。
+⍟ = HTTP 触发时必填。各 data Schema 完整定义见 §4.4.15 ~ §4.4.15。
 
 #### 6.3.2 edge.data 配置
 
@@ -2098,7 +2117,7 @@ graph TB
 
 ## 7. 执行数据约定
 
-执行数据的结构由对应节点的 nodeInput / nodeOutput 动态决定，不在数据库层约束。errorInfo 使用结构化格式（定义见 §4.4.8）。
+执行数据的结构由对应节点的 nodeInput / nodeOutput 动态决定，不在数据库层约束。errorInfo 使用结构化格式（定义见 §4.4.5）。
 
 示例：
 
