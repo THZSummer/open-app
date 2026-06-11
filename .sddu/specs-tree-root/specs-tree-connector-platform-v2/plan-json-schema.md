@@ -135,7 +135,7 @@
 
 | # | 作用域 | 性质 | 语法 | 示例 | 说明 |
 |:---:|------|:---:|------|------|------|
-| 1 | `node` | 设计态 | `${$.node.{id}.{input\|output\|current}.path}` | `${$.node.trigger.input.sender}` | 引用任意节点的输入/输出字段；结构节点（loop/error_handler）的运行时上下文通过 `.current` 子路径引用 |
+| 1 | `node` | 设计态 | `${$.node.{id}.{input\|output\|current}.path}` | 见下方示例 | 引用任意节点的三个数据面：`input`（入参）、`output`（返回值）、`current`（过程中参数，仅结构节点） |
 | 2 | `constant` | 设计态 | `${$.constant:value}` | `${$.constant:0}` | 编排设计者填入的固定值 |
 | 3 | `system` | 设计态 | `${$.system.{key}}` | `${$.system.env.region}`、`${$.system.apiKey}` | 平台环境变量 / 配置 / 密钥；`system.fn.{name}(args)` 引用内置函数 |
 | 4 | `script` | 设计态 | `${$.script.{name}(args)}` | `${$.script.transform(...)}` | 用户预定义脚本，按名引用传参 |
@@ -143,17 +143,27 @@
 
 > 表达式层级：`$.` = 根 → `node`/`constant`/`system`/`script`/`execution` = 作用域 → 具体路径或参数。
 
-**结构节点运行时上下文引用**：`loop_v2` / `error_handler` 结构体内的节点可通过 `node.{id}.current` 引用当前执行上下文：
+**`node` 的三个数据面**：
 
-| 场景 | 写法 | 说明 |
-|------|------|------|
-| 循环体内引用当前迭代元素 | `${$.node.{loopNodeId}.current.item}` | 引擎每次迭代注入 |
-| 循环体内引用当前索引 | `${$.node.{loopNodeId}.current.index}` | 0-based |
-| 循环体内引用迭代总数 | `${$.node.{loopNodeId}.current.total}` | — |
-| 错误处理体内引用错误码 | `${$.node.{errorNodeId}.current.code}` | 跟随 `errorInfoDef` 结构（见 §4.4.8） |
-| 错误处理体内引用错误消息 | `${$.node.{errorNodeId}.current.messageZh}` / `.messageEn` | — |
+| 路径 | 语义 | 生命周期 | 示例 |
+|------|------|---------|------|
+| `input` | 节点的入参 | 节点执行期间 | `${$.node.trigger.input.sender}` — 触发器收到的请求字段 |
+| `output` | 节点的返回值 | 执行完成后下游可引用 | `${$.node.node_1.output.msgId}` — 连接器调用下游 API 的返回 |
+| `current` | 节点的过程中参数 | 仅结构节点（loop/error_handler）体内有效 | `${$.node.loop_1.current.item}` — 循环体内当前迭代元素 |
 
-> `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
+**结构节点 `current` 引用示例**：
+
+| 场景 | `input` | `output` | `current` |
+|------|:--:|:--:|------|
+| 触发器收到请求 | `${$.node.trigger.input.sender}` | —（无返回值） | — |
+| 连接器调用结果 | — | `${$.node.conn_1.output.msgId}` | — |
+| 循环体内当前元素 | — | `${$.node.loop_1.output.items}`（原始数组） | `${$.node.loop_1.current.item}` |
+| 循环体内当前索引 | — | — | `${$.node.loop_1.current.index}` |
+| 多重循环内层 | — | — | `${$.node.loop_inner.current.item}` |
+| 多重循环同时引用外层 | — | — | `${$.node.loop_outer.current.item}` |
+| 错误处理体内错误码 | — | — | `${$.node.err_1.current.code}` |
+
+> `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径，与 `input`/`output` 平级。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
 
 > `loop_v2` / `error_handler` 节点的 `output` 字段结构（持久化属性）和 `current` 下可用字段的完整列表，待 §4.4.14 `structureNodeDataDef.config` 专项细化后确定。
 
