@@ -2265,8 +2265,7 @@ graph TB
       "additionalProperties": false,
       "properties": {
         "url": { "type": "string" },
-        "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
-        "headers": { "type": "object" }
+        "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"] }
       },
       "required": ["url", "method"]
     },
@@ -2309,8 +2308,7 @@ graph TB
   "protocol": "HTTP",
   "protocolConfig": {
     "url": "https://api.example.com/im/send",
-    "method": "POST",
-    "headers": { "Content-Type": "application/json" }
+    "method": "POST"
   },
   "authConfigs": [
     {
