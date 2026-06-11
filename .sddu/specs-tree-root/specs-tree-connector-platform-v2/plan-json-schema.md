@@ -2238,6 +2238,8 @@ graph TB
 
 ### 5.1 定位与存储
 
+| 维度 | 说明 |
+|------|------|
 | 存储位置 | connector_version_t.connection_config (MEDIUMTEXT) |
 | 框架归属 | 无 — 与 React Flow 完全无关 |
 | 数据性质 | 连接器版本自身的对外 API 声明 |
