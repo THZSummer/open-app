@@ -311,7 +311,7 @@
 
 > `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径，与 `input`/`output` 平级。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
 >
-> `loop_v2` / `error_handler` 节点的 `output` 字段结构（持久化属性）和 `current` 下可用字段的完整列表，待 §4.4.14 `structureNodeDataDef.config` 专项细化后确定。
+> `loop_v2` / `error_handler` 节点的 `output` 字段结构（持久化属性）和 `current` 下可用字段的完整列表，待 §4.3.14 `structureNodeDataDef.config` 专项细化后确定。
 
 ### 3.3 设计原则
 
@@ -485,22 +485,836 @@ graph TB
 | # | 组件名 | 层 | 用途 | 被引用方 |
 |:---:|--------|:---:|------|---------|
 | 1 | `jsonObjectDef` | 第四层 | 基础复用：字段定义（value 可选，递归嵌套） | §6.4 orchestrationConfig 等全部组件 |
-| 2 | `authConfigDef` | 横跨 | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.4.15 triggerNodeDataDef |
-| 3 | `rateLimitConfigDef` | 横跨 | 限流配置（QPS + 并发） | §5 connectionConfig, §4.4.15 triggerNodeDataDef |
+| 2 | `authConfigDef` | 横跨 | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
+| 3 | `rateLimitConfigDef` | 横跨 | 限流配置（QPS + 并发） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
 | 4 | `errorInfoDef` | 横跨 | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
-| 5 | `httpInputDef` | 第三层 | HTTP 入参声明（header/query/body 三段式） | §4.4.8 nodeInputDef |
-| 6 | `httpOutputDef` | 第三层 | HTTP 出参声明（header/body 两段式） | §4.4.5 nodeOutputDef |
-| 7 | `nodeInputDef` | 第一层 | 入参路由器（oneOf 按协议分发） | §5 connectionConfig, §4.4.15 triggerNodeDataDef |
+| 5 | `httpInputDef` | 第三层 | HTTP 入参声明（header/query/body 三段式） | §4.3.8 nodeInputDef |
+| 6 | `httpOutputDef` | 第三层 | HTTP 出参声明（header/body 两段式） | §4.3.5 nodeOutputDef |
+| 7 | `nodeInputDef` | 第一层 | 入参路由器（oneOf 按协议分发） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
 | 8 | `nodeOutputDef` | 第一层 | 出参路由器（oneOf 按协议分发） | §5 connectionConfig |
-| 9 | `triggerNodeDataDef` | 第二层 | 触发器节点业务数据 | §4.4.15 nodeDataDef |
-| 10 | `connectorNodeDataDef` | 第二层 | 连接器节点业务数据（版本引用 + 字段映射） | §4.4.15 nodeDataDef |
-| 11 | `dataProcessorNodeDataDef` | 第二层 | 数据处理器节点业务数据（字段映射管道） | §4.4.15 nodeDataDef |
-| 12 | `exitNodeDataDef` | 第二层 | 出口节点业务数据（出参字段映射） | §4.4.15 nodeDataDef |
-| 13 | `structureNodeDataDef` | 第二层 | 结构体主节点业务数据（config 预留） | §4.4.15 nodeDataDef |
-| 14 | `textMarkerNodeDataDef` | 第二层 | text 标记节点数据（config 预留） | §4.4.15 nodeDataDef |
+| 9 | `triggerNodeDataDef` | 第二层 | 触发器节点业务数据 | §4.3.15 nodeDataDef |
+| 10 | `connectorNodeDataDef` | 第二层 | 连接器节点业务数据（版本引用 + 字段映射） | §4.3.15 nodeDataDef |
+| 11 | `dataProcessorNodeDataDef` | 第二层 | 数据处理器节点业务数据（字段映射管道） | §4.3.15 nodeDataDef |
+| 12 | `exitNodeDataDef` | 第二层 | 出口节点业务数据（出参字段映射） | §4.3.15 nodeDataDef |
+| 13 | `structureNodeDataDef` | 第二层 | 结构体主节点业务数据（config 预留） | §4.3.15 nodeDataDef |
+| 14 | `textMarkerNodeDataDef` | 第二层 | text 标记节点数据（config 预留） | §4.3.15 nodeDataDef |
 | 15 | `nodeDataDef` | 第一层 | 节点 data 路由器（oneOf 按 node.type 分发至 7 种 data） | §6.4 orchestrationConfig |
 
-### 4.3 完整组件定义
+### 4.3 组件详解
+
+> 以 `jsonObjectDef` 为基础，按依赖关系逐层展开。
+
+#### 4.3.1 jsonObjectDef
+
+> 基础复用组件。value 可选——有值=编排映射场景，无值=纯声明场景。每个字段自维护所有属性（required/sensitive/value 等），不做顶层 `required` 数组。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:jsonObjectDef:v2",
+  "type": "object",
+  "properties": {
+    "type": { "type": "string", "enum": ["object"] },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "description": "叶子字段：基本类型",
+            "type": "object",
+            "properties": {
+              "type":        { "type": "string", "enum": ["string", "number", "boolean"] },
+              "description": { "type": "string" },
+              "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
+              "required":    { "type": "boolean", "default": false, "description": "是否必填" },
+              "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
+              "readonly":    { "type": "boolean", "default": false, "description": "字段是否只读" },
+              "deprecated":  { "type": "boolean", "default": false, "description": "是否已废弃" },
+              "nullable":    { "type": "boolean", "default": false, "description": "是否允许 null 值" },
+              "placeholder": { "type": "string",  "description": "输入框占位提示" },
+              "pattern":     { "type": "string",  "description": "正则校验表达式，如 ^1[3-9]\\d{9}$" },
+              "minLength":   { "type": "number",  "description": "字符串最小长度" },
+              "maxLength":   { "type": "number",  "description": "字符串最大长度" },
+              "enum":        { "type": "array" },
+              "default":     {},
+              "minimum":     { "type": "number" },
+              "maximum":     { "type": "number" }
+            },
+            "required": ["type"]
+          },
+          {
+            "description": "嵌套 object：递归引用自身",
+            "$ref": "#/definitions/jsonObjectDef"
+          },
+          {
+            "description": "数组字段",
+            "type": "object",
+            "properties": {
+              "type":        { "type": "string", "enum": ["array"] },
+              "description": { "type": "string" },
+              "required":    { "type": "boolean", "default": false },
+              "readonly":    { "type": "boolean", "default": false },
+              "deprecated":  { "type": "boolean", "default": false },
+              "minItems":    { "type": "number",  "description": "数组最少元素数" },
+              "maxItems":    { "type": "number",  "description": "数组最多元素数" },
+              "items":       { "$ref": "#/definitions/jsonObjectDef" }
+            },
+            "required": ["type", "items"]
+          }
+        ]
+      }
+    }
+  },
+  "required": ["type", "properties"]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 适用 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 全部 | 顶层固定 `"object"` |
+| properties | object | ✅ | 全部 | 字段定义集合，每个字段自维护所有属性 |
+| properties.{key}.type | string | ✅ | 全部 | 字段类型：`string` / `number` / `boolean` / `object`（递归）/ `array` |
+| properties.{key}.required | boolean | ❌ | 全部 | 是否必填，默认 `false` |
+| properties.{key}.value | string | ❌ | 叶子 | 映射表达式。遵循 §3 值表达式体系 |
+| properties.{key}.sensitive | boolean | ❌ | 叶子 | 运行时脱敏，默认 `false` |
+| properties.{key}.readonly | boolean | ❌ | 全部 | 字段是否只读，默认 `false` |
+| properties.{key}.deprecated | boolean | ❌ | 全部 | 是否已废弃，默认 `false` |
+| properties.{key}.description | string | ❌ | 全部 | 字段描述 |
+| properties.{key}.placeholder | string | ❌ | 叶子 | 输入框占位提示（string 类型可用） |
+| properties.{key}.pattern | string | ❌ | 叶子 | 正则校验，如 `^1[3-9]\d{9}$`（string 类型可用） |
+| properties.{key}.minLength | number | ❌ | 叶子 | 字符串最小长度（string 类型可用） |
+| properties.{key}.maxLength | number | ❌ | 叶子 | 字符串最大长度（string 类型可用） |
+| properties.{key}.enum | array | ❌ | 叶子 | 枚举值列表 |
+| properties.{key}.default | any | ❌ | 叶子 | 默认值 |
+| properties.{key}.minimum | number | ❌ | 叶子 | 最小值（number 类型可用） |
+| properties.{key}.maximum | number | ❌ | 叶子 | 最大值（number 类型可用） |
+| properties.{key}.nullable | boolean | ❌ | 叶子 | 是否允许 null 值，默认 `false` |
+| properties.{key}.minItems | number | ❌ | array | 数组最少元素数 |
+| properties.{key}.maxItems | number | ❌ | array | 数组最多元素数 |
+| properties.{key}.items | object | ❌ | array | 数组元素定义（type=array 时必填） |
+
+> **示例** — sender/content 必填，phone 脱敏，全部字段级声明：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "sender":  { "type": "string", "required": true,  "description": "发送者 ID" },
+    "content": { "type": "string", "required": true,  "description": "消息内容" },
+    "phone":   { "type": "string", "required": false, "description": "手机号", "sensitive": true }
+  }
+}
+```
+
+> **示例** — 带 value 映射 + 嵌套 object：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receiver": { "type": "string", "required": true, "value": "${$.node.trigger.input.body.sender}" },
+    "content":  { "type": "string", "required": true, "value": "${$.node.trigger.input.body.content}" },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "source":    { "type": "string", "required": true,  "value": "${$.constant:openplatform}" },
+        "timestamp": { "type": "string", "required": false, "value": "${$.node.trigger.input.body.ts}" }
+      }
+    }
+  }
+}
+```
+
+> **示例** — 带 value 映射（编排 inputMapping）：
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "receiver": { "type": "string", "value": "${$.node.trigger.input.body.sender}" },
+    "content":  { "type": "string", "value": "${$.node.trigger.input.body.content}" },
+    "phone":    { "type": "string", "value": "${$.node.trigger.input.body.phone}", "sensitive": true }
+  },
+  "required": ["receiver", "content"]
+}
+```
+
+
+#### 4.3.2 authConfigDef
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:authConfigDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "type": { "type": "string", "enum": ["SOA", "APIG", "SYSTOKEN", "AKSK", "NONE"] },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string" },
+          "carrier": { "type": "string", "enum": ["header", "query"] },
+          "fieldName": { "type": "string" },
+          "required": { "type": "boolean", "default": true },
+          "sensitive": { "type": "boolean", "default": false }
+        },
+        "required": ["name", "carrier", "fieldName"]
+      }
+    }
+  },
+  "required": ["type"]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| type | string | ✅ | 认证类型：`SOA` / `APIG` / `SYSTOKEN` / `AKSK` / `NONE` |
+| fields[] | array | ❌ | 凭证字段列表 |
+| fields[].name | string | ✅ | 字段名，程序内部标识 |
+| fields[].carrier | string | ✅ | 传递位置：`header` / `query` |
+| fields[].fieldName | string | ✅ | 实际 HTTP 字段名，如 `X-Sys-Token` |
+| fields[].required | boolean | ❌ | 是否必填，默认 `true` |
+| fields[].sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
+
+> **示例**
+
+```json
+{
+  "type": "SYSTOKEN",
+  "fields": [
+    { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
+  ]
+}
+```
+
+
+#### 4.3.3 rateLimitConfigDef
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:rateLimitConfigDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "maxQps": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "maxConcurrency": { "type": "integer", "minimum": 1, "maximum": 1000 }
+  }
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
+| maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
+
+> **示例**
+
+```json
+{ "maxQps": 100, "maxConcurrency": 10 }
+```
+
+#### 4.3.4 errorInfoDef
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:errorInfoDef:v2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "code": { "type": "string", "pattern": "^[1-9][0-9]{2,4}$" },
+    "messageZh": { "type": "string" },
+    "messageEn": { "type": "string" },
+    "cause": { "type": "string" },
+    "downstreamStatus": { "type": "integer" },
+    "downstreamBody": { "type": "string" }
+  },
+  "required": ["code", "messageZh", "messageEn"],
+  "oneOf": [
+    { "required": ["cause"] },
+    { "required": ["downstreamStatus"] }
+  ]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| code | string | ✅ | 错误码。4xx/5xx=下游错误，6xxxx=内部错误 |
+| messageZh | string | ✅ | 错误中文描述 |
+| messageEn | string | ✅ | 错误英文描述 |
+| cause | string | ❌ ⚡ | 根因描述（内部错误时必填） |
+| downstreamStatus | integer | ❌ ⚡ | 下游 HTTP 状态码（下游错误时必填） |
+| downstreamBody | string | ❌ | 下游响应体片段（截断到 512 字符） |
+
+**错误码字典**：
+
+| Code | messageZh | messageEn | 来源 |
+|:----:|-----------|-----------|:----:|
+| `400` | 下游请求参数错误 | Bad Request | downstream |
+| `401` | 下游未授权 | Unauthorized | downstream |
+| `403` | 下游无权限 | Forbidden | downstream |
+| `404` | 下游资源不存在 | Not Found | downstream |
+| `500` | 下游内部错误 | Internal Server Error | downstream |
+| `502` | 下游网关错误 | Bad Gateway | downstream |
+| `503` | 下游服务不可用 | Service Unavailable | downstream |
+| `504` | 下游网关超时 | Gateway Timeout | downstream |
+| `6001` | 字段映射失败 | Field Mapping Failed | internal |
+| `6002` | JSON 解析失败 | JSON Parse Failed | internal |
+| `6003` | 编排执行超时 | Orchestration Timeout | internal |
+| `6004` | 连接器版本未找到 | Connector Version Not Found | internal |
+
+> **示例**
+
+```json
+// 下游调用失败
+{ "code": "503", "messageZh": "下游服务不可用", "messageEn": "Service Unavailable", "downstreamStatus": 503 }
+
+// 内部错误
+{ "code": "6001", "messageZh": "字段映射失败", "messageEn": "Field Mapping Failed", "cause": "source 字段 ${node_1.msgId} 不存在" }
+```
+
+
+#### 4.3.5 httpInputDef
+
+> HTTP 入参，按传输位置分为 header / query / body 三段。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:httpInputDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol": { "type": "string", "const": "HTTP" },
+    "header": { "$ref": "#/definitions/jsonObjectDef" },
+    "query":  { "$ref": "#/definitions/jsonObjectDef" },
+    "body":   { "$ref": "#/definitions/jsonObjectDef" }
+  },
+  "required": ["protocol"],
+  "anyOf": [
+    { "required": ["header"] },
+    { "required": ["query"] },
+    { "required": ["body"] }
+  ]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
+| header | object | ❌ ⚡ | 请求头参数定义 |
+| query | object | ❌ ⚡ | Query 参数定义 |
+| body | object | ❌ ⚡ | 请求体参数定义 |
+
+⚡ = anyOf：必须至少声明 header / query / body 其中之一。
+
+> **示例**
+
+```json
+{
+  "protocol": "HTTP",
+  "query": {
+    "type": "object",
+    "properties": { "page": { "type": "integer", "description": "页码" } },
+    "required": ["page"]
+  },
+  "body": {
+    "type": "object",
+    "properties": {
+      "receiver": { "type": "string", "description": "接收者 ID" },
+      "content":  { "type": "string", "description": "消息内容" }
+    },
+    "required": ["receiver", "content"]
+  }
+}
+```
+
+
+#### 4.3.6 httpOutputDef
+
+> HTTP 出参，按传输位置分为 header / body 两段。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:httpOutputDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "protocol": { "type": "string", "const": "HTTP" },
+    "header": { "$ref": "#/definitions/jsonObjectDef" },
+    "body":   { "$ref": "#/definitions/jsonObjectDef" }
+  },
+  "required": ["protocol"],
+  "anyOf": [
+    { "required": ["header"] },
+    { "required": ["body"] }
+  ]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
+| header | object | ❌ ⚡ | 响应头字段定义 |
+| body | object | ❌ ⚡ | 响应体字段定义 |
+
+⚡ = anyOf：必须至少声明 header / body 其中之一。
+
+> **示例**
+
+```json
+{
+  "protocol": "HTTP",
+  "header": {
+    "type": "object",
+    "properties": { "X-Request-Id": { "type": "string", "description": "请求追踪 ID" } }
+  },
+  "body": {
+    "type": "object",
+    "properties": {
+      "msgId": { "type": "string", "description": "消息 ID" },
+      "code":  { "type": "integer", "description": "状态码" }
+    }
+  }
+}
+```
+
+
+#### 4.3.7 nodeInputDef
+
+> 入参路由器。通过 oneOf 按协议类型分发到对应协议实现。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:nodeInputDef:v1",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/definitions/httpInputDef" }
+  ]
+}
+```
+
+**协议路由**：
+
+| 协议 | 目标定义 | 说明 |
+|------|---------|------|
+| `HTTP` | `httpInputDef`（§4.3.5） | header / query / body |
+| `REDIS`（V1） | `redisInputDef` | 待定义 |
+| `MYSQL`（V1） | `mysqlInputDef` | 待定义 |
+
+> **示例** — HTTP 协议入参：
+
+```json
+{
+  "protocol": "HTTP",
+  "body": {
+    "type": "object",
+    "properties": {
+      "receiver": { "type": "string" },
+      "content":  { "type": "string" }
+    },
+    "required": ["receiver", "content"]
+  }
+}
+```
+
+
+#### 4.3.8 nodeOutputDef
+
+> 出参路由器。通过 oneOf 按协议类型分发到对应协议实现。
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:nodeOutputDef:v1",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/definitions/httpOutputDef" }
+  ]
+}
+```
+
+**协议路由**：
+
+| 协议 | 目标定义 | 说明 |
+|------|---------|------|
+| `HTTP` | `httpOutputDef`（§4.3.6） | header / body |
+| `REDIS`（V1） | `redisOutputDef` | 待定义 |
+
+> **示例** — HTTP 协议出参：
+
+```json
+{
+  "protocol": "HTTP",
+  "body": {
+    "type": "object",
+    "properties": {
+      "msgId": { "type": "string" },
+      "code":  { "type": "integer" }
+    }
+  }
+}
+```
+
+
+#### 4.3.9 triggerNodeDataDef
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:triggerNodeDataDef:v2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "type": { "type": "string", "enum": ["http", "manual"] },
+    "authConfig": { "$ref": "#/definitions/authConfigDef" },
+    "nodeInput": { "$ref": "#/definitions/nodeInputDef" },
+    "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
+  },
+  "required": ["type"],
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "http" } }, "required": ["type"] },
+      "then": { "required": ["authConfig", "nodeInput"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "manual" } }, "required": ["type"] },
+      "then": { "properties": { "authConfig": false, "nodeInput": false } }
+    }
+  ]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| type | string | ✅ | 触发子类型：`http` / `manual` |
+| authConfig | object | ❌ ⚡ | 认证配置（HTTP 触发时必填），见 §4.3.1 |
+| nodeInput | object | ❌ ⚡ | 入参声明（HTTP 触发时必填），见 §4.3.7 |
+| rateLimitConfig | object | ❌ | 限流配置，见 §4.3.2 |
+
+⚡ = `type="http"` 时必填。
+
+> **示例** — HTTP 触发，SYSTOKEN 认证，限流 100 QPS：
+
+```json
+{
+  "labelCn": "接收请求",
+  "type": "http",
+  "authConfig": {
+    "type": "SYSTOKEN",
+    "fields": [{ "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }]
+  },
+  "nodeInput": {
+    "protocol": "HTTP",
+    "body": {
+      "type": "object",
+      "properties": {
+        "sender":  { "type": "string" },
+        "content": { "type": "string" }
+      },
+      "required": ["sender", "content"]
+    }
+  },
+  "rateLimitConfig": { "maxQps": 100 }
+}
+```
+
+
+#### 4.3.10 connectorNodeDataDef
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:connectorNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "connectorVersionId": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{15,19}$",
+      "description": "引用的连接器版本 ID，必须为已发布版本"
+    },
+    "inputMapping": {
+      "type": "object",
+      "properties": {
+        "header": { "$ref": "#/definitions/jsonObjectDef" },
+        "query":  { "$ref": "#/definitions/jsonObjectDef" },
+        "body":   { "$ref": "#/definitions/jsonObjectDef" }
+      }
+    }
+  },
+  "required": ["connectorVersionId", "inputMapping"]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| connectorVersionId | string | ✅ | 引用的连接器版本 ID（18-20 位数字，必须为已发布版本） |
+| inputMapping | object | ✅ | 字段映射，镜像连接器 nodeInput 结构，value 遵循 §3 值表达式体系 |
+
+> **示例** — 将 trigger 的 sender/content 映射到下游 API：
+
+```json
+{
+  "labelCn": "发送消息",
+  "connectorVersionId": "1234567890123456789",
+  "inputMapping": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "receiver": { "type": "string", "value": "${$.node.trigger.input.body.sender}" },
+        "content":  { "type": "string", "value": "${$.node.trigger.input.body.content}" }
+      },
+      "required": ["receiver", "content"]
+    }
+  }
+}
+```
+
+
+#### 4.3.11 dataProcessorNodeDataDef
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:dataProcessorNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fieldMappings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "source": { "type": "string", "description": "值表达式，遵循 §3 值表达式体系" },
+              "target": { "type": "string" }
+            },
+            "required": ["source", "target"]
+          }
+        }
+      }
+    }
+  },
+  "required": ["config"]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| config | object | ✅ | 管道转换配置 |
+| config.fieldMappings[] | array | ✅ | 字段映射列表，至少 1 项 |
+| config.fieldMappings[].source | string | ✅ | 值表达式，遵循 §3 值表达式体系 |
+| config.fieldMappings[].target | string | ✅ | 目标字段路径 |
+
+> **示例** — 引用 conn_1 返回值 + 系统函数 + 常量：
+
+```json
+{
+  "labelCn": "格式化输出",
+  "config": {
+    "fieldMappings": [
+      { "source": "${$.system.fn.upper($.node.conn_1.output.body.name)}", "target": "upperName" },
+      { "source": "${$.node.conn_1.output.body.msgId}",                   "target": "id" },
+      { "source": "${$.constant:processed}",                               "target": "status" }
+    ]
+  }
+}
+```
+
+
+#### 4.3.12 exitNodeDataDef
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:exitNodeDataDef:v1",
+  "title": "exitNodeDataDef",
+  "description": "出口节点业务数据。node.type='exit' 时 node.data 内的结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "outputMapping": {
+      "type": "object",
+      "properties": {
+        "header": { "$ref": "#/definitions/jsonObjectDef" },
+        "body":   { "$ref": "#/definitions/jsonObjectDef" }
+      }
+    }
+  },
+  "required": ["outputMapping"]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| outputMapping | object | ✅ | 字段映射，镜像 nodeOutput 结构（HTTP: header/body），value 遵循 §3 值表达式体系 |
+
+> **示例** — 将 conn_1 的返回值映射到 HTTP 响应体：
+
+```json
+{
+  "labelCn": "返回结果",
+  "outputMapping": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "msgId":  { "type": "string", "value": "${$.node.conn_1.output.body.msgId}" },
+        "status": { "type": "string", "value": "${$.constant:success}" }
+      }
+    }
+  }
+}
+```
+
+
+#### 4.3.13 structureNodeDataDef（V2 新增）
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:structureNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "type": { "type": "string", "enum": ["loop_v2", "parallel", "condition_branch", "error_handler"] },
+    "config": { "type": "object", "description": "结构体配置（预留槽）" }
+  },
+  "required": ["type"]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点中文标签 |
+| labelEn | string | ❌ | 节点英文标签 |
+| type | string | ✅ | 结构体类型：`loop_v2` / `parallel` / `condition_branch` / `error_handler` |
+| config | object | ❌ | 结构体配置（预留槽） |
+
+> **示例** — 循环节点（config 待细化）：
+
+```json
+{ "labelCn": "遍历处理", "type": "loop_v2", "config": {} }
+```
+
+
+#### 4.3.14 textMarkerNodeDataDef（V2 新增）
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:textMarkerNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "type": { "type": "string", "const": "text" },
+    "config": { "type": "object", "description": "归属配置（预留槽）" }
+  }
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 说明 |
+|-----------|------|:----:|------|
+| labelCn | string | ❌ | 节点展示中文文本 |
+| labelEn | string | ❌ | 节点展示英文文本 |
+| type | string | ✅ | 固定为 `text` |
+| config | object | ❌ | 结构归属配置（预留槽） |
+
+> **示例** — 循环区域标记：
+
+```json
+{ "labelCn": "循环开始", "type": "text", "config": {} }
+```
+
+### 5.1 定位与存储
+
+| 维度 | 说明 |
+|------|------|
+
+#### 4.3.15 nodeDataDef（路由汇总）
+
+> 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
+
+| `node.type` 值 | 对应 data Schema | $ref 目标 | 详见 |
+|----------------|-----------------|-----------|:--:|
+| `trigger` | triggerNodeDataDef | `#/definitions/triggerNodeDataDef` | §4.3.15 |
+| `connector` | connectorNodeDataDef | `#/definitions/connectorNodeDataDef` | §4.3.11 |
+| `data_processor` | dataProcessorNodeDataDef | `#/definitions/dataProcessorNodeDataDef` | §4.3.12 |
+| `exit` | exitNodeDataDef | `#/definitions/exitNodeDataDef` | §4.3.13 |
+| `loop_v2` / `parallel` / `condition_branch` / `error_handler` | structureNodeDataDef | `#/definitions/structureNodeDataDef` | §4.3.14 |
+| `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.3.14 |
+
+### 4.4 完整组件定义
 
 以下 JSON 为所有共享组件定义的聚合，是整个文档中 JSON Schema 定义的唯一权威来源。各组件通过 `#/definitions/xxx` 路径被 §5 和 §6 引用。
 
@@ -839,820 +1653,6 @@ graph TB
 }
 ```
 
-### 4.4 组件详解
-
-> 以 `jsonObjectDef` 为基础，按依赖关系逐层展开。
-
-#### 4.4.1 jsonObjectDef
-
-> 基础复用组件。value 可选——有值=编排映射场景，无值=纯声明场景。每个字段自维护所有属性（required/sensitive/value 等），不做顶层 `required` 数组。
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:jsonObjectDef:v2",
-  "type": "object",
-  "properties": {
-    "type": { "type": "string", "enum": ["object"] },
-    "properties": {
-      "type": "object",
-      "additionalProperties": {
-        "oneOf": [
-          {
-            "description": "叶子字段：基本类型",
-            "type": "object",
-            "properties": {
-              "type":        { "type": "string", "enum": ["string", "number", "boolean"] },
-              "description": { "type": "string" },
-              "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
-              "required":    { "type": "boolean", "default": false, "description": "是否必填" },
-              "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
-              "readonly":    { "type": "boolean", "default": false, "description": "字段是否只读" },
-              "deprecated":  { "type": "boolean", "default": false, "description": "是否已废弃" },
-              "nullable":    { "type": "boolean", "default": false, "description": "是否允许 null 值" },
-              "placeholder": { "type": "string",  "description": "输入框占位提示" },
-              "pattern":     { "type": "string",  "description": "正则校验表达式，如 ^1[3-9]\\d{9}$" },
-              "minLength":   { "type": "number",  "description": "字符串最小长度" },
-              "maxLength":   { "type": "number",  "description": "字符串最大长度" },
-              "enum":        { "type": "array" },
-              "default":     {},
-              "minimum":     { "type": "number" },
-              "maximum":     { "type": "number" }
-            },
-            "required": ["type"]
-          },
-          {
-            "description": "嵌套 object：递归引用自身",
-            "$ref": "#/definitions/jsonObjectDef"
-          },
-          {
-            "description": "数组字段",
-            "type": "object",
-            "properties": {
-              "type":        { "type": "string", "enum": ["array"] },
-              "description": { "type": "string" },
-              "required":    { "type": "boolean", "default": false },
-              "readonly":    { "type": "boolean", "default": false },
-              "deprecated":  { "type": "boolean", "default": false },
-              "minItems":    { "type": "number",  "description": "数组最少元素数" },
-              "maxItems":    { "type": "number",  "description": "数组最多元素数" },
-              "items":       { "$ref": "#/definitions/jsonObjectDef" }
-            },
-            "required": ["type", "items"]
-          }
-        ]
-      }
-    }
-  },
-  "required": ["type", "properties"]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 适用 | 说明 |
-|-----------|------|:----:|:--:|------|
-| type | string | ✅ | 全部 | 顶层固定 `"object"` |
-| properties | object | ✅ | 全部 | 字段定义集合，每个字段自维护所有属性 |
-| properties.{key}.type | string | ✅ | 全部 | 字段类型：`string` / `number` / `boolean` / `object`（递归）/ `array` |
-| properties.{key}.required | boolean | ❌ | 全部 | 是否必填，默认 `false` |
-| properties.{key}.value | string | ❌ | 叶子 | 映射表达式。遵循 §3 值表达式体系 |
-| properties.{key}.sensitive | boolean | ❌ | 叶子 | 运行时脱敏，默认 `false` |
-| properties.{key}.readonly | boolean | ❌ | 全部 | 字段是否只读，默认 `false` |
-| properties.{key}.deprecated | boolean | ❌ | 全部 | 是否已废弃，默认 `false` |
-| properties.{key}.description | string | ❌ | 全部 | 字段描述 |
-| properties.{key}.placeholder | string | ❌ | 叶子 | 输入框占位提示（string 类型可用） |
-| properties.{key}.pattern | string | ❌ | 叶子 | 正则校验，如 `^1[3-9]\d{9}$`（string 类型可用） |
-| properties.{key}.minLength | number | ❌ | 叶子 | 字符串最小长度（string 类型可用） |
-| properties.{key}.maxLength | number | ❌ | 叶子 | 字符串最大长度（string 类型可用） |
-| properties.{key}.enum | array | ❌ | 叶子 | 枚举值列表 |
-| properties.{key}.default | any | ❌ | 叶子 | 默认值 |
-| properties.{key}.minimum | number | ❌ | 叶子 | 最小值（number 类型可用） |
-| properties.{key}.maximum | number | ❌ | 叶子 | 最大值（number 类型可用） |
-| properties.{key}.nullable | boolean | ❌ | 叶子 | 是否允许 null 值，默认 `false` |
-| properties.{key}.minItems | number | ❌ | array | 数组最少元素数 |
-| properties.{key}.maxItems | number | ❌ | array | 数组最多元素数 |
-| properties.{key}.items | object | ❌ | array | 数组元素定义（type=array 时必填） |
-
-> **示例** — sender/content 必填，phone 脱敏，全部字段级声明：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "sender":  { "type": "string", "required": true,  "description": "发送者 ID" },
-    "content": { "type": "string", "required": true,  "description": "消息内容" },
-    "phone":   { "type": "string", "required": false, "description": "手机号", "sensitive": true }
-  }
-}
-```
-
-> **示例** — 带 value 映射 + 嵌套 object：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "receiver": { "type": "string", "required": true, "value": "${$.node.trigger.input.body.sender}" },
-    "content":  { "type": "string", "required": true, "value": "${$.node.trigger.input.body.content}" },
-    "metadata": {
-      "type": "object",
-      "properties": {
-        "source":    { "type": "string", "required": true,  "value": "${$.constant:openplatform}" },
-        "timestamp": { "type": "string", "required": false, "value": "${$.node.trigger.input.body.ts}" }
-      }
-    }
-  }
-}
-```
-
-> **示例** — 带 value 映射（编排 inputMapping）：
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "receiver": { "type": "string", "value": "${$.node.trigger.input.body.sender}" },
-    "content":  { "type": "string", "value": "${$.node.trigger.input.body.content}" },
-    "phone":    { "type": "string", "value": "${$.node.trigger.input.body.phone}", "sensitive": true }
-  },
-  "required": ["receiver", "content"]
-}
-```
-
-
-#### 4.4.2 authConfigDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:authConfigDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "type": { "type": "string", "enum": ["SOA", "APIG", "SYSTOKEN", "AKSK", "NONE"] },
-    "fields": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "name": { "type": "string" },
-          "carrier": { "type": "string", "enum": ["header", "query"] },
-          "fieldName": { "type": "string" },
-          "required": { "type": "boolean", "default": true },
-          "sensitive": { "type": "boolean", "default": false }
-        },
-        "required": ["name", "carrier", "fieldName"]
-      }
-    }
-  },
-  "required": ["type"]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| type | string | ✅ | 认证类型：`SOA` / `APIG` / `SYSTOKEN` / `AKSK` / `NONE` |
-| fields[] | array | ❌ | 凭证字段列表 |
-| fields[].name | string | ✅ | 字段名，程序内部标识 |
-| fields[].carrier | string | ✅ | 传递位置：`header` / `query` |
-| fields[].fieldName | string | ✅ | 实际 HTTP 字段名，如 `X-Sys-Token` |
-| fields[].required | boolean | ❌ | 是否必填，默认 `true` |
-| fields[].sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
-
-> **示例**
-
-```json
-{
-  "type": "SYSTOKEN",
-  "fields": [
-    { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
-  ]
-}
-```
-
-
-#### 4.4.3 rateLimitConfigDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:rateLimitConfigDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "maxQps": { "type": "integer", "minimum": 1, "maximum": 10000 },
-    "maxConcurrency": { "type": "integer", "minimum": 1, "maximum": 1000 }
-  }
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
-| maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
-
-> **示例**
-
-```json
-{ "maxQps": 100, "maxConcurrency": 10 }
-```
-
-#### 4.4.4 errorInfoDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:errorInfoDef:v2",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "code": { "type": "string", "pattern": "^[1-9][0-9]{2,4}$" },
-    "messageZh": { "type": "string" },
-    "messageEn": { "type": "string" },
-    "cause": { "type": "string" },
-    "downstreamStatus": { "type": "integer" },
-    "downstreamBody": { "type": "string" }
-  },
-  "required": ["code", "messageZh", "messageEn"],
-  "oneOf": [
-    { "required": ["cause"] },
-    { "required": ["downstreamStatus"] }
-  ]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| code | string | ✅ | 错误码。4xx/5xx=下游错误，6xxxx=内部错误 |
-| messageZh | string | ✅ | 错误中文描述 |
-| messageEn | string | ✅ | 错误英文描述 |
-| cause | string | ❌ ⚡ | 根因描述（内部错误时必填） |
-| downstreamStatus | integer | ❌ ⚡ | 下游 HTTP 状态码（下游错误时必填） |
-| downstreamBody | string | ❌ | 下游响应体片段（截断到 512 字符） |
-
-**错误码字典**：
-
-| Code | messageZh | messageEn | 来源 |
-|:----:|-----------|-----------|:----:|
-| `400` | 下游请求参数错误 | Bad Request | downstream |
-| `401` | 下游未授权 | Unauthorized | downstream |
-| `403` | 下游无权限 | Forbidden | downstream |
-| `404` | 下游资源不存在 | Not Found | downstream |
-| `500` | 下游内部错误 | Internal Server Error | downstream |
-| `502` | 下游网关错误 | Bad Gateway | downstream |
-| `503` | 下游服务不可用 | Service Unavailable | downstream |
-| `504` | 下游网关超时 | Gateway Timeout | downstream |
-| `6001` | 字段映射失败 | Field Mapping Failed | internal |
-| `6002` | JSON 解析失败 | JSON Parse Failed | internal |
-| `6003` | 编排执行超时 | Orchestration Timeout | internal |
-| `6004` | 连接器版本未找到 | Connector Version Not Found | internal |
-
-> **示例**
-
-```json
-// 下游调用失败
-{ "code": "503", "messageZh": "下游服务不可用", "messageEn": "Service Unavailable", "downstreamStatus": 503 }
-
-// 内部错误
-{ "code": "6001", "messageZh": "字段映射失败", "messageEn": "Field Mapping Failed", "cause": "source 字段 ${node_1.msgId} 不存在" }
-```
-
-
-#### 4.4.5 httpInputDef
-
-> HTTP 入参，按传输位置分为 header / query / body 三段。
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:httpInputDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "protocol": { "type": "string", "const": "HTTP" },
-    "header": { "$ref": "#/definitions/jsonObjectDef" },
-    "query":  { "$ref": "#/definitions/jsonObjectDef" },
-    "body":   { "$ref": "#/definitions/jsonObjectDef" }
-  },
-  "required": ["protocol"],
-  "anyOf": [
-    { "required": ["header"] },
-    { "required": ["query"] },
-    { "required": ["body"] }
-  ]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
-| header | object | ❌ ⚡ | 请求头参数定义 |
-| query | object | ❌ ⚡ | Query 参数定义 |
-| body | object | ❌ ⚡ | 请求体参数定义 |
-
-⚡ = anyOf：必须至少声明 header / query / body 其中之一。
-
-> **示例**
-
-```json
-{
-  "protocol": "HTTP",
-  "query": {
-    "type": "object",
-    "properties": { "page": { "type": "integer", "description": "页码" } },
-    "required": ["page"]
-  },
-  "body": {
-    "type": "object",
-    "properties": {
-      "receiver": { "type": "string", "description": "接收者 ID" },
-      "content":  { "type": "string", "description": "消息内容" }
-    },
-    "required": ["receiver", "content"]
-  }
-}
-```
-
-
-#### 4.4.6 httpOutputDef
-
-> HTTP 出参，按传输位置分为 header / body 两段。
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:httpOutputDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "protocol": { "type": "string", "const": "HTTP" },
-    "header": { "$ref": "#/definitions/jsonObjectDef" },
-    "body":   { "$ref": "#/definitions/jsonObjectDef" }
-  },
-  "required": ["protocol"],
-  "anyOf": [
-    { "required": ["header"] },
-    { "required": ["body"] }
-  ]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| protocol | string | ✅ | 协议标识，固定为 `HTTP` |
-| header | object | ❌ ⚡ | 响应头字段定义 |
-| body | object | ❌ ⚡ | 响应体字段定义 |
-
-⚡ = anyOf：必须至少声明 header / body 其中之一。
-
-> **示例**
-
-```json
-{
-  "protocol": "HTTP",
-  "header": {
-    "type": "object",
-    "properties": { "X-Request-Id": { "type": "string", "description": "请求追踪 ID" } }
-  },
-  "body": {
-    "type": "object",
-    "properties": {
-      "msgId": { "type": "string", "description": "消息 ID" },
-      "code":  { "type": "integer", "description": "状态码" }
-    }
-  }
-}
-```
-
-
-#### 4.4.7 nodeInputDef
-
-> 入参路由器。通过 oneOf 按协议类型分发到对应协议实现。
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:nodeInputDef:v1",
-  "type": "object",
-  "oneOf": [
-    { "$ref": "#/definitions/httpInputDef" }
-  ]
-}
-```
-
-**协议路由**：
-
-| 协议 | 目标定义 | 说明 |
-|------|---------|------|
-| `HTTP` | `httpInputDef`（§4.4.5） | header / query / body |
-| `REDIS`（V1） | `redisInputDef` | 待定义 |
-| `MYSQL`（V1） | `mysqlInputDef` | 待定义 |
-
-> **示例** — HTTP 协议入参：
-
-```json
-{
-  "protocol": "HTTP",
-  "body": {
-    "type": "object",
-    "properties": {
-      "receiver": { "type": "string" },
-      "content":  { "type": "string" }
-    },
-    "required": ["receiver", "content"]
-  }
-}
-```
-
-
-#### 4.4.8 nodeOutputDef
-
-> 出参路由器。通过 oneOf 按协议类型分发到对应协议实现。
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:nodeOutputDef:v1",
-  "type": "object",
-  "oneOf": [
-    { "$ref": "#/definitions/httpOutputDef" }
-  ]
-}
-```
-
-**协议路由**：
-
-| 协议 | 目标定义 | 说明 |
-|------|---------|------|
-| `HTTP` | `httpOutputDef`（§4.4.6） | header / body |
-| `REDIS`（V1） | `redisOutputDef` | 待定义 |
-
-> **示例** — HTTP 协议出参：
-
-```json
-{
-  "protocol": "HTTP",
-  "body": {
-    "type": "object",
-    "properties": {
-      "msgId": { "type": "string" },
-      "code":  { "type": "integer" }
-    }
-  }
-}
-```
-
-
-#### 4.4.9 triggerNodeDataDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:triggerNodeDataDef:v2",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "type": { "type": "string", "enum": ["http", "manual"] },
-    "authConfig": { "$ref": "#/definitions/authConfigDef" },
-    "nodeInput": { "$ref": "#/definitions/nodeInputDef" },
-    "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
-  },
-  "required": ["type"],
-  "allOf": [
-    {
-      "if": { "properties": { "type": { "const": "http" } }, "required": ["type"] },
-      "then": { "required": ["authConfig", "nodeInput"] }
-    },
-    {
-      "if": { "properties": { "type": { "const": "manual" } }, "required": ["type"] },
-      "then": { "properties": { "authConfig": false, "nodeInput": false } }
-    }
-  ]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| type | string | ✅ | 触发子类型：`http` / `manual` |
-| authConfig | object | ❌ ⚡ | 认证配置（HTTP 触发时必填），见 §4.4.1 |
-| nodeInput | object | ❌ ⚡ | 入参声明（HTTP 触发时必填），见 §4.4.7 |
-| rateLimitConfig | object | ❌ | 限流配置，见 §4.4.2 |
-
-⚡ = `type="http"` 时必填。
-
-> **示例** — HTTP 触发，SYSTOKEN 认证，限流 100 QPS：
-
-```json
-{
-  "labelCn": "接收请求",
-  "type": "http",
-  "authConfig": {
-    "type": "SYSTOKEN",
-    "fields": [{ "name": "token", "carrier": "header", "fieldName": "X-Sys-Token" }]
-  },
-  "nodeInput": {
-    "protocol": "HTTP",
-    "body": {
-      "type": "object",
-      "properties": {
-        "sender":  { "type": "string" },
-        "content": { "type": "string" }
-      },
-      "required": ["sender", "content"]
-    }
-  },
-  "rateLimitConfig": { "maxQps": 100 }
-}
-```
-
-
-#### 4.4.10 connectorNodeDataDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:connectorNodeDataDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "connectorVersionId": {
-      "type": "string",
-      "pattern": "^[1-9][0-9]{15,19}$",
-      "description": "引用的连接器版本 ID，必须为已发布版本"
-    },
-    "inputMapping": {
-      "type": "object",
-      "properties": {
-        "header": { "$ref": "#/definitions/jsonObjectDef" },
-        "query":  { "$ref": "#/definitions/jsonObjectDef" },
-        "body":   { "$ref": "#/definitions/jsonObjectDef" }
-      }
-    }
-  },
-  "required": ["connectorVersionId", "inputMapping"]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| connectorVersionId | string | ✅ | 引用的连接器版本 ID（18-20 位数字，必须为已发布版本） |
-| inputMapping | object | ✅ | 字段映射，镜像连接器 nodeInput 结构，value 遵循 §3 值表达式体系 |
-
-> **示例** — 将 trigger 的 sender/content 映射到下游 API：
-
-```json
-{
-  "labelCn": "发送消息",
-  "connectorVersionId": "1234567890123456789",
-  "inputMapping": {
-    "body": {
-      "type": "object",
-      "properties": {
-        "receiver": { "type": "string", "value": "${$.node.trigger.input.body.sender}" },
-        "content":  { "type": "string", "value": "${$.node.trigger.input.body.content}" }
-      },
-      "required": ["receiver", "content"]
-    }
-  }
-}
-```
-
-
-#### 4.4.11 dataProcessorNodeDataDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:dataProcessorNodeDataDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "config": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "fieldMappings": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "source": { "type": "string", "description": "值表达式，遵循 §3 值表达式体系" },
-              "target": { "type": "string" }
-            },
-            "required": ["source", "target"]
-          }
-        }
-      }
-    }
-  },
-  "required": ["config"]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| config | object | ✅ | 管道转换配置 |
-| config.fieldMappings[] | array | ✅ | 字段映射列表，至少 1 项 |
-| config.fieldMappings[].source | string | ✅ | 值表达式，遵循 §3 值表达式体系 |
-| config.fieldMappings[].target | string | ✅ | 目标字段路径 |
-
-> **示例** — 引用 conn_1 返回值 + 系统函数 + 常量：
-
-```json
-{
-  "labelCn": "格式化输出",
-  "config": {
-    "fieldMappings": [
-      { "source": "${$.system.fn.upper($.node.conn_1.output.body.name)}", "target": "upperName" },
-      { "source": "${$.node.conn_1.output.body.msgId}",                   "target": "id" },
-      { "source": "${$.constant:processed}",                               "target": "status" }
-    ]
-  }
-}
-```
-
-
-#### 4.4.12 exitNodeDataDef
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:exitNodeDataDef:v1",
-  "title": "exitNodeDataDef",
-  "description": "出口节点业务数据。node.type='exit' 时 node.data 内的结构",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "outputMapping": {
-      "type": "object",
-      "properties": {
-        "header": { "$ref": "#/definitions/jsonObjectDef" },
-        "body":   { "$ref": "#/definitions/jsonObjectDef" }
-      }
-    }
-  },
-  "required": ["outputMapping"]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| outputMapping | object | ✅ | 字段映射，镜像 nodeOutput 结构（HTTP: header/body），value 遵循 §3 值表达式体系 |
-
-> **示例** — 将 conn_1 的返回值映射到 HTTP 响应体：
-
-```json
-{
-  "labelCn": "返回结果",
-  "outputMapping": {
-    "body": {
-      "type": "object",
-      "properties": {
-        "msgId":  { "type": "string", "value": "${$.node.conn_1.output.body.msgId}" },
-        "status": { "type": "string", "value": "${$.constant:success}" }
-      }
-    }
-  }
-}
-```
-
-
-#### 4.4.13 structureNodeDataDef（V2 新增）
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:structureNodeDataDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "type": { "type": "string", "enum": ["loop_v2", "parallel", "condition_branch", "error_handler"] },
-    "config": { "type": "object", "description": "结构体配置（预留槽）" }
-  },
-  "required": ["type"]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点中文标签 |
-| labelEn | string | ❌ | 节点英文标签 |
-| type | string | ✅ | 结构体类型：`loop_v2` / `parallel` / `condition_branch` / `error_handler` |
-| config | object | ❌ | 结构体配置（预留槽） |
-
-> **示例** — 循环节点（config 待细化）：
-
-```json
-{ "labelCn": "遍历处理", "type": "loop_v2", "config": {} }
-```
-
-
-#### 4.4.14 textMarkerNodeDataDef（V2 新增）
-
-> **Def**
-
-```json
-{
-  "$id": "urn:openapp:schema:textMarkerNodeDataDef:v1",
-  "type": "object",
-  "additionalProperties": false,
-  "properties": {
-    "labelCn": { "type": "string" },
-    "labelEn": { "type": "string" },
-    "type": { "type": "string", "const": "text" },
-    "config": { "type": "object", "description": "归属配置（预留槽）" }
-  }
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| labelCn | string | ❌ | 节点展示中文文本 |
-| labelEn | string | ❌ | 节点展示英文文本 |
-| type | string | ✅ | 固定为 `text` |
-| config | object | ❌ | 结构归属配置（预留槽） |
-
-> **示例** — 循环区域标记：
-
-```json
-{ "labelCn": "循环开始", "type": "text", "config": {} }
-```
-
-### 5.1 定位与存储
-
-| 维度 | 说明 |
-|------|------|
-
-#### 4.4.15 nodeDataDef（路由汇总）
-
-> 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
-
-| `node.type` 值 | 对应 data Schema | $ref 目标 | 详见 |
-|----------------|-----------------|-----------|:--:|
-| `trigger` | triggerNodeDataDef | `#/definitions/triggerNodeDataDef` | §4.4.15 |
-| `connector` | connectorNodeDataDef | `#/definitions/connectorNodeDataDef` | §4.4.11 |
-| `data_processor` | dataProcessorNodeDataDef | `#/definitions/dataProcessorNodeDataDef` | §4.4.12 |
-| `exit` | exitNodeDataDef | `#/definitions/exitNodeDataDef` | §4.4.13 |
-| `loop_v2` / `parallel` / `condition_branch` / `error_handler` | structureNodeDataDef | `#/definitions/structureNodeDataDef` | §4.4.14 |
-| `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.4.14 |
-
 ---
 
 ## 5. 连接器配置 Schema
@@ -1707,11 +1707,11 @@ graph TB
 | labelEn | string | ❌ | 连接器英文标签 | — |
 | protocol | string | ✅ | 协议类型，MVP 仅 `HTTP` | — |
 | protocolConfig | object | ✅ | 协议配置（url / method / headers） | — |
-| authConfig | object | ❌ | 认证类型声明 | §4.4.1 |
-| nodeInput | object | ❌ | 入参契约 | §4.4.7 |
-| nodeOutput | object | ❌ | 出参契约 | §4.4.8 |
+| authConfig | object | ❌ | 认证类型声明 | §4.3.1 |
+| nodeInput | object | ❌ | 入参契约 | §4.3.7 |
+| nodeOutput | object | ❌ | 出参契约 | §4.3.8 |
 | timeoutMs | integer | ❌ | 单次调用超时（毫秒），默认 3000 | — |
-| rateLimitConfig | object | ❌ | 限流配置 | §4.4.2 |
+| rateLimitConfig | object | ❌ | 限流配置 | §4.3.2 |
 
 ### 5.4 示例
 
@@ -1872,7 +1872,7 @@ graph TB
 | `error_handler` | structureNodeDataDef | type | 错误处理主节点 |
 | `text` | textMarkerNodeDataDef | — | 纯渲染标记（引擎跳过） |
 
-⍟ = HTTP 触发时必填。各 data Schema 完整定义见 §4.4.15 ~ §4.4.15。
+⍟ = HTTP 触发时必填。各 data Schema 完整定义见 §4.3.15 ~ §4.3.15。
 
 #### 6.3.2 edge.data 配置
 
@@ -2122,7 +2122,7 @@ graph TB
 
 ## 7. 执行数据约定
 
-执行数据的结构由对应节点的 nodeInput / nodeOutput 动态决定，不在数据库层约束。errorInfo 使用结构化格式（定义见 §4.4.5）。
+执行数据的结构由对应节点的 nodeInput / nodeOutput 动态决定，不在数据库层约束。errorInfo 使用结构化格式（定义见 §4.3.5）。
 
 示例：
 
