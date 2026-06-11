@@ -1651,8 +1651,13 @@ graph TB
 | `data_processor` | dataProcessorNodeDataDef | `#/definitions/dataProcessorNodeDataDef` | §4.4.12 |
 | `exit` | exitNodeDataDef | `#/definitions/exitNodeDataDef` | §4.4.13 |
 | `loop_v2` / `parallel` / `condition_branch` / `error_handler` | structureNodeDataDef | `#/definitions/structureNodeDataDef` | §4.4.14 |
-| `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.4.15 |
+| `text` | textMarkerNodeDataDef | `#/definitions/textMarkerNodeDataDef` | §4.4.14 |
 
+---
+
+## 5. 连接器配置 Schema
+
+### 5.1 定位与存储
 
 | 存储位置 | connector_version_t.connection_config (MEDIUMTEXT) |
 | 框架归属 | 无 — 与 React Flow 完全无关 |
