@@ -705,6 +705,8 @@
                 connectorType: 1,
                 descriptionCn: '通用的HTTP请求连接器，支持GET/POST等方法',
                 descriptionEn: 'General-purpose HTTP request connector',
+                creator: '张三',
+                modifier: '李四',
                 createTime: '2024-01-15 10:30:00',
                 lastUpdateTime: '2024-01-20 14:25:00'
             },
@@ -806,7 +808,7 @@
             if (pageData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
+                        <td colspan="11" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
                             暂无数据
                         </td>
                     </tr>
@@ -820,6 +822,8 @@
                         <td class="text-center">HTTP</td>
                         <td class="text-center" title="${item.descriptionCn}">${item.descriptionCn || '-'}</td>
                         <td class="text-center" title="${item.descriptionEn}">${item.descriptionEn || '-'}</td>
+                        <td>${item.creator || '-'}</td>
+                        <td>${item.modifier || '-'}</td>
                         <td>${item.createTime}</td>
                         <td>${item.lastUpdateTime}</td>
                         <td>
@@ -827,7 +831,8 @@
                                 <button class="btn btn-link" onclick="editConnector('${item.id}')">编辑</button>
                                 <button class="btn btn-link" onclick="configConnector('${item.id}')">配置</button>
                                 ${item.invalid === 1 ? 
-                                    `<button class="btn btn-link danger" onclick="deleteConnector('${item.id}')">删除</button>` :
+                                    `<button class="btn btn-link" onclick="restoreConnector('${item.id}')">恢复</button>
+                                     <button class="btn btn-link danger" onclick="deleteConnector('${item.id}')">删除</button>` :
                                     `<button class="btn btn-link" onclick="invalidConnector('${item.id}')">失效</button>`
                                 }
                             </div>
@@ -943,6 +948,7 @@
                     connector.nameEn = nameEn;
                     connector.descriptionCn = descCn;
                     connector.descriptionEn = descEn;
+                    connector.modifier = '当前用户';
                     connector.lastUpdateTime = new Date().toLocaleString('zh-CN');
                     showToast('编辑成功', 'success');
                 }
@@ -955,6 +961,8 @@
                     nameEn,
                     descriptionCn: descCn,
                     descriptionEn: descEn,
+                    creator: '当前用户',
+                    modifier: '当前用户',
                     createTime: new Date().toLocaleString('zh-CN'),
                     lastUpdateTime: new Date().toLocaleString('zh-CN')
                 });
@@ -975,6 +983,7 @@
         // ========================================
         let deleteId = null;
         let invalidId = null;
+        let restoreId = null;
 
         /**
          * 失效连接器
@@ -1013,6 +1022,45 @@
         }
 
         /**
+         * 恢复连接器
+         * 将已失效连接器恢复为未失效状态，需要二次确认
+         * @param {string} id - 连接器ID
+         */
+        function restoreConnector(id) {
+            const connector = connectorData.find(item => item.id === id);
+            if (!connector || connector.invalid !== 1) {
+                showToast('只有已失效的连接器才能恢复', 'error');
+                return;
+            }
+
+            restoreId = id;
+            document.getElementById('confirmTitle').textContent = '确认恢复连接器';
+            document.getElementById('confirmMessage').textContent = `确认要恢复「${connector.nameCn}」吗？恢复后连接器将重新进入未失效状态，可继续配置和使用。`;
+            document.getElementById('confirmOkBtn').textContent = '确认恢复';
+            document.getElementById('confirmOkBtn').style.cssText = 'background: var(--success-color); border-color: var(--success-color);';
+            openModal('confirmModal');
+        }
+
+        /**
+         * 确认恢复操作
+         * 执行连接器恢复
+         */
+        function confirmRestore() {
+            if (restoreId) {
+                const connector = connectorData.find(item => item.id === restoreId);
+                if (connector) {
+                    connector.invalid = 0;
+                    connector.modifier = '当前用户';
+                    connector.lastUpdateTime = new Date().toLocaleString('zh-CN');
+                    showToast('恢复成功', 'success');
+                }
+                closeModal('confirmModal');
+                renderTable();
+                restoreId = null;
+            }
+        }
+
+        /**
          * 删除连接器
          * 只有已失效的连接器才能删除
          * @param {string} id - 连接器ID
@@ -1028,7 +1076,7 @@
             
             deleteId = id;
             document.getElementById('confirmTitle').textContent = '确认删除连接器';
-            document.getElementById('confirmMessage').textContent = `删除后将无法恢复，确认要删除这个连接器吗？`;
+            document.getElementById('confirmMessage').textContent = `确认要删除「${connector?.nameCn}」吗？删除后连接器记录将从列表移除且无法恢复，相关配置不可再查看。`;
             document.getElementById('confirmOkBtn').textContent = '确认删除';
             document.getElementById('confirmOkBtn').style.cssText = 'background: var(--error-color); border-color: var(--error-color);';
             openModal('confirmModal');
@@ -1055,6 +1103,8 @@
         function handleConfirm() {
             if (invalidId) {
                 confirmInvalid();
+            } else if (restoreId) {
+                confirmRestore();
             } else if (deleteId) {
                 confirmDelete();
             }

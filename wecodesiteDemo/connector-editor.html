@@ -589,6 +589,8 @@
                         <button class="btn" id="copyToDraftBtn" onclick="handleCopyToDraft()" style="display: none;">复制到草稿</button>
                         <!-- 失效按钮（仅已发布版本时显示） -->
                         <button class="btn" id="invalidateBtn" onclick="handleInvalidate()" style="display: none;">失效</button>
+                        <!-- 恢复按钮（仅已失效版本时显示） -->
+                        <button class="btn" id="restoreBtn" onclick="handleRestoreVersion()" style="display: none; color: var(--success-color);">恢复</button>
                         <!-- 删除按钮（仅已失效版本时显示） -->
                         <button class="btn" id="deleteBtn" onclick="handleDeleteVersion()" style="display: none; color: var(--error-color);">删除</button>
                     </div>
@@ -605,7 +607,6 @@
                                 <button type="button" class="radio-group-item" data-value="POST">POST</button>
                                 <button type="button" class="radio-group-item" data-value="PUT">PUT</button>
                                 <button type="button" class="radio-group-item" data-value="DELETE">DELETE</button>
-                                <button type="button" class="radio-group-item" data-value="PATCH">PATCH</button>
                             </div>
                         </div>
                         <div class="form-group">
@@ -689,8 +690,8 @@
                     <div class="config-card-body">
                         <!-- Tab导航 -->
                         <div class="param-tabs" id="responseParamTabs">
-                            <button class="tab-btn active" data-tab="header" onclick="switchResponseTab('header')">HTTP请求头</button>
-                            <button class="tab-btn" data-tab="body" onclick="switchResponseTab('body')">HTTP请求体</button>
+                            <button class="tab-btn active" data-tab="header" onclick="switchResponseTab('header')">HTTP响应头</button>
+                            <button class="tab-btn" data-tab="body" onclick="switchResponseTab('body')">HTTP响应体</button>
                         </div>
                         <!-- Tab内容 -->
                         <div class="param-tab-content" id="responseTabContent">
@@ -861,6 +862,7 @@
             const publishBtn = document.getElementById('publishBtn');
             const copyToDraftBtn = document.getElementById('copyToDraftBtn');
             const invalidateBtn = document.getElementById('invalidateBtn');
+            const restoreBtn = document.getElementById('restoreBtn');
             const deleteBtn = document.getElementById('deleteBtn');
 
             // 更新编辑按钮（确保样式统一为primary）
@@ -874,6 +876,7 @@
                 publishBtn.style.display = 'inline-flex';
                 copyToDraftBtn.style.display = 'none';
                 invalidateBtn.style.display = 'none';
+                restoreBtn.style.display = 'none';
                 deleteBtn.style.display = 'none';
             } else if (status === VERSION_STATUS.PUBLISHED) {
                 // 已发布版本：显示复制到草稿按钮和失效按钮
@@ -888,6 +891,7 @@
                 copyToDraftBtn.style.display = 'inline-flex';
                 copyToDraftBtn.textContent = '复制到草稿';
                 invalidateBtn.style.display = 'none';
+                restoreBtn.style.display = 'inline-flex';
                 deleteBtn.style.display = 'inline-flex';
             }
         }
@@ -902,13 +906,9 @@
 
             if (isEditing) {
                 // 保存配置
-                connectorConfig.protocolAddress = document.getElementById('protocolAddress').value.trim();
-                connectorConfig.requestSchema = collectParams('requestParams');
-                connectorConfig.responseSchema = collectParams('responseParams');
-
-                // 模拟保存
-                console.log('保存配置:', connectorConfig);
-                showToast('保存成功', 'success');
+                if (!saveConnectorConfig()) {
+                    return;
+                }
 
                 // 退出编辑模式
                 exitEditMode();
@@ -920,6 +920,7 @@
                 if (editorPage) {
                     editorPage.classList.remove('editor-disabled');
                 }
+                renderAuthParams();
                 // 显示入参配置区域的添加按钮
                 document.querySelectorAll('.request-add-btn, .response-add-btn').forEach(btn => {
                     btn.style.display = 'block';
@@ -947,6 +948,7 @@
             if (editorPage) {
                 editorPage.classList.add('editor-disabled');
             }
+            renderAuthParams();
             // 隐藏添加按钮
             document.querySelectorAll('.request-add-btn, .response-add-btn').forEach(btn => {
                 btn.style.display = 'none';
@@ -1010,6 +1012,10 @@
             const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
             if (!currentVersion) return;
 
+            if (!window.confirm(`确认要失效「${currentVersion.name}」吗？失效后版本将无法继续部署或编辑，只能复制到草稿、恢复或删除。`)) {
+                return;
+            }
+
             currentVersion.status = VERSION_STATUS.INVALID;
             updateVersionSelect();
             updateVersionButtons();
@@ -1017,9 +1023,34 @@
         }
 
         /**
+         * 恢复当前版本
+         * 将已失效版本恢复为已发布状态
+         */
+        function handleRestoreVersion() {
+            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
+            if (!currentVersion || currentVersion.status !== VERSION_STATUS.INVALID) return;
+
+            if (!window.confirm(`确认要恢复「${currentVersion.name}」吗？恢复后版本将重新变为已发布版本，可继续被选择和部署。`)) {
+                return;
+            }
+
+            currentVersion.status = VERSION_STATUS.PUBLISHED;
+            updateVersionSelect();
+            updateVersionButtons();
+            showToast('版本已恢复', 'success');
+        }
+
+        /**
          * 删除当前版本
          */
         function handleDeleteVersion() {
+            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
+            if (!currentVersion) return;
+
+            if (!window.confirm(`确认要删除「${currentVersion.name}」吗？删除后版本数据将无法恢复，相关配置不可再查看。`)) {
+                return;
+            }
+
             // 从版本列表中移除当前版本
             const index = versionData.versions.findIndex(v => v.id === versionData.currentVersion);
             if (index === -1) return;
@@ -1152,18 +1183,21 @@
                                         <option value="query" ${param.carrier === 'query' ? 'selected' : ''}>query</option>
                                     </select>
                                     <input type="text"
+                                           style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);"
+                                           placeholder="签名值来源"
+                                           disabled>
+                                    <input type="${isEditing ? 'text' : 'password'}"
                                            style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
-                                           placeholder="签名值">
-                                    <input type="text"
-                                           style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
+                                           value="${isEditing ? '' : '******'}"
                                            placeholder="签名密钥">
                                 </div>
                             </div>
                         `;
                     } else {
-                        // SOA、APIG和Cookie：参数名称（可编辑）、类型（不可编辑）、位置、值来源（Cookie可编辑，SOA和APIG不可编辑）
-                        const valueSourceEditable = isCookie;
+                        // SOA、APIG和Cookie：参数名称（可编辑）、类型（不可编辑）、位置、值来源（均不可编辑）
+                        const valueSourceEditable = false;
                         const valueSourceValue = isCookie ? '' : param.paramName;
+                        const valueSourcePlaceholder = isCookie ? '从连接流引用参数配置' : '值来源';
                         html += `
                             <div class="form-group" style="margin-bottom: 12px;">
                                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
@@ -1183,7 +1217,7 @@
                                            style="flex: 1; min-width: 180px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; ${!valueSourceEditable ? 'background: var(--bg-light);' : ''}"
                                            value="${valueSourceValue}"
                                            ${!valueSourceEditable ? 'disabled' : ''}
-                                           placeholder="值来源">
+                                           placeholder="${valueSourcePlaceholder}">
                                 </div>
                             </div>
                         `;
@@ -1675,7 +1709,7 @@
                     const paramData = {
                         paramName: name,
                         paramType: paramType,
-                        carrier: item.querySelector('.param-carrier').value,
+                        carrier: item.querySelector('.param-carrier')?.value || '',
                         description: item.querySelector('.param-desc').value.trim(),
                         children: []
                     };
@@ -1728,22 +1762,119 @@
         // ========================================
 
         /**
-         * 保存配置
-         * 收集所有配置数据并进行验证
+         * 校验协议地址是否为合法网络地址
+         * @param {string} url - 需要校验的协议地址
+         * @returns {boolean} 是否为合法的http或https地址
          */
-        function handleSave() {
+        function isValidNetworkUrl(url) {
+            try {
+                const parsedUrl = new URL(url);
+                return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:';
+            } catch (error) {
+                return false;
+            }
+        }
+
+        /**
+         * 判断复杂类型参数下是否存在基础类型子参数
+         * @param {Array} children - 子参数列表
+         * @returns {boolean} 是否存在基础类型子参数
+         */
+        function hasBasicTypeChild(children) {
+            return children.some(child => {
+                if (!isComplexType(child.paramType)) {
+                    return true;
+                }
+                return hasBasicTypeChild(child.children || []);
+            });
+        }
+
+        /**
+         * 校验参数配置中的复杂类型子参数
+         * @param {Object} options - 校验配置对象
+         * @returns {string} 校验失败文案，空字符串表示通过
+         */
+        function validateSchemaParams(options) {
+            const params = options.params;
+            const location = options.location;
+
+            for (const param of params) {
+                const currentPath = `${location}-${param.paramName}`;
+                if (isComplexType(param.paramType) && !hasBasicTypeChild(param.children || [])) {
+                    return `${currentPath}：${param.paramType}类型参数必须包含基础类型子参数`;
+                }
+
+                const childError = validateSchemaParams({
+                    params: param.children || [],
+                    location: currentPath
+                });
+                if (childError) {
+                    return childError;
+                }
+            }
+
+            return '';
+        }
+
+        /**
+         * 收集并保存接口配置
+         * @returns {boolean} 是否保存成功
+         */
+        function saveConnectorConfig() {
             connectorConfig.protocolAddress = document.getElementById('protocolAddress').value.trim();
-            connectorConfig.requestSchema = collectParams('requestParams');
-            connectorConfig.responseSchema = collectParams('responseParams');
+            connectorConfig.requestSchema = {
+                header: collectParams('requestParams-header'),
+                body: collectParams('requestParams-body'),
+                query: collectParams('requestParams-query')
+            };
+            connectorConfig.responseSchema = {
+                header: collectParams('responseParams-header'),
+                body: collectParams('responseParams-body')
+            };
 
             if (!connectorConfig.protocolAddress) {
                 showToast('请输入协议地址', 'error');
-                return;
+                return false;
+            }
+
+            if (!isValidNetworkUrl(connectorConfig.protocolAddress)) {
+                showToast('协议地址必须是合法的http或https网络地址', 'error');
+                return false;
+            }
+
+            const schemaGroups = [
+                { label: '入参配置-HTTP请求头', params: connectorConfig.requestSchema.header },
+                { label: '入参配置-HTTP请求体', params: connectorConfig.requestSchema.body },
+                { label: '入参配置-URL查询参数', params: connectorConfig.requestSchema.query },
+                { label: '出参配置-HTTP响应头', params: connectorConfig.responseSchema.header },
+                { label: '出参配置-HTTP响应体', params: connectorConfig.responseSchema.body }
+            ];
+
+            for (const group of schemaGroups) {
+                const errorMessage = validateSchemaParams({
+                    params: group.params,
+                    location: group.label
+                });
+                if (errorMessage) {
+                    showToast(errorMessage, 'error');
+                    return false;
+                }
             }
 
             // 模拟保存
             console.log('保存配置:', connectorConfig);
             showToast('保存成功', 'success');
+            return true;
+        }
+
+        /**
+         * 保存配置
+         * 收集所有配置数据并进行验证
+         */
+        function handleSave() {
+            if (!saveConnectorConfig()) {
+                return;
+            }
 
             // 退出编辑模式
             exitEditMode();

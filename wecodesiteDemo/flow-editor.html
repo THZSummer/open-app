@@ -205,63 +205,6 @@
             overflow: hidden;
         }
 
-        /* ========================================
-           节点库面板
-           ======================================== */
-        .node-library {
-            width: 260px;
-            background: var(--bg-white);
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            flex-shrink: 0;
-        }
-
-        .node-library-header {
-            padding: 16px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .node-library-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 4px;
-        }
-
-        .node-library-desc {
-            font-size: 12px;
-            color: var(--text-tertiary);
-        }
-
-        .node-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-        }
-
-        .node-card {
-            padding: 12px;
-            margin-bottom: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            cursor: grab;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .node-card:hover {
-            border-color: var(--primary-color);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .node-card.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
         .node-icon {
             width: 36px;
             height: 36px;
@@ -440,12 +383,6 @@
         .node-desc {
             font-size: 11px;
             color: var(--text-tertiary);
-        }
-
-        .node-added {
-            font-size: 10px;
-            color: var(--text-tertiary);
-            margin-left: 4px;
         }
 
         /* ========================================
@@ -641,6 +578,52 @@
             animation: dash 0.5s linear infinite;
         }
 
+        .edge-insert-button {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-color);
+            background: var(--bg-white);
+            color: var(--primary-color);
+            font-size: 18px;
+            font-weight: 600;
+            line-height: 22px;
+            cursor: pointer;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(24, 144, 255, 0.25);
+            transition: all 0.2s;
+        }
+
+        .edge-insert-button:hover {
+            background: var(--primary-color);
+            color: var(--bg-white);
+            transform: translate(-50%, -50%) scale(1.08);
+        }
+
+        .insert-node-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .insert-node-option {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .insert-node-option:hover {
+            border-color: var(--primary-color);
+            background: #e6f7ff;
+        }
+
         @keyframes dash {
             to {
                 stroke-dashoffset: -10;
@@ -654,7 +637,7 @@
             position: fixed;
             top: 0;
             right: 0;
-            width: calc(100vw - 220px - 260px - 50px);
+            width: calc(100vw - 220px - 50px);
             height: 100vh;
             background: var(--bg-white);
             box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
@@ -718,25 +701,26 @@
         }
 
         /* ========================================
-           调试抽屉（无蒙层，右侧滑出）
+           调试抽屉（无蒙层，底部滑出）
            ======================================== */
         .debug-drawer {
             position: fixed;
-            top: 0;
+            left: 220px;
             right: 0;
-            width: 480px;
-            height: 100vh;
+            bottom: 0;
+            height: 45vh;
+            min-height: 360px;
             background: var(--bg-white);
-            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
             z-index: 200;
-            transform: translateX(100%);
+            transform: translateY(100%);
             transition: transform 0.3s;
             display: flex;
             flex-direction: column;
         }
 
         .debug-drawer.active {
-            transform: translateX(0);
+            transform: translateY(0);
         }
 
         /* 表单样式 */
@@ -1005,17 +989,6 @@
 
             <!-- 编辑器主体 -->
             <div class="editor-content">
-                <!-- 节点库 -->
-                <div class="node-library">
-                    <div class="node-library-header">
-                        <div class="node-library-title">节点库</div>
-                        <div class="node-library-desc">拖拽节点到画布进行编排</div>
-                    </div>
-                    <div class="node-list" id="nodeList">
-                        <!-- 动态生成 -->
-                    </div>
-                </div>
-
                 <!-- 画布区域 -->
                 <div class="canvas-area">
                     <div class="canvas-container" id="canvas">
@@ -1193,7 +1166,22 @@
         </div>
     </div>
 
-    <!-- 调试抽屉（右侧滑出，无蒙层） -->
+    <!-- 连线插入节点弹窗 -->
+    <div class="modal-overlay" id="insertNodeModal">
+        <div class="modal" style="max-width: 620px;">
+            <div class="modal-header">
+                <h3 class="modal-title">选择要插入的节点</h3>
+                <div class="modal-close" onclick="closeInsertNodeModal()">✕</div>
+            </div>
+            <div class="modal-body">
+                <div class="insert-node-grid" id="insertNodeList">
+                    <!-- 动态生成节点选项 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试抽屉（底部滑出，无蒙层） -->
     <div class="debug-drawer" id="debugDrawer">
         <div class="drawer-header">
             <h3 class="drawer-title">保存并调试 - <span id="debugFlowName">连接流</span></h3>
@@ -3164,8 +3152,8 @@
             },
             {
                 type: 'action',
-                name: '动作节点',
-                desc: '执行动作的节点',
+                name: '连接器节点',
+                desc: '执行连接器操作的节点',
                 icon: '⚙️'
             },
             {
@@ -3251,6 +3239,7 @@
         let dragOffset = { x: 0, y: 0 };
         let isConnecting = false;
         let connectStart = null;
+        let insertEdgeContext = null;
 
         // 版本状态常量
         const FLOW_VERSION_STATUS = {
@@ -3298,6 +3287,98 @@
 
         function generateId() {
             return 'n' + Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        /**
+         * 创建节点默认配置数据
+         * @param {Object} params - 节点初始化参数
+         * @returns {Object} 节点默认配置数据
+         */
+        function createDefaultNodeData(params) {
+            const { nodeType } = params;
+            const nodeData = {
+                label: nodeType.name,
+                description: nodeType.desc,
+                config: {}
+            };
+
+            // 循环节点初始化迭代配置
+            if (nodeType.type === 'forLoop') {
+                nodeData.iterable = '';
+                nodeData.itemName = 'item';
+            } else if (nodeType.type === 'error') {
+                nodeData.strategy = 'ignore';
+                nodeData.retryCount = 3;
+            } else if (nodeType.type === 'condition') {
+                nodeData.conditions = [
+                    { id: 'cond1', label: '条件1', expression: '' },
+                    { id: 'cond2', label: '条件2', expression: '' },
+                    { id: 'else', label: 'else', expression: '' }
+                ];
+            } else if (nodeType.type === 'parallel') {
+                nodeData.branches = [
+                    { id: 'branch1', label: '分支1' },
+                    { id: 'branch2', label: '分支2' },
+                    { id: 'branch3', label: '分支3' }
+                ];
+            }
+
+            return nodeData;
+        }
+
+        /**
+         * 创建画布节点
+         * @param {Object} params - 节点创建参数
+         * @returns {Object|null} 画布节点对象
+         */
+        function createFlowNode(params) {
+            const { type, x, y } = params;
+            const nodeType = NODE_TYPES.find(t => t.type === type);
+            if (!nodeType) {
+                return null;
+            }
+
+            return {
+                id: generateId(),
+                type,
+                x,
+                y,
+                data: createDefaultNodeData({ nodeType })
+            };
+        }
+
+        /**
+         * 初始化基础流程结构
+         * 默认生成触发器、数据输出和二者之间的可插入连线
+         */
+        function initializeDefaultFlow() {
+            if (nodes.length > 0) {
+                return;
+            }
+
+            const triggerNode = createFlowNode({
+                type: 'trigger',
+                x: 320,
+                y: 80
+            });
+            const outputNode = createFlowNode({
+                type: 'output',
+                x: 320,
+                y: 300
+            });
+
+            if (!triggerNode || !outputNode) {
+                return;
+            }
+
+            nodes = [triggerNode, outputNode];
+            edges = [{
+                id: generateId(),
+                source: triggerNode.id,
+                target: outputNode.id,
+                sourceHandle: 'bottom',
+                targetHandle: null
+            }];
         }
 
         function getUrlParam(name) {
@@ -3366,6 +3447,7 @@
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
                         <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
                         <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
+                        <button class="btn" style="color: var(--success-color);" onclick="handleRestoreVersion()">恢复</button>
                         <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
                     `;
                     break;
@@ -3405,8 +3487,6 @@
          */
         function updateCanvasState(status) {
             const canvas = document.getElementById('canvas');
-            const nodeLibrary = document.querySelector('.node-library');
-            const nodeCards = document.querySelectorAll('.node-card');
             const isEditing = flowVersionData.isEditing;
             // 可编辑的状态：草稿、已驳回、已撤回（且处于编辑模式）
             const editableStatuses = [FLOW_VERSION_STATUS.DRAFT, FLOW_VERSION_STATUS.REJECTED, FLOW_VERSION_STATUS.WITHDRAWN];
@@ -3429,27 +3509,8 @@
                 if (existingMsg) existingMsg.remove();
             }
 
-            // 禁用/启用节点拖拽和节点库的拖拽功能
-            if (!isEditable) {
-                // 禁用节点库的拖拽
-                nodeCards.forEach(card => {
-                    card.draggable = false;
-                    card.style.cursor = 'default';
-                });
-                // 禁用画布上的拖拽
-                canvas.dataset.editable = 'false';
-            } else {
-                // 启用节点库的拖拽
-                const hasTrigger = nodes.some(n => n.type === 'trigger');
-                nodeCards.forEach(card => {
-                    const nodeType = card.dataset.type;
-                    const isDisabled = nodeType === 'trigger' && hasTrigger;
-                    card.draggable = !isDisabled;
-                    card.style.cursor = isDisabled ? 'not-allowed' : 'grab';
-                });
-                // 启用画布上的拖拽
-                canvas.dataset.editable = 'true';
-            }
+            // 画布编辑状态只控制连线加号和节点移动，不再存在节点库拖拽入口
+            canvas.dataset.editable = isEditable ? 'true' : 'false';
         }
 
         // 版本操作函数
@@ -3526,7 +3587,7 @@
         function handleInvalidateVersion() {
             showConfirm(
                 '确认失效此版本？',
-                '失效后版本将无法再次编辑和部署，是否继续？',
+                '失效后版本将无法再次编辑和部署，只能复制到草稿、恢复或删除，是否继续？',
                 '#faad14',
                 '确认失效',
                 () => {
@@ -3546,6 +3607,38 @@
                         showToast('版本已失效', 'success');
                         updateVersionActions(FLOW_VERSION_STATUS.INVALID);
                         updateCanvasState(FLOW_VERSION_STATUS.INVALID);
+                    }
+                }
+            );
+        }
+
+        /**
+         * 恢复版本（二次确认）
+         * 将已失效版本恢复为已发布状态
+         */
+        function handleRestoreVersion() {
+            showConfirm(
+                '确认恢复此版本？',
+                '恢复后版本将重新变为已发布状态，可继续被选择和部署，是否继续？',
+                '#52c41a',
+                '确认恢复',
+                () => {
+                    const version = flowVersionData.versions.find(v => v.id === flowVersionData.currentVersion);
+                    if (version) {
+                        version.status = FLOW_VERSION_STATUS.PUBLISHED;
+                        version.modifiedAt = new Date().toLocaleString('zh-CN');
+                        // 更新下拉框显示
+                        const select = document.getElementById('flowVersionSelect');
+                        const options = select.options;
+                        for (let i = 0; i < options.length; i++) {
+                            if (options[i].value === version.id) {
+                                options[i].textContent = `${version.name} (${version.createdAt}) [已发布]`;
+                                break;
+                            }
+                        }
+                        showToast('版本已恢复', 'success');
+                        updateVersionActions(FLOW_VERSION_STATUS.PUBLISHED);
+                        updateCanvasState(FLOW_VERSION_STATUS.PUBLISHED);
                     }
                 }
             );
@@ -3584,7 +3677,7 @@
         function handleWithdrawVersion() {
             showConfirm(
                 '确认撤回此版本？',
-                '撤回后版本将变为已撤回状态，是否继续？',
+                '撤回后版本将变为已撤回状态，当前审批流程会停止推进，是否继续？',
                 '#faad14',
                 '确认撤回',
                 () => {
@@ -3944,33 +4037,6 @@
         }
 
         // ========================================
-        // 节点库渲染
-        // ========================================
-        function renderNodeLibrary() {
-            const container = document.getElementById('nodeList');
-            const hasTrigger = nodes.some(n => n.type === 'trigger');
-
-            container.innerHTML = NODE_TYPES.map(node => {
-                const isDisabled = node.type === 'trigger' && hasTrigger;
-                return `
-                    <div class="node-card ${isDisabled ? 'disabled' : ''}"
-                         draggable="${!isDisabled}"
-                         data-type="${node.type}"
-                         ondragstart="handleDragStart(event, '${node.type}')">
-                        <div class="node-icon ${node.type}">${node.icon}</div>
-                        <div class="node-info">
-                            <div class="node-name">
-                                ${node.name}
-                                ${isDisabled ? '<span class="node-added">(已添加)</span>' : ''}
-                            </div>
-                            <div class="node-desc">${node.desc}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // ========================================
         // 画布渲染
         // ========================================
 
@@ -4180,10 +4246,17 @@
                     ? '#13c2c2' // 循环/异常处理的连线颜色
                     : (edge.sourceHandle ? '#fa8c16' : '#1890ff'); // 分支连线颜色
 
+                const insertX = (startX + endX) / 2;
+                const insertY = (startY + endY) / 2;
+
                 return `
                     <svg class="flow-edge animated" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: visible;">
                         <path d="${path}" stroke="${edgeColor}" />
                     </svg>
+                    <button class="edge-insert-button"
+                            style="left: ${insertX}px; top: ${insertY}px;"
+                            onclick="openInsertNodeModal({ edgeId: '${edge.id}', x: ${insertX}, y: ${insertY} })"
+                            title="插入节点">+</button>
                 `;
             }).join('');
 
@@ -4191,7 +4264,7 @@
             const emptyState = nodes.length === 0 ? `
                 <div class="empty-state">
                     <div class="empty-state-icon">📋</div>
-                    <div class="empty-state-text">从左侧拖拽节点到此处开始编排流程</div>
+                    <div class="empty-state-text">点击连线上的 + 号或从左侧拖拽节点到此处开始编排流程</div>
                 </div>
             ` : '';
 
@@ -4222,98 +4295,153 @@
             return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
         }
 
-        // ========================================
-        // 节点拖拽
-        // ========================================
-        function handleDragStart(event, type) {
-            const canvas = document.getElementById('canvas');
-
-            // 检查是否可编辑
-            if (canvas.dataset.editable !== 'true') {
-                event.preventDefault();
-                return;
-            }
-
-            const nodeType = NODE_TYPES.find(t => t.type === type);
-            if (!nodeType) return;
-
-            // 检查触发器是否已存在
-            if (type === 'trigger' && nodes.some(n => n.type === 'trigger')) {
-                event.preventDefault();
-                return;
-            }
-
-            event.dataTransfer.setData('text/plain', JSON.stringify({
-                type,
-                label: nodeType.name,
-                description: nodeType.desc
-            }));
+        /**
+         * 获取可通过连线加号插入的节点类型
+         * @returns {Array} 可插入节点类型列表
+         */
+        function getInsertableNodeTypes() {
+            return NODE_TYPES.filter(nodeType => nodeType.type !== 'trigger');
         }
 
-        document.getElementById('canvas').addEventListener('dragover', (e) => {
-            e.preventDefault();
-        });
+        /**
+         * 渲染插入节点弹窗的选项
+         */
+        function renderInsertNodeOptions() {
+            const container = document.getElementById('insertNodeList');
+            container.innerHTML = getInsertableNodeTypes().map(nodeType => `
+                <div class="insert-node-option" onclick="handleInsertNodeSelect({ type: '${nodeType.type}' })">
+                    <div class="node-icon ${nodeType.type}" style="background: ${getNodeColor(nodeType.type)}">${nodeType.icon}</div>
+                    <div class="node-info">
+                        <div class="node-name">${nodeType.name}</div>
+                        <div class="node-desc">${nodeType.desc}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
 
-        document.getElementById('canvas').addEventListener('drop', (e) => {
-            e.preventDefault();
+        /**
+         * 打开连线插入节点弹窗
+         * @param {Object} params - 插入上下文
+         */
+        function openInsertNodeModal(params) {
+            const { edgeId, x, y } = params;
             const canvas = document.getElementById('canvas');
 
-            // 检查是否可编辑
+            // 只允许草稿等可编辑状态通过连线加号插入节点
             if (canvas.dataset.editable !== 'true') {
+                showToast('当前版本不可编辑', 'error');
                 return;
             }
 
-            const data = e.dataTransfer.getData('text/plain');
-            if (!data) return;
+            insertEdgeContext = { edgeId, x, y };
+            renderInsertNodeOptions();
+            document.getElementById('insertNodeModal').classList.add('active');
+        }
 
-            try {
-                const nodeData = JSON.parse(data);
-                const canvas = document.getElementById('canvas');
-                const rect = canvas.getBoundingClientRect();
+        /**
+         * 关闭连线插入节点弹窗并清理上下文
+         */
+        function closeInsertNodeModal() {
+            insertEdgeContext = null;
+            document.getElementById('insertNodeModal').classList.remove('active');
+        }
 
-                // 初始化新节点数据
-                const newNodeData = {
-                    label: nodeData.label,
-                    description: nodeData.description,
-                    config: {}
-                };
+        /**
+         * 下移被插入连线后方的节点，降低新节点与后续节点重叠的概率
+         * @param {Object} params - 下移节点参数
+         */
+        function shiftNodesAfterInsert(params) {
+            const { targetNodeId, offsetY } = params;
+            const visitedNodeIds = new Set();
+            const pendingNodeIds = [targetNodeId];
 
-                // 根据节点类型初始化特定数据
-                if (nodeData.type === 'forLoop') {
-                    newNodeData.iterable = '';
-                    newNodeData.itemName = 'item';
-                } else if (nodeData.type === 'error') {
-                    newNodeData.strategy = 'ignore';
-                    newNodeData.retryCount = 3;
-                } else if (nodeData.type === 'condition') {
-                    newNodeData.conditions = [
-                        { id: 'cond1', label: '条件1', expression: '' },
-                        { id: 'cond2', label: '条件2', expression: '' },
-                        { id: 'else', label: 'else', expression: '' }
-                    ];
-                } else if (nodeData.type === 'parallel') {
-                    newNodeData.branches = [
-                        { id: 'branch1', label: '分支1' },
-                        { id: 'branch2', label: '分支2' },
-                        { id: 'branch3', label: '分支3' }
-                    ];
+            // 沿后续连线查找需要整体下移的节点
+            while (pendingNodeIds.length > 0) {
+                const currentNodeId = pendingNodeIds.shift();
+                if (!currentNodeId || visitedNodeIds.has(currentNodeId)) {
+                    continue;
                 }
 
-                const newNode = {
-                    id: generateId(),
-                    type: nodeData.type,
-                    x: e.clientX - rect.left - 80,
-                    y: e.clientY - rect.top - 40,
-                    data: newNodeData
-                };
-
-                nodes.push(newNode);
-                renderCanvas();
-                renderNodeLibrary();
-            } catch (err) {
-                console.error('解析节点数据失败', err);
+                visitedNodeIds.add(currentNodeId);
+                edges
+                    .filter(edge => edge.source === currentNodeId)
+                    .forEach(edge => pendingNodeIds.push(edge.target));
             }
-        });
+
+            nodes.forEach(node => {
+                if (visitedNodeIds.has(node.id)) {
+                    node.y += offsetY;
+                }
+            });
+        }
+
+        /**
+         * 在指定连线上插入节点
+         * @param {Object} params - 插入节点参数
+         */
+        function insertNodeOnEdge(params) {
+            const { edgeId, type, x, y } = params;
+            const edgeToSplit = edges.find(edge => edge.id === edgeId);
+            if (!edgeToSplit) {
+                showToast('未找到可插入的连线', 'error');
+                return;
+            }
+
+            const newNode = createFlowNode({
+                type,
+                x: x - 80,
+                y: y - 40
+            });
+
+            if (!newNode) {
+                showToast('节点类型不存在', 'error');
+                return;
+            }
+
+            shiftNodesAfterInsert({
+                targetNodeId: edgeToSplit.target,
+                offsetY: 140
+            });
+
+            const previousEdge = {
+                id: generateId(),
+                source: edgeToSplit.source,
+                target: newNode.id,
+                sourceHandle: edgeToSplit.sourceHandle,
+                targetHandle: null
+            };
+            const nextEdge = {
+                id: generateId(),
+                source: newNode.id,
+                target: edgeToSplit.target,
+                sourceHandle: 'bottom',
+                targetHandle: edgeToSplit.targetHandle
+            };
+
+            nodes.push(newNode);
+            edges = edges.filter(edge => edge.id !== edgeId);
+            edges.push(previousEdge, nextEdge);
+            renderCanvas();
+        }
+
+        /**
+         * 处理插入弹窗中的节点类型选择
+         * @param {Object} params - 选择的节点类型参数
+         */
+        function handleInsertNodeSelect(params) {
+            const { type } = params;
+            if (!insertEdgeContext) {
+                return;
+            }
+
+            insertNodeOnEdge({
+                edgeId: insertEdgeContext.edgeId,
+                type,
+                x: insertEdgeContext.x,
+                y: insertEdgeContext.y
+            });
+            closeInsertNodeModal();
+        }
 
         // ========================================
         // 节点移动
@@ -5013,15 +5141,31 @@
                 return;
             }
 
-            // 删除节点
-            nodes = nodes.filter(n => n.id !== selectedNode.id);
+            const incomingEdges = edges.filter(e => e.target === selectedNode.id);
+            const outgoingEdges = edges.filter(e => e.source === selectedNode.id);
+            const reconnectEdges = [];
 
-            // 删除相关连线
-            edges = edges.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id);
+            // 删除中间节点时自动重连前后节点，避免剩余节点变成孤立节点
+            incomingEdges.forEach(incomingEdge => {
+                outgoingEdges.forEach(outgoingEdge => {
+                    reconnectEdges.push({
+                        id: generateId(),
+                        source: incomingEdge.source,
+                        target: outgoingEdge.target,
+                        sourceHandle: incomingEdge.sourceHandle,
+                        targetHandle: outgoingEdge.targetHandle
+                    });
+                });
+            });
+
+            // 删除节点和相关连线，并补充自动重连的连线
+            nodes = nodes.filter(n => n.id !== selectedNode.id);
+            edges = edges
+                .filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id)
+                .concat(reconnectEdges);
 
             closeDrawer();
             renderCanvas();
-            renderNodeLibrary();
             showToast('节点已删除', 'success');
         }
 
@@ -5150,8 +5294,8 @@
                 updateCanvasState(firstVersion.status);
             }
 
-            // 初始化节点库
-            renderNodeLibrary();
+            // 初始化默认流程，确保画布上存在可点击加号的基础连线
+            initializeDefaultFlow();
 
             // 初始化画布
             renderCanvas();
