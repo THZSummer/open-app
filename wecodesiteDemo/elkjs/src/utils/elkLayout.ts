@@ -5,13 +5,22 @@ import { FlowNode, FlowEdge, ELKConfig, NodeType } from '../types/flow';
 const elk = new ELK();
 
 /**
+ * 节点纵向间距配置
+ * 可插入连线保留加号空间，辅助连线不额外预留节点间距
+ */
+const nodeSpacingConfig = {
+  insertableEdgeGap: 120,
+  auxiliaryEdgeGap: 100
+};
+
+/**
  * ELK 布局算法配置
  */
 const elkConfig: ELKConfig = {
   'elk.algorithm': 'layered',
   'elk.direction': 'DOWN',
   'elk.spacing.nodeNode': '80',
-  'elk.layered.spacing.nodeNodeBetweenLayers': '120'
+  'elk.layered.spacing.nodeNodeBetweenLayers': String(nodeSpacingConfig.insertableEdgeGap)
 };
 
 /**
@@ -20,14 +29,13 @@ const elkConfig: ELKConfig = {
 const loopV2LayoutConfig = {
   mainNodeWidth: 240,
   mainNodeHeight: 76,
-  verticalGap: 90,
+  verticalGap: nodeSpacingConfig.auxiliaryEdgeGap,
   rightColumnOffsetX: 260,
-  regionTextGapY: 60,
   textNodeWidth: 240,
   textNodeHeight: 32,
   rightColumnNodeHeight: 76,
-  rightColumnNodeGap: 90,
-  rightColumnEndGap: 80
+  rightColumnNodeGap: nodeSpacingConfig.insertableEdgeGap,
+  auxiliaryEdgeGap: nodeSpacingConfig.auxiliaryEdgeGap
 };
 
 /**
@@ -38,10 +46,10 @@ const parallelLayoutConfig = {
   mainNodeHeight: 76,
   textNodeWidth: 240,
   textNodeHeight: 32,
-  branchTopGap: 90,
-  branchNodeGap: 90,
+  branchTopGap: nodeSpacingConfig.auxiliaryEdgeGap,
+  branchNodeGap: nodeSpacingConfig.insertableEdgeGap,
   branchColumnGap: 120,
-  mergeTopGap: 90,
+  mergeTopGap: nodeSpacingConfig.auxiliaryEdgeGap,
   nestedStructureWidth: 760
 };
 
@@ -261,23 +269,34 @@ function applyLoopV2ChildrenLayout(params: {
       loopV2LayoutConfig.mainNodeHeight +
       loopV2LayoutConfig.verticalGap +
       loopV2LayoutConfig.textNodeHeight +
-      loopV2LayoutConfig.regionTextGapY +
+      loopV2LayoutConfig.rightColumnNodeGap +
       insertedNodesHeight +
-      (insertedNodeIds.length > 0 ? loopV2LayoutConfig.rightColumnEndGap : 0) +
       loopV2LayoutConfig.textNodeHeight;
     const breakBottomHeight =
-      loopV2LayoutConfig.mainNodeHeight +
-      loopV2LayoutConfig.verticalGap +
-      loopV2LayoutConfig.textNodeHeight +
-      loopV2LayoutConfig.regionTextGapY +
-      insertedNodesHeight +
-      (insertedNodeIds.length > 0 ? loopV2LayoutConfig.rightColumnEndGap : 0) +
-      loopV2LayoutConfig.textNodeHeight +
-      loopV2LayoutConfig.regionTextGapY +
+      endBottomHeight +
+      loopV2LayoutConfig.auxiliaryEdgeGap +
       loopV2LayoutConfig.textNodeHeight;
 
     // 嵌套循环在父级右侧列占位时，需要覆盖循环结束和循环跳出两条路径的最低点
     return Math.max(endBottomHeight, breakBottomHeight);
+  };
+
+  // 获取并行或条件结构自身占用的整体高度
+  const getParallelGroupHeight = (params: {
+    groupId: string;
+  }): number => {
+    const { groupId } = params;
+    const groupNode = nodeMap.get(groupId);
+    const groupTopY = groupNode?.position.y || 0;
+    const groupChildren = Array.from(nodeMap.values()).filter(
+      (node) => node.data.config?.parallelGroupId === groupId
+    );
+    const groupBottomY = groupChildren.reduce((bottomY, child) => {
+      return Math.max(bottomY, child.position.y + getNodeSize(child).height);
+    }, groupTopY + loopV2LayoutConfig.rightColumnNodeHeight);
+
+    // 并行或条件结构在循环右侧列中按实际子节点最低点占位
+    return groupBottomY - groupTopY;
   };
 
   // 获取节点在指定父级循环组内占用的高度
@@ -300,6 +319,16 @@ function applyLoopV2ChildrenLayout(params: {
       return getLoopV2GroupHeight({
         groupId: node.id,
         visitedGroupIds
+      });
+    }
+
+    // 嵌套并行或条件结构在父级右侧列中需要按自身整组高度占位
+    if (
+      isParallelStructureNode(node) &&
+      node.data.config?.parentLoopV2GroupId === parentGroupId
+    ) {
+      return getParallelGroupHeight({
+        groupId: node.id
       });
     }
 
@@ -351,6 +380,20 @@ function applyLoopV2ChildrenLayout(params: {
             node.data.config?.loopV2Role === 'break'
         );
         currentId = nestedBreakNode?.id || nextEdge.target;
+        continue;
+      }
+
+      if (
+        isParallelStructureNode(nextNode) &&
+        nextNode?.data.config?.parentLoopV2GroupId === groupId
+      ) {
+        const nestedMergeNode = nodes.find(
+          (node) =>
+            node.data.config?.parallelGroupId === nextNode.id &&
+            node.data.config?.parallelRole === 'merge'
+        );
+        // 循环右侧列把嵌套并行或条件当成整体节点，不能继续穿透到分支内部
+        currentId = nestedMergeNode?.id || nextEdge.target;
         continue;
       }
 
@@ -461,11 +504,10 @@ function applyLoopV2ChildrenLayout(params: {
       const y =
         rightColumnY +
         loopV2LayoutConfig.textNodeHeight +
-        loopV2LayoutConfig.regionTextGapY +
-        insertedNodesHeight +
-        (insertedNodeIds.length > 0 ? loopV2LayoutConfig.rightColumnEndGap : 0);
+        loopV2LayoutConfig.rightColumnNodeGap +
+        insertedNodesHeight;
 
-      // 循环结束文本根据右侧列实际占位高度自动下移，末尾增加额外间隙
+      // 循环结束文本根据右侧列实际占位高度自动下移，末尾使用可插入连线间距
       return {
         ...node,
         position: {
@@ -492,11 +534,10 @@ function applyLoopV2ChildrenLayout(params: {
       const y =
         rightColumnY +
         loopV2LayoutConfig.textNodeHeight +
-        loopV2LayoutConfig.regionTextGapY +
+        loopV2LayoutConfig.rightColumnNodeGap +
         insertedNodesHeight +
-        (insertedNodeIds.length > 0 ? loopV2LayoutConfig.rightColumnEndGap : 0) +
         loopV2LayoutConfig.textNodeHeight +
-        loopV2LayoutConfig.regionTextGapY;
+        loopV2LayoutConfig.auxiliaryEdgeGap;
       const nextEdge = edges.find((edge) => edge.source === node.id);
       const nextNode = nextEdge ? currentNodeMap.get(nextEdge.target) : undefined;
       const nextNodeSize = nextNode ? getNodeSize(nextNode) : undefined;
@@ -676,8 +717,8 @@ function applyParallelChildrenLayout(params: {
         const nextNode = nodeMap.get(nextEdge.target);
         const nestedStructureExitNodeId = getNestedStructureExitNodeId(nextNode);
         if (nestedStructureExitNodeId) {
-          const exitEdge = edges.find((edge) => edge.source === nestedStructureExitNodeId);
-          currentId = exitEdge?.target || nextEdge.target;
+          // 连续嵌套结构在父分支链路中先停在当前结构出口，避免直接跳入下一个结构内部
+          currentId = nestedStructureExitNodeId;
           continue;
         }
 
@@ -729,8 +770,6 @@ function applyParallelChildrenLayout(params: {
         return node;
       }
 
-      const itemWidth = getBranchItemWidth(node);
-      const centeredX = branchPosition.x + branchPosition.width / 2 - itemWidth / 2;
       const startY =
         parallelNode.position.y +
         parallelLayoutConfig.mainNodeHeight +
@@ -755,10 +794,11 @@ function applyParallelChildrenLayout(params: {
             return height + getBranchItemHeight(previousNode) + getBranchItemGap(previousNode);
           }, 0);
 
+        // 分支内容节点与分支开始节点保持同一 X 轴，避免嵌套结构撑宽分支后普通节点被居中偏移
         return {
           ...node,
           position: {
-            x: centeredX,
+            x: branchPosition.x,
             y:
               startY +
               parallelLayoutConfig.textNodeHeight +
@@ -896,6 +936,127 @@ function isMainFlowCascadeNode(node?: FlowNode): boolean {
 }
 
 /**
+ * 保留添加节点前的横向位置约束
+ * 触发器完全锁定原始位置，主流程节点只接受布局后的纵向位置
+ */
+function preserveMainFlowHorizontalPositions(params: {
+  /** 布局前的节点列表 */
+  originalNodes: FlowNode[];
+  /** 布局后的节点列表 */
+  layoutedNodes: FlowNode[];
+}): FlowNode[] {
+  const { originalNodes, layoutedNodes } = params;
+  const originalNodeMap = new Map(originalNodes.map((node) => [node.id, node]));
+
+  return layoutedNodes.map((node) => {
+    const originalNode = originalNodeMap.get(node.id);
+    if (!originalNode) {
+      return node;
+    }
+
+    if (node.type === NodeType.TRIGGER) {
+      // 触发器在任何布局场景下都不允许改变位置
+      return {
+        ...node,
+        position: originalNode.position
+      };
+    }
+
+    if (!isMainFlowCascadeNode(node)) {
+      return node;
+    }
+
+    // 主流程节点只采用布局计算出的 Y 轴，X 轴保持用户当前画布位置
+    return {
+      ...node,
+      position: {
+        x: originalNode.position.x,
+        y: node.position.y
+      }
+    };
+  });
+}
+
+/**
+ * 按主流程连线顺序归一化纵向位置
+ * 新增节点的 Y 轴由上一节点底部和可插入连线间距计算
+ */
+function normalizeMainFlowVerticalPositions(params: {
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
+}): FlowNode[] {
+  const { nodes, edges } = params;
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const groupBottomYMap = getLoopV2GroupBottomYMap(nodes);
+  const requiredTopYMap = new Map<string, number>();
+  const mainFlowGap = nodeSpacingConfig.insertableEdgeGap;
+
+  for (const node of nodes) {
+    if (node.type === NodeType.TRIGGER) {
+      requiredTopYMap.set(node.id, node.position.y);
+    }
+  }
+
+  // 多次沿连线传播 Y 轴需求，覆盖新增节点位于多段主流程中的场景
+  for (let cascadeIndex = 0; cascadeIndex < nodes.length; cascadeIndex += 1) {
+    let hasChanged = false;
+
+    for (const edge of edges) {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+      if (!sourceNode || !targetNode || !isMainFlowCascadeNode(targetNode)) {
+        continue;
+      }
+
+      if (isSameLoopV2GroupEdge({ sourceNode, targetNode })) {
+        continue;
+      }
+
+      if (isSameParallelGroupEdge({ sourceNode, targetNode })) {
+        continue;
+      }
+
+      const sourceGroupId =
+        sourceNode.data.config?.loopV2GroupId || sourceNode.data.config?.parallelGroupId;
+      const sourceTopY = requiredTopYMap.get(sourceNode.id) ?? sourceNode.position.y;
+      const sourceBottomY = sourceGroupId && groupBottomYMap.has(String(sourceGroupId))
+        ? Number(groupBottomYMap.get(String(sourceGroupId)))
+        : sourceTopY +
+          (getMainFlowNodeBottomY({ node: sourceNode, groupBottomYMap }) - sourceNode.position.y);
+      const targetTopY = sourceBottomY + mainFlowGap;
+      const currentTopY = requiredTopYMap.get(targetNode.id) ?? targetNode.position.y;
+
+      if (targetTopY > currentTopY) {
+        requiredTopYMap.set(targetNode.id, targetTopY);
+        hasChanged = true;
+      }
+    }
+
+    if (!hasChanged) {
+      break;
+    }
+  }
+
+  return nodes.map((node) => {
+    const requiredTopY = requiredTopYMap.get(node.id);
+    if (requiredTopY === undefined || node.type === NodeType.TRIGGER) {
+      return node;
+    }
+
+    // 主流程纵向位置按上一节点分类占位后统一下推，横向位置不在这里处理
+    return {
+      ...node,
+      position: {
+        x: node.position.x,
+        y: requiredTopY
+      }
+    };
+  });
+}
+
+/**
  * 计算每个循环 V2 组当前布局后的最低坐标
  */
 function getLoopV2GroupBottomYMap(nodes: FlowNode[]): Map<string, number> {
@@ -949,7 +1110,7 @@ function adjustLoopV2NextNodePosition(params: {
 
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   const requiredTopYMap = new Map<string, number>();
-  const mainFlowGap = 120;
+  const mainFlowGap = nodeSpacingConfig.insertableEdgeGap;
 
   // 从循环 V2 出口开始记录第一个需要下推的主流程节点
   for (const edge of edges) {
@@ -1168,8 +1329,24 @@ export async function applyElkLayout(
         const mainNode = layoutedMainNodes.find((item) => item.id === node.id);
         return mainNode || node;
       });
+      const constrainedNodes = preserveMainFlowHorizontalPositions({
+        originalNodes: nodes,
+        layoutedNodes
+      });
+      const settledNodes = settleLoopV2Layout({ nodes: constrainedNodes, edges });
+      const normalizedNodes = normalizeMainFlowVerticalPositions({
+        nodes: settledNodes,
+        edges
+      });
+      const finalNodes = settleLoopV2Layout({
+        nodes: normalizedNodes,
+        edges
+      });
 
-      return settleLoopV2Layout({ nodes: layoutedNodes, edges });
+      return preserveMainFlowHorizontalPositions({
+        originalNodes: nodes,
+        layoutedNodes: finalNodes
+      });
     }
 
     return settleLoopV2Layout({ nodes, edges });

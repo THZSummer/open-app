@@ -645,6 +645,8 @@
                                 <th>中文描述</th>
                                 <th>英文描述</th>
                                 <th>状态</th>
+                                <th>创建者</th>
+                                <th>更新人</th>
                                 <th>创建时间</th>
                                 <th>更新时间</th>
                                 <th>操作</th>
@@ -793,6 +795,8 @@
                 descriptionCn: '跨系统的数据同步和更新',
                 descriptionEn: 'Cross-system data synchronization and updates',
                 lifecycleStatus: 1,
+                creator: '张三',
+                modifier: '当前用户',
                 createTime: '2024-01-08 14:00:00',
                 lastUpdateTime: '2024-01-19 10:30:00'
             },
@@ -813,6 +817,8 @@
                 descriptionCn: '自动化邮件营销和追踪流程',
                 descriptionEn: 'Automated email marketing and tracking workflow',
                 lifecycleStatus: 2,
+                creator: '赵六',
+                modifier: '当前用户',
                 createTime: '2024-01-05 08:30:00',
                 lastUpdateTime: '2024-01-17 13:20:00'
             }
@@ -990,6 +996,7 @@
             const flow = flowData.find(item => item.id === deployFlowId);
             if (flow) {
                 flow.lifecycleStatus = 1;
+                flow.modifier = '当前用户';
                 flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
             }
             
@@ -1027,7 +1034,7 @@
             if (pageData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
+                        <td colspan="11" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
                             暂无数据
                         </td>
                     </tr>
@@ -1048,6 +1055,8 @@
                                     ${status.text}
                                 </span>
                             </td>
+                            <td>${item.creator || '-'}</td>
+                            <td>${item.modifier || '-'}</td>
                             <td>${item.createTime}</td>
                             <td>${item.lastUpdateTime}</td>
                             <td>
@@ -1066,7 +1075,8 @@
                                                 复制ID
                                             </button>
                                             ${item.lifecycleStatus === 3 ?
-                                                `<button class="menu-item" onclick="deleteFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--error-color);">删除</button>` :
+                                                `<button class="menu-item" onclick="restoreFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--success-color);">恢复</button>
+                                                 <button class="menu-item" onclick="deleteFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--error-color);">删除</button>` :
                                                 `<button class="menu-item" onclick="handleDeploy('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">部署</button>`
                                             }
                                             ${item.lifecycleStatus === 1 ?
@@ -1245,7 +1255,7 @@
         function stopFlow(id) {
             showConfirm(
                 '确认停止连接流吗？',
-                '停止后将无法接收HTTP触发请求，确认要停止这个连接流吗？',
+                `确认要停止「${flowData.find(item => item.id === id)?.nameCn}」吗？停止后运行中的连接流将停止处理触发请求，外部调用可能无法得到预期响应。`,
                 '#faad14',
                 '确认停止',
                 () => {
@@ -1290,6 +1300,33 @@
         }
 
         /**
+         * 恢复连接流
+         * 将已失效连接流恢复为待部署状态，需要二次确认
+         * @param {string} id - 连接流ID
+         */
+        function restoreFlow(id) {
+            const flow = flowData.find(item => item.id === id);
+            if (!flow || flow.lifecycleStatus !== 3) {
+                showToast('只有已失效的连接流才能恢复', 'error');
+                return;
+            }
+
+            showConfirm(
+                '确认恢复连接流吗？',
+                `确认要恢复「${flow.nameCn}」吗？恢复后连接流回到待部署状态，需要重新部署后才能运行。`,
+                '#52c41a',
+                '确认恢复',
+                () => {
+                    flow.lifecycleStatus = 0;
+                    flow.modifier = '当前用户';
+                    flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
+                    showToast('恢复成功', 'success');
+                    renderTable();
+                }
+            );
+        }
+
+        /**
          * 删除连接流
          * 只有已失效状态的连接流才能删除，需要二次确认
          * @param {string} id - 连接流ID
@@ -1305,7 +1342,7 @@
 
             showConfirm(
                 '确认删除连接流吗？',
-                '删除后将无法恢复，确认要删除这个连接流吗？',
+                `确认要删除「${flow.nameCn}」吗？删除后连接流记录和配置将移除且无法恢复。`,
                 '#ff4d4f',
                 '确认删除',
                 () => {

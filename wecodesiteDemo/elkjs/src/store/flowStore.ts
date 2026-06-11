@@ -47,6 +47,31 @@ const initialEdge: FlowEdge = {
 };
 
 /**
+ * 获取插入节点的初始位置
+ * 主流程节点横向继承上一节点位置，避免把连线中点误用为节点左上角
+ */
+function getInsertedNodePosition(params: {
+  /** 插入按钮传入的位置 */
+  position: { x: number; y: number };
+  /** 被拆分连线的源节点 */
+  sourceNode?: FlowNode;
+  /** 是否插入在并行或条件分支内部 */
+  parallelBranchConfig?: ReturnType<typeof getParallelBranchConfig>;
+}) {
+  const { position, sourceNode, parallelBranchConfig } = params;
+
+  if (parallelBranchConfig) {
+    return position;
+  }
+
+  // 主流程新增节点与上一个节点保持 X 轴对齐，Y 轴后续由布局统一计算
+  return {
+    x: sourceNode?.position.x ?? position.x,
+    y: position.y
+  };
+}
+
+/**
  * 获取循环节点在父级右侧链路中的归属组 ID
  */
 function getNestedLoopParentGroupId(params: {
@@ -601,6 +626,11 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       sourceNode,
       targetNode
     });
+    const insertedPosition = getInsertedNodePosition({
+      position,
+      sourceNode,
+      parallelBranchConfig
+    });
 
     // 生成新节点 ID
     const newNodeId = nanoid(10);
@@ -609,7 +639,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const newNode: FlowNode = {
       id: newNodeId,
       type: nodeType,
-      position,
+      position: insertedPosition,
       data: {
         label: nodeLabel,
         type: nodeType,
@@ -711,6 +741,11 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       sourceNode,
       targetNode
     });
+    const insertedPosition = getInsertedNodePosition({
+      position,
+      sourceNode,
+      parallelBranchConfig
+    });
 
     // 生成循环节点及文本节点 ID
     const loopV2Id = nanoid(10);
@@ -723,8 +758,8 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const loopMainWidth = 240;
     const loopTextWidth = 240;
     const loopRightColumnOffsetX = 260;
-    const loopMainCenterX = position.x + loopMainWidth / 2;
-    const loopRightTextX = position.x + loopRightColumnOffsetX;
+    const loopMainCenterX = insertedPosition.x + loopMainWidth / 2;
+    const loopRightTextX = insertedPosition.x + loopRightColumnOffsetX;
     const loopRightTextCenterX = loopRightTextX + loopTextWidth / 2;
     const loopRegionTextX =
       loopMainCenterX -
@@ -733,13 +768,13 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const targetNodeWidth = 240;
     const loopBreakTextX = targetNode
       ? targetNode.position.x + targetNodeWidth / 2 - loopTextWidth / 2
-      : position.x;
+      : insertedPosition.x;
 
     // 创建循环节点，嵌套在父级右侧链路时额外记录父级循环组
     const loopV2Node: FlowNode = {
       id: loopV2Id,
       type: nodeType,
-      position,
+      position: insertedPosition,
       data: {
         label: structureText.main,
         type: nodeType,
@@ -757,7 +792,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const loopRegionTextNode: FlowNode = {
       id: loopRegionTextId,
       type: NodeType.TEXT,
-      position: { x: loopRegionTextX, y: position.y + 140 },
+      position: { x: loopRegionTextX, y: insertedPosition.y + 140 },
       data: {
         label: structureText.region,
         type: NodeType.TEXT,
@@ -772,7 +807,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const loopStartTextNode: FlowNode = {
       id: loopStartTextId,
       type: NodeType.TEXT,
-      position: { x: position.x + 260, y: position.y + 140 },
+      position: { x: insertedPosition.x + 260, y: insertedPosition.y + 140 },
       data: {
         label: structureText.start,
         type: NodeType.TEXT,
@@ -787,7 +822,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const loopEndTextNode: FlowNode = {
       id: loopEndTextId,
       type: NodeType.TEXT,
-      position: { x: position.x + 260, y: position.y + 340 },
+      position: { x: insertedPosition.x + 260, y: insertedPosition.y + 340 },
       data: {
         label: structureText.end,
         type: NodeType.TEXT,
@@ -802,7 +837,7 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const loopBreakTextNode: FlowNode = {
       id: loopBreakTextId,
       type: NodeType.TEXT,
-      position: { x: loopBreakTextX, y: position.y + 420 },
+      position: { x: loopBreakTextX, y: insertedPosition.y + 420 },
       data: {
         label: structureText.break,
         type: NodeType.TEXT,
@@ -957,9 +992,19 @@ export const useFlowStore = create<FlowState>((set, get) => ({
 
     const sourceNode = nodes.find((node) => node.id === edgeToSplit.source);
     const targetNode = nodes.find((node) => node.id === edgeToSplit.target);
+    const rightColumnGroupId = getLoopV2RightColumnGroupId({
+      sourceNode,
+      targetNode,
+      nodes
+    });
     const parallelBranchConfig = getParallelBranchConfig({
       sourceNode,
       targetNode
+    });
+    const insertedPosition = getInsertedNodePosition({
+      position,
+      sourceNode,
+      parallelBranchConfig
     });
     const structureText = getParallelStructureText({ nodeType });
     const parallelId = nanoid(10);
@@ -971,12 +1016,18 @@ export const useFlowStore = create<FlowState>((set, get) => ({
     const parallelNode: FlowNode = {
       id: parallelId,
       type: nodeType,
-      position,
+      position: insertedPosition,
       data: {
         label: structureText.main,
         type: nodeType,
         description: structureText.description,
         config: {
+          ...(rightColumnGroupId
+            ? {
+                parentLoopV2GroupId: rightColumnGroupId,
+                parentLoopV2Role: 'right-column-node'
+              }
+            : {}),
           ...parallelBranchConfig,
           parallelGroupId: parallelId,
           parallelRole: 'root'
@@ -989,21 +1040,21 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       branchId: branchOneId,
       branchIndex: 1,
       branchLabelPrefix: structureText.branchLabelPrefix,
-      position: { x: position.x, y: position.y + 160 }
+      position: { x: insertedPosition.x, y: insertedPosition.y + 160 }
     });
     const branchTwo = createParallelBranchNodes({
       parallelGroupId: parallelId,
       branchId: branchTwoId,
       branchIndex: 2,
       branchLabelPrefix: structureText.branchLabelPrefix,
-      position: { x: position.x + 320, y: position.y + 160 }
+      position: { x: insertedPosition.x + 320, y: insertedPosition.y + 160 }
     });
 
     // 创建并行合并文本节点，作为所有分支共同出口
     const mergeNode: FlowNode = {
       id: mergeId,
       type: NodeType.TEXT,
-      position: { x: position.x + 160, y: position.y + 420 },
+      position: { x: insertedPosition.x + 160, y: insertedPosition.y + 420 },
       data: {
         label: structureText.merge,
         type: NodeType.TEXT,
