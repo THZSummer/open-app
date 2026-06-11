@@ -429,7 +429,7 @@ ${$.system.fn.format($.node.err_1.current.messageZh, $.execution.flowId)}
 | 3 | **`{协议}InputDef` / `{协议}OutputDef`** | 第三层协议具体实现，不额外加 `Contract`/`Schema` 后缀 | `httpInputDef`、`httpOutputDef` |
 | 4 | **语义化名 + `Def`** | 第四层基础复用组件，无直接对应 JSON 字段 | `jsonObjectDef`（v2 合并 mappedFieldDef/mappedJsonSchemaObjectDef，value 可选） |
 
-**14 个组件的关系全景**：
+**17 个组件的关系全景**：
 
 ```mermaid
 graph TB
@@ -442,8 +442,11 @@ graph TB
         CD["connectorNodeDataDef"]
         DD["dataProcessorNodeDataDef"]
         ED["exitNodeDataDef"]
-        SD["structureNodeDataDef"]
-        MD["textNodeDataDef"]
+        LD["loopNodeDataDef"]
+        PD["parallelNodeDataDef"]
+        BD["conditionBranchNodeDataDef"]
+        HD["errorHandlerNodeDataDef"]
+        TX["textNodeDataDef"]
     end
 
     subgraph L3["第三层：协议实现"]
@@ -466,8 +469,11 @@ graph TB
     ND --> CD
     ND --> DD
     ND --> ED
-    ND --> SD
-    ND --> MD
+    ND --> LD
+    ND --> PD
+    ND --> BD
+    ND --> HD
+    ND --> TX
     HI --> JS
     HO --> JS
     CD --> JS
@@ -484,7 +490,7 @@ graph TB
 | 层 | 职责 | 组件 |
 |:--:|------|------|
 | 第一层 | 路由器（oneOf 按 node.type 分发） | `nodeDataDef` |
-| 第二层 | 7 种节点 data 定义（业务数据载体） | `triggerNodeDataDef` ~ `textNodeDataDef` |
+| 第二层 | 9 种节点 data 定义（业务数据载体） | `triggerNodeDataDef` ~ `textNodeDataDef` |
 | 第三层 | 协议具体实现（HTTP header/query/body） | `httpInputDef`、`httpOutputDef` |
 | 第四层 | 基础复用组件（被上层引用） | `jsonObjectDef`（v2 合并 mappedFieldDef/mappedJsonSchemaObjectDef，value 可选） |
 | 横跨层 | 多场景复用（认证/限流/基类/错误） | `authConfigDef`、`rateLimitConfigDef`、`nodeDataBaseDef`、`errorInfoDef` |
@@ -494,24 +500,22 @@ graph TB
 | # | 组件名 | 层 | 用途 | 被引用方 |
 |:---:|--------|:---:|------|---------|
 | 1 | `jsonObjectDef` | 第四层 | 基础复用：字段定义（value 可选，递归嵌套） | §6.4 orchestrationConfig 等全部组件 |
-| 2 | `authConfigDef` | 横跨 | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
-| 3 | `rateLimitConfigDef` | 横跨 | 限流配置（QPS + 并发） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
+| 2 | `authConfigDef` | 横跨 | 认证类型声明（含凭证字段列表） | §5 connectionConfig, §4.3.8 triggerNodeDataDef |
+| 3 | `rateLimitConfigDef` | 横跨 | 限流配置（QPS + 并发） | §5 connectionConfig, §4.3.8 triggerNodeDataDef |
 | 4 | `errorInfoDef` | 横跨 | 错误详情（code + 双语 message + 根因） | §7 执行数据 |
-| 5 | `nodeDataBaseDef` | 横跨 | 节点 data 公共基类（type / labelCn / labelEn） | 全部节点 data 子 Def（allOf 继承） |
-| 5 | `httpInputDef` | 第三层 | HTTP 入参声明（header/query/body 三段式） | §4.3.8 nodeInputDef |
-| 6 | `httpOutputDef` | 第三层 | HTTP 出参声明（header/body 两段式） | §4.3.5 nodeOutputDef |
-| 7 | `nodeInputDef` | 第一层 | 入参路由器（oneOf 按协议分发） | §5 connectionConfig, §4.3.15 triggerNodeDataDef |
-| 8 | `nodeOutputDef` | 第一层 | 出参路由器（oneOf 按协议分发） | §5 connectionConfig |
-| 9 | `triggerNodeDataDef` | 第二层 | 触发器节点业务数据 | §4.3.8 |
-| 10 | `connectorNodeDataDef` | 第二层 | 连接器节点业务数据（版本引用 + 字段映射） | §4.3.9 |
-| 11 | `dataProcessorNodeDataDef` | 第二层 | 数据处理器节点业务数据 | §4.3.10 |
-| 12 | `exitNodeDataDef` | 第二层 | 出口节点业务数据 | §4.3.11 |
-| 13 | `loopNodeDataDef` | 第二层 | 循环节点业务数据（继承 nodeDataBaseDef） | §4.3.12 |
-| 14 | `parallelNodeDataDef` | 第二层 | 并行节点业务数据（继承 nodeDataBaseDef） | §4.3.13 |
-| 15 | `conditionBranchNodeDataDef` | 第二层 | 条件分支节点业务数据（继承 nodeDataBaseDef） | §4.3.14 |
-| 16 | `errorHandlerNodeDataDef` | 第二层 | 错误处理节点业务数据（继承 nodeDataBaseDef） | §4.3.15 |
-| 17 | `textNodeDataDef` | 第二层 | text 标记节点数据（继承 nodeDataBaseDef） | §4.3.16 |
-| 18 | `nodeDataDef` | 第一层 | 节点 data 路由器（oneOf 按 node.type 分发至 9 种 data） | §4.3.17 |
+| 5 | `nodeDataBaseDef` | 横跨 | 节点 data 公共基类（type / labelCn / labelEn / structConfig） | 全部节点 data 子 Def（allOf 继承） |
+| 6 | `httpInputDef` | 第三层 | HTTP 入参声明（header/query/body 三段式） | §4.3.8 triggerNodeDataDef, §5 connectionConfig |
+| 7 | `httpOutputDef` | 第三层 | HTTP 出参声明（header/body 两段式） | §5 connectionConfig |
+| 8 | `triggerNodeDataDef` | 第二层 | 触发器节点业务数据 | §4.3.8 |
+| 9 | `connectorNodeDataDef` | 第二层 | 连接器节点业务数据（版本引用 + 字段映射） | §4.3.9 |
+| 10 | `dataProcessorNodeDataDef` | 第二层 | 数据处理器节点业务数据 | §4.3.10 |
+| 11 | `exitNodeDataDef` | 第二层 | 出口节点业务数据 | §4.3.11 |
+| 12 | `loopNodeDataDef` | 第二层 | 循环节点业务数据（继承 nodeDataBaseDef） | §4.3.12 |
+| 13 | `parallelNodeDataDef` | 第二层 | 并行节点业务数据（继承 nodeDataBaseDef） | §4.3.13 |
+| 14 | `conditionBranchNodeDataDef` | 第二层 | 条件分支节点业务数据（继承 nodeDataBaseDef） | §4.3.14 |
+| 15 | `errorHandlerNodeDataDef` | 第二层 | 错误处理节点业务数据（继承 nodeDataBaseDef） | §4.3.15 |
+| 16 | `textNodeDataDef` | 第二层 | text 标记节点数据（继承 nodeDataBaseDef） | §4.3.16 |
+| 17 | `nodeDataDef` | 第一层 | 节点 data 路由器（oneOf 按 node.type 分发至 9 种 data） | §4.3.17, §6.4 orchestrationConfig |
 
 ### 4.3 组件详解
 
