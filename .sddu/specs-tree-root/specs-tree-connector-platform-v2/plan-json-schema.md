@@ -891,6 +891,8 @@ graph TB
 
 #### 4.4.1 authConfigDef
 
+> **Def**
+
 ```json
 {
   "$id": "urn:openapp:schema:authConfigDef:v1",
@@ -918,16 +920,7 @@ graph TB
 }
 ```
 
-示例：
-
-```json
-{
-  "type": "SYSTOKEN",
-  "fields": [
-    { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
-  ]
-}
-```
+> **字段说明**
 
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
@@ -939,7 +932,20 @@ graph TB
 | fields[].required | boolean | ❌ | 是否必填，默认 `true` |
 | fields[].sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
 
+> **示例**
+
+```json
+{
+  "type": "SYSTOKEN",
+  "fields": [
+    { "name": "token", "carrier": "header", "fieldName": "X-Sys-Token", "required": true, "sensitive": true }
+  ]
+}
+```
+
 #### 4.4.2 rateLimitConfigDef
+
+> **Def**
 
 ```json
 {
@@ -953,12 +959,14 @@ graph TB
 }
 ```
 
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
 | maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
 
-示例：
+> **示例**
 
 ```json
 { "maxQps": 100, "maxConcurrency": 10 }
@@ -967,6 +975,8 @@ graph TB
 #### 4.4.3 jsonSchemaObjectDef
 
 纯字段形状描述组件，不包含协议位置信息。被 httpInputDef / httpOutputDef 引用。
+
+> **Def**
 
 ```json
 {
@@ -996,7 +1006,7 @@ graph TB
 }
 ```
 
-示例 — 定义一个 `sender`(string) + `content`(string)，均必填：
+> **示例** — 定义一个 `sender`(string) + `content`(string)，均必填：
 
 ```json
 {
@@ -1011,7 +1021,9 @@ graph TB
 
 #### 4.4.4 httpInputDef
 
-HTTP 入参契约，按传输位置分为 header / query / body 三段。
+> HTTP 入参，按传输位置分为 header / query / body 三段。
+
+> **Def**
 
 ```json
 {
@@ -1033,6 +1045,8 @@ HTTP 入参契约，按传输位置分为 header / query / body 三段。
 }
 ```
 
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | protocol | string | ✅ | 协议标识，固定为 `HTTP` |
@@ -1042,7 +1056,7 @@ HTTP 入参契约，按传输位置分为 header / query / body 三段。
 
 ⚡ = anyOf：必须至少声明 header / query / body 其中之一。
 
-示例 — 声明 Query 参数 `page`(integer, 必填) 和 Body 参数 `receiver`/`content`(string, 必填)：
+> **示例**
 
 ```json
 {
@@ -1065,7 +1079,9 @@ HTTP 入参契约，按传输位置分为 header / query / body 三段。
 
 #### 4.4.5 httpOutputDef
 
-HTTP 出参契约，按传输位置分为 header / body 两段。
+> HTTP 出参，按传输位置分为 header / body 两段。
+
+> **Def**
 
 ```json
 {
@@ -1085,6 +1101,8 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 }
 ```
 
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | protocol | string | ✅ | 协议标识，固定为 `HTTP` |
@@ -1093,7 +1111,7 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 ⚡ = anyOf：必须至少声明 header / body 其中之一。
 
-示例 — 声明响应头 `X-Request-Id`(string) + 响应体 `msgId`/`code`：
+> **示例**
 
 ```json
 {
@@ -1114,7 +1132,9 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 #### 4.4.6 nodeInputDef
 
-入参契约路由器。通过 oneOf 按协议类型分发：
+> 入参路由器。通过 oneOf 按协议类型分发到对应协议实现。
+
+> **Def**
 
 ```json
 {
@@ -1126,15 +1146,35 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 }
 ```
 
+**协议路由**：
+
 | 协议 | 目标定义 | 说明 |
 |------|---------|------|
 | `HTTP` | `httpInputDef`（§4.4.4） | header / query / body |
-| `REDIS`（V1） | `redisInputContractDef` | 待定义 |
-| `MYSQL`（V1） | `mysqlInputContractDef` | 待定义 |
+| `REDIS`（V1） | `redisInputDef` | 待定义 |
+| `MYSQL`（V1） | `mysqlInputDef` | 待定义 |
+
+> **示例** — HTTP 协议入参：
+
+```json
+{
+  "protocol": "HTTP",
+  "body": {
+    "type": "object",
+    "properties": {
+      "receiver": { "type": "string" },
+      "content":  { "type": "string" }
+    },
+    "required": ["receiver", "content"]
+  }
+}
+```
 
 #### 4.4.7 nodeOutputDef
 
-出参契约路由器：
+> 出参路由器。通过 oneOf 按协议类型分发到对应协议实现。
+
+> **Def**
 
 ```json
 {
@@ -1146,12 +1186,31 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 }
 ```
 
+**协议路由**：
+
 | 协议 | 目标定义 | 说明 |
 |------|---------|------|
 | `HTTP` | `httpOutputDef`（§4.4.5） | header / body |
-| `REDIS`（V1） | `redisOutputContractDef` | 待定义 |
+| `REDIS`（V1） | `redisOutputDef` | 待定义 |
+
+> **示例** — HTTP 协议出参：
+
+```json
+{
+  "protocol": "HTTP",
+  "body": {
+    "type": "object",
+    "properties": {
+      "msgId": { "type": "string" },
+      "code":  { "type": "integer" }
+    }
+  }
+}
+```
 
 #### 4.4.8 errorInfoDef
+
+> **Def**
 
 ```json
 {
@@ -1174,6 +1233,8 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 }
 ```
 
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | code | string | ✅ | 错误码。4xx/5xx=下游错误，6xxxx=内部错误 |
@@ -1183,7 +1244,7 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | downstreamStatus | integer | ❌ ⚡ | 下游 HTTP 状态码（下游错误时必填） |
 | downstreamBody | string | ❌ | 下游响应体片段（截断到 512 字符） |
 
-错误码字典：
+**错误码字典**：
 
 | Code | messageZh | messageEn | 来源 |
 |:----:|-----------|-----------|:----:|
@@ -1200,7 +1261,7 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | `6003` | 编排执行超时 | Orchestration Timeout | internal |
 | `6004` | 连接器版本未找到 | Connector Version Not Found | internal |
 
-示例：
+> **示例**
 
 ```json
 // 下游调用失败
@@ -1212,7 +1273,7 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 #### 4.4.9 nodeDataDef（路由汇总）
 
-节点业务数据路由器，根据 `node.type` 选择对应的 data Schema。V2 扩展至 **7 分支**：
+> 节点业务数据路由器，按 `node.type` 分发。V2 扩展至 **7 分支**。
 
 | `node.type` 值 | 对应 data Schema | $ref 目标 | 详见 |
 |----------------|-----------------|-----------|:--:|
@@ -1225,18 +1286,49 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 #### 4.4.10 triggerNodeDataDef
 
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:triggerNodeDataDef:v2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "type": { "type": "string", "enum": ["http", "manual"] },
+    "authConfig": { "$ref": "#/definitions/authConfigDef" },
+    "nodeInput": { "$ref": "#/definitions/nodeInputDef" },
+    "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
+  },
+  "required": ["type"],
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "http" } }, "required": ["type"] },
+      "then": { "required": ["authConfig", "nodeInput"] }
+    },
+    {
+      "if": { "properties": { "type": { "const": "manual" } }, "required": ["type"] },
+      "then": { "properties": { "authConfig": false, "nodeInput": false } }
+    }
+  ]
+}
+```
+
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | labelCn | string | ❌ | 节点中文标签 |
 | labelEn | string | ❌ | 节点英文标签 |
 | type | string | ✅ | 触发子类型：`http` / `manual` |
 | authConfig | object | ❌ ⚡ | 认证配置（HTTP 触发时必填），见 §4.4.1 |
-| nodeInput | object | ❌ ⚡ | 入参数据契约（HTTP 触发时必填），见 §4.4.6 |
+| nodeInput | object | ❌ ⚡ | 入参声明（HTTP 触发时必填），见 §4.4.6 |
 | rateLimitConfig | object | ❌ | 限流配置，见 §4.4.2 |
 
 ⚡ = `type="http"` 时必填。
 
-示例 — HTTP 触发，SYSTOKEN 认证，限流 100 QPS：
+> **示例** — HTTP 触发，SYSTOKEN 认证，限流 100 QPS：
 
 ```json
 {
@@ -1263,14 +1355,44 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 #### 4.4.11 connectorNodeDataDef
 
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:connectorNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "connectorVersionId": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]{15,19}$",
+      "description": "引用的连接器版本 ID，必须为已发布版本"
+    },
+    "inputMapping": {
+      "type": "object",
+      "properties": {
+        "header": { "$ref": "#/definitions/mappedJsonSchemaObjectDef" },
+        "query":  { "$ref": "#/definitions/mappedJsonSchemaObjectDef" },
+        "body":   { "$ref": "#/definitions/mappedJsonSchemaObjectDef" }
+      }
+    }
+  },
+  "required": ["connectorVersionId", "inputMapping"]
+}
+```
+
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | labelCn | string | ❌ | 节点中文标签 |
 | labelEn | string | ❌ | 节点英文标签 |
 | connectorVersionId | string | ✅ | 引用的连接器版本 ID（18-20 位数字，必须为已发布版本） |
-| inputMapping | object | ✅ | 字段映射，结构镜像连接器 nodeInput 协议，value 遵循 §3 值表达式体系 |
+| inputMapping | object | ✅ | 字段映射，镜像连接器 nodeInput 结构，value 遵循 §3 值表达式体系 |
 
-示例 — 将 trigger 的 sender/content 映射到下游 API 的 receiver/content：
+> **示例** — 将 trigger 的 sender/content 映射到下游 API：
 
 ```json
 {
@@ -1291,6 +1413,42 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 #### 4.4.12 dataProcessorNodeDataDef
 
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:dataProcessorNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fieldMappings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "source": { "type": "string", "description": "值表达式，遵循 §3 值表达式体系" },
+              "target": { "type": "string" }
+            },
+            "required": ["source", "target"]
+          }
+        }
+      }
+    }
+  },
+  "required": ["config"]
+}
+```
+
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | labelCn | string | ❌ | 节点中文标签 |
@@ -1300,7 +1458,7 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | config.fieldMappings[].source | string | ✅ | 值表达式，遵循 §3 值表达式体系 |
 | config.fieldMappings[].target | string | ✅ | 目标字段路径 |
 
-示例 — 引用 conn_1 返回值 + 系统函数 + 常量：
+> **示例** — 引用 conn_1 返回值 + 系统函数 + 常量：
 
 ```json
 {
@@ -1317,13 +1475,39 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 #### 4.4.13 exitNodeDataDef
 
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:exitNodeDataDef:v1",
+  "title": "exitNodeDataDef",
+  "description": "出口节点业务数据。node.type='exit' 时 node.data 内的结构",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "outputMapping": {
+      "type": "object",
+      "properties": {
+        "header": { "$ref": "#/definitions/mappedJsonSchemaObjectDef" },
+        "body":   { "$ref": "#/definitions/mappedJsonSchemaObjectDef" }
+      }
+    }
+  },
+  "required": ["outputMapping"]
+}
+```
+
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | labelCn | string | ❌ | 节点中文标签 |
 | labelEn | string | ❌ | 节点英文标签 |
-| outputMapping | object | ✅ | 字段映射，结构镜像连接器 nodeOutput 协议，value 遵循 §3 值表达式体系 |
+| outputMapping | object | ✅ | 字段映射，镜像 nodeOutput 结构（HTTP: header/body），value 遵循 §3 值表达式体系 |
 
-示例 — 将 conn_1 的返回值映射到 HTTP 响应体：
+> **示例** — 将 conn_1 的返回值映射到 HTTP 响应体：
 
 ```json
 {
@@ -1332,8 +1516,8 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
     "body": {
       "type": "object",
       "properties": {
-        "msgId":  { "type": "string",  "value": "${$.node.conn_1.output.body.msgId}" },
-        "status": { "type": "string",  "value": "${$.constant:success}" }
+        "msgId":  { "type": "string", "value": "${$.node.conn_1.output.body.msgId}" },
+        "status": { "type": "string", "value": "${$.constant:success}" }
       }
     }
   }
@@ -1342,6 +1526,25 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 
 #### 4.4.14 structureNodeDataDef（V2 新增）
 
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:structureNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "type": { "type": "string", "enum": ["loop_v2", "parallel", "condition_branch", "error_handler"] },
+    "config": { "type": "object", "description": "结构体配置（预留槽）" }
+  },
+  "required": ["type"]
+}
+```
+
+> **字段说明**
+
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
 | labelCn | string | ❌ | 节点中文标签 |
@@ -1349,13 +1552,31 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | type | string | ✅ | 结构体类型：`loop_v2` / `parallel` / `condition_branch` / `error_handler` |
 | config | object | ❌ | 结构体配置（预留槽） |
 
-示例 — 循环节点（config 待细化）：
+> **示例** — 循环节点（config 待细化）：
 
 ```json
 { "labelCn": "遍历处理", "type": "loop_v2", "config": {} }
 ```
 
 #### 4.4.15 textMarkerNodeDataDef（V2 新增）
+
+> **Def**
+
+```json
+{
+  "$id": "urn:openapp:schema:textMarkerNodeDataDef:v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "labelCn": { "type": "string" },
+    "labelEn": { "type": "string" },
+    "type": { "type": "string", "const": "text" },
+    "config": { "type": "object", "description": "归属配置（预留槽）" }
+  }
+}
+```
+
+> **字段说明**
 
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
@@ -1364,15 +1585,11 @@ HTTP 出参契约，按传输位置分为 header / body 两段。
 | type | string | ✅ | 固定为 `text` |
 | config | object | ❌ | 结构归属配置（预留槽） |
 
-示例 — 循环区域标记：
+> **示例** — 循环区域标记：
 
 ```json
 { "labelCn": "循环开始", "type": "text", "config": {} }
 ```
-
----
-
-## 5. 连接器配置 Schema
 
 ### 5.1 定位与存储
 
