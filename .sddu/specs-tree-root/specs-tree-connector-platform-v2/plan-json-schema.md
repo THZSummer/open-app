@@ -138,7 +138,7 @@
 | 1 | `node` | 设计态 | `${$.node.{id}.{input\|output\|current}.path}` | 见下方示例 | 引用任意节点的三个数据面：`input`（入参）、`output`（返回值）、`current`（过程中参数，仅结构节点） |
 | 2 | `constant` | 设计态 | `${$.constant:value}` | `${$.constant:0}` | 编排设计者填入的固定值 |
 | 3 | `system` | 设计态 | `${$.system.env.{key}}` / `.fn.{name}(args)` | `${$.system.env.region}`、`${$.system.fn.upper(...)}` | 双子类：`env`（环境变量含密钥）、`fn`（内置函数，值=Java类全路径.invoke） |
-| 4 | `script` | 设计态 | `${$.script.{name}(args)}` | `${$.script.transform(...)}` | 用户预定义脚本，按名引用传参 |
+| 4 | `script` | 设计态 | `${$.script.{name}(args)}` | `${$.script.normalize(...)}` | 用户预定义脚本，按名引用传参，脚本名对应 Java 类全路径 `com.openapp.script.XxxScript.invoke` |
 | 5 | `execution` | 运行时注入 | `${$.execution.id}` / `.flowId` / `.triggerTime` | `${$.execution.flowId}` | 引擎每次执行时注入的运行时元数据 |
 
 > 表达式层级：`$.` = 根 → `node`/`constant`/`system`/`script`/`execution` = 作用域 → 具体路径或参数。
@@ -252,11 +252,15 @@
       "if":        "com.openapp.fn.logic.IfFunction.invoke"
     }
   },
-  "script": { "normalize": "(user-defined)" },
-  "constant": { "20": 20, "processed": "processed" },
+  "script": {
+    "normalize":     "com.openapp.script.NormalizeScript.invoke",
+    "randomUserInfo": "com.openapp.script.RandomUserInfoScript.invoke"
+  },
   "execution": { "id": "exec-2026-001", "flowId": "flow-12345", "triggerTime": "2026-06-10T10:00:00Z" }
 }
 ```
+
+> `constant` 不在运行时 JSON 中：`${$.constant:20}` 的值 `20` 直接写在表达式里，引擎解析表达式语法即得值，无需存入运行时上下文对象。
 
 **各节点的数据面**：
 
@@ -302,9 +306,6 @@
 | `$.system.env.locale` | `"zh-CN"` | system |
 | `$.system.fn.upper($.node.conn_1.output.body.name)` | `"ALICE"` | system.fn |
 | `$.script.normalize($.node.conn_1.output.body.data, $.system.env.locale)` | `"normalized raw data"` | script |
-| `$.constant:20` | `20` | constant |
-| `$.constant:processed` | `"processed"` | constant |
-| `$.execution.id` | `"exec-2026-001"` | execution |
 | `$.execution.flowId` | `"flow-12345"` | execution |
 | `$.execution.triggerTime` | `"2026-06-10T10:00:00Z"` | execution |
 
