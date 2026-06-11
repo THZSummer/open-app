@@ -1528,55 +1528,13 @@ graph TB
     }
   ],
   "edges": [
-    {
-      "id": "edge-trigger-loop",
-      "source": "trigger-1",
-      "target": "loop-1",
-      "type": "smoothstep",
-      "data": { "businessType": "default", "connectionMode": "serial" }
-    },
-    {
-      "id": "edge-loop-region",
-      "source": "loop-1",
-      "target": "loop-region-1",
-      "type": "smoothstep",
-      "data": { "isStructural": true }
-    },
-    {
-      "id": "edge-loop-start",
-      "source": "loop-1",
-      "target": "loop-start-1",
-      "type": "smoothstep",
-      "data": { "isStructural": true }
-    },
-    {
-      "id": "edge-start-end",
-      "source": "loop-start-1",
-      "target": "loop-end-1",
-      "type": "smoothstep",
-      "data": { "businessType": "loop_entry", "iterationVar": "item" }
-    },
-    {
-      "id": "edge-region-break",
-      "source": "loop-region-1",
-      "target": "loop-break-1",
-      "type": "smoothstep",
-      "data": { "isStructural": true }
-    },
-    {
-      "id": "edge-end-break",
-      "source": "loop-end-1",
-      "target": "loop-break-1",
-      "type": "smoothstep",
-      "data": { "isStructural": true }
-    },
-    {
-      "id": "edge-break-end",
-      "source": "loop-break-1",
-      "target": "end-1",
-      "type": "smoothstep",
-      "data": { "businessType": "default", "connectionMode": "serial" }
-    }
+    { "id":"edge-trigger-loop",   "source":"trigger-1",     "target":"loop-1",        "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } },
+    { "id":"edge-loop-region",    "source":"loop-1",        "target":"loop-region-1", "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"edge-loop-start",     "source":"loop-1",        "target":"loop-start-1",  "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"edge-start-end",      "source":"loop-start-1",  "target":"loop-end-1",    "type":"smoothstep", "data":{ "businessType":"loop_entry", "iterationVar":"item" } },
+    { "id":"edge-region-break",   "source":"loop-region-1", "target":"loop-break-1",  "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"edge-end-break",      "source":"loop-end-1",    "target":"loop-break-1",  "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"edge-break-end",      "source":"loop-break-1",  "target":"end-1",         "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } }
   ]
 }
 ```
