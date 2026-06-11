@@ -1383,6 +1383,27 @@ graph TB
       ]
     },
 
+    "nodeDataBaseDef": {
+      "$id": "urn:openapp:schema:nodeDataBaseDef:v1",
+      "title": "nodeDataBaseDef",
+      "description": "节点 data 公共基类。所有节点 data 的 allOf 基础，type 为业务节点类型（与 React Flow node.type 分离）",
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["trigger", "connector", "dataProcessor", "exit", "loop", "parallel", "conditionBranch", "errorHandler", "text"],
+          "description": "业务节点类型"
+        },
+        "labelCn": { "type": "string", "description": "节点中文标签" },
+        "labelEn": { "type": "string", "description": "节点英文标签" },
+        "structConfig": {
+          "type": "object",
+          "description": "结构体配置（预留）"
+        }
+      },
+      "required": ["type"]
+    },
+
     "nodeDataDef": {
       "$id": "urn:openapp:schema:nodeDataDef:v2",
       "title": "nodeDataDef",
@@ -1402,18 +1423,17 @@ graph TB
       "$id": "urn:openapp:schema:triggerNodeDataDef:v2",
       "title": "triggerNodeDataDef",
       "description": "触发器节点业务数据",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "labelCn": { "type": "string" },
-        "labelEn": { "type": "string" },
-        "type": { "type": "string", "enum": ["http", "manual"] },
-        "authConfig": { "$ref": "#/definitions/authConfigDef" },
-        "nodeInput": { "$ref": "#/definitions/httpInputDef" },
-        "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
-      },
-      "required": ["type"],
       "allOf": [
+        { "$ref": "#/definitions/nodeDataBaseDef" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "authConfig": { "$ref": "#/definitions/authConfigDef" },
+            "nodeInput": { "$ref": "#/definitions/httpInputDef" },
+            "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
+          }
+        },
         {
           "if": { "properties": { "type": { "const": "http" } }, "required": ["type"] },
           "then": { "required": ["authConfig", "nodeInput"] }
@@ -1429,78 +1449,87 @@ graph TB
       "$id": "urn:openapp:schema:connectorNodeDataDef:v1",
       "title": "connectorNodeDataDef",
       "description": "连接器节点业务数据",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "labelCn": { "type": "string" },
-        "labelEn": { "type": "string" },
-        "connectorVersionId": {
-          "type": "string",
-          "pattern": "^[1-9][0-9]{15,19}$",
-          "description": "引用的连接器版本 ID，必须为已发布版本"
-        },
-        "inputMapping": {
+      "allOf": [
+        { "$ref": "#/definitions/nodeDataBaseDef" },
+        {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "header": { "$ref": "#/definitions/jsonObjectDef" },
-            "query":  { "$ref": "#/definitions/jsonObjectDef" },
-            "body":   { "$ref": "#/definitions/jsonObjectDef" }
-          }
+            "connectorVersionId": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{15,19}$",
+              "description": "引用的连接器版本 ID，必须为已发布版本"
+            },
+            "inputMapping": {
+              "type": "object",
+              "properties": {
+                "header": { "$ref": "#/definitions/jsonObjectDef" },
+                "query":  { "$ref": "#/definitions/jsonObjectDef" },
+                "body":   { "$ref": "#/definitions/jsonObjectDef" }
+              }
+            }
+          },
+          "required": ["connectorVersionId", "inputMapping"]
         }
-      },
-      "required": ["connectorVersionId", "inputMapping"]
+      ]
     },
 
     "dataProcessorNodeDataDef": {
       "$id": "urn:openapp:schema:dataProcessorNodeDataDef:v1",
       "title": "dataProcessorNodeDataDef",
       "description": "数据处理器节点业务数据",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "labelCn": { "type": "string" },
-        "labelEn": { "type": "string" },
-        "config": {
+      "allOf": [
+        { "$ref": "#/definitions/nodeDataBaseDef" },
+        {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "fieldMappings": {
-              "type": "array",
-              "minItems": 1,
-              "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                  "source": { "type": "string", "description": "值表达式，遵循 §3 值表达式体系" },
-                  "target": { "type": "string" }
-                },
-                "required": ["source", "target"]
+            "config": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fieldMappings": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "source": { "type": "string", "description": "值表达式，遵循 §3 值表达式体系" },
+                      "target": { "type": "string" }
+                    },
+                    "required": ["source", "target"]
+                  }
+                }
               }
             }
-          }
+          },
+          "required": ["config"]
         }
-      },
-      "required": ["config"]
+      ]
     },
 
     "exitNodeDataDef": {
       "$id": "urn:openapp:schema:exitNodeDataDef:v1",
       "title": "exitNodeDataDef",
       "description": "出口节点业务数据",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "labelCn": { "type": "string" },
-        "labelEn": { "type": "string" },
-        "outputMapping": {
+      "allOf": [
+        { "$ref": "#/definitions/nodeDataBaseDef" },
+        {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
-            "header": { "$ref": "#/definitions/jsonObjectDef" },
-            "body":   { "$ref": "#/definitions/jsonObjectDef" }
-          }
+            "outputMapping": {
+              "type": "object",
+              "properties": {
+                "header": { "$ref": "#/definitions/jsonObjectDef" },
+                "body":   { "$ref": "#/definitions/jsonObjectDef" }
+              }
+            }
+          },
+          "required": ["outputMapping"]
         }
-      },
-      "required": ["outputMapping"]
+      ]
     },
 
     "structureNodeDataDef": {
@@ -1522,14 +1551,16 @@ graph TB
       "$id": "urn:openapp:schema:textMarkerNodeDataDef:v1",
       "title": "textMarkerNodeDataDef",
       "description": "text 标记节点数据。纯渲染，不参与 DAG 执行",
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "labelCn": { "type": "string" },
-        "labelEn": { "type": "string" },
-        "type": { "type": "string", "const": "text" },
-        "config": { "type": "object", "description": "归属配置（预留槽）" }
-      }
+      "allOf": [
+        { "$ref": "#/definitions/nodeDataBaseDef" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "config": { "type": "object", "description": "归属配置（预留槽）" }
+          }
+        }
+      ]
     }
   }
 }
