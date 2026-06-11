@@ -1580,33 +1580,103 @@ graph TB
 }
 ```
 
-> **并行结构的 6 个 node + 8 条 edge 完整示例**
+> **并行结构的 6 个 node + 8 条 edge 完整示例**（来源：前端 FlowCanvas 持久化数据，已对齐 Schema 命名）
 
 ```json
-// nodes（6 个）:
-[
-  { "id":"parallel-1",                "type":"parallel", "data":{ "type":"parallel",            "labelCn":"并行处理",   "structConfig":{ "parallelGroupId":"parallel-1", "parallelRole":"root" } } },
-  { "id":"parallel-branch-1-start",   "type":"text",    "data":{ "type":"text",                 "labelCn":"分支1开始",  "structConfig":{ "parallelGroupId":"parallel-1", "parallelRole":"branch-start", "parallelBranchId":"b1", "parallelBranchIndex":1 } } },
-  { "id":"parallel-branch-1-end",     "type":"text",    "data":{ "type":"text",                 "labelCn":"分支1结束",  "structConfig":{ "parallelGroupId":"parallel-1", "parallelRole":"branch-end",   "parallelBranchId":"b1", "parallelBranchIndex":1 } } },
-  { "id":"parallel-branch-2-start",   "type":"text",    "data":{ "type":"text",                 "labelCn":"分支2开始",  "structConfig":{ "parallelGroupId":"parallel-1", "parallelRole":"branch-start", "parallelBranchId":"b2", "parallelBranchIndex":2 } } },
-  { "id":"parallel-branch-2-end",     "type":"text",    "data":{ "type":"text",                 "labelCn":"分支2结束",  "structConfig":{ "parallelGroupId":"parallel-1", "parallelRole":"branch-end",   "parallelBranchId":"b2", "parallelBranchIndex":2 } } },
-  { "id":"parallel-merge-1",          "type":"text",    "data":{ "type":"text",                 "labelCn":"并行合并",   "structConfig":{ "parallelGroupId":"parallel-1", "parallelRole":"merge" } } }
-]
-
-// edges（8 条）:
-//   upstream → parallel-1                              （入口）
-//   parallel-1 → branch-1-start  [isStructural]          （辅助边）
-//   parallel-1 → branch-2-start  [isStructural]          （辅助边）
-//   branch-1-start → ...分支1节点... → branch-1-end       （分支1可编辑链路）
-//   branch-2-start → ...分支2节点... → branch-2-end       （分支2可编辑链路）
-//   branch-1-end → merge  [isStructural]                 （辅助边）
-//   branch-2-end → merge  [isStructural]                 （辅助边）
-//   merge → downstream                                   （出口）
+{
+  "nodes": [
+    {
+      "id": "trigger-1",
+      "type": "trigger",
+      "position": { "x": 250, "y": 50 },
+      "data": { "type": "trigger", "labelCn": "触发器", "labelEn": "Trigger", "structConfig": {} }
+    },
+    {
+      "id": "parallel-1",
+      "type": "parallel",
+      "position": { "x": 250, "y": 160 },
+      "data": {
+        "type": "parallel",
+        "labelCn": "并行处理",
+        "labelEn": "Parallel",
+        "structConfig": { "parallelGroupId": "parallel-1", "parallelRole": "root" }
+      }
+    },
+    {
+      "id": "parallel-branch-1-start",
+      "type": "text",
+      "position": { "x": 250, "y": 320 },
+      "data": {
+        "type": "text", "labelCn": "分支1开始", "labelEn": "Branch1 Start",
+        "structConfig": { "parallelGroupId":"parallel-1", "parallelRole":"branch-start", "parallelBranchId":"b1", "parallelBranchIndex":1 }
+      }
+    },
+    {
+      "id": "parallel-branch-1-end",
+      "type": "text",
+      "position": { "x": 250, "y": 520 },
+      "data": {
+        "type": "text", "labelCn": "分支1结束", "labelEn": "Branch1 End",
+        "structConfig": { "parallelGroupId":"parallel-1", "parallelRole":"branch-end", "parallelBranchId":"b1", "parallelBranchIndex":1 }
+      }
+    },
+    {
+      "id": "parallel-branch-2-start",
+      "type": "text",
+      "position": { "x": 570, "y": 320 },
+      "data": {
+        "type": "text", "labelCn": "分支2开始", "labelEn": "Branch2 Start",
+        "structConfig": { "parallelGroupId":"parallel-1", "parallelRole":"branch-start", "parallelBranchId":"b2", "parallelBranchIndex":2 }
+      }
+    },
+    {
+      "id": "parallel-branch-2-end",
+      "type": "text",
+      "position": { "x": 570, "y": 520 },
+      "data": {
+        "type": "text", "labelCn": "分支2结束", "labelEn": "Branch2 End",
+        "structConfig": { "parallelGroupId":"parallel-1", "parallelRole":"branch-end", "parallelBranchId":"b2", "parallelBranchIndex":2 }
+      }
+    },
+    {
+      "id": "parallel-merge-1",
+      "type": "text",
+      "position": { "x": 410, "y": 580 },
+      "data": {
+        "type": "text", "labelCn": "并行合并", "labelEn": "Merge",
+        "structConfig": { "parallelGroupId":"parallel-1", "parallelRole":"merge" }
+      }
+    },
+    {
+      "id": "end-1",
+      "type": "exit",
+      "position": { "x": 410, "y": 740 },
+      "data": { "type": "exit", "labelCn": "结束", "labelEn": "End", "output": {}, "structConfig": {} }
+    }
+  ],
+  "edges": [
+    { "id":"e-t-parallel",       "source":"trigger-1",              "target":"parallel-1",              "type":"smoothstep", "data":{ "businessType":"default", "connectionMode":"serial" } },
+    { "id":"e-p-b1start",        "source":"parallel-1",             "target":"parallel-branch-1-start",  "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-p-b2start",        "source":"parallel-1",             "target":"parallel-branch-2-start",  "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-b1start-b1end",    "source":"parallel-branch-1-start","target":"parallel-branch-1-end",    "type":"smoothstep", "data":{ "businessType":"default", "connectionMode":"parallel" } },
+    { "id":"e-b2start-b2end",    "source":"parallel-branch-2-start","target":"parallel-branch-2-end",    "type":"smoothstep", "data":{ "businessType":"default", "connectionMode":"parallel" } },
+    { "id":"e-b1end-merge",      "source":"parallel-branch-1-end",  "target":"parallel-merge-1",         "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-b2end-merge",      "source":"parallel-branch-2-end",  "target":"parallel-merge-1",         "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-merge-end",        "source":"parallel-merge-1",       "target":"end-1",                    "type":"smoothstep", "data":{ "businessType":"default", "connectionMode":"serial" } }
+  ]
+}
 ```
+
+> **引擎解析逻辑**：
+> 1. 过滤 `node.type === "text"` 的标记节点、`edge.data.isStructural === true` 的辅助边
+> 2. 剩余节点中，`branch-start → branch-end` 之间的子图即为各分支体。`connectionMode=parallel` 的分支引擎并发执行
+> 3. 所有分支完成后在 `merge` 节点汇合，继续下游
 
 #### 4.3.14 conditionBranchNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。条件分支结构的**入口主节点**。与并行节点完全复用 `parallelGroupId` 分组体系——主节点结构、分组字段、node/edge 数量均相同。区别仅在前端文案（"条件"替代"分支"）和引擎执行策略（按 conditionExpr 匹配而非全部并发）。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。条件分支结构的**入口主节点**。**与 parallel 同构**——主节点结构、分组字段体系（`parallelGroupId` + `parallelRole`）、node/edge 数量（6+8）完全一致。区别：① 前端文案（"条件"替代"分支"）② 引擎按 `conditionExpr` 匹配分支执行（而非全部并发）。
+>
+> structConfig 字段说明及完整示例见 §4.3.13 parallelNodeDataDef。
 
 > **Def**
 
@@ -1630,11 +1700,11 @@ graph TB
 }
 ```
 
-> **结构组成**：与 §4.3.14 parallelNodeDataDef 完全一致——6 个 node + 8 条 edge。structConfig 字段说明同上。
-
 #### 4.3.15 errorHandlerNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**。与循环节点完全复用 `loopV2GroupId` 分组体系——主节点结构、分组字段、node/edge 数量均相同。区别仅在前端文案（"错误处理"替代"循环"）和引擎执行策略（上游节点失败时路由到错误处理分支）。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**。**与 loop 同构**——主节点结构、分组字段体系（`loopV2GroupId`）、node/edge 数量（5+7）完全一致。区别：① 前端文案（"错误处理"替代"循环"）② 引擎在上游节点失败时路由到错误处理分支（而非正常流程）。
+>
+> structConfig 字段说明及完整 nodes+edges 示例见 §4.3.12 loopNodeDataDef。
 
 > **Def**
 
@@ -1643,16 +1713,6 @@ graph TB
   "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
 }
 ```
-
-> **structConfig 字段**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| loopV2GroupId | string | 错误处理分组 ID，等于主节点 ID。主节点和 4 个标记节点通过此字段关联 |
-| parentLoopV2GroupId | string? | 嵌套在父级循环右侧链路时 |
-| parentLoopV2Role | string? | 属于父级循环右侧链路时，值为 `"right-column-node"` |
-| parentParallelGroupId | string? | 嵌套在并行/条件分支内部时 |
-| parentParallelBranchId | string? | 嵌套在并行/条件分支内部时 |
 
 > **示例**
 
@@ -1666,8 +1726,6 @@ graph TB
   }
 }
 ```
-
-> **结构组成**：与 §4.3.12 loopNodeDataDef 完全一致——5 个 node + 7 条 edge。
 
 #### 4.3.16 textMarkerNodeDataDef（V2 新增）
 
