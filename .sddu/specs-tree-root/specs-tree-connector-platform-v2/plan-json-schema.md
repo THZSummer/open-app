@@ -406,7 +406,15 @@ ${$.system.fn.format($.node.err_1.current.messageZh, $.execution.flowId)}
 为避免「JSON 字段与 JSON 字段定义同名」的歧义，本规范区分两者：
 - **JSON 字段（field name）**：JSON 数据中的属性键，描述「存什么数据」（如 `authConfig`）
 - **JSON 字段定义（definition key）**：校验规则组件键名（如 `authConfigDef`）
-- **命名规则**：有对应字段的取 **字段全名 + `Def`**，无对应字段的复用组件语义化名 + `Def`。第二层节点 data 定义统一为 `{type}NodeDataDef`（如 `triggerNodeDataDef`），与第一层路由器 `nodeDataDef` 呼应。
+
+**命名规则**：
+
+| # | 规则 | 适用对象 | 示例 |
+|:---:|------|------|------|
+| 1 | **字段全名 + `Def`** | 有直接对应 JSON 字段的组件 | `authConfig` → `authConfigDef`、`rateLimitConfig` → `rateLimitConfigDef`、`nodeInput` → `nodeInputDef`、`errorInfo` → `errorInfoDef` |
+| 2 | **`{type}NodeDataDef`** | 第二层节点 data 定义，与第一层路由器 `nodeDataDef` 呼应 | `triggerNodeDataDef`、`connectorNodeDataDef`、`exitNodeDataDef` |
+| 3 | **`{协议}InputDef` / `{协议}OutputDef`** | 第三层协议具体实现，不额外加 `Contract`/`Schema` 后缀 | `httpInputDef`、`httpOutputDef` |
+| 4 | **语义化名 + `Def`** | 第四层基础复用组件，无直接对应 JSON 字段 | `jsonSchemaObjectDef`、`mappedFieldDef`、`mappedJsonSchemaObjectDef` |
 
 **17 个组件的关系全景**：
 
