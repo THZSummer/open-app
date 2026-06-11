@@ -593,6 +593,10 @@ graph TB
                   "type":        { "type": "string", "enum": ["array"] },
                   "description": { "type": "string" },
                   "required":    { "type": "boolean", "default": false },
+                  "readonly":    { "type": "boolean", "default": false },
+                  "deprecated":  { "type": "boolean", "default": false },
+                  "minItems":    { "type": "number",  "description": "数组最少元素数" },
+                  "maxItems":    { "type": "number",  "description": "数组最多元素数" },
                   "items":       { "$ref": "#/definitions/jsonObjectDef" }
                 },
                 "required": ["type", "items"]
@@ -942,6 +946,13 @@ graph TB
               "value":       { "type": "string", "description": "映射表达式（可选）。遵循 §3 值表达式体系" },
               "required":    { "type": "boolean", "default": false, "description": "是否必填" },
               "sensitive":   { "type": "boolean", "default": false, "description": "运行时脱敏" },
+              "readonly":    { "type": "boolean", "default": false, "description": "字段是否只读" },
+              "deprecated":  { "type": "boolean", "default": false, "description": "是否已废弃" },
+              "nullable":    { "type": "boolean", "default": false, "description": "是否允许 null 值" },
+              "placeholder": { "type": "string",  "description": "输入框占位提示" },
+              "pattern":     { "type": "string",  "description": "正则校验表达式，如 ^1[3-9]\\d{9}$" },
+              "minLength":   { "type": "number",  "description": "字符串最小长度" },
+              "maxLength":   { "type": "number",  "description": "字符串最大长度" },
               "enum":        { "type": "array" },
               "default":     {},
               "minimum":     { "type": "number" },
@@ -960,6 +971,10 @@ graph TB
               "type":        { "type": "string", "enum": ["array"] },
               "description": { "type": "string" },
               "required":    { "type": "boolean", "default": false },
+              "readonly":    { "type": "boolean", "default": false },
+              "deprecated":  { "type": "boolean", "default": false },
+              "minItems":    { "type": "number",  "description": "数组最少元素数" },
+              "maxItems":    { "type": "number",  "description": "数组最多元素数" },
               "items":       { "$ref": "#/definitions/jsonObjectDef" }
             },
             "required": ["type", "items"]
@@ -974,20 +989,29 @@ graph TB
 
 > **字段说明**
 
-| JSON 字段 | 类型 | 必填 | 说明 |
-|-----------|------|:----:|------|
-| type | string | ✅ | 顶层固定 `"object"` |
-| properties | object | ✅ | 字段定义集合，每个字段自维护所有属性 |
-| properties.{key}.type | string | ✅ | 字段类型：`string` / `number` / `boolean` / `object`（递归）/ `array` |
-| properties.{key}.required | boolean | ❌ | 是否必填，默认 `false`。字段级别自声明 |
-| properties.{key}.value | string | ❌ | 映射表达式。遵循 §3 值表达式体系 |
-| properties.{key}.sensitive | boolean | ❌ | 运行时脱敏，默认 `false` |
-| properties.{key}.description | string | ❌ | 字段描述 |
-| properties.{key}.enum | array | ❌ | 枚举值列表 |
-| properties.{key}.default | any | ❌ | 默认值 |
-| properties.{key}.minimum | number | ❌ | 最小值 |
-| properties.{key}.maximum | number | ❌ | 最大值 |
-| properties.{key}.items | object | ❌ | 数组元素定义（type=array 时必填） |
+| JSON 字段 | 类型 | 必填 | 适用 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 全部 | 顶层固定 `"object"` |
+| properties | object | ✅ | 全部 | 字段定义集合，每个字段自维护所有属性 |
+| properties.{key}.type | string | ✅ | 全部 | 字段类型：`string` / `number` / `boolean` / `object`（递归）/ `array` |
+| properties.{key}.required | boolean | ❌ | 全部 | 是否必填，默认 `false` |
+| properties.{key}.value | string | ❌ | 叶子 | 映射表达式。遵循 §3 值表达式体系 |
+| properties.{key}.sensitive | boolean | ❌ | 叶子 | 运行时脱敏，默认 `false` |
+| properties.{key}.readonly | boolean | ❌ | 全部 | 字段是否只读，默认 `false` |
+| properties.{key}.deprecated | boolean | ❌ | 全部 | 是否已废弃，默认 `false` |
+| properties.{key}.description | string | ❌ | 全部 | 字段描述 |
+| properties.{key}.placeholder | string | ❌ | 叶子 | 输入框占位提示（string 类型可用） |
+| properties.{key}.pattern | string | ❌ | 叶子 | 正则校验，如 `^1[3-9]\d{9}$`（string 类型可用） |
+| properties.{key}.minLength | number | ❌ | 叶子 | 字符串最小长度（string 类型可用） |
+| properties.{key}.maxLength | number | ❌ | 叶子 | 字符串最大长度（string 类型可用） |
+| properties.{key}.enum | array | ❌ | 叶子 | 枚举值列表 |
+| properties.{key}.default | any | ❌ | 叶子 | 默认值 |
+| properties.{key}.minimum | number | ❌ | 叶子 | 最小值（number 类型可用） |
+| properties.{key}.maximum | number | ❌ | 叶子 | 最大值（number 类型可用） |
+| properties.{key}.nullable | boolean | ❌ | 叶子 | 是否允许 null 值，默认 `false` |
+| properties.{key}.minItems | number | ❌ | array | 数组最少元素数 |
+| properties.{key}.maxItems | number | ❌ | array | 数组最多元素数 |
+| properties.{key}.items | object | ❌ | array | 数组元素定义（type=array 时必填） |
 
 > **示例** — sender/content 必填，phone 脱敏，全部字段级声明：
 
