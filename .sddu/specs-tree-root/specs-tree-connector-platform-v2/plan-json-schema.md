@@ -163,7 +163,7 @@
 | 多重循环同时引用外层 | — | — | `${$.node.loop_outer.current.item}` |
 | 错误处理体内错误码 | — | — | `${$.node.err_1.current.code}` |
 
-**全场景综合示例**：以下编排 JSON 覆盖全部值来源——触发器、循环、连接器、数据处理器（含内置函数 + 自定义脚本）、错误处理、执行元数据：
+**全场景综合示例**：以下编排 JSON 覆盖全部 5 个作用域，每处表达式标注了对应的作用域来源：
 
 ```json
 {
@@ -172,7 +172,16 @@
       "id": "trigger", "type": "trigger",
       "data": {
         "type": "http",
-        "inputContract": { "protocol": "HTTP", "body": { "type": "object", "properties": { "items": { "type": "array", "items": { "type": "string" } }, "region": { "type": "string" } } } }
+        "inputContract": {
+          "protocol": "HTTP",
+          "body": {
+            "type": "object",
+            "properties": {
+              "items":  { "type": "array", "items": { "type": "string" } },
+              "region": { "type": "string" }
+            }
+          }
+        }
       }
     },
     {
@@ -184,8 +193,20 @@
       "data": {
         "connectorVersionId": "1111111111111111111",
         "inputMapping": {
-          "header": { "type": "object", "properties": { "Authorization": { "type": "string", "description": "Bearer", "value": "${$.system.apiKey}" } } },
-          "body":   { "type": "object", "properties": { "itemId": { "type": "string", "description": "当前迭代元素", "value": "${$.node.loop_1.current.item}" }, "size": { "type": "integer", "description": "固定页大小", "value": "${$.constant:20}" }, "source": { "type": "string", "value": "${$.system.env.region}" } } }
+          "header": {
+            "type": "object",
+            "properties": {
+              "Authorization": { "type": "string", "value": "${$.system.apiKey}" }
+            }
+          },
+          "body": {
+            "type": "object",
+            "properties": {
+              "itemId": { "type": "string",  "value": "${$.node.loop_1.current.item}" },
+              "size":   { "type": "integer", "value": "${$.constant:20}" },
+              "source": { "type": "string",  "value": "${$.system.env.region}" }
+            }
+          }
         }
       }
     },
@@ -194,10 +215,10 @@
       "data": {
         "config": {
           "fieldMappings": [
-            { "source": "${$.system.fn.upper($.node.conn_1.output.name)}", "target": "upperName" },
+            { "source": "${$.system.fn.upper($.node.conn_1.output.name)}",          "target": "upperName" },
             { "source": "${$.script.normalize($.node.conn_1.output.data, $.system.env.locale)}", "target": "normalized" },
-            { "source": "${$.node.loop_1.current.index}", "target": "loopIndex" },
-            { "source": "${$.constant:processed}", "target": "status" }
+            { "source": "${$.node.loop_1.current.index}",                            "target": "loopIndex" },
+            { "source": "${$.constant:processed}",                                   "target": "status" }
           ]
         }
       }
@@ -211,21 +232,56 @@
       "data": {
         "connectorVersionId": "2222222222222222222",
         "inputMapping": {
-          "body": { "type": "object", "properties": { "errorCode": { "type": "string", "value": "${$.node.err_1.current.code}" }, "errorMsg": { "type": "string", "value": "${$.node.err_1.current.messageZh}" }, "item": { "type": "string", "value": "${$.node.loop_1.current.item}" }, "flowId": { "type": "string", "value": "${$.execution.flowId}" } } }
+          "body": {
+            "type": "object",
+            "properties": {
+              "errorCode": { "type": "string", "value": "${$.node.err_1.current.code}" },
+              "errorMsg":  { "type": "string", "value": "${$.node.err_1.current.messageZh}" },
+              "item":      { "type": "string", "value": "${$.node.loop_1.current.item}" },
+              "flowId":    { "type": "string", "value": "${$.execution.flowId}" }
+            }
+          }
         }
       }
     },
     {
       "id": "exit", "type": "exit",
       "data": {
-        "outputMapping": { "body": { "type": "object", "properties": { "total": { "type": "integer", "value": "${$.node.loop_1.current.total}" }, "execId": { "type": "string", "value": "${$.execution.id}" } } } }
+        "outputMapping": {
+          "body": {
+            "type": "object",
+            "properties": {
+              "total":  { "type": "integer", "value": "${$.node.loop_1.current.total}" },
+              "execId": { "type": "string",  "value": "${$.execution.id}" }
+            }
+          }
+        }
       }
     }
   ]
 }
 ```
 
-> 上例覆盖全部 5 类值来源——① `node.{id}.input/output/current`（触发器入参、连接器返回值、循环迭代变量、错误信息）；② `constant`（固定值 20、processed）；③ `system`（apiKey 密钥、env.region 环境变量、fn.upper 内置函数）；④ `script`（normalize 自定义脚本）；⑤ `execution`（flowId、id 运行元数据）。
+**JSON 中表达式与作用域的对应**：
+
+| 表达式 | 作用域 | 子路径 | 语义 |
+|--------|:---:|------|------|
+| `${$.node.loop_1.current.item}` | `node` | `current` | loop_1 当前迭代元素 |
+| `${$.node.loop_1.current.index}` | `node` | `current` | loop_1 当前索引 |
+| `${$.node.loop_1.current.total}` | `node` | `current` | loop_1 迭代总数 |
+| `${$.node.err_1.current.code}` | `node` | `current` | err_1 捕获的错误码 |
+| `${$.node.err_1.current.messageZh}` | `node` | `current` | err_1 捕获的错误消息 |
+| `${$.node.conn_1.output.name}` | `node` | `output` | conn_1 的返回值 |
+| `${$.node.conn_1.output.data}` | `node` | `output` | conn_1 的返回值 |
+| `${$.constant:20}` | `constant` | — | 固定数值 20 |
+| `${$.constant:processed}` | `constant` | — | 固定字符串 |
+| `${$.system.apiKey}` | `system` | — | 平台密钥 |
+| `${$.system.env.region}` | `system` | — | 环境变量 |
+| `${$.system.env.locale}` | `system` | — | 环境变量 |
+| `${$.system.fn.upper(...)}` | `system` | `fn` | 系统内置函数 |
+| `${$.script.normalize(...)}` | `script` | — | 用户自定义脚本 |
+| `${$.execution.flowId}` | `execution` | — | 当前流 ID |
+| `${$.execution.id}` | `execution` | — | 当前执行 ID |
 
 > `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径，与 `input`/`output` 平级。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
 
