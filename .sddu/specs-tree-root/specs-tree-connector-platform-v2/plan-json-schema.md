@@ -317,7 +317,7 @@
 
 > `current` 不是独立作用域，是 `node` 下结构节点的运行时子路径，与 `input`/`output` 平级。仅在对应结构体内有效，多重循环按节点 ID 精确区分。
 >
-> `loop_v2` / `error_handler` 节点的 `output` 字段结构（持久化属性）和 `current` 下可用字段的完整列表，待 §4.3.14 `structureNodeDataDef.config` 专项细化后确定。
+> `loop_v2` / `error_handler` 节点的 `output` 字段结构（持久化属性）和 `current` 下可用字段的完整列表，待 §4.3.12~§4.3.15 `loopNodeDataDef` / `errorHandlerNodeDataDef` 专项细化后确定。
 
 ### 3.3 设计原则
 
@@ -1394,7 +1394,7 @@ graph TB
 
 #### 4.3.12 loopNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`），循环节点无额外独有字段。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。循环结构的入口主节点。
 
 > **Def**
 
@@ -1404,15 +1404,32 @@ graph TB
 }
 ```
 
+> **structConfig 字段说明**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| loopV2GroupId | string | 当前循环结构的分组 ID，等于循环主节点 ID |
+| parentLoopV2GroupId | string? | 嵌套在父级循环右侧链路时，记录父循环 ID |
+| parentLoopV2Role | string? | 属于父级循环右侧链路时，值为 `"right-column-node"` |
+| parentParallelGroupId | string? | 嵌套在并行/条件分支内部时，记录父分支分组 ID |
+| parentParallelBranchId | string? | 嵌套在并行/条件分支内部时，记录父分支 ID |
+
 > **示例**
 
 ```json
-{ "type": "loop-v2", "labelCn": "遍历处理", "structConfig": { "loopV2GroupId": "loop-1" } }
+{
+  "type": "loop-v2",
+  "labelCn": "遍历处理",
+  "labelEn": "Loop",
+  "structConfig": {
+    "loopV2GroupId": "loop-1"
+  }
+}
 ```
 
 #### 4.3.13 parallelNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`），并行节点无额外独有字段。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。并行处理结构的入口主节点，默认生成两条分支。
 
 > **Def**
 
@@ -1422,15 +1439,33 @@ graph TB
 }
 ```
 
+> **structConfig 字段说明**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| parallelGroupId | string | 当前并行结构分组 ID，等于并行主节点 ID |
+| parallelRole | string | 固定为 `"root"`，标识为并行结构主节点 |
+| parentParallelGroupId | string? | 嵌套在另一个并行/条件分支内部时，记录父分支分组 ID |
+| parentParallelBranchId | string? | 嵌套在另一个并行/条件分支内部时，记录父分支 ID |
+| parentParallelBranchIndex | number? | 嵌套在另一个并行/条件分支内部时，记录父分支序号 |
+
 > **示例**
 
 ```json
-{ "type": "parallel", "labelCn": "并行处理", "structConfig": { "parallelGroupId": "parallel-1", "parallelRole": "root" } }
+{
+  "type": "parallel",
+  "labelCn": "并行处理",
+  "labelEn": "Parallel",
+  "structConfig": {
+    "parallelGroupId": "parallel-1",
+    "parallelRole": "root"
+  }
+}
 ```
 
 #### 4.3.14 conditionBranchNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`），条件分支节点无额外独有字段。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。条件分支结构的入口主节点，与并行节点复用了 `parallelGroupId` 分组体系，区别在于文本标记节点文案（"条件"替代"分支"）。
 
 > **Def**
 
@@ -1440,15 +1475,31 @@ graph TB
 }
 ```
 
+> **structConfig 字段说明**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| parallelGroupId | string | 当前条件分支结构分组 ID |
+| parallelRole | string | 固定为 `"root"`，标识为条件分支主节点 |
+| （其余同 parallelNodeDataDef） | | |
+
 > **示例**
 
 ```json
-{ "type": "condition-branch", "labelCn": "条件分支", "structConfig": { "parallelGroupId": "cond-1", "parallelRole": "root" } }
+{
+  "type": "condition-branch",
+  "labelCn": "条件分支",
+  "labelEn": "Condition",
+  "structConfig": {
+    "parallelGroupId": "cond-1",
+    "parallelRole": "root"
+  }
+}
 ```
 
 #### 4.3.15 errorHandlerNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`），错误处理节点无额外独有字段。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的入口主节点，复用循环节点的 `loopV2GroupId` 分组体系，区别在于文本标记节点文案（"错误处理"替代"循环"）。
 
 > **Def**
 
@@ -1458,17 +1509,69 @@ graph TB
 }
 ```
 
+> **structConfig 字段说明**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| loopV2GroupId | string | 当前错误处理结构的分组 ID，等于错误处理主节点 ID |
+| parentLoopV2GroupId | string? | 嵌套在父级循环右侧链路时，记录父循环 ID |
+| parentLoopV2Role | string? | 属于父级循环右侧链路时，值为 `"right-column-node"` |
+| parentParallelGroupId | string? | 嵌套在并行/条件分支内部时，记录父分支分组 ID |
+| parentParallelBranchId | string? | 嵌套在并行/条件分支内部时，记录父分支 ID |
+
 > **示例**
 
 ```json
-{ "type": "error-handler", "labelCn": "错误处理", "structConfig": { "loopV2GroupId": "err-1" } }
+{
+  "type": "error-handler",
+  "labelCn": "错误处理",
+  "labelEn": "Error Handler",
+  "structConfig": {
+    "loopV2GroupId": "err-1"
+  }
+}
 ```
 
 #### 4.3.16 textMarkerNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。纯渲染标记节点，不参与 DAG 执行，引擎拓扑排序时过滤。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。纯渲染标记节点，不参与 DAG 执行，引擎拓扑排序时过滤。`structConfig` 承载其与结构主节点的归属关系。
 
 > **Def**
+
+```json
+{
+  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
+}
+```
+
+> **structConfig 字段说明 — 两套分组体系**
+
+**循环/错误处理文本节点**（`loopV2GroupId` + `loopV2Role`）：
+
+| loopV2Role | 含义 | label 示例 |
+|-----------|------|-----------|
+| `region` | 左侧辅助说明节点 | "循环区域" / "错误处理区域" |
+| `start` | 右侧可编辑链路入口 | "循环开始" / "错误处理开始" |
+| `end` | 右侧可编辑链路出口 | "循环结束" / "错误处理结束" |
+| `break` | 结构最终出口汇合点 | "循环跳出" / "错误处理跳出" |
+
+**并行/条件分支文本节点**（`parallelGroupId` + `parallelRole` + `parallelBranchId` + `parallelBranchIndex`）：
+
+| parallelRole | 含义 | label 示例 |
+|------------|------|-----------|
+| `branch-start` | 分支入口（显示删除按钮） | "分支1开始" / "条件1开始" |
+| `branch-end` | 分支出口 | "分支1结束" / "条件1结束" |
+| `merge` | 所有分支汇合点 | "并行合并" / "条件分支合并" |
+
+> **示例**
+
+```json
+// 循环区域说明节点
+{ "type": "text", "labelCn": "循环区域", "structConfig": { "loopV2GroupId": "loop-1", "loopV2Role": "region" } }
+
+// 分支开始节点
+{ "type": "text", "labelCn": "分支1开始", "structConfig": { "parallelGroupId": "parallel-1", "parallelRole": "branch-start", "parallelBranchId": "parallel-branch-1", "parallelBranchIndex": 1 } }
+```
 
 ```json
 {
