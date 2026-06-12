@@ -1292,7 +1292,7 @@ graph TB
 }
 ```
 
-#### 4.3.10 dataProcessorNodeDataDef
+#### 4.3.10 dataProcessorNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展数据处理器独有字段。无协议包袱，纯内存运行。
 
