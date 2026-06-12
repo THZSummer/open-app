@@ -1558,7 +1558,64 @@ graph TB
 > 2. 剩余节点中，从 `loop-start-1 → loop-end-1` 之间的子图即为循环体
 > 3. 对循环体中的每个节点按 Kahn 算法拓扑排序后，按 `iterationVar` 声明的变量名进行迭代执行
 
-#### 4.3.13 parallelNodeDataDef（V2 新增）
+#### 4.3.13 textNodeDataDef（V2 新增）
+
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。**结构节点的标记节点**——循环/错误处理中的"循环区域""循环开始""循环结束""循环跳出"，并行/条件分支中的"分支开始""分支结束""并行合并"。
+
+**循环/错误处理** — `loopV2GroupId` + `loopV2Role`：
+
+| loopV2Role | 含义 | 位置 |
+|-----------|------|------|
+| `region` | 左侧辅助说明节点 | 主节点左下方 |
+| `start` | 右侧可编辑链路入口 | 引擎从此边的 target 开始识别循环体子图 |
+| `end` | 右侧可编辑链路出口 | 引擎在此结束循环体子图 |
+| `break` | 结构最终汇合出口 | 左侧路径和右侧路径在此汇合后进入下游 |
+
+**并行/条件分支** — `parallelGroupId` + `parallelRole` + `parallelBranchId` + `parallelBranchIndex`：
+
+| parallelRole | 含义 | 说明 |
+|------------|------|------|
+| `branch-start` | 分支入口 | 显示删除按钮，引擎从此边的 target 开始识别分支子图 |
+| `branch-end` | 分支出口 | 引擎在此结束分支子图 |
+| `merge` | 所有分支汇合点 | 各分支结束后在此汇合，进入下游 |
+
+> **Def**
+
+```json
+{
+  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
+}
+```
+
+> **示例**
+
+```json
+// 循环区域说明
+{ "type":"text", "labelCn":"循环区域", "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"region" } }
+
+// 循环开始（引擎识别循环体入口）
+{ "type":"text", "labelCn":"循环开始", "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"start" } }
+
+// 分支开始（引擎识别分支子图入口）
+{ "type":"text", "labelCn":"分支1开始", "structConfig":{ "parallelGroupId":"p-1", "parallelRole":"branch-start", "parallelBranchId":"b1", "parallelBranchIndex":1 } }
+
+// 并行合并（引擎等待所有分支完成后汇合）
+{ "type":"text", "labelCn":"并行合并", "structConfig":{ "parallelGroupId":"p-1", "parallelRole":"merge" } }
+```
+
+```json
+{
+  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
+}
+```
+
+> **示例**
+
+```json
+{ "type": "text", "labelCn": "循环开始", "structConfig": { "loopV2GroupId": "loop-1", "loopV2Role": "start" } }
+```
+
+#### 4.3.14 parallelNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。并行处理结构的**入口主节点**。一个完整并行结构由 **1 个主节点（parallel）+ 默认 2 组分支标记节点 ×2（start+end）+ 1 个 merge 标记节点 = 6 个 node + 8 条 edge** 组成。每组分支的 start→end 之间是可编辑的子图。引擎执行时通过 edge 拓扑识别各分支，按 `connectionMode=parallel` 并发执行。
 
@@ -1686,7 +1743,7 @@ graph TB
 > 2. 剩余节点中，`branch-start → branch-end` 之间的子图即为各分支体。`connectionMode=parallel` 的分支引擎并发执行
 > 3. 所有分支完成后在 `merge` 节点汇合，继续下游
 
-#### 4.3.14 conditionBranchNodeDataDef（V2 新增）
+#### 4.3.15 conditionBranchNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。条件分支结构的**入口主节点**。与 parallel 同构——主节点结构、分组字段体系（`parallelGroupId` + `parallelRole`）、node/edge 数量（6+8）完全一致。区别：① 前端文案（"条件"替代"分支"）② 引擎按 `conditionExpr` 匹配分支执行（而非全部并发）。
 
@@ -1744,7 +1801,7 @@ graph TB
 > 2. 对每条 `businessType=condition` 的边，按 `conditionExpr` 匹配，命中的分支执行其内部子图
 > 3. 匹配完成后在 `merge` 节点汇合，继续下游
 
-#### 4.3.15 errorHandlerNodeDataDef（V2 新增）
+#### 4.3.16 errorHandlerNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**。与 loop 同构——主节点结构、分组字段体系（`loopV2GroupId`）、node/edge 数量（5+7）完全一致。区别：① 前端文案（"错误处理"替代"循环"）② 引擎在上游节点失败时路由到错误处理分支。
 
@@ -1799,63 +1856,6 @@ graph TB
 > 2. 过滤 `node.type === "text"` 和 `isStructural` 辅助边后，`err-start → err-end` 之间为错误处理子图
 > 3. 无论错误处理子图执行结果如何，`businessType=always` 边确保最终进入下游
 
-#### 4.3.16 textNodeDataDef（V2 新增）
-
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。**结构节点的标记节点**——循环/错误处理中的"循环区域""循环开始""循环结束""循环跳出"，并行/条件分支中的"分支开始""分支结束""并行合并"。
-
-**循环/错误处理** — `loopV2GroupId` + `loopV2Role`：
-
-| loopV2Role | 含义 | 位置 |
-|-----------|------|------|
-| `region` | 左侧辅助说明节点 | 主节点左下方 |
-| `start` | 右侧可编辑链路入口 | 引擎从此边的 target 开始识别循环体子图 |
-| `end` | 右侧可编辑链路出口 | 引擎在此结束循环体子图 |
-| `break` | 结构最终汇合出口 | 左侧路径和右侧路径在此汇合后进入下游 |
-
-**并行/条件分支** — `parallelGroupId` + `parallelRole` + `parallelBranchId` + `parallelBranchIndex`：
-
-| parallelRole | 含义 | 说明 |
-|------------|------|------|
-| `branch-start` | 分支入口 | 显示删除按钮，引擎从此边的 target 开始识别分支子图 |
-| `branch-end` | 分支出口 | 引擎在此结束分支子图 |
-| `merge` | 所有分支汇合点 | 各分支结束后在此汇合，进入下游 |
-
-> **Def**
-
-```json
-{
-  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
-}
-```
-
-> **示例**
-
-```json
-// 循环区域说明
-{ "type":"text", "labelCn":"循环区域", "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"region" } }
-
-// 循环开始（引擎识别循环体入口）
-{ "type":"text", "labelCn":"循环开始", "structConfig":{ "loopV2GroupId":"loop-1", "loopV2Role":"start" } }
-
-// 分支开始（引擎识别分支子图入口）
-{ "type":"text", "labelCn":"分支1开始", "structConfig":{ "parallelGroupId":"p-1", "parallelRole":"branch-start", "parallelBranchId":"b1", "parallelBranchIndex":1 } }
-
-// 并行合并（引擎等待所有分支完成后汇合）
-{ "type":"text", "labelCn":"并行合并", "structConfig":{ "parallelGroupId":"p-1", "parallelRole":"merge" } }
-```
-
-```json
-{
-  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
-}
-```
-
-> **示例**
-
-```json
-{ "type": "text", "labelCn": "循环开始", "structConfig": { "loopV2GroupId": "loop-1", "loopV2Role": "start" } }
-```
-
 #### 4.3.17 nodeDataDef（路由汇总）
 
 > 节点业务数据路由器，按 `node.type` 分发到对应 data Schema。
@@ -1870,7 +1870,7 @@ graph TB
 | `parallel` | parallelNodeDataDef | §4.3.13 |
 | `condition-branch` | conditionBranchNodeDataDef | §4.3.14 |
 | `error-handler` | errorHandlerNodeDataDef | §4.3.15 |
-| `text` | textNodeDataDef | §4.3.16 |
+| `text` | textNodeDataDef | §4.3.13 |
 ### 4.4 完整组件定义
 
 以下 JSON 为所有共享组件定义的聚合，是整个文档中 JSON Schema 定义的唯一权威来源。各组件通过 `#/definitions/xxx` 路径被 §5 和 §6 引用。
