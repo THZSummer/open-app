@@ -510,7 +510,7 @@ graph TB
 | 9 | `connectorNodeDataDef` | 第二层 | 连接器节点业务数据（版本引用 + 字段映射） | §4.3.9 |
 | 10 | `dataProcessorNodeDataDef` | 第二层 | 数据处理器节点业务数据 | §4.3.10 |
 | 11 | `exitNodeDataDef` | 第二层 | 出口节点业务数据 | §4.3.11 |
-| 12 | `loopNodeDataDef` | 第二层 | 循环节点业务数据（继承 nodeDataBaseDef） | §4.3.12 |
+| 13 | `loopNodeDataDef` | 第二层 | 循环节点业务数据（继承 nodeDataBaseDef） | §4.3.12 |
 | 13 | `parallelNodeDataDef` | 第二层 | 并行节点业务数据（继承 nodeDataBaseDef） | §4.3.13 |
 | 14 | `conditionBranchNodeDataDef` | 第二层 | 条件分支节点业务数据（继承 nodeDataBaseDef） | §4.3.14 |
 | 15 | `errorHandlerNodeDataDef` | 第二层 | 错误处理节点业务数据（继承 nodeDataBaseDef） | §4.3.15 |
@@ -1406,7 +1406,62 @@ graph TB
 }
 ```
 
-#### 4.3.12 loopNodeDataDef（V2 新增）
+#### 4.3.12 errorHandlerNodeDataDef（V2 新增）
+
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**。与 loop 同构——主节点结构、分组字段体系（`loopV2GroupId`）、node/edge 数量（5+7）完全一致。区别：① 前端文案（"错误处理"替代"循环"）② 引擎在上游节点失败时路由到错误处理分支。
+
+> **Def**
+
+```json
+{
+  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
+}
+```
+
+> **示例**
+
+```json
+{
+  "type": "error-handler",
+  "labelCn": "错误处理",
+  "labelEn": "Error Handler",
+  "structConfig": {
+    "loopV2GroupId": "err-1"
+  }
+}
+```
+
+> **错误处理完整示例**（5 nodes + 7 edges，来源于前端 FlowCanvas 持久化数据）
+
+```json
+{
+  "nodes": [
+    { "id":"trigger-1",     "type":"trigger",      "position":{"x":250,"y":50},  "data":{ "type":"trigger",      "labelCn":"触发器",         "labelEn":"Trigger",        "structConfig":{} } },
+    { "id":"err-1",         "type":"error-handler", "position":{"x":250,"y":160}, "data":{ "type":"error-handler", "labelCn":"错误处理节点",   "labelEn":"Error Handler",  "structConfig":{ "loopV2GroupId":"err-1" } } },
+    { "id":"err-region-1",  "type":"text",          "position":{"x":-10,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理区域",   "labelEn":"Error Region",   "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"region" } } },
+    { "id":"err-start-1",   "type":"text",          "position":{"x":510,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理开始",   "labelEn":"Error Start",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"start" } } },
+    { "id":"err-end-1",     "type":"text",          "position":{"x":510,"y":500}, "data":{ "type":"text",          "labelCn":"错误处理结束",   "labelEn":"Error End",      "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"end" } } },
+    { "id":"err-break-1",   "type":"text",          "position":{"x":250,"y":580}, "data":{ "type":"text",          "labelCn":"错误处理跳出",   "labelEn":"Error Break",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"break" } } },
+    { "id":"end-1",         "type":"exit",          "position":{"x":250,"y":740}, "data":{ "type":"exit",          "labelCn":"结束",           "labelEn":"End",            "output":{}, "structConfig":{} } }
+  ],
+  "edges": [
+    { "id":"e-t-err",         "source":"trigger-1",  "target":"err-1",        "type":"smoothstep", "data":{ "businessType":"error",      "connectionMode":"serial" } },
+    { "id":"e-err-region",    "source":"err-1",      "target":"err-region-1", "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-err-start",     "source":"err-1",      "target":"err-start-1",  "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-start-end",     "source":"err-start-1", "target":"err-end-1",   "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } },
+    { "id":"e-region-break",  "source":"err-region-1","target":"err-break-1", "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-end-break",     "source":"err-end-1",   "target":"err-break-1", "type":"smoothstep", "data":{ "isStructural":true } },
+    { "id":"e-break-end",     "source":"err-break-1", "target":"end-1",       "type":"smoothstep", "data":{ "businessType":"always",     "connectionMode":"serial" } }
+  ]
+}
+```
+
+> **引擎解析逻辑**：
+> 1. 上游节点执行失败 → `businessType=error` 边激活，路由到错误处理主节点
+> 2. 过滤 `node.type === "text"` 和 `isStructural` 辅助边后，`err-start → err-end` 之间为错误处理子图
+> 3. 无论错误处理子图执行结果如何，`businessType=always` 边确保最终进入下游
+
+#### 4.3.13 loopNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。循环结构的**入口主节点**。
 
@@ -1558,7 +1613,7 @@ graph TB
 > 2. 剩余节点中，从 `loop-start-1 → loop-end-1` 之间的子图即为循环体
 > 3. 对循环体中的每个节点按 Kahn 算法拓扑排序后，按 `iterationVar` 声明的变量名进行迭代执行
 
-#### 4.3.13 textNodeDataDef（V2 新增）
+#### 4.3.14 textNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。**结构节点的标记节点**——循环/错误处理中的"循环区域""循环开始""循环结束""循环跳出"，并行/条件分支中的"分支开始""分支结束""并行合并"。
 
@@ -1615,7 +1670,7 @@ graph TB
 { "type": "text", "labelCn": "循环开始", "structConfig": { "loopV2GroupId": "loop-1", "loopV2Role": "start" } }
 ```
 
-#### 4.3.14 parallelNodeDataDef（V2 新增）
+#### 4.3.15 parallelNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。并行处理结构的**入口主节点**。一个完整并行结构由 **1 个主节点（parallel）+ 默认 2 组分支标记节点 ×2（start+end）+ 1 个 merge 标记节点 = 6 个 node + 8 条 edge** 组成。每组分支的 start→end 之间是可编辑的子图。引擎执行时通过 edge 拓扑识别各分支，按 `connectionMode=parallel` 并发执行。
 
@@ -1743,7 +1798,7 @@ graph TB
 > 2. 剩余节点中，`branch-start → branch-end` 之间的子图即为各分支体。`connectionMode=parallel` 的分支引擎并发执行
 > 3. 所有分支完成后在 `merge` 节点汇合，继续下游
 
-#### 4.3.15 conditionBranchNodeDataDef（V2 新增）
+#### 4.3.16 conditionBranchNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。条件分支结构的**入口主节点**。与 parallel 同构——主节点结构、分组字段体系（`parallelGroupId` + `parallelRole`）、node/edge 数量（6+8）完全一致。区别：① 前端文案（"条件"替代"分支"）② 引擎按 `conditionExpr` 匹配分支执行（而非全部并发）。
 
@@ -1800,61 +1855,6 @@ graph TB
 > 1. 过滤 `node.type === "text"` 的标记节点、`edge.data.isStructural === true` 的辅助边
 > 2. 对每条 `businessType=condition` 的边，按 `conditionExpr` 匹配，命中的分支执行其内部子图
 > 3. 匹配完成后在 `merge` 节点汇合，继续下游
-
-#### 4.3.16 errorHandlerNodeDataDef（V2 新增）
-
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**。与 loop 同构——主节点结构、分组字段体系（`loopV2GroupId`）、node/edge 数量（5+7）完全一致。区别：① 前端文案（"错误处理"替代"循环"）② 引擎在上游节点失败时路由到错误处理分支。
-
-> **Def**
-
-```json
-{
-  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
-}
-```
-
-> **示例**
-
-```json
-{
-  "type": "error-handler",
-  "labelCn": "错误处理",
-  "labelEn": "Error Handler",
-  "structConfig": {
-    "loopV2GroupId": "err-1"
-  }
-}
-```
-
-> **错误处理完整示例**（5 nodes + 7 edges，来源于前端 FlowCanvas 持久化数据）
-
-```json
-{
-  "nodes": [
-    { "id":"trigger-1",     "type":"trigger",      "position":{"x":250,"y":50},  "data":{ "type":"trigger",      "labelCn":"触发器",         "labelEn":"Trigger",        "structConfig":{} } },
-    { "id":"err-1",         "type":"error-handler", "position":{"x":250,"y":160}, "data":{ "type":"error-handler", "labelCn":"错误处理节点",   "labelEn":"Error Handler",  "structConfig":{ "loopV2GroupId":"err-1" } } },
-    { "id":"err-region-1",  "type":"text",          "position":{"x":-10,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理区域",   "labelEn":"Error Region",   "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"region" } } },
-    { "id":"err-start-1",   "type":"text",          "position":{"x":510,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理开始",   "labelEn":"Error Start",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"start" } } },
-    { "id":"err-end-1",     "type":"text",          "position":{"x":510,"y":500}, "data":{ "type":"text",          "labelCn":"错误处理结束",   "labelEn":"Error End",      "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"end" } } },
-    { "id":"err-break-1",   "type":"text",          "position":{"x":250,"y":580}, "data":{ "type":"text",          "labelCn":"错误处理跳出",   "labelEn":"Error Break",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"break" } } },
-    { "id":"end-1",         "type":"exit",          "position":{"x":250,"y":740}, "data":{ "type":"exit",          "labelCn":"结束",           "labelEn":"End",            "output":{}, "structConfig":{} } }
-  ],
-  "edges": [
-    { "id":"e-t-err",         "source":"trigger-1",  "target":"err-1",        "type":"smoothstep", "data":{ "businessType":"error",      "connectionMode":"serial" } },
-    { "id":"e-err-region",    "source":"err-1",      "target":"err-region-1", "type":"smoothstep", "data":{ "isStructural":true } },
-    { "id":"e-err-start",     "source":"err-1",      "target":"err-start-1",  "type":"smoothstep", "data":{ "isStructural":true } },
-    { "id":"e-start-end",     "source":"err-start-1", "target":"err-end-1",   "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } },
-    { "id":"e-region-break",  "source":"err-region-1","target":"err-break-1", "type":"smoothstep", "data":{ "isStructural":true } },
-    { "id":"e-end-break",     "source":"err-end-1",   "target":"err-break-1", "type":"smoothstep", "data":{ "isStructural":true } },
-    { "id":"e-break-end",     "source":"err-break-1", "target":"end-1",       "type":"smoothstep", "data":{ "businessType":"always",     "connectionMode":"serial" } }
-  ]
-}
-```
-
-> **引擎解析逻辑**：
-> 1. 上游节点执行失败 → `businessType=error` 边激活，路由到错误处理主节点
-> 2. 过滤 `node.type === "text"` 和 `isStructural` 辅助边后，`err-start → err-end` 之间为错误处理子图
-> 3. 无论错误处理子图执行结果如何，`businessType=always` 边确保最终进入下游
 
 #### 4.3.17 nodeDataDef（路由汇总）
 
