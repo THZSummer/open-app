@@ -2902,7 +2902,14 @@ graph TB
   "edges": [
     { "id":"e1", "source":"node_trigger", "target":"node_1",    "data":{"businessType":"default"} },
     { "id":"e2", "source":"node_1",       "target":"node_exit", "data":{"businessType":"default"} }
-  ]
+  ],
+  "flowConfig": {
+    "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 20 },
+    "cache": {
+      "key": ["${$.node.trigger.input.body.sender}", "${$.constant:msg_query}"],
+      "ttl": 60
+    }
+  }
 }
 ```
 
@@ -3010,7 +3017,14 @@ graph TB
     { "id":"e_end_brk",      "source":"loop_end_1",   "target":"loop_break_1",  "data":{"isStructural":true } },
     // loop → exit
     { "id":"e_brk_exit",     "source":"loop_break_1", "target":"node_exit",     "data":{"businessType":"default",    "connectionMode":"serial" } }
-  ]
+  ],
+  "flowConfig": {
+    "rateLimitConfig": { "maxQps": 50, "maxConcurrency": 5 },
+    "cache": {
+      "key": ["${$.node.trigger.input.header.Authorization}", "${$.constant:batch_query}"],
+      "ttl": 30
+    }
+  }
 }
 ```
 
