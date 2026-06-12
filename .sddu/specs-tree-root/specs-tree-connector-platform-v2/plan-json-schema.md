@@ -1292,7 +1292,62 @@ graph TB
 }
 ```
 
-#### 4.3.10 dataProcessorNodeDataDef（V2 新增）
+#### 4.3.10 exitNodeDataDef
+
+> 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展出口独有字段。
+
+> **Def**
+
+```json
+{
+  "allOf": [
+    { "$ref": "#/definitions/nodeDataBaseDef" },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "output": {
+          "type": "object",
+          "properties": {
+            "header": { "$ref": "#/definitions/jsonObjectDef" },
+            "body":   { "$ref": "#/definitions/jsonObjectDef" }
+          }
+        }
+      },
+      "required": ["output"]
+    }
+  ]
+}
+```
+
+> **字段说明**
+
+| JSON 字段 | 类型 | 必填 | 来源 | 说明 |
+|-----------|------|:----:|:--:|------|
+| type | string | ✅ | 基类 | `"exit"` |
+| labelCn | string | ❌ | 基类 | 节点中文标签 |
+| labelEn | string | ❌ | 基类 | 节点英文标签 |
+| output | object | ✅ | 独有 | 字段映射，value 遵循 §3 值表达式体系 |
+
+> **示例**
+
+```json
+{
+  "type": "exit",
+  "labelCn": "返回结果",
+  "output": {
+    "body": {
+      "type": "object",
+      "properties": {
+        "msgId":  { "type": "string",  "value": "${$.node.conn_1.output.body.msgId}" },
+        "status": { "type": "string",  "value": "${$.constant:success}" }
+      }
+    }
+  }
+}
+```
+
+#### 4.3.11 dataProcessorNodeDataDef（V2 新增）
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展数据处理器独有字段。无协议包袱，纯内存运行。
 
@@ -1347,61 +1402,6 @@ graph TB
       }
     },
     "required": ["upperName"]
-  }
-}
-```
-
-#### 4.3.11 exitNodeDataDef
-
-> 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展出口独有字段。
-
-> **Def**
-
-```json
-{
-  "allOf": [
-    { "$ref": "#/definitions/nodeDataBaseDef" },
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "output": {
-          "type": "object",
-          "properties": {
-            "header": { "$ref": "#/definitions/jsonObjectDef" },
-            "body":   { "$ref": "#/definitions/jsonObjectDef" }
-          }
-        }
-      },
-      "required": ["output"]
-    }
-  ]
-}
-```
-
-> **字段说明**
-
-| JSON 字段 | 类型 | 必填 | 来源 | 说明 |
-|-----------|------|:----:|:--:|------|
-| type | string | ✅ | 基类 | `"exit"` |
-| labelCn | string | ❌ | 基类 | 节点中文标签 |
-| labelEn | string | ❌ | 基类 | 节点英文标签 |
-| output | object | ✅ | 独有 | 字段映射，value 遵循 §3 值表达式体系 |
-
-> **示例**
-
-```json
-{
-  "type": "exit",
-  "labelCn": "返回结果",
-  "output": {
-    "body": {
-      "type": "object",
-      "properties": {
-        "msgId":  { "type": "string",  "value": "${$.node.conn_1.output.body.msgId}" },
-        "status": { "type": "string",  "value": "${$.constant:success}" }
-      }
-    }
   }
 }
 ```
