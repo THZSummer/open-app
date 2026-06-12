@@ -1408,15 +1408,56 @@ graph TB
 
 #### 4.3.12 errorHandlerNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**。与 loop 同构——主节点结构、分组字段体系（`loopV2GroupId`）、node/edge 数量（5+7）完全一致。区别：① 前端文案（"错误处理"替代"循环"）② 引擎在上游节点失败时路由到错误处理分支。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**，采用 **try-catch 模型**：try 区域包裹被保护节点（由 DAG 拓扑 + text 标记节点界定），catch 仅定义失败返回值。
 
 > **Def**
 
 ```json
 {
-  "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
+  "allOf": [
+    { "$ref": "#/definitions/nodeDataBaseDef" },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "successCondition": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "try 区域成功条件（可空）。对 try 区域最后一个节点的 output 字段做等值比较。空 = 不校验，仅以节点自身成败判断",
+          "properties": {
+            "checkField": {
+              "type": "string",
+              "description": "引用表达式，指向 try 出口数据的字段，如 ${$.node.conn_1.output.body.code}。遵循 §3 值表达式体系"
+            },
+            "expectedValue": {
+              "type": "string",
+              "description": "预期值常量，如 ${$.constant:0}。遵循 §3 值表达式体系"
+            }
+          },
+          "required": ["checkField", "expectedValue"]
+        },
+        "failureResponse": {
+          "$ref": "#/definitions/jsonObjectDef",
+          "description": "catch 失败返回值。复用 jsonObjectDef，value 遵循 §3 值表达式体系。支持运行时上下文字段：${$.node.err_1.current.code} / ${$.node.err_1.current.messageZh} / ${$.node.err_1.current.failedNodeId} / ${$.node.err_1.current.failedNodeLabel}。空 = 使用平台默认错误体 {\"success\":false,\"error\":{\"code\":\"FLOW_ERROR\",\"message\":\"节点执行失败\"}}"
+        }
+      }
+    }
+  ]
 }
 ```
+
+> **字段说明**
+
+| 字段 | 类型 | 必填 | 来源 | 说明 |
+|------|------|:----:|:--:|------|
+| type | string | ✅ | 基类 | `"error-handler"` |
+| successCondition | object | ❌ | 独有 | try 区域成功条件。空 = 仅以节点自身成败判断（HTTP 2xx=成，其余=败） |
+| successCondition.checkField | string | ✅ ⚡ | 独有 | 引用表达式，指向 try 最后一个节点的 output 字段 |
+| successCondition.expectedValue | string | ✅ ⚡ | 独有 | 预期值常量，如 `${$.constant:0}` |
+| failureResponse | object | ❌ | 独有 | catch 失败返回值，复用 jsonObjectDef。空 = 平台默认错误体 |
+| structConfig | object | ❌ | 基类 | `loopV2GroupId` 分组关联 |
+
+⚡ = successCondition 存在时必填。
 
 > **示例**
 
@@ -1425,41 +1466,56 @@ graph TB
   "type": "error-handler",
   "labelCn": "错误处理",
   "labelEn": "Error Handler",
-  "structConfig": {
-    "loopV2GroupId": "err-1"
+  "structConfig": { "loopV2GroupId": "err-1" },
+  "successCondition": {
+    "checkField": "${$.node.conn_1.output.body.code}",
+    "expectedValue": "${$.constant:0}"
+  },
+  "failureResponse": {
+    "type": "object",
+    "properties": {
+      "success": { "type": "boolean", "value": "${$.constant:false}" },
+      "errorCode": { "type": "string", "value": "${$.node.err_1.current.code}" },
+      "errorMessage": { "type": "string", "value": "${$.node.err_1.current.messageZh}" },
+      "failedNodeId": { "type": "string", "value": "${$.node.err_1.current.failedNodeId}" },
+      "failedNodeLabel": { "type": "string", "value": "${$.node.err_1.current.failedNodeLabel}" }
+    }
   }
 }
 ```
 
-> **错误处理完整示例**（5 nodes + 7 edges，来源于前端 FlowCanvas 持久化数据）
+> **错误处理完整示例**（5 nodes + 7 edges）
 
 ```json
 {
   "nodes": [
     { "id":"trigger-1",     "type":"trigger",      "position":{"x":250,"y":50},  "data":{ "type":"trigger",      "labelCn":"触发器",         "labelEn":"Trigger",        "structConfig":{} } },
-    { "id":"err-1",         "type":"error-handler", "position":{"x":250,"y":160}, "data":{ "type":"error-handler", "labelCn":"错误处理节点",   "labelEn":"Error Handler",  "structConfig":{ "loopV2GroupId":"err-1" } } },
+    { "id":"err-1",         "type":"error-handler", "position":{"x":250,"y":160}, "data":{ "type":"error-handler", "labelCn":"错误处理",       "labelEn":"Error Handler",  "structConfig":{ "loopV2GroupId":"err-1" }, "successCondition":{ "checkField":"${$.node.conn_1.output.body.code}","expectedValue":"${$.constant:0}" }, "failureResponse":{ "type":"object","properties":{ "errorCode":{ "type":"string","value":"${$.node.err_1.current.code}" } } } } },
     { "id":"err-region-1",  "type":"text",          "position":{"x":-10,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理区域",   "labelEn":"Error Region",   "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"region" } } },
     { "id":"err-start-1",   "type":"text",          "position":{"x":510,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理开始",   "labelEn":"Error Start",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"start" } } },
-    { "id":"err-end-1",     "type":"text",          "position":{"x":510,"y":500}, "data":{ "type":"text",          "labelCn":"错误处理结束",   "labelEn":"Error End",      "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"end" } } },
-    { "id":"err-break-1",   "type":"text",          "position":{"x":250,"y":580}, "data":{ "type":"text",          "labelCn":"错误处理跳出",   "labelEn":"Error Break",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"break" } } },
-    { "id":"end-1",         "type":"exit",          "position":{"x":250,"y":740}, "data":{ "type":"exit",          "labelCn":"结束",           "labelEn":"End",            "output":{}, "structConfig":{} } }
+    { "id":"conn-1",        "type":"connector",     "position":{"x":510,"y":400}, "data":{ "type":"connector",     "labelCn":"被保护节点",     "connectorVersionId":"1234567890123456789", "input":{}, "structConfig":{ "parentLoopV2GroupId":"err-1","parentLoopV2Role":"right-column-node" } } },
+    { "id":"err-end-1",     "type":"text",          "position":{"x":510,"y":560}, "data":{ "type":"text",          "labelCn":"错误处理结束",   "labelEn":"Error End",      "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"end" } } },
+    { "id":"err-break-1",   "type":"text",          "position":{"x":250,"y":640}, "data":{ "type":"text",          "labelCn":"错误处理跳出",   "labelEn":"Error Break",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"break" } } },
+    { "id":"end-1",         "type":"exit",          "position":{"x":250,"y":800}, "data":{ "type":"exit",          "labelCn":"结束",           "labelEn":"End",            "output":{}, "structConfig":{} } }
   ],
   "edges": [
-    { "id":"e-t-err",         "source":"trigger-1",  "target":"err-1",        "type":"smoothstep", "data":{ "businessType":"error",      "connectionMode":"serial" } },
+    { "id":"e-t-err",         "source":"trigger-1",  "target":"err-1",        "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } },
     { "id":"e-err-region",    "source":"err-1",      "target":"err-region-1", "type":"smoothstep", "data":{ "isStructural":true } },
     { "id":"e-err-start",     "source":"err-1",      "target":"err-start-1",  "type":"smoothstep", "data":{ "isStructural":true } },
-    { "id":"e-start-end",     "source":"err-start-1", "target":"err-end-1",   "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } },
+    { "id":"e-start-conn",    "source":"err-start-1", "target":"conn-1",       "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } },
+    { "id":"e-conn-end",      "source":"conn-1",      "target":"err-end-1",    "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } },
     { "id":"e-region-break",  "source":"err-region-1","target":"err-break-1", "type":"smoothstep", "data":{ "isStructural":true } },
     { "id":"e-end-break",     "source":"err-end-1",   "target":"err-break-1", "type":"smoothstep", "data":{ "isStructural":true } },
-    { "id":"e-break-end",     "source":"err-break-1", "target":"end-1",       "type":"smoothstep", "data":{ "businessType":"always",     "connectionMode":"serial" } }
+    { "id":"e-break-end",     "source":"err-break-1", "target":"end-1",       "type":"smoothstep", "data":{ "businessType":"default",    "connectionMode":"serial" } }
   ]
 }
 ```
 
 > **引擎解析逻辑**：
-> 1. 上游节点执行失败 → `businessType=error` 边激活，路由到错误处理主节点
-> 2. 过滤 `node.type === "text"` 和 `isStructural` 辅助边后，`err-start → err-end` 之间为错误处理子图
-> 3. 无论错误处理子图执行结果如何，`businessType=always` 边确保最终进入下游
+> 1. try 区域内节点执行失败（HTTP 非 2xx / 超时 / 转换失败）或 successCondition 不满足 → **立即终止整个连接流**
+> 2. 以 `failureResponse` 作为 HTTP 响应返回；未配 → 使用平台默认错误体
+> 3. successCondition 满足 + 全部节点正常完成 → 错误处理节点透明通过，流继续下游
+> 4. 嵌套错误处理：内层未配 failureResponse → 冒泡到外层取值
 
 #### 4.3.13 loopNodeDataDef（V2 新增）
 
@@ -2226,10 +2282,28 @@ graph TB
     },
 
     "errorHandlerNodeDataDef": {
-      "$id": "urn:openapp:schema:errorHandlerNodeDataDef:v1",
+      "$id": "urn:openapp:schema:errorHandlerNodeDataDef:v2",
       "title": "errorHandlerNodeDataDef",
-      "description": "错误处理节点业务数据。继承 nodeDataBaseDef，无额外独有字段",
-      "allOf": [{ "$ref": "#/definitions/nodeDataBaseDef" }]
+      "description": "错误处理节点业务数据。try-catch 模型，继承 nodeDataBaseDef",
+      "allOf": [
+        { "$ref": "#/definitions/nodeDataBaseDef" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "successCondition": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "checkField": { "type": "string", "description": "引用表达式，指向 try 出口数据的字段" },
+                "expectedValue": { "type": "string", "description": "预期值常量" }
+              },
+              "required": ["checkField", "expectedValue"]
+            },
+            "failureResponse": { "$ref": "#/definitions/jsonObjectDef", "description": "catch 失败返回值。复用 jsonObjectDef" }
+          }
+        }
+      ]
     },
 
     "textNodeDataDef": {
@@ -2740,7 +2814,7 @@ graph TB
     },
 
     // ==================== 嵌套错误处理 (5 nodes，位于循环体内部) ====================
-    { "id":"err_1",        "type":"error-handler", "position":{"x":760,"y":620}, "data":{ "type":"error-handler", "labelCn":"错误处理",    "structConfig":{ "loopV2GroupId":"err_1","parentLoopV2GroupId":"loop_1" } } },
+    { "id":"err_1",        "type":"error-handler", "position":{"x":760,"y":620}, "data":{ "type":"error-handler", "labelCn":"错误处理",    "structConfig":{ "loopV2GroupId":"err_1","parentLoopV2GroupId":"loop_1" }, "successCondition":{ "checkField":"${$.node.conn_1.output.body.code}","expectedValue":"${$.constant:0}" }, "failureResponse":{ "type":"object","properties":{ "errorCode":{ "type":"string","value":"${$.node.err_1.current.code}" } } } } },
     { "id":"err_region_1", "type":"text",          "position":{"x":500,"y":760}, "data":{ "type":"text",          "labelCn":"错误处理区域","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"region" } } },
     { "id":"err_start_1",  "type":"text",          "position":{"x":1010,"y":760},"data":{ "type":"text",          "labelCn":"错误处理开始","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"start" } } },
     // err body: retry connector
