@@ -2,7 +2,7 @@
 
 **Feature ID**: CONN-PLAT-002
 **关联文档**: spec.md（§3.7 FR-037）, plan-db.md（§0.6 JSON 字段规范）, plan-api.md（§3.4 #28/#29 flowConfig.cache）, plan-json-schema.md（§6.4 flowConfig.cache）
-**版本**: v3.1
+**版本**: v4.0
 **创建日期**: 2026-06-12
 **对齐基线**: spec.md v2.17-draft + plan-db.md v2.0 + plan-api.md v5.3 + plan-json-schema.md v9.7
 
@@ -734,7 +734,145 @@ connector-api 运行时 ───▶│ cp:entity:*          平台配置缓存 
 
 ---
 
-## 13. 开放问题
+## 13. 通用缓存问题与防护
+
+> 💡 以下三种防护机制适用于 **Part 1 业务缓存** 和 **Part 2 平台配置缓存**，由 `CacheEngine` 和 `EntityCacheManager` 统一实现。
+
+---
+
+### 13.1 缓存穿透
+
+**问题**：恶意/异常请求使用不存在的 key（如伪造的 `flowId`）绕过缓存，每次都穿透到 MySQL 查询不存在的记录。
+
+**方案**：**缓存空值**。MySQL 返回 NULL 时，写入一条短 TTL 空标记。后续相同请求命中空标记直接返回，不穿透。
+
+```
+请求 → Redis GET → 命中空标记 "__NULL__" → 直接返回 404/空
+                  → 未命中 → MySQL → 有数据？→ SET value EX ttl
+                                     → 无数据？→ SET "__NULL__" EX 60
+```
+
+| 配置项 | 默认值 | 适用 |
+|--------|--------|------|
+| `cp.cache.null-value.ttl` | `60`（秒） | Part 1 + Part 2 |
+| `cp.cache.null-value.marker` | `"__NULL__"` | 空值标记常量 |
+
+**Redis 命令**：
+
+```java
+Object value = redis.get(key);
+if (value == null) {
+    value = queryDB(key);
+    if (value == null) {
+        redis.set(key, "__NULL__", 60);  // 空值短 TTL
+        return null;
+    }
+    redis.set(key, value, computeTtl());
+    return value;
+}
+if ("__NULL__".equals(value)) return null;  // 命中空标记
+return value;
+```
+
+---
+
+### 13.2 缓存击穿
+
+**问题**：热点 key 过期瞬间（如 7 天到期），大量并发请求同时发现缓存失效 → 全部回源 MySQL → DB 瞬时压力激增。
+
+**方案**：**互斥加载锁**。第一个发现缓存失效的请求获取分布式锁（Redis `SETNX`），独自查 MySQL 回写缓存。其余请求等待锁释放后重读缓存。
+
+```
+并发请求 A,B,C 同时 GET 同一个 key
+  → A: 未命中 → SETNX lock 成功 → 查 MySQL → SET value → DEL lock
+  → B: 未命中 → SETNX lock 失败 → sleep(50ms) → GET → 命中 A 写入的值 ✅
+  → C: 未命中 → SETNX lock 失败 → sleep(50ms) → GET → 命中 ✅
+```
+
+```java
+String lockKey = cacheKey + ":lock";
+int retryCount = 0;
+
+while (retryCount < 10) {
+    value = redis.get(cacheKey);
+    if (value != null) return value;            // 命中（含空标记）
+
+    if (redis.setnx(lockKey, "1", 10)) {        // 获锁成功，TTL=10s
+        try {
+            value = queryDB(key);               // 独自查 DB
+            redis.set(cacheKey, value, ttl);    // 回写缓存
+            return value;
+        } finally {
+            redis.del(lockKey);                 // 释放锁
+        }
+    }
+    Thread.sleep(50);                           // 等待持锁者
+    retryCount++;
+}
+return queryDB(key);                            // 超时兜底，直接查 DB
+```
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `cp.cache.mutex.lock-ttl` | `10`（秒） | 锁最大持有时间，防止死锁 |
+| `cp.cache.mutex.retry-count` | `10` | 等待重试次数 |
+| `cp.cache.mutex.retry-interval` | `50`（ms） | 重试间隔 |
+
+---
+
+### 13.3 热点 Key
+
+**问题**：热门连接流每秒数百次触发，所有请求打同一个 Redis key。虽然单 Redis 实例 QPS 通常足够，但结合 MEDIUMTEXT 大 value 仍有带宽压力。
+
+**方案**：**两级缓存**——本地缓存（Caffeine L1）+ Redis（L2）。L1 命中率 >95% 时大幅减少 Redis 读取。
+
+```
+请求 → Caffeine L1 → 命中（<1μs）
+                   → 未命中 → Redis L2 → 命中 → 回填 L1
+                                        → 未命中 → MySQL → 回填 L2 → 回填 L1
+```
+
+**适用对象**：
+- Part 1 业务缓存：热门缓存键的执行结果
+- Part 2 平台缓存：热门已部署流的 FlowVersion / ConnectorVersion
+
+**Caffeine 配置**：
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `cp.cache.local.max-size` | `1000` | 最大缓存条目数 |
+| `cp.cache.local.ttl` | `30`（秒） | 本地缓存 TTL（短于 Redis，保证最终一致性） |
+| `cp.cache.local.enabled` | `true` | 是否启用本地缓存 |
+
+**两级读取流程**：
+
+```java
+// ① L1 本地缓存
+value = caffeine.getIfPresent(cacheKey);
+if (value != null) return value;
+
+// ② L2 Redis（含互斥锁防击穿）
+value = redisGetWithMutex(cacheKey);
+if (value != null) {
+    caffeine.put(cacheKey, value);  // 回填 L1
+    return value;
+}
+
+// ③ MySQL
+value = queryDB(key);
+redis.set(cacheKey, value, ttl);
+caffeine.put(cacheKey, value);
+return value;
+```
+
+**L1 一致性保证**：
+- L1 TTL（30s）远小于 L2 TTL（7 天），最终一致性窗口 ≤ 30s
+- 版本生命周期事件（发布/失效/删除）触发时，open-server 可**主动广播**失效消息 → connector-api 清除本地缓存
+- 或直接用短 TTL 兜底，无需广播（V2 实现简单优先）
+
+---
+
+## 14. 开放问题
 
 | # | 问题 | 影响范围 | 建议决策时间 | 状态 |
 |----|------|---------|-------------|:--:|
@@ -745,7 +883,7 @@ connector-api 运行时 ───▶│ cp:entity:*          平台配置缓存 
 
 ---
 
-## 14. 文件影响分析
+## 15. 文件影响分析
 
 | 操作 | 文件 | 说明 |
 |:--:|------|------|
@@ -760,6 +898,10 @@ connector-api 运行时 ───▶│ cp:entity:*          平台配置缓存 
 | NEW | `connector-api/.../cache/EntityCacheManager.java` | 实体缓存管理器：Cache-Aside 读（Flow / FlowVersion / Connector / ConnectorVersion），MGET 批量读取 |
 | NEW | `connector-api/.../cache/EntityCacheSerializer.java` | 实体 JSON 序列化/反序列化（DB row → JSON → POJO） |
 | MODIFY | `connector-api/.../runtime/FlowExecutor.java` | 运行时入口改为优先读实体缓存（MGET 替代逐条 MySQL 查询） |
+| — | — | **通用防护（§13）** | — |
+| NEW | `connector-api/.../cache/CacheNullValueGuard.java` | 缓存穿透防护：空值标记（"__NULL__"）短 TTL 写入 + 识别 |
+| NEW | `connector-api/.../cache/CacheMutexLock.java` | 缓存击穿防护：Redis SETNX 分布式互斥锁 + 重试等待 |
+| NEW | `connector-api/.../cache/CacheLocalL1.java` | 热点 Key 防护：Caffeine 本地缓存 L1（maxSize=1000, TTL=30s） |
 | — | — | **open-server — 缓存写入/清理（仅失效，不读）** | — |
 | MODIFY | `open-server/.../service/FlowVersionService.java` | 版本发布时 SET FlowVersion 缓存 + 遍历 DAG SET ConnectorVersion 缓存；失效/删除时 DEL |
 | MODIFY | `open-server/.../service/ConnectorVersionService.java` | 连接器版本发布时 SET 缓存；失效/删除时 DEL |
@@ -824,6 +966,7 @@ connector-api 运行时 ───▶│ cp:entity:*          平台配置缓存 
 | v2.0 | 2026-06-12 | 方案重构：node_type=0 cache_hit 伪枚举 → execution_record/step 对称 cache_status/cache_key/cache_ttl_remaining 字段体系 | SDDU Plan Agent |
 | v3.0 | 2026-06-12 | 新增 §12 Part 2 平台配置缓存：四实体（Flow/FlowVersion/Connector/ConnectorVersion）Cache-Aside + 部署预热 + open-server 写/清理 | SDDU Plan Agent |
 | v3.1 | 2026-06-12 | §12.3 TTL 策略调整：永不过期 → 7 天 + 随机抖动（±7200s），防死缓存 + 缓存血崩 | SDDU Plan Agent |
+| v4.0 | 2026-06-12 | 新增 §13 通用缓存问题与防护：① 穿透 → 空值标记 ② 击穿 → 互斥锁 ③ 热点 → Caffeine L1，三机制覆盖 Part 1+2 | SDDU Plan Agent |
 
 ---
 
