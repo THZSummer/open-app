@@ -2,7 +2,7 @@
 
 **Feature ID**: CONN-PLAT-002
 **关联文档**: spec.md（§3.7 FR-037）, plan-db.md（§0.6 JSON 字段规范）, plan-api.md（§3.4 #28/#29 flowConfig.cache）, plan-json-schema.md（§6.4 flowConfig.cache）
-**版本**: v3.0
+**版本**: v3.1
 **创建日期**: 2026-06-12
 **对齐基线**: spec.md v2.17-draft + plan-db.md v2.0 + plan-api.md v5.3 + plan-json-schema.md v9.7
 
@@ -595,10 +595,43 @@ connector-api 每次处理 HTTP 触发请求时，存在以下**必经的 MySQL 
 
 | 策略项 | 值 | 说明 |
 |--------|-----|------|
-| **TTL** | **永不过期**（不设 EXPIRE） | 已发布的版本配置不可变，通过版本生命周期事件主动管理 |
+| **TTL** | **7 天 + 随机抖动**（基准 604800s，抖动 ± 7200s） | 防止死缓存堆积；随机抖动避免大量 key 同时过期引发缓存血崩 |
 | **读策略** | **Cache-Aside**：connector-api 先读 Redis → 未命中则读 MySQL → 回写 Redis | 标准旁路缓存模式 |
 | **写策略** | **Write-Through**：open-server 在实体变更时同步写入/更新/删除 Redis | 保证缓存与 DB 一致 |
 | **缓存值** | 完整实体 JSON（所有列），含 MEDIUMTEXT 配置快照和状态字段 | 避免二次查询做状态校验 |
+
+#### 12.3a TTL 随机抖动设计
+
+**问题**：如果大量缓存在同一时刻写入且 TTL 相同，过期时会产生**缓存血崩**——大量 key 同时失效，瞬间全部回源 MySQL。
+
+**方案**：每条缓存写入时，TTL = 基准值 + 随机偏移。
+
+```
+TTL = BASE_TTL + random(0, JITTER_RANGE)
+
+BASE_TTL  = 604800s（7 天），application.yml 可配
+JITTER    = random(0, 7200s)（0~2 小时）
+实际 TTL  = 604800 ~ 612000s（7 天 ~ 7 天+2 小时）
+```
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `cp.cache.entity.ttl-base` | `604800`（7 天） | 全局可配 |
+| `cp.cache.entity.ttl-jitter` | `7200`（2 小时） | 全局可配，0 = 关闭抖动 |
+
+**Redis 写入命令**：
+
+```java
+// 每次 SET 时独立生成随机 TTL
+int ttl = baseTtl + ThreadLocalRandom.current().nextInt(jitterRange + 1);
+redis.set(key, json, ttl);  // SET key value EX ttl
+```
+
+**为什么选 7 天**：
+- 已发布的版本配置变更频率极低（按天/周计）
+- 7 天内未读取的缓存大概率是冷数据，释放 Redis 内存
+- 即使意外过期，Cache-Aside 自动回源 MySQL，用户无感知
+- 配合版本生命周期事件（发布/失效/删除）主动 `DEL`，实际过期前已被清理
 
 ### 12.4 缓存生命周期
 
@@ -694,7 +727,7 @@ connector-api 运行时 ───▶│ cp:entity:*          平台配置缓存 
 | **缓存什么** | 连接流执行结果（HTTP 响应） | 实体对象（Flow / FlowVersion / Connector / ConnectorVersion） |
 | **谁来配置** | 用户（flowConfig.cache） | 系统自动 |
 | **缓存键** | `cp:cache:{flowId}:{versionNumber}:{inputHash}` | `cp:entity:{type}:{id}` |
-| **TTL** | 用户指定（秒） | 永不过期（靠事件失效） |
+| **TTL** | 用户指定（秒） | 7 天 + 随机抖动（基准 604800s ± 7200s） |
 | **谁来读** | connector-api | connector-api |
 | **谁来写** | connector-api（执行后） | open-server（实体变更时） |
 | **谁来清理** | open-server（版本发布/部署时异步清理） | open-server（实体失效/删除时同步删除） |
@@ -790,6 +823,7 @@ connector-api 运行时 ───▶│ cp:entity:*          平台配置缓存 
 | v1.2 | 2026-06-12 | 用户决策落地第二轮：① OQ-C02 全局可配置 ② OQ-C03 异步消息队列 ③ OQ-C04 延后 V3 | SDDU Plan Agent |
 | v2.0 | 2026-06-12 | 方案重构：node_type=0 cache_hit 伪枚举 → execution_record/step 对称 cache_status/cache_key/cache_ttl_remaining 字段体系 | SDDU Plan Agent |
 | v3.0 | 2026-06-12 | 新增 §12 Part 2 平台配置缓存：四实体（Flow/FlowVersion/Connector/ConnectorVersion）Cache-Aside + 部署预热 + open-server 写/清理 | SDDU Plan Agent |
+| v3.1 | 2026-06-12 | §12.3 TTL 策略调整：永不过期 → 7 天 + 随机抖动（±7200s），防死缓存 + 缓存血崩 | SDDU Plan Agent |
 
 ---
 
