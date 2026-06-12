@@ -2,9 +2,9 @@
 
 **Feature ID**: CONN-PLAT-002
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
-**版本**: v5.3
+**版本**: v6.0
 **创建日期**: 2026-06-09
-**对齐基线**: spec.md v2.15-draft + plan.md + plan-db.md
+**对齐基线**: spec.md v2.15-draft + plan.md + plan-db.md + plan-json-schema.md v9.7
 
 ---
 
@@ -14,7 +14,7 @@
 |------|------|---------|
 | **版本模型** | **多版本**（草稿→发布→失效→删除），最多 1000 个版本 | spec v2.15 |
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
-| **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md)：React Flow 格式 / 认证多选 / inputMapping-outputMapping 分段 / JSON Path 表达式 / FR-047 类型严格约束 | plan-json-schema.md v6.0 |
+| **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.7：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler successCondition+failureResponse | plan-json-schema.md v9.7 |
 | **服务归属** | open-server（管理面 49 个） + connector-api（运行时 2 个） | plan.md §1 |
 | 端点总数 | **51**（open-server 49 + connector-api 2） | — |
 
@@ -903,29 +903,32 @@
 | publishedBy | string | 发布人 |
 | createTime | string | 创建时间 |
 
-**`connectionConfig` 子字段**
+**`connectionConfig` 子字段**（对齐 plan-json-schema.md §5.2 connectionConfig v3）
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
+| labelCn | string | 连接器中文标签（快照） |
+| labelEn | string | 连接器英文标签（快照） |
 | protocol | string | 协议类型，固定 `"HTTP"` |
-| protocolConfig | object | 协议配置：url/method/headers |
-| authConfig | object | 认证配置，见下方子表 |
-| urlWhitelist | array | URL 白名单规则数组，见下方子表。空数组=不限制 |
-| inputContract | object | 入参契约（JSON Schema） |
-| outputContract | object | 出参契约（JSON Schema） |
+| protocolConfig | object | 协议配置：url / method（headers 由 input.header 承载，不在此处） |
+| authConfigs | array | 认证配置列表（minItems 1），每项见下方 `authConfigs[]` 子表 |
+| urlWhitelist | array | URL 白名单规则数组，见下方 `urlWhitelist[]` 子表。空数组=不限制 |
+| input | object | 入参声明（HTTP header/query/body 三段式），见 plan-json-schema.md §4.3.5 httpInputDef |
+| output | object | 出参声明（HTTP header/body 两段式），见 plan-json-schema.md §4.3.6 httpOutputDef |
+| timeoutMs | int | 单次调用超时（毫秒），默认 3000 |
+| rateLimitConfig | object | 限流配置（maxQps / maxConcurrency），见 plan-json-schema.md §4.3.3 |
 
-**`authConfig` 子字段**
+**`authConfigs[]` 子字段**（对齐 plan-json-schema.md §4.3.2 authConfigDef v2）
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| types | string[] | 认证类型：`SOA`/`APIG`/`DIGITAL_SIGN`/`COOKIE` |
-| fields | array | 凭证字段列表 |
-| fields[].name | string | 凭证名称 |
-| fields[].carrier | string | 放置位置：`header`/`query` |
-| fields[].fieldName | string | Header/Query 参数名 |
-| fields[].required | bool | 是否必填 |
-| fields[].sensitive | bool | 是否敏感（脱敏显示） |
-| fields[].sort | int | 排序（运行时按序附加） |
+| type | string | 认证类型：`SOA`/`APIG`/`SYSTOKEN`/`AKSK`/`NONE`/`COOKIE`/`SIGNATURE` |
+| header | object | 放置在请求头的认证字段（jsonObjectDef）。与 query 至少二选一 |
+| query | object | 放置在 Query 的认证字段（jsonObjectDef）。与 header 至少二选一 |
+| sysAccountWhitelist | string[] | type=SYSTOKEN 时必填，允许触发的账号白名单。空数组=全部禁止 |
+| secretKey | object | type=SIGNATURE 时必填，签名密钥定义（jsonObjectDef） |
+
+> `header`/`query` 内每个字段的 `value` 遵循 §3 值表达式体系（如 `"${$.system.env.soaToken}"`）。`sensitive=true` 的字段落库加密存储、日志脱敏打印。
 
 **`urlWhitelist[]` 子字段**
 
@@ -951,30 +954,81 @@
     "versionNumber": 2,
     "status": 2,
     "connectionConfig": {
+      "labelCn": "IM 发送消息",
+      "labelEn": "IM Send Message",
       "protocol": "HTTP",
       "protocolConfig": {
         "url": "https://openapi.xxx.com/im/send",
-        "method": "POST",
-        "headers": { "Content-Type": "application/json" }
+        "method": "POST"
       },
-      "authConfig": {
-        "types": ["SOA", "DIGITAL_SIGN"],
-        "fields": [
-          { "name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true, "sort": 1 },
-          { "name": "signature", "carrier": "header", "fieldName": "X-Signature", "required": true, "sensitive": true, "sort": 2 }
-        ]
-      },
+      "authConfigs": [
+        {
+          "type": "SOA",
+          "header": {
+            "type": "object",
+            "properties": {
+              "X-Soa-Token": {
+                "type": "string",
+                "required": true,
+                "sensitive": true,
+                "value": "${$.system.env.soaToken}",
+                "description": "SOA 认证令牌"
+              }
+            }
+          }
+        },
+        {
+          "type": "SIGNATURE",
+          "secretKey": {
+            "type": "object",
+            "properties": {
+              "signSecretKey": {
+                "type": "string",
+                "required": true,
+                "sensitive": true,
+                "value": "${$.constant:user-configured-secret-key}",
+                "description": "签名密钥"
+              }
+            }
+          },
+          "header": {
+            "type": "object",
+            "properties": {
+              "X-Signature": {
+                "type": "string",
+                "required": true,
+                "sensitive": true,
+                "value": "${$.system.env.signature}",
+                "description": "引擎动态计算的签名值"
+              }
+            }
+          }
+        }
+      ],
       "urlWhitelist": [
         { "pattern": "^https://api\\.example\\.com/v1/.*", "description": "内部 API 网关" }
       ],
-      "inputContract": {
+      "input": {
         "protocol": "HTTP",
-        "body": { "type": "object", "properties": { "receiver": {"type":"string"}, "content": {"type":"string"} }, "required": ["receiver","content"] }
+        "body": {
+          "type": "object",
+          "properties": {
+            "receiver": { "type": "string", "required": true, "description": "接收者 ID" },
+            "content":  { "type": "string", "required": true, "description": "消息内容" }
+          }
+        }
       },
-      "outputContract": {
+      "output": {
         "protocol": "HTTP",
-        "body": { "type": "object", "properties": { "msgId": {"type":"string"} } }
-      }
+        "body": {
+          "type": "object",
+          "properties": {
+            "msgId": { "type": "string", "description": "消息 ID" }
+          }
+        }
+      },
+      "timeoutMs": 5000,
+      "rateLimitConfig": { "maxQps": 10, "maxConcurrency": 5 }
     },
     "publishedTime": "2026-06-08 09:00:00",
     "publishedBy": "lisi",
@@ -1005,9 +1059,10 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #9 |
+| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #9（对齐 plan-json-schema.md §5.2） |
 
 > `urlWhitelist` 校验：每条 `pattern` 须为合法 Java 正则，不合法返回 400。空数组=不限制。
+> `authConfigs` 校验：`type` 枚举值合法、`header`/`query` 至少声明其一、`type=SYSTOKEN` 时 `sysAccountWhitelist` 必填、`type=SIGNATURE` 时 `secretKey` 必填。
 
 **响应体 `data`**
 
@@ -1022,7 +1077,7 @@
 
 | code | 说明 |
 |------|------|
-| 400 | URL 白名单正则语法错误 |
+| 400 | URL 白名单正则语法错误 / authConfigs 结构校验失败 |
 | 409 | 非草稿状态，不可编辑 |
 
 **示例**
@@ -1034,18 +1089,58 @@
 // 请求体
 {
   "connectionConfig": {
+    "labelCn": "IM 发送消息 V2",
+    "labelEn": "IM Send Message V2",
     "protocol": "HTTP",
-    "protocolConfig": { "url": "https://openapi.xxx.com/im/send/v2", "method": "POST", "headers": {"Content-Type":"application/json"} },
-    "authConfig": {
-      "types": ["SOA", "DIGITAL_SIGN"],
-      "fields": [
-        {"name":"accessKey","carrier":"header","fieldName":"AK","required":true,"sensitive":true,"sort":1},
-        {"name":"signature","carrier":"header","fieldName":"X-Signature","required":true,"sensitive":true,"sort":2}
-      ]
-    },
+    "protocolConfig": { "url": "https://openapi.xxx.com/im/send/v2", "method": "POST" },
+    "authConfigs": [
+      {
+        "type": "SOA",
+        "header": {
+          "type": "object",
+          "properties": {
+            "X-Soa-Token": { "type": "string", "required": true, "sensitive": true, "value": "${$.system.env.soaToken}" }
+          }
+        }
+      },
+      {
+        "type": "SIGNATURE",
+        "secretKey": {
+          "type": "object",
+          "properties": {
+            "signSecretKey": { "type": "string", "required": true, "sensitive": true, "value": "${$.constant:new-secret-key}" }
+          }
+        },
+        "header": {
+          "type": "object",
+          "properties": {
+            "X-Signature": { "type": "string", "required": true, "sensitive": true, "value": "${$.system.env.signature}" }
+          }
+        }
+      }
+    ],
     "urlWhitelist": [{"pattern":"^https://api\\.example\\.com/v2/.*","description":"新版 API"}],
-    "inputContract": {"protocol":"HTTP","body":{"type":"object","properties":{"receiver":{"type":"string"},"content":{"type":"string"}},"required":["receiver","content"]}},
-    "outputContract": {"protocol":"HTTP","body":{"type":"object","properties":{"msgId":{"type":"string"}}}}
+    "input": {
+      "protocol": "HTTP",
+      "body": {
+        "type": "object",
+        "properties": {
+          "receiver": { "type": "string", "required": true, "description": "接收者 ID" },
+          "content":  { "type": "string", "required": true, "description": "消息内容" }
+        }
+      }
+    },
+    "output": {
+      "protocol": "HTTP",
+      "body": {
+        "type": "object",
+        "properties": {
+          "msgId": { "type": "string", "description": "消息 ID" }
+        }
+      }
+    },
+    "timeoutMs": 5000,
+    "rateLimitConfig": { "maxQps": 20, "maxConcurrency": 5 }
   }
 }
 
@@ -1961,9 +2056,9 @@
 | versionNumber | int | 版本号 |
 | status | int | 版本状态，见 §1.8.4 |
 | orchestrationConfig | object | 编排配置快照 |
-| orchestrationConfig.flowConfig | object | 流级配置（超时/限流/缓存） |
-| orchestrationConfig.nodes | array | 节点列表 |
-| orchestrationConfig.edges | array | 边列表（含 connectionMode 串行/并行） |
+| orchestrationConfig.flowConfig | object | 流级配置（限流/缓存），见 plan-json-schema.md §6.4 |
+| orchestrationConfig.nodes | array | 节点列表，每项含 `id/type/position/data`，`data` 按 `node.type` 路由到 9 种 data Schema |
+| orchestrationConfig.edges | array | 边列表，每项含 `id/source/target/type/data`，`data` 承载控制流语义（businessType/connectionMode/conditionExpr/isStructural/iterationVar） |
 | publishedTime | string | 发布时间 |
 | publishedBy | string | 发布人 |
 | createTime | string | 创建时间 |
@@ -1980,7 +2075,10 @@
     "versionNumber": 2,
     "status": 5,
     "orchestrationConfig": {
-      "flowConfig": { "timeout": {"perNode":10,"global":60}, "rateLimit": {"mode":"QPS","value":100}, "cache": {"enabled":true,"keyTemplate":"${$.node.trigger.input.userId}","ttl":300} },
+      "flowConfig": {
+        "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 10 },
+        "cache": { "key": ["${$.node.trigger.input.body.userId}"], "ttl": 300 }
+      },
       "nodes": [ /* 完整 nodes 数组 */ ],
       "edges": [ {"id":"e1","source":"node_trigger","target":"node_1","type":"smoothstep","data":{"connectionMode":"serial"}} ]
     },
@@ -2014,14 +2112,15 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | orchestrationConfig | object | ✅ | 编排配置全文替换 |
-| orchestrationConfig.flowConfig | object | ❌ | 流级配置 |
-| orchestrationConfig.flowConfig.timeout.perNode | int | ❌ | 单节点超时（秒），0=不限 |
-| orchestrationConfig.flowConfig.timeout.global | int | ❌ | 全局超时（秒） |
-| orchestrationConfig.flowConfig.rateLimit.mode | string | ❌ | 限流模式：`QPS`/`CONCURRENCY` |
-| orchestrationConfig.flowConfig.rateLimit.value | int | ❌ | 限流阈值，0=关闭 |
+| orchestrationConfig.flowConfig | object | ❌ | 流级配置（对齐 plan-json-schema.md §6.4） |
+| orchestrationConfig.flowConfig.rateLimitConfig | object | ❌ | 入站限流配置 |
+| orchestrationConfig.flowConfig.rateLimitConfig.maxQps | int | ❌ | 每秒最大请求数，范围 1-10000 |
+| orchestrationConfig.flowConfig.rateLimitConfig.maxConcurrency | int | ❌ | 最大并发数，范围 1-1000 |
 | orchestrationConfig.flowConfig.cache | object | ❌ | 缓存配置 |
-| orchestrationConfig.nodes | array | ✅ | 节点列表（trigger/connector/data_processor/exit） |
-| orchestrationConfig.edges | array | ✅ | 边列表，`data.connectionMode` 支持 `serial`/`parallel` |
+| orchestrationConfig.flowConfig.cache.key | string[] | ❌ | 缓存键表达式列表（minItems 1），每个元素遵循 §3 值表达式体系 |
+| orchestrationConfig.flowConfig.cache.ttl | int | ❌ | 缓存时长（秒） |
+| orchestrationConfig.nodes | array | ✅ | 节点列表（9 种 node.type：trigger/connector/data_processor/exit/loop-v2/parallel/condition-branch/error-handler/text） |
+| orchestrationConfig.edges | array | ✅ | 边列表，`data` 承载控制流语义（businessType/connectionMode/conditionExpr/isStructural/iterationVar） |
 
 **响应体 `data`**
 
@@ -2048,7 +2147,10 @@
 // 请求体
 {
   "orchestrationConfig": {
-    "flowConfig": { "timeout": {"perNode":10,"global":60}, "rateLimit": {"mode":"QPS","value":100} },
+    "flowConfig": {
+      "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 10 },
+      "cache": { "key": ["${$.node.trigger.input.body.userId}"], "ttl": 300 }
+    },
     "nodes": [ /* 完整 nodes 数组 */ ],
     "edges": [ /* 完整 edges 数组 */ ]
   }
@@ -3009,7 +3111,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| triggerData | object | ✅ | 模拟触发数据，结构与触发器节点的 inputContract 一致 |
+| triggerData | object | ✅ | 模拟触发数据，结构与触发器节点的 nodeInput（httpInputDef）一致 |
 
 **响应体 `data`**（同步返回，由 connector-api 透传）
 
@@ -3103,7 +3205,7 @@
 2. SYSTOKEN 凭证在白名单内
 3. 未超过入站限流阈值
 
-**请求体**（结构与触发器节点的 inputContract 一致）
+**请求体**（结构与触发器节点的 nodeInput（httpInputDef）一致）
 
 **响应体 `data`**
 
@@ -3174,3 +3276,4 @@
 | v5.3 | 2026-06-10 | **§3 全文补字段定义表**：① 41 个接口全部补请求头/路径参数/查询参数/请求体/响应体/错误响应字段表<br>② 嵌套对象展开到叶子字段（connectionConfig、orchestrationConfig、steps[] 等）<br>③ §3 标题精简为 `#N 名称` + `` `METHOD /path` `` 独立行<br>④ 时间格式统一 `yyyy-MM-dd HH:mm:ss`，appId 归入请求头<br>⑤ §1.9 接口命名规范：`[操作动词][资源名词][强调词]` | SDDU Plan Agent |
 | v5.4 | 2026-06-10 | **补全 JSON 示例**：22 个缺失示例的接口全部补回（#19~#27、#29~#41），每个接口含请求/响应/错误完整示例 | SDDU Plan Agent |
 | v5.5 | 2026-06-10 | **补全审批域接口**：① §2 新增「审批记录」（#37~#42，扩展 businessType）和「审批流模板配置」（#43~#46，新增 appId 字段）两个分组，共 10 个接口<br>② 端点从 41→51 重新编号（#37~#51），V1 已删除接口在表中独立成行不占编号<br>③ 改动点列恢复 ①②③④⑤⑥ 编号格式，与 V2 变更列（新增/改造/删除）独立<br>④ §3 新增 §3.5（#37~#42）、§3.6（#43~#46），§3.5→§3.7~§3.10 顺延重新编号<br>⑤ 跨引用编号同步更新（§0/#49/#50 等）<br>⑥ plan.md 接口数同步更新为 49+2 | SDDU Plan Agent |
+| v6.0 | 2026-06-12 | **全量对齐 plan-json-schema.md v9.7**：① #9/#10 connectionConfig 字段重构 — `authConfig` 单对象→`authConfigs[]` 数组（每个元素含 type/header/query/secretKey/sysAccountWhitelist），`inputContract`/`outputContract`→`input`/`output`，`protocolConfig` 移除 headers，新增 `labelCn`/`labelEn`/`timeoutMs`/`rateLimitConfig` 字段<br>② #28/#29 orchestrationConfig.flowConfig 重构 — `timeout` 移除（节点超时由 connectorNodeDataDef.timeoutMs 承载），`rateLimit`{mode,value}→`rateLimitConfig`{maxQps,maxConcurrency}，`cache`{enabled,keyTemplate}→`cache`{key[],ttl}<br>③ §0 对齐基线更新为 plan-json-schema.md v9.7<br>④ 全局替换 inputContract→input、outputContract→output、authConfig→authConfigs<br>⑤ #29 请求体字段表展开 flowConfig.rateLimitConfig 和 flowConfig.cache 子字段 | SDDU Plan Agent |
