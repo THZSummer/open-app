@@ -830,6 +830,31 @@
             font-size: 14px;
         }
 
+        /* 连接流无版本状态用于替代画布区域展示 */
+        .no-version-flow-state {
+            display: none;
+            flex: 1;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            background: var(--bg-light);
+            color: var(--text-tertiary);
+            text-align: center;
+        }
+
+        /* 连接流无版本图标用于强化空状态提示 */
+        .no-version-flow-icon {
+            font-size: 52px;
+            opacity: 0.55;
+        }
+
+        /* 连接流无版本文案用于说明当前无法编辑画布的原因 */
+        .no-version-flow-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
         /* ========================================
            弹窗样式
            ======================================== */
@@ -989,8 +1014,15 @@
 
             <!-- 编辑器主体 -->
             <div class="editor-content">
+                <!-- 无版本提示区域，版本为空时替代画布展示 -->
+                <div class="no-version-flow-state" id="noVersionFlowState">
+                    <div class="no-version-flow-icon">∅</div>
+                    <div class="no-version-flow-text">当前连接流暂无版本，请先创建草稿版本后再配置画布</div>
+                    <button class="btn btn-primary" onclick="handleCreateDraftVersion()">创建草稿</button>
+                </div>
+
                 <!-- 画布区域 -->
-                <div class="canvas-area">
+                <div class="canvas-area" id="canvasArea">
                     <div class="canvas-container" id="canvas">
                         <!-- 节点和连线渲染在这里 -->
                     </div>
@@ -3457,13 +3489,30 @@
         }
 
         /**
+         * 更新连接流无版本状态和画布展示
+         * 当版本列表为空时隐藏画布并展示创建草稿入口
+         */
+        function updateNoVersionFlowState() {
+            const noVersionFlowState = document.getElementById('noVersionFlowState');
+            const canvasArea = document.getElementById('canvasArea');
+            const hasVersion = flowVersionData.versions.length > 0;
+
+            // 根据是否存在版本切换空状态和画布区域
+            noVersionFlowState.style.display = hasVersion ? 'none' : 'flex';
+            canvasArea.style.display = hasVersion ? 'block' : 'none';
+        }
+
+        /**
          * 渲染版本选择器和顶部操作按钮
-         * 当版本为空时隐藏选择器并展示创建草稿按钮
+         * 当版本为空时隐藏选择器和顶部操作，仅保留返回与连接流名称
          */
         function refreshVersionHeader() {
             const selector = document.getElementById('versionSelectorContainer');
             const select = document.getElementById('flowVersionSelect');
             const actions = document.getElementById('versionActions');
+
+            // 每次刷新版本头部时先同步无版本状态，避免画布残留
+            updateNoVersionFlowState();
 
             select.innerHTML = flowVersionData.versions.map(version => `
                 <option value="${version.id}">${version.name} (${version.createdAt}) [${VERSION_STATUS_TEXT[version.status]}]</option>
@@ -3471,11 +3520,13 @@
 
             if (flowVersionData.versions.length === 0) {
                 selector.style.display = 'none';
-                actions.innerHTML = '<button class="btn btn-primary" onclick="handleCreateDraftVersion()">创建草稿</button>';
+                actions.style.display = 'none';
+                actions.innerHTML = '';
                 return;
             }
 
-            selector.style.display = 'block';
+            selector.style.display = 'inline-flex';
+            actions.style.display = 'flex';
             select.value = flowVersionData.currentVersion;
             const currentVersion = flowVersionData.versions.find(version => version.id === flowVersionData.currentVersion);
             if (currentVersion) {
@@ -3585,6 +3636,12 @@
          */
         function updateCanvasState(status) {
             const canvas = document.getElementById('canvas');
+
+            // 没有版本时不更新画布状态，避免无版本页面出现只读提示
+            if (flowVersionData.versions.length === 0) {
+                return;
+            }
+
             const isEditing = flowVersionData.isEditing;
             // 可编辑的状态：草稿、已驳回、已撤回（且处于编辑模式）
             const editableStatuses = [FLOW_VERSION_STATUS.DRAFT, FLOW_VERSION_STATUS.REJECTED, FLOW_VERSION_STATUS.WITHDRAWN];
