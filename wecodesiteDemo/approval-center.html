@@ -879,12 +879,11 @@
                             <option value="api_permission_apply">api_permission_apply - API权限申请审批</option>
                             <option value="event_permission_apply">event_permission_apply - 事件权限申请审批</option>
                             <option value="callback_permission_apply">callback_permission_apply - 回调权限申请审批</option>
-                            <option value="global_connector_flow">global_connector_flow - 全局连接流审批</option>
-                            <option value="app_connector_flow">app_connector_flow - 应用级连接流审批</option>
+                            <option value="connector_flow">connector_flow - 连接流版本审批</option>
                         </select>
                         <div id="appIdGroup" class="hidden" style="margin-top: 12px;">
-                            <label class="form-label">应用ID<span class="required">*</span></label>
-                            <input type="text" class="form-input" id="appId" placeholder="请输入应用ID" maxlength="64">
+                            <label class="form-label">应用ID</label>
+                            <input type="text" class="form-input" id="appId" placeholder="不填为全局审批，填写后为应用级审批" maxlength="64">
                         </div>
                     </div>
 
@@ -911,8 +910,8 @@
                         <ul>
                             <li>审批节点按顺序执行，序号从1开始递增</li>
                             <li>code='global' 为全局审批流程，其他为场景审批流程</li>
-                            <li>全局连接流审批和应用级连接流审批用于连接流的发布审批</li>
-                            <li>应用级连接流审批需要指定应用ID</li>
+                            <li>connector_flow 用于连接流版本发布审批</li>
+                            <li>连接流版本审批不填应用ID为全局审批，填写应用ID为应用级审批</li>
                             <li>流程代码创建后不可修改</li>
                         </ul>
                     </div>
@@ -986,9 +985,9 @@
             },
             {
                 id: 'af3',
-                nameCn: '全局连接流审批',
-                nameEn: 'global-connector-flow-approval',
-                code: 'global_connector_flow',
+                nameCn: '连接流版本审批',
+                nameEn: 'connector-flow-version-approval',
+                code: 'connector_flow',
                 nodes: [
                     { userId: 'u004', userName: '赵六' }
                 ],
@@ -997,9 +996,9 @@
             },
             {
                 id: 'af4',
-                nameCn: '应用级连接流审批',
-                nameEn: 'app-connector-flow-approval',
-                code: 'app_connector_flow',
+                nameCn: '应用级连接流版本审批',
+                nameEn: 'app-connector-flow-version-approval',
+                code: 'connector_flow',
                 appId: 'app-001',
                 nodes: [
                     { userId: 'u005', userName: '孙七' }
@@ -1044,8 +1043,7 @@
             'api_permission_apply': 'API权限申请审批',
             'event_permission_apply': '事件权限申请审批',
             'callback_permission_apply': '回调权限申请审批',
-            'global_connector_flow': '全局连接流审批',
-            'app_connector_flow': '应用级连接流审批'
+            'connector_flow': '连接流版本审批'
         };
 
         // ========================================
@@ -1118,11 +1116,20 @@
 
         /**
          * 获取审批类型标签颜色
-         * @param {string} code - 流程代码
+         * @param {Object} flow - 审批流程数据
          * @returns {string} CSS类名
          */
-        function getApprovalTypeClass(code) {
-            if (code === 'global' || code === 'global_connector_flow') {
+        function getApprovalTypeClass(flow) {
+            const code = flow.code;
+            const appId = flow.appId;
+
+            // 连接流版本审批根据应用ID是否填写判断审批范围
+            if (code === 'connector_flow') {
+                return appId ? 'blue' : 'green';
+            }
+
+            // 全局审批使用绿色标签，其他场景审批使用蓝色标签
+            if (code === 'global') {
                 return 'green';
             }
             return 'blue';
@@ -1130,11 +1137,20 @@
 
         /**
          * 获取审批类型文本
-         * @param {string} code - 流程代码
+         * @param {Object} flow - 审批流程数据
          * @returns {string} 审批类型文本
          */
-        function getApprovalTypeText(code) {
-            if (code === 'global' || code === 'global_connector_flow') {
+        function getApprovalTypeText(flow) {
+            const code = flow.code;
+            const appId = flow.appId;
+
+            // 连接流版本审批根据应用ID是否填写判断审批范围
+            if (code === 'connector_flow') {
+                return appId ? '应用级审批' : '全局审批';
+            }
+
+            // 非连接流版本审批保持原有全局/场景审批分类
+            if (code === 'global') {
                 return '全局审批';
             }
             return '场景审批';
@@ -1173,8 +1189,8 @@
                 `;
             } else {
                 tbody.innerHTML = pageData.map(item => {
-                    const approvalTypeClass = getApprovalTypeClass(item.code);
-                    const approvalTypeText = getApprovalTypeText(item.code);
+                    const approvalTypeClass = getApprovalTypeClass(item);
+                    const approvalTypeText = getApprovalTypeText(item);
                     const statusClass = item.status === 1 ? 'success' : 'default';
                     const statusText = item.status === 1 ? '启用' : '禁用';
                     const nodeCount = item.nodes ? item.nodes.length : 0;
@@ -1286,13 +1302,14 @@
 
         /**
          * 处理流程代码变更
-         * 当选择应用级连接流审批时显示应用ID输入框
+         * 当选择连接流版本审批时显示可选应用ID输入框
          */
         function handleCodeChange() {
             const code = document.getElementById('flowCode').value;
             const appIdGroup = document.getElementById('appIdGroup');
 
-            if (code === 'app_connector_flow') {
+            // 连接流版本审批支持按应用ID区分全局审批和应用级审批
+            if (code === 'connector_flow') {
                 appIdGroup.classList.remove('hidden');
             } else {
                 appIdGroup.classList.add('hidden');
@@ -1396,9 +1413,9 @@
             document.getElementById('nameEn').value = flow.nameEn;
             document.getElementById('flowCode').value = flow.code;
 
-            // 处理应用ID
+            // 处理连接流版本审批的应用ID
             handleCodeChange();
-            if (flow.code === 'app_connector_flow' && flow.appId) {
+            if (flow.code === 'connector_flow' && flow.appId) {
                 document.getElementById('appId').value = flow.appId;
             }
 
@@ -1463,10 +1480,7 @@
                 showToast('请选择流程代码', 'error');
                 return;
             }
-            if (code === 'app_connector_flow' && !appId) {
-                showToast('请输入应用ID', 'error');
-                return;
-            }
+            // 连接流版本审批中应用ID非必填，未填写时按全局审批处理
 
             // 收集审批节点
             const nodeCards = document.querySelectorAll('.node-card');
@@ -1491,7 +1505,7 @@
                 createTime: new Date().toLocaleString('zh-CN')
             };
 
-            if (code === 'app_connector_flow') {
+            if (code === 'connector_flow' && appId) {
                 flowItem.appId = appId;
             }
 
@@ -1500,6 +1514,11 @@
                 const index = flowData.findIndex(item => item.id === editId);
                 if (index !== -1) {
                     flowData[index] = { ...flowData[index], ...flowItem };
+
+                    // 应用ID清空后需要移除旧值，确保按全局审批处理
+                    if (code === 'connector_flow' && !appId) {
+                        delete flowData[index].appId;
+                    }
                     showToast('更新成功', 'success');
                 }
             } else {

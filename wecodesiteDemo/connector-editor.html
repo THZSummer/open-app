@@ -502,6 +502,12 @@
             opacity: 0.6;
         }
 
+        /* 数字签名密钥掩码按钮独立可操作，不受编辑状态影响 */
+        .editor-disabled #authParamsContainer .signature-mask-btn {
+            pointer-events: auto;
+            opacity: 1;
+        }
+
         /* 隐藏添加按钮 */
         .editor-disabled .request-add-btn,
         .editor-disabled .response-add-btn {
@@ -581,6 +587,8 @@
                             <option value="v2">v0.9.0 (2024-01-10) [已发布]</option>
                             <option value="v3">v0.8.0 (2024-01-05) [已失效]</option>
                         </select>
+                        <!-- 创建草稿按钮（仅版本列表为空时显示） -->
+                        <button class="btn btn-primary" id="createDraftBtn" onclick="handleCreateDraft()" style="display: none;">创建草稿</button>
                         <!-- 编辑/保存按钮 -->
                         <button class="btn btn-primary" id="editBtn" onclick="handleEdit()">编辑</button>
                         <!-- 发布按钮（仅草稿版本时显示） -->
@@ -784,11 +792,12 @@
             ],
             SIGNATURE: [
                 {
-                    paramName: 'X-Signature',
+                    paramName: '',
                     paramType: 'string',
                     description: '',
                     carrier: 'header',
                     isFixed: true,
+                    signatureValueSource: 'X-Signature',
                     signatureKey: '',
                     children: []
                 }
@@ -800,6 +809,12 @@
 
         // 页面编辑状态
         let isEditing = false;
+
+        // 数字签名密钥掩码状态，独立控制密钥是否明文展示
+        let isSignatureKeyMasked = true;
+
+        // 参数Schema最多支持10层，超出层级不允许继续添加子节点
+        const MAX_SCHEMA_DEPTH = 10;
 
         let connectorConfig = {
             protocolType: 'GET',
@@ -854,10 +869,7 @@
          * 根据当前版本的状态（草稿/已发布/已失效）显示不同的操作按钮
          */
         function updateVersionButtons() {
-            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
-            if (!currentVersion) return;
-
-            const status = currentVersion.status;
+            const createDraftBtn = document.getElementById('createDraftBtn');
             const editBtn = document.getElementById('editBtn');
             const publishBtn = document.getElementById('publishBtn');
             const copyToDraftBtn = document.getElementById('copyToDraftBtn');
@@ -865,32 +877,42 @@
             const restoreBtn = document.getElementById('restoreBtn');
             const deleteBtn = document.getElementById('deleteBtn');
 
-            // 更新编辑按钮（确保样式统一为primary）
-            editBtn.style.display = 'inline-flex';
+            // 每次切换版本状态时先重置所有操作按钮，避免按钮状态残留
+            createDraftBtn.style.display = 'none';
+            editBtn.style.display = 'none';
             editBtn.textContent = '编辑';
             editBtn.classList.add('btn-primary');
+            publishBtn.style.display = 'none';
+            copyToDraftBtn.style.display = 'none';
+            invalidateBtn.style.display = 'none';
+            restoreBtn.style.display = 'none';
+            deleteBtn.style.display = 'none';
+
+            // 版本列表为空时，仅展示创建草稿按钮
+            if (versionData.versions.length === 0) {
+                createDraftBtn.style.display = 'inline-flex';
+                return;
+            }
+
+            const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
+            if (!currentVersion) return;
+
+            const status = currentVersion.status;
 
             // 根据版本状态显示不同按钮
             if (status === VERSION_STATUS.DRAFT) {
                 // 草稿版本：显示编辑按钮和发布按钮
+                editBtn.style.display = 'inline-flex';
                 publishBtn.style.display = 'inline-flex';
-                copyToDraftBtn.style.display = 'none';
-                invalidateBtn.style.display = 'none';
-                restoreBtn.style.display = 'none';
-                deleteBtn.style.display = 'none';
             } else if (status === VERSION_STATUS.PUBLISHED) {
-                // 已发布版本：显示复制到草稿按钮和失效按钮
-                publishBtn.style.display = 'none';
+                // 已发布版本：不显示编辑按钮，仅显示复制到草稿和失效按钮
                 copyToDraftBtn.style.display = 'inline-flex';
                 copyToDraftBtn.textContent = '复制到草稿';
                 invalidateBtn.style.display = 'inline-flex';
-                deleteBtn.style.display = 'none';
             } else if (status === VERSION_STATUS.INVALID) {
-                // 已失效版本：显示复制到草稿按钮和删除按钮
-                publishBtn.style.display = 'none';
+                // 已失效版本：不显示编辑按钮，仅显示复制到草稿、恢复和删除按钮
                 copyToDraftBtn.style.display = 'inline-flex';
                 copyToDraftBtn.textContent = '复制到草稿';
-                invalidateBtn.style.display = 'none';
                 restoreBtn.style.display = 'inline-flex';
                 deleteBtn.style.display = 'inline-flex';
             }
@@ -962,6 +984,30 @@
 
         function handlePublish() {
             showToast('发布功能待实现', 'success');
+        }
+
+        /**
+         * 创建草稿版本
+         * 当版本列表为空时，新增一个草稿版本并刷新版本操作区
+         */
+        function handleCreateDraft() {
+            // 生成新的草稿版本ID和名称
+            const newVersionId = 'v' + Date.now().toString(36);
+            const newVersion = {
+                id: newVersionId,
+                name: 'v1.0.0',
+                createdAt: new Date().toLocaleString('zh-CN'),
+                status: VERSION_STATUS.DRAFT
+            };
+
+            // 新增草稿版本并设置为当前版本
+            versionData.versions.unshift(newVersion);
+            versionData.currentVersion = newVersionId;
+
+            // 刷新版本列表和按钮展示状态
+            updateVersionSelect();
+            updateVersionButtons();
+            showToast('已创建草稿版本', 'success');
         }
 
         /**
@@ -1059,11 +1105,11 @@
 
             // 检查是否还有其他版本
             if (versionData.versions.length === 0) {
-                // 没有其他版本，返回连接器列表页
+                // 没有其他版本时留在当前页，仅展示创建草稿按钮
+                versionData.currentVersion = '';
+                updateVersionSelect();
+                updateVersionButtons();
                 showToast('版本已删除', 'success');
-                setTimeout(() => {
-                    handleBack();
-                }, 500);
                 return;
             }
 
@@ -1079,6 +1125,14 @@
          */
         function updateVersionSelect() {
             const select = document.getElementById('versionSelect');
+
+            // 版本列表为空时展示占位选项，避免下拉框保留旧数据
+            if (versionData.versions.length === 0) {
+                select.innerHTML = '<option value="">暂无版本</option>';
+                select.value = '';
+                return;
+            }
+
             select.innerHTML = versionData.versions.map(v => {
                 const statusText = v.status === VERSION_STATUS.DRAFT ? '草稿'
                     : v.status === VERSION_STATUS.PUBLISHED ? '已发布' : '已失效';
@@ -1166,7 +1220,10 @@
 
                 authSchema.forEach((param, index) => {
                     if (isSignature) {
-                        // 数字签名：参数名称（可编辑）、类型（不可编辑，默认为string）、位置、签名值、签名密钥
+                        // 数字签名：参数名称默认空且可编辑，签名值来源默认显示X-Signature
+                        const signatureKeyType = isSignatureKeyMasked ? 'password' : 'text';
+                        const signatureKeyValue = param.signatureKey || '';
+                        const signatureMaskText = isSignatureKeyMasked ? '显示' : '隐藏';
                         html += `
                             <div class="form-group" style="margin-bottom: 12px;">
                                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
@@ -1184,12 +1241,17 @@
                                     </select>
                                     <input type="text"
                                            style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);"
+                                           value="${param.signatureValueSource || 'X-Signature'}"
                                            placeholder="签名值来源"
                                            disabled>
-                                    <input type="${isEditing ? 'text' : 'password'}"
+                                    <input type="${signatureKeyType}"
+                                           class="signature-key-input"
                                            style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
-                                           value="${isEditing ? '' : '******'}"
+                                           value="${signatureKeyValue}"
                                            placeholder="签名密钥">
+                                    <button type="button" class="btn signature-mask-btn" onclick="toggleSignatureKeyMask()" style="padding: 6px 12px;">
+                                        ${signatureMaskText}
+                                    </button>
                                 </div>
                             </div>
                         `;
@@ -1228,6 +1290,22 @@
             });
 
             container.innerHTML = html;
+        }
+
+        /**
+         * 切换数字签名密钥掩码状态
+         */
+        function toggleSignatureKeyMask() {
+            const signatureKeyInput = document.querySelector('.signature-key-input');
+
+            // 切换前同步当前输入值，避免重新渲染后丢失未保存的密钥
+            if (signatureKeyInput) {
+                AUTH_SCHEMA_MAP.SIGNATURE[0].signatureKey = signatureKeyInput.value;
+            }
+
+            // 掩码状态只控制密钥展示方式，不影响页面编辑状态
+            isSignatureKeyMasked = !isSignatureKeyMasked;
+            renderAuthParams();
         }
 
         /**
@@ -1454,17 +1532,20 @@
                     ${getCarrierOptions(isRequest, carrier)}
                    </select>`;
 
-            // 根据类型决定添加按钮的行为
-            // 基础类型点击直接添加兄弟节点，object/array点击有下拉框
+            // 根据类型决定添加按钮的行为，复杂类型在达到层级上限后不再提供添加子节点入口
+            const canAddChild = depth < MAX_SCHEMA_DEPTH - 1;
+            const childButtonHtml = canAddChild
+                ? `<button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                            添加子节点
+                        </button>`
+                : '';
             const addButtonHtml = isComplex
                 ? `<div class="dropdown-menu" style="position: relative; display: inline-block;">
                     <button type="button" class="add-item-btn" onclick="toggleItemDropdown(this)" style="padding: ${rowPadding}; border: none; background: transparent;">
                         添加
                     </button>
                     <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
-                        <button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
-                            添加子节点
-                        </button>
+                        ${childButtonHtml}
                         <button type="button" onclick="addChildParam(this, 'sibling')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
                             添加兄弟节点
                         </button>
@@ -1526,7 +1607,13 @@
             if (existingAddBtn) {
                 const parentDropdown = existingAddBtn.closest('.dropdown-menu');
                 if (isComplex) {
-                    // 复杂类型：需要下拉框
+                    // 复杂类型：需要下拉框，达到层级上限时不显示添加子节点入口
+                    const canAddChild = depth < MAX_SCHEMA_DEPTH - 1;
+                    const childButtonHtml = canAddChild
+                        ? `<button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                    添加子节点
+                                </button>`
+                        : '';
                     if (!parentDropdown) {
                         // 替换为带下拉框的按钮
                         const newAddBtn = document.createElement('div');
@@ -1537,9 +1624,7 @@
                                 添加
                             </button>
                             <div class="dropdown-content" style="display: none; position: absolute; background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-md); z-index: 10; min-width: 120px;">
-                                <button type="button" onclick="addChildParam(this, 'child')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
-                                    添加子节点
-                                </button>
+                                ${childButtonHtml}
                                 <button type="button" onclick="addChildParam(this, 'sibling')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
                                     添加兄弟节点
                                 </button>
@@ -1547,8 +1632,14 @@
                         `;
                         existingAddBtn.replaceWith(newAddBtn);
                     } else {
-                        // 已经是下拉框，更新按钮文字
+                        // 已经是下拉框，更新按钮内容
                         parentDropdown.querySelector('.add-item-btn').innerHTML = '添加';
+                        parentDropdown.querySelector('.dropdown-content').innerHTML = `
+                            ${childButtonHtml}
+                            <button type="button" onclick="addChildParam(this, 'sibling')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px;">
+                                添加兄弟节点
+                            </button>
+                        `;
                     }
                 } else {
                     // 基础类型：直接添加兄弟节点
@@ -1610,10 +1701,18 @@
             const isRequest = requestTabContent !== null;
 
             if (type === 'child') {
+                const currentDepth = parseInt(paramItem.dataset.depth) || 0;
+
+                // 达到层级上限时禁止继续添加子节点
+                if (currentDepth >= MAX_SCHEMA_DEPTH - 1) {
+                    showToast('参数层级最多支持10层', 'error');
+                    return;
+                }
+
                 // 添加到children-container
                 const childrenContainer = paramItem.querySelector('.children-container');
                 if (childrenContainer) {
-                    const childHtml = renderParamItem({}, isRequest, 1);
+                    const childHtml = renderParamItem({}, isRequest, currentDepth + 1);
                     childrenContainer.insertAdjacentHTML('beforeend', childHtml);
                 }
             } else {
@@ -1776,6 +1875,36 @@
         }
 
         /**
+         * 校验参数Schema层级是否超过上限
+         * @param {Object} options - 层级校验配置对象
+         * @returns {string} 校验失败文案，空字符串表示通过
+         */
+        function validateSchemaDepth(options) {
+            const params = options.params;
+            const location = options.location;
+            const depth = options.depth;
+
+            if (depth > MAX_SCHEMA_DEPTH) {
+                return `${location}：参数层级最多支持${MAX_SCHEMA_DEPTH}层`;
+            }
+
+            for (const param of params) {
+                const currentPath = `${location}-${param.paramName}`;
+                const childError = validateSchemaDepth({
+                    params: param.children || [],
+                    location: currentPath,
+                    depth: depth + 1
+                });
+
+                if (childError) {
+                    return childError;
+                }
+            }
+
+            return '';
+        }
+
+        /**
          * 判断复杂类型参数下是否存在基础类型子参数
          * @param {Array} children - 子参数列表
          * @returns {boolean} 是否存在基础类型子参数
@@ -1851,6 +1980,16 @@
             ];
 
             for (const group of schemaGroups) {
+                const depthErrorMessage = validateSchemaDepth({
+                    params: group.params,
+                    location: group.label,
+                    depth: 1
+                });
+                if (depthErrorMessage) {
+                    showToast(depthErrorMessage, 'error');
+                    return false;
+                }
+
                 const errorMessage = validateSchemaParams({
                     params: group.params,
                     location: group.label

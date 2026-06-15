@@ -791,6 +791,8 @@
                         status: 'success',
                         startTime: '14:30:00.000',
                         endTime: '14:30:00.050',
+                        duration: 50,
+                        input: { method: 'POST', path: '/users/register', body: { userId: 'u12345', userName: '张三', email: 'zhangsan@example.com' } },
                         output: { received: true, requestId: 'req-001' }
                     },
                     {
@@ -799,6 +801,8 @@
                         status: 'success',
                         startTime: '14:30:00.050',
                         endTime: '14:30:00.800',
+                        duration: 750,
+                        input: { userId: 'u12345', userName: '张三', email: 'zhangsan@example.com' },
                         output: { userId: 'u12345', created: true }
                     },
                     {
@@ -807,6 +811,8 @@
                         status: 'success',
                         startTime: '14:30:00.800',
                         endTime: '14:30:01.250',
+                        duration: 450,
+                        input: { userId: 'u12345', email: 'zhangsan@example.com', template: 'welcome' },
                         output: { emailSent: true, messageId: 'msg-001' }
                     }
                 ]
@@ -834,6 +840,8 @@
                         status: 'success',
                         startTime: '14:25:00.000',
                         endTime: '14:25:00.100',
+                        duration: 100,
+                        input: { topic: 'order.created', orderId: 'ord-98765' },
                         output: { event: 'order.created' }
                     },
                     {
@@ -842,6 +850,8 @@
                         status: 'success',
                         startTime: '14:25:00.100',
                         endTime: '14:25:01.000',
+                        duration: 900,
+                        input: { orderId: 'ord-98765' },
                         output: { orderId: 'ord-98765', status: 'pending' }
                     },
                     {
@@ -850,6 +860,8 @@
                         status: 'error',
                         startTime: '14:25:01.000',
                         endTime: '14:25:03.500',
+                        duration: 2500,
+                        input: { orderId: 'ord-98765', items: [{ skuId: 'sku-001', quantity: 1 }] },
                         error: '连接数据库超时',
                         output: null
                     }
@@ -877,6 +889,8 @@
                         status: 'success',
                         startTime: '10:00:00.000',
                         endTime: '10:00:00.010',
+                        duration: 10,
+                        input: { taskId: 'task-001', schedule: 'daily 10:00' },
                         output: { scheduled: true }
                     },
                     {
@@ -885,6 +899,8 @@
                         status: 'success',
                         startTime: '10:00:00.010',
                         endTime: '10:00:00.300',
+                        duration: 290,
+                        input: { taskId: 'task-001', limit: 100 },
                         output: { messages: [{ id: 1 }, { id: 2 }, { id: 3 }] }
                     },
                     {
@@ -893,6 +909,8 @@
                         status: 'success',
                         startTime: '10:00:00.300',
                         endTime: '10:00:00.850',
+                        duration: 550,
+                        input: { messageIds: [1, 2, 3], channel: '站内信' },
                         output: { sent: 3, failed: 0 }
                     }
                 ]
@@ -919,6 +937,8 @@
                         status: 'success',
                         startTime: '15:30:00.000',
                         endTime: '15:30:00.050',
+                        duration: 50,
+                        input: { initiatedBy: 'admin', syncType: 'full' },
                         output: { initiatedBy: 'admin' }
                     },
                     {
@@ -927,6 +947,8 @@
                         status: 'success',
                         startTime: '15:30:00.050',
                         endTime: '15:30:05.200',
+                        duration: 5150,
+                        input: { source: '数据源A', syncType: 'full' },
                         output: { records: 10000 }
                     },
                     {
@@ -935,6 +957,8 @@
                         status: 'running',
                         startTime: '15:30:05.200',
                         endTime: null,
+                        duration: null,
+                        input: { records: 10000, transformRule: '标准化字段' },
                         output: null
                     }
                 ]
@@ -962,6 +986,8 @@
                         status: 'success',
                         startTime: '12:00:00.000',
                         endTime: '12:00:00.050',
+                        duration: 50,
+                        input: { method: 'POST', path: '/payments/process', body: { paymentId: 'pay-55555', amount: 999.00 } },
                         output: { received: true }
                     },
                     {
@@ -970,6 +996,8 @@
                         status: 'success',
                         startTime: '12:00:00.050',
                         endTime: '12:00:05.000',
+                        duration: 4950,
+                        input: { paymentId: 'pay-55555', amount: 999.00 },
                         output: { valid: true }
                     },
                     {
@@ -978,6 +1006,8 @@
                         status: 'timeout',
                         startTime: '12:00:05.000',
                         endTime: '12:00:30.000',
+                        duration: 25000,
+                        input: { paymentId: 'pay-55555', amount: 999.00, provider: '第三方支付' },
                         error: '执行超时（30秒）',
                         output: null
                     }
@@ -1224,6 +1254,22 @@
             record.nodes.forEach(node => {
                 const nodeStatus = STATUS_MAP[node.status] || { text: '未知', class: 'default' };
                 const endTime = node.endTime || '-';
+                const inputHtml = node.input !== undefined ? `
+                    <div style="margin-top: 10px;">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">入参</div>
+                        <div class="code-block" style="margin-top: 0;">
+                            <pre>${formatJsonHighlight(node.input)}</pre>
+                        </div>
+                    </div>
+                ` : '';
+                const outputHtml = node.output !== undefined ? `
+                    <div style="margin-top: 10px;">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">出参</div>
+                        <div class="code-block" style="margin-top: 0;">
+                            <pre>${formatJsonHighlight(node.output)}</pre>
+                        </div>
+                    </div>
+                ` : '';
 
                 nodesHtml += `
                     <div class="node-execution-item">
@@ -1232,14 +1278,11 @@
                             <span class="node-execution-status ${nodeStatus.class}">${nodeStatus.text}</span>
                         </div>
                         <div class="node-execution-time">
-                            ${node.startTime} → ${endTime}
+                            ${node.startTime} → ${endTime} ｜ 耗时：${formatDuration(node.duration)}
                         </div>
-                        ${node.error ? `<div style="color: var(--error-color); font-size: 12px; margin-top: 8px;">错误: ${node.error}</div>` : ''}
-                        ${node.output ? `
-                            <div class="code-block" style="margin-top: 8px;">
-                                <pre>${formatJsonHighlight(node.output)}</pre>
-                            </div>
-                        ` : ''}
+                        ${inputHtml}
+                        ${outputHtml}
+                        ${node.error ? `<div style="color: var(--error-color); font-size: 12px; margin-top: 8px;">错误信息：${node.error}</div>` : ''}
                     </div>
                 `;
             });

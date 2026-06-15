@@ -346,7 +346,7 @@
         }
 
         /* ========================================
-           SYSTOKEN凭证白名单样式
+           SYSACCOUNT账号白名单样式
            ======================================== */
         .systoken-list {
             display: flex;
@@ -967,7 +967,7 @@
                         ← 返回
                     </button>
                     <span class="flow-name" id="flowName">未命名流程</span>
-                    <div class="version-selector" style="margin-left: 16px;">
+                    <div class="version-selector" id="versionSelectorContainer" style="margin-left: 16px;">
                         <label style="font-size: 13px; color: var(--text-secondary); margin-right: 8px;">版本:</label>
                         <select id="flowVersionSelect" onchange="handleVersionChange(this.value)" style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; cursor: pointer;">
                             <option value="v1">v1.0.0 (2024-01-15) [草稿]</option>
@@ -1112,8 +1112,8 @@
         <div class="drawer-body">
             <!-- 限流配置 -->
             <div class="form-group">
-                <label class="form-label">限流配置（最大100）</label>
-                <input type="number" class="form-input" id="rateLimitInput" placeholder="请输入限流值" min="1" max="100" value="10">
+                <label class="form-label">限流配置（最大1000）</label>
+                <input type="number" class="form-input" id="rateLimitInput" placeholder="请输入限流值" min="1" max="1000" value="10">
             </div>
 
             <div class="divider" style="height: 1px; background: var(--border-color); margin: 16px 0;"></div>
@@ -1129,16 +1129,25 @@
                 </div>
                 <div id="cacheConfig" style="display: none;">
                     <div class="form-group">
-                        <label class="form-label">缓存时间（秒）</label>
-                        <input type="number" class="form-input" id="cacheTime" placeholder="请输入缓存时间（整数）" min="1" step="1" value="60">
+                        <label class="form-label">缓存时间（秒，最大1296000秒）</label>
+                        <input type="number" class="form-input" id="cacheTime" placeholder="请输入缓存时间（整数）" min="1" max="1296000" step="1" value="60">
                     </div>
                     <div class="form-group">
                         <label class="form-label">缓存Key</label>
-                        <select class="form-select" id="cacheKeySelect" style="width: 100%;">
-                            <option value="">从触发器入参中选择</option>
-                            <option value="param1">param1</option>
-                            <option value="param1+param2">param1 + param2</option>
-                        </select>
+                        <div class="cache-key-list" id="cacheKeyList">
+                            <div class="cache-key-item" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                <select class="form-select cache-key-select" onchange="updateCacheKeyPreview()" style="flex: 1;">
+                                    <option value="">从触发器入参中选择</option>
+                                    <option value="param1">param1</option>
+                                    <option value="param2">param2</option>
+                                </select>
+                                <button type="button" class="btn" onclick="removeCacheKeyItem(this)" style="padding: 6px 12px;">删除</button>
+                            </div>
+                        </div>
+                        <button type="button" class="add-param-btn" onclick="addCacheKeyItem()" style="margin-top: 8px;">+ 添加缓存Key</button>
+                        <div style="margin-top: 8px; color: var(--text-secondary); font-size: 12px;">
+                            拼接结果：<span id="cacheKeyPreview">-</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3077,6 +3086,23 @@
             'c1': {
                 id: 'c1',
                 name: 'HTTP请求连接器',
+                authMethods: [
+                    {
+                        id: 'SOA',
+                        name: 'SOA认证',
+                        params: [
+                            { paramName: '参数名称', paramType: 'string', carrier: 'header', valueSource: 'X-Huawei-Auth' }
+                        ]
+                    },
+                    {
+                        id: 'APIG',
+                        name: 'APIG认证',
+                        params: [
+                            { paramName: '参数名称', paramType: 'string', carrier: 'header', valueSource: 'X-HW-ID' },
+                            { paramName: '参数名称', paramType: 'string', carrier: 'header', valueSource: 'X-HW-APPKEY' }
+                        ]
+                    }
+                ],
                 versions: [
                     {
                         id: 'v1',
@@ -3109,6 +3135,15 @@
             'c2': {
                 id: 'c2',
                 name: '数据库连接器',
+                authMethods: [
+                    {
+                        id: 'COOKIE',
+                        name: 'Cookie认证',
+                        params: [
+                            { paramName: 'Cookie-Token', paramType: 'string', carrier: 'header', valueSource: '' }
+                        ]
+                    }
+                ],
                 versions: [
                     {
                         id: 'v1',
@@ -3125,6 +3160,16 @@
             'c3': {
                 id: 'c3',
                 name: 'Redis缓存连接器',
+                authMethods: [
+                    {
+                        id: 'SIGNATURE',
+                        name: '数字签名认证',
+                        params: [
+                            { paramName: 'X-Signature', paramType: 'string', carrier: 'header', valueSource: '签名值' },
+                            { paramName: '签名密钥', paramType: 'string', carrier: 'header', valueSource: '固定值' }
+                        ]
+                    }
+                ],
                 versions: [
                     {
                         id: 'v1',
@@ -3241,6 +3286,9 @@
         let connectStart = null;
         let insertEdgeContext = null;
 
+        // 并行节点最多允许配置的分支数量
+        const PARALLEL_BRANCH_LIMIT = 8;
+
         // 版本状态常量
         const FLOW_VERSION_STATUS = {
             DRAFT: 'draft',
@@ -3306,9 +3354,13 @@
             if (nodeType.type === 'forLoop') {
                 nodeData.iterable = '';
                 nodeData.itemName = 'item';
+            } else if (nodeType.type === 'action') {
+                // 连接器节点初始化超时时间和认证值来源配置
+                nodeData.timeout = 30;
+                nodeData.authValueSources = {};
             } else if (nodeType.type === 'error') {
-                nodeData.strategy = 'ignore';
-                nodeData.retryCount = 3;
+                // 异常处理节点初始化错误处理规则
+                nodeData.errorRules = [{ errorType: 'all', strategy: 'ignore', retryInterval: 1 }];
             } else if (nodeType.type === 'condition') {
                 nodeData.conditions = [
                     { id: 'cond1', label: '条件1', expression: '' },
@@ -3391,6 +3443,48 @@
         // ========================================
 
         /**
+         * 更新版本下拉选项展示文案
+         * 版本状态变化后同步名称、时间和状态文案
+         * @param {Object} params - 更新参数
+         */
+        function updateVersionOptionText(params) {
+            const { version } = params;
+            const select = document.getElementById('flowVersionSelect');
+            const option = Array.from(select.options).find(item => item.value === version.id);
+            if (option) {
+                option.textContent = `${version.name} (${version.createdAt}) [${VERSION_STATUS_TEXT[version.status]}]`;
+            }
+        }
+
+        /**
+         * 渲染版本选择器和顶部操作按钮
+         * 当版本为空时隐藏选择器并展示创建草稿按钮
+         */
+        function refreshVersionHeader() {
+            const selector = document.getElementById('versionSelectorContainer');
+            const select = document.getElementById('flowVersionSelect');
+            const actions = document.getElementById('versionActions');
+
+            select.innerHTML = flowVersionData.versions.map(version => `
+                <option value="${version.id}">${version.name} (${version.createdAt}) [${VERSION_STATUS_TEXT[version.status]}]</option>
+            `).join('');
+
+            if (flowVersionData.versions.length === 0) {
+                selector.style.display = 'none';
+                actions.innerHTML = '<button class="btn btn-primary" onclick="handleCreateDraftVersion()">创建草稿</button>';
+                return;
+            }
+
+            selector.style.display = 'block';
+            select.value = flowVersionData.currentVersion;
+            const currentVersion = flowVersionData.versions.find(version => version.id === flowVersionData.currentVersion);
+            if (currentVersion) {
+                updateVersionActions(currentVersion.status);
+                updateCanvasState(currentVersion.status);
+            }
+        }
+
+        /**
          * 版本切换
          * 当用户选择不同版本时调用，更新当前版本并刷新按钮状态和画布状态
          * @param {string} versionId - 选择的版本ID
@@ -3404,6 +3498,26 @@
                 updateCanvasState(version.status);
                 showToast(`已切换到版本: ${version.name}`, 'success');
             }
+        }
+
+        /**
+         * 渲染草稿类版本操作按钮
+         * 草稿、已驳回、已撤回共享编辑、保存、发布和删除能力
+         * @param {Object} params - 渲染参数
+         * @returns {string} 按钮HTML字符串
+         */
+        function renderDraftLikeVersionActions(params) {
+            const { isEditing } = params;
+            return `
+                <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
+                ${isEditing
+                    ? `<button class="btn" onclick="handleSaveEdit()">保存</button>`
+                    : `<button class="btn" onclick="handleEdit()">编辑</button>`
+                }
+                <button class="btn btn-primary" onclick="handlePublishFlow()">发布</button>
+                <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+            `;
         }
 
         /**
@@ -3421,16 +3535,8 @@
 
             switch (status) {
                 case FLOW_VERSION_STATUS.DRAFT:
-                    // 草稿状态：有编辑按钮（编辑/保存）
-                    buttons = `
-                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
-                        ${isEditing
-                            ? `<button class="btn" onclick="handleSaveEdit()">保存</button>`
-                            : `<button class="btn" onclick="handleEdit()">编辑</button>`
-                        }
-                        <button class="btn btn-primary" onclick="handlePublishFlow()">发布</button>
-                    `;
+                    // 草稿状态：支持编辑、保存、发布和删除
+                    buttons = renderDraftLikeVersionActions({ isEditing });
                     break;
                 case FLOW_VERSION_STATUS.PUBLISHED:
                     // 已发布状态：复制到草稿、失效
@@ -3460,20 +3566,12 @@
                     `;
                     break;
                 case FLOW_VERSION_STATUS.REJECTED:
-                    // 已驳回状态：复制到草稿（回到草稿状态重新编辑发布）
-                    buttons = `
-                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
-                        <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
-                    `;
+                    // 已驳回状态：和草稿版一致，保存后转为草稿
+                    buttons = renderDraftLikeVersionActions({ isEditing });
                     break;
                 case FLOW_VERSION_STATUS.WITHDRAWN:
-                    // 已撤回状态：复制到草稿（回到草稿状态重新编辑发布）
-                    buttons = `
-                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
-                        <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
-                    `;
+                    // 已撤回状态：和草稿版一致，保存后转为草稿
+                    buttons = renderDraftLikeVersionActions({ isEditing });
                     break;
             }
 
@@ -3535,12 +3633,45 @@
             flowVersionData.isEditing = false;
             const version = flowVersionData.versions.find(v => v.id === flowVersionData.currentVersion);
             if (version) {
+                // 已驳回和已撤回保存后转为草稿版
+                if ([FLOW_VERSION_STATUS.REJECTED, FLOW_VERSION_STATUS.WITHDRAWN].includes(version.status)) {
+                    version.status = FLOW_VERSION_STATUS.DRAFT;
+                    updateVersionOptionText({ version });
+                }
+
                 // 更新修改时间
                 version.modifiedAt = new Date().toLocaleString('zh-CN');
                 updateVersionActions(version.status);
                 updateCanvasState(version.status);
                 showToast('已保存编辑内容', 'success');
             }
+        }
+
+        /**
+         * 创建草稿版本
+         * 当版本列表为空或需要新草稿时初始化一个草稿版本
+         */
+        function handleCreateDraftVersion() {
+            const createdAt = new Date().toLocaleString('zh-CN');
+            const newVersion = {
+                id: 'v' + Date.now(),
+                name: 'v1.0.0',
+                createdAt,
+                status: FLOW_VERSION_STATUS.DRAFT,
+                creator: '当前用户',
+                modifier: '当前用户',
+                modifiedAt: createdAt
+            };
+
+            flowVersionData.versions.unshift(newVersion);
+            flowVersionData.currentVersion = newVersion.id;
+            flowVersionData.isEditing = false;
+            nodes = [];
+            edges = [];
+            initializeDefaultFlow();
+            renderCanvas();
+            refreshVersionHeader();
+            showToast('已创建草稿版本', 'success');
         }
 
         /**
@@ -3659,14 +3790,18 @@
                     );
                     showToast('版本已删除', 'success');
 
-                    // 切换到第一个可用版本
+                    // 切换到第一个可用版本，若为空则展示创建草稿按钮
                     if (flowVersionData.versions.length > 0) {
                         const firstVersion = flowVersionData.versions[0];
                         flowVersionData.currentVersion = firstVersion.id;
-                        document.getElementById('flowVersionSelect').value = firstVersion.id;
-                        updateVersionActions(firstVersion.status);
-                        updateCanvasState(firstVersion.status);
+                    } else {
+                        flowVersionData.currentVersion = '';
+                        flowVersionData.isEditing = false;
+                        nodes = [];
+                        edges = [];
+                        renderCanvas();
                     }
+                    refreshVersionHeader();
                 }
             );
         }
@@ -3774,6 +3909,13 @@
 
         // 更多配置抽屉功能
         function openMoreConfig() {
+            // 打开更多配置时刷新缓存Key可选项和拼接预览
+            document.querySelectorAll('.cache-key-select').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = getCacheKeyOptionsHtml();
+                select.value = currentValue;
+            });
+            updateCacheKeyPreview();
             document.getElementById('moreConfigDrawer').classList.add('active');
         }
 
@@ -3783,20 +3925,85 @@
 
         function toggleCacheConfig(enabled) {
             document.getElementById('cacheConfig').style.display = enabled ? 'block' : 'none';
+            updateCacheKeyPreview();
+        }
+
+        /**
+         * 获取缓存Key下拉选项HTML
+         * 从触发器入参中生成可选择的缓存Key
+         * @returns {string} 缓存Key选项HTML字符串
+         */
+        function getCacheKeyOptionsHtml() {
+            const triggerNode = nodes.find(node => node.type === 'trigger');
+            const inputParams = triggerNode?.data.inputParams || { header: [], body: [], query: [] };
+            const paramNames = ['header', 'body', 'query'].flatMap(tabName =>
+                (inputParams[tabName] || []).map(param => param.paramName).filter(Boolean)
+            );
+            const options = paramNames.length > 0 ? paramNames : ['param1', 'param2'];
+            return '<option value="">从触发器入参中选择</option>' + options.map(option => `
+                <option value="${option}">${option}</option>
+            `).join('');
+        }
+
+        /**
+         * 添加缓存Key配置项
+         * 新增一行可选择的缓存Key并刷新拼接结果
+         */
+        function addCacheKeyItem() {
+            const list = document.getElementById('cacheKeyList');
+            if (!list) return;
+
+            const item = document.createElement('div');
+            item.className = 'cache-key-item';
+            item.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+            item.innerHTML = `
+                <select class="form-select cache-key-select" onchange="updateCacheKeyPreview()" style="flex: 1;">
+                    ${getCacheKeyOptionsHtml()}
+                </select>
+                <button type="button" class="btn" onclick="removeCacheKeyItem(this)" style="padding: 6px 12px;">删除</button>
+            `;
+            list.appendChild(item);
+            updateCacheKeyPreview();
+        }
+
+        /**
+         * 删除缓存Key配置项
+         * @param {HTMLElement} button - 删除按钮元素
+         */
+        function removeCacheKeyItem(button) {
+            button.closest('.cache-key-item')?.remove();
+            updateCacheKeyPreview();
+        }
+
+        /**
+         * 更新缓存Key拼接结果预览
+         * 使用加号展示所有已选择的缓存Key
+         */
+        function updateCacheKeyPreview() {
+            const preview = document.getElementById('cacheKeyPreview');
+            if (!preview) return;
+
+            const cacheKeys = Array.from(document.querySelectorAll('.cache-key-select'))
+                .map(select => select.value)
+                .filter(Boolean);
+            preview.textContent = cacheKeys.length > 0 ? cacheKeys.join(' + ') : '-';
         }
 
         function saveMoreConfig() {
             const rateLimit = document.getElementById('rateLimitInput').value;
             const cacheEnabled = document.getElementById('cacheEnabled').checked;
             const cacheTime = document.getElementById('cacheTime').value;
-            const cacheKey = document.getElementById('cacheKeySelect').value;
+            const cacheKeys = Array.from(document.querySelectorAll('.cache-key-select'))
+                .map(select => select.value)
+                .filter(Boolean);
 
             // 模拟保存
             console.log('保存更多配置:', {
                 rateLimit,
                 cacheEnabled,
                 cacheTime,
-                cacheKey
+                cacheKeys,
+                cacheKeyPreview: cacheKeys.join(' + ')
             });
 
             closeMoreConfigDrawer();
@@ -4296,10 +4503,91 @@
         }
 
         /**
+         * 判断指定连线是否属于错误处理节点右侧分支
+         * 通过向上追溯连线来源，识别由错误处理节点 body 出口发起的分支链路。
+         * @param {Object} params - 判断参数
+         * @returns {string|null} 错误处理节点ID
+         */
+        function getErrorBranchRootId(params) {
+            const { edge } = params;
+            if (!edge) return null;
+
+            const sourceNode = nodes.find(node => node.id === edge.source);
+            if (sourceNode?.type === 'error' && edge.sourceHandle === 'body') {
+                return sourceNode.id;
+            }
+
+            const visitedNodeIds = new Set();
+            const pendingNodeIds = [edge.source];
+            while (pendingNodeIds.length > 0) {
+                const nodeId = pendingNodeIds.shift();
+                if (!nodeId || visitedNodeIds.has(nodeId)) continue;
+
+                visitedNodeIds.add(nodeId);
+                const incomingEdges = edges.filter(item => item.target === nodeId);
+                for (const incomingEdge of incomingEdges) {
+                    const incomingSourceNode = nodes.find(node => node.id === incomingEdge.source);
+                    if (incomingSourceNode?.type === 'error' && incomingEdge.sourceHandle === 'body') {
+                        return incomingSourceNode.id;
+                    }
+                    pendingNodeIds.push(incomingEdge.source);
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * 获取错误处理右侧分支中的连接器节点数量
+         * 仅统计由错误处理节点 body 出口可达的连接器节点。
+         * @param {Object} params - 统计参数
+         * @returns {number} 连接器节点数量
+         */
+        function getErrorBranchConnectorCount(params) {
+            const { errorNodeId } = params;
+            const visitedNodeIds = new Set();
+            const pendingNodeIds = edges
+                .filter(edge => edge.source === errorNodeId && edge.sourceHandle === 'body')
+                .map(edge => edge.target);
+            let connectorCount = 0;
+
+            while (pendingNodeIds.length > 0) {
+                const nodeId = pendingNodeIds.shift();
+                if (!nodeId || visitedNodeIds.has(nodeId)) continue;
+
+                visitedNodeIds.add(nodeId);
+                const node = nodes.find(item => item.id === nodeId);
+                if (node?.type === 'action') {
+                    connectorCount += 1;
+                }
+                edges
+                    .filter(edge => edge.source === nodeId)
+                    .forEach(edge => pendingNodeIds.push(edge.target));
+            }
+
+            return connectorCount;
+        }
+
+        /**
+         * 判断连线是否在错误处理右侧分支中
+         * @param {Object} params - 判断参数
+         * @returns {boolean} 是否为错误处理右侧分支
+         */
+        function isErrorBranchEdge(params) {
+            const { edge } = params;
+            return Boolean(getErrorBranchRootId({ edge }));
+        }
+
+        /**
          * 获取可通过连线加号插入的节点类型
          * @returns {Array} 可插入节点类型列表
          */
         function getInsertableNodeTypes() {
+            const edge = edges.find(item => item.id === insertEdgeContext?.edgeId);
+            if (isErrorBranchEdge({ edge })) {
+                return NODE_TYPES.filter(nodeType => nodeType.type === 'action');
+            }
+
             return NODE_TYPES.filter(nodeType => nodeType.type !== 'trigger');
         }
 
@@ -4330,6 +4618,13 @@
             // 只允许草稿等可编辑状态通过连线加号插入节点
             if (canvas.dataset.editable !== 'true') {
                 showToast('当前版本不可编辑', 'error');
+                return;
+            }
+
+            const edge = edges.find(item => item.id === edgeId);
+            const errorNodeId = getErrorBranchRootId({ edge });
+            if (errorNodeId && getErrorBranchConnectorCount({ errorNodeId }) >= 1) {
+                showToast('错误处理分支只能添加一个连接器节点', 'error');
                 return;
             }
 
@@ -4431,6 +4726,17 @@
         function handleInsertNodeSelect(params) {
             const { type } = params;
             if (!insertEdgeContext) {
+                return;
+            }
+
+            const edge = edges.find(item => item.id === insertEdgeContext.edgeId);
+            const errorNodeId = getErrorBranchRootId({ edge });
+            if (errorNodeId && type !== 'action') {
+                showToast('错误处理分支只能添加连接器节点', 'error');
+                return;
+            }
+            if (errorNodeId && getErrorBranchConnectorCount({ errorNodeId }) >= 1) {
+                showToast('错误处理分支只能添加一个连接器节点', 'error');
                 return;
             }
 
@@ -4546,14 +4852,14 @@
                         </select>
                     </div>
 
-                    <!-- SYSTOKEN凭证白名单 -->
+                    <!-- SYSACCOUNT账号白名单 -->
                     <div class="form-group" style="margin-top: 24px;">
-                        <label class="form-label" style="font-weight: 600;">SYSTOKEN凭证白名单</label>
+                        <label class="form-label" style="font-weight: 600;">SYSACCOUNT账号白名单</label>
                         <div class="systoken-list" id="systokenList">
                             ${systokenList}
                         </div>
                         <button type="button" class="add-param-btn systoken-add-btn" onclick="addSystokenItem()">
-                            + 添加凭证
+                            + 添加账号
                         </button>
                     </div>
 
@@ -4597,6 +4903,7 @@
                 const displayParams = currentConnector
                     ? (currentConnector.versions.find(v => v.id === node.data.connectorVersionId)?.outputParams || { header: [], body: [] })
                     : { header: [], body: [] };
+                const authMethodsHtml = renderConnectorAuthMethods(currentConnector);
 
                 configHtml = `
                     <div class="form-group">
@@ -4619,6 +4926,16 @@
                         <select class="form-select" id="nodeConnectorVersion" onchange="handleConnectorVersionChange(this.value)">
                             ${versionOptions || '<option value="">请先选择连接器</option>'}
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">认证方式</label>
+                        <div id="connectorAuthMethods" style="padding: 8px 0;">
+                            ${authMethodsHtml}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">超时时间（秒）</label>
+                        <input type="number" class="form-input" id="nodeTimeout" value="${node.data.timeout || 30}" min="1" step="1" placeholder="请输入超时时间">
                     </div>
 
                     <!-- 出参配置 -->
@@ -4672,25 +4989,25 @@
                     <div class="form-group" style="margin-top: 24px;">
                         <label class="form-label" style="font-weight: 600;">参数组装配置</label>
                         <div class="param-tabs" id="outputAssembleTabs">
-                            <button class="tab-btn active" onclick="switchOutputAssembleTab('header')">HTTP请求头</button>
-                            <button class="tab-btn" onclick="switchOutputAssembleTab('body')">HTTP请求体</button>
+                            <button class="tab-btn active" onclick="switchOutputAssembleTab('body')">HTTP响应体</button>
+                            <button class="tab-btn" onclick="switchOutputAssembleTab('header')">HTTP响应头</button>
                         </div>
                         <div class="param-tab-content" id="outputAssembleContent">
-                            <div class="tab-panel active" data-tab="header">
-                                <div class="schema-list" id="output-assemble-params-header"></div>
-                                <button type="button" class="add-param-btn output-add-param-btn" data-tab="header" onclick="addOutputAssembleParam('header')">+ 添加参数</button>
-                            </div>
-                            <div class="tab-panel" data-tab="body">
+                            <div class="tab-panel active" data-tab="body">
                                 <div class="schema-list" id="output-assemble-params-body"></div>
                                 <button type="button" class="add-param-btn output-add-param-btn" data-tab="body" onclick="addOutputAssembleParam('body')">+ 添加参数</button>
+                            </div>
+                            <div class="tab-panel" data-tab="header">
+                                <div class="schema-list" id="output-assemble-params-header"></div>
+                                <button type="button" class="add-param-btn output-add-param-btn" data-tab="header" onclick="addOutputAssembleParam('header')">+ 添加参数</button>
                             </div>
                         </div>
                     </div>
                 `;
             } else if (node.type === 'error') {
                 // 异常处理节点配置
-                const strategy = node.data.strategy || 'ignore';
-                const retryCount = node.data.retryCount || 3;
+                const errorRules = node.data.errorRules || [{ errorType: 'all', strategy: 'ignore', retryInterval: 1 }];
+                const errorRulesHtml = errorRules.map(rule => renderErrorRuleItem(rule)).join('');
 
                 configHtml = `
                     <div class="form-group">
@@ -4702,15 +5019,11 @@
                         <textarea class="form-textarea" id="nodeDesc">${node.data.description || ''}</textarea>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">异常处理策略</label>
-                        <select class="form-select" id="nodeErrorType" onchange="toggleRetryConfig(this.value)">
-                            <option value="ignore" ${strategy === 'ignore' ? 'selected' : ''}>忽略（继续执行）</option>
-                            <option value="retry" ${strategy === 'retry' ? 'selected' : ''}>重试</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="retryConfigGroup" style="display: ${strategy === 'retry' ? 'block' : 'none'};">
-                        <label class="form-label">重试次数</label>
-                        <input type="number" class="form-input" id="nodeRetryCount" value="${retryCount}" min="1" max="10" style="width: 120px;">
+                        <label class="form-label" style="font-weight: 600;">错误处理配置</label>
+                        <div id="errorRuleList">
+                            ${errorRulesHtml}
+                        </div>
+                        <button type="button" class="add-param-btn" onclick="addErrorRuleItem()" style="margin-top: 8px;">+ 添加错误类型</button>
                     </div>
                     <div class="form-group" style="margin-top: 16px; padding: 12px; background: #fff1f0; border-radius: 6px; border: 1px solid #ff4d4f;">
                         <label class="form-label" style="color: #ff4d4f; font-weight: 500;">连线说明</label>
@@ -4864,7 +5177,7 @@
                             ${branchesHtml}
                         </div>
                         <button type="button" class="add-param-btn" onclick="addBranch()" style="margin-top: 8px;">
-                            + 添加分支
+                            + 添加分支（最多8个）
                         </button>
                     </div>
                     <div class="form-group" style="margin-top: 16px; padding: 12px; background: #f0f5ff; border-radius: 6px; border: 1px solid #597ef7;">
@@ -4908,6 +5221,11 @@
                 const assembleParams = node.data.assembleParams || { header: [], body: [] };
                 renderOutputAssembleParams('output-assemble-params-header', assembleParams.header || []);
                 renderOutputAssembleParams('output-assemble-params-body', assembleParams.body || []);
+            }
+
+            // 异常处理节点：初始化错误类型互斥状态
+            if (node.type === 'error') {
+                handleErrorRuleTypeChange();
             }
 
             // 数据处理节点：渲染参数组装配置
@@ -4980,6 +5298,11 @@
             const list = document.getElementById('branchList');
             if (!list) return;
 
+            if (list.children.length >= PARALLEL_BRANCH_LIMIT) {
+                showToast(`并行分支最多支持${PARALLEL_BRANCH_LIMIT}个`, 'error');
+                return;
+            }
+
             const index = list.children.length;
             const newBranch = `
                 <div class="form-group" style="margin-bottom: 12px; padding: 12px; background: var(--bg-light); border-radius: 6px;">
@@ -5021,14 +5344,140 @@
         }
 
         /**
-         * 切换重试配置显示
-         * @param {string} strategy - 异常处理策略
+         * 渲染错误处理规则项
+         * @param {Object} rule - 错误处理规则
+         * @returns {string} 错误处理规则HTML字符串
          */
-        function toggleRetryConfig(strategy) {
-            const retryConfigGroup = document.getElementById('retryConfigGroup');
-            if (retryConfigGroup) {
-                retryConfigGroup.style.display = strategy === 'retry' ? 'block' : 'none';
+        function renderErrorRuleItem(rule) {
+            const errorType = rule.errorType || '';
+            const strategy = rule.strategy || 'ignore';
+            const retryInterval = rule.retryInterval || 1;
+            return `
+                <div class="error-rule-item" style="padding: 12px; background: var(--bg-light); border-radius: 6px; margin-bottom: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <select class="form-select error-type-select" onchange="handleErrorRuleTypeChange()" style="flex: 1;">
+                            <option value="">请选择错误类型</option>
+                            <option value="all" ${errorType === 'all' ? 'selected' : ''}>全部</option>
+                            <option value="timeout" ${errorType === 'timeout' ? 'selected' : ''}>超时错误</option>
+                            <option value="connection" ${errorType === 'connection' ? 'selected' : ''}>连接错误</option>
+                        </select>
+                        <select class="form-select error-strategy-select" onchange="handleErrorStrategyChange(this)" style="flex: 1;">
+                            <option value="ignore" ${strategy === 'ignore' ? 'selected' : ''}>忽视</option>
+                            <option value="retry" ${strategy === 'retry' ? 'selected' : ''}>重试</option>
+                            <option value="abort" ${strategy === 'abort' ? 'selected' : ''}>中止</option>
+                        </select>
+                        <button type="button" class="param-remove-btn" onclick="removeErrorRuleItem(this)">删除</button>
+                    </div>
+                    <div class="error-retry-interval" style="display: ${strategy === 'retry' ? 'block' : 'none'};">
+                        <label class="form-label">重试间隔（秒）</label>
+                        <input type="number" class="form-input retry-interval-input" value="${retryInterval}" min="1" step="1" style="width: 120px;">
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 获取已选择的错误类型
+         * @returns {Array} 已选择错误类型数组
+         */
+        function getSelectedErrorTypes() {
+            return Array.from(document.querySelectorAll('.error-type-select'))
+                .map(select => select.value)
+                .filter(Boolean);
+        }
+
+        /**
+         * 校验错误类型选择规则
+         * 全部和其他错误类型互斥，且每种错误类型只能选择一次
+         */
+        function handleErrorRuleTypeChange() {
+            const selectedTypes = getSelectedErrorTypes();
+            const hasAll = selectedTypes.includes('all');
+            const hasDuplicate = selectedTypes.some((type, index) => selectedTypes.indexOf(type) !== index);
+
+            if (hasDuplicate) {
+                showToast('每个错误类型只能添加一次', 'error');
             }
+            if (hasAll && selectedTypes.length > 1) {
+                showToast('选择全部后不能添加其他错误类型', 'error');
+            }
+
+            // 根据已选错误类型更新下拉禁用状态
+            document.querySelectorAll('.error-type-select').forEach(select => {
+                Array.from(select.options).forEach(option => {
+                    if (!option.value || option.value === select.value) {
+                        option.disabled = false;
+                        return;
+                    }
+                    option.disabled = hasAll || selectedTypes.includes(option.value) || (option.value === 'all' && selectedTypes.length > 0);
+                });
+            });
+        }
+
+        /**
+         * 添加错误处理规则项
+         * 根据互斥规则限制新增错误类型
+         */
+        function addErrorRuleItem() {
+            const list = document.getElementById('errorRuleList');
+            if (!list) return;
+
+            const selectedTypes = getSelectedErrorTypes();
+            if (selectedTypes.includes('all')) {
+                showToast('选择全部后不能添加其他错误类型', 'error');
+                return;
+            }
+            if (selectedTypes.length >= 2) {
+                showToast('可配置的错误类型已全部添加', 'error');
+                return;
+            }
+
+            list.insertAdjacentHTML('beforeend', renderErrorRuleItem({ errorType: '', strategy: 'ignore', retryInterval: 1 }));
+        }
+
+        /**
+         * 删除错误处理规则项
+         * @param {HTMLElement} button - 删除按钮元素
+         */
+        function removeErrorRuleItem(button) {
+            button.closest('.error-rule-item')?.remove();
+        }
+
+        /**
+         * 切换重试间隔配置显示
+         * @param {HTMLElement} select - 错误处理策略选择器
+         */
+        function handleErrorStrategyChange(select) {
+            const retryInterval = select.closest('.error-rule-item')?.querySelector('.error-retry-interval');
+            if (retryInterval) {
+                retryInterval.style.display = select.value === 'retry' ? 'block' : 'none';
+            }
+        }
+
+        /**
+         * 收集错误处理规则配置
+         * @returns {Array} 错误处理规则数组
+         */
+        function collectErrorRules() {
+            const rules = Array.from(document.querySelectorAll('.error-rule-item')).map(item => ({
+                errorType: item.querySelector('.error-type-select')?.value || '',
+                strategy: item.querySelector('.error-strategy-select')?.value || 'ignore',
+                retryInterval: parseInt(item.querySelector('.retry-interval-input')?.value) || 1
+            })).filter(rule => rule.errorType);
+            const errorTypes = rules.map(rule => rule.errorType);
+            const hasDuplicate = errorTypes.some((type, index) => errorTypes.indexOf(type) !== index);
+            const hasAll = errorTypes.includes('all');
+
+            if (hasDuplicate) {
+                showToast('每个错误类型只能添加一次', 'error');
+                return null;
+            }
+            if (hasAll && errorTypes.length > 1) {
+                showToast('选择全部后不能添加其他错误类型', 'error');
+                return null;
+            }
+
+            return rules;
         }
 
         function closeDrawer() {
@@ -5040,8 +5489,13 @@
         function saveNodeConfig() {
             if (!selectedNode) return;
 
-            // 基础配置
-            selectedNode.data.label = document.getElementById('nodeLabel')?.value || '';
+            // 基础配置：节点名称为必填项
+            const nodeLabel = document.getElementById('nodeLabel')?.value.trim() || '';
+            if (!nodeLabel) {
+                showToast('节点名称不能为空', 'error');
+                return;
+            }
+            selectedNode.data.label = nodeLabel;
             selectedNode.data.description = document.getElementById('nodeDesc')?.value || '';
 
             // 根据节点类型保存特定配置
@@ -5049,7 +5503,7 @@
                 // 触发器配置
                 selectedNode.data.triggerType = document.getElementById('nodeTriggerType')?.value;
 
-                // SYSTOKEN凭证白名单
+                // SYSACCOUNT账号白名单
                 const systokenInputs = document.querySelectorAll('.systoken-input');
                 selectedNode.data.systokenWhitelist = Array.from(systokenInputs).map((input, index) => ({
                     id: `t${index}`,
@@ -5066,6 +5520,8 @@
                 // 连接器配置
                 selectedNode.data.connectorId = document.getElementById('nodeConnector')?.value;
                 selectedNode.data.connectorVersionId = document.getElementById('nodeConnectorVersion')?.value;
+                selectedNode.data.timeout = parseInt(document.getElementById('nodeTimeout')?.value) || 30;
+                selectedNode.data.authValueSources = collectAuthValueSources();
                 selectedNode.data.outputParams = {
                     header: collectConnectorOutputParams(document.getElementById('connector-output-params-header')),
                     body: collectConnectorOutputParams(document.getElementById('connector-output-params-body'))
@@ -5078,8 +5534,11 @@
                 };
             } else if (selectedNode.type === 'error') {
                 // 异常处理配置
-                selectedNode.data.strategy = document.getElementById('nodeErrorType')?.value === 'retry' ? 'retry' : 'ignore';
-                selectedNode.data.retryCount = parseInt(document.getElementById('nodeRetryCount')?.value) || 3;
+                const errorRules = collectErrorRules();
+                if (!errorRules) {
+                    return;
+                }
+                selectedNode.data.errorRules = errorRules;
             } else if (selectedNode.type === 'data') {
                 // 数据处理配置 - 保存参数组装配置
                 selectedNode.data.assembleParams = {
@@ -5113,6 +5572,11 @@
                 // 并行配置
                 const branchList = document.getElementById('branchList');
                 if (branchList) {
+                    if (branchList.children.length > PARALLEL_BRANCH_LIMIT) {
+                        showToast(`并行分支最多支持${PARALLEL_BRANCH_LIMIT}个`, 'error');
+                        return;
+                    }
+
                     const branches = [];
                     Array.from(branchList.children).forEach((item, index) => {
                         const labelInput = document.getElementById(`branchLabel${index}`);
@@ -5288,11 +5752,7 @@
             }
 
             // 初始化版本按钮状态
-            const firstVersion = flowVersionData.versions.find(v => v.id === flowVersionData.currentVersion);
-            if (firstVersion) {
-                updateVersionActions(firstVersion.status);
-                updateCanvasState(firstVersion.status);
-            }
+            refreshVersionHeader();
 
             // 初始化默认流程，确保画布上存在可点击加号的基础连线
             initializeDefaultFlow();
@@ -5387,8 +5847,8 @@
         function switchOutputAssembleTab(tabName) {
             document.querySelectorAll('#outputAssembleTabs .tab-btn').forEach(btn => {
                 btn.classList.toggle('active',
-                    (tabName === 'header' && btn.textContent === 'HTTP请求头') ||
-                    (tabName === 'body' && btn.textContent === 'HTTP请求体'));
+                    (tabName === 'header' && btn.textContent === 'HTTP响应头') ||
+                    (tabName === 'body' && btn.textContent === 'HTTP响应体'));
             });
             document.querySelectorAll('#outputAssembleContent .tab-panel').forEach(panel => {
                 panel.classList.toggle('active', panel.dataset.tab === tabName);
@@ -5410,7 +5870,166 @@
         }
 
         /**
-         * 添加SYSTOKEN凭证项
+         * 展平参数树为可选择的上游出参列表
+         * @param {Array} params - 参数列表
+         * @param {string} prefix - 参数路径前缀
+         * @returns {Array} 展平后的参数列表
+         */
+        function flattenOutputParams(params, prefix = '') {
+            return (params || []).flatMap(param => {
+                const paramPath = prefix ? `${prefix}.${param.paramName}` : param.paramName;
+                const currentParam = {
+                    name: paramPath,
+                    type: param.paramType,
+                    carrier: param.carrier
+                };
+                return [currentParam, ...flattenOutputParams(param.children || [], paramPath)];
+            });
+        }
+
+        /**
+         * 获取当前节点上游所有节点出参
+         * 从连线关系递归查找当前连接器节点之前的节点输出参数
+         * @returns {Array} 上游出参列表
+         */
+        function getUpstreamOutputParams() {
+            if (!selectedNode) return [];
+
+            const visitedNodeIds = new Set();
+            const pendingNodeIds = edges
+                .filter(edge => edge.target === selectedNode.id)
+                .map(edge => edge.source);
+            const outputParams = [];
+
+            while (pendingNodeIds.length > 0) {
+                const nodeId = pendingNodeIds.shift();
+                if (!nodeId || visitedNodeIds.has(nodeId)) continue;
+
+                visitedNodeIds.add(nodeId);
+                const node = nodes.find(item => item.id === nodeId);
+                if (node?.data?.outputParams) {
+                    outputParams.push(...flattenOutputParams(node.data.outputParams.header || []));
+                    outputParams.push(...flattenOutputParams(node.data.outputParams.body || []));
+                }
+                if (node?.data?.assembleParams) {
+                    outputParams.push(...flattenOutputParams(node.data.assembleParams.header || []));
+                    outputParams.push(...flattenOutputParams(node.data.assembleParams.body || []));
+                    outputParams.push(...flattenOutputParams(node.data.assembleParams.query || []));
+                }
+
+                edges
+                    .filter(edge => edge.target === nodeId)
+                    .forEach(edge => pendingNodeIds.push(edge.source));
+            }
+
+            return outputParams;
+        }
+
+        /**
+         * 渲染Cookie值来源下拉框
+         * @param {Object} params - 渲染参数
+         * @returns {string} Cookie值来源HTML字符串
+         */
+        function renderCookieValueSourceSelect(params) {
+            const { authMethodId, paramIndex, currentValue } = params;
+            const upstreamParams = getUpstreamOutputParams();
+            const optionsHtml = upstreamParams.length > 0
+                ? upstreamParams.map(param => `
+                    <option value="${param.name}" ${currentValue === param.name ? 'selected' : ''}>${param.name}</option>
+                `).join('')
+                : '<option value="">暂无上游出参</option>';
+
+            return `
+                <select class="form-select auth-cookie-source" data-auth-method-id="${authMethodId}" data-param-index="${paramIndex}" style="min-width: 180px; flex: 1;">
+                    <option value="">请选择值来源</option>
+                    ${optionsHtml}
+                </select>
+            `;
+        }
+
+        /**
+         * 渲染认证参数值来源
+         * @param {Object} params - 渲染参数
+         * @returns {string} 值来源HTML字符串
+         */
+        function renderAuthValueSource(params) {
+            const { authMethod, param, paramIndex } = params;
+            const authValueSources = selectedNode?.data?.authValueSources || {};
+            const currentValue = authValueSources[`${authMethod.id}-${paramIndex}`] || param.valueSource || '';
+
+            if (authMethod.id === 'COOKIE') {
+                return renderCookieValueSourceSelect({
+                    authMethodId: authMethod.id,
+                    paramIndex,
+                    currentValue
+                });
+            }
+
+            return `
+                <input type="text" class="form-input" value="${currentValue}" disabled style="min-width: 180px; flex: 1; background: var(--bg-light);">
+            `;
+        }
+
+        /**
+         * 渲染连接器配置页中已配置的认证参数
+         * @param {Object} connector - 当前选择的连接器配置
+         * @returns {string} 认证参数只读展示HTML字符串
+         */
+        function renderConnectorAuthMethods(connector) {
+            const authMethods = connector?.authMethods || [];
+            if (authMethods.length === 0) {
+                return '<span style="color: var(--text-tertiary); font-size: 13px;">未配置认证方式</span>';
+            }
+
+            return authMethods.map(authMethod => `
+                <div class="auth-method-section" style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 8px; color: var(--text-primary);">${authMethod.name}</div>
+                    <div style="display: grid; grid-template-columns: 1fr 90px 90px 1.4fr; gap: 8px; align-items: center; margin-bottom: 6px; color: var(--text-tertiary); font-size: 12px;">
+                        <span>参数名称</span>
+                        <span>类型</span>
+                        <span>位置</span>
+                        <span>值来源</span>
+                    </div>
+                    ${(authMethod.params || []).map((param, paramIndex) => `
+                        <div style="display: grid; grid-template-columns: 1fr 90px 90px 1.4fr; gap: 8px; align-items: center; margin-bottom: 8px;">
+                            <input type="text" class="form-input" value="${param.paramName}" disabled style="background: var(--bg-light);">
+                            <input type="text" class="form-input" value="${param.paramType}" disabled style="background: var(--bg-light);">
+                            <input type="text" class="form-input" value="${param.carrier}" disabled style="background: var(--bg-light);">
+                            ${renderAuthValueSource({ authMethod, param, paramIndex })}
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        /**
+         * 刷新连接器认证参数只读展示
+         * @param {Object} connector - 当前选择的连接器配置
+         */
+        function updateConnectorAuthMethods(connector) {
+            const container = document.getElementById('connectorAuthMethods');
+            if (container) {
+                container.innerHTML = renderConnectorAuthMethods(connector);
+            }
+        }
+
+        /**
+         * 收集认证参数值来源配置
+         * 仅Cookie认证允许在连接流节点中选择值来源
+         * @returns {Object} 认证参数值来源映射
+         */
+        function collectAuthValueSources() {
+            const authValueSources = {};
+            document.querySelectorAll('.auth-cookie-source').forEach(select => {
+                const authMethodId = select.dataset.authMethodId;
+                const paramIndex = select.dataset.paramIndex;
+                authValueSources[`${authMethodId}-${paramIndex}`] = select.value;
+            });
+            return authValueSources;
+        }
+
+        /**
+         * 添加SYSACCOUNT账号项
          */
         function addSystokenItem() {
             const list = document.getElementById('systokenList');
@@ -5437,6 +6056,7 @@
                 versionSelect.innerHTML = connector.versions.map(v =>
                     `<option value="${v.id}">${v.name}</option>`
                 ).join('');
+                updateConnectorAuthMethods(connector);
                 // 渲染第一个版本的出参配置（只读模式，带配置按钮）
                 const firstVersion = connector.versions[0];
                 if (firstVersion) {
@@ -5445,6 +6065,7 @@
                 }
             } else {
                 versionSelect.innerHTML = '<option value="">请先选择连接器</option>';
+                updateConnectorAuthMethods(null);
             }
         }
 
