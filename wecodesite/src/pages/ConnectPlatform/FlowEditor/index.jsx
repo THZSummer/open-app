@@ -25,12 +25,16 @@ import { generateNodeId, generateEdgeId, getInitialNodePosition, transformFromBa
 import { fetchFlowDetail, saveFlowConfig } from './thunk';
 import { queryParams } from '../../../utils/common';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import './FlowEditor.m.less';
 
 /**
  * 连接流编辑器页面组件
  */
 function FlowEditor() {
+  // 校验当前用户是否具备连接平台访问权限
+  useAdminAccessGuard();
+
   const navigate = useNavigate();
 
   /**

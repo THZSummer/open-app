@@ -40,21 +40,21 @@ export const convertToTreeData = (categoryList) => {
   }));
 };
 
-export const getSecondModalInfo = (type, action, isAdminWeb) => {
-  const actionStr = action === 'delete' ? '删除' : '撤回';
-  let modalTitle = `确认${actionStr}${type}`;
-  let modalContent = `${actionStr}后将无法恢复，确认要${actionStr}这个${type}`;
-  let finnalStr = '';
-  if (action === 'delete') {
-    finnalStr = isAdminWeb ? '吗？' : '订阅吗？'
-  } else {
-    finnalStr = '申请吗？';
-  }
-  modalTitle += finnalStr;
-  modalContent += finnalStr;
+export const getSecondModalInfo = (params) => {
+  /**
+   * 二次确认弹窗配置参数
+   */
+  const {
+    action,
+    getConfirmText,
+    impactText,
+    objectName,
+  } = params;
   return {
     ...ACTION_CONFIG[action],
-    title: modalTitle,
-    content: modalContent,
+    content: {
+      confirmText: getConfirmText({ objectName }),
+      impactText,
+    },
   }
 }

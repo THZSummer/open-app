@@ -21,7 +21,8 @@ import {
   deleteApprovalFlow,
 } from './thunk';
 import './ApprovalCenter.m.less';
-import { getApprovalFlowColumns, secondModalInfo } from './constants';
+import { APPROVAL_FLOW_DELETE_SECOND_MODAL_INFO, getApprovalFlowColumns } from './constants';
+import { getSecondModalInfo } from '../../../utils/common';
 import ApprovalFlowFormModal from '../../../components/ApprovalFlowFormModal/ApprovalFlowFormModal';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 
@@ -204,7 +205,10 @@ function ApprovalFlowConfig() {
         onClose={() => setDeleteModalVisible(false)}
         onConfirm={handleConfirmDelete}
         requireConfirmText={deleteFlowCode}
-        modalInfo={secondModalInfo}
+        modalInfo={getSecondModalInfo({
+          ...APPROVAL_FLOW_DELETE_SECOND_MODAL_INFO,
+          objectName: deleteFlowCode,
+        })}
       />
     </div>
   );

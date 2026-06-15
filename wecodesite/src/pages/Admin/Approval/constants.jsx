@@ -1,19 +1,22 @@
 import React from 'react';
 import { Tag, Button, Space, Popconfirm } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { SUBSCRIPTION_STATUS, ACTION_CONFIG } from '../../../utils/constants';
+import { SUBSCRIPTION_STATUS } from '../../../utils/constants';
+
+/**
+ * 审批流程删除二次确认弹窗配置
+ */
+export const APPROVAL_FLOW_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个审批流程：${objectName}吗？`,
+  impactText: '操作影响：删除后，该审批流程无法恢复，关联业务将无法继续使用该流程审批。',
+};
 
 export const LEVEL_MAP = {
   'resource': { text: '资源审批', color: 'blue' },
   'scene': { text: '场景审批', color: 'orange' },
   'global': { text: '全局审批', color: 'green' },
 };
-
-export const secondModalInfo = {
-  ...ACTION_CONFIG.delete,
-  title: '删除审批流程',
-  content: '此操作将永久删除该审批流程，无法恢复！'
-}
 
 export const BUSINESS_COLUMNS = [
   {

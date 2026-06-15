@@ -4,6 +4,15 @@ import { AUTH_TYPE } from '../../../utils/constants';
 import { adminTableBaseColumn } from '../../../utils/commonTableConfigs';
 
 /**
+ * API删除二次确认弹窗配置
+ */
+export const ADMIN_API_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个API：${objectName}吗？`,
+  impactText: '操作影响：删除后，该 API 将不可再被应用订阅或使用，相关权限配置会失效。',
+};
+
+/**
  * HTTP请求方法选项
  */
 export const HTTP_METHOD_OPTIONS = [

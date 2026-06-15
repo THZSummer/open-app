@@ -19,14 +19,25 @@ import ConnectorSearchForm from '../../../components/ConnectorSearchForm/Connect
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ConnectorFormModal from '../../../components/ConnectorFormModal/ConnectorFormModal';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
-import { pageInfo, flowSearchConfig, flowStatusOptions, getFlowColumns, stopFlowModalInfo, deleteFlowModalInfo } from './constants';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
+import {
+  FLOW_DELETE_SECOND_MODAL_INFO,
+  flowSearchConfig,
+  flowStatusOptions,
+  getFlowColumns,
+  pageInfo,
+} from './constants';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
+import { getSecondModalInfo } from '../../../utils/common';
 import './Flow.m.less';
 
 /**
  * 连接流列表页面主组件
  */
 function FlowList() {
+  // 校验当前用户是否具备连接平台访问权限
+  useAdminAccessGuard();
+
   const navigate = useNavigate();
 
   /**
@@ -186,7 +197,7 @@ function FlowList() {
         successMsg = '启动成功';
         errorMsg = '启动失败';
         setLoading = null;
-        currentPage = INIT_PAGECONFIG;
+        currentPage = pagination;
         break;
       default:
         return;
@@ -341,7 +352,18 @@ function FlowList() {
             open={actionModalVisible}
             onClose={handleActionCancel}
             onConfirm={handleActionConfirm}
-            modalInfo={currentActionType === 'delete' ? deleteFlowModalInfo : stopFlowModalInfo}
+            modalInfo={currentActionType === 'delete' ? getSecondModalInfo({
+              ...FLOW_DELETE_SECOND_MODAL_INFO,
+              objectName: actionItem?.nameCn || actionItem?.nameEn,
+            }) : {
+              content: {
+                confirmText: actionItem ? `确认要停止这个连接流：${actionItem.nameCn || actionItem.nameEn}吗？` : '确认要停止这个连接流吗？',
+                impactText: '操作影响：停止后，该连接流将不再处理触发请求，但配置仍会保留。',
+              },
+              confirmButtonText: '确认停止',
+              loadingText: '停止中...',
+              dangerColor: '#ff4d4f',
+            }}
             loading={actionLoading}
           />
 

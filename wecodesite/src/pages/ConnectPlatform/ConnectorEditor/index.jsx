@@ -27,6 +27,7 @@ import {
 } from './thunk';
 import SchemaEditor from '../../../components/SchemaEditor/SchemaEditor.jsx';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import {
   DEFAULT_API_CONFIG,
   AUTH_SCHEMA_MAP,
@@ -43,6 +44,9 @@ import './ConnectorEditor.m.less';
  * 连接器编辑页面组件
  */
 const ConnectorEditor = () => {
+  // 校验当前用户是否具备连接平台访问权限
+  useAdminAccessGuard();
+
   const navigate = useNavigate();
   const connectorId = queryParams('id');
 

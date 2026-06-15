@@ -11,10 +11,10 @@ const createState = () => {
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [currentApprovalInfo, setCurrentApprovalInfo] = useState({});
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [currentDeleteId, setCurrentDeleteId] = useState(null);
+  const [currentDeleteItem, setCurrentDeleteItem] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [revokeVisible, setRevokeVisible] = useState(false);
-  const [currentWithdrawId, setCurrentWithdrawId] = useState(null);
+  const [currentWithdrawItem, setCurrentWithdrawItem] = useState(null);
   const [revokePending, setRevokePending] = useState(false);
 
   return {
@@ -26,10 +26,10 @@ const createState = () => {
     approvalModalOpen, setApprovalModalOpen,
     currentApprovalInfo, setCurrentApprovalInfo,
     deleteModalOpen, setDeleteModalOpen,
-    currentDeleteId, setCurrentDeleteId,
+    currentDeleteItem, setCurrentDeleteItem,
     deleteLoading, setDeleteLoading,
     revokeVisible, setRevokeVisible,
-    currentWithdrawId, setCurrentWithdrawId,
+    currentWithdrawItem, setCurrentWithdrawItem,
     revokePending, setRevokePending,
   };
 };
@@ -142,32 +142,37 @@ const createApprovalOperations = (state) => {
 };
 
 const createDeleteOperations = (state, appId, options) => {
-  const { setDeleteModalOpen, setCurrentDeleteId, setDeleteLoading, pagination } = state;
+  const { setDeleteModalOpen, setCurrentDeleteItem, setDeleteLoading, pagination } = state;
   let loadDataRef = null;
-  const deleteIdRef = useRef(null);
+  const deleteItemRef = useRef(null);
 
-  const handleDelete = useCallback((id) => {
-    deleteIdRef.current = id;
-    setCurrentDeleteId(id);
+  const handleDelete = useCallback((record) => {
+    deleteItemRef.current = record;
+    setCurrentDeleteItem(record);
     setDeleteModalOpen(true);
   }, []);
 
   const handleConfirmDelete = useCallback(async () => {
-    if (!deleteIdRef.current) return;
+    if (!deleteItemRef.current?.id) return;
     setDeleteLoading(true);
-    const res = await options.deleteItem(appId, deleteIdRef.current);
+    const res = await options.deleteItem(appId, deleteItemRef.current.id);
     if (res && res.code === '200') {
       message.success('删除成功');
       setDeleteModalOpen(false);
-      deleteIdRef.current = null;
-      loadDataRef?.(INIT_PAGECONFIG);
+      deleteItemRef.current = null;
+      setCurrentDeleteItem(null);
+      loadDataRef?.(INIT_PAGECONFIG.curPage, INIT_PAGECONFIG.pageSize);
     } else {
       message.error(res?.messageZh || res?.message || '删除失败');
     }
     setDeleteLoading(false);
   }, [appId, options.deleteItem]);
 
-  const closeDeleteModal = useCallback(() => setDeleteModalOpen(false), []);
+  const closeDeleteModal = useCallback(() => {
+    deleteItemRef.current = null;
+    setCurrentDeleteItem(null);
+    setDeleteModalOpen(false);
+  }, []);
 
   const setLoadData = useCallback((fn) => {
     loadDataRef = fn;
@@ -182,24 +187,25 @@ const createDeleteOperations = (state, appId, options) => {
 };
 
 const createWithdrawOperations = (state, appId, options) => {
-  const { setCurrentWithdrawId, setRevokePending, setRevokeVisible, pagination } = state;
+  const { setCurrentWithdrawItem, setRevokePending, setRevokeVisible, pagination } = state;
   let loadDataRef = null;
-  const withdrawIdRef = useRef(null);
+  const withdrawItemRef = useRef(null);
 
-  const handleWithdraw = useCallback((id) => {
-    withdrawIdRef.current = id;
-    setCurrentWithdrawId(id);
+  const handleWithdraw = useCallback((record) => {
+    withdrawItemRef.current = record;
+    setCurrentWithdrawItem(record);
     setRevokeVisible(true);
   }, []);
 
   const handleConfirmWithdraw = useCallback(async () => {
-    if (!withdrawIdRef.current) return;
+    if (!withdrawItemRef.current?.id) return;
     setRevokePending(true);
-    const res = await options.withdraw(appId, withdrawIdRef.current);
+    const res = await options.withdraw(appId, withdrawItemRef.current.id);
     if (res && res.code === '200') {
       message.success('已撤回');
       setRevokeVisible(false);
-      withdrawIdRef.current = null;
+      withdrawItemRef.current = null;
+      setCurrentWithdrawItem(null);
       loadDataRef?.();
     } else {
       message.error(res?.messageZh || res?.message || '撤回失败');
@@ -211,7 +217,11 @@ const createWithdrawOperations = (state, appId, options) => {
     loadDataRef = fn;
   }, []);
   
-  const closeWithdrawModal = useCallback(() => setRevokeVisible(false), []);
+  const closeWithdrawModal = useCallback(() => {
+    withdrawItemRef.current = null;
+    setCurrentWithdrawItem(null);
+    setRevokeVisible(false);
+  }, []);
 
   return {
     handleConfirmWithdraw,

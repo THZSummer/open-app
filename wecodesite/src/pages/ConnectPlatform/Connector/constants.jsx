@@ -10,6 +10,15 @@ import React from 'react';
 import { Button, Space, Tooltip } from 'antd';
 
 /**
+ * 连接器删除二次确认弹窗配置
+ */
+export const CONNECTOR_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个连接器：${objectName}吗？`,
+  impactText: '操作影响：删除后，该连接器相关触发器、动作或连接流配置可能不可用。',
+};
+
+/**
  * 渲染文本单元格
  * 用于表格中显示文本内容，支持tooltip和空值显示
  * @param {string} text - 单元格文本
@@ -29,17 +38,6 @@ export const pageInfo = {
   addButtonText: '新建连接器',
   description: '管理平台的连接器配置，包括触发事件和执行动作的定义',
   title: '连接器管理',
-};
-
-/**
- * 删除确认弹窗配置
- */
-export const deleteConnectorModalInfo = {
-  confirmButtonText: '确认删除',
-  content: '删除后将无法恢复，确认要删除这个连接器吗？',
-  dangerColor: '#ff4d4f',
-  loadingText: '删除中...',
-  title: '确认删除连接器吗？',
 };
 
 /**
@@ -133,7 +131,7 @@ export const getConnectorColumns = ({ handleEdit, handleDeleteClick, handleConfi
         <Button type="link" size="small" onClick={() => handleConfigClick(record)}>
           配置
         </Button>
-        <Button type="link" size="small" danger onClick={() => handleDeleteClick(record.id)}>
+        <Button type="link" size="small" danger onClick={() => handleDeleteClick(record)}>
           删除
         </Button>
       </Space>

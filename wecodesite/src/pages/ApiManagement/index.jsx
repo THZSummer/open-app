@@ -6,7 +6,11 @@ import ApprovalAddressModal from '../../components/ApprovalAddressModal/Approval
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ApiPermissionDrawer from './ApiPermissionDrawer';
 import { fetchAppApis, subscribeApis, withdrawApiApplication, deleteApiSubscription } from './thunk';
-import { getApiManagementColumns } from './constants';
+import {
+  API_DELETE_SECOND_MODAL_INFO,
+  API_WITHDRAW_SECOND_MODAL_INFO,
+  getApiManagementColumns,
+} from './constants';
 import { getSecondModalInfo, openUrl, queryParams } from '../../utils/common';
 import './ApiManagement.m.less';
 import { REMIND_BUSINESSTYPE } from '../../utils/constants';
@@ -39,6 +43,8 @@ function ApiManagement() {
     drawerOpen,
     deleteModalOpen,
     deleteLoading,
+    currentDeleteItem,
+    currentWithdrawItem,
     subscribeLoading,
     approvalModalOpen,
     currentApprovalInfo,
@@ -88,7 +94,10 @@ function ApiManagement() {
         onClose={closeDeleteModal}
         onConfirm={handleConfirmDelete}
         loading={deleteLoading}
-        modalInfo={getSecondModalInfo('API', 'delete', false)}
+        modalInfo={getSecondModalInfo({
+          ...API_DELETE_SECOND_MODAL_INFO,
+          objectName: currentDeleteItem?.permission?.nameCn,
+        })}
       />
 
       <ApprovalAddressModal
@@ -112,7 +121,10 @@ function ApiManagement() {
         open={revokeVisible}
         onClose={closeWithdrawModal}
         onConfirm={handleConfirmWithdraw}
-        modalInfo={getSecondModalInfo('API', 'withdraw', false)}
+        modalInfo={getSecondModalInfo({
+          ...API_WITHDRAW_SECOND_MODAL_INFO,
+          objectName: currentWithdrawItem?.permission?.nameCn,
+        })}
         loading={revokePending}
       />
     </div>
