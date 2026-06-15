@@ -122,6 +122,8 @@ open-server/src/main/resources/db/migration/
 | `execution_record_t` | `status` | 0=success, 1=failed, 2=timeout | V2 启用 |
 | `execution_step_t` | `status` | 0=success, 1=failed, 2=timeout, 3=not_executed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
+| `execution_record_t` | `cache_status` | 0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3） | V2 新增 |
+| `execution_step_t` | `cache_status` | 0=未命中, 1=节点级命中（V3） | V2 预留，V3 启用 |
 
 ### 0.8 V2 规范变更（相对 V1）
 
@@ -350,6 +352,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `trigger_type`            TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
     `trigger_account`         VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识，debug=调试用户）',
     `status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=success, 1=failed, 2=timeout',
+    `cache_status`            TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '缓存状态：0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3）',
+    `cache_key`               VARCHAR(500) DEFAULT NULL COMMENT '命中的缓存键（全流命中时有值，调试用）',
+    `cache_ttl_remaining`     INT          DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒）',
     `error_message`           VARCHAR(1000) DEFAULT NULL COMMENT '错误信息（整体摘要，节点级详情在 execution_step_t）',
     `duration_ms`             INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
     `trigger_time`            DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
@@ -360,7 +365,8 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     PRIMARY KEY (`id`),
     INDEX `idx_flow_trigger_time` (`flow_id`, `trigger_time`) COMMENT '按连接流+时间查询运行记录',
     INDEX `idx_trigger_time`       (`trigger_time`)           COMMENT '定时清理时按时间范围扫描',
-    INDEX `idx_status`   (`status`)       COMMENT '按执行状态过滤'
+    INDEX `idx_status`   (`status`)       COMMENT '按执行状态过滤',
+    INDEX `idx_cache_status` (`cache_status`)  COMMENT '按缓存命中状态过滤'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行记录表';
 ```
 
@@ -374,6 +380,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | `trigger_type` | TINYINT(10) | 1=http, 2=debug |
 | `trigger_account` | VARCHAR(100) | 触发账号 |
 | `status` | TINYINT(10) | 0=success, 1=failed, 2=timeout |
+| `cache_status` | TINYINT(1) | 0=未命中, 1=全流命中, 2=部分命中（V3） |
+| `cache_key` | VARCHAR(500) | 命中的缓存键（全流命中时有值） |
+| `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL（秒） |
 | `trigger_time` | DATETIME(3) | 触发时间 |
 | `duration_ms` | INT | 总耗时 |
 
@@ -391,6 +400,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
     `iteration`         INT(11)      NOT NULL DEFAULT 0 COMMENT '循环轮次（0=首次或非循环，>0=第N轮循环）',
     `status`            TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=not_executed（未执行，如分支未走到）',
+    `cache_status`      TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '节点级缓存状态：0=未命中（正常执行）, 1=节点级命中（V3 启用，V2 始终为0）',
+    `cache_key`         VARCHAR(500) DEFAULT NULL COMMENT '命中的节点级缓存键（V3 启用，调试用）',
+    `cache_ttl_remaining` INT        DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒，V3 启用）',
     `input_data`        MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输入数据JSON',
     `output_data`       MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输出数据JSON',
     `error_message`     TEXT         DEFAULT NULL COMMENT '步骤错误信息',
@@ -412,6 +424,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
 | `iteration` | INT | 循环轮次（预留），默认 0 |
 | `status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=not_executed |
+| `cache_status` | TINYINT(1) | 0=未命中, 1=节点级命中（V3 启用，V2 始终为 0） |
+| `cache_key` | VARCHAR(500) | 命中的节点级缓存键（V3 启用，V2 始终 NULL） |
+| `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL 秒（V3 启用，V2 始终 NULL） |
 | `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON |
 | `error_code` | VARCHAR(20) | 结构化错误码，方便告警分类 |
 
@@ -486,6 +501,21 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | 2 | connector | 连接器节点 |
 | 3 | data_processor | 数据处理节点（V2 新增） |
 | 4 | exit | 出口节点 |
+
+### 4.8 execution_record_t.cache_status（V2 新增）
+
+| 值 | 含义 | 说明 |
+|:--:|------|------|
+| 0 | 未命中 | 正常执行 DAG，未使用缓存 |
+| 1 | 全流命中 | 整个连接流结果从缓存返回，无节点实际执行 |
+| 2 | 部分命中 | V3：部分节点缓存命中，部分实际执行 |
+
+### 4.9 execution_step_t.cache_status（V2 预留，V3 启用）
+
+| 值 | 含义 | 说明 |
+|:--:|------|------|
+| 0 | 未命中 | 该节点正常执行（V2 始终为 0） |
+| 1 | 节点级命中 | V3：该节点结果从缓存返回 |
 
 ---
 
