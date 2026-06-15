@@ -83,10 +83,11 @@ const InsertEdge: React.FC<EdgeProps> = ({
     const midX = (sourceX + targetX) / 2;
     const midY = (sourceY + targetY) / 2;
     
-    // 触发插入节点事件
+    // 触发插入节点事件，并把按钮页面坐标传给下拉框定位
     triggerInsertNode({
       edgeId: id,
-      position: { x: midX, y: midY }
+      position: { x: midX, y: midY },
+      dropdownPosition: { x: event.clientX, y: event.clientY }
     });
   };
 

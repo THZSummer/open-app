@@ -1009,8 +1009,8 @@
             <!-- 动态表单 -->
         </div>
         <div class="drawer-footer">
-            <button class="btn" onclick="closeDrawer()">取消</button>
-            <button class="btn btn-primary" onclick="saveNodeConfig()">保存</button>
+            <button class="btn" onclick="closeDrawer()">关闭</button>
+            <button class="btn btn-primary" id="nodeConfigSaveButton" onclick="saveNodeConfig()">保存</button>
         </div>
     </div>
 
@@ -3501,23 +3501,26 @@
         }
 
         /**
-         * 渲染草稿类版本操作按钮
-         * 草稿、已驳回、已撤回共享编辑、保存、发布和删除能力
-         * @param {Object} params - 渲染参数
+         * 渲染草稿版本操作按钮
+         * 草稿版本直接允许编辑，保存不做完整校验，发布时执行节点校验
          * @returns {string} 按钮HTML字符串
          */
-        function renderDraftLikeVersionActions(params) {
-            const { isEditing } = params;
+        function renderDraftVersionActions() {
             return `
                 <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
-                ${isEditing
-                    ? `<button class="btn" onclick="handleSaveEdit()">保存</button>`
-                    : `<button class="btn" onclick="handleEdit()">编辑</button>`
-                }
+                <button class="btn" onclick="openDebugDrawer()">调试</button>
+                <button class="btn" onclick="handleSaveDraft()">保存</button>
                 <button class="btn btn-primary" onclick="handlePublishFlow()">发布</button>
-                <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
             `;
+        }
+
+        /**
+         * 渲染新增草稿按钮
+         * 已发布、已失效、已驳回版本通过新增草稿进入可编辑版本
+         * @returns {string} 按钮HTML字符串
+         */
+        function renderCreateDraftButton() {
+            return '<button class="btn" onclick="handleCopyToDraft()">新增草稿</button>';
         }
 
         /**
@@ -3528,50 +3531,50 @@
         function updateVersionActions(status) {
             const container = document.getElementById('versionActions');
             let buttons = '';
-            const isEditing = flowVersionData.isEditing;
-
-            // 可以编辑的状态：草稿、已驳回、已撤回
-            const canEdit = [FLOW_VERSION_STATUS.DRAFT, FLOW_VERSION_STATUS.REJECTED, FLOW_VERSION_STATUS.WITHDRAWN];
 
             switch (status) {
                 case FLOW_VERSION_STATUS.DRAFT:
-                    // 草稿状态：支持编辑、保存、发布和删除
-                    buttons = renderDraftLikeVersionActions({ isEditing });
+                    // 草稿状态：更多配置、调试、保存、发布
+                    buttons = renderDraftVersionActions();
                     break;
                 case FLOW_VERSION_STATUS.PUBLISHED:
-                    // 已发布状态：复制到草稿、失效
+                    // 已发布状态：新增草稿、更多配置、调试、失效
                     buttons = `
+                        ${renderCreateDraftButton()}
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
-                        <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
+                        <button class="btn" onclick="openDebugDrawer()">调试</button>
                         <button class="btn" style="color: var(--warning-color);" onclick="handleInvalidateVersion()">失效</button>
                     `;
                     break;
                 case FLOW_VERSION_STATUS.INVALID:
-                    // 已失效状态：复制到草稿、删除
+                    // 已失效状态：新增草稿、更多配置、删除
                     buttons = `
+                        ${renderCreateDraftButton()}
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
-                        <button class="btn" onclick="handleCopyToDraft()">复制到草稿</button>
-                        <button class="btn" style="color: var(--success-color);" onclick="handleRestoreVersion()">恢复</button>
                         <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
                     `;
                     break;
                 case FLOW_VERSION_STATUS.PENDING:
-                    // 审批中状态：撤回
+                    // 审批中状态：更多配置、撤回
                     buttons = `
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
-                        <button class="btn" onclick="openDebugDrawer()">保存并调试</button>
                         <button class="btn" style="color: var(--warning-color);" onclick="handleWithdrawVersion()">撤回</button>
                     `;
                     break;
                 case FLOW_VERSION_STATUS.REJECTED:
-                    // 已驳回状态：和草稿版一致，保存后转为草稿
-                    buttons = renderDraftLikeVersionActions({ isEditing });
+                    // 已驳回状态：新增草稿、更多配置、删除
+                    buttons = `
+                        ${renderCreateDraftButton()}
+                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                    `;
                     break;
                 case FLOW_VERSION_STATUS.WITHDRAWN:
-                    // 已撤回状态：和草稿版一致，保存后转为草稿
-                    buttons = renderDraftLikeVersionActions({ isEditing });
+                    // 已撤回状态按只读版本处理，仅支持新增草稿和更多配置
+                    buttons = `
+                        ${renderCreateDraftButton()}
+                        <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                    `;
                     break;
             }
 
@@ -3585,10 +3588,9 @@
          */
         function updateCanvasState(status) {
             const canvas = document.getElementById('canvas');
-            const isEditing = flowVersionData.isEditing;
-            // 可编辑的状态：草稿、已驳回、已撤回（且处于编辑模式）
-            const editableStatuses = [FLOW_VERSION_STATUS.DRAFT, FLOW_VERSION_STATUS.REJECTED, FLOW_VERSION_STATUS.WITHDRAWN];
-            const isEditable = isEditing && editableStatuses.includes(status);
+
+            // 只有草稿版本允许编辑画布和节点配置，其他版本均只读
+            const isEditable = status === FLOW_VERSION_STATUS.DRAFT;
 
             // 添加只读/可编辑提示
             let existingMsg = document.querySelector('.canvas-readonly-msg');
@@ -3600,8 +3602,8 @@
                     existingMsg.style.cssText = 'position: absolute; top: 10px; right: 10px; background: var(--warning-color); color: white; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 50;';
                     canvas.appendChild(existingMsg);
                 }
-                existingMsg.textContent = isEditing ? '当前版本可编辑' : '当前版本只读，不可编辑';
-                existingMsg.style.background = isEditing ? 'var(--success-color)' : 'var(--warning-color)';
+                existingMsg.textContent = '当前版本只读，不可编辑';
+                existingMsg.style.background = 'var(--warning-color)';
             } else {
                 canvas.style.opacity = '1';
                 if (existingMsg) existingMsg.remove();
@@ -3612,6 +3614,35 @@
         }
 
         // 版本操作函数
+
+        /**
+         * 获取当前选中的版本对象。
+         * @returns {Object|null} 当前版本对象
+         */
+        function getCurrentFlowVersion() {
+            return flowVersionData.versions.find(version => version.id === flowVersionData.currentVersion) || null;
+        }
+
+        /**
+         * 判断当前版本是否为草稿版本。
+         * @returns {boolean} 当前版本是否可编辑
+         */
+        function isCurrentDraftVersion() {
+            return getCurrentFlowVersion()?.status === FLOW_VERSION_STATUS.DRAFT;
+        }
+
+        /**
+         * 保存草稿版本。
+         * 保存只暂存当前画布和配置，不执行完整节点数据校验。
+         */
+        function handleSaveDraft() {
+            if (!isCurrentDraftVersion()) {
+                showToast('只有草稿版本可以保存', 'error');
+                return;
+            }
+            handleSave();
+            showToast('草稿已保存，发布时将执行完整校验', 'success');
+        }
 
         /**
          * 进入编辑模式
@@ -4845,6 +4876,25 @@
             openDrawer(node);
         }
 
+        /**
+         * 根据当前版本状态控制节点配置抽屉只读。
+         * 非草稿版本隐藏保存按钮，并禁用表单输入控件。
+         */
+        function applyNodeDrawerReadonly() {
+            const isReadonly = !isCurrentDraftVersion();
+            const drawer = document.getElementById('configDrawer');
+            const saveButton = document.getElementById('nodeConfigSaveButton');
+            if (saveButton) {
+                saveButton.style.display = isReadonly ? 'none' : 'inline-flex';
+            }
+            drawer.querySelectorAll('input, textarea, select, button').forEach(element => {
+                const isCloseButton = element.classList.contains('drawer-close') || element.getAttribute('onclick') === 'closeDrawer()';
+                if (!isCloseButton && element.id !== 'nodeConfigSaveButton') {
+                    element.disabled = isReadonly;
+                }
+            });
+        }
+
         function openDrawer(node) {
             const drawer = document.getElementById('configDrawer');
             const body = document.getElementById('drawerBody');
@@ -4998,6 +5048,7 @@
                 // 渲染出参配置（只读模式，不显示添加删除按钮）
                 renderConnectorOutputParams('connector-output-params-header', displayParams.header || []);
                 renderConnectorOutputParams('connector-output-params-body', displayParams.body || []);
+                applyNodeDrawerReadonly();
 
                 return;
             } else if (node.type === 'output') {
@@ -5264,6 +5315,7 @@
                 renderDataProcessAssembleParams('data-process-assemble-params-body', assembleParams.body || []);
                 renderDataProcessAssembleParams('data-process-assemble-params-query', assembleParams.query || []);
             }
+            applyNodeDrawerReadonly();
         }
 
         // ========================================
@@ -5576,6 +5628,10 @@
 
         function saveNodeConfig() {
             if (!selectedNode) return;
+            if (!isCurrentDraftVersion()) {
+                showToast('当前版本只读，不能修改节点配置', 'error');
+                return;
+            }
 
             // 基础配置：节点名称为必填项
             const nodeLabel = document.getElementById('nodeLabel')?.value.trim() || '';

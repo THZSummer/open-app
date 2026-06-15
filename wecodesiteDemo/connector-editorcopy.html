@@ -1034,13 +1034,12 @@
             });
         }
 
-        // 版本操作函数（占位，后续完善）
+        /**
+         * 保存当前草稿版本
+         * 保存只收集当前页面配置，不执行发布前必填和格式校验。
+         */
         function handleSaveDraft() {
-            showToast('保存草稿功能待实现', 'success');
-        }
-
-        function handlePublish() {
-            showToast('发布功能待实现', 'success');
+            saveConnectorConfig();
         }
 
         /**
@@ -1069,12 +1068,26 @@
 
         /**
          * 将当前版本设为已发布状态
+         * 发布前执行完整配置校验，校验通过后才允许状态流转。
          */
         function handlePublish() {
             const currentVersion = versionData.versions.find(v => v.id === versionData.currentVersion);
             if (!currentVersion) return;
 
+            if (currentVersion.status !== VERSION_STATUS.DRAFT) {
+                showToast('仅草稿版本允许发布', 'error');
+                return;
+            }
+
+            collectConnectorConfig();
+            const validateMessage = validateConnectorConfigBeforePublish();
+            if (validateMessage) {
+                showToast(validateMessage, 'error');
+                return;
+            }
+
             currentVersion.status = VERSION_STATUS.PUBLISHED;
+            exitEditMode();
             updateVersionSelect();
             updateVersionButtons();
             showToast('版本已发布', 'success');
@@ -1264,7 +1277,6 @@
 
             selectedAuthTypes.forEach(authType => {
                 const authSchema = AUTH_SCHEMA_MAP[authType] || [];
-                const isSoaOrApig = authType === 'SOA' || authType === 'APIG';
                 const isCookie = authType === 'COOKIE';
                 const isSignature = authType === 'SIGNATURE';
 
@@ -1285,21 +1297,23 @@
                             <div class="form-group" style="margin-bottom: 12px;">
                                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                                     <input type="text"
+                                           class="auth-param-name"
                                            style="width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
                                            value="${param.paramName}"
                                            placeholder="参数名称">
-                                    <select disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light); width: 90px;">
+                                    <select class="auth-param-type" disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light); width: 90px;">
                                         <option value="string" selected>string</option>
                                     </select>
-                                    <select style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 90px;">
+                                    <select class="auth-param-carrier" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 90px;">
                                         <option value="header" ${param.carrier === 'header' ? 'selected' : ''}>header</option>
                                         <option value="body" ${param.carrier === 'body' ? 'selected' : ''}>body</option>
                                         <option value="query" ${param.carrier === 'query' ? 'selected' : ''}>query</option>
                                     </select>
                                     <input type="text"
+                                           class="signature-value-source-input"
                                            style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);"
                                            value="${param.signatureValueSource || 'X-Signature'}"
-                                           placeholder="签名值来源"
+                                           placeholder="签名固定值"
                                            disabled>
                                     <input type="${signatureKeyType}"
                                            class="signature-key-input"
@@ -1321,13 +1335,14 @@
                             <div class="form-group" style="margin-bottom: 12px;">
                                 <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                                     <input type="text"
+                                           class="auth-param-name"
                                            style="width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px;"
-                                           value=""
+                                           value="${param.paramName || ''}"
                                            placeholder="参数名称">
-                                    <select disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light); width: 90px;">
+                                    <select class="auth-param-type" disabled style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light); width: 90px;">
                                         <option value="string" selected>string</option>
                                     </select>
-                                    <select style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 90px;">
+                                    <select class="auth-param-carrier" style="padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; width: 90px;">
                                         <option value="header" ${param.carrier === 'header' ? 'selected' : ''}>header</option>
                                         <option value="body" ${param.carrier === 'body' ? 'selected' : ''}>body</option>
                                         <option value="query" ${param.carrier === 'query' ? 'selected' : ''}>query</option>
@@ -1860,26 +1875,23 @@
                 const name = item.querySelector('.param-name').value.trim();
                 const paramType = item.querySelector('.param-type').value;
                 const isComplex = isComplexType(paramType);
+                const paramData = {
+                    paramName: name,
+                    paramType: paramType,
+                    carrier: item.querySelector('.param-carrier')?.value || '',
+                    description: item.querySelector('.param-desc').value.trim(),
+                    children: []
+                };
 
-                if (name) {
-                    const paramData = {
-                        paramName: name,
-                        paramType: paramType,
-                        carrier: item.querySelector('.param-carrier')?.value || '',
-                        description: item.querySelector('.param-desc').value.trim(),
-                        children: []
-                    };
-
-                    // 递归收集子参数
-                    if (isComplex) {
-                        const childrenContainer = item.querySelector('.children-container');
-                        if (childrenContainer) {
-                            paramData.children = collectParamItems(childrenContainer);
-                        }
+                // 递归收集子参数，发布校验阶段再判断空名称和复杂类型是否合法
+                if (isComplex) {
+                    const childrenContainer = item.querySelector('.children-container');
+                    if (childrenContainer) {
+                        paramData.children = collectParamItems(childrenContainer);
                     }
-
-                    params.push(paramData);
                 }
+
+                params.push(paramData);
             });
 
             return params;
@@ -1929,6 +1941,63 @@
             } catch (error) {
                 return false;
             }
+        }
+
+        /**
+         * 收集当前页面所有配置到 connectorConfig 中。
+         * 只收集数据，不执行任何校验。
+         */
+        function collectConnectorConfig() {
+            // 收集接口配置
+            const activeProtocolBtn = document.querySelector('#protocolTypeGroup .radio-group-item.active');
+            connectorConfig.protocolType = activeProtocolBtn ? activeProtocolBtn.dataset.value : '';
+            connectorConfig.protocolAddress = document.getElementById('protocolAddress').value.trim();
+
+            // 收集认证方式
+            connectorConfig.authType = selectedAuthTypes;
+            connectorConfig.authRequestSchema = [];
+
+            document.querySelectorAll('.auth-type-section').forEach(section => {
+                const authType = section.dataset.type;
+                const isSignature = authType === 'SIGNATURE';
+                const sectionSchema = [];
+
+                section.querySelectorAll('.form-group').forEach(group => {
+                    const paramNameInput = group.querySelector('.auth-param-name');
+                    const paramTypeSelect = group.querySelector('.auth-param-type');
+                    const carrierSelect = group.querySelector('.auth-param-carrier');
+                    const param = {
+                        paramName: paramNameInput ? paramNameInput.value.trim() : '',
+                        paramType: paramTypeSelect ? paramTypeSelect.value : 'string',
+                        carrier: carrierSelect ? carrierSelect.value : 'header',
+                        description: ''
+                    };
+
+                    if (isSignature) {
+                        param.signatureValueSource = group.querySelector('.signature-value-source-input')
+                            ? group.querySelector('.signature-value-source-input').value.trim() : 'X-Signature';
+                        param.signatureKey = group.querySelector('.signature-key-input')
+                            ? group.querySelector('.signature-key-input').value : '';
+                    }
+
+                    sectionSchema.push(param);
+                });
+
+                connectorConfig.authRequestSchema.push({ authType: authType, params: sectionSchema });
+            });
+
+            // 收集入参
+            connectorConfig.requestSchema = {
+                header: collectParams('requestParams-header'),
+                body: collectParams('requestParams-body'),
+                query: collectParams('requestParams-query')
+            };
+
+            // 收集出参
+            connectorConfig.responseSchema = {
+                header: collectParams('responseParams-header'),
+                body: collectParams('responseParams-body')
+            };
         }
 
         /**
@@ -2003,48 +2072,67 @@
         }
 
         /**
-         * 收集并保存接口配置
-         * @returns {boolean} 是否保存成功
+         * 发布前校验所有配置项。
+         * 校验覆盖：接口配置、认证方式配置、入参配置、出参配置。
+         * @returns {string} 校验错误文案，空字符串表示校验通过
          */
-        function saveConnectorConfig() {
-            connectorConfig.protocolAddress = document.getElementById('protocolAddress').value.trim();
-            connectorConfig.requestSchema = {
-                header: collectParams('requestParams-header'),
-                body: collectParams('requestParams-body'),
-                query: collectParams('requestParams-query')
-            };
-            connectorConfig.responseSchema = {
-                header: collectParams('responseParams-header'),
-                body: collectParams('responseParams-body')
-            };
-
+        function validateConnectorConfigBeforePublish() {
+            // 1. 接口配置校验
+            if (!connectorConfig.protocolType) {
+                return '接口配置：协议类型未选择';
+            }
             if (!connectorConfig.protocolAddress) {
-                showToast('请输入协议地址', 'error');
-                return false;
+                return '接口配置：协议地址不能为空';
             }
-
             if (!isValidNetworkUrl(connectorConfig.protocolAddress)) {
-                showToast('协议地址必须是合法的http或https网络地址', 'error');
-                return false;
+                return '接口配置：协议地址必须是合法的http或https网络地址';
             }
 
-            const schemaGroups = [
+            // 2. 认证方式校验
+            if (!connectorConfig.authType || connectorConfig.authType.length === 0) {
+                return '认证方式配置：请至少选择一种认证方式';
+            }
+
+            // 认证参数校验
+            for (const authGroup of connectorConfig.authRequestSchema) {
+                const authType = authGroup.authType;
+                const params = authGroup.params;
+
+                for (let i = 0; i < params.length; i++) {
+                    const param = params[i];
+
+                    if (authType === 'SIGNATURE') {
+                        // 数字签名：签名固定值和签名密钥必填
+                        if (!param.signatureValueSource) {
+                            return `认证方式配置-数字签名：签名固定值不能为空`;
+                        }
+                        if (!param.signatureKey) {
+                            return `认证方式配置-数字签名：签名密钥不能为空`;
+                        }
+                    } else {
+                        // SOA、APIG、Cookie：参数名称必填
+                        if (!param.paramName) {
+                            return `认证方式配置-${getAuthTypeName(authType)}：参数名称不能为空`;
+                        }
+                    }
+                }
+            }
+
+            // 3. 入参校验
+            const requestSchemaGroups = [
                 { label: '入参配置-HTTP请求头', params: connectorConfig.requestSchema.header },
                 { label: '入参配置-HTTP请求体', params: connectorConfig.requestSchema.body },
-                { label: '入参配置-URL查询参数', params: connectorConfig.requestSchema.query },
-                { label: '出参配置-HTTP响应头', params: connectorConfig.responseSchema.header },
-                { label: '出参配置-HTTP响应体', params: connectorConfig.responseSchema.body }
+                { label: '入参配置-URL查询参数', params: connectorConfig.requestSchema.query }
             ];
 
-            for (const group of schemaGroups) {
+            for (const group of requestSchemaGroups) {
                 const depthErrorMessage = validateSchemaDepth({
                     params: group.params,
                     location: group.label,
                     depth: 1
                 });
                 if (depthErrorMessage) {
-                    showToast(depthErrorMessage, 'error');
-                    return false;
+                    return depthErrorMessage;
                 }
 
                 const errorMessage = validateSchemaParams({
@@ -2052,10 +2140,74 @@
                     location: group.label
                 });
                 if (errorMessage) {
-                    showToast(errorMessage, 'error');
-                    return false;
+                    return errorMessage;
+                }
+
+                // 额外：参数名称不能为空
+                const nameErrorMessage = validateSchemaParamNames(group.params, group.label);
+                if (nameErrorMessage) {
+                    return nameErrorMessage;
                 }
             }
+
+            // 4. 出参校验
+            const responseSchemaGroups = [
+                { label: '出参配置-HTTP响应头', params: connectorConfig.responseSchema.header },
+                { label: '出参配置-HTTP响应体', params: connectorConfig.responseSchema.body }
+            ];
+
+            for (const group of responseSchemaGroups) {
+                const depthErrorMessage = validateSchemaDepth({
+                    params: group.params,
+                    location: group.label,
+                    depth: 1
+                });
+                if (depthErrorMessage) {
+                    return depthErrorMessage;
+                }
+
+                const errorMessage = validateSchemaParams({
+                    params: group.params,
+                    location: group.label
+                });
+                if (errorMessage) {
+                    return errorMessage;
+                }
+
+                const nameErrorMessage = validateSchemaParamNames(group.params, group.label);
+                if (nameErrorMessage) {
+                    return nameErrorMessage;
+                }
+            }
+
+            return '';
+        }
+
+        /**
+         * 校验参数名称不能为空
+         * @param {Array} params - 参数数组
+         * @param {string} location - 配置位置描述
+         * @returns {string} 校验失败文案，空字符串表示通过
+         */
+        function validateSchemaParamNames(params, location) {
+            for (const param of params) {
+                if (!param.paramName) {
+                    return `${location}：参数名称不能为空`;
+                }
+                const childError = validateSchemaParamNames(param.children || [], `${location}-${param.paramName}`);
+                if (childError) {
+                    return childError;
+                }
+            }
+            return '';
+        }
+
+        /**
+         * 收集并保存接口配置（仅保存，不做发布前校验）
+         * @returns {boolean} 是否保存成功
+         */
+        function saveConnectorConfig() {
+            collectConnectorConfig();
 
             // 模拟保存
             console.log('保存配置:', connectorConfig);

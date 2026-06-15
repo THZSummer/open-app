@@ -9,6 +9,61 @@
   height: 100%;
 }
 
+/* 节点类型下拉框 */
+.node-select-dropdown {
+  position: fixed;
+  min-width: 180px;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+  transform: translate(12px, 12px);
+  z-index: 1000;
+}
+
+.node-select-dropdown-title {
+  padding: 6px 8px 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.node-select-option,
+.node-select-cancel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.2s ease;
+}
+
+.node-select-option:hover,
+.node-select-cancel:hover {
+  background: var(--bg-tertiary);
+}
+
+.node-select-option-mark {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.node-select-cancel {
+  justify-content: center;
+  margin-top: 4px;
+  color: var(--text-secondary);
+}
+
 /* 工具栏样式 */
 .canvas-toolbar {
   position: absolute;

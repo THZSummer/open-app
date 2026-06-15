@@ -208,6 +208,105 @@ function getParallelBranchConfig(params: {
 }
 
 /**
+ * 判断节点是否为指定错误处理结构的右侧处理链路端点
+ */
+function isErrorHandlerRightColumnEndpoint(params: {
+  /** 当前节点 */
+  node?: FlowNode;
+  /** 错误处理结构节点 ID */
+  errorHandlerId: string;
+}) {
+  const { node, errorHandlerId } = params;
+  const config = node?.data.config;
+
+  if (!node || !config) {
+    return false;
+  }
+
+  // 错误处理开始和结束文本节点属于右侧处理链路的固定端点
+  if (
+    config.loopV2GroupId === errorHandlerId &&
+    (config.loopV2Role === 'start' || config.loopV2Role === 'end')
+  ) {
+    return true;
+  }
+
+  // 用户插入到错误处理内部的动作节点会记录为右侧链路节点
+  return Boolean(
+    config.parentLoopV2GroupId === errorHandlerId &&
+      config.parentLoopV2Role === 'right-column-node'
+  );
+}
+
+/**
+ * 判断错误处理结构内部是否已经存在动作节点
+ */
+function hasErrorHandlerActionNode(params: {
+  /** 错误处理结构节点 ID */
+  errorHandlerId: string;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+}) {
+  const { errorHandlerId, nodes } = params;
+
+  return nodes.some(
+    (node) =>
+      node.type === NodeType.ACTION &&
+      node.data.config?.parentLoopV2GroupId === errorHandlerId &&
+      node.data.config?.parentLoopV2Role === 'right-column-node'
+  );
+}
+
+/**
+ * 同步错误处理内部动作节点数量限制对应的插入按钮状态
+ */
+function syncErrorHandlerActionInsertLimit(params: {
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
+}) {
+  const { nodes, edges } = params;
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const errorHandlerIds = nodes
+    .filter((node) => node.type === NodeType.ERROR_HANDLER)
+    .map((node) => node.id);
+
+  if (errorHandlerIds.length === 0) {
+    return edges;
+  }
+
+  return edges.map((edge) => {
+    const matchedErrorHandlerId = errorHandlerIds.find((errorHandlerId) => {
+      const sourceNode = nodeMap.get(edge.source);
+      const targetNode = nodeMap.get(edge.target);
+
+      return (
+        isErrorHandlerRightColumnEndpoint({ node: sourceNode, errorHandlerId }) &&
+        isErrorHandlerRightColumnEndpoint({ node: targetNode, errorHandlerId })
+      );
+    });
+
+    if (!matchedErrorHandlerId) {
+      return edge;
+    }
+
+    const shouldHideInsertButton = hasErrorHandlerActionNode({
+      errorHandlerId: matchedErrorHandlerId,
+      nodes
+    });
+
+    return {
+      ...edge,
+      data: {
+        ...edge.data,
+        hideInsertButton: shouldHideInsertButton || undefined
+      }
+    };
+  });
+}
+
+/**
  * 创建并行结构单条分支的开始和结束文本节点
  */
 function createParallelBranchNodes(params: {
@@ -362,7 +461,14 @@ export const useFlowStore = create<FlowState>((set, get) => ({
   /**
    * 设置连线列表
    */
-  setEdges: (edges) => set({ edges }),
+  setEdges: (edges) => {
+    const { nodes } = get();
+
+    // 外部同步连线时也刷新错误处理内部动作数量限制
+    set({
+      edges: syncErrorHandlerActionInsertLimit({ nodes, edges })
+    });
+  },
 
   /**
    * 添加单个节点
@@ -462,9 +568,14 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       });
     }
 
+    const nextNodes = nodes.filter((node) => !removeNodeIds.has(node.id));
+
     set({
-      nodes: nodes.filter((node) => !removeNodeIds.has(node.id)),
-      edges: nextEdges
+      nodes: nextNodes,
+      edges: syncErrorHandlerActionInsertLimit({
+        nodes: nextNodes,
+        edges: nextEdges
+      })
     });
   },
 
@@ -622,6 +733,19 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       targetNode,
       nodes
     });
+    const rightColumnGroupNode = nodes.find((node) => node.id === rightColumnGroupId);
+    const isErrorHandlerRightColumn = rightColumnGroupNode?.type === NodeType.ERROR_HANDLER;
+
+    // 错误处理内部右侧链路最多只允许添加一个动作节点
+    if (
+      nodeType === NodeType.ACTION &&
+      rightColumnGroupId &&
+      isErrorHandlerRightColumn &&
+      hasErrorHandlerActionNode({ errorHandlerId: rightColumnGroupId, nodes })
+    ) {
+      return;
+    }
+
     const parallelBranchConfig = getParallelBranchConfig({
       sourceNode,
       targetNode
@@ -687,10 +811,16 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       style: { stroke: '#6366f1', strokeWidth: 2 }
     };
 
-    // 更新节点和连线：添加新节点、删除旧连线、添加两条新连线
+    const nextNodes = [...nodes, newNode];
+    const nextEdges = [...edges.filter((e) => e.id !== edgeId), newEdge1, newEdge2];
+
+    // 更新节点和连线后，同步错误处理内部动作节点数量限制
     set({
-      nodes: [...nodes, newNode],
-      edges: [...edges.filter((e) => e.id !== edgeId), newEdge1, newEdge2]
+      nodes: nextNodes,
+      edges: syncErrorHandlerActionInsertLimit({
+        nodes: nextNodes,
+        edges: nextEdges
+      })
     });
   },
 
@@ -737,6 +867,13 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       targetNode,
       nodes
     });
+    const rightColumnGroupNode = nodes.find((node) => node.id === rightColumnGroupId);
+
+    // 错误处理内部只允许添加一个动作节点，不允许继续嵌套结构节点
+    if (rightColumnGroupNode?.type === NodeType.ERROR_HANDLER) {
+      return;
+    }
+
     const parallelBranchConfig = getParallelBranchConfig({
       sourceNode,
       targetNode
@@ -997,6 +1134,13 @@ export const useFlowStore = create<FlowState>((set, get) => ({
       targetNode,
       nodes
     });
+    const rightColumnGroupNode = nodes.find((node) => node.id === rightColumnGroupId);
+
+    // 错误处理内部只允许添加一个动作节点，不允许继续嵌套多分支结构
+    if (rightColumnGroupNode?.type === NodeType.ERROR_HANDLER) {
+      return;
+    }
+
     const parallelBranchConfig = getParallelBranchConfig({
       sourceNode,
       targetNode

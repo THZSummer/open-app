@@ -10,10 +10,9 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { useFlowStore } from '../../store/flowStore';
-import { nodeTypes } from '../nodes';
+import { nodeTypes, defaultNodeTypes } from '../nodes';
 import InsertEdge from '../edges/InsertEdge';
-import NodeSelectModal from '../NodeSelectModal';
-import { NodeType, FlowEdge } from '../../types/flow';
+import { NodeType, FlowEdge, FlowNode } from '../../types/flow';
 import { applyElkLayout } from '../../utils/elkLayout';
 import {
   registerInsertNodeCallback,
@@ -73,6 +72,73 @@ function enrichEdgesWithRoutingMeta(params: { edges: FlowEdge[] }): FlowEdge[] {
 }
 
 /**
+ * 判断节点是否是指定错误处理结构的右侧处理链路端点
+ */
+function isErrorHandlerRightColumnEndpoint(params: {
+  /** 当前节点 */
+  node?: FlowNode;
+  /** 错误处理结构节点 ID */
+  errorHandlerId: string;
+}) {
+  const { node, errorHandlerId } = params;
+  const config = node?.data.config;
+
+  if (!node || !config) {
+    return false;
+  }
+
+  // 错误处理开始和结束文本节点是右侧处理链路的固定端点
+  if (
+    config.loopV2GroupId === errorHandlerId &&
+    (config.loopV2Role === 'start' || config.loopV2Role === 'end')
+  ) {
+    return true;
+  }
+
+  // 用户插入到错误处理内部的节点会归属到右侧处理链路
+  return Boolean(
+    config.parentLoopV2GroupId === errorHandlerId &&
+      config.parentLoopV2Role === 'right-column-node'
+  );
+}
+
+/**
+ * 判断当前插入连线是否属于错误处理内部右侧处理链路
+ */
+function isErrorHandlerInsertEdge(params: {
+  /** 当前连线 ID */
+  edgeId: string;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
+}) {
+  const { edgeId, nodes, edges } = params;
+  const edge = edges.find((item) => item.id === edgeId);
+
+  if (!edge) {
+    return false;
+  }
+
+  const sourceNode = nodes.find((node) => node.id === edge.source);
+  const targetNode = nodes.find((node) => node.id === edge.target);
+  const errorHandlerNodes = nodes.filter((node) => node.type === NodeType.ERROR_HANDLER);
+
+  return errorHandlerNodes.some((errorHandlerNode) => {
+    return (
+      isErrorHandlerRightColumnEndpoint({
+        node: sourceNode,
+        errorHandlerId: errorHandlerNode.id
+      }) &&
+      isErrorHandlerRightColumnEndpoint({
+        node: targetNode,
+        errorHandlerId: errorHandlerNode.id
+      })
+    );
+  });
+}
+
+/**
  * 流程画布组件
  * 核心功能：
  * 1. 管理节点和连线的状态
@@ -100,11 +166,14 @@ const FlowCanvas: React.FC = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(storeNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
 
-  // 模态框状态
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // 节点类型下拉框状态
   const [insertContext, setInsertContext] = useState<{
+    /** 被点击的连线 ID */
     edgeId: string;
+    /** 新节点插入到画布中的参考位置 */
     position: { x: number; y: number };
+    /** 下拉框显示在页面中的参考位置 */
+    dropdownPosition: { x: number; y: number };
   } | null>(null);
 
   // 保存 ReactFlow 实例
@@ -146,26 +215,20 @@ const FlowCanvas: React.FC = () => {
   }, []);
 
   /**
-   * 打开节点选择弹窗
-   */
-  const openNodeSelectModal = (params: {
-    edgeId: string;
-    position: { x: number; y: number };
-  }) => {
-    setInsertContext(params);
-    setIsModalOpen(true);
-  };
-
-  /**
    * 处理主流程连线上的插入按钮点击
    */
   const handleInsertNode = (params: {
+    /** 被点击的连线 ID */
     edgeId: string;
+    /** 新节点插入到画布中的参考位置 */
     position: { x: number; y: number };
+    /** 下拉框显示在页面中的参考位置 */
+    dropdownPosition: { x: number; y: number };
   }) => {
-    openNodeSelectModal({
+    setInsertContext({
       edgeId: params.edgeId,
-      position: params.position
+      position: params.position,
+      dropdownPosition: params.dropdownPosition
     });
   };
 
@@ -232,15 +295,13 @@ const FlowCanvas: React.FC = () => {
     // 更新本地状态后重新布局
     syncStoreAndApplyLayout();
 
-    setIsModalOpen(false);
     setInsertContext(null);
   };
 
   /**
-   * 处理模态框关闭
+   * 关闭节点类型下拉框
    */
-  const handleModalClose = () => {
-    setIsModalOpen(false);
+  const closeNodeSelectDropdown = () => {
     setInsertContext(null);
   };
 
@@ -304,6 +365,14 @@ const FlowCanvas: React.FC = () => {
     setEdges(updatedEdges);
   };
 
+  const selectableNodeTypes = insertContext && isErrorHandlerInsertEdge({
+    edgeId: insertContext.edgeId,
+    nodes: storeNodes,
+    edges: storeEdges
+  })
+    ? defaultNodeTypes.filter((nodeType) => nodeType.type === NodeType.ACTION)
+    : defaultNodeTypes;
+
   /**
    * 应用自动布局
    * 使用 ELK 算法自动排列节点
@@ -333,6 +402,7 @@ const FlowCanvas: React.FC = () => {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onInit={onInit}
+        onPaneClick={closeNodeSelectDropdown}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         // nodesDraggable={false}
@@ -348,13 +418,39 @@ const FlowCanvas: React.FC = () => {
         <Controls showInteractive={false} />
       </ReactFlow>
 
-      {/* 节点选择模态框 */}
-      <NodeSelectModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        onSelect={handleNodeSelect}
-        position={{ x: 0, y: 0 }}
-      />
+      {/* 节点类型下拉框 */}
+      {insertContext && (
+        <div
+          className="node-select-dropdown"
+          style={{
+            left: insertContext.dropdownPosition.x,
+            top: insertContext.dropdownPosition.y
+          }}
+        >
+          <div className="node-select-dropdown-title">选择节点类型</div>
+          {selectableNodeTypes.map((nodeType) => (
+            <button
+              key={nodeType.type}
+              className="node-select-option"
+              type="button"
+              onClick={() => handleNodeSelect(nodeType.type as NodeType, nodeType.label)}
+            >
+              <span
+                className="node-select-option-mark"
+                style={{ background: nodeType.color }}
+              />
+              <span>{nodeType.label}</span>
+            </button>
+          ))}
+          <button
+            className="node-select-cancel"
+            type="button"
+            onClick={closeNodeSelectDropdown}
+          >
+            取消
+          </button>
+        </div>
+      )}
 
       {/* 工具栏 */}
       <div className="canvas-toolbar">

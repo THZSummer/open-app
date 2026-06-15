@@ -3,8 +3,12 @@
  * 用于在自定义边组件和 FlowCanvas 组件之间传递插入节点事件
  */
 type InsertNodeCallback = (params: {
+  /** 被点击的连线 ID */
   edgeId: string;
+  /** 节点插入到画布中的参考位置 */
   position: { x: number; y: number };
+  /** 下拉框显示在页面中的参考位置 */
+  dropdownPosition: { x: number; y: number };
 }) => void;
 
 type AddParallelBranchCallback = (params: {
@@ -40,8 +44,12 @@ export function registerInsertNodeCallback(callback: InsertNodeCallback) {
  * 触发主流程插入节点事件
  */
 export function triggerInsertNode(params: {
+  /** 被点击的连线 ID */
   edgeId: string;
+  /** 节点插入到画布中的参考位置 */
   position: { x: number; y: number };
+  /** 下拉框显示在页面中的参考位置 */
+  dropdownPosition: { x: number; y: number };
 }) {
   if (insertNodeCallback) {
     insertNodeCallback(params);

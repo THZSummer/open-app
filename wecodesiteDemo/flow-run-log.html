@@ -294,10 +294,6 @@
             color: var(--warning-color);
         }
 
-        .status-badge.running {
-            background: #e6f7ff;
-            color: var(--primary-color);
-        }
 
         /* ========================================
            分页器
@@ -561,10 +557,6 @@
             color: var(--error-color);
         }
 
-        .node-execution-status.running {
-            background: #e6f7ff;
-            color: var(--primary-color);
-        }
 
         .node-execution-time {
             font-size: 12px;
@@ -671,6 +663,13 @@
                     <input
                         type="text"
                         class="search-input"
+                        id="executionIdSearch"
+                        placeholder="搜索执行ID"
+                        onkeydown="if(event.key==='Enter') handleSearch()"
+                    >
+                    <input
+                        type="text"
+                        class="search-input"
                         id="flowNameSearch"
                         placeholder="搜索连接流名称"
                         onkeydown="if(event.key==='Enter') handleSearch()"
@@ -679,7 +678,6 @@
                         <option value="">全部状态</option>
                         <option value="success">成功</option>
                         <option value="error">失败</option>
-                        <option value="running">运行中</option>
                         <option value="timeout">超时</option>
                     </select>
                     <button class="btn btn-primary" onclick="handleSearch()">搜索</button>
@@ -695,10 +693,9 @@
                                 <th>连接流名称</th>
                                 <th>版本</th>
                                 <th>触发方式</th>
-                                <th>状态</th>
-                                <th>执行时长</th>
                                 <th>开始时间</th>
-                                <th>结束时间</th>
+                                <th>执行时长</th>
+                                <th>执行状态</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -748,7 +745,6 @@
         const STATUS_MAP = {
             'success': { text: '成功', class: 'success' },
             'error': { text: '失败', class: 'error' },
-            'running': { text: '运行中', class: 'running' },
             'timeout': { text: '超时', class: 'error' }
         };
 
@@ -922,10 +918,11 @@
                 flowNameEn: 'data-sync-flow',
                 version: 'v2.0.0',
                 triggerType: 'manual',
-                status: 'running',
-                duration: null,
+                status: 'timeout',
+                duration: 30000,
                 startTime: '2024-01-20 15:30:00',
-                endTime: null,
+                endTime: '2024-01-20 15:30:30',
+                errorMessage: '执行超时（30秒）',
                 triggerParams: {
                     initiatedBy: 'admin',
                     syncType: 'full'
@@ -954,11 +951,12 @@
                     {
                         nodeId: 'action-2',
                         nodeName: '数据转换处理',
-                        status: 'running',
+                        status: 'timeout',
                         startTime: '15:30:05.200',
-                        endTime: null,
-                        duration: null,
+                        endTime: '15:30:30.000',
+                        duration: 24800,
                         input: { records: 10000, transformRule: '标准化字段' },
+                        error: '执行超时（30秒）',
                         output: null
                     }
                 ]
@@ -1024,6 +1022,7 @@
         };
 
         // 搜索条件
+        let searchExecutionId = '';
         let searchFlowName = '';
         let searchStatus = '';
 
@@ -1075,6 +1074,24 @@
         }
 
         /**
+         * 格式化毫秒级时间
+         * @param {string} timeText - 时间文本
+         * @returns {string} 毫秒级时间文本
+         */
+        function formatMillisecondTime(timeText) {
+            if (!timeText) {
+                return '-';
+            }
+
+            // 已经包含毫秒时直接返回，避免重复追加毫秒
+            if (/\.\d{3}$/.test(timeText)) {
+                return timeText;
+            }
+
+            return `${timeText}.000`;
+        }
+
+        /**
          * 格式化JSON并高亮显示
          * @param {Object} obj - 要格式化的对象
          * @returns {string} 高亮后的HTML字符串
@@ -1101,6 +1118,12 @@
 
             // 过滤数据
             let filteredData = runLogData;
+            if (searchExecutionId) {
+                // 执行ID单独过滤，避免和连接流名称混用
+                filteredData = filteredData.filter(item =>
+                    item.id.toLowerCase().includes(searchExecutionId.toLowerCase())
+                );
+            }
             if (searchFlowName) {
                 filteredData = filteredData.filter(item =>
                     item.flowName.toLowerCase().includes(searchFlowName.toLowerCase()) ||
@@ -1121,7 +1144,7 @@
             if (pageData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
+                        <td colspan="8" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
                             暂无运行记录
                         </td>
                     </tr>
@@ -1140,12 +1163,11 @@
                             </td>
                             <td class="text-center">${item.version}</td>
                             <td class="text-center">${triggerText}</td>
+                            <td>${formatMillisecondTime(item.startTime)}</td>
+                            <td class="text-center">${formatDuration(item.duration)}</td>
                             <td>
                                 <span class="status-badge ${status.class}">${status.text}</span>
                             </td>
-                            <td class="text-center">${formatDuration(item.duration)}</td>
-                            <td>${item.startTime}</td>
-                            <td>${item.endTime || '-'}</td>
                             <td>
                                 <div class="action-cell">
                                     <button class="btn btn-link" onclick="viewDetail('${item.id}')">详情</button>
@@ -1216,6 +1238,8 @@
          * 搜索运行记录
          */
         function handleSearch() {
+            // 分别读取执行ID、连接流名称和执行状态三个搜索条件
+            searchExecutionId = document.getElementById('executionIdSearch').value.trim();
             searchFlowName = document.getElementById('flowNameSearch').value.trim();
             searchStatus = document.getElementById('statusFilter').value;
             pagination.curPage = 1;
@@ -1226,8 +1250,11 @@
          * 重置搜索
          */
         function handleReset() {
+            // 重置执行ID、连接流名称和执行状态三个搜索条件
+            document.getElementById('executionIdSearch').value = '';
             document.getElementById('flowNameSearch').value = '';
             document.getElementById('statusFilter').value = '';
+            searchExecutionId = '';
             searchFlowName = '';
             searchStatus = '';
             pagination.curPage = 1;
@@ -1245,9 +1272,6 @@
         function viewDetail(id) {
             const record = runLogData.find(item => item.id === id);
             if (!record) return;
-
-            const status = STATUS_MAP[record.status];
-            const triggerText = TRIGGER_TYPE_MAP[record.triggerType] || record.triggerType;
 
             // 生成节点执行列表HTML
             let nodesHtml = '';
@@ -1298,32 +1322,7 @@
                         <span class="detail-info-value">${record.id}</span>
 
                         <span class="detail-info-label">连接流</span>
-                        <span class="detail-info-value">${record.flowName} (${record.flowNameEn})</span>
-
-                        <span class="detail-info-label">版本</span>
-                        <span class="detail-info-value">${record.version}</span>
-
-                        <span class="detail-info-label">触发方式</span>
-                        <span class="detail-info-value">${triggerText}</span>
-
-                        <span class="detail-info-label">状态</span>
-                        <span class="detail-info-value">
-                            <span class="status-badge ${status.class}">${status.text}</span>
-                        </span>
-
-                        <span class="detail-info-label">执行时长</span>
-                        <span class="detail-info-value">${formatDuration(record.duration)}</span>
-
-                        <span class="detail-info-label">开始时间</span>
-                        <span class="detail-info-value">${record.startTime}</span>
-
-                        <span class="detail-info-label">结束时间</span>
-                        <span class="detail-info-value">${record.endTime || '-'}</span>
-
-                        ${record.errorMessage ? `
-                            <span class="detail-info-label">错误信息</span>
-                            <span class="detail-info-value" style="color: var(--error-color);">${record.errorMessage}</span>
-                        ` : ''}
+                        <span class="detail-info-value">${record.flowName}</span>
                     </div>
                 </div>
 
