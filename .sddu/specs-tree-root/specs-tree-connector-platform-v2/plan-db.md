@@ -314,6 +314,8 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
 | `connector_id` | BIGINT(20) | 冗余字段，直接定位连接器，避免 JOIN connector_version_t |
 | `connector_version_id` | BIGINT(20) | 被引用的连接器版本 ID |
 
+> 💡 引用约束：连接器版本失效/删除前，通过 `connector_version_ref_t` + `flow_t.lifecycle_status` 联合校验——仅当引用该版本的所有连接流均非「运行中」状态时，才允许失效/删除。
+
 ### 3.6 openplatform_v2_approval_flow_t（MODIFY）
 
 **变更理由**：连接器平台复用现有审批引擎，三级审批人配置（应用级/平台级/全局级）通过 `approval_flow_t` 的 `nodes` JSON 存储。新增 `app_id` 字段区分不同应用的审批人配置。
