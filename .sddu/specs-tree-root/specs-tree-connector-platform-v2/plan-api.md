@@ -3177,10 +3177,10 @@
 | labelEn | string | 英文名称 |
 | descriptionCn | string | 中文描述 |
 | descriptionEn | string | 英文描述 |
-| inputSchema | object | 入参定义，jsonObjectDef 格式（见 [plan-json-schema.md §4.3.2](./plan-json-schema.md)） |
-| outputSchema | object | 出参定义，jsonObjectDef 格式 |
+| input | object | 入参定义，jsonObjectDef 格式（见 [plan-json-schema.md §4.3.2](./plan-json-schema.md)） |
+| output | object | 出参定义，jsonObjectDef 格式 |
 
-> 💡 `inputSchema` 和 `outputSchema` 复用 dataProcessorNodeDataDef 的 output 字段结构（jsonObjectDef），前端可直接渲染为 Schema 编辑器。
+> 💡 `input` 和 `output` 复用 dataProcessorNodeDataDef 的 output 字段结构（jsonObjectDef），前端可直接渲染为 Schema 编辑器。
 
 **示例**
 
@@ -3197,14 +3197,14 @@
       "labelEn": "To String",
       "descriptionCn": "将任意类型值转为字符串",
       "descriptionEn": "Convert any value to string",
-      "inputSchema": {
+      "input": {
         "type": "object",
         "properties": {
           "value": { "type": "string", "description": "输入值" }
         },
         "required": ["value"]
       },
-      "outputSchema": { "type": "string" }
+      "output": { "type": "string" }
     },
     {
       "name": "toNumber",
@@ -3212,14 +3212,14 @@
       "labelEn": "To Number",
       "descriptionCn": "将字符串转为数字",
       "descriptionEn": "Convert string to number",
-      "inputSchema": {
+      "input": {
         "type": "object",
         "properties": {
           "value": { "type": "string", "description": "输入值" }
         },
         "required": ["value"]
       },
-      "outputSchema": { "type": "number" }
+      "output": { "type": "number" }
     },
     {
       "name": "toBoolean",
@@ -3227,14 +3227,14 @@
       "labelEn": "To Boolean",
       "descriptionCn": "将字符串/数字转为布尔值",
       "descriptionEn": "Convert string/number to boolean",
-      "inputSchema": {
+      "input": {
         "type": "object",
         "properties": {
           "value": { "type": "string", "description": "输入值" }
         },
         "required": ["value"]
       },
-      "outputSchema": { "type": "boolean" }
+      "output": { "type": "boolean" }
     },
     {
       "name": "formatDate",
@@ -3242,7 +3242,7 @@
       "labelEn": "Format Date",
       "descriptionCn": "将日期字符串按指定格式转换",
       "descriptionEn": "Format date string with pattern",
-      "inputSchema": {
+      "input": {
         "type": "object",
         "properties": {
           "value": { "type": "string", "description": "日期值" },
@@ -3251,7 +3251,7 @@
         },
         "required": ["value", "fromPattern", "toPattern"]
       },
-      "outputSchema": { "type": "string" }
+      "output": { "type": "string" }
     }
   ],
   "page": null
