@@ -1176,18 +1176,18 @@ graph TB
           "items": { "$ref": "#/definitions/authConfigDef" },
           "description": "认证配置列表。支持多选组合，运行时按序校验。至少一种认证方式"
         },
-        "nodeInput": { "$ref": "#/definitions/httpInputDef" },
+        "input": { "$ref": "#/definitions/httpInputDef" },
         "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
       },
       "required": ["triggerType"]
     },
     {
       "if": { "properties": { "triggerType": { "const": "http" } }, "required": ["triggerType"] },
-      "then": { "required": ["authConfigs", "nodeInput"] }
+      "then": { "required": ["authConfigs", "input"] }
     },
     {
       "if": { "properties": { "triggerType": { "const": "manual" } }, "required": ["triggerType"] },
-      "then": { "properties": { "authConfigs": false, "nodeInput": false } }
+      "then": { "properties": { "authConfigs": false, "input": false } }
     }
   ]
 }
@@ -1198,11 +1198,11 @@ graph TB
 | JSON 字段 | 类型 | 必填 | 来源 | 说明 |
 |-----------|------|:----:|:--:|------|
 | type | string | ✅ | 基类 | `"trigger"`。固定值，区分于其他 8 种业务节点类型 |
-| triggerType | string | ✅ | 独有 | 触发器激活方式：`http`（对外暴露 HTTP 端点，需配 authConfigs + nodeInput）/ `manual`（仅内部触发，无需认证和入参声明） |
+| triggerType | string | ✅ | 独有 | 触发器激活方式：`http`（对外暴露 HTTP 端点，需配 authConfigs + input）/ `manual`（仅内部触发，无需认证和入参声明） |
 | labelCn | string | ❌ | 基类 | 节点中文标签 |
 | labelEn | string | ❌ | 基类 | 节点英文标签 |
 | authConfigs[] | array | ❌ ⚡ | 独有 | 认证配置列表，minItems 1。triggerType=http 时必填。每项见 §4.3.2 |
-| nodeInput | object | ❌ ⚡ | 独有 | 入参声明。triggerType=http 时必填，见 §4.3.5 |
+| input | object | ❌ ⚡ | 独有 | 入参声明。triggerType=http 时必填，见 §4.3.5 |
 | rateLimitConfig | object | ❌ | 独有 | 限流配置，见 §4.3.3 |
 
 ⚡ = `triggerType="http"` 时必填。
@@ -2822,7 +2822,7 @@ graph TB
               "minItems": 1,
               "description": "缓存键表达式列表。每个元素遵循 §3 值表达式体系，运行时按序解析后以冒号(:)拼接为完整缓存键"
             },
-            "ttl": { "type": "integer", "minimum": 1, "description": "缓存时长（秒）" }
+            "ttl": { "type": "number", "minimum": 1, "description": "缓存时长（秒）" }
           },
           "required": ["key", "ttl"]
         }
@@ -2896,7 +2896,7 @@ graph TB
 | `rateLimitConfig` | object | ❌ | 入站限流配置，复用 `rateLimitConfigDef`（§4.3.3）。`maxQps`：每秒最大请求数（1-1000）；`maxConcurrency`：最大并发数（1-1000） |
 | `cache` | object | ❌ | 响应缓存配置，命中后跳过 DAG 执行直接返回 |
 | `cache.key` | string[] | ✅⚡ | 缓存键表达式列表，minItems 1。每个元素遵循 §3 值表达式体系，运行时按序解析后以冒号(`:`)拼接为完整缓存键 |
-| `cache.ttl` | integer | ✅⚡ | 缓存时长（秒），≥1 |
+| `cache.ttl` | number | ✅⚡ | 缓存时长（秒），≥1 |
 
 ⚡ = `cache` 存在时必填。
 
