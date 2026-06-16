@@ -121,7 +121,7 @@ open-server/src/main/resources/db/migration/
 | `execution_record_t` | `trigger_type` | 1=http | V2 启用 |
 | `execution_record_t` | `status` | 0=success, 1=failed | V2 启用 |
 | `execution_record_t` | `rate_limit_status` | 0=未触发, 1=触发限流 | V2 启用 |
-| `execution_step_t` | `status` | 0=success, 1=failed, 2=timeout, 3=not_executed | 步骤执行结果 |
+| `execution_step_t` | `status` | 0=success, 1=failed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
 | `execution_record_t` | `cache_status` | 0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3） | V2 新增 |
 | `execution_step_t` | `cache_status` | 0=未命中, 1=节点级命中（V3） | V2 预留，V3 启用 |
@@ -407,7 +407,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 
 ### 3.8 openplatform_v2_cp_execution_step_t（NEW）
 
-**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。步骤表专注记录每个节点的执行现场（输入/输出/耗时/状态），拓扑还原依赖 `execution_record_t.flow_version_snapshot` 中的 `nodes[]` + `edges[]`。`iteration` 预留循环场景，`not_executed` 覆盖条件分支未走到的节点。
+**建表理由**：V1 预留 DDL 但未实际使用，V2 全新启用。步骤表专注记录每个节点的执行现场（输入/输出/耗时/状态），拓扑还原依赖 `execution_record_t.flow_version_snapshot` 中的 `nodes[]` + `edges[]`。`iteration` 预留循环场景。
 
 ```sql
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
@@ -418,7 +418,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `node_label_cn`     VARCHAR(128) DEFAULT NULL COMMENT '节点中文名称 (执行时快照)',
     `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
     `iteration`         INT(11)      NOT NULL DEFAULT 0 COMMENT '循环轮次（0=首次或非循环，>0=第N轮循环）',
-    `status`            TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=not_executed（未执行，如分支未走到）',
+    `status`            TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed',
     `cache_status`      TINYINT(10)   NOT NULL DEFAULT 0 COMMENT '节点级缓存状态：0=未命中（正常执行）, 1=节点级命中（V3 启用，V2 始终为0）',
     `cache_key`         VARCHAR(500) DEFAULT NULL COMMENT '命中的节点级缓存键（V3 启用，调试用）',
     `cache_ttl_remaining` INT        DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒，V3 启用）',
@@ -442,7 +442,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | `node_id` | VARCHAR(64) | 节点 ID，匹配 flow_version_snapshot.nodes[].id |
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
 | `iteration` | INT | 循环轮次（预留），默认 0 |
-| `status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=not_executed |
+| `status` | TINYINT(10) | 0=success, 1=failed |
 | `cache_status` | TINYINT(10) | 0=未命中, 1=节点级命中（V3 启用，V2 始终为 0） |
 | `cache_key` | VARCHAR(500) | 命中的节点级缓存键（V3 启用，V2 始终 NULL） |
 | `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL 秒（V3 启用，V2 始终 NULL） |
