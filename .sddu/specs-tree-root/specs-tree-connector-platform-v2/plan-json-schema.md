@@ -1176,8 +1176,7 @@ graph TB
           "items": { "$ref": "#/definitions/authConfigDef" },
           "description": "认证配置列表。支持多选组合，运行时按序校验。至少一种认证方式"
         },
-        "input": { "$ref": "#/definitions/httpInputDef" },
-        "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" }
+        "input": { "$ref": "#/definitions/httpInputDef" }
       },
       "required": ["triggerType"]
     },
@@ -1203,6 +1202,7 @@ graph TB
 | labelEn | string | ❌ | 基类 | 节点英文标签 |
 | authConfigs[] | array | ❌ ⚡ | 独有 | 认证配置列表，minItems 1。triggerType=http 时必填。每项见 §4.3.2 |
 | input | object | ❌ ⚡ | 独有 | 入参声明。triggerType=http 时必填，见 §4.3.5 |
+
 | rateLimitConfig | object | ❌ | 独有 | 限流配置，见 §4.3.3 |
 
 ⚡ = `triggerType="http"` 时必填。
