@@ -2,7 +2,7 @@
 
 **Feature ID**: CONN-PLAT-002
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
-**版本**: v6.0
+**版本**: v7.0
 **创建日期**: 2026-06-09
 **对齐基线**: spec.md v2.24-draft + plan-json-schema.md v9.10
 
@@ -15,7 +15,7 @@
 | **版本模型** | **多版本**（草稿→发布→失效→删除），最多 1000 个版本 | spec v2.15 |
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
 | **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.10：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler 策略模型（retry/ignore/terminate + errorTypes + retryConfig） | plan-json-schema.md v9.10 |
-| **服务归属** | open-server（管理面 54 个） + connector-api（运行时 2 个） | plan.md §1 |
+| **服务归属** | open-server（管理面 54 个） + connector-api（运行时 2 个，其中 #54 采用透明穿透模式） | plan.md §1 |
 | 端点总数 | **56**（open-server 54 + connector-api 2） | — |
 
 ---
@@ -99,7 +99,9 @@
 
 ### 1.5 响应格式规范
 
-所有接口统一使用以下响应格式：
+> ⚠️ **例外**：connector-api 运行时 `#54 调用连接流` 采用**透明穿透**模式，不使用标准信封，详见 §3.9 #54 设计理念。
+
+所有 open-server 管理面接口（#1~#52）统一使用以下响应格式：
 
 ```json
 // 成功响应
@@ -371,7 +373,7 @@
 | 52 | GET | `/data-processor/functions` | 查询数据处理函数列表 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | — | — | **connector-api — 运行时** | — | — | — |
 | 53 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试执行 | 新增 | ④ 新增接口<br>（由 open-server #51 代理调用） |
-| 54 | POST | `/flows/{flowId}/invoke` | 调用连接流 | 改造 | ③ 路径变更<br>⑥ 替换 V1 trigger invoke |
+| 54 | POST | `/flows/{flowId}/invoke` | 调用连接流 | 改造 | ③ 路径变更<br>⑥ 替换 V1 trigger invoke<br>⚠️ **透明穿透模式**：请求/响应均由用户自定义（触发器入参 + 出口出参），平台元数据放入 `X-` 响应头，不使用标准响应信封 |
 
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
 > 💡 **审批提交** 在 #32 发布版本时由后端自动调用 `ApprovalEngine.createApproval()` 创建审批实例，不暴露为独立端点。
@@ -379,7 +381,7 @@
 > 💡 **#39~#44** 是现有 ApprovalController 接口，V2 扩展 `businessType=connector_flow_version_publish` 场景和业务回调（审批通过→FlowVersion 已发布，驳回→已驳回）。
 > 💡 **#45~#48** 是现有审批流模板接口，V2 新增 `appId` 字段支持应用隔离。
 
-**端点统计**：新增 35 + 改造 16 + 删除 5 = 56 个（open-server 54 + connector-api 2）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
+**端点统计**：新增 35 + 改造 16 + 删除 5 = 56 个（open-server 54 + connector-api 2）。connector-api #54 采用透明穿透模式（请求/响应用户自定义，平台元数据 X- 响应头）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
 
 ---
 
@@ -3302,60 +3304,197 @@
 
 外部系统直接调用，运行时按 `flow_t.deployed_version_id` 执行。
 
-**请求头**
+##### 设计理念：透明穿透（Transparent Passthrough）
+
+`#54` 接口采用**透明穿透**模式——除了接口地址（URL 路径）由平台固定外，**请求和响应的所有参数、返回值均由用户在连接流中自定义**：
+
+- **请求侧**：完全遵循连接流中触发器节点的 `nodeInput`（httpInputDef）定义。调用方传入的 Header、Query 参数、Body 结构均由触发器节点的入参 Schema 决定。
+- **响应侧**：完全遵循连接流中出口节点的 `output`（httpOutputDef）定义。平台不包装任何业务数据，调用方收到的响应 Header（用户自定义部分）和 Body 结构均由出口节点的出参 Schema 决定。
+- **平台元数据**：所有平台级响应参数（执行 ID、状态、耗时、错误信息、缓存命中状态等）统一追加到响应头，采用 `X-` 前缀格式，与用户自定义的响应 Header/body 完全分离。
+
+> 💡 此模式下，`#54` 接口**不使用**标准 `{ code, messageZh, messageEn, data, page }` 响应信封。响应 Body 即为出口节点的出参数据，响应 Header 中含平台 `X-` 前缀元数据。
+
+##### 请求（Request）
+
+**请求头 — 平台认证**
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | X-Sys-Token | string | ✅ | SYSTOKEN 凭证，须在触发器白名单内 |
 
-**前置校验**：
+**请求头 — 用户自定义**
+
+> 由触发器节点的 `nodeInput.header`（httpInputDef.header）定义。调用方需按此 Schema 传入对应 Header 字段（含必填/可选约束）。
+
+**查询参数 — 用户自定义**
+
+> 由触发器节点的 `nodeInput.query`（httpInputDef.query）定义。调用方需按此 Schema 传入对应 Query 参数（含必填/可选约束）。
+
+**请求体 — 用户自定义**
+
+> 由触发器节点的 `nodeInput.body`（httpInputDef.body）定义。调用方需按此 Schema 传入对应 Body（含必填/可选约束、类型约束 FR-047）。
+
+##### 前置校验
+
 1. `flow_t.lifecycleStatus = 2`（运行中）
-2. SYSTOKEN 凭证在白名单内
-3. 未超过入站限流阈值
+2. SYSTOKEN 凭证在触发器 `authConfig.sysAccountWhitelist` 白名单内
+3. 未超过入站限流阈值（`flowConfig.rateLimitConfig`）
 
-**请求体**（结构与触发器节点的 nodeInput（httpInputDef）一致）
+##### 响应（Response）
 
-**响应体 `data`**
+**响应头 — 平台元数据（全部 `X-` 前缀）**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| executionId | string | 执行 ID |
-| status | int | 执行状态 |
-| resultData | object | 出参数据 |
-| durationMs | int | 耗时 |
+| Header | 类型 | 说明 | 出现条件 |
+|--------|------|------|---------|
+| X-Execution-Id | string | 执行记录 ID（雪花ID） | 连接流已执行（含执行失败） |
+| X-Status | int | 执行状态：`0`=成功 / `1`=失败 / `2`=超时，见 §1.8.5 | 连接流已执行 |
+| X-Duration-Ms | int | 执行耗时（毫秒） | 连接流已执行 |
+| X-Cache-Status | int | 缓存命中状态：`0`=未命中 / `1`=全流命中 / `2`=部分命中，见 §1.8.9 | 缓存已生效 |
+| X-Code | int | 平台结果码：`200`=成功，其余见 §1.7 错误码定义 | 始终返回 |
+| X-Message-Zh | string | 中文提示信息（成功/错误描述） | 始终返回 |
+| X-Message-En | string | 英文提示信息 | 始终返回 |
 
-**错误响应**
+> ⚠️ 前置校验失败（401/429/503）时，连接流未实际执行，`X-Execution-Id`、`X-Status`、`X-Duration-Ms` 不出现。
 
-| code | 说明 |
-|------|------|
-| 401 | SYSTOKEN 不在白名单 |
-| 429 | 请求频率超限（入站限流） |
-| 503 | 连接流未部署 |
+**响应头 — 用户自定义**
 
-**示例**
+> 由出口节点的 `output.header`（exitNodeDataDef.output.header）定义。平台按此 Schema 将对应的响应头字段值注入到 HTTP 响应头中（值来源于 §3 值表达式体系解析结果）。
 
+**响应体 — 用户自定义**
+
+> 由出口节点的 `output.body`（exitNodeDataDef.output.body）定义。平台按此 Schema 构造响应 Body（值来源于 §3 值表达式体系解析结果），Body 即为出口节点的出参数据，**不经过任何平台信封包装**。
+
+**HTTP 状态码约定**
+
+| HTTP Status | 场景 | X-Code |
+|-------------|------|--------|
+| `200` | 连接流执行完成（无论节点成功/失败，见 X-Status） | 200 |
+| `401` | SYSTOKEN 不在白名单 | 401 |
+| `429` | 请求频率超限（入站限流） | 429 |
+| `503` | 连接流未部署 | 503 |
+| `500` | 引擎内部错误 | 500 |
+
+##### 示例
+
+**示例 1：成功执行**
+
+假设触发器节点 `httpInputDef` 定义：
 ```json
-// 请求头
-// X-Sys-Token: token_abc123
+{ "protocol": "HTTP", "body": { "type": "object", "properties": { "sender": {"type":"string"}, "content": {"type":"string"} } } }
+```
 
-// 请求体
-{ "sender": "external_system", "content": "这是一条外部消息" }
+假设出口节点 `output` 定义：
+```json
+{ "body": { "type": "object", "properties": { "msgId": {"type":"string","value":"${$.node.conn_1.output.body.msgId}"}, "code": {"type":"number","value":"${$.node.conn_1.output.body.code}"} } } }
+```
 
-// 响应体 200
+```
+// 请求
+POST /api/v1/flows/4444444444444444444/invoke
+X-Sys-Token: token_abc123
+Content-Type: application/json
+
+{"sender": "external_system", "content": "这是一条外部消息"}
+
+// 响应（HTTP 200）
+X-Execution-Id: 1234567890123456789
+X-Status: 0
+X-Duration-Ms: 234
+X-Code: 200
+X-Message-Zh: 成功
+X-Message-En: Success
+X-Cache-Status: 0
+
+{"msgId": "msg_xxxx", "code": 0}
+```
+
+**示例 2：SYSTOKEN 不在白名单**
+
+```
+// 请求
+POST /api/v1/flows/4444444444444444444/invoke
+X-Sys-Token: token_invalid
+
+// 响应（HTTP 401）
+X-Code: 401
+X-Message-Zh: SYSTOKEN 不在白名单中
+X-Message-En: SYSTOKEN not in whitelist
+
+（空 Body）
+```
+
+**示例 3：入站限流**
+
+```
+// 响应（HTTP 429）
+X-Code: 429
+X-Message-Zh: 请求频率超限
+X-Message-En: Rate limit exceeded
+
+（空 Body）
+```
+
+**示例 4：未部署**
+
+```
+// 响应（HTTP 503）
+X-Code: 503
+X-Message-Zh: 连接流未部署
+X-Message-En: Flow not deployed
+
+（空 Body）
+```
+
+**示例 5：执行失败（连接器节点报错）**
+
+```
+// 响应（HTTP 200）
+X-Execution-Id: 1234567890123456790
+X-Status: 1
+X-Duration-Ms: 5123
+X-Code: 200
+X-Message-Zh: 成功
+X-Message-En: Success
+
+{"msgId": null, "code": -1}
+```
+
+**示例 6：缓存命中（全流）**
+
+```
+// 响应（HTTP 200）
+X-Execution-Id: 1234567890123456791
+X-Status: 0
+X-Duration-Ms: 2
+X-Code: 200
+X-Message-Zh: 成功
+X-Message-En: Success
+X-Cache-Status: 1
+
+{"msgId": "msg_cached", "code": 0}
+```
+
+**示例 7：含用户自定义响应头**
+
+假设出口节点 `output` 定义：
+```json
 {
-  "code": "200",
-  "data": { "executionId": "1234567890123456789", "status": 0, "resultData": {"msgId":"msg_xxxx","code":0}, "durationMs": 234 },
-  "page": null
+  "header": { "type": "object", "properties": { "X-Request-Id": {"type":"string","value":"${$.execution.id}"} } },
+  "body": { "type": "object", "properties": { "result": {"type":"string","value":"${$.constant:ok}"} } }
 }
+```
 
-// 响应体 401 — SYSTOKEN 不在白名单
-{ "code": "401", "messageZh": "SYSTOKEN 不在白名单中", "data": null, "page": null }
+```
+// 响应（HTTP 200）
+X-Execution-Id: 1234567890123456792
+X-Status: 0
+X-Duration-Ms: 156
+X-Code: 200
+X-Message-Zh: 成功
+X-Message-En: Success
+X-Request-Id: 1234567890123456792      ← 用户自定义响应头（来自出口节点 output.header）
 
-// 响应体 429 — 入站限流
-{ "code": "429", "messageZh": "请求频率超限", "data": null, "page": null }
-
-// 响应体 503 — 未部署
-{ "code": "503", "messageZh": "连接流未部署", "data": null, "page": null }
+{"result": "ok"}
 ```
 
 ---
@@ -3395,6 +3534,6 @@
 | v5.3 | 2026-06-10 | **§3 全文补字段定义表**：① 41 个接口全部补请求头/路径参数/查询参数/请求体/响应体/错误响应字段表<br>② 嵌套对象展开到叶子字段（connectionConfig、orchestrationConfig、steps[] 等）<br>③ §3 标题精简为 `#N 名称` + `` `METHOD /path` `` 独立行<br>④ 时间格式统一 `yyyy-MM-dd HH:mm:ss`，appId 归入请求头<br>⑤ §1.9 接口命名规范：`[操作动词][资源名词][强调词]` | SDDU Plan Agent |
 | v5.4 | 2026-06-10 | **补全 JSON 示例**：22 个缺失示例的接口全部补回（#20~#29、#31~#43），每个接口含请求/响应/错误完整示例 | SDDU Plan Agent |
 | v5.5 | 2026-06-10 | **补全审批域接口**：① §2 新增「审批记录」（#39~#44，扩展 businessType）和「审批流模板配置」（#45~#48，新增 appId 字段）两个分组，共 10 个接口<br>② 端点从 41→51 重新编号（#39~#53），V1 已删除接口在表中独立成行不占编号<br>③ 改动点列恢复 ①②③④⑤⑥ 编号格式，与 V2 变更列（新增/改造/删除）独立<br>④ §3 新增 §3.5（#39~#44）、§3.6（#45~#48），§3.5→§3.7~§3.10 顺延重新编号<br>⑤ 跨引用编号同步更新（§0/#51/#52 等）<br>⑥ plan.md 接口数同步更新为 49+2 | SDDU Plan Agent |
-| v6.0 | 2026-06-12 | **全量对齐 plan-json-schema.md v9.7**：① #10/#11 connectionConfig 字段重构 — `authConfig` 单对象→`authConfigs[]` 数组（每个元素含 type/header/query/secretKey/sysAccountWhitelist），`inputContract`/`outputContract`→`input`/`output`，`protocolConfig` 移除 headers，新增 `labelCn`/`labelEn`/`timeoutMs`/`rateLimitConfig` 字段<br>② #30/#31 orchestrationConfig.flowConfig 重构 — `timeout` 移除（节点超时由 connectorNodeDataDef.timeoutMs 承载），`rateLimit`{mode,value}→`rateLimitConfig`{maxQps,maxConcurrency}，`cache`{enabled,keyTemplate}→`cache`{key[],ttl}<br>③ §0 对齐基线更新为 plan-json-schema.md v9.7<br>④ 全局替换 inputContract→input、outputContract→output、authConfig→authConfigs<br>⑤ #31 请求体字段表展开 flowConfig.rateLimitConfig 和 flowConfig.cache 子字段 | SDDU Plan Agent |
+| v7.0 | 2026-06-16 | **#54 透明穿透模式重构**：① 请求侧完全遵循触发器节点 `httpInputDef`（header/query/body 均由用户自定义）<br>② 响应侧完全遵循出口节点 `output`（httpOutputDef header/body 均由用户自定义），不使用标准响应信封<br>③ 平台元数据（executionId/status/durationMs/code/message/cacheStatus）统一追加到 `X-` 前缀响应头<br>④ §1.5 新增 #54 例外说明<br>⑤ §2 接口清单 #54 行新增透明穿透标注<br>⑥ 新增 ADR-008 记录设计决策 | SDDU Plan Agent |
 | v6.2 | 2026-06-15 | **接口重新编号**：① 创建草稿端点补编号 #8（连接器）、#28（连接流）② 全表 #8~#51 依次顺延 +1/+2 ③ §3 章标题范围同步 ④ 全文 `#N` 交叉引用同步更新 | SDDU Plan Agent |
 | v6.1 | 2026-06-15 | **对齐 spec v2.22**：① §0 对齐基线更新为 spec v2.22 + plan-json-schema v9.10 ② errorHandler 字段描述从 successCondition+failureResponse 更新为策略模型（retry/ignore/terminate + errorTypes + retryConfig）③ #1 创建连接器不再自动生成草稿（FR-005a）④ #17 创建连接流不再自动生成草稿（FR-024a）⑤ 新增 `POST /connectors/{connectorId}/versions` 创建连接器草稿端点 ⑥ 新增 `POST /flows/{flowId}/versions` 创建连接流草稿端点 ⑦ #16 删除连接器版本补充草稿可直接删除 ⑧ #36 删除连接流版本补充草稿/已撤回/已驳回可直接删除 ⑨ 端点总数 51→53 | SDDU Plan Agent |

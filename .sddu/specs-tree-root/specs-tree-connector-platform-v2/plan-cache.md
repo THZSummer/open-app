@@ -194,22 +194,23 @@ ${$.node.trigger.input.header.X-App-Id}
   "statusCode": 200,
   "headers": {
     "Content-Type": "application/json",
-    "X-Execution-Id": "exec-2026-001"
+    "X-Execution-Id": "exec-2026-001",
+    "X-Status": "0",
+    "X-Duration-Ms": "234",
+    "X-Code": "200",
+    "X-Message-Zh": "成功",
+    "X-Message-En": "Success",
+    "X-Cache-Status": "1"
   },
-  "body": {
-    "executionId": "1234567890123456789",
-    "status": 0,
-    "resultData": { "msgId": "msg_xxxx", "code": 0 },
-    "durationMs": 234
-  }
+  "body": { "msgId": "msg_xxxx", "code": 0 }
 }
 ```
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `statusCode` | int | HTTP 状态码（200/201 等） |
-| `headers` | object | 响应头（排除 `Set-Cookie` 等带会话信息的头） |
-| `body` | object | 响应体，直接透传 DAG 出口节点的 output |
+| `headers` | object | 响应头（含平台 `X-` 元数据头 + 用户自定义出口 header），排除 `Set-Cookie` 等带会话信息的头 |
+| `body` | object | 响应体，直接透传出口节点的 `output.body`，无平台信封包装 |
 
 ### 4.2 缓存条件
 
@@ -428,27 +429,27 @@ HTTP 触发请求
 缓存命中时返回的响应格式与正常执行完全一致，调用方**无需感知缓存**。`executionId` 由系统正常生成（雪花 ID），`durationMs` 为实际缓存读取耗时（通常 < 5ms）。运维侧通过 `execution_record.cache_status=1` 区分。
 
 ```json
-// 缓存命中响应（对外格式与正常执行相同）
-{
-  "code": "200",
-  "messageZh": "操作成功",
-  "messageEn": "Success",
-  "data": {
-    "executionId": "9876543210987654321",
-    "status": 0,
-    "resultData": { "msgId": "msg_xxxx", "code": 0 },
-    "durationMs": 2
-  },
-  "page": null
-}
+// 缓存命中响应（对外格式：透明穿透模式，平台元数据在 X- 响应头中）
+// HTTP 200
+// X-Execution-Id: 9876543210987654321
+// X-Status: 0
+// X-Duration-Ms: 2
+// X-Code: 200
+// X-Message-Zh: 成功
+// X-Message-En: Success
+// X-Cache-Status: 1
+
+{"msgId": "msg_xxxx", "code": 0}
 ```
 
 | 字段 | 缓存命中时的值 | 说明 |
 |------|--------------|------|
-| `executionId` | 正常雪花 ID | 每次请求独立生成，可追溯 |
-| `durationMs` | 实际 Redis GET 耗时（< 5ms） | 真实耗时 |
-| `resultData` | 与真实执行相同 | 从缓存值透传 |
+| `X-Execution-Id` | 正常雪花 ID | 每次请求独立生成，可追溯 |
+| `X-Duration-Ms` | 实际 Redis GET 耗时（< 5ms） | 真实耗时 |
+| `X-Cache-Status` | `1`（全流命中） | 区别于正常执行的 `0` |
+| 响应 Body | 与真实执行相同 | 从缓存值透传出口节点 `output.body` |
 | `execution_step` 详情 | **无**（不返回 steps 数组） | 没有节点实际执行 |
+| 平台响应信封 | **不适用** | `#54` 透明穿透模式，不使用标准信封 |
 
 ### 7.3 缓存与限流的交互
 
