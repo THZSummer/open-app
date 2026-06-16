@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§3 数据库变更）, plan-json-schema.md（JSON 结构权威定义）
 **版本**: v2.0
 **创建日期**: 2026-06-09
-**对齐基线**: spec.md v2.22-draft
+**对齐基线**: spec.md v2.23-draft
 
 ---
 

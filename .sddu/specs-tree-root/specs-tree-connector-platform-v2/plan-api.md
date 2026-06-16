@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
 **版本**: v6.0
 **创建日期**: 2026-06-09
-**对齐基线**: spec.md v2.22-draft + plan-json-schema.md v9.10
+**对齐基线**: spec.md v2.23-draft + plan-json-schema.md v9.10
 
 ---
 
@@ -1056,8 +1056,8 @@
 |------|------|:--:|------|
 | connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §5.2） |
 
-> `urlWhitelist` 校验：每条 `pattern` 须为合法 Java 正则，不合法返回 400。空数组=不限制。
-> `authConfigs` 校验：`type` 枚举值合法、`header`/`query` 至少声明其一、`type=SYSTOKEN` 时 `sysAccountWhitelist` 必填、`type=SIGNATURE` 时 `secretKey` 必填。
+> `urlWhitelist` 校验：保存时不校验正则合法性（spec v2.23），正则校验推迟到发布时（#12）执行。空数组=不限制。
+> `authConfigs` 校验：保存时不校验 `type` 枚举值合法性、`header`/`query` 声明、`sysAccountWhitelist`/`secretKey` 必填等结构约束（spec v2.23），全部推迟到发布时（#12）执行。
 
 **响应体 `data`**
 
@@ -1072,7 +1072,7 @@
 
 | code | 说明 |
 |------|------|
-| 400 | URL 白名单正则语法错误 / authConfigs 结构校验失败 |
+| 400 | JSON 完全不可解析（仅此一种情况）；正则/authConfigs 等平台要求限制校验推迟到发布时（#12） |
 | 409 | 非草稿状态，不可编辑 |
 
 **示例**

@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§4.2 connector-api 模块），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）  
 **版本**: v1.0  
 **创建日期**: 2026-06-09  
-**对齐基线**: spec.md v2.15-draft，ADR-005（限流），ADR-006（运行记录）
+**对齐基线**: spec.md v2.23-draft，ADR-005（限流），ADR-006（运行记录）
 
 ---
 
