@@ -3115,7 +3115,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| triggerData | object | ✅ | 模拟触发数据，结构与触发器节点的 nodeInput（httpInputDef）一致 |
+| triggerData | object | ✅ | 模拟触发数据，结构与触发器节点的 `input`（httpInputDef）一致 |
 
 **响应体 `data`**（同步返回，由 connector-api 透传）
 
@@ -3308,7 +3308,7 @@
 
 `#54` 接口采用**透明穿透**模式——除了接口地址（URL 路径）由平台固定外，**请求和响应的所有参数、返回值均由用户在连接流中自定义**：
 
-- **请求侧**：完全遵循连接流中触发器节点的 `nodeInput`（httpInputDef）定义。调用方传入的 Header、Query 参数、Body 结构均由触发器节点的入参 Schema 决定。
+- **请求侧**：完全遵循连接流中触发器节点的 `input`（httpInputDef）定义。调用方传入的 Header、Query 参数、Body 结构均由触发器节点的入参 Schema 决定。
 - **响应侧**：完全遵循连接流中出口节点的 `output`（httpOutputDef）定义。平台不包装任何业务数据，调用方收到的响应 Header（用户自定义部分）和 Body 结构均由出口节点的出参 Schema 决定。
 - **平台元数据**：所有平台级响应参数（执行 ID、状态、耗时、错误信息、缓存命中状态等）统一追加到响应头，采用 `X-` 前缀格式，与用户自定义的响应 Header/body 完全分离。
 
@@ -3324,15 +3324,15 @@
 
 **请求头 — 用户自定义**
 
-> 由触发器节点的 `nodeInput.header`（httpInputDef.header）定义。调用方需按此 Schema 传入对应 Header 字段（含必填/可选约束）。
+> 由触发器节点的 `input.header`（httpInputDef.header）定义。调用方需按此 Schema 传入对应 Header 字段（含必填/可选约束）。
 
 **查询参数 — 用户自定义**
 
-> 由触发器节点的 `nodeInput.query`（httpInputDef.query）定义。调用方需按此 Schema 传入对应 Query 参数（含必填/可选约束）。
+> 由触发器节点的 `input.query`（httpInputDef.query）定义。调用方需按此 Schema 传入对应 Query 参数（含必填/可选约束）。
 
 **请求体 — 用户自定义**
 
-> 由触发器节点的 `nodeInput.body`（httpInputDef.body）定义。调用方需按此 Schema 传入对应 Body（含必填/可选约束、类型约束 FR-047）。
+> 由触发器节点的 `input.body`（httpInputDef.body）定义。调用方需按此 Schema 传入对应 Body（含必填/可选约束、类型约束 FR-047）。
 
 ##### 前置校验
 
