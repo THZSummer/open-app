@@ -120,7 +120,7 @@ open-server/src/main/resources/db/migration/
 | `flow_version_t` | `status` | 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除 | V2 新增 |
 | `execution_record_t` | `trigger_type` | 1=http | V2 启用 |
 | `execution_record_t` | `status` | 0=success, 1=failed | V2 启用 |
-| `execution_record_t` | `rate_limited` | 0=未触发, 1=触发限流 | V2 启用 |
+| `execution_record_t` | `rate_limit_status` | 0=未触发, 1=触发限流 | V2 启用 |
 | `execution_step_t` | `status` | 0=success, 1=failed, 2=timeout, 3=not_executed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
 | `execution_record_t` | `cache_status` | 0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3） | V2 新增 |
@@ -363,7 +363,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `trigger_type`            TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）',
     `trigger_account`         VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识）',
     `status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=success, 1=failed',
-    `rate_limited`            TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否触发限流：0=未触发, 1=触发限流（429）',
+    `rate_limit_status`       TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '限流状态：0=未触发限流, 1=触发限流（429）',
     `cache_status`            TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '缓存状态：0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3）',
     `cache_key`               VARCHAR(500) DEFAULT NULL COMMENT '命中的缓存键（全流命中时有值，调试用）',
     `cache_ttl_remaining`     INT          DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒）',
@@ -396,7 +396,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | `trigger_type` | TINYINT(10) | 1=http |
 | `trigger_account` | VARCHAR(100) | 触发账号 |
 | `status` | TINYINT(10) | 0=success, 1=failed |
-| `rate_limited` | TINYINT(1) | 0=未触发限流, 1=触发限流（429） |
+| `rate_limit_status` | TINYINT(1) | 0=未触发限流, 1=触发限流（429） |
 | `cache_status` | TINYINT(1) | 0=未命中, 1=全流命中, 2=部分命中（V3） |
 | `cache_key` | VARCHAR(500) | 命中的缓存键（全流命中时有值） |
 | `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL（秒） |
