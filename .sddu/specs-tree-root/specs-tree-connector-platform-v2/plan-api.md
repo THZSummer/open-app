@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
 **版本**: v6.0
 **创建日期**: 2026-06-09
-**对齐基线**: spec.md v2.22-draft + plan-json-schema.md v9.10
+**对齐基线**: spec.md v2.24-draft + plan-json-schema.md v9.10
 
 ---
 
@@ -15,8 +15,8 @@
 | **版本模型** | **多版本**（草稿→发布→失效→删除），最多 1000 个版本 | spec v2.15 |
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
 | **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.10：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler 策略模型（retry/ignore/terminate + errorTypes + retryConfig） | plan-json-schema.md v9.10 |
-| **服务归属** | open-server（管理面 49 个） + connector-api（运行时 2 个） | plan.md §1 |
-| 端点总数 | **53**（open-server 51 + connector-api 2） | — |
+| **服务归属** | open-server（管理面 54 个） + connector-api（运行时 2 个） | plan.md §1 |
+| 端点总数 | **56**（open-server 54 + connector-api 2） | — |
 
 ---
 
@@ -30,7 +30,7 @@
 |--------|------|
 | 基础路径 | `/service/open/v2` (open-server 管理面) / `/api/v1` (connector-api 执行面) |
 | 认证方式 | 管理面复用现有 Cookie/SSO；执行面 HTTP 触发通过 SYSTOKEN 签名验证 |
-| 应用隔离 | open-server 管理面接口（#1~#51）统一通过 `Header: X-App-Id` 传递，三层校验：白名单准入 → 用户权限 → 数据归属<br>connector-api 运行时（#52~#53）从 flow 自动获取 |
+| 应用隔离 | open-server 管理面接口（#1~#52）统一通过 `Header: X-App-Id` 传递，三层校验：白名单准入 → 用户权限 → 数据归属<br>connector-api 运行时（#53~#54）从 flow 自动获取 |
 | 时间格式 | `yyyy-MM-dd HH:mm:ss` |
 
 ### 1.2 字段命名规范
@@ -261,6 +261,13 @@
 |:--:|------|
 | 1 | HTTP |
 
+#### 1.8.11 日志采集开关状态 (logSwitch)
+
+| 数字 | 含义 |
+|:--:|------|
+| 0 | 关闭 |
+| 1 | 开启
+
 ### 1.9 接口命名规范
 
 **规则**：接口名称统一采用 `[操作动词] [资源名词] [强调词]` 格式。
@@ -302,7 +309,7 @@
 | 4 | PUT | `/connectors/{connectorId}` | 更新连接器 | 改造 | ① 三层权限校验 |
 | 5 | PUT | `/connectors/{connectorId}/invalidate` | 失效连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 6 | PUT | `/connectors/{connectorId}/recover` | 恢复连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 7 | DELETE | `/connectors/{connectorId}` | 删除连接器 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
+| 7 | DELETE | `/connectors/{connectorId}` | 删除连接器 | 改造 | ① 三层权限校验 |
 | — | — | **open-server — 连接器版本** | — | — | — |
 | 8 | POST | `/connectors/{connectorId}/versions` | 创建连接器草稿版本 | 新增 | ① 三层权限校验<br>② 版本上限 1000 校验<br>③ 生成空草稿（FR-005a） |
 | 9 | GET | `/connectors/{connectorId}/versions` | 查询连接器版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤<br>（status=2 已发布）<br>④ 新增接口 |
@@ -312,7 +319,7 @@
 | 13 | POST | `/connectors/{connectorId}/versions/{versionId}/copy-to-draft` | 复制连接器版本到草稿 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 14 | PUT | `/connectors/{connectorId}/versions/{versionId}/invalidate` | 失效连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 15 | PUT | `/connectors/{connectorId}/versions/{versionId}/recover` | 恢复连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 16 | DELETE | `/connectors/{connectorId}/versions/{versionId}` | 删除连接器版本 | 新增 | ① 三层权限校验<br>② 草稿可直接删除<br>④ 新增接口 |
+| 16 | DELETE | `/connectors/{connectorId}/versions/{versionId}` | 删除连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | — | GET | `/connectors/{connectorId}/config` | 获取连接器配置 | 删除 | ⑤ V1 接口，V2 由 #10 替代 |
 | — | PUT | `/connectors/{connectorId}/config` | 编辑连接器配置 | 删除 | ⑤ V1 接口，V2 由 #11 替代 |
 | — | — | **open-server — 连接流 CRUD** | — | — | — |
@@ -326,7 +333,7 @@
 | 24 | POST | `/flows/{flowId}/stop` | 停止连接流 | 改造 | ① 三层权限校验 |
 | 25 | PUT | `/flows/{flowId}/invalidate` | 失效连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 26 | PUT | `/flows/{flowId}/recover` | 恢复连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 27 | DELETE | `/flows/{flowId}` | 删除连接流 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
+| 27 | DELETE | `/flows/{flowId}` | 删除连接流 | 改造 | ① 三层权限校验 |
 | — | — | **open-server — 连接流版本** | — | — | — |
 | 28 | POST | `/flows/{flowId}/versions` | 创建连接流草稿版本 | 新增 | ① 三层权限校验<br>② 版本上限 1000 校验<br>③ 生成空草稿（FR-024a） |
 | 29 | GET | `/flows/{flowId}/versions` | 查询连接流版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤<br>（status=5 已发布）<br>④ 新增接口 |
@@ -336,7 +343,7 @@
 | 33 | POST | `/flows/{flowId}/versions/{versionId}/copy-to-draft` | 复制连接流版本到草稿 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 34 | PUT | `/flows/{flowId}/versions/{versionId}/invalidate` | 失效连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 35 | PUT | `/flows/{flowId}/versions/{versionId}/recover` | 恢复连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 36 | DELETE | `/flows/{flowId}/versions/{versionId}` | 删除连接流版本 | 新增 | ① 三层权限校验<br>② 草稿/已撤回/已驳回可直接删除<br>④ 新增接口 |
+| 36 | DELETE | `/flows/{flowId}/versions/{versionId}` | 删除连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | — | GET | `/flows/{flowId}/config` | 获取编排配置 | 删除 | ⑤ V1 接口，V2 由 #30 替代 |
 | — | PUT | `/flows/{flowId}/config` | 保存编排配置 | 删除 | ⑤ V1 接口，V2 由 #31 替代 |
 | — | POST | `/flows/{flowId}/test-run` | 测试运行 | 删除 | ⑤ V1 接口，V2 由 #51 替代 |
@@ -360,9 +367,11 @@
 | 50 | GET | `/flows/{flowId}/executions/{executionId}` | 查询运行记录详情 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | — | — | **open-server — 调试代理** | — | — | — |
 | 51 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试连接流版本（代理） | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 test-run |
+| — | — | **open-server — 函数列表** | — | — | — |
+| 52 | GET | `/data-processor/functions` | 查询数据处理函数列表 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | — | — | **connector-api — 运行时** | — | — | — |
-| 52 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试执行 | 新增 | ④ 新增接口<br>（由 open-server #51 代理调用） |
-| 53 | POST | `/flows/{flowId}/invoke` | 调用连接流 | 改造 | ③ 路径变更<br>⑥ 替换 V1 trigger invoke |
+| 53 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试执行 | 新增 | ④ 新增接口<br>（由 open-server #51 代理调用） |
+| 54 | POST | `/flows/{flowId}/invoke` | 调用连接流 | 改造 | ③ 路径变更<br>⑥ 替换 V1 trigger invoke |
 
 > 💡 **应用白名单**（FR-045）：数据存储在 `openplatform_lookup_*` LookUp 体系，复用 market-web 现有管理界面，运行时读取，不新增接口。
 > 💡 **审批提交** 在 #32 发布版本时由后端自动调用 `ApprovalEngine.createApproval()` 创建审批实例，不暴露为独立端点。
@@ -370,7 +379,7 @@
 > 💡 **#39~#44** 是现有 ApprovalController 接口，V2 扩展 `businessType=connector_flow_version_publish` 场景和业务回调（审批通过→FlowVersion 已发布，驳回→已驳回）。
 > 💡 **#45~#48** 是现有审批流模板接口，V2 新增 `appId` 字段支持应用隔离。
 
-**端点统计**：新增 32 + 改造 16 + 删除 5 = 53 个（open-server 51 + connector-api 2）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
+**端点统计**：新增 35 + 改造 16 + 删除 5 = 56 个（open-server 54 + connector-api 2）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
 
 ---
 
@@ -757,7 +766,7 @@
 |------|------|:--:|------|
 | connectorId | string | ✅ | 连接器 ID（雪花ID） |
 
-> 仅「已失效」状态可删除，前端需二次确认。
+> 💡 可删除状态参见 [spec.md §1.7.1](./spec.md#171-连接器生命周期)。前端需二次确认。
 
 **错误响应**
 
@@ -1056,8 +1065,8 @@
 |------|------|:--:|------|
 | connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §5.2） |
 
-> `urlWhitelist` 校验：每条 `pattern` 须为合法 Java 正则，不合法返回 400。空数组=不限制。
-> `authConfigs` 校验：`type` 枚举值合法、`header`/`query` 至少声明其一、`type=SYSTOKEN` 时 `sysAccountWhitelist` 必填、`type=SIGNATURE` 时 `secretKey` 必填。
+> `urlWhitelist` 校验：保存时不校验正则合法性（spec v2.23），正则校验推迟到发布时（#12）执行。空数组=不限制。
+> `authConfigs` 校验：保存时不校验 `type` 枚举值合法性、`header`/`query` 声明、`sysAccountWhitelist`/`secretKey` 必填等结构约束（spec v2.23），全部推迟到发布时（#12）执行。
 
 **响应体 `data`**
 
@@ -1072,7 +1081,7 @@
 
 | code | 说明 |
 |------|------|
-| 400 | URL 白名单正则语法错误 / authConfigs 结构校验失败 |
+| 400 | JSON 完全不可解析（仅此一种情况）；正则/authConfigs 等平台要求限制校验推迟到发布时（#12） |
 | 409 | 非草稿状态，不可编辑 |
 
 **示例**
@@ -1391,9 +1400,9 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | connectorId | string | ✅ | 连接器 ID |
-| versionId | string | ✅ | 版本 ID（草稿/已失效状态可删除） |
+| versionId | string | ✅ | 版本 ID（可删除状态见 spec §1.7.2） |
 
-> 前端需二次确认，不可恢复。草稿可直接删除（FR-010），无需先标记失效。
+> 💡 可删除状态参见 [spec.md §1.7.2](./spec.md#172-连接器版本生命周期)。前端需二次确认，不可恢复。
 
 **错误响应**
 
@@ -1941,9 +1950,9 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| flowId | string | ✅ | 连接流 ID（仅已失效状态） |
+| flowId | string | ✅ | 连接流 ID（可删除状态见 spec §1.7.3） |
 
-> 前端需二次确认，不可恢复。
+> 💡 可删除状态参见 [spec.md §1.7.3](./spec.md#173-连接流生命周期)。前端需二次确认，不可恢复。
 
 **错误响应**
 
@@ -2174,6 +2183,7 @@
 | versionId | string | ✅ | 版本 ID（仅草稿状态） |
 
 > 提交后进入三级审批流程（应用级→平台连接流级→全局级），复用现有 `ApprovalEngine`。
+> 节点超时值 > 应用最大超时值 → 禁止提交（EC-028）。
 
 **响应体 `data`**
 
@@ -2361,9 +2371,9 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | flowId | string | ✅ | 连接流 ID |
-| versionId | string | ✅ | 版本 ID（草稿/已撤回/已驳回/已失效状态可删除） |
+| versionId | string | ✅ | 版本 ID（可删除状态见 spec §1.7.4） |
 
-> 前端需二次确认，不可恢复。草稿/已撤回/已驳回可直接删除，无需先标记失效。
+> 💡 可删除状态参见 [spec.md §1.7.4](./spec.md#174-连接流版本生命周期)。前端需二次确认，不可恢复。
 
 **错误响应**
 
@@ -3084,7 +3094,7 @@
 
 `POST /flows/{flowId}/versions/{versionId}/debug`
 
-前端调用 open-server，open-server 代理转发到 connector-api #52。
+前端调用 open-server，open-server 代理转发到 connector-api #53。
 
 **请求头**
 
@@ -3144,9 +3154,115 @@
 
 ---
 
-### 3.9 运行时（#52~#53）— connector-api
+### 3.8a 函数列表（#52）— open-server
 
-#### #52 调试连接流版本
+#### #52 查询数据处理函数列表
+
+`GET /service/open/v2/data-processor/functions`
+
+**请求头**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| X-App-Id | string | ✅ | 应用 ID |
+
+> 💡 本期仅支持字段类型转换系列函数（`toString` / `toNumber` / `toBoolean` / `formatDate`），函数列表在 open-server 侧静态维护。后续可通过 market-server Property 扩展为动态配置。
+
+**响应体 `data[]`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| name | string | 函数名 |
+| labelCn | string | 中文名称 |
+| labelEn | string | 英文名称 |
+| descriptionCn | string | 中文描述 |
+| descriptionEn | string | 英文描述 |
+| input | object | 入参定义，jsonObjectDef 格式（见 [plan-json-schema.md §4.3.2](./plan-json-schema.md)） |
+| output | object | 出参定义，jsonObjectDef 格式 |
+
+> 💡 `input` 和 `output` 复用 dataProcessorNodeDataDef 的 output 字段结构（jsonObjectDef），前端可直接渲染为 Schema 编辑器。
+
+**示例**
+
+```json
+// 响应体 200
+{
+  "code": "200",
+  "messageZh": "成功",
+  "messageEn": "Success",
+  "data": [
+    {
+      "name": "toString",
+      "labelCn": "转为字符串",
+      "labelEn": "To String",
+      "descriptionCn": "将任意类型值转为字符串",
+      "descriptionEn": "Convert any value to string",
+      "input": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "输入值" }
+        },
+        "required": ["value"]
+      },
+      "output": { "type": "string" }
+    },
+    {
+      "name": "toNumber",
+      "labelCn": "转为数字",
+      "labelEn": "To Number",
+      "descriptionCn": "将字符串转为数字",
+      "descriptionEn": "Convert string to number",
+      "input": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "输入值" }
+        },
+        "required": ["value"]
+      },
+      "output": { "type": "number" }
+    },
+    {
+      "name": "toBoolean",
+      "labelCn": "转为布尔",
+      "labelEn": "To Boolean",
+      "descriptionCn": "将字符串/数字转为布尔值",
+      "descriptionEn": "Convert string/number to boolean",
+      "input": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "输入值" }
+        },
+        "required": ["value"]
+      },
+      "output": { "type": "boolean" }
+    },
+    {
+      "name": "formatDate",
+      "labelCn": "日期格式化",
+      "labelEn": "Format Date",
+      "descriptionCn": "将日期字符串按指定格式转换",
+      "descriptionEn": "Format date string with pattern",
+      "input": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "日期值" },
+          "fromPattern": { "type": "string", "description": "源格式", "example": "yyyy-MM-dd HH:mm:ss" },
+          "toPattern": { "type": "string", "description": "目标格式", "example": "yyyy/MM/dd" }
+        },
+        "required": ["value", "fromPattern", "toPattern"]
+      },
+      "output": { "type": "string" }
+    }
+  ],
+  "page": null
+}
+```
+
+---
+
+### 3.9 运行时（#53~#54）— connector-api
+
+#### #53 调试连接流版本
 
 `POST /api/v1/flows/{flowId}/versions/{versionId}/debug`
 
@@ -3180,7 +3296,7 @@
 }
 ```
 
-#### #53 调用连接流
+#### #54 调用连接流
 
 `POST /api/v1/flows/{flowId}/invoke`
 
@@ -3241,6 +3357,17 @@
 // 响应体 503 — 未部署
 { "code": "503", "messageZh": "连接流未部署", "data": null, "page": null }
 ```
+
+---
+
+### 3.9a 系统配置（#54~#55）— open-server（复用 market-server Property）
+
+#### open-server — 系统配置（复用 market-server Property）
+
+| # | 方法 | 路径 | 说明 |
+|---|------|------|------|
+| 54 | GET | /service/open/v2/app-config/{appId} | 查询应用级系统配置（超时上限/限流上限/记录条数上限/日志开关） |
+| 55 | PUT | /service/open/v2/app-config/{appId} | 更新应用级系统配置 |
 
 ---
 
