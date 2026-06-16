@@ -373,10 +373,12 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `create_by`               VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
     `last_update_by`          VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
     PRIMARY KEY (`id`),
-    INDEX `idx_app_flow_trigger_time` (`app_id`, `flow_id`, `trigger_time`) COMMENT '按应用+连接流+时间查询运行记录',
-    INDEX `idx_trigger_time`       (`trigger_time`)           COMMENT '定时清理时按时间范围扫描',
-    INDEX `idx_status`   (`status`)       COMMENT '按执行状态过滤',
-    INDEX `idx_cache_status` (`cache_status`)  COMMENT '按缓存命中状态过滤'
+    INDEX `idx_app_id_status`          (`app_id`, `id`, `status`)          COMMENT '核心：按应用+执行记录+状态',
+    INDEX `idx_app_flow_status`        (`app_id`, `flow_id`, `status`)     COMMENT '核心：按应用+连接流+状态',
+    INDEX `idx_app_flow_name_cn_status` (`app_id`, `flow_name_cn`, `status`) COMMENT '核心：按应用+连接流中文名称+状态',
+    INDEX `idx_app_flow_name_en_status` (`app_id`, `flow_name_en`, `status`) COMMENT '核心：按应用+连接流英文名称+状态',
+    INDEX `idx_app_status`             (`app_id`, `status`)               COMMENT '核心：按应用+状态',
+    INDEX `idx_trigger_time`           (`trigger_time`)                   COMMENT '定时清理时按时间范围扫描'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行记录表';
 ```
 
