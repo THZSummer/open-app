@@ -365,6 +365,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `cache_status`            TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '缓存状态：0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3）',
     `cache_key`               VARCHAR(500) DEFAULT NULL COMMENT '命中的缓存键（全流命中时有值，调试用）',
     `cache_ttl_remaining`     INT          DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒）',
+    `error_code`              VARCHAR(20)   DEFAULT NULL COMMENT '错误码（4xx=下游客户端, 5xx=下游服务端, 6xxxx=引擎内部）',
     `error_message`           VARCHAR(1000) DEFAULT NULL COMMENT '错误信息（整体摘要，节点级详情在 execution_step_t）',
     `duration_ms`             INT(11)      DEFAULT NULL COMMENT '总执行耗时(毫秒)',
     `trigger_time`            DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '触发时间',
@@ -397,6 +398,8 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | `cache_key` | VARCHAR(500) | 命中的缓存键（全流命中时有值） |
 | `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL（秒） |
 | `trigger_time` | DATETIME(3) | 触发时间 |
+| `error_code` | VARCHAR(20) | 结构化错误码，方便告警分类 |
+| `error_message` | VARCHAR(1000) | 整体摘要 |
 | `duration_ms` | INT | 总耗时 |
 
 ### 3.8 openplatform_v2_cp_execution_step_t（NEW）
