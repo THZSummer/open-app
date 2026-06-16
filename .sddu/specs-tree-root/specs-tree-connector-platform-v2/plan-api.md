@@ -309,7 +309,7 @@
 | 4 | PUT | `/connectors/{connectorId}` | 更新连接器 | 改造 | ① 三层权限校验 |
 | 5 | PUT | `/connectors/{connectorId}/invalidate` | 失效连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 6 | PUT | `/connectors/{connectorId}/recover` | 恢复连接器 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 7 | DELETE | `/connectors/{connectorId}` | 删除连接器 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
+| 7 | DELETE | `/connectors/{connectorId}` | 删除连接器 | 改造 | ① 三层权限校验 |
 | — | — | **open-server — 连接器版本** | — | — | — |
 | 8 | POST | `/connectors/{connectorId}/versions` | 创建连接器草稿版本 | 新增 | ① 三层权限校验<br>② 版本上限 1000 校验<br>③ 生成空草稿（FR-005a） |
 | 9 | GET | `/connectors/{connectorId}/versions` | 查询连接器版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤<br>（status=2 已发布）<br>④ 新增接口 |
