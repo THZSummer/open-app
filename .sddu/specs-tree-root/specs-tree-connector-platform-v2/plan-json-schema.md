@@ -280,6 +280,10 @@
 | loop_v2 | — | ✅（原始数组等） | ✅ item / index / total | output 为持久化属性，current 为迭代上下文 |
 | error_handler | — | ✅（错误统计等） | ✅ code / messageZh / messageEn / cause | current 跟随 errorInfoDef |
 
+> ⚠️ **引用约束**：
+> - **不支持引用触发器节点的 output**：触发器无出参，HTTP 请求数据通过 `input` 获取（header/query/body）
+> - **不支持引用连接器节点的 input**：连接器的入参来源于上游节点，引用 `${$.node.conn_1.input.xxx}` 无意义——应引用上游节点的 `output`
+
 **Path 解析对照 — 按作用域分组**：
 
 | JSON Path | 解析结果 | 作用域 |
