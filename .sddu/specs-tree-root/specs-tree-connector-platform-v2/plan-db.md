@@ -247,7 +247,9 @@ ALTER TABLE openplatform_v2_cp_flow_t
     ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID',
     MODIFY COLUMN lifecycle_status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '生命周期：1=待部署, 2=运行中, 3=已停止, 4=已失效, 5=物理删除',
     ADD INDEX idx_deployed_version (deployed_version_id),
-    ADD INDEX idx_app_status (app_id, lifecycle_status);
+    ADD INDEX idx_app_status (app_id, lifecycle_status),
+    ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询',
+    ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
 ```
 
 | 列 | 类型 | 变更 | 说明 |
