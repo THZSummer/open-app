@@ -449,6 +449,8 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON |
 | `error_code` | VARCHAR(20) | 结构化错误码，方便告警分类 |
 
+> 💡 缓存命中时，全流可能跳过大部分节点的实际执行。为保证运行记录可追溯，缓存命中场景下至少记录触发器节点的入参（`input_data`）和数据输出节点的出参（`output_data`），其余节点标记 `cache_status=1` 并跳过 I/O 写入。
+
 ---
 
 ## 4. 状态枚举定义
