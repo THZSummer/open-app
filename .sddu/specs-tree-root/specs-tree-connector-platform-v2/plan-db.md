@@ -203,7 +203,9 @@ erDiagram
 ALTER TABLE openplatform_v2_cp_connector_t
     ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID（0=全局，迁移前数据默认0）',
     MODIFY COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=有效不可用（无已发布版本）, 2=有效可用（有已发布版本）, 3=已失效, 4=物理删除',
-    ADD INDEX idx_app_status (app_id, status);
+    ADD INDEX idx_app_status (app_id, status),
+    ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询',
+    ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
 ```
 
 | 列 | 类型 | 变更 | 说明 |
