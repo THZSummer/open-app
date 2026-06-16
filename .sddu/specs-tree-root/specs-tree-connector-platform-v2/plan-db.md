@@ -284,13 +284,14 @@ ALTER TABLE openplatform_v2_cp_flow_version_t
 
 ### 3.5 openplatform_v2_cp_connector_version_ref_t（NEW）
 
-**建表理由**：编排中 connector 节点引用特定 ConnectorVersion，需要显式管理引用关系以支持「标记版本失效/删除」的前置「被引用」校验（ADR-007）。`flow_id`/`connector_id` 冗余避免 JOIN 穿透版本表。编排保存时同步写入，编排删除时级联清理。
+**建表理由**：编排中 connector 节点引用特定 ConnectorVersion，需要显式管理引用关系以支持「标记版本失效/删除」的前置「被引用」校验（ADR-007）。`node_id` 定位编排画布中的具体连接器节点，`flow_id`/`connector_id` 冗余避免 JOIN 穿透版本表。编排保存时同步写入，编排删除时级联清理。
 
 ```sql
 CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
     id BIGINT(20) NOT NULL COMMENT '雪花ID',
     flow_version_id BIGINT(20) NOT NULL COMMENT '连接流版本ID',
     flow_id BIGINT(20) NOT NULL COMMENT '连接流ID（冗余，避免 JOIN flow_version_t）',
+    node_id VARCHAR(64) NOT NULL COMMENT '编排画布中的连接器节点ID（React Flow node.id）',
     connector_version_id BIGINT(20) NOT NULL COMMENT '连接器版本ID',
     connector_id BIGINT(20) NOT NULL COMMENT '连接器ID（冗余，避免 JOIN connector_version_t）',
     create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
@@ -298,7 +299,7 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
     create_by VARCHAR(100) NOT NULL DEFAULT '' COMMENT '创建人账号',
     last_update_by VARCHAR(100) NOT NULL DEFAULT '' COMMENT '更新人账号',
     PRIMARY KEY (id),
-    INDEX idx_flow_version (flow_version_id) COMMENT '按流版本查询其全部引用',
+    INDEX idx_flow_version_node (flow_version_id, node_id) COMMENT '按流版本+节点ID定位唯一引用',
     INDEX idx_flow (flow_id) COMMENT '按连接流查询其全部引用',
     INDEX idx_connector_version (connector_version_id) COMMENT '按连接器版本查询被哪些流引用',
     INDEX idx_connector (connector_id) COMMENT '按连接器查询被哪些流引用（失效/删除前置校验）'
@@ -309,6 +310,7 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
 |----|------|------|
 | `flow_version_id` | BIGINT(20) | 引用的连接流版本 ID |
 | `flow_id` | BIGINT(20) | 冗余字段，直接定位连接流，避免 JOIN flow_version_t |
+| `node_id` | VARCHAR(64) | 编排画布中的连接器节点 ID（React Flow node.id），同一流版本可包含多个连接器节点 |
 | `connector_version_id` | BIGINT(20) | 被引用的连接器版本 ID |
 | `connector_id` | BIGINT(20) | 冗余字段，直接定位连接器，避免 JOIN connector_version_t |
 
