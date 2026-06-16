@@ -319,7 +319,7 @@
 | 13 | POST | `/connectors/{connectorId}/versions/{versionId}/copy-to-draft` | 复制连接器版本到草稿 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 14 | PUT | `/connectors/{connectorId}/versions/{versionId}/invalidate` | 失效连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 15 | PUT | `/connectors/{connectorId}/versions/{versionId}/recover` | 恢复连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 16 | DELETE | `/connectors/{connectorId}/versions/{versionId}` | 删除连接器版本 | 新增 | ① 三层权限校验<br>② 草稿可直接删除<br>④ 新增接口 |
+| 16 | DELETE | `/connectors/{connectorId}/versions/{versionId}` | 删除连接器版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | — | GET | `/connectors/{connectorId}/config` | 获取连接器配置 | 删除 | ⑤ V1 接口，V2 由 #10 替代 |
 | — | PUT | `/connectors/{connectorId}/config` | 编辑连接器配置 | 删除 | ⑤ V1 接口，V2 由 #11 替代 |
 | — | — | **open-server — 连接流 CRUD** | — | — | — |
@@ -333,7 +333,7 @@
 | 24 | POST | `/flows/{flowId}/stop` | 停止连接流 | 改造 | ① 三层权限校验 |
 | 25 | PUT | `/flows/{flowId}/invalidate` | 失效连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 26 | PUT | `/flows/{flowId}/recover` | 恢复连接流 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 27 | DELETE | `/flows/{flowId}` | 删除连接流 | 改造 | ① 三层权限校验<br>② 仅已失效状态可删 |
+| 27 | DELETE | `/flows/{flowId}` | 删除连接流 | 改造 | ① 三层权限校验 |
 | — | — | **open-server — 连接流版本** | — | — | — |
 | 28 | POST | `/flows/{flowId}/versions` | 创建连接流草稿版本 | 新增 | ① 三层权限校验<br>② 版本上限 1000 校验<br>③ 生成空草稿（FR-024a） |
 | 29 | GET | `/flows/{flowId}/versions` | 查询连接流版本列表 | 新增 | ① 三层权限校验<br>② 新增 status 过滤<br>（status=5 已发布）<br>④ 新增接口 |
@@ -343,7 +343,7 @@
 | 33 | POST | `/flows/{flowId}/versions/{versionId}/copy-to-draft` | 复制连接流版本到草稿 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 34 | PUT | `/flows/{flowId}/versions/{versionId}/invalidate` | 失效连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | 35 | PUT | `/flows/{flowId}/versions/{versionId}/recover` | 恢复连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
-| 36 | DELETE | `/flows/{flowId}/versions/{versionId}` | 删除连接流版本 | 新增 | ① 三层权限校验<br>② 草稿/已撤回/已驳回可直接删除<br>④ 新增接口 |
+| 36 | DELETE | `/flows/{flowId}/versions/{versionId}` | 删除连接流版本 | 新增 | ① 三层权限校验<br>④ 新增接口 |
 | — | GET | `/flows/{flowId}/config` | 获取编排配置 | 删除 | ⑤ V1 接口，V2 由 #30 替代 |
 | — | PUT | `/flows/{flowId}/config` | 保存编排配置 | 删除 | ⑤ V1 接口，V2 由 #31 替代 |
 | — | POST | `/flows/{flowId}/test-run` | 测试运行 | 删除 | ⑤ V1 接口，V2 由 #51 替代 |
@@ -764,7 +764,7 @@
 |------|------|:--:|------|
 | connectorId | string | ✅ | 连接器 ID（雪花ID） |
 
-> 仅「已失效」状态可删除，前端需二次确认。
+> 💡 可删除状态参见 [spec.md §1.7.1](./spec.md#171-连接器生命周期)。前端需二次确认。
 
 **错误响应**
 
@@ -1398,9 +1398,9 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | connectorId | string | ✅ | 连接器 ID |
-| versionId | string | ✅ | 版本 ID（草稿/已失效状态可删除） |
+| versionId | string | ✅ | 版本 ID（可删除状态见 spec §1.7.2） |
 
-> 前端需二次确认，不可恢复。草稿可直接删除（FR-010），无需先标记失效。
+> 💡 可删除状态参见 [spec.md §1.7.2](./spec.md#172-连接器版本生命周期)。前端需二次确认，不可恢复。
 
 **错误响应**
 
@@ -1948,9 +1948,9 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| flowId | string | ✅ | 连接流 ID（仅已失效状态） |
+| flowId | string | ✅ | 连接流 ID（可删除状态见 spec §1.7.3） |
 
-> 前端需二次确认，不可恢复。
+> 💡 可删除状态参见 [spec.md §1.7.3](./spec.md#173-连接流生命周期)。前端需二次确认，不可恢复。
 
 **错误响应**
 
@@ -2369,9 +2369,9 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | flowId | string | ✅ | 连接流 ID |
-| versionId | string | ✅ | 版本 ID（草稿/已撤回/已驳回/已失效状态可删除） |
+| versionId | string | ✅ | 版本 ID（可删除状态见 spec §1.7.4） |
 
-> 前端需二次确认，不可恢复。草稿/已撤回/已驳回可直接删除，无需先标记失效。
+> 💡 可删除状态参见 [spec.md §1.7.4](./spec.md#174-连接流版本生命周期)。前端需二次确认，不可恢复。
 
 **错误响应**
 
