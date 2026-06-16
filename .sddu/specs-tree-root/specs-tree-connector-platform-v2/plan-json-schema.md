@@ -902,7 +902,7 @@ graph TB
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "maxQps": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "maxQps": { "type": "integer", "minimum": 1, "maximum": 1000 },
     "maxConcurrency": { "type": "integer", "minimum": 1, "maximum": 1000 }
   }
 }
@@ -912,7 +912,7 @@ graph TB
 
 | JSON 字段 | 类型 | 必填 | 说明 |
 |-----------|------|:----:|------|
-| maxQps | integer | ❌ | 每秒最大请求数，范围 1-10000 |
+| maxQps | integer | ❌ | 每秒最大请求数，范围 1-1000 |
 | maxConcurrency | integer | ❌ | 最大并发数，范围 1-1000 |
 
 > **示例**
@@ -2050,7 +2050,7 @@ graph TB
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "maxQps": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "maxQps": { "type": "integer", "minimum": 1, "maximum": 1000 },
         "maxConcurrency": { "type": "integer", "minimum": 1, "maximum": 1000 }
       }
     },
@@ -2893,7 +2893,7 @@ graph TB
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
-| `rateLimitConfig` | object | ❌ | 入站限流配置，复用 `rateLimitConfigDef`（§4.3.3）。`maxQps`：每秒最大请求数（1-10000）；`maxConcurrency`：最大并发数（1-1000） |
+| `rateLimitConfig` | object | ❌ | 入站限流配置，复用 `rateLimitConfigDef`（§4.3.3）。`maxQps`：每秒最大请求数（1-1000）；`maxConcurrency`：最大并发数（1-1000） |
 | `cache` | object | ❌ | 响应缓存配置，命中后跳过 DAG 执行直接返回 |
 | `cache.key` | string[] | ✅⚡ | 缓存键表达式列表，minItems 1。每个元素遵循 §3 值表达式体系，运行时按序解析后以冒号(`:`)拼接为完整缓存键 |
 | `cache.ttl` | integer | ✅⚡ | 缓存时长（秒），≥1 |
