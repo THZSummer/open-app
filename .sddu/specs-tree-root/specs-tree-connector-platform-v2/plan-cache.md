@@ -4,7 +4,7 @@
 **关联文档**: spec.md（§3.7 FR-037）, plan-db.md（§0.6 JSON 字段规范）, plan-api.md（§3.4 #28/#29 flowConfig.cache）, plan-json-schema.md（§6.4 flowConfig.cache）
 **版本**: v4.0
 **创建日期**: 2026-06-12
-**对齐基线**: spec.md v2.23-draft + plan-db.md v2.0 + plan-api.md v5.3 + plan-json-schema.md v9.7
+**对齐基线**: spec.md v2.24-draft + plan-db.md v2.0 + plan-api.md v5.3 + plan-json-schema.md v9.7
 
 ---
 

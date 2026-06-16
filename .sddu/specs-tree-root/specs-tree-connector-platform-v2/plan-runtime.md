@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§4.2 connector-api 模块），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）  
 **版本**: v1.0  
 **创建日期**: 2026-06-09  
-**对齐基线**: spec.md v2.23-draft，ADR-005（限流），ADR-006（运行记录）
+**对齐基线**: spec.md v2.24-draft，ADR-005（限流），ADR-006（运行记录）
 
 ---
 
@@ -115,6 +115,10 @@ public Mono<ParallelResult> execute(NodeContext ctx, List<Branch> branches) {
 - HTTP 触发请求到达时，从 `FlowVersion.orchestrationConfig.flowConfig` JSON 解析
 - 解析结果注入 `ExecutionContext`，供后续节点获取
 - 解析失败 → 使用默认值（无超时/无限流/无缓存），记录告警日志
+
+### 3.2a 节点超时上限控制
+
+运行时单节点超时 = **min(节点配置值, 应用最大超时值)**。应用最大超时值从系统配置读取（默认 5s，平台管理员可按应用覆盖）。节点配置值超过应用最大超时值时，以应用最大超时值为准，确保平台管理员可控制全局超时上限。
 
 ---
 
@@ -263,8 +267,9 @@ end
 
 ```
 请求完成（成功/失败/超时）
-    → 异步写入 execution_record_t（1 条）
-    → 批量写入 execution_step_t（N 条，每节点 1 条）
+    → 检查应用级日志采集开关：
+        - 开启（默认）→ 正常写入 execution_record_t + execution_step_t
+        - 关闭 → 仅写入 execution_record_t（基础信息），不写 execution_step_t
     → 写入失败 → 仅记录错误日志，不影响业务
 ```
 
@@ -284,6 +289,10 @@ private Map<String, Object> sanitize(Map<String, Object> data) {
 - 每天 03:00 执行
 - 删除 `trigger_time < NOW() - INTERVAL 30 DAY` 的记录
 - 分批删除（每批 1000 条），避免长事务
+
+### 7.3a FIFO 条数清理
+
+每次 `execution_record` 写入后检查该 `flow_id` 的记录数是否超限（默认 1000，按应用可配），超限时按 `create_time ASC` 批量 DELETE 最早的多余记录。与 30 天定时清理互补。
 
 ---
 

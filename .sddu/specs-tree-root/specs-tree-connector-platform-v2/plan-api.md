@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
 **版本**: v6.0
 **创建日期**: 2026-06-09
-**对齐基线**: spec.md v2.23-draft + plan-json-schema.md v9.10
+**对齐基线**: spec.md v2.24-draft + plan-json-schema.md v9.10
 
 ---
 
@@ -16,7 +16,7 @@
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
 | **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.10：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler 策略模型（retry/ignore/terminate + errorTypes + retryConfig） | plan-json-schema.md v9.10 |
 | **服务归属** | open-server（管理面 49 个） + connector-api（运行时 2 个） | plan.md §1 |
-| 端点总数 | **53**（open-server 51 + connector-api 2） | — |
+| 端点总数 | **55**（open-server 53 + connector-api 2） | — |
 
 ---
 
@@ -261,6 +261,13 @@
 |:--:|------|
 | 1 | HTTP |
 
+#### 1.8.11 日志采集开关状态 (logSwitch)
+
+| 数字 | 含义 |
+|:--:|------|
+| 0 | 关闭 |
+| 1 | 开启
+
 ### 1.9 接口命名规范
 
 **规则**：接口名称统一采用 `[操作动词] [资源名词] [强调词]` 格式。
@@ -370,7 +377,7 @@
 > 💡 **#39~#44** 是现有 ApprovalController 接口，V2 扩展 `businessType=connector_flow_version_publish` 场景和业务回调（审批通过→FlowVersion 已发布，驳回→已驳回）。
 > 💡 **#45~#48** 是现有审批流模板接口，V2 新增 `appId` 字段支持应用隔离。
 
-**端点统计**：新增 32 + 改造 16 + 删除 5 = 53 个（open-server 51 + connector-api 2）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
+**端点统计**：新增 34 + 改造 16 + 删除 5 = 55 个（open-server 53 + connector-api 2）。各接口 FR 对应关系见 [spec.md §A](./spec.md#a-需求追溯)。
 
 ---
 
@@ -2174,6 +2181,7 @@
 | versionId | string | ✅ | 版本 ID（仅草稿状态） |
 
 > 提交后进入三级审批流程（应用级→平台连接流级→全局级），复用现有 `ApprovalEngine`。
+> 节点超时值 > 应用最大超时值 → 禁止提交（EC-028）。
 
 **响应体 `data`**
 
@@ -3241,6 +3249,17 @@
 // 响应体 503 — 未部署
 { "code": "503", "messageZh": "连接流未部署", "data": null, "page": null }
 ```
+
+---
+
+### 3.9a 系统配置（#54~#55）— open-server（复用 market-server Property）
+
+#### open-server — 系统配置（复用 market-server Property）
+
+| # | 方法 | 路径 | 说明 |
+|---|------|------|------|
+| 54 | GET | /service/open/v2/app-config/{appId} | 查询应用级系统配置（超时上限/限流上限/记录条数上限/日志开关） |
+| 55 | PUT | /service/open/v2/app-config/{appId} | 更新应用级系统配置 |
 
 ---
 
