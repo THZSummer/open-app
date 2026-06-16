@@ -363,8 +363,8 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `trigger_type`            TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）',
     `trigger_account`         VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识）',
     `status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=success, 1=failed',
-    `rate_limit_status`       TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '限流状态：0=未触发限流, 1=触发限流（429）',
-    `cache_status`            TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '缓存状态：0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3）',
+    `rate_limit_status`       TINYINT(10)   NOT NULL DEFAULT 0 COMMENT '限流状态：0=未触发限流, 1=触发限流（429）',
+    `cache_status`            TINYINT(10)   NOT NULL DEFAULT 0 COMMENT '缓存状态：0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3）',
     `cache_key`               VARCHAR(500) DEFAULT NULL COMMENT '命中的缓存键（全流命中时有值，调试用）',
     `cache_ttl_remaining`     INT          DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒）',
     `error_code`              VARCHAR(20)   DEFAULT NULL COMMENT '错误码（4xx=下游客户端, 5xx=下游服务端, 6xxxx=引擎内部）',
@@ -396,8 +396,8 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | `trigger_type` | TINYINT(10) | 1=http |
 | `trigger_account` | VARCHAR(100) | 触发账号 |
 | `status` | TINYINT(10) | 0=success, 1=failed |
-| `rate_limit_status` | TINYINT(1) | 0=未触发限流, 1=触发限流（429） |
-| `cache_status` | TINYINT(1) | 0=未命中, 1=全流命中, 2=部分命中（V3） |
+| `rate_limit_status` | TINYINT(10) | 0=未触发限流, 1=触发限流（429） |
+| `cache_status` | TINYINT(10) | 0=未命中, 1=全流命中, 2=部分命中（V3） |
 | `cache_key` | VARCHAR(500) | 命中的缓存键（全流命中时有值） |
 | `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL（秒） |
 | `trigger_time` | DATETIME(3) | 触发时间 |
@@ -419,7 +419,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
     `node_label_en`     VARCHAR(128) DEFAULT NULL COMMENT '节点英文名称 (执行时快照)',
     `iteration`         INT(11)      NOT NULL DEFAULT 0 COMMENT '循环轮次（0=首次或非循环，>0=第N轮循环）',
     `status`            TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '步骤状态：0=success, 1=failed, 2=timeout, 3=not_executed（未执行，如分支未走到）',
-    `cache_status`      TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '节点级缓存状态：0=未命中（正常执行）, 1=节点级命中（V3 启用，V2 始终为0）',
+    `cache_status`      TINYINT(10)   NOT NULL DEFAULT 0 COMMENT '节点级缓存状态：0=未命中（正常执行）, 1=节点级命中（V3 启用，V2 始终为0）',
     `cache_key`         VARCHAR(500) DEFAULT NULL COMMENT '命中的节点级缓存键（V3 启用，调试用）',
     `cache_ttl_remaining` INT        DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒，V3 启用）',
     `input_data`        MEDIUMTEXT   DEFAULT NULL COMMENT '步骤输入数据JSON',
@@ -443,7 +443,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 | `node_type` | TINYINT(10) | 1=trigger, 2=connector, 3=data_processor, 4=exit |
 | `iteration` | INT | 循环轮次（预留），默认 0 |
 | `status` | TINYINT(10) | 0=success, 1=failed, 2=timeout, 3=not_executed |
-| `cache_status` | TINYINT(1) | 0=未命中, 1=节点级命中（V3 启用，V2 始终为 0） |
+| `cache_status` | TINYINT(10) | 0=未命中, 1=节点级命中（V3 启用，V2 始终为 0） |
 | `cache_key` | VARCHAR(500) | 命中的节点级缓存键（V3 启用，V2 始终 NULL） |
 | `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL 秒（V3 启用，V2 始终 NULL） |
 | `input_data` / `output_data` | MEDIUMTEXT | 步骤输入/输出 JSON |
