@@ -78,7 +78,7 @@ open-server/src/main/resources/db/migration/
 | `create_by` | VARCHAR(100) | 创建人账号 |
 | `last_update_by` | VARCHAR(100) | 更新人账号 |
 
-> ⚠️ **V2 新增表注意**：`connector_version_ref_t` 为纯中间表（同步维护，无人工操作），不需要审计字段。其余新表均需完整 4 个审计字段。
+> ⚠️ **V2 新增表注意**：所有新增表均需完整 4 个审计字段（含 `connector_version_ref_t`）。
 
 ### 0.5 描述字段规范
 
@@ -294,12 +294,15 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
     connector_version_id BIGINT(20) NOT NULL COMMENT '连接器版本ID',
     connector_id BIGINT(20) NOT NULL COMMENT '连接器ID（冗余，避免 JOIN connector_version_t）',
     create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    last_update_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+    create_by VARCHAR(100) NOT NULL DEFAULT '' COMMENT '创建人账号',
+    last_update_by VARCHAR(100) NOT NULL DEFAULT '' COMMENT '更新人账号',
     PRIMARY KEY (id),
     INDEX idx_flow_version (flow_version_id) COMMENT '按流版本查询其全部引用',
     INDEX idx_flow (flow_id) COMMENT '按连接流查询其全部引用',
     INDEX idx_connector_version (connector_version_id) COMMENT '按连接器版本查询被哪些流引用',
     INDEX idx_connector (connector_id) COMMENT '按连接器查询被哪些流引用（失效/删除前置校验）'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器版本引用中间表（M:N，编排保存时同步维护，不含审计字段——纯中间表，无人工操作）';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器版本引用中间表（M:N，编排保存时同步维护）';
 ```
 
 | 列 | 类型 | 说明 |
