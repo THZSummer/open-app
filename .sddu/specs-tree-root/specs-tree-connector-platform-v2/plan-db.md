@@ -352,6 +352,7 @@ ALTER TABLE openplatform_v2_approval_flow_t
 ```sql
 CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `id`                      BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
+    `app_id`                  BIGINT(20)   NOT NULL DEFAULT 0 COMMENT '归属应用ID（与连接流 app_id 一致，冗余避免 JOIN）',
     `flow_id`                 BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
     `flow_version_id`         BIGINT(20)   DEFAULT NULL COMMENT '关联连接流版本ID',
     `flow_version_number`     INT          DEFAULT NULL COMMENT '关联连接流版本号（冗余，避免列表 JOIN）',
@@ -372,7 +373,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `create_by`               VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '创建人（系统自动生成）',
     `last_update_by`          VARCHAR(100) NOT NULL DEFAULT 'SYSTEM' COMMENT '最后更新人（系统自动生成）',
     PRIMARY KEY (`id`),
-    INDEX `idx_flow_trigger_time` (`flow_id`, `trigger_time`) COMMENT '按连接流+时间查询运行记录',
+    INDEX `idx_app_flow_trigger_time` (`app_id`, `flow_id`, `trigger_time`) COMMENT '按应用+连接流+时间查询运行记录',
     INDEX `idx_trigger_time`       (`trigger_time`)           COMMENT '定时清理时按时间范围扫描',
     INDEX `idx_status`   (`status`)       COMMENT '按执行状态过滤',
     INDEX `idx_cache_status` (`cache_status`)  COMMENT '按缓存命中状态过滤'
@@ -381,6 +382,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 
 | 列 | 类型 | 说明 |
 |----|------|------|
+| `app_id` | BIGINT(20) | 归属应用 ID（冗余，与 flow_t.app_id 一致，支持按应用隔离查询） |
 | `flow_id` | BIGINT(20) | 连接流 ID |
 | `flow_version_id` | BIGINT(20) | 执行的版本 ID |
 | `flow_version_number` | INT | 冗余，列表查询免 JOIN flow_version_t |
