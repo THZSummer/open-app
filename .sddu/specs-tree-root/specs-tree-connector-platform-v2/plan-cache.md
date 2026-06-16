@@ -187,7 +187,7 @@ ${$.node.trigger.input.header.X-App-Id}
 
 ### 4.1 缓存值结构
 
-> ⚠️ **关键原则**：缓存仅存储**用户定义的业务数据**（出口节点的 `output.header` + `output.body`），不存储平台 `X-` 元数据（`X-Execution-Id` / `X-Duration-Ms` / `X-Cache-Status` 等）。这些平台头值每次请求都不同，缓存无意义，由引擎在响应时实时生成。
+> ⚠️ **关键原则**：缓存仅存储**用户定义的业务数据**（出口节点的 `output.header` + `output.body`）。平台级数据（HTTP 状态码、`X-` 元数据头）一概不缓存——这些值或每次请求不同，或由引擎在响应时按规则确定。
 
 缓存值存储出口节点的纯净 HTTP 响应数据，序列化为 JSON：
 
@@ -197,7 +197,6 @@ ${$.node.trigger.input.header.X-App-Id}
 //   output.body   = { msgId: "${$.node.conn_1.output.body.msgId}", code: "${$.node.conn_1.output.body.code}" }
 
 {
-  "statusCode": 200,
   "headers": {
     "Content-Type": "application/json",
     "X-Request-Id": "exec-2026-001"
@@ -208,11 +207,10 @@ ${$.node.trigger.input.header.X-App-Id}
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `statusCode` | int | HTTP 状态码（200） |
 | `headers` | object | **仅用户自定义的出口响应头**（出口节点 `output.header` 解析结果），不含平台 `X-` 元数据头。排除 `Set-Cookie` 等带会话信息的头 |
 | `body` | object | 出口节点 `output.body` 解析结果，无平台信封包装 |
 
-> 💡 平台 `X-` 响应头（`X-Execution-Id` / `X-Status` / `X-Duration-Ms` / `X-Cache-Status` / `X-Code` / `X-Message-*`）**不缓存**。缓存命中时由引擎实时生成：`X-Execution-Id` 新生成雪花 ID，`X-Duration-Ms` 为实际 Redis GET 耗时，`X-Cache-Status` 设为 `1`。
+> 💡 **不缓存的内容**：HTTP 状态码（引擎按规则实时返回 200）、平台 `X-` 响应头（`X-Execution-Id` / `X-Status` / `X-Duration-Ms` / `X-Cache-Status` / `X-Code` / `X-Message-*`）。缓存命中时由引擎实时生成：`X-Execution-Id` 新雪花 ID，`X-Duration-Ms` 为 Redis GET 实际耗时，`X-Cache-Status` 设为 `1`。HTTP 状态码固定 `200`（能进缓存的执行结果本身是成功的，§4.2）。
 
 ### 4.2 缓存条件
 
@@ -256,7 +254,7 @@ V3（部分命中，节点级缓存）:
 | 限制项 | 值 | 说明 |
 |--------|------|------|
 | 最大响应体大小 | **1 MB**（可配置） | 超过此阈值的响应体不缓存，记录告警日志 |
-| 序列化后总大小上限 | **1.5 MB** | 含 statusCode + headers + body |
+| 序列化后总大小上限 | **1.5 MB** | 含 headers + body |
 
 ---
 
