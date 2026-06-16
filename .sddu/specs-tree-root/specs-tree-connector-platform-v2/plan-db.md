@@ -301,8 +301,10 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
     PRIMARY KEY (id),
     INDEX idx_flow_version_node (flow_version_id, node_id) COMMENT '按流版本+节点ID定位唯一引用',
     INDEX idx_flow (flow_id) COMMENT '按连接流查询其全部引用',
-    INDEX idx_connector (connector_id) COMMENT '按连接器查询被哪些流引用（失效/删除前置校验）',
-    INDEX idx_connector_version (connector_version_id) COMMENT '按连接器版本查询被哪些流引用'
+    INDEX idx_connector_flow (connector_id, flow_id) COMMENT '按连接器查询哪些连接流引用了它',
+    INDEX idx_connector_version_flow_ver (connector_version_id, flow_id, flow_version_id) COMMENT '按连接器版本查询哪些连接流的哪些版本引用了它',
+    INDEX idx_connector_version (connector_version_id) COMMENT '按连接器版本查询被哪些流引用',
+    INDEX idx_flow_version (flow_version_id) COMMENT '按连接流版本查询其全部引用'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器版本引用中间表（M:N，编排保存时同步维护）';
 ```
 
