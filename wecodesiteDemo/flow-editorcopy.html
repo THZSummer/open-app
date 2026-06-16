@@ -3569,6 +3569,7 @@
                 <button class="btn" onclick="openDebugDrawer()">调试</button>
                 <button class="btn" onclick="handleSaveDraft()">保存</button>
                 <button class="btn btn-primary" onclick="handlePublishFlow()">发布</button>
+                <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
             `;
         }
 
@@ -3628,10 +3629,11 @@
                     `;
                     break;
                 case FLOW_VERSION_STATUS.WITHDRAWN:
-                    // 已撤回状态按只读版本处理，仅支持新增草稿和更多配置
+                    // 已撤回状态按只读版本处理，支持新增草稿、更多配置和删除
                     buttons = `
                         ${renderCreateDraftButton()}
                         <button class="btn" onclick="openMoreConfig()">更多配置</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
                     `;
                     break;
             }
@@ -3873,6 +3875,20 @@
          * 删除版本（二次确认）
          */
         function handleDeleteVersion() {
+            const version = getCurrentFlowVersion();
+            const deletableStatuses = [
+                FLOW_VERSION_STATUS.DRAFT,
+                FLOW_VERSION_STATUS.INVALID,
+                FLOW_VERSION_STATUS.REJECTED,
+                FLOW_VERSION_STATUS.WITHDRAWN
+            ];
+
+            // 仅草稿、已失效、已驳回、已撤回版本允许删除
+            if (!version || !deletableStatuses.includes(version.status)) {
+                showToast('当前版本状态不允许删除', 'error');
+                return;
+            }
+
             showConfirm(
                 '确认删除此版本？',
                 '删除后版本数据将无法恢复，是否继续？',
