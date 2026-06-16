@@ -289,11 +289,11 @@ ALTER TABLE openplatform_v2_cp_flow_version_t
 ```sql
 CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
     id BIGINT(20) NOT NULL COMMENT '雪花ID',
-    flow_version_id BIGINT(20) NOT NULL COMMENT '连接流版本ID',
     flow_id BIGINT(20) NOT NULL COMMENT '连接流ID（冗余，避免 JOIN flow_version_t）',
+    flow_version_id BIGINT(20) NOT NULL COMMENT '连接流版本ID',
     node_id VARCHAR(64) NOT NULL COMMENT '编排画布中的连接器节点ID（React Flow node.id）',
-    connector_version_id BIGINT(20) NOT NULL COMMENT '连接器版本ID',
     connector_id BIGINT(20) NOT NULL COMMENT '连接器ID（冗余，避免 JOIN connector_version_t）',
+    connector_version_id BIGINT(20) NOT NULL COMMENT '连接器版本ID',
     create_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
     last_update_time DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
     create_by VARCHAR(100) NOT NULL DEFAULT '' COMMENT '创建人账号',
@@ -301,20 +301,18 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
     PRIMARY KEY (id),
     INDEX idx_flow_version_node (flow_version_id, node_id) COMMENT '按流版本+节点ID定位唯一引用',
     INDEX idx_flow (flow_id) COMMENT '按连接流查询其全部引用',
-    INDEX idx_connector_version (connector_version_id) COMMENT '按连接器版本查询被哪些流引用',
-    INDEX idx_connector (connector_id) COMMENT '按连接器查询被哪些流引用（失效/删除前置校验）'
+    INDEX idx_connector (connector_id) COMMENT '按连接器查询被哪些流引用（失效/删除前置校验）',
+    INDEX idx_connector_version (connector_version_id) COMMENT '按连接器版本查询被哪些流引用'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='连接器版本引用中间表（M:N，编排保存时同步维护）';
 ```
 
 | 列 | 类型 | 说明 |
 |----|------|------|
-| `flow_version_id` | BIGINT(20) | 引用的连接流版本 ID |
 | `flow_id` | BIGINT(20) | 冗余字段，直接定位连接流，避免 JOIN flow_version_t |
+| `flow_version_id` | BIGINT(20) | 引用的连接流版本 ID |
 | `node_id` | VARCHAR(64) | 编排画布中的连接器节点 ID（React Flow node.id），同一流版本可包含多个连接器节点 |
-| `connector_version_id` | BIGINT(20) | 被引用的连接器版本 ID |
 | `connector_id` | BIGINT(20) | 冗余字段，直接定位连接器，避免 JOIN connector_version_t |
-
-> 💡 不存储 `node_id`——引用表不耦合编排配置的具体节点结构，仅记录"谁引用了谁"。
+| `connector_version_id` | BIGINT(20) | 被引用的连接器版本 ID |
 
 ### 3.6 openplatform_v2_approval_flow_t（MODIFY）
 
