@@ -1426,7 +1426,7 @@ graph TB
 
 #### 4.3.12 errorHandlerNodeDataDef（V2 新增）
 
-> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**，采用 **retry/ignore/terminate 策略模型**：每流最多 1 个，仅作用于连接器节点（try-catch 语义）。由 DAG 拓扑 + text 标记节点界定被保护区域。
+> 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**，每流最多 1 个，仅作用于连接器节点（try-catch 语义）。先选错误类型，再选处理策略：同一错误类型仅一种策略，不同错误类型可配不同策略。
 
 > **Def**
 
@@ -1439,50 +1439,47 @@ graph TB
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "strategy": {
-          "type": "string",
-          "enum": ["retry", "ignore", "terminate"],
-          "description": "错误处理策略。retry=按配置次数和间隔重试；ignore=捕获错误后标记节点为'已忽略'并继续下游；terminate=捕获错误后终止整个连接流"
-        },
-        "errorTypes": {
-          "type": "array",
-          "minItems": 1,
-          "items": { "type": "string", "enum": ["all", "timeout", "connection_error", "other"] },
-          "uniqueItems": true,
-          "description": "错误类型范围。"all" 与 "other"/"timeout"/"connection_error" 互斥（选 "all" 则不可选其他），"timeout"/"connection_error"/"other" 之间可多选"
-        },
-        "retryConfig": {
+        "errors": {
           "type": "object",
-          "additionalProperties": false,
-          "description": "重试配置，仅 strategy=retry 时必填",
-          "properties": {
-            "maxRetries": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 5,
-              "description": "最大重试次数，范围 1~5"
-            },
-            "retryInterval": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 300,
-              "description": "重试间隔（秒），范围 1~300"
+          "minProperties": 1,
+          "description": "错误类型 → 处理策略映射。key 为错误类型枚举，value 为策略配置",
+          "patternProperties": {
+            "^(all|timeout|connection_error|other)$": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "strategy": {
+                  "type": "string",
+                  "enum": ["retry", "ignore", "terminate"],
+                  "description": "处理策略。retry=重试；ignore=忽略并继续；terminate=终止执行"
+                },
+                "retries": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5,
+                  "description": "重试次数，仅 strategy=retry 时必填，范围 1~5"
+                },
+                "interval": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 300,
+                  "description": "重试间隔（秒），仅 strategy=retry 时必填，范围 1~300"
+                }
+              },
+              "required": ["strategy"],
+              "if": { "properties": { "strategy": { "const": "retry" } } },
+              "then": { "required": ["retries", "interval"] }
             }
           },
-          "required": ["maxRetries", "retryInterval"]
+          "additionalProperties": false
         }
       },
-      "required": ["strategy", "errorTypes"],
+      "required": ["errors"],
       "allOf": [
         {
-          "description": "errorTypes: all 与 other/timeout/connection_error 互斥",
-          "if": { "properties": { "errorTypes": { "contains": { "const": "all" } } } },
-          "then": { "properties": { "errorTypes": { "maxItems": 1 } } }
-        },
-        {
-          "description": "strategy=retry 时 retryConfig 必填",
-          "if": { "properties": { "strategy": { "const": "retry" } } },
-          "then": { "required": ["retryConfig"] }
+          "description": "all 与其他错误类型互斥",
+          "if": { "required": ["errors"], "properties": { "errors": { "required": ["all"] } } },
+          "then": { "properties": { "errors": { "maxProperties": 1 } } }
         }
       ]
     }
@@ -1494,19 +1491,18 @@ graph TB
 
 | 字段 | 类型 | 必填 | 来源 | 说明 |
 |------|------|:----:|:--:|------|
-| type | string | ✅ | 基类 | `"errorHandler"`。固定值，区分于其他 8 种业务节点类型 |
+| type | string | ✅ | 基类 | `"errorHandler"` |
 | labelCn | string | ❌ | 基类 | 节点中文标签 |
 | labelEn | string | ❌ | 基类 | 节点英文标签 |
-| structConfig | object | ❌ | 基类 | `loopV2GroupId` 分组关联。错误处理节点与 text 标记节点通过此 ID 归属同一逻辑组 |
-| strategy | string | ✅ | 独有 | 错误处理策略三选一：`retry`（重试 1~5 次，间隔 1~300s）、`ignore`（捕获错误后标记"已忽略"并继续下游）、`terminate`（捕获错误后终止整个连接流） |
-| errorTypes[] | array | ✅ | 独有 | 错误类型范围。`all` 与 `other`/`timeout`/`connection_error` 互斥（选 `all` 则不可选其他），`timeout`/`connection_error`/`other` 之间可多选 |
-| retryConfig | object | ⚡ | 独有 | 重试配置，仅 strategy=retry 时必填 |
-| retryConfig.maxRetries | integer | ✅ ⚡ | 独有 | 最大重试次数，范围 1~5。超出范围时温和提示，不阻止保存（EC-022），发布时统一校验（FR-026） |
-| retryConfig.retryInterval | integer | ✅ ⚡ | 独有 | 重试间隔（秒），范围 1~300。超出范围时温和提示，不阻止保存（EC-023），发布时统一校验（FR-026） |
+| structConfig | object | ❌ | 基类 | `loopV2GroupId` 分组关联 |
+| errors | object | ✅ | 独有 | 错误类型→策略映射。key 取值：`all` / `timeout` / `connection_error` / `other`。`all` 与其他类型互斥（选了 `all` 则不可再选其他） |
+| errors.{type}.strategy | string | ✅ | 独有 | 处理策略：`retry`（重试）/ `ignore`（忽略并继续）/ `terminate`（终止执行） |
+| errors.{type}.retries | integer | ⚡ | 独有 | 重试次数 1~5，仅 strategy=retry 时必填 |
+| errors.{type}.interval | integer | ⚡ | 独有 | 重试间隔（秒）1~300，仅 strategy=retry 时必填 |
 
 ⚡ = strategy=retry 时必填。
 
-> **示例 — retry 策略**
+> **示例 — 多错误类型不同策略**
 
 ```json
 {
@@ -1514,13 +1510,15 @@ graph TB
   "labelCn": "错误处理",
   "labelEn": "Error Handler",
   "structConfig": { "loopV2GroupId": "err-1" },
-  "strategy": "retry",
-  "errorTypes": ["timeout", "connection_error"],
-  "retryConfig": { "maxRetries": 3, "retryInterval": 10 }
+  "errors": {
+    "timeout": { "strategy": "retry", "retries": 3, "interval": 10 },
+    "connection_error": { "strategy": "retry", "retries": 2, "interval": 30 },
+    "other": { "strategy": "ignore" }
+  }
 }
 ```
 
-> **示例 — ignore 策略**
+> **示例 — 全部错误统一重试**
 
 ```json
 {
@@ -1528,21 +1526,9 @@ graph TB
   "labelCn": "错误处理",
   "labelEn": "Error Handler",
   "structConfig": { "loopV2GroupId": "err-1" },
-  "strategy": "ignore",
-  "errorTypes": ["all"]
-}
-```
-
-> **示例 — terminate 策略**
-
-```json
-{
-  "type": "errorHandler",
-  "labelCn": "错误处理",
-  "labelEn": "Error Handler",
-  "structConfig": { "loopV2GroupId": "err-1" },
-  "strategy": "terminate",
-  "errorTypes": ["timeout", "connection_error", "other"]
+  "errors": {
+    "all": { "strategy": "retry", "retries": 4, "interval": 20 }
+  }
 }
 ```
 
@@ -1552,7 +1538,7 @@ graph TB
 {
   "nodes": [
     { "id":"trigger-1",     "type":"trigger",      "position":{"x":250,"y":50},  "data":{ "type":"trigger",      "labelCn":"触发器",         "labelEn":"Trigger",        "structConfig":{} } },
-    { "id":"err-1",         "type":"error-handler", "position":{"x":250,"y":160}, "data":{ "type":"errorHandler", "labelCn":"错误处理",       "labelEn":"Error Handler",  "structConfig":{ "loopV2GroupId":"err-1" }, "strategy":"retry", "errorTypes":["timeout","connection_error"], "retryConfig":{ "maxRetries":3, "retryInterval":10 } } },
+    { "id":"err-1",         "type":"error-handler", "position":{"x":250,"y":160}, "data":{ "type":"errorHandler", "labelCn":"错误处理",       "labelEn":"Error Handler",  "structConfig":{ "loopV2GroupId":"err-1" }, "errors":{ "timeout":{ "strategy":"retry","retries":3,"interval":10 }, "connection_error":{ "strategy":"retry","retries":3,"interval":10 } } } },
     { "id":"err-region-1",  "type":"text",          "position":{"x":-10,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理区域",   "labelEn":"Error Region",   "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"region" } } },
     { "id":"err-start-1",   "type":"text",          "position":{"x":510,"y":300}, "data":{ "type":"text",          "labelCn":"错误处理开始",   "labelEn":"Error Start",    "structConfig":{ "loopV2GroupId":"err-1","loopV2Role":"start" } } },
     { "id":"conn-1",        "type":"connector",     "position":{"x":510,"y":400}, "data":{ "type":"connector",     "labelCn":"被保护节点",     "connectorVersionId":"1234567890123456789", "input":{}, "structConfig":{ "parentLoopV2GroupId":"err-1","parentLoopV2Role":"right-column-node" } } },
@@ -1575,8 +1561,8 @@ graph TB
 
 > **引擎解析逻辑**：
 > 1. 错误处理节点仅包裹连接器节点（try-catch 语义），触发器/数据处理/数据输出节点不受影响
-> 2. 包裹区域内连接器节点执行失败（HTTP 非 2xx / 超时 / 连接错误）且匹配 errorTypes → 按 strategy 执行：
->    - **retry**：按 retryConfig.maxRetries 次数和 retryConfig.retryInterval 间隔循环重试，全部重试失败后标记节点为"失败"
+> 2. 包裹区域内连接器节点执行失败（HTTP 非 2xx / 超时 / 连接错误）且匹配 errors 中定义的错误类型 → 按对应 strategy 执行：
+>    - **retry**：按 errors.{type}.retries 次数和 errors.{type}.interval 间隔循环重试，全部重试失败后标记节点为"失败"
 >    - **ignore**：捕获错误后标记节点为"已忽略"并继续执行下游节点
 >    - **terminate**：捕获错误后终止整个连接流执行
 > 3. 所有被保护节点正常完成 → 错误处理节点透明通过，流继续下游
@@ -2343,25 +2329,31 @@ graph TB
     "errorHandlerNodeDataDef": {
       "$id": "urn:openapp:schema:errorHandlerNodeDataDef:v2",
       "title": "errorHandlerNodeDataDef",
-      "description": "错误处理节点业务数据。retry/ignore/terminate 策略模型，继承 nodeDataBaseDef",
+      "description": "错误处理节点业务数据。errors 错误类型→策略映射，继承 nodeDataBaseDef",
       "allOf": [
         { "$ref": "#/definitions/nodeDataBaseDef" },
         {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "strategy": { "type": "string", "enum": ["retry", "ignore", "terminate"] },
-            "errorTypes": { "type": "array", "minItems": 1, "items": { "type": "string", "enum": ["all", "timeout", "connection_error", "other"] }, "uniqueItems": true },
-            "retryConfig": {
+            "errors": {
               "type": "object",
-              "properties": {
-                "maxRetries": { "type": "integer", "minimum": 1, "maximum": 5 },
-                "retryInterval": { "type": "integer", "minimum": 1, "maximum": 300 }
+              "minProperties": 1,
+              "patternProperties": {
+                "^(all|timeout|connection_error|other)$": {
+                  "type": "object",
+                  "properties": {
+                    "strategy": { "type": "string", "enum": ["retry", "ignore", "terminate"] },
+                    "retries": { "type": "integer", "minimum": 1, "maximum": 5 },
+                    "interval": { "type": "integer", "minimum": 1, "maximum": 300 }
+                  },
+                  "required": ["strategy"]
+                }
               },
-              "required": ["maxRetries", "retryInterval"]
+              "additionalProperties": false
             }
           },
-          "required": ["strategy", "errorTypes"]
+          "required": ["errors"]
         }
       ]
     },
@@ -3012,7 +3004,7 @@ graph TB
     },
 
     // ==================== 嵌套错误处理 (5 nodes，位于循环体内部) ====================
-    { "id":"err_1",        "type":"error-handler", "position":{"x":760,"y":620}, "data":{ "type":"errorHandler", "labelCn":"错误处理",    "structConfig":{ "loopV2GroupId":"err_1","parentLoopV2GroupId":"loop_1" }, "strategy":"retry", "errorTypes":["timeout","connection_error"], "retryConfig":{ "maxRetries":3, "retryInterval":10 } } },
+    { "id":"err_1",        "type":"error-handler", "position":{"x":760,"y":620}, "data":{ "type":"errorHandler", "labelCn":"错误处理",    "structConfig":{ "loopV2GroupId":"err_1","parentLoopV2GroupId":"loop_1" }, "errors":{ "timeout":{ "strategy":"retry","retries":3,"interval":10 }, "connection_error":{ "strategy":"retry","retries":3,"interval":10 } } } },
     { "id":"err_region_1", "type":"text",          "position":{"x":500,"y":760}, "data":{ "type":"text",          "labelCn":"错误处理区域","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"region" } } },
     { "id":"err_start_1",  "type":"text",          "position":{"x":1010,"y":760},"data":{ "type":"text",          "labelCn":"错误处理开始","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"start" } } },
     // err body: retry connector
