@@ -3177,20 +3177,10 @@
 | labelEn | string | 英文名称 |
 | descriptionCn | string | 中文描述 |
 | descriptionEn | string | 英文描述 |
-| inputType | string | 入参类型 |
-| outputType | string | 出参类型 |
-| params | array | 参数定义列表 |
+| inputSchema | object | 入参定义，jsonObjectDef 格式（见 [plan-json-schema.md §4.3.2](./plan-json-schema.md)） |
+| outputSchema | object | 出参定义，jsonObjectDef 格式 |
 
-**params[]**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| name | string | 参数名 |
-| type | string | 参数类型 |
-| required | boolean | 是否必填 |
-| labelCn | string | 中文标签 |
-| labelEn | string | 英文标签 |
-| example | string | 示例值（可选） |
+> 💡 `inputSchema` 和 `outputSchema` 复用 dataProcessorNodeDataDef 的 output 字段结构（jsonObjectDef），前端可直接渲染为 Schema 编辑器。
 
 **示例**
 
@@ -3207,11 +3197,14 @@
       "labelEn": "To String",
       "descriptionCn": "将任意类型值转为字符串",
       "descriptionEn": "Convert any value to string",
-      "inputType": "any",
-      "outputType": "string",
-      "params": [
-        { "name": "value", "type": "any", "required": true, "labelCn": "输入值", "labelEn": "Input Value" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "输入值" }
+        },
+        "required": ["value"]
+      },
+      "outputSchema": { "type": "string" }
     },
     {
       "name": "toNumber",
@@ -3219,11 +3212,14 @@
       "labelEn": "To Number",
       "descriptionCn": "将字符串转为数字",
       "descriptionEn": "Convert string to number",
-      "inputType": "string",
-      "outputType": "number",
-      "params": [
-        { "name": "value", "type": "string", "required": true, "labelCn": "输入值", "labelEn": "Input Value" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "输入值" }
+        },
+        "required": ["value"]
+      },
+      "outputSchema": { "type": "number" }
     },
     {
       "name": "toBoolean",
@@ -3231,11 +3227,14 @@
       "labelEn": "To Boolean",
       "descriptionCn": "将字符串/数字转为布尔值",
       "descriptionEn": "Convert string/number to boolean",
-      "inputType": "string | number",
-      "outputType": "boolean",
-      "params": [
-        { "name": "value", "type": "string | number", "required": true, "labelCn": "输入值", "labelEn": "Input Value" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "输入值" }
+        },
+        "required": ["value"]
+      },
+      "outputSchema": { "type": "boolean" }
     },
     {
       "name": "formatDate",
@@ -3243,13 +3242,16 @@
       "labelEn": "Format Date",
       "descriptionCn": "将日期字符串按指定格式转换",
       "descriptionEn": "Format date string with pattern",
-      "inputType": "string",
-      "outputType": "string",
-      "params": [
-        { "name": "value", "type": "string", "required": true, "labelCn": "日期值", "labelEn": "Date Value" },
-        { "name": "fromPattern", "type": "string", "required": true, "labelCn": "源格式", "labelEn": "From Pattern", "example": "yyyy-MM-dd HH:mm:ss" },
-        { "name": "toPattern", "type": "string", "required": true, "labelCn": "目标格式", "labelEn": "To Pattern", "example": "yyyy/MM/dd" }
-      ]
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "value": { "type": "string", "description": "日期值" },
+          "fromPattern": { "type": "string", "description": "源格式", "example": "yyyy-MM-dd HH:mm:ss" },
+          "toPattern": { "type": "string", "description": "目标格式", "example": "yyyy/MM/dd" }
+        },
+        "required": ["value", "fromPattern", "toPattern"]
+      },
+      "outputSchema": { "type": "string" }
     }
   ],
   "page": null
