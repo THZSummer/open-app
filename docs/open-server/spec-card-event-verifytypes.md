@@ -8,6 +8,7 @@
 | v0.2 | 2026-06-11 | Spec Agent | 清除全部 #ASSUMED，确认日志级别 / 兜底策略 / 时序语义 / AFTER_COMMIT |
 | v0.3 | 2026-06-11 | Spec Agent | 认证方式枚举补充 `4: APIG`（与 [spec.md:81] 5 种认证方式对齐）|
 | v1.0 | 2026-06-11 | Spec Agent | 重写为需求设计说明书样式（对齐 `docs/market-server/app-chatbot-bindtab-requirement.md`）|
+| v1.1 | 2026-06-11 | Spec Agent | 认证方式枚举新增 `5: SYS_TOKEN`，由 5 种扩展为 6 种 |
 
 ## 目录
 - 1 需求价值和概述
@@ -48,9 +49,9 @@
 
 ## Abstract 摘要：
 
-**中文**：开放平台在应用生命周期关键节点（创建业务应用、升级应用类型、更新基本信息、转移 Owner、变更认证方式）通过 SDK 经事件平台向卡片服务发送事件通知。当前消息体中的 `verfyType`（Integer，单选）字段已上线运行，历史项目已有实现。本次业务驱动为认证方式由单选扩展为多选（含新增类型 `4: APIG`），需要在消息体中**新增 `verifyTypes`（`List<Integer>`，升序）字段**承载完整多选列表，**保留历史字段 `verfyType`** 以保持向后兼容。本需求不修改触发点、不修改前端、不修改预留方法体结构，仅在消息体构造环节新增字段并按触发场景确定取值规则（默认/从 DB 读/以请求为准）。事件发送失败仅打印 ERROR 日志，不阻断主业务；重试由事件平台承担；时序依赖消息体 `time` 字段（UTC 毫秒）；触发时机严格 AFTER_COMMIT。
+**中文**：开放平台在应用生命周期关键节点（创建业务应用、升级应用类型、更新基本信息、转移 Owner、变更认证方式）通过 SDK 经事件平台向卡片服务发送事件通知。当前消息体中的 `verfyType`（Integer，单选）字段已上线运行，历史项目已有实现。本次业务驱动为认证方式由单选扩展为多选（含新增类型 `4: APIG`、`5: SYS_TOKEN`），需要在消息体中**新增 `verifyTypes`（`List<Integer>`，升序）字段**承载完整多选列表，**保留历史字段 `verfyType`** 以保持向后兼容。本需求不修改触发点、不修改前端、不修改预留方法体结构，仅在消息体构造环节新增字段并按触发场景确定取值规则（默认/从 DB 读/以请求为准）。事件发送失败仅打印 ERROR 日志，不阻断主业务；重试由事件平台承担；时序依赖消息体 `time` 字段（UTC 毫秒）；触发时机严格 AFTER_COMMIT。
 
-**English**: OpenPlatform sends event notifications to the Card Service via an event platform through SDK at key application lifecycle nodes (creating business app, upgrading app type via EAMAP binding, updating basic info, transferring Owner, changing authentication methods). The existing `verfyType` (Integer, single-select) field in the message body is already in production. The business driver this time is the extension of authentication methods from single-select to multi-select (including the newly added type `4: APIG`), requiring a new `verifyTypes` (`List<Integer>`, ascending) field in the message body to carry the complete multi-select list, while **retaining the historical `verfyType` field** for backward compatibility. This requirement does not modify trigger points, frontend, or the reserved method structure — it only adds the new field during message body construction and defines value rules per trigger scenario (default / read from DB / based on request). Event sending failure only prints ERROR logs without blocking the main business; retries are handled by the event platform; timing depends on the `time` field (UTC milliseconds); trigger timing is strictly AFTER_COMMIT.
+**English**: OpenPlatform sends event notifications to the Card Service via an event platform through SDK at key application lifecycle nodes (creating business app, upgrading app type via EAMAP binding, updating basic info, transferring Owner, changing authentication methods). The existing `verfyType` (Integer, single-select) field in the message body is already in production. The business driver this time is the extension of authentication methods from single-select to multi-select (including the newly added types `4: APIG` and `5: SYS_TOKEN`), requiring a new `verifyTypes` (`List<Integer>`, ascending) field in the message body to carry the complete multi-select list, while **retaining the historical `verfyType` field** for backward compatibility. This requirement does not modify trigger points, frontend, or the reserved method structure — it only adds the new field during message body construction and defines value rules per trigger scenario (default / read from DB / based on request). Event sending failure only prints ERROR logs without blocking the main business; retries are handled by the event platform; timing depends on the `time` field (UTC milliseconds); trigger timing is strictly AFTER_COMMIT.
 
 ## List 缩略语清单
 
@@ -65,6 +66,7 @@
 | FMEA | Failure Mode and Effects Analysis | 失效模式与影响分析 |
 | SOA | Service-Oriented Architecture | 面向服务架构 |
 | APIG | API Gateway | API 网关 |
+| SYS_TOKEN | System Token | 系统令牌（系统级认证方式）|
 
 ---
 
@@ -78,7 +80,7 @@
 
 本次需求在消息体中**新增 `verifyTypes` 字段**（`List<Integer>`，升序排列），承载完整多选列表；同时**保留 `verfyType` 字段**（取 `verifyTypes[0]`），确保老消费方不破约。
 
-认证方式枚举同步扩展 `4: APIG`（历史 5 种认证方式见 [spec.md:81]，首次输入时漏列，本次对齐）。
+认证方式枚举同步扩展 `4: APIG`、`5: SYS_TOKEN`（上游文档 [spec.md:81] 原定义 5 种，本次扩展为 6 种）。
 
 ### 1.2 需求价值
 
@@ -94,7 +96,7 @@
 ### 1.3 如果不做的影响
 
 - 卡片服务无法获得应用的多选认证方式，只能继续按单选 `verfyType` 处理，业务语义缺失
-- 新增的 `APIG` 认证方式（值 `4`）在消息体中无承载，卡片服务无法识别
+- 新增的 `APIG`（值 `4`）、`SYS_TOKEN`（值 `5`）认证方式在消息体中无承载，卡片服务无法识别
 - 业务侧认证方式多选能力与卡片服务消费侧脱节，形成数据孤岛
 - 长期看，缺失 `verifyTypes` 会阻塞卡片服务侧的认证策略升级
 
@@ -160,10 +162,10 @@ graph TB
 |--------|---------|
 | IR 标识 | IR-OPEN-CARD-EVENT-001 |
 | 名称 | 卡片服务事件通知消息体新增 verifyTypes 字段 |
-| 描述 | 在 open-server 向卡片服务发送的事件消息体中，新增 `verifyTypes`（`List<Integer>`，升序）字段承载多选认证方式；保留历史 `verfyType` 字段；认证方式枚举扩展 `4: APIG` |
+| 描述 | 在 open-server 向卡片服务发送的事件消息体中，新增 `verifyTypes`（`List<Integer>`，升序）字段承载多选认证方式；保留历史 `verfyType` 字段；认证方式枚举扩展 `4: APIG`、`5: SYS_TOKEN` |
 | 优先级 | P1（高）|
-| 需求描述（why）| 业务侧认证方式扩展为多选 + 新增 APIG 类型，当前单选字段 `verfyType` 无法承载完整语义；卡片服务消费侧需要完整的多选信息 |
-| what | ① 新增 `verifyTypes` 字段；② 保留 `verfyType`；③ 5 个触发场景各自取值规则；④ 认证方式枚举扩展 `4: APIG`；⑤ 失败 ERROR 日志；⑥ `[0]` 兜底 |
+| 需求描述（why）| 业务侧认证方式扩展为多选 + 新增 APIG / SYS_TOKEN 类型，当前单选字段 `verfyType` 无法承载完整语义；卡片服务消费侧需要完整的多选信息 |
+| what | ① 新增 `verifyTypes` 字段；② 保留 `verfyType`；③ 5 个触发场景各自取值规则；④ 认证方式枚举扩展 `4: APIG`、`5: SYS_TOKEN`；⑤ 失败 ERROR 日志；⑥ `[0]` 兜底 |
 | who | 后端：open-server 开发；卡片服务：消费方升级（不在本需求范围）|
 | 对架构要素的影响 | **架构**：消息契约扩展，触发点不变；**可靠性**：失败零影响主业务；**兼容**：老消费方不破约 |
 
@@ -178,7 +180,7 @@ graph TB
 | 特性 | 说明 |
 |------|------|
 | `verifyTypes` 字段 | 消息体新增 `List<Integer>` 字段，承载多选认证方式（升序）|
-| `4: APIG` 认证类型 | 认证方式枚举扩展，与 [spec.md:81] 5 种认证方式对齐 |
+| `4: APIG`、`5: SYS_TOKEN` 认证类型 | 认证方式枚举扩展，由上游 5 种扩展为 6 种 |
 
 **【修改】**：
 
@@ -347,7 +349,7 @@ graph TB
 
 **【前置条件】**：
 - 认证方式更新事务成功提交
-- 请求入参中 `verifyTypes` 非空，元素值域为 `{0, 1, 2, 3, 4}`
+- 请求入参中 `verifyTypes` 非空，元素值域为 `{0, 1, 2, 3, 4, 5}`
 - 操作人为应用成员
 
 **【最小保证】**：事件发送失败时，认证方式更新结果保留
@@ -370,7 +372,7 @@ graph TB
 
 **【扩展场景】**：
 - **E1 请求入参 `verifyTypes` 为空**：理论上由认证方式配置侧约束拦截，不应到达此处 #ASSUMED
-- **E2 请求入参含非法值（非 `{0,1,2,3,4}`）**：由认证方式更新侧校验拦截 #ASSUMED
+- **E2 请求入参含非法值（非 `{0,1,2,3,4,5}`）**：由认证方式更新侧校验拦截 #ASSUMED
 - **E3 SDK 调用失败**：ERROR 日志，主业务不回滚
 
 **【DFX 属性】**：可靠性、可观测、向后兼容
@@ -439,8 +441,9 @@ graph TB
 | `2` | 数字签名 | 历史 |
 | `3` | SOAURL | 历史 |
 | `4` | **APIG** | **新增** |
+| `5` | **SYS_TOKEN** | **新增** |
 
-来源：5 种认证方式全量清单 [spec.md:81]；`4: APIG` 由 [用户输入 2026-06-11] 补充对齐。
+来源：上游 5 种认证方式清单 [spec.md:81]；`4: APIG`、`5: SYS_TOKEN` 由 [用户输入 2026-06-11] 补充扩展，本次共 6 种。
 
 ### 6.6 数据库映射
 
@@ -563,7 +566,7 @@ sequenceDiagram
 #### 前向兼容性确认
 
 - 新卡片服务消费方可读 `verifyTypes` 获得完整多选信息
-- 认证方式枚举新增 `4: APIG`，消费方按值解析即可
+- 认证方式枚举新增 `4: APIG`、`5: SYS_TOKEN`，消费方按值解析即可
 - `extend` / `propertyObjMap` 字段保留，未来可扩展
 
 ### 7.4 可运维
@@ -618,5 +621,5 @@ sequenceDiagram
 | 测试用例覆盖 | ✅ | §8 共 13 条 TC（含 1 条 APIG 新增）|
 | 改动面最小化 | ✅ | 不改触发点 / 预留方法体 / 前端 |
 | #ASSUMED 标记 | ✅ | 仅 UC-05 E1/E2 两项校验拦截边界标 #ASSUMED，其余全部已确认 |
-| 与上游文档对齐 | ✅ | 5 种认证方式与 [spec.md:81] 对齐；触发点与 [plan.md] 对齐 |
+| 与上游文档对齐 | ✅ | 认证方式枚举（含 APIG / SYS_TOKEN 共 6 种）与业务侧对齐；触发点与 [plan.md] 对齐 |
 | 参考样式对齐 | ✅ | 章节结构对齐 `docs/market-server/app-chatbot-bindtab-requirement.md` |
