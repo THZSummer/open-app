@@ -118,8 +118,8 @@ open-server/src/main/resources/db/migration/
 | `connector_version_t` | `status` | 1=草稿, 2=已发布, 3=已失效, 4=物理删除 | V2 启用 |
 | `flow_t` | `lifecycle_status` | 1=待部署, 2=运行中, 3=已停止, 4=已失效, 5=物理删除 | V2 扩展 |
 | `flow_version_t` | `status` | 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除 | V2 新增 |
-| `execution_record_t` | `trigger_type` | 1=http, 2=debug | V2 启用 |
-| `execution_record_t` | `status` | 0=success, 1=failed, 2=timeout | V2 启用 |
+| `execution_record_t` | `trigger_type` | 1=http | V2 启用 |
+| `execution_record_t` | `status` | 0=success, 1=failed | V2 启用 |
 | `execution_step_t` | `status` | 0=success, 1=failed, 2=timeout, 3=not_executed | 步骤执行结果 |
 | `execution_step_t` | `node_type` | 1=trigger, 2=connector, 3=data_processor, 4=exit | V2 新增 data_processor |
 | `execution_record_t` | `cache_status` | 0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3） | V2 新增 |
@@ -358,9 +358,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
     `flow_version_snapshot`   MEDIUMTEXT   DEFAULT NULL COMMENT '执行时版本完整快照JSON（orchestrationConfig + flowConfig），版本删除后仍可还原执行现场',
     `flow_name_cn`            VARCHAR(128) NOT NULL COMMENT '连接流中文名称（触发时快照）',
     `flow_name_en`            VARCHAR(128) NOT NULL COMMENT '连接流英文名称（触发时快照）',
-    `trigger_type`            TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）, 2=debug（调试触发）',
-    `trigger_account`         VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识，debug=调试用户）',
-    `status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=success, 1=failed, 2=timeout',
+    `trigger_type`            TINYINT(10)  NOT NULL DEFAULT 1 COMMENT '触发方式：1=http（HTTP触发）',
+    `trigger_account`         VARCHAR(100) DEFAULT NULL COMMENT '触发账号（HTTP=调用方凭证标识）',
+    `status`        TINYINT(10)  NOT NULL DEFAULT 0 COMMENT '执行状态：0=success, 1=failed',
     `cache_status`            TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '缓存状态：0=未命中（正常执行）, 1=全流命中, 2=部分命中（V3）',
     `cache_key`               VARCHAR(500) DEFAULT NULL COMMENT '命中的缓存键（全流命中时有值，调试用）',
     `cache_ttl_remaining`     INT          DEFAULT NULL COMMENT '命中时缓存剩余 TTL（秒）',
@@ -386,9 +386,9 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_record_t` (
 | `flow_version_number` | INT | 冗余，列表查询免 JOIN flow_version_t |
 | `flow_version_snapshot` | MEDIUMTEXT | 执行时版本快照（编排拓扑 + flowConfig），版本删除后仍可还原 |
 | `flow_name_cn` / `flow_name_en` | VARCHAR(128) | 触发时快照 |
-| `trigger_type` | TINYINT(10) | 1=http, 2=debug |
+| `trigger_type` | TINYINT(10) | 1=http |
 | `trigger_account` | VARCHAR(100) | 触发账号 |
-| `status` | TINYINT(10) | 0=success, 1=failed, 2=timeout |
+| `status` | TINYINT(10) | 0=success, 1=failed |
 | `cache_status` | TINYINT(1) | 0=未命中, 1=全流命中, 2=部分命中（V3） |
 | `cache_key` | VARCHAR(500) | 命中的缓存键（全流命中时有值） |
 | `cache_ttl_remaining` | INT | 命中时缓存剩余 TTL（秒） |
@@ -489,8 +489,7 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 
 | 值 | 含义 | 说明 |
 |:--:|------|------|
-| 1 | http | HTTP 触发，计入正常运行指标 |
-| 2 | debug | 调试触发，不计入正常运行指标 |
+| 1 | http | HTTP 触发 |
 
 ### 4.6 execution_record_t.status
 
@@ -498,7 +497,6 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 |:--:|------|------|
 | 0 | success | 所有节点执行成功 |
 | 1 | failed | 某节点执行失败 |
-| 2 | timeout | 执行超过全流超时配置，强制终止 |
 
 > 💡 同步执行模型下 `pending`/`running` 为内存瞬态，不持久化。
 
