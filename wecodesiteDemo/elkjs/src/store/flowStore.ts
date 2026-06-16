@@ -183,26 +183,38 @@ function getParallelBranchConfig(params: {
   targetNode?: FlowNode;
 }) {
   const { sourceNode, targetNode } = params;
-  const sourceBranchId = sourceNode?.data.config?.parallelBranchId;
-  const targetBranchId = targetNode?.data.config?.parallelBranchId;
-  const branchId = sourceBranchId || targetBranchId;
+  const sourceConfig = sourceNode?.data.config;
+  const targetConfig = targetNode?.data.config;
+  const isSourceParallelMerge = sourceConfig?.parallelRole === 'merge';
+  const sourceBranchId = sourceConfig?.parallelBranchId;
+  const targetBranchId = targetConfig?.parallelBranchId;
+  // 嵌套并行合并节点之后继续插入时，需要回到目标节点所在的外层分支
+  const branchId = isSourceParallelMerge && targetBranchId
+    ? targetBranchId
+    : sourceBranchId || targetBranchId;
+  // 分支归属要和实际继续向下流转的目标分支保持一致
+  const parentParallelGroupId = isSourceParallelMerge && targetBranchId
+    ? targetConfig?.parallelGroupId || targetConfig?.parentParallelGroupId
+    : sourceConfig?.parallelGroupId ||
+      sourceConfig?.parentParallelGroupId ||
+      targetConfig?.parallelGroupId ||
+      targetConfig?.parentParallelGroupId;
+  // 分支序号跟随当前归属分支，避免布局时被移动到嵌套结构轴线上
+  const parentParallelBranchIndex = isSourceParallelMerge && targetBranchId
+    ? targetConfig?.parallelBranchIndex || targetConfig?.parentParallelBranchIndex
+    : sourceConfig?.parallelBranchIndex ||
+      sourceConfig?.parentParallelBranchIndex ||
+      targetConfig?.parallelBranchIndex ||
+      targetConfig?.parentParallelBranchIndex;
 
   if (!branchId) {
     return undefined;
   }
 
   return {
-    parentParallelGroupId:
-      sourceNode?.data.config?.parallelGroupId ||
-      sourceNode?.data.config?.parentParallelGroupId ||
-      targetNode?.data.config?.parallelGroupId ||
-      targetNode?.data.config?.parentParallelGroupId,
+    parentParallelGroupId,
     parentParallelBranchId: branchId,
-    parentParallelBranchIndex:
-      sourceNode?.data.config?.parallelBranchIndex ||
-      sourceNode?.data.config?.parentParallelBranchIndex ||
-      targetNode?.data.config?.parallelBranchIndex ||
-      targetNode?.data.config?.parentParallelBranchIndex,
+    parentParallelBranchIndex,
     parentParallelRole: 'branch-node'
   };
 }

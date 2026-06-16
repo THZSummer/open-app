@@ -967,6 +967,362 @@ function getNodeAxisCenterX(params: {
 }
 
 /**
+ * 移动节点到指定水平线
+ */
+function alignNodeToHorizontalLine(params: {
+  /** 当前节点 */
+  node: FlowNode;
+  /** 目标 Y 坐标 */
+  y: number;
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { node, y, positionMap } = params;
+  const currentPosition = positionMap.get(node.id) || node.position;
+
+  positionMap.set(node.id, {
+    ...currentPosition,
+    y
+  });
+}
+
+/**
+ * 按纵向偏移量移动单个节点
+ */
+function moveNodeByDeltaY(params: {
+  /** 当前节点 */
+  node: FlowNode;
+  /** 纵向偏移量 */
+  deltaY: number;
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { node, deltaY, positionMap } = params;
+  const currentPosition = positionMap.get(node.id) || node.position;
+
+  positionMap.set(node.id, {
+    ...currentPosition,
+    y: currentPosition.y + deltaY
+  });
+}
+
+/**
+ * 判断节点是否属于指定结构节点内部
+ */
+function isStructureInnerNode(params: {
+  /** 当前节点 */
+  node: FlowNode;
+  /** 结构节点 ID */
+  structureNodeId: string;
+}) {
+  const { node, structureNodeId } = params;
+  const config = node.data.config;
+
+  return Boolean(
+    config?.parallelGroupId === structureNodeId ||
+      config?.parentParallelGroupId === structureNodeId ||
+      config?.loopV2GroupId === structureNodeId ||
+      config?.parentLoopV2GroupId === structureNodeId
+  );
+}
+
+/**
+ * 按纵向偏移量整体移动结构节点和内部节点
+ */
+function moveStructureByDeltaY(params: {
+  /** 结构节点 */
+  structureNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 纵向偏移量 */
+  deltaY: number;
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { structureNode, nodes, deltaY, positionMap } = params;
+
+  moveNodeByDeltaY({ node: structureNode, deltaY, positionMap });
+
+  for (const node of nodes) {
+    if (node.id !== structureNode.id && isStructureInnerNode({ node, structureNodeId: structureNode.id })) {
+      moveNodeByDeltaY({ node, deltaY, positionMap });
+    }
+  }
+}
+
+/**
+ * 对齐并行结构内分支开始和结束节点的水平线
+ */
+function alignParallelBranchBoundaryNodesY(params: {
+  /** 并行结构节点 */
+  parallelNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { parallelNode, nodes, positionMap } = params;
+  const branchStartNodes = getParallelBranchStartNodes({
+    parallelId: parallelNode.id,
+    nodes
+  });
+
+  if (branchStartNodes.length > 0) {
+    // 分支开始节点取最靠上的位置，保证所有分支从同一水平线展开
+    const branchStartY = Math.min(
+      ...branchStartNodes.map((node) => (positionMap.get(node.id) || node.position).y)
+    );
+
+    for (const node of branchStartNodes) {
+      alignNodeToHorizontalLine({ node, y: branchStartY, positionMap });
+    }
+  }
+}
+
+/**
+ * 获取分支开始节点后的首个业务节点
+ */
+function getFirstParallelBranchContentNode(params: {
+  /** 分支开始节点 */
+  branchStartNode: FlowNode;
+  /** 当前节点映射 */
+  nodeMap: Map<string, FlowNode>;
+  /** 当前连线列表 */
+  edges: FlowEdge[];
+}): FlowNode | undefined {
+  const { branchStartNode, nodeMap, edges } = params;
+  const firstEdge = edges.find((edge) => edge.source === branchStartNode.id);
+  const firstNode = firstEdge ? nodeMap.get(firstEdge.target) : undefined;
+
+  // 分支开始直接连到分支结束时，说明该分支暂时没有业务节点
+  if (!firstNode || firstNode.data.config?.parallelRole === 'branch-end') {
+    return undefined;
+  }
+
+  return firstNode;
+}
+
+/**
+ * 获取并行结构的外部出口节点
+ */
+function getParallelStructureExitNode(params: {
+  /** 并行结构节点 */
+  parallelNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+}): FlowNode | undefined {
+  const { parallelNode, nodes } = params;
+
+  return nodes.find(
+    (node) =>
+      node.data.config?.parallelGroupId === parallelNode.id &&
+      node.data.config?.parallelRole === 'merge'
+  );
+}
+
+/**
+ * 获取循环或错误处理结构的外部出口节点
+ */
+function getLoopStructureExitNode(params: {
+  /** 循环或错误处理结构节点 */
+  structureNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+}): FlowNode | undefined {
+  const { structureNode, nodes } = params;
+
+  return nodes.find(
+    (node) =>
+      node.data.config?.loopV2GroupId === structureNode.id &&
+      node.data.config?.loopV2Role === 'break'
+  );
+}
+
+/**
+ * 获取节点当前位置的底部 Y 坐标
+ */
+function getNodeBottomY(params: {
+  /** 当前节点 */
+  node: FlowNode;
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}): number {
+  const { node, positionMap } = params;
+  const position = positionMap.get(node.id) || node.position;
+  const size = getNodeSize(node);
+
+  return position.y + size.height;
+}
+
+/**
+ * 获取节点在外层主链路中继续向下的出口节点
+ */
+function getMainChainSourceNode(params: {
+  /** 当前节点 */
+  node: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+}): FlowNode {
+  const { node, nodes } = params;
+
+  if (isParallelStructureNode(node)) {
+    return getParallelStructureExitNode({ parallelNode: node, nodes }) || node;
+  }
+
+  if (isLoopV2StructureNode(node)) {
+    return getLoopStructureExitNode({ structureNode: node, nodes }) || node;
+  }
+
+  return node;
+}
+
+/**
+ * 获取节点在主链路中的底部参考 Y 坐标
+ */
+function getMainChainBottomY(params: {
+  /** 当前节点 */
+  node: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}): number {
+  const { node, nodes, positionMap } = params;
+  const sourceNode = getMainChainSourceNode({ node, nodes });
+
+  return getNodeBottomY({ node: sourceNode, positionMap });
+}
+
+/**
+ * 按目标 Y 移动节点，结构节点保持内部相对位置整体平移
+ */
+function moveNodeOrStructureToY(params: {
+  /** 当前节点 */
+  node: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 目标 Y 坐标 */
+  y: number;
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { node, nodes, y, positionMap } = params;
+  const currentPosition = positionMap.get(node.id) || node.position;
+  const deltaY = y - currentPosition.y;
+
+  if (isCompoundStructureNode(node)) {
+    // 结构节点作为主链路节点移动时，内部节点需要同步平移
+    moveStructureByDeltaY({
+      structureNode: node,
+      nodes,
+      deltaY,
+      positionMap
+    });
+    return;
+  }
+
+  alignNodeToHorizontalLine({ node, y, positionMap });
+}
+
+/**
+ * 对齐并行结构内各分支的首个业务节点水平线
+ */
+function alignParallelBranchFirstContentNodesY(params: {
+  /** 并行结构节点 */
+  parallelNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { parallelNode, nodes, edges, positionMap } = params;
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const branchStartNodes = getParallelBranchStartNodes({
+    parallelId: parallelNode.id,
+    nodes
+  });
+  const firstContentNodes = branchStartNodes
+    .map((branchStartNode) =>
+      getFirstParallelBranchContentNode({
+        branchStartNode,
+        nodeMap,
+        edges
+      })
+    )
+    .filter((node): node is FlowNode => Boolean(node));
+
+  if (branchStartNodes.length === 0 || firstContentNodes.length === 0) {
+    return;
+  }
+
+  // 首个业务节点基于分支开始节点下方的固定间距对齐，避免结构节点被拉得过高
+  const branchStartY = Math.min(
+    ...branchStartNodes.map((node) => (positionMap.get(node.id) || node.position).y)
+  );
+  const firstContentY = branchStartY + parallelLayoutConfig.branchNodeGap;
+
+  for (const node of firstContentNodes) {
+    moveNodeOrStructureToY({ node, nodes, y: firstContentY, positionMap });
+  }
+}
+
+/**
+ * 压缩并行结构内每条分支的主链路纵向间距
+ */
+function compactParallelBranchMainChainsY(params: {
+  /** 并行结构节点 */
+  parallelNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { parallelNode, nodes, edges, positionMap } = params;
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const branchStartNodes = getParallelBranchStartNodes({
+    parallelId: parallelNode.id,
+    nodes
+  });
+
+  for (const branchStartNode of branchStartNodes) {
+    const visitedNodeIds = new Set<string>([branchStartNode.id]);
+    let previousNode = branchStartNode;
+    let currentNode = branchStartNode;
+
+    while (currentNode) {
+      const sourceNode = getMainChainSourceNode({ node: currentNode, nodes });
+      const nextEdge = edges.find((edge) => edge.source === sourceNode.id);
+      const nextNode = nextEdge ? nodeMap.get(nextEdge.target) : undefined;
+
+      if (!nextNode || visitedNodeIds.has(nextNode.id)) {
+        break;
+      }
+
+      const previousBottomY = getMainChainBottomY({
+        node: previousNode,
+        nodes,
+        positionMap
+      });
+      const nextY = previousBottomY + parallelLayoutConfig.branchNodeGap;
+
+      moveNodeOrStructureToY({ node: nextNode, nodes, y: nextY, positionMap });
+      visitedNodeIds.add(nextNode.id);
+
+      if (nextNode.data.config?.parallelRole === 'branch-end') {
+        break;
+      }
+
+      previousNode = nextNode;
+      currentNode = nextNode;
+    }
+  }
+}
+
+/**
  * 获取并行结构每条分支的中心线
  */
 function getParallelBranchAxisMap(params: {
@@ -1000,6 +1356,110 @@ function getParallelBranchAxisMap(params: {
 }
 
 /**
+ * 根据循环结构角色获取内部文本节点
+ */
+function getLoopRoleNode(params: {
+  /** 循环或错误处理结构节点 ID */
+  structureNodeId: string;
+  /** 内部文本节点角色 */
+  role: string;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+}): FlowNode | undefined {
+  const { structureNodeId, role, nodes } = params;
+
+  return nodes.find(
+    (node) =>
+      node.data.config?.loopV2GroupId === structureNodeId &&
+      node.data.config?.loopV2Role === role
+  );
+}
+
+/**
+ * 按内部连线顺序重排循环或错误处理结构的纵向位置
+ */
+function layoutLoopStructureY(params: {
+  /** 循环或错误处理结构节点 */
+  structureNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
+  /** 右侧处理链路中心线 */
+  rightColumnCenterX: number;
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+  /** 已处理结构 ID */
+  visitedStructureIds: Set<string>;
+}): void {
+  const { structureNode, nodes, edges, rightColumnCenterX, positionMap, visitedStructureIds } = params;
+  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+  const regionNode = getLoopRoleNode({ structureNodeId: structureNode.id, role: 'region', nodes });
+  const startNode = getLoopRoleNode({ structureNodeId: structureNode.id, role: 'start', nodes });
+  const breakNode = getLoopRoleNode({ structureNodeId: structureNode.id, role: 'break', nodes });
+  const structurePosition = positionMap.get(structureNode.id) || structureNode.position;
+  const firstRowY = structurePosition.y + loopV2LayoutConfig.mainNodeHeight + loopV2LayoutConfig.verticalGap;
+
+  if (regionNode) {
+    alignNodeToHorizontalLine({ node: regionNode, y: firstRowY, positionMap });
+  }
+
+  if (!startNode) {
+    return;
+  }
+
+  alignNodeToHorizontalLine({ node: startNode, y: firstRowY, positionMap });
+
+  let currentNode = startNode;
+  const visitedNodeIds = new Set<string>([startNode.id]);
+
+  while (currentNode) {
+    const nextEdge = edges.find((edge) => edge.source === currentNode.id);
+    const nextNode = nextEdge ? nodeMap.get(nextEdge.target) : undefined;
+
+    if (!nextNode || visitedNodeIds.has(nextNode.id) || nextNode.id === breakNode?.id) {
+      break;
+    }
+
+    const nextY = getNodeBottomY({ node: currentNode, positionMap }) + loopV2LayoutConfig.rightColumnNodeGap;
+    moveNodeOrStructureToY({ node: nextNode, nodes, y: nextY, positionMap });
+    alignNodeToAxis({ node: nextNode, axisCenterX: rightColumnCenterX, positionMap });
+
+    if (isParallelStructureNode(nextNode)) {
+      layoutParallelStructureOnAxis({
+        parallelNode: nextNode,
+        nodes,
+        edges,
+        axisCenterX: rightColumnCenterX,
+        positionMap,
+        visitedStructureIds
+      });
+    }
+
+    if (isLoopV2StructureNode(nextNode)) {
+      layoutLoopStructureOnAxis({
+        structureNode: nextNode,
+        nodes,
+        edges,
+        axisCenterX: rightColumnCenterX,
+        positionMap,
+        visitedStructureIds
+      });
+    }
+
+    visitedNodeIds.add(nextNode.id);
+    currentNode = nextNode;
+  }
+
+  if (breakNode) {
+    const regionBottomY = regionNode ? getNodeBottomY({ node: regionNode, positionMap }) : firstRowY;
+    const rightColumnBottomY = getNodeBottomY({ node: currentNode, positionMap });
+    const breakY = Math.max(regionBottomY, rightColumnBottomY) + loopV2LayoutConfig.auxiliaryEdgeGap;
+    alignNodeToHorizontalLine({ node: breakNode, y: breakY, positionMap });
+  }
+}
+
+/**
  * 按指定轴线布局循环或错误处理结构
  */
 function layoutLoopStructureOnAxis(params: {
@@ -1007,6 +1467,8 @@ function layoutLoopStructureOnAxis(params: {
   structureNode: FlowNode;
   /** 当前节点列表 */
   nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
   /** 结构主轴中心线 */
   axisCenterX: number;
   /** 节点位置映射 */
@@ -1014,7 +1476,7 @@ function layoutLoopStructureOnAxis(params: {
   /** 已处理结构 ID */
   visitedStructureIds: Set<string>;
 }) {
-  const { structureNode, nodes, axisCenterX, positionMap, visitedStructureIds } = params;
+  const { structureNode, nodes, edges, axisCenterX, positionMap, visitedStructureIds } = params;
   const rightColumnCenterX = axisCenterX + loopV2LayoutConfig.rightColumnOffsetX;
   const leftColumnCenterX = axisCenterX - loopV2LayoutConfig.rightColumnOffsetX;
 
@@ -1048,28 +1510,74 @@ function layoutLoopStructureOnAxis(params: {
 
     if (isCurrentRightColumnNode && parentRole === 'right-column-node') {
       alignNodeToAxis({ node, axisCenterX: rightColumnCenterX, positionMap });
-
-      if (isParallelStructureNode(node)) {
-        layoutParallelStructureOnAxis({
-          parallelNode: node,
-          nodes,
-          axisCenterX: rightColumnCenterX,
-          positionMap,
-          visitedStructureIds
-        });
-      }
-
-      if (isLoopV2StructureNode(node)) {
-        layoutLoopStructureOnAxis({
-          structureNode: node,
-          nodes,
-          axisCenterX: rightColumnCenterX,
-          positionMap,
-          visitedStructureIds
-        });
-      }
     }
   }
+
+  layoutLoopStructureY({
+    structureNode,
+    nodes,
+    edges,
+    rightColumnCenterX,
+    positionMap,
+    visitedStructureIds
+  });
+}
+
+/**
+ * 获取并行结构内所有分支结束节点
+ */
+function getParallelBranchEndNodes(params: {
+  /** 并行结构节点 ID */
+  parallelId: string;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+}): FlowNode[] {
+  const { parallelId, nodes } = params;
+
+  return nodes
+    .filter(
+      (node) =>
+        node.data.config?.parallelGroupId === parallelId &&
+        node.data.config?.parallelRole === 'branch-end'
+    )
+    .sort(
+      (prev, next) =>
+        Number(prev.data.config?.parallelBranchIndex || 0) -
+        Number(next.data.config?.parallelBranchIndex || 0)
+    );
+}
+
+/**
+ * 根据分支结束节点重新定位并行合并节点的纵向位置
+ */
+function alignParallelMergeNodeY(params: {
+  /** 并行结构节点 */
+  parallelNode: FlowNode;
+  /** 当前节点列表 */
+  nodes: FlowNode[];
+  /** 节点位置映射 */
+  positionMap: Map<string, { x: number; y: number }>;
+}) {
+  const { parallelNode, nodes, positionMap } = params;
+  const mergeNode = getParallelStructureExitNode({ parallelNode, nodes });
+  const branchEndNodes = getParallelBranchEndNodes({
+    parallelId: parallelNode.id,
+    nodes
+  });
+
+  if (!mergeNode || branchEndNodes.length === 0) {
+    return;
+  }
+
+  const branchEndBottomY = Math.max(
+    ...branchEndNodes.map((node) => getNodeBottomY({ node, positionMap }))
+  );
+
+  alignNodeToHorizontalLine({
+    node: mergeNode,
+    y: branchEndBottomY + parallelLayoutConfig.mergeTopGap,
+    positionMap
+  });
 }
 
 /**
@@ -1080,6 +1588,8 @@ function layoutParallelStructureOnAxis(params: {
   parallelNode: FlowNode;
   /** 当前节点列表 */
   nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
   /** 并行结构主轴中心线 */
   axisCenterX: number;
   /** 节点位置映射 */
@@ -1087,7 +1597,7 @@ function layoutParallelStructureOnAxis(params: {
   /** 已处理结构 ID */
   visitedStructureIds: Set<string>;
 }) {
-  const { parallelNode, nodes, axisCenterX, positionMap, visitedStructureIds } = params;
+  const { parallelNode, nodes, edges, axisCenterX, positionMap, visitedStructureIds } = params;
 
   if (visitedStructureIds.has(parallelNode.id)) {
     return;
@@ -1095,6 +1605,23 @@ function layoutParallelStructureOnAxis(params: {
 
   visitedStructureIds.add(parallelNode.id);
   alignNodeToAxis({ node: parallelNode, axisCenterX, positionMap });
+  alignParallelBranchBoundaryNodesY({
+    parallelNode,
+    nodes,
+    positionMap
+  });
+  alignParallelBranchFirstContentNodesY({
+    parallelNode,
+    nodes,
+    edges,
+    positionMap
+  });
+  compactParallelBranchMainChainsY({
+    parallelNode,
+    nodes,
+    edges,
+    positionMap
+  });
 
   const branchAxisMap = getParallelBranchAxisMap({
     parallelId: parallelNode.id,
@@ -1128,6 +1655,7 @@ function layoutParallelStructureOnAxis(params: {
       layoutParallelStructureOnAxis({
         parallelNode: node,
         nodes,
+        edges,
         axisCenterX: branchAxisCenterX,
         positionMap,
         visitedStructureIds
@@ -1138,12 +1666,19 @@ function layoutParallelStructureOnAxis(params: {
       layoutLoopStructureOnAxis({
         structureNode: node,
         nodes,
+        edges,
         axisCenterX: branchAxisCenterX,
         positionMap,
         visitedStructureIds
       });
     }
   }
+
+  alignParallelMergeNodeY({
+    parallelNode,
+    nodes,
+    positionMap
+  });
 }
 
 /**
@@ -1152,8 +1687,10 @@ function layoutParallelStructureOnAxis(params: {
 function applyStructuredSemanticLayout(params: {
   /** ELK 和语义修正后的节点列表 */
   nodes: FlowNode[];
+  /** 当前连线列表 */
+  edges: FlowEdge[];
 }): FlowNode[] {
-  const { nodes } = params;
+  const { nodes, edges } = params;
   const positionMap = new Map(nodes.map((node) => [node.id, node.position]));
   const primaryAxisCenterX = getPrimaryAxisCenterX({ nodes });
   const visitedStructureIds = new Set<string>();
@@ -1174,6 +1711,7 @@ function applyStructuredSemanticLayout(params: {
       layoutParallelStructureOnAxis({
         parallelNode: node,
         nodes,
+        edges,
         axisCenterX,
         positionMap,
         visitedStructureIds
@@ -1184,6 +1722,7 @@ function applyStructuredSemanticLayout(params: {
       layoutLoopStructureOnAxis({
         structureNode: node,
         nodes,
+        edges,
         axisCenterX,
         positionMap,
         visitedStructureIds
@@ -1229,7 +1768,7 @@ async function applyCompoundElkLayout(params: {
     };
   });
 
-  return applyStructuredSemanticLayout({ nodes: layoutedNodes });
+  return applyStructuredSemanticLayout({ nodes: layoutedNodes, edges });
 }
 
 /**
