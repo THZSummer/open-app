@@ -187,20 +187,20 @@ ${$.node.trigger.input.header.X-App-Id}
 
 ### 4.1 缓存值结构
 
-缓存值存储连接流执行的完整 HTTP 响应，序列化为 JSON：
+> ⚠️ **关键原则**：缓存仅存储**用户定义的业务数据**（出口节点的 `output.header` + `output.body`），不存储平台 `X-` 元数据（`X-Execution-Id` / `X-Duration-Ms` / `X-Cache-Status` 等）。这些平台头值每次请求都不同，缓存无意义，由引擎在响应时实时生成。
+
+缓存值存储出口节点的纯净 HTTP 响应数据，序列化为 JSON：
 
 ```json
+// 假设出口节点 output 定义为:
+//   output.header = { X-Request-Id: "${$.execution.id}" }
+//   output.body   = { msgId: "${$.node.conn_1.output.body.msgId}", code: "${$.node.conn_1.output.body.code}" }
+
 {
   "statusCode": 200,
   "headers": {
     "Content-Type": "application/json",
-    "X-Execution-Id": "exec-2026-001",
-    "X-Status": "0",
-    "X-Duration-Ms": "234",
-    "X-Code": "200",
-    "X-Message-Zh": "成功",
-    "X-Message-En": "Success",
-    "X-Cache-Status": "1"
+    "X-Request-Id": "exec-2026-001"
   },
   "body": { "msgId": "msg_xxxx", "code": 0 }
 }
@@ -208,9 +208,11 @@ ${$.node.trigger.input.header.X-App-Id}
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `statusCode` | int | HTTP 状态码（200/201 等） |
-| `headers` | object | 响应头（含平台 `X-` 元数据头 + 用户自定义出口 header），排除 `Set-Cookie` 等带会话信息的头 |
-| `body` | object | 响应体，直接透传出口节点的 `output.body`，无平台信封包装 |
+| `statusCode` | int | HTTP 状态码（200） |
+| `headers` | object | **仅用户自定义的出口响应头**（出口节点 `output.header` 解析结果），不含平台 `X-` 元数据头。排除 `Set-Cookie` 等带会话信息的头 |
+| `body` | object | 出口节点 `output.body` 解析结果，无平台信封包装 |
+
+> 💡 平台 `X-` 响应头（`X-Execution-Id` / `X-Status` / `X-Duration-Ms` / `X-Cache-Status` / `X-Code` / `X-Message-*`）**不缓存**。缓存命中时由引擎实时生成：`X-Execution-Id` 新生成雪花 ID，`X-Duration-Ms` 为实际 Redis GET 耗时，`X-Cache-Status` 设为 `1`。
 
 ### 4.2 缓存条件
 
@@ -426,30 +428,33 @@ HTTP 触发请求
 
 ### 7.2 缓存命中响应格式
 
-缓存命中时返回的响应格式与正常执行完全一致，调用方**无需感知缓存**。`executionId` 由系统正常生成（雪花 ID），`durationMs` 为实际缓存读取耗时（通常 < 5ms）。运维侧通过 `execution_record.cache_status=1` 区分。
+缓存命中时，引擎分两路构造响应：
+- **平台 `X-` 头**：每次实时生成（`X-Execution-Id` 雪花 ID、`X-Duration-Ms` Redis GET 耗时、`X-Cache-Status: 1`）
+- **用户数据**：从缓存值透传（出口 `output.header` → 响应头、`output.body` → 响应体）
+
+调用方**无需感知缓存**——响应格式与非缓存完全一致，平台 `X-` 头照常返回，`X-Cache-Status` 是唯一区分标志。
 
 ```json
-// 缓存命中响应（对外格式：透明穿透模式，平台元数据在 X- 响应头中）
+// 缓存命中响应（对外格式：透明穿透模式）
 // HTTP 200
-// X-Execution-Id: 9876543210987654321
+// X-Execution-Id: 9876543210987654321          ← 实时生成
 // X-Status: 0
-// X-Duration-Ms: 2
+// X-Duration-Ms: 2                              ← Redis GET 实际耗时
 // X-Code: 200
 // X-Message-Zh: 成功
 // X-Message-En: Success
-// X-Cache-Status: 1
+// X-Cache-Status: 1                             ← 标识缓存命中
+// X-Request-Id: exec-2026-001                   ← 用户自定义（从缓存透传）
 
-{"msgId": "msg_xxxx", "code": 0}
+{"msgId": "msg_xxxx", "code": 0}                ← 用户自定义（从缓存透传）
 ```
 
-| 字段 | 缓存命中时的值 | 说明 |
-|------|--------------|------|
-| `X-Execution-Id` | 正常雪花 ID | 每次请求独立生成，可追溯 |
-| `X-Duration-Ms` | 实际 Redis GET 耗时（< 5ms） | 真实耗时 |
-| `X-Cache-Status` | `1`（全流命中） | 区别于正常执行的 `0` |
-| 响应 Body | 与真实执行相同 | 从缓存值透传出口节点 `output.body` |
-| `execution_step` 详情 | **无**（不返回 steps 数组） | 没有节点实际执行 |
-| 平台响应信封 | **不适用** | `#54` 透明穿透模式，不使用标准信封 |
+| 数据来源 | 内容 | 缓存？ |
+|---------|------|:---:|
+| 平台实时生成 | `X-Execution-Id`、`X-Duration-Ms`、`X-Cache-Status`、`X-Code`、`X-Message-*` | ❌ |
+| 缓存透传 | 用户自定义响应头（出口 `output.header` 解析结果） | ✅ |
+| 缓存透传 | 响应 Body（出口 `output.body` 解析结果） | ✅ |
+| 不返回 | `execution_step` 详情（无节点实际执行） | — |
 
 ### 7.3 缓存与限流的交互
 
