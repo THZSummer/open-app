@@ -3346,6 +3346,7 @@
 
 | Header | 类型 | 说明 | 出现条件 |
 |--------|------|------|---------|
+| X-Flow-Id | string | 连接流 ID（雪花ID），对应 URL 路径中的 `{flowId}` | 始终返回 |
 | X-Execution-Id | string | 执行记录 ID（雪花ID） | 连接流已执行（含执行失败） |
 | X-Status | int | 执行状态：`0`=成功 / `1`=失败 / `2`=超时，见 §1.8.5 | 连接流已执行 |
 | X-Duration-Ms | int | 执行耗时（毫秒） | 连接流已执行 |
@@ -3354,7 +3355,7 @@
 | X-Message-Zh | string | 中文提示信息（成功/错误描述） | 始终返回 |
 | X-Message-En | string | 英文提示信息 | 始终返回 |
 
-> ⚠️ 前置校验失败（401/429/503）时，连接流未实际执行，`X-Execution-Id`、`X-Status`、`X-Duration-Ms` 不出现。
+> ⚠️ 前置校验失败（401/429/503）时，连接流未实际执行，`X-Execution-Id`、`X-Status`、`X-Duration-Ms` 不出现。`X-Flow-Id`、`X-Code`、`X-Message-Zh`、`X-Message-En` 始终返回。
 
 **响应头 — 用户自定义**
 
@@ -3397,6 +3398,7 @@ Content-Type: application/json
 {"sender": "external_system", "content": "这是一条外部消息"}
 
 // 响应（HTTP 200）
+X-Flow-Id: 4444444444444444444
 X-Execution-Id: 1234567890123456789
 X-Status: 0
 X-Duration-Ms: 234
@@ -3416,6 +3418,7 @@ POST /api/v1/flows/4444444444444444444/invoke
 X-Sys-Token: token_invalid
 
 // 响应（HTTP 401）
+X-Flow-Id: 4444444444444444444
 X-Code: 401
 X-Message-Zh: SYSTOKEN 不在白名单中
 X-Message-En: SYSTOKEN not in whitelist
@@ -3427,6 +3430,7 @@ X-Message-En: SYSTOKEN not in whitelist
 
 ```
 // 响应（HTTP 429）
+X-Flow-Id: 4444444444444444444
 X-Code: 429
 X-Message-Zh: 请求频率超限
 X-Message-En: Rate limit exceeded
@@ -3438,6 +3442,7 @@ X-Message-En: Rate limit exceeded
 
 ```
 // 响应（HTTP 503）
+X-Flow-Id: 4444444444444444444
 X-Code: 503
 X-Message-Zh: 连接流未部署
 X-Message-En: Flow not deployed
@@ -3449,6 +3454,7 @@ X-Message-En: Flow not deployed
 
 ```
 // 响应（HTTP 200）
+X-Flow-Id: 4444444444444444444
 X-Execution-Id: 1234567890123456790
 X-Status: 1
 X-Duration-Ms: 5123
@@ -3463,6 +3469,7 @@ X-Message-En: Success
 
 ```
 // 响应（HTTP 200）
+X-Flow-Id: 4444444444444444444
 X-Execution-Id: 1234567890123456791
 X-Status: 0
 X-Duration-Ms: 2
@@ -3486,6 +3493,7 @@ X-Cache-Status: 1
 
 ```
 // 响应（HTTP 200）
+X-Flow-Id: 4444444444444444444
 X-Execution-Id: 1234567890123456792
 X-Status: 0
 X-Duration-Ms: 156

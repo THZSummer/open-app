@@ -210,7 +210,7 @@ ${$.node.trigger.input.header.X-App-Id}
 | `headers` | object | **仅用户自定义的出口响应头**（出口节点 `output.header` 解析结果），不含平台 `X-` 元数据头。排除 `Set-Cookie` 等带会话信息的头 |
 | `body` | object | 出口节点 `output.body` 解析结果，无平台信封包装 |
 
-> 💡 **不缓存的内容**：HTTP 状态码（引擎按规则实时返回 200）、平台 `X-` 响应头（`X-Execution-Id` / `X-Status` / `X-Duration-Ms` / `X-Cache-Status` / `X-Code` / `X-Message-*`）。缓存命中时由引擎实时生成：`X-Execution-Id` 新雪花 ID，`X-Duration-Ms` 为 Redis GET 实际耗时，`X-Cache-Status` 设为 `1`。HTTP 状态码固定 `200`（能进缓存的执行结果本身是成功的，§4.2）。
+> 💡 **不缓存的内容**：HTTP 状态码（引擎按规则实时返回 200）、平台 `X-` 响应头（`X-Flow-Id` / `X-Execution-Id` / `X-Status` / `X-Duration-Ms` / `X-Cache-Status` / `X-Code` / `X-Message-*`）。缓存命中时由引擎实时生成：`X-Execution-Id` 新雪花 ID，`X-Duration-Ms` 为 Redis GET 实际耗时，`X-Cache-Status` 设为 `1`，`X-Flow-Id` 从请求 URL 路径提取。HTTP 状态码固定 `200`（能进缓存的执行结果本身是成功的，§4.2）。
 
 ### 4.2 缓存条件
 
@@ -427,7 +427,7 @@ HTTP 触发请求
 ### 7.2 缓存命中响应格式
 
 缓存命中时，引擎分两路构造响应：
-- **平台 `X-` 头**：每次实时生成（`X-Execution-Id` 雪花 ID、`X-Duration-Ms` Redis GET 耗时、`X-Cache-Status: 1`）
+- **平台 `X-` 头**：每次实时生成（`X-Flow-Id` 从请求路径提取、`X-Execution-Id` 雪花 ID、`X-Duration-Ms` Redis GET 耗时、`X-Cache-Status: 1`）
 - **用户数据**：从缓存值透传（出口 `output.header` → 响应头、`output.body` → 响应体）
 
 调用方**无需感知缓存**——响应格式与非缓存完全一致，平台 `X-` 头照常返回，`X-Cache-Status` 是唯一区分标志。
@@ -435,9 +435,10 @@ HTTP 触发请求
 ```json
 // 缓存命中响应（对外格式：透明穿透模式）
 // HTTP 200
-// X-Execution-Id: 9876543210987654321          ← 实时生成
+// X-Flow-Id: 4444444444444444444                  ← 实时生成
+// X-Execution-Id: 9876543210987654321              ← 实时生成
 // X-Status: 0
-// X-Duration-Ms: 2                              ← Redis GET 实际耗时
+// X-Duration-Ms: 2                                 ← Redis GET 实际耗时
 // X-Code: 200
 // X-Message-Zh: 成功
 // X-Message-En: Success
@@ -449,7 +450,7 @@ HTTP 触发请求
 
 | 数据来源 | 内容 | 缓存？ |
 |---------|------|:---:|
-| 平台实时生成 | `X-Execution-Id`、`X-Duration-Ms`、`X-Cache-Status`、`X-Code`、`X-Message-*` | ❌ |
+| 平台实时生成 | `X-Flow-Id`、`X-Execution-Id`、`X-Duration-Ms`、`X-Cache-Status`、`X-Code`、`X-Message-*` | ❌ |
 | 缓存透传 | 用户自定义响应头（出口 `output.header` 解析结果） | ✅ |
 | 缓存透传 | 响应 Body（出口 `output.body` 解析结果） | ✅ |
 | 不返回 | `execution_step` 详情（无节点实际执行） | — |
