@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接流编辑器 V2 - 连接平台</title>
+    <style>
+        /* ========================================
+           全局样式变量
+           ======================================== */
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-tertiary: #8c8c8c;
+            --border-color: #d9d9d9;
+            --bg-light: #fafafa;
+            --bg-white: #ffffff;
+            --bg-editor: #0f172a;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        /* ========================================
+           基础样式重置
+           ======================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5715;
+            color: var(--text-primary);
+            background: var(--bg-light);
+            overflow: hidden;
+        }
+
+        /* ========================================
+           页面布局
+           ======================================== */
+        .page-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 0;
+            flex: 1;
+        }
+
+        .sidebar-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .sidebar-item.active {
+            background: #e6f7ff;
+            color: var(--primary-color);
+            font-weight: 500;
+            border-right: 3px solid var(--primary-color);
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .editor-header {
+            height: 64px;
+            padding: 0 24px;
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .header-left,
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .flow-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .version-tag {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: var(--primary-color);
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+        }
+
+        .editor-content {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(720px, 1fr) 320px;
+            gap: 16px;
+            padding: 16px;
+            overflow: hidden;
+        }
+
+        .workbench {
+            min-width: 0;
+            overflow: auto;
+            padding-right: 2px;
+        }
+
+        .assist-panel {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* ========================================
+           通用组件
+           ======================================== */
+        .btn {
+            height: 32px;
+            padding: 0 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-white);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            color: #fff;
+            border-color: var(--primary-hover);
+        }
+
+        .btn-danger {
+            color: var(--error-color);
+            border-color: #ffccc7;
+        }
+
+        .btn-danger:hover {
+            color: #fff;
+            background: var(--error-color);
+            border-color: var(--error-color);
+        }
+
+        .btn-text {
+            height: auto;
+            padding: 0;
+            border: none;
+            background: transparent;
+            color: var(--primary-color);
+        }
+
+        .card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-desc {
+            margin-top: 4px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+            font-weight: 400;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-white);
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-input,
+        .form-select {
+            height: 34px;
+            padding: 0 10px;
+        }
+
+        .form-textarea {
+            min-height: 72px;
+            padding: 8px 10px;
+            resize: vertical;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.12);
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            height: 22px;
+            padding: 0 8px;
+            border-radius: 11px;
+            font-size: 12px;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+
+        .tag-trigger {
+            color: #0958d9;
+            background: #e6f4ff;
+            border-color: #91caff;
+        }
+
+        .tag-action {
+            color: #389e0d;
+            background: #f6ffed;
+            border-color: #b7eb8f;
+        }
+
+        .tag-data {
+            color: #531dab;
+            background: #f9f0ff;
+            border-color: #d3adf7;
+        }
+
+        .tag-warning {
+            color: #d46b08;
+            background: #fff7e6;
+            border-color: #ffd591;
+        }
+
+        .empty-state {
+            padding: 28px;
+            text-align: center;
+            color: var(--text-tertiary);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-light);
+        }
+
+        /* ========================================
+           连接器版本定义区
+           ======================================== */
+        .connector-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .connector-table th,
+        .connector-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .connector-table th {
+            color: var(--text-secondary);
+            background: var(--bg-light);
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .connector-table tr:hover td {
+            background: #fcfcfc;
+        }
+
+        .alias-code {
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #f5f5f5;
+            color: #c41d7f;
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .output-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .output-chip {
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: #f5f5f5;
+            color: var(--text-secondary);
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .param-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .param-summary-card {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-light);
+            padding: 10px;
+            min-height: 82px;
+        }
+
+        .param-summary-title {
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .connector-doc-card {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 10px;
+            background: var(--bg-white);
+        }
+
+        .connector-doc-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .connector-doc-section {
+            margin-top: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .param-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .param-tree-item {
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .param-tree-name {
+            color: #c41d7f;
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+        }
+
+        .param-tree-type {
+            color: var(--primary-color);
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+        }
+
+        /* ========================================
+           JS 脚本编排区
+           ======================================== */
+        .script-shell {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background: var(--bg-editor);
+        }
+
+        .script-toolbar {
+            min-height: 44px;
+            padding: 8px 12px;
+            background: #111827;
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .script-toolbar-left,
+        .script-toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .script-select {
+            height: 28px;
+            min-width: 180px;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            background: #0b1220;
+            color: #d1d5db;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .script-btn {
+            height: 28px;
+            padding: 0 10px;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            background: #1f2937;
+            color: #d1d5db;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .script-btn:hover {
+            color: #fff;
+            border-color: var(--primary-color);
+        }
+
+        .script-editor-wrap {
+            position: relative;
+            min-height: 420px;
+            display: grid;
+            grid-template-columns: 52px 1fr;
+        }
+
+        .line-numbers {
+            padding: 14px 10px;
+            background: #0b1220;
+            color: #64748b;
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 22px;
+            text-align: right;
+            user-select: none;
+            overflow: hidden;
+            white-space: pre;
+        }
+
+        .script-editor {
+            width: 100%;
+            min-height: 420px;
+            padding: 14px;
+            border: none;
+            outline: none;
+            resize: vertical;
+            background: var(--bg-editor);
+            color: #e5e7eb;
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 22px;
+            tab-size: 4;
+        }
+
+        .script-footer {
+            padding: 10px 12px;
+            background: #111827;
+            border-top: 1px solid #1f2937;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 12px;
+        }
+
+        .validation-list {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .validation-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .validation-item.success {
+            color: #237804;
+            background: #f6ffed;
+            border: 1px solid #b7eb8f;
+        }
+
+        .validation-item.error {
+            color: #a8071a;
+            background: #fff1f0;
+            border: 1px solid #ffa39e;
+        }
+
+        .validation-item.warning {
+            color: #ad6800;
+            background: #fffbe6;
+            border: 1px solid #ffe58f;
+        }
+
+        /* ========================================
+           右侧辅助面板
+           ======================================== */
+        .assist-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .assist-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .assist-desc {
+            margin-top: 4px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .assist-body {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            padding: 12px;
+        }
+
+        .assist-section {
+            margin-bottom: 18px;
+        }
+
+        .assist-section-title {
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .variable-item,
+        .snippet-item {
+            padding: 9px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-white);
+            cursor: default;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .variable-code {
+            color: #c41d7f;
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .variable-desc,
+        .snippet-desc {
+            margin-top: 4px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        /* ========================================
+           弹窗与抽屉
+           ======================================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            width: 640px;
+            max-width: calc(100vw - 48px);
+            max-height: calc(100vh - 48px);
+            background: var(--bg-white);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            border-radius: 4px;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+            background: var(--bg-light);
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .json-preview {
+            max-height: 520px;
+            padding: 14px;
+            overflow: auto;
+            border-radius: 6px;
+            background: #0f172a;
+            color: #e5e7eb;
+            font-family: Consolas, Monaco, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .toast {
+            position: fixed;
+            top: 78px;
+            right: 24px;
+            min-width: 220px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.75);
+            box-shadow: var(--shadow-md);
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ========================================
+           响应式适配
+           ======================================== */
+        @media (max-width: 1280px) {
+            .editor-content {
+                grid-template-columns: 1fr;
+                overflow: auto;
+            }
+
+            .assist-panel {
+                min-height: 360px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面主容器 -->
+    <div class="page-container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">连接平台</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item" onclick="navigateTo('connector-list.html')">
+                    <span>⚡</span>
+                    <span>连接器管理</span>
+                </li>
+                <li class="sidebar-item active" onclick="navigateTo('flow-list.html')">
+                    <span>🔗</span>
+                    <span>连接流管理</span>
+                </li>
+                <li class="sidebar-item" onclick="navigateTo('approval-center.html')">
+                    <span>✅</span>
+                    <span>审批中心</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <!-- 编辑器头部 -->
+            <div class="editor-header">
+                <div class="header-left">
+                    <button class="btn" onclick="handleBack()">← 返回</button>
+                    <span class="flow-name">客户消息通知流</span>
+                    <span class="version-tag">V2 脚本编排版</span>
+                    <select class="form-select" id="flowVersionSelect" style="width: 190px;" onchange="handleFlowVersionChange()">
+                        <option value="draft">v1.1.0 草稿</option>
+                        <option value="released">v1.0.0 已发布</option>
+                    </select>
+                </div>
+                <div class="header-right">
+                    <button class="btn" onclick="openPreviewModal()">预览 JSON</button>
+                    <button class="btn" onclick="validateScript()">校验脚本</button>
+                    <button class="btn btn-primary" onclick="saveDraft()">保存草稿</button>
+                    <button class="btn btn-primary" onclick="publishFlow()">发布</button>
+                </div>
+            </div>
+
+            <!-- 编辑器主体 -->
+            <div class="editor-content">
+                <!-- 左侧工作区 -->
+                <div class="workbench">
+                    <!-- 基础信息区 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">基础信息</div>
+                                <div class="card-desc">定义当前连接流版本的基础描述，脚本编排区负责具体执行逻辑。</div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="flowNameInput">连接流名称</label>
+                                    <input class="form-input" id="flowNameInput" value="客户消息通知流" onchange="updateFlowMeta()">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="flowVersionInput">当前版本</label>
+                                    <input class="form-input" id="flowVersionInput" value="v1.1.0" onchange="updateFlowMeta()">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="flowOwnerInput">负责人</label>
+                                    <input class="form-input" id="flowOwnerInput" value="张三" onchange="updateFlowMeta()">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 16px;">
+                                <label class="form-label" for="flowDescriptionInput">版本描述</label>
+                                <textarea class="form-textarea" id="flowDescriptionInput" onchange="updateFlowMeta()">通过脚本编排 CRM 查询、订单查询和飞书消息发送连接器，支持串行和并行逻辑。</textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 当前版本连接器定义区 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">本版本使用的连接器</div>
+                                <div class="card-desc">先声明本版本可用连接器和具体版本，JS 脚本中通过模板变量引用。</div>
+                            </div>
+                            <button class="btn btn-primary" onclick="openConnectorModal()">+ 添加连接器</button>
+                        </div>
+                        <div class="card-body">
+                            <table class="connector-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 130px;">连接器ID</th>
+                                        <th style="width: 180px;">中文名称</th>
+                                        <th style="width: 180px;">英文名称</th>
+                                        <th style="width: 120px;">版本</th>
+                                        <th style="width: 100px;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="connectorTableBody">
+                                    <!-- 连接器列表由脚本动态渲染 -->
+                                </tbody>
+                            </table>
+                            <div class="empty-state" id="connectorEmptyState" style="display: none;">
+                                暂无连接器，请先添加本版本需要使用的连接器。
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- JS脚本编排区 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">JS 脚本编排</div>
+                                <div class="card-desc">通过一整块脚本表达串行、并行、条件分支和异常处理，模板变量用于引用连接器和出参。</div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="script-shell">
+                                <div class="script-toolbar">
+                                    <div class="script-toolbar-left">
+                                        <span style="color: #d1d5db; font-size: 12px;">通过 JS 脚本编排连接器调用顺序和并发逻辑</span>
+                                    </div>
+                                    <div class="script-toolbar-right">
+                                        <button class="script-btn" onclick="validateScript()">校验脚本</button>
+                                    </div>
+                                </div>
+                                <div class="script-editor-wrap">
+                                    <pre class="line-numbers" id="lineNumbers">1</pre>
+                                    <textarea class="script-editor" id="scriptEditor" spellcheck="false" oninput="handleScriptInput()" onscroll="syncLineNumberScroll()">async function run(input, context) {
+    // 并行查询客户信息和订单列表
+    const [customer, orderResult] = await Promise.all([
+        ${connector.conn_001}({
+            phone: input.phone
+        }),
+        ${connector.conn_003}({
+            userId: input.userId
+        })
+    ]);
+
+    // 串行发送消息通知
+    const messageResult = await ${connector.conn_002}({
+        userId: customer.customerId,
+        content: `客户 ${output.conn_001.customer.customerName} 近30天订单数：${output.conn_003.total}`
+    });
+
+    // 返回连接流执行结果
+    return {
+        customer,
+        orders: orderResult.orders,
+        messageId: messageResult.messageId
+    };
+}</textarea>
+                                </div>
+                                <div class="script-footer">
+                                    <span id="scriptStats">行数：1，字符数：0</span>
+                                    <span>支持模板变量：${connector.连接器ID} / ${output.连接器ID.fieldPath}</span>
+                                </div>
+                            </div>
+                            <div class="validation-list" id="validationList">
+                                <!-- 校验结果由脚本动态渲染 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧模板变量辅助面板 -->
+                <div class="assist-panel">
+                    <div class="assist-header">
+                        <div class="assist-title">模板变量助手</div>
+                        <div class="assist-desc">点击变量或片段可插入到当前光标位置。</div>
+                    </div>
+                    <div class="assist-body">
+                        <div class="assist-section">
+                            <div class="assist-section-title">可用连接器</div>
+                            <div id="connectorVariableList">
+                                <!-- 连接器变量列表由脚本动态渲染 -->
+                            </div>
+                        </div>
+                        <div class="assist-section">
+                            <div class="assist-section-title">连接器说明</div>
+                            <div id="connectorDocList">
+                                <!-- 连接器说明由脚本动态渲染 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加或编辑连接器弹窗 -->
+    <div class="modal-overlay" id="connectorModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="connectorModalTitle">添加连接器</h3>
+                <button class="modal-close" onclick="closeConnectorModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                    <div class="form-group">
+                        <label class="form-label" for="flowConnectorIdInput">连接器ID</label>
+                        <input class="form-input" id="flowConnectorIdInput" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="connectorNameInput">选择连接器名称</label>
+                        <select class="form-select" id="connectorNameInput" onchange="handleConnectorNameChange()">
+                            <!-- 连接器选项由脚本动态渲染 -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">连接器中文名称</label>
+                        <input class="form-input" id="connectorCnNameInput" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">连接器英文名称</label>
+                        <input class="form-input" id="connectorEnNameInput" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="connectorVersionInput">选择版本</label>
+                        <select class="form-select" id="connectorVersionInput" onchange="handleConnectorVersionChange()">
+                            <!-- 版本选项由脚本动态渲染 -->
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label" style="font-weight: 600;">入参配置</label>
+                    <div class="param-summary-grid" id="connectorInputsPreview">
+                        <!-- 入参字段由脚本根据连接器和版本动态渲染 -->
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label" style="font-weight: 600;">出参配置</label>
+                    <div class="param-summary-grid" id="connectorOutputsPreview">
+                        <!-- 出参字段由脚本根据连接器和版本动态渲染 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeConnectorModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveConnector()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JSON预览弹窗 -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal" style="width: 760px;">
+            <div class="modal-header">
+                <h3 class="modal-title">连接流版本 JSON 预览</h3>
+                <button class="modal-close" onclick="closePreviewModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <pre class="json-preview" id="jsonPreviewContent"></pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closePreviewModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ========================================
+        // 页面状态数据
+        // ========================================
+
+        /**
+         * 当前正在编辑的连接器下标，-1 表示新增连接器。
+         * @type {number}
+         */
+        let editingConnectorIndex = -1;
+
+        /**
+         * 当前连接流版本的内存态数据。
+         * @type {Object}
+         */
+        const flowState = {
+            id: 'flow_customer_notice',
+            name: '客户消息通知流',
+            version: 'v1.1.0',
+            owner: '张三',
+            description: '通过脚本编排 CRM 查询、订单查询和飞书消息发送连接器，支持串行和并行逻辑。',
+            connectors: [
+                {
+                    flowConnectorId: 'conn_001',
+                    connectorId: 'crmCustomerQuery',
+                    versionId: 'v2'
+                },
+                {
+                    flowConnectorId: 'conn_002',
+                    connectorId: 'larkMessageSend',
+                    versionId: 'v2'
+                },
+                {
+                    flowConnectorId: 'conn_003',
+                    connectorId: 'orderListQuery',
+                    versionId: 'v1'
+                }
+            ],
+            script: ''
+        };
+
+        /**
+         * 连接器配置数据，入参和出参结构参考 V1 连接器节点配置弹窗中的版本参数配置。
+         * @type {Object}
+         */
+        const CONNECTOR_DATA = {
+            crmCustomerQuery: {
+                id: 'crmCustomerQuery',
+                cnName: 'CRM客户查询',
+                enName: 'crmCustomerQuery',
+                versions: [
+                    {
+                        id: 'v2',
+                        name: 'v1.2.0',
+                        inputParams: {
+                            header: [
+                                { id: 'crm_in_h1', paramName: 'X-Trace-Id', paramType: 'string', carrier: 'header', description: '链路追踪ID' }
+                            ],
+                            body: [
+                                { id: 'crm_in_b1', paramName: 'phone', paramType: 'string', carrier: 'body', description: '客户手机号' }
+                            ],
+                            query: []
+                        },
+                        outputParams: {
+                            header: [
+                                { id: 'crm_out_h1', paramName: 'traceId', paramType: 'string', carrier: 'header', description: '链路追踪ID' }
+                            ],
+                            body: [
+                                {
+                                    id: 'crm_out_b0',
+                                    paramName: 'customer',
+                                    paramType: 'object',
+                                    carrier: 'body',
+                                    description: '客户信息',
+                                    children: [
+                                        { id: 'crm_out_b1', paramName: 'customerId', paramType: 'string', carrier: 'body', description: '客户ID' },
+                                        { id: 'crm_out_b2', paramName: 'customerName', paramType: 'string', carrier: 'body', description: '客户名称' },
+                                        { id: 'crm_out_b3', paramName: 'level', paramType: 'string', carrier: 'body', description: '客户等级' }
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        inputParams: {
+                            header: [],
+                            body: [
+                                { id: 'crm_in_b2', paramName: 'customerNo', paramType: 'string', carrier: 'body', description: '客户编号' }
+                            ],
+                            query: []
+                        },
+                        outputParams: {
+                            header: [],
+                            body: [
+                                { id: 'crm_out_b4', paramName: 'id', paramType: 'string', carrier: 'body', description: '客户ID' },
+                                { id: 'crm_out_b5', paramName: 'name', paramType: 'string', carrier: 'body', description: '客户名称' }
+                            ]
+                        }
+                    }
+                ]
+            },
+            larkMessageSend: {
+                id: 'larkMessageSend',
+                cnName: '飞书消息发送',
+                enName: 'larkMessageSend',
+                versions: [
+                    {
+                        id: 'v2',
+                        name: 'v2.0.0',
+                        inputParams: {
+                            header: [],
+                            body: [
+                                { id: 'msg_in_b1', paramName: 'userId', paramType: 'string', carrier: 'body', description: '接收人ID' },
+                                {
+                                    id: 'msg_in_b2',
+                                    paramName: 'content',
+                                    paramType: 'object',
+                                    carrier: 'body',
+                                    description: '消息内容',
+                                    children: [
+                                        { id: 'msg_in_b2_1', paramName: 'title', paramType: 'string', carrier: 'body', description: '消息标题' },
+                                        { id: 'msg_in_b2_2', paramName: 'text', paramType: 'string', carrier: 'body', description: '消息正文' }
+                                    ]
+                                }
+                            ],
+                            query: []
+                        },
+                        outputParams: {
+                            header: [],
+                            body: [
+                                { id: 'msg_out_b1', paramName: 'messageId', paramType: 'string', carrier: 'body', description: '消息ID' },
+                                { id: 'msg_out_b2', paramName: 'status', paramType: 'string', carrier: 'body', description: '发送状态' }
+                            ]
+                        }
+                    },
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        inputParams: {
+                            header: [],
+                            body: [
+                                { id: 'msg_in_b3', paramName: 'openId', paramType: 'string', carrier: 'body', description: '接收人 open_id' },
+                                { id: 'msg_in_b4', paramName: 'text', paramType: 'string', carrier: 'body', description: '文本内容' }
+                            ],
+                            query: []
+                        },
+                        outputParams: {
+                            header: [],
+                            body: [
+                                { id: 'msg_out_b3', paramName: 'messageId', paramType: 'string', carrier: 'body', description: '消息ID' }
+                            ]
+                        }
+                    }
+                ]
+            },
+            orderListQuery: {
+                id: 'orderListQuery',
+                cnName: '订单列表查询',
+                enName: 'orderListQuery',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.1.0',
+                        inputParams: {
+                            header: [],
+                            body: [],
+                            query: [
+                                { id: 'order_in_q1', paramName: 'userId', paramType: 'string', carrier: 'query', description: '用户ID' },
+                                { id: 'order_in_q2', paramName: 'days', paramType: 'number', carrier: 'query', description: '查询天数' }
+                            ]
+                        },
+                        outputParams: {
+                            header: [],
+                            body: [
+                                {
+                                    id: 'order_out_b1',
+                                    paramName: 'orders',
+                                    paramType: 'array',
+                                    carrier: 'body',
+                                    description: '订单列表',
+                                    children: [
+                                        { id: 'order_out_b1_1', paramName: 'orderId', paramType: 'string', carrier: 'body', description: '订单ID' },
+                                        { id: 'order_out_b1_2', paramName: 'amount', paramType: 'number', carrier: 'body', description: '订单金额' },
+                                        {
+                                            id: 'order_out_b1_3',
+                                            paramName: 'items',
+                                            paramType: 'array',
+                                            carrier: 'body',
+                                            description: '商品明细',
+                                            children: [
+                                                { id: 'order_out_b1_3_1', paramName: 'skuId', paramType: 'string', carrier: 'body', description: '商品ID' },
+                                                { id: 'order_out_b1_3_2', paramName: 'count', paramType: 'number', carrier: 'body', description: '商品数量' }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                { id: 'order_out_b2', paramName: 'total', paramType: 'number', carrier: 'body', description: '订单总数' }
+                            ]
+                        }
+                    }
+                ]
+            },
+            customerLevelCalc: {
+                id: 'customerLevelCalc',
+                cnName: '客户等级计算',
+                enName: 'customerLevelCalc',
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        inputParams: {
+                            header: [],
+                            body: [
+                                { id: 'level_in_b1', paramName: 'customerId', paramType: 'string', carrier: 'body', description: '客户ID' },
+                                { id: 'level_in_b2', paramName: 'amount', paramType: 'number', carrier: 'body', description: '消费金额' }
+                            ],
+                            query: []
+                        },
+                        outputParams: {
+                            header: [],
+                            body: [
+                                { id: 'level_out_b1', paramName: 'level', paramType: 'string', carrier: 'body', description: '计算等级' },
+                                { id: 'level_out_b2', paramName: 'score', paramType: 'number', carrier: 'body', description: '等级分数' },
+                                { id: 'level_out_b3', paramName: 'reason', paramType: 'string', carrier: 'body', description: '计算原因' }
+                            ]
+                        }
+                    }
+                ]
+            }
+        };
+
+        // ========================================
+        // 页面初始化
+        // ========================================
+
+        /**
+         * 初始化页面数据与事件。
+         * @returns {void}
+         */
+        function initPage() {
+            flowState.script = document.getElementById('scriptEditor').value;
+            renderConnectorTable();
+            renderVariableAssistPanel();
+            updateLineNumbers();
+            updateScriptStats();
+            validateScript();
+        }
+
+        /**
+         * 跳转到指定页面。
+         * @param {string} url - 目标页面地址。
+         * @returns {void}
+         */
+        function navigateTo(url) {
+            window.location.href = url;
+        }
+
+        /**
+         * 返回连接流列表页面。
+         * @returns {void}
+         */
+        function handleBack() {
+            navigateTo('flow-list.html');
+        }
+
+        /**
+         * 切换连接流版本时展示演示提示。
+         * @returns {void}
+         */
+        function handleFlowVersionChange() {
+            showToast('已切换版本，当前页面为静态演示数据');
+        }
+
+        // ========================================
+        // 基础信息处理
+        // ========================================
+
+        /**
+         * 同步基础信息表单到内存态数据。
+         * @returns {void}
+         */
+        function updateFlowMeta() {
+            flowState.name = document.getElementById('flowNameInput').value.trim();
+            flowState.version = document.getElementById('flowVersionInput').value.trim();
+            flowState.owner = document.getElementById('flowOwnerInput').value.trim();
+            flowState.description = document.getElementById('flowDescriptionInput').value.trim();
+        }
+
+        // ========================================
+        // 连接器版本定义区
+        // ========================================
+
+        /**
+         * 获取连接器定义。
+         * @param {string} connectorId - 连接器ID。
+         * @returns {Object | undefined} 连接器定义。
+         */
+        function getConnectorDefinition(connectorId) {
+            return CONNECTOR_DATA[connectorId];
+        }
+
+        /**
+         * 获取连接器版本定义。
+         * @param {Object} params - 查询连接器版本所需参数。
+         * @returns {Object | undefined} 连接器版本定义。
+         */
+        function getConnectorVersionDefinition(params) {
+            const connectorId = params.connectorId;
+            const versionId = params.versionId;
+            const connector = getConnectorDefinition(connectorId);
+            return connector?.versions.find(function(version) {
+                return version.id === versionId;
+            });
+        }
+
+        /**
+         * 获取连接器指定版本的扁平出参字段。
+         * @param {Object} params - 查询出参字段所需参数。
+         * @returns {Array} 出参字段数组。
+         */
+        function getConnectorVersionOutputs(params) {
+            const version = getConnectorVersionDefinition(params);
+            const outputParams = version?.outputParams || { header: [], body: [] };
+            return flattenOutputParams(outputParams.header || []).concat(flattenOutputParams(outputParams.body || []));
+        }
+
+        /**
+         * 获取连接器指定版本的入参配置。
+         * @param {Object} params - 查询入参配置所需参数。
+         * @returns {Object} 入参配置对象。
+         */
+        function getConnectorVersionInputs(params) {
+            const version = getConnectorVersionDefinition(params);
+            return version?.inputParams || { header: [], body: [], query: [] };
+        }
+
+        /**
+         * 获取连接器指定版本的出参配置。
+         * @param {Object} params - 查询出参配置所需参数。
+         * @returns {Object} 出参配置对象。
+         */
+        function getConnectorVersionOutputGroups(params) {
+            const version = getConnectorVersionDefinition(params);
+            return version?.outputParams || { header: [], body: [] };
+        }
+
+        /**
+         * 展平连接器版本出参树。
+         * @param {Array} params - 出参树数组。
+         * @returns {Array} 扁平出参字段数组。
+         */
+        function flattenOutputParams(params) {
+            return flattenParamsWithPath({
+                params: params,
+                parentPath: ''
+            });
+        }
+
+        /**
+         * 按完整路径展平参数树。
+         * @param {Object} options - 展平参数树所需参数。
+         * @returns {Array} 带完整路径的参数字段数组。
+         */
+        function flattenParamsWithPath(options) {
+            const params = options.params;
+            const parentPath = options.parentPath;
+            const outputFields = [];
+
+            params.forEach(function(param) {
+                const fieldPath = parentPath ? parentPath + '.' + param.paramName : param.paramName;
+                outputFields.push({
+                    field: param.paramName,
+                    path: fieldPath,
+                    type: param.paramType || 'string',
+                    carrier: param.carrier || 'body',
+                    description: param.description || ''
+                });
+
+                if (param.children && param.children.length > 0) {
+                    outputFields.push.apply(outputFields, flattenParamsWithPath({
+                        params: param.children,
+                        parentPath: fieldPath
+                    }));
+                }
+            });
+
+            return outputFields;
+        }
+
+        /**
+         * 渲染当前版本使用的连接器表格。
+         * @returns {void}
+         */
+        function renderConnectorTable() {
+            const tableBody = document.getElementById('connectorTableBody');
+            const emptyState = document.getElementById('connectorEmptyState');
+
+            if (flowState.connectors.length === 0) {
+                tableBody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            tableBody.innerHTML = flowState.connectors.map(function(connector, index) {
+                const connectorDefinition = getConnectorDefinition(connector.connectorId);
+                const versionDefinition = getConnectorVersionDefinition({
+                    connectorId: connector.connectorId,
+                    versionId: connector.versionId
+                });
+
+                return '<tr>' +
+                    '<td><span class="alias-code">' + connector.flowConnectorId + '</span></td>' +
+                    '<td>' + (connectorDefinition?.cnName || '-') + '</td>' +
+                    '<td>' + (connectorDefinition?.enName || '-') + '</td>' +
+                    '<td>' + (versionDefinition?.name || '-') + '</td>' +
+                    '<td>' +
+                        '<button class="btn-text" onclick="editConnector(' + index + ')">编辑</button>' +
+                        '<span style="color: var(--border-color); margin: 0 6px;">|</span>' +
+                        '<button class="btn-text" style="color: var(--error-color);" onclick="removeConnector(' + index + ')">删除</button>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        /**
+         * 渲染出参字段标签。
+         * @param {Array} outputs - 出参字段数组。
+         * @returns {string} 出参字段HTML。
+         */
+        function renderOutputChips(outputs) {
+            if (outputs.length === 0) {
+                return '<span style="color: var(--text-tertiary); font-size: 12px;">暂无参数配置</span>';
+            }
+
+            return outputs.map(function(output) {
+                return '<span class="output-chip" title="' + output.description + '">' + output.field + ' · ' + output.type + '</span>';
+            }).join('');
+        }
+
+        /**
+         * 渲染参数分组摘要。
+         * @param {Object} params - 参数分组对象。
+         * @returns {string} 参数分组HTML。
+         */
+        function renderParamSummaryGroups(params) {
+            const groupNames = Object.keys(params);
+
+            return groupNames.map(function(groupName) {
+                return '<div class="param-summary-card">' +
+                    '<div class="param-summary-title">' + getParamGroupTitle(groupName) + '</div>' +
+                    renderParamTree(params[groupName] || []) +
+                '</div>';
+            }).join('');
+        }
+
+        /**
+         * 渲染树形参数列表。
+         * @param {Array} params - 参数树数组。
+         * @returns {string} 树形参数HTML。
+         */
+        function renderParamTree(params) {
+            if (params.length === 0) {
+                return '<span style="color: var(--text-tertiary); font-size: 12px;">暂无参数配置</span>';
+            }
+
+            return '<div class="param-tree">' + renderParamTreeItems({
+                params: params,
+                level: 0
+            }) + '</div>';
+        }
+
+        /**
+         * 递归渲染树形参数节点。
+         * @param {Object} options - 渲染参数节点所需参数。
+         * @returns {string} 树形参数节点HTML。
+         */
+        function renderParamTreeItems(options) {
+            const params = options.params;
+            const level = options.level;
+
+            return params.map(function(param) {
+                const childrenHtml = param.children && param.children.length > 0
+                    ? renderParamTreeItems({ params: param.children, level: level + 1 })
+                    : '';
+                return '<div class="param-tree-item" style="padding-left: ' + (level * 14) + 'px;">' +
+                    '<span class="param-tree-name">' + param.paramName + '</span>' +
+                    ' · <span class="param-tree-type">' + (param.paramType || 'string') + '</span>' +
+                    ' · ' + (param.description || '-') +
+                '</div>' + childrenHtml;
+            }).join('');
+        }
+
+        /**
+         * 获取参数分组显示名称。
+         * @param {string} groupName - 参数分组名称。
+         * @returns {string} 参数分组显示名称。
+         */
+        function getParamGroupTitle(groupName) {
+            const titleMap = {
+                header: 'HTTP请求头',
+                body: 'HTTP请求体',
+                query: 'URL查询参数'
+            };
+            return titleMap[groupName] || groupName;
+        }
+
+        /**
+         * 生成当前连接流内的连接器ID。
+         * @returns {string} 新连接器ID。
+         */
+        function generateFlowConnectorId() {
+            const maxIndex = flowState.connectors.reduce(function(maxValue, connector) {
+                const matchResult = connector.flowConnectorId.match(/^conn_(\d+)$/);
+                const currentIndex = matchResult ? Number(matchResult[1]) : 0;
+                return Math.max(maxValue, currentIndex);
+            }, 0);
+            return 'conn_' + String(maxIndex + 1).padStart(3, '0');
+        }
+
+        /**
+         * 打开添加连接器弹窗。
+         * @returns {void}
+         */
+        function openConnectorModal() {
+            const firstConnectorId = Object.keys(CONNECTOR_DATA)[0];
+            const firstConnector = getConnectorDefinition(firstConnectorId);
+
+            editingConnectorIndex = -1;
+            document.getElementById('connectorModalTitle').innerText = '添加连接器';
+            document.getElementById('flowConnectorIdInput').value = generateFlowConnectorId();
+            renderConnectorOptions(firstConnectorId);
+            renderConnectorVersionOptions({
+                connectorId: firstConnectorId,
+                selectedVersionId: firstConnector?.versions[0]?.id || ''
+            });
+            renderConnectorMeta();
+            renderConnectorParamsPreview();
+            document.getElementById('connectorModal').classList.add('active');
+        }
+
+        /**
+         * 关闭添加或编辑连接器弹窗。
+         * @returns {void}
+         */
+        function closeConnectorModal() {
+            document.getElementById('connectorModal').classList.remove('active');
+        }
+
+        /**
+         * 编辑指定连接器。
+         * @param {number} index - 连接器在数组中的下标。
+         * @returns {void}
+         */
+        function editConnector(index) {
+            const connector = flowState.connectors[index];
+            editingConnectorIndex = index;
+            document.getElementById('connectorModalTitle').innerText = '编辑连接器';
+            document.getElementById('flowConnectorIdInput').value = connector.flowConnectorId;
+            renderConnectorOptions(connector.connectorId);
+            renderConnectorVersionOptions({
+                connectorId: connector.connectorId,
+                selectedVersionId: connector.versionId
+            });
+            renderConnectorMeta();
+            renderConnectorParamsPreview();
+            document.getElementById('connectorModal').classList.add('active');
+        }
+
+        /**
+         * 渲染连接器下拉选项。
+         * @param {string} selectedConnectorId - 当前选中的连接器ID。
+         * @returns {void}
+         */
+        function renderConnectorOptions(selectedConnectorId) {
+            const connectorNameInput = document.getElementById('connectorNameInput');
+            connectorNameInput.innerHTML = Object.values(CONNECTOR_DATA).map(function(connector) {
+                const selectedText = connector.id === selectedConnectorId ? 'selected' : '';
+                return '<option value="' + connector.id + '" ' + selectedText + '>' + connector.cnName + '</option>';
+            }).join('');
+        }
+
+        /**
+         * 渲染连接器版本下拉选项。
+         * @param {Object} params - 渲染版本选项所需参数。
+         * @returns {void}
+         */
+        function renderConnectorVersionOptions(params) {
+            const connectorId = params.connectorId;
+            const selectedVersionId = params.selectedVersionId;
+            const connector = getConnectorDefinition(connectorId);
+            const versionInput = document.getElementById('connectorVersionInput');
+
+            versionInput.innerHTML = (connector?.versions || []).map(function(version) {
+                const selectedText = version.id === selectedVersionId ? 'selected' : '';
+                return '<option value="' + version.id + '" ' + selectedText + '>' + version.name + '</option>';
+            }).join('');
+        }
+
+        /**
+         * 根据连接器变更联动版本和出参预览。
+         * @returns {void}
+         */
+        function handleConnectorNameChange() {
+            const connectorId = document.getElementById('connectorNameInput').value;
+            const connector = getConnectorDefinition(connectorId);
+            const firstVersionId = connector?.versions[0]?.id || '';
+
+            if (!connector) {
+                return;
+            }
+
+            renderConnectorVersionOptions({
+                connectorId: connectorId,
+                selectedVersionId: firstVersionId
+            });
+            renderConnectorMeta();
+            renderConnectorParamsPreview();
+        }
+
+        /**
+         * 根据版本变更联动参数预览。
+         * @returns {void}
+         */
+        function handleConnectorVersionChange() {
+            renderConnectorParamsPreview();
+        }
+
+        /**
+         * 渲染当前弹窗中的连接器中英文名称。
+         * @returns {void}
+         */
+        function renderConnectorMeta() {
+            const connectorId = document.getElementById('connectorNameInput').value;
+            const connector = getConnectorDefinition(connectorId);
+            document.getElementById('connectorCnNameInput').value = connector?.cnName || '';
+            document.getElementById('connectorEnNameInput').value = connector?.enName || '';
+        }
+
+        /**
+         * 渲染当前弹窗中连接器版本的入参和出参预览。
+         * @returns {void}
+         */
+        function renderConnectorParamsPreview() {
+            const connectorId = document.getElementById('connectorNameInput').value;
+            const versionId = document.getElementById('connectorVersionInput').value;
+            const inputParams = getConnectorVersionInputs({
+                connectorId: connectorId,
+                versionId: versionId
+            });
+            const outputParams = getConnectorVersionOutputGroups({
+                connectorId: connectorId,
+                versionId: versionId
+            });
+
+            document.getElementById('connectorInputsPreview').innerHTML = renderParamSummaryGroups(inputParams);
+            document.getElementById('connectorOutputsPreview').innerHTML = renderParamSummaryGroups(outputParams);
+        }
+
+        /**
+         * 保存连接器定义。
+         * @returns {void}
+         */
+        function saveConnector() {
+            const flowConnectorId = document.getElementById('flowConnectorIdInput').value.trim();
+            const connectorId = document.getElementById('connectorNameInput').value.trim();
+            const versionId = document.getElementById('connectorVersionInput').value.trim();
+
+            if (!flowConnectorId || !connectorId || !versionId) {
+                showToast('请完整填写连接器ID、名称和版本');
+                return;
+            }
+
+            const duplicateIndex = flowState.connectors.findIndex(function(connector, index) {
+                return connector.flowConnectorId === flowConnectorId && index !== editingConnectorIndex;
+            });
+
+            if (duplicateIndex > -1) {
+                showToast('连接器ID不能重复');
+                return;
+            }
+
+            const connectorData = {
+                flowConnectorId: flowConnectorId,
+                connectorId: connectorId,
+                versionId: versionId
+            };
+
+            if (editingConnectorIndex > -1) {
+                flowState.connectors[editingConnectorIndex] = connectorData;
+            } else {
+                flowState.connectors.push(connectorData);
+            }
+
+            closeConnectorModal();
+            refreshConnectorRelatedViews();
+            showToast('连接器定义已保存');
+        }
+
+        /**
+         * 删除指定连接器定义。
+         * @param {number} index - 连接器在数组中的下标。
+         * @returns {void}
+         */
+        function removeConnector(index) {
+            const connector = flowState.connectors[index];
+            const confirmMessage = '确认删除连接器 ' + connector.flowConnectorId + ' 吗？脚本中的引用不会自动删除。';
+
+            if (!window.confirm(confirmMessage)) {
+                return;
+            }
+
+            flowState.connectors.splice(index, 1);
+            refreshConnectorRelatedViews();
+            showToast('连接器定义已删除');
+        }
+
+        /**
+         * 刷新连接器相关视图。
+         * @returns {void}
+         */
+        function refreshConnectorRelatedViews() {
+            renderConnectorTable();
+            renderVariableAssistPanel();
+            validateScript();
+        }
+
+        // ========================================
+        // 模板变量辅助区
+        // ========================================
+
+        /**
+         * 生成连接器引用模板变量。
+         * @param {string} flowConnectorId - 当前连接流内的连接器ID。
+         * @returns {string} 连接器模板变量。
+         */
+        function buildConnectorVariable(flowConnectorId) {
+            return '${connector.' + flowConnectorId + '}';
+        }
+
+        /**
+         * 生成连接器出参模板变量。
+         * @param {Object} options - 生成出参变量所需参数。
+         * @returns {string} 出参模板变量。
+         */
+        function buildOutputVariable(options) {
+            const flowConnectorId = options.flowConnectorId;
+            const field = options.field;
+            return '${output.' + flowConnectorId + '.' + field + '}';
+        }
+
+        /**
+         * 渲染右侧模板变量辅助面板。
+         * @returns {void}
+         */
+        function renderVariableAssistPanel() {
+            const connectorVariableList = document.getElementById('connectorVariableList');
+            const connectorDocList = document.getElementById('connectorDocList');
+
+            connectorVariableList.innerHTML = flowState.connectors.map(function(connector) {
+                const connectorDefinition = getConnectorDefinition(connector.connectorId);
+                const variable = buildConnectorVariable(connector.flowConnectorId);
+
+                return '<div class="variable-item">' +
+                    '<div class="variable-code">' + variable + '</div>' +
+                    '<div class="variable-desc">' + (connectorDefinition?.cnName || '-') + '</div>' +
+                '</div>';
+            }).join('') || '<div class="empty-state">暂无可用连接器</div>';
+
+            connectorDocList.innerHTML = flowState.connectors.map(function(connector) {
+                return renderConnectorDocCard(connector);
+            }).join('') || '<div class="empty-state">暂无连接器说明</div>';
+        }
+
+        /**
+         * 渲染单个连接器说明卡片。
+         * @param {Object} connector - 当前连接流内的连接器配置。
+         * @returns {string} 连接器说明HTML。
+         */
+        function renderConnectorDocCard(connector) {
+            const connectorDefinition = getConnectorDefinition(connector.connectorId);
+            const versionDefinition = getConnectorVersionDefinition({
+                connectorId: connector.connectorId,
+                versionId: connector.versionId
+            });
+            const inputParams = getConnectorVersionInputs({
+                connectorId: connector.connectorId,
+                versionId: connector.versionId
+            });
+            const outputParams = getConnectorVersionOutputGroups({
+                connectorId: connector.connectorId,
+                versionId: connector.versionId
+            });
+
+            return '<div class="connector-doc-card">' +
+                '<div class="connector-doc-title">' + connector.flowConnectorId + ' / ' + (connectorDefinition?.cnName || '-') + ' / ' + (versionDefinition?.name || '-') + '</div>' +
+                '<div class="connector-doc-section"><strong>入参</strong>' + renderParamDocGroups(inputParams) + '</div>' +
+                '<div class="connector-doc-section"><strong>出参</strong>' + renderParamDocGroups(outputParams) + '</div>' +
+            '</div>';
+        }
+
+        /**
+         * 渲染参数说明分组。
+         * @param {Object} params - 参数分组对象。
+         * @returns {string} 参数说明HTML。
+         */
+        function renderParamDocGroups(params) {
+            return Object.keys(params).map(function(groupName) {
+                return '<div style="margin-top: 6px;">' +
+                    getParamGroupTitle(groupName) + '：' +
+                    renderParamTree(params[groupName] || []) +
+                '</div>';
+            }).join('');
+        }
+
+        /**
+         * 向脚本编辑器当前光标位置插入文本。
+         * @param {string} text - 需要插入的文本。
+         * @returns {void}
+         */
+        function insertTextAtCursor(text) {
+            const editor = document.getElementById('scriptEditor');
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const beforeText = editor.value.substring(0, start);
+            const afterText = editor.value.substring(end);
+
+            editor.value = beforeText + text + afterText;
+            editor.focus();
+            editor.selectionStart = start + text.length;
+            editor.selectionEnd = start + text.length;
+            handleScriptInput();
+        }
+
+        // ========================================
+        // 脚本编辑与校验
+        // ========================================
+
+        /**
+         * 处理脚本编辑器输入事件。
+         * @returns {void}
+         */
+        function handleScriptInput() {
+            flowState.script = document.getElementById('scriptEditor').value;
+            updateLineNumbers();
+            updateScriptStats();
+        }
+
+        /**
+         * 更新脚本编辑器行号。
+         * @returns {void}
+         */
+        function updateLineNumbers() {
+            const editor = document.getElementById('scriptEditor');
+            const lineNumbers = document.getElementById('lineNumbers');
+            const lineCount = editor.value.split('\n').length;
+            const numbers = [];
+
+            for (let index = 1; index <= lineCount; index += 1) {
+                numbers.push(index);
+            }
+
+            lineNumbers.textContent = numbers.join('\n');
+        }
+
+        /**
+         * 同步行号区域滚动位置。
+         * @returns {void}
+         */
+        function syncLineNumberScroll() {
+            const editor = document.getElementById('scriptEditor');
+            const lineNumbers = document.getElementById('lineNumbers');
+            lineNumbers.scrollTop = editor.scrollTop;
+        }
+
+        /**
+         * 更新脚本统计信息。
+         * @returns {void}
+         */
+        function updateScriptStats() {
+            const script = document.getElementById('scriptEditor').value;
+            const lineCount = script.split('\n').length;
+            const charCount = script.length;
+            document.getElementById('scriptStats').innerText = '行数：' + lineCount + '，字符数：' + charCount;
+        }
+
+        /**
+         * 校验脚本中的模板变量引用是否有效。
+         * @returns {void}
+         */
+        function validateScript() {
+            const script = document.getElementById('scriptEditor').value;
+            const validationList = document.getElementById('validationList');
+            const results = [];
+            const flowConnectorIdSet = new Set(flowState.connectors.map(function(connector) {
+                return connector.flowConnectorId;
+            }));
+
+            validateConnectorReferences({
+                script: script,
+                flowConnectorIdSet: flowConnectorIdSet,
+                results: results
+            });
+
+            validateOutputReferences({
+                script: script,
+                results: results
+            });
+
+            if (results.length === 0) {
+                results.push({
+                    type: 'success',
+                    message: '脚本模板变量校验通过，所有连接器和出参引用均已定义。'
+                });
+            }
+
+            validationList.innerHTML = results.map(function(item) {
+                return '<div class="validation-item ' + item.type + '">' + item.message + '</div>';
+            }).join('');
+
+            return results;
+        }
+
+        /**
+         * 校验连接器调用模板变量。
+         * @param {Object} options - 校验连接器引用所需参数。
+         * @returns {void}
+         */
+        function validateConnectorReferences(options) {
+            const script = options.script;
+            const flowConnectorIdSet = options.flowConnectorIdSet;
+            const results = options.results;
+            const connectorReferenceRegex = /\$\{connector\.([a-zA-Z_$][\w$]*)\}/g;
+            let matchResult = connectorReferenceRegex.exec(script);
+
+            while (matchResult) {
+                const flowConnectorId = matchResult[1];
+
+                if (!flowConnectorIdSet.has(flowConnectorId)) {
+                    results.push({
+                        type: 'error',
+                        message: '连接器引用未定义：${connector.' + flowConnectorId + '}'
+                    });
+                }
+
+                matchResult = connectorReferenceRegex.exec(script);
+            }
+        }
+
+        /**
+         * 校验连接器出参模板变量。
+         * @param {Object} options - 校验出参引用所需参数。
+         * @returns {void}
+         */
+        function validateOutputReferences(options) {
+            const script = options.script;
+            const results = options.results;
+            const outputReferenceRegex = /\$\{output\.([a-zA-Z_$][\w$]*)\.([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)\}/g;
+            let matchResult = outputReferenceRegex.exec(script);
+
+            while (matchResult) {
+                const flowConnectorId = matchResult[1];
+                const fieldPath = matchResult[2];
+                const connector = flowState.connectors.find(function(item) {
+                    return item.flowConnectorId === flowConnectorId;
+                });
+
+                if (!connector) {
+                    results.push({
+                        type: 'error',
+                        message: '出参引用所属连接器未定义：${output.' + flowConnectorId + '.' + fieldPath + '}'
+                    });
+                } else {
+                    const outputs = getConnectorVersionOutputs({
+                        connectorId: connector.connectorId,
+                        versionId: connector.versionId
+                    });
+                    const hasOutputField = outputs.some(function(output) {
+                        return output.path === fieldPath;
+                    });
+
+                    if (!hasOutputField) {
+                        results.push({
+                            type: 'warning',
+                            message: '出参字段未在当前连接器版本中声明：${output.' + flowConnectorId + '.' + fieldPath + '}'
+                        });
+                    }
+                }
+
+                matchResult = outputReferenceRegex.exec(script);
+            }
+        }
+
+        // ========================================
+        // JSON预览与保存发布
+        // ========================================
+
+        /**
+         * 获取当前页面的连接流版本配置。
+         * @returns {Object} 连接流版本配置对象。
+         */
+        function getFlowVersionPayload() {
+            updateFlowMeta();
+            flowState.script = document.getElementById('scriptEditor').value;
+
+            return {
+                id: flowState.id,
+                name: flowState.name,
+                version: flowState.version,
+                owner: flowState.owner,
+                description: flowState.description,
+                orchestrationMode: 'javascript_template_variable',
+                variableRules: {
+                    connectorCall: '${connector.连接器ID}',
+                    connectorOutput: '${output.连接器ID.fieldPath}'
+                },
+                connectors: flowState.connectors,
+                script: flowState.script
+            };
+        }
+
+        /**
+         * 打开 JSON 预览弹窗。
+         * @returns {void}
+         */
+        function openPreviewModal() {
+            const payload = getFlowVersionPayload();
+            document.getElementById('jsonPreviewContent').textContent = JSON.stringify(payload, null, 4);
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        /**
+         * 关闭 JSON 预览弹窗。
+         * @returns {void}
+         */
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.remove('active');
+        }
+
+        /**
+         * 保存当前版本草稿。
+         * @returns {void}
+         */
+        function saveDraft() {
+            getFlowVersionPayload();
+            showToast('草稿已保存（静态演示）');
+        }
+
+        /**
+         * 发布当前连接流版本。
+         * @returns {void}
+         */
+        function publishFlow() {
+            const validationResults = validateScript();
+            const hasError = validationResults.some(function(item) {
+                return item.type === 'error';
+            });
+
+            if (hasError) {
+                showToast('脚本存在错误，请修正后再发布');
+                return;
+            }
+
+            showToast('已提交发布（静态演示）');
+        }
+
+        // ========================================
+        // 通用提示
+        // ========================================
+
+        /**
+         * 展示页面提示信息。
+         * @param {string} message - 提示文案。
+         * @returns {void}
+         */
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+
+            window.setTimeout(function() {
+                toast.classList.remove('show');
+            }, 2200);
+        }
+
+        /**
+         * 页面加载完成后初始化编辑器。
+         * @returns {void}
+         */
+        window.onload = function() {
+            initPage();
+        };
+    </script>
+</body>
+</html>
