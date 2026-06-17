@@ -89,112 +89,44 @@ Event Loop（非阻塞）            boundedElastic（阻塞隔离）
 
 ### 2.1 原理
 
-用户脚本中直接写 V2 引用语法，运行时**先替换、再执行**：
+用户脚本中直接写 V2 引用语法，运行时**先替换、再执行**。
+
+**三步流程**：
 
 ```
-脚本源码：
-  const users = ${$.node.conn_1.output.body.data.users};
-  const name  = ${$.node.trigger.input.body.sender};
+① 用户编写脚本（含 ${$.node.xxx} 引用）
+   const users = ${$.node.conn_1.output.body.data.users};
+   const name  = ${$.node.trigger.input.body.sender};
 
-运行时替换后（纯 JS）：
-  const users = [{"name":"Alice","age":28},{"name":"Bob","age":35}];
-  const name  = "Alice";
+② 运行时替换 — 扫描所有 ${...}，逐个解析为具体值，转为 JS 字面量字符串后替换
+   const users = [{"name":"Alice","age":28},{"name":"Bob","age":35}];
+   const name  = "Alice";
 
-GraalJS 执行 → 返回 { total: 2, avgAge: 31.5 }
+③ GraalJS 执行纯 JS — 此时脚本中已无任何引用，就是标准 JS 代码
+   → 返回 { total: 2, avgAge: 31.5 }
 ```
+
+**关键要点**：
+
+- 替换发生在 GraalJS 编译/执行**之前**，GraalJS 看到的永远是纯 JS
+- 引用语法复用 V2 值表达式体系 `${$.scope.path}`，用户已熟悉
+- 每个引用**独立解析、独立替换**，不依赖脚本上下文——即字符串层面的模板替换，而非 AST 级别的变量绑定
+- 替换后的脚本可能因引用值的内容而产生语法变化（如字符串中含特殊字符），`JSON.stringify` 保证了字面量安全
 
 ### 2.2 替换规则
 
-对脚本中每个 `${$.scope.path}` 引用：
+对脚本中每个 `${$.scope.path}` 引用，解析其运行时值，按以下规则转为 JS 字面量：
 
-| 解析值的 Java 类型 | 替换为 JS 字面量 | 示例 |
-|------|------|------|
-| `String` | `JSON.stringify(value)` → 带引号的转义字符串 | `"hello"` / `"line1\nline2"` |
-| `Integer` / `Long` / `BigDecimal` | `value.toString()` → 数字 | `42` / `3.14` |
-| `Boolean` | `true` 或 `false` | `true` |
-| `null` | `null` | `null` |
-| `Map` / `List` | `JSON.stringify(value)` → JSON 字面量 | `{"a":1}` / `[1,2,3]` |
-| 解析失败（字段不存在） | `null` + WARN 日志 | `null` |
+| 解析值的 Java 类型 | 转换方式 | 替换结果示例 | 说明 |
+|------|------|------|------|
+| `String` | `JSON.stringify(value)` | `"hello"` / `"line1\nline2"` | 自动处理引号转义、换行、Unicode |
+| `Integer` / `Long` / `BigDecimal` | `value.toString()` | `42` / `3.14` | 直接输出数字 |
+| `Boolean` | `true` 或 `false` | `true` | 无引号 |
+| `null` | 字面量 `null` | `null` | — |
+| `Map` / `List` | `JSON.stringify(value)` | `{"a":1}` / `[1,2,3]` | 嵌套对象/数组完整序列化 |
+| 解析失败（字段不存在） | 字面量 `null` + WARN 日志 | `null` | 不中断执行，脚本自行兜底 |
 
-> 💡 统一使用 `JSON.stringify` 处理非基本类型，保证生成的 JS 字面量语法正确（含引号转义、特殊字符处理）。
-
-### 2.3 实现
-
-```java
-package com.openapp.connector.platform.v3.modules.script;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.regex.*;
-
-@Component
-public class ScriptTemplateReplacer {
-
-    // 匹配 ${$.scope.path}  — 与 V2 值表达式体系统一
-    private static final Pattern REF_PATTERN =
-        Pattern.compile("\\$\\{\\$\\.([^}]+)\\}");
-
-    private final ObjectMapper mapper = new ObjectMapper();
-
-    /**
-     * 将脚本中含 ${$.xxx} 的引用全量替换为 JS 字面量值。
-     *
-     * @param scriptContent  用户编写的脚本（含引用语法）
-     * @param ctx            运行时上下文（用于解析 node.xxx.input/output）
-     * @return 替换后的纯 JS 脚本
-     */
-    public String replace(String scriptContent, ExecutionContext ctx) {
-        Matcher matcher = REF_PATTERN.matcher(scriptContent);
-        StringBuilder sb = new StringBuilder();
-
-        while (matcher.find()) {
-            String refPath = matcher.group(1);  // 例如 "node.conn_1.output.body.data.users"
-            Object resolved;
-            try {
-                resolved = ctx.resolve(refPath);
-            } catch (Exception e) {
-                resolved = null;
-                log.warn("脚本引用解析失败: ${$.%s} — %s", refPath, e.getMessage());
-            }
-            String literal = toJsLiteral(resolved);
-            matcher.appendReplacement(sb, Matcher.quoteReplacement(literal));
-        }
-        matcher.appendTail(sb);
-        return sb.toString();
-    }
-
-    /** 将 Java 值转为 JS 字面量字符串 */
-    private String toJsLiteral(Object value) {
-        if (value == null) return "null";
-        if (value instanceof String s) {
-            // JSON.stringify 自动处理引号转义、换行符等
-            try { return mapper.writeValueAsString(s); }
-            catch (Exception e) { return "null"; }
-        }
-        if (value instanceof Number || value instanceof Boolean) {
-            return value.toString();
-        }
-        // Map / List / 其他对象 → JSON 字面量
-        try { return mapper.writeValueAsString(value); }
-        catch (Exception e) { return "null"; }
-    }
-}
-```
-
-### 2.4 替换示例
-
-```
-脚本源码：
-  const phone  = ${$.node.trigger.input.body.phone};
-  const users  = ${$.node.conn_1.output.body.data};
-  const active = ${$.node.conn_1.output.body.active};
-  const total  = users.length;
-
-运行时替换后：
-  const phone  = "13800001111";
-  const users  = [{"name":"Alice","age":28},{"name":"Bob","age":35}];
-  const active = true;
-  const total  = users.length;
-```
+**为什么用 `JSON.stringify`？** 它确保生成的字符串是合法的 JS 字面量。例如值为 `He said "Hi"` 时，`JSON.stringify` 输出 `"He said \"Hi\""`——合法的 JS 字符串字面量。直接拼接会导致 `const msg = "He said "Hi""` 这样的语法错误。
 
 ---
 
