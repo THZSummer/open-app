@@ -275,68 +275,56 @@ public class ScriptCacheManager {
 
 ---
 
-## 5. 执行器实现
+## 5. 执行流程
 
-### 5.1 WebFlux 非阻塞执行器
+### 5.1 运行时执行
+
+脚本节点的执行由 DAG 调度器触发，整体流程如下：
+
+```
+DAG 调度器（Event Loop 线程）
+  │
+  └→ ScriptNodeExecutor.execute(scriptContent, ctx, timeout)
+       │                              ↑ 返回 Mono<Map>，不阻塞 Event Loop
+       │
+       └→ [boundedElastic 线程池]     ← .subscribeOn(Schedulers.boundedElastic())
+            │
+            ├─ ① 字符串替换：扫描 ${$.node.xxx} → 解析值 → JS 字面量
+            ├─ ② 编译/缓存：Source.newBuilder("js", pureJs, ...).build()
+            ├─ ③ 沙箱执行：Context.eval(source)  →  Value
+            └─ ④ 类型转换：Value.as(Map.class)   →  Map<String, Object>
+```
+
+**WebFlux 集成要点**：
+
+- 脚本执行为阻塞操作（GraalJS `Context.eval()` 是同步的），必须通过 `Mono.fromCallable()` 隔离到 `boundedElastic` 线程池，释放 Event Loop 处理其他请求
+- 超时通过 `Mono.timeout(Duration)` 控制，超时后 Mono 以 `TimeoutException` 终止
+- 每执行完一次脚本，`Context` 立即 `close()` 释放 GraalVM 资源，不留残留状态
+
+核心调用链（片段）：
 
 ```java
-@Component
-public class ScriptNodeExecutor {
-
-    private final ScriptTemplateReplacer replacer;
-    private final GraalJSContextFactory contextFactory;
-    private final ScriptCacheManager   cacheManager;
-
-    /**
-     * 执行流程：
-     * ① 字符串替换（${$.node.xxx} → JS 字面量）
-     * ② 编译/缓存
-     * ③ GraalJS Context.eval()
-     * ④ Value → Map
-     */
-    public Mono<Map<String, Object>> execute(
-            String scriptContent,
-            ExecutionContext ctx,
-            Duration timeout) {
-
-        return Mono.fromCallable(() -> {
-            // ① 字符串替换
-            String pureJs = replacer.replace(scriptContent, ctx);
-
-            // ② 编译/缓存（替换后的纯 JS）
-            Source source = cacheManager.compileOrGet(pureJs);
-
-            // ③ 执行
-            Context context = contextFactory.create();
-            try {
-                Value result = context.eval(source);
-                return result.isNull() ? Map.of() : result.as(Map.class);
-            } finally {
-                context.close(true);
-            }
-        })
-        .subscribeOn(Schedulers.boundedElastic())
-        .timeout(timeout);
+Mono.fromCallable(() -> {
+    String pureJs = replacer.replace(scriptContent, ctx);      // ① 替换
+    Source source = cacheManager.compileOrGet(pureJs);         // ② 编译
+    try (Context c = contextFactory.create()) {                // ③ 执行
+        Value v = c.eval(source);
+        return v.isNull() ? Map.of() : v.as(Map.class);       // ④ 转换
     }
-}
+})
+.subscribeOn(Schedulers.boundedElastic())
+.timeout(timeout);
 ```
 
 ### 5.2 发布时校验
 
-连接流版本发布时，对每个 `nodeType=script` 的 `scriptContent` 先做替换（用空上下文，引用会变成 `null`），再交 GraalJS 做语法检查：
+连接流版本发布时，对每个 `scriptContent` 进行语法校验：
 
-```java
-public void validate(String scriptContent) {
-    // 替换引用为 null（仅校验语法，不校验引用有效性—
-    // 引用有效性在运行时自然暴露）
-    String sanitized = REF_PATTERN.matcher(scriptContent).replaceAll("null");
-    try {
-        Source.newBuilder("js", sanitized, "validate.js").build();
-    } catch (PolyglotException e) {
-        throw new ValidationException("脚本语法错误: " + e.getMessage());
-    }
-}
-```
+1. 将所有 `${$.xxx}` 引用**替换为 `null`**（此时无运行时上下文，仅校验 JS 语法）
+2. 调用 `Source.newBuilder("js", ...).build()` 做 parse
+3. parse 成功 = 语法正确；`PolyglotException` = 语法错误 → 拒绝发布
+
+> 💡 发布时不校验引用有效性（字段是否存在、路径是否正确）——这些在运行时自然暴露：引用解析失败 → 替换为 `null` + WARN 日志，不阻塞执行。
 
 ---
 
