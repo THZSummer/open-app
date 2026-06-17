@@ -2,7 +2,7 @@
 
 **Feature ID**: CONN-PLAT-003
 **关联文档**: plan.md（主技术规划）、plan-json-schema.md（值表达式体系 §3）、plan-runtime.md（运行时引擎）
-**版本**: v3.0-draft
+**版本**: v4.0-draft
 **创建日期**: 2026-06-17
 **对齐基线**: spec.md（继承自 V2 v2.24-draft，V3 待重写）
 
@@ -12,96 +12,54 @@
 
 ### 0.1 背景与动机
 
-V2 的数据处理节点（FR-040）仅支持 4 种字段类型转换函数（`toString` / `toNumber` / `toBoolean` / `formatDate`），脚本执行能力被列为 `NG16`。V3 将**内联脚本节点**引入编排画布，使平台从「固定函数编排」升级为「可编程编排」。
+V2 的数据处理节点仅支持 4 种类型转换函数。V3 引入**脚本节点**，用户可在 JS 中直接使用 `${$.node.xxx}` 引用语法访问任意上游节点数据，运行时做**纯字符串替换**后交由 GraalJS 执行。
 
-### 0.2 核心设计决策
+### 0.2 核心设计
 
 | # | 决策 | 说明 |
 |:---:|------|------|
-| 1 | **仅脚本节点（内联）** | 脚本写在连接流版本 JSON 配置中，不做脚本库、不建新表 |
-| 2 | **GraalJS 引擎** | 沙箱能力碾压 Groovy，ES2022 语法，`HostAccess` 精细化 Java 互操作 |
-| 3 | **WebFlux 非阻塞** | `Mono.fromCallable().subscribeOn(boundedElastic)` 隔离，不阻塞 Event Loop |
-| 4 | **Context 沙箱** | `allowIO(false)` + `HostAccess.EXPLICIT` + `statementLimit` 四层防护 |
-| 5 | **Source 编译缓存** | Caffeine 缓存 `Source`，首次编译 2~10ms，后续命中 < 0.5ms |
-| 6 | **配置即存储** | 脚本源码存储在 `FlowVersion.orchestrationConfig` JSON 中，零新增表 |
+| 1 | **无 inputMapping** | 不配置入参映射，用户在脚本内直接写 `${$.node.xxx.output.field}` |
+| 2 | **字符串替换** | 运行前扫描 `${$.scope.path}`，解析值 → JS 字面量，替换到脚本中 |
+| 3 | **GraalJS 引擎** | ES2022，沙箱四层防护，`HostAccess.EXPLICIT` |
+| 4 | **WebFlux 非阻塞** | `Mono.fromCallable().subscribeOn(boundedElastic)` |
+| 5 | **配置即存储** | 脚本源码存于 `FlowVersion.orchestrationConfig` JSON，零新表 |
 
-### 0.3 存储位置
-
-脚本内容作为**连接流版本快照**的一部分，存储在 `FlowVersion.orchestrationConfig` 的 `nodes[]` 中：
+### 0.3 执行模型（一行描述）
 
 ```
-FlowVersion.orchestrationConfig (JSON TEXT)
-  └── nodes[]
-       └── { nodeType: "script", data: { scriptContent: "// JS code", ... } }
+用户写的 JS（含 ${$.node.xxx} 引用）
+      ↓ 字符串替换（解析引用 → JS 字面量）
+纯 JS（所有引用已替换为具体值）
+      ↓ GraalJS Context.eval()
+返回值（JS object → Java Map）
 ```
 
 ### 0.4 Spring Boot + WebFlux + GraalJS 关系
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                 Spring Boot 3.x (Java 21)               │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │              WebFlux (Reactor Netty)              │  │
-│  │  ┌─────────────┐  ┌──────────────────────────┐   │  │
-│  │  │ Event Loop  │  │ boundedElastic Scheduler  │   │  │
-│  │  │ (NIO 非阻塞) │  │    ┌──────────────────┐  │   │  │
-│  │  │             │  │    │  Script Executor  │  │   │  │
-│  │  │  HTTP 路由   │  │    │  Mono.fromCallable│  │   │  │
-│  │  │  参数解析    │  │    │    ↓              │  │   │  │
-│  │  │  响应序列化  │  │    │  GraalJS Context  │  │   │  │
-│  │  │             │  │    │  (阻塞式执行)      │  │   │  │
-│  │  └─────────────┘  │    └──────────────────┘  │   │  │
-│  │                    └──────────────────────────┘   │  │
-│  └──────────────────────────────────────────────────┘  │
-│                         │                              │
-│              ┌──────────┴──────────┐                   │
-│              │  GraalJS Polyglot   │                   │
-│              │  ┌──────────────┐   │                   │
-│              │  │ Context (每次│   │                   │
-│              │  │ 新建/池化)   │   │                   │
-│              │  │ ┌──────────┐ │   │                   │
-│              │  │ │ Bindings │ │   │                   │
-│              │  │ │ ├ input  │ │   │ ← 入参映射解析值  │
-│              │  │ │ ├ ctx    │ │   │ ← 运行时上下文    │
-│              │  │ │ ├ _util  │ │   │ ← Java 工具类     │
-│              │  │ │ ├ _log   │ │   │ ← 日志输出        │
-│              │  │ │ └ ...    │ │   │ ← 自定义业务类    │
-│              │  │ └──────────┘ │   │                   │
-│              │  └──────────────┘   │                   │
-│              │   HostAccess 白名单  │                   │
-│              │   ResourceLimits    │                   │
-│              └─────────────────────┘                   │
-└────────────────────────────────────────────────────────┘
+Event Loop（非阻塞）            boundedElastic（阻塞隔离）
+┌─────────────────┐          ┌──────────────────────────┐
+│ HTTP 路由/解析   │  Mono    │ ScriptNodeExecutor       │
+│ 响应序列化       │←─────── │ ① 字符串替换（引用解析）   │
+│                 │  回调    │ ② GraalJS Context.eval() │
+└─────────────────┘          │ ③ Value → Map            │
+                             └──────────────────────────┘
 ```
 
 ---
 
 ## 1. 语言选型
 
-### 1.1 候选对比
-
-| 维度 | GraalJS (GraalVM) | Groovy 4.x |
-|------|:---:|:---:|
-| **沙箱能力** | ✅ `Context` 原生全维度权限开关 + `ResourceLimits` | ⚠️ `SecureASTCustomizer` 仅编译期 AST 白名单 |
-| **JVM 互操作** | ✅ `HostAccess` 逐方法白名单 | ✅ 无缝调用 |
-| **语言普及度** | ✅ JavaScript / ES2022 | 🟡 Groovy 特有语法 |
-| **性能（预热后）** | 🟢 Graal JIT 编译 | 🟡 中等 |
-| **异步模型** | ✅ Promise/async-await（预留） | ❌ |
-| **体积** | ~30MB | ~8MB |
-
-### 1.2 决策：GraalJS
+### 1.1 决策：GraalJS
 
 | 理由 | 说明 |
 |------|------|
-| 沙箱碾压 | `allowIO(false)` + `allowCreateThread(false)` + `allowNativeAccess(false)` + `HostAccess.EXPLICIT` + `statementLimit(10000)` — 全维度运行时管控 |
-| ES2022 | 应用管理员零学习成本 |
-| Polyglot 扩展 | 后续可按需引入 Python/WASM |
-| 精细 Java 互操作 | `@HostAccess.Export` 注解逐方法暴露，安全可控 |
-
-### 1.3 Maven 依赖
+| 沙箱碾压 | `allowIO/allowCreateThread/allowNativeAccess(false)` + `HostAccess.EXPLICIT` + `statementLimit` — 全维度运行时管控 |
+| ES2022 | 零学习成本 |
+| 精细 Java 互操作 | `@HostAccess.Export` 逐方法暴露 |
 
 ```xml
-<!-- 仅 connector-api 运行时引入，open-server 不引入 -->
+<!-- 仅 connector-api -->
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
@@ -114,70 +72,166 @@ FlowVersion.orchestrationConfig (JSON TEXT)
 </dependency>
 ```
 
-### 1.4 JavaScript 要求
+### 1.2 JavaScript 要求
 
 | 维度 | 约束 |
 |------|------|
-| **版本** | ES2022 (`js.ecmascript-version=2022`) |
-| **严格模式** | 自动启用 |
-| **模块** | 禁用 `import`/`export` |
-| **顶层 await** | 禁用（脚本同步执行） |
-| **返回值约定** | 最后一条表达式值 = 返回值，或显式 `return` |
-| **类型映射** | JS `object` → Java `Map`、JS `number` → Java `double`、JS `string` → `String`、JS `boolean` → `boolean`、JS `Array` → `List` |
+| 版本 | ES2022 |
+| 严格模式 | 自动启用 |
+| 模块 | 禁用 `import`/`export` |
+| 顶层 await | 禁用 |
+| 类型映射 | `object`→`Map`、`number`→`double`、`string`→`String`、`boolean`→`boolean`、`Array`→`List` |
+| 引用语法 | `${$.node.{id}.{input\|output}.path}` — 与 V2 值表达式体系统一 |
 
 ---
 
-## 2. 安全沙箱设计
+## 2. 字符串替换机制（核心）
 
-### 2.1 四层防护
+### 2.1 原理
+
+用户脚本中直接写 V2 引用语法，运行时**先替换、再执行**：
 
 ```
-第 1 层：Context 权限开关
-  allowIO(false)              禁止文件/网络 I/O
-  allowNativeAccess(false)    禁止 JNI
-  allowCreateThread(false)    禁止线程
-  allowCreateProcess(false)   禁止进程
-  allowHostClassLoading(false) 禁止动态加载类
-  allowPolyglotAccess(NONE)   禁止跨语言
-  allowEnvironmentAccess(NONE) 禁止环境变量
+脚本源码：
+  const users = ${$.node.conn_1.output.body.data.users};
+  const name  = ${$.node.trigger.input.body.sender};
 
-第 2 层：HostAccess 白名单
-  HostAccess.EXPLICIT → 仅 @HostAccess.Export 注解方法可调用
-  禁止任意 Java 类查找（allowHostClassLookup(→false)）
+运行时替换后（纯 JS）：
+  const users = [{"name":"Alice","age":28},{"name":"Bob","age":35}];
+  const name  = "Alice";
 
-第 3 层：ResourceLimits
-  statementLimit(10000)   最多 1w 条语句
-  option("js.console","false")
-  option("js.print","false")
-  option("js.load","false")
-
-第 4 层：运维熔断
-  单节点连续超时 5 次 → 版本自动禁用 + 告警
-  全平台超时率 > 10% → 平台级告警
+GraalJS 执行 → 返回 { total: 2, avgAge: 31.5 }
 ```
 
-### 2.2 Context 工厂（核心代码）
+### 2.2 替换规则
+
+对脚本中每个 `${$.scope.path}` 引用：
+
+| 解析值的 Java 类型 | 替换为 JS 字面量 | 示例 |
+|------|------|------|
+| `String` | `JSON.stringify(value)` → 带引号的转义字符串 | `"hello"` / `"line1\nline2"` |
+| `Integer` / `Long` / `BigDecimal` | `value.toString()` → 数字 | `42` / `3.14` |
+| `Boolean` | `true` 或 `false` | `true` |
+| `null` | `null` | `null` |
+| `Map` / `List` | `JSON.stringify(value)` → JSON 字面量 | `{"a":1}` / `[1,2,3]` |
+| 解析失败（字段不存在） | `null` + WARN 日志 | `null` |
+
+> 💡 统一使用 `JSON.stringify` 处理非基本类型，保证生成的 JS 字面量语法正确（含引号转义、特殊字符处理）。
+
+### 2.3 实现
 
 ```java
-package com.openapp.connector.platform.v3.modules.script.context;
+package com.openapp.connector.platform.v3.modules.script;
 
-import org.graalvm.polyglot.*;
-import org.springframework.stereotype.Component;
-import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.regex.*;
 
+@Component
+public class ScriptTemplateReplacer {
+
+    // 匹配 ${$.scope.path}  — 与 V2 值表达式体系统一
+    private static final Pattern REF_PATTERN =
+        Pattern.compile("\\$\\{\\$\\.([^}]+)\\}");
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    /**
+     * 将脚本中含 ${$.xxx} 的引用全量替换为 JS 字面量值。
+     *
+     * @param scriptContent  用户编写的脚本（含引用语法）
+     * @param ctx            运行时上下文（用于解析 node.xxx.input/output）
+     * @return 替换后的纯 JS 脚本
+     */
+    public String replace(String scriptContent, ExecutionContext ctx) {
+        Matcher matcher = REF_PATTERN.matcher(scriptContent);
+        StringBuilder sb = new StringBuilder();
+
+        while (matcher.find()) {
+            String refPath = matcher.group(1);  // 例如 "node.conn_1.output.body.data.users"
+            Object resolved;
+            try {
+                resolved = ctx.resolve(refPath);
+            } catch (Exception e) {
+                resolved = null;
+                log.warn("脚本引用解析失败: ${$.%s} — %s", refPath, e.getMessage());
+            }
+            String literal = toJsLiteral(resolved);
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(literal));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    /** 将 Java 值转为 JS 字面量字符串 */
+    private String toJsLiteral(Object value) {
+        if (value == null) return "null";
+        if (value instanceof String s) {
+            // JSON.stringify 自动处理引号转义、换行符等
+            try { return mapper.writeValueAsString(s); }
+            catch (Exception e) { return "null"; }
+        }
+        if (value instanceof Number || value instanceof Boolean) {
+            return value.toString();
+        }
+        // Map / List / 其他对象 → JSON 字面量
+        try { return mapper.writeValueAsString(value); }
+        catch (Exception e) { return "null"; }
+    }
+}
+```
+
+### 2.4 替换示例
+
+```
+脚本源码：
+  const phone  = ${$.node.trigger.input.body.phone};
+  const users  = ${$.node.conn_1.output.body.data};
+  const active = ${$.node.conn_1.output.body.active};
+  const total  = users.length;
+
+运行时替换后：
+  const phone  = "13800001111";
+  const users  = [{"name":"Alice","age":28},{"name":"Bob","age":35}];
+  const active = true;
+  const total  = users.length;
+```
+
+---
+
+## 3. 安全沙箱
+
+### 3.1 四层防护
+
+```
+第 1 层：Context 权限开关（全关）
+  allowIO/allowNativeAccess/allowCreateThread/allowCreateProcess(false)
+  allowPolyglotAccess(NONE)  allowEnvironmentAccess(NONE)
+
+第 2 层：HostAccess 白名单
+  HostAccess.EXPLICIT → 仅 @HostAccess.Export 方法可被 JS 调用
+  allowHostClassLookup(→false)
+
+第 3 层：ResourceLimits
+  statementLimit(10000)
+  禁用 console/print/load
+
+第 4 层：运维熔断
+  连续超时 5 次 → 版本禁用 + 告警
+```
+
+### 3.2 Context 工厂
+
+```java
 @Component
 public class GraalJSContextFactory {
 
     private static final Engine SHARED_ENGINE = Engine.newBuilder()
-        .option("engine.WarnInterpreterOnly", "false")
-        .build();
+        .option("engine.WarnInterpreterOnly", "false").build();
 
-    /** 每次调用创建全新沙箱 Context */
-    public Context createSandboxContext(Map<String, Object> bindingsMap) {
+    public Context create() {
         Context ctx = Context.newBuilder("js")
             .engine(SHARED_ENGINE)
 
-            // 第 1 层
             .allowIO(false)
             .allowNativeAccess(false)
             .allowCreateThread(false)
@@ -186,20 +240,16 @@ public class GraalJSContextFactory {
             .allowPolyglotAccess(PolyglotAccess.NONE)
             .allowEnvironmentAccess(EnvironmentAccess.NONE)
             .allowExperimentalOptions(false)
-            .allowValueSharing(false)
 
-            // 第 2 层：仅 @HostAccess.Export 方法可被 JS 调用
             .allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT)
                 .allowAccessAnnotatedBy(HostAccess.Export.class)
                 .allowListAccess(true)
                 .allowMapAccess(true)
                 .build())
-            .allowHostClassLookup(className -> false)
+            .allowHostClassLookup(cn -> false)
 
-            // 第 3 层
             .resourceLimits(ResourceLimits.newBuilder()
-                .statementLimit(10000, null)
-                .build())
+                .statementLimit(10000, null).build())
             .option("js.ecmascript-version", "2022")
             .option("js.console", "false")
             .option("js.print", "false")
@@ -210,53 +260,15 @@ public class GraalJSContextFactory {
 
             .build();
 
-        // 注入 bindings
-        Value jsBindings = ctx.getBindings("js");
-        for (Map.Entry<String, Object> e : bindingsMap.entrySet()) {
-            jsBindings.putMember(e.getKey(), e.getValue());
-        }
-        jsBindings.putMember("_util", new ScriptUtil());
-        jsBindings.putMember("_log",  new ScriptLogger());
-
+        Value js = ctx.getBindings("js");
+        js.putMember("_util", new ScriptUtil());
+        js.putMember("_log",  new ScriptLogger());
         return ctx;
     }
 }
 ```
 
-### 2.3 WebFlux 非阻塞包装
-
-```java
-@Component
-public class ScriptNodeExecutor {
-
-    private final GraalJSContextFactory contextFactory;
-    private final ScriptCacheManager   cacheManager;
-
-    /**
-     * 执行脚本节点。阻塞操作跑在 boundedElastic 线程池，不占用 Event Loop。
-     */
-    public Mono<Map<String, Object>> execute(
-            String scriptContent,
-            Map<String, Object> bindings,
-            Duration timeout) {
-
-        return Mono.fromCallable(() -> {
-            Source source = cacheManager.compileOrGet(scriptContent);
-            Context ctx = contextFactory.createSandboxContext(bindings);
-            try {
-                Value result = ctx.eval(source);
-                return result.isNull() ? Map.of() : result.as(Map.class);
-            } finally {
-                ctx.close(true);
-            }
-        })
-        .subscribeOn(Schedulers.boundedElastic())
-        .timeout(timeout);
-    }
-}
-```
-
-### 2.4 编译缓存
+### 3.3 编译缓存
 
 ```java
 @Component
@@ -267,34 +279,21 @@ public class ScriptCacheManager {
         .expireAfterAccess(Duration.ofMinutes(30))
         .build();
 
-    public Source compileOrGet(String scriptContent) {
-        String hash = DigestUtils.md5Hex(scriptContent).substring(0, 16);
+    public Source compileOrGet(String pureJs) {  // 入参是替换后的纯 JS
+        String hash = DigestUtils.md5Hex(pureJs).substring(0, 16);
         return cache.get(hash, k ->
-            Source.newBuilder("js", scriptContent, "inline.js").build());
+            Source.newBuilder("js", pureJs, "script.js").build());
     }
 }
 ```
 
 ---
 
-## 3. 脚本节点详设
+## 4. 脚本节点配置
 
-### 3.1 节点类型
+### 4.1 配置结构
 
-脚本节点是编排画布中的**独立节点类型**，与触发器、连接器、数据处理、数据输出节点并列：
-
-```
-触发器 ──▶ 连接器 ──▶ [脚本节点] ──▶ 数据输出
-                        │
-                        ├── scriptContent（多行 JS ES2022）
-                        ├── inputMapping（引用上游字段 → input 对象）
-                        ├── outputSchema（出参字段声明）
-                        └── timeout（超时，默认 5s）
-```
-
-### 3.2 配置结构
-
-存储在 `FlowVersion.orchestrationConfig.nodes[]` 中：
+存储在 `FlowVersion.orchestrationConfig.nodes[]`，无 `inputMapping`：
 
 ```json
 {
@@ -302,39 +301,37 @@ public class ScriptCacheManager {
   "nodeType": "script",
   "label": "数据清洗与聚合",
   "data": {
-    "scriptContent": "// JavaScript ES2022\nconst users = input.users;\n\nconst summary = {};\nsummary.total = users.length;\nsummary.avgAge = users.reduce((sum, u) => sum + u.age, 0) / users.length;\nsummary.activeCount = users.filter(u => u.status === 'active').length;\n\nsummary;",
-    "inputMapping": {
-      "users": {
-        "type": "array",
-        "value": "${$.node.conn_1.output.body.data.users}"
-      }
-    },
+    "scriptContent": "const users = ${$.node.conn_1.output.body.data.users};\nconst total = users.length;\nconst avgAge = users.reduce((s,u) => s + u.age, 0) / total;\n({ total, avgAge });",
     "outputSchema": {
-      "summary": {
-        "type": "object",
-        "properties": {
-          "total":       { "type": "number" },
-          "avgAge":      { "type": "number" },
-          "activeCount": { "type": "number" }
-        }
-      }
+      "total":  { "type": "number" },
+      "avgAge": { "type": "number" }
     },
     "timeout": 5,
-    "description": "统计用户总数、平均年龄、活跃数"
+    "description": "统计用户总数和平均年龄"
   }
 }
 ```
 
-### 3.3 注入到 JS 的变量
+### 4.2 字段说明
 
-| 变量 | 类型 | 来源 | 说明 |
-|------|------|------|------|
-| `input` | `object` | `inputMapping` 解析 | 脚本入参，键=映射字段名 |
-| `ctx` | `object` | Java ExecutionContext 代理 | 只读，所有节点 `input`/`output` |
-| `_util` | `object` | `ScriptUtil` 实例 | 工具方法（见 §4） |
-| `_log` | `object` | `ScriptLogger` 实例 | `_log.info/warn/debug/error(...)` |
+| 字段 | 必填 | 说明 |
+|------|:---:|------|
+| `scriptContent` | ✅ | JS 脚本，可使用 `${$.node.{id}.{input\|output}.path}` 引用 |
+| `outputSchema` | ❌ | 出参字段声明（用于发布时类型校验和下游提示） |
+| `timeout` | ❌ | 超时秒数，默认 5，最大 30 |
+| `description` | ❌ | 节点说明 |
 
-### 3.4 约束
+### 4.3 注入到 JS 的内置变量
+
+| 变量 | 类型 | 说明 |
+|------|------|------|
+| `_util` | `ScriptUtil` 实例 | `_util.md5/ uuid/ base64Encode/ formatDate/ parseJson/ toJson/ sha256/ timestamp` |
+| `_log` | `ScriptLogger` 实例 | `_log.info/warn/debug/error(msg)` |
+
+> 💡 不需要 `input` 对象——用户直接用 `${$.node.xxx}` 引用，替换后脚本中就是纯字面量值。
+> 💡 不需要 `ctx` 对象——需要什么字段就在脚本中写 `${$.node.xxx}` 引用。
+
+### 4.4 约束
 
 | 约束 | 值 |
 |------|:---:|
@@ -342,68 +339,80 @@ public class ScriptCacheManager {
 | 脚本最大长度 | 10000 字符 |
 | 默认超时 | 5s（可配 1~30s） |
 | 语句上限 | 10000 条 |
-| 返回值类型 | JS object → Java `Map<String,Object>` |
 | 沙箱违规 | `PolyglotException` → 节点失败 |
 
-### 3.5 执行流程
+---
 
-```mermaid
-sequenceDiagram
-    participant DAG as DAG 调度器 (Event Loop)
-    participant EXEC as ScriptNodeExecutor
-    participant POOL as boundedElastic 线程池
-    participant CACHE as ScriptCacheManager
-    participant GRAAL as GraalJS Context
+## 5. 执行器实现
 
-    DAG->>EXEC: execute(scriptContent, bindings, timeout)
-    Note over DAG,EXEC: 返回 Mono，不阻塞 Event Loop
-
-    EXEC-->>POOL: Mono.fromCallable() 提交到 boundedElastic
-
-    POOL->>CACHE: compileOrGet(scriptContent)
-    CACHE-->>POOL: Source (缓存命中/新建)
-
-    POOL->>GRAAL: createSandboxContext(bindings)
-    POOL->>GRAAL: context.eval(source)
-    GRAAL-->>POOL: Value result
-
-    POOL->>POOL: result.as(Map.class)
-    POOL-->>EXEC: Map<String,Object>
-
-    EXEC-->>DAG: Mono 完成，结果回调 Event Loop
-```
-
-### 3.6 发布时校验
-
-连接流版本发布时（FR-026），对每个 `nodeType=script` 执行编译校验：
+### 5.1 WebFlux 非阻塞执行器
 
 ```java
-// ScriptValidator.java
+@Component
+public class ScriptNodeExecutor {
+
+    private final ScriptTemplateReplacer replacer;
+    private final GraalJSContextFactory contextFactory;
+    private final ScriptCacheManager   cacheManager;
+
+    /**
+     * 执行流程：
+     * ① 字符串替换（${$.node.xxx} → JS 字面量）
+     * ② 编译/缓存
+     * ③ GraalJS Context.eval()
+     * ④ Value → Map
+     */
+    public Mono<Map<String, Object>> execute(
+            String scriptContent,
+            ExecutionContext ctx,
+            Duration timeout) {
+
+        return Mono.fromCallable(() -> {
+            // ① 字符串替换
+            String pureJs = replacer.replace(scriptContent, ctx);
+
+            // ② 编译/缓存（替换后的纯 JS）
+            Source source = cacheManager.compileOrGet(pureJs);
+
+            // ③ 执行
+            Context context = contextFactory.create();
+            try {
+                Value result = context.eval(source);
+                return result.isNull() ? Map.of() : result.as(Map.class);
+            } finally {
+                context.close(true);
+            }
+        })
+        .subscribeOn(Schedulers.boundedElastic())
+        .timeout(timeout);
+    }
+}
+```
+
+### 5.2 发布时校验
+
+连接流版本发布时，对每个 `nodeType=script` 的 `scriptContent` 先做替换（用空上下文，引用会变成 `null`），再交 GraalJS 做语法检查：
+
+```java
 public void validate(String scriptContent) {
+    // 替换引用为 null（仅校验语法，不校验引用有效性—
+    // 引用有效性在运行时自然暴露）
+    String sanitized = REF_PATTERN.matcher(scriptContent).replaceAll("null");
     try {
-        Source source = Source.newBuilder("js", scriptContent, "validate.js").build();
-        // parse 成功 = 语法正确（不实际执行，仅语法检查）
+        Source.newBuilder("js", sanitized, "validate.js").build();
     } catch (PolyglotException e) {
         throw new ValidationException("脚本语法错误: " + e.getMessage());
     }
 }
 ```
 
-> 💡 仅校验 JS 语法（parse），**不执行**脚本，与 V2「草稿保存不校验、发布时统一校验」原则一致。
-
 ---
 
-## 4. Java 工具类暴露给 JS
+## 6. Java 工具类暴露给 JS
 
-### 4.1 `ScriptUtil`
+### 6.1 ScriptUtil
 
 ```java
-package com.openapp.connector.platform.v3.modules.script.context;
-
-/**
- * JS 中通过 _util.xxx() 调用。
- * 方法通过 @HostAccess.Export 暴露，其余 private 方法不可访问。
- */
 public class ScriptUtil {
 
     @HostAccess.Export
@@ -435,15 +444,9 @@ public class ScriptUtil {
 }
 ```
 
-### 4.2 自定义业务类暴露给 JS
-
-业务类通过 `@HostAccess.Export` 标注，在 `ContextFactory` 中注入：
+### 6.2 自定义业务类
 
 ```java
-package com.openapp.connector.platform.v3.modules.script.business;
-
-import org.graalvm.polyglot.HostAccess;
-
 public class CustomValidator {
 
     @HostAccess.Export
@@ -452,207 +455,166 @@ public class CustomValidator {
     }
 
     @HostAccess.Export
-    public String orderGrade(double amount) {
-        if (amount >= 10000) return "VIP";
-        if (amount >= 1000)  return "Gold";
-        return "Standard";
-    }
+    public String orderGrade(double amount) { /* VIP/Gold/Standard */ }
 }
 ```
 
-**注册到 Context**：
+注册到 Context（在 `GraalJSContextFactory.create()` 中追加）：
 
 ```java
-// GraalJSContextFactory.createSandboxContext() 内追加：
-jsBindings.putMember("_customValidator", new CustomValidator());
-
-// 若不同连接流需要不同业务类组合，可在 bindingsMap 中动态传入
+// 自定义业务类随 bindings 注入
+js.putMember("_customValidator", new CustomValidator());
 ```
 
-### 4.3 JS 中调用 Java 类示例
+### 6.3 JS 中调用示例
 
 ```javascript
-// 1. 调用工具方法
-const hash = _util.md5(input.userId + _util.timestamp());
-const decoded = _util.base64Decode(input.payload);
+// 工具方法
+const hash  = _util.md5(${$.node.trigger.input.body.userId});
+const now   = _util.formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss');
 
-// 2. 调用自定义业务类
-const isValid = _customValidator.checkPhone(input.phone);
-if (!isValid) throw new Error('Invalid phone: ' + input.phone);
+// 自定义业务类
+const phone  = ${$.node.trigger.input.body.phone};
+const amount = ${$.node.conn_1.output.body.totalAmount};
+const grade  = _customValidator.orderGrade(amount);
 
-const grade = _customValidator.orderGrade(input.amount);
+// 日志
+_log.info('Order: ' + phone + ', grade=' + grade);
 
-// 3. 访问上游节点数据（ctx 只读）
-const upstreamData = ctx.node.conn_1.output.body;
-
-// 4. 日志
-_log.info(`Order validated: grade=${grade}`);
-
-// 5. 返回值
-({ hash, grade, isValid });
+({ hash, grade, time: now });
 ```
 
 ---
 
-## 5. 错误处理与监控
+## 7. 错误处理与监控
 
-### 5.1 错误类型
+### 7.1 错误类型
 
-| 错误 | Java 异常 | 处理 |
-|------|---------|------|
-| JS 语法错误 | `PolyglotException`（编译期） | 发布时拦截，不进入运行时 |
-| 沙箱违规 | `PolyglotException: Access denied` | 运行时捕获，节点失败 |
-| 语句超限 | `ResourceLimitExceededException` | 运行时捕获，节点失败 |
-| 执行超时 | `TimeoutException` | WebFlux `Mono.timeout()` 触发 |
-| JS 运行时异常 | `PolyglotException` | 被错误处理节点按策略（重试/忽略/终止）处理 |
+| 错误 | 异常 | 处理 |
+|------|------|------|
+| JS 语法错误 | `PolyglotException`（编译期） | 发布时拦截 |
+| 引用解析失败 | `null` + WARN 日志 | 不阻塞，脚本自行判断空值 |
+| 沙箱违规 | `PolyglotException: Access denied` | 节点失败 |
+| 语句超限 | `ResourceLimitExceededException` | 节点失败 |
+| 执行超时 | `TimeoutException` | 错误处理节点按策略处理 |
 
-### 5.2 监控指标
-
-```
-script.execution.count        脚本执行总数（tag: flowId, nodeId）
-script.execution.duration     耗时分布（P50/P95/P99）
-script.execution.timeout      超时次数
-script.execution.sandbox_error 沙箱拦截次数
-script.compilation.cache_hit   Source 缓存命中率
-```
-
-### 5.3 熔断
+### 7.2 监控指标
 
 ```
-单节点连续超时 5 次 → 版本自动标记失效 + 平台告警
-全平台超时率 > 10%（5 分钟窗口）→ 告警
+script.execution.count        tag: flowId, nodeId
+script.execution.duration     P50/P95/P99
+script.execution.timeout
+script.execution.sandbox_error
+script.template.replace_fail  引用解析失败次数
+script.compilation.cache_hit
+```
+
+### 7.3 熔断
+
+```
+单节点连续超时 5 次 → 版本失效 + 告警
+全平台超时率 > 10%（5min 窗口）→ 告警
 ```
 
 ---
 
-## 6. 与现有节点的关系
-
-### 6.1 脚本节点 vs 数据处理节点
-
-| 维度 | 数据处理节点（V2 FR-040） | 脚本节点（V3 新增） |
-|------|:---:|:---:|
-| 能力 | 4 种类型转换函数 | 任意 JS 逻辑 |
-| 入口 | 节点属性面板 → outputField → function | 独立节点 → scriptContent 编辑器 |
-| 行数 | 单行函数调用 | 多行（最多 10000 字符） |
-| 适用场景 | 简单类型转换 | 复杂聚合、条件计算、数据清洗 |
-
-### 6.2 错误处理集成
-
-脚本节点被错误处理节点（FR-039a）包裹，支持三种策略：
-- **重试**：重新执行脚本（新 Context，无状态残留）
-- **忽略**：跳过脚本节点，继续下游
-- **终止**：终止整个连接流
-
----
-
-## 7. 风险与缓解
+## 8. 风险
 
 | 风险 | 等级 | 缓解 |
 |------|:---:|------|
-| GraalJS 沙箱逃逸 CVE | 🟡 | 锁定 24.1.x LTS，跟踪 Oracle 安全公告 |
-| GraalJS ~30MB 体积 | 🟢 | 仅 connector-api 引入，管理面不引入 |
-| Context 创建 ~10ms/次 | 🟡 | Caffeine Source 缓存 + Context 池化（可选） |
-| 阻塞 Event Loop | 🟢 | `Mono.fromCallable().subscribeOn(boundedElastic)` |
-| JS number ↔ double 精度 | 🟡 | 大整数用 `_util` 字符串工具方法；文档明确映射规则 |
+| GraalJS 沙箱逃逸 CVE | 🟡 | 24.1.x LTS，跟踪 Oracle 安全公告 |
+| GraalJS ~30MB 体积 | 🟢 | 仅 connector-api 引入 |
+| `${}` 替换后 JS 语法错误 | 🟢 | `JSON.stringify` 保证字面量安全；脚本编辑器实时预览 |
+| 引用字段不存在 | 🟢 | 替换为 `null` + 日志，脚本自行 `??` 兜底 |
+| JS number ↔ double 精度 | 🟡 | 大整数用 `_util` 字符串方法 |
 
 ---
 
-## 8. 版本规划
+## 9. 版本规划
 
-| 阶段 | 范围 | 预估 |
-|------|------|:--:|
-| Phase 1 | GraalJS Context 工厂 + 沙箱 + Source 缓存 + WebFlux 集成 | 基准 |
-| Phase 2 | 脚本节点 DAG 集成 + inputMapping/outputSchema + 超时 + 错误处理 | +2 天 |
-| Phase 3 | 自定义业务类 `@HostAccess.Export` 体系 + ScriptUtil 完善 | +1 天 |
-| Phase 4 | 监控指标 + 熔断 + Context 池化优化 | +2 天 |
+| 阶段 | 范围 |
+|------|------|
+| Phase 1 | `ScriptTemplateReplacer` + `GraalJSContextFactory` + `ScriptCacheManager` |
+| Phase 2 | `ScriptNodeExecutor` + DAG 集成 + 超时 + 错误处理 |
+| Phase 3 | 自定义业务类体系 + ScriptUtil 完善 + 发布时校验 |
+| Phase 4 | 监控 + 熔断 + 编辑器实时预览 |
 
 ---
 
 ## 附录 A：完整 JS 脚本示例
 
-### A.1 列表聚合统计
+### A.1 列表聚合
 
 ```javascript
-const items = input.orderItems;
+const users = ${$.node.conn_1.output.body.data.users};
+const total  = users.length;
+const avgAge = users.reduce((sum, u) => sum + u.age, 0) / total;
 
-const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-const avgPrice = items.reduce((sum, item) => sum + item.price, 0) / items.length;
-const categories = new Set(items.map(i => i.category)).size;
-
-_log.info(`Processed ${items.length} orders, ${categories} categories`);
-
-({ orderStats: { totalAmount, avgPrice, categories } });
+({ total, avgAge });
 ```
 
-### A.2 数据脱敏 + 调用自定义类
+### A.2 数据脱敏 + 条件路由
 
 ```javascript
-const phone = input.phone;
-const amount = input.orderAmount;
-
-if (!_customValidator.checkPhone(phone)) {
-    throw new Error('手机号格式不合法: ' + phone);
-}
+const phone  = ${$.node.trigger.input.body.phone};
+const amount = ${$.node.conn_1.output.body.totalAmount};
+const name   = ${$.node.trigger.input.body.sender};
 
 const grade = _customValidator.orderGrade(amount);
+const masked = phone.substring(0,3) + '****' + phone.substring(7);
+const hash   = _util.md5(phone + amount);
 
-// 脱敏
-const masked = phone.substring(0, 3) + '****' + phone.substring(7);
+_log.info(`${name}: grade=${grade}`);
 
-const hash = _util.md5(phone + amount);
-const now  = _util.formatDate(Date.now(), 'yyyy-MM-dd HH:mm:ss');
-
-({ grade, masked, hash, validatedAt: now });
+({ name, grade, masked, hash });
 ```
 
-### A.3 ES2022 特性使用
+### A.3 分组统计（ES2022）
 
 ```javascript
-const users = input.users ?? [];
+const items = ${$.node.conn_1.output.body.data.items} ?? [];
 
-const lastUser = users.at(-1);         // Array.at() — ES2022
-const hasActive = users.some(u => u.status === 'active');
-
-// 分组
-const byStatus = users.reduce((groups, user) => {
-    (groups[user.status] ??= []).push(user);
+const byCategory = items.reduce((groups, item) => {
+    (groups[item.category] ??= []).push(item);
     return groups;
 }, {});
 
-({ total: users.length, lastUser: lastUser?.name, hasActive, byStatus });
+const total = items.length;
+const last  = items.at(-1);
+
+({ total, lastItem: last?.name, byCategory });
 ```
 
-### A.4 复杂条件路由
+### A.4 复杂计算
 
 ```javascript
-const { score, history } = input;
+const orders  = ${$.node.conn_1.output.body.orders};
+const history = ${$.node.conn_2.output.body.history};
 
-const avgHistory = history.length > 0
+const totalRevenue = orders.reduce((s, o) => s + o.price * o.qty, 0);
+const avgHistory   = history.length > 0
     ? history.reduce((s, h) => s + h, 0) / history.length
     : 0;
 
-let level;
-if (score >= 90 && avgHistory >= 85)     level = 'SSS';
-else if (score >= 80 && avgHistory >= 70) level = 'A';
-else if (score >= 60)                    level = 'B';
-else                                     level = 'C';
+let tier;
+if (totalRevenue >= 100000 && avgHistory >= 90) tier = 'S';
+else if (totalRevenue >= 10000)                  tier = 'A';
+else                                             tier = 'B';
 
-const discount = { SSS: 0.5, A: 0.7, B: 0.85, C: 1.0 }[level];
-
-({ level, discount, avgHistory });
+({ totalRevenue, avgHistory, tier });
 ```
 
 ---
 
 ## 附录 B：修订记录
 
-| 版本 | 日期 | 修订内容 | 修订人 |
-|------|------|---------|--------|
-| v1.0 | 2026-06-17 | 初始版本：Groovy 方案，三种执行形态 + 脚本库 | SDDU Plan Agent |
-| v2.0 | 2026-06-17 | 翻转为 GraalJS；新增 WebFlux 架构图、HostAccess 自定义类示例 | SDDU Plan Agent |
-| v3.0 | 2026-06-17 | **大幅精简**：移除脚本库/数据库表/API 设计；脚本纯内联存储在 `FlowVersion.orchestrationConfig` JSON 中；仅保留脚本节点一种形态 | SDDU Plan Agent |
+| 版本 | 日期 | 修订内容 |
+|------|------|---------|
+| v1.0 | 06-17 | 初始：Groovy 方案，三种形态 + 脚本库 |
+| v2.0 | 06-17 | 翻转为 GraalJS；新增 WebFlux 架构、HostAccess 示例 |
+| v3.0 | 06-17 | 精简：移除脚本库/数据库表/API，仅保留内联脚本节点 |
+| v4.0 | 06-17 | **移除 inputMapping，改为脚本内直接写 `${$.node.xxx}` 引用，运行时字符串替换** |
 
 ---
 
-**文档状态**: 📝 初稿（draft，v3.0）
-**下一步**: 与 V3 整体 spec.md 对齐后纳入 plan.md 子文档索引
+**文档状态**: 📝 初稿（draft，v4.0）
