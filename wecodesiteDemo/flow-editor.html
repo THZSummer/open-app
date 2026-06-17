@@ -830,6 +830,31 @@
             font-size: 14px;
         }
 
+        /* 连接流无版本状态用于替代画布区域展示 */
+        .no-version-flow-state {
+            display: none;
+            flex: 1;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            background: var(--bg-light);
+            color: var(--text-tertiary);
+            text-align: center;
+        }
+
+        /* 连接流无版本图标用于强化空状态提示 */
+        .no-version-flow-icon {
+            font-size: 52px;
+            opacity: 0.55;
+        }
+
+        /* 连接流无版本文案用于说明当前无法编辑画布的原因 */
+        .no-version-flow-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
         /* ========================================
            弹窗样式
            ======================================== */
@@ -989,8 +1014,15 @@
 
             <!-- 编辑器主体 -->
             <div class="editor-content">
+                <!-- 无版本提示区域，版本为空时替代画布展示 -->
+                <div class="no-version-flow-state" id="noVersionFlowState">
+                    <div class="no-version-flow-icon">∅</div>
+                    <div class="no-version-flow-text">当前连接流暂无版本，请先创建草稿版本后再配置画布</div>
+                    <button class="btn btn-primary" onclick="handleCreateDraftVersion()">创建草稿</button>
+                </div>
+
                 <!-- 画布区域 -->
-                <div class="canvas-area">
+                <div class="canvas-area" id="canvasArea">
                     <div class="canvas-container" id="canvas">
                         <!-- 节点和连线渲染在这里 -->
                     </div>
@@ -1112,8 +1144,9 @@
         <div class="drawer-body">
             <!-- 限流配置 -->
             <div class="form-group">
-                <label class="form-label">限流配置（最大1000）</label>
+                <label class="form-label">限流配置（默认上限1000，当前上限<span id="rateLimitMaxText">1000</span>）</label>
                 <input type="number" class="form-input" id="rateLimitInput" placeholder="请输入限流值" min="1" max="1000" value="10">
+                <div style="margin-top: 4px; color: var(--text-tertiary); font-size: 12px;">可通过应用级配置接口获取当前应用限流上限；接口无返回时使用默认上限1000。</div>
             </div>
 
             <div class="divider" style="height: 1px; background: var(--border-color); margin: 16px 0;"></div>
@@ -1193,7 +1226,7 @@
     <!-- 调试抽屉（底部滑出，无蒙层） -->
     <div class="debug-drawer" id="debugDrawer">
         <div class="drawer-header">
-            <h3 class="drawer-title">保存并调试 - <span id="debugFlowName">连接流</span></h3>
+            <h3 class="drawer-title">调试 - <span id="debugFlowName">连接流</span></h3>
             <button class="drawer-close" onclick="closeDebugDrawer()">✕</button>
         </div>
         <div class="drawer-body">
@@ -1222,13 +1255,13 @@
             <div class="form-group" style="margin-top: 24px;">
                 <label class="form-label" style="font-weight: 600;">执行输出</label>
                 <div id="debugOutput" style="margin-top: 12px; padding: 16px; background: #1e1e1e; border-radius: 6px; color: #d4d4d4; font-family: monospace; font-size: 13px; min-height: 150px; white-space: pre-wrap;">
-                    <span style="color: var(--text-tertiary);">点击"开始调试"查看执行结果...</span>
+                    <span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>
                 </div>
             </div>
         </div>
         <div class="drawer-footer">
             <button class="btn" onclick="closeDebugDrawer()">关闭</button>
-            <button class="btn btn-primary" onclick="executeDebug()">开始调试</button>
+            <button class="btn btn-primary" onclick="executeDebug()">立即调试</button>
         </div>
     </div>
 
@@ -3289,6 +3322,12 @@
         // 并行节点最多允许配置的分支数量
         const PARALLEL_BRANCH_LIMIT = 8;
 
+        // 应用级配置上限模拟数据，接口无返回时使用默认上限
+        const APP_FLOW_CONFIG_LIMITS = {
+            rateLimitMax: 1000,
+            connectorTimeoutMax: 3
+        };
+
         // 版本状态常量
         const FLOW_VERSION_STATUS = {
             DRAFT: 'draft',
@@ -3356,7 +3395,7 @@
                 nodeData.itemName = 'item';
             } else if (nodeType.type === 'action') {
                 // 连接器节点初始化超时时间和认证值来源配置
-                nodeData.timeout = 30;
+                nodeData.timeout = APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax;
                 nodeData.authValueSources = {};
             } else if (nodeType.type === 'error') {
                 // 异常处理节点默认不添加错误类型，等待用户手动添加
@@ -3457,13 +3496,30 @@
         }
 
         /**
+         * 更新连接流无版本状态和画布展示
+         * 当版本列表为空时隐藏画布并展示创建草稿入口
+         */
+        function updateNoVersionFlowState() {
+            const noVersionFlowState = document.getElementById('noVersionFlowState');
+            const canvasArea = document.getElementById('canvasArea');
+            const hasVersion = flowVersionData.versions.length > 0;
+
+            // 根据是否存在版本切换空状态和画布区域
+            noVersionFlowState.style.display = hasVersion ? 'none' : 'flex';
+            canvasArea.style.display = hasVersion ? 'block' : 'none';
+        }
+
+        /**
          * 渲染版本选择器和顶部操作按钮
-         * 当版本为空时隐藏选择器并展示创建草稿按钮
+         * 当版本为空时隐藏选择器和顶部操作，仅保留返回与连接流名称
          */
         function refreshVersionHeader() {
             const selector = document.getElementById('versionSelectorContainer');
             const select = document.getElementById('flowVersionSelect');
             const actions = document.getElementById('versionActions');
+
+            // 每次刷新版本头部时先同步无版本状态，避免画布残留
+            updateNoVersionFlowState();
 
             select.innerHTML = flowVersionData.versions.map(version => `
                 <option value="${version.id}">${version.name} (${version.createdAt}) [${VERSION_STATUS_TEXT[version.status]}]</option>
@@ -3471,11 +3527,13 @@
 
             if (flowVersionData.versions.length === 0) {
                 selector.style.display = 'none';
-                actions.innerHTML = '<button class="btn btn-primary" onclick="handleCreateDraftVersion()">创建草稿</button>';
+                actions.style.display = 'none';
+                actions.innerHTML = '';
                 return;
             }
 
-            selector.style.display = 'block';
+            selector.style.display = 'inline-flex';
+            actions.style.display = 'flex';
             select.value = flowVersionData.currentVersion;
             const currentVersion = flowVersionData.versions.find(version => version.id === flowVersionData.currentVersion);
             if (currentVersion) {
@@ -3590,6 +3648,11 @@
          */
         function updateCanvasState(status) {
             const canvas = document.getElementById('canvas');
+
+            // 没有版本时不更新画布状态，避免无版本页面出现只读提示
+            if (flowVersionData.versions.length === 0) {
+                return;
+            }
 
             // 只有草稿版本允许编辑画布和节点配置，其他版本均只读
             const isEditable = status === FLOW_VERSION_STATUS.DRAFT;
@@ -3956,6 +4019,15 @@
 
         // 更多配置抽屉功能
         function openMoreConfig() {
+            const rateLimitInput = document.getElementById('rateLimitInput');
+            const rateLimitMaxText = document.getElementById('rateLimitMaxText');
+            if (rateLimitInput) {
+                rateLimitInput.max = APP_FLOW_CONFIG_LIMITS.rateLimitMax;
+            }
+            if (rateLimitMaxText) {
+                rateLimitMaxText.textContent = APP_FLOW_CONFIG_LIMITS.rateLimitMax;
+            }
+
             // 打开更多配置时刷新缓存Key可选项和唯一选择状态
             document.querySelectorAll('.cache-key-select').forEach(select => {
                 const currentValue = select.value;
@@ -4061,12 +4133,28 @@
         }
 
         function saveMoreConfig() {
-            const rateLimit = document.getElementById('rateLimitInput').value;
+            const rateLimit = parseInt(document.getElementById('rateLimitInput').value);
             const cacheEnabled = document.getElementById('cacheEnabled').checked;
-            const cacheTime = document.getElementById('cacheTime').value;
+            const cacheTime = parseInt(document.getElementById('cacheTime').value);
             const cacheKeys = Array.from(document.querySelectorAll('.cache-key-select'))
                 .map(select => select.value)
                 .filter(Boolean);
+            if (!Number.isInteger(rateLimit) || rateLimit < 1) {
+                showToast('请输入大于0的限流值', 'error');
+                return;
+            }
+            if (rateLimit > APP_FLOW_CONFIG_LIMITS.rateLimitMax) {
+                showToast(`限流值不能超过当前应用上限${APP_FLOW_CONFIG_LIMITS.rateLimitMax}`, 'error');
+                return;
+            }
+            if (cacheEnabled && (!Number.isInteger(cacheTime) || cacheTime < 1)) {
+                showToast('开启缓存后需要配置有效缓存时间', 'error');
+                return;
+            }
+            if (cacheEnabled && cacheKeys.length === 0) {
+                showToast('开启缓存后至少选择一个缓存Key', 'error');
+                return;
+            }
             const hasDuplicateCacheKey = cacheKeys.some((key, index) => cacheKeys.indexOf(key) !== index);
             if (hasDuplicateCacheKey) {
                 showToast('缓存Key每个只能选择一次', 'error');
@@ -4120,7 +4208,7 @@
             renderDebugInputParams('debug-input-params-query', queryParams);
 
             // 清空输出
-            document.getElementById('debugOutput').innerHTML = '<span style="color: var(--text-tertiary);">点击"开始调试"查看执行结果...</span>';
+            document.getElementById('debugOutput').innerHTML = '<span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>';
 
             // 打开抽屉
             document.getElementById('debugDrawer').classList.add('active');
@@ -5029,8 +5117,9 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">超时时间（秒）</label>
-                        <input type="number" class="form-input" id="nodeTimeout" value="${node.data.timeout || 30}" min="1" step="1" placeholder="请输入超时时间">
+                        <label class="form-label">超时时间（秒，当前上限${APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax}秒）</label>
+                        <input type="number" class="form-input" id="nodeTimeout" value="${node.data.timeout || APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax}" min="1" max="${APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax}" step="1" placeholder="请输入超时时间">
+                        <div style="margin-top: 4px; color: var(--text-tertiary); font-size: 12px;">默认上限为3秒，可通过应用级配置接口调整。</div>
                     </div>
 
                     <!-- 出参配置 -->
@@ -5680,7 +5769,12 @@
                 // 连接器配置
                 selectedNode.data.connectorId = document.getElementById('nodeConnector')?.value;
                 selectedNode.data.connectorVersionId = document.getElementById('nodeConnectorVersion')?.value;
-                selectedNode.data.timeout = parseInt(document.getElementById('nodeTimeout')?.value) || 30;
+                const timeoutValue = parseInt(document.getElementById('nodeTimeout')?.value) || APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax;
+                if (timeoutValue > APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax) {
+                    showToast(`超时时间不能超过${APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax}秒`, 'error');
+                    return;
+                }
+                selectedNode.data.timeout = timeoutValue;
                 selectedNode.data.authValueSources = collectAuthValueSources();
                 selectedNode.data.outputParams = {
                     header: collectConnectorOutputParams(document.getElementById('connector-output-params-header')),

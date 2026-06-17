@@ -648,6 +648,32 @@
             margin-bottom: 8px;
         }
 
+        .variable-item.active {
+            border-color: var(--primary-color);
+            background: #f0f7ff;
+        }
+
+        .variable-item-main {
+            cursor: pointer;
+        }
+
+        .variable-insert-btn {
+            height: 26px;
+            margin-top: 8px;
+            padding: 0 10px;
+            border: 1px solid #91d5ff;
+            border-radius: 4px;
+            background: #e6f7ff;
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .variable-insert-btn:hover {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
         .variable-code {
             color: #c41d7f;
             font-family: Consolas, Monaco, 'Courier New', monospace;
@@ -1057,6 +1083,12 @@
         let editingConnectorIndex = -1;
 
         /**
+         * 模板变量助手当前选中的连接器ID。
+         * @type {string}
+         */
+        let selectedAssistConnectorId = '';
+
+        /**
          * 当前连接流版本的内存态数据。
          * @type {Object}
          */
@@ -1288,6 +1320,7 @@
          */
         function initPage() {
             flowState.script = document.getElementById('scriptEditor').value;
+            ensureSelectedAssistConnector();
             renderConnectorTable();
             renderVariableAssistPanel();
             updateLineNumbers();
@@ -1769,6 +1802,7 @@
          * @returns {void}
          */
         function refreshConnectorRelatedViews() {
+            ensureSelectedAssistConnector();
             renderConnectorTable();
             renderVariableAssistPanel();
             validateScript();
@@ -1799,6 +1833,53 @@
         }
 
         /**
+         * 确保模板变量助手有一个有效选中连接器。
+         * @returns {void}
+         */
+        function ensureSelectedAssistConnector() {
+            const hasSelectedConnector = flowState.connectors.some(function(connector) {
+                return connector.flowConnectorId === selectedAssistConnectorId;
+            });
+
+            if (!hasSelectedConnector) {
+                selectedAssistConnectorId = flowState.connectors[0]?.flowConnectorId || '';
+            }
+        }
+
+        /**
+         * 获取模板变量助手当前选中的连接器。
+         * @returns {Object | undefined} 当前选中的连接器。
+         */
+        function getSelectedAssistConnector() {
+            return flowState.connectors.find(function(connector) {
+                return connector.flowConnectorId === selectedAssistConnectorId;
+            });
+        }
+
+        /**
+         * 切换模板变量助手当前选中的连接器。
+         * @param {string} flowConnectorId - 当前连接流内的连接器ID。
+         * @returns {void}
+         */
+        function selectAssistConnector(flowConnectorId) {
+            selectedAssistConnectorId = flowConnectorId;
+            renderVariableAssistPanel();
+        }
+
+        /**
+         * 将连接器变量插入到脚本当前光标位置。
+         * @param {Event} event - 点击事件对象。
+         * @param {string} flowConnectorId - 当前连接流内的连接器ID。
+         * @returns {void}
+         */
+        function insertConnectorVariableToScript(event, flowConnectorId) {
+            event.stopPropagation();
+            selectedAssistConnectorId = flowConnectorId;
+            insertTextAtCursor(buildConnectorVariable(flowConnectorId));
+            renderVariableAssistPanel();
+        }
+
+        /**
          * 渲染右侧模板变量辅助面板。
          * @returns {void}
          */
@@ -1809,16 +1890,19 @@
             connectorVariableList.innerHTML = flowState.connectors.map(function(connector) {
                 const connectorDefinition = getConnectorDefinition(connector.connectorId);
                 const variable = buildConnectorVariable(connector.flowConnectorId);
+                const activeClass = connector.flowConnectorId === selectedAssistConnectorId ? ' active' : '';
 
-                return '<div class="variable-item">' +
-                    '<div class="variable-code">' + variable + '</div>' +
-                    '<div class="variable-desc">' + (connectorDefinition?.cnName || '-') + '</div>' +
+                return '<div class="variable-item' + activeClass + '">' +
+                    '<div class="variable-item-main" onclick="selectAssistConnector(\'' + connector.flowConnectorId + '\')">' +
+                        '<div class="variable-code">' + variable + '</div>' +
+                        '<div class="variable-desc">' + (connectorDefinition?.cnName || '-') + '</div>' +
+                    '</div>' +
+                    '<button class="variable-insert-btn" onclick="insertConnectorVariableToScript(event, \'' + connector.flowConnectorId + '\')">插入到脚本</button>' +
                 '</div>';
             }).join('') || '<div class="empty-state">暂无可用连接器</div>';
 
-            connectorDocList.innerHTML = flowState.connectors.map(function(connector) {
-                return renderConnectorDocCard(connector);
-            }).join('') || '<div class="empty-state">暂无连接器说明</div>';
+            const selectedConnector = getSelectedAssistConnector();
+            connectorDocList.innerHTML = selectedConnector ? renderConnectorDocCard(selectedConnector) : '<div class="empty-state">暂无连接器说明</div>';
         }
 
         /**

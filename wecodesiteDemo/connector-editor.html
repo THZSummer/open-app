@@ -109,6 +109,9 @@
             padding: 80px 24px 24px;
             background: #ffffff;
             min-height: 100%;
+            /* 页面内容使用纵向弹性布局，便于无版本状态填充剩余区域 */
+            display: flex;
+            flex-direction: column;
         }
 
         /* ========================================
@@ -203,6 +206,32 @@
 
         .config-card-body {
             padding: 16px;
+        }
+
+        /* 无版本状态用于提示用户先创建草稿版本 */
+        .no-version-state {
+            display: none;
+            /* 填充页面剩余高度，确保图标、文案和按钮在可视区域中居中 */
+            flex: 1;
+            min-height: 360px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 12px;
+            color: var(--text-tertiary);
+            text-align: center;
+        }
+
+        /* 无版本状态图标用于强化空状态提示 */
+        .no-version-icon {
+            font-size: 52px;
+            opacity: 0.55;
+        }
+
+        /* 无版本状态文案用于说明当前页面不可配置的原因 */
+        .no-version-text {
+            font-size: 14px;
+            color: var(--text-secondary);
         }
 
         /* ========================================
@@ -578,34 +607,43 @@
                     </div>
                 </div>
 
-                <!-- 版本选择区域 - 移到接口配置表单之前 -->
-                <div class="config-card">
-                    <div class="config-card-header">版本选择</div>
-                    <div class="config-card-body" style="display: flex; align-items: center; gap: 12px;">
-                        <select class="form-input" id="versionSelect" onchange="handleVersionChange(this.value)" style="max-width: 300px;">
-                            <option value="v1">v1.0.0 (2024-01-15) [草稿]</option>
-                            <option value="v2">v0.9.0 (2024-01-10) [已发布]</option>
-                            <option value="v3">v0.8.0 (2024-01-05) [已失效]</option>
-                        </select>
-                        <!-- 创建草稿按钮（仅版本列表为空时显示） -->
-                        <button class="btn btn-primary" id="createDraftBtn" onclick="handleCreateDraft()" style="display: none;">创建草稿</button>
-                        <!-- 编辑/保存按钮 -->
-                        <button class="btn btn-primary" id="editBtn" onclick="handleEdit()">编辑</button>
-                        <!-- 发布按钮（仅草稿版本时显示） -->
-                        <button class="btn" id="publishBtn" onclick="handlePublish()" style="display: none;">发布</button>
-                        <!-- 复制到草稿按钮（仅非草稿版本时显示） -->
-                        <button class="btn" id="copyToDraftBtn" onclick="handleCopyToDraft()" style="display: none;">复制到草稿</button>
-                        <!-- 失效按钮（仅已发布版本时显示） -->
-                        <button class="btn" id="invalidateBtn" onclick="handleInvalidate()" style="display: none;">失效</button>
-                        <!-- 恢复按钮（仅已失效版本时显示） -->
-                        <button class="btn" id="restoreBtn" onclick="handleRestoreVersion()" style="display: none; color: var(--success-color);">恢复</button>
-                        <!-- 删除按钮（仅已失效版本时显示） -->
-                        <button class="btn" id="deleteBtn" onclick="handleDeleteVersion()" style="display: none; color: var(--error-color);">删除</button>
-                    </div>
+                <!-- 无版本提示区域，版本为空时只展示创建草稿入口 -->
+                <div class="no-version-state" id="noVersionState">
+                    <div class="no-version-icon">∅</div>
+                    <div class="no-version-text">当前连接器暂无版本，请先创建草稿版本后再配置接口</div>
+                    <button class="btn btn-primary" onclick="handleCreateDraft()">创建草稿</button>
                 </div>
 
-                <!-- 接口配置表单 -->
-                <div class="config-card">
+                <!-- 版本和接口配置区域，存在版本时展示完整配置内容 -->
+                <div id="versionConfigContent">
+                    <!-- 版本选择区域 - 移到接口配置表单之前 -->
+                    <div class="config-card">
+                        <div class="config-card-header">版本选择</div>
+                        <div class="config-card-body" style="display: flex; align-items: center; gap: 12px;">
+                            <select class="form-input" id="versionSelect" onchange="handleVersionChange(this.value)" style="max-width: 300px;">
+                                <option value="v1">v1.0.0 (2024-01-15) [草稿]</option>
+                                <option value="v2">v0.9.0 (2024-01-10) [已发布]</option>
+                                <option value="v3">v0.8.0 (2024-01-05) [已失效]</option>
+                            </select>
+                            <!-- 创建草稿按钮（仅版本列表为空时显示） -->
+                            <button class="btn btn-primary" id="createDraftBtn" onclick="handleCreateDraft()" style="display: none;">创建草稿</button>
+                            <!-- 编辑/保存按钮 -->
+                            <button class="btn btn-primary" id="editBtn" onclick="handleEdit()">编辑</button>
+                            <!-- 发布按钮（仅草稿版本时显示） -->
+                            <button class="btn" id="publishBtn" onclick="handlePublish()" style="display: none;">发布</button>
+                            <!-- 复制到草稿按钮（仅非草稿版本时显示） -->
+                            <button class="btn" id="copyToDraftBtn" onclick="handleCopyToDraft()" style="display: none;">复制到草稿</button>
+                            <!-- 失效按钮（仅已发布版本时显示） -->
+                            <button class="btn" id="invalidateBtn" onclick="handleInvalidate()" style="display: none;">失效</button>
+                            <!-- 恢复按钮（仅已失效版本时显示） -->
+                            <button class="btn" id="restoreBtn" onclick="handleRestoreVersion()" style="display: none; color: var(--success-color);">恢复</button>
+                            <!-- 删除按钮（仅已失效版本时显示） -->
+                            <button class="btn" id="deleteBtn" onclick="handleDeleteVersion()" style="display: none; color: var(--error-color);">删除</button>
+                        </div>
+                    </div>
+
+                    <!-- 接口配置表单 -->
+                    <div class="config-card">
                     <div class="config-card-header">接口配置</div>
                     <div class="config-card-body">
                         <div class="form-group">
@@ -721,6 +759,7 @@
                             </div>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -865,6 +904,20 @@
         }
 
         /**
+         * 更新无版本状态和配置区域展示
+         * 当版本列表为空时隐藏所有配置区域，仅展示创建草稿入口
+         */
+        function updateNoVersionState() {
+            const noVersionState = document.getElementById('noVersionState');
+            const versionConfigContent = document.getElementById('versionConfigContent');
+            const hasVersion = versionData.versions.length > 0;
+
+            // 根据是否存在版本切换空状态和配置内容
+            noVersionState.style.display = hasVersion ? 'none' : 'flex';
+            versionConfigContent.style.display = hasVersion ? 'block' : 'none';
+        }
+
+        /**
          * 根据版本状态更新按钮
          * 根据当前版本的状态（草稿/已发布/已失效）显示不同的操作按钮
          */
@@ -876,6 +929,9 @@
             const invalidateBtn = document.getElementById('invalidateBtn');
             const restoreBtn = document.getElementById('restoreBtn');
             const deleteBtn = document.getElementById('deleteBtn');
+
+            // 每次切换版本状态时先同步无版本区域，避免配置区域残留
+            updateNoVersionState();
 
             // 每次切换版本状态时先重置所有操作按钮，避免按钮状态残留
             createDraftBtn.style.display = 'none';
@@ -1257,7 +1313,7 @@
                                            class="signature-value-source-input"
                                            style="flex: 1; min-width: 140px; padding: 6px 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 13px; background: var(--bg-light);"
                                            value="${param.signatureValueSource || 'X-Signature'}"
-                                           placeholder="签名值固定值"
+                                           placeholder="签名固定值"
                                            disabled>
                                     <input type="${signatureKeyType}"
                                            class="signature-key-input"
@@ -1945,16 +2001,74 @@
         }
 
         /**
-         * 收集并保存接口配置（仅保存，不做发布前校验）
-         * @returns {boolean} 是否保存成功
+         * 校验参数Schema层级是否超过上限
+         * @param {Object} options - 层级校验配置对象
+         * @returns {string} 校验失败文案，空字符串表示通过
          */
-        function saveConnectorConfig() {
-            collectConnectorConfig();
+        function validateSchemaDepth(options) {
+            const params = options.params;
+            const location = options.location;
+            const depth = options.depth;
 
-            // 模拟保存
-            console.log('保存配置:', connectorConfig);
-            showToast('保存成功', 'success');
-            return true;
+            if (depth > MAX_SCHEMA_DEPTH) {
+                return `${location}：参数层级最多支持${MAX_SCHEMA_DEPTH}层`;
+            }
+
+            for (const param of params) {
+                const currentPath = `${location}-${param.paramName}`;
+                const childError = validateSchemaDepth({
+                    params: param.children || [],
+                    location: currentPath,
+                    depth: depth + 1
+                });
+
+                if (childError) {
+                    return childError;
+                }
+            }
+
+            return '';
+        }
+
+        /**
+         * 判断复杂类型参数下是否存在基础类型子参数
+         * @param {Array} children - 子参数列表
+         * @returns {boolean} 是否存在基础类型子参数
+         */
+        function hasBasicTypeChild(children) {
+            return children.some(child => {
+                if (!isComplexType(child.paramType)) {
+                    return true;
+                }
+                return hasBasicTypeChild(child.children || []);
+            });
+        }
+
+        /**
+         * 校验参数配置中的复杂类型子参数
+         * @param {Object} options - 校验配置对象
+         * @returns {string} 校验失败文案，空字符串表示通过
+         */
+        function validateSchemaParams(options) {
+            const params = options.params;
+            const location = options.location;
+
+            for (const param of params) {
+                const currentPath = `${location}-${param.paramName}`;
+                if (isComplexType(param.paramType) && !hasBasicTypeChild(param.children || [])) {
+                    return `${currentPath}：${param.paramType}类型参数必须包含基础类型子参数`;
+                }
+
+                const childError = validateSchemaParams({
+                    params: param.children || [],
+                    location: currentPath
+                });
+                if (childError) {
+                    return childError;
+                }
+            }
+
+            return '';
         }
 
         /**
@@ -2089,74 +2203,16 @@
         }
 
         /**
-         * 校验参数Schema层级是否超过上限
-         * @param {Object} options - 层级校验配置对象
-         * @returns {string} 校验失败文案，空字符串表示通过
+         * 收集并保存接口配置（仅保存，不做发布前校验）
+         * @returns {boolean} 是否保存成功
          */
-        function validateSchemaDepth(options) {
-            const params = options.params;
-            const location = options.location;
-            const depth = options.depth;
+        function saveConnectorConfig() {
+            collectConnectorConfig();
 
-            if (depth > MAX_SCHEMA_DEPTH) {
-                return `${location}：参数层级最多支持${MAX_SCHEMA_DEPTH}层`;
-            }
-
-            for (const param of params) {
-                const currentPath = `${location}-${param.paramName}`;
-                const childError = validateSchemaDepth({
-                    params: param.children || [],
-                    location: currentPath,
-                    depth: depth + 1
-                });
-
-                if (childError) {
-                    return childError;
-                }
-            }
-
-            return '';
-        }
-
-        /**
-         * 判断复杂类型参数下是否存在基础类型子参数
-         * @param {Array} children - 子参数列表
-         * @returns {boolean} 是否存在基础类型子参数
-         */
-        function hasBasicTypeChild(children) {
-            return children.some(child => {
-                if (!isComplexType(child.paramType)) {
-                    return true;
-                }
-                return hasBasicTypeChild(child.children || []);
-            });
-        }
-
-        /**
-         * 校验参数配置中的复杂类型子参数
-         * @param {Object} options - 校验配置对象
-         * @returns {string} 校验失败文案，空字符串表示通过
-         */
-        function validateSchemaParams(options) {
-            const params = options.params;
-            const location = options.location;
-
-            for (const param of params) {
-                const currentPath = `${location}-${param.paramName}`;
-                if (isComplexType(param.paramType) && !hasBasicTypeChild(param.children || [])) {
-                    return `${currentPath}：${param.paramType}类型参数必须包含基础类型子参数`;
-                }
-
-                const childError = validateSchemaParams({
-                    params: param.children || [],
-                    location: currentPath
-                });
-                if (childError) {
-                    return childError;
-                }
-            }
-
-            return '';
+            // 模拟保存
+            console.log('保存配置:', connectorConfig);
+            showToast('保存成功', 'success');
+            return true;
         }
 
         /**

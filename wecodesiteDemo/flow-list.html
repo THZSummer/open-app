@@ -724,21 +724,21 @@
         </div>
     </div>
 
-    <!-- 部署弹窗 -->
-    <div class="modal-overlay" id="deployModal">
+    <!-- 启动版本选择弹窗 -->
+    <div class="modal-overlay" id="startModal">
         <div class="modal" style="max-width: 480px;">
             <div class="modal-header">
-                <h3 class="modal-title">选择部署版本</h3>
-                <div class="modal-close" onclick="closeModal('deployModal')">✕</div>
+                <h3 class="modal-title">选择启动版本</h3>
+                <div class="modal-close" onclick="closeModal('startModal')">✕</div>
             </div>
             <div class="modal-body">
-                <div class="version-list" id="deployVersionList">
+                <div class="version-list" id="startVersionList">
                     <!-- 动态生成 -->
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn" onclick="closeModal('deployModal')">取消</button>
-                <button class="btn btn-primary" onclick="confirmDeploy()">确认部署</button>
+                <button class="btn" onclick="closeModal('startModal')">取消</button>
+                <button class="btn btn-primary" id="confirmStartBtn" onclick="confirmStart()">确认启动</button>
             </div>
         </div>
     </div>
@@ -751,7 +751,6 @@
         // 模拟数据
         // ========================================
         const STATUS_MAP = {
-            0: { text: '待部署', color: 'default' },
             1: { text: '运行中', color: 'success' },
             2: { text: '已停止', color: 'error' },
             3: { text: '已失效', color: 'error' }
@@ -784,7 +783,7 @@
                 nameEn: 'notification-flow',
                 descriptionCn: '发送各类系统通知消息',
                 descriptionEn: 'Send various system notification messages',
-                lifecycleStatus: 0,
+                lifecycleStatus: 2,
                 createTime: '2024-01-20 11:20:00',
                 lastUpdateTime: '2024-01-20 11:20:00'
             },
@@ -894,7 +893,7 @@
                 id: generateId(),
                 nameCn: flow.nameCn + ' (副本)',
                 nameEn: flow.nameEn + '-copy',
-                lifecycleStatus: 0,
+                lifecycleStatus: 2,
                 createTime: new Date().toLocaleString('zh-CN'),
                 lastUpdateTime: new Date().toLocaleString('zh-CN')
             };
@@ -924,28 +923,28 @@
         }
 
         /**
-         * 部署
-         * 打开部署弹窗
+         * 启动连接流
+         * 打开启动版本选择弹窗
          * @param {string} flowId - 连接流ID
          */
-        function handleDeploy(flowId) {
+        function handleStart(flowId) {
             // 关闭菜单
             document.querySelectorAll('.more-menu').forEach(menu => menu.style.display = 'none');
 
-            // 打开部署弹窗
-            openDeployModal(flowId);
+            // 打开启动版本选择弹窗
+            openStartModal(flowId);
         }
 
         /**
-         * 打开部署弹窗
+         * 打开启动版本选择弹窗
          * @param {string} flowId - 连接流ID
          */
-        let deployFlowId = null;
-        let selectedDeployVersion = null;
+        let startFlowId = null;
+        let selectedStartVersion = null;
 
-        function openDeployModal(flowId) {
-            deployFlowId = flowId;
-            selectedDeployVersion = null;
+        function openStartModal(flowId) {
+            startFlowId = flowId;
+            selectedStartVersion = null;
 
             // 模拟版本数据 - 只展示已发布的版本
             const versions = [
@@ -954,18 +953,23 @@
                 { id: 'v3', name: 'v0.8.0', createdAt: '2024-01-05 14:20:00', status: 'invalid' }
             ].filter(v => v.status === 'published');
 
-            const versionList = document.getElementById('deployVersionList');
+            const versionList = document.getElementById('startVersionList');
+            const confirmStartBtn = document.getElementById('confirmStartBtn');
             
-            // 如果没有已发布的版本，显示提示信息
+            // 如果没有已发布的版本，显示提示信息并禁用确认启动
             if (versions.length === 0) {
                 versionList.innerHTML = '<div style="text-align: center; padding: 24px 0; color: var(--text-tertiary);">暂无已发布的版本</div>';
-                openModal('deployModal');
+                confirmStartBtn.disabled = true;
+                openModal('startModal');
                 return;
             }
+
+            // 存在可启动版本时允许用户确认启动
+            confirmStartBtn.disabled = false;
             
             versionList.innerHTML = versions.map(v => `
                 <label class="version-item" style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 8px; cursor: pointer;">
-                    <input type="radio" name="deployVersion" value="${v.id}" onchange="selectedDeployVersion = '${v.id}'">
+                    <input type="radio" name="startVersion" value="${v.id}" onchange="selectedStartVersion = '${v.id}'">
                     <div style="flex: 1;">
                         <div style="font-size: 14px; font-weight: 500;">${v.name}</div>
                         <div style="font-size: 12px; color: var(--text-tertiary);">${v.createdAt}</div>
@@ -976,35 +980,35 @@
                 </label>
             `).join('');
 
-            openModal('deployModal');
+            openModal('startModal');
         }
 
         /**
-         * 确认部署
-         * 执行部署操作
+         * 确认启动
+         * 根据选择的已发布版本启动连接流
          */
-        function confirmDeploy() {
-            if (!selectedDeployVersion) {
-                showToast('请选择要部署的版本', 'error');
+        function confirmStart() {
+            if (!selectedStartVersion) {
+                showToast('请选择要启动的版本', 'error');
                 return;
             }
 
-            // 模拟部署接口调用
-            console.log(`部署连接流 ${deployFlowId} 的版本 ${selectedDeployVersion}`);
+            // 模拟启动接口调用
+            console.log(`启动连接流 ${startFlowId} 的版本 ${selectedStartVersion}`);
             
             // 更新连接流状态为运行中
-            const flow = flowData.find(item => item.id === deployFlowId);
+            const flow = flowData.find(item => item.id === startFlowId);
             if (flow) {
                 flow.lifecycleStatus = 1;
                 flow.modifier = '当前用户';
                 flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
             }
             
-            showToast('部署成功', 'success');
+            showToast('启动成功', 'success');
 
-            closeModal('deployModal');
-            deployFlowId = null;
-            selectedDeployVersion = null;
+            closeModal('startModal');
+            startFlowId = null;
+            selectedStartVersion = null;
             renderTable();
         }
 
@@ -1041,7 +1045,7 @@
                 `;
             } else {
                 tbody.innerHTML = pageData.map(item => {
-                    const status = STATUS_MAP[item.lifecycleStatus];
+                    const status = STATUS_MAP[item.lifecycleStatus] || { text: '-', color: 'default' };
                     return `
                         <tr>
                             <td class="text-center">${item.id}</td>
@@ -1074,19 +1078,16 @@
                                             <button class="menu-item" onclick="handleCopyId('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">
                                                 复制ID
                                             </button>
-                                            ${item.lifecycleStatus === 3 ?
-                                                `<button class="menu-item" onclick="restoreFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--success-color);">恢复</button>
-                                                 <button class="menu-item" onclick="deleteFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--error-color);">删除</button>` :
-                                                `<button class="menu-item" onclick="handleDeploy('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">部署</button>`
+                                            ${item.lifecycleStatus === 2 ?
+                                                `<button class="menu-item" onclick="handleStart('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">启动</button>
+                                                 <button class="menu-item" onclick="invalidFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">失效</button>` : ''
                                             }
                                             ${item.lifecycleStatus === 1 ?
                                                 `<button class="menu-item" onclick="stopFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">停止</button>` : ''
                                             }
-                                            ${item.lifecycleStatus === 2 ?
-                                                `<button class="menu-item" onclick="startFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">启动</button>` : ''
-                                            }
-                                            ${item.lifecycleStatus === 0 || item.lifecycleStatus === 2 ?
-                                                `<button class="menu-item" onclick="invalidFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">失效</button>` : ''
+                                            ${item.lifecycleStatus === 3 ?
+                                                `<button class="menu-item" onclick="restoreFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--success-color);">恢复</button>
+                                                 <button class="menu-item" onclick="deleteFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--error-color);">删除</button>` : ''
                                             }
                                         </div>
                                     </div>
@@ -1209,7 +1210,7 @@
                     nameEn,
                     descriptionCn: descCn,
                     descriptionEn: descEn,
-                    lifecycleStatus: 0,
+                    lifecycleStatus: 2,
                     createTime: new Date().toLocaleString('zh-CN'),
                     lastUpdateTime: new Date().toLocaleString('zh-CN')
                 });
@@ -1232,21 +1233,6 @@
         // 状态操作
         // ========================================
         
-        /**
-         * 启动连接流
-         * 将已停止状态的连接流启动为运行中
-         * @param {string} id - 连接流ID
-         */
-        function startFlow(id) {
-            const flow = flowData.find(item => item.id === id);
-            if (flow && flow.lifecycleStatus === 2) {
-                flow.lifecycleStatus = 1;
-                flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
-                showToast('启动成功', 'success');
-                renderTable();
-            }
-        }
-
         /**
          * 停止连接流
          * 将运行中状态的连接流停止，需要二次确认
@@ -1272,15 +1258,15 @@
 
         /**
          * 失效连接流
-         * 将待部署或已停止状态的连接流设置为已失效，需要二次确认
+         * 将已停止状态的连接流设置为已失效，需要二次确认
          * @param {string} id - 连接流ID
          */
         function invalidFlow(id) {
             const flow = flowData.find(item => item.id === id);
             if (!flow) return;
 
-            // 只有待部署或已停止状态才能失效
-            if (flow.lifecycleStatus !== 0 && flow.lifecycleStatus !== 2) {
+            // 只有已停止状态才能失效
+            if (flow.lifecycleStatus !== 2) {
                 showToast('当前状态不允许失效', 'error');
                 return;
             }
@@ -1301,7 +1287,7 @@
 
         /**
          * 恢复连接流
-         * 将已失效连接流恢复为待部署状态，需要二次确认
+         * 将已失效连接流恢复为已停止状态，需要二次确认
          * @param {string} id - 连接流ID
          */
         function restoreFlow(id) {
@@ -1313,11 +1299,11 @@
 
             showConfirm(
                 '确认恢复连接流吗？',
-                `确认要恢复「${flow.nameCn}」吗？恢复后连接流回到待部署状态，需要重新部署后才能运行。`,
+                `确认要恢复「${flow.nameCn}」吗？恢复后连接流回到已停止状态，需要选择已发布版本启动后才能运行。`,
                 '#52c41a',
                 '确认恢复',
                 () => {
-                    flow.lifecycleStatus = 0;
+                    flow.lifecycleStatus = 2;
                     flow.modifier = '当前用户';
                     flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
                     showToast('恢复成功', 'success');
