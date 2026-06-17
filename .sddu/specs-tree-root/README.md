@@ -29,7 +29,7 @@
 | **CAP-OPEN-001** | [能力开放平台](./specs-tree-capability-open-platform/) | ✅ validated（全流程完成） | P0 | Summer | 2026-04-22 |
 | **CONN-PLAT-001** | [连接器平台 V1](./specs-tree-connector-platform/) | ✅ validated（全流程完成） | P1 | - | 2026-05-24 |
 | **CONN-PLAT-002** | [连接器平台 V2 — 多版本与增强](./specs-tree-connector-platform-v2/) | ✅ planned（规范+规划完成，待任务分解） | P1 | Summer | 2026-06-09 |
-| **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | ✅ specified（规范完成） | P0 | Summer | 2026-04-07 |
+| **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | 🟡 suspended（搁置） | P0 | Summer | 2026-04-07 |
 | **FR-DICTIONARY-001** | [数据字典管理](./specs-tree-dictionary/) | ✅ planned（规范+规划完成） | P1 | SDDU-Spec Agent | 2026-05-22 |
 | **FR-LOOKUP-001** | [LookUp 管理](./specs-tree-lookup/) | ✅ planned（规范+规划完成） | P1 | SDDU-Spec Agent | 2026-05-15 |
 
@@ -131,7 +131,7 @@
 
 ### DATA-OPEN-001: 数据开放平台
 
-**状态**: ✅ specified（规范编写完成，待技术规划）
+**状态**: 🟡 suspended（搁置）
 
 **文档**:
 - [需求挖掘报告 v1.18](./specs-tree-data-open-platform/discovery-report.md) - 需求挖掘报告（1101 行）

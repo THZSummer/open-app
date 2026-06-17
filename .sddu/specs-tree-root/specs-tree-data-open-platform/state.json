@@ -3,7 +3,10 @@
   "featureId": "DATA-OPEN-001",
   "featureName": "数据开放平台",
   "state": "specified",
+  "phase": "specified",
+  "status": "suspended",
   "specifiedAt": "2026-04-07T17:30:00Z",
+  "suspendedAt": "2026-06-17T00:00:00+08:00",
   "stateHistory": [
     {
       "state": "drafting",
@@ -14,6 +17,11 @@
       "state": "specified",
       "timestamp": "2026-04-07T17:30:00Z",
       "note": "规范文档 v2.0 完成 - 基于 discovery 阶段产出覆盖重生成"
+    },
+    {
+      "state": "suspended",
+      "timestamp": "2026-06-17T00:00:00+08:00",
+      "note": "用户手动搁置 — 可随时恢复"
     }
   ],
   "artifacts": {
@@ -27,5 +35,5 @@
       "version": "v2.0"
     }
   },
-  "lastUpdated": "2026-04-07T17:30:00Z"
+  "lastUpdated": "2026-06-17T00:00:00+08:00"
 }
