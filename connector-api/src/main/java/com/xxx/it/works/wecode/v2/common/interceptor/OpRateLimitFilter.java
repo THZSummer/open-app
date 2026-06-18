@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.common.interceptor;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
@@ -9,31 +8,29 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 限流过滤器 (connector-api)
+ * 限流过滤器 (connector-api) (v5.8)
  * <p>
  * FR-024: HTTP 触发超过 trigger.data.rateLimitConfig.maxQps → 返回 429
  * 限流维度: 按 flowId
  * 使用 Token Bucket 算法 (Bucket4j)
  * </p>
  * <p>
+ * v5.8: 429 响应改为透明穿透格式 — X- 平台头 + 空Body (不再返回 JSON errorInfo).
  * v5.5: 从 orchestrationConfig.trigger.data.rateLimitConfig.maxQps 动态读取限流配置,
- * 而非硬编码默认值. 返回结构化 errorInfo: {code: "429", messageZh, messageEn}.
+ * 而非硬编码默认值.
  * </p>
  */
 @Component
@@ -149,31 +146,25 @@ public class OpRateLimitFilter implements WebFilter {
     }
 
     /**
-     * 写入 429 限流响应 (结构化 errorInfo JSON)
+     * 写入 429 限流响应 (v5.8 透明穿透: X- 头 + 空Body)
      */
     private Mono<Void> writeRateLimitResponse(ServerWebExchange exchange) {
+        String path = exchange.getRequest().getURI().getPath();
+        String flowId = extractFlowId(path);
+
         exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
-        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
         exchange.getResponse().getHeaders().add("Retry-After", "1");
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("status", "failed");
-        Map<String, Object> errorInfo = new HashMap<>();
-        errorInfo.put("code", "429");
-        errorInfo.put("messageZh", "请求频率超限");
-        errorInfo.put("messageEn", "Too many requests");
-        body.put("errorInfo", errorInfo);
-
-        byte[] bytes;
-        try {
-            bytes = objectMapper.writeValueAsBytes(body);
-        } catch (JsonProcessingException e) {
-            bytes = "{\"status\":\"failed\",\"errorInfo\":{\"code\":\"429\",\"messageZh\":\"请求频率超限\",\"messageEn\":\"Too many requests\"}}"
-                    .getBytes(StandardCharsets.UTF_8);
+        // 平台元数据 X- 头
+        if (flowId != null) {
+            exchange.getResponse().getHeaders().add("X-Flow-Id", flowId);
         }
+        exchange.getResponse().getHeaders().add("X-Code", "429");
+        exchange.getResponse().getHeaders().add("X-Message-Zh", "请求频率超限");
+        exchange.getResponse().getHeaders().add("X-Message-En", "Too many requests");
 
-        DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
-        return exchange.getResponse().writeWith(Mono.just(buffer));
+        // 空 Body (无 Content-Type)
+        return exchange.getResponse().setComplete();
     }
 
     /**

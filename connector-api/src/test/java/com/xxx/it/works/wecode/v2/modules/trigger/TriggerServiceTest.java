@@ -5,6 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
+import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,7 +66,7 @@ class OpTriggerServiceTest {
     }
 
     @Test
-    @DisplayName("HTTP 触发成功执行")
+    @DisplayName("HTTP 触发成功执行 — 返回 TransparentFlowResponse")
     void testInvokeFlow_Success() {
         FlowVersionEntity flowVersion = new FlowVersionEntity();
         flowVersion.setFlowId(100L);
@@ -75,41 +76,59 @@ class OpTriggerServiceTest {
         mockResult.setExecutionId("exec-001");
         mockResult.setFlowId("100");
         mockResult.setStatus("success");
+        mockResult.setTotalDurationMs(150L);
+        mockResult.setResultData(Map.of("body", Map.of("msgId", "msg_001"),
+                "header", Map.of("X-Custom", "val1")));
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
 
-        Mono<ExecutionResult> resultMono = triggerService.invokeFlow(
+        Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of("sender", "test"), Map.of(), Map.of());
 
         StepVerifier.create(resultMono)
-                .assertNext(result -> {
-                    assertEquals("success", result.getStatus());
-                    assertEquals("100", result.getFlowId());
+                .assertNext(response -> {
+                    // 平台元数据头
+                    assertEquals("100", response.getPlatformHeaders().get("X-Flow-Id"));
+                    assertEquals("exec-001", response.getPlatformHeaders().get("X-Execution-Id"));
+                    assertEquals("0", response.getPlatformHeaders().get("X-Status")); // success=0
+                    assertEquals("150", response.getPlatformHeaders().get("X-Duration-Ms"));
+                    assertEquals("0", response.getPlatformHeaders().get("X-Cache-Status"));
+                    // 用户自定义头
+                    assertEquals("val1", response.getUserHeaders().get("X-Custom"));
+                    // Body
+                    assertTrue(response.getBody() instanceof Map);
+                    Map<?, ?> body = (Map<?, ?>) response.getBody();
+                    assertEquals("msg_001", body.get("msgId"));
+                    // HTTP Status
+                    assertEquals(200, response.getHttpStatus().value());
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("流不存在返回failed")
+    @DisplayName("流不存在返回 404 (preExecutionError)")
     void testInvokeFlow_NotFound() {
         when(flowVersionReadRepository.findByFlowId(999L)).thenReturn(Mono.empty());
 
-        Mono<ExecutionResult> resultMono = triggerService.invokeFlow(
+        Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 999L, Map.of(), Map.of(), Map.of());
 
         StepVerifier.create(resultMono)
-                .assertNext(result -> {
-                    assertEquals("failed", result.getStatus());
-                    assertNotNull(result.getErrorInfo());
-                    assertNotNull(result.getErrorInfo().get("messageZh"),
-                            "errorInfo should contain messageZh");
+                .assertNext(response -> {
+                    assertEquals(404, response.getHttpStatus().value());
+                    assertNull(response.getBody(), "错误响应应为空Body");
+                    assertEquals("404", response.getPlatformHeaders().get("X-Code"));
+                    assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"),
+                            "should have X-Message-Zh");
+                    assertNotNull(response.getPlatformHeaders().get("X-Message-En"),
+                            "should have X-Message-En");
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("执行异常时返回failed")
+    @DisplayName("执行异常时返回 500 (preExecutionError)")
     void testInvokeFlow_ExecutionError() {
         FlowVersionEntity flowVersion = new FlowVersionEntity();
         flowVersion.setFlowId(100L);
@@ -118,11 +137,16 @@ class OpTriggerServiceTest {
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(executor.execute(any(), anyString())).thenReturn(Mono.error(new RuntimeException("Execution error")));
 
-        Mono<ExecutionResult> resultMono = triggerService.invokeFlow(
+        Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of(), Map.of(), Map.of());
 
         StepVerifier.create(resultMono)
-                .assertNext(result -> assertEquals("failed", result.getStatus()))
+                .assertNext(response -> {
+                    assertEquals(500, response.getHttpStatus().value());
+                    assertNull(response.getBody(), "错误响应应为空Body");
+                    assertEquals("500", response.getPlatformHeaders().get("X-Code"));
+                    assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"));
+                })
                 .verifyComplete();
     }
 }
