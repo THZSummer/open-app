@@ -886,6 +886,49 @@
                         </div>
                     </div>
 
+                    <!-- 触发器配置区 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div>
+                                <div class="card-title">触发器配置</div>
+                                <div class="card-desc">配置连接流启动方式、SYSACCOUNT 白名单和触发器入参。</div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label" for="triggerNameInput">触发器名称</label>
+                                    <input class="form-input" id="triggerNameInput" onchange="updateTriggerMeta()">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="triggerTypeInput">触发方式</label>
+                                    <select class="form-select" id="triggerTypeInput" onchange="updateTriggerMeta()">
+                                        <option value="http">HTTP触发</option>
+                                        <option value="schedule">定时触发</option>
+                                        <option value="event">事件触发</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 16px;">
+                                <label class="form-label" for="triggerDescInput">触发器描述</label>
+                                <textarea class="form-textarea" id="triggerDescInput" onchange="updateTriggerMeta()"></textarea>
+                            </div>
+                            <div class="form-group" style="margin-top: 20px;">
+                                <label class="form-label" style="font-weight: 600;">SYSACCOUNT白名单</label>
+                                <div id="triggerSystokenList">
+                                    <!-- SYSACCOUNT 白名单由脚本动态渲染 -->
+                                </div>
+                                <button type="button" class="btn" style="margin-top: 8px;" onclick="addTriggerSystokenItem()">+ 添加账号</button>
+                            </div>
+                            <div class="form-group" style="margin-top: 20px;">
+                                <label class="form-label" style="font-weight: 600;">入参配置</label>
+                                <div class="param-summary-grid" id="triggerInputParamEditor">
+                                    <!-- 触发器入参由脚本动态渲染 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 当前版本连接器定义区 -->
                     <div class="card">
                         <div class="card-header">
@@ -937,13 +980,17 @@
                                 <div class="script-editor-wrap">
                                     <pre class="line-numbers" id="lineNumbers">1</pre>
                                     <textarea class="script-editor" id="scriptEditor" spellcheck="false" oninput="handleScriptInput()" onscroll="syncLineNumberScroll()">async function run(input, context) {
+    // 从触发器入参中读取手机号和用户ID
+    const phone = ${trigger.body.user.phone};
+    const userId = ${trigger.body.user.userId};
+
     // 并行查询客户信息和订单列表
     const [customer, orderResult] = await Promise.all([
         ${connector.conn_001}({
-            phone: input.phone
+            phone: phone
         }),
         ${connector.conn_003}({
-            userId: input.userId
+            userId: userId
         })
     ]);
 
@@ -963,7 +1010,7 @@
                                 </div>
                                 <div class="script-footer">
                                     <span id="scriptStats">行数：1，字符数：0</span>
-                                    <span>支持模板变量：${connector.连接器ID} / ${output.连接器ID.fieldPath}</span>
+                                    <span>支持模板变量：${trigger.body.fieldPath} / ${connector.连接器ID} / ${output.连接器ID.fieldPath}</span>
                                 </div>
                             </div>
                             <div class="validation-list" id="validationList">
@@ -977,9 +1024,15 @@
                 <div class="assist-panel">
                     <div class="assist-header">
                         <div class="assist-title">模板变量助手</div>
-                        <div class="assist-desc">点击变量或片段可插入到当前光标位置。</div>
+                        <div class="assist-desc">触发器入参和连接器变量可插入到当前光标位置。</div>
                     </div>
                     <div class="assist-body">
+                        <div class="assist-section">
+                            <div class="assist-section-title">触发器入参</div>
+                            <div id="triggerVariableList">
+                                <!-- 触发器入参变量由脚本动态渲染 -->
+                            </div>
+                        </div>
                         <div class="assist-section">
                             <div class="assist-section-title">可用连接器</div>
                             <div id="connectorVariableList">
@@ -1098,6 +1151,35 @@
             version: 'v1.1.0',
             owner: '张三',
             description: '通过脚本编排 CRM 查询、订单查询和飞书消息发送连接器，支持串行和并行逻辑。',
+            trigger: {
+                name: 'HTTP请求触发器',
+                description: '接收外部系统请求，启动客户消息通知流。',
+                triggerType: 'http',
+                systokenWhitelist: [
+                    { value: 'SYS_CUSTOMER_CENTER' }
+                ],
+                inputParams: {
+                    header: [
+                        { id: 'trigger_h1', paramName: 'X-Trace-Id', paramType: 'string', carrier: 'header', description: '链路追踪ID' }
+                    ],
+                    body: [
+                        {
+                            id: 'trigger_b1',
+                            paramName: 'user',
+                            paramType: 'object',
+                            carrier: 'body',
+                            description: '用户信息',
+                            children: [
+                                { id: 'trigger_b1_1', paramName: 'userId', paramType: 'string', carrier: 'body', description: '用户ID' },
+                                { id: 'trigger_b1_2', paramName: 'phone', paramType: 'string', carrier: 'body', description: '手机号' }
+                            ]
+                        }
+                    ],
+                    query: [
+                        { id: 'trigger_q1', paramName: 'source', paramType: 'string', carrier: 'query', description: '请求来源' }
+                    ]
+                }
+            },
             connectors: [
                 {
                     flowConnectorId: 'conn_001',
@@ -1320,6 +1402,7 @@
          */
         function initPage() {
             flowState.script = document.getElementById('scriptEditor').value;
+            renderTriggerConfig();
             ensureSelectedAssistConnector();
             renderConnectorTable();
             renderVariableAssistPanel();
@@ -1366,6 +1449,121 @@
             flowState.version = document.getElementById('flowVersionInput').value.trim();
             flowState.owner = document.getElementById('flowOwnerInput').value.trim();
             flowState.description = document.getElementById('flowDescriptionInput').value.trim();
+        }
+
+        // ========================================
+        // 触发器配置区
+        // ========================================
+
+        /**
+         * 渲染触发器配置表单。
+         * @returns {void}
+         */
+        function renderTriggerConfig() {
+            document.getElementById('triggerNameInput').value = flowState.trigger.name;
+            document.getElementById('triggerDescInput').value = flowState.trigger.description;
+            document.getElementById('triggerTypeInput').value = flowState.trigger.triggerType;
+            renderTriggerSystokenList();
+            renderTriggerInputParamEditor();
+        }
+
+        /**
+         * 同步触发器基础信息到内存态数据。
+         * @returns {void}
+         */
+        function updateTriggerMeta() {
+            flowState.trigger.name = document.getElementById('triggerNameInput').value.trim();
+            flowState.trigger.description = document.getElementById('triggerDescInput').value.trim();
+            flowState.trigger.triggerType = document.getElementById('triggerTypeInput').value;
+        }
+
+        /**
+         * 渲染 SYSACCOUNT 白名单。
+         * @returns {void}
+         */
+        function renderTriggerSystokenList() {
+            const listElement = document.getElementById('triggerSystokenList');
+            listElement.innerHTML = flowState.trigger.systokenWhitelist.map(function(item, index) {
+                return '<div class="form-grid" style="grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 8px;">' +
+                    '<input class="form-input" value="' + (item.value || '') + '" placeholder="请输入账号" onchange="updateTriggerSystokenItem(' + index + ', this.value)">' +
+                    '<button type="button" class="btn btn-danger" onclick="removeTriggerSystokenItem(' + index + ')">删除</button>' +
+                '</div>';
+            }).join('') || '<div class="empty-state" style="padding: 12px;">暂无白名单账号</div>';
+        }
+
+        /**
+         * 添加 SYSACCOUNT 白名单账号。
+         * @returns {void}
+         */
+        function addTriggerSystokenItem() {
+            flowState.trigger.systokenWhitelist.push({ value: '' });
+            renderTriggerSystokenList();
+        }
+
+        /**
+         * 更新 SYSACCOUNT 白名单账号。
+         * @param {number} index - 白名单账号下标。
+         * @param {string} value - 白名单账号值。
+         * @returns {void}
+         */
+        function updateTriggerSystokenItem(index, value) {
+            flowState.trigger.systokenWhitelist[index].value = value.trim();
+        }
+
+        /**
+         * 删除 SYSACCOUNT 白名单账号。
+         * @param {number} index - 白名单账号下标。
+         * @returns {void}
+         */
+        function removeTriggerSystokenItem(index) {
+            flowState.trigger.systokenWhitelist.splice(index, 1);
+            renderTriggerSystokenList();
+        }
+
+        /**
+         * 渲染触发器入参配置。
+         * @returns {void}
+         */
+        function renderTriggerInputParamEditor() {
+            document.getElementById('triggerInputParamEditor').innerHTML = renderEditableTriggerParamGroups();
+            renderVariableAssistPanel();
+        }
+
+        /**
+         * 渲染可编辑的触发器入参分组。
+         * @returns {string} 触发器入参编辑HTML。
+         */
+        function renderEditableTriggerParamGroups() {
+            return Object.keys(flowState.trigger.inputParams).map(function(groupName) {
+                return '<div class="param-summary-card">' +
+                    '<div class="param-summary-title">' + getParamGroupTitle(groupName) + '</div>' +
+                    renderParamTree(flowState.trigger.inputParams[groupName] || []) +
+                    '<button type="button" class="variable-insert-btn" onclick="addTriggerRootParam(\'' + groupName + '\')">+ 添加参数</button>' +
+                '</div>';
+            }).join('');
+        }
+
+        /**
+         * 添加触发器根级入参。
+         * @param {string} groupName - 参数分组名称。
+         * @returns {void}
+         */
+        function addTriggerRootParam(groupName) {
+            const paramName = window.prompt('请输入参数名');
+
+            if (!paramName) {
+                return;
+            }
+
+            flowState.trigger.inputParams[groupName].push({
+                id: 'trigger_' + groupName + '_' + Date.now(),
+                paramName: paramName,
+                paramType: 'string',
+                carrier: groupName,
+                description: ''
+            });
+            renderTriggerInputParamEditor();
+            validateScript();
         }
 
         // ========================================
@@ -1880,12 +2078,47 @@
         }
 
         /**
+         * 渲染触发器入参变量列表。
+         * @returns {string} 触发器入参变量HTML。
+         */
+        function renderTriggerVariableList() {
+            const groupNames = Object.keys(flowState.trigger.inputParams);
+            const html = groupNames.map(function(groupName) {
+                const fields = flattenOutputParams(flowState.trigger.inputParams[groupName] || []);
+                const content = fields.map(function(field) {
+                    const variable = '${trigger.' + groupName + '.' + field.path + '}';
+                    return '<div class="variable-item">' +
+                        '<div class="variable-code">' + variable + '</div>' +
+                        '<div class="variable-desc">' + getParamGroupTitle(groupName) + ' · ' + field.type + ' · ' + (field.description || '-') + '</div>' +
+                        '<button class="variable-insert-btn" onclick="insertTriggerVariableToScript(\'' + variable + '\')">插入到脚本</button>' +
+                    '</div>';
+                }).join('');
+
+                return content;
+            }).join('');
+
+            return html || '<div class="empty-state">暂无触发器入参</div>';
+        }
+
+        /**
+         * 将触发器变量插入到脚本当前光标位置。
+         * @param {string} variable - 触发器变量。
+         * @returns {void}
+         */
+        function insertTriggerVariableToScript(variable) {
+            insertTextAtCursor(variable);
+        }
+
+        /**
          * 渲染右侧模板变量辅助面板。
          * @returns {void}
          */
         function renderVariableAssistPanel() {
+            const triggerVariableList = document.getElementById('triggerVariableList');
             const connectorVariableList = document.getElementById('connectorVariableList');
             const connectorDocList = document.getElementById('connectorDocList');
+
+            triggerVariableList.innerHTML = renderTriggerVariableList();
 
             connectorVariableList.innerHTML = flowState.connectors.map(function(connector) {
                 const connectorDefinition = getConnectorDefinition(connector.connectorId);
@@ -2040,6 +2273,11 @@
                 results: results
             });
 
+            validateTriggerReferences({
+                script: script,
+                results: results
+            });
+
             if (results.length === 0) {
                 results.push({
                     type: 'success',
@@ -2124,6 +2362,36 @@
             }
         }
 
+        /**
+         * 校验触发器入参模板变量。
+         * @param {Object} options - 校验触发器引用所需参数。
+         * @returns {void}
+         */
+        function validateTriggerReferences(options) {
+            const script = options.script;
+            const results = options.results;
+            const triggerReferenceRegex = /\$\{trigger\.(header|body|query)\.([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)\}/g;
+            let matchResult = triggerReferenceRegex.exec(script);
+
+            while (matchResult) {
+                const groupName = matchResult[1];
+                const fieldPath = matchResult[2];
+                const triggerFields = flattenOutputParams(flowState.trigger.inputParams[groupName] || []);
+                const hasTriggerField = triggerFields.some(function(field) {
+                    return field.path === fieldPath;
+                });
+
+                if (!hasTriggerField) {
+                    results.push({
+                        type: 'warning',
+                        message: '触发器入参未声明：${trigger.' + groupName + '.' + fieldPath + '}'
+                    });
+                }
+
+                matchResult = triggerReferenceRegex.exec(script);
+            }
+        }
+
         // ========================================
         // JSON预览与保存发布
         // ========================================
@@ -2134,6 +2402,7 @@
          */
         function getFlowVersionPayload() {
             updateFlowMeta();
+            updateTriggerMeta();
             flowState.script = document.getElementById('scriptEditor').value;
 
             return {
@@ -2144,9 +2413,11 @@
                 description: flowState.description,
                 orchestrationMode: 'javascript_template_variable',
                 variableRules: {
+                    triggerInput: '${trigger.header|body|query.fieldPath}',
                     connectorCall: '${connector.连接器ID}',
                     connectorOutput: '${output.连接器ID.fieldPath}'
                 },
+                trigger: flowState.trigger,
                 connectors: flowState.connectors,
                 script: flowState.script
             };

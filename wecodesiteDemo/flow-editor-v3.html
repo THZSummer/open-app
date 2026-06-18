@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -336,11 +337,25 @@
             font-weight: 600;
         }
 
-        .node-card-icon.trigger { background: #1890ff; }
-        .node-card-icon.connector { background: #52c41a; }
-        .node-card-icon.function { background: #722ed1; }
-        .node-card-icon.parallel { background: #597ef7; }
-        .node-card-icon.output { background: #eb2f96; }
+        .node-card-icon.trigger {
+            background: #1890ff;
+        }
+
+        .node-card-icon.connector {
+            background: #52c41a;
+        }
+
+        .node-card-icon.function {
+            background: #722ed1;
+        }
+
+        .node-card-icon.parallel {
+            background: #597ef7;
+        }
+
+        .node-card-icon.output {
+            background: #eb2f96;
+        }
 
         .node-card-actions {
             display: flex;
@@ -625,6 +640,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="page-container">
         <aside class="sidebar">
@@ -694,7 +710,8 @@
                 <div class="modal-close" onclick="closePreviewModal()">×</div>
             </div>
             <div class="modal-body">
-                <pre id="previewContent" style="max-height: 520px; overflow: auto; padding: 12px; background: #1f1f1f; color: #f5f5f5; border-radius: 6px; font-size: 12px;"></pre>
+                <pre id="previewContent"
+                    style="max-height: 520px; overflow: auto; padding: 12px; background: #1f1f1f; color: #f5f5f5; border-radius: 6px; font-size: 12px;"></pre>
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closePreviewModal()">关闭</button>
@@ -960,9 +977,8 @@
                     data: {
                         label: '函数节点',
                         description: '处理前置节点数据并输出结构',
-                        inputMappings: { header: [], body: [], query: [] },
                         script: 'function transform(input) {\n    return input;\n}',
-                        outputParams: { header: [], body: [], query: [] }
+                        outputParams: []
                     }
                 };
             }
@@ -1249,26 +1265,14 @@
                     <div class="node-card-body">
                         ${renderCommonNodeFields({ step, path, index })}
                         <div class="form-group">
-                            <label class="form-label">节点入参配置</label>
-                            <div class="form-help" style="margin-bottom: 8px;">用于从当前节点之前的数据中组装函数入参。</div>
-                            ${renderMappingTabs({ ownerId: step.id, group: 'functionInput', mappings: data.inputMappings, path, index, tabs: [
-                                { key: 'body', label: '函数入参' },
-                                { key: 'header', label: '扩展Header' },
-                                { key: 'query', label: '扩展Query' }
-                            ] })}
-                        </div>
-                        <div class="form-group">
                             <label class="form-label">JS脚本输入框</label>
                             <textarea class="form-textarea script-textarea" onchange="updateStepField({ pathText: '${encodedPath}', index: ${index}, field: 'script', value: this.value })">${escapeHtml(data.script)}</textarea>
                             <div class="form-help">该节点用于处理当前节点之前的数据，并通过下方出参结构提供给后续节点使用。</div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">节点出参配置</label>
-                            ${renderSchemaTabs({ ownerId: step.id, group: 'functionOutput', schema: data.outputParams, tabs: [
-                                { key: 'header', label: 'Header出参' },
-                                { key: 'body', label: 'Body出参' },
-                                { key: 'query', label: 'Query出参' }
-                            ] })}
+                            <div class="form-help" style="margin-bottom: 8px;">定义函数处理后的出参结构，供后续节点引用。</div>
+                            ${renderFlatSchemaList({ ownerId: step.id, group: 'functionOutput', schema: data.outputParams })}
                         </div>
                     </div>
                 </section>
@@ -1380,6 +1384,24 @@
             return `
                 <div class="param-tabs">${tabButtons}</div>
                 <div>${tabPanels}</div>
+            `;
+        }
+
+        /**
+         * 渲染无位置分组的结构配置列表
+         * @param {Object} params - 结构列表参数
+         * @returns {string} 结构列表 HTML
+         */
+        function renderFlatSchemaList(params) {
+            const ownerId = params.ownerId;
+            const group = params.group;
+            const schema = params.schema;
+
+            return `
+                <div class="schema-list">
+                    ${(schema || []).map(param => renderSchemaParamItem({ param, ownerId, group, tabKey: '', depth: 0 })).join('')}
+                </div>
+                <button class="add-param-btn" onclick="addSchemaParam({ ownerId: '${ownerId}', group: '${group}', tabKey: '' })">+ 添加参数</button>
             `;
         }
 
@@ -1527,15 +1549,50 @@
                 schema: v3FlowData.trigger.data.inputParams
             });
 
-            const rootLimit = path.length === 0 ? index : findParallelIndexInParentPath({ path });
-            collectStepReferences({ references, steps: v3FlowData.steps, limit: rootLimit, prefix: '主流程' });
-
-            if (path.length > 0) {
-                const branchSteps = getStepsByPath(path);
-                collectStepReferences({ references, steps: branchSteps, limit: index, prefix: '当前分支' });
-            }
+            collectReferenceContextByPath({ references, path, index });
 
             return references;
+        }
+
+        /**
+         * 按路径逐层收集当前节点之前的可引用数据
+         * @param {Object} params - 路径引用上下文参数
+         * @returns {void}
+         */
+        function collectReferenceContextByPath(params) {
+            const references = params.references;
+            const path = params.path;
+            const index = params.index;
+            let steps = v3FlowData.steps;
+            let prefix = '主流程';
+
+            if (path.length === 0) {
+                collectStepReferences({ references, steps, limit: index, prefix });
+                return;
+            }
+
+            path.forEach((pathItem, pathIndex) => {
+                const pathParts = pathItem.split(':');
+                const nodeId = pathParts[0];
+                const branchId = pathParts[1];
+                const parallelIndex = steps.findIndex(step => step.id === nodeId);
+                const parallelNode = steps[parallelIndex];
+                const branch = parallelNode?.branches.find(item => item.id === branchId);
+
+                collectStepReferences({ references, steps, limit: parallelIndex, prefix });
+
+                if (!branch) {
+                    steps = [];
+                    return;
+                }
+
+                steps = branch.steps;
+                prefix = `${prefix}/${parallelNode.data.label}/${branch.label}`;
+
+                if (pathIndex === path.length - 1) {
+                    collectStepReferences({ references, steps, limit: index, prefix });
+                }
+            });
         }
 
         /**
@@ -1586,39 +1643,59 @@
                 }
 
                 if (step.type === 'function') {
-                    collectSchemaReferences({
+                    collectFunctionOutputReferences({
                         references,
                         sourceLabel: `${prefix}/${step.data.label || '函数节点'}出参`,
                         sourceKey: `${step.id}.output`,
-                        schema: step.data.outputParams || { header: [], body: [], query: [] }
+                        params: step.data.outputParams || []
                     });
                 }
 
                 if (step.type === 'parallel') {
-                    step.branches.forEach(branch => {
-                        branch.steps.forEach(branchStep => {
-                            if (branchStep.type === 'connector') {
-                                const connector = CONNECTOR_DATA[branchStep.data.connectorId];
-                                const version = connector?.versions.find(item => item.id === branchStep.data.connectorVersionId);
-                                collectSchemaReferences({
-                                    references,
-                                    sourceLabel: `${prefix}/${step.data.label}/${branch.label}/${branchStep.data.label}出参`,
-                                    sourceKey: `${step.id}.${branch.id}.${branchStep.id}.output`,
-                                    schema: version?.outputParams || { header: [], body: [] }
-                                });
-                            }
-
-                            if (branchStep.type === 'function') {
-                                collectSchemaReferences({
-                                    references,
-                                    sourceLabel: `${prefix}/${step.data.label}/${branch.label}/${branchStep.data.label}出参`,
-                                    sourceKey: `${step.id}.${branch.id}.${branchStep.id}.output`,
-                                    schema: branchStep.data.outputParams || { header: [], body: [], query: [] }
-                                });
-                            }
-                        });
-                    });
+                    collectParallelStepReferences({ references, step, prefix });
                 }
+            });
+        }
+
+        /**
+         * 递归收集并行节点内部的出参引用
+         * @param {Object} params - 并行节点引用参数
+         * @returns {void}
+         */
+        function collectParallelStepReferences(params) {
+            const references = params.references;
+            const step = params.step;
+            const prefix = params.prefix;
+
+            step.branches.forEach(branch => {
+                branch.steps.forEach(branchStep => {
+                    const sourcePrefix = `${prefix}/${step.data.label}/${branch.label}`;
+                    const sourceKey = `${step.id}.${branch.id}.${branchStep.id}.output`;
+
+                    if (branchStep.type === 'connector') {
+                        const connector = CONNECTOR_DATA[branchStep.data.connectorId];
+                        const version = connector?.versions.find(item => item.id === branchStep.data.connectorVersionId);
+                        collectSchemaReferences({
+                            references,
+                            sourceLabel: `${sourcePrefix}/${branchStep.data.label}出参`,
+                            sourceKey,
+                            schema: version?.outputParams || { header: [], body: [] }
+                        });
+                    }
+
+                    if (branchStep.type === 'function') {
+                        collectFunctionOutputReferences({
+                            references,
+                            sourceLabel: `${sourcePrefix}/${branchStep.data.label}出参`,
+                            sourceKey,
+                            params: branchStep.data.outputParams || []
+                        });
+                    }
+
+                    if (branchStep.type === 'parallel') {
+                        collectParallelStepReferences({ references, step: branchStep, prefix: sourcePrefix });
+                    }
+                });
             });
         }
 
@@ -1642,6 +1719,59 @@
                     params: schema[groupKey] || [],
                     parentPath: ''
                 });
+            });
+        }
+
+        /**
+         * 收集函数节点无位置分组的出参引用
+         * @param {Object} params - 函数出参引用参数
+         * @returns {void}
+         */
+        function collectFunctionOutputReferences(params) {
+            const references = params.references;
+            const sourceLabel = params.sourceLabel;
+            const sourceKey = params.sourceKey;
+            const paramList = params.params;
+
+            collectFlatParamReferences({
+                references,
+                sourceLabel,
+                sourceKey,
+                params: paramList,
+                parentPath: ''
+            });
+        }
+
+        /**
+         * 递归收集无位置分组的参数引用
+         * @param {Object} params - 无分组参数引用配置
+         * @returns {void}
+         */
+        function collectFlatParamReferences(params) {
+            const references = params.references;
+            const sourceLabel = params.sourceLabel;
+            const sourceKey = params.sourceKey;
+            const paramList = params.params;
+            const parentPath = params.parentPath;
+
+            paramList.forEach(param => {
+                const currentPath = parentPath ? `${parentPath}.${param.paramName}` : param.paramName;
+                if (param.paramName) {
+                    references.push({
+                        label: `${sourceLabel}/${currentPath}`,
+                        value: `${sourceKey}.${currentPath}`
+                    });
+                }
+
+                if ((param.children || []).length > 0) {
+                    collectFlatParamReferences({
+                        references,
+                        sourceLabel,
+                        sourceKey,
+                        params: param.children,
+                        parentPath: currentPath
+                    });
+                }
             });
         }
 
@@ -1774,6 +1904,8 @@
         function removeStep(params) {
             const path = JSON.parse(decodeURIComponent(params.pathText));
             const steps = getStepsByPath(path);
+            const removedStep = steps[params.index];
+            clearReferencesByPrefix({ prefix: removedStep.id });
             steps.splice(params.index, 1);
             renderFlow();
         }
@@ -1806,7 +1938,13 @@
             step.data[params.field] = params.value;
 
             if (params.resetVersion) {
+                clearReferencesByPrefix({ prefix: `${step.id}.output` });
                 step.data.connectorVersionId = '';
+                step.data.inputMappings = { header: [], body: [], query: [] };
+            }
+
+            if (params.field === 'connectorVersionId') {
+                clearReferencesByPrefix({ prefix: `${step.id}.output` });
                 step.data.inputMappings = { header: [], body: [], query: [] };
             }
 
@@ -1873,6 +2011,58 @@
         }
 
         /**
+         * 清理所有匹配前缀的引用配置
+         * @param {Object} params - 引用清理参数
+         * @returns {void}
+         */
+        function clearReferencesByPrefix(params) {
+            const prefix = params.prefix;
+            clearReferencesInMappings({ mappings: v3FlowData.output.data.assembleParams, prefix });
+            clearReferencesInSteps({ steps: v3FlowData.steps, prefix });
+        }
+
+        /**
+         * 清理步骤列表中的引用配置
+         * @param {Object} params - 步骤引用清理参数
+         * @returns {void}
+         */
+        function clearReferencesInSteps(params) {
+            const steps = params.steps;
+            const prefix = params.prefix;
+
+            steps.forEach(step => {
+                if (step.data?.inputMappings) {
+                    clearReferencesInMappings({ mappings: step.data.inputMappings, prefix });
+                }
+
+                if (step.type === 'parallel') {
+                    step.branches.forEach(branch => {
+                        clearReferencesInSteps({ steps: branch.steps, prefix });
+                    });
+                }
+            });
+        }
+
+        /**
+         * 清理映射容器中的引用配置
+         * @param {Object} params - 映射引用清理参数
+         * @returns {void}
+         */
+        function clearReferencesInMappings(params) {
+            const mappings = params.mappings;
+            const prefix = params.prefix;
+
+            Object.keys(mappings || {}).forEach(tabKey => {
+                mappings[tabKey].forEach(mapping => {
+                    if (mapping.referenceValue && mapping.referenceValue.startsWith(prefix)) {
+                        mapping.referenceValue = '';
+                        mapping.configType = 'fixed';
+                    }
+                });
+            });
+        }
+
+        /**
          * 获取节点中的结构配置容器
          * @param {Object} params - 容器查找参数
          * @returns {Object} 结构配置容器
@@ -1884,6 +2074,20 @@
             }
 
             return node.data.outputParams;
+        }
+
+        /**
+         * 获取结构配置中的参数数组
+         * @param {Object} params - 参数列表获取配置
+         * @returns {Array<Object>} 参数数组
+         */
+        function getSchemaParamList(params) {
+            const container = getSchemaContainer({ ownerId: params.ownerId, group: params.group });
+            if (Array.isArray(container)) {
+                return container;
+            }
+
+            return container[params.tabKey];
         }
 
         /**
@@ -1908,19 +2112,47 @@
         function findParamWithParent(params) {
             const list = params.list;
             const paramId = params.paramId;
+            const parentPath = params.parentPath || '';
 
             for (const param of list) {
+                const paramPath = parentPath ? `${parentPath}.${param.paramName}` : param.paramName;
                 if (param.id === paramId) {
-                    return { param, parentList: list };
+                    return { param, parentList: list, paramPath };
                 }
 
-                const found = findParamWithParent({ list: param.children || [], paramId });
+                const found = findParamWithParent({
+                    list: param.children || [],
+                    paramId,
+                    parentPath: paramPath
+                });
                 if (found) {
                     return found;
                 }
             }
 
             return null;
+        }
+
+        /**
+         * 构建结构参数引用前缀
+         * @param {Object} params - 引用前缀参数
+         * @returns {string} 引用前缀
+         */
+        function buildSchemaReferencePrefix(params) {
+            const ownerId = params.ownerId;
+            const group = params.group;
+            const tabKey = params.tabKey;
+            const paramPath = params.paramPath;
+
+            if (group === 'triggerInput') {
+                return `trigger.input.${tabKey}.${paramPath}`;
+            }
+
+            if (group === 'functionOutput') {
+                return `${ownerId}.output.${paramPath}`;
+            }
+
+            return `${ownerId}.output.${tabKey}.${paramPath}`;
         }
 
         /**
@@ -1943,8 +2175,8 @@
          * @returns {void}
          */
         function addSchemaParam(params) {
-            const container = getSchemaContainer({ ownerId: params.ownerId, group: params.group });
-            container[params.tabKey].push(createSchemaParam());
+            const paramList = getSchemaParamList({ ownerId: params.ownerId, group: params.group, tabKey: params.tabKey });
+            paramList.push(createSchemaParam());
             renderFlow();
         }
 
@@ -1954,8 +2186,8 @@
          * @returns {void}
          */
         function addSchemaSiblingParam(params) {
-            const container = getSchemaContainer({ ownerId: params.ownerId, group: params.group });
-            const found = findParamWithParent({ list: container[params.tabKey], paramId: params.paramId });
+            const paramList = getSchemaParamList({ ownerId: params.ownerId, group: params.group, tabKey: params.tabKey });
+            const found = findParamWithParent({ list: paramList, paramId: params.paramId });
             found.parentList.push(createSchemaParam());
             renderFlow();
         }
@@ -1966,8 +2198,8 @@
          * @returns {void}
          */
         function addSchemaChildParam(params) {
-            const container = getSchemaContainer({ ownerId: params.ownerId, group: params.group });
-            const found = findParamWithParent({ list: container[params.tabKey], paramId: params.paramId });
+            const paramList = getSchemaParamList({ ownerId: params.ownerId, group: params.group, tabKey: params.tabKey });
+            const found = findParamWithParent({ list: paramList, paramId: params.paramId });
             found.param.children = found.param.children || [];
             found.param.children.push(createSchemaParam());
             renderFlow();
@@ -1979,8 +2211,20 @@
          * @returns {void}
          */
         function updateSchemaParamField(params) {
-            const container = getSchemaContainer({ ownerId: params.ownerId, group: params.group });
-            const found = findParamWithParent({ list: container[params.tabKey], paramId: params.paramId });
+            const paramList = getSchemaParamList({ ownerId: params.ownerId, group: params.group, tabKey: params.tabKey });
+            const found = findParamWithParent({ list: paramList, paramId: params.paramId });
+
+            if (params.field === 'paramName' && found.param.paramName) {
+                clearReferencesByPrefix({
+                    prefix: buildSchemaReferencePrefix({
+                        ownerId: params.ownerId,
+                        group: params.group,
+                        tabKey: params.tabKey,
+                        paramPath: found.paramPath
+                    })
+                });
+            }
+
             found.param[params.field] = params.value;
             if (params.field === 'paramType' && !isComplexType(params.value)) {
                 found.param.children = [];
@@ -1994,9 +2238,21 @@
          * @returns {void}
          */
         function removeSchemaParam(params) {
-            const container = getSchemaContainer({ ownerId: params.ownerId, group: params.group });
-            const found = findParamWithParent({ list: container[params.tabKey], paramId: params.paramId });
+            const paramList = getSchemaParamList({ ownerId: params.ownerId, group: params.group, tabKey: params.tabKey });
+            const found = findParamWithParent({ list: paramList, paramId: params.paramId });
             const removeIndex = found.parentList.findIndex(item => item.id === params.paramId);
+
+            if (found.param.paramName) {
+                clearReferencesByPrefix({
+                    prefix: buildSchemaReferencePrefix({
+                        ownerId: params.ownerId,
+                        group: params.group,
+                        tabKey: params.tabKey,
+                        paramPath: found.paramPath
+                    })
+                });
+            }
+
             found.parentList.splice(removeIndex, 1);
             renderFlow();
         }

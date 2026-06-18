@@ -1,0 +1,2899 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接流编辑器 V4 - 连接平台</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+    <style>
+        /* ========================================
+           全局样式变量
+           ======================================== */
+        :root {
+            --primary-color: #1677ff;
+            --primary-hover: #4096ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #1f2329;
+            --text-secondary: #4e5969;
+            --text-tertiary: #86909c;
+            --border-color: #d9dfe8;
+            --bg-page: #f3f6fb;
+            --bg-white: #ffffff;
+            --bg-soft: #f8fbff;
+            --shadow-sm: 0 4px 12px rgba(24, 39, 75, 0.05);
+            --shadow-md: 0 12px 32px rgba(24, 39, 75, 0.12);
+            --radius-lg: 14px;
+            --radius-md: 10px;
+        }
+
+        /* ========================================
+           基础页面样式
+           ======================================== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            height: 100vh;
+            overflow: hidden;
+            color: var(--text-primary);
+            background: radial-gradient(circle at 18% 12%, rgba(22, 119, 255, 0.10), transparent 28%), var(--bg-page);
+            font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        /* ========================================
+           页面布局
+           ======================================== */
+        .page-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 220px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.94);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(16px);
+        }
+
+        .sidebar-header {
+            padding: 22px 24px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-menu {
+            flex: 1;
+            list-style: none;
+            padding: 14px 0;
+        }
+
+        .sidebar-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 24px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-item:hover {
+            color: var(--primary-color);
+            background: #eef6ff;
+        }
+
+        .sidebar-item.active {
+            color: var(--primary-color);
+            background: linear-gradient(90deg, #e8f3ff 0%, #ffffff 100%);
+            font-weight: 600;
+        }
+
+        .sidebar-item.active::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            top: 8px;
+            bottom: 8px;
+            width: 3px;
+            border-radius: 2px 0 0 2px;
+            background: var(--primary-color);
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           顶部区域
+           ======================================== */
+        .editor-header {
+            height: 64px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            background: rgba(255, 255, 255, 0.96);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+        }
+
+        .header-left,
+        .header-right,
+        .version-selector,
+        .version-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .back-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .flow-name {
+            font-size: 16px;
+            font-weight: 650;
+        }
+
+        .version-tag {
+            padding: 2px 8px;
+            border-radius: 999px;
+            color: #0958d9;
+            background: #e6f4ff;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .node-count {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        /* ========================================
+           通用控件
+           ======================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 32px;
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 7px;
+            color: var(--text-primary);
+            background: var(--bg-white);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn:disabled {
+            color: #b8bec8;
+            cursor: not-allowed;
+            background: #f5f7fa;
+        }
+
+        .btn-primary {
+            color: #fff;
+            border-color: var(--primary-color);
+            background: var(--primary-color);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            color: #fff;
+            border-color: var(--primary-hover);
+            background: var(--primary-hover);
+        }
+
+        .btn-danger {
+            color: var(--error-color);
+            border-color: #ffccc7;
+        }
+
+        .btn-small {
+            min-height: 28px;
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        .form-select,
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            background: #fff;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .form-select,
+        .form-input {
+            height: 34px;
+            padding: 0 10px;
+        }
+
+        .form-textarea {
+            min-height: 88px;
+            padding: 8px 10px;
+            resize: vertical;
+        }
+
+        .form-select:focus,
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.10);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 7px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 650;
+        }
+
+        .form-help {
+            margin-top: 6px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        /* ========================================
+           内容区域
+           ======================================== */
+        .editor-content {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            padding: 22px 26px 36px;
+        }
+
+        .workspace-shell {
+            width: min(1180px, 100%);
+            margin: 0 auto;
+        }
+
+        .intro-panel {
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 18px;
+            padding: 20px 22px;
+            border: 1px solid #dceaff;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 255, 0.94));
+            box-shadow: var(--shadow-sm);
+        }
+
+        .intro-panel::after {
+            content: "";
+            position: absolute;
+            right: -52px;
+            top: -70px;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: rgba(22, 119, 255, 0.10);
+        }
+
+        .intro-title {
+            position: relative;
+            z-index: 1;
+            font-size: 18px;
+            font-weight: 750;
+        }
+
+        .intro-desc {
+            position: relative;
+            z-index: 1;
+            max-width: 760px;
+            margin-top: 6px;
+            color: var(--text-secondary);
+        }
+
+        /* ========================================
+           无版本状态
+           ======================================== */
+        .no-version-flow-state {
+            display: none;
+            min-height: 460px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 14px;
+            border: 1px dashed #b7d8ff;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.72);
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .no-version-flow-state.active {
+            display: flex;
+        }
+
+        .no-version-flow-icon {
+            width: 72px;
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 24px;
+            color: #0958d9;
+            background: #e6f4ff;
+            font-size: 36px;
+        }
+
+        .no-version-flow-text {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+
+        /* ========================================
+           编排模式选择
+           ======================================== */
+        .mode-panel {
+            margin-bottom: 18px;
+            padding: 18px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.88);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .mode-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .mode-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .mode-card {
+            position: relative;
+            min-height: 116px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 13px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .mode-card.active {
+            border-color: var(--primary-color);
+            background: linear-gradient(135deg, #ffffff 0%, #eef7ff 100%);
+            box-shadow: 0 10px 22px rgba(22, 119, 255, 0.12);
+        }
+
+        .mode-card-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .mode-card-desc {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .mode-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            color: #fff;
+            background: var(--primary-color);
+            font-size: 13px;
+        }
+
+        /* ========================================
+           节点卡片编排区域
+           ======================================== */
+        .flow-stage {
+            display: none;
+            padding-bottom: 24px;
+        }
+
+        .flow-stage.active {
+            display: block;
+        }
+
+        .node-card {
+            overflow: hidden;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            border-left-width: 4px;
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .node-card.trigger {
+            border-left-color: #1677ff;
+        }
+
+        .node-card.connector {
+            border-left-color: #52c41a;
+        }
+
+        .node-card.script {
+            border-left-color: #fa8c16;
+        }
+
+        .node-card.parallel {
+            border-left-color: #597ef7;
+        }
+
+        .node-card.output {
+            border-left-color: #eb2f96;
+        }
+
+        .node-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 13px 16px;
+            border-bottom: 1px solid #eef1f6;
+            background: linear-gradient(90deg, #fbfdff, #ffffff);
+        }
+
+        .node-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .node-icon {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .node-icon.trigger {
+            background: #1677ff;
+        }
+
+        .node-icon.connector {
+            background: #52c41a;
+        }
+
+        .node-icon.script {
+            background: #fa8c16;
+        }
+
+        .node-icon.parallel {
+            background: #597ef7;
+        }
+
+        .node-icon.output {
+            background: #eb2f96;
+        }
+
+        .node-title {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .node-subtitle {
+            margin-top: 1px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .node-body {
+            padding: 16px;
+        }
+
+        .insert-row {
+            display: flex;
+            justify-content: center;
+            margin: 0 0 12px;
+        }
+
+        .insert-btn {
+            color: var(--primary-color);
+            border-style: dashed;
+            background: rgba(255, 255, 255, 0.86);
+        }
+
+        /* ========================================
+           参数配置样式
+           ======================================== */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .tab-btn {
+            padding: 5px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            color: var(--text-secondary);
+            background: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+            background: #e6f4ff;
+            font-weight: 650;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .schema-list,
+        .mapping-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .schema-item,
+        .mapping-item,
+        .auth-item,
+        .systoken-item {
+            padding: 10px;
+            border: 1px solid #edf0f5;
+            border-radius: 10px;
+            background: var(--bg-soft);
+        }
+
+        .schema-row,
+        .mapping-row,
+        .systoken-row {
+            display: grid;
+            grid-template-columns: 1.1fr 120px 1.5fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .mapping-row {
+            grid-template-columns: 1fr 120px 1.6fr;
+        }
+
+        .systoken-row {
+            grid-template-columns: 1fr auto;
+        }
+
+        .add-param-btn {
+            margin-top: 8px;
+            border: none;
+            color: var(--primary-color);
+            background: transparent;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .param-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin: 2px 4px 2px 0;
+            padding: 3px 8px;
+            border-radius: 999px;
+            color: #0958d9;
+            background: #e6f4ff;
+            font-size: 12px;
+        }
+
+        .empty-hint {
+            padding: 12px;
+            border: 1px dashed var(--border-color);
+            border-radius: 10px;
+            color: var(--text-tertiary);
+            background: #fff;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        /* ========================================
+           脚本编辑器样式
+           ======================================== */
+        .script-editor {
+            height: 260px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+        }
+
+        .script-fallback {
+            font-family: Consolas, Monaco, "Courier New", monospace;
+            min-height: 230px;
+        }
+
+        .script-status {
+            margin-top: 8px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .script-status.error {
+            color: var(--error-color);
+        }
+
+        .script-status.success {
+            color: var(--success-color);
+        }
+
+        /* ========================================
+           并行节点样式
+           ======================================== */
+        .parallel-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .branch-panel {
+            padding: 14px;
+            border: 1px solid #c9d7ff;
+            border-radius: 13px;
+            background: #f8faff;
+        }
+
+        .branch-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        /* ========================================
+           弹窗与提示
+           ======================================== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(8, 15, 26, 0.42);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            width: min(620px, 92vw);
+            max-height: 88vh;
+            overflow: hidden;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: var(--shadow-md);
+        }
+
+        .modal-header,
+        .modal-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-footer {
+            justify-content: flex-end;
+            border-top: 1px solid var(--border-color);
+            border-bottom: none;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .modal-close:hover {
+            background: #f2f4f8;
+        }
+
+        .modal-body {
+            max-height: 68vh;
+            overflow: auto;
+            padding: 18px;
+        }
+
+        .insert-node-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .insert-node-option {
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .insert-node-option:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-1px);
+        }
+
+        .insert-node-option-title {
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+
+        .insert-node-option-desc {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 32px;
+            z-index: 200;
+            transform: translateX(-50%) translateY(18px);
+            min-width: 220px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            color: #fff;
+            background: rgba(31, 35, 41, 0.92);
+            text-align: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            background: var(--success-color);
+        }
+
+        .toast.error {
+            background: var(--error-color);
+        }
+
+        /* ========================================
+           响应式处理
+           ======================================== */
+        @media (max-width: 980px) {
+            .sidebar {
+                width: 184px;
+            }
+
+            .mode-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .editor-header {
+                height: auto;
+                min-height: 64px;
+                align-items: flex-start;
+                flex-direction: column;
+                padding: 12px 18px;
+            }
+
+            .header-left,
+            .header-right {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 页面主容器 -->
+    <div class="page-container">
+        <!-- 左侧菜单栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">连接平台</div>
+            <ul class="sidebar-menu" id="sidebarMenu">
+                <li class="sidebar-item" data-menu="应用管理">应用管理</li>
+                <li class="sidebar-item" data-menu="连接器管理">连接器管理</li>
+                <li class="sidebar-item active" data-menu="连接流编排 V4">连接流编排 V4</li>
+                <li class="sidebar-item" data-menu="运行日志">运行日志</li>
+            </ul>
+        </aside>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 编辑器顶部区域 -->
+            <header class="editor-header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="handleBack()">← 返回</button>
+                    <span class="flow-name" id="flowName">订单同步连接流</span>
+                    <span class="version-tag">V4 表单编排</span>
+                    <div class="version-selector" id="versionSelectorContainer"></div>
+                </div>
+                <div class="header-right">
+                    <span class="node-count" id="nodeCount">未选择编排模式</span>
+                    <div class="version-actions" id="versionActions"></div>
+                </div>
+            </header>
+
+            <!-- 编辑器内容区域 -->
+            <section class="editor-content">
+                <div class="workspace-shell">
+                    <div class="intro-panel">
+                        <div class="intro-title">连接流表单编排工作台</div>
+                        <div class="intro-desc">通过卡片和表单配置连接流，不使用画布、拖拽和连线。连接器入参可选择触发器入参、上游连接器出参和脚本节点出参。</div>
+                    </div>
+
+                    <!-- 无版本状态 -->
+                    <div class="no-version-flow-state" id="noVersionFlowState">
+                        <div class="no-version-flow-icon">＋</div>
+                        <div class="no-version-flow-text">当前连接流暂无版本，请先添加版本后再配置编排</div>
+                        <button class="btn btn-primary" onclick="handleAddVersion()">添加版本</button>
+                    </div>
+
+                    <!-- 编排配置区域 -->
+                    <div id="flowWorkspace">
+                        <section class="mode-panel">
+                            <div class="mode-title-row">
+                                <div>
+                                    <div class="mode-title">选择编排类型</div>
+                                    <div class="form-help">未选择前不展示后续节点，切换编排类型会重新初始化当前 demo 数据。</div>
+                                </div>
+                                <button class="btn btn-small" onclick="simulateNoVersion()">模拟无版本</button>
+                            </div>
+                            <div class="mode-grid" id="modeGrid"></div>
+                        </section>
+                        <section class="flow-stage" id="flowStage"></section>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- 添加节点弹窗 -->
+    <div class="modal-overlay" id="insertNodeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">选择要添加的节点</h3>
+                <button class="modal-close" onclick="closeInsertNodeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="insert-node-grid" id="insertNodeList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预览数据弹窗 -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal" style="width: min(820px, 92vw);">
+            <div class="modal-header">
+                <h3 class="modal-title">流程数据预览</h3>
+                <button class="modal-close" onclick="closePreviewModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <pre id="previewContent" style="max-height: 520px; overflow: auto; padding: 14px; border-radius: 10px; color: #e8eef8; background: #111827; font-size: 12px;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closePreviewModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ========================================
+        // 常量与模拟数据
+        // ========================================
+
+        /**
+         * 应用级连接流配置限制。
+         */
+        const APP_FLOW_CONFIG_LIMITS = {
+            connectorTimeoutMax: 3,
+            connectorNodeMax: 3,
+            parallelBranchMax: 8
+        };
+
+        /**
+         * 编排模式配置。
+         */
+        const FLOW_MODES = [
+            { key: 'single', title: '单节点', icon: '单', desc: '固定触发器、连接器和数据输出，适合一次连接器调用。' },
+            { key: 'serial', title: '串行编排', icon: '串', desc: '按顺序添加连接器和脚本节点，连接器数量默认最多 3 个。' },
+            { key: 'parallel', title: '并行编排', icon: '并', desc: '在并行节点内配置多个分支，每个分支固定一个连接器。' }
+        ];
+
+        /**
+         * 连接器模拟数据。
+         */
+        const CONNECTOR_DATA = {
+            http: {
+                id: 'http',
+                name: 'HTTP请求连接器',
+                authMethods: [
+                    { id: 'SOA', name: 'SOA认证', params: [{ name: 'X-Huawei-Auth', type: 'string', carrier: 'header' }] },
+                    { id: 'APIG', name: 'APIG认证', params: [{ name: 'X-HW-ID', type: 'string', carrier: 'header' }, { name: 'X-HW-APPKEY', type: 'string', carrier: 'header' }] }
+                ],
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        inputParams: {
+                            header: [{ id: 'ih1', name: 'Authorization', type: 'string', desc: '认证信息' }],
+                            body: [{ id: 'ib1', name: 'payload', type: 'object', desc: '请求体' }],
+                            query: [{ id: 'iq1', name: 'pageNo', type: 'number', desc: '页码' }]
+                        },
+                        outputParams: [{ id: 'ho1', name: 'code', type: 'number' }, { id: 'ho2', name: 'data.id', type: 'number' }, { id: 'ho3', name: 'data.name', type: 'string' }]
+                    },
+                    {
+                        id: 'v2',
+                        name: 'v0.9.0',
+                        inputParams: {
+                            header: [],
+                            body: [{ id: 'ib2', name: 'keyword', type: 'string', desc: '搜索关键词' }],
+                            query: []
+                        },
+                        outputParams: [{ id: 'ho4', name: 'result', type: 'string' }]
+                    }
+                ]
+            },
+            database: {
+                id: 'database',
+                name: '数据库连接器',
+                authMethods: [
+                    { id: 'COOKIE', name: 'Cookie认证', params: [{ name: 'Cookie-Token', type: 'string', carrier: 'header' }] }
+                ],
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        inputParams: {
+                            header: [],
+                            body: [{ id: 'dbi1', name: 'sql', type: 'string', desc: 'SQL语句' }, { id: 'dbi2', name: 'params', type: 'array', desc: 'SQL参数' }],
+                            query: []
+                        },
+                        outputParams: [{ id: 'dbo1', name: 'rows', type: 'array' }, { id: 'dbo2', name: 'rowCount', type: 'number' }]
+                    }
+                ]
+            },
+            redis: {
+                id: 'redis',
+                name: 'Redis缓存连接器',
+                authMethods: [
+                    { id: 'SIGNATURE', name: '数字签名认证', params: [{ name: 'X-Signature', type: 'string', carrier: 'header' }] }
+                ],
+                versions: [
+                    {
+                        id: 'v1',
+                        name: 'v1.0.0',
+                        inputParams: {
+                            header: [],
+                            body: [{ id: 'ri1', name: 'key', type: 'string', desc: '缓存键' }, { id: 'ri2', name: 'ttl', type: 'number', desc: '过期时间' }],
+                            query: []
+                        },
+                        outputParams: [{ id: 'ro1', name: 'value', type: 'string' }, { id: 'ro2', name: 'exists', type: 'boolean' }]
+                    }
+                ]
+            }
+        };
+
+        /**
+         * 连接流版本模拟数据。
+         */
+        let flowVersionData = {
+            currentVersion: 'v1',
+            versions: [
+                { id: 'v1', name: 'v1.0.0', status: '草稿', createdAt: '2024-01-15' },
+                { id: 'v2', name: 'v0.9.0', status: '已发布', createdAt: '2024-01-10' }
+            ]
+        };
+
+        /**
+         * 当前连接流编排数据。
+         */
+        let flowData = createEmptyFlowData();
+
+        /**
+         * 当前添加节点上下文。
+         */
+        let insertContext = null;
+
+        /**
+         * 节点卡片收起状态缓存。
+         */
+        const collapsedNodeMap = {};
+
+        /**
+         * Monaco 编辑器实例缓存。
+         */
+        const monacoEditors = {};
+
+        /**
+         * Monaco 加载状态。
+         */
+        let monacoLoadStarted = false;
+
+        // ========================================
+        // 初始化逻辑
+        // ========================================
+
+        /**
+         * 初始化页面事件与首屏渲染。
+         * @returns {void}
+         */
+        function initPage() {
+            bindSidebarMenu();
+            renderVersionArea();
+            renderModeGrid();
+            renderWorkspace();
+        }
+
+        /**
+         * 创建空的连接流数据。
+         * @returns {Object} 空连接流数据
+         */
+        function createEmptyFlowData() {
+            return {
+                mode: '',
+                trigger: createTriggerNode(),
+                steps: [],
+                output: createOutputNode()
+            };
+        }
+
+        /**
+         * 绑定左侧菜单点击事件。
+         * @returns {void}
+         */
+        function bindSidebarMenu() {
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.addEventListener('click', function () {
+                    document.querySelectorAll('.sidebar-item').forEach(menuItem => menuItem.classList.remove('active'));
+                    this.classList.add('active');
+                    showToast({ message: `已跳转到${this.dataset.menu}` });
+                });
+            });
+        }
+
+        // ========================================
+        // 顶部版本逻辑
+        // ========================================
+
+        /**
+         * 渲染顶部版本选择与操作按钮。
+         * @returns {void}
+         */
+        function renderVersionArea() {
+            const selectorContainer = document.getElementById('versionSelectorContainer');
+            const actionsContainer = document.getElementById('versionActions');
+            const hasVersion = flowVersionData.versions.length > 0;
+
+            selectorContainer.innerHTML = hasVersion ? renderVersionSelectorHtml() : '<span class="form-help">暂无版本</span>';
+            actionsContainer.innerHTML = hasVersion ? renderVersionActionsHtml() : '<button class="btn btn-primary" onclick="handleAddVersion()">添加版本</button>';
+        }
+
+        /**
+         * 渲染版本选择器 HTML。
+         * @returns {string} 版本选择器 HTML
+         */
+        function renderVersionSelectorHtml() {
+            const options = flowVersionData.versions.map(version => `
+                <option value="${version.id}" ${flowVersionData.currentVersion === version.id ? 'selected' : ''}>
+                    ${version.name} (${version.createdAt}) [${version.status}]
+                </option>
+            `).join('');
+
+            return `
+                <label style="color: var(--text-secondary); font-size: 13px;">版本:</label>
+                <select class="form-select" style="width: 220px;" onchange="handleVersionChange(this.value)">${options}</select>
+            `;
+        }
+
+        /**
+         * 渲染版本操作按钮 HTML。
+         * @returns {string} 版本操作按钮 HTML
+         */
+        function renderVersionActionsHtml() {
+            return `
+                <button class="btn" onclick="previewFlowData()">预览数据</button>
+                <button class="btn" onclick="debugFlow()">立即调试</button>
+                <button class="btn" onclick="showVersionDetail()">版本详情</button>
+                <button class="btn btn-primary" onclick="saveFlow()">保存</button>
+            `;
+        }
+
+        /**
+         * 处理版本切换。
+         * @param {string} versionId - 版本 ID
+         * @returns {void}
+         */
+        function handleVersionChange(versionId) {
+            flowVersionData.currentVersion = versionId;
+            showToast({ message: '已切换连接流版本' });
+            renderVersionArea();
+        }
+
+        /**
+         * 添加连接流版本。
+         * @returns {void}
+         */
+        function handleAddVersion() {
+            const versionId = `v${Date.now()}`;
+            flowVersionData.versions = [{ id: versionId, name: 'v1.0.0', status: '草稿', createdAt: '2024-01-18' }];
+            flowVersionData.currentVersion = versionId;
+            showToast({ message: '已添加草稿版本' });
+            renderVersionArea();
+            renderWorkspace();
+        }
+
+        /**
+         * 模拟无版本状态。
+         * @returns {void}
+         */
+        function simulateNoVersion() {
+            flowVersionData.versions = [];
+            flowVersionData.currentVersion = '';
+            flowData = createEmptyFlowData();
+            showToast({ message: '已切换为无版本状态' });
+            renderVersionArea();
+            renderWorkspace();
+        }
+
+        /**
+         * 返回上一页模拟逻辑。
+         * @returns {void}
+         */
+        function handleBack() {
+            showToast({ message: '返回连接流列表' });
+        }
+
+        // ========================================
+        // 模式与工作区渲染
+        // ========================================
+
+        /**
+         * 渲染编排模式选择卡片。
+         * @returns {void}
+         */
+        function renderModeGrid() {
+            const modeGrid = document.getElementById('modeGrid');
+            modeGrid.innerHTML = FLOW_MODES.map(mode => `
+                <div class="mode-card ${flowData.mode === mode.key ? 'active' : ''}" onclick="selectFlowMode('${mode.key}')">
+                    <div class="mode-card-title"><span class="mode-badge">${mode.icon}</span>${mode.title}</div>
+                    <div class="mode-card-desc">${mode.desc}</div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * 选择编排模式并初始化节点。
+         * @param {string} mode - 编排模式
+         * @returns {void}
+         */
+        function selectFlowMode(mode) {
+            flowData = createEmptyFlowData();
+            flowData.mode = mode;
+
+            if (mode === 'single') {
+                flowData.steps = [createConnectorNode()];
+            }
+
+            if (mode === 'serial') {
+                flowData.steps = [createConnectorNode()];
+            }
+
+            if (mode === 'parallel') {
+                flowData.steps = [createParallelNode()];
+            }
+
+            showToast({ message: '已切换编排模式' });
+            renderModeGrid();
+            renderWorkspace();
+        }
+
+        /**
+         * 渲染工作区内容。
+         * @returns {void}
+         */
+        function renderWorkspace() {
+            const hasVersion = flowVersionData.versions.length > 0;
+            const noVersionState = document.getElementById('noVersionFlowState');
+            const flowWorkspace = document.getElementById('flowWorkspace');
+            const flowStage = document.getElementById('flowStage');
+
+            noVersionState.classList.toggle('active', !hasVersion);
+            flowWorkspace.style.display = hasVersion ? 'block' : 'none';
+
+            if (!hasVersion) {
+                updateNodeCount();
+                return;
+            }
+
+            renderModeGrid();
+            flowStage.classList.toggle('active', Boolean(flowData.mode));
+            disposeMonacoEditors();
+            flowStage.innerHTML = flowData.mode ? renderFlowStageHtml() : '';
+            updateNodeCount();
+            scheduleMonacoEditors();
+        }
+
+        /**
+         * 渲染节点舞台 HTML。
+         * @returns {string} 节点舞台 HTML
+         */
+        function renderFlowStageHtml() {
+            const nodes = getVisibleNodes();
+            const titleCounter = createNodeTitleCounter();
+            let html = '';
+
+            nodes.forEach((node, index) => {
+                html += renderNodeCard({ node, index, titleCounter });
+                html += renderInsertButton({ nodes, index });
+            });
+
+            return html;
+        }
+
+        /**
+         * 获取当前可见节点列表。
+         * @returns {Array} 可见节点列表
+         */
+        function getVisibleNodes() {
+            return [flowData.trigger].concat(flowData.steps, flowData.output);
+        }
+
+        /**
+         * 创建节点标题计数器。
+         * @returns {Object} 节点标题计数器
+         */
+        function createNodeTitleCounter() {
+            return {
+                trigger: 0,
+                connector: 0,
+                script: 0,
+                parallel: 0,
+                output: 0
+            };
+        }
+
+        /**
+         * 获取带序号的节点标题。
+         * @param {Object} params - 标题参数
+         * @returns {string} 节点标题
+         */
+        function getNumberedNodeTitle(params) {
+            const type = params.type;
+            const baseTitle = params.baseTitle;
+            const titleCounter = params.titleCounter;
+
+            if (flowData.mode === 'single' || !titleCounter) {
+                return baseTitle;
+            }
+
+            titleCounter[type] += 1;
+            return `${baseTitle} ${titleCounter[type]}`;
+        }
+
+        /**
+         * 获取分支内连接器标题。
+         * @returns {string} 分支连接器标题
+         */
+        function getBranchConnectorTitle() {
+            return flowData.mode === 'single' ? '连接器' : '连接器 1';
+        }
+
+        /**
+         * 更新顶部节点数量文案。
+         * @returns {void}
+         */
+        function updateNodeCount() {
+            const nodeCount = document.getElementById('nodeCount');
+
+            if (flowVersionData.versions.length === 0) {
+                nodeCount.textContent = '暂无版本';
+                return;
+            }
+
+            if (!flowData.mode) {
+                nodeCount.textContent = '未选择编排模式';
+                return;
+            }
+
+            nodeCount.textContent = `当前 ${getVisibleNodes().length} 个节点`;
+        }
+
+        // ========================================
+        // 节点创建方法
+        // ========================================
+
+        /**
+         * 生成唯一 ID。
+         * @returns {string} 唯一 ID
+         */
+        function generateId() {
+            return `node_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        }
+
+        /**
+         * 创建触发器节点。
+         * @returns {Object} 触发器节点
+         */
+        function createTriggerNode() {
+            return {
+                id: 'trigger',
+                type: 'trigger',
+                triggerType: 'http',
+                systokens: ['SYSACCOUNT_ORDER'],
+                inputParams: {
+                    header: [{ id: generateId(), name: 'X-Request-Id', type: 'string', desc: '请求ID' }],
+                    body: [{ id: generateId(), name: 'orderId', type: 'string', desc: '订单ID' }],
+                    query: []
+                }
+            };
+        }
+
+        /**
+         * 创建连接器节点。
+         * @returns {Object} 连接器节点
+         */
+        function createConnectorNode() {
+            return {
+                id: generateId(),
+                type: 'connector',
+                connectorId: '',
+                versionId: '',
+                authMethodId: '',
+                timeout: APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax,
+                inputMappings: {}
+            };
+        }
+
+        /**
+         * 创建脚本处理节点。
+         * @returns {Object} 脚本处理节点
+         */
+        function createScriptNode() {
+            return {
+                id: generateId(),
+                type: 'script',
+                script: 'type Input = Record<string, unknown>;\n\nexport function transform(input: Input) {\n  return {\n    result: input\n  };\n}',
+                outputParams: [{ id: generateId(), name: 'result', type: 'object', desc: '脚本处理结果' }]
+            };
+        }
+
+        /**
+         * 创建并行节点。
+         * @returns {Object} 并行节点
+         */
+        function createParallelNode() {
+            return {
+                id: generateId(),
+                type: 'parallel',
+                activeBranchId: '',
+                branches: [createParallelBranch(1), createParallelBranch(2)]
+            };
+        }
+
+        /**
+         * 创建并行分支。
+         * @param {number} index - 分支序号
+         * @returns {Object} 并行分支
+         */
+        function createParallelBranch(index) {
+            const branchId = generateId();
+            return {
+                id: branchId,
+                label: `分支${index}`,
+                connector: createConnectorNode()
+            };
+        }
+
+        /**
+         * 创建数据输出节点。
+         * @returns {Object} 数据输出节点
+         */
+        function createOutputNode() {
+            return {
+                id: 'output',
+                type: 'output',
+                assembleParams: {
+                    body: [{ id: generateId(), name: 'data', type: 'object', source: '' }],
+                    header: []
+                }
+            };
+        }
+
+        // ========================================
+        // 节点卡片渲染
+        // ========================================
+
+        /**
+         * 渲染节点卡片。
+         * @param {Object} params - 渲染参数
+         * @returns {string} 节点卡片 HTML
+         */
+        function renderNodeCard(params) {
+            const node = params.node;
+            const index = params.index;
+            const titleCounter = params.titleCounter;
+
+            if (node.type === 'trigger') {
+                return renderTriggerCard({ node, titleCounter });
+            }
+
+            if (node.type === 'connector') {
+                return renderConnectorCard({ node, index, scope: 'main', titleCounter });
+            }
+
+            if (node.type === 'script') {
+                return renderScriptCard({ node, index, titleCounter });
+            }
+
+            if (node.type === 'parallel') {
+                return renderParallelCard({ node, index, titleCounter });
+            }
+
+            return renderOutputCard({ node, titleCounter });
+        }
+
+        /**
+         * 渲染节点头部。
+         * @param {Object} params - 头部参数
+         * @returns {string} 节点头部 HTML
+         */
+        function renderCardHeader(params) {
+            const nodeId = params.nodeId;
+            const title = params.title;
+            const subtitle = params.subtitle;
+            const type = params.type;
+            const icon = params.icon;
+            const actions = params.actions || '';
+            const isCollapsed = Boolean(collapsedNodeMap[nodeId]);
+
+            return `
+                <div class="node-header">
+                    <div class="node-title-wrap">
+                        <span class="node-icon ${type}">${icon}</span>
+                        <div>
+                            <div class="node-title">${title}</div>
+                            <div class="node-subtitle">${subtitle}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${actions}
+                        <button class="btn btn-small" onclick="toggleNodeCollapse('${nodeId}')">${isCollapsed ? '展开' : '收起'}</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染节点卡片内容区域。
+         * @param {Object} params - 内容区域参数
+         * @returns {string} 内容区域 HTML
+         */
+        function renderCollapsibleBody(params) {
+            const nodeId = params.nodeId;
+            const content = params.content;
+
+            if (collapsedNodeMap[nodeId]) {
+                return '';
+            }
+
+            return `<div class="node-body">${content}</div>`;
+        }
+
+        /**
+         * 切换节点卡片收起状态。
+         * @param {string} nodeId - 节点 ID
+         * @returns {void}
+         */
+        function toggleNodeCollapse(nodeId) {
+            collapsedNodeMap[nodeId] = !collapsedNodeMap[nodeId];
+            renderWorkspace();
+        }
+
+        /**
+         * 渲染触发器卡片。
+         * @param {Object} node - 触发器节点
+         * @returns {string} 触发器卡片 HTML
+         */
+        function renderTriggerCard(params) {
+            const node = params.node;
+            const title = getNumberedNodeTitle({ type: 'trigger', baseTitle: '触发器', titleCounter: params.titleCounter });
+            const body = `
+                <div class="form-group">
+                    <label class="form-label">触发方式</label>
+                    <select class="form-select" onchange="updateTriggerType(this.value)">
+                        <option value="http" ${node.triggerType === 'http' ? 'selected' : ''}>HTTP触发</option>
+                        <option value="schedule" ${node.triggerType === 'schedule' ? 'selected' : ''}>定时触发</option>
+                        <option value="event" ${node.triggerType === 'event' ? 'selected' : ''}>事件触发</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">SYSACCOUNT白名单</label>
+                    <div id="systokenList">${renderSystokenList()}</div>
+                    <button class="add-param-btn" onclick="addSystokenItem()">+ 添加账号</button>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">入参配置</label>
+                    ${renderSchemaTabs({ ownerId: node.id, group: 'triggerInput', schema: node.inputParams })}
+                </div>
+            `;
+
+            return `
+                <section class="node-card trigger">
+                    ${renderCardHeader({ nodeId: node.id, type: 'trigger', title, subtitle: '配置连接流入口参数', icon: '触' })}
+                    ${renderCollapsibleBody({ nodeId: node.id, content: body })}
+                </section>
+            `;
+        }
+
+        /**
+         * 渲染连接器卡片。
+         * @param {Object} params - 连接器卡片参数
+         * @returns {string} 连接器卡片 HTML
+         */
+        function renderConnectorCard(params) {
+            const node = params.node;
+            const index = params.index;
+            const scope = params.scope;
+            const title = scope === 'branch'
+                ? getBranchConnectorTitle()
+                : getNumberedNodeTitle({ type: 'connector', baseTitle: '连接器', titleCounter: params.titleCounter });
+            const connector = CONNECTOR_DATA[node.connectorId];
+            const version = getConnectorVersion(node);
+            const connectorOptions = Object.values(CONNECTOR_DATA).map(connectorItem => `
+                <option value="${connectorItem.id}" ${node.connectorId === connectorItem.id ? 'selected' : ''}>${connectorItem.name}</option>
+            `).join('');
+            const versionOptions = connector ? connector.versions.map(versionItem => `
+                <option value="${versionItem.id}" ${node.versionId === versionItem.id ? 'selected' : ''}>${versionItem.name}</option>
+            `).join('') : '';
+
+            const body = `
+                <div class="form-group">
+                    <label class="form-label">选择连接器</label>
+                    <select class="form-select" onchange="updateConnectorField({ nodeId: '${node.id}', field: 'connectorId', value: this.value, resetVersion: true })">
+                        <option value="">请选择连接器</option>
+                        ${connectorOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">选择连接器版本</label>
+                    <select class="form-select" onchange="updateConnectorField({ nodeId: '${node.id}', field: 'versionId', value: this.value })" ${connector ? '' : 'disabled'}>
+                        <option value="">请选择版本</option>
+                        ${versionOptions}
+                    </select>
+                </div>
+                ${version ? renderConnectorConfigAfterVersion({ node, connector, version }) : '<div class="empty-hint">选择连接器和版本后展示认证方式、超时时间和入参配置。</div>'}
+            `;
+
+            return `
+                <section class="node-card connector">
+                    ${renderCardHeader({ nodeId: node.id, type: 'connector', title, subtitle: '选择连接器版本并配置入参映射', icon: '连', actions: renderRemoveAction({ node, index, scope }) })}
+                    ${renderCollapsibleBody({ nodeId: node.id, content: body })}
+                </section>
+            `;
+        }
+
+        /**
+         * 渲染连接器版本选择后的配置区域。
+         * @param {Object} params - 配置区域参数
+         * @returns {string} 配置区域 HTML
+         */
+        function renderConnectorConfigAfterVersion(params) {
+            const node = params.node;
+            const connector = params.connector;
+            const version = params.version;
+
+            return `
+                <div class="form-group">
+                    <label class="form-label">认证方式</label>
+                    ${renderAuthMethods({ node, connector })}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">超时时间（秒，当前上限${APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax}秒）</label>
+                    <input class="form-input" type="number" min="1" max="${APP_FLOW_CONFIG_LIMITS.connectorTimeoutMax}" value="${node.timeout}" onchange="updateConnectorField({ nodeId: '${node.id}', field: 'timeout', value: this.value })">
+                    <div class="form-help">默认上限为 3 秒，可通过应用级配置接口调整。</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">入参配置</label>
+                    <div class="form-help" style="margin-bottom: 8px;">只展示该连接器版本对应的入参，参数值可选择上游节点数据。</div>
+                    ${renderMappingTabs({ node, inputParams: version.inputParams })}
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染脚本节点卡片。
+         * @param {Object} params - 脚本节点参数
+         * @returns {string} 脚本节点 HTML
+         */
+        function renderScriptCard(params) {
+            const node = params.node;
+            const index = params.index;
+            const title = getNumberedNodeTitle({ type: 'script', baseTitle: '脚本处理', titleCounter: params.titleCounter });
+            const body = `
+                <div class="form-group">
+                    <label class="form-label">TS脚本输入框</label>
+                    <div class="script-editor" id="editor-${node.id}"></div>
+                    <textarea class="form-textarea script-fallback" id="fallback-${node.id}" style="display: none;" onchange="updateScriptContent({ nodeId: '${node.id}', value: this.value })">${escapeHtml(node.script)}</textarea>
+                    <div class="script-status" id="status-${node.id}">Monaco Editor 将进行 TypeScript 基础校验。</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">节点出参配置</label>
+                    <div class="form-help" style="margin-bottom: 8px;">仅配置数据结构，不需要选择参数位置。</div>
+                    ${renderFlatSchemaList({ ownerId: node.id, schema: node.outputParams })}
+                </div>
+            `;
+
+            return `
+                <section class="node-card script">
+                    ${renderCardHeader({ nodeId: node.id, type: 'script', title, subtitle: '使用 TypeScript 处理上游数据', icon: '脚', actions: renderRemoveAction({ node, index, scope: 'main' }) })}
+                    ${renderCollapsibleBody({ nodeId: node.id, content: body })}
+                </section>
+            `;
+        }
+
+        /**
+         * 渲染并行节点卡片。
+         * @param {Object} params - 并行节点参数
+         * @returns {string} 并行节点 HTML
+         */
+        function renderParallelCard(params) {
+            const node = params.node;
+            const title = getNumberedNodeTitle({ type: 'parallel', baseTitle: '并行节点', titleCounter: params.titleCounter });
+            const activeBranch = getActiveBranch(node);
+            const tabsHtml = node.branches.map(branch => `
+                <button class="tab-btn ${branch.id === activeBranch.id ? 'active' : ''}" onclick="switchParallelBranch({ nodeId: '${node.id}', branchId: '${branch.id}' })">${escapeHtml(branch.label)}</button>
+            `).join('');
+            const body = `
+                <div class="parallel-toolbar">
+                    <div>
+                        <label class="form-label" style="margin-bottom: 0;">并行分支</label>
+                        <div class="form-help">每个分支默认包含一个连接器，不能删除，也不能继续添加其他节点。</div>
+                    </div>
+                    <button class="btn btn-small" onclick="addParallelBranchToNode('${node.id}')" ${node.branches.length >= APP_FLOW_CONFIG_LIMITS.parallelBranchMax ? 'disabled' : ''}>+ 添加分支</button>
+                </div>
+                <div class="tabs">${tabsHtml}</div>
+                <div class="branch-panel">
+                    <div class="branch-title-row">
+                        <input class="form-input" style="max-width: 260px;" value="${escapeHtml(activeBranch.label)}" onchange="updateBranchLabel({ nodeId: '${node.id}', branchId: '${activeBranch.id}', value: this.value })">
+                        ${node.branches.length > 1 ? `<button class="btn btn-danger btn-small" onclick="removeParallelBranch({ nodeId: '${node.id}', branchId: '${activeBranch.id}' })">删除分支</button>` : ''}
+                    </div>
+                    ${renderConnectorCard({ node: activeBranch.connector, index: -1, scope: 'branch' })}
+                </div>
+            `;
+
+            return `
+                <section class="node-card parallel">
+                    ${renderCardHeader({ nodeId: node.id, type: 'parallel', title, subtitle: '每个分支固定一个连接器节点', icon: '并' })}
+                    ${renderCollapsibleBody({ nodeId: node.id, content: body })}
+                </section>
+            `;
+        }
+
+        /**
+         * 渲染数据输出卡片。
+         * @param {Object} node - 数据输出节点
+         * @returns {string} 数据输出卡片 HTML
+         */
+        function renderOutputCard(params) {
+            const node = params.node;
+            const title = getNumberedNodeTitle({ type: 'output', baseTitle: '数据输出', titleCounter: params.titleCounter });
+            const body = `
+                <div class="form-group">
+                    <label class="form-label">参数组装配置</label>
+                    ${renderOutputMappingTabs(node)}
+                </div>
+            `;
+
+            return `
+                <section class="node-card output">
+                    ${renderCardHeader({ nodeId: node.id, type: 'output', title, subtitle: '配置最终响应参数组装', icon: '出' })}
+                    ${renderCollapsibleBody({ nodeId: node.id, content: body })}
+                </section>
+            `;
+        }
+
+        /**
+         * 渲染删除按钮。
+         * @param {Object} params - 删除按钮参数
+         * @returns {string} 删除按钮 HTML
+         */
+        function renderRemoveAction(params) {
+            const node = params.node;
+            const index = params.index;
+            const scope = params.scope;
+
+            if (scope === 'branch' || flowData.mode === 'single') {
+                return '';
+            }
+
+            if (node.type === 'connector' && flowData.mode === 'serial') {
+                const connectorCount = flowData.steps.filter(step => step.type === 'connector').length;
+
+                if (connectorCount <= 1) {
+                    return '';
+                }
+
+                return `<button class="btn btn-danger btn-small" onclick="removeStep(${index - 1})">删除</button>`;
+            }
+
+            if (node.type === 'script') {
+                return `<button class="btn btn-danger btn-small" onclick="removeStep(${index - 1})">删除</button>`;
+            }
+
+            return '';
+        }
+
+        // ========================================
+        // 插入节点逻辑
+        // ========================================
+
+        /**
+         * 渲染节点间添加按钮。
+         * @param {Object} params - 添加按钮参数
+         * @returns {string} 添加按钮 HTML
+         */
+        function renderInsertButton(params) {
+            const nodes = params.nodes;
+            const index = params.index;
+            const options = getInsertableNodeTypes({ nodes, index });
+
+            if (options.length === 0) {
+                return '';
+            }
+
+            return `
+                <div class="insert-row">
+                    <button class="btn insert-btn" onclick="handleAddButtonClick(${index})">+ 添加节点</button>
+                </div>
+            `;
+        }
+
+        /**
+         * 获取当前位置可添加的节点类型。
+         * @param {Object} params - 插入位置参数
+         * @returns {Array} 可添加节点类型
+         */
+        function getInsertableNodeTypes(params) {
+            const nodes = params.nodes;
+            const index = params.index;
+            const prevNode = nodes[index];
+            const nextNode = nodes[index + 1];
+
+            if (!nextNode || flowData.mode === 'single') {
+                return [];
+            }
+
+            if (flowData.mode === 'serial') {
+                return getSerialInsertableTypes({ prevNode, nextNode });
+            }
+
+            if (flowData.mode === 'parallel') {
+                return getParallelInsertableTypes({ prevNode, nextNode });
+            }
+
+            return [];
+        }
+
+        /**
+         * 获取串行编排可添加节点类型。
+         * @param {Object} params - 相邻节点参数
+         * @returns {Array} 可添加节点类型
+         */
+        function getSerialInsertableTypes(params) {
+            const prevNode = params.prevNode;
+            const nextNode = params.nextNode;
+            const types = [];
+            const connectorCount = flowData.steps.filter(step => step.type === 'connector').length;
+
+            if (connectorCount < APP_FLOW_CONFIG_LIMITS.connectorNodeMax) {
+                types.push('connector');
+            }
+
+            if (prevNode.type !== 'script' && nextNode.type !== 'script') {
+                types.push('script');
+            }
+
+            return types;
+        }
+
+        /**
+         * 获取并行编排可添加节点类型。
+         * @param {Object} params - 相邻节点参数
+         * @returns {Array} 可添加节点类型
+         */
+        function getParallelInsertableTypes(params) {
+            const prevNode = params.prevNode;
+            const nextNode = params.nextNode;
+            const isBeforeParallel = prevNode.type === 'trigger' && nextNode.type === 'parallel';
+            const isAfterParallel = prevNode.type === 'parallel' && nextNode.type === 'output';
+
+            if ((isBeforeParallel || isAfterParallel) && prevNode.type !== 'script' && nextNode.type !== 'script') {
+                return ['script'];
+            }
+
+            return [];
+        }
+
+        /**
+         * 处理添加按钮点击。
+         * @param {number} index - 可见节点插入位置索引
+         * @returns {void}
+         */
+        function handleAddButtonClick(index) {
+            const nodes = getVisibleNodes();
+            const options = getInsertableNodeTypes({ nodes, index });
+
+            if (options.length === 1) {
+                insertContext = { visibleIndex: index };
+                handleInsertNode(options[0]);
+                return;
+            }
+
+            openInsertNodeModal(index);
+        }
+
+        /**
+         * 打开添加节点弹窗。
+         * @param {number} index - 可见节点插入位置索引
+         * @returns {void}
+         */
+        function openInsertNodeModal(index) {
+            const nodes = getVisibleNodes();
+            const options = getInsertableNodeTypes({ nodes, index });
+            insertContext = { visibleIndex: index };
+
+            document.getElementById('insertNodeList').innerHTML = options.map(type => renderInsertOption(type)).join('') || '<div class="empty-hint">当前位置暂无可添加节点</div>';
+            document.getElementById('insertNodeModal').classList.add('active');
+        }
+
+        /**
+         * 渲染添加节点选项。
+         * @param {string} type - 节点类型
+         * @returns {string} 添加节点选项 HTML
+         */
+        function renderInsertOption(type) {
+            const config = {
+                connector: { title: '连接器节点', desc: '调用连接器并配置版本入参映射' },
+                script: { title: '脚本处理节点', desc: '使用 TypeScript 处理上游数据并声明出参结构' }
+            };
+            const item = config[type];
+
+            return `
+                <div class="insert-node-option" onclick="handleInsertNode('${type}')">
+                    <div class="insert-node-option-title">${item.title}</div>
+                    <div class="insert-node-option-desc">${item.desc}</div>
+                </div>
+            `;
+        }
+
+        /**
+         * 关闭添加节点弹窗。
+         * @returns {void}
+         */
+        function closeInsertNodeModal() {
+            insertContext = null;
+            document.getElementById('insertNodeModal').classList.remove('active');
+        }
+
+        /**
+         * 处理插入节点操作。
+         * @param {string} type - 节点类型
+         * @returns {void}
+         */
+        function handleInsertNode(type) {
+            if (!insertContext) {
+                return;
+            }
+
+            const visibleIndex = insertContext.visibleIndex;
+            const stepIndex = visibleIndex;
+            const node = type === 'connector' ? createConnectorNode() : createScriptNode();
+
+            flowData.steps.splice(stepIndex, 0, node);
+            closeInsertNodeModal();
+            showToast({ message: '已添加节点' });
+            renderWorkspace();
+        }
+
+        /**
+         * 删除编排步骤。
+         * @param {number} stepIndex - 步骤索引
+         * @returns {void}
+         */
+        function removeStep(stepIndex) {
+            flowData.steps.splice(stepIndex, 1);
+            showToast({ message: '已删除节点' });
+            renderWorkspace();
+        }
+
+        // ========================================
+        // 触发器配置逻辑
+        // ========================================
+
+        /**
+         * 更新触发方式。
+         * @param {string} value - 触发方式
+         * @returns {void}
+         */
+        function updateTriggerType(value) {
+            flowData.trigger.triggerType = value;
+            showToast({ message: '已更新触发方式' });
+        }
+
+        /**
+         * 渲染 SYSACCOUNT 白名单。
+         * @returns {string} 白名单 HTML
+         */
+        function renderSystokenList() {
+            return flowData.trigger.systokens.map((token, index) => `
+                <div class="systoken-item" style="margin-bottom: 8px;">
+                    <div class="systoken-row">
+                        <input class="form-input" value="${escapeHtml(token)}" onchange="updateSystoken({ index: ${index}, value: this.value })">
+                        <button class="btn btn-danger btn-small" onclick="removeSystokenItem(${index})">删除</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * 添加白名单账号。
+         * @returns {void}
+         */
+        function addSystokenItem() {
+            flowData.trigger.systokens.push('');
+            renderWorkspace();
+        }
+
+        /**
+         * 更新白名单账号。
+         * @param {Object} params - 更新参数
+         * @returns {void}
+         */
+        function updateSystoken(params) {
+            const index = params.index;
+            const value = params.value;
+            flowData.trigger.systokens[index] = value;
+        }
+
+        /**
+         * 删除白名单账号。
+         * @param {number} index - 白名单索引
+         * @returns {void}
+         */
+        function removeSystokenItem(index) {
+            flowData.trigger.systokens.splice(index, 1);
+            renderWorkspace();
+        }
+
+        // ========================================
+        // 参数结构配置渲染
+        // ========================================
+
+        /**
+         * 渲染结构配置 Tabs。
+         * @param {Object} params - 结构配置参数
+         * @returns {string} 结构配置 HTML
+         */
+        function renderSchemaTabs(params) {
+            const ownerId = params.ownerId;
+            const group = params.group;
+            const schema = params.schema;
+            const tabs = [
+                { key: 'header', label: 'HTTP请求头' },
+                { key: 'body', label: 'HTTP请求体' },
+                { key: 'query', label: 'URL查询参数' }
+            ];
+
+            return renderTabs({
+                ownerId,
+                group,
+                tabs,
+                panelRenderer: tab => renderSchemaList({ ownerId, group, tabKey: tab.key, schema: schema[tab.key] || [] })
+            });
+        }
+
+        /**
+         * 渲染结构参数列表。
+         * @param {Object} params - 参数列表配置
+         * @returns {string} 参数列表 HTML
+         */
+        function renderSchemaList(params) {
+            const ownerId = params.ownerId;
+            const group = params.group;
+            const tabKey = params.tabKey;
+            const schema = params.schema;
+            const itemsHtml = schema.map((param, index) => renderSchemaItem({ param, ownerId, group, tabKey, index })).join('');
+
+            return `
+                <div class="schema-list">${itemsHtml || '<div class="empty-hint">暂无参数</div>'}</div>
+                <button class="add-param-btn" onclick="addSchemaParam({ ownerId: '${ownerId}', group: '${group}', tabKey: '${tabKey}' })">+ 添加参数</button>
+            `;
+        }
+
+        /**
+         * 渲染结构参数项。
+         * @param {Object} params - 参数项配置
+         * @returns {string} 参数项 HTML
+         */
+        function renderSchemaItem(params) {
+            const param = params.param;
+            const ownerId = params.ownerId;
+            const group = params.group;
+            const tabKey = params.tabKey;
+            const index = params.index;
+
+            return `
+                <div class="schema-item">
+                    <div class="schema-row">
+                        <input class="form-input" placeholder="参数名" value="${escapeHtml(param.name)}" onchange="updateSchemaParam({ ownerId: '${ownerId}', group: '${group}', tabKey: '${tabKey}', index: ${index}, field: 'name', value: this.value })">
+                        <select class="form-select" onchange="updateSchemaParam({ ownerId: '${ownerId}', group: '${group}', tabKey: '${tabKey}', index: ${index}, field: 'type', value: this.value })">
+                            ${renderTypeOptions(param.type)}
+                        </select>
+                        <input class="form-input" placeholder="描述" value="${escapeHtml(param.desc || '')}" onchange="updateSchemaParam({ ownerId: '${ownerId}', group: '${group}', tabKey: '${tabKey}', index: ${index}, field: 'desc', value: this.value })">
+                        <button class="btn btn-danger btn-small" onclick="removeSchemaParam({ ownerId: '${ownerId}', group: '${group}', tabKey: '${tabKey}', index: ${index} })">删除</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 渲染扁平结构列表。
+         * @param {Object} params - 扁平结构参数
+         * @returns {string} 扁平结构 HTML
+         */
+        function renderFlatSchemaList(params) {
+            const ownerId = params.ownerId;
+            const schema = params.schema;
+            const itemsHtml = schema.map((param, index) => `
+                <div class="schema-item">
+                    <div class="schema-row">
+                        <input class="form-input" value="${escapeHtml(param.name)}" onchange="updateFlatSchemaParam({ ownerId: '${ownerId}', index: ${index}, field: 'name', value: this.value })">
+                        <select class="form-select" onchange="updateFlatSchemaParam({ ownerId: '${ownerId}', index: ${index}, field: 'type', value: this.value })">${renderTypeOptions(param.type)}</select>
+                        <input class="form-input" value="${escapeHtml(param.desc || '')}" onchange="updateFlatSchemaParam({ ownerId: '${ownerId}', index: ${index}, field: 'desc', value: this.value })">
+                        <button class="btn btn-danger btn-small" onclick="removeFlatSchemaParam({ ownerId: '${ownerId}', index: ${index} })">删除</button>
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="schema-list">${itemsHtml || '<div class="empty-hint">暂无出参结构</div>'}</div>
+                <button class="add-param-btn" onclick="addFlatSchemaParam('${ownerId}')">+ 添加出参</button>
+            `;
+        }
+
+        /**
+         * 渲染类型下拉选项。
+         * @param {string} selectedType - 当前类型
+         * @returns {string} 类型选项 HTML
+         */
+        function renderTypeOptions(selectedType) {
+            return ['string', 'number', 'boolean', 'object', 'array'].map(type => `
+                <option value="${type}" ${selectedType === type ? 'selected' : ''}>${type}</option>
+            `).join('');
+        }
+
+        /**
+         * 渲染通用 Tabs。
+         * @param {Object} params - Tabs 参数
+         * @returns {string} Tabs HTML
+         */
+        function renderTabs(params) {
+            const ownerId = params.ownerId;
+            const group = params.group;
+            const tabs = params.tabs;
+            const panelRenderer = params.panelRenderer;
+            const buttonsHtml = tabs.map((tab, index) => `
+                <button class="tab-btn ${index === 0 ? 'active' : ''}" onclick="switchLocalTab(this, '${ownerId}-${group}-${tab.key}')">${tab.label}</button>
+            `).join('');
+            const panelsHtml = tabs.map((tab, index) => `
+                <div class="tab-panel ${index === 0 ? 'active' : ''}" id="${ownerId}-${group}-${tab.key}">${panelRenderer(tab)}</div>
+            `).join('');
+
+            return `<div class="tabs">${buttonsHtml}</div>${panelsHtml}`;
+        }
+
+        /**
+         * 切换当前卡片内的 Tab。
+         * @param {HTMLElement} button - 当前按钮
+         * @param {string} panelId - 面板 ID
+         * @returns {void}
+         */
+        function switchLocalTab(button, panelId) {
+            const container = button.closest('.node-body') || button.closest('.branch-panel');
+            container.querySelectorAll('.tab-btn').forEach(tab => tab.classList.remove('active'));
+            container.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+            button.classList.add('active');
+            document.getElementById(panelId).classList.add('active');
+        }
+
+        /**
+         * 获取结构参数数组。
+         * @param {Object} params - 定位参数
+         * @returns {Array} 参数数组
+         */
+        function getSchemaByParams(params) {
+            const ownerId = params.ownerId;
+            const group = params.group;
+            const tabKey = params.tabKey;
+
+            if (ownerId === 'trigger') {
+                return flowData.trigger.inputParams[tabKey];
+            }
+
+            if (group === 'outputAssemble') {
+                return flowData.output.assembleParams[tabKey];
+            }
+
+            return [];
+        }
+
+        /**
+         * 添加结构参数。
+         * @param {Object} params - 添加参数
+         * @returns {void}
+         */
+        function addSchemaParam(params) {
+            getSchemaByParams(params).push(createParam());
+            renderWorkspace();
+        }
+
+        /**
+         * 更新结构参数。
+         * @param {Object} params - 更新参数
+         * @returns {void}
+         */
+        function updateSchemaParam(params) {
+            const schema = getSchemaByParams(params);
+            schema[params.index][params.field] = params.value;
+        }
+
+        /**
+         * 删除结构参数。
+         * @param {Object} params - 删除参数
+         * @returns {void}
+         */
+        function removeSchemaParam(params) {
+            getSchemaByParams(params).splice(params.index, 1);
+            renderWorkspace();
+        }
+
+        /**
+         * 创建默认参数。
+         * @returns {Object} 默认参数
+         */
+        function createParam() {
+            return { id: generateId(), name: '', type: 'string', desc: '' };
+        }
+
+        /**
+         * 查找脚本节点。
+         * @param {string} ownerId - 节点 ID
+         * @returns {Object|null} 脚本节点
+         */
+        function findScriptNode(ownerId) {
+            return flowData.steps.find(step => step.id === ownerId && step.type === 'script') || null;
+        }
+
+        /**
+         * 添加脚本出参。
+         * @param {string} ownerId - 节点 ID
+         * @returns {void}
+         */
+        function addFlatSchemaParam(ownerId) {
+            const node = findScriptNode(ownerId);
+            node.outputParams.push(createParam());
+            renderWorkspace();
+        }
+
+        /**
+         * 更新脚本出参。
+         * @param {Object} params - 更新参数
+         * @returns {void}
+         */
+        function updateFlatSchemaParam(params) {
+            const node = findScriptNode(params.ownerId);
+            node.outputParams[params.index][params.field] = params.value;
+        }
+
+        /**
+         * 删除脚本出参。
+         * @param {Object} params - 删除参数
+         * @returns {void}
+         */
+        function removeFlatSchemaParam(params) {
+            const node = findScriptNode(params.ownerId);
+            node.outputParams.splice(params.index, 1);
+            renderWorkspace();
+        }
+
+        // ========================================
+        // 连接器配置逻辑
+        // ========================================
+
+        /**
+         * 获取连接器版本。
+         * @param {Object} node - 连接器节点
+         * @returns {Object|null} 连接器版本
+         */
+        function getConnectorVersion(node) {
+            const connector = CONNECTOR_DATA[node.connectorId];
+            return connector ? connector.versions.find(version => version.id === node.versionId) || null : null;
+        }
+
+        /**
+         * 查找连接器节点。
+         * @param {string} nodeId - 节点 ID
+         * @returns {Object|null} 连接器节点
+         */
+        function findConnectorNode(nodeId) {
+            for (const step of flowData.steps) {
+                if (step.id === nodeId && step.type === 'connector') {
+                    return step;
+                }
+
+                if (step.type === 'parallel') {
+                    const branch = step.branches.find(item => item.connector.id === nodeId);
+                    if (branch) {
+                        return branch.connector;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * 更新连接器字段。
+         * @param {Object} params - 更新参数
+         * @returns {void}
+         */
+        function updateConnectorField(params) {
+            const node = findConnectorNode(params.nodeId);
+            node[params.field] = params.value;
+
+            if (params.resetVersion) {
+                node.versionId = '';
+                node.authMethodId = '';
+                node.inputMappings = {};
+            }
+
+            renderWorkspace();
+        }
+
+        /**
+         * 渲染认证方式配置。
+         * @param {Object} params - 认证参数
+         * @returns {string} 认证方式 HTML
+         */
+        function renderAuthMethods(params) {
+            const node = params.node;
+            const connector = params.connector;
+
+            return connector.authMethods.map(method => `
+                <label class="auth-item" style="display: block; margin-bottom: 8px; cursor: pointer;">
+                    <input type="radio" name="auth-${node.id}" value="${method.id}" ${node.authMethodId === method.id ? 'checked' : ''} onchange="updateConnectorField({ nodeId: '${node.id}', field: 'authMethodId', value: this.value })">
+                    <strong>${method.name}</strong>
+                    <div class="form-help">${method.params.map(param => `${param.carrier}.${param.name}: ${param.type}`).join('，')}</div>
+                </label>
+            `).join('');
+        }
+
+        /**
+         * 渲染连接器入参映射 Tabs。
+         * @param {Object} params - 入参映射参数
+         * @returns {string} 入参映射 HTML
+         */
+        function renderMappingTabs(params) {
+            const node = params.node;
+            const inputParams = params.inputParams;
+            const tabs = [
+                { key: 'header', label: 'HTTP请求头' },
+                { key: 'body', label: 'HTTP请求体' },
+                { key: 'query', label: 'URL查询参数' }
+            ];
+
+            return renderTabs({
+                ownerId: node.id,
+                group: 'connectorInput',
+                tabs,
+                panelRenderer: tab => renderMappingList({ node, tabKey: tab.key, params: inputParams[tab.key] || [] })
+            });
+        }
+
+        /**
+         * 渲染入参映射列表。
+         * @param {Object} params - 映射列表参数
+         * @returns {string} 映射列表 HTML
+         */
+        function renderMappingList(params) {
+            const node = params.node;
+            const tabKey = params.tabKey;
+            const paramList = params.params;
+            const upstreamOptions = getUpstreamOptions(node.id);
+            const itemsHtml = paramList.map(param => renderMappingItem({ node, tabKey, param, upstreamOptions })).join('');
+
+            return `<div class="mapping-list">${itemsHtml || '<div class="empty-hint">当前版本无该位置入参</div>'}</div>`;
+        }
+
+        /**
+         * 渲染入参映射项。
+         * @param {Object} params - 映射项参数
+         * @returns {string} 映射项 HTML
+         */
+        function renderMappingItem(params) {
+            const node = params.node;
+            const tabKey = params.tabKey;
+            const param = params.param;
+            const upstreamOptions = params.upstreamOptions;
+            const mappingKey = `${tabKey}.${param.name}`;
+            const value = node.inputMappings[mappingKey] || '';
+            const optionsHtml = upstreamOptions.map(option => `
+                <option value="${escapeHtml(option.value)}" ${value === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>
+            `).join('');
+
+            return `
+                <div class="mapping-item">
+                    <div class="mapping-row">
+                        <input class="form-input" value="${escapeHtml(param.name)}" readonly>
+                        <input class="form-input" value="${escapeHtml(param.type)}" readonly>
+                        <select class="form-select" onchange="updateInputMapping({ nodeId: '${node.id}', mappingKey: '${mappingKey}', value: this.value })">
+                            <option value="">请选择上游节点数据</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div class="form-help">${escapeHtml(param.desc || '')}</div>
+                </div>
+            `;
+        }
+
+        /**
+         * 更新入参映射。
+         * @param {Object} params - 映射参数
+         * @returns {void}
+         */
+        function updateInputMapping(params) {
+            const node = findConnectorNode(params.nodeId);
+            node.inputMappings[params.mappingKey] = params.value;
+        }
+
+        /**
+         * 获取上游节点可引用参数。
+         * @param {string} nodeId - 当前节点 ID
+         * @returns {Array} 上游选项
+         */
+        function getUpstreamOptions(nodeId) {
+            const options = [];
+            const nodes = getVisibleNodes();
+            const currentIndex = findVisibleNodeIndex(nodeId);
+            const upstreamNodes = currentIndex >= 0 ? nodes.slice(0, currentIndex) : nodes;
+
+            collectTriggerOptions(options);
+            upstreamNodes.forEach(node => collectNodeOutputOptions({ options, node }));
+
+            return options;
+        }
+
+        /**
+         * 查找可见节点索引。
+         * @param {string} nodeId - 节点 ID
+         * @returns {number} 可见节点索引
+         */
+        function findVisibleNodeIndex(nodeId) {
+            const nodes = getVisibleNodes();
+            const directIndex = nodes.findIndex(node => node.id === nodeId);
+
+            if (directIndex >= 0) {
+                return directIndex;
+            }
+
+            const parallelIndex = nodes.findIndex(node => node.type === 'parallel' && node.branches.some(branch => branch.connector.id === nodeId));
+            return parallelIndex;
+        }
+
+        /**
+         * 收集触发器入参选项。
+         * @param {Array} options - 选项数组
+         * @returns {void}
+         */
+        function collectTriggerOptions(options) {
+            Object.keys(flowData.trigger.inputParams).forEach(position => {
+                flowData.trigger.inputParams[position].forEach(param => {
+                    options.push({ label: `触发器.${position}.${param.name}`, value: `trigger.${position}.${param.name}` });
+                });
+            });
+        }
+
+        /**
+         * 收集节点出参选项。
+         * @param {Object} params - 收集参数
+         * @returns {void}
+         */
+        function collectNodeOutputOptions(params) {
+            const options = params.options;
+            const node = params.node;
+
+            if (node.type === 'connector') {
+                collectConnectorOutputOptions({ options, node, prefix: '连接器' });
+            }
+
+            if (node.type === 'script') {
+                node.outputParams.forEach(param => options.push({ label: `脚本.${param.name}`, value: `${node.id}.${param.name}` }));
+            }
+
+            if (node.type === 'parallel') {
+                node.branches.forEach(branch => collectConnectorOutputOptions({ options, node: branch.connector, prefix: `并行.${branch.label}` }));
+            }
+        }
+
+        /**
+         * 收集连接器版本出参选项。
+         * @param {Object} params - 收集参数
+         * @returns {void}
+         */
+        function collectConnectorOutputOptions(params) {
+            const options = params.options;
+            const node = params.node;
+            const prefix = params.prefix;
+            const version = getConnectorVersion(node);
+
+            if (!version) {
+                return;
+            }
+
+            version.outputParams.forEach(param => {
+                options.push({ label: `${prefix}.${param.name}`, value: `${node.id}.${param.name}` });
+            });
+        }
+
+        /**
+         * 渲染数据输出映射 Tabs。
+         * @param {Object} node - 数据输出节点
+         * @returns {string} 输出映射 HTML
+         */
+        function renderOutputMappingTabs(node) {
+            const tabs = [
+                { key: 'body', label: 'HTTP响应体' },
+                { key: 'header', label: 'HTTP响应头' }
+            ];
+
+            return renderTabs({
+                ownerId: node.id,
+                group: 'outputAssemble',
+                tabs,
+                panelRenderer: tab => renderOutputMappingList({ node, tabKey: tab.key, schema: node.assembleParams[tab.key] || [] })
+            });
+        }
+
+        /**
+         * 渲染输出组装列表。
+         * @param {Object} params - 输出组装参数
+         * @returns {string} 输出组装 HTML
+         */
+        function renderOutputMappingList(params) {
+            const node = params.node;
+            const tabKey = params.tabKey;
+            const schema = params.schema;
+            const upstreamOptions = getUpstreamOptions(node.id);
+            const itemsHtml = schema.map((param, index) => renderOutputMappingItem({ tabKey, param, index, upstreamOptions })).join('');
+
+            return `
+                <div class="mapping-list">${itemsHtml || '<div class="empty-hint">暂无响应参数</div>'}</div>
+                <button class="add-param-btn" onclick="addSchemaParam({ ownerId: 'output', group: 'outputAssemble', tabKey: '${tabKey}' })">+ 添加响应参数</button>
+            `;
+        }
+
+        /**
+         * 渲染输出组装项。
+         * @param {Object} params - 输出组装项参数
+         * @returns {string} 输出组装项 HTML
+         */
+        function renderOutputMappingItem(params) {
+            const tabKey = params.tabKey;
+            const param = params.param;
+            const index = params.index;
+            const upstreamOptions = params.upstreamOptions;
+            const optionsHtml = upstreamOptions.map(option => `<option value="${escapeHtml(option.value)}" ${param.source === option.value ? 'selected' : ''}>${escapeHtml(option.label)}</option>`).join('');
+
+            return `
+                <div class="mapping-item">
+                    <div class="mapping-row">
+                        <input class="form-input" value="${escapeHtml(param.name)}" onchange="updateSchemaParam({ ownerId: 'output', group: 'outputAssemble', tabKey: '${tabKey}', index: ${index}, field: 'name', value: this.value })">
+                        <select class="form-select" onchange="updateSchemaParam({ ownerId: 'output', group: 'outputAssemble', tabKey: '${tabKey}', index: ${index}, field: 'type', value: this.value })">${renderTypeOptions(param.type)}</select>
+                        <select class="form-select" onchange="updateSchemaParam({ ownerId: 'output', group: 'outputAssemble', tabKey: '${tabKey}', index: ${index}, field: 'source', value: this.value })">
+                            <option value="">请选择上游节点数据</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ========================================
+        // 并行节点交互
+        // ========================================
+
+        /**
+         * 获取当前激活分支。
+         * @param {Object} node - 并行节点
+         * @returns {Object} 当前分支
+         */
+        function getActiveBranch(node) {
+            const activeBranch = node.branches.find(branch => branch.id === node.activeBranchId);
+            return activeBranch || node.branches[0];
+        }
+
+        /**
+         * 查找并行节点。
+         * @param {string} nodeId - 并行节点 ID
+         * @returns {Object|null} 并行节点
+         */
+        function findParallelNode(nodeId) {
+            return flowData.steps.find(step => step.id === nodeId && step.type === 'parallel') || null;
+        }
+
+        /**
+         * 切换并行分支。
+         * @param {Object} params - 分支参数
+         * @returns {void}
+         */
+        function switchParallelBranch(params) {
+            const node = findParallelNode(params.nodeId);
+            node.activeBranchId = params.branchId;
+            renderWorkspace();
+        }
+
+        /**
+         * 添加并行分支。
+         * @param {string} nodeId - 并行节点 ID
+         * @returns {void}
+         */
+        function addParallelBranchToNode(nodeId) {
+            const node = findParallelNode(nodeId);
+            node.branches.push(createParallelBranch(node.branches.length + 1));
+            node.activeBranchId = node.branches[node.branches.length - 1].id;
+            showToast({ message: '已添加并行分支' });
+            renderWorkspace();
+        }
+
+        /**
+         * 更新分支名称。
+         * @param {Object} params - 分支名称参数
+         * @returns {void}
+         */
+        function updateBranchLabel(params) {
+            const node = findParallelNode(params.nodeId);
+            const branch = node.branches.find(item => item.id === params.branchId);
+            branch.label = params.value;
+        }
+
+        /**
+         * 删除并行分支。
+         * @param {Object} params - 删除分支参数
+         * @returns {void}
+         */
+        function removeParallelBranch(params) {
+            const node = findParallelNode(params.nodeId);
+            node.branches = node.branches.filter(branch => branch.id !== params.branchId);
+            node.activeBranchId = node.branches[0].id;
+            renderWorkspace();
+        }
+
+        // ========================================
+        // Monaco Editor 逻辑
+        // ========================================
+
+        /**
+         * 调度脚本编辑器初始化。
+         * @returns {void}
+         */
+        function scheduleMonacoEditors() {
+            setTimeout(initMonacoEditors, 0);
+        }
+
+        /**
+         * 释放旧的 Monaco 编辑器实例。
+         * @returns {void}
+         */
+        function disposeMonacoEditors() {
+            Object.keys(monacoEditors).forEach(nodeId => {
+                monacoEditors[nodeId].dispose();
+                delete monacoEditors[nodeId];
+            });
+        }
+
+        /**
+         * 初始化 Monaco 编辑器。
+         * @returns {void}
+         */
+        function initMonacoEditors() {
+            const scriptNodes = flowData.steps.filter(step => step.type === 'script');
+
+            if (scriptNodes.length === 0) {
+                return;
+            }
+
+            if (!window.require) {
+                showScriptFallback(scriptNodes, 'Monaco Editor 加载失败，请使用备用输入框。');
+                return;
+            }
+
+            if (!monacoLoadStarted) {
+                monacoLoadStarted = true;
+                window.require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+            }
+
+            window.require(['vs/editor/editor.main'], function () {
+                scriptNodes.forEach(node => createMonacoEditor(node));
+            }, function () {
+                showScriptFallback(scriptNodes, 'Monaco Editor 加载失败，请使用备用输入框。');
+            });
+        }
+
+        /**
+         * 创建单个 Monaco 编辑器。
+         * @param {Object} node - 脚本节点
+         * @returns {void}
+         */
+        function createMonacoEditor(node) {
+            const container = document.getElementById(`editor-${node.id}`);
+            const status = document.getElementById(`status-${node.id}`);
+
+            if (!container || monacoEditors[node.id]) {
+                return;
+            }
+
+            monacoEditors[node.id] = monaco.editor.create(container, {
+                value: node.script,
+                language: 'typescript',
+                theme: 'vs',
+                minimap: { enabled: false },
+                automaticLayout: true
+            });
+
+            monacoEditors[node.id].onDidChangeModelContent(function () {
+                node.script = monacoEditors[node.id].getValue();
+                validateTypeScript({ editor: monacoEditors[node.id], status });
+            });
+
+            validateTypeScript({ editor: monacoEditors[node.id], status });
+        }
+
+        /**
+         * 校验 TypeScript 脚本。
+         * @param {Object} params - 校验参数
+         * @returns {void}
+         */
+        function validateTypeScript(params) {
+            const editor = params.editor;
+            const status = params.status;
+            const model = editor.getModel();
+            const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+
+            if (markers.length > 0) {
+                status.className = 'script-status error';
+                status.textContent = `TS校验发现 ${markers.length} 个问题，请检查脚本。`;
+                return;
+            }
+
+            status.className = 'script-status success';
+            status.textContent = 'TS脚本校验通过。';
+        }
+
+        /**
+         * 展示脚本备用输入框。
+         * @param {Array} scriptNodes - 脚本节点列表
+         * @param {string} message - 状态文案
+         * @returns {void}
+         */
+        function showScriptFallback(scriptNodes, message) {
+            scriptNodes.forEach(node => {
+                const editor = document.getElementById(`editor-${node.id}`);
+                const fallback = document.getElementById(`fallback-${node.id}`);
+                const status = document.getElementById(`status-${node.id}`);
+
+                if (editor) {
+                    editor.style.display = 'none';
+                }
+
+                if (fallback) {
+                    fallback.style.display = 'block';
+                }
+
+                if (status) {
+                    status.className = 'script-status error';
+                    status.textContent = message;
+                }
+            });
+        }
+
+        /**
+         * 更新脚本内容。
+         * @param {Object} params - 脚本参数
+         * @returns {void}
+         */
+        function updateScriptContent(params) {
+            const node = findScriptNode(params.nodeId);
+            node.script = params.value;
+        }
+
+        // ========================================
+        // 通用操作
+        // ========================================
+
+        /**
+         * 预览流程数据。
+         * @returns {void}
+         */
+        function previewFlowData() {
+            document.getElementById('previewContent').textContent = JSON.stringify({ flowVersionData, flowData }, null, 2);
+            document.getElementById('previewModal').classList.add('active');
+        }
+
+        /**
+         * 关闭预览弹窗。
+         * @returns {void}
+         */
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.remove('active');
+        }
+
+        /**
+         * 保存流程配置。
+         * @returns {void}
+         */
+        function saveFlow() {
+            showToast({ message: 'V4流程配置已保存' });
+        }
+
+        /**
+         * 执行调试入口。
+         * @returns {void}
+         */
+        function debugFlow() {
+            showToast({ message: '调试入口已触发，请在预览数据中查看当前配置' });
+        }
+
+        /**
+         * 展示版本详情。
+         * @returns {void}
+         */
+        function showVersionDetail() {
+            const version = flowVersionData.versions.find(item => item.id === flowVersionData.currentVersion);
+            showToast({ message: version ? `当前版本：${version.name}，状态：${version.status}` : '暂无版本详情' });
+        }
+
+        /**
+         * 展示提示。
+         * @param {Object} params - 提示参数
+         * @returns {void}
+         */
+        function showToast(params) {
+            const toast = document.getElementById('toast');
+            toast.textContent = params.message;
+            toast.className = `toast show ${params.type || 'success'}`;
+            setTimeout(function () {
+                toast.className = 'toast';
+            }, 1800);
+        }
+
+        /**
+         * 转义 HTML 字符。
+         * @param {string} value - 原始文本
+         * @returns {string} 转义文本
+         */
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        /**
+         * 页面加载完成后初始化。
+         */
+        initPage();
+    </script>
+</body>
+
+</html>
