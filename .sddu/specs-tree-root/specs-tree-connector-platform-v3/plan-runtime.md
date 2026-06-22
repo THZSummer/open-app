@@ -17,7 +17,7 @@ V2 运行时在 V1 的串行调度引擎基础上新增 6 个核心模块：
 | 版本配置解析器 | 每次 HTTP/调试 触发 | 按 `deployed_version_id` 读取 FlowVersion → ConnectorVersion |
 | 并行分支执行器 | 编排中包含并行边 | Reactor `Flux.merge()` 并发执行，独立超时 + 错误汇聚 |
 | flowConfig 解析器 | 版本配置加载后 | 解析超时/限流/缓存配置，初始化运行环境 |
-| 数据处理节点执行器 | 编排中包含 data_processor 节点 | 字段类型转换（toString/toNumber/toBoolean/formatDate），递归值解析 |
+| 脚本节点执行器 | 编排中包含 script 节点 | GraalJS 沙箱执行 `function main(ctx)`，详见 [plan-script.md](./plan-script.md) |
 | 入站限流拦截器 | HTTP 触发请求到达 | Redis 令牌桶（QPS）或并发计数器（Concurrency） |
 | 认证注入器扩展 | 连接器 HTTP 调用 | Cookie/DigitalSign/MultiAuth 注入器注册到现有 Strategy 模式 |
 
@@ -47,7 +47,7 @@ graph TB
         CACHE{"FlowCacheManager<br/>💾 结果缓存?"}
         DAG["DAG 调度器"]
         PBE["ParallelBranchExecutor<br/>⇉ 并行分支"]
-        DPE["DataProcessorExecutor<br/>🔄 数据转换"]
+        DPE["ScriptNodeExecutor<br/>🖊️ GraalJS 脚本"]
     end
 
     subgraph CONNECTOR["连接器调用"]
@@ -256,7 +256,7 @@ flowchart TD
     DAG_START["DAG 调度器<br/>取下一个节点"] --> NODE_TYPE{"节点类型?"}
 
     NODE_TYPE -->|"connector"| AUTH["🔐 Auth Injector<br/>认证凭证注入"]
-    NODE_TYPE -->|"data_processor"| DP["🔄 DataProcessorExecutor<br/>字段类型转换"]
+    NODE_TYPE -->|"script"| SCR["🖊️ ScriptNodeExecutor<br/>GraalJS 沙箱"]
     NODE_TYPE -->|"并行分支"| PAR["⇉ ParallelBranchExecutor<br/>并发调度各分支"]
 
     AUTH --> URL_CHK["🛡️ UrlWhitelistValidator<br/>正则匹配目标 URL"]
@@ -487,76 +487,9 @@ sequenceDiagram
 
 ---
 
-## 4. 数据处理节点执行器（DataProcessorExecutor）
+## 4. [已移除] 数据处理节点执行器
 
-### 4.1 节点配置结构
-
-```json
-{
-  "outputFields": [
-    {
-      "name": "userId",
-      "type": "string",
-      "sourceType": "function",
-      "function": {
-        "name": "toString",
-        "args": [
-          { "sourceType": "reference", "value": "${$.node.trigger.input.userId}" }
-        ]
-      }
-    },
-    {
-      "name": "count",
-      "type": "number",
-      "sourceType": "function",
-      "function": {
-        "name": "toNumber",
-        "args": [
-          { "sourceType": "reference", "value": "${$.node.connector_1.output.count}" }
-        ]
-      }
-    }
-  ]
-}
-```
-
-### 4.2 值来源解析（递归）
-
-```mermaid
-flowchart TD
-    START["resolveValue(source, ctx)"] --> TYPE{"sourceType?"}
-
-    TYPE -->|"constant"| CONST["直接返回 source.value"]
-    TYPE -->|"reference"| REF["ctx.resolvePath(source.value)"]
-    TYPE -->|"function"| FUNC["获取转换函数<br/>converters.get(name)"]
-
-    FUNC --> ITER["遍历 func.args[]"]
-    ITER --> RECURSE["对每个 arg 递归调用<br/>resolveValue(arg, ctx)"]
-    RECURSE -->|"仍有参数未处理"| ITER
-    RECURSE -->|"递归完成"| APPLY["func.apply(resolvedArgs)"]
-
-    CONST --> OUTPUT["返回解析值"]
-    REF --> OUTPUT
-    APPLY --> OUTPUT
-
-    style TYPE fill:#fff3e0,stroke:#e65100
-    style OUTPUT fill:#c8e6c9,stroke:#1b5e20
-```
-
-### 4.3 本期支持的转换函数
-
-| 函数名 | 输入 | 输出 | 失败处理 |
-|--------|------|------|---------|
-| `toString` | any | string | 原始值 → `String.valueOf()` |
-| `toNumber` | string/number | number | 非数字 → 标记失败，保留原始值 |
-| `toBoolean` | string/number | boolean | "true"/1/true → true, 其余 → false |
-| `formatDate` | string/number(ms) | string | 非法日期 → 标记失败，保留原始值 |
-
-### 4.4 错误处理
-
-- 任一字段转换失败 → 节点标记为 "failed"
-- 成功转换的字段正常输出
-- 失败字段保留原始值 + 错误信息（EC-013）
+> ❌ 已移除。数据处理节点（FR-040）已被脚本节点（FR-040a）替代。脚本节点执行器设计详见 [plan-script.md](./plan-script.md)。并行处理节点执行器见 §3 并行分支执行器。
 
 ---
 

@@ -23,6 +23,7 @@ V2 的数据处理节点仅支持 4 种类型转换函数。V3 引入**脚本节
 | 3 | **GraalJS 引擎** | ES2022，沙箱五层防护，`HostAccess.EXPLICIT` |
 | 4 | **WebFlux 非阻塞** | `Mono.fromCallable().subscribeOn(boundedElastic)` |
 | 5 | **配置即存储** | 脚本源码存于 `FlowVersion.orchestrationConfig` JSON，零新表 |
+| 6 | **无内置工具** | 不提供 `_util`/`_log` 等全局绑定，用户用纯 JS（ES2022）自行实现所有逻辑 |
 
 ### 0.3 执行模型
 
@@ -236,14 +237,10 @@ function main(ctx) {
     // ═══ 业务处理 ═══
     const total  = users.length;
     const avgAge = users.reduce((sum, u) => sum + u.age, 0) / total;
-    const hash   = _util.md5(phone);
-
-    // ═══ 日志（可选） ═══
-    _log.info(`处理 ${total} 条数据`);
 
     // ═══ return 输出 ═══
     // 返回的对象将作为节点 output，供下游节点通过 ctx.script_1.output.xxx 访问
-    return { total, avgAge, hash };
+    return { total, avgAge };
 
 }
 ```
@@ -253,11 +250,9 @@ function main(ctx) {
 | 组成部分 | 说明 |
 |---------|------|
 | `function main(ctx)` | **固定入口签名**。`ctx` 是上游节点数据，`main` 为约定入口名 |
-| 函数体 | 任意标准 JS（ES2022），可定义变量、辅助函数、使用 `_util`/`_log` |
+| 函数体 | 任意标准 JS（ES2022），可定义变量、辅助函数。不提供内置工具，所有逻辑由用户自行实现 |
 | `return { ... }` | **必须有 return 语句**，返回值为节点 output |
-| `_util` | 全局工具集：`md5`/`uuid`/`base64Encode`/`sha256`/`timestamp`/`formatDate`/`parseJson`/`toJson` |
-| `_log` | 全局日志：`info`/`warn`/`debug`/`error(msg)` |
-| `ctx` 路径规则 | `ctx.{nodeId}.{input\|output}.{field.subfield...}`，节点 ID 见画布 |
+| `ctx` 路径规则 | `ctx.{nodeId}.{input\|output}.{field.subfield...}` |
 
 ### 3.2 字段说明
 
@@ -273,10 +268,8 @@ function main(ctx) {
 | 变量 | 类型 | 说明 |
 |------|------|------|
 | `ctx` | `Map<String, Object>`（**函数参数**） | 上游所有节点的 input/output 数据。用户在 `function(ctx)` 签名中显式声明 |
-| `_util` | `ScriptUtil` 实例（全局绑定） | `_util.md5/ uuid/ base64Encode/ formatDate/ parseJson/ toJson/ sha256/ timestamp` |
-| `_log` | `ScriptLogger` 实例（全局绑定） | `_log.info/warn/debug/error(msg)` |
 
-> 💡 `ctx` 是函数参数（非全局），`_util`/`_log`/业务类是全局绑定。通过 `c.eval("js","main")` 获取函数引用确保 `this=undefined`，脚本无法通过 `this` 访问全局绑定。
+> 💡 `ctx` 是函数参数（非全局）。不提供 `_util`/`_log` 等内置工具，用户用纯 JS（ES2022）自行实现所有逻辑。
 
 ### 3.4 约束
 
@@ -330,11 +323,7 @@ Mono.fromCallable(() -> {
     Source source = cacheManager.compileOrGet(scriptContent);
 
     try (Context c = contextFactory.create()) {
-        // ③ 注入全局工具（_util/_log 在函数作用域链上自然可见）
-        c.getBindings("js").putMember("_util", scriptUtil);
-        c.getBindings("js").putMember("_log", scriptLogger);
-
-        // ④ eval 注册函数 → 安全获取 main → 调用 main(ctx)
+        // ③ 纯 JS 沙箱，无全局绑定注入
         c.eval(source);                                            // 注册 function main 到全局
         Value result = c.eval("js", "main").execute(ctx);          // eval 获取（this=undefined），非 getMember
         // ⑤ 转换
@@ -406,7 +395,11 @@ public class ScriptStructureValidator {
 
 ---
 
-## 5. Java 工具类暴露给 JS
+## 5. [已移除] Java 工具类暴露给 JS
+
+> ❌ 已移除。V3 脚本节点不提供任何内置工具（`_util`/`_log`/`CustomValidator`/`ScriptUtil`/`ScriptLogger`），用户用纯 JS（ES2022）自行实现所有逻辑。GraalJS `Context` 仅注入 `ctx` 函数参数，无 `putMember` 全局绑定。
+
+## 6. 版本规划
 
 ### 5.1 ScriptUtil
 
