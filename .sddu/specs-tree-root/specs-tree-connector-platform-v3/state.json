@@ -5,7 +5,7 @@
   "phase": "validated",
   "status": "completed",
   "created_at": "2026-06-17T10:00:00+08:00",
-  "updated_at": "2026-06-22T15:00:00+08:00",
+  "updated_at": "2026-06-22T16:00:00+08:00",
   "stateHistory": [
     {
       "state": "registered",
@@ -26,6 +26,11 @@
       "state": "validated",
       "timestamp": "2026-06-22T15:00:00+08:00",
       "note": "验证完成 — FR 100%覆盖，编译零错误，存在 1 项已知漂移 (GraalJS parse)，结论：有条件通过"
+    },
+    {
+      "state": "drift_fixed",
+      "timestamp": "2026-06-22T16:00:00+08:00",
+      "note": "DRIFT-01 修复：FlowPublishValidator.java fieldName scriptSource→script。增量 review + validate 通过。Python E2E 字段名同步修复 (scriptContent→script)。"
     }
   ],
   "artifacts": {
@@ -41,11 +46,20 @@
     "v2_status": "terminated"
   },
   "tasks": {
-    "TASK-001": { "status": "pending", "wave": 1 },
-    "TASK-002": { "status": "pending", "wave": 1 },
-    "TASK-003": { "status": "pending", "wave": 1 },
+    "TASK-001": { "status": "completed", "wave": 1, "completed_at": "2026-06-22T06:00:00+08:00" },
+    "TASK-002": { "status": "completed", "wave": 1, "completed_at": "2026-06-22T06:00:00+08:00" },
+    "TASK-003": { "status": "completed", "wave": 1, "completed_at": "2026-06-22T06:00:00+08:00" },
     "TASK-004": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:25:00+08:00" },
-    "TASK-005": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:37:00+08:00" }
+    "TASK-005": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:37:00+08:00" },
+    "TASK-006": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:37:00+08:00" },
+    "TASK-007": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:37:00+08:00" },
+    "TASK-008": { "status": "completed", "wave": 3, "completed_at": "2026-06-22T07:00:00+08:00" },
+    "TASK-009": { "status": "completed", "wave": 3, "completed_at": "2026-06-22T07:00:00+08:00" },
+    "TASK-010": { "status": "completed", "wave": 3, "completed_at": "2026-06-22T07:00:00+08:00" },
+    "TASK-011": { "status": "completed", "wave": 3, "completed_at": "2026-06-22T07:00:00+08:00" },
+    "TASK-012": { "status": "completed", "wave": 4, "completed_at": "2026-06-22T08:00:00+08:00" },
+    "TASK-013": { "status": "completed", "wave": 4, "completed_at": "2026-06-22T08:00:00+08:00" },
+    "TASK-014": { "status": "completed", "wave": 4, "completed_at": "2026-06-22T08:00:00+08:00" }
   },
   "test_tasks": {
     "TEST-TASK-E2E-001": { "status": "implemented", "name": "Python E2E: 连接器与连接流版本生命周期", "scripts": ["connector_version_lifecycle.py", "flow_version_lifecycle.py", "flow_approval_full_flow.py"], "completed_at": "2026-06-22T12:00:00+08:00" },
@@ -53,6 +67,9 @@
     "TEST-TASK-E2E-003": { "status": "implemented", "name": "Python E2E: 认证+安全+脚本+调试", "scripts": ["connector_auth_multiple.py", "connector_url_whitelist.py", "script_node_execution.py", "debug_draft_invoke.py"], "completed_at": "2026-06-22T12:00:00+08:00" }
   },
   "next_steps": [
-    "Feature 验证完成 (validated → completed)。后续：修复 GraalJS parse 校验漂移后运行 @sddu-docs 更新导航"
+    "✅ DRIFT-01 已修复 — FlowPublishValidator.java fieldName scriptSource→script，与 ScriptNodeExecutor.java 对齐",
+    "✅ review.md / validation-report.md 已更新",
+    "✅ Java 单元测试 263 通过（open-server 209 + connector-api 154）",
+    "Python E2E 集成测试需启动 open-server (:18080) + connector-api (:18180) 后执行"
   ]
 }

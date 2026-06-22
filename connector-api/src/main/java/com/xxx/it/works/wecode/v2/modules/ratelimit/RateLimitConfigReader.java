@@ -56,7 +56,12 @@ public class RateLimitConfigReader {
     public Mono<RateLimitConfig> readFlowRateLimit(Long flowId) {
         return flowVersionReadRepository.findByFlowId(flowId)
                 .map(this::extractRateLimitConfig)
-                .defaultIfEmpty(defaultConfig());
+                .defaultIfEmpty(defaultConfig())
+                .onErrorResume(e -> {
+                    log.warn("Rate limit config read failed for flowId={}, using defaults: {}",
+                            flowId, e.getMessage());
+                    return Mono.just(defaultConfig());
+                });
     }
 
     /**

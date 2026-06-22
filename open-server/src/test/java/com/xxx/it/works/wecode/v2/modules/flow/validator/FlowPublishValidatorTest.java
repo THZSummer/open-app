@@ -328,7 +328,7 @@ class FlowPublishValidatorTest {
         String longSource = "x".repeat(50001);
         String config = "{\"nodes\":[" +
                 "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"scriptSource\":\"" + longSource + "\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"" + longSource + "\"}}," +
                 "{\"id\":\"c\",\"type\":\"connector\"}," +
                 "{\"id\":\"e\",\"type\":\"exit\"}" +
                 "],\"edges\":[" +
@@ -362,7 +362,7 @@ class FlowPublishValidatorTest {
         String validScript = "function main(ctx) { return { result: ctx.input.value + 1 }; }";
         String config = "{\"nodes\":[" +
                 "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"scriptSource\":\"" + escapeJson(validScript) + "\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"" + escapeJson(validScript) + "\"}}," +
                 "{\"id\":\"c\",\"type\":\"connector\"}," +
                 "{\"id\":\"e\",\"type\":\"exit\"}" +
                 "],\"edges\":[" +
@@ -380,7 +380,7 @@ class FlowPublishValidatorTest {
         String invalidScript = "function main(ctx) { return {; }"; // missing value after return
         String config = "{\"nodes\":[" +
                 "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"scriptSource\":\"" + escapeJson(invalidScript) + "\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"" + escapeJson(invalidScript) + "\"}}," +
                 "{\"id\":\"c\",\"type\":\"connector\"}," +
                 "{\"id\":\"e\",\"type\":\"exit\"}" +
                 "],\"edges\":[" +
@@ -398,7 +398,7 @@ class FlowPublishValidatorTest {
     void testEmptyScriptSource_Fail() {
         String config = "{\"nodes\":[" +
                 "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"scriptSource\":\"\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"\"}}," +
                 "{\"id\":\"c\",\"type\":\"connector\"}," +
                 "{\"id\":\"e\",\"type\":\"exit\"}" +
                 "],\"edges\":[" +

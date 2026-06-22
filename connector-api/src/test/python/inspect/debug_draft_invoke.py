@@ -31,7 +31,7 @@ def _mysql(sql):
 
 
 def _escape(obj):
-    return json.dumps(obj).replace("'", "''")
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_status=1):
@@ -95,9 +95,9 @@ def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_stat
 
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
-        f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
+        f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({vid}, {snow_id_val}, "
-        f"'{_escape(orch)}', {version_status}, 'tester', 'tester')"
+        f"'{_escape(orch)}', 'tester', 'tester')"
     )
     return snow_id_val, vid
 
@@ -226,8 +226,8 @@ try:
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
-        f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
-        f"VALUES ({vid_118}, {sid_118}, '{{\"nodes\":[],\"edges\":[]}}', 0, 'tester', 'tester')"
+        f"(id, flow_id, orchestration_config, create_by, last_update_by) "
+        f"VALUES ({vid_118}, {sid_118}, '{{\"nodes\":[],\"edges\":[]}}', 'tester', 'tester')"
     )
     resp = debug_request(sid_118, {"mockTriggerData": {"sender": "test"}})
     if resp:

@@ -21,6 +21,11 @@ SCRIPTS = [
     "connector_url_whitelist.py",
     "script_node_execution.py",
     "debug_draft_invoke.py",
+    # V4 E2E: Flow config — timeout + cache + parallel + version select (P2: FR-034~039)
+    "node_timeout.py",
+    "flow_cache.py",
+    "parallel_branch.py",
+    "connector_version_select.py",
 ]
 
 quiet = "--quiet" in sys.argv

@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Date;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -169,7 +170,7 @@ class OpFlowControllerWebMvcTest {
             detail.setId("2000000000000000001");
             detail.setNameCn("新消息自动通知");
             detail.setLifecycleStatus(1);
-            detail.setCreateTime("2026-05-21T10:00:00.000Z");
+            detail.setCreateTime(new Date());
 
             when(flowService.getFlowDetail(2000000000000000001L))
                     .thenReturn(ApiResponse.success(detail));

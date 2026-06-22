@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/service/open/v2/connectors")
+@RequestMapping("/service/open/v2/admin/connectors")
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接器管理", description = "连接器 CRUD 及连接配置管理接口")
 public class OpConnectorController {

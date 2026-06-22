@@ -8,6 +8,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
+import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,9 @@ class OpTriggerServiceTest {
     @Mock
     private CacheToggle cacheToggle;
 
+    @Mock
+    private UrlWhitelistValidator urlWhitelistValidator;
+
     private ObjectMapper objectMapper;
     private OpTriggerService triggerService;
 
@@ -61,8 +65,8 @@ class OpTriggerServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, executor,
-                flowVersionReadRepository, reactiveRedisTemplate, cacheToggle);
+        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, urlWhitelistValidator,
+                executor, flowVersionReadRepository, reactiveRedisTemplate, cacheToggle);
     }
 
     @Test

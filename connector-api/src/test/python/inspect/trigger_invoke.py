@@ -564,7 +564,7 @@ def _mysql_exec(sql):
 
 
 def _escape_json(obj):
-    return json.dumps(obj).replace("'", "''")
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 def setup_connector(connection_config=None):

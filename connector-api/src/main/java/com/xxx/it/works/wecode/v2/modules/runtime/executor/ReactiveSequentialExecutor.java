@@ -218,6 +218,9 @@ public class ReactiveSequentialExecutor {
         result.setTotalDurationMs(System.currentTimeMillis() - startTime);
 
         boolean anyFailed = false;
+        String firstErrorCode = null;
+        String firstErrorMessageZh = null;
+        String firstErrorMessageEn = null;
 
         // 收集所有步骤详情
         for (JsonNode node : orderedNodes) {
@@ -226,6 +229,17 @@ public class ReactiveSequentialExecutor {
             // 检查失败状态
             if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
                 anyFailed = true;
+                if (firstErrorCode == null && step.getErrorInfo() != null) {
+                    Object code = step.getErrorInfo().get("code");
+                    Object msgZh = step.getErrorInfo().get("messageZh");
+                    Object msgEn = step.getErrorInfo().get("messageEn");
+                    // fallback to "message" field
+                    if (msgZh == null) msgZh = step.getErrorInfo().get("message");
+                    if (msgEn == null) msgEn = step.getErrorInfo().get("message");
+                    firstErrorCode = code instanceof String ? (String) code : "6001";
+                    firstErrorMessageZh = msgZh instanceof String ? (String) msgZh : step.getStatus();
+                    firstErrorMessageEn = msgEn instanceof String ? (String) msgEn : step.getStatus();
+                }
             }
 
             result.addStep(step);
@@ -233,6 +247,16 @@ public class ReactiveSequentialExecutor {
 
         // 设置整体状态
         result.setStatus(anyFailed ? "failed" : "success");
+
+        // 传播首个失败步骤的错误信息
+        if (anyFailed && firstErrorCode != null) {
+            Map<String, Object> errorInfo = new HashMap<>();
+            errorInfo.put("code", firstErrorCode);
+            errorInfo.put("messageZh", firstErrorMessageZh);
+            errorInfo.put("messageEn", firstErrorMessageEn);
+            result.setErrorInfo(errorInfo);
+        }
+
         log.info("Flow execution complete: status={}, totalDurationMs={}", result.getStatus(), result.getTotalDurationMs());
 
         // resultData 取最后一个输出 (不含 __status/__input/__error 等元字段)

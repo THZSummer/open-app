@@ -120,7 +120,7 @@ def _mysql_exec(sql):
 
 def _escape_json(obj):
     """将 Python 对象转为 MySQL-safe JSON 字符串"""
-    return json.dumps(obj).replace("'", "''")
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 def setup_connector(config):

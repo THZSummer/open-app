@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.auth.credential;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -27,7 +28,7 @@ public class MultiAuthCredentialInjector implements CredentialInjector {
      *
      * @param registry 凭据注入器注册中心
      */
-    public MultiAuthCredentialInjector(CredentialInjectorRegistry registry) {
+    public MultiAuthCredentialInjector(@Lazy CredentialInjectorRegistry registry) {
         this.registry = registry;
     }
 

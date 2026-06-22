@@ -62,7 +62,7 @@ class ApprovalControllerTest {
             when(approvalService.countFlowList(any())).thenReturn(1L);
 
             ApiResponse<List<ApprovalFlowListResponse>> response = approvalController.getFlowList(
-                    "审批", 1, 20);
+                    "审批", null, 1, 20);
 
             assertNotNull(response);
             assertEquals("200", response.getCode());
@@ -189,7 +189,7 @@ class ApprovalControllerTest {
             when(approvalService.countPendingList(any(), any(), any(), any(), any())).thenReturn(1L);
 
             ApiResponse<List<ApprovalPendingListResponse>> response = approvalController.getPendingList(
-                    "api_register", null, null, null, null, 1, 20);
+                    "api_register", null, null, null, null, null, 1, 20);
 
             assertNotNull(response);
             assertEquals("200", response.getCode());

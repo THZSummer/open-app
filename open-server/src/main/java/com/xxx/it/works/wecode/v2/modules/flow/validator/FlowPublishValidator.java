@@ -33,7 +33,7 @@ import java.util.Set;
  * 6. 并行分支数 ≤ 8
  * 7. 连接器版本引用可用性
  * 8. JSON 语法合法性
- * 9. 脚本语法合法性（预留扩展）
+ * 9. 脚本语法合法性（GraalJS parse 预检）
  * </p>
  */
 @Slf4j
@@ -163,7 +163,7 @@ public class FlowPublishValidator {
                     scriptNodeCount++;
                     JsonNode data = node.get("data");
                     if (data != null) {
-                        JsonNode scriptSource = data.get("scriptSource");
+                        JsonNode scriptSource = data.get("script");
                         if (scriptSource != null && !scriptSource.isNull()) {
                             String source = scriptSource.asText();
                             String nodeId = node.has("id") ? node.get("id").asText() : "unknown";

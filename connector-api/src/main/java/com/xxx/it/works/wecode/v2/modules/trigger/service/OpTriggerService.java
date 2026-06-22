@@ -11,6 +11,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
+import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
@@ -34,7 +35,8 @@ import java.util.UUID;
  *   <li>出口节点的 output.body 直接作为 HTTP 响应体 (裸数据)</li>
  *   <li>出口节点的 output.header 映射为用户自定义 HTTP 响应头</li>
  *   <li>平台元数据 (executionId/flowId/status/durationMs/code/message) 改为 X- 前缀 HTTP 响应头</li>
- *   <li>前置校验失败按异常类型返回不同 HTTP Status (401/404/500)</li>
+ *   <li>前置校验失败按异常类型返回不同 HTTP Status (401/404/403/500)</li>
+ *   <li>新增 connector 节点 URL 白名单校验 (data.urlWhitelist), 违规返回 403</li>
  * </ul>
  * v5.7 变更:
  * <ul>
@@ -56,6 +58,7 @@ public class OpTriggerService {
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
     private final AuthValidatorRegistry authValidatorRegistry;
+    private final UrlWhitelistValidator urlWhitelistValidator;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final CacheToggle cacheToggle;
@@ -63,12 +66,14 @@ public class OpTriggerService {
     public OpTriggerService(
             ObjectMapper objectMapper,
             AuthValidatorRegistry authValidatorRegistry,
+            UrlWhitelistValidator urlWhitelistValidator,
             ReactiveSequentialExecutor executor,
             OpFlowVersionReadRepository flowVersionReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
             CacheToggle cacheToggle) {
         this.objectMapper = objectMapper;
         this.authValidatorRegistry = authValidatorRegistry;
+        this.urlWhitelistValidator = urlWhitelistValidator;
         this.executor = executor;
         this.flowVersionReadRepository = flowVersionReadRepository;
         this.reactiveRedisTemplate = reactiveRedisTemplate;
@@ -101,7 +106,11 @@ public class OpTriggerService {
                             .flatMap(entity -> reactiveRedisTemplate.opsForValue()
                                     .set(key, entity.getOrchestrationConfig(), Duration.ofSeconds(120))
                                     .thenReturn(entity))
-                );
+                )
+                .onErrorResume(e -> {
+                    log.warn("Redis unavailable for flow config cache, falling back to DB: flowId={}", flowId);
+                    return flowVersionReadRepository.findByFlowId(flowId);
+                });
     }
 
     /**
@@ -176,6 +185,10 @@ public class OpTriggerService {
                         validateInputContractSections(inputContract, headers, queryParams, triggerData);
                     }
 
+                    // 7.5 校验 connector 节点 URL 白名单
+                    List<String> urlWhitelist = (List<String>) nodeData.get("urlWhitelist");
+                    validateConnectorUrlWhitelist(nodes, urlWhitelist);
+
                     // 8. 构建执行上下文
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(triggerData);
@@ -211,11 +224,25 @@ public class OpTriggerService {
                                 flowIdStr, HttpStatus.NOT_FOUND, "404",
                                 "流不存在: " + msg, "Flow not found: " + msg));
                     }
+                    if (msg.contains("whitelist") || msg.contains("Whitelist")
+                            || msg.contains("URL not in")) {
+                        return Mono.just(TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.FORBIDDEN, "403",
+                                "URL 白名单拒绝: " + msg, "URL whitelist denied: " + msg));
+                    }
                     if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
                             || msg.contains("X-Sys-Token") || msg.contains("认证")) {
                         return Mono.just(TransparentFlowResponse.preExecutionError(
                                 flowIdStr, HttpStatus.UNAUTHORIZED, "401",
                                 "认证失败: " + msg, "Authentication failed: " + msg));
+                    }
+                    // 输入校验错误 → 400
+                    if (msg.contains("required field") || msg.contains("inputContract")
+                            || msg.contains("must be") || msg.contains("Missing required")
+                            || e instanceof IllegalArgumentException) {
+                        return Mono.just(TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.BAD_REQUEST, "400",
+                                "请求参数错误: " + msg, "Bad request: " + msg));
                     }
                     // 其他异常 → 500
                     return Mono.just(TransparentFlowResponse.preExecutionError(
@@ -266,6 +293,21 @@ public class OpTriggerService {
         TransparentFlowResponse r = TransparentFlowResponse.success(
                 flowId, result.getExecutionId(), execStatus, result.getTotalDurationMs(),
                 userHeaders, responseBody);
+
+        // v5.8: 执行失败/超时时补充 X-Code / X-Message-* 错误头
+        if (execStatus != 0 && result.getErrorInfo() != null) {
+            Map<String, Object> err = result.getErrorInfo();
+            if (err.containsKey("code")) {
+                r.getPlatformHeaders().put("X-Code", String.valueOf(err.get("code")));
+            }
+            if (err.containsKey("messageZh")) {
+                r.getPlatformHeaders().put("X-Message-Zh", String.valueOf(err.get("messageZh")));
+            }
+            if (err.containsKey("messageEn")) {
+                r.getPlatformHeaders().put("X-Message-En", String.valueOf(err.get("messageEn")));
+            }
+        }
+
         r.getPlatformHeaders().put("X-Cache-Status", "0"); // 当前未实现缓存
         return r;
     }
@@ -492,6 +534,33 @@ public class OpTriggerService {
             int maxConcurrency = ((Number) maxConcurrencyObj).intValue();
             if (maxConcurrency < 1 || maxConcurrency > 1000) {
                 throw new RuntimeException("Rate limit maxConcurrency must be between 1 and 1000, got: " + maxConcurrency);
+            }
+        }
+    }
+
+    /**
+     * 校验 connector 节点的目标 URL 是否在白名单中
+     * <p>
+     * 遍历编排配置中所有 type=connector 节点，提取 data.url 进行白名单校验。
+     * 空白名单（null 或空列表）允许所有 URL 通过，不影响存量业务。
+     * </p>
+     */
+    @SuppressWarnings("unchecked")
+    private void validateConnectorUrlWhitelist(List<Map<String, Object>> nodes, List<String> urlWhitelist) {
+        if (nodes == null || nodes.isEmpty()) return;
+
+        for (Map<String, Object> node : nodes) {
+            String nodeType = (String) node.get("type");
+            if (!"connector".equals(nodeType)) continue;
+
+            Map<String, Object> connData = (Map<String, Object>) node.get("data");
+            if (connData == null) continue;
+
+            String url = (String) connData.get("url");
+            if (url == null || url.isEmpty()) continue;
+
+            if (!urlWhitelistValidator.validate(url, urlWhitelist)) {
+                throw new RuntimeException("URL not in whitelist: " + url);
             }
         }
     }

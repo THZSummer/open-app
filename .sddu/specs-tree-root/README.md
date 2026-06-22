@@ -29,7 +29,7 @@
 | **CAP-OPEN-001** | [能力开放平台](./specs-tree-capability-open-platform/) | ✅ validated（全流程完成） | P0 | Summer | 2026-04-22 |
 | **CONN-PLAT-001** | [连接器平台 V1](./specs-tree-connector-platform/) | ✅ validated（全流程完成） | P1 | - | 2026-05-24 |
 | **CONN-PLAT-002** | [连接器平台 V2 — 多版本与增强](./specs-tree-connector-platform-v2/) | 🚫 terminated（已终止，转入 V3） | P1 | Summer | 2026-06-17 |
-| **CONN-PLAT-003** | [连接器平台 V3 — 多版本与增强](./specs-tree-connector-platform-v3/) | 📋 registered（spec+plan+tasks 已完成） | P1 | Summer | 2026-06-22 |
+| **CONN-PLAT-003** | [连接器平台 V3 — 多版本与增强](./specs-tree-connector-platform-v3/) | ✅ validated — completed（全流程完成） | P1 | Summer | 2026-06-22 |
 | **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | 🟡 suspended（搁置） | P0 | Summer | 2026-04-07 |
 | **FR-DICTIONARY-001** | [数据字典管理](./specs-tree-dictionary/) | ✅ planned（规范+规划完成） | P1 | SDDU-Spec Agent | 2026-05-22 |
 | **FR-LOOKUP-001** | [LookUp 管理](./specs-tree-lookup/) | ✅ planned（规范+规划完成） | P1 | SDDU-Spec Agent | 2026-05-15 |
@@ -112,7 +112,7 @@
 
 ### CONN-PLAT-003: 连接器平台 V3 — 多版本与增强
 
-**状态**: 📋 registered（spec+plan+tasks 已完成，待 build）
+**状态**: ✅ validated — completed（全流程完成 — 注册 → 需求挖掘 → 规范 → 规划 → 任务分解 → 实现 → 审查 → 验证）
 **Feature ID**: CONN-PLAT-003
 **规范版本**: v3.0（47 FRs）
 **依赖**: CONN-PLAT-001（V1 — validated）、CONN-PLAT-002（V2 — terminated）
@@ -126,8 +126,12 @@
 - [脚本引擎 v8.1-draft](./specs-tree-connector-platform-v3/plan-script.md) - GraalJS 沙箱，function main(ctx)
 - [JSON Schema v9.10](./specs-tree-connector-platform-v3/plan-json-schema.md) - JSON 结构权威定义
 - [任务分解](./specs-tree-connector-platform-v3/tasks.md) - 14 个任务，4 个波次
-- [ADR-004~008](./specs-tree-connector-platform-v3/ADR-004.md) - 5 个架构决策记录
-- [状态文件](./specs-tree-connector-platform-v3/state.json) - registered / tracked
+- [构建报告](./specs-tree-connector-platform-v3/build.md) - 14 任务全部实现
+- [代码审查](./specs-tree-connector-platform-v3/review.md) - 审查通过，5 阻塞问题已修复
+- [验证报告](./specs-tree-connector-platform-v3/validation-report.md) - FR 100% 覆盖，1 项已知漂移，有条件通过
+- [测试任务](./specs-tree-connector-platform-v3/test-tasks.md) - 补充测试规划
+- [ADR-004~008](./specs-tree-connector-platform-v3/ADR-004.md) - 5 个架构决策记录（全部 ACCEPTED）
+- [状态文件](./specs-tree-connector-platform-v3/state.json) - validated / completed
 
 **V3 vs V2 核心变化**:
 | 维度 | V2（已终止） | V3（当前） |
@@ -138,8 +142,7 @@
 | 复杂逻辑 | 数据处理节点 + 错误处理策略 | 脚本节点（GraalJS 沙箱） |
 
 **下一步**:
-1. 运行 `@sddu build connector-platform-v3` 启动任务实现
-2. 按 Wave 1→4 顺序执行 14 个构建任务
+🎉 全流程完成！后续：修复 GraalJS parse 校验漂移
 
 ---
 

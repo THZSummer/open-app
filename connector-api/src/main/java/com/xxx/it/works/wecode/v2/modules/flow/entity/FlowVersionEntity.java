@@ -3,6 +3,8 @@ package com.xxx.it.works.wecode.v2.modules.flow.entity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -23,6 +25,8 @@ import java.util.Map;
  */
 @Table("openplatform_v2_cp_flow_version_t")
 public class FlowVersionEntity {
+
+    private static final Logger log = LoggerFactory.getLogger(FlowVersionEntity.class);
 
     @Id
     @Column("id")
@@ -111,6 +115,8 @@ public class FlowVersionEntity {
         try {
             return mapper.readTree(this.orchestrationConfig);
         } catch (Exception e) {
+            log.error("Failed to parse orchestrationConfig as JsonNode: flowId={}, error={}",
+                    this.flowId, e.getMessage());
             return mapper.createObjectNode();
         }
     }
@@ -126,6 +132,8 @@ public class FlowVersionEntity {
             return mapper.readValue(this.orchestrationConfig,
                     new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
+            log.error("Failed to parse orchestrationConfig as Map: flowId={}, error={}",
+                    this.flowId, e.getMessage());
             return Map.of();
         }
     }

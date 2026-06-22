@@ -115,7 +115,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
 
         log.info("Script node executing: nodeId={}, timeoutMs={}, upstreamCount={}",
                 nodeId, finalTimeoutMs,
-                upstreamNodeIds != null ? upstreamNodeIds.size() : 0);
+                upstreamNodeIds != null ? upstreamNodeIds.size() : "(default)");
 
         // 5. 在 boundedElastic 线程池中执行, 带超时控制
         return Mono.fromCallable(() -> executeScript(scriptSource, ctxMap))
@@ -275,17 +275,17 @@ public class ScriptNodeExecutor implements NodeExecutor {
         String errorMsg;
         if (e instanceof PolyglotException pe) {
             if (pe.isCancelled()) {
-                errorMsg = "Script execution cancelled (timeout or resource limit): " + pe.getMessage();
+                errorMsg = sanitize("Script execution cancelled (timeout or resource limit): " + pe.getMessage());
                 log.warn("Script node {} cancelled: {}", nodeId, pe.getMessage());
             } else {
-                errorMsg = "Script execution error: " + pe.getMessage();
+                errorMsg = sanitize("Script execution error: " + pe.getMessage());
                 log.warn("Script node {} execution error: {}", nodeId, pe.getMessage());
             }
         } else if (e instanceof java.util.concurrent.TimeoutException) {
             errorMsg = "Script execution timed out";
             log.warn("Script node {} timed out", nodeId);
         } else {
-            errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            errorMsg = sanitize(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
             log.error("Script node {} unexpected error: {}", nodeId, errorMsg, e);
         }
 
@@ -301,5 +301,14 @@ public class ScriptNodeExecutor implements NodeExecutor {
         output.setErrorInfo(errorInfo);
 
         return output;
+    }
+
+    /**
+     * 清理错误消息中的控制字符 (换行/回车等),
+     * 避免 HTTP 头写入时抛出 {@code IllegalArgumentException}.
+     */
+    private String sanitize(String msg) {
+        if (msg == null) return "";
+        return msg.replace('\n', ' ').replace('\r', ' ');
     }
 }

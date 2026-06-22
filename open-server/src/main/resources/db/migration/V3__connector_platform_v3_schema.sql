@@ -31,7 +31,7 @@ ALTER TABLE openplatform_v2_cp_connector_t
 -- 1.2 connector_version_t: 移除 1:1 约束，新增版本号/状态/发布时间字段
 -- ----------------------------------------------------------------------------
 ALTER TABLE openplatform_v2_cp_connector_version_t
-    DROP INDEX uk_connector_id,
+    DROP INDEX idx_connector_id,
     ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增',
     ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=已发布, 3=已失效, 4=物理删除',
     ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（首次发布时刻）',
@@ -56,7 +56,7 @@ ALTER TABLE openplatform_v2_cp_flow_t
 -- 1.4 flow_version_t: 移除 1:1 约束，新增版本号/7状态/发布时间字段
 -- ----------------------------------------------------------------------------
 ALTER TABLE openplatform_v2_cp_flow_version_t
-    DROP INDEX uk_flow_id,
+    DROP INDEX idx_flow_id,
     ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增',
     ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除',
     ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（审批通过的时刻）',

@@ -40,13 +40,13 @@ class OpConnectorControllerTest {
             request.setConnectorType(1);
 
             ApiResponse<ConnectorCreateResponse> mockResp = ApiResponse.success(
-                    ConnectorCreateResponse.builder().id("200").build());
+                    ConnectorCreateResponse.builder().connectorId("200").build());
 
             when(connectorService.createConnector(any())).thenReturn(mockResp);
 
             ApiResponse<ConnectorCreateResponse> response = connectorController.createConnector(request);
             assertEquals("200", response.getCode());
-            assertEquals("200", response.getData().getId());
+            assertEquals("200", response.getData().getConnectorId());
             verify(connectorService).createConnector(request);
         }
     }
@@ -77,12 +77,12 @@ class OpConnectorControllerTest {
         @DisplayName("请求委托给 service")
         void testGetConnectorDetail() {
             ConnectorDetailResponse detail = new ConnectorDetailResponse();
-            detail.setId("100");
+            detail.setConnectorId("100");
             when(connectorService.getConnectorDetail(100L))
                     .thenReturn(ApiResponse.success(detail));
 
             ApiResponse<ConnectorDetailResponse> response = connectorController.getConnectorDetail(100L);
-            assertEquals("100", response.getData().getId());
+            assertEquals("100", response.getData().getConnectorId());
         }
     }
 

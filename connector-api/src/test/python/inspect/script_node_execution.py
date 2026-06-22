@@ -44,8 +44,13 @@ def _mysql(sql):
 
 
 def _escape(obj):
-    """Escape a JSON object for safe MySQL string insertion."""
-    return json.dumps(obj).replace("'", "''")
+    """Escape a JSON object for safe MySQL string insertion.
+    
+    Backslashes MUST be escaped first to prevent MySQL from interpreting
+    JSON escape sequences (e.g. \\n) as literal bytes, which corrupts the
+    stored orchestration_config JSON and causes parse failures downstream.
+    """
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -98,7 +103,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                 "data": {
                     "labelCn": "脚本处理",
                     "labelEn": "Script",
-                    "scriptContent": script_content,
+                    "script": script_content,
                     "timeoutMs": timeout_ms
                 }
             },
@@ -175,9 +180,9 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
     orch = orchestration or {"nodes": [], "edges": []}
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, deployed_version_id, create_by, last_update_by) "
+        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({flow_id}, '脚本测试', 'ScriptTest', "
-        f"{lifecycle_status}, {flow_version_id}, 'tester', 'tester')"
+        f"{lifecycle_status}, 'tester', 'tester')"
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "

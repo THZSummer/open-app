@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  *   <li>{@code allowIO(false)} — 禁止文件/网络 IO</li>
  *   <li>{@code allowCreateThread(false)} — 禁止创建线程</li>
  *   <li>{@code allowNativeAccess(false)} — 禁止原生代码访问</li>
- *   <li>{@code allowHostAccess(HostAccess.EXPLICIT)} — 禁止 {@code Java.type()} 等反射</li>
+         *   <li>{@code allowHostAccess(EXPLICIT + Map/List)} — 禁止 {@code Java.type()} 等反射, 但允许 Map/List 键访问</li>
  *   <li>{@code allowAllAccess(false)} — 最大限制, 全部关闭</li>
  * </ol>
  * </p>
@@ -64,7 +64,11 @@ public class GraalJsContextFactory {
                 .allowIO(false)                       // 1. 禁止文件/网络 IO
                 .allowCreateThread(false)             // 2. 禁止创建线程
                 .allowNativeAccess(false)             // 3. 禁止原生访问
-                .allowHostAccess(HostAccess.EXPLICIT) // 4. 禁止 Java.type() / 反射
+                 .allowHostAccess(HostAccess.newBuilder(HostAccess.EXPLICIT)
+                         .allowMapAccess(true)
+                         .allowListAccess(true)
+                         .allowBufferAccess(true)
+                         .build())
                 .allowAllAccess(false)                // 5. 最大限制
                 // === 语句限制 ===
                 .resourceLimits(ResourceLimits.newBuilder()

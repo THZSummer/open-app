@@ -47,7 +47,7 @@ class OpConnectorControllerWebMvcTest {
         @DisplayName("✅ TC-001: 正常创建（完整字段）")
         void testCreateSuccess() throws Exception {
             ConnectorCreateResponse respData = ConnectorCreateResponse.builder()
-                    .id("1234567890123456789")
+                    .connectorId("1234567890123456789")
                     .build();
             when(connectorService.createConnector(any()))
                     .thenReturn(ApiResponse.success(respData));
@@ -113,7 +113,7 @@ class OpConnectorControllerWebMvcTest {
             String longName = "a".repeat(501);
             when(connectorService.createConnector(any()))
                     .thenReturn(ApiResponse.success(
-                            ConnectorCreateResponse.builder().id("200").build()));
+                            ConnectorCreateResponse.builder().connectorId("200").build()));
 
             mockMvc.perform(post("/service/open/v2/connectors")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -169,7 +169,7 @@ class OpConnectorControllerWebMvcTest {
         @DisplayName("✅ TC-007: 默认分页查询")
         void testListDefaultPage() throws Exception {
             ConnectorListResponse item = new ConnectorListResponse();
-            item.setId("1234567890123456789");
+            item.setConnectorId("1234567890123456789");
             item.setNameCn("IM 发送消息");
             item.setNameEn("IM Send Message");
             item.setConnectorType(1);
@@ -259,7 +259,7 @@ class OpConnectorControllerWebMvcTest {
         @DisplayName("✅ TC-013: 正常查询")
         void testDetailSuccess() throws Exception {
             ConnectorDetailResponse detail = new ConnectorDetailResponse();
-            detail.setId("1234567890123456789");
+            detail.setConnectorId("1234567890123456789");
             detail.setNameCn("IM 发送消息");
             detail.setNameEn("IM Send Message");
             detail.setConnectorType(1);
