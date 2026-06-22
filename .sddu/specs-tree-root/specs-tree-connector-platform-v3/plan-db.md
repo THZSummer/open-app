@@ -116,7 +116,7 @@ open-server/src/main/resources/db/migration/
 | `connector_t` | `connector_type` | 1=HTTP | 协议类型（V2 新增：2=MySQL 预留） |
 | `connector_t` | `status` | 1=有效不可用, 2=有效可用, 3=已失效, 4=物理删除 | V2 启用 |
 | `connector_version_t` | `status` | 1=草稿, 2=已发布, 3=已失效, 4=物理删除 | V2 启用 |
-| `flow_t` | `lifecycle_status` | 1=待部署, 2=运行中, 3=已停止, 4=已失效, 5=物理删除 | V2 扩展 |
+| `flow_t` | `lifecycle_status` | 1=已停止, 2=运行中, 3=已失效, 4=物理删除 | V2 扩展 |
 | `flow_version_t` | `status` | 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除 | V2 新增 |
 | `execution_record_t` | `trigger_type` | 1=http | V2 启用 |
 | `execution_record_t` | `status` | 0=success, 1=failed | V2 启用 |
@@ -146,7 +146,7 @@ open-server/src/main/resources/db/migration/
 |---|------|:---:|---------|------|
 | 1 | `openplatform_v2_cp_connector_t` | MODIFY | connector | 启用 `status` 4状态流转；新增 `app_id` 应用归属 |
 | 2 | `openplatform_v2_cp_connector_version_t` | MODIFY | connector | 1:1→1:N；新增 `version_number`/`status`/`published_time`（首次发布时刻）/`published_by`（发布操作人） |
-| 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 5状态；新增 `deployed_version_id`/`deployed_version_number`（冗余，避免列表 JOIN）/`app_id` |
+| 3 | `openplatform_v2_cp_flow_t` | MODIFY | flow | 扩展 `lifecycle_status` 4状态；新增 `deployed_version_id`/`deployed_version_number`（冗余，避免列表 JOIN）/`app_id` |
 | 4 | `openplatform_v2_cp_flow_version_t` | MODIFY | flow | 1:1→1:N；新增 `version_number`、7状态`status`、`published_time`（发布时间，审批通过时刻）、`published_by`（发布人，提交审批的人） |
 | 5 | `openplatform_v2_cp_connector_version_ref_t` | **NEW** | flow | 连接器版本引用中间表（M:N）；含 `flow_id`/`connector_id` 冗余，不含 `node_id` |
 | 6 | `openplatform_v2_cp_execution_record_t` | NEW | runtime | 运行记录表（V1 预留 DDL 但未使用），V2 全新启用并修正枚举值 |
@@ -240,14 +240,14 @@ ALTER TABLE openplatform_v2_cp_connector_version_t
 
 ### 3.3 openplatform_v2_cp_flow_t（MODIFY）
 
-**变更理由**：V2 引入连接流 5 状态生命周期（待部署→运行中→已停止→已失效→物理删除）、部署版本指针、应用归属。
+**变更理由**：V2 引入连接流 4 状态生命周期（已停止⇄运行中→已失效→物理删除）、部署版本指针、应用归属。部署不改变状态，仅切换版本绑定。
 
 ```sql
 ALTER TABLE openplatform_v2_cp_flow_t
     ADD COLUMN deployed_version_id BIGINT(20) NULL COMMENT '当前部署的版本ID（运行时按此指针读取编排快照）',
     ADD COLUMN deployed_version_number INT NULL COMMENT '当前部署的版本号（冗余，避免列表查询 JOIN flow_version_t）',
     ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID',
-    MODIFY COLUMN lifecycle_status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '生命周期：1=待部署, 2=运行中, 3=已停止, 4=已失效, 5=物理删除',
+    MODIFY COLUMN lifecycle_status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '生命周期：1=已停止, 2=运行中, 3=已失效, 4=物理删除',
     ADD INDEX idx_deployed_version (deployed_version_id),
     ADD INDEX idx_app_status (app_id, lifecycle_status),
     ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询',
@@ -259,7 +259,7 @@ ALTER TABLE openplatform_v2_cp_flow_t
 | `deployed_version_id` | BIGINT(20) | NEW | 指向当前部署的 FlowVersion.id，运行时读取入口 |
 | `deployed_version_number` | INT | NEW | 冗余字段，与 `deployed_version_id` 对应的版本号同步更新，列表查询无需 JOIN |
 | `app_id` | BIGINT(20) | NEW | 归属应用 ID，实现 G13 应用数据隔离 |
-| `lifecycle_status` | TINYINT(10) | MODIFY | V1: 1=running, 2=stopped → V2: 5 状态 |
+| `lifecycle_status` | TINYINT(10) | MODIFY | V1: 1=running, 2=stopped → V2: 4 状态（1=已停止, 2=运行中, 3=已失效, 4=物理删除） |
 
 ### 3.4 openplatform_v2_cp_flow_version_t（MODIFY）
 
@@ -478,13 +478,14 @@ CREATE TABLE IF NOT EXISTS `openplatform_v2_cp_execution_step_t` (
 
 ### 4.3 flow_t.lifecycle_status
 
+> 💡 V2 连接流仅 4 状态，部署不改变状态。创建连接流默认进入「已停止」(1)，需独立执行部署（绑定版本）和启动（状态迁移）后方可响应触发。
+
 | 值 | 含义 | 触发条件 | 可执行操作 |
 |:--:|------|---------|---------|
-| 1 | 待部署 | 创建连接流 / 复制连接流 / 恢复时无部署版本 | 查看、读写版本、部署+启动、标记失效 |
-| 2 | 运行中 | 部署+启动 / 启动 | 查看、读写版本、部署（替换运行版本）、停止 |
-| 3 | 已停止 | 停止 / 恢复（通用安全中间态） | 查看、读写版本、启动、标记失效 |
-| 4 | 已失效 | 标记失效 | 查看、读版本、恢复、删除 |
-| 5 | 物理删除 | 删除操作 | —（终态） |
+| 1 | 已停止 | 创建连接流 / 复制连接流 / 恢复 | 查看、读写版本、部署、启动、标记失效 |
+| 2 | 运行中 | 启动 | 查看、读写版本、部署（替换运行版本）、停止 |
+| 3 | 已失效 | 标记失效 | 查看、读版本、恢复、删除 |
+| 4 | 物理删除 | 删除操作 | —（终态） |
 
 ### 4.4 flow_version_t.status
 

@@ -185,13 +185,14 @@
 
 #### 1.8.3 连接流生命周期 (flow.lifecycleStatus)
 
+> 💡 连接流仅 4 状态。部署不改变状态，仅切换版本绑定。启动是将「已停止」迁移至「运行中」的独立操作。
+
 | 数字 | 含义 |
 |:--:|------|
-| 1 | 待部署 |
+| 1 | 已停止 |
 | 2 | 运行中 |
-| 3 | 已停止 |
-| 4 | 已失效 |
-| 5 | 物理删除 |
+| 3 | 已失效 |
+| 4 | 物理删除 |
 
 #### 1.8.4 连接流版本状态 (flowVersion.status)
 
@@ -1458,7 +1459,7 @@
 | flowId | string | 连接流 ID |
 | nameCn | string | 中文名称 |
 | nameEn | string | 英文名称 |
-| lifecycleStatus | int | 生命周期状态：固定 `1`（待部署），见 §1.8.3 |
+| lifecycleStatus | int | 生命周期状态：创建后固定 `1`（已停止），见 §1.8.3 |
 | appId | string | 归属应用 ID |
 | createTime | string | 创建时间 |
 | note | string | 提示：创建连接流后需手动创建草稿版本（FR-024a）或从已发布版本复制到草稿来获得可编辑版本 |
@@ -1687,7 +1688,7 @@
 | flowId | string | 新连接流 ID |
 | nameCn | string | 新名称（追加 `_copy_xxxxx` 随机后缀） |
 | nameEn | string | 新英文名称 |
-| lifecycleStatus | int | 固定 `1`（待部署） |
+| lifecycleStatus | int | 固定 `1`（已停止） |
 | versionsCopied | int | 复制的版本数量 |
 | createTime | string | 创建时间 |
 
@@ -1869,7 +1870,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| flowId | string | ✅ | 连接流 ID（仅待部署或已停止状态） |
+| flowId | string | ✅ | 连接流 ID（仅已停止状态） |
 
 **响应体 `data`**
 
