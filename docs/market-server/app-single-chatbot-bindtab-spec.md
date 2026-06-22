@@ -1,9 +1,20 @@
 # Spec：应用绑定单聊机器人账号
 
-> **版本**: v1.0  
-> **日期**: 2026-06-10  
+> **版本**: v2.0  
+> **日期**: 2026-06-22  
 > **状态**: Draft  
 > **范围**: market-server（后端 API）+ market-web（前端 Tab 组件）
+>
+> **v2.0 变更摘要**:
+> - 机器人账号校验由本地正则（`p_` 前缀）改为**调用通讯录 API 远程校验**（userType ∈ {4,5,10}）
+> - 绑定数量上限来源由 `lookup_classify_t / lookup_item_t` 改为 `openplatform_property_t`（path=`CEC.Open`, code=`single.chat.robot.max.number`，默认值=1）
+> - 审计日志标记为**预留人工实现**（market-server 当前无 `@AuditLog`）
+> - 雪花 ID：dev 环境 `DevIdGeneratorStrategy` 已实现；标准环境 `StandardIdGeneratorStrategy` 待实现
+> - `AppPropertyEntity` 在 market-server 中新建，不复用 open-server 的 `OldAppProperty`
+> - 前端布局由 Table 改为**动态标签流式布局**（flex-wrap，按字符宽度自动换行）
+> - 新增错误码 40006（通讯录 API 调用失败）
+> - 解绑二次确认提示语：「确认删除该机器人账号吗？」
+> - `tenantId` 配置到 `application.yml`；`token` 由人工通过工具类获取
 
 ---
 
@@ -23,13 +34,18 @@
 
 | # | 规则 | 来源 |
 |---|------|------|
-| BR-1 | 一个应用可绑定的机器人账号数量上限由 Lookup 配置决定，**服务端在绑定时校验** | 用户确认 |
+| BR-1 | 一个应用可绑定的机器人账号数量上限由 `openplatform_property_t` 数据字典配置决定（path=`CEC.Open`, code=`single.chat.robot.max.number`，默认值=1），**服务端在绑定时校验** | 用户确认 |
 | BR-2 | 每个绑定的机器人在 `openplatform_app_p_t` 中存储为**独立一行**记录 | 用户确认 |
 | BR-3 | 存储方式：`parent_id` = 应用主键 `id`，`property_name` = `single_chatbot_account`，`property_value` = 账号 ID | 用户确认 |
 | BR-4 | 解绑操作执行**硬删除**（DELETE FROM），通过 `app_id` + `accountId` 定位记录 | 用户确认 |
 | BR-5 | 绑定/解绑操作通过**现有 AOP 注解机制**记录审计日志，开发者仅需在接口方法上添加注解 | 用户确认 |
 | BR-6 | 权限控制：仅校验登录态（`@AuthRole`），不做细粒度角色校验 | 用户确认 |
-| BR-7 | 机器人账号格式：以 `p_` 开头，最大长度 200 字符 | 用户确认 |
+| BR-7 | ~~机器人账号格式校验~~ 已改为**调用通讯录接口远程校验**（见 §2.6），不再做本地正则校验 | 用户确认 |
+| BR-11 | 绑定时调用通讯录 API 获取账号信息，校验 `userType` ∈ {4=机器人, 5=业务助手, 10=个人助手}，其他类型返回 40002 | 用户确认 |
+| BR-12 | 通讯录 API 请求体为 `{"users":["<accountId>"]}`，响应 `users` 为空列表时返回 40002 | 用户确认 |
+| BR-13 | 通讯录 API 请求头需携带 `x-welink-tenantid` 和 `Authorization`，**tenantId 和 token 由运维人工获取并配置**，本系统不自动获取 | 用户确认 |
+| BR-14 | 绑定数量上限从 `openplatform_property_t` 数据字典表读取（path=`CEC.Open`, code=`single.chat.robot.max.number`），不再依赖 lookup 表 | 用户确认 |
+| BR-15 | 复用现有 `DictionaryMapper.selectByPathAndCode(path, code)` 读取数量上限，无需新建 Mapper | `[src/market-server/.../dictionary/mapper/DictionaryMapper.java:32]` |
 | BR-8 | **前端不控制数量上限**，上限校验完全由服务端在绑定时负责 | 用户确认 |
 | BR-9 | **DB 主键为雪花 ID（Long）**，返回前端时**必须转为 String** 防 JS 精度丢失 | 用户确认 |
 | BR-10 | **DB Entity 与 API VO 严格分离**，DB Entity 用 `Long`，VO 用 `String` | 用户确认 |
@@ -37,11 +53,14 @@
 ### 1.3 不在范围内
 
 - 应用详情页本身的路由和框架搭建（由外部系统集成）
-- 机器人账号的创建/管理（由其他系统负责）
-- 机器人账号的存在性远程校验（仅做格式校验）
+- 机器人账号的创建/管理（由通讯录系统负责）
+- 通讯录 API 本身的实现（由外部系统负责）
+- `Authorization` token 的自动获取（由人工通过工具类获取）
 - 审批流程相关的任何改动
 - 前端对绑定数量上限的展示或控制
-- 雪花 ID 生成器实现代码（预留人工实现）
+- 标准环境雪花 ID 生成代码（`StandardIdGeneratorStrategy.nextId()` 待实现）
+- 审计日志 AOP 注解（market-server 当前无此能力，预留人工实现）
+- `openplatform_property_t` 数据字典记录的新增（由人工实现，不在本次 Spec 范围）
 
 ### 1.4 系统上下文
 
@@ -49,6 +68,7 @@
 graph TB
     subgraph 外部系统
         DetailPage["应用详情页<br/>(不在本仓库)"]
+        WeContact["通讯录 API<br/>/wecontact-relation/v1/..."]
     end
 
     subgraph market-web
@@ -60,15 +80,15 @@ graph TB
     subgraph market-server
         Controller["ChatbotBindController<br/>/service/open/v2/apps/single-chatbot-accounts"]
         Service["ChatbotBindService"]
-        LookupSvc["Lookup 配置读取"]
+        DictMapper["DictionaryMapper<br/>(读取数量上限)"]
+        WcClient["WeContactClient<br/>(RestTemplate)"]
         Mapper["ChatbotBindMapper"]
     end
 
     subgraph MySQL["openapp 数据库"]
         AppT["openplatform_app_t"]
         AppPT["openplatform_app_p_t"]
-        LookupClassify["openplatform_lookup_classify_t"]
-        LookupItem["openplatform_lookup_item_t"]
+        PropT["openplatform_property_t<br/>(数据字典)"]
     end
 
     DetailPage -->|"传入 appId prop"| ChatbotTab
@@ -76,12 +96,13 @@ graph TB
     FetchAPI --> WebConfig
     FetchAPI -->|"HTTP :18080"| Controller
     Controller --> Service
-    Service --> LookupSvc
+    Service --> DictMapper
+    Service --> WcClient
     Service --> Mapper
     Mapper --> AppT
     Mapper --> AppPT
-    LookupSvc --> LookupClassify
-    LookupSvc --> LookupItem
+    DictMapper --> PropT
+    WcClient -->|"POST + tenantId/token"| WeContact
 ```
 
 ---
@@ -115,7 +136,7 @@ graph LR
 - DB Entity（`AppPropertyEntity`）中 `id`、`parentId` 类型为 `Long`
 - API VO（`ChatbotAccountVO`）中所有 ID 字段类型为 `String`
 - Service 层负责 Entity → VO 转换，`Long.toString()` 序列化
-- 雪花 ID 生成由 `IdGeneratorStrategy` 负责，**生成代码预留人工实现**，本 Spec 不生成
+- 雪花 ID 生成由 `IdGeneratorStrategy` 负责：dev 环境使用 `DevIdGeneratorStrategy`（已实现完整雪花算法）；标准生产环境 `StandardIdGeneratorStrategy` 骨架已存在但 `nextId()` 待实现 `[src/market-server/.../common/id/DevIdGeneratorStrategy.java:1-161]` `[src/market-server/.../common/id/StandardIdGeneratorStrategy.java:1-42]`
 
 ### 2.2 后端 API
 
@@ -194,7 +215,7 @@ POST /service/open/v2/apps/single-chatbot-accounts
 | 参数 | 类型 | 必填 | 校验规则 | 说明 |
 |------|------|------|----------|------|
 | `appId` | String | 是 | @NotBlank | 应用业务 ID |
-| `accountId` | String | 是 | 以 `p_` 开头，长度 1~200 | 机器人账号 ID |
+| `accountId` | String | 是 | @NotBlank（后端通过通讯录 API 校验有效性） | 机器人账号 ID |
 
 **响应** `ApiResponse<ChatbotAccountVO>`:
 
@@ -213,25 +234,30 @@ POST /service/open/v2/apps/single-chatbot-accounts
 ```
 
 **处理逻辑**:
-1. 校验 `accountId` 格式：正则 `^p_.{1,196}$`
-2. 通过 `app_id` 查询应用主键 `id`（不存在 → 40001）
-3. 查询 Lookup 配置获取最大可绑定数量
+1. 通过 `app_id` 查询应用主键 `id`（不存在 → 40001）
+2. 调用通讯录 API 校验 `accountId` 有效性（详见 §2.6）：
+   - 请求 POST `/wecontact-relation/v1/relation/personPublicInfo?source=welink_sysi_open`
+   - 请求头携带 `x-welink-tenantid` + `Authorization`（配置项，人工获取）
+   - 响应 `users` 为空列表 → 40002
+   - 响应 `users[0].userType` ∉ {4, 5, 10} → 40002
+3. 查询 `openplatform_property_t`（path=`CEC.Open`, code=`single.chat.robot.max.number`）获取最大可绑定数量
 4. 查询当前已绑定数量
 5. 已绑定 >= 上限 → 40003
 6. 重复检查（同 property_value 已存在且 status=1）→ 40004
-7. 通过 `IdGeneratorStrategy` 生成雪花 ID（**预留人工实现**）
+7. 通过 `IdGeneratorStrategy.nextId()` 生成雪花 ID（dev 环境 `DevIdGeneratorStrategy` 已实现；标准环境 `StandardIdGeneratorStrategy` 预留人工实现）`[src/market-server/.../common/id/DevIdGeneratorStrategy.java:91]`
 8. INSERT `openplatform_app_p_t`
 9. Entity → VO 转换（`Long` → `String`）
-10. 添加审计日志注解 #ASSUMED
+10. 添加审计日志注解（**预留人工实现**，见附录 A-5）
 
 **错误码**:
 
 | code | 含义 |
 |------|------|
 | 40001 | 应用不存在 |
-| 40002 | accountId 格式不合法 |
+| 40002 | 账号无效（通讯录 API 未查到或 userType 不合法） |
 | 40003 | 超过最大可绑定数量 |
 | 40004 | 该账号已绑定（重复绑定） |
+| 40006 | 通讯录 API 调用失败（网络超时/服务不可用） |
 | 40101 | 未登录 |
 
 ---
@@ -324,8 +350,7 @@ public class ChatbotBindRequest {
     @NotBlank
     private String appId;
 
-    @NotBlank
-    @Pattern(regexp = "^p_.{1,196}$", message = "账号格式不正确")
+    @NotBlank   // 后端通过通讯录 API 校验有效性，此处仅做非空校验
     private String accountId;
 }
 ```
@@ -346,16 +371,34 @@ private ChatbotAccountVO toVO(AppPropertyEntity entity) {
 
 ---
 
-### 2.4 Lookup 配置（待新建）
+### 2.4 数量上限配置（openplatform_property_t 数据字典）
 
-| 层级 | 字段 | 值 | 说明 |
-|------|------|----|------|
-| **Classify** | `classify_code` | `APP_CHATBOT_CONFIG` #ASSUMED | 应用机器人配置分类 |
-| **Classify** | `path` | `/app` #ASSUMED | 分类路径 |
-| **Item** | `item_code` | `MAX_SINGLE_CHATBOT_BINDABLE` #ASSUMED | 最大可绑定单聊机器人数量 |
-| **Item** | `item_value` | `5` #ASSUMED（示例值） | 最大数量，整数字符串 |
+从已有数据字典表 `openplatform_property_t` 读取绑定数量上限，复用现有 `DictionaryMapper.selectByPathAndCode(path, code)` 方法 `[src/market-server/.../dictionary/mapper/DictionaryMapper.java:32]`。
 
-> 具体 classify_code、item_code、path 和默认值均为 #ASSUMED，需上线前由开发/运维确认。
+| 字段 | 值 | 说明 |
+|------|----|------|
+| `id` | 雪花 ID（BIGINT，由 `IdGeneratorStrategy.nextId()` 生成） | 主键 |
+| `path` | `CEC.Open` | 数据字典路径 |
+| `code` | `single.chat.robot.max.number` | 最大可绑定单聊机器人数量编码 |
+| `value` | `1`（默认值，运维可调整） | 最大数量，整数字符串 |
+
+**读取方式**：
+
+```java
+// 注入已有 Mapper
+@Autowired
+private DictionaryMapper dictionaryMapper;
+
+// 读取数量上限
+DictionaryEntity entity = dictionaryMapper.selectByPathAndCode("CEC.Open", "single.chat.robot.max.number");
+int maxCount = (entity != null && entity.getValue() != null) 
+    ? Integer.parseInt(entity.getValue()) 
+    : 1;  // 默认值：未配置时上限为 1
+```
+
+> **注意**：`openplatform_property_t` 对应 Entity 为 `DictionaryEntity` `[src/market-server/.../dictionary/entity/DictionaryEntity.java:18]`，**非 PropertyEntity**。主键 `id` 为雪花 ID。
+
+> **数据字典记录新增由人工实现，不在本次 Spec 范围。**
 
 ---
 
@@ -382,32 +425,67 @@ src/router/routeRedBlue/
 |------|------|------|------|
 | `appId` | String | 是 | 当前应用的业务 ID，由父页面传入 |
 
-**页面布局**:
+**页面布局**（动态标签流式布局，非表格）：
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  机器人绑定                                      [+ 绑定账号] │
-├──────┬──────────────┬──────────────┬────────────────────────┤
-│ 序号 │   账号 ID     │   绑定时间    │       操作             │
-├──────┼──────────────┼──────────────┼────────────────────────┤
-│  1   │ p_abc123     │ 06-10 14:30  │       解绑             │
-│  2   │ p_def456     │ 06-10 13:00  │       解绑             │
-│  3   │ p_ghi789     │ 06-09 10:22  │       解绑             │
-└──────┴──────────────┴──────────────┴────────────────────────┘
+│  机器人绑定                                                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+│  │ p_abc123     [×] │  │ p_def456     [×] │  │ p_ghi789     [×] │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘
+│  ┌─────────────────────────────────────────────────────────────┐
+│  │ p_very_long_robot_account_name_here              [×]        │
+│  └─────────────────────────────────────────────────────────────┘
+│  ┌──────────────────┐                                           │
+│  │ ＋ 添加账号       │   ← 跟在最后一个标签后，超出行限制自动换行   │
+│  └──────────────────┘                                           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+**换行规则**（动态计算，非固定列数）：
+
+| 规则 | 说明 |
+|------|------|
+| 每行字符上限 | 由容器宽度动态计算（`containerWidth / charWidth`），随窗口缩放实时变化 |
+| 标签间距 | 每个标签之间间隔一个字符宽度（约 `1em`） |
+| 多个标签同行 | 按顺序排列，累计字符数不超过行上限时保持在同一行 |
+| 最后一个标签溢出 | 如果加上最后一个标签会超出行上限，则该标签另起一行 |
+| 超长标签独占行 | 如果单个标签字符长度超过行上限，该标签独占一行（不截断） |
+| 标签最小宽度 | 保证最小可读宽度（如 120px），避免过窄 |
+| **「＋ 添加账号」按钮** | 作为最后一个 tag 跟在账号标签之后，超出行限制时自动另起一行 |
+| **输入状态点击外部** | 当输入框处于激活状态时，点击页面任意非输入区域自动触发保存请求（失焦提交） |
+
+**实现方式**：
+
+```javascript
+// 使用 CSS flex + flex-wrap 实现流式布局
+// 每个标签宽度由内容决定（max-content），超出容器自动换行
+<Tag style={{ marginBottom: 8, maxWidth: '100%' }}>
+  {accountId} <CloseOutlined onClick={() => handleUnbind(accountId)} />
+</Tag>
+```
+
+> **不使用 Ant Design `Table`**，改用 `Tag` + `flex-wrap` 容器实现动态标签流式布局。  
+> 容器宽度变化时标签自动重排，无需监听 resize 事件。
 
 **行为说明**:
 
-1. **初始化**: 组件挂载 → 调用查询接口获取已绑定列表
+1. **初始化**: 组件挂载 → 调用查询接口获取已绑定列表 → 渲染标签
 2. **绑定流程**:
    - 点击「+ 绑定账号」→ 弹出 `BindAccountModal`
-   - 前端格式校验（`p_` 开头，≤200 字符）
-   - 确认 → 调用绑定接口 → 成功刷新列表
+   - 前端必填校验
+   - 确认 → 调用绑定接口 → 成功刷新标签列表
+   - code=40002 → `message.error('账号无效')`
    - code=40003 → `message.error('已超过最大绑定数量')`
    - code=40004 → `message.error('该账号已绑定')`
+   - code=40006 → `message.error('通讯录服务暂不可用')`
 3. **解绑流程**:
-   - 点击「解绑」→ `ConfirmModal` 二次确认（含账号 ID）
-   - 确认 → 调用解绑接口（body: `{ appId, accountId }`）→ 成功刷新列表
+   - 点击标签上的「×」→ `ConfirmModal` 弹出，仅展示提示语「确认删除该机器人账号吗？」
+   - 按钮仅「确认」「取消」两个，无其他附加内容
+   - 确认 → 调用解绑接口（body: `{ appId, accountId }`）→ 成功刷新标签列表
 4. **空状态**: Ant Design `Empty` 组件
 
 > **前端不获取、不展示数量上限**，完全依赖服务端返回的错误信息。  
@@ -420,7 +498,8 @@ src/router/routeRedBlue/
 | 规则 | 正则/条件 | 提示信息 |
 |------|-----------|----------|
 | 必填 | `required: true` | 请输入机器人账号 |
-| 格式 | `pattern: /^p_.{1,196}$/` | 账号格式不正确，需以 p_ 开头，最长200字符 |
+
+> **注意**：前端不再做格式校验（正则已移除），账号有效性由后端调用通讯录 API 校验。
 
 #### 2.5.4 API 配置（web.config.js 新增）
 
@@ -440,6 +519,88 @@ APP_CHATBOT_ACCOUNTS: '/market-web/service/open/v2/apps/single-chatbot-accounts'
 
 ---
 
+### 2.6 通讯录 API（外部系统，绑定校验用）
+
+绑定时调用通讯录接口校验账号有效性、获取账号信息。
+
+**接口详情**：
+
+| 项 | 值 |
+|---|---|
+| Method | POST |
+| URL | `/wecontact-relation/v1/relation/personPublicInfo?source=welink_sysi_open` |
+| Content-Type | application/json |
+
+**请求头**：
+
+| Header | 值 | 来源 |
+|--------|-----|------|
+| `x-welink-tenantid` | `${wecontact.tenant-id}` | 配置到 `application.yml`，运维人工填入 |
+| `Authorization` | `${token}` | 人工通过工具类获取（不持久化，运行时读取） |
+
+**请求 Body**：
+
+```json
+{
+  "users": ["p_robot"]
+}
+```
+
+> `users` 为数组，本场景固定传入 1 个 accountId。
+
+**响应 Body**：
+
+```json
+{
+  "code": "0",
+  "message": "OK",
+  "users": [
+    {
+      "personAccount": "p_robot",
+      "workId": "p_robot",
+      "chineseName": "test机器人",
+      "englishName": "test robot",
+      "userType": 10,
+      "userStatus": 3
+    }
+  ]
+}
+```
+
+**userType 枚举**（仅以下值允许绑定）：
+
+| userType | 含义 | 是否允许绑定 |
+|:--------:|------|:----------:|
+| 4 | 机器人 | ✅ |
+| 5 | 业务助手 | ✅ |
+| 10 | 个人助手 | ✅ |
+| 其他 | — | ❌ 返回 40002 |
+
+**校验逻辑**：
+
+```
+1. 调用通讯录 API
+2. 网络异常/超时 → 40006（通讯录 API 调用失败）
+3. code != "0" → 40006
+4. users 为空列表 → 40002（账号无效）
+5. users[0].userType ∉ {4, 5, 10} → 40002（类型不合法）
+6. 校验通过 → 继续后续绑定流程
+```
+
+**配置示例**（application.yml）：
+
+```yaml
+wecontact:
+  api-url: https://xxx.example.com   # 通讯录 API 基础 URL #ASSUMED
+  tenant-id: <运维人工填入>           # x-welink-tenantid
+```
+
+> **`Authorization` token 不配置在 yml 中**，由人工通过独立工具类获取，运行时注入。
+
+> **实现说明**：market-server 当前无 HTTP 客户端，需新增 `RestTemplateConfig`（参考 `[src/event-server/.../common/config/RestTemplateConfig.java:14-20]`）和 `WeContactClient`（参考 `[src/event-server/.../client/ApiServerClient.java:29-272]`）。
+
+---
+
 ## 3. Constraints
 
 ### 3.1 技术约束
@@ -448,20 +609,23 @@ APP_CHATBOT_ACCOUNTS: '/market-web/service/open/v2/apps/single-chatbot-accounts'
 |---|------|------|
 | C-1 | 后端 SQL 不使用 `SELECT *`，显式列出字段 | [app-version-approval-spec.md] |
 | C-2 | JOIN ≤ 3 张表，子查询嵌套 ≤ 3 层 | [app-version-approval-spec.md] |
-| C-3 | 响应统一使用 `ApiResponse<T>` 包装 | [common/model/ApiResponse.java] |
-| C-4 | DB 主键为雪花 ID（Long/BigInt），由 `IdGeneratorStrategy` 生成，**生成代码预留人工实现** | 用户确认 |
+| C-3 | 响应统一使用 `ApiResponse<T>` 包装 | `[src/market-server/.../common/model/ApiResponse.java:1-155]` |
+| C-4 | DB 主键为雪花 ID（Long/BigInt），dev 环境 `DevIdGeneratorStrategy` 已实现；标准环境 `StandardIdGeneratorStrategy` 待实现 | `[src/market-server/.../common/id/DevIdGeneratorStrategy.java:1-161]` |
 | C-5 | **所有 ID 字段返回前端时必须转为 String**，防 JS Number 精度丢失（雪花 ID > 2^53） | 用户确认 |
 | C-6 | **DB Entity 与 API VO 严格分离**：Entity 用 `Long`，VO 用 `String` | 用户确认 |
-| C-7 | 安全注解 `@AuthRole` 标记所有 Controller 方法 | [common/security/AuthRole.java] |
-| C-8 | 审计日志通过 AOP 注解方式添加 #ASSUMED | 用户确认 |
-| C-9 | 前端 React 18 + Ant Design 4.x + CSS Modules (Less) | [market-web/package.json] |
-| C-10 | 前端 HTTP 使用 `fetchApi()`，不使用 axios | [market-web/src/utils/webFetch.js] |
+| C-7 | 安全注解 `@AuthRole` 标记所有 Controller 方法 | `[src/market-server/.../common/security/AuthRole.java:1-21]` |
+| C-8 | 审计日志 **预留人工实现**（market-server 当前无 `@AuditLog` 注解，仅 open-server 有） | 用户确认 |
+| C-9 | 前端 React 18 + Ant Design 4.x + CSS Modules (Less) | `[src/market-web/package.json]` |
+| C-10 | 前端 HTTP 使用 `fetchApi()`，不使用 axios | `[src/market-web/src/utils/webFetch.js:1-36]` |
 | C-11 | 前端状态使用 `useState`（页面级） | 现有代码模式 |
 | C-12 | 时间格式：`yyyy-MM-dd HH:mm:ss`，时区 `Asia/Shanghai` | [app-version-approval-spec.md] |
 | C-13 | 国际化：响应 messageZh/messageEn 双语 | 现有代码模式 |
 | C-14 | DELETE 请求参数放 Body（非 QueryParam） | 用户确认 |
 | C-15 | 前端不获取也不展示绑定数量上限 | 用户确认 |
 | C-16 | 前端不传递任何 DB 主键 ID，仅使用业务 ID（appId）和账号 ID（accountId） | 用户确认 |
+| C-17 | 后端调用通讯录 API 需使用 `RestTemplate`（market-server 当前无 HTTP 客户端，需新增 Bean + Client 类） | 用户确认 |
+| C-18 | `tenantId` 配置到 `application.yml`；`token` 由人工通过工具类获取，不持久化到配置文件 | 用户确认 |
+| C-19 | 绑定数量上限从 `openplatform_property_t`（path=`CEC.Open`, code=`single.chat.robot.max.number`）读取，复用 `DictionaryMapper.selectByPathAndCode()` | `[src/market-server/.../dictionary/mapper/DictionaryMapper.java:32]` |
 
 ### 3.2 数据约束
 
@@ -500,23 +664,16 @@ erDiagram
         varchar create_by "创建人"
     }
 
-    openplatform_lookup_classify_t {
-        bigint classifyId PK "雪花ID"
-        varchar classify_code "分类编码"
-        varchar path "分类路径"
-        tinyint status "0=失效 1=有效"
-    }
-
-    openplatform_lookup_item_t {
-        bigint itemId PK "雪花ID"
-        bigint classifyId FK "classify_t.classifyId"
-        varchar item_code "项编码"
-        varchar item_value "项值-最大数量"
+    openplatform_property_t {
+        bigint id PK "雪花ID"
+        varchar code "编码"
+        varchar name "名称"
+        varchar value "值-最大数量"
+        varchar path "路径"
         tinyint status "0=失效 1=有效"
     }
 
     openplatform_app_t ||--o{ openplatform_app_p_t : "1:N parent_id"
-    openplatform_lookup_classify_t ||--o{ openplatform_lookup_item_t : "1:N classifyId"
 ```
 
 **`app_p_t` 记录示例（本次功能）**:
@@ -539,7 +696,8 @@ erDiagram
 | 重复检查 | `app_p_t` | SELECT COUNT | 同解绑条件 |
 | 数量上限检查 | `app_p_t` | SELECT COUNT | `parent_id`=?, `property_name`='single_chatbot_account', `status`=1 |
 | 查应用主键 | `app_t` | SELECT id | `app_id`=?, `status`=1 |
-| 查最大数量 | `lookup_item_t` | SELECT | JOIN `lookup_classify_t` |
+| 查最大数量 | `openplatform_property_t` | SELECT | `path`='CEC.Open', `code`='single.chat.robot.max.number'（复用 DictionaryMapper） |
+| 校验账号有效性 | 外部通讯录 API | POST | `/wecontact-relation/v1/relation/personPublicInfo` |
 
 ### 4.3 对象层次关系
 
@@ -575,15 +733,23 @@ modules/
     │   └── ChatbotBindController.java       # 3 个接口
     ├── service/
     │   ├── ChatbotBindService.java          # 接口
-    │   └── impl/ChatbotBindServiceImpl.java # 实现（含 Entity→VO 转换）
+    │   └── impl/ChatbotBindServiceImpl.java # 实现（含 Entity→VO 转换、通讯录 API 调用）
+    ├── client/
+    │   └── WeContactClient.java             # 通讯录 API 客户端（RestTemplate 调用）
     ├── mapper/
     │   └── ChatbotBindMapper.java           # MyBatis Mapper 接口
     ├── entity/
-    │   └── AppPropertyEntity.java           # DB 实体（Long id）
+    │   └── AppPropertyEntity.java           # DB 实体（Long id，新建不复用 open-server）
     ├── dto/
-    │   └── ChatbotBindRequest.java          # 请求 DTO
+    │   ├── ChatbotBindRequest.java          # 绑定/解绑请求 DTO
+    │   └── WeContactRequest.java            # 通讯录 API 请求 DTO #ASSUMED
     └── vo/
-        └── ChatbotAccountVO.java            # 响应 VO（String id）
+        ├── ChatbotAccountVO.java            # 响应 VO（String id）
+        └── WeContactResponse.java           # 通讯录 API 响应 VO #ASSUMED
+
+common/
+└── config/
+    └── RestTemplateConfig.java              # RestTemplate Bean（参考 event-server）
 
 resources/mapper/
 └── chatbotbindtab/
@@ -608,7 +774,8 @@ src/router/routeRedBlue/
 | 文件 | 变更 |
 |------|------|
 | `web.config.js` | 新增 1 个 URL 常量 |
-| Lookup 管理（运行时） | 新建 classify + item（§2.4） |
+| `application.yml` | 新增 `wecontact.api-url`、`wecontact.tenant-id` 配置项 |
+| `openplatform_property_t`（运行时） | 新增数据字典记录（path=`CEC.Open`, code=`single.chat.robot.max.number`, value=`1`） |
 
 ---
 
@@ -621,14 +788,14 @@ src/router/routeRedBlue/
 | 项 | 内容 |
 |----|------|
 | 前置 | 应用 A（app_id=app001）已绑定 2 个账号 |
-| 操作 | `GET /apps/single-chatbot-accounts?appId=app001` |
+| 操作 | `GET /service/open/v2/apps/single-chatbot-accounts?appId=app001` |
 | 期望 | code=200，data 长度=2，id 字段为 String 类型（如 `"1934567890123456789"`），按 create_time DESC |
 
 #### TC-02: 查询 — 应用不存在
 
 | 项 | 内容 |
 |----|------|
-| 操作 | `GET /apps/single-chatbot-accounts?appId=nonexistent` |
+| 操作 | `GET /service/open/v2/apps/single-chatbot-accounts?appId=nonexistent` |
 | 期望 | code=40001 |
 
 #### TC-03: 查询 — 无绑定记录
@@ -636,7 +803,7 @@ src/router/routeRedBlue/
 | 项 | 内容 |
 |----|------|
 | 前置 | 应用 B 存在但未绑定 |
-| 操作 | `GET /apps/single-chatbot-accounts?appId=app002` |
+| 操作 | `GET /service/open/v2/apps/single-chatbot-accounts?appId=app002` |
 | 期望 | code=200，data=[] |
 
 #### TC-04: 绑定 — 正常
@@ -644,23 +811,40 @@ src/router/routeRedBlue/
 | 项 | 内容 |
 |----|------|
 | 前置 | 已绑定 2 个，上限=5 |
-| 操作 | `POST /apps/single-chatbot-accounts` body: `{"appId":"app001","accountId":"p_newbot001"}` |
+| 操作 | `POST /service/open/v2/apps/single-chatbot-accounts` body: `{"appId":"app001","accountId":"p_newbot001"}` |
 | 期望 | code=200，data.id 为 String 类型，app_p_t 新增一行 |
 
-#### TC-05: 绑定 — 格式不合法
+#### TC-05: 绑定 — 通讯录 API 返回空 users
 
 | 项 | 内容 |
 |----|------|
-| 操作 | POST body: `{"accountId":"invalid_no_prefix"}` |
-| 期望 | code=40002 |
+| 前置 | 通讯录 API 返回 `{"code":"0","users":[]}` |
+| 操作 | POST body: `{"appId":"app001","accountId":"nonexistent_account"}` |
+| 期望 | code=40002（账号无效） |
+
+#### TC-05b: 绑定 — 通讯录 API 返回不合法 userType
+
+| 项 | 内容 |
+|----|------|
+| 前置 | 通讯录 API 返回 `{"code":"0","users":[{"userType":1}]}` |
+| 操作 | POST body: `{"appId":"app001","accountId":"p_normaluser"}` |
+| 期望 | code=40002（userType=1 不在 {4,5,10} 中） |
 
 #### TC-06: 绑定 — 超过上限
 
 | 项 | 内容 |
 |----|------|
-| 前置 | 已绑定 5 个，上限=5 |
-| 操作 | POST body: `{"accountId":"p_overflow"}` |
+| 前置 | 已绑定 1 个，上限=1（默认值） |
+| 操作 | POST body: `{"appId":"app001","accountId":"p_overflow"}` |
 | 期望 | code=40003 |
+
+#### TC-06c: 绑定 — 通讯录 API 调用失败
+
+| 项 | 内容 |
+|----|------|
+| 前置 | 通讯录 API 网络超时 / 返回非 0 code |
+| 操作 | POST body: `{"appId":"app001","accountId":"p_abc123"}` |
+| 期望 | code=40006 |
 
 #### TC-07: 绑定 — 重复
 
@@ -675,7 +859,7 @@ src/router/routeRedBlue/
 | 项 | 内容 |
 |----|------|
 | 前置 | 应用 A 绑定了 p_abc123 |
-| 操作 | `DELETE /apps/single-chatbot-accounts` body: `{"appId":"app001","accountId":"p_abc123"}` |
+| 操作 | `DELETE /service/open/v2/apps/single-chatbot-accounts` body: `{"appId":"app001","accountId":"p_abc123"}` |
 | 期望 | code=200，对应行物理删除 |
 
 #### TC-09: 解绑 — 记录不存在
@@ -683,14 +867,14 @@ src/router/routeRedBlue/
 | 项 | 内容 |
 |----|------|
 | 前置 | 应用 A 未绑定 p_nonexist |
-| 操作 | `DELETE /apps/single-chatbot-accounts` body: `{"appId":"app001","accountId":"p_nonexist"}` |
+| 操作 | `DELETE /service/open/v2/apps/single-chatbot-accounts` body: `{"appId":"app001","accountId":"p_nonexist"}` |
 | 期望 | code=40005 |
 
 #### TC-10: 解绑 — 应用不存在
 
 | 项 | 内容 |
 |----|------|
-| 操作 | `DELETE /apps/single-chatbot-accounts` body: `{"appId":"nonexistent","accountId":"p_abc123"}` |
+| 操作 | `DELETE /service/open/v2/apps/single-chatbot-accounts` body: `{"appId":"nonexistent","accountId":"p_abc123"}` |
 | 期望 | code=40001 |
 
 #### TC-11: 未登录
@@ -716,14 +900,21 @@ src/router/routeRedBlue/
 | 项 | 内容 |
 |----|------|
 | 操作 | 组件挂载，传入有效 appId |
-| 期望 | 自动查询，表格渲染列表 |
+| 期望 | 自动查询，标签流式渲染已绑定账号列表 |
 
-#### TC-F02: 绑定 — 前端校验失败
+#### TC-F02: 绑定 — 前端必填校验
 
 | 项 | 内容 |
 |----|------|
-| 操作 | 输入 `invalid_account` → 确认 |
-| 期望 | 校验拦截，不发请求 |
+| 操作 | 不输入任何 accountId → 点击确认 |
+| 期望 | 表单校验拦截（required），不发请求 |
+
+#### TC-F02b: 绑定 — 服务端返回账号无效
+
+| 项 | 内容 |
+|----|------|
+| 操作 | 输入合法字符串 → 提交 → 服务端返回 40002 |
+| 期望 | `message.error('账号无效')` 提示 |
 
 #### TC-F03: 绑定 — 服务端超限错误
 
@@ -743,8 +934,8 @@ src/router/routeRedBlue/
 
 | 项 | 内容 |
 |----|------|
-| 操作 | 点击「解绑」 |
-| 期望 | ConfirmModal → 确认 → 删除 → 刷新；取消 → 无操作 |
+| 操作 | 点击标签上的「×」 |
+| 期望 | 弹出 ConfirmModal，提示「确认删除该机器人账号吗？」→ 确认 → 调用解绑 → 刷新；取消 → 无操作 |
 
 #### TC-F06: 空状态
 
@@ -759,15 +950,14 @@ src/router/routeRedBlue/
 
 | # | 标记内容 | 需确认方 | 影响 |
 |---|----------|----------|------|
-| A-1 | Lookup classify_code = `APP_CHATBOT_CONFIG` | 开发/运维 | 配置路径 |
-| A-2 | Lookup item_code = `MAX_SINGLE_CHATBOT_BINDABLE` | 开发/运维 | 配置路径 |
-| A-3 | Lookup path = `/app` | 开发/运维 | 分类归属 |
-| A-4 | Lookup 默认值 = 5 | 产品/运维 | 业务上限 |
-| A-5 | 审计日志注解名称 | 开发 | 代码实现 |
-| A-6 | 新模块包名 `chatbotbindtab` | 开发 | 代码组织 |
-| A-7 | tenant_id 从应用记录继承 | 开发 | 多租户 |
-| A-8 | Lookup 读取失败降级策略 | 产品/开发 | 容错 |
-| A-9 | 雪花 ID 生成代码（预留人工实现，本 Spec 不生成） | 开发 | ID 生成 |
+| A-1 | ~~Lookup classify_code~~ 已替换为 `openplatform_property_t`（path=`CEC.Open`, code=`single.chat.robot.max.number`），需运维确认 | 运维 | 数据字典配置 |
+| A-2 | 通讯录 API 基础 URL（`wecontact.api-url`） | 运维 | 外部系统地址 |
+| A-3 | 审计日志注解（**预留人工实现**） | 开发 | 代码实现 |
+| A-4 | 新模块包名 `chatbotbindtab` | 开发 | 代码组织 |
+| A-5 | tenant_id 从应用记录继承 | 开发 | 多租户 |
+| A-6 | 通讯录 API 读取失败降级策略（当前默认返回 40006） | 产品/开发 | 容错 |
+| A-7 | 数量上限读不到配置时默认值 = 1 | 产品/运维 | 业务上限 |
+| A-8 | `WeContactRequest` / `WeContactResponse` DTO 类名 | 开发 | 代码组织 |
 
 ---
 
@@ -782,7 +972,7 @@ sequenceDiagram
     participant Svc as ChatbotBindService
     participant DB as MySQL
 
-    FE->>API: GET /apps/single-chatbot-accounts?appId=xxx
+    FE->>API: GET /service/open/v2/apps/single-chatbot-accounts?appId=xxx
     API->>Svc: getBoundAccounts(appId)
 
     Svc->>DB: SELECT id FROM app_t WHERE app_id=? AND status=1
@@ -804,18 +994,26 @@ sequenceDiagram
     participant FE as 前端 Tab
     participant API as ChatbotBindController
     participant Svc as ChatbotBindService
-    participant Lk as Lookup
+    participant WC as WeContactClient<br/>(通讯录 API)
     participant DB as MySQL
 
-    FE->>FE: 前端校验: /^p_.{1,196}$/
-    FE->>API: POST /apps/single-chatbot-accounts<br/>{ appId, accountId }
+    FE->>API: POST /service/open/v2/apps/single-chatbot-accounts<br/>{ appId, accountId }
     API->>Svc: bindAccount(appId, accountId)
 
     Svc->>DB: SELECT id FROM app_t WHERE app_id=? AND status=1
     DB-->>Svc: appPkId (Long)
 
-    Svc->>Lk: 查询 MAX_SINGLE_CHATBOT_BINDABLE
-    Lk-->>Svc: maxCount (如 5)
+    Svc->>WC: POST /wecontact-relation/v1/relation/personPublicInfo<br/>{ users: [accountId] }
+    WC-->>Svc: { code:"0", users:[{userType:10, ...}] }
+
+    alt 通讯录 API 异常
+        Svc-->>API: throw 40006 通讯录 API 调用失败
+    else users 为空 或 userType ∉ {4,5,10}
+        Svc-->>API: throw 40002 账号无效
+    end
+
+    Svc->>DB: SELECT value FROM openplatform_property_t<br/>WHERE path='CEC.Open' AND code='single.chat.robot.max.number'
+    DB-->>Svc: maxCount (如 1)
 
     Svc->>DB: SELECT COUNT(*) FROM app_p_t WHERE parent_id=? AND property_name='single_chatbot_account' AND status=1
     DB-->>Svc: currentCount
@@ -829,10 +1027,10 @@ sequenceDiagram
         alt dupCount > 0
             Svc-->>API: throw 40004 重复绑定
         else 不重复
-            Svc->>Svc: snowflakeId = IdGeneratorStrategy.nextId() 预留人工实现
+            Svc->>Svc: snowflakeId = IdGeneratorStrategy.nextId()
             Svc->>DB: INSERT INTO app_p_t (id, parent_id, property_name, property_value, status, create_by, create_time, tenant_id)
             DB-->>Svc: OK
-            Note over Svc: 审计日志注解
+            Note over Svc: 审计日志注解（预留人工实现）
             Svc->>Svc: Entity → VO (Long id → String id)
             Svc-->>API: ChatbotAccountVO (id: String)
         end
@@ -850,7 +1048,7 @@ sequenceDiagram
     participant Svc as ChatbotBindService
     participant DB as MySQL
 
-    FE->>API: DELETE /apps/single-chatbot-accounts<br/>{ appId, accountId }
+    FE->>API: DELETE /service/open/v2/apps/single-chatbot-accounts<br/>{ appId, accountId }
     API->>Svc: unbindAccount(appId, accountId)
 
     Svc->>DB: SELECT id FROM app_t WHERE app_id=? AND status=1
@@ -884,16 +1082,18 @@ flowchart TD
     E --> F["Table 渲染"]
 
     F -->|"点击 绑定账号"| G["BindAccountModal"]
-    G -->|"输入 accountId"| H{"前端校验<br/>p_ 开头 / 200字符"}
+    G -->|"输入 accountId"| H{"前端必填校验"}
     H -->|"通过"| I["bindAccount(appId, accountId)"]
     H -->|"失败"| J["表单错误提示"]
     I -->|"POST body: appId, accountId"| K{"后端响应"}
-    K -->|"200"| L["关闭弹窗 / 刷新列表"]
+    K -->|"200"| L["关闭弹窗 / 刷新标签"]
+    K -->|"40002"| M2["message.error 账号无效"]
     K -->|"40003"| M["message.error 超限"]
     K -->|"40004"| N["message.error 已绑定"]
+    K -->|"40006"| M3["message.error 通讯录服务暂不可用"]
     K -->|"其他"| O["message.error 通用错误"]
 
-    F -->|"点击 解绑"| P["ConfirmModal"]
+    F -->|"点击标签 ×"| P["ConfirmModal<br/>仅提示：确认删除该机器人账号吗？<br/>按钮：确认 / 取消"]
     P -->|"确认"| Q["unbindAccount(appId, accountId)"]
     P -->|"取消"| R["关闭"]
     Q -->|"DELETE body: appId, accountId"| S{"后端响应"}

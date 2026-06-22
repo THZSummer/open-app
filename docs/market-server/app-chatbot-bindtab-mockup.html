@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>应用详情 - 效果图</title>
+<title>应用详情 - 效果图 v2.0（标签流式布局）</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -83,26 +83,45 @@
     border: 1px solid #d6e4ff;
   }
 
-  /* ===== Chatbot Account List ===== */
-  .account-list { list-style: none; }
-  .account-item {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 0; border-bottom: 1px solid #f5f5f5;
+  /* ===== Chatbot Account Tags (flex-wrap) ===== */
+  .account-tags {
+    display: flex; flex-wrap: wrap; gap: 1em; align-items: flex-start;
   }
-  .account-item:last-of-type { border-bottom: none; }
-  .account-id {
+  .account-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px 6px 12px;
+    background: #f0f5ff; color: var(--primary);
+    border: 1px solid #d6e4ff; border-radius: 4px;
+    font-size: 13px; font-weight: 500;
     font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
-    font-size: 13px; color: var(--text-primary); font-weight: 500;
-    letter-spacing: 0.3px;
+    max-width: 100%; word-break: break-all;
   }
-  .account-delete {
-    width: 24px; height: 24px; border: none; background: none;
-    cursor: pointer; font-size: 15px; color: #ccc; border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.15s;
+  .account-tag-delete {
+    width: 18px; height: 18px; border: none; background: none;
+    cursor: pointer; font-size: 12px; color: var(--primary);
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; transition: all 0.15s; flex-shrink: 0;
+    opacity: 0.6;
   }
-  .account-delete:hover {
-    color: var(--danger); background: #fff1f0;
+  .account-tag-delete:hover {
+    opacity: 1; color: var(--danger); background: #fff1f0;
+  }
+  /* Add button as a tag (dashed border) */
+  .account-tag-add {
+    border: 1px dashed var(--border);
+    background: #fff; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s;
+    font-family: inherit;
+  }
+  .account-tag-add:hover {
+    border-color: var(--primary); color: var(--primary);
+  }
+  /* Inline input as a tag */
+  .add-inline-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--primary); border-radius: 4px;
+    background: #f8faff;
   }
 
   /* ===== Add Account ===== */
@@ -291,44 +310,35 @@
     <div class="panel-body expanded" id="body-chatbot">
       <div class="panel-body-inner">
 
-        <!-- Account List -->
-        <ul class="account-list" id="accountList">
-          <li class="account-item" data-account="p_order_bot_001">
-            <span class="account-id">p_order_bot_001</span>
-            <button class="account-delete" title="解绑" onclick="showDeleteConfirm('p_order_bot_001')">&#10005;</button>
-          </li>
-          <li class="account-item" data-account="p_order_notify_bot">
-            <span class="account-id">p_order_notify_bot</span>
-            <button class="account-delete" title="解绑" onclick="showDeleteConfirm('p_order_notify_bot')">&#10005;</button>
-          </li>
-          <li class="account-item" data-account="p_cs_assistant">
-            <span class="account-id">p_cs_assistant</span>
-            <button class="account-delete" title="解绑" onclick="showDeleteConfirm('p_cs_assistant')">&#10005;</button>
-          </li>
-        </ul>
+        <!-- Account Tags + Add Button (flex-wrap layout) -->
+        <div class="account-tags" id="tagsContainer">
+          <div id="accountList">
+            <span class="account-tag">p_order_bot_001<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm('p_order_bot_001')">&#10005;</button></span>
+            <span class="account-tag">p_order_notify_bot<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm('p_order_notify_bot')">&#10005;</button></span>
+            <span class="account-tag">p_cs_assistant<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm('p_cs_assistant')">&#10005;</button></span>
+          </div>
 
-        <!-- Empty (hidden by default) -->
-        <div class="empty-hint" id="emptyHint" style="display:none;">
-          暂无绑定的机器人账号
-        </div>
-
-        <!-- Add Section -->
-        <div class="add-section">
-          <button class="add-btn" id="addBtn" onclick="showAddInput()">
-            <span class="plus">&#65291;</span> 添加账号
+          <!-- Add Button (inline as a tag, wraps to next line if needed) -->
+          <button class="account-tag account-tag-add" id="addBtn" onclick="showAddInput()">
+            <span style="font-size:14px;font-weight:300;">&#65291;</span> 添加账号
           </button>
-          <div class="add-inline" id="addInline">
-            <span class="plus" style="font-size:16px;color:var(--primary);font-weight:300;">&#65291;</span>
+
+          <!-- Inline Input (shown when add is clicked, also inline) -->
+          <div class="add-inline-tag" id="addInline" style="display:none;">
             <input
               class="add-inline-input"
               id="addInput"
               type="text"
-              placeholder="输入机器人账号，如 p_my_bot_001"
-              maxlength="200"
+              placeholder="输入机器人账号"
               autocomplete="off"
             />
-            <span class="add-inline-hint" id="addHint">p_ 开头，最长 200 字符</span>
+            <span class="add-inline-hint" id="addHint">输入机器人账号 ID</span>
           </div>
+        </div>
+
+        <!-- Empty (hidden by default) -->
+        <div class="empty-hint" id="emptyHint" style="display:none;">
+          暂无绑定的机器人账号
         </div>
 
       </div>
@@ -341,19 +351,18 @@
 <div class="modal-overlay hidden" id="deleteModal">
   <div class="modal">
     <div class="modal-header">
-      <span>确认解绑</span>
+      <span>提示</span>
       <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
     </div>
     <div class="modal-body">
       <div class="confirm-title">
         <span class="confirm-icon err">!</span>
-        <span>确定要解绑此机器人账号吗？</span>
+        <span>确认删除该机器人账号吗？</span>
       </div>
-      <div class="confirm-content" id="deleteSummary"></div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeModal('deleteModal')">取消</button>
-      <button class="btn btn-danger-solid" onclick="doDelete()">确认解绑</button>
+      <button class="btn btn-danger-solid" onclick="doDelete()">确认</button>
     </div>
   </div>
 </div>
@@ -404,18 +413,14 @@
     if (mockAccounts.length === 0) {
       list.style.display = 'none';
       empty.style.display = '';
-      return;
+    } else {
+      list.style.display = '';
+      empty.style.display = 'none';
+      list.innerHTML = mockAccounts.map(function(id) {
+        return '<span class="account-tag">' + escapeHtml(id) +
+          '<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm(\'' + escapeHtml(id) + '\')">&#10005;</button></span>';
+      }).join('');
     }
-
-    list.style.display = '';
-    empty.style.display = 'none';
-
-    list.innerHTML = mockAccounts.map(function(id) {
-      return '<li class="account-item" data-account="' + escapeHtml(id) + '">' +
-        '<span class="account-id">' + escapeHtml(id) + '</span>' +
-        '<button class="account-delete" title="解绑" onclick="showDeleteConfirm(\'' + escapeHtml(id) + '\')">&#10005;</button>' +
-        '</li>';
-    }).join('');
   }
 
   function escapeHtml(str) {
@@ -427,9 +432,6 @@
   // ===== Delete =====
   function showDeleteConfirm(accountId) {
     deleteTarget = accountId;
-    document.getElementById('deleteSummary').innerHTML =
-      '即将解绑的账号：<strong>' + escapeHtml(accountId) + '</strong><br/>' +
-      '解绑后该机器人将无法通过当前应用发送单聊消息。';
     document.getElementById('deleteModal').classList.remove('hidden');
   }
 
@@ -448,11 +450,11 @@
     addMode = true;
     document.getElementById('addBtn').style.display = 'none';
     var inline = document.getElementById('addInline');
-    inline.classList.add('active');
+    inline.style.display = 'inline-flex';
     var input = document.getElementById('addInput');
     input.value = '';
     input.classList.remove('error');
-    document.getElementById('addHint').textContent = 'p_ 开头，最长 200 字符';
+    document.getElementById('addHint').textContent = '输入机器人账号 ID';
     document.getElementById('addHint').classList.remove('error-text');
     setTimeout(function() { input.focus(); }, 50);
   }
@@ -460,7 +462,7 @@
   function hideAddInput() {
     addMode = false;
     document.getElementById('addBtn').style.display = '';
-    document.getElementById('addInline').classList.remove('active');
+    document.getElementById('addInline').style.display = 'none';
   }
 
   function submitAdd() {
@@ -469,16 +471,8 @@
     var val = input.value.trim();
 
     if (!val) {
-      // Empty input — just close
+      // Empty input — just close (click outside or no value)
       hideAddInput();
-      return;
-    }
-
-    // Validate format
-    if (!/^p_.{1,196}$/.test(val)) {
-      input.classList.add('error');
-      hint.textContent = '格式不正确，需以 p_ 开头，最长 200 字符';
-      hint.classList.add('error-text');
       return;
     }
 
@@ -489,7 +483,7 @@
       return;
     }
 
-    // Simulate bind success
+    // Simulate bind success (real call goes to backend, which validates via contact API)
     mockAccounts.push(val);
     hideAddInput();
     renderAccounts();
@@ -500,9 +494,10 @@
   document.addEventListener('click', function(e) {
     if (!addMode) return;
     var input = document.getElementById('addInput');
-    var addSection = document.querySelector('.add-section');
-    // If click is outside the add section
-    if (!addSection.contains(e.target)) {
+    var addInline = document.getElementById('addInline');
+    var addBtn = document.getElementById('addBtn');
+    // If click is outside the input and the add button, trigger save
+    if (!addInline.contains(e.target) && !addBtn.contains(e.target)) {
       submitAdd();
     }
   });
