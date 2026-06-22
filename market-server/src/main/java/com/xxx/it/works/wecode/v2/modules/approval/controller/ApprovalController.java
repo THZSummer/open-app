@@ -24,14 +24,14 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Slf4j
 @RestController
-@RequestMapping("/service/open/v2/approvals")
+@RequestMapping("/service/open/v2/apps")
 @Tag(name = "审批管理", description = "通用审批管理接口")
 public class ApprovalController {
 
     @Autowired
     private ApprovalService approvalService;
 
-    @GetMapping("/app-pending")
+    @GetMapping("/pending")
     @AuthRole
     @Operation(summary = "查询待审批应用列表")
     public ApiResponse<PageVO<ApprovalListVo>> getPendingList(
@@ -44,7 +44,7 @@ public class ApprovalController {
         return approvalService.getPendingList(request);
     }
 
-    @GetMapping("/app-published")
+    @GetMapping("/publish")
     @AuthRole
     @Operation(summary = "查询已上架应用列表")
     public ApiResponse<PageVO<ApprovalListVo>> getPublishedList(
@@ -57,7 +57,7 @@ public class ApprovalController {
         return approvalService.getPublishedList(request);
     }
 
-    @PostMapping("/app-process")
+    @PostMapping("/approval")
     @AuthRole
     @Operation(summary = "审批操作（通过/驳回）")
     public ApiResponse<Void> processApproval(

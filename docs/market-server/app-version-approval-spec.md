@@ -1,8 +1,10 @@
 # market-server 通用审批管理模块 — 技术规格书（Spec）
 
-> **版本**: v9.2 | **日期**: 2026-06-08 | **状态**: 待评审
+> **版本**: v10.0 | **日期**: 2026-06-22 | **状态**: 待评审
 >
 > **效果图**: 浏览器打开 [`approval-page-mockup.html`](./approval-page-mockup.html) 可交互预览
+>
+> **v10.0 变更摘要**: API URL 路径前缀由 `/approvals/` 重命名为 `/apps/`；端点名 `app-pending` → `pending`、`app-published` → `publish`、`app-process` → `approval`；同步更新 §2.1 / §2.2.3 / §5.1 / §6.1 / §6.3 中所有引用
 >
 > **v9.2 变更摘要**: 新增应用版本状态枚举 AppVersionStatusEnum（5 种状态）；已上架列表 SQL 简化为直接查询 version.status=4（APPROVED），不再 JOIN approval_record_t；计数 SQL 简化为 COUNT(DISTINCT)；新增审批操作与版本状态联动说明；更新测试用例 T-04~T-08
 >
@@ -118,14 +120,14 @@ SELECT ... FROM r WHERE r.business_id IN (
 
 ### 2.1 后端 API（3 个端点）
 
-**Base Path**: `/service/open/v2/approvals`
+**Base Path**: `/service/open/v2/apps`
 **端口**: 18080
 **认证**: `@AuthRole`（market-server 自定义权限注解）`[src/market-server/.../security/AuthRole.java]`
 
 #### API-1: 待审批列表
 
 ```
-GET /service/open/v2/approvals/app-pending
+GET /service/open/v2/apps/pending
 ```
 
 **请求参数**：
@@ -247,7 +249,7 @@ WHERE status = 0
 #### API-2: 已上架应用列表
 
 ```
-GET /service/open/v2/approvals/app-published
+GET /service/open/v2/apps/publish
 ```
 
 > **v9.2 变更**: 已上架列表不再 JOIN `approval_record_t`，改为直接查询 `openplatform_app_version_t.status = 4`（APPROVED）的版本。子查询仅涉及 1 张表（version），外层 JOIN 2 张表（a + v + 子查询结果）。`applicantId` 由 Service 层根据 version_id 从 approval_record 补查。
@@ -342,7 +344,7 @@ WHERE v.status = 4 AND a.status = 1 AND a.app_type = 1
 #### API-3: 审批操作（通过/驳回统一接口）
 
 ```
-POST /service/open/v2/approvals/app-process
+POST /service/open/v2/apps/approval
 ```
 
 **请求 Body**：
@@ -444,9 +446,9 @@ src/router/routeRedBlue/
 
 ```js
 // 审批管理
-APPROVAL_PENDING_LIST: '/market-web/service/open/v2/approvals/app-pending',
-APPROVAL_PUBLISHED_LIST: '/market-web/service/open/v2/approvals/app-published',
-APPROVAL_PROCESS: '/market-web/service/open/v2/approvals/app-process',
+APPROVAL_PENDING_LIST: '/market-web/service/open/v2/apps/pending',
+APPROVAL_PUBLISHED_LIST: '/market-web/service/open/v2/apps/publish',
+APPROVAL_PROCESS: '/market-web/service/open/v2/apps/approval',
 ```
 
 #### 2.2.4 页面设计
@@ -883,7 +885,7 @@ CREATE TABLE `openplatform_app_p_t` (
 ### 5.1 后端架构（策略模式）
 
 ```
-ApprovalController（3 个端点）
+ApprovalController（3 个端点：pending / publish / approval）
     │
     ▼
 ApprovalServiceImpl（流程编排）
@@ -1193,13 +1195,15 @@ public enum AppVersionStatusEnum {
 
 ## 6. File Manifest（文件清单）
 
-### 6.1 后端新建文件（20 个）
+### 6.1 后端新建文件（23 个）
 
 > 路径前缀：`market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/`
 
+**Java 文件（20 个）**：
+
 | # | 文件路径 | 说明 |
 |:-:|---------|------|
-| 1 | `approval/controller/ApprovalController.java` | 3 个端点（app-pending, app-published, app-process） |
+| 1 | `approval/controller/ApprovalController.java` | 3 个端点（pending, publish, approval） |
 | 2 | `approval/service/ApprovalService.java` | 接口 |
 | 3 | `approval/service/impl/ApprovalServiceImpl.java` | 实现（编排 Engine + HandlerFactory + ResolverFactory，含能力名称补查） |
 | 4 | `approval/engine/ApprovalEngine.java` | 简化版审批引擎（process 统一方法） |
@@ -1220,12 +1224,13 @@ public enum AppVersionStatusEnum {
 | 19 | `approval/constant/ApprovalConstants.java` | 状态/操作常量 |
 | 20 | `approval/constant/AppVersionStatusEnum.java` | 应用版本状态枚举（DRAFT/IN_PROCESS/REJECTED/APPROVED/CANCELLED） |
 
-> MyBatis XML（路径前缀 `market-server/src/main/resources/mapper/`）：
+**MyBatis XML 文件（3 个）**（路径前缀 `market-server/src/main/resources/mapper/`）：
 
 | # | 文件路径 | 说明 |
 |:-:|---------|------|
-| 20 | `approval/ApprovalRecordMapper.xml` | SQL（selectPendingList, selectPublishedList, selectById, update, countPending, countPublished）— 所有查询明确列出字段，JOIN ≤ 3 表；已上架列表以 app_t 为主表 + 子查询取 MAX(version_code) WHERE v.status=4（APPROVED），不再 JOIN approval_record_t |
-| 21 | `approval/ApprovalLogMapper.xml` | SQL（insert） |
+| 21 | `approval/ApprovalRecordMapper.xml` | SQL（selectPendingList, selectPublishedList, selectById, update, countPending, countPublished）— 所有查询明确列出字段，JOIN ≤ 3 表；已上架列表以 app_t 为主表 + 子查询取 MAX(version_code) WHERE v.status=4（APPROVED），不再 JOIN approval_record_t |
+| 22 | `approval/ApprovalLogMapper.xml` | SQL（insert） |
+| 23 | `approval/ApprovalFlowMapper.xml` | SQL（selectByCode） |
 
 ### 6.2 前端新建文件（4 个）
 
@@ -1244,7 +1249,7 @@ public enum AppVersionStatusEnum {
 |:-:|---------|------|
 | 1 | `market-web/src/router/index.tsx` | 新增 `<Route path="approval" element={<Approval />} />` |
 | 2 | `market-web/src/components/Layout/index.js` | menuItems 新增 `{ key: '/approval', icon: <AuditOutlined />, label: '审批管理' }` |
-| 3 | `market-web/src/configs/web.config.js` | 新增 3 个 API URL 配置（APP_PENDING_LIST, APP_PUBLISHED_LIST, APP_PROCESS） |
+| 3 | `market-web/src/configs/web.config.js` | 新增 3 个 API URL 配置（APPROVAL_PENDING_LIST, APPROVAL_PUBLISHED_LIST, APPROVAL_PROCESS） |
 
 ---
 
@@ -1256,26 +1261,26 @@ public enum AppVersionStatusEnum {
 
 | # | 用例 | 预期 |
 |:-:|------|------|
-| T-01 | GET app-pending — 无参数 | 返回所有 status=0 且 business_type='app_version_publish' 的记录，含 appNameCn/appNameEn/versionNo/appId/capabilityNames/applicantId，按 lastUpdateTime DESC 排序 |
-| T-02 | GET app-pending — 分页 curPage=2, pageSize=5 | 返回第 6-10 条记录，page.total 正确 |
-| T-03 | GET app-pending — 无记录 | data=[], page.total=0 |
-| T-04 | GET app-published — 无参数 | 返回所有 status=1 且 app_type=1 的应用及其最新已上架版本（version.status=4），按 lastUpdateTime DESC 排序，appId 来自 app_t.app_id。子查询仅过滤 version.status=4，不 JOIN approval_record_t |
-| T-05 | GET app-published — 同一应用多个已上架版本 | 仅返回 version_code 最大的版本（子查询 MAX(version_code) WHERE v.status=4） |
-| T-06 | GET app-published — 同一应用 v1(status=4) + v2(status=3) | 返回 v1（最新已上架版本），v2 被驳回（status=3）不影响 v1 展示 |
-| T-07 | GET app-published — 应用仅有 status=3(REJECTED) 的版本 | 该应用不出现在结果中（子查询无 status=4 的记录，INNER JOIN 过滤掉） |
-| T-08 | GET app-published — 分页 | 以应用维度分页（非审批记录维度），page.total = COUNT(DISTINCT v.app_id) WHERE v.status=4 AND a.status=1 AND a.app_type=1 |
+| T-01 | GET /apps/pending — 无参数 | 返回所有 status=0 且 business_type='app_version_publish' 的记录，含 appNameCn/appNameEn/versionNo/appId/capabilityNames/applicantId，按 lastUpdateTime DESC 排序 |
+| T-02 | GET /apps/pending — 分页 curPage=2, pageSize=5 | 返回第 6-10 条记录，page.total 正确 |
+| T-03 | GET /apps/pending — 无记录 | data=[], page.total=0 |
+| T-04 | GET /apps/publish — 无参数 | 返回所有 status=1 且 app_type=1 的应用及其最新已上架版本（version.status=4），按 lastUpdateTime DESC 排序，appId 来自 app_t.app_id。子查询仅过滤 version.status=4，不 JOIN approval_record_t |
+| T-05 | GET /apps/publish — 同一应用多个已上架版本 | 仅返回 version_code 最大的版本（子查询 MAX(version_code) WHERE v.status=4） |
+| T-06 | GET /apps/publish — 同一应用 v1(status=4) + v2(status=3) | 返回 v1（最新已上架版本），v2 被驳回（status=3）不影响 v1 展示 |
+| T-07 | GET /apps/publish — 应用仅有 status=3(REJECTED) 的版本 | 该应用不出现在结果中（子查询无 status=4 的记录，INNER JOIN 过滤掉） |
+| T-08 | GET /apps/publish — 分页 | 以应用维度分页（非审批记录维度），page.total = COUNT(DISTINCT v.app_id) WHERE v.status=4 AND a.status=1 AND a.app_type=1 |
 
 #### 审批操作
 
 | # | 用例 | 预期 |
 |:-:|------|------|
-| T-09 | POST app-process action=0 — 正常通过（单节点） | status → APPROVED(1), completedAt 非空, handler.onApproved 执行 |
-| T-10 | POST app-process action=0 — 多节点非最后 | currentNode += 1, status 仍为 PENDING(0), handler 不触发 |
-| T-11 | POST app-process action=0 — 多节点最后节点 | status → APPROVED(1), handler.onApproved 执行 |
-| T-12 | POST app-process action=1 — 正常驳回 | status → REJECTED(2), handler.onRejected 执行 |
-| T-13 | POST app-process — record 不存在 | code=40001 |
-| T-14 | POST app-process — 非 PENDING 状态 | code=40002, messageZh 含当前状态 |
-| T-15 | POST app-process — 无效 action | code=40005, messageZh 含 action 值 |
+| T-09 | POST /apps/approval action=0 — 正常通过（单节点） | status → APPROVED(1), completedAt 非空, handler.onApproved 执行 |
+| T-10 | POST /apps/approval action=0 — 多节点非最后 | currentNode += 1, status 仍为 PENDING(0), handler 不触发 |
+| T-11 | POST /apps/approval action=0 — 多节点最后节点 | status → APPROVED(1), handler.onApproved 执行 |
+| T-12 | POST /apps/approval action=1 — 正常驳回 | status → REJECTED(2), handler.onRejected 执行 |
+| T-13 | POST /apps/approval — record 不存在 | code=40001 |
+| T-14 | POST /apps/approval — 非 PENDING 状态 | code=40002, messageZh 含当前状态 |
+| T-15 | POST /apps/approval — 无效 action | code=40005, messageZh 含 action 值 |
 
 ### 7.2 前端测试用例（15 条）
 

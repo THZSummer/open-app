@@ -26,7 +26,7 @@ export default {
   DICTIONARY_DELETE: '/market-web/service/open/v2/dictionary/{id}',
 
   // 审批管理 API 配置
-  APPROVAL_PENDING_LIST: '/market-web/service/open/v2/approvals/app-pending',
-  APPROVAL_PUBLISHED_LIST: '/market-web/service/open/v2/approvals/app-published',
-  APPROVAL_PROCESS: '/market-web/service/open/v2/approvals/app-process',
+  APPROVAL_PENDING_LIST: '/market-web/service/open/v2/apps/pending',
+  APPROVAL_PUBLISHED_LIST: '/market-web/service/open/v2/apps/publish',
+  APPROVAL_PROCESS: '/market-web/service/open/v2/apps/approval',
 };
