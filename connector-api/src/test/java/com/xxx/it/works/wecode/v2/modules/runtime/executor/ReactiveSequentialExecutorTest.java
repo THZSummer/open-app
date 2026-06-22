@@ -37,7 +37,7 @@ class ReactiveSequentialExecutorTest {
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 
         executor = new ReactiveSequentialExecutor(
-                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor);
+                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor, null);
     }
 
     @Test

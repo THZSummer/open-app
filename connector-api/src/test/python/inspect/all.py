@@ -16,6 +16,11 @@ SCRIPTS = [
     "trigger_invoke.py",
     "test_run.py",
     "contract_response.py",
+    # V3 E2E: 认证 + 安全 + 脚本 + 调试
+    "connector_auth_multiple.py",
+    "connector_url_whitelist.py",
+    "script_node_execution.py",
+    "debug_draft_invoke.py",
 ]
 
 quiet = "--quiet" in sys.argv

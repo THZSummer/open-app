@@ -15,6 +15,13 @@ SCRIPTS = [
     "api_delete.py",
     "event_delete.py",
     "callback_delete.py",
+    # V3 E2E: 版本生命周期 + 部署启动 + 审批
+    "connector_version_lifecycle.py",
+    "flow_version_lifecycle.py",
+    "flow_approval_full_flow.py",
+    "flow_deploy_start_invoke.py",
+    "flow_copy.py",
+    "flow_stop_restart.py",
 ]
 
 quiet = "--quiet" in sys.argv

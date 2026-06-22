@@ -35,8 +35,13 @@
     "TASK-004": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:25:00+08:00" },
     "TASK-005": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:37:00+08:00" }
   },
+  "test_tasks": {
+    "TEST-TASK-E2E-001": { "status": "implemented", "name": "Python E2E: 连接器与连接流版本生命周期", "scripts": ["connector_version_lifecycle.py", "flow_version_lifecycle.py", "flow_approval_full_flow.py"], "completed_at": "2026-06-22T12:00:00+08:00" },
+    "TEST-TASK-E2E-002": { "status": "implemented", "name": "Python E2E: 连接流部署→启动→触发调用 端到端", "scripts": ["flow_deploy_start_invoke.py", "flow_copy.py", "flow_stop_restart.py"], "completed_at": "2026-06-22T12:00:00+08:00" },
+    "TEST-TASK-E2E-003": { "status": "implemented", "name": "Python E2E: 认证+安全+脚本+调试", "scripts": ["connector_auth_multiple.py", "connector_url_whitelist.py", "script_node_execution.py", "debug_draft_invoke.py"], "completed_at": "2026-06-22T12:00:00+08:00" }
+  },
   "next_steps": [
-    "运行 @sddu-review connector-platform-v3 TASK-005 审查连接流管理 API 实现",
+    "Phase 4 Python E2E 脚本已完成（10 scripts），等待 @sddu-review 审查",
     "继续 TASK-006: 安全准入拦截器"
   ]
 }

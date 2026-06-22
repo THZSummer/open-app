@@ -1,0 +1,344 @@
+{
+  "featureId": "CONN-PLAT-002",
+  "featureName": "连接器平台 V3 — 测试补充",
+  "version": "v3.0",
+  "createdAt": "2026-06-22",
+  "totalTestTasks": 18,
+  "totalNewTestClasses": 30,
+  "totalPythonE2EScripts": 10,
+  "currentCoverage": "~23%",
+  "targetCoverage": "~60%+",
+  "testGapAnalysis": ".sddu/specs-tree-root/specs-tree-connector-platform-v3/test-gap-analysis.md",
+    "testWaves": [
+    {
+      "wave": "P0",
+      "name": "核心业务逻辑测试",
+      "priority": "P0",
+      "description": "运行时引擎核心 + 部署 + 版本管理 + 发布校验。6 个测试任务，可并行执行。",
+      "tasks": [
+        "TEST-TASK-P0-001",
+        "TEST-TASK-P0-002",
+        "TEST-TASK-P0-003",
+        "TEST-TASK-P0-004",
+        "TEST-TASK-P0-005",
+        "TEST-TASK-P0-006"
+      ],
+      "parallelizable": true
+    },
+    {
+      "wave": "P1",
+      "name": "重要功能测试",
+      "priority": "P1",
+      "description": "Controller 切片 + 认证注入器 + 安全校验 + 审批集成 + 限流缓存。6 个测试任务，可并行执行。",
+      "tasks": [
+        "TEST-TASK-P1-001",
+        "TEST-TASK-P1-002",
+        "TEST-TASK-P1-003",
+        "TEST-TASK-P1-004",
+        "TEST-TASK-P1-005",
+        "TEST-TASK-P1-006"
+      ],
+      "parallelizable": true
+    },
+    {
+      "wave": "P2",
+      "name": "辅助功能测试",
+      "priority": "P2",
+      "description": "缓存键/限流配置读取/脚本辅助 + 执行记录/脱敏/清理 + 调试通道/操作日志。3 个测试任务，可并行执行。",
+      "tasks": [
+        "TEST-TASK-P2-001",
+        "TEST-TASK-P2-002",
+        "TEST-TASK-P2-003"
+      ],
+      "parallelizable": true
+    },
+    {
+      "wave": "E2E",
+      "name": "Python 端到端集成测试",
+      "priority": "P0",
+      "description": "跨 open-server 和 connector-api 的 Python 端到端集成测试，覆盖版本全生命周期、部署/启动/触发、多认证、安全白名单、脚本节点、草稿调试等 V3 核心场景。10 个新增 Python 脚本，3 个测试任务，可并行执行。",
+      "tasks": [
+        "TEST-TASK-E2E-001",
+        "TEST-TASK-E2E-002",
+        "TEST-TASK-E2E-003"
+      ],
+      "parallelizable": true
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TEST-TASK-P0-001",
+      "name": "FlowRuntimeEngine + VersionConfigResolver + DagScheduler 核心运行时测试",
+      "complexity": "L",
+      "dependencies": ["TASK-008"],
+      "wave": "P0",
+      "testType": "单元测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/runtime/FlowRuntimeEngineTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/runtime/VersionConfigResolverTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/runtime/DagSchedulerTest.java" }
+      ],
+      "targetClasses": ["FlowRuntimeEngine", "VersionConfigResolver", "DagScheduler"],
+      "description": "5 阶段管道正常执行 + 异常路径 (503/500/401/429)；Redis 缓存命中/未命中/异常 Cache-Aside；串行/并行 DAG 调度 + 超时 + 汇聚"
+    },
+    {
+      "id": "TEST-TASK-P0-002",
+      "name": "FlowDeployService 部署服务测试",
+      "complexity": "M",
+      "dependencies": ["TASK-005"],
+      "wave": "P0",
+      "testType": "单元测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/flow/service/FlowDeployServiceTest.java" }
+      ],
+      "targetClasses": ["FlowDeployService"],
+      "description": "正常部署 + 已失效版本拒绝 + 未发布版本拒绝 + 重复部署幂等 + 连接器版本引用校验"
+    },
+    {
+      "id": "TEST-TASK-P0-003",
+      "name": "FlowVersionService + FlowPublishValidator 版本管理与发布校验测试",
+      "complexity": "L",
+      "dependencies": ["TASK-005"],
+      "wave": "P0",
+      "testType": "单元测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/flow/service/FlowVersionServiceTest.java" },
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/flow/validator/FlowPublishValidatorTest.java" }
+      ],
+      "targetClasses": ["FlowVersionService", "FlowPublishValidator"],
+      "description": "版本 CRUD (创建/更新/发布/复制/撤回/失效/恢复/删除) + 版本上限 1000 边界；9 项发布校验逐项覆盖"
+    },
+    {
+      "id": "TEST-TASK-P0-004",
+      "name": "ConnectorVersionService 连接器版本管理测试",
+      "complexity": "M",
+      "dependencies": ["TASK-004"],
+      "wave": "P0",
+      "testType": "单元测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/connector/service/ConnectorVersionServiceTest.java" }
+      ],
+      "targetClasses": ["ConnectorVersionService"],
+      "description": "创建空草稿(上限校验) + 更新草稿(仅 JSON 校验) + 发布版本(业务必填+URL正则) + 复制到草稿 + 失效前引用校验 + 状态联动(连接器状态随版本变化)"
+    },
+    {
+      "id": "TEST-TASK-P0-005",
+      "name": "FlowVersionController 连接流版本 API 端点测试",
+      "complexity": "M",
+      "dependencies": ["TASK-005"],
+      "wave": "P0",
+      "testType": "WebMvc 切片测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/flow/controller/FlowVersionControllerWebMvcTest.java" }
+      ],
+      "targetClasses": ["FlowVersionController"],
+      "description": "7 个 REST 端点 WebMvc 切片测试：创建草稿/更新草稿/发布/复制/撤回/版本列表/版本详情，含 HTTP 状态码 + @Valid 校验 + 响应 JSON 验证"
+    },
+    {
+      "id": "TEST-TASK-P0-006",
+      "name": "ConnectorVersionController 连接器版本 API 端点测试",
+      "complexity": "M",
+      "dependencies": ["TASK-004"],
+      "wave": "P0",
+      "testType": "WebMvc 切片测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/connector/controller/ConnectorVersionControllerWebMvcTest.java" }
+      ],
+      "targetClasses": ["ConnectorVersionController"],
+      "description": "7 个 REST 端点 WebMvc 切片测试：创建草稿/更新草稿/发布/复制/失效/版本列表/版本详情，含 @Valid 校验 + 错误码 + 引用校验 422 返回"
+    },
+    {
+      "id": "TEST-TASK-P1-001",
+      "name": "认证注入器 3 件套测试 (Cookie + DigitalSign + MultiAuth)",
+      "complexity": "M",
+      "dependencies": ["TASK-009"],
+      "wave": "P1",
+      "testType": "单元测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/auth/credential/CookieCredentialInjectorTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/auth/credential/DigitalSignCredentialInjectorTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/auth/credential/MultiAuthCredentialInjectorTest.java" }
+      ],
+      "targetClasses": ["CookieCredentialInjector", "DigitalSignCredentialInjector", "MultiAuthCredentialInjector"],
+      "description": "Cookie 注入(名称匹配/不匹配/空值) + 数字签名(Header/Query 模式 + 算法正确性) + 多认证组合(排序叠加 + 互不干扰)"
+    },
+    {
+      "id": "TEST-TASK-P1-002",
+      "name": "UrlWhitelistValidator + SystokenWhitelistValidator 安全校验测试",
+      "complexity": "M",
+      "dependencies": ["TASK-009"],
+      "wave": "P1",
+      "testType": "单元测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/security/UrlWhitelistValidatorTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/security/SystokenWhitelistValidatorTest.java" }
+      ],
+      "targetClasses": ["UrlWhitelistValidator", "SystokenWhitelistValidator"],
+      "description": "URL 白名单(空白名单放行/单条匹配/多条组合正则/不在白名单拒绝/正则缓存/非法正则) + SYSTOKEN 白名单(空白名单全禁/在白名单通过/不在白名单拒绝)"
+    },
+    {
+      "id": "TEST-TASK-P1-003",
+      "name": "AppWhitelistService + AppDataIsolationAspect 安全准入测试",
+      "complexity": "M",
+      "dependencies": ["TASK-006"],
+      "wave": "P1",
+      "testType": "单元测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/security/AppWhitelistServiceTest.java" },
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/security/AppDataIsolationAspectTest.java" }
+      ],
+      "targetClasses": ["AppWhitelistService", "AppDataIsolationAspect"],
+      "description": "应用白名单(market-server 校验/非白名单拒绝/降级放行+告警) + 数据隔离(创建 app_id 注入/查询过滤/跨应用拒绝)"
+    },
+    {
+      "id": "TEST-TASK-P1-004",
+      "name": "FlowVersionApprovalService + ApprovalCallbackHandler 审批集成测试",
+      "complexity": "M",
+      "dependencies": ["TASK-007"],
+      "wave": "P1",
+      "testType": "单元测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/approval/FlowVersionApprovalServiceTest.java" },
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/modules/approval/ApprovalCallbackHandlerTest.java" }
+      ],
+      "targetClasses": ["FlowVersionApprovalService", "ApprovalCallbackHandler"],
+      "description": "审批实例创建 + 三级审批依次通过/任意级驳回/撤回/催办 + 回调(通过→已发布5/驳回→已驳回4) + businessData 正确性"
+    },
+    {
+      "id": "TEST-TASK-P1-005",
+      "name": "InboundRateLimiter + FlowCacheManager 限流与缓存测试",
+      "complexity": "M",
+      "dependencies": ["TASK-010"],
+      "wave": "P1",
+      "testType": "单元测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/ratelimit/InboundRateLimiterTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/cache/FlowCacheManagerTest.java" }
+      ],
+      "targetClasses": ["InboundRateLimiter", "FlowCacheManager"],
+      "description": "QPS 限流(通过/429+Retry-After/Lua原子) + 并发限流(通过/429) + Redis 降级放行 + 缓存命中跳过DAG + 未命中回写+TTL + 版本变更主动清空"
+    },
+    {
+      "id": "TEST-TASK-P1-006",
+      "name": "ScriptNodeExecutor + GraalJsContextFactory 脚本执行器测试",
+      "complexity": "M",
+      "dependencies": ["TASK-011"],
+      "wave": "P1",
+      "testType": "单元测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/script/ScriptNodeExecutorTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/script/GraalJsSandboxSecurityTest.java" }
+      ],
+      "targetClasses": ["ScriptNodeExecutor", "GraalJsContextFactory"],
+      "description": "正常脚本执行(main(ctx)→Map) + ctx 路径访问 + 可选链语法 + 超时终止 + 类型映射 + 沙箱5层安全(IO/Java.type/线程/原生/statementLimit)"
+    },
+    {
+      "id": "TEST-TASK-P2-001",
+      "name": "缓存 + 脚本辅助类测试 (CacheKeyResolver / RateLimitConfigReader / CtxAssembler)",
+      "complexity": "S",
+      "dependencies": ["TASK-010", "TASK-011"],
+      "wave": "P2",
+      "testType": "单元测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/cache/CacheKeyResolverTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/ratelimit/RateLimitConfigReaderTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/script/CtxAssemblerTest.java" }
+      ],
+      "targetClasses": ["CacheKeyResolver", "RateLimitConfigReader", "CtxAssembler"],
+      "description": "缓存键模板解析 + 上下文动态值拼接；min(流配置, 应用上限) 限流取值 + 降级；上游节点 input/output 嵌套 Map 组装 + 指针引用"
+    },
+    {
+      "id": "TEST-TASK-P2-002",
+      "name": "执行记录 + 脱敏 + 清理测试 (ExecutionRecordService / LogSanitizer / ExecutionCleanupJob)",
+      "complexity": "M",
+      "dependencies": ["TASK-012"],
+      "wave": "P2",
+      "testType": "单元测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/execution/ExecutionRecordServiceTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/execution/LogSanitizerTest.java" },
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/execution/ExecutionCleanupJobTest.java" }
+      ],
+      "targetClasses": ["ExecutionRecordService", "ExecutionStepService", "LogSanitizer", "ExecutionCleanupJob"],
+      "description": "HTTP触发/调试触发写入 + trigger_type 正确 + 异步不阻塞 + FIFO 上限清理；4字段脱敏为*** + 嵌套JSON递归；30天定时清理(先step后record分批1000)"
+    },
+    {
+      "id": "TEST-TASK-P2-003",
+      "name": "调试通道 + 操作日志测试 (OpTestRunService / EntitySnapshotLoader)",
+      "complexity": "S",
+      "dependencies": ["TASK-013", "TASK-014"],
+      "wave": "P2",
+      "testType": "单元测试",
+      "module": "connector-api + open-server",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/java/.../v2/modules/debug/OpTestRunServiceTest.java" },
+        { "action": "NEW", "path": "open-server/src/test/java/.../v2/common/snapshot/EntitySnapshotLoaderTest.java" }
+      ],
+      "targetClasses": ["OpTestRunService", "EntitySnapshotLoader"],
+      "description": "草稿/已发布版本调试成功 + 已失效版本拒绝EC-014 + 同一用户并发限制3；连接器/连接流实体变更前后关键字段快照对比"
+    },
+    {
+      "id": "TEST-TASK-E2E-001",
+      "name": "Python E2E: 连接器与连接流版本生命周期",
+      "complexity": "M",
+      "dependencies": ["TASK-004", "TASK-005", "TASK-007"],
+      "wave": "E2E",
+      "testType": "Python 集成测试",
+      "module": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/python/inspect/connector_version_lifecycle.py" },
+        { "action": "NEW", "path": "open-server/src/test/python/inspect/flow_version_lifecycle.py" },
+        { "action": "NEW", "path": "open-server/src/test/python/inspect/flow_approval_full_flow.py" }
+      ],
+      "targetClasses": ["ConnectorVersionService", "FlowVersionService", "FlowVersionApprovalService", "ApprovalCallbackHandler"],
+      "description": "P0 端到端集成测试：连接器版本全生命周期（创建草稿→发布→复制到草稿→失效→删除，覆盖 FR-005a/006/007/009）；连接流版本全生命周期（创建草稿→编辑编排→提交审批→审批流转→版本列表，覆盖 FR-024a/026/031）；审批全流程（三级审批通过/驳回/撤回 + 驳回后重提，覆盖 FR-031/032）"
+    },
+    {
+      "id": "TEST-TASK-E2E-002",
+      "name": "Python E2E: 连接流部署→启动→触发调用 端到端",
+      "complexity": "M",
+      "dependencies": ["TASK-004", "TASK-005", "TASK-008"],
+      "wave": "E2E",
+      "testType": "Python 集成测试",
+      "module": "open-server + connector-api",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/test/python/inspect/flow_deploy_start_invoke.py" },
+        { "action": "NEW", "path": "open-server/src/test/python/inspect/flow_copy.py" },
+        { "action": "NEW", "path": "open-server/src/test/python/inspect/flow_stop_restart.py" }
+      ],
+      "targetClasses": ["FlowDeployService", "FlowVersionService", "FlowRuntimeEngine", "FlowCopyService"],
+      "description": "🔴 P0 端到端集成测试：连接流创建→草稿→发布→部署→启动→HTTP触发调用→查看运行记录（FR-018/019/042）；连接流一键复制→验证名称后缀 _copy_xxxxx→验证状态已停止→验证版本历史完整（FR-017）；运行中停止→已停止再启动（FR-020/019）"
+    },
+    {
+      "id": "TEST-TASK-E2E-003",
+      "name": "Python E2E: 认证 + 安全 + 脚本 + 调试",
+      "complexity": "M",
+      "dependencies": ["TASK-004", "TASK-005", "TASK-009", "TASK-011", "TASK-013"],
+      "wave": "E2E",
+      "testType": "Python 集成测试",
+      "module": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/test/python/inspect/connector_auth_multiple.py" },
+        { "action": "NEW", "path": "connector-api/src/test/python/inspect/connector_url_whitelist.py" },
+        { "action": "NEW", "path": "connector-api/src/test/python/inspect/script_node_execution.py" },
+        { "action": "NEW", "path": "connector-api/src/test/python/inspect/debug_draft_invoke.py" }
+      ],
+      "targetClasses": ["CookieCredentialInjector", "DigitalSignCredentialInjector", "MultiAuthCredentialInjector", "UrlWhitelistValidator", "ScriptNodeExecutor", "OpTestRunService"],
+      "description": "P0 端到端集成测试：多认证组合（SOA+Cookie、数字签名+Cookie、三种以上组合，验证认证头正确附加，FR-012/013/014）；URL 白名单校验（命中通过/未命中拒绝/空白名单放行，FR-015）；GraalJS 脚本节点执行（正常返回/超时终止/语法错误拒绝，FR-040a）；草稿版本直接调试（草稿成功/已发布成功/已失效拒绝 EC-014，FR-041）"
+    }
+  ]
+}
