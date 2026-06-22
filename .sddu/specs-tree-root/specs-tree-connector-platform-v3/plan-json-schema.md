@@ -3031,10 +3031,139 @@ graph TB
 }
 ```
 
-#### 6.5.2 脚本节点编排
+#### 6.5.2 V2 循环编排
+
+循环体内嵌 connector + data_processor + 嵌套 error_handler，展示结构节点间的包含关系。
+
+```json
+{
+  "nodes": [
+    // ==================== 流程入口 ====================
+    {
+      "id": "node_trigger", "type": "trigger",
+      "position": { "x": 250, "y": 50 },
+      "data": {
+        "labelCn": "批量处理触发", "type": "trigger", "triggerType": "http",
+        "authConfigs": [{ "type": "SYSTOKEN", "header": { "type": "object", "properties": { "X-Sys-Token": { "type": "string", "required": true, "sensitive": true } } } }],
+        "input": { "protocol": "HTTP", "body": { "type": "object", "properties": { "items": { "type":"array","items":{"type":"string"} } } } }
+      }
+    },
+
+    // ==================== 循环结构 (5 nodes) ====================
+    { "id":"loop_1",        "type":"loop-v2", "position":{"x":250,"y":160}, "data":{ "type":"loopV2", "labelCn":"遍历处理",  "structConfig":{ "loopV2GroupId":"loop_1" } } },
+    { "id":"loop_region_1", "type":"text",    "position":{"x":-10,"y":300}, "data":{ "type":"text",    "labelCn":"循环区域",  "structConfig":{ "loopV2GroupId":"loop_1","loopV2Role":"region" } } },
+    // ↓ 循环体入口
+    { "id":"loop_start_1",  "type":"text",    "position":{"x":510,"y":300}, "data":{ "type":"text",    "labelCn":"循环开始",  "structConfig":{ "loopV2GroupId":"loop_1","loopV2Role":"start" } } },
+
+    // ==================== 循环体：connector → data_processor ====================
+    {
+      "id": "conn_1", "type": "connector",
+      "position": { "x": 760, "y": 300 },
+      "data": {
+        "labelCn": "获取详情", "type": "connector", "connectorVersionId": "1234567890123456789",
+        "input": { "body": { "type": "object", "properties": { "itemId": { "type":"string","value":"${$.node.loop_1.current.item}" } } } },
+        "structConfig": { "parentLoopV2GroupId":"loop_1","parentLoopV2Role":"right-column-node" }
+      }
+    },
+    {
+      "id": "data_proc_1", "type": "data_processor",
+      "position": { "x": 760, "y": 460 },
+      "data": {
+        "labelCn": "格式化结果",
+        "type": "dataProcessor",
+        "output": { "type": "object", "properties": { "upperName": { "type":"string","value":"${$.system.fn.upper($.node.conn_1.output.body.name)}" } } },
+        "structConfig": { "parentLoopV2GroupId":"loop_1","parentLoopV2Role":"right-column-node" }
+      }
+    },
+
+    // ==================== 嵌套错误处理 (5 nodes，位于循环体内部) ====================
+    { "id":"err_1",        "type":"error-handler", "position":{"x":760,"y":620}, "data":{ "type":"errorHandler", "labelCn":"错误处理",    "structConfig":{ "loopV2GroupId":"err_1","parentLoopV2GroupId":"loop_1" }, "errors":{ "timeout":{ "strategy":"retry","retries":3,"interval":10 }, "connection_error":{ "strategy":"retry","retries":3,"interval":10 } } } },
+    { "id":"err_region_1", "type":"text",          "position":{"x":500,"y":760}, "data":{ "type":"text",          "labelCn":"错误处理区域","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"region" } } },
+    { "id":"err_start_1",  "type":"text",          "position":{"x":1010,"y":760},"data":{ "type":"text",          "labelCn":"错误处理开始","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"start" } } },
+    // err body: retry connector
+    {
+      "id": "conn_retry", "type": "connector",
+      "position": { "x": 1260, "y": 760 },
+      "data": {
+        "labelCn": "重试请求", "type": "connector", "connectorVersionId": "1234567890123456789",
+        "input": { "body": { "type": "object", "properties": { "itemId": { "type":"string","value":"${$.node.loop_1.current.item}" } } } },
+        "structConfig": { "parentLoopV2GroupId":"err_1","parentLoopV2Role":"right-column-node" }
+      }
+    },
+    { "id":"err_end_1",    "type":"text",          "position":{"x":1010,"y":920},"data":{ "type":"text",          "labelCn":"错误处理结束","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"end" } } },
+    { "id":"err_break_1",  "type":"text",          "position":{"x":760,"y":1000},"data":{ "type":"text",          "labelCn":"错误处理跳出","structConfig":{ "loopV2GroupId":"err_1","loopV2Role":"break" } } },
+
+    // ↑ 循环体出口
+    { "id":"loop_end_1",   "type":"text", "position":{"x":760,"y":1160}, "data":{ "type":"text", "labelCn":"循环结束",  "structConfig":{ "loopV2GroupId":"loop_1","loopV2Role":"end" } } },
+    { "id":"loop_break_1", "type":"text", "position":{"x":250,"y":1160}, "data":{ "type":"text", "labelCn":"循环跳出",  "structConfig":{ "loopV2GroupId":"loop_1","loopV2Role":"break" } } },
+
+    // ==================== 流程出口 ====================
+    {
+      "id": "node_exit", "type": "exit",
+      "position": { "x": 250, "y": 1320 },
+      "data": {
+        "labelCn": "返回结果", "type": "exit",
+        "output": { "body": { "type": "object", "properties": { "count": { "type":"integer","value":"${$.node.loop_1.current.total}" } } } }
+      }
+    }
+  ],
+  "edges": [
+    // trigger → loop
+    { "id":"e_t_loop",       "source":"node_trigger", "target":"loop_1",        "data":{"businessType":"default",    "connectionMode":"serial" } },
+
+    // loop 辅助边 (isStructural)
+    { "id":"e_loop_rgn",     "source":"loop_1",       "target":"loop_region_1", "data":{"isStructural":true } },
+    { "id":"e_rgn_brk",      "source":"loop_region_1","target":"loop_break_1",  "data":{"isStructural":true } },
+    // loop 入口 → 循环体
+    { "id":"e_loop_start",   "source":"loop_1",       "target":"loop_start_1",  "data":{"isStructural":true } },
+    { "id":"e_s_conn",       "source":"loop_start_1", "target":"conn_1",        "data":{"businessType":"loop_entry","iterationVar":"item" } },
+    // 循环体：connector → data_processor → error_handler
+    { "id":"e_c_dp",         "source":"conn_1",       "target":"data_proc_1",   "data":{"businessType":"default",    "connectionMode":"serial" } },
+    { "id":"e_dp_err",       "source":"data_proc_1",  "target":"err_1",         "data":{"businessType":"error",      "connectionMode":"serial" } },
+
+    // error_handler 内部 (isStructural + error body)
+    { "id":"e_err_rgn",      "source":"err_1",        "target":"err_region_1",  "data":{"isStructural":true } },
+    { "id":"e_err_rgn_brk",  "source":"err_region_1", "target":"err_break_1",   "data":{"isStructural":true } },
+    { "id":"e_err_start",    "source":"err_1",        "target":"err_start_1",   "data":{"isStructural":true } },
+    { "id":"e_err_s_retry",  "source":"err_start_1",  "target":"conn_retry",    "data":{"businessType":"default",    "connectionMode":"serial" } },
+    { "id":"e_retry_end",    "source":"conn_retry",   "target":"err_end_1",     "data":{"businessType":"default",    "connectionMode":"serial" } },
+    { "id":"e_err_end_brk",  "source":"err_end_1",    "target":"err_break_1",   "data":{"isStructural":true } },
+    // error_handler → 回到循环体
+    { "id":"e_err_brk_end",  "source":"err_break_1",  "target":"loop_end_1",    "data":{"businessType":"always",      "connectionMode":"serial" } },
+
+    // loop 出口
+    { "id":"e_end_brk",      "source":"loop_end_1",   "target":"loop_break_1",  "data":{"isStructural":true } },
+    // loop → exit
+    { "id":"e_brk_exit",     "source":"loop_break_1", "target":"node_exit",     "data":{"businessType":"default",    "connectionMode":"serial" } }
+  ],
+  "flowConfig": {
+    "rateLimitConfig": { "maxQps": 50, "maxConcurrency": 5 },
+    "cache": {
+      "key": ["${$.node.trigger.input.header.Authorization}", "${$.constant:batch_query}"],
+      "ttl": 30
+    }
+  }
+}
+```
+
+> **结构解析示意**：
+> ```
+> trigger → loop ──┬── region ──────────────────────────▶ break ──▶ exit
+>                  └── start
+>                       │   // ====== 循环体 ======
+>                       ├── conn_1 (获取详情)
+>                       ├── data_proc_1 (格式化)
+>                       └── err_1 ──┬── region ──▶ break
+>                                   └── start → conn_retry → end ──▶ break
+>                                           // ====== err body ======
+>                       │   // ====== 循环体结束 ======
+>                       └── end ──▶ break
+> ```
+
+
+#### 6.5.3 脚本节点编排
 
 触发器 → 连接器（获取数据）→ 脚本节点（加工聚合）→ 数据输出。
-
 
 ```json
 {
@@ -3100,6 +3229,8 @@ graph TB
   "flowConfig": { "rateLimitConfig": { "maxQps": 100 } }
 }
 ```
+
+
 ---
 
 ## 7. 执行数据约定
