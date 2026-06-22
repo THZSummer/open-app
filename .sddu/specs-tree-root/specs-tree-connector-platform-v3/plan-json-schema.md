@@ -1,4 +1,4 @@
-# JSON Schema 设计规范：连接器平台 V2
+# JSON Schema 设计规范：连接器平台 V3
 
 **关联文档**: plan.md, plan-db.md (§3 表结构定义), plan-api.md (§3 接口详细定义)  
 **版本**: v9.10
@@ -38,7 +38,7 @@
 
 ### 1.4 值表达式体系
 
-编排中节点需要从多种来源取值——上游节点产出、固定常量、平台配置、内置函数、用户自定义脚本等。V2 统一为 `${$.scope.path}` 表达式语法，详细定义见 **[§3 值表达式体系](#3-值表达式体系)**。
+编排中节点需要从多种来源取值——上游节点产出、固定常量、平台配置、内置函数、用户自定义脚本等。V3 统一为 `${$.scope.path}` 表达式语法，详细定义见 **[§3 值表达式体系](#3-值表达式体系)**。
 
 > **核心要点**：① 5 种值来源（node / constant / system / script / execution）；② `node` 下分 `input`（入参）/ `output`（返回值）/ `current`（过程中参数，仅结构节点）；③ `system` 下分 `env`（环境变量）/ `fn`（内置函数）；④ 表达式支持嵌套引用。
 
@@ -86,7 +86,7 @@
 
 ### 2.3 FR-047 数据结构类型严格校验规则
 
-> FR-047 是 V2 跨连接器和连接流的通用数据模型层约束，对所有 JSON Schema 定义的数据结构生效。
+> FR-047 是 V3 跨连接器和连接流的通用数据模型层约束，对所有 JSON Schema 定义的数据结构生效。
 
 #### 2.3.1 基本类型限定
 
@@ -133,7 +133,7 @@
 
 ## 3. 值表达式体系
 
-编排中每个节点需要的字段值可能来自多种来源——不仅仅是上游节点的输出，也可能是固定常量、系统配置、或内置函数计算结果。V2 统一为**单一表达式语法**，覆盖全部值来源。
+编排中每个节点需要的字段值可能来自多种来源——不仅仅是上游节点的输出，也可能是固定常量、系统配置、或内置函数计算结果。V3 统一为**单一表达式语法**，覆盖全部值来源。
 
 ### 3.1 值来源总览
 
@@ -1365,7 +1365,7 @@ graph TB
 }
 ```
 
-#### 4.3.11 dataProcessorNodeDataDef（V2 新增）
+#### 4.3.11 dataProcessorNodeDataDef（V3 新增）
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展数据处理器独有字段。无协议包袱，纯内存运行。
 
@@ -1424,7 +1424,7 @@ graph TB
 }
 ```
 
-#### 4.3.11a scriptNodeDataDef（V2 新增）
+#### 4.3.11a scriptNodeDataDef（V3 新增）
 
 > 继承 `nodeDataBaseDef`（type / labelCn / labelEn / structConfig），扩展脚本节点独有字段。脚本源码存于 `scriptContent`，运行时由 GraalJS 沙箱执行，`function main(ctx) { ... return ... }`。`outputSchema` 声明出参结构供下游节点引用提示。详细设计见 [plan-script.md](./plan-script.md)。
 
@@ -1495,7 +1495,7 @@ graph TB
 }
 ```
 
-#### 4.3.12 errorHandlerNodeDataDef（V2 新增）
+#### 4.3.12 errorHandlerNodeDataDef（V3 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。错误处理结构的**入口主节点**，每流最多 1 个，仅作用于连接器节点（try-catch 语义）。先选错误类型，再选处理策略：同一错误类型仅一种策略，不同错误类型可配不同策略。
 
@@ -1639,7 +1639,7 @@ graph TB
 > 3. 所有被保护节点正常完成 → 错误处理节点透明通过，流继续下游
 > 4. 嵌套错误处理：内层 retry 全部失败且未终止 → 冒泡到外层错误处理节点取值
 
-#### 4.3.13 loopNodeDataDef（V2 新增）
+#### 4.3.13 loopNodeDataDef（V3 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。循环结构的**入口主节点**。
 
@@ -1791,7 +1791,7 @@ graph TB
 > 2. 剩余节点中，从 `loop-start-1 → loop-end-1` 之间的子图即为循环体
 > 3. 对循环体中的每个节点按 Kahn 算法拓扑排序后，按 `iterationVar` 声明的变量名进行迭代执行
 
-#### 4.3.14 textNodeDataDef（V2 新增）
+#### 4.3.14 textNodeDataDef（V3 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。**结构节点的标记节点**——循环/错误处理中的"循环区域""循环开始""循环结束""循环跳出"，并行/条件分支中的"分支开始""分支结束""并行合并"。
 
@@ -1836,7 +1836,7 @@ graph TB
 { "type":"text", "labelCn":"并行合并", "structConfig":{ "parallelGroupId":"p-1", "parallelRole":"merge" } }
 ```
 
-#### 4.3.15 parallelNodeDataDef（V2 新增）
+#### 4.3.15 parallelNodeDataDef（V3 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。并行处理结构的**入口主节点**。一个完整并行结构由 **1 个主节点（parallel）+ 默认 2 组分支标记节点 ×2（start+end）+ 1 个 merge 标记节点 = 6 个 node + 8 条 edge** 组成。每组分支的 start→end 之间是可编辑的子图。引擎执行时通过 edge 拓扑识别各分支，按 `connectionMode=parallel` 并发执行。
 
@@ -1964,7 +1964,7 @@ graph TB
 > 2. 剩余节点中，`branch-start → branch-end` 之间的子图即为各分支体。`connectionMode=parallel` 的分支引擎并发执行
 > 3. 所有分支完成后在 `merge` 节点汇合，继续下游
 
-#### 4.3.16 conditionBranchNodeDataDef（V2 新增）
+#### 4.3.16 conditionBranchNodeDataDef（V3 新增）
 
 > 继承 `nodeDataBaseDef`（含 `structConfig`）。条件分支结构的**入口主节点**。与 parallel 同构——主节点结构、分组字段体系（`parallelGroupId` + `parallelRole`）、node/edge 数量（6+8）完全一致。区别：① 前端文案（"条件"替代"分支"）② 引擎按 `conditionExpr` 匹配分支执行（而非全部并发）。
 

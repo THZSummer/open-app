@@ -10,7 +10,7 @@
     {
       "state": "registered",
       "timestamp": "2026-06-17T10:00:00+08:00",
-      "note": "从 V2 复制创建，作为 V3 新起点。V2 已标记为 terminated。"
+      "note": "从 V3 复制创建，作为 V3 新起点。V3 已标记为 terminated。"
     }
   ],
   "artifacts": {

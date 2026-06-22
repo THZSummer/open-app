@@ -24,7 +24,7 @@
 
 | 维度 | 详情 |
 |------|------|
-| **解决方案** | 随 authConfigDef v2 重构，字段名 `authConfig` 保持不变（暂不改数组），多选数组化（authConfigs）标记为后续优化项，当前单认证结构已满足 V2 spec 核心需求 |
+| **解决方案** | 随 authConfigDef v2 重构，字段名 `authConfig` 保持不变（暂不改数组），多选数组化（authConfigs）标记为后续优化项，当前单认证结构已满足 V3 spec 核心需求 |
 | **决策记录** | GAP-01 先落地重构方案，多选数组化可与 GAP-07 独立推进 |
 
 ### ✅ GAP-02: triggerNodeDataDef 缺少 SYSTOKEN 白名单 — 已解决 (2026-06-11)
