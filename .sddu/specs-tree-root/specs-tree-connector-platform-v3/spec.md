@@ -191,7 +191,7 @@ V3 架构核心变化：
 | **超时** | 属于连接流，非连接器。超时是调用方诉求，不同流对同一连接器可设不同超时值。平台管理员可按应用设置最大超时上限（平台统一默认 5s，未设独立值的应用回退使用平台统一默认） | 调用方（连接流）不长时间阻塞 | 应用管理员编排连接流时按节点配置，运行时取 min(节点值, 应用最大超时值) | G8 |
 | **入站限流** | 属于连接流。限制连接流被触发的频率，防止自身过载。平台管理员可按应用设置最大限流上限（平台统一默认 QPS=1000、并发=1000，未设独立值的应用回退使用平台统一默认） | 连接流自身 | 应用管理员在连接流编排时配置，运行时取 min(流配置值, 应用最大限流值) | G8 |
 | **缓存** | 属于连接流。通过缓存子图结果减少重复调用。TTL 上限默认 15 天 | 后端系统 + 调用效率 | 应用管理员在连接流运行时配置中设定 | G8 |
-| **脚本节点** | 属于连接流。每流最多 10 个，用户编写 `function main(ctx) { ... return ... }` 处理复杂逻辑。GraalJS 沙箱执行（ES2022），五层纵深防御。ctx 为上游全量数据函数参数，return 显式输出。详细设计见 [plan-script.md](./plan-script.md) | 调用方（连接流） | 应用管理员在连接流编排时编写脚本 | G8 |
+| **脚本节点** | 属于连接流。每流最多 10 个，用户编写 `function main(ctx) { ... return ... }` 处理复杂逻辑。GraalJS 沙箱执行（ES2022），五层纵深防御，不提供内置工具。ctx 为上游全量数据函数参数，return 显式输出。详细设计见 [plan-script.md](./plan-script.md) | 调用方（连接流） | 应用管理员在连接流编排时编写脚本 | G8 |
 | **并行分支** | 属于连接流。并行处理节点内分支上限 8，防止资源过度拆分 | 连接流自身 | 应用管理员编排连接流时在并行处理节点中配置分支数 | G8 |
 | **日志采集开关** | 属于平台 + 应用。控制是否写入节点级运行日志。平台管理员设置平台统一默认值（默认开启），可按应用覆盖；某应用未设独立值时回退使用平台统一默认。关闭后不再写入节点日志，运行记录仅保留基础信息；已写入的历史日志保留不变仍可查询。开关关闭期间条数上限和保留天数策略对不再写入的日志无实际影响（无新数据触发清理），老数据仍按策略到期清理 | 后端存储 | 平台管理员在应用级配置中设定；应用管理员在自己的应用内可操作开启/关闭 | G11 |
 | **引用稽核** | 被引用方的校验通过查询引用方确定，不把引用关系固化到被引用方的状态或字段中。被引用方只关心自身配置，不关心"被谁用"。细则：① FlowVersion「已部署」不设独立状态，失效前查 `flow.deployed_version_id` 即可（1:1，O(1)）；② ConnectorVersion 的编排引用通过 `connector_version_ref` 中间表显式管理（M:N），保存编排时同步维护 | — | 引用关系存于引用方或中间表 | — |
@@ -520,11 +520,11 @@ erDiagram
 
 ### 3.8e 连接流编排 — 脚本节点（G8）
 
-> 💡 脚本节点用于处理复杂业务逻辑。用户编写标准 JavaScript（ES2022）函数 `function main(ctx) { ... return ... }`，通过 `ctx.{nodeId}.{input|output}.field` 路径访问任意上游节点数据。运行时使用 GraalJS 沙箱执行，五层纵深防御确保安全。详细设计见 [plan-script.md](./plan-script.md)。
+> 💡 脚本节点用于处理复杂业务逻辑。用户编写标准 JavaScript（ES2022）函数 `function main(ctx) { ... return ... }`，通过 `ctx.{nodeId}.{input|output}.field` 路径访问任意上游节点数据。不提供内置工具（`_util`/`_log`），用户用纯 JS 自行实现所有逻辑。运行时使用 GraalJS 沙箱执行，五层纵深防御确保安全。详细设计见 [plan-script.md](./plan-script.md)。
 
 | FR | 名称 | 描述 | 验收标准 |
 |----|------|------|---------|
-| **FR-040a** | 脚本节点 | V3 新增：用户编写 `function main(ctx) { ... return ... }` 处理复杂逻辑，ctx 为上游所有节点数据的函数参数，return 显式输出 | ① 流程编排中可添加「脚本」节点类型，每连接流最多 10 个<br>② 脚本节点配置：`scriptContent`（必填，标准 JS 函数声明，最大 10000 字符）、`outputSchema`（选填，声明出参字段供下游引用）、`timeout`（选填，默认 5s，范围 1~30s）<br>③ 数据访问：通过函数参数 `ctx.{nodeId}.{input\|output}.field` 读取上游节点数据，如 `ctx.conn_1.output.body.data.users`<br>④ 内置工具：`_util`（md5/uuid/base64Encode/formatDate/parseJson/toJson/sha256/timestamp）、`_log`（info/warn/debug/error）<br>⑤ ✅【保存时不校验】草稿保存时仅校验 JSON 语法合法性，不执行脚本语法校验<br>⑥ ⚠️【发布时校验】提交发布时（FR-026）统一校验：a) `scriptContent` 必须是合法的 `function main(ctx) { ... }` 声明，不允许函数外有任何代码；b) GraalJS 语法 parse 通过；不满足则禁止提交<br>⑦ 运行时：GraalJS 沙箱执行（ES2022 严格模式，IO/线程/进程/Native/环境变量全部关闭），boundedElastic 线程隔离，`statementLimit=10000`，超时后强制终止<br>⑧ 返回值作为节点 output，供下游通过 `ctx.script_1.output.field` 引用 |
+| **FR-040a** | 脚本节点 | V3 新增：用户编写 `function main(ctx) { ... return ... }` 处理复杂逻辑，ctx 为上游所有节点数据的函数参数，return 显式输出。不提供任何内置工具，用户自行编写所有逻辑 | ① 流程编排中可添加「脚本」节点类型，每连接流最多 10 个<br>② 脚本节点配置：`scriptContent`（必填，标准 JS 函数声明，最大 10000 字符）、`outputSchema`（选填，声明出参字段供下游引用）、`timeout`（选填，默认 5s，范围 1~30s）<br>③ 数据访问：通过函数参数 `ctx.{nodeId}.{input\|output}.field` 读取上游节点数据，如 `ctx.conn_1.output.body.data.users`<br>④ 不提供 `_util`、`_log` 等内置工具——用户用纯 JS（ES2022）自行实现所有逻辑<br>⑤ ✅【保存时不校验】草稿保存时仅校验 JSON 语法合法性，不执行脚本语法校验<br>⑥ ⚠️【发布时校验】提交发布时（FR-026）统一校验：a) `scriptContent` 必须是合法的 `function main(ctx) { ... }` 声明，不允许函数外有任何代码；b) GraalJS 语法 parse 通过；不满足则禁止提交<br>⑦ 运行时：GraalJS 沙箱执行（ES2022 严格模式，IO/线程/进程/Native/环境变量全部关闭），boundedElastic 线程隔离，`statementLimit=10000`，超时后强制终止<br>⑧ 返回值作为节点 output，供下游通过 `ctx.script_1.output.field` 引用 |
 
 ### 3.9 调试（G16）
 
