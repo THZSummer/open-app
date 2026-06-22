@@ -38,17 +38,14 @@ public class DagScheduler {
 
     private final ObjectMapper objectMapper;
     private final Map<String, NodeExecutor> executorMap;
-    private final ParallelBranchExecutor parallelBranchExecutor;
 
     /** script 节点执行器 (TASK-011 实现后注入, 当前可为 null) */
     @Autowired(required = false)
     private NodeExecutor scriptNodeExecutor;
 
     public DagScheduler(ObjectMapper objectMapper,
-                         List<NodeExecutor> nodeExecutors,
-                         ParallelBranchExecutor parallelBranchExecutor) {
+                         List<NodeExecutor> nodeExecutors) {
         this.objectMapper = objectMapper;
-        this.parallelBranchExecutor = parallelBranchExecutor;
         this.executorMap = new HashMap<>();
         // 自动注册所有 NodeExecutor Bean
         for (NodeExecutor executor : nodeExecutors) {

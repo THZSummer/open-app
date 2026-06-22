@@ -112,15 +112,14 @@ public class RuntimeConfig {
     }
 
     @Bean
-    public ParallelBranchExecutor parallelBranchExecutor() {
-        return new ParallelBranchExecutor();
+    public ParallelBranchExecutor parallelBranchExecutor(ObjectMapper objectMapper) {
+        return new ParallelBranchExecutor(objectMapper);
     }
 
     @Bean
     public DagScheduler dagScheduler(ObjectMapper objectMapper,
-                                       List<NodeExecutor> nodeExecutors,
-                                       ParallelBranchExecutor parallelBranchExecutor) {
-        return new DagScheduler(objectMapper, nodeExecutors, parallelBranchExecutor);
+                                       List<NodeExecutor> nodeExecutors) {
+        return new DagScheduler(objectMapper, nodeExecutors);
     }
 
     @Bean

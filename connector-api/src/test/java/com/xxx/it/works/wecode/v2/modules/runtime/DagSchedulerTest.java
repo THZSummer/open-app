@@ -51,10 +51,8 @@ class DagSchedulerTest {
         when(connectorExecutor.getNodeType()).thenReturn("connector");
         when(exitExecutor.getNodeType()).thenReturn("exit");
 
-        ParallelBranchExecutor parallelBranchExecutor = new ParallelBranchExecutor();
         scheduler = new DagScheduler(objectMapper,
-                List.of(triggerExecutor, connectorExecutor, exitExecutor),
-                parallelBranchExecutor);
+                List.of(triggerExecutor, connectorExecutor, exitExecutor));
     }
 
     // ===== 辅助方法 =====
