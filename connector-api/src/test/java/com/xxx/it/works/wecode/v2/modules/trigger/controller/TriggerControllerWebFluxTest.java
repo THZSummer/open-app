@@ -43,7 +43,7 @@ class OpTriggerControllerWebFluxTest {
 
     @BeforeEach
     void setUp() {
-        // Prevent OpRateLimitFilter from failing when it calls findByFlowId
+        // Prevent rate limit filter dependency injection failure in test context
         when(flowVersionReadRepository.findByFlowId(anyLong())).thenReturn(Mono.empty());
     }
 

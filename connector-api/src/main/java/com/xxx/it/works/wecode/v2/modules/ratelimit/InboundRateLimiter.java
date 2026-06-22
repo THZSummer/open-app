@@ -177,8 +177,7 @@ public class InboundRateLimiter implements WebFilter {
     }
 
     /**
-     * 写入 429 限流响应 (透明穿透: X- 头 + 空Body)
-     * 与现有 OpRateLimitFilter 的 writeRateLimitResponse 行为对齐。
+     * 写入 429 限流响应 (透明穿透: X- 头 + 空Body)。
      */
     private Mono<Void> writeRateLimitResponse(ServerWebExchange exchange, String flowId) {
         exchange.getResponse().setStatusCode(HttpStatus.TOO_MANY_REQUESTS);

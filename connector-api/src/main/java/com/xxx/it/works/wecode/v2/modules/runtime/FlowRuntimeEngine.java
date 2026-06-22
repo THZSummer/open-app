@@ -57,7 +57,7 @@ public class FlowRuntimeEngine {
 
         // Phase 1+2: 版本配置解析 (含 Flow 加载和部署检查)
         // Phase 3: 触发器鉴权 (内嵌在 VersionConfigResolver 之后)
-        // Phase 4: 限流 (当前简化处理, 由 OpRateLimitFilter WebFilter 拦截)
+        // Phase 4: 入站限流 (由 InboundRateLimiter WebFilter 拦截, Redis Token Bucket)
         // Phase 5: DAG 调度执行
 
         return versionConfigResolver.resolveFlowVersion(flowId)
@@ -68,7 +68,7 @@ public class FlowRuntimeEngine {
                             resolved.getConnectorConfigs().size());
 
                     // Phase 3: SYSTOKEN 白名单校验已由 WebFilter 完成 (在此做补充校验)
-                    // Phase 4: 入站限流已由 OpRateLimitFilter 完成
+                    // Phase 4: 入站限流已由 InboundRateLimiter 完成 (Redis Token Bucket)
 
                     // Phase 5: 检查是否有缓存配置, 有则查缓存
                     FlowConfig flowConfig = resolved.getFlowConfig();
