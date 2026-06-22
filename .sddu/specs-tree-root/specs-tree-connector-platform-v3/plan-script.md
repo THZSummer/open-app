@@ -208,8 +208,8 @@ for (Map.Entry<String, NodeResult> entry : upstreamResults.entrySet()) {
   "nodeType": "script",
   "label": "数据清洗与聚合",
   "data": {
-    "scriptContent": "function main(ctx) {\n  const users = ctx.conn_1.output.body.data.users;\n  const total = users.length;\n  const avgAge = users.reduce((s,u) => s + u.age, 0) / total;\n  return { total, avgAge };\n}",
-    "outputSchema": {
+    "script": "function main(ctx) {\n  const users = ctx.conn_1.output.body.data.users;\n  const total = users.length;\n  const avgAge = users.reduce((s,u) => s + u.age, 0) / total;\n  return { total, avgAge };\n}",
+    "output": {
       "total":  { "type": "number" },
       "avgAge": { "type": "number" }
     },
@@ -219,11 +219,11 @@ for (Map.Entry<String, NodeResult> entry : upstreamResults.entrySet()) {
 }
 ```
 
-> 💡 JSON 中 `scriptContent` 为单行（`\n` 转义），编辑器渲染为多行格式化展示。存储与展示分离。
+> 💡 JSON 中 `script` 为单行（`\n` 转义），编辑器渲染为多行格式化展示。存储与展示分离。
 
 ### 3.1.1 脚本格式（编辑器展示）
 
-上述 `scriptContent` 在编辑器中格式化为：
+上述 `script` 在编辑器中格式化为：
 
 ```javascript
 // 固定格式：function main(ctx) { ... return ... }
@@ -258,8 +258,8 @@ function main(ctx) {
 
 | 字段 | 必填 | 说明 |
 |------|:---:|------|
-| `scriptContent` | ✅ | 标准函数声明 `function main(ctx) { ... }`，通过 `ctx.{nodeId}.{input\|output}.field` 读数据，`return` 输出 |
-| `outputSchema` | ❌ | 出参字段声明（用于发布时类型校验和下游提示） |
+| `script` | ✅ | 标准函数声明 `function main(ctx) { ... }`，通过 `ctx.{nodeId}.{input\|output}.field` 读数据，`return` 输出 |
+| `output` | ❌ | 出参字段声明（用于发布时类型校验和下游提示） |
 | `timeout` | ❌ | 超时秒数，默认 5，最大 30 |
 | `description` | ❌ | 节点说明 |
 
