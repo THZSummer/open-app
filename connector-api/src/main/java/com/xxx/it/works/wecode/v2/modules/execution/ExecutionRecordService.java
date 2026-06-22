@@ -1,12 +1,12 @@
 package com.xxx.it.works.wecode.v2.modules.execution;
 
-import com.xxx.it.works.wecode.v2.modules.execution.entity.ExecutionRecord;
-import com.xxx.it.works.wecode.v2.modules.execution.mapper.ExecutionRecordMapper;
+import com.xxx.it.works.wecode.v2.modules.execution.entity.ExecutionRecordEntity;
+import com.xxx.it.works.wecode.v2.modules.execution.repository.ExecutionRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  * 运行记录服务（connector-api 运行时写入侧）
@@ -18,7 +18,7 @@ import java.util.Date;
  * <p>写入失败不影响业务响应（异常吞掉仅记录日志）</p>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 2.0.0
  */
 @Service
 public class ExecutionRecordService {
@@ -28,10 +28,10 @@ public class ExecutionRecordService {
     /** 初始状态：pending */
     private static final int STATUS_PENDING = 2;
 
-    private final ExecutionRecordMapper executionRecordMapper;
+    private final ExecutionRecordRepository repository;
 
-    public ExecutionRecordService(ExecutionRecordMapper executionRecordMapper) {
-        this.executionRecordMapper = executionRecordMapper;
+    public ExecutionRecordService(ExecutionRecordRepository repository) {
+        this.repository = repository;
     }
 
     /**
@@ -46,30 +46,26 @@ public class ExecutionRecordService {
      */
     public Long startRecord(Long recordId, Long flowId, Long flowVersionId,
                             Long appId, Integer triggerType) {
-        try {
-            Date now = new Date();
+        LocalDateTime now = LocalDateTime.now();
 
-            ExecutionRecord record = new ExecutionRecord();
-            record.setId(recordId);
-            record.setFlowId(flowId);
-            record.setFlowVersionId(flowVersionId);
-            record.setAppId(appId);
-            record.setTriggerType(triggerType);
-            record.setStatus(STATUS_PENDING);
-            record.setTriggerTime(now);
-            record.setCreateTime(now);
-            record.setLastUpdateTime(now);
+        ExecutionRecordEntity record = new ExecutionRecordEntity();
+        record.setId(recordId);
+        record.setFlowId(flowId);
+        record.setFlowVersionId(flowVersionId);
+        record.setAppId(appId);
+        record.setTriggerType(triggerType);
+        record.setStatus(STATUS_PENDING);
+        record.setTriggerTime(now);
+        record.setCreateTime(now);
+        record.setLastUpdateTime(now);
 
-            executionRecordMapper.insert(record);
-
-            log.debug("Execution record created: recordId={}, flowId={}, triggerType={}",
-                    recordId, flowId, triggerType);
-            return recordId;
-        } catch (Exception e) {
-            log.error("Failed to create execution record: recordId={}, flowId={}, error={}",
-                    recordId, flowId, e.getMessage(), e);
-            return recordId;
-        }
+        repository.save(record)
+                .doOnSuccess(r -> log.debug("Execution record created: recordId={}, flowId={}, triggerType={}",
+                        recordId, flowId, triggerType))
+                .doOnError(e -> log.error("Failed to create execution record: recordId={}, flowId={}, error={}",
+                        recordId, flowId, e.getMessage(), e))
+                .subscribe();
+        return recordId;
     }
 
     /**
@@ -83,23 +79,14 @@ public class ExecutionRecordService {
      */
     public void updateRecord(Long recordId, Integer status, Integer durationMs,
                              String errorCode, String errorMsg) {
-        try {
-            ExecutionRecord record = new ExecutionRecord();
-            record.setId(recordId);
-            record.setStatus(status);
-            record.setDurationMs(durationMs);
-            record.setErrorCode(errorCode);
-            record.setErrorMessage(errorMsg);
-            record.setLastUpdateTime(new Date());
+        LocalDateTime now = LocalDateTime.now();
 
-            executionRecordMapper.update(record);
-
-            log.debug("Execution record updated: recordId={}, status={}, durationMs={}",
-                    recordId, status, durationMs);
-        } catch (Exception e) {
-            log.error("Failed to update execution record: recordId={}, error={}",
-                    recordId, e.getMessage(), e);
-        }
+        repository.updateStatus(recordId, status, durationMs, errorCode, errorMsg, now)
+                .doOnSuccess(count -> log.debug("Execution record updated: recordId={}, status={}, durationMs={}",
+                        recordId, status, durationMs))
+                .doOnError(e -> log.error("Failed to update execution record: recordId={}, error={}",
+                        recordId, e.getMessage(), e))
+                .subscribe();
     }
 
     /**
@@ -109,16 +96,15 @@ public class ExecutionRecordService {
      * @param limit      记录条数上限
      */
     public void checkAndCleanFifo(Long flowId, int limit) {
-        try {
-            Long count = executionRecordMapper.countByFlowId(flowId);
-            if (count != null && count > limit) {
-                int excess = (int) (count - limit);
-                executionRecordMapper.deleteOldestByFlowId(flowId, excess);
-                log.info("FIFO cleanup executed: flowId={}, deleted={}, remaining={}",
-                        flowId, excess, limit);
-            }
-        } catch (Exception e) {
-            log.error("FIFO cleanup failed: flowId={}, error={}", flowId, e.getMessage(), e);
-        }
+        repository.countByFlowId(flowId)
+                .filter(count -> count > limit)
+                .flatMap(count -> {
+                    int excess = (int) (count - limit);
+                    return repository.deleteOldestByFlowId(flowId, excess);
+                })
+                .doOnNext(deleted -> log.info("FIFO cleanup executed: flowId={}, deleted={}, remaining={}",
+                        flowId, deleted, limit))
+                .doOnError(e -> log.error("FIFO cleanup failed: flowId={}, error={}", flowId, e.getMessage(), e))
+                .subscribe();
     }
 }
