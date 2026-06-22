@@ -144,6 +144,16 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            min-width: 0;
+        }
+
+        .header-left {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header-right {
+            flex-shrink: 0;
         }
 
         .back-btn {
@@ -152,6 +162,8 @@
             color: var(--text-secondary);
             cursor: pointer;
             font-size: 14px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .back-btn:hover {
@@ -161,15 +173,20 @@
         .flow-name {
             font-size: 16px;
             font-weight: 650;
+            max-width: 240px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-shrink: 1;
         }
 
-        .version-tag {
-            padding: 2px 8px;
-            border-radius: 999px;
-            color: #0958d9;
-            background: #e6f4ff;
-            font-size: 12px;
-            font-weight: 600;
+        .version-selector .form-select {
+            width: 240px !important;
+            min-width: 0;
+        }
+
+        .version-actions .btn {
+            white-space: nowrap;
         }
 
         .node-count {
@@ -296,41 +313,15 @@
             margin: 0 auto;
         }
 
-        .intro-panel {
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 18px;
-            padding: 20px 22px;
-            border: 1px solid #dceaff;
-            border-radius: var(--radius-lg);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 247, 255, 0.94));
-            box-shadow: var(--shadow-sm);
-        }
-
-        .intro-panel::after {
-            content: "";
-            position: absolute;
-            right: -52px;
-            top: -70px;
-            width: 180px;
-            height: 180px;
-            border-radius: 50%;
-            background: rgba(22, 119, 255, 0.10);
-        }
-
-        .intro-title {
-            position: relative;
-            z-index: 1;
-            font-size: 18px;
-            font-weight: 750;
-        }
-
-        .intro-desc {
-            position: relative;
-            z-index: 1;
-            max-width: 760px;
-            margin-top: 6px;
-            color: var(--text-secondary);
+        .flow-workspace.readonly .form-input,
+        .flow-workspace.readonly .form-select,
+        .flow-workspace.readonly .form-textarea,
+        .flow-workspace.readonly .btn:not(.flow-step),
+        .flow-workspace.readonly .flow-step-add,
+        .flow-workspace.readonly .mode-card,
+        .flow-workspace.readonly .node-action-btn {
+            pointer-events: none;
+            opacity: 0.7;
         }
 
         /* ========================================
@@ -461,6 +452,129 @@
 
         .flow-stage.active {
             display: block;
+        }
+
+        /* ========================================
+           步骤条
+           ======================================== */
+        .flow-stepper-wrap {
+            position: relative;
+            margin-bottom: 16px;
+            padding: 14px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .flow-stepper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 6px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+        }
+
+        .flow-stepper::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .flow-stepper::-webkit-scrollbar-thumb {
+            background: #d9dfe8;
+            border-radius: 999px;
+        }
+
+        .flow-stepper::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-color);
+        }
+
+        .flow-step {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            color: var(--text-secondary);
+            background: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .flow-step:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .flow-step.active {
+            border-color: var(--primary-color);
+            color: #fff;
+            background: var(--primary-color);
+            box-shadow: 0 8px 18px rgba(22, 119, 255, 0.18);
+            font-weight: 650;
+        }
+
+        .flow-step .step-index {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: rgba(22, 119, 255, 0.10);
+            color: var(--primary-color);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .flow-step.active .step-index {
+            background: rgba(255, 255, 255, 0.22);
+            color: #fff;
+        }
+
+        .flow-step-link {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .flow-step-link::before {
+            content: "";
+            display: inline-block;
+            width: 28px;
+            height: 2px;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #d9dfe8, #b6c4dc);
+        }
+
+        .flow-step-add {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border: 1px dashed var(--primary-color);
+            border-radius: 50%;
+            background: rgba(22, 119, 255, 0.05);
+            color: var(--primary-color);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .flow-step-add:hover {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .flow-active-node {
+            margin-top: 4px;
         }
 
         .node-card {
@@ -740,6 +854,255 @@
             display: flex;
         }
 
+        /* ========================================
+           抽屉
+           ======================================== */
+        .drawer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 999;
+        }
+
+        .drawer-overlay.active {
+            display: block;
+        }
+
+        .drawer {
+            position: absolute;
+            background: #fff;
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.18);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .drawer-right {
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(520px, 92vw);
+        }
+
+        .drawer-bottom {
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: min(560px, 86vh);
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .drawer-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow: auto;
+            padding: 18px 20px;
+        }
+
+        .drawer-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border-color);
+            background: #fafbfc;
+        }
+
+        .debug-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .debug-tab {
+            padding: 8px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 2px solid transparent;
+        }
+
+        .debug-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .debug-panel {
+            display: none;
+        }
+
+        .debug-panel.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-tip {
+            margin-top: 4px;
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .drawer-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 16px 0;
+        }
+
+        .cache-toggle-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .cache-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .cache-key-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .cache-key-item {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .cache-key-item .form-select {
+            flex: 1;
+        }
+
+        .add-param-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 6px 12px;
+            border: 1px dashed var(--primary-color);
+            border-radius: 6px;
+            background: rgba(22, 119, 255, 0.05);
+            color: var(--primary-color);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .add-param-btn:hover {
+            background: var(--primary-color);
+            color: #fff;
+        }
+
+        .cache-key-preview {
+            margin-top: 8px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        /* 调试入参 tabs */
+        .param-tabs {
+            display: flex;
+            gap: 6px;
+            margin: 8px 0 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            padding: 8px 14px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .schema-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .schema-row {
+            display: grid;
+            grid-template-columns: 1fr 100px 1.4fr;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: #fafbfc;
+        }
+
+        .schema-row .param-name {
+            font-weight: 600;
+        }
+
+        .schema-row .param-type {
+            color: var(--text-tertiary);
+            font-size: 12px;
+        }
+
+        .schema-empty {
+            padding: 14px;
+            text-align: center;
+            color: var(--text-tertiary);
+            font-size: 12px;
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+        }
+
+        .debug-output {
+            margin-top: 12px;
+            padding: 16px;
+            background: #1e1e1e;
+            border-radius: 6px;
+            color: #d4d4d4;
+            font-family: monospace;
+            font-size: 13px;
+            min-height: 150px;
+            white-space: pre-wrap;
+            overflow: auto;
+        }
+
         .modal {
             width: min(620px, 92vw);
             max-height: 88vh;
@@ -899,12 +1262,10 @@
             <header class="editor-header">
                 <div class="header-left">
                     <button class="back-btn" onclick="handleBack()">← 返回</button>
-                    <span class="flow-name" id="flowName">订单同步连接流</span>
-                    <span class="version-tag">V4 表单编排</span>
+                    <span class="flow-name" id="flowName" title="订单同步连接流">订单同步连接流</span>
                     <div class="version-selector" id="versionSelectorContainer"></div>
                 </div>
                 <div class="header-right">
-                    <span class="node-count" id="nodeCount">未选择编排模式</span>
                     <div class="version-actions" id="versionActions"></div>
                 </div>
             </header>
@@ -912,11 +1273,6 @@
             <!-- 编辑器内容区域 -->
             <section class="editor-content">
                 <div class="workspace-shell">
-                    <div class="intro-panel">
-                        <div class="intro-title">连接流表单编排工作台</div>
-                        <div class="intro-desc">通过卡片和表单配置连接流，不使用画布、拖拽和连线。连接器入参可选择触发器入参、上游连接器出参和脚本节点出参。</div>
-                    </div>
-
                     <!-- 无版本状态 -->
                     <div class="no-version-flow-state" id="noVersionFlowState">
                         <div class="no-version-flow-icon">＋</div>
@@ -956,18 +1312,110 @@
         </div>
     </div>
 
-    <!-- 预览数据弹窗 -->
-    <div class="modal-overlay" id="previewModal">
-        <div class="modal" style="width: min(820px, 92vw);">
+    <!-- 更多配置抽屉 -->
+    <div class="drawer-overlay" id="moreConfigDrawer">
+        <div class="drawer drawer-right">
+            <div class="drawer-header">
+                <h3 class="drawer-title">更多配置</h3>
+                <button class="modal-close" onclick="closeMoreConfigDrawer()">×</button>
+            </div>
+            <div class="drawer-body">
+                <!-- 限流配置 -->
+                <div class="form-group">
+                    <label class="form-label">限流配置（默认上限1000，当前上限<span id="rateLimitMaxText">1000</span>）</label>
+                    <input type="number" class="form-input" id="rateLimitInput" placeholder="请输入限流值" min="1" max="1000" value="10" />
+                    <div class="form-tip">可通过应用级配置接口获取当前应用限流上限；接口无返回时使用默认上限1000。</div>
+                </div>
+
+                <div class="drawer-divider"></div>
+
+                <!-- 缓存配置 -->
+                <div class="form-group">
+                    <label class="form-label">缓存配置</label>
+                    <div class="cache-toggle-row">
+                        <label class="cache-toggle">
+                            <input type="checkbox" id="cacheEnabled" onchange="toggleCacheConfig(this.checked)" />
+                            <span>开启缓存</span>
+                        </label>
+                    </div>
+                    <div id="cacheConfig" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">缓存时间（秒，最大1296000秒）</label>
+                            <input type="number" class="form-input" id="cacheTime" placeholder="请输入缓存时间（整数）" min="1" max="1296000" step="1" value="60" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">缓存Key</label>
+                            <div class="cache-key-list" id="cacheKeyList"></div>
+                            <button type="button" class="add-param-btn" id="cacheKeyAddButton" onclick="addCacheKeyItem()">+ 添加缓存Key</button>
+                            <div class="cache-key-preview">拼接结果：<span id="cacheKeyPreview">-</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button class="btn" onclick="closeMoreConfigDrawer()">取消</button>
+                <button class="btn btn-primary" onclick="saveMoreConfig()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 调试抽屉 -->
+    <div class="drawer-overlay" id="debugDrawer">
+        <div class="drawer drawer-bottom">
+            <div class="drawer-header">
+                <h3 class="drawer-title">调试 - <span id="debugFlowName">订单同步连接流</span></h3>
+                <button class="modal-close" onclick="closeDebugDrawer()">×</button>
+            </div>
+            <div class="drawer-body">
+                <!-- 入参配置 -->
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">入参配置</label>
+                    <div class="param-tabs" id="debugInputTabs">
+                        <button class="tab-btn active" onclick="switchDebugInputTab('header')">HTTP请求头</button>
+                        <button class="tab-btn" onclick="switchDebugInputTab('body')">HTTP请求体</button>
+                        <button class="tab-btn" onclick="switchDebugInputTab('query')">URL查询参数</button>
+                    </div>
+                    <div class="param-tab-content" id="debugInputContent">
+                        <div class="tab-panel active" data-tab="header">
+                            <div class="schema-list" id="debug-input-params-header"></div>
+                        </div>
+                        <div class="tab-panel" data-tab="body">
+                            <div class="schema-list" id="debug-input-params-body"></div>
+                        </div>
+                        <div class="tab-panel" data-tab="query">
+                            <div class="schema-list" id="debug-input-params-query"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 执行输出 -->
+                <div class="form-group" style="margin-top: 24px;">
+                    <label class="form-label" style="font-weight: 600;">执行输出</label>
+                    <div id="debugOutput" class="debug-output">
+                        <span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="drawer-footer">
+                <button class="btn" onclick="closeDebugDrawer()">关闭</button>
+                <button class="btn btn-primary" onclick="executeDebug()">立即调试</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 二次确认弹窗 -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="width: 360px;">
             <div class="modal-header">
-                <h3 class="modal-title">流程数据预览</h3>
-                <button class="modal-close" onclick="closePreviewModal()">×</button>
+                <h3 class="modal-title">操作确认</h3>
+                <button class="modal-close" onclick="closeConfirmModal()">×</button>
             </div>
             <div class="modal-body">
-                <pre id="previewContent" style="max-height: 520px; overflow: auto; padding: 14px; border-radius: 10px; color: #e8eef8; background: #111827; font-size: 12px;"></pre>
+                <div id="confirmMessage" style="color: var(--text-secondary); line-height: 1.6;"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn" onclick="closePreviewModal()">关闭</button>
+                <button class="btn" onclick="closeConfirmModal()">取消</button>
+                <button class="btn btn-primary" id="confirmBtn">确定</button>
             </div>
         </div>
     </div>
@@ -986,7 +1434,18 @@
         const APP_FLOW_CONFIG_LIMITS = {
             connectorTimeoutMax: 3,
             connectorNodeMax: 3,
-            parallelBranchMax: 8
+            parallelBranchMax: 8,
+            rateLimitMax: 1000,
+            cacheTimeMax: 1296000
+        };
+
+        /**
+         * 编排类型可见性配置，可由接口下发控制。
+         */
+        const APP_FLOW_TYPE_VISIBILITY = {
+            single: true,
+            serial: true,
+            parallel: true
         };
 
         /**
@@ -1073,13 +1532,41 @@
         };
 
         /**
+         * 版本状态常量。
+         */
+        const FLOW_VERSION_STATUS = {
+            DRAFT: 'draft',
+            PUBLISHED: 'published',
+            INVALID: 'invalid',
+            PENDING: 'pending',
+            REJECTED: 'rejected',
+            WITHDRAWN: 'withdrawn'
+        };
+
+        /**
+         * 版本状态文案。
+         */
+        const FLOW_VERSION_STATUS_TEXT = {
+            draft: '草稿',
+            published: '已发布',
+            invalid: '已失效',
+            pending: '审批中',
+            rejected: '已驳回',
+            withdrawn: '已撤回'
+        };
+
+        /**
          * 连接流版本模拟数据。
          */
         let flowVersionData = {
             currentVersion: 'v1',
             versions: [
-                { id: 'v1', name: 'v1.0.0', status: '草稿', createdAt: '2024-01-15' },
-                { id: 'v2', name: 'v0.9.0', status: '已发布', createdAt: '2024-01-10' }
+                { id: 'v1', name: 'v1.0.0', status: FLOW_VERSION_STATUS.DRAFT, createdAt: '2024-01-15' },
+                { id: 'v2', name: 'v0.9.0', status: FLOW_VERSION_STATUS.PUBLISHED, createdAt: '2024-01-10' },
+                { id: 'v3', name: 'v0.8.0', status: FLOW_VERSION_STATUS.INVALID, createdAt: '2024-01-05' },
+                { id: 'v4', name: 'v0.7.0', status: FLOW_VERSION_STATUS.PENDING, createdAt: '2024-01-01' },
+                { id: 'v5', name: 'v0.6.0', status: FLOW_VERSION_STATUS.REJECTED, createdAt: '2023-12-28' },
+                { id: 'v6', name: 'v0.5.0', status: FLOW_VERSION_STATUS.WITHDRAWN, createdAt: '2023-12-25' }
             ]
         };
 
@@ -1097,6 +1584,11 @@
          * 节点卡片收起状态缓存。
          */
         const collapsedNodeMap = {};
+
+        /**
+         * 当前激活的节点 ID，用于步骤条切换。
+         */
+        let activeNodeId = '';
 
         /**
          * Monaco 编辑器实例缓存。
@@ -1174,13 +1666,13 @@
         function renderVersionSelectorHtml() {
             const options = flowVersionData.versions.map(version => `
                 <option value="${version.id}" ${flowVersionData.currentVersion === version.id ? 'selected' : ''}>
-                    ${version.name} (${version.createdAt}) [${version.status}]
+                    ${version.name} (${version.createdAt}) [${FLOW_VERSION_STATUS_TEXT[version.status]}]
                 </option>
             `).join('');
 
             return `
                 <label style="color: var(--text-secondary); font-size: 13px;">版本:</label>
-                <select class="form-select" style="width: 220px;" onchange="handleVersionChange(this.value)">${options}</select>
+                <select class="form-select" style="width: 240px;" onchange="handleVersionChange(this.value)">${options}</select>
             `;
         }
 
@@ -1189,12 +1681,190 @@
          * @returns {string} 版本操作按钮 HTML
          */
         function renderVersionActionsHtml() {
-            return `
-                <button class="btn" onclick="previewFlowData()">预览数据</button>
-                <button class="btn" onclick="debugFlow()">立即调试</button>
-                <button class="btn" onclick="showVersionDetail()">版本详情</button>
-                <button class="btn btn-primary" onclick="saveFlow()">保存</button>
-            `;
+            const version = getCurrentFlowVersion();
+
+            if (!version) {
+                return '';
+            }
+
+            switch (version.status) {
+                case FLOW_VERSION_STATUS.DRAFT:
+                    return `
+                        <button class="btn" onclick="openMoreConfigDrawer()">更多配置</button>
+                        <button class="btn" onclick="openDebugDrawer()">调试</button>
+                        <button class="btn" onclick="saveFlow()">保存</button>
+                        <button class="btn btn-primary" onclick="handlePublishVersion()">发布</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                    `;
+                case FLOW_VERSION_STATUS.PUBLISHED:
+                    return `
+                        <button class="btn" onclick="handleCopyToDraft()">新增草稿</button>
+                        <button class="btn" onclick="openMoreConfigDrawer()">更多配置</button>
+                        <button class="btn" onclick="openDebugDrawer()">调试</button>
+                        <button class="btn" style="color: var(--warning-color);" onclick="handleInvalidateVersion()">失效</button>
+                    `;
+                case FLOW_VERSION_STATUS.INVALID:
+                    return `
+                        <button class="btn" onclick="handleCopyToDraft()">新增草稿</button>
+                        <button class="btn" onclick="openMoreConfigDrawer()">更多配置</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                    `;
+                case FLOW_VERSION_STATUS.PENDING:
+                    return `
+                        <button class="btn" onclick="openMoreConfigDrawer()">更多配置</button>
+                        <button class="btn" style="color: var(--warning-color);" onclick="handleWithdrawVersion()">撤回</button>
+                    `;
+                case FLOW_VERSION_STATUS.REJECTED:
+                    return `
+                        <button class="btn" onclick="handleCopyToDraft()">新增草稿</button>
+                        <button class="btn" onclick="openMoreConfigDrawer()">更多配置</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                    `;
+                case FLOW_VERSION_STATUS.WITHDRAWN:
+                    return `
+                        <button class="btn" onclick="handleCopyToDraft()">新增草稿</button>
+                        <button class="btn" onclick="openMoreConfigDrawer()">更多配置</button>
+                        <button class="btn" style="color: var(--error-color);" onclick="handleDeleteVersion()">删除</button>
+                    `;
+                default:
+                    return '';
+            }
+        }
+
+        /**
+         * 获取当前版本。
+         * @returns {Object|null} 当前版本
+         */
+        function getCurrentFlowVersion() {
+            return flowVersionData.versions.find(version => version.id === flowVersionData.currentVersion) || null;
+        }
+
+        /**
+         * 判断当前版本是否可编辑。
+         * @returns {boolean} 当前版本是否可编辑
+         */
+        function isCurrentDraftVersion() {
+            const version = getCurrentFlowVersion();
+            return Boolean(version && version.status === FLOW_VERSION_STATUS.DRAFT);
+        }
+
+        /**
+         * 弹出二次确认。
+         * @param {Object} params - 确认弹窗参数
+         * @returns {void}
+         */
+        function showConfirm(params) {
+            const message = params.message;
+            const onConfirm = params.onConfirm;
+
+            document.getElementById('confirmMessage').textContent = message;
+            const confirmBtn = document.getElementById('confirmBtn');
+            confirmBtn.onclick = function () {
+                closeConfirmModal();
+                onConfirm();
+            };
+            document.getElementById('confirmModal').classList.add('active');
+        }
+
+        /**
+         * 关闭确认弹窗。
+         * @returns {void}
+         */
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.remove('active');
+        }
+
+        /**
+         * 发布当前版本。
+         * @returns {void}
+         */
+        function handlePublishVersion() {
+            showConfirm({
+                message: '确定发布当前草稿版本？发布后将进入审批中状态。',
+                onConfirm: function () {
+                    const version = getCurrentFlowVersion();
+                    version.status = FLOW_VERSION_STATUS.PENDING;
+                    showToast({ message: '已提交发布，进入审批中' });
+                    renderVersionArea();
+                    renderWorkspace();
+                }
+            });
+        }
+
+        /**
+         * 撤回审批中的版本。
+         * @returns {void}
+         */
+        function handleWithdrawVersion() {
+            showConfirm({
+                message: '确定撤回当前审批中的版本？',
+                onConfirm: function () {
+                    const version = getCurrentFlowVersion();
+                    version.status = FLOW_VERSION_STATUS.WITHDRAWN;
+                    showToast({ message: '已撤回审批' });
+                    renderVersionArea();
+                    renderWorkspace();
+                }
+            });
+        }
+
+        /**
+         * 失效已发布的版本。
+         * @returns {void}
+         */
+        function handleInvalidateVersion() {
+            showConfirm({
+                message: '确定将当前已发布版本设置为已失效？',
+                onConfirm: function () {
+                    const version = getCurrentFlowVersion();
+                    version.status = FLOW_VERSION_STATUS.INVALID;
+                    showToast({ message: '已将当前版本置为已失效' });
+                    renderVersionArea();
+                    renderWorkspace();
+                }
+            });
+        }
+
+        /**
+         * 删除当前版本。
+         * @returns {void}
+         */
+        function handleDeleteVersion() {
+            showConfirm({
+                message: '确定删除当前版本？删除后无法恢复。',
+                onConfirm: function () {
+                    const versionId = flowVersionData.currentVersion;
+                    flowVersionData.versions = flowVersionData.versions.filter(item => item.id !== versionId);
+                    flowVersionData.currentVersion = flowVersionData.versions[0] ? flowVersionData.versions[0].id : '';
+
+                    if (!flowVersionData.currentVersion) {
+                        flowData = createEmptyFlowData();
+                        activeNodeId = '';
+                    }
+
+                    showToast({ message: '已删除版本' });
+                    renderVersionArea();
+                    renderWorkspace();
+                }
+            });
+        }
+
+        /**
+         * 基于当前版本新增草稿。
+         * @returns {void}
+         */
+        function handleCopyToDraft() {
+            showConfirm({
+                message: '基于当前版本新增草稿版本？',
+                onConfirm: function () {
+                    const newId = `v${Date.now()}`;
+                    flowVersionData.versions.unshift({ id: newId, name: 'v1.0.0-draft', status: FLOW_VERSION_STATUS.DRAFT, createdAt: '2024-01-20' });
+                    flowVersionData.currentVersion = newId;
+                    showToast({ message: '已新增草稿版本' });
+                    renderVersionArea();
+                    renderWorkspace();
+                }
+            });
         }
 
         /**
@@ -1206,6 +1876,7 @@
             flowVersionData.currentVersion = versionId;
             showToast({ message: '已切换连接流版本' });
             renderVersionArea();
+            renderWorkspace();
         }
 
         /**
@@ -1214,8 +1885,9 @@
          */
         function handleAddVersion() {
             const versionId = `v${Date.now()}`;
-            flowVersionData.versions = [{ id: versionId, name: 'v1.0.0', status: '草稿', createdAt: '2024-01-18' }];
+            flowVersionData.versions = [{ id: versionId, name: 'v1.0.0', status: FLOW_VERSION_STATUS.DRAFT, createdAt: '2024-01-18' }];
             flowVersionData.currentVersion = versionId;
+            activeNodeId = '';
             showToast({ message: '已添加草稿版本' });
             renderVersionArea();
             renderWorkspace();
@@ -1229,6 +1901,7 @@
             flowVersionData.versions = [];
             flowVersionData.currentVersion = '';
             flowData = createEmptyFlowData();
+            activeNodeId = '';
             showToast({ message: '已切换为无版本状态' });
             renderVersionArea();
             renderWorkspace();
@@ -1252,12 +1925,16 @@
          */
         function renderModeGrid() {
             const modeGrid = document.getElementById('modeGrid');
-            modeGrid.innerHTML = FLOW_MODES.map(mode => `
-                <div class="mode-card ${flowData.mode === mode.key ? 'active' : ''}" onclick="selectFlowMode('${mode.key}')">
-                    <div class="mode-card-title"><span class="mode-badge">${mode.icon}</span>${mode.title}</div>
-                    <div class="mode-card-desc">${mode.desc}</div>
-                </div>
-            `).join('');
+            const visibleModes = FLOW_MODES.filter(mode => APP_FLOW_TYPE_VISIBILITY[mode.key]);
+
+            modeGrid.innerHTML = visibleModes.length === 0
+                ? '<div class="empty-hint">当前应用未启用任何编排类型，请联系管理员调整接口配置。</div>'
+                : visibleModes.map(mode => `
+                    <div class="mode-card ${flowData.mode === mode.key ? 'active' : ''}" onclick="selectFlowMode('${mode.key}')">
+                        <div class="mode-card-title"><span class="mode-badge">${mode.icon}</span>${mode.title}</div>
+                        <div class="mode-card-desc">${mode.desc}</div>
+                    </div>
+                `).join('');
         }
 
         /**
@@ -1281,6 +1958,7 @@
                 flowData.steps = [createParallelNode()];
             }
 
+            activeNodeId = flowData.trigger.id;
             showToast({ message: '已切换编排模式' });
             renderModeGrid();
             renderWorkspace();
@@ -1298,6 +1976,7 @@
 
             noVersionState.classList.toggle('active', !hasVersion);
             flowWorkspace.style.display = hasVersion ? 'block' : 'none';
+            flowWorkspace.classList.toggle('readonly', hasVersion && !isCurrentDraftVersion());
 
             if (!hasVersion) {
                 updateNodeCount();
@@ -1307,6 +1986,11 @@
             renderModeGrid();
             flowStage.classList.toggle('active', Boolean(flowData.mode));
             disposeMonacoEditors();
+
+            if (flowData.mode) {
+                ensureActiveNode();
+            }
+
             flowStage.innerHTML = flowData.mode ? renderFlowStageHtml() : '';
             updateNodeCount();
             scheduleMonacoEditors();
@@ -1319,14 +2003,15 @@
         function renderFlowStageHtml() {
             const nodes = getVisibleNodes();
             const titleCounter = createNodeTitleCounter();
-            let html = '';
+            const nodeMeta = nodes.map(node => ({ node, title: computeNodeTitle({ node, titleCounter }) }));
+            const activeMeta = nodeMeta.find(item => item.node.id === activeNodeId) || nodeMeta[0];
 
-            nodes.forEach((node, index) => {
-                html += renderNodeCard({ node, index, titleCounter });
-                html += renderInsertButton({ nodes, index });
-            });
-
-            return html;
+            return `
+                ${renderFlowStepper({ nodeMeta, activeId: activeMeta.node.id })}
+                <div class="flow-active-node">
+                    ${renderNodeCard({ node: activeMeta.node, index: nodes.indexOf(activeMeta.node), titleCounter: null, overrideTitle: activeMeta.title })}
+                </div>
+            `;
         }
 
         /**
@@ -1335,6 +2020,19 @@
          */
         function getVisibleNodes() {
             return [flowData.trigger].concat(flowData.steps, flowData.output);
+        }
+
+        /**
+         * 确保当前激活节点有效，否则回退到第一个节点。
+         * @returns {void}
+         */
+        function ensureActiveNode() {
+            const nodes = getVisibleNodes();
+            const exists = nodes.some(node => node.id === activeNodeId);
+
+            if (!exists) {
+                activeNodeId = nodes[0] ? nodes[0].id : '';
+            }
         }
 
         /**
@@ -1360,13 +2058,31 @@
             const type = params.type;
             const baseTitle = params.baseTitle;
             const titleCounter = params.titleCounter;
+            const skipNumbering = !titleCounter || flowData.mode === 'single' || type === 'trigger' || type === 'output';
 
-            if (flowData.mode === 'single' || !titleCounter) {
+            if (skipNumbering) {
+                if (titleCounter && (type === 'trigger' || type === 'output')) {
+                    titleCounter[type] += 1;
+                }
+
                 return baseTitle;
             }
 
             titleCounter[type] += 1;
             return `${baseTitle} ${titleCounter[type]}`;
+        }
+
+        /**
+         * 计算节点标题。
+         * @param {Object} params - 节点参数
+         * @returns {string} 节点标题
+         */
+        function computeNodeTitle(params) {
+            const node = params.node;
+            const titleCounter = params.titleCounter;
+            const titleMap = { trigger: '触发器', connector: '连接器', script: '脚本处理', parallel: '并行节点', output: '数据输出' };
+
+            return getNumberedNodeTitle({ type: node.type, baseTitle: titleMap[node.type], titleCounter });
         }
 
         /**
@@ -1382,19 +2098,7 @@
          * @returns {void}
          */
         function updateNodeCount() {
-            const nodeCount = document.getElementById('nodeCount');
-
-            if (flowVersionData.versions.length === 0) {
-                nodeCount.textContent = '暂无版本';
-                return;
-            }
-
-            if (!flowData.mode) {
-                nodeCount.textContent = '未选择编排模式';
-                return;
-            }
-
-            nodeCount.textContent = `当前 ${getVisibleNodes().length} 个节点`;
+            return;
         }
 
         // ========================================
@@ -1511,24 +2215,25 @@
             const node = params.node;
             const index = params.index;
             const titleCounter = params.titleCounter;
+            const overrideTitle = params.overrideTitle;
 
             if (node.type === 'trigger') {
-                return renderTriggerCard({ node, titleCounter });
+                return renderTriggerCard({ node, titleCounter, overrideTitle });
             }
 
             if (node.type === 'connector') {
-                return renderConnectorCard({ node, index, scope: 'main', titleCounter });
+                return renderConnectorCard({ node, index, scope: 'main', titleCounter, overrideTitle });
             }
 
             if (node.type === 'script') {
-                return renderScriptCard({ node, index, titleCounter });
+                return renderScriptCard({ node, index, titleCounter, overrideTitle });
             }
 
             if (node.type === 'parallel') {
-                return renderParallelCard({ node, index, titleCounter });
+                return renderParallelCard({ node, index, titleCounter, overrideTitle });
             }
 
-            return renderOutputCard({ node, titleCounter });
+            return renderOutputCard({ node, titleCounter, overrideTitle });
         }
 
         /**
@@ -1595,7 +2300,7 @@
          */
         function renderTriggerCard(params) {
             const node = params.node;
-            const title = getNumberedNodeTitle({ type: 'trigger', baseTitle: '触发器', titleCounter: params.titleCounter });
+            const title = params.overrideTitle || getNumberedNodeTitle({ type: 'trigger', baseTitle: '触发器', titleCounter: params.titleCounter });
             const body = `
                 <div class="form-group">
                     <label class="form-label">触发方式</label>
@@ -1633,9 +2338,9 @@
             const node = params.node;
             const index = params.index;
             const scope = params.scope;
-            const title = scope === 'branch'
+            const title = params.overrideTitle || (scope === 'branch'
                 ? getBranchConnectorTitle()
-                : getNumberedNodeTitle({ type: 'connector', baseTitle: '连接器', titleCounter: params.titleCounter });
+                : getNumberedNodeTitle({ type: 'connector', baseTitle: '连接器', titleCounter: params.titleCounter }));
             const connector = CONNECTOR_DATA[node.connectorId];
             const version = getConnectorVersion(node);
             const connectorOptions = Object.values(CONNECTOR_DATA).map(connectorItem => `
@@ -1707,7 +2412,7 @@
         function renderScriptCard(params) {
             const node = params.node;
             const index = params.index;
-            const title = getNumberedNodeTitle({ type: 'script', baseTitle: '脚本处理', titleCounter: params.titleCounter });
+            const title = params.overrideTitle || getNumberedNodeTitle({ type: 'script', baseTitle: '脚本处理', titleCounter: params.titleCounter });
             const body = `
                 <div class="form-group">
                     <label class="form-label">TS脚本输入框</label>
@@ -1737,7 +2442,7 @@
          */
         function renderParallelCard(params) {
             const node = params.node;
-            const title = getNumberedNodeTitle({ type: 'parallel', baseTitle: '并行节点', titleCounter: params.titleCounter });
+            const title = params.overrideTitle || getNumberedNodeTitle({ type: 'parallel', baseTitle: '并行节点', titleCounter: params.titleCounter });
             const activeBranch = getActiveBranch(node);
             const tabsHtml = node.branches.map(branch => `
                 <button class="tab-btn ${branch.id === activeBranch.id ? 'active' : ''}" onclick="switchParallelBranch({ nodeId: '${node.id}', branchId: '${branch.id}' })">${escapeHtml(branch.label)}</button>
@@ -1775,7 +2480,7 @@
          */
         function renderOutputCard(params) {
             const node = params.node;
-            const title = getNumberedNodeTitle({ type: 'output', baseTitle: '数据输出', titleCounter: params.titleCounter });
+            const title = params.overrideTitle || getNumberedNodeTitle({ type: 'output', baseTitle: '数据输出', titleCounter: params.titleCounter });
             const body = `
                 <div class="form-group">
                     <label class="form-label">参数组装配置</label>
@@ -1841,10 +2546,57 @@
             }
 
             return `
-                <div class="insert-row">
-                    <button class="btn insert-btn" onclick="handleAddButtonClick(${index})">+ 添加节点</button>
+                <button class="flow-step-add" title="添加节点" onclick="handleAddButtonClick(${index})">+</button>
+            `;
+        }
+
+        /**
+         * 渲染步骤条。
+         * @param {Object} params - 步骤条参数
+         * @returns {string} 步骤条 HTML
+         */
+        function renderFlowStepper(params) {
+            const nodeMeta = params.nodeMeta;
+            const activeId = params.activeId;
+            const nodes = nodeMeta.map(item => item.node);
+            const iconMap = { trigger: '触', connector: '连', script: '脚', parallel: '并', output: '出' };
+            const parts = [];
+
+            nodeMeta.forEach((meta, index) => {
+                const stepHtml = `
+                    <button class="flow-step ${meta.node.id === activeId ? 'active' : ''}" onclick="selectActiveNode('${meta.node.id}')">
+                        <span class="step-index">${iconMap[meta.node.type] || index + 1}</span>
+                        <span>${escapeHtml(meta.title)}</span>
+                    </button>
+                `;
+                parts.push(stepHtml);
+
+                if (index < nodeMeta.length - 1) {
+                    const insertBtn = renderInsertButton({ nodes, index });
+
+                    if (insertBtn) {
+                        parts.push(insertBtn);
+                    } else {
+                        parts.push('<span class="flow-step-link"></span>');
+                    }
+                }
+            });
+
+            return `
+                <div class="flow-stepper-wrap">
+                    <div class="flow-stepper">${parts.join('')}</div>
                 </div>
             `;
+        }
+
+        /**
+         * 切换当前激活节点。
+         * @param {string} nodeId - 节点 ID
+         * @returns {void}
+         */
+        function selectActiveNode(nodeId) {
+            activeNodeId = nodeId;
+            renderWorkspace();
         }
 
         /**
@@ -1989,6 +2741,7 @@
             const node = type === 'connector' ? createConnectorNode() : createScriptNode();
 
             flowData.steps.splice(stepIndex, 0, node);
+            activeNodeId = node.id;
             closeInsertNodeModal();
             showToast({ message: '已添加节点' });
             renderWorkspace();
@@ -2000,7 +2753,15 @@
          * @returns {void}
          */
         function removeStep(stepIndex) {
+            const removingNode = flowData.steps[stepIndex];
             flowData.steps.splice(stepIndex, 1);
+
+            if (activeNodeId === removingNode.id) {
+                const visibleNodes = getVisibleNodes();
+                const fallback = visibleNodes[Math.max(0, stepIndex)] || visibleNodes[0];
+                activeNodeId = fallback ? fallback.id : '';
+            }
+
             showToast({ message: '已删除节点' });
             renderWorkspace();
         }
@@ -2820,23 +3581,6 @@
         // ========================================
 
         /**
-         * 预览流程数据。
-         * @returns {void}
-         */
-        function previewFlowData() {
-            document.getElementById('previewContent').textContent = JSON.stringify({ flowVersionData, flowData }, null, 2);
-            document.getElementById('previewModal').classList.add('active');
-        }
-
-        /**
-         * 关闭预览弹窗。
-         * @returns {void}
-         */
-        function closePreviewModal() {
-            document.getElementById('previewModal').classList.remove('active');
-        }
-
-        /**
          * 保存流程配置。
          * @returns {void}
          */
@@ -2845,20 +3589,278 @@
         }
 
         /**
-         * 执行调试入口。
+         * 打开更多配置抽屉。
          * @returns {void}
          */
-        function debugFlow() {
-            showToast({ message: '调试入口已触发，请在预览数据中查看当前配置' });
+        function openMoreConfigDrawer() {
+            const rateLimitInput = document.getElementById('rateLimitInput');
+            const rateLimitMaxText = document.getElementById('rateLimitMaxText');
+
+            rateLimitInput.max = APP_FLOW_CONFIG_LIMITS.rateLimitMax;
+            rateLimitMaxText.textContent = APP_FLOW_CONFIG_LIMITS.rateLimitMax;
+
+            renderCacheKeyList();
+            updateCacheKeyState();
+            document.getElementById('moreConfigDrawer').classList.add('active');
         }
 
         /**
-         * 展示版本详情。
+         * 关闭更多配置抽屉。
          * @returns {void}
          */
-        function showVersionDetail() {
-            const version = flowVersionData.versions.find(item => item.id === flowVersionData.currentVersion);
-            showToast({ message: version ? `当前版本：${version.name}，状态：${version.status}` : '暂无版本详情' });
+        function closeMoreConfigDrawer() {
+            document.getElementById('moreConfigDrawer').classList.remove('active');
+        }
+
+        /**
+         * 切换缓存配置显示。
+         * @param {boolean} enabled - 是否开启缓存
+         * @returns {void}
+         */
+        function toggleCacheConfig(enabled) {
+            document.getElementById('cacheConfig').style.display = enabled ? 'block' : 'none';
+        }
+
+        /**
+         * 渲染缓存 Key 列表。
+         * @returns {void}
+         */
+        function renderCacheKeyList() {
+            const cacheKeyList = document.getElementById('cacheKeyList');
+
+            if (cacheKeyList.children.length === 0) {
+                cacheKeyList.innerHTML = createCacheKeyItemHtml('');
+            }
+        }
+
+        /**
+         * 生成缓存 Key 单项 HTML。
+         * @param {string} selectedValue - 已选择的值
+         * @returns {string} 缓存 Key 单项 HTML
+         */
+        function createCacheKeyItemHtml(selectedValue) {
+            return `
+                <div class="cache-key-item">
+                    <select class="form-select cache-key-select" onchange="updateCacheKeyState()">
+                        ${getCacheKeyOptionsHtml(selectedValue)}
+                    </select>
+                    <button type="button" class="btn" onclick="removeCacheKeyItem(this)">删除</button>
+                </div>
+            `;
+        }
+
+        /**
+         * 获取缓存 Key 下拉选项 HTML。
+         * @param {string} selectedValue - 已选择的值
+         * @returns {string} 选项 HTML
+         */
+        function getCacheKeyOptionsHtml(selectedValue) {
+            const options = getCacheKeyOptions();
+            const optionHtml = options.map(option => `
+                <option value="${option}" ${option === selectedValue ? 'selected' : ''}>${option}</option>
+            `).join('');
+
+            return `<option value="">从触发器入参中选择</option>${optionHtml}`;
+        }
+
+        /**
+         * 获取缓存 Key 可选值列表。
+         * @returns {Array<string>} 可选值列表
+         */
+        function getCacheKeyOptions() {
+            const params = flowData.trigger.inputParams;
+            const list = [];
+
+            ['header', 'body', 'query'].forEach(position => {
+                (params[position] || []).forEach(item => {
+                    if (item.name && list.indexOf(item.name) === -1) {
+                        list.push(item.name);
+                    }
+                });
+            });
+
+            return list;
+        }
+
+        /**
+         * 新增缓存 Key 配置项。
+         * @returns {void}
+         */
+        function addCacheKeyItem() {
+            const cacheKeyList = document.getElementById('cacheKeyList');
+            cacheKeyList.insertAdjacentHTML('beforeend', createCacheKeyItemHtml(''));
+            updateCacheKeyState();
+        }
+
+        /**
+         * 删除缓存 Key 配置项。
+         * @param {HTMLElement} btn - 删除按钮
+         * @returns {void}
+         */
+        function removeCacheKeyItem(btn) {
+            const item = btn.closest('.cache-key-item');
+
+            if (item) {
+                item.remove();
+            }
+
+            updateCacheKeyState();
+        }
+
+        /**
+         * 更新缓存 Key 选项禁用与拼接预览。
+         * @returns {void}
+         */
+        function updateCacheKeyState() {
+            const selects = document.querySelectorAll('#cacheKeyList .cache-key-select');
+            const selectedValues = Array.from(selects).map(select => select.value).filter(value => value !== '');
+
+            selects.forEach(select => {
+                Array.from(select.options).forEach(option => {
+                    const taken = option.value !== '' && option.value !== select.value && selectedValues.indexOf(option.value) !== -1;
+                    option.disabled = taken;
+                });
+            });
+
+            const options = getCacheKeyOptions();
+            const addButton = document.getElementById('cacheKeyAddButton');
+            addButton.style.display = selectedValues.length >= options.length && options.length > 0 ? 'none' : 'inline-flex';
+
+            const preview = document.getElementById('cacheKeyPreview');
+            preview.textContent = selectedValues.length === 0 ? '-' : selectedValues.join('_');
+        }
+
+        /**
+         * 校验并保存更多配置。
+         * @returns {void}
+         */
+        function saveMoreConfig() {
+            const rateLimit = parseInt(document.getElementById('rateLimitInput').value, 10);
+            const cacheEnabled = document.getElementById('cacheEnabled').checked;
+            const cacheTime = parseInt(document.getElementById('cacheTime').value, 10);
+            const cacheKeySelects = document.querySelectorAll('#cacheKeyList .cache-key-select');
+            const cacheKeys = Array.from(cacheKeySelects).map(select => select.value).filter(value => value !== '');
+
+            if (!Number.isInteger(rateLimit) || rateLimit < 1) {
+                showToast({ message: '请输入大于0的限流值', type: 'error' });
+                return;
+            }
+
+            if (rateLimit > APP_FLOW_CONFIG_LIMITS.rateLimitMax) {
+                showToast({ message: `限流值不能超过当前应用上限${APP_FLOW_CONFIG_LIMITS.rateLimitMax}`, type: 'error' });
+                return;
+            }
+
+            if (cacheEnabled) {
+                if (!Number.isInteger(cacheTime) || cacheTime < 1 || cacheTime > APP_FLOW_CONFIG_LIMITS.cacheTimeMax) {
+                    showToast({ message: '开启缓存后需要配置有效缓存时间', type: 'error' });
+                    return;
+                }
+
+                if (cacheKeys.length === 0) {
+                    showToast({ message: '开启缓存后至少选择一个缓存Key', type: 'error' });
+                    return;
+                }
+
+                if (new Set(cacheKeys).size !== cacheKeys.length) {
+                    showToast({ message: '缓存Key每个只能选择一次', type: 'error' });
+                    return;
+                }
+            }
+
+            closeMoreConfigDrawer();
+            showToast({ message: '更多配置已保存' });
+        }
+
+        /**
+         * 打开调试抽屉。
+         * @returns {void}
+         */
+        function openDebugDrawer() {
+            document.getElementById('debugFlowName').textContent = document.getElementById('flowName').textContent;
+            renderDebugInputs();
+            document.getElementById('debugOutput').innerHTML = '<span style="color: var(--text-tertiary);">点击"立即调试"查看执行结果...</span>';
+            document.getElementById('debugDrawer').classList.add('active');
+        }
+
+        /**
+         * 关闭调试抽屉。
+         * @returns {void}
+         */
+        function closeDebugDrawer() {
+            document.getElementById('debugDrawer').classList.remove('active');
+        }
+
+        /**
+         * 渲染调试入参 schema 列表。
+         * @returns {void}
+         */
+        function renderDebugInputs() {
+            ['header', 'body', 'query'].forEach(position => {
+                const container = document.getElementById(`debug-input-params-${position}`);
+                const params = (flowData.trigger.inputParams[position] || []);
+
+                if (params.length === 0) {
+                    container.innerHTML = '<div class="schema-empty">暂无入参</div>';
+                    return;
+                }
+
+                container.innerHTML = params.map(param => `
+                    <div class="schema-row">
+                        <span class="param-name">${escapeHtml(param.name || '-')}</span>
+                        <span class="param-type">${escapeHtml(param.type || '')}</span>
+                        <input class="form-input" data-param="${escapeHtml(param.name || '')}" placeholder="请输入${escapeHtml(param.name || '参数值')}" />
+                    </div>
+                `).join('');
+            });
+        }
+
+        /**
+         * 切换调试入参 tab。
+         * @param {string} tabKey - tab 键
+         * @returns {void}
+         */
+        function switchDebugInputTab(tabKey) {
+            const tabs = document.querySelectorAll('#debugInputTabs .tab-btn');
+            const panels = document.querySelectorAll('#debugInputContent .tab-panel');
+
+            tabs.forEach(btn => {
+                const matched = btn.textContent.indexOf(tabKey === 'header' ? 'HTTP请求头' : tabKey === 'body' ? 'HTTP请求体' : 'URL查询参数') !== -1;
+                btn.classList.toggle('active', matched);
+            });
+
+            panels.forEach(panel => {
+                panel.classList.toggle('active', panel.getAttribute('data-tab') === tabKey);
+            });
+        }
+
+        /**
+         * 执行调试。
+         * @returns {void}
+         */
+        function executeDebug() {
+            const output = document.getElementById('debugOutput');
+            const inputs = document.querySelectorAll('#debugInputContent .form-input');
+            const params = {};
+            inputs.forEach(input => {
+                const key = input.getAttribute('data-param');
+                if (key) {
+                    params[key] = input.value;
+                }
+            });
+
+            output.innerHTML = '<span style="color: var(--primary-color);">正在执行调试...</span>';
+
+            setTimeout(function () {
+                const result = {
+                    success: true,
+                    params,
+                    result: '这是调试执行的输出结果',
+                    executedAt: new Date().toISOString()
+                };
+                output.textContent = JSON.stringify(result, null, 2);
+                showToast({ message: '调试执行成功' });
+            }, 800);
         }
 
         /**
