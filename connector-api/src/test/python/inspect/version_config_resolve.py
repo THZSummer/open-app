@@ -325,7 +325,7 @@ try:
         headers={"X-Sys-Token": "test-token"}
     )
 
-    if resp:
+    if resp is not None:
         check("IT-VER-001 HTTP 200", resp.status_code == 200,
               f"实际: {resp.status_code}")
         body = resp.json()

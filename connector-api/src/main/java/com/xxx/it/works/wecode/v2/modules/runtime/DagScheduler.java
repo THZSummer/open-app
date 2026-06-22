@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.*;
@@ -179,6 +180,7 @@ public class DagScheduler {
         for (String targetId : targetIds) {
             // 每个分支独立执行, 失败不影响其他分支
             Mono<Void> branch = executeDag(targetId, nodeMap, adjacencyMap, ctx, startTime)
+                    .subscribeOn(Schedulers.parallel())
                     .onErrorResume(e -> {
                         log.warn("Parallel branch {} failed: {}", targetId, e.getMessage());
                         return Mono.empty();
@@ -193,8 +195,8 @@ public class DagScheduler {
             return branches.get(0);
         }
 
-        // 等待所有分支完成
-        return Flux.merge(branches).then();
+        // 等待所有分支完成, publishOn 避免 parallel scheduler 线程争用
+        return Flux.merge(branches).then().publishOn(Schedulers.boundedElastic());
     }
 
     /**

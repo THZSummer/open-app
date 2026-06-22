@@ -1,5 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
@@ -9,6 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 /**
@@ -35,13 +40,19 @@ public class FlowRuntimeEngine {
     private final VersionConfigResolver versionConfigResolver;
     private final DagScheduler dagScheduler;
     private final FlowConfigParser flowConfigParser;
+    private final FlowCacheManager cacheManager;
+    private final ObjectMapper objectMapper;
 
     public FlowRuntimeEngine(VersionConfigResolver versionConfigResolver,
                               DagScheduler dagScheduler,
-                              FlowConfigParser flowConfigParser) {
+                              FlowConfigParser flowConfigParser,
+                              FlowCacheManager cacheManager,
+                              ObjectMapper objectMapper) {
         this.versionConfigResolver = versionConfigResolver;
         this.dagScheduler = dagScheduler;
         this.flowConfigParser = flowConfigParser;
+        this.cacheManager = cacheManager;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -73,11 +84,28 @@ public class FlowRuntimeEngine {
                     // Phase 5: 检查是否有缓存配置, 有则查缓存
                     FlowConfig flowConfig = resolved.getFlowConfig();
                     if (flowConfig.getCacheTtl() != null && flowConfig.getCacheTtl() > 0) {
-                        // TODO: 缓存检查逻辑 (TASK-010 FlowCacheManager 实现后对接)
-                        log.debug("Cache enabled but FlowCacheManager not yet integrated (TASK-010), proceeding without cache");
+                        String cacheKey = buildCacheKey(flowId, ctx);
+                        return cacheManager.checkCache(flowId, cacheKey)
+                                .flatMap(cachedResult -> {
+                                    // 缓存命中: 直接返回缓存结果
+                                    log.info("Cache hit: flowId={}, cacheKey={}", flowId, cacheKey);
+                                    cachedResult.setCacheHit(true);
+                                    return Mono.just(cachedResult);
+                                })
+                                .switchIfEmpty(
+                                    // 缓存未命中: 执行 DAG → 回写缓存
+                                    dagScheduler.schedule(resolved, ctx)
+                                            .map(updatedCtx -> buildResult(resolved, updatedCtx, startTime))
+                                            .flatMap(result -> {
+                                                result.setCacheHit(false);
+                                                return cacheManager.writeCache(flowId, cacheKey, result,
+                                                        flowConfig.getCacheTtl())
+                                                        .thenReturn(result);
+                                            })
+                                );
                     }
 
-                    // Phase 5: DAG 调度执行
+                    // Phase 5: 无缓存配置, 直接 DAG 调度执行
                     return dagScheduler.schedule(resolved, ctx)
                             .map(updatedCtx -> buildResult(resolved, updatedCtx, startTime));
                 })
@@ -181,5 +209,36 @@ public class FlowRuntimeEngine {
         result.setErrorInfo(errorInfo);
 
         return result;
+    }
+
+    /**
+     * 构建缓存 key (基于 flowId + context 关键参数的 SHA-256 哈希)
+     */
+    private String buildCacheKey(Long flowId, ExecutionContext ctx) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(("flow:" + flowId).getBytes(StandardCharsets.UTF_8));
+            if (ctx.getTriggerData() != null) {
+                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerData()));
+            }
+            if (ctx.getTriggerHeaders() != null) {
+                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerHeaders()));
+            }
+            if (ctx.getTriggerQueryParams() != null) {
+                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerQueryParams()));
+            }
+            byte[] hash = digest.digest();
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 always available in JVM
+            return String.valueOf(Objects.hash(flowId, ctx.getExecutionId()));
+        } catch (Exception e) {
+            log.warn("Failed to compute cache key: {}", e.getMessage());
+            return String.valueOf(Objects.hash(flowId, ctx.getExecutionId()));
+        }
     }
 }

@@ -259,7 +259,7 @@ try:
         orchestration=build_script_orch(script_001)
     )
     resp = trigger_invoke(fid_001, body={"name": "world", "value": 21})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("X-Status 为 0",
@@ -294,7 +294,7 @@ try:
         orchestration=build_script_orch(script_002)
     )
     resp = trigger_invoke(fid_002, body={"message": "test_message"})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("echo == test_message",
@@ -328,7 +328,7 @@ try:
     # Use a 5s HTTP timeout — server-side timeout is 2s, so response
     # should arrive before the HTTP layer gives up.
     resp = trigger_invoke(fid_003, body={"name": "test", "value": 1}, timeout=5)
-    if resp:
+    if resp is not None:
         check("脚本超时应返回错误状态",
               resp.status_code != 200 or resp.headers.get("X-Status") == "1",
               f"status={resp.status_code}, X-Status={resp.headers.get('X-Status')}")
@@ -361,7 +361,7 @@ try:
         orchestration=build_script_orch(script_004)
     )
     resp = trigger_invoke(fid_004, body={"name": "test", "value": 1})
-    if resp:
+    if resp is not None:
         check("语法错误应返回错误状态",
               resp.status_code != 200 or resp.headers.get("X-Status") == "1",
               f"status={resp.status_code}, X-Status={resp.headers.get('X-Status')}")
@@ -396,7 +396,7 @@ try:
         orchestration=build_script_orch(script_005)
     )
     resp = trigger_invoke(fid_005, body={"name": "test", "value": 1})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("sum == 6",

@@ -8,6 +8,8 @@ import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.FlowVersionApprovalService;
+import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
+import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
 import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
@@ -50,6 +52,7 @@ public class FlowVersionService {
     private final ObjectMapper objectMapper;
     private final FlowPublishValidator publishValidator;
     private final FlowVersionApprovalService approvalService;
+    private final AuditLogService auditLogService;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
@@ -341,6 +344,21 @@ public class FlowVersionService {
 
         log.info("Flow version submitted for approval: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
+
+        // 记录审计日志（FR-046）
+        try {
+            OperateLog auditLog = new OperateLog();
+            auditLog.setOperateType("PUBLISH");
+            auditLog.setOperateObject("flow_version:" + versionId);
+            auditLog.setOperateDescCn("提交连接流版本发布审批 - " + flow.getNameCn() + " v" + version.getVersionNumber());
+            auditLog.setOperateDescEn("Submit flow version publish approval - " + flow.getNameEn() + " v" + version.getVersionNumber());
+            auditLog.setOperateUser(currentUser);
+            auditLog.setAppId(String.valueOf(appId));
+            auditLog.setStatus(1);
+            auditLogService.saveAsync(auditLog);
+        } catch (Exception e) {
+            log.warn("Failed to write audit log for flow publish: flowId={}, versionId={}", flowId, versionId, e);
+        }
 
         SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         FlowPublishResponse response = FlowPublishResponse.builder()

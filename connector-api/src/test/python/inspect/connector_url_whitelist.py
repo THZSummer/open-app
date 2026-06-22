@@ -337,7 +337,7 @@ try:
     )
 
     resp = trigger_invoke(fid_001)
-    if resp:
+    if resp is not None:
         # 白名单应放行；如果下游可达 → HTTP 200；如果下游不可达 → 下游错误，而非白名单违规
         check("[IT-WL-001] 非白名单违规",
               not is_whitelist_violation(resp),
@@ -390,7 +390,7 @@ try:
     )
 
     resp = trigger_invoke(fid_002)
-    if resp:
+    if resp is not None:
         # 应被白名单拦截 — 返回错误
         check("[IT-WL-002] 白名单拦截生效",
               is_whitelist_violation(resp) or resp.status_code >= 400,
@@ -430,7 +430,7 @@ try:
     )
 
     resp = trigger_invoke(fid_003)
-    if resp:
+    if resp is not None:
         # 空白名单不应拦截任何 URL
         check("[IT-WL-003] 非白名单违规",
               not is_whitelist_violation(resp),
@@ -484,7 +484,7 @@ try:
     )
 
     resp = trigger_invoke(fid_004a)
-    if resp:
+    if resp is not None:
         # httpbin.org 应匹配多模式中的第一条，放行
         check("[IT-WL-004a] 非白名单违规（httpbin.org 应匹配）",
               not is_whitelist_violation(resp),
@@ -522,7 +522,7 @@ try:
     )
 
     resp = trigger_invoke(fid_004b)
-    if resp:
+    if resp is not None:
         # evil.com 不应匹配任何模式，应被拦截
         check("[IT-WL-004b] 白名单拦截生效（evil.com 不匹配）",
               is_whitelist_violation(resp) or resp.status_code >= 400,

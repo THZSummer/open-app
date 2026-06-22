@@ -221,13 +221,13 @@ def build_conn_config():
 
 
 # ═══════════════════════════════════════════════════════════
-# Orchestration Builder — with cache config on connector node
+# Orchestration Builder — cache config in top-level flowConfig
 # ═══════════════════════════════════════════════════════════
 
-def build_orch(connector_version_id, cache_ttl=None):
+def build_orch(connector_version_id, cache_ttl=60):
     """构建 trigger → connector → exit 编排
 
-    cache_ttl: 缓存 TTL（秒），None 表示不启用缓存
+    cache_ttl: 缓存 TTL（秒），默认 60；None 表示不启用缓存
     """
     connector_data = {
         "labelCn": "缓存连接器",
@@ -239,13 +239,16 @@ def build_orch(connector_version_id, cache_ttl=None):
             "body": {"type": "object", "properties": {}}
         }
     }
-    if cache_ttl is not None:
-        connector_data["cacheConfig"] = {
-            "enabled": True,
-            "ttl": cache_ttl
-        }
 
-    return {
+    # 构建 flowConfig (顶层, FlowRuntimeEngine 从此字段读取缓存配置)
+    # FlowConfigParser 直接从 flowConfig 根读取 cacheTtl / cacheKeyTemplate
+    flow_config = {}
+    if cache_ttl is not None:
+        flow_config["cacheTtl"] = cache_ttl
+        flow_config["cacheKeyTemplate"] = "cache_test_${.input.userId}"
+
+    orch = {
+        "flowConfig": flow_config,
         "nodes": [
             {
                 "id": "node_trigger", "type": "trigger",
@@ -302,6 +305,7 @@ def build_orch(connector_version_id, cache_ttl=None):
              "type": "smoothstep", "data": {"businessType": "default"}}
         ]
     }
+    return orch
 
 
 # ═══════════════════════════════════════════════════════════
@@ -396,7 +400,7 @@ try:
     _global_counter[0] = 0
     resp, elapsed = trigger_invoke(fid_002)
 
-    if resp:
+    if resp is not None:
         check("[IT-CACHE-002] HTTP 200",
               resp.status_code == 200,
               f"status={resp.status_code}")

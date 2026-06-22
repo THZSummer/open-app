@@ -1,5 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.flow;
 
+import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
+import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -91,6 +93,7 @@ public class FlowController {
     /**
      * #20 编辑连接流基本信息
      */
+    @AuditLog(value = OperateEnum.UPDATE_FLOW, resourceIdParam = "flowId")
     @PutMapping("/{flowId}")
     @Operation(summary = "#20 更新连接流", description = "更新名称和描述信息")
     public ApiResponse<Void> updateFlow(

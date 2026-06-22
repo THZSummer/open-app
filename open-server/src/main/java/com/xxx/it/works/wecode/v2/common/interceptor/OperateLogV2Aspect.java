@@ -89,6 +89,8 @@ public class OperateLogV2Aspect {
         ctx.op = auditLog.value();
         try {
             ctx.resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
+            log.info("[OPERATE_LOG] Phase1: op={}, resourceIdParam={}, extractedId={}", 
+                    ctx.op, auditLog.resourceIdParam(), ctx.resourceId);
 
             if ((ctx.op.needsBeforeData() || auditLog.appIdSource() == AppIdSourceEnum.ENTITY)
                     && ctx.resourceId != null) {
@@ -110,10 +112,31 @@ public class OperateLogV2Aspect {
         int status = 1;
         try {
             result = joinPoint.proceed();
+            // CREATE 类操作：从返回值中提取 resourceId
+            if (result != null && ctx.resourceId == null) {
+                try {
+                    if (result instanceof ApiResponse<?> apiResp) {
+                        Object data = apiResp.getData();
+                        if (data != null) {
+                            JsonNode node = objectMapper.valueToTree(data);
+                            JsonNode idNode = node.get("connectorId");
+                            if (idNode == null) idNode = node.get("id");
+                            if (idNode == null) idNode = node.get("flowId");
+                            if (idNode != null && idNode.isTextual()) {
+                                ctx.resourceId = Long.parseLong(idNode.asText());
+                            } else if (idNode != null && idNode.isNumber()) {
+                                ctx.resourceId = idNode.asLong();
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // 提取失败不影响主流程
+                }
+            }
         } catch (Throwable ex) {
             status = 0;
             // 主操作失败，记录 status=0 的审计日志（saveOperateLog 内部有 try-catch）
-            saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, null, status);
+            saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, null, status, ctx.resourceId);
             throw ex; // 重新抛出，由全局异常处理器处理
         }
 
@@ -132,7 +155,7 @@ public class OperateLogV2Aspect {
         }
 
         // Phase 4: 保存审计日志
-        saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, afterData, status);
+        saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, afterData, status, ctx.resourceId);
 
         return result;
     }
@@ -145,14 +168,20 @@ public class OperateLogV2Aspect {
      * <p>整体包裹 try-catch，任何异常仅记录日志，不影响主业务</p>
      */
     private void saveOperateLog(OperateEnum op, String appId, ProceedingJoinPoint joinPoint,
-                                String beforeData, String afterData, int status) {
+                                String beforeData, String afterData, int status, Long resourceId) {
         try {
             OperateLog logEntry = new OperateLog();
 
             // 基础字段（从 OperateEnum 统一获取）
             logEntry.setAppId(appId);
             logEntry.setOperateType(op.getOperateType());
-            logEntry.setOperateObject(op.getOperateObjectCn());
+            // operate_object 格式: "连接器:connectorId" 或 "连接器"（如果 resourceId 为 null）
+            String operateObject = op.getOperateObjectCn();
+            if (resourceId != null) {
+                operateObject = operateObject + ":" + resourceId;
+            }
+            log.info("[OPERATE_LOG] resourceId={}, operateObject={}", resourceId, operateObject);
+            logEntry.setOperateObject(operateObject);
             logEntry.setOperateDescCn(op.getDescCn());
             logEntry.setOperateDescEn(op.getDescEn());
 

@@ -9,6 +9,8 @@ import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.Connector;
+import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
+import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
 import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper;
@@ -48,6 +50,7 @@ public class ConnectorVersionService {
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
     private final IdGeneratorStrategy idGenerator;
+    private final AuditLogService auditLogService;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -315,6 +318,21 @@ public class ConnectorVersionService {
             connector.setLastUpdateBy(currentUser);
             connectorMapper.update(connector);
             log.info("First version published, connector status -> AVAILABLE: connectorId={}", connectorId);
+        }
+
+        // 记录审计日志（FR-046）
+        try {
+            OperateLog auditLog = new OperateLog();
+            auditLog.setOperateType("PUBLISH");
+            auditLog.setOperateObject("connector_version:" + versionId);
+            auditLog.setOperateDescCn("发布连接器版本 - " + connector.getNameCn() + " v" + version.getVersionNumber());
+            auditLog.setOperateDescEn("Publish connector version - " + connector.getNameEn() + " v" + version.getVersionNumber());
+            auditLog.setOperateUser(currentUser);
+            auditLog.setAppId(String.valueOf(appId));
+            auditLog.setStatus(1);
+            auditLogService.saveAsync(auditLog);
+        } catch (Exception e) {
+            log.warn("Failed to write audit log for connector publish: connectorId={}, versionId={}", connectorId, versionId, e);
         }
 
         log.info("Version published: connectorId={}, versionId={}, versionNumber={}",

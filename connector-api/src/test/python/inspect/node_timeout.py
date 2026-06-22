@@ -302,7 +302,7 @@ try:
     )
 
     resp, elapsed = trigger_invoke(fid_001, timeout=10)
-    if resp:
+    if resp is not None:
         check("[IT-TIMEOUT-001] 执行应在 ~1s 超时",
               elapsed < 3.0,
               f"实际耗时: {elapsed:.2f}s (期望 < 3s)")
@@ -339,7 +339,7 @@ try:
     )
 
     resp, elapsed = trigger_invoke(fid_002, timeout=15)
-    if resp:
+    if resp is not None:
         check("[IT-TIMEOUT-002] HTTP 200 或下游错误",
               resp.status_code in (200, 500),
               f"status={resp.status_code}")

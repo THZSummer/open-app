@@ -3,10 +3,12 @@ package com.xxx.it.works.wecode.v2.modules.runtime.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
+import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
+import io.netty.channel.ChannelOption;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
@@ -22,8 +24,11 @@ import com.xxx.it.works.wecode.v2.modules.runtime.ParallelBranchExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.VersionConfigResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -79,7 +84,11 @@ public class RuntimeConfig {
 
     @Bean
     public WebClient webClient() {
+        HttpClient httpClient = HttpClient.create()
+                .responseTimeout(Duration.ofSeconds(30))
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
         return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .codecs(config -> config
                         .defaultCodecs()
                         .maxInMemorySize(16 * 1024 * 1024)) // 16MB
@@ -125,7 +134,10 @@ public class RuntimeConfig {
     @Bean
     public FlowRuntimeEngine flowRuntimeEngine(VersionConfigResolver versionConfigResolver,
                                                  DagScheduler dagScheduler,
-                                                 FlowConfigParser flowConfigParser) {
-        return new FlowRuntimeEngine(versionConfigResolver, dagScheduler, flowConfigParser);
+                                                 FlowConfigParser flowConfigParser,
+                                                 FlowCacheManager cacheManager,
+                                                 ObjectMapper objectMapper) {
+        return new FlowRuntimeEngine(versionConfigResolver, dagScheduler, flowConfigParser,
+                cacheManager, objectMapper);
     }
 }

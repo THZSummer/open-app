@@ -3,9 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.ratelimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -14,17 +12,17 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 
 /**
- * 入站请求限流过滤器 (connector-api) — Redis Token Bucket
+ * 入站请求限流过滤器 (connector-api) — Redis INCR + EXPIRE
  * <p>
  * 取代旧的 Bucket4j 本地限流, 基于 Redis 实现分布式限流。
  * 支持两种模式:
  * <ul>
- *   <li>QPS 模式: Redis Lua Token Bucket, 按秒粒度限流</li>
+ *   <li>QPS 模式: Redis INCR + EXPIRE, 按分钟粒度限流</li>
  *   <li>Concurrency 模式: Redis INCR/DECR, 控制同时在途请求数</li>
  * </ul>
  * </p>
@@ -39,13 +37,13 @@ public class InboundRateLimiter implements WebFilter {
     private static final Logger log = LoggerFactory.getLogger(InboundRateLimiter.class);
 
     /** Redis Key 前缀: QPS */
-    private static final String QPS_KEY_PREFIX = "cp:ratelimit:qps:";
+    private static final String QPS_KEY_PREFIX = "rate_limit:";
 
     /** Redis Key 前缀: 并发 */
     private static final String CONCURRENCY_KEY_PREFIX = "cp:ratelimit:concurrency:";
 
-    /** 限流 Key TTL (秒) — QPS 桶的存活时间 */
-    private static final int QPS_KEY_TTL_SECONDS = 2;
+    /** 限流 Key TTL (秒) — QPS 分钟桶的存活时间 */
+    private static final int QPS_KEY_TTL_SECONDS = 60;
 
     /** 并发 Key TTL (秒) — 防止异常情况下的 key 泄漏 */
     private static final int CONCURRENCY_KEY_TTL_SECONDS = 300;
@@ -56,18 +54,10 @@ public class InboundRateLimiter implements WebFilter {
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final RateLimitConfigReader rateLimitConfigReader;
 
-    /** Token Bucket Lua 脚本 */
-    private final DefaultRedisScript<Long> tokenBucketScript;
-
     public InboundRateLimiter(ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
-                               RateLimitConfigReader rateLimitConfigReader) {
+                                RateLimitConfigReader rateLimitConfigReader) {
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.rateLimitConfigReader = rateLimitConfigReader;
-
-        // 加载 Lua 脚本
-        this.tokenBucketScript = new DefaultRedisScript<>();
-        this.tokenBucketScript.setLocation(new ClassPathResource("lua/rate_limit_token_bucket.lua"));
-        this.tokenBucketScript.setResultType(Long.class);
     }
 
     @Override
@@ -93,7 +83,7 @@ public class InboundRateLimiter implements WebFilter {
                 .flatMap(config -> applyRateLimit(exchange, chain, flowId, config))
                 .onErrorResume(e -> {
                     // Redis 不可用或配置读取失败 → 降级放行
-                    log.warn("Rate limit check degraded for flowId={}: {}", flowId, e.getMessage());
+                    log.warn("Rate limit check degraded for flowId={}", flowId, e);
                     return chain.filter(exchange);
                 });
     }
@@ -112,28 +102,36 @@ public class InboundRateLimiter implements WebFilter {
     }
 
     /**
-     * QPS 限流: Redis Lua Token Bucket
+     * QPS 限流: Redis INCR + EXPIRE (分钟粒度)
      */
     private Mono<Void> applyQpsLimit(ServerWebExchange exchange, WebFilterChain chain,
-                                      String flowId, RateLimitConfig config) {
-        long currentSecond = Instant.now().getEpochSecond();
-        String key = QPS_KEY_PREFIX + flowId + ":" + currentSecond;
-        List<String> keys = Collections.singletonList(key);
+                                       String flowId, RateLimitConfig config) {
+        // 分钟桶: rate_limit:{flowId}:{minute_bucket}
+        String minuteBucket = LocalDateTime.now()
+                .truncatedTo(ChronoUnit.MINUTES)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
+        String key = QPS_KEY_PREFIX + flowId + ":" + minuteBucket;
 
         int maxQps = config.getMaxQps();
 
-        return reactiveRedisTemplate.execute(tokenBucketScript, keys,
-                        String.valueOf(maxQps), String.valueOf(QPS_KEY_TTL_SECONDS))
-                .next()  // Flux<Long> → Mono<Long>
-                .flatMap(result -> {
-                    if (result != null && result == 1L) {
+        return reactiveRedisTemplate.opsForValue().increment(key)
+                .flatMap(current -> {
+                    // 首次使用设置 TTL
+                    if (current == 1) {
+                        return reactiveRedisTemplate.expire(key, Duration.ofSeconds(QPS_KEY_TTL_SECONDS))
+                                .thenReturn(current);
+                    }
+                    return Mono.just(current);
+                })
+                .flatMap(current -> {
+                    if (current <= maxQps) {
                         return chain.filter(exchange);
                     } else {
-                        log.warn("QPS rate limit exceeded: flowId={}, maxQps={}", flowId, maxQps);
+                        log.warn("QPS rate limit exceeded: flowId={}, current={}, maxQps={}",
+                                flowId, current, maxQps);
                         return writeRateLimitResponse(exchange, flowId);
                     }
-                })
-                .switchIfEmpty(chain.filter(exchange)); // Redis script returned empty, pass through
+                });
     }
 
     /**
@@ -162,8 +160,7 @@ public class InboundRateLimiter implements WebFilter {
                                     reactiveRedisTemplate.opsForValue().decrement(key)
                                             .subscribe(
                                                     v -> {},
-                                                    e -> log.warn("Failed to decrement concurrency key for flowId={}: {}",
-                                                            flowId, e.getMessage())
+                                                    e -> log.warn("Failed to decrement concurrency key for flowId={}", flowId, e)
                                             );
                                 });
                     } else {

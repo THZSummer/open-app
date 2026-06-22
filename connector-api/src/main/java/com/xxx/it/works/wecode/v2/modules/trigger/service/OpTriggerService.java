@@ -1,7 +1,11 @@
 package com.xxx.it.works.wecode.v2.modules.trigger.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
+import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
@@ -17,8 +21,10 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,6 +66,8 @@ public class OpTriggerService {
     private final AuthValidatorRegistry authValidatorRegistry;
     private final UrlWhitelistValidator urlWhitelistValidator;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
+    private final OpFlowReadRepository flowReadRepository;
+    private final OpConnectorVersionReadRepository connectorVersionReadRepository;
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final CacheToggle cacheToggle;
 
@@ -69,6 +77,8 @@ public class OpTriggerService {
             UrlWhitelistValidator urlWhitelistValidator,
             ReactiveSequentialExecutor executor,
             OpFlowVersionReadRepository flowVersionReadRepository,
+            OpFlowReadRepository flowReadRepository,
+            OpConnectorVersionReadRepository connectorVersionReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
             CacheToggle cacheToggle) {
         this.objectMapper = objectMapper;
@@ -76,20 +86,40 @@ public class OpTriggerService {
         this.urlWhitelistValidator = urlWhitelistValidator;
         this.executor = executor;
         this.flowVersionReadRepository = flowVersionReadRepository;
+        this.flowReadRepository = flowReadRepository;
+        this.connectorVersionReadRepository = connectorVersionReadRepository;
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.cacheToggle = cacheToggle;
     }
 
     /**
-     * 加载流版本配置（带 Redis 缓存 read-through）
+     * 加载流版本配置（优先使用已部署版本, 带 Redis 缓存 read-through）
      * <p>
+     * FR-043: 先加载 Flow entity 检查 deployed_version_id.
+     * 如果已设置, 使用 findById() 加载特定版本; 否则回退到 findByFlowId().
      * 缓存 Key: {@code cp:flow:config:{flowId}}, TTL 120s.
-     * 命中时用缓存的 orchestrationConfig 重建最小 entity, 跳过 R2DBC.
-     * 未命中时 R2DBC 查询 → 回填 Redis.
      * {@code connector.cache.enabled=false} 时直接穿透 R2DBC.
      * </p>
      */
     private Mono<FlowVersionEntity> loadFlowVersion(Long flowId) {
+        return flowReadRepository.findById(flowId)
+                .flatMap(flow -> {
+                    Long deployedVersionId = flow.getDeployedVersionId();
+                    if (deployedVersionId != null) {
+                        log.debug("Flow {} has deployed_version_id={}, loading specific version",
+                                flowId, deployedVersionId);
+                        return flowVersionReadRepository.findById(deployedVersionId);
+                    }
+                    // 未设置部署版本, 回退到按 flowId 查询
+                    return loadFlowVersionByFlowId(flowId);
+                })
+                .switchIfEmpty(loadFlowVersionByFlowId(flowId));
+    }
+
+    /**
+     * 按 flowId 加载版本配置（带缓存 read-through）
+     */
+    private Mono<FlowVersionEntity> loadFlowVersionByFlowId(Long flowId) {
         if (!cacheToggle.isEnabled()) {
             return flowVersionReadRepository.findByFlowId(flowId);
         }
@@ -185,10 +215,7 @@ public class OpTriggerService {
                         validateInputContractSections(inputContract, headers, queryParams, triggerData);
                     }
 
-                    // 7.5 校验 connector 节点 URL 白名单
-                    List<String> urlWhitelist = (List<String>) nodeData.get("urlWhitelist");
-                    validateConnectorUrlWhitelist(nodes, urlWhitelist);
-
+                    // 7.5 校验 connector 节点 URL 白名单 (FR-015: 从 connector connection_config 读取)
                     // 8. 构建执行上下文
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(triggerData);
@@ -208,9 +235,10 @@ public class OpTriggerService {
                     triggerNodeCtx.setStatus("success");
                     context.setNodeContext(triggerNodeCtx);
 
-                    // 10. 执行连接流
+                    // 10. 异步校验 URL 白名单 → 执行连接流
                     String flowIdStr = String.valueOf(flowId);
-                    return executor.execute(context, flowVersion.getOrchestrationConfig())
+                    return validateConnectorUrlWhitelist(nodes)
+                            .then(executor.execute(context, flowVersion.getOrchestrationConfig()))
                             .map(result -> buildTransparentResponse(flowIdStr, result));
                 })
                 .onErrorResume(e -> {
@@ -308,7 +336,18 @@ public class OpTriggerService {
             }
         }
 
-        r.getPlatformHeaders().put("X-Cache-Status", "0"); // 当前未实现缓存
+        r.getPlatformHeaders().put("X-Cache-Status", result.isCacheHit() ? "1" : "0");
+
+        // v5.9: set proper HTTP status for failures (was always 200)
+        if (execStatus != 0) {
+            String xCode = r.getPlatformHeaders().get("X-Code");
+            if (xCode != null && xCode.contains("timeout")) {
+                r.setHttpStatus(HttpStatus.GATEWAY_TIMEOUT);
+            } else {
+                r.setHttpStatus(HttpStatus.BAD_GATEWAY);
+            }
+        }
+
         return r;
     }
 
@@ -539,15 +578,18 @@ public class OpTriggerService {
     }
 
     /**
-     * 校验 connector 节点的目标 URL 是否在白名单中
+     * 校验 connector 节点的目标 URL 是否在白名单中 (FR-015)
      * <p>
-     * 遍历编排配置中所有 type=connector 节点，提取 data.url 进行白名单校验。
-     * 空白名单（null 或空列表）允许所有 URL 通过，不影响存量业务。
+     * 遍历编排配置中所有 type=connector 节点, 从节点 data.connectorVersionId 加载
+     * 连接器版本, 解析 connection_config JSON 中的 urlWhitelist 进行校验.
+     * 空白名单（null 或空列表）允许所有 URL 通过, 不影响存量业务.
      * </p>
      */
     @SuppressWarnings("unchecked")
-    private void validateConnectorUrlWhitelist(List<Map<String, Object>> nodes, List<String> urlWhitelist) {
-        if (nodes == null || nodes.isEmpty()) return;
+    private Mono<Void> validateConnectorUrlWhitelist(List<Map<String, Object>> nodes) {
+        if (nodes == null || nodes.isEmpty()) return Mono.empty();
+
+        List<Mono<Void>> validations = new ArrayList<>();
 
         for (Map<String, Object> node : nodes) {
             String nodeType = (String) node.get("type");
@@ -556,12 +598,74 @@ public class OpTriggerService {
             Map<String, Object> connData = (Map<String, Object>) node.get("data");
             if (connData == null) continue;
 
-            String url = (String) connData.get("url");
-            if (url == null || url.isEmpty()) continue;
+            // 从节点 data 获取 connectorVersionId (支持 Number 和 String 两种格式)
+            Object connectorVersionIdObj = connData.get("connectorVersionId");
+            if (connectorVersionIdObj == null) continue;
 
-            if (!urlWhitelistValidator.validate(url, urlWhitelist)) {
-                throw new RuntimeException("URL not in whitelist: " + url);
+            Long connectorVersionId;
+            if (connectorVersionIdObj instanceof Number) {
+                connectorVersionId = ((Number) connectorVersionIdObj).longValue();
+            } else if (connectorVersionIdObj instanceof String) {
+                try {
+                    connectorVersionId = Long.valueOf((String) connectorVersionIdObj);
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid connectorVersionId format: {}", connectorVersionIdObj);
+                    continue;
+                }
+            } else {
+                continue;
             }
+
+            // 异步加载连接器版本, 从 connection_config 提取 urlWhitelist 并校验
+            Mono<Void> validation = connectorVersionReadRepository.findById(connectorVersionId)
+                    .<Void>flatMap(connVersion -> {
+                        Map<String, Object> connConfig = connVersion.parseConnectionConfig(objectMapper);
+
+                        // v5.9: extract URL from connection_config.protocolConfig.url (not node data)
+                        Map<String, Object> protocolConfig = (Map<String, Object>) connConfig.get("protocolConfig");
+                        String url = protocolConfig != null ? (String) protocolConfig.get("url") : null;
+                        if (url == null || url.isEmpty()) {
+                            return Mono.empty();
+                        }
+
+                        List<String> whitelist = extractWhitelist(connConfig.get("urlWhitelist"));
+                        if (!urlWhitelistValidator.validate(url, whitelist)) {
+                            return Mono.<Void>error(new RuntimeException("URL not in whitelist: " + url));
+                        }
+                        return Mono.empty();
+                    })
+                    .onErrorResume(e -> {
+                        // 连接器版本未找到时允许通过 (向后兼容)
+                        if (e instanceof RuntimeException) {
+                            return Mono.error(e);
+                        }
+                        log.warn("Failed to load connector version {} for URL whitelist check: {}",
+                                connectorVersionId, e.getMessage());
+                        return Mono.empty();
+                    });
+            validations.add(validation);
         }
+
+        if (validations.isEmpty()) return Mono.empty();
+        return Flux.merge(validations).then();
+    }
+
+    /**
+     * Extract whitelist patterns from connection config, supporting both
+     * single string and list-of-strings formats for backward compatibility.
+     */
+    @SuppressWarnings("unchecked")
+    private List<String> extractWhitelist(Object whitelistObj) {
+        if (whitelistObj == null) {
+            return null;
+        }
+        if (whitelistObj instanceof List) {
+            return (List<String>) whitelistObj;
+        }
+        if (whitelistObj instanceof String) {
+            return List.of((String) whitelistObj);
+        }
+        log.warn("urlWhitelist has unexpected type: {}", whitelistObj.getClass().getName());
+        return null;
     }
 }

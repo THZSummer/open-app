@@ -181,11 +181,37 @@ CREATE TABLE openplatform_v2_cp_execution_step_t (
 DROP TABLE IF EXISTS openplatform_v2_cp_storage_blob_ref_t;
 
 -- ============================================================================
+-- 第 4 部分: 审计日志表 (FR-046)
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 4.1 操作日志表 (openplatform_operate_log_t)
+--     记录连接器/连接流发布等关键操作，供审计追溯
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS openplatform_operate_log_t (
+    id BIGINT NOT NULL COMMENT '雪花ID',
+    operate_type VARCHAR(50) NOT NULL COMMENT '操作类型: CREATE/UPDATE/DELETE/PUBLISH',
+    operate_object VARCHAR(500) COMMENT '操作对象标识',
+    operate_content TEXT COMMENT '操作内容JSON',
+    operator VARCHAR(100) COMMENT '操作人',
+    operate_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+    app_id BIGINT DEFAULT 0 COMMENT '应用ID',
+    create_by VARCHAR(100),
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_update_by VARCHAR(100),
+    last_update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    INDEX idx_operate_type (operate_type),
+    INDEX idx_operate_time (operate_time),
+    INDEX idx_app_id (app_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
+
+-- ============================================================================
 -- 迁移完成标记
 -- ============================================================================
 -- 连接器平台 V3 Schema 迁移完成
 -- 变更汇总:
 --   ALTER (5): connector_t, connector_version_t, flow_t, flow_version_t, approval_flow_t
---   CREATE (3): connector_version_ref_t, execution_record_t, execution_step_t
+--   CREATE (4): connector_version_ref_t, execution_record_t, execution_step_t, openplatform_operate_log_t
 --   DROP (1): storage_blob_ref_t (V1 预留，V3 不使用)
 -- ============================================================================

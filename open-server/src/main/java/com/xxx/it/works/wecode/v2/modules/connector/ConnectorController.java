@@ -1,5 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.connector;
 
+import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
+import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -36,6 +38,7 @@ public class ConnectorController {
     /**
      * #1 创建连接器
      */
+    @AuditLog(value = OperateEnum.CREATE_CONNECTOR)
     @PostMapping
     @Operation(summary = "#1 创建连接器", description = "创建连接器基本信息，状态为有效不可用，需手动创建草稿版本")
     public ApiResponse<ConnectorCreateResponse> createConnector(
@@ -77,6 +80,7 @@ public class ConnectorController {
     /**
      * #4 更新连接器基本信息
      */
+    @AuditLog(value = OperateEnum.UPDATE_CONNECTOR, resourceIdParam = "connectorId")
     @PutMapping("/{connectorId}")
     @Operation(summary = "#4 更新连接器", description = "更新名称和描述信息")
     public ApiResponse<Void> updateConnector(
@@ -114,6 +118,7 @@ public class ConnectorController {
     /**
      * #7 删除连接器
      */
+    @AuditLog(value = OperateEnum.DELETE_CONNECTOR, resourceIdParam = "connectorId")
     @DeleteMapping("/{connectorId}")
     @Operation(summary = "#7 删除连接器", description = "物理删除，仅已失效状态可删除")
     public ApiResponse<Void> deleteConnector(

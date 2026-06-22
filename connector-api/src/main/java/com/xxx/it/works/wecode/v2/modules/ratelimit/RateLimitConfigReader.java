@@ -58,8 +58,7 @@ public class RateLimitConfigReader {
                 .map(this::extractRateLimitConfig)
                 .defaultIfEmpty(defaultConfig())
                 .onErrorResume(e -> {
-                    log.warn("Rate limit config read failed for flowId={}, using defaults: {}",
-                            flowId, e.getMessage());
+                    log.warn("Rate limit config read failed for flowId={}, using defaults", flowId, e);
                     return Mono.just(defaultConfig());
                 });
     }
@@ -113,8 +112,7 @@ public class RateLimitConfigReader {
             return new RateLimitConfig(mode, maxQps, maxConcurrency);
 
         } catch (Exception e) {
-            log.warn("Failed to parse rate limit config for flowId={}, using defaults: {}",
-                    entity.getFlowId(), e.getMessage());
+            log.warn("Failed to parse rate limit config for flowId={}, using defaults", entity.getFlowId(), e);
             return defaultConfig();
         }
     }
