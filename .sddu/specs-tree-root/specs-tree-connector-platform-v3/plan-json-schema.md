@@ -3033,7 +3033,7 @@ graph TB
 
 #### 6.5.2 V2 循环编排
 
-循环体内嵌 connector + data_processor + 嵌套 error_handler，展示结构节点间的包含关系。
+循环体内嵌 connector → data_processor → script → error_handler，展示结构节点间的包含关系。
 
 ```json
 {
@@ -3072,6 +3072,23 @@ graph TB
         "labelCn": "格式化结果",
         "type": "dataProcessor",
         "output": { "type": "object", "properties": { "upperName": { "type":"string","value":"${$.system.fn.upper($.node.conn_1.output.body.name)}" } } },
+        "structConfig": { "parentLoopV2GroupId":"loop_1","parentLoopV2Role":"right-column-node" }
+      }
+    },
+    {
+      "id": "script_1", "type": "script",
+      "position": { "x": 1010, "y": 460 },
+      "data": {
+        "labelCn": "聚合统计",
+        "type": "script",
+        "script": "function main(ctx) {\n  const name = ctx.data_proc_1.output.upperName ?? '';\n  const detail = ctx.conn_1.output.body;\n  const hasDetail = !!detail;\n  return { name, hasDetail };\n}",
+        "output": {
+          "type": "object",
+          "properties": {
+            "name":     { "type": "string" },
+            "hasDetail": { "type": "boolean" }
+          }
+        },
         "structConfig": { "parentLoopV2GroupId":"loop_1","parentLoopV2Role":"right-column-node" }
       }
     },
@@ -3117,9 +3134,10 @@ graph TB
     // loop 入口 → 循环体
     { "id":"e_loop_start",   "source":"loop_1",       "target":"loop_start_1",  "data":{"isStructural":true } },
     { "id":"e_s_conn",       "source":"loop_start_1", "target":"conn_1",        "data":{"businessType":"loop_entry","iterationVar":"item" } },
-    // 循环体：connector → data_processor → error_handler
+    // 循环体：connector → data_processor → script → error_handler
     { "id":"e_c_dp",         "source":"conn_1",       "target":"data_proc_1",   "data":{"businessType":"default",    "connectionMode":"serial" } },
-    { "id":"e_dp_err",       "source":"data_proc_1",  "target":"err_1",         "data":{"businessType":"error",      "connectionMode":"serial" } },
+    { "id":"e_dp_sc",        "source":"data_proc_1",  "target":"script_1",      "data":{"businessType":"default",    "connectionMode":"serial" } },
+    { "id":"e_sc_err",       "source":"script_1",     "target":"err_1",         "data":{"businessType":"error",      "connectionMode":"serial" } },
 
     // error_handler 内部 (isStructural + error body)
     { "id":"e_err_rgn",      "source":"err_1",        "target":"err_region_1",  "data":{"isStructural":true } },
@@ -3153,6 +3171,7 @@ graph TB
 >                       │   // ====== 循环体 ======
 >                       ├── conn_1 (获取详情)
 >                       ├── data_proc_1 (格式化)
+>                       ├── script_1 (聚合统计)
 >                       └── err_1 ──┬── region ──▶ break
 >                                   └── start → conn_retry → end ──▶ break
 >                                           // ====== err body ======
@@ -3160,78 +3179,6 @@ graph TB
 >                       └── end ──▶ break
 > ```
 
-
-#### 6.5.3 脚本节点编排
-
-触发器 → 连接器（获取数据）→ 脚本节点（加工聚合）→ 数据输出。
-
-```json
-{
-  "nodes": [
-    {
-      "id": "node_trigger", "type": "trigger",
-      "position": { "x": 100, "y": 200 },
-      "data": {
-        "labelCn": "接收请求", "type": "trigger", "triggerType": "http",
-        "authConfigs": [{ "type": "SYSTOKEN", "header": { "type": "object", "properties": { "X-Sys-Token": { "type": "string", "required": true, "sensitive": true } } } }],
-        "input": { "protocol": "HTTP", "body": { "type": "object", "properties": { "userId": {"type":"string"} }, "required":["userId"] } }
-      }
-    },
-    {
-      "id": "conn_1", "type": "connector",
-      "position": { "x": 350, "y": 200 },
-      "data": {
-        "labelCn": "获取订单列表", "type": "connector", "connectorVersionId": "1234567890123456789",
-        "input": { "body": { "type": "object", "properties": { "userId": { "type":"string","value":"${$.node.trigger.input.userId}" } } } }
-      }
-    },
-    {
-      "id": "script_1", "type": "script",
-      "position": { "x": 600, "y": 200 },
-      "data": {
-        "labelCn": "统计汇总",
-        "type": "script",
-        "script": "function main(ctx) {\n  const orders = ctx.conn_1.output.body.data?.orders ?? [];\n  const totalAmount = orders.reduce((s, o) => s + o.price * o.qty, 0);\n  const count = orders.length;\n  const avgAmount = count > 0 ? totalAmount / count : 0;\n  return { count, totalAmount, avgAmount };\n}",
-        "output": {
-          "type": "object",
-          "properties": {
-            "count":       { "type": "number", "description": "订单数量" },
-            "totalAmount": { "type": "number", "description": "订单总额" },
-            "avgAmount":   { "type": "number", "description": "均单价" }
-          }
-        },
-        "timeout": 5
-      }
-    },
-    {
-      "id": "node_exit", "type": "exit",
-      "position": { "x": 850, "y": 200 },
-      "data": {
-        "labelCn": "返回结果",
-        "output": {
-          "body": {
-            "type": "object",
-            "properties": {
-              "count":       { "type":"number","value":"${$.node.script_1.output.count}" },
-              "totalAmount": { "type":"number","value":"${$.node.script_1.output.totalAmount}" },
-              "avgAmount":   { "type":"number","value":"${$.node.script_1.output.avgAmount}" }
-            }
-          }
-        }
-      }
-    }
-  ],
-  "edges": [
-    { "id":"e1", "source":"node_trigger", "target":"conn_1",    "data":{"businessType":"default","connectionMode":"serial"} },
-    { "id":"e2", "source":"conn_1",       "target":"script_1",  "data":{"businessType":"default","connectionMode":"serial"} },
-    { "id":"e3", "source":"script_1",     "target":"node_exit", "data":{"businessType":"default","connectionMode":"serial"} }
-  ],
-  "flowConfig": { "rateLimitConfig": { "maxQps": 100 } }
-}
-```
-
-
----
 
 ## 7. 执行数据约定
 
