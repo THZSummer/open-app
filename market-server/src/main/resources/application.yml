@@ -41,3 +41,9 @@ logging:
 # 平台配置
 platform:
   approval-url-prefix: https://platform.example.com/approval/
+
+# 通讯录 API 配置
+wecontact:
+  api-url: https://xxx.example.com   # 通讯录 API 基础 URL #ASSUMED
+  tenant-id: <运维人工填入>           # x-welink-tenantid
+  token: <人工通过工具类获取>          # Authorization（实际通过工具类动态获取）
