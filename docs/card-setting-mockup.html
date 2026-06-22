@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>应用详情 - 卡片设置板块 - 效果图 v0.1</title>
+<title>应用详情 - 卡片设置板块 - 效果图 v0.5</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -115,6 +115,27 @@
   .unit { color: var(--text-secondary); font-size: 13px; margin-left: -4px; }
   .action-group { display: flex; gap: 8px; margin-left: auto; }
 
+  /* ===== 两态 UI：只读态 / 编辑态 ===== */
+  .readonly-view {
+    display: flex; align-items: center; gap: 8px;   /* 与 antd Space 默认 8px 对齐 */
+  }
+  .readonly-value {
+    font-size: 13px; color: var(--text-primary);
+  }
+  .readonly-value .num { font-weight: 600; color: var(--text-primary); }
+  .btn-link {
+    background: transparent; border: none; color: var(--primary);
+    padding: 0 4px; cursor: pointer; font-size: 13px;
+  }
+  .btn-link:hover { color: var(--primary-hover); text-decoration: underline; }
+
+  .editing-view { display: flex; align-items: center; gap: 8px; }
+
+  /* Tooltip 加宽（完整业务说明较长） */
+  .tip::after {
+    white-space: normal; width: 320px; text-align: left;
+  }
+
   /* Buttons */
   .btn {
     display: inline-flex; align-items: center; justify-content: center;
@@ -165,12 +186,6 @@
     background: var(--success); margin-right: 6px;
   }
   .status-text { font-size: 12px; color: var(--text-hint); margin-left: 8px; }
-
-  /* Helper text */
-  .helper {
-    font-size: 12px; color: var(--text-hint); margin-top: 12px;
-    padding: 8px 12px; background: #fafafa; border-radius: 4px;
-  }
 
   /* Failure simulator */
   .simulator {
@@ -261,47 +276,64 @@
 
     <!-- Real content (hidden until loaded) -->
     <div id="content" style="display: none;">
-      <!-- Row 1: 定期失效时间 -->
+      <!-- Row 1: 定期失效时间（两态） -->
       <div class="setting-row">
         <div class="setting-label">
           定期失效时间
-          <span class="tip" data-tip="定期失效时间，最小1天，最大7天">?</span>
+          <span class="tip" data-tip="根据每张消息卡片第一次投放时间开始计算，系统按设置的时间自动对卡片进行失效，失效的卡片在端侧不再支持交互">?</span>
         </div>
-        <div class="input-number">
-          <button class="step-btn step-down" data-field="expiration" data-delta="-1">▼</button>
-          <input type="number" id="expiration-input" min="1" max="7" value="3">
-          <button class="step-btn step-up" data-field="expiration" data-delta="1">▲</button>
+        <!-- 只读态 -->
+        <div class="readonly-view" id="expiration-readonly">
+          <div class="readonly-value">
+            <span class="num" id="expiration-display">14</span> 天
+          </div>
+          <button class="btn-link" id="expiration-modify">修改</button>
         </div>
-        <span class="unit">天</span>
-        <div class="action-group">
-          <button class="btn" id="expiration-cancel" disabled>取消</button>
-          <button class="btn btn-primary" id="expiration-save" disabled>保存</button>
+        <!-- 编辑态 -->
+        <div class="editing-view" id="expiration-editing" style="display:none;">
+          <div class="input-number">
+            <button class="step-btn step-down" data-field="expiration" data-delta="-1">▼</button>
+            <input type="number" id="expiration-input" min="1" max="7" value="7">
+            <button class="step-btn step-up" data-field="expiration" data-delta="1">▲</button>
+          </div>
+          <span class="unit">天</span>
+          <div class="action-group">
+            <button class="btn" id="expiration-cancel">取消</button>
+            <button class="btn btn-primary" id="expiration-save" disabled>保存</button>
+          </div>
+          <span class="status-text" id="expiration-status"></span>
         </div>
-        <span class="status-text" id="expiration-status"></span>
       </div>
 
-      <!-- Row 2: 定期删除时间 -->
+      <!-- Row 2: 定期删除时间（两态） -->
       <div class="setting-row">
         <div class="setting-label">
           定期删除时间
-          <span class="tip" data-tip="定期删除时间，最小1天，最大30天">?</span>
+          <span class="tip" data-tip="只有失效的卡片可以删除，根据每张消息卡片失效时间开始计算，系统按照设置的时间自动对卡片进行删除">?</span>
         </div>
-        <div class="input-number">
-          <button class="step-btn step-down" data-field="retention" data-delta="-1">▼</button>
-          <input type="number" id="retention-input" min="1" max="30" value="15">
-          <button class="step-btn step-up" data-field="retention" data-delta="1">▲</button>
+        <!-- 只读态 -->
+        <div class="readonly-view" id="retention-readonly">
+          <div class="readonly-value">
+            <span class="num" id="retention-display">7</span> 天
+          </div>
+          <button class="btn-link" id="retention-modify">修改</button>
         </div>
-        <span class="unit">天</span>
-        <div class="action-group">
-          <button class="btn" id="retention-cancel" disabled>取消</button>
-          <button class="btn btn-primary" id="retention-save" disabled>保存</button>
+        <!-- 编辑态 -->
+        <div class="editing-view" id="retention-editing" style="display:none;">
+          <div class="input-number">
+            <button class="step-btn step-down" data-field="retention" data-delta="-1">▼</button>
+            <input type="number" id="retention-input" min="1" max="30" value="7">
+            <button class="step-btn step-up" data-field="retention" data-delta="1">▲</button>
+          </div>
+          <span class="unit">天</span>
+          <div class="action-group">
+            <button class="btn" id="retention-cancel">取消</button>
+            <button class="btn btn-primary" id="retention-save" disabled>保存</button>
+          </div>
+          <span class="status-text" id="retention-status"></span>
         </div>
-        <span class="status-text" id="retention-status"></span>
       </div>
 
-      <div class="helper">
-        💡 提示：修改后请点击"保存"生效；点击"取消"将还原为上次保存的值。两行独立保存，互不影响。
-      </div>
     </div>
   </section>
 </main>
@@ -320,9 +352,29 @@
   'use strict';
 
   // ===== State =====
+  // 两态：mode='readonly' 显示只读态；mode='editing' 显示编辑态
+  // displayed = 只读态展示值（可能是系统默认值如 14，超出用户可写范围）
+  // editValue = 编辑态 InputNumber 值（裁剪后）
+  // saved     = 上次 GET 返回值（取消时还原目标）
   const FIELDS = {
-    expiration: { min: 1, max: 7,  saved: null, current: null, saving: false, inputId: 'expiration-input', statusId: 'expiration-status', saveId: 'expiration-save', cancelId: 'expiration-cancel' },
-    retention:  { min: 1, max: 30, saved: null, current: null, saving: false, inputId: 'retention-input',  statusId: 'retention-status',  saveId: 'retention-save',  cancelId: 'retention-cancel' }
+    expiration: {
+      min: 1, max: 7, periodType: 1,
+      saved: null, displayed: null, editValue: null,
+      mode: 'readonly', saving: false,
+      readonlyId: 'expiration-readonly', editingId: 'expiration-editing',
+      displayId: 'expiration-display', inputId: 'expiration-input',
+      statusId: 'expiration-status',
+      saveId: 'expiration-save', cancelId: 'expiration-cancel', modifyId: 'expiration-modify'
+    },
+    retention: {
+      min: 1, max: 30, periodType: 0,
+      saved: null, displayed: null, editValue: null,
+      mode: 'readonly', saving: false,
+      readonlyId: 'retention-readonly', editingId: 'retention-editing',
+      displayId: 'retention-display', inputId: 'retention-input',
+      statusId: 'retention-status',
+      saveId: 'retention-save', cancelId: 'retention-cancel', modifyId: 'retention-modify'
+    }
   };
 
   // ===== Toast =====
@@ -336,67 +388,117 @@
   }
 
   // ===== API mock =====
+  // 服务端"状态"—— 模拟卡片服务的数据
+  const serverState = { expirationDays: 14, deletionDays: 7 };
+
   function mockFetchCardSetting() {
     return new Promise(resolve => {
       setTimeout(() => resolve({
-        code: '200', data: { expirationDays: 3, retentionDays: 15 }
+        code: '200',
+        data: { expirationDays: serverState.expirationDays, deletionDays: serverState.deletionDays }
       }), 800);
     });
   }
-  function mockUpdate(field, value) {
+  // 单一 PUT：body 含 periodDays + periodType
+  function mockUpdatePeriod(periodType, periodDays) {
     const shouldFail = document.getElementById('simulate-failure').checked;
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        if (shouldFail) reject({ code: '502', messageZh: '卡片服务暂时不可用' });
-        else resolve({ code: '200', data: {
-          expirationDays: field === 'expiration' ? value : FIELDS.expiration.saved,
-          retentionDays:  field === 'retention'  ? value : FIELDS.retention.saved
-        }});
+        if (shouldFail) {
+          // 模拟 request.ts 拦截器自动 toast（本 demo 直接 toast）
+          toast('error', '卡片服务暂时不可用');
+          reject({ code: '502', messageZh: '卡片服务暂时不可用' });
+        } else {
+          if (periodType === 1) serverState.expirationDays = periodDays;
+          else if (periodType === 0) serverState.deletionDays = periodDays;
+          resolve({ code: '200', data: null });
+        }
       }, 600);
     });
+  }
+
+  // ===== 裁剪规则 =====
+  // 进入编辑态时：displayed → editValue
+  function clampToEditable(displayed, min, max) {
+    if (displayed === null || displayed === undefined) return null;
+    if (displayed < min) return min;
+    if (displayed > max) return max;
+    return displayed;
   }
 
   // ===== UI update =====
   function updateFieldUI(name) {
     const f = FIELDS[name];
+    const readonlyEl = document.getElementById(f.readonlyId);
+    const editingEl = document.getElementById(f.editingId);
+    const displayEl = document.getElementById(f.displayId);
     const input = document.getElementById(f.inputId);
     const saveBtn = document.getElementById(f.saveId);
     const cancelBtn = document.getElementById(f.cancelId);
     const statusEl = document.getElementById(f.statusId);
 
-    input.value = f.current;
-    const isDirty = f.current !== f.saved;
-    const isValid = f.current >= f.min && f.current <= f.max;
-    saveBtn.disabled = !isDirty || !isValid || f.saving;
-    cancelBtn.disabled = !isDirty || f.saving;
-    input.disabled = f.saving;
+    // 切换两态
+    if (f.mode === 'readonly') {
+      readonlyEl.style.display = 'flex';
+      editingEl.style.display = 'none';
+      // 只读态展示 displayed 值（包括系统默认值，如 14，正常颜色展示）
+      displayEl.textContent = f.displayed === null ? '—' : f.displayed;
+    } else {
+      readonlyEl.style.display = 'none';
+      editingEl.style.display = 'flex';
+      input.value = f.editValue === null ? '' : f.editValue;
+      const isDirty = f.editValue !== null && f.editValue !== f.displayed;
+      const isValid = f.editValue !== null && f.editValue >= f.min && f.editValue <= f.max;
+      saveBtn.disabled = !isDirty || !isValid || f.saving;
+      input.disabled = f.saving;
 
-    // Step buttons disabled at bounds
-    const row = input.closest('.setting-row');
-    row.querySelector('.step-down').disabled = f.current <= f.min || f.saving;
-    row.querySelector('.step-up').disabled   = f.current >= f.max || f.saving;
+      // Step buttons disabled at bounds
+      const row = input.closest('.setting-row');
+      row.querySelector('.step-down').disabled = f.editValue === null || f.editValue <= f.min || f.saving;
+      row.querySelector('.step-up').disabled   = f.editValue === null || f.editValue >= f.max || f.saving;
 
-    statusEl.textContent = f.saving ? '保存中...' : '';
+      statusEl.textContent = f.saving ? '保存中...' : '';
+    }
   }
 
   // ===== Actions =====
+  function enterEditMode(name) {
+    const f = FIELDS[name];
+    if (f.mode === 'editing' || f.saving) return;
+    // 裁剪：displayed → editValue
+    f.editValue = clampToEditable(f.displayed, f.min, f.max);
+    f.mode = 'editing';
+    updateFieldUI(name);
+  }
+
   function setValue(name, val) {
     const f = FIELDS[name];
-    if (typeof val !== 'number' || isNaN(val)) return;
-    f.current = Math.max(f.min, Math.min(f.max, Math.round(val)));
+    if (f.mode !== 'editing') return;
+    if (val === '' || val === null || isNaN(val)) {
+      f.editValue = null;
+    } else {
+      if (typeof val !== 'number') return;
+      f.editValue = Math.max(f.min, Math.min(f.max, Math.round(val)));
+    }
     updateFieldUI(name);
   }
 
   async function saveField(name) {
     const f = FIELDS[name];
-    if (f.saving || f.current === f.saved) return;
+    if (f.mode !== 'editing' || f.saving || f.editValue === null) return;
     f.saving = true; updateFieldUI(name);
     try {
-      await mockUpdate(name, f.current);
-      f.saved = f.current;
+      await mockUpdatePeriod(f.periodType, f.editValue);
+      // 保存成功后：重新 GET 回填
+      const res = await mockFetchCardSetting();
+      FIELDS.expiration.saved = FIELDS.expiration.displayed = res.data.expirationDays;
+      FIELDS.retention.saved  = FIELDS.retention.displayed  = res.data.deletionDays;
+      FIELDS[name].mode = 'readonly';
+      FIELDS[name].editValue = null;
       toast('success', '保存成功');
     } catch (e) {
-      toast('error', e.messageZh || '保存失败，请稍后重试');
+      // request.ts 拦截器已自动 toast；这里只保留输入值供重试
+      // 不调用 toast，避免双重提示（demo 中 mockUpdatePeriod 已 toast，故此处跳过）
     } finally {
       f.saving = false; updateFieldUI(name);
     }
@@ -404,32 +506,46 @@
 
   function cancelField(name) {
     const f = FIELDS[name];
-    f.current = f.saved;
+    if (f.mode !== 'editing' || f.saving) return;
+    // 还原到修改前的展示值（即 saved），切回只读态
+    f.mode = 'readonly';
+    f.editValue = null;
     updateFieldUI(name);
   }
 
   // ===== Init =====
   async function init() {
     const res = await mockFetchCardSetting();
-    FIELDS.expiration.saved = FIELDS.expiration.current = res.data.expirationDays;
-    FIELDS.retention.saved  = FIELDS.retention.current  = res.data.retentionDays;
+    FIELDS.expiration.saved = FIELDS.expiration.displayed = res.data.expirationDays;
+    FIELDS.retention.saved  = FIELDS.retention.displayed  = res.data.deletionDays;
     document.getElementById('loading-skeleton').style.display = 'none';
     document.getElementById('content').style.display = 'block';
     updateFieldUI('expiration'); updateFieldUI('retention');
   }
 
   // ===== Event bindings =====
+  // "修改"按钮 → 进入编辑态
+  document.getElementById('expiration-modify').addEventListener('click', () => enterEditMode('expiration'));
+  document.getElementById('retention-modify').addEventListener('click',  () => enterEditMode('retention'));
+
   document.querySelectorAll('input[type=number]').forEach(input => {
     const name = input.id.startsWith('expiration') ? 'expiration' : 'retention';
-    input.addEventListener('input', e => setValue(name, parseInt(e.target.value, 10)));
-    input.addEventListener('blur',  e => setValue(name, parseInt(e.target.value, 10))); // re-clamp on blur
+    input.addEventListener('input', e => {
+      const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
+      setValue(name, v);
+    });
+    input.addEventListener('blur', e => {
+      // 失焦时 re-clamp
+      if (e.target.value !== '') setValue(name, parseInt(e.target.value, 10));
+    });
   });
 
   document.querySelectorAll('.step-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const name = btn.dataset.field;
       const delta = parseInt(btn.dataset.delta, 10);
-      setValue(name, FIELDS[name].current + delta);
+      const cur = FIELDS[name].editValue === null ? FIELDS[name].min : FIELDS[name].editValue;
+      setValue(name, cur + delta);
     });
   });
 
