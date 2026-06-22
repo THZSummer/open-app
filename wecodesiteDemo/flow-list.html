@@ -724,11 +724,14 @@
         </div>
     </div>
 
-    <!-- 启动版本选择弹窗 -->
+    <!-- 启动版本提示弹窗（无可启动版本时使用）-->
+    <!-- 注意：启动操作仅修改状态（需已部署），不弹版本选择弹窗 -->
+
+    <!-- 部署版本选择弹窗 -->
     <div class="modal-overlay" id="startModal">
         <div class="modal" style="max-width: 480px;">
             <div class="modal-header">
-                <h3 class="modal-title">选择启动版本</h3>
+                <h3 class="modal-title" id="startModalTitle">选择部署版本</h3>
                 <div class="modal-close" onclick="closeModal('startModal')">✕</div>
             </div>
             <div class="modal-body">
@@ -738,7 +741,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn" onclick="closeModal('startModal')">取消</button>
-                <button class="btn btn-primary" id="confirmStartBtn" onclick="confirmStart()">确认启动</button>
+                <button class="btn btn-primary" id="confirmStartBtn" onclick="confirmStart()">确认部署</button>
             </div>
         </div>
     </div>
@@ -764,6 +767,8 @@
                 descriptionCn: '处理新用户注册的业务流程',
                 descriptionEn: 'Process new user registration workflow',
                 lifecycleStatus: 1,
+                // 当前部署版本：连接流-版本绑定关系；运行中状态必定有部署版本
+                deployedVersionId: 'v2',
                 createTime: '2024-01-15 10:30:00',
                 lastUpdateTime: '2024-01-20 14:25:00'
             },
@@ -774,6 +779,8 @@
                 descriptionCn: '自动化订单处理和状态更新',
                 descriptionEn: 'Automated order processing and status updates',
                 lifecycleStatus: 2,
+                // 已停止但已经部署过版本
+                deployedVersionId: 'v2',
                 createTime: '2024-01-10 09:15:00',
                 lastUpdateTime: '2024-01-18 16:40:00'
             },
@@ -784,6 +791,8 @@
                 descriptionCn: '发送各类系统通知消息',
                 descriptionEn: 'Send various system notification messages',
                 lifecycleStatus: 2,
+                // 已停止且未部署过任何版本
+                deployedVersionId: null,
                 createTime: '2024-01-20 11:20:00',
                 lastUpdateTime: '2024-01-20 11:20:00'
             },
@@ -794,6 +803,7 @@
                 descriptionCn: '跨系统的数据同步和更新',
                 descriptionEn: 'Cross-system data synchronization and updates',
                 lifecycleStatus: 1,
+                deployedVersionId: 'v2',
                 creator: '张三',
                 modifier: '当前用户',
                 createTime: '2024-01-08 14:00:00',
@@ -806,6 +816,7 @@
                 descriptionCn: '集成第三方支付网关的处理流程',
                 descriptionEn: 'Integrated third-party payment gateway processing flow',
                 lifecycleStatus: 1,
+                deployedVersionId: 'v2',
                 createTime: '2024-01-12 15:45:00',
                 lastUpdateTime: '2024-01-21 09:15:00'
             },
@@ -816,6 +827,7 @@
                 descriptionCn: '自动化邮件营销和追踪流程',
                 descriptionEn: 'Automated email marketing and tracking workflow',
                 lifecycleStatus: 2,
+                deployedVersionId: null,
                 creator: '赵六',
                 modifier: '当前用户',
                 createTime: '2024-01-05 08:30:00',
@@ -894,6 +906,8 @@
                 nameCn: flow.nameCn + ' (副本)',
                 nameEn: flow.nameEn + '-copy',
                 lifecycleStatus: 2,
+                // 复制流默认未部署任何版本
+                deployedVersionId: null,
                 createTime: new Date().toLocaleString('zh-CN'),
                 lastUpdateTime: new Date().toLocaleString('zh-CN')
             };
@@ -924,27 +938,66 @@
 
         /**
          * 启动连接流
-         * 打开启动版本选择弹窗
+         * 仅修改状态：已停止 → 运行中
+         * 要求：连接流必须存在当前部署版本，否则给出提示并阻断
          * @param {string} flowId - 连接流ID
          */
         function handleStart(flowId) {
             // 关闭菜单
             document.querySelectorAll('.more-menu').forEach(menu => menu.style.display = 'none');
 
-            // 打开启动版本选择弹窗
-            openStartModal(flowId);
+            const flow = flowData.find(item => item.id === flowId);
+            if (!flow) return;
+
+            // 仅已停止状态可以启动
+            if (flow.lifecycleStatus !== 2) {
+                showToast('当前状态不允许启动', 'error');
+                return;
+            }
+
+            // 启动前置依赖：必须已存在部署版本
+            if (!flow.deployedVersionId) {
+                showToast('当前连接流尚未部署版本，请先部署后再启动', 'error');
+                return;
+            }
+
+            // 仅切换状态，不修改部署版本绑定
+            flow.lifecycleStatus = 1;
+            flow.modifier = '当前用户';
+            flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
+            showToast('启动成功', 'success');
+            renderTable();
         }
 
         /**
-         * 打开启动版本选择弹窗
+         * 部署连接流
+         * 仅修改连接流-版本绑定关系（deployedVersionId），不修改 lifecycleStatus
+         * 允许在 已停止 / 运行中 状态下重复执行（切换部署版本）
          * @param {string} flowId - 连接流ID
          */
-        let startFlowId = null;
-        let selectedStartVersion = null;
+        function handleDeploy(flowId) {
+            // 关闭菜单
+            document.querySelectorAll('.more-menu').forEach(menu => menu.style.display = 'none');
 
-        function openStartModal(flowId) {
-            startFlowId = flowId;
-            selectedStartVersion = null;
+            // 打开部署版本选择弹窗
+            openDeployModal(flowId);
+        }
+
+        /**
+         * 打开部署版本选择弹窗
+         * 数据来源：当前连接流可部署版本（仅已发布版本）
+         * 已部署过的连接流默认选中当前部署版本
+         * @param {string} flowId - 连接流ID
+         */
+        let deployFlowId = null;
+        let selectedDeployVersionId = null;
+
+        function openDeployModal(flowId) {
+            deployFlowId = flowId;
+            selectedDeployVersionId = null;
+
+            const flow = flowData.find(item => item.id === flowId);
+            const currentDeployedVersionId = flow ? flow.deployedVersionId : null;
 
             // 模拟版本数据 - 只展示已发布的版本
             const versions = [
@@ -955,8 +1008,8 @@
 
             const versionList = document.getElementById('startVersionList');
             const confirmStartBtn = document.getElementById('confirmStartBtn');
-            
-            // 如果没有已发布的版本，显示提示信息并禁用确认启动
+
+            // 若不存在已发布版本，提示并禁用确认部署
             if (versions.length === 0) {
                 versionList.innerHTML = '<div style="text-align: center; padding: 24px 0; color: var(--text-tertiary);">暂无已发布的版本</div>';
                 confirmStartBtn.disabled = true;
@@ -964,51 +1017,54 @@
                 return;
             }
 
-            // 存在可启动版本时允许用户确认启动
+            // 默认选中当前部署版本（若存在）
+            const defaultSelectedId = versions.some(v => v.id === currentDeployedVersionId)
+                ? currentDeployedVersionId
+                : null;
+            selectedDeployVersionId = defaultSelectedId;
             confirmStartBtn.disabled = false;
-            
-            versionList.innerHTML = versions.map(v => `
-                <label class="version-item" style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 8px; cursor: pointer;">
-                    <input type="radio" name="startVersion" value="${v.id}" onchange="selectedStartVersion = '${v.id}'">
-                    <div style="flex: 1;">
-                        <div style="font-size: 14px; font-weight: 500;">${v.name}</div>
-                        <div style="font-size: 12px; color: var(--text-tertiary);">${v.createdAt}</div>
-                    </div>
-                    <span class="status-badge ${v.status === 'published' ? 'success' : v.status === 'draft' ? 'default' : 'error'}">
-                        ${v.status === 'published' ? '已发布' : v.status === 'draft' ? '草稿' : '已失效'}
-                    </span>
-                </label>
-            `).join('');
+
+            versionList.innerHTML = versions.map(v => {
+                const isCurrent = v.id === currentDeployedVersionId;
+                const checked = v.id === defaultSelectedId ? 'checked' : '';
+                return `
+                    <label class="version-item" style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid ${isCurrent ? 'var(--primary-color)' : 'var(--border-color)'}; border-radius: 4px; margin-bottom: 8px; cursor: pointer;">
+                        <input type="radio" name="startVersion" value="${v.id}" ${checked} onchange="selectedDeployVersionId = '${v.id}'">
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; font-weight: 500;">${v.name}${isCurrent ? ' <span style="color: var(--primary-color); font-size: 12px;">(当前部署)</span>' : ''}</div>
+                            <div style="font-size: 12px; color: var(--text-tertiary);">${v.createdAt}</div>
+                        </div>
+                        <span class="status-badge success">已发布</span>
+                    </label>
+                `;
+            }).join('');
 
             openModal('startModal');
         }
 
         /**
-         * 确认启动
-         * 根据选择的已发布版本启动连接流
+         * 确认部署
+         * 仅更新连接流的当前部署版本绑定关系，不修改 lifecycleStatus
          */
         function confirmStart() {
-            if (!selectedStartVersion) {
-                showToast('请选择要启动的版本', 'error');
+            if (!selectedDeployVersionId) {
+                showToast('请选择要部署的版本', 'error');
                 return;
             }
 
-            // 模拟启动接口调用
-            console.log(`启动连接流 ${startFlowId} 的版本 ${selectedStartVersion}`);
-            
-            // 更新连接流状态为运行中
-            const flow = flowData.find(item => item.id === startFlowId);
+            const flow = flowData.find(item => item.id === deployFlowId);
             if (flow) {
-                flow.lifecycleStatus = 1;
+                // 仅写入版本绑定，不修改 lifecycleStatus
+                flow.deployedVersionId = selectedDeployVersionId;
                 flow.modifier = '当前用户';
                 flow.lastUpdateTime = new Date().toLocaleString('zh-CN');
             }
-            
-            showToast('启动成功', 'success');
+
+            showToast('部署成功', 'success');
 
             closeModal('startModal');
-            startFlowId = null;
-            selectedStartVersion = null;
+            deployFlowId = null;
+            selectedDeployVersionId = null;
             renderTable();
         }
 
@@ -1080,10 +1136,12 @@
                                             </button>
                                             ${item.lifecycleStatus === 2 ?
                                                 `<button class="menu-item" onclick="handleStart('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">启动</button>
+                                                 <button class="menu-item" onclick="handleDeploy('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">部署</button>
                                                  <button class="menu-item" onclick="invalidFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">失效</button>` : ''
                                             }
                                             ${item.lifecycleStatus === 1 ?
-                                                `<button class="menu-item" onclick="stopFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">停止</button>` : ''
+                                                `<button class="menu-item" onclick="handleDeploy('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">部署</button>
+                                                 <button class="menu-item" onclick="stopFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--text-primary);">停止</button>` : ''
                                             }
                                             ${item.lifecycleStatus === 3 ?
                                                 `<button class="menu-item" onclick="restoreFlow('${item.id}')" style="display: block; width: 100%; padding: 8px 12px; border: none; background: transparent; text-align: left; cursor: pointer; font-size: 13px; color: var(--success-color);">恢复</button>
@@ -1211,6 +1269,8 @@
                     descriptionCn: descCn,
                     descriptionEn: descEn,
                     lifecycleStatus: 2,
+                    // 新建连接流默认未部署任何版本
+                    deployedVersionId: null,
                     createTime: new Date().toLocaleString('zh-CN'),
                     lastUpdateTime: new Date().toLocaleString('zh-CN')
                 });
