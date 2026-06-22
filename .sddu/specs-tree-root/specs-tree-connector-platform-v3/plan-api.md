@@ -1748,7 +1748,7 @@
 | flowId | string | 连接流 ID |
 | deployedVersionId | string | 部署的版本 ID |
 | deployedVersionNumber | int | 部署的版本号 |
-| lifecycleStatus | int | 变更后 `2`（运行中） |
+| lifecycleStatus | int | 部署后连接流的当前生命周期状态（部署不改变状态，返回原状态值。如部署前为「已停止」则返回 1，部署前为「运行中」则返回 2） |
 | invokeUrl | string | 触发地址 |
 
 **错误响应**
@@ -1766,14 +1766,14 @@
 // 请求体
 { "versionId": "6666666666666666666" }
 
-// 响应体 200
+// 响应体 200（部署不改变 lifecycleStatus，此例中部署前连接流处于「已停止」）
 {
   "code": "200",
   "data": {
     "flowId": "4444444444444444444",
     "deployedVersionId": "6666666666666666666",
     "deployedVersionNumber": 2,
-    "lifecycleStatus": 2,
+    "lifecycleStatus": 1,
     "invokeUrl": "https://xxx/api/v1/flows/4444444444444444444/invoke"
   },
   "page": null
