@@ -17,8 +17,9 @@
 | **Wave 2** | 4 | 管理面核心（连接器/连接流/安全/审批） | ✅ 4 任务并行 |
 | **Wave 3** | 4 | 运行时核心（引擎/认证/限流/缓存/脚本） | ✅ 4 任务并行 |
 | **Wave 4** | 3 | 运维调试（运行记录/调试/操作日志） | ✅ 2 任务并行 + 1 可独立 |
+| **Wave 5** | 1 | 整体集成验证与性能基线 | ❌ 依赖全部前序波次 |
 
-**总计**: 14 个任务，4 个执行波次
+**总计**: 15 个任务，5 个执行波次
 
 ### 复杂度分布
 
@@ -26,7 +27,7 @@
 |:---:|:---:|------|
 | **S** | 2 | 单一文件/配置，自动化批量执行 |
 | **M** | 8 | 多文件，有简单依赖 |
-| **L** | 4 | 复杂变更，多文件多依赖 |
+| **L** | 5 | 复杂变更，多文件多依赖 |
 
 ### 服务分布
 
@@ -35,6 +36,7 @@
 | open-server（管理面） | 8 |
 | connector-api（运行时） | 5 |
 | 数据库（跨服务） | 1 |
+| 集成验证（跨服务） | 1 |
 
 ---
 
@@ -51,6 +53,9 @@ connector-api 运行时引擎的六个核心组件：版本解析器、认证注
 
 ### Wave 4 — 运维调试（依赖 Wave 2 + Wave 3）
 执行记录写入/查询、调试执行通道、操作日志扩展。记录写入模块依赖运行时引擎就绪。
+
+### Wave 5 — 整体集成验证（依赖 Wave 1~4）
+全平台端到端集成测试：完整主流程验证、调试流程验证、脚本节点验证、一键复制验证、性能基线检查（NFR-001~004）、安全机制验证（URL 白名单 / SYSTOKEN 白名单 / 应用白名单）。
 
 ---
 
@@ -89,6 +94,11 @@ connector-api 运行时引擎的六个核心组件：版本解析器、认证注
 - [ ] `execution_record_t` 包含 7 个索引（含 `idx_trigger_time` 用于定时清理）
 - [ ] `execution_step_t` 的 `node_type` 为 TINYINT（非 VARCHAR）
 - [ ] 审计字段（`create_time`/`last_update_time`/`create_by`/`last_update_by`）完备
+
+### 测试要求
+- [ ] Java 单元测试：`V3SchemaMigrationTest.java` 验证 DDL 执行后全部 8 张表结构、列类型、索引、默认值正确（`src/test/java/com/xxx/it/works/wecode/v2/common/db/`）
+- [ ] Python 集成测试：不适用（纯数据库层，无 API 端点）
+- [ ] Shell API 测试脚本：不适用
 
 ### 验证命令
 ```bash
@@ -158,6 +168,12 @@ mysql -u root -p -e "
 - [ ] `ExecutionStepMapper` 支持按 `execution_id` 查询全部步骤
 - [ ] 所有 Mapper 方法有对应 MyBatis XML SQL 实现
 
+### 测试要求
+- [ ] Java 单元测试：`ConnectorVersionRefMapperTest.java`、`ExecutionRecordMapperTest.java`、`ExecutionStepMapperTest.java` 覆盖所有 CRUD 方法和联合查询（with real MySQL via `@MybatisTest`）（`src/test/java/.../v2/modules/connector/mapper/`、`.../v2/modules/flow/mapper/`）
+- [ ] Java 单元测试：修改已有 Mapper 的测试需扩展用例覆盖新增字段映射（`ConnectorMapperTest`、`FlowMapperTest` 等追加 `app_id` 字段断言）
+- [ ] Python 集成测试：不适用（持久层，无 API 端点）
+- [ ] Shell API 测试脚本：不适用
+
 ### 验证命令
 ```bash
 # 编译检查实体类
@@ -202,6 +218,12 @@ mvn test -Dtest=ConnectorVersionRefMapperTest,ExecutionRecordMapperTest
 - [ ] `OperateEnum` 新增不少于 15 个操作类型（覆盖 spec FR-046 全部操作）
 - [ ] `ConnectorPlatformConstants` 包含所有关键上限常量
 - [ ] 各枚举类提供 `fromValue(int)` / `isValidTransition(int from, int to)` 静态方法（状态机校验）
+
+### 测试要求
+- [ ] Java 单元测试：`EnumConsistencyTest.java` 验证所有枚举 TINYINT 值不冲突、`fromValue()` 往返一致性、`isValidTransition()` 状态机规则（`src/test/java/.../v2/common/constant/`）
+- [ ] Java 单元测试：`ConnectorPlatformConstantsTest.java` 验证常量值（版本上限 1000、脚本上限 10、缓存 TTL 上限 1296000 等）与 spec §1.7 一致
+- [ ] Python 集成测试：不适用（常量层，无 API 端点）
+- [ ] Shell API 测试脚本：不适用
 
 ### 验证命令
 ```bash
@@ -253,6 +275,13 @@ mvn test -Dtest=EnumConsistencyTest
 - [ ] PUT `/connectors/{id}/versions/{vid}/invalidate` 失效前校验引用关系
 - [ ] 首次发布版本时连接器状态变更为 2（有效可用）
 - [ ] 最后一个已发布版本失效时连接器状态变更为 1（有效不可用）
+
+### 测试要求
+- [ ] Java 单元测试：`ConnectorServiceTest.java` 覆盖连接器实体 CRUD 全流程（创建→更新→失效→恢复→删除），使用 Mockito 模拟 Mapper（`src/test/java/.../v2/modules/connector/service/`）
+- [ ] Java 单元测试：`ConnectorVersionServiceTest.java` 覆盖版本生命周期全流程（创建空草稿→更新草稿→发布校验→复制到草稿→失效→恢复→删除），含版本上限 1000 边界测试
+- [ ] Java WebMvc 切片测试：`ConnectorControllerWebMvcTest.java`、`ConnectorVersionControllerWebMvcTest.java` 覆盖 HTTP 请求绑定、`@Valid` 校验、响应序列化和 HTTP 状态码（`src/test/java/.../v2/modules/connector/controller/`）
+- [ ] Python 集成测试：`connector_create.py` → `connector_detail.py` → `connector_update.py` → `connector_list.py` → `connector_config_set.py` → `connector_delete.py` 覆盖端到端流程（`src/test/python/inspect/`）
+- [ ] Shell API 测试脚本：连接器实体管理（#1~#7）和版本管理（#8~#16）各端点独立覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
 
 ### 验证命令
 ```bash
@@ -319,6 +348,14 @@ cd open-server && mvn test -Dtest=ConnectorServiceTest,ConnectorVersionServiceTe
 - [ ] POST `/flows/{id}/versions/{vid}/urge` 向当前审批级别审批人发送通知
 - [ ] 编排保存/发布时同步维护 connector_version_ref 中间表
 
+### 测试要求
+- [ ] Java 单元测试：`FlowServiceTest.java` 覆盖连接流实体 CRUD 全流程（创建→更新→复制→部署→启动→停止→失效→恢复→删除），Mockito 模拟 Mapper（`src/test/java/.../v2/modules/flow/service/`）
+- [ ] Java 单元测试：`FlowVersionServiceTest.java` 覆盖版本生命周期（创建空草稿→更新草稿→发布校验→复制到草稿→失效→恢复），含 9 项发布校验逐一验证
+- [ ] Java 单元测试：`FlowPublishValidatorTest.java` 覆盖全部 9 项校验逻辑（业务必填、编排非空、入站限流上限、超时上限、缓存 TTL 上限、并行分支上限、连接器版本可用性、JSON 语法、脚本语法），逐项 mock 验证
+- [ ] Java WebMvc 切片测试：`FlowControllerWebMvcTest.java`、`FlowVersionControllerWebMvcTest.java` 覆盖 HTTP 层（`src/test/java/.../v2/modules/flow/controller/`）
+- [ ] Python 集成测试：`flow_create.py` → `flow_detail.py` → `flow_update.py` → `flow_list.py` → `flow_start.py` → `flow_stop.py` → `flow_delete.py` 端到端流程（`src/test/python/inspect/`）
+- [ ] Shell API 测试脚本：连接流实体管理（#17~#27）和版本管理（#28~#38）各端点独立覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
+
 ### 验证命令
 ```bash
 # 运行连接流管理 API 集成测试
@@ -365,6 +402,13 @@ cd open-server && mvn test -Dtest=FlowServiceTest,FlowVersionServiceTest,FlowPub
 - [ ] 创建连接器/连接流时 `app_id` 自动写入为 `X-App-Id` Header 值
 - [ ] market-server 不可用时白名单校验降级放行，日志记录告警
 - [ ] 拦截器仅对 `/service/open/v2/connectors/**` 和 `/service/open/v2/flows/**` 路径生效
+
+### 测试要求
+- [ ] Java 单元测试：`AppWhitelistServiceTest.java` 覆盖白名单校验正常通过、非白名单拒绝、market-server 降级放行三种场景（Mock market-server 调用）（`src/test/java/.../v2/modules/security/`）
+- [ ] Java 单元测试：`AppDataIsolationAspectTest.java` 覆盖应用 A 不可查询/操作应用 B 的资源、创建时 `app_id` 自动注入（`src/test/java/.../v2/modules/security/`）
+- [ ] Java WebMvc 切片测试：`AppWhitelistInterceptorTest.java`（通过 `@WebMvcTest` + MockMvc）验证非白名单返回 403 + 提示信息、白名单正常通过（`src/test/java/.../v2/modules/security/`）
+- [ ] Python 集成测试：`connector_platform_v3_security.py` 覆盖非白名单应用 403 拒绝、跨应用数据隔离验证（`src/test/python/inspect/`）
+- [ ] Shell API 测试脚本：安全准入拦截端点覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
 
 ### 验证命令
 ```bash
@@ -417,6 +461,13 @@ cd open-server && mvn test -Dtest=AppWhitelistServiceTest,AppDataIsolationAspect
 - [ ] 催办操作向当前审批级别审批人发送通知
 - [ ] 审批记录列表支持按 `businessType=connector_flow_version_publish` 过滤
 - [ ] 审批详情 `businessData` 包含 flowId/flowNameCn/versionId/versionNumber 等信息
+
+### 测试要求
+- [ ] Java 单元测试：`FlowVersionApprovalServiceTest.java` 覆盖审批实例创建、三级审批依次通过/任一级驳回/撤回全路径，Mock `ApprovalEngine`（`src/test/java/.../v2/modules/approval/`）
+- [ ] Java 单元测试：`ApprovalCallbackHandlerTest.java` 覆盖审批通过/驳回回调触发 FlowVersion 状态变更（待审批→已发布/已驳回），验证 `businessType=connector_flow_version_publish` 分支（`src/test/java/.../v2/modules/approval/`）
+- [ ] Java WebMvc 切片测试：`ApprovalControllerWebMvcTest.java` 扩展用例覆盖 `businessType=connector_flow_version_publish` 过滤查询（`src/test/java/.../v2/modules/approval/controller/`）
+- [ ] Python 集成测试：审批提交→催办→通过/驳回→状态验证 端到端流程（`src/test/python/inspect/`）
+- [ ] Shell API 测试脚本：审批流模板配置（#45~#48）和审批记录查询（#39~#44）各端点覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
 
 ### 验证命令
 ```bash
@@ -476,6 +527,14 @@ cd open-server && mvn test -Dtest=FlowVersionApprovalServiceTest,ApprovalCallbac
 - [ ] 单节点超时按 `min(节点超时配置, 应用最大超时值)` 执行
 - [ ] EntityCacheManager 优先 Redis 读取，miss 回源 MySQL 并回写，TTL 7d±2h
 
+### 测试要求
+- [ ] Java 单元测试：`VersionConfigResolverTest.java` 覆盖正常解析、未部署（503）、版本删除（500）、连接器版本失效（标记节点失败）四种场景，Mock Redis/MySQL 双数据源（`src/test/java/.../v2/modules/runtime/`）
+- [ ] Java 单元测试：`DagSchedulerTest.java` 覆盖串行调度（`flatMap`）、并行调度（`Flux.merge()`）、多并行边汇聚、单节点超时终止（StepVerifier 验证 Reactor 流）（`src/test/java/.../v2/modules/runtime/`）
+- [ ] Java 单元测试：`ParallelBranchExecutorTest.java` 覆盖各分支独立超时、单分支失败不扩散、全部完成汇聚（`src/test/java/.../v2/modules/runtime/`）
+- [ ] Java 单元测试：`EntityCacheManagerTest.java` 覆盖 Redis 命中/未命中回源 MySQL/版本变更主动失效 三种场景（`src/test/java/.../v2/modules/cache/`）
+- [ ] Python 集成测试：HTTP 触发→5 阶段管道执行→返回响应 端到端流程（`src/test/python/inspect/connector_platform_v3_e2e.py`）
+- [ ] Shell API 测试脚本：运行时引擎调用端点覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
+
 ### 验证命令
 ```bash
 # 触发连接流调用
@@ -524,6 +583,15 @@ cd connector-api && mvn test -Dtest=VersionConfigResolverTest,DagSchedulerTest,P
 - [ ] SYSTOKEN 白名单为空时全部禁止（返回 401）
 - [ ] SYSTOKEN 不在白名单中时返回 401
 - [ ] 认证注入器通过 Spring Bean 自动注册到 `CredentialInjectorRegistry`
+
+### 测试要求
+- [ ] Java 单元测试：`CookieCredentialInjectorTest.java` 覆盖 Cookie 名称匹配注入、Cookie 名称不匹配跳过（`src/test/java/.../v2/modules/auth/credential/`）
+- [ ] Java 单元测试：`DigitalSignCredentialInjectorTest.java` 覆盖 Header 模式签名注入、Query 参数模式签名注入、签名算法正确性验证（`src/test/java/.../v2/modules/auth/credential/`）
+- [ ] Java 单元测试：`MultiAuthCredentialInjectorTest.java` 覆盖多认证按排序组合、各认证器独立执行、结果叠加正确性（`src/test/java/.../v2/modules/auth/credential/`）
+- [ ] Java 单元测试：`UrlWhitelistValidatorTest.java` 覆盖空白名单放行、单条规则匹配、多条规则组合匹配、正则非法拒绝、不匹配返回 403（`src/test/java/.../v2/modules/security/`）
+- [ ] Java 单元测试：`SystokenWhitelistValidatorTest.java` 覆盖空白名单全部禁止（401）、SYSTOKEN 在白名单通过、不在白名单拒绝（`src/test/java/.../v2/modules/security/`）
+- [ ] Python 集成测试：`connector_platform_v3_security.py` 覆盖 URL 白名单拦截、SYSTOKEN 白名单拦截、Cookie/数字签名/多认证正常调用（`src/test/python/inspect/`）
+- [ ] Shell API 测试脚本：安全准入拦截端点覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
 
 ### 验证命令
 ```bash
@@ -574,6 +642,13 @@ cd connector-api && mvn test -Dtest=CookieCredentialInjectorTest,DigitalSignCred
 - [ ] 版本变更时缓存被主动清空
 - [ ] 速率限制值取 `min(流配置, 应用上限)`
 
+### 测试要求
+- [ ] Java 单元测试：`InboundRateLimiterTest.java` 覆盖 QPS 模式令牌桶限流（Redis Lua 脚本）、并发模式计数器限流、超限返回 429 + `Retry-After`、Redis 不可用降级放行（Embedded Redis 或 Mock）（`src/test/java/.../v2/modules/ratelimit/`）
+- [ ] Java 单元测试：`FlowCacheManagerTest.java` 覆盖缓存命中跳过 DAG、缓存未命中执行后回写、TTL 正确设置、版本变更主动清空（`src/test/java/.../v2/modules/cache/`）
+- [ ] Java 单元测试：`CacheKeyResolverTest.java` 覆盖 `keyTemplate` 表达式解析、上下文动态值拼接（`src/test/java/.../v2/modules/cache/`）
+- [ ] Python 集成测试：限流验证（并发请求超限返回 429）、缓存验证（相同请求返回缓存结果）（`src/test/python/inspect/connector_platform_v3_e2e.py`）
+- [ ] Shell API 测试脚本：限流拦截端点覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
+
 ### 验证命令
 ```bash
 # 压测验证限流（超过 QPS 限制后返回 429）
@@ -621,6 +696,13 @@ cd connector-api && mvn test -Dtest=InboundRateLimiterTest,FlowCacheManagerTest
 - [ ] 脚本内 `while(true){}` 在 `statementLimit` 达到后终止
 - [ ] 每流最多 10 个脚本节点（编排保存时校验）
 - [ ] 脚本源码最大 10000 字符（编排保存时校验）
+
+### 测试要求
+- [ ] Java 单元测试：`ScriptNodeExecutorTest.java` 覆盖正常脚本执行（`main(ctx)` 返回 Map）、ctx 上下文数据访问（`ctx.trigger.input.body`）、上游节点出参访问（`ctx.conn_1.output.body.data`）、可选链语法（`ctx?.conn_1?.output?.body?.field ?? "default"`）（`src/test/java/.../v2/modules/script/`）
+- [ ] Java 单元测试：`GraalJsSandboxSecurityTest.java` 覆盖五层沙箱安全验证——`testFileAccessBlocked`（IO 拒绝）、`testJavaTypeBlocked`（`HostAccess.EXPLICIT`）、`testInfiniteLoopTerminated`（`statementLimit`）、`testThreadCreationBlocked`（线程拒绝）、`testNativeAccessBlocked`（原生拒绝）（`src/test/java/.../v2/modules/script/`）
+- [ ] Java 单元测试：`CtxAssemblerTest.java` 覆盖上游多节点 input/output 组装为嵌套 Map、指针引用正确性（`src/test/java/.../v2/modules/script/`）
+- [ ] Python 集成测试：脚本节点正常执行 + 超时终止端到端验证（`src/test/python/inspect/connector_platform_v3_e2e.py`）
+- [ ] Shell API 测试脚本：脚本节点编排端点覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
 
 ### 验证命令
 ```bash
@@ -674,6 +756,15 @@ mvn test -Dtest=GraalJsSandboxSecurityTest#testInfiniteLoopTerminated
 - [ ] 运行记录列表支持按 status/triggerType/时间范围过滤分页
 - [ ] 运行记录详情包含 steps 数组，每个 step 含 nodeId/nodeType/status/duration/inputData/outputData
 
+### 测试要求
+- [ ] Java 单元测试：`ExecutionRecordServiceTest.java` 覆盖 HTTP 触发/调试触发记录写入、trigger_type 正确标记（1=http, 2=debug）、异步写入不阻塞响应、写入失败不影响业务（`src/test/java/.../v2/modules/execution/`）
+- [ ] Java 单元测试：`LogSanitizerTest.java` 覆盖 password/token/secretKey/signSecretKey 字段脱敏，验证脱敏后值为 `"***"` （`src/test/java/.../v2/modules/execution/`）
+- [ ] Java 单元测试：`ExecutionCleanupJobTest.java` 覆盖 FIFO 清理（记录超上限删除最早）、30 天定时清理（先删 step 再删 record，分批 1000）（`src/test/java/.../v2/modules/execution/`）
+- [ ] Java 单元测试：`LogSwitchServiceTest.java` 覆盖开关开启写 step、开关关闭不写 step、动态切换立即生效（`src/test/java/.../v2/modules/execution/`）
+- [ ] Java WebMvc 切片测试：`ExecutionRecordControllerWebMvcTest.java` 覆盖列表查询（按 status/triggerType/时间范围过滤分页）和详情查询（含 steps 数组）（`src/test/java/.../v2/modules/flow/controller/`）
+- [ ] Python 集成测试：触发连接流→查询运行记录→查看详情 端到端流程，验证脱敏和 step 日志完整性（`src/test/python/inspect/connector_platform_v3_e2e.py`）
+- [ ] Shell API 测试脚本：运行记录查询端点（#49~#50）覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
+
 ### 验证命令
 ```bash
 # 查询运行记录
@@ -722,6 +813,12 @@ cd connector-api && mvn test -Dtest=ExecutionRecordServiceTest,LogSanitizerTest
 - [ ] 调试超时 30s 后终止（独立于正常执行超时配置）
 - [ ] 调试线程池隔离（不影响正常 HTTP 触发执行）
 
+### 测试要求
+- [ ] Java 单元测试：`DebugExecutionServiceTest.java` 覆盖草稿版本调试成功、已发布版本调试成功、已失效版本拒绝（EC-014）、并发上限 3 校验、30s 超时终止、trigger_type=2 运行记录生成（`src/test/java/.../v2/modules/debug/`）
+- [ ] Java WebMvc 切片测试：`DebugProxyControllerWebMvcTest.java` 覆盖 open-server 代理转发到 connector-api、三层权限校验（`src/test/java/.../v2/modules/flow/controller/`）
+- [ ] Python 集成测试：`debug_test_run.py` 覆盖草稿版本调试→各节点执行详情返回→已失效版本拒绝 端到端流程（`src/test/python/inspect/`）
+- [ ] Shell API 测试脚本：调试执行端点（#51~#53）覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
+
 ### 验证命令
 ```bash
 # 触发调试执行
@@ -765,6 +862,13 @@ cd connector-api && mvn test -Dtest=DebugExecutionServiceTest
 - [ ] 每条日志包含：操作人、操作时间、操作类型、操作对象 ID、变更前/后快照
 - [ ] 操作日志复用现有 OperateLog 存储和查询模块
 
+### 测试要求
+- [ ] Java 单元测试：`ConnectorOperateLogAspectTest.java` 覆盖连接器实体的创建/编辑/删除/恢复、连接器版本的创建草稿/发布/失效/恢复/删除 各操作日志写入验证（切面拦截 + 日志字段断言）（`src/test/java/.../v2/modules/auditlog/`）
+- [ ] Java 单元测试：`FlowOperateLogAspectTest.java` 覆盖连接流实体的创建/编辑/删除/恢复/部署/启动/停止/复制、连接流版本的创建草稿/发布/失效/恢复/删除/提交审批/撤回 各操作日志写入验证（`src/test/java/.../v2/modules/auditlog/`）
+- [ ] Java 单元测试：`EntitySnapshotLoaderTest.java` 覆盖连接器和连接流实体变更前/后关键字段快照正确性（`src/test/java/.../v2/modules/auditlog/`）
+- [ ] Python 集成测试：执行关键操作后查询操作日志，验证操作人/操作时间/操作类型/对象 ID/变更快照完整性（`src/test/python/inspect/connector_platform_v3_e2e.py`）
+- [ ] Shell API 测试脚本：操作日志查询端点覆盖（`src/test/api-test-scripts/connector-platform-v3/`）
+
 ### 验证命令
 ```bash
 # 执行一个操作后查询操作日志
@@ -772,6 +876,72 @@ cd connector-api && mvn test -Dtest=DebugExecutionServiceTest
 
 # 单元测试
 cd open-server && mvn test -Dtest=ConnectorOperateLogAspectTest,FlowOperateLogAspectTest
+```
+
+---
+
+## TASK-015: 整体集成验证与性能基线
+
+**复杂度**: L
+**前置依赖**: TASK-004, TASK-005, TASK-006, TASK-007, TASK-008, TASK-009, TASK-010, TASK-011, TASK-012, TASK-013, TASK-014
+**执行波次**: 5
+
+### 描述
+执行全平台端到端集成验证，确保 V3 全部功能在真实环境中正确协同工作，覆盖主流程、调试流程、脚本节点、一键复制、安全性、性能基线（NFR-001~004）。
+
+核心验证路径：
+1. **完整主流程**：创建连接器 → 配置认证和 URL 白名单 → 创建草稿版本 → 更新配置 → 发布版本 → 创建连接流 → 编排节点（触发器 + 连接器引用 + 脚本节点 + 并行分支）→ 保存草稿 → 发布 → 三级审批通过 → 部署 → 启动 → HTTP 触发调用 → 查看运行记录和步骤日志 → 停止
+2. **调试流程**：草稿版本直接调试 → 各节点执行详情返回 → 已失效版本拒绝
+3. **脚本节点**：`function main(ctx) { return { result: ctx.conn_1.output.body.value * 2 }; }` 正确返回计算结果
+4. **一键复制**：复制连接流（含完整版本历史）→ 新名称含 `_copy_xxxxx` → 状态为已停止
+5. **安全机制**：
+   - URL 白名单：不在白名单的 URL 被拦截（403）
+   - SYSTOKEN 白名单：不在白名单的 SYSTOKEN 被拦截（401）
+   - 应用白名单：非白名单应用访问返回 403
+6. **性能基线**（NFR-001~004）：
+   - NFR-001: API 响应时间 P95 ≤ 200ms（不含下游调用）
+   - NFR-002: 运行时单次调用延迟 ≤ 50ms（不含下游 HTTP 往返）
+   - NFR-003: 系统支持 QPS ≥ 100（单流）
+   - NFR-004: 30 天运行记录查询 P95 ≤ 500ms
+
+### 涉及文件
+- [NEW] `open-server/src/test/python/inspect/connector_platform_v3_e2e.py`（主流程 + 调试 + 脚本 + 复制 端到端）
+- [NEW] `open-server/src/test/python/inspect/connector_platform_v3_security.py`（URL 白名单 + SYSTOKEN 白名单 + 应用白名单 安全验证）
+- [NEW] `open-server/src/test/python/inspect/connector_platform_v3_performance.py`（性能基线 NFR-001~004）
+- [NEW] `open-server/src/test/api-test-scripts/connector-platform-v3/e2e-full-flow.sh`（Shell 版主流程）
+- [NEW] `open-server/src/test/api-test-scripts/connector-platform-v3/run-all-v3-tests.sh`（聚合执行器）
+
+### 验收标准
+- [ ] 完整主流程 11 步全部通过（创建连接器→发布→创建流→草稿→发布→审批→部署→启动→触发→停止）
+- [ ] 调试流程：草稿版本调试成功返回各节点执行详情；已失效版本调试返回 422（EC-014）
+- [ ] 脚本节点：`main(ctx)` 正确计算并返回 `{ result: <upstream_output> * 2 }`
+- [ ] 一键复制：复制后新流含完整版本历史，名称格式 `原名称_copy_xxxxx`，lifecycleStatus=1
+- [ ] URL 白名单：不在白名单的目标 URL 被拦截（HTTP 403）
+- [ ] SYSTOKEN 白名单：不在白名单的 SYSTOKEN 被拦截（HTTP 401）
+- [ ] 应用白名单：非白名单应用访问任意连接器平台接口返回 403 + 提示信息
+- [ ] NFR-001: `GET /connectors` 列表查询 P95 ≤ 200ms
+- [ ] NFR-002: 运行时引擎单次调用延迟（不含下游 HTTP 往返）≤ 50ms
+- [ ] NFR-003: 单流 QPS 压测 100 并发，成功率 ≥ 99%（限流阈值之上合理拒绝）
+- [ ] NFR-004: 30 天运行记录按 flowId 分页查询 P95 ≤ 500ms
+- [ ] 所有集成测试脚本通过率 100%
+
+### 验证命令
+```bash
+# 运行全部 Python 集成测试
+cd open-server/src/test/python/inspect && python3 connector_platform_v3_e2e.py
+
+# 运行安全验证
+python3 connector_platform_v3_security.py
+
+# 运行性能基线测试
+python3 connector_platform_v3_performance.py
+
+# 运行全部 Shell API 测试脚本
+cd open-server/src/test/api-test-scripts/connector-platform-v3 && bash run-all-v3-tests.sh
+
+# 运行全部 Java 单元测试
+cd open-server && mvn test
+cd ../connector-api && mvn test
 ```
 
 ---
@@ -784,6 +954,9 @@ graph TD
     WAVE1 --> WAVE3["Wave 3 运行时"]
     WAVE2 --> WAVE4["Wave 4 运维调试"]
     WAVE3 --> WAVE4
+    WAVE2 --> WAVE5["Wave 5 集成验证"]
+    WAVE3 --> WAVE5
+    WAVE4 --> WAVE5
 
     T001["TASK-001<br/>DB Schema"] --> T002["TASK-002<br/>实体持久层"]
     T001 --> T003["TASK-003<br/>枚举常量"]
@@ -800,11 +973,23 @@ graph TD
     T002 --> T012["TASK-012<br/>执行记录"]
     T008 --> T012
     T003 --> T014["TASK-014<br/>操作日志"]
+    T004 --> T015["TASK-015<br/>集成验证"]
+    T005 --> T015
+    T006 --> T015
+    T007 --> T015
+    T008 --> T015
+    T009 --> T015
+    T010 --> T015
+    T011 --> T015
+    T012 --> T015
+    T013 --> T015
+    T014 --> T015
 
     style WAVE1 fill:#e8eaf6,stroke:#283593
     style WAVE2 fill:#e8f5e9,stroke:#2e7d32
     style WAVE3 fill:#fff3e0,stroke:#e65100
     style WAVE4 fill:#fce4ec,stroke:#c62828
+    style WAVE5 fill:#f3e5f5,stroke:#6a1b9a
 ```
 
 ---
@@ -820,12 +1005,12 @@ graph TD
 | FR-005 | 编辑草稿（连接器） | TASK-004 |
 | FR-005a | 创建草稿版本（连接器） | TASK-004 |
 | FR-006 | 复制到草稿（连接器） | TASK-004 |
-| FR-007 | 发布版本（连接器） | TASK-004 |
+| FR-007 | 发布版本（连接器） | TASK-004, TASK-015（主流程验证） |
 | FR-008~011 | 版本查看/失效/删除/恢复（连接器） | TASK-004 |
 | FR-012~014 | 认证类型/凭证位置/认证多选 | TASK-004（配置）, TASK-009（运行时） |
-| FR-015 | URL 正则白名单 | TASK-004（配置校验）, TASK-009（运行时校验） |
+| FR-015 | URL 正则白名单 | TASK-004（配置校验）, TASK-009（运行时校验）, TASK-015（安全验证） |
 | FR-016 | 创建连接流 | TASK-005 |
-| FR-017 | 一键复制 | TASK-005 |
+| FR-017 | 一键复制 | TASK-005, TASK-015（复制验证） |
 | FR-018 | 部署 | TASK-005 |
 | FR-019 | 启动 | TASK-005 |
 | FR-020 | 停止 | TASK-005 |
@@ -833,26 +1018,30 @@ graph TD
 | FR-024 | 编辑草稿（连接流） | TASK-005 |
 | FR-024a | 创建草稿版本（连接流） | TASK-005 |
 | FR-025 | 复制到草稿（连接流） | TASK-005 |
-| FR-026 | 发布版本（连接流） | TASK-005, TASK-007 |
+| FR-026 | 发布版本（连接流） | TASK-005, TASK-007, TASK-015（主流程验证） |
 | FR-027~030 | 版本查看/失效/删除/恢复（连接流） | TASK-005 |
-| FR-031 | 提交审批 | TASK-005, TASK-007 |
+| FR-031 | 提交审批 | TASK-005, TASK-007, TASK-015（主流程验证） |
 | FR-032 | 审批人配置 | TASK-007 |
 | FR-033 | 一键催办 | TASK-007 |
 | FR-034 | 节点超时 | TASK-005（配置校验）, TASK-008（运行时） |
 | FR-035 | 入站限流 | TASK-005（配置校验）, TASK-010（运行时） |
-| FR-036 | SYSTOKEN 白名单 | TASK-009（运行时） |
+| FR-036 | SYSTOKEN 白名单 | TASK-009（运行时）, TASK-015（安全验证） |
 | FR-037 | 缓存配置 | TASK-005（配置校验）, TASK-010（运行时） |
 | FR-038 | 串行/并行 | TASK-008 |
 | FR-038a | 并行处理节点 | TASK-005（配置校验）, TASK-008（运行时） |
 | FR-039 | 连接器版本选择 | TASK-005（配置校验）, TASK-008（版本解析） |
-| FR-040a | 脚本节点 | TASK-005（发布时语法校验）, TASK-011（运行时执行） |
-| FR-041 | 调试触发 | TASK-013 |
+| FR-040a | 脚本节点 | TASK-005（发布时语法校验）, TASK-011（运行时执行）, TASK-015（脚本验证） |
+| FR-041 | 调试触发 | TASK-013, TASK-015（调试验证） |
 | FR-042 | 运行记录查看 | TASK-012 |
 | FR-043 | 版本配置解析 | TASK-008 |
 | FR-044 | 日志采集 | TASK-012 |
-| FR-045 | 应用白名单管理 | TASK-006 |
+| FR-045 | 应用白名单管理 | TASK-006, TASK-015（安全验证） |
 | FR-046 | 操作日志 | TASK-014 |
 | FR-047 | JSON 语法校验 | TASK-004（连接器发布时）, TASK-005（连接流发布时） |
+| NFR-001 | API 响应时间 P95 ≤ 200ms | TASK-015（性能基线验证） |
+| NFR-002 | 运行时延迟 ≤ 50ms | TASK-015（性能基线验证） |
+| NFR-003 | 单流 QPS ≥ 100 | TASK-015（性能基线验证） |
+| NFR-004 | 运行记录查询 P95 ≤ 500ms | TASK-015（性能基线验证） |
 
 ---
 
@@ -864,9 +1053,10 @@ graph TD
 **文件**: `.sddu/specs-tree-root/specs-tree-connector-platform-v3/tasks.md`
 
 ### 任务汇总
-- 总任务数：14 个
-- 复杂度分布：S 级 2 个，M 级 8 个，L 级 4 个
-- 执行波次：4 个波次
+- 总任务数：15 个
+- 复杂度分布：S 级 2 个，M 级 8 个，L 级 5 个
+- 执行波次：5 个波次
+- 测试覆盖：Java 单元测试 + Python 集成测试 + Shell API 测试脚本 三层测试体系
 
 ### 下一步
 👉 运行 `@sddu-build TASK-001` 开始实现第一个任务
