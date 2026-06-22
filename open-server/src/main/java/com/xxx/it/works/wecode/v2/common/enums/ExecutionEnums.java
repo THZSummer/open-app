@@ -31,7 +31,10 @@ public final class ExecutionEnums {
         SUCCESS(0, "成功"),
 
         /** 失败 */
-        FAILED(1, "失败");
+        FAILED(1, "失败"),
+
+        /** 执行中（运行时状态） */
+        PENDING(2, "执行中");
 
         private final Integer code;
         private final String description;

@@ -202,11 +202,21 @@ public class FlowVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        // 仅草稿状态可编辑
-        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.DRAFT.getCode()) {
+        // 草稿、已撤回、已驳回状态可编辑（spec §1.7.4）
+        Integer currentStatus = version.getStatus();
+        if (currentStatus == null ||
+                (currentStatus != FlowVersionStatus.DRAFT.getCode()
+                        && currentStatus != FlowVersionStatus.WITHDRAWN.getCode()
+                        && currentStatus != FlowVersionStatus.REJECTED.getCode())) {
             return ApiResponse.error("409",
-                    "非草稿状态，不可编辑",
-                    "Only draft versions can be edited");
+                    "非草稿/已撤回/已驳回状态，不可编辑",
+                    "Only draft, withdrawn, or rejected versions can be edited");
+        }
+
+        // 已撤回/已驳回 → 自动转为草稿
+        if (currentStatus == FlowVersionStatus.WITHDRAWN.getCode()
+                || currentStatus == FlowVersionStatus.REJECTED.getCode()) {
+            version.setStatus(FlowVersionStatus.DRAFT.getCode());
         }
 
         // DB 存储级校验：JSON 可解析
@@ -540,13 +550,15 @@ public class FlowVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        // 仅草稿或已失效状态可删除
+        // 仅草稿、已失效、已撤回、已驳回状态可删除 (FR-029)
         if (version.getStatus() == null ||
                 (version.getStatus() != FlowVersionStatus.DRAFT.getCode()
-                        && version.getStatus() != FlowVersionStatus.INVALIDATED.getCode())) {
+                        && version.getStatus() != FlowVersionStatus.INVALIDATED.getCode()
+                        && version.getStatus() != FlowVersionStatus.WITHDRAWN.getCode()
+                        && version.getStatus() != FlowVersionStatus.REJECTED.getCode())) {
             return ApiResponse.error("409",
-                    "仅草稿或已失效状态可删除",
-                    "Only draft or invalidated versions can be deleted");
+                    "仅草稿/已失效/已撤回/已驳回状态可删除",
+                    "Only draft, invalidated, withdrawn, or rejected versions can be deleted");
         }
 
         flowVersionMapper.deleteById(versionId);

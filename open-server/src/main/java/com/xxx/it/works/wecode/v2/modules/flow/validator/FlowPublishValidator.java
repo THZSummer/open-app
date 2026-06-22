@@ -10,6 +10,9 @@ import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMa
 import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorVersionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.ResourceLimits;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -151,7 +154,7 @@ public class FlowPublishValidator {
             }
         }
 
-        // 校验 9：脚本语法合法性（预留扩展，实际执行时由 GraalJS 沙箱校验）
+        // 校验 9：脚本语法合法性（FR-026 校验项 i: GraalJS parse 预检）
         if (nodes != null && nodes.isArray()) {
             int scriptNodeCount = 0;
             for (JsonNode node : nodes) {
@@ -163,9 +166,30 @@ public class FlowPublishValidator {
                         JsonNode scriptSource = data.get("scriptSource");
                         if (scriptSource != null && !scriptSource.isNull()) {
                             String source = scriptSource.asText();
-                            if (source.length() > ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH) {
+                            String nodeId = node.has("id") ? node.get("id").asText() : "unknown";
+                            if (source == null || source.trim().isEmpty()) {
+                                errors.add(String.format("脚本节点 [%s] 源码不能为空", nodeId));
+                            } else if (source.length() > ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH) {
                                 errors.add("脚本源码超过最大长度限制 "
                                         + ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH + "字符");
+                            } else {
+                                // FR-026 校验项 i): 使用 GraalJS polyglot 进行语法预检
+                                try (Context ctx = Context.newBuilder("js")
+                                        .allowExperimentalOptions(true)
+                                        .option("js.ecmascript-version", "2022")
+                                        .resourceLimits(ResourceLimits.newBuilder()
+                                                .statementLimit(1000, null)
+                                                .build())
+                                        .build()) {
+                                    ctx.eval("js", source);
+                                } catch (PolyglotException e) {
+                                    errors.add(String.format("脚本节点 [%s] 语法错误: %s",
+                                            nodeId, e.getMessage()));
+                                } catch (Exception e) {
+                                    log.error("脚本节点 [{}] GraalJS 校验异常", nodeId, e);
+                                    errors.add(String.format("脚本节点 [%s] 校验异常: %s",
+                                            nodeId, e.getMessage()));
+                                }
                             }
                         }
                     }

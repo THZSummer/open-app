@@ -355,4 +355,70 @@ class FlowPublishValidatorTest {
         List<String> errors = validator.validateOrchestrationConfig(config);
         assertTrue(errors.stream().anyMatch(e -> e.contains("脚本节点数量超过上限")));
     }
+
+    @Test
+    @DisplayName("校验9: 合法脚本语法 → 通过 (GraalJS parse)")
+    void testValidScriptSyntax_Pass() {
+        String validScript = "function main(ctx) { return { result: ctx.input.value + 1 }; }";
+        String config = "{\"nodes\":[" +
+                "{\"id\":\"t\",\"type\":\"trigger\"}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"scriptSource\":\"" + escapeJson(validScript) + "\"}}," +
+                "{\"id\":\"c\",\"type\":\"connector\"}," +
+                "{\"id\":\"e\",\"type\":\"exit\"}" +
+                "],\"edges\":[" +
+                "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"s\"}," +
+                "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
+                "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
+                "]}";
+        List<String> errors = validator.validateOrchestrationConfig(config);
+        assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
+    }
+
+    @Test
+    @DisplayName("校验9: 非法脚本语法 → 失败 (GraalJS parse)")
+    void testInvalidScriptSyntax_Fail() {
+        String invalidScript = "function main(ctx) { return {; }"; // missing value after return
+        String config = "{\"nodes\":[" +
+                "{\"id\":\"t\",\"type\":\"trigger\"}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"scriptSource\":\"" + escapeJson(invalidScript) + "\"}}," +
+                "{\"id\":\"c\",\"type\":\"connector\"}," +
+                "{\"id\":\"e\",\"type\":\"exit\"}" +
+                "],\"edges\":[" +
+                "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"s\"}," +
+                "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
+                "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
+                "]}";
+        List<String> errors = validator.validateOrchestrationConfig(config);
+        assertTrue(errors.stream().anyMatch(e -> e.contains("语法错误")),
+                "Expected syntax error but got: " + errors);
+    }
+
+    @Test
+    @DisplayName("校验9: 空脚本源码 → 失败")
+    void testEmptyScriptSource_Fail() {
+        String config = "{\"nodes\":[" +
+                "{\"id\":\"t\",\"type\":\"trigger\"}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"scriptSource\":\"\"}}," +
+                "{\"id\":\"c\",\"type\":\"connector\"}," +
+                "{\"id\":\"e\",\"type\":\"exit\"}" +
+                "],\"edges\":[" +
+                "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"s\"}," +
+                "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
+                "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
+                "]}";
+        List<String> errors = validator.validateOrchestrationConfig(config);
+        assertTrue(errors.stream().anyMatch(e -> e.contains("源码不能为空")),
+                "Expected empty source error but got: " + errors);
+    }
+
+    /**
+     * 转义 JSON 字符串中的特殊字符，避免拼接 JSON 时格式错误
+     */
+    private static String escapeJson(String raw) {
+        return raw.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
 }

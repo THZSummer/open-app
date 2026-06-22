@@ -126,11 +126,14 @@ public class FlowCopyService {
      */
     private String generateCopyName(String originalName) {
         Random random = new Random();
+        String newName = null;
         for (int i = 0; i < MAX_RETRY; i++) {
             int suffix = random.nextInt(0x10000);
-            String newName = originalName + "_copy_" + String.format("%04x", suffix);
+            newName = originalName + "_copy_" + String.format("%04x", suffix);
             // 简单碰撞检查（生产环境可加强）
             // 由于名称唯一性约束未强制，此处不做严格碰撞检测
+        }
+        if (newName != null) {
             return newName;
         }
         // 保底：使用 timestamp 后缀
