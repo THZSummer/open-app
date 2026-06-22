@@ -56,6 +56,20 @@
             <version>${r2dbc-mysql.version}</version>
         </dependency>
 
+        <!-- MyBatis (for execution record writing) -->
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>3.0.4</version>
+        </dependency>
+
+        <!-- MySQL JDBC Driver (for MyBatis) -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Reactive Redis -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -67,6 +81,19 @@
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j-core</artifactId>
             <version>${bucket4j.version}</version>
+        </dependency>
+
+        <!-- GraalVM Polyglot for JavaScript sandbox -->
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>24.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-language</artifactId>
+            <version>24.1.1</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- SpringDoc OpenAPI (WebFlux) -->

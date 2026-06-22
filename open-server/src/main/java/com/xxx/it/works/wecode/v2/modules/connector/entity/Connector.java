@@ -10,6 +10,7 @@ import java.util.Date;
  * <p>
  * 对应表 openplatform_v2_cp_connector_t
  * 连接器 = 纯出站端点定义, 类比 import 的模块/库
+ * V3 新增: app_id 应用归属; status 启用 4 状态流转
  * </p>
  */
 @Data
@@ -35,11 +36,14 @@ public class Connector implements Serializable {
     /** 图标文件ID */
     private String iconFileId;
 
-    /** 连接器类型: 1=HTTP (MVP仅支持HTTP) */
+    /** 连接器类型: 1=HTTP */
     private Integer connectorType;
 
-    /** 状态: 预留字段 (MVP不使用) */
+    /** 状态: 1=有效不可用, 2=有效可用, 3=已失效, 4=物理删除（V3 启用） */
     private Integer status;
+
+    /** 归属应用ID（V3 新增，实现 G13 应用数据隔离） */
+    private Long appId;
 
     /** 创建时间 */
     private Date createTime;

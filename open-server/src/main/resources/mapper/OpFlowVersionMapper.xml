@@ -6,7 +6,11 @@
     <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion">
         <id column="id" property="id"/>
         <result column="flow_id" property="flowId"/>
+        <result column="version_number" property="versionNumber"/>
+        <result column="status" property="status"/>
         <result column="orchestration_config" property="orchestrationConfig"/>
+        <result column="published_time" property="publishedTime"/>
+        <result column="published_by" property="publishedBy"/>
         <result column="create_time" property="createTime"/>
         <result column="last_update_time" property="lastUpdateTime"/>
         <result column="create_by" property="createBy"/>
@@ -15,15 +19,18 @@
 
     <!-- Base Column -->
     <sql id="Base_Column_List">
-        id, flow_id, orchestration_config, create_time, last_update_time, create_by, last_update_by
+        id, flow_id, version_number, status, orchestration_config,
+        published_time, published_by, create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- Insert -->
     <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion">
         INSERT INTO openplatform_v2_cp_flow_version_t (
-            id, flow_id, orchestration_config, create_time, last_update_time, create_by, last_update_by
+            id, flow_id, version_number, status, orchestration_config,
+            published_time, published_by, create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{flowId}, #{orchestrationConfig}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+            #{id}, #{flowId}, #{versionNumber}, #{status}, #{orchestrationConfig},
+            #{publishedTime}, #{publishedBy}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
 
@@ -39,6 +46,10 @@
     <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion">
         UPDATE openplatform_v2_cp_flow_version_t
         SET orchestration_config = #{orchestrationConfig},
+            version_number       = #{versionNumber},
+            status               = #{status},
+            published_time       = #{publishedTime},
+            published_by         = #{publishedBy},
             last_update_time     = #{lastUpdateTime},
             last_update_by       = #{lastUpdateBy}
         WHERE id = #{id}
@@ -48,6 +59,45 @@
     <delete id="deleteByFlowId">
         DELETE FROM openplatform_v2_cp_flow_version_t
         WHERE flow_id = #{flowId}
+    </delete>
+
+    <!-- Select By ID (V3) -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_flow_version_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- Select List By FlowId (V3 multi-version) -->
+    <select id="selectListByFlowId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_flow_version_t
+        WHERE flow_id = #{flowId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY version_number DESC
+    </select>
+
+    <!-- Select By FlowId And VersionNumber (V3) -->
+    <select id="selectByFlowIdAndVersionNumber" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_flow_version_t
+        WHERE flow_id = #{flowId}
+          AND version_number = #{versionNumber}
+    </select>
+
+    <!-- Select Max VersionNumber By FlowId (V3) -->
+    <select id="selectMaxVersionNumberByFlowId" resultType="java.lang.Integer">
+        SELECT COALESCE(MAX(version_number), 0)
+        FROM openplatform_v2_cp_flow_version_t
+        WHERE flow_id = #{flowId}
+    </select>
+
+    <!-- Delete By ID (V3) -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_cp_flow_version_t
+        WHERE id = #{id}
     </delete>
 
 </mapper>

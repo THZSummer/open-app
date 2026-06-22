@@ -2,29 +2,41 @@
   "feature": "connector-platform-v3",
   "feature_id": "CONN-PLAT-003",
   "feature_name": "连接器平台 V3",
-  "phase": "registered",
+  "phase": "builded",
   "status": "tracked",
   "created_at": "2026-06-17T10:00:00+08:00",
-  "updated_at": "2026-06-17T10:00:00+08:00",
+  "updated_at": "2026-06-22T06:37:00+08:00",
   "stateHistory": [
     {
       "state": "registered",
       "timestamp": "2026-06-17T10:00:00+08:00",
-      "note": "从 V3 复制创建，作为 V3 新起点。V3 已标记为 terminated。"
+      "note": "从 V2 复制创建，作为 V3 新起点。V2 已标记为 terminated。"
+    },
+    {
+      "state": "plan_approved",
+      "timestamp": "2026-06-22T00:00:00+08:00",
+      "note": "plan.md / plan-api.md / plan-db.md / tasks.md 已就绪"
     }
   ],
   "artifacts": {
-    "spec": {
-      "specification": "./spec.md",
-      "version": "v2.15-draft",
-      "status": "draft"
-    }
+    "spec": { "specification": "./spec.md", "version": "v2.15-draft", "status": "draft" },
+    "plan": { "specification": "./plan.md", "status": "completed" },
+    "tasks": { "specification": "./tasks.md", "status": "completed" },
+    "build": { "specification": "./build.md", "status": "completed" }
   },
   "dependencies": {
     "v2_feature": "CONN-PLAT-002",
     "v2_status": "terminated"
   },
+  "tasks": {
+    "TASK-001": { "status": "pending", "wave": 1 },
+    "TASK-002": { "status": "pending", "wave": 1 },
+    "TASK-003": { "status": "pending", "wave": 1 },
+    "TASK-004": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:25:00+08:00" },
+    "TASK-005": { "status": "completed", "wave": 2, "completed_at": "2026-06-22T06:37:00+08:00" }
+  },
   "next_steps": [
-    "运行 @sddu discovery connector-platform-v3 重新启动需求挖掘"
+    "运行 @sddu-review connector-platform-v3 TASK-005 审查连接流管理 API 实现",
+    "继续 TASK-006: 安全准入拦截器"
   ]
 }

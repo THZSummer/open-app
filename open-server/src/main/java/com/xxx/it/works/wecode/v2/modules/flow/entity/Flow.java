@@ -9,8 +9,9 @@ import java.util.Date;
  * 连接流基本信息实体
  * <p>
  * 对应表 openplatform_v2_cp_flow_t
- * lifecycle_status: 1=running(运行中), 2=stopped(已停止)
- * MVP 创建后默认 lifecycle_status=1 (running)
+ * V3 扩展: lifecycle_status 4 状态（已停止⇄运行中→已失效→物理删除）
+ * V3 新增: deployed_version_id, deployed_version_number, app_id
+ * 部署不改变状态，仅切换版本绑定
  * </p>
  */
 @Data
@@ -36,8 +37,17 @@ public class Flow implements Serializable {
     /** 图标文件ID */
     private String iconFileId;
 
-    /** 生命周期状态: 1=running(运行中), 2=stopped(已停止) */
+    /** 生命周期状态: 1=已停止, 2=运行中, 3=已失效, 4=物理删除（V3 启用 4 状态） */
     private Integer lifecycleStatus;
+
+    /** 当前部署的版本ID（运行时按此指针读取编排快照，V3 新增） */
+    private Long deployedVersionId;
+
+    /** 当前部署的版本号（冗余，避免列表查询 JOIN flow_version_t，V3 新增） */
+    private Integer deployedVersionNumber;
+
+    /** 归属应用ID（V3 新增，实现 G13 应用数据隔离） */
+    private Long appId;
 
     /** 创建时间 */
     private Date createTime;

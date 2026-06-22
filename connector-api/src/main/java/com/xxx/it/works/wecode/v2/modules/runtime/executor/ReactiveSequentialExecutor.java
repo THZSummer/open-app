@@ -10,6 +10,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.script.ScriptNodeExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -43,7 +44,8 @@ public class ReactiveSequentialExecutor {
             TriggerNodeExecutor triggerNodeExecutor,
             ConnectorNodeExecutor connectorNodeExecutor,
             DataProcessorExecutor dataProcessorExecutor,
-            ExitNodeExecutor exitNodeExecutor) {
+            ExitNodeExecutor exitNodeExecutor,
+            ScriptNodeExecutor scriptNodeExecutor) {
 
         this.objectMapper = objectMapper;
         this.executorMap = new HashMap<>();
@@ -51,6 +53,7 @@ public class ReactiveSequentialExecutor {
         executorMap.put("connector", connectorNodeExecutor);
         executorMap.put("data_processor", dataProcessorExecutor);
         executorMap.put("exit", exitNodeExecutor);
+        executorMap.put("script", scriptNodeExecutor);
     }
 
     /**

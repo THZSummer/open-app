@@ -62,4 +62,15 @@ public interface OpFlowMapper {
             @Param("lastUpdateTime") java.util.Date lastUpdateTime,
             @Param("lastUpdateBy") String lastUpdateBy
     );
+
+    /**
+     * 部署连接流（绑定版本）
+     */
+    int deploy(
+            @Param("id") Long id,
+            @Param("deployedVersionId") Long deployedVersionId,
+            @Param("deployedVersionNumber") Integer deployedVersionNumber,
+            @Param("lastUpdateTime") java.util.Date lastUpdateTime,
+            @Param("lastUpdateBy") String lastUpdateBy
+    );
 }

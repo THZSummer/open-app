@@ -77,4 +77,20 @@ public interface ApprovalFlowMapper {
     int countByCodeExcludeId(
             @Param("code") String code,
             @Param("excludeId") Long excludeId);
+
+    /**
+     * 根据编码和应用ID查询审批流程（V3 新增）
+     *
+     * <p>用于连接器流版本发布审批的三级审批人查找：
+     * 1. 应用级：code=? AND app_id=?
+     * 2. 平台级：code=? AND app_id IS NULL
+     * 3. 全局级：code='global' AND app_id IS NULL</p>
+     *
+     * @param code  流程编码
+     * @param appId 应用ID（可为null）
+     * @return 审批流程模板
+     */
+    ApprovalFlow selectByCodeAndAppId(
+            @Param("code") String code,
+            @Param("appId") Long appId);
 }

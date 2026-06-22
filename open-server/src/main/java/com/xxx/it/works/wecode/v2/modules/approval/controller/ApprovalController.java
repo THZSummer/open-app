@@ -2,7 +2,10 @@ package com.xxx.it.works.wecode.v2.modules.approval.controller;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.approval.ApprovalCallbackHandler;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.*;
+import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,12 +47,17 @@ public class ApprovalController {
 
     private final ApprovalService approvalService;
 
+    // V3 新增：审批回调处理器和记录Mapper（用于审批通过/驳回后的业务回调）
+    private final ApprovalCallbackHandler approvalCallbackHandler;
+    private final ApprovalRecordMapper approvalRecordMapper;
+
     // ==================== 审批流程模板管理 (#41-44) ====================
 
     /**
      * #41 获取审批流程模板列表
      *
      * @param keyword 搜索关键词
+     * @param appId 应用ID（V3 新增，过滤应用级模板）
      * @param curPage 当前页码
      * @param pageSize 每页数量
      * @return 审批流程模板列表
@@ -58,10 +66,11 @@ public class ApprovalController {
     @PlatformAdminPermission
     public ApiResponse<List<ApprovalFlowListResponse>> getFlowList(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long appId,
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 
-        log.info("Get approval flow list: keyword={}, curPage={}, pageSize={}", keyword, curPage, pageSize);
+        log.info("Get approval flow list: keyword={}, appId={}, curPage={}, pageSize={}", keyword, appId, curPage, pageSize);
 
         ApprovalFlowListRequest request = new ApprovalFlowListRequest();
         request.setKeyword(keyword);
@@ -155,9 +164,11 @@ public class ApprovalController {
      * #46 获取待审批列表
      *
      * @param type 审批类型
+     * @param businessType 业务类型（V3 新增，如 connector_flow_version_publish）
      * @param keyword 搜索关键词
      * @param status 审批状态
      * @param applicantId 申请人ID
+     * @param approverId 审批人ID
      * @param curPage 当前页码
      * @param pageSize 每页数量
      * @return 待审批列表
@@ -165,6 +176,7 @@ public class ApprovalController {
     @GetMapping("/approvals/pending")
     public ApiResponse<List<ApprovalPendingListResponse>> getPendingList(
             @RequestParam(required = false) String type,
+            @RequestParam(required = false) String businessType,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) String applicantId,
@@ -172,11 +184,16 @@ public class ApprovalController {
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 
-        log.info("Get pending approval list: type={}, keyword={}, status={}, applicantId={}, approverId={}, curPage={}, pageSize={}",
-                type, keyword, status, applicantId, approverId, curPage, pageSize);
+        log.info("Get pending approval list: type={}, businessType={}, keyword={}, status={}, applicantId={}, approverId={}, curPage={}, pageSize={}",
+                type, businessType, keyword, status, applicantId, approverId, curPage, pageSize);
 
         ApprovalPendingListRequest request = new ApprovalPendingListRequest();
-        request.setType(type);
+        // V3: 如果传了businessType参数，则用businessType作为type（精确匹配业务类型）
+        if (businessType != null && !businessType.isEmpty()) {
+            request.setType(businessType);
+        } else {
+            request.setType(type);
+        }
         request.setKeyword(keyword);
         request.setStatus(status);
 
@@ -241,6 +258,17 @@ public class ApprovalController {
 
         ApprovalActionResponse data = approvalService.approve(
                 Long.parseLong(id), request, operatorId, operatorName, operator);
+
+        // V3 新增：审批全部通过后，触发业务回调（如连接流版本发布）
+        try {
+            ApprovalRecord record = approvalRecordMapper.selectById(Long.parseLong(id));
+            if (record != null && record.getStatus() == com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine.Status.APPROVED) {
+                approvalCallbackHandler.onApproved(record);
+            }
+        } catch (Exception e) {
+            log.error("Approval callback failed after approve: id={}", id, e);
+        }
+
         return ApiResponse.success(data);
     }
 
@@ -263,6 +291,17 @@ public class ApprovalController {
 
         ApprovalActionResponse data = approvalService.reject(
                 Long.parseLong(id), request, operatorId, operatorName, operator);
+
+        // V3 新增：审批驳回后，触发业务回调（如连接流版本驳回）
+        try {
+            ApprovalRecord record = approvalRecordMapper.selectById(Long.parseLong(id));
+            if (record != null && record.getStatus() == com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine.Status.REJECTED) {
+                approvalCallbackHandler.onRejected(record, request.getComment());
+            }
+        } catch (Exception e) {
+            log.error("Approval callback failed after reject: id={}", id, e);
+        }
+
         return ApiResponse.success(data);
     }
 

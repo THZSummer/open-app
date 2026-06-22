@@ -34,6 +34,22 @@ public class FlowVersionEntity {
     @Column("orchestration_config")
     private String orchestrationConfig;
 
+    /** V3: 版本号 (1~1000) */
+    @Column("version_number")
+    private Integer versionNumber;
+
+    /** V3: 版本状态 (1=draft, 2=pending_approval, 3=withdrawn, 4=rejected, 5=published, 6=invalidated, 7=deleted) */
+    @Column("status")
+    private Integer status;
+
+    /** V3: 发布时间 */
+    @Column("published_time")
+    private LocalDateTime publishedTime;
+
+    /** V3: 发布人 */
+    @Column("published_by")
+    private String publishedBy;
+
     @Column("create_time")
     private LocalDateTime createTime;
 
@@ -58,6 +74,18 @@ public class FlowVersionEntity {
 
     public String getOrchestrationConfig() { return orchestrationConfig; }
     public void setOrchestrationConfig(String orchestrationConfig) { this.orchestrationConfig = orchestrationConfig; }
+
+    public Integer getVersionNumber() { return versionNumber; }
+    public void setVersionNumber(Integer versionNumber) { this.versionNumber = versionNumber; }
+
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
+
+    public LocalDateTime getPublishedTime() { return publishedTime; }
+    public void setPublishedTime(LocalDateTime publishedTime) { this.publishedTime = publishedTime; }
+
+    public String getPublishedBy() { return publishedBy; }
+    public void setPublishedBy(String publishedBy) { this.publishedBy = publishedBy; }
 
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
