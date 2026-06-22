@@ -69,11 +69,11 @@ graph TB
     subgraph Flow["🔀 编排层（连接流 — 增强）"]
         EN["触发器节点\nHTTP 触发"]
         CN["连接器节点\nHTTP 调用 · 可选版本"]
-        PN["数据处理节点（新增）\n字段类型转换"]
+        SN["脚本节点（新增）\nGraalJS 沙箱"]
         EX["数据输出节点\nHTTP 返回"]
         EN -->|串行/并行| CN
-        CN -->|串行/并行| PN
-        PN -->|串行/并行| EX
+        CN -->|串行/并行| SN
+        SN -->|串行/并行| EX
         FC["📋 flowConfig（流级配置）\n缓存 · 入站限流"]
     end
 
