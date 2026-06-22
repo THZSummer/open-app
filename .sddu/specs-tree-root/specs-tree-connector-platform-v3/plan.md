@@ -1,14 +1,14 @@
-# 技术计划：连接器平台 V2 — 多版本与增强
+# 技术计划：连接器平台 V3 — 多版本与增强
 
 **Feature ID**: CONN-PLAT-002
-**规划版本**: v2.0
+**规划版本**: v3.0
 **创建日期**: 2026-06-09
-**最近更新**: 2026-06-10
+**最近更新**: 2026-06-22
 **规划作者**: SDDU Plan Agent
-**规范版本**: [spec.md](./spec.md) v2.24-draft
-**前置文档**: spec.md v2.24, [plan-json-schema.md](./plan-json-schema.md) v9.10, ADR-001~003（V1 已验证）, ../specs-tree-connector-platform/plan.md（V1 基线）
+**规范版本**: [spec.md](./spec.md) v3.0
+**前置文档**: spec.md v3.0, [plan-json-schema.md](./plan-json-schema.md), ADR-001~003（V1 已验证）, ../specs-tree-connector-platform/plan.md（V1 基线）
 
-> 💡 **项目说明**：V1（CONN-PLAT-001）为内部验证 MVP，无真实用户使用。V2 不提供 V1 兼容，所有模块（数据库、接口、业务逻辑、前端）均按最新设计全新实施，无需考虑 V1 数据迁移或双轨代码路径。已存在的 V1 表通过 ALTER 变更，新表直接 CREATE。前端统一在 `wecodesite`，后端管理面在 `open-server`，运行时在 `connector-api`。
+> 💡 **项目说明**：V1（CONN-PLAT-001）为内部验证 MVP，无真实用户使用。V3 不提供 V1 兼容，所有模块（数据库、接口、业务逻辑）均按最新设计全新实施。**前端部分走单独的设计实施流程，不纳入本 plan 范畴**（plan-page.md 已删除，前端页面对齐 spec 中的流程编排交互另行规划）。
 
 ---
 
@@ -76,13 +76,14 @@ graph TB
 
 | 层 | 技术 | 版本 |
 |----|------|------|
-| **前端** | React + Ant Design 4 + Vite + Less | React 18.2, antd 4.24.16, Vite 5 |
-| **画布** | @xyflow/react (React Flow) | v12.10.1 |
 | **后端管理面** | Spring Boot (open-server) + MyBatis | 3.4.6 |
 | **后端运行时** | Spring Boot (connector-api) + WebFlux + R2DBC | 3.5.14 |
 | **数据库** | MySQL | 5.7 |
 | **缓存** | Redis (Lettuce) | — |
+| **脚本引擎** | GraalJS (GraalVM Polyglot) | 24.1.1 |
 | **构建** | Maven | — |
+
+> 📌 **前端不在本 plan 范围**：前端（React + Ant Design 4 + Vite）走单独的设计实施流程，流程编排采用表单交互（非画布拖拽），详见前端专项规划。
 | **语言** | Java 21 + JavaScript/JSX | — |
 
 ### 1.3 V1→V2 核心变更
@@ -213,9 +214,9 @@ V2 的 8 个开放问题（OQ-001~008）在规划阶段全部决策完成。
 | 审批集成 | open-server | 审批引擎（拓展场景） + 审批人配置（改造应用隔离） | 🆕 拓展+改造 |
 | 安全准入 | open-server | 应用白名单（复用 market-server Lookup） + URL白名单（复用 market-server Property） + 准入拦截 | 🆕 全新 |
 | 操作日志 | open-server | OperateEnum 扩展 + EntitySnapshotLoader 扩展 | 🔧 扩展 |
-| 运行时引擎 | connector-api | 版本解析 + 并行执行 + 限流 + 缓存 + 日志 + 调试 + 错误处理执行 | 🆕 多模块 |
+| 运行时引擎 | connector-api | 版本解析 + 并行执行 + 限流 + 缓存 + 日志 + 调试 + 脚本执行 | 🆕 多模块 |
 | 认证注入 | connector-api | Cookie/DigitalSign/MultiAuth 注入器 | 🆕 扩展 |
-| 错误处理 | connector-api | 重试/忽略/终止策略执行 | 🆕 新增 |
+| 脚本执行 | connector-api | GraalJS 沙箱执行（ScriptNodeExecutor） | 🆕 新增 |
 | 前端 | wecodesite | 版本历史/审批/调试/运行记录/白名单页面 | 🆕 14 新页面 |
 
 ### 3.2 服务职责详表
@@ -271,9 +272,8 @@ open-app/
 | 文档 | 内容 |
 |------|------|
 | [plan-db.md](./plan-db.md) | **数据库设计** — 12 张表（5M+3N+4R），仅新增 connector_version_ref_t + 2 张 V1 预留表 |
-| [plan-api.md](./plan-api.md) | **API 接口设计** — 49 端点完整定义、请求/响应示例、错误码、枚举字典 |
-| [plan-page.md](./plan-page.md) | **前端页面设计** — 路由设计、版本历史/审批/调试/运行记录/白名单页面详设 |
-| [plan-runtime.md](./plan-runtime.md) | **运行时引擎设计** — 版本解析、并行分支、限流、缓存、日志、调试、认证注入器 |
+| [plan-api.md](./plan-api.md) | **API 接口设计** — 端点完整定义、请求/响应示例、错误码、枚举字典 |
+| [plan-runtime.md](./plan-runtime.md) | **运行时引擎设计** — 版本解析、并行分支、限流、缓存、日志、调试、脚本执行、认证注入器 |
 | [plan-json-schema.md](./plan-json-schema.md) | **JSON Schema 规范** — 数据契约定义、映射表达式体系、FR-047 类型校验规则 |
 | [plan-code.md](./plan-code.md) | **代码规范** — 16 条规范（注释中文、日志英文、SQL 规范等） |
 | [plan-cache.md](./plan-cache.md) | **缓存与限流策略** — Redis 配置缓存、令牌桶限流、版本切换失效 |
@@ -293,8 +293,7 @@ open-app/
 | 缓存与版本切换一致性 | 🟢 低 | 版本变更主动清空 + TTL 兜底（5 分钟） |
 | 调试执行影响正常运行 | 🟢 低 | 独立线程池（max 5）；独立超时（30s）；不计入正常指标 |
 | market-server 依赖可用性 | 🟡 中 | 应用白名单依赖 market-server Lookup、URL 白名单依赖 market-server Property；需确保 SLA 对齐，market-server 不可用时白名单功能降级 |
-| 错误处理策略重构 | 🟡 中 | try-catch → retry/ignore/terminate，运行时执行器需全新实现；单元测试覆盖三种策略+错误类型组合 |
-| 草稿创建逻辑变更 | 🟢 低 | 创建时不再自动生成草稿，需手动创建；前端需新增「创建草稿」按钮入口 |
+| 草稿创建逻辑变更 | 🟢 低 | 创建时不再自动生成草稿，需手动创建 |
 | FIFO 记录清理失败 | 🟢 低 | 定时删除失败不影响正常写入，告警兜底 |
 | 日志开关状态迁移一致性 | 🟢 低 | 开关操作记录操作日志，历史日志保留不变 |
 
@@ -306,8 +305,8 @@ open-app/
 
 | 阶段 | 范围 | 预估工期 | 可并行 |
 |------|------|:--:|:--:|
-| **Phase 1**: 版本 + 认证 | 连接器多版本（FR-001~011）、连接器认证增强（FR-012~014）、连接流多版本（FR-024~030）、数据模型严格化（FR-047） | 基准 | — |
-| **Phase 2**: 审批 + 编排 | 版本发布审批（FR-031~033）、连接流生命周期增强（FR-018~023）、flowConfig + 串行/并行（FR-034~037 + FR-038/038a 并行处理节点）+ 版本选择（FR-039）+ 错误处理（FR-039a）+ 数据处理（FR-040）、一键复制（FR-017） | +2 周 | Phase 1 完成版本后即可开始 |
+| **Phase 1**: 版本 + 认证 | 连接器多版本（FR-001~011）、连接器认证增强（FR-012~014）、连接流多版本（FR-024~030）、JSON 语法校验（FR-047） | 基准 | — |
+| **Phase 2**: 审批 + 编排 | 版本发布审批（FR-031~033）、连接流生命周期增强（FR-018~023）、flowConfig + 串行/并行（FR-034~037 + FR-038/038a）+ 版本选择（FR-039）+ 脚本节点（FR-040a）、一键复制（FR-017） | +2 周 | Phase 1 完成版本后即可开始 |
 | **Phase 3**: 安全 + 运维 | URL 白名单（FR-015）、应用白名单（FR-045）、应用数据隔离（G13）、运行记录（FR-042）、运行时增强（FR-043~044）、调试（FR-041）、操作日志（FR-046） | +2 周 | 与 Phase 2 可并行 |
 
 ### 6.2 关键里程碑
@@ -337,7 +336,7 @@ Week 5:   联调 + 数据迁移验证 + 灰度上线
 **状态**: specified → **planned**
 **8 个 OQ**: 全部决策完成
 **4 个 ADR**: ADR-004 ~ ADR-007
-**7 个子文档**: plan-db / plan-api / plan-page / plan-runtime / plan-json-schema / plan-code / plan-cache
+**6 个子文档**: plan-db / plan-api / plan-runtime / plan-json-schema / plan-code / plan-cache（plan-script 为附录；plan-page 已删除，前端走独立流程）
 
 ### 下一步
 

@@ -39,9 +39,9 @@ specs-tree-connector-platform-v3/
 ├── plan-cache.md           # 缓存设计规划（继承自 V2）
 ├── plan-code.md            # 代码设计规划（继承自 V2）
 ├── plan-db.md              # DB 设计规划（继承自 V2）
-├── plan-page.md            # 页面设计规划（继承自 V2）
-├── plan-runtime.md         # 运行时设计规划（继承自 V2）
-├── json-schema-gap-analysis.md  # JSON Schema 差距分析（继承自 V2）
+├── plan-runtime.md         # 运行时设计规划
+├── plan-script.md          # 脚本引擎设计（V3 新增）
+├── json-schema-gap-analysis.md  # JSON Schema 差距分析
 └── 需求设计说明书-connector-platform-v2.md  # 原 V2 需求设计说明书
 ```
 
@@ -63,8 +63,8 @@ specs-tree-connector-platform-v3/
 | plan-cache.md | **缓存设计** — 继承自 V2 | ⏳ 待审查 |
 | plan-code.md | **代码设计** — 继承自 V2 | ⏳ 待审查 |
 | plan-db.md | **DB 设计** — 继承自 V2 | ⏳ 待审查 |
-| plan-page.md | **页面设计** — 继承自 V2 | ⏳ 待审查 |
 | plan-runtime.md | **运行时设计** — 继承自 V2 | ⏳ 待审查 |
+| plan-script.md | **脚本引擎设计** — V3 新增 | ✅ 已设计 |
 | plan-json-schema.md | **JSON Schema 设计规范** — 继承自 V2 | ⏳ 待审查 |
 
 ### 📂 架构决策记录 (ADR)
