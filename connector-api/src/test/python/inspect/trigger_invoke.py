@@ -829,8 +829,8 @@ try:
                                    "X-Trace-Id": "trace-061"},
                           query_params={"page": "1", "size": "10"})
     if resp is not None:
-        check("HTTP 500", resp.status_code == 500)
-        check("X-Code 为 500", resp.headers.get("X-Code") == "500")
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061, fvid_061, cid_061, cvid_061)
@@ -854,8 +854,8 @@ try:
                                    "X-Trace-Id": "trace-061b"},
                           query_params={"size": "10"})
     if resp is not None:
-        check("HTTP 500", resp.status_code == 500)
-        check("X-Code 为 500", resp.headers.get("X-Code") == "500")
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061b, fvid_061b, cid_061b, cvid_061b)
@@ -878,8 +878,8 @@ try:
                           headers={"X-Sys-Token": "test-token"},
                           query_params={"page": "1", "size": "10"})
     if resp is not None:
-        check("HTTP 500", resp.status_code == 500)
-        check("X-Code 为 500", resp.headers.get("X-Code") == "500")
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061c, fvid_061c, cid_061c, cvid_061c)

@@ -356,7 +356,7 @@ try:
     _last_request_path[0] = None
     resp, elapsed = trigger_invoke(fid_001)
 
-    if resp:
+    if resp is not None:
         check("[IT-CVS-001] HTTP 200",
               resp.status_code == 200,
               f"status={resp.status_code}")

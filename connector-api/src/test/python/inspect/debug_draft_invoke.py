@@ -137,7 +137,7 @@ try:
     fid, vid_115 = setup_flow(sid_115, lifecycle_status=1,
                               version_status=0)  # 草稿状态
     resp = debug_request(fid, {"mockTriggerData": {"sender": "debug_user"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -168,7 +168,7 @@ try:
     fid, vid_116 = setup_flow(sid_116, lifecycle_status=1,
                               version_status=1)  # 已发布状态
     resp = debug_request(fid, {"mockTriggerData": {"sender": "pub_user"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -191,7 +191,7 @@ try:
     fid, vid_117 = setup_flow(sid_117, lifecycle_status=1,
                               version_status=6)  # 已失效状态 (status=6=invalidated)
     resp = debug_request(fid, {"mockTriggerData": {"sender": "invalid_user"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         # 期望失败: status=failed 或非 200
         is_rejected = (
@@ -230,7 +230,7 @@ try:
         f"VALUES ({vid_118}, {sid_118}, '{{\"nodes\":[],\"edges\":[]}}', 'tester', 'tester')"
     )
     resp = debug_request(sid_118, {"mockTriggerData": {"sender": "test"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("空编排调试不崩溃",
               resp.status_code in (200, 400, 500),

@@ -11,7 +11,7 @@
 用法:
   from client import *
   resp = request("POST", "/trigger/{flowId}/invoke", {...}, headers={...})
-  if resp:
+  if resp is not None:
       check("状态码", resp.status_code == 200)
       check("errorInfo.code 为 6001", resp.json().get("errorInfo", {}).get("code") == "6001")
 """
@@ -20,6 +20,10 @@ import json
 import requests
 import time
 import re
+import atexit
+
+_pass_count = 0
+_fail_count = 0
 
 __all__ = [
     "BASE_URL", "is_quiet", "request",
@@ -114,9 +118,12 @@ def _is_pass(resp):
 
 def check(name, condition, detail=""):
     """契约校验断言：PASS / FAIL + 可选详细描述"""
+    global _pass_count, _fail_count
     if condition:
+        _pass_count += 1
         print(f"  ✅ PASS: {name}" + (f" - {detail}" if detail else ""))
     else:
+        _fail_count += 1
         print(f"  ❌ FAIL: {name}" + (f" - {detail}" if detail else ""))
 
 
@@ -146,3 +153,22 @@ def check_time_iso8601(value):
 def check_camel_case(name):
     """校验字段名是否为 camelCase"""
     return bool(re.match(r"^[a-z]+[A-Za-z0-9]*$", name))
+
+
+def _print_summary():
+    """打印测试结果汇总（仅在非 quiet 模式下输出）"""
+    if is_quiet():
+        return
+    print(f"\n── 测试结果 ──")
+    print(f"  ✅ PASS: {_pass_count}  ❌ FAIL: {_fail_count}")
+    print(f"  exit code: {'1' if _fail_count > 0 else '0'}")
+
+
+def _atexit_handler():
+    """atexit 处理函数：打印汇总并在失败时设置非零退出码"""
+    _print_summary()
+    if _fail_count > 0:
+        sys.exit(1)
+
+
+atexit.register(_atexit_handler)

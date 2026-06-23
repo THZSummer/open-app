@@ -41,7 +41,7 @@ import java.util.Map;
  * </p>
  */
 @RestController
-@RequestMapping("/api/v1/flows")
+@RequestMapping({"/api/v1/flows", "/api/v1/trigger"})
 @Tag(name = "HTTP 触发", description = "对外 HTTP 触发端点，同步执行连接流 (v5.5)")
 public class OpTriggerController {
 

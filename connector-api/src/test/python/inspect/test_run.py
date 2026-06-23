@@ -143,7 +143,7 @@ def test_run_request(flow_id, body=None):
 print("=== IT-070: flow 不存在 ===")
 resp = test_run_request(999999999999999999,
                         {"mockTriggerData": {"sender": "test"}})
-if resp:
+if resp is not None:
     body = resp.json()
     check("HTTP 200", resp.status_code == 200)
     # lifecycle_status=0 不影响引擎执行，接受任何执行结果
@@ -157,7 +157,7 @@ vid_071 = None
 try:
     _, vid_071 = setup_flow(sid_071, lifecycle_status=0)
     resp = test_run_request(sid_071, {"mockTriggerData": {"sender": "test"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("executionId 为 string",
@@ -173,7 +173,7 @@ vid_072 = None
 try:
     fid, vid_072 = setup_flow(sid_072, lifecycle_status=1)
     resp = test_run_request(fid, {"mockTriggerData": {"sender": "test_user"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("executionId 为 string",
@@ -200,7 +200,7 @@ vid_073 = None
 try:
     fid, vid_073 = setup_flow(sid_073, lifecycle_status=1)
     resp = test_run_request(fid, {"mockTriggerData": {}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("executionId 存在", bool(body.get("executionId")))

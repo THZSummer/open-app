@@ -268,7 +268,7 @@ try:
                  "X-Trace-Id": "trace-001-log"}
     )
 
-    if resp:
+    if resp is not None:
         check("IT-LOG-001 HTTP 200", resp.status_code == 200,
               f"实际: {resp.status_code}")
         check("IT-LOG-001 X-Execution-Id 存在",
@@ -327,7 +327,7 @@ try:
                  "X-Trace-Id": "trace-002-log"}
     )
 
-    if resp:
+    if resp is not None:
         check("IT-LOG-002 HTTP 200", resp.status_code == 200,
               f"实际: {resp.status_code}")
     else:
@@ -398,7 +398,7 @@ try:
                  "X-Trace-Id": "trace-003-log"}
     )
 
-    if resp:
+    if resp is not None:
         check("IT-LOG-003 HTTP 200", resp.status_code == 200,
               f"实际: {resp.status_code}")
         check("IT-LOG-003 X-Execution-Id 存在",

@@ -22,7 +22,7 @@ import java.time.temporal.ChronoUnit;
  * 取代旧的 Bucket4j 本地限流, 基于 Redis 实现分布式限流。
  * 支持两种模式:
  * <ul>
- *   <li>QPS 模式: Redis INCR + EXPIRE, 按分钟粒度限流</li>
+ *   <li>QPS 模式: Redis INCR + EXPIRE, 按秒级粒度限流</li>
  *   <li>Concurrency 模式: Redis INCR/DECR, 控制同时在途请求数</li>
  * </ul>
  * </p>
@@ -42,8 +42,8 @@ public class InboundRateLimiter implements WebFilter {
     /** Redis Key 前缀: 并发 */
     private static final String CONCURRENCY_KEY_PREFIX = "cp:ratelimit:concurrency:";
 
-    /** 限流 Key TTL (秒) — QPS 分钟桶的存活时间 */
-    private static final int QPS_KEY_TTL_SECONDS = 60;
+    /** 限流 Key TTL (秒) — QPS 秒级桶的存活时间 */
+    private static final int QPS_KEY_TTL_SECONDS = 2;
 
     /** 并发 Key TTL (秒) — 防止异常情况下的 key 泄漏 */
     private static final int CONCURRENCY_KEY_TTL_SECONDS = 300;
@@ -102,15 +102,15 @@ public class InboundRateLimiter implements WebFilter {
     }
 
     /**
-     * QPS 限流: Redis INCR + EXPIRE (分钟粒度)
+     * QPS 限流: Redis INCR + EXPIRE (秒级粒度)
      */
     private Mono<Void> applyQpsLimit(ServerWebExchange exchange, WebFilterChain chain,
                                        String flowId, RateLimitConfig config) {
-        // 分钟桶: rate_limit:{flowId}:{minute_bucket}
-        String minuteBucket = LocalDateTime.now()
-                .truncatedTo(ChronoUnit.MINUTES)
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
-        String key = QPS_KEY_PREFIX + flowId + ":" + minuteBucket;
+        // 秒级桶: rate_limit:{flowId}:{second_bucket}
+        String secondBucket = LocalDateTime.now()
+                .truncatedTo(ChronoUnit.SECONDS)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+        String key = QPS_KEY_PREFIX + flowId + ":" + secondBucket;
 
         int maxQps = config.getMaxQps();
 

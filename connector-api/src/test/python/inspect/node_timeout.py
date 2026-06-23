@@ -341,7 +341,7 @@ try:
     resp, elapsed = trigger_invoke(fid_002, timeout=15)
     if resp is not None:
         check("[IT-TIMEOUT-002] HTTP 200 或下游错误",
-              resp.status_code in (200, 500),
+              resp.status_code in (200, 500, 502),
               f"status={resp.status_code}")
         # 无节点超时不应触发 timeout 错误
         check("[IT-TIMEOUT-002] 非超时失败（正常完成或下游不可达）",

@@ -464,7 +464,7 @@ try:
     resp, elapsed = trigger_invoke(fid_001, timeout=15)
     individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]  # 4s
 
-    if resp:
+    if resp is not None:
         check("[IT-PAR-001] HTTP 200",
               resp.status_code == 200,
               f"status={resp.status_code}")
@@ -567,7 +567,7 @@ try:
     resp, elapsed = trigger_invoke(fid_003, timeout=15)
     individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]  # 4s
 
-    if resp:
+    if resp is not None:
         check("[IT-PAR-003] HTTP 200",
               resp.status_code == 200,
               f"status={resp.status_code}")
