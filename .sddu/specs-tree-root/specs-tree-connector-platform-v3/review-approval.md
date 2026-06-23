@@ -161,25 +161,129 @@ node.setLevel("global");    // ✅ 唯一重合的
 
 ### 偏离 5：独立回调机制
 
-**标准**：回调内联在 `ApprovalEngine` 中，对 Controller 透明。
+#### 5.1 标准 6 种（V2）：引擎内联回调
 
-```java
-// ApprovalEngine.approve() 内部
-updateResourceStatus(record, Status.APPROVED);     // 注册场景
-updateSubscriptionStatus(record, Status.APPROVED);  // 权限申请场景
+回调逻辑写在 `ApprovalEngine` 内部，作为审批执行方法的一部分，在**同一事务**中完成。
+
+```
+Controller → Service → Engine.approve()
+                          │
+                          ├─ 记录日志
+                          ├─ 更新 ApprovalRecord 状态
+                          ├─ updateResourceStatus()     ← 回调：API/Event/Callback 状态变更
+                          └─ updateSubscriptionStatus() ← 回调：Subscription 状态变更
 ```
 
-**V3**：使用独立的 `ApprovalCallbackHandler`，由 Controller 层显式触发。
+**`updateResourceStatus()` — 资源注册回调**（`ApprovalEngine` 第 642 行）：
 
 ```java
-// ApprovalController.approve() — V3 新增代码
-ApprovalRecord record = approvalRecordMapper.selectById(Long.parseLong(id));
-if (record.getStatus() == Status.APPROVED) {
-    approvalCallbackHandler.onApproved(record);  // ← Controller 感知业务类型
+private void updateResourceStatus(ApprovalRecord record, int status) {
+    // 审批通过→已发布(2)，拒绝/撤销→草稿(0)
+    int resourceStatus = (status == Status.APPROVED) ? 2 : 0;
+
+    switch (businessType) {
+        case "api_register":      apiMapper.update(api);       break;
+        case "event_register":    eventMapper.update(event);   break;
+        case "callback_register": callbackMapper.update(cb);   break;
+        case "*_permission_apply": /* 跳过，由 updateSubscriptionStatus 处理 */ break;
+        default: log.warn("Unknown");  // ← connector_flow_version_publish 落入这里，被忽略
+    }
 }
 ```
 
-**问题**：Controller 层需要注入 `ApprovalCallbackHandler` 和 `ApprovalRecordMapper`，并在通用审批接口中硬编码 V3 回调逻辑。
+**`updateSubscriptionStatus()` — 权限申请回调**（`ApprovalEngine` 第 706 行）：
+
+```java
+private void updateSubscriptionStatus(ApprovalRecord record, int status) {
+    // 仅处理 api/event/callback_permission_apply
+    if (!是权限申请类型) return;
+
+    if (status == APPROVED)  subscriptionStatus = 1; // 已授权
+    if (status == REJECTED)  subscriptionStatus = 2; // 已拒绝
+    if (status == CANCELLED) subscriptionStatus = 3; // 已取消
+
+    subscriptionMapper.update(subscription);
+}
+```
+
+**特点**：
+- 回调与审批执行**同事务**（`@Transactional` 在 `approve()`/`reject()`/`cancel()` 上）
+- 通过 `businessType` 的 switch/if 分支分发
+- 对 Controller 完全透明
+
+#### 5.2 V3 流版本发布：独立回调处理器
+
+回调逻辑在独立的 `ApprovalCallbackHandler` 中，由 **Controller 层显式调用**，在引擎事务**之外**。
+
+```
+Controller.approve()
+  │
+  ├─ Service.approve() → Engine.approve()     ← 引擎事务（不含 V3 回调）
+  │     └─ updateResourceStatus()             ← 遇到 connector_flow_version_publish → 落入 default，忽略
+  │
+  └─ approvalCallbackHandler.onApproved(record)  ← V3 回调（独立事务）
+        └─ flowVersionMapper.update(version)     ← FlowVersion 状态变更
+```
+
+**Controller 层触发**（`ApprovalController` 第 262-270 行）：
+
+```java
+// 引擎先执行
+ApprovalActionResponse data = approvalService.approve(...);
+
+// V3 新增：引擎执行完后，Controller 再手动触发回调
+ApprovalRecord record = approvalRecordMapper.selectById(Long.parseLong(id));
+if (record.getStatus() == Status.APPROVED) {
+    approvalCallbackHandler.onApproved(record);   // 独立事务
+}
+```
+
+**`ApprovalCallbackHandler.onApproved()`**：
+
+```java
+@Transactional(rollbackFor = Exception.class)  // ← 独立事务！
+public void onApproved(ApprovalRecord record) {
+    if (!"connector_flow_version_publish".equals(record.getBusinessType())) {
+        return;  // 非 V3 类型直接忽略
+    }
+    // 更新 FlowVersion 状态为已发布(5)
+    version.setStatus(FlowVersionStatus.PUBLISHED.getCode());
+    version.setPublishedTime(new Date());
+    flowVersionMapper.update(version);
+}
+```
+
+**`ApprovalCallbackHandler.onRejected()`**：
+
+```java
+@Transactional(rollbackFor = Exception.class)  // ← 独立事务！
+public void onRejected(ApprovalRecord record, String rejectReason) {
+    if (!"connector_flow_version_publish".equals(record.getBusinessType())) return;
+    // 更新 FlowVersion 状态为已驳回(4)
+    version.setStatus(FlowVersionStatus.REJECTED.getCode());
+    flowVersionMapper.update(version);
+}
+```
+
+#### 5.3 回调对比总结
+
+| 维度 | 标准 6 种（V2） | V3 流版本发布 |
+|------|:--:|:--:|
+| **回调位置** | `ApprovalEngine` 内部 | `ApprovalCallbackHandler` 独立类 |
+| **触发者** | 引擎自身 | Controller 层显式调用 |
+| **事务边界** | 与审批执行**同事务** | **独立事务**（`@Transactional` 单独标注） |
+| **分发方式** | `businessType` switch/if 分支 | `businessType` 前置判断 + 直接忽略非 V3 |
+| **Controller 感知** | ❌ 不感知 | ✅ 注入 `ApprovalCallbackHandler` + `ApprovalRecordMapper` |
+| **回调内容** | API/Event/Callback 状态 / Subscription 状态 | FlowVersion 状态 + 发布时间/发布人 |
+| **引擎是否感知** | ✅ 引擎内部方法 | ❌ 引擎 `updateResourceStatus` 的 default 分支直接忽略 |
+
+#### 5.4 回调机制的关键问题
+
+1. **事务隔离风险**：V3 回调在独立事务中，引擎事务已提交。如果回调失败（如 FlowVersion 不存在），审批记录已经是 APPROVED 状态，无法回滚 → **数据不一致**
+
+2. **引擎盲区**：`updateResourceStatus()` 的 `default` 分支对 `connector_flow_version_publish` 只打一行 `log.warn`，不做任何处理。引擎完全不知道这个类型的存在
+
+3. **Controller 越权**：Controller 原本只做参数解析和路由转发，现在直接操作 Mapper 查询 `ApprovalRecord` 并调用业务回调，打破了分层架构
 
 ---
 
@@ -322,3 +426,4 @@ ApprovalEngine
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
 | v1.0 | 初始版本，完成 V2/V3 审批体系差异分析 | 2026-06-23 | SDDU 路由调度专家 |
+| v1.1 | 扩展偏离 5：补充回调机制详细实现对比（引擎内联 vs 独立处理器）、事务边界差异、关键问题分析 | 2026-06-23 | SDDU 路由调度专家 |
