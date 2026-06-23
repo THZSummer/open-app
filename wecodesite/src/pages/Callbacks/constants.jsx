@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tag, Button } from 'antd';
+import { Button } from 'antd';
 import { CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
 import { renderStatus } from '../../utils/commonTableConfigs';
 

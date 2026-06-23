@@ -17,6 +17,12 @@ export const FLOW_DELETE_SECOND_MODAL_INFO = {
   impactText: '操作影响：删除后，该连接流配置将无法恢复，关联运行配置会被移除。',
 };
 
+export const FLOW_STOP_SECOND_MODAL_INFO = {
+  action: 'stop',
+  impactText: '操作影响：停止后，该连接流不再处理触发请求，但配置仍会保留。',
+  getConfirmText: ({ objectName }) => `确认要停止这个连接流：${objectName}吗？`,
+}
+
 /**
  * 页面配置信息
  */

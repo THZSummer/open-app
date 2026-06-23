@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
+import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { fetchCallbackList, deleteCallback } from './thunk';
 import CallbackRegister from './CallbackRegister';
 import { ADMIN_CALLBACK_DELETE_SECOND_MODAL_INFO, getCallbackListColumns } from './constants';
