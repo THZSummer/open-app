@@ -26,7 +26,7 @@ import json
 import urllib.parse
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import threading
 import urllib.request
 import copy
@@ -127,7 +127,7 @@ class MockHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "not_found"})
 
 
-mock_server = HTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
+mock_server = ThreadingHTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
 mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
 mock_thread.start()
 

@@ -16,7 +16,7 @@ import time
 import json
 import requests as req_lib
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
 
 
@@ -73,7 +73,7 @@ class MockHandler(BaseHTTPRequestHandler):
 mock_server = None
 mock_ready = False
 try:
-    mock_server = HTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
+    mock_server = ThreadingHTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
     mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
     mock_thread.start()
 except OSError:

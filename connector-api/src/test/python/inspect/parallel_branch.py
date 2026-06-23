@@ -16,7 +16,7 @@ import json
 import requests as req_lib
 import threading
 import urllib.request
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 
 # ═══════════════════════════════════════════════════════════
@@ -83,7 +83,7 @@ class ParallelMockHandler(BaseHTTPRequestHandler):
 mock_server = None
 mock_ready = False
 try:
-    mock_server = HTTPServer((MOCK_HOST, MOCK_PORT), ParallelMockHandler)
+    mock_server = ThreadingHTTPServer((MOCK_HOST, MOCK_PORT), ParallelMockHandler)
     mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
     mock_thread.start()
 except OSError:

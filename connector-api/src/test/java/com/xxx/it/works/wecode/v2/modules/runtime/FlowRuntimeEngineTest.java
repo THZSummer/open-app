@@ -1,5 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
@@ -22,6 +24,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
@@ -38,11 +41,16 @@ class FlowRuntimeEngineTest {
     @Mock
     private FlowConfigParser flowConfigParser;
 
+    @Mock
+    private FlowCacheManager cacheManager;
+
     private FlowRuntimeEngine engine;
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        engine = new FlowRuntimeEngine(versionConfigResolver, dagScheduler, flowConfigParser);
+        engine = new FlowRuntimeEngine(versionConfigResolver, dagScheduler, flowConfigParser,
+                cacheManager, objectMapper);
     }
 
     // ===== 正常执行路径 =====
@@ -359,6 +367,8 @@ class FlowRuntimeEngineTest {
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));
         when(dagScheduler.schedule(any(ResolvedFlowConfig.class), any(ExecutionContext.class)))
                 .thenReturn(Mono.just(ctx));
+        when(cacheManager.checkCache(anyLong(), any())).thenReturn(Mono.empty());
+        when(cacheManager.writeCache(anyLong(), any(), any(), anyInt())).thenReturn(Mono.empty());
 
         Mono<ExecutionResult> resultMono = engine.execute(flowId, ctx);
 

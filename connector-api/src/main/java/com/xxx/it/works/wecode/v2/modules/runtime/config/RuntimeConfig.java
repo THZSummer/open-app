@@ -85,7 +85,6 @@ public class RuntimeConfig {
     @Bean
     public WebClient webClient() {
         HttpClient httpClient = HttpClient.create()
-                .responseTimeout(Duration.ofSeconds(30))
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000);
         return WebClient.builder()
                 .clientConnector(new ReactorClientHttpConnector(httpClient))

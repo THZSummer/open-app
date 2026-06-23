@@ -63,8 +63,29 @@ public class DagScheduler {
      * @return Mono<ExecutionContext> 填充了所有节点执行结果的上下文
      */
     public Mono<ExecutionContext> schedule(ResolvedFlowConfig resolved, ExecutionContext ctx) {
+        return doSchedule(resolved.getFlowVersion().getOrchestrationConfig(), ctx);
+    }
+
+    /**
+     * 调度执行 DAG (直接传入编排配置 JSON 字符串)
+     * <p>
+     * 用于已自行完成版本解析和校验的场景 (如 OpTriggerService),
+     * 避免重复加载 flow version.
+     * </p>
+     *
+     * @param orchestrationConfig 编排配置 JSON 字符串
+     * @param ctx                 执行上下文
+     * @return Mono<ExecutionContext> 填充了所有节点执行结果的上下文
+     */
+    public Mono<ExecutionContext> schedule(String orchestrationConfig, ExecutionContext ctx) {
+        return doSchedule(orchestrationConfig, ctx);
+    }
+
+    /**
+     * DAG 调度核心逻辑
+     */
+    private Mono<ExecutionContext> doSchedule(String orchestrationConfig, ExecutionContext ctx) {
         long startTime = System.currentTimeMillis();
-        String orchestrationConfig = resolved.getFlowVersion().getOrchestrationConfig();
 
         return Mono.fromCallable(() -> objectMapper.readTree(orchestrationConfig))
                 .flatMap(config -> {

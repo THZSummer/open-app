@@ -7,10 +7,13 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
+import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +32,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -63,6 +70,7 @@ public class OpTriggerService {
 
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
+    private final DagScheduler dagScheduler;
     private final AuthValidatorRegistry authValidatorRegistry;
     private final UrlWhitelistValidator urlWhitelistValidator;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
@@ -70,26 +78,31 @@ public class OpTriggerService {
     private final OpConnectorVersionReadRepository connectorVersionReadRepository;
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final CacheToggle cacheToggle;
+    private final FlowCacheManager cacheManager;
 
     public OpTriggerService(
             ObjectMapper objectMapper,
             AuthValidatorRegistry authValidatorRegistry,
             UrlWhitelistValidator urlWhitelistValidator,
             ReactiveSequentialExecutor executor,
+            DagScheduler dagScheduler,
             OpFlowVersionReadRepository flowVersionReadRepository,
             OpFlowReadRepository flowReadRepository,
             OpConnectorVersionReadRepository connectorVersionReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
-            CacheToggle cacheToggle) {
+            CacheToggle cacheToggle,
+            FlowCacheManager cacheManager) {
         this.objectMapper = objectMapper;
         this.authValidatorRegistry = authValidatorRegistry;
         this.urlWhitelistValidator = urlWhitelistValidator;
         this.executor = executor;
+        this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
         this.flowReadRepository = flowReadRepository;
         this.connectorVersionReadRepository = connectorVersionReadRepository;
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.cacheToggle = cacheToggle;
+        this.cacheManager = cacheManager;
     }
 
     /**
@@ -144,6 +157,13 @@ public class OpTriggerService {
     }
 
     /**
+     * 按版本 ID 直接加载流版本配置
+     */
+    private Mono<FlowVersionEntity> loadFlowVersionByVersionId(Long versionId) {
+        return flowVersionReadRepository.findById(versionId);
+    }
+
+    /**
      * 执行 HTTP 触发
      * <p>
      * 1. 查询 flow 版本配置<br>
@@ -153,7 +173,8 @@ public class OpTriggerService {
      * 5. 校验 {@code data.rateLimitConfig} 限流配置<br>
      * 6. 校验 {@code data.inputContract} header / query / body 三段契约<br>
      * 7. 构建 ExecutionContext (结构化 NodeContext: {header, query, body})<br>
-     * 8. 执行连接流并返回结果<br>
+     * 8. 缓存检查 (FR-037): 若 flowConfig.cacheTtl > 0, 先查缓存<br>
+     * 9. 执行连接流并返回结果 (缓存命中时跳过执行)<br>
      * </p>
      *
      * @param flowId      连接流ID
@@ -235,11 +256,43 @@ public class OpTriggerService {
                     triggerNodeCtx.setStatus("success");
                     context.setNodeContext(triggerNodeCtx);
 
-                    // 10. 异步校验 URL 白名单 → 执行连接流
+                    // 10. 解析 flowConfig 缓存配置
+                    FlowConfig flowConfig = parseFlowConfigFromOrchMap(config);
+
+                    // 11. 异步校验 URL 白名单 -> 缓存检查 -> 执行连接流
                     String flowIdStr = String.valueOf(flowId);
-                    return validateConnectorUrlWhitelist(nodes)
-                            .then(executor.execute(context, flowVersion.getOrchestrationConfig()))
-                            .map(result -> buildTransparentResponse(flowIdStr, result));
+                    boolean cacheEnabled = flowConfig.getCacheTtl() != null && flowConfig.getCacheTtl() > 0;
+                    final String cacheKey = cacheEnabled ? buildCacheKey(context) : null;
+
+                    Mono<ExecutionResult> executionMono;
+                    if (cacheEnabled) {
+                        final int cacheTtl = flowConfig.getCacheTtl();
+                        executionMono = validateConnectorUrlWhitelist(nodes)
+                                .then(cacheManager.checkCache(flowId, cacheKey)
+                                        .flatMap(cachedResult -> {
+                                            log.info("Cache hit: flowId={}, cacheKey={}", flowId, cacheKey);
+                                            cachedResult.setCacheHit(true);
+                                            return Mono.just(cachedResult);
+                                        })
+                                        .switchIfEmpty(
+                                            dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
+                                                    .flatMap(updatedCtx -> {
+                                                        ExecutionResult result = buildResultFromExecutionContext(
+                                                                updatedCtx, executionId, flowIdStr);
+                                                        result.setCacheHit(false);
+                                                        return cacheManager.writeCache(flowId, cacheKey,
+                                                                result, cacheTtl)
+                                                                .thenReturn(result);
+                                                    })
+                                        ));
+                    } else {
+                        executionMono = validateConnectorUrlWhitelist(nodes)
+                                .then(dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
+                                        .map(updatedCtx -> buildResultFromExecutionContext(
+                                                updatedCtx, executionId, flowIdStr)));
+                    }
+
+                    return executionMono.map(result -> buildTransparentResponse(flowIdStr, result));
                 })
                 .onErrorResume(e -> {
                     log.error("Trigger invoke failed: flowId={}, error={}", flowId, e.getMessage());
@@ -277,6 +330,71 @@ public class OpTriggerService {
                             flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, "500",
                             "触发执行失败: " + msg, "Trigger execution failed: " + msg));
                 });
+    }
+
+    /**
+     * 从 ExecutionContext 构建 ExecutionResult (DagScheduler 输出桥接)
+     */
+    private ExecutionResult buildResultFromExecutionContext(
+            ExecutionContext ctx, String executionId, String flowId) {
+        ExecutionResult result = new ExecutionResult();
+        result.setExecutionId(executionId);
+        result.setFlowId(flowId);
+        result.setTest(ctx.isTest());
+
+        boolean anyFailed = false;
+        Map<String, Object> lastOutput = null;
+        long totalDurationMs = 0;
+
+        for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
+            NodeContext nodeCtx = entry.getValue();
+            if (nodeCtx.getDurationMs() > totalDurationMs) {
+                totalDurationMs = nodeCtx.getDurationMs();
+            }
+
+            ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
+            step.setNodeId(nodeCtx.getNodeId());
+            step.setNodeType(nodeCtx.getNodeType());
+            step.setInputData(nodeCtx.getInput());
+            step.setOutputData(nodeCtx.getOutput());
+            step.setStatus(nodeCtx.getStatus());
+            step.setDurationMs(nodeCtx.getDurationMs());
+            step.setErrorInfo(nodeCtx.getErrorInfo());
+
+            if ("failed".equals(nodeCtx.getStatus()) || "timeout".equals(nodeCtx.getStatus())) {
+                anyFailed = true;
+                if (result.getErrorInfo() == null && nodeCtx.getErrorInfo() != null
+                        && !nodeCtx.getErrorInfo().isEmpty()) {
+                    result.setErrorInfo(new HashMap<>(nodeCtx.getErrorInfo()));
+                }
+            }
+
+            result.addStep(step);
+
+            if (nodeCtx.getOutput() != null && !nodeCtx.getOutput().isEmpty()) {
+                lastOutput = nodeCtx.getOutput();
+            }
+        }
+
+        // Prefer exit node output for response body (ConcurrentHashMap has no guaranteed iteration order)
+        NodeContext exitNodeCtx = ctx.getNodeContexts().get("node_exit");
+        if (exitNodeCtx != null && exitNodeCtx.getOutput() != null
+                && !exitNodeCtx.getOutput().isEmpty()) {
+            lastOutput = exitNodeCtx.getOutput();
+        }
+
+        result.setStatus(anyFailed ? "failed" : "success");
+        result.setTotalDurationMs(totalDurationMs);
+
+        if (lastOutput != null) {
+            Map<String, Object> cleanOutput = new HashMap<>(lastOutput);
+            cleanOutput.remove("__status");
+            cleanOutput.remove("__input");
+            cleanOutput.remove("__error");
+            result.setResultData(cleanOutput);
+        }
+
+        return result;
     }
 
     /**
@@ -667,5 +785,54 @@ public class OpTriggerService {
         }
         log.warn("urlWhitelist has unexpected type: {}", whitelistObj.getClass().getName());
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private FlowConfig parseFlowConfigFromOrchMap(Map<String, Object> config) {
+        try {
+            Map<String, Object> flowConfigMap = (Map<String, Object>) config.get("flowConfig");
+            if (flowConfigMap == null || flowConfigMap.isEmpty()) {
+                return FlowConfig.defaults();
+            }
+            FlowConfig fc = new FlowConfig();
+            Object ttl = flowConfigMap.get("cacheTtl");
+            if (ttl instanceof Number) {
+                fc.setCacheTtl(((Number) ttl).intValue());
+            }
+            Object template = flowConfigMap.get("cacheKeyTemplate");
+            if (template instanceof String) {
+                fc.setCacheKeyTemplate((String) template);
+            }
+            return fc;
+        } catch (Exception e) {
+            log.warn("Failed to parse flowConfig from orchestration map: {}", e.getMessage());
+            return FlowConfig.defaults();
+        }
+    }
+
+    private String buildCacheKey(ExecutionContext ctx) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            if (ctx.getTriggerData() != null) {
+                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerData()));
+            }
+            if (ctx.getTriggerHeaders() != null) {
+                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerHeaders()));
+            }
+            if (ctx.getTriggerQueryParams() != null) {
+                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerQueryParams()));
+            }
+            byte[] hash = digest.digest();
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            return String.valueOf(Objects.hash(ctx.getExecutionId()));
+        } catch (Exception e) {
+            log.warn("Failed to compute cache key: {}", e.getMessage());
+            return String.valueOf(Objects.hash(ctx.getExecutionId()));
+        }
     }
 }
