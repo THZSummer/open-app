@@ -232,7 +232,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =
@@ -265,7 +265,7 @@ class PermissionServiceTest {
             assertEquals(0, response.getFailedCount());
             assertEquals(1, response.getRecords().get(0).getStatus());
             verify(subscriptionMapper).batchInsert(anyList());
-            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString());
+            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
@@ -490,7 +490,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =
@@ -654,7 +654,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =
@@ -689,7 +689,7 @@ class PermissionServiceTest {
             assertEquals("400", exception.getCode());
             assertTrue(exception.getMessageZh().contains("已发布"));
             verify(subscriptionMapper, never()).batchInsert(anyList());
-            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString());
+            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
@@ -931,7 +931,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =

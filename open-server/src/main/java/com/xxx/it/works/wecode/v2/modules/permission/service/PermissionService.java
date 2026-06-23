@@ -294,7 +294,8 @@ public class PermissionService {
                             subscription.getId(),             // businessId
                             currentUser,
                             currentUser,
-                            currentUser
+                            currentUser,
+                            null
                     );
                     log.info("Approval record created successfully: subscriptionId={}, approvalId={}",
                             subscription.getId(), approvalRecord.getId());
@@ -526,7 +527,8 @@ public class PermissionService {
                             subscription.getId(),             // businessId
                             currentUser,
                             currentUser,
-                            currentUser
+                            currentUser,
+                            null
                     );
                     log.info("Approval record created successfully: subscriptionId={}, approvalId={}",
                             subscription.getId(), approvalRecord.getId());
@@ -792,7 +794,8 @@ public class PermissionService {
                             subscription.getId(),             // businessId
                             currentUser,
                             currentUser,
-                            currentUser
+                            currentUser,
+                            null
                     );
                     log.info("Approval record created successfully: subscriptionId={}, approvalId={}",
                             subscription.getId(), approvalRecord.getId());
