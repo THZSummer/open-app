@@ -13,6 +13,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,9 @@ public class FlowService {
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
     private final IdGeneratorStrategy idGenerator;
+
+    @Autowired(required = false)
+    private StringRedisTemplate stringRedisTemplate;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
@@ -360,8 +364,27 @@ public class FlowService {
         // 删除连接流基本信息
         flowMapper.deleteById(flowId);
 
+        evictFlowConfigCache(flowId);
+
         log.info("Flow deleted: id={}, appId={}", flowId, appId);
         return ApiResponse.success();
+    }
+
+    // ==================== 缓存失效 ====================
+
+    /**
+     * 使 cp:flow:config:{flowId} 缓存失效, 避免缓存返回已删除版本的旧数据.
+     */
+    private void evictFlowConfigCache(Long flowId) {
+        if (stringRedisTemplate == null) {
+            return;
+        }
+        try {
+            stringRedisTemplate.delete("cp:flow:config:" + flowId);
+            log.debug("Evicted flow config cache: flowId={}", flowId);
+        } catch (Exception e) {
+            log.warn("Failed to evict flow config cache: flowId={}, error={}", flowId, e.getMessage());
+        }
     }
 
     // ==================== 内部转换方法 ====================

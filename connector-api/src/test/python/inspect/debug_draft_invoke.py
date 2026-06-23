@@ -95,9 +95,9 @@ def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_stat
 
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
-        f"(id, flow_id, orchestration_config, create_by, last_update_by) "
+        f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
         f"VALUES ({vid}, {snow_id_val}, "
-        f"'{_escape(orch)}', 'tester', 'tester')"
+        f"'{_escape(orch)}', {version_status}, 'tester', 'tester')"
     )
     return snow_id_val, vid
 
@@ -189,7 +189,7 @@ sid_117 = snow_id()
 vid_117 = None
 try:
     fid, vid_117 = setup_flow(sid_117, lifecycle_status=1,
-                              version_status=2)  # 已失效状态
+                              version_status=6)  # 已失效状态 (status=6=invalidated)
     resp = debug_request(fid, {"mockTriggerData": {"sender": "invalid_user"}})
     if resp:
         body = resp.json()

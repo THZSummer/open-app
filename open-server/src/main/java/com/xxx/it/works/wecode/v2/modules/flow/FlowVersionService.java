@@ -21,6 +21,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.validator.FlowPublishValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +54,9 @@ public class FlowVersionService {
     private final FlowPublishValidator publishValidator;
     private final FlowVersionApprovalService approvalService;
     private final AuditLogService auditLogService;
+
+    @Autowired(required = false)
+    private StringRedisTemplate stringRedisTemplate;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
@@ -581,6 +585,8 @@ public class FlowVersionService {
 
         flowVersionMapper.deleteById(versionId);
 
+        evictFlowConfigCache(flowId);
+
         log.info("Flow version deleted: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
         return ApiResponse.success();
@@ -660,6 +666,23 @@ public class FlowVersionService {
         }
 
         return ApiResponse.success("催办成功，已通知审批人");
+    }
+
+    // ==================== 缓存失效 ====================
+
+    /**
+     * 使 cp:flow:config:{flowId} 缓存失效, 避免缓存返回已删除版本的旧数据.
+     */
+    private void evictFlowConfigCache(Long flowId) {
+        if (stringRedisTemplate == null) {
+            return;
+        }
+        try {
+            stringRedisTemplate.delete("cp:flow:config:" + flowId);
+            log.debug("Evicted flow config cache: flowId={}", flowId);
+        } catch (Exception e) {
+            log.warn("Failed to evict flow config cache: flowId={}, error={}", flowId, e.getMessage());
+        }
     }
 
     // ==================== 辅助方法 ====================

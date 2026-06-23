@@ -15,13 +15,24 @@ SCRIPTS = [
     "api_delete.py",
     "event_delete.py",
     "callback_delete.py",
+    # V3 E2E: CRUD 基础操作
+    "connector_create.py",
+    "connector_delete.py",
+    "flow_create.py",
+    "flow_delete.py",
     # V3 E2E: 版本生命周期 + 部署启动 + 审批
     "connector_version_lifecycle.py",
+    "connector_recover.py",  # NEW: FR-002 恢复连接器
     "flow_version_lifecycle.py",
+    "flow_recover.py",  # NEW: FR-021 恢复连接流
     "flow_approval_full_flow.py",
     "flow_deploy_start_invoke.py",
     "flow_copy.py",
     "flow_stop_restart.py",
+    # V3 E2E: 安全 + 审计 + 校验
+    "app_whitelist.py",
+    "operation_log.py",
+    "json_validation.py",
 ]
 
 quiet = "--quiet" in sys.argv

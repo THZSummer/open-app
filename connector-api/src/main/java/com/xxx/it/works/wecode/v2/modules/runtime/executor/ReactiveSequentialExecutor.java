@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.*;
 
 /**
@@ -117,13 +118,47 @@ public class ReactiveSequentialExecutor {
         // v5.5: 传递完整 config (含 data 字段), executor 自行提取 data.xxx
         Map<String, Object> configMap = objectMapper.convertValue(nodeConfig, Map.class);
         log.info("Executing node: id={}, type={}", nodeConfig.get("id"), nodeConfig.get("type"));
-                            log.info("Executing node: id={}, type={}", nodeConfig.get("id"), nodeConfig.get("type"));
-                    return executor.execute(context, configMap)
+
+        Duration nodeTimeout = resolveNodeTimeout(nodeConfig);
+
+        return executor.execute(context, configMap)
+                .timeout(nodeTimeout)
                 .doOnNext(output -> {
                     output.setDurationMs(System.currentTimeMillis() - nodeStart);
                     log.info("Node {} executed: status={}, duration={}ms",
                             output.getNodeId(), output.getStatus(), output.getDurationMs());
+                })
+                .onErrorResume(e -> {
+                    log.warn("Node {} execution timeout or error: {}", nodeConfig.get("id").asText(), e.getMessage());
+                    NodeOutput errorOutput = new NodeOutput(
+                            nodeConfig.get("id").asText(), nodeConfig.get("type").asText(),
+                            new HashMap<>(), new HashMap<>());
+                    errorOutput.setStatus("timeout");
+                    errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
+                    Map<String, Object> errInfo = new HashMap<>();
+                    errInfo.put("code", "6002");
+                    errInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
+                    errInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
+                    errInfo.put("message", e.getMessage());
+                    errorOutput.setErrorInfo(errInfo);
+                    return Mono.just(errorOutput);
                 });
+    }
+
+    /**
+     * 解析节点超时: min(node.data.timeoutMs, 30s), 默认 30s
+     */
+    private Duration resolveNodeTimeout(JsonNode nodeConfig) {
+        long defaultTimeoutMs = 30000;
+        JsonNode data = nodeConfig.get("data");
+        if (data != null && data.has("timeoutMs")) {
+            JsonNode timeoutNode = data.get("timeoutMs");
+            if (timeoutNode.isNumber()) {
+                long nodeTimeoutMs = timeoutNode.asLong();
+                return Duration.ofMillis(Math.min(nodeTimeoutMs, defaultTimeoutMs));
+            }
+        }
+        return Duration.ofMillis(defaultTimeoutMs);
     }
 
     /**

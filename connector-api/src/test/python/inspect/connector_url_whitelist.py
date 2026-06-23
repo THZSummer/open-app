@@ -346,13 +346,12 @@ try:
         # 如果下游可达，应收到成功的 HTTP 200
         if resp.status_code == 200:
             try:
-                body = resp.json()
                 check("[IT-WL-001] executionId 存在",
-                      "executionId" in body and isinstance(body["executionId"], str),
-                      f"body keys: {list(body.keys())}")
+                      bool(resp.headers.get("X-Execution-Id")))
+                body = resp.json()
                 check("[IT-WL-001] 非失败状态",
-                      body.get("status") != "failed",
-                      f"status={body.get('status')}")
+                      resp.headers.get("X-Status") != "1",
+                      f"X-Status={resp.headers.get('X-Status')}")
             except Exception:
                 check("[IT-WL-001] 响应为合法 JSON", False, "无法解析响应体")
         elif is_downstream_error(resp):
@@ -438,12 +437,12 @@ try:
 
         if resp.status_code == 200:
             try:
-                body = resp.json()
                 check("[IT-WL-003] executionId 存在",
-                      "executionId" in body and isinstance(body["executionId"], str))
+                      bool(resp.headers.get("X-Execution-Id")))
+                body = resp.json()
                 check("[IT-WL-003] 非失败状态",
-                      body.get("status") != "failed",
-                      f"status={body.get('status')}")
+                      resp.headers.get("X-Status") != "1",
+                      f"X-Status={resp.headers.get('X-Status')}")
             except Exception:
                 check("[IT-WL-003] 响应为合法 JSON", False)
         elif is_downstream_error(resp):

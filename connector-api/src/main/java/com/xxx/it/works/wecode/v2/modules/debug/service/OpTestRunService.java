@@ -68,6 +68,10 @@ public class OpTestRunService {
         return flowVersionReadRepository.findByFlowId(flowId)
                 .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
                 .flatMap(flowVersion -> {
+                    Integer status = flowVersion.getStatus();
+                    if (status != null && status == 6) {
+                        return Mono.error(new RuntimeException("该版本已失效，不可调试"));
+                    }
                     // 1. 解析编排配置 (React Flow 格式)
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
                     List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
@@ -106,10 +110,17 @@ public class OpTestRunService {
                     errorResult.setStatus("failed");
                     // v5.5: 使用结构化 errorInfo
                     Map<String, Object> errInfo = new HashMap<>();
-                    errInfo.put("code", "6002");
-                    errInfo.put("messageZh", "测试执行失败: " + e.getMessage());
-                    errInfo.put("messageEn", "Test execution failed: " + e.getMessage());
-                    errInfo.put("cause", e.getMessage());
+                    String msg = e.getMessage();
+                    if (msg != null && msg.contains("已失效")) {
+                        errInfo.put("code", "6004");
+                        errInfo.put("messageZh", msg);
+                        errInfo.put("messageEn", "The version has been invalidated and cannot be debugged");
+                    } else {
+                        errInfo.put("code", "6002");
+                        errInfo.put("messageZh", "测试执行失败: " + msg);
+                        errInfo.put("messageEn", "Test execution failed: " + msg);
+                    }
+                    errInfo.put("cause", msg);
                     errorResult.setErrorInfo(errInfo);
                     errorResult.setTest(true);
                     return Mono.just(errorResult);

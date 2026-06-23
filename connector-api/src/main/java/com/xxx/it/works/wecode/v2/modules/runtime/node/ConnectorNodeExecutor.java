@@ -173,11 +173,16 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             return executeLegacy(context, config, data, nodeId);
         }
 
-        // 提取 timeoutMs
+        // 提取 timeoutMs: 优先从 data (编排配置节点级) 读取, 回退到 connectionConfig (连接器级)
         long timeoutMs = DEFAULT_TIMEOUT_MS;
-        Object timeoutObj = connectionConfig.get("timeoutMs");
-        if (timeoutObj instanceof Number) {
-            timeoutMs = ((Number) timeoutObj).longValue();
+        Object dataTimeoutObj = data.get("timeoutMs");
+        if (dataTimeoutObj instanceof Number && ((Number) dataTimeoutObj).longValue() > 0) {
+            timeoutMs = ((Number) dataTimeoutObj).longValue();
+        } else {
+            Object connTimeoutObj = connectionConfig.get("timeoutMs");
+            if (connTimeoutObj instanceof Number && ((Number) connTimeoutObj).longValue() > 0) {
+                timeoutMs = ((Number) connTimeoutObj).longValue();
+            }
         }
 
         // 提取 authConfig
@@ -223,7 +228,11 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         String url = (String) data.get("url");
         String method = (String) data.getOrDefault("method", "POST");
-        Integer timeout = (Integer) data.get("timeoutMs");
+        Integer timeout = null;
+        Object timeoutObj = data.get("timeoutMs");
+        if (timeoutObj instanceof Number) {
+            timeout = ((Number) timeoutObj).intValue();
+        }
         if (timeout != null && timeout > 0) {
             timeoutMs = timeout;
         }

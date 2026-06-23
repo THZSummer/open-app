@@ -447,15 +447,13 @@ def verify_flow_response(resp, test_label):
         check(f"[{test_label}] 响应为合法 JSON", False, "无法解析响应体")
         return
 
-    # executionId 必须存在（无论成功失败）
+    # executionId 必须存在（无论成功失败）— v5.8 transparent response: 在响应头中
     check(f"[{test_label}] executionId 存在",
-          "executionId" in body and isinstance(body["executionId"], str),
-          f"body keys: {list(body.keys())}")
+          bool(resp.headers.get("X-Execution-Id")))
 
-    # status 字段
+    # status 字段 — v5.8 transparent response: 在响应头中
     check(f"[{test_label}] status 字段存在",
-          "status" in body,
-          f"body keys: {list(body.keys())}")
+          resp.headers.get("X-Status") is not None)
 
     status_val = body.get("status", "")
     if status_val == "failed":

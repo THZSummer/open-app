@@ -19,13 +19,18 @@ SCRIPTS = [
     # V3 E2E: 认证 + 安全 + 脚本 + 调试
     "connector_auth_multiple.py",
     "connector_url_whitelist.py",
+    "systoken_whitelist.py",  # NEW: FR-036 SYSTOKEN白名单
     "script_node_execution.py",
     "debug_draft_invoke.py",
-    # V4 E2E: Flow config — timeout + cache + parallel + version select (P2: FR-034~039)
+    # V3 E2E: Flow config — timeout + cache + parallel + version select
     "node_timeout.py",
     "flow_cache.py",
     "parallel_branch.py",
     "connector_version_select.py",
+    # V3 E2E: 运行时 — 执行记录 + 日志 + 版本解析
+    "execution_record_view.py",
+    "execution_log.py",
+    "version_config_resolve.py",
 ]
 
 quiet = "--quiet" in sys.argv
