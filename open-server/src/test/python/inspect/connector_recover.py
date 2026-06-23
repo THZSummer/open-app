@@ -106,7 +106,7 @@ try:
     # 3. 将连接器变更为已失效状态 (status=3 INVALIDATED)
     resp = _api_put(f"/service/open/v2/connectors/{cid_001}/invalidate")
     invalidated = False
-    if resp:
+    if resp is not None:
         if resp.status_code in (200, 201):
             check("IT-REC-CONN-001 [1] 失效连接器 HTTP 200",
                   True,
@@ -181,7 +181,7 @@ try:
     # 3. 将连接器变更为已失效状态
     resp = _api_put(f"/service/open/v2/connectors/{cid_002}/invalidate")
     invalidated = False
-    if resp:
+    if resp is not None:
         if resp.status_code in (200, 201):
             check("IT-REC-CONN-002 [1] 失效连接器 HTTP 200",
                   True,
@@ -255,7 +255,7 @@ try:
 
     # 2. 尝试恢复一个处于"有效可用"状态的连接器（非 INVALIDATED）
     resp = _api_put(f"/service/open/v2/connectors/{cid_003}/recover")
-    if resp:
+    if resp is not None:
         check("IT-REC-CONN-003 [1] 恢复请求已处理 (HTTP 200 或 409)",
               resp.status_code in (200, 409),
               f"实际: {resp.status_code}")
@@ -285,7 +285,7 @@ try:
     created_connector_ids.append(cid_003b)
 
     resp = _api_put(f"/service/open/v2/connectors/{cid_003b}/recover")
-    if resp:
+    if resp is not None:
         check("IT-REC-CONN-003 [3] UNAVAILABLE 状态恢复请求已处理 (HTTP 200 或 409)",
               resp.status_code in (200, 409),
               f"实际: {resp.status_code}")

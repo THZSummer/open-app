@@ -113,6 +113,7 @@ public class FlowCopyService {
         FlowCopyResponse response = FlowCopyResponse.builder()
                 .flowId(String.valueOf(newFlowId))
                 .nameCn(newNameCn)
+                .nameEn(newNameEn)
                 .lifecycleStatus(FlowLifecycleStatus.STOPPED.getCode())
                 .versionCount(versionCount)
                 .message("复制成功，共复制 " + versionCount + " 个版本")

@@ -12,6 +12,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -44,11 +46,11 @@ public class FlowController {
      */
     @PostMapping
     @Operation(summary = "#17 创建连接流", description = "创建连接流基本信息，lifecycleStatus=1（已停止），不自动生成草稿版本")
-    public ApiResponse<FlowCreateResponse> createFlow(
+    public ResponseEntity<ApiResponse<FlowCreateResponse>> createFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Valid @RequestBody FlowCreateRequest request) {
         log.info("POST /flows - create flow: nameCn={}, appId={}", request.getNameCn(), appId);
-        return flowService.createFlow(request, appId);
+        return toResponseEntity(flowService.createFlow(request, appId));
     }
 
     /**
@@ -56,7 +58,7 @@ public class FlowController {
      */
     @GetMapping
     @Operation(summary = "#18 查询连接流列表", description = "列表查询，支持 lifecycleStatus/keyword 过滤 + 分页")
-    public ApiResponse<List<FlowListResponse>> getFlowList(
+    public ResponseEntity<ApiResponse<List<FlowListResponse>>> getFlowList(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "生命周期状态过滤") @RequestParam(required = false) Integer lifecycleStatus,
             @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
@@ -64,7 +66,7 @@ public class FlowController {
             @Parameter(description = "每页数量") @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
 
         log.info("GET /flows - list: appId={}, lifecycleStatus={}, keyword={}", appId, lifecycleStatus, keyword);
-        return flowService.getFlowList(lifecycleStatus, keyword, curPage, pageSize, appId);
+        return toResponseEntity(flowService.getFlowList(lifecycleStatus, keyword, curPage, pageSize, appId));
     }
 
     /**
@@ -72,7 +74,7 @@ public class FlowController {
      */
     @GetMapping("/{flowId}")
     @Operation(summary = "#19 查询连接流详情", description = "详情查询，含 invokeUrl")
-    public ApiResponse<FlowDetailResponse> getFlowDetail(
+    public ResponseEntity<ApiResponse<FlowDetailResponse>> getFlowDetail(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             HttpServletRequest request) {
@@ -87,7 +89,7 @@ public class FlowController {
             invokeUrlPrefix += ":" + port;
         }
 
-        return flowService.getFlowDetail(flowId, appId, invokeUrlPrefix);
+        return toResponseEntity(flowService.getFlowDetail(flowId, appId, invokeUrlPrefix));
     }
 
     /**
@@ -96,12 +98,12 @@ public class FlowController {
     @AuditLog(value = OperateEnum.UPDATE_FLOW, resourceIdParam = "flowId")
     @PutMapping("/{flowId}")
     @Operation(summary = "#20 更新连接流", description = "更新名称和描述信息")
-    public ApiResponse<Void> updateFlow(
+    public ResponseEntity<ApiResponse<Void>> updateFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Valid @RequestBody FlowUpdateRequest request) {
         log.info("PUT /flows/{} - update: appId={}", flowId, appId);
-        return flowService.updateFlow(flowId, request, appId);
+        return toResponseEntity(flowService.updateFlow(flowId, request, appId));
     }
 
     /**
@@ -109,11 +111,11 @@ public class FlowController {
      */
     @PostMapping("/{flowId}/copy")
     @Operation(summary = "#21 复制连接流", description = "复制全部版本历史，名称追加 _copy_xxxxx")
-    public ApiResponse<FlowCopyResponse> copyFlow(
+    public ResponseEntity<ApiResponse<FlowCopyResponse>> copyFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "源连接流ID") @PathVariable Long flowId) {
         log.info("POST /flows/{}/copy: appId={}", flowId, appId);
-        return flowCopyService.copyFlow(flowId, appId);
+        return toResponseEntity(flowCopyService.copyFlow(flowId, appId));
     }
 
     /**
@@ -121,12 +123,12 @@ public class FlowController {
      */
     @PostMapping("/{flowId}/deploy")
     @Operation(summary = "#22 部署连接流", description = "部署版本，纯版本绑定，不改变生命周期状态")
-    public ApiResponse<FlowDeployResponse> deployFlow(
+    public ResponseEntity<ApiResponse<FlowDeployResponse>> deployFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Valid @RequestBody FlowDeployRequest request) {
         log.info("POST /flows/{}/deploy: appId={}, versionId={}", flowId, appId, request.getVersionId());
-        return flowDeployService.deployVersion(flowId, request.getVersionId(), appId);
+        return toResponseEntity(flowDeployService.deployVersion(flowId, request.getVersionId(), appId));
     }
 
     /**
@@ -134,11 +136,11 @@ public class FlowController {
      */
     @PostMapping("/{flowId}/start")
     @Operation(summary = "#23 启动连接流", description = "启动（需有已部署版本），状态 1→2")
-    public ApiResponse<Void> startFlow(
+    public ResponseEntity<ApiResponse<Void>> startFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
         log.info("POST /flows/{}/start: appId={}", flowId, appId);
-        return flowService.startFlow(flowId, appId);
+        return toResponseEntity(flowService.startFlow(flowId, appId));
     }
 
     /**
@@ -146,11 +148,11 @@ public class FlowController {
      */
     @PostMapping("/{flowId}/stop")
     @Operation(summary = "#24 停止连接流", description = "停止（仅运行中），状态 2→1")
-    public ApiResponse<Void> stopFlow(
+    public ResponseEntity<ApiResponse<Void>> stopFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
         log.info("POST /flows/{}/stop: appId={}", flowId, appId);
-        return flowService.stopFlow(flowId, appId);
+        return toResponseEntity(flowService.stopFlow(flowId, appId));
     }
 
     /**
@@ -158,11 +160,11 @@ public class FlowController {
      */
     @PutMapping("/{flowId}/invalidate")
     @Operation(summary = "#25 失效连接流", description = "标记失效（仅已停止状态），状态 1→3")
-    public ApiResponse<?> invalidateFlow(
+    public ResponseEntity<ApiResponse<?>> invalidateFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
         log.info("PUT /flows/{}/invalidate: appId={}", flowId, appId);
-        return flowService.invalidateFlow(flowId, appId);
+        return toResponseEntity(flowService.invalidateFlow(flowId, appId));
     }
 
     /**
@@ -170,11 +172,11 @@ public class FlowController {
      */
     @PutMapping("/{flowId}/recover")
     @Operation(summary = "#26 恢复连接流", description = "恢复 → 已停止状态（需手动启动）")
-    public ApiResponse<?> recoverFlow(
+    public ResponseEntity<ApiResponse<?>> recoverFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
         log.info("PUT /flows/{}/recover: appId={}", flowId, appId);
-        return flowService.recoverFlow(flowId, appId);
+        return toResponseEntity(flowService.recoverFlow(flowId, appId));
     }
 
     /**
@@ -182,10 +184,42 @@ public class FlowController {
      */
     @DeleteMapping("/{flowId}")
     @Operation(summary = "#27 删除连接流", description = "物理删除（仅已失效状态可删除）")
-    public ApiResponse<Void> deleteFlow(
+    public ResponseEntity<ApiResponse<Void>> deleteFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
         log.info("DELETE /flows/{}: appId={}", flowId, appId);
-        return flowService.deleteFlow(flowId, appId);
+        return toResponseEntity(flowService.deleteFlow(flowId, appId));
+    }
+
+    // ==================== 辅助方法 ====================
+
+    /**
+     * 将 ApiResponse 转换为 ResponseEntity，根据 code 映射 HTTP 状态码
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private ResponseEntity toResponseEntity(ApiResponse response) {
+        if (response == null) {
+            return ResponseEntity.ok(ApiResponse.success());
+        }
+        String code = response.getCode();
+        if ("200".equals(code)) {
+            return ResponseEntity.ok(response);
+        }
+        if ("400".equals(code)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+        if ("404".equals(code)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        }
+        if ("409".equals(code)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+        }
+        if ("422".equals(code)) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
+        }
+        if ("500".equals(code)) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

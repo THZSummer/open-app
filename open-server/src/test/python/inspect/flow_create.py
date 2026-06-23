@@ -3,10 +3,10 @@
 from client import *
 
 print("=== IT-023: 正常创建 ===")
-request("POST", "/flows", {"nameCn": "新消息自动通知", "nameEn": "Auto Message Notification"})
+request("POST", "/service/open/v2/flows", {"nameCn": "新消息自动通知", "nameEn": "Auto Message Notification"})
 
 print("=== IT-024: 缺少 nameCn ===")
-request("POST", "/flows", {"nameEn": "Test"})
+request("POST", "/service/open/v2/flows", {"nameEn": "Test"})
 
 print("=== IT-025: 缺少 nameEn ===")
-request("POST", "/flows", {"nameCn": "测试"})
+request("POST", "/service/open/v2/flows", {"nameCn": "测试"})

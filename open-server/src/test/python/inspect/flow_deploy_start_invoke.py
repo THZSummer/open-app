@@ -143,9 +143,9 @@ def build_orchestration(connector_version_id):
 def create_flow_via_api(name_cn="E2E部署测试流"):
     """通过 open-server API 创建连接流，返回 flow_id"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows",
+        f"{BASE_URL}/service/open/v2/flows",
         json={"nameCn": name_cn, "nameEn": name_cn.replace(" ", "_")},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     data = resp.json()
@@ -157,9 +157,9 @@ def create_flow_via_api(name_cn="E2E部署测试流"):
 def create_version_via_api(flow_id):
     """通过 API 创建空草稿版本"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows/{flow_id}/versions",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/versions",
         json={},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     data = resp.json()
@@ -171,9 +171,9 @@ def create_version_via_api(flow_id):
 def update_version_via_api(flow_id, version_id, orchestration):
     """通过 API 更新草稿编排"""
     resp = req_lib.put(
-        f"{BASE_URL}/flows/{flow_id}/versions/{version_id}",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/versions/{version_id}",
         json={"orchestrationConfig": json.dumps(orchestration)},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     return resp
@@ -182,9 +182,9 @@ def update_version_via_api(flow_id, version_id, orchestration):
 def publish_version_via_api(flow_id, version_id):
     """通过 API 发布草稿版本"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows/{flow_id}/versions/{version_id}/publish",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/versions/{version_id}/publish",
         json={},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     return resp
@@ -193,9 +193,9 @@ def publish_version_via_api(flow_id, version_id):
 def deploy_flow_via_api(flow_id, version_id):
     """通过 API 部署版本"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows/{flow_id}/deploy",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/deploy",
         json={"versionId": version_id},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     return resp
@@ -204,9 +204,9 @@ def deploy_flow_via_api(flow_id, version_id):
 def start_flow_via_api(flow_id):
     """通过 API 启动连接流"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows/{flow_id}/start",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/start",
         json={},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     return resp
@@ -215,9 +215,9 @@ def start_flow_via_api(flow_id):
 def stop_flow_via_api(flow_id):
     """通过 API 停止连接流"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows/{flow_id}/stop",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/stop",
         json={},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     return resp
@@ -256,8 +256,8 @@ try:
     fid_100 = snow_id()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-        f"VALUES ({fid_100}, 'E2E部署测试流', 'E2E_Deploy_Test', 0, 'tester', 'tester')"
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+        f"VALUES ({fid_100}, 'E2E部署测试流', 'E2E_Deploy_Test', 1, 1, 'tester', 'tester')"
     )
     print("  [2/6] 连接流已创建 (id={})".format(fid_100))
 
@@ -266,10 +266,10 @@ try:
     orch = build_orchestration(cvid_100)
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
-        f"(id, flow_id, orchestration_config, create_by, last_update_by) "
-        f"VALUES ({fvid_100}, {fid_100}, '{_escape(orch)}', 'tester', 'tester')"
+        f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
+        f"VALUES ({fvid_100}, {fid_100}, '{_escape(orch)}', 5, 'tester', 'tester')"
     )
-    print("  [3/6] 草稿编排已保存 (vid={})".format(fvid_100))
+    print("  [3/6] 创建已发布版本 (vid={}, status=5)".format(fvid_100))
 
     # 4. 部署 (FR-018)
     print("\n  --- IT-100a: 部署已发布版本 (FR-018) ---")
@@ -298,8 +298,8 @@ try:
               bool(resp_trig.headers.get("X-Execution-Id")))
         # 验证运行记录 (FR-042)
         resp_records = req_lib.get(
-            f"{BASE_URL}/flows/{fid_100}/execution-records",
-            headers={"Content-Type": "application/json"},
+            f"{BASE_URL}/service/open/v2/flows/{fid_100}/execution-records",
+            headers={"Content-Type": "application/json", "X-App-Id": "1"},
             timeout=10
         )
         if resp_records.status_code == 200:
@@ -344,11 +344,11 @@ try:
     fid_101 = snow_id()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-        f"VALUES ({fid_101}, 'E2E-101未部署启动', 'E2E_101', 0, 'tester', 'tester')"
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+        f"VALUES ({fid_101}, 'E2E-101未部署启动', 'E2E_101', 1, 1, 'tester', 'tester')"
     )
     resp = start_flow_via_api(fid_101)
-    if resp:
+    if resp is not None:
         check("未部署启动被拒绝 (HTTP 4xx/5xx 或 code != 200)",
               resp.status_code not in (200, 201),
               f"实际: {resp.status_code} body={resp.text[:200]}")
@@ -383,13 +383,13 @@ try:
     orch_102 = build_orchestration(cvid_102)
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-        f"VALUES ({fid_102}, 'E2E-102', 'E2E_102', 0, 'tester', 'tester')"
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+        f"VALUES ({fid_102}, 'E2E-102', 'E2E_102', 1, 1, 'tester', 'tester')"
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
-        f"(id, flow_id, orchestration_config, create_by, last_update_by) "
-        f"VALUES ({fvid_102}, {fid_102}, '{_escape(orch_102)}', 'tester', 'tester')"
+        f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
+        f"VALUES ({fvid_102}, {fid_102}, '{_escape(orch_102)}', 5, 'tester', 'tester')"
     )
     # 部署 + 启动
     deploy_flow_via_api(fid_102, fvid_102)
@@ -402,7 +402,7 @@ try:
     resp = trigger_invoke(fid_102,
                           body={"keyword": "test"},
                           headers={"X-Sys-Token": "test-token"})
-    if resp:
+    if resp is not None:
         check("停止后触发被拒绝",
               resp.status_code in (404, 503, 500),
               f"实际: {resp.status_code}")

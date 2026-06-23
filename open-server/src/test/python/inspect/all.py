@@ -59,18 +59,38 @@ for script in SCRIPTS:
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=base_dir)
     output = result.stdout + result.stderr
 
-    if result.returncode == 0:
-        passed += 1
-        results.append((name, "PASS"))
-    elif "SKIP" in output:
-        skipped += 1
-        results.append((name, "SKIP"))
-    else:
+    # Parse stdout for actual assertion results (not exit code)
+    # Individual test scripts use check() which prints "❌ FAIL:" on failure
+    # and "✅ PASS:" on success. These are the source of truth.
+    # Exclude summary lines that contain BOTH markers.
+    # Fallback to exit code for unhandled crashes.
+    all_lines = output.split('\n')
+    fail_lines = [l for l in all_lines if "❌ FAIL:" in l and "✅ PASS:" not in l]
+    has_fail = len(fail_lines) > 0
+    has_skip = "SKIP" in output or "[SKIP]" in output
+
+    if has_fail:
         failed += 1
         results.append((name, "FAIL"))
+    elif has_skip:
+        skipped += 1
+        results.append((name, "SKIP"))
+    elif result.returncode != 0:
+        # Crash or unhandled exception — no FAIL marker in output
+        failed += 1
+        results.append((name, "FAIL (crash)"))
+    else:
+        passed += 1
+        results.append((name, "PASS"))
 
     if not quiet:
         print(output)
+        # Show per-script assertion counts from stdout
+        all_lines = output.split('\n')
+        pass_count = sum(1 for l in all_lines if "✅ PASS:" in l and "❌ FAIL:" not in l)
+        fail_count = sum(1 for l in all_lines if "❌ FAIL:" in l and "✅ PASS:" not in l)
+        if pass_count > 0 or fail_count > 0:
+            print(f"  [脚本断言: ✅ {pass_count}  ❌ {fail_count}]")
 
 total = passed + failed + skipped
 print(f"\n{'='*60}")

@@ -56,7 +56,7 @@ try:
     print(f"{'='*60}")
 
     resp = api_get(f"/service/open/v2/connectors/{cid}", headers={"X-App-Id": "1"})
-    if resp:
+    if resp is not None:
         check("HTTP 200 — 白名单应用请求成功",
               resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -75,7 +75,7 @@ try:
     print(f"{'='*60}")
 
     resp = api_get(f"/service/open/v2/connectors/{cid}")
-    if resp:
+    if resp is not None:
         check("HTTP 403 — 缺少 X-App-Id Header",
               resp.status_code == 403,
               f"实际: {resp.status_code}")
@@ -103,7 +103,7 @@ try:
     print(f"{'='*60}")
 
     resp = api_get(f"/service/open/v2/connectors/{cid}", headers={"X-App-Id": "99999"})
-    if resp:
+    if resp is not None:
         check("HTTP 200 — 空白名单任意应用放行",
               resp.status_code == 200,
               f"实际: {resp.status_code}")

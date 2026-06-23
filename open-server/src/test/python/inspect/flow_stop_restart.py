@@ -66,9 +66,9 @@ def build_simple_orch():
 def stop_flow_via_api(flow_id):
     """通过 API 停止连接流"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows/{flow_id}/stop",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/stop",
         json={},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     return resp
@@ -77,9 +77,9 @@ def stop_flow_via_api(flow_id):
 def start_flow_via_api(flow_id):
     """通过 API 启动连接流"""
     resp = req_lib.post(
-        f"{BASE_URL}/flows/{flow_id}/start",
+        f"{BASE_URL}/service/open/v2/flows/{flow_id}/start",
         json={},
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-App-Id": "1"},
         timeout=10
     )
     return resp
@@ -146,12 +146,12 @@ try:
     )
     print("\n  [1/4] 连接器已创建 (cid={}, cvid={})".format(cid_001, cvid_001))
 
-    # 2. Create flow via MySQL with lifecycle_status=0
+    # 2. Create flow via MySQL with lifecycle_status=1 (STOPPED)
     fid_001 = snow_id()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-        f"VALUES ({fid_001}, '停止重启测试流', 'StopRestartFlow', 0, 'tester', 'tester')"
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+        f"VALUES ({fid_001}, '停止重启测试流', 'StopRestartFlow', 1, 1, 'tester', 'tester')"
     )
     print("  [2/4] 连接流已创建 (fid={})".format(fid_001))
 
@@ -161,7 +161,7 @@ try:
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
-        f"VALUES ({fvid_001}, {fid_001}, '{_escape(orch)}', 1, 'tester', 'tester')"
+        f"VALUES ({fvid_001}, {fid_001}, '{_escape(orch)}', 5, 'tester', 'tester')"
     )
     print("  [3/4] 流程编排版本已创建并发布 (fvid={})".format(fvid_001))
 
@@ -184,9 +184,9 @@ try:
     status_val = _mysql_query(
         f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}"
     )
-    check("MySQL 确认流状态为运行中 (lifecycle_status=1)",
-          status_val == "1",
-          f"lifecycle_status={status_val}, 期望=1")
+    check("MySQL 确认流状态为运行中 (lifecycle_status=2)",
+          status_val == "2",
+          f"lifecycle_status={status_val}, 期望=2")
 
     # 7. Stop flow via API → verify HTTP 200
     print("\n  --- 7. 停止连接流 (FR-020) ---")
@@ -199,9 +199,9 @@ try:
     status_val = _mysql_query(
         f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}"
     )
-    check("MySQL 确认流状态已停止 (lifecycle_status=0)",
-          status_val == "0",
-          f"lifecycle_status={status_val}, 期望=0")
+    check("MySQL 确认流状态已停止 (lifecycle_status=1)",
+          status_val == "1",
+          f"lifecycle_status={status_val}, 期望=1")
 
     # 9. Stop again (idempotent) → verify HTTP 200
     print("\n  --- 9. 重复停止 (幂等) ---")
@@ -221,9 +221,9 @@ try:
     status_val = _mysql_query(
         f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}"
     )
-    check("MySQL 确认流重新运行中 (lifecycle_status=1)",
-          status_val == "1",
-          f"lifecycle_status={status_val}, 期望=1")
+    check("MySQL 确认流重新运行中 (lifecycle_status=2)",
+          status_val == "2",
+          f"lifecycle_status={status_val}, 期望=2")
 
 finally:
     # Cleanup
@@ -296,13 +296,13 @@ try:
     orch_002 = build_simple_orch()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-        f"VALUES ({fid_002}, '停止触发拒绝流', 'StopTriggerRejectFlow', 0, 'tester', 'tester')"
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+        f"VALUES ({fid_002}, '停止触发拒绝流', 'StopTriggerRejectFlow', 1, 1, 'tester', 'tester')"
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
-        f"VALUES ({fvid_002}, {fid_002}, '{_escape(orch_002)}', 1, 'tester', 'tester')"
+        f"VALUES ({fvid_002}, {fid_002}, '{_escape(orch_002)}', 5, 'tester', 'tester')"
     )
     _mysql(
         f"UPDATE openplatform_v2_cp_flow_t "
@@ -404,8 +404,8 @@ try:
     fid_003 = snow_id()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-        f"VALUES ({fid_003}, '未部署启动拒绝流', 'NoDeployStartReject', 0, 'tester', 'tester')"
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+        f"VALUES ({fid_003}, '未部署启动拒绝流', 'NoDeployStartReject', 1, 1, 'tester', 'tester')"
     )
     # Also create a version (so flow exists with version but NOT deployed)
     fvid_003 = snow_id()
@@ -413,7 +413,7 @@ try:
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
-        f"VALUES ({fvid_003}, {fid_003}, '{_escape(orch_003)}', 1, 'tester', 'tester')"
+        f"VALUES ({fvid_003}, {fid_003}, '{_escape(orch_003)}', 5, 'tester', 'tester')"
     )
     # NOTE: intentionally NOT setting deployed_version_id — this is the test
     print("\n  [setup] 连接流已创建但未部署 (fid={}, deployed_version_id IS NULL)".format(fid_003))
@@ -425,13 +425,13 @@ try:
           resp.status_code not in (200, 201),
           f"实际: {resp.status_code} body={resp.text[:200]}")
 
-    # Also verify lifecycle_status is still 0
+    # Also verify lifecycle_status is still 1 (STOPPED)
     status_val = _mysql_query(
         f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_003}"
     )
-    check("MySQL 确认流未被启动 (lifecycle_status=0)",
-          status_val == "0",
-          f"lifecycle_status={status_val}, 期望=0")
+    check("MySQL 确认流未被启动 (lifecycle_status=1)",
+          status_val == "1",
+          f"lifecycle_status={status_val}, 期望=1")
 
 finally:
     if fvid_003:
