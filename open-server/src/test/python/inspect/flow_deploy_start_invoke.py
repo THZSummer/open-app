@@ -64,8 +64,8 @@ def setup_connector(label_cn="E2E测试连接器"):
     }
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid}, '{label_cn}', '{label_cn}', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid}, '{label_cn}', '{label_cn}', 1, 1, 'tester', 'tester')"
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "

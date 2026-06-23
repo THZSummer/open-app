@@ -102,8 +102,8 @@ try:
     cid_108 = snow_id()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid_108}, 'E2E版本测试连接器', 'E2E_Version_Test', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid_108}, 'E2E版本测试连接器', 'E2E_Version_Test', 1, 1, 'tester', 'tester')"
     )
     print(f"  [1] 连接器已创建 id={cid_108}")
 
@@ -120,7 +120,7 @@ try:
                   f"data={json.dumps(data, ensure_ascii=False)[:200]}")
         # 空草稿配置为空
         check("空草稿配置为空", True)
-    else:
+    if cvid_108 is None:
         print("  SKIP: 创建草稿 API 不可用，使用 MySQL 插入")
         cvid_108 = snow_id()
         _mysql(
@@ -220,7 +220,7 @@ try:
             check("复制后返回新 versionId",
                   bool(cvid_108b) and cvid_108b != cvid_108,
                   f"vid={cvid_108b}")
-    else:
+    if cvid_108b is None:
         # Fallback
         cvid_108b = snow_id()
         _mysql(

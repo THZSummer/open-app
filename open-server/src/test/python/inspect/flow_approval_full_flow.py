@@ -244,7 +244,7 @@ try:
             fvid_001 = data["data"].get("id") or data["data"].get("versionId")
             check("返回 versionId", bool(fvid_001),
                   f"data={json.dumps(data, ensure_ascii=False)[:200]}")
-    else:
+    if fvid_001 is None:
         # Fallback: MySQL 创建
         fvid_001 = snow_id()
         _mysql(
@@ -431,7 +431,7 @@ try:
             fvid_002 = data["data"].get("id") or data["data"].get("versionId")
             check("返回 versionId", bool(fvid_002),
                   f"data={json.dumps(data, ensure_ascii=False)[:200]}")
-    else:
+    if fvid_002 is None:
         fvid_002 = snow_id()
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_version_t "
@@ -564,12 +564,11 @@ try:
 
     # [Step 2] 创建草稿版本
     print("\n  -- [2] 创建草稿版本 --")
-    resp = api_post(f"/service/open/v2/flows/{fid_003}/versions")
     if resp is not None:
         data = resp.json()
         if data.get("code") in ("200", 200) and data.get("data"):
             fvid_003 = data["data"].get("id") or data["data"].get("versionId")
-    else:
+    if fvid_003 is None:
         fvid_003 = snow_id()
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_version_t "

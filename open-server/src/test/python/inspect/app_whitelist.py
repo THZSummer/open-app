@@ -44,8 +44,8 @@ print(f"\n[Setup] 创建测试连接器 id={cid}")
 try:
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid}, '白名单测试连接器', 'WL_Test_Connector', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid}, '白名单测试连接器', 'WL_Test_Connector', 1, 1, 'tester', 'tester')"
     )
 
     # ═══════════════════════════════════════════════════════════

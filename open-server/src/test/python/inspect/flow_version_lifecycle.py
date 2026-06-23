@@ -235,7 +235,7 @@ try:
             fvid_001 = data["data"].get("id") or data["data"].get("versionId")
             check("返回 versionId", bool(fvid_001),
                   f"data={json.dumps(data, ensure_ascii=False)[:200]}")
-    else:
+    if fvid_001 is None:
         # Fallback: MySQL 创建
         fvid_001 = snow_id()
         _mysql(
@@ -370,7 +370,7 @@ try:
             check("第二个草稿返回 versionId",
                   bool(fvid_003) and str(fvid_003) != str(fvid_001),
                   f"vid={fvid_003}")
-    else:
+    if fvid_003 is None:
         fvid_003 = snow_id()
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_version_t "

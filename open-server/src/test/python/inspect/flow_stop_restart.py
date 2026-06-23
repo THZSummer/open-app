@@ -136,8 +136,8 @@ try:
     }
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid_001}, '停止重启测试连接器', 'StopRestartConnector', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid_001}, '停止重启测试连接器', 'StopRestartConnector', 1, 1, 'tester', 'tester')"
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
@@ -282,8 +282,8 @@ try:
     }
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid_002}, '停止触发拒绝测试连接器', 'StopTriggerReject', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid_002}, '停止触发拒绝测试连接器', 'StopTriggerReject', 1, 1, 'tester', 'tester')"
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
@@ -391,8 +391,8 @@ try:
     }
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid_003}, '未部署启动拒绝测试连接器', 'NoDeployStartReject', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid_003}, '未部署启动拒绝测试连接器', 'NoDeployStartReject', 1, 1, 'tester', 'tester')"
     )
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
