@@ -22,6 +22,7 @@ import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import {
   FLOW_DELETE_SECOND_MODAL_INFO,
+  FLOW_STOP_SECOND_MODAL_INFO,
   flowSearchConfig,
   flowStatusOptions,
   getFlowColumns,
@@ -352,18 +353,10 @@ function FlowList() {
             open={actionModalVisible}
             onClose={handleActionCancel}
             onConfirm={handleActionConfirm}
-            modalInfo={currentActionType === 'delete' ? getSecondModalInfo({
-              ...FLOW_DELETE_SECOND_MODAL_INFO,
+            modalInfo={getSecondModalInfo({
+              ...(currentActionType === 'delete' ? FLOW_DELETE_SECOND_MODAL_INFO : FLOW_STOP_SECOND_MODAL_INFO),
               objectName: actionItem?.nameCn || actionItem?.nameEn,
-            }) : {
-              content: {
-                confirmText: actionItem ? `确认要停止这个连接流：${actionItem.nameCn || actionItem.nameEn}吗？` : '确认要停止这个连接流吗？',
-                impactText: '操作影响：停止后，该连接流将不再处理触发请求，但配置仍会保留。',
-              },
-              confirmButtonText: '确认停止',
-              loadingText: '停止中...',
-              dangerColor: '#ff4d4f',
-            }}
+            })}
             loading={actionLoading}
           />
 

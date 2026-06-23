@@ -78,5 +78,11 @@ export const ACTION_CONFIG = {
     confirmButtonText: '确认撤回',
     loadingText: '撤回中...',
     dangerColor: '#faad14'
+  },
+  stop: {
+    content: '确定要停止吗？',
+    confirmButtonText: '确认停止',
+    loadingText: '停止中...',
+    dangerColor: '#ff4d4f'
   }
 };
