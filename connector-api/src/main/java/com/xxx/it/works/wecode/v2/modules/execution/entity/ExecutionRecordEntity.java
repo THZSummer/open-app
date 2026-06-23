@@ -57,6 +57,39 @@ public class ExecutionRecordEntity implements Persistable<Long> {
     @Column("last_update_time")
     private LocalDateTime lastUpdateTime;
 
+    @Column("flow_version_number")
+    private Integer flowVersionNumber;
+
+    @Column("flow_version_snapshot")
+    private String flowVersionSnapshot;
+
+    @Column("flow_name_cn")
+    private String flowNameCn;
+
+    @Column("flow_name_en")
+    private String flowNameEn;
+
+    @Column("trigger_account")
+    private String triggerAccount;
+
+    @Column("rate_limit_status")
+    private Integer rateLimitStatus;
+
+    @Column("cache_status")
+    private Integer cacheStatus;
+
+    @Column("cache_key")
+    private String cacheKey;
+
+    @Column("cache_ttl_remaining")
+    private Integer cacheTtlRemaining;
+
+    @Column("create_by")
+    private String createBy;
+
+    @Column("last_update_by")
+    private String lastUpdateBy;
+
     /** 标记是否为新建实体（Persistable），true=INSERT, false=UPDATE */
     @Transient
     private boolean isNew = true;
@@ -112,4 +145,37 @@ public class ExecutionRecordEntity implements Persistable<Long> {
 
     public LocalDateTime getLastUpdateTime() { return lastUpdateTime; }
     public void setLastUpdateTime(LocalDateTime lastUpdateTime) { this.lastUpdateTime = lastUpdateTime; }
+
+    public Integer getFlowVersionNumber() { return flowVersionNumber; }
+    public void setFlowVersionNumber(Integer flowVersionNumber) { this.flowVersionNumber = flowVersionNumber; }
+
+    public String getFlowVersionSnapshot() { return flowVersionSnapshot; }
+    public void setFlowVersionSnapshot(String flowVersionSnapshot) { this.flowVersionSnapshot = flowVersionSnapshot; }
+
+    public String getFlowNameCn() { return flowNameCn; }
+    public void setFlowNameCn(String flowNameCn) { this.flowNameCn = flowNameCn; }
+
+    public String getFlowNameEn() { return flowNameEn; }
+    public void setFlowNameEn(String flowNameEn) { this.flowNameEn = flowNameEn; }
+
+    public String getTriggerAccount() { return triggerAccount; }
+    public void setTriggerAccount(String triggerAccount) { this.triggerAccount = triggerAccount; }
+
+    public Integer getRateLimitStatus() { return rateLimitStatus; }
+    public void setRateLimitStatus(Integer rateLimitStatus) { this.rateLimitStatus = rateLimitStatus; }
+
+    public Integer getCacheStatus() { return cacheStatus; }
+    public void setCacheStatus(Integer cacheStatus) { this.cacheStatus = cacheStatus; }
+
+    public String getCacheKey() { return cacheKey; }
+    public void setCacheKey(String cacheKey) { this.cacheKey = cacheKey; }
+
+    public Integer getCacheTtlRemaining() { return cacheTtlRemaining; }
+    public void setCacheTtlRemaining(Integer cacheTtlRemaining) { this.cacheTtlRemaining = cacheTtlRemaining; }
+
+    public String getCreateBy() { return createBy; }
+    public void setCreateBy(String createBy) { this.createBy = createBy; }
+
+    public String getLastUpdateBy() { return lastUpdateBy; }
+    public void setLastUpdateBy(String lastUpdateBy) { this.lastUpdateBy = lastUpdateBy; }
 }

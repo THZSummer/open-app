@@ -12,6 +12,9 @@ import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
+import com.xxx.it.works.wecode.v2.common.IdGenerator;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
 import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
@@ -67,6 +70,15 @@ class OpTriggerServiceTest {
     @Mock
     private FlowCacheManager cacheManager;
 
+    @Mock
+    private ExecutionRecordService executionRecordService;
+
+    @Mock
+    private ExecutionStepService executionStepService;
+
+    @Mock
+    private IdGenerator idGenerator;
+
     private ObjectMapper objectMapper;
     private OpTriggerService triggerService;
 
@@ -84,9 +96,11 @@ class OpTriggerServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
+        when(idGenerator.nextId()).thenReturn(1L);
         triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, urlWhitelistValidator,
                 executor, dagScheduler, flowVersionReadRepository, flowReadRepository,
-                connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle, cacheManager);
+                connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle, cacheManager,
+                executionRecordService, executionStepService, idGenerator);
     }
 
     @Test

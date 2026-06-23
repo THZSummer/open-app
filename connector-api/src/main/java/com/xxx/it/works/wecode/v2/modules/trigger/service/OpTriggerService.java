@@ -7,7 +7,11 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService.StepLog;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
@@ -26,12 +30,15 @@ import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -79,6 +86,9 @@ public class OpTriggerService {
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final CacheToggle cacheToggle;
     private final FlowCacheManager cacheManager;
+    private final ExecutionRecordService executionRecordService;
+    private final ExecutionStepService executionStepService;
+    private final IdGenerator idGenerator;
 
     public OpTriggerService(
             ObjectMapper objectMapper,
@@ -91,7 +101,10 @@ public class OpTriggerService {
             OpConnectorVersionReadRepository connectorVersionReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
             CacheToggle cacheToggle,
-            FlowCacheManager cacheManager) {
+            FlowCacheManager cacheManager,
+            ExecutionRecordService executionRecordService,
+            ExecutionStepService executionStepService,
+            IdGenerator idGenerator) {
         this.objectMapper = objectMapper;
         this.authValidatorRegistry = authValidatorRegistry;
         this.urlWhitelistValidator = urlWhitelistValidator;
@@ -103,6 +116,9 @@ public class OpTriggerService {
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.cacheToggle = cacheToggle;
         this.cacheManager = cacheManager;
+        this.executionRecordService = executionRecordService;
+        this.executionStepService = executionStepService;
+        this.idGenerator = idGenerator;
     }
 
     /**
@@ -113,20 +129,27 @@ public class OpTriggerService {
      * 缓存 Key: {@code cp:flow:config:{flowId}}, TTL 120s.
      * {@code connector.cache.enabled=false} 时直接穿透 R2DBC.
      * </p>
+     *
+     * @return Tuple2 of (FlowVersionEntity, FlowEntity) — FlowEntity may be null if not found
      */
-    private Mono<FlowVersionEntity> loadFlowVersion(Long flowId) {
+    private Mono<Tuple2<FlowVersionEntity, Optional<FlowEntity>>> loadFlowVersion(Long flowId) {
         return flowReadRepository.findById(flowId)
                 .flatMap(flow -> {
                     Long deployedVersionId = flow.getDeployedVersionId();
                     if (deployedVersionId != null) {
                         log.debug("Flow {} has deployed_version_id={}, loading specific version",
                                 flowId, deployedVersionId);
-                        return flowVersionReadRepository.findById(deployedVersionId);
+                        return flowVersionReadRepository.findById(deployedVersionId)
+                                .map(fv -> Tuples.of(fv, Optional.of(flow)));
                     }
                     // 未设置部署版本, 回退到按 flowId 查询
-                    return loadFlowVersionByFlowId(flowId);
+                    return loadFlowVersionByFlowId(flowId)
+                            .map(fv -> Tuples.of(fv, Optional.of(flow)));
                 })
-                .switchIfEmpty(loadFlowVersionByFlowId(flowId));
+                .switchIfEmpty(
+                    loadFlowVersionByFlowId(flowId)
+                            .map(fv -> Tuples.of(fv, Optional.empty()))
+                );
     }
 
     /**
@@ -186,10 +209,39 @@ public class OpTriggerService {
     public Mono<TransparentFlowResponse> invokeFlow(Long flowId, Map<String, Object> triggerData,
                                                      Map<String, String> headers, Map<String, String> queryParams) {
         String executionId = UUID.randomUUID().toString().replace("-", "");
+        // ★ 执行记录持久化: 创建记录 (status=pending)
+        Long recordId = idGenerator.nextId();
+        Long flowVersionId = null; // will be resolved after loadFlowVersion
+        try {
+            executionRecordService.startRecord(recordId, flowId, flowVersionId, null, 1);
+            log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
+        } catch (Exception ex) {
+            log.warn("Failed to start execution record: {}", ex.getMessage());
+        }
 
         return loadFlowVersion(flowId)
                 .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
-                .flatMap(flowVersion -> {
+                .flatMap(tuple -> {
+                    FlowVersionEntity flowVersion = tuple.getT1();
+                    FlowEntity flow = tuple.getT2().orElse(null);
+
+                    // ★ 补充流元数据到执行记录（flowNameCn/flowNameEn/appId 来自 FlowEntity）
+                    if (flow != null) {
+                        try {
+                            executionRecordService.updateFlowMeta(recordId,
+                                    flowVersion.getId(),
+                                    flowVersion.getVersionNumber(),
+                                    flow.getAppId(),
+                                    flow.getNameCn(),
+                                    flow.getNameEn(),
+                                    flowVersion.getOrchestrationConfig());
+                        } catch (Exception ex) {
+                            log.warn("Failed to update flow meta for record {}: {}", recordId, ex.getMessage());
+                        }
+                    }
+
+                    // ★ 更新执行记录中的 flowVersionId
+                    executionRecordService.updateRecord(recordId, 2, null, null, null); // status=2=pending
                     // 1. 解析编排配置 (React Flow 格式)
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
                     List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
@@ -278,7 +330,7 @@ public class OpTriggerService {
                                             dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
                                                     .flatMap(updatedCtx -> {
                                                         ExecutionResult result = buildResultFromExecutionContext(
-                                                                updatedCtx, executionId, flowIdStr);
+                                                                updatedCtx, executionId, flowIdStr, recordId);
                                                         result.setCacheHit(false);
                                                         return cacheManager.writeCache(flowId, cacheKey,
                                                                 result, cacheTtl)
@@ -289,46 +341,79 @@ public class OpTriggerService {
                         executionMono = validateConnectorUrlWhitelist(nodes)
                                 .then(dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
                                         .map(updatedCtx -> buildResultFromExecutionContext(
-                                                updatedCtx, executionId, flowIdStr)));
+                                                updatedCtx, executionId, flowIdStr, recordId)));
                     }
 
-                    return executionMono.map(result -> buildTransparentResponse(flowIdStr, result));
+                    return executionMono.map(result -> {
+                        // ★ 执行成功 - 更新记录
+                        Integer finalStatus = "success".equals(result.getStatus()) ? 0 : 1;
+                        long totalMs = result.getTotalDurationMs();
+                        Integer duration = totalMs > 0 ? (int) totalMs : null;
+                        String errCode = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("code") : null;
+                        String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
+                        try {
+                            executionRecordService.updateRecord(recordId, finalStatus, duration, errCode, errMsg);
+                        } catch (Exception ex) {
+                            log.warn("Failed to update execution record: {}", ex.getMessage());
+                        }
+                        return buildTransparentResponse(flowIdStr, result);
+                    });
                 })
                 .onErrorResume(e -> {
                     log.error("Trigger invoke failed: flowId={}, error={}", flowId, e.getMessage());
                     String flowIdStr = String.valueOf(flowId);
                     String msg = e.getMessage() != null ? e.getMessage() : "";
 
+                    String errorCode;
+                    String errorMsg;
+                    TransparentFlowResponse response;
+
                     // 按异常消息分类错误码
                     if (msg.contains("Flow not found")) {
-                        return Mono.just(TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.NOT_FOUND, "404",
-                                "流不存在: " + msg, "Flow not found: " + msg));
-                    }
-                    if (msg.contains("whitelist") || msg.contains("Whitelist")
+                        errorCode = "404";
+                        errorMsg = "流不存在: " + msg;
+                        response = TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.NOT_FOUND, errorCode,
+                                errorMsg, "Flow not found: " + msg);
+                    } else if (msg.contains("whitelist") || msg.contains("Whitelist")
                             || msg.contains("URL not in")) {
-                        return Mono.just(TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.FORBIDDEN, "403",
-                                "URL 白名单拒绝: " + msg, "URL whitelist denied: " + msg));
-                    }
-                    if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
+                        errorCode = "403";
+                        errorMsg = "URL 白名单拒绝: " + msg;
+                        response = TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.FORBIDDEN, errorCode,
+                                errorMsg, "URL whitelist denied: " + msg);
+                    } else if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
                             || msg.contains("X-Sys-Token") || msg.contains("认证")) {
-                        return Mono.just(TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.UNAUTHORIZED, "401",
-                                "认证失败: " + msg, "Authentication failed: " + msg));
-                    }
-                    // 输入校验错误 → 400
-                    if (msg.contains("required field") || msg.contains("inputContract")
+                        errorCode = "401";
+                        errorMsg = "认证失败: " + msg;
+                        response = TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.UNAUTHORIZED, errorCode,
+                                errorMsg, "Authentication failed: " + msg);
+                    } else if (msg.contains("required field") || msg.contains("inputContract")
                             || msg.contains("must be") || msg.contains("Missing required")
                             || e instanceof IllegalArgumentException) {
-                        return Mono.just(TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.BAD_REQUEST, "400",
-                                "请求参数错误: " + msg, "Bad request: " + msg));
+                        errorCode = "400";
+                        errorMsg = "请求参数错误: " + msg;
+                        response = TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.BAD_REQUEST, errorCode,
+                                errorMsg, "Bad request: " + msg);
+                    } else {
+                        // 其他异常 → 500
+                        errorCode = "500";
+                        errorMsg = "触发执行失败: " + msg;
+                        response = TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, errorCode,
+                                errorMsg, "Trigger execution failed: " + msg);
                     }
-                    // 其他异常 → 500
-                    return Mono.just(TransparentFlowResponse.preExecutionError(
-                            flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, "500",
-                            "触发执行失败: " + msg, "Trigger execution failed: " + msg));
+
+                    // ★ 执行失败 - 更新记录
+                    try {
+                        executionRecordService.updateRecord(recordId, 1, null, errorCode, errorMsg);
+                    } catch (Exception ex) {
+                        log.warn("Failed to update execution record: {}", ex.getMessage());
+                    }
+
+                    return Mono.just(response);
                 });
     }
 
@@ -336,7 +421,7 @@ public class OpTriggerService {
      * 从 ExecutionContext 构建 ExecutionResult (DagScheduler 输出桥接)
      */
     private ExecutionResult buildResultFromExecutionContext(
-            ExecutionContext ctx, String executionId, String flowId) {
+            ExecutionContext ctx, String executionId, String flowId, Long recordId) {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(executionId);
         result.setFlowId(flowId);
@@ -394,7 +479,48 @@ public class OpTriggerService {
             result.setResultData(cleanOutput);
         }
 
+        // ★ 步骤日志持久化 (fire-and-forget, 不影响业务响应)
+        try {
+            List<StepLog> stepLogs = new ArrayList<>();
+            for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
+                NodeContext nodeCtx = entry.getValue();
+                StepLog sl = new StepLog();
+                sl.stepId = idGenerator.nextId();
+                sl.nodeId = nodeCtx.getNodeId();
+                sl.nodeType = mapNodeType(nodeCtx.getNodeType());
+                sl.nodeName = nodeCtx.getNodeId();
+                sl.status = "success".equals(nodeCtx.getStatus()) ? 0 : 1;
+                sl.input = nodeCtx.getInput();
+                sl.output = nodeCtx.getOutput();
+                sl.error = nodeCtx.getErrorInfo() != null ? String.valueOf(nodeCtx.getErrorInfo()) : null;
+                sl.durationMs = (int) nodeCtx.getDurationMs();
+                stepLogs.add(sl);
+            }
+            if (!stepLogs.isEmpty()) {
+                executionStepService.logStepsBatch(recordId, stepLogs);
+            }
+        } catch (Exception ex) {
+            log.warn("Failed to log execution steps for record {}: {}", recordId, ex.getMessage());
+        }
+
         return result;
+    }
+
+    /**
+     * 将节点类型字符串映射为数字
+     * @param nodeType 节点类型字符串 (trigger/connector/script/parallel/exit)
+     * @return 1=trigger, 2=connector, 3=script, 4=parallel, 5=exit, 0=unknown
+     */
+    private Integer mapNodeType(String nodeType) {
+        if (nodeType == null) return 0;
+        return switch (nodeType.toLowerCase()) {
+            case "trigger" -> 1;
+            case "connector" -> 2;
+            case "script" -> 3;
+            case "parallel" -> 4;
+            case "exit" -> 5;
+            default -> 0;
+        };
     }
 
     /**

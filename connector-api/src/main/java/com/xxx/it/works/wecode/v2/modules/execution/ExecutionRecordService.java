@@ -58,6 +58,13 @@ public class ExecutionRecordService {
         record.setTriggerTime(now);
         record.setCreateTime(now);
         record.setLastUpdateTime(now);
+        // NOT NULL 字段默认值（后续由调用方通过 updateFlowMeta 更新实际值）
+        record.setFlowNameCn("");
+        record.setFlowNameEn("");
+        record.setRateLimitStatus(0);
+        record.setCacheStatus(0);
+        record.setCreateBy("SYSTEM");
+        record.setLastUpdateBy("SYSTEM");
 
         repository.save(record)
                 .doOnSuccess(r -> log.debug("Execution record created: recordId={}, flowId={}, triggerType={}",
@@ -85,6 +92,27 @@ public class ExecutionRecordService {
                 .doOnSuccess(count -> log.debug("Execution record updated: recordId={}, status={}, durationMs={}",
                         recordId, status, durationMs))
                 .doOnError(e -> log.error("Failed to update execution record: recordId={}, error={}",
+                        recordId, e.getMessage(), e))
+                .subscribe();
+    }
+
+    /**
+     * 补充流元数据（在 loadFlowVersion 之后调用，更新 flowNameCn/flowNameEn/appId 等字段）
+     *
+     * @param recordId            执行记录ID
+     * @param flowVersionId       流版本ID
+     * @param flowVersionNumber   流版本号
+     * @param appId               应用ID
+     * @param flowNameCn          流中文名
+     * @param flowNameEn          流英文名
+     * @param flowVersionSnapshot 流版本编排快照
+     */
+    public void updateFlowMeta(Long recordId, Long flowVersionId, Integer flowVersionNumber,
+                               Long appId, String flowNameCn, String flowNameEn,
+                               String flowVersionSnapshot) {
+        repository.updateFlowMeta(recordId, flowVersionId, flowVersionNumber, appId,
+                        flowNameCn, flowNameEn, flowVersionSnapshot)
+                .doOnError(e -> log.error("Failed to update flow meta: recordId={}, error={}",
                         recordId, e.getMessage(), e))
                 .subscribe();
     }

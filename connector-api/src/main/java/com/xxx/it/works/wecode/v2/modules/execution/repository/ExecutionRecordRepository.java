@@ -22,6 +22,13 @@ public interface ExecutionRecordRepository extends ReactiveCrudRepository<Execut
 
     Mono<Long> countByFlowId(Long flowId);
 
+    /**
+     * 补充流元数据字段（在 loadFlowVersion 之后调用）
+     */
+    @Modifying
+    @Query("UPDATE openplatform_v2_cp_execution_record_t SET flow_version_id = :flowVersionId, flow_version_number = :flowVersionNumber, app_id = :appId, flow_name_cn = :flowNameCn, flow_name_en = :flowNameEn, flow_version_snapshot = :flowVersionSnapshot, last_update_time = NOW() WHERE id = :id")
+    Mono<Integer> updateFlowMeta(Long id, Long flowVersionId, Integer flowVersionNumber, Long appId, String flowNameCn, String flowNameEn, String flowVersionSnapshot);
+
     /** FIFO 清理：删除指定流的最早 N 条（子查询绕开 MySQL DELETE ... LIMIT 方言限制） */
     @Modifying
     @Query("DELETE FROM openplatform_v2_cp_execution_record_t WHERE id IN (SELECT id FROM (SELECT id FROM openplatform_v2_cp_execution_record_t WHERE flow_id = :flowId ORDER BY trigger_time ASC LIMIT :limit) AS tmp)")

@@ -1,6 +1,9 @@
 package com.xxx.it.works.wecode.v2.modules.debug.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.IdGenerator;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
@@ -30,6 +33,15 @@ class OpTestRunServiceTest {
     @Mock
     private OpFlowVersionReadRepository flowVersionReadRepository;
 
+    @Mock
+    private ExecutionRecordService executionRecordService;
+
+    @Mock
+    private ExecutionStepService executionStepService;
+
+    @Mock
+    private IdGenerator idGenerator;
+
     private ObjectMapper objectMapper;
     private OpTestRunService service;
     private final Long versionId = 200L;
@@ -37,7 +49,9 @@ class OpTestRunServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        service = new OpTestRunService(objectMapper, executor, flowVersionReadRepository);
+        when(idGenerator.nextId()).thenReturn(1L);
+        service = new OpTestRunService(objectMapper, executor, flowVersionReadRepository,
+                executionRecordService, executionStepService, idGenerator);
     }
 
     @Test
