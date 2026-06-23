@@ -110,7 +110,7 @@ public class ConnectorService {
         int offset = (page - 1) * size;
 
         // 查询所有符合基本过滤条件的记录（不含 appId，在 Java 层过滤）
-        List<Connector> allConnectors = connectorMapper.selectList(connectorType, keyword, null, null);
+        List<Connector> allConnectors = connectorMapper.selectAll(connectorType, keyword);
 
         // 按 appId 和 status 过滤
         List<Connector> filtered = allConnectors.stream()

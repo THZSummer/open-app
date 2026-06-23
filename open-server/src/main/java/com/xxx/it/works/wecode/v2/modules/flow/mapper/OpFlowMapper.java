@@ -36,6 +36,14 @@ public interface OpFlowMapper {
     int deleteById(@Param("id") Long id);
 
     /**
+     * 查询全部连接流列表（无分页）
+     */
+    List<Flow> selectAll(
+            @Param("lifecycleStatus") Integer lifecycleStatus,
+            @Param("keyword") String keyword
+    );
+
+    /**
      * 分页查询连接流列表
      */
     List<Flow> selectList(

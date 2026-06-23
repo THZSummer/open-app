@@ -102,7 +102,7 @@ public class FlowService {
         int offset = (page - 1) * size;
 
         // 查询所有符合基本过滤条件的记录（不含 appId 过滤，在 Java 层处理）
-        List<Flow> allFlows = flowMapper.selectList(lifecycleStatus, keyword, null, null);
+        List<Flow> allFlows = flowMapper.selectAll(lifecycleStatus, keyword);
 
         // 按 appId 过滤
         List<Flow> filtered = allFlows.stream()
