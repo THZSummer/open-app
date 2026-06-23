@@ -25,8 +25,8 @@ public class ClassifyCreateDTO implements Serializable {
      */
     @NotBlank(message = "分类编码不能为空")
     @Size(max = 100, message = "分类编码长度不能超过100字符")
-    @Pattern(regexp = "^[a-zA-Z0-9_.-]+$", message = "分类编码只能包含字母、数字、下划线、点和横杠")
-    @Schema(description = "分类编码，必填，1-100字符，支持字母、数字、下划线、点、横杠",
+    @Pattern(regexp = "^[a-zA-Z0-9_./*-]+$", message = "分类编码只能包含字母、数字、下划线、点、横杠、斜杠和星号")
+    @Schema(description = "分类编码，必填，1-100字符，支持字母、数字、下划线、点、横杠、斜杠、星号",
             requiredMode = Schema.RequiredMode.REQUIRED,
             example = "USER_TYPE")
     private String classifyCode;

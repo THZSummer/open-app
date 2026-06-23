@@ -28,8 +28,9 @@
 |------------|-------------|------|--------|------|----------|
 | **CAP-OPEN-001** | [能力开放平台](./specs-tree-capability-open-platform/) | ✅ validated（全流程完成） | P0 | Summer | 2026-04-22 |
 | **CONN-PLAT-001** | [连接器平台 V1](./specs-tree-connector-platform/) | ✅ validated（全流程完成） | P1 | - | 2026-05-24 |
-| **CONN-PLAT-002** | [连接器平台 V2 — 多版本与增强](./specs-tree-connector-platform-v2/) | ✅ planned（规范+规划完成，待任务分解） | P1 | Summer | 2026-06-09 |
-| **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | ✅ specified（规范完成） | P0 | Summer | 2026-04-07 |
+| **CONN-PLAT-002** | [连接器平台 V2 — 多版本与增强](./specs-tree-connector-platform-v2/) | 🚫 terminated（已终止，转入 V3） | P1 | Summer | 2026-06-17 |
+| **CONN-PLAT-003** | [连接器平台 V3 — 多版本与增强](./specs-tree-connector-platform-v3/) | 📋 registered（spec+plan+tasks 已完成） | P1 | Summer | 2026-06-22 |
+| **DATA-OPEN-001** | [数据开放平台](./specs-tree-data-open-platform/) | 🟡 suspended（搁置） | P0 | Summer | 2026-04-07 |
 | **FR-DICTIONARY-001** | [数据字典管理](./specs-tree-dictionary/) | ✅ planned（规范+规划完成） | P1 | SDDU-Spec Agent | 2026-05-22 |
 | **FR-LOOKUP-001** | [LookUp 管理](./specs-tree-lookup/) | ✅ planned（规范+规划完成） | P1 | SDDU-Spec Agent | 2026-05-15 |
 
@@ -91,47 +92,60 @@
 
 ### CONN-PLAT-002: 连接器平台 V2 — 多版本与增强
 
-**状态**: ✅ planned（规范编写完成，技术规划完成，待任务分解）
-**规范版本**: v2.15-draft
-**规划版本**: v1.0
-**依赖**: CONN-PLAT-001（V1 MVP — 已建成并验证）
+**状态**: 🚫 terminated（已终止 — 用户标记丢弃，工作转入 V3）
+**终止时间**: 2026-06-17
+**转入**: [CONN-PLAT-003 连接器平台 V3](./specs-tree-connector-platform-v3/)
 
 **文档**:
 - [产品规范 v2.15-draft](./specs-tree-connector-platform-v2/spec.md) - 产品规范（802 行），52 项 FR、37 项 NFR
 - [技术规划 v1.0](./specs-tree-connector-platform-v2/plan.md) - 技术规划（807 行），4 个 ADR（PROPOSED）
 - [JSON Schema 设计规范](./specs-tree-connector-platform-v2/plan-json-schema.md) - V2 沿用 V1 的 JSON Schema 设计（v5.6）
-- [状态文件](./specs-tree-connector-platform-v2/state.json) - planned / v2.15-draft
+- [状态文件](./specs-tree-connector-platform-v2/state.json) - terminated
 - [ADR-004](./specs-tree-connector-platform-v2/ADR-004.md) - 版本完整快照存储与递增整数版本号（PROPOSED）
 - [ADR-005](./specs-tree-connector-platform-v2/ADR-005.md) - Redis 令牌桶入站限流方案（PROPOSED）
 - [ADR-006](./specs-tree-connector-platform-v2/ADR-006.md) - MySQL 主存储运行记录与日志（PROPOSED）
 - [ADR-007](./specs-tree-connector-platform-v2/ADR-007.md) - 多版本模型下的引用稽核策略（PROPOSED）
 
-**核心能力**（三大升级方向）：
+**终止原因**: V2 设计方向为「完整好用」，过于复杂。V3 转向「简单可用，能兜底」。
 
-| 方向 | 关键能力 |
-|------|---------|
-| **G1: 多版本及生命周期** | 5 状态状态机（草稿→已发布→已弃用→已退役→已归档）、SemVer 规则、版本快照/对比/回滚、双凭据轮转零停机、全量审计日志 |
-| **G2: 连接配置增强** | 7 种认证方式（含 mTLS）、三级超时模型、令牌桶限流、Fork-Join 并行编排（≤ 5 分支）、3 种失败/合并策略 |
-| **G3: 运行时与监控** | 执行历史（7 状态，30 天保留）、5 级可配运行日志、重试+指数退避+熔断器+死信队列 |
+---
 
-**范围亮点**:
-- **52 项功能需求**（FR-001 ~ FR-052），**37 项非功能需求**（NFR-001 ~ NFR-037）
-- **4 角色用户画像**：连接器开发者 / 集成工程师 / SRE 工程师 / 业务用户
-- **10 个用户故事**、**25 个边界情况**、**12 个开放问题**
-- **Gherkin 场景**：版本发布、版本弃用、凭据轮转、失败重试与熔断
-- **36 个 API 端点**（V1 保留 15 + 修改 3 + 新增 17）
-- **4 个 ADR**（PROPOSED）：版本完整快照存储、Redis 令牌桶限流、MySQL 执行历史、引用稽核策略
-- **5 批次交付**：多版本(3-4w) → 认证(2-3w) → 并行(3-4w) → 历史(2-3w) → 重试(1-2w) → GA(2w)
+### CONN-PLAT-003: 连接器平台 V3 — 多版本与增强
+
+**状态**: 📋 registered（spec+plan+tasks 已完成，待 build）
+**Feature ID**: CONN-PLAT-003
+**规范版本**: v3.0（47 FRs）
+**依赖**: CONN-PLAT-001（V1 — validated）、CONN-PLAT-002（V2 — terminated）
+
+**文档**:
+- [产品规范 v3.0](./specs-tree-connector-platform-v3/spec.md) - 47 项 FR，设计方向：简单可用，能兜底
+- [技术规划 v3.0](./specs-tree-connector-platform-v3/plan.md) - 架构分析、模块划分
+- [数据库设计 v2.0](./specs-tree-connector-platform-v3/plan-db.md) - 表结构、索引、迁移
+- [API 设计 v7.0](./specs-tree-connector-platform-v3/plan-api.md) - 管理面 + 运行时接口
+- [运行时引擎 v1.0](./specs-tree-connector-platform-v3/plan-runtime.md) - 执行引擎、认证、限流
+- [脚本引擎 v8.1-draft](./specs-tree-connector-platform-v3/plan-script.md) - GraalJS 沙箱，function main(ctx)
+- [JSON Schema v9.10](./specs-tree-connector-platform-v3/plan-json-schema.md) - JSON 结构权威定义
+- [任务分解](./specs-tree-connector-platform-v3/tasks.md) - 14 个任务，4 个波次
+- [ADR-004~008](./specs-tree-connector-platform-v3/ADR-004.md) - 5 个架构决策记录
+- [状态文件](./specs-tree-connector-platform-v3/state.json) - registered / tracked
+
+**V3 vs V2 核心变化**:
+| 维度 | V2（已终止） | V3（当前） |
+|------|:-----------:|:---------:|
+| 交互方式 | 编排画布（拖拽） | 流程编排（表单配置） |
+| 节点类型 | 触发器/连接器/数据输出/数据处理/错误处理 | 触发器/连接器/数据输出/**脚本** |
+| 数据校验 | 11 条严格类型约束 | 仅 JSON 语法合法性 |
+| 复杂逻辑 | 数据处理节点 + 错误处理策略 | 脚本节点（GraalJS 沙箱） |
 
 **下一步**:
-1. 运行 `@sddu-tasks connector-platform-v2` 进行任务分解
-2. ADR 评审：4 个 PROPOSED ADR 待 Review 后转为 ACCEPTED
+1. 运行 `@sddu build connector-platform-v3` 启动任务实现
+2. 按 Wave 1→4 顺序执行 14 个构建任务
 
 ---
 
 ### DATA-OPEN-001: 数据开放平台
 
-**状态**: ✅ specified（规范编写完成，待技术规划）
+**状态**: 🟡 suspended（搁置）
 
 **文档**:
 - [需求挖掘报告 v1.18](./specs-tree-data-open-platform/discovery-report.md) - 需求挖掘报告（1101 行）

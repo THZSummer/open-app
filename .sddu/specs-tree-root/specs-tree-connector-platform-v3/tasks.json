@@ -1,0 +1,270 @@
+{
+  "featureId": "CONN-PLAT-002",
+  "featureName": "连接器平台 V3 — 多版本与增强",
+  "version": "v3.0",
+  "createdAt": "2026-06-22",
+  "totalTasks": 14,
+  "waves": [
+    {
+      "wave": 1,
+      "name": "基础设施",
+      "tasks": ["TASK-001", "TASK-002", "TASK-003"],
+      "parallelizable": true
+    },
+    {
+      "wave": 2,
+      "name": "管理面核心",
+      "tasks": ["TASK-004", "TASK-005", "TASK-006", "TASK-007"],
+      "parallelizable": true
+    },
+    {
+      "wave": 3,
+      "name": "运行时核心",
+      "tasks": ["TASK-008", "TASK-009", "TASK-010", "TASK-011"],
+      "parallelizable": true
+    },
+    {
+      "wave": 4,
+      "name": "运维调试",
+      "tasks": ["TASK-012", "TASK-013", "TASK-014"],
+      "parallelizable": false
+    }
+  ],
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "name": "数据库 Schema 迁移",
+      "complexity": "L",
+      "dependencies": [],
+      "wave": 1,
+      "service": "database",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/resources/db/migration/V3__connector_platform_v3_schema.sql" }
+      ],
+      "frs": [],
+      "description": "执行 V3 全部 DDL：5 ALTER + 3 CREATE + 审批表 ALTER"
+    },
+    {
+      "id": "TASK-002",
+      "name": "实体模型与持久层",
+      "complexity": "M",
+      "dependencies": ["TASK-001"],
+      "wave": 1,
+      "service": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/java/.../entity/ConnectorVersionRef.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../entity/ExecutionRecord.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../entity/ExecutionStep.java" },
+        { "action": "MODIFY", "path": "open-server/src/main/java/.../entity/Connector.java" },
+        { "action": "MODIFY", "path": "open-server/src/main/java/.../entity/ConnectorVersion.java" },
+        { "action": "MODIFY", "path": "open-server/src/main/java/.../entity/Flow.java" },
+        { "action": "MODIFY", "path": "open-server/src/main/java/.../entity/FlowVersion.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../mapper/ConnectorVersionRefMapper.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../mapper/ExecutionRecordMapper.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../mapper/ExecutionStepMapper.java" }
+      ],
+      "frs": [],
+      "description": "MyBatis 实体类、Mapper 接口/XML、Repository 类"
+    },
+    {
+      "id": "TASK-003",
+      "name": "枚举常量与配置定义",
+      "complexity": "S",
+      "dependencies": [],
+      "wave": 1,
+      "service": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/java/.../constant/ConnectorStatus.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../constant/ConnectorVersionStatus.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../constant/FlowLifecycleStatus.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../constant/FlowVersionStatus.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../constant/ExecutionEnums.java" },
+        { "action": "MODIFY", "path": "connector-api/src/main/java/.../constant/AuthType.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../constant/ConnectorPlatformConstants.java" }
+      ],
+      "frs": [],
+      "description": "状态枚举类、AuthType 扩展、OperateEnum 扩展、业务常量"
+    },
+    {
+      "id": "TASK-004",
+      "name": "连接器管理 API（实体 + 版本）",
+      "complexity": "L",
+      "dependencies": ["TASK-001", "TASK-002", "TASK-003"],
+      "wave": 2,
+      "service": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/connector/ConnectorController.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/connector/ConnectorService.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/connector/ConnectorVersionController.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/connector/ConnectorVersionService.java" }
+      ],
+      "frs": ["FR-001", "FR-002", "FR-003", "FR-004", "FR-005", "FR-005a", "FR-006", "FR-007", "FR-008", "FR-009", "FR-010", "FR-011", "FR-015"],
+      "description": "连接器实体 CRUD + 版本管理 16 个 API（plan-api #1~#16），含 URL 白名单配置"
+    },
+    {
+      "id": "TASK-005",
+      "name": "连接流管理 API（实体 + 版本 + 编排）",
+      "complexity": "L",
+      "dependencies": ["TASK-001", "TASK-002", "TASK-003"],
+      "wave": 2,
+      "service": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/FlowController.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/FlowService.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/FlowVersionController.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/FlowVersionService.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/FlowDeployService.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/FlowCopyService.java" }
+      ],
+      "frs": ["FR-016", "FR-017", "FR-018", "FR-019", "FR-020", "FR-021", "FR-022", "FR-023", "FR-024", "FR-024a", "FR-025", "FR-026", "FR-027", "FR-028", "FR-029", "FR-030", "FR-034", "FR-035", "FR-037", "FR-038a", "FR-039", "FR-040a", "FR-047"],
+      "description": "连接流实体 CRUD + 版本管理 + 部署/启动/停止 + 复制 + 编排配置 + 审批提交/撤回/催办（plan-api #17~#38）"
+    },
+    {
+      "id": "TASK-006",
+      "name": "安全准入拦截器",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-002", "TASK-003"],
+      "wave": 2,
+      "service": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/security/AppWhitelistInterceptor.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/security/AppWhitelistService.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/security/AppDataIsolationAspect.java" },
+        { "action": "MODIFY", "path": "open-server/src/main/java/.../config/WebMvcConfig.java" }
+      ],
+      "frs": ["FR-045"],
+      "description": "应用白名单准入拦截器 + 应用数据隔离 AOP + market-server 集成"
+    },
+    {
+      "id": "TASK-007",
+      "name": "版本发布审批集成",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-002", "TASK-003"],
+      "wave": 2,
+      "service": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/approval/FlowVersionApprovalService.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/approval/ApprovalCallbackHandler.java" },
+        { "action": "MODIFY", "path": "open-server/src/main/java/.../approval/ApprovalController.java" }
+      ],
+      "frs": ["FR-031", "FR-032", "FR-033"],
+      "description": "三级审批集成（应用级→平台连接流级→全局级）+ 审批人配置 + 催办"
+    },
+    {
+      "id": "TASK-008",
+      "name": "运行时引擎核心（版本解析 + DAG 调度 + 并行分支）",
+      "complexity": "L",
+      "dependencies": ["TASK-001", "TASK-002"],
+      "wave": 3,
+      "service": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/runtime/VersionConfigResolver.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/runtime/FlowConfigParser.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/runtime/DagScheduler.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/runtime/ParallelBranchExecutor.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/runtime/FlowRuntimeEngine.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/cache/EntityCacheManager.java" }
+      ],
+      "frs": ["FR-034", "FR-038", "FR-038a", "FR-039", "FR-043"],
+      "description": "5 阶段执行管道：版本配置解析、flowConfig 解析、DAG 调度、并行分支执行器、平台配置缓存"
+    },
+    {
+      "id": "TASK-009",
+      "name": "运行时认证注入器（Cookie + 数字签名 + 多认证）+ URL 白名单校验",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-003"],
+      "wave": 3,
+      "service": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/auth/credential/CookieCredentialInjector.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/auth/credential/DigitalSignCredentialInjector.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/auth/credential/MultiAuthCredentialInjector.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/security/UrlWhitelistValidator.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/security/SystokenWhitelistValidator.java" }
+      ],
+      "frs": ["FR-012", "FR-013", "FR-014", "FR-015", "FR-036"],
+      "description": "Cookie/DigitalSign/MultiAuth 注入器 + URL 白名单运行时校验 + SYSTOKEN 白名单校验（Phase 3）"
+    },
+    {
+      "id": "TASK-010",
+      "name": "运行时限流拦截器与缓存管理器",
+      "complexity": "M",
+      "dependencies": ["TASK-001"],
+      "wave": 3,
+      "service": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/ratelimit/InboundRateLimiter.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/ratelimit/RateLimitConfigReader.java" },
+        { "action": "NEW", "path": "connector-api/src/main/resources/lua/rate_limit_token_bucket.lua" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/cache/FlowCacheManager.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/cache/CacheKeyResolver.java" }
+      ],
+      "frs": ["FR-035", "FR-037"],
+      "description": "Redis 令牌桶入站限流（Phase 4）+ 连接流业务缓存管理（Phase 5 第一步）"
+    },
+    {
+      "id": "TASK-011",
+      "name": "运行时脚本节点执行器（GraalJS 沙箱）",
+      "complexity": "L",
+      "dependencies": ["TASK-001"],
+      "wave": 3,
+      "service": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/script/ScriptNodeExecutor.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/script/GraalJsContextFactory.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/script/CtxAssembler.java" },
+        { "action": "MODIFY", "path": "connector-api/pom.xml" }
+      ],
+      "frs": ["FR-040a"],
+      "description": "GraalJS 沙箱执行 function main(ctx)，五层纵深防御，boundedElastic 线程隔离"
+    },
+    {
+      "id": "TASK-012",
+      "name": "执行记录与步骤日志",
+      "complexity": "M",
+      "dependencies": ["TASK-001", "TASK-002", "TASK-008"],
+      "wave": 4,
+      "service": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/execution/ExecutionRecordService.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/execution/ExecutionStepService.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/execution/LogSanitizer.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/execution/ExecutionCleanupJob.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/ExecutionRecordController.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/ExecutionRecordService.java" }
+      ],
+      "frs": ["FR-042", "FR-044"],
+      "description": "执行记录写入/查询 + 步骤日志采集 + 日志开关控制 + FIFO 清理 + 30 天定时清理"
+    },
+    {
+      "id": "TASK-013",
+      "name": "调试执行通道",
+      "complexity": "M",
+      "dependencies": ["TASK-005", "TASK-008"],
+      "wave": 4,
+      "service": "connector-api",
+      "files": [
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/debug/DebugExecutionService.java" },
+        { "action": "NEW", "path": "connector-api/src/main/java/.../v2/modules/debug/DebugExecutionController.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/flow/DebugProxyController.java" }
+      ],
+      "frs": ["FR-041"],
+      "description": "草稿/已发布版本同步调试执行（独立线程池 max 5，超时 30s，open-server 代理）"
+    },
+    {
+      "id": "TASK-014",
+      "name": "操作日志扩展",
+      "complexity": "S",
+      "dependencies": ["TASK-003"],
+      "wave": 4,
+      "service": "open-server",
+      "files": [
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/auditlog/ConnectorOperateLogAspect.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/auditlog/FlowOperateLogAspect.java" },
+        { "action": "NEW", "path": "open-server/src/main/java/.../v2/modules/auditlog/EntitySnapshotLoader.java" }
+      ],
+      "frs": ["FR-046"],
+      "description": "复用现有 OperateLog 模块，扩展枚举值 + 连接器/连接流操作埋点"
+    }
+  ]
+}

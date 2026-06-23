@@ -4,11 +4,11 @@
 
 **数据开放平台**是 open-app 体系下的子平台，聚焦 XX 通讯平台的数据开放管理，将企业内部 XX 平台的数据开放给企业内部其它三方平台消费使用。
 
-**当前状态**: ✅ specified（规范编写完成，待技术规划）  
+**当前状态**: 🟡 suspended（搁置 — 可随时恢复）  
 **Feature ID**: DATA-OPEN-001  
 **优先级**: P0  
 **创建时间**: 2026-04-07  
-**最后更新**: 2026-04-07
+**最后更新**: 2026-06-17
 
 ## 目录结构
 
@@ -38,7 +38,7 @@ specs-tree-data-open-platform/
 | spec.md | 产品规范 v2.0 - 完整的产品规范文档，包含 27 项 FR、24 项 NFR、18 项 EC | 712 行 | ✅ specified |
 | spec-backup.md | 产品规范备份 - v2.0 完整备份版本 | 1156 行 | 📁 备份文件 |
 | spec.json | 规范元数据 - Feature 基本信息和统计 | 12 行 | ✅ 存在 |
-| state.json | 状态文件 - 记录 Feature 当前状态为 specified | 31 行 | ✅ specified |
+| state.json | 状态文件 - 记录 Feature 当前状态为 suspended | 39 行 | 🟡 suspended |
 
 ## 核心内容摘要
 
@@ -76,8 +76,11 @@ L1-L5 敏感度分级，基于敏感度的动态审批链
 
 ## 下一步
 
-运行 `@sddu-plan 数据开放平台` 开始技术规划阶段。
+特性当前处于搁置状态。恢复后可继续技术规划。
+
+- `@sddu 标记 data-open-platform tracked` — 恢复追踪
+- `@sddu 标记 data-open-platform terminated` — 终止特性
 
 ---
 
-*最后更新：2026-04-13 | @sddu-docs 自动生成*
+*最后更新：2026-06-17 | @sddu-docs 自动生成*

@@ -7,9 +7,11 @@ import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
+import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
@@ -17,14 +19,23 @@ import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * HTTP 触发服务 (v5.7)
+ * HTTP 触发服务 (v5.8)
  * <p>
  * 处理外部系统的 HTTP 触发请求.
+ * v5.8 变更:
+ * <ul>
+ *   <li>返回值从 {@code ExecutionResult} 信封模式改为 {@code TransparentFlowResponse} 透明穿透模式</li>
+ *   <li>出口节点的 output.body 直接作为 HTTP 响应体 (裸数据)</li>
+ *   <li>出口节点的 output.header 映射为用户自定义 HTTP 响应头</li>
+ *   <li>平台元数据 (executionId/flowId/status/durationMs/code/message) 改为 X- 前缀 HTTP 响应头</li>
+ *   <li>前置校验失败按异常类型返回不同 HTTP Status (401/404/500)</li>
+ * </ul>
  * v5.7 变更:
  * <ul>
  *   <li>触发器节点上下文结构化: input = {@code {header: {...}, query: {...}, body: {...}}}</li>
@@ -112,8 +123,8 @@ public class OpTriggerService {
      * @param queryParams URL Query 参数
      */
     @SuppressWarnings("unchecked")
-    public Mono<ExecutionResult> invokeFlow(Long flowId, Map<String, Object> triggerData,
-                                             Map<String, String> headers, Map<String, String> queryParams) {
+    public Mono<TransparentFlowResponse> invokeFlow(Long flowId, Map<String, Object> triggerData,
+                                                     Map<String, String> headers, Map<String, String> queryParams) {
         String executionId = UUID.randomUUID().toString().replace("-", "");
 
         return loadFlowVersion(flowId)
@@ -185,22 +196,78 @@ public class OpTriggerService {
                     context.setNodeContext(triggerNodeCtx);
 
                     // 10. 执行连接流
-                    return executor.execute(context, flowVersion.getOrchestrationConfig());
+                    String flowIdStr = String.valueOf(flowId);
+                    return executor.execute(context, flowVersion.getOrchestrationConfig())
+                            .map(result -> buildTransparentResponse(flowIdStr, result));
                 })
                 .onErrorResume(e -> {
                     log.error("Trigger invoke failed: flowId={}, error={}", flowId, e.getMessage());
-                    ExecutionResult errorResult = new ExecutionResult();
-                    errorResult.setExecutionId(executionId);
-                    errorResult.setFlowId(String.valueOf(flowId));
-                    errorResult.setStatus("failed");
-                    Map<String, Object> errInfo = new HashMap<>();
-                    errInfo.put("code", "6001");
-                    errInfo.put("messageZh", "触发执行失败: " + e.getMessage());
-                    errInfo.put("messageEn", "Trigger execution failed: " + e.getMessage());
-                    errInfo.put("cause", e.getMessage());
-                    errorResult.setErrorInfo(errInfo);
-                    return Mono.just(errorResult);
+                    String flowIdStr = String.valueOf(flowId);
+                    String msg = e.getMessage() != null ? e.getMessage() : "";
+
+                    // 按异常消息分类错误码
+                    if (msg.contains("Flow not found")) {
+                        return Mono.just(TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.NOT_FOUND, "404",
+                                "流不存在: " + msg, "Flow not found: " + msg));
+                    }
+                    if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
+                            || msg.contains("X-Sys-Token") || msg.contains("认证")) {
+                        return Mono.just(TransparentFlowResponse.preExecutionError(
+                                flowIdStr, HttpStatus.UNAUTHORIZED, "401",
+                                "认证失败: " + msg, "Authentication failed: " + msg));
+                    }
+                    // 其他异常 → 500
+                    return Mono.just(TransparentFlowResponse.preExecutionError(
+                            flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, "500",
+                            "触发执行失败: " + msg, "Trigger execution failed: " + msg));
                 });
+    }
+
+    /**
+     * 从 ExecutionResult 构建 TransparentFlowResponse (透明穿透)
+     * <p>
+     * 拆解逻辑:
+     * <ul>
+     *   <li>resultData["header"] → userHeaders</li>
+     *   <li>resultData["body"] → body</li>
+     *   <li>如果 resultData 没有 body 字段 (exit 节点无 outputMapping 降级),
+     *       则将整个 resultData 去掉 __ 前缀的元字段作为 body</li>
+     * </ul>
+     * </p>
+     */
+    @SuppressWarnings("unchecked")
+    private TransparentFlowResponse buildTransparentResponse(String flowId, ExecutionResult result) {
+        Map<String, Object> resultData = result.getResultData();
+        Map<String, String> userHeaders = new LinkedHashMap<>();
+        Object responseBody = null;
+
+        if (resultData != null) {
+            // 提取 header
+            Object headerObj = resultData.get("header");
+            if (headerObj instanceof Map) {
+                ((Map<String, ?>) headerObj).forEach((k, v) -> userHeaders.put(String.valueOf(k), String.valueOf(v)));
+            }
+            // 提取 body
+            Object bodyObj = resultData.get("body");
+            if (bodyObj != null) {
+                responseBody = bodyObj;
+            } else {
+                // 降级: 无 outputMapping 时, 整个 resultData 去掉 __ 元字段作为 body
+                Map<String, Object> fallback = new LinkedHashMap<>();
+                resultData.forEach((k, v) -> { if (!k.startsWith("__")) fallback.put(k, v); });
+                responseBody = fallback.isEmpty() ? null : fallback;
+            }
+        }
+
+        int execStatus = "success".equals(result.getStatus()) ? 0
+                : ("timeout".equals(result.getStatus()) ? 2 : 1);
+
+        TransparentFlowResponse r = TransparentFlowResponse.success(
+                flowId, result.getExecutionId(), execStatus, result.getTotalDurationMs(),
+                userHeaders, responseBody);
+        r.getPlatformHeaders().put("X-Cache-Status", "0"); // 当前未实现缓存
+        return r;
     }
 
     /**

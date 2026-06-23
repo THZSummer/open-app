@@ -1,14 +1,17 @@
 # 目录：连接器平台 V2 — 多版本与增强
 
+> ⚠️ **本 Feature 已于 2026-06-17 标记为 terminated。所有后续工作转入 V3，详见 [connector-platform-v3](../specs-tree-connector-platform-v3/README.md)。**
+
 ## 目录简介
 
 **连接器平台 V2** 在 V1（CONN-PLAT-001）已验证的零代码编排核心价值基础上，围绕多版本管理、连接配置增强、运行时与监控三大方向升级。覆盖 52 项 FR、37 项 NFR，36 个 API 端点，5 批次交付规划。
 
-**当前状态**: ✅ planned（规范编写完成，技术规划完成）  
+**当前状态**: 🛑 terminated（已终止，工作转入 V3）  
 **Feature ID**: CONN-PLAT-002  
 **优先级**: P1  
 **创建时间**: 2026-06-02  
-**最新更新**: 2026-06-09（技术规划完成，4 个 ADR PROPOSED）  
+**终止时间**: 2026-06-17  
+**最新更新**: 2026-06-17（标记终止）  
 **依赖**: CONN-PLAT-001（V1 MVP — 已建成并验证）  
 **规范版本**: v2.15-draft
 
@@ -18,7 +21,7 @@
 |------|------|----------|
 | 📋 规范编写 (spec) | ✅ 完成 | 2026-06-09（v2.15-draft） |
 | 📐 技术规划 (plan) | ✅ 完成 | 2026-06-09（1 个规划 + 4 个 ADR PROPOSED） |
-| 📝 任务分解 (tasks) | ⏳ 待开始 | — |
+| 🛑 终止 (terminated) | 🛑 已终止 | 2026-06-17（工作转入 V3） |
 
 ## 目录结构
 
@@ -28,7 +31,7 @@ specs-tree-connector-platform-v2/
 ├── spec.md                 # 产品规范 v2.15-draft（802 行）
 ├── plan.md                 # 技术规划 v1.0（807 行）
 ├── plan-json-schema.md     # JSON Schema 设计规范（V2 沿用 V1 v5.6）
-├── state.json              # 状态文件
+├── state.json              # 状态文件（terminated）
 ├── ADR-004.md              # 架构决策：版本完整快照存储与递增整数版本号（PROPOSED）
 ├── ADR-005.md              # 架构决策：Redis 令牌桶入站限流方案（PROPOSED）
 ├── ADR-006.md              # 架构决策：MySQL 主存储运行记录与日志（PROPOSED）
@@ -42,7 +45,7 @@ specs-tree-connector-platform-v2/
 | 文件 | 说明 | 状态 |
 |------|------|------|
 | spec.md | **产品规范 v2.15-draft** — 52 项 FR、37 项 NFR、25 个边界情况、12 个开放问题、36 个 API 端点、10 个用户故事、4 角色用户画像 | ✅ draft |
-| state.json | 状态文件 — 当前阶段 planned | ✅ planned |
+| state.json | 状态文件 — 当前状态 terminated | 🛑 terminated |
 
 **核心能力**（三大升级方向）：
 
@@ -108,9 +111,8 @@ specs-tree-connector-platform-v2/
 
 ## 下一步
 
-1. 运行 `@sddu-tasks connector-platform-v2` 开始任务分解
-2. ADR 评审：4 个 PROPOSED ADR 待 Review 后转为 ACCEPTED
+🛑 Feature 已终止，工作转入 V3：[connector-platform-v3](../specs-tree-connector-platform-v3/README.md)
 
 ---
 
-*最后更新: 2026-06-09 | @sddu-docs 自动生成*
+*最后更新: 2026-06-17 | @sddu-docs 自动生成*
