@@ -89,7 +89,23 @@
         WHERE id = #{id}
     </update>
 
-    <!-- Select List -->
+    <!-- Select All (no pagination) -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_flow_t
+        <where>
+            <if test="lifecycleStatus != null">
+                AND lifecycle_status = #{lifecycleStatus}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR name_en LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- Select List (with pagination) -->
     <select id="selectList" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_flow_t
@@ -103,7 +119,9 @@
             </if>
         </where>
         ORDER BY create_time DESC
-        LIMIT #{offset}, #{pageSize}
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
     </select>
 
     <!-- Count List -->
