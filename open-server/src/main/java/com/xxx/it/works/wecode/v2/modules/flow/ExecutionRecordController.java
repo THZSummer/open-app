@@ -56,14 +56,14 @@ public class ExecutionRecordController {
      *
      * <p>返回完整执行记录信息 + 步骤日志数组。</p>
      */
-    @GetMapping("/{flowId}/executions/{recordId}")
+    @GetMapping("/{flowId}/executions/{executionId}")
     @Operation(summary = "#50 查看运行记录详情", description = "查看单条执行记录详情，含步骤日志数组（节点 I/O 日志内嵌）")
     public ApiResponse<ExecutionRecordDetailVO> getExecutionDetail(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
-            @Parameter(description = "执行记录ID") @PathVariable Long recordId) {
+            @Parameter(description = "执行记录ID") @PathVariable Long executionId) {
 
-        log.info("GET /flows/{}/executions/{} - detail: appId={}", flowId, recordId, appId);
-        return executionRecordService.getDetail(flowId, recordId, appId);
+        log.info("GET /flows/{}/executions/{} - detail: appId={}", flowId, executionId, appId);
+        return executionRecordService.getDetail(flowId, executionId, appId);
     }
 }

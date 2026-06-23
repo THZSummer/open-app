@@ -32,6 +32,7 @@ class OpTestRunServiceTest {
 
     private ObjectMapper objectMapper;
     private OpTestRunService service;
+    private final Long versionId = 200L;
 
     @BeforeEach
     void setUp() {
@@ -61,7 +62,7 @@ class OpTestRunServiceTest {
 
         doReturn(parsedConfig).when(entity).parseOrchestrationConfigAsMap(any(ObjectMapper.class));
 
-        when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(entity));
+        when(flowVersionReadRepository.findById(200L)).thenReturn(Mono.just(entity));
 
         ExecutionResult mockResult = new ExecutionResult();
         mockResult.setExecutionId("exec-001");
@@ -73,7 +74,7 @@ class OpTestRunServiceTest {
         Map<String, Object> mockTriggerData = new HashMap<>();
         mockTriggerData.put("body", Map.of("key", "value"));
 
-        StepVerifier.create(service.executeTestRun(100L, mockTriggerData))
+        StepVerifier.create(service.executeTestRun(100L, 200L, mockTriggerData))
                 .assertNext(result -> {
                     assertEquals("success", result.getStatus());
                     assertTrue(result.isTest());
@@ -84,9 +85,9 @@ class OpTestRunServiceTest {
     @Test
     @DisplayName("Flow 不存在 → 返回错误 ExecutionResult")
     void testExecuteTestRun_FlowNotFound() {
-        when(flowVersionReadRepository.findByFlowId(999L)).thenReturn(Mono.empty());
+        when(flowVersionReadRepository.findById(999L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(service.executeTestRun(999L, Map.of()))
+        StepVerifier.create(service.executeTestRun(999L, 999L, Map.of()))
                 .assertNext(result -> {
                     assertEquals("failed", result.getStatus());
                     assertTrue(result.isTest());
@@ -114,7 +115,7 @@ class OpTestRunServiceTest {
 
         doReturn(parsedConfig).when(entity).parseOrchestrationConfigAsMap(any(ObjectMapper.class));
 
-        when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(entity));
+        when(flowVersionReadRepository.findById(200L)).thenReturn(Mono.just(entity));
 
         ExecutionResult mockResult = new ExecutionResult();
         mockResult.setExecutionId("exec-002");
@@ -123,7 +124,7 @@ class OpTestRunServiceTest {
         mockResult.setTest(true);
         when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
 
-        StepVerifier.create(service.executeTestRun(100L, Map.of()))
+        StepVerifier.create(service.executeTestRun(100L, 200L, Map.of()))
                 .assertNext(result -> {
                     assertTrue(result.isTest());
                 })

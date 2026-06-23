@@ -31,7 +31,7 @@ import java.util.Map;
  * </p>
  */
 @RestController
-@RequestMapping("/api/v1/internal/test-run")
+@RequestMapping("/api/v1/flows")
 @Tag(name = "测试执行", description = "内部测试执行接口，供 open-server debug-proxy 调用 (v5.5)")
 public class OpTestRunController {
 
@@ -54,19 +54,22 @@ public class OpTestRunController {
      * </ul>
      * </p>
      */
-    @PostMapping(value = "/{flowId}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/{flowId}/versions/{versionId}/debug", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "执行测试运行 (v5.5)",
                description = "内部端点，接收模拟触发数据和凭证，同步执行连接流并返回结果."
-                           + " triggerType=3 (运行时记录维度), isTest=true.")
+                            + " triggerType=3 (运行时记录维度), isTest=true.")
     public Mono<ExecutionResult> executeTestRun(
             @Parameter(description = "连接流ID")
             @PathVariable Long flowId,
+            @Parameter(description = "版本ID")
+            @PathVariable Long versionId,
             @RequestBody TestRunRequest request) {
 
-        log.info("Internal test run: flowId={}", flowId);
+        log.info("Internal test run: flowId={}, versionId={}", flowId, versionId);
 
         return testRunService.executeTestRun(
                 flowId,
+                versionId,
                 request != null ? request.getMockTriggerData() : null);
     }
 

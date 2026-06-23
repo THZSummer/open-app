@@ -111,33 +111,6 @@ public class OpConnectorController {
         return toResponseEntity(connectorService.deleteConnector(connectorId));
     }
 
-    /**
-     * #6 查看连接配置
-     */
-    @GetMapping("/{connectorId}/config")
-    @PlatformAdminPermission
-    @Operation(summary = "#6 查看连接配置",
-               description = "查看连接配置（authConfig/inputContract/outputContract/rateLimitConfig/超时）")
-    public ResponseEntity<ApiResponse<ConnectorConfigResponse>> getConnectorConfig(
-            @Parameter(description = "连接器ID")
-            @PathVariable Long connectorId) {
-        return toResponseEntity(connectorService.getConnectorConfig(connectorId));
-    }
-
-    /**
-     * #7 编辑连接配置
-     */
-    @PutMapping("/{connectorId}/config")
-    @PlatformAdminPermission
-    @Operation(summary = "#7 编辑连接配置",
-               description = "编辑连接配置，编辑即生效，connectionConfig JSON 全文替换（authConfig/inputContract/outputContract/rateLimitConfig）")
-    public ResponseEntity<ApiResponse<Void>> updateConnectorConfig(
-            @Parameter(description = "连接器ID")
-            @PathVariable Long connectorId,
-            @Valid @RequestBody ConnectorConfigUpdateRequest request) {
-        return toResponseEntity(connectorService.updateConnectorConfig(connectorId, request));
-    }
-
     // ==================== 辅助方法 ====================
 
     /**

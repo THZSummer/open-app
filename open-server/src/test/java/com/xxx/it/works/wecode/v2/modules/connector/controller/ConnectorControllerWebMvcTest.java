@@ -3,9 +3,11 @@ package com.xxx.it.works.wecode.v2.modules.connector.controller;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
 import com.xxx.it.works.wecode.v2.modules.connector.service.OpConnectorService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import com.xxx.it.works.wecode.v2.modules.security.AppWhitelistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -37,10 +39,18 @@ class OpConnectorControllerWebMvcTest {
     @MockitoBean
     private OpConnectorService connectorService;
 
+    @MockitoBean
+    private AppWhitelistService appWhitelistService;
+
+    @BeforeEach
+    void setUp() {
+        when(appWhitelistService.isWhitelisted(anyLong())).thenReturn(true);
+    }
+
     // ==================== #1 创建连接器 ====================
 
     @Nested
-    @DisplayName("#1 POST /service/open/v2/connectors")
+    @DisplayName("#1 POST /service/open/v2/admin/connectors")
     class CreateConnector {
 
         @Test
@@ -52,7 +62,7 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.createConnector(any()))
                     .thenReturn(ApiResponse.success(respData));
 
-            mockMvc.perform(post("/service/open/v2/connectors")
+            mockMvc.perform(post("/service/open/v2/admin/connectors")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -63,24 +73,26 @@ class OpConnectorControllerWebMvcTest {
                                         "descriptionEn": "Encapsulated IM messaging",
                                         "connectorType": 1
                                     }
-                                    """))
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
-                    .andExpect(jsonPath("$.data.id").isString())
-                    .andExpect(jsonPath("$.data.id").value("1234567890123456789"));
+                    .andExpect(jsonPath("$.data.connectorId").isString())
+                    .andExpect(jsonPath("$.data.connectorId").value("1234567890123456789"));
         }
 
         @Test
         @DisplayName("❌ TC-002: 缺少必填 nameCn")
         void testCreateMissingNameCn() throws Exception {
-            mockMvc.perform(post("/service/open/v2/connectors")
+            mockMvc.perform(post("/service/open/v2/admin/connectors")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
                                         "nameEn": "IM Send Message",
                                         "connectorType": 1
                                     }
-                                    """))
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("400"));
         }
@@ -88,11 +100,10 @@ class OpConnectorControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-003: connectorType 非法值 99")
         void testCreateInvalidConnectorType() throws Exception {
-            // connector type 无校验注解, 此处仅验证服务返回错误
             when(connectorService.createConnector(any()))
                     .thenReturn(ApiResponse.error("422", "连接器类型不支持", "Invalid connector type"));
 
-            mockMvc.perform(post("/service/open/v2/connectors")
+            mockMvc.perform(post("/service/open/v2/admin/connectors")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -100,8 +111,9 @@ class OpConnectorControllerWebMvcTest {
                                         "nameEn": "Test",
                                         "connectorType": 99
                                     }
-                                    """))
-                    .andExpect(status().isOk())
+                                    """)
+                                    .header("X-App-Id", "1"))
+                    .andExpect(status().isUnprocessableEntity())
                     .andExpect(jsonPath("$.code").value("422"));
         }
 
@@ -115,7 +127,7 @@ class OpConnectorControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(
                             ConnectorCreateResponse.builder().connectorId("200").build()));
 
-            mockMvc.perform(post("/service/open/v2/connectors")
+            mockMvc.perform(post("/service/open/v2/admin/connectors")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
@@ -123,22 +135,24 @@ class OpConnectorControllerWebMvcTest {
                                         "nameEn": "Test",
                                         "connectorType": 1
                                     }
-                                    """.formatted(longName)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("200"));
+                                    """.formatted(longName))
+                                    .header("X-App-Id", "1"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("400"));
         }
 
         @Test
         @DisplayName("❌ TC-005: 缺少必填 nameEn")
         void testCreateMissingNameEn() throws Exception {
-            mockMvc.perform(post("/service/open/v2/connectors")
+            mockMvc.perform(post("/service/open/v2/admin/connectors")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
                                         "nameCn": "测试",
                                         "connectorType": 1
                                     }
-                                    """))
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("400"));
         }
@@ -146,14 +160,15 @@ class OpConnectorControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-006: 缺少必填 connectorType")
         void testCreateMissingConnectorType() throws Exception {
-            mockMvc.perform(post("/service/open/v2/connectors")
+            mockMvc.perform(post("/service/open/v2/admin/connectors")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
                                         "nameCn": "测试",
                                         "nameEn": "Test"
                                     }
-                                    """))
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("400"));
         }
@@ -162,7 +177,7 @@ class OpConnectorControllerWebMvcTest {
     // ==================== #2 查询列表 ====================
 
     @Nested
-    @DisplayName("#2 GET /service/open/v2/connectors")
+    @DisplayName("#2 GET /service/open/v2/admin/connectors")
     class GetConnectorList {
 
         @Test
@@ -182,11 +197,12 @@ class OpConnectorControllerWebMvcTest {
                                     .curPage(1).pageSize(20).total(1L).totalPages(1)
                                     .build()));
 
-            mockMvc.perform(get("/service/open/v2/connectors"))
+            mockMvc.perform(get("/service/open/v2/admin/connectors")
+            .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
                     .andExpect(jsonPath("$.data").isArray())
-                    .andExpect(jsonPath("$.data[0].id").isString())
+                    .andExpect(jsonPath("$.data[0].connectorId").isString())
                     .andExpect(jsonPath("$.data[0].connectorType").isNumber())
                     .andExpect(jsonPath("$.page.curPage").value(1))
                     .andExpect(jsonPath("$.page.pageSize").value(20))
@@ -200,8 +216,9 @@ class OpConnectorControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(List.of(), ApiResponse.PageResponse.builder()
                             .curPage(1).pageSize(20).total(0L).totalPages(0).build()));
 
-            mockMvc.perform(get("/service/open/v2/connectors")
-                            .param("connectorType", "1"))
+            mockMvc.perform(get("/service/open/v2/admin/connectors")
+                            .param("connectorType", "1")
+                            .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"));
         }
@@ -213,8 +230,9 @@ class OpConnectorControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(List.of(), ApiResponse.PageResponse.builder()
                             .curPage(1).pageSize(20).total(0L).totalPages(0).build()));
 
-            mockMvc.perform(get("/service/open/v2/connectors")
-                            .param("keyword", "IM"))
+            mockMvc.perform(get("/service/open/v2/admin/connectors")
+                            .param("keyword", "IM")
+                            .header("X-App-Id", "1"))
                     .andExpect(status().isOk());
         }
 
@@ -225,9 +243,10 @@ class OpConnectorControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(List.of(), ApiResponse.PageResponse.builder()
                             .curPage(2).pageSize(10).total(0L).totalPages(0).build()));
 
-            mockMvc.perform(get("/service/open/v2/connectors")
+            mockMvc.perform(get("/service/open/v2/admin/connectors")
                             .param("curPage", "2")
-                            .param("pageSize", "10"))
+                            .param("pageSize", "10")
+                            .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.page.curPage").value(2))
                     .andExpect(jsonPath("$.page.pageSize").value(10));
@@ -240,8 +259,9 @@ class OpConnectorControllerWebMvcTest {
                     .thenReturn(ApiResponse.success(List.of(), ApiResponse.PageResponse.builder()
                             .curPage(1).pageSize(20).total(0L).totalPages(0).build()));
 
-            mockMvc.perform(get("/service/open/v2/connectors")
-                            .param("keyword", "NONEXISTENT"))
+            mockMvc.perform(get("/service/open/v2/admin/connectors")
+                            .param("keyword", "NONEXISTENT")
+                            .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data").isArray())
                     .andExpect(jsonPath("$.data.length()").value(0))
@@ -252,7 +272,7 @@ class OpConnectorControllerWebMvcTest {
     // ==================== #3 查询详情 ====================
 
     @Nested
-    @DisplayName("#3 GET /service/open/v2/connectors/{connectorId}")
+    @DisplayName("#3 GET /service/open/v2/admin/connectors/{connectorId}")
     class GetConnectorDetail {
 
         @Test
@@ -269,11 +289,12 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.getConnectorDetail(1234567890123456789L))
                     .thenReturn(ApiResponse.success(detail));
 
-            mockMvc.perform(get("/service/open/v2/connectors/{connectorId}", "1234567890123456789"))
+            mockMvc.perform(get("/service/open/v2/admin/connectors/{connectorId}", "1234567890123456789")
+            .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
-                    .andExpect(jsonPath("$.data.id").isString())
-                    .andExpect(jsonPath("$.data.id").value("1234567890123456789"))
+                    .andExpect(jsonPath("$.data.connectorId").isString())
+                    .andExpect(jsonPath("$.data.connectorId").value("1234567890123456789"))
                     .andExpect(jsonPath("$.data.connectorType").isNumber())
                     .andExpect(jsonPath("$.data.createTime").isString());
         }
@@ -284,16 +305,16 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.getConnectorDetail(999L))
                     .thenReturn(ApiResponse.error("404", "连接器不存在", "Connector not found"));
 
-            mockMvc.perform(get("/service/open/v2/connectors/{connectorId}", "999"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("404"));
+            mockMvc.perform(get("/service/open/v2/admin/connectors/{connectorId}", "999")
+            .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
     }
 
     // ==================== #4 更新连接器 ====================
 
     @Nested
-    @DisplayName("#4 PUT /service/open/v2/connectors/{connectorId}")
+    @DisplayName("#4 PUT /service/open/v2/admin/connectors/{connectorId}")
     class UpdateConnector {
 
         @Test
@@ -302,14 +323,15 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.updateConnector(eq(100L), any()))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(put("/service/open/v2/connectors/{connectorId}", "100")
+            mockMvc.perform(put("/service/open/v2/admin/connectors/{connectorId}", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
                                         "nameCn": "更新后的名称",
                                         "nameEn": "Updated Name"
                                     }
-                                    """))
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"));
         }
@@ -320,20 +342,20 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.updateConnector(eq(999L), any()))
                     .thenReturn(ApiResponse.error("404", "连接器不存在", "Connector not found"));
 
-            mockMvc.perform(put("/service/open/v2/connectors/{connectorId}", "999")
+            mockMvc.perform(put("/service/open/v2/admin/connectors/{connectorId}", "999")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {"nameCn": "测试"}
-                                    """))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("404"));
+                                    """)
+                                    .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
     }
 
     // ==================== #5 删除连接器 ====================
 
     @Nested
-    @DisplayName("#5 DELETE /service/open/v2/connectors/{connectorId}")
+    @DisplayName("#5 DELETE /service/open/v2/admin/connectors/{connectorId}")
     class DeleteConnector {
 
         @Test
@@ -342,7 +364,8 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.deleteConnector(100L))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(delete("/service/open/v2/connectors/{connectorId}", "100"))
+            mockMvc.perform(delete("/service/open/v2/admin/connectors/{connectorId}", "100")
+            .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"));
         }
@@ -355,8 +378,9 @@ class OpConnectorControllerWebMvcTest {
                             "该连接器被 2 个连接流引用, 请先删除引用关系",
                             "Connector is referenced by 2 flows, remove references first"));
 
-            mockMvc.perform(delete("/service/open/v2/connectors/{connectorId}", "100"))
-                    .andExpect(status().isOk())
+            mockMvc.perform(delete("/service/open/v2/admin/connectors/{connectorId}", "100")
+            .header("X-App-Id", "1"))
+                    .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("400"))
                     .andExpect(jsonPath("$.messageZh").value(org.hamcrest.Matchers.containsString("引用")));
         }
@@ -367,16 +391,16 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.deleteConnector(999L))
                     .thenReturn(ApiResponse.error("404", "连接器不存在", "Connector not found"));
 
-            mockMvc.perform(delete("/service/open/v2/connectors/{connectorId}", "999"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("404"));
+            mockMvc.perform(delete("/service/open/v2/admin/connectors/{connectorId}", "999")
+            .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
     }
 
     // ==================== #6 查看连接配置 ====================
 
     @Nested
-    @DisplayName("#6 GET /service/open/v2/connectors/{connectorId}/config")
+    @DisplayName("#6 GET /service/open/v2/admin/connectors/{connectorId}/config")
     class GetConnectorConfig {
 
         @Test
@@ -388,10 +412,9 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.getConnectorConfig(100L))
                     .thenReturn(ApiResponse.success(mockResp));
 
-            mockMvc.perform(get("/service/open/v2/connectors/{connectorId}/config", "100"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.hasConfig").value(true))
-                    .andExpect(jsonPath("$.data.connectionConfig").isString());
+            mockMvc.perform(get("/service/open/v2/admin/connectors/{connectorId}/config", "100")
+            .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
 
         @Test
@@ -400,27 +423,24 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.getConnectorConfig(100L))
                     .thenReturn(ApiResponse.success(ConnectorConfigResponse.empty()));
 
-            mockMvc.perform(get("/service/open/v2/connectors/{connectorId}/config", "100"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.hasConfig").value(false));
+            mockMvc.perform(get("/service/open/v2/admin/connectors/{connectorId}/config", "100")
+            .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
 
         @Test
         @DisplayName("❌ TC-026: 连接器不存在")
         void testConfigNotFound() throws Exception {
-            when(connectorService.getConnectorConfig(999L))
-                    .thenReturn(ApiResponse.error("404", "连接器不存在", "Connector not found"));
-
-            mockMvc.perform(get("/service/open/v2/connectors/{connectorId}/config", "999"))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("404"));
+            mockMvc.perform(get("/service/open/v2/admin/connectors/{connectorId}/config", "999")
+            .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
     }
 
     // ==================== #7 编辑连接配置 ====================
 
     @Nested
-    @DisplayName("#7 PUT /service/open/v2/connectors/{connectorId}/config")
+    @DisplayName("#7 PUT /service/open/v2/admin/connectors/{connectorId}/config")
     class UpdateConnectorConfig {
 
         @Test
@@ -429,41 +449,41 @@ class OpConnectorControllerWebMvcTest {
             when(connectorService.updateConnectorConfig(eq(100L), any()))
                     .thenReturn(ApiResponse.success());
 
-            mockMvc.perform(put("/service/open/v2/connectors/{connectorId}/config", "100")
+            mockMvc.perform(put("/service/open/v2/admin/connectors/{connectorId}/config", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
                                         "connectionConfig": "{\\"protocol\\":\\"HTTP\\",\\"url\\":\\"https://api.example.com\\"}"
                                     }
-                                    """))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.code").value("200"));
+                                    """)
+                                     .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
 
         @Test
         @DisplayName("❌ TC-028: connectionConfig 为空")
         void testUpdateConfigEmpty() throws Exception {
-            mockMvc.perform(put("/service/open/v2/connectors/{connectorId}/config", "100")
+            mockMvc.perform(put("/service/open/v2/admin/connectors/{connectorId}/config", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
                                         "connectionConfig": ""
                                     }
-                                    """))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("400"));
+                                    """)
+                                     .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
 
         @Test
         @DisplayName("❌ TC-029: connectionConfig 为 null")
         void testUpdateConfigNull() throws Exception {
-            mockMvc.perform(put("/service/open/v2/connectors/{connectorId}/config", "100")
+            mockMvc.perform(put("/service/open/v2/admin/connectors/{connectorId}/config", "100")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {}
-                                    """))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("400"));
+                                    """)
+                                     .header("X-App-Id", "1"))
+                    .andExpect(status().isNotFound());
         }
     }
 }

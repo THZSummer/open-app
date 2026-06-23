@@ -55,17 +55,19 @@ public class OpTestRunService {
      * 执行测试运行
      *
      * @param flowId 连接流ID
+     * @param versionId 版本ID
      * @param mockTriggerData 模拟触发数据 (存入 NodeContext.input 分区)
      * @return ExecutionResult 含各步骤详情
      */
     @SuppressWarnings("unchecked")
     public Mono<ExecutionResult> executeTestRun(
             Long flowId,
+            Long versionId,
             Map<String, Object> mockTriggerData) {
 
         String executionId = UUID.randomUUID().toString().replace("-", "");
 
-        return flowVersionReadRepository.findByFlowId(flowId)
+        return flowVersionReadRepository.findById(versionId)
                 .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
                 .flatMap(flowVersion -> {
                     Integer status = flowVersion.getStatus();

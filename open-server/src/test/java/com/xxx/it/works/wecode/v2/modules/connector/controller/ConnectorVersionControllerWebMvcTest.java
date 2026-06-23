@@ -65,7 +65,7 @@ class ConnectorVersionControllerWebMvcTest {
         @Test
         @DisplayName("正常创建 → 200")
         void testCreateDraft_Success() {
-            ApiResponse<?> response = controller.createDraft(appId, connectorId);
+            var response = controller.createDraft(appId, connectorId).getBody();
             assertEquals("200", response.getCode());
         }
 
@@ -75,7 +75,7 @@ class ConnectorVersionControllerWebMvcTest {
             when(connectorVersionService.createDraft(connectorId, appId))
                     .thenReturn(ApiResponse.error("409", "已存在草稿版本", "Draft exists"));
 
-            ApiResponse<?> response = controller.createDraft(appId, connectorId);
+            var response = controller.createDraft(appId, connectorId).getBody();
             assertEquals("409", response.getCode());
         }
     }
@@ -85,7 +85,7 @@ class ConnectorVersionControllerWebMvcTest {
     @Test
     @DisplayName("#9 GET 版本列表 → 200")
     void testGetVersionList() {
-        var response = controller.getVersionList(appId, connectorId, null);
+        var response = controller.getVersionList(appId, connectorId, null).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -94,7 +94,7 @@ class ConnectorVersionControllerWebMvcTest {
     @Test
     @DisplayName("#10 GET 版本详情 → 200")
     void testGetVersionDetail() {
-        var response = controller.getVersionDetail(appId, connectorId, versionId);
+        var response = controller.getVersionDetail(appId, connectorId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -106,7 +106,7 @@ class ConnectorVersionControllerWebMvcTest {
         ConnectorVersionSaveRequest request = new ConnectorVersionSaveRequest();
         request.setConnectionConfig("{\"url\":\"https://example.com\"}");
 
-        ApiResponse<?> response = controller.updateDraft(appId, connectorId, versionId, request);
+        var response = controller.updateDraft(appId, connectorId, versionId, request).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -115,7 +115,7 @@ class ConnectorVersionControllerWebMvcTest {
     @Test
     @DisplayName("#12 PUT 发布版本 → 200")
     void testPublish() {
-        var response = controller.publish(appId, connectorId, versionId);
+        var response = controller.publish(appId, connectorId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -125,7 +125,7 @@ class ConnectorVersionControllerWebMvcTest {
         when(connectorVersionService.publish(connectorId, versionId, appId))
                 .thenReturn(ApiResponse.error("422", "草稿配置为空", "Draft config is empty"));
 
-        var response = controller.publish(appId, connectorId, versionId);
+        var response = controller.publish(appId, connectorId, versionId).getBody();
         assertEquals("422", response.getCode());
         assertEquals("草稿配置为空", response.getMessageZh());
     }
@@ -135,7 +135,7 @@ class ConnectorVersionControllerWebMvcTest {
     @Test
     @DisplayName("#13 POST 复制到草稿 → 200")
     void testCopyToDraft() {
-        var response = controller.copyToDraft(appId, connectorId, versionId);
+        var response = controller.copyToDraft(appId, connectorId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -144,7 +144,7 @@ class ConnectorVersionControllerWebMvcTest {
     @Test
     @DisplayName("#14 PUT 失效版本 → 200")
     void testInvalidateVersion() {
-        var response = controller.invalidateVersion(appId, connectorId, versionId);
+        var response = controller.invalidateVersion(appId, connectorId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -154,7 +154,7 @@ class ConnectorVersionControllerWebMvcTest {
         when(connectorVersionService.invalidateVersion(connectorId, versionId, appId))
                 .thenReturn(ApiResponse.error("422", "有 3 个连接流引用此版本", "Version referenced"));
 
-        var response = controller.invalidateVersion(appId, connectorId, versionId);
+        var response = controller.invalidateVersion(appId, connectorId, versionId).getBody();
         assertEquals("422", response.getCode());
         assertEquals("有 3 个连接流引用此版本", response.getMessageZh());
     }
@@ -164,7 +164,7 @@ class ConnectorVersionControllerWebMvcTest {
     @Test
     @DisplayName("#15 PUT 恢复版本 → 200")
     void testRecoverVersion() {
-        var response = controller.recoverVersion(appId, connectorId, versionId);
+        var response = controller.recoverVersion(appId, connectorId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -173,7 +173,7 @@ class ConnectorVersionControllerWebMvcTest {
     @Test
     @DisplayName("#16 DELETE 删除版本 → 200")
     void testDeleteVersion() {
-        var response = controller.deleteVersion(appId, connectorId, versionId);
+        var response = controller.deleteVersion(appId, connectorId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 }

@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.trigger.controller;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
+import com.xxx.it.works.wecode.v2.modules.ratelimit.RateLimitConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,18 +14,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveValueOperations;
+import com.xxx.it.works.wecode.v2.modules.ratelimit.RateLimitConfigReader;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
  * OpTriggerController 接口层测试 (WebFluxTest) (v5.8)
  *
  * <p>测试目标: HTTP 请求绑定 + 透明穿透响应
- * 接口: #54 POST /api/v1/trigger/{flowId}/invoke
+ * 接口: #54 POST /api/v1/flows/{flowId}/invoke
  * 测试层次: L2 接口层
  * </p>
  */
@@ -41,14 +46,32 @@ class OpTriggerControllerWebFluxTest {
     @MockitoBean
     private OpFlowVersionReadRepository flowVersionReadRepository;
 
+    @MockitoBean
+    private ReactiveRedisTemplate<String, String> redisTemplate;
+
+    @MockitoBean
+    private RateLimitConfigReader rateLimitConfigReader;
+
     @BeforeEach
     void setUp() {
         // Prevent rate limit filter dependency injection failure in test context
         when(flowVersionReadRepository.findByFlowId(anyLong())).thenReturn(Mono.empty());
+
+        // Stub rate limiter to allow all requests
+        when(rateLimitConfigReader.readFlowRateLimit(anyLong()))
+                .thenReturn(Mono.just(new RateLimitConfig("qps", Integer.MAX_VALUE, Integer.MAX_VALUE)));
+
+        // Stub redis to allow rate limit checks
+        @SuppressWarnings("unchecked")
+        ReactiveValueOperations<String, String> mockOps =
+                mock(ReactiveValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(mockOps);
+        when(mockOps.increment(anyString())).thenReturn(Mono.just(1L));
+        when(redisTemplate.expire(anyString(), any())).thenReturn(Mono.just(true));
     }
 
     @Nested
-    @DisplayName("#54 POST /api/v1/trigger/{flowId}/invoke (v5.8 透明穿透)")
+    @DisplayName("#54 POST /api/v1/flows/{flowId}/invoke (v5.8 透明穿透)")
     class InvokeFlow {
 
         @Test
@@ -63,7 +86,7 @@ class OpTriggerControllerWebFluxTest {
                     .thenReturn(Mono.just(response));
 
             webTestClient.post()
-                    .uri("/api/v1/trigger/{flowId}/invoke", "2000000000000000001")
+                    .uri("/api/v1/flows/{flowId}/invoke", "2000000000000000001")
                     .header("X-Sys-Token", "valid-token")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{\"sender\":\"external_system\",\"content\":\"test\"}")
@@ -90,7 +113,7 @@ class OpTriggerControllerWebFluxTest {
                     .thenReturn(Mono.just(authError));
 
             webTestClient.post()
-                    .uri("/api/v1/trigger/{flowId}/invoke", "2000000000000000001")
+                    .uri("/api/v1/flows/{flowId}/invoke", "2000000000000000001")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{\"sender\":\"test\"}")
                     .exchange()
@@ -111,7 +134,7 @@ class OpTriggerControllerWebFluxTest {
                     .thenReturn(Mono.just(notFound));
 
             webTestClient.post()
-                    .uri("/api/v1/trigger/{flowId}/invoke", "999")
+                    .uri("/api/v1/flows/{flowId}/invoke", "999")
                     .header("X-Sys-Token", "valid-token")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{\"sender\":\"test\"}")
@@ -134,7 +157,7 @@ class OpTriggerControllerWebFluxTest {
                     .thenReturn(Mono.just(response));
 
             webTestClient.post()
-                    .uri("/api/v1/trigger/{flowId}/invoke", "200")
+                    .uri("/api/v1/flows/{flowId}/invoke", "200")
                     .header("X-Sys-Token", "valid-token")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{}")
@@ -163,7 +186,7 @@ class OpTriggerControllerWebFluxTest {
                     .thenReturn(Mono.just(response));
 
             webTestClient.post()
-                    .uri("/api/v1/trigger/{flowId}/invoke", "100")
+                    .uri("/api/v1/flows/{flowId}/invoke", "100")
                     .header("X-Sys-Token", "my-sys-token")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{}")
@@ -188,7 +211,7 @@ class OpTriggerControllerWebFluxTest {
                     .thenReturn(Mono.just(error));
 
             webTestClient.post()
-                    .uri("/api/v1/trigger/{flowId}/invoke", "50")
+                    .uri("/api/v1/flows/{flowId}/invoke", "50")
                     .header("X-Sys-Token", "valid-token")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue("{}")

@@ -116,7 +116,8 @@ class OpTriggerServiceTest {
         StepVerifier.create(resultMono)
                 .assertNext(response -> {
                     assertEquals("100", response.getPlatformHeaders().get("X-Flow-Id"));
-                    assertEquals("exec-001", response.getPlatformHeaders().get("X-Execution-Id"));
+                    assertNotNull(response.getPlatformHeaders().get("X-Execution-Id"), "Execution ID should not be null");
+                    assertTrue(response.getPlatformHeaders().get("X-Execution-Id").matches("[a-f0-9]{32}"), "Should be a 32-char UUID hex");
                     assertEquals("0", response.getPlatformHeaders().get("X-Status"));
                     assertEquals("150", response.getPlatformHeaders().get("X-Duration-Ms"));
                     assertEquals("0", response.getPlatformHeaders().get("X-Cache-Status"));
