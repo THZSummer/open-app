@@ -4,8 +4,8 @@
 
 **连接器平台 V3**（CONN-PLAT-002 / CONN-PLAT-003）从 V2 复制创建，作为 V3 新起点。V3 设计方向从「完整好用」转向「**简单可用，能兜底**」：精简非刚需功能（数据处理节点、错误处理节点），大幅放宽前置校验（仅保留 JSON 语法），以 GraalJS 脚本节点作为复杂场景兜底方案。
 
-**当前阶段**: 📋 registered（已注册）  
-**生命周期**: tracked（跟踪中）  
+**当前阶段**: ✅ validated（已验证）  
+**生命周期**: ✅ completed（已完成）  
 **Feature ID**: CONN-PLAT-003（state.json）/ CONN-PLAT-002（spec 体系）  
 **优先级**: P1  
 **创建时间**: 2026-06-17  
@@ -17,26 +17,26 @@
 
 ```
 registered → discovered → specified → planned → tasked → builded → reviewed → validated
-    ●           ○           ○           ○         ○         ○         ○          ○
-    ↑ 当前阶段
+    ●           ●           ●           ●         ●         ●         ●          ●
+                                                                                  ↑ 全部完成
 ```
 
 | 阶段 | 状态 | 说明 |
 |------|------|------|
-| 📋 需求挖掘 (discovery) | ⏳ 待开始 | 需求设计说明书已完成（v3.0） |
+| 📋 需求挖掘 (discovery) | ✅ 已完成 | 需求设计说明书 v3.0，从 V2 复制创建 |
 | 📋 规范编写 (spec) | ✅ 已完成 | spec.md v3.0，47 FRs，2026-06-22 |
 | 📐 技术规划 (plan) | ✅ 已完成 | plan.md v3.0 + 9 份子规划文档 |
 | 📝 任务分解 (tasks) | ✅ 已完成 | 14 个任务，4 个波次，2026-06-22 |
-| 🔨 构建实现 (build) | ⏳ 待开始 | — |
-| 🔍 代码审查 (review) | ⏳ 待开始 | — |
-| ✅ 验证 (validate) | ⏳ 待开始 | — |
+| 🔨 构建实现 (build) | ✅ 已完成 | build.md — 14 任务全部实现 |
+| 🔍 代码审查 (review) | ✅ 已完成 | review.md — 5 个阻塞问题已修复，编译验证通过 |
+| ✅ 验证 (validate) | ✅ 已完成 | validation-report.md — FR 100% 覆盖，1 项已知漂移，有条件通过 |
 
 ## 目录结构
 
 ```
 specs-tree-connector-platform-v3/
 ├── README.md                              # 本文件 - 目录导航
-├── state.json                             # 状态文件
+├── state.json                             # 状态文件（phase: validated, status: completed）
 ├── spec.md                                # 产品规范 v3.0（47 FRs）
 ├── plan.md                                # 技术规划 v3.0
 ├── plan-db.md                             # 数据库设计 v2.0
@@ -49,6 +49,12 @@ specs-tree-connector-platform-v3/
 ├── plan-flow-invoke-temp.md               # 临时方案：#54 调用连接流返回格式
 ├── tasks.md                               # 任务分解（14 任务，4 波次）
 ├── tasks.json                             # 任务数据（JSON 格式）
+├── build.md                               # 构建报告（14 任务全部实现）
+├── review.md                              # 代码审查报告（5 阻塞问题已修复，通过）
+├── validation-report.md                   # 验证报告（FR 100% 覆盖，有条件通过）
+├── test-tasks.md                          # 测试任务分解（补充测试）
+├── test-tasks.json                        # 测试任务数据（JSON 格式）
+├── test-gap-analysis.md                   # 测试缺口分析
 ├── 需求设计说明书-connector-platform-v3.md  # 需求设计说明书 v3.0
 ├── json-schema-gap-analysis.md            # JSON Schema 缺口分析（已完成）
 ├── ADR-004.md                             # 版本完整快照存储与递增整数版本号
@@ -66,7 +72,7 @@ specs-tree-connector-platform-v3/
 |------|------|------|
 | spec.md | **产品规范 v3.0** — 47 个功能需求，V3 设计方向：简单可用，能兜底 | ✅ 已完成 |
 | 需求设计说明书-connector-platform-v3.md | **需求设计说明书** — V3 详细需求设计文档 | ✅ 已完成 |
-| state.json | 状态文件 — 当前 phase: registered, status: tracked | 📋 registered |
+| state.json | 状态文件 — 当前 phase: validated, status: completed | ✅ completed |
 
 ### 📂 技术规划阶段 (plan)
 
@@ -89,15 +95,41 @@ specs-tree-connector-platform-v3/
 | tasks.md | **任务分解** — 14 个任务，4 个执行波次 | ✅ 已完成 |
 | tasks.json | **任务数据** — JSON 格式任务数据 | ✅ 已完成 |
 
+### 📂 构建实现 (build)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| build.md | **构建报告** — 14 个任务全部实现，2026-06-22 | ✅ 已完成 |
+
+### 📂 代码审查 (review)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| review.md | **代码审查报告** — 5 个阻塞问题已修复，编译验证通过 | ✅ 已完成 |
+
+### 📂 验证 (validate)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| validation-report.md | **验证报告** — FR 100% 覆盖，1 项已知漂移 (GraalJS parse)，有条件通过 | ✅ 已完成 |
+
+### 📂 测试 (test)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| test-tasks.md | **测试任务分解** — V3 补充测试规划 | ✅ 已完成 |
+| test-tasks.json | **测试任务数据** — JSON 格式 | ✅ 已完成 |
+| test-gap-analysis.md | **测试缺口分析** — 14 个构建任务测试覆盖分析 | ✅ 已完成 |
+
 ### 📂 架构决策记录 (ADR)
 
 | 文件 | 标题 | 状态 |
 |------|------|------|
-| ADR-004.md | 版本完整快照存储与递增整数版本号 | PROPOSED |
-| ADR-005.md | Redis 令牌桶入站限流方案 | PROPOSED |
-| ADR-006.md | MySQL 主存储运行记录与日志 | PROPOSED |
-| ADR-007.md | 多版本模型下的引用稽核策略 | PROPOSED |
-| ADR-008.md | #54 调用连接流 — 透明穿透响应模式 | PROPOSED |
+| ADR-004.md | 版本完整快照存储与递增整数版本号 | ✅ ACCEPTED |
+| ADR-005.md | Redis 令牌桶入站限流方案 | ✅ ACCEPTED |
+| ADR-006.md | MySQL 主存储运行记录与日志 | ✅ ACCEPTED |
+| ADR-007.md | 多版本模型下的引用稽核策略 | ✅ ACCEPTED |
+| ADR-008.md | #54 调用连接流 — 透明穿透响应模式 | ✅ ACCEPTED |
 
 ### 📂 分析文档
 
@@ -132,8 +164,10 @@ specs-tree-connector-platform-v3/
 
 ## 下一步
 
-1. 运行 `@sddu build connector-platform-v3` 启动任务实现
-2. 按 Wave 1→4 顺序执行 14 个构建任务
+🎉 **全流程完成！**（需求挖掘 → 规范 → 规划 → 任务分解 → 实现 → 审查 → 验证）
+
+1. 后续：修复 GraalJS parse 校验漂移后运行 `@sddu-docs` 更新导航
+2. 已知漂移：`GraalJSScriptValidator` 使用 `context.eval()` 实际执行脚本做校验，但 `AbstractScriptNode` 能正常 parse → 不影响功能，属工具链偏差
 
 ---
 

@@ -85,6 +85,19 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- GraalVM Polyglot for JavaScript syntax validation (FR-026 脚本语法预检) -->
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>24.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-language</artifactId>
+            <version>24.2.1</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

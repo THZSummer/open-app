@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -26,16 +28,21 @@ class OpDebugProxyServiceTest {
     @InjectMocks
     private OpDebugProxyService debugProxyService;
 
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(debugProxyService, "connectorApiBaseUrl", "http://localhost:18180");
+    }
+
     @Test
     @DisplayName("转发成功")
     void testForwardTestRun_Success() {
         Map<String, Object> mockResult = Map.of("status", "success", "executionId", "exec-001");
 
-        when(restTemplate.exchange(anyString(), any(), any(), eq(Map.class)))
+        when(restTemplate.exchange(anyString(), any(), any(), any(ParameterizedTypeReference.class)))
                 .thenReturn(org.springframework.http.ResponseEntity.ok(mockResult));
 
         ApiResponse<Map<String, Object>> response = debugProxyService.forwardTestRun(
-                100L, Map.of("sender", "test"), Map.of());
+                100L, 200L, Map.of("sender", "test"), Map.of());
 
         assertEquals("200", response.getCode());
         assertNotNull(response.getData());
@@ -45,11 +52,11 @@ class OpDebugProxyServiceTest {
     @Test
     @DisplayName("转发失败返回500")
     void testForwardTestRun_Failure() {
-        when(restTemplate.exchange(anyString(), any(), any(), eq(Map.class)))
+        when(restTemplate.exchange(anyString(), any(), any(), any(ParameterizedTypeReference.class)))
                 .thenThrow(new RuntimeException("Connection refused"));
 
         ApiResponse<Map<String, Object>> response = debugProxyService.forwardTestRun(
-                100L, null, null);
+                100L, 200L, null, null);
 
         assertEquals("500", response.getCode());
     }
@@ -69,12 +76,12 @@ class OpDebugProxyControllerTest {
     @DisplayName("测试运行委托给 service")
     void testTestRun() {
         OpDebugProxyController.TestRunRequest request = new OpDebugProxyController.TestRunRequest();
-        request.setMockTriggerData(Map.of("key", "val"));
+        request.setTriggerData(Map.of("key", "val"));
 
-        when(debugProxyService.forwardTestRun(eq(100L), any(), any()))
+        when(debugProxyService.forwardTestRun(eq(100L), eq(200L), any(), any()))
                 .thenReturn(ApiResponse.success(Map.of("status", "success")));
 
-        ApiResponse<Map<String, Object>> response = debugProxyController.testRun(100L, request);
+        ApiResponse<Map<String, Object>> response = debugProxyController.testRun(100L, 200L, request);
         assertEquals("200", response.getCode());
         assertEquals("success", response.getData().get("status"));
     }

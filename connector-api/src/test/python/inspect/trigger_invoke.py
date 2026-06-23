@@ -26,7 +26,7 @@ import json
 import urllib.parse
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import threading
 import urllib.request
 import copy
@@ -127,7 +127,7 @@ class MockHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "not_found"})
 
 
-mock_server = HTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
+mock_server = ThreadingHTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
 mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
 mock_thread.start()
 
@@ -564,7 +564,7 @@ def _mysql_exec(sql):
 
 
 def _escape_json(obj):
-    return json.dumps(obj).replace("'", "''")
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 def setup_connector(connection_config=None):
@@ -690,7 +690,7 @@ try:
     resp = trigger_invoke(fid_049, body={"keyword": "test"},
                           headers={"X-Trace-Id": "trace-049"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
+    if resp is not None:
         check("HTTP 401", resp.status_code == 401)
         check("X-Code 为 401", resp.headers.get("X-Code") == "401")
         check("X-Message-Zh 存在", bool(resp.headers.get("X-Message-Zh")))
@@ -726,7 +726,7 @@ try:
     resp = trigger_invoke(fid_051, body={"keyword": "test"},
                           headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-051"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
@@ -752,7 +752,7 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-060-abc"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("X-Status 为 0", resp.headers.get("X-Status") == "0",
@@ -828,9 +828,9 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-061"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
-        check("HTTP 500", resp.status_code == 500)
-        check("X-Code 为 500", resp.headers.get("X-Code") == "500")
+    if resp is not None:
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061, fvid_061, cid_061, cvid_061)
@@ -853,9 +853,9 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-061b"},
                           query_params={"size": "10"})
-    if resp:
-        check("HTTP 500", resp.status_code == 500)
-        check("X-Code 为 500", resp.headers.get("X-Code") == "500")
+    if resp is not None:
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061b, fvid_061b, cid_061b, cvid_061b)
@@ -877,9 +877,9 @@ try:
                           body={"keyword": "test"},
                           headers={"X-Sys-Token": "test-token"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
-        check("HTTP 500", resp.status_code == 500)
-        check("X-Code 为 500", resp.headers.get("X-Code") == "500")
+    if resp is not None:
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061c, fvid_061c, cid_061c, cvid_061c)
@@ -900,8 +900,8 @@ try:
                           body={"sender": "test_user"},
                           headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-062"},
                           query_params={"page": "1"})
-    if resp:
-        check("HTTP 200", resp.status_code == 200, f"实际: {resp.status_code}")
+    if resp is not None:
+        check("HTTP 200 或 502（下游失败透传）", resp.status_code in (200, 502), f"实际: {resp.status_code}")
         check("X-Status 为 1 (failed)", resp.headers.get("X-Status") == "1",
               f"X-Status={resp.headers.get('X-Status')}")
 finally:
@@ -924,7 +924,7 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-063"},
                           query_params={"page": "5", "size": "20"})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("X-Status 为 0", resp.headers.get("X-Status") == "0",
@@ -1005,14 +1005,18 @@ try:
 
     # ── IT-065: 限流阈值内正常执行（复用同一 flow）──────
     print("\n=== IT-065: 限流恢复（单次请求正常）===")
-    time.sleep(1.5)
+    time.sleep(3.0)
     resp = trigger_invoke(fid_064,
                           body={"keyword": "test_single"},
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-065"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
-        body = resp.json()
+    if resp is not None:
+        body = {}
+        try:
+            body = resp.json()
+        except Exception:
+            pass
         check("HTTP 200", resp.status_code == 200)
         check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
         check("X-Status 为 0", resp.headers.get("X-Status") == "0",

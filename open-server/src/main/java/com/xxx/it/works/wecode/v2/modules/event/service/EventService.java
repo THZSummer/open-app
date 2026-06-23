@@ -219,7 +219,7 @@ public class EventService {
 
         // ✅ 获取注册审批节点（两级：场景+全局）
         List<ApprovalNodeDto> approvalNodes = approvalEngine.composeApprovalNodes(
-            ApprovalEngine.BusinessType.EVENT_REGISTER, null);
+            ApprovalEngine.BusinessType.EVENT_REGISTER, null, null);
 
         if (approvalNodes.isEmpty()) {
 
@@ -237,7 +237,8 @@ public class EventService {
                     eventId,
                     UserContextHolder.getUserId(),
                     UserContextHolder.getUserName(),
-                    UserContextHolder.getUserId()
+                    UserContextHolder.getUserId(),
+                    null
                 );
                 log.info("Create event registration approval record: eventId={}, nodesCount={}", eventId, approvalNodes.size());
             } catch (Exception e) {

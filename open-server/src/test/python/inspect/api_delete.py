@@ -92,7 +92,7 @@ def cleanup_subscription(sub_id):
 # ═══════════════════════════════════════════════════════════
 print("=== IT-DEL-API-001: 删除不存在的 API ===")
 resp = request("DELETE", "/service/open/v2/apis/999999999999999999")
-if resp:
+if resp is not None:
     body = resp.json()
     check("code 为 404", str(body.get("code")) == "404",
           f"code={body.get('code')}")
@@ -108,7 +108,7 @@ try:
     sub_id_002 = setup_subscription(perm_id_002)
 
     resp = request("DELETE", f"/service/open/v2/apis/{api_id_002}")
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("code 为 409", str(body.get("code")) == "409",
               f"code={body.get('code')}")
@@ -130,7 +130,7 @@ try:
     api_id_003, perm_id_003 = setup_api_test_data(cat_id_003, "nosub")
 
     resp = request("DELETE", f"/service/open/v2/apis/{api_id_003}")
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("code 为 200", str(body.get("code")) == "200",
               f"code={body.get('code')}")

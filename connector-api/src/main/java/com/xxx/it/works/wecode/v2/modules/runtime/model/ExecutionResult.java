@@ -45,6 +45,9 @@ public class ExecutionResult {
     /** 是否测试运行 */
     private boolean isTest;
 
+    /** 缓存命中标记 (FR-037), 默认 false */
+    private boolean cacheHit;
+
     public ExecutionResult() {
         this.steps = new ArrayList<>();
     }
@@ -187,6 +190,9 @@ public class ExecutionResult {
 
     public boolean isTest() { return isTest; }
     public void setTest(boolean test) { isTest = test; }
+
+    public boolean isCacheHit() { return cacheHit; }
+    public void setCacheHit(boolean cacheHit) { this.cacheHit = cacheHit; }
 
     public void addStep(StepDetail step) {
         this.steps.add(step);

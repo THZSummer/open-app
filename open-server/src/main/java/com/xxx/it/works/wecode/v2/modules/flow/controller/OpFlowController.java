@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Slf4j
 @RestController
-@RequestMapping("/service/open/v2/flows")
+@RequestMapping("/service/open/v2/admin/flows")
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接流管理", description = "连接流 CRUD、编排配置及生命周期管理接口")
 public class OpFlowController {
@@ -136,30 +136,4 @@ public class OpFlowController {
         return flowService.stopFlow(flowId);
     }
 
-    /**
-     * #15 查看编排配置
-     */
-    @GetMapping("/{flowId}/config")
-    @PlatformAdminPermission
-    @Operation(summary = "#15 查看编排配置",
-               description = "查看编排配置（React Flow 格式：nodes/edges/trigger 完整 DAG）")
-    public ApiResponse<FlowConfigResponse> getFlowConfig(
-            @Parameter(description = "连接流ID")
-            @PathVariable Long flowId) {
-        return flowService.getFlowConfig(flowId);
-    }
-
-    /**
-     * #16 保存编排配置
-     */
-    @PutMapping("/{flowId}/config")
-    @PlatformAdminPermission
-    @Operation(summary = "#16 保存编排配置",
-               description = "编辑即生效，React Flow 格式：nodes/edges 含 trigger/connector/exit 节点")
-    public ApiResponse<Void> updateFlowConfig(
-            @Parameter(description = "连接流ID")
-            @PathVariable Long flowId,
-            @Valid @RequestBody FlowConfigUpdateRequest request) {
-        return flowService.updateFlowConfig(flowId, request);
-    }
 }

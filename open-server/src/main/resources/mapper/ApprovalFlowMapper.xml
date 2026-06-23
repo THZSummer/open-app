@@ -12,6 +12,7 @@
         <result column="description_cn" property="descriptionCn"/>
         <result column="description_en" property="descriptionEn"/>
         <!-- ✅ v2.8.0 变更：移除 is_default 字段映射 -->
+        <result column="app_id" property="appId"/>
         <result column="nodes" property="nodes"/>
         <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
@@ -22,17 +23,17 @@
 
     <!-- 基础列 -->
     <sql id="Base_Column_List">
-        id, name_cn, name_en, code, description_cn, description_en, nodes, status,
+        id, name_cn, name_en, code, description_cn, description_en, app_id, nodes, status,
         create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- 插入审批流程 -->
     <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow">
         INSERT INTO openplatform_v2_approval_flow_t (
-            id, name_cn, name_en, code, description_cn, description_en, nodes, status,
+            id, name_cn, name_en, code, description_cn, description_en, app_id, nodes, status,
             create_time, last_update_time, create_by, last_update_by
         ) VALUES (
-            #{id}, #{nameCn}, #{nameEn}, #{code}, #{descriptionCn}, #{descriptionEn}, #{nodes}, #{status},
+            #{id}, #{nameCn}, #{nameEn}, #{code}, #{descriptionCn}, #{descriptionEn}, #{appId}, #{nodes}, #{status},
             #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
@@ -92,6 +93,7 @@
             <if test="nameEn != null">name_en = #{nameEn},</if>
             <if test="descriptionCn != null">description_cn = #{descriptionCn},</if>
             <if test="descriptionEn != null">description_en = #{descriptionEn},</if>
+            <if test="appId != null">app_id = #{appId},</if>
             <if test="nodes != null">nodes = #{nodes},</if>
             <if test="status != null">status = #{status},</if>
             last_update_time = #{lastUpdateTime},
@@ -117,6 +119,20 @@
         SELECT COUNT(*)
         FROM openplatform_v2_approval_flow_t
         WHERE code = #{code} AND id != #{excludeId} AND status = 1
+    </select>
+
+    <!-- 根据编码和应用ID查询审批流程（V3 新增，三级审批人查找） -->
+    <select id="selectByCodeAndAppId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_approval_flow_t
+        WHERE code = #{code} AND status = 1
+        <if test="appId != null">
+            AND app_id = #{appId}
+        </if>
+        <if test="appId == null">
+            AND app_id IS NULL
+        </if>
+        LIMIT 1
     </select>
 
 </mapper>

@@ -1,18 +1,29 @@
 package com.xxx.it.works.wecode.v2.modules.trigger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
+import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
+import com.xxx.it.works.wecode.v2.common.IdGenerator;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
+import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
+import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,6 +47,9 @@ class OpTriggerServiceTest {
     private ReactiveSequentialExecutor executor;
 
     @Mock
+    private DagScheduler dagScheduler;
+
+    @Mock
     private AuthValidatorRegistry authValidatorRegistry;
 
     @Mock
@@ -43,6 +57,27 @@ class OpTriggerServiceTest {
 
     @Mock
     private CacheToggle cacheToggle;
+
+    @Mock
+    private UrlWhitelistValidator urlWhitelistValidator;
+
+    @Mock
+    private OpFlowReadRepository flowReadRepository;
+
+    @Mock
+    private OpConnectorVersionReadRepository connectorVersionReadRepository;
+
+    @Mock
+    private FlowCacheManager cacheManager;
+
+    @Mock
+    private ExecutionRecordService executionRecordService;
+
+    @Mock
+    private ExecutionStepService executionStepService;
+
+    @Mock
+    private IdGenerator idGenerator;
 
     private ObjectMapper objectMapper;
     private OpTriggerService triggerService;
@@ -61,8 +96,11 @@ class OpTriggerServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, executor,
-                flowVersionReadRepository, reactiveRedisTemplate, cacheToggle);
+        when(idGenerator.nextId()).thenReturn(1L);
+        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, urlWhitelistValidator,
+                executor, dagScheduler, flowVersionReadRepository, flowReadRepository,
+                connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle, cacheManager,
+                executionRecordService, executionStepService, idGenerator);
     }
 
     @Test
@@ -72,35 +110,35 @@ class OpTriggerServiceTest {
         flowVersion.setFlowId(100L);
         flowVersion.setOrchestrationConfig(VALID_ORCHESTRATION_CONFIG);
 
-        ExecutionResult mockResult = new ExecutionResult();
-        mockResult.setExecutionId("exec-001");
-        mockResult.setFlowId("100");
-        mockResult.setStatus("success");
-        mockResult.setTotalDurationMs(150L);
-        mockResult.setResultData(Map.of("body", Map.of("msgId", "msg_001"),
+        ExecutionContext mockCtx = new ExecutionContext("exec-001", "100");
+        NodeContext exitNodeCtx = new NodeContext();
+        exitNodeCtx.setNodeId("n1");
+        exitNodeCtx.setNodeType("exit");
+        exitNodeCtx.setStatus("success");
+        exitNodeCtx.setDurationMs(150L);
+        exitNodeCtx.setOutput(Map.of("body", Map.of("msgId", "msg_001"),
                 "header", Map.of("X-Custom", "val1")));
+        mockCtx.setNodeContext(exitNodeCtx);
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
-        when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
+        when(dagScheduler.schedule(anyString(), any())).thenReturn(Mono.just(mockCtx));
+        when(flowReadRepository.findById(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of("sender", "test"), Map.of(), Map.of());
 
         StepVerifier.create(resultMono)
                 .assertNext(response -> {
-                    // 平台元数据头
                     assertEquals("100", response.getPlatformHeaders().get("X-Flow-Id"));
-                    assertEquals("exec-001", response.getPlatformHeaders().get("X-Execution-Id"));
-                    assertEquals("0", response.getPlatformHeaders().get("X-Status")); // success=0
+                    assertNotNull(response.getPlatformHeaders().get("X-Execution-Id"), "Execution ID should not be null");
+                    assertTrue(response.getPlatformHeaders().get("X-Execution-Id").matches("[a-f0-9]{32}"), "Should be a 32-char UUID hex");
+                    assertEquals("0", response.getPlatformHeaders().get("X-Status"));
                     assertEquals("150", response.getPlatformHeaders().get("X-Duration-Ms"));
                     assertEquals("0", response.getPlatformHeaders().get("X-Cache-Status"));
-                    // 用户自定义头
                     assertEquals("val1", response.getUserHeaders().get("X-Custom"));
-                    // Body
                     assertTrue(response.getBody() instanceof Map);
                     Map<?, ?> body = (Map<?, ?>) response.getBody();
                     assertEquals("msg_001", body.get("msgId"));
-                    // HTTP Status
                     assertEquals(200, response.getHttpStatus().value());
                 })
                 .verifyComplete();
@@ -109,6 +147,7 @@ class OpTriggerServiceTest {
     @Test
     @DisplayName("流不存在返回 404 (preExecutionError)")
     void testInvokeFlow_NotFound() {
+        when(flowReadRepository.findById(999L)).thenReturn(Mono.empty());
         when(flowVersionReadRepository.findByFlowId(999L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
@@ -135,7 +174,8 @@ class OpTriggerServiceTest {
         flowVersion.setOrchestrationConfig(VALID_ORCHESTRATION_CONFIG);
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
-        when(executor.execute(any(), anyString())).thenReturn(Mono.error(new RuntimeException("Execution error")));
+        when(dagScheduler.schedule(anyString(), any())).thenReturn(Mono.error(new RuntimeException("Execution error")));
+        when(flowReadRepository.findById(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of(), Map.of(), Map.of());

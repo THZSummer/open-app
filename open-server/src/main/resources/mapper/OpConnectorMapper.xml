@@ -12,6 +12,7 @@
         <result column="icon_file_id" property="iconFileId"/>
         <result column="connector_type" property="connectorType"/>
         <result column="status" property="status"/>
+        <result column="app_id" property="appId"/>
         <result column="create_time" property="createTime"/>
         <result column="last_update_time" property="lastUpdateTime"/>
         <result column="create_by" property="createBy"/>
@@ -21,17 +22,17 @@
     <!-- Base Column -->
     <sql id="Base_Column_List">
         id, name_cn, name_en, description_cn, description_en, icon_file_id,
-        connector_type, status, create_time, last_update_time, create_by, last_update_by
+        connector_type, status, app_id, create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- Insert -->
     <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.connector.entity.Connector">
         INSERT INTO openplatform_v2_cp_connector_t (
             id, name_cn, name_en, description_cn, description_en, icon_file_id,
-            connector_type, status, create_time, last_update_time, create_by, last_update_by
+            connector_type, status, app_id, create_time, last_update_time, create_by, last_update_by
         ) VALUES (
             #{id}, #{nameCn}, #{nameEn}, #{descriptionCn}, #{descriptionEn}, #{iconFileId},
-            #{connectorType}, #{status}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+            #{connectorType}, #{status}, #{appId}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
 
@@ -52,6 +53,7 @@
             icon_file_id     = #{iconFileId},
             connector_type   = #{connectorType},
             status           = #{status},
+            app_id           = #{appId},
             last_update_time = #{lastUpdateTime},
             last_update_by   = #{lastUpdateBy}
         WHERE id = #{id}

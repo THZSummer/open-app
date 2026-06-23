@@ -19,7 +19,7 @@ import java.util.Map;
 /**
  * HTTP 触发 Controller (v5.8)
  * <p>
- * 对外暴露 POST /api/v1/trigger/{flowId}/invoke 端点
+ * 对外暴露 POST /api/v1/flows/{flowId}/invoke 端点
  * 响应外部系统请求并同步执行连接流
  * </p>
  * <p>
@@ -41,7 +41,7 @@ import java.util.Map;
  * </p>
  */
 @RestController
-@RequestMapping("/api/v1/trigger")
+@RequestMapping({"/api/v1/flows", "/api/v1/trigger"})
 @Tag(name = "HTTP 触发", description = "对外 HTTP 触发端点，同步执行连接流 (v5.5)")
 public class OpTriggerController {
 
@@ -56,7 +56,7 @@ public class OpTriggerController {
     /**
      * HTTP 触发连接流执行 (v5.8 透明穿透)
      * <p>
-     * POST /api/v1/trigger/{flowId}/invoke
+     * POST /api/v1/flows/{flowId}/invoke
      * 认证/限流/入参校验全部由 OpTriggerService 根据编排配置动态处理.
      * <ul>
      *   <li>响应体: 出口节点 output.body 裸数据 (不再是 ExecutionResult JSON 信封)</li>

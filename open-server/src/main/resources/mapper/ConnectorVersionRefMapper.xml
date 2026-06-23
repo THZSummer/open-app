@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef">
+        <id column="id" property="id"/>
+        <result column="flow_id" property="flowId"/>
+        <result column="flow_version_id" property="flowVersionId"/>
+        <result column="node_id" property="nodeId"/>
+        <result column="connector_id" property="connectorId"/>
+        <result column="connector_version_id" property="connectorVersionId"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- Base Column -->
+    <sql id="Base_Column_List">
+        id, flow_id, flow_version_id, node_id, connector_id, connector_version_id,
+        create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef">
+        INSERT INTO openplatform_v2_cp_connector_version_ref_t (
+            id, flow_id, flow_version_id, node_id, connector_id, connector_version_id,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{flowId}, #{flowVersionId}, #{nodeId}, #{connectorId}, #{connectorVersionId},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- Batch Insert -->
+    <insert id="insertBatch">
+        INSERT INTO openplatform_v2_cp_connector_version_ref_t (
+            id, flow_id, flow_version_id, node_id, connector_id, connector_version_id,
+            create_time, last_update_time, create_by, last_update_by
+        ) VALUES
+        <foreach collection="list" item="ref" separator=",">
+            (#{ref.id}, #{ref.flowId}, #{ref.flowVersionId}, #{ref.nodeId}, #{ref.connectorId}, #{ref.connectorVersionId},
+             #{ref.createTime}, #{ref.lastUpdateTime}, #{ref.createBy}, #{ref.lastUpdateBy})
+        </foreach>
+    </insert>
+
+    <!-- Delete By ID -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- Delete By FlowVersionId -->
+    <delete id="deleteByFlowVersionId">
+        DELETE FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE flow_version_id = #{flowVersionId}
+    </delete>
+
+    <!-- Select By FlowVersion And Node -->
+    <select id="selectByFlowVersionAndNode" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE flow_version_id = #{flowVersionId}
+          AND node_id = #{nodeId}
+    </select>
+
+    <!-- Select By FlowVersionId -->
+    <select id="selectByFlowVersionId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE flow_version_id = #{flowVersionId}
+    </select>
+
+    <!-- Select By FlowId -->
+    <select id="selectByFlowId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE flow_id = #{flowId}
+    </select>
+
+    <!-- Select By ConnectorVersionId -->
+    <select id="selectByConnectorVersionId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE connector_version_id = #{connectorVersionId}
+    </select>
+
+    <!-- Select By ConnectorId -->
+    <select id="selectByConnectorId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE connector_id = #{connectorId}
+    </select>
+
+    <!-- Select By ConnectorVersion And Flow -->
+    <select id="selectByConnectorVersionAndFlow" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE connector_version_id = #{connectorVersionId}
+          AND flow_id = #{flowId}
+          AND flow_version_id = #{flowVersionId}
+    </select>
+
+</mapper>

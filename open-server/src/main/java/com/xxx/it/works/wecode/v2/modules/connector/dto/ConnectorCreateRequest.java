@@ -6,36 +6,34 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * 创建连接器请求
+ * 创建连接器请求（V3 应用隔离版本）
  * <p>
  * API #1: POST /service/open/v2/connectors
+ * V3 变更：移除 iconFileId，创建时不自动生成草稿版本
  * </p>
  */
 @Data
 public class ConnectorCreateRequest {
 
-    /** 中文名称 */
+    /** 中文名称，最长 64 字符 */
     @NotBlank(message = "中文名称不能为空")
-    @Size(max = 200, message = "中文名称长度不能超过200")
+    @Size(max = 64, message = "中文名称长度不能超过64")
     private String nameCn;
 
-    /** 英文名称 */
+    /** 英文名称，最长 128 字符 */
     @NotBlank(message = "英文名称不能为空")
-    @Size(max = 200, message = "英文名称长度不能超过200")
+    @Size(max = 128, message = "英文名称长度不能超过128")
     private String nameEn;
 
-    /** 中文描述 */
+    /** 中文描述，最长 512 字符 */
+    @Size(max = 512, message = "中文描述长度不能超过512")
     private String descriptionCn;
 
-    /** 英文描述 */
+    /** 英文描述，最长 512 字符 */
+    @Size(max = 512, message = "英文描述长度不能超过512")
     private String descriptionEn;
 
-    /** 图标文件ID */
-    private String iconFileId;
-
-    /** 连接器类型: 1=HTTP (MVP仅支持HTTP) */
+    /** 协议类型，固定传 1（HTTP） */
     @NotNull(message = "连接器类型不能为空")
-    @jakarta.validation.constraints.Min(value = 1, message = "连接器类型不支持")
-    @jakarta.validation.constraints.Max(value = 1, message = "连接器类型不支持")
     private Integer connectorType;
 }
