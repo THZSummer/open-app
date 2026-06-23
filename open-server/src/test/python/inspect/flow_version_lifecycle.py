@@ -38,7 +38,7 @@ def _escape(obj):
 def api_post(path, body=None):
     try:
         resp = req_lib.post(f"{BASE_URL}{path}", json=body or {},
-                            headers={"Content-Type": "application/json"}, timeout=10)
+                            headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: 请求失败 - {e}")
@@ -48,7 +48,7 @@ def api_post(path, body=None):
 def api_put(path, body=None):
     try:
         resp = req_lib.put(f"{BASE_URL}{path}", json=body or {},
-                           headers={"Content-Type": "application/json"}, timeout=10)
+                           headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: 请求失败 - {e}")
@@ -58,7 +58,7 @@ def api_put(path, body=None):
 def api_get(path):
     try:
         resp = req_lib.get(f"{BASE_URL}{path}",
-                           headers={"Content-Type": "application/json"}, timeout=10)
+                           headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: 请求失败 - {e}")
@@ -192,12 +192,12 @@ print("=" * 60)
 
 try:
     # [Step 1] 通过 API 创建连接流
-    print("\n  -- [1] 创建连接流 (POST /flows) --")
-    resp = api_post("/flows", {
+    print("\n  -- [1] 创建连接流 (POST /service/open/v2/flows) --")
+    resp = api_post("/service/open/v2/flows", {
         "nameCn": "E2E流版本测试",
         "nameEn": "E2E_FlowVersion_Test"
     })
-    if resp:
+    if resp is not None:
         check("创建流 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -214,8 +214,8 @@ try:
         fid_001 = snow_id()
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_t "
-            f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-            f"VALUES ({fid_001}, 'E2E流版本测试', 'E2E_FlowVersion_Test', 0, 'tester', 'tester')"
+            f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+            f"VALUES ({fid_001}, 'E2E流版本测试', 'E2E_FlowVersion_Test', 1, 1, 'tester', 'tester')"
         )
         check("创建流 (MySQL fallback)", True)
 
@@ -224,9 +224,9 @@ try:
     print(f"  ✅ 连接流已创建 id={fid_001}")
 
     # [Step 2] 创建空草稿版本 (FR-016)
-    print("\n  -- [2] 创建空草稿版本 (POST /flows/{id}/versions) (FR-016) --")
-    resp = api_post(f"/flows/{fid_001}/versions")
-    if resp:
+    print("\n  -- [2] 创建空草稿版本 (POST /service/open/v2/flows/{id}/versions) (FR-016) --")
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions")
+    if resp is not None:
         check("创建空草稿 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -235,7 +235,7 @@ try:
             fvid_001 = data["data"].get("id") or data["data"].get("versionId")
             check("返回 versionId", bool(fvid_001),
                   f"data={json.dumps(data, ensure_ascii=False)[:200]}")
-    else:
+    if fvid_001 is None:
         # Fallback: MySQL 创建
         fvid_001 = snow_id()
         _mysql(
@@ -250,11 +250,11 @@ try:
     print(f"  ✅ 空草稿版本已创建 vid={fvid_001}")
 
     # [Step 3] 更新草稿编排 (FR-024a)
-    print("\n  -- [3] 更新草稿编排 (PUT /flows/{id}/versions/{vid}) (FR-024a) --")
+    print("\n  -- [3] 更新草稿编排 (PUT /service/open/v2/flows/{id}/versions/{vid}) (FR-024a) --")
     orch = build_orchestration(cvid)
-    resp = api_put(f"/flows/{fid_001}/versions/{fvid_001}",
+    resp = api_put(f"/service/open/v2/flows/{fid_001}/versions/{fvid_001}",
                    {"orchestrationConfig": json.dumps(orch)})
-    if resp:
+    if resp is not None:
         check("更新编排 HTTP 200",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -273,9 +273,9 @@ try:
     print(f"  ✅ 草稿编排已保存 (nodes={len(orch['nodes'])}, edges={len(orch['edges'])})")
 
     # [Step 4] 提交审批 (FR-033)
-    print("\n  -- [4] 提交审批 (POST /flows/{id}/versions/{vid}/publish) (FR-033) --")
-    resp = api_post(f"/flows/{fid_001}/versions/{fvid_001}/publish")
-    if resp:
+    print("\n  -- [4] 提交审批 (POST /service/open/v2/flows/{id}/versions/{vid}/publish) (FR-033) --")
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions/{fvid_001}/publish")
+    if resp is not None:
         check("提交审批 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -286,6 +286,10 @@ try:
     else:
         check("提交审批 (API 不可用)", False)
     print(f"  ✅ 版本 {fvid_001} 已提交审批")
+
+    # 模拟审批通过：MySQL 更新版本状态为 PUBLISHED(5)
+    _mysql(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 5 WHERE id = {fvid_001}")
+    print(f"  ✅ 版本 {fvid_001} 审批模拟通过 (status=5 PUBLISHED)")
 
 finally:
     pass  # 继续供后续测试使用
@@ -302,18 +306,18 @@ print("=" * 60)
 
 try:
     # [Step 5] 模拟审批通过：MySQL 更新版本状态为已发布
-    print("\n  -- [5] 模拟审批通过 (MySQL: status=1) --")
+    print("\n  -- [5] 模拟审批通过 (MySQL: status=5) --")
     _mysql(
         f"UPDATE openplatform_v2_cp_flow_version_t "
-        f"SET status = 1 WHERE id = {fvid_001}"
+        f"SET status = 5 WHERE id = {fvid_001}"
     )
-    check("模拟审批通过 (MySQL status=1)", True)
+    check("模拟审批通过 (MySQL status=5)", True)
     print(f"  ✅ 版本 {fvid_001} 状态已更新为 published")
 
     # [Step 6] 查看版本列表 (FR-026)
-    print("\n  -- [6] 查看版本列表 (GET /flows/{id}/versions) (FR-026) --")
-    resp = api_get(f"/flows/{fid_001}/versions")
-    if resp:
+    print("\n  -- [6] 查看版本列表 (GET /service/open/v2/flows/{id}/versions) (FR-026) --")
+    resp = api_get(f"/service/open/v2/flows/{fid_001}/versions")
+    if resp is not None:
         check("版本列表 HTTP 200",
               resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -354,9 +358,9 @@ print("=" * 60)
 
 try:
     # [Step 7] 创建第二个草稿版本
-    print("\n  -- [7] 创建第二个草稿版本 (POST /flows/{id}/versions) --")
-    resp = api_post(f"/flows/{fid_001}/versions")
-    if resp:
+    print("\n  -- [7] 创建第二个草稿版本 (POST /service/open/v2/flows/{id}/versions) --")
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions")
+    if resp is not None:
         check("创建第二个草稿 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -366,7 +370,7 @@ try:
             check("第二个草稿返回 versionId",
                   bool(fvid_003) and str(fvid_003) != str(fvid_001),
                   f"vid={fvid_003}")
-    else:
+    if fvid_003 is None:
         fvid_003 = snow_id()
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_version_t "
@@ -382,9 +386,9 @@ try:
     # [Step 8] 更新第二个草稿编排
     print("\n  -- [8] 更新第二个草稿编排 --")
     orch2 = build_orchestration(cvid)
-    resp = api_put(f"/flows/{fid_001}/versions/{fvid_003}",
+    resp = api_put(f"/service/open/v2/flows/{fid_001}/versions/{fvid_003}",
                    {"orchestrationConfig": json.dumps(orch2)})
-    if resp:
+    if resp is not None:
         check("更新第二草稿 HTTP 200",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -399,8 +403,8 @@ try:
 
     # [Step 9] 发布第二个草稿
     print("\n  -- [9] 发布第二个草稿 --")
-    resp = api_post(f"/flows/{fid_001}/versions/{fvid_003}/publish")
-    if resp:
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions/{fvid_003}/publish")
+    if resp is not None:
         check("发布第二草稿 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -410,13 +414,13 @@ try:
     # 模拟审批通过第二个版本
     _mysql(
         f"UPDATE openplatform_v2_cp_flow_version_t "
-        f"SET status = 1 WHERE id = {fvid_003}"
+        f"SET status = 5 WHERE id = {fvid_003}"
     )
     print(f"  ✅ 第二个版本 {fvid_003} 已审批通过")
 
     # [Step 10] 验证多版本共存
     print("\n  -- [10] 验证多版本共存 --")
-    resp = api_get(f"/flows/{fid_001}/versions")
+    resp = api_get(f"/service/open/v2/flows/{fid_001}/versions")
     if resp and resp.status_code == 200:
         data = resp.json()
         vers = data.get("data", [])
@@ -451,8 +455,8 @@ print("=" * 60)
 try:
     # [Step 11] 创建第三个草稿版本
     print("\n  -- [11] 创建第三个草稿版本 --")
-    resp = api_post(f"/flows/{fid_001}/versions")
-    if resp:
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions")
+    if resp is not None:
         check("创建第三个草稿 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -474,9 +478,9 @@ try:
     # [Step 12] 更新第三个草稿编排
     print("\n  -- [12] 更新第三个草稿编排 --")
     orch3 = build_orchestration(cvid)
-    resp = api_put(f"/flows/{fid_001}/versions/{fvid_004}",
+    resp = api_put(f"/service/open/v2/flows/{fid_001}/versions/{fvid_004}",
                    {"orchestrationConfig": json.dumps(orch3)})
-    if resp:
+    if resp is not None:
         check("更新第三草稿 HTTP 200",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -491,8 +495,8 @@ try:
 
     # [Step 13] 提交审批
     print("\n  -- [13] 提交第三个草稿的审批 --")
-    resp = api_post(f"/flows/{fid_001}/versions/{fvid_004}/publish")
-    if resp:
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions/{fvid_004}/publish")
+    if resp is not None:
         check("提交审批 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -501,20 +505,20 @@ try:
         # Fallback: simulate pending approval via MySQL
         _mysql(
             f"UPDATE openplatform_v2_cp_flow_version_t "
-            f"SET status = 0 WHERE id = {fvid_004}"
+            f"SET status = 3 WHERE id = {fvid_004}"
         )
         print(f"  ⚠️  publish API 不可用，使用 MySQL 模拟待审批状态")
 
     # 在审批前，确保状态不是 published
     _mysql(
         f"UPDATE openplatform_v2_cp_flow_version_t "
-        f"SET status = 0 WHERE id = {fvid_004}"
+        f"SET status = 3 WHERE id = {fvid_004}"
     )
 
     # [Step 14] 撤回审批 (FR-031)
-    print("\n  -- [14] 撤回审批 (POST /flows/{id}/versions/{vid}/cancel) (FR-031) --")
-    resp = api_post(f"/flows/{fid_001}/versions/{fvid_004}/cancel")
-    if resp:
+    print("\n  -- [14] 撤回审批 (POST /service/open/v2/flows/{id}/versions/{vid}/cancel) (FR-031) --")
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions/{fvid_004}/cancel")
+    if resp is not None:
         http_ok = resp.status_code in (200, 201)
         check("撤回审批 HTTP 200/201",
               http_ok,
@@ -528,14 +532,14 @@ try:
         # Fallback: MySQL 模拟撤回
         _mysql(
             f"UPDATE openplatform_v2_cp_flow_version_t "
-            f"SET status = 0 WHERE id = {fvid_004}"
+            f"SET status = 3 WHERE id = {fvid_004}"
         )
         check("撤回审批 (MySQL fallback — cancel API 不可用)", True)
     print(f"  ✅ 版本 {fvid_004} 审批已撤回")
 
     # [Step 15] 验证撤回后版本列表仍包含该版本
     print("\n  -- [15] 验证撤回后版本列表仍含该版本 --")
-    resp = api_get(f"/flows/{fid_001}/versions")
+    resp = api_get(f"/service/open/v2/flows/{fid_001}/versions")
     if resp and resp.status_code == 200:
         data = resp.json()
         vers = data.get("data", [])
@@ -569,10 +573,10 @@ print("IT-FLOW-005: 已发布版本不可撤回 (FR-031 边界)")
 print("=" * 60)
 
 try:
-    # 对已发布版本 (status=1) 尝试撤回
+    # 对已发布版本 (status=5) 尝试撤回
     print("\n  -- [16] 尝试撤回已发布版本 v1 --")
-    resp = api_post(f"/flows/{fid_001}/versions/{fvid_001}/cancel")
-    if resp:
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/versions/{fvid_001}/cancel")
+    if resp is not None:
         # 预期应返回错误（已发布版本不可撤回）
         data = resp.json()
         should_reject = (

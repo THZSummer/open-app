@@ -29,7 +29,7 @@ def _escape(obj):
 def api_post(path, body=None):
     try:
         resp = req_lib.post(f"{BASE_URL}{path}", json=body or {},
-                            headers={"Content-Type": "application/json"}, timeout=10)
+                            headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: POST {path} - {e}")
@@ -38,7 +38,7 @@ def api_post(path, body=None):
 def api_get(path):
     try:
         resp = req_lib.get(f"{BASE_URL}{path}",
-                           headers={"Content-Type": "application/json"}, timeout=10)
+                           headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: GET {path} - {e}")
@@ -172,12 +172,12 @@ print("=" * 60)
 
 try:
     # [Step 1] 创建连接流
-    print("\n  -- [1] 创建连接流 (POST /flows) --")
-    resp = api_post("/flows", {
+    print("\n  -- [1] 创建连接流 (POST /service/open/v2/flows) --")
+    resp = api_post("/service/open/v2/flows", {
         "nameCn": "E2E复制测试流",
         "nameEn": "E2E_Copy_Test"
     })
-    if resp:
+    if resp is not None:
         check("创建流 HTTP 200/201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -194,8 +194,8 @@ try:
         fid_001 = snow_id()
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_t "
-            f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-            f"VALUES ({fid_001}, 'E2E复制测试流', 'E2E_Copy_Test', 0, 'tester', 'tester')"
+            f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+            f"VALUES ({fid_001}, 'E2E复制测试流', 'E2E_Copy_Test', 1, 1, 'tester', 'tester')"
         )
         check("创建流 (MySQL fallback)", True)
 
@@ -211,7 +211,7 @@ try:
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
-        f"VALUES ({fvid_001a}, {fid_001}, '{_escape(orch)}', 1, 'tester', 'tester')"
+        f"VALUES ({fvid_001a}, {fid_001}, '{_escape(orch)}', 5, 'tester', 'tester')"
     )
     check("创建 published 版本", True, f"vid={fvid_001a}")
     print(f"     published 版本已创建 vid={fvid_001a}")
@@ -220,15 +220,15 @@ try:
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
-        f"VALUES ({fvid_001b}, {fid_001}, '{_escape(orch)}', 0, 'tester', 'tester')"
+        f"VALUES ({fvid_001b}, {fid_001}, '{_escape(orch)}', 1, 'tester', 'tester')"
     )
     check("创建 draft 版本", True, f"vid={fvid_001b}")
     print(f"     draft 版本已创建 vid={fvid_001b}")
 
     # [Step 3] 复制流
-    print("\n  -- [3] 复制流 (POST /flows/{id}/copy) --")
-    resp = api_post(f"/flows/{fid_001}/copy", {})
-    if resp:
+    print("\n  -- [3] 复制流 (POST /service/open/v2/flows/{id}/copy) --")
+    resp = api_post(f"/service/open/v2/flows/{fid_001}/copy", {})
+    if resp is not None:
         http_ok = resp.status_code in (200, 201)
         check("复制流 HTTP 200/201",
               http_ok,
@@ -256,10 +256,10 @@ try:
                   "_copy_" in new_name_en,
                   f"nameEn={new_name_en}")
 
-            # 验证新流状态为 stopped (lifecycle_status=0)
+            # 验证新流状态为 stopped (lifecycle_status=1)
             new_lifecycle = data["data"].get("lifecycleStatus") or data["data"].get("lifecycle_status")
-            is_stopped = new_lifecycle in (0, "0", "STOPPED", "stopped")
-            check("新流状态为 stopped (lifecycle_status=0)",
+            is_stopped = new_lifecycle in (1, "1", "STOPPED", "stopped")
+            check("新流状态为 stopped (lifecycle_status=1)",
                   is_stopped,
                   f"lifecycle_status={new_lifecycle}")
         else:
@@ -271,8 +271,8 @@ try:
         # 复制流记录
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_t "
-            f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-            f"VALUES ({copied_fid}, 'E2E复制测试流_copy_20250101', 'E2E_Copy_Test_copy_20250101', 0, 'tester', 'tester')"
+            f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+            f"VALUES ({copied_fid}, 'E2E复制测试流_copy_20250101', 'E2E_Copy_Test_copy_20250101', 1, 1, 'tester', 'tester')"
         )
         check("复制流 (MySQL fallback)", True)
         print(f"  ⚠️  复制 API 不可用，使用 MySQL 模拟")
@@ -282,9 +282,9 @@ try:
         raise RuntimeError("FATAL: 复制流失败，终止 IT-COPY-001")
 
     # [Step 4] 查询新流版本历史
-    print("\n  -- [4] 查询新流版本列表 (GET /flows/{id}/versions) --")
-    resp = api_get(f"/flows/{copied_fid}/versions")
-    if resp:
+    print("\n  -- [4] 查询新流版本列表 (GET /service/open/v2/flows/{id}/versions) --")
+    resp = api_get(f"/service/open/v2/flows/{copied_fid}/versions")
+    if resp is not None:
         check("新流版本列表 HTTP 200",
               resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -328,8 +328,8 @@ try:
     fid_002 = snow_id()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-        f"VALUES ({fid_002}, 'E2E单版本复制测试', 'E2E_SingleVerCopy', 0, 'tester', 'tester')"
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+        f"VALUES ({fid_002}, 'E2E单版本复制测试', 'E2E_SingleVerCopy', 1, 1, 'tester', 'tester')"
     )
     print(f"  ✅ 连接流已创建 id={fid_002}")
 
@@ -338,15 +338,15 @@ try:
     _mysql(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
-        f"VALUES ({fvid_002}, {fid_002}, '{_escape(orch)}', 1, 'tester', 'tester')"
+        f"VALUES ({fvid_002}, {fid_002}, '{_escape(orch)}', 5, 'tester', 'tester')"
     )
     check("创建单版本 (MySQL)", True, f"vid={fvid_002}")
     print(f"  ✅ 单版本已创建 vid={fvid_002}")
 
     # [Step 6] 复制流
-    print("\n  -- [6] 复制单版本流 (POST /flows/{id}/copy) --")
-    resp = api_post(f"/flows/{fid_002}/copy", {})
-    if resp:
+    print("\n  -- [6] 复制单版本流 (POST /service/open/v2/flows/{id}/copy) --")
+    resp = api_post(f"/service/open/v2/flows/{fid_002}/copy", {})
+    if resp is not None:
         http_ok = resp.status_code in (200, 201)
         check("复制单版本流 HTTP 200/201",
               http_ok,
@@ -367,8 +367,8 @@ try:
         copied_fid_002 = snow_id()
         _mysql(
             f"INSERT INTO openplatform_v2_cp_flow_t "
-            f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
-            f"VALUES ({copied_fid_002}, 'E2E单版本复制测试_copy_20250101', 'E2E_SingleVerCopy_copy_20250101', 0, 'tester', 'tester')"
+            f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
+            f"VALUES ({copied_fid_002}, 'E2E单版本复制测试_copy_20250101', 'E2E_SingleVerCopy_copy_20250101', 1, 1, 'tester', 'tester')"
         )
         check("复制单版本流 (MySQL fallback)", True)
     print(f"  ✅ 新流已创建 copied_fid={copied_fid_002}")
@@ -378,7 +378,7 @@ try:
 
     # [Step 7] 验证单版本复制结果
     print("\n  -- [7] 验证单版本复制结果 --")
-    resp = api_get(f"/flows/{copied_fid_002}/versions")
+    resp = api_get(f"/service/open/v2/flows/{copied_fid_002}/versions")
     if resp and resp.status_code == 200:
         data = resp.json()
         vers = data.get("data", [])

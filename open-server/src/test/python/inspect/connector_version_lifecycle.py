@@ -37,7 +37,7 @@ def _escape(obj):
 def api_post(path, body=None):
     try:
         resp = req_lib.post(f"{BASE_URL}{path}", json=body or {},
-                            headers={"Content-Type": "application/json"}, timeout=10)
+                            headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: 请求失败 - {e}")
@@ -47,7 +47,7 @@ def api_post(path, body=None):
 def api_put(path, body=None):
     try:
         resp = req_lib.put(f"{BASE_URL}{path}", json=body or {},
-                           headers={"Content-Type": "application/json"}, timeout=10)
+                           headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: 请求失败 - {e}")
@@ -57,7 +57,7 @@ def api_put(path, body=None):
 def api_get(path):
     try:
         resp = req_lib.get(f"{BASE_URL}{path}",
-                           headers={"Content-Type": "application/json"}, timeout=10)
+                           headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
         return resp
     except Exception as e:
         print(f"  SKIP: 请求失败 - {e}")
@@ -102,14 +102,14 @@ try:
     cid_108 = snow_id()
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid_108}, 'E2E版本测试连接器', 'E2E_Version_Test', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid_108}, 'E2E版本测试连接器', 'E2E_Version_Test', 1, 1, 'tester', 'tester')"
     )
     print(f"  [1] 连接器已创建 id={cid_108}")
 
     # 2. 创建空草稿版本 (FR-005a)
-    resp = api_post(f"/connectors/{cid_108}/versions")
-    if resp:
+    resp = api_post(f"/service/open/v2/connectors/{cid_108}/versions")
+    if resp is not None:
         check("创建空草稿 HTTP 201",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -120,7 +120,7 @@ try:
                   f"data={json.dumps(data, ensure_ascii=False)[:200]}")
         # 空草稿配置为空
         check("空草稿配置为空", True)
-    else:
+    if cvid_108 is None:
         print("  SKIP: 创建草稿 API 不可用，使用 MySQL 插入")
         cvid_108 = snow_id()
         _mysql(
@@ -132,9 +132,9 @@ try:
     print(f"  [2] 空草稿版本已创建 vid={cvid_108}")
 
     # 3. 更新草稿配置
-    resp = api_put(f"/connectors/{cid_108}/versions/{cvid_108}",
+    resp = api_put(f"/service/open/v2/connectors/{cid_108}/versions/{cvid_108}",
                    {"connectionConfig": json.dumps(CONNECTION_CONFIG)})
-    if resp:
+    if resp is not None:
         check("更新草稿配置 HTTP 200",
               resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -161,8 +161,8 @@ print("IT-109: 发布草稿版本 (FR-007)")
 print("=" * 60)
 
 try:
-    resp = api_put(f"/connectors/{cid_108}/versions/{cvid_108}/publish")
-    if resp:
+    resp = api_put(f"/service/open/v2/connectors/{cid_108}/versions/{cvid_108}/publish")
+    if resp is not None:
         check("发布版本 HTTP 200",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -170,7 +170,7 @@ try:
         # MySQL fallback
         _mysql(
             f"UPDATE openplatform_v2_cp_connector_version_t "
-            f"SET status = 1 WHERE id = {cvid_108}"
+            f"SET status = 2 WHERE id = {cvid_108}"
         )
         check("发布版本 (MySQL)", True)
 
@@ -186,8 +186,8 @@ print("IT-110: 查看连接器版本列表")
 print("=" * 60)
 
 try:
-    resp = api_get(f"/connectors/{cid_108}/versions")
-    if resp:
+    resp = api_get(f"/service/open/v2/connectors/{cid_108}/versions")
+    if resp is not None:
         check("查询版本列表 HTTP 200",
               resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -209,8 +209,8 @@ print("IT-111: 复制已发布版本到草稿 (FR-006)")
 print("=" * 60)
 
 try:
-    resp = api_post(f"/connectors/{cid_108}/versions/{cvid_108}/copy-to-draft")
-    if resp:
+    resp = api_post(f"/service/open/v2/connectors/{cid_108}/versions/{cvid_108}/copy-to-draft")
+    if resp is not None:
         check("复制到草稿 HTTP 200",
               resp.status_code in (200, 201),
               f"实际: {resp.status_code}")
@@ -220,7 +220,7 @@ try:
             check("复制后返回新 versionId",
                   bool(cvid_108b) and cvid_108b != cvid_108,
                   f"vid={cvid_108b}")
-    else:
+    if cvid_108b is None:
         # Fallback
         cvid_108b = snow_id()
         _mysql(
@@ -235,12 +235,12 @@ try:
     if cvid_108b:
         _mysql(
             f"UPDATE openplatform_v2_cp_connector_version_t "
-            f"SET status = 1 WHERE id = {cvid_108b}"
+            f"SET status = 2 WHERE id = {cvid_108b}"
         )
         print(f"  [4] 第二个已发布版本 vid={cvid_108b}")
 
     # 验证多已发布版本共存
-    resp = api_get(f"/connectors/{cid_108}/versions")
+    resp = api_get(f"/service/open/v2/connectors/{cid_108}/versions")
     if resp and resp.status_code == 200:
         data = resp.json()
         vers = data.get("data", [])
@@ -260,15 +260,15 @@ print("IT-112: 失效已发布版本 (FR-009)")
 print("=" * 60)
 
 try:
-    resp = api_put(f"/connectors/{cid_108}/versions/{cvid_108}/invalidate")
-    if resp:
+    resp = api_put(f"/service/open/v2/connectors/{cid_108}/versions/{cvid_108}/invalidate")
+    if resp is not None:
         check("失效版本响应",
               True,  # 接受任意结果（可能有引用校验）
               f"HTTP: {resp.status_code}")
     else:
         _mysql(
             f"UPDATE openplatform_v2_cp_connector_version_t "
-            f"SET status = 2 WHERE id = {cvid_108}"
+            f"SET status = 3 WHERE id = {cvid_108}"
         )
         check("失效版本 (MySQL)", True)
 
@@ -286,10 +286,10 @@ print("=" * 60)
 try:
     # 尝试通过 API 删除
     resp = req_lib.delete(
-        f"{BASE_URL}/connectors/{cid_108}/versions/{cvid_108}",
-        headers={"Content-Type": "application/json"}, timeout=10
+        f"{BASE_URL}/service/open/v2/connectors/{cid_108}/versions/{cvid_108}",
+        headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10
     )
-    if resp:
+    if resp is not None:
         check("删除已失效版本 HTTP 200",
               resp.status_code in (200, 204),
               f"实际: {resp.status_code}")

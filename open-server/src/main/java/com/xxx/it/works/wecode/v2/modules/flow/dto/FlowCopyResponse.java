@@ -20,6 +20,9 @@ public class FlowCopyResponse {
     /** 新连接流名称 */
     private String nameCn;
 
+    /** 新连接流英文名称 */
+    private String nameEn;
+
     /** 生命周期状态 */
     private Integer lifecycleStatus;
 

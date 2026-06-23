@@ -44,8 +44,8 @@ print(f"\n[Setup] 创建测试连接器 id={cid}")
 try:
     _mysql(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
-        f"VALUES ({cid}, '白名单测试连接器', 'WL_Test_Connector', 1, 'tester', 'tester')"
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
+        f"VALUES ({cid}, '白名单测试连接器', 'WL_Test_Connector', 1, 1, 'tester', 'tester')"
     )
 
     # ═══════════════════════════════════════════════════════════
@@ -56,7 +56,7 @@ try:
     print(f"{'='*60}")
 
     resp = api_get(f"/service/open/v2/connectors/{cid}", headers={"X-App-Id": "1"})
-    if resp:
+    if resp is not None:
         check("HTTP 200 — 白名单应用请求成功",
               resp.status_code == 200,
               f"实际: {resp.status_code}")
@@ -75,7 +75,7 @@ try:
     print(f"{'='*60}")
 
     resp = api_get(f"/service/open/v2/connectors/{cid}")
-    if resp:
+    if resp is not None:
         check("HTTP 403 — 缺少 X-App-Id Header",
               resp.status_code == 403,
               f"实际: {resp.status_code}")
@@ -103,7 +103,7 @@ try:
     print(f"{'='*60}")
 
     resp = api_get(f"/service/open/v2/connectors/{cid}", headers={"X-App-Id": "99999"})
-    if resp:
+    if resp is not None:
         check("HTTP 200 — 空白名单任意应用放行",
               resp.status_code == 200,
               f"实际: {resp.status_code}")

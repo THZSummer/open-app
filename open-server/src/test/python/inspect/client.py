@@ -9,11 +9,15 @@
 
 open-server 标准响应格式: {code, messageZh, messageEn, data}
 """
+import atexit
 import sys
 import json
 import requests
 import time
 import re
+
+_pass_count = 0
+_fail_count = 0
 
 __all__ = [
     "BASE_URL", "is_quiet", "request",
@@ -89,9 +93,12 @@ def _is_pass(resp):
         return resp.ok
 
 def check(name, condition, detail=""):
+    global _pass_count, _fail_count
     if condition:
+        _pass_count += 1
         print(f"  ✅ PASS: {name}" + (f" - {detail}" if detail else ""))
     else:
+        _fail_count += 1
         print(f"  ❌ FAIL: {name}" + (f" - {detail}" if detail else ""))
 
 def check_field_type(body, field_path, expected_type):
@@ -109,3 +116,17 @@ def check_field_type(body, field_path, expected_type):
 
 def check_camel_case(name):
     return bool(re.match(r"^[a-z]+[A-Za-z0-9]*$", name))
+
+def _print_summary():
+    if is_quiet():
+        return
+    print(f"\n── 测试结果 ──")
+    print(f"  ✅ PASS: {_pass_count}  ❌ FAIL: {_fail_count}")
+    print(f"  exit code: {'1' if _fail_count > 0 else '0'}")
+
+def _atexit_handler():
+    _print_summary()
+    if _fail_count > 0:
+        sys.exit(1)
+
+atexit.register(_atexit_handler)
