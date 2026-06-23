@@ -33,14 +33,11 @@
         WHERE id = #{id}
     </select>
 
-    <!-- ==================== selectPendingList (3-table JOIN) ==================== -->
+    <!-- ==================== selectPendingList (单表) ==================== -->
     <select id="selectPendingList" resultMap="BaseResultMap">
         SELECT r.id, r.business_type, r.business_id, r.applicant_id,
-               r.status, r.current_node, r.create_time, r.last_update_time,
-               v.version_code, a.app_id, a.app_name_cn, a.app_name_en
+               r.status, r.current_node, r.create_time, r.last_update_time
         FROM openplatform_v2_approval_record_t r
-        LEFT JOIN openplatform_app_version_t v ON r.business_id = v.id
-        LEFT JOIN openplatform_app_t a ON v.app_id = a.id
         WHERE r.status = 0
           AND r.business_type = 'app_version_publish'
         ORDER BY r.last_update_time DESC
@@ -108,12 +105,12 @@
         LIMIT 1
     </select>
 
-    <!-- ==================== selectCapabilityNames ==================== -->
-    <select id="selectCapabilityNames" resultType="string">
-        SELECT ab.ability_name_cn
-        FROM openplatform_app_ability_relation_t acr
-        LEFT JOIN openplatform_ability_t ab ON acr.ability_id = ab.id
-        WHERE acr.app_id = #{appPkId}
+    <!-- ==================== selectVersionAbilityIds ==================== -->
+    <select id="selectVersionAbilityIds" resultType="string">
+        SELECT property_value
+        FROM openplatform_app_version_p_t
+        WHERE parent_id = #{versionId}
+          AND property_name = 'abilityIds'
     </select>
 
     <!-- ==================== selectThirdPartyAppId ==================== -->

@@ -24,7 +24,10 @@ public interface ApprovalRecordMapper {
 
     String selectApplicantByVersionId(@Param("versionId") Long versionId);
 
-    List<String> selectCapabilityNames(@Param("appPkId") Long appPkId);
-
     String selectThirdPartyAppId(@Param("appPkId") Long appPkId);
+
+    /**
+     * 从版本属性表查询 abilityIds（逗号分隔的能力主键 ID）
+     */
+    String selectVersionAbilityIds(@Param("versionId") Long versionId);
 }

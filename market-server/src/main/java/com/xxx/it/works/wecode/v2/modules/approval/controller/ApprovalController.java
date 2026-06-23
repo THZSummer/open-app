@@ -6,7 +6,6 @@ import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalListRequest;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalProcessRequest;
 import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
 import com.xxx.it.works.wecode.v2.modules.approval.vo.ApprovalListVo;
-import com.xxx.it.works.wecode.v2.modules.lookup.vo.common.PageVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -19,9 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * 审批管理控制器
- */
+import java.util.List;
+
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/apps")
@@ -34,7 +32,7 @@ public class ApprovalController {
     @GetMapping("/pending")
     @AuthRole
     @Operation(summary = "查询待审批应用列表")
-    public ApiResponse<PageVO<ApprovalListVo>> getPendingList(
+    public ApiResponse<List<ApprovalListVo>> getPendingList(
             @RequestParam(required = false, defaultValue = "1") Integer curPage,
             @RequestParam(required = false, defaultValue = "10") Integer pageSize) {
         log.info("Get pending list, curPage={}, pageSize={}", curPage, pageSize);
@@ -47,7 +45,7 @@ public class ApprovalController {
     @GetMapping("/publish")
     @AuthRole
     @Operation(summary = "查询已上架应用列表")
-    public ApiResponse<PageVO<ApprovalListVo>> getPublishedList(
+    public ApiResponse<List<ApprovalListVo>> getPublishedList(
             @RequestParam(required = false, defaultValue = "1") Integer curPage,
             @RequestParam(required = false, defaultValue = "10") Integer pageSize) {
         log.info("Get published list, curPage={}, pageSize={}", curPage, pageSize);

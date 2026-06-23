@@ -14,7 +14,7 @@ public class ApprovalListVo implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Schema(description = "审批记录ID")
-    private Long id;
+    private String id;
 
     @Schema(description = "业务类型")
     private String businessType;

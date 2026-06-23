@@ -1,11 +1,13 @@
 package com.xxx.it.works.wecode.v2.modules.approval.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Schema(description = "审批节点")
 public class ApprovalNodeDto implements Serializable {
 
@@ -24,5 +26,5 @@ public class ApprovalNodeDto implements Serializable {
     private Integer order;
 
     @Schema(description = "审批层级")
-    private Integer level;
+    private String level;
 }

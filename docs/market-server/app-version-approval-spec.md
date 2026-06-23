@@ -1,8 +1,10 @@
 # market-server 通用审批管理模块 — 技术规格书（Spec）
 
-> **版本**: v10.0 | **日期**: 2026-06-22 | **状态**: 待评审
+> **版本**: v10.1 | **日期**: 2026-06-23 | **状态**: 待评审
 >
 > **效果图**: 浏览器打开 [`approval-page-mockup.html`](./approval-page-mockup.html) 可交互预览
+>
+> **v10.1 变更摘要**: 待审批列表主查询由 3 表 JOIN 改为单表查询 approval_record_t，version/app 数据由 Service 层单表补查后整合；新增 AppEntity / AppVersionEntity / AppMapper / AppVersionMapper；AppVersionPublishHandler 通过/驳回时使用 AppVersionStatusEnum 更新版本状态；更新 §1.4 / §2.1 / §5.1 / §5.3 / §6.1
 >
 > **v10.0 变更摘要**: API URL 路径前缀由 `/approvals/` 重命名为 `/apps/`；端点名 `app-pending` → `pending`、`app-published` → `publish`、`app-process` → `approval`；同步更新 §2.1 / §2.2.3 / §5.1 / §6.1 / §6.3 中所有引用
 >
@@ -107,12 +109,14 @@ SELECT ... FROM r WHERE r.business_id IN (
 
 #### 多表数据获取策略
 
-当需要展示的数据涉及 >3 张表时，采用以下策略：
+当需要展示的数据涉及多张表时，统一采用**单表查询 + Service 层整合**策略：
 
 | 策略 | 说明 | 适用场景 |
 |------|------|---------|
-| 主查询 + 代码补查 | 主 SQL 连表 ≤3 张获取核心数据，Service 层用 Java 代码补充查询 | 能力名称列表、标签等 |
-| BusinessDataResolver | 不同 businessType 各自实现 Resolver，内部按规范查询 | 业务展示数据 |
+| **单表查询 + 代码整合** | 每张表独立查询返回实体对象，Service 层按业务关系整合为 VO | 待审批列表（record → version → app → 能力 → 第三方ID） |
+| BusinessDataResolver | 不同 businessType 各自实现 Resolver，内部按规范查询 | 业务展示数据（后续迭代） |
+
+> **设计决策**：禁止多表 JOIN 获取展示数据。每张表独立查询，Service 层负责结果整合。优势：SQL 简单可控、实体类型安全、易于调试和扩展。
 
 ---
 
@@ -187,8 +191,10 @@ GET /service/open/v2/apps/pending
 | createTime | String | 申请时间 |
 
 > **注意**：主查询通过 `business_type = 'app_version_publish'` 过滤，仅返回应用版本发布类型的审批记录。排序字段为 `last_update_time DESC`（非 create_time），确保最近更新过的记录排在前面。
+>
+> **v10.1 变更**：主查询改为单表查询 `approval_record_t`，version/app 数据由 Service 层单表补查后整合。
 
-**主查询 SQL**（3 表 JOIN：approval_record + version + app）：
+**主查询 SQL**（单表：approval_record_t）：
 
 ```sql
 SELECT
@@ -199,29 +205,32 @@ SELECT
     r.status,
     r.current_node,
     r.create_time,
-    r.last_update_time,
-    v.version_code,
-    a.app_id,
-    a.app_name_cn,
-    a.app_name_en
+    r.last_update_time
 FROM openplatform_v2_approval_record_t r
-LEFT JOIN openplatform_app_version_t v ON r.business_id = v.id
-LEFT JOIN openplatform_app_t a ON v.app_id = a.id
 WHERE r.status = 0
   AND r.business_type = 'app_version_publish'
 ORDER BY r.last_update_time DESC
 LIMIT #{offset}, #{pageSize}
 ```
 
-**能力名称补查**（Service 层 Java 代码，单独查询，不增加主查询表数）：
+**能力名称补查**（Service 层 Java 代码，两步单表查询）：
 
 ```sql
--- 根据 app_id 查询关联能力名称（2 表 JOIN）
-SELECT ab.ability_name_cn
-FROM openplatform_app_ability_relation_t acr
-LEFT JOIN openplatform_ability_t ab ON acr.ability_id = ab.id
-WHERE acr.app_id = #{appId}
+-- 第一步：从版本属性表获取 abilityIds（逗号分隔的能力主键 ID）
+SELECT property_value
+FROM openplatform_app_version_p_t
+WHERE parent_id = #{versionId}
+  AND property_name = 'abilityIds'
 ```
+
+```sql
+-- 第二步：根据 ID 列表查能力中英文名（IN 查询，单表）
+SELECT id, ability_name_cn, ability_name_en
+FROM openplatform_ability_t
+WHERE id IN (#{id1}, #{id2}, ...)
+```
+
+> **说明**：版本关联能力存储在 `openplatform_app_version_p_t`（版本属性表），`property_name = 'abilityIds'` 时 `property_value` 为逗号分隔的能力主键 ID（如 `"101,102,103"`）。Service 层解析字符串后批量查询 `openplatform_ability_t` 获取能力名称。
 
 **第三方应用ID补查**（Service 层 Java 代码，从属性表获取）：
 
@@ -235,7 +244,11 @@ WHERE parent_id = #{appId}
 
 > `[src/open-server/.../mapper/ApprovalRecordMapper.xml]`: `selectPendingList` 方法参考
 >
-> **注意**: `appId` 响应字段 = `openplatform_app_p_t.property_value`（`property_name = 'third_party_app_id'`），由 Service 层在主查询之后单独补查，不在主 SQL 中 JOIN（避免超出 3 表限制）。
+> **注意**:
+> - `appId` 响应字段 = `openplatform_app_p_t.property_value`（`property_name = 'third_party_app_id'`），由 Service 层补查
+> - `appNameCn/appNameEn` = `openplatform_app_t.app_name_cn/app_name_en`，由 Service 层通过 version→app 链路补查
+> - `versionNo` = `openplatform_app_version_t.version_code`，由 Service 层补查
+> - `capabilityNames` = 从版本属性表 `openplatform_app_version_p_t` 获取 abilityIds，再查 `openplatform_ability_t`，由 Service 层补查
 
 **计数 SQL**：
 
@@ -739,7 +752,7 @@ const handleReject = (record) => {
 | id | BIGINT AUTO_INCREMENT | 主键 |
 | record_id | BIGINT | 关联审批记录 |
 | node_index | INT | 审批节点索引 |
-| level | INT | 审批层级 |
+| level | VARCHAR | 审批层级 |
 | operator_id | VARCHAR(64) | 操作人 ID |
 | operator_name | VARCHAR(100) | 操作人姓名 |
 | action | TINYINT | 0=通过, 1=驳回, 2=撤回, 3=转办, 4=催办 |
@@ -869,8 +882,28 @@ CREATE TABLE `openplatform_app_p_t` (
 ) ENGINE=InnoDB COMMENT='应用属性表';
 ```
 
+#### openplatform_app_version_p_t（版本属性表 — KV 结构）
+
+```sql
+CREATE TABLE `openplatform_app_version_p_t` (
+  `id` bigint(20) NOT NULL COMMENT '主键',
+  `parent_id` bigint(20) NOT NULL COMMENT '版本主键ID',
+  `property_name` varchar(255) DEFAULT NULL COMMENT '属性名',
+  `property_value` varchar(2000) NOT NULL DEFAULT '' COMMENT '属性值',
+  `tenant_id` varchar(64) NOT NULL DEFAULT '' COMMENT '租户id',
+  `status` tinyint DEFAULT '1' COMMENT '状态：0=失效, 1=有效',
+  `create_by` varchar(100) DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `last_update_by` varchar(100) DEFAULT NULL COMMENT '最后更新人',
+  `last_update_time` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_parent_id` (`parent_id`) USING BTREE
+) ENGINE=InnoDB COMMENT='应用版本属性表';
+```
+
 > **关键说明**：
 > - `openplatform_app_p_t` 为 KV 属性表，第三方应用 ID 通过 `property_name = 'third_party_app_id'` 获取
+> - `openplatform_app_version_p_t` 为版本 KV 属性表，能力 ID 列表通过 `property_name = 'abilityIds'` 获取（`property_value` 为逗号分隔的能力主键 ID）
 > - `openplatform_app_ability_relation_t.app_id` 关联的是 `openplatform_app_t.id`（主键），不是 `app_id` 字段
 > - **待审批列表**：响应 VO 中的 `appId` = `openplatform_app_p_t.property_value`（Service 层补查），因为主表是 approval_record
 > - **已上架列表**：响应 VO 中的 `appId` = `openplatform_app_t.app_id`（直接从主表获取，无需补查），因为主表是 app_t
@@ -889,26 +922,32 @@ ApprovalController（3 个端点：pending / publish / approval）
     │
     ▼
 ApprovalServiceImpl（流程编排）
-    ├─ 1a. 待审批主查询（3 表 JOIN: record + version + app，按 business_type 过滤）
-    ├─ 1b. 已上架主查询（app_t 主表 + 子查询取 MAX(version_code) WHERE v.status=4）
-    ├─ 2. Service 层补查能力名称（单独查询，不增加主查询表数）
-    ├─ 3. 组装 VO（含 appNameCn/appNameEn/versionNo/appId/capabilityNames/applicantId）
     │
-    ├─ 审批操作（process 统一入口）:
-    │    ├─ 状态/权限校验
-    │    ├─ 解析 combinedNodes
-    │    ├─ 插入 ApprovalLog
-    │    ├─ 更新 ApprovalRecord（状态/节点推进）
-    │    └─ 策略路由 ──→ ApprovalHandlerFactory
-    │                          │
-    │                ┌─────────┼──────────┐
-    │                ▼         ▼          ▼
-    │        AppVersion   ApiPermission  EventPermission ...
-    │        PublishHandler ApplyHandler  ApplyHandler
-    │                │         │          │
-    │                ▼         ▼          ▼
-    │          版本状态更新   subscription  subscription
-    │          (v.status=4/3) status 更新    status 更新
+    ├─ 待审批列表:
+    │    ├─ 1. 单表查 approval_record_t（按 business_type + status 过滤）
+    │    ├─ 2. 单表查 app_version_t by versionId → version_code, app_id
+    │    ├─ 3. 单表查 app_t by appPkId → app_name_cn, app_name_en
+    │    ├─ 4. 单表查 app_p_t → third_party_app_id
+    │    ├─ 5. 单表查 app_version_p_t → abilityIds → 查 ability_t → 能力名称
+    │    └─ 6. 整合为 ApprovalListVo
+    │
+    ├─ 已上架列表（app_t 主表 + 子查询取 MAX(version_code) WHERE v.status=4）
+    │
+    └─ 审批操作（process 统一入口）:
+         ├─ 状态/权限校验
+         ├─ 解析 combinedNodes
+         ├─ 插入 ApprovalLog
+         ├─ 更新 ApprovalRecord（状态/节点推进）
+         └─ 策略路由 ──→ ApprovalHandlerFactory
+                               │
+                     ┌─────────┼──────────┐
+                     ▼         ▼          ▼
+             AppVersion   ApiPermission  EventPermission ...
+             PublishHandler ApplyHandler  ApplyHandler
+                     │         │          │
+                     ▼         ▼          ▼
+               版本状态更新   subscription  subscription
+             (AppVersionStatusEnum.APPROVED/REJECTED)
 ```
 
 ### 5.2 核心接口设计
@@ -1044,7 +1083,7 @@ public void process(Long recordId, int action) {
             record.setStatus(STATUS_APPROVED);
             record.setCompletedAt(now);
             recordMapper.update(record);
-            handler.onApproved(record);
+            handler.onApproved(record);  // → 更新 version.status = AppVersionStatusEnum.APPROVED(4)
         } else {
             record.setCurrentNode(record.getCurrentNode() + 1);
             recordMapper.update(record);
@@ -1053,12 +1092,33 @@ public void process(Long recordId, int action) {
         record.setStatus(STATUS_REJECTED);
         record.setCompletedAt(now);
         recordMapper.update(record);
-        handler.onRejected(record);
+        handler.onRejected(record);  // → 更新 version.status = AppVersionStatusEnum.REJECTED(3)
     } else {
         throw new BizException(40005, "无效的操作类型：" + action);
     }
 }
 ```
+
+**版本状态联动**（`AppVersionPublishHandler`）：
+
+```java
+@Override
+public void onApproved(ApprovalRecord record) {
+    // businessId = version_t.id
+    Long versionId = Long.parseLong(record.getBusinessId());
+    appVersionMapper.updateStatus(versionId, AppVersionStatusEnum.APPROVED.getValue());
+}
+
+@Override
+public void onRejected(ApprovalRecord record) {
+    Long versionId = Long.parseLong(record.getBusinessId());
+    appVersionMapper.updateStatus(versionId, AppVersionStatusEnum.REJECTED.getValue());
+}
+```
+
+> **枚举引用**：`AppVersionStatusEnum` 定义在 `approval/constant/AppVersionStatusEnum.java`，已存在。
+> - `APPROVED(4)` — 审批通过
+> - `REJECTED(3)` — 审批驳回
 
 ### 5.4 常量定义
 
@@ -1195,42 +1255,58 @@ public enum AppVersionStatusEnum {
 
 ## 6. File Manifest（文件清单）
 
-### 6.1 后端新建文件（23 个）
+### 6.1 后端文件清单
 
 > 路径前缀：`market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/`
 
-**Java 文件（20 个）**：
+**已有文件（18 个，无需修改）**：
 
 | # | 文件路径 | 说明 |
 |:-:|---------|------|
 | 1 | `approval/controller/ApprovalController.java` | 3 个端点（pending, publish, approval） |
 | 2 | `approval/service/ApprovalService.java` | 接口 |
-| 3 | `approval/service/impl/ApprovalServiceImpl.java` | 实现（编排 Engine + HandlerFactory + ResolverFactory，含能力名称补查） |
-| 4 | `approval/engine/ApprovalEngine.java` | 简化版审批引擎（process 统一方法） |
-| 5 | `approval/handler/ApprovalHandler.java` | 策略接口 |
-| 6 | `approval/handler/ApprovalHandlerFactory.java` | 策略工厂 |
-| 7 | `approval/resolver/BusinessDataResolver.java` | 业务数据解析接口 |
-| 8 | `approval/resolver/BusinessDataResolverFactory.java` | 解析器工厂 |
-| 9 | `approval/entity/ApprovalRecord.java` | 实体（同构 open-server） |
-| 10 | `approval/entity/ApprovalLog.java` | 实体（同构 open-server） |
-| 11 | `approval/entity/ApprovalFlow.java` | 实体（同构 open-server） |
-| 12 | `approval/mapper/ApprovalRecordMapper.java` | Mapper 接口 |
-| 13 | `approval/mapper/ApprovalLogMapper.java` | Mapper 接口 |
-| 14 | `approval/mapper/ApprovalFlowMapper.java` | Mapper 接口 |
-| 15 | `approval/dto/ApprovalNodeDto.java` | 节点 DTO |
-| 16 | `approval/dto/ApprovalListRequest.java` | 列表查询请求（curPage, pageSize） |
-| 17 | `approval/dto/ApprovalProcessRequest.java` | 审批操作请求（id: String, action: Integer） |
-| 18 | `approval/vo/ApprovalListVo.java` | 列表展示 VO（含 appNameCn, appNameEn, versionNo, appId, capabilityNames, applicantId, createTime） |
-| 19 | `approval/constant/ApprovalConstants.java` | 状态/操作常量 |
-| 20 | `approval/constant/AppVersionStatusEnum.java` | 应用版本状态枚举（DRAFT/IN_PROCESS/REJECTED/APPROVED/CANCELLED） |
+| 3 | `approval/engine/ApprovalEngine.java` | 简化版审批引擎（process 统一方法） |
+| 4 | `approval/handler/ApprovalHandler.java` | 策略接口 |
+| 5 | `approval/handler/ApprovalHandlerFactory.java` | 策略工厂 |
+| 6 | `approval/handler/AppVersionPublishHandler.java` | 应用版本审批 handler（待补充版本状态更新逻辑） |
+| 7 | `approval/entity/ApprovalRecord.java` | 实体（同构 open-server） |
+| 8 | `approval/entity/ApprovalLog.java` | 实体（同构 open-server） |
+| 9 | `approval/entity/ApprovalFlow.java` | 实体（同构 open-server） |
+| 10 | `approval/mapper/ApprovalRecordMapper.java` | Mapper 接口 |
+| 11 | `approval/mapper/ApprovalLogMapper.java` | Mapper 接口 |
+| 12 | `approval/mapper/ApprovalFlowMapper.java` | Mapper 接口 |
+| 13 | `approval/dto/ApprovalNodeDto.java` | 节点 DTO |
+| 14 | `approval/dto/ApprovalListRequest.java` | 列表查询请求（curPage, pageSize） |
+| 15 | `approval/dto/ApprovalProcessRequest.java` | 审批操作请求（id: String, action: Integer） |
+| 16 | `approval/vo/ApprovalListVo.java` | 列表展示 VO |
+| 17 | `approval/constant/ApprovalConstants.java` | 状态/操作常量 |
+| 18 | `approval/constant/AppVersionStatusEnum.java` | 应用版本状态枚举（DRAFT/IN_PROCESS/REJECTED/APPROVED/CANCELLED） |
 
-**MyBatis XML 文件（3 个）**（路径前缀 `market-server/src/main/resources/mapper/`）：
+**v10.1 新建文件（6 个）**：
 
 | # | 文件路径 | 说明 |
 |:-:|---------|------|
-| 21 | `approval/ApprovalRecordMapper.xml` | SQL（selectPendingList, selectPublishedList, selectById, update, countPending, countPublished）— 所有查询明确列出字段，JOIN ≤ 3 表；已上架列表以 app_t 为主表 + 子查询取 MAX(version_code) WHERE v.status=4（APPROVED），不再 JOIN approval_record_t |
-| 22 | `approval/ApprovalLogMapper.xml` | SQL（insert） |
-| 23 | `approval/ApprovalFlowMapper.xml` | SQL（selectByCode） |
+| 19 | `approval/entity/AppEntity.java` | 应用实体（对应 `openplatform_app_t`） |
+| 20 | `approval/entity/AppVersionEntity.java` | 版本实体（对应 `openplatform_app_version_t`） |
+| 21 | `approval/mapper/AppMapper.java` | 应用 Mapper（`selectById`） |
+| 22 | `approval/mapper/AppVersionMapper.java` | 版本 Mapper（`selectById` + `updateStatus`） |
+
+**v10.1 修改文件（4 个）**：
+
+| # | 文件路径 | 变更 |
+|:-:|---------|------|
+| 23 | `approval/service/impl/ApprovalServiceImpl.java` | `getPendingList` 改为单表查询 + Service 层补查 version→app→能力→第三方ID |
+| 24 | `approval/handler/AppVersionPublishHandler.java` | `onApproved/onRejected` 补充版本状态更新（引用 `AppVersionStatusEnum`） |
+
+**MyBatis XML 文件**（路径前缀 `market-server/src/main/resources/mapper/`）：
+
+| # | 文件路径 | 状态 | 说明 |
+|:-:|---------|:----:|------|
+| 25 | `ApprovalRecordMapper.xml` | 修改 | `selectPendingList` 改为单表查 approval_record_t；保留 selectCapabilityNames、selectThirdPartyAppId |
+| 26 | `ApprovalLogMapper.xml` | 不变 | SQL（insert） |
+| 27 | `ApprovalFlowMapper.xml` | 不变 | SQL（selectByCode） |
+| 28 | `AppMapper.xml` | **新建** | 单表 SELECT app_t（selectById） |
+| 29 | `AppVersionMapper.xml` | **新建** | 单表 SELECT + UPDATE version_t（selectById, updateStatus） |
 
 ### 6.2 前端新建文件（4 个）
 
@@ -1261,7 +1337,7 @@ public enum AppVersionStatusEnum {
 
 | # | 用例 | 预期 |
 |:-:|------|------|
-| T-01 | GET /apps/pending — 无参数 | 返回所有 status=0 且 business_type='app_version_publish' 的记录，含 appNameCn/appNameEn/versionNo/appId/capabilityNames/applicantId，按 lastUpdateTime DESC 排序 |
+| T-01 | GET /apps/pending — 无参数 | 返回所有 status=0 且 business_type='app_version_publish' 的记录，Service 层单表补查 version→app→能力→第三方ID，含 appNameCn/appNameEn/versionNo/appId/capabilityNames/applicantId，按 lastUpdateTime DESC 排序 |
 | T-02 | GET /apps/pending — 分页 curPage=2, pageSize=5 | 返回第 6-10 条记录，page.total 正确 |
 | T-03 | GET /apps/pending — 无记录 | data=[], page.total=0 |
 | T-04 | GET /apps/publish — 无参数 | 返回所有 status=1 且 app_type=1 的应用及其最新已上架版本（version.status=4），按 lastUpdateTime DESC 排序，appId 来自 app_t.app_id。子查询仅过滤 version.status=4，不 JOIN approval_record_t |
@@ -1274,10 +1350,10 @@ public enum AppVersionStatusEnum {
 
 | # | 用例 | 预期 |
 |:-:|------|------|
-| T-09 | POST /apps/approval action=0 — 正常通过（单节点） | status → APPROVED(1), completedAt 非空, handler.onApproved 执行 |
-| T-10 | POST /apps/approval action=0 — 多节点非最后 | currentNode += 1, status 仍为 PENDING(0), handler 不触发 |
-| T-11 | POST /apps/approval action=0 — 多节点最后节点 | status → APPROVED(1), handler.onApproved 执行 |
-| T-12 | POST /apps/approval action=1 — 正常驳回 | status → REJECTED(2), handler.onRejected 执行 |
+| T-09 | POST /apps/approval action=0 — 正常通过（单节点） | status → APPROVED(1), completedAt 非空, handler.onApproved 执行, version.status → AppVersionStatusEnum.APPROVED(4) |
+| T-10 | POST /apps/approval action=0 — 多节点非最后 | currentNode += 1, status 仍为 PENDING(0), handler 不触发, version.status 不变 |
+| T-11 | POST /apps/approval action=0 — 多节点最后节点 | status → APPROVED(1), handler.onApproved 执行, version.status → AppVersionStatusEnum.APPROVED(4) |
+| T-12 | POST /apps/approval action=1 — 正常驳回 | status → REJECTED(2), handler.onRejected 执行, version.status → AppVersionStatusEnum.REJECTED(3) |
 | T-13 | POST /apps/approval — record 不存在 | code=40001 |
 | T-14 | POST /apps/approval — 非 PENDING 状态 | code=40002, messageZh 含当前状态 |
 | T-15 | POST /apps/approval — 无效 action | code=40005, messageZh 含 action 值 |

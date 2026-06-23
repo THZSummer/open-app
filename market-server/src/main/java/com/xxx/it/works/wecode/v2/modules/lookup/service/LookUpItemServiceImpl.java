@@ -249,8 +249,8 @@ public class LookUpItemServiceImpl implements LookUpItemService {
 
     private ItemListVO convertToListVO(LookUpItemEntity entity) {
         ItemListVO vo = new ItemListVO();
-        vo.setItemId(entity.getItemId());
-        vo.setClassifyId(entity.getClassifyId());
+        vo.setItemId(String.valueOf(entity.getItemId()));
+        vo.setClassifyId(String.valueOf(entity.getClassifyId()));
         vo.setItemCode(entity.getItemCode());
         vo.setItemName(entity.getItemName());
         vo.setItemValue(entity.getItemValue());
@@ -273,8 +273,8 @@ public class LookUpItemServiceImpl implements LookUpItemService {
 
     private ItemDetailVO convertToDetailVO(LookUpItemEntity entity) {
         ItemDetailVO vo = new ItemDetailVO();
-        vo.setItemId(entity.getItemId());
-        vo.setClassifyId(entity.getClassifyId());
+        vo.setItemId(String.valueOf(entity.getItemId()));
+        vo.setClassifyId(String.valueOf(entity.getClassifyId()));
         vo.setClassifyName(entity.getClassifyName());
         vo.setItemCode(entity.getItemCode());
         vo.setItemName(entity.getItemName());

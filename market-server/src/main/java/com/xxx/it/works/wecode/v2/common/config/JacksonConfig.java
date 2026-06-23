@@ -74,4 +74,5 @@ public class JacksonConfig {
             gen.writeString(value.format(DATE_FORMATTER));
         }
     }
+
 }

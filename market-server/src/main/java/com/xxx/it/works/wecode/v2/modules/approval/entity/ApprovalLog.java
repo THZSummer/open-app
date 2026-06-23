@@ -16,7 +16,7 @@ public class ApprovalLog implements Serializable {
 
     private Integer nodeIndex;
 
-    private Integer level;
+    private String level;
 
     private String operatorId;
 
