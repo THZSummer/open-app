@@ -136,7 +136,22 @@ public enum OperateEnum {
             null, null),
     CONNECTOR_FLOW_VERSION_PUBLISH("PUBLISH", "FLOW_VERSION", "流版本",
             "发布流版本", "Publish Flow Version",
-            "发布版本${versionCode}", "Publish version ${versionCode}");
+            "发布版本${versionCode}", "Publish version ${versionCode}"),
+    START_FLOW("START", "FLOW", "连接流",
+            "启动连接流", "Start Flow",
+            "启动连接流:${nameCn}", "Start Flow:${nameEn}"),
+    STOP_FLOW("STOP", "FLOW", "连接流",
+            "停止连接流", "Stop Flow",
+            "停止连接流:${nameCn}", "Stop Flow:${nameEn}"),
+    DEPLOY_FLOW("DEPLOY", "FLOW", "连接流",
+            "部署连接流", "Deploy Flow",
+            "部署连接流:${nameCn}", "Deploy Flow:${nameEn}"),
+    INVALIDATE_FLOW("INVALIDATE", "FLOW", "连接流",
+            "失效连接流", "Invalidate Flow",
+            "失效连接流:${nameCn}", "Invalidate Flow:${nameEn}"),
+    RECOVER_FLOW("RECOVER", "FLOW", "连接流",
+            "恢复连接流", "Recover Flow",
+            "恢复连接流:${nameCn}", "Recover Flow:${nameEn}");
 
     /**
      * DB operate_type 字段值
