@@ -10,65 +10,24 @@
 操作日志表: openplatform_operate_log_t
 """
 
-from client import *
-import subprocess, time, json, requests as req_lib
+from client import api, db, db_val, ok, fail, done
+import subprocess, time, json
 
-
-DB_HOST = "192.168.3.155"
-DB_USER = "openapp"
-DB_PASS = "openapp"
-DB_NAME = "openapp"
-DB_BASE = ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e"]
+DB_BASE = ["mysql", "-h192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e"]
 
 
 def snow_id():
     return int(time.time() * 1000000) % 100000000000000000
 
 
-def _mysql(sql):
-    subprocess.run(DB_BASE + [sql], check=True, capture_output=True)
-
-
-def _mysql_query(sql):
-    result = subprocess.run(DB_BASE + [sql], capture_output=True, text=True)
-    lines = result.stdout.strip().split('\n')
-    if len(lines) > 1:
-        return lines[-1].strip()
-    return lines[0].strip() if lines else ""
-
-
 def _escape(obj):
     return json.dumps(obj).replace("'", "''")
 
 
-def api_post(path, body=None):
-    try:
-        resp = req_lib.post(f"{BASE_URL}{path}", json=body or {},
-                            headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
-        return resp
-    except Exception as e:
-        print(f"  SKIP: 请求失败 - {e}")
-        return None
-
-
-def api_put(path, body=None):
-    try:
-        resp = req_lib.put(f"{BASE_URL}{path}", json=body or {},
-                           headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
-        return resp
-    except Exception as e:
-        print(f"  SKIP: 请求失败 - {e}")
-        return None
-
-
-def api_get(path):
-    try:
-        resp = req_lib.get(f"{BASE_URL}{path}",
-                           headers={"Content-Type": "application/json", "X-App-Id": "1"}, timeout=10)
-        return resp
-    except Exception as e:
-        print(f"  SKIP: 请求失败 - {e}")
-        return None
+def _mysql_raw(sql):
+    """Execute SELECT and return raw stdout (for multi-column queries)"""
+    r = subprocess.run(DB_BASE + [sql], capture_output=True, text=True)
+    return r.stdout
 
 
 def build_simple_orch():
@@ -93,7 +52,6 @@ def build_simple_orch():
 
 # ═══════════════════════════════════════════════════════════
 # IT-REC-FLOW-001: 恢复已失效连接流 → 已停止
-# 覆盖: FR-021 — 从 invalidated(2) → recovered → stopped(0)
 # ═══════════════════════════════════════════════════════════
 fid_001 = fvid_001 = None
 
@@ -103,94 +61,74 @@ print("  (FR-021, invalidated(3) → recover → stopped(1))")
 print("=" * 60)
 
 try:
-    # [Step 1] 通过 MySQL 创建已失效的连接流 (lifecycle_status=3)
     print("\n  -- [1] 创建已失效连接流 (MySQL: lifecycle_status=3) --")
     fid_001 = snow_id()
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({fid_001}, '恢复测试流', 'RecoverTestFlow', 3, 1, 'tester', 'tester')"
     )
-    check("创建已失效连接流 (lifecycle_status=3)", True)
+    ok(True, name="创建已失效连接流 (lifecycle_status=3)")
     print(f"  ✅ 已失效连接流已创建 fid={fid_001}")
 
-    # [Step 2] 创建流程版本 (确保流有版本数据)
     print("\n  -- [2] 创建流程版本 --")
     fvid_001 = snow_id()
     orch = build_simple_orch()
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
         f"VALUES ({fvid_001}, {fid_001}, '{_escape(orch)}', 5, 'tester', 'tester')"
     )
-    check("创建流程版本", True)
+    ok(True, name="创建流程版本")
     print(f"  ✅ 流程版本已创建 fvid={fvid_001}")
 
-    # [Step 3] 验证初始状态为 invalidated
     print("\n  -- [3] 验证初始状态为已失效 --")
-    status_val = _mysql_query(
-        f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}"
-    )
-    check("MySQL 确认流初始状态为已失效 (lifecycle_status=3)",
-          status_val == "3",
-          f"lifecycle_status={status_val}, 期望=3")
+    status_val = db_val(f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}")
+    ok(status_val == "3", name="MySQL 确认流初始状态为已失效 (lifecycle_status=3)")
 
-    # [Step 4] 尝试通过 API 恢复连接流
     print("\n  -- [4] 恢复连接流 --")
     recovered_via_api = False
 
-    # Try POST /service/open/v2/flows/{flowId}/restore
-    resp = api_post(f"/service/open/v2/flows/{fid_001}/restore")
+    resp = api("POST", f"/flows/{fid_001}/restore")
     if resp and resp.status_code in (200, 201):
         data = resp.json()
         if data.get("code") in ("200", 200):
             recovered_via_api = True
-            check("恢复连接流 (POST /restore) HTTP 200", True,
-                  f"body={resp.text[:200]}")
+            ok(True, name="恢复连接流 (POST /restore) HTTP 200")
         else:
             print(f"     POST /restore 返回 code={data.get('code')}, body={resp.text[:200]}")
 
     if not recovered_via_api:
-        # Try PUT /service/open/v2/flows/{flowId}/recover
-        resp = api_put(f"/service/open/v2/flows/{fid_001}/recover")
+        resp = api("PUT", f"/flows/{fid_001}/recover")
         if resp and resp.status_code in (200, 201):
             data = resp.json()
             if data.get("code") in ("200", 200):
                 recovered_via_api = True
-                check("恢复连接流 (PUT /recover) HTTP 200", True,
-                      f"body={resp.text[:200]}")
+                ok(True, name="恢复连接流 (PUT /recover) HTTP 200")
             else:
                 print(f"     PUT /recover 返回 code={data.get('code')}, body={resp.text[:200]}")
 
     if not recovered_via_api:
-        # Try POST /service/open/v2/flows/{flowId}/recover
-        resp = api_post(f"/service/open/v2/flows/{fid_001}/recover")
+        resp = api("POST", f"/flows/{fid_001}/recover")
         if resp and resp.status_code in (200, 201):
             data = resp.json()
             if data.get("code") in ("200", 200):
                 recovered_via_api = True
-                check("恢复连接流 (POST /recover) HTTP 200", True,
-                      f"body={resp.text[:200]}")
+                ok(True, name="恢复连接流 (POST /recover) HTTP 200")
 
     if not recovered_via_api:
-        # Fallback: MySQL 直接更新
         print("     ⚠️  恢复 API 不可用，使用 MySQL 回退恢复")
-        _mysql(
+        db(
             f"UPDATE openplatform_v2_cp_flow_t "
             f"SET lifecycle_status = 1 "
             f"WHERE id = {fid_001}"
         )
-        check("恢复连接流 (MySQL fallback: lifecycle_status → 1)", True)
+        ok(True, name="恢复连接流 (MySQL fallback: lifecycle_status → 1)")
 
-    # [Step 5] 验证恢复后状态为 stopped
     print("\n  -- [5] 验证恢复后状态为已停止 --")
     time.sleep(0.3)
-    status_val = _mysql_query(
-        f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}"
-    )
-    check("MySQL 确认流恢复后状态为已停止 (lifecycle_status=1)",
-          status_val == "1",
-          f"lifecycle_status={status_val}, 期望=1")
+    status_val = db_val(f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}")
+    ok(status_val == "1", name="MySQL 确认流恢复后状态为已停止 (lifecycle_status=1)")
 
 finally:
     pass  # 保留数据供 IT-REC-FLOW-002 使用
@@ -198,7 +136,6 @@ finally:
 
 # ═══════════════════════════════════════════════════════════
 # IT-REC-FLOW-002: 恢复后验证连接流可启动
-# 覆盖: FR-021 → 恢复后流进入 stopped 状态，可正常重新启动
 # ═══════════════════════════════════════════════════════════
 
 print("\n" + "=" * 60)
@@ -210,42 +147,32 @@ try:
     if not fid_001:
         raise RuntimeError("FATAL: fid_001 不存在，跳过 IT-REC-FLOW-002")
 
-    # [Step 1] 部署版本到连接流
     print("\n  -- [1] 部署版本到连接流 --")
-    _mysql(
+    db(
         f"UPDATE openplatform_v2_cp_flow_t "
         f"SET deployed_version_id = {fvid_001} "
         f"WHERE id = {fid_001}"
     )
-    check("部署版本 (MySQL: deployed_version_id)", True)
+    ok(True, name="部署版本 (MySQL: deployed_version_id)")
     print(f"  ✅ 已部署版本 fvid={fvid_001} → 流 fid={fid_001}")
 
-    # [Step 2] 启动连接流
-    print("\n  -- [2] 启动连接流 (POST /service/open/v2/flows/{id}/start) --")
-    resp = api_post(f"/service/open/v2/flows/{fid_001}/start")
+    print("\n  -- [2] 启动连接流 (POST /flows/{id}/start) --")
+    resp = api("POST", f"/flows/{fid_001}/start")
     if resp is not None:
-        check("启动连接流 HTTP 200/201",
-              resp.status_code in (200, 201),
-              f"实际: {resp.status_code} body={resp.text[:200]}")
+        ok(resp.status_code in (200, 201), name="启动连接流 HTTP 200/201")
         if resp.status_code in (200, 201):
             data = resp.json()
             if data.get("code") not in ("200", 200):
                 print(f"     注意: 启动返回 code={data.get('code')}, msg={data.get('messageCn', data.get('message', ''))}")
     else:
-        check("启动连接流 (API 不可用, 跳过)", True)
+        ok(True, name="启动连接流 (API 不可用, 跳过)")
 
-    # [Step 3] 验证流已成功启动 (lifecycle_status=1)
     print("\n  -- [3] 验证流已启动 --")
     time.sleep(0.3)
-    status_val = _mysql_query(
-        f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}"
-    )
-    check("MySQL 确认流已启动 (lifecycle_status=2)",
-          status_val == "2",
-          f"lifecycle_status={status_val}, 期望=2")
+    status_val = db_val(f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}")
+    ok(status_val == "2", name="MySQL 确认流已启动 (lifecycle_status=2)")
 
 finally:
-    # Cleanup IT-REC-FLOW-001 / 002 data
     if fvid_001:
         subprocess.run(DB_BASE + [
             f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {fvid_001}"
@@ -258,7 +185,6 @@ finally:
 
 # ═══════════════════════════════════════════════════════════
 # IT-REC-FLOW-003: 运行中连接流不可恢复
-# 覆盖: FR-021 边界 — 只有 invalidated 状态才可恢复
 # ═══════════════════════════════════════════════════════════
 fid_003 = fvid_003 = None
 
@@ -268,85 +194,65 @@ print("  (FR-021 边界, lifecycle_status=2 不应被恢复)")
 print("=" * 60)
 
 try:
-    # [Step 1] 创建运行中的连接流 (lifecycle_status=2)
     print("\n  -- [1] 创建运行中连接流 (MySQL: lifecycle_status=2) --")
     fid_003 = snow_id()
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({fid_003}, '运行中恢复拒绝测试', 'RunningRecoverReject', 2, 1, 'tester', 'tester')"
     )
-    check("创建运行中连接流 (lifecycle_status=2)", True)
+    ok(True, name="创建运行中连接流 (lifecycle_status=2)")
     print(f"  ✅ 运行中连接流已创建 fid={fid_003}")
 
-    # [Step 2] 创建流程版本
     fvid_003 = snow_id()
     orch = build_simple_orch()
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
         f"VALUES ({fvid_003}, {fid_003}, '{_escape(orch)}', 5, 'tester', 'tester')"
     )
-    check("创建流程版本", True)
+    ok(True, name="创建流程版本")
 
-    # [Step 3] 尝试恢复运行中的连接流 → 应被拒绝
     print("\n  -- [3] 尝试恢复运行中连接流 → 应被拒绝 --")
     rejected = False
 
-    # Try POST /service/open/v2/flows/{flowId}/restore
-    resp = api_post(f"/service/open/v2/flows/{fid_003}/restore")
+    resp = api("POST", f"/flows/{fid_003}/restore")
     if resp is not None:
         data = resp.json()
         if resp.status_code not in (200, 201) or data.get("code") not in ("200", 200):
             rejected = True
-            check("运行中连接流恢复被拒绝 (POST /restore)",
-                  True,
-                  f"HTTP: {resp.status_code}, code={data.get('code')}")
+            ok(True, name="运行中连接流恢复被拒绝 (POST /restore)")
         else:
             print(f"     POST /restore 返回 200 (可能允许运行中流恢复，需检查业务逻辑)")
             rejected = False
 
     if not rejected:
-        # Try PUT /service/open/v2/flows/{flowId}/recover
-        resp = api_put(f"/service/open/v2/flows/{fid_003}/recover")
+        resp = api("PUT", f"/flows/{fid_003}/recover")
         if resp is not None:
             data = resp.json()
             if resp.status_code not in (200, 201) or data.get("code") not in ("200", 200):
                 rejected = True
-                check("运行中连接流恢复被拒绝 (PUT /recover)",
-                      True,
-                      f"HTTP: {resp.status_code}, code={data.get('code')}")
+                ok(True, name="运行中连接流恢复被拒绝 (PUT /recover)")
             else:
                 print(f"     PUT /recover 返回 200 (可能允许运行中流恢复，需检查业务逻辑)")
 
     if not rejected:
-        # Try POST /service/open/v2/flows/{flowId}/recover
-        resp = api_post(f"/service/open/v2/flows/{fid_003}/recover")
+        resp = api("POST", f"/flows/{fid_003}/recover")
         if resp is not None:
             data = resp.json()
             if resp.status_code not in (200, 201) or data.get("code") not in ("200", 200):
                 rejected = True
-                check("运行中连接流恢复被拒绝 (POST /recover)",
-                      True,
-                      f"HTTP: {resp.status_code}, code={data.get('code')}")
+                ok(True, name="运行中连接流恢复被拒绝 (POST /recover)")
 
     if not rejected:
-        check("运行中连接流恢复 (API 不可用, 跳过验证)", True)
+        ok(True, name="运行中连接流恢复 (API 不可用, 跳过验证)")
 
-    # [Step 4] 验证状态未被改变 (仍为 running)
     print("\n  -- [4] 验证状态未被改变 --")
-    status_val = _mysql_query(
-        f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_003}"
-    )
+    status_val = db_val(f"SELECT lifecycle_status FROM openplatform_v2_cp_flow_t WHERE id = {fid_003}")
     if not rejected:
-        # 如果恢复未被拒绝，检查状态是否仍为 2 或变成 1
-        check("MySQL 确认流状态未从 running 意外改变",
-              status_val in ("2", "1"),
-              f"lifecycle_status={status_val}")
+        ok(status_val in ("2", "1"), name="MySQL 确认流状态未从 running 意外改变")
     else:
-        check("MySQL 确认流状态仍为运行中 (lifecycle_status=2)",
-              status_val == "2",
-              f"lifecycle_status={status_val}, 期望=2")
+        ok(status_val == "2", name="MySQL 确认流状态仍为运行中 (lifecycle_status=2)")
 
 finally:
     if fvid_003:
@@ -361,7 +267,6 @@ finally:
 
 # ═══════════════════════════════════════════════════════════
 # IT-REC-FLOW-004: 恢复后操作日志记录
-# 覆盖: FR-021 → 恢复操作应记录到操作日志表
 # ═══════════════════════════════════════════════════════════
 fid_004 = fvid_004 = None
 
@@ -371,7 +276,6 @@ print("  (FR-021, 操作日志验证)")
 print("=" * 60)
 
 try:
-    # [Step 1] 检查操作日志表是否存在
     print("\n  -- [1] 检查操作日志表 --")
     table_check = subprocess.run(
         DB_BASE + ["SHOW TABLES LIKE 'openplatform_operate_log_t'"],
@@ -379,7 +283,6 @@ try:
     )
     log_table_exists = "openplatform_operate_log_t" in table_check.stdout
     if not log_table_exists:
-        # 尝试其他可能的表名
         table_check2 = subprocess.run(
             DB_BASE + ["SHOW TABLES LIKE 'openplatform_v2_cp_operation_log_t'"],
             capture_output=True, text=True
@@ -388,45 +291,42 @@ try:
         if log_table_name:
             log_table_exists = True
         else:
-            log_table_name = "openplatform_operate_log_t"  # default
+            log_table_name = "openplatform_operate_log_t"
     else:
         log_table_name = "openplatform_operate_log_t"
 
     if not log_table_exists:
-        check("操作日志表存在 (跳过 — 表不存在)", True)
+        ok(True, name="操作日志表存在 (跳过 — 表不存在)")
         print(f"     SKIP: 操作日志表不存在，无法验证操作日志记录")
         print(f"     ✅ IT-REC-FLOW-004 已优雅跳过")
     else:
         print(f"  ✅ 操作日志表 {log_table_name} 存在")
 
-        # [Step 2] 获取恢复前的日志计数基线
-        baseline = _mysql_query(f"SELECT COUNT(*) FROM {log_table_name}")
+        baseline = db_val(f"SELECT COUNT(*) FROM {log_table_name}")
         try:
-            baseline_count = int(baseline)
+            baseline_count = int(baseline) if baseline else 0
         except (ValueError, IndexError):
             baseline_count = 0
         print(f"\n  -- [2] 操作日志基线计数: {baseline_count} --")
 
-        # [Step 3] 创建并恢复一个连接流
         print("\n  -- [3] 创建已失效连接流并恢复 --")
         fid_004 = snow_id()
         fvid_004 = snow_id()
         orch = build_simple_orch()
 
-        _mysql(
+        db(
             f"INSERT INTO openplatform_v2_cp_flow_t "
             f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
             f"VALUES ({fid_004}, '恢复日志测试流', 'RecoverLogFlow', 3, 1, 'tester', 'tester')"
         )
-        _mysql(
+        db(
             f"INSERT INTO openplatform_v2_cp_flow_version_t "
             f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
             f"VALUES ({fvid_004}, {fid_004}, '{_escape(orch)}', 5, 'tester', 'tester')"
         )
 
-        # 尝试恢复 via API
         recovered = False
-        resp = api_post(f"/service/open/v2/flows/{fid_004}/restore")
+        resp = api("POST", f"/flows/{fid_004}/restore")
         if resp and resp.status_code in (200, 201):
             data = resp.json()
             if data.get("code") in ("200", 200):
@@ -434,7 +334,7 @@ try:
                 print(f"     恢复 (POST /restore): HTTP 200")
 
         if not recovered:
-            resp = api_put(f"/service/open/v2/flows/{fid_004}/recover")
+            resp = api("PUT", f"/flows/{fid_004}/recover")
             if resp and resp.status_code in (200, 201):
                 data = resp.json()
                 if data.get("code") in ("200", 200):
@@ -442,7 +342,7 @@ try:
                     print(f"     恢复 (PUT /recover): HTTP 200")
 
         if not recovered:
-            resp = api_post(f"/service/open/v2/flows/{fid_004}/recover")
+            resp = api("POST", f"/flows/{fid_004}/recover")
             if resp and resp.status_code in (200, 201):
                 data = resp.json()
                 if data.get("code") in ("200", 200):
@@ -450,20 +350,19 @@ try:
                     print(f"     恢复 (POST /recover): HTTP 200")
 
         if not recovered:
-            _mysql(
+            db(
                 f"UPDATE openplatform_v2_cp_flow_t "
                 f"SET lifecycle_status = 1 WHERE id = {fid_004}"
             )
             print(f"     ⚠️  恢复 API 不可用，使用 MySQL 回退恢复")
 
-        # [Step 4] 查询恢复后的操作日志
         print(f"\n  -- [4] 查询恢复操作日志 --")
-        log_records = _mysql_query(
+        log_records = db_val(
             f"SELECT COUNT(*) FROM {log_table_name} "
             f"WHERE operate_object LIKE '%{fid_004}%'"
         )
         try:
-            log_count = int(log_records)
+            log_count = int(log_records) if log_records else 0
         except (ValueError, IndexError):
             log_count = 0
         print(f"      {log_table_name} 匹配记录数: {log_count}")
@@ -480,13 +379,11 @@ try:
             )
             details = details_result.stdout.strip()
             print(f"      日志详情:\n{details}")
-            check("恢复操作日志已记录", True,
-                  f"找到 {log_count} 条记录")
+            ok(True, name="恢复操作日志已记录")
         else:
-            # 检查总记录数是否有增长
-            after = _mysql_query(f"SELECT COUNT(*) FROM {log_table_name}")
+            after = db_val(f"SELECT COUNT(*) FROM {log_table_name}")
             try:
-                after_count = int(after)
+                after_count = int(after) if after else 0
             except (ValueError, IndexError):
                 after_count = 0
             if after_count > baseline_count:
@@ -500,10 +397,9 @@ try:
                 )
                 recent = recent_result.stdout.strip()
                 print(f"      最近记录:\n{recent}")
-                check("恢复操作日志 (总记录增长)", True)
+                ok(True, name="恢复操作日志 (总记录增长)")
             else:
-                check("恢复操作日志已记录", False,
-                      f"基线={baseline_count}, 当前={after_count}, LIKE 匹配={log_count}")
+                ok(False, name="恢复操作日志已记录")
 
 finally:
     if fvid_004:
@@ -517,13 +413,12 @@ finally:
 
 
 # ═══════════════════════════════════════════════════════════
-# Global Cleanup (defensive — 确保一切已清理)
+# Global Cleanup (defensive)
 # ═══════════════════════════════════════════════════════════
 print("\n" + "-" * 60)
 print("Cleanup")
 print("-" * 60)
 
-# IT-REC-FLOW-001/002 数据已在 finally 中清理
 if fid_001:
     subprocess.run(DB_BASE + [
         f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {fid_001}"
@@ -558,3 +453,4 @@ if fvid_004:
     print(f"  已删除版本 v={fvid_004}")
 
 print("\n✅ 连接流恢复 E2E 测试完成")
+done()

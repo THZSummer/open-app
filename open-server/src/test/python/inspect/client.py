@@ -1,132 +1,141 @@
 #!/usr/bin/env python3
-"""公共模块：open-server (port 18080) 专用
-
-提供统一的:
-- BASE_URL / 请求发送 / 响应打印
-- --quiet 模式控制
-- is_pass() 自动判断 PASS/FAIL
-- check() 契约校验断言
-
-open-server 标准响应格式: {code, messageZh, messageEn, data}
 """
-import atexit
-import sys
-import json
+集成测试统一入口 — 测试脚本只传业务参数，不关心任何基础设施细节。
+
+用法:
+    from client import api, db, ok, fail, done
+
+    resp = api("POST", "/connectors", {"nameCn": "测试", "nameEn": "Test", "connectorType": 1})
+    ok(resp, 200, "创建连接器")
+
+    resp = api("GET", "/connectors/999", app_id="99999")  # 覆盖 app
+    ok(resp, 403, "无权限访问")
+"""
+import sys, json, time, subprocess
 import requests
-import time
-import re
 
-_pass_count = 0
-_fail_count = 0
+# ═══════════════════════════════════════════════════════════
+# 配置 — 只改这里
+# ═══════════════════════════════════════════════════════════
+_API_BASE = "http://localhost:18080/open-server"
+TEST_APP_ID = "202606241730488926"
+_DEFAULT_USER  = "admin"
+_DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
+_REDIS = {"host": "192.168.3.201", "port": 6379, "password": "openapp"}
+_TIMEOUT = 10
 
-__all__ = [
-    "BASE_URL", "is_quiet", "request",
-    "check", "check_field_type", "check_camel_case",
-    "_print_request", "_print_response", "_is_pass",
-]
+# ═══════════════════════════════════════════════════════════
+# 内部状态
+# ═══════════════════════════════════════════════════════════
+_pass = 0
+_fail = 0
 
-BASE_URL = "http://localhost:18080/open-server"
-
-def is_quiet():
-    return "--quiet" in sys.argv
-
-def request(method, path, body=None, headers=None):
-    url = f"{BASE_URL}{path}"
+# ═══════════════════════════════════════════════════════════
+# API — 默认全自动，参数可覆盖
+# ═══════════════════════════════════════════════════════════
+def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeout=None):
+    """
+    发送 HTTP 请求。
+    - method, path, body: 业务参数
+    - app_id, user: 覆盖默认，传 None 去掉对应 header
+    - headers: 额外请求头，会合并进默认头
+    - timeout: 覆盖默认超时（秒）
+    返回 requests.Response 或 None（连接失败）。
+    """
+    url = f"{_API_BASE}/service/open/v2{path}"
     h = {"Content-Type": "application/json"}
+
+    aid = TEST_APP_ID if app_id is None else app_id
+    usr = _DEFAULT_USER if user is None else user
+    if aid is not None:
+        h["X-App-Id"] = aid
+    if usr is not None:
+        h["Cookie"] = f"user_id={usr}"
     if headers:
         h.update(headers)
+
+    t = timeout if timeout is not None else _TIMEOUT
     try:
-        start = time.time()
-        if method == "POST":
-            resp = requests.post(url, json=body, headers=h, timeout=10)
-        elif method == "GET":
-            resp = requests.get(url, headers=h, timeout=10)
-        elif method == "PUT":
-            resp = requests.put(url, json=body, headers=h, timeout=10)
-        elif method == "DELETE":
-            resp = requests.delete(url, headers=h, timeout=10)
-        else:
-            resp = requests.request(method, url, json=body, headers=h, timeout=10)
-        elapsed = time.time() - start
-    except requests.exceptions.ConnectionError:
-        if not is_quiet():
-            print(f"\n  SKIP: open-server 未运行 (port 18080)")
-        else:
-            print(f"[SKIP] {method} {path}")
+        return requests.request(method, url, json=body, headers=h, timeout=t)
+    except requests.ConnectionError:
+        print(f"  SKIP: open-server 未运行 (port 18080)")
         return None
 
-    if not is_quiet():
-        _print_request(method, url, h, body)
-        _print_response(resp, elapsed)
-    return resp
+# ═══════════════════════════════════════════════════════════
+# DB — 直接执行 SQL
+# ═══════════════════════════════════════════════════════════
+def db(sql, capture=False):
+    """执行 SQL。capture=True 返回 stdout"""
+    cmd = ["mysql", f"-h{_DB['host']}", f"-u{_DB['user']}", f"-p{_DB['passwd']}", _DB['db'], "-e", sql]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout if capture else None
 
-def _print_request(method, url, headers, body):
-    print(f"\n{'='*60}")
-    print(f"REQUEST: {method} {url}")
-    if body:
-        print(f"  Body: {json.dumps(body, ensure_ascii=False)}")
-    print(f"{'='*60}")
+def db_val(sql):
+    """执行 SQL 并返回单个值（第一列第一行）"""
+    out = db(sql, capture=True)
+    lines = out.strip().split('\n')
+    return lines[-1].strip() if len(lines) > 1 else None
 
-def _print_response(resp, elapsed):
-    print(f"RESPONSE: {resp.status_code}")
-    try:
-        body = resp.json()
-        print(f"  Body: {json.dumps(body, indent=2, ensure_ascii=False)}")
-    except Exception:
-        print(f"  Body: {resp.text[:500]}")
-    print(f"  Time: {elapsed:.2f}s")
-    ok = _is_pass(resp)
-    tag = "PASS" if ok else "FAIL"
-    full = "✅" if ok else "❌"
-    print(f"  Result: [{full} {tag}]")
-    print()
+def redis(*args):
+    """执行 redis-cli 命令。如 redis("KEYS", "*") → redis("SET", "k", "v")"""
+    cmd = ["redis-cli", "-h", _REDIS["host"], "-p", str(_REDIS["port"]), "-a", _REDIS["password"], "--no-auth-warning"]
+    cmd.extend([str(a) for a in args])
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
 
-def _is_pass(resp):
-    """判断请求是否通过：open-server 返回 code=200 视为通过"""
-    if resp.status_code not in (200, 201):
-        return False
-    try:
-        data = resp.json()
-        code = data.get("code")
-        return code == "200" or code == 200
-    except Exception:
-        return resp.ok
-
-def check(name, condition, detail=""):
-    global _pass_count, _fail_count
-    if condition:
-        _pass_count += 1
-        print(f"  ✅ PASS: {name}" + (f" - {detail}" if detail else ""))
+# ═══════════════════════════════════════════════════════════
+# 断言
+# ═══════════════════════════════════════════════════════════
+def ok(resp_or_cond, expected=None, name=""):
+    """
+    断言通过。
+    - ok(resp, 200, "创建成功") → 检查 HTTP 状态码
+    - ok(resp, 200, ...) 同时检查 body.code == "200"
+    - ok(True, name="条件成立") → 直接布尔断言
+    """
+    global _pass, _fail
+    if isinstance(resp_or_cond, bool):
+        if isinstance(expected, str):
+            name = expected
+        cond, detail = resp_or_cond, ""
+    elif resp_or_cond is None:
+        cond, detail = False, "连接失败"
+    elif isinstance(expected, int):
+        ok_http = resp_or_cond.status_code == expected
+        try:
+            body = resp_or_cond.json()
+            ok_code = body.get("code") in ("200", 200)
+        except Exception:
+            ok_code = True
+        cond = ok_http and ok_code
+        detail = f"HTTP {resp_or_cond.status_code} (期望 {expected})"
     else:
-        _fail_count += 1
-        print(f"  ❌ FAIL: {name}" + (f" - {detail}" if detail else ""))
+        cond, detail = bool(resp_or_cond), ""
+    if cond:
+        _pass += 1
+        tag = f"✅ PASS: {name}" + (f" - {detail}" if detail else "")
+    else:
+        _fail += 1
+        tag = f"❌ FAIL: {name}" + (f" - {detail}" if detail else "")
+        if resp_or_cond is not None and not isinstance(resp_or_cond, bool):
+            try:
+                tag += f"\n       body={json.dumps(resp_or_cond.json(), ensure_ascii=False)[:200]}"
+            except Exception:
+                pass
+    print(tag)
 
-def check_field_type(body, field_path, expected_type):
-    parts = field_path.split(".")
-    current = body
-    for p in parts:
-        if isinstance(current, dict) and p in current:
-            current = current[p]
-        else:
-            return False, f"字段 {field_path} 不存在"
-    actual = type(current).__name__
-    ok = actual == expected_type
-    detail = f"期望 {expected_type}, 实际 {actual}" if not ok else ""
-    return ok, detail
+def fail(name, detail=""):
+    """直接标记失败"""
+    global _fail
+    _fail += 1
+    print(f"❌ FAIL: {name}" + (f" - {detail}" if detail else ""))
 
-def check_camel_case(name):
-    return bool(re.match(r"^[a-z]+[A-Za-z0-9]*$", name))
-
-def _print_summary():
-    if is_quiet():
-        return
-    print(f"\n── 测试结果 ──")
-    print(f"  ✅ PASS: {_pass_count}  ❌ FAIL: {_fail_count}")
-    print(f"  exit code: {'1' if _fail_count > 0 else '0'}")
-
-def _atexit_handler():
-    _print_summary()
-    if _fail_count > 0:
+# ═══════════════════════════════════════════════════════════
+# 收尾
+# ═══════════════════════════════════════════════════════════
+def done():
+    """打印汇总，非零退出"""
+    print(f"\n── 结果 ──")
+    print(f"  ✅ PASS: {_pass}  ❌ FAIL: {_fail}")
+    if _fail > 0:
         sys.exit(1)
-
-atexit.register(_atexit_handler)
