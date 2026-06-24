@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -22,7 +23,6 @@ import java.util.TimeZone;
  * </ul>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
  */
 @Configuration
 public class JacksonConfig {
@@ -42,6 +42,9 @@ public class JacksonConfig {
 
         // 设置时区为北京时间
         objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
+
+        // 注入 JsonUtils 静态工具类
+        JsonUtils.init(objectMapper);
 
         return objectMapper;
     }

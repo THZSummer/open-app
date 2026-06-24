@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.ability.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Getter;
  * @version 1.0.0
  */
 @Getter
+@AllArgsConstructor
 public enum AbilityTypeEnum {
 
     GROUP_TOP(1, "群置顶服务"),
@@ -21,11 +23,6 @@ public enum AbilityTypeEnum {
 
     private final int code;
     private final String desc;
-
-    AbilityTypeEnum(int code, String desc) {
-        this.code = code;
-        this.desc = desc;
-    }
 
     public static boolean isValidCode(Integer code) {
         if (code == null) {

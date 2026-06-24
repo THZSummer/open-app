@@ -50,6 +50,11 @@ import java.util.List;
  */
 public class DiffConfig {
 
+    /**
+     * 模板中字段级 diff 的占位符（OperateEnum 模板和 OperateLogV2Aspect 渲染统一引用）
+     */
+    public static final String DIFF_FIELDS_PLACEHOLDER = "${diffFields}";
+
     // ===== 默认格式模板 =====
     public static final String DEFAULT_FORMAT_CN_NORMAL = "${label}: 由\"${before}\"改为\"${after}\"";
     public static final String DEFAULT_FORMAT_CN_LABEL_ONLY = "修改${label}";

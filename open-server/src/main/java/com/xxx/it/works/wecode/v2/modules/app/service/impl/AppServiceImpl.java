@@ -219,7 +219,6 @@ public class AppServiceImpl implements AppService {
         List<App> apps = appMapper.selectListByAccountId(accountId, tenantId, offset, pageSize);
         long total = appMapper.countByAccountId(accountId, tenantId);
 
-        // 批量查询 Owner 信息（1 次 member 查询 + 1 次 employee 查询，替代 N*2 次）
         List<Long> appIds = apps.stream().map(App::getId).collect(Collectors.toList());
         Map<Long, EmployeeInfoVO> ownerMap = getOwnerMap(appIds);
 

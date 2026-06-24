@@ -1,6 +1,6 @@
 package com.xxx.it.works.wecode.v2.common.interceptor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
@@ -22,8 +22,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Aspect
 @Component
 public class ServiceLogAspect {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Pointcut("@within(org.springframework.stereotype.Service) && within(com.xxx.it.works.wecode.v2.modules..*)")
     public void serviceMethod() {
@@ -59,10 +57,7 @@ public class ServiceLogAspect {
         if (arg instanceof MultipartFile) {
             return arg.getClass().getSimpleName();
         }
-        try {
-            return OBJECT_MAPPER.writeValueAsString(arg);
-        } catch (Exception e) {
-            return arg.toString();
-        }
+        String json = JsonUtils.toJson(arg);
+        return json != null ? json : arg.toString();
     }
 }
