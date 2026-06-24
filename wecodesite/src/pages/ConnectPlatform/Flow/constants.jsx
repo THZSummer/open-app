@@ -131,8 +131,8 @@ export const getFlowColumns = (callbacks) => {
   return [
     {
       title: '连接流 ID',
-      dataIndex: 'flowId',
-      key: 'flowId',
+      dataIndex: 'id',
+      key: 'id',
       width: 180,
       ellipsis: true,
       render: renderText,
