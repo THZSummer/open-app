@@ -1,3 +1,5 @@
+import { queryParams } from "../utils/common";
+
 export const API_CONFIG = {
   BASE_URL: '/service/open/v2',
 
@@ -11,25 +13,59 @@ export const API_CONFIG = {
     CATEGORIES: '/categories',
   },
 
+  // ===== 连接器（对齐 plan-api.md v7.0） =====
   CONNECTORS: {
-    LIST: '/connectors',
-    DETAIL: '/connectors/{connectorId}',
-    CREATE: '/connectors',
-    UPDATE: '/connectors/{connectorId}',
-    DELETE: '/connectors/{connectorId}',
-    CONFIG: '/connectors/{connectorId}/config',
-    CONFIG_UPDATE: '/connectors/{connectorId}/config',
+    LIST: '/connectors',                                                      // #2 查询连接器列表
+    DETAIL: '/connectors/{connectorId}',                                      // #3 查询连接器详情
+    CREATE: '/connectors',                                                    // #1 创建连接器
+    UPDATE: '/connectors/{connectorId}',                                      // #4 更新连接器
+    DELETE: '/connectors/{connectorId}',                                      // #7 删除连接器
+    INVALIDATE: '/connectors/{connectorId}/invalidate',                       // #5 失效连接器
+    RECOVER: '/connectors/{connectorId}/recover',                             // #6 恢复连接器
+
+    // ===== 连接器版本（#8~#16） =====
+    VERSIONS_LIST: '/connectors/{connectorId}/versions',                      // #9 查询版本列表
+    VERSION_CREATE: '/connectors/{connectorId}/versions',                     // #8 创建草稿版本
+    VERSION_DETAIL: '/connectors/{connectorId}/versions/{versionId}',         // #10 查询版本详情
+    VERSION_UPDATE: '/connectors/{connectorId}/versions/{versionId}',         // #11 更新版本
+    VERSION_PUBLISH: '/connectors/{connectorId}/versions/{versionId}/publish',// #12 发布版本
+    VERSION_COPY_TO_DRAFT: '/connectors/{connectorId}/versions/{versionId}/copy-to-draft', // #13 复制到草稿
+    VERSION_INVALIDATE: '/connectors/{connectorId}/versions/{versionId}/invalidate',       // #14 失效版本
+    VERSION_RECOVER: '/connectors/{connectorId}/versions/{versionId}/recover',             // #15 恢复版本
+    VERSION_DELETE: '/connectors/{connectorId}/versions/{versionId}',                      // #16 删除版本
   },
 
+  // ===== 连接流（对齐 plan-api.md v7.0） =====
   FLOWS: {
-    LIST: '/flows',
-    DETAIL: '/flows/{flowId}',
-    CREATE: '/flows',
-    UPDATE: '/flows/{flowId}',
-    DELETE: '/flows/{flowId}',
-    START: '/flows/{flowId}/start',
-    STOP: '/flows/{flowId}/stop',
-    CONFIG: '/flows/{flowId}/config',
+    LIST: '/flows',                                                           // #18 查询连接流列表
+    DETAIL: '/flows/{flowId}',                                                // #19 查询连接流详情
+    CREATE: '/flows',                                                         // #17 创建连接流
+    UPDATE: '/flows/{flowId}',                                                // #20 更新连接流
+    DELETE: '/flows/{flowId}',                                                // #27 删除连接流
+    COPY: '/flows/{flowId}/copy',                                             // #21 复制连接流
+    DEPLOY: '/flows/{flowId}/deploy',                                         // #22 部署连接流
+    START: '/flows/{flowId}/start',                                           // #23 启动连接流
+    STOP: '/flows/{flowId}/stop',                                             // #24 停止连接流
+    INVALIDATE: '/flows/{flowId}/invalidate',                                 // #25 失效连接流
+    RECOVER: '/flows/{flowId}/recover',                                       // #26 恢复连接流
+
+    // ===== 连接流版本（#28~#38） =====
+    VERSIONS_LIST: '/flows/{flowId}/versions',                                // #29 查询版本列表
+    VERSION_CREATE: '/flows/{flowId}/versions',                               // #28 创建草稿版本
+    VERSION_DETAIL: '/flows/{flowId}/versions/{versionId}',                   // #30 查询版本详情
+    VERSION_UPDATE: '/flows/{flowId}/versions/{versionId}',                   // #31 更新版本
+    VERSION_PUBLISH: '/flows/{flowId}/versions/{versionId}/publish',          // #32 发布版本
+    VERSION_COPY_TO_DRAFT: '/flows/{flowId}/versions/{versionId}/copy-to-draft', // #33 复制到草稿
+    VERSION_INVALIDATE: '/flows/{flowId}/versions/{versionId}/invalidate',    // #34 失效版本
+    VERSION_RECOVER: '/flows/{flowId}/versions/{versionId}/recover',          // #35 恢复版本
+    VERSION_DELETE: '/flows/{flowId}/versions/{versionId}',                   // #36 删除版本
+    VERSION_CANCEL: '/flows/{flowId}/versions/{versionId}/cancel',            // #37 撤回审批
+    VERSION_URGE: '/flows/{flowId}/versions/{versionId}/urge',                // #38 催办审批
+    VERSION_DEBUG: '/flows/{flowId}/versions/{versionId}/debug',              // #51 调试代理
+
+    // ===== 运行记录（#49~#50） =====
+    EXECUTIONS_LIST: '/flows/{flowId}/executions',                            // #49 查询运行记录列表
+    EXECUTION_DETAIL: '/flows/{flowId}/executions/{executionId}',             // #50 查询运行记录详情
   },
 
   EVENTS: {
@@ -104,7 +140,73 @@ export const API_CONFIG = {
     UPDATE: '/approval-flows/{id}',
     DELETE: '/approval-flows/{id}',
   },
+
+  // ===== 应用管理模块 (APP-MGMT-001) =====
+  APP: {
+    LIST: '/app',
+    CREATE: '/app',
+    DETAIL: '/app/{appId}',
+    UPDATE: '/app/{appId}',
+    DELETE: '/app/{appId}',
+    ICONS: '/app/icons',
+    EAMAP_LIST: '/app/eamap',
+    CURRENT_ROLE: '/app/{appId}/current-role',
+    IDENTITY: '/app/{appId}/identity',
+    VERIFY_TYPE_GET: '/app/{appId}/verify-type',
+    VERIFY_TYPE_UPDATE: '/app/{appId}/verify-type',
+    BIND_EAMAP: '/app/{appId}/bind-eamap',
+  },
+
+  APP_MEMBERS: {
+    LIST: '/app/{appId}/members',
+    ADD: '/app/{appId}/members',
+    DELETE: '/app/{appId}/members/{id}',
+    TRANSFER_OWNER: '/app/{appId}/transfer-owner',
+    SEARCH_USERS: '/app/{appId}/search-users',
+  },
+
+  APP_ABILITIES: {
+    LIST: '/abilities',
+    SUBSCRIBED: '/app/{appId}/abilities',
+    ADD: '/app/{appId}/abilities',
+  },
+
+  APP_VERSIONS: {
+    LIST: '/app/{appId}/versions',
+    CREATE: '/app/{appId}/versions',
+    DETAIL: '/app/{appId}/versions/{versionId}',
+    UPDATE: '/app/{appId}/versions/{versionId}',
+    PUBLISH: '/app/{appId}/versions/{versionId}/publish',
+    WITHDRAW: '/app/{appId}/versions/{versionId}/withdraw',
+    DELETE: '/app/{appId}/versions/{versionId}',
+  },
+
+  // ===== 通用查询接口 =====
+  LOOKUP: {
+    WHITELIST: '/lookup/whitelist',
+  },
+
+  // ===== 通用文件接口 =====
+  FILE: {
+    UPLOAD_IMAGE: '/file/upload-image',
+  },
 };
+
+// ==================== 灰度发布：新旧路由映射 ====================
+// key = 旧路由，value = 新路由
+// 后续手动替换新路由实现时，只改这里即可
+export const ROUTE_VERSION_MAP = {
+  '/':                  '/app-list-v2',
+  '/basic-info':        '/basic-info-v2',
+  '/members':           '/members-v2',
+  '/capabilities':      '/capabilities-v2',
+  '/capability-detail': '/capability-detail-v2',
+  '/version-release':   '/version-release-v2',
+  '/operation-log':     '/operation-log-v2',
+};
+
+// 灰度发布场景使用的新页面路由列表（用于快速判断"当前是否新页面"）
+export const NEW_PAGE_ROUTES = Object.values(ROUTE_VERSION_MAP);
 
 export const buildApiUrl = (template, params = {}) => {
   let url = template;
@@ -114,20 +216,92 @@ export const buildApiUrl = (template, params = {}) => {
   return url;
 };
 
+// 请求去重缓存：同一个 URL 的并发 GET 请求只发一次
+const _pendingRequests = new Map();
+
 export const fetchApi = async (url, options = {}) => {
-  const { params, ...fetchOptions } = options;
+  const { params, rawBody, ...fetchOptions } = options;
   let fullUrl = `${API_CONFIG.BASE_URL}${url}`;
   if (params) {
     const queryString = new URLSearchParams(params).toString();
     fullUrl = queryString ? `${fullUrl}?${queryString}` : fullUrl;
   }
+
+  // GET 请求去重：如果同一个 URL 正在请求中，复用 Promise
+  const method = (fetchOptions.method || 'GET').toUpperCase();
+  if (method === 'GET') {
+    const cached = _pendingRequests.get(fullUrl);
+    if (cached) return cached;
+    const promise = _doFetch(fullUrl, fetchOptions, rawBody);
+    _pendingRequests.set(fullUrl, promise);
+    try {
+      return await promise;
+    } catch (e) {
+      _pendingRequests.delete(fullUrl);
+      throw e;
+    } finally {
+      _pendingRequests.delete(fullUrl);
+    }
+  }
+
+  return _doFetch(fullUrl, fetchOptions, rawBody);
+};
+
+const _doFetch = async (fullUrl, fetchOptions, rawBody) => {
+  // rawBody=true 时（如 FormData 上传），不设置 Content-Type，让浏览器自动处理 boundary
+  const headers = rawBody
+    ? { ...fetchOptions.headers }
+    : { 'Content-Type': 'application/json', ...fetchOptions.headers };
+
+  const appId = queryParams('appId');
+  if (appId) {
+    headers['X-App-Id'] = appId;
+  }
+
   const response = await fetch(fullUrl, {
     ...fetchOptions,
-    credentials: 'include',  // 确保请求携带 Cookie
-    headers: {
-      'Content-Type': 'application/json',
-      ...fetchOptions.headers,
-    },
+    credentials: 'include',
+    headers,
   });
   return response.json();
+};
+
+// ==================== 灰度发布：白名单拉取（带缓存） ====================
+// 内存缓存：整个会话内只拉一次
+let _whitelistCache = null;
+let _whitelistPromise = null;
+
+/**
+ * 获取灰度白名单（应用白名单，appId 列表）
+ * - 后端从 openplatform_lookup_item_t 表 item_code = whiteAppList 的 item_value 中读取
+ * - 返回格式：字符串，如 '["app_001","app_002"]'，由前端 JSON.parse 解析
+ * - 成功：缓存并返回 appId 数组
+ * - 失败：降级为空数组（白名单空 = 所有应用走新页面）
+ */
+export const fetchWhitelist = async () => {
+  if (_whitelistCache !== null) return _whitelistCache;
+  if (_whitelistPromise) return _whitelistPromise;
+
+  _whitelistPromise = (async () => {
+    try {
+      const url = buildApiUrl(API_CONFIG.LOOKUP.WHITELIST, {});
+      const res = await fetchApi(url);
+      // 后端返回字符串，如 '["app_001","app_002"]'，解析为数组
+      const raw = res?.data;
+      if (typeof raw === 'string' && raw.trim()) {
+        _whitelistCache = JSON.parse(raw);
+      } else if (Array.isArray(raw)) {
+        _whitelistCache = raw;
+      } else {
+        _whitelistCache = [];
+      }
+    } catch (e) {
+      _whitelistCache = [];
+    } finally {
+      _whitelistPromise = null;
+    }
+    return _whitelistCache;
+  })();
+
+  return _whitelistPromise;
 };

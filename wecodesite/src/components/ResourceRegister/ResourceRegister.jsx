@@ -211,6 +211,8 @@ function ResourceRegister({
       confirmLoading={submitting}
       loading={loading}
       destroyOnClose
+      okText="保存"
+      cancelText="取消"
       footer={mode === 'view' ? [
         <Button key="close" onClick={onCancel}>
           关闭

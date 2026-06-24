@@ -16,6 +16,7 @@ import {
 
 const { Option } = Select;
 
+// 流程代码选项：覆盖现有场景与连接流版本审批
 const APPROVAL_FLOW_CODE_OPTIONS = [
   { value: 'global', label: 'global - 全局审批' },
   { value: 'api_register', label: 'api_register - API注册审批' },
@@ -24,7 +25,11 @@ const APPROVAL_FLOW_CODE_OPTIONS = [
   { value: 'api_permission_apply', label: 'api_permission_apply - API权限申请审批' },
   { value: 'event_permission_apply', label: 'event_permission_apply - 事件权限申请审批' },
   { value: 'callback_permission_apply', label: 'callback_permission_apply - 回调权限申请审批' },
+  { value: 'connector_flow', label: 'connector_flow - 连接流版本审批' },
 ];
+
+// 仅 connector_flow 流程代码支持展示应用 ID
+const APP_ID_ENABLED_CODE = 'connector_flow';
 
 function ApprovalFlowFormModal({
   visible,
@@ -35,6 +40,8 @@ function ApprovalFlowFormModal({
 }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = React.useState(false);
+  // 当前选中的流程代码（用于控制应用 ID 字段显示与否）
+  const [currentCode, setCurrentCode] = React.useState('');
 
   useEffect(() => {
     if (visible) {
@@ -43,16 +50,30 @@ function ApprovalFlowFormModal({
           nameCn: editingFlow.nameCn,
           nameEn: editingFlow.nameEn,
           code: editingFlow.code,
+          appId: editingFlow.appId,
           nodes: editingFlow.nodes || [],
         });
+        setCurrentCode(editingFlow.code);
       } else {
         form.resetFields();
         form.setFieldsValue({
           nodes: [],
         });
+        setCurrentCode('');
       }
     }
   }, [visible, isEditing, editingFlow, form]);
+
+  /**
+   * 流程代码变化时同步本地状态，并在切换为非 connector_flow 时清空应用 ID
+   * 参数 value 为选中的流程代码
+   */
+  const handleCodeChange = (value) => {
+    setCurrentCode(value);
+    if (value !== APP_ID_ENABLED_CODE) {
+      form.setFieldsValue({ appId: undefined });
+    }
+  };
 
   const handleOk = async () => {
     const values = await form.validateFields();
@@ -64,8 +85,12 @@ function ApprovalFlowFormModal({
       type: 'approver',
     })) : [];
 
+    // 仅 connector_flow 才提交 appId；其他流程代码不带 appId
+    const appId = values.code === APP_ID_ENABLED_CODE ? (values.appId || '') : undefined;
+
     const data = {
       ...values,
+      appId,
       nodes,
     };
 
@@ -85,6 +110,8 @@ function ApprovalFlowFormModal({
       onOk={handleOk}
       onCancel={handleCancel}
       confirmLoading={loading}
+      okText="保存"
+      cancelText="取消"
       width={700}
       destroyOnClose
     >
@@ -114,11 +141,12 @@ function ApprovalFlowFormModal({
           rules={[
             { required: true, message: '请选择流程代码' },
           ]}
-          extra="选择审批流程类型"
+          extra="选择审批流程类型，创建后不可修改"
         >
           <Select
             placeholder="请选择流程代码"
             disabled={!!isEditing}
+            onChange={handleCodeChange}
           >
             {APPROVAL_FLOW_CODE_OPTIONS.map(opt => (
               <Option key={opt.value} value={opt.value}>
@@ -127,6 +155,17 @@ function ApprovalFlowFormModal({
             ))}
           </Select>
         </Form.Item>
+
+        {/* 应用 ID：仅 connector_flow 流程代码下展示，非必填；不填为全局审批，填写后为应用级审批 */}
+        {currentCode === APP_ID_ENABLED_CODE && (
+          <Form.Item
+            label="应用 ID"
+            name="appId"
+            extra="非必填；不填为全局审批，填写后为应用级审批"
+          >
+            <Input placeholder="请输入应用 ID（不填为全局审批）" allowClear />
+          </Form.Item>
+        )}
 
         <Divider orientation="left">审批节点配置</Divider>
 
@@ -209,6 +248,7 @@ function ApprovalFlowFormModal({
           <ul style={{ paddingLeft: 20 }}>
             <li>审批节点按顺序执行，序号从1开始递增</li>
             <li>code='global' 为全局审批流程，其他为场景审批流程</li>
+            <li>code='connector_flow' 为连接流版本审批：未填写应用 ID 为全局审批，填写应用 ID 为应用级审批</li>
             <li>权限申请流程的资源审批节点从 permission.resource_nodes 字段获取</li>
             <li>流程代码创建后不可修改</li>
           </ul>

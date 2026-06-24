@@ -1,70 +1,55 @@
 /**
  * 连接器管理页面样式
+ * 样式风格对齐成员管理页面
  */
 
-// 页面最外层容器
-.connector-page-wrapper {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
-
-// 主内容区域
-.main-content {
-  flex: 1;
-  overflow: auto;
-}
-
 .connector-management-page {
-  padding: 24px;
-  background: #fff;
   min-height: 100%;
 
+  // 卡片容器（对齐成员管理 .content-card）
+  .content-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  // 页面头部（对齐成员管理 .page-header）
   .page-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    align-items: center;
+    margin-bottom: 16px;
 
+    // 自动化构建：左侧标题 + 描述
     &-left {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-    }
-
-    // 主按钮样式
-    :global(.ant-btn-primary) {
-      border-radius: 6px;
+      gap: 2px;
     }
   }
 }
 
+// 页面标题（对齐成员管理 h2）
 .page-title {
-  font-size: 18px;
+  margin: 0;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1f2329;
 }
 
+// 页面描述（对齐成员管理 .page-desc）
 .page-desc {
+  margin: 4px 0 0;
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: #8f959e;
 }
 
-.toolbar {
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-
-  :global(.ant-table) {
-    min-width: 800px;
-  }
-
-  :global(.ant-table-thead > tr > th),
-  :global(.ant-table-tbody > tr > td) {
-    white-space: nowrap;
+// 分页容器（对齐成员管理 .members-pagination）
+.page-pagination {
+  :global(.pagination-wrapper) {
+    border: none;
+    background: transparent;
+    padding: 12px 0;
+    margin-top: 16px;
   }
 }
