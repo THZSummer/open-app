@@ -5,9 +5,9 @@
 -- 规范版本: spec.md v3.0 / plan-db.md v2.0
 -- 设计原则:
 --   - V3 多版本模型: connector_t/flow_t 1:N connector_version_t/flow_version_t
---   - 移除 1:1 约束 (uk_connector_id / uk_flow_id)
+--   - 移除 1:1 约束 (idx_connector_id / idx_flow_id)
 --   - 新增连接器版本引用中间表 (connector_version_ref_t)
---   - 启用执行记录和执行步骤表 (V1 预留未使用)
+--   - 启用执行记录和执行步骤表 (V3 新增)
 --   - 所有枚举: TINYINT(10) + COMMENT 注释数字→含义映射
 --   - 无物理外键
 --   - 审计字段: create_time, last_update_time, create_by, last_update_by
@@ -73,7 +73,7 @@ ALTER TABLE openplatform_v2_approval_flow_t
     ADD UNIQUE KEY uk_code_app (code, app_id);
 
 -- ============================================================================
--- 第 2 部分: 新建表 (3 CREATE)
+-- 第 2 部分: 新建表 (4 CREATE)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ ALTER TABLE openplatform_v2_approval_flow_t
 --     用于「标记版本失效/删除」的前置「被引用」校验
 --     flow_id/connector_id 冗余避免 JOIN 穿透版本表
 -- ----------------------------------------------------------------------------
-CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
+CREATE TABLE IF NOT EXISTS openplatform_v2_cp_connector_version_ref_t (
     id BIGINT(20) NOT NULL COMMENT '雪花ID',
     flow_id BIGINT(20) NOT NULL COMMENT '连接流ID（冗余，避免 JOIN flow_version_t）',
     flow_version_id BIGINT(20) NOT NULL COMMENT '连接流版本ID',
@@ -102,12 +102,9 @@ CREATE TABLE openplatform_v2_cp_connector_version_ref_t (
 
 -- ----------------------------------------------------------------------------
 -- 2.2 执行记录表 (execution_record_t)
---     V1 预留 DDL 但未实际使用，V3 全新启用修正版
---     先删旧表（无数据），再建新表
+--     V3 全新启用，记录每次连接流执行的元数据
 -- ----------------------------------------------------------------------------
-DROP TABLE IF EXISTS openplatform_v2_cp_execution_record_t;
-
-CREATE TABLE openplatform_v2_cp_execution_record_t (
+CREATE TABLE IF NOT EXISTS openplatform_v2_cp_execution_record_t (
     id                      BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
     app_id                  BIGINT(20)   NOT NULL DEFAULT 0 COMMENT '归属应用ID（与连接流 app_id 一致，冗余避免 JOIN）',
     flow_id                 BIGINT(20)   NOT NULL COMMENT '关联连接流ID',
@@ -143,13 +140,9 @@ CREATE TABLE openplatform_v2_cp_execution_record_t (
 
 -- ----------------------------------------------------------------------------
 -- 2.3 执行步骤详情表 (execution_step_t)
---     V1 预留 DDL 但未实际使用，V3 全新启用
---     node_type VARCHAR→TINYINT
---     先删旧表（无数据），再建新表
+--     V3 全新启用，node_type VARCHAR→TINYINT
 -- ----------------------------------------------------------------------------
-DROP TABLE IF EXISTS openplatform_v2_cp_execution_step_t;
-
-CREATE TABLE openplatform_v2_cp_execution_step_t (
+CREATE TABLE IF NOT EXISTS openplatform_v2_cp_execution_step_t (
     id                BIGINT(20)   NOT NULL COMMENT '雪花ID (应用层生成)',
     execution_id      BIGINT(20)   NOT NULL COMMENT '关联执行记录ID',
     node_id           VARCHAR(64)  NOT NULL COMMENT '节点ID（对应 flow_version_snapshot.nodes[].id）',
@@ -175,17 +168,11 @@ CREATE TABLE openplatform_v2_cp_execution_step_t (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行步骤详情表';
 
 -- ============================================================================
--- 第 3 部分: 清理 V1 预留表
---    storage_blob_ref_t V3 不使用，删除
--- ============================================================================
-DROP TABLE IF EXISTS openplatform_v2_cp_storage_blob_ref_t;
-
--- ============================================================================
--- 第 4 部分: 审计日志表 (FR-046)
+-- 第 3 部分: 审计日志表 (FR-046)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 4.1 操作日志表 (openplatform_operate_log_t)
+-- 3.1 操作日志表 (openplatform_operate_log_t)
 --     记录连接器/连接流发布等关键操作，供审计追溯
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS openplatform_operate_log_t (
@@ -213,5 +200,4 @@ CREATE TABLE IF NOT EXISTS openplatform_operate_log_t (
 -- 变更汇总:
 --   ALTER (5): connector_t, connector_version_t, flow_t, flow_version_t, approval_flow_t
 --   CREATE (4): connector_version_ref_t, execution_record_t, execution_step_t, openplatform_operate_log_t
---   DROP (1): storage_blob_ref_t (V1 预留，V3 不使用)
 -- ============================================================================
