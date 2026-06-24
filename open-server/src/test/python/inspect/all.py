@@ -12,27 +12,42 @@ import os
 from datetime import datetime
 
 SCRIPTS = [
+    # V3 E2E: 删除接口
     "api_delete.py",
     "event_delete.py",
     "callback_delete.py",
-    # V3 E2E: CRUD 基础操作
+    # V3 E2E: 连接器 CRUD 基础操作
     "connector_create.py",
     "connector_delete.py",
+    "connector_detail.py",
+    "connector_update.py",
+    "connector_list.py",
+    # V3 E2E: 连接流 CRUD 基础操作
     "flow_create.py",
     "flow_delete.py",
-    # V3 E2E: 版本生命周期 + 部署启动 + 审批
+    "flow_detail.py",
+    "flow_update.py",
+    "flow_list.py",
+    "flow_start.py",
+    "flow_stop.py",
+    # V3 E2E: 连接器版本生命周期 + 恢复
     "connector_version_lifecycle.py",
-    "connector_recover.py",  # NEW: FR-002 恢复连接器
+    "connector_recover.py",
+    "connector_crud.py",
+    # V3 E2E: 连接流版本生命周期 + 恢复 + 复制 + 停止重启
     "flow_version_lifecycle.py",
-    "flow_recover.py",  # NEW: FR-021 恢复连接流
-    "flow_approval_full_flow.py",
-    "flow_deploy_start_invoke.py",
+    "flow_recover.py",
     "flow_copy.py",
     "flow_stop_restart.py",
-    # V3 E2E: 安全 + 审计 + 校验
+    # V3 E2E: 审批 + 部署启动调用
+    "flow_approval_full_flow.py",
+    "approval_engine_callback.py",
+    "flow_deploy_start_invoke.py",
+    # V3 E2E: 安全 + 审计 + 校验 + 调试
     "app_whitelist.py",
     "operation_log.py",
     "json_validation.py",
+    "flow_version_debug.py",
 ]
 
 quiet = "--quiet" in sys.argv
