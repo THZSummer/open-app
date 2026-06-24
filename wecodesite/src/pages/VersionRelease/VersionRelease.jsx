@@ -107,10 +107,6 @@ function VersionRelease() {
     loadVersions({ curPage: page, pageSize });
   };
 
-  const handleShowSizeChange = (page, pageSize) => {
-    loadVersions({ curPage: 1, pageSize });
-  };
-
   // 返回列表
   const backToList = () => {
     setMode(MODE.LIST);
@@ -357,7 +353,8 @@ function VersionRelease() {
                   onChange={handlePageChange}
                   showSizeChanger
                   pageSizeOptions={PAGE_SIZE_OPTIONS}
-                  onShowSizeChange={handleShowSizeChange}
+                  showQuickJumper
+                  showTotal={(total) => `共 ${total} 条`}
                 />
               </div>
             </div>

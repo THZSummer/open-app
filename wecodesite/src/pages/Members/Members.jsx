@@ -96,10 +96,6 @@ function Members() {
     loadMembers({ curPage: page, pageSize });
   };
 
-  const handleShowSizeChange = (page, pageSize) => {
-    loadMembers({ curPage: 1, pageSize });
-  };
-
   // 搜索用户（添加成员用）— 模糊搜索
   const handleSearch = debounce(async (keyword) => {
     if (!keyword || keyword.trim().length === 0) {
@@ -303,7 +299,8 @@ function Members() {
                 onChange={handlePageChange}
                 showSizeChanger
                 pageSizeOptions={PAGE_SIZE_OPTIONS}
-                onShowSizeChange={handleShowSizeChange}
+                showQuickJumper
+                showTotal={(total) => `共 ${total} 条`}
               />
             </div>
           </div>

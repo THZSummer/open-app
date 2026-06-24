@@ -111,15 +111,6 @@ function ConnectorList() {
   };
 
   /**
-   * 切换每页条数
-   * @param {number} page - 页码
-   * @param {number} size - 每页条数
-   */
-  const handleShowSizeChange = (page, size) => {
-    loadData({ curPage: 1, pageSize: size });
-  };
-
-  /**
    * 搜索处理
    * @param {Object} formValues - 表单值
    */
@@ -340,7 +331,8 @@ function ConnectorList() {
               onChange={handlePageChange}
               showSizeChanger
               pageSizeOptions={PAGE_SIZE_OPTIONS}
-              onShowSizeChange={handleShowSizeChange}
+              showQuickJumper
+              showTotal={(total) => `共 ${total} 条`}
             />
           </div>
         </Spin>
