@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.member.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Getter;
  * @version 1.0.0
  */
 @Getter
+@AllArgsConstructor
 public enum MemberTypeEnum {
 
     /**
@@ -38,12 +40,6 @@ public enum MemberTypeEnum {
      * 角色优先级：Owner(3) > Admin(2) > Developer(1)
      */
     private final int priority;
-
-    MemberTypeEnum(int code, String desc, int priority) {
-        this.code = code;
-        this.desc = desc;
-        this.priority = priority;
-    }
 
     /**
      * 根据 code 查找枚举，未匹配返回 null

@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.version.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Getter;
  * @version 1.0.0
  */
 @Getter
+@AllArgsConstructor
 public enum VersionStatusEnum {
 
     PENDING_RELEASE(1, "待发布"),
@@ -18,9 +20,4 @@ public enum VersionStatusEnum {
 
     private final int code;
     private final String desc;
-
-    VersionStatusEnum(int code, String desc) {
-        this.code = code;
-        this.desc = desc;
-    }
 }

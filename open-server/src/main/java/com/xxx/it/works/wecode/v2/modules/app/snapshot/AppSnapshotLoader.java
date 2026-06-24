@@ -5,6 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.app.constants.AppPropertyConstants;
 import com.xxx.it.works.wecode.v2.modules.app.entity.App;
 import com.xxx.it.works.wecode.v2.modules.app.entity.AppProperty;
 import com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper;
+import com.xxx.it.works.wecode.v2.modules.app.enums.VerifyTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -84,6 +85,14 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
                             .map(Integer::parseInt)
                             .collect(Collectors.toList());
                     snapshot.put("verifyType", verifyTypeList);
+                    // 加描述字段供模板 ${verifyTypeDesc} 使用
+                    String verifyTypeDesc = verifyTypeList.stream()
+                            .map(code -> {
+                                VerifyTypeEnum e = VerifyTypeEnum.fromCode(code);
+                                return e != null ? e.getName() : String.valueOf(code);
+                            })
+                            .collect(Collectors.joining("、"));
+                    snapshot.put("verifyTypeDesc", verifyTypeDesc);
                 } else if (AppPropertyConstants.PROP_DIAGRAM_ID_LIST.equals(p.getPropertyName())) {
                     // 示意图 ID 列表映射为 funcImgId，匹配 OperateLogV2Aspect.APP_FIELD_LABELS
                     snapshot.put("funcImgId", p.getPropertyValue());

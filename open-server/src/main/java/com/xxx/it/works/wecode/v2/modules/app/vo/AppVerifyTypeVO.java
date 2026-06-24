@@ -1,6 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.app.vo;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -12,6 +14,8 @@ import java.util.List;
  * @date 2026-06-06
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AppVerifyTypeVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -25,12 +29,4 @@ public class AppVerifyTypeVO implements Serializable {
      * API 密钥
      */
     private String apiSecret;
-
-    public AppVerifyTypeVO() {
-    }
-
-    public AppVerifyTypeVO(List<Integer> verifyType, String apiSecret) {
-        this.verifyType = verifyType;
-        this.apiSecret = apiSecret;
-    }
 }

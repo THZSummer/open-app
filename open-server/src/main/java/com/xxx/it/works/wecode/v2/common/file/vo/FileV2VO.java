@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.common.file.vo;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -13,6 +14,7 @@ import java.io.Serializable;
  */
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 public class FileV2VO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -25,9 +27,4 @@ public class FileV2VO implements Serializable {
      * 文件访问URL
      */
     private String url;
-
-    public FileV2VO(String fileId, String url) {
-        this.fileId = fileId;
-        this.url = url;
-    }
 }

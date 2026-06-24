@@ -8,7 +8,6 @@ import com.xxx.it.works.wecode.v2.modules.app.dto.BindEamapRequest;
 import com.xxx.it.works.wecode.v2.modules.app.dto.CreateAppRequest;
 import com.xxx.it.works.wecode.v2.modules.app.dto.UpdateAppRequest;
 import com.xxx.it.works.wecode.v2.modules.app.dto.UpdateVerifyTypeRequest;
-import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
 import com.xxx.it.works.wecode.v2.modules.app.service.AppService;
 import com.xxx.it.works.wecode.v2.modules.app.vo.AppBasicInfoVO;
 import com.xxx.it.works.wecode.v2.modules.app.vo.AppIdentityVO;
@@ -52,7 +51,7 @@ public class AppController {
     /**
      * 1.1 创建应用
      */
-    @AuditLog(value = OperateEnum.CREATE_APP, appIdSource = AppIdSourceEnum.RESPONSE_FIELD)
+    @AuditLog(value = OperateEnum.CREATE_APP)
     @PostMapping("")
     public ApiResponse<CreateAppVO> createApp(@RequestBody @Validated CreateAppRequest request) {
         String appId = appService.saveApp(request);
