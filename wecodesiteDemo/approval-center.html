@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>审批中心 - 连接平台</title>
+    <style>
+        /* ========================================
+           全局样式变量
+           ======================================== */
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-tertiary: #8c8c8c;
+            --border-color: #d9d9d9;
+            --bg-light: #fafafa;
+            --bg-white: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5715;
+            color: var(--text-primary);
+            background: var(--bg-light);
+        }
+
+        /* ========================================
+           页面布局
+           ======================================== */
+        .page-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           左侧导航栏
+           ======================================== */
+        .sidebar {
+            width: 220px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 0;
+            flex: 1;
+        }
+
+        .sidebar-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .sidebar-item.active {
+            background: #e6f7ff;
+            color: var(--primary-color);
+            font-weight: 500;
+            border-right: 3px solid var(--primary-color);
+        }
+
+        /* ========================================
+           主内容区域
+           ======================================== */
+        .main-content {
+            flex: 1;
+            overflow: auto;
+            background: var(--bg-light);
+        }
+
+        .management-page {
+            padding: 24px;
+            background: var(--bg-white);
+            min-height: 100%;
+        }
+
+        /* ========================================
+           页面头部
+           ======================================== */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .page-header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .page-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        /* ========================================
+           Tab标签页
+           ======================================== */
+        .tabs-container {
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-list {
+            display: flex;
+            gap: 0;
+            list-style: none;
+        }
+
+        .tab-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 14px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            margin-bottom: -1px;
+        }
+
+        .tab-item:hover {
+            color: var(--primary-color);
+        }
+
+        .tab-item.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        /* ========================================
+           Tab内容区
+           ======================================== */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ========================================
+           按钮样式
+           ======================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+            color: #fff;
+        }
+
+        .btn-link {
+            background: transparent;
+            border: none;
+            padding: 4px 8px;
+            color: var(--primary-color);
+        }
+
+        .btn-link:hover {
+            color: var(--primary-hover);
+        }
+
+        .btn-link.danger {
+            color: var(--error-color);
+        }
+
+        .btn-link.danger:hover {
+            color: #ff7875;
+        }
+
+        /* ========================================
+           搜索表单
+           ======================================== */
+        .search-form {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-input {
+            width: 300px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        /* ========================================
+           表格样式
+           ======================================== */
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-white);
+        }
+
+        .data-table thead {
+            background: var(--bg-light);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-light);
+        }
+
+        .data-table .action-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* ========================================
+           状态徽章
+           ======================================== */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .status-badge.success {
+            background: #f6ffed;
+            color: var(--success-color);
+        }
+
+        .status-badge.error {
+            background: #fff2f0;
+            color: var(--error-color);
+        }
+
+        .status-badge.default {
+            background: #f5f5f5;
+            color: var(--text-tertiary);
+        }
+
+        .status-badge.blue {
+            background: #e6f7ff;
+            color: var(--primary-color);
+        }
+
+        .status-badge.orange {
+            background: #fff7e6;
+            color: var(--warning-color);
+        }
+
+        .status-badge.green {
+            background: #f6ffed;
+            color: var(--success-color);
+        }
+
+        /* ========================================
+           分页器
+           ======================================== */
+        .pagination {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-right: 16px;
+        }
+
+        .page-btn {
+            min-width: 32px;
+            height: 32px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .page-size-select {
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        /* ========================================
+           模态框
+           ======================================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            transition: color 0.3s;
+            font-size: 16px;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        /* ========================================
+           表单样式
+           ======================================== */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .form-label .required {
+            color: var(--error-color);
+            margin-left: 2px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--bg-white);
+            cursor: pointer;
+        }
+
+        .form-textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+            transition: all 0.3s;
+        }
+
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        /* ========================================
+           审批节点配置
+           ======================================== */
+        .approval-nodes {
+            margin-top: 16px;
+        }
+
+        .nodes-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .nodes-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .node-card {
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-light);
+        }
+
+        .node-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .node-card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .node-card-content {
+            display: flex;
+            gap: 12px;
+        }
+
+        .node-card-content .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .empty-nodes {
+            padding: 24px;
+            text-align: center;
+            color: var(--text-tertiary);
+            border: 1px dashed var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .form-tips {
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--bg-light);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        .form-tips ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .form-tips li {
+            margin-bottom: 4px;
+        }
+
+        /* ========================================
+           确认弹窗
+           ======================================== */
+        .confirm-content {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .confirm-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .confirm-icon.warning {
+            background: #fffbe6;
+            color: var(--warning-color);
+        }
+
+        .confirm-text h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .confirm-text p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ========================================
+           Toast消息
+           ======================================== */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 24px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-md);
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--success-color);
+        }
+
+        .toast.error {
+            background: var(--error-color);
+        }
+
+        /* ========================================
+           工具类
+           ======================================== */
+        .text-ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+            display: inline-block;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        /* ========================================
+           条件显示
+           ======================================== */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面主容器 -->
+    <div class="page-container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">连接平台</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item" onclick="navigateTo('connector-list.html')">
+                    <span>⚡</span>
+                    <span>连接器管理</span>
+                </li>
+                <li class="sidebar-item" onclick="navigateTo('flow-list.html')">
+                    <span>🔗</span>
+                    <span>连接流管理</span>
+                </li>
+                <li class="sidebar-item active" onclick="navigateTo('approval-center.html')">
+                    <span>📋</span>
+                    <span>审批中心</span>
+                </li>
+                <li class="sidebar-item" onclick="navigateTo('flow-run-log.html')">
+                    <span>📊</span>
+                    <span>运行记录</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <div class="management-page">
+                <!-- 页面头部 -->
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h3 class="page-title">审批中心</h3>
+                        <span class="page-desc">审批权限申请，处理待办事项</span>
+                    </div>
+                </div>
+
+                <!-- Tab标签页 -->
+                <div class="tabs-container">
+                    <ul class="tab-list">
+                        <li class="tab-item active" data-tab="pending">我的待审</li>
+                        <li class="tab-item" data-tab="mine">我发起的</li>
+                        <li class="tab-item" data-tab="all">全部</li>
+                        <li class="tab-item" data-tab="flowConfig">审批流程配置</li>
+                    </ul>
+                </div>
+
+                <!-- Tab内容区域 -->
+                <!-- 我的待审 -->
+                <div class="tab-content active" id="tab-pending">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <p>暂无待审批事项</p>
+                    </div>
+                </div>
+
+                <!-- 我发起的 -->
+                <div class="tab-content" id="tab-mine">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📤</div>
+                        <p>暂无我发起的审批</p>
+                    </div>
+                </div>
+
+                <!-- 全部 -->
+                <div class="tab-content" id="tab-all">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <p>暂无审批记录</p>
+                    </div>
+                </div>
+
+                <!-- 审批流程配置 -->
+                <div class="tab-content" id="tab-flowConfig">
+                    <!-- 页面头部 -->
+                    <div class="page-header">
+                        <div class="page-header-left">
+                            <h3 class="page-title">审批流程配置</h3>
+                            <span class="page-desc">配置不同审批类型的审批流程模板</span>
+                        </div>
+                        <button class="btn btn-primary" onclick="openCreateModal()">
+                            <span>+</span>
+                            新建流程
+                        </button>
+                    </div>
+
+                    <!-- 搜索表单 -->
+                    <div class="search-form">
+                        <input
+                            type="text"
+                            class="search-input"
+                            id="searchInput"
+                            placeholder="搜索流程名称或代码"
+                            onkeydown="if(event.key==='Enter') handleSearch()"
+                        >
+                        <button class="btn btn-primary" onclick="handleSearch()">搜索</button>
+                        <button class="btn" onclick="handleReset()">重置</button>
+                    </div>
+
+                    <!-- 表格列表 -->
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>流程ID</th>
+                                    <th>流程名称（中文）</th>
+                                    <th>流程名称（英文）</th>
+                                    <th>审批类型</th>
+                                    <th>流程代码</th>
+                                    <th>审批节点数</th>
+                                    <th>状态</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="flowTableBody">
+                                <!-- 动态填充 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分页器 -->
+                    <div class="pagination" id="pagination">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑审批流程弹窗 -->
+    <div class="modal-overlay" id="formModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="formModalTitle">新建审批流程</h3>
+                <div class="modal-close" onclick="closeModal('formModal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <form id="flowForm">
+                    <input type="hidden" id="editId">
+                    <div class="form-group">
+                        <label class="form-label">流程名称（中文）<span class="required">*</span></label>
+                        <input type="text" class="form-input" id="nameCn" placeholder="请输入流程名称（中文）" maxlength="128">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">流程名称（英文）<span class="required">*</span></label>
+                        <input type="text" class="form-input" id="nameEn" placeholder="请输入流程名称（英文）" maxlength="128">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">流程代码<span class="required">*</span></label>
+                        <select class="form-select" id="flowCode" onchange="handleCodeChange()">
+                            <option value="">请选择流程代码</option>
+                            <option value="global">global - 全局审批</option>
+                            <option value="api_register">api_register - API注册审批</option>
+                            <option value="event_register">event_register - 事件注册审批</option>
+                            <option value="callback_register">callback_register - 回调注册审批</option>
+                            <option value="api_permission_apply">api_permission_apply - API权限申请审批</option>
+                            <option value="event_permission_apply">event_permission_apply - 事件权限申请审批</option>
+                            <option value="callback_permission_apply">callback_permission_apply - 回调权限申请审批</option>
+                            <option value="connector_flow">connector_flow - 连接流版本审批</option>
+                        </select>
+                        <div id="appIdGroup" class="hidden" style="margin-top: 12px;">
+                            <label class="form-label">应用ID</label>
+                            <input type="text" class="form-input" id="appId" placeholder="不填为全局审批，填写后为应用级审批" maxlength="64">
+                        </div>
+                    </div>
+
+                    <!-- 审批节点配置 -->
+                    <div class="approval-nodes">
+                        <div class="nodes-header">
+                            <span class="nodes-title">审批节点配置</span>
+                            <button type="button" class="btn btn-primary" onclick="addApprovalNode()">
+                                <span>+</span>
+                                添加审批节点
+                            </button>
+                        </div>
+
+                        <div id="nodesContainer">
+                            <div class="empty-nodes" id="emptyNodes">
+                                <p>暂无审批节点</p>
+                                <p style="font-size: 12px; margin-top: 4px;">点击上方"添加审批节点"按钮添加审批人</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-tips">
+                        <p>提示：</p>
+                        <ul>
+                            <li>审批节点按顺序执行，序号从1开始递增</li>
+                            <li>code='global' 为全局审批流程，其他为场景审批流程</li>
+                            <li>connector_flow 用于连接流版本发布审批</li>
+                            <li>连接流版本审批不填应用ID为全局审批，填写应用ID为应用级审批</li>
+                            <li>流程代码创建后不可修改</li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('formModal')">取消</button>
+                <button class="btn btn-primary" onclick="submitForm()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除弹窗 -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3 class="modal-title">删除审批流程</h3>
+                <div class="modal-close" onclick="closeModal('confirmModal')">✕</div>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-content">
+                    <div class="confirm-icon warning">!</div>
+                    <div class="confirm-text">
+                        <h4>确认删除审批流程</h4>
+                        <p>此操作将永久删除该审批流程，无法恢复！</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('confirmModal')">取消</button>
+                <button class="btn btn-primary" id="confirmOkBtn" style="background: var(--error-color); border-color: var(--error-color);">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ========================================
+        // 模拟数据
+        // ========================================
+
+        /**
+         * 审批流程列表数据
+         * @type {Array<{id: string, nameCn: string, nameEn: string, code: string, nodes: Array, status: number, createTime: string}>}
+         */
+        let flowData = [
+            {
+                id: 'af1',
+                nameCn: '全局审批流程',
+                nameEn: 'global-approval-flow',
+                code: 'global',
+                nodes: [
+                    { userId: 'u001', userName: '张三' },
+                    { userId: 'u002', userName: '李四' }
+                ],
+                status: 1,
+                createTime: '2024-01-15 10:30:00'
+            },
+            {
+                id: 'af2',
+                nameCn: 'API注册审批流程',
+                nameEn: 'api-register-approval-flow',
+                code: 'api_register',
+                nodes: [
+                    { userId: 'u003', userName: '王五' }
+                ],
+                status: 1,
+                createTime: '2024-01-12 09:15:00'
+            },
+            {
+                id: 'af3',
+                nameCn: '连接流版本审批',
+                nameEn: 'connector-flow-version-approval',
+                code: 'connector_flow',
+                nodes: [
+                    { userId: 'u004', userName: '赵六' }
+                ],
+                status: 1,
+                createTime: '2024-01-18 14:20:00'
+            },
+            {
+                id: 'af4',
+                nameCn: '应用级连接流版本审批',
+                nameEn: 'app-connector-flow-version-approval',
+                code: 'connector_flow',
+                appId: 'app-001',
+                nodes: [
+                    { userId: 'u005', userName: '孙七' }
+                ],
+                status: 1,
+                createTime: '2024-01-20 11:00:00'
+            },
+            {
+                id: 'af5',
+                nameCn: '事件注册审批流程',
+                nameEn: 'event-register-approval-flow',
+                code: 'event_register',
+                nodes: [],
+                status: 0,
+                createTime: '2024-01-10 16:45:00'
+            }
+        ];
+
+        // 分页配置
+        const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+        let pagination = {
+            curPage: 1,
+            pageSize: 10,
+            total: flowData.length
+        };
+
+        // 搜索关键词
+        let searchKeyword = '';
+
+        // 审批节点计数
+        let nodeCounter = 0;
+
+        // 当前待删除的流程ID
+        let deleteFlowId = null;
+
+        // 流程代码映射
+        const CODE_MAP = {
+            'global': '全局审批',
+            'api_register': 'API注册审批',
+            'event_register': '事件注册审批',
+            'callback_register': '回调注册审批',
+            'api_permission_apply': 'API权限申请审批',
+            'event_permission_apply': '事件权限申请审批',
+            'callback_permission_apply': '回调权限申请审批',
+            'connector_flow': '连接流版本审批'
+        };
+
+        // ========================================
+        // 工具函数
+        // ========================================
+
+        /**
+         * 显示Toast消息提示
+         * @param {string} message - 提示文本
+         * @param {string} type - 消息类型：success/error
+         */
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        /**
+         * 打开模态框
+         * @param {string} modalId - 模态框ID
+         */
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        /**
+         * 关闭模态框
+         * @param {string} modalId - 模态框ID
+         */
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        /**
+         * 生成唯一ID
+         * @returns {string} 唯一ID字符串
+         */
+        function generateId() {
+            return 'af' + Date.now().toString(36);
+        }
+
+        // ========================================
+        // Tab切换功能
+        // ========================================
+
+        /**
+         * 初始化Tab切换功能
+         * 绑定Tab点击事件
+         */
+        function initTabs() {
+            const tabItems = document.querySelectorAll('.tab-item');
+            tabItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    // 移除所有active
+                    tabItems.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                    // 添加active到当前
+                    item.classList.add('active');
+                    const tabId = 'tab-' + item.dataset.tab;
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+        }
+
+        // ========================================
+        // 表格渲染
+        // ========================================
+
+        /**
+         * 获取审批类型标签颜色
+         * @param {Object} flow - 审批流程数据
+         * @returns {string} CSS类名
+         */
+        function getApprovalTypeClass(flow) {
+            const code = flow.code;
+            const appId = flow.appId;
+
+            // 连接流版本审批根据应用ID是否填写判断审批范围
+            if (code === 'connector_flow') {
+                return appId ? 'blue' : 'green';
+            }
+
+            // 全局审批使用绿色标签，其他场景审批使用蓝色标签
+            if (code === 'global') {
+                return 'green';
+            }
+            return 'blue';
+        }
+
+        /**
+         * 获取审批类型文本
+         * @param {Object} flow - 审批流程数据
+         * @returns {string} 审批类型文本
+         */
+        function getApprovalTypeText(flow) {
+            const code = flow.code;
+            const appId = flow.appId;
+
+            // 连接流版本审批根据应用ID是否填写判断审批范围
+            if (code === 'connector_flow') {
+                return appId ? '应用级审批' : '全局审批';
+            }
+
+            // 非连接流版本审批保持原有全局/场景审批分类
+            if (code === 'global') {
+                return '全局审批';
+            }
+            return '场景审批';
+        }
+
+        /**
+         * 渲染表格数据
+         */
+        function renderTable() {
+            const tbody = document.getElementById('flowTableBody');
+
+            // 过滤数据
+            let filteredData = flowData;
+            if (searchKeyword) {
+                filteredData = flowData.filter(item =>
+                    item.nameCn.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+                    item.nameEn.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+                    item.code.toLowerCase().includes(searchKeyword.toLowerCase())
+                );
+            }
+
+            // 计算分页
+            const startIndex = (pagination.curPage - 1) * pagination.pageSize;
+            const endIndex = startIndex + pagination.pageSize;
+            const pageData = filteredData.slice(startIndex, endIndex);
+            pagination.total = filteredData.length;
+
+            // 渲染表格
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
+                            暂无审批流程
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = pageData.map(item => {
+                    const approvalTypeClass = getApprovalTypeClass(item);
+                    const approvalTypeText = getApprovalTypeText(item);
+                    const statusClass = item.status === 1 ? 'success' : 'default';
+                    const statusText = item.status === 1 ? '启用' : '禁用';
+                    const nodeCount = item.nodes ? item.nodes.length : 0;
+
+                    return `
+                        <tr>
+                            <td class="text-center">${item.id}</td>
+                            <td class="text-center" title="${item.nameCn}">${item.nameCn}</td>
+                            <td class="text-center" title="${item.nameEn}">${item.nameEn}</td>
+                            <td>
+                                <span class="status-badge ${approvalTypeClass}">${approvalTypeText}</span>
+                            </td>
+                            <td>
+                                <span class="status-badge blue">${item.code}</span>
+                            </td>
+                            <td class="text-center">${nodeCount}</td>
+                            <td>
+                                <span class="status-badge ${statusClass}">${statusText}</span>
+                            </td>
+                            <td>
+                                <div class="action-cell">
+                                    <button class="btn btn-link" onclick="editFlow('${item.id}')">编辑</button>
+                                    <button class="btn btn-link danger" onclick="confirmDelete('${item.id}')">删除</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            renderPagination();
+        }
+
+        /**
+         * 渲染分页器
+         */
+        function renderPagination() {
+            const paginationEl = document.getElementById('pagination');
+            const totalPages = Math.ceil(pagination.total / pagination.pageSize) || 1;
+
+            let html = `<span class="pagination-info">共 ${pagination.total} 条</span>`;
+            html += `<button class="page-btn" onclick="changePage(${pagination.curPage - 1})" ${pagination.curPage <= 1 ? 'disabled' : ''}>上一页</button>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (totalPages <= 7 || Math.abs(i - pagination.curPage) <= 2 || i === 1 || i === totalPages) {
+                    html += `<button class="page-btn ${i === pagination.curPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+                } else if (i === 2 || i === totalPages - 1) {
+                    html += `<span style="padding: 0 4px;">...</span>`;
+                }
+            }
+
+            html += `<button class="page-btn" onclick="changePage(${pagination.curPage + 1})" ${pagination.curPage >= totalPages ? 'disabled' : ''}>下一页</button>`;
+            html += `<select class="page-size-select" onchange="changePageSize(this.value)">`;
+            PAGE_SIZE_OPTIONS.forEach(size => {
+                html += `<option value="${size}" ${size === pagination.pageSize ? 'selected' : ''}>${size}条/页</option>`;
+            });
+            html += `</select>`;
+
+            paginationEl.innerHTML = html;
+        }
+
+        /**
+         * 切换分页
+         * @param {number} page - 目标页码
+         */
+        function changePage(page) {
+            const totalPages = Math.ceil(pagination.total / pagination.pageSize) || 1;
+            if (page < 1 || page > totalPages) return;
+            pagination.curPage = page;
+            renderTable();
+        }
+
+        /**
+         * 切换每页条数
+         * @param {number} size - 每页条数
+         */
+        function changePageSize(size) {
+            pagination.pageSize = parseInt(size);
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        // ========================================
+        // 搜索和重置
+        // ========================================
+
+        /**
+         * 搜索审批流程
+         */
+        function handleSearch() {
+            searchKeyword = document.getElementById('searchInput').value.trim();
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        /**
+         * 重置搜索
+         */
+        function handleReset() {
+            document.getElementById('searchInput').value = '';
+            searchKeyword = '';
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        // ========================================
+        // 表单操作
+        // ========================================
+
+        /**
+         * 处理流程代码变更
+         * 当选择连接流版本审批时显示可选应用ID输入框
+         */
+        function handleCodeChange() {
+            const code = document.getElementById('flowCode').value;
+            const appIdGroup = document.getElementById('appIdGroup');
+
+            // 连接流版本审批支持按应用ID区分全局审批和应用级审批
+            if (code === 'connector_flow') {
+                appIdGroup.classList.remove('hidden');
+            } else {
+                appIdGroup.classList.add('hidden');
+                document.getElementById('appId').value = '';
+            }
+        }
+
+        /**
+         * 添加审批节点
+         */
+        function addApprovalNode() {
+            nodeCounter++;
+            const container = document.getElementById('nodesContainer');
+            const emptyNodes = document.getElementById('emptyNodes');
+
+            // 隐藏空状态
+            if (emptyNodes) {
+                emptyNodes.style.display = 'none';
+            }
+
+            const nodeIndex = nodeCounter;
+            const nodeHtml = `
+                <div class="node-card" id="node-${nodeIndex}">
+                    <div class="node-card-header">
+                        <span class="node-card-title">审批节点 ${document.querySelectorAll('.node-card').length + 1}</span>
+                        <button type="button" class="btn btn-link danger" onclick="removeNode(${nodeIndex})">删除</button>
+                    </div>
+                    <div class="node-card-content">
+                        <div class="form-group">
+                            <label class="form-label">审批人ID<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="userId-${nodeIndex}" placeholder="请输入审批人ID">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">审批人姓名<span class="required">*</span></label>
+                            <input type="text" class="form-input" id="userName-${nodeIndex}" placeholder="请输入审批人姓名">
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', nodeHtml);
+        }
+
+        /**
+         * 删除审批节点
+         * @param {number} nodeIndex - 节点索引
+         */
+        function removeNode(nodeIndex) {
+            const nodeEl = document.getElementById(`node-${nodeIndex}`);
+            if (nodeEl) {
+                nodeEl.remove();
+            }
+
+            // 如果没有节点了，显示空状态
+            const remainingNodes = document.querySelectorAll('.node-card');
+            if (remainingNodes.length === 0) {
+                document.getElementById('emptyNodes').style.display = 'block';
+            }
+
+            // 重新编号
+            remainingNodes.forEach((node, index) => {
+                const title = node.querySelector('.node-card-title');
+                if (title) {
+                    title.textContent = `审批节点 ${index + 1}`;
+                }
+            });
+        }
+
+        /**
+         * 打开新建弹窗
+         */
+        function openCreateModal() {
+            document.getElementById('formModalTitle').textContent = '新建审批流程';
+            document.getElementById('flowForm').reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('appIdGroup').classList.add('hidden');
+
+            // 清空审批节点
+            document.getElementById('nodesContainer').innerHTML = `
+                <div class="empty-nodes" id="emptyNodes">
+                    <p>暂无审批节点</p>
+                    <p style="font-size: 12px; margin-top: 4px;">点击上方"添加审批节点"按钮添加审批人</p>
+                </div>
+            `;
+            nodeCounter = 0;
+
+            openModal('formModal');
+        }
+
+        /**
+         * 编辑审批流程
+         * @param {string} id - 流程ID
+         */
+        function editFlow(id) {
+            const flow = flowData.find(item => item.id === id);
+            if (!flow) return;
+
+            document.getElementById('formModalTitle').textContent = '编辑审批流程';
+            document.getElementById('editId').value = id;
+            document.getElementById('nameCn').value = flow.nameCn;
+            document.getElementById('nameEn').value = flow.nameEn;
+            document.getElementById('flowCode').value = flow.code;
+
+            // 处理连接流版本审批的应用ID
+            handleCodeChange();
+            if (flow.code === 'connector_flow' && flow.appId) {
+                document.getElementById('appId').value = flow.appId;
+            }
+
+            // 渲染审批节点
+            const container = document.getElementById('nodesContainer');
+            if (flow.nodes && flow.nodes.length > 0) {
+                let nodesHtml = '';
+                flow.nodes.forEach((node, index) => {
+                    nodeCounter++;
+                    nodesHtml += `
+                        <div class="node-card" id="node-${nodeCounter}">
+                            <div class="node-card-header">
+                                <span class="node-card-title">审批节点 ${index + 1}</span>
+                                <button type="button" class="btn btn-link danger" onclick="removeNode(${nodeCounter})">删除</button>
+                            </div>
+                            <div class="node-card-content">
+                                <div class="form-group">
+                                    <label class="form-label">审批人ID<span class="required">*</span></label>
+                                    <input type="text" class="form-input" id="userId-${nodeCounter}" value="${node.userId || ''}" placeholder="请输入审批人ID">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">审批人姓名<span class="required">*</span></label>
+                                    <input type="text" class="form-input" id="userName-${nodeCounter}" value="${node.userName || ''}" placeholder="请输入审批人姓名">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = nodesHtml;
+            } else {
+                container.innerHTML = `
+                    <div class="empty-nodes" id="emptyNodes">
+                        <p>暂无审批节点</p>
+                        <p style="font-size: 12px; margin-top: 4px;">点击上方"添加审批节点"按钮添加审批人</p>
+                    </div>
+                `;
+            }
+
+            openModal('formModal');
+        }
+
+        /**
+         * 提交表单
+         */
+        function submitForm() {
+            const editId = document.getElementById('editId').value;
+            const nameCn = document.getElementById('nameCn').value.trim();
+            const nameEn = document.getElementById('nameEn').value.trim();
+            const code = document.getElementById('flowCode').value;
+            const appId = document.getElementById('appId').value.trim();
+
+            // 表单验证
+            if (!nameCn) {
+                showToast('请输入流程名称（中文）', 'error');
+                return;
+            }
+            if (!nameEn) {
+                showToast('请输入流程名称（英文）', 'error');
+                return;
+            }
+            if (!code) {
+                showToast('请选择流程代码', 'error');
+                return;
+            }
+            // 连接流版本审批中应用ID非必填，未填写时按全局审批处理
+
+            // 收集审批节点
+            const nodeCards = document.querySelectorAll('.node-card');
+            const nodes = [];
+            nodeCards.forEach(card => {
+                const id = card.id.replace('node-', '');
+                const userId = document.getElementById(`userId-${id}`).value.trim();
+                const userName = document.getElementById(`userName-${id}`).value.trim();
+
+                if (userId && userName) {
+                    nodes.push({ userId, userName });
+                }
+            });
+
+            // 构建流程数据
+            const flowItem = {
+                nameCn,
+                nameEn,
+                code,
+                nodes,
+                status: 1,
+                createTime: new Date().toLocaleString('zh-CN')
+            };
+
+            if (code === 'connector_flow' && appId) {
+                flowItem.appId = appId;
+            }
+
+            if (editId) {
+                // 编辑模式
+                const index = flowData.findIndex(item => item.id === editId);
+                if (index !== -1) {
+                    flowData[index] = { ...flowData[index], ...flowItem };
+
+                    // 应用ID清空后需要移除旧值，确保按全局审批处理
+                    if (code === 'connector_flow' && !appId) {
+                        delete flowData[index].appId;
+                    }
+                    showToast('更新成功', 'success');
+                }
+            } else {
+                // 新建模式
+                flowData.unshift({
+                    id: generateId(),
+                    ...flowItem
+                });
+                showToast('创建成功', 'success');
+            }
+
+            closeModal('formModal');
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        // ========================================
+        // 删除操作
+        // ========================================
+
+        /**
+         * 确认删除
+         * @param {string} id - 流程ID
+         */
+        function confirmDelete(id) {
+            deleteFlowId = id;
+            openModal('confirmModal');
+        }
+
+        /**
+         * 执行删除
+         */
+        document.getElementById('confirmOkBtn').addEventListener('click', () => {
+            if (deleteFlowId) {
+                flowData = flowData.filter(item => item.id !== deleteFlowId);
+                showToast('删除成功', 'success');
+                closeModal('confirmModal');
+                renderTable();
+                deleteFlowId = null;
+            }
+        });
+
+        // ========================================
+        // 页面导航
+        // ========================================
+
+        /**
+         * 页面导航
+         * @param {string} page - 目标页面路径
+         */
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // ========================================
+        // 初始化
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initTabs();
+            renderTable();
+
+            // 点击遮罩关闭弹窗
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        overlay.classList.remove('active');
+                    }
+                });
+            });
+
+            // ESC键关闭弹窗
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                        modal.classList.remove('active');
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,26 +1,35 @@
 package com.xxx.it.works.wecode.v2.modules.trigger.controller;
 
-import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
+import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
 /**
- * HTTP 触发 Controller
+ * HTTP 触发 Controller (v5.8)
  * <p>
- * 对外暴露 POST /api/v1/trigger/{flowId}/invoke 端点
+ * 对外暴露 POST /api/v1/flows/{flowId}/invoke 端点
  * 响应外部系统请求并同步执行连接流
  * </p>
  * <p>
+ * v5.8 变更:
+ * <ul>
+ *   <li>响应格式从 JSON 信封 ({@code ExecutionResult}) 改为透明穿透</li>
+ *   <li>出口节点 output.body → HTTP 响应体 (裸数据)</li>
+ *   <li>出口节点 output.header → 用户自定义 HTTP 响应头</li>
+ *   <li>平台元数据 → X- 前缀 HTTP 响应头</li>
+ * </ul>
  * v5.5:
  * <ul>
  *   <li>触发配置从 {@code config.nodes[].data.*} (React Flow 格式) 读取</li>
@@ -32,7 +41,7 @@ import java.util.Map;
  * </p>
  */
 @RestController
-@RequestMapping("/api/v1/trigger")
+@RequestMapping({"/api/v1/flows", "/api/v1/trigger"})
 @Tag(name = "HTTP 触发", description = "对外 HTTP 触发端点，同步执行连接流 (v5.5)")
 public class OpTriggerController {
 
@@ -45,22 +54,22 @@ public class OpTriggerController {
     }
 
     /**
-     * HTTP 触发连接流执行
+     * HTTP 触发连接流执行 (v5.8 透明穿透)
      * <p>
-     * POST /api/v1/trigger/{flowId}/invoke
-     * 认证校验已移至 OpTriggerService 中按 data.authConfig.type 动态处理。
+     * POST /api/v1/flows/{flowId}/invoke
+     * 认证/限流/入参校验全部由 OpTriggerService 根据编排配置动态处理.
      * <ul>
-     *   <li>请求体: 触发数据 JSON (按 {@code data.inputContract} JSON Schema 校验)</li>
-     *   <li>触发数据存入 {@code nodeContexts["node_trigger"].input}</li>
+     *   <li>响应体: 出口节点 output.body 裸数据 (不再是 ExecutionResult JSON 信封)</li>
+     *   <li>用户自定义响应头: 出口节点 output.header → HTTP 响应头</li>
+     *   <li>平台元数据: X-Flow-Id / X-Execution-Id / X-Status / X-Duration-Ms / X-Code / X-Message-Zh / X-Message-En / X-Cache-Status</li>
      * </ul>
      * </p>
      */
     @PostMapping(value = "/{flowId}/invoke", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "HTTP 触发连接流 (v5.5)",
-               description = "接收外部系统请求并同步执行连接流，返回完整执行结果。"
-                           + "请求体按 data.inputContract 校验，认证按 data.authConfig 校验，限流按 data.rateLimitConfig.maxQps."
-                           + "请求头 hasSteps=true 时返回各步骤详情，默认不返回。")
-    public Mono<ExecutionResult> invokeFlow(
+    @Operation(summary = "HTTP 触发连接流 (v5.8 透明穿透)",
+               description = "接收外部系统请求并同步执行连接流, 出口节点 body/header 直接作为 HTTP 响应体/头返回."
+                           + "平台元数据通过 X- 前缀 HTTP 响应头携带.")
+    public Mono<ResponseEntity<Object>> invokeFlow(
             @Parameter(description = "连接流ID")
             @PathVariable Long flowId,
             @Parameter(description = "触发数据 (按 inputContract 校验)")
@@ -71,13 +80,23 @@ public class OpTriggerController {
 
         log.info("HTTP trigger invoke: flowId={}", flowId);
 
-        // 认证/限流/入参校验全部由 OpTriggerService 根据编排配置中的 data.authConfig/data.rateLimitConfig/data.inputContract 动态处理
+        // 认证/限流/入参校验 + 执行全部由 OpTriggerService 处理
         return triggerService.invokeFlow(flowId, triggerData, allHeaders, queryParams)
-                .map(result -> {
-                    if (!"true".equalsIgnoreCase(allHeaders.get("hasSteps"))) {
-                        result.getSteps().clear();
-                    }
-                    return result;
+                .map(response -> {
+                    HttpHeaders headers = new HttpHeaders();
+                    // 先放平台 X- 头
+                    response.getPlatformHeaders().forEach(headers::add);
+                    // 再放用户自定义头 (不与平台 X- 头冲突)
+                    response.getUserHeaders().forEach((k, v) -> {
+                        if (!k.startsWith("X-Flow-") && !k.startsWith("X-Execution-")
+                                && !k.startsWith("X-Status") && !k.startsWith("X-Duration-")
+                                && !k.startsWith("X-Cache-") && !k.startsWith("X-Code")
+                                && !k.startsWith("X-Message-")) {
+                            headers.add(k, String.valueOf(v));
+                        }
+                    });
+                    Object body = response.getBody();
+                    return new ResponseEntity<>(body, headers, response.getHttpStatus());
                 });
     }
 }

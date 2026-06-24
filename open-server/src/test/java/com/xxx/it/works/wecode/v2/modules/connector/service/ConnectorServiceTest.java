@@ -76,7 +76,7 @@ class OpConnectorServiceTest {
             assertNotNull(response);
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
-            assertEquals("200", response.getData().getId());
+            assertEquals("200", response.getData().getConnectorId());
 
             verify(connectorMapper).insert(argThat(c ->
                     "新连接器".equals(c.getNameCn()) &&
@@ -154,7 +154,7 @@ class OpConnectorServiceTest {
 
             assertEquals("200", response.getCode());
             assertEquals("原始连接器", response.getData().getNameCn());
-            assertEquals("100", response.getData().getId());
+            assertEquals("100", response.getData().getConnectorId());
         }
 
         @Test

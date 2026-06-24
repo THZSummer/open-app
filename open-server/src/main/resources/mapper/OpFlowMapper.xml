@@ -11,6 +11,9 @@
         <result column="description_en" property="descriptionEn"/>
         <result column="icon_file_id" property="iconFileId"/>
         <result column="lifecycle_status" property="lifecycleStatus"/>
+        <result column="deployed_version_id" property="deployedVersionId"/>
+        <result column="deployed_version_number" property="deployedVersionNumber"/>
+        <result column="app_id" property="appId"/>
         <result column="create_time" property="createTime"/>
         <result column="last_update_time" property="lastUpdateTime"/>
         <result column="create_by" property="createBy"/>
@@ -20,17 +23,20 @@
     <!-- Base Column -->
     <sql id="Base_Column_List">
         id, name_cn, name_en, description_cn, description_en, icon_file_id,
-        lifecycle_status, create_time, last_update_time, create_by, last_update_by
+        lifecycle_status, deployed_version_id, deployed_version_number, app_id,
+        create_time, last_update_time, create_by, last_update_by
     </sql>
 
     <!-- Insert -->
     <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.Flow">
         INSERT INTO openplatform_v2_cp_flow_t (
             id, name_cn, name_en, description_cn, description_en, icon_file_id,
-            lifecycle_status, create_time, last_update_time, create_by, last_update_by
+            lifecycle_status, deployed_version_id, deployed_version_number, app_id,
+            create_time, last_update_time, create_by, last_update_by
         ) VALUES (
             #{id}, #{nameCn}, #{nameEn}, #{descriptionCn}, #{descriptionEn}, #{iconFileId},
-            #{lifecycleStatus}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+            #{lifecycleStatus}, #{deployedVersionId}, #{deployedVersionNumber}, #{appId},
+            #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
         )
     </insert>
 
@@ -44,13 +50,17 @@
     <!-- Update -->
     <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.Flow">
         UPDATE openplatform_v2_cp_flow_t
-        SET name_cn          = #{nameCn},
-            name_en          = #{nameEn},
-            description_cn   = #{descriptionCn},
-            description_en   = #{descriptionEn},
-            icon_file_id     = #{iconFileId},
-            last_update_time = #{lastUpdateTime},
-            last_update_by   = #{lastUpdateBy}
+        SET name_cn                = #{nameCn},
+            name_en                = #{nameEn},
+            description_cn         = #{descriptionCn},
+            description_en         = #{descriptionEn},
+            icon_file_id           = #{iconFileId},
+            lifecycle_status       = #{lifecycleStatus},
+            deployed_version_id    = #{deployedVersionId},
+            deployed_version_number = #{deployedVersionNumber},
+            app_id                 = #{appId},
+            last_update_time       = #{lastUpdateTime},
+            last_update_by         = #{lastUpdateBy}
         WHERE id = #{id}
     </update>
 
@@ -69,7 +79,33 @@
         WHERE id = #{id}
     </update>
 
-    <!-- Select List -->
+    <!-- Deploy (Bind Version) -->
+    <update id="deploy">
+        UPDATE openplatform_v2_cp_flow_t
+        SET deployed_version_id     = #{deployedVersionId},
+            deployed_version_number = #{deployedVersionNumber},
+            last_update_time        = #{lastUpdateTime},
+            last_update_by          = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- Select All (no pagination) -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_flow_t
+        <where>
+            <if test="lifecycleStatus != null">
+                AND lifecycle_status = #{lifecycleStatus}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
+                     OR name_en LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- Select List (with pagination) -->
     <select id="selectList" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_flow_t
@@ -83,7 +119,9 @@
             </if>
         </where>
         ORDER BY create_time DESC
-        LIMIT #{offset}, #{pageSize}
+        <if test="offset != null and pageSize != null">
+            LIMIT #{offset}, #{pageSize}
+        </if>
     </select>
 
     <!-- Count List -->

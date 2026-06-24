@@ -11,11 +11,13 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.reactive.function.client.WebClient;
+import java.time.Duration;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
 import org.springframework.web.util.UriComponentsBuilder;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -43,18 +45,52 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final ExpressionResolver expressionResolver;
     private final CredentialInjectorRegistry credentialInjectorRegistry;
     private final OpConnectorVersionReadRepository connectorVersionReadRepository;
+    private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
+    private final CacheToggle cacheToggle;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
     public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
                                   CredentialInjectorRegistry credentialInjectorRegistry,
-                                  OpConnectorVersionReadRepository connectorVersionReadRepository) {
+                                  OpConnectorVersionReadRepository connectorVersionReadRepository,
+                                  ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+                                  CacheToggle cacheToggle) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
         this.expressionResolver = new ExpressionResolver();
         this.credentialInjectorRegistry = credentialInjectorRegistry;
         this.connectorVersionReadRepository = connectorVersionReadRepository;
+        this.reactiveRedisTemplate = reactiveRedisTemplate;
+        this.cacheToggle = cacheToggle;
+    }
+
+    /**
+     * 加载连接器版本配置（带 Redis 缓存 read-through）
+     * <p>
+     * 缓存 Key: {@code cp:conn:config:{connVersionId}}, TTL 300s.
+     * 命中时用缓存的 connectionConfig 重建最小 entity, 跳过 R2DBC.
+     * {@code connector.cache.enabled=false} 时直接穿透 R2DBC.
+     * </p>
+     */
+    private Mono<ConnectorVersionEntity> loadConnectorVersion(Long connectorVersionId) {
+        if (!cacheToggle.isEnabled()) {
+            return connectorVersionReadRepository.findById(connectorVersionId);
+        }
+        String key = "cp:conn:config:" + connectorVersionId;
+        return reactiveRedisTemplate.opsForValue().get(key)
+                .flatMap(cachedJson -> {
+                    ConnectorVersionEntity entity = new ConnectorVersionEntity();
+                    entity.setConnectionConfig(cachedJson);
+                    entity.setId(connectorVersionId);
+                    return Mono.just(entity);
+                })
+                .switchIfEmpty(
+                    connectorVersionReadRepository.findById(connectorVersionId)
+                            .flatMap(entity -> reactiveRedisTemplate.opsForValue()
+                                    .set(key, entity.getConnectionConfig(), Duration.ofSeconds(300))
+                                    .thenReturn(entity))
+                );
     }
 
     @Override
@@ -88,7 +124,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             } else {
                 connectorVersionId = Long.valueOf(connectorVersionIdObj.toString());
             }
-            return connectorVersionReadRepository.findById(connectorVersionId)
+            return loadConnectorVersion(connectorVersionId)
                     .flatMap(versionEntity -> executeWithConnectionConfig(context, config, data, nodeId, versionEntity))
                     .switchIfEmpty(Mono.defer(() -> executeLegacy(context, config, data, nodeId)));
         }
@@ -137,11 +173,16 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             return executeLegacy(context, config, data, nodeId);
         }
 
-        // 提取 timeoutMs
+        // 提取 timeoutMs: 优先从 data (编排配置节点级) 读取, 回退到 connectionConfig (连接器级)
         long timeoutMs = DEFAULT_TIMEOUT_MS;
-        Object timeoutObj = connectionConfig.get("timeoutMs");
-        if (timeoutObj instanceof Number) {
-            timeoutMs = ((Number) timeoutObj).longValue();
+        Object dataTimeoutObj = data.get("timeoutMs");
+        if (dataTimeoutObj instanceof Number && ((Number) dataTimeoutObj).longValue() > 0) {
+            timeoutMs = ((Number) dataTimeoutObj).longValue();
+        } else {
+            Object connTimeoutObj = connectionConfig.get("timeoutMs");
+            if (connTimeoutObj instanceof Number && ((Number) connTimeoutObj).longValue() > 0) {
+                timeoutMs = ((Number) connTimeoutObj).longValue();
+            }
         }
 
         // 提取 authConfig
@@ -187,7 +228,11 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         String url = (String) data.get("url");
         String method = (String) data.getOrDefault("method", "POST");
-        Integer timeout = (Integer) data.get("timeoutMs");
+        Integer timeout = null;
+        Object timeoutObj = data.get("timeoutMs");
+        if (timeoutObj instanceof Number) {
+            timeout = ((Number) timeoutObj).intValue();
+        }
         if (timeout != null && timeout > 0) {
             timeoutMs = timeout;
         }

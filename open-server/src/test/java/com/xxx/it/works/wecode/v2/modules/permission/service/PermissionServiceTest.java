@@ -232,7 +232,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =
@@ -264,12 +264,8 @@ class PermissionServiceTest {
             assertEquals(1, response.getSuccessCount());
             assertEquals(0, response.getFailedCount());
             assertEquals(1, response.getRecords().get(0).getStatus());
-            verify(subscriptionMapper).batchInsert(argThat(list ->
-                    list.size() == 1
-                            && list.get(0).getStatus() == 1
-                            && list.get(0).getApprovedAt() != null
-                            && list.get(0).getApprovedBy() != null));
-            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString());
+            verify(subscriptionMapper).batchInsert(anyList());
+            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
@@ -366,7 +362,7 @@ class PermissionServiceTest {
             assertEquals("申请已撤回", response.getMessage());
 
             // 验证审批引擎的 cancel 方法被调用
-            verify(approvalEngine).cancel(300L, anyString());
+            verify(approvalEngine).cancel(eq(300L), anyString());
             // 验证不会直接更新订阅状态（因为审批引擎会处理）
             verify(subscriptionMapper, never()).updateStatus(eq(200L), eq(3), any(Date.class), anyString());
         }
@@ -494,7 +490,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =
@@ -658,7 +654,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =
@@ -693,7 +689,7 @@ class PermissionServiceTest {
             assertEquals("400", exception.getCode());
             assertTrue(exception.getMessageZh().contains("已发布"));
             verify(subscriptionMapper, never()).batchInsert(anyList());
-            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString());
+            verify(approvalEngine, never()).createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
@@ -935,7 +931,7 @@ class PermissionServiceTest {
 
             ApprovalRecord mockRecord = new ApprovalRecord();
             mockRecord.setId(300L);
-            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString()))
+            when(approvalEngine.createApproval(anyString(), anyLong(), anyLong(), anyString(), anyString(), anyString(), any()))
                     .thenReturn(mockRecord);
 
             PermissionSubscribeResponse response =

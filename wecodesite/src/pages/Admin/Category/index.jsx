@@ -18,7 +18,6 @@ import {
   FileOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import {
   fetchCategoryTree,
   fetchCategoryOwners,
@@ -31,24 +30,14 @@ import {
 import CategoryFormModal from '../../../components/CategoryFormModal/CategoryFormModal';
 import CategoryOwnerModal from '../../../components/CategoryOwnerModal/CategoryOwnerModal';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { isInAdminWhitelist } from '../../../utils/common';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
+import { CATEGORY_DELETE_SECOND_MODAL_INFO } from './constants';
+import { getSecondModalInfo } from '../../../utils/common';
 import './CategoryList.m.less';
-import { secondModalInfo } from './constants';
 
 function CategoryList() {
-  const navigate = useNavigate();
-
-  const init = async () => {
-    const canShow = await isInAdminWhitelist()
-    if (!canShow) {
-      navigate('/apps');
-    }
-  }
-
-  useEffect(() => {
-    init();
-  }, []);
+  useAdminAccessGuard();
 
   const [loading, setLoading] = useState(false);
   const [categoryTree, setCategoryTree] = useState([]);
@@ -308,7 +297,10 @@ function CategoryList() {
             onClose={() => setDeleteModalVisible(false)}
             onConfirm={handleConfirmDelete}
             requireConfirmText={deleteCategoryName}
-            modalInfo={secondModalInfo}
+            modalInfo={getSecondModalInfo({
+              ...CATEGORY_DELETE_SECOND_MODAL_INFO,
+              objectName: deleteCategoryName,
+            })}
           />
         </div>
       </div>

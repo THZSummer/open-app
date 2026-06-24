@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""HTTP 触发集成测试 (v5.7 — 结构化 trigger input {header, query, body})
+"""HTTP 触发集成测试 (v5.8 — 透明响应格式)
 
 覆盖 POST /api/v1/trigger/{flowId}/invoke 全部场景：
-  - IT-049: 凭证缺失 → errorInfo
-  - IT-050: flow 不存在 → errorInfo.cause 含 "Flow not found"
-  - IT-051: flow 未运行 (lifecycle_status=0) → 正常执行
-  - IT-060: 快乐路径 — 三段参数 (header/query/body) 全链路透传
-  - IT-061: 请求体缺必填字段 → errorInfo
-  - IT-062: Connector 下游失败 (POST /api/fail → 500)
-  - IT-063: 常量 + 跨节点引用 + header/query/body 区分验证
-  - IT-064: 超过限流阈值 → 429
-  - IT-065: 限流恢复 → 正常
+  - IT-049: 凭证缺失 → HTTP 401 + X- 头
+  - IT-050: flow 不存在 → HTTP 404 + X-Code 头
+  - IT-051: flow 未运行 (lifecycle_status=0) → 正常执行 + X- 头
+  - IT-060: 快乐路径 — 三段参数 (header/query/body) 全链路透传 + 透明响应体
+  - IT-061: 请求体缺必填字段 → HTTP 500 + X-Code 头
+  - IT-062: Connector 下游失败 (POST /api/fail → 500) → X-Status=1
+  - IT-063: 常量 + 跨节点引用 + header/query/body 区分验证 + 透明响应
+  - IT-064: 超过限流阈值 → 429 + X- 头
+  - IT-065: 限流恢复 → 正常 + X- 头
 
-核心设计 (v5.7):
-  - trigger node inputContract 声明 header/query/body 三段契约
-  - trigger node 运行时 context: {header: {...}, query: {...}, body: {...}}
-  - connector inputMapping 引用 trigger 的三段 input
-  - exit outputMapping 可引用 trigger input 和 connector output
+核心设计 (v5.8 — 透明响应格式):
+  - 响应体为 exit outputMapping.body 的直接数据 (无 resultData 信封)
+  - 平台元数据通过 X-Flow-Id / X-Execution-Id / X-Status / X-Duration-Ms 等响应头返回
+  - exit outputMapping.header 映射为真实 HTTP 响应头 (如 X-Response-Id)
+  - 错误信息通过 X-Code / X-Message-Zh / X-Message-En 响应头返回, 响应体为空
+  - 不再返回 steps (hasSteps 逻辑已移除)
 """
 from client import *
 import subprocess
@@ -25,7 +26,7 @@ import json
 import urllib.parse
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import threading
 import urllib.request
 import copy
@@ -126,7 +127,7 @@ class MockHandler(BaseHTTPRequestHandler):
             self._send_json(404, {"error": "not_found"})
 
 
-mock_server = HTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
+mock_server = ThreadingHTTPServer((MOCK_HOST, MOCK_PORT), MockHandler)
 mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
 mock_thread.start()
 
@@ -558,12 +559,12 @@ def snow_id():
 
 
 def _mysql_exec(sql):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e", sql],
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e", sql],
                    check=True, capture_output=True)
 
 
 def _escape_json(obj):
-    return json.dumps(obj).replace("'", "''")
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 def setup_connector(connection_config=None):
@@ -587,10 +588,10 @@ def setup_connector(connection_config=None):
 
 
 def cleanup_connector(connector_id, version_id):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}"],
                    capture_output=True)
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}"],
                    capture_output=True)
 
@@ -615,10 +616,10 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None,
 
 
 def cleanup_flow(flow_id, flow_version_id, connector_id=None, connector_version_id=None):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}"],
                    capture_output=True)
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}"],
                    capture_output=True)
     if connector_id and connector_version_id:
@@ -635,7 +636,7 @@ def trigger_invoke(flow_id, body=None, headers=None, query_params=None):
         qs = urllib.parse.urlencode(query_params, doseq=True)
         url = f"{url}?{qs}"
 
-    h = {"Content-Type": "application/json", "hasSteps": "true"}
+    h = {"Content-Type": "application/json"}
     if headers:
         h.update(headers)
 
@@ -689,16 +690,11 @@ try:
     resp = trigger_invoke(fid_049, body={"keyword": "test"},
                           headers={"X-Trace-Id": "trace-049"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
-        body = resp.json()
-        check("HTTP 200", resp.status_code == 200)
-        check("status 为 failed", body.get("status") == "failed")
-        check("errorInfo 存在", "errorInfo" in body)
-        ei = body.get("errorInfo", {})
-        check("errorInfo.code 存在", bool(ei.get("code")))
-        cause = (ei.get("cause") or "").lower()
-        check("errorInfo.cause 含 token 缺失",
-              "missing" in cause or "x-sys-token" in cause or "token" in cause)
+    if resp is not None:
+        check("HTTP 401", resp.status_code == 401)
+        check("X-Code 为 401", resp.headers.get("X-Code") == "401")
+        check("X-Message-Zh 存在", bool(resp.headers.get("X-Message-Zh")))
+        check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_049, fvid_049, cid_049, cvid_049)
 
@@ -711,12 +707,9 @@ resp = trigger_invoke(999999999999999999, body={"keyword": "test"},
                       headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-050"},
                       query_params={"page": "1"})
 if resp:
-    body = resp.json()
-    check("HTTP 200", resp.status_code == 200)
-    check("status 为 failed", body.get("status") == "failed")
-    ei = body.get("errorInfo", {})
-    check("errorInfo.cause 含 Flow not found",
-          "Flow not found" in (ei.get("cause") or ""))
+    check("HTTP 404", resp.status_code == 404)
+    check("X-Code 为 404", resp.headers.get("X-Code") == "404")
+    check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -733,10 +726,12 @@ try:
     resp = trigger_invoke(fid_051, body={"keyword": "test"},
                           headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-051"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
-        check("executionId 为 string", isinstance(body.get("executionId"), str))
+        check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
+        check("X-Status 为 0", resp.headers.get("X-Status") == "0")
+        check("响应体含 searchKeyword 数据", body.get("searchKeyword") == "test")
 finally:
     cleanup_flow(sid_051, fvid_051, cid_051, cvid_051)
 
@@ -757,147 +752,62 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-060-abc"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
-        check("status 不为 failed", body.get("status") != "failed",
-              f"status={body.get('status')}")
-        check("executionId 为 string", isinstance(body.get("executionId"), str))
-        check("totalDurationMs 为 int/float",
-              isinstance(body.get("totalDurationMs"), (int, float)))
+        check("X-Status 为 0", resp.headers.get("X-Status") == "0",
+              f"X-Status={resp.headers.get('X-Status')}")
+        check("X-Flow-Id 存在", bool(resp.headers.get("X-Flow-Id")))
+        check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
 
-        # ── resultData 验证 (exit outputMapping 解析) ──
-        rd = body.get("resultData")
-        check("resultData 为 dict", isinstance(rd, dict))
-        if isinstance(rd, dict):
-            # 响应头验证
-            resp_header = rd.get("header", {})
-            if isinstance(resp_header, dict):
-                check("X-Response-Id == resp-001 (constant)",
-                      resp_header.get("X-Response-Id") == "resp-001",
-                      f"X-Response-Id={resp_header.get('X-Response-Id')}")
+        # ── 用户自定义响应头 (exit outputMapping.header → 真实 HTTP 头) ──
+        check("X-Response-Id == resp-001 (constant, 作为 HTTP 响应头)",
+              resp.headers.get("X-Response-Id") == "resp-001",
+              f"X-Response-Id={resp.headers.get('X-Response-Id')}")
 
-            result_body = rd.get("body", {}) if isinstance(rd.get("body"), dict) else {}
-            check("resultData.body.code == 0",
-                  result_body.get("code") == 0,
-                  f"code={result_body.get('code')}")
-            check("resultData.body.message == success",
-                  result_body.get("message") == "success")
-            check("resultData.body.searchKeyword == abc_search_keyword",
-                  result_body.get("searchKeyword") == "abc_search_keyword",
-                  f"searchKeyword={result_body.get('searchKeyword')}")
-            check("resultData.body.searchPage == 1",
-                  result_body.get("searchPage") == 1,
-                  f"searchPage={result_body.get('searchPage')}")
-            check("resultData.body.searchSize == 10",
-                  result_body.get("searchSize") == 10,
-                  f"searchSize={result_body.get('searchSize')}")
-            check("resultData.body.totalCount == 2",
-                  result_body.get("totalCount") == 2,
-                  f"totalCount={result_body.get('totalCount')}")
+        # ── 响应体是 exit outputMapping.body 的直接数据 (无 resultData 信封) ──
+        check("body.code == 0",
+              body.get("code") == 0,
+              f"code={body.get('code')}")
+        check("body.message == success",
+              body.get("message") == "success")
+        check("body.searchKeyword == abc_search_keyword",
+              body.get("searchKeyword") == "abc_search_keyword",
+              f"searchKeyword={body.get('searchKeyword')}")
+        check("body.searchPage == 1",
+              body.get("searchPage") == 1,
+              f"searchPage={body.get('searchPage')}")
+        check("body.searchSize == 10",
+              body.get("searchSize") == 10,
+              f"searchSize={body.get('searchSize')}")
+        check("body.totalCount == 2",
+              body.get("totalCount") == 2,
+              f"totalCount={body.get('totalCount')}")
 
-            # ── 列表嵌套提取验证 (已知 ExpressionResolver items[n] bug) ──
-            check("firstItemId 预留 (已知 ExpressionResolver items[n] bug)",
-                  True)
-            check("firstItemName 预留 (已知 ExpressionResolver items[n] bug)",
-                  True)
-            check("firstItemScore 预留 (已知 ExpressionResolver items[n] bug)",
-                  True)
-            check("firstItemFirstTag 预留 (已知 ExpressionResolver items[n] bug)",
-                  True)
-            check("firstItemDetailUrl 预留 (已知 ExpressionResolver items[n] bug)",
-                  True)
+        # ── 列表嵌套提取验证 (已知 ExpressionResolver items[n] bug) ──
+        check("firstItemId 预留 (已知 ExpressionResolver items[n] bug)",
+              True)
+        check("firstItemName 预留 (已知 ExpressionResolver items[n] bug)",
+              True)
+        check("firstItemScore 预留 (已知 ExpressionResolver items[n] bug)",
+              True)
+        check("firstItemFirstTag 预留 (已知 ExpressionResolver items[n] bug)",
+              True)
+        check("firstItemDetailUrl 预留 (已知 ExpressionResolver items[n] bug)",
+              True)
 
-            # ── 跨节点引用验证 (exit 直接引用 trigger.input.query) ──
-            check("resultData.body.sourcePage == 1 (跨节点引用 trigger.query.page)",
-                  result_body.get("sourcePage") == 1,
-                  f"sourcePage={result_body.get('sourcePage')}")
-            check("resultData.body.sourceSize == 10 (跨节点引用 trigger.query.size)",
-                  result_body.get("sourceSize") == 10,
-                  f"sourceSize={result_body.get('sourceSize')}")
+        # ── 跨节点引用验证 (exit 直接引用 trigger.input.query) ──
+        check("body.sourcePage == 1 (跨节点引用 trigger.query.page)",
+              body.get("sourcePage") == 1,
+              f"sourcePage={body.get('sourcePage')}")
+        check("body.sourceSize == 10 (跨节点引用 trigger.query.size)",
+              body.get("sourceSize") == 10,
+              f"sourceSize={body.get('sourceSize')}")
 
-            # ── 常量验证 ──
-            check("resultData.body.echoConstant == hello-constant",
-                  result_body.get("echoConstant") == "hello-constant",
-                  f"echoConstant={result_body.get('echoConstant')}")
-
-        # ── steps 验证 ──
-        steps = body.get("steps")
-        check("steps 为 list", isinstance(steps, list))
-        if isinstance(steps, list):
-            check("steps 有 3 个条目（trigger + connector + exit）",
-                  len(steps) == 3, f"实际: {len(steps)}")
-
-            # trigger step
-            trigger_step = None
-            for s in steps:
-                if s.get("nodeType") == "trigger":
-                    trigger_step = s
-                    break
-            check("trigger step 存在", trigger_step is not None)
-            if trigger_step:
-                check("trigger step status 为 success",
-                      trigger_step.get("status") == "success")
-                input_data = trigger_step.get("inputData", {})
-                check("trigger inputData 含 header 分区",
-                      isinstance(input_data, dict) and "header" in input_data,
-                      f"trigger input keys: {list(input_data.keys()) if isinstance(input_data, dict) else 'N/A'}")
-                check("trigger inputData 含 query 分区",
-                      isinstance(input_data, dict) and "query" in input_data)
-                check("trigger inputData 含 body 分区",
-                      isinstance(input_data, dict) and "body" in input_data)
-                if isinstance(input_data, dict):
-                    header_part = input_data.get("header", {})
-                    check("trigger inputData.header.X-Trace-Id == trace-060-abc",
-                          header_part.get("X-Trace-Id") == "trace-060-abc",
-                          f"X-Trace-Id={header_part.get('X-Trace-Id')}")
-                    query_part = input_data.get("query", {})
-                    check("trigger inputData.query.page == 1",
-                          str(query_part.get("page")) == "1",
-                          f"page={query_part.get('page')}")
-                    check("trigger inputData.query.size == 10",
-                          str(query_part.get("size")) == "10",
-                          f"size={query_part.get('size')}")
-                    body_part = input_data.get("body", {})
-            check("trigger inputData.body.keyword == abc_search_keyword",
-                  body_part.get("keyword") == "abc_search_keyword",
-                  f"keyword={body_part.get('keyword')}")
-
-            # connector step
-            connector_step = None
-            for s in steps:
-                if s.get("nodeType") == "connector":
-                    connector_step = s
-                    break
-            check("connector step 存在", connector_step is not None)
-            if connector_step:
-                check("connector step status 为 success",
-                      connector_step.get("status") == "success",
-                      f"status={connector_step.get('status')}")
-
-                # 验证 connector 的 inputData 含解析后的 query 参数
-                c_input = connector_step.get("inputData", {})
-                if isinstance(c_input, dict):
-                    c_query = c_input.get("query", {})
-                    check("connector inputData.query.keyword == abc_search_keyword",
-                          c_query.get("keyword") == "abc_search_keyword",
-                          f"keyword={c_query.get('keyword')}")
-                    check("connector inputData.query.page == 1 (解析后为 int)",
-                          c_query.get("page") == 1 or str(c_query.get("page")) == "1",
-                          f"page={c_query.get('page')}")
-                    check("connector inputData.query.size == 10 (解析后为 int)",
-                          c_query.get("size") == 10 or str(c_query.get("size")) == "10",
-                          f"size={c_query.get('size')}")
-
-                # 验证 connector 的 outputData 含 mock 返回数据
-                c_output = connector_step.get("outputData", {})
-                check("connector step outputData 为 dict",
-                      isinstance(c_output, dict))
-                if isinstance(c_output, dict):
-                    check("connector outputData.code == 0",
-                          c_output.get("code") == 0)
-                    check("connector outputData.data 存在",
-                          "data" in c_output)
+        # ── 常量验证 ──
+        check("body.echoConstant == hello-constant",
+              body.get("echoConstant") == "hello-constant",
+              f"echoConstant={body.get('echoConstant')}")
 finally:
     cleanup_flow(sid_060, fvid_060, cid_060, cvid_060)
 
@@ -918,11 +828,10 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-061"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
-        body = resp.json()
-        check("HTTP 200", resp.status_code == 200)
-        check("status 为 failed 或 errorInfo 存在",
-              body.get("status") == "failed" or "errorInfo" in body)
+    if resp is not None:
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
+        check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061, fvid_061, cid_061, cvid_061)
 
@@ -944,11 +853,10 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-061b"},
                           query_params={"size": "10"})
-    if resp:
-        body = resp.json()
-        check("HTTP 200", resp.status_code == 200)
-        check("status 为 failed 或 errorInfo 存在 (缺 query.page)",
-              body.get("status") == "failed" or "errorInfo" in body)
+    if resp is not None:
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
+        check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061b, fvid_061b, cid_061b, cvid_061b)
 
@@ -969,11 +877,10 @@ try:
                           body={"keyword": "test"},
                           headers={"X-Sys-Token": "test-token"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
-        body = resp.json()
-        check("HTTP 200", resp.status_code == 200)
-        check("status 为 failed 或 errorInfo 存在 (缺 header.X-Trace-Id)",
-              body.get("status") == "failed" or "errorInfo" in body)
+    if resp is not None:
+        check("HTTP 400", resp.status_code == 400)
+        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
+        check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 finally:
     cleanup_flow(sid_061c, fvid_061c, cid_061c, cvid_061c)
 
@@ -993,27 +900,10 @@ try:
                           body={"sender": "test_user"},
                           headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-062"},
                           query_params={"page": "1"})
-    if resp:
-        body = resp.json()
-        check("HTTP 200", resp.status_code == 200, f"实际: {resp.status_code}")
-        check("status 为 failed", body.get("status") == "failed",
-              f"status={body.get('status')}")
-        check("errorInfo 存在", "errorInfo" in body)
-
-        steps = body.get("steps")
-        if isinstance(steps, list):
-            connector_step = None
-            for s in steps:
-                if s.get("nodeType") == "connector":
-                    connector_step = s
-                    break
-            check("connector step 存在", connector_step is not None)
-            if connector_step:
-                check("connector step status 为 failed",
-                      connector_step.get("status") == "failed",
-                      f"status={connector_step.get('status')}")
-                check("connector step errorInfo 存在",
-                      connector_step.get("errorInfo") is not None)
+    if resp is not None:
+        check("HTTP 200 或 502（下游失败透传）", resp.status_code in (200, 502), f"实际: {resp.status_code}")
+        check("X-Status 为 1 (failed)", resp.headers.get("X-Status") == "1",
+              f"X-Status={resp.headers.get('X-Status')}")
 finally:
     cleanup_flow(sid_062, fvid_062, cid_062, cvid_062)
 
@@ -1034,119 +924,43 @@ try:
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-063"},
                           query_params={"page": "5", "size": "20"})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
-        check("status 不为 failed", body.get("status") != "failed",
-              f"status={body.get('status')}")
+        check("X-Status 为 0", resp.headers.get("X-Status") == "0",
+              f"X-Status={resp.headers.get('X-Status')}")
 
-        # ── 验证 resultData 中的表达式链 ──
-        rd = body.get("resultData")
-        if isinstance(rd, dict):
-            result_body = rd.get("body", {}) if isinstance(rd.get("body"), dict) else {}
+        # ── 用户自定义响应头 ──
+        check("X-Response-Id == resp-001 (constant, 作为 HTTP 响应头)",
+              resp.headers.get("X-Response-Id") == "resp-001")
 
-            # 常量: echoConstant
-            check("echoConstant == hello-constant",
-                  result_body.get("echoConstant") == "hello-constant",
-                  f"echoConstant={result_body.get('echoConstant')}")
+        # ── 响应体是 exit outputMapping.body 的直接数据 (无 resultData 信封) ──
 
-            # $.node reference: searchKeyword ← connector.output.data.keyword
-            check("searchKeyword == expr_test (来自 trigger body → connector → exit)",
-                  result_body.get("searchKeyword") == "expr_test",
-                  f"searchKeyword={result_body.get('searchKeyword')}")
+        # 常量: echoConstant
+        check("echoConstant == hello-constant",
+              body.get("echoConstant") == "hello-constant",
+              f"echoConstant={body.get('echoConstant')}")
 
-            # 跨节点: sourcePage ← trigger.input.query.page
-            check("sourcePage == 5 (直接引用 trigger.input.query.page)",
-                  result_body.get("sourcePage") == 5,
-                  f"sourcePage={result_body.get('sourcePage')}")
+        # $.node reference: searchKeyword ← connector.output.data.keyword
+        check("searchKeyword == expr_test (来自 trigger body → connector → exit)",
+              body.get("searchKeyword") == "expr_test",
+              f"searchKeyword={body.get('searchKeyword')}")
 
-            # 跨节点: sourceSize ← trigger.input.query.size
-            check("sourceSize == 20 (直接引用 trigger.input.query.size)",
-                  result_body.get("sourceSize") == 20,
-                  f"sourceSize={result_body.get('sourceSize')}")
+        # 跨节点: sourcePage ← trigger.input.query.page
+        check("sourcePage == 5 (直接引用 trigger.input.query.page)",
+              body.get("sourcePage") == 5,
+              f"sourcePage={body.get('sourcePage')}")
 
-            # $.node reference + nested: firstItemId ← connector.output.data.items[0].id
-            # 已知问题: ExpressionResolver 的 items[0].id 数组索引解析有 bug (.split 破坏括号语法)
-            # 预留校验位
-            check("firstItemId 预留 (已知 ExpressionResolver items[n] bug)",
-                  True)
+        # 跨节点: sourceSize ← trigger.input.query.size
+        check("sourceSize == 20 (直接引用 trigger.input.query.size)",
+              body.get("sourceSize") == 20,
+              f"sourceSize={body.get('sourceSize')}")
 
-            # 响应头: X-Response-Id (constant)
-            resp_header = rd.get("header", {})
-            if isinstance(resp_header, dict):
-                check("X-Response-Id == resp-001 (constant in header mapping)",
-                      resp_header.get("X-Response-Id") == "resp-001")
-
-        # ── 验证 connector step 三段落 ──
-        steps = body.get("steps")
-        if isinstance(steps, list):
-            connector_step = None
-            for s in steps:
-                if s.get("nodeType") == "connector":
-                    connector_step = s
-                    break
-
-            check("connector step 存在", connector_step is not None)
-            if connector_step:
-                input_data = connector_step.get("inputData", {})
-                check("connector inputData 含 headers 分区",
-                      isinstance(input_data, dict) and "headers" in input_data)
-                check("connector inputData 含 query 分区",
-                      isinstance(input_data, dict) and "query" in input_data)
-                check("connector inputData 含 body 分区",
-                      isinstance(input_data, dict) and "body" in input_data)
-
-                if isinstance(input_data, dict):
-                    query = input_data.get("query", {})
-                    # keyword 来自 trigger.input.body.keyword
-                    check("connector query.keyword == expr_test (body 透传)",
-                          query.get("keyword") == "expr_test",
-                          f"keyword={query.get('keyword')}")
-                    # page 来自 trigger.input.query.page (常量表达式)
-                    check("connector query.page == 5 (来自 trigger.input.query.page)",
-                          str(query.get("page")) == "5",
-                          f"page={query.get('page')}")
-                    # size 来自 trigger.input.query.size (常量表达式)
-                    check("connector query.size == 20 (来自 trigger.input.query.size)",
-                          str(query.get("size")) == "20",
-                          f"size={query.get('size')}")
-
-                output_data = connector_step.get("outputData", {})
-                check("connector output 含 data 字段",
-                      isinstance(output_data, dict) and "data" in output_data,
-                      f"output keys: {list(output_data.keys()) if isinstance(output_data, dict) else type(output_data)}")
-
-            # ── 验证 trigger step 结构化 input ──
-            trigger_step = None
-            for s in steps:
-                if s.get("nodeType") == "trigger":
-                    trigger_step = s
-                    break
-            check("trigger step 存在", trigger_step is not None)
-            if trigger_step:
-                t_input = trigger_step.get("inputData", {})
-                check("trigger input 含 header/query/body 三段",
-                      isinstance(t_input, dict) and
-                      "header" in t_input and "query" in t_input and "body" in t_input,
-                      f"keys: {list(t_input.keys()) if isinstance(t_input, dict) else 'N/A'}")
-                if isinstance(t_input, dict):
-                    t_body = t_input.get("body", {})
-                    check("trigger.input.body.keyword == expr_test",
-                          t_body.get("keyword") == "expr_test",
-                          f"keyword={t_body.get('keyword')}")
-                    t_query = t_input.get("query", {})
-                    check("trigger.input.query.page == 5",
-                          str(t_query.get("page")) == "5",
-                          f"page={t_query.get('page')}")
-                    check("trigger.input.query.size == 20",
-                          str(t_query.get("size")) == "20",
-                          f"size={t_query.get('size')}")
-                    t_header = t_input.get("header", {})
-                    check("trigger.input.header.X-Sys-Token == test-token",
-                          t_header.get("X-Sys-Token") == "test-token")
-                    check("trigger.input.header.X-Trace-Id == trace-063",
-                          t_header.get("X-Trace-Id") == "trace-063",
-                          f"X-Trace-Id={t_header.get('X-Trace-Id')}")
+        # $.node reference + nested: firstItemId ← connector.output.data.items[0].id
+        # 已知问题: ExpressionResolver 的 items[0].id 数组索引解析有 bug (.split 破坏括号语法)
+        # 预留校验位
+        check("firstItemId 预留 (已知 ExpressionResolver items[n] bug)",
+              True)
 finally:
     cleanup_flow(sid_063, fvid_063, cid_063, cvid_063)
 
@@ -1178,20 +992,35 @@ try:
     check("至少 1 个 429 响应", count_429 >= 1,
           f"429={count_429}, 其他={len(statuses)-count_429}")
 
+    # 可选: 单独发一次请求验证 429 的 X- 头
+    resp_429 = trigger_invoke(fid_064,
+                              body={"keyword": "test_429"},
+                              headers={"X-Sys-Token": "test-token",
+                                       "X-Trace-Id": "trace-064-429"},
+                              query_params={"page": "1", "size": "10"})
+    if resp_429 and resp_429.status_code == 429:
+        check("X-Code 为 429", resp_429.headers.get("X-Code") == "429")
+        check("X-Message-Zh 存在", bool(resp_429.headers.get("X-Message-Zh")))
+        check("响应体为空", len(resp_429.content) == 0, f"body={resp_429.content}")
+
     # ── IT-065: 限流阈值内正常执行（复用同一 flow）──────
     print("\n=== IT-065: 限流恢复（单次请求正常）===")
-    time.sleep(1.5)
+    time.sleep(3.0)
     resp = trigger_invoke(fid_064,
                           body={"keyword": "test_single"},
                           headers={"X-Sys-Token": "test-token",
                                    "X-Trace-Id": "trace-065"},
                           query_params={"page": "1", "size": "10"})
-    if resp:
-        body = resp.json()
+    if resp is not None:
+        body = {}
+        try:
+            body = resp.json()
+        except Exception:
+            pass
         check("HTTP 200", resp.status_code == 200)
-        check("executionId 存在", bool(body.get("executionId")))
-        check("status 不为 failed", body.get("status") != "failed",
-              f"status={body.get('status')}")
+        check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
+        check("X-Status 为 0", resp.headers.get("X-Status") == "0",
+              f"X-Status={resp.headers.get('X-Status')}")
 finally:
     cleanup_flow(sid_064, fvid_064, cid_064, cvid_064)
 

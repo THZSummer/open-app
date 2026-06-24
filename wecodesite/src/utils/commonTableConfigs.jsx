@@ -118,7 +118,7 @@ export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) =
       <Space>
         <Button type='link' size='small' onClick={() => handleView(record.id)}>详情</Button>
         {record.status !== 0 && <Button type='link' size='small' onClick={() => handleEdit(record.id)}>编辑</Button>}
-        <Button type='link' size='small' danger onClick={() => handleDelete(record.id)}>删除</Button>
+        <Button type='link' size='small' danger onClick={() => handleDelete(record)}>删除</Button>
       </Space>
     )
   },

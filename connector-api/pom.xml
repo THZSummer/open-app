@@ -23,7 +23,7 @@
         <java.version>21</java.version>
         <r2dbc-mysql.version>1.3.2</r2dbc-mysql.version>
         <springdoc-openapi.version>2.5.0</springdoc-openapi.version>
-        <bucket4j.version>8.10.1</bucket4j.version>
+        <netty.version>4.1.135.Final</netty.version>
     </properties>
 
     <dependencies>
@@ -62,11 +62,17 @@
             <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
         </dependency>
 
-        <!-- Bucket4j 限流 -->
+        <!-- GraalVM Polyglot for JavaScript sandbox -->
         <dependency>
-            <groupId>com.bucket4j</groupId>
-            <artifactId>bucket4j-core</artifactId>
-            <version>${bucket4j.version}</version>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>24.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-language</artifactId>
+            <version>24.2.1</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- SpringDoc OpenAPI (WebFlux) -->

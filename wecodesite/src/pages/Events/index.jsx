@@ -7,7 +7,11 @@ import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfir
 import EventDrawer from './EventDrawer';
 import EventSubscriptionDrawer from './EventSubscriptionDrawer';
 import { fetchAppEvents, deleteAppEventSubscription, withdrawApproval, subscribeEvents } from './thunk';
-import { getEventColumns } from './constants';
+import {
+  EVENT_DELETE_SECOND_MODAL_INFO,
+  EVENT_WITHDRAW_SECOND_MODAL_INFO,
+  getEventColumns,
+} from './constants';
 import { queryParams, openUrl, getSecondModalInfo } from '../../utils/common';
 import './Events.m.less';
 import { REMIND_BUSINESSTYPE } from '../../utils/constants';
@@ -34,6 +38,8 @@ function Events() {
     currentApprovalInfo,
     deleteModalOpen,
     deleteLoading,
+    currentDeleteItem,
+    currentWithdrawItem,
     revokePending,
     revokeVisible,
     loadData,
@@ -139,14 +145,20 @@ function Events() {
         onClose={closeDeleteModal}
         onConfirm={handleConfirmDelete}
         loading={deleteLoading}
-        modalInfo={getSecondModalInfo('事件', 'delete', false)}
+        modalInfo={getSecondModalInfo({
+          ...EVENT_DELETE_SECOND_MODAL_INFO,
+          objectName: currentDeleteItem?.permission?.nameCn,
+        })}
       />
 
       <DeleteConfirmModal
         open={revokeVisible}
         onClose={closeWithdrawModal}
         onConfirm={handleConfirmWithdraw}
-        modalInfo={getSecondModalInfo('事件', 'withdraw', false)}
+        modalInfo={getSecondModalInfo({
+          ...EVENT_WITHDRAW_SECOND_MODAL_INFO,
+          objectName: currentWithdrawItem?.permission?.nameCn,
+        })}
         loading={revokePending}
       />
     </div>

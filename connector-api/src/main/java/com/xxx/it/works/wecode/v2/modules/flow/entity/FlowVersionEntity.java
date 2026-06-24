@@ -3,6 +3,8 @@ package com.xxx.it.works.wecode.v2.modules.flow.entity;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -24,6 +26,8 @@ import java.util.Map;
 @Table("openplatform_v2_cp_flow_version_t")
 public class FlowVersionEntity {
 
+    private static final Logger log = LoggerFactory.getLogger(FlowVersionEntity.class);
+
     @Id
     @Column("id")
     private Long id;
@@ -33,6 +37,22 @@ public class FlowVersionEntity {
 
     @Column("orchestration_config")
     private String orchestrationConfig;
+
+    /** V3: 版本号 (1~1000) */
+    @Column("version_number")
+    private Integer versionNumber;
+
+    /** V3: 版本状态 (1=draft, 2=pending_approval, 3=withdrawn, 4=rejected, 5=published, 6=invalidated, 7=deleted) */
+    @Column("status")
+    private Integer status;
+
+    /** V3: 发布时间 */
+    @Column("published_time")
+    private LocalDateTime publishedTime;
+
+    /** V3: 发布人 */
+    @Column("published_by")
+    private String publishedBy;
 
     @Column("create_time")
     private LocalDateTime createTime;
@@ -59,6 +79,18 @@ public class FlowVersionEntity {
     public String getOrchestrationConfig() { return orchestrationConfig; }
     public void setOrchestrationConfig(String orchestrationConfig) { this.orchestrationConfig = orchestrationConfig; }
 
+    public Integer getVersionNumber() { return versionNumber; }
+    public void setVersionNumber(Integer versionNumber) { this.versionNumber = versionNumber; }
+
+    public Integer getStatus() { return status; }
+    public void setStatus(Integer status) { this.status = status; }
+
+    public LocalDateTime getPublishedTime() { return publishedTime; }
+    public void setPublishedTime(LocalDateTime publishedTime) { this.publishedTime = publishedTime; }
+
+    public String getPublishedBy() { return publishedBy; }
+    public void setPublishedBy(String publishedBy) { this.publishedBy = publishedBy; }
+
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
 
@@ -83,6 +115,8 @@ public class FlowVersionEntity {
         try {
             return mapper.readTree(this.orchestrationConfig);
         } catch (Exception e) {
+            log.error("Failed to parse orchestrationConfig as JsonNode: flowId={}, error={}",
+                    this.flowId, e.getMessage());
             return mapper.createObjectNode();
         }
     }
@@ -98,6 +132,8 @@ public class FlowVersionEntity {
             return mapper.readValue(this.orchestrationConfig,
                     new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
+            log.error("Failed to parse orchestrationConfig as Map: flowId={}, error={}",
+                    this.flowId, e.getMessage());
             return Map.of();
         }
     }

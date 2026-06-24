@@ -37,28 +37,30 @@ public class OpDebugProxyService {
     /**
      * 转发测试运行请求到 connector-api
      * <p>
-     * 构建请求体时透传 mockTriggerData（v5.5 新字段格式：authConfig/inputContract/outputContract/rateLimitConfig）
-     * 和 credentials 至 connector-api 的 POST /api/v1/internal/test-run/{flowId}。
+     * 构建请求体时透传 triggerData（v5.5 新字段格式：authConfig/inputContract/outputContract/rateLimitConfig）
+     * 和 credentials 至 connector-api 的 POST /api/v1/flows/{flowId}/versions/{versionId}/debug。
      * </p>
      *
      * @param flowId 连接流ID
-     * @param mockTriggerData 模拟触发数据（含新 v5.5 字段名）
+     * @param versionId 版本ID
+     * @param triggerData 模拟触发数据（含新 v5.5 字段名）
      * @param credentials 凭证 (按 connectorVersionId 分组)
      * @return 转发结果
      */
     public ApiResponse<Map<String, Object>> forwardTestRun(
             Long flowId,
-            Map<String, Object> mockTriggerData,
+            Long versionId,
+            Map<String, Object> triggerData,
             Map<String, Map<String, String>> credentials) {
 
-        String url = connectorApiBaseUrl + "/api/v1/internal/test-run/" + flowId;
+        String url = connectorApiBaseUrl + "/api/v1/flows/" + flowId + "/versions/" + versionId + "/debug";
 
-        log.info("Forwarding test run to connector-api: flowId={}, url={}", flowId, url);
+        log.info("Forwarding test run to connector-api: flowId={}, versionId={}, url={}", flowId, versionId, url);
 
         try {
-            // 构建请求体 - 透传 mockTriggerData（已使用 v5.5 新字段名：authConfig/inputContract/outputContract/rateLimitConfig）
+            // 构建请求体 - 透传 triggerData（已使用 v5.5 新字段名：authConfig/inputContract/outputContract/rateLimitConfig）
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("mockTriggerData", mockTriggerData != null ? mockTriggerData : new HashMap<>());
+            requestBody.put("triggerData", triggerData != null ? triggerData : new HashMap<>());
             requestBody.put("credentials", credentials != null ? credentials : new HashMap<>());
 
             HttpHeaders headers = new HttpHeaders();

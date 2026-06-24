@@ -1,15 +1,15 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { fetchEventList, deleteEvent } from './thunk';
-import { getEventListColumns } from './constants';
+import { ADMIN_EVENT_DELETE_SECOND_MODAL_INFO, getEventListColumns } from './constants';
 import EventRegister from './EventRegister';
 import { useAdminList } from '../../../hooks/useAdminList';
 import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
 import { fetchCategoryTree } from '../Category/thunk';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-import { getSecondModalInfo, isInAdminWhitelist } from '../../../utils/common';
+import { getSecondModalInfo } from '../../../utils/common';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import './EventList.m.less';
 
@@ -17,21 +17,7 @@ import './EventList.m.less';
  * 事件列表管理页
  */
 function EventList() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    checkPermission();
-  }, []);
-
-  /**
-   * 权限校验
-   */
-  const checkPermission = async () => {
-    const allowed = await isInAdminWhitelist();
-    if (!allowed) {
-      navigate('/apps');
-    }
-  };
+  useAdminAccessGuard();
 
   const {
     loadData,
@@ -50,7 +36,7 @@ function EventList() {
     handleAdd,
     handleEdit,
     handleView,
-    handlecancelRomove,
+    handleCloseDeleteConfirm,
     handleDelete,
     handleDeleteClick,
     handleSuccess,
@@ -143,9 +129,12 @@ function EventList() {
 
           <DeleteConfirmModal
             open={removeConfirmVisible}
-            onClose={handlecancelRomove}
+            onClose={handleCloseDeleteConfirm}
             onConfirm={handleDeleteClick}
-            modalInfo={getSecondModalInfo('事件', 'delete', true)}
+            modalInfo={getSecondModalInfo({
+              ...ADMIN_EVENT_DELETE_SECOND_MODAL_INFO,
+              objectName: currentItem?.nameCn || currentItem?.nameEn,
+            })}
           />
         </div>
       </div>

@@ -68,17 +68,21 @@ export const REMIND_BUSINESSTYPE = {
 
 export const ACTION_CONFIG = {
   delete: {
-    title: '确认删除',
     content: '确定要删除吗？',
     confirmButtonText: '确认删除',
     loadingText: '删除中...',
     dangerColor: '#ff4d4f'
   },
   withdraw: {
-    title: '确认撤回',
     content: '确定要撤回吗？撤回后将无法恢复。',
     confirmButtonText: '确认撤回',
     loadingText: '撤回中...',
     dangerColor: '#faad14'
+  },
+  stop: {
+    content: '确定要停止吗？',
+    confirmButtonText: '确认停止',
+    loadingText: '停止中...',
+    dangerColor: '#ff4d4f'
   }
 };

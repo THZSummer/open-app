@@ -63,6 +63,14 @@ public class ApprovalFlow implements Serializable {
     // 查询方式：SELECT * FROM approval_flow_t WHERE code='global'
 
     /**
+     * 归属应用ID（V3 新增）
+     *
+     * <p>NULL=平台级/全局模板，非NULL=应用级定制模板。
+     * 查询时按app_id就近匹配：应用级优先 → 平台级回退 → 全局级兜底。</p>
+     */
+    private Long appId;
+
+    /**
      * 审批节点配置（JSON 格式）
      *
      * 格式示例：

@@ -30,6 +30,13 @@ public class ApprovalFlowUpdateRequest implements Serializable {
     // 原因：审批流程类型由 code 标识，无法通过更新修改
 
     /**
+     * 归属应用ID（V3 新增）
+     *
+     * <p>NULL=平台级/全局模板，非NULL=应用级定制模板</p>
+     */
+    private Long appId;
+
+    /**
      * 审批节点列表
      */
     private List<ApprovalNodeDto> nodes;

@@ -16,15 +16,15 @@ export const DEFAULT_SEARCH_VALUES = {
 export const MODAL_TITLE_ADD = '新增字典';
 export const MODAL_TITLE_EDIT = '编辑字典';
 
-// code 字段格式校验正则：字母、数字、下划线、点、横杠
-export const CODE_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+// code 字段格式校验正则：字母、数字、下划线、点、横杠、斜杠、星号
+export const CODE_PATTERN = /^[a-zA-Z0-9_./*-]+$/;
 
 // 表单验证规则
 export const FORM_VALIDATION_RULES = {
   code: [
     { required: true, message: '请输入编码' },
     { max: 100, message: '最多100个字符' },
-    { pattern: CODE_PATTERN, message: '仅支持字母、数字、下划线、点、横杠' }
+    { pattern: CODE_PATTERN, message: '仅支持字母、数字、下划线、点、横杠、斜杠、星号' }
   ],
   name: [
     { required: true, message: '请输入名称' },

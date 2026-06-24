@@ -9,6 +9,21 @@ import React from 'react';
 import { Badge, Button, Space, Tooltip } from 'antd';
 
 /**
+ * 连接流删除二次确认弹窗配置
+ */
+export const FLOW_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个连接流：${objectName}吗？`,
+  impactText: '操作影响：删除后，该连接流配置将无法恢复，关联运行配置会被移除。',
+};
+
+export const FLOW_STOP_SECOND_MODAL_INFO = {
+  action: 'stop',
+  impactText: '操作影响：停止后，该连接流不再处理触发请求，但配置仍会保留。',
+  getConfirmText: ({ objectName }) => `确认要停止这个连接流：${objectName}吗？`,
+}
+
+/**
  * 页面配置信息
  */
 export const pageInfo = {
@@ -176,24 +191,3 @@ export const flowSearchConfig = {
   placeholder: '搜索连接流中英文名称',
 };
 
-/**
- * 删除二次确认配置
- */
-export const deleteFlowModalInfo = {
-  confirmButtonText: '确认删除',
-  content: '删除后将无法恢复，确认要删除这个连接流吗？',
-  dangerColor: '#ff4d4f',
-  loadingText: '删除中...',
-  title: '确认删除连接流吗？',
-};
-
-/**
- * 停止二次确认配置
- */
-export const stopFlowModalInfo = {
-  title: '确认停止连接流吗？',
-  content: '停止后将无法接收HTTP触发请求，确认要停止这个连接流吗？',
-  confirmButtonText: '确认停止',
-  loadingText: '停止中...',
-  dangerColor: '#ff4d4f'
-};

@@ -19,14 +19,26 @@ import ConnectorSearchForm from '../../../components/ConnectorSearchForm/Connect
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ConnectorFormModal from '../../../components/ConnectorFormModal/ConnectorFormModal';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
-import { pageInfo, flowSearchConfig, flowStatusOptions, getFlowColumns, stopFlowModalInfo, deleteFlowModalInfo } from './constants';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
+import {
+  FLOW_DELETE_SECOND_MODAL_INFO,
+  FLOW_STOP_SECOND_MODAL_INFO,
+  flowSearchConfig,
+  flowStatusOptions,
+  getFlowColumns,
+  pageInfo,
+} from './constants';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
+import { getSecondModalInfo } from '../../../utils/common';
 import './Flow.m.less';
 
 /**
  * 连接流列表页面主组件
  */
 function FlowList() {
+  // 校验当前用户是否具备连接平台访问权限
+  useAdminAccessGuard();
+
   const navigate = useNavigate();
 
   /**
@@ -186,7 +198,7 @@ function FlowList() {
         successMsg = '启动成功';
         errorMsg = '启动失败';
         setLoading = null;
-        currentPage = INIT_PAGECONFIG;
+        currentPage = pagination;
         break;
       default:
         return;
@@ -341,7 +353,10 @@ function FlowList() {
             open={actionModalVisible}
             onClose={handleActionCancel}
             onConfirm={handleActionConfirm}
-            modalInfo={currentActionType === 'delete' ? deleteFlowModalInfo : stopFlowModalInfo}
+            modalInfo={getSecondModalInfo({
+              ...(currentActionType === 'delete' ? FLOW_DELETE_SECOND_MODAL_INFO : FLOW_STOP_SECOND_MODAL_INFO),
+              objectName: actionItem?.nameCn || actionItem?.nameEn,
+            })}
             loading={actionLoading}
           />
 

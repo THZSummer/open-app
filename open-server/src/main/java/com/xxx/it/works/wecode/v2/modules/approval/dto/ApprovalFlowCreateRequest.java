@@ -39,6 +39,13 @@ public class ApprovalFlowCreateRequest implements Serializable {
     // 原因：用 code='global' 标识全局审批，无需单独设置 isDefault
 
     /**
+     * 归属应用ID（V3 新增）
+     *
+     * <p>NULL=平台级/全局模板，非NULL=应用级定制模板</p>
+     */
+    private Long appId;
+
+    /**
      * 审批节点列表
      */
     private List<ApprovalNodeDto> nodes;

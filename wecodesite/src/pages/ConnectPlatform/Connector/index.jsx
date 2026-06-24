@@ -19,11 +19,21 @@ import ConnectorSearchForm from '../../../components/ConnectorSearchForm/Connect
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ConnectorFormModal from '../../../components/ConnectorFormModal/ConnectorFormModal';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
-import { pageInfo, searchConfig, getConnectorColumns, deleteConnectorModalInfo } from './constants';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
+import {
+  CONNECTOR_DELETE_SECOND_MODAL_INFO,
+  getConnectorColumns,
+  pageInfo,
+  searchConfig,
+} from './constants';
+import { getSecondModalInfo } from '../../../utils/common';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import './Connector.m.less';
 
 function ConnectorList() {
+  // 校验当前用户是否具备连接平台访问权限
+  useAdminAccessGuard();
+
   const navigate = useNavigate();
 
   /**
@@ -44,7 +54,7 @@ function ConnectorList() {
 
   // 删除确认弹窗相关状态
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteItemId, setDeleteItemId] = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // 连接器表单弹窗相关状态
@@ -129,10 +139,10 @@ function ConnectorList() {
 
   /**
    * 点击删除按钮
-   * @param {string} id - 连接器ID
+   * @param {Object} record - 连接器记录
    */
-  const handleDeleteClick = (id) => {
-    setDeleteItemId(id);
+  const handleDeleteClick = (record) => {
+    setDeleteItem(record);
     setDeleteModalVisible(true);
   };
 
@@ -140,15 +150,15 @@ function ConnectorList() {
    * 确认删除连接器
    */
   const handleDeleteConfirm = async () => {
-    if (!deleteItemId) return;
+    if (!deleteItem?.id) return;
 
     setDeleteLoading(true);
-    const res = await deleteConnector(deleteItemId);
+    const res = await deleteConnector(deleteItem.id);
 
     if (res && res.code === '200') {
       message.success('删除成功');
       setDeleteModalVisible(false);
-      setDeleteItemId(null);
+      setDeleteItem(null);
       loadData(INIT_PAGECONFIG);
     } else {
       message.error(res?.messageZh || '删除失败');
@@ -169,7 +179,7 @@ function ConnectorList() {
    * 关闭删除确认弹窗
    */
   const handleDeleteCancel = () => {
-    setDeleteItemId(null);
+    setDeleteItem(null);
     setDeleteModalVisible(false);
   };
 
@@ -279,7 +289,10 @@ function ConnectorList() {
             open={deleteModalVisible}
             onClose={handleDeleteCancel}
             onConfirm={handleDeleteConfirm}
-            modalInfo={deleteConnectorModalInfo}
+            modalInfo={getSecondModalInfo({
+              ...CONNECTOR_DELETE_SECOND_MODAL_INFO,
+              objectName: deleteItem?.nameCn || deleteItem?.nameEn,
+            })}
             loading={deleteLoading}
           />
 

@@ -4,6 +4,24 @@ import { CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
 import { renderStatus } from '../../utils/commonTableConfigs';
 
 /**
+ * 事件订阅删除二次确认弹窗配置
+ */
+export const EVENT_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个事件订阅：${objectName}吗？`,
+  impactText: '操作影响：删除后，该事件订阅关系将被移除，应用将无法继续接收对应事件。',
+};
+
+/**
+ * 事件订阅撤回二次确认弹窗配置
+ */
+export const EVENT_WITHDRAW_SECOND_MODAL_INFO = {
+  action: 'withdraw',
+  getConfirmText: ({ objectName }) => `确认要撤回这个事件：${objectName}申请吗？`,
+  impactText: '操作影响：撤回后，该事件权限申请将终止审批流程，如需使用，需要先删除后重新订阅。',
+};
+
+/**
  * 事件列表表格列配置
  *
  * @param {Function} handleOpenDoc - 打开文档
@@ -70,11 +88,11 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
         {record.status === 0 && (
           <>
             <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
-            <Button type="link" onClick={() => handleWithdraw(record.id)}>撤回审核</Button>
+            <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
           </>
         )}
         {record.status !== 0 && (
-          <Button type="link" danger onClick={() => handleDelete(record.id)}>删除</Button>
+          <Button type="link" danger onClick={() => handleDelete(record)}>删除</Button>
         )}
       </div>
     ),

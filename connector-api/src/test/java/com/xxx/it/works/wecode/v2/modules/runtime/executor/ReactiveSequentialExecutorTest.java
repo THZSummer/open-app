@@ -32,12 +32,12 @@ class ReactiveSequentialExecutorTest {
 
         TriggerNodeExecutor triggerExecutor = new TriggerNodeExecutor(objectMapper);
         CredentialInjectorRegistry mockRegistry = new CredentialInjectorRegistry(List.of());
-        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockRegistry, null);
+                ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockRegistry, null, null, null);
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 
         executor = new ReactiveSequentialExecutor(
-                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor);
+                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor, null);
     }
 
     @Test

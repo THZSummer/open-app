@@ -5,9 +5,9 @@ spring:
   application:
     name: connector-api
 
-  # R2DBC 数据源配置 (Reactive MySQL)
+  # R2DBC 数据源配置 (Reactive MySQL) — 对齐 open-server 192.168.3.155
   r2dbc:
-    url: r2dbc:mysql://localhost:3306/openapp?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    url: r2dbc:mysql://192.168.3.155:3306/openapp?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
     username: openapp
     password: openapp
     pool:
@@ -16,26 +16,37 @@ spring:
       max-idle-time: 30m
       validation-query: SELECT 1
 
-  # Reactive Redis 配置
+  # Reactive Redis 集群配置 — 对齐 open-server
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: openapp
+      cluster:
+        nodes:
+          - 192.168.3.201:6379
+          - 192.168.3.202:6379
+          - 192.168.3.203:6379
+          - 192.168.3.204:6379
+          - 192.168.3.205:6379
+        max-redirects: 3
       timeout: 5000
       lettuce:
         pool:
-          max-active: 16
+          max-active: 8
+          max-wait: -1ms
           max-idle: 8
-          min-idle: 4
+          min-idle: 0
+
+# 缓存配置（临时方案）
+connector:
+  cache:
+    enabled: true
 
 # 健康检查配置（不检查数据库和 Redis，避免因外部依赖未就绪导致启动检测失败）
 management:
   health:
     db:
-      enabled: false
+      enabled: true
     redis:
-      enabled: false
+      enabled: true
   endpoints:
     web:
       exposure:

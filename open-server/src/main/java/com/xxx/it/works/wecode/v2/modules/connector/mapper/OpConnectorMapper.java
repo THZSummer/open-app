@@ -36,6 +36,14 @@ public interface OpConnectorMapper {
     int deleteById(@Param("id") Long id);
 
     /**
+     * 查询全部连接器列表（无分页）
+     */
+    List<Connector> selectAll(
+            @Param("connectorType") Integer connectorType,
+            @Param("keyword") String keyword
+    );
+
+    /**
      * 分页查询连接器列表
      */
     List<Connector> selectList(

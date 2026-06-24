@@ -1,0 +1,58 @@
+/**
+ * 文本节点样式
+ * 让说明节点保持轻量展示，同时保留弱化后的连接能力
+ */
+.text-node {
+  position: relative;
+  min-width: 240px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px dashed #cbd5e1;
+  border-radius: 999px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.text-node.selected {
+  border-color: #6366f1;
+  color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.16);
+}
+
+.text-node-content {
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.text-node-handle {
+  width: 6px !important;
+  height: 6px !important;
+  border: 1px solid #ffffff !important;
+  background: #cbd5e1 !important;
+  opacity: 0.65;
+}
+
+.text-node-delete {
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  border: 1px solid #fecaca;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #ef4444;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.text-node-delete:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
