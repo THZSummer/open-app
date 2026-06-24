@@ -237,7 +237,7 @@ public class OpConnectorService {
             version = new ConnectorVersion();
             version.setId(idGenerator.nextId());
             version.setConnectorId(connectorId);
-            version.setConnectionConfig(request.getConnectionConfig());
+            version.setConnectionConfig(request.getConnectionConfig().toString());
             version.setCreateTime(now);
             version.setLastUpdateTime(now);
             version.setCreateBy(currentUser);
@@ -245,7 +245,7 @@ public class OpConnectorService {
             connectorVersionMapper.insert(version);
         } else {
             // 更新现有版本 - 全文替换
-            version.setConnectionConfig(request.getConnectionConfig());
+            version.setConnectionConfig(request.getConnectionConfig().toString());
             version.setLastUpdateTime(now);
             version.setLastUpdateBy(currentUser);
             connectorVersionMapper.update(version);

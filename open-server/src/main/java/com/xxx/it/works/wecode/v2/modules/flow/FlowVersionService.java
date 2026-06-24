@@ -119,7 +119,7 @@ public class FlowVersionService {
         version.setFlowId(flowId);
         version.setVersionNumber(versionNumber);
         version.setStatus(FlowVersionStatus.DRAFT.getCode());
-        version.setOrchestrationConfig("{}");
+        version.setOrchestrationConfig(null);
         version.setCreateTime(now);
         version.setLastUpdateTime(now);
         version.setCreateBy(currentUser);
