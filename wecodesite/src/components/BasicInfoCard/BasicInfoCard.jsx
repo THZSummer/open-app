@@ -36,7 +36,7 @@ function BasicInfoCard() {
       descCn: appData.descCn,
       descEn: appData.descEn,
     });
-  }, [appData, editForm]);
+  }, [appData]);
 
   const handleSave = async () => {
     try {
