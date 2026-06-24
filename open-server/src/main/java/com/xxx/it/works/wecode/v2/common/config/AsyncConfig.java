@@ -19,8 +19,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Slf4j
 @Configuration
 public class AsyncConfig {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AsyncConfig.class);
-
     /**
      * 审计日志异步写入线程池
      *
