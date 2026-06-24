@@ -61,7 +61,7 @@ import {
   validateForPublish,
   buildNodeTitles,
 } from './utils';
-import { queryParams, getCurrentAppId, getSecondModalInfo } from '../../../utils/common';
+import { queryParams, getSecondModalInfo } from '../../../utils/common';
 import './FlowEditorV2.m.less';
 
 /**
@@ -720,7 +720,7 @@ function FlowEditorV2() {
       {/* 面包屑 */}
       <div className="content-card">
         <div className="page-breadcrumb">
-          <span className="page-breadcrumb-link" onClick={() => navigate(`/connect/flows?appId=${getCurrentAppId()}`)}>连接流列表</span>
+          <span className="page-breadcrumb-link" onClick={() => navigate(`/connect/flows?appId=${queryParams('appId')}`)}>连接流列表</span>
           <span className="page-breadcrumb-sep">&gt;</span>
           <span>编排配置</span>
         </div>

@@ -18,6 +18,7 @@ import React from 'react';
 import { Drawer, Button, message } from 'antd';
 import { LinkOutlined, BellOutlined, CopyOutlined } from '@ant-design/icons';
 import { VERSION_STATUS_MAP } from '../constants';
+import { copyToClipboard } from '../../../../utils/common';
 import '../FlowEditorV2.m.less';
 
 /**
@@ -82,10 +83,14 @@ const VersionDetailDrawer = (props) => {
    *
    * @param {string} url 审批地址
    */
-  const handleCopyApprovalUrl = (url) => {
-    navigator.clipboard.writeText(url).then(() => {
+  const handleCopyApprovalUrl = async (url) => {
+    // 调用通用复制方法（含降级方案）
+    const success = await copyToClipboard(url);
+    if (success) {
       message.success('审批链接已复制');
-    }).catch(() => message.error('复制失败，请检查浏览器权限'));
+    } else {
+      message.error('复制失败，请检查浏览器权限');
+    }
   };
   
   if (!versionInfo) return null;

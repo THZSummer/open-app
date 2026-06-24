@@ -648,19 +648,3 @@ export const extractPropertiesFromNodes = (nodes = []) => {
   });
 };
 
-/**
- * 复制ID到剪贴板
- * 将传入的ID字符串复制到系统剪贴板
- *
- * @param {string} id - 需要复制的ID
- * @param {Function} [onSuccess] - 复制成功回调
- * @param {Function} [onError] - 复制失败回调
- */
-export const copyIdToClipboard = async (id, onSuccess, onError) => {
-  try {
-    await navigator.clipboard.writeText(id);
-    if (onSuccess) onSuccess();
-  } catch (err) {
-    if (onError) onError();
-  }
-};

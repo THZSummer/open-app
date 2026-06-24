@@ -7,7 +7,7 @@ import BindEamapModal from '../../components/BindEamapModal/BindEamapModal';
 import IconPicker from '../../components/IconPicker/IconPicker';
 import { useAppDetail } from '../../contexts/AppContext';
 import { fetchCurrentRole, updateApp, fetchAppIdentity, fetchVerifyType, updateVerifyType, bindEamap, fetchEamapList, uploadImage } from './thunk';
-import { copyToClipboard, formatDateTime, validateFile, validateImageDimensions } from '../../utils/common';
+import { copyToClipboard, validateFile, validateImageDimensions } from '../../utils/common';
 import { FILE_VALIDATION, VERIFY_TYPE_MAP } from '../../utils/constants';
 
 import './BasicInfo.m.less';
@@ -53,6 +53,7 @@ function BasicInfo() {
   // 入口校验：先查角色，再从 Context 拿 detail 加载页面数据
   useEffect(() => {
     const checkAccess = async () => {
+      console.log('baseInfo appId = ', appId)
       if (!appId) {
         navigate('/');
         return;

@@ -60,7 +60,7 @@ import {
   CONNECTOR_VERSION_EXPIRE_SECOND_MODAL_INFO,
   CONNECTOR_VERSION_DELETE_SECOND_MODAL_INFO,
 } from './constants';
-import { queryParams, getCurrentAppId, getSecondModalInfo } from '../../../utils/common';
+import { queryParams, getSecondModalInfo } from '../../../utils/common';
 import './ConnectorEditor.m.less';
 
 const { Option } = Select;
@@ -865,7 +865,7 @@ const ConnectorEditor = () => {
         {/* 面包屑：连接器列表 / 接口配置（参考版本详情页样式） */}
         <div className="page-breadcrumb">
           {/* 可点击：跳转到连接器列表（携带 appId 避免列表页拿不到数据） */}
-          <span className="page-breadcrumb-link" onClick={() => navigate(`/connect/connectors?appId=${getCurrentAppId()}`)}>连接器列表</span>
+          <span className="page-breadcrumb-link" onClick={() => navigate(`/connect/connectors?appId=${queryParams('appId')}`)}>连接器列表</span>
           <span className="page-breadcrumb-sep">&gt;</span>
           {/* 当前详情页：纯文本，不可点击 */}
           <span>接口配置</span>

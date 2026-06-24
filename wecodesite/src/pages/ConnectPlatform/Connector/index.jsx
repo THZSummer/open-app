@@ -34,9 +34,8 @@ import {
   CONNECTOR_DELETE_SECOND_MODAL_INFO,
   CONNECTOR_DISABLE_SECOND_MODAL_INFO,
 } from './constants';
-import { getSecondModalInfo } from '../../../utils/common';
+import { getSecondModalInfo, queryParams } from '../../../utils/common';
 import { INIT_PAGECONFIG } from '../../../utils/constants';
-import { getCurrentAppId } from '../../../utils/common';
 import './Connector.m.less';
 
 /**
@@ -92,9 +91,7 @@ function ConnectorList() {
       // 更新分页信息，使用API返回的分页配置
       setPagination((prev) => ({
         ...prev,
-        curPage: result.page?.curPage || 1,
-        pageSize: result.page?.pageSize || 10,
-        total: Number(result.page?.total) || 0,
+        ...(result.page ? result.page : INIT_PAGECONFIG),
       }));
       // 更新列表数据
       setData(result.data || []);
@@ -155,7 +152,7 @@ function ConnectorList() {
    * @param {Object} record - 连接器记录
    */
   const handleConfigClick = (record) => {
-    navigate(`/connect/connector-editor?id=${record.connectorId}&appId=${getCurrentAppId()}`);
+    navigate(`/connect/connector-editor?id=${record.connectorId}&appId=${queryParams('appId')}`);
   };
 
   /**

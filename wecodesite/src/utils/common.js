@@ -60,20 +60,6 @@ export const getSecondModalInfo = (params) => {
 }
 
 // ==================== 应用管理公共工具函数 (APP-MGMT-001) ====================
-
-/**
- * 格式化日期时间
- * @param {string} dateStr - ISO 8601 日期字符串
- * @returns {string} yyyy-MM-dd HH:mm:ss
- */
-export const formatDateTime = (dateStr) => {
-  if (!dateStr) return '-';
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return dateStr;
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-};
-
 /**
  * 校验文件类型和大小
  * @param {File} file - 文件对象
@@ -176,13 +162,4 @@ export const buildUrlWithParams = (path, params = {}) => {
  */
 export const getCurrentUserId = () => {
   return getUserIdCookie() || '';
-};
-
-/**
- * 从 URL search 参数获取当前 appId（灰度发布使用）
- * @returns {string} 当前 appId，无则返回空字符串
- */
-export const getCurrentAppId = () => {
-  const search = new URLSearchParams(window.location.search);
-  return search.get('appId') || '';
 };

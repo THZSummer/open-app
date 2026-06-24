@@ -45,9 +45,7 @@ import {
   FLOW_DISABLE_SECOND_MODAL_INFO,
 } from './constants';
 import { INIT_PAGECONFIG } from '../../../utils/constants';
-import { copyIdToClipboard } from '../../../utils/flowUtils';
-import { getCurrentAppId } from '../../../utils/common';
-import { getSecondModalInfo } from '../../../utils/common';
+import { queryParams, getSecondModalInfo, copyToClipboard } from '../../../utils/common';
 import './Flow.m.less';
 
 /**
@@ -171,7 +169,7 @@ function FlowList() {
    * @param {Object} record - 连接流记录
    */
   const handleConfig = (record) => {
-    const appId = getCurrentAppId();
+    const appId = queryParams('appId');
     navigate(`/connect/flow/editor?id=${record.flowId}&name=${encodeURIComponent(record.nameCn)}&appId=${appId}`);
   };
 
@@ -193,12 +191,14 @@ function FlowList() {
    * 复制 ID 到剪贴板
    * @param {Object} record - 连接流记录
    */
-  const handleCopyId = (record) => {
-    copyIdToClipboard(
-      record.flowId,
-      () => message.success('复制成功'),
-      () => message.error('复制失败，请手动复制')
-    );
+  const handleCopyId = async (record) => {
+    // 调用通用复制方法（含降级方案）
+    const success = await copyToClipboard(record.flowId);
+    if (success) {
+      message.success('复制成功');
+    } else {
+      message.error('复制失败，请手动复制');
+    }
   };
 
   /**

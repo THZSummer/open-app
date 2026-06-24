@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTE_VERSION_MAP, NEW_PAGE_ROUTES, fetchWhitelist } from '../configs/web.config';
-import { getCurrentAppId } from '../utils/common';
+import { queryParams } from '../utils/common';
 
 /**
  * 灰度发布路由守卫 Hook（基于应用白名单）
@@ -48,7 +48,7 @@ export function useRouteWhitelistGuard() {
 
     const run = async () => {
       // 从 URL 获取当前 appId
-      const currentAppId = getCurrentAppId();
+      const currentAppId = queryParams('appId');
 
       // 应用列表页（无 appId）→ 始终走新页面
       if (!currentAppId) {
