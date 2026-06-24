@@ -118,7 +118,10 @@ public class FileV2Service {
         String savedFileName = fileId + ext;
 
         // 3. 保存文件到磁盘
-        Path filePath = dirPath.resolve(savedFileName);
+        // NOTE: 必须用绝对路径。MultipartFile.transferTo(File) 对相对路径会按
+        // Tomcat 临时目录解析（而非工作目录），导致与 createDirectories 的根目录不一致，
+        // 抛 FileNotFoundException(FILE_SAVE_FAILED)。转绝对路径后两者一致。
+        Path filePath = dirPath.resolve(savedFileName).toAbsolutePath().normalize();
         try {
             file.transferTo(filePath.toFile());
         } catch (IOException e) {
