@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchAppDetail, clearAppDetail } from '../../../store/appSlice';
+import { fetchRole, clearRole } from '../../../store/roleSlice';
 import { message } from 'antd';
 import { fetchEamapOptions } from '../../../pages/AppList/thunk';
 import { bindEamap } from '../../../pages/BasicInfo/thunk';
@@ -7,10 +10,23 @@ import BindEamapModal from '../../BindEamapModal/BindEamapModal';
 
 import './AppInfoBar.m.less';
 
-function AppInfoBar({ appDetail }) {
+function AppInfoBar() {
+  const appDetail = useSelector(state => state.app.appDetail);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId') || '';
+
+  useEffect(() => {
+    if (appId) {
+      dispatch(fetchAppDetail(appId));
+      dispatch(fetchRole(appId));
+    }
+    return () => {
+      dispatch(clearAppDetail());
+      dispatch(clearRole());
+    };
+  }, [appId, dispatch]);
   const [eamapOptions, setEamapOptions] = useState([]);
   const [bindModalVisible, setBindModalVisible] = useState(false);
 

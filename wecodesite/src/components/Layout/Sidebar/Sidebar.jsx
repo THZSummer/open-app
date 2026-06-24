@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   KeyOutlined,
   TeamOutlined,
@@ -31,7 +32,8 @@ function DynamicIcon({ iconName, iconUrl, size = 14 }) {
 // 自定义事件：能力变更时通知 Sidebar 刷新
 const ABILITY_CHANGED_EVENT = 'app:ability-changed';
 
-function Sidebar({ sidebarMainHeight, appDetail }) {
+function Sidebar({ sidebarMainHeight }) {
+  const appDetail = useSelector(state => state.app.appDetail);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Layout as AntLayout } from 'antd';
-import { useAppDetail } from '../../contexts/AppContext';
 import { useRouteWhitelistGuard } from '../../hooks/useRouteWhitelistGuard';
 import Header from './Header/Header';
 import AppInfoBar from './AppInfoBar/AppInfoBar';
@@ -21,14 +20,12 @@ const SIMPLE_CONTENT_HEIGHT = '100vh';
 
 function LayoutInner() {
   const location = useLocation();
-  const { appDetail } = useAppDetail();
   useRouteWhitelistGuard(); // 灰度发布：全局路由守卫
-  // 管理后台页面（仅 /admin/*），/connect/* 已迁移至应用详情布局下
+
   const isAdminPage = location.pathname.startsWith('/admin');
-  // 应用列表页（首页及灰度新首页）不需要 Sidebar / AppInfoBar
   const isAppListPage = location.pathname === '/appList' || location.pathname === '/app-list-v2';
   const isDetailPage = !isAdminPage && !isAppListPage;
-  
+
   const contentAreaHeight = isDetailPage 
     ? CONTENT_HEIGHT_WITH_APPINFOBAR
     : CONTENT_HEIGHT_WITHOUT_APPINFOBAR;
@@ -44,7 +41,7 @@ function LayoutInner() {
   return (
     <AntLayout style={{ minHeight: '100vh', overflow: 'hidden' }}>
       {!isAdminPage && <Header style={{ flexShrink: 0 }} />}
-      {isDetailPage && <AppInfoBar appDetail={appDetail} style={{ flexShrink: 0 }} />}
+      {isDetailPage && <AppInfoBar style={{ flexShrink: 0 }} />}
       <AntLayout style={{ flex: 1, flexDirection: 'row', overflow: 'hidden' }}>
         {isDetailPage && (
           <Sider 
@@ -61,7 +58,7 @@ function LayoutInner() {
               boxSizing: 'border-box'
             }}
           >
-            <Sidebar sidebarMainHeight={sidebarMainHeight} appDetail={appDetail} />
+            <Sidebar sidebarMainHeight={sidebarMainHeight} />
           </Sider>
         )}
         <Content style={{ 

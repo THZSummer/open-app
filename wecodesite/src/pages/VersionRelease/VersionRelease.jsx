@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Table, Tag, Button, Form, Input, message, Spin, Pagination } from 'antd';
 import { PlusOutlined, EyeOutlined, DeleteOutlined, RollbackOutlined, EditOutlined, SendOutlined, PushpinOutlined, NotificationOutlined, LinkOutlined, MessageOutlined, QrcodeOutlined, TeamOutlined, CreditCardOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { useAppDetail } from '../../contexts/AppContext';
+import { useSelector } from 'react-redux';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { fetchVersionList, createVersion, fetchVersionDetail, publishVersion, withdrawVersion, deleteVersion, updateVersion } from './thunk';
 import { fetchSubscribedAbilities } from '../Capabilities/thunk';
@@ -32,7 +32,7 @@ function VersionRelease() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { appDetail } = useAppDetail();
+  const { appDetail } = useSelector(state => state.app);
   const appId = searchParams.get('appId');
 
   // 页面级权限守卫

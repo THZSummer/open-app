@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Table, Button, Pagination, Input, Select, message } from 'antd';
 const { TabPane } = Tabs;
 import { fetchApis, fetchCategories, fetchTabConfig } from './thunk';
-import { useAppDetail } from '../../contexts/AppContext';
+import { useSelector } from 'react-redux';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { NEED_REVIEW_OPTIONS, createDrawerColumns } from '../../utils/commonTableConfigs';
 import { TAB_CONFIG_SEARCH_KEY } from './constants';
@@ -53,7 +53,7 @@ const transformCategoriesToModules = (categories) => {
  * @param {string} appId - 应用ID
  */
 function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
-  const { appDetail } = useAppDetail();
+  const { appDetail } = useSelector(state => state.app);
   // 是否启用身份权限功能开关（仅控制第一层Tab是否显示）
   const enableIdentityPermission = true;
   

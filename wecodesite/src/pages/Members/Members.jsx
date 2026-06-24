@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Table, Button, Tag, Modal, Radio, Select, message, Spin, Tooltip, Pagination } from 'antd';
 import { PlusOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { useAppDetail } from '../../contexts/AppContext';
+import { useSelector } from 'react-redux';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { fetchMemberList, searchUsers, addMembers, deleteMember, transferOwner } from './thunk';
 import { ROLE_MAP, INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../utils/constants';
@@ -19,7 +19,7 @@ const { Option } = Select;
 function Members() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { appDetail } = useAppDetail();
+  const { appDetail } = useSelector(state => state.app);
   const appId = searchParams.get('appId');
 
   // 页面级权限守卫：不是成员则跳回列表

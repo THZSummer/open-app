@@ -5,8 +5,8 @@ import * as Icons from '@ant-design/icons';
 import { fetchSubscribedAbilities, fetchAbilityList, addAbility } from './thunk';
 import { ABILITY_TYPE_MAP, ABILITY_SCENE_MAP } from '../../utils/constants';
 import { ABILITY_CHANGED_EVENT } from '../../components/Layout/Sidebar/Sidebar';
+import { useSelector } from 'react-redux';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
-import { useAppDetail } from '../../contexts/AppContext';
 
 import './Capabilities.m.less';
 
@@ -37,7 +37,7 @@ function Capabilities() {
 
   // 页面级权限守卫
   const { loading: roleLoading } = useRoleGuard(appId);
-  const { appDetail } = useAppDetail();
+  const { appDetail } = useSelector(state => state.app);
 
   const [abilities, setAbilities] = useState([]);
   const [subscribedAbilities, setSubscribedAbilities] = useState([]);
