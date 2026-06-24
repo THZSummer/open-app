@@ -40,13 +40,13 @@ class OpConnectorControllerTest {
             request.setConnectorType(1);
 
             ApiResponse<ConnectorCreateResponse> mockResp = ApiResponse.success(
-                    ConnectorCreateResponse.builder().id("200").build());
+                    ConnectorCreateResponse.builder().connectorId("200").build());
 
             when(connectorService.createConnector(any())).thenReturn(mockResp);
 
-            ApiResponse<ConnectorCreateResponse> response = connectorController.createConnector(request);
+            var response = connectorController.createConnector(request).getBody();
             assertEquals("200", response.getCode());
-            assertEquals("200", response.getData().getId());
+            assertEquals("200", response.getData().getConnectorId());
             verify(connectorService).createConnector(request);
         }
     }
@@ -61,8 +61,8 @@ class OpConnectorControllerTest {
             ApiResponse<List<ConnectorListResponse>> mockResp = ApiResponse.success(List.of());
             when(connectorService.getConnectorList(any())).thenReturn(mockResp);
 
-            ApiResponse<List<ConnectorListResponse>> response = connectorController.getConnectorList(
-                    null, null, 1, 20);
+            var response = connectorController.getConnectorList(
+                    null, null, 1, 20).getBody();
             assertEquals("200", response.getCode());
             verify(connectorService).getConnectorList(argThat(r ->
                     r.getCurPage() == 1 && r.getPageSize() == 20));
@@ -77,12 +77,12 @@ class OpConnectorControllerTest {
         @DisplayName("请求委托给 service")
         void testGetConnectorDetail() {
             ConnectorDetailResponse detail = new ConnectorDetailResponse();
-            detail.setId("100");
+            detail.setConnectorId("100");
             when(connectorService.getConnectorDetail(100L))
                     .thenReturn(ApiResponse.success(detail));
 
-            ApiResponse<ConnectorDetailResponse> response = connectorController.getConnectorDetail(100L);
-            assertEquals("100", response.getData().getId());
+            var response = connectorController.getConnectorDetail(100L).getBody();
+            assertEquals("100", response.getData().getConnectorId());
         }
     }
 
@@ -98,7 +98,7 @@ class OpConnectorControllerTest {
 
             when(connectorService.updateConnector(eq(100L), any())).thenReturn(ApiResponse.success());
 
-            ApiResponse<Void> response = connectorController.updateConnector(100L, request);
+            var response = connectorController.updateConnector(100L, request).getBody();
             assertEquals("200", response.getCode());
             verify(connectorService).updateConnector(100L, request);
         }
@@ -113,38 +113,9 @@ class OpConnectorControllerTest {
         void testDeleteConnector() {
             when(connectorService.deleteConnector(100L)).thenReturn(ApiResponse.success());
 
-            ApiResponse<Void> response = connectorController.deleteConnector(100L);
+            var response = connectorController.deleteConnector(100L).getBody();
             assertEquals("200", response.getCode());
             verify(connectorService).deleteConnector(100L);
-        }
-    }
-
-    @Nested
-    @DisplayName("#6/#7 连接配置")
-    class ConnectorConfigTest {
-
-        @Test
-        @DisplayName("查看配置委托给 service")
-        void testGetConnectorConfig() {
-            ConnectorConfigResponse configResp = new ConnectorConfigResponse();
-            configResp.setHasConfig(true);
-            when(connectorService.getConnectorConfig(100L))
-                    .thenReturn(ApiResponse.success(configResp));
-
-            ApiResponse<ConnectorConfigResponse> response = connectorController.getConnectorConfig(100L);
-            assertTrue(response.getData().isHasConfig());
-        }
-
-        @Test
-        @DisplayName("编辑配置委托给 service")
-        void testUpdateConnectorConfig() {
-            ConnectorConfigUpdateRequest request = new ConnectorConfigUpdateRequest();
-            request.setConnectionConfig("{}");
-
-            when(connectorService.updateConnectorConfig(eq(100L), any())).thenReturn(ApiResponse.success());
-
-            ApiResponse<Void> response = connectorController.updateConnectorConfig(100L, request);
-            assertEquals("200", response.getCode());
         }
     }
 }

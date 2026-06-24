@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.approval.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
@@ -20,6 +21,10 @@ import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
@@ -76,6 +81,10 @@ public class ApprovalService {
     private final PermissionMapper permissionMapper;
     private final ApprovalNotifyService approvalNotifyService;
 
+    // V3 新增：连接器流模块 Mapper（用于获取连接流版本发布审批业务数据）
+    private final OpFlowMapper cpFlowMapper;
+    private final OpFlowVersionMapper cpFlowVersionMapper;
+
     // ==================== 审批流程模板管理 ====================
 
     /**
@@ -93,6 +102,7 @@ public class ApprovalService {
             response.setNameCn(flow.getNameCn());
             response.setNameEn(flow.getNameEn());
             response.setCode(flow.getCode());
+            response.setAppId(flow.getAppId());  // V3 新增
 
             // ✅ v2.8.0变更：移除 isDefault 字段
             response.setStatus(flow.getStatus());
@@ -124,6 +134,7 @@ public class ApprovalService {
         response.setNameCn(flow.getNameCn());
         response.setNameEn(flow.getNameEn());
         response.setCode(flow.getCode());
+        response.setAppId(flow.getAppId());  // V3 新增
 
         // ✅ v2.8.0变更：移除 isDefault 字段
         response.setStatus(flow.getStatus());
@@ -156,6 +167,7 @@ public class ApprovalService {
         flow.setNameCn(request.getNameCn());
         flow.setNameEn(request.getNameEn());
         flow.setCode(request.getCode());
+        flow.setAppId(request.getAppId());  // V3 新增：应用级审批模板
         flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
         flow.setStatus(1);
         flow.setCreateTime(new Date());
@@ -187,6 +199,9 @@ public class ApprovalService {
         // 更新流程
         flow.setNameCn(request.getNameCn());
         flow.setNameEn(request.getNameEn());
+        if (request.getAppId() != null) {
+            flow.setAppId(request.getAppId());  // V3 新增：应用级审批模板
+        }
         flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
         flow.setLastUpdateTime(new Date());
         flow.setLastUpdateBy(operator);
@@ -721,6 +736,8 @@ public class ApprovalService {
                 case "event_permission_apply":
                 case "callback_permission_apply":
                     return getPermissionApplyData(businessId);
+                case "connector_flow_version_publish":
+                    return getFlowVersionPublishData(businessId);
                 default:
                     log.warn("Unknown business type: {}", businessType);
                     return new HashMap<>();
@@ -776,6 +793,40 @@ public class ApprovalService {
         if (callback != null) {
             data.put("nameCn", callback.getNameCn());
         }
+        return data;
+    }
+
+    /**
+     * 获取连接流版本发布审批数据（V3 新增）
+     *
+     * <p>从FlowVersion表和Flow表查询业务数据，
+     * 返回flowId、flowVersionId、flowNameCn、flowNameEn等信息。</p>
+     *
+     * @param businessId 业务ID（即flowVersionId）
+     * @return 业务数据
+     */
+    private Map<String, Object> getFlowVersionPublishData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        FlowVersion version = cpFlowVersionMapper.selectById(businessId);
+        if (version == null) {
+            return data;
+        }
+
+        data.put("flowVersionId", version.getId());
+        data.put("flowId", version.getFlowId());
+        data.put("versionNumber", version.getVersionNumber());
+        data.put("status", version.getStatus());
+
+        // 查询关联的Flow信息
+        if (version.getFlowId() != null) {
+            Flow flow = cpFlowMapper.selectById(version.getFlowId());
+            if (flow != null) {
+                data.put("flowNameCn", flow.getNameCn());
+                data.put("flowNameEn", flow.getNameEn());
+                data.put("appId", flow.getAppId());
+            }
+        }
+
         return data;
     }
 

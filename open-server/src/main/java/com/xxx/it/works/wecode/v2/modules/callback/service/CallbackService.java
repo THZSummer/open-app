@@ -236,7 +236,7 @@ public class CallbackService {
 
         // ✅ 获取注册审批节点（两级：场景+全局）
         List<ApprovalNodeDto> approvalNodes = approvalEngine.composeApprovalNodes(
-            ApprovalEngine.BusinessType.CALLBACK_REGISTER, null);
+            ApprovalEngine.BusinessType.CALLBACK_REGISTER, null, null);
 
         if (approvalNodes.isEmpty()) {
 
@@ -254,7 +254,8 @@ public class CallbackService {
                     callbackId,
                     UserContextHolder.getUserId(),
                     UserContextHolder.getUserName(),
-                    UserContextHolder.getUserId()
+                    UserContextHolder.getUserId(),
+                    null
                 );
                 log.info("Create callback registration approval record: callbackId={}, nodesCount={}", callbackId, approvalNodes.size());
             } catch (Exception e) {

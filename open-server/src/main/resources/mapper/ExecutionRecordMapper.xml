@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.flow.mapper.ExecutionRecordMapper">
+
+    <!-- ResultMap -->
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionRecord">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="flow_id" property="flowId"/>
+        <result column="flow_version_id" property="flowVersionId"/>
+        <result column="flow_version_number" property="flowVersionNumber"/>
+        <result column="flow_version_snapshot" property="flowVersionSnapshot"/>
+        <result column="flow_name_cn" property="flowNameCn"/>
+        <result column="flow_name_en" property="flowNameEn"/>
+        <result column="trigger_type" property="triggerType"/>
+        <result column="trigger_account" property="triggerAccount"/>
+        <result column="status" property="status"/>
+        <result column="rate_limit_status" property="rateLimitStatus"/>
+        <result column="cache_status" property="cacheStatus"/>
+        <result column="cache_key" property="cacheKey"/>
+        <result column="cache_ttl_remaining" property="cacheTtlRemaining"/>
+        <result column="error_code" property="errorCode"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="duration_ms" property="durationMs"/>
+        <result column="trigger_time" property="triggerTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="create_by" property="createBy"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+    </resultMap>
+
+    <!-- Base Column (不含大字段，列表查询用) -->
+    <sql id="Base_Column_List">
+        id, app_id, flow_id, flow_version_id, flow_version_number,
+        flow_name_cn, flow_name_en, trigger_type, trigger_account,
+        status, rate_limit_status, cache_status, cache_key, cache_ttl_remaining,
+        error_code, error_message, duration_ms,
+        trigger_time, create_time, last_update_time, create_by, last_update_by
+    </sql>
+
+    <!-- Detail Column (含大字段 flow_version_snapshot) -->
+    <sql id="Detail_Column_List">
+        <include refid="Base_Column_List"/>,
+        flow_version_snapshot
+    </sql>
+
+    <!-- Insert -->
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionRecord">
+        INSERT INTO openplatform_v2_cp_execution_record_t (
+            id, app_id, flow_id, flow_version_id, flow_version_number,
+            flow_version_snapshot, flow_name_cn, flow_name_en,
+            trigger_type, trigger_account,
+            status, rate_limit_status, cache_status, cache_key, cache_ttl_remaining,
+            error_code, error_message, duration_ms,
+            trigger_time, create_time, last_update_time, create_by, last_update_by
+        ) VALUES (
+            #{id}, #{appId}, #{flowId}, #{flowVersionId}, #{flowVersionNumber},
+            #{flowVersionSnapshot}, #{flowNameCn}, #{flowNameEn},
+            #{triggerType}, #{triggerAccount},
+            #{status}, #{rateLimitStatus}, #{cacheStatus}, #{cacheKey}, #{cacheTtlRemaining},
+            #{errorCode}, #{errorMessage}, #{durationMs},
+            #{triggerTime}, #{createTime}, #{lastUpdateTime}, #{createBy}, #{lastUpdateBy}
+        )
+    </insert>
+
+    <!-- Select By ID -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Detail_Column_List"/>
+        FROM openplatform_v2_cp_execution_record_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- Update -->
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionRecord">
+        UPDATE openplatform_v2_cp_execution_record_t
+        SET status              = #{status},
+            duration_ms         = #{durationMs},
+            error_code          = #{errorCode},
+            error_message       = #{errorMessage},
+            rate_limit_status   = #{rateLimitStatus},
+            cache_status        = #{cacheStatus},
+            cache_key           = #{cacheKey},
+            cache_ttl_remaining = #{cacheTtlRemaining},
+            last_update_time    = #{lastUpdateTime},
+            last_update_by      = #{lastUpdateBy}
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete By ID -->
+    <delete id="deleteById">
+        DELETE FROM openplatform_v2_cp_execution_record_t
+        WHERE id = #{id}
+    </delete>
+
+    <!-- Select List (分页查询) -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_v2_cp_execution_record_t
+        <where>
+            <if test="flowId != null">
+                AND flow_id = #{flowId}
+            </if>
+            <if test="appId != null">
+                AND app_id = #{appId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="triggerType != null">
+                AND trigger_type = #{triggerType}
+            </if>
+            <if test="startTime != null">
+                AND trigger_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND trigger_time <![CDATA[ <= ]]> #{endTime}
+            </if>
+        </where>
+        ORDER BY trigger_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- Count List -->
+    <select id="countList" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_cp_execution_record_t
+        <where>
+            <if test="flowId != null">
+                AND flow_id = #{flowId}
+            </if>
+            <if test="appId != null">
+                AND app_id = #{appId}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="triggerType != null">
+                AND trigger_type = #{triggerType}
+            </if>
+            <if test="startTime != null">
+                AND trigger_time >= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND trigger_time <![CDATA[ <= ]]> #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- Count By FlowId -->
+    <select id="countByFlowId" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_v2_cp_execution_record_t
+        WHERE flow_id = #{flowId}
+    </select>
+
+    <!-- Delete By TriggerTime Before (批量清理) -->
+    <delete id="deleteByTriggerTimeBefore">
+        DELETE FROM openplatform_v2_cp_execution_record_t
+        WHERE trigger_time <![CDATA[ < ]]> #{beforeTime}
+        LIMIT #{limit}
+    </delete>
+
+    <!-- Delete Oldest By FlowId (FIFO 清理) -->
+    <delete id="deleteOldestByFlowId">
+        DELETE FROM openplatform_v2_cp_execution_record_t
+        WHERE id IN (
+            SELECT id FROM (
+                SELECT id FROM openplatform_v2_cp_execution_record_t
+                WHERE flow_id = #{flowId}
+                ORDER BY create_time ASC
+                LIMIT #{limit}
+            ) AS tmp
+        )
+    </delete>
+
+</mapper>

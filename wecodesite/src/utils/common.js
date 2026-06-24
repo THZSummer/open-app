@@ -40,21 +40,149 @@ export const convertToTreeData = (categoryList) => {
   }));
 };
 
-export const getSecondModalInfo = (type, action, isAdminWeb) => {
-  const actionStr = action === 'delete' ? '删除' : '撤回';
-  let modalTitle = `确认${actionStr}${type}`;
-  let modalContent = `${actionStr}后将无法恢复，确认要${actionStr}这个${type}`;
-  let finnalStr = '';
-  if (action === 'delete') {
-    finnalStr = isAdminWeb ? '吗？' : '订阅吗？'
-  } else {
-    finnalStr = '申请吗？';
-  }
-  modalTitle += finnalStr;
-  modalContent += finnalStr;
+export const getSecondModalInfo = (params) => {
+  /**
+   * 二次确认弹窗配置参数
+   */
+  const {
+    action,
+    getConfirmText,
+    impactText,
+    objectName,
+  } = params;
   return {
     ...ACTION_CONFIG[action],
-    title: modalTitle,
-    content: modalContent,
+    content: {
+      confirmText: getConfirmText({ objectName }),
+      impactText,
+    },
   }
 }
+
+// ==================== 应用管理公共工具函数 (APP-MGMT-001) ====================
+
+/**
+ * 格式化日期时间
+ * @param {string} dateStr - ISO 8601 日期字符串
+ * @returns {string} yyyy-MM-dd HH:mm:ss
+ */
+export const formatDateTime = (dateStr) => {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+/**
+ * 校验文件类型和大小
+ * @param {File} file - 文件对象
+ * @param {Object} config - 校验配置 { types, maxSize, typeMessage, sizeMessage }
+ * @returns {Object} { valid: boolean, message: string }
+ */
+export const validateFile = (file, config) => {
+  if (!config.types.includes(file.type)) {
+    return { valid: false, message: config.typeMessage };
+  }
+  if (file.size > config.maxSize) {
+    return { valid: false, message: config.sizeMessage };
+  }
+  return { valid: true, message: '' };
+};
+
+/**
+ * 校验图片尺寸
+ * @param {File} file - 文件对象
+ * @param {number} expectWidth - 期望宽度
+ * @param {number} expectHeight - 期望高度
+ * @returns {Promise<Object>} { valid: boolean, message: string }
+ */
+export const validateImageDimensions = (file, expectWidth, expectHeight) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.width !== expectWidth || img.height !== expectHeight) {
+        resolve({
+          valid: false,
+          message: `图片尺寸必须为${expectWidth}x${expectHeight}px`,
+        });
+      } else {
+        resolve({ valid: true, message: '' });
+      }
+    };
+    img.onerror = () => {
+      resolve({ valid: false, message: '图片加载失败' });
+    };
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+/**
+ * 复制文本到剪贴板
+ * @param {string} text - 要复制的文本
+ */
+export const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    // 降级方案
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const success = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return success;
+  }
+};
+
+/**
+ * 防抖函数
+ * @param {Function} fn - 原函数
+ * @param {number} delay - 延迟毫秒
+ * @returns {Function}
+ */
+export const debounce = (fn, delay = 300) => {
+  let timer = null;
+  return (...args) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+};
+
+/**
+ * 构建带查询参数的 URL
+ * @param {string} path - 路径
+ * @param {Object} params - 查询参数
+ * @returns {string}
+ */
+export const buildUrlWithParams = (path, params = {}) => {
+  const query = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  return query ? `${path}?${query}` : path;
+};
+
+/**
+ * 获取当前用户ID（灰度发布使用）
+ * - 当前实现：从 cookie `user_id` 读取
+ * - 后续如需切换到其他方式（SSO token、localStorage、用户中心接口等），只需修改此方法
+ *
+ * @returns {string} 当前用户ID，未登录返回空字符串
+ */
+export const getCurrentUserId = () => {
+  return getUserIdCookie() || '';
+};
+
+/**
+ * 从 URL search 参数获取当前 appId（灰度发布使用）
+ * @returns {string} 当前 appId，无则返回空字符串
+ */
+export const getCurrentAppId = () => {
+  const search = new URLSearchParams(window.location.search);
+  return search.get('appId') || '';
+};

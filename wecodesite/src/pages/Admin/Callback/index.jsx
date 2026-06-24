@@ -1,14 +1,14 @@
 import React, { useEffect } from 'react';
-import { Button, Table, Spin, Empty, Pagination, message } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { fetchCallbackList, deleteCallback } from './thunk';
 import CallbackRegister from './CallbackRegister';
-import { getCallbackListColumns } from './constants';
+import { ADMIN_CALLBACK_DELETE_SECOND_MODAL_INFO, getCallbackListColumns } from './constants';
 import { useAdminList } from '../../../hooks/useAdminList';
 import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
 import { fetchCategoryTree } from '../Category/thunk';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-import { getSecondModalInfo, isInAdminWhitelist } from '../../../utils/common';
+import { getSecondModalInfo } from '../../../utils/common';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import './CallbackList.m.less';
@@ -17,21 +17,7 @@ import './CallbackList.m.less';
  * 回调管理列表页面
  */
 function CallbackList() {
-  const navigate = useNavigate();
-
-  /**
-   * 页面初始化
-   */
-  const pageInit = async () => {
-    const hasPermission = await isInAdminWhitelist();
-    if (!hasPermission) {
-      navigate('/apps');
-    }
-  };
-
-  useEffect(() => {
-    pageInit();
-  }, []);
+  useAdminAccessGuard();
 
   const {
     data: callbackList,
@@ -39,7 +25,7 @@ function CallbackList() {
     handleAdd,
     handleView,
     handleEdit,
-    handlecancelRomove,
+    handleCloseDeleteConfirm,
     handleDeleteClick,
     handleDelete,
     handleSuccess,
@@ -143,9 +129,12 @@ function CallbackList() {
 
           <DeleteConfirmModal
             open={removeConfirmVisible}
-            onClose={handlecancelRomove}
+            onClose={handleCloseDeleteConfirm}
             onConfirm={handleDeleteClick}
-            modalInfo={getSecondModalInfo('回调', 'delete', true)}
+            modalInfo={getSecondModalInfo({
+              ...ADMIN_CALLBACK_DELETE_SECOND_MODAL_INFO,
+              objectName: currentItem?.nameCn || currentItem?.nameEn,
+            })}
           />
         </div>
       </div>

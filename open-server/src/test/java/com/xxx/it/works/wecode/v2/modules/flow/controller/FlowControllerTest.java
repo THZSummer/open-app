@@ -83,17 +83,4 @@ class OpFlowControllerTest {
         when(flowService.stopFlow(100L)).thenReturn(ApiResponse.success());
         assertEquals("200", flowController.stopFlow(100L).getCode());
     }
-
-    @Test
-    @DisplayName("#15/#16 编排配置")
-    void testGetAndUpdateFlowConfig() {
-        when(flowService.getFlowConfig(100L)).thenReturn(
-                ApiResponse.success(FlowConfigResponse.of("{}")));
-        assertTrue(flowController.getFlowConfig(100L).getData().isHasConfig());
-
-        when(flowService.updateFlowConfig(eq(100L), any())).thenReturn(ApiResponse.success());
-        FlowConfigUpdateRequest req = new FlowConfigUpdateRequest();
-        req.setOrchestrationConfig("{\"nodes\":[{}]}");
-        assertEquals("200", flowController.updateFlowConfig(100L, req).getCode());
-    }
 }

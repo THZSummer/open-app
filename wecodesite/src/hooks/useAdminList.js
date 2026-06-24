@@ -122,12 +122,12 @@ const createCrudOperations = (state, options) => {
     setModalVisible(true);
   }, []);
 
-  const handleDelete = useCallback((id) => {
-    setCurrentItem({ id });
+  const handleDelete = useCallback((record) => {
+    setCurrentItem(record);
     setRemoveConfirmVisible(true);
   }, []);
 
-  const handlecancelRomove = useCallback(() => {
+  const handleCloseDeleteConfirm = useCallback(() => {
     setCurrentItem(null);
     setRemoveConfirmVisible(false);
   }, []);
@@ -154,7 +154,7 @@ const createCrudOperations = (state, options) => {
     handleEdit,
     handleView,
     handleDelete,
-    handlecancelRomove,
+    handleCloseDeleteConfirm,
     handleDeleteClick,
     setLoadData,
   };

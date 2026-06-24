@@ -1,0 +1,28 @@
+.card-grid {
+  display: grid;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.card-grid-item {
+  min-width: 0;
+}
+
+/** 列数和间距通过 CSS 自定义属性传入 */
+.card-grid-cols-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.card-grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.card-grid-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}

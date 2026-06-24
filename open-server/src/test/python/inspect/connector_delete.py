@@ -10,7 +10,7 @@ subprocess.run([
 ], capture_output=True)
 
 print("=== IT-015: 正常删除 ===")
-resp = request("DELETE", f"/connectors/{snow_id}")
+resp = request("DELETE", f"/service/open/v2/connectors/{snow_id}")
 
 print("=== IT-016: 不存在的连接器 ===")
-request("DELETE", "/connectors/999999999999999999")
+request("DELETE", "/service/open/v2/connectors/999999999999999999")

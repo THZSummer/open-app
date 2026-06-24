@@ -36,6 +36,14 @@ public interface OpFlowMapper {
     int deleteById(@Param("id") Long id);
 
     /**
+     * 查询全部连接流列表（无分页）
+     */
+    List<Flow> selectAll(
+            @Param("lifecycleStatus") Integer lifecycleStatus,
+            @Param("keyword") String keyword
+    );
+
+    /**
      * 分页查询连接流列表
      */
     List<Flow> selectList(
@@ -59,6 +67,17 @@ public interface OpFlowMapper {
     int updateLifecycleStatus(
             @Param("id") Long id,
             @Param("lifecycleStatus") Integer lifecycleStatus,
+            @Param("lastUpdateTime") java.util.Date lastUpdateTime,
+            @Param("lastUpdateBy") String lastUpdateBy
+    );
+
+    /**
+     * 部署连接流（绑定版本）
+     */
+    int deploy(
+            @Param("id") Long id,
+            @Param("deployedVersionId") Long deployedVersionId,
+            @Param("deployedVersionNumber") Integer deployedVersionNumber,
             @Param("lastUpdateTime") java.util.Date lastUpdateTime,
             @Param("lastUpdateBy") String lastUpdateBy
     );

@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接流运行记录 - 连接平台</title>
+    <style>
+        /* ========================================
+           全局样式变量
+           ======================================== */
+        :root {
+            --primary-color: #1890ff;
+            --primary-hover: #40a9ff;
+            --success-color: #52c41a;
+            --warning-color: #faad14;
+            --error-color: #ff4d4f;
+            --text-primary: #262626;
+            --text-secondary: #595959;
+            --text-tertiary: #8c8c8c;
+            --border-color: #d9d9d9;
+            --bg-light: #fafafa;
+            --bg-white: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+            --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5715;
+            color: var(--text-primary);
+            background: var(--bg-light);
+        }
+
+        /* ========================================
+           页面布局
+           ======================================== */
+        .page-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           左侧导航栏
+           ======================================== */
+        .sidebar {
+            width: 220px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 0;
+            flex: 1;
+        }
+
+        .sidebar-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-item:hover {
+            background: var(--bg-light);
+            color: var(--primary-color);
+        }
+
+        .sidebar-item.active {
+            background: #e6f7ff;
+            color: var(--primary-color);
+            font-weight: 500;
+            border-right: 3px solid var(--primary-color);
+        }
+
+        /* ========================================
+           主内容区域
+           ======================================== */
+        .main-content {
+            flex: 1;
+            overflow: auto;
+            background: var(--bg-light);
+        }
+
+        .management-page {
+            padding: 24px;
+            background: var(--bg-white);
+            min-height: 100%;
+        }
+
+        /* ========================================
+           页面头部
+           ======================================== */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .page-header-left {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .page-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+
+        /* ========================================
+           按钮样式
+           ======================================== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            font-size: 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+            color: #fff;
+        }
+
+        .btn-link {
+            background: transparent;
+            border: none;
+            padding: 4px 8px;
+            color: var(--primary-color);
+        }
+
+        .btn-link:hover {
+            color: var(--primary-hover);
+        }
+
+        /* ========================================
+           搜索表单
+           ======================================== */
+        .search-form {
+            margin-bottom: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            width: 200px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+
+        .search-select {
+            width: 150px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--bg-white);
+            cursor: pointer;
+        }
+
+        /* ========================================
+           表格样式
+           ======================================== */
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--bg-white);
+        }
+
+        .data-table thead {
+            background: var(--bg-light);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-light);
+        }
+
+        .data-table .action-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* ========================================
+           状态徽章
+           ======================================== */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .status-badge.success {
+            background: #f6ffed;
+            color: var(--success-color);
+        }
+
+        .status-badge.error {
+            background: #fff2f0;
+            color: var(--error-color);
+        }
+
+        .status-badge.default {
+            background: #f5f5f5;
+            color: var(--text-tertiary);
+        }
+
+        .status-badge.warning {
+            background: #fffbe6;
+            color: var(--warning-color);
+        }
+
+
+        /* ========================================
+           分页器
+           ======================================== */
+        .pagination {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin-right: 16px;
+        }
+
+        .page-btn {
+            min-width: 32px;
+            height: 32px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .page-size-select {
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        /* ========================================
+           抽屉弹窗样式
+           ======================================== */
+        .detail-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 600px;
+            height: 100vh;
+            background: var(--bg-white);
+            box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-drawer.active {
+            transform: translateX(0);
+        }
+
+        .drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .drawer-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .drawer-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .drawer-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .drawer-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--text-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .drawer-close:hover {
+            background: var(--bg-light);
+            color: var(--text-primary);
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .drawer-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        /* ========================================
+           详情信息样式
+           ======================================== */
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .detail-info-grid {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 8px 16px;
+        }
+
+        .detail-info-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .detail-info-value {
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        /* ========================================
+           代码块样式
+           ======================================== */
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 6px;
+            padding: 16px;
+            overflow-x: auto;
+            margin-top: 8px;
+        }
+
+        .code-block pre {
+            margin: 0;
+            color: #d4d4d4;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .code-block .json-key {
+            color: #9cdcfe;
+        }
+
+        .code-block .json-string {
+            color: #ce9178;
+        }
+
+        .code-block .json-number {
+            color: #b5cea8;
+        }
+
+        .code-block .json-boolean {
+            color: #569cd6;
+        }
+
+        .code-block .json-null {
+            color: #569cd6;
+        }
+
+        /* ========================================
+           节点执行信息
+           ======================================== */
+        .node-execution-list {
+            margin-top: 12px;
+        }
+
+        .node-execution-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-light);
+        }
+
+        .node-execution-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .node-execution-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .node-execution-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .node-execution-status.success {
+            background: #f6ffed;
+            color: var(--success-color);
+        }
+
+        .node-execution-status.error {
+            background: #fff2f0;
+            color: var(--error-color);
+        }
+
+
+        .node-execution-time {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 4px;
+        }
+
+        /* ========================================
+           Toast消息
+           ======================================== */
+        .toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 24px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-md);
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: var(--success-color);
+        }
+
+        .toast.error {
+            background: var(--error-color);
+        }
+
+        /* ========================================
+           工具类
+           ======================================== */
+        .text-ellipsis {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+            display: inline-block;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 页面主容器 -->
+    <div class="page-container">
+        <!-- 左侧导航栏 -->
+        <div class="sidebar">
+            <div class="sidebar-header">连接平台</div>
+            <ul class="sidebar-menu">
+                <li class="sidebar-item" onclick="navigateTo('connector-list.html')">
+                    <span>⚡</span>
+                    <span>连接器管理</span>
+                </li>
+                <li class="sidebar-item" onclick="navigateTo('flow-list.html')">
+                    <span>🔗</span>
+                    <span>连接流管理</span>
+                </li>
+                <li class="sidebar-item" onclick="navigateTo('approval-center.html')">
+                    <span>📋</span>
+                    <span>审批中心</span>
+                </li>
+                <li class="sidebar-item active" onclick="navigateTo('flow-run-log.html')">
+                    <span>📊</span>
+                    <span>运行记录</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 主内容区 -->
+        <div class="main-content">
+            <div class="management-page">
+                <!-- 页面头部 -->
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h3 class="page-title">连接流运行记录</h3>
+                        <span class="page-desc">查看所有连接流的执行记录和详细信息</span>
+                    </div>
+                </div>
+
+                <!-- 搜索表单 -->
+                <div class="search-form">
+                    <input
+                        type="text"
+                        class="search-input"
+                        id="executionIdSearch"
+                        placeholder="搜索执行ID"
+                        onkeydown="if(event.key==='Enter') handleSearch()"
+                    >
+                    <input
+                        type="text"
+                        class="search-input"
+                        id="flowNameSearch"
+                        placeholder="搜索连接流名称"
+                        onkeydown="if(event.key==='Enter') handleSearch()"
+                    >
+                    <select class="search-select" id="statusFilter" onchange="handleSearch()">
+                        <option value="">全部状态</option>
+                        <option value="success">成功</option>
+                        <option value="error">失败</option>
+                        <option value="timeout">超时</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="handleSearch()">搜索</button>
+                    <button class="btn" onclick="handleReset()">重置</button>
+                </div>
+
+                <!-- 表格列表 -->
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>执行ID</th>
+                                <th>连接流名称</th>
+                                <th>版本</th>
+                                <th>触发方式</th>
+                                <th>开始时间</th>
+                                <th>执行时长</th>
+                                <th>执行状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- 动态填充 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 分页器 -->
+                <div class="pagination" id="pagination">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情抽屉遮罩 -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+    <!-- 详情抽屉弹窗 -->
+    <div class="detail-drawer" id="detailDrawer">
+        <div class="drawer-header">
+            <h3 class="drawer-title">执行详情</h3>
+            <button class="drawer-close" onclick="closeDrawer()">✕</button>
+        </div>
+        <div class="drawer-body" id="drawerBody">
+            <!-- 动态填充 -->
+        </div>
+        <div class="drawer-footer">
+            <button class="btn" onclick="closeDrawer()">关闭</button>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ========================================
+        // 模拟数据
+        // ========================================
+
+        /**
+         * 执行状态映射
+         * @type {Object}
+         */
+        const STATUS_MAP = {
+            'success': { text: '成功', class: 'success' },
+            'error': { text: '失败', class: 'error' },
+            'timeout': { text: '超时', class: 'error' }
+        };
+
+        /**
+         * 触发方式映射
+         * @type {Object}
+         */
+        const TRIGGER_TYPE_MAP = {
+            'http': 'HTTP触发',
+            'schedule': '定时触发',
+            'event': '事件触发',
+            'manual': '手动触发'
+        };
+
+        /**
+         * 运行记录列表数据
+         * @type {Array}
+         */
+        let runLogData = [
+            {
+                id: 'run-001',
+                flowId: 'f1',
+                flowName: '用户注册流程',
+                flowNameEn: 'user-registration-flow',
+                version: 'v1.0.0',
+                triggerType: 'http',
+                status: 'success',
+                duration: 1250,
+                startTime: '2024-01-20 14:30:00',
+                endTime: '2024-01-20 14:30:01',
+                triggerParams: {
+                    userId: 'u12345',
+                    userName: '张三',
+                    email: 'zhangsan@example.com'
+                },
+                nodes: [
+                    {
+                        nodeId: 'trigger-1',
+                        nodeName: 'HTTP触发器',
+                        status: 'success',
+                        startTime: '14:30:00.000',
+                        endTime: '14:30:00.050',
+                        duration: 50,
+                        input: { method: 'POST', path: '/users/register', body: { userId: 'u12345', userName: '张三', email: 'zhangsan@example.com' } },
+                        output: { received: true, requestId: 'req-001' }
+                    },
+                    {
+                        nodeId: 'action-1',
+                        nodeName: '用户服务-创建用户',
+                        status: 'success',
+                        startTime: '14:30:00.050',
+                        endTime: '14:30:00.800',
+                        duration: 750,
+                        input: { userId: 'u12345', userName: '张三', email: 'zhangsan@example.com' },
+                        output: { userId: 'u12345', created: true }
+                    },
+                    {
+                        nodeId: 'action-2',
+                        nodeName: '发送欢迎邮件',
+                        status: 'success',
+                        startTime: '14:30:00.800',
+                        endTime: '14:30:01.250',
+                        duration: 450,
+                        input: { userId: 'u12345', email: 'zhangsan@example.com', template: 'welcome' },
+                        output: { emailSent: true, messageId: 'msg-001' }
+                    }
+                ]
+            },
+            {
+                id: 'run-002',
+                flowId: 'f2',
+                flowName: '订单处理流程',
+                flowNameEn: 'order-processing-flow',
+                version: 'v0.9.0',
+                triggerType: 'event',
+                status: 'error',
+                duration: 3500,
+                startTime: '2024-01-20 14:25:00',
+                endTime: '2024-01-20 14:25:03',
+                errorMessage: '连接数据库超时',
+                triggerParams: {
+                    orderId: 'ord-98765',
+                    event: 'order.created'
+                },
+                nodes: [
+                    {
+                        nodeId: 'trigger-1',
+                        nodeName: '事件触发器',
+                        status: 'success',
+                        startTime: '14:25:00.000',
+                        endTime: '14:25:00.100',
+                        duration: 100,
+                        input: { topic: 'order.created', orderId: 'ord-98765' },
+                        output: { event: 'order.created' }
+                    },
+                    {
+                        nodeId: 'action-1',
+                        nodeName: '查询订单详情',
+                        status: 'success',
+                        startTime: '14:25:00.100',
+                        endTime: '14:25:01.000',
+                        duration: 900,
+                        input: { orderId: 'ord-98765' },
+                        output: { orderId: 'ord-98765', status: 'pending' }
+                    },
+                    {
+                        nodeId: 'action-2',
+                        nodeName: '更新库存',
+                        status: 'error',
+                        startTime: '14:25:01.000',
+                        endTime: '14:25:03.500',
+                        duration: 2500,
+                        input: { orderId: 'ord-98765', items: [{ skuId: 'sku-001', quantity: 1 }] },
+                        error: '连接数据库超时',
+                        output: null
+                    }
+                ]
+            },
+            {
+                id: 'run-003',
+                flowId: 'f3',
+                flowName: '消息通知流程',
+                flowNameEn: 'notification-flow',
+                version: 'v1.2.0',
+                triggerType: 'schedule',
+                status: 'success',
+                duration: 850,
+                startTime: '2024-01-20 10:00:00',
+                endTime: '2024-01-20 10:00:00',
+                triggerParams: {
+                    taskId: 'task-001',
+                    schedule: 'daily 10:00'
+                },
+                nodes: [
+                    {
+                        nodeId: 'trigger-1',
+                        nodeName: '定时触发器',
+                        status: 'success',
+                        startTime: '10:00:00.000',
+                        endTime: '10:00:00.010',
+                        duration: 10,
+                        input: { taskId: 'task-001', schedule: 'daily 10:00' },
+                        output: { scheduled: true }
+                    },
+                    {
+                        nodeId: 'action-1',
+                        nodeName: '查询待发送消息',
+                        status: 'success',
+                        startTime: '10:00:00.010',
+                        endTime: '10:00:00.300',
+                        duration: 290,
+                        input: { taskId: 'task-001', limit: 100 },
+                        output: { messages: [{ id: 1 }, { id: 2 }, { id: 3 }] }
+                    },
+                    {
+                        nodeId: 'action-2',
+                        nodeName: '批量发送通知',
+                        status: 'success',
+                        startTime: '10:00:00.300',
+                        endTime: '10:00:00.850',
+                        duration: 550,
+                        input: { messageIds: [1, 2, 3], channel: '站内信' },
+                        output: { sent: 3, failed: 0 }
+                    }
+                ]
+            },
+            {
+                id: 'run-004',
+                flowId: 'f4',
+                flowName: '数据同步流程',
+                flowNameEn: 'data-sync-flow',
+                version: 'v2.0.0',
+                triggerType: 'manual',
+                status: 'timeout',
+                duration: 30000,
+                startTime: '2024-01-20 15:30:00',
+                endTime: '2024-01-20 15:30:30',
+                errorMessage: '执行超时（30秒）',
+                triggerParams: {
+                    initiatedBy: 'admin',
+                    syncType: 'full'
+                },
+                nodes: [
+                    {
+                        nodeId: 'trigger-1',
+                        nodeName: '手动触发器',
+                        status: 'success',
+                        startTime: '15:30:00.000',
+                        endTime: '15:30:00.050',
+                        duration: 50,
+                        input: { initiatedBy: 'admin', syncType: 'full' },
+                        output: { initiatedBy: 'admin' }
+                    },
+                    {
+                        nodeId: 'action-1',
+                        nodeName: '数据源A-读取数据',
+                        status: 'success',
+                        startTime: '15:30:00.050',
+                        endTime: '15:30:05.200',
+                        duration: 5150,
+                        input: { source: '数据源A', syncType: 'full' },
+                        output: { records: 10000 }
+                    },
+                    {
+                        nodeId: 'action-2',
+                        nodeName: '数据转换处理',
+                        status: 'timeout',
+                        startTime: '15:30:05.200',
+                        endTime: '15:30:30.000',
+                        duration: 24800,
+                        input: { records: 10000, transformRule: '标准化字段' },
+                        error: '执行超时（30秒）',
+                        output: null
+                    }
+                ]
+            },
+            {
+                id: 'run-005',
+                flowId: 'f5',
+                flowName: '支付处理流程',
+                flowNameEn: 'payment-processing-flow',
+                version: 'v1.1.0',
+                triggerType: 'http',
+                status: 'timeout',
+                duration: 30000,
+                startTime: '2024-01-20 12:00:00',
+                endTime: '2024-01-20 12:00:30',
+                errorMessage: '执行超时（30秒）',
+                triggerParams: {
+                    paymentId: 'pay-55555',
+                    amount: 999.00
+                },
+                nodes: [
+                    {
+                        nodeId: 'trigger-1',
+                        nodeName: 'HTTP触发器',
+                        status: 'success',
+                        startTime: '12:00:00.000',
+                        endTime: '12:00:00.050',
+                        duration: 50,
+                        input: { method: 'POST', path: '/payments/process', body: { paymentId: 'pay-55555', amount: 999.00 } },
+                        output: { received: true }
+                    },
+                    {
+                        nodeId: 'action-1',
+                        nodeName: '验证支付信息',
+                        status: 'success',
+                        startTime: '12:00:00.050',
+                        endTime: '12:00:05.000',
+                        duration: 4950,
+                        input: { paymentId: 'pay-55555', amount: 999.00 },
+                        output: { valid: true }
+                    },
+                    {
+                        nodeId: 'action-2',
+                        nodeName: '调用第三方支付',
+                        status: 'timeout',
+                        startTime: '12:00:05.000',
+                        endTime: '12:00:30.000',
+                        duration: 25000,
+                        input: { paymentId: 'pay-55555', amount: 999.00, provider: '第三方支付' },
+                        error: '执行超时（30秒）',
+                        output: null
+                    }
+                ]
+            }
+        ];
+
+        // 分页配置
+        const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+        let pagination = {
+            curPage: 1,
+            pageSize: 10,
+            total: runLogData.length
+        };
+
+        // 搜索条件
+        let searchExecutionId = '';
+        let searchFlowName = '';
+        let searchStatus = '';
+
+        // ========================================
+        // 工具函数
+        // ========================================
+
+        /**
+         * 显示Toast消息提示
+         * @param {string} message - 提示文本
+         * @param {string} type - 消息类型：success/error
+         */
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        /**
+         * 打开详情抽屉
+         */
+        function openDrawer() {
+            document.getElementById('drawerOverlay').classList.add('active');
+            document.getElementById('detailDrawer').classList.add('active');
+        }
+
+        /**
+         * 关闭详情抽屉
+         */
+        function closeDrawer() {
+            document.getElementById('drawerOverlay').classList.remove('active');
+            document.getElementById('detailDrawer').classList.remove('active');
+        }
+
+        /**
+         * 格式化执行时长
+         * @param {number} ms - 毫秒数
+         * @returns {string} 格式化后的时长字符串
+         */
+        function formatDuration(ms) {
+            if (ms === null || ms === undefined) {
+                return '-';
+            }
+            if (ms < 1000) {
+                return ms + 'ms';
+            }
+            return (ms / 1000).toFixed(2) + 's';
+        }
+
+        /**
+         * 格式化毫秒级时间
+         * @param {string} timeText - 时间文本
+         * @returns {string} 毫秒级时间文本
+         */
+        function formatMillisecondTime(timeText) {
+            if (!timeText) {
+                return '-';
+            }
+
+            // 已经包含毫秒时直接返回，避免重复追加毫秒
+            if (/\.\d{3}$/.test(timeText)) {
+                return timeText;
+            }
+
+            return `${timeText}.000`;
+        }
+
+        /**
+         * 格式化JSON并高亮显示
+         * @param {Object} obj - 要格式化的对象
+         * @returns {string} 高亮后的HTML字符串
+         */
+        function formatJsonHighlight(obj) {
+            const json = JSON.stringify(obj, null, 2);
+            return json
+                .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+                .replace(/: "([^"]*)"/g, ': <span class="json-string">"$1"</span>')
+                .replace(/: (\d+\.?\d*)/g, ': <span class="json-number">$1</span>')
+                .replace(/: (true|false)/g, ': <span class="json-boolean">$1</span>')
+                .replace(/: (null)/g, ': <span class="json-null">$1</span>');
+        }
+
+        // ========================================
+        // 表格渲染
+        // ========================================
+
+        /**
+         * 渲染表格数据
+         */
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+
+            // 过滤数据
+            let filteredData = runLogData;
+            if (searchExecutionId) {
+                // 执行ID单独过滤，避免和连接流名称混用
+                filteredData = filteredData.filter(item =>
+                    item.id.toLowerCase().includes(searchExecutionId.toLowerCase())
+                );
+            }
+            if (searchFlowName) {
+                filteredData = filteredData.filter(item =>
+                    item.flowName.toLowerCase().includes(searchFlowName.toLowerCase()) ||
+                    item.flowNameEn.toLowerCase().includes(searchFlowName.toLowerCase())
+                );
+            }
+            if (searchStatus) {
+                filteredData = filteredData.filter(item => item.status === searchStatus);
+            }
+
+            // 计算分页
+            const startIndex = (pagination.curPage - 1) * pagination.pageSize;
+            const endIndex = startIndex + pagination.pageSize;
+            const pageData = filteredData.slice(startIndex, endIndex);
+            pagination.total = filteredData.length;
+
+            // 渲染表格
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: 40px 0; color: var(--text-tertiary);">
+                            暂无运行记录
+                        </td>
+                    </tr>
+                `;
+            } else {
+                tbody.innerHTML = pageData.map(item => {
+                    const status = STATUS_MAP[item.status];
+                    const triggerText = TRIGGER_TYPE_MAP[item.triggerType] || item.triggerType;
+
+                    return `
+                        <tr>
+                            <td class="text-center">${item.id}</td>
+                            <td class="text-center" title="${item.flowName}">
+                                <div>${item.flowName}</div>
+                                <div style="font-size: 11px; color: var(--text-tertiary);">${item.flowNameEn}</div>
+                            </td>
+                            <td class="text-center">${item.version}</td>
+                            <td class="text-center">${triggerText}</td>
+                            <td>${formatMillisecondTime(item.startTime)}</td>
+                            <td class="text-center">${formatDuration(item.duration)}</td>
+                            <td>
+                                <span class="status-badge ${status.class}">${status.text}</span>
+                            </td>
+                            <td>
+                                <div class="action-cell">
+                                    <button class="btn btn-link" onclick="viewDetail('${item.id}')">详情</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            renderPagination();
+        }
+
+        /**
+         * 渲染分页器
+         */
+        function renderPagination() {
+            const paginationEl = document.getElementById('pagination');
+            const totalPages = Math.ceil(pagination.total / pagination.pageSize) || 1;
+
+            let html = `<span class="pagination-info">共 ${pagination.total} 条</span>`;
+            html += `<button class="page-btn" onclick="changePage(${pagination.curPage - 1})" ${pagination.curPage <= 1 ? 'disabled' : ''}>上一页</button>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (totalPages <= 7 || Math.abs(i - pagination.curPage) <= 2 || i === 1 || i === totalPages) {
+                    html += `<button class="page-btn ${i === pagination.curPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+                } else if (i === 2 || i === totalPages - 1) {
+                    html += `<span style="padding: 0 4px;">...</span>`;
+                }
+            }
+
+            html += `<button class="page-btn" onclick="changePage(${pagination.curPage + 1})" ${pagination.curPage >= totalPages ? 'disabled' : ''}>下一页</button>`;
+            html += `<select class="page-size-select" onchange="changePageSize(this.value)">`;
+            PAGE_SIZE_OPTIONS.forEach(size => {
+                html += `<option value="${size}" ${size === pagination.pageSize ? 'selected' : ''}>${size}条/页</option>`;
+            });
+            html += `</select>`;
+
+            paginationEl.innerHTML = html;
+        }
+
+        /**
+         * 切换分页
+         * @param {number} page - 目标页码
+         */
+        function changePage(page) {
+            const totalPages = Math.ceil(pagination.total / pagination.pageSize) || 1;
+            if (page < 1 || page > totalPages) return;
+            pagination.curPage = page;
+            renderTable();
+        }
+
+        /**
+         * 切换每页条数
+         * @param {number} size - 每页条数
+         */
+        function changePageSize(size) {
+            pagination.pageSize = parseInt(size);
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        // ========================================
+        // 搜索和重置
+        // ========================================
+
+        /**
+         * 搜索运行记录
+         */
+        function handleSearch() {
+            // 分别读取执行ID、连接流名称和执行状态三个搜索条件
+            searchExecutionId = document.getElementById('executionIdSearch').value.trim();
+            searchFlowName = document.getElementById('flowNameSearch').value.trim();
+            searchStatus = document.getElementById('statusFilter').value;
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        /**
+         * 重置搜索
+         */
+        function handleReset() {
+            // 重置执行ID、连接流名称和执行状态三个搜索条件
+            document.getElementById('executionIdSearch').value = '';
+            document.getElementById('flowNameSearch').value = '';
+            document.getElementById('statusFilter').value = '';
+            searchExecutionId = '';
+            searchFlowName = '';
+            searchStatus = '';
+            pagination.curPage = 1;
+            renderTable();
+        }
+
+        // ========================================
+        // 详情查看
+        // ========================================
+
+        /**
+         * 查看执行详情
+         * @param {string} id - 执行记录ID
+         */
+        function viewDetail(id) {
+            const record = runLogData.find(item => item.id === id);
+            if (!record) return;
+
+            // 生成节点执行列表HTML
+            let nodesHtml = '';
+            record.nodes.forEach(node => {
+                const nodeStatus = STATUS_MAP[node.status] || { text: '未知', class: 'default' };
+                const endTime = node.endTime || '-';
+                const inputHtml = node.input !== undefined ? `
+                    <div style="margin-top: 10px;">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">入参</div>
+                        <div class="code-block" style="margin-top: 0;">
+                            <pre>${formatJsonHighlight(node.input)}</pre>
+                        </div>
+                    </div>
+                ` : '';
+                const outputHtml = node.output !== undefined ? `
+                    <div style="margin-top: 10px;">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">出参</div>
+                        <div class="code-block" style="margin-top: 0;">
+                            <pre>${formatJsonHighlight(node.output)}</pre>
+                        </div>
+                    </div>
+                ` : '';
+
+                nodesHtml += `
+                    <div class="node-execution-item">
+                        <div class="node-execution-header">
+                            <span class="node-execution-name">${node.nodeName}</span>
+                            <span class="node-execution-status ${nodeStatus.class}">${nodeStatus.text}</span>
+                        </div>
+                        <div class="node-execution-time">
+                            ${node.startTime} → ${endTime} ｜ 耗时：${formatDuration(node.duration)}
+                        </div>
+                        ${inputHtml}
+                        ${outputHtml}
+                        ${node.error ? `<div style="color: var(--error-color); font-size: 12px; margin-top: 8px;">错误信息：${node.error}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            // 构建详情HTML
+            const drawerBody = document.getElementById('drawerBody');
+            drawerBody.innerHTML = `
+                <!-- 基本信息 -->
+                <div class="detail-section">
+                    <div class="detail-section-title">基本信息</div>
+                    <div class="detail-info-grid">
+                        <span class="detail-info-label">执行ID</span>
+                        <span class="detail-info-value">${record.id}</span>
+
+                        <span class="detail-info-label">连接流</span>
+                        <span class="detail-info-value">${record.flowName}</span>
+                    </div>
+                </div>
+
+                <!-- 触发参数 -->
+                <div class="detail-section">
+                    <div class="detail-section-title">触发参数</div>
+                    <div class="code-block">
+                        <pre>${formatJsonHighlight(record.triggerParams)}</pre>
+                    </div>
+                </div>
+
+                <!-- 节点执行详情 -->
+                <div class="detail-section">
+                    <div class="detail-section-title">节点执行详情 (${record.nodes.length}个节点)</div>
+                    <div class="node-execution-list">
+                        ${nodesHtml}
+                    </div>
+                </div>
+            `;
+
+            // 打开抽屉
+            openDrawer();
+        }
+
+        // ========================================
+        // 页面导航
+        // ========================================
+
+        /**
+         * 页面导航
+         * @param {string} page - 目标页面路径
+         */
+        function navigateTo(page) {
+            window.location.href = page;
+        }
+
+        // ========================================
+        // 初始化
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTable();
+
+            // ESC键关闭抽屉
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeDrawer();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Button, message } from 'antd';
 import CallbackDrawer from './CallbackDrawer';
 import './Callbacks.m.less';
-import { getCallbackColumns } from './constants';
+import {
+  CALLBACK_DELETE_SECOND_MODAL_INFO,
+  CALLBACK_WITHDRAW_SECOND_MODAL_INFO,
+  getCallbackColumns,
+} from './constants';
 import { queryParams, openUrl, getSecondModalInfo } from '../../utils/common';
 import CallbackConfigDrawer from './CallbackConfigDrawer';
 import { useSubscriptionList } from '../../hooks/useSubscriptionList';
@@ -36,6 +40,8 @@ function Callbacks() {
     subscribeLoading,
     approvalModalOpen,
     currentApprovalInfo,
+    currentDeleteItem,
+    currentWithdrawItem,
     revokePending,
     revokeVisible,
     loadData,
@@ -141,14 +147,20 @@ function Callbacks() {
         onClose={closeDeleteModal}
         onConfirm={handleConfirmDelete}
         loading={deleteLoading}
-        modalInfo={getSecondModalInfo('回调', 'delete', false)}
+        modalInfo={getSecondModalInfo({
+          ...CALLBACK_DELETE_SECOND_MODAL_INFO,
+          objectName: currentDeleteItem?.permission?.nameCn,
+        })}
       />
 
       <DeleteConfirmModal
         open={revokeVisible}
         onClose={closeWithdrawModal}
         onConfirm={handleConfirmWithdraw}
-        modalInfo={getSecondModalInfo('回调', 'withdraw', false)}
+        modalInfo={getSecondModalInfo({
+          ...CALLBACK_WITHDRAW_SECOND_MODAL_INFO,
+          objectName: currentWithdrawItem?.permission?.nameCn,
+        })}
         loading={revokePending}
       />
     </div>

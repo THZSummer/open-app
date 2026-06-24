@@ -59,7 +59,6 @@ public class OpConnectorService {
         connector.setNameEn(request.getNameEn());
         connector.setDescriptionCn(request.getDescriptionCn());
         connector.setDescriptionEn(request.getDescriptionEn());
-        connector.setIconFileId(request.getIconFileId());
         connector.setConnectorType(request.getConnectorType());
         connector.setStatus(0);
         connector.setCreateTime(now);
@@ -71,7 +70,7 @@ public class OpConnectorService {
 
         log.info("Connector created: id={}", connectorId);
         return ApiResponse.success(ConnectorCreateResponse.builder()
-                .id(String.valueOf(connectorId))
+                .connectorId(String.valueOf(connectorId))
                 .build());
     }
 
@@ -144,8 +143,6 @@ public class OpConnectorService {
         if (request.getNameEn() != null) connector.setNameEn(request.getNameEn());
         if (request.getDescriptionCn() != null) connector.setDescriptionCn(request.getDescriptionCn());
         if (request.getDescriptionEn() != null) connector.setDescriptionEn(request.getDescriptionEn());
-        if (request.getIconFileId() != null) connector.setIconFileId(request.getIconFileId());
-        if (request.getConnectorType() != null) connector.setConnectorType(request.getConnectorType());
 
         connector.setLastUpdateTime(now);
         connector.setLastUpdateBy(currentUser);
@@ -262,29 +259,24 @@ public class OpConnectorService {
 
     private ConnectorListResponse toListResponse(Connector c) {
         ConnectorListResponse r = new ConnectorListResponse();
-        r.setId(String.valueOf(c.getId()));
+        r.setConnectorId(String.valueOf(c.getId()));
         r.setNameCn(c.getNameCn());
         r.setNameEn(c.getNameEn());
-        r.setDescriptionCn(c.getDescriptionCn());
-        r.setDescriptionEn(c.getDescriptionEn());
-        r.setIconFileId(c.getIconFileId());
         r.setConnectorType(c.getConnectorType());
-        r.setCreateTime(c.getCreateTime());
-        r.setLastUpdateTime(c.getLastUpdateTime());
+        r.setCreateTime(c.getCreateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getCreateTime()) : null);
         return r;
     }
 
     private ConnectorDetailResponse toDetailResponse(Connector c) {
         ConnectorDetailResponse r = new ConnectorDetailResponse();
-        r.setId(String.valueOf(c.getId()));
+        r.setConnectorId(String.valueOf(c.getId()));
         r.setNameCn(c.getNameCn());
         r.setNameEn(c.getNameEn());
         r.setDescriptionCn(c.getDescriptionCn());
         r.setDescriptionEn(c.getDescriptionEn());
-        r.setIconFileId(c.getIconFileId());
         r.setConnectorType(c.getConnectorType());
-        r.setCreateTime(c.getCreateTime());
-        r.setLastUpdateTime(c.getLastUpdateTime());
+        r.setCreateTime(c.getCreateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getCreateTime()) : null);
+        r.setLastUpdateTime(c.getLastUpdateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getLastUpdateTime()) : null);
         return r;
     }
 }

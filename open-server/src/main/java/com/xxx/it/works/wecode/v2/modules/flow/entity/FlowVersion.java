@@ -14,8 +14,8 @@ import java.util.Date;
  * 连接流版本/配置实体
  * <p>
  * 对应表 openplatform_v2_cp_flow_version_t
- * MVP 单版本模型: 每 flow 仅一条记录, 编辑即生效
- * 编排配置 JSON (React Flow 格式): {nodes[], edges[]}
+ * V3 多版本模型: 1:N flow_t，每实体最多 1000 个版本
+ * V3 新增: version_number, status（7 状态含审批中间态）, published_time, published_by
  * </p>
  */
 @Data
@@ -31,8 +31,20 @@ public class FlowVersion implements Serializable {
     /** 关联连接流ID (逻辑外键 → flow_t.id) */
     private Long flowId;
 
-    /** 编排配置JSON (React Flow 格式) */
+    /** 版本号，实体内从1递增（V3 新增） */
+    private Integer versionNumber;
+
+    /** 状态: 1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除（V3 新增 7 状态） */
+    private Integer status;
+
+    /** 编排配置JSON (React Flow 格式 + flowConfig) */
     private String orchestrationConfig;
+
+    /** 发布时间（审批通过的时刻，V3 新增） */
+    private Date publishedTime;
+
+    /** 发布人（提交审批的人，V3 新增） */
+    private String publishedBy;
 
     /** 创建时间 */
     private Date createTime;

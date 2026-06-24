@@ -30,26 +30,45 @@ specs-tree-connector-platform/
 ├── discovery-report.md        # 需求挖掘报告
 ├── discovery-analysis.md      # 需求分析笔记
 ├── discovery-session-log.md   # 会话日志
-├── spec.md                    # 产品规范文档（v4.0）
+├── spec.md                    # 产品规范文档（v5.0）
 ├── spec-v3.2.md               # 产品规范 v3.2（历史版本）
 ├── spec-v4.0.md               # 产品规范 v4.0（历史版本）
+├── spec-v5.0.md               # 产品规范 v5.0（历史版本）
 ├── spec.json                  # 规范元数据
-├── plan.md                    # 技术规划文档（v2.8.1）
+├── plan.md                    # 技术规划文档（v2.8.1，当前）
 ├── plan-v2.7.6.md             # 技术规划 v2.7.6（历史版本）
-├── plan-page.md               # 前端页面设计文档（v2.0）
+├── plan-v2.8.1.md             # 技术规划 v2.8.1（历史版本）
+├── plan-page.md               # 前端页面设计文档（v2.0，当前）
 ├── plan-page-v2.7.5.md        # 前端页面设计 v2.7.5（历史版本）
-├── plan-api.md                # API 接口设计文档（v2.0）
+├── plan-page-v2.8.0.md        # 前端页面设计 v2.8.0（历史版本）
+├── plan-api.md                # API 接口设计文档（v2.0，当前）
 ├── plan-api-v2.7.6.md         # API 接口设计 v2.7.6（历史版本）
-├── plan-db.md                 # 数据库设计文档（v2.8.1）
+├── plan-api-v2.8.0.md         # API 接口设计 v2.8.0（历史版本）
+├── plan-db.md                 # 数据库设计文档（v2.8.1，当前）
 ├── plan-db-v2.7.6.md          # 数据库设计 v2.7.6（历史版本）
+├── plan-db-v2.8.1.md          # 数据库设计 v2.8.1（历史版本）
 ├── plan-code.md               # 代码规范文档
-├── plan-json-schema.md        # JSON Schema 设计
+├── plan-code-check-report.md  # 代码规范符合性检查报告
+├── plan-cache.md              # 缓存与限流策略设计
+├── plan-json-schema.md        # JSON Schema 设计（当前）
 ├── plan-json-schema-v3.0.md   # JSON Schema v3.0（历史版本）
-├── tasks.md                   # 任务分解文档（12 个任务，含 2 个外部占位）
-├── tasks.json                 # 任务元数据
-├── build.md                   # Build 实现报告（10 个任务全部完成）
-├── review.md                  # 代码审查报告（审查通过）
-├── validation-report.md       # 代码验证报告（79 测试，100% FR 覆盖）
+├── plan-json-schema-v5.4.md   # JSON Schema v5.4（历史版本）
+├── plan-json-schema-impl.md   # JSON 构建逻辑实现参考
+├── plan-multi-module-build.md # Maven 单进程合并构建方案
+├── tasks.md                   # 任务分解文档（12 个任务，含 2 个外部占位，当前）
+├── tasks.json                 # 任务元数据（当前）
+├── tasks-v2.8.1.md            # 任务分解 v2.8.1（历史版本）
+├── tasks-v2.8.1.json          # 任务元数据 v2.8.1（历史版本）
+├── build.md                   # Build 实现报告（10 个任务全部完成，当前）
+├── build-v2.8.1.md            # Build 实现报告 v2.8.1（历史版本）
+├── review.md                  # 代码审查报告（当前）
+├── review-v2.8.1.md           # 代码审查报告 v2.8.1（历史版本）
+├── validation-report.md       # 代码验证报告（79 测试，100% FR 覆盖，当前）
+├── validation-report-v2.8.1.md# 验证报告 v2.8.1（历史版本）
+├── test-plan.md               # 测试方案：后端接口测试
+├── test-plan-integration.md   # 测试方案：Python 集成测试
+├── test-report.md             # 测试执行报告
+├── test-report-integration.md # 集成测试报告
 ├── ADR-001.md                 # 架构决策：轻量顺序执行引擎
 ├── ADR-002.md                 # 架构决策：React Flow 可视化编排画布
 ├── ADR-003.md                 # 架构决策：单体嵌入 + 模块化隔离
@@ -70,9 +89,11 @@ specs-tree-connector-platform/
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| spec.md | **产品规范 v4.0（当前）** — 5 个用户故事、25 项 FR、22 项 NFR、12 项 EC | ✅ specified |
+| spec.md | **产品规范 v5.0（当前）** — 5 个用户故事、19 项 FR、22 项 NFR、12 项 EC | ✅ specified |
 | spec-v3.2.md | 产品规范 v3.2 — 历史版本（对齐早期异步架构设计） | 📁 历史版本 |
 | spec-v4.0.md | 产品规范 v4.0 — 历史版本备份 | 📁 历史版本 |
+| spec-v5.0.md | 产品规范 v5.0 — 历史版本备份 | 📁 历史版本 |
+| spec-v5.0.md               | 产品规范 v5.0 — 历史版本备份 | 📁 历史版本 |
 
 ### 📂 技术规划阶段 (plan)
 
@@ -80,22 +101,33 @@ specs-tree-connector-platform/
 |------|------|------|
 | plan.md | **技术规划 v2.8.1（当前）** — 同步执行引擎架构、DDL 脚本统一 FlywayDB 命名风格 | ✅ planned |
 | plan-v2.7.6.md | 技术规划 v2.7.6 — 历史版本 | 📁 历史版本 |
-| plan-page.md | **前端页面设计 v2.0** — 触发器仅 HTTP/手动、数据处理节点入 MVP | ✅ planned |
+| plan-v2.8.1.md | 技术规划 v2.8.1 — 历史版本 | 📁 历史版本 |
+| plan-page.md | **前端页面设计 v2.0（当前）** — 触发器仅 HTTP/手动、数据处理节点入 MVP | ✅ planned |
 | plan-page-v2.7.5.md | 前端页面设计 v2.7.5 — 历史版本 | 📁 历史版本 |
-| plan-api.md | **API 接口设计 v2.0** — 26 个端点覆盖 25 个 FR | ✅ planned |
+| plan-page-v2.8.0.md | 前端页面设计 v2.8.0 — 历史版本 | 📁 历史版本 |
+| plan-api.md | **API 接口设计 v2.0（当前）** — 26 个端点覆盖 25 个 FR | ✅ planned |
 | plan-api-v2.7.6.md | API 接口设计 v2.7.6 — 历史版本 | 📁 历史版本 |
-| plan-db.md | **数据库设计 v2.8.1** — SQL 脚本存放于 `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`，FlywayDB 命名风格，connector-api 不存放 DDL | ✅ planned |
+| plan-api-v2.8.0.md | API 接口设计 v2.8.0 — 历史版本 | 📁 历史版本 |
+| plan-db.md | **数据库设计 v2.8.1（当前）** — SQL 脚本存放于 `open-server/src/main/resources/db/migration/V2__init_connector_platform_schema.sql`，FlywayDB 命名风格，connector-api 不存放 DDL | ✅ planned |
 | plan-db-v2.7.6.md | 数据库设计 v2.7.6 — 历史版本 | 📁 历史版本 |
+| plan-db-v2.8.1.md | 数据库设计 v2.8.1 — 历史版本 | 📁 历史版本 |
 | plan-code.md | **代码规范** — 16 条强制规则，沿用能力开放平台标准 | ✅ planned |
-| plan-json-schema.md | JSON Schema 设计（当前） | ✅ planned |
+| plan-code-check-report.md | **代码规范符合性检查报告** — 74 个文件的规范检查 | ✅ 已检查 |
+| plan-cache.md | **缓存与限流策略设计** — 连接器平台缓存体系与入站限流方案 | ✅ planned |
+| plan-json-schema.md | JSON Schema 设计（当前，v5.6） | ✅ planned |
 | plan-json-schema-v3.0.md | JSON Schema v3.0 — 历史版本 | 📁 历史版本 |
+| plan-json-schema-v5.4.md | JSON Schema v5.4 — 历史版本 | 📁 历史版本 |
+| plan-json-schema-impl.md | JSON 构建逻辑实现参考 — 设计态与运行态 JSON 构造算法说明 | ✅ 参考文档 |
+| plan-multi-module-build.md | Maven 单进程合并构建方案 — connector-api 多模块构建策略 | ✅ planned |
 
 ### 📂 任务分解阶段 (tasks)
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| tasks.md | **任务分解文档** — 12 个任务、4 个波次、10 个当前实施 + 2 个外部占位；connector-api 包结构对齐 open-server（`com.xxx.it.works.wecode.v2`，`common` 与 `modules` 同级） | ✅ tasked |
-| tasks.json | **任务元数据** — 任务结构化数据，含 connector-api 目录结构信息（`common`/`modules` 同级） | ✅ tasked |
+| tasks.md | **任务分解文档（当前）** — 12 个任务、4 个波次、10 个当前实施 + 2 个外部占位；connector-api 包结构对齐 open-server（`com.xxx.it.works.wecode.v2`，`common` 与 `modules` 同级） | ✅ tasked |
+| tasks.json | **任务元数据（当前）** — 任务结构化数据，含 connector-api 目录结构信息（`common`/`modules` 同级） | ✅ tasked |
+| tasks-v2.8.1.md | 任务分解 v2.8.1 — 历史版本 | 📁 历史版本 |
+| tasks-v2.8.1.json | 任务元数据 v2.8.1 — 历史版本 | 📁 历史版本 |
 
 **任务概要**:
 - **当前实施任务（10 个）**: TASK-001~TASK-008, TASK-011~TASK-012
@@ -121,19 +153,31 @@ specs-tree-connector-platform/
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| build.md | **Build 实现报告** — 10 个任务全部完成，38 个新增文件 | ✅ built |
+| build.md | **Build 实现报告（当前）** — 10 个任务全部完成，38 个新增文件 | ✅ built |
+| build-v2.8.1.md | Build 实现报告 v2.8.1 — 历史版本 | 📁 历史版本 |
 
 ### 📂 代码审查阶段 (review)
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| review.md | **代码审查报告** — 审查通过，0 阻塞问题，79 个测试，100% FR 覆盖 | ✅ reviewed |
+| review.md | **代码审查报告（当前）** — 审查通过，0 阻塞问题，79 个测试，100% FR 覆盖 | ✅ reviewed |
+| review-v2.8.1.md | 代码审查报告 v2.8.1 — 历史版本 | 📁 历史版本 |
 
 ### 📂 代码验证阶段 (validate)
 
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| validation-report.md | **代码验证报告** — 79 测试全部通过，100% FR 覆盖，全流程完成 | ✅ validated |
+| validation-report.md | **代码验证报告（当前）** — 79 测试全部通过，100% FR 覆盖，全流程完成 | ✅ validated |
+| validation-report-v2.8.1.md | 验证报告 v2.8.1 — 历史版本 | 📁 历史版本 |
+
+### 📂 测试阶段 (test)
+
+| 文件 | 说明 | 状态 |
+|------|------|------|
+| test-plan.md | **测试方案（后端接口）** — 后端 API #1~#18 测试计划 | ✅ 已执行 |
+| test-plan-integration.md | **测试方案（集成测试）** — Python 真调 L3 集成测试方案 | ✅ 已执行 |
+| test-report.md | **测试执行报告** — 后端接口测试执行结果 | ✅ 已完成 |
+| test-report-integration.md | **集成测试报告** — L3 集成测试执行结果 | ✅ 已完成 |
 
 ## 规范概要
 
@@ -189,4 +233,4 @@ specs-tree-connector-platform/
 
 ---
 
-*最后更新: 2026-05-24 | @sddu-docs 自动更新*
+*最后更新: 2026-06-09 | @sddu-docs 自动更新*

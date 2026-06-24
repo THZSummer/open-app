@@ -222,7 +222,7 @@ public class ApiService {
 
         // ✅ 获取注册审批节点（两级：场景+全局）
         List<ApprovalNodeDto> approvalNodes = approvalEngine.composeApprovalNodes(
-            ApprovalEngine.BusinessType.API_REGISTER, null);
+            ApprovalEngine.BusinessType.API_REGISTER, null, null);
 
         if (approvalNodes.isEmpty()) {
 
@@ -240,7 +240,8 @@ public class ApiService {
                     api.getId(),
                     currentUser,
                     currentUser,
-                    currentUser
+                    currentUser,
+                    null
                 );
                 log.info("Create API registration approval record: apiId={}, nodesCount={}", api.getId(), approvalNodes.size());
             } catch (Exception e) {

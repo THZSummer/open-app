@@ -1,9 +1,11 @@
 package com.xxx.it.works.wecode.v2.modules.debug;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import com.xxx.it.works.wecode.v2.modules.security.AppWhitelistService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
@@ -35,6 +37,14 @@ class OpDebugProxyControllerWebMvcTest {
     @MockitoBean
     private OpDebugProxyService debugProxyService;
 
+    @MockitoBean
+    private AppWhitelistService appWhitelistService;
+
+    @BeforeEach
+    void setUp() {
+        when(appWhitelistService.isWhitelisted(anyLong())).thenReturn(true);
+    }
+
     @Nested
     @DisplayName("#17 POST /service/open/v2/flows/{flowId}/test-run")
     class TestRun {
@@ -47,14 +57,14 @@ class OpDebugProxyControllerWebMvcTest {
                     "status", "success",
                     "totalDurationMs", 1270
             );
-            when(debugProxyService.forwardTestRun(eq(100L), any(), any()))
+            when(debugProxyService.forwardTestRun(eq(100L), eq(200L), any(), any()))
                     .thenReturn(ApiResponse.success(resultData));
 
-            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "100")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/versions/{versionId}/debug", "100", "200")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
-                                        "mockTriggerData": {
+                                        "triggerData": {
                                             "sender": "test_user",
                                             "content": "测试消息"
                                         },
@@ -64,7 +74,8 @@ class OpDebugProxyControllerWebMvcTest {
                                             }
                                         }
                                     }
-                                    """))
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
                     .andExpect(jsonPath("$.data.executionId").isString())
@@ -74,12 +85,13 @@ class OpDebugProxyControllerWebMvcTest {
         @Test
         @DisplayName("✅ TC-066: 无 mockTriggerData")
         void testRunNoTriggerData() throws Exception {
-            when(debugProxyService.forwardTestRun(eq(100L), any(), any()))
+            when(debugProxyService.forwardTestRun(eq(100L), eq(200L), any(), any()))
                     .thenReturn(ApiResponse.success(Map.of("status", "success")));
 
-            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "100")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/versions/{versionId}/debug", "100", "200")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{}"))
+                            .content("{}")
+                            .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"));
         }
@@ -87,14 +99,15 @@ class OpDebugProxyControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-067: flowId 不存在")
         void testRunFlowNotFound() throws Exception {
-            when(debugProxyService.forwardTestRun(eq(999L), any(), any()))
+            when(debugProxyService.forwardTestRun(eq(999L), eq(200L), any(), any()))
                     .thenReturn(ApiResponse.error("404", "连接流不存在", "Flow not found"));
 
-            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "999")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/versions/{versionId}/debug", "999", "200")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"mockTriggerData": {"sender": "test"}}
-                                    """))
+                                    {"triggerData": {"sender": "test"}}
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("404"));
         }
@@ -102,15 +115,16 @@ class OpDebugProxyControllerWebMvcTest {
         @Test
         @DisplayName("❌ TC-068: 转发失败")
         void testRunForwardFailed() throws Exception {
-            when(debugProxyService.forwardTestRun(eq(100L), any(), any()))
+            when(debugProxyService.forwardTestRun(eq(100L), eq(200L), any(), any()))
                     .thenReturn(ApiResponse.error("500", "测试运行转发失败: Connection refused",
                             "Test run forwarding failed: Connection refused"));
 
-            mockMvc.perform(post("/service/open/v2/flows/{flowId}/test-run", "100")
+            mockMvc.perform(post("/service/open/v2/flows/{flowId}/versions/{versionId}/debug", "100", "200")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"mockTriggerData": {"sender": "test"}}
-                                    """))
+                                    {"triggerData": {"sender": "test"}}
+                                    """)
+                                    .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("500"));
         }

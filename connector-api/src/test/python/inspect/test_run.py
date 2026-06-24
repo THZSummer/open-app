@@ -25,7 +25,7 @@ def snow_id():
 def setup_flow(snow_id_val, lifecycle_status=1):
     version_id = snow_id()
     subprocess.run([
-        "mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({snow_id_val}, 'IT_测试运行', 'IT_TestRun', "
@@ -90,7 +90,7 @@ def setup_flow(snow_id_val, lifecycle_status=1):
     }
 
     subprocess.run([
-        "mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, "
         f"create_by, last_update_by) "
@@ -100,7 +100,7 @@ def setup_flow(snow_id_val, lifecycle_status=1):
     ], check=True, capture_output=True)
 
     subprocess.run([
-        "mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
         f"UPDATE openplatform_v2_cp_flow_t "
         f"SET lifecycle_status = {lifecycle_status} "
         f"WHERE id = {snow_id_val}"
@@ -110,10 +110,10 @@ def setup_flow(snow_id_val, lifecycle_status=1):
 
 
 def cleanup_flow(flow_id_val, version_id_val):
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_version_t "
                     f"WHERE id = {version_id_val}"], capture_output=True)
-    subprocess.run(["mysql", "-uopenapp", "-popenapp", "openapp", "-e",
+    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
                     f"DELETE FROM openplatform_v2_cp_flow_t "
                     f"WHERE id = {flow_id_val}"], capture_output=True)
 
@@ -143,7 +143,7 @@ def test_run_request(flow_id, body=None):
 print("=== IT-070: flow 不存在 ===")
 resp = test_run_request(999999999999999999,
                         {"mockTriggerData": {"sender": "test"}})
-if resp:
+if resp is not None:
     body = resp.json()
     check("HTTP 200", resp.status_code == 200)
     # lifecycle_status=0 不影响引擎执行，接受任何执行结果
@@ -157,7 +157,7 @@ vid_071 = None
 try:
     _, vid_071 = setup_flow(sid_071, lifecycle_status=0)
     resp = test_run_request(sid_071, {"mockTriggerData": {"sender": "test"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("executionId 为 string",
@@ -173,7 +173,7 @@ vid_072 = None
 try:
     fid, vid_072 = setup_flow(sid_072, lifecycle_status=1)
     resp = test_run_request(fid, {"mockTriggerData": {"sender": "test_user"}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("executionId 为 string",
@@ -200,7 +200,7 @@ vid_073 = None
 try:
     fid, vid_073 = setup_flow(sid_073, lifecycle_status=1)
     resp = test_run_request(fid, {"mockTriggerData": {}})
-    if resp:
+    if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("executionId 存在", bool(body.get("executionId")))

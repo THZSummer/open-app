@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
 import { Button, Table, Spin, Empty, Pagination } from 'antd';
 import { fetchApiList, deleteApi } from './thunk';
 import { fetchCategoryTree } from '../Category/thunk';
 import { useAdminList } from '../../../hooks/useAdminList';
 import AdminTableToolbar from '../../../components/AdminTableToolbar/AdminTableToolbar';
-import { getApiListColumns } from './constants';
+import { ADMIN_API_DELETE_SECOND_MODAL_INFO, getApiListColumns } from './constants';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constants';
-import { getSecondModalInfo, isInAdminWhitelist } from '../../../utils/common';
+import { getSecondModalInfo } from '../../../utils/common';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import ApiRegister from './ApiRegister';
 import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
@@ -17,21 +17,7 @@ import './ApiList.m.less';
  * API列表管理页面
  */
 function ApiList() {
-  const navigate = useNavigate();
-
-  /**
-   * 初始化权限校验
-   */
-  const validateAccess = async () => {
-    const hasAccess = await isInAdminWhitelist();
-    if (!hasAccess) {
-      navigate('/apps');
-    }
-  };
-
-  useEffect(() => {
-    validateAccess();
-  }, []);
+  useAdminAccessGuard();
 
   const {
     categories,
@@ -41,7 +27,7 @@ function ApiList() {
     handleAdd,
     handleCategoryChange,
     handleDelete,
-    handlecancelRomove,
+    handleCloseDeleteConfirm,
     handleDeleteClick,
     handleEdit,
     handlePageChange,
@@ -143,9 +129,12 @@ function ApiList() {
 
           <DeleteConfirmModal
             open={removeConfirmVisible}
-            onClose={handlecancelRomove}
+            onClose={handleCloseDeleteConfirm}
             onConfirm={handleDeleteClick}
-            modalInfo={getSecondModalInfo('API', 'delete', true)}
+            modalInfo={getSecondModalInfo({
+              ...ADMIN_API_DELETE_SECOND_MODAL_INFO,
+              objectName: currentItem?.nameCn || currentItem?.nameEn,
+            })}
           />
         </div>
       </div>

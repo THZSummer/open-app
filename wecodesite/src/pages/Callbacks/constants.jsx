@@ -1,7 +1,25 @@
 import React from 'react';
-import { Tag, Button } from 'antd';
+import { Button } from 'antd';
 import { CHANNEL_TYPE, AUTH_TYPE } from '../../utils/constants';
 import { renderStatus } from '../../utils/commonTableConfigs';
+
+/**
+ * 回调订阅删除二次确认弹窗配置
+ */
+export const CALLBACK_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个回调订阅：${objectName}吗？`,
+  impactText: '操作影响：删除后，该回调订阅关系将被移除，应用将无法继续使用对应回调能力。',
+};
+
+/**
+ * 回调订阅撤回二次确认弹窗配置
+ */
+export const CALLBACK_WITHDRAW_SECOND_MODAL_INFO = {
+  action: 'withdraw',
+  getConfirmText: ({ objectName }) => `确认要撤回这个回调：${objectName}申请吗？`,
+  impactText: '操作影响：撤回后，该回调权限申请将终止审批流程，如需使用，需要先删除后重新订阅。',
+};
 
 /**
  * 回调列表表格列配置
@@ -57,11 +75,11 @@ export const getCallbackColumns = ({ handleOpenDoc, handleEdit, handleCopyApprov
         {record.status === 0 && (
           <>
             <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
-            <Button type="link" onClick={() => handleWithdraw(record.id)}>撤回审核</Button>
+            <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
           </>
         )}
         {record.status !== 0 && (
-          <Button type="link" danger onClick={() => handleDelete(record.id)}>删除</Button>
+          <Button type="link" danger onClick={() => handleDelete(record)}>删除</Button>
         )}
       </div>
     ),

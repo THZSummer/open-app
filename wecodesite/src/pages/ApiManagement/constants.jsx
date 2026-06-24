@@ -4,6 +4,24 @@ import { AUTH_TYPE } from '../../utils/constants';
 import { renderStatus } from '../../utils/commonTableConfigs';
 
 /**
+ * API订阅删除二次确认弹窗配置
+ */
+export const API_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个API订阅：${objectName}吗？`,
+  impactText: '操作影响：删除后，该 API 订阅关系将被移除，应用将无法继续使用对应接口能力。',
+};
+
+/**
+ * API订阅撤回二次确认弹窗配置
+ */
+export const API_WITHDRAW_SECOND_MODAL_INFO = {
+  action: 'withdraw',
+  getConfirmText: ({ objectName }) => `确认要撤回这个API：${objectName}申请吗？`,
+  impactText: '操作影响：撤回后，该 API 权限申请将终止审批流程，如需使用，需要先删除后重新订阅。',
+};
+
+/**
  * API订阅管理Tab配置键
  */
 export const TAB_CONFIG_SEARCH_KEY = 'CEC.Open/Api.Drawer.TabsList';
@@ -63,11 +81,11 @@ export const getApiManagementColumns = ({ handleOpenDoc, handleCopyApprovalAddre
         {record.status === 0 && (
           <>
             <Button type="link" size="small" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
-            <Button type="link" size="small" onClick={() => handleWithdraw(record.id)}>撤回审核</Button>
+            <Button type="link" size="small" onClick={() => handleWithdraw(record)}>撤回审核</Button>
           </>
         )}
         {record.status !== 0 && (
-          <Button type="link" size="small" danger onClick={() => handleDelete(record.id)}>删除</Button>
+          <Button type="link" size="small" danger onClick={() => handleDelete(record)}>删除</Button>
         )}
       </div>
     ),

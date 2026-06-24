@@ -9,7 +9,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.6</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
@@ -24,6 +24,7 @@
     <properties>
         <mybatis-spring-boot.version>3.0.4</mybatis-spring-boot.version>
         <springdoc-openapi.version>2.5.0</springdoc-openapi.version>
+        <netty.version>4.1.135.Final</netty.version>
     </properties>
 
     <dependencies>
@@ -83,6 +84,19 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <!-- GraalVM Polyglot for JavaScript syntax validation (FR-026 脚本语法预检) -->
+        <dependency>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
+            <version>24.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.graalvm.js</groupId>
+            <artifactId>js-language</artifactId>
+            <version>24.2.1</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- Spring Boot Test -->

@@ -43,8 +43,10 @@ function DeleteConfirmModal({
     >
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
         <ExclamationCircleOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
-        <div style={{ fontSize: 16, marginBottom: 8 }}>{modalInfo.title}</div>
-        <div style={{ color: '#8c8c8c' }}>{modalInfo.content}</div>
+        <div style={{ color: '#8c8c8c', textAlign: 'left' }}>
+          <div style={{ marginBottom: 8 }}>{modalInfo.content.confirmText}</div>
+          <div>{modalInfo.content.impactText}</div>
+        </div>
       </div>
 
       {requireConfirmText && (

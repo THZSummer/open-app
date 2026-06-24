@@ -10,11 +10,13 @@ import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.script.ScriptNodeExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.*;
 
 /**
@@ -43,7 +45,8 @@ public class ReactiveSequentialExecutor {
             TriggerNodeExecutor triggerNodeExecutor,
             ConnectorNodeExecutor connectorNodeExecutor,
             DataProcessorExecutor dataProcessorExecutor,
-            ExitNodeExecutor exitNodeExecutor) {
+            ExitNodeExecutor exitNodeExecutor,
+            ScriptNodeExecutor scriptNodeExecutor) {
 
         this.objectMapper = objectMapper;
         this.executorMap = new HashMap<>();
@@ -51,6 +54,7 @@ public class ReactiveSequentialExecutor {
         executorMap.put("connector", connectorNodeExecutor);
         executorMap.put("data_processor", dataProcessorExecutor);
         executorMap.put("exit", exitNodeExecutor);
+        executorMap.put("script", scriptNodeExecutor);
     }
 
     /**
@@ -114,13 +118,47 @@ public class ReactiveSequentialExecutor {
         // v5.5: 传递完整 config (含 data 字段), executor 自行提取 data.xxx
         Map<String, Object> configMap = objectMapper.convertValue(nodeConfig, Map.class);
         log.info("Executing node: id={}, type={}", nodeConfig.get("id"), nodeConfig.get("type"));
-                            log.info("Executing node: id={}, type={}", nodeConfig.get("id"), nodeConfig.get("type"));
-                    return executor.execute(context, configMap)
+
+        Duration nodeTimeout = resolveNodeTimeout(nodeConfig);
+
+        return executor.execute(context, configMap)
+                .timeout(nodeTimeout)
                 .doOnNext(output -> {
                     output.setDurationMs(System.currentTimeMillis() - nodeStart);
                     log.info("Node {} executed: status={}, duration={}ms",
                             output.getNodeId(), output.getStatus(), output.getDurationMs());
+                })
+                .onErrorResume(e -> {
+                    log.warn("Node {} execution timeout or error: {}", nodeConfig.get("id").asText(), e.getMessage());
+                    NodeOutput errorOutput = new NodeOutput(
+                            nodeConfig.get("id").asText(), nodeConfig.get("type").asText(),
+                            new HashMap<>(), new HashMap<>());
+                    errorOutput.setStatus("timeout");
+                    errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
+                    Map<String, Object> errInfo = new HashMap<>();
+                    errInfo.put("code", "6002");
+                    errInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
+                    errInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
+                    errInfo.put("message", e.getMessage());
+                    errorOutput.setErrorInfo(errInfo);
+                    return Mono.just(errorOutput);
                 });
+    }
+
+    /**
+     * 解析节点超时: min(node.data.timeoutMs, 30s), 默认 30s
+     */
+    private Duration resolveNodeTimeout(JsonNode nodeConfig) {
+        long defaultTimeoutMs = 30000;
+        JsonNode data = nodeConfig.get("data");
+        if (data != null && data.has("timeoutMs")) {
+            JsonNode timeoutNode = data.get("timeoutMs");
+            if (timeoutNode.isNumber()) {
+                long nodeTimeoutMs = timeoutNode.asLong();
+                return Duration.ofMillis(Math.min(nodeTimeoutMs, defaultTimeoutMs));
+            }
+        }
+        return Duration.ofMillis(defaultTimeoutMs);
     }
 
     /**
@@ -215,6 +253,9 @@ public class ReactiveSequentialExecutor {
         result.setTotalDurationMs(System.currentTimeMillis() - startTime);
 
         boolean anyFailed = false;
+        String firstErrorCode = null;
+        String firstErrorMessageZh = null;
+        String firstErrorMessageEn = null;
 
         // 收集所有步骤详情
         for (JsonNode node : orderedNodes) {
@@ -223,6 +264,17 @@ public class ReactiveSequentialExecutor {
             // 检查失败状态
             if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
                 anyFailed = true;
+                if (firstErrorCode == null && step.getErrorInfo() != null) {
+                    Object code = step.getErrorInfo().get("code");
+                    Object msgZh = step.getErrorInfo().get("messageZh");
+                    Object msgEn = step.getErrorInfo().get("messageEn");
+                    // fallback to "message" field
+                    if (msgZh == null) msgZh = step.getErrorInfo().get("message");
+                    if (msgEn == null) msgEn = step.getErrorInfo().get("message");
+                    firstErrorCode = code instanceof String ? (String) code : "6001";
+                    firstErrorMessageZh = msgZh instanceof String ? (String) msgZh : step.getStatus();
+                    firstErrorMessageEn = msgEn instanceof String ? (String) msgEn : step.getStatus();
+                }
             }
 
             result.addStep(step);
@@ -230,6 +282,16 @@ public class ReactiveSequentialExecutor {
 
         // 设置整体状态
         result.setStatus(anyFailed ? "failed" : "success");
+
+        // 传播首个失败步骤的错误信息
+        if (anyFailed && firstErrorCode != null) {
+            Map<String, Object> errorInfo = new HashMap<>();
+            errorInfo.put("code", firstErrorCode);
+            errorInfo.put("messageZh", firstErrorMessageZh);
+            errorInfo.put("messageEn", firstErrorMessageEn);
+            result.setErrorInfo(errorInfo);
+        }
+
         log.info("Flow execution complete: status={}, totalDurationMs={}", result.getStatus(), result.getTotalDurationMs());
 
         // resultData 取最后一个输出 (不含 __status/__input/__error 等元字段)

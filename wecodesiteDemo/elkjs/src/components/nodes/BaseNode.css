@@ -1,0 +1,117 @@
+.base-node {
+  position: relative;
+  min-width: 240px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.base-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.base-node.selected {
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.base-node.region-child-node {
+  min-width: 220px;
+}
+
+.node-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.node-icon {
+  font-size: 16px;
+}
+
+.node-type {
+  letter-spacing: 0.5px;
+}
+
+.node-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.node-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.node-description {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* 节点删除按钮样式 */
+.base-node-delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #fecaca;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #ef4444;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+/* 鼠标移入节点或节点选中时展示删除按钮 */
+.base-node:hover .base-node-delete,
+.base-node.selected .base-node-delete {
+  opacity: 1;
+}
+
+/* 节点删除按钮悬停样式 */
+.base-node-delete:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+/* Handle 样式 */
+.node-handle {
+  width: 12px !important;
+  height: 12px !important;
+  border: 2px solid #ffffff !important;
+  background: #94a3b8 !important;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.node-handle:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 8px currentColor;
+}

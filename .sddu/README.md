@@ -10,8 +10,11 @@
     ├── README.md          # 目录导航
     ├── specs-tree-capability-open-platform/  # 能力开放平台（已完成全流程）
     ├── specs-tree-connector-platform/        # 连接器平台 V1（已完成全流程）
-    ├── specs-tree-connector-platform-v2/     # 连接器平台 V2 — 多版本与增强（discovery-enhanced）
-    └── specs-tree-data-open-platform/        # 数据开放平台（规范编写完成）
+    ├── specs-tree-connector-platform-v2/     # 连接器平台 V2 — 多版本与增强（🚫 已终止）
+    ├── specs-tree-connector-platform-v3/     # 连接器平台 V3 — 多版本与增强（✅ validated — completed）
+    ├── specs-tree-data-open-platform/        # 数据开放平台（🟡 搁置）
+    ├── specs-tree-dictionary/                # 数据字典管理（planned）
+    └── specs-tree-lookup/                    # LookUp 管理（planned）
 ```
 
 ## Feature 概览
@@ -20,8 +23,11 @@
 |---------|------|------|--------|
 | 能力开放平台 | [specs-tree-capability-open-platform/](specs-tree-root/specs-tree-capability-open-platform/) | ✅ validated（全流程完成） | P0 |
 | 连接器平台 V1 | [specs-tree-connector-platform/](specs-tree-root/specs-tree-connector-platform/) | ✅ validated（全流程完成） | P1 |
-| 连接器平台 V2 | [specs-tree-connector-platform-v2/](specs-tree-root/specs-tree-connector-platform-v2/) | 🔶 discovery-enhanced（规范完成 — 深度需求挖掘） | P1 |
-| 数据开放平台 | [specs-tree-data-open-platform/](specs-tree-root/specs-tree-data-open-platform/) | ✅ specified（规范完成） | P0 |
+| 连接器平台 V2 | [specs-tree-connector-platform-v2/](specs-tree-root/specs-tree-connector-platform-v2/) | 🚫 terminated（已终止，转入 V3） | P1 |
+| 连接器平台 V3 | [specs-tree-connector-platform-v3/](specs-tree-root/specs-tree-connector-platform-v3/) | ✅ validated — completed（全流程完成） | P1 |
+| 数据开放平台 | [specs-tree-data-open-platform/](specs-tree-root/specs-tree-data-open-platform/) | 🟡 suspended（搁置） | P0 |
+| 数据字典管理 | [specs-tree-dictionary/](specs-tree-root/specs-tree-dictionary/) | ✅ planned（规范+规划完成） | P1 |
+| LookUp 管理 | [specs-tree-lookup/](specs-tree-root/specs-tree-lookup/) | ✅ planned（规范+规划完成） | P1 |
 
 ## 快速开始
 

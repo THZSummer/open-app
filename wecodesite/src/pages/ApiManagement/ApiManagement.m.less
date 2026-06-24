@@ -1,8 +1,5 @@
 .api-management {
-  background-color: var(--bg-primary);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-  padding: 24px;
+  // 页面容器不设白底和 padding，由 Layout 统一控制
   min-height: 100%;
   box-sizing: border-box;
 }
@@ -23,12 +20,12 @@
 .page-title {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1f2329;
 }
 
 .page-desc {
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: #8f959e;
 }
 
 .btn-primary {
@@ -36,14 +33,14 @@
   align-items: center;
   gap: 4px;
   padding: 8px 16px;
-  background-color: var(--primary-color);
+  background-color: #3370ff;
   color: white;
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   font-weight: 500;
   transition: background-color 0.2s ease;
 
   &:hover {
-    background-color: var(--primary-hover);
+    background-color: #2860e0;
   }
 
   span {
@@ -59,51 +56,52 @@
   td {
     padding: 12px 16px;
     text-align: left;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #dee0e3;
   }
 
   th {
     font-size: 13px;
     font-weight: 500;
-    color: var(--text-secondary);
-    background-color: var(--bg-secondary);
+    color: #8f959e;
+    background-color: #f2f3f5;
   }
 
   td {
     font-size: 14px;
-    color: var(--text-primary);
+    color: #1f2329;
   }
 
-  tbody tr:hover {
-    background-color: var(--bg-hover);
+  tbody tr:hover td {
+    background-color: #f7f8fa;
   }
 
   .code-name {
     font-family: monospace;
     font-size: 13px;
-    color: var(--text-secondary);
+    color: #646a73;
   }
 }
 
 .status-badge {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 12px;
+  border-radius: 4px;
   font-size: 12px;
+  font-weight: 500;
 
   &.已审核 {
-    background-color: #e6f4ea;
-    color: var(--success-color);
+    background-color: #e5f7e5;
+    color: #1a7f1a;
   }
 
   &.审核中 {
-    background-color: #fef7e0;
-    color: #b06000;
+    background-color: #fff3e5;
+    color: #d46b08;
   }
 
   &.已中止 {
-    background-color: #fce8e8;
-    color: var(--error-color);
+    background-color: #fde2e2;
+    color: #f54a45;
   }
 }
 
@@ -113,25 +111,27 @@
 }
 
 .btn-link {
-  padding: 4px 8px;
-  background: none;
-  color: var(--primary-color);
+  padding: 4px 12px;
+  background: transparent;
+  border: none;
+  color: #3370ff;
   font-size: 13px;
-  transition: opacity 0.2s ease;
-  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
 
   &:hover {
-    opacity: 0.8;
+    background: #e8f0ff;
   }
 }
 
 .table-wrapper {
   overflow-x: auto;
-  
+
   :global(.ant-table) {
     min-width: 800px;
   }
-  
+
   :global(.ant-table-thead > tr > th),
   :global(.ant-table-tbody > tr > td) {
     white-space: nowrap;

@@ -25,8 +25,8 @@ public class DictionaryCreateDTO implements Serializable {
      */
     @NotBlank(message = "编码不能为空")
     @Size(max = 100, message = "编码长度不能超过100字符")
-    @Pattern(regexp = "^[a-zA-Z0-9_.-]+$", message = "编码只支持字母、数字、下划线、点、横杠")
-    @Schema(description = "编码，必填，1-100字符，支持字母、数字、下划线、点、横杠，同一路径下唯一",
+    @Pattern(regexp = "^[a-zA-Z0-9_./*-]+$", message = "编码只支持字母、数字、下划线、点、横杠、斜杠、星号")
+    @Schema(description = "编码，必填，1-100字符，支持字母、数字、下划线、点、横杠、斜杠、星号，同一路径下唯一",
             requiredMode = Schema.RequiredMode.REQUIRED,
             example = "USER_STATUS")
     private String code;

@@ -10,7 +10,7 @@ subprocess.run([
 ], capture_output=True)
 
 print("=== IT-034: 删除流 ===")
-resp = request("DELETE", f"/flows/{snow_id}")
+resp = request("DELETE", f"/service/open/v2/flows/{snow_id}")
 
 print("=== IT-035: flowId 不存在 ===")
-request("DELETE", "/flows/999999999999999999")
+request("DELETE", "/service/open/v2/flows/999999999999999999")

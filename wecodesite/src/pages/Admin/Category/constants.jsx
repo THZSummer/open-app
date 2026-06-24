@@ -1,6 +1,14 @@
 import React from 'react';
 import { Button } from 'antd';
-import { ACTION_CONFIG } from '../../../utils/constants';
+
+/**
+ * 分类删除二次确认弹窗配置
+ */
+export const CATEGORY_DELETE_SECOND_MODAL_INFO = {
+  action: 'delete',
+  getConfirmText: ({ objectName }) => `确认要删除这个分类：${objectName}吗？`,
+  impactText: '操作影响：删除后，该分类及其所有子分类将被删除，分类下关联资源可能受到影响。',
+};
 
 export const getOwnerColumns = (handleRemoveOwner) => [
   { title: '用户ID', dataIndex: 'userId', key: 'userId', width: 150 },
@@ -16,9 +24,3 @@ export const getOwnerColumns = (handleRemoveOwner) => [
     ),
   },
 ];
-
-export const secondModalInfo = {
-  ...ACTION_CONFIG.delete,
-  title: '删除分类',
-  content: '此操作将永久删除该分类及其所有子分类，无法恢复！',
-}

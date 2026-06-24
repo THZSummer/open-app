@@ -1,24 +1,11 @@
 /**
- * 连接器编辑页面样式
+ * 连接器编辑页样式
+ * 视觉对齐成员管理页（Members）：白色卡片、Lark 蓝、统一字号体系
  */
 
-// 页面最外层容器
-.connector-editor-wrapper {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
-
-// 主内容区域
-.editor-main-content {
-  flex: 1;
-  overflow: auto;
-}
-
 .connector-editor-page {
-  padding: 24px;
-  background: #fff;
   min-height: 100%;
+  box-sizing: border-box;
   transition: opacity 0.3s;
 
   &.loading {
@@ -26,87 +13,166 @@
     pointer-events: none;
   }
 
-  .page-header {
-    margin-bottom: 24px;
+  // ===== 通用卡片容器（同 Members .content-card） =====
+  .content-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
 
-    &-title {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      flex-wrap: nowrap;
-      gap: 8px;
-
-      .page-title {
-        white-space: nowrap;
-        margin: 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: #333;
-      }
-
-      .page-desc {
-        white-space: nowrap;
-        font-size: 13px;
-        color: #8c8c8c;
-      }
+    &:last-child {
+      margin-bottom: 0;
     }
   }
 
-  .action-bar {
+  // ===== 顶部标题 + 操作 =====
+  .page-header {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0;
 
-    :global(.ant-btn-primary) {
-      height: 36px;
-      padding: 0 24px;
-      font-size: 14px;
-      font-weight: 500;
-      border-radius: 6px;
-      box-shadow: 0 2px 4px rgba(24, 144, 255, 0.2);
-      transition: all 0.3s;
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2329;
+    }
+
+    .page-desc {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #8f959e;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+  }
+
+  // ===== 面包屑（对齐版本详情页样式） =====
+  .page-breadcrumb {
+    font-size: 14px;
+    color: #8f959e;
+    margin-bottom: 20px;
+
+    // 可点击：主蓝色，hover 下划线
+    .page-breadcrumb-link {
+      color: #3370ff;
+      cursor: pointer;
 
       &:hover {
-        box-shadow: 0 4px 8px rgba(24, 144, 255, 0.3);
-        transform: translateY(-1px);
+        text-decoration: underline;
       }
+    }
 
-      &:active {
-        box-shadow: 0 1px 2px rgba(24, 144, 255, 0.2);
-        transform: translateY(0);
-      }
+    // 分隔符
+    .page-breadcrumb-sep {
+      margin: 0 8px;
+      color: #c0c4cc;
     }
   }
 
-  .basic-info-form {
-    max-width: 600px;
+  // ===== 版本选择条 =====
+  .version-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #f7f8fa;
+    border: 1px solid #f2f3f5;
+    border-radius: 6px;
+
+    // 左侧：当前版本标签 + 版本下拉
+    .version-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    // 右侧：操作按钮组
+    .version-bar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .version-bar-label {
+      font-size: 13px;
+      color: #646a73;
+      font-weight: 500;
+    }
+
+    .version-select {
+      min-width: 280px;
+    }
+
+    .version-empty {
+      flex: 1;
+      font-size: 13px;
+      color: #8f959e;
+    }
   }
 
-  .api-config-card {
-    margin-bottom: 16px;
+  // ===== 版本选项样式（下拉项内含状态 Tag） =====
+  .version-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .version-option-name {
+      font-size: 14px;
+      color: #1f2329;
+      font-weight: 500;
+    }
+
+    .version-option-time {
+      font-size: 12px;
+      color: #8f959e;
+    }
+  }
+
+  // ===== 节卡片（接口/认证/入参/出参） =====
+  .section-card {
+    background: #fff;
     border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-
-  .auth-config-card {
+    border: 1px solid #f2f3f5;
+    padding: 20px 24px;
     margin-bottom: 16px;
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.2s;
+
+    &:hover {
+      border-color: #e5e6eb;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f2329;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f2f3f5;
+    }
+
+    .section-tip {
+      font-size: 12px;
+      color: #8f959e;
+      font-weight: 400;
+    }
   }
 
-  .request-config-card {
-    margin-bottom: 16px;
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-
-  .response-config-card {
-    margin-bottom: 16px;
-    border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-
+  // ===== 表单基础项 =====
   .form-item-spacing {
     margin-bottom: 16px;
   }
@@ -119,84 +185,138 @@
     border-radius: 6px;
   }
 
-  .divider-spacing {
-    margin: 12px 0;
-  }
-
   .placeholder-text {
-    color: #999;
-    font-style: italic;
-    padding: 8px 0;
+    color: #8f959e;
+    font-size: 13px;
+    padding: 12px 0;
+    text-align: center;
+    background: #f7f8fa;
+    border-radius: 6px;
   }
 
-  .trigger-form,
-  .action-form {
-    .trigger-item,
-    .action-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 12px;
-      margin-bottom: 12px;
-      border: 1px solid #f0f0f0;
-      border-radius: 8px;
-      transition: all 0.3s;
+  // ===== 认证子区块 =====
+  .auth-sub-section {
+    margin-top: 12px;
+    padding: 16px;
+    background: #f7f8fa;
+    border-radius: 6px;
 
-      &:hover {
-        border-color: #1890ff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-      }
-
-      &-content {
-        flex: 1;
-        min-width: 0;
-      }
-
-      &-info {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 4px;
-      }
+    & + .auth-sub-section {
+      margin-top: 12px;
     }
 
-    .trigger-name,
-    .action-name {
-      font-weight: 500;
-      font-size: 14px;
-      color: #333;
-    }
-
-    .trigger-type {
-      font-size: 12px;
-      color: #1890ff;
-    }
-
-    .trigger-desc,
-    .action-desc {
-      font-size: 12px;
-      color: #8c8c8c;
-      margin-top: 4px;
-    }
-
-    .action-method {
+    .auth-sub-title {
       display: flex;
       align-items: center;
       gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1f2329;
+      margin-bottom: 12px;
+
+      .auth-sub-tag {
+        display: inline-block;
+        padding: 1px 8px;
+        background: #e8f0ff;
+        color: #3370ff;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+    }
+  }
+
+  // ===== 认证参数单行布局（对齐 demo） =====
+  .auth-param-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+
+    &:last-child {
+      margin-bottom: 0;
     }
 
-    .action-endpoint {
-      font-size: 12px;
-      color: #666;
-      font-family: monospace;
+    // 参数名称：固定宽度
+    .auth-field-name {
+      width: 140px;
+      flex-shrink: 0;
     }
 
-    .trigger-edit-form,
-    .action-edit-form {
-      margin-top: 16px;
-      padding: 16px;
-      background: #fafafa;
-      border-radius: 8px;
+    // 参数类型：固定宽度（仅 string，disabled）
+    .auth-field-type {
+      width: 90px;
+      flex-shrink: 0;
     }
+
+    // carrier 下拉
+    .auth-field-carrier {
+      width: 100px;
+      flex-shrink: 0;
+    }
+
+    // 值来源 / 字段映射 / 签名固定值 / 签名密钥
+    .auth-field-value {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    // 显示/隐藏密钥按钮
+    .signature-mask-btn {
+      flex-shrink: 0;
+    }
+  }
+
+  // ===== 只读态：整页禁用 =====
+  &.is-readonly {
+    .section-card {
+      background: #fcfcfd;
+    }
+  }
+
+  // ===== Tab 样式（贴近 Lark） =====
+  :global(.ant-tabs-tab) {
+    padding: 8px 0 !important;
+    font-size: 14px;
+    color: #646a73;
+
+    &.ant-tabs-tab-active .ant-tabs-tab-btn {
+      color: #3370ff !important;
+      font-weight: 600;
+    }
+  }
+
+  :global(.ant-tabs-ink-bar) {
+    background: #3370ff !important;
+  }
+
+  // ===== 主操作按钮组 =====
+  .primary-btn {
+    background-color: #3370ff;
+    border-color: #3370ff;
+
+    &:hover,
+    &:focus {
+      background-color: #2860e0;
+      border-color: #2860e0;
+    }
+  }
+
+  .danger-btn {
+    color: #f54a45;
+    border-color: #f54a45;
+
+    &:hover,
+    &:focus {
+      color: #fff;
+      background: #f54a45;
+      border-color: #f54a45;
+    }
+  }
+
+  // ===== 状态 Tag 间距 =====
+  .status-tag {
+    margin-left: 4px;
   }
 }

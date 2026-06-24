@@ -39,6 +39,18 @@ public class FlowEntity {
     @Column("lifecycle_status")
     private Integer lifecycleStatus;
 
+    /** V3: 已部署版本ID */
+    @Column("deployed_version_id")
+    private Long deployedVersionId;
+
+    /** V3: 已部署版本号 */
+    @Column("deployed_version_number")
+    private Integer deployedVersionNumber;
+
+    /** V3: 所属应用ID */
+    @Column("app_id")
+    private Long appId;
+
     @Column("create_time")
     private LocalDateTime createTime;
 
@@ -81,6 +93,15 @@ public class FlowEntity {
 
     public Integer getLifecycleStatus() { return lifecycleStatus; }
     public void setLifecycleStatus(Integer lifecycleStatus) { this.lifecycleStatus = lifecycleStatus; }
+
+    public Long getDeployedVersionId() { return deployedVersionId; }
+    public void setDeployedVersionId(Long deployedVersionId) { this.deployedVersionId = deployedVersionId; }
+
+    public Integer getDeployedVersionNumber() { return deployedVersionNumber; }
+    public void setDeployedVersionNumber(Integer deployedVersionNumber) { this.deployedVersionNumber = deployedVersionNumber; }
+
+    public Long getAppId() { return appId; }
+    public void setAppId(Long appId) { this.appId = appId; }
 
     public LocalDateTime getCreateTime() { return createTime; }
     public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }

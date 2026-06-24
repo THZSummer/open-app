@@ -14,8 +14,8 @@ import java.util.Date;
  * 连接器版本/配置实体
  * <p>
  * 对应表 openplatform_v2_cp_connector_version_t
- * MVP 单版本模型: 每 connector 仅一条记录, 编辑即生效
- * 仅声明认证类型 Schema (含 sensitive:true 标记), 不存储凭证值
+ * V3 多版本模型: 1:N connector_t，每实体最多 1000 个版本
+ * V3 新增: version_number, status, published_time, published_by
  * </p>
  */
 @Data
@@ -31,8 +31,20 @@ public class ConnectorVersion implements Serializable {
     /** 关联连接器ID (逻辑外键 → connector_t.id) */
     private Long connectorId;
 
+    /** 版本号，实体内从1递增（V3 新增） */
+    private Integer versionNumber;
+
+    /** 状态: 1=草稿, 2=已发布, 3=已失效, 4=物理删除（V3 新增） */
+    private Integer status;
+
     /** 连接配置JSON (完整 connection_config 字符串) */
     private String connectionConfig;
+
+    /** 发布时间（首次发布时刻，V3 新增） */
+    private Date publishedTime;
+
+    /** 发布人（发布操作人，V3 新增） */
+    private String publishedBy;
 
     /** 创建时间 */
     private Date createTime;

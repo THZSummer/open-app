@@ -85,6 +85,8 @@ function CategoryFormModal({
       onOk={handleOk}
       onCancel={handleCancel}
       confirmLoading={loading}
+      okText="保存"
+      cancelText="取消"
       width={600}
       destroyOnClose
     >
