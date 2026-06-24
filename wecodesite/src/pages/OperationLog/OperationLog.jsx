@@ -83,6 +83,7 @@ function OperationLog() {
       title: '操作描述',
       dataIndex: 'description',
       key: 'description',
+      render: (text) => <span className="desc-cell">{text}</span>,
     },
     {
       title: '操作IP',

@@ -30,7 +30,8 @@ const createDefaultParam = (options) => {
   const {
     mode = 'default',
     showCarrier = false,
-    carrierOptions = []
+    carrierOptions = [],
+    carrierFilter = null, // 当前 Tab 锁定的 carrier，新增参数自动落到此 carrier
   } = options;
 
   // 基于 PARAM_DEFAULTS 创建基础参数对象
@@ -42,7 +43,8 @@ const createDefaultParam = (options) => {
 
   // 如果需要显示 carrier 且有可用的 carrier 选项，设置默认 carrier 值
   if (showCarrier && carrierOptions.length > 0) {
-    baseParam.carrier = carrierOptions[0];
+    // 优先使用 carrierFilter（来源于当前 Tab），否则用 carrierOptions 第一个
+    baseParam.carrier = carrierFilter || carrierOptions[0];
   }
 
   return baseParam;
@@ -88,12 +90,16 @@ const SchemaParamItem = ({
   valueInputType = 'description',
   lockedFields = {},
   showActionButtons = true,
+  // 仅控制 carrier 下拉控件的可见性，不影响数据写入
+  hideCarrier = false,
 }) => {
   const paramIsComplex = isComplexType(param.paramType);
   const showSourceType = mode === 'reference';
   const sourceType = param.sourceType || 'static';
   const isCarrierLocked = !!parentCarrier || lockedFields.carrier;
   const effectiveCarrier = parentCarrier || param.carrier;
+  // 实际是否渲染 carrier：showCarrier 为前提，hideCarrier 用于显式隐藏
+  const renderCarrier = showCarrier && !hideCarrier;
 
   /**
    * 根据模式渲染值输入控件
@@ -207,8 +213,8 @@ const SchemaParamItem = ({
         ))}
       </Select>
 
-      {/* Carrier 选择器（仅当 showCarrier 为 true 时显示） */}
-      {showCarrier && (
+      {/* Carrier 选择器（仅当 showCarrier=true 且 hideCarrier=false 时显示） */}
+      {renderCarrier && (
         <Select
           value={effectiveCarrier}  // 使用 effectiveCarrier，优先使用父级 carrier
           onChange={(val) => onUpdate(path, { carrier: val })}
@@ -331,6 +337,8 @@ const SchemaParamItem = ({
             valueInputType={valueInputType}
             showActionButtons={showActionButtons}
             lockedFields={lockedFields}
+            // 递归透传，子层级与父层级保持一致的 carrier 可见性
+            hideCarrier={hideCarrier}
           />
         ))}
 
@@ -419,6 +427,10 @@ const SchemaEditor = ({
   value,
   lockedFields = {},
   showActionButtons = true,
+  // 当前 Tab 的 carrier 过滤值；存在时仅展示并写回该 carrier 的参数
+  carrierFilter = null,
+  // 隐藏 carrier 下拉控件（数据不受影响）
+  hideCarrier = false,
 }) => {
   const [schemaData, setSchemaData] = useState([]);
   const [internalChange, setInternalChange] = useState(false);
@@ -497,7 +509,7 @@ const SchemaEditor = ({
 
   /**
    * 处理 schema 数据变化
-   * @param {Array} newSchema - 新的 schema 数据
+   * @param {Array} newSchema - 新的 schema 数据（始终为完整 schema，含全部 carrier）
    */
   const handleSchemaChange = useCallback((newSchema) => {
     // 标记为内部状态变化，防止 useEffect 重新覆盖数据
@@ -600,37 +612,72 @@ const SchemaEditor = ({
    * 添加新参数
    */
   const handleAddParam = useCallback(() => {
-    // 创建新的默认参数对象
-    const newParam = createDefaultParam({ mode, showCarrier, carrierOptions });
+    // 创建新的默认参数对象（carrierFilter 存在时新参数 carrier = filter）
+    const newParam = createDefaultParam({ mode, showCarrier, carrierOptions, carrierFilter });
 
     // 将新参数添加到 schema 数组末尾
     const newSchema = [...schemaData, newParam];
 
-    // 触发 schema 变化处理
-    handleSchemaChange(newSchema);
-  }, [schemaData, handleSchemaChange, mode, showCarrier, carrierOptions]);
+    // 触发 schema 变化处理（handleSchemaChange 内部不会再做合并，因为完整数据已就位）
+    setInternalChange(true);
+    setSchemaData(newSchema);
+    if (onChange) onChange(newSchema);
+    if (form && form.setFieldValue) {
+      const currentConfig = form.getFieldValue('apiConfig') || {};
+      form.setFieldValue('apiConfig', { ...currentConfig, [schemaType]: newSchema });
+    }
+    setInternalChange(false);
+  }, [schemaData, mode, showCarrier, carrierOptions, carrierFilter, form, schemaType, onChange]);
+
+  // 计算当前展示的参数集合：启用 carrierFilter 时只展示该 carrier 的顶层项
+  // 同时建立"展示 index -> 真实 index"映射，确保 path 能正确回写
+  const visibleIndexMap = [];
+  const visibleSchema = [];
+  (schemaData || []).forEach((item, idx) => {
+    if (!carrierFilter || item.carrier === carrierFilter) {
+      visibleSchema.push(item);
+      visibleIndexMap.push(idx);
+    }
+  });
+
+  /**
+   * 将"展示 path"转换为"真实 path"
+   * 仅顶层 index 需要映射，子层级 index 在 children 中保持一致
+   * @param {Array} displayPath 来自渲染组件的 path
+   */
+  const resolveRealPath = (displayPath) => {
+    if (!carrierFilter) return displayPath;
+    if (!displayPath || displayPath.length === 0) return displayPath;
+    const [first, ...rest] = displayPath;
+    const realFirst = visibleIndexMap[first];
+    if (realFirst === undefined) return displayPath;
+    return [realFirst, ...rest];
+  };
 
   return (
     <div className="schema-editor">
-      {/* 遍历渲染所有顶层参数 */}
-      {schemaData.map((param, index) => (
+      {/* 遍历渲染当前可见参数（按 carrierFilter 过滤） */}
+      {visibleSchema.map((param, index) => (
         <SchemaParamItem
-          key={index}
+          key={visibleIndexMap[index]}
           param={param}
           index={index}
-          path={[index]}  // 顶层参数路径为 [index]
-          onUpdate={handleUpdateByPath}  // 更新参数的处理函数
-          onDelete={handleDeleteByPath}  // 删除参数的处理函数
+          path={[index]}  // 顶层参数 path 使用展示 index，回调时再映射到真实 index
+          onUpdate={(displayPath, updates) => handleUpdateByPath(resolveRealPath(displayPath), updates)}
+          onDelete={(displayPath) => handleDeleteByPath(resolveRealPath(displayPath))}
           editable={editable}
           depth={0}  // 顶层参数深度为 0
           mode={mode}
           upstreamParams={upstreamParams}
           showCarrier={showCarrier}
           carrierOptions={carrierOptions}
+          // 启用 carrierFilter 时，顶层 carrier 被锁定为当前 Tab 的 carrier
+          parentCarrier={carrierFilter || null}
           typeOptions={typeOptions}
           valueInputType={valueInputType}
           lockedFields={lockedFields}
           showActionButtons={showActionButtons}
+          hideCarrier={hideCarrier}
         />
       ))}
 

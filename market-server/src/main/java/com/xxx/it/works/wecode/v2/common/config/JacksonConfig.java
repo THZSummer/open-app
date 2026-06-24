@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -43,12 +42,6 @@ public class JacksonConfig {
         customModule.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer());
         customModule.addSerializer(LocalDate.class, new LocalDateSerializer());
         objectMapper.registerModule(customModule);
-
-        // Long 类型序列化为 String
-        SimpleModule longModule = new SimpleModule();
-        longModule.addSerializer(Long.class, ToStringSerializer.instance);
-        longModule.addSerializer(Long.TYPE, ToStringSerializer.instance);
-        objectMapper.registerModule(longModule);
 
         return objectMapper;
     }

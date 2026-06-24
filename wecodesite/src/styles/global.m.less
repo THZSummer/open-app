@@ -57,3 +57,80 @@ input, textarea, select {
   font-size: 14px;
   outline: none;
 }
+
+/* TextArea showCount 字数统计：绝对定位到右下角，与边框保持间距 */
+.ant-input-textarea-show-count {
+  position: relative;
+
+  textarea.ant-input {
+    padding-bottom: 28px !important;
+  }
+
+  &::after {
+    position: absolute !important;
+    right: 12px !important;
+    bottom: 8px !important;
+    color: #8f959e !important;
+    font-size: 12px !important;
+    line-height: 16px !important;
+    white-space: nowrap !important;
+    pointer-events: none !important;
+  }
+}
+
+/* Input 单行 showCount */
+.ant-input-show-count-suffix {
+  color: #8f959e !important;
+  font-size: 12px !important;
+}
+
+/* ==================== 全局圆角样式 ==================== */
+
+/* Ant Design Input 单行输入框 */
+:global(.ant-input) {
+  border-radius: 12px !important;
+}
+
+/* Ant Design Input 密码框 */
+:global(.ant-input-password) {
+  border-radius: 12px !important;
+}
+
+/* Ant Design Input Affix Wrapper (带前后缀) */
+:global(.ant-input-affix-wrapper) {
+  border-radius: 12px !important;
+}
+
+/* Ant Design TextArea 多行输入框 */
+:global(.ant-input-textarea) textarea {
+  border-radius: 12px !important;
+}
+
+/* Ant Design Select 选择器 */
+:global(.ant-select) {
+  border-radius: 12px !important;
+}
+
+:global(.ant-select .ant-select-selector) {
+  border-radius: 12px !important;
+}
+
+/* Ant Design Select 多选模式标签 */
+:global(.ant-select-multiple .ant-select-selector) {
+  border-radius: 12px !important;
+}
+
+/* Ant Design DatePicker 日期选择器 */
+:global(.ant-picker) {
+  border-radius: 12px !important;
+}
+
+/* Ant Design InputNumber 数字输入框 */
+:global(.ant-input-number) {
+  border-radius: 12px !important;
+}
+
+/* Ant Design Cascader 级联选择 */
+:global(.ant-cascader .ant-select-selector) {
+  border-radius: 12px !important;
+}

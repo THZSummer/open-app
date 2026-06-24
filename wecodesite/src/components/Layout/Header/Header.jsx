@@ -1,87 +1,114 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Layout, Dropdown } from 'antd';
-import { LoginOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
+import { Dropdown } from 'antd';
+import { LogoutOutlined, DownOutlined, ApiOutlined } from '@ant-design/icons';
 import LoginModal from './LoginModal';
 import { getUserIdCookie, isLoggedIn, removeUserIdCookie } from '../../../utils/cookie';
+import { get } from '../../../utils/request';
 
-const { Header: AntHeader } = Layout;
+import './Header.m.less';
 
 function Header() {
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    setLoggedIn(isLoggedIn());
-    setUserId(getUserIdCookie() || '');
+    const loggedInStatus = isLoggedIn();
+    setLoggedIn(loggedInStatus);
+    const id = getUserIdCookie() || '';
+    setUserId(id);
+
+    // 已登录时拉取用户姓名
+    if (loggedInStatus && id) {
+      get('/user-info')
+        .then((res) => {
+          if (res?.code === '200' && res?.data?.userName) {
+            setUserName(res.data.userName);
+          }
+        })
+        .catch(() => {
+          // 接口失败不影响页面
+        });
+    }
   }, []);
 
   const handleLoginSuccess = (id) => {
     setLoggedIn(true);
     setUserId(id);
+    // 登录成功后拉取姓名
+    get('/user-info')
+      .then((res) => {
+        if (res?.code === '200' && res?.data?.userName) {
+          setUserName(res.data.userName);
+        }
+      })
+      .catch(() => {});
   };
 
   const handleLogout = () => {
     removeUserIdCookie();
     setLoggedIn(false);
     setUserId('');
+    setUserName('');
+    navigate('/');
+  };
+
+  const handleApiManagementClick = () => {
+    navigate('/api-management');
   };
 
   const menuItems = loggedIn
     ? [
-        { key: 'user_id', label: `用户ID: ${userId}`, disabled: true },
+        { key: 'apiManagement', label: 'API管理', icon: <ApiOutlined />, onClick: handleApiManagementClick },
         { type: 'divider' },
         { key: 'logout', label: '退出登录', icon: <LogoutOutlined />, onClick: handleLogout }
       ]
     : [
-        { key: 'login', label: '登录', icon: <LoginOutlined />, onClick: () => setLoginModalOpen(true) }
+        { key: 'login', label: '登录', onClick: () => setLoginModalOpen(true) }
       ];
 
+  // 显示名称：优先 userName，否则 userId，最后 "请登录"
+  const displayName = loggedIn
+    ? (userName || userId || '用户')
+    : '请登录';
+
   return (
-    <AntHeader style={{ 
-      background: '#fff', 
-      padding: '0 24px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderBottom: '1px solid #f0f0f0'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{
-            width: 32,
-            height: 32,
-            borderRadius: 6,
-            background: '#0066ff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <header className="header">
+      <div className="header-left">
+        <Link to="/" className="header-logo">
+          <div className="logo-icon-box">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
               <path d="M4 8L8 4L12 8L8 12L4 8Z" fill="white"/>
             </svg>
           </div>
-          <strong style={{ fontSize: 16, color: '#1f1f1f' }}>开放平台</strong>
+          <strong className="logo-text">开放平台</strong>
         </Link>
-        <a 
+        <a
           href="https://open.feishu.cn/"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: '#5e5e5e' }}
+          className="header-doc-link"
         >
           开发文档
         </a>
       </div>
-      <Dropdown menu={{ items: menuItems }} trigger={['hover', 'click']}>
-        <span style={{ color: '#8c8c8c', cursor: 'pointer' }}>开发者</span>
-      </Dropdown>
-      <LoginModal 
-        open={loginModalOpen} 
-        onClose={() => setLoginModalOpen(false)} 
-        onLoginSuccess={handleLoginSuccess} 
+      <div className="header-right">
+        <Dropdown menu={{ items: menuItems }} trigger={['hover', 'click']}>
+          <span className="header-user-trigger">
+            {displayName}
+            {loggedIn && <DownOutlined className="header-user-arrow" />}
+          </span>
+        </Dropdown>
+      </div>
+      <LoginModal
+        open={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
       />
-    </AntHeader>
+    </header>
   );
 }
 
