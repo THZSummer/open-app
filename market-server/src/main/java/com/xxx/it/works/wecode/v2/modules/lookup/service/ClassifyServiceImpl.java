@@ -224,7 +224,7 @@ public class ClassifyServiceImpl implements ClassifyService {
      */
     private ClassifyListVO convertToListVO(ClassifyEntity entity) {
         ClassifyListVO vo = new ClassifyListVO();
-        vo.setClassifyId(entity.getClassifyId());
+        vo.setClassifyId(String.valueOf(entity.getClassifyId()));
         vo.setClassifyCode(entity.getClassifyCode());
         vo.setClassifyName(entity.getClassifyName());
         vo.setPath(entity.getPath());
@@ -244,7 +244,7 @@ public class ClassifyServiceImpl implements ClassifyService {
      */
     private ClassifyVO convertToVO(ClassifyEntity entity) {
         ClassifyVO vo = new ClassifyVO();
-        vo.setClassifyId(entity.getClassifyId());
+        vo.setClassifyId(String.valueOf(entity.getClassifyId()));
         vo.setClassifyCode(entity.getClassifyCode());
         vo.setClassifyName(entity.getClassifyName());
         vo.setPath(entity.getPath());

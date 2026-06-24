@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>应用详情 - 效果图 v2.0（标签流式布局）</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 13px; color: #333; background: #f0f2f5;
+  }
+  :root {
+    --primary: #2b5ff5; --primary-hover: #4b7aff;
+    --success: #00b578; --danger: #f54a45;
+    --warning: #ff9f00;
+    --text-primary: #333; --text-secondary: #666; --text-hint: #999;
+    --border: #e8e8e8; --radius: 6px;
+  }
+
+  /* ===== Page ===== */
+  .page-wrapper {
+    max-width: 800px; margin: 32px auto;
+  }
+  .page-title {
+    font-size: 20px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 20px; padding: 0 4px;
+  }
+
+  /* ===== Collapsible Panel ===== */
+  .panel {
+    background: #fff; border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    margin-bottom: 12px; overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; cursor: pointer; user-select: none;
+    transition: background 0.15s;
+  }
+  .panel-header:hover { background: #fafbfc; }
+  .panel-header-left {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel-arrow {
+    font-size: 10px; color: var(--text-hint);
+    transition: transform 0.25s ease;
+    width: 16px; text-align: center;
+  }
+  .panel-arrow.expanded { transform: rotate(90deg); }
+  .panel-title {
+    font-size: 15px; font-weight: 600; color: var(--text-primary);
+  }
+  .panel-badge {
+    font-size: 12px; color: var(--text-hint);
+    background: #f5f5f5; padding: 2px 8px; border-radius: 10px;
+  }
+  .panel-body {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+  }
+  .panel-body.expanded {
+    max-height: 2000px;
+  }
+  .panel-body-inner {
+    padding: 0 20px 20px;
+  }
+
+  /* ===== Basic Info ===== */
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px 32px;
+  }
+  .info-item { display: flex; flex-direction: column; gap: 4px; }
+  .info-label { font-size: 12px; color: var(--text-hint); }
+  .info-value { font-size: 13px; color: var(--text-primary); font-weight: 500; }
+
+  /* ===== Ability Tags ===== */
+  .ability-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ability-tag {
+    padding: 4px 12px; background: #f0f5ff; color: var(--primary);
+    border-radius: 4px; font-size: 12px; font-weight: 500;
+    border: 1px solid #d6e4ff;
+  }
+
+  /* ===== Chatbot Account Tags (flex-wrap) ===== */
+  .account-tags {
+    display: flex; flex-wrap: wrap; gap: 1em; align-items: flex-start;
+  }
+  .account-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px 6px 12px;
+    background: #f0f5ff; color: var(--primary);
+    border: 1px solid #d6e4ff; border-radius: 4px;
+    font-size: 13px; font-weight: 500;
+    font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    max-width: 100%; word-break: break-all;
+  }
+  .account-tag-delete {
+    width: 18px; height: 18px; border: none; background: none;
+    cursor: pointer; font-size: 12px; color: var(--primary);
+    border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; transition: all 0.15s; flex-shrink: 0;
+    opacity: 0.6;
+  }
+  .account-tag-delete:hover {
+    opacity: 1; color: var(--danger); background: #fff1f0;
+  }
+  /* Add button as a tag (dashed border) */
+  .account-tag-add {
+    border: 1px dashed var(--border);
+    background: #fff; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.2s;
+    font-family: inherit;
+  }
+  .account-tag-add:hover {
+    border-color: var(--primary); color: var(--primary);
+  }
+  /* Inline input as a tag */
+  .add-inline-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px;
+    border: 1px solid var(--primary); border-radius: 4px;
+    background: #f8faff;
+  }
+
+  /* ===== Add Account ===== */
+  .add-section {
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px dashed #e8e8e8;
+  }
+  .add-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border: 1px dashed var(--border);
+    border-radius: var(--radius); background: none;
+    color: var(--text-secondary); font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .add-btn:hover {
+    border-color: var(--primary); color: var(--primary);
+  }
+  .add-btn .plus {
+    font-size: 16px; font-weight: 300; line-height: 1;
+  }
+
+  /* ===== Inline Input ===== */
+  .add-inline {
+    display: none; align-items: center; gap: 8px;
+  }
+  .add-inline.active { display: flex; }
+  .add-inline-input {
+    flex: 1; max-width: 320px; height: 34px;
+    padding: 0 12px; font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+    border: 1px solid var(--primary); border-radius: var(--radius);
+    outline: none; background: #f8faff;
+    box-shadow: 0 0 0 2px rgba(43,95,245,0.1);
+  }
+  .add-inline-input::placeholder { color: #bbb; }
+  .add-inline-input.error {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 2px rgba(245,74,69,0.1);
+  }
+  .add-inline-hint {
+    font-size: 12px; color: var(--text-hint);
+    white-space: nowrap;
+  }
+  .add-inline-hint.error-text { color: var(--danger); }
+
+  /* ===== Empty ===== */
+  .empty-hint {
+    text-align: center; padding: 24px; color: var(--text-hint);
+    font-size: 13px;
+  }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #fff; border-radius: 8px; width: 400px; max-width: 90vw;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.15);
+  }
+  .modal-header {
+    padding: 16px 20px 12px; font-size: 15px; font-weight: 600;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .modal-close {
+    width: 28px; height: 28px; cursor: pointer; font-size: 18px;
+    color: var(--text-hint); display: flex; align-items: center;
+    justify-content: center; border: none; background: none; border-radius: 4px;
+  }
+  .modal-close:hover { background: #f5f5f5; color: var(--text-primary); }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 12px 20px 16px; display: flex; justify-content: flex-end; gap: 8px; }
+
+  .confirm-icon {
+    width: 22px; height: 22px; border-radius: 50%; color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; margin-right: 8px; flex-shrink: 0;
+  }
+  .confirm-icon.err { background: var(--danger); }
+  .confirm-icon.warn { background: var(--warning); }
+  .confirm-title { display: flex; align-items: center; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .confirm-content { font-size: 13px; color: var(--text-secondary); padding-left: 30px; }
+  .confirm-content strong { color: var(--text-primary); }
+
+  /* ===== Buttons ===== */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 32px; padding: 0 14px; font-size: 13px; border-radius: var(--radius);
+    cursor: pointer; border: 1px solid var(--border); background: #fff;
+    color: var(--text-primary); transition: all 0.2s;
+  }
+  .btn:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+  .btn-danger-solid { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .btn-danger-solid:hover { background: #d93a36; border-color: #d93a36; color: #fff; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+    background: #fff; border-radius: 6px; padding: 10px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15); z-index: 2000;
+    font-size: 13px; display: flex; align-items: center; gap: 8px;
+    border-left: 3px solid var(--success); opacity: 1; transition: opacity 0.3s;
+  }
+  .toast.error { border-left-color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+  <div class="page-title">应用详情 — 订单管理应用</div>
+
+  <!-- ===== Panel 1: 基本信息 ===== -->
+  <div class="panel">
+    <div class="panel-header" onclick="togglePanel('basic')">
+      <div class="panel-header-left">
+        <span class="panel-arrow expanded" id="arrow-basic">&#9654;</span>
+        <span class="panel-title">基本信息</span>
+      </div>
+    </div>
+    <div class="panel-body expanded" id="body-basic">
+      <div class="panel-body-inner">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">应用 ID</span>
+            <span class="info-value">app_order_mgmt_001</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">应用类型</span>
+            <span class="info-value">业务应用</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">应用名称（中文）</span>
+            <span class="info-value">订单管理应用</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">应用名称（英文）</span>
+            <span class="info-value">Order Management App</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">状态</span>
+            <span class="info-value" style="color: var(--success);">有效</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">创建时间</span>
+            <span class="info-value">2026-05-20 09:30:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Panel 2: 应用能力 ===== -->
+  <div class="panel">
+    <div class="panel-header" onclick="togglePanel('ability')">
+      <div class="panel-header-left">
+        <span class="panel-arrow" id="arrow-ability">&#9654;</span>
+        <span class="panel-title">应用能力</span>
+        <span class="panel-badge">4 项</span>
+      </div>
+    </div>
+    <div class="panel-body" id="body-ability">
+      <div class="panel-body-inner">
+        <div class="ability-tags">
+          <span class="ability-tag">订单查询</span>
+          <span class="ability-tag">订单创建</span>
+          <span class="ability-tag">订单取消</span>
+          <span class="ability-tag">支付结果回调</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Panel 3: 单聊机器人账号 ===== -->
+  <div class="panel">
+    <div class="panel-header" onclick="togglePanel('chatbot')">
+      <div class="panel-header-left">
+        <span class="panel-arrow expanded" id="arrow-chatbot">&#9654;</span>
+        <span class="panel-title">单聊机器人账号</span>
+        <span class="panel-badge" id="chatbotBadge">3 个</span>
+      </div>
+    </div>
+    <div class="panel-body expanded" id="body-chatbot">
+      <div class="panel-body-inner">
+
+        <!-- Account Tags + Add Button (flex-wrap layout) -->
+        <div class="account-tags" id="tagsContainer">
+          <div id="accountList">
+            <span class="account-tag">p_order_bot_001<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm('p_order_bot_001')">&#10005;</button></span>
+            <span class="account-tag">p_order_notify_bot<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm('p_order_notify_bot')">&#10005;</button></span>
+            <span class="account-tag">p_cs_assistant<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm('p_cs_assistant')">&#10005;</button></span>
+          </div>
+
+          <!-- Add Button (inline as a tag, wraps to next line if needed) -->
+          <button class="account-tag account-tag-add" id="addBtn" onclick="showAddInput()">
+            <span style="font-size:14px;font-weight:300;">&#65291;</span> 添加账号
+          </button>
+
+          <!-- Inline Input (shown when add is clicked, also inline) -->
+          <div class="add-inline-tag" id="addInline" style="display:none;">
+            <input
+              class="add-inline-input"
+              id="addInput"
+              type="text"
+              placeholder="输入机器人账号"
+              autocomplete="off"
+            />
+            <span class="add-inline-hint" id="addHint">输入机器人账号 ID</span>
+          </div>
+        </div>
+
+        <!-- Empty (hidden by default) -->
+        <div class="empty-hint" id="emptyHint" style="display:none;">
+          暂无绑定的机器人账号
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== Delete Confirm Modal ===== -->
+<div class="modal-overlay hidden" id="deleteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>提示</span>
+      <button class="modal-close" onclick="closeModal('deleteModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-title">
+        <span class="confirm-icon err">!</span>
+        <span>确认删除该机器人账号吗？</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('deleteModal')">取消</button>
+      <button class="btn btn-danger-solid" onclick="doDelete()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Error Modal ===== -->
+<div class="modal-overlay hidden" id="errorModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span>提示</span>
+      <button class="modal-close" onclick="closeModal('errorModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="confirm-title">
+        <span class="confirm-icon warn">!</span>
+        <span id="errorTitle">操作失败</span>
+      </div>
+      <div class="confirm-content" id="errorMessage"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeModal('errorModal')">知道了</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== Mock Data =====
+  var mockAccounts = ['p_order_bot_001', 'p_order_notify_bot', 'p_cs_assistant'];
+  var deleteTarget = null;
+  var addMode = false;
+
+  // ===== Panel Toggle =====
+  function togglePanel(name) {
+    var body = document.getElementById('body-' + name);
+    var arrow = document.getElementById('arrow-' + name);
+    var isExpanded = body.classList.contains('expanded');
+    body.classList.toggle('expanded');
+    arrow.classList.toggle('expanded');
+  }
+
+  // ===== Render =====
+  function renderAccounts() {
+    var list = document.getElementById('accountList');
+    var empty = document.getElementById('emptyHint');
+    var badge = document.getElementById('chatbotBadge');
+
+    badge.textContent = mockAccounts.length + ' 个';
+
+    if (mockAccounts.length === 0) {
+      list.style.display = 'none';
+      empty.style.display = '';
+    } else {
+      list.style.display = '';
+      empty.style.display = 'none';
+      list.innerHTML = mockAccounts.map(function(id) {
+        return '<span class="account-tag">' + escapeHtml(id) +
+          '<button class="account-tag-delete" title="删除" onclick="showDeleteConfirm(\'' + escapeHtml(id) + '\')">&#10005;</button></span>';
+      }).join('');
+    }
+  }
+
+  function escapeHtml(str) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(str));
+    return d.innerHTML;
+  }
+
+  // ===== Delete =====
+  function showDeleteConfirm(accountId) {
+    deleteTarget = accountId;
+    document.getElementById('deleteModal').classList.remove('hidden');
+  }
+
+  function doDelete() {
+    if (!deleteTarget) return;
+    var target = deleteTarget;
+    mockAccounts = mockAccounts.filter(function(a) { return a !== target; });
+    deleteTarget = null;
+    closeModal('deleteModal');
+    renderAccounts();
+    showToast('已解绑：' + target);
+  }
+
+  // ===== Add =====
+  function showAddInput() {
+    addMode = true;
+    document.getElementById('addBtn').style.display = 'none';
+    var inline = document.getElementById('addInline');
+    inline.style.display = 'inline-flex';
+    var input = document.getElementById('addInput');
+    input.value = '';
+    input.classList.remove('error');
+    document.getElementById('addHint').textContent = '输入机器人账号 ID';
+    document.getElementById('addHint').classList.remove('error-text');
+    setTimeout(function() { input.focus(); }, 50);
+  }
+
+  function hideAddInput() {
+    addMode = false;
+    document.getElementById('addBtn').style.display = '';
+    document.getElementById('addInline').style.display = 'none';
+  }
+
+  function submitAdd() {
+    var input = document.getElementById('addInput');
+    var hint = document.getElementById('addHint');
+    var val = input.value.trim();
+
+    if (!val) {
+      // Empty input — just close (click outside or no value)
+      hideAddInput();
+      return;
+    }
+
+    // Check duplicate
+    if (mockAccounts.indexOf(val) !== -1) {
+      showError('绑定失败', '该账号 <strong>' + escapeHtml(val) + '</strong> 已绑定到当前应用（错误码 40004）。');
+      hideAddInput();
+      return;
+    }
+
+    // Simulate bind success (real call goes to backend, which validates via contact API)
+    mockAccounts.push(val);
+    hideAddInput();
+    renderAccounts();
+    showToast('绑定成功：' + val);
+  }
+
+  // Click outside input → submit
+  document.addEventListener('click', function(e) {
+    if (!addMode) return;
+    var input = document.getElementById('addInput');
+    var addInline = document.getElementById('addInline');
+    var addBtn = document.getElementById('addBtn');
+    // If click is outside the input and the add button, trigger save
+    if (!addInline.contains(e.target) && !addBtn.contains(e.target)) {
+      submitAdd();
+    }
+  });
+
+  // Enter key in input → submit
+  document.getElementById('addInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitAdd();
+    }
+  });
+
+  // ===== Modal Utils =====
+  function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+  document.querySelectorAll('.modal-overlay').forEach(function(o) {
+    o.addEventListener('click', function(e) { if (e.target === this) this.classList.add('hidden'); });
+  });
+
+  function showError(title, msg) {
+    document.getElementById('errorTitle').textContent = title;
+    document.getElementById('errorMessage').innerHTML = msg;
+    document.getElementById('errorModal').classList.remove('hidden');
+  }
+
+  // ===== Toast =====
+  function showToast(msg, type) {
+    var toast = document.createElement('div');
+    toast.className = 'toast' + (type === 'error' ? ' error' : '');
+    var icon = type === 'error' ? '&#10007;' : '&#10003;';
+    var color = type === 'error' ? 'var(--danger)' : 'var(--success)';
+    toast.innerHTML = '<span style="color:'+color+';font-weight:600;">' + icon + '</span> ' + msg;
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.style.opacity = '0'; }, 1500);
+    setTimeout(function() { toast.remove(); }, 2000);
+  }
+</script>
+
+</body>
+</html>

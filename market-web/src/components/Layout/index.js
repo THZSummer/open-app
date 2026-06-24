@@ -6,6 +6,7 @@ import {
   AppstoreOutlined,
   BookOutlined,
   FileTextOutlined,
+  AuditOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import useGlobalStore from '@/stores/global.store';
@@ -31,6 +32,11 @@ const menuItems = [
     key: '/dictionary',
     icon: <FileTextOutlined />,
     label: '数据字典',
+  },
+  {
+    key: '/approval',
+    icon: <AuditOutlined />,
+    label: '审批管理',
   },
 ];
 

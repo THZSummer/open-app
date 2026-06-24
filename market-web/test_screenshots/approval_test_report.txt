@@ -1,0 +1,41 @@
+审批管理前端测试报告
+==================================================
+- [PASS] F-04a: 导航到 /approval (URL: http://localhost:13000/market-web/approval)
+- [PASS] F-04b: 审批管理菜单项高亮
+- [PASS] F-01a: 默认 Tab = "待审批应用" (实际: "待审批应用")
+- [PASS] F-01b: 待审批列表 3 条数据 (实际: 3)
+- [PASS] F-01c: 待审批表头完整 (应用名称, 应用能力, 版本号, 应用ID, 申请账号, 申请时间, 操作)
+- [PASS] F-03a: 待审批操作按钮: 查看/同意/拒绝 (实际: 查看/同意/拒绝)
+- [PASS] F-02a: 已上架 Tab 激活 (实际: "已上架应用")
+- [PASS] F-02b: 已上架列表 2 条数据 (实际: 2)
+- [PASS] F-02c: 已上架仅显示查看 (实际: 查看)
+- [PASS] F-02d: 切换后调用了 publish API
+- [PASS] F-13: 所有行仅含查看 ([["查看"],["查看"]])
+- [PASS] F-03b: 切换回待审批 (实际: "待审批应用")
+- [PASS] F-03c: 切换回后重新显示 查看/同意/拒绝
+- [PASS] F-05a: 中文显示 appNameCn (实际: "订单管理应用")
+- [PASS] F-05b: 英文显示 appNameEn (实际: "Order Management App")
+- [PASS] F-14: 待审批时间列标题 = "申请时间" (实际: "申请时间")
+- [PASS] F-15: 已上架时间列标题 = "创建时间" (实际: "创建时间")
+- [PASS] F-06-pre: 成功点击查看按钮
+- [PASS] F-06: window.open('/app-detail/app_third_party_001', '_blank') (实际: {"url":"/app-detail/app_third_party_001","target":"_blank"})
+- [PASS] F-07-pre: 成功点击已上架查看按钮
+- [PASS] F-07: window.open('/app-detail/app_pub_001', '_blank') (实际: {"url":"/app-detail/app_pub_001","target":"_blank"})
+- [PASS] F-09a: Modal.confirm 弹出
+- [PASS] F-09b: Modal 展示应用信息 (内容: "应用：订单管理应用，版本：v2.1.0，申请账号：u001...")
+- [PASS] F-09c: 取消后无 API 调用
+- [PASS] F-08a: 调用 process API (action=0)
+- [PASS] F-08b: ID 正确传递 (id=1)
+- [PASS] F-08c: 显示 "审批通过" 提示
+- [PASS] F-08d: 列表刷新（重新调用 pending API）
+- [PASS] F-10a: 拒绝 Modal.confirm 弹出
+- [PASS] F-10b: 拒绝 Modal 展示应用信息 (内容: "应用：库存同步工具，版本：v1.0.0，申请账号：u002...")
+- [PASS] F-10c: 拒绝按钮为 danger 样式 (ant-btn-dangerous)
+- [PASS] F-12: 拒绝取消后无 API 调用
+- [PASS] F-11-pre: 成功点击拒绝按钮
+- [PASS] F-11-modal: 拒绝 Modal 再次弹出
+- [PASS] F-11a: 调用 process API (action=1)
+- [PASS] F-11b: 拒绝 ID 正确传递 (id=2)
+- [PASS] F-11c: 显示 "已拒绝" 提示
+
+通过: 37 / 失败: 0

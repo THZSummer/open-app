@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.approval.mapper.AbilityMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.AbilityEntity">
+        <id column="id" property="id"/>
+        <result column="ability_name_cn" property="abilityNameCn"/>
+        <result column="ability_name_en" property="abilityNameEn"/>
+        <result column="ability_desc_cn" property="abilityDescCn"/>
+        <result column="ability_desc_en" property="abilityDescEn"/>
+        <result column="ability_type" property="abilityType"/>
+        <result column="order_num" property="orderNum"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, ability_name_cn, ability_name_en, ability_desc_cn, ability_desc_en,
+        ability_type, order_num, status, create_by, create_time, last_update_by, last_update_time
+    </sql>
+
+    <!-- ==================== selectByIds ==================== -->
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM openplatform_ability_t
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+</mapper>

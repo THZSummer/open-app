@@ -1,0 +1,225 @@
+// ============================================
+// 审批管理页面样式
+// ============================================
+
+// 布局容器
+.container {
+  padding: 12px 20px;
+  background: #f2f3f5;
+}
+
+// 页面卡片
+.page {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e5e6eb;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+// 页面头部
+.pageHead {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e6eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.pageHeadLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pageHeadTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1d2129;
+}
+
+// Tab 内容区域
+.tabContent {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+}
+
+// 语言切换
+.langSwitch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #86909c;
+
+  span {
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    transition: all 0.15s;
+
+    &:hover {
+      color: #2b5ff5;
+      background: #eef2ff;
+    }
+  }
+}
+
+.langActive {
+  color: #2b5ff5;
+  font-weight: 500;
+  background: #eef2ff;
+}
+
+// 分页容器
+.paginationWrapper {
+  margin-top: 16px;
+  text-align: right;
+}
+
+// 操作按钮组
+.actionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+// 蓝色链接按钮
+.actionButton {
+  color: #2b5ff5;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #eef2ff;
+  }
+}
+
+// 绿色链接按钮（同意）
+.actionButtonSuccess {
+  color: #00b578;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: rgba(0, 181, 120, 0.08);
+  }
+}
+
+// 红色链接按钮（拒绝）
+.actionButtonDanger {
+  color: #f54a45;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #fff2f0;
+  }
+}
+
+// 弹窗样式覆盖
+:global {
+  .ant-modal-content {
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .ant-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e6eb;
+  }
+
+  .ant-modal-body {
+    padding: 20px;
+  }
+
+  .ant-modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #e5e6eb;
+  }
+
+  .ant-tabs-nav {
+    margin-bottom: 0;
+    padding: 0 20px;
+  }
+
+  .ant-tabs-tab {
+    font-size: 14px;
+    padding: 12px 0;
+  }
+
+  .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: #2b5ff5;
+    font-weight: 500;
+  }
+
+  .ant-tabs-ink-bar {
+    background: #2b5ff5;
+  }
+
+  .ant-table-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ant-table {
+    flex: 1;
+    font-size: 13px;
+  }
+
+  .ant-table-thead > tr > th {
+    background: #fafafa;
+    font-weight: 500;
+    color: #4e5969;
+    font-size: 13px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e6eb;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 14px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid #f2f3f5;
+  }
+
+  .ant-table-tbody > tr:hover > td {
+    background: #f8f9fb;
+  }
+
+  .ant-pagination {
+    display: flex;
+    align-items: center;
+  }
+
+  .ant-pagination-item {
+    border-radius: 6px;
+    border-color: #e5e6eb;
+
+    &:hover {
+      border-color: #2b5ff5;
+    }
+
+    &.ant-pagination-item-active {
+      background: #2b5ff5;
+      border-color: #2b5ff5;
+
+      a {
+        color: #fff;
+      }
+    }
+  }
+}
