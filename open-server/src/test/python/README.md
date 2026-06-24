@@ -51,6 +51,14 @@
 | `test_flow_version_recover.py` | #35 | PUT /flows/{id}/versions/{vid}/recover |
 | `test_flow_version_delete.py` | #36 | DELETE /flows/{id}/versions/{vid} |
 | `test_flow_version_debug.py` | #51 | POST /flows/{id}/versions/{vid}/debug |
+| **运行记录** | | |
+| `test_execution_records.py` | #49~#50 | GET /flows/{id}/executions + 详情 |
+| **审批记录** | | |
+| `test_approval_records.py` | #39~#44 | 审批记录列表/详情/批量操作 |
+| **审批流模板** | | |
+| `test_approval_flow_template.py` | #45~#48 | 审批流模板 CRUD |
+| **数据处理** | | |
+| `test_data_processor_functions.py` | #52 | GET /data-processor/functions |
 | **端到端** | | |
 | `test_flow_deploy_invoke.py` | – | 部署→启动→调用 全链路 |
 | `test_flow_stop_restart.py` | – | 停止→重启 全链路 |
@@ -64,11 +72,11 @@
 每个用例标注优先级，默认只跑最关键的 L0：
 
 ```
-        L0 (4)    ← 冒烟：列表能通
-       L1 (35)    ← 核心 CRUD：增删改查
-      L2 (32)     ← 生命周期：发布/失效/恢复
-     L3 (13)      ← 端到端：部署→启动→调试
-    L4 (17)       ← 边界反向：缺参数/超长/404
+        L0 (6)    ← 冒烟：列表能通
+       L1 (54)    ← 核心 CRUD：增删改查
+       L2 (32)     ← 生命周期：发布/失效/恢复
+      L3 (13)      ← 端到端：部署→启动→调试
+     L4 (23)       ← 边界反向：缺参数/超长/404
 ```
 
 | 级别 | 含义 | CI 触发 | 预期耗时 |
@@ -111,7 +119,7 @@ TEST_APP_ID = "202606241730488926"
 ```bash
 cd open-server/src/test/python
 
-# 默认 L0 冒烟（4 个用例，秒级反馈）
+# 默认 L0 冒烟（6 个用例，秒级反馈）
 pytest
 
 # 指定层级
@@ -173,6 +181,10 @@ python/
 ├── test_flow_version_recover.py         ← #35 PUT .../recover
 ├── test_flow_version_delete.py          ← #36 DELETE /flows/{id}/versions/{vid}
 ├── test_flow_version_debug.py           ← #51 POST .../debug
+├── test_execution_records.py              ← #49~#50 运行记录列表/详情
+├── test_approval_records.py               ← #39~#44 审批记录查询/批量
+├── test_approval_flow_template.py         ← #45~#48 审批流模板 CRUD
+├── test_data_processor_functions.py       ← #52 数据处理函数列表
 ├── test_flow_deploy_invoke.py           ← 部署→启动→调用 全链路
 ├── test_flow_stop_restart.py            ← 停止→重启 全链路
 ├── test_approval.py                     ← #37~#48 审批
