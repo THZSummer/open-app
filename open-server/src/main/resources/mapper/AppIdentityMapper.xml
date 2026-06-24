@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.app.mapper.AppIdentityMapper">
+
+    <resultMap id="AppIdentityResultMap" type="com.xxx.it.works.wecode.v2.modules.app.entity.AppIdentity">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="public_key" property="publicKey"/>
+        <result column="private_key" property="privateKey"/>
+        <result column="key_version" property="keyVersion"/>
+        <result column="kit_version" property="kitVersion"/>
+        <result column="ak" property="ak"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectByAppId" resultMap="AppIdentityResultMap">
+        SELECT id,
+               app_id,
+               public_key,
+               private_key,
+               key_version,
+               kit_version,
+               ak,
+               tenant_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_identity_t
+        WHERE app_id = #{appId,jdbcType=BIGINT}
+          AND status = 1 LIMIT 1
+    </select>
+
+    <insert id="insert">
+        INSERT INTO openplatform_app_identity_t (id, app_id, public_key, private_key, key_version, kit_version,
+                                                 ak, tenant_id, status, create_by, create_time, last_update_by,
+                                                 last_update_time)
+        VALUES (#{id,jdbcType=BIGINT}, #{appId,jdbcType=BIGINT}, #{publicKey,jdbcType=VARCHAR},
+                #{privateKey,jdbcType=VARCHAR}, #{keyVersion,jdbcType=VARCHAR}, #{kitVersion,jdbcType=VARCHAR},
+                #{ak,jdbcType=VARCHAR}, #{tenantId,jdbcType=VARCHAR}, #{status,jdbcType=INTEGER},
+                #{createBy,jdbcType=VARCHAR}, NOW(3), #{lastUpdateBy,jdbcType=VARCHAR}, NOW(3))
+    </insert>
+
+    <delete id="deleteByAppId">
+        DELETE
+        FROM openplatform_app_identity_t
+        WHERE app_id = #{appId,jdbcType=BIGINT}
+    </delete>
+
+</mapper>

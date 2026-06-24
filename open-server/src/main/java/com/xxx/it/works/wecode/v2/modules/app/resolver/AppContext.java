@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.app.resolver;
 
+import com.xxx.it.works.wecode.v2.modules.app.entity.App;
 import lombok.Builder;
 import lombok.Data;
 
@@ -28,4 +29,9 @@ public class AppContext implements Serializable {
      * 外部业务ID（用于响应返回）
      */
     private String externalId;
+
+    /**
+     * 应用实体（resolveAndValidate 已查询，避免调用方重复查询）
+     */
+    private App app;
 }

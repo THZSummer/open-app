@@ -1,7 +1,7 @@
 package com.xxx.it.works.wecode.v2.common.user.strategy.impl;
 
-import com.xxx.it.works.wecode.v2.common.user.strategy.UserResolveStrategy;
 import com.xxx.it.works.wecode.v2.common.model.UserContext;
+import com.xxx.it.works.wecode.v2.common.user.strategy.UserResolveStrategy;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

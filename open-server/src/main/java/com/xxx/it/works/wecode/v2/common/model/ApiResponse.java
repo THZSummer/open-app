@@ -120,6 +120,23 @@ public class ApiResponse<T> implements Serializable {
     }
 
     /**
+     * 构建分页响应对象
+     *
+     * @param curPage  当前页码
+     * @param pageSize 每页大小
+     * @param total    总记录数
+     * @return 分页响应
+     */
+    public static PageResponse buildPage(int curPage, int pageSize, long total) {
+        return PageResponse.builder()
+                .curPage(curPage)
+                .pageSize(pageSize)
+                .total(total)
+                .totalPages((int) Math.ceil((double) total / pageSize))
+                .build();
+    }
+
+    /**
      * 错误响应
      */
     public static <T> ApiResponse<T> error(String code, String messageZh, String messageEn) {

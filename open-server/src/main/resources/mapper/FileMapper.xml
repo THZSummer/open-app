@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.common.file.mapper.FileMapper">
+
+    <resultMap id="FileResultMap" type="com.xxx.it.works.wecode.v2.common.file.entity.FileEntity">
+        <id column="id" property="id"/>
+        <result column="file_id" property="fileId"/>
+        <result column="file_name" property="fileName"/>
+        <result column="file_path" property="filePath"/>
+        <result column="url" property="url"/>
+        <result column="biz_type" property="bizType"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="content_type" property="contentType"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectByFileId" resultMap="FileResultMap">
+        SELECT id,
+               file_id,
+               file_name,
+               file_path,
+               url,
+               biz_type,
+               file_size,
+               content_type,
+               tenant_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_file_t
+        WHERE file_id = #{fileId,jdbcType=VARCHAR}
+          AND status = 1
+    </select>
+
+    <select id="selectByFileIds" resultMap="FileResultMap">
+        SELECT id, file_id, file_name, file_path, url, biz_type, file_size, content_type, tenant_id, status, create_by,
+        create_time, last_update_by, last_update_time FROM openplatform_file_t
+        WHERE status = 1 AND file_id IN
+        <foreach collection="fileIds" item="fid" open="(" separator="," close=")">
+            #{fid,jdbcType=VARCHAR}
+        </foreach>
+    </select>
+
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.common.file.entity.FileEntity">
+        INSERT INTO openplatform_file_t (id, file_id, file_name, file_path, url, biz_type,
+                                         file_size, content_type, tenant_id, status,
+                                         create_by, create_time, last_update_by, last_update_time)
+        VALUES (#{id,jdbcType=BIGINT}, #{fileId,jdbcType=VARCHAR}, #{fileName}, #{filePath}, #{url},
+                #{bizType,jdbcType=INTEGER},
+                #{fileSize}, #{contentType}, #{tenantId,jdbcType=VARCHAR}, #{status,jdbcType=INTEGER},
+                #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime})
+    </insert>
+
+</mapper>

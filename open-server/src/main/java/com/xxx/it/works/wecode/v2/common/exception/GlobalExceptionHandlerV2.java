@@ -1,16 +1,17 @@
 package com.xxx.it.works.wecode.v2.common.exception;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 
 /**
@@ -43,7 +44,7 @@ public class GlobalExceptionHandlerV2 {
     }
 
     /**
-     * Handle parameter validation exception (@Valid)
+     * Handle parameter validation exception (@Valid on @RequestBody)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -56,7 +57,7 @@ public class GlobalExceptionHandlerV2 {
     }
 
     /**
-     * Handle parameter validation exception (@Validated)
+     * Handle parameter validation exception (@Validated on @RequestParam)
      */
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -69,12 +70,23 @@ public class GlobalExceptionHandlerV2 {
     }
 
     /**
+     * Handle missing required parameter (@RequestParam required=true)
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+        log.warn("Missing required parameter: {}", e.getParameterName());
+        return ApiResponse.error("400", "缺少必传参数: " + e.getParameterName(), "Missing required parameter: " + e.getParameterName());
+    }
+
+    /**
      * Handle unknown exception
      */
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleException(Exception e) {
         log.error("System exception", e);
-        return ApiResponse.error("500", "Internal server error", "Internal Server Error");
+        String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+        return ApiResponse.error("500", "Internal server error: " + detail, "Internal Server Error: " + detail);
     }
 }

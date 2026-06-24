@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty">
+        <id column="id" property="id"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="property_name" property="propertyName"/>
+        <result column="property_value" property="propertyValue"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT id,
+               parent_id,
+               property_name,
+               property_value,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_ability_p_t
+        WHERE parent_id = #{parentId,jdbcType=BIGINT}
+          AND status = 1
+    </select>
+
+    <select id="selectByParentIds" resultMap="BaseResultMap">
+        SELECT id, parent_id, property_name, property_value, status, create_by, create_time, last_update_by,
+        last_update_time FROM openplatform_ability_p_t
+        WHERE parent_id IN
+        <foreach collection="list" item="id" open="(" separator="," close=")">
+            #{id,jdbcType=BIGINT}
+        </foreach>
+        AND status = 1
+    </select>
+
+</mapper>

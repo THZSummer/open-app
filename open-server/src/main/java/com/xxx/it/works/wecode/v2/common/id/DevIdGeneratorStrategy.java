@@ -70,22 +70,22 @@ public class DevIdGeneratorStrategy implements IdGeneratorStrategy {
     /**
      * 机器 ID（默认 0）
      */
-    private long workerId = 0L;
+    private Long workerId = 0L;
 
     /**
      * 数据中心 ID（默认 0）
      */
-    private long datacenterId = 0L;
+    private Long datacenterId = 0L;
 
     /**
      * 序列号
      */
-    private long sequence = 0L;
+    private Long sequence = 0L;
 
     /**
      * 上次生成 ID 的时间戳
      */
-    private long lastTimestamp = -1L;
+    private Long lastTimestamp = -1L;
 
     @Override
     public synchronized long nextId() {

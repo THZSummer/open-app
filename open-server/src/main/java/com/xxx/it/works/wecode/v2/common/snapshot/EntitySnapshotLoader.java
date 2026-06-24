@@ -1,5 +1,9 @@
 package com.xxx.it.works.wecode.v2.common.snapshot;
 
+import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
+
+import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
+
 import java.util.List;
 
 /**
@@ -19,7 +23,7 @@ public interface EntitySnapshotLoader {
     /**
      * 返回该 Loader 支持的 operateObject 列表
      *
-     * <p>与 {@link com.xxx.it.works.wecode.v2.common.enums.OperateEnum#getOperateObject()} 对应</p>
+     * <p>与 {@link OperateEnum#getOperateObject()} 对应</p>
      *
      * @return operateObject 标识列表
      */
