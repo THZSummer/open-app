@@ -3,6 +3,11 @@
  */
 import { Tooltip } from 'antd';
 
+export const openWindow = (url, target = '_blank') => {
+  const newWindow = window.open(url, target, 'noopener,noreferrer');
+  if (newWindow) newWindow.opener = null;
+}
+
 /**
  * 始终渲染带 tooltip 的单元格内容
  * 不判断文本长度，始终显示 tooltip
