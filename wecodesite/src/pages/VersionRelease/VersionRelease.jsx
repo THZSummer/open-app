@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { Table, Tag, Button, Form, Input, message, Spin } from 'antd';
+import { Table, Tag, Button, Form, Input, message, Spin, Pagination } from 'antd';
 import { PlusOutlined, EyeOutlined, DeleteOutlined, RollbackOutlined, EditOutlined, SendOutlined, PushpinOutlined, NotificationOutlined, LinkOutlined, MessageOutlined, QrcodeOutlined, TeamOutlined, CreditCardOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import Pagination from '../../components/Pagination/Pagination';
 import { useAppDetail } from '../../contexts/AppContext';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { fetchVersionList, createVersion, fetchVersionDetail, publishVersion, withdrawVersion, deleteVersion, updateVersion } from './thunk';
 import { fetchSubscribedAbilities } from '../Capabilities/thunk';
-import { VERSION_STATUS_MAP, VERSION_STATUS, ABILITY_TYPE_MAP, FORM_VALIDATION_RULES, INIT_PAGECONFIG } from '../../utils/constants';
+import { VERSION_STATUS_MAP, VERSION_STATUS, ABILITY_TYPE_MAP, FORM_VALIDATION_RULES, INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../utils/constants';
 
 import './VersionRelease.m.less';
 
@@ -352,8 +351,12 @@ function VersionRelease() {
             <div style={{ marginTop: 16 }}>
               <div className="version-pagination">
                 <Pagination
-                  pagination={pagination}
+                  current={pagination.curPage}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
                   onChange={handlePageChange}
+                  showSizeChanger
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
                   onShowSizeChange={handleShowSizeChange}
                 />
               </div>

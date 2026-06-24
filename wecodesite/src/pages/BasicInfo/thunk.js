@@ -1,11 +1,10 @@
-import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
+import { API_CONFIG, fetchApi } from '../../configs/web.config';
 
 // ==================== 真实 API 调用 ====================
 
 export const fetchCurrentRole = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.CURRENT_ROLE, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP.CURRENT_ROLE, { params: { appId } });
     return result || {};
   } catch (err) {
     return {};
@@ -14,8 +13,7 @@ export const fetchCurrentRole = async (appId) => {
 
 export const fetchAppDetail = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.DETAIL, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP.DETAIL, { params: { appId } });
     return result || {};
   } catch (err) {
     return {};
@@ -24,9 +22,9 @@ export const fetchAppDetail = async (appId) => {
 
 export const updateApp = async (appId, data = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.UPDATE, { appId });
-    const result = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP.UPDATE, {
       method: 'PUT',
+      params: { appId },
       body: JSON.stringify(data),
     });
     return result || {};
@@ -37,8 +35,7 @@ export const updateApp = async (appId, data = {}) => {
 
 export const fetchAppIdentity = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.IDENTITY, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP.IDENTITY, { params: { appId } });
     return result || {};
   } catch (err) {
     return {};
@@ -47,8 +44,7 @@ export const fetchAppIdentity = async (appId) => {
 
 export const fetchVerifyType = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.VERIFY_TYPE_GET, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP.VERIFY_TYPE_GET, { params: { appId } });
     return result || {};
   } catch (err) {
     return {};
@@ -57,9 +53,9 @@ export const fetchVerifyType = async (appId) => {
 
 export const updateVerifyType = async (appId, data = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.VERIFY_TYPE_UPDATE, { appId });
-    const result = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP.VERIFY_TYPE_UPDATE, {
       method: 'PUT',
+      params: { appId },
       body: JSON.stringify(data),
     });
     return result || {};
@@ -79,9 +75,9 @@ export const fetchEamapList = async (params = {}) => {
 
 export const bindEamap = async (appId, data = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.BIND_EAMAP, { appId });
-    const result = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP.BIND_EAMAP, {
       method: 'POST',
+      params: { appId },
       body: JSON.stringify(data),
     });
     return result || {};

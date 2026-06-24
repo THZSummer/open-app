@@ -17,7 +17,7 @@ function CardGrid(props) {
   return (
     <div
       className={`card-grid card-grid-cols-${columns}`}
-      style={{ gap: `${gap}px` }}
+      style={{ gap: 0 }}
     >
       {items.map((item, index) => (
         <div key={item.id || index} className="card-grid-item">

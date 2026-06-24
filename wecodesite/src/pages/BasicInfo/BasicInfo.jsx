@@ -53,7 +53,6 @@ function BasicInfo() {
   // 入口校验：先查角色，再从 Context 拿 detail 加载页面数据
   useEffect(() => {
     const checkAccess = async () => {
-      console.log('baseInfo appId = ', appId)
       if (!appId) {
         navigate('/');
         return;

@@ -66,10 +66,10 @@ function LayoutInner() {
         )}
         <Content style={{ 
           background: isAdminPage ? '#fff' : '#f5f6f7', 
-          padding: isAppListPage ? '12px 24px 24px' : (isAdminPage ? 0 : PADDING),
+          padding: isAppListPage ? 0 : (isAdminPage ? 0 : PADDING),
           height: contentHeight,
           overflowY: 'auto',
-          overflowX: isAdminPage ? 'auto' : 'hidden',
+          overflowX: isAppListPage ? 'auto' : (isAdminPage ? 'auto' : 'hidden'),
           boxSizing: 'border-box'
         }}>
           <div style={undefined}>

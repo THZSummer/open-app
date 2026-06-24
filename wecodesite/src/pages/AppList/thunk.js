@@ -5,7 +5,7 @@
  *
  * 提供应用列表、创建应用、EAMAP列表、图标列表等接口调用
  */
-import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
+import { API_CONFIG, fetchApi } from '../../configs/web.config';
 
 /**
  * 获取应用列表
@@ -94,8 +94,9 @@ export const uploadImage = async (bizType, formData) => {
  */
 export const fetchAppById = async (appId) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP.DETAIL, { appId }), {
+    const result = await fetchApi(API_CONFIG.APP.DETAIL, {
       method: 'GET',
+      params: { appId },
     });
     return result || {};
   } catch (err) {
@@ -112,8 +113,9 @@ export const fetchAppById = async (appId) => {
  */
 export const bindEamap = async (appId, data) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APP.BIND_EAMAP, { appId }), {
+    const result = await fetchApi(API_CONFIG.APP.BIND_EAMAP, {
       method: 'POST',
+      params: { appId },
       body: JSON.stringify({ eamapAppCode: data.eamapAppCode }),
     });
     return result || {};

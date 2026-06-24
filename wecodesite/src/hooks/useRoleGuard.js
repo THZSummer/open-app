@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { buildApiUrl, fetchApi, API_CONFIG } from '../configs/web.config';
+import { fetchApi, API_CONFIG } from '../configs/web.config';
 
 /**
  * 页面级权限守卫 Hook
@@ -22,8 +22,7 @@ export function useRoleGuard(appId) {
 
     const checkAccess = async () => {
       try {
-        const url = buildApiUrl(API_CONFIG.APP.CURRENT_ROLE, { appId });
-        const result = await fetchApi(url);
+        const result = await fetchApi(API_CONFIG.APP.CURRENT_ROLE, { params: { appId } });
         if (result?.code !== '200' || result.data?.role == null) {
           navigate('/');
           return;

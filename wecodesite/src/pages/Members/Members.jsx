@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Table, Button, Tag, Modal, Radio, Select, message, Spin, Tooltip } from 'antd';
+import { Table, Button, Tag, Modal, Radio, Select, message, Spin, Tooltip, Pagination } from 'antd';
 import { PlusOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import Pagination from '../../components/Pagination/Pagination';
 import { useAppDetail } from '../../contexts/AppContext';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { fetchMemberList, searchUsers, addMembers, deleteMember, transferOwner } from './thunk';
-import { ROLE_MAP, INIT_PAGECONFIG } from '../../utils/constants';
+import { ROLE_MAP, INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../utils/constants';
 import { debounce } from '../../utils/common';
 
 import './Members.m.less';
@@ -298,8 +297,12 @@ function Members() {
           <div style={{ marginTop: 16 }}>
             <div className="members-pagination">
               <Pagination
-                pagination={pagination}
+                current={pagination.curPage}
+                pageSize={pagination.pageSize}
+                total={pagination.total}
                 onChange={handlePageChange}
+                showSizeChanger
+                pageSizeOptions={PAGE_SIZE_OPTIONS}
                 onShowSizeChange={handleShowSizeChange}
               />
             </div>

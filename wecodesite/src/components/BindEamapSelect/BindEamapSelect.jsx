@@ -11,9 +11,10 @@ import './BindEamapSelect.m.less';
  * @param {Function} props.onChange - 选择变化回调
  * @param {Array} props.eamapOptions - EAMAP 选项列表
  * @param {string} props.placeholder - 占位文字
+ * @param {boolean} props.loading - 是否显示加载状态
  */
 function BindEamapSelect(props) {
-  const { value, onChange, eamapOptions, placeholder } = props;
+  const { value, onChange, eamapOptions, placeholder, loading } = props;
 
   // 后端返回 { eamapAppCode, eamapAppName }，映射为 Ant Design Select 的 { value, label }
   // 展示格式: 名称 code（如 "审批中心 eamap_approval_003"）
@@ -28,6 +29,7 @@ function BindEamapSelect(props) {
       onChange={onChange}
       options={options}
       placeholder={placeholder || '选择应用服务'}
+      loading={loading}
       showSearch
       optionFilterProp="label"
       className="eamap-select-full"

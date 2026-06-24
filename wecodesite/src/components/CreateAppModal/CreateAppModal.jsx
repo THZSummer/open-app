@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, message, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
+import { fetchEamapOptions } from '../../pages/AppList/thunk';
 import BindEamapSelect from '../BindEamapSelect/BindEamapSelect';
 import IconPicker from '../IconPicker/IconPicker';
 
@@ -24,37 +25,48 @@ import './CreateAppModal.m.less';
  * @param {boolean} props.confirmLoading - 提交中状态
  */
 function CreateAppModal(props) {
-  const { visible, onCancel, onOk, eamapOptions = [], confirmLoading = false } = props;
+  const { visible, onCancel, onOk, confirmLoading = false } = props;
   const [form] = Form.useForm();
-  // 当前选中的图标 fileId（预设图标 fileId / 上传后返回的真实 fileId）
   const [iconId, setIconId] = useState('');
-  // 自定义上传图标的 URL
   const [iconUrl, setIconUrl] = useState('');
+  const [eamapOptions, setEamapOptions] = useState([]);
+  const [eamapLoading, setEamapLoading] = useState(false);
 
-  // 弹窗打开时：重置表单和图标
+  // 弹窗打开时：重置表单和图标，加载EAMAP数据
   useEffect(() => {
     if (visible) {
       form.resetFields();
       setIconId('');
       setIconUrl('');
+      loadEamapOptions();
     }
-  }, [visible, form]);
+  }, [visible]);
+
+  const loadEamapOptions = async () => {
+    setEamapLoading(true);
+    try {
+      const result = await fetchEamapOptions({ curPage: 1, pageSize: 100 });
+      if (result?.code === '200') {
+        setEamapOptions(result.data || []);
+      }
+    } catch (error) {
+      message.error('加载EAMAP选项失败');
+    } finally {
+      setEamapLoading(false);
+    }
+  };
 
   // 提交
   const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      if (!iconId) {
-        message.warning('请选择应用图标');
-        return;
-      }
-      onOk({
-        ...values,
-        icon: iconId,
-      });
-    } catch (error) {
-      // form validation failed
+    const values = await form.validateFields();
+    if (!iconId) {
+      message.warning('请选择应用图标');
+      return;
     }
+    onOk({
+      ...values,
+      icon: iconId,
+    });
   };
 
   return (
@@ -134,6 +146,7 @@ function CreateAppModal(props) {
         >
           <BindEamapSelect
             eamapOptions={eamapOptions}
+            loading={eamapLoading}
             placeholder="选择应用服务"
           />
         </Form.Item>

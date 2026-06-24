@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { message, Button, Table, Spin } from 'antd';
+import { message, Button, Table, Spin, Pagination } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import {
   fetchConnectorList,
@@ -26,7 +26,6 @@ import {
 import ConnectorSearchForm from '../../../components/ConnectorSearchForm/ConnectorSearchForm';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ConnectorFormModal from '../../../components/ConnectorFormModal/ConnectorFormModal';
-import Pagination from '../../../components/Pagination/Pagination';
 import {
   pageInfo,
   searchConfig,
@@ -35,7 +34,7 @@ import {
   CONNECTOR_DISABLE_SECOND_MODAL_INFO,
 } from './constants';
 import { getSecondModalInfo, queryParams } from '../../../utils/common';
-import { INIT_PAGECONFIG } from '../../../utils/constants';
+import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import './Connector.m.less';
 
 /**
@@ -335,8 +334,12 @@ function ConnectorList() {
           />
           <div className="page-pagination">
             <Pagination
-              pagination={pagination}
+              current={pagination.curPage}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
               onChange={handlePageChange}
+              showSizeChanger
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
               onShowSizeChange={handleShowSizeChange}
             />
           </div>

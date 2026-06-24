@@ -59,13 +59,11 @@ function AppCard(props) {
           <div className="app-card-eamap">
             {app.eamapBound ? (
               <span className="eamap-status binded">
-                <span className="dot" />
-                已绑定 EAMAP{app.eamapAppCode ? `-${app.eamapAppCode}` : ''}
+                已绑定EAMAP{app.eamapAppCode ? `-${app.eamapAppCode}` : ''}
               </span>
             ) : (
               <span className="eamap-status unbinded">
-                <span className="dot" />
-                未绑定 EAMAP
+                未绑定EAMAP
               </span>
             )}
           </div>
@@ -74,17 +72,17 @@ function AppCard(props) {
 
       <div className="app-card-bottom">
         <div className="app-card-meta-item">
-          <span className="app-card-meta-label">所有者</span>
+            <span className="app-card-meta-label">所有者：</span>
           <span className="app-card-meta-value owner">
             {ownerName}{ownerAccount ? ` ${ownerAccount}` : ''}
           </span>
         </div>
         <div className="app-card-meta-item">
-          <span className="app-card-meta-label">我的角色</span>
+            <span className="app-card-meta-label">我的角色：</span>
           <span className="app-card-meta-value role">{roleText}</span>
         </div>
         <div className="app-card-meta-item">
-          <span className="app-card-meta-label">最新动态</span>
+            <span className="app-card-meta-label">最新动态：</span>
           <span className="app-card-meta-value">{formatTime(app.lastUpdateTime)}</span>
         </div>
       </div>

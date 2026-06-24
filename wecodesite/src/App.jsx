@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
+import zhCN from 'antd/lib/locale/zh_CN';
 import { AppProvider } from './contexts/AppContext';
 import Layout from './components/Layout/Layout';
 import AppList from './pages/AppList/AppList';
@@ -29,6 +30,7 @@ import 'antd/dist/antd.css';
 function App() {
   return (
     <ConfigProvider
+      locale={zhCN}
       theme={{
         token: {
           colorPrimary: '#0066ff',
@@ -39,7 +41,7 @@ function App() {
       <AppProvider>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<AppList />} />
+          <Route path="appList" element={<AppList />} />
           <Route path="basic-info" element={<BasicInfo />} />
           <Route path="members" element={<Members />} />
           <Route path="capabilities" element={<Capabilities />} />
@@ -51,7 +53,6 @@ function App() {
           <Route path="run-management" element={<RunManagement />} />
           <Route path="version-release" element={<VersionRelease />} />
           {/* ===== 灰度发布：新页面路由（v2 占位，先复用 v1 源码，后续手动替换） ===== */}
-          <Route path="app-list-v2" element={<AppList />} />
           <Route path="basic-info-v2" element={<BasicInfo />} />
           <Route path="members-v2" element={<Members />} />
           <Route path="capabilities-v2" element={<Capabilities />} />
@@ -70,7 +71,7 @@ function App() {
           <Route path="connect/flows/editor" element={<FlowEditorV2 />} />
           {/* 旧版连接流编辑器（画布拖拽形态，保留供管理使用） */}
           {/* <Route path="connect/history/flows/editor" element={<FlowEditor />} /> */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/appList" replace />} />
         </Route>
       </Routes>
       </AppProvider>

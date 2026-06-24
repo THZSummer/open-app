@@ -117,7 +117,7 @@ export const VERIFY_TYPE_MAP = {
 
 export const ROLE_MAP = {
   0: { text: '开发者', color: 'default' },
-  1: { text: 'Owner', color: 'gold' },
+  1: { text: '所有者', color: 'gold' },
   2: { text: '管理员', color: 'blue' },
 };
 

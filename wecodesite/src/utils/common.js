@@ -95,9 +95,11 @@ export const validateImageDimensions = (file, expectWidth, expectHeight) => {
       } else {
         resolve({ valid: true, message: '' });
       }
+      URL.revokeObjectURL(img.src);
     };
     img.onerror = () => {
       resolve({ valid: false, message: '图片加载失败' });
+      URL.revokeObjectURL(img.src);
     };
     img.src = URL.createObjectURL(file);
   });

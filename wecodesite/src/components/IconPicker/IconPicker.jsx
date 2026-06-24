@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, message, Spin, Modal } from 'antd';
+import { Upload, message, Spin } from 'antd';
 import { PlusOutlined, EyeOutlined, CloseOutlined } from '@ant-design/icons';
 import { validateFile, validateImageDimensions } from '../../utils/common';
 import { FILE_VALIDATION } from '../../utils/constants';
@@ -24,7 +24,6 @@ function IconPicker({ value, uploadedUrl, onChange }) {
   const [localUploadedUrl, setLocalUploadedUrl] = useState(uploadedUrl || '');
   const [presetIcons, setPresetIcons] = useState([]);
   const [presetLoading, setPresetLoading] = useState(false);
-  const [previewVisible, setPreviewVisible] = useState(false);
 
   // 同步外部 uploadedUrl
   useEffect(() => {
@@ -107,10 +106,12 @@ function IconPicker({ value, uploadedUrl, onChange }) {
     onChange && onChange('', '');
   };
 
-  // 预览图片
+  // 预览图片 - 新标签页打开
   const handlePreview = (e) => {
     e.stopPropagation();
-    setPreviewVisible(true);
+    if (currentImageUrl) {
+      window.open(currentImageUrl, '_blank');
+    }
   };
 
   return (
@@ -166,18 +167,6 @@ function IconPicker({ value, uploadedUrl, onChange }) {
           )}
         </div>
       </div>
-
-      {/* 图片预览弹窗 */}
-      <Modal
-        open={previewVisible}
-        footer={null}
-        onCancel={() => setPreviewVisible(false)}
-        width={240}
-        closable={false}
-        bodyStyle={{ padding: 16, display: 'flex', justifyContent: 'center' }}
-      >
-        {currentImageUrl && <img src={currentImageUrl} alt="preview" style={{ maxWidth: '100%', borderRadius: 8 }} />}
-      </Modal>
     </div>
   );
 }

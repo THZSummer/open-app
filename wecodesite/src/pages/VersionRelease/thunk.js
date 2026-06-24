@@ -1,11 +1,10 @@
-import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
+import { API_CONFIG, fetchApi } from '../../configs/web.config';
 
 // ==================== 真实 API 调用 ====================
 
 export const fetchVersionList = async (appId, params = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_VERSIONS.LIST, { appId });
-    const result = await fetchApi(url, { params });
+    const result = await fetchApi(API_CONFIG.APP_VERSIONS.LIST, { params: { appId, ...params } });
     return result || {};
   } catch (err) {
     return {};
@@ -14,9 +13,9 @@ export const fetchVersionList = async (appId, params = {}) => {
 
 export const createVersion = async (appId, data = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_VERSIONS.CREATE, { appId });
-    const result = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP_VERSIONS.CREATE, {
       method: 'POST',
+      params: { appId },
       body: JSON.stringify(data),
     });
     return result || {};
@@ -27,8 +26,7 @@ export const createVersion = async (appId, data = {}) => {
 
 export const fetchVersionDetail = async (appId, versionId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_VERSIONS.DETAIL, { appId, versionId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP_VERSIONS.DETAIL, { params: { appId, versionId } });
     return result || {};
   } catch (err) {
     return {};
@@ -37,8 +35,10 @@ export const fetchVersionDetail = async (appId, versionId) => {
 
 export const publishVersion = async (appId, versionId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_VERSIONS.PUBLISH, { appId, versionId });
-    const result = await fetchApi(url, { method: 'POST' });
+    const result = await fetchApi(API_CONFIG.APP_VERSIONS.PUBLISH, {
+      method: 'POST',
+      params: { appId, versionId },
+    });
     return result || {};
   } catch (err) {
     return {};
@@ -47,8 +47,10 @@ export const publishVersion = async (appId, versionId) => {
 
 export const withdrawVersion = async (appId, versionId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_VERSIONS.WITHDRAW, { appId, versionId });
-    const result = await fetchApi(url, { method: 'POST' });
+    const result = await fetchApi(API_CONFIG.APP_VERSIONS.WITHDRAW, {
+      method: 'POST',
+      params: { appId, versionId },
+    });
     return result || {};
   } catch (err) {
     return {};
@@ -57,8 +59,10 @@ export const withdrawVersion = async (appId, versionId) => {
 
 export const deleteVersion = async (appId, versionId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_VERSIONS.DELETE, { appId, versionId });
-    const result = await fetchApi(url, { method: 'DELETE' });
+    const result = await fetchApi(API_CONFIG.APP_VERSIONS.DELETE, {
+      method: 'DELETE',
+      params: { appId, versionId },
+    });
     return result || {};
   } catch (err) {
     return {};
@@ -67,9 +71,9 @@ export const deleteVersion = async (appId, versionId) => {
 
 export const updateVersion = async (appId, versionId, data = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_VERSIONS.UPDATE, { appId, versionId });
-    const result = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP_VERSIONS.UPDATE, {
       method: 'PUT',
+      params: { appId, versionId },
       body: JSON.stringify(data),
     });
     return result || {};
@@ -80,8 +84,7 @@ export const updateVersion = async (appId, versionId, data = {}) => {
 
 export const fetchAppDetail = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.DETAIL, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP.DETAIL, { params: { appId } });
     return result || {};
   } catch (err) {
     return {};

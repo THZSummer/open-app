@@ -1,11 +1,10 @@
-import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
+import { API_CONFIG, fetchApi } from '../../configs/web.config';
 
 // ==================== 真实 API 调用 ====================
 
 export const fetchMemberList = async (appId, params = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_MEMBERS.LIST, { appId });
-    const result = await fetchApi(url, { params });
+    const result = await fetchApi(API_CONFIG.APP_MEMBERS.LIST, { params: { appId, ...params } });
     return result || {};
   } catch (err) {
     return {};
@@ -14,8 +13,7 @@ export const fetchMemberList = async (appId, params = {}) => {
 
 export const searchUsers = async (appId, keyword) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_MEMBERS.SEARCH_USERS, { appId });
-    const result = await fetchApi(url, { params: { keyword } });
+    const result = await fetchApi(API_CONFIG.APP_MEMBERS.SEARCH_USERS, { params: { appId, keyword } });
     return result || {};
   } catch (err) {
     return {};
@@ -24,9 +22,9 @@ export const searchUsers = async (appId, keyword) => {
 
 export const addMembers = async (appId, data = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_MEMBERS.ADD, { appId });
-    const result = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP_MEMBERS.ADD, {
       method: 'POST',
+      params: { appId },
       body: JSON.stringify(data),
     });
     return result || {};
@@ -37,8 +35,10 @@ export const addMembers = async (appId, data = {}) => {
 
 export const deleteMember = async (appId, id) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_MEMBERS.DELETE, { appId, id });
-    const result = await fetchApi(url, { method: 'DELETE' });
+    const result = await fetchApi(API_CONFIG.APP_MEMBERS.DELETE, {
+      method: 'DELETE',
+      params: { appId, id },
+    });
     return result || {};
   } catch (err) {
     return {};
@@ -47,9 +47,9 @@ export const deleteMember = async (appId, id) => {
 
 export const transferOwner = async (appId, data = {}) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_MEMBERS.TRANSFER_OWNER, { appId });
-    const result = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP_MEMBERS.TRANSFER_OWNER, {
       method: 'POST',
+      params: { appId },
       body: JSON.stringify(data),
     });
     return result || {};
@@ -60,8 +60,7 @@ export const transferOwner = async (appId, data = {}) => {
 
 export const fetchCurrentRole = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.CURRENT_ROLE, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP.CURRENT_ROLE, { params: { appId } });
     return result || {};
   } catch (err) {
     return {};
@@ -70,8 +69,7 @@ export const fetchCurrentRole = async (appId) => {
 
 export const fetchAppDetail = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP.DETAIL, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP.DETAIL, { params: { appId } });
     return result || {};
   } catch (err) {
     return {};

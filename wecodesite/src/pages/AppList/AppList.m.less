@@ -48,15 +48,30 @@
 
 // 新组件样式
 .app-list-page {
-  max-width: 1200px;
+  width: 1200px;
   margin: 0 auto;
-  padding: 12px 0 32px;
+  padding: 24px 0 0;
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border-radius: 4px;
+    &:hover {
+      background: #a0a0a0;
+    }
+  }
 
   .app-list-hero {
     background: linear-gradient(135deg, #e8f0ff 0%, #f0f5ff 100%);
     border-radius: 12px;
     padding: 36px 32px;
-    margin-bottom: 28px;
+    margin-bottom: 0;
+    height: 283px;
 
     .hero-title {
       font-size: 22px;
@@ -93,11 +108,26 @@
   }
 
   .app-list-section {
-    .section-title {
-      font-size: 18px;
+    .appTypeName {
+      font-size: 20px;
+      line-height: 27px;
+      padding-top: 26px;
+      padding-bottom: 26px;
       font-weight: 600;
       color: #1f2329;
-      margin-bottom: 20px;
     }
   }
+}
+
+.app-list-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 24px;
+}
+
+.pagination-total {
+  color: #8f959e;
+  font-size: 13px;
 }

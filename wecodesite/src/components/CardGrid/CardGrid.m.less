@@ -1,22 +1,20 @@
 .card-grid {
   display: grid;
-
-  @media (max-width: 900px) {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-
-  @media (max-width: 600px) {
-    grid-template-columns: 1fr !important;
-  }
+  justify-content: space-between;
 }
 
 .card-grid-item {
   min-width: 0;
+  margin-bottom: 24px;
+
+  &:nth-last-child(-n+3) {
+    margin-bottom: 0;
+  }
 }
 
 /** 列数和间距通过 CSS 自定义属性传入 */
 .card-grid-cols-3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, 384px);
 }
 
 .card-grid-cols-2 {

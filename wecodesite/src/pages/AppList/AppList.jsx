@@ -9,20 +9,20 @@
  * - 点击卡片进入应用详情
  * - 创建应用弹窗
  */
-import React, { useState, useEffect } from 'react';
-import { Button, message, Spin } from 'antd';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { Button, message, Spin, Pagination } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import AppCard from '../../components/AppCard/AppCard';
-import CreateAppModal from '../../components/CreateAppModal/CreateAppModal';
 import EmptyState from '../../components/EmptyState/EmptyState';
-import Pagination from '../../components/Pagination/Pagination';
 import CardGrid from '../../components/CardGrid/CardGrid';
-import { fetchAppList, fetchEamapOptions, createApp } from './thunk';
+import { fetchAppList, createApp } from './thunk';
 import { INIT_PAGECONFIG } from '../../utils/constants';
 import { HERO_CONFIG, EMPTY_CONFIG, DEFAULT_GRID_COLUMNS, DEFAULT_GRID_GAP } from './constant';
 
 import './AppList.m.less';
+
+const CreateAppModal = lazy(() => import('../../components/CreateAppModal/CreateAppModal'));
 
 /**
  * 应用列表页
@@ -39,8 +39,11 @@ function AppList() {
   const [pagination, setPagination] = useState(INIT_PAGECONFIG);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [eamapOptions, setEamapOptions] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
+
+  useEffect(() => {
+    loadAppList();
+  }, []);
 
   // 加载应用列表
   const loadAppList = async (params = { curPage: 1, pageSize: 10 }) => {
@@ -64,23 +67,6 @@ function AppList() {
       setLoading(false);
     }
   };
-
-  // 加载弹窗所需数据
-  const loadModalData = async () => {
-    try {
-      const eamapResult = await fetchEamapOptions({ curPage: 1, pageSize: 100 });
-      if (eamapResult && eamapResult.code === '200') {
-        setEamapOptions(eamapResult.data || []);
-      }
-    } catch (error) {
-      message.error('加载弹窗数据失败');
-    }
-  };
-
-  useEffect(() => {
-    loadAppList();
-    loadModalData();
-  }, []);
 
   // 分页变化
   const handlePageChange = (page, pageSize) => {
@@ -132,7 +118,7 @@ function AppList() {
 
   // 渲染单个卡片
   const renderAppCard = (app) => (
-    <AppCard app={app} onClick={() => handleCardClick(app)} />
+    <AppCard key={app.appId} app={app} onClick={() => handleCardClick(app)} />
   );
 
   return (
@@ -153,16 +139,23 @@ function AppList() {
 
       {/* 应用列表 */}
       <div className="app-list-section">
-        <h2 className="section-title">企业应用</h2>
+        <div className="appTypeName">企业应用</div>
         <Spin spinning={loading}>
           {apps.length > 0 ? (
             <>
               <CardGrid items={apps} renderItem={renderAppCard} columns={DEFAULT_GRID_COLUMNS} gap={DEFAULT_GRID_GAP} />
-              <Pagination
-                pagination={pagination}
-                onChange={handlePageChange}
-                onShowSizeChange={handleShowSizeChange}
-              />
+              <div className="app-list-pagination">
+                <span className="pagination-total">共 {pagination.total} 条</span>
+                <Pagination
+                  current={pagination.curPage}
+                  pageSize={pagination.pageSize}
+                  total={pagination.total}
+                  onChange={handlePageChange}
+                  showSizeChanger
+                  pageSizeOptions={[10, 20, 50]}
+                  onShowSizeChange={handleShowSizeChange}
+                />
+              </div>
             </>
           ) : (
             <EmptyState
@@ -175,13 +168,14 @@ function AppList() {
       </div>
 
       {/* 创建应用弹窗 */}
-      <CreateAppModal
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        onOk={handleCreateApp}
-        eamapOptions={eamapOptions}
-        confirmLoading={modalLoading}
-      />
+      <Suspense fallback={null}>
+        {modalVisible && <CreateAppModal
+          visible={modalVisible}
+          onCancel={() => setModalVisible(false)}
+          onOk={handleCreateApp}
+          confirmLoading={modalLoading}
+        />}
+      </Suspense>
     </div>
   );
 }

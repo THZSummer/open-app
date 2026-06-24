@@ -1,13 +1,12 @@
-import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
+import { API_CONFIG, fetchApi } from '../../configs/web.config';
 
 /**
  * 获取能力详情（从已订阅能力列表中查找）
- * 后端接口: GET /service/open/v2/app/{appId}/abilities
+ * 后端接口: GET /service/open/v2/ability/subscribed?appId=xxx
  */
 export const fetchCapabilityDetail = async (appId, abilityType) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_ABILITIES.SUBSCRIBED, { appId });
-    const result = await fetchApi(url);
+    const result = await fetchApi(API_CONFIG.APP_ABILITIES.SUBSCRIBED, { params: { appId } });
     if (result?.code === '200' && Array.isArray(result.data)) {
       const ability = result.data.find(a => a.abilityType === Number(abilityType));
       return ability || null;
@@ -21,7 +20,7 @@ export const fetchCapabilityDetail = async (appId, abilityType) => {
 
 /**
  * 获取能力列表（含所有能力的详情）
- * 后端接口: GET /service/open/v2/abilities?appId=xxx
+ * 后端接口: GET /service/open/v2/ability/list?appId=xxx
  */
 export const fetchAbilityListForDetail = async (appId) => {
   try {
