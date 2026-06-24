@@ -40,6 +40,12 @@ public class ConnectorDetailResponse {
     /** 创建时间 */
     private String createTime;
 
+    /** 创建者 */
+    private String createBy;
+
+    /** 更新人 */
+    private String lastUpdateBy;
+
     /** 最后更新时间 */
     private String lastUpdateTime;
 }

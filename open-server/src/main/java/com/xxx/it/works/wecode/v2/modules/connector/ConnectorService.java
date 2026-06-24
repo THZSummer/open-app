@@ -131,10 +131,15 @@ public class ConnectorService {
             item.setConnectorId(String.valueOf(c.getId()));
             item.setNameCn(c.getNameCn());
             item.setNameEn(c.getNameEn());
+            item.setDescriptionCn(c.getDescriptionCn());
+            item.setDescriptionEn(c.getDescriptionEn());
             item.setConnectorType(c.getConnectorType());
             item.setStatus(c.getStatus());
             item.setAppId(String.valueOf(c.getAppId()));
             item.setCreateTime(c.getCreateTime() != null ? sdf.format(c.getCreateTime()) : null);
+            item.setCreateBy(c.getCreateBy());
+            item.setLastUpdateBy(c.getLastUpdateBy());
+            item.setLastUpdateTime(c.getLastUpdateTime() != null ? sdf.format(c.getLastUpdateTime()) : null);
 
             // 查询版本信息
             List<ConnectorVersion> versions = connectorVersionMapper.selectListByConnectorId(c.getId(), null);
