@@ -15,27 +15,27 @@ export const fetchAppDetail = createAsyncThunk(
 const appSlice = createSlice({
   name: 'app',
   initialState: {
-    appDetail: null,
-    appDetailLoading: false,
+    appBaseInfo: null,
+    appBaseInfoLoading: false,
   },
   reducers: {
     clearAppDetail(state) {
-      state.appDetail = null;
-      state.appDetailLoading = false;
+      state.appBaseInfo = null;
+      state.appBaseInfoLoading = false;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchAppDetail.pending, (state) => {
-        state.appDetailLoading = true;
+        state.appBaseInfoLoading = true;
       })
       .addCase(fetchAppDetail.fulfilled, (state, action) => {
-        state.appDetail = action.payload;
-        state.appDetailLoading = false;
+        state.appBaseInfo = action.payload;
+        state.appBaseInfoLoading = false;
       })
       .addCase(fetchAppDetail.rejected, (state) => {
-        state.appDetail = null;
-        state.appDetailLoading = false;
+        state.appBaseInfo = null;
+        state.appBaseInfoLoading = false;
       });
   },
 });
