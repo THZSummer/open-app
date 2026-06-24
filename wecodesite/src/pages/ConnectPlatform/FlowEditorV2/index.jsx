@@ -16,7 +16,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, message, Modal } from 'antd';
+import { Button, message, Modal, Empty } from 'antd';
 import VersionBar from './components/VersionBar';
 import VersionDetailDrawer from './components/VersionDetailDrawer';
 import ModePanel from './components/ModePanel';
@@ -108,8 +108,11 @@ function FlowEditorV2() {
   // 派生值
   const isDraft = currentVersion?.status === VERSION_STATUS.DRAFT;
   const isPublished = currentVersion?.status === VERSION_STATUS.PUBLISHED;
-  // 只有草稿且已点击「编辑」进入编辑态时，才允许切换编排模式、增删节点、编辑节点表单
-  const editable = isDraft && isEditing;
+  // 已撤回 / 已驳回 版本与草稿一样支持「编辑 → 保存」流程（保存后由后端流转为草稿）
+  const isWithdrawn = currentVersion?.status === VERSION_STATUS.WITHDRAWN;
+  const isRejected = currentVersion?.status === VERSION_STATUS.REJECTED;
+  // 只有支持编辑的版本状态（草稿 / 撤回 / 驳回）且已点击「编辑」进入编辑态时，才允许切换编排模式、增删节点、编辑节点表单
+  const editable = (isDraft || isWithdrawn || isRejected) && isEditing;
   const hasVersion = versionList.length > 0;
   const hasMode = !!flowData?.flowMode;
   const visibleNodes = hasVersion && hasMode ? getVisibleNodes(flowData) : [];
@@ -291,11 +294,15 @@ function FlowEditorV2() {
 
   /**
    * 保存草稿（不做完整校验）
+   * 已撤回 / 已驳回 状态保存后由后端流转为草稿，需要重新拉取版本列表刷新状态
    */
   const handleSave = async () => {
     if (!currentVersion?.versionId) return;
     setActionLoading(true);
+    // 深拷贝当前流程数据，避免直接传引用导致后续编辑影响请求体
     const config = JSON.parse(JSON.stringify(flowData));
+    // 记录保存前是否为「撤回 / 驳回」态，用于决定保存后是否刷新版本列表
+    const needReloadAfterSave = isWithdrawn || isRejected;
     const res = await saveDraft({
       flowId, versionId: currentVersion.versionId, config,
     });
@@ -303,6 +310,10 @@ function FlowEditorV2() {
       message.success('保存成功');
       // 保存成功后退出编辑态，按钮回到「编辑」展示
       setIsEditing(false);
+      // 撤回 / 驳回 → 草稿 的状态流转需刷新版本列表
+      if (needReloadAfterSave) {
+        await loadVersions(flowId, { preferVersionId: currentVersion.versionId });
+      }
     } else {
       message.error(res?.messageZh || '保存失败');
     }
@@ -747,10 +758,18 @@ function FlowEditorV2() {
       {detailLoading ? (
         <div style={{ textAlign: 'center', padding: 100, color: '#8f959e' }}>加载中...</div>
       ) : !hasVersion ? (
-        <div className="no-version-state">
-          <div className="no-version-icon">＋</div>
-          <div className="no-version-text">当前连接流暂无版本，请先添加版本后再配置编排</div>
-          <Button type="primary" className="primary-btn" onClick={() => handleVersionAction('addVersion')}>添加版本</Button>
+        <div className="content-card no-version-state">
+          <Empty description="暂无版本，请先创建草稿">
+            {/* 空态下创建草稿入口，点击新增一个草稿版本 */}
+            <Button
+              type="primary"
+              className="primary-btn"
+              loading={actionLoading}
+              onClick={() => handleVersionAction('addVersion')}
+            >
+              创建草稿
+            </Button>
+          </Empty>
         </div>
       ) : (
         <>
@@ -823,7 +842,7 @@ function FlowEditorV2() {
         visible={detailDrawerVisible}
         versionInfo={versionDetailInfo}
         onClose={() => { setDetailDrawerVisible(false); setVersionDetailInfo(null); }}
-        onUrge={() => {}}
+        onUrge={() => { }}
       />
 
       {/* 更多配置抽屉 */}

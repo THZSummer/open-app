@@ -22,6 +22,7 @@
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
+import { buildVersionSummary } from '../../../utils/common';
 
 /**
  * 应用级配置默认值（与 plan-api.md §3.9a #54~#55 字段对齐）
@@ -54,7 +55,13 @@ export const fetchVersionList = async (flowId) => {
     const result = await fetchApi(
       buildApiUrl(API_CONFIG.FLOWS.VERSIONS_LIST, { flowId })
     );
-    return result || {};
+    if (result?.code !== '200') return result || {};
+
+    // 将后端数据映射为 UI 所需摘要结构（按创建时间倒序）
+    const list = (result.data || [])
+      .map(buildVersionSummary)
+      .sort((a, b) => (a.createTime < b.createTime ? 1 : -1));
+    return { code: '200', data: list };
   } catch (err) {
     return {};
   }
@@ -78,7 +85,17 @@ export const fetchVersionDetail = async (params) => {
     const result = await fetchApi(
       buildApiUrl(API_CONFIG.FLOWS.VERSION_DETAIL, { flowId, versionId })
     );
-    return result || {};
+    if (result?.code !== '200') return result || {};
+
+    // 将后端版本摘要字段（含 v{versionNumber} 拼接的 name）与其余业务字段合并
+    const detail = result.data || {};
+    return {
+      code: '200',
+      data: {
+        ...detail,
+        ...buildVersionSummary(detail),
+      },
+    };
   } catch (err) {
     return {};
   }

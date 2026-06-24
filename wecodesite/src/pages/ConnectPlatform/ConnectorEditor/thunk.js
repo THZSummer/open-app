@@ -20,6 +20,7 @@
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
+import { buildVersionSummary } from '../../../utils/common';
 import {
   DEFAULT_API_CONFIG,
   MAX_SCHEMA_DEPTH,
@@ -450,23 +451,6 @@ export const transformToSchemaFormat = (apiConfig) => {
 /* ========================================
  * V3 真实接口调用层
  * ======================================== */
-
-/**
- * 由后端版本数据构造 currentVersion 摘要
- * 前端 UI 使用 name 字段展示版本名称，此处用 `v{versionNumber}` 拼接
- *
- * @param {Object} ver - 后端版本数据
- * @returns {Object} 含 versionId / status / createTime / name 的摘要对象
- */
-const buildVersionSummary = (ver) => ({
-  versionId: ver.versionId,
-  status: ver.status,
-  createTime: ver.createTime,
-  name: ver.versionNumber != null ? `v${ver.versionNumber}` : ver.versionId,
-  versionNumber: ver.versionNumber,
-  publishedTime: ver.publishedTime,
-  publishedBy: ver.publishedBy,
-});
 
 /**
  * 查询连接器版本列表（#9）

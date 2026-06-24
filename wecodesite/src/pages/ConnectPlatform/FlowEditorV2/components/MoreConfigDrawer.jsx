@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Drawer, InputNumber, Switch, Select, Button, Space, message } from 'antd';
-import { DeleteOutlined, PlusOutlined, ThunderboltOutlined, DatabaseOutlined } from '@ant-design/icons';
+import { ThunderboltOutlined, DatabaseOutlined } from '@ant-design/icons';
 import '../FlowEditorV2.m.less';
 
 const { Option } = Select;
@@ -234,7 +234,6 @@ const MoreConfigDrawer = (props) => {
                     })}
                   </Select>
                   <Button
-                    icon={<DeleteOutlined />}
                     danger
                     onClick={() => handleRemoveCacheKey(idx)}
                   />
@@ -242,7 +241,6 @@ const MoreConfigDrawer = (props) => {
               ))}
               <Button
                 type="dashed"
-                icon={<PlusOutlined />}
                 onClick={handleAddCacheKey}
                 style={{ width: '100%', marginTop: 4 }}
               >

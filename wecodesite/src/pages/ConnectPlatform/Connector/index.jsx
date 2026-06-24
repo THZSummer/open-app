@@ -14,7 +14,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message, Button, Table, Spin, Pagination } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import {
   fetchConnectorList,
   deleteConnector,
@@ -302,7 +301,7 @@ function ConnectorList() {
             <h2 className="page-title">{pageInfo.title}</h2>
             <p className="page-desc">{pageInfo.description}</p>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+          <Button type="primary" onClick={handleAdd}>
             {pageInfo.addButtonText}
           </Button>
         </div>

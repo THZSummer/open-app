@@ -17,8 +17,8 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Form, Empty, message } from 'antd';
-import { fetchVersionList, fetchVersionDetail } from './thunk';
+import { Form, Empty, Button, message } from 'antd';
+import { fetchVersionList, fetchVersionDetail, createDraftVersion } from './thunk';
 import {
   DEFAULT_API_CONFIG,
   REQUEST_SCHEMA_CONFIG,
@@ -58,6 +58,9 @@ const ConnectorEditor = () => {
 
   // 是否处于编辑态（默认 false，只读，点击「编辑」才可改）
   const [isEditing, setIsEditing] = useState(false);
+
+  // 空态下"创建草稿"按钮 loading
+  const [creatingDraft, setCreatingDraft] = useState(false);
 
   // 各 section 锚点，用于发布校验失败滚动定位
   const sectionRefs = {
@@ -193,6 +196,25 @@ const ConnectorEditor = () => {
     setIsEditing(false);
   };
 
+  /**
+   * 空态下创建草稿
+   * 当前连接器无任何版本时，由空态区按钮触发
+   */
+  const handleCreateDraftFromEmpty = async () => {
+    setCreatingDraft(true);
+    const res = await createDraftVersion({
+      connectorId,
+      baseVersionId: null,
+    });
+    if (res?.code === '200') {
+      message.success('已创建草稿');
+      await loadVersions({ preferVersionId: res.data?.versionId });
+    } else {
+      message.error(res?.messageZh || '创建失败');
+    }
+    setCreatingDraft(false);
+  };
+
   return (
     <div
       className={[
@@ -272,8 +294,18 @@ const ConnectorEditor = () => {
         </Form>
       ) : (
         !detailLoading && (
-          <div className="content-card">
-            <Empty description="暂无版本，请先创建草稿" />
+          <div className="content-card empty-card">
+            <Empty description="暂无版本，请先创建草稿">
+              {/* 空态下创建草稿入口，点击新增一个草稿版本 */}
+              <Button
+                type="primary"
+                className="primary-btn"
+                loading={creatingDraft}
+                onClick={handleCreateDraftFromEmpty}
+              >
+                创建草稿
+              </Button>
+            </Empty>
           </div>
         )
       )}

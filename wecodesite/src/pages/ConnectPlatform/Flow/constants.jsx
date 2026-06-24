@@ -183,8 +183,8 @@ export const getFlowColumns = (callbacks) => {
     },
     {
       title: '创建者',
-      dataIndex: 'createUserName',
-      key: 'createUserName',
+      dataIndex: 'createBy',
+      key: 'createBy',
       width: 120,
       ellipsis: true,
       render: renderText,
@@ -199,8 +199,8 @@ export const getFlowColumns = (callbacks) => {
     },
     {
       title: '更新人',
-      dataIndex: 'lastUpdateUserName',
-      key: 'lastUpdateUserName',
+      dataIndex: 'lastUpdateBy',
+      key: 'lastUpdateBy',
       width: 120,
       ellipsis: true,
       render: renderText,
