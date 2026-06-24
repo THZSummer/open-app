@@ -1,0 +1,140 @@
+// 分页组件样式 — 对照 demo-app-list.html .pagination-wrapper
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding: 14px 20px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #dee0e3;
+  box-sizing: border-box;
+}
+
+.pagination-info {
+  color: #8f959e;
+  font-size: 13px;
+
+  .pagination-info-count {
+    color: #1f2329;
+    font-weight: 500;
+    margin: 0 2px;
+  }
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pagination-btns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.page-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dee0e3;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2329;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  user-select: none;
+
+  &:hover:not(:disabled) {
+    border-color: #3370ff;
+    color: #3370ff;
+  }
+
+  &.active {
+    background: #3370ff;
+    border-color: #3370ff;
+    color: #fff;
+    font-weight: 500;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.page-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  color: #8f959e;
+  font-size: 13px;
+  user-select: none;
+}
+
+.page-size-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8f959e;
+  font-size: 13px;
+}
+
+.page-size-label {
+  color: #8f959e;
+  font-size: 13px;
+}
+
+.page-size-select {
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2329;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+
+  &:hover,
+  &:focus {
+    border-color: #3370ff;
+  }
+}
+
+.page-jump-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8f959e;
+  font-size: 13px;
+}
+
+.page-jump-input {
+  width: 48px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2329;
+  background: #fff;
+  outline: none;
+  text-align: center;
+  transition: border-color 0.2s;
+
+  &:hover,
+  &:focus {
+    border-color: #3370ff;
+  }
+}

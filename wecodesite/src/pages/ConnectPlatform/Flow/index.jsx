@@ -5,30 +5,48 @@
  *
  * 功能：
  * - 展示连接流列表（分页、搜索）
- * - 创建新的连接流
- * - 编辑已有连接流
- * - 删除连接流
+ * - 创建/编辑连接流
+ * - 操作列：编辑、配置、更多（按状态展示菜单项）
+ * - 启动（仅切换状态，前置校验已部署版本）
+ * - 部署（独立动作，仅更新版本绑定，不修改状态）
+ * - 复制流、复制 ID、停止、失效、恢复、删除
+ *
+ * 整改依据：连接流列表需求设计说明书 V1.3
  */
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { message, Button, Table, Pagination } from 'antd';
+import { message, Button, Table, Spin } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { fetchFlowList, deleteFlow, createFlow, updateFlow, stopFlow, startFlow } from './thunk';
+import {
+  fetchFlowList,
+  deleteFlow,
+  createFlow,
+  updateFlow,
+  stopFlow,
+  startFlow,
+  deployFlow,
+  copyFlow,
+  disableFlow,
+  restoreFlow,
+} from './thunk';
 import ConnectorSearchForm from '../../../components/ConnectorSearchForm/ConnectorSearchForm';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ConnectorFormModal from '../../../components/ConnectorFormModal/ConnectorFormModal';
-import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
-import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
+import DeployFlowModal from '../../../components/DeployFlowModal/DeployFlowModal';
+import Pagination from '../../../components/Pagination/Pagination';
 import {
-  FLOW_DELETE_SECOND_MODAL_INFO,
-  FLOW_STOP_SECOND_MODAL_INFO,
+  pageInfo,
   flowSearchConfig,
   flowStatusOptions,
   getFlowColumns,
-  pageInfo,
+  FLOW_STOP_SECOND_MODAL_INFO,
+  FLOW_DELETE_SECOND_MODAL_INFO,
+  FLOW_DISABLE_SECOND_MODAL_INFO,
 } from './constants';
-import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
+import { INIT_PAGECONFIG } from '../../../utils/constants';
+import { copyIdToClipboard } from '../../../utils/flowUtils';
+import { getCurrentAppId } from '../../../utils/common';
 import { getSecondModalInfo } from '../../../utils/common';
 import './Flow.m.less';
 
@@ -36,9 +54,6 @@ import './Flow.m.less';
  * 连接流列表页面主组件
  */
 function FlowList() {
-  // 校验当前用户是否具备连接平台访问权限
-  useAdminAccessGuard();
-
   const navigate = useNavigate();
 
   /**
@@ -57,18 +72,21 @@ function FlowList() {
   // 搜索关键词
   const [keyword, setKeyword] = useState('');
 
-  // 操作确认弹窗相关状态（统一管理删除/停止等操作）
-  const [actionModalVisible, setActionModalVisible] = useState(false);
-  const [actionItem, setActionItem] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  // 当前操作类型（delete/stop）
-  const [currentActionType, setCurrentActionType] = useState(null);
+  // 二次确认弹窗相关状态（覆盖删除/停止/失效）
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [confirmActionItem, setConfirmActionItem] = useState(null);
+  const [confirmActionType, setConfirmActionType] = useState(null);
+  const [confirmActionLoading, setConfirmActionLoading] = useState(false);
 
   // 创建/编辑弹窗相关状态
   const [modalVisible, setModalVisible] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
+
+  // 部署版本选择弹窗相关状态
+  const [deployModalVisible, setDeployModalVisible] = useState(false);
+  const [deployFlowItem, setDeployFlowItem] = useState(null);
+  const [deployLoading, setDeployLoading] = useState(false);
 
   /**
    * 数据加载
@@ -77,7 +95,7 @@ function FlowList() {
   const loadData = async (params = {}) => {
     setLoading(true);
 
-    // 调用API
+    // 调用列表接口
     const result = await fetchFlowList({
       curPage: params.curPage ?? pagination.curPage,
       keyword: params.keyword ?? keyword,
@@ -112,6 +130,15 @@ function FlowList() {
   };
 
   /**
+   * 切换每页条数
+   * @param {number} page - 页码
+   * @param {number} size - 每页条数
+   */
+  const handleShowSizeChange = (page, size) => {
+    loadData({ curPage: 1, pageSize: size });
+  };
+
+  /**
    * 搜索处理
    * @param {Object} formValues - 表单值
    */
@@ -139,116 +166,233 @@ function FlowList() {
   };
 
   /**
-   * 查看连接流详情
-   * @param {string} id - 连接流ID
+   * 进入连接流配置页（V2 编辑器）
+   * 跳转时携带 appId，确保编排页可回传应用上下文
+   * @param {Object} record - 连接流记录
    */
-  const handleView = (id) => {
-    const record = data.find(item => item.id === id);
-    if (record) {
-      navigate(`/connect/flows/editor?id=${record.id}&name=${encodeURIComponent(record.nameCn)}`);
-    }
+  const handleConfig = (record) => {
+    const appId = getCurrentAppId();
+    navigate(`/connect/flow/editor?id=${record.flowId}&name=${encodeURIComponent(record.nameCn)}&appId=${appId}`);
   };
 
   /**
-   * 操作按钮点击处理（统一处理删除、停止、启动）
+   * 复制流
    * @param {Object} record - 连接流记录
-   * @param {string} action - 操作类型：delete/stop/start
    */
-  const handleActionClick = (record, action) => {
-    if (action === 'start') {
-      // 启动操作直接执行
-      executeAction(record, 'start');
+  const handleCopyFlow = async (record) => {
+    const res = await copyFlow(record.flowId);
+    if (res && res.code === '200') {
+      message.success('复制成功');
+      loadData(INIT_PAGECONFIG);
     } else {
-      // 删除/停止操作显示确认弹窗
-      setCurrentActionType(action);
-      setActionItem(record);
-      setActionModalVisible(true);
+      message.error(res?.messageZh || '复制失败');
     }
   };
 
   /**
-   * 执行操作（统一的方法）
+   * 复制 ID 到剪贴板
    * @param {Object} record - 连接流记录
-   * @param {string} action - 操作类型：delete/stop/start
    */
-  const executeAction = async (record, action) => {
-    let apiFunc;
+  const handleCopyId = (record) => {
+    copyIdToClipboard(
+      record.flowId,
+      () => message.success('复制成功'),
+      () => message.error('复制失败，请手动复制')
+    );
+  };
+
+  /**
+   * 启动连接流（已停止 → 运行中）
+   * 调用后端独立 start 接口
+   *
+   * @param {Object} record - 连接流记录
+   */
+  const handleStart = async (record) => {
+    const res = await startFlow(record.flowId);
+    if (res && res.code === '200') {
+      message.success('启动成功');
+      loadData();
+    } else {
+      message.error(res?.messageZh || '启动失败');
+    }
+  };
+
+  /**
+   * 打开部署版本选择弹窗
+   * 已停止 / 运行中状态均可触发
+   *
+   * @param {Object} record - 连接流记录
+   */
+  const handleOpenDeployModal = (record) => {
+    setDeployFlowItem(record);
+    setDeployModalVisible(true);
+  };
+
+  /**
+   * 关闭部署弹窗
+   */
+  const handleDeployModalCancel = () => {
+    setDeployModalVisible(false);
+    setDeployFlowItem(null);
+  };
+
+  /**
+   * 确认部署
+   * 仅更新连接流-版本绑定关系，连接流状态保持不变
+   *
+   * @param {string} versionId - 选中的版本ID
+   */
+  const handleDeployConfirm = async (versionId) => {
+    if (!deployFlowItem) return;
+
+    setDeployLoading(true);
+    const res = await deployFlow({
+      flowId: deployFlowItem.flowId,
+      versionId,
+    });
+    setDeployLoading(false);
+
+    if (res && res.code === '200') {
+      message.success('部署成功');
+      handleDeployModalCancel();
+      loadData();
+    } else {
+      message.error(res?.messageZh || '部署失败');
+    }
+  };
+
+  /**
+   * 恢复连接流（已失效 → 已停止）
+   *
+   * @param {Object} record - 连接流记录
+   */
+  const handleRestore = async (record) => {
+    const res = await restoreFlow(record.flowId);
+    if (res && res.code === '200') {
+      message.success('恢复成功');
+      loadData();
+    } else {
+      message.error(res?.messageZh || '恢复失败');
+    }
+  };
+
+  /**
+   * 触发需要二次确认的操作（停止/失效/删除）
+   *
+   * @param {Object} record - 连接流记录
+   * @param {string} actionType - 操作类型：'stop' | 'disable' | 'delete'
+   */
+  const triggerConfirmAction = (record, actionType) => {
+    setConfirmActionItem(record);
+    setConfirmActionType(actionType);
+    setConfirmModalVisible(true);
+  };
+
+  /**
+   * 关闭二次确认弹窗
+   */
+  const handleConfirmCancel = () => {
+    setConfirmModalVisible(false);
+    setConfirmActionItem(null);
+    setConfirmActionType(null);
+  };
+
+  /**
+   * 执行二次确认后的操作（停止/失效/删除）
+   */
+  const handleConfirmExecute = async () => {
+    if (!confirmActionItem || !confirmActionType) return;
+
+    setConfirmActionLoading(true);
+
+    let res;
     let successMsg;
     let errorMsg;
-    let setLoading;
-    let currentPage;
+    let resetToFirstPage = false;
 
-    switch (action) {
-      case 'delete':
-        apiFunc = deleteFlow;
-        successMsg = '删除成功';
-        errorMsg = '删除失败';
-        setLoading = setActionLoading;
-        currentPage = INIT_PAGECONFIG;
-        break;
+    switch (confirmActionType) {
       case 'stop':
-        apiFunc = stopFlow;
+        res = await stopFlow(confirmActionItem.flowId);
         successMsg = '停止成功';
         errorMsg = '停止失败';
-        setLoading = setActionLoading;
-        currentPage = pagination;
         break;
-      case 'start':
-        apiFunc = startFlow;
-        successMsg = '启动成功';
-        errorMsg = '启动失败';
-        setLoading = null;
-        currentPage = pagination;
+      case 'disable':
+        res = await disableFlow(confirmActionItem.flowId);
+        successMsg = '已失效';
+        errorMsg = '失效操作失败';
+        break;
+      case 'delete':
+        res = await deleteFlow(confirmActionItem.flowId);
+        successMsg = '删除成功';
+        errorMsg = '删除失败';
+        resetToFirstPage = true;
         break;
       default:
+        setConfirmActionLoading(false);
         return;
     }
 
-    if (setLoading) setLoading(true);
-
-    const res = await apiFunc(record.id);
-
     if (res && res.code === '200') {
-       message.success(successMsg);
-       // 关闭弹窗并清理状态
-       handleActionCancel();
-       loadData(currentPage);
-     } else {
-       message.error(res?.messageZh || errorMsg);
-     }
+      message.success(successMsg);
+      handleConfirmCancel();
+      loadData(resetToFirstPage ? INIT_PAGECONFIG : {});
+    } else {
+      message.error(res?.messageZh || errorMsg);
+    }
 
-     if (setLoading) setLoading(false);
+    setConfirmActionLoading(false);
   };
 
   /**
-   * 确认删除/停止操作
+   * 更多菜单点击处理
+   * 根据 key 分发到对应的处理函数
+   *
+   * @param {string} key - 菜单 key：copy / copyId / start / deploy / stop / disable / restore / delete
+   * @param {Object} record - 连接流记录
    */
-  const handleActionConfirm = () => {
-    if (currentActionType && actionItem) {
-      executeAction(actionItem, currentActionType);
+  const handleMoreMenuClick = (key, record) => {
+    switch (key) {
+      case 'copy':
+        handleCopyFlow(record);
+        break;
+      case 'copyId':
+        handleCopyId(record);
+        break;
+      case 'start':
+        handleStart(record);
+        break;
+      case 'deploy':
+        handleOpenDeployModal(record);
+        break;
+      case 'stop':
+        triggerConfirmAction(record, 'stop');
+        break;
+      case 'disable':
+        triggerConfirmAction(record, 'disable');
+        break;
+      case 'restore':
+        handleRestore(record);
+        break;
+      case 'delete':
+        triggerConfirmAction(record, 'delete');
+        break;
+      default:
+        break;
     }
   };
 
   /**
-   * 关闭操作确认弹窗
-   */
-  const handleActionCancel = () => {
-    setActionModalVisible(false);
-    setActionItem(null);
-    setCurrentActionType(null);
-  };
-
-  /**
-   * 提交表单
+   * 提交表单（创建/编辑）
+   *
    * @param {Object} values - 表单值
    */
   const handleModalSubmit = async (values) => {
     setModalLoading(true);
 
     // 判断是编辑还是创建
-    const isEdit = !!editItem?.id;
+    const isEdit = !!editItem?.flowId;
     const result = isEdit
-      ? await updateFlow({ flowId: editItem.id, data: values })
+      ? await updateFlow({ flowId: editItem.flowId, data: values })
       : await createFlow(values);
 
     if (result && result.code === '200') {
@@ -269,7 +413,7 @@ function FlowList() {
   };
 
   /**
-   * 关闭弹窗
+   * 关闭创建/编辑弹窗
    */
   const handleModalCancel = () => {
     setEditItem(null);
@@ -277,7 +421,7 @@ function FlowList() {
   };
 
   /**
-   * 副作用
+   * 副作用：首次加载列表
    */
   useEffect(() => {
     loadData();
@@ -288,89 +432,108 @@ function FlowList() {
    */
   const columns = getFlowColumns({
     handleEdit,
-    handleView,
-    handleActionClick,
+    handleConfig,
+    handleMoreMenuClick,
   });
+
+  /**
+   * 根据当前操作类型获取二次确认弹窗的配置
+   * 通过 getSecondModalInfo 注入当前操作对象名称（nameCn）
+   */
+  const getConfirmModalInfo = () => {
+    // 当前操作的连接流名称（用于弹窗内确认文案）
+    const objectName = confirmActionItem?.nameCn;
+
+    // 根据当前操作类型选取对应的基础配置
+    let baseInfo;
+    switch (confirmActionType) {
+      case 'stop':
+        baseInfo = FLOW_STOP_SECOND_MODAL_INFO;
+        break;
+      case 'disable':
+        baseInfo = FLOW_DISABLE_SECOND_MODAL_INFO;
+        break;
+      case 'delete':
+        baseInfo = FLOW_DELETE_SECOND_MODAL_INFO;
+        break;
+      default:
+        baseInfo = FLOW_DELETE_SECOND_MODAL_INFO;
+    }
+
+    return getSecondModalInfo({ ...baseInfo, objectName });
+  };
 
   /**
    * 渲染
    */
   return (
-    <div className="page-container">
-      {/* 左侧导航栏 */}
-      <SimpleSidebar />
-
-      {/* 主内容区 */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <div className="flow-management-page">
-          {/* 页面头部 */}
-          <div className="page-header">
-            <div className="page-header-left">
-              <h4 className="page-title">{pageInfo.title}</h4>
-              <span className="page-desc">{pageInfo.description}</span>
-            </div>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAdd}
-              style={{ justifyContent: 'center', borderRadius: 6 }}
-            >
-              {pageInfo.addButtonText}
-            </Button>
+    <div className="flow-management-page">
+      <div className="content-card">
+        {/* 页面头部 */}
+        <div className="page-header">
+          <div className="page-header-left">
+            <h2 className="page-title">{pageInfo.title}</h2>
+            <p className="page-desc">{pageInfo.description}</p>
           </div>
+          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+            {pageInfo.addButtonText}
+          </Button>
+        </div>
 
-          {/* 搜索表单 */}
-          <ConnectorSearchForm
-            keyword={keyword}
-            onSearch={handleSearch}
-            placeholder={flowSearchConfig.placeholder}
-            statusOptions={flowStatusOptions}
-          />
+        {/* 搜索表单 */}
+        <ConnectorSearchForm
+          keyword={keyword}
+          onSearch={handleSearch}
+          placeholder={flowSearchConfig.placeholder}
+          statusOptions={flowStatusOptions}
+        />
 
-          {/* 表格列表 */}
+        {/* 表格列表 */}
+        <Spin spinning={loading}>
           <Table
             columns={columns}
             dataSource={data}
-            loading={loading}
+            rowKey="flowId"
             pagination={false}
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1700 }}
           />
-          <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <div className="page-pagination">
             <Pagination
-              current={pagination.curPage}
-              pageSize={pagination.pageSize}
-              total={pagination.total}
+              pagination={pagination}
               onChange={handlePageChange}
-              showSizeChanger
-              pageSizeOptions={PAGE_SIZE_OPTIONS}
-              showQuickJumper
-              showTotal={(total) => `共 ${total} 条`}
+              onShowSizeChange={handleShowSizeChange}
             />
           </div>
-
-          {/* 操作确认弹窗（删除/停止） */}
-          <DeleteConfirmModal
-            open={actionModalVisible}
-            onClose={handleActionCancel}
-            onConfirm={handleActionConfirm}
-            modalInfo={getSecondModalInfo({
-              ...(currentActionType === 'delete' ? FLOW_DELETE_SECOND_MODAL_INFO : FLOW_STOP_SECOND_MODAL_INFO),
-              objectName: actionItem?.nameCn || actionItem?.nameEn,
-            })}
-            loading={actionLoading}
-          />
-
-          {/* 创建/编辑弹窗 */}
-          <ConnectorFormModal
-            type="flow"
-            visible={modalVisible}
-            onCancel={handleModalCancel}
-            onOk={handleModalSubmit}
-            initialValues={editItem}
-            loading={modalLoading}
-          />
-        </div>
+        </Spin>
       </div>
+
+      {/* 二次确认弹窗（停止/失效/删除） */}
+      <DeleteConfirmModal
+        open={confirmModalVisible}
+        onClose={handleConfirmCancel}
+        onConfirm={handleConfirmExecute}
+        modalInfo={getConfirmModalInfo()}
+        loading={confirmActionLoading}
+      />
+
+      {/* 创建/编辑弹窗 */}
+      <ConnectorFormModal
+        type="flow"
+        visible={modalVisible}
+        onCancel={handleModalCancel}
+        onOk={handleModalSubmit}
+        initialValues={editItem}
+        loading={modalLoading}
+      />
+
+      {/* 部署版本选择弹窗 */}
+      <DeployFlowModal
+        open={deployModalVisible}
+        flow={deployFlowItem}
+        loading={deployLoading}
+        onCancel={handleDeployModalCancel}
+        onOk={handleDeployConfirm}
+      />
     </div>
   );
 }

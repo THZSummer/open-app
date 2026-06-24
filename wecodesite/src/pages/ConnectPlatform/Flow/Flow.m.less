@@ -1,58 +1,55 @@
 /**
  * 连接流管理页面样式
+ * 样式风格对齐成员管理页面
  */
 
 .flow-management-page {
-  padding: 24px;
-  background: #fff;
   min-height: 100%;
 
+  // 卡片容器（对齐成员管理 .content-card）
+  .content-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  // 页面头部（对齐成员管理 .page-header）
   .page-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    align-items: center;
+    margin-bottom: 16px;
 
+    // 左侧标题与描述
     &-left {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
     }
   }
 }
 
-.page-container {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
-
+// 页面标题
 .page-title {
-  font-size: 18px;
+  margin: 0;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #1f2329;
 }
 
+// 页面描述
 .page-desc {
+  margin: 4px 0 0;
   font-size: 13px;
-  color: var(--text-tertiary);
+  color: #8f959e;
 }
 
-.toolbar {
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-
-  :global(.ant-table) {
-    min-width: 800px;
-  }
-
-  :global(.ant-table-thead > tr > th),
-  :global(.ant-table-tbody > tr > td) {
-    white-space: nowrap;
+// 分页容器
+.page-pagination {
+  :global(.pagination-wrapper) {
+    border: none;
+    background: transparent;
+    padding: 12px 0;
+    margin-top: 16px;
   }
 }
