@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""调试运行测试 — API #51"""
+"""#51 POST /flows/{id}/versions/{vid}/debug — 调试运行"""
 import pytest
-from conftest import api, db, draft_flow
+from _client import api
 
 
 class TestFlowVersionDebug:

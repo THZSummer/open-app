@@ -4,20 +4,60 @@
 
 ## 设计思想
 
-### 文件划分：一个接口文件对应一组 API
+### 文件划分：一个接口一个文件
 
-每个测试文件对应 plan-api 中的一个接口分组，做到「改哪个 API 就知道改哪个测试文件」：
+每个测试文件对应 plan-api 中的一个接口，文件名 = `test_{resource}_{action}.py` 跟 API 路径一致：
 
-| 文件 | 接口 | 用例 |
-|------|------|:--:|
-| `test_connector_crud.py` | #1~#7 连接器 CRUD + 生命周期 | 19 |
-| `test_connector_version.py` | #8~#16 连接器版本 | 9 |
-| `test_flow_crud.py` | #17~#27 连接流 CRUD + 生命周期 | 34 |
-| `test_flow_version.py` | #28~#36 连接流版本 | 11 |
-| `test_flow_version_debug.py` | #51 版本调试 | 2 |
-| `test_approval.py` | #37~#44 审批 | 8 |
-| `test_security.py` | 白名单 + 操作日志 | 6 |
-| `test_misc.py` | API/事件/回调删除 + JSON 校验 | 12 |
+| 文件 | API # | 接口 |
+|------|:--:|------|
+| **连接器** | | |
+| `test_connector_create.py` | #1 | POST /connectors |
+| `test_connector_list.py` | #2 | GET /connectors |
+| `test_connector_detail.py` | #3 | GET /connectors/{id} |
+| `test_connector_update.py` | #4 | PUT /connectors/{id} |
+| `test_connector_invalidate.py` | #5 | PUT /connectors/{id}/invalidate |
+| `test_connector_recover.py` | #6 | PUT /connectors/{id}/recover |
+| `test_connector_delete.py` | #7 | DELETE /connectors/{id} |
+| **连接器版本** | | |
+| `test_connector_version_create.py` | #8 | POST /connectors/{id}/versions |
+| `test_connector_version_list.py` | #9 | GET /connectors/{id}/versions |
+| `test_connector_version_detail.py` | #10 | GET /connectors/{id}/versions/{vid} |
+| `test_connector_version_update.py` | #11 | PUT /connectors/{id}/versions/{vid} |
+| `test_connector_version_publish.py` | #12 | PUT /connectors/{id}/versions/{vid}/publish |
+| `test_connector_version_copy.py` | #13 | POST /connectors/{id}/versions/{vid}/copy-to-draft |
+| `test_connector_version_invalidate.py` | #14 | PUT /connectors/{id}/versions/{vid}/invalidate |
+| `test_connector_version_recover.py` | #15 | PUT /connectors/{id}/versions/{vid}/recover |
+| `test_connector_version_delete.py` | #16 | DELETE /connectors/{id}/versions/{vid} |
+| **连接流** | | |
+| `test_flow_create.py` | #17 | POST /flows |
+| `test_flow_list.py` | #18 | GET /flows |
+| `test_flow_detail.py` | #19 | GET /flows/{id} |
+| `test_flow_update.py` | #20 | PUT /flows/{id} |
+| `test_flow_copy.py` | #21 | POST /flows/{id}/copy |
+| `test_flow_deploy.py` | #22 | POST /flows/{id}/deploy |
+| `test_flow_start.py` | #23 | POST /flows/{id}/start |
+| `test_flow_stop.py` | #24 | POST /flows/{id}/stop |
+| `test_flow_invalidate.py` | #25 | PUT /flows/{id}/invalidate |
+| `test_flow_recover.py` | #26 | PUT /flows/{id}/recover |
+| `test_flow_delete.py` | #27 | DELETE /flows/{id} |
+| **连接流版本** | | |
+| `test_flow_version_create.py` | #28 | POST /flows/{id}/versions |
+| `test_flow_version_list.py` | #29 | GET /flows/{id}/versions |
+| `test_flow_version_detail.py` | #30 | GET /flows/{id}/versions/{vid} |
+| `test_flow_version_update.py` | #31 | PUT /flows/{id}/versions/{vid} |
+| `test_flow_version_publish.py` | #32 | POST /flows/{id}/versions/{vid}/publish |
+| `test_flow_version_copy.py` | #33 | POST /flows/{id}/versions/{vid}/copy-to-draft |
+| `test_flow_version_invalidate.py` | #34 | PUT /flows/{id}/versions/{vid}/invalidate |
+| `test_flow_version_recover.py` | #35 | PUT /flows/{id}/versions/{vid}/recover |
+| `test_flow_version_delete.py` | #36 | DELETE /flows/{id}/versions/{vid} |
+| `test_flow_version_debug.py` | #51 | POST /flows/{id}/versions/{vid}/debug |
+| **端到端** | | |
+| `test_flow_deploy_invoke.py` | – | 部署→启动→调用 全链路 |
+| `test_flow_stop_restart.py` | – | 停止→重启 全链路 |
+| **其他** | | |
+| `test_approval.py` | #37~#48 | 审批流程 |
+| `test_security.py` | – | 白名单准入 + 操作日志 |
+| `test_misc.py` | – | API/事件/回调删除 + JSON 校验 |
 
 ### 用例分层：L0~L4 五级金字塔
 
@@ -80,7 +120,7 @@ pytest -m "L0 or L1"             # PR 门禁
 pytest -m "not L4"               # 每日回归
 
 # 指定文件
-pytest test_connector_crud.py -v
+pytest test_connector_create.py -v
 
 # 并行 + 报告
 pytest -n auto --html=report.html
@@ -94,16 +134,50 @@ pytest -m ""                     # 空字符串覆盖 -m L0 默认
 ```
 python/
 ├── README.md
-├── pytest.ini                  ← 配置(markers/addopts)
-├── conftest.py                 ← 共享 fixtures
-├── test_connector_crud.py      ← #1~#7
-├── test_connector_version.py   ← #8~#16
-├── test_flow_crud.py           ← #17~#27
-├── test_flow_version.py        ← #28~#36
-├── test_flow_version_debug.py  ← #51
-├── test_approval.py            ← #37~#44
-├── test_security.py
-├── test_misc.py
+├── pytest.ini                           ← 配置(markers/addopts)
+├── conftest.py                          ← 共享 fixtures
+├── test_connector_create.py             ← #1  POST /connectors
+├── test_connector_list.py               ← #2  GET /connectors
+├── test_connector_detail.py             ← #3  GET /connectors/{id}
+├── test_connector_update.py             ← #4  PUT /connectors/{id}
+├── test_connector_invalidate.py         ← #5  PUT /connectors/{id}/invalidate
+├── test_connector_recover.py            ← #6  PUT /connectors/{id}/recover
+├── test_connector_delete.py             ← #7  DELETE /connectors/{id}
+├── test_connector_version_create.py     ← #8  POST /connectors/{id}/versions
+├── test_connector_version_list.py       ← #9  GET /connectors/{id}/versions
+├── test_connector_version_detail.py     ← #10 GET /connectors/{id}/versions/{vid}
+├── test_connector_version_update.py     ← #11 PUT /connectors/{id}/versions/{vid}
+├── test_connector_version_publish.py    ← #12 PUT /connectors/{id}/versions/{vid}/publish
+├── test_connector_version_copy.py       ← #13 POST .../copy-to-draft
+├── test_connector_version_invalidate.py ← #14 PUT .../invalidate
+├── test_connector_version_recover.py    ← #15 PUT .../recover
+├── test_connector_version_delete.py     ← #16 DELETE /connectors/{id}/versions/{vid}
+├── test_flow_create.py                  ← #17 POST /flows
+├── test_flow_list.py                    ← #18 GET /flows
+├── test_flow_detail.py                  ← #19 GET /flows/{id}
+├── test_flow_update.py                  ← #20 PUT /flows/{id}
+├── test_flow_copy.py                    ← #21 POST /flows/{id}/copy
+├── test_flow_deploy.py                  ← #22 POST /flows/{id}/deploy
+├── test_flow_start.py                   ← #23 POST /flows/{id}/start
+├── test_flow_stop.py                    ← #24 POST /flows/{id}/stop
+├── test_flow_invalidate.py              ← #25 PUT /flows/{id}/invalidate
+├── test_flow_recover.py                 ← #26 PUT /flows/{id}/recover
+├── test_flow_delete.py                  ← #27 DELETE /flows/{id}
+├── test_flow_version_create.py          ← #28 POST /flows/{id}/versions
+├── test_flow_version_list.py            ← #29 GET /flows/{id}/versions
+├── test_flow_version_detail.py          ← #30 GET /flows/{id}/versions/{vid}
+├── test_flow_version_update.py          ← #31 PUT /flows/{id}/versions/{vid}
+├── test_flow_version_publish.py         ← #32 POST /flows/{id}/versions/{vid}/publish
+├── test_flow_version_copy.py            ← #33 POST .../copy-to-draft
+├── test_flow_version_invalidate.py      ← #34 PUT .../invalidate
+├── test_flow_version_recover.py         ← #35 PUT .../recover
+├── test_flow_version_delete.py          ← #36 DELETE /flows/{id}/versions/{vid}
+├── test_flow_version_debug.py           ← #51 POST .../debug
+├── test_flow_deploy_invoke.py           ← 部署→启动→调用 全链路
+├── test_flow_stop_restart.py            ← 停止→重启 全链路
+├── test_approval.py                     ← #37~#48 审批
+├── test_security.py                     ← 白名单 + 操作日志
+├── test_misc.py                         ← API/事件/回调删除 + JSON 校验
 └── inspect/
-    └── client.py               ← 基础设施(api/db/redis/ok)
+    └── client.py                        ← 基础设施(api/db/redis/ok)
 ```
