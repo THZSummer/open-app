@@ -1,4 +1,8 @@
 .capability-detail {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
   min-height: 100%;
   box-sizing: border-box;
 }
@@ -9,7 +13,7 @@
   gap: 16px;
   margin-bottom: 24px;
   padding-bottom: 24px;
-  border-bottom: 1px solid #dee0e3;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .detail-icon {
@@ -19,9 +23,9 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #e6f0ff 0%, #d4e5ff 100%);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 28px;
-  color: #3370ff;
+  color: var(--primary-color);
   flex-shrink: 0;
 }
 
@@ -35,27 +39,27 @@
   h4 {
     font-size: 18px;
     font-weight: 600;
-    color: #1f2329;
+    color: var(--text-primary);
     margin-bottom: 4px;
   }
 
   .ant-typography-secondary {
     font-size: 13px;
-    color: #8f959e;
+    color: var(--text-tertiary);
   }
 }
 
 .config-card {
-  border: 1px solid #dee0e3;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 
   .ant-card-head {
-    border-bottom: 1px solid #dee0e3;
+    border-bottom: 1px solid var(--border-color);
 
     .ant-card-head-title {
       font-size: 14px;
       font-weight: 500;
-      color: #1f2329;
+      color: var(--text-primary);
     }
   }
 }
@@ -65,12 +69,12 @@
   gap: 12px;
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid #dee0e3;
+  border-top: 1px solid var(--border-color);
 }
 
 .back-link {
   font-size: 13px;
-  color: #3370ff;
+  color: var(--primary-color);
   text-decoration: none;
   display: inline-block;
   margin-bottom: 8px;
@@ -93,12 +97,12 @@
 .page-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text-primary);
 }
 
 .page-desc {
   font-size: 13px;
-  color: #8f959e;
+  color: var(--text-tertiary);
 }
 
 .page-content {
@@ -115,9 +119,9 @@
   &-title {
     font-size: 14px;
     font-weight: 600;
-    color: #1f2329;
+    color: var(--text-primary);
     padding-bottom: 8px;
-    border-bottom: 1px solid #dee0e3;
+    border-bottom: 1px solid var(--border-color);
   }
 }
 
@@ -135,15 +139,15 @@
 
 .info-label {
   font-size: 13px;
-  color: #8f959e;
+  color: var(--text-tertiary);
 }
 
 .info-value {
   font-size: 14px;
-  color: #1f2329;
+  color: var(--text-primary);
 
   &.status-enabled {
-    color: #1a7f1a;
+    color: var(--success-color);
   }
 }
 
@@ -158,32 +162,32 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background-color: #f2f3f5;
-  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
 }
 
 .permission-check {
-  color: #1a7f1a;
+  color: var(--success-color);
   font-weight: bold;
 }
 
 .permission-name {
   font-size: 14px;
-  color: #1f2329;
+  color: var(--text-primary);
 }
 
 .page-actions {
   display: flex;
   gap: 12px;
   padding-top: 16px;
-  border-top: 1px solid #dee0e3;
+  border-top: 1px solid var(--border-color);
 }
 
 .btn-danger {
   padding: 8px 20px;
-  background-color: #f54a45;
+  background-color: var(--error-color);
   color: white;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   transition: opacity 0.2s ease;
 
@@ -195,6 +199,6 @@
 .empty-state {
   padding: 24px;
   text-align: center;
-  color: #8f959e;
+  color: var(--text-tertiary);
   font-size: 14px;
 }

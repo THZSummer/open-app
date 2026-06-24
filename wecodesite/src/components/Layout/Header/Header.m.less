@@ -1,78 +1,93 @@
-/* 顶部导航栏 — 对照 demo-app-list.html .header */
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 48px;
-  padding: 0 24px;
-  background: #fff;
-  border-bottom: 1px solid #dee0e3;
-  flex-shrink: 0;
+  height: 56px;
+  padding: 0 var(--spacing-base);
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
 
-  .header-left {
+  &-left {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 24px;
   }
 
-  .header-logo {
+  &-logo {
     display: flex;
     align-items: center;
     gap: 8px;
     text-decoration: none;
   }
 
-  .logo-icon-box {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    background: linear-gradient(135deg, #3370ff, #85a5ff);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .logo-icon {
+    width: 28px;
+    height: 28px;
   }
 
   .logo-text {
     font-size: 16px;
     font-weight: 600;
-    color: #1f2329;
+    color: var(--text-primary);
   }
 
-  .header-doc-link {
+  &-center {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  &-tab {
     font-size: 14px;
-    color: #646a73;
+    color: var(--text-secondary);
     text-decoration: none;
-    transition: color 0.2s;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    position: relative;
+    transition: all 0.2s ease;
 
     &:hover {
-      color: #1f2329;
+      color: var(--text-primary);
+      background-color: var(--bg-hover);
+    }
+
+    &.active {
+      color: var(--text-primary);
+      font-weight: 500;
+      background-color: var(--bg-hover);
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 8px;
+        right: 8px;
+        height: 2px;
+        background-color: var(--primary-color);
+      }
     }
   }
 
-  .header-right {
+  &-right {
     display: flex;
     align-items: center;
   }
 
-  .header-user-trigger {
-    font-size: 14px;
-    color: #1f2329;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: all 0.2s;
-    display: inline-flex;
+  &-user {
+    display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
 
     &:hover {
-      background: #f2f3f5;
+      background-color: var(--bg-hover);
     }
   }
 
-  .header-user-arrow {
-    font-size: 10px;
-    color: #8f959e;
-    transition: transform 0.2s;
+  .user-name {
+    font-size: 14px;
+    color: var(--text-primary);
   }
 }

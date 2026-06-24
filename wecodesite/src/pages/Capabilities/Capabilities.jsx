@@ -1,197 +1,190 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { message, Spin } from 'antd';
-import * as Icons from '@ant-design/icons';
-import { fetchSubscribedAbilities, fetchAbilityList, addAbility } from './thunk';
-import { ABILITY_TYPE_MAP, ABILITY_SCENE_MAP } from '../../utils/constants';
-import { ABILITY_CHANGED_EVENT } from '../../components/Layout/Sidebar/Sidebar';
-import { useRoleGuard } from '../../hooks/useRoleGuard';
-import { useAppDetail } from '../../contexts/AppContext';
-
+import { Card, Button, Tag, Empty, Modal, message } from 'antd';
+import { RobotOutlined, GlobalOutlined, AppstoreOutlined, MailOutlined, CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import './Capabilities.m.less';
 
-/**
- * 根据后端返回的 icon 名称动态渲染 Ant Design Icon 组件
- */
-function DynamicIcon({ iconName, size = 12 }) {
-  if (!iconName) return null;
-  const IconComp = Icons[iconName];
-  if (!IconComp) return null;
-  return <IconComp style={{ fontSize: size }} />;
-}
+const capabilityTypes = [
+  { type: 'bot', name: '机器人', icon: 'RobotOutlined' },
+  { type: 'web', name: '网页应用', icon: 'GlobalOutlined' },
+  { type: 'miniapp', name: '小程序', icon: 'MailOutlined' },
+  { type: 'widget', name: '小组件', icon: 'AppstoreOutlined' },
+];
 
-/**
- * 应用能力页
- *
- * 布局：右侧内容区整体结构
- *   - 标题：添加应用能力
- *   - 描述：你可以根据实际需求, 为应用开启服务...
- *   - Tab 切换：消息场景（目前只有一个）
- *   - 能力卡片网格
- */
 function Capabilities() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const appId = searchParams.get('appId');
-  const activeSubKey = searchParams.get('sub') || 'add';
+  const appId = searchParams.get('appId') || '1';
+  const enabledCapabilities = searchParams.get('caps')?.split(',').filter(Boolean) || ['bot'];
+  const [modalVisible, setModalVisible] = React.useState(false);
+  const [selectedCapability, setSelectedCapability] = React.useState(null);
 
-  // 页面级权限守卫
-  const { loading: roleLoading } = useRoleGuard(appId);
-  const { appDetail } = useAppDetail();
+  const isEnabled = (type) => enabledCapabilities.includes(type);
 
-  const [abilities, setAbilities] = useState([]);
-  const [subscribedAbilities, setSubscribedAbilities] = useState([]);
-  const [loading, setLoading] = useState(false);
-  // 当前选中的场景 Tab
-  const sceneKeys = Object.keys(ABILITY_SCENE_MAP);
-  const [activeScene, setActiveScene] = useState(sceneKeys[0] || 'message');
-
-  useEffect(() => {
-    if (!appId || roleLoading) {
-      if (!appId) navigate('/');
-      return;
-    }
-    if (!appDetail) return;
-    if (appDetail.appType !== 1) {
-      navigate(`/basic-info?appId=${appId}`);
-      return;
-    }
-    loadAbilities();
-  }, [appId, roleLoading, appDetail]);
-
-  const loadAbilities = async () => {
-    setLoading(true);
-    try {
-      const [subscribedRes, listRes] = await Promise.all([
-        fetchSubscribedAbilities(appId),
-        fetchAbilityList(appId),
-      ]);
-      if (subscribedRes?.code === '200') {
-        setSubscribedAbilities(subscribedRes.data || []);
+  const updateCapabilities = (newCaps) => {
+    const capsStr = newCaps.join(',');
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      if (capsStr) {
+        newParams.set('caps', capsStr);
+      } else {
+        newParams.delete('caps');
       }
-      if (listRes?.code === '200') {
-        const filtered = (listRes.data || []).filter(a => a.abilityType !== 6);
-        setAbilities(filtered);
-      }
-    } catch (error) {
-      message.error('加载能力列表失败');
-    } finally {
-      setLoading(false);
-    }
+      return newParams;
+    }, { replace: true });
   };
 
-  const handleAddAbility = async (abilityType) => {
-    const result = await addAbility(appId, { abilityType });
-    if (result?.code === '200') {
-      message.success('能力添加成功');
-      await loadAbilities();
-      window.dispatchEvent(new CustomEvent(ABILITY_CHANGED_EVENT));
-      navigate(`/capabilities?appId=${appId}&sub=${abilityType}`);
-    } else {
-      message.error(result?.messageZh || '添加失败');
-    }
+  const handleAddClick = (capability) => {
+    setSelectedCapability(capability);
+    setModalVisible(true);
   };
 
-  const isSubscribed = (type) => subscribedAbilities.some((a) => a.abilityType === type);
+  const handleConfirmAdd = () => {
+    if (selectedCapability && !enabledCapabilities.includes(selectedCapability.type)) {
+      const newCaps = [...enabledCapabilities, selectedCapability.type];
+      updateCapabilities(newCaps);
+      message.success(`已成功添加${selectedCapability.name}能力`);
+    }
+    setModalVisible(false);
+    setSelectedCapability(null);
+  };
 
-  const currentSubscribedAbility = subscribedAbilities.find(
-    (a) => String(a.abilityType) === activeSubKey && a.abilityType !== 6
-  );
-
-  // 按场景分组能力卡片
-  const groupedAbilities = Object.entries(ABILITY_SCENE_MAP).map(([sceneKey, scene]) => ({
-    key: sceneKey,
-    name: scene.name,
-    description: scene.description,
-    abilities: abilities.filter((a) => scene.types.includes(a.abilityType)),
-  }));
-
-  const currentGroup = groupedAbilities.find((g) => g.key === activeScene);
+  const handleCapabilityClick = (capability) => {
+    if (isEnabled(capability.type)) {
+      navigate(`/capability-detail?appId=${appId}&type=${capability.type}`);
+    }
+  };
 
   return (
-    <div className="capabilities-page">
-      {activeSubKey === 'add' ? (
-        <div className="content-card">
-          <div className="capabilities-header">
-            <h2 className="capabilities-title">添加应用能力</h2>
-            <p className="capabilities-desc">你可以根据实际需求, 为应用开启服务。单个应用可开启多种能力, 一个能力可用于一个或多个场景</p>
-          </div>
+    <div className="capabilities">
+      <div className="capabilities-header">
+        <h4 className="page-title">添加应用能力</h4>
+        <span className="page-desc">为应用开启对应的客户端能力，开启后需完成配置并发布应用才能生效</span>
+      </div>
 
-          {/* 场景 Tab */}
-          <div className="capabilities-tabs">
-            {groupedAbilities.map((group) => (
-              <div
-                key={group.key}
-                className={`capabilities-tab ${activeScene === group.key ? 'active' : ''}`}
-                onClick={() => setActiveScene(group.key)}
-              >
-                {group.name}
-              </div>
-            ))}
-          </div>
-
-          {/* 能力卡片 */}
-          <Spin spinning={loading}>
-            <div className="ability-grid">
-              {currentGroup?.abilities.map((ability) => (
-                <div key={ability.abilityType} className="ability-card">
-                  {/* 示意图区域 */}
-                  <div className="ability-image">
-                    {ability.illustration ? (
-                      <img src={ability.illustration} alt={ability.nameCn} />
-                    ) : ability.iconUrl ? (
-                      <img src={ability.iconUrl} alt={ability.nameCn} />
-                    ) : (
-                      <DynamicIcon iconName={ability.icon} size={20} />
-                    )}
-                  </div>
-                  {/* 名称（带图标） */}
-                  <div className="ability-name">
-                    {ability.iconUrl ? (
-                      <img src={ability.iconUrl} alt="" className="ability-name-icon" />
-                    ) : (
-                      <DynamicIcon iconName={ability.icon} size={12} />
-                    )}
-                    <span>{ability.nameCn}</span>
-                  </div>
-                  {/* 描述 */}
-                  <div className="ability-desc">{ability.descCn}</div>
-                  {/* 按钮 — 已添加显示"配置"，未添加显示"添加" */}
-                  {isSubscribed(ability.abilityType) ? (
-                    <button
-                      className="btn-config"
-                      onClick={() => navigate(`/capabilities?appId=${appId}&sub=${ability.abilityType}`)}
-                    >
-                      配置
-                    </button>
-                  ) : (
-                    <button
-                      className="btn-add"
-                      onClick={() => handleAddAbility(ability.abilityType)}
-                    >
-                      添加
-                    </button>
+      <div className="capabilities-content">
+        <div className="capabilities-grid">
+          {capabilityTypes.map((capability) => (
+            <Card
+              key={capability.type}
+              className={`capability-card ${isEnabled(capability.type) ? 'enabled' : ''}`}
+              hoverable={isEnabled(capability.type)}
+              onClick={() => handleCapabilityClick(capability)}
+            >
+              <div className="capability-card-inner">
+                <div className="capability-icon-wrapper">
+                  <span className="capability-icon">
+                    {capability.type === 'bot' && <RobotOutlined />}
+                    {capability.type === 'web' && <GlobalOutlined />}
+                    {capability.type === 'miniapp' && <MailOutlined />}
+                    {capability.type === 'widget' && <AppstoreOutlined />}
+                  </span>
+                  {isEnabled(capability.type) && (
+                    <span className="capability-check">
+                      <CheckOutlined />
+                    </span>
                   )}
                 </div>
-              ))}
-            </div>
-          </Spin>
+                <div className="capability-info">
+                  <div className="capability-name-row">
+                    <span className="capability-name">{capability.name}</span>
+                    {capability.type === 'miniapp' && (
+                      <Tag color="orange" className="not-recommended-tag">不推荐</Tag>
+                    )}
+                  </div>
+                  <span className="capability-desc">
+                    {capability.type === 'bot' && '通过飞书会话与用户进行消息交互'}
+                    {capability.type === 'web' && 'H5 开发，运行在飞书客户端内'}
+                    {capability.type === 'miniapp' && '支持在小程序中实现复杂交互'}
+                    {capability.type === 'widget' && '将应用嵌入到云文档、多维表格等飞书模块'}
+                  </span>
+                  <div className="capability-status">
+                    {isEnabled(capability.type) ? (
+                      <span className="enabled-text" style={{ color: '#52c41a' }}>
+                        <CheckOutlined /> 已添加{capability.name}
+                      </span>
+                    ) : (
+                      <Button
+                        type="primary"
+                        ghost
+                        size="small"
+                        icon={<PlusOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddClick(capability);
+                        }}
+                        className="add-btn"
+                      >
+                        添加
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
-      ) : (
-        // 已订阅能力配置页
-        <div className="capability-config-page">
-          <div className="info-card">
-            <div className="info-card-header">
-              <h3>{currentSubscribedAbility?.nameCn || ABILITY_TYPE_MAP[Number(activeSubKey)]?.text || '能力配置'}</h3>
+
+        {enabledCapabilities.length === 0 && (
+          <div className="empty-tips">
+            <Empty
+              description={
+                <span className="empty-text">暂无已启用的应用能力，请点击"添加"按钮启用能力</span>
+              }
+            />
+          </div>
+        )}
+
+        <div className="capability-notes">
+          <span className="notes-title">说明</span>
+          <ul className="notes-list">
+            <li>应用能力开启后，需完成必填项的配置并提交版本发布申请后，才能在线上生效</li>
+            <li>不同能力支持的配置项不同，请根据实际需求进行配置</li>
+            <li>如需修改已开启的能力，请在对应能力详情页进行操作</li>
+          </ul>
+        </div>
+      </div>
+
+      <Modal
+        title={`添加${selectedCapability?.name || ''}能力`}
+        open={modalVisible}
+        onOk={handleConfirmAdd}
+        onCancel={() => setModalVisible(false)}
+        okText="确认添加"
+        cancelText="取消"
+        className="add-capability-modal"
+      >
+        {selectedCapability && (
+          <div className="modal-content">
+            <div className="modal-capability-info">
+              <span className="modal-icon">
+                {selectedCapability.type === 'bot' && <RobotOutlined />}
+                {selectedCapability.type === 'web' && <GlobalOutlined />}
+                {selectedCapability.type === 'miniapp' && <MailOutlined />}
+                {selectedCapability.type === 'widget' && <AppstoreOutlined />}
+              </span>
+              <div className="modal-text">
+                <strong>{selectedCapability.name}</strong>
+                <br />
+                <span style={{ color: '#8c8c8c' }}>
+                  {selectedCapability.type === 'bot' && '通过飞书会话与用户进行消息交互'}
+                  {selectedCapability.type === 'web' && 'H5 开发，运行在飞书客户端内'}
+                  {selectedCapability.type === 'miniapp' && '支持在小程序中实现复杂交互'}
+                  {selectedCapability.type === 'widget' && '将应用嵌入到云文档、多维表格等飞书模块'}
+                </span>
+              </div>
             </div>
-            <div className="info-card-body">
-              <p style={{ color: '#8f959e', fontSize: 14 }}>
-                {currentSubscribedAbility?.nameCn || '该能力'}已添加，配置页面由能力方提供。
-              </p>
+            <div className="modal-notice">
+              <span>添加能力后，你需要：</span>
+              <ul>
+                <li>完成必填项的配置</li>
+                <li>提交版本发布申请</li>
+                <li>等待审核通过后能力才能生效</li>
+              </ul>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 }

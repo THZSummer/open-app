@@ -1,4 +1,8 @@
 .operation-log {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
   min-height: 100%;
   box-sizing: border-box;
 
@@ -18,12 +22,12 @@
   .page-title {
     font-size: 18px;
     font-weight: 600;
-    color: #1f2329;
+    color: var(--text-primary);
   }
 
   .page-desc {
     font-size: 13px;
-    color: #8f959e;
+    color: var(--text-tertiary);
   }
 
   .search-area {
@@ -57,20 +61,16 @@
     align-items: center;
 
     .pagination-info {
-      color: #646a73;
+      color: #666;
       font-size: 14px;
     }
   }
 
   .result-success {
-    color: #1a7f1a;
+    color: #52c41a;
   }
 
   .result-fail {
-    color: #f54a45;
-  }
-
-  .desc-cell {
-    white-space: pre-line;
+    color: #ff4d4f;
   }
 }

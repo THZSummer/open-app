@@ -1,5 +1,5 @@
 .app-list {
-  max-width: 1200px;
+  max-width: 960px;
   margin: 0 auto;
   min-height: 100%;
   box-sizing: border-box;
@@ -12,9 +12,9 @@
   }
 
   &-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
-    color: #1f2329;
+    color: var(--text-primary);
     margin: 0;
   }
 
@@ -24,14 +24,14 @@
     justify-content: center;
     gap: 4px;
     padding: 8px 16px;
-    background-color: #3370ff;
+    background-color: var(--primary-color);
     color: white;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-weight: 500;
     transition: background-color 0.2s ease;
 
     &:hover {
-      background-color: #2860e0;
+      background-color: var(--primary-hover);
     }
 
     span {
@@ -43,61 +43,5 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-  }
-}
-
-// 新组件样式
-.app-list-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 12px 0 32px;
-
-  .app-list-hero {
-    background: linear-gradient(135deg, #e8f0ff 0%, #f0f5ff 100%);
-    border-radius: 12px;
-    padding: 36px 32px;
-    margin-bottom: 28px;
-
-    .hero-title {
-      font-size: 22px;
-      font-weight: 700;
-      color: #1f2329;
-      margin-bottom: 8px;
-    }
-
-    .hero-desc {
-      font-size: 14px;
-      color: #646a73;
-      margin-bottom: 20px;
-    }
-
-    .hero-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: 8px 20px;
-      background: #3370ff;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-weight: 500;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        background: #2860e0;
-      }
-    }
-  }
-
-  .app-list-section {
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1f2329;
-      margin-bottom: 20px;
-    }
   }
 }

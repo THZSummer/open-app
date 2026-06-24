@@ -1,4 +1,8 @@
 .version-release {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: 24px;
   min-height: 100%;
   box-sizing: border-box;
 }
@@ -19,12 +23,12 @@
 .page-title {
   font-size: 18px;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text-primary);
 }
 
 .page-desc {
   font-size: 13px;
-  color: #8f959e;
+  color: var(--text-tertiary);
 }
 
 .btn-primary {
@@ -32,14 +36,14 @@
   align-items: center;
   gap: 4px;
   padding: 8px 16px;
-  background-color: #3370ff;
+  background-color: var(--primary-color);
   color: white;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-weight: 500;
   transition: background-color 0.2s ease;
 
   &:hover {
-    background-color: #2860e0;
+    background-color: var(--primary-hover);
   }
 
   span {
@@ -47,24 +51,10 @@
   }
 }
 
-// 版本表格样式（对照 demo .data-table）
 .version-table {
   :global(.ant-table-thead > tr > th) {
-    background: #f2f3f5;
-    font-weight: 500;
-    font-size: 13px;
-    color: #8f959e;
-    border-bottom: 1px solid #dee0e3;
-  }
-
-  :global(.ant-table-tbody > tr > td) {
-    font-size: 14px;
-    color: #1f2329;
-    border-bottom: 1px solid #f2f3f5;
-  }
-
-  :global(.ant-table-tbody > tr:hover > td) {
-    background: #f7f8fa;
+    background-color: #fafafa;
+    font-weight: 600;
   }
 }
 
@@ -79,13 +69,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border: 1px solid #dee0e3;
-  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: #3370ff;
-    box-shadow: 0 2px 8px rgba(51, 112, 255, 0.08);
+    border-color: var(--primary-color);
   }
 }
 
@@ -96,19 +85,19 @@
 .version-number {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2329;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .version-desc {
   font-size: 13px;
-  color: #646a73;
+  color: var(--text-secondary);
   margin-bottom: 4px;
 }
 
 .version-time {
   font-size: 12px;
-  color: #8f959e;
+  color: var(--text-tertiary);
 }
 
 .version-actions {
@@ -117,51 +106,37 @@
   gap: 12px;
 }
 
-// 状态标签（对照 demo .tag）
 .status-badge {
   display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
   font-size: 12px;
-  font-weight: 500;
 
   &.已发布 {
-    background: #e5f7e5;
-    color: #1a7f1a;
+    background-color: #e6f4ea;
+    color: var(--success-color);
   }
 
   &.已废弃 {
-    background: #fde2e2;
-    color: #f54a45;
+    background-color: #fce8e8;
+    color: var(--error-color);
   }
 
   &.开发中 {
-    background: #fff3e5;
-    color: #d46b08;
+    background-color: #fef7e0;
+    color: #b06000;
   }
 }
 
-// 文字按钮（对照 demo .btn-text）
 .btn-link {
-  padding: 4px 12px;
-  background: transparent;
-  border: none;
-  color: #3370ff;
+  padding: 4px 8px;
+  background: none;
+  color: var(--primary-color);
   font-size: 13px;
-  cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
+  transition: opacity 0.2s ease;
 
   &:hover {
-    background: #e8f0ff;
-  }
-
-  &.danger {
-    color: #f54a45;
-
-    &:hover {
-      background: #fde2e2;
-    }
+    opacity: 0.8;
   }
 }
 
@@ -176,7 +151,7 @@
 
   .form-text {
     font-size: 14px;
-    color: #1f2329;
+    color: var(--text-primary);
   }
 
   .capabilities-display {
@@ -196,290 +171,8 @@
   .form-actions {
     margin-top: 24px;
     padding-top: 16px;
-    border-top: 1px solid #f2f3f5;
+    border-top: 1px solid var(--border-color);
     display: flex;
     gap: 12px;
-  }
-}
-
-// ==================== 重构后页面样式 ====================
-
-.version-release-page {
-
-  .content-card {
-    background: #fff;
-    border-radius: 8px;
-    padding: 24px;
-  }
-
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-
-    h2 {
-      margin: 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: #1f2329;
-    }
-  }
-
-  .action-btns {
-    display: flex;
-    gap: 8px;
-  }
-
-  // 面包屑导航
-  .version-breadcrumb {
-    font-size: 14px;
-    color: #8f959e;
-    margin-bottom: 20px;
-
-    .version-breadcrumb-link {
-      color: #3370ff;
-      cursor: pointer;
-
-      &:hover {
-        text-decoration: underline;
-      }
-    }
-
-    .version-breadcrumb-sep {
-      margin: 0 8px;
-      color: #c0c4cc;
-    }
-  }
-
-  .version-form-title-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 0 0 24px 0;
-  }
-
-  .version-form-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1f2329;
-    margin: 0;
-  }
-
-  // 查看模式底部操作按钮
-  .version-detail-actions {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid #f2f3f5;
-    margin-left: 100px;
-    display: flex;
-    gap: 12px;
-  }
-
-  // 左右布局表单
-  .version-create-form {
-    .version-form-row {
-      display: flex;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-
-    .version-form-label {
-      width: 100px;
-      flex-shrink: 0;
-      font-size: 14px;
-      color: #1f2329;
-      line-height: 32px;
-
-      .version-form-required {
-        color: #f54a45;
-        margin-right: 2px;
-      }
-    }
-
-    .version-form-field {
-      flex: 1;
-      max-width: 500px;
-    }
-
-    .version-form-field-wide {
-      max-width: none;
-    }
-
-    .version-form-text {
-      display: inline-block;
-      font-size: 14px;
-      color: #1f2329;
-      line-height: 32px;
-      min-height: 32px;
-      word-break: break-all;
-      white-space: pre-wrap;
-    }
-
-    .version-form-actions {
-      margin-top: 24px;
-      margin-left: 100px;
-      display: flex;
-      gap: 12px;
-    }
-  }
-
-  // 能力卡片列表
-  .ability-notice {
-    font-size: 13px;
-    color: #8f959e;
-    line-height: 20px;
-    margin-top: 12px;
-  }
-
-  .ability-card-wrapper {
-    background: #f7f8fa;
-    border-radius: 8px;
-    padding: 16px;
-    min-height: 108px;
-    min-width: 500px;
-    width: fit-content;
-  }
-
-  .ability-card-list {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 12px;
-  }
-
-  .ability-card-item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px;
-    background: #fff;
-    border-radius: 8px;
-    border: 1px solid #e8e8e8;
-    flex-shrink: 0;
-
-    .ability-card-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .ability-card-icon {
-      width: 32px;
-      height: 32px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-      background: #e8f0ff;
-      flex-shrink: 0;
-
-      img {
-        width: 20px;
-        height: 20px;
-        object-fit: contain;
-      }
-    }
-
-    .ability-card-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: #1f2329;
-      line-height: 1.3;
-    }
-
-    .ability-card-status {
-      font-size: 12px;
-      color: #34c759;
-      line-height: 1.2;
-    }
-  }
-}
-
-// 版本详情视图（对照 demo .info-card）
-.version-detail {
-  .version-detail-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f2f3f5;
-
-    .version-detail-code {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1f2329;
-    }
-  }
-
-  .version-detail-card {
-    background: #fff;
-    border-radius: 8px;
-    border: 1px solid #dee0e3;
-    margin-bottom: 24px;
-    box-shadow: 0 1px 2px rgba(31, 35, 41, 0.04);
-
-    .detail-actions {
-      display: flex;
-      gap: 8px;
-    }
-  }
-}
-
-// 详情只读视图（对照 demo .info-row）
-.detail-view {
-  .detail-row {
-    display: flex;
-    padding: 12px 0;
-    border-bottom: 1px solid #f2f3f5;
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-
-  .detail-label {
-    width: 120px;
-    flex-shrink: 0;
-    color: #8f959e;
-    font-size: 14px;
-  }
-
-  .detail-value {
-    flex: 1;
-    color: #1f2329;
-    font-size: 14px;
-    word-break: break-all;
-  }
-}
-
-// 卡片内操作按钮
-.card-actions {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #f2f3f5;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-// 关联能力
-.version-ability-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-
-  .ability-chip {
-    display: inline-block;
-  }
-}
-
-// 分页组件样式覆盖
-.version-pagination {
-  .pagination-wrapper {
-    border: none !important;
-    background: transparent !important;
-    padding: 12px 0 !important;
-    margin-top: 0 !important;
   }
 }

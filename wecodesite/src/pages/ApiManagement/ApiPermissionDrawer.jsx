@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Table, Button, Pagination, Input, Select, message } from 'antd';
 const { TabPane } = Tabs;
 import { fetchApis, fetchCategories, fetchTabConfig } from './thunk';
-import { useAppDetail } from '../../contexts/AppContext';
+import { mockAppInfo } from '../BasicInfo/mock';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { NEED_REVIEW_OPTIONS, createDrawerColumns } from '../../utils/commonTableConfigs';
 import { TAB_CONFIG_SEARCH_KEY } from './constants';
@@ -53,12 +53,12 @@ const transformCategoriesToModules = (categories) => {
  * @param {string} appId - 应用ID
  */
 function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
-  const { appDetail } = useAppDetail();
   // 是否启用身份权限功能开关（仅控制第一层Tab是否显示）
   const enableIdentityPermission = true;
   
-  // 根据 appId 异步获取应用信息，判断是业务应用还是个人应用
-  const [appType, setAppType] = useState('person');
+  // 根据 appId 获取应用信息，判断是业务应用还是个人应用
+  const appInfo = appId ? mockAppInfo[appId] : null;
+  const appType = appInfo && appInfo.eamap ? 'business' : 'person';
 
   // Tab配置状态
   const [tabConfig, setTabConfig] = useState({
@@ -120,9 +120,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
    * 加载Tab配置
    * 抽屉打开时调用一次，缓存到组件状态
    * 数据处理逻辑在此处完成
-   * @param {string} targetAppType - 应用类型：'business' 或 'person'
    */
-  const loadTabConfig = async (targetAppType = appType) => {
+  const loadTabConfig = async () => {
     setLoading(true);
     try {
       // 调用接口时传入 searchKey 参数
@@ -130,7 +129,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
       
       if (rawData && rawData.code === 200) {
         // 数据处理：根据应用类型筛选并解析数据
-        const parsedConfig = parseTabConfig(rawData, targetAppType);
+        const parsedConfig = parseTabConfig(rawData, appType);
         
         setTabConfig({
           firstLevelTabs: parsedConfig.firstLevelTabs,
@@ -241,21 +240,15 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     setSelectedRowKeys([]);
     
     const initData = async () => {
-      // 0. 从 Context 获取应用详情，判断应用类型
-      let resolvedAppType = 'person';
-      if (appDetail) {
-        resolvedAppType = (appDetail.appType === 1 || appDetail.eamap) ? 'business' : 'person';
-      }
-      setAppType(resolvedAppType);
-
-      // 1. 加载Tab配置（传入解析后的 appType）
-      const tabResult = await loadTabConfig(resolvedAppType);
+      // 1. 加载Tab配置
+      const tabResult = await loadTabConfig();
       
       if (!tabResult) {
         return;
       }
       
       // 2. 加载模块列表
+      console.log('tabResult = ', tabResult)
       const modules = await loadModules(tabResult.firstChildTab.key);
       
       // 3. 加载API列表

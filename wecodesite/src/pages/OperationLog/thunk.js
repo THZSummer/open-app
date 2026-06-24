@@ -1,48 +1,41 @@
-import { API_CONFIG, buildApiUrl, fetchApi } from '../../configs/web.config';
+import { operationTypes, operationObjects, mockAccounts, mockIps, mockResults } from './mock';
 
-/**
- * 分页查询操作日志
- * 后端接口: GET /service/open/v2/operate-log
- */
-export const fetchOperationLogList = async ({ page, pageSize, filters = {} }) => {
-  try {
-    const params = {
-      curPage: page,
-      pageSize,
-    };
-    if (filters.account) params.operateUser = filters.account;
-    if (filters.operationObject) params.operateObject = filters.operationObject;
-    if (filters.operationTime?.length === 2) {
-      params.startTime = filters.operationTime[0];
-      params.endTime = filters.operationTime[1];
-    }
-    const result = await fetchApi('/operate-log', { params });
-    if (result?.code === '200') {
-      return {
-        data: (result.data || []).map(item => ({ ...item, key: item.id })),
-        total: result.page?.total || 0,
-      };
-    }
-    return { data: [], total: 0 };
-  } catch (err) {
-    console.error('fetchOperationLogList error:', err);
-    return { data: [], total: 0 };
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const generateMockData = (page, pageSize, filters = {}) => {
+  const total = 156;
+  const data = [];
+
+  for (let i = 0; i < pageSize; i++) {
+    const seq = (page - 1) * pageSize + i + 1;
+    const date = new Date();
+    date.setDate(date.getDate() - Math.floor(Math.random() * 180));
+
+    data.push({
+      key: seq,
+      id: seq,
+      account: mockAccounts[Math.floor(Math.random() * mockAccounts.length)],
+      operationType: operationTypes[Math.floor(Math.random() * operationTypes.length)].value,
+      operationObject: operationObjects[Math.floor(Math.random() * operationObjects.length)].value,
+      description: `操作描述_${seq}`,
+      ip: mockIps[Math.floor(Math.random() * mockIps.length)],
+      time: date.toISOString().slice(0, 19).replace('T', ' '),
+      result: mockResults[Math.floor(Math.random() * mockResults.length)],
+    });
   }
+
+  return { data, total };
 };
 
-/**
- * 获取操作日志筛选条件
- * 后端接口: GET /service/open/v2/operate-log/filters
- */
+export const fetchOperationLogList = async ({ page, pageSize, filters = {} }) => {
+  await delay(300);
+  return generateMockData(page, pageSize, filters);
+};
+
 export const fetchOperationLogFilters = async () => {
-  try {
-    const result = await fetchApi('/operate-log/filters');
-    if (result?.code === '200') {
-      return result.data;
-    }
-    return { operationTypes: [], operationObjects: [] };
-  } catch (err) {
-    console.error('fetchOperationLogFilters error:', err);
-    return { operationTypes: [], operationObjects: [] };
-  }
+  await delay(100);
+  return {
+    operationTypes,
+    operationObjects,
+  };
 };

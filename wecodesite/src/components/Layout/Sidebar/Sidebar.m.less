@@ -1,10 +1,6 @@
-// 侧边栏样式 — 对照 demo-app-list.html .sidebar / .menu-group / .menu-item
-
 .sidebar {
-  width: 240px;
-  background: #fff;
-  border-right: 1px solid #dee0e3;
-  padding: 24px 0;
+  background-color: var(--bg-primary);
+  flex-shrink: 0;
   overflow-y: auto;
   overflow-x: hidden;
 
@@ -21,83 +17,71 @@
     flex-direction: column;
     margin: 0;
     padding: 0;
-
-    & + & {
-      margin-top: 12px;
-    }
   }
 
-  // 分组标题（对照 demo .menu-group-title）
   &-category-header {
-    padding: 6px 20px;
     font-size: 12px;
     font-weight: 500;
-    color: #8f959e;
-    letter-spacing: 0.3px;
-    user-select: none;
+    color: var(--text-tertiary);
+    padding: 12px 12px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   &-category-items {
     display: flex;
     flex-direction: column;
+    gap: 4px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  // 菜单项（对照 demo .menu-item）
-  // "添加应用能力"和"已添加的能力"同级，大小一致
   &-item {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 14px;
-    color: #646a73;
-    border-left: 3px solid transparent;
+    padding: 10px 12px 10px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
     text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
 
     &:hover {
-      background: #f2f3f5;
-      color: #1f2329;
+      background-color: var(--bg-hover);
+      color: var(--text-primary);
+      text-decoration: none;
     }
 
     &.active {
-      background: #e8f0ff;
-      color: #3370ff;
-      font-weight: 500;
-      border-left-color: #3370ff;
+      background-color: #e6f0ff;
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    &.indented {
+      padding-left: 36px;
+      font-size: 13px;
+
+      .sidebar-item-icon {
+        font-size: 14px;
+      }
     }
   }
 
   &-item-icon {
-    width: 18px;
-    height: 18px;
-    flex-shrink: 0;
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    // 已添加能力的小图标（对照 demo .ability-item .ability-icon 14x14）
-    .anticon {
-      font-size: 18px;
-    }
+    font-size: 16px;
   }
 
   &-item-label {
     flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   &-divider {
     height: 1px;
-    background-color: #f2f3f5;
-    margin: 4px 8px;
+    background-color: var(--border-color);
+    margin: 8px 12px;
   }
 }
 

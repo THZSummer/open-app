@@ -79,7 +79,7 @@ function ConnectorFormModal({ type = 'connector', visible, onCancel, onOk, initi
       onOk={handleSubmit}
       okText="保存"
       cancelText="取消"
-      width={520}
+      width={600}
       destroyOnClose
       confirmLoading={loading}
     >

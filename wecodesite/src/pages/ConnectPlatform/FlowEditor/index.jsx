@@ -24,12 +24,17 @@ import { nodeTypes } from './constants';
 import { generateNodeId, generateEdgeId, getInitialNodePosition, transformFromBackend, transformToBackend } from '../../../utils/flowUtils';
 import { fetchFlowDetail, saveFlowConfig } from './thunk';
 import { queryParams } from '../../../utils/common';
+import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
+import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import './FlowEditor.m.less';
 
 /**
  * 连接流编辑器页面组件
  */
 function FlowEditor() {
+  // 校验当前用户是否具备连接平台访问权限
+  useAdminAccessGuard();
+
   const navigate = useNavigate();
 
   /**
@@ -214,78 +219,86 @@ const loadFlowDetail = async (id) => {
    * 渲染
    */
   return (
-    <div className="flow-editor-page">
-      {/* 顶部工具栏 */}
-      <div className="editor-header">
-        <div className="header-left">
-          <Button
-            type="text"
-            icon={<CloseOutlined />}
-            onClick={handleClose}
-            className="back-btn"
+    <div className="page-container">
+      {/* 左侧导航栏 */}
+      <SimpleSidebar />
+
+      {/* 主内容区 */}
+      <div className="main-content">
+        <div className="flow-editor-page">
+          {/* 顶部工具栏 */}
+          <div className="editor-header">
+            <div className="header-left">
+              <Button
+                type="text"
+                icon={<CloseOutlined />}
+                onClick={handleClose}
+                className="back-btn"
+              >
+                返回
+              </Button>
+              <span className="flow-name">{flowName}</span>
+            </div>
+            <div className="header-right">
+              <Space>
+                <span className="node-count">
+                  {nodes.length} 个节点 · {edges.length} 条连线
+                </span>
+                <Button
+                  type="primary"
+                  icon={<SaveOutlined />}
+                  onClick={handleSave}
+                  loading={loading}
+                >
+                  保存
+                </Button>
+              </Space>
+            </div>
+          </div>
+
+          {/* 画布主体 */}
+          <div className="editor-content">
+            {/* 左侧节点库 */}
+            <NodeLibrary nodes={nodes} />
+
+            {/* 中央画布 */}
+            <div className="editor-canvas-area">
+              <FlowCanvasWrapper
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={handleNodeClick}
+                onNodeDrop={handleNodeDrop}
+                selectedNodeId={selectedNode?.id}
+                canDeleteNode={canDeleteNode}
+                nodeTypes={nodeTypes}
+              />
+            </div>
+          </div>
+
+          {/* 节点配置抽屉 */}
+          <Drawer
+            title="节点配置"
+            placement="right"
+            open={!!selectedNode}
+            onClose={() => setSelectedNode(null)}
+            width={600}
+            destroyOnClose
+            mask={false}
           >
-            返回
-          </Button>
-          <span className="flow-name">{flowName}</span>
-        </div>
-        <div className="header-right">
-          <Space>
-            <span className="node-count">
-              {nodes.length} 个节点 · {edges.length} 条连线
-            </span>
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSave}
-              loading={loading}
-            >
-              保存
-            </Button>
-          </Space>
+            {selectedNode && (
+              <NodeProperties
+                selectedNode={selectedNode}
+                onUpdateNode={handleUpdateNode}
+                nodes={nodes}
+                edges={edges}
+              />
+            )}
+          </Drawer>
         </div>
       </div>
-
-      {/* 画布主体 */}
-      <div className="editor-content">
-        {/* 左侧节点库 */}
-        <NodeLibrary nodes={nodes} />
-
-        {/* 中央画布 */}
-        <div className="editor-canvas-area">
-          <FlowCanvasWrapper
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={handleNodeClick}
-            onNodeDrop={handleNodeDrop}
-            selectedNodeId={selectedNode?.id}
-            canDeleteNode={canDeleteNode}
-            nodeTypes={nodeTypes}
-          />
-        </div>
-      </div>
-
-      {/* 节点配置抽屉 */}
-      <Drawer
-        title="节点配置"
-        placement="right"
-        open={!!selectedNode}
-        onClose={() => setSelectedNode(null)}
-        width={600}
-        destroyOnClose
-        mask={false}
-      >
-        {selectedNode && (
-          <NodeProperties
-            selectedNode={selectedNode}
-            onUpdateNode={handleUpdateNode}
-            nodes={nodes}
-            edges={edges}
-          />
-        )}
-      </Drawer>
     </div>
   );
 }
