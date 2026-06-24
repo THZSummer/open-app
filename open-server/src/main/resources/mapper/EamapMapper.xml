@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.app.mapper.EamapMapper">
+
+    <resultMap id="EamapResultMap" type="com.xxx.it.works.wecode.v2.modules.app.entity.Eamap">
+        <id column="id" property="id"/>
+        <result column="eamap_app_code" property="eamapAppCode"/>
+        <result column="name_cn" property="nameCn"/>
+        <result column="name_en" property="nameEn"/>
+        <result column="owner_account_id" property="ownerAccountId"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="EamapResultMap">
+        SELECT id,
+               eamap_app_code,
+               name_cn,
+               name_en,
+               owner_account_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_eamap_t
+        WHERE status = 1
+        ORDER BY id
+    </select>
+
+    <select id="selectList" resultMap="EamapResultMap">
+        SELECT id,
+               eamap_app_code,
+               name_cn,
+               name_en,
+               owner_account_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_eamap_t
+        WHERE status = 1
+        ORDER BY id
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*) FROM openplatform_eamap_t WHERE status = 1
+    </select>
+
+    <select id="selectByEamapAppCode" resultMap="EamapResultMap">
+        SELECT id,
+               eamap_app_code,
+               name_cn,
+               name_en,
+               owner_account_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_eamap_t
+        WHERE eamap_app_code = #{eamapAppCode,jdbcType=VARCHAR}
+          AND status = 1 LIMIT 1
+    </select>
+
+</mapper>

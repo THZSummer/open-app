@@ -1,9 +1,13 @@
 package com.xxx.it.works.wecode.v2.common.annotation;
 
-import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
 import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
+import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * 审计日志注解
@@ -14,8 +18,7 @@ import java.lang.annotation.*;
  * <p>使用示例：</p>
  * <pre>
  * &#64;AuditLog(value = OperateEnum.SUBSCRIBE_API_PERMISSION)
- * &#64;AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION)
- * &#64;AuditLog(value = OperateEnum.WITHDRAW_API_PERMISSION, appIdSource = AppIdSourceEnum.ENTITY)
+ * &#64;AuditLog(value = OperateEnum.CREATE_APP, appIdSource = AppIdSourceEnum.RESPONSE_FIELD)
  * </pre>
  *
  * @author SDDU Build Agent
@@ -36,6 +39,7 @@ public @interface AuditLog {
      * <ul>
      *   <li>PATH_VARIABLE（默认）：从方法参数 appId 直接获取（已是 openplatform_app_t.app_id）</li>
      *   <li>ENTITY：从实体快照中提取 numeric app_id，再通过 AppContextResolver.toExternalId() 转换</li>
+     *   <li>RESPONSE_FIELD：从返回值 ApiResponse.data.appId 中提取（CREATE 类操作）</li>
      * </ul>
      */
     AppIdSourceEnum appIdSource() default AppIdSourceEnum.PATH_VARIABLE;

@@ -3,8 +3,6 @@ package com.xxx.it.works.wecode.v2.common.config;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,12 +42,6 @@ public class JacksonConfig {
 
         // 设置时区为北京时间
         objectMapper.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
-
-        // Long 类型序列化为 String，避免 JavaScript 精度丢失
-        SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addSerializer(Long.class, ToStringSerializer.instance);
-        simpleModule.addSerializer(Long.TYPE, ToStringSerializer.instance);
-        objectMapper.registerModule(simpleModule);
 
         return objectMapper;
     }

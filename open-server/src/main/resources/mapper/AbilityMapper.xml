@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper">
+
+    <resultMap id="AbilityResultMap" type="com.xxx.it.works.wecode.v2.modules.ability.entity.Ability">
+        <id column="id" property="id"/>
+        <result column="ability_name_cn" property="abilityNameCn"/>
+        <result column="ability_name_en" property="abilityNameEn"/>
+        <result column="ability_desc_cn" property="abilityDescCn"/>
+        <result column="ability_desc_en" property="abilityDescEn"/>
+        <result column="ability_type" property="abilityType"/>
+        <result column="order_num" property="orderNum"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="AbilityResultMap">
+        SELECT id,
+               ability_name_cn,
+               ability_name_en,
+               ability_desc_cn,
+               ability_desc_en,
+               ability_type,
+               order_num,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_ability_t
+        WHERE status = 1
+        ORDER BY order_num, id
+    </select>
+
+    <select id="selectById" resultMap="AbilityResultMap">
+        SELECT id,
+               ability_name_cn,
+               ability_name_en,
+               ability_desc_cn,
+               ability_desc_en,
+               ability_type,
+               order_num,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_ability_t
+        WHERE id = #{id,jdbcType=BIGINT}
+          AND status = 1
+    </select>
+
+</mapper>

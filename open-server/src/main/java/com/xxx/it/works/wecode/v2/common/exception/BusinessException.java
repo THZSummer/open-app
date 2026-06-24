@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.common.exception;
 
+import com.xxx.it.works.wecode.v2.common.enums.ResponseCodeEnum;
 import lombok.Getter;
 
 /**
@@ -42,6 +43,13 @@ public class BusinessException extends RuntimeException {
         this.code = code;
         this.messageZh = messageZh;
         this.messageEn = messageEn;
+    }
+
+    /**
+     * 根据 ResponseCodeEnum 构建异常
+     */
+    public static BusinessException of(ResponseCodeEnum code) {
+        return new BusinessException(code.getCode(), code.getMessageZh(), code.getMessageEn());
     }
 
     /**

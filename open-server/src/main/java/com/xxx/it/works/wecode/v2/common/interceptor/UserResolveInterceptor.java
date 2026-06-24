@@ -1,8 +1,8 @@
 package com.xxx.it.works.wecode.v2.common.interceptor;
 
-import com.xxx.it.works.wecode.v2.common.user.strategy.UserResolveStrategy;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.model.UserContext;
+import com.xxx.it.works.wecode.v2.common.user.strategy.UserResolveStrategy;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +36,8 @@ public class UserResolveInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request,
-                            HttpServletResponse response,
-                            Object handler) {
+                             HttpServletResponse response,
+                             Object handler) {
         try {
 
             // 1. Select and execute strategy

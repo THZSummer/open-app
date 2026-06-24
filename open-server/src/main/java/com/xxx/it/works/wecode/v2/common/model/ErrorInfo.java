@@ -29,23 +29,35 @@ public class ErrorInfo implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 错误码 (数字字符串，如 "6001", "429") */
+    /**
+     * 错误码 (数字字符串，如 "6001", "429")
+     */
     private String code;
 
-    /** 中文错误消息 */
+    /**
+     * 中文错误消息
+     */
     private String messageZh;
 
-    /** 英文错误消息 */
+    /**
+     * 英文错误消息
+     */
     private String messageEn;
 
     // ====== oneOf 约束 ======
 
-    /** 内部错误原因 (6xxxx 类型错误) */
+    /**
+     * 内部错误原因 (6xxxx 类型错误)
+     */
     private String cause;
 
-    /** 下游 HTTP 状态码 (4xx/5xx 类型错误) */
+    /**
+     * 下游 HTTP 状态码 (4xx/5xx 类型错误)
+     */
     private Integer downstreamStatus;
 
-    /** 下游响应体 (截断 512 字符) */
+    /**
+     * 下游响应体 (截断 512 字符)
+     */
     private String downstreamBody;
 }

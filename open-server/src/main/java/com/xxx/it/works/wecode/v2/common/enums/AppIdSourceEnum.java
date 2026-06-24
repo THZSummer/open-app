@@ -33,5 +33,18 @@ public enum AppIdSourceEnum {
      * 切面先加载实体快照（before_data），从中提取 numeric app_id（openplatform_app_t.id），
      * 再通过 AppContextResolver.toExternalId() 转换为 varchar app_id（openplatform_app_t.app_id）。</p>
      */
-    ENTITY;
+    ENTITY,
+
+    /**
+     * 从方法返回值（ApiResponse.data）中提取 appId
+     *
+     * <p>适用于 CREATE 类操作，方法参数中无 appId，实体尚未持久化无法加载快照，
+     * 但方法返回的 ApiResponse.data 中包含新建实体的 appId。</p>
+     *
+     * <p>典型场景：AppController.createApp() 返回 ApiResponse&lt;CreateAppVO&gt;，
+     * CreateAppVO.appId 即为新建应用的 openplatform_app_t.app_id（varchar 外部业务 ID）。</p>
+     *
+     * <p>切面在 proceed 之后从 result 中提取 appId，因此 appId 解析发生在 Phase 3。</p>
+     */
+    RESPONSE_FIELD
 }

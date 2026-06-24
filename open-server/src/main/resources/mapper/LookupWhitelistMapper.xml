@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.lookup.mapper.LookupWhitelistMapper">
+
+    <select id="selectItemsByClassifyCode" resultType="java.util.Map">
+        SELECT i.item_code AS itemCode, i.item_name AS itemName
+        FROM openplatform_lookup_item_t i
+                 JOIN openplatform_lookup_classify_t c ON c.classify_id = i.classify_id
+        WHERE c.classify_code = #{classifyCode}
+          AND c.status = 1
+          AND i.status = 1
+        ORDER BY i.item_index
+    </select>
+
+    <select id="selectItemValuesByClassifyCode" resultType="java.lang.String">
+        SELECT i.item_value
+        FROM openplatform_lookup_item_t i
+                 JOIN openplatform_lookup_classify_t c ON c.classify_id = i.classify_id
+        WHERE c.classify_code = #{classifyCode}
+          AND c.status = 1
+          AND i.status = 1
+        ORDER BY i.item_index
+    </select>
+
+    <select id="selectItemValueByCode" resultType="java.lang.String">
+        SELECT i.item_value
+        FROM openplatform_lookup_item_t i
+                 JOIN openplatform_lookup_classify_t c ON c.classify_id = i.classify_id
+        WHERE c.classify_code = #{classifyCode}
+          AND i.item_code = #{itemCode}
+          AND c.status = 1
+          AND i.status = 1
+    </select>
+
+</mapper>

@@ -1,8 +1,8 @@
 package com.xxx.it.works.wecode.v2.common.user.strategy.impl;
 
-import com.xxx.it.works.wecode.v2.common.user.strategy.UserResolveStrategy;
 import com.xxx.it.works.wecode.v2.common.enums.AuthTypeEnum;
 import com.xxx.it.works.wecode.v2.common.model.UserContext;
+import com.xxx.it.works.wecode.v2.common.user.strategy.UserResolveStrategy;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -59,7 +59,7 @@ public class DevUserStrategy implements UserResolveStrategy {
     /**
      * Extract specified Cookie value from request
      *
-     * @param request HTTP request
+     * @param request    HTTP request
      * @param cookieName Cookie name
      * @return Cookie value, returns null if not found
      */
