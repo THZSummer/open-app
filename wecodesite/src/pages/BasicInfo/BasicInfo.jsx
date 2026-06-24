@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Form, Input, Button, Card, Radio, Upload, message } from 'antd';
-import { EyeInvisibleOutlined, EyeOutlined, CopyOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Card, Radio, Upload, message, InputNumber, Space, Tooltip } from 'antd';
+import { EyeInvisibleOutlined, EyeOutlined, CopyOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { mockAppInfo } from './mock';
+import { fetchCardSetting, updateCardPeriod } from './thunk';
 import './BasicInfo.m.less';
 
 const authOptions = [
@@ -23,6 +24,21 @@ function BasicInfo() {
   const [authMethodEditing, setAuthMethodEditing] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
 
+  // 卡片设置 state
+  const [cardSetting, setCardSetting] = useState({
+    expirationDays: null,
+    deletionDays: null,
+  });
+  const [cardSettingEditing, setCardSettingEditing] = useState(false);
+  const [cardSettingDraft, setCardSettingDraft] = useState({
+    expiration: null,
+    deletion: null,
+  });
+  const [cardSettingRowSaving, setCardSettingRowSaving] = useState({
+    expiration: false,
+    deletion: false,
+  });
+
   useEffect(() => {
     const appInfo = mockAppInfo[appId] || mockAppInfo['1'];
     setAppData(appInfo);
@@ -39,6 +55,13 @@ function BasicInfo() {
     });
     authMethodForm.setFieldsValue({
       authMethod: appInfo.authMethod,
+    });
+  }, [appId]);
+
+  // 卡片设置：拉取真实 API（独立于现有 mock 逻辑）
+  useEffect(() => {
+    fetchCardSetting(appId).then((data) => {
+      if (data) setCardSetting(data);
     });
   }, [appId]);
 
@@ -87,6 +110,58 @@ function BasicInfo() {
       authMethod: appData.authMethod,
     });
     setAuthMethodEditing(false);
+  };
+
+  // 卡片设置：字段约束配置
+  const CARD_FIELD_CONSTRAINTS = {
+    expiration: { min: 1, max: 7, periodType: 1 },
+    deletion: { min: 1, max: 30, periodType: 0 },
+  };
+
+  const clampToEditable = (v, field) => {
+    if (v == null) return null;
+    const { min, max } = CARD_FIELD_CONSTRAINTS[field];
+    return Math.max(min, Math.min(max, Math.round(v)));
+  };
+
+  const handleCardSettingEdit = () => {
+    setCardSettingDraft({
+      expiration: clampToEditable(cardSetting.expirationDays, 'expiration'),
+      deletion: clampToEditable(cardSetting.deletionDays, 'deletion'),
+    });
+    setCardSettingEditing(true);
+  };
+
+  const handleCardSettingCancel = () => {
+    setCardSettingEditing(false);
+    setCardSettingDraft({ expiration: null, deletion: null });
+    setCardSettingRowSaving({ expiration: false, deletion: false });
+  };
+
+  const handleCardSettingSaveRow = async (field) => {
+    const constraint = CARD_FIELD_CONSTRAINTS[field];
+    const draftValue = cardSettingDraft[field];
+    if (draftValue == null || draftValue < constraint.min || draftValue > constraint.max) {
+      return;
+    }
+    setCardSettingRowSaving({ ...cardSettingRowSaving, [field]: true });
+    try {
+      const result = await updateCardPeriod(appId, constraint.periodType, draftValue);
+      if (result.success) {
+        message.success('保存成功');
+        const fresh = await fetchCardSetting(appId);
+        if (fresh) setCardSetting(fresh);
+        setCardSettingDraft({ ...cardSettingDraft, [field]: null });
+        const otherField = field === 'expiration' ? 'deletion' : 'expiration';
+        if (cardSettingDraft[otherField] == null) {
+          setCardSettingEditing(false);
+        }
+      } else {
+        message.error(result.message || '保存失败');
+      }
+    } finally {
+      setCardSettingRowSaving({ ...cardSettingRowSaving, [field]: false });
+    }
   };
 
   const renderCredential = () => (
@@ -179,6 +254,77 @@ function BasicInfo() {
     </div>
   );
 
+  const renderCardSetting = () => (
+    <div className='formContent'>
+      <Form layout="horizontal">
+        <Form.Item label="定期失效时间">
+          <Space>
+            {cardSettingDraft.expiration != null ? (
+              <InputNumber
+                min={1}
+                max={7}
+                value={cardSettingDraft.expiration}
+                onChange={(v) =>
+                  setCardSettingDraft({ ...cardSettingDraft, expiration: v })
+                }
+                disabled={cardSettingRowSaving.expiration}
+              />
+            ) : (
+              <span className="detail-text">
+                {cardSetting.expirationDays != null ? `${cardSetting.expirationDays} 天` : '— 天'}
+              </span>
+            )}
+            <Tooltip title="根据每张消息卡片第一次投放时间开始计算，系统按设置的时间自动对卡片进行失效，失效的卡片在端侧不再支持交互">
+              <QuestionCircleOutlined style={{ color: 'rgba(0,0,0,0.45)', cursor: 'help' }} />
+            </Tooltip>
+            {cardSettingDraft.expiration != null && (
+              <Button
+                type="primary"
+                size="small"
+                loading={cardSettingRowSaving.expiration}
+                onClick={() => handleCardSettingSaveRow('expiration')}
+              >
+                保存
+              </Button>
+            )}
+          </Space>
+        </Form.Item>
+        <Form.Item label="定期删除时间">
+          <Space>
+            {cardSettingDraft.deletion != null ? (
+              <InputNumber
+                min={1}
+                max={30}
+                value={cardSettingDraft.deletion}
+                onChange={(v) =>
+                  setCardSettingDraft({ ...cardSettingDraft, deletion: v })
+                }
+                disabled={cardSettingRowSaving.deletion}
+              />
+            ) : (
+              <span className="detail-text">
+                {cardSetting.deletionDays != null ? `${cardSetting.deletionDays} 天` : '— 天'}
+              </span>
+            )}
+            <Tooltip title="只有失效的卡片可以删除，根据每张消息卡片失效时间开始计算，系统按照设置的时间自动对卡片进行删除">
+              <QuestionCircleOutlined style={{ color: 'rgba(0,0,0,0.45)', cursor: 'help' }} />
+            </Tooltip>
+            {cardSettingDraft.deletion != null && (
+              <Button
+                type="primary"
+                size="small"
+                loading={cardSettingRowSaving.deletion}
+                onClick={() => handleCardSettingSaveRow('deletion')}
+              >
+                保存
+              </Button>
+            )}
+          </Space>
+        </Form.Item>
+      </Form>
+    </div>
+  );
+
   return (
     <div className="basic-info">
       <div className="page-header">
@@ -230,6 +376,26 @@ function BasicInfo() {
           <div className="card-footer">
             <Button onClick={handleAuthMethodCancel}>取消</Button>
             <Button type="primary" onClick={handleAuthMethodSave}>保存</Button>
+          </div>
+        )}
+      </Card>
+
+      <Card
+        title="卡片设置"
+        style={{ marginBottom: 16 }}
+        className="info-card"
+        extra={
+          !cardSettingEditing && (
+            <Button type="link" onClick={handleCardSettingEdit}>
+              编辑
+            </Button>
+          )
+        }
+      >
+        {renderCardSetting()}
+        {cardSettingEditing && (
+          <div className="card-footer">
+            <Button onClick={handleCardSettingCancel}>取消</Button>
           </div>
         )}
       </Card>

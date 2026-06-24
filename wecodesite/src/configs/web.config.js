@@ -55,6 +55,7 @@ export const API_CONFIG = {
     SUBSCRIBE: '/apps/{appId}/apis/subscribe',
     WITHDRAW: '/apps/{appId}/apis/{id}/withdraw',
     DELETE: '/apps/{appId}/apis/{id}',
+    CARD_SETTINGS: '/apps/{appId}/card-settings',
   },
 
   APP_EVENTS: {
