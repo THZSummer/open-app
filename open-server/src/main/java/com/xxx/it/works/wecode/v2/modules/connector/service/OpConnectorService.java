@@ -262,8 +262,13 @@ public class OpConnectorService {
         r.setConnectorId(String.valueOf(c.getId()));
         r.setNameCn(c.getNameCn());
         r.setNameEn(c.getNameEn());
+        r.setDescriptionCn(c.getDescriptionCn());
+        r.setDescriptionEn(c.getDescriptionEn());
         r.setConnectorType(c.getConnectorType());
         r.setCreateTime(c.getCreateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getCreateTime()) : null);
+        r.setCreateBy(c.getCreateBy());
+        r.setLastUpdateBy(c.getLastUpdateBy());
+        r.setLastUpdateTime(c.getLastUpdateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getLastUpdateTime()) : null);
         return r;
     }
 
@@ -276,6 +281,8 @@ public class OpConnectorService {
         r.setDescriptionEn(c.getDescriptionEn());
         r.setConnectorType(c.getConnectorType());
         r.setCreateTime(c.getCreateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getCreateTime()) : null);
+        r.setCreateBy(c.getCreateBy());
+        r.setLastUpdateBy(c.getLastUpdateBy());
         r.setLastUpdateTime(c.getLastUpdateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getLastUpdateTime()) : null);
         return r;
     }
