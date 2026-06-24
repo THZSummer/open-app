@@ -94,7 +94,7 @@ public class ApiResponse<T> implements Serializable {
     public static <T> ApiResponse<T> success() {
         return ApiResponse.<T>builder()
                 .code("200")
-                .messageZh("æä½æå")
+                .messageZh("操作成功")
                 .messageEn("Success")
                 .build();
     }
@@ -102,7 +102,7 @@ public class ApiResponse<T> implements Serializable {
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
                 .code("200")
-                .messageZh("æä½æå")
+                .messageZh("操作成功")
                 .messageEn("Success")
                 .data(data)
                 .build();
@@ -111,7 +111,7 @@ public class ApiResponse<T> implements Serializable {
     public static <T> ApiResponse<T> success(T data, PageResponse page) {
         return ApiResponse.<T>builder()
                 .code("200")
-                .messageZh("æä½æå")
+                .messageZh("操作成功")
                 .messageEn("Success")
                 .data(data)
                 .page(page)
