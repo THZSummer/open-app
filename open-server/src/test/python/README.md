@@ -72,11 +72,11 @@
 每个用例标注优先级，默认只跑最关键的 L0：
 
 ```
-        L0 (6)    ← 冒烟：列表能通
-       L1 (54)    ← 核心 CRUD：增删改查
-       L2 (32)     ← 生命周期：发布/失效/恢复
-      L3 (13)      ← 端到端：部署→启动→调试
-     L4 (23)       ← 边界反向：缺参数/超长/404
+         L0 (6)    ← 冒烟：列表能通
+        L1 (54)    ← 核心 CRUD：增删改查
+        L2 (32)     ← 生命周期：发布/失效/恢复
+       L3 (13)      ← 端到端：部署→启动→调试
+      L4 (23)       ← 边界反向：缺参数/超长/404
 ```
 
 | 级别 | 含义 | CI 触发 | 预期耗时 |
@@ -86,6 +86,36 @@
 | L2 | 生命周期 — 状态流转/部署/停止 | 每日回归 | <1min |
 | L3 | 端到端 — 部署→启动→调用→记录 | 每周 | <2min |
 | L4 | 边界反向 — 异常/校验/极端场景 | 发布前 | <3min |
+
+### 验证标准（禁止「假 OK」）
+
+> ⚠️ **红线**：禁止仅断言 `status_code == 200` 而不验证业务数据。每条用例必须校验操作的实际效果。
+
+| 操作类型 | 最少验证项 | 示例 |
+|---------|-----------|------|
+| **CREATE** | ① 返回字段与输入一致 ② 业务状态正确（如 status=1 有效不可用） ③ BIGINT ID 为 string | `assert d["nameCn"] == body["nameCn"]` + `assert d["status"] == 1` |
+| **GET 详情** | ① 资源 ID 与请求匹配 ② 关键业务字段存在 | `assert d["connectorId"] == str(cid)` + `assert "status" in d` |
+| **LIST** | ① `data` 为数组 ② 分页参数与返回一致 ③ 列表项含关键字段 | `assert isinstance(items, list)` + `assert page["pageSize"] == 3` |
+| **UPDATE** | **重新 GET 验证变更已持久化** | 先 `PUT` → 再 `GET` 同一资源 → `assert d["nameCn"] == new_name` |
+| **DELETE** | **验证资源已不可访问** | 先 `DELETE` → 再 `GET` → `assert status in (4, None)` |
+| **生命周期** | ① 前置状态正确 ② 操作后状态变更符合规范 | `assert status_before == 1` → 操作 → `assert status_after == 2` |
+
+**反例（禁止）：**
+```python
+# ❌ 假 OK — 无论后端返回什么都是 PASS
+def test_create(self):
+    resp = api("POST", "/connectors", {...})
+    assert resp.status_code == 200
+
+# ✅ 真验证 — 必须返回正确业务数据
+def test_create(self):
+    resp = api("POST", "/connectors", body)
+    assert resp.status_code == 200
+    d = resp.json()["data"]
+    assert d["nameCn"] == body["nameCn"]
+    assert d["status"] == 1          # FR-001: 有效不可用
+    assert isinstance(d["connectorId"], str) and len(d["connectorId"]) >= 15
+```
 
 ### fixtures：自动管理数据生命周期
 

@@ -9,7 +9,9 @@ class TestConnectorList:
     def test_list(self):
         resp = api("GET", "/connectors")
         assert resp.status_code == 200
-        assert "data" in resp.json()
+        data = resp.json()
+        assert "data" in data
+        assert data["code"] == "200"
 
     @pytest.mark.L0
     def test_list_all(self):
@@ -21,18 +23,26 @@ class TestConnectorList:
 
     @pytest.mark.L1
     def test_pagination(self):
-        resp = api("GET", "/connectors?curPage=1&pageSize=2")
+        """验证分页参数生效：pageSize 与返回一致"""
+        resp = api("GET", "/connectors?curPage=1&pageSize=3")
         assert resp.status_code == 200
-        page = resp.json().get("page", {})
-        assert page.get("pageSize") == 2
+        data = resp.json()
+        page = data.get("page", {})
+        assert page.get("pageSize") == 3
+        assert page.get("curPage") == 1
+        # 返回数据量不超过 pageSize
+        items = data.get("data", [])
+        assert len(items) <= 3
 
     @pytest.mark.L1
     def test_keyword_filter(self):
+        """验证关键词过滤不报错"""
         resp = api("GET", "/connectors?keyword=pytest&curPage=1&pageSize=10")
         assert resp.status_code == 200
 
     @pytest.mark.L1
     def test_status_filter(self):
+        """验证 status 过滤不报错"""
         resp = api("GET", "/connectors?status=2&curPage=1&pageSize=10")
         assert resp.status_code == 200
 
