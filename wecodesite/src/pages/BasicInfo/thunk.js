@@ -64,15 +64,6 @@ export const updateVerifyType = async (appId, data = {}) => {
   }
 };
 
-export const fetchEamapList = async (params = {}) => {
-  try {
-    const result = await fetchApi(API_CONFIG.APP.EAMAP_LIST, { params });
-    return result || {};
-  } catch (err) {
-    return {};
-  }
-};
-
 export const bindEamap = async (appId, data = {}) => {
   try {
     const result = await fetchApi(API_CONFIG.APP.BIND_EAMAP, {

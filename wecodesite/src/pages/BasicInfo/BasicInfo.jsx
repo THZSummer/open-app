@@ -3,10 +3,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Form, Input, message, Spin, Tag, Upload, Modal } from 'antd';
 import { EyeInvisibleOutlined, EyeOutlined, CopyOutlined, EditOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import AuthMethodCard from '../../components/AuthMethodCard/AuthMethodCard';
-import BindEamapModal from '../../components/BindEamapModal/BindEamapModal';
 import IconPicker from '../../components/IconPicker/IconPicker';
 import { useAppDetail } from '../../contexts/AppContext';
-import { fetchCurrentRole, updateApp, fetchAppIdentity, fetchVerifyType, updateVerifyType, bindEamap, fetchEamapList, uploadImage } from './thunk';
+import { fetchCurrentRole, updateApp, fetchAppIdentity, fetchVerifyType, updateVerifyType, uploadImage } from './thunk';
 import { copyToClipboard, validateFile, validateImageDimensions } from '../../utils/common';
 import { FILE_VALIDATION, VERIFY_TYPE_MAP } from '../../utils/constants';
 
@@ -30,10 +29,6 @@ function BasicInfo() {
   const [basicInfoEditing, setBasicInfoEditing] = useState(false);
   const [authEditing, setAuthEditing] = useState(false);
   const [editForm] = Form.useForm();
-
-  // 绑定 EAMAP 相关
-  const [bindEamapModalVisible, setBindEamapModalVisible] = useState(false);
-  const [eamapOptions, setEamapOptions] = useState([]);
 
   // 功能示意图相关
   const [diagram, setDiagram] = useState(null);
@@ -98,14 +93,6 @@ function BasicInfo() {
       }
     });
   }, [appDetail, appId]);
-
-  // 加载 EAMAP 列表
-  const loadEamapOptions = async () => {
-    const result = await fetchEamapList({ curPage: 1, pageSize: 100 });
-    if (result?.code === '200') {
-      setEamapOptions(result.data || []);
-    }
-  };
 
   const handleCopy = async (text) => {
     const success = await copyToClipboard(text);
@@ -174,23 +161,6 @@ function BasicInfo() {
     }
   };
 
-  // 绑定 EAMAP
-  const handleBindEamapOpen = () => {
-    loadEamapOptions();
-    setBindEamapModalVisible(true);
-  };
-
-  const handleBindEamapSubmit = async (eamapAppCode) => {
-    const result = await bindEamap(appId, { eamapAppCode });
-    if (result?.code === '200') {
-      message.success('绑定成功，应用已升级为业务应用');
-      setBindEamapModalVisible(false);
-      reloadAppDetail();
-    } else {
-      message.error(result?.messageZh || '绑定失败');
-    }
-  };
-
   // 图标选择器回调：仅同步 iconId 和 iconUrl 到 appData
   const handleIconChange = (fileId, url) => {
     setIconId(fileId);
@@ -231,7 +201,6 @@ function BasicInfo() {
   }
 
   const isLegacyPersonal = appData.appType === 0 && appData.appSubType === 0;
-  const hasEamap = !!appData.eamapAppCode;
 
   return (
     <div className="basic-info-page">
@@ -447,15 +416,6 @@ function BasicInfo() {
         )}
 
       </Spin>
-
-      {/* 绑定 EAMAP Modal */}
-      <BindEamapModal
-        visible={bindEamapModalVisible}
-        onCancel={() => setBindEamapModalVisible(false)}
-        onOk={handleBindEamapSubmit}
-        appId={appId}
-        eamapOptions={eamapOptions}
-      />
 
       {/* 功能示意图预览 */}
       <Modal
