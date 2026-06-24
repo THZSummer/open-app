@@ -1,7 +1,9 @@
 package com.xxx.it.works.wecode.v2.modules.app.vo;
 
 import com.xxx.it.works.wecode.v2.common.file.vo.FileV2VO;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -12,6 +14,8 @@ import java.io.Serializable;
  * @date 2026-06-06
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AppListItemVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -70,21 +74,4 @@ public class AppListItemVO implements Serializable {
      * 最后更新时间
      */
     private String lastUpdateTime;
-
-    public AppListItemVO() {
-    }
-
-    public AppListItemVO(String appId, String nameCn, String nameEn, FileV2VO icon, Integer appType, Integer appSubType, Integer status, Boolean eamapBound, EmployeeInfoVO owner, Integer currentUserRole, String lastUpdateTime) {
-        this.appId = appId;
-        this.nameCn = nameCn;
-        this.nameEn = nameEn;
-        this.icon = icon;
-        this.appType = appType;
-        this.appSubType = appSubType;
-        this.status = status;
-        this.eamapBound = eamapBound;
-        this.owner = owner;
-        this.currentUserRole = currentUserRole;
-        this.lastUpdateTime = lastUpdateTime;
-    }
 }

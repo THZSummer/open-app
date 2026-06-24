@@ -66,7 +66,7 @@ public enum OperateEnum {
             "新增应用:${appNameCn}", "Create application:${appNameEn}"),
     UPDATE_APP("UPDATE", "APP", "应用基础信息",
             "更新应用基本信息", "Update Application Basic Info",
-            "修改基础信息:\n${diffFields}", "Update basic info:\n${diffFields}") {
+            "修改基础信息:\n" + DiffConfig.DIFF_FIELDS_PLACEHOLDER, "Update basic info:\n" + DiffConfig.DIFF_FIELDS_PLACEHOLDER) {
         @Override
         public DiffConfig diffConfig() {
             return DiffConfig.builder()
@@ -81,13 +81,13 @@ public enum OperateEnum {
     },
     UPDATE_APP_VERIFY_TYPE("UPDATE", "APP_VERIFY_TYPE", "认证方式",
             "更新应用认证方式", "Update Application Verify Type",
-            "修改认证方式为${verifyType}", "Update verify type to ${verifyType}"),
+            "修改认证方式为${verifyTypeDesc}", "Update verify type to ${verifyTypeDesc}"),
     BIND_APP_EAMAP("UPDATE", "APP", "应用基础信息",
             "绑定EAMAP升级业务应用", "Bind EAMAP to Application",
             "绑定应用服务${eamapAppCode}", "Bind application service ${eamapAppCode}"),
     ADD_APP_MEMBER("CREATE", "APP_MEMBER", "成员管理",
             "添加应用成员", "Add Application Member",
-            "新增${memberType}:${accountId}", "Add ${memberType}:${accountId}"),
+            "新增${memberTypeDesc}:${accountId}", "Add ${memberTypeDesc}:${accountId}"),
     DELETE_APP_MEMBER("DELETE", "APP_MEMBER", "成员管理",
             "删除应用成员", "Delete Application Member",
             "删除人员:${accountId}", "Delete member:${accountId}"),
@@ -138,7 +138,6 @@ public enum OperateEnum {
             "发布流版本", "Publish Flow Version",
             "发布版本${versionCode}", "Publish version ${versionCode}");
 
-
     /**
      * DB operate_type 字段值
      */
@@ -173,14 +172,6 @@ public enum OperateEnum {
      * 审计描述模板（英文），含 ${xxx} 占位符，由 TemplateRenderer 渲染后写入 desc_en；null 时回退 descEn
      */
     private final String templateEn;
-
-    public String getOperateType() { return operateType; }
-    public String getOperateObject() { return operateObject; }
-    public String getOperateObjectCn() { return operateObjectCn; }
-    public String getDescCn() { return descCn; }
-    public String getDescEn() { return descEn; }
-    public String getTemplateCn() { return templateCn; }
-    public String getTemplateEn() { return templateEn; }
 
     /**
      * 判断是否需要加载 before_data 实体快照

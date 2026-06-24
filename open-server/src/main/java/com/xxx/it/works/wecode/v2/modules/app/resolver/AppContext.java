@@ -1,8 +1,10 @@
 package com.xxx.it.works.wecode.v2.modules.app.resolver;
 
 import com.xxx.it.works.wecode.v2.modules.app.entity.App;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -16,6 +18,8 @@ import java.io.Serializable;
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AppContext implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -34,67 +38,4 @@ public class AppContext implements Serializable {
      * 应用实体（resolveAndValidate 已查询，避免调用方重复查询）
      */
     private App app;
-
-    public AppContext() {
-    }
-
-    public Long getInternalId() {
-        return this.internalId;
-    }
-
-    public void setInternalId(Long internalId) {
-        this.internalId = internalId;
-    }
-
-    public String getExternalId() {
-        return this.externalId;
-    }
-
-    public void setExternalId(String externalId) {
-        this.externalId = externalId;
-    }
-
-    public App getApp() {
-        return this.app;
-    }
-
-    public void setApp(App app) {
-        this.app = app;
-    }
-
-    public static AppContextBuilder builder() {
-        return new AppContextBuilder();
-    }
-
-    public static class AppContextBuilder {
-        private Long internalId;
-        private String externalId;
-        private App app;
-
-        AppContextBuilder() {
-        }
-
-        public AppContextBuilder internalId(Long internalId) {
-            this.internalId = internalId;
-            return this;
-        }
-
-        public AppContextBuilder externalId(String externalId) {
-            this.externalId = externalId;
-            return this;
-        }
-
-        public AppContextBuilder app(App app) {
-            this.app = app;
-            return this;
-        }
-
-        public AppContext build() {
-            AppContext context = new AppContext();
-            context.setInternalId(internalId);
-            context.setExternalId(externalId);
-            context.setApp(app);
-            return context;
-        }
-    }
 }

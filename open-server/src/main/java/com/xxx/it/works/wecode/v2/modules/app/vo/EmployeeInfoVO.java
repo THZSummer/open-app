@@ -1,6 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.app.vo;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -11,6 +13,8 @@ import java.io.Serializable;
  * @date 2026-06-06
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class EmployeeInfoVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -34,14 +38,4 @@ public class EmployeeInfoVO implements Serializable {
      * W3 账号
      */
     private String w3Account;
-
-    public EmployeeInfoVO() {
-    }
-
-    public EmployeeInfoVO(String welinkId, String memberNameCn, String memberNameEn, String w3Account) {
-        this.welinkId = welinkId;
-        this.memberNameCn = memberNameCn;
-        this.memberNameEn = memberNameEn;
-        this.w3Account = w3Account;
-    }
 }
