@@ -12,7 +12,6 @@
 
 import React, { useState } from 'react';
 import { Button, Select, Tag, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import { getSecondModalInfo } from '../../../../utils/common';
 import {
@@ -269,19 +268,9 @@ const VersionBar = (props) => {
    * 渲染版本栏右侧操作按钮（按版本状态显隐）
    */
   const renderVersionActions = () => {
-    // 无版本：仅展示"创建草稿"
+    // 无版本：右侧不展示任何按钮，"创建草稿"统一交由空态区域呈现
     if (!currentVersion) {
-      return (
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          className="primary-btn"
-          loading={actionLoading}
-          onClick={handleCreateDraft}
-        >
-          创建草稿
-        </Button>
-      );
+      return null;
     }
 
     return (
@@ -368,7 +357,7 @@ const VersionBar = (props) => {
         <div className="version-bar-left">
           <span className="version-bar-label">当前版本</span>
           {versionList.length === 0 ? (
-            <span className="version-empty">暂无版本，点击右侧"创建草稿"开始配置</span>
+            <span className="version-empty">暂无版本，点击"创建草稿"开始配置</span>
           ) : (
             <Select
               className="version-select"

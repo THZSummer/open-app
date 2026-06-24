@@ -15,7 +15,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, message, Modal, Space, Drawer } from 'antd';
-import { SaveOutlined, CloseOutlined } from '@ant-design/icons';
 import { ReactFlow, addEdge, useNodesState, useEdgesState } from '@xyflow/react';
 import FlowCanvasWrapper from '../../../components/FlowCanvas/FlowCanvasWrapper';
 import NodeLibrary from './NodeLibrary';
@@ -220,7 +219,6 @@ const loadFlowDetail = async (id) => {
         <div className="header-left">
           <Button
             type="text"
-            icon={<CloseOutlined />}
             onClick={handleClose}
             className="back-btn"
           >
@@ -235,7 +233,6 @@ const loadFlowDetail = async (id) => {
             </span>
             <Button
               type="primary"
-              icon={<SaveOutlined />}
               onClick={handleSave}
               loading={loading}
             >

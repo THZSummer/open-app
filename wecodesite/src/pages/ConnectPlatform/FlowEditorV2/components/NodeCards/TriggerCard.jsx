@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Select, Input, Button, Tabs } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import SchemaEditorV2 from '../../../../../components/SchemaEditor/SchemaEditorV2';
 import { CARRIER_TABS, TRIGGER_TYPE_OPTIONS } from '../../constants';
 import './NodeCards.m.less';
@@ -128,7 +127,6 @@ const TriggerCard = (props) => {
               />
               <Button
                 type="text"
-                icon={<DeleteOutlined />}
                 disabled={!editable}
                 onClick={() => handleRemoveSystoken(index)}
               />
@@ -137,7 +135,6 @@ const TriggerCard = (props) => {
         </div>
         <Button
           type="dashed"
-          icon={<PlusOutlined />}
           disabled={!editable}
           className="add-row-btn"
           onClick={handleAddSystoken}

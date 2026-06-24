@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Input, Button, Space, Empty, Spin } from 'antd';
-import { PlayCircleOutlined, ApiOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
+import { ApiOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
 import '../FlowEditorV2.m.less';
 
 /**
@@ -228,7 +228,6 @@ const DebugDrawer = (props) => {
           <Button onClick={onClose}>关闭</Button>
           <Button
             type="primary"
-            icon={<PlayCircleOutlined />}
             loading={debugLoading}
             onClick={handleDebug}
           >

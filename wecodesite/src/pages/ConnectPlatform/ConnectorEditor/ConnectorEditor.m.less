@@ -5,7 +5,10 @@
 
 .connector-editor-page {
   min-height: 100%;
+  height: 100%;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   transition: opacity 0.3s;
 
   &.loading {
@@ -23,6 +26,15 @@
     &:last-child {
       margin-bottom: 0;
     }
+  }
+
+  // ===== 空态卡片：撑满左侧主内容区减去顶部卡片的剩余高度 =====
+  // flex:1 让其占据剩余空间；与顶部卡片之间的 16px 间距由顶部 .content-card 的 margin-bottom 提供
+  .empty-card {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   // ===== 顶部标题 + 操作 =====
@@ -123,22 +135,9 @@
   }
 
   // ===== 版本选项样式（下拉项内含状态 Tag） =====
-  .version-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .version-option-name {
-      font-size: 14px;
-      color: #1f2329;
-      font-weight: 500;
-    }
-
-    .version-option-time {
-      font-size: 12px;
-      color: #8f959e;
-    }
-  }
+  // 注意：下拉项实际样式定义在文件底部 :global 块中
+  // 因为 antd Select 下拉面板通过 Portal 渲染到 body，不在 .connector-editor-page 作用域内
+  // 这里保留注释作为索引
 
   // ===== 节卡片（接口/认证/入参/出参） =====
   .section-card {
@@ -318,5 +317,25 @@
   // ===== 状态 Tag 间距 =====
   .status-tag {
     margin-left: 4px;
+  }
+}
+
+// ===== 版本下拉项样式（顶层全局，避免被页面容器作用域限制） =====
+// antd Select 下拉面板通过 Portal 渲染到 body，不在 .connector-editor-page 作用域内
+// 因此放在顶层而非嵌套，确保下拉项命中样式
+.version-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .version-option-name {
+    font-size: 14px;
+    color: #1f2329;
+    font-weight: 500;
+  }
+
+  .version-option-time {
+    font-size: 12px;
+    color: #8f959e;
   }
 }

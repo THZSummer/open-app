@@ -165,3 +165,29 @@ export const buildUrlWithParams = (path, params = {}) => {
 export const getCurrentUserId = () => {
   return getUserIdCookie() || '';
 };
+
+/**
+ * 由后端版本数据构造前端 UI 版本摘要
+ * 前端 UI 使用 name 字段展示版本名称，按 `v{versionNumber}` 拼接
+ * 兼容连接器（ConnectorEditor）和连接流（FlowEditorV2）两侧版本下拉
+ *
+ * @param {Object} ver - 后端版本数据
+ * 包含以下字段：
+ * - versionId: 版本 ID
+ * - status: 版本状态
+ * - createTime: 创建时间
+ * - versionNumber: 版本号（用于拼接 name）
+ * - publishedTime: 发布时间（可选）
+ * - publishedBy: 发布人（可选）
+ *
+ * @returns {Object} 含 versionId / status / createTime / name / versionNumber / publishedTime / publishedBy 的摘要
+ */
+export const buildVersionSummary = (ver) => ({
+  versionId: ver.versionId,
+  status: ver.status,
+  createTime: ver.createTime,
+  name: ver.versionNumber != null ? `v${ver.versionNumber}` : ver.versionId,
+  versionNumber: ver.versionNumber,
+  publishedTime: ver.publishedTime,
+  publishedBy: ver.publishedBy,
+});

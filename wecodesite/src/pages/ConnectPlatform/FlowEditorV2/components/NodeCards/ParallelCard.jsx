@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, Input, InputNumber, Select, AutoComplete, Button, Tooltip } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined } from '@ant-design/icons';
 import { CARRIER_TABS } from '../../constants';
 import { fetchConnectorList, fetchConnectorVersions, fetchConnectorInputParams } from '../../thunk';
 import { collectUpstreamRefs } from '../../utils';
@@ -469,7 +469,6 @@ const ParallelCard = (props) => {
         </span>
         <Button
           type="dashed"
-          icon={<PlusOutlined />}
           size="small"
           disabled={!editable || branches.length >= branchMax}
           onClick={handleAddBranch}
