@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "权限信息")
 public class PermissionDto implements Serializable {
@@ -76,4 +74,14 @@ public class PermissionDto implements Serializable {
      */
     @Schema(description = "资源级审批节点配置（JSON字符串）")
     private String resourceNodes;
+
+    public PermissionDto(String id, String nameCn, String nameEn, String scope, Integer status, Integer needApproval, String resourceNodes) {
+        this.id = id;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.scope = scope;
+        this.status = status;
+        this.needApproval = needApproval;
+        this.resourceNodes = resourceNodes;
+    }
 }

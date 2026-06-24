@@ -29,10 +29,17 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/flows")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接流版本管理", description = "连接流版本 CRUD、发布审批及配置管理接口")
 public class FlowVersionController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowVersionController.class);
 
+
+
+
+    @Autowired
+    public FlowVersionController(FlowVersionService flowVersionService) {
+        this.flowVersionService = flowVersionService;
+    }
     private final FlowVersionService flowVersionService;
 
     /**

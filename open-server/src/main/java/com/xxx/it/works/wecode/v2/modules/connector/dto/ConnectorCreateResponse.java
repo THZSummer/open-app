@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.connector.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,7 +14,6 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class ConnectorCreateResponse {
 
     /** 连接器ID（string） */
@@ -41,4 +39,15 @@ public class ConnectorCreateResponse {
 
     /** 提示信息 */
     private String note;
+
+    public ConnectorCreateResponse(String connectorId, String nameCn, String nameEn, Integer connectorType, Integer status, String appId, String createTime, String note) {
+        this.connectorId = connectorId;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.connectorType = connectorType;
+        this.status = status;
+        this.appId = appId;
+        this.createTime = createTime;
+        this.note = note;
+    }
 }

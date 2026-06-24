@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.app.vo;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -14,7 +13,6 @@ import java.io.Serializable;
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class EamapVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -28,4 +26,9 @@ public class EamapVO implements Serializable {
      * EAMAP 应用名称
      */
     private String eamapAppName;
+
+    public EamapVO(String eamapAppCode, String eamapAppName) {
+        this.eamapAppCode = eamapAppCode;
+        this.eamapAppName = eamapAppName;
+    }
 }

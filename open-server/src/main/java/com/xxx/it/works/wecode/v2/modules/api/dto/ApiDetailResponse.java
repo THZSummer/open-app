@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,7 +19,6 @@ import java.util.List;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "API 详情")
 public class ApiDetailResponse implements Serializable {
@@ -104,4 +102,20 @@ public class ApiDetailResponse implements Serializable {
      */
     @Schema(description = "扩展属性列表")
     private List<PropertyDto> properties;
+
+    public ApiDetailResponse(String id, String nameCn, String nameEn, String path, String method, Integer authType, String categoryId, String categoryName, Integer status, Date createTime, String createBy, PermissionDto permission, List<PropertyDto> properties) {
+        this.id = id;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.path = path;
+        this.method = method;
+        this.authType = authType;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.status = status;
+        this.createTime = createTime;
+        this.createBy = createBy;
+        this.permission = permission;
+        this.properties = properties;
+    }
 }

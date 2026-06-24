@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.connector.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +13,6 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class ConnectorPublishResponse {
 
     /** 版本 ID（string） */
@@ -31,4 +29,12 @@ public class ConnectorPublishResponse {
 
     /** 发布时间 */
     private String publishedTime;
+
+    public ConnectorPublishResponse(String versionId, Integer versionNumber, Integer status, Integer connectorStatus, String publishedTime) {
+        this.versionId = versionId;
+        this.versionNumber = versionNumber;
+        this.status = status;
+        this.connectorStatus = connectorStatus;
+        this.publishedTime = publishedTime;
+    }
 }

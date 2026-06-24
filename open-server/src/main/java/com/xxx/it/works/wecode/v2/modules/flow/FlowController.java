@@ -33,10 +33,19 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/flows")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接流管理", description = "连接流 CRUD、生命周期及部署管理接口")
 public class FlowController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowController.class);
 
+
+
+
+    @Autowired
+    public FlowController(FlowService flowService, FlowDeployService flowDeployService, FlowCopyService flowCopyService) {
+        this.flowService = flowService;
+        this.flowDeployService = flowDeployService;
+        this.flowCopyService = flowCopyService;
+    }
     private final FlowService flowService;
     private final FlowDeployService flowDeployService;
     private final FlowCopyService flowCopyService;

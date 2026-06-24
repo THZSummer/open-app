@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.permission.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +15,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class WithdrawResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -50,4 +48,13 @@ public class WithdrawResponse implements Serializable {
      * 认证类型
      */
     private Integer authType;
+
+    public WithdrawResponse(String id, Integer status, String message, Integer channelType, String channelAddress, Integer authType) {
+        this.id = id;
+        this.status = status;
+        this.message = message;
+        this.channelType = channelType;
+        this.channelAddress = channelAddress;
+        this.authType = authType;
+    }
 }

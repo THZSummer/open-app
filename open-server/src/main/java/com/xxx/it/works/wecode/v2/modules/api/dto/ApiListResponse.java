@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +18,6 @@ import java.util.Date;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "API 列表项")
 public class ApiListResponse implements Serializable {
@@ -97,4 +95,19 @@ public class ApiListResponse implements Serializable {
      */
     @Schema(description = "文档链接")
     private String docUrl;
+
+    public ApiListResponse(String id, String nameCn, String nameEn, String path, String method, Integer authType, String categoryId, String categoryName, Integer status, PermissionDto permission, Date createTime, String docUrl) {
+        this.id = id;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.path = path;
+        this.method = method;
+        this.authType = authType;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.status = status;
+        this.permission = permission;
+        this.createTime = createTime;
+        this.docUrl = docUrl;
+    }
 }

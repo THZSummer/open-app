@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.sync.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +15,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class EmergencyDetail implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -40,4 +38,11 @@ public class EmergencyDetail implements Serializable {
      * 错误信息（失败时）
      */
     private String error;
+
+    public EmergencyDetail(Long id, String status, String message, String error) {
+        this.id = id;
+        this.status = status;
+        this.message = message;
+        this.error = error;
+    }
 }

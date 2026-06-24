@@ -36,9 +36,18 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class FlowService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowService.class);
 
+
+
+
+    @Autowired
+    public FlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, IdGeneratorStrategy idGenerator) {
+        this.flowMapper = flowMapper;
+        this.flowVersionMapper = flowVersionMapper;
+        this.idGenerator = idGenerator;
+    }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
     private final IdGeneratorStrategy idGenerator;

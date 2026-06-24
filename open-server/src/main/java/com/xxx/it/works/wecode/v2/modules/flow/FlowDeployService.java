@@ -25,9 +25,17 @@ import java.util.Date;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class FlowDeployService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowDeployService.class);
 
+
+
+
+    @Autowired
+    public FlowDeployService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper) {
+        this.flowMapper = flowMapper;
+        this.flowVersionMapper = flowVersionMapper;
+    }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
 

@@ -24,4 +24,12 @@ public class AppIdentityVO implements Serializable {
      * Secret Key
      */
     private String sk;
+
+    public AppIdentityVO() {
+    }
+
+    public AppIdentityVO(String ak, String sk) {
+        this.ak = ak;
+        this.sk = sk;
+    }
 }

@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.app.vo;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -14,7 +13,6 @@ import java.io.Serializable;
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class CurrentRoleVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -23,4 +21,8 @@ public class CurrentRoleVO implements Serializable {
      * 角色编码
      */
     private Integer role;
+
+    public CurrentRoleVO(Integer role) {
+        this.role = role;
+    }
 }

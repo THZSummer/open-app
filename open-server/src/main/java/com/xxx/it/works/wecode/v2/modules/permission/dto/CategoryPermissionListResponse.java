@@ -1,9 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.permission.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -16,8 +14,6 @@ import java.util.List;
  */
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class CategoryPermissionListResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -67,14 +63,27 @@ public class CategoryPermissionListResponse implements Serializable {
      */
     private CategoryInfo category;
 
+
+    public CategoryPermissionListResponse() {
+    }
+
+    public CategoryPermissionListResponse(String id, String nameCn, String nameEn, String scope, Integer status, Integer needApproval, Integer isSubscribed, ResourceInfo resource, CategoryInfo category) {
+        this.id = id;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.scope = scope;
+        this.status = status;
+        this.needApproval = needApproval;
+        this.isSubscribed = isSubscribed;
+        this.resource = resource;
+        this.category = category;
+    }
     /**
      * 资源信息
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ResourceInfo implements Serializable {
+        public static class ResourceInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -109,9 +118,7 @@ public class CategoryPermissionListResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CategoryInfo implements Serializable {
+        public static class CategoryInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
