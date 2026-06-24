@@ -43,6 +43,8 @@ class OpFlowServiceTest {
     @InjectMocks
     private OpFlowService flowService;
 
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private Flow existingFlow;
 
     @BeforeEach
@@ -271,7 +273,7 @@ class OpFlowServiceTest {
         @DisplayName("保存配置 - 校验通过")
         void testUpdateFlowConfig_Valid() throws Exception {
             FlowConfigUpdateRequest request = new FlowConfigUpdateRequest();
-            request.setOrchestrationConfig("{\"nodes\":[{\"id\":\"n1\",\"type\":\"entry\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"入口\"}}],\"edges\":[]}");
+            request.setOrchestrationConfig(MAPPER.readTree("{\"nodes\":[{\"id\":\"n1\",\"type\":\"entry\",\"position\":{\"x\":0,\"y\":0},\"data\":{\"labelCn\":\"入口\"}}],\"edges\":[]}"));
 
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
             when(flowVersionMapper.selectByFlowId(100L)).thenReturn(null);
@@ -292,7 +294,7 @@ class OpFlowServiceTest {
         @DisplayName("保存配置 - 无节点拒绝")
         void testUpdateFlowConfig_EmptyNodes() throws Exception {
             FlowConfigUpdateRequest request = new FlowConfigUpdateRequest();
-            request.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
+            request.setOrchestrationConfig(MAPPER.readTree("{\"nodes\":[],\"edges\":[]}"));
 
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
 

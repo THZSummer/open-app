@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.connector.controller;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.ConnectorVersionController;
 import com.xxx.it.works.wecode.v2.modules.connector.ConnectorVersionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.ConnectorVersionSaveRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,8 @@ class ConnectorVersionControllerWebMvcTest {
 
     @InjectMocks
     private ConnectorVersionController controller;
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Long appId = 1L;
     private final Long connectorId = 100L;
@@ -102,9 +105,9 @@ class ConnectorVersionControllerWebMvcTest {
 
     @Test
     @DisplayName("#11 PUT 更新草稿 → 200")
-    void testUpdateDraft() {
+    void testUpdateDraft() throws Exception {
         ConnectorVersionSaveRequest request = new ConnectorVersionSaveRequest();
-        request.setConnectionConfig("{\"url\":\"https://example.com\"}");
+        request.setConnectionConfig(MAPPER.readTree("{\"url\":\"https://example.com\"}"));
 
         var response = controller.updateDraft(appId, connectorId, versionId, request).getBody();
         assertEquals("200", response.getCode());
