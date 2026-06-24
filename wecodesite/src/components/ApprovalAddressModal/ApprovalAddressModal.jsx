@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { remindPeople } from '../../pages/Admin/Approval/thunk';
+import { copyToClipboard } from '../../utils/common';
 
 /**
  * 从审批链接中提取 eflowId
@@ -18,10 +19,15 @@ const extractEflowId = (url) => {
 function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessType, approvalUser }) {
   const [remindLoading, setRemindLoading] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(approvalUrl).then(() => {
+  // 复制审批链接到剪贴板
+  const handleCopy = async () => {
+    // 调用通用复制方法（含降级方案）
+    const success = await copyToClipboard(approvalUrl);
+    if (success) {
       message.success('审批链接已复制');
-    }).catch(() => message.error('复制失败，请检查浏览器权限'));
+    } else {
+      message.error('复制失败，请检查浏览器权限');
+    }
   };
 
   /**

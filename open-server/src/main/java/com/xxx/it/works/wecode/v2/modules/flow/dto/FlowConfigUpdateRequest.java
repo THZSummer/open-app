@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.flow.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -15,6 +16,6 @@ import lombok.Data;
 public class FlowConfigUpdateRequest {
 
     /** 编排配置JSON (完整替换) */
-    @NotBlank(message = "编排配置不能为空")
-    private String orchestrationConfig;
+    @NotNull(message = "编排配置不能为空")
+    private JsonNode orchestrationConfig;
 }

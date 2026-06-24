@@ -1,0 +1,26 @@
+.card-grid {
+  display: grid;
+  justify-content: space-between;
+}
+
+.card-grid-item {
+  min-width: 0;
+  margin-bottom: 24px;
+
+  &:nth-last-child(-n+3) {
+    margin-bottom: 0;
+  }
+}
+
+/** 列数和间距通过 CSS 自定义属性传入 */
+.card-grid-cols-3 {
+  grid-template-columns: repeat(3, 384px);
+}
+
+.card-grid-cols-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.card-grid-cols-4 {
+  grid-template-columns: repeat(4, 1fr);
+}

@@ -1,71 +1,101 @@
-import { mockAppInfo } from './mock';
-import { mockApps } from '../AppList/mock';
-import { fetchApi, buildApiUrl, API_CONFIG } from '../../configs/web.config';
-import { message } from 'antd';
+import { API_CONFIG, fetchApi } from '../../configs/web.config';
 
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+// ==================== 真实 API 调用 ====================
 
-export const fetchAppInfo = async (appId) => {
-  await delay(300);
-  return mockAppInfo[appId] || null;
-};
-
-export const bindEamapToApp = async (appId, eamap) => {
-  await delay(300);
-  if (mockAppInfo[appId]) {
-    mockAppInfo[appId].eamap = eamap;
-  }
-  const appInList = mockApps.find((a) => a.id === appId);
-  if (appInList) {
-    appInList.eamap = eamap;
-  }
-  return { appId, eamap };
-};
-
-/**
- * #TBD-CS01 查询应用卡片设置（失效周期 + 删除周期）
- * @param {string} appId
- * @returns {Promise<{expirationDays: number|null, deletionDays: number|null}|null>}
- */
-export const fetchCardSetting = async (appId) => {
+export const fetchCurrentRole = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_APIS.CARD_SETTINGS, { appId });
-    const res = await fetchApi(url, { method: 'GET' });
-    if (res?.code === '200' || res?.code === 200) {
-      return res.data;
-    }
-    message.error(res?.messageZh || res?.message || '查询卡片设置失败');
-    return null;
+    const result = await fetchApi(API_CONFIG.APP.CURRENT_ROLE, { params: { appId } });
+    return result || {};
   } catch (err) {
-    console.error('fetchCardSetting error:', err);
-    message.error('查询卡片设置失败');
-    return null;
+    return {};
   }
 };
 
-/**
- * #TBD-CS02 更新单个卡片周期（失效或删除）
- * @param {string} appId
- * @param {0|1} periodType - 0=删除周期, 1=失效周期
- * @param {number} periodDays - 周期天数
- * @returns {Promise<{success: boolean, message?: string}>}
- */
-export const updateCardPeriod = async (appId, periodType, periodDays) => {
+export const fetchAppDetail = async (appId) => {
   try {
-    const url = buildApiUrl(API_CONFIG.APP_APIS.CARD_SETTINGS, { appId });
-    const res = await fetchApi(url, {
+    const result = await fetchApi(API_CONFIG.APP.DETAIL, { params: { appId } });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const updateApp = async (appId, data = {}) => {
+  try {
+    const result = await fetchApi(API_CONFIG.APP.UPDATE, {
       method: 'PUT',
-      body: JSON.stringify({ periodType, periodDays }),
+      params: { appId },
+      body: JSON.stringify(data),
     });
-    if (res?.code === '200' || res?.code === 200) {
-      return { success: true };
-    }
-    return {
-      success: false,
-      message: res?.messageZh || res?.message || '保存失败',
-    };
+    return result || {};
   } catch (err) {
-    console.error('updateCardPeriod error:', err);
-    return { success: false, message: '卡片服务暂时不可用' };
+    return {};
+  }
+};
+
+export const fetchAppIdentity = async (appId) => {
+  try {
+    const result = await fetchApi(API_CONFIG.APP.IDENTITY, { params: { appId } });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const fetchVerifyType = async (appId) => {
+  try {
+    const result = await fetchApi(API_CONFIG.APP.VERIFY_TYPE_GET, { params: { appId } });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const updateVerifyType = async (appId, data = {}) => {
+  try {
+    const result = await fetchApi(API_CONFIG.APP.VERIFY_TYPE_UPDATE, {
+      method: 'PUT',
+      params: { appId },
+      body: JSON.stringify(data),
+    });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const fetchEamapList = async (params = {}) => {
+  try {
+    const result = await fetchApi(API_CONFIG.APP.EAMAP_LIST, { params });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const bindEamap = async (appId, data = {}) => {
+  try {
+    const result = await fetchApi(API_CONFIG.APP.BIND_EAMAP, {
+      method: 'POST',
+      params: { appId },
+      body: JSON.stringify(data),
+    });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+export const uploadImage = async (bizType, formData) => {
+  try {
+    const result = await fetchApi(API_CONFIG.FILE.UPLOAD_IMAGE, {
+      method: 'POST',
+      params: { bizType },
+      body: formData,  // 直接传 FormData，不走 JSON.stringify
+      rawBody: true,   // 告诉 fetchApi 不要自动 JSON.stringify
+    });
+    return result || {};
+  } catch (err) {
+    return {};
   }
 };

@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 
 /**
  * ID 生成器配置
@@ -23,6 +22,7 @@ import java.util.Objects;
 @Configuration
 @RequiredArgsConstructor
 public class IdGeneratorConfig {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(IdGeneratorConfig.class);
 
     private final List<IdGeneratorStrategy> strategies;
 

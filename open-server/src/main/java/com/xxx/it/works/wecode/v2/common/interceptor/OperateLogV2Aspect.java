@@ -1,18 +1,20 @@
 package com.xxx.it.works.wecode.v2.common.interceptor;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
+import com.xxx.it.works.wecode.v2.common.constants.CommonConstants;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
-import com.xxx.it.works.wecode.v2.common.enums.AppIdSourceEnum;
 import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoader;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoaderFactory;
+import com.xxx.it.works.wecode.v2.common.util.CommonUtils;
+import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
+import com.xxx.it.works.wecode.v2.modules.app.constants.AppPropertyConstants;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
 import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -21,27 +23,25 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 操作日志持久化切面 V2
  *
  * <p>基于 @AuditLog 注解的 @Around 切面，自动捕获操作前后实体快照、
- * 用户信息和 IP 地址，异步写入 openplatform_operate_log_t 表</p>
+ * 用户信息和 IP 地址，异步写入操作日志表。</p>
  *
- * <p>与 AuditLogAspect（连接流 SLF4J 日志）互不影响</p>
- *
- * <p>实体快照加载采用策略模式（EntitySnapshotLoader + Factory），
- * 根据 OperateEnum.operateObject 路由到对应的 Loader 实现，支持不同资源类型从不同表加载</p>
- *
- * <p><b>错误隔离原则</b>：切面任何环节的异常均不得影响主业务接口，
- * 所有非 proceed 操作均包裹在 try-catch 中，异常仅记录日志并跳过审计</p>
+ * <p><b>appId 自动提取</b>：方法参数 → beforeData 快照 → 返回值（按顺序自动尝试）</p>
+ * <p><b>错误隔离</b>：切面任何环节异常不得影响主业务</p>
  *
  * @author SDDU Build Agent
- * @version 2.2.0
+ * @version 5.0.0
  */
 @Slf4j
 @Aspect
@@ -51,13 +51,11 @@ import java.util.Date;
 public class OperateLogV2Aspect {
 
     private final AuditLogService auditLogService;
-    private final ObjectMapper objectMapper;
     private final EntitySnapshotLoaderFactory snapshotLoaderFactory;
     private final AppContextResolver appContextResolver;
 
-    /**
-     * 审计上下文，用于在 before / proceed / after 阶段之间传递中间状态
-     */
+    private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{(\\w+)}");
+
     private static class AuditContext {
         OperateEnum op;
         Long resourceId;
@@ -74,154 +72,235 @@ public class OperateLogV2Aspect {
      *   <li>Phase 2（proceed）：主方法异常 → 记录 status=0 审计日志后重新抛出</li>
      *   <li>Phase 3（after proceed）：审计后处理异常 → 仅记录日志，主方法结果正常返回</li>
      * </ul>
-     * </p>
-     *
-     * @param joinPoint 连接点
-     * @param auditLog  注解实例
-     * @return 目标方法返回值
-     * @throws Throwable 目标方法抛出的异常（审计日志不影响异常传播）
      */
     @Around("@annotation(auditLog)")
     public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {
+        AuditContext ctx = prepareAuditContext(joinPoint, auditLog);
+        if (ctx == null) {
+            return joinPoint.proceed();
+        }
 
-        // Phase 1: 审计前准备 —— 任何异常不影响主方法执行
+        Object result;
+        try {
+            result = joinPoint.proceed();
+        } catch (Throwable ex) {
+            // 失败时不加载 afterData：业务方法可能在 @Transactional 中，
+            // catch 时事务尚未回滚，查 DB 会拿到未提交的脏数据。
+            writeAuditLog(ctx, null, 0);
+            throw ex;
+        }
+
+        String afterData = loadAfterData(ctx, joinPoint, result);
+        writeAuditLog(ctx, afterData, 1);
+        return result;
+    }
+
+    // ===== Phase 1: 审计前准备 =====
+
+    /**
+     * Phase 1: 审计前准备。失败返回 null，主方法将照常执行但不写审计。
+     */
+    private AuditContext prepareAuditContext(ProceedingJoinPoint joinPoint, AuditLog auditLog) {
         AuditContext ctx = new AuditContext();
         ctx.op = auditLog.value();
         try {
             ctx.resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
-            log.info("[OPERATE_LOG] Phase1: op={}, resourceIdParam={}, extractedId={}", 
-                    ctx.op, auditLog.resourceIdParam(), ctx.resourceId);
 
-            if ((ctx.op.needsBeforeData() || auditLog.appIdSource() == AppIdSourceEnum.ENTITY)
-                    && ctx.resourceId != null) {
-                ctx.beforeData = loadEntitySnapshot(ctx.resourceId, ctx.op.getOperateObject());
+            // appId 自动策略 1: 从方法参数提取
+            ctx.appId = extractAppIdFromParams(joinPoint);
+
+            // appId → internalId 转换（用于 EntitySnapshotLoader 加载快照）
+            if (ctx.resourceId == null && isValid(ctx.appId)) {
+                ctx.resourceId = resolveInternalIdFromAppId(ctx.appId);
             }
 
-            if (auditLog.appIdSource() == AppIdSourceEnum.PATH_VARIABLE) {
-                ctx.appId = extractAppIdFromParams(joinPoint);
-            } else {
-                ctx.appId = extractAppIdFromEntity(ctx.beforeData);
-            }
+            loadBeforeData(ctx, joinPoint);
+            return ctx;
         } catch (Exception e) {
-            log.error("[OPERATE_LOG] Pre-proceed audit logic failed, skipping audit for this request", e);
-            return joinPoint.proceed();
+            log.error("[OPERATE_LOG] Pre-proceed audit logic failed, skipping audit", e);
+            return null;
+        }
+    }
+
+    private void loadBeforeData(AuditContext ctx, ProceedingJoinPoint joinPoint) {
+        if (ctx.op.needsBeforeData()) {
+            EntitySnapshotLoader loader = snapshotLoaderFactory.getLoader(ctx.op.getOperateObject());
+            if (loader != null) {
+                ctx.beforeData = JsonUtils.toJson(loader.loadBeforeData(joinPoint, ctx.resourceId));
+            }
         }
 
-        // Phase 2: 执行目标方法
-        Object result;
-        int status = 1;
+        // appId 自动策略 2: 从 beforeData 快照提取
+        if (!isValid(ctx.appId)) {
+            ctx.appId = extractAppIdFromEntity(ctx.beforeData);
+        }
+    }
+
+    // ===== Phase 3: 加载 afterData =====
+
+    private String loadAfterData(AuditContext ctx, ProceedingJoinPoint joinPoint, Object result) {
         try {
-            result = joinPoint.proceed();
-            // CREATE 类操作：从返回值中提取 resourceId
-            if (result != null && ctx.resourceId == null) {
-                try {
-                    if (result instanceof ApiResponse<?> apiResp) {
-                        Object data = apiResp.getData();
-                        if (data != null) {
-                            JsonNode node = objectMapper.valueToTree(data);
-                            JsonNode idNode = node.get("connectorId");
-                            if (idNode == null) idNode = node.get("id");
-                            if (idNode == null) idNode = node.get("flowId");
-                            if (idNode != null && idNode.isTextual()) {
-                                ctx.resourceId = Long.parseLong(idNode.asText());
-                            } else if (idNode != null && idNode.isNumber()) {
-                                ctx.resourceId = idNode.asLong();
-                            }
-                        }
-                    }
-                } catch (Exception ignored) {
-                    // 提取失败不影响主流程
+            // appId 自动策略 3: 从返回值提取
+            if (!isValid(ctx.appId)) {
+                ctx.appId = extractAppIdFromResponse(result);
+                if (ctx.resourceId == null && isValid(ctx.appId)) {
+                    ctx.resourceId = resolveInternalIdFromAppId(ctx.appId);
                 }
             }
-        } catch (Throwable ex) {
-            status = 0;
-            // 主操作失败，记录 status=0 的审计日志（saveOperateLog 内部有 try-catch）
-            saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, null, status, ctx.resourceId);
-            throw ex; // 重新抛出，由全局异常处理器处理
-        }
 
-        // Phase 3: 审计后处理 —— 任何异常不影响主方法返回
-        String afterData = null;
-        try {
             if (ctx.op.needsAfterData()) {
-                if (ctx.resourceId != null) {
-                    afterData = loadEntitySnapshot(ctx.resourceId, ctx.op.getOperateObject());
-                } else {
-                    afterData = extractEntityFromResult(result);
+                EntitySnapshotLoader loader = snapshotLoaderFactory.getLoader(ctx.op.getOperateObject());
+                if (loader != null) {
+                    return JsonUtils.toJson(loader.loadAfterData(joinPoint, ctx.resourceId, result));
                 }
+                // 无 Loader，从返回值提取
+                return extractEntityFromResult(result);
             }
         } catch (Exception e) {
             log.warn("[OPERATE_LOG] Post-proceed snapshot extraction failed", e);
         }
-
-        // Phase 4: 保存审计日志
-        saveOperateLog(ctx.op, ctx.appId, joinPoint, ctx.beforeData, afterData, status, ctx.resourceId);
-
-        return result;
+        return null;
     }
 
-    // ===== 私有辅助方法 =====
-
     /**
-     * 构造并保存操作日志
-     *
-     * <p>整体包裹 try-catch，任何异常仅记录日志，不影响主业务</p>
+     * Phase 4: 渲染中英文描述 + 异步保存审计日志。
      */
-    private void saveOperateLog(OperateEnum op, String appId, ProceedingJoinPoint joinPoint,
-                                String beforeData, String afterData, int status, Long resourceId) {
+    private void writeAuditLog(AuditContext ctx, String afterData, int status) {
         try {
             OperateLog logEntry = new OperateLog();
-
-            // 基础字段（从 OperateEnum 统一获取）
-            logEntry.setAppId(appId);
-            logEntry.setOperateType(op.getOperateType());
-            // operate_object 格式: "连接器:connectorId" 或 "连接器"（如果 resourceId 为 null）
-            String operateObject = op.getOperateObjectCn();
-            if (resourceId != null) {
-                operateObject = operateObject + ":" + resourceId;
-            }
-            log.info("[OPERATE_LOG] resourceId={}, operateObject={}", resourceId, operateObject);
-            logEntry.setOperateObject(operateObject);
-            logEntry.setOperateDescCn(op.getDescCn());
-            logEntry.setOperateDescEn(op.getDescEn());
-
-            // 用户信息（取 userId）
             String userId = UserContextHolder.getUserId();
-            logEntry.setOperateUser(userId);
-            logEntry.setIpAddress(extractIpAddress());
+            Date now = new Date();
 
-            // 前后数据
-            logEntry.setBeforeData(beforeData);
+            logEntry.setAppId(ctx.appId);
+            logEntry.setOperateType(ctx.op.getOperateType());
+            logEntry.setOperateObject(ctx.op.getOperateObjectCn());
+            logEntry.setOperateDescCn(renderDesc(ctx, afterData, true));
+            logEntry.setOperateDescEn(renderDesc(ctx, afterData, false));
+            logEntry.setOperateUser(userId);
+            logEntry.setIpAddress(CommonUtils.extractIpAddress());
+            logEntry.setBeforeData(ctx.beforeData);
             logEntry.setAfterData(afterData);
             logEntry.setStatus(status);
-
-            // 时间戳和操作人
-            Date now = new Date();
             logEntry.setCreateBy(userId);
             logEntry.setLastUpdateBy(userId);
             logEntry.setCreateTime(now);
             logEntry.setLastUpdateTime(now);
 
-            // 异步保存
             auditLogService.saveAsync(logEntry);
-
         } catch (Exception e) {
             log.error("[OPERATE_LOG] Failed to construct/save log entry", e);
         }
     }
 
     /**
-     * 从方法参数中提取资源 ID
+     * 渲染描述模板，模板为空或渲染异常时回退到静态 descCn/descEn
      */
+    private String renderDesc(AuditContext ctx, String afterData, boolean isChinese) {
+        String template = isChinese ? ctx.op.getTemplateCn() : ctx.op.getTemplateEn();
+        String fallback = isChinese ? ctx.op.getDescCn() : ctx.op.getDescEn();
+        if (template == null || template.isEmpty()) {
+            return fallback;
+        }
+        try {
+            String rendered = renderTemplate(template, ctx.op, ctx.beforeData,
+                    afterData, isChinese);
+            return rendered != null ? rendered : fallback;
+        } catch (Exception e) {
+            log.warn("[OPERATE_LOG] Template rendering failed", e);
+            return fallback;
+        }
+    }
+
+    /**
+     * 渲染审计描述模板，将 ${xxx} 占位符替换为实际值。${diffFields} 触发字段级 diff 渲染。
+     */
+    private String renderTemplate(String template, OperateEnum op,
+                                  String beforeData, String afterData,
+                                  boolean isChinese) {
+        if (template == null || template.isEmpty()) {
+            return null;
+        }
+
+        JsonNode before = JsonUtils.parseJson(beforeData);
+        JsonNode after = JsonUtils.parseJson(afterData);
+
+        if (template.contains(DiffConfig.DIFF_FIELDS_PLACEHOLDER)) {
+            String diffResult = renderDiffFields(op, before, after, isChinese);
+            template = template.replace(DiffConfig.DIFF_FIELDS_PLACEHOLDER, diffResult);
+        }
+
+        Matcher matcher = PLACEHOLDER_PATTERN.matcher(template);
+        StringBuilder sb = new StringBuilder();
+        while (matcher.find()) {
+            String placeholder = matcher.group(1);
+            String value = resolvePlaceholder(placeholder, before, after);
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(value != null ? value : ""));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
+    }
+
+    /**
+     * 渲染字段级 diff（仅展示实际修改的字段）。
+     * 字段映射、中/英格式模板、labelOnly 格式、分隔符全部是 DiffConfig 配置数据，切面零硬编码。
+     */
+    private String renderDiffFields(OperateEnum op, JsonNode before, JsonNode after, boolean isChinese) {
+        if (before == null || after == null) {
+            return "";
+        }
+        DiffConfig config = op.diffConfig();
+        if (config == null) {
+            return "";
+        }
+
+        List<String> lines = new ArrayList<>();
+        for (DiffField field : config.fields()) {
+            String beforeVal = JsonUtils.getFieldText(before, field.name());
+            String afterVal = JsonUtils.getFieldText(after, field.name());
+            if (Objects.equals(beforeVal, afterVal)) {
+                continue;
+            }
+            lines.add(config.renderField(field, beforeVal, afterVal, isChinese));
+        }
+        return String.join(config.separator(), lines);
+    }
+
+    /**
+     * 从 beforeData/afterData JSON 中提取占位符值
+     */
+    private String resolvePlaceholder(String placeholder, JsonNode before, JsonNode after) {
+        String value = JsonUtils.getFieldText(after, placeholder);
+        if (value == null) {
+            value = JsonUtils.getFieldText(before, placeholder);
+        }
+        return value != null ? value : "";
+    }
+
+    private boolean isValid(String appId) {
+        return appId != null && !CommonConstants.UNKNOWN.equals(appId);
+    }
+
+    private Long resolveInternalIdFromAppId(String appId) {
+        try {
+            AppContext appCtx = appContextResolver.resolveAndValidate(appId);
+            if (appCtx != null && appCtx.getInternalId() != null) {
+                return appCtx.getInternalId();
+            }
+            log.warn("[OPERATE_LOG] AppContextResolver returned null internalId for appId={}", appId);
+            return null;
+        } catch (Exception e) {
+            log.warn("[OPERATE_LOG] Failed to resolve internalId from appId={}", appId, e);
+            return null;
+        }
+    }
+
     private Long extractResourceId(ProceedingJoinPoint joinPoint, String paramName) {
         MethodSignature sig = (MethodSignature) joinPoint.getSignature();
         String[] paramNames = sig.getParameterNames();
         Object[] args = joinPoint.getArgs();
-
         if (paramNames == null) {
             return null;
         }
-
         for (int i = 0; i < paramNames.length; i++) {
             if (paramName.equals(paramNames[i])) {
                 Object arg = args[i];
@@ -239,16 +318,10 @@ public class OperateLogV2Aspect {
         return null;
     }
 
-    /**
-     * PATH_VARIABLE 策略：从方法参数中提取 appId
-     *
-     * <p>路径 {appId} 已是 openplatform_app_t.app_id（varchar 外部业务 ID），直接使用</p>
-     */
     private String extractAppIdFromParams(ProceedingJoinPoint joinPoint) {
         MethodSignature sig = (MethodSignature) joinPoint.getSignature();
         String[] paramNames = sig.getParameterNames();
         Object[] args = joinPoint.getArgs();
-
         if (paramNames != null) {
             for (int i = 0; i < paramNames.length; i++) {
                 if ("appId".equals(paramNames[i]) && args[i] != null) {
@@ -256,118 +329,72 @@ public class OperateLogV2Aspect {
                 }
             }
         }
-        return "unknown";
+        return CommonConstants.UNKNOWN;
     }
 
     /**
-     * ENTITY 策略：从实体快照中提取 numeric app_id，再转换为 varchar app_id
-     *
-     * <p>数据链路：
-     * 实体 JSON 中的 appId (Long) = openplatform_app_t.id (内部主键)
-     * → AppContextResolver.toExternalId(internalId)
-     * → openplatform_app_t.app_id (varchar 外部业务 ID) = 审计日志 app_id</p>
+     * 从实体快照中提取 appId（numeric app_id → varchar app_id 转换）。
+     * 实体 JSON 中的 appId 是 openplatform_app_t.id（内部主键），
+     * 通过 AppContextResolver.toExternalId() 转换为 openplatform_app_t.app_id（varchar 业务 ID）。
      */
     private String extractAppIdFromEntity(String entityJson) {
         if (entityJson == null) {
-            return "unknown";
+            return CommonConstants.UNKNOWN;
         }
         try {
-            JsonNode node = objectMapper.readTree(entityJson);
+            JsonNode node = JsonUtils.parseJson(entityJson);
+            if (node == null) {
+                return CommonConstants.UNKNOWN;
+            }
             JsonNode appIdNode = node.get("appId");
             if (appIdNode == null) {
-                appIdNode = node.get("app_id");
+                appIdNode = node.get(AppPropertyConstants.COL_APP_ID);
             }
             if (appIdNode == null || appIdNode.isNull()) {
-                return "unknown";
+                return CommonConstants.UNKNOWN;
             }
-            // 实体中存储的是 numeric app_id (openplatform_app_t.id)
             Long internalId = appIdNode.asLong();
-            // 通过 AppContextResolver 转换为 varchar app_id (openplatform_app_t.app_id)
             return appContextResolver.toExternalId(internalId);
         } catch (Exception e) {
             log.warn("[OPERATE_LOG] Failed to extract appId from entity", e);
-            return "unknown";
+            return CommonConstants.UNKNOWN;
         }
     }
 
     /**
-     * 通过策略工厂加载实体快照（JSON 序列化）
-     *
-     * <p>根据 operateObject 路由到对应的 EntitySnapshotLoader 实现</p>
-     *
-     * @param id             资源 ID
-     * @param operateObject  操作对象标识（如 API_PERMISSION / EVENT_PERMISSION）
-     * @return 实体 JSON 字符串，未找到或加载失败返回 null
+     * 从方法返回值 ApiResponse.data.appId 中提取 appId。
+     * 适用于 CREATE 类操作（如 createApp），方法参数中无 appId，
+     * 但返回值中包含新建实体的 appId。
      */
-    private String loadEntitySnapshot(Long id, String operateObject) {
-        try {
-            EntitySnapshotLoader loader = snapshotLoaderFactory.getLoader(operateObject);
-            if (loader == null) {
-                log.warn("[OPERATE_LOG] No snapshot loader for: {}", operateObject);
-                return null;
-            }
-            Object entity = loader.loadById(id);
-            return entity != null ? objectMapper.writeValueAsString(entity) : null;
-        } catch (Exception e) {
-            log.warn("[OPERATE_LOG] Entity snapshot load failed: id={}, object={}", id, operateObject, e);
-            return null;
-        }
-    }
-
-    /**
-     * 从 ApiResponse 返回值中提取实体数据作为 afterData
-     *
-     * <p>适用于 SUBSCRIBE 等批量操作，resourceId 为 null 的场景。
-     * 返回的 PermissionSubscribeResponse 包含创建的订阅记录列表。</p>
-     */
-    private String extractEntityFromResult(Object result) {
+    private String extractAppIdFromResponse(Object result) {
         if (result == null) {
-            return null;
+            return CommonConstants.UNKNOWN;
         }
         try {
             if (result instanceof ApiResponse<?> apiResponse) {
                 Object data = apiResponse.getData();
-                return data != null ? objectMapper.writeValueAsString(data) : null;
+                if (data != null) {
+                    JsonNode dataNode = JsonUtils.toTree(data);
+                    JsonNode appIdNode = dataNode != null ? dataNode.get("appId") : null;
+                    if (appIdNode != null && !appIdNode.isNull()) {
+                        return appIdNode.asText();
+                    }
+                }
             }
-            return objectMapper.writeValueAsString(result);
+            return CommonConstants.UNKNOWN;
         } catch (Exception e) {
-            log.warn("[OPERATE_LOG] Failed to extract entity from result", e);
-            return null;
+            log.warn("[OPERATE_LOG] Failed to extract appId from response", e);
+            return CommonConstants.UNKNOWN;
         }
     }
 
-    /**
-     * 从 HttpServletRequest 中提取客户端 IP 地址
-     *
-     * <p>优先级：X-Forwarded-For → X-Real-IP → request.getRemoteAddr()</p>
-     */
-    private String extractIpAddress() {
-        try {
-            ServletRequestAttributes attrs =
-                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-            if (attrs == null) {
-                return null;
-            }
-
-            HttpServletRequest request = attrs.getRequest();
-
-            String ip = request.getHeader("X-Forwarded-For");
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getHeader("X-Real-IP");
-            }
-            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-                ip = request.getRemoteAddr();
-            }
-
-            // X-Forwarded-For 可能包含多个 IP，取第一个（客户端真实 IP）
-            if (ip != null && ip.contains(",")) {
-                ip = ip.split(",")[0].trim();
-            }
-
-            return ip;
-        } catch (Exception e) {
-            log.warn("[OPERATE_LOG] Failed to extract IP address", e);
+    private String extractEntityFromResult(Object result) {
+        if (result == null) {
             return null;
         }
+        if (result instanceof ApiResponse<?> apiResponse) {
+            return JsonUtils.toJson(apiResponse.getData());
+        }
+        return JsonUtils.toJson(result);
     }
 }

@@ -29,9 +29,18 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpConnectorService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OpConnectorService.class);
 
+
+
+
+    @Autowired
+    public OpConnectorService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, IdGeneratorStrategy idGenerator) {
+        this.connectorMapper = connectorMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+        this.idGenerator = idGenerator;
+    }
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final IdGeneratorStrategy idGenerator;
@@ -228,7 +237,7 @@ public class OpConnectorService {
             version = new ConnectorVersion();
             version.setId(idGenerator.nextId());
             version.setConnectorId(connectorId);
-            version.setConnectionConfig(request.getConnectionConfig());
+            version.setConnectionConfig(request.getConnectionConfig().toString());
             version.setCreateTime(now);
             version.setLastUpdateTime(now);
             version.setCreateBy(currentUser);
@@ -236,7 +245,7 @@ public class OpConnectorService {
             connectorVersionMapper.insert(version);
         } else {
             // 更新现有版本 - 全文替换
-            version.setConnectionConfig(request.getConnectionConfig());
+            version.setConnectionConfig(request.getConnectionConfig().toString());
             version.setLastUpdateTime(now);
             version.setLastUpdateBy(currentUser);
             connectorVersionMapper.update(version);
@@ -262,8 +271,13 @@ public class OpConnectorService {
         r.setConnectorId(String.valueOf(c.getId()));
         r.setNameCn(c.getNameCn());
         r.setNameEn(c.getNameEn());
+        r.setDescriptionCn(c.getDescriptionCn());
+        r.setDescriptionEn(c.getDescriptionEn());
         r.setConnectorType(c.getConnectorType());
         r.setCreateTime(c.getCreateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getCreateTime()) : null);
+        r.setCreateBy(c.getCreateBy());
+        r.setLastUpdateBy(c.getLastUpdateBy());
+        r.setLastUpdateTime(c.getLastUpdateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getLastUpdateTime()) : null);
         return r;
     }
 
@@ -276,6 +290,8 @@ public class OpConnectorService {
         r.setDescriptionEn(c.getDescriptionEn());
         r.setConnectorType(c.getConnectorType());
         r.setCreateTime(c.getCreateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getCreateTime()) : null);
+        r.setCreateBy(c.getCreateBy());
+        r.setLastUpdateBy(c.getLastUpdateBy());
         r.setLastUpdateTime(c.getLastUpdateTime() != null ? new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(c.getLastUpdateTime()) : null);
         return r;
     }

@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.approval.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +15,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class ApprovalActionResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -35,4 +33,10 @@ public class ApprovalActionResponse implements Serializable {
      * 提示消息
      */
     private String message;
+
+    public ApprovalActionResponse(String id, Integer status, String message) {
+        this.id = id;
+        this.status = status;
+        this.message = message;
+    }
 }

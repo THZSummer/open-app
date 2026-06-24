@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.connector.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
@@ -13,7 +14,7 @@ import lombok.Data;
 @Data
 public class ConnectorConfigUpdateRequest {
 
-    /** 连接配置JSON (完整替换) */
-    @NotBlank(message = "连接配置不能为空")
-    private String connectionConfig;
+    /** 连接配置 JSON 对象 (完整替换) */
+    @NotNull(message = "连接配置不能为空")
+    private JsonNode connectionConfig;
 }

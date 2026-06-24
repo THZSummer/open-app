@@ -1,19 +1,29 @@
 package com.xxx.it.works.wecode.v2.modules.app.resolver.impl;
 
+import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
+import com.xxx.it.works.wecode.v2.modules.app.entity.App;
+import com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppAccessException;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
+import com.xxx.it.works.wecode.v2.modules.member.entity.AppMember;
+import com.xxx.it.works.wecode.v2.modules.member.mapper.AppMemberMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
 
 /**
  * Standard Environment Application Context Resolver
  *
  * <p>Production environment implementation:</p>
  * <ul>
- *   <li>ID conversion: Call application management service to get mapping</li>
- *   <li>Permission validation: Validate current user's access permission to the application</li>
+ *   <li>ID conversion: Query AppMapper to get internal ID from external appId</li>
+ *   <li>Permission validation: Check current user's membership in the app</li>
  * </ul>
  *
  * @author SDDU Build Agent
@@ -24,50 +34,49 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(name = "app.resolver.type", havingValue = "standard")
 public class StandardAppContextResolver implements AppContextResolver {
 
-    // TODO: Inject application management service
-    // @Autowired
-    // private AppManageService appManageService;
+    @Autowired
+    private AppMapper appMapper;
+    @Autowired
+    private AppMemberMapper appMemberMapper;
 
     @Override
     public AppContext resolveAndValidate(String externalAppId) {
         log.info("Standard environment resolving appId: {}", externalAppId);
 
         // 1. Validate parameters
-        if (externalAppId == null || externalAppId.isEmpty()) {
+        if (StringUtils.isEmpty(externalAppId)) {
             throw AppAccessException.notFound(externalAppId);
         }
 
-        // TODO: Standard environment implementation, integrate with application management service
-        // 2. Call application management service to get internal ID
-        // Long internalId = appManageService.getInternalIdByExternalId(externalAppId);
-        // if (internalId == null) {
-        //     throw AppAccessException.notFound(externalAppId);
-        // }
+        // 2. 查询应用是否存在
+        App app = appMapper.selectByAppId(externalAppId);
+        if (app == null) {
+            throw AppAccessException.notFound(externalAppId);
+        }
 
-        // 3. Validate current user's access permission to the application
-        // String currentUserId = UserContextHolder.getUserId();
-        // boolean hasPermission = appManageService.checkUserAppPermission(
-        //     currentUserId, internalId);
-        // if (!hasPermission) {
-        //     throw AppAccessException.noPermission(externalAppId);
-        // }
+        // 3. 校验当前用户是否为应用成员
+        Long internalId = app.getId();
+        String currentUserId = UserContextHolder.getUserId();
+        List<AppMember> members = appMemberMapper.selectByAppIdAndAccountId(internalId, currentUserId);
+        if (CollectionUtils.isEmpty(members)) {
+            throw AppAccessException.noPermission(externalAppId);
+        }
 
         // 4. Return context
-        // return AppContext.builder()
-        //     .internalId(internalId)
-        //     .externalId(externalAppId)
-        //     .build();
-
-        throw new UnsupportedOperationException(
-            "StandardAppContextResolver not implemented yet, please implement it in standard environment");
+        return AppContext.builder()
+                .internalId(internalId)
+                .externalId(externalAppId)
+                .app(app)
+                .build();
     }
 
     @Override
     public String toExternalId(Long internalId) {
-
-        // TODO: Standard environment implementation
-        // return appManageService.getExternalIdByInternalId(internalId);
-        throw new UnsupportedOperationException(
-            "StandardAppContextResolver not implemented yet, please implement it in standard environment");
+        App app = appMapper.selectById(internalId);
+        if (app == null) {
+            throw AppAccessException.notFound(String.valueOf(internalId));
+        }
+        return app.getAppId();
     }
+
 }

@@ -1,8 +1,21 @@
 import React, { useEffect } from 'react';
-import { Modal, Form } from 'antd';
+import { Modal, Form, Tooltip } from 'antd';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 import BindEamapSelect from '../BindEamapSelect/BindEamapSelect';
 
-function BindEamapModal({ visible, onCancel, onOk, appId, eamapOptions = [], currentEamap }) {
+/**
+ * 绑定应用服务弹窗
+ *
+ * @param {Object} props - 组件属性
+ * @param {boolean} props.visible - 弹窗是否可见
+ * @param {Function} props.onCancel - 取消回调
+ * @param {Function} props.onOk - 确认回调
+ * @param {string} props.appId - 应用ID
+ * @param {Array} props.eamapOptions - EAMAP 选项列表
+ * @param {string} props.currentEamap - 当前绑定的 EAMAP
+ */
+function BindEamapModal(props) {
+  const { visible, onCancel, onOk, appId, eamapOptions = [], currentEamap } = props;
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -27,6 +40,7 @@ function BindEamapModal({ visible, onCancel, onOk, appId, eamapOptions = [], cur
       onCancel={onCancel}
       onOk={handleSubmit}
       okText="确认绑定"
+      cancelText="取消"
       width={480}
       destroyOnClose
     >
@@ -36,12 +50,23 @@ function BindEamapModal({ visible, onCancel, onOk, appId, eamapOptions = [], cur
       >
         <Form.Item
           name="eamap"
-          label="选择要绑定的EAMAP"
-          rules={[{ required: true, message: '请选择要绑定的EAMAP' }]}
+          label={
+            <span>
+              绑定到应用服务
+              <Tooltip
+                overlayStyle={{ maxWidth: 'none' }}
+                color="#eef4ff"
+                title={<span style={{ color: '#1f2329', whiteSpace: 'nowrap' }}>开放平台按照应用服务维度做权限隔离，如需申请API权限等开放能力需要先绑定应用服务，如无权限请前往应用中心查询对应责任人</span>}
+              >
+                <QuestionCircleOutlined style={{ color: '#8f959e', marginLeft: 4, cursor: 'pointer' }} />
+              </Tooltip>
+            </span>
+          }
+          rules={[{ required: true, message: '请选择应用服务' }]}
         >
           <BindEamapSelect
             eamapOptions={eamapOptions}
-            placeholder="请选择要绑定的EAMAP"
+            placeholder="选择应用服务"
           />
         </Form.Item>
       </Form>

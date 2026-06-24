@@ -39,7 +39,7 @@ public class PlatformAdminPermissionAspect {
         //         "Permission denied: Platform admin only"
         //     );
         // }
-        
+
         log.debug("Platform admin permission check passed (currently skipped)");
     }
 }

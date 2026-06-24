@@ -48,24 +48,7 @@ public enum AuthTypeEnum {
     /**
      * Client Token 认证
      */
-    CLITOKEN(6, "CLITOKEN", "Client Token认证"),
-
-    // ===== V3 连接器平台认证类型 =====
-
-    /**
-     * Cookie 认证（连接器平台 V3）
-     */
-    CONNECTOR_COOKIE(8, "CONNECTOR_COOKIE", "连接器平台Cookie认证"),
-
-    /**
-     * 数字签名认证（连接器平台 V3）
-     */
-    CONNECTOR_DIGITAL_SIGN(9, "CONNECTOR_DIGITAL_SIGN", "连接器平台数字签名认证"),
-
-    /**
-     * 多认证组合（连接器平台 V3）
-     */
-    CONNECTOR_MULTI_AUTH(10, "CONNECTOR_MULTI_AUTH", "连接器平台多认证组合");
+    CLITOKEN(6, "CLITOKEN", "Client Token认证");
 
     /**
      * 枚举编码（数据库存储值）
@@ -81,6 +64,11 @@ public enum AuthTypeEnum {
      * 枚举描述
      */
     private final String description;
+
+
+    public Integer getCode() { return code; }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
 
     /**
      * 默认认证方式：SOA

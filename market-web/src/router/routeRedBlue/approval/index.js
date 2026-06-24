@@ -2,53 +2,55 @@ import React, { useState, useEffect } from 'react';
 import { message, Table, Pagination, Tabs, Modal } from 'antd';
 import { fetchPendingList, fetchPublishedList, processApproval } from './thunk';
 import {
-  API_CONFIG, APPROVAL_ACTION, PAGE_SIZE_OPTIONS,
-  getPendingColumns, getPublishedColumns
+  API_CONFIG, APPROVAL_ACTION, getPendingColumns, getPublishedColumns
 } from './constant';
+import { DEFAULT_PAGINATION, PAGE_SIZE_OPTIONS } from '../../../utils/constant';
+import { openWindow } from '../../../utils/common';
 import less from './index.module.less';
 
 const { TabPane } = Tabs;
 const { confirm } = Modal;
 
+// const Contextroot = processApproval.env.NODE_ENV === 'development' ? '' : '/appstore-market-admin';
+const Contextroot = '';
+
 const Approval = () => {
   const [activeTab, setActiveTab] = useState('pending');
   const [dataSource, setDataSource] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [pagination, setPagination] = useState({ curPage: 1, pageSize: 10, total: 0 });
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
   const [currentLang, setCurrentLang] = useState(localStorage.getItem('lang') || 'zh');
 
   const fetchData = async (tab = activeTab, page = pagination) => {
     setLoading(true);
-    try {
-      const fetchFn = tab === 'pending' ? fetchPendingList : fetchPublishedList;
-      const result = await fetchFn({ curPage: page.curPage, pageSize: page.pageSize });
-      if (result && result.code === '200') {
-        setDataSource(result.data || []);
-        setPagination(prev => ({ ...prev, total: result.page?.total || 0 }));
-      } else {
-        message.error(result?.messageZh || '获取数据失败');
-      }
-    } finally {
-      setLoading(false);
+    const fetchFn = tab === 'pending' ? fetchPendingList : fetchPublishedList;
+    const result = await fetchFn({ pageNum: page.pageNum, pageSize: page.pageSize });
+    if (result && result.code === '200') {
+      setDataSource(result.data || []);
+      setPagination(prev => ({ ...prev, pageNum: result.page?.curPage || 1, total: result.page?.total || 0 }));
+    } else {
+      message.error(result?.messageZh || '获取数据失败');
     }
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, pagination.curPage, pagination.pageSize]);
+  }, [activeTab, pagination.pageNum, pagination.pageSize]);
 
   const handleTabChange = (key) => {
     setActiveTab(key);
-    setPagination({ curPage: 1, pageSize: 10, total: 0 });
+    setPagination(DEFAULT_PAGINATION);
     setDataSource([]);
   };
 
   const handlePageChange = (page, pageSize) => {
-    setPagination(prev => ({ ...prev, curPage: page, pageSize }));
+    setPagination(prev => ({ ...prev, pageNum: page, pageSize }));
   };
 
   const handleView = (record) => {
-    window.open('/app-detail/' + record.appId, '_blank');
+    // openWindow(`#${Contextroot}/approveDetail?appId=${record.appId}`);
+    openWindow(`/market-web/approveDetail?appId=${record.appId}`);
   };
 
   const handleApprove = (record) => {
@@ -88,12 +90,6 @@ const Approval = () => {
     });
   };
 
-  // Language switch
-  const switchLang = (lang) => {
-    setCurrentLang(lang);
-    localStorage.setItem('lang', lang);
-  };
-
   // App name renderer
   const renderAppName = (text, record) => {
     return currentLang === 'en' ? record.appNameEn : record.appNameCn;
@@ -125,19 +121,15 @@ const Approval = () => {
           <div className={less.pageHeadLeft}>
             <span className={less.pageHeadTitle}>审批管理</span>
           </div>
-          <div className={less.langSwitch}>
-            <span className={currentLang === 'zh' ? less.langActive : ''} onClick={() => switchLang('zh')}>中文</span>
-            <span className={currentLang === 'en' ? less.langActive : ''} onClick={() => switchLang('en')}>EN</span>
-          </div>
         </div>
         <Tabs activeKey={activeTab} onChange={handleTabChange}>
           <TabPane tab="待审批应用" key="pending">
             <Table columns={pendingColumns} dataSource={dataSource} rowKey="id"
-                   loading={loading} pagination={false} scroll={{ x: '100%' }} />
+              loading={loading} pagination={false} scroll={{ x: '100%' }} />
           </TabPane>
           <TabPane tab="已上架应用" key="published">
             <Table columns={publishedColumns} dataSource={dataSource} rowKey="id"
-                   loading={loading} pagination={false} scroll={{ x: '100%' }} />
+              loading={loading} pagination={false} scroll={{ x: '100%' }} />
           </TabPane>
         </Tabs>
         <div className={less.paginationWrapper}>
@@ -145,7 +137,7 @@ const Approval = () => {
             total={pagination.total}
             current={pagination.curPage}
             pageSize={pagination.pageSize}
-            pageSizeOptions={['10', '20', '50']}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
             showSizeChanger
             showTotal={(total) => `共 ${total} 条`}
             onChange={handlePageChange}

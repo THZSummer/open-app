@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper">
+
+    <resultMap id="AppResultMap" type="com.xxx.it.works.wecode.v2.modules.app.entity.App">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="icon_id" property="iconId"/>
+        <result column="app_name_cn" property="appNameCn"/>
+        <result column="app_name_en" property="appNameEn"/>
+        <result column="app_desc_cn" property="appDescCn"/>
+        <result column="app_desc_en" property="appDescEn"/>
+        <result column="app_type" property="appType"/>
+        <result column="app_sub_type" property="appSubType"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <resultMap id="AppPropertyResultMap" type="com.xxx.it.works.wecode.v2.modules.app.entity.AppProperty">
+        <id column="id" property="id"/>
+        <result column="parent_id" property="parentId"/>
+        <result column="property_name" property="propertyName"/>
+        <result column="property_value" property="propertyValue"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectByAppId" resultMap="AppResultMap">
+        SELECT id,
+               app_id,
+               tenant_id,
+               icon_id,
+               app_name_cn,
+               app_name_en,
+               app_desc_cn,
+               app_desc_en,
+               app_type,
+               app_sub_type,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_t
+        WHERE app_id = #{appId,jdbcType=VARCHAR}
+          AND status = 1
+    </select>
+
+    <select id="selectById" resultMap="AppResultMap">
+        SELECT id,
+               app_id,
+               tenant_id,
+               icon_id,
+               app_name_cn,
+               app_name_en,
+               app_desc_cn,
+               app_desc_en,
+               app_type,
+               app_sub_type,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_t
+        WHERE id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO openplatform_app_t (id, app_id, tenant_id, icon_id, app_name_cn, app_name_en,
+                                        app_desc_cn, app_desc_en, app_type, app_sub_type, status,
+                                        create_by, create_time, last_update_by, last_update_time)
+        VALUES (#{id,jdbcType=BIGINT}, #{appId,jdbcType=VARCHAR}, #{tenantId,jdbcType=VARCHAR},
+                #{iconId,jdbcType=VARCHAR}, #{appNameCn,jdbcType=VARCHAR}, #{appNameEn,jdbcType=VARCHAR},
+                #{appDescCn,jdbcType=VARCHAR}, #{appDescEn,jdbcType=VARCHAR}, #{appType,jdbcType=INTEGER},
+                #{appSubType,jdbcType=INTEGER}, #{status,jdbcType=INTEGER},
+                #{createBy,jdbcType=VARCHAR}, NOW(3), #{lastUpdateBy,jdbcType=VARCHAR}, NOW(3))
+    </insert>
+
+    <update id="update">
+        UPDATE openplatform_app_t
+        <set>
+            <if test="iconId != null">icon_id = #{iconId,jdbcType=VARCHAR},</if>
+            <if test="appNameCn != null">app_name_cn = #{appNameCn,jdbcType=VARCHAR},</if>
+            <if test="appNameEn != null">app_name_en = #{appNameEn,jdbcType=VARCHAR},</if>
+            <if test="appDescCn != null">app_desc_cn = #{appDescCn,jdbcType=VARCHAR},</if>
+            <if test="appDescEn != null">app_desc_en = #{appDescEn,jdbcType=VARCHAR},</if>
+            <if test="appType != null">app_type = #{appType,jdbcType=INTEGER},</if>
+            <if test="appSubType != null">app_sub_type = #{appSubType,jdbcType=INTEGER},</if>
+            <if test="status != null">status = #{status,jdbcType=INTEGER},</if>
+            <if test="lastUpdateBy != null">last_update_by = #{lastUpdateBy,jdbcType=VARCHAR},</if>
+            last_update_time = NOW(3)
+        </set>
+        WHERE app_id = #{appId,jdbcType=VARCHAR}
+    </update>
+
+    <select id="countByNameCn" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_app_t
+        WHERE app_name_cn = #{nameCn,jdbcType=VARCHAR}
+          AND status = 1
+    </select>
+
+    <select id="countByNameEn" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_app_t
+        WHERE app_name_en = #{nameEn,jdbcType=VARCHAR}
+          AND status = 1
+    </select>
+
+    <select id="selectListByAccountId" resultMap="AppResultMap">
+        SELECT DISTINCT a.id,
+                        a.app_id,
+                        a.tenant_id,
+                        a.icon_id,
+                        a.app_name_cn,
+                        a.app_name_en,
+                        a.app_desc_cn,
+                        a.app_desc_en,
+                        a.app_type,
+                        a.app_sub_type,
+                        a.status,
+                        a.create_by,
+                        a.create_time,
+                        a.last_update_by,
+                        a.last_update_time
+        FROM openplatform_app_t a
+                 INNER JOIN openplatform_app_member_t m ON a.id = m.app_id
+        WHERE m.account_id = #{accountId,jdbcType=VARCHAR}
+          AND a.tenant_id = #{tenantId,jdbcType=VARCHAR}
+          AND a.status = 1
+          AND m.status = 1
+        ORDER BY a.last_update_time DESC
+            LIMIT #{offset,jdbcType=INTEGER}, #{pageSize,jdbcType=INTEGER}
+    </select>
+
+    <select id="countByAccountId" resultType="long">
+        SELECT COUNT(DISTINCT a.id)
+        FROM openplatform_app_t a
+                 INNER JOIN openplatform_app_member_t m ON a.id = m.app_id
+        WHERE m.account_id = #{accountId,jdbcType=VARCHAR}
+          AND a.tenant_id = #{tenantId,jdbcType=VARCHAR}
+          AND a.status = 1
+          AND m.status = 1
+    </select>
+
+    <select id="selectPropertiesByParentId" resultMap="AppPropertyResultMap">
+        SELECT id,
+               parent_id,
+               property_name,
+               property_value,
+               tenant_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_p_t
+        WHERE parent_id = #{parentId,jdbcType=BIGINT}
+          AND status = 1
+    </select>
+
+    <insert id="insertProperty">
+        INSERT INTO openplatform_app_p_t (id, parent_id, property_name, property_value, tenant_id, status,
+                                          create_by, create_time, last_update_by, last_update_time)
+        VALUES (#{id,jdbcType=BIGINT}, #{parentId,jdbcType=BIGINT}, #{propertyName,jdbcType=VARCHAR},
+                #{propertyValue,jdbcType=VARCHAR}, #{tenantId,jdbcType=VARCHAR}, #{status,jdbcType=INTEGER},
+                #{createBy,jdbcType=VARCHAR}, NOW(3), #{lastUpdateBy,jdbcType=VARCHAR}, NOW(3))
+    </insert>
+
+    <insert id="batchInsertProperties">
+        INSERT INTO openplatform_app_p_t (
+        id, parent_id, property_name, property_value, tenant_id, status,
+        create_by, create_time, last_update_by, last_update_time
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.id,jdbcType=BIGINT}, #{item.parentId,jdbcType=BIGINT}, #{item.propertyName,jdbcType=VARCHAR},
+            #{item.propertyValue,jdbcType=VARCHAR}, #{item.tenantId,jdbcType=VARCHAR}, #{item.status,jdbcType=INTEGER},
+            #{item.createBy,jdbcType=VARCHAR}, NOW(3), #{item.lastUpdateBy,jdbcType=VARCHAR}, NOW(3))
+        </foreach>
+    </insert>
+
+    <delete id="deletePropertyByName">
+        DELETE
+        FROM openplatform_app_p_t
+        WHERE parent_id = #{parentId,jdbcType=BIGINT}
+          AND property_name = #{propertyName,jdbcType=VARCHAR}
+    </delete>
+
+    <select id="countByPropertyNameAndValue" resultType="int">
+        SELECT COUNT(1)
+        FROM openplatform_app_p_t
+        WHERE property_name = #{propertyName,jdbcType=VARCHAR}
+          AND property_value = #{propertyValue,jdbcType=VARCHAR}
+          AND status = 1
+    </select>
+
+    <!-- 查询数据字典（openplatform_property_t）按 path + code -->
+    <select id="selectDictionaryValue" resultType="string">
+        SELECT value
+        FROM openplatform_property_t
+        WHERE path = #{path}
+          AND code = #{code}
+          AND status = 1
+    </select>
+
+</mapper>

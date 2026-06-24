@@ -1,109 +1,132 @@
+// AppCard 样式 — 对照 demo-app-list.html .app-card / .card-header / .eamap-status
+
 .app-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 24px;
-  background-color: var(--bg-primary);
-  border-radius: var(--radius-md);
-  text-decoration: none;
-  transition: all 0.2s ease;
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
   cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  height: 215px;
 
-  &:hover {
-    box-shadow: var(--shadow-md);
-    text-decoration: none;
-  }
 
-  &-top {
+  .app-card-top {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-bottom: 16px;
   }
 
-  &-icon {
-    width: 48px;
-    height: 48px;
+  .app-card-icon {
+    width: 56px;
+    height: 56px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    background-color: var(--bg-secondary);
-    border-radius: var(--radius-sm);
+    font-size: 22px;
+    background: linear-gradient(135deg, #e8f0ff 0%, #d6e4ff 100%);
+    border-radius: 10px;
     flex-shrink: 0;
+    overflow: hidden;
+    color: #3370ff;
+
+    .app-card-icon-fallback {
+      font-size: 22px;
+      font-weight: 600;
+      color: #3370ff;
+    }
   }
 
-  &-info {
+  .app-card-icon-img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: 10px;
+  }
+
+  .app-card-info {
     flex: 1;
     min-width: 0;
-  }
-
-  &-name {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-  }
-
-  &-eamap {
-    font-size: 13px;
-
-    &.bound {
-      color: var(--success-color);
-    }
-
-    &.unbound {
-      color: var(--text-tertiary);
-    }
-  }
-
-  &-bottom {
+    height: 56px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    justify-content: space-between;
   }
 
-  &-meta-item {
-    display: flex;
-    align-items: center;
-    font-size: 12px;
-    gap: 8px;
-  }
-
-  &-meta-label {
-    color: var(--text-tertiary);
-    width: 56px;
-    flex-shrink: 0;
-  }
-
-  &-meta-value {
-    color: var(--text-primary);
-    width: 140px;
+  .app-card-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2329;
+    margin-bottom: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex-shrink: 0;
-    position: relative;
-    cursor: default;
+  }
+
+  // EAMAP 状态标签（对照 demo .eamap-status）
+  .app-card-eamap {
+    .eamap-status {
+      display: inline-flex;
+    align-items: flex-start;
+      gap: 4px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+
+      .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+
+      &.binded {
+        background: #eafff4;
+        color: #00d057;
+
+        .dot {
+          background: #1a7f1a;
+        }
+      }
+
+      &.unbinded {
+        background: #fff3e9;
+        color: #ff8821;
+
+        .dot {
+          background: #d46b08;
+        }
+      }
+    }
+  }
+
+  .app-card-bottom {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-card-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    margin-top: 15px;
+  }
+
+  .app-card-meta-label {
+    color: #999;
+    min-width: 60px;
+  }
+
+  .app-card-meta-value {
+    color: #1f2329;
 
     &.owner {
-      color: var(--primary-color);
-      cursor: pointer;
+      color: #3370ff;
+    }
 
-      &:hover:after {
-        content: attr(title);
-        position: absolute;
-        left: 0;
-        top: 100%;
-        margin-top: 4px;
-        padding: 6px 10px;
-        background-color: var(--text-primary);
-        color: var(--bg-primary);
-        border-radius: var(--radius-sm);
-        font-size: 12px;
-        white-space: nowrap;
-        z-index: 100;
-        box-shadow: var(--shadow-md);
-      }
+    &.role {
+      font-size: 12px;
     }
   }
 }

@@ -1,5 +1,5 @@
 .app-list {
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
   min-height: 100%;
   box-sizing: border-box;
@@ -12,9 +12,9 @@
   }
 
   &-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
-    color: var(--text-primary);
+    color: #1f2329;
     margin: 0;
   }
 
@@ -24,14 +24,14 @@
     justify-content: center;
     gap: 4px;
     padding: 8px 16px;
-    background-color: var(--primary-color);
+    background-color: #3370ff;
     color: white;
-    border-radius: var(--radius-sm);
+    border-radius: 4px;
     font-weight: 500;
     transition: background-color 0.2s ease;
 
     &:hover {
-      background-color: var(--primary-hover);
+      background-color: #2860e0;
     }
 
     span {
@@ -44,4 +44,90 @@
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
   }
+}
+
+// 新组件样式
+.app-list-page {
+  width: 1200px;
+  margin: 0 auto;
+  padding: 24px 0 0;
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border-radius: 4px;
+    &:hover {
+      background: #a0a0a0;
+    }
+  }
+
+  .app-list-hero {
+    background: linear-gradient(135deg, #e8f0ff 0%, #f0f5ff 100%);
+    border-radius: 12px;
+    padding: 36px 32px;
+    margin-bottom: 0;
+    height: 283px;
+
+    .hero-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1f2329;
+      margin-bottom: 8px;
+    }
+
+    .hero-desc {
+      font-size: 14px;
+      color: #646a73;
+      margin-bottom: 20px;
+    }
+
+    .hero-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 8px 20px;
+      background: #3370ff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #2860e0;
+      }
+    }
+  }
+
+  .app-list-section {
+    .appTypeName {
+      font-size: 20px;
+      line-height: 27px;
+      padding-top: 26px;
+      padding-bottom: 26px;
+      font-weight: 600;
+      color: #1f2329;
+    }
+  }
+}
+
+.app-list-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 24px;
+}
+
+.pagination-total {
+  color: #8f959e;
+  font-size: 13px;
 }

@@ -371,7 +371,9 @@
 | — | — | **open-server — 调试代理** | — | — | — |
 | 51 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试连接流版本（代理） | 新增 | ① 三层权限校验<br>④ 新增接口<br>⑥ 替换 V1 test-run |
 | — | — | **open-server — 函数列表** | — | — | — |
-| 52 | GET | `/data-processor/functions` | 查询数据处理函数列表 | 新增 | ① 三层权限校验<br>④ 新增接口 |
+| 52 | GET | `/data-processor/functions` | 查询数据处理函数列表 | 新增 | ① 三层权限校验<br>④ 新增接口<br>⚠️ V3 本期不实现，函数列表在 open-server 侧静态维护，后续可通过 market-server Property 扩展为动态配置 |
+
+> ⚠️ **#52 V3 本期不实现**：数据处理函数列表（toString/toNumber/toBoolean/formatDate）在 open-server 侧静态维护，不暴露为独立端点。后续可通过 `market-server` Property 扩展为动态配置。前端使用方直接硬编码这四个函数。
 | — | — | **connector-api — 运行时** | — | — | — |
 | 53 | POST | `/flows/{flowId}/versions/{versionId}/debug` | 调试执行 | 新增 | ④ 新增接口<br>（由 open-server #51 代理调用） |
 | 54 | POST | `/flows/{flowId}/invoke` | 调用连接流 | 改造 | ③ 路径变更<br>⑥ 替换 V1 trigger invoke<br>⚠️ **透明穿透模式**：请求/响应均由用户自定义（触发器入参 + 出口出参），平台元数据放入 `X-` 响应头，不使用标准响应信封 |

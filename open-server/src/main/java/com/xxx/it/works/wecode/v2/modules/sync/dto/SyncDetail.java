@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.sync.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +15,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class SyncDetail implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -45,4 +43,12 @@ public class SyncDetail implements Serializable {
      * 审批日志同步状态
      */
     private String approvalLogStatus;
+
+    public SyncDetail(Long id, String status, String error, String approvalStatus, String approvalLogStatus) {
+        this.id = id;
+        this.status = status;
+        this.error = error;
+        this.approvalStatus = approvalStatus;
+        this.approvalLogStatus = approvalLogStatus;
+    }
 }

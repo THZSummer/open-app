@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.flow.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 /**
@@ -13,5 +14,5 @@ import lombok.Data;
 public class FlowVersionSaveRequest {
 
     /** 编排配置 JSON 字符串（React Flow 格式：nodes + edges + flowConfig） */
-    private String orchestrationConfig;
+    private JsonNode orchestrationConfig;
 }

@@ -1,9 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.permission.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -17,8 +15,6 @@ import java.util.List;
  */
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class ApiSubscriptionListResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -83,14 +79,30 @@ public class ApiSubscriptionListResponse implements Serializable {
      */
     private Date createTime;
 
+
+    public ApiSubscriptionListResponse() {
+    }
+
+    public ApiSubscriptionListResponse(String id, String appId, String permissionId, String applicantId, PermissionInfo permission, ApiInfo api, CategoryInfo category, ApproverInfo approver, Integer status, Integer authType, String approvalUrl, Date createTime) {
+        this.id = id;
+        this.appId = appId;
+        this.permissionId = permissionId;
+        this.applicantId = applicantId;
+        this.permission = permission;
+        this.api = api;
+        this.category = category;
+        this.approver = approver;
+        this.status = status;
+        this.authType = authType;
+        this.approvalUrl = approvalUrl;
+        this.createTime = createTime;
+    }
     /**
      * 权限信息
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class PermissionInfo implements Serializable {
+        public static class PermissionInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -110,9 +122,7 @@ public class ApiSubscriptionListResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ApiInfo implements Serializable {
+        public static class ApiInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -142,9 +152,7 @@ public class ApiSubscriptionListResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CategoryInfo implements Serializable {
+        public static class CategoryInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -174,9 +182,7 @@ public class ApiSubscriptionListResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ApproverInfo implements Serializable {
+        public static class ApproverInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

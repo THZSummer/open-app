@@ -1,0 +1,148 @@
+// ========================================
+// SchemaEditorV2 样式
+// ========================================
+// 设计语言：飞书 Lark 风格，克制商务
+// - 每行参数：浅底框 + 圆角，悬浮态边框升级
+// - 复杂类型子参数容器：左侧 2px 蓝色带 + 左内边距，强化父子层级
+// - 主操作蓝（#3370FF / Lark 蓝），辅助灰 #8F959E
+// - 全局类名：schema-editor-v2 + BEM 子类
+
+// ===== 主题变量（聚合到一处，便于后续主题切换） =====
+@se-primary: #3370ff;           // Lark 主蓝
+@se-primary-hover: #5b8aff;     // 悬浮蓝
+@se-primary-soft: rgba(51, 112, 255, 0.08);
+@se-text-primary: #1f2329;
+@se-text-secondary: #646a73;
+@se-text-tertiary: #8f959e;
+@se-border: #e5e6eb;
+@se-border-soft: #f2f3f5;
+@se-danger: #f54a45;
+@se-danger-soft: #fff1f0;
+
+.schema-editor-v2 {
+  font-size: 13px;
+  color: @se-text-primary;
+
+  // ===== 顶部"+ 添加参数"按钮（仅初始空态显示） =====
+  // 飞书风格的虚线占位行，强调"这里可以填充内容"
+  .schema-add-top-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 36px;
+    margin-bottom: 0;
+    border: 1px dashed @se-border;
+    color: @se-text-secondary;
+    background: transparent;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: @se-primary;
+      color: @se-primary;
+      background: @se-primary-soft;
+    }
+  }
+
+  // ===== 单行参数容器 =====
+  .schema-param-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+
+    // antd 控件在小尺寸下的字号微调
+    .ant-input,
+    .ant-select {
+      font-size: 13px;
+    }
+  }
+
+  // ===== 参数名输入框（最显眼的列） =====
+  .schema-param-name {
+    width: 160px;
+    flex: none;
+
+    .ant-input {
+      font-weight: 500;
+    }
+  }
+
+  // ===== 参数类型选择器 =====
+  .schema-param-type {
+    width: 96px;
+    flex: none;
+  }
+
+  // ===== carrier 选择器（仅出参展示） =====
+  .schema-param-carrier {
+    width: 92px;
+    flex: none;
+  }
+
+  // ===== 描述输入框（占用剩余空间） =====
+  // 用 flex:1 让描述列自适应宽度，避免长描述被截断
+  .schema-param-desc {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  // ===== 添加按钮（行尾） =====
+  // 使用 ghost 蓝色样式，与主操作色协同
+  .schema-add-btn {
+    flex: none;
+    padding: 0 8px;
+    height: 28px;
+    color: @se-primary;
+    font-weight: 500;
+
+    &:hover {
+      color: @se-primary-hover;
+      background: @se-primary-soft;
+    }
+  }
+
+  // ===== 删除按钮（行尾） =====
+  // 默认低饱和，hover 升级到危险红
+  .schema-delete-btn {
+    flex: none;
+    padding: 0 8px;
+    height: 28px;
+    color: @se-text-tertiary;
+    font-weight: 500;
+    transition: all 0.18s ease;
+
+    &:hover {
+      color: @se-danger;
+      background: @se-danger-soft;
+    }
+  }
+
+  // ===== 子参数容器 =====
+  // 左内边距缩进，体现父子层级
+  .schema-children-container {
+    margin-left: 24px;
+  }
+}
+
+// ===== Dropdown 菜单微调（提升与项目主色的一致性） =====
+// antd Dropdown 渲染在 body 下，需在外层定义
+.schema-editor-v2-dropdown {
+  .ant-dropdown-menu {
+    padding: 4px;
+    border-radius: 6px;
+    box-shadow: 0 6px 16px rgba(31, 35, 41, 0.12);
+
+    .ant-dropdown-menu-item {
+      border-radius: 4px;
+      font-size: 13px;
+      color: @se-text-primary;
+
+      &:hover {
+        background: @se-primary-soft;
+        color: @se-primary;
+      }
+    }
+  }
+}

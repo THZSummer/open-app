@@ -7,33 +7,39 @@
  * - 展示连接器列表（分页、搜索）
  * - 创建新的连接器（弹窗表单）
  * - 编辑已有连接器（弹窗表单）
- * - 删除连接器
+ * - 失效/恢复/删除连接器（按状态展示操作）
  * - 点击配置按钮跳转到配置页面
  */
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { message, Button, Table, Pagination } from 'antd';
-import { fetchConnectorList, deleteConnector, createConnector, updateConnector } from './thunk';
+import { message, Button, Table, Spin, Pagination } from 'antd';
+import {
+  fetchConnectorList,
+  deleteConnector,
+  createConnector,
+  updateConnector,
+  disableConnector,
+  restoreConnector,
+} from './thunk';
 import ConnectorSearchForm from '../../../components/ConnectorSearchForm/ConnectorSearchForm';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal/DeleteConfirmModal';
 import ConnectorFormModal from '../../../components/ConnectorFormModal/ConnectorFormModal';
-import SimpleSidebar from '../../../components/SimpleSidebar/SimpleSidebar';
-import { useAdminAccessGuard } from '../../../hooks/useAdminAccessGuard';
 import {
-  CONNECTOR_DELETE_SECOND_MODAL_INFO,
-  getConnectorColumns,
   pageInfo,
   searchConfig,
+  getConnectorColumns,
+  CONNECTOR_DELETE_SECOND_MODAL_INFO,
+  CONNECTOR_DISABLE_SECOND_MODAL_INFO,
 } from './constants';
-import { getSecondModalInfo } from '../../../utils/common';
+import { getSecondModalInfo, queryParams } from '../../../utils/common';
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import './Connector.m.less';
 
+/**
+ * 连接器列表页面主组件
+ */
 function ConnectorList() {
-  // 校验当前用户是否具备连接平台访问权限
-  useAdminAccessGuard();
-
   const navigate = useNavigate();
 
   /**
@@ -52,10 +58,13 @@ function ConnectorList() {
   // 搜索关键词
   const [keyword, setKeyword] = useState('');
 
-  // 删除确认弹窗相关状态
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [deleteItem, setDeleteItem] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+  // 操作确认弹窗（删除/失效）相关状态
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionItem, setActionItem] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // 当前操作类型：'delete' | 'disable'
+  const [currentActionType, setCurrentActionType] = useState(null);
 
   // 连接器表单弹窗相关状态
   const [formModalVisible, setFormModalVisible] = useState(false);
@@ -78,11 +87,9 @@ function ConnectorList() {
 
     if (result && result.code === '200') {
       // 更新分页信息，使用API返回的分页配置
-      setPagination(prev => ({
+      setPagination((prev) => ({
         ...prev,
-        curPage: result.page?.curPage || 1,
-        pageSize: result.page?.pageSize || 10,
-        total: Number(result.page?.total) || 0,
+        ...(result.page ? result.page : INIT_PAGECONFIG),
       }));
       // 更新列表数据
       setData(result.data || []);
@@ -113,7 +120,7 @@ function ConnectorList() {
   };
 
   /**
-   * 编辑连接器（弹窗）
+   * 编辑连接器
    * @param {Object} record - 连接器记录
    */
   const handleEdit = (record) => {
@@ -130,41 +137,95 @@ function ConnectorList() {
   };
 
   /**
-   * 点击配置按钮，跳转到配置页面
+   * 点击配置按钮，跳转到配置页面（携带 appId）
    * @param {Object} record - 连接器记录
    */
   const handleConfigClick = (record) => {
-    navigate(`/connect/connector-editor?id=${record.id}`);
+    navigate(`/connect/connector-editor?id=${record.connectorId}&appId=${queryParams('appId')}`);
   };
 
   /**
-   * 点击删除按钮
+   * 点击删除按钮（仅已失效连接器可见）
    * @param {Object} record - 连接器记录
    */
   const handleDeleteClick = (record) => {
-    setDeleteItem(record);
-    setDeleteModalVisible(true);
+    setActionItem(record);
+    setCurrentActionType('delete');
+    setActionModalVisible(true);
   };
 
   /**
-   * 确认删除连接器
+   * 点击失效按钮（仅正常连接器可见）
+   * @param {Object} record - 连接器记录
    */
-  const handleDeleteConfirm = async () => {
-    if (!deleteItem?.id) return;
+  const handleDisableClick = (record) => {
+    setActionItem(record);
+    setCurrentActionType('disable');
+    setActionModalVisible(true);
+  };
 
-    setDeleteLoading(true);
-    const res = await deleteConnector(deleteItem.id);
-
+  /**
+   * 点击恢复按钮（仅已失效连接器可见，直接执行，不需要二次确认）
+   * @param {Object} record - 连接器记录
+   */
+  const handleRestoreClick = async (record) => {
+    // 仅传入连接器 ID，后端会将状态由「已失效」改为「有效可用/有效不可用」
+    const res = await restoreConnector(record.connectorId);
     if (res && res.code === '200') {
-      message.success('删除成功');
-      setDeleteModalVisible(false);
-      setDeleteItem(null);
-      loadData(INIT_PAGECONFIG);
+      message.success('恢复成功');
+      loadData();
     } else {
-      message.error(res?.messageZh || '删除失败');
+      message.error(res?.messageZh || '恢复失败');
+    }
+  };
+
+  /**
+   * 确认执行删除/失效操作
+   */
+  const handleActionConfirm = async () => {
+    if (!actionItem || !currentActionType) return;
+
+    setActionLoading(true);
+
+    let res;
+    let successMsg;
+    let errorMsg;
+
+    if (currentActionType === 'delete') {
+      // 删除接口只需 connectorId
+      res = await deleteConnector(actionItem.connectorId);
+      successMsg = '删除成功';
+      errorMsg = '删除失败';
+    } else if (currentActionType === 'disable') {
+      // 失效接口只需 connectorId（PUT /connectors/{connectorId}/invalidate）
+      res = await disableConnector(actionItem.connectorId);
+      successMsg = '已失效';
+      errorMsg = '失效操作失败';
     }
 
-    setDeleteLoading(false);
+    if (res && res.code === '200') {
+      message.success(successMsg);
+      handleActionCancel();
+      // 删除回到第一页，失效保留当前页码
+      if (currentActionType === 'delete') {
+        loadData(INIT_PAGECONFIG);
+      } else {
+        loadData();
+      }
+    } else {
+      message.error(res?.messageZh || errorMsg);
+    }
+
+    setActionLoading(false);
+  };
+
+  /**
+   * 关闭操作确认弹窗
+   */
+  const handleActionCancel = () => {
+    setActionItem(null);
+    setCurrentActionType(null);
+    setActionModalVisible(false);
   };
 
   /**
@@ -176,15 +237,7 @@ function ConnectorList() {
   };
 
   /**
-   * 关闭删除确认弹窗
-   */
-  const handleDeleteCancel = () => {
-    setDeleteItem(null);
-    setDeleteModalVisible(false);
-  };
-
-  /**
-   * 表单弹窗确认
+   * 表单弹窗确认（创建/编辑）
    * @param {Object} values - 表单值
    */
   const handleFormModalOk = async (values) => {
@@ -193,8 +246,8 @@ function ConnectorList() {
     let res;
 
     if (editRecord) {
-      // 编辑
-      res = await updateConnector(editRecord.id, values);
+      // 编辑（仅基本信息）
+      res = await updateConnector(editRecord.connectorId, values);
     } else {
       // 新增
       res = await createConnector(values);
@@ -219,7 +272,7 @@ function ConnectorList() {
   };
 
   /**
-   * 副作用
+   * 副作用：首次加载列表
    */
   useEffect(() => {
     loadData();
@@ -232,46 +285,44 @@ function ConnectorList() {
     handleEdit,
     handleDeleteClick,
     handleConfigClick,
+    handleDisableClick,
+    handleRestoreClick,
   });
 
   /**
    * 渲染
    */
   return (
-    <div className="connector-page-wrapper">
-      {/* 左侧导航栏 */}
-      <SimpleSidebar />
-
-      {/* 主内容区 */}
-      <div className="main-content">
-        <div className="connector-management-page">
-          {/* 页面头部 */}
-          <div className="page-header">
-            <div className="page-header-left">
-              <h4 className="page-title">{pageInfo.title}</h4>
-              <span className="page-desc">{pageInfo.description}</span>
-            </div>
-            <Button type="primary" onClick={handleAdd}>
-              {pageInfo.addButtonText}
-            </Button>
+    <div className="connector-management-page">
+      <div className="content-card">
+        {/* 页面头部 */}
+        <div className="page-header">
+          <div className="page-header-left">
+            <h2 className="page-title">{pageInfo.title}</h2>
+            <p className="page-desc">{pageInfo.description}</p>
           </div>
+          <Button type="primary" onClick={handleAdd}>
+            {pageInfo.addButtonText}
+          </Button>
+        </div>
 
-          {/* 搜索表单 */}
-          <ConnectorSearchForm
-            keyword={keyword}
-            onSearch={handleSearch}
-            placeholder={searchConfig.placeholder}
-          />
+        {/* 搜索表单 */}
+        <ConnectorSearchForm
+          keyword={keyword}
+          onSearch={handleSearch}
+          placeholder={searchConfig.placeholder}
+        />
 
-          {/* 表格列表 */}
+        {/* 表格列表 */}
+        <Spin spinning={loading}>
           <Table
             columns={columns}
             dataSource={data}
-            loading={loading}
+            rowKey="connectorId"
             pagination={false}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1600 }}
           />
-          <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <div className="page-pagination">
             <Pagination
               current={pagination.curPage}
               pageSize={pagination.pageSize}
@@ -283,29 +334,31 @@ function ConnectorList() {
               showTotal={(total) => `共 ${total} 条`}
             />
           </div>
-
-          {/* 删除确认弹窗 */}
-          <DeleteConfirmModal
-            open={deleteModalVisible}
-            onClose={handleDeleteCancel}
-            onConfirm={handleDeleteConfirm}
-            modalInfo={getSecondModalInfo({
-              ...CONNECTOR_DELETE_SECOND_MODAL_INFO,
-              objectName: deleteItem?.nameCn || deleteItem?.nameEn,
-            })}
-            loading={deleteLoading}
-          />
-
-          {/* 连接器表单弹窗 */}
-          <ConnectorFormModal
-            visible={formModalVisible}
-            onCancel={handleFormModalCancel}
-            onOk={handleFormModalOk}
-            initialValues={editRecord}
-            loading={formModalLoading}
-          />
-        </div>
+        </Spin>
       </div>
+
+      {/* 操作确认弹窗（删除/失效） */}
+      <DeleteConfirmModal
+        open={actionModalVisible}
+        onClose={handleActionCancel}
+        onConfirm={handleActionConfirm}
+        modalInfo={getSecondModalInfo({
+          ...(currentActionType === 'delete'
+            ? CONNECTOR_DELETE_SECOND_MODAL_INFO
+            : CONNECTOR_DISABLE_SECOND_MODAL_INFO),
+          objectName: actionItem?.nameCn,
+        })}
+        loading={actionLoading}
+      />
+
+      {/* 连接器表单弹窗 */}
+      <ConnectorFormModal
+        visible={formModalVisible}
+        onCancel={handleFormModalCancel}
+        onOk={handleFormModalOk}
+        initialValues={editRecord}
+        loading={formModalLoading}
+      />
     </div>
   );
 }

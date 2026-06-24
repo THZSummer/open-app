@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.connector.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +13,6 @@ import lombok.NoArgsConstructor;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class ConnectorCopyResponse {
 
     /** 新草稿版本 ID（string） */
@@ -31,4 +29,12 @@ public class ConnectorCopyResponse {
 
     /** 操作说明（覆盖已有草稿时提示） */
     private String message;
+
+    public ConnectorCopyResponse(String versionId, Integer versionNumber, Integer status, Integer sourceVersionNumber, String message) {
+        this.versionId = versionId;
+        this.versionNumber = versionNumber;
+        this.status = status;
+        this.sourceVersionNumber = sourceVersionNumber;
+        this.message = message;
+    }
 }

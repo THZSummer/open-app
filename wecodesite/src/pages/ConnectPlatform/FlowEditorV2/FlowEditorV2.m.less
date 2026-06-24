@@ -1,0 +1,872 @@
+/* ========================================
+ * 连接流编辑器 V2 - 样式
+ * ========================================
+ * 视觉对齐连接器编辑页
+ */
+
+.flow-editor-v2-page {
+  min-height: 100%;
+  box-sizing: border-box;
+
+  // ===== 通用卡片容器 =====
+  .content-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  // ===== 页面标题 =====
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0;
+
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2329;
+    }
+
+    .page-desc {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #8f959e;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+  }
+
+  // ===== 面包屑 =====
+  .page-breadcrumb {
+    font-size: 14px;
+    color: #8f959e;
+    margin-bottom: 20px;
+
+    .page-breadcrumb-link {
+      color: #3370ff;
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+
+    .page-breadcrumb-sep {
+      margin: 0 8px;
+      color: #c0c4cc;
+    }
+  }
+
+  // ===== 版本选择条 =====
+  .version-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #f7f8fa;
+    border: 1px solid #f2f3f5;
+    border-radius: 6px;
+
+    .version-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .version-bar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .version-bar-label {
+      font-size: 13px;
+      color: #646a73;
+      font-weight: 500;
+    }
+
+    .version-select {
+      min-width: 280px;
+    }
+
+    .version-empty {
+      flex: 1;
+      font-size: 13px;
+      color: #8f959e;
+    }
+  }
+
+  // ===== 版本选项样式 =====
+  // 注意：下拉项实际样式定义在文件底部 :global 块中
+  // 因为 antd Select 下拉面板通过 Portal 渲染到 body，不在 .flow-editor-v2-page 作用域内
+  // 这里保留注释作为索引
+
+  // ===== 编排模式面板 =====
+  .flow-mode-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+
+    .mode-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f2329;
+      margin-bottom: 6px;
+    }
+
+    .mode-title-desc {
+      font-size: 12px;
+      color: #8f959e;
+      margin-bottom: 16px;
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .mode-card {
+      padding: 16px 18px;
+      border: 1px solid #f2f3f5;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fff;
+
+      &:hover {
+        border-color: #3370ff;
+      }
+
+      &.active {
+        border-color: #3370ff;
+        background: linear-gradient(180deg, #f0f7ff 0%, #fff 100%);
+      }
+
+      .mode-card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2329;
+        margin-bottom: 6px;
+
+        .mode-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 24px;
+          height: 24px;
+          border-radius: 6px;
+          background: #e8f0ff;
+          color: #3370ff;
+          font-weight: 700;
+        }
+      }
+
+      .mode-card-desc {
+        font-size: 12px;
+        color: #8f959e;
+        line-height: 1.5;
+      }
+    }
+  }
+
+  // ===== 步骤条 =====
+  .flow-stepper {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+    background: #fff;
+    border: 1px solid #f2f3f5;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    // 内容超出时启用水平滚动，不换行
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+
+    // 滚动条样式美化
+    &::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #d9dfe8;
+      border-radius: 3px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  }
+
+  .step-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid #f2f3f5;
+    border-radius: 24px;
+    background: #fff;
+    color: #4e5969;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 13px;
+    // 节点项自身不被压缩
+    flex-shrink: 0;
+
+    &:hover {
+      border-color: #3370ff;
+      color: #3370ff;
+    }
+
+    &.active {
+      border-color: #3370ff;
+      background: #3370ff;
+      color: #fff;
+    }
+
+    .step-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.25);
+      font-size: 11px;
+    }
+
+    &:not(.active) .step-index {
+      background: #f3f6fb;
+      color: #86909c;
+    }
+  }
+
+  .step-divider {
+    width: 24px;
+    height: 1px;
+    background: #d9dfe8;
+    // 分隔线不被压缩
+    flex-shrink: 0;
+  }
+
+  .add-step-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px dashed #3370ff;
+    background: #fff;
+    color: #3370ff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    // 加号按钮不被压缩
+    flex-shrink: 0;
+
+    &:hover {
+      background: #3370ff;
+      color: #fff;
+    }
+  }
+
+  // ===== 节点卡片 =====
+  .node-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    border: 1px solid #f2f3f5;
+  }
+
+  .node-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f2f3f5;
+
+    .node-card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f2329;
+
+      .node-card-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: normal;
+        background: #e8f3ff;
+        color: #3370ff;
+      }
+    }
+  }
+
+  // ===== 主操作按钮组 =====
+  .primary-btn {
+    background-color: #3370ff;
+    border-color: #3370ff;
+
+    &:hover,
+    &:focus {
+      background-color: #2860e0;
+      border-color: #2860e0;
+    }
+  }
+
+  .danger-btn {
+    color: #f54a45;
+    border-color: #f54a45;
+
+    &:hover,
+    &:focus {
+      color: #fff;
+      background: #f54a45;
+      border-color: #f54a45;
+    }
+  }
+
+  // ===== 无版本占位 =====
+  .no-version-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  // ===== Tab 样式 =====
+  :global(.ant-tabs-tab) {
+    padding: 8px 0 !important;
+    font-size: 14px;
+    color: #646a73;
+
+    &.ant-tabs-tab-active .ant-tabs-tab-btn {
+      color: #3370ff !important;
+      font-weight: 600;
+    }
+  }
+
+  :global(.ant-tabs-ink-bar) {
+    background: #3370ff !important;
+  }
+}
+
+// ========================================
+// 抽屉通用样式 tokens（版本详情 / 更多配置 / 调试）
+// 使用全局选择器，避免 antd Drawer Portal 在外层时样式失效
+// ========================================
+
+// ===== 版本下拉项样式（顶层全局，避免被页面容器作用域限制） =====
+// antd Select 下拉面板通过 Portal 渲染到 body，不在 .flow-editor-v2-page 作用域内
+// 因此放在顶层而非嵌套，确保下拉项命中样式
+.version-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .version-option-name {
+    font-size: 14px;
+    color: #1f2329;
+    font-weight: 500;
+  }
+
+  .version-option-time {
+    font-size: 12px;
+    color: #8f959e;
+  }
+}
+
+// ===== 抽屉顶部 Hero 区 =====
+.drawer-hero {
+  position: relative;
+  padding: 18px 20px 16px;
+  margin: -24px -24px 16px;
+  border-bottom: 1px solid #f2f3f5;
+  background: linear-gradient(180deg, #f7f9ff 0%, #ffffff 100%);
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 18px;
+    bottom: 18px;
+    width: 3px;
+    border-radius: 2px;
+    background: #3370ff;
+  }
+
+  .drawer-hero-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2329;
+    letter-spacing: 0.2px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .drawer-hero-sub {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #86909c;
+  }
+
+  // 状态色变体：通过附加 class 切换左侧色条与背景
+  &.hero-success { &::before { background: #00b42a; } background: linear-gradient(180deg, #f0faf3 0%, #ffffff 100%); }
+  &.hero-warning { &::before { background: #ff7d00; } background: linear-gradient(180deg, #fff7e8 0%, #ffffff 100%); }
+  &.hero-error   { &::before { background: #f54a45; } background: linear-gradient(180deg, #fff1f0 0%, #ffffff 100%); }
+  &.hero-default { &::before { background: #c0c4cc; } background: linear-gradient(180deg, #f7f8fa 0%, #ffffff 100%); }
+}
+
+// ===== 分组卡片 =====
+.drawer-section {
+  background: #fff;
+  border: 1px solid #f2f3f5;
+  border-radius: 8px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2329;
+    margin-bottom: 12px;
+
+    &::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 14px;
+      border-radius: 2px;
+      background: #3370ff;
+    }
+
+    .section-title-extra {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: normal;
+      color: #86909c;
+    }
+  }
+
+  .section-desc {
+    margin-top: -6px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: #86909c;
+    line-height: 1.6;
+  }
+
+  &.section-disabled {
+    background: #fafbfc;
+
+    .section-title { color: #86909c; &::before { background: #d9dfe8; } }
+  }
+}
+
+// ===== KV 网格 =====
+.kv-grid {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  row-gap: 10px;
+  column-gap: 12px;
+  font-size: 13px;
+
+  .kv-label {
+    color: #86909c;
+    line-height: 22px;
+  }
+
+  .kv-value {
+    color: #1f2329;
+    line-height: 22px;
+    word-break: break-all;
+  }
+}
+
+// ===== 状态胶囊 =====
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  background: #f2f3f5;
+  color: #4e5969;
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #86909c;
+  }
+
+  &.pill-success { background: #e8f7ec; color: #00873a; &::before { background: #00b42a; box-shadow: 0 0 0 3px rgba(0, 180, 42, 0.12); } }
+  &.pill-warning { background: #fff3e0; color: #b94e00; &::before { background: #ff7d00; box-shadow: 0 0 0 3px rgba(255, 125, 0, 0.15); } }
+  &.pill-error   { background: #ffece8; color: #c43232; &::before { background: #f54a45; box-shadow: 0 0 0 3px rgba(245, 74, 69, 0.15); } }
+  &.pill-processing { background: #e8f3ff; color: #1d63d6; &::before { background: #3370ff; box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.15); } }
+  &.pill-default { background: #f2f3f5; color: #4e5969; }
+}
+
+// ===== 暗色代码面板 =====
+.code-panel {
+  position: relative;
+  background: #0f1d34;
+  color: #e6edf3;
+  border-radius: 6px;
+  padding: 28px 14px 14px;
+  font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow: auto;
+  max-height: 320px;
+
+  &::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 14px;
+    top: 8px;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: #6c8aaf;
+    text-transform: uppercase;
+  }
+
+  pre {
+    margin: 0;
+    background: transparent !important;
+    color: inherit !important;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .code-empty {
+    color: #6c8aaf;
+    font-style: italic;
+  }
+}
+
+// ===== 提示 banner =====
+.tip-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f0f7ff;
+  border: 1px solid #d6e4ff;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #1d63d6;
+  margin-bottom: 12px;
+  line-height: 1.6;
+
+  .tip-banner-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #3370ff;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+}
+
+// ===== 错误引用块 =====
+.callout-error {
+  position: relative;
+  padding: 10px 12px 10px 16px;
+  background: #fff5f5;
+  border: 1px solid #ffd8d6;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #c43232;
+  line-height: 1.7;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 2px;
+    background: #f54a45;
+  }
+}
+
+// ===== 缓存 Key 行 =====
+.cache-key-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+
+  .cache-key-index {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: #e8f0ff;
+    color: #3370ff;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+// ===== 缓存时间进度条 =====
+.cache-progress {
+  margin-top: 8px;
+
+  .cache-progress-track {
+    position: relative;
+    height: 6px;
+    background: #f2f3f5;
+    border-radius: 3px;
+    overflow: hidden;
+
+    .cache-progress-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, #3370ff 0%, #69b1ff 100%);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+  }
+
+  .cache-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #86909c;
+    margin-top: 4px;
+  }
+}
+
+// ===== 链接卡片 =====
+.link-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d6e4ff;
+  background: #f7faff;
+  border-radius: 6px;
+  // 整卡不再可点击，仅图标响应点击
+
+  .link-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    .link-card-title {
+      font-size: 13px;
+      color: #1f2329;
+      font-weight: 500;
+    }
+
+    .link-card-sub {
+      font-size: 11px;
+      color: #86909c;
+      word-break: break-all;
+    }
+  }
+
+  .link-card-arrow {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    color: #3370ff;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+
+    &:hover {
+      background: #e8f0ff;
+      color: #2860e0;
+    }
+
+    &:active {
+      background: #d6e4ff;
+    }
+  }
+}
+
+// ===== Trace 时间轴 =====
+.trace-timeline {
+  position: relative;
+  padding-left: 16px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    bottom: 6px;
+    width: 1px;
+    background: #e5e6eb;
+  }
+
+  .trace-item {
+    position: relative;
+    padding: 6px 0 6px 14px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: -16px;
+      top: 12px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid #3370ff;
+      box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.1);
+    }
+
+    &.trace-success::before { border-color: #00b42a; box-shadow: 0 0 0 3px rgba(0, 180, 42, 0.12); }
+    &.trace-error::before   { border-color: #f54a45; box-shadow: 0 0 0 3px rgba(245, 74, 69, 0.12); }
+
+    .trace-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .trace-name {
+      font-size: 13px;
+      color: #1f2329;
+      font-weight: 500;
+    }
+
+    .trace-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #86909c;
+    }
+  }
+}
+
+// ===== 调试入参行 =====
+.debug-param-row {
+  display: grid;
+  grid-template-columns: minmax(0, auto) 70px 1fr;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px dashed #f2f3f5;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .debug-param-name {
+    font-size: 13px;
+    color: #1f2329;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+
+  .debug-param-type {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    line-height: 32px;
+    padding: 0 8px;
+    border-radius: 4px;
+    background: #f2f3f5;
+    color: #4e5969;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    box-sizing: border-box;
+  }
+}
+
+// ===== 抽屉内 metrics 行 =====
+.drawer-metrics {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+
+  .metrics-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #86909c;
+
+    .metrics-num {
+      color: #1f2329;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', Consolas, monospace;
+    }
+  }
+}

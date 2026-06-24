@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.ability.mapper.AppAbilityRelationMapper">
+
+    <resultMap id="AppAbilityRelationResultMap"
+               type="com.xxx.it.works.wecode.v2.modules.ability.entity.AppAbilityRelation">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="ability_id" property="abilityId"/>
+        <result column="ability_type" property="abilityType"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectByAppId" resultMap="AppAbilityRelationResultMap">
+        SELECT id,
+               app_id,
+               ability_id,
+               ability_type,
+               tenant_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_ability_relation_t
+        WHERE app_id = #{appId,jdbcType=BIGINT}
+          AND status = 1
+    </select>
+
+    <select id="selectByAppIdAndAbilityType" resultMap="AppAbilityRelationResultMap">
+        SELECT id,
+               app_id,
+               ability_id,
+               ability_type,
+               tenant_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_ability_relation_t
+        WHERE app_id = #{appId,jdbcType=BIGINT}
+          AND ability_type = #{abilityType,jdbcType=INTEGER}
+          AND status = 1
+    </select>
+
+    <select id="selectById" resultMap="AppAbilityRelationResultMap">
+        SELECT id,
+               app_id,
+               ability_id,
+               ability_type,
+               tenant_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_ability_relation_t
+        WHERE id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO openplatform_app_ability_relation_t (id, app_id, ability_id, ability_type, tenant_id, status,
+                                                         create_by, create_time, last_update_by, last_update_time)
+        VALUES (#{id,jdbcType=BIGINT}, #{appId,jdbcType=BIGINT}, #{abilityId,jdbcType=BIGINT},
+                #{abilityType,jdbcType=INTEGER}, #{tenantId,jdbcType=VARCHAR}, #{status,jdbcType=INTEGER},
+                #{createBy,jdbcType=VARCHAR}, NOW(3), #{lastUpdateBy,jdbcType=VARCHAR}, NOW(3))
+    </insert>
+
+</mapper>
