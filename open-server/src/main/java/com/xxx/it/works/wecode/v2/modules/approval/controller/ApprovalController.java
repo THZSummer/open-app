@@ -2,10 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.approval.controller;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
-import com.xxx.it.works.wecode.v2.modules.approval.ApprovalCallbackHandler;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.*;
-import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,10 +43,6 @@ import com.xxx.it.works.wecode.v2.common.security.PlatformAdminPermission;
 public class ApprovalController {
 
     private final ApprovalService approvalService;
-
-    // V3 新增：审批回调处理器和记录Mapper（用于审批通过/驳回后的业务回调）
-    private final ApprovalCallbackHandler approvalCallbackHandler;
-    private final ApprovalRecordMapper approvalRecordMapper;
 
     // ==================== 审批流程模板管理 (#41-44) ====================
 
@@ -258,17 +251,6 @@ public class ApprovalController {
 
         ApprovalActionResponse data = approvalService.approve(
                 Long.parseLong(id), request, operatorId, operatorName, operator);
-
-        // V3 新增：审批全部通过后，触发业务回调（如连接流版本发布）
-        try {
-            ApprovalRecord record = approvalRecordMapper.selectById(Long.parseLong(id));
-            if (record != null && record.getStatus() == com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine.Status.APPROVED) {
-                approvalCallbackHandler.onApproved(record);
-            }
-        } catch (Exception e) {
-            log.error("Approval callback failed after approve: id={}", id, e);
-        }
-
         return ApiResponse.success(data);
     }
 
@@ -291,17 +273,6 @@ public class ApprovalController {
 
         ApprovalActionResponse data = approvalService.reject(
                 Long.parseLong(id), request, operatorId, operatorName, operator);
-
-        // V3 新增：审批驳回后，触发业务回调（如连接流版本驳回）
-        try {
-            ApprovalRecord record = approvalRecordMapper.selectById(Long.parseLong(id));
-            if (record != null && record.getStatus() == com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine.Status.REJECTED) {
-                approvalCallbackHandler.onRejected(record, request.getComment());
-            }
-        } catch (Exception e) {
-            log.error("Approval callback failed after reject: id={}", id, e);
-        }
-
         return ApiResponse.success(data);
     }
 

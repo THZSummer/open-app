@@ -23,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
+import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -71,6 +74,8 @@ public class ApprovalEngine {
     private final com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper apiMapper;
     private final com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper eventMapper;
     private final com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper callbackMapper;
+    // V3 新增：流版本发布审批回调
+    private final com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper flowVersionMapper;
 
     /**
      * 审批动作枚举
@@ -103,6 +108,7 @@ public class ApprovalEngine {
         public static final String API_PERMISSION_APPLY = "api_permission_apply";
         public static final String EVENT_PERMISSION_APPLY = "event_permission_apply";
         public static final String CALLBACK_PERMISSION_APPLY = "callback_permission_apply";
+        public static final String CONNECTOR_FLOW_VERSION_PUBLISH = "connector_flow_version_publish";
     }
 
     /**
@@ -136,7 +142,7 @@ public class ApprovalEngine {
      * @param permissionId 权限ID（用于获取资源审批节点，权限申请时使用）
      * @return 组合后的审批节点列表
      */
-    public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId) {
+    public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId, Long appId) {
         List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
         int order = 1;
 
@@ -150,7 +156,7 @@ public class ApprovalEngine {
             log.info("Resource registration approval: businessType={}, two-level approval (scene+global)", businessType);
 
             // 第一级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
+            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
             for (ApprovalNodeDto node : sceneNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
@@ -182,7 +188,7 @@ public class ApprovalEngine {
             log.debug("Resource approval nodes count: {}", resourceNodes.size());
 
             // 第二级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
+            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
             for (ApprovalNodeDto node : sceneNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
@@ -203,7 +209,7 @@ public class ApprovalEngine {
             log.warn("Unknown business type: {}, using default two-level approval (scene+global)", businessType);
 
             // 默认：场景审批 + 全局审批
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
+            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
             for (ApprovalNodeDto node : sceneNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
@@ -274,12 +280,15 @@ public class ApprovalEngine {
      * @param businessType 业务类型
      * @return 场景审批节点列表
      */
-    private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType) {
+    private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
 
         // 根据业务类型确定场景审批编码
         String sceneCode = getSceneCodeByBusinessType(businessType);
 
-        ApprovalFlow sceneFlow = flowMapper.selectByCode(sceneCode);
+        ApprovalFlow sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, appId);
+        if (sceneFlow == null && appId != null) {
+            sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, null);
+        }
         if (sceneFlow == null) {
             log.warn("Scene approval flow not found: code={}", sceneCode);
             return Collections.emptyList();
@@ -308,7 +317,7 @@ public class ApprovalEngine {
      * @return 全局审批节点列表
      */
     private List<ApprovalNodeDto> getGlobalApprovalNodes() {
-        ApprovalFlow globalFlow = flowMapper.selectByCode("global");
+        ApprovalFlow globalFlow = flowMapper.selectByCodeAndAppId("global", null);
         if (globalFlow == null) {
             log.warn("Global approval flow not found: code=global");
             return Collections.emptyList();
@@ -351,6 +360,8 @@ public class ApprovalEngine {
                 return "event_permission_apply";
             case BusinessType.CALLBACK_PERMISSION_APPLY:
                 return "callback_permission_apply";
+            case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
+                return "connector_flow_version_publish";
             default:
                 log.warn("Unknown business type: {}, using default scene code", businessType);
                 return "api_permission_apply";  // 默认使用API权限申请审批
@@ -377,10 +388,11 @@ public class ApprovalEngine {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecord createApproval(String businessType, Long permissionId, Long businessId,
-                                          String applicantId, String applicantName, String operator) {
+                                          String applicantId, String applicantName, String operator,
+                                          Long appId) {
 
         // 1. 组合三级审批节点
-        List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId);
+        List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId, appId);
 
         if (combinedNodes.isEmpty()) {
             throw new BusinessException("400", "审批节点配置为空，无法创建审批记录",
@@ -688,6 +700,9 @@ public class ApprovalEngine {
                     // 权限申请场景，由 updateSubscriptionStatus 处理
                     log.debug("Permission application scenario, not updating resource status");
                     break;
+                case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
+                    handleFlowVersionPublishResult(record, status);
+                    break;
 
                 default:
                     log.warn("Unknown business type: {}", businessType);
@@ -744,6 +759,41 @@ public class ApprovalEngine {
         subscriptionMapper.update(subscription);
 
         log.info("Updated subscription status: subscriptionId={}, status={}", subscription.getId(), subscriptionStatus);
+    }
+
+    /**
+     * 处理连接流版本发布审批结果（V3 新增）
+     *
+     * <p>审批通过（APPROVED）→ FlowVersion 状态变更为已发布(5)
+     * 审批驳回（REJECTED）→ FlowVersion 状态变更为已驳回(4)
+     * 审批撤销（CANCELLED）→ FlowVersion 状态变更为已撤回</p>
+     *
+     * @param record 审批记录
+     * @param status 审批状态
+     */
+    private void handleFlowVersionPublishResult(ApprovalRecord record, int status) {
+        Long flowVersionId = record.getBusinessId();
+        com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion version =
+                flowVersionMapper.selectById(flowVersionId);
+        if (version == null) {
+            log.error("FlowVersion not found: flowVersionId={}", flowVersionId);
+            return;
+        }
+        if (status == Status.APPROVED) {
+            version.setStatus(FlowVersionStatus.PUBLISHED.getCode());
+            version.setPublishedTime(new Date());
+            version.setPublishedBy(record.getApplicantId());
+        } else if (status == Status.REJECTED) {
+            version.setStatus(FlowVersionStatus.REJECTED.getCode());
+        } else if (status == Status.CANCELLED) {
+            version.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
+        }
+        version.setLastUpdateTime(new Date());
+        version.setLastUpdateBy(record.getApplicantId());
+        flowVersionMapper.update(version);
+
+        log.info("Flow version publish result handled: flowVersionId={}, status={}, businessType={}",
+                 flowVersionId, status, record.getBusinessType());
     }
 
     /**

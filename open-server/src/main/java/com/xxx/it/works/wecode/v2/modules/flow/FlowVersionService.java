@@ -105,7 +105,7 @@ public class FlowVersionService {
         version.setFlowId(flowId);
         version.setVersionNumber(versionNumber);
         version.setStatus(FlowVersionStatus.DRAFT.getCode());
-        version.setOrchestrationConfig(null);
+        version.setOrchestrationConfig("{}");
         version.setCreateTime(now);
         version.setLastUpdateTime(now);
         version.setCreateBy(currentUser);
@@ -115,7 +115,12 @@ public class FlowVersionService {
 
         log.info("Draft version created: flowId={}, versionId={}, versionNumber={}",
                 flowId, version.getId(), versionNumber);
-        return ApiResponse.success();
+
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("id", version.getId());
+        data.put("versionId", version.getId());
+        data.put("versionNumber", versionNumber);
+        return ApiResponse.success(data);
     }
 
     // ==================== #29 版本列表 ====================
@@ -325,12 +330,6 @@ public class FlowVersionService {
 
         // ── 全部校验通过，提交审批 ──
 
-        version.setStatus(FlowVersionStatus.PENDING_APPROVAL.getCode());
-        version.setPublishedTime(now);
-        version.setPublishedBy(currentUser);
-        version.setLastUpdateTime(now);
-        version.setLastUpdateBy(currentUser);
-        flowVersionMapper.update(version);
 
         // 调用审批服务创建审批实例
         try {

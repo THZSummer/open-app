@@ -421,9 +421,427 @@ ApprovalEngine
 
 ---
 
-## 八、修订记录
+## 八、引擎侧统一改造方案（落地实施）
+
+> 核心原则：**不改变存量 6 种类型的任何行为，但让引擎原生感知第 7 种类型和 `appId` 维度。一视同仁。**
+
+---
+
+### 8.1 问题诊断结论
+
+经过代码对照分析，得出三个核心判断：
+
+| 判断 | 代码证据 | 结论 |
+|------|---------|:--:|
+| 流版本发布场景无特殊性 | `ApprovalService.getBusinessData()` 已用统一 switch 接纳 7 种类型；V3 节点组合结构（三级回退）是通用模式 | ✅ |
+| `appId` 应平台级增加 | `selectByCodeAndAppId(code, null)` 等价于 `selectByCode(code)`，存量完全兼容 | ✅ |
+| 存量 `appId = NULL` | schema 定义为 `BIGINT NULL`，旧行自然为 NULL，唯一约束 `uk_code_app (code, app_id)` 允许 | ✅ |
+
+**根本原因**：不是流版本发布特殊，而是引擎的设计落后了一步——`BusinessType` 枚举、`composeApprovalNodes()` 方法签名、模板匹配策略都还没接纳 `appId` 这个维度。让引擎原生支持 `appId`，V3 就能回归标准路径，10 项偏离中的 7 项会自然消失。
+
+---
+
+### 8.2 改造点 1：扩展 `BusinessType` 枚举
+
+**文件**：`ApprovalEngine.java` 第 99 行
+
+**当前**（只有 6 个）：
+```java
+public static class BusinessType {
+    public static final String API_REGISTER = "api_register";
+    public static final String EVENT_REGISTER = "event_register";
+    public static final String CALLBACK_REGISTER = "callback_register";
+    public static final String API_PERMISSION_APPLY = "api_permission_apply";
+    public static final String EVENT_PERMISSION_APPLY = "event_permission_apply";
+    public static final String CALLBACK_PERMISSION_APPLY = "callback_permission_apply";
+}
+```
+
+**改造后**（新增第 7 个）：
+```java
+public static class BusinessType {
+    public static final String API_REGISTER = "api_register";
+    public static final String EVENT_REGISTER = "event_register";
+    public static final String CALLBACK_REGISTER = "callback_register";
+    public static final String API_PERMISSION_APPLY = "api_permission_apply";
+    public static final String EVENT_PERMISSION_APPLY = "event_permission_apply";
+    public static final String CALLBACK_PERMISSION_APPLY = "callback_permission_apply";
+    // ✅ 新增
+    public static final String CONNECTOR_FLOW_VERSION_PUBLISH = "connector_flow_version_publish";
+}
+```
+
+**影响**：消除 `ConnectorPlatformConstants` 中孤立常量的必要性。存量代码不受影响（只是多了一个常量）。
+
+---
+
+### 8.3 改造点 2：扩展 `composeApprovalNodes()` — 核心
+
+**文件**：`ApprovalEngine.java` 第 139 行
+
+**当前签名**：
+```java
+public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId)
+```
+
+**改造后签名**：
+```java
+public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId, Long appId)
+```
+
+**关键逻辑变更**——`getSceneApprovalNodes()` 从 `selectByCode` 改为 `selectByCodeAndAppId`：
+
+```java
+// 改造前 — 只按 code 匹配
+private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType) {
+    String sceneCode = getSceneCodeByBusinessType(businessType);
+    ApprovalFlow sceneFlow = flowMapper.selectByCode(sceneCode);  // ← 旧
+    ...
+}
+
+// 改造后 — 支持 code + appId 联合匹配，三级回退
+private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
+    String sceneCode = getSceneCodeByBusinessType(businessType);
+    // 1. 先用 code+appId 精确匹配（应用级）
+    ApprovalFlow sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, appId);
+    // 2. 若无，回退到 code+NULL（平台级）
+    if (sceneFlow == null && appId != null) {
+        sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, null);
+    }
+    ...
+}
+```
+
+**`getGlobalApprovalNodes()` 同步改造**：
+```java
+// 改造前
+ApprovalFlow globalFlow = flowMapper.selectByCode("global");
+
+// 改造后 — 全局模板不绑定 appId，始终用 NULL
+ApprovalFlow globalFlow = flowMapper.selectByCodeAndAppId("global", null);
+```
+
+**向下兼容性**：存量调用方传 `appId = null`，`selectByCodeAndAppId(code, null)` 等价于原 `selectByCode(code)`，**行为完全不变**。
+
+---
+
+### 8.4 改造点 3：扩展 `createApproval()` — 透传 `appId`
+
+**文件**：`ApprovalEngine.java` 第 378 行
+
+**当前签名**：
+```java
+public ApprovalRecord createApproval(String businessType, Long permissionId, Long businessId,
+                                      String applicantId, String applicantName, String operator)
+```
+
+**改造后签名**（`appId` 加在末尾，存量调用方只需加一个 `null`）：
+```java
+public ApprovalRecord createApproval(String businessType, Long permissionId, Long businessId,
+                                      String applicantId, String applicantName, String operator,
+                                      Long appId)  // ← 新增参数
+```
+
+内部调用：
+```java
+List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId, appId);
+```
+
+**存量 6 种类型的调用方改动**（每个文件只需在末尾加一个 `null`）：
+
+| 文件 | 行号 | 改动 |
+|------|------|------|
+| `ApiService.java` | 237 | `createApproval(API_REGISTER, permissionId, apiId, ..., null)` |
+| `EventService.java` | 234 | `createApproval(EVENT_REGISTER, permissionId, eventId, ..., null)` |
+| `CallbackService.java` | 251 | `createApproval(CALLBACK_REGISTER, permissionId, callbackId, ..., null)` |
+| `PermissionService.java` | 291, 523, 789 | `createApproval(*_PERMISSION_APPLY, permissionId, subscriptionId, ..., null)` ×3 |
+
+---
+
+### 8.5 改造点 4：`getSceneCodeByBusinessType` 补全
+
+**文件**：`ApprovalEngine.java` 第 340 行
+
+```java
+private String getSceneCodeByBusinessType(String businessType) {
+    switch (businessType) {
+        case BusinessType.API_REGISTER:              return "api_register";
+        case BusinessType.EVENT_REGISTER:            return "event_register";
+        case BusinessType.CALLBACK_REGISTER:         return "callback_register";
+        case BusinessType.API_PERMISSION_APPLY:      return "api_permission_apply";
+        case BusinessType.EVENT_PERMISSION_APPLY:    return "event_permission_apply";
+        case BusinessType.CALLBACK_PERMISSION_APPLY: return "callback_permission_apply";
+        // ✅ 新增
+        case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH: return "connector_flow_version_publish";
+        default:
+            log.warn("Unknown business type: {}, using default scene code", businessType);
+            return "api_permission_apply";
+    }
+}
+```
+
+---
+
+### 8.6 改造点 5：`updateResourceStatus` 补全回调 — **消除 Controller 耦合的关键**
+
+**文件**：`ApprovalEngine.java` 第 642 行
+
+**当前**：V3 类型落入 `default`，只打 warn，被忽略。
+
+**改造后**：
+```java
+private void updateResourceStatus(ApprovalRecord record, int status) {
+    String businessType = record.getBusinessType();
+    Long businessId = record.getBusinessId();
+    int resourceStatus = (status == Status.APPROVED) ? 2 : 0;
+
+    try {
+        switch (businessType) {
+            case BusinessType.API_REGISTER:    ... break;
+            case BusinessType.EVENT_REGISTER:  ... break;
+            case BusinessType.CALLBACK_REGISTER: ... break;
+            case BusinessType.API_PERMISSION_APPLY:
+            case BusinessType.EVENT_PERMISSION_APPLY:
+            case BusinessType.CALLBACK_PERMISSION_APPLY:
+                break;  // 由 updateSubscriptionStatus 处理
+
+            // ✅ 新增：连接流版本发布回调（从 ApprovalCallbackHandler 搬入）
+            case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
+                handleFlowVersionPublishResult(record, status);
+                break;
+
+            default:
+                log.warn("Unknown business type: {}", businessType);
+        }
+    } catch (Exception e) {
+        log.error("Failed to update resource status: businessType={}, businessId={}", businessType, businessId, e);
+    }
+}
+```
+
+**新增私有方法**（从 `ApprovalCallbackHandler` 搬过来，逻辑不变）：
+
+```java
+/**
+ * 处理连接流版本发布审批结果
+ *
+ * <p>审批通过（APPROVED）→ FlowVersion 状态变更为已发布(5)
+ * 审批驳回（REJECTED）→ FlowVersion 状态变更为已驳回(4)
+ * 审批撤销（CANCELLED）→ FlowVersion 状态变更为已撤回</p>
+ */
+private void handleFlowVersionPublishResult(ApprovalRecord record, int status) {
+    Long flowVersionId = record.getBusinessId();
+    FlowVersion version = flowVersionMapper.selectById(flowVersionId);
+    if (version == null) {
+        log.error("FlowVersion not found: flowVersionId={}", flowVersionId);
+        return;
+    }
+    if (status == Status.APPROVED) {
+        version.setStatus(FlowVersionStatus.PUBLISHED.getCode());
+        version.setPublishedTime(new Date());
+        version.setPublishedBy(record.getApplicantId());
+    } else if (status == Status.REJECTED) {
+        version.setStatus(FlowVersionStatus.REJECTED.getCode());
+    } else if (status == Status.CANCELLED) {
+        version.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
+    }
+    version.setLastUpdateTime(new Date());
+    version.setLastUpdateBy(record.getApplicantId());
+    flowVersionMapper.update(version);
+
+    log.info("Flow version publish result handled: flowVersionId={}, status={}, businessType={}",
+             flowVersionId, status, record.getBusinessType());
+}
+```
+
+**关键收益**：
+- V3 回调与审批执行在**同一事务**内（`approve`/`reject`/`cancel` 都有 `@Transactional`）
+- Controller 不再需要注入 `ApprovalCallbackHandler` 和 `ApprovalRecordMapper`
+- `FlowVersionApprovalService.cancelApproval()` 不再需要手动改 FlowVersion 状态（引擎 `cancel()` 已处理）
+- 新增依赖：引擎需注入 `OpFlowVersionMapper`
+
+---
+
+### 8.7 改造点 6：简化 `FlowVersionApprovalService`
+
+**文件**：`FlowVersionApprovalService.java`
+
+**改造后 `submitApproval()`**——核心逻辑大幅简化：
+
+```java
+@Transactional(rollbackFor = Exception.class)
+public ApprovalRecord submitApproval(Long flowVersionId, Long flowId, String flowNameCn,
+                                      String flowNameEn, Long appId,
+                                      String applicantId, String applicantName) {
+    // 1. 校验版本状态（不变）
+    FlowVersion version = flowVersionMapper.selectById(flowVersionId);
+    if (version == null) {
+        throw BusinessException.notFound("版本不存在: " + flowVersionId, ...);
+    }
+    if (!FlowVersionStatus.DRAFT.getCode().equals(version.getStatus())) {
+        throw BusinessException.badRequest("仅草稿状态的版本可提交审批", ...);
+    }
+
+    // 2. 更新 FlowVersion 状态为待审批（业务前置动作，保留）
+    version.setStatus(FlowVersionStatus.PENDING_APPROVAL.getCode());
+    version.setLastUpdateTime(new Date());
+    version.setLastUpdateBy(applicantId);
+    flowVersionMapper.update(version);
+
+    // 3. ✅ 直接调用引擎统一入口（不再手动 new ApprovalRecord + 手动 insert）
+    ApprovalRecord record = approvalEngine.createApproval(
+        ApprovalEngine.BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH,
+        null,              // permissionId — 流版本发布不涉及权限
+        flowVersionId,     // businessId
+        applicantId, applicantName, applicantId,
+        appId              // ✅ 传入 appId，引擎内部做三级回退
+    );
+
+    log.info("Flow version approval submitted: recordId={}, flowVersionId={}, appId={}",
+             record.getId(), flowVersionId, appId);
+
+    return record;
+}
+```
+
+**关于 `cancelApproval()` 的补充说明**：
+
+撤回操作存在两条入口路径，这是**设计意图，非偏离**：
+
+| 入口 | 路径 | 适用场景 |
+|------|------|----------|
+| 审批中心统一入口 | `ApprovalController.cancel()` → `ApprovalService` → `ApprovalEngine.cancel()` | 用户在审批中心页面操作 |
+| 业务对象专属入口 | `FlowVersionApprovalService.cancelApproval()` → `ApprovalEngine.cancel()` + 更新 FlowVersion 状态 | 用户在连接流版本详情页操作 |
+
+**设计原则**：前端是谁的页面，入口在哪个业务对象，就用哪个业务对象的接口。审批中心用统一接口，业务详情页用业务专属接口。
+
+引擎的职责是审批记录本身的状态变更（PENDING → CANCELLED）。业务副作用（如 FlowVersion 状态从 PENDING_APPROVAL → WITHDRAWN）由触发方自行处理。`FlowVersionApprovalService.cancelApproval()` 作为业务方，在调引擎 cancel 后额外更新 FlowVersion 状态是合理的，**无需消除**。
+
+注意：如果引擎的 `updateResourceStatus()` 已补全了 `handleFlowVersionPublishResult(record, CANCELLED)`（见 8.6 节），则统一入口路径也能正确处理 FlowVersion 状态回退，两条路径在业务结果上保持一致。
+
+**可删除的方法**：
+- `composeApprovalNodes(Long appId)` — 逻辑已并入引擎
+- `getApprovalNodesByCodeAndAppId(String code, Long appId)` — 引擎直接调 Mapper
+
+---
+
+### 8.8 改造点 7：清理 Controller
+
+**文件**：`ApprovalController.java`
+
+**改造后**——移除 V3 专属依赖和手动回调：
+
+```java
+// ❌ 删除以下注入
+// private final ApprovalCallbackHandler approvalCallbackHandler;
+// private final ApprovalRecordMapper approvalRecordMapper;
+
+@PostMapping("/approvals/{id}/approve")
+public ApiResponse<ApprovalActionResponse> approve(...) {
+    // 改造前：先调引擎，再手动调 callbackHandler
+    // ApprovalActionResponse data = approvalService.approve(...);
+    // ApprovalRecord record = approvalRecordMapper.selectById(...);
+    // if (record.getStatus() == APPROVED) { approvalCallbackHandler.onApproved(record); }
+
+    // 改造后：调引擎即可，回调已在引擎内部同一事务中执行
+    ApprovalActionResponse data = approvalService.approve(
+        Long.parseLong(id), request, operatorId, operatorName, operator);
+    return ApiResponse.success(data);
+}
+```
+
+`reject` 方法同理。`cancel` 和 `batch-approve`/`batch-reject` 原本就没有 V3 回调逻辑，无需改动。
+
+---
+
+### 8.9 可消除的文件
+
+| 文件 | 处置 | 原因 |
+|------|:--:|------|
+| `ApprovalCallbackHandler.java` | 删除 | 逻辑并入 `ApprovalEngine.handleFlowVersionPublishResult()` |
+| `ConnectorPlatformConstants.APPROVAL_BUSINESS_TYPE_FLOW_VERSION_PUBLISH` | 可保留（作为别名常量）或删除 | `ApprovalEngine.BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH` 已提供相同值 |
+
+---
+
+### 8.10 改造总览：影响面
+
+| 文件 | 改动 | 风险 |
+|------|------|:--:|
+| **`ApprovalEngine.java`** | | |
+| 　`BusinessType` 枚举 | +1 常量 | 🟢 新增 |
+| 　`composeApprovalNodes()` | +`appId` 参数 | 🟢 加参数 |
+| 　`createApproval()` | +`appId` 参数 | 🟢 加参数 |
+| 　`getSceneApprovalNodes()` | 改用 `selectByCodeAndAppId` + 回退 | 🟢 等价扩展 |
+| 　`getGlobalApprovalNodes()` | 改用 `selectByCodeAndAppId("global", null)` | 🟢 等价替换 |
+| 　`getSceneCodeByBusinessType()` | +1 case | 🟢 新增分支 |
+| 　`updateResourceStatus()` | +1 case → `handleFlowVersionPublishResult()` | 🟡 新方法 |
+| 　新依赖注入 | +`OpFlowVersionMapper` | 🟡 新依赖 |
+| **存量 Service 调用方** | | |
+| 　`ApiService.java` | `createApproval(..., null)` | 🟢 +1 arg |
+| 　`EventService.java` | `createApproval(..., null)` | 🟢 +1 arg |
+| 　`CallbackService.java` | `createApproval(..., null)` | 🟢 +1 arg |
+| 　`PermissionService.java` | `createApproval(..., null)` ×3 | 🟢 +1 arg |
+| **V3 相关文件** | | |
+| 　`FlowVersionApprovalService.java` | `submitApproval` → 调引擎 `createApproval` | 🟡 大简化 |
+| 　 | `cancelApproval` → 只调引擎 `cancel` | 🟡 大简化 |
+| 　 | `composeApprovalNodes(appId)` → **删除** | 🟢 移除 |
+| 　 | `getApprovalNodesByCodeAndAppId` → **删除** | 🟢 移除 |
+| 　`ApprovalCallbackHandler.java` | **删除** | 🟢 类消除 |
+| 　`ApprovalController.java` | 移除 `approvalCallbackHandler` + `approvalRecordMapper` 注入和手动回调 | 🟢 简化 |
+| **已有基础设施（无需改动）** | | |
+| 　`db/migration/V3_xxx.sql` | 不变 — schema 已就绪（`uk_code_app`） | 🟢 已就绪 |
+| 　`ApprovalFlowMapper.java` | 不变 — `selectByCodeAndAppId` 已存在 | 🟢 已就绪 |
+
+---
+
+### 8.11 改造后调用路径对比
+
+```
+存量 6 种（行为完全不变）:
+  composeApprovalNodes("api_register", null, null)
+    → getSceneApprovalNodes("api_register", null)
+      → selectByCodeAndAppId("api_register", null)  // 等价于原 selectByCode
+    → getGlobalApprovalNodes()
+      → selectByCodeAndAppId("global", null)         // 等价于原 selectByCode
+
+V3 流版本发布（回归标准路径）:
+  composeApprovalNodes("connector_flow_version_publish", null, 123)
+    → getSceneApprovalNodes("connector_flow_version_publish", 123)
+      → selectByCodeAndAppId("connector_flow_version_publish", 123)  // app 级
+      → selectByCodeAndAppId("connector_flow_version_publish", null) // platform 级回退
+    → getGlobalApprovalNodes()
+      → selectByCodeAndAppId("global", null)                          // global 级兜底
+```
+
+**一视同仁**：存量 6 种类型和 V3 流版本发布走完全相同的代码路径，区别仅在于 `appId` 传 `null` 还是具体值。
+
+---
+
+### 8.12 消除的偏离项
+
+改造完成后，原 10 项偏离的处置：
+
+| # | 偏离项 | 处置 |
+|---|--------|:--:|
+| 1 | BusinessType 未注册到引擎枚举 | ✅ 消除 — 注册到 `ApprovalEngine.BusinessType` |
+| 2 | 绕过引擎的 `composeApprovalNodes()` | ✅ 消除 — V3 走引擎统一入口 |
+| 3 | 绕过引擎的 `createApproval()` | ✅ 消除 — V3 走引擎统一入口 |
+| 4 | 使用非标准 level 值 | ✅ 消除 — 引擎返回标准 `scene`/`global`，不再有 `app`/`platform` |
+| 5 | 独立回调机制 | ✅ 消除 — 回调并入引擎 `updateResourceStatus`，同事务 |
+| 6 | 取消/催办逻辑重复 | ⚠️ **设计意图** — 取消存在两条入口路径（审批中心统一入口 + 业务对象专属入口），这是由前端 UI 上下文决定的，非偏离。引擎负责审批记录状态，业务副作用由各自 Service 处理。催办同理保留在 `FlowVersionApprovalService` |
+| 7 | 审批前状态管理耦合 | ⚠️ 保留 — 提交审批时将 FlowVersion 从 DRAFT 改为 PENDING_APPROVAL 是业务前置动作，不放入引擎 |
+| 8 | 模板匹配引入 appId 维度 | ✅ **变为特性** — 不再是偏离，而是引擎统一支持的维度 |
+| 9 | Controller 层耦合 V3 逻辑 | ✅ 消除 — Controller 回归纯粹路由 |
+| 10 | 两套取消入口并存 | ⚠️ **设计意图** — 同偏离 6。前端上下文决定入口：审批中心页面用统一接口，业务详情页用业务专属接口。两条路径在 `ApprovalEngine.cancel()` 处汇合，业务副作用各自处理 |
+
+**偏离 7 保留的理由**：审批前状态管理（草稿 → 待审批）是提交方的业务逻辑，不是审批引擎的职责。引擎只负责：组合节点 → 创建记录 → 审批执行 → 结果回调。`FlowVersionApprovalService` 作为提交方保留这个前置动作是合理的。
+
+---
+
+## 九、修订记录
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
 | v1.0 | 初始版本，完成 V2/V3 审批体系差异分析 | 2026-06-23 | SDDU 路由调度专家 |
 | v1.1 | 扩展偏离 5：补充回调机制详细实现对比（引擎内联 vs 独立处理器）、事务边界差异、关键问题分析 | 2026-06-23 | SDDU 路由调度专家 |
+| v1.2 | 新增第八节：引擎侧统一改造方案（落地实施），含 12 个子节的详细实施步骤和影响面分析 | 2026-06-23 | SDDU 路由调度专家 |
