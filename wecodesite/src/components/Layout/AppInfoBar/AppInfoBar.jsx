@@ -5,7 +5,7 @@ import { fetchAppDetail, clearAppDetail } from '../../../store/appSlice';
 import { fetchRole, clearRole } from '../../../store/roleSlice';
 import { message } from 'antd';
 import { fetchEamapOptions } from '../../../pages/AppList/thunk';
-import { bindEamap } from '../../../pages/BasicInfo/thunk';
+import { bindEamap } from './thunk';
 import BindEamapModal from '../../BindEamapModal/BindEamapModal';
 
 import './AppInfoBar.m.less';

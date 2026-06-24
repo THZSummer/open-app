@@ -1,12 +1,16 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchCurrentRole } from '../pages/BasicInfo/thunk';
+import { API_CONFIG, fetchApi } from '../configs/web.config';
 
 export const fetchRole = createAsyncThunk(
   'role/fetchRole',
   async (appId) => {
-    const result = await fetchCurrentRole(appId);
-    if (result?.code === '200' && result.data?.role != null) {
-      return result.data.role;
+    try {
+      const result = await fetchApi(API_CONFIG.APP.CURRENT_ROLE, { params: { appId } });
+      if (result?.code === '200' && result.data?.role != null) {
+        return result.data.role;
+      }
+    } catch (err) {
+      // ignore
     }
     return null;
   }

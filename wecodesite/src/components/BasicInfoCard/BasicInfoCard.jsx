@@ -5,7 +5,8 @@ import { EditOutlined, EyeOutlined, CloseOutlined, PlusOutlined } from '@ant-des
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAppDetail } from '../../store/appSlice';
 import IconPicker from '../../components/IconPicker/IconPicker';
-import { updateApp, uploadImage } from '../../pages/BasicInfo/thunk';
+import { updateApp, uploadImage } from './thunk';
+import './BasicInfoCard.m.less';
 import { validateFile, validateImageDimensions } from '../../utils/common';
 import { FILE_VALIDATION } from '../../utils/constants';
 

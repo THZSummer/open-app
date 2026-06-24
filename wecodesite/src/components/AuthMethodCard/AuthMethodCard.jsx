@@ -5,7 +5,7 @@ import { Card, Checkbox, Input, message, Modal, Spin } from 'antd';
 import { EditOutlined, WarningOutlined } from '@ant-design/icons';
 import { VERIFY_TYPE_MAP, FORM_VALIDATION_RULES } from '../../utils/constants';
 import { fetchAppDetail } from '../../store/appSlice';
-import { fetchVerifyType, updateVerifyType } from '../../pages/BasicInfo/thunk';
+import { fetchVerifyType, updateVerifyType } from './thunk';
 
 import './AuthMethodCard.m.less';
 

@@ -4,7 +4,8 @@ import { Card, Button, message, Spin } from 'antd';
 import { EyeInvisibleOutlined, EyeOutlined, CopyOutlined } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { copyToClipboard } from '../../utils/common';
-import { fetchAppIdentity } from '../../pages/BasicInfo/thunk';
+import { fetchAppIdentity } from './thunk';
+import './AppCredentials.m.less';
 
 function AppCredentials() {
   const [searchParams] = useSearchParams();
