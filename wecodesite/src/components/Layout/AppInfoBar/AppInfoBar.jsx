@@ -11,7 +11,7 @@ import BindEamapModal from '../../BindEamapModal/BindEamapModal';
 import './AppInfoBar.m.less';
 
 function AppInfoBar() {
-  const appDetail = useSelector(state => state.app.appDetail);
+  const appBaseInfo = useSelector(state => state.app.appBaseInfo);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -52,7 +52,7 @@ function AppInfoBar() {
       if (result?.code === '200') {
         message.success('绑定成功，应用已升级为业务应用');
         setBindModalVisible(false);
-        // 刷新页面让 Layout 重新加载 appDetail
+        // 刷新页面让 Layout 重新加载 appBaseInfo
         window.location.reload();
       } else {
         message.error(result?.messageZh || result?.messageEn || '绑定失败');
@@ -63,9 +63,9 @@ function AppInfoBar() {
   };
 
   // 判断应用类型
-  const isPersonalApp = appDetail?.appType === 0;
-  const isLegacyPersonal = isPersonalApp && appDetail?.appSubType === 0;
-  const hasEamap = !!appDetail?.eamapAppCode;
+  const isPersonalApp = appBaseInfo?.appType === 0;
+  const isLegacyPersonal = isPersonalApp && appBaseInfo?.appSubType === 0;
+  const hasEamap = !!appBaseInfo?.eamapAppCode;
 
   return (
     <>
@@ -80,11 +80,11 @@ function AppInfoBar() {
           <div className="header-divider"></div>
           <div className="header-app-info">
             <span className="header-app-name">
-              {appDetail?.nameCn || appDetail?.nameEn || '加载中...'}
+              {appBaseInfo?.nameCn || appBaseInfo?.nameEn || '加载中...'}
             </span>
             {/* 业务应用：显示已绑定信息 */}
             {!isPersonalApp && hasEamap && (
-              <span className="header-eamap"><span className="header-eamap-label">已绑定:</span> {appDetail.eamapAppName || ''} {appDetail.eamapAppCode}</span>
+              <span className="header-eamap"><span className="header-eamap-label">已绑定:</span> {appBaseInfo.eamapAppName || ''} {appBaseInfo.eamapAppCode}</span>
             )}
             {/* 存量个人应用：显示 未绑定应用服务: 立即绑定 */}
             {isLegacyPersonal && (

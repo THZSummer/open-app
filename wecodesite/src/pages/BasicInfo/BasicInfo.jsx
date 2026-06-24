@@ -11,7 +11,7 @@ import './BasicInfo.m.less';
 function BasicInfo() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { appDetail } = useSelector(state => state.app);
+  const { appBaseInfo } = useSelector(state => state.app);
   const appId = searchParams.get('appId');
 
   useEffect(() => {
@@ -20,7 +20,7 @@ function BasicInfo() {
     }
   }, [appId, navigate]);
 
-  if (!appDetail) {
+  if (!appBaseInfo) {
     return <Spin spinning={true} className="basic-info-loading" />;
   }
 
@@ -28,7 +28,7 @@ function BasicInfo() {
     <div className="basic-info-page">
       <AppCredentials />
       <BasicInfoCard />
-      {appDetail.appType !== 0 && <AuthMethodCard />}
+      {appBaseInfo.appType !== 0 && <AuthMethodCard />}
     </div>
   );
 }

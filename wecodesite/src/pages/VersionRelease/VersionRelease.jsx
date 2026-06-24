@@ -32,7 +32,7 @@ function VersionRelease() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { appDetail } = useSelector(state => state.app);
+  const { appBaseInfo } = useSelector(state => state.app);
   const appId = searchParams.get('appId');
 
   // 页面级权限守卫
@@ -85,8 +85,8 @@ function VersionRelease() {
       if (!appId) navigate('/');
       return;
     }
-    if (!appDetail) return; // Context 还没加载好
-    if (appDetail.appType !== 1) {
+    if (!appBaseInfo) return; // Context 还没加载好
+    if (appBaseInfo.appType !== 1) {
       navigate(`/basic-info?appId=${appId}`);
       return;
     }
@@ -101,7 +101,7 @@ function VersionRelease() {
         setSubscribedAbilities(abilityRes.data);
       }
     });
-  }, [appId, appDetail, roleLoading, location.pathname, loadVersions]);
+  }, [appId, appBaseInfo, roleLoading, location.pathname, loadVersions]);
 
   const handlePageChange = (page, pageSize) => {
     loadVersions({ curPage: page, pageSize });

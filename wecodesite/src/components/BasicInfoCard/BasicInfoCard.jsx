@@ -14,7 +14,7 @@ function BasicInfoCard() {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const dispatch = useDispatch();
-  const { appDetail: appData } = useSelector(state => state.app);
+  const { appBaseInfo: appData } = useSelector(state => state.app);
   const [editing, setEditing] = useState(false);
   const [editForm] = Form.useForm();
   const [diagram, setDiagram] = useState(null);

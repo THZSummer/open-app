@@ -10,7 +10,7 @@ import './AppCredentials.m.less';
 function AppCredentials() {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
-  const { appDetail } = useSelector(state => state.app);
+  const { appBaseInfo } = useSelector(state => state.app);
   const [showSecret, setShowSecret] = useState(false);
   const [identity, setIdentity] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -42,7 +42,7 @@ function AppCredentials() {
     <Card title="应用凭证" className="info-card">
       <div className="credential-item">
         <span className="credential-label">APP ID</span>
-        <span className="credential-value">{appDetail.appId}</span>
+        <span className="credential-value">{appBaseInfo.appId}</span>
       </div>
       <Spin spinning={loading}>
         {identity && (

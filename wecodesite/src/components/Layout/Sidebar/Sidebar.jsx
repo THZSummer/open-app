@@ -33,7 +33,7 @@ function DynamicIcon({ iconName, iconUrl, size = 14 }) {
 const ABILITY_CHANGED_EVENT = 'app:ability-changed';
 
 function Sidebar({ sidebarMainHeight }) {
-  const appDetail = useSelector(state => state.app.appDetail);
+  const appBaseInfo = useSelector(state => state.app.appBaseInfo);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -43,9 +43,8 @@ function Sidebar({ sidebarMainHeight }) {
 
   // 动态已订阅能力列表
   const [subscribedAbilities, setSubscribedAbilities] = useState([]);
-  // 从 appDetail prop 获取应用类型
-  const appType = appDetail?.appType ?? null;
-  const appSubType = appDetail?.appSubType ?? null;
+  const appType = appBaseInfo?.appType ?? null;
+  const appSubType = appBaseInfo?.appSubType ?? null;
 
   const loadSubscribedAbilities = useCallback(async () => {
     if (!appId) return;

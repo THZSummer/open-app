@@ -53,7 +53,7 @@ const transformCategoriesToModules = (categories) => {
  * @param {string} appId - 应用ID
  */
 function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
-  const { appDetail } = useSelector(state => state.app);
+  const { appBaseInfo } = useSelector(state => state.app);
   // 是否启用身份权限功能开关（仅控制第一层Tab是否显示）
   const enableIdentityPermission = true;
   
@@ -243,8 +243,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     const initData = async () => {
       // 0. 从 Context 获取应用详情，判断应用类型
       let resolvedAppType = 'person';
-      if (appDetail) {
-        resolvedAppType = (appDetail.appType === 1 || appDetail.eamap) ? 'business' : 'person';
+      if (appBaseInfo) {
+        resolvedAppType = (appBaseInfo.appType === 1 || appBaseInfo.eamap) ? 'business' : 'person';
       }
       setAppType(resolvedAppType);
 
