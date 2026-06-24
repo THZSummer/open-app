@@ -26,7 +26,7 @@ function LayoutInner() {
   // 管理后台页面（仅 /admin/*），/connect/* 已迁移至应用详情布局下
   const isAdminPage = location.pathname.startsWith('/admin');
   // 应用列表页（首页及灰度新首页）不需要 Sidebar / AppInfoBar
-  const isAppListPage = location.pathname === '/' || location.pathname === '/app-list-v2';
+  const isAppListPage = location.pathname === '/appList' || location.pathname === '/app-list-v2';
   const isDetailPage = !isAdminPage && !isAppListPage;
   
   const contentAreaHeight = isDetailPage 
