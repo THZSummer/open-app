@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Badge, Button, Space, Tooltip } from 'antd';
+import { Tag, Button, Space, Tooltip } from 'antd';
 import { CONNECTOR_STATUS, CONNECTOR_STATUS_MAP } from '../../../utils/constants';
 
 /**
@@ -147,8 +147,8 @@ export const getConnectorColumns = (callbacks) => {
     },
     {
       title: '创建者',
-      dataIndex: 'createUserName',
-      key: 'createUserName',
+      dataIndex: 'createBy',
+      key: 'createBy',
       width: 120,
       ellipsis: true,
       render: renderTextCell,
@@ -163,8 +163,8 @@ export const getConnectorColumns = (callbacks) => {
     },
     {
       title: '更新人',
-      dataIndex: 'lastUpdateUserName',
-      key: 'lastUpdateUserName',
+      dataIndex: 'lastUpdateBy',
+      key: 'lastUpdateBy',
       width: 120,
       ellipsis: true,
       render: renderTextCell,
@@ -181,12 +181,12 @@ export const getConnectorColumns = (callbacks) => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      width: 110,
+      width: 120,
       align: 'center',
       render: (status) => {
         // 默认按"有效不可用"处理，避免未知状态展示异常
         const config = CONNECTOR_STATUS_MAP[status] ?? CONNECTOR_STATUS_MAP[CONNECTOR_STATUS.INACTIVE];
-        return <Badge color={config.color} text={config.text} />;
+        return <Tag color={config.color}>{config.text}</Tag>;
       },
     },
     {

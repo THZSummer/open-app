@@ -90,7 +90,7 @@ public class ConnectorVersionController {
             @Parameter(description = "版本ID") @PathVariable Long versionId,
             @Valid @RequestBody ConnectorVersionSaveRequest request) {
         log.info("PUT /connectors/{}/versions/{} - update draft: appId={}", connectorId, versionId, appId);
-        return toResponseEntity(connectorVersionService.updateDraft(connectorId, versionId, request.getConnectionConfig(), appId));
+        return toResponseEntity(connectorVersionService.updateDraft(connectorId, versionId, request.getConnectionConfig().toString(), appId));
     }
 
     /**

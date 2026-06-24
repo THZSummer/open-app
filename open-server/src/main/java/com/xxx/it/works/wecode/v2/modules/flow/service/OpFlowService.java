@@ -276,7 +276,7 @@ public class OpFlowService {
 
         // 编排校验: 检查是否有节点
         try {
-            JsonNode config = objectMapper.readTree(request.getOrchestrationConfig());
+            JsonNode config = request.getOrchestrationConfig();
             JsonNode nodes = config.get("nodes");
             if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
                 return ApiResponse.error("400", "编排配置至少需要一个节点", "At least one node is required");
@@ -294,7 +294,7 @@ public class OpFlowService {
             version = new FlowVersion();
             version.setId(idGenerator.nextId());
             version.setFlowId(flowId);
-            version.setOrchestrationConfig(request.getOrchestrationConfig());
+            version.setOrchestrationConfig(request.getOrchestrationConfig().toString());
             version.setCreateTime(now);
             version.setLastUpdateTime(now);
             version.setCreateBy(currentUser);
@@ -302,7 +302,7 @@ public class OpFlowService {
             flowVersionMapper.insert(version);
         } else {
             // 更新现有版本 - 全文替换
-            version.setOrchestrationConfig(request.getOrchestrationConfig());
+            version.setOrchestrationConfig(request.getOrchestrationConfig().toString());
             version.setLastUpdateTime(now);
             version.setLastUpdateBy(currentUser);
             flowVersionMapper.update(version);

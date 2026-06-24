@@ -254,36 +254,66 @@ const parseAuthConfigs = (authConfigs) => {
 };
 
 /**
+ * 归一化后端返回的 connectionConfig
+ * 兼容两种返回形态：JSON 字符串 / 已解析对象
+ *
+ * @param {string|Object} rawConfig - 后端返回的 connectionConfig 原始值
+ * @returns {Object|null} 解析后的 connectionConfig 对象；解析失败返回 null
+ */
+const normalizeConnectionConfig = (rawConfig) => {
+  // 空值直接返回 null，由调用方走默认配置分支
+  if (!rawConfig) return null;
+
+  // 已经是对象：直接返回
+  if (typeof rawConfig === 'object') return rawConfig;
+
+  // 字符串：尝试 JSON.parse，解析失败返回 null
+  if (typeof rawConfig === 'string') {
+    try {
+      return JSON.parse(rawConfig);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // 其它非法类型：返回 null
+  return null;
+};
+
+/**
  * 将 V3 connectionConfig 转换为前端表单可编辑的 apiConfig
  *
- * @param {Object} connectionConfig - V3 connectionConfig 对象（详见 plan-json-schema.md §5.2）
+ * @param {Object|string} connectionConfig - V3 connectionConfig 对象或其 JSON 字符串
  * @returns {Object} 前端表单 apiConfig
  */
 export const transformFromSchemaFormat = (connectionConfig) => {
-  // 数据校验：缺失时返回默认配置
-  if (!connectionConfig) {
+  // 先做字符串/对象的兼容归一化
+  const normalized = normalizeConnectionConfig(connectionConfig);
+
+  // 数据校验：缺失或解析失败时返回默认配置
+  if (!normalized) {
     return { ...DEFAULT_API_CONFIG };
   }
 
   // 解析认证配置
-  const auth = parseAuthConfigs(connectionConfig.authConfigs);
+  const auth = parseAuthConfigs(normalized.authConfigs);
 
   // 解析入参（含 header / query / body）
   const requestSchema = processContract({
-    contract: connectionConfig.input,
+    contract: normalized.input,
     carriers: ['header', 'query', 'body'],
   });
 
   // 解析出参（含 header / body）
   const responseSchema = processContract({
-    contract: connectionConfig.output,
+    contract: normalized.output,
     carriers: ['header', 'body'],
   });
 
   // 组装前端表单结构
   return {
-    protocolType: connectionConfig.protocolConfig?.method || '',
-    protocolAddress: connectionConfig.protocolConfig?.url || '',
+    protocolType: normalized.protocolConfig?.method || '',
+    protocolAddress: normalized.protocolConfig?.url || '',
     authType: auth.authType,
     authRequestSchema: auth.authRequestSchema,
     signatureConfig: auth.signatureConfig,
@@ -291,12 +321,12 @@ export const transformFromSchemaFormat = (connectionConfig) => {
     requestSchema,
     responseSchema,
     // V3 新增字段直接透传
-    labelCn: connectionConfig.labelCn || '',
-    labelEn: connectionConfig.labelEn || '',
-    urlWhitelist: connectionConfig.urlWhitelist || [],
-    timeoutMs: connectionConfig.timeoutMs || 3000,
-    rateLimitConfig: connectionConfig.rateLimitConfig || null,
-    sysAccountWhitelist: connectionConfig.sysAccountWhitelist || [],
+    labelCn: normalized.labelCn || '',
+    labelEn: normalized.labelEn || '',
+    urlWhitelist: normalized.urlWhitelist || [],
+    timeoutMs: normalized.timeoutMs || 3000,
+    rateLimitConfig: normalized.rateLimitConfig || null,
+    sysAccountWhitelist: normalized.sysAccountWhitelist || [],
   };
 };
 

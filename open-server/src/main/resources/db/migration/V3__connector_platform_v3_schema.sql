@@ -28,10 +28,11 @@ ALTER TABLE openplatform_v2_cp_connector_t
     ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
 
 -- ----------------------------------------------------------------------------
--- 1.2 connector_version_t: 移除 1:1 约束，新增版本号/状态/发布时间字段
+-- 1.2 connector_version_t: 移除 1:1 约束，新增版本号/状态/发布时间字段，connection_config 改为可空（草稿无需配置）
 -- ----------------------------------------------------------------------------
 ALTER TABLE openplatform_v2_cp_connector_version_t
     DROP INDEX idx_connector_id,
+    MODIFY COLUMN connection_config MEDIUMTEXT NULL COMMENT '连接配置JSON（V3多版本：草稿可为空，发布时必填）',
     ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增',
     ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=已发布, 3=已失效, 4=物理删除',
     ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（首次发布时刻）',
@@ -53,10 +54,11 @@ ALTER TABLE openplatform_v2_cp_flow_t
     ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
 
 -- ----------------------------------------------------------------------------
--- 1.4 flow_version_t: 移除 1:1 约束，新增版本号/7状态/发布时间字段
+-- 1.4 flow_version_t: 移除 1:1 约束，新增版本号/7状态/发布时间字段，orchestration_config 改为可空（草稿无需编排）
 -- ----------------------------------------------------------------------------
 ALTER TABLE openplatform_v2_cp_flow_version_t
     DROP INDEX idx_flow_id,
+    MODIFY COLUMN orchestration_config MEDIUMTEXT NULL COMMENT '编排配置JSON（V3多版本：草稿可为空，发布时必填）',
     ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增',
     ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除',
     ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（审批通过的时刻）',
@@ -198,6 +200,6 @@ CREATE TABLE IF NOT EXISTS openplatform_operate_log_t (
 -- ============================================================================
 -- 连接器平台 V3 Schema 迁移完成
 -- 变更汇总:
---   ALTER (5): connector_t, connector_version_t, flow_t, flow_version_t, approval_flow_t
+--   ALTER (5 + 2 MODIFY): connector_t, connector_version_t (connection_config→NULL for draft), flow_t, flow_version_t (orchestration_config→NULL for draft), approval_flow_t
 --   CREATE (4): connector_version_ref_t, execution_record_t, execution_step_t, openplatform_operate_log_t
 -- ============================================================================
