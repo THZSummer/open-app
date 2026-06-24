@@ -63,6 +63,8 @@ import java.util.regex.Pattern;
 @Order(2)
 public class OperateLogV2Aspect {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OperateLogV2Aspect.class);
+
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
     private final EntitySnapshotLoaderFactory snapshotLoaderFactory;

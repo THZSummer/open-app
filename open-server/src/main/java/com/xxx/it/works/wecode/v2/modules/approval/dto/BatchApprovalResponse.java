@@ -1,9 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.approval.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -16,8 +14,6 @@ import java.util.List;
  */
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class BatchApprovalResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -42,14 +38,22 @@ public class BatchApprovalResponse implements Serializable {
      */
     private String message;
 
+
+    public BatchApprovalResponse() {
+    }
+
+    public BatchApprovalResponse(Integer successCount, Integer failedCount, List<FailedItem> failedItems, String message) {
+        this.successCount = successCount;
+        this.failedCount = failedCount;
+        this.failedItems = failedItems;
+        this.message = message;
+    }
     /**
      * 失败项
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class FailedItem implements Serializable {
+        public static class FailedItem implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

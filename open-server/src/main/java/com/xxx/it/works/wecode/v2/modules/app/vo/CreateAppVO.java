@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.app.vo;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -14,7 +13,6 @@ import java.io.Serializable;
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class CreateAppVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -23,4 +21,8 @@ public class CreateAppVO implements Serializable {
      * 应用ID
      */
     private String appId;
+
+    public CreateAppVO(String appId) {
+        this.appId = appId;
+    }
 }

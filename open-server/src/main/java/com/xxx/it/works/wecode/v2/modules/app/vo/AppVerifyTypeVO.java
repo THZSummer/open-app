@@ -25,4 +25,12 @@ public class AppVerifyTypeVO implements Serializable {
      * API 密钥
      */
     private String apiSecret;
+
+    public AppVerifyTypeVO() {
+    }
+
+    public AppVerifyTypeVO(List<Integer> verifyType, String apiSecret) {
+        this.verifyType = verifyType;
+        this.apiSecret = apiSecret;
+    }
 }

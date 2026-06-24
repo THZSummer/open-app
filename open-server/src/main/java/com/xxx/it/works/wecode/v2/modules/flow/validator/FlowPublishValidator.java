@@ -38,9 +38,18 @@ import java.util.Set;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class FlowPublishValidator {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowPublishValidator.class);
 
+
+
+
+    @Autowired
+    public FlowPublishValidator(ObjectMapper objectMapper, ConnectorVersionRefMapper connectorVersionRefMapper, OpConnectorVersionMapper connectorVersionMapper) {
+        this.objectMapper = objectMapper;
+        this.connectorVersionRefMapper = connectorVersionRefMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+    }
     private final ObjectMapper objectMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;

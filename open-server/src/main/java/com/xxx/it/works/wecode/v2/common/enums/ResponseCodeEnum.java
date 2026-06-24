@@ -86,4 +86,9 @@ public enum ResponseCodeEnum {
     private final String code;
     private final String messageZh;
     private final String messageEn;
+
+
+    public String getCode() { return code; }
+    public String getMessageZh() { return messageZh; }
+    public String getMessageEn() { return messageEn; }
 }

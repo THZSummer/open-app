@@ -34,4 +34,14 @@ public class EmployeeInfoVO implements Serializable {
      * W3 账号
      */
     private String w3Account;
+
+    public EmployeeInfoVO() {
+    }
+
+    public EmployeeInfoVO(String welinkId, String memberNameCn, String memberNameEn, String w3Account) {
+        this.welinkId = welinkId;
+        this.memberNameCn = memberNameCn;
+        this.memberNameEn = memberNameEn;
+        this.w3Account = w3Account;
+    }
 }

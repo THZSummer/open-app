@@ -43,9 +43,20 @@ import java.util.regex.PatternSyntaxException;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class ConnectorVersionService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorVersionService.class);
 
+
+
+
+    @Autowired
+    public ConnectorVersionService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, AuditLogService auditLogService) {
+        this.connectorMapper = connectorMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+        this.connectorVersionRefMapper = connectorVersionRefMapper;
+        this.idGenerator = idGenerator;
+        this.auditLogService = auditLogService;
+    }
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;

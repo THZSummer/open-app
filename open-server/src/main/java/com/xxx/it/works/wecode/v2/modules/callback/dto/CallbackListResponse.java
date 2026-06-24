@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.callback.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -19,7 +18,6 @@ import java.util.Date;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class CallbackListResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -68,4 +66,16 @@ public class CallbackListResponse implements Serializable {
      * 文档链接（从properties中提取）
      */
     private String docUrl;
+
+    public CallbackListResponse(String id, String nameCn, String nameEn, String categoryId, String categoryName, Integer status, PermissionDto permission, Date createTime, String docUrl) {
+        this.id = id;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.status = status;
+        this.permission = permission;
+        this.createTime = createTime;
+        this.docUrl = docUrl;
+    }
 }

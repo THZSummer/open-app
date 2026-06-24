@@ -34,9 +34,18 @@ import java.util.Random;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class FlowCopyService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowCopyService.class);
 
+
+
+
+    @Autowired
+    public FlowCopyService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, IdGeneratorStrategy idGenerator) {
+        this.flowMapper = flowMapper;
+        this.flowVersionMapper = flowVersionMapper;
+        this.idGenerator = idGenerator;
+    }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
     private final IdGeneratorStrategy idGenerator;

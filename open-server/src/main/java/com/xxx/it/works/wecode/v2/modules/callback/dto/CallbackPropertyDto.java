@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.callback.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class CallbackPropertyDto implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -32,4 +30,9 @@ public class CallbackPropertyDto implements Serializable {
      * 属性值
      */
     private String propertyValue;
+
+    public CallbackPropertyDto(String propertyName, String propertyValue) {
+        this.propertyName = propertyName;
+        this.propertyValue = propertyValue;
+    }
 }

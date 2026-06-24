@@ -35,6 +35,10 @@ public enum ConnectorStatus {
     /** 中文描述 */
     private final String description;
 
+
+    public Integer getCode() { return code; }
+    public String getDescription() { return description; }
+
     /** 默认状态：有效不可用 */
     public static final ConnectorStatus DEFAULT = UNAVAILABLE;
 

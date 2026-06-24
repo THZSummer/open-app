@@ -36,6 +36,10 @@ public enum FlowLifecycleStatus {
     /** 中文描述 */
     private final String description;
 
+
+    public Integer getCode() { return code; }
+    public String getDescription() { return description; }
+
     /** 默认状态：已停止 */
     public static final FlowLifecycleStatus DEFAULT = STOPPED;
 

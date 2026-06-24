@@ -24,10 +24,17 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/flows")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "运行记录", description = "连接流运行记录查询接口（列表 + 详情）")
 public class ExecutionRecordController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ExecutionRecordController.class);
 
+
+
+
+    @Autowired
+    public ExecutionRecordController(ExecutionRecordService executionRecordService) {
+        this.executionRecordService = executionRecordService;
+    }
     private final ExecutionRecordService executionRecordService;
 
     /**

@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.callback.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,7 +19,6 @@ import java.util.List;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class CallbackResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -84,4 +82,19 @@ public class CallbackResponse implements Serializable {
      * 最后更新人
      */
     private String lastUpdateBy;
+
+    public CallbackResponse(String id, String nameCn, String nameEn, String categoryId, String categoryName, Integer status, PermissionDto permission, List<CallbackPropertyDto> properties, Date createTime, String createBy, Date lastUpdateTime, String lastUpdateBy) {
+        this.id = id;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.status = status;
+        this.permission = permission;
+        this.properties = properties;
+        this.createTime = createTime;
+        this.createBy = createBy;
+        this.lastUpdateTime = lastUpdateTime;
+        this.lastUpdateBy = lastUpdateBy;
+    }
 }

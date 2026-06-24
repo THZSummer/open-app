@@ -45,6 +45,10 @@ public enum FlowVersionStatus {
     /** 中文描述 */
     private final String description;
 
+
+    public Integer getCode() { return code; }
+    public String getDescription() { return description; }
+
     /** 默认状态：草稿 */
     public static final FlowVersionStatus DEFAULT = DRAFT;
 

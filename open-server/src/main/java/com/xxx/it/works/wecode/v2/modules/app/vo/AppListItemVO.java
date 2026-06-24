@@ -70,4 +70,21 @@ public class AppListItemVO implements Serializable {
      * 最后更新时间
      */
     private String lastUpdateTime;
+
+    public AppListItemVO() {
+    }
+
+    public AppListItemVO(String appId, String nameCn, String nameEn, FileV2VO icon, Integer appType, Integer appSubType, Integer status, Boolean eamapBound, EmployeeInfoVO owner, Integer currentUserRole, String lastUpdateTime) {
+        this.appId = appId;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.icon = icon;
+        this.appType = appType;
+        this.appSubType = appSubType;
+        this.status = status;
+        this.eamapBound = eamapBound;
+        this.owner = owner;
+        this.currentUserRole = currentUserRole;
+        this.lastUpdateTime = lastUpdateTime;
+    }
 }

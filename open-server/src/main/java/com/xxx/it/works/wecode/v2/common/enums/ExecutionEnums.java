@@ -39,6 +39,10 @@ public final class ExecutionEnums {
         private final Integer code;
         private final String description;
 
+
+        public Integer getCode() { return code; }
+        public String getDescription() { return description; }
+
         public static ExecutionStatus fromValue(Integer code) {
             if (code == null) {
                 return null;
@@ -69,6 +73,10 @@ public final class ExecutionEnums {
 
         private final Integer code;
         private final String description;
+
+
+        public Integer getCode() { return code; }
+        public String getDescription() { return description; }
 
         public static TriggerType fromValue(Integer code) {
             if (code == null) {
@@ -110,6 +118,10 @@ public final class ExecutionEnums {
         private final Integer code;
         private final String description;
 
+
+        public Integer getCode() { return code; }
+        public String getDescription() { return description; }
+
         public static NodeType fromValue(Integer code) {
             if (code == null) {
                 return null;
@@ -143,6 +155,10 @@ public final class ExecutionEnums {
 
         private final Integer code;
         private final String description;
+
+
+        public Integer getCode() { return code; }
+        public String getDescription() { return description; }
 
         public static CacheStatus fromValue(Integer code) {
             if (code == null) {

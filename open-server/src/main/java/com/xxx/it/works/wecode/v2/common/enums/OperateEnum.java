@@ -111,7 +111,33 @@ public enum OperateEnum {
             "撤回版本${versionCode}", "Withdraw version ${versionCode}"),
     DELETE_APP_VERSION("DELETE", "APP_VERSION", "版本",
             "删除应用版本", "Delete Application Version",
-            "删除版本${versionCode}", "Delete version ${versionCode}");
+            "删除版本${versionCode}", "Delete version ${versionCode}"),
+
+    // ===== 连接器管理 =====
+    CREATE_CONNECTOR("CREATE", "CONNECTOR", "连接器",
+            "创建连接器", "Create Connector",
+            "创建连接器:${nameCn}", "Create Connector:${nameEn}"),
+    UPDATE_CONNECTOR("UPDATE", "CONNECTOR", "连接器",
+            "更新连接器", "Update Connector",
+            null, null),
+    DELETE_CONNECTOR("DELETE", "CONNECTOR", "连接器",
+            "删除连接器", "Delete Connector",
+            null, null),
+
+    // ===== 连接流管理 =====
+    CREATE_FLOW("CREATE", "FLOW", "连接流",
+            "创建连接流", "Create Flow",
+            "创建连接流:${nameCn}", "Create Flow:${nameEn}"),
+    UPDATE_FLOW("UPDATE", "FLOW", "连接流",
+            "更新连接流", "Update Flow",
+            null, null),
+    DELETE_FLOW("DELETE", "FLOW", "连接流",
+            "删除连接流", "Delete Flow",
+            null, null),
+    CONNECTOR_FLOW_VERSION_PUBLISH("PUBLISH", "FLOW_VERSION", "流版本",
+            "发布流版本", "Publish Flow Version",
+            "发布版本${versionCode}", "Publish version ${versionCode}");
+
 
     /**
      * DB operate_type 字段值
@@ -147,6 +173,14 @@ public enum OperateEnum {
      * 审计描述模板（英文），含 ${xxx} 占位符，由 TemplateRenderer 渲染后写入 desc_en；null 时回退 descEn
      */
     private final String templateEn;
+
+    public String getOperateType() { return operateType; }
+    public String getOperateObject() { return operateObject; }
+    public String getOperateObjectCn() { return operateObjectCn; }
+    public String getDescCn() { return descCn; }
+    public String getDescEn() { return descEn; }
+    public String getTemplateCn() { return templateCn; }
+    public String getTemplateEn() { return templateEn; }
 
     /**
      * 判断是否需要加载 before_data 实体快照

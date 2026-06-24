@@ -65,6 +65,11 @@ public enum AuthTypeEnum {
      */
     private final String description;
 
+
+    public Integer getCode() { return code; }
+    public String getName() { return name; }
+    public String getDescription() { return description; }
+
     /**
      * 默认认证方式：SOA
      */

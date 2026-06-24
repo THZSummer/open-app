@@ -30,9 +30,19 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpFlowService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OpFlowService.class);
 
+
+
+
+    @Autowired
+    public OpFlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper) {
+        this.flowMapper = flowMapper;
+        this.flowVersionMapper = flowVersionMapper;
+        this.idGenerator = idGenerator;
+        this.objectMapper = objectMapper;
+    }
     /** 生命周期状态常量 */
     public static final int LIFECYCLE_RUNNING = 1;
     public static final int LIFECYCLE_STOPPED = 2;
