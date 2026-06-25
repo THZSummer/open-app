@@ -1,7 +1,7 @@
-package com.xxx.it.works.wecode.v2.modules.trigger.controller;
+package com.xxx.it.works.wecode.v2.modules.flow.controller;
 
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
-import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,15 +41,15 @@ import java.util.Map;
  * </p>
  */
 @RestController
-@RequestMapping({"/api/v1/flows", "/api/v1/trigger"})
+@RequestMapping("/api/v1/flows")
 @Tag(name = "HTTP 触发", description = "对外 HTTP 触发端点，同步执行连接流 (v5.5)")
-public class OpTriggerController {
+public class FlowInvokeController {
 
-    private static final Logger log = LoggerFactory.getLogger(OpTriggerController.class);
+    private static final Logger log = LoggerFactory.getLogger(FlowInvokeController.class);
 
-    private final OpTriggerService triggerService;
+    private final FlowInvokeService triggerService;
 
-    public OpTriggerController(OpTriggerService triggerService) {
+    public FlowInvokeController(FlowInvokeService triggerService) {
         this.triggerService = triggerService;
     }
 
@@ -57,7 +57,7 @@ public class OpTriggerController {
      * HTTP 触发连接流执行 (v5.8 透明穿透)
      * <p>
      * POST /api/v1/flows/{flowId}/invoke
-     * 认证/限流/入参校验全部由 OpTriggerService 根据编排配置动态处理.
+     * 认证/限流/入参校验全部由 FlowInvokeService 根据编排配置动态处理.
      * <ul>
      *   <li>响应体: 出口节点 output.body 裸数据 (不再是 ExecutionResult JSON 信封)</li>
      *   <li>用户自定义响应头: 出口节点 output.header → HTTP 响应头</li>
@@ -80,7 +80,7 @@ public class OpTriggerController {
 
         log.info("HTTP trigger invoke: flowId={}", flowId);
 
-        // 认证/限流/入参校验 + 执行全部由 OpTriggerService 处理
+        // 认证/限流/入参校验 + 执行全部由 FlowInvokeService 处理
         return triggerService.invokeFlow(flowId, triggerData, allHeaders, queryParams)
                 .map(response -> {
                     HttpHeaders headers = new HttpHeaders();

@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.debug.service;
+package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
@@ -39,9 +39,9 @@ import java.util.UUID;
  * </p>
  */
 @Service
-public class OpTestRunService {
+public class FlowVersionDebugService {
 
-    private static final Logger log = LoggerFactory.getLogger(OpTestRunService.class);
+    private static final Logger log = LoggerFactory.getLogger(FlowVersionDebugService.class);
 
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
@@ -50,7 +50,7 @@ public class OpTestRunService {
     private final ExecutionStepService executionStepService;
     private final IdGenerator idGenerator;
 
-    public OpTestRunService(
+    public FlowVersionDebugService(
             ObjectMapper objectMapper,
             ReactiveSequentialExecutor executor,
             OpFlowVersionReadRepository flowVersionReadRepository,

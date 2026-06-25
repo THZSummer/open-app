@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """HTTP 触发集成测试 (v5.8 — 透明响应格式)
 
-覆盖 POST /api/v1/trigger/{flowId}/invoke 全部场景：
+覆盖 POST /api/v1/flows/{flowId}/invoke 全部场景：
   - IT-049: 凭证缺失 → HTTP 401 + X- 头
   - IT-050: flow 不存在 → HTTP 404 + X-Code 头
   - IT-051: flow 未运行 (lifecycle_status=0) → 正常执行 + X- 头
@@ -610,7 +610,7 @@ BASE_TRIGGER = "http://localhost:18180/api/v1"
 
 def trigger_invoke(flow_id, body=None, headers=None, query_params=None):
     """发送 HTTP 触发请求，支持 header / query / body 三段参数"""
-    url = f"{BASE_TRIGGER}/trigger/{flow_id}/invoke"
+    url = f"{BASE_TRIGGER}/flows/{flow_id}/invoke"
     if query_params:
         qs = urllib.parse.urlencode(query_params, doseq=True)
         url = f"{url}?{qs}"
@@ -627,7 +627,7 @@ def trigger_invoke(flow_id, body=None, headers=None, query_params=None):
         if not is_quiet():
             print(f"\n  SKIP: connector-api 未运行 (port 18180)")
         else:
-            print(f"[SKIP] POST /trigger/{flow_id}/invoke")
+            print(f"[SKIP] POST /flows/{flow_id}/invoke")
         return None
 
     if not is_quiet():
@@ -640,7 +640,7 @@ def _send_quiet(flow_id, idx):
     """静默发送触发请求（用于并发限流测试）"""
     try:
         resp = requests.post(
-            f"{BASE_TRIGGER}/trigger/{flow_id}/invoke",
+            f"{BASE_TRIGGER}/flows/{flow_id}/invoke",
             json={"keyword": f"test_{idx}"},
             headers={"Content-Type": "application/json",
                      "X-Sys-Token": "test-token",

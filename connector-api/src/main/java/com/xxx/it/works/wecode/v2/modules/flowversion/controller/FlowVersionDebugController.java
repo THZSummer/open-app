@@ -1,6 +1,6 @@
-package com.xxx.it.works.wecode.v2.modules.debug.controller;
+package com.xxx.it.works.wecode.v2.modules.flowversion.controller;
 
-import com.xxx.it.works.wecode.v2.modules.debug.service.OpTestRunService;
+import com.xxx.it.works.wecode.v2.modules.flowversion.service.FlowVersionDebugService;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,13 +32,13 @@ import java.util.Map;
  */
 @RestController
 @Tag(name = "测试执行", description = "内部测试执行接口，供 open-server debug-proxy 调用 (v5.5)")
-public class OpTestRunController {
+public class FlowVersionDebugController {
 
-    private static final Logger log = LoggerFactory.getLogger(OpTestRunController.class);
+    private static final Logger log = LoggerFactory.getLogger(FlowVersionDebugController.class);
 
-    private final OpTestRunService testRunService;
+    private final FlowVersionDebugService testRunService;
 
-    public OpTestRunController(OpTestRunService testRunService) {
+    public FlowVersionDebugController(FlowVersionDebugService testRunService) {
         this.testRunService = testRunService;
     }
 
@@ -70,31 +70,6 @@ public class OpTestRunController {
                 flowId,
                 versionId,
                 request != null ? request.getMockTriggerData() : null);
-    }
-
-    /**
-     * 执行测试运行 (向后兼容旧路径)
-     * <p>
-     * 接收 {@code {"mockTriggerData": {...}}} JSON 对象, 使用 flowId 作为 versionId 调用服务.
-     * </p>
-     */
-    @PostMapping(value = "/api/v1/internal/test-run/{flowId}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "执行测试运行 (向后兼容路径)",
-               description = "内部端点 (兼容旧测试脚本), 接收 mockTriggerData 并使用 flowId 作为 versionId.")
-    public Mono<ExecutionResult> executeTestRunLegacy(
-            @Parameter(description = "连接流ID")
-            @PathVariable Long flowId,
-            @RequestBody(required = false) Map<String, Object> body) {
-
-        log.info("Internal test run (legacy): flowId={}", flowId);
-
-        @SuppressWarnings("unchecked")
-        Map<String, Object> mockTriggerData = null;
-        if (body != null && body.containsKey("mockTriggerData")) {
-            mockTriggerData = (Map<String, Object>) body.get("mockTriggerData");
-        }
-
-        return testRunService.executeTestRun(flowId, flowId, mockTriggerData);
     }
 
     /**

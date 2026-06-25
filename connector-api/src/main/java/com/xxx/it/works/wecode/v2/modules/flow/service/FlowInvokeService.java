@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.trigger.service;
+package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
@@ -69,9 +69,9 @@ import java.util.UUID;
  * </p>
  */
 @Service
-public class OpTriggerService {
+public class FlowInvokeService {
 
-    private static final Logger log = LoggerFactory.getLogger(OpTriggerService.class);
+    private static final Logger log = LoggerFactory.getLogger(FlowInvokeService.class);
 
     private static final String TRIGGER_NODE_ID = "node_trigger";
 
@@ -90,7 +90,7 @@ public class OpTriggerService {
     private final ExecutionStepService executionStepService;
     private final IdGenerator idGenerator;
 
-    public OpTriggerService(
+    public FlowInvokeService(
             ObjectMapper objectMapper,
             AuthValidatorRegistry authValidatorRegistry,
             UrlWhitelistValidator urlWhitelistValidator,

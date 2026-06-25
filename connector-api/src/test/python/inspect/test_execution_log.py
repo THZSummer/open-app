@@ -202,7 +202,7 @@ def query_step_logs(flow_id):
         f"WHERE r.flow_id = {flow_id} "
         f"ORDER BY s.create_time ASC"
     )
-    return db(sql)
+    return db(sql, capture=True)
 
 
 def query_step_full_data(flow_id):
@@ -216,7 +216,7 @@ def query_step_full_data(flow_id):
         f"WHERE r.flow_id = {flow_id} "
         f"ORDER BY s.create_time ASC"
     )
-    return db(sql)
+    return db(sql, capture=True)
 
 
 # ═══════════════════════════════════════════════════════════

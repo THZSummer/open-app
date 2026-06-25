@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.trigger;
+package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
@@ -15,7 +15,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
-import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
 import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
 import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,8 +37,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("OpTriggerService 测试")
-class OpTriggerServiceTest {
+@DisplayName("FlowInvokeService 测试")
+class FlowInvokeServiceTest {
 
     @Mock
     private OpFlowVersionReadRepository flowVersionReadRepository;
@@ -80,7 +80,7 @@ class OpTriggerServiceTest {
     private IdGenerator idGenerator;
 
     private ObjectMapper objectMapper;
-    private OpTriggerService triggerService;
+    private FlowInvokeService triggerService;
 
     /**
      * v5.7 有效的编排配置: 包含 trigger 节点 (type=http, authConfig, inputContract) + exit 节点
@@ -97,7 +97,7 @@ class OpTriggerServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         when(idGenerator.nextId()).thenReturn(1L);
-        triggerService = new OpTriggerService(objectMapper, authValidatorRegistry, urlWhitelistValidator,
+        triggerService = new FlowInvokeService(objectMapper, authValidatorRegistry, urlWhitelistValidator,
                 executor, dagScheduler, flowVersionReadRepository, flowReadRepository,
                 connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle, cacheManager,
                 executionRecordService, executionStepService, idGenerator);

@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.debug.service;
+package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
@@ -24,8 +24,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("OpTestRunService 测试")
-class OpTestRunServiceTest {
+@DisplayName("FlowVersionDebugService 测试")
+class FlowVersionDebugServiceTest {
 
     @Mock
     private ReactiveSequentialExecutor executor;
@@ -43,14 +43,14 @@ class OpTestRunServiceTest {
     private IdGenerator idGenerator;
 
     private ObjectMapper objectMapper;
-    private OpTestRunService service;
+    private FlowVersionDebugService service;
     private final Long versionId = 200L;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
         when(idGenerator.nextId()).thenReturn(1L);
-        service = new OpTestRunService(objectMapper, executor, flowVersionReadRepository,
+        service = new FlowVersionDebugService(objectMapper, executor, flowVersionReadRepository,
                 executionRecordService, executionStepService, idGenerator);
     }
 

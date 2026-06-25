@@ -256,7 +256,8 @@ def query_record_version(flow_id):
     out = db(
         f"SELECT flow_version_id FROM openplatform_v2_cp_execution_record_t "
         f"WHERE flow_id = {flow_id} "
-        f"ORDER BY trigger_time DESC LIMIT 1"
+        f"ORDER BY trigger_time DESC LIMIT 1",
+        capture=True
     )
     return out
 

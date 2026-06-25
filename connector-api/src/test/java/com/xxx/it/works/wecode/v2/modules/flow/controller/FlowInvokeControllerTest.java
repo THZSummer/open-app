@@ -1,8 +1,8 @@
-package com.xxx.it.works.wecode.v2.modules.trigger.controller;
+package com.xxx.it.works.wecode.v2.modules.flow.controller;
 
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
-import com.xxx.it.works.wecode.v2.modules.trigger.service.OpTriggerService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
 import com.xxx.it.works.wecode.v2.modules.ratelimit.RateLimitConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,22 +26,22 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * OpTriggerController 接口层测试 (WebFluxTest) (v5.8)
+ * FlowInvokeController 接口层测试 (WebFluxTest) (v5.8)
  *
  * <p>测试目标: HTTP 请求绑定 + 透明穿透响应
  * 接口: #54 POST /api/v1/flows/{flowId}/invoke
  * 测试层次: L2 接口层
  * </p>
  */
-@WebFluxTest(OpTriggerController.class)
-@DisplayName("OpTriggerController WebFluxTest")
-class OpTriggerControllerWebFluxTest {
+@WebFluxTest(FlowInvokeController.class)
+@DisplayName("FlowInvokeController WebFluxTest")
+class FlowInvokeControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
 
     @MockitoBean
-    private OpTriggerService triggerService;
+    private FlowInvokeService triggerService;
 
     @MockitoBean
     private OpFlowVersionReadRepository flowVersionReadRepository;
