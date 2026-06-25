@@ -22,12 +22,9 @@ if lsof -i:$PORT > /dev/null 2>&1; then
 fi
 
 # 检查/构建 jar
-JAR=$(ls target/open-server-*.jar 2>/dev/null | head -1)
-if [ -z "$JAR" ]; then
-    echo "🔨 未找到 jar，正在编译..."
-    mvn package -DskipTests -q || { echo "❌ 编译失败"; exit 1; }
-    JAR=$(ls target/open-server-*.jar 2>/dev/null | head -1)
-fi
+echo "🔨 编译中..."
+mvn package -DskipTests -q || { echo "❌ 编译失败"; exit 1; }
+JAR=$(ls target/*.jar 2>/dev/null | head -1)
 echo "📦 $JAR"
 
 # 启动
