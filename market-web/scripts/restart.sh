@@ -1,20 +1,33 @@
 #!/bin/bash
-# market-web 一键启动 (前端)
+# market-web 一键重启 — 先停止再启动
 set -uo pipefail
 
-APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "=========================================="
+echo "重启 market-web"
+echo "=========================================="
+
+# 先停止
+echo ""
+echo ">>> 停止旧进程..."
+bash "$SCRIPT_DIR/stop.sh"
+echo ""
+
+# 再启动
+echo ">>> 启动新进程..."
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PORT=13000
 LOG="$APP_DIR/logs/market-web.log"
 PID_FILE="$APP_DIR/.pid"
 
-echo "=========================================="
 echo "启动 market-web (前端)  端口: $PORT"
 echo "=========================================="
 
 cd "$APP_DIR"
 
 if lsof -i:$PORT > /dev/null 2>&1; then
-    echo "⚠️  端口 $PORT 已被占用，请先执行 ./scripts/stop.sh"
+    echo "⚠️  端口 $PORT 仍被占用，请手动检查"
     exit 1
 fi
 

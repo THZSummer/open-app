@@ -132,7 +132,7 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
     return flow_id, flow_version_id
 
 
-def build_orch(connector_version_id):
+def build_orch(connector_version_id, connection_config):
     """构建 trigger → connector → exit 三元编排"""
     return {
         "nodes": [
@@ -168,6 +168,7 @@ def build_orch(connector_version_id):
                 "data": {
                     "labelCn": "连接器", "labelEn": "Conn",
                     "connectorVersionId": str(connector_version_id),
+                    "connectorVersionConfig": connection_config,
                     "inputMapping": {
                         "header": {"type": "object", "properties": {}},
                         "query": {"type": "object", "properties": {}},
@@ -377,7 +378,7 @@ def test_connector_auth_multiple():
     cid_001, cvid_001 = setup_connector(CONN_CONFIG_SOA_COOKIE)
     fid_001, fvid_001 = setup_flow(
         sid_001, lifecycle_status=1,
-        orchestration=build_orch(cvid_001)
+        orchestration=build_orch(cvid_001, CONN_CONFIG_SOA_COOKIE)
     )
 
     resp = trigger(
@@ -392,7 +393,7 @@ def test_connector_auth_multiple():
     cid_002, cvid_002 = setup_connector(CONN_CONFIG_DIGITALSIGN_COOKIE)
     fid_002, fvid_002 = setup_flow(
         sid_002, lifecycle_status=1,
-        orchestration=build_orch(cvid_002)
+        orchestration=build_orch(cvid_002, CONN_CONFIG_DIGITALSIGN_COOKIE)
     )
 
     resp = trigger(
@@ -407,7 +408,7 @@ def test_connector_auth_multiple():
     cid_003, cvid_003 = setup_connector(CONN_CONFIG_TRIPLE_AUTH)
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=1,
-        orchestration=build_orch(cvid_003)
+        orchestration=build_orch(cvid_003, CONN_CONFIG_TRIPLE_AUTH)
     )
 
     resp = trigger(
@@ -422,7 +423,7 @@ def test_connector_auth_multiple():
     cid_004, cvid_004 = setup_connector(CONN_CONFIG_SOA_ONLY)
     fid_004, fvid_004 = setup_flow(
         sid_004, lifecycle_status=1,
-        orchestration=build_orch(cvid_004)
+        orchestration=build_orch(cvid_004, CONN_CONFIG_SOA_ONLY)
     )
 
     resp = trigger(

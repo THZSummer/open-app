@@ -93,7 +93,7 @@ def build_conn_config(url, url_whitelist=None):
 # Orchestration Builder
 # ═══════════════════════════════════════════════════════════
 
-def build_orch(connector_version_id):
+def build_orch(connector_version_id, connection_config):
     """构建 trigger → connector → exit 三元编排"""
     return {
         "nodes": [
@@ -129,6 +129,7 @@ def build_orch(connector_version_id):
                 "data": {
                     "labelCn": "连接器", "labelEn": "Conn",
                     "connectorVersionId": str(connector_version_id),
+                    "connectorVersionConfig": connection_config,
                     "inputMapping": {
                         "header": {"type": "object", "properties": {}},
                         "query": {"type": "object", "properties": {}},
@@ -251,7 +252,7 @@ def test_connector_url_whitelist():
     cid_001, cvid_001 = setup_connector(config_001)
     fid_001, fvid_001 = setup_flow(
         sid_001, lifecycle_status=1,
-        orchestration=build_orch(cvid_001)
+        orchestration=build_orch(cvid_001, config_001)
     )
 
     resp = trigger(fid_001, body={"msg": "test"}, headers={"X-Sys-Token": "test-token"})
@@ -295,7 +296,7 @@ def test_connector_url_whitelist():
     cid_002, cvid_002 = setup_connector(config_002)
     fid_002, fvid_002 = setup_flow(
         sid_002, lifecycle_status=1,
-        orchestration=build_orch(cvid_002)
+        orchestration=build_orch(cvid_002, config_002)
     )
 
     resp = trigger(fid_002, body={"msg": "test"}, headers={"X-Sys-Token": "test-token"})
@@ -327,7 +328,7 @@ def test_connector_url_whitelist():
     cid_003, cvid_003 = setup_connector(config_003)
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=1,
-        orchestration=build_orch(cvid_003)
+        orchestration=build_orch(cvid_003, config_003)
     )
 
     resp = trigger(fid_003, body={"msg": "test"}, headers={"X-Sys-Token": "test-token"})
@@ -373,7 +374,7 @@ def test_connector_url_whitelist():
     cid_004a, cvid_004a = setup_connector(config_004a)
     fid_004a, fvid_004a = setup_flow(
         sid_004a, lifecycle_status=1,
-        orchestration=build_orch(cvid_004a)
+        orchestration=build_orch(cvid_004a, config_004a)
     )
 
     resp = trigger(fid_004a, body={"msg": "test"}, headers={"X-Sys-Token": "test-token"})
@@ -406,7 +407,7 @@ def test_connector_url_whitelist():
     cid_004b, cvid_004b = setup_connector(config_004b)
     fid_004b, fvid_004b = setup_flow(
         sid_004b, lifecycle_status=1,
-        orchestration=build_orch(cvid_004b)
+        orchestration=build_orch(cvid_004b, config_004b)
     )
 
     resp = trigger(fid_004b, body={"msg": "test"}, headers={"X-Sys-Token": "test-token"})

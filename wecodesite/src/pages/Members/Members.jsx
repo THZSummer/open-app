@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Table, Button, Tag, Modal, Radio, Select, message, Spin, Tooltip, Pagination } from 'antd';
 import { PlusOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { useAppDetail } from '../../contexts/AppContext';
+import { useSelector } from 'react-redux';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { fetchMemberList, searchUsers, addMembers, deleteMember, transferOwner } from './thunk';
 import { ROLE_MAP, INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../utils/constants';
@@ -19,7 +19,7 @@ const { Option } = Select;
 function Members() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { appDetail } = useAppDetail();
+  const { appBaseInfo } = useSelector(state => state.app);
   const appId = searchParams.get('appId');
 
   // 页面级权限守卫：不是成员则跳回列表
@@ -57,21 +57,21 @@ function Members() {
     return Array.from(map.values());
   })();
 
-  // 权限校验通过后（role 已拿到），从 Context 拿 appDetail 加载数据
+  // 权限校验通过后（role 已拿到），从 Context 拿 appBaseInfo 加载数据
   useEffect(() => {
     if (!appId || roleLoading || role === null) return;
-    if (!appDetail) return;
-    if (appDetail.appType !== 1) {
+    if (!appBaseInfo) return;
+    if (appBaseInfo.appType !== 1) {
       navigate(`/basic-info?appId=${appId}`);
       return;
     }
-    setAppData(appDetail);
+    setAppData(appBaseInfo);
     // 根据 role 设置添加成员时的默认角色
     if (role === 1) setSelectedRole(2);
     else if (role === 2) setSelectedRole(0);
     else setSelectedRole(0);
     loadMembers();
-  }, [appId, appDetail, role, roleLoading]);
+  }, [appId, appBaseInfo, role, roleLoading]);
 
   const loadMembers = async (params = { curPage: 1, pageSize: 10 }) => {
     setLoading(true);
