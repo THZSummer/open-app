@@ -279,13 +279,6 @@ class OpFlowServiceTest {
             when(flowVersionMapper.selectByFlowId(100L)).thenReturn(null);
             when(idGenerator.nextId()).thenReturn(300L);
 
-            com.fasterxml.jackson.databind.node.ArrayNode arrNode = mock(com.fasterxml.jackson.databind.node.ArrayNode.class);
-            when(arrNode.isArray()).thenReturn(true);
-            when(arrNode.isEmpty()).thenReturn(false);
-            com.fasterxml.jackson.databind.JsonNode cfgNode = mock(com.fasterxml.jackson.databind.JsonNode.class);
-            when(cfgNode.get("nodes")).thenReturn(arrNode);
-            when(objectMapper.readTree(anyString())).thenReturn(cfgNode);
-
             assertEquals("200", flowService.updateFlowConfig(100L, request).getCode());
             verify(flowVersionMapper).insert(any(FlowVersion.class));
         }
@@ -297,13 +290,6 @@ class OpFlowServiceTest {
             request.setOrchestrationConfig(MAPPER.readTree("{\"nodes\":[],\"edges\":[]}"));
 
             when(flowMapper.selectById(100L)).thenReturn(existingFlow);
-
-            com.fasterxml.jackson.databind.node.ArrayNode emptyArr = mock(com.fasterxml.jackson.databind.node.ArrayNode.class);
-            when(emptyArr.isArray()).thenReturn(true);
-            when(emptyArr.isEmpty()).thenReturn(true);
-            com.fasterxml.jackson.databind.JsonNode cfgNode = mock(com.fasterxml.jackson.databind.JsonNode.class);
-            when(cfgNode.get("nodes")).thenReturn(emptyArr);
-            when(objectMapper.readTree(anyString())).thenReturn(cfgNode);
 
             assertEquals("400", flowService.updateFlowConfig(100L, request).getCode());
             verify(flowVersionMapper, never()).insert(any());
