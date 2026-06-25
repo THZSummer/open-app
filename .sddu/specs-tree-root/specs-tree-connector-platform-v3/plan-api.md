@@ -391,7 +391,7 @@
 ## 3. 接口详细定义
 
 > 💡 接口清单见 §2，本章为每个接口的请求/响应详细定义。所有接口的字段命名、数据类型、响应格式、状态枚举均遵循 §1 设计规范。
-> 💡 **URL 白名单**（FR-015）作为 `connectionConfig.urlWhitelist` 字段内嵌在连接器版本配置中，由 #10 / #11 读写，不设独立端点。
+> 💡 **URL 白名单**（FR-015）为连接器级独立配置，不存储在 `connectionConfig` 中。
 > 💡 **操作日志查询**（FR-046）复用现有 OperateLog 模块，详见 §3.8，不新增专用端点。
 
 ### 3.1 连接器 CRUD（#1~#7）
@@ -921,7 +921,6 @@
 | protocol | string | 协议类型，固定 `"HTTP"` |
 | protocolConfig | object | 协议配置：url / method（headers 由 input.header 承载，不在此处） |
 | authConfigs | array | 认证配置列表（minItems 1），每项见下方 `authConfigs[]` 子表 |
-| urlWhitelist | array | URL 白名单规则数组，见下方 `urlWhitelist[]` 子表。空数组=不限制 |
 | input | object | 入参声明（HTTP header/query/body 三段式），见 plan-json-schema.md §4.3.5 httpInputDef |
 | output | object | 出参声明（HTTP header/body 两段式），见 plan-json-schema.md §4.3.6 httpOutputDef |
 | timeoutMs | int | 单次调用超时（毫秒），默认 3000 |
@@ -938,13 +937,6 @@
 | secretKey | object | type=SIGNATURE 时必填，签名密钥定义（jsonObjectDef） |
 
 > `header`/`query` 内每个字段的 `value` 遵循 §3 值表达式体系（如 `"${$.system.env.soaToken}"`）。`sensitive=true` 的字段落库加密存储、日志脱敏打印。
-
-**`urlWhitelist[]` 子字段**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| pattern | string | 正则表达式 |
-| description | string | 规则说明 |
 
 **示例**
 
@@ -1014,9 +1006,6 @@
           }
         }
       ],
-      "urlWhitelist": [
-        { "pattern": "^https://api\\.example\\.com/v1/.*", "description": "内部 API 网关" }
-      ],
       "input": {
         "protocol": "HTTP",
         "body": {
@@ -1070,7 +1059,6 @@
 |------|------|:--:|------|
 | connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §4.3.7 connectorConfigDef） |
 
-> `urlWhitelist` 校验：保存时不校验正则合法性（spec v2.23），正则校验推迟到发布时（#12）执行。空数组=不限制。
 > `authConfigs` 校验：保存时不校验 `type` 枚举值合法性、`header`/`query` 声明、`sysAccountWhitelist`/`secretKey` 必填等结构约束（spec v2.23），全部推迟到发布时（#12）执行。
 
 **响应体 `data`**
@@ -1128,7 +1116,6 @@
         }
       }
     ],
-    "urlWhitelist": [{"pattern":"^https://api\\.example\\.com/v2/.*","description":"新版 API"}],
     "input": {
       "protocol": "HTTP",
       "body": {
