@@ -16,7 +16,7 @@
   from client import *
 
   # HTTP
-  resp = request("POST", "/trigger/{flowId}/invoke", {...}, headers={...})
+  resp = api("POST", "/flows/{flowId}/invoke", {...}, headers={...})
 
   # DB
   fid = snow_id()
@@ -31,20 +31,22 @@ import json
 import requests
 import time
 import re
-import atexit
 import subprocess
 
 _pass_count = 0
 _fail_count = 0
 
 __all__ = [
-    "BASE_URL", "is_quiet", "request",
+    "BASE_URL", "is_quiet", "api",
     "check", "check_field_type", "check_time_iso8601", "check_camel_case",
+    "done",
     "_print_request", "_print_response", "_is_pass",
     # V4: DB 基础设施
     "db", "db_val", "snow_id", "escape_sql",
-    "_DB", "_API_HOST",
+    "_DB", "_API_HOST", "TEST_APP_ID",
     "redis",
+    # HTTP 快捷方法
+    "trigger", "debug_run",
 ]
 
 BASE_URL = "http://localhost:18180/api/v1"
@@ -69,6 +71,7 @@ _REDIS_CLUSTER = {
     "password": "openapp",
 }
 _API_HOST = "localhost:18180"
+TEST_APP_ID = "202606241730488926"  # 与 open-server 共用测试应用
 
 
 def is_quiet():
@@ -76,7 +79,7 @@ def is_quiet():
     return "--quiet" in sys.argv
 
 
-def request(method, path, body=None, headers=None):
+def api(method, path, body=None, headers=None):
     """发送请求到 connector-api (port 18180)，返回 Response 对象
 
     连接失败时返回 None（打印 SKIP）; --quiet 时抑制请求/响应详情。
@@ -154,14 +157,16 @@ def _is_pass(resp):
 
 
 def check(name, condition, detail=""):
-    """契约校验断言：PASS / FAIL + 可选详细描述"""
+    """契约校验断言：PASS / FAIL + 可选详细描述。失败时抛出 AssertionError。"""
     global _pass_count, _fail_count
     if condition:
         _pass_count += 1
         print(f"  ✅ PASS: {name}" + (f" - {detail}" if detail else ""))
     else:
         _fail_count += 1
-        print(f"  ❌ FAIL: {name}" + (f" - {detail}" if detail else ""))
+        msg = f"  ❌ FAIL: {name}" + (f" - {detail}" if detail else "")
+        print(msg)
+        raise AssertionError(msg)
 
 
 def check_field_type(body, field_path, expected_type):
@@ -255,20 +260,31 @@ def redis(*args):
     return r.stdout.strip() if r.returncode == 0 else None
 
 
-def _print_summary():
-    """打印测试结果汇总（仅在非 quiet 模式下输出）"""
-    if is_quiet():
-        return
+def trigger(flow_id, body=None, headers=None, query_params=None):
+    """HTTP 触发连接流 — POST /api/v1/flows/{flowId}/invoke
+
+    返回 Response 对象（连接失败返回 None）。
+    query_params 示例: {"page": "1", "size": "10"}
+    """
+    path = f"/flows/{flow_id}/invoke"
+    if query_params:
+        import urllib.parse
+        qs = urllib.parse.urlencode(query_params, doseq=True)
+        path = f"{path}?{qs}"
+    return api("POST", path, body, headers)
+
+
+def debug_run(flow_id, version_id, body=None):
+    """测试运行调试 — POST /api/v1/flows/{flowId}/versions/{versionId}/debug
+
+    body 示例: {"mockTriggerData": {"sender": "test"}}
+    返回 Response 对象（连接失败返回 None）。
+    """
+    return api("POST", f"/flows/{flow_id}/versions/{version_id}/debug", body)
+
+
+def done():
+    """打印汇总，返回 (pass_count, fail_count)"""
     print(f"\n── 测试结果 ──")
     print(f"  ✅ PASS: {_pass_count}  ❌ FAIL: {_fail_count}")
-    print(f"  exit code: {'1' if _fail_count > 0 else '0'}")
-
-
-def _atexit_handler():
-    """atexit 处理函数：打印汇总并在失败时设置非零退出码"""
-    _print_summary()
-    if _fail_count > 0:
-        sys.exit(1)
-
-
-atexit.register(_atexit_handler)
+    return _pass_count, _fail_count

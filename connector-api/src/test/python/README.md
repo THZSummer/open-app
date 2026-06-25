@@ -8,7 +8,7 @@
 
 connector-api 是运行时引擎，测试以**执行场景**为单位组织，而非按 API 端点：
 
-| 文件 | 标记 | 覆盖场景 |
+| 文件 | 级别 | 覆盖场景 |
 |------|:--:|------|
 | **基础连通** | | |
 | `test_health.py` | L0 | 服务健康检查 |
@@ -108,16 +108,17 @@ cd connector-api/src/test/python
 # 默认 L0 冒烟
 pytest
 
-# 指定层级
-pytest -m L1                     # 核心执行
-pytest -m "L0 or L1"             # PR 门禁
-pytest -m "not L4"               # 每日回归
+# L0 冒烟
+pytest -m L0
 
-# 全量回归（含 inspect 脚本）
-python3 inspect/all.py
+# L1 核心执行
+pytest -m L1
+
+# 全量
+pytest
 
 # 全量 + 报告
-python3 inspect/all.py --all --report
+python3 inspect/all.py --report
 
 # 安静模式
 python3 inspect/all.py --quiet

@@ -11,21 +11,21 @@
 即使下游 mock 不存在，也验证流程引擎能正确处理 authConfig 而不崩溃。
 """
 from client import *
+import pytest
 import time
 import json
-import requests as req_lib
 import threading
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
 
 
 # ═══════════════════════════════════════════════════════════
-# Mock Downstream Server (port 18999)
+# Mock Downstream Server (port 18995)
 # 用于接收 connector 的下游 HTTP 调用，回显收到的请求头
 # ═══════════════════════════════════════════════════════════
 
 MOCK_HOST = "localhost"
-MOCK_PORT = 18999
+MOCK_PORT = 18995
 MOCK_BASE = f"http://{MOCK_HOST}:{MOCK_PORT}"
 
 
@@ -68,7 +68,7 @@ class MockHandler(BaseHTTPRequestHandler):
         })
 
 
-# 尝试启动 mock server（端口可能已被 trigger_invoke.py 占用）
+# 尝试启动 mock server
 mock_server = None
 mock_ready = False
 try:
@@ -76,7 +76,7 @@ try:
     mock_thread = threading.Thread(target=mock_server.serve_forever, daemon=True)
     mock_thread.start()
 except OSError:
-    print("INFO: Mock server port 18999 already in use (may be from another test)")
+    print("INFO: Mock server port 18995 already in use (may be from another test)")
 
 # 等待 mock 就绪
 for _ in range(10):
@@ -90,7 +90,7 @@ for _ in range(10):
     time.sleep(0.5)
 
 if not mock_ready:
-    print("WARNING: Mock server on port 18999 did not become ready — "
+    print("WARNING: Mock server on port 18995 did not become ready — "
           "connector downstream calls will fail (acceptable for auth config tests)")
 
 
@@ -101,9 +101,9 @@ def setup_connector(config):
     version_id = snow_id()
     db(
         f"INSERT INTO openplatform_v2_cp_connector_t "
-        f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
+        f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
-        f"1, 'tester', 'tester')"
+        f"1, {TEST_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
@@ -125,9 +125,9 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
     flow_version_id = snow_id()
     db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
-        f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
+        f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_多认证测试', 'IT_MultiAuthTest', "
-        f"{lifecycle_status}, 'tester', 'tester')"
+        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
@@ -343,50 +343,8 @@ CONN_CONFIG_SOA_ONLY = {
 
 
 # ═══════════════════════════════════════════════════════════
-# Trigger Invoke Helper
+# IT-AUTH-001: SOA + Cookie 多认证 (FR-012, FR-014)
 # ═══════════════════════════════════════════════════════════
-
-def trigger_invoke(flow_id, body=None, headers=None):
-    """向 connector-api 发送触发请求，返回 Response 对象或 None"""
-    url = f"http://localhost:18180/api/v1/trigger/{flow_id}/invoke"
-    h = {"Content-Type": "application/json"}
-    if headers:
-        h.update(headers)
-
-    if not is_quiet():
-        print(f"\n  REQUEST: POST {url}")
-        if body:
-            print(f"    Body: {json.dumps(body, ensure_ascii=False)}")
-
-    try:
-        start = time.time()
-        resp = req_lib.post(url, json=body or {}, headers=h, timeout=10)
-        elapsed = time.time() - start
-    except req_lib.exceptions.ConnectionError:
-        if not is_quiet():
-            print("  SKIP: connector-api 未运行 (port 18180)")
-        else:
-            print("[SKIP] POST trigger invoke")
-        return None
-    except Exception as e:
-        print(f"  ERROR: {e}")
-        return None
-
-    if not is_quiet():
-        print(f"  RESPONSE: {resp.status_code} ({elapsed:.2f}s)")
-        try:
-            resp_body = resp.json()
-            print(f"    Body: {json.dumps(resp_body, indent=2, ensure_ascii=False)}")
-        except Exception:
-            print(f"    Body: {resp.text[:500]}")
-        # 打印关键响应头
-        for key in ["X-Flow-Id", "X-Execution-Id", "X-Status", "X-Duration-Ms",
-                     "X-Code", "X-Message-Zh"]:
-            if key in resp.headers:
-                print(f"    {key}: {resp.headers[key]}")
-
-    return resp
-
 
 def verify_flow_response(resp, test_label):
     """通用响应校验：验证 trigger API 返回了合理的执行结果"""
@@ -428,98 +386,105 @@ def verify_flow_response(resp, test_label):
 # ═══════════════════════════════════════════════════════════
 # IT-AUTH-001: SOA + Cookie 多认证 (FR-012, FR-014)
 # ═══════════════════════════════════════════════════════════
-print("=== IT-AUTH-001: SOA + Cookie 多认证 (FR-012, FR-014) ===")
-sid_001 = snow_id()
-fvid_001 = cid_001 = cvid_001 = None
-try:
-    cid_001, cvid_001 = setup_connector(CONN_CONFIG_SOA_COOKIE)
-    fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
-        orchestration=build_orch(cvid_001)
-    )
 
-    resp = trigger_invoke(
-        fid_001,
-        body={"msg": "auth_test_001"},
-        headers={"X-Sys-Token": "test-token"}
-    )
-    verify_flow_response(resp, "IT-AUTH-001")
-finally:
-    cleanup_flow(sid_001, fvid_001, cid_001, cvid_001)
+@pytest.mark.L2
+def test_connector_auth_multiple():
+    print("=== IT-AUTH-001: SOA + Cookie 多认证 (FR-012, FR-014) ===")
+    sid_001 = snow_id()
+    fvid_001 = cid_001 = cvid_001 = None
+    try:
+        cid_001, cvid_001 = setup_connector(CONN_CONFIG_SOA_COOKIE)
+        fid_001, fvid_001 = setup_flow(
+            sid_001, lifecycle_status=1,
+            orchestration=build_orch(cvid_001)
+        )
+    
+        resp = trigger(
+            fid_001,
+            body={"msg": "auth_test_001"},
+            headers={"X-Sys-Token": "test-token"}
+        )
+        verify_flow_response(resp, "IT-AUTH-001")
+    finally:
+        cleanup_flow(sid_001, fvid_001, cid_001, cvid_001)
+    
+    
+    # ═══════════════════════════════════════════════════════════
+    # IT-AUTH-002: DigitalSign + Cookie 多认证 (FR-013, FR-014)
+    # ═══════════════════════════════════════════════════════════
+    print("\n=== IT-AUTH-002: DigitalSign + Cookie 多认证 (FR-013, FR-014) ===")
+    sid_002 = snow_id()
+    fvid_002 = cid_002 = cvid_002 = None
+    try:
+        cid_002, cvid_002 = setup_connector(CONN_CONFIG_DIGITALSIGN_COOKIE)
+        fid_002, fvid_002 = setup_flow(
+            sid_002, lifecycle_status=1,
+            orchestration=build_orch(cvid_002)
+        )
+    
+        resp = trigger(
+            fid_002,
+            body={"msg": "auth_test_002"},
+            headers={"X-Sys-Token": "test-token"}
+        )
+        verify_flow_response(resp, "IT-AUTH-002")
+    finally:
+        cleanup_flow(sid_002, fvid_002, cid_002, cvid_002)
+    
+    
+    # ═══════════════════════════════════════════════════════════
+    # IT-AUTH-003: SOA + DigitalSign + Cookie 三重组合
+    # ═══════════════════════════════════════════════════════════
+    print("\n=== IT-AUTH-003: SOA + DigitalSign + Cookie 三重组合认证 ===")
+    sid_003 = snow_id()
+    fvid_003 = cid_003 = cvid_003 = None
+    try:
+        cid_003, cvid_003 = setup_connector(CONN_CONFIG_TRIPLE_AUTH)
+        fid_003, fvid_003 = setup_flow(
+            sid_003, lifecycle_status=1,
+            orchestration=build_orch(cvid_003)
+        )
+    
+        resp = trigger(
+            fid_003,
+            body={"msg": "auth_test_003"},
+            headers={"X-Sys-Token": "test-token"}
+        )
+        verify_flow_response(resp, "IT-AUTH-003")
+    finally:
+        cleanup_flow(sid_003, fvid_003, cid_003, cvid_003)
+    
+    
+    # ═══════════════════════════════════════════════════════════
+    # IT-AUTH-004: 单一 SOA 认证 (基线对比)
+    # ═══════════════════════════════════════════════════════════
+    print("\n=== IT-AUTH-004: 单一 SOA 认证 (基线) ===")
+    sid_004 = snow_id()
+    fvid_004 = cid_004 = cvid_004 = None
+    try:
+        cid_004, cvid_004 = setup_connector(CONN_CONFIG_SOA_ONLY)
+        fid_004, fvid_004 = setup_flow(
+            sid_004, lifecycle_status=1,
+            orchestration=build_orch(cvid_004)
+        )
+    
+        resp = trigger(
+            fid_004,
+            body={"msg": "auth_test_004"},
+            headers={"X-Sys-Token": "test-token"}
+        )
+        verify_flow_response(resp, "IT-AUTH-004")
+    finally:
+        cleanup_flow(sid_004, fvid_004, cid_004, cvid_004)
+    
+    
+    # ═══════════════════════════════════════════════════════════
+    # Shutdown
+    # ═══════════════════════════════════════════════════════════
+    if mock_server is not None:
+        mock_server.shutdown()
+        print("\nMock server shut down.")
 
-
-# ═══════════════════════════════════════════════════════════
-# IT-AUTH-002: DigitalSign + Cookie 多认证 (FR-013, FR-014)
-# ═══════════════════════════════════════════════════════════
-print("\n=== IT-AUTH-002: DigitalSign + Cookie 多认证 (FR-013, FR-014) ===")
-sid_002 = snow_id()
-fvid_002 = cid_002 = cvid_002 = None
-try:
-    cid_002, cvid_002 = setup_connector(CONN_CONFIG_DIGITALSIGN_COOKIE)
-    fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
-        orchestration=build_orch(cvid_002)
-    )
-
-    resp = trigger_invoke(
-        fid_002,
-        body={"msg": "auth_test_002"},
-        headers={"X-Sys-Token": "test-token"}
-    )
-    verify_flow_response(resp, "IT-AUTH-002")
-finally:
-    cleanup_flow(sid_002, fvid_002, cid_002, cvid_002)
-
-
-# ═══════════════════════════════════════════════════════════
-# IT-AUTH-003: SOA + DigitalSign + Cookie 三重组合
-# ═══════════════════════════════════════════════════════════
-print("\n=== IT-AUTH-003: SOA + DigitalSign + Cookie 三重组合认证 ===")
-sid_003 = snow_id()
-fvid_003 = cid_003 = cvid_003 = None
-try:
-    cid_003, cvid_003 = setup_connector(CONN_CONFIG_TRIPLE_AUTH)
-    fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
-        orchestration=build_orch(cvid_003)
-    )
-
-    resp = trigger_invoke(
-        fid_003,
-        body={"msg": "auth_test_003"},
-        headers={"X-Sys-Token": "test-token"}
-    )
-    verify_flow_response(resp, "IT-AUTH-003")
-finally:
-    cleanup_flow(sid_003, fvid_003, cid_003, cvid_003)
-
-
-# ═══════════════════════════════════════════════════════════
-# IT-AUTH-004: 单一 SOA 认证 (基线对比)
-# ═══════════════════════════════════════════════════════════
-print("\n=== IT-AUTH-004: 单一 SOA 认证 (基线) ===")
-sid_004 = snow_id()
-fvid_004 = cid_004 = cvid_004 = None
-try:
-    cid_004, cvid_004 = setup_connector(CONN_CONFIG_SOA_ONLY)
-    fid_004, fvid_004 = setup_flow(
-        sid_004, lifecycle_status=1,
-        orchestration=build_orch(cvid_004)
-    )
-
-    resp = trigger_invoke(
-        fid_004,
-        body={"msg": "auth_test_004"},
-        headers={"X-Sys-Token": "test-token"}
-    )
-    verify_flow_response(resp, "IT-AUTH-004")
-finally:
-    cleanup_flow(sid_004, fvid_004, cid_004, cvid_004)
-
-
-# ═══════════════════════════════════════════════════════════
-# Shutdown
-# ═══════════════════════════════════════════════════════════
-if mock_server is not None:
-    mock_server.shutdown()
-    print("\nMock server shut down.")
+if __name__ == "__main__":
+    test_connector_auth_multiple()
+    done()
