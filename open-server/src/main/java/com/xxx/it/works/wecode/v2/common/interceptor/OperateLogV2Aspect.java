@@ -25,6 +25,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -310,7 +311,10 @@ public class OperateLogV2Aspect {
 
             Map<String, Object> flat = new LinkedHashMap<>();
             for (int i = 0; i < paramNames.length; i++) {
-                if (args[i] == null) {
+                if (args[i] == null
+                        || args[i] instanceof Collection
+                        || args[i] instanceof Map
+                        || args[i].getClass().isArray()) {
                     continue;
                 }
                 if (args[i] instanceof CharSequence || args[i] instanceof Number || args[i] instanceof Boolean) {
