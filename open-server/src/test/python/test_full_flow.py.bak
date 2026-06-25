@@ -588,7 +588,7 @@ def test_full_flow():
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "message": {"type": "string", "value": "${$.constant:hello-from-e2e}"},
+                                        "message": {"type": "string", "value": "${$.node.trigger.input.body.filters}"},
                                         "traceId": {"type": "string", "value": "${$.node.trigger.input.body.traceId}"},
                                         "sort": {"type": "string", "value": "${$.node.trigger.input.body.sort}"}
                                     }
@@ -790,7 +790,7 @@ def test_full_flow():
             return True
 
         def s17():
-            r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
+            r = api_connector("POST", f"/flows/{fid}/invoke?keyword=人工智能&page=1&size=10",
                              {
                                  "filters": {"category": "tech", "minScore": 0.5},
                                  "sort": "score",
