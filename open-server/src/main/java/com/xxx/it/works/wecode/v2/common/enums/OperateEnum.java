@@ -194,20 +194,6 @@ public enum OperateEnum {
     }
 
     /**
-     * 获取渲染后的中文描述；若 templateCn 为 null 则回退 descCn
-     */
-    public String getDescCnOrDefault() {
-        return templateCn != null ? templateCn : descCn;
-    }
-
-    /**
-     * 获取渲染后的英文描述；若 templateEn 为 null 则回退 descEn
-     */
-    public String getDescEnOrDefault() {
-        return templateEn != null ? templateEn : descEn;
-    }
-
-    /**
      * diff 字段配置（仅当操作模板含 ${diffFields} 时需要配置）
      *
      * @return diff 配置，null 表示无 diff 需求
