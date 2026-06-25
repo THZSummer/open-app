@@ -21,15 +21,10 @@ if lsof -i:$PORT > /dev/null 2>&1; then
     exit 1
 fi
 
-# 检查/构建 jar
-echo "🔨 编译中..."
-mvn package -DskipTests -q || { echo "❌ 编译失败"; exit 1; }
-JAR=$(ls target/*.jar 2>/dev/null | head -1)
-echo "📦 $JAR"
-
 # 启动
+echo "🔨 编译启动中..."
 mkdir -p logs
-nohup java -jar "$JAR" --spring.profiles.active="$PROFILE" > "$LOG" 2>&1 &
+nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" > "$LOG" 2>&1 &
 echo $! > "$PID_FILE"
 echo "PID: $(cat $PID_FILE)"
 
