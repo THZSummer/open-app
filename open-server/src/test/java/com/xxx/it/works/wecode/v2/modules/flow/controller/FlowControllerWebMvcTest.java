@@ -59,7 +59,7 @@ class OpFlowControllerWebMvcTest {
         void testCreateSuccess() throws Exception {
             when(flowService.createFlow(any()))
                     .thenReturn(ApiResponse.success(
-                            FlowCreateResponse.builder().id("2000000000000000001").build()));
+                            FlowCreateResponse.builder().flowId("2000000000000000001").build()));
 
             mockMvc.perform(post("/service/open/v2/admin/flows")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +72,7 @@ class OpFlowControllerWebMvcTest {
                                     .header("X-App-Id", "1"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("200"))
-                    .andExpect(jsonPath("$.data.id").isString());
+                    .andExpect(jsonPath("$.data.flowId").isString());
         }
 
         @Test

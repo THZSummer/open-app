@@ -366,11 +366,16 @@ public class FlowVersionService {
         try {
             OperateLog auditLog = new OperateLog();
             auditLog.setOperateType("PUBLISH");
-            auditLog.setOperateObject("flow_version:" + versionId);
+            auditLog.setOperateObject("流版本");
             auditLog.setOperateDescCn("提交连接流版本发布审批 - " + flow.getNameCn() + " v" + version.getVersionNumber());
             auditLog.setOperateDescEn("Submit flow version publish approval - " + flow.getNameEn() + " v" + version.getVersionNumber());
             auditLog.setOperateUser(currentUser);
             auditLog.setAppId(String.valueOf(appId));
+            auditLog.setIpAddress(com.xxx.it.works.wecode.v2.common.util.CommonUtils.extractIpAddress());
+            auditLog.setCreateBy(currentUser);
+            auditLog.setCreateTime(now);
+            auditLog.setLastUpdateBy(currentUser);
+            auditLog.setLastUpdateTime(now);
             auditLog.setStatus(1);
             auditLogService.saveAsync(auditLog);
         } catch (Exception e) {

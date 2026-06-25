@@ -148,6 +148,13 @@ public class OperateLogV2Aspect {
                 }
             }
 
+            // CREATE 类操作：从返回值提取实体 ID 并覆盖 resourceId
+            // （prepareAuditContext 阶段 resourceId 可能被设为 app 内部 ID，此处用真实的实体 ID 覆盖）
+            Long entityId = extractEntityIdFromResponse(result);
+            if (entityId != null) {
+                ctx.resourceId = entityId;
+            }
+
             if (ctx.op.needsAfterData()) {
                 EntitySnapshotLoader loader = snapshotLoaderFactory.getLoader(ctx.op.getOperateObject());
                 if (loader != null) {
@@ -396,5 +403,48 @@ public class OperateLogV2Aspect {
             return JsonUtils.toJson(apiResponse.getData());
         }
         return JsonUtils.toJson(result);
+    }
+
+    /**
+     * 从方法返回值中提取实体 ID（用于 CREATE 类操作）。
+     * 响应 DTO 的 ID 字段名因实体类型而异：connectorId / flowId / id 等。
+     */
+    private Long extractEntityIdFromResponse(Object result) {
+        if (result == null) {
+            return null;
+        }
+        try {
+            Object data = null;
+            // 处理 ResponseEntity<ApiResponse<X>> 嵌套
+            if (result instanceof org.springframework.http.ResponseEntity<?> re) {
+                Object body = re.getBody();
+                if (body instanceof ApiResponse<?> apiResp) {
+                    data = apiResp.getData();
+                }
+            } else if (result instanceof ApiResponse<?> apiResponse) {
+                data = apiResponse.getData();
+            }
+            if (data == null) {
+                return null;
+            }
+            JsonNode node = JsonUtils.toTree(data);
+            if (node == null) {
+                return null;
+            }
+            // 按优先级尝试常见 ID 字段名
+            for (String field : new String[]{"connectorId", "flowId", "versionId", "id"}) {
+                JsonNode idNode = node.get(field);
+                if (idNode != null && !idNode.isNull()) {
+                    try {
+                        return Long.parseLong(idNode.asText());
+                    } catch (NumberFormatException ignored) {
+                        // Snowflake IDs are numeric strings, parse may fail for non-numeric
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[OPERATE_LOG] Failed to extract entity id from response", e);
+        }
+        return null;
     }
 }

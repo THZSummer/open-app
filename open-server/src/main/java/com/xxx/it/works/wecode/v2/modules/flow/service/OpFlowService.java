@@ -83,7 +83,7 @@ public class OpFlowService {
 
         log.info("Flow created: id={}", flowId);
         return ApiResponse.success(FlowCreateResponse.builder()
-                .id(String.valueOf(flowId))
+                .flowId(String.valueOf(flowId))
                 .build());
     }
 

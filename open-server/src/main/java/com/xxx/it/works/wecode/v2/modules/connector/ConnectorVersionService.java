@@ -335,11 +335,16 @@ public class ConnectorVersionService {
         try {
             OperateLog auditLog = new OperateLog();
             auditLog.setOperateType("PUBLISH");
-            auditLog.setOperateObject("connector_version:" + versionId);
+            auditLog.setOperateObject("连接器版本");
             auditLog.setOperateDescCn("发布连接器版本 - " + connector.getNameCn() + " v" + version.getVersionNumber());
             auditLog.setOperateDescEn("Publish connector version - " + connector.getNameEn() + " v" + version.getVersionNumber());
             auditLog.setOperateUser(currentUser);
             auditLog.setAppId(String.valueOf(appId));
+            auditLog.setIpAddress(com.xxx.it.works.wecode.v2.common.util.CommonUtils.extractIpAddress());
+            auditLog.setCreateBy(currentUser);
+            auditLog.setCreateTime(now);
+            auditLog.setLastUpdateBy(currentUser);
+            auditLog.setLastUpdateTime(now);
             auditLog.setStatus(1);
             auditLogService.saveAsync(auditLog);
         } catch (Exception e) {

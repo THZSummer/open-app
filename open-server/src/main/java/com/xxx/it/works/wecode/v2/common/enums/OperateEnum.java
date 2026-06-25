@@ -119,10 +119,10 @@ public enum OperateEnum {
             "创建连接器:${nameCn}", "Create Connector:${nameEn}"),
     UPDATE_CONNECTOR("UPDATE", "CONNECTOR", "连接器",
             "更新连接器", "Update Connector",
-            null, null),
+            "更新连接器:${nameCn}", "Update Connector:${nameEn}"),
     DELETE_CONNECTOR("DELETE", "CONNECTOR", "连接器",
             "删除连接器", "Delete Connector",
-            null, null),
+            "删除连接器:${nameCn}", "Delete Connector:${nameEn}"),
 
     // ===== 连接流管理 =====
     CREATE_FLOW("CREATE", "FLOW", "连接流",
@@ -130,13 +130,28 @@ public enum OperateEnum {
             "创建连接流:${nameCn}", "Create Flow:${nameEn}"),
     UPDATE_FLOW("UPDATE", "FLOW", "连接流",
             "更新连接流", "Update Flow",
-            null, null),
+            "更新连接流:${nameCn}", "Update Flow:${nameEn}"),
     DELETE_FLOW("DELETE", "FLOW", "连接流",
             "删除连接流", "Delete Flow",
-            null, null),
+            "删除连接流:${nameCn}", "Delete Flow:${nameEn}"),
     CONNECTOR_FLOW_VERSION_PUBLISH("PUBLISH", "FLOW_VERSION", "流版本",
             "发布流版本", "Publish Flow Version",
-            "发布版本${versionCode}", "Publish version ${versionCode}");
+            "发布版本${versionCode}", "Publish version ${versionCode}"),
+    START_FLOW("START", "FLOW", "连接流",
+            "启动连接流", "Start Flow",
+            "启动连接流:${nameCn}", "Start Flow:${nameEn}"),
+    STOP_FLOW("STOP", "FLOW", "连接流",
+            "停止连接流", "Stop Flow",
+            "停止连接流:${nameCn}", "Stop Flow:${nameEn}"),
+    DEPLOY_FLOW("DEPLOY", "FLOW", "连接流",
+            "部署连接流", "Deploy Flow",
+            "部署连接流:${nameCn}", "Deploy Flow:${nameEn}"),
+    INVALIDATE_FLOW("INVALIDATE", "FLOW", "连接流",
+            "失效连接流", "Invalidate Flow",
+            "失效连接流:${nameCn}", "Invalidate Flow:${nameEn}"),
+    RECOVER_FLOW("RECOVER", "FLOW", "连接流",
+            "恢复连接流", "Recover Flow",
+            "恢复连接流:${nameCn}", "Recover Flow:${nameEn}");
 
     /**
      * DB operate_type 字段值

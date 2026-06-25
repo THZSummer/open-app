@@ -77,7 +77,7 @@ class OpFlowServiceTest {
             ApiResponse<FlowCreateResponse> response = flowService.createFlow(request);
 
             assertEquals("200", response.getCode());
-            assertEquals("200", response.getData().getId());
+            assertEquals("200", response.getData().getFlowId());
 
             verify(flowMapper).insert(argThat(f ->
                     f.getLifecycleStatus() == OpFlowService.LIFECYCLE_RUNNING &&
