@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.chatbotbindtab.mapper.ChatbotBindMapper">
+
+    <!-- 根据应用业务 ID 查询应用主键 ID（仅查询有效应用） -->
+    <select id="selectAppPkIdByAppId" resultType="java.lang.Long">
+        SELECT id
+        FROM openplatform_app_t
+        WHERE app_id = #{appId}
+          AND status = 1
+    </select>
+
+    <!-- 查询应用已绑定的机器人账号列表（显式列出字段） -->
+    <select id="selectBoundAccounts"
+            resultType="com.xxx.it.works.wecode.v2.modules.chatbotbindtab.entity.AppPropertyEntity">
+        SELECT id,
+               parent_id,
+               property_name,
+               property_value,
+               tenant_id,
+               status,
+               create_time,
+               create_by,
+               last_update_time,
+               last_update_by
+        FROM openplatform_app_p_t
+        WHERE parent_id = #{appPkId}
+          AND property_name = 'single_chatbot_account'
+          AND status = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 统计应用已绑定的机器人账号数量 -->
+    <select id="countBoundAccounts" resultType="int">
+        SELECT COUNT(*)
+        FROM openplatform_app_p_t
+        WHERE parent_id = #{appPkId}
+          AND property_name = 'single_chatbot_account'
+          AND status = 1
+    </select>
+
+    <!-- 检查指定账号是否已绑定 -->
+    <select id="selectByAppPkIdAndAccountId"
+            resultType="com.xxx.it.works.wecode.v2.modules.chatbotbindtab.entity.AppPropertyEntity">
+        SELECT id,
+               parent_id,
+               property_name,
+               property_value,
+               tenant_id,
+               status,
+               create_time,
+               create_by,
+               last_update_time,
+               last_update_by
+        FROM openplatform_app_p_t
+        WHERE parent_id = #{appPkId}
+          AND property_name = 'single_chatbot_account'
+          AND property_value = #{accountId}
+          AND status = 1
+    </select>
+
+    <!-- 插入绑定记录（显式列出字段） -->
+    <insert id="insert">
+        INSERT INTO openplatform_app_p_t (
+            id,
+            parent_id,
+            property_name,
+            property_value,
+            tenant_id,
+            status,
+            create_by,
+            create_time,
+            last_update_by,
+            last_update_time
+        ) VALUES (
+            #{id},
+            #{parentId},
+            'single_chatbot_account',
+            #{propertyValue},
+            #{tenantId},
+            1,
+            #{createBy},
+            NOW(3),
+            #{lastUpdateBy},
+            NOW(3)
+        )
+    </insert>
+
+    <!-- 删除绑定记录（硬删除） -->
+    <delete id="deleteByAppPkIdAndAccountId">
+        DELETE FROM openplatform_app_p_t
+        WHERE parent_id = #{appPkId}
+          AND property_name = 'single_chatbot_account'
+          AND property_value = #{accountId}
+          AND status = 1
+    </delete>
+
+</mapper>

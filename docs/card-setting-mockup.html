@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>应用详情 - 卡片设置板块 - 效果图 v0.5</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: 13px; color: #333; background: #f0f2f5; display: flex; min-height: 100vh;
+  }
+  :root {
+    --primary: #2b5ff5; --primary-hover: #4b7aff; --primary-disabled: #a8bcf5;
+    --success: #00b578; --danger: #f54a45;
+    --warning: #ff9f00; --warning-bg: #fff5e0;
+    --text-primary: #333; --text-secondary: #666; --text-hint: #999;
+    --border: #e8e8e8; --radius: 6px;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar { width: 200px; min-height: 100vh; background: #001529; color: #fff; flex-shrink: 0; }
+  .sidebar-logo {
+    height: 56px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 2px;
+  }
+  .sidebar-menu { list-style: none; padding: 8px 0; }
+  .sidebar-menu li {
+    padding: 10px 24px; cursor: pointer; font-size: 13px; color: rgba(255,255,255,0.65);
+    display: flex; align-items: center; gap: 8px; transition: all 0.2s;
+  }
+  .sidebar-menu li:hover { color: #fff; background: rgba(255,255,255,0.06); }
+  .sidebar-menu li.active { color: #fff; background: var(--primary); }
+  .sidebar-menu li .icon { font-size: 14px; width: 16px; text-align: center; }
+
+  /* ===== Main ===== */
+  .main { flex: 1; padding: 16px 24px; min-width: 0; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .page-title { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+  .breadcrumb { font-size: 12px; color: var(--text-hint); margin-bottom: 4px; }
+  .breadcrumb a { color: var(--text-hint); text-decoration: none; }
+  .breadcrumb a:hover { color: var(--primary); }
+
+  /* ===== Card ===== */
+  .card {
+    background: #fff; border-radius: var(--radius); box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    padding: 16px 20px; margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 15px; font-weight: 600; color: var(--text-primary);
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0;
+  }
+
+  /* ===== Placeholder sections ===== */
+  .placeholder {
+    padding: 24px; text-align: center; color: var(--text-hint); font-size: 13px;
+    background: #fafafa; border-radius: 4px; border: 1px dashed #e0e0e0;
+  }
+  .kv-grid { display: grid; grid-template-columns: 140px 1fr 140px 1fr; gap: 12px 16px; font-size: 13px; }
+  .kv-grid dt { color: var(--text-hint); }
+  .kv-grid dd { color: var(--text-primary); }
+
+  /* ===== Card Setting Section ===== */
+  .setting-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px 0;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label {
+    min-width: 120px; color: var(--text-primary); font-size: 13px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* Tooltip */
+  .tip {
+    position: relative; display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%; background: #e8e8e8; color: #666;
+    font-size: 11px; font-weight: 600; cursor: help; font-style: italic; font-family: serif;
+  }
+  .tip::after {
+    content: attr(data-tip);
+    position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%);
+    background: rgba(0,0,0,0.8); color: #fff; padding: 6px 10px; border-radius: 4px;
+    font-size: 12px; font-weight: normal; font-style: normal; font-family: inherit;
+    white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity 0.15s;
+    z-index: 10;
+  }
+  .tip:hover::after { opacity: 1; }
+
+  /* InputNumber (custom) */
+  .input-number {
+    display: inline-flex; align-items: stretch; height: 32px;
+    border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+    background: #fff; transition: border-color 0.2s;
+  }
+  .input-number:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(43,95,245,0.12); }
+  .input-number input {
+    width: 64px; height: 100%; border: none; outline: none; text-align: center;
+    font-size: 13px; color: var(--text-primary); padding: 0 4px;
+    -moz-appearance: textfield;
+  }
+  .input-number input::-webkit-outer-spin-button,
+  .input-number input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .input-number input:disabled { background: #f5f5f5; color: var(--text-hint); cursor: not-allowed; }
+  .input-number .step-btn {
+    width: 28px; background: #fafafa; border: none; cursor: pointer; color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center; font-size: 10px;
+    transition: all 0.15s; user-select: none;
+  }
+  .input-number .step-btn:hover:not(:disabled) { background: #f0f0f0; color: var(--primary); }
+  .input-number .step-btn:active:not(:disabled) { background: #e8e8e8; }
+  .input-number .step-btn:disabled { color: #d0d0d0; cursor: not-allowed; }
+  .input-number .step-up { border-left: 1px solid var(--border); }
+
+  .unit { color: var(--text-secondary); font-size: 13px; margin-left: -4px; }
+  .action-group { display: flex; gap: 8px; margin-left: auto; }
+
+  /* ===== 两态 UI：只读态 / 编辑态 ===== */
+  .readonly-view {
+    display: flex; align-items: center; gap: 8px;   /* 与 antd Space 默认 8px 对齐 */
+  }
+  .readonly-value {
+    font-size: 13px; color: var(--text-primary);
+  }
+  .readonly-value .num { font-weight: 600; color: var(--text-primary); }
+  .btn-link {
+    background: transparent; border: none; color: var(--primary);
+    padding: 0 4px; cursor: pointer; font-size: 13px;
+  }
+  .btn-link:hover { color: var(--primary-hover); text-decoration: underline; }
+
+  .editing-view { display: flex; align-items: center; gap: 8px; }
+
+  /* Tooltip 加宽（完整业务说明较长） */
+  .tip::after {
+    white-space: normal; width: 320px; text-align: left;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 32px; padding: 0 14px; font-size: 13px; border-radius: var(--radius);
+    cursor: pointer; border: 1px solid var(--border); background: #fff;
+    color: var(--text-primary); transition: all 0.2s; gap: 4px; white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+  .btn:disabled { color: var(--text-hint); cursor: not-allowed; background: #f5f5f5; }
+  .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+  .btn-primary:disabled { background: var(--primary-disabled); border-color: var(--primary-disabled); color: #fff; }
+
+  /* Loading skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+    background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px; height: 20px;
+  }
+  @keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+    z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .toast {
+    padding: 10px 16px; border-radius: var(--radius); background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 8px;
+    font-size: 13px; animation: toast-in 0.2s ease-out;
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.error { border-left: 3px solid var(--danger); }
+  .toast-icon { font-size: 16px; }
+  .toast.success .toast-icon { color: var(--success); }
+  .toast.error .toast-icon { color: var(--danger); }
+
+  /* Status indicator */
+  .status-dot {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success); margin-right: 6px;
+  }
+  .status-text { font-size: 12px; color: var(--text-hint); margin-left: 8px; }
+
+  /* Failure simulator */
+  .simulator {
+    position: fixed; bottom: 16px; right: 16px; background: #fff;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 12px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .simulator-title { font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+  .simulator label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-logo">开放平台</div>
+  <ul class="sidebar-menu">
+    <li><span class="icon">⌂</span>概览</li>
+    <li class="active"><span class="icon">▦</span>应用管理</li>
+    <li><span class="icon">◈</span>API 管理</li>
+    <li><span class="icon">⚡</span>事件管理</li>
+    <li><span class="icon">↻</span>回调管理</li>
+    <li><span class="icon">▤</span>分类管理</li>
+    <li><span class="icon">⚙</span>权限管理</li>
+  </ul>
+</aside>
+
+<!-- Main -->
+<main class="main">
+  <div class="breadcrumb"><a href="#">应用管理</a> / 应用详情</div>
+  <div class="page-header">
+    <div class="page-title">应用详情</div>
+    <div style="font-size: 12px; color: var(--text-hint);">appId: app_2026_demo_001</div>
+  </div>
+
+  <!-- 板块 1: 应用凭证（占位） -->
+  <section class="card">
+    <div class="card-title">应用凭证</div>
+    <dl class="kv-grid">
+      <dt>AppKey</dt><dd>demo_app_key_xxxx</dd>
+      <dt>AppSecret</dt><dd>•••••••••••• <a href="#" style="color: var(--primary); font-size: 12px; margin-left: 8px;">查看</a></dd>
+    </dl>
+    <div class="placeholder" style="margin-top: 12px; padding: 12px;">
+      （其他凭证内容由同事 A 实现）
+    </div>
+  </section>
+
+  <!-- 板块 2: 应用基本信息（占位） -->
+  <section class="card">
+    <div class="card-title">应用基本信息</div>
+    <dl class="kv-grid">
+      <dt>应用名称（中）</dt><dd>示例开放应用</dd>
+      <dt>应用名称（英）</dt><dd>Demo Open App</dd>
+      <dt>应用类型</dt><dd>企业自建</dd>
+      <dt>状态</dt><dd><span class="status-dot"></span>已发布</dd>
+      <dt>创建时间</dt><dd>2026-05-10 14:30:22</dd>
+      <dt> owner</dt><dd>zhangsan@example.com</dd>
+    </dl>
+    <div class="placeholder" style="margin-top: 12px; padding: 12px;">
+      （其他基本信息由同事 A 实现）
+    </div>
+  </section>
+
+  <!-- 板块 3: 认证方式（占位） -->
+  <section class="card">
+    <div class="card-title">认证方式</div>
+    <div class="placeholder">
+      （OAuth2.0 / API Key / HMAC-SHA256 等认证配置由同事 A 实现）
+    </div>
+  </section>
+
+  <!-- 板块 4: 卡片设置（本次交付范围） -->
+  <section class="card" id="card-setting-section">
+    <div class="card-title">卡片设置</div>
+
+    <!-- Loading skeleton -->
+    <div id="loading-skeleton">
+      <div class="setting-row">
+        <div class="setting-label">定期失效时间</div>
+        <div class="skeleton" style="width: 120px;"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-label">定期删除时间</div>
+        <div class="skeleton" style="width: 120px;"></div>
+      </div>
+    </div>
+
+    <!-- Real content (hidden until loaded) -->
+    <div id="content" style="display: none;">
+      <!-- Row 1: 定期失效时间（两态） -->
+      <div class="setting-row">
+        <div class="setting-label">
+          定期失效时间
+          <span class="tip" data-tip="根据每张消息卡片第一次投放时间开始计算，系统按设置的时间自动对卡片进行失效，失效的卡片在端侧不再支持交互">?</span>
+        </div>
+        <!-- 只读态 -->
+        <div class="readonly-view" id="expiration-readonly">
+          <div class="readonly-value">
+            <span class="num" id="expiration-display">14</span> 天
+          </div>
+          <button class="btn-link" id="expiration-modify">修改</button>
+        </div>
+        <!-- 编辑态 -->
+        <div class="editing-view" id="expiration-editing" style="display:none;">
+          <div class="input-number">
+            <button class="step-btn step-down" data-field="expiration" data-delta="-1">▼</button>
+            <input type="number" id="expiration-input" min="1" max="7" value="7">
+            <button class="step-btn step-up" data-field="expiration" data-delta="1">▲</button>
+          </div>
+          <span class="unit">天</span>
+          <div class="action-group">
+            <button class="btn" id="expiration-cancel">取消</button>
+            <button class="btn btn-primary" id="expiration-save" disabled>保存</button>
+          </div>
+          <span class="status-text" id="expiration-status"></span>
+        </div>
+      </div>
+
+      <!-- Row 2: 定期删除时间（两态） -->
+      <div class="setting-row">
+        <div class="setting-label">
+          定期删除时间
+          <span class="tip" data-tip="只有失效的卡片可以删除，根据每张消息卡片失效时间开始计算，系统按照设置的时间自动对卡片进行删除">?</span>
+        </div>
+        <!-- 只读态 -->
+        <div class="readonly-view" id="retention-readonly">
+          <div class="readonly-value">
+            <span class="num" id="retention-display">7</span> 天
+          </div>
+          <button class="btn-link" id="retention-modify">修改</button>
+        </div>
+        <!-- 编辑态 -->
+        <div class="editing-view" id="retention-editing" style="display:none;">
+          <div class="input-number">
+            <button class="step-btn step-down" data-field="retention" data-delta="-1">▼</button>
+            <input type="number" id="retention-input" min="1" max="30" value="7">
+            <button class="step-btn step-up" data-field="retention" data-delta="1">▲</button>
+          </div>
+          <span class="unit">天</span>
+          <div class="action-group">
+            <button class="btn" id="retention-cancel">取消</button>
+            <button class="btn btn-primary" id="retention-save" disabled>保存</button>
+          </div>
+          <span class="status-text" id="retention-status"></span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Failure simulator (demo only) -->
+<div class="simulator">
+  <div class="simulator-title">🎛 Demo 模拟器</div>
+  <label><input type="checkbox" id="simulate-failure"> 模拟保存失败（502）</label>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===== State =====
+  // 两态：mode='readonly' 显示只读态；mode='editing' 显示编辑态
+  // displayed = 只读态展示值（可能是系统默认值如 14，超出用户可写范围）
+  // editValue = 编辑态 InputNumber 值（裁剪后）
+  // saved     = 上次 GET 返回值（取消时还原目标）
+  const FIELDS = {
+    expiration: {
+      min: 1, max: 7, periodType: 1,
+      saved: null, displayed: null, editValue: null,
+      mode: 'readonly', saving: false,
+      readonlyId: 'expiration-readonly', editingId: 'expiration-editing',
+      displayId: 'expiration-display', inputId: 'expiration-input',
+      statusId: 'expiration-status',
+      saveId: 'expiration-save', cancelId: 'expiration-cancel', modifyId: 'expiration-modify'
+    },
+    retention: {
+      min: 1, max: 30, periodType: 0,
+      saved: null, displayed: null, editValue: null,
+      mode: 'readonly', saving: false,
+      readonlyId: 'retention-readonly', editingId: 'retention-editing',
+      displayId: 'retention-display', inputId: 'retention-input',
+      statusId: 'retention-status',
+      saveId: 'retention-save', cancelId: 'retention-cancel', modifyId: 'retention-modify'
+    }
+  };
+
+  // ===== Toast =====
+  function toast(type, msg) {
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    el.innerHTML = '<span class="toast-icon">' + (type === 'success' ? '✓' : '✕') + '</span><span>' + msg + '</span>';
+    container.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.2s'; setTimeout(() => el.remove(), 200); }, 2500);
+  }
+
+  // ===== API mock =====
+  // 服务端"状态"—— 模拟卡片服务的数据
+  const serverState = { expirationDays: 14, deletionDays: 7 };
+
+  function mockFetchCardSetting() {
+    return new Promise(resolve => {
+      setTimeout(() => resolve({
+        code: '200',
+        data: { expirationDays: serverState.expirationDays, deletionDays: serverState.deletionDays }
+      }), 800);
+    });
+  }
+  // 单一 PUT：body 含 periodDays + periodType
+  function mockUpdatePeriod(periodType, periodDays) {
+    const shouldFail = document.getElementById('simulate-failure').checked;
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (shouldFail) {
+          // 模拟 request.ts 拦截器自动 toast（本 demo 直接 toast）
+          toast('error', '卡片服务暂时不可用');
+          reject({ code: '502', messageZh: '卡片服务暂时不可用' });
+        } else {
+          if (periodType === 1) serverState.expirationDays = periodDays;
+          else if (periodType === 0) serverState.deletionDays = periodDays;
+          resolve({ code: '200', data: null });
+        }
+      }, 600);
+    });
+  }
+
+  // ===== 裁剪规则 =====
+  // 进入编辑态时：displayed → editValue
+  function clampToEditable(displayed, min, max) {
+    if (displayed === null || displayed === undefined) return null;
+    if (displayed < min) return min;
+    if (displayed > max) return max;
+    return displayed;
+  }
+
+  // ===== UI update =====
+  function updateFieldUI(name) {
+    const f = FIELDS[name];
+    const readonlyEl = document.getElementById(f.readonlyId);
+    const editingEl = document.getElementById(f.editingId);
+    const displayEl = document.getElementById(f.displayId);
+    const input = document.getElementById(f.inputId);
+    const saveBtn = document.getElementById(f.saveId);
+    const cancelBtn = document.getElementById(f.cancelId);
+    const statusEl = document.getElementById(f.statusId);
+
+    // 切换两态
+    if (f.mode === 'readonly') {
+      readonlyEl.style.display = 'flex';
+      editingEl.style.display = 'none';
+      // 只读态展示 displayed 值（包括系统默认值，如 14，正常颜色展示）
+      displayEl.textContent = f.displayed === null ? '—' : f.displayed;
+    } else {
+      readonlyEl.style.display = 'none';
+      editingEl.style.display = 'flex';
+      input.value = f.editValue === null ? '' : f.editValue;
+      const isDirty = f.editValue !== null && f.editValue !== f.displayed;
+      const isValid = f.editValue !== null && f.editValue >= f.min && f.editValue <= f.max;
+      saveBtn.disabled = !isDirty || !isValid || f.saving;
+      input.disabled = f.saving;
+
+      // Step buttons disabled at bounds
+      const row = input.closest('.setting-row');
+      row.querySelector('.step-down').disabled = f.editValue === null || f.editValue <= f.min || f.saving;
+      row.querySelector('.step-up').disabled   = f.editValue === null || f.editValue >= f.max || f.saving;
+
+      statusEl.textContent = f.saving ? '保存中...' : '';
+    }
+  }
+
+  // ===== Actions =====
+  function enterEditMode(name) {
+    const f = FIELDS[name];
+    if (f.mode === 'editing' || f.saving) return;
+    // 裁剪：displayed → editValue
+    f.editValue = clampToEditable(f.displayed, f.min, f.max);
+    f.mode = 'editing';
+    updateFieldUI(name);
+  }
+
+  function setValue(name, val) {
+    const f = FIELDS[name];
+    if (f.mode !== 'editing') return;
+    if (val === '' || val === null || isNaN(val)) {
+      f.editValue = null;
+    } else {
+      if (typeof val !== 'number') return;
+      f.editValue = Math.max(f.min, Math.min(f.max, Math.round(val)));
+    }
+    updateFieldUI(name);
+  }
+
+  async function saveField(name) {
+    const f = FIELDS[name];
+    if (f.mode !== 'editing' || f.saving || f.editValue === null) return;
+    f.saving = true; updateFieldUI(name);
+    try {
+      await mockUpdatePeriod(f.periodType, f.editValue);
+      // 保存成功后：重新 GET 回填
+      const res = await mockFetchCardSetting();
+      FIELDS.expiration.saved = FIELDS.expiration.displayed = res.data.expirationDays;
+      FIELDS.retention.saved  = FIELDS.retention.displayed  = res.data.deletionDays;
+      FIELDS[name].mode = 'readonly';
+      FIELDS[name].editValue = null;
+      toast('success', '保存成功');
+    } catch (e) {
+      // request.ts 拦截器已自动 toast；这里只保留输入值供重试
+      // 不调用 toast，避免双重提示（demo 中 mockUpdatePeriod 已 toast，故此处跳过）
+    } finally {
+      f.saving = false; updateFieldUI(name);
+    }
+  }
+
+  function cancelField(name) {
+    const f = FIELDS[name];
+    if (f.mode !== 'editing' || f.saving) return;
+    // 还原到修改前的展示值（即 saved），切回只读态
+    f.mode = 'readonly';
+    f.editValue = null;
+    updateFieldUI(name);
+  }
+
+  // ===== Init =====
+  async function init() {
+    const res = await mockFetchCardSetting();
+    FIELDS.expiration.saved = FIELDS.expiration.displayed = res.data.expirationDays;
+    FIELDS.retention.saved  = FIELDS.retention.displayed  = res.data.deletionDays;
+    document.getElementById('loading-skeleton').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    updateFieldUI('expiration'); updateFieldUI('retention');
+  }
+
+  // ===== Event bindings =====
+  // "修改"按钮 → 进入编辑态
+  document.getElementById('expiration-modify').addEventListener('click', () => enterEditMode('expiration'));
+  document.getElementById('retention-modify').addEventListener('click',  () => enterEditMode('retention'));
+
+  document.querySelectorAll('input[type=number]').forEach(input => {
+    const name = input.id.startsWith('expiration') ? 'expiration' : 'retention';
+    input.addEventListener('input', e => {
+      const v = e.target.value === '' ? null : parseInt(e.target.value, 10);
+      setValue(name, v);
+    });
+    input.addEventListener('blur', e => {
+      // 失焦时 re-clamp
+      if (e.target.value !== '') setValue(name, parseInt(e.target.value, 10));
+    });
+  });
+
+  document.querySelectorAll('.step-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.field;
+      const delta = parseInt(btn.dataset.delta, 10);
+      const cur = FIELDS[name].editValue === null ? FIELDS[name].min : FIELDS[name].editValue;
+      setValue(name, cur + delta);
+    });
+  });
+
+  document.getElementById('expiration-save').addEventListener('click', () => saveField('expiration'));
+  document.getElementById('retention-save').addEventListener('click',  () => saveField('retention'));
+  document.getElementById('expiration-cancel').addEventListener('click', () => cancelField('expiration'));
+  document.getElementById('retention-cancel').addEventListener('click',  () => cancelField('retention'));
+
+  init();
+})();
+</script>
+
+</body>
+</html>
