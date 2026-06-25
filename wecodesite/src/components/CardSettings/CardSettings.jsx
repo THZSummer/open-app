@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, Button, InputNumber, Tooltip, message } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import { fetchCardSetting, updateCardPeriod } from '../../pages/BasicInfo/thunk';
+import { fetchCardSetting, updateCardPeriod } from './thunk';
 
 import './CardSettings.m.less';
 
