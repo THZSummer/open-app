@@ -20,7 +20,7 @@ const roleSlice = createSlice({
   name: 'role',
   initialState: {
     role: null,
-    roleLoading: false,
+    roleLoading: true,
   },
   reducers: {
     clearRole(state) {
