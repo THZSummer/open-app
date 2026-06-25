@@ -65,6 +65,12 @@ function AuthMethodCard() {
     }
   };
 
+  function maskSecret(secret) {
+    if (!secret) return '';
+    if (secret.length <= 6) return secret.slice(0, 2) + '****';
+    return secret.slice(0, 4) + '****' + secret.slice(-4);
+  }
+
   const handleSecretChange = (e) => {
     const val = e.target.value;
     setSecret(val);
