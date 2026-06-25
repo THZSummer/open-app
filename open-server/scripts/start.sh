@@ -37,15 +37,16 @@ echo $! > "$PID_FILE"
 echo "PID: $(cat $PID_FILE)"
 
 # 等待就绪 (2s 间隔)
-echo -n "⏳ 等待就绪"
+echo "⏳ 等待就绪..."
 for i in $(seq 1 30); do
     sleep 2
-    if curl -sf "http://localhost:$PORT$CTX/actuator/health" | grep -q '"status":"UP"'; then
-        echo ""
+    RESULT=$(curl -s "http://localhost:$PORT$CTX/actuator/health" 2>&1)
+    if echo "$RESULT" | grep -q '"status":"UP"'; then
+        echo "  [$i] ✅ $RESULT"
         echo "✅ 就绪! http://localhost:$PORT$CTX"
         exit 0
     fi
-    echo -n "."
+    echo "  [$i] ⏳ $RESULT"
 done
 echo ""
 echo "⚠️  超时 (60s)，检查日志: tail -f $LOG"

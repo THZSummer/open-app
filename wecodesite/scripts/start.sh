@@ -28,15 +28,16 @@ nohup npm run dev > "$LOG" 2>&1 &
 echo $! > "$PID_FILE"
 echo "PID: $(cat $PID_FILE)"
 
-echo -n "⏳ 等待就绪"
+echo "⏳ 等待就绪..."
 for i in $(seq 1 30); do
     sleep 2
-    if curl -sf "http://localhost:$PORT/" > /dev/null 2>&1; then
-        echo ""
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/" 2>&1)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "  [$i] ✅ HTTP $HTTP_CODE"
         echo "✅ 就绪! http://localhost:$PORT"
         exit 0
     fi
-    echo -n "."
+    echo "  [$i] ⏳ HTTP $HTTP_CODE"
 done
 echo ""
 echo "⚠️  超时 (60s)，检查日志: tail -f $LOG"
