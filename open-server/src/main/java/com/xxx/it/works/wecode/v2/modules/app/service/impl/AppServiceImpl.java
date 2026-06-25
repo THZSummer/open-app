@@ -593,7 +593,7 @@ public class AppServiceImpl implements AppService {
     private String generateAppId() {
         String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern(CommonConstants.APP_ID_DATE_FORMAT));
         int random = new Random().nextInt(9000) + 1000; // 1000~9999
-        return CommonConstants.APP_ID_PREFIX + timestamp + random;
+        return timestamp + random;
     }
 
     /**
