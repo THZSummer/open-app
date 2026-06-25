@@ -52,7 +52,7 @@
 | `test_flow_version_delete.py` | #36 | DELETE /flows/{id}/versions/{vid} |
 | `test_flow_version_debug.py` | #51 | POST /flows/{id}/versions/{vid}/debug |
 | **运行记录** | | |
-| `test_execution_records.py` | #49~#50 | GET /flows/{id}/executions + 详情 |
+| `test_execution_records.py` | #49~#50 | GET /executions + 详情 |
 | **审批记录** | | |
 | `test_approval_records.py` | #39~#44 | 审批记录列表/详情/批量操作 |
 | **审批流模板** | | |
