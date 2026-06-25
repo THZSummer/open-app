@@ -14,7 +14,7 @@ V2 运行时在 V1 的串行调度引擎基础上新增 6 个核心模块：
 
 | 模块 | 触发条件 | 关键能力 |
 |------|---------|---------|
-| 版本配置解析器 | 每次 HTTP/调试 触发 | 按 `deployed_version_id` 读取 FlowVersion → ConnectorVersion |
+| 版本配置解析器 | 每次 HTTP/调试 触发 | 按 `deployed_version_id` 读取 FlowVersion 编排快照，连接器配置直接从节点 `connectorConfig` 快照获取（无需查询 ConnectorVersion） |
 | 并行分支执行器 | 编排中包含并行边 | Reactor `Flux.merge()` 并发执行，独立超时 + 错误汇聚 |
 | flowConfig 解析器 | 版本配置加载后 | 解析超时/限流/缓存配置，初始化运行环境 |
 | 脚本节点执行器 | 编排中包含 script 节点 | GraalJS 沙箱执行 `function main(ctx)`，详见 [plan-script.md](./plan-script.md) |
@@ -183,19 +183,6 @@ sequenceDiagram
         end
         EC-->>VCR: FlowVersion 实体
 
-        loop 每个 connector 节点
-            VCR->>EC: 读取 ConnectorVersion 实体
-            EC->>Redis: GET cp:entity:connectorversion:{cvId}
-            alt 命中
-                Redis-->>EC: ConnectorVersion JSON (含 connection_config MEDIUMTEXT)
-            else miss
-                EC->>DB: SELECT connector_version_t
-                DB-->>EC: ConnectorVersion row
-                EC->>Redis: SET (TTL 7d ± 2h)
-            end
-            EC-->>VCR: ConnectorVersion 实体
-        end
-
         VCR->>VCR: 解析 flowConfig（白名单/超时/限流/缓存）
         VCR-->>Runtime: ResolvedConfig
     end
@@ -355,12 +342,12 @@ flowchart TD
 |------|------|
 | `deployed_version_id` 为 NULL | 返回 503 "Flow not deployed" |
 | FlowVersion 不存在或已删除 | 返回 500 "Deployed version not found" |
-| ConnectorVersion 不存在或已失效 | 标记对应节点为失败，继续执行其余节点（降级） |
+
 
 ### 1.3 缓存策略
 
-- FlowVersion + ConnectorVersion 配置读后写入 Redis 缓存
-- Key: `cp:config:flow:{flowId}:{versionId}`, TTL: 5 分钟
+- FlowVersion 编排配置读后写入 Redis 缓存（含完整的 connectorConfig 快照，无需单独缓存 ConnectorVersion）
+- Key: `cp:entity:flowversion:{versionId}`, TTL: 7 天
 - 版本切换时主动失效对应缓存
 
 ---
