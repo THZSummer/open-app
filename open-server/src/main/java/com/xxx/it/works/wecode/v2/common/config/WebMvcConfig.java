@@ -30,7 +30,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${platform.file.upload-dir:./uploads}")
     private String uploadDir;
 
-    @Value("${platform.file.url-prefix:/uploads}")
+    @Value("${platform.file.url-prefix:/service/open/v2/uploads}")
     private String urlPrefix;
 
     @Override
@@ -44,13 +44,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
     }
 
     /**
-     * 静态资源映射：将 /uploads/** 请求映射到磁盘上传目录
-     * 这样前端通过 url（如 /uploads/2026/06/07/file_xxx.png）就能直接访问图片
+     * 静态资源映射：urlPrefix + "/**" 映射到磁盘上传目录
+     * urlPrefix 默认 /service/open/v2/uploads，与 vite proxy 前缀一致
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String resourceLocation = "file:" + uploadDir + "/";
+        // 磁盘（用户上传）+ classpath（预设图标，打包进 JAR）
         registry.addResourceHandler(urlPrefix + "/**")
-                .addResourceLocations(resourceLocation);
+                .addResourceLocations("file:" + uploadDir + "/", "classpath:/static/uploads/");
     }
 }

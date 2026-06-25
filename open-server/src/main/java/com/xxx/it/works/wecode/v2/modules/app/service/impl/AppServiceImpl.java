@@ -324,7 +324,8 @@ public class AppServiceImpl implements AppService {
         for (String fileId : iconIds) {
             FileEntity file = fileMapper.selectByFileId(fileId);
             if (Objects.nonNull(file)) {
-                list.add(new FileV2VO(file.getFileId(), file.getUrl()));
+                // 用 fileV2Service 构建 VO，确保 url 前缀与当前配置一致
+                list.add(fileV2Service.buildFileVO(fileId));
             }
         }
         return list;
