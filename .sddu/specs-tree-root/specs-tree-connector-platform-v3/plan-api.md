@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
 **版本**: v7.0
 **创建日期**: 2026-06-09
-**对齐基线**: spec.md v2.24-draft + plan-json-schema.md v9.10
+**对齐基线**: spec.md v2.24-draft + plan-json-schema.md v9.11
 
 ---
 
@@ -14,7 +14,7 @@
 |------|------|---------|
 | **版本模型** | **多版本**（草稿→发布→失效→删除），最多 1000 个版本 | spec v2.15 |
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
-| **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.10：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler 策略模型（retry/ignore/terminate + errorTypes + retryConfig） | plan-json-schema.md v9.10 |
+| **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.11：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler 策略模型（retry/ignore/terminate + errorTypes + retryConfig） | plan-json-schema.md v9.10 |
 | **服务归属** | open-server（管理面 54 个） + connector-api（运行时 2 个，其中 #54 采用透明穿透模式） | plan.md §1 |
 | 端点总数 | **56**（open-server 54 + connector-api 2） | — |
 
@@ -912,7 +912,7 @@
 | publishedBy | string | 发布人 |
 | createTime | string | 创建时间 |
 
-**`connectionConfig` 子字段**（对齐 plan-json-schema.md §5.2 connectionConfig v3）
+**`connectionConfig` 子字段**（对齐 plan-json-schema.md §4.3.7 connectorConfigDef）
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1068,7 +1068,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §5.2） |
+| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §4.3.7 connectorConfigDef） |
 
 > `urlWhitelist` 校验：保存时不校验正则合法性（spec v2.23），正则校验推迟到发布时（#12）执行。空数组=不限制。
 > `authConfigs` 校验：保存时不校验 `type` 枚举值合法性、`header`/`query` 声明、`sysAccountWhitelist`/`secretKey` 必填等结构约束（spec v2.23），全部推迟到发布时（#12）执行。
@@ -2085,7 +2085,11 @@
         "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 10 },
         "cache": { "key": ["${$.node.trigger.input.body.userId}"], "ttl": 300 }
       },
-      "nodes": [ /* 完整 nodes 数组 */ ],
+      "nodes": [
+        { "id":"node_trigger", "type":"trigger", "position":{"x":100,"y":200}, "data":{ "type":"trigger", "triggerType":"http", ... } },
+        { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
+        { "id":"node_exit", "type":"exit", "position":{"x":600,"y":200}, "data":{ "type":"exit", "output":{...} } }
+      ],
       "edges": [ {"id":"e1","source":"node_trigger","target":"node_1","type":"smoothstep","data":{"connectionMode":"serial"}} ]
     },
     "publishedTime": "2026-06-07 09:00:00",
@@ -2157,7 +2161,11 @@
       "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 10 },
       "cache": { "key": ["${$.node.trigger.input.body.userId}"], "ttl": 300 }
     },
-    "nodes": [ /* 完整 nodes 数组 */ ],
+    "nodes": [
+      { "id":"node_trigger", "type":"trigger", "position":{"x":100,"y":200}, "data":{ "type":"trigger", "triggerType":"http", ... } },
+      { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
+      { "id":"node_exit", "type":"exit", "position":{"x":600,"y":200}, "data":{ "type":"exit", "output":{...} } }
+    ],
     "edges": [ /* 完整 edges 数组 */ ]
   }
 }
