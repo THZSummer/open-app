@@ -1,20 +1,33 @@
 #!/bin/bash
-# wecodesite 一键启动 (Vite React 前端)
+# wecodesite 一键重启 — 先停止再启动
 set -uo pipefail
 
-APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "=========================================="
+echo "重启 wecodesite"
+echo "=========================================="
+
+# 先停止
+echo ""
+echo ">>> 停止旧进程..."
+bash "$SCRIPT_DIR/stop.sh"
+echo ""
+
+# 再启动
+echo ">>> 启动新进程..."
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PORT=5173
 LOG="$APP_DIR/logs/wecodesite.log"
 PID_FILE="$APP_DIR/.pid"
 
-echo "=========================================="
 echo "启动 wecodesite (前端)  端口: $PORT"
 echo "=========================================="
 
 cd "$APP_DIR"
 
 if lsof -i:$PORT > /dev/null 2>&1; then
-    echo "⚠️  端口 $PORT 已被占用，请先执行 ./scripts/stop.sh"
+    echo "⚠️  端口 $PORT 仍被占用，请手动检查"
     exit 1
 fi
 

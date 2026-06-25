@@ -1,26 +1,38 @@
 #!/bin/bash
-# api-server 一键启动
+# market-server 一键重启 — 先停止再启动
 set -uo pipefail
 
-APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PORT=18081
-CTX="/api-server"
-LOG="$APP_DIR/logs/api-server.log"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "=========================================="
+echo "重启 market-server"
+echo "=========================================="
+
+# 先停止
+echo ""
+echo ">>> 停止旧进程..."
+bash "$SCRIPT_DIR/stop.sh"
+echo ""
+
+# 再启动
+echo ">>> 启动新进程..."
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PORT=18083
+CTX="/market-server"
+LOG="$APP_DIR/logs/market-server.log"
 PID_FILE="$APP_DIR/.pid"
 PROFILE="${SPRING_PROFILES_ACTIVE:-dev}"
 
-echo "=========================================="
-echo "启动 api-server (API网关)  端口: $PORT  环境: $PROFILE"
+echo "启动 market-server (应用市场)  端口: $PORT  环境: $PROFILE"
 echo "=========================================="
 
 cd "$APP_DIR"
 
 if lsof -i:$PORT > /dev/null 2>&1; then
-    echo "⚠️  端口 $PORT 已被占用，请先执行 ./scripts/stop.sh"
+    echo "⚠️  端口 $PORT 仍被占用，请手动检查"
     exit 1
 fi
 
-# 启动
 echo "🔨 编译启动中..."
 mkdir -p logs
 nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" > "$LOG" 2>&1 &

@@ -1,26 +1,38 @@
 #!/bin/bash
-# connector-api 一键启动 — WebFlux 运行时服务
+# connector-api 一键重启 — 先停止再启动
 set -uo pipefail
 
-APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "=========================================="
+echo "重启 connector-api"
+echo "=========================================="
+
+# 先停止
+echo ""
+echo ">>> 停止旧进程..."
+bash "$SCRIPT_DIR/stop.sh"
+echo ""
+
+# 再启动
+echo ">>> 启动新进程..."
+APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PORT=18180
-CTX=""   # connector-api 无 context-path
+CTX=""
 LOG="$APP_DIR/logs/connector-api.log"
 PID_FILE="$APP_DIR/.pid"
 PROFILE="${SPRING_PROFILES_ACTIVE:-dev}"
 
-echo "=========================================="
 echo "启动 connector-api (运行时)  端口: $PORT  环境: $PROFILE"
 echo "=========================================="
 
 cd "$APP_DIR"
 
 if lsof -i:$PORT > /dev/null 2>&1; then
-    echo "⚠️  端口 $PORT 已被占用，请先执行 ./scripts/stop.sh"
+    echo "⚠️  端口 $PORT 仍被占用，请手动检查"
     exit 1
 fi
 
-# 启动
 echo "🔨 编译启动中..."
 mkdir -p logs
 nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" > "$LOG" 2>&1 &
