@@ -4,7 +4,7 @@
 **关联文档**: plan.md（§4.1 管理面 + §4.2 运行时），plan-db.md（§3 表结构），plan-json-schema.md（JSON 结构定义）
 **版本**: v7.0
 **创建日期**: 2026-06-09
-**对齐基线**: spec.md v2.24-draft + plan-json-schema.md v9.10
+**对齐基线**: spec.md v2.24-draft + plan-json-schema.md v9.11
 
 ---
 
@@ -14,7 +14,7 @@
 |------|------|---------|
 | **版本模型** | **多版本**（草稿→发布→失效→删除），最多 1000 个版本 | spec v2.15 |
 | **连接流版本审批** | 三级审批（应用级→平台连接流级→全局级）+ 催办 | spec §3.6 |
-| **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.10：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler 策略模型（retry/ignore/terminate + errorTypes + retryConfig） | plan-json-schema.md v9.10 |
+| **JSON 字段结构** | 对齐 [plan-json-schema.md](./plan-json-schema.md) v9.11：React Flow 格式 / authConfigs 数组化多选认证 / input-output 协议分段 / JSON Path 值表达式 / flowConfig 限流+缓存 / FR-047 类型严格约束 / errorHandler 策略模型（retry/ignore/terminate + errorTypes + retryConfig） | plan-json-schema.md v9.10 |
 | **服务归属** | open-server（管理面 54 个） + connector-api（运行时 2 个，其中 #54 采用透明穿透模式） | plan.md §1 |
 | 端点总数 | **56**（open-server 54 + connector-api 2） | — |
 
@@ -391,7 +391,7 @@
 ## 3. 接口详细定义
 
 > 💡 接口清单见 §2，本章为每个接口的请求/响应详细定义。所有接口的字段命名、数据类型、响应格式、状态枚举均遵循 §1 设计规范。
-> 💡 **URL 白名单**（FR-015）作为 `connectionConfig.urlWhitelist` 字段内嵌在连接器版本配置中，由 #10 / #11 读写，不设独立端点。
+> 💡 **URL 白名单**（FR-015）为连接器级独立配置，不存储在 `connectionConfig` 中。
 > 💡 **操作日志查询**（FR-046）复用现有 OperateLog 模块，详见 §3.8，不新增专用端点。
 
 ### 3.1 连接器 CRUD（#1~#7）
@@ -912,7 +912,7 @@
 | publishedBy | string | 发布人 |
 | createTime | string | 创建时间 |
 
-**`connectionConfig` 子字段**（对齐 plan-json-schema.md §5.2 connectionConfig v3）
+**`connectionConfig` 子字段**（对齐 plan-json-schema.md §4.3.7 connectorConfigDef）
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -921,7 +921,6 @@
 | protocol | string | 协议类型，固定 `"HTTP"` |
 | protocolConfig | object | 协议配置：url / method（headers 由 input.header 承载，不在此处） |
 | authConfigs | array | 认证配置列表（minItems 1），每项见下方 `authConfigs[]` 子表 |
-| urlWhitelist | array | URL 白名单规则数组，见下方 `urlWhitelist[]` 子表。空数组=不限制 |
 | input | object | 入参声明（HTTP header/query/body 三段式），见 plan-json-schema.md §4.3.5 httpInputDef |
 | output | object | 出参声明（HTTP header/body 两段式），见 plan-json-schema.md §4.3.6 httpOutputDef |
 | timeoutMs | int | 单次调用超时（毫秒），默认 3000 |
@@ -938,13 +937,6 @@
 | secretKey | object | type=SIGNATURE 时必填，签名密钥定义（jsonObjectDef） |
 
 > `header`/`query` 内每个字段的 `value` 遵循 §3 值表达式体系（如 `"${$.system.env.soaToken}"`）。`sensitive=true` 的字段落库加密存储、日志脱敏打印。
-
-**`urlWhitelist[]` 子字段**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| pattern | string | 正则表达式 |
-| description | string | 规则说明 |
 
 **示例**
 
@@ -1014,9 +1006,6 @@
           }
         }
       ],
-      "urlWhitelist": [
-        { "pattern": "^https://api\\.example\\.com/v1/.*", "description": "内部 API 网关" }
-      ],
       "input": {
         "protocol": "HTTP",
         "body": {
@@ -1068,9 +1057,8 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §5.2） |
+| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §4.3.7 connectorConfigDef） |
 
-> `urlWhitelist` 校验：保存时不校验正则合法性（spec v2.23），正则校验推迟到发布时（#12）执行。空数组=不限制。
 > `authConfigs` 校验：保存时不校验 `type` 枚举值合法性、`header`/`query` 声明、`sysAccountWhitelist`/`secretKey` 必填等结构约束（spec v2.23），全部推迟到发布时（#12）执行。
 
 **响应体 `data`**
@@ -1128,7 +1116,6 @@
         }
       }
     ],
-    "urlWhitelist": [{"pattern":"^https://api\\.example\\.com/v2/.*","description":"新版 API"}],
     "input": {
       "protocol": "HTTP",
       "body": {
@@ -2085,7 +2072,11 @@
         "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 10 },
         "cache": { "key": ["${$.node.trigger.input.body.userId}"], "ttl": 300 }
       },
-      "nodes": [ /* 完整 nodes 数组 */ ],
+      "nodes": [
+        { "id":"node_trigger", "type":"trigger", "position":{"x":100,"y":200}, "data":{ "type":"trigger", "triggerType":"http", ... } },
+        { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
+        { "id":"node_exit", "type":"exit", "position":{"x":600,"y":200}, "data":{ "type":"exit", "output":{...} } }
+      ],
       "edges": [ {"id":"e1","source":"node_trigger","target":"node_1","type":"smoothstep","data":{"connectionMode":"serial"}} ]
     },
     "publishedTime": "2026-06-07 09:00:00",
@@ -2157,7 +2148,11 @@
       "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 10 },
       "cache": { "key": ["${$.node.trigger.input.body.userId}"], "ttl": 300 }
     },
-    "nodes": [ /* 完整 nodes 数组 */ ],
+    "nodes": [
+      { "id":"node_trigger", "type":"trigger", "position":{"x":100,"y":200}, "data":{ "type":"trigger", "triggerType":"http", ... } },
+      { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
+      { "id":"node_exit", "type":"exit", "position":{"x":600,"y":200}, "data":{ "type":"exit", "output":{...} } }
+    ],
     "edges": [ /* 完整 edges 数组 */ ]
   }
 }
