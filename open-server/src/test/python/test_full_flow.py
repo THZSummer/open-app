@@ -48,6 +48,10 @@ import requests
 CONNECTOR_API = "http://localhost:18180/api/v1"
 KEEP = os.environ.get("KEEP_TEST_DATA", "1") == "1"
 
+import random
+import string
+_RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+
 # ═══════════════════════════════════════════════════════════
 # Mock HTTP Server
 # ═══════════════════════════════════════════════════════════
@@ -177,6 +181,7 @@ def get_data(resp):
 def test_full_flow():
     print("=" * 60)
     print("  全流程端到端测试 — 连接器平台 V3")
+    print(f"  Run ID: {_RUN_ID}")
     print("=" * 60)
 
     # ── Phase 0 检查 ──
@@ -233,8 +238,8 @@ def test_full_flow():
             nonlocal cid
             cid = snow_id()
             r = os_api("POST", "/connectors", {
-                "nameCn": "全流程测试连接器",
-                "nameEn": "full-flow-connector",
+                "nameCn": f"全流程测试连接器_{_RUN_ID}",
+                "nameEn": f"full-flow-connector-{_RUN_ID}",
                 "connectorType": 1
             })
             if not check_ok(r, "CREATE 连接器"): return False
@@ -305,8 +310,8 @@ def test_full_flow():
             nonlocal fid
             fid = snow_id()
             r = os_api("POST", "/flows", {
-                "nameCn": "全流程测试连接流",
-                "nameEn": "full-flow-test"
+                "nameCn": f"全流程测试连接流_{_RUN_ID}",
+                "nameEn": f"full-flow-test-{_RUN_ID}"
             })
             if not check_ok(r, "CREATE 连接流"): return False
             d = get_data(r)
