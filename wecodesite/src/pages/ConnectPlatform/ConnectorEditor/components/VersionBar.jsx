@@ -44,6 +44,7 @@ const { Option } = Select;
  * props.detailLoading 详情加载态
  * props.onVersionChange 版本切换回调（versionId => void）
  * props.onEnterEdit 进入编辑态回调
+ * props.onCancelEdit 取消编辑回调（丢弃未保存修改）
  * props.onExitEdit 退出编辑态回调（保存 / 发布成功后调用）
  * props.onReloadVersions 重新加载版本列表回调，参数 { keepCurrent, preferVersionId }
  * props.onScrollToSection 校验失败时滚动到指定 section，参数 sectionKey
@@ -60,6 +61,7 @@ const VersionBar = (props) => {
     detailLoading,
     onVersionChange,
     onEnterEdit,
+    onCancelEdit,
     onExitEdit,
     onReloadVersions,
     onScrollToSection,
@@ -277,28 +279,36 @@ const VersionBar = (props) => {
       <>
         {isDraft && (
           <>
-            {/* 编辑 / 保存 切换 */}
+            {/* 编辑 / 发布 / 取消编辑 / 保存 按编辑态互斥展示 */}
             {!isEditing ? (
-              <Button
-                type="primary"
-                className="primary-btn"
-                onClick={onEnterEdit}
-              >
-                编辑
-              </Button>
+              <>
+                <Button
+                  type="primary"
+                  className="primary-btn"
+                  onClick={onEnterEdit}
+                >
+                  编辑
+                </Button>
+                <Button loading={actionLoading} onClick={handlePublish}>
+                  发布
+                </Button>
+              </>
             ) : (
-              <Button
-                type="primary"
-                className="primary-btn"
-                loading={actionLoading}
-                onClick={handleSave}
-              >
-                保存
-              </Button>
+              <>
+                {/* 取消编辑：退出编辑态并由父组件重新加载当前版本，丢弃未保存修改 */}
+                <Button onClick={onCancelEdit} disabled={actionLoading}>
+                  取消编辑
+                </Button>
+                <Button
+                  type="primary"
+                  className="primary-btn"
+                  loading={actionLoading}
+                  onClick={handleSave}
+                >
+                  保存
+                </Button>
+              </>
             )}
-            <Button loading={actionLoading} onClick={handlePublish}>
-              发布
-            </Button>
             <Button
               className="danger-btn"
               onClick={() => openConfirm('delete')}

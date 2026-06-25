@@ -128,13 +128,12 @@ export const VERSION_ACTIONS = {
 /**
  * 版本栏按钮渲染顺序（从左到右）
  * 详情按钮独立渲染在最左侧；其余按钮按下方优先级稳定重排。
- * 顺序：更多配置 / 调试 → 新增草稿 / 编辑 / 保存 → 发布 / 撤回 → 失效 / 删除
+ * 顺序：新增草稿 / 编辑 / 取消编辑 / 保存 → 发布 / 撤回 → 失效 / 删除
  */
 export const VERSION_BUTTON_ORDER = [
-  'moreConfig',
-  'debug',
   'newDraft',
   'edit',
+  'cancelEdit',
   'save',
   'publish',
   'withdraw',
@@ -148,8 +147,8 @@ export const VERSION_BUTTON_ORDER = [
 export const DEFAULT_APP_LIMITS = {
   /** 限流默认上限 */
   rateLimitMax: 1000,
-  /** 连接器超时默认上限（秒） */
-  connectorTimeoutMax: 3,
+  /** 连接器超时默认上限（毫秒） */
+  connectorTimeoutMax: 300000,
   /** 串行模式连接器数量上限 */
   serialConnectorMax: 3,
   /** 并行模式分支数量上限 */
@@ -201,8 +200,8 @@ export const FLOW_VERSION_DELETE_SECOND_MODAL_INFO = {
 
 /** 输出节点载体 Tab（无 query） */
 export const OUTPUT_CARRIER_TABS = [
-  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
   { key: 'header', label: 'HTTP 响应头', carrier: 'header' },
+  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
 ];
 
 // ========================================

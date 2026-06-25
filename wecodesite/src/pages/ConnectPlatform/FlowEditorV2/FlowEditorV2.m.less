@@ -89,7 +89,8 @@
       min-width: 0;
     }
 
-    .version-bar-actions {
+    .version-bar-actions,
+    .version-bar-extra-actions {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -328,6 +329,16 @@
         font-weight: normal;
         background: #e8f3ff;
         color: #3370ff;
+      }
+
+      .node-card-id {
+        max-width: 520px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #8f959e;
+        font-size: 12px;
+        font-weight: 400;
       }
     }
   }

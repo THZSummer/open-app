@@ -190,6 +190,15 @@ const ConnectorEditor = () => {
   };
 
   /**
+   * 取消编辑并还原当前版本详情
+   */
+  const handleCancelEdit = async () => {
+    if (!currentVersion?.versionId) return;
+    setIsEditing(false);
+    await loadVersionDetail(currentVersion.versionId);
+  };
+
+  /**
    * 退出编辑态（VersionBar 在保存 / 发布成功后调用）
    */
   const handleExitEdit = () => {
@@ -239,6 +248,7 @@ const ConnectorEditor = () => {
           detailLoading={detailLoading}
           onVersionChange={handleVersionChange}
           onEnterEdit={handleEnterEdit}
+          onCancelEdit={handleCancelEdit}
           onExitEdit={handleExitEdit}
           onReloadVersions={loadVersions}
           onScrollToSection={scrollToSection}

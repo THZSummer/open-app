@@ -16,15 +16,6 @@ export const editorPageInfo = {
 };
 
 /**
- * 触发类型映射
- */
-export const TRIGGER_TYPE_MAP = {
-  webhook: { text: 'Webhook', color: 'blue' },
-  api: { text: 'API轮询', color: 'green' },
-  schedule: { text: '定时触发', color: 'purple' },
-};
-
-/**
  * API配置的默认状态
  * 入参 / 出参均按 carrier 维度区分，仍以扁平数组维护
  * 对齐 plan-api.md v7.0 connectionConfig 结构
@@ -38,9 +29,9 @@ export const DEFAULT_API_CONFIG = {
   authRequestSchema: {},
   // 数字签名独立配置：参数名 / carrier / 固定值 / 密钥
   signatureConfig: {
-    paramName: '',
+    paramName: 'X-Signature',
     carrier: 'header',
-    fixedValue: 'X-Signature',
+    fixedValue: 'signature',
     secret: '',
   },
   headerSchema: [],
@@ -64,12 +55,17 @@ export const DEFAULT_API_CONFIG = {
  * 单个认证方式的默认参数项工厂
  * @param {Object} options
  * options.paramName 默认参数名
+ * options.fixedValue 默认固定值
  */
 const buildAuthParam = (options) => {
   // options.paramName: 参数名称
-  const { paramName } = options;
+  // options.fixedValue: 固定值，用于页面值来源展示
+  const { paramName, fixedValue } = options;
+  console.log('paramName', paramName);
+  console.log('fixedValue', fixedValue);
   return {
     paramName,
+    fixedValue,
     paramType: 'string',
     description: '',
     carrier: 'header',
@@ -83,14 +79,14 @@ const buildAuthParam = (options) => {
  */
 export const AUTH_SCHEMA_MAP = {
   SOA: [
-    buildAuthParam({ paramName: 'X-Huawei-Auth' }),
+    buildAuthParam({ paramName: 'X-Soa-Token', fixedValue: 'soaToken' }),
   ],
   APIG: [
-    buildAuthParam({ paramName: 'X-HW-ID' }),
-    buildAuthParam({ paramName: 'X-HW-APPKEY' }),
+    buildAuthParam({ paramName: 'apigAppSecret', fixedValue: 'apigAppSecret' }),
+    buildAuthParam({ paramName: 'apigAppKey', fixedValue: 'apigAppKey' }),
   ],
   Cookie: [
-    buildAuthParam({ paramName: 'Cookie' }),
+    buildAuthParam({ paramName: 'Cookie', fixedValue: 'Cookie' }),
   ],
 };
 
@@ -103,7 +99,6 @@ export const HTTP_METHOD_OPTIONS = [
   'POST',
   'PUT',
   'DELETE',
-  'PATCH',
 ];
 
 /**
@@ -152,6 +147,32 @@ export const COOKIE_FIELD_MAPPING_PLACEHOLDER = '从连接流引用参数配置'
  * 数字签名固定值默认值
  */
 export const SIGNATURE_DEFAULT_FIXED_VALUE = 'X-Signature';
+
+/**
+ * 认证参数行展示配置
+ * 用于统一控制通用认证和数字签名的值来源列展示差异
+ */
+export const AUTH_PARAM_ROW_CONFIG = {
+  // SOA 认证：展示系统值来源
+  SOA: {
+    valuePlaceholder: '值来源',
+  },
+  // APIG 认证：展示系统值来源
+  APIG: {
+    valuePlaceholder: '值来源',
+  },
+  // Cookie 认证：值来源由连接流引用参数配置
+  Cookie: {
+    value: '',
+    valuePlaceholder: COOKIE_FIELD_MAPPING_PLACEHOLDER,
+  },
+  // 数字签名：展示固定签名值，并额外展示签名密钥
+  SIGNATURE: {
+    value: SIGNATURE_DEFAULT_FIXED_VALUE,
+    valuePlaceholder: '签名固定值',
+    showSecret: true,
+  },
+};
 
 /**
  * Schema编辑器载体选项

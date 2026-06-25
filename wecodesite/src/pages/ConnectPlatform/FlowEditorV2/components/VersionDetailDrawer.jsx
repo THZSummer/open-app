@@ -123,9 +123,10 @@ const VersionDetailDrawer = (props) => {
         <div className="section-title">基础信息</div>
         <div className="kv-grid">
           <KvRow label="版本名称" value={versionInfo.name} />
-          <KvRow label="创建人" value={versionInfo.creator} />
+          <KvRow label="创建人" value={versionInfo.createBy} />
           <KvRow label="创建时间" value={versionInfo.createTime} />
-          <KvRow label="描述" value={versionInfo.description} />
+          <KvRow label="更新人" value={versionInfo.lastUpdateBy} />
+          <KvRow label="更新时间" value={versionInfo.lastUpdateTime} />
         </div>
       </div>
 
@@ -134,8 +135,8 @@ const VersionDetailDrawer = (props) => {
         <div className="drawer-section">
           <div className="section-title">发布信息</div>
           <div className="kv-grid">
-            <KvRow label="发布人" value={versionInfo.publisher} />
-            <KvRow label="发布时间" value={versionInfo.publishTime} />
+            <KvRow label="发布人" value={versionInfo.publishedBy} />
+            <KvRow label="发布时间" value={versionInfo.publishedTime} />
           </div>
         </div>
       )}
@@ -145,6 +146,7 @@ const VersionDetailDrawer = (props) => {
         <div className="drawer-section">
           <div className="section-title">失效信息</div>
           <div className="kv-grid">
+            <KvRow label="失效人" value={versionInfo.expireBy} />
             <KvRow label="失效时间" value={versionInfo.expireTime} />
           </div>
         </div>
@@ -218,8 +220,8 @@ const VersionDetailDrawer = (props) => {
         <div className="drawer-section">
           <div className="section-title">撤回信息</div>
           <div className="kv-grid">
-            <KvRow label="撤回人" value={versionInfo.withdrawer} />
-            <KvRow label="撤回时间" value={versionInfo.withdrawTime} />
+            <KvRow label="撤回人" value={versionInfo.lastUpdateBy} />
+            <KvRow label="撤回时间" value={versionInfo.lastUpdateTime} />
           </div>
         </div>
       )}

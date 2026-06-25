@@ -293,6 +293,15 @@ function FlowEditorV2() {
   };
 
   /**
+   * 取消编辑并还原当前版本详情
+   */
+  const handleCancelEdit = async () => {
+    if (!currentVersion?.versionId) return;
+    setIsEditing(false);
+    await loadVersionDetail(flowId, currentVersion.versionId);
+  };
+
+  /**
    * 保存草稿（不做完整校验）
    * 已撤回 / 已驳回 状态保存后由后端流转为草稿，需要重新拉取版本列表刷新状态
    */
@@ -628,16 +637,40 @@ function FlowEditorV2() {
    *
    * @param {Object} config 更多配置
    */
-  const handleSaveMoreConfig = (config) => {
-    setFlowData({
+  const handleSaveMoreConfig = async (config) => {
+    if (!editable || !currentVersion?.versionId) {
+      message.warning('请先进入编辑状态');
+      return;
+    }
+
+    const nextFlowData = {
       ...flowData,
       rateLimit: config.rateLimit,
       cacheEnabled: config.cacheEnabled,
       cacheTime: config.cacheTime,
       cacheKeys: config.cacheKeys,
+    };
+    const requestConfig = JSON.parse(JSON.stringify(nextFlowData));
+    const needReloadAfterSave = isWithdrawn || isRejected;
+
+    setActionLoading(true);
+    const res = await saveDraft({
+      flowId,
+      versionId: currentVersion.versionId,
+      config: requestConfig,
     });
-    message.success('更多配置已保存');
-    setMoreConfigVisible(false);
+    setActionLoading(false);
+
+    if (res?.code === '200') {
+      setFlowData(nextFlowData);
+      message.success('更多配置已保存');
+      setMoreConfigVisible(false);
+      if (needReloadAfterSave) {
+        await loadVersions(flowId, { preferVersionId: currentVersion.versionId });
+      }
+    } else {
+      message.error(res?.messageZh || '更多配置保存失败');
+    }
   };
 
   // ========================================
@@ -750,6 +783,7 @@ function FlowEditorV2() {
           actionLoading={actionLoading}
           isEditing={isEditing}
           onVersionChange={handleVersionChange}
+          onCancelEdit={handleCancelEdit}
           onAction={handleVersionAction}
         />
       </div>
@@ -812,7 +846,8 @@ function FlowEditorV2() {
                   <div className="node-card-header">
                     <div className="node-card-title">
                       <span className="node-card-tag">{getNodeTagText(activeNode.type)}</span>
-                      {getNodeTitleText(activeNode.type)}
+                      <span>{getNodeTitleText(activeNode.type)}</span>
+                      <span className="node-card-id">{activeNode.id}</span>
                     </div>
                   </div>
                   {renderActiveNodeCard()}
@@ -848,10 +883,12 @@ function FlowEditorV2() {
       {/* 更多配置抽屉 */}
       <MoreConfigDrawer
         visible={moreConfigVisible}
+        editable={editable}
         rateLimit={flowData.rateLimit}
         cacheEnabled={flowData.cacheEnabled}
         cacheTime={flowData.cacheTime}
         cacheKeys={flowData.cacheKeys}
+        triggerNodeId={flowData.trigger?.id}
         triggerInputParams={flowData.trigger?.inputParams}
         rateLimitMax={appLimits.rateLimitMax}
         cacheTimeMax={appLimits.cacheTimeMax}
