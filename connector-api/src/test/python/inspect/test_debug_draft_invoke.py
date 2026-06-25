@@ -10,34 +10,16 @@
 依赖: connector-api (:18180)
 """
 from client import *
-import subprocess, time, json, requests as req_lib
+import time, json, requests as req_lib
 
-
-DB_HOST = "192.168.3.155"
-DB_USER = "openapp"
-DB_PASS = "openapp"
-DB_NAME = "openapp"
-DB_BASE = ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e"]
 
 BASE_INTERNAL = "http://localhost:18180/api/v1/internal/test-run"
-
-
-def snow_id():
-    return int(time.time() * 1000000) % 100000000000000000
-
-
-def _mysql(sql):
-    subprocess.run(DB_BASE + [sql], check=True, capture_output=True)
-
-
-def _escape(obj):
-    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_status=1):
     """创建连接流 + 版本，返回 (flow_id, version_id)"""
     vid = snow_id()
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({snow_id_val}, 'IT_调试测试', 'IT_Debug', "
@@ -93,24 +75,20 @@ def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_stat
         ]
     }
 
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, status, create_by, last_update_by) "
         f"VALUES ({vid}, {snow_id_val}, "
-        f"'{_escape(orch)}', {version_status}, 'tester', 'tester')"
+        f"'{escape_sql(orch)}', {version_status}, 'tester', 'tester')"
     )
     return snow_id_val, vid
 
 
 def cleanup_flow(fid, vid):
     if vid:
-        subprocess.run(DB_BASE + [
-            f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {vid}"
-        ], capture_output=True)
+        db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {vid}")
     if fid:
-        subprocess.run(DB_BASE + [
-            f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {fid}"
-        ], capture_output=True)
+        db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {fid}")
 
 
 def debug_request(flow_id, body=None):
@@ -219,12 +197,12 @@ vid_118 = None
 try:
     # 创建无编排的草稿
     vid_118 = snow_id()
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({sid_118}, 'IT_空编排', 'IT_Empty', 1, 'tester', 'tester')"
     )
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({vid_118}, {sid_118}, '{{\"nodes\":[],\"edges\":[]}}', 'tester', 'tester')"

@@ -10,7 +10,6 @@
 注：connector-api 实际响应格式为直接返回 ExecutionResult。
 """
 from client import *
-import subprocess
 import time
 import json
 import requests as req_lib
@@ -18,19 +17,14 @@ import requests as req_lib
 BASE_INTERNAL = "http://localhost:18180/api/v1/internal/test-run"
 
 
-def snow_id():
-    return int(time.time() * 1000000) % 100000000000000000
-
-
 def setup_flow(snow_id_val, lifecycle_status=1):
     version_id = snow_id()
-    subprocess.run([
-        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({snow_id_val}, 'IT_测试运行', 'IT_TestRun', "
         f"{lifecycle_status}, 'tester', 'tester')"
-    ], check=True, capture_output=True)
+    )
 
     orchestration = {
         "nodes": [
@@ -89,33 +83,27 @@ def setup_flow(snow_id_val, lifecycle_status=1):
         ]
     }
 
-    subprocess.run([
-        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, "
         f"create_by, last_update_by) "
         f"VALUES ({version_id}, {snow_id_val}, "
-        f"'{json.dumps(orchestration).replace(chr(39), chr(39)*2)}', "
+        f"'{escape_sql(orchestration)}', "
         f"'tester', 'tester')"
-    ], check=True, capture_output=True)
+    )
 
-    subprocess.run([
-        "mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
+    db(
         f"UPDATE openplatform_v2_cp_flow_t "
         f"SET lifecycle_status = {lifecycle_status} "
         f"WHERE id = {snow_id_val}"
-    ], check=True, capture_output=True)
+    )
 
     return snow_id_val, version_id
 
 
 def cleanup_flow(flow_id_val, version_id_val):
-    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
-                    f"DELETE FROM openplatform_v2_cp_flow_version_t "
-                    f"WHERE id = {version_id_val}"], capture_output=True)
-    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
-                    f"DELETE FROM openplatform_v2_cp_flow_t "
-                    f"WHERE id = {flow_id_val}"], capture_output=True)
+    db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {version_id_val}")
+    db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id_val}")
 
 
 def test_run_request(flow_id, body=None):

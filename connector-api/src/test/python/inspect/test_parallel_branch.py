@@ -10,7 +10,6 @@
 并行分支同时执行，串行分支顺序执行。
 """
 from client import *
-import subprocess
 import time
 import json
 import requests as req_lib
@@ -103,36 +102,7 @@ if not mock_ready:
     print("WARNING: Parallel mock server on port 18997 did not become ready")
 
 
-# ═══════════════════════════════════════════════════════════
-# Database Helpers
-# ═══════════════════════════════════════════════════════════
-
-DB_HOST = "192.168.3.155"
-DB_USER = "openapp"
-DB_PASS = "openapp"
-DB_NAME = "openapp"
-
-
-def snow_id():
-    """生成唯一 ID"""
-    return int(time.time() * 1000000) % 100000000000000000
-
-
-def _mysql_exec(sql):
-    """执行 MySQL 语句（出错时抛异常）"""
-    subprocess.run(
-        ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e", sql],
-        check=True, capture_output=True
-    )
-
-
-def _escape_json(obj):
-    """将 Python 对象转为 MySQL-safe JSON 字符串"""
-    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
-
-
 def setup_connector(label_cn, label_en, target_url, method="GET"):
-    """创建连接器 + 版本，返回 (connector_id, version_id)"""
     connector_id = snow_id()
     version_id = snow_id()
     config = {
@@ -157,65 +127,46 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
         },
         "timeoutMs": 10000
     }
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
         f"1, 'tester', 'tester')"
     )
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
         f"(id, connector_id, connection_config, create_by, last_update_by) "
         f"VALUES ({version_id}, {connector_id}, "
-        f"'{_escape_json(config)}', 'tester', 'tester')"
+        f"'{escape_sql(config)}', 'tester', 'tester')"
     )
     return connector_id, version_id
 
 
 def cleanup_connector(connector_id, version_id):
-    """清理连接器 + 版本"""
-    subprocess.run(
-        ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e",
-         f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}"],
-        capture_output=True
-    )
-    subprocess.run(
-        ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e",
-         f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}"],
-        capture_output=True
-    )
+    db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}")
+    db(f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}")
 
 
 def setup_flow(flow_id, lifecycle_status, orchestration):
-    """创建 Flow + 版本，返回 (flow_id, flow_version_id)"""
     flow_version_id = snow_id()
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_并行测试', 'IT_ParallelTest', "
         f"{lifecycle_status}, 'tester', 'tester')"
     )
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({flow_version_id}, {flow_id}, "
-        f"'{_escape_json(orchestration)}', 'tester', 'tester')"
+        f"'{escape_sql(orchestration)}', 'tester', 'tester')"
     )
     return flow_id, flow_version_id
 
 
 def cleanup_flow(flow_id, flow_version_id, connector_ids=None, connector_version_ids=None):
-    """清理 Flow + 版本，可选连带清理多个 Connector"""
-    subprocess.run(
-        ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e",
-         f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}"],
-        capture_output=True
-    )
-    subprocess.run(
-        ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e",
-         f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}"],
-        capture_output=True
-    )
+    db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}")
+    db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}")
     if connector_ids and connector_version_ids:
         for cid, cvid in zip(connector_ids, connector_version_ids):
             cleanup_connector(cid, cvid)

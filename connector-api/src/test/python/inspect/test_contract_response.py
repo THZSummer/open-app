@@ -17,26 +17,6 @@ from client import *
 import json
 import re
 import requests
-import subprocess
-import time
-
-DB_HOST = "192.168.3.155"
-DB_USER = "openapp"
-DB_PASS = "openapp"
-DB_NAME = "openapp"
-DB_BASE = ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e"]
-
-
-def snow_id():
-    return int(time.time() * 1000000) % 100000000000000000
-
-
-def _mysql(sql):
-    subprocess.run(DB_BASE + [sql], check=True, capture_output=True)
-
-
-def _escape(obj):
-    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 def _parse_header_int(name, resp):
@@ -73,8 +53,8 @@ orch = {
                "type": "smoothstep", "data": {"businessType": "default"}}]
 }
 
-_mysql(f"INSERT INTO openplatform_v2_cp_flow_t (id, name_cn, name_en, lifecycle_status, create_by, last_update_by) VALUES ({test_flow_id}, '契约测试', 'ContractTest', 1, 'tester', 'tester')")
-_mysql(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, orchestration_config, create_by, last_update_by) VALUES ({test_version_id}, {test_flow_id}, '{_escape(orch)}', 'tester', 'tester')")
+db(f"INSERT INTO openplatform_v2_cp_flow_t (id, name_cn, name_en, lifecycle_status, create_by, last_update_by) VALUES ({test_flow_id}, '契约测试', 'ContractTest', 1, 'tester', 'tester')")
+db(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, orchestration_config, create_by, last_update_by) VALUES ({test_version_id}, {test_flow_id}, '{escape_sql(orch)}', 'tester', 'tester')")
 
 
 # ── 获取错误响应 ─────────────────────────────────────
@@ -149,5 +129,5 @@ check("错误码 404 覆盖（flow 不存在）",
       f"已覆盖: {codes_seen}")
 
 # ── 清理测试数据 ──
-_mysql(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {test_version_id}")
-_mysql(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {test_flow_id}")
+db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {test_version_id}")
+db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {test_flow_id}")

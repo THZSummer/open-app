@@ -7,13 +7,24 @@
 - --quiet 模式控制
 - is_pass() 自动判断 PASS/FAIL
 - check() 契约校验断言
+- db() / db_val() / snow_id() / escape_sql() — 数据库操作 + 测试数据管理
+
+配置：
+  切换环境只需修改本文件顶部的 _DB / BASE_URL 字典。
 
 用法:
   from client import *
+
+  # HTTP
   resp = request("POST", "/trigger/{flowId}/invoke", {...}, headers={...})
-  if resp is not None:
-      check("状态码", resp.status_code == 200)
-      check("errorInfo.code 为 6001", resp.json().get("errorInfo", {}).get("code") == "6001")
+
+  # DB
+  fid = snow_id()
+  db(f"INSERT INTO openplatform_v2_cp_flow_t (...) VALUES ({fid}, ...)")
+  rows = db_val("SELECT COUNT(*) FROM openplatform_v2_cp_flow_t")
+
+  # 断言
+  check("状态码", resp.status_code == 200)
 """
 import sys
 import json
@@ -21,6 +32,7 @@ import requests
 import time
 import re
 import atexit
+import subprocess
 
 _pass_count = 0
 _fail_count = 0
@@ -29,9 +41,34 @@ __all__ = [
     "BASE_URL", "is_quiet", "request",
     "check", "check_field_type", "check_time_iso8601", "check_camel_case",
     "_print_request", "_print_response", "_is_pass",
+    # V4: DB 基础设施
+    "db", "db_val", "snow_id", "escape_sql",
+    "_DB", "_API_HOST",
+    "redis",
 ]
 
 BASE_URL = "http://localhost:18180/api/v1"
+
+# ═══════════════════════════════════════════════════════════
+# 数据库配置 — 切换环境只需改这里
+# ═══════════════════════════════════════════════════════════
+_DB = {
+    "host": "192.168.3.155",
+    "user": "openapp",
+    "passwd": "openapp",
+    "db": "openapp",
+}
+_REDIS_CLUSTER = {
+    "nodes": [
+        {"host": "192.168.3.201", "port": 6379},
+        {"host": "192.168.3.202", "port": 6379},
+        {"host": "192.168.3.203", "port": 6379},
+        {"host": "192.168.3.204", "port": 6379},
+        {"host": "192.168.3.205", "port": 6379},
+    ],
+    "password": "openapp",
+}
+_API_HOST = "localhost:18180"
 
 
 def is_quiet():
@@ -153,6 +190,69 @@ def check_time_iso8601(value):
 def check_camel_case(name):
     """校验字段名是否为 camelCase"""
     return bool(re.match(r"^[a-z]+[A-Za-z0-9]*$", name))
+
+
+# ═══════════════════════════════════════════════════════════
+# V4: 数据库基础设施 — 所有脚本共享
+# ═══════════════════════════════════════════════════════════
+
+def db(sql, capture=False):
+    """执行 MySQL SQL 语句。
+
+    Args:
+        sql: 要执行的 SQL 语句
+        capture: 如果为 True，返回 stdout 字符串；否则返回 None
+    """
+    cmd = [
+        "mysql", f"-h{_DB['host']}", f"-u{_DB['user']}",
+        f"-p{_DB['passwd']}", _DB['db'], "-e", sql
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout if capture else None
+
+
+def db_val(sql):
+    """执行 SQL 并返回单个值（第一列第一行）。
+
+    用于 COUNT(*)、获取某个字段值等场景。
+    """
+    out = db(sql, capture=True)
+    if out is None:
+        return None
+    lines = out.strip().split('\n')
+    return lines[-1].strip() if len(lines) > 1 else None
+
+
+def snow_id():
+    """生成唯一雪花 ID（基于微秒时间戳）。
+
+    所有测试数据 ID 必须通过此函数生成，确保不冲突。
+    """
+    return int(time.time() * 1000000) % 100000000000000000
+
+
+def escape_sql(obj):
+    """将 Python 对象转为 MySQL-safe JSON 字符串。
+
+    用于将 orchestration_config / connection_config 等 JSON 字段插入 SQL。
+    """
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
+
+
+def redis(*args):
+    """执行 redis-cli 命令（Cluster 模式）。
+
+    例: redis("KEYS", "*") → redis("SET", "k", "v") → redis("GET", "k")
+    """
+    first = _REDIS_CLUSTER["nodes"][0]
+    cmd = [
+        "redis-cli", "-c",
+        "-h", first["host"], "-p", str(first["port"]),
+        "-a", _REDIS_CLUSTER["password"], "--no-auth-warning"
+    ]
+    cmd.extend([str(a) for a in args])
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
 
 
 def _print_summary():

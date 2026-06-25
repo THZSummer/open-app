@@ -16,41 +16,9 @@ v5.8 transparent response format:
   - Errors via X-Code / X-Message-Zh / X-Message-En headers, empty body
 """
 from client import *
-import subprocess
 import time
 import json
 import requests as req_lib
-
-
-# ═══════════════════════════════════════════════════════════
-# Database Helpers
-# ═══════════════════════════════════════════════════════════
-
-DB_HOST = "192.168.3.155"
-DB_USER = "openapp"
-DB_PASS = "openapp"
-DB_NAME = "openapp"
-DB_BASE = ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e"]
-
-
-def snow_id():
-    """Generate a unique ID based on microsecond timestamp."""
-    return int(time.time() * 1000000) % 100000000000000000
-
-
-def _mysql(sql):
-    """Execute a MySQL statement (raises on failure — for setup)."""
-    subprocess.run(DB_BASE + [sql], check=True, capture_output=True)
-
-
-def _escape(obj):
-    """Escape a JSON object for safe MySQL string insertion.
-    
-    Backslashes MUST be escaped first to prevent MySQL from interpreting
-    JSON escape sequences (e.g. \\n) as literal bytes, which corrupts the
-    stored orchestration_config JSON and causes parse failures downstream.
-    """
-    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -178,32 +146,28 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
     """
     flow_version_id = snow_id()
     orch = orchestration or {"nodes": [], "edges": []}
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({flow_id}, '脚本测试', 'ScriptTest', "
         f"{lifecycle_status}, 'tester', 'tester')"
     )
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({flow_version_id}, {flow_id}, "
-        f"'{_escape(orch)}', 'tester', 'tester')"
+        f"'{escape_sql(orch)}', 'tester', 'tester')"
     )
     return flow_id, flow_version_id
 
 
 def cleanup_flow(flow_id, flow_version_id):
     """Delete flow and version records (best-effort, no exception on failure)."""
-    subprocess.run(
-        ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e",
-         f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}"],
-        capture_output=True
+    db(
+        f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}"
     )
-    subprocess.run(
-        ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e",
-         f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}"],
-        capture_output=True
+    db(
+        f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}"
     )
 
 

@@ -11,44 +11,12 @@
   - 降级通过 MySQL 直接查询 openplatform_v2_cp_execution_record_t
 """
 from client import *
-import subprocess
 import time
 import json
 import requests as req_lib
 
 
-# ═══════════════════════════════════════════════════════════
-# Database Helpers
-# ═══════════════════════════════════════════════════════════
-
-DB_HOST = "192.168.3.155"
-DB_USER = "openapp"
-DB_PASS = "openapp"
-DB_NAME = "openapp"
-DB_BASE = ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e"]
-
 OPEN_SERVER = "http://localhost:18080/open-server"
-
-
-def snow_id():
-    """生成唯一雪花 ID"""
-    return int(time.time() * 1000000) % 100000000000000000
-
-
-def _mysql(sql):
-    """执行 MySQL 语句（出错时抛异常）"""
-    subprocess.run(DB_BASE + [sql], check=True, capture_output=True)
-
-
-def _mysql_quiet(sql):
-    """执行 MySQL 查询，返回 stdout（失败不抛异常）"""
-    r = subprocess.run(DB_BASE + [sql], capture_output=True, text=True)
-    return r.stdout
-
-
-def _escape(obj):
-    """将 Python 对象转为 MySQL-safe JSON 字符串"""
-    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -126,17 +94,17 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
     flow_version_id = snow_id()
     orch = orchestration or build_orch()
 
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_执行记录测试', 'IT_ExecRecord', "
         f"{lifecycle_status}, 'tester', 'tester')"
     )
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({flow_version_id}, {flow_id}, "
-        f"'{_escape(orch)}', 'tester', 'tester')"
+        f"'{escape_sql(orch)}', 'tester', 'tester')"
     )
     return flow_id, flow_version_id
 
@@ -144,29 +112,25 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
 def cleanup_flow(flow_id, flow_version_id):
     """清理 Flow + 版本 + 相关执行记录"""
     if flow_id:
-        subprocess.run(
-            DB_BASE + [
-                f"DELETE FROM openplatform_v2_cp_execution_step_t "
-                f"WHERE execution_id IN (SELECT id FROM "
-                f"openplatform_v2_cp_execution_record_t WHERE flow_id = {flow_id})"
-            ], capture_output=True)
-        subprocess.run(
-            DB_BASE + [
-                f"DELETE FROM openplatform_v2_cp_execution_record_t "
-                f"WHERE flow_id = {flow_id}"
-            ], capture_output=True)
+        db(
+            f"DELETE FROM openplatform_v2_cp_execution_step_t "
+            f"WHERE execution_id IN (SELECT id FROM "
+            f"openplatform_v2_cp_execution_record_t WHERE flow_id = {flow_id})"
+        )
+        db(
+            f"DELETE FROM openplatform_v2_cp_execution_record_t "
+            f"WHERE flow_id = {flow_id}"
+        )
     if flow_version_id:
-        subprocess.run(
-            DB_BASE + [
-                f"DELETE FROM openplatform_v2_cp_flow_version_t "
-                f"WHERE id = {flow_version_id}"
-            ], capture_output=True)
+        db(
+            f"DELETE FROM openplatform_v2_cp_flow_version_t "
+            f"WHERE id = {flow_version_id}"
+        )
     if flow_id:
-        subprocess.run(
-            DB_BASE + [
-                f"DELETE FROM openplatform_v2_cp_flow_t "
-                f"WHERE id = {flow_id}"
-            ], capture_output=True)
+        db(
+            f"DELETE FROM openplatform_v2_cp_flow_t "
+            f"WHERE id = {flow_id}"
+        )
 
 
 def trigger_invoke(flow_id, body=None, headers=None):
@@ -203,7 +167,7 @@ def query_execution_records(flow_id):
         f"WHERE flow_id = {flow_id} "
         f"ORDER BY trigger_time DESC"
     )
-    return _mysql_quiet(sql)
+    return db(sql, capture=True)
 
 
 def list_executions_api(flow_id, query_params=None):
@@ -368,15 +332,17 @@ try:
     time.sleep(0.5)
 
     # ── MySQL 验证分页/过滤 ──
-    page1_out = _mysql_quiet(
+    page1_out = db(
         f"SELECT id, flow_id, status FROM "
         f"openplatform_v2_cp_execution_record_t "
         f"WHERE flow_id = {fid_003} "
-        f"ORDER BY trigger_time DESC LIMIT 2"
+        f"ORDER BY trigger_time DESC LIMIT 2",
+        capture=True
     )
-    other_out = _mysql_quiet(
+    other_out = db(
         f"SELECT COUNT(*) FROM openplatform_v2_cp_execution_record_t "
-        f"WHERE flow_id = 999999999999999999"
+        f"WHERE flow_id = 999999999999999999",
+        capture=True
     )
 
     has_p1 = page1_out.strip() and "id" in page1_out

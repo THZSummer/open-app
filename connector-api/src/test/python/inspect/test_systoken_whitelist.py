@@ -14,7 +14,6 @@
 编排使用 trigger → exit 两节点模式（无需 connector 依赖）。
 """
 from client import *
-import subprocess
 import time
 import json
 import requests as req_lib
@@ -25,30 +24,7 @@ import requests as req_lib
 
 CONNECTOR_API_BASE = "http://localhost:18180/api/v1"
 
-DB_HOST = "192.168.3.155"
-DB_USER = "openapp"
-DB_PASS = "openapp"
-DB_NAME = "openapp"
-DB_BASE = ["mysql", "-h", DB_HOST, f"-u{DB_USER}", f"-p{DB_PASS}", DB_NAME, "-e"]
 
-
-# ═══════════════════════════════════════════════════════════
-# Database Helpers
-# ═══════════════════════════════════════════════════════════
-
-def snow_id():
-    """生成唯一雪花 ID"""
-    return int(time.time() * 1000000) % 100000000000000000
-
-
-def _mysql(sql):
-    """执行 MySQL 语句（出错时抛异常）"""
-    subprocess.run(DB_BASE + [sql], check=True, capture_output=True)
-
-
-def _escape(obj):
-    """将 Python 对象转为 MySQL-safe JSON 字符串"""
-    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -137,17 +113,17 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
     flow_version_id = snow_id()
     orch = orchestration or build_orch()
 
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_SYSTOKEN白名单', 'IT_SysTokenWL', "
         f"{lifecycle_status}, 'tester', 'tester')"
     )
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({flow_version_id}, {flow_id}, "
-        f"'{_escape(orch)}', 'tester', 'tester')"
+        f"'{escape_sql(orch)}', 'tester', 'tester')"
     )
     return flow_id, flow_version_id
 
@@ -155,11 +131,11 @@ def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
 def insert_version(flow_id, orchestration):
     """为已有 flow 插入一个新版本。返回 version_id"""
     version_id = snow_id()
-    _mysql(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({version_id}, {flow_id}, "
-        f"'{_escape(orchestration)}', 'tester', 'tester')"
+        f"'{escape_sql(orchestration)}', 'tester', 'tester')"
     )
     return version_id
 
@@ -168,17 +144,9 @@ def cleanup_flow(flow_id, *version_ids):
     """清理 Flow + 版本记录"""
     for vid in version_ids:
         if vid:
-            subprocess.run(
-                DB_BASE + [
-                    f"DELETE FROM openplatform_v2_cp_flow_version_t "
-                    f"WHERE id = {vid}"
-                ], capture_output=True)
+            db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {vid}")
     if flow_id:
-        subprocess.run(
-            DB_BASE + [
-                f"DELETE FROM openplatform_v2_cp_flow_t "
-                f"WHERE id = {flow_id}"
-            ], capture_output=True)
+        db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}")
 
 
 # ═══════════════════════════════════════════════════════════
@@ -351,11 +319,7 @@ try:
               f"status={resp_v1_deny.status_code}")
 
     # ── 清理 v1，使 v2 变为唯一（最新）版本 ──
-    subprocess.run(
-        DB_BASE + [
-            f"DELETE FROM openplatform_v2_cp_flow_version_t "
-            f"WHERE id = {fvid_004_v1}"
-        ], capture_output=True)
+    db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {fvid_004_v1}")
     fvid_004_v1 = None  # 标记已清理，防止 finally 重复删除
 
     # SKIP: 版本切换缓存隔离需 API 级部署操作触发缓存失效

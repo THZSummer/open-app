@@ -20,7 +20,6 @@
   - 不再返回 steps (hasSteps 逻辑已移除)
 """
 from client import *
-import subprocess
 import time
 import json
 import urllib.parse
@@ -554,74 +553,54 @@ def build_fail_orchestration(connector_version_id):
 # Helpers
 # ═══════════════════════════════════════════════════════════
 
-def snow_id():
-    return int(time.time() * 1000000) % 100000000000000000
-
-
-def _mysql_exec(sql):
-    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e", sql],
-                   check=True, capture_output=True)
-
-
-def _escape_json(obj):
-    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
-
 
 def setup_connector(connection_config=None):
     connector_id = snow_id()
     version_id = snow_id()
     config = connection_config or CONNECTION_CONFIG
 
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
         f"1, 'tester', 'tester')"
     )
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
         f"(id, connector_id, connection_config, create_by, last_update_by) "
         f"VALUES ({version_id}, {connector_id}, "
-        f"'{_escape_json(config)}', 'tester', 'tester')"
+        f"'{escape_sql(config)}', 'tester', 'tester')"
     )
     return connector_id, version_id
 
 
 def cleanup_connector(connector_id, version_id):
-    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
-                    f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}"],
-                   capture_output=True)
-    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
-                    f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}"],
-                   capture_output=True)
+    db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}")
+    db(f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}")
 
 
 def setup_flow(flow_id, lifecycle_status=1, orchestration=None,
                connector_id=None, connector_version_id=None):
     flow_version_id = snow_id()
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_触发测试', 'IT_TriggerTest', "
         f"{lifecycle_status}, 'tester', 'tester')"
     )
     orch = orchestration or build_orchestration_no_connector()
-    _mysql_exec(
+    db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
         f"(id, flow_id, orchestration_config, create_by, last_update_by) "
         f"VALUES ({flow_version_id}, {flow_id}, "
-        f"'{_escape_json(orch)}', 'tester', 'tester')"
+        f"'{escape_sql(orch)}', 'tester', 'tester')"
     )
     return flow_id, flow_version_id
 
 
 def cleanup_flow(flow_id, flow_version_id, connector_id=None, connector_version_id=None):
-    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
-                    f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}"],
-                   capture_output=True)
-    subprocess.run(["mysql", "-h", "192.168.3.155", "-uopenapp", "-popenapp", "openapp", "-e",
-                    f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}"],
-                   capture_output=True)
+    db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}")
+    db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}")
     if connector_id and connector_version_id:
         cleanup_connector(connector_id, connector_version_id)
 
