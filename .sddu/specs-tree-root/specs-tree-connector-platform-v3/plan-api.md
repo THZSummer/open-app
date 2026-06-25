@@ -912,7 +912,7 @@
 | publishedBy | string | 发布人 |
 | createTime | string | 创建时间 |
 
-**`connectionConfig` 子字段**（对齐 plan-json-schema.md §4.3.7 connectorConfigDef）
+**`connectionConfig` 子字段**（对齐 plan-json-schema.md §4.3.7 connectorVersionConfigDef）
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
@@ -1057,7 +1057,7 @@
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §4.3.7 connectorConfigDef） |
+| connectionConfig | object | ✅ | 连接配置全文替换，结构同 #10（对齐 plan-json-schema.md §4.3.7 connectorVersionConfigDef） |
 
 > `authConfigs` 校验：保存时不校验 `type` 枚举值合法性、`header`/`query` 声明、`sysAccountWhitelist`/`secretKey` 必填等结构约束（spec v2.23），全部推迟到发布时（#12）执行。
 
@@ -2074,7 +2074,7 @@
       },
       "nodes": [
         { "id":"node_trigger", "type":"trigger", "position":{"x":100,"y":200}, "data":{ "type":"trigger", "triggerType":"http", ... } },
-        { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
+        { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorVersionConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
         { "id":"node_exit", "type":"exit", "position":{"x":600,"y":200}, "data":{ "type":"exit", "output":{...} } }
       ],
       "edges": [ {"id":"e1","source":"node_trigger","target":"node_1","type":"smoothstep","data":{"connectionMode":"serial"}} ]
@@ -2150,7 +2150,7 @@
     },
     "nodes": [
       { "id":"node_trigger", "type":"trigger", "position":{"x":100,"y":200}, "data":{ "type":"trigger", "triggerType":"http", ... } },
-      { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
+      { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorVersionConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
       { "id":"node_exit", "type":"exit", "position":{"x":600,"y":200}, "data":{ "type":"exit", "output":{...} } }
     ],
     "edges": [ /* 完整 edges 数组 */ ]
@@ -3344,7 +3344,7 @@ sequenceDiagram
     CA->>VCR: resolve(flowId, versionId)
     VCR->>DB: SELECT flow_version_t WHERE id={versionId}
     DB-->>VCR: FlowVersion（含 orchestration_config）
-    VCR->>VCR: 解析 orchestration_config<br/>· nodes → 遍历 connector 节点，从 node.data.connectorConfig 取快照<br/>· edges → 构建 DAG 拓扑<br/>· flowConfig → 调试模式跳过入站限流和缓存
+    VCR->>VCR: 解析 orchestration_config<br/>· nodes → 遍历 connector 节点，从 node.data.connectorVersionConfig 取快照<br/>· edges → 构建 DAG 拓扑<br/>· flowConfig → 调试模式跳过入站限流和缓存
     VCR-->>CA: ResolvedConfig
 
     Note over CA,EXT: ② DAG 执行
@@ -3355,7 +3355,7 @@ sequenceDiagram
         alt trigger 节点
             DAG->>DAG: triggerData 作为 input
         else connector 节点
-            DAG->>DAG: 从 connectorConfig 取 url/method/auth<br/>注入认证凭证 + 字段映射
+            DAG->>DAG: 从 connectorVersionConfig 取 url/method/auth<br/>注入认证凭证 + 字段映射
             DAG->>EXT: HTTP 调用外部 API
             EXT-->>DAG: 响应
         else exit 节点
@@ -3602,7 +3602,7 @@ sequenceDiagram
     DB-->>VCR: deployed_version_id
     VCR->>DB: SELECT flow_version_t WHERE id={deployedVersionId}
     DB-->>VCR: FlowVersion（含 orchestration_config）
-    VCR->>VCR: 解析 orchestration_config<br/>· nodes → 从 node.data.connectorConfig 取快照<br/>· edges → 构建 DAG 拓扑<br/>· flowConfig → 解析限流/缓存配置
+    VCR->>VCR: 解析 orchestration_config<br/>· nodes → 从 node.data.connectorVersionConfig 取快照<br/>· edges → 构建 DAG 拓扑<br/>· flowConfig → 解析限流/缓存配置
     VCR-->>CA: ResolvedConfig
 
     Note over CA,LIMITER: ② 入站限流
@@ -3622,7 +3622,7 @@ sequenceDiagram
         loop 遍历编排节点
             DAG->>DAG: Kahn 拓扑排序
             alt connector 节点
-                DAG->>DAG: 从 connectorConfig 取 url/method/auth<br/>注入认证凭证 + 字段映射
+                DAG->>DAG: 从 connectorVersionConfig 取 url/method/auth<br/>注入认证凭证 + 字段映射
                 DAG->>CONN: HTTP 调用外部 API
                 CONN-->>DAG: 响应
             else exit 节点
