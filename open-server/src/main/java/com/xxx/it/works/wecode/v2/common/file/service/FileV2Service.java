@@ -46,34 +46,36 @@ public class FileV2Service {
     @Value("${platform.file.upload-dir:./uploads}")
     private String uploadDir;
 
-    @Value("${platform.file.url-prefix:/uploads}")
+    @Value("${platform.file.url-prefix:/service/open/v2/uploads}")
     private String urlPrefix;
 
     /**
-     * 根据文件ID查询文件 URL
-     *
-     * @param fileId 文件ID
-     * @return 文件 URL，fileId 为空或查不到时返回空字符串
+     * 根据文件ID查询文件 URL（动态拼接，确保前缀与当前配置一致）
      */
     public String queryFileUrl(String fileId) {
         if (!StringUtils.hasText(fileId)) {
             return "";
         }
         FileEntity file = fileMapper.selectByFileId(fileId);
-        return Objects.nonNull(file) ? file.getUrl() : "";
+        if (Objects.isNull(file)) {
+            return "";
+        }
+        // filePath 可能带 /uploads/ 前缀（旧数据），去掉避免和 urlPrefix 重复
+        String fp = file.getFilePath();
+        if (fp != null && fp.startsWith("/uploads/")) {
+            fp = fp.substring("/uploads/".length());
+        } else if (fp != null && fp.startsWith("uploads/")) {
+            fp = fp.substring("uploads/".length());
+        }
+        fp = fp.startsWith("/") ? fp.substring(1) : fp;
+        return urlPrefix + "/" + fp;
     }
 
     /**
      * 根据文件ID构建 FileV2VO（含 fileId + url）
-     *
-     * @param fileId 文件ID
-     * @return FileV2VO，fileId 为入参值，url 从文件表查询（查不到则为空字符串）
      */
     public FileV2VO buildFileVO(String fileId) {
-        FileV2VO vo = new FileV2VO();
-        vo.setFileId(fileId);
-        vo.setUrl(queryFileUrl(fileId));
-        return vo;
+        return new FileV2VO(fileId, queryFileUrl(fileId));
     }
 
     /**
