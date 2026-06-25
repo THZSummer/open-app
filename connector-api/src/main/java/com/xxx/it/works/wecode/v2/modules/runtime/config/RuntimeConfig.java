@@ -46,8 +46,10 @@ public class RuntimeConfig {
 
     @Bean
     public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                                         CredentialInjectorRegistry credentialInjectorRegistry) {
-        return new ConnectorNodeExecutor(objectMapper, webClient, credentialInjectorRegistry);
+                                                         CredentialInjectorRegistry credentialInjectorRegistry,
+                                                         OpConnectorVersionReadRepository connectorVersionReadRepository) {
+        return new ConnectorNodeExecutor(objectMapper, webClient, credentialInjectorRegistry,
+                connectorVersionReadRepository);
     }
 
     @Bean

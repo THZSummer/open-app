@@ -389,10 +389,12 @@ def test_full_flow():
                             "X-Custom-Header": "full-flow-test"
                         }
                     },
-                    "authConfig": {
-                        "type": "NONE"
-                    },
-                    "inputContract": {
+                    "authConfigs": [
+                        {
+                            "type": "NONE"
+                        }
+                    ],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {
                             "type": "object",
@@ -404,19 +406,27 @@ def test_full_flow():
                             "type": "object",
                             "properties": {
                                 "keyword": {"type": "string", "description": "搜索关键词"},
-                                "page": {"type": "integer", "description": "页码"}
+                                "page": {"type": "integer", "description": "页码"},
+                                "size": {"type": "integer", "description": "每页条数"}
                             }
                         },
                         "body": {
                             "type": "object",
                             "properties": {
                                 "message": {"type": "string", "description": "消息体"},
-                                "traceId": {"type": "string", "description": "追踪ID"},
-                                "timestamp": {"type": "integer", "description": "时间戳"}
+                                "filters": {
+                                    "type": "object",
+                                    "properties": {
+                                        "category": {"type": "string"},
+                                        "minScore": {"type": "number"}
+                                    }
+                                },
+                                "sort": {"type": "string", "description": "排序字段"},
+                                "traceId": {"type": "string", "description": "请求追踪ID"}
                             }
                         }
                     },
-                    "outputContract": {
+                    "output": {
                         "protocol": "HTTP",
                         "body": {
                             "type": "object",
@@ -508,71 +518,79 @@ def test_full_flow():
                     "nodes": [
                         {"id": "trigger", "type": "trigger", "data": {
                             "type": "http",
-                            "subType": "http",
-                "inputContract": {
-                    "protocol": "HTTP",
-                    "header": {
-                        "type": "object",
-                        "properties": {
-                            "X-Trace-Id": {"type": "string", "description": "全链路追踪ID"}
-                        },
-                        "required": []
-                    },
-                    "query": {
-                        "type": "object",
-                        "properties": {
-                            "keyword": {"type": "string", "description": "搜索关键词"},
-                            "page": {"type": "integer", "description": "页码", "default": 1},
-                            "size": {"type": "integer", "description": "每页条数", "default": 20}
-                        },
-                        "required": ["keyword"]
-                    },
-                    "body": {
-                        "type": "object",
-                        "properties": {
-                            "filters": {
-                                "type": "object",
-                                "description": "过滤条件",
-                                "properties": {
-                                    "category": {"type": "string", "description": "分类"},
-                                    "minScore": {"type": "number", "description": "最低评分"}
-                                }
-                            },
-                            "sort": {"type": "string", "description": "排序字段", "default": "score"},
-                            "traceId": {"type": "string", "description": "请求追踪ID"}
-                        },
-                        "required": []
-                    }
-                },
                             "authConfig": {
                                 "type": "SYSTOKEN",
-                                "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X-Sys-Token": {
+                                            "type": "string",
+                                            "required": True,
+                                            "sensitive": True
+                                        }
+                                    }
+                                }
+                            },
+                            "inputContract": {
+                                "protocol": "HTTP",
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X-Trace-Id": {"type": "string", "description": "全链路追踪ID"}
+                                    },
+                                    "required": []
+                                },
+                                "query": {
+                                    "type": "object",
+                                    "properties": {
+                                        "keyword": {"type": "string", "description": "搜索关键词"},
+                                        "page": {"type": "integer", "description": "页码", "default": 1},
+                                        "size": {"type": "integer", "description": "每页条数", "default": 20}
+                                    },
+                                    "required": ["keyword"]
+                                },
+                                "body": {
+                                    "type": "object",
+                                    "properties": {
+                                        "filters": {
+                                            "type": "object",
+                                            "description": "过滤条件",
+                                            "properties": {
+                                                "category": {"type": "string", "description": "分类"},
+                                                "minScore": {"type": "number", "description": "最低评分"}
+                                            }
+                                        },
+                                        "sort": {"type": "string", "description": "排序字段", "default": "score"},
+                                        "traceId": {"type": "string", "description": "请求追踪ID"}
+                                    },
+                                    "required": []
+                                }
                             }
                         }},
                         {"id": "conn1", "type": "connector", "data": {
                             "connectorId": str(cid),
                             "connectorVersionId": str(conn_vid),
-                            "inputMapping": {
+                            "input": {
                                 "header": {
                                     "type": "object",
                                     "properties": {
-                                        "X-Trace-Id": {"type": "string", "value": "${$.node.trigger.input.header.X-Trace-Id}"}
+                                        "X-Trace-Id": {"type": "string", "value": "${$.node.trigger.inputContract.header.X-Trace-Id}"}
                                     }
                                 },
                                 "query": {
                                     "type": "object",
                                     "properties": {
-                                        "keyword": {"type": "string", "value": "${$.node.trigger.input.query.keyword}"},
-                                        "page": {"type": "string", "value": "${$.node.trigger.input.query.page}"},
-                                        "size": {"type": "string", "value": "${$.node.trigger.input.query.size}"}
+                                        "keyword": {"type": "string", "value": "${$.node.trigger.inputContract.query.keyword}"},
+                                        "page": {"type": "string", "value": "${$.node.trigger.inputContract.query.page}"},
+                                        "size": {"type": "string", "value": "${$.node.trigger.inputContract.query.size}"}
                                     }
                                 },
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "message": {"type": "string", "value": "${$.node.trigger.input.body.filters}"},
-                                        "traceId": {"type": "string", "value": "${$.node.trigger.input.body.traceId}"},
-                                        "sort": {"type": "string", "value": "${$.node.trigger.input.body.sort}"}
+                                        "message": {"type": "string", "value": "${$.node.trigger.inputContract.body.filters}"},
+                                        "traceId": {"type": "string", "value": "${$.node.trigger.inputContract.body.traceId}"},
+                                        "sort": {"type": "string", "value": "${$.node.trigger.inputContract.body.sort}"}
                                     }
                                 }
                             }
@@ -789,7 +807,12 @@ def test_full_flow():
                 print(f"  ✅ TRIGGER (HTTP {r.status_code})")
                 try:
                     b = r.json()
-                    print(f"    响应: {json.dumps(b, ensure_ascii=False)[:200]}")
+                    print(f"    响应body: {json.dumps(b, ensure_ascii=False)[:500]}")
+                    # also print response headers
+                    for h in ["X-Flow-Id", "X-Execution-Id", "X-Status", "X-Duration-Ms", "X-Echo-Count"]:
+                        v = r.headers.get(h)
+                        if v:
+                            print(f"    {h}: {v}")
                 except Exception:
                     print(f"    响应: {r.text[:200]}")
                 return True
@@ -799,7 +822,7 @@ def test_full_flow():
         def s18():
             time.sleep(1)
             st = os_db_val(
-                f"SELECT status FROM openplatform_v2_execution_record_t "
+                f"SELECT status FROM openplatform_v2_cp_execution_record_t "
                 f"WHERE flow_id={fid} ORDER BY create_time DESC LIMIT 1"
             )
             if st:
