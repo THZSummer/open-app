@@ -1,6 +1,6 @@
 #!/bin/bash
 # market-web 一键启动 (前端)
-set -euo pipefail
+set -uo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT=13000

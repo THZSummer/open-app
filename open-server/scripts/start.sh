@@ -1,6 +1,6 @@
 #!/bin/bash
 # open-server 一键启动 — 优先 java -jar，无 jar 自动编译
-set -euo pipefail
+set -uo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT=18080

@@ -1,6 +1,6 @@
 #!/bin/bash
 # connector-api 一键启动 — WebFlux 运行时服务
-set -euo pipefail
+set -uo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT=18180

@@ -1,6 +1,6 @@
 #!/bin/bash
 # wecodesite 一键启动 (Vite React 前端)
-set -euo pipefail
+set -uo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PORT=5173
