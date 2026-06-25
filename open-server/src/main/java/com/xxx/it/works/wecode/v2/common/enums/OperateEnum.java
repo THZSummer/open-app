@@ -208,25 +208,9 @@ public enum OperateEnum {
     }
 
     /**
-     * 该操作的 diff 字段配置（模板配置式）
+     * diff 字段配置（仅当操作模板含 ${diffFields} 时需要配置）
      *
-     * <p>仅当操作模板含 ${diffFields} 时需要配置。默认返回 null 表示无 diff 配置，
-     * 切面 {@code renderDiffFields} 会跳过 diff 渲染。</p>
-     *
-     * <p>需要 diff 的操作在枚举值上 override 此方法，返回 {@link DiffConfig}：</p>
-     * <pre>{@code
-     * UPDATE_APP(...) {
-     *     @Override
-     *     public DiffConfig diffConfig() {
-     *         return DiffConfig.builder()
-     *             .field("appNameCn", "中文名", "Chinese name")
-     *             .labelOnlyField("iconId", "应用图标", "App icon")
-     *             .build();
-     *     }
-     * }
-     * }</pre>
-     *
-     * @return diff 配置，null 表示该操作无 diff 需求
+     * @return diff 配置，null 表示无 diff 需求
      */
     public DiffConfig diffConfig() {
         return null;
