@@ -57,38 +57,144 @@ _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 # ═══════════════════════════════════════════════════════════
 
 class MockServer:
+    """真实模拟下游 HTTP 服务，覆盖请求 header/query/body → 响应 body/header"""
+
     def __init__(self, port=18980):
         self.port = port
         self._server = None
         self._thread = None
 
     def _make_handler(self):
+        # mutable state shared across requests (thread-safe via GIL for our use case)
+        state = {"call_count": 0}
+
         class H(BaseHTTPRequestHandler):
             def log_message(self, f, *a):
                 pass
-            def _respond(self, code, body):
+
+            def _respond(self, code, body, extra_headers=None):
                 self.send_response(code)
                 self.send_header("Content-Type", "application/json")
+                # custom response headers for verification
+                self.send_header("X-Mock-Server", "full-flow-test")
+                self.send_header("X-Response-Id", f"resp-{state['call_count']}")
+                if extra_headers:
+                    for k, v in extra_headers.items():
+                        self.send_header(k, v)
                 self.end_headers()
-                self.wfile.write(json.dumps(body).encode())
-            def _dispatch(self, method):
-                path = self.path.split("?")[0]
-                body = {}
-                if method == "POST":
-                    cl = int(self.headers.get("Content-Length", 0))
-                    if cl > 0:
-                        try:
-                            body = json.loads(self.rfile.read(cl))
-                        except Exception:
-                            body = {}
+                self.wfile.write(json.dumps(body, ensure_ascii=False).encode())
+
+            def _parse_query(self):
+                """解析 query string 为 dict"""
+                from urllib.parse import parse_qs, urlparse
+                parsed = urlparse(self.path)
+                qs = parse_qs(parsed.query)
+                # parse_qs returns {k: [v1, v2]}, flatten single values
+                return {k: v[0] if len(v) == 1 else v for k, v in qs.items()}
+
+            def _parse_body(self):
+                cl = int(self.headers.get("Content-Length", 0))
+                if cl > 0:
+                    try:
+                        return json.loads(self.rfile.read(cl))
+                    except Exception:
+                        return {"raw": "parse_error"}
+                return {}
+
+            def _echo_headers(self):
+                """收集所有请求头（排除 host/content-length）"""
+                skip = {"host", "content-length", "content-type"}
+                return {k: v for k, v in self.headers.items() if k.lower() not in skip}
+
+            def _path_only(self):
+                return self.path.split("?")[0]
+
+            # ── GET /api/health ──
+            def do_GET(self):
+                path = self._path_only()
+                query = self._parse_query()
+                state["call_count"] += 1
+
                 if path == "/api/health":
-                    self._respond(200, {"status": "ok", "server": "full-flow-mock"})
+                    self._respond(200, {
+                        "status": "ok",
+                        "server": "full-flow-mock",
+                        "uptime_calls": state["call_count"]
+                    })
+
+                elif path == "/api/search":
+                    keyword = query.get("keyword", "")
+                    page = query.get("page", "1")
+                    self._respond(200, {
+                        "code": 0,
+                        "message": "success",
+                        "data": {
+                            "keyword": keyword,
+                            "page": int(page),
+                            "total": 42,
+                            "items": [
+                                {"id": 1, "name": f"结果-{keyword}-1", "score": 0.95},
+                                {"id": 2, "name": f"结果-{keyword}-2", "score": 0.82},
+                            ]
+                        }
+                    }, extra_headers={"X-Search-Total": "42"})
+
                 elif path == "/api/echo":
-                    self._respond(200, {"code": 0, "data": {"echo": body, "path": "/api/echo"}})
+                    self._respond(200, {
+                        "code": 0,
+                        "data": {
+                            "method": "GET",
+                            "query": query,
+                            "message": f"echo: {keyword}"
+                        }
+                    })
+
                 else:
-                    self._respond(200, {"code": 0, "data": {"path": path}})
-            do_GET = lambda s: s._dispatch("GET")
-            do_POST = lambda s: s._dispatch("POST")
+                    self._respond(200, {
+                        "code": 0,
+                        "data": {"path": path, "query": query, "method": "GET"}
+                    })
+
+            # ── POST /api/echo (主接口 — 连接器目标) ──
+            def do_POST(self):
+                path = self._path_only()
+                body = self._parse_body()
+                req_headers = self._echo_headers()
+                query = self._parse_query()
+                state["call_count"] += 1
+
+                if path == "/api/echo":
+                    self._respond(200, {
+                        "code": 0,
+                        "message": "echo success",
+                        "data": {
+                            "echo_body": body,
+                            "echo_headers": req_headers,
+                            "echo_query": query,
+                            "server_time": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                            "call_number": state["call_count"]
+                        }
+                    }, extra_headers={
+                        "X-Echo-Count": str(state["call_count"]),
+                        "X-Request-Header-Count": str(len(req_headers))
+                    })
+
+                elif path == "/api/data":
+                    self._respond(200, {
+                        "code": 0,
+                        "data": {
+                            "received": body,
+                            "query": query,
+                            "processed": True
+                        }
+                    })
+
+                else:
+                    self._respond(200, {
+                        "code": 0,
+                        "data": {"path": path, "received": body, "method": "POST"}
+                    })
+
         return H
 
     def start(self, timeout=10):
@@ -356,7 +462,17 @@ def test_full_flow():
                             "connectorVersionId": str(conn_vid)
                         }},
                         {"id": "exit", "type": "exit", "data": {
-                            "outputMapping": {"body": {"echo": "{{conn1.data}}"}}
+                            "outputMapping": {
+                                "body": {
+                                    "received": "{{conn1.data.echo_body}}",
+                                    "call_number": "{{conn1.data.call_number}}",
+                                    "server_time": "{{conn1.data.server_time}}"
+                                },
+                                "header": {
+                                    "X-Echo-Count": "{{conn1.data.call_number}}",
+                                    "X-Mock-Response-Id": "{{conn1.responseHeaders.X-Response-Id}}"
+                                }
+                            }
                         }}
                     ],
                     "edges": [
@@ -536,9 +652,9 @@ def test_full_flow():
             return True
 
         def s17():
-            r = api_connector("POST", f"/flows/{fid}/invoke",
-                             {"message": "hello-from-production"},
-                             headers={"X-Sys-Token": "test-token"})
+            r = api_connector("POST", f"/flows/{fid}/invoke?keyword=hello&page=1",
+                             {"message": "hello-from-production", "traceId": _RUN_ID, "timestamp": int(time.time())},
+                             headers={"X-Sys-Token": "test-token", "X-Trace-Id": _RUN_ID})
             if r is None:
                 os_fail("connector-api 连接失败")
                 return False
