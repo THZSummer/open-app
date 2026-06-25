@@ -54,7 +54,7 @@ public class FlowController {
     /**
      * #17 创建连接流
      */
-    @AuditLog(value = OperateEnum.CREATE_FLOW, resourceIdParam = "appId")
+    @AuditLog(value = OperateEnum.CREATE_FLOW)
     @PostMapping
     @Operation(summary = "#17 创建连接流", description = "创建连接流基本信息，lifecycleStatus=1（已停止），不自动生成草稿版本")
     public ResponseEntity<ApiResponse<FlowCreateResponse>> createFlow(
