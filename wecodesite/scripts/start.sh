@@ -1,16 +1,14 @@
 #!/bin/bash
-# connector-api 一键启动 — WebFlux 运行时服务
+# wecodesite 一键启动 (Vite React 前端)
 set -uo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PORT=18180
-CTX=""   # connector-api 无 context-path
-LOG="$APP_DIR/logs/connector-api.log"
+PORT=5173
+LOG="$APP_DIR/logs/wecodesite.log"
 PID_FILE="$APP_DIR/.pid"
-PROFILE="${SPRING_PROFILES_ACTIVE:-dev}"
 
 echo "=========================================="
-echo "启动 connector-api (运行时)  端口: $PORT  环境: $PROFILE"
+echo "启动 wecodesite (前端)  端口: $PORT"
 echo "=========================================="
 
 cd "$APP_DIR"
@@ -20,23 +18,26 @@ if lsof -i:$PORT > /dev/null 2>&1; then
     exit 1
 fi
 
-# 启动
-echo "🔨 编译启动中..."
+if [ ! -d "node_modules" ]; then
+    echo "📦 安装依赖..."
+    npm install || { echo "❌ 依赖安装失败"; exit 1; }
+fi
+
 mkdir -p logs
-nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" > "$LOG" 2>&1 &
+nohup npm run dev > "$LOG" 2>&1 &
 echo $! > "$PID_FILE"
 echo "PID: $(cat $PID_FILE)"
 
 echo "⏳ 等待就绪..."
 for i in $(seq 1 30); do
     sleep 2
-    RESULT=$(curl -s "http://localhost:$PORT/actuator/health" 2>&1)
-    if echo "$RESULT" | grep -q '"status":"UP"'; then
-        echo "  [$i] ✅ $RESULT"
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/" 2>&1)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "  [$i] ✅ HTTP $HTTP_CODE"
         echo "✅ 就绪! http://localhost:$PORT"
         exit 0
     fi
-    echo "  [$i] ⏳ $RESULT"
+    echo "  [$i] ⏳ HTTP $HTTP_CODE"
 done
 echo ""
 echo "⚠️  超时 (60s)，检查日志: tail -f $LOG"

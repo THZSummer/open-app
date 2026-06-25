@@ -1,54 +1,44 @@
 #!/bin/bash
-set -x
-# open-web 一键启动脚本
+# market-web 一键启动 (前端)
+set -uo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PORT=13000
+LOG="$APP_DIR/logs/market-web.log"
+PID_FILE="$APP_DIR/.pid"
 
 echo "=========================================="
-echo "启动 open-web (前端应用)"
-echo "端口: 13000"
+echo "启动 market-web (前端)  端口: $PORT"
 echo "=========================================="
 
-cd "$(dirname "$0")/.."
+cd "$APP_DIR"
 
-# 检查服务是否已启动
-if lsof -i:13000 > /dev/null 2>&1; then
-    echo "⚠️  端口 13000 已被占用，服务可能已在运行"
-    echo "请先执行 ./scripts/stop.sh 停止服务"
+if lsof -i:$PORT > /dev/null 2>&1; then
+    echo "⚠️  端口 $PORT 已被占用，请先执行 ./scripts/stop.sh"
     exit 1
 fi
 
-# 检查依赖是否已安装
 if [ ! -d "node_modules" ]; then
-    echo "正在安装依赖..."
-    npm install
-    if [ $? -ne 0 ]; then
-        echo "❌ 依赖安装失败"
-        exit 1
-    fi
+    echo "📦 安装依赖..."
+    npm install || { echo "❌ 依赖安装失败"; exit 1; }
 fi
 
-# 启动服务（后台运行）
-echo "正在启动前端服务..."
-nohup npm run dev > logs/open-web.log 2>&1 &
+mkdir -p logs
+nohup npm run dev > "$LOG" 2>&1 &
+echo $! > "$PID_FILE"
+echo "PID: $(cat $PID_FILE)"
 
-PID=$!
-echo $PID > .pid
-
-echo "✅ 服务启动成功!"
-echo "   PID: $PID"
-echo "   日志: logs/open-web.log"
-echo ""
-echo "等待服务启动完成..."
-
-for i in {1..30}; do
-    if curl -s http://localhost:13000/open-web/ > /dev/null 2>&1; then
-        echo ""
-        echo "✅ 服务已就绪! 访问地址: http://localhost:13000/open-web/"
+echo "⏳ 等待就绪..."
+for i in $(seq 1 30); do
+    sleep 2
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/" 2>&1)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "  [$i] ✅ HTTP $HTTP_CODE"
+        echo "✅ 就绪! http://localhost:$PORT"
         exit 0
     fi
-    sleep 1
-    echo -n "."
+    echo "  [$i] ⏳ HTTP $HTTP_CODE"
 done
-
 echo ""
-echo "⚠️  服务启动超时，请检查日志: logs/open-web.log"
+echo "⚠️  超时 (60s)，检查日志: tail -f $LOG"
 exit 1

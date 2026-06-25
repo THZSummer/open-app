@@ -1,13 +1,13 @@
 #!/bin/bash
-# market-server 一键停止
+# wecodesite 一键停止
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PORT=18083
+PORT=5173
 PID_FILE="$APP_DIR/.pid"
 
 echo "=========================================="
-echo "停止 market-server"
+echo "停止 wecodesite"
 echo "=========================================="
 
 cd "$APP_DIR"
