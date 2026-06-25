@@ -209,15 +209,7 @@ public class FlowInvokeService {
     public Mono<TransparentFlowResponse> invokeFlow(Long flowId, Map<String, Object> triggerData,
                                                      Map<String, String> headers, Map<String, String> queryParams) {
         String executionId = UUID.randomUUID().toString().replace("-", "");
-        // ★ 执行记录持久化: 创建记录 (status=pending)
         Long recordId = idGenerator.nextId();
-        Long flowVersionId = null; // will be resolved after loadFlowVersion
-        try {
-            executionRecordService.startRecord(recordId, flowId, flowVersionId, null, 1);
-            log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
-        } catch (Exception ex) {
-            log.warn("Failed to start execution record: {}", ex.getMessage());
-        }
 
         return loadFlowVersion(flowId)
                 .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
@@ -225,7 +217,17 @@ public class FlowInvokeService {
                     FlowVersionEntity flowVersion = tuple.getT1();
                     FlowEntity flow = tuple.getT2().orElse(null);
 
-                    // ★ 补充流元数据到执行记录（flowNameCn/flowNameEn/appId 来自 FlowEntity）
+                    // ★ 创建执行记录 (status=pending, 使用正确的 appId)
+                    Long appId = flow != null ? flow.getAppId() : null;
+                    try {
+                        executionRecordService.startRecord(recordId, flowId,
+                                flowVersion.getId(), appId, 1);
+                        log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
+                    } catch (Exception ex) {
+                        log.warn("Failed to start execution record: {}", ex.getMessage());
+                    }
+
+                    // ★ 补充流元数据（flowNameCn/flowNameEn/flowVersionSnapshot）
                     if (flow != null) {
                         try {
                             executionRecordService.updateFlowMeta(recordId,
@@ -240,8 +242,6 @@ public class FlowInvokeService {
                         }
                     }
 
-                    // ★ 更新执行记录中的 flowVersionId
-                    executionRecordService.updateRecord(recordId, 2, null, null, null); // status=2=pending
                     // 1. 解析编排配置 (React Flow 格式)
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
                     List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
