@@ -309,14 +309,7 @@ public class OperateLogV2Aspect {
                 if (args[i] instanceof CharSequence || args[i] instanceof Number || args[i] instanceof Boolean) {
                     flat.put(paramNames[i], args[i].toString());
                 } else {
-                    JsonNode node = JsonUtils.toTree(args[i]);
-                    if (node != null && node.isObject()) {
-                        node.fields().forEachRemaining(entry -> {
-                            if (!flat.containsKey(entry.getKey())) {
-                                flat.put(entry.getKey(), entry.getValue());
-                            }
-                        });
-                    }
+                    JsonUtils.flattenToMap(JsonUtils.toTree(args[i]), flat);
                 }
             }
             return flat.isEmpty() ? null : JsonUtils.toJson(flat);
