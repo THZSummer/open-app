@@ -479,8 +479,8 @@ def test_full_flow():
             nonlocal fid
             fid = snow_id()
             r = os_api("POST", "/flows", {
-                "nameCn": f"全流程测试连接流_{_RUN_ID}",
-                "nameEn": f"full-flow-test-{_RUN_ID}"
+                "nameCn": f"搜索服务代理_{_RUN_ID}",
+                "nameEn": f"search-proxy-{_RUN_ID}"
             })
             if not check_ok(r, "CREATE 连接流"): return False
             d = get_data(r)
@@ -509,12 +509,41 @@ def test_full_flow():
                         {"id": "trigger", "type": "trigger", "data": {
                             "type": "http",
                             "subType": "http",
-                            "inputContract": {
-                                "protocol": "HTTP",
-                                "header": {"type": "object", "properties": {}, "required": []},
-                                "query": {"type": "object", "properties": {}, "required": []},
-                                "body": {"type": "object", "properties": {"message": {"type": "string"}}, "required": []}
+                "inputContract": {
+                    "protocol": "HTTP",
+                    "header": {
+                        "type": "object",
+                        "properties": {
+                            "X-Trace-Id": {"type": "string", "description": "全链路追踪ID"}
+                        },
+                        "required": []
+                    },
+                    "query": {
+                        "type": "object",
+                        "properties": {
+                            "keyword": {"type": "string", "description": "搜索关键词"},
+                            "page": {"type": "integer", "description": "页码", "default": 1},
+                            "size": {"type": "integer", "description": "每页条数", "default": 20}
+                        },
+                        "required": ["keyword"]
+                    },
+                    "body": {
+                        "type": "object",
+                        "properties": {
+                            "filters": {
+                                "type": "object",
+                                "description": "过滤条件",
+                                "properties": {
+                                    "category": {"type": "string", "description": "分类"},
+                                    "minScore": {"type": "number", "description": "最低评分"}
+                                }
                             },
+                            "sort": {"type": "string", "description": "排序字段", "default": "score"},
+                            "traceId": {"type": "string", "description": "请求追踪ID"}
+                        },
+                        "required": []
+                    }
+                },
                             "authConfig": {
                                 "type": "SYSTOKEN",
                                 "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
@@ -534,15 +563,16 @@ def test_full_flow():
                                     "type": "object",
                                     "properties": {
                                         "keyword": {"type": "string", "value": "${$.node.trigger.input.query.keyword}"},
-                                        "page": {"type": "string", "value": "${$.node.trigger.input.query.page}"}
+                                        "page": {"type": "string", "value": "${$.node.trigger.input.query.page}"},
+                                        "size": {"type": "string", "value": "${$.node.trigger.input.query.size}"}
                                     }
                                 },
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "message": {"type": "string", "value": "${$.node.trigger.input.body.message}"},
+                                        "message": {"type": "string", "value": "${$.node.trigger.input.body.filters}"},
                                         "traceId": {"type": "string", "value": "${$.node.trigger.input.body.traceId}"},
-                                        "timestamp": {"type": "string", "value": "${$.node.trigger.input.body.timestamp}"}
+                                        "sort": {"type": "string", "value": "${$.node.trigger.input.body.sort}"}
                                     }
                                 }
                             }
@@ -550,13 +580,17 @@ def test_full_flow():
                         {"id": "exit", "type": "exit", "data": {
                             "outputMapping": {
                                 "body": {
-                                    "received": "{{conn1.data.echo_body}}",
-                                    "call_number": "{{conn1.data.call_number}}",
-                                    "server_time": "{{conn1.data.server_time}}"
+                                    "code": {"type": "integer", "value": "${$.node.conn1.output.code}"},
+                                    "message": {"type": "string", "value": "${$.node.conn1.output.message}"},
+                                    "data": {
+                                        "type": "object",
+                                        "value": "${$.node.conn1.output.data.echo_body}"
+                                    },
+                                    "serverTime": {"type": "string", "value": "${$.node.conn1.output.data.server_time}"},
+                                    "callNumber": {"type": "integer", "value": "${$.node.conn1.output.data.call_number}"}
                                 },
                                 "header": {
-                                    "X-Echo-Count": "{{conn1.data.call_number}}",
-                                    "X-Mock-Response-Id": "{{conn1.responseHeaders.X-Response-Id}}"
+                                    "X-Echo-Count": {"type": "string", "value": "${$.node.conn1.output.data.call_number}"}
                                 }
                             }
                         }}
@@ -738,9 +772,16 @@ def test_full_flow():
             return True
 
         def s17():
-            r = api_connector("POST", f"/flows/{fid}/invoke?keyword=hello&page=1",
-                             {"message": "hello-from-production", "traceId": _RUN_ID, "timestamp": int(time.time())},
-                             headers={"X-Sys-Token": "test-token", "X-Trace-Id": _RUN_ID})
+            r = api_connector("POST", f"/flows/{fid}/invoke?keyword=人工智能&page=1&size=10",
+                             {
+                                 "filters": {"category": "tech", "minScore": 0.5},
+                                 "sort": "score",
+                                 "traceId": _RUN_ID
+                             },
+                             headers={
+                                 "X-Sys-Token": "test-token",
+                                 "X-Trace-Id": f"trace-{_RUN_ID}"
+                             })
             if r is None:
                 os_fail("connector-api 连接失败")
                 return False
