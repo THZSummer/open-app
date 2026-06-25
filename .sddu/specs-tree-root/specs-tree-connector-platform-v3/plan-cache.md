@@ -595,7 +595,7 @@ connector-api 每次处理 HTTP 触发请求时，存在以下**必经的 MySQL 
 | 3 | Connector | `cp:entity:connector:{connectorId}` | `connector_t` | `id`, `status`, `app_id`, `connector_type`, `name_cn`, `name_en` |
 | 4 | ConnectorVersion | `cp:entity:connectorversion:{versionId}` | `connector_version_t` | `id`, `connector_id`, `version_number`, `status`, **`connection_config`**（MEDIUMTEXT）, `published_time`, `published_by` |
 
-> **为什么不缓存 lookup / property**：应用白名单（`openplatform_lookup_item_t`）和 URL 白名单规则（`openplatform_property_t`）仅供 open-server 管理面读取——open-server 不读缓存，因此这两类数据不纳入 connector-api 的缓存体系。URL 白名单规则已内嵌在 `ConnectorVersion.connection_config` 中，随 ConnectorVersion 实体一并缓存。
+> **为什么不缓存 lookup / property**：应用白名单（`openplatform_lookup_item_t`）和 URL 白名单规则（`openplatform_property_t`）仅供 open-server 管理面读取——open-server 不读缓存，因此这两类数据不纳入 connector-api 的缓存体系。URL 白名单规则存储在连接器级独立配置中（复用 openplatform_property_t），不随 ConnectorVersion 缓存。
 
 ### 12.3 缓存策略
 
