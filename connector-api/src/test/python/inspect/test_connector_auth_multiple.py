@@ -114,12 +114,6 @@ def setup_connector(config):
     return connector_id, version_id
 
 
-def cleanup_connector(connector_id, version_id):
-    """清理连接器 + 版本"""
-    db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}")
-    db(f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}")
-
-
 def setup_flow(flow_id, lifecycle_status, orchestration):
     """创建 Flow + 版本，返回 (flow_id, flow_version_id)"""
     flow_version_id = snow_id()
@@ -137,18 +131,6 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
     )
     return flow_id, flow_version_id
 
-
-def cleanup_flow(flow_id, flow_version_id, connector_id=None, connector_version_id=None):
-    """清理 Flow + 版本，可选连带清理 Connector"""
-    db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}")
-    db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}")
-    if connector_id and connector_version_id:
-        cleanup_connector(connector_id, connector_version_id)
-
-
-# ═══════════════════════════════════════════════════════════
-# Orchestration Builder
-# ═══════════════════════════════════════════════════════════
 
 def build_orch(connector_version_id):
     """构建 trigger → connector → exit 三元编排"""
@@ -392,95 +374,63 @@ def test_connector_auth_multiple():
     print("=== IT-AUTH-001: SOA + Cookie 多认证 (FR-012, FR-014) ===")
     sid_001 = snow_id()
     fvid_001 = cid_001 = cvid_001 = None
-    try:
-        cid_001, cvid_001 = setup_connector(CONN_CONFIG_SOA_COOKIE)
-        fid_001, fvid_001 = setup_flow(
-            sid_001, lifecycle_status=1,
-            orchestration=build_orch(cvid_001)
-        )
-    
-        resp = trigger(
-            fid_001,
-            body={"msg": "auth_test_001"},
-            headers={"X-Sys-Token": "test-token"}
-        )
-        verify_flow_response(resp, "IT-AUTH-001")
-    finally:
-        cleanup_flow(sid_001, fvid_001, cid_001, cvid_001)
-    
-    
-    # ═══════════════════════════════════════════════════════════
-    # IT-AUTH-002: DigitalSign + Cookie 多认证 (FR-013, FR-014)
-    # ═══════════════════════════════════════════════════════════
+    cid_001, cvid_001 = setup_connector(CONN_CONFIG_SOA_COOKIE)
+    fid_001, fvid_001 = setup_flow(
+        sid_001, lifecycle_status=1,
+        orchestration=build_orch(cvid_001)
+    )
+
+    resp = trigger(
+        fid_001,
+        body={"msg": "auth_test_001"},
+        headers={"X-Sys-Token": "test-token"}
+    )
+    verify_flow_response(resp, "IT-AUTH-001")
     print("\n=== IT-AUTH-002: DigitalSign + Cookie 多认证 (FR-013, FR-014) ===")
     sid_002 = snow_id()
     fvid_002 = cid_002 = cvid_002 = None
-    try:
-        cid_002, cvid_002 = setup_connector(CONN_CONFIG_DIGITALSIGN_COOKIE)
-        fid_002, fvid_002 = setup_flow(
-            sid_002, lifecycle_status=1,
-            orchestration=build_orch(cvid_002)
-        )
-    
-        resp = trigger(
-            fid_002,
-            body={"msg": "auth_test_002"},
-            headers={"X-Sys-Token": "test-token"}
-        )
-        verify_flow_response(resp, "IT-AUTH-002")
-    finally:
-        cleanup_flow(sid_002, fvid_002, cid_002, cvid_002)
-    
-    
-    # ═══════════════════════════════════════════════════════════
-    # IT-AUTH-003: SOA + DigitalSign + Cookie 三重组合
-    # ═══════════════════════════════════════════════════════════
+    cid_002, cvid_002 = setup_connector(CONN_CONFIG_DIGITALSIGN_COOKIE)
+    fid_002, fvid_002 = setup_flow(
+        sid_002, lifecycle_status=1,
+        orchestration=build_orch(cvid_002)
+    )
+
+    resp = trigger(
+        fid_002,
+        body={"msg": "auth_test_002"},
+        headers={"X-Sys-Token": "test-token"}
+    )
+    verify_flow_response(resp, "IT-AUTH-002")
     print("\n=== IT-AUTH-003: SOA + DigitalSign + Cookie 三重组合认证 ===")
     sid_003 = snow_id()
     fvid_003 = cid_003 = cvid_003 = None
-    try:
-        cid_003, cvid_003 = setup_connector(CONN_CONFIG_TRIPLE_AUTH)
-        fid_003, fvid_003 = setup_flow(
-            sid_003, lifecycle_status=1,
-            orchestration=build_orch(cvid_003)
-        )
-    
-        resp = trigger(
-            fid_003,
-            body={"msg": "auth_test_003"},
-            headers={"X-Sys-Token": "test-token"}
-        )
-        verify_flow_response(resp, "IT-AUTH-003")
-    finally:
-        cleanup_flow(sid_003, fvid_003, cid_003, cvid_003)
-    
-    
-    # ═══════════════════════════════════════════════════════════
-    # IT-AUTH-004: 单一 SOA 认证 (基线对比)
-    # ═══════════════════════════════════════════════════════════
+    cid_003, cvid_003 = setup_connector(CONN_CONFIG_TRIPLE_AUTH)
+    fid_003, fvid_003 = setup_flow(
+        sid_003, lifecycle_status=1,
+        orchestration=build_orch(cvid_003)
+    )
+
+    resp = trigger(
+        fid_003,
+        body={"msg": "auth_test_003"},
+        headers={"X-Sys-Token": "test-token"}
+    )
+    verify_flow_response(resp, "IT-AUTH-003")
     print("\n=== IT-AUTH-004: 单一 SOA 认证 (基线) ===")
     sid_004 = snow_id()
     fvid_004 = cid_004 = cvid_004 = None
-    try:
-        cid_004, cvid_004 = setup_connector(CONN_CONFIG_SOA_ONLY)
-        fid_004, fvid_004 = setup_flow(
-            sid_004, lifecycle_status=1,
-            orchestration=build_orch(cvid_004)
-        )
-    
-        resp = trigger(
-            fid_004,
-            body={"msg": "auth_test_004"},
-            headers={"X-Sys-Token": "test-token"}
-        )
-        verify_flow_response(resp, "IT-AUTH-004")
-    finally:
-        cleanup_flow(sid_004, fvid_004, cid_004, cvid_004)
-    
-    
-    # ═══════════════════════════════════════════════════════════
-    # Shutdown
-    # ═══════════════════════════════════════════════════════════
+    cid_004, cvid_004 = setup_connector(CONN_CONFIG_SOA_ONLY)
+    fid_004, fvid_004 = setup_flow(
+        sid_004, lifecycle_status=1,
+        orchestration=build_orch(cvid_004)
+    )
+
+    resp = trigger(
+        fid_004,
+        body={"msg": "auth_test_004"},
+        headers={"X-Sys-Token": "test-token"}
+    )
+    verify_flow_response(resp, "IT-AUTH-004")
     if mock_server is not None:
         mock_server.shutdown()
         print("\nMock server shut down.")

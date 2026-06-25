@@ -99,11 +99,6 @@ def setup_flow(snow_id_val, lifecycle_status=1):
     return snow_id_val, version_id
 
 
-def cleanup_flow(flow_id_val, version_id_val):
-    db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {version_id_val}")
-    db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id_val}")
-
-
 @pytest.mark.L1
 def test_internal_test_run():
     # ── IT-070: flow 不存在 ────────────────────────────
@@ -121,61 +116,45 @@ def test_internal_test_run():
     print("\n=== IT-071: flow 未运行（stopped）===")
     sid_071 = snow_id()
     vid_071 = None
-    try:
-        _, vid_071 = setup_flow(sid_071, lifecycle_status=0)
-        resp = debug_run(sid_071, vid_071, {"mockTriggerData": {"sender": "test"}})
-        if resp is not None:
-            body = resp.json()
-            check("HTTP 200", resp.status_code == 200)
-            check("executionId 为 string",
-                  isinstance(body.get("executionId"), str))
-    finally:
-        if vid_071:
-            cleanup_flow(sid_071, vid_071)
-
+    _, vid_071 = setup_flow(sid_071, lifecycle_status=0)
+    resp = debug_run(sid_071, vid_071, {"mockTriggerData": {"sender": "test"}})
+    if resp is not None:
+        body = resp.json()
+        check("HTTP 200", resp.status_code == 200)
+        check("executionId 为 string",
+              isinstance(body.get("executionId"), str))
     # ── IT-072: 正常测试运行 ───────────────────────────
     print("\n=== IT-072: 正常测试运行（entry→exit）===")
     sid_072 = snow_id()
     vid_072 = None
-    try:
-        fid, vid_072 = setup_flow(sid_072, lifecycle_status=1)
-        resp = debug_run(fid, vid_072, {"mockTriggerData": {"sender": "test_user"}})
-        if resp is not None:
-            body = resp.json()
-            check("HTTP 200", resp.status_code == 200)
-            check("executionId 为 string",
-                  isinstance(body.get("executionId"), str))
-            check("totalDurationMs 为 int",
-                  isinstance(body.get("totalDurationMs"), (int, float)))
-            # steps 为数组
-            steps = body.get("steps")
-            check("steps 为 list", isinstance(steps, list))
-            if isinstance(steps, list) and len(steps) > 0:
-                s = steps[0]
-                check("steps[].nodeId 存在", bool(s.get("nodeId")))
-                check("steps[].nodeLabelCn 存在", bool(s.get("nodeLabelCn")))
-                check("steps[].durationMs 为 int",
-                      isinstance(s.get("durationMs"), (int, float)))
-    finally:
-        if vid_072:
-            cleanup_flow(sid_072, vid_072)
-
+    fid, vid_072 = setup_flow(sid_072, lifecycle_status=1)
+    resp = debug_run(fid, vid_072, {"mockTriggerData": {"sender": "test_user"}})
+    if resp is not None:
+        body = resp.json()
+        check("HTTP 200", resp.status_code == 200)
+        check("executionId 为 string",
+              isinstance(body.get("executionId"), str))
+        check("totalDurationMs 为 int",
+              isinstance(body.get("totalDurationMs"), (int, float)))
+        # steps 为数组
+        steps = body.get("steps")
+        check("steps 为 list", isinstance(steps, list))
+        if isinstance(steps, list) and len(steps) > 0:
+            s = steps[0]
+            check("steps[].nodeId 存在", bool(s.get("nodeId")))
+            check("steps[].nodeLabelCn 存在", bool(s.get("nodeLabelCn")))
+            check("steps[].durationMs 为 int",
+                  isinstance(s.get("durationMs"), (int, float)))
     # ── IT-073: 空 mockTriggerData ──────────────────────
     print("\n=== IT-073: 空 mockTriggerData ===")
     sid_073 = snow_id()
     vid_073 = None
-    try:
-        fid, vid_073 = setup_flow(sid_073, lifecycle_status=1)
-        resp = debug_run(fid, vid_073, {"mockTriggerData": {}})
-        if resp is not None:
-            body = resp.json()
-            check("HTTP 200", resp.status_code == 200)
-            check("executionId 存在", bool(body.get("executionId")))
-    finally:
-        if vid_073:
-            cleanup_flow(sid_073, vid_073)
-
-
+    fid, vid_073 = setup_flow(sid_073, lifecycle_status=1)
+    resp = debug_run(fid, vid_073, {"mockTriggerData": {}})
+    if resp is not None:
+        body = resp.json()
+        check("HTTP 200", resp.status_code == 200)
+        check("executionId 存在", bool(body.get("executionId")))
 if __name__ == "__main__":
     test_internal_test_run()
     done()

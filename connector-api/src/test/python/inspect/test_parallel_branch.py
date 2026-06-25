@@ -143,11 +143,6 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
     return connector_id, version_id
 
 
-def cleanup_connector(connector_id, version_id):
-    db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {version_id}")
-    db(f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {connector_id}")
-
-
 def setup_flow(flow_id, lifecycle_status, orchestration):
     flow_version_id = snow_id()
     db(
@@ -164,18 +159,6 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
     )
     return flow_id, flow_version_id
 
-
-def cleanup_flow(flow_id, flow_version_id, connector_ids=None, connector_version_ids=None):
-    db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {flow_version_id}")
-    db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id = {flow_id}")
-    if connector_ids and connector_version_ids:
-        for cid, cvid in zip(connector_ids, connector_version_ids):
-            cleanup_connector(cid, cvid)
-
-
-# ═══════════════════════════════════════════════════════════
-# Orchestration Builder — 并行分支编排
-# ═══════════════════════════════════════════════════════════
 
 def build_parallel_orch(connector_version_ids, parallel=True):
     """构建并行/串行编排
@@ -368,154 +351,130 @@ def test_parallel_branch():
     fvid_001 = None
     cids_001 = []
     cvids_001 = []
-    try:
-        # 创建两个连接器，分别指向 2s 延迟端点
-        cid_a, cvid_a = setup_connector(
-            "分支A", "BranchA", f"{MOCK_BASE}/api/branch-a"
-        )
-        cid_b, cvid_b = setup_connector(
-            "分支B", "BranchB", f"{MOCK_BASE}/api/branch-b"
-        )
-        cids_001 = [cid_a, cid_b]
-        cvids_001 = [cvid_a, cvid_b]
+    # 创建两个连接器，分别指向 2s 延迟端点
+    cid_a, cvid_a = setup_connector(
+        "分支A", "BranchA", f"{MOCK_BASE}/api/branch-a"
+    )
+    cid_b, cvid_b = setup_connector(
+        "分支B", "BranchB", f"{MOCK_BASE}/api/branch-b"
+    )
+    cids_001 = [cid_a, cid_b]
+    cvids_001 = [cvid_a, cvid_b]
 
-        fid_001, fvid_001 = setup_flow(
-            sid_001, lifecycle_status=1,
-            orchestration=build_parallel_orch(cvids_001, parallel=True)
-        )
+    fid_001, fvid_001 = setup_flow(
+        sid_001, lifecycle_status=1,
+        orchestration=build_parallel_orch(cvids_001, parallel=True)
+    )
 
-        start = time.time()
-        resp = trigger(fid_001, body={"msg": "parallel_test"}, headers={"X-Sys-Token": "test-token"})
-        elapsed = time.time() - start if resp else 0
-        individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]  # 4s
+    start = time.time()
+    resp = trigger(fid_001, body={"msg": "parallel_test"}, headers={"X-Sys-Token": "test-token"})
+    elapsed = time.time() - start if resp else 0
+    individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]  # 4s
 
-        if resp is not None:
-            check("[IT-PAR-001] HTTP 200",
-                  resp.status_code == 200,
-                  f"status={resp.status_code}")
-            check("[IT-PAR-001] 总耗时 < 串行和 (4s)",
-                  elapsed < individual_sum,
-                  f"elapsed={elapsed:.2f}s, individual_sum={individual_sum}s")
-            # 并行应接近 max(branch_delays)，而非 sum
-            max_delay = max(BRANCH_DELAYS["a"], BRANCH_DELAYS["b"])
-            check("[IT-PAR-001] 总耗时接近 max(分支延迟)",
-                  elapsed < max_delay + 1.5,
-                  f"elapsed={elapsed:.2f}s, max_delay={max_delay}s (允许 1.5s 开销)")
-            print(f"  INFO: 并行执行耗时 {elapsed:.2f}s (各分支 {BRANCH_DELAYS['a']}s + {BRANCH_DELAYS['b']}s)")
-        elif elapsed > 0:
-            check("[IT-PAR-001] 请求超时（可能串行执行）",
-                  elapsed >= individual_sum,
-                  f"elapsed={elapsed:.2f}s")
-        else:
-            check("[IT-PAR-001] 请求发送成功", False, "connector-api 未运行")
-    finally:
-        cleanup_flow(sid_001, fvid_001, cids_001, cvids_001)
-
-
-    # ═══════════════════════════════════════════════════════════
-    # IT-PAR-002: Publish validation rejects > 8 parallel branches
-    # ═══════════════════════════════════════════════════════════
+    if resp is not None:
+        check("[IT-PAR-001] HTTP 200",
+              resp.status_code == 200,
+              f"status={resp.status_code}")
+        check("[IT-PAR-001] 总耗时 < 串行和 (4s)",
+              elapsed < individual_sum,
+              f"elapsed={elapsed:.2f}s, individual_sum={individual_sum}s")
+        # 并行应接近 max(branch_delays)，而非 sum
+        max_delay = max(BRANCH_DELAYS["a"], BRANCH_DELAYS["b"])
+        check("[IT-PAR-001] 总耗时接近 max(分支延迟)",
+              elapsed < max_delay + 1.5,
+              f"elapsed={elapsed:.2f}s, max_delay={max_delay}s (允许 1.5s 开销)")
+        print(f"  INFO: 并行执行耗时 {elapsed:.2f}s (各分支 {BRANCH_DELAYS['a']}s + {BRANCH_DELAYS['b']}s)")
+    elif elapsed > 0:
+        check("[IT-PAR-001] 请求超时（可能串行执行）",
+              elapsed >= individual_sum,
+              f"elapsed={elapsed:.2f}s")
+    else:
+        check("[IT-PAR-001] 请求发送成功", False, "connector-api 未运行")
     print("\n=== IT-PAR-002: 发布校验 — 拒绝 > 8 并行分支 ===")
     sid_002 = snow_id()
     fvid_002 = None
     cids_002 = []
     cvids_002 = []
-    try:
-        # 创建 9 个连接器（超过 8 个限制）
-        for i in range(9):
-            cid, cvid = setup_connector(
-                f"分支{i}", f"Branch{i}", f"{MOCK_BASE}/api/branch-a"
-            )
-            cids_002.append(cid)
-            cvids_002.append(cvid)
-
-        fid_002, fvid_002 = setup_flow(
-            sid_002, lifecycle_status=1,
-            orchestration=build_parallel_orch_multi(cvids_002)
+    # 创建 9 个连接器（超过 8 个限制）
+    for i in range(9):
+        cid, cvid = setup_connector(
+            f"分支{i}", f"Branch{i}", f"{MOCK_BASE}/api/branch-a"
         )
+        cids_002.append(cid)
+        cvids_002.append(cvid)
 
-        # 尝试调用 open-server 的发布接口
-        open_server_url = f"http://localhost:18080/open-server/api/v1/flows/{fid_002}/publish"
-        try:
-            pub_resp = req_lib.post(
-                open_server_url,
-                json={},
-                headers={"Content-Type": "application/json"},
-                timeout=10
-            )
-            check("[IT-PAR-002] 发布请求已发送",
+    fid_002, fvid_002 = setup_flow(
+        sid_002, lifecycle_status=1,
+        orchestration=build_parallel_orch_multi(cvids_002)
+    )
+
+    # 尝试调用 open-server 的发布接口
+    open_server_url = f"http://localhost:18080/open-server/api/v1/flows/{fid_002}/publish"
+    try:
+        pub_resp = req_lib.post(
+            open_server_url,
+            json={},
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+        check("[IT-PAR-002] 发布请求已发送",
+              True,
+              f"HTTP {pub_resp.status_code}")
+        if pub_resp.status_code >= 400:
+            check("[IT-PAR-002] 发布被拒绝 (> 8 并行分支)",
                   True,
-                  f"HTTP {pub_resp.status_code}")
-            if pub_resp.status_code >= 400:
-                check("[IT-PAR-002] 发布被拒绝 (> 8 并行分支)",
-                      True,
-                      f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
-            else:
-                check("[IT-PAR-002] 发布未拒绝 (可能未启用并行分支上限校验)",
-                      True,
-                      f"status={pub_resp.status_code}")
-        except req_lib.exceptions.ConnectionError:
-            print("  INFO: open-server (port 18080) 未运行 — 跳过发布校验")
-            check("[IT-PAR-002] open-server 不可用 (SKIP)", True)
-        except Exception as e:
-            print(f"  WARN: 发布请求异常: {e}")
-            check("[IT-PAR-002] 发布校验异常（环境问题）", True)
+                  f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
+        else:
+            check("[IT-PAR-002] 发布未拒绝 (可能未启用并行分支上限校验)",
+                  True,
+                  f"status={pub_resp.status_code}")
+    except req_lib.exceptions.ConnectionError:
+        print("  INFO: open-server (port 18080) 未运行 — 跳过发布校验")
+        check("[IT-PAR-002] open-server 不可用 (SKIP)", True)
+    except Exception as e:
+        print(f"  WARN: 发布请求异常: {e}")
+        check("[IT-PAR-002] 发布校验异常（环境问题）", True)
 
-    finally:
-        cleanup_flow(sid_002, fvid_002, cids_002, cvids_002)
-
-
-    # ═══════════════════════════════════════════════════════════
-    # IT-PAR-003: Serial execution — branches execute in sequence
-    # ═══════════════════════════════════════════════════════════
     print("\n=== IT-PAR-003: 串行执行 — 总耗时 ≈ 各分支耗时之和 ===")
     sid_003 = snow_id()
     fvid_003 = None
     cids_003 = []
     cvids_003 = []
-    try:
-        # 创建两个连接器（串行编排）
-        cid_a, cvid_a = setup_connector(
-            "串行A", "SerialA", f"{MOCK_BASE}/api/branch-a"
-        )
-        cid_b, cvid_b = setup_connector(
-            "串行B", "SerialB", f"{MOCK_BASE}/api/branch-b"
-        )
-        cids_003 = [cid_a, cid_b]
-        cvids_003 = [cvid_a, cvid_b]
+    # 创建两个连接器（串行编排）
+    cid_a, cvid_a = setup_connector(
+        "串行A", "SerialA", f"{MOCK_BASE}/api/branch-a"
+    )
+    cid_b, cvid_b = setup_connector(
+        "串行B", "SerialB", f"{MOCK_BASE}/api/branch-b"
+    )
+    cids_003 = [cid_a, cid_b]
+    cvids_003 = [cvid_a, cvid_b]
 
-        fid_003, fvid_003 = setup_flow(
-            sid_003, lifecycle_status=1,
-            orchestration=build_parallel_orch(cvids_003, parallel=False)
-        )
+    fid_003, fvid_003 = setup_flow(
+        sid_003, lifecycle_status=1,
+        orchestration=build_parallel_orch(cvids_003, parallel=False)
+    )
 
-        start = time.time()
-        resp = trigger(fid_003, body={"msg": "parallel_test"}, headers={"X-Sys-Token": "test-token"})
-        elapsed = time.time() - start if resp else 0
-        individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]  # 4s
+    start = time.time()
+    resp = trigger(fid_003, body={"msg": "parallel_test"}, headers={"X-Sys-Token": "test-token"})
+    elapsed = time.time() - start if resp else 0
+    individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]  # 4s
 
-        if resp is not None:
-            check("[IT-PAR-003] HTTP 200",
-                  resp.status_code == 200,
-                  f"status={resp.status_code}")
-            # 串行执行总时间应 >= 各分支延迟之和
-            check("[IT-PAR-003] 总耗时 >= 串行和 (4s)",
-                  elapsed >= individual_sum - 0.5,
-                  f"elapsed={elapsed:.2f}s, individual_sum={individual_sum}s")
-            print(f"  INFO: 串行执行耗时 {elapsed:.2f}s (各分支 {BRANCH_DELAYS['a']}s + {BRANCH_DELAYS['b']}s)")
-        elif elapsed > 0:
-            check("[IT-PAR-003] 请求超时 — 串行执行耗时 >= 4s",
-                  elapsed >= individual_sum,
-                  f"elapsed={elapsed:.2f}s")
-        else:
-            check("[IT-PAR-003] 请求发送成功", False, "connector-api 未运行")
-    finally:
-        cleanup_flow(sid_003, fvid_003, cids_003, cvids_003)
-
-
-    # ═══════════════════════════════════════════════════════════
-    # Shutdown
-    # ═══════════════════════════════════════════════════════════
+    if resp is not None:
+        check("[IT-PAR-003] HTTP 200",
+              resp.status_code == 200,
+              f"status={resp.status_code}")
+        # 串行执行总时间应 >= 各分支延迟之和
+        check("[IT-PAR-003] 总耗时 >= 串行和 (4s)",
+              elapsed >= individual_sum - 0.5,
+              f"elapsed={elapsed:.2f}s, individual_sum={individual_sum}s")
+        print(f"  INFO: 串行执行耗时 {elapsed:.2f}s (各分支 {BRANCH_DELAYS['a']}s + {BRANCH_DELAYS['b']}s)")
+    elif elapsed > 0:
+        check("[IT-PAR-003] 请求超时 — 串行执行耗时 >= 4s",
+              elapsed >= individual_sum,
+              f"elapsed={elapsed:.2f}s")
+    else:
+        check("[IT-PAR-003] 请求发送成功", False, "connector-api 未运行")
     if mock_server is not None:
         mock_server.shutdown()
         print("\nParallel mock server shut down.")
