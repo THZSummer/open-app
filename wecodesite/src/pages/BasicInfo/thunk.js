@@ -1,4 +1,4 @@
-import { API_CONFIG, fetchApi } from '../../configs/web.config';
+import { API_CONFIG, fetchApi, buildApiUrl } from '../../configs/web.config';
 
 // ==================== 真实 API 调用 ====================
 
@@ -93,6 +93,43 @@ export const uploadImage = async (bizType, formData) => {
       params: { bizType },
       body: formData,  // 直接传 FormData，不走 JSON.stringify
       rawBody: true,   // 告诉 fetchApi 不要自动 JSON.stringify
+    });
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+// ==================== 卡片设置（数据源：卡片服务） ====================
+
+/**
+ * #TBD-CS01 查询应用卡片设置（失效周期 + 删除周期）
+ * @param {string} appId
+ * @returns {Promise<object>} 响应体（code/data/messageZh 等）
+ */
+export const fetchCardSetting = async (appId) => {
+  try {
+    const url = buildApiUrl(API_CONFIG.APP_APIS.CARD_SETTINGS, { appId });
+    const result = await fetchApi(url);
+    return result || {};
+  } catch (err) {
+    return {};
+  }
+};
+
+/**
+ * #TBD-CS02 更新单个卡片周期（失效或删除）
+ * @param {string} appId
+ * @param {0|1} periodType - 0=删除周期, 1=失效周期
+ * @param {number} periodDays - 周期天数
+ * @returns {Promise<object>} 响应体
+ */
+export const updateCardPeriod = async (appId, periodType, periodDays) => {
+  try {
+    const url = buildApiUrl(API_CONFIG.APP_APIS.CARD_SETTINGS, { appId });
+    const result = await fetchApi(url, {
+      method: 'PUT',
+      body: JSON.stringify({ periodType, periodDays }),
     });
     return result || {};
   } catch (err) {

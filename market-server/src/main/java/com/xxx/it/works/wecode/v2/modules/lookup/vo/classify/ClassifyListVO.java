@@ -24,7 +24,7 @@ public class ClassifyListVO implements Serializable {
      */
     @Schema(description = "分类ID",
             example = "1")
-    private Long classifyId;
+    private String classifyId;
 
     /**
      * 分类编码

@@ -182,7 +182,7 @@ public class DictionaryServiceImpl implements DictionaryService {
 
     private DictionaryListVO convertToListVO(DictionaryEntity entity) {
         DictionaryListVO vo = new DictionaryListVO();
-        vo.setId(entity.getId());
+        vo.setId(String.valueOf(entity.getId()));
         vo.setCode(entity.getCode());
         vo.setName(entity.getName());
         vo.setValue(entity.getValue());
@@ -199,7 +199,7 @@ public class DictionaryServiceImpl implements DictionaryService {
 
     private DictionaryVO convertToVO(DictionaryEntity entity) {
         DictionaryVO vo = new DictionaryVO();
-        vo.setId(entity.getId());
+        vo.setId(String.valueOf(entity.getId()));
         vo.setCode(entity.getCode());
         vo.setName(entity.getName());
         vo.setValue(entity.getValue());
