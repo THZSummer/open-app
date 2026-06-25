@@ -114,7 +114,23 @@ def test_create(self):
     d = resp.json()["data"]
     assert d["nameCn"] == body["nameCn"]
     assert d["status"] == 1          # FR-001: 有效不可用
-    assert isinstance(d["connectorId"], str) and len(d["connectorId"]) >= 15
+     assert isinstance(d["connectorId"], str) and len(d["connectorId"]) >= 15
+```
+
+**生命周期验证标准模式（前置确认 → 操作 → 后置验证）：**
+```python
+# ✅ 标准生命周期测试 — 三步验证
+def test_invalidate(self, published_connector):
+    cid, vid = published_connector
+    # ① 前置确认
+    resp0 = api("GET", f"/connectors/{cid}/versions/{vid}")
+    assert resp0.json()["data"].get("status") in (2, "2")  # 已发布
+    # ② 执行操作
+    resp = api("PUT", f"/connectors/{cid}/versions/{vid}/invalidate")
+    assert resp.status_code == 200
+    # ③ 后置验证状态变更
+    resp2 = api("GET", f"/connectors/{cid}/versions/{vid}")
+    assert resp2.json()["data"].get("status") in (3, "3")  # 已失效
 ```
 
 ### fixtures：自动管理数据生命周期
@@ -134,6 +150,23 @@ def test_detail(connector):      # fixture 自动建连接器
 | `flow` | 空连接流 |
 | `draft_flow` | 含草稿版本的连接流 |
 | `deployed_flow` | 已部署的连接流（含版本 + deployed 指针） |
+
+### 条件保留测试数据
+
+默认测试结束后自动清理 DB 数据。需要保留数据检查时设置 `KEEP_TEST_DATA=1`：
+
+```bash
+KEEP_TEST_DATA=1 pytest -m "L0 or L1 or L2"
+
+# 跑完后 DB 中保留全部测试数据，可直接 SQL 查询验证
+mysql -h... -e "SELECT name_cn, status FROM ... WHERE name_cn LIKE 'pytest%'"
+```
+
+所有 fixture 创建的 `name_cn` 包含测试函数名，可追溯数据来源：
+```
+pytest_invalidate / pytest_copy_to_draft / pytest_publish / ...
+pytest_flow_invalidate / pytest_flow_publish / pytest_flow_start / ...
+```
 
 ### 配置：单一入口
 
@@ -165,6 +198,9 @@ pytest -n auto --html=report.html
 
 # 全量
 pytest -m ""                     # 空字符串覆盖 -m L0 默认
+
+# 保留数据用于调试
+KEEP_TEST_DATA=1 pytest -m "L0 or L1 or L2"
 ```
 
 ## 目录
