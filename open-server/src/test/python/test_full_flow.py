@@ -114,6 +114,7 @@ class MockServer:
                 path = self._path_only()
                 query = self._parse_query()
                 state["call_count"] += 1
+                time.sleep(random.uniform(0.01, 0.02))  # simulate 10-20ms latency
 
                 if path == "/api/health":
                     self._respond(200, {
@@ -162,6 +163,7 @@ class MockServer:
                 req_headers = self._echo_headers()
                 query = self._parse_query()
                 state["call_count"] += 1
+                time.sleep(random.uniform(0.01, 0.02))  # simulate 10-20ms latency
 
                 if path == "/api/echo":
                     self._respond(200, {
@@ -379,7 +381,68 @@ def test_full_flow():
             r = os_api("PUT", f"/connectors/{cid}/versions/{conn_vid}", {
                 "connectionConfig": {
                     "protocol": "HTTP",
-                    "protocolConfig": {"url": "http://localhost:18980/api/echo", "method": "POST"},
+                    "protocolConfig": {
+                        "url": "http://localhost:18980/api/echo",
+                        "method": "POST",
+                        "headers": {
+                            "Content-Type": "application/json",
+                            "X-Custom-Header": "full-flow-test"
+                        }
+                    },
+                    "authConfig": {
+                        "type": "NONE"
+                    },
+                    "inputContract": {
+                        "protocol": "HTTP",
+                        "header": {
+                            "type": "object",
+                            "properties": {
+                                "X-Trace-Id": {"type": "string", "description": "追踪ID"}
+                            }
+                        },
+                        "query": {
+                            "type": "object",
+                            "properties": {
+                                "keyword": {"type": "string", "description": "搜索关键词"},
+                                "page": {"type": "integer", "description": "页码"}
+                            }
+                        },
+                        "body": {
+                            "type": "object",
+                            "properties": {
+                                "message": {"type": "string", "description": "消息体"},
+                                "traceId": {"type": "string", "description": "追踪ID"},
+                                "timestamp": {"type": "integer", "description": "时间戳"}
+                            }
+                        }
+                    },
+                    "outputContract": {
+                        "protocol": "HTTP",
+                        "body": {
+                            "type": "object",
+                            "properties": {
+                                "code": {"type": "integer"},
+                                "message": {"type": "string"},
+                                "data": {
+                                    "type": "object",
+                                    "properties": {
+                                        "echo_body": {"type": "object"},
+                                        "echo_headers": {"type": "object"},
+                                        "echo_query": {"type": "object"},
+                                        "server_time": {"type": "string"},
+                                        "call_number": {"type": "integer"}
+                                    }
+                                }
+                            },
+                            "header": {
+                                "type": "object",
+                                "properties": {
+                                    "X-Echo-Count": {"type": "string"},
+                                    "X-Request-Header-Count": {"type": "string"}
+                                }
+                            }
+                        }
+                    },
                     "timeoutMs": 5000
                 }
             })
@@ -459,7 +522,30 @@ def test_full_flow():
                         }},
                         {"id": "conn1", "type": "connector", "data": {
                             "connectorId": str(cid),
-                            "connectorVersionId": str(conn_vid)
+                            "connectorVersionId": str(conn_vid),
+                            "inputMapping": {
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X-Trace-Id": {"type": "string", "value": "${$.node.trigger.input.header.X-Trace-Id}"}
+                                    }
+                                },
+                                "query": {
+                                    "type": "object",
+                                    "properties": {
+                                        "keyword": {"type": "string", "value": "${$.node.trigger.input.query.keyword}"},
+                                        "page": {"type": "string", "value": "${$.node.trigger.input.query.page}"}
+                                    }
+                                },
+                                "body": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {"type": "string", "value": "${$.node.trigger.input.body.message}"},
+                                        "traceId": {"type": "string", "value": "${$.node.trigger.input.body.traceId}"},
+                                        "timestamp": {"type": "string", "value": "${$.node.trigger.input.body.timestamp}"}
+                                    }
+                                }
+                            }
                         }},
                         {"id": "exit", "type": "exit", "data": {
                             "outputMapping": {
