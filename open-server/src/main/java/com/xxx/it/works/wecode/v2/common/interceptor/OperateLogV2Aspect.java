@@ -5,12 +5,12 @@ import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
 import com.xxx.it.works.wecode.v2.common.constants.CommonConstants;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
+import com.xxx.it.works.wecode.v2.common.enums.OperateResultEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoader;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoaderFactory;
 import com.xxx.it.works.wecode.v2.common.util.CommonUtils;
 import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
-import com.xxx.it.works.wecode.v2.modules.app.constants.AppPropertyConstants;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
@@ -26,7 +26,9 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,6 +63,7 @@ public class OperateLogV2Aspect {
         Long resourceId;
         String beforeData;
         String appId;
+        String requestJson;
     }
 
     /**
@@ -86,12 +89,12 @@ public class OperateLogV2Aspect {
         } catch (Throwable ex) {
             // 失败时不加载 afterData：业务方法可能在 @Transactional 中，
             // catch 时事务尚未回滚，查 DB 会拿到未提交的脏数据。
-            writeAuditLog(ctx, null, 0);
+            writeAuditLog(ctx, null, OperateResultEnum.FAILED.getCode());
             throw ex;
         }
 
         String afterData = loadAfterData(ctx, joinPoint, result);
-        writeAuditLog(ctx, afterData, 1);
+        writeAuditLog(ctx, afterData, OperateResultEnum.SUCCESS.getCode());
         return result;
     }
 
@@ -105,6 +108,9 @@ public class OperateLogV2Aspect {
         ctx.op = auditLog.value();
         try {
             ctx.resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
+
+            // 方法参数展平为 JSON（失败场景下模板渲染的数据源）
+            ctx.requestJson = buildRequestJson(joinPoint);
 
             // appId 自动策略 1: 从方法参数提取
             ctx.appId = extractAppIdFromParams(joinPoint);
@@ -210,7 +216,7 @@ public class OperateLogV2Aspect {
         }
         try {
             String rendered = renderTemplate(template, ctx.op, ctx.beforeData,
-                    afterData, isChinese);
+                    afterData, ctx.requestJson, isChinese);
             return rendered != null ? rendered : fallback;
         } catch (Exception e) {
             log.warn("[OPERATE_LOG] Template rendering failed", e);
@@ -223,6 +229,7 @@ public class OperateLogV2Aspect {
      */
     private String renderTemplate(String template, OperateEnum op,
                                   String beforeData, String afterData,
+                                  String requestParams,
                                   boolean isChinese) {
         if (template == null || template.isEmpty()) {
             return null;
@@ -230,6 +237,7 @@ public class OperateLogV2Aspect {
 
         JsonNode before = JsonUtils.parseJson(beforeData);
         JsonNode after = JsonUtils.parseJson(afterData);
+        JsonNode request = JsonUtils.parseJson(requestParams);
 
         if (template.contains(DiffConfig.DIFF_FIELDS_PLACEHOLDER)) {
             String diffResult = renderDiffFields(op, before, after, isChinese);
@@ -240,7 +248,7 @@ public class OperateLogV2Aspect {
         StringBuilder sb = new StringBuilder();
         while (matcher.find()) {
             String placeholder = matcher.group(1);
-            String value = resolvePlaceholder(placeholder, before, after);
+            String value = resolvePlaceholder(placeholder, before, after, request);
             matcher.appendReplacement(sb, Matcher.quoteReplacement(value != null ? value : ""));
         }
         matcher.appendTail(sb);
@@ -275,12 +283,54 @@ public class OperateLogV2Aspect {
     /**
      * 从 beforeData/afterData JSON 中提取占位符值
      */
-    private String resolvePlaceholder(String placeholder, JsonNode before, JsonNode after) {
+    private String resolvePlaceholder(String placeholder, JsonNode before, JsonNode after, JsonNode request) {
         String value = JsonUtils.getFieldText(after, placeholder);
         if (value == null) {
             value = JsonUtils.getFieldText(before, placeholder);
         }
+        if (value == null) {
+            value = JsonUtils.getFieldText(request, placeholder);
+        }
         return value != null ? value : "";
+    }
+
+    /**
+     * 将方法参数展平为 JSON 字符串，用于失败场景下模板渲染的数据源。
+     * 简单类型（String/Number/Boolean）按参数名直接放入；
+     * 复杂对象（如 @RequestBody DTO）展平其属性到顶层。
+     */
+    private String buildRequestJson(ProceedingJoinPoint joinPoint) {
+        try {
+            MethodSignature sig = (MethodSignature) joinPoint.getSignature();
+            String[] paramNames = sig.getParameterNames();
+            Object[] args = joinPoint.getArgs();
+            if (paramNames == null) {
+                return null;
+            }
+
+            Map<String, Object> flat = new LinkedHashMap<>();
+            for (int i = 0; i < paramNames.length; i++) {
+                if (args[i] == null) {
+                    continue;
+                }
+                if (args[i] instanceof CharSequence || args[i] instanceof Number || args[i] instanceof Boolean) {
+                    flat.put(paramNames[i], args[i].toString());
+                } else {
+                    JsonNode node = JsonUtils.toTree(args[i]);
+                    if (node != null && node.isObject()) {
+                        node.fields().forEachRemaining(entry -> {
+                            if (!flat.containsKey(entry.getKey())) {
+                                flat.put(entry.getKey(), entry.getValue());
+                            }
+                        });
+                    }
+                }
+            }
+            return flat.isEmpty() ? null : JsonUtils.toJson(flat);
+        } catch (Exception e) {
+            log.debug("[OPERATE_LOG] Failed to build request JSON for template rendering", e);
+            return null;
+        }
     }
 
     private boolean isValid(String appId) {
@@ -331,7 +381,7 @@ public class OperateLogV2Aspect {
         Object[] args = joinPoint.getArgs();
         if (paramNames != null) {
             for (int i = 0; i < paramNames.length; i++) {
-                if ("appId".equals(paramNames[i]) && args[i] != null) {
+                if (CommonConstants.FIELD_APP_ID.equals(paramNames[i]) && args[i] != null) {
                     return args[i].toString();
                 }
             }
@@ -353,9 +403,9 @@ public class OperateLogV2Aspect {
             if (node == null) {
                 return CommonConstants.UNKNOWN;
             }
-            JsonNode appIdNode = node.get("appId");
+            JsonNode appIdNode = node.get(CommonConstants.FIELD_APP_ID);
             if (appIdNode == null) {
-                appIdNode = node.get(AppPropertyConstants.COL_APP_ID);
+                appIdNode = node.get(CommonConstants.COL_APP_ID);
             }
             if (appIdNode == null || appIdNode.isNull()) {
                 return CommonConstants.UNKNOWN;
@@ -382,7 +432,7 @@ public class OperateLogV2Aspect {
                 Object data = apiResponse.getData();
                 if (data != null) {
                     JsonNode dataNode = JsonUtils.toTree(data);
-                    JsonNode appIdNode = dataNode != null ? dataNode.get("appId") : null;
+                    JsonNode appIdNode = dataNode != null ? dataNode.get(CommonConstants.FIELD_APP_ID) : null;
                     if (appIdNode != null && !appIdNode.isNull()) {
                         return appIdNode.asText();
                     }

@@ -1,8 +1,11 @@
 package com.xxx.it.works.wecode.v2.common.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 /**
  * JSON 工具类
@@ -82,6 +85,26 @@ public final class JsonUtils {
             return objectMapper.valueToTree(obj);
         } catch (Exception e) {
             log.warn("[JSON] Failed to convert object to tree: {}", obj.getClass().getSimpleName(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 将 Java 对象转换为 {@code Map<String, Object>}（通过 Jackson convertValue）。
+     * <ul>
+     *   <li>null → null</li>
+     *   <li>转换失败 → null（仅 warn 日志）</li>
+     *   <li>返回的是可变的 LinkedHashMap，调用方可继续 put 扩展字段</li>
+     * </ul>
+     */
+    public static Map<String, Object> toMap(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        try {
+            return objectMapper.convertValue(obj, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("[JSON] Failed to convert object to Map: {}", obj.getClass().getSimpleName(), e);
             return null;
         }
     }
