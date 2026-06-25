@@ -1,14 +1,14 @@
 #!/bin/bash
-# market-web 一键启动 (前端)
+# wecodesite 一键启动 (Vite React 前端)
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PORT=13000
-LOG="$APP_DIR/logs/market-web.log"
+PORT=5173
+LOG="$APP_DIR/logs/wecodesite.log"
 PID_FILE="$APP_DIR/.pid"
 
 echo "=========================================="
-echo "启动 market-web (前端)  端口: $PORT"
+echo "启动 wecodesite (前端)  端口: $PORT"
 echo "=========================================="
 
 cd "$APP_DIR"
