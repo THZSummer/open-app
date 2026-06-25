@@ -7,31 +7,71 @@
 - --quiet 模式控制
 - is_pass() 自动判断 PASS/FAIL
 - check() 契约校验断言
+- db() / db_val() / snow_id() / escape_sql() — 数据库操作 + 测试数据管理
+
+配置：
+  切换环境只需修改本文件顶部的 _DB / BASE_URL 字典。
 
 用法:
   from client import *
-  resp = request("POST", "/trigger/{flowId}/invoke", {...}, headers={...})
-  if resp is not None:
-      check("状态码", resp.status_code == 200)
-      check("errorInfo.code 为 6001", resp.json().get("errorInfo", {}).get("code") == "6001")
+
+  # HTTP
+  resp = api("POST", "/flows/{flowId}/invoke", {...}, headers={...})
+
+  # DB
+  fid = snow_id()
+  db(f"INSERT INTO openplatform_v2_cp_flow_t (...) VALUES ({fid}, ...)")
+  rows = db_val("SELECT COUNT(*) FROM openplatform_v2_cp_flow_t")
+
+  # 断言
+  check("状态码", resp.status_code == 200)
 """
 import sys
 import json
 import requests
 import time
 import re
-import atexit
+import subprocess
 
 _pass_count = 0
 _fail_count = 0
 
 __all__ = [
-    "BASE_URL", "is_quiet", "request",
+    "BASE_URL", "is_quiet", "api",
     "check", "check_field_type", "check_time_iso8601", "check_camel_case",
+    "done",
     "_print_request", "_print_response", "_is_pass",
+    # V4: DB 基础设施
+    "db", "db_val", "snow_id", "escape_sql",
+    "_DB", "_API_HOST", "TEST_APP_ID",
+    "redis",
+    # HTTP 快捷方法
+    "trigger", "debug_run",
 ]
 
 BASE_URL = "http://localhost:18180/api/v1"
+
+# ═══════════════════════════════════════════════════════════
+# 数据库配置 — 切换环境只需改这里
+# ═══════════════════════════════════════════════════════════
+_DB = {
+    "host": "192.168.3.155",
+    "user": "openapp",
+    "passwd": "openapp",
+    "db": "openapp",
+}
+_REDIS_CLUSTER = {
+    "nodes": [
+        {"host": "192.168.3.201", "port": 6379},
+        {"host": "192.168.3.202", "port": 6379},
+        {"host": "192.168.3.203", "port": 6379},
+        {"host": "192.168.3.204", "port": 6379},
+        {"host": "192.168.3.205", "port": 6379},
+    ],
+    "password": "openapp",
+}
+_API_HOST = "localhost:18180"
+TEST_APP_ID = "202606241730488926"  # 与 open-server 共用测试应用
 
 
 def is_quiet():
@@ -39,7 +79,7 @@ def is_quiet():
     return "--quiet" in sys.argv
 
 
-def request(method, path, body=None, headers=None):
+def api(method, path, body=None, headers=None):
     """发送请求到 connector-api (port 18180)，返回 Response 对象
 
     连接失败时返回 None（打印 SKIP）; --quiet 时抑制请求/响应详情。
@@ -117,14 +157,16 @@ def _is_pass(resp):
 
 
 def check(name, condition, detail=""):
-    """契约校验断言：PASS / FAIL + 可选详细描述"""
+    """契约校验断言：PASS / FAIL + 可选详细描述。失败时抛出 AssertionError。"""
     global _pass_count, _fail_count
     if condition:
         _pass_count += 1
         print(f"  ✅ PASS: {name}" + (f" - {detail}" if detail else ""))
     else:
         _fail_count += 1
-        print(f"  ❌ FAIL: {name}" + (f" - {detail}" if detail else ""))
+        msg = f"  ❌ FAIL: {name}" + (f" - {detail}" if detail else "")
+        print(msg)
+        raise AssertionError(msg)
 
 
 def check_field_type(body, field_path, expected_type):
@@ -155,20 +197,94 @@ def check_camel_case(name):
     return bool(re.match(r"^[a-z]+[A-Za-z0-9]*$", name))
 
 
-def _print_summary():
-    """打印测试结果汇总（仅在非 quiet 模式下输出）"""
-    if is_quiet():
-        return
+# ═══════════════════════════════════════════════════════════
+# V4: 数据库基础设施 — 所有脚本共享
+# ═══════════════════════════════════════════════════════════
+
+def db(sql, capture=False):
+    """执行 MySQL SQL 语句。
+
+    Args:
+        sql: 要执行的 SQL 语句
+        capture: 如果为 True，返回 stdout 字符串；否则返回 None
+    """
+    cmd = [
+        "mysql", f"-h{_DB['host']}", f"-u{_DB['user']}",
+        f"-p{_DB['passwd']}", _DB['db'], "-e", sql
+    ]
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout if capture else None
+
+
+def db_val(sql):
+    """执行 SQL 并返回单个值（第一列第一行）。
+
+    用于 COUNT(*)、获取某个字段值等场景。
+    """
+    out = db(sql, capture=True)
+    if out is None:
+        return None
+    lines = out.strip().split('\n')
+    return lines[-1].strip() if len(lines) > 1 else None
+
+
+def snow_id():
+    """生成唯一雪花 ID（基于微秒时间戳）。
+
+    所有测试数据 ID 必须通过此函数生成，确保不冲突。
+    """
+    return int(time.time() * 1000000) % 100000000000000000
+
+
+def escape_sql(obj):
+    """将 Python 对象转为 MySQL-safe JSON 字符串。
+
+    用于将 orchestration_config / connection_config 等 JSON 字段插入 SQL。
+    """
+    return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
+
+
+def redis(*args):
+    """执行 redis-cli 命令（Cluster 模式）。
+
+    例: redis("KEYS", "*") → redis("SET", "k", "v") → redis("GET", "k")
+    """
+    first = _REDIS_CLUSTER["nodes"][0]
+    cmd = [
+        "redis-cli", "-c",
+        "-h", first["host"], "-p", str(first["port"]),
+        "-a", _REDIS_CLUSTER["password"], "--no-auth-warning"
+    ]
+    cmd.extend([str(a) for a in args])
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def trigger(flow_id, body=None, headers=None, query_params=None):
+    """HTTP 触发连接流 — POST /api/v1/flows/{flowId}/invoke
+
+    返回 Response 对象（连接失败返回 None）。
+    query_params 示例: {"page": "1", "size": "10"}
+    """
+    path = f"/flows/{flow_id}/invoke"
+    if query_params:
+        import urllib.parse
+        qs = urllib.parse.urlencode(query_params, doseq=True)
+        path = f"{path}?{qs}"
+    return api("POST", path, body, headers)
+
+
+def debug_run(flow_id, version_id, body=None):
+    """测试运行调试 — POST /api/v1/flows/{flowId}/versions/{versionId}/debug
+
+    body 示例: {"mockTriggerData": {"sender": "test"}}
+    返回 Response 对象（连接失败返回 None）。
+    """
+    return api("POST", f"/flows/{flow_id}/versions/{version_id}/debug", body)
+
+
+def done():
+    """打印汇总，返回 (pass_count, fail_count)"""
     print(f"\n── 测试结果 ──")
     print(f"  ✅ PASS: {_pass_count}  ❌ FAIL: {_fail_count}")
-    print(f"  exit code: {'1' if _fail_count > 0 else '0'}")
-
-
-def _atexit_handler():
-    """atexit 处理函数：打印汇总并在失败时设置非零退出码"""
-    _print_summary()
-    if _fail_count > 0:
-        sys.exit(1)
-
-
-atexit.register(_atexit_handler)
+    return _pass_count, _fail_count

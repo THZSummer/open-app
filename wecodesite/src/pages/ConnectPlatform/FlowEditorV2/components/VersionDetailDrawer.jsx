@@ -16,7 +16,7 @@
 
 import React from 'react';
 import { Drawer, Button, message } from 'antd';
-import { LinkOutlined, BellOutlined, CopyOutlined } from '@ant-design/icons';
+import { LinkOutlined, CopyOutlined } from '@ant-design/icons';
 import { VERSION_STATUS_MAP } from '../constants';
 import { copyToClipboard } from '../../../../utils/common';
 import '../FlowEditorV2.m.less';
@@ -188,7 +188,6 @@ const VersionDetailDrawer = (props) => {
           <div style={{ marginTop: 12, textAlign: 'right' }}>
             <Button
               type="primary"
-              icon={<BellOutlined />}
               onClick={() => {
                 onUrge && onUrge();
                 message.success('已发送催办提醒');

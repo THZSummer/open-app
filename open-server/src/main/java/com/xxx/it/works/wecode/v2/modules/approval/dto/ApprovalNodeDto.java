@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.approval.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,6 @@ import java.util.List;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class ApprovalNodeDto implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -81,4 +79,16 @@ public class ApprovalNodeDto implements Serializable {
      * 每催办一次追加一个第三方返回的卡片ID
      */
     private List<String> cardIds;
+
+    public ApprovalNodeDto(String type, String userId, String userName, Integer order, String level, Integer status, Date approveTime, String comment, List<String> cardIds) {
+        this.type = type;
+        this.userId = userId;
+        this.userName = userName;
+        this.order = order;
+        this.level = level;
+        this.status = status;
+        this.approveTime = approveTime;
+        this.comment = comment;
+        this.cardIds = cardIds;
+    }
 }

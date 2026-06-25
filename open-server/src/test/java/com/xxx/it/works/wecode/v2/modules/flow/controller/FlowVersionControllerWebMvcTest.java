@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.flow.controller;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.FlowVersionController;
 import com.xxx.it.works.wecode.v2.modules.flow.FlowVersionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.FlowVersionSaveRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,8 @@ class FlowVersionControllerWebMvcTest {
 
     @InjectMocks
     private FlowVersionController controller;
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Long appId = 1L;
     private final Long flowId = 100L;
@@ -106,9 +109,9 @@ class FlowVersionControllerWebMvcTest {
 
     @Test
     @DisplayName("#31 PUT 更新草稿 → 200")
-    void testUpdateDraft() {
+    void testUpdateDraft() throws Exception {
         FlowVersionSaveRequest request = new FlowVersionSaveRequest();
-        request.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
+        request.setOrchestrationConfig(MAPPER.readTree("{\"nodes\":[],\"edges\":[]}"));
 
         var response = controller.updateDraft(appId, flowId, versionId, request).getBody();
         assertEquals("200", response.getCode());

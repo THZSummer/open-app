@@ -37,9 +37,19 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class ConnectorService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorService.class);
 
+
+
+
+    @Autowired
+    public ConnectorService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator) {
+        this.connectorMapper = connectorMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+        this.connectorVersionRefMapper = connectorVersionRefMapper;
+        this.idGenerator = idGenerator;
+    }
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;

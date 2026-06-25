@@ -24,14 +24,14 @@ public class ItemDetailVO implements Serializable {
      */
     @Schema(description = "项ID",
             example = "1")
-    private Long itemId;
+    private String itemId;
 
     /**
      * 分类ID
      */
     @Schema(description = "分类ID",
             example = "1")
-    private Long classifyId;
+    private String classifyId;
 
     /**
      * 分类名称

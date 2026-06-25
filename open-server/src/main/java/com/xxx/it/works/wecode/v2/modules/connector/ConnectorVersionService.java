@@ -43,9 +43,20 @@ import java.util.regex.PatternSyntaxException;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class ConnectorVersionService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorVersionService.class);
 
+
+
+
+    @Autowired
+    public ConnectorVersionService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, AuditLogService auditLogService) {
+        this.connectorMapper = connectorMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+        this.connectorVersionRefMapper = connectorVersionRefMapper;
+        this.idGenerator = idGenerator;
+        this.auditLogService = auditLogService;
+    }
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
@@ -324,11 +335,16 @@ public class ConnectorVersionService {
         try {
             OperateLog auditLog = new OperateLog();
             auditLog.setOperateType("PUBLISH");
-            auditLog.setOperateObject("connector_version:" + versionId);
+            auditLog.setOperateObject("连接器版本");
             auditLog.setOperateDescCn("发布连接器版本 - " + connector.getNameCn() + " v" + version.getVersionNumber());
             auditLog.setOperateDescEn("Publish connector version - " + connector.getNameEn() + " v" + version.getVersionNumber());
             auditLog.setOperateUser(currentUser);
             auditLog.setAppId(String.valueOf(appId));
+            auditLog.setIpAddress(com.xxx.it.works.wecode.v2.common.util.CommonUtils.extractIpAddress());
+            auditLog.setCreateBy(currentUser);
+            auditLog.setCreateTime(now);
+            auditLog.setLastUpdateBy(currentUser);
+            auditLog.setLastUpdateTime(now);
             auditLog.setStatus(1);
             auditLogService.saveAsync(auditLog);
         } catch (Exception e) {

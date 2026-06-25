@@ -44,6 +44,27 @@ public class UserContext implements Serializable {
      *
      * @return 系统用户上下文
      */
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+    public com.xxx.it.works.wecode.v2.common.enums.AuthTypeEnum getAuthType() { return authType; }
+    public void setAuthType(com.xxx.it.works.wecode.v2.common.enums.AuthTypeEnum authType) { this.authType = authType; }
+
+    public static UserContextBuilder builder() { return new UserContextBuilder(); }
+
+    public static class UserContextBuilder {
+        private String userId;
+        private String userName;
+        private com.xxx.it.works.wecode.v2.common.enums.AuthTypeEnum authType;
+
+        public UserContextBuilder userId(String userId) { this.userId = userId; return this; }
+        public UserContextBuilder userName(String userName) { this.userName = userName; return this; }
+        public UserContextBuilder authType(com.xxx.it.works.wecode.v2.common.enums.AuthTypeEnum authType) { this.authType = authType; return this; }
+        public UserContext build() { return new UserContext(userId, userName, authType); }
+    }
+
     public static UserContext empty() {
         return UserContext.builder()
                 .userId("system")

@@ -1,9 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.permission.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -16,8 +14,6 @@ import java.util.List;
  */
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class PermissionSubscribeResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -42,14 +38,22 @@ public class PermissionSubscribeResponse implements Serializable {
      */
     private List<FailedRecord> failedRecords;
 
+
+    public PermissionSubscribeResponse() {
+    }
+
+    public PermissionSubscribeResponse(Integer successCount, Integer failedCount, List<SubscriptionRecord> records, List<FailedRecord> failedRecords) {
+        this.successCount = successCount;
+        this.failedCount = failedCount;
+        this.records = records;
+        this.failedRecords = failedRecords;
+    }
     /**
      * 订阅记录
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class SubscriptionRecord implements Serializable {
+        public static class SubscriptionRecord implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -79,9 +83,7 @@ public class PermissionSubscribeResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class FailedRecord implements Serializable {
+        public static class FailedRecord implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

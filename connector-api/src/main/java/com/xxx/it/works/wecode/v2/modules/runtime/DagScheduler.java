@@ -69,7 +69,7 @@ public class DagScheduler {
     /**
      * 调度执行 DAG (直接传入编排配置 JSON 字符串)
      * <p>
-     * 用于已自行完成版本解析和校验的场景 (如 OpTriggerService),
+     * 用于已自行完成版本解析和校验的场景 (如 FlowInvokeService),
      * 避免重复加载 flow version.
      * </p>
      *

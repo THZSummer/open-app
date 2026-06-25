@@ -29,9 +29,18 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpConnectorService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OpConnectorService.class);
 
+
+
+
+    @Autowired
+    public OpConnectorService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, IdGeneratorStrategy idGenerator) {
+        this.connectorMapper = connectorMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+        this.idGenerator = idGenerator;
+    }
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final IdGeneratorStrategy idGenerator;
@@ -228,7 +237,7 @@ public class OpConnectorService {
             version = new ConnectorVersion();
             version.setId(idGenerator.nextId());
             version.setConnectorId(connectorId);
-            version.setConnectionConfig(request.getConnectionConfig());
+            version.setConnectionConfig(request.getConnectionConfig().toString());
             version.setCreateTime(now);
             version.setLastUpdateTime(now);
             version.setCreateBy(currentUser);
@@ -236,7 +245,7 @@ public class OpConnectorService {
             connectorVersionMapper.insert(version);
         } else {
             // 更新现有版本 - 全文替换
-            version.setConnectionConfig(request.getConnectionConfig());
+            version.setConnectionConfig(request.getConnectionConfig().toString());
             version.setLastUpdateTime(now);
             version.setLastUpdateBy(currentUser);
             connectorVersionMapper.update(version);

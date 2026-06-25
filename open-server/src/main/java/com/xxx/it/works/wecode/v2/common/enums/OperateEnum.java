@@ -66,7 +66,7 @@ public enum OperateEnum {
             "新增应用:${appNameCn}", "Create application:${appNameEn}"),
     UPDATE_APP("UPDATE", "APP", "应用基础信息",
             "更新应用基本信息", "Update Application Basic Info",
-            "修改基础信息:\n${diffFields}", "Update basic info:\n${diffFields}") {
+            "修改基础信息:\n" + DiffConfig.DIFF_FIELDS_PLACEHOLDER, "Update basic info:\n" + DiffConfig.DIFF_FIELDS_PLACEHOLDER) {
         @Override
         public DiffConfig diffConfig() {
             return DiffConfig.builder()
@@ -81,13 +81,13 @@ public enum OperateEnum {
     },
     UPDATE_APP_VERIFY_TYPE("UPDATE", "APP_VERIFY_TYPE", "认证方式",
             "更新应用认证方式", "Update Application Verify Type",
-            "修改认证方式为${verifyType}", "Update verify type to ${verifyType}"),
+            "修改认证方式为${verifyTypeDesc}", "Update verify type to ${verifyTypeDesc}"),
     BIND_APP_EAMAP("UPDATE", "APP", "应用基础信息",
             "绑定EAMAP升级业务应用", "Bind EAMAP to Application",
             "绑定应用服务${eamapAppCode}", "Bind application service ${eamapAppCode}"),
     ADD_APP_MEMBER("CREATE", "APP_MEMBER", "成员管理",
             "添加应用成员", "Add Application Member",
-            "新增${memberType}:${accountId}", "Add ${memberType}:${accountId}"),
+            "新增${memberTypeDesc}:${accountId}", "Add ${memberTypeDesc}:${accountId}"),
     DELETE_APP_MEMBER("DELETE", "APP_MEMBER", "成员管理",
             "删除应用成员", "Delete Application Member",
             "删除人员:${accountId}", "Delete member:${accountId}"),
@@ -111,7 +111,47 @@ public enum OperateEnum {
             "撤回版本${versionCode}", "Withdraw version ${versionCode}"),
     DELETE_APP_VERSION("DELETE", "APP_VERSION", "版本",
             "删除应用版本", "Delete Application Version",
-            "删除版本${versionCode}", "Delete version ${versionCode}");
+            "删除版本${versionCode}", "Delete version ${versionCode}"),
+
+    // ===== 连接器管理 =====
+    CREATE_CONNECTOR("CREATE", "CONNECTOR", "连接器",
+            "创建连接器", "Create Connector",
+            "创建连接器:${nameCn}", "Create Connector:${nameEn}"),
+    UPDATE_CONNECTOR("UPDATE", "CONNECTOR", "连接器",
+            "更新连接器", "Update Connector",
+            "更新连接器:${nameCn}", "Update Connector:${nameEn}"),
+    DELETE_CONNECTOR("DELETE", "CONNECTOR", "连接器",
+            "删除连接器", "Delete Connector",
+            "删除连接器:${nameCn}", "Delete Connector:${nameEn}"),
+
+    // ===== 连接流管理 =====
+    CREATE_FLOW("CREATE", "FLOW", "连接流",
+            "创建连接流", "Create Flow",
+            "创建连接流:${nameCn}", "Create Flow:${nameEn}"),
+    UPDATE_FLOW("UPDATE", "FLOW", "连接流",
+            "更新连接流", "Update Flow",
+            "更新连接流:${nameCn}", "Update Flow:${nameEn}"),
+    DELETE_FLOW("DELETE", "FLOW", "连接流",
+            "删除连接流", "Delete Flow",
+            "删除连接流:${nameCn}", "Delete Flow:${nameEn}"),
+    CONNECTOR_FLOW_VERSION_PUBLISH("PUBLISH", "FLOW_VERSION", "流版本",
+            "发布流版本", "Publish Flow Version",
+            "发布版本${versionCode}", "Publish version ${versionCode}"),
+    START_FLOW("START", "FLOW", "连接流",
+            "启动连接流", "Start Flow",
+            "启动连接流:${nameCn}", "Start Flow:${nameEn}"),
+    STOP_FLOW("STOP", "FLOW", "连接流",
+            "停止连接流", "Stop Flow",
+            "停止连接流:${nameCn}", "Stop Flow:${nameEn}"),
+    DEPLOY_FLOW("DEPLOY", "FLOW", "连接流",
+            "部署连接流", "Deploy Flow",
+            "部署连接流:${nameCn}", "Deploy Flow:${nameEn}"),
+    INVALIDATE_FLOW("INVALIDATE", "FLOW", "连接流",
+            "失效连接流", "Invalidate Flow",
+            "失效连接流:${nameCn}", "Invalidate Flow:${nameEn}"),
+    RECOVER_FLOW("RECOVER", "FLOW", "连接流",
+            "恢复连接流", "Recover Flow",
+            "恢复连接流:${nameCn}", "Recover Flow:${nameEn}");
 
     /**
      * DB operate_type 字段值
@@ -183,25 +223,9 @@ public enum OperateEnum {
     }
 
     /**
-     * 该操作的 diff 字段配置（模板配置式）
+     * diff 字段配置（仅当操作模板含 ${diffFields} 时需要配置）
      *
-     * <p>仅当操作模板含 ${diffFields} 时需要配置。默认返回 null 表示无 diff 配置，
-     * 切面 {@code renderDiffFields} 会跳过 diff 渲染。</p>
-     *
-     * <p>需要 diff 的操作在枚举值上 override 此方法，返回 {@link DiffConfig}：</p>
-     * <pre>{@code
-     * UPDATE_APP(...) {
-     *     @Override
-     *     public DiffConfig diffConfig() {
-     *         return DiffConfig.builder()
-     *             .field("appNameCn", "中文名", "Chinese name")
-     *             .labelOnlyField("iconId", "应用图标", "App icon")
-     *             .build();
-     *     }
-     * }
-     * }</pre>
-     *
-     * @return diff 配置，null 表示该操作无 diff 需求
+     * @return diff 配置，null 表示无 diff 需求
      */
     public DiffConfig diffConfig() {
         return null;

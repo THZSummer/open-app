@@ -1,46 +1,43 @@
 #!/bin/bash
-set -ex
-# connector-api 一键启动脚本
-# 连接器平台运行时服务 (Spring WebFlux + R2DBC)
+# connector-api 一键启动 — WebFlux 运行时服务
+set -uo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PORT=18180
+CTX=""   # connector-api 无 context-path
+LOG="$APP_DIR/logs/connector-api.log"
+PID_FILE="$APP_DIR/.pid"
+PROFILE="${SPRING_PROFILES_ACTIVE:-dev}"
 
 echo "=========================================="
-echo "启动 connector-api (运行时服务)"
-echo "端口: 18180"
+echo "启动 connector-api (运行时)  端口: $PORT  环境: $PROFILE"
 echo "=========================================="
 
-cd "$(dirname "$0")/.."
+cd "$APP_DIR"
 
-# 检查服务是否已启动
-if lsof -i:18180 > /dev/null 2>&1; then
-    echo "⚠️  端口 18180 已被占用，服务可能已在运行"
-    echo "请先执行 ./scripts/stop.sh 停止服务"
+if lsof -i:$PORT > /dev/null 2>&1; then
+    echo "⚠️  端口 $PORT 已被占用，请先执行 ./scripts/stop.sh"
     exit 1
 fi
 
-# 启动服务（后台运行）
-echo "正在启动服务..."
-nohup mvn spring-boot:run -Dspring-boot.run.profiles=dev > logs/connector-api.log 2>&1 &
+# 启动
+echo "🔨 编译启动中..."
+mkdir -p logs
+nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" > "$LOG" 2>&1 &
+echo $! > "$PID_FILE"
+echo "PID: $(cat $PID_FILE)"
 
-# 记录进程ID
-PID=$!
-echo $PID > .pid
-
-echo "✅ 服务启动成功!"
-echo "   PID: $PID"
-echo "   日志: logs/connector-api.log"
-echo ""
-echo "等待服务启动完成..."
-
-# 等待服务启动
-for i in {1..30}; do
-    if curl -s http://localhost:18180/actuator/health > /dev/null 2>&1; then
-        echo "✅ 服务已就绪! 访问地址: http://localhost:18180"
+echo "⏳ 等待就绪..."
+for i in $(seq 1 30); do
+    sleep 2
+    RESULT=$(curl -s "http://localhost:$PORT/actuator/health" 2>&1)
+    if echo "$RESULT" | grep -q '"status":"UP"'; then
+        echo "  [$i] ✅ $RESULT"
+        echo "✅ 就绪! http://localhost:$PORT"
         exit 0
     fi
-    sleep 1
-    echo -n "."
+    echo "  [$i] ⏳ $RESULT"
 done
-
 echo ""
-echo "⚠️  服务启动超时，请检查日志: logs/connector-api.log"
+echo "⚠️  超时 (60s)，检查日志: tail -f $LOG"
 exit 1

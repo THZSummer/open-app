@@ -219,7 +219,6 @@ public class AppServiceImpl implements AppService {
         List<App> apps = appMapper.selectListByAccountId(accountId, tenantId, offset, pageSize);
         long total = appMapper.countByAccountId(accountId, tenantId);
 
-        // 批量查询 Owner 信息（1 次 member 查询 + 1 次 employee 查询，替代 N*2 次）
         List<Long> appIds = apps.stream().map(App::getId).collect(Collectors.toList());
         Map<Long, EmployeeInfoVO> ownerMap = getOwnerMap(appIds);
 
@@ -325,7 +324,8 @@ public class AppServiceImpl implements AppService {
         for (String fileId : iconIds) {
             FileEntity file = fileMapper.selectByFileId(fileId);
             if (Objects.nonNull(file)) {
-                list.add(new FileV2VO(file.getFileId(), file.getUrl()));
+                // 用 fileV2Service 构建 VO，确保 url 前缀与当前配置一致
+                list.add(fileV2Service.buildFileVO(fileId));
             }
         }
         return list;
@@ -593,7 +593,7 @@ public class AppServiceImpl implements AppService {
     private String generateAppId() {
         String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern(CommonConstants.APP_ID_DATE_FORMAT));
         int random = new Random().nextInt(9000) + 1000; // 1000~9999
-        return CommonConstants.APP_ID_PREFIX + timestamp + random;
+        return timestamp + random;
     }
 
     /**

@@ -17,7 +17,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { message, Button, Table, Spin, Pagination } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
 import {
   fetchFlowList,
   deleteFlow,
@@ -46,6 +45,40 @@ import {
 import { INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../../utils/constants';
 import { queryParams, getSecondModalInfo, copyToClipboard } from '../../../utils/common';
 import './Flow.m.less';
+
+/**
+ * 二次确认动作配置表
+ * key: 'stop' | 'disable' | 'delete'
+ * 字段说明：
+ * - api：调用的后端接口方法
+ * - successMsg：成功提示文案
+ * - errorMsg：失败兜底提示文案
+ * - modalInfo：二次确认弹窗基础配置
+ * - resetToFirstPage：成功后是否回到第一页
+ */
+const CONFIRM_ACTION_CONFIG = {
+  stop: {
+    api: stopFlow,
+    successMsg: '停止成功',
+    errorMsg: '停止失败',
+    modalInfo: FLOW_STOP_SECOND_MODAL_INFO,
+    resetToFirstPage: false,
+  },
+  disable: {
+    api: disableFlow,
+    successMsg: '已失效',
+    errorMsg: '失效操作失败',
+    modalInfo: FLOW_DISABLE_SECOND_MODAL_INFO,
+    resetToFirstPage: false,
+  },
+  delete: {
+    api: deleteFlow,
+    successMsg: '删除成功',
+    errorMsg: '删除失败',
+    modalInfo: FLOW_DELETE_SECOND_MODAL_INFO,
+    resetToFirstPage: true,
+  },
+};
 
 /**
  * 连接流列表页面主组件
@@ -100,14 +133,9 @@ function FlowList() {
     });
 
     if (result && result.code === '200') {
-      // 使用接口返回的page数据更新分页信息
-      const pageData = result.page || {};
-      setPagination({
-        curPage: pageData.curPage ?? 1,
-        pageSize: pageData.pageSize ?? 10,
-        total: Number(pageData.total) || 0,
-        totalPages: pageData.totalPages ?? 0,
-      });
+      // 使用接口返回的 page 数据更新分页信息
+      const pageData = result.page || INIT_PAGECONFIG;
+      setPagination(pageData);
       // 更新列表数据
       setData(result.data || []);
     } else {
@@ -160,21 +188,46 @@ function FlowList() {
    */
   const handleConfig = (record) => {
     const appId = queryParams('appId');
-    navigate(`/connect/flow/editor?id=${record.flowId}&name=${encodeURIComponent(record.nameCn)}&appId=${appId}`);
+    navigate(`/connect/flows/editor?id=${record.id}&name=${encodeURIComponent(record.nameCn)}&appId=${appId}`);
+  };
+
+  /**
+   * 通用：执行简单异步动作（调用 API → 成功提示 → 刷新列表）
+   * 适用于：复制流、启动、恢复 等无需二次确认的操作
+   */
+  const executeFlowAction = async (params) => {
+    // 接口方法
+    const { apiFn } = params;
+    // 连接流 ID
+    const { id } = params;
+    // 成功提示文案
+    const { successMsg } = params;
+    // 失败兜底提示文案
+    const { errorMsg } = params;
+    // 成功后是否回到第一页
+    const { resetToFirstPage = false } = params;
+
+    const res = await apiFn(id);
+    if (res && res.code === '200') {
+      message.success(successMsg);
+      loadData(resetToFirstPage ? INIT_PAGECONFIG : {});
+    } else {
+      message.error(res?.messageZh || errorMsg);
+    }
   };
 
   /**
    * 复制流
    * @param {Object} record - 连接流记录
    */
-  const handleCopyFlow = async (record) => {
-    const res = await copyFlow(record.flowId);
-    if (res && res.code === '200') {
-      message.success('复制成功');
-      loadData(INIT_PAGECONFIG);
-    } else {
-      message.error(res?.messageZh || '复制失败');
-    }
+  const handleCopyFlow = (record) => {
+    executeFlowAction({
+      apiFn: copyFlow,
+      id: record.id,
+      successMsg: '复制成功',
+      errorMsg: '复制失败',
+      resetToFirstPage: true,
+    });
   };
 
   /**
@@ -183,7 +236,7 @@ function FlowList() {
    */
   const handleCopyId = async (record) => {
     // 调用通用复制方法（含降级方案）
-    const success = await copyToClipboard(record.flowId);
+    const success = await copyToClipboard(record.id);
     if (success) {
       message.success('复制成功');
     } else {
@@ -197,14 +250,13 @@ function FlowList() {
    *
    * @param {Object} record - 连接流记录
    */
-  const handleStart = async (record) => {
-    const res = await startFlow(record.flowId);
-    if (res && res.code === '200') {
-      message.success('启动成功');
-      loadData();
-    } else {
-      message.error(res?.messageZh || '启动失败');
-    }
+  const handleStart = (record) => {
+    executeFlowAction({
+      apiFn: startFlow,
+      id: record.id,
+      successMsg: '启动成功',
+      errorMsg: '启动失败',
+    });
   };
 
   /**
@@ -237,7 +289,7 @@ function FlowList() {
 
     setDeployLoading(true);
     const res = await deployFlow({
-      flowId: deployFlowItem.flowId,
+      flowId: deployFlowItem.id,
       versionId,
     });
     setDeployLoading(false);
@@ -256,14 +308,13 @@ function FlowList() {
    *
    * @param {Object} record - 连接流记录
    */
-  const handleRestore = async (record) => {
-    const res = await restoreFlow(record.flowId);
-    if (res && res.code === '200') {
-      message.success('恢复成功');
-      loadData();
-    } else {
-      message.error(res?.messageZh || '恢复失败');
-    }
+  const handleRestore = (record) => {
+    executeFlowAction({
+      apiFn: restoreFlow,
+      id: record.id,
+      successMsg: '恢复成功',
+      errorMsg: '恢复失败',
+    });
   };
 
   /**
@@ -289,45 +340,25 @@ function FlowList() {
 
   /**
    * 执行二次确认后的操作（停止/失效/删除）
+   * 通过 CONFIRM_ACTION_CONFIG 统一分发，避免重复的 switch
    */
   const handleConfirmExecute = async () => {
     if (!confirmActionItem || !confirmActionType) return;
 
+    // 当前操作类型对应的配置项
+    const config = CONFIRM_ACTION_CONFIG[confirmActionType];
+    if (!config) return;
+
     setConfirmActionLoading(true);
 
-    let res;
-    let successMsg;
-    let errorMsg;
-    let resetToFirstPage = false;
-
-    switch (confirmActionType) {
-      case 'stop':
-        res = await stopFlow(confirmActionItem.flowId);
-        successMsg = '停止成功';
-        errorMsg = '停止失败';
-        break;
-      case 'disable':
-        res = await disableFlow(confirmActionItem.flowId);
-        successMsg = '已失效';
-        errorMsg = '失效操作失败';
-        break;
-      case 'delete':
-        res = await deleteFlow(confirmActionItem.flowId);
-        successMsg = '删除成功';
-        errorMsg = '删除失败';
-        resetToFirstPage = true;
-        break;
-      default:
-        setConfirmActionLoading(false);
-        return;
-    }
+    const res = await config.api(confirmActionItem.id);
 
     if (res && res.code === '200') {
-      message.success(successMsg);
+      message.success(config.successMsg);
       handleConfirmCancel();
-      loadData(resetToFirstPage ? INIT_PAGECONFIG : {});
+      loadData(config.resetToFirstPage ? INIT_PAGECONFIG : {});
     } else {
-      message.error(res?.messageZh || errorMsg);
+      message.error(res?.messageZh || config.errorMsg);
     }
 
     setConfirmActionLoading(false);
@@ -335,39 +366,27 @@ function FlowList() {
 
   /**
    * 更多菜单点击处理
-   * 根据 key 分发到对应的处理函数
+   * 通过映射表分发到对应的处理函数，避免冗长的 switch
    *
    * @param {string} key - 菜单 key：copy / copyId / start / deploy / stop / disable / restore / delete
    * @param {Object} record - 连接流记录
    */
   const handleMoreMenuClick = (key, record) => {
-    switch (key) {
-      case 'copy':
-        handleCopyFlow(record);
-        break;
-      case 'copyId':
-        handleCopyId(record);
-        break;
-      case 'start':
-        handleStart(record);
-        break;
-      case 'deploy':
-        handleOpenDeployModal(record);
-        break;
-      case 'stop':
-        triggerConfirmAction(record, 'stop');
-        break;
-      case 'disable':
-        triggerConfirmAction(record, 'disable');
-        break;
-      case 'restore':
-        handleRestore(record);
-        break;
-      case 'delete':
-        triggerConfirmAction(record, 'delete');
-        break;
-      default:
-        break;
+    // 菜单 key 到处理函数的映射表
+    const handlerMap = {
+      copy: handleCopyFlow,
+      copyId: handleCopyId,
+      start: handleStart,
+      deploy: handleOpenDeployModal,
+      stop: (item) => triggerConfirmAction(item, 'stop'),
+      disable: (item) => triggerConfirmAction(item, 'disable'),
+      restore: handleRestore,
+      delete: (item) => triggerConfirmAction(item, 'delete'),
+    };
+
+    const handler = handlerMap[key];
+    if (handler) {
+      handler(record);
     }
   };
 
@@ -380,9 +399,9 @@ function FlowList() {
     setModalLoading(true);
 
     // 判断是编辑还是创建
-    const isEdit = !!editItem?.flowId;
+    const isEdit = !!editItem?.id;
     const result = isEdit
-      ? await updateFlow({ flowId: editItem.flowId, data: values })
+      ? await updateFlow({ flowId: editItem.id, data: values })
       : await createFlow(values);
 
     if (result && result.code === '200') {
@@ -428,27 +447,16 @@ function FlowList() {
 
   /**
    * 根据当前操作类型获取二次确认弹窗的配置
-   * 通过 getSecondModalInfo 注入当前操作对象名称（nameCn）
+   * 直接从 CONFIRM_ACTION_CONFIG 中读取，避免重复的 switch
    */
   const getConfirmModalInfo = () => {
     // 当前操作的连接流名称（用于弹窗内确认文案）
     const objectName = confirmActionItem?.nameCn;
 
-    // 根据当前操作类型选取对应的基础配置
-    let baseInfo;
-    switch (confirmActionType) {
-      case 'stop':
-        baseInfo = FLOW_STOP_SECOND_MODAL_INFO;
-        break;
-      case 'disable':
-        baseInfo = FLOW_DISABLE_SECOND_MODAL_INFO;
-        break;
-      case 'delete':
-        baseInfo = FLOW_DELETE_SECOND_MODAL_INFO;
-        break;
-      default:
-        baseInfo = FLOW_DELETE_SECOND_MODAL_INFO;
-    }
+    // 取对应配置；类型异常时兜底使用删除配置
+    const baseInfo =
+      CONFIRM_ACTION_CONFIG[confirmActionType]?.modalInfo
+      || FLOW_DELETE_SECOND_MODAL_INFO;
 
     return getSecondModalInfo({ ...baseInfo, objectName });
   };
@@ -465,7 +473,7 @@ function FlowList() {
             <h2 className="page-title">{pageInfo.title}</h2>
             <p className="page-desc">{pageInfo.description}</p>
           </div>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
+          <Button type="primary" onClick={handleAdd}>
             {pageInfo.addButtonText}
           </Button>
         </div>
@@ -483,7 +491,7 @@ function FlowList() {
           <Table
             columns={columns}
             dataSource={data}
-            rowKey="flowId"
+            rowKey="id"
             pagination={false}
             scroll={{ x: 1700 }}
           />

@@ -8,15 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
-/**
- * 统一 API 响应格式
- *
- * <p>所有接口返回统一格式：{code, messageZh, messageEn, data, page}</p>
- *
- * @param <T> 数据类型
- * @author SDDU Build Agent
- * @version 1.0.0
- */
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,34 +17,41 @@ public class ApiResponse<T> implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /**
-     * 响应码
-     */
     private String code;
-
-    /**
-     * 中文消息
-     */
     private String messageZh;
-
-    /**
-     * 英文消息
-     */
     private String messageEn;
-
-    /**
-     * 响应数据
-     */
     private T data;
-
-    /**
-     * 分页信息
-     */
     private PageResponse page;
 
-    /**
-     * 分页响应
-     */
+
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+    public String getMessageZh() { return messageZh; }
+    public void setMessageZh(String messageZh) { this.messageZh = messageZh; }
+    public String getMessageEn() { return messageEn; }
+    public void setMessageEn(String messageEn) { this.messageEn = messageEn; }
+    public T getData() { return data; }
+    public void setData(T data) { this.data = data; }
+    public PageResponse getPage() { return page; }
+    public void setPage(PageResponse page) { this.page = page; }
+
+    public static <T> ApiResponseBuilder<T> builder() { return new ApiResponseBuilder<>(); }
+
+    public static class ApiResponseBuilder<T> {
+        private String code;
+        private String messageZh;
+        private String messageEn;
+        private T data;
+        private PageResponse page;
+
+        public ApiResponseBuilder<T> code(String code) { this.code = code; return this; }
+        public ApiResponseBuilder<T> messageZh(String messageZh) { this.messageZh = messageZh; return this; }
+        public ApiResponseBuilder<T> messageEn(String messageEn) { this.messageEn = messageEn; return this; }
+        public ApiResponseBuilder<T> data(T data) { this.data = data; return this; }
+        public ApiResponseBuilder<T> page(PageResponse page) { this.page = page; return this; }
+        public ApiResponse<T> build() { return new ApiResponse<>(code, messageZh, messageEn, data, page); }
+    }
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -62,30 +60,37 @@ public class ApiResponse<T> implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
-        /**
-         * 当前页码（从 1 开始）
-         */
         private Integer curPage;
-
-        /**
-         * 每页大小
-         */
         private Integer pageSize;
-
-        /**
-         * 总记录数
-         */
         private Long total;
-
-        /**
-         * 总页数
-         */
         private Integer totalPages;
+
+
+        public Integer getCurPage() { return curPage; }
+        public void setCurPage(Integer curPage) { this.curPage = curPage; }
+        public Integer getPageSize() { return pageSize; }
+        public void setPageSize(Integer pageSize) { this.pageSize = pageSize; }
+        public Long getTotal() { return total; }
+        public void setTotal(Long total) { this.total = total; }
+        public Integer getTotalPages() { return totalPages; }
+        public void setTotalPages(Integer totalPages) { this.totalPages = totalPages; }
+
+        public static PageResponseBuilder builder() { return new PageResponseBuilder(); }
+
+        public static class PageResponseBuilder {
+            private Integer curPage;
+            private Integer pageSize;
+            private Long total;
+            private Integer totalPages;
+
+            public PageResponseBuilder curPage(Integer curPage) { this.curPage = curPage; return this; }
+            public PageResponseBuilder pageSize(Integer pageSize) { this.pageSize = pageSize; return this; }
+            public PageResponseBuilder total(Long total) { this.total = total; return this; }
+            public PageResponseBuilder totalPages(Integer totalPages) { this.totalPages = totalPages; return this; }
+            public PageResponse build() { return new PageResponse(curPage, pageSize, total, totalPages); }
+        }
     }
 
-    /**
-     * 成功响应（无数据）
-     */
     public static <T> ApiResponse<T> success() {
         return ApiResponse.<T>builder()
                 .code("200")
@@ -94,9 +99,6 @@ public class ApiResponse<T> implements Serializable {
                 .build();
     }
 
-    /**
-     * 成功响应（有数据）
-     */
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
                 .code("200")
@@ -106,9 +108,6 @@ public class ApiResponse<T> implements Serializable {
                 .build();
     }
 
-    /**
-     * 成功响应（分页数据）
-     */
     public static <T> ApiResponse<T> success(T data, PageResponse page) {
         return ApiResponse.<T>builder()
                 .code("200")
@@ -119,14 +118,6 @@ public class ApiResponse<T> implements Serializable {
                 .build();
     }
 
-    /**
-     * 构建分页响应对象
-     *
-     * @param curPage  当前页码
-     * @param pageSize 每页大小
-     * @param total    总记录数
-     * @return 分页响应
-     */
     public static PageResponse buildPage(int curPage, int pageSize, long total) {
         return PageResponse.builder()
                 .curPage(curPage)
@@ -136,9 +127,6 @@ public class ApiResponse<T> implements Serializable {
                 .build();
     }
 
-    /**
-     * 错误响应
-     */
     public static <T> ApiResponse<T> error(String code, String messageZh, String messageEn) {
         return ApiResponse.<T>builder()
                 .code(code)

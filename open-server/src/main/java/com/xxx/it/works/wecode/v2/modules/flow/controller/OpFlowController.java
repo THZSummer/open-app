@@ -25,10 +25,17 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/admin/flows")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接流管理", description = "连接流 CRUD、编排配置及生命周期管理接口")
 public class OpFlowController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OpFlowController.class);
 
+
+
+
+    @Autowired
+    public OpFlowController(OpFlowService flowService) {
+        this.flowService = flowService;
+    }
     private final OpFlowService flowService;
 
     /**

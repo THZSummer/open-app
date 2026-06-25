@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.connector.service;
 
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.Connector;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
@@ -38,6 +39,8 @@ class OpConnectorServiceTest {
 
     @InjectMocks
     private OpConnectorService connectorService;
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private Connector existingConnector;
 
@@ -266,9 +269,9 @@ class OpConnectorServiceTest {
 
         @Test
         @DisplayName("编辑配置 - 首次配置创建版本")
-        void testUpdateConnectorConfig_FirstTime() {
+        void testUpdateConnectorConfig_FirstTime() throws Exception {
             ConnectorConfigUpdateRequest request = new ConnectorConfigUpdateRequest();
-            request.setConnectionConfig("{\"protocol\":\"HTTP\"}");
+            request.setConnectionConfig(MAPPER.readTree("{\"protocol\":\"HTTP\"}"));
 
             when(connectorMapper.selectById(100L)).thenReturn(existingConnector);
             when(connectorVersionMapper.selectByConnectorId(100L)).thenReturn(null);
@@ -281,9 +284,9 @@ class OpConnectorServiceTest {
 
         @Test
         @DisplayName("编辑配置 - 更新现有版本（全文替换）")
-        void testUpdateConnectorConfig_Replace() {
+        void testUpdateConnectorConfig_Replace() throws Exception {
             ConnectorConfigUpdateRequest request = new ConnectorConfigUpdateRequest();
-            request.setConnectionConfig("{\"protocol\":\"HTTP\",\"newField\":true}");
+            request.setConnectionConfig(MAPPER.readTree("{\"protocol\":\"HTTP\",\"newField\":true}"));
 
             ConnectorVersion existingVersion = new ConnectorVersion();
             existingVersion.setId(300L);

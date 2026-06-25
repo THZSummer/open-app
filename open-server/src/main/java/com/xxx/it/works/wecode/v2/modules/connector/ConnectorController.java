@@ -29,10 +29,17 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/connectors")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接器管理", description = "连接器 CRUD 接口")
 public class ConnectorController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorController.class);
 
+
+
+
+    @Autowired
+    public ConnectorController(ConnectorService connectorService) {
+        this.connectorService = connectorService;
+    }
     private final ConnectorService connectorService;
 
     /**

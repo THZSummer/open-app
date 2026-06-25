@@ -24,7 +24,7 @@ public class DictionaryListVO implements Serializable {
      */
     @Schema(description = "主键ID",
             example = "1")
-    private Long id;
+    private String id;
 
     /**
      * 编码

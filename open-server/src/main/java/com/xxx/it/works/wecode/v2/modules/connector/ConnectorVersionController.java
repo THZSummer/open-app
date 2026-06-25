@@ -28,10 +28,17 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/connectors")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接器版本管理", description = "连接器版本 CRUD 及生命周期管理接口")
 public class ConnectorVersionController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorVersionController.class);
 
+
+
+
+    @Autowired
+    public ConnectorVersionController(ConnectorVersionService connectorVersionService) {
+        this.connectorVersionService = connectorVersionService;
+    }
     private final ConnectorVersionService connectorVersionService;
 
     /**
@@ -83,7 +90,7 @@ public class ConnectorVersionController {
             @Parameter(description = "版本ID") @PathVariable Long versionId,
             @Valid @RequestBody ConnectorVersionSaveRequest request) {
         log.info("PUT /connectors/{}/versions/{} - update draft: appId={}", connectorId, versionId, appId);
-        return toResponseEntity(connectorVersionService.updateDraft(connectorId, versionId, request.getConnectionConfig(), appId));
+        return toResponseEntity(connectorVersionService.updateDraft(connectorId, versionId, request.getConnectionConfig().toString(), appId));
     }
 
     /**

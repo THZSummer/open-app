@@ -1,9 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.permission.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -17,8 +15,6 @@ import java.util.List;
  */
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class EventSubscriptionListResponse implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -93,14 +89,32 @@ public class EventSubscriptionListResponse implements Serializable {
      */
     private String approvalUrl;
 
+
+    public EventSubscriptionListResponse() {
+    }
+
+    public EventSubscriptionListResponse(String id, String appId, String permissionId, String applicantId, PermissionInfo permission, EventInfo event, CategoryInfo category, Integer status, Integer channelType, String channelAddress, Integer authType, Date createTime, ApproverInfo approver, String approvalUrl) {
+        this.id = id;
+        this.appId = appId;
+        this.permissionId = permissionId;
+        this.applicantId = applicantId;
+        this.permission = permission;
+        this.event = event;
+        this.category = category;
+        this.status = status;
+        this.channelType = channelType;
+        this.channelAddress = channelAddress;
+        this.authType = authType;
+        this.createTime = createTime;
+        this.approver = approver;
+        this.approvalUrl = approvalUrl;
+    }
     /**
      * 权限信息
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class PermissionInfo implements Serializable {
+        public static class PermissionInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -120,9 +134,7 @@ public class EventSubscriptionListResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EventInfo implements Serializable {
+        public static class EventInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -142,9 +154,7 @@ public class EventSubscriptionListResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ApproverInfo implements Serializable {
+        public static class ApproverInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 
@@ -164,9 +174,7 @@ public class EventSubscriptionListResponse implements Serializable {
      */
     @Data
     @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CategoryInfo implements Serializable {
+        public static class CategoryInfo implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

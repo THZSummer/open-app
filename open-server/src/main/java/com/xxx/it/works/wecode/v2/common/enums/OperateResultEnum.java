@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.common.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Getter;
  * @version 1.0.0
  */
 @Getter
+@AllArgsConstructor
 public enum OperateResultEnum {
 
     FAILED(0, "失败"),
@@ -16,9 +18,4 @@ public enum OperateResultEnum {
 
     private final int code;
     private final String desc;
-
-    OperateResultEnum(int code, String desc) {
-        this.code = code;
-        this.desc = desc;
-    }
 }

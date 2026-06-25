@@ -19,7 +19,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Slf4j
 @Configuration
 public class AsyncConfig {
-
     /**
      * 审计日志异步写入线程池
      *

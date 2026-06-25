@@ -1,43 +1,43 @@
 #!/bin/bash
-set -x
-# api-server 一键启动脚本
+# api-server 一键启动
+set -uo pipefail
+
+APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PORT=18081
+CTX="/api-server"
+LOG="$APP_DIR/logs/api-server.log"
+PID_FILE="$APP_DIR/.pid"
+PROFILE="${SPRING_PROFILES_ACTIVE:-dev}"
 
 echo "=========================================="
-echo "启动 api-server (API网关服务)"
-echo "端口: 18081"
+echo "启动 api-server (API网关)  端口: $PORT  环境: $PROFILE"
 echo "=========================================="
 
-cd "$(dirname "$0")/.."
+cd "$APP_DIR"
 
-# 检查服务是否已启动
-if lsof -i:18081 > /dev/null 2>&1; then
-    echo "⚠️  端口 18081 已被占用，服务可能已在运行"
-    echo "请先执行 ./scripts/stop.sh 停止服务"
+if lsof -i:$PORT > /dev/null 2>&1; then
+    echo "⚠️  端口 $PORT 已被占用，请先执行 ./scripts/stop.sh"
     exit 1
 fi
 
-# 启动服务（后台运行）
-echo "正在启动服务..."
-nohup mvn spring-boot:run -Dspring-boot.run.profiles=dev > logs/api-server.log 2>&1 &
+# 启动
+echo "🔨 编译启动中..."
+mkdir -p logs
+nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" > "$LOG" 2>&1 &
+echo $! > "$PID_FILE"
+echo "PID: $(cat $PID_FILE)"
 
-PID=$!
-echo $PID > .pid
-
-echo "✅ 服务启动成功!"
-echo "   PID: $PID"
-echo "   日志: logs/api-server.log"
-echo ""
-echo "等待服务启动完成..."
-
-for i in {1..30}; do
-    if curl -s http://localhost:18081/api-server/actuator/health > /dev/null 2>&1; then
-        echo "✅ 服务已就绪! 访问地址: http://localhost:18081/api-server"
+echo "⏳ 等待就绪..."
+for i in $(seq 1 30); do
+    sleep 2
+    RESULT=$(curl -s "http://localhost:$PORT$CTX/actuator/health" 2>&1)
+    if echo "$RESULT" | grep -q '"status":"UP"'; then
+        echo "  [$i] ✅ $RESULT"
+        echo "✅ 就绪! http://localhost:$PORT$CTX"
         exit 0
     fi
-    sleep 1
-    echo -n "."
+    echo "  [$i] ⏳ $RESULT"
 done
-
 echo ""
-echo "⚠️  服务启动超时，请检查日志: logs/api-server.log"
+echo "⚠️  超时 (60s)，检查日志: tail -f $LOG"
 exit 1

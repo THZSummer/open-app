@@ -30,9 +30,19 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OpFlowService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OpFlowService.class);
 
+
+
+
+    @Autowired
+    public OpFlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper) {
+        this.flowMapper = flowMapper;
+        this.flowVersionMapper = flowVersionMapper;
+        this.idGenerator = idGenerator;
+        this.objectMapper = objectMapper;
+    }
     /** 生命周期状态常量 */
     public static final int LIFECYCLE_RUNNING = 1;
     public static final int LIFECYCLE_STOPPED = 2;
@@ -73,7 +83,7 @@ public class OpFlowService {
 
         log.info("Flow created: id={}", flowId);
         return ApiResponse.success(FlowCreateResponse.builder()
-                .id(String.valueOf(flowId))
+                .flowId(String.valueOf(flowId))
                 .build());
     }
 
@@ -266,7 +276,7 @@ public class OpFlowService {
 
         // 编排校验: 检查是否有节点
         try {
-            JsonNode config = objectMapper.readTree(request.getOrchestrationConfig());
+            JsonNode config = request.getOrchestrationConfig();
             JsonNode nodes = config.get("nodes");
             if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
                 return ApiResponse.error("400", "编排配置至少需要一个节点", "At least one node is required");
@@ -284,7 +294,7 @@ public class OpFlowService {
             version = new FlowVersion();
             version.setId(idGenerator.nextId());
             version.setFlowId(flowId);
-            version.setOrchestrationConfig(request.getOrchestrationConfig());
+            version.setOrchestrationConfig(request.getOrchestrationConfig().toString());
             version.setCreateTime(now);
             version.setLastUpdateTime(now);
             version.setCreateBy(currentUser);
@@ -292,7 +302,7 @@ public class OpFlowService {
             flowVersionMapper.insert(version);
         } else {
             // 更新现有版本 - 全文替换
-            version.setOrchestrationConfig(request.getOrchestrationConfig());
+            version.setOrchestrationConfig(request.getOrchestrationConfig().toString());
             version.setLastUpdateTime(now);
             version.setLastUpdateBy(currentUser);
             flowVersionMapper.update(version);

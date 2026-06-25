@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.sync.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,7 +16,6 @@ import java.util.List;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class SyncResult implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -41,4 +39,11 @@ public class SyncResult implements Serializable {
      * 详细结果列表
      */
     private List<SyncDetail> details;
+
+    public SyncResult(int success, int failed, int skipped, List<SyncDetail> details) {
+        this.success = success;
+        this.failed = failed;
+        this.skipped = skipped;
+        this.details = details;
+    }
 }

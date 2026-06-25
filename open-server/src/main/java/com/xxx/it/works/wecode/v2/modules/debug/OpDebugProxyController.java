@@ -23,10 +23,17 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/flows")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "调试代理", description = "测试运行代理，转发至 connector-api 内部测试接口")
 public class OpDebugProxyController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OpDebugProxyController.class);
 
+
+
+
+    @Autowired
+    public OpDebugProxyController(OpDebugProxyService debugProxyService) {
+        this.debugProxyService = debugProxyService;
+    }
     private final OpDebugProxyService debugProxyService;
 
     /**

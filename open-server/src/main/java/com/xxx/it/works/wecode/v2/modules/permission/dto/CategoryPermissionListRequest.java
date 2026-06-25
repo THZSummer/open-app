@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.permission.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,7 +15,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class CategoryPermissionListRequest implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -50,4 +48,13 @@ public class CategoryPermissionListRequest implements Serializable {
      * 每页数量（默认 20）
      */
     private Integer pageSize;
+
+    public CategoryPermissionListRequest(String categoryId, String keyword, Integer needApproval, Boolean includeChildren, Integer curPage, Integer pageSize) {
+        this.categoryId = categoryId;
+        this.keyword = keyword;
+        this.needApproval = needApproval;
+        this.includeChildren = includeChildren;
+        this.curPage = curPage;
+        this.pageSize = pageSize;
+    }
 }

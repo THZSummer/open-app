@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.app.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Getter;
  * @version 1.0.0
  */
 @Getter
+@AllArgsConstructor
 public enum AppSubTypeEnum {
 
     LEGACY_PERSONAL(0, "存量个人应用"),
@@ -19,9 +21,4 @@ public enum AppSubTypeEnum {
 
     private final int code;
     private final String desc;
-
-    AppSubTypeEnum(int code, String desc) {
-        this.code = code;
-        this.desc = desc;
-    }
 }

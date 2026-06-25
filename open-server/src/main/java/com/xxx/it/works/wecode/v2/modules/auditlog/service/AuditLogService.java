@@ -3,8 +3,8 @@ package com.xxx.it.works.wecode.v2.modules.auditlog.service;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
 import com.xxx.it.works.wecode.v2.modules.auditlog.mapper.OperateLogMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -22,11 +22,12 @@ import java.util.Date;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AuditLogService {
 
-    private final OperateLogMapper operateLogMapper;
-    private final IdGeneratorStrategy idGenerator;
+    @Autowired
+    private OperateLogMapper operateLogMapper;
+    @Autowired
+    private IdGeneratorStrategy idGenerator;
 
     /**
      * 异步保存审计日志

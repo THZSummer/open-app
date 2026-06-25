@@ -34,10 +34,10 @@ class OpFlowControllerTest {
         req.setNameCn("流");
 
         when(flowService.createFlow(req)).thenReturn(
-                ApiResponse.success(FlowCreateResponse.builder().id("200").build()));
+                ApiResponse.success(FlowCreateResponse.builder().flowId("200").build()));
 
         ApiResponse<FlowCreateResponse> resp = flowController.createFlow(req);
-        assertEquals("200", resp.getData().getId());
+        assertEquals("200", resp.getData().getFlowId());
     }
 
     @Test

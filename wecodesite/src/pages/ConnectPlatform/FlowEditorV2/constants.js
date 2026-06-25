@@ -64,12 +64,12 @@ export const NODE_TYPE_LABEL = {
 // 版本状态
 // ========================================
 export const VERSION_STATUS = {
-  DRAFT: 'DRAFT',
-  PUBLISHED: 'PUBLISHED',
-  EXPIRED: 'EXPIRED',
-  APPROVING: 'APPROVING',
-  REJECTED: 'REJECTED',
-  WITHDRAWN: 'WITHDRAWN',
+  DRAFT: 1,
+  PUBLISHED: 5,
+  EXPIRED: 6,
+  APPROVING: 2,
+  REJECTED: 4,
+  WITHDRAWN: 3,
 };
 
 /**
@@ -92,8 +92,8 @@ export const VERSION_ACTIONS = {
   [VERSION_STATUS.DRAFT]: [
     { label: '更多配置', action: 'moreConfig', type: 'default' },
     { label: '调试', action: 'debug', type: 'default' },
-    { label: '保存', action: 'save', type: 'default' },
-    { label: '发布', action: 'publish', type: 'primary' },
+    { label: '保存', action: 'save', type: 'primary' },
+    { label: '发布', action: 'publish', type: 'default' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.PUBLISHED]: [
@@ -114,14 +114,33 @@ export const VERSION_ACTIONS = {
   [VERSION_STATUS.REJECTED]: [
     { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.WITHDRAWN]: [
     { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
 };
+
+/**
+ * 版本栏按钮渲染顺序（从左到右）
+ * 详情按钮独立渲染在最左侧；其余按钮按下方优先级稳定重排。
+ * 顺序：更多配置 / 调试 → 新增草稿 / 编辑 / 保存 → 发布 / 撤回 → 失效 / 删除
+ */
+export const VERSION_BUTTON_ORDER = [
+  'moreConfig',
+  'debug',
+  'newDraft',
+  'edit',
+  'save',
+  'publish',
+  'withdraw',
+  'expire',
+  'delete',
+];
 
 // ========================================
 // 应用级配置默认上限

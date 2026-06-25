@@ -110,6 +110,7 @@ public class ApprovalEngine {
         public static final String EVENT_PERMISSION_APPLY = "event_permission_apply";
         public static final String CALLBACK_PERMISSION_APPLY = "callback_permission_apply";
         public static final String APP_VERSION_PUBLISH = "app_version_publish";
+        public static final String CONNECTOR_FLOW_VERSION_PUBLISH = "connector_flow_version_publish";
     }
 
     /**
@@ -143,7 +144,7 @@ public class ApprovalEngine {
      * @param permissionId 权限ID（用于获取资源审批节点，权限申请时使用）
      * @return 组合后的审批节点列表
      */
-    public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId) {
+    public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId, Long appId) {
         List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
         int order = 1;
 
@@ -386,10 +387,10 @@ public class ApprovalEngine {
      */
     @Transactional(rollbackFor = Exception.class)
     public ApprovalRecord createApproval(String businessType, Long permissionId, Long businessId,
-                                          String applicantId, String applicantName, String operator) {
+                                          String applicantId, String applicantName, String operator, Long appId) {
 
         // 1. 组合三级审批节点
-        List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId);
+        List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId, appId);
 
         if (combinedNodes.isEmpty()) {
             throw new BusinessException("400", "审批节点配置为空，无法创建审批记录",

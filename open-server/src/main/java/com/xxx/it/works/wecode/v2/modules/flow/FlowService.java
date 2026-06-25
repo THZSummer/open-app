@@ -36,9 +36,18 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class FlowService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowService.class);
 
+
+
+
+    @Autowired
+    public FlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, IdGeneratorStrategy idGenerator) {
+        this.flowMapper = flowMapper;
+        this.flowVersionMapper = flowVersionMapper;
+        this.idGenerator = idGenerator;
+    }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
     private final IdGeneratorStrategy idGenerator;
@@ -47,6 +56,10 @@ public class FlowService {
     private StringRedisTemplate stringRedisTemplate;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
+    private String formatDate(Date date) {
+        return new SimpleDateFormat(DATE_FORMAT).format(date);
+    }
 
     // ==================== #17 创建连接流 ====================
 
@@ -81,7 +94,13 @@ public class FlowService {
         log.info("Flow created: id={}, appId={}", flowId, appId);
 
         FlowCreateResponse response = FlowCreateResponse.builder()
-                .id(String.valueOf(flowId))
+                .flowId(String.valueOf(flowId))
+                .nameCn(request.getNameCn())
+                .nameEn(request.getNameEn())
+                .lifecycleStatus(FlowLifecycleStatus.STOPPED.getCode())
+                .appId(String.valueOf(appId))
+                .createTime(formatDate(now))
+                .note("创建连接流后需手动创建草稿版本")
                 .build();
 
         return ApiResponse.success(response);
@@ -227,7 +246,7 @@ public class FlowService {
      * 启动连接流，必须有已部署版本
      */
     @Transactional
-    public ApiResponse<Void> startFlow(Long flowId, Long appId) {
+    public ApiResponse<FlowLifecycleResponse> startFlow(Long flowId, Long appId) {
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -252,7 +271,14 @@ public class FlowService {
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.RUNNING.getCode(), now, currentUser);
 
         log.info("Flow started: id={}, appId={}", flowId, appId);
-        return ApiResponse.success();
+
+        FlowLifecycleResponse response = FlowLifecycleResponse.builder()
+                .flowId(String.valueOf(flowId))
+                .lifecycleStatus(FlowLifecycleStatus.RUNNING.getCode())
+                .lastUpdateTime(formatDate(now))
+                .build();
+
+        return ApiResponse.success(response);
     }
 
     // ==================== #24 停止 ====================
@@ -262,7 +288,7 @@ public class FlowService {
      * 停止连接流
      */
     @Transactional
-    public ApiResponse<Void> stopFlow(Long flowId, Long appId) {
+    public ApiResponse<FlowLifecycleResponse> stopFlow(Long flowId, Long appId) {
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -280,7 +306,14 @@ public class FlowService {
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.STOPPED.getCode(), now, currentUser);
 
         log.info("Flow stopped: id={}, appId={}", flowId, appId);
-        return ApiResponse.success();
+
+        FlowLifecycleResponse response = FlowLifecycleResponse.builder()
+                .flowId(String.valueOf(flowId))
+                .lifecycleStatus(FlowLifecycleStatus.STOPPED.getCode())
+                .lastUpdateTime(formatDate(now))
+                .build();
+
+        return ApiResponse.success(response);
     }
 
     // ==================== #25 失效 ====================

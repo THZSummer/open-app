@@ -43,9 +43,23 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class FlowVersionService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowVersionService.class);
 
+
+
+
+    @Autowired
+    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, AuditLogService auditLogService) {
+        this.flowMapper = flowMapper;
+        this.flowVersionMapper = flowVersionMapper;
+        this.connectorVersionRefMapper = connectorVersionRefMapper;
+        this.idGenerator = idGenerator;
+        this.objectMapper = objectMapper;
+        this.publishValidator = publishValidator;
+        this.approvalService = approvalService;
+        this.auditLogService = auditLogService;
+    }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
@@ -105,7 +119,7 @@ public class FlowVersionService {
         version.setFlowId(flowId);
         version.setVersionNumber(versionNumber);
         version.setStatus(FlowVersionStatus.DRAFT.getCode());
-        version.setOrchestrationConfig("{}");
+        version.setOrchestrationConfig(null);
         version.setCreateTime(now);
         version.setLastUpdateTime(now);
         version.setCreateBy(currentUser);
@@ -352,11 +366,16 @@ public class FlowVersionService {
         try {
             OperateLog auditLog = new OperateLog();
             auditLog.setOperateType("PUBLISH");
-            auditLog.setOperateObject("flow_version:" + versionId);
+            auditLog.setOperateObject("流版本");
             auditLog.setOperateDescCn("提交连接流版本发布审批 - " + flow.getNameCn() + " v" + version.getVersionNumber());
             auditLog.setOperateDescEn("Submit flow version publish approval - " + flow.getNameEn() + " v" + version.getVersionNumber());
             auditLog.setOperateUser(currentUser);
             auditLog.setAppId(String.valueOf(appId));
+            auditLog.setIpAddress(com.xxx.it.works.wecode.v2.common.util.CommonUtils.extractIpAddress());
+            auditLog.setCreateBy(currentUser);
+            auditLog.setCreateTime(now);
+            auditLog.setLastUpdateBy(currentUser);
+            auditLog.setLastUpdateTime(now);
             auditLog.setStatus(1);
             auditLogService.saveAsync(auditLog);
         } catch (Exception e) {

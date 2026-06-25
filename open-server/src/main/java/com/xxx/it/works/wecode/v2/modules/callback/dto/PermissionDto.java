@@ -1,6 +1,5 @@
 package com.xxx.it.works.wecode.v2.modules.callback.dto;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,6 @@ import java.io.Serializable;
 @Data
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
 public class PermissionDto implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -62,4 +60,14 @@ public class PermissionDto implements Serializable {
      * v2.8.0新增字段
      */
     private String resourceNodes;
+
+    public PermissionDto(String id, String nameCn, String nameEn, String scope, Integer status, Integer needApproval, String resourceNodes) {
+        this.id = id;
+        this.nameCn = nameCn;
+        this.nameEn = nameEn;
+        this.scope = scope;
+        this.status = status;
+        this.needApproval = needApproval;
+        this.resourceNodes = resourceNodes;
+    }
 }

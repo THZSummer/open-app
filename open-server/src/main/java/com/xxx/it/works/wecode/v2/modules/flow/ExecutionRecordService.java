@@ -29,9 +29,17 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class ExecutionRecordService {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ExecutionRecordService.class);
 
+
+
+
+    @Autowired
+    public ExecutionRecordService(ExecutionRecordMapper executionRecordMapper, ExecutionStepMapper executionStepMapper) {
+        this.executionRecordMapper = executionRecordMapper;
+        this.executionStepMapper = executionStepMapper;
+    }
     private final ExecutionRecordMapper executionRecordMapper;
     private final ExecutionStepMapper executionStepMapper;
 

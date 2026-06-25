@@ -22,7 +22,6 @@ import java.util.Locale;
 @Configuration
 @RequiredArgsConstructor
 public class IdGeneratorConfig {
-
     private final List<IdGeneratorStrategy> strategies;
 
     @Value("${spring.profiles.active:dev}")

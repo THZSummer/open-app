@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.common.enums;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
@@ -9,6 +10,7 @@ import lombok.Getter;
  * @version 1.0.0
  */
 @Getter
+@AllArgsConstructor
 public enum StatusEnum {
 
     DISABLED(0, "禁用"),
@@ -16,9 +18,4 @@ public enum StatusEnum {
 
     private final int code;
     private final String desc;
-
-    StatusEnum(int code, String desc) {
-        this.code = code;
-        this.desc = desc;
-    }
 }

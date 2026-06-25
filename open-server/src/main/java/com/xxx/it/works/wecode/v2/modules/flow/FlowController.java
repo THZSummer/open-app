@@ -4,6 +4,7 @@ import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
 import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.*;
+import com.xxx.it.works.wecode.v2.modules.flow.dto.FlowLifecycleResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,10 +34,19 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/service/open/v2/flows")
-@RequiredArgsConstructor(onConstructor_ = @Autowired)
 @Tag(name = "连接流管理", description = "连接流 CRUD、生命周期及部署管理接口")
 public class FlowController {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowController.class);
 
+
+
+
+    @Autowired
+    public FlowController(FlowService flowService, FlowDeployService flowDeployService, FlowCopyService flowCopyService) {
+        this.flowService = flowService;
+        this.flowDeployService = flowDeployService;
+        this.flowCopyService = flowCopyService;
+    }
     private final FlowService flowService;
     private final FlowDeployService flowDeployService;
     private final FlowCopyService flowCopyService;
@@ -44,6 +54,7 @@ public class FlowController {
     /**
      * #17 创建连接流
      */
+    @AuditLog(value = OperateEnum.CREATE_FLOW)
     @PostMapping
     @Operation(summary = "#17 创建连接流", description = "创建连接流基本信息，lifecycleStatus=1（已停止），不自动生成草稿版本")
     public ResponseEntity<ApiResponse<FlowCreateResponse>> createFlow(
@@ -121,6 +132,7 @@ public class FlowController {
     /**
      * #22 部署连接流
      */
+    @AuditLog(value = OperateEnum.DEPLOY_FLOW, resourceIdParam = "flowId")
     @PostMapping("/{flowId}/deploy")
     @Operation(summary = "#22 部署连接流", description = "部署版本，纯版本绑定，不改变生命周期状态")
     public ResponseEntity<ApiResponse<FlowDeployResponse>> deployFlow(
@@ -134,9 +146,10 @@ public class FlowController {
     /**
      * #23 启动连接流
      */
+    @AuditLog(value = OperateEnum.START_FLOW, resourceIdParam = "flowId")
     @PostMapping("/{flowId}/start")
     @Operation(summary = "#23 启动连接流", description = "启动（需有已部署版本），状态 1→2")
-    public ResponseEntity<ApiResponse<Void>> startFlow(
+    public ResponseEntity<ApiResponse<FlowLifecycleResponse>> startFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
         log.info("POST /flows/{}/start: appId={}", flowId, appId);
@@ -146,9 +159,10 @@ public class FlowController {
     /**
      * #24 停止连接流
      */
+    @AuditLog(value = OperateEnum.STOP_FLOW, resourceIdParam = "flowId")
     @PostMapping("/{flowId}/stop")
     @Operation(summary = "#24 停止连接流", description = "停止（仅运行中），状态 2→1")
-    public ResponseEntity<ApiResponse<Void>> stopFlow(
+    public ResponseEntity<ApiResponse<FlowLifecycleResponse>> stopFlow(
             @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
         log.info("POST /flows/{}/stop: appId={}", flowId, appId);
@@ -158,6 +172,7 @@ public class FlowController {
     /**
      * #25 失效连接流
      */
+    @AuditLog(value = OperateEnum.INVALIDATE_FLOW, resourceIdParam = "flowId")
     @PutMapping("/{flowId}/invalidate")
     @Operation(summary = "#25 失效连接流", description = "标记失效（仅已停止状态），状态 1→3")
     public ResponseEntity<ApiResponse<?>> invalidateFlow(
@@ -170,6 +185,7 @@ public class FlowController {
     /**
      * #26 恢复连接流
      */
+    @AuditLog(value = OperateEnum.RECOVER_FLOW, resourceIdParam = "flowId")
     @PutMapping("/{flowId}/recover")
     @Operation(summary = "#26 恢复连接流", description = "恢复 → 已停止状态（需手动启动）")
     public ResponseEntity<ApiResponse<?>> recoverFlow(
@@ -182,6 +198,7 @@ public class FlowController {
     /**
      * #27 删除连接流
      */
+    @AuditLog(value = OperateEnum.DELETE_FLOW, resourceIdParam = "flowId")
     @DeleteMapping("/{flowId}")
     @Operation(summary = "#27 删除连接流", description = "物理删除（仅已失效状态可删除）")
     public ResponseEntity<ApiResponse<Void>> deleteFlow(

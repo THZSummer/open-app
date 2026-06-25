@@ -1,7 +1,9 @@
 package com.xxx.it.works.wecode.v2.modules.app.vo;
 
 import com.xxx.it.works.wecode.v2.common.file.vo.FileV2VO;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.util.List;
@@ -13,6 +15,8 @@ import java.util.List;
  * @date 2026-06-06
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AppBasicInfoVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
