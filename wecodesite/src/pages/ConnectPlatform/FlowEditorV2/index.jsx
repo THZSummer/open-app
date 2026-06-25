@@ -61,7 +61,7 @@ import {
   validateForPublish,
   buildNodeTitles,
 } from './utils';
-import { queryParams, getSecondModalInfo } from '../../../utils/common';
+import { queryParams, getSecondModalInfo, getVersionObjectName } from '../../../utils/common';
 import './FlowEditorV2.m.less';
 
 /**
@@ -344,9 +344,9 @@ function FlowEditorV2() {
       content: '发布后将进入审批中状态，是否继续？',
       onOk: async () => {
         setActionLoading(true);
-        const config = JSON.parse(JSON.stringify(flowData));
         const res = await publishVersion({
-          flowId, versionId: currentVersion.versionId, config,
+          flowId,
+          versionId: currentVersion.versionId,
         });
         if (res?.code === '200') {
           message.success('发布成功');
@@ -461,37 +461,11 @@ function FlowEditorV2() {
   };
 
   /**
-   * 拼接版本对象名
-   * 优先 "v{versionNo} ({versionName})"，缺失则按 versionName / versionNo / versionId 回退
-   */
-  const getVersionObjectName = () => {
-    // 当前选中版本
-    const version = currentVersion;
-    if (!version) return '';
-
-    // 版本号字段（兼容多种命名）
-    const versionNo = version.versionNo || version.versionNumber;
-    // 版本名称字段（兼容多种命名）
-    const versionName = version.versionName || version.name;
-
-    if (versionNo && versionName) {
-      return `v${versionNo} (${versionName})`;
-    }
-    if (versionNo) {
-      return `v${versionNo}`;
-    }
-    if (versionName) {
-      return versionName;
-    }
-    return version.versionId || '';
-  };
-
-  /**
    * 获取二次确认弹窗配置（含 onConfirm 回调）
    */
   const getConfirmModalInfo = () => {
     // 版本对象名（用于确认文案拼接）
-    const objectName = getVersionObjectName();
+    const objectName = getVersionObjectName(currentVersion);
 
     if (confirmModal.type === 'expire') {
       return {

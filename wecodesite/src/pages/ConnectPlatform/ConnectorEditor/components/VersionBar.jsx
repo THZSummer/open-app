@@ -13,7 +13,7 @@
 import React, { useState } from 'react';
 import { Button, Select, Tag, message } from 'antd';
 import DeleteConfirmModal from '../../../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { getSecondModalInfo } from '../../../../utils/common';
+import { getSecondModalInfo, getVersionObjectName } from '../../../../utils/common';
 import {
   VERSION_STATUS,
   VERSION_STATUS_MAP,
@@ -207,32 +207,6 @@ const VersionBar = (props) => {
   };
 
   /**
-   * 拼接版本对象名
-   * 优先 "v{versionNo} ({versionName})"，缺失则回退 versionId
-   */
-  const getVersionObjectName = () => {
-    // 当前选中版本
-    const version = currentVersion;
-    if (!version) return '';
-
-    // 版本号字段（兼容多种命名）
-    const versionNo = version.versionNo || version.versionNumber;
-    // 版本名称字段（兼容多种命名）
-    const versionName = version.versionName || version.name;
-
-    if (versionNo && versionName) {
-      return `v${versionNo} (${versionName})`;
-    }
-    if (versionNo) {
-      return `v${versionNo}`;
-    }
-    if (versionName) {
-      return versionName;
-    }
-    return version.versionId || '';
-  };
-
-  /**
    * 二次确认弹窗内容
    * - 失效 / 删除：走新版 getSecondModalInfo 范式，包含确认文案 + 操作影响双段
    * - 恢复操作非破坏性，已改为直接执行，不进入此方法
@@ -243,7 +217,7 @@ const VersionBar = (props) => {
       return {
         ...getSecondModalInfo({
           ...CONNECTOR_VERSION_EXPIRE_SECOND_MODAL_INFO,
-          objectName: getVersionObjectName(),
+          objectName: getVersionObjectName(currentVersion),
         }),
         onConfirm: doExpire,
       };
@@ -252,7 +226,7 @@ const VersionBar = (props) => {
     return {
       ...getSecondModalInfo({
         ...CONNECTOR_VERSION_DELETE_SECOND_MODAL_INFO,
-        objectName: getVersionObjectName(),
+        objectName: getVersionObjectName(currentVersion),
       }),
       onConfirm: doDelete,
     };

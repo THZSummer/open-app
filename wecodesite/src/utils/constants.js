@@ -267,3 +267,20 @@ export const FILE_VALIDATION = {
     dimensionMessage: '示意图尺寸360x200px',
   },
 };
+
+/**
+ * HTTP 请求载体 Tab 配置
+ */
+export const HTTP_REQUEST_CARRIER_TABS = [
+  { key: 'header', label: 'HTTP 请求头', carrier: 'header' },
+  { key: 'body', label: 'HTTP 请求体', carrier: 'body' },
+  { key: 'query', label: 'URL 查询参数', carrier: 'query' },
+];
+
+/**
+ * HTTP 响应载体 Tab 配置
+ */
+export const HTTP_RESPONSE_CARRIER_TABS = [
+  { key: 'header', label: 'HTTP 响应头', carrier: 'header' },
+  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
+];

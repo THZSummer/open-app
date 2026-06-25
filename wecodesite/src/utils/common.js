@@ -191,3 +191,58 @@ export const buildVersionSummary = (ver) => ({
   publishedTime: ver.publishedTime,
   publishedBy: ver.publishedBy,
 });
+
+/**
+ * 归一化后端 JSON 配置字段
+ * @param {string|Object} rawConfig 后端返回的原始配置
+ * @returns {Object|null} 解析后的配置对象
+ */
+export const normalizeJsonConfig = (rawConfig) => {
+  // 空值交给调用方走默认配置分支
+  if (!rawConfig) return null;
+
+  // 已经是对象时直接返回，避免重复序列化
+  if (typeof rawConfig === 'object') return rawConfig;
+
+  // 字符串配置需要兼容 JSON parse 失败场景
+  if (typeof rawConfig === 'string') {
+    try {
+      return JSON.parse(rawConfig);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * 构建并排序版本摘要列表
+ * @param {Array} versions 后端版本列表
+ * @returns {Array} 按创建时间倒序排列的版本摘要列表
+ */
+export const buildSortedVersionSummaries = (versions = []) => {
+  return (versions || [])
+    .map(buildVersionSummary)
+    .sort((a, b) => (a.createTime < b.createTime ? 1 : -1));
+};
+
+/**
+ * 拼接版本对象展示名
+ * @param {Object} version 版本对象
+ * @returns {string} 版本展示名
+ */
+export const getVersionObjectName = (version) => {
+  // 缺少版本对象时返回空字符串，避免弹窗文案出现 undefined
+  if (!version) return '';
+
+  // 兼容后端与前端摘要里的不同版本号字段命名
+  const versionNo = version.versionNo || version.versionNumber;
+  // 兼容后端与前端摘要里的不同版本名字段命名
+  const versionName = version.versionName || version.name;
+
+  if (versionNo && versionName) return `v${versionNo} (${versionName})`;
+  if (versionNo) return `v${versionNo}`;
+  if (versionName) return versionName;
+  return version.versionId || '';
+};

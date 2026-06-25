@@ -6,14 +6,10 @@
  * 定义连接器编辑页面的配置信息、状态映射、Tab 等基本信息
  */
 
-/**
- * 页面配置信息
- * 定义连接器编辑页面的标题等基本信息
- */
-export const editorPageInfo = {
-  createTitle: '新建连接器',
-  editTitle: '编辑连接器',
-};
+import {
+  HTTP_REQUEST_CARRIER_TABS,
+  HTTP_RESPONSE_CARRIER_TABS,
+} from '../../../utils/constants';
 
 /**
  * API配置的默认状态
@@ -175,12 +171,6 @@ export const AUTH_PARAM_ROW_CONFIG = {
 };
 
 /**
- * Schema编辑器载体选项
- * 定义参数可以放置的位置
- */
-export const CARRIER_OPTIONS = ['header', 'body', 'query'];
-
-/**
  * Schema编辑器载体选项（仅请求）
  */
 export const REQUEST_CARRIER_OPTIONS = ['header', 'body', 'query'];
@@ -194,37 +184,12 @@ export const RESPONSE_CARRIER_OPTIONS = ['header', 'body'];
  * 入参 Tab 配置
  * label 用于 Tab 标题，carrier 用于按位置过滤参数
  */
-export const REQUEST_TABS = [
-  { key: 'header', label: 'HTTP 请求头', carrier: 'header' },
-  { key: 'body', label: 'HTTP 请求体', carrier: 'body' },
-  { key: 'query', label: 'URL 查询参数', carrier: 'query' },
-];
+export const REQUEST_TABS = HTTP_REQUEST_CARRIER_TABS;
 
 /**
  * 出参 Tab 配置
  */
-export const RESPONSE_TABS = [
-  { key: 'header', label: 'HTTP 响应头', carrier: 'header' },
-  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
-];
-
-/**
- * 认证请求Schema配置（通用认证：SOA / APIG / Cookie 共用）
- */
-export const AUTH_REQUEST_SCHEMA_CONFIG = {
-  schemaType: 'authRequestSchema',
-  editable: true,
-  showCarrier: true,
-  carrierOptions: CARRIER_OPTIONS,
-  typeOptions: ['string'],
-  valueInputType: 'fieldName',
-  showActionButtons: false,
-  lockedFields: {
-    paramName: true,
-    paramType: true,
-    carrier: false,
-  },
-};
+export const RESPONSE_TABS = HTTP_RESPONSE_CARRIER_TABS;
 
 /**
  * 请求Schema配置（入参，全 carrier）

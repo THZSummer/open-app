@@ -124,26 +124,6 @@ export const buildScriptContextType = (refs = []) => {
 };
 
 /**
- * 同步脚本中的 Context 类型声明
- * @param {Object} params 配置对象
- * @param {string} params.script 脚本内容
- * @param {string} params.contextType 最新 Context 类型声明
- * @returns {string} 同步后的脚本内容
- */
-export const syncScriptContextType = (params) => {
-  // params.script / params.contextType
-  const { script, contextType } = params;
-  const safeScript = script || '';
-  const safeContextType = contextType || DEFAULT_SCRIPT_CONTEXT_TYPE;
-
-  if (SCRIPT_CONTEXT_TYPE_PATTERN.test(safeScript)) {
-    return safeScript.replace(SCRIPT_CONTEXT_TYPE_PATTERN, safeContextType);
-  }
-
-  return `${safeContextType}\n${safeScript}`;
-};
-
-/**
  * 生成 Monaco TypeScript 额外类型声明
  * @param {string} contextType Context 类型声明
  * @returns {string} Monaco 额外类型声明
@@ -166,6 +146,48 @@ export const stripScriptEditorTypes = (script) => {
     .replace(SCRIPT_TYPE_LINE_PATTERN, '')
     .replace(/(\w+)\s*:\s*Context/g, '$1')
     .trim();
+};
+
+/**
+ * 取值模式选项：静态值 / 引用上游参数
+ */
+export const VALUE_MODE_OPTIONS = [
+  { value: 'static', label: '静态值' },
+  { value: 'ref', label: '引用上游参数' },
+];
+
+/**
+ * 把上游 ref 列表转换为分组选项
+ * @param {Array} refs 上游引用列表
+ * @returns {Array} 分组选项
+ */
+export const buildRefOptions = (refs = []) => {
+  // 按上游节点分组展示完整引用表达式，便于区分不同节点来源
+  const groupMap = new Map();
+  refs.forEach((item) => {
+    const groupLabel = item.groupLabel || item.nodeId || '上游参数';
+    const groupOptions = groupMap.get(groupLabel) || [];
+    groupOptions.push({
+      value: item.value,
+      label: item.label || item.path || item.value,
+    });
+    groupMap.set(groupLabel, groupOptions);
+  });
+  return Array.from(groupMap.entries()).map(([label, options]) => ({ label, options }));
+};
+
+/**
+ * 标准化 mapping，兼容旧字符串值
+ * @param {*} raw 原始 mapping 值
+ * @returns {Object} 标准化后的 mapping 对象
+ */
+export const normalizeMapping = (raw) => {
+  // 新版结构直接保留 mode/value，缺失字段用静态空值兜底
+  if (raw && typeof raw === 'object' && 'mode' in raw) {
+    return { mode: raw.mode || 'static', value: raw.value ?? '' };
+  }
+  const str = typeof raw === 'string' ? raw : '';
+  return { mode: 'static', value: str };
 };
 
 /**

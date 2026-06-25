@@ -99,7 +99,6 @@ const ScriptCard = (props) => {
    * Monaco Editor 挂载完成回调
    */
   const handleEditorMount = (editor, monaco) => {
-    editorMounted.current = true;
     registerContextExtraLib(monaco);
   };
 

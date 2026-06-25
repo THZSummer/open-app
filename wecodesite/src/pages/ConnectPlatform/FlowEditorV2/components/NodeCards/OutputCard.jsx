@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Tabs, Input, Select, Button, Dropdown } from 'antd';
 import { OUTPUT_CARRIER_TABS } from '../../constants';
-import { collectUpstreamRefs } from '../../utils';
+import { buildRefOptions, collectUpstreamRefs } from '../../utils';
 import { DEFAULT_TYPE_OPTIONS, isComplexType, MAX_SCHEMA_DEPTH } from '../../../../../components/SchemaEditor/constants';
 import './NodeCards.m.less';
 
@@ -24,26 +24,6 @@ const createDefaultOutputParam = () => ({
   paramValue: '',
   children: [],
 });
-
-/**
- * 把上游 ref 列表转换为分组 Select options
- * @param {Array} refs 上游引用参数列表
- * @returns {Array} 分组下拉选项
- */
-const buildRefOptions = (refs) => {
-  // 按节点分组，组内展示完整参数路径表达式
-  const groupMap = new Map();
-  refs.forEach((item) => {
-    const groupLabel = item.groupLabel || item.nodeId || '上游参数';
-    const groupOptions = groupMap.get(groupLabel) || [];
-    groupOptions.push({
-      value: item.value,
-      label: item.label || item.path || item.value,
-    });
-    groupMap.set(groupLabel, groupOptions);
-  });
-  return Array.from(groupMap.entries()).map(([label, options]) => ({ label, options }));
-};
 
 /**
  * 数据输出节点卡片

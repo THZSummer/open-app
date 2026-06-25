@@ -7,6 +7,11 @@
  * 与旧版 FlowEditor/constants.js 完全独立。
  */
 
+import {
+  HTTP_REQUEST_CARRIER_TABS,
+  HTTP_RESPONSE_CARRIER_TABS,
+} from '../../../utils/constants';
+
 // ========================================
 // 编排模式
 // ========================================
@@ -160,11 +165,7 @@ export const DEFAULT_APP_LIMITS = {
 // ========================================
 // HTTP 请求载体 Tab 配置
 // ========================================
-export const CARRIER_TABS = [
-  { key: 'header', label: 'HTTP 请求头', carrier: 'header' },
-  { key: 'body', label: 'HTTP 请求体', carrier: 'body' },
-  { key: 'query', label: 'URL 查询参数', carrier: 'query' },
-];
+export const CARRIER_TABS = HTTP_REQUEST_CARRIER_TABS;
 
 // ========================================
 // 二次确认弹窗配置（版本失效 / 撤回 / 删除）
@@ -199,10 +200,7 @@ export const FLOW_VERSION_DELETE_SECOND_MODAL_INFO = {
 };
 
 /** 输出节点载体 Tab（无 query） */
-export const OUTPUT_CARRIER_TABS = [
-  { key: 'header', label: 'HTTP 响应头', carrier: 'header' },
-  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
-];
+export const OUTPUT_CARRIER_TABS = HTTP_RESPONSE_CARRIER_TABS;
 
 // ========================================
 // 触发方式

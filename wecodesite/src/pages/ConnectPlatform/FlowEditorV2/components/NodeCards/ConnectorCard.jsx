@@ -3,7 +3,12 @@ import { Select, Input, InputNumber, Tabs, AutoComplete, Tag } from 'antd';
 import { CARRIER_TABS } from '../../constants';
 import { VERSION_STATUS_MAP as CONNECTOR_VERSION_STATUS_MAP } from '../../../ConnectorEditor/constants';
 import { fetchConnectorList, fetchConnectorVersions, fetchConnectorInputParams } from '../../thunk';
-import { collectUpstreamRefs } from '../../utils';
+import {
+  buildRefOptions,
+  collectUpstreamRefs,
+  normalizeMapping,
+  VALUE_MODE_OPTIONS,
+} from '../../utils';
 import './NodeCards.m.less';
 
 /**
@@ -15,50 +20,6 @@ const AUTH_METHOD_LABEL = {
   Cookie: 'Cookie 认证',
   SIGNATURE: '数字签名认证',
   NONE: '无认证',
-};
-
-/**
- * 取值模式选项：静态值 / 引用上游参数
- */
-const VALUE_MODE_OPTIONS = [
-  { value: 'static', label: '静态值' },
-  { value: 'ref', label: '引用上游参数' },
-];
-
-/**
- * 把上游 ref 列表转换为 AutoComplete options
- *
- * @param {Array} refs 上游引用列表
- * @returns {Array} AutoComplete options
- */
-const buildRefOptions = (refs) => {
-  // 按上游节点分组展示完整引用表达式，便于区分不同节点来源
-  const groupMap = new Map();
-  refs.forEach((item) => {
-    const groupLabel = item.groupLabel || item.nodeId || '上游参数';
-    const groupOptions = groupMap.get(groupLabel) || [];
-    groupOptions.push({
-      value: item.value,
-      label: item.label || item.path || item.value,
-    });
-    groupMap.set(groupLabel, groupOptions);
-  });
-  return Array.from(groupMap.entries()).map(([label, options]) => ({ label, options }));
-};
-
-/**
- * 标准化 mapping，兼容旧字符串值
- *
- * @param {*} raw 原始 mapping 值
- * @returns {Object} 标准化后的 mapping 对象 { mode, value }
- */
-const normalizeMapping = (raw) => {
-  if (raw && typeof raw === 'object' && 'mode' in raw) {
-    return { mode: raw.mode || 'static', value: raw.value ?? '' };
-  }
-  // 兼容旧的字符串形式
-  const str = typeof raw === 'string' ? raw : '';
-  return { mode: 'static', value: str };
 };
 
 /**

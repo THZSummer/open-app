@@ -22,7 +22,17 @@
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
-import { buildVersionSummary } from '../../../utils/common';
+import {
+  buildSortedVersionSummaries,
+  buildVersionSummary,
+  normalizeJsonConfig,
+} from '../../../utils/common';
+import {
+  buildHttpCarrierParams,
+  buildJsonObjectFromParams,
+  hasObjectKeys,
+  parseJsonObjectToParams,
+} from '../../../utils/flowUtilsV2';
 import { stripScriptEditorTypes } from './utils';
 
 /**
@@ -59,67 +69,11 @@ export const fetchVersionList = async (flowId) => {
     if (result?.code !== '200') return result || {};
 
     // 将后端数据映射为 UI 所需摘要结构（按创建时间倒序）
-    const list = (result.data || [])
-      .map(buildVersionSummary)
-      .sort((a, b) => (a.createTime < b.createTime ? 1 : -1));
+    const list = buildSortedVersionSummaries(result.data || []);
     return { code: '200', data: list };
-  } catch (err) {
+  } catch {
     return {};
   }
-};
-
-/**
- * 归一化后端返回的 orchestrationConfig
- * 兼容 JSON 字符串 / 已解析对象 两种返回形态
- *
- * @param {string|Object} rawConfig - 后端返回的 orchestrationConfig 原始值
- * @returns {Object|null} 解析后的编排配置；解析失败返回 null
- */
-const normalizeOrchestrationConfig = (rawConfig) => {
-  // 空值直接返回 null，由页面走空配置分支
-  if (!rawConfig) return null;
-
-  // 已经是对象：直接返回
-  if (typeof rawConfig === 'object') return rawConfig;
-
-  // 字符串：尝试 JSON.parse，解析失败返回 null
-  if (typeof rawConfig === 'string') {
-    try {
-      return JSON.parse(rawConfig);
-    } catch (err) {
-      return null;
-    }
-  }
-
-  // 其它非法类型：返回 null
-  return null;
-};
-
-/**
- * 归一化后端返回的 connectionConfig
- * 兼容 JSON 字符串 / 已解析对象 两种返回形态
- *
- * @param {string|Object} rawConfig - 后端返回的 connectionConfig 原始值
- * @returns {Object|null} 解析后的连接器配置；解析失败返回 null
- */
-const normalizeConnectionConfig = (rawConfig) => {
-  // 空值直接返回 null，由调用方走空 schema 分支
-  if (!rawConfig) return null;
-
-  // 已经是对象：直接返回
-  if (typeof rawConfig === 'object') return rawConfig;
-
-  // 字符串：尝试 JSON.parse，解析失败返回 null
-  if (typeof rawConfig === 'string') {
-    try {
-      return JSON.parse(rawConfig);
-    } catch (err) {
-      return null;
-    }
-  }
-
-  // 其它非法类型：返回 null
-  return null;
 };
 
 /**
@@ -129,19 +83,8 @@ const normalizeConnectionConfig = (rawConfig) => {
  * @returns {Array} 节点入参列表
  */
 const transformJsonSchemaToFlowParams = (jsonSchema) => {
-  // 没有 properties 时，表示当前载体无入参
-  if (!jsonSchema?.properties) return [];
-
-  // 递归转换 properties，保留嵌套 children 供上游参数路径平铺展开
-  return Object.entries(jsonSchema.properties).map(([name, schema]) => ({
-    name,
-    paramName: name,
-    type: schema?.type || 'string',
-    paramType: schema?.type || 'string',
-    desc: schema?.description || '',
-    description: schema?.description || '',
-    children: transformJsonSchemaToFlowParams(schema),
-  }));
+  // 复用公共 jsonObjectDef 转参数树方法，保留当前函数名供连接器入参回显使用
+  return parseJsonObjectToParams({ jsonObject: jsonSchema });
 };
 
 /**
@@ -252,7 +195,7 @@ export const fetchVersionDetail = async (params) => {
     // 将后端版本摘要字段、编排配置字段与其余业务字段合并，供页面直接回显
     const detail = result.data || {};
     // orchestrationConfig 当前接口返回 JSON 字符串，这里统一归一化为前端可读对象
-    const orchestrationConfig = normalizeOrchestrationConfig(detail.orchestrationConfig);
+    const orchestrationConfig = normalizeJsonConfig(detail.orchestrationConfig);
     return {
       code: '200',
       data: {
@@ -261,7 +204,7 @@ export const fetchVersionDetail = async (params) => {
         ...(transformOrchestrationConfigToFlowData(orchestrationConfig) || {}),
       },
     };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -285,48 +228,6 @@ const parseValueExpression = (rawValue) => {
     return { mode: 'static', value: expression.replace(/^\$\.constant:/, '') };
   }
   return { mode: 'static', value };
-};
-
-/**
- * 将 jsonObjectDef 字段还原为 SchemaEditorV2 参数节点
- * @param {Object} params 参数对象
- * 包含以下字段：
- * - name: 参数名称
- * - field: jsonObjectDef 字段
- * @returns {Object} 前端参数节点
- */
-const parseJsonFieldToParam = (params) => {
-  // params.name / params.field / params.carrier
-  const { name, field, carrier } = params;
-  const type = field?.type || 'string';
-  const children = type === 'object'
-    ? parseJsonObjectToParams({ jsonObject: field, carrier })
-    : parseJsonObjectToParams({ jsonObject: field?.items, carrier });
-  return {
-    name,
-    paramName: name,
-    type,
-    paramType: type,
-    desc: field?.description || '',
-    description: field?.description || '',
-    children,
-    carrier,
-  };
-};
-
-/**
- * 将 jsonObjectDef 还原为 SchemaEditorV2 参数数组
- * @param {Object} params 参数对象
- * 包含以下字段：
- * - jsonObject: jsonObjectDef 对象
- * - carrier: 参数位置
- * @returns {Array} 前端参数数组
- */
-const parseJsonObjectToParams = (params) => {
-  // params.jsonObject / params.carrier
-  const { jsonObject, carrier } = params || {};
-  if (!jsonObject?.properties) return [];
-  return Object.entries(jsonObject.properties).map(([name, field]) => parseJsonFieldToParam({ name, field, carrier }));
 };
 
 /**
@@ -653,16 +554,6 @@ const transformOrchestrationConfigToFlowData = (orchestrationConfig) => {
 const FLOW_NODE_X_GAP = 260;
 
 /**
- * 判断 JSON 对象是否存在有效字段
- * @param {Object} obj 待判断对象
- * @returns {boolean} 是否存在字段
- */
-const hasObjectKeys = (obj) => {
-  // 仅对象且至少有一个 key 时才视为有效配置
-  return !!obj && typeof obj === 'object' && Object.keys(obj).length > 0;
-};
-
-/**
  * 判断 HTTP 分段对象是否包含有效 carrier
  * @param {Object} httpObject HTTP 分段对象
  * @returns {boolean} 是否包含 header/query/body 中任意有效配置
@@ -723,66 +614,15 @@ const buildValueExpression = (params) => {
 };
 
 /**
- * 将 SchemaEditorV2 的参数节点转换为 jsonObjectDef 字段
- * @param {Object} param 前端参数节点
- * @returns {Object} jsonObjectDef 字段
- */
-const buildJsonFieldFromParam = (param) => {
-  // param.paramName / param.paramType / param.description / param.children
-  const type = param.paramType || param.type || 'string';
-  const description = param.description || param.desc || '';
-
-  if (type === 'object') {
-    const childrenObject = buildJsonObjectFromParams(param.children || []);
-    return {
-      type: 'object',
-      properties: childrenObject.properties,
-    };
-  }
-
-  if (type === 'array') {
-    return {
-      type: 'array',
-      items: buildJsonObjectFromParams(param.children || []),
-    };
-  }
-
-  return {
-    type,
-    ...(description ? { description } : {}),
-  };
-};
-
-/**
- * 将 SchemaEditorV2 参数数组转换为 jsonObjectDef
- * @param {Array} params 前端参数数组
- * @returns {Object} jsonObjectDef 对象
- */
-const buildJsonObjectFromParams = (params) => {
-  // 按字段名收集 properties，空名称字段不写入保存参数
-  const properties = {};
-  (params || []).forEach((param) => {
-    const name = param.paramName || param.name || '';
-    if (!name) return;
-    properties[name] = buildJsonFieldFromParam(param);
-  });
-
-  return { type: 'object', properties };
-};
-
-/**
  * 将前端 HTTP 三段参数转换为文档 httpInputDef
  * @param {Object} sourceMap 前端 header/query/body 参数数组对象
  * @returns {Object} httpInputDef 对象
  */
 const buildHttpInputFromParams = (sourceMap) => {
   // 触发器入参需要固定写入协议标识
-  const input = {};
-  ['header', 'query', 'body'].forEach((carrier) => {
-    const jsonObject = buildJsonObjectFromParams(sourceMap?.[carrier] || []);
-    if (hasObjectKeys(jsonObject.properties)) {
-      input[carrier] = jsonObject;
-    }
+  const input = buildHttpCarrierParams({
+    sourceMap,
+    carriers: ['header', 'query', 'body'],
   });
   return input;
 };
@@ -1057,12 +897,11 @@ const buildTriggerAuthConfigs = (trigger) => {
  * @param {Object} params 参数对象
  * 包含以下字段：
  * - trigger: 前端触发器节点
- * - index: 节点序号
  * @returns {Object} React Flow 节点
  */
 const buildTriggerFlowNode = (params) => {
-  // params.trigger / params.index
-  const { trigger, index } = params;
+  // params.trigger
+  const { trigger } = params;
   const data = {
     type: 'trigger',
     triggerType: trigger?.triggerType || 'http',
@@ -1085,13 +924,11 @@ const buildTriggerFlowNode = (params) => {
  * @param {Object} params 参数对象
  * 包含以下字段：
  * - node: 前端连接器节点
- * - index: 节点序号
- * - y: 纵向位置
  * @returns {Object} React Flow 节点
  */
 const buildConnectorFlowNode = (params) => {
-  // params.node / params.index / params.y
-  const { node, index, y } = params;
+  // params.node
+  const { node } = params;
   const input = buildHttpInputFromMappings(node?.inputMappings || {});
   const authConfigs = buildConnectorAuthConfigs({
     authConfigs: node?.authConfigs || [],
@@ -1123,12 +960,12 @@ const buildConnectorFlowNode = (params) => {
  * @param {Object} params 参数对象
  * 包含以下字段：
  * - node: 前端脚本节点
- * - index: 节点序号
+ * - upstreamNodeIds: 当前节点之前已生成的上游节点 ID
  * @returns {Object} React Flow 节点
  */
 const buildScriptFlowNode = (params) => {
-  // params.node / params.index / params.upstreamNodeIds
-  const { node, index, upstreamNodeIds } = params;
+  // params.node / params.upstreamNodeIds
+  const { node, upstreamNodeIds } = params;
   const script = node?.script || '';
   const normalizedScript = stripScriptEditorTypes(script)
     .replace(/export\s+function\s+transform\s*\(([^)]*)\)/, (match, args) => {
@@ -1151,7 +988,7 @@ const buildScriptFlowNode = (params) => {
       script: wrappedScript,
       editorScript: script,
       upstreamNodeIds: upstreamNodeIds || [],
-      output: buildJsonObjectFromParams(node?.outputParams || []),
+      output: buildJsonObjectFromParams(node?.outputParams || []) || { type: 'object', properties: {} },
     },
   };
 };
@@ -1161,12 +998,11 @@ const buildScriptFlowNode = (params) => {
  * @param {Object} params 参数对象
  * 包含以下字段：
  * - node: 前端并行节点
- * - index: 节点序号
  * @returns {Object} React Flow 节点
  */
 const buildParallelFlowNode = (params) => {
-  // params.node / params.index
-  const { node, index } = params;
+  // params.node
+  const { node } = params;
   return {
     id: node?.id,
     type: 'parallel',
@@ -1181,12 +1017,11 @@ const buildParallelFlowNode = (params) => {
  * @param {Object} params 参数对象
  * 包含以下字段：
  * - output: 前端输出节点
- * - index: 节点序号
  * @returns {Object} React Flow 节点
  */
 const buildExitFlowNode = (params) => {
-  // params.output / params.index
-  const { output, index } = params;
+  // params.output
+  const { output } = params;
   const dataOutput = {};
   ['header', 'body'].forEach((carrier) => {
     const jsonObject = buildJsonObjectFromOutputParams(output?.assembleParams?.[carrier] || []);
@@ -1210,16 +1045,15 @@ const buildExitFlowNode = (params) => {
  * @param {Object} params 参数对象
  * 包含以下字段：
  * - node: 前端节点
- * - index: 节点序号
  * - upstreamNodeIds: 当前节点之前已生成的上游节点 ID
  * @returns {Object|null} React Flow 节点
  */
 const buildStepFlowNode = (params) => {
-  // params.node / params.index / params.upstreamNodeIds
-  const { node, index, upstreamNodeIds } = params;
-  if (node?.type === 'connector') return buildConnectorFlowNode({ node, index });
-  if (node?.type === 'script') return buildScriptFlowNode({ node, index, upstreamNodeIds });
-  if (node?.type === 'parallel') return buildParallelFlowNode({ node, index });
+  // params.node / params.upstreamNodeIds
+  const { node, upstreamNodeIds } = params;
+  if (node?.type === 'connector') return buildConnectorFlowNode({ node });
+  if (node?.type === 'script') return buildScriptFlowNode({ node, upstreamNodeIds });
+  if (node?.type === 'parallel') return buildParallelFlowNode({ node });
   return null;
 };
 
@@ -1254,13 +1088,13 @@ const buildFlowEdge = (params) => {
  */
 const buildSerialFlowGraph = (flowData) => {
   // 串行图按照 trigger -> steps -> output 顺序生成，并为脚本节点记录已经生成的上游节点 ID。
-  const nodes = [buildTriggerFlowNode({ trigger: flowData.trigger, index: 0 })];
-  (flowData.steps || []).forEach((step, stepIndex) => {
+  const nodes = [buildTriggerFlowNode({ trigger: flowData.trigger })];
+  (flowData.steps || []).forEach((step) => {
     const upstreamNodeIds = nodes.map(node => node.id);
-    const flowNode = buildStepFlowNode({ node: step, index: stepIndex + 1, upstreamNodeIds });
+    const flowNode = buildStepFlowNode({ node: step, upstreamNodeIds });
     if (flowNode) nodes.push(flowNode);
   });
-  nodes.push(buildExitFlowNode({ output: flowData.output, index: nodes.length }));
+  nodes.push(buildExitFlowNode({ output: flowData.output }));
 
   const edges = [];
   for (let i = 0; i < nodes.length - 1; i++) {
@@ -1280,21 +1114,15 @@ const buildSerialFlowGraph = (flowData) => {
  */
 const buildParallelFlowGraph = (flowData) => {
   // 并行图按照 trigger -> parallel -> branch connectors -> output 生成
-  const triggerNode = buildTriggerFlowNode({ trigger: flowData.trigger, index: 0 });
+  const triggerNode = buildTriggerFlowNode({ trigger: flowData.trigger });
   const parallel = (flowData.steps || []).find(item => item?.type === 'parallel');
   if (!parallel) return buildSerialFlowGraph(flowData);
 
-  const parallelNode = buildParallelFlowNode({ node: parallel, index: 1 });
-  const scriptNodesBeforeParallel = (flowData.steps || [])
-    .filter(item => item?.type === 'script')
-    .map(item => item.id);
-  const branchUpstreamNodeIds = [triggerNode.id, ...scriptNodesBeforeParallel, parallelNode.id];
-  const branchNodes = (parallel.branches || []).map((branch, branchIndex) => buildConnectorFlowNode({
+  const parallelNode = buildParallelFlowNode({ node: parallel });
+  const branchNodes = (parallel.branches || []).map((branch) => buildConnectorFlowNode({
     node: branch.connector,
-    index: 2,
-    y: branchIndex * 120,
   }));
-  const outputNode = buildExitFlowNode({ output: flowData.output, index: 3 });
+  const outputNode = buildExitFlowNode({ output: flowData.output });
   const nodes = [triggerNode, parallelNode, ...branchNodes, outputNode];
   const edges = [buildFlowEdge({
     source: triggerNode.id,
@@ -1358,13 +1186,6 @@ const buildOrchestrationConfig = (flowData) => {
   };
 };
 
-export const buildOrchestrationConfigForTest = buildOrchestrationConfig;
-
-/**
- * 测试专用：暴露文档编排配置到前端数据结构的转换能力
- */
-export const transformOrchestrationConfigToFlowDataForTest = transformOrchestrationConfigToFlowData;
-
 /**
  * 保存草稿版本（#31 更新连接流版本）
  *
@@ -1389,26 +1210,25 @@ export const saveDraft = async (params) => {
       }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
 
 /**
  * 发布连接流版本（#32）
- * 流程：先保存最新草稿，再触发发布（进入审批流程）
+ * 仅触发发布接口，不在发布时保存草稿内容
  *
  * @param {Object} params - 参数对象
  * 包含以下字段：
  * - flowId: 连接流 ID
  * - versionId: 版本 ID
- * - config: 编排配置
  *
  * @returns {Promise<Object>} 发布结果
  */
 export const publishVersion = async (params) => {
   // 解构传入对象中需要使用的参数
-  const { flowId, versionId, config } = params;
+  const { flowId, versionId } = params;
 
   try {
     const result = await fetchApi(
@@ -1416,7 +1236,7 @@ export const publishVersion = async (params) => {
       { method: 'POST' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1455,7 +1275,7 @@ export const createDraftVersion = async (params) => {
       );
     }
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1480,7 +1300,7 @@ export const expireVersion = async (params) => {
       { method: 'PUT' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1505,7 +1325,7 @@ export const withdrawVersion = async (params) => {
       { method: 'POST' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1530,7 +1350,7 @@ export const deleteVersion = async (params) => {
       { method: 'DELETE' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1554,7 +1374,7 @@ export const fetchConnectorList = async () => {
       name: item.nameCn || item.nameEn || '',
     }));
     return { ...result, data: list };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1574,11 +1394,9 @@ export const fetchConnectorVersions = async (connectorId) => {
     if (result?.code !== '200') return result || {};
 
     // 将连接器版本列表映射为 UI 展示所需摘要结构（版本号 / 时间 / 状态），并按创建时间倒序
-    const list = (result.data || [])
-      .map(buildVersionSummary)
-      .sort((a, b) => (a.createTime < b.createTime ? 1 : -1));
+    const list = buildSortedVersionSummaries(result.data || []);
     return { ...result, data: list };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1604,7 +1422,7 @@ export const fetchConnectorInputParams = async (params) => {
     if (result?.code !== '200') return result || {};
 
     // 解析连接器版本详情中的 connectionConfig，提取认证方式与入参配置
-    const connectionConfig = normalizeConnectionConfig(result.data?.connectionConfig);
+    const connectionConfig = normalizeJsonConfig(result.data?.connectionConfig);
     return {
       code: '200',
       data: {
@@ -1621,7 +1439,7 @@ export const fetchConnectorInputParams = async (params) => {
         },
       },
     };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1665,7 +1483,7 @@ export const debugFlow = async (params) => {
       }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -1690,7 +1508,7 @@ export const urgeApproval = async (params) => {
       { method: 'POST' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
