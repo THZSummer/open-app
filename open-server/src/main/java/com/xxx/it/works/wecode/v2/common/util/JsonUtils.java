@@ -19,7 +19,7 @@ import java.util.Map;
 @Slf4j
 public final class JsonUtils {
 
-    private static ObjectMapper objectMapper;
+    private static volatile ObjectMapper objectMapper;
 
     private JsonUtils() {
     }
@@ -28,7 +28,7 @@ public final class JsonUtils {
      * 注入 Spring 配置好的 ObjectMapper（由 JacksonConfig 启动时调用一次）
      */
     public static void init(ObjectMapper mapper) {
-        objectMapper = mapper;
+        objectMapper = mapper.copy();
     }
 
     /**
@@ -126,5 +126,23 @@ public final class JsonUtils {
             return null;
         }
         return field.asText();
+    }
+
+    /**
+     * 将对象类型的 JsonNode 字段扁平化合并到目标 Map（已存在的 key 不覆盖）。
+     * <ul>
+     *   <li>node 为 null 或非对象 → 直接返回</li>
+     *   <li>仅当 target 中不存在该 key 时才 put</li>
+     * </ul>
+     */
+    public static void flattenToMap(JsonNode node, Map<String, Object> target) {
+        if (node == null || !node.isObject()) {
+            return;
+        }
+        node.fields().forEachRemaining(entry -> {
+            if (!target.containsKey(entry.getKey())) {
+                target.put(entry.getKey(), entry.getValue());
+            }
+        });
     }
 }

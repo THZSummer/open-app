@@ -24,3 +24,5 @@ TestResults.xml
 ### OpenCode ###
 .opencode/
 opencode.json
+.idea/
+/.idea/
