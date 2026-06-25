@@ -140,7 +140,7 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
         f"VALUES ({version_id}, {connector_id}, "
         f"'{escape_sql(config)}', 'tester', 'tester')"
     )
-    return connector_id, version_id
+    return connector_id, version_id, config
 
 
 def setup_flow(flow_id, lifecycle_status, orchestration):
@@ -160,7 +160,7 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
     return flow_id, flow_version_id
 
 
-def build_parallel_orch(connector_version_ids, parallel=True):
+def build_parallel_orch(connector_version_ids, connection_configs, parallel=True):
     """构建并行/串行编排
 
     并行：trigger → [connector_a, connector_b] → exit
@@ -200,6 +200,7 @@ def build_parallel_orch(connector_version_ids, parallel=True):
             "data": {
                 "labelCn": "分支A", "labelEn": "BranchA",
                 "connectorVersionId": str(connector_version_ids[0]),
+                "connectorVersionConfig": connection_configs[0],
                 "inputMapping": {
                     "header": {"type": "object", "properties": {}},
                     "query": {"type": "object", "properties": {}},
@@ -213,6 +214,7 @@ def build_parallel_orch(connector_version_ids, parallel=True):
             "data": {
                 "labelCn": "分支B", "labelEn": "BranchB",
                 "connectorVersionId": str(connector_version_ids[1]),
+                "connectorVersionConfig": connection_configs[1],
                 "inputMapping": {
                     "header": {"type": "object", "properties": {}},
                     "query": {"type": "object", "properties": {}},
@@ -264,7 +266,7 @@ def build_parallel_orch(connector_version_ids, parallel=True):
     return {"nodes": nodes, "edges": edges}
 
 
-def build_parallel_orch_multi(connector_version_ids):
+def build_parallel_orch_multi(connector_version_ids, connection_configs):
     """构建 N 路并行编排（用于 >8 测试）
 
     trigger → [conn_1, conn_2, ..., conn_N] → exit
@@ -305,6 +307,7 @@ def build_parallel_orch_multi(connector_version_ids):
             "data": {
                 "labelCn": f"分支{i}", "labelEn": f"Branch{i}",
                 "connectorVersionId": str(cvid),
+                "connectorVersionConfig": connection_configs[i],
                 "inputMapping": {
                     "header": {"type": "object", "properties": {}},
                     "query": {"type": "object", "properties": {}},
@@ -352,10 +355,10 @@ def test_parallel_branch():
     cids_001 = []
     cvids_001 = []
     # 创建两个连接器，分别指向 2s 延迟端点
-    cid_a, cvid_a = setup_connector(
+    cid_a, cvid_a, config_a = setup_connector(
         "分支A", "BranchA", f"{MOCK_BASE}/api/branch-a"
     )
-    cid_b, cvid_b = setup_connector(
+    cid_b, cvid_b, config_b = setup_connector(
         "分支B", "BranchB", f"{MOCK_BASE}/api/branch-b"
     )
     cids_001 = [cid_a, cid_b]
@@ -363,7 +366,7 @@ def test_parallel_branch():
 
     fid_001, fvid_001 = setup_flow(
         sid_001, lifecycle_status=1,
-        orchestration=build_parallel_orch(cvids_001, parallel=True)
+        orchestration=build_parallel_orch(cvids_001, [config_a, config_b], parallel=True)
     )
 
     start = time.time()
@@ -395,17 +398,19 @@ def test_parallel_branch():
     fvid_002 = None
     cids_002 = []
     cvids_002 = []
+    configs_002 = []
     # 创建 9 个连接器（超过 8 个限制）
     for i in range(9):
-        cid, cvid = setup_connector(
+        cid, cvid, config = setup_connector(
             f"分支{i}", f"Branch{i}", f"{MOCK_BASE}/api/branch-a"
         )
         cids_002.append(cid)
         cvids_002.append(cvid)
+        configs_002.append(config)
 
     fid_002, fvid_002 = setup_flow(
         sid_002, lifecycle_status=1,
-        orchestration=build_parallel_orch_multi(cvids_002)
+        orchestration=build_parallel_orch_multi(cvids_002, configs_002)
     )
 
     # 尝试调用 open-server 的发布接口
@@ -441,10 +446,10 @@ def test_parallel_branch():
     cids_003 = []
     cvids_003 = []
     # 创建两个连接器（串行编排）
-    cid_a, cvid_a = setup_connector(
+    cid_a, cvid_a, config_a = setup_connector(
         "串行A", "SerialA", f"{MOCK_BASE}/api/branch-a"
     )
-    cid_b, cvid_b = setup_connector(
+    cid_b, cvid_b, config_b = setup_connector(
         "串行B", "SerialB", f"{MOCK_BASE}/api/branch-b"
     )
     cids_003 = [cid_a, cid_b]
@@ -452,7 +457,7 @@ def test_parallel_branch():
 
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=1,
-        orchestration=build_parallel_orch(cvids_003, parallel=False)
+        orchestration=build_parallel_orch(cvids_003, [config_a, config_b], parallel=False)
     )
 
     start = time.time()

@@ -162,7 +162,7 @@ def build_version_config(version_label, target_url):
 # Orchestration Builder
 # ═══════════════════════════════════════════════════════════
 
-def build_orch(connector_version_id):
+def build_orch(connector_version_id, connection_config):
     """构建 trigger → connector → exit 编排，引用指定 connectorVersionId"""
     return {
         "nodes": [
@@ -199,6 +199,7 @@ def build_orch(connector_version_id):
                     "labelCn": "版本连接器",
                     "labelEn": "VersionConn",
                     "connectorVersionId": str(connector_version_id),
+                    "connectorVersionConfig": connection_config,
                     "inputMapping": {
                         "header": {"type": "object", "properties": {}},
                         "query": {"type": "object", "properties": {}},
@@ -260,7 +261,7 @@ def test_connector_version_select():
     # Flow 引用 Version 1
     fid_001, fvid_001 = setup_flow(
         sid_001, lifecycle_status=1,
-        orchestration=build_orch(vid_1)
+        orchestration=build_orch(vid_1, config_v1)
     )
 
     _last_request_path[0] = None
@@ -295,7 +296,7 @@ def test_connector_version_select():
     non_existent_version_id = 999999999999999999
     fid_002, fvid_002 = setup_flow(
         sid_002, lifecycle_status=1,
-        orchestration=build_orch(non_existent_version_id)
+        orchestration=build_orch(non_existent_version_id, {})
     )
 
     # 尝试调用 open-server 的发布接口
@@ -357,7 +358,7 @@ def test_connector_version_select():
     # Flow 引用这个未发布的版本
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=1,
-        orchestration=build_orch(vid_draft)
+        orchestration=build_orch(vid_draft, config_draft)
     )
 
     # 尝试调用 open-server 的发布接口
