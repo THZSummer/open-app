@@ -113,6 +113,7 @@ export const VERIFY_TYPE_MAP = {
   1: { text: 'SOAHeader', label: 'SOAHeader', needApiSecret: false, order: 2 },
   3: { text: 'SOAURL', label: 'SOAURL', needApiSecret: false, order: 3 },
   4: { text: 'APIG', label: 'APIG', needApiSecret: false, order: 4 },
+  5: { text: 'IntegrateToken', label: 'Token', needApiSecret: false, order: 5 },
 };
 
 export const ROLE_MAP = {
