@@ -5,12 +5,12 @@ import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
 import com.xxx.it.works.wecode.v2.common.constants.CommonConstants;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
+import com.xxx.it.works.wecode.v2.common.enums.OperateResultEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoader;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoaderFactory;
 import com.xxx.it.works.wecode.v2.common.util.CommonUtils;
 import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
-import com.xxx.it.works.wecode.v2.modules.app.constants.AppPropertyConstants;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
@@ -86,12 +86,12 @@ public class OperateLogV2Aspect {
         } catch (Throwable ex) {
             // 失败时不加载 afterData：业务方法可能在 @Transactional 中，
             // catch 时事务尚未回滚，查 DB 会拿到未提交的脏数据。
-            writeAuditLog(ctx, null, 0);
+            writeAuditLog(ctx, null, OperateResultEnum.FAILED.getCode());
             throw ex;
         }
 
         String afterData = loadAfterData(ctx, joinPoint, result);
-        writeAuditLog(ctx, afterData, 1);
+        writeAuditLog(ctx, afterData, OperateResultEnum.SUCCESS.getCode());
         return result;
     }
 
@@ -324,7 +324,7 @@ public class OperateLogV2Aspect {
         Object[] args = joinPoint.getArgs();
         if (paramNames != null) {
             for (int i = 0; i < paramNames.length; i++) {
-                if ("appId".equals(paramNames[i]) && args[i] != null) {
+                if (CommonConstants.FIELD_APP_ID.equals(paramNames[i]) && args[i] != null) {
                     return args[i].toString();
                 }
             }
@@ -346,9 +346,9 @@ public class OperateLogV2Aspect {
             if (node == null) {
                 return CommonConstants.UNKNOWN;
             }
-            JsonNode appIdNode = node.get("appId");
+            JsonNode appIdNode = node.get(CommonConstants.FIELD_APP_ID);
             if (appIdNode == null) {
-                appIdNode = node.get(AppPropertyConstants.COL_APP_ID);
+                appIdNode = node.get(CommonConstants.COL_APP_ID);
             }
             if (appIdNode == null || appIdNode.isNull()) {
                 return CommonConstants.UNKNOWN;
@@ -375,7 +375,7 @@ public class OperateLogV2Aspect {
                 Object data = apiResponse.getData();
                 if (data != null) {
                     JsonNode dataNode = JsonUtils.toTree(data);
-                    JsonNode appIdNode = dataNode != null ? dataNode.get("appId") : null;
+                    JsonNode appIdNode = dataNode != null ? dataNode.get(CommonConstants.FIELD_APP_ID) : null;
                     if (appIdNode != null && !appIdNode.isNull()) {
                         return appIdNode.asText();
                     }

@@ -35,9 +35,4 @@ public final class AppPropertyConstants {
      * EAMAP 应用名称
      */
     public static final String PROP_EAMAP_APP_NAME = "eamap_app_name";
-
-    /**
-     * 应用ID（数据库列名）
-     */
-    public static final String COL_APP_ID = "app_id";
 }
