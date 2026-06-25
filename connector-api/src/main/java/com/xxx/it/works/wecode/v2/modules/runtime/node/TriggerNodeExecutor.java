@@ -16,7 +16,7 @@ import java.util.Map;
  * 入口节点执行器 (v5.7)
  * <p>
  * 结构化 trigger input: {header: {...}, query: {...}, body: {...}}
- * 优先复用 OpTriggerService 预置的 NodeContext, 否则从 triggerData/triggerHeaders/triggerQueryParams 构建.
+ * 优先复用 FlowInvokeService 预置的 NodeContext, 否则从 triggerData/triggerHeaders/triggerQueryParams 构建.
  * </p>
  */
 public class TriggerNodeExecutor implements NodeExecutor {
@@ -47,7 +47,7 @@ public class TriggerNodeExecutor implements NodeExecutor {
         String nodeId = (String) config.get("id");
         log.info("Entry node executing: nodeId={}", nodeId);
 
-        // 优先复用 OpTriggerService 预置的结构化 NodeContext
+        // 优先复用 FlowInvokeService 预置的结构化 NodeContext
         Map<String, Object> input;
         NodeContext preSeeded = context.getNodeContext(nodeId);
         if (preSeeded != null && preSeeded.getInput() != null
