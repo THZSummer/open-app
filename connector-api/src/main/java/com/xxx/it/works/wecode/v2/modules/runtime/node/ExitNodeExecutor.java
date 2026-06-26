@@ -165,6 +165,7 @@ public class ExitNodeExecutor implements NodeExecutor {
         }
         Map<String, Object> segMap = (Map<String, Object>) segment;
 
+        // {type: "object", properties: {field: {type, value}}}
         Object props = segMap.get("properties");
         if (props instanceof Map) {
             Map<String, Object> result = new LinkedHashMap<>();
@@ -174,7 +175,15 @@ public class ExitNodeExecutor implements NodeExecutor {
             return result;
         }
 
-        return Collections.emptyMap();
+        // 扁平: {field: {type, value}}
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : segMap.entrySet()) {
+            Object value = extractMappedValue(entry.getValue());
+            if (value != null) {
+                result.put(entry.getKey(), value);
+            }
+        }
+        return result;
     }
     @SuppressWarnings("unchecked")
     private Object resolveValue(ExecutionContext context, Object value) {
