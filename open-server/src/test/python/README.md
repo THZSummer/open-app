@@ -220,14 +220,14 @@ KEEP_TEST_DATA=1 pytest -m "L0 or L1 or L2"
 #### 测试报告
 
 ```bash
-# 需要先安装插件
+# 安装插件
 pip install pytest-html
 
-# 生成报告（全量）
-pytest -m "" --html=reports/report.html --self-contained-html
+# 生成报告
+pytest -m "" --html=reports/report.html
 
-# 指定层级
-pytest -m "L0 or L1" --html=reports/report-l1.html --self-contained-html
+# 查看报告（启动临时 HTTP 服务，浏览器访问 http://localhost:18900/report.html）
+cd reports && python3 -m http.server 18900
 ```
 
 ## 目录
