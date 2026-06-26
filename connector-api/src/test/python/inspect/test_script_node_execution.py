@@ -11,7 +11,7 @@ Covers:
 
 Orchestration: trigger → script → exit
 v5.8 transparent response format:
-  - Response body = exit outputMapping.body data (no resultData envelope)
+  - Response body = exit output.body data (no resultData envelope)
   - Platform metadata via X-Flow-Id / X-Execution-Id / X-Status / X-Duration-Ms headers
   - Errors via X-Code / X-Message-Zh / X-Message-En headers, empty body
 """
@@ -40,14 +40,15 @@ def build_script_orch(script_content, timeout_ms=5000):
                 "data": {
                     "labelCn": "接收",
                     "labelEn": "Recv",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [
                             {"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}
                         ]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {}, "required": []},
                         "query": {"type": "object", "properties": {}, "required": []},
@@ -82,7 +83,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                 "data": {
                     "labelCn": "返回",
                     "labelEn": "Ret",
-                    "outputMapping": {
+                    "output": {
                         "header": {"type": "object", "properties": {}},
                         "body": {
                             "type": "object",

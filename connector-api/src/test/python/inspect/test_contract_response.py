@@ -37,11 +37,11 @@ def test_contract_response():
         "nodes": [
             {"id": "node_trigger", "type": "trigger",
              "position": {"x": 100, "y": 200},
-             "data": {"labelCn": "接收", "labelEn": "Receive", "type": "http",
-                      "authConfig": {"type": "SYSTOKEN", "fields": [
+             "data": {"labelCn": "接收", "labelEn": "Receive", "type": "trigger", "triggerType": "http",
+                      "authConfigs": [{"type": "SYSTOKEN", "fields": [
                           {"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}
-                      ]},
-                      "inputContract": {"protocol": "HTTP",
+                      ]}],
+                      "input": {"protocol": "HTTP",
                           "header": {"type": "object", "properties": {}, "required": []},
                           "query": {"type": "object", "properties": {}, "required": []},
                           "body": {"type": "object", "properties": {}, "required": []}},
@@ -49,7 +49,7 @@ def test_contract_response():
             {"id": "node_exit", "type": "exit",
              "position": {"x": 350, "y": 200},
              "data": {"labelCn": "返回", "labelEn": "Return",
-                      "outputMapping": {"header": {"type": "object", "properties": {}},
+                      "output": {"header": {"type": "object", "properties": {}},
                           "body": {"type": "object", "properties": {"ok": {"type": "boolean", "value": True}}}}}}
         ],
         "edges": [{"id": "e1", "source": "node_trigger", "target": "node_exit",

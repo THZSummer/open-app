@@ -33,15 +33,16 @@ def build_orch_v1():
                 "position": {"x": 100, "y": 200},
                 "data": {
                     "labelCn": "接收", "labelEn": "Receive",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [
                             {"name": "token", "carrier": "header",
                              "fieldName": "X-Sys-Token"}
                         ]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {},
                                    "required": []},
@@ -61,7 +62,7 @@ def build_orch_v1():
                 "position": {"x": 350, "y": 200},
                 "data": {
                     "labelCn": "返回V1", "labelEn": "ReturnV1",
-                    "outputMapping": {
+                    "output": {
                         "header": {"type": "object", "properties": {}},
                         "body": {
                             "type": "object",
@@ -96,15 +97,16 @@ def build_orch_v2():
                 "position": {"x": 100, "y": 200},
                 "data": {
                     "labelCn": "接收", "labelEn": "Receive",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [
                             {"name": "token", "carrier": "header",
                              "fieldName": "X-Sys-Token"}
                         ]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {},
                                    "required": []},
@@ -124,7 +126,7 @@ def build_orch_v2():
                 "position": {"x": 350, "y": 200},
                 "data": {
                     "labelCn": "返回V2", "labelEn": "ReturnV2",
-                    "outputMapping": {
+                    "output": {
                         "header": {"type": "object", "properties": {}},
                         "body": {
                             "type": "object",
