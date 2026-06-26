@@ -596,7 +596,7 @@ def test_full_flow():
                             }
                         }},
                         {"id": "exit", "type": "exit", "data": {
-                            "outputMapping": {
+                            "output": {
                                 "body": {
                                     "code": {"type": "integer", "value": "${$.node.conn1.output.code}"},
                                     "message": {"type": "string", "value": "${$.node.conn1.output.message}"},
