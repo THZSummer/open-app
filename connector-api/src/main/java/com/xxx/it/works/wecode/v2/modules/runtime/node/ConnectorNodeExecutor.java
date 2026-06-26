@@ -217,7 +217,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
         Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
 
-        Map<String, Object> authConfig = (Map<String, Object>) data.get("authConfig");
+        Map<String, Object> authConfig = null;
         credentialInjectorRegistry.inject(authConfig, headers);
 
         Map<String, Object> input = new HashMap<>();
@@ -235,11 +235,9 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     }
 
     /**
-     * 从 DB 加载的 ConnectorVersionEntity 构建兼容 connectorVersionConfig 快照格式的 Map
+     * 从 DB 加载的 ConnectorVersionEntity 构建 connectorVersionConfig 快照 Map
      * <p>
-     * DB connection_config JSON 格式: { protocolConfig, authConfig, inputContract, outputContract, ... }
-     * snapshot 格式: { protocolConfig, authConfigs (list), timeoutMs, ... }
-     * 此方法做字段适配, 复用 executeWithSnapshot 的解析逻辑
+     * DB connection_config JSON 格式与 Schema §4.3.7 connectorVersionConfigDef 一致。
      * </p>
      */
     @SuppressWarnings("unchecked")
@@ -247,53 +245,6 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         Map<String, Object> connConfig = entity.parseConnectionConfig(objectMapper);
 
         Map<String, Object> snapshot = new HashMap<>(connConfig);
-
-        // 适配 authConfig (DB 单对象) → authConfigs (snapshot 数组格式)
-        if (!snapshot.containsKey("authConfigs")) {
-            Object authConfig = snapshot.get("authConfig");
-            if (authConfig instanceof Map) {
-                snapshot.put("authConfigs", List.of(authConfig));
-            } else {
-                Object legacyAuth = snapshot.get("authTypeSchema");
-                if (legacyAuth instanceof Map) {
-                    snapshot.put("authConfigs", List.of(legacyAuth));
-                }
-            }
-        }
-
-        // 适配 inputContract / inputSchema → input (设计名)
-        if (!snapshot.containsKey("input")) {
-            Object val = snapshot.get("inputContract");
-            if (val instanceof Map) {
-                snapshot.put("input", val);
-            } else {
-                Object legacy = snapshot.get("inputSchema");
-                if (legacy instanceof Map) {
-                    snapshot.put("input", legacy);
-                }
-            }
-        }
-
-        // 适配 outputContract / outputSchema → output (设计名)
-        if (!snapshot.containsKey("output")) {
-            Object val = snapshot.get("outputContract");
-            if (val instanceof Map) {
-                snapshot.put("output", val);
-            } else {
-                Object legacy = snapshot.get("outputSchema");
-                if (legacy instanceof Map) {
-                    snapshot.put("output", legacy);
-                }
-            }
-        }
-
-        // 适配 rateLimit → rateLimitConfig (设计名)
-        if (!snapshot.containsKey("rateLimitConfig")) {
-            Object val = snapshot.get("rateLimit");
-            if (val instanceof Map) {
-                snapshot.put("rateLimitConfig", val);
-            }
-        }
 
         return snapshot;
     }
