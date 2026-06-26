@@ -264,28 +264,28 @@ public class FlowInvokeService {
 
                     String triggerNodeId = (String) triggerNode.get("id");
 
-                    // 4. 校验 data.type 子类型
-                    String subType = (String) nodeData.get("type");
-                    if (subType == null || subType.isBlank()) {
-                        return Mono.error(new RuntimeException("Trigger node data.type is required"));
+                    // 4. 校验 data.triggerType (激活方式: http/manual)
+                    String triggerType = (String) nodeData.get("triggerType");
+                    if (triggerType == null || triggerType.isBlank()) {
+                        return Mono.error(new RuntimeException("Trigger node data.triggerType is required"));
                     }
-                    if (!"http".equals(subType) && !"manual".equals(subType)) {
-                        return Mono.error(new RuntimeException("Unknown trigger type: " + subType));
+                    if (!"http".equals(triggerType) && !"manual".equals(triggerType)) {
+                        return Mono.error(new RuntimeException("Unknown trigger type: " + triggerType));
                     }
 
-                    // 5. 校验 authConfig (HTTP 触发时必须存在)
-                    validateAuthConfig(nodeData, headers, subType);
+                    // 5. 校验 authConfigs (HTTP 触发时必须存在)
+                    validateAuthConfig(nodeData, headers, triggerType);
 
                     // 6. 校验 rateLimitConfig
                     validateRateLimitConfig(nodeData);
 
-                    // 7. 校验 inputContract (header / query / body 三段)
-                    Map<String, Object> inputContract = (Map<String, Object>) nodeData.get("inputContract");
-                    if ("http".equals(subType) && inputContract == null) {
-                        return Mono.error(new RuntimeException("HTTP trigger requires inputContract"));
+                    // 7. 校验 input (header / query / body 三段)
+                    Map<String, Object> input = (Map<String, Object>) nodeData.get("input");
+                    if ("http".equals(triggerType) && input == null) {
+                        return Mono.error(new RuntimeException("HTTP trigger requires input"));
                     }
-                    if (inputContract != null) {
-                        validateInputContractSections(inputContract, headers, queryParams, triggerData);
+                    if (input != null) {
+                        validateInputContractSections(input, headers, queryParams, triggerData);
                     }
 
                     // 7.5 校验 connector 节点 URL 白名单 (FR-015: 从 connector connection_config 读取)
@@ -302,8 +302,8 @@ public class FlowInvokeService {
                     NodeContext triggerNodeCtx = new NodeContext();
                     triggerNodeCtx.setNodeId(triggerNodeId);
                     triggerNodeCtx.setNodeType("trigger");
-                    Map<String, Object> input = buildStructuredTriggerInput(headers, queryParams, triggerData);
-                    triggerNodeCtx.setInput(input);
+                    Map<String, Object> triggerInput = buildStructuredTriggerInput(headers, queryParams, triggerData);
+                    triggerNodeCtx.setInput(triggerInput);
                     triggerNodeCtx.setOutput(new HashMap<>());
                     triggerNodeCtx.setStatus("success");
                     context.setNodeContext(triggerNodeCtx);
@@ -389,7 +389,7 @@ public class FlowInvokeService {
                         response = TransparentFlowResponse.preExecutionError(
                                 flowIdStr, HttpStatus.UNAUTHORIZED, errorCode,
                                 errorMsg, "Authentication failed: " + msg);
-                    } else if (msg.contains("required field") || msg.contains("inputContract")
+                    } else if (msg.contains("required field") || msg.contains("input")
                             || msg.contains("must be") || msg.contains("Missing required")
                             || e instanceof IllegalArgumentException) {
                         errorCode = "400";
@@ -788,18 +788,24 @@ public class FlowInvokeService {
      * 校验 authConfig (HTTP 触发时必须存在)
      */
     @SuppressWarnings("unchecked")
-    private void validateAuthConfig(Map<String, Object> nodeData, Map<String, String> headers, String subType) {
-        Map<String, Object> authConfig = (Map<String, Object>) nodeData.get("authConfig");
-        if ("http".equals(subType)) {
-            if (authConfig == null || authConfig.isEmpty()) {
-                throw new RuntimeException("HTTP trigger requires authConfig");
+    private void validateAuthConfig(Map<String, Object> nodeData, Map<String, String> headers, String triggerType) {
+        List<Map<String, Object>> authConfigs = (List<Map<String, Object>>) nodeData.get("authConfigs");
+        if ("http".equals(triggerType)) {
+            if (authConfigs == null || authConfigs.isEmpty()) {
+                throw new RuntimeException("HTTP trigger requires authConfigs");
             }
-            String authType = (String) authConfig.get("type");
-            if (authType == null || authType.isBlank()) {
-                throw new RuntimeException("authConfig.type is required for HTTP trigger");
+            for (Map<String, Object> ac : authConfigs) {
+                String authType = (String) ac.get("type");
+                if (authType == null || authType.isBlank()) {
+                    throw new RuntimeException("authConfigs[].type is required for HTTP trigger");
+                }
             }
         }
-        authValidatorRegistry.validate(authConfig, headers);
+        if (authConfigs != null) {
+            for (Map<String, Object> ac : authConfigs) {
+                authValidatorRegistry.validate(ac, headers);
+            }
+        }
     }
 
     /**
