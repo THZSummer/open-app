@@ -36,7 +36,7 @@ function Capabilities() {
   const activeSubKey = searchParams.get('sub') || 'add';
 
   // 页面级权限守卫
-  const { loading: roleLoading } = useRoleGuard(appId);
+  const { loading: roleTypeLoading } = useRoleGuard(appId);
   const { appBaseInfo } = useSelector(state => state.app);
 
   const [abilities, setAbilities] = useState([]);
@@ -47,7 +47,7 @@ function Capabilities() {
   const [activeScene, setActiveScene] = useState(sceneKeys[0] || 'message');
 
   useEffect(() => {
-    if (!appId || roleLoading) {
+    if (!appId || roleTypeLoading) {
       if (!appId) navigate('/');
       return;
     }
@@ -57,7 +57,7 @@ function Capabilities() {
       return;
     }
     loadAbilities();
-  }, [appId, roleLoading, appBaseInfo]);
+  }, [appId, roleTypeLoading, appBaseInfo]);
 
   const loadAbilities = async () => {
     setLoading(true);

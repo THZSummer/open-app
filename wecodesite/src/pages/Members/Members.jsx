@@ -52,7 +52,7 @@ function Members() {
   const appId = searchParams.get('appId');
 
   // 页面级权限守卫：不是成员则跳回列表
-  const { role, loading: roleLoading } = useRoleGuard(appId);
+  const { roleType, loading: roleTypeLoading } = useRoleGuard(appId);
 
   const [members, setMembers] = useState([]);
   const [pagination, setPagination] = useState(INIT_PAGECONFIG);
@@ -88,19 +88,18 @@ function Members() {
 
   // 权限校验通过后（role 已拿到），从 Context 拿 appBaseInfo 加载数据
   useEffect(() => {
-    if (!appId || roleLoading || role === null) return;
+    if (!appId || roleTypeLoading || roleType === null) return;
     if (!appBaseInfo) return;
     if (appBaseInfo.appType !== 1) {
       navigate(`/basic-info?appId=${appId}`);
       return;
     }
     setAppData(appBaseInfo);
-    // 根据 role 设置添加成员时的默认角色
-    if (role === 1) setSelectedRole(2);
-    else if (role === 2) setSelectedRole(0);
+    if (roleType === 1) setSelectedRole(2);
+    else if (roleType === 2) setSelectedRole(0);
     else setSelectedRole(0);
     loadMembers();
-  }, [appId, appBaseInfo, role, roleLoading]);
+  }, [appId, appBaseInfo, roleType, roleTypeLoading]);
 
   const loadMembers = async (params = { curPage: 1, pageSize: 10 }) => {
     setLoading(true);
@@ -188,10 +187,9 @@ function Members() {
     }
   };
 
-  // 当前用户权限
-  const isOwner = role === 1;
-  const isAdmin = role === 2;
-  const isDeveloper = role === 0;
+  const isOwner = roleType === 1;
+  const isAdmin = roleType === 2;
+  const isDeveloper = roleType === 0;
   const canAdd = isOwner || isAdmin;
 
   // 权限矩阵：判断按钮是否可执行 / 置灰 / 不展示
@@ -300,6 +298,7 @@ function Members() {
       <Modal
         title="添加人员"
         open={addModalVisible}
+        width={600}
         onOk={handleAddMembers}
         onCancel={() => { setAddModalVisible(false); setSelectedUsers([]); setSearchValue(''); setSearchResults([]); }}
       okText="确认添加"
@@ -324,7 +323,7 @@ function Members() {
               dropdownClassName="member-select-dropdown"
               optionLabelProp="label"
             >
-              {allOptions.map((user) => (
+              {searchResults.map((user) => (
                   <Option key={user.welinkId} value={user.welinkId} label={`${user.memberNameCn} ${user.w3Account} ${user.deptName || ''}`}>
                     <div className="member-option">
                       <span className="member-option-name">{user.memberNameCn}</span>
@@ -336,7 +335,7 @@ function Members() {
             </Select>
           </div>
 
-          <div className="role-select">
+          <div className="form-item">
             <label className="form-label"><span style={{ color: '#f54a45' }}>* </span>角色：</label>
             <Radio.Group value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
               {isOwner && <Radio value={2}>管理员</Radio>}

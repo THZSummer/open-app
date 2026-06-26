@@ -36,7 +36,7 @@ function VersionRelease() {
   const appId = searchParams.get('appId');
 
   // 页面级权限守卫
-  const { loading: roleLoading } = useRoleGuard(appId);
+  const { loading: roleTypeLoading } = useRoleGuard(appId);
 
   // 页面模式
   const [mode, setMode] = useState(MODE.LIST);
@@ -81,7 +81,7 @@ function VersionRelease() {
   }, [appId]);
 
   useEffect(() => {
-    if (!appId || roleLoading) {
+    if (!appId || roleTypeLoading) {
       if (!appId) navigate('/');
       return;
     }
@@ -101,7 +101,7 @@ function VersionRelease() {
         setSubscribedAbilities(abilityRes.data);
       }
     });
-  }, [appId, appBaseInfo, roleLoading, location.pathname, loadVersions]);
+  }, [appId, appBaseInfo, roleTypeLoading, location.pathname, loadVersions]);
 
   const handlePageChange = (page, pageSize) => {
     loadVersions({ curPage: page, pageSize });

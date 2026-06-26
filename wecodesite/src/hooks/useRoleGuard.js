@@ -4,18 +4,18 @@ import { useSelector } from 'react-redux';
 
 export function useRoleGuard(appId) {
   const navigate = useNavigate();
-  const { role, roleLoading } = useSelector(state => state.role);
+  const { roleType, roleTypeLoading } = useSelector(state => state.role);
 
   useEffect(() => {
     if (!appId) {
       navigate('/');
       return;
     }
-    if (roleLoading) return;
-    if (role == null) {
+    if (roleTypeLoading) return;
+    if (roleType == null) {
       navigate('/');
     }
-  }, [appId, role, roleLoading, navigate]);
+  }, [appId, roleType, roleTypeLoading, navigate]);
 
-  return { role, loading: roleLoading };
+  return { roleType, loading: roleTypeLoading };
 }
