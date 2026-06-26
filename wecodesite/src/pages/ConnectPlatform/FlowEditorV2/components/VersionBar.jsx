@@ -150,7 +150,7 @@ const VersionBar = (props) => {
               type={btn.type}
               danger={btn.danger}
               className={btn.danger ? 'danger-btn' : btn.type === 'primary' ? 'primary-btn' : undefined}
-              loading={actionLoading && (btn.action === 'save' || btn.action === 'publish' || btn.action === 'newDraft')}
+              loading={actionLoading && ['save', 'publish', 'newDraft', 'restore'].includes(btn.action)}
               disabled={btn.action === 'cancelEdit' && actionLoading}
               onClick={() => (btn.action === 'cancelEdit' ? onCancelEdit() : onAction(btn.action))}
             >

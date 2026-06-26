@@ -39,6 +39,7 @@ import {
   publishVersion,
   createDraftVersion,
   expireVersion,
+  restoreVersion,
   withdrawVersion,
   deleteVersion,
   debugFlow,
@@ -253,6 +254,7 @@ function FlowEditorV2() {
       case 'publish': return handlePublish();
       case 'newDraft': return handleNewDraft();
       case 'expire': return handleExpire();
+      case 'restore': return doRestore();
       case 'withdraw': return handleWithdraw();
       case 'delete': return handleDelete();
       case 'detail': return handleOpenDetail();
@@ -406,6 +408,26 @@ function FlowEditorV2() {
     }
     setActionLoading(false);
     setConfirmModal({ open: false, type: null });
+  };
+
+  /**
+   * 执行恢复操作
+   */
+  const doRestore = async () => {
+    if (!currentVersion?.versionId) return;
+
+    setActionLoading(true);
+    const res = await restoreVersion({
+      flowId,
+      versionId: currentVersion.versionId,
+    });
+    if (res?.code === '200') {
+      message.success('已恢复');
+      await loadVersions(flowId, { preferVersionId: currentVersion.versionId });
+    } else {
+      message.error(res?.messageZh || '恢复失败');
+    }
+    setActionLoading(false);
   };
 
   /**
@@ -670,7 +692,12 @@ function FlowEditorV2() {
    */
   const handleDebug = async (paramValues) => {
     setDebugLoading(true);
-    const res = await debugFlow({ flowId, inputParams: paramValues });
+    // 传入当前版本 ID，用于调试指定版本。
+    const res = await debugFlow({
+      flowId,
+      versionId: currentVersion?.versionId,
+      inputParams: paramValues,
+    });
     setDebugLoading(false);
     if (res?.code === '200') {
       setDebugResult(res.data);

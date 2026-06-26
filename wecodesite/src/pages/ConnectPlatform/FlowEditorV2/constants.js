@@ -110,6 +110,7 @@ export const VERSION_ACTIONS = {
   [VERSION_STATUS.EXPIRED]: [
     { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '恢复', action: 'restore', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.APPROVING]: [
@@ -117,13 +118,11 @@ export const VERSION_ACTIONS = {
     { label: '撤回', action: 'withdraw', type: 'default', danger: true },
   ],
   [VERSION_STATUS.REJECTED]: [
-    { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
     { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.WITHDRAWN]: [
-    { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
     { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
@@ -133,7 +132,7 @@ export const VERSION_ACTIONS = {
 /**
  * 版本栏按钮渲染顺序（从左到右）
  * 详情按钮独立渲染在最左侧；其余按钮按下方优先级稳定重排。
- * 顺序：新增草稿 / 编辑 / 取消编辑 / 保存 → 发布 / 撤回 → 失效 / 删除
+ * 顺序：新增草稿 / 编辑 / 取消编辑 / 保存 → 发布 / 撤回 → 失效 / 恢复 / 删除
  */
 export const VERSION_BUTTON_ORDER = [
   'newDraft',
@@ -143,6 +142,7 @@ export const VERSION_BUTTON_ORDER = [
   'publish',
   'withdraw',
   'expire',
+  'restore',
   'delete',
 ];
 

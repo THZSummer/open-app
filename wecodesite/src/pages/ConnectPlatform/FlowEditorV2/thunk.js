@@ -9,7 +9,7 @@
  *   - #31 更新连接流版本（保存草稿）
  *   - #32 发布连接流版本
  *   - #28 创建草稿版本 / #33 复制版本到草稿
- *   - #34 失效版本 / #37 撤回审批 / #36 删除版本
+ *   - #34 失效版本 / #35 恢复版本 / #37 撤回审批 / #36 删除版本
  *   - #38 催办审批
  *   - #51 调试连接流版本（代理）
  *   - #2 查询连接器列表（status=2 有效可用）
@@ -1297,6 +1297,31 @@ export const expireVersion = async (params) => {
   try {
     const result = await fetchApi(
       buildApiUrl(API_CONFIG.FLOWS.VERSION_INVALIDATE, { flowId, versionId }),
+      { method: 'PUT' }
+    );
+    return result || {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * 恢复版本（#35）
+ *
+ * @param {Object} params - 参数对象
+ * 包含以下字段：
+ * - flowId: 连接流 ID
+ * - versionId: 版本 ID（仅已失效状态可恢复）
+ *
+ * @returns {Promise<Object>} 操作结果
+ */
+export const restoreVersion = async (params) => {
+  // 解构传入对象中需要使用的参数
+  const { flowId, versionId } = params;
+
+  try {
+    const result = await fetchApi(
+      buildApiUrl(API_CONFIG.FLOWS.VERSION_RECOVER, { flowId, versionId }),
       { method: 'PUT' }
     );
     return result || {};
