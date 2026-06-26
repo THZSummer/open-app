@@ -428,6 +428,13 @@ def test_full_flow():
                     },
                     "output": {
                         "protocol": "HTTP",
+                        "header": {
+                            "type": "object",
+                            "properties": {
+                                "X-Echo-Count": {"type": "string"},
+                                "X-Request-Header-Count": {"type": "string"}
+                            }
+                        },
                         "body": {
                             "type": "object",
                             "properties": {
@@ -442,13 +449,6 @@ def test_full_flow():
                                         "server_time": {"type": "string"},
                                         "call_number": {"type": "integer"}
                                     }
-                                }
-                            },
-                            "header": {
-                                "type": "object",
-                                "properties": {
-                                    "X-Echo-Count": {"type": "string"},
-                                    "X-Request-Header-Count": {"type": "string"}
                                 }
                             }
                         }
