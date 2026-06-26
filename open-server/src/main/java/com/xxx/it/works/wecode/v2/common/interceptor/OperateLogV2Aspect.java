@@ -122,7 +122,8 @@ public class OperateLogV2Aspect {
             if (idText != null) {
                 try {
                     ctx.resourceId = Long.parseLong(idText);
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException e) {
+                    log.debug("[OPERATE_LOG] entityId is not numeric, keeping original resourceId: field={}, value={}", ctx.op.entityIdField(), idText);
                 }
             }
 

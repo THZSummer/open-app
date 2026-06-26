@@ -147,7 +147,8 @@ public final class JsonUtils {
                 if (v instanceof CharSequence || v instanceof Number || v instanceof Boolean) {
                     result.put(f.getName(), v.toString());
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                log.debug("[JsonUtils] Failed to extract field value: field={}, class={}", f.getName(), obj.getClass().getSimpleName(), e);
             }
         }
         return result;
