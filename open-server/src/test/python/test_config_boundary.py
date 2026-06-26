@@ -129,8 +129,9 @@ class TestConnectorVersionLimit:
 class TestUrlRegexPattern:
     """#2 连接器目标 URL 需匹配平台正则规则
 
-    当前服务版本尚未实现 URL 正则校验（Property 化 PR 待上线）。
-    测试验证 publish 接口可用性，上线后 modify 断言即可。
+    url_regex_pattern 由 ConnectorPlatformPropertyService 读取；
+    ConnectorVersionService.publish() 在发布时校验目标 URL 是否匹配正则。
+    默认 fixture 写入的 pattern 是 "^https?://.*"，允许任何 http/https URL。
     """
 
     @pytest.mark.L4
@@ -146,18 +147,49 @@ class TestUrlRegexPattern:
             )
 
     @pytest.mark.L4
-    def test_url_regex_property_can_be_set(self):
-        """验证 url_regex_pattern 属性可正确存储读取（Property 化后生效）"""
-        _set_property("connector_platform", "url_regex_pattern", "^https://safe[.]com/.*")
-        try:
-            val = db_val(
-                "SELECT value FROM openplatform_property_t "
-                "WHERE path = 'connector_platform' AND code = 'url_regex_pattern' AND status = 1"
+    def test_url_regex_property_exists(self):
+        """验证 url_regex_pattern 属性已由 session fixture 写入 DB"""
+        val = db_val(
+            "SELECT value FROM openplatform_property_t "
+            "WHERE path = 'connector_platform' AND code = 'url_regex_pattern' AND status = 1"
+        )
+        assert val is not None, "url_regex_pattern should exist after session fixture init"
+        assert val.startswith("^"), f"Expected regex pattern, got {val}"
+
+    @pytest.mark.L4
+    def test_publish_connector_with_url_not_matching_regex_rejected(self, draft_connector):
+        """设置 url_regex_pattern = ^https://api.example.com/.* 后，URL 不匹配 → 422"""
+        cid, vid = draft_connector
+        # Override the session fixture's default with a restrictive pattern
+        _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
+        _set_connection_config(vid, {"url": "http://evil.com/api", "protocol": "HTTP"})
+        resp = _publish_connector(cid, vid)
+        if resp is not None:
+            assert resp.status_code == 422, (
+                f"Expected 422 for URL not matching regex, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
             )
-            assert val is not None, "Property should be stored"
-            assert "safe" in val, f"Expected 'safe' in regex, got {val}"
-        finally:
-            _clear_property("connector_platform", "url_regex_pattern")
+            body = resp.json()
+            assert "URL" in body.get("messageZh", "") or "url" in body.get("messageEn", "").lower(), (
+                f"Expected URL-related error, got: {body}"
+            )
+        # Restore default permissive regex for test isolation
+        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+
+    @pytest.mark.L4
+    def test_publish_connector_with_url_matching_regex_passes(self, draft_connector):
+        """URL 匹配正则 → 发布成功"""
+        cid, vid = draft_connector
+        _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
+        _set_connection_config(vid, {"url": "https://api.example.com/v1/users", "protocol": "HTTP"})
+        resp = _publish_connector(cid, vid)
+        if resp is not None:
+            assert resp.status_code in (200, 201), (
+                f"Expected 200 for matching URL, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
+        # Restore default permissive regex for test isolation
+        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
 
 
 # ================================================================
@@ -172,34 +204,28 @@ class TestConnectorConfigMaxBytes:
     """
 
     @pytest.mark.L4
-    def test_publish_with_oversized_config_rejected(self, draft_connector):
-        """设定 max_bytes=50，写入 >50 字节配置 → 上线后应为 422"""
+    def test_publish_with_config_under_platform_limit_succeeds(self, draft_connector):
+        """连接器配置在平台默认上限 1048576 字节内 → 发布成功"""
         cid, vid = draft_connector
-        oversized = {"protocol": "HTTP", "description": "x" * 100, "url": "https://example.com"}
-        _set_connection_config(vid, oversized)
-        _set_property(f"connector_platform_app_{TEST_APP_ID}", "connector_config_max_bytes", "50")
-        try:
-            resp = _publish_connector(cid, vid)
-            if resp is not None:
-                # 上线后: assert resp.status_code == 422
-                # 当前服务未启用此校验 → 允许发布
-                pass  # 不做硬断言，验证不崩溃
-        finally:
-            _clear_property(f"connector_platform_app_{TEST_APP_ID}", "connector_config_max_bytes")
+        # Restore permissive URL regex in case a prior test narrowed it
+        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+        _set_connection_config(vid, {"protocol": "HTTP", "url": "https://example.com"})
+        resp = _publish_connector(cid, vid)
+        if resp is not None:
+            assert resp.status_code in (200, 201), (
+                f"Expected 200 when config within limit, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
     @pytest.mark.L4
-    def test_config_max_bytes_property_stored(self):
-        """验证 connector_config_max_bytes 属性可正确存储读取"""
-        _set_property(f"connector_platform_app_{TEST_APP_ID}", "connector_config_max_bytes", "1024")
-        try:
-            val = db_val(
-                f"SELECT value FROM openplatform_property_t "
-                f"WHERE path = 'connector_platform_app_{TEST_APP_ID}' "
-                f"AND code = 'connector_config_max_bytes' AND status = 1"
-            )
-            assert val == "1024", f"Expected 1024, got {val}"
-        finally:
-            _clear_property(f"connector_platform_app_{TEST_APP_ID}", "connector_config_max_bytes")
+    def test_config_max_bytes_property_exists(self):
+        """验证 connector_config_max_bytes 已由 session fixture 写入 DB"""
+        val = db_val(
+            "SELECT value FROM openplatform_property_t "
+            "WHERE path = 'connector_platform' AND code = 'connector_config_max_bytes' AND status = 1"
+        )
+        assert val is not None, "connector_config_max_bytes should exist after session fixture init"
+        assert int(val) == 1048576, f"Expected 1048576, got {val}"
 
 
 # ================================================================
@@ -267,31 +293,56 @@ class TestExecutionRecordLimit:
 # ================================================================
 
 class TestNodeTimeoutLimit:
-    """#6 连接流节点超时上限
-    
-    当前服务硬编码上限 30000ms（30s）。Property 化 PR 上线后改为 5000ms（5s）。
+    """#6 连接流节点超时上限（默认 5 秒，由 Property node_max_timeout_seconds 控制）
+
+    FlowVersionService.publish() 从 PropertyService 读取 node_max_timeout_seconds，
+    转换为毫秒后传入 FlowPublishValidator.validateTimeoutAgainstAppMax()。
+    fixture 写入的默认值是 5 秒（5000ms）。
     """
 
     @pytest.mark.L4
-    def test_publish_with_flow_timeout_exceeds_current_limit_rejected(self, draft_flow):
-        """flowConfig.timeout = 99999ms > 当前上限 30000ms → 发布拒绝"""
+    def test_publish_with_flow_timeout_exceeds_5s_rejected(self, draft_flow):
+        """flowConfig.timeout = 10000ms > 5000ms → 422"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"timeout": 99999}  # >> 30000ms
+        config["flowConfig"] = {"timeout": 10000}  # >> 5000ms
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
             assert resp.status_code == 422, (
-                f"Expected 422 for timeout exceeding limit, got {resp.status_code}: "
+                f"Expected 422 for timeout exceeding 5s limit, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
+
+    @pytest.mark.L4
+    def test_publish_with_connector_node_timeout_exceeds_5s_rejected(self, draft_flow):
+        """connector 节点 data.timeoutMs = 10000ms > 5000ms → 422"""
+        fid, fvid = draft_flow
+        config = {
+            "trigger": {},
+            "nodes": [
+                {"id": "n1", "type": "connector", "data": {"timeoutMs": 10000}},
+                {"id": "exit1", "type": "exit"}
+            ],
+            "edges": [
+                {"id": "e1", "source": "trigger", "target": "n1"},
+                {"id": "e2", "source": "n1", "target": "exit1"}
+            ]
+        }
+        _set_orchestration(fvid, config)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code == 422, (
+                f"Expected 422 for connector node timeout > 5s, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
 
     @pytest.mark.L4
     def test_publish_with_flow_timeout_within_limit_passes(self, draft_flow):
-        """flowConfig.timeout = 5000ms ≤ 当前上限 → 发布成功"""
+        """flowConfig.timeout = 3000ms ≤ 5000ms → 发布成功"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"timeout": 5000}
+        config["flowConfig"] = {"timeout": 3000}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -312,43 +363,26 @@ class TestFlowConfigMaxBytes:
     """
 
     @pytest.mark.L4
-    def test_publish_with_oversized_orchestration_rejected(self, draft_flow):
-        """设定 flow_config_max_bytes=100，写入超大编排 → 上线后应为 422"""
+    def test_publish_with_orchestration_under_platform_limit_succeeds(self, draft_flow):
+        """编排配置在平台默认上限 1048576 字节内 → 发布成功"""
         fid, fvid = draft_flow
-        config = {
-            "trigger": {},
-            "nodes": [
-                {"id": "n1", "type": "script", "data": {"script": "1+1", "description": "x" * 200}},
-                {"id": "exit1", "type": "exit"}
-            ],
-            "edges": [
-                {"id": "e1", "source": "trigger", "target": "n1"},
-                {"id": "e2", "source": "n1", "target": "exit1"}
-            ]
-        }
-        _set_orchestration(fvid, config)
-        _set_property(f"connector_platform_app_{TEST_APP_ID}", "flow_config_max_bytes", "100")
-        try:
-            resp = _publish_flow(fid, fvid)
-            if resp is not None:
-                # 上线后: assert resp.status_code == 422
-                pass
-        finally:
-            _clear_property(f"connector_platform_app_{TEST_APP_ID}", "flow_config_max_bytes")
+        _set_orchestration(fvid, _BASE_ORCH)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code in (200, 201), (
+                f"Expected 200 when orchestration within limit, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
     @pytest.mark.L4
-    def test_flow_config_max_bytes_property_stored(self):
-        """验证 flow_config_max_bytes 属性可正确存储读取"""
-        _set_property(f"connector_platform_app_{TEST_APP_ID}", "flow_config_max_bytes", "2048")
-        try:
-            val = db_val(
-                f"SELECT value FROM openplatform_property_t "
-                f"WHERE path = 'connector_platform_app_{TEST_APP_ID}' "
-                f"AND code = 'flow_config_max_bytes' AND status = 1"
-            )
-            assert val == "2048", f"Expected 2048, got {val}"
-        finally:
-            _clear_property(f"connector_platform_app_{TEST_APP_ID}", "flow_config_max_bytes")
+    def test_flow_config_max_bytes_property_exists(self):
+        """验证 flow_config_max_bytes 已由 session fixture 写入 DB"""
+        val = db_val(
+            "SELECT value FROM openplatform_property_t "
+            "WHERE path = 'connector_platform' AND code = 'flow_config_max_bytes' AND status = 1"
+        )
+        assert val is not None, "flow_config_max_bytes should exist after session fixture init"
+        assert int(val) == 1048576, f"Expected 1048576, got {val}"
 
 
 # ================================================================
@@ -572,14 +606,15 @@ class TestScriptLengthLimit:
 
 class TestScriptTimeoutLimit:
     """#13 脚本节点超时范围 (上限 30s)
-    
-    当前服务版本的 validateOrchestrationConfig 未校验脚本 timeout 字段。
-    Property 化 PR 上线后将校验 data.timeout 不超过 30s。
+
+    FlowPublishValidator.validateOrchestrationConfig() 从 PropertyService 读取
+    script_max_timeout_seconds，校验每个 script 节点的 data.timeout 不超过该上限。
+    fixture 写入的默认值为 30 秒。
     """
 
     @pytest.mark.L4
-    def test_publish_with_script_timeout_exceeds_30s(self, draft_flow):
-        """脚本 data.timeout = 60 > 30s → 上线后应为 422"""
+    def test_publish_with_script_timeout_exceeds_30s_rejected(self, draft_flow):
+        """脚本 data.timeout = 60 > 30s → 422"""
         fid, fvid = draft_flow
         config = {
             "trigger": {},
@@ -595,10 +630,9 @@ class TestScriptTimeoutLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            # 上线后: assert resp.status_code == 422
-            # 当前服务不校验脚本 timeout → 可能返回 200
-            assert resp.status_code in (200, 201, 422), (
-                f"Unexpected response: {resp.status_code}"
+            assert resp.status_code == 422, (
+                f"Expected 422 for script timeout > 30s, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
             )
 
     @pytest.mark.L4
@@ -634,30 +668,13 @@ class TestLogCollectionToggle:
 
     @pytest.mark.L4
     def test_log_collection_property_default_enabled(self):
-        """验证 log_collection_enabled 默认值为 true（开启）"""
+        """验证 log_collection_enabled 由 session fixture 写入且值为 true"""
         val = db_val(
             "SELECT value FROM openplatform_property_t "
             "WHERE path = 'connector_platform' AND code = 'log_collection_enabled' AND status = 1"
         )
-        if val is not None:
-            assert val.lower() in ("true", "1"), f"Expected log collection enabled, got '{val}'"
-
-    @pytest.mark.L4
-    def test_log_collection_disabled_config(self):
-        """设置 log_collection_enabled=false 后属性可正确存储读取"""
-        _set_property(f"connector_platform_app_{TEST_APP_ID}", "log_collection_enabled", "false")
-        try:
-            val = db_val(
-                f"SELECT value FROM openplatform_property_t "
-                f"WHERE path = 'connector_platform_app_{TEST_APP_ID}' "
-                f"AND code = 'log_collection_enabled' AND status = 1"
-            )
-            assert val is not None, "Property should exist after insert"
-            assert val.lower() in ("false", "0"), (
-                f"Expected log collection disabled, got '{val}'"
-            )
-        finally:
-            _clear_property(f"connector_platform_app_{TEST_APP_ID}", "log_collection_enabled")
+        assert val is not None, "log_collection_enabled should exist after session fixture init"
+        assert val.lower() in ("true", "1"), f"Expected log collection enabled, got '{val}'"
 
 
 # ================================================================
@@ -665,11 +682,11 @@ class TestLogCollectionToggle:
 # ================================================================
 
 class TestAppWhitelist:
-    """#15 应用白名单 — 空白名单 = 拒绝所有（安全默认）
-    
-    注意：当前服务版本 AppWhitelistInterceptor 存在但未注册到拦截器链。
-    白名单校验逻辑已在 AppWhitelistService 中实现（空白名单拒绝所有），
-    但请求未被拦截。注册后以下 403 断言将生效。
+    """#15 应用白名单 — AppWhitelistInterceptor 已注册到 WebMvcConfig
+
+    AppWhitelistInterceptor 拦截 /service/open/v2/connectors/** 和
+    /service/open/v2/flows/**，校验 X-App-Id Header 对应的应用是否在白名单内。
+    白名单为空时拒绝所有应用（安全默认）；测试环境 fixture 已将 TEST_APP_ID 加入白名单。
     """
 
     @pytest.mark.L4
@@ -684,45 +701,36 @@ class TestAppWhitelist:
 
     @pytest.mark.L4
     def test_missing_app_id_header_rejected(self, connector):
-        """缺少 X-App-Id Header → 上线后应为 403（当前拦截器未注册，返回 500）"""
-        # client.py 的 api() 始终设置 X-App-Id header（默认 TEST_APP_ID）。
-        # 使用 app_id="" 发送空字符串，测试边界行为。
+        """缺少 X-App-Id Header → 403"""
         resp = api("GET", f"/connectors/{connector}", app_id="")
         if resp is not None:
-            # 上线后（拦截器注册）：assert resp.status_code == 403
-            # 当前：空白 appId 触发下游 500 或通过（取决于拦截器是否注册）
-            assert resp.status_code in (200, 403, 500), (
-                f"Unexpected status for missing app_id: {resp.status_code}"
+            assert resp.status_code == 403, (
+                f"Expected 403 for missing X-App-Id header, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
             )
 
     @pytest.mark.L4
     def test_empty_whitelist_denies_all_concept(self):
         """验证安全默认逻辑：白名单为空时 AppWhitelistService.isWhitelisted() 返回 false
-        
+
         本测试直接验证代码逻辑：当无 whitelist 配置时，parseWhitelist() 返回空集合，
         isWhitelistedByProperty() 返回 false（拒绝所有）。
         """
-        # 验证 spring property 为空时，降级属性也为空（或测试环境特定）
         whitelist_val = db_val(
             "SELECT value FROM openplatform_property_t "
             "WHERE path = 'connector_platform' AND code = 'app_whitelist' AND status = 1"
         )
-        # 无论白名单是否有值，安全默认逻辑存在：
-        # - 有值 → 仅名单内应用可通过
-        # - 无值 → 全部拒绝
-        # 此处验证测试环境不崩溃
         assert whitelist_val is None or len(whitelist_val.strip()) > 0, (
             "Whitelist should be None (no entry) or non-empty"
         )
 
     @pytest.mark.L4
     def test_non_whitelisted_app_rejected(self, connector):
-        """非白名单应用 → 上线后应为 403"""
+        """非白名单应用 → 403"""
         non_whitelisted_id = "999999999999999998"
         resp = api("GET", f"/connectors/{connector}", app_id=non_whitelisted_id)
         if resp is not None:
-            # 上线后: assert resp.status_code == 403
-            # 当前拦截器未注册 → 请求通过但查询不到对应 app 的连接器(返回 404)
-            assert resp.status_code in (200, 403), (
-                f"Expected 200/403, got {resp.status_code}"
+            assert resp.status_code == 403, (
+                f"Expected 403 for non-whitelisted app, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
             )
