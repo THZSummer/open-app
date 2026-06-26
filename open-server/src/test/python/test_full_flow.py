@@ -251,21 +251,21 @@ def step(desc, fn):
         os_fail(f"Step {no} 异常: {e}")
         return False
 
-def check_ok(resp, desc):
+def check_ok(resp, desc, url=""):
     if resp is None:
-        os_fail(f"{desc}: 连接失败")
+        os_fail(f"{desc}: 连接失败 {url}")
         return False
     if resp.status_code == 200:
         try:
             body = resp.json()
             if body.get("code") in ("200", 200):
-                print(f"  ✅ {desc}")
+                print(f"  ✅ {desc}  {url}")
                 return True
             else:
-                os_fail(f"{desc}: code={body.get('code')}, msg={body.get('messageZh', '')}")
+                os_fail(f"{desc}: code={body.get('code')}, msg={body.get('messageZh', '')}  {url}")
                 return False
         except Exception:
-            print(f"  ✅ {desc} (HTTP 200)")
+            print(f"  ✅ {desc} (HTTP 200)  {url}")
             return True
     else:
         try:
@@ -273,7 +273,7 @@ def check_ok(resp, desc):
             detail = f"HTTP {resp.status_code}, code={body.get('code')}, msg={body.get('messageZh', '')}"
         except Exception:
             detail = f"HTTP {resp.status_code}, body={resp.text[:200]}"
-        os_fail(f"{desc}: {detail}")
+        os_fail(f"{desc}: {detail}  {url}")
         return False
 
 def get_data(resp):
@@ -350,7 +350,7 @@ def test_full_flow():
                 "nameEn": f"full-flow-connector-{_RUN_ID}",
                 "connectorType": 1
             })
-            if not check_ok(r, "CREATE 连接器"): return False
+            if not check_ok(r, "CREATE 连接器", "POST /connectors"): return False
             d = get_data(r)
             if str(d.get("connectorId")) != str(cid):
                 cid = int(d.get("connectorId"))
@@ -363,10 +363,10 @@ def test_full_flow():
         def s2():
             nonlocal conn_vid
             r = os_api("POST", f"/connectors/{cid}/versions", {})
-            if not check_ok(r, "CREATE 草稿版本 (connector)"): return False
+            if not check_ok(r, "CREATE 草稿版本 (connector)", "POST /connectors/{cid}/versions"): return False
             # API 不返回 data，需要查列表获取 versionId
             r2 = os_api("GET", f"/connectors/{cid}/versions")
-            if not check_ok(r2, "GET 版本列表"): return False
+            if not check_ok(r2, "GET 版本列表", "GET /connectors/{cid}/versions"): return False
             vlist = get_data(r2)
             if isinstance(vlist, dict):
                 vlist = vlist.get("items", vlist.get("data", []))
@@ -456,13 +456,13 @@ def test_full_flow():
                     "timeoutMs": 5000
                 }
             })
-            return check_ok(r, "UPDATE 连接器配置 -> Mock")
+            return check_ok(r, "UPDATE 连接器配置 -> Mock", "PUT /connectors/{cid}/versions/{vid}")
 
         def s4():
             r = os_api("PUT", f"/connectors/{cid}/versions/{conn_vid}/publish")
-            if not check_ok(r, "PUBLISH 连接器版本"): return False
+            if not check_ok(r, "PUBLISH 连接器版本", "PUT /connectors/{cid}/versions/{vid}/publish"): return False
             r2 = os_api("GET", f"/connectors/{cid}/versions/{conn_vid}")
-            if not check_ok(r2, "确认已发布"): return False
+            if not check_ok(r2, "确认已发布", "GET /connectors/{cid}/versions/{vid}"): return False
             d = get_data(r2)
             if d.get("status") not in (2, "2"):
                 os_fail(f"status={d.get('status')}, 期望=2 (已发布)")
@@ -492,7 +492,7 @@ def test_full_flow():
                 "nameCn": f"搜索服务代理_{_RUN_ID}",
                 "nameEn": f"search-proxy-{_RUN_ID}"
             })
-            if not check_ok(r, "CREATE 连接流"): return False
+            if not check_ok(r, "CREATE 连接流", "POST /flows"): return False
             d = get_data(r)
             if str(d.get("flowId")) != str(fid):
                 fid = int(d.get("flowId"))
@@ -505,7 +505,7 @@ def test_full_flow():
         def s6():
             nonlocal fvid
             r = os_api("POST", f"/flows/{fid}/versions", {})
-            if not check_ok(r, "CREATE 草稿版本 (flow)"): return False
+            if not check_ok(r, "CREATE 草稿版本 (flow)", "POST /flows/{fid}/versions"): return False
             d = get_data(r)
             fvid = int(d.get("versionId", d.get("id", 0)))
             print(f"    flowVersionId={fvid}")
@@ -619,7 +619,7 @@ def test_full_flow():
                     ]
                 }
             })
-            return check_ok(r, "UPDATE 编排配置")
+            return check_ok(r, "UPDATE 编排配置", "PUT /flows/{fid}/versions/{fvid}")
 
         if not failed:
             if not step("CREATE 连接流", s5): failed = True
@@ -643,7 +643,7 @@ def test_full_flow():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
                 "triggerData": {"message": "hello-draft-debug"}
             })
-            return check_ok(r, "DEBUG 草稿版本")
+            return check_ok(r, "DEBUG 草稿版本", "POST /flows/{fid}/versions/{fvid}/debug")
 
         if not failed:
             if not step("DEBUG 草稿版本", s8): failed = True
@@ -661,9 +661,9 @@ def test_full_flow():
 
         def s9():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/publish")
-            if not check_ok(r, "PUBLISH (提交审批)"): return False
+            if not check_ok(r, "PUBLISH (提交审批)", "POST /flows/{fid}/versions/{fvid}/publish"): return False
             r2 = os_api("GET", f"/flows/{fid}/versions/{fvid}")
-            if not check_ok(r2, "确认待审批"): return False
+            if not check_ok(r2, "确认待审批", "GET /flows/{fid}/versions/{fvid}"): return False
             st = get_data(r2).get("status")
             if st not in (2, "2"):
                 os_fail(f"version status={st}, 期望=2 (待审批)")
@@ -675,7 +675,7 @@ def test_full_flow():
             nonlocal aid
             # 从 API 查审批记录
             r = os_api("GET", "/approvals/pending?businessType=connector_flow_version_publish")
-            if not check_ok(r, "查询审批记录"): return False
+            if not check_ok(r, "查询审批记录", "GET /approvals/pending?businessType=..."): return False
             items = get_data(r)
             if isinstance(items, dict):
                 items = items.get("items", items.get("data", []))
@@ -700,7 +700,7 @@ def test_full_flow():
         def s11():
             r = os_api("POST", f"/approvals/{aid}/approve",
                        {"comment": "场景级审批通过"}, user="tester")
-            if not check_ok(r, "第一级审批 (scene, tester)"):
+            if not check_ok(r, "第一级审批 (scene, tester)", "POST /approvals/{id}/approve (L1)"):
                 # check if already past this level
                 r2 = os_api("GET", f"/approvals/{aid}")
                 d = get_data(r2)
@@ -711,7 +711,7 @@ def test_full_flow():
         def s12():
             r = os_api("POST", f"/approvals/{aid}/approve",
                        {"comment": "全局级审批通过"}, user="tester")
-            if not check_ok(r, "第二级审批 (global, tester)"):
+            if not check_ok(r, "第二级审批 (global, tester)", "POST /approvals/{id}/approve (L2)"):
                 r2 = os_api("GET", f"/approvals/{aid}")
                 d = get_data(r2)
                 print(f"    当前状态: status={d.get('status')}")
@@ -721,7 +721,7 @@ def test_full_flow():
         def s13():
             time.sleep(0.5)
             r = os_api("GET", f"/flows/{fid}/versions/{fvid}")
-            if not check_ok(r, "确认版本已发布"): return False
+            if not check_ok(r, "确认版本已发布", "GET /flows/{fid}/versions/{fvid}"): return False
             st = get_data(r).get("status")
             if st not in (5, "5"):
                 time.sleep(2)
@@ -759,7 +759,7 @@ def test_full_flow():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
                 "triggerData": {"message": "hello-after-approval"}
             })
-            return check_ok(r, "DEBUG 已发布版本")
+            return check_ok(r, "DEBUG 已发布版本", "POST /flows/{fid}/versions/{fvid}/debug")
 
         if not failed:
             if not step("DEBUG 已发布版本", s14): failed = True
@@ -777,11 +777,11 @@ def test_full_flow():
 
         def s15():
             r = os_api("POST", f"/flows/{fid}/deploy", {"versionId": fvid})
-            return check_ok(r, "DEPLOY 部署")
+            return check_ok(r, "DEPLOY 部署", "POST /flows/{fid}/deploy")
 
         def s16():
             r = os_api("POST", f"/flows/{fid}/start")
-            if not check_ok(r, "START 启动"): return False
+            if not check_ok(r, "START 启动", "POST /flows/{fid}/start"): return False
             r2 = os_api("GET", f"/flows/{fid}")
             ls = get_data(r2).get("lifecycleStatus")
             if ls not in (2, "2"):
@@ -833,7 +833,7 @@ def test_full_flow():
 
         def s19():
             r = os_api("POST", f"/flows/{fid}/stop")
-            if not check_ok(r, "STOP 停止"): return False
+            if not check_ok(r, "STOP 停止", "POST /flows/{fid}/stop"): return False
             r2 = os_api("GET", f"/flows/{fid}")
             ls = get_data(r2).get("lifecycleStatus")
             if ls in (1, "1"):
