@@ -108,16 +108,21 @@ export const getSubscribeColumns = () => [
  *
  * @param {Object} callbacks - 回调函数对象
  * 包含以下字段：
- * - onShowDetail: 点击详情按钮的回调，参数为 executionId
+ * - onShowDetail: 点击详情按钮的回调，参数为 id
  *
  * @returns {Array} 表格列定义
  */
 export const getFlowRunColumns = (callbacks) => {
   const { onShowDetail } = callbacks;
   return [
-    { title: '执行ID', dataIndex: 'executionId', key: 'executionId' },
+    { title: '执行ID', dataIndex: 'id', key: 'id' },
     { title: '连接流名称', dataIndex: 'flowNameCn', key: 'flowNameCn' },
-    { title: '版本号', dataIndex: 'flowVersionNumber', key: 'flowVersionNumber' },
+    { 
+      title: '版本号', 
+      dataIndex: 'flowVersionNumber', 
+      key: 'flowVersionNumber',
+      render: (value) => value ? `v${value}` : '-',
+    },
     { title: '触发时间', dataIndex: 'triggerTime', key: 'triggerTime' },
     {
       title: '触发方式',
@@ -151,7 +156,7 @@ export const getFlowRunColumns = (callbacks) => {
         <button
           type="button"
           className="btn-link"
-          onClick={() => onShowDetail(record.executionId)}
+          onClick={() => onShowDetail(record.id)}
         >
           详情
         </button>

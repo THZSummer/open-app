@@ -147,6 +147,15 @@ export const VERSION_BUTTON_ORDER = [
 ];
 
 // ========================================
+// 应用级配置 lookup
+// ========================================
+
+/**
+ * 连接流应用级配置 lookup 查询键
+ */
+export const FLOW_APP_CONFIG_LOOKUP_KEY = 'CEC.Open/Flow.AppId.Config';
+
+// ========================================
 // 应用级配置默认上限
 // ========================================
 export const DEFAULT_APP_LIMITS = {
@@ -157,7 +166,7 @@ export const DEFAULT_APP_LIMITS = {
   /** 串行模式连接器数量上限 */
   serialConnectorMax: 3,
   /** 并行模式分支数量上限 */
-  parallelBranchMax: 8,
+  parallelBranchMax: 3,
   /** 缓存时间上限（秒） */
   cacheTimeMax: 1296000,
 };

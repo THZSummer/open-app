@@ -16,9 +16,7 @@
  *   - #9 查询连接器版本列表（status=2 已发布）
  *   - #10 查询连接器版本详情（取入参）
  *
- * 应用级配置（超时上限/限流上限/记录条数上限/日志开关）
- * 后端在 plan-api.md §3.9a 由 market-server Property 提供，
- * 暂未对接独立接口，沿用前端默认配置。
+ * 应用级配置接口只负责拉取通用 lookup 数据，页面侧负责业务解析。
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
@@ -27,6 +25,8 @@ import {
   buildVersionSummary,
   normalizeJsonConfig,
 } from '../../../utils/common';
+import { getCommonConfig } from '../../../../routes-redBlue/utils/common';
+import { FLOW_APP_CONFIG_LOOKUP_KEY } from './constants';
 import {
   buildHttpCarrierParams,
   buildJsonObjectFromParams,
@@ -36,23 +36,16 @@ import {
 import { stripScriptEditorTypes } from './utils';
 
 /**
- * 应用级配置默认值（与 plan-api.md §3.9a #54~#55 字段对齐）
- */
-const DEFAULT_APP_CONFIG = {
-  maxTimeoutMs: 30000,
-  maxQps: 1000,
-  maxConcurrency: 100,
-  maxRecords: 10000,
-  logSwitch: 1,
-};
-
-/**
- * 获取应用级配置（暂用前端默认值，后端接口就绪后切换）
+ * 获取应用级配置
  *
- * @returns {Promise<Object>} 应用级配置
+ * @returns {Promise<Object>} 应用级配置响应
  */
 export const fetchAppConfig = async () => {
-  return { code: '200', data: { ...DEFAULT_APP_CONFIG } };
+  try {
+    return await getCommonConfig(FLOW_APP_CONFIG_LOOKUP_KEY);
+  } catch {
+    return {};
+  }
 };
 
 /**
