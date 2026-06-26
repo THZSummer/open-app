@@ -142,6 +142,9 @@ public class OperateLogV2Aspect {
 
     /** Phase 4: 渲染描述 + 异步保存。 */
     private void writeAuditLog(AuditContext ctx, int status) {
+        if (!isValid(ctx.appId)) {
+            return;
+        }
         try {
             String userId = UserContextHolder.getUserId();
             Date now = new Date();
