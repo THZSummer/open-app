@@ -2,6 +2,8 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
+import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -17,6 +19,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -40,16 +43,19 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final WebClient webClient;
     private final ExpressionResolver expressionResolver;
     private final CredentialInjectorRegistry credentialInjectorRegistry;
+    private final OpConnectorVersionReadRepository connectorVersionReadRepository;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
     public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                  CredentialInjectorRegistry credentialInjectorRegistry) {
+                                   CredentialInjectorRegistry credentialInjectorRegistry,
+                                   OpConnectorVersionReadRepository connectorVersionReadRepository) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
         this.expressionResolver = new ExpressionResolver();
         this.credentialInjectorRegistry = credentialInjectorRegistry;
+        this.connectorVersionReadRepository = connectorVersionReadRepository;
     }
 
     @Override
@@ -83,8 +89,34 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             }
         }
 
-        // 降级: 无快照时走 legacy 模式 (从 data.url/method 直接读取)
-        log.info("No connectorVersionConfig snapshot, using legacy mode: nodeId={}", nodeId);
+        // 降级: 无快照时尝试从 connectorVersionId 查 DB 加载连接器版本
+        Object versionIdObj = data.get("connectorVersionId");
+        Long connectorVersionId = null;
+        if (versionIdObj instanceof Number) {
+            connectorVersionId = ((Number) versionIdObj).longValue();
+        } else if (versionIdObj instanceof String) {
+            try {
+                connectorVersionId = Long.valueOf((String) versionIdObj);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        if (connectorVersionId != null) {
+            final Long cvId = connectorVersionId;
+            log.info("No snapshot, loading connector version from DB: nodeId={}, connectorVersionId={}",
+                    nodeId, cvId);
+            return connectorVersionReadRepository.findById(cvId)
+                    .flatMap(entity -> executeWithSnapshot(context, data, nodeId,
+                            buildSnapshotFromEntity(entity)))
+                    .switchIfEmpty(Mono.defer(() -> {
+                        log.warn("ConnectorVersion not found in DB: id={}, falling back to legacy: nodeId={}",
+                                cvId, nodeId);
+                        return executeLegacy(context, data, nodeId);
+                    }));
+        }
+
+        // 最终降级: 无快照无 versionId 时走 legacy 模式 (从 data.url/method 直接读取)
+        log.info("No connectorVersionConfig snapshot or connectorVersionId, using legacy mode: nodeId={}", nodeId);
         return executeLegacy(context, data, nodeId);
     }
 
@@ -200,6 +232,70 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         long startTime = System.currentTimeMillis();
         return executeHttpCallReactive(nodeId, url, method, headers, queryParams,
                 requestBody, timeoutMs, context, input, startTime);
+    }
+
+    /**
+     * 从 DB 加载的 ConnectorVersionEntity 构建兼容 connectorVersionConfig 快照格式的 Map
+     * <p>
+     * DB connection_config JSON 格式: { protocolConfig, authConfig, inputContract, outputContract, ... }
+     * snapshot 格式: { protocolConfig, authConfigs (list), timeoutMs, ... }
+     * 此方法做字段适配, 复用 executeWithSnapshot 的解析逻辑
+     * </p>
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildSnapshotFromEntity(ConnectorVersionEntity entity) {
+        Map<String, Object> connConfig = entity.parseConnectionConfig(objectMapper);
+
+        Map<String, Object> snapshot = new HashMap<>(connConfig);
+
+        // 适配 authConfig (DB 单对象) → authConfigs (snapshot 数组格式)
+        if (!snapshot.containsKey("authConfigs")) {
+            Object authConfig = snapshot.get("authConfig");
+            if (authConfig instanceof Map) {
+                snapshot.put("authConfigs", List.of(authConfig));
+            } else {
+                Object legacyAuth = snapshot.get("authTypeSchema");
+                if (legacyAuth instanceof Map) {
+                    snapshot.put("authConfigs", List.of(legacyAuth));
+                }
+            }
+        }
+
+        // 适配 inputContract / inputSchema → input (设计名)
+        if (!snapshot.containsKey("input")) {
+            Object val = snapshot.get("inputContract");
+            if (val instanceof Map) {
+                snapshot.put("input", val);
+            } else {
+                Object legacy = snapshot.get("inputSchema");
+                if (legacy instanceof Map) {
+                    snapshot.put("input", legacy);
+                }
+            }
+        }
+
+        // 适配 outputContract / outputSchema → output (设计名)
+        if (!snapshot.containsKey("output")) {
+            Object val = snapshot.get("outputContract");
+            if (val instanceof Map) {
+                snapshot.put("output", val);
+            } else {
+                Object legacy = snapshot.get("outputSchema");
+                if (legacy instanceof Map) {
+                    snapshot.put("output", legacy);
+                }
+            }
+        }
+
+        // 适配 rateLimit → rateLimitConfig (设计名)
+        if (!snapshot.containsKey("rateLimitConfig")) {
+            Object val = snapshot.get("rateLimit");
+            if (val instanceof Map) {
+                snapshot.put("rateLimitConfig", val);
+            }
+        }
+
+        return snapshot;
     }
 
     /**

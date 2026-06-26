@@ -461,8 +461,14 @@ public class FlowInvokeService {
             }
         }
 
-        // Prefer exit node output for response body (ConcurrentHashMap has no guaranteed iteration order)
-        NodeContext exitNodeCtx = ctx.getNodeContexts().get("node_exit");
+        // Prefer exit node output for response body — search by type, not hardcoded ID
+        NodeContext exitNodeCtx = null;
+        for (NodeContext nc : ctx.getNodeContexts().values()) {
+            if ("exit".equals(nc.getNodeType())) {
+                exitNodeCtx = nc;
+                break;
+            }
+        }
         if (exitNodeCtx != null && exitNodeCtx.getOutput() != null
                 && !exitNodeCtx.getOutput().isEmpty()) {
             lastOutput = exitNodeCtx.getOutput();

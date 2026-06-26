@@ -69,12 +69,12 @@ public class ExitNodeExecutor implements NodeExecutor {
 
             // v5.5: 从 data.outputMapping 结构化配置构建响应
             // outputMapping 格式: {header: {...}, body: {...}}
-            Object outputMappingObj = data.get("outputMapping");
+            Object outputMappingObj = data.get("output");
             if (outputMappingObj instanceof Map) {
                 Map<String, Object> outputMapping = (Map<String, Object>) outputMappingObj;
 
                 // 存储原始 outputMapping 配置到 input 分区
-                input.put("outputMapping", new HashMap<>(outputMapping));
+                input.put("output", new HashMap<>(outputMapping));
 
                 // 处理 header 映射
                 Object headerMapping = outputMapping.get("header");
@@ -103,7 +103,7 @@ public class ExitNodeExecutor implements NodeExecutor {
 
             } else {
                 outputData = collectFallbackOutputs(context);
-                input.put("outputMapping", null);
+                input.put("output", null);
             }
 
             // 标记元数据
@@ -165,6 +165,7 @@ public class ExitNodeExecutor implements NodeExecutor {
         }
         Map<String, Object> segMap = (Map<String, Object>) segment;
 
+        // {type: "object", properties: {field: {type, value}}}
         Object props = segMap.get("properties");
         if (props instanceof Map) {
             Map<String, Object> result = new LinkedHashMap<>();
@@ -174,7 +175,15 @@ public class ExitNodeExecutor implements NodeExecutor {
             return result;
         }
 
-        return Collections.emptyMap();
+        // 扁平: {field: {type, value}}
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : segMap.entrySet()) {
+            Object value = extractMappedValue(entry.getValue());
+            if (value != null) {
+                result.put(entry.getKey(), value);
+            }
+        }
+        return result;
     }
     @SuppressWarnings("unchecked")
     private Object resolveValue(ExecutionContext context, Object value) {
