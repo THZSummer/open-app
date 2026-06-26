@@ -443,6 +443,43 @@ public class ConnectorPlatformPropertyService {
 
 **查询逻辑**：按应用区分的项先查 `(connector_platform_app_{appId}, code)`，未命中回退 `(connector_platform, code)`，仍未命中返回方法默认值。
 
+#### 2.6.1.1 硬编码兜底约束
+
+**核心原则**：数据库配置缺失时，系统**必须**使用代码内置默认值正常运行，**禁止**因 DB 无配置而拒绝服务。
+
+每个 Property 读取方法均遵循三级 fallback：
+
+```
+1. 查 DB: path = 'connector_platform_app_{appId}' AND code = '{key}'   → 命中则返回
+2. 查 DB: path = 'connector_platform' AND code = '{key}'                → 命中则返回
+3. 均未命中 → 返回代码硬编码默认值（与 §2.1~§2.3 中各配置项的默认值一致）
+```
+
+| 约束 | 说明 |
+|------|------|
+| **DB 不可用** | 连接超时/查不到表 → 跳过 DB 查询，直接使用硬编码默认值 + 记 WARN 日志 |
+| **单条配置缺失** | 某 code 在 DB 中不存在 → 返回方法签名中的 default 值，不影响其他配置 |
+| **value 格式异常** | DB 中 value 无法解析为预期类型（如 `"abc"` 而非 `"1000"`）→ 返回硬编码默认值 + 记 ERROR 日志 |
+| **禁止的行为** | 抛异常终止、返回 null 导致 NPE、要求运维必须补全配置才能启动 |
+
+**示例**：
+
+```java
+public int getNodeMaxTimeoutSeconds(String appId) {
+    try {
+        Integer value = queryProperty("connector_platform_app_" + appId, "node_max_timeout_seconds");
+        if (value != null) return value;
+        value = queryProperty("connector_platform", "node_max_timeout_seconds");
+        if (value != null) return value;
+    } catch (Exception e) {
+        log.warn("Failed to read Property for node_max_timeout_seconds, using default", e);
+    }
+    return 5; // 硬编码兜底默认值
+}
+```
+
+所有接入点代码需遵循此模式。
+
 #### 2.6.2 接入点汇总
 
 | # | 接入位置 | 方法 |
