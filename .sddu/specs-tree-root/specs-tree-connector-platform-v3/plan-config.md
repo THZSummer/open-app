@@ -17,6 +17,7 @@
   - [2.3 平台管控](#23-平台管控)
   - [2.4 实体级配置](#24-实体级配置)
   - [2.5 校验时机策略](#25-校验时机策略)
+  - [2.6 Property 化实施路线](#26-property-化实施路线)
 - [附录 A：平台配置能力](#附录-a平台配置能力)
   - [A.1 Spring 配置文件](#a1-spring-配置文件)
   - [A.2 业务对象 JSON 配置](#a2-业务对象-json-配置)
@@ -54,37 +55,296 @@
 
 ## 2 配置详情
 
-> 💡 以下各配置项的**存储**、**path**、**code** 与 §1 配置清单一一对应。支持按应用区分的项遵循二层回退模型：优先取 `path=connector_platform_app_{appId}`，未命中回退 `path=connector_platform`。
+当前全部 15 项配置均以 **Java 硬编码常量** 形式存在于 `ConnectorPlatformConstants.java`，尚未接入 Property 动态读取。以下逐项记录实现现状与 Property 化方案。
+
+---
 
 ### 2.1 连接器
 
-| # | 配置项 | 存储 | path | code | 默认值 | 按应用区分 | FR | 说明 |
-|---|--------|:---:|------|------|:---:|:---:|:--:|------|
-| 1 | 连接器版本数量上限 | Property | `connector_platform` | `connector_max_versions` | 1000 | ❌ | FR-005a | 每个连接器最多创建 1000 个版本，达上限禁止创建/复制草稿 (EC-019) |
-| 2 | 连接器URL正则规则 | Property | `connector_platform` | `url_regex_pattern` | — | ❌ | FR-015 | 平台级 URL 正则校验规则，连接器发布时按此规则校验用户填写的目标地址。正则满足"或"语法即可覆盖多域名场景。空白 = 不限制 |
-| 3 | 连接器配置JSON长度上限 | Property | `connector_platform` / `connector_platform_app_{appId}` | `connector_config_max_bytes` | — | ✅ | FR-047 | 限制连接器版本配置 JSON 的最大字节数，防止超大配置导致存储/解析异常 |
+#### 2.1.1 #1 连接器版本数量上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` |
+| **code** | `connector_max_versions` |
+| **默认值** | 1000 |
+| **按应用区分** | ❌ |
+| **实现状态** | ⚠️ 硬编码，值正确 |
+
+**现状**：`ConnectorPlatformConstants.MAX_VERSION_COUNT = 1000`。`ConnectorVersionService.createDraft()` / `copyToDraft()` 中校验，达上限返回 422。该常量同时被 #4 连接流版本共用。
+
+**方案**：在 `ConnectorPlatformPropertyService` 中新增 `getConnectorMaxVersions()`，从 `openplatform_property_t` 读取 `(connector_platform, connector_max_versions)`，未配置时 fallback 1000。`ConnectorVersionService` 注入该 Service 替换硬编码常量。
+
+---
+
+#### 2.1.2 #2 连接器URL正则规则
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` |
+| **code** | `url_regex_pattern` |
+| **默认值** | —（空白 = 不限制） |
+| **按应用区分** | ❌ |
+| **实现状态** | ❌ 未实现 |
+
+**现状**：无任何代码读取此 Property。当前连接器发布时校验的是连接器版本快照内的 **`urlWhitelist[]` 数组**（每条一个正则），非平台级统一规则。空白名单时放行所有 URL。
+
+**方案**：
+1. 在 `ConnectorPlatformPropertyService` 中新增 `getUrlRegexPattern()`，读取 `(connector_platform, url_regex_pattern)`
+2. `ConnectorVersionService.publish()` 中增加校验：若 Property 配置了正则，则用户填写的目标 URL 必须匹配此正则
+3. 此校验与现有的 `urlWhitelist[]` 校验并行——`urlWhitelist[]` 是用户自配的连接器级规则，`url_regex_pattern` 是平台级的兜底规则
+
+---
+
+#### 2.1.3 #3 连接器配置JSON长度上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `connector_config_max_bytes` |
+| **默认值** | —（需设定） |
+| **按应用区分** | ✅ |
+| **实现状态** | ❌ 未实现 |
+
+**现状**：`ConnectorVersionService.publish()` 仅校验 JSON 非空 + 语法合法，无字节数限制。
+
+**方案**：
+1. 在 `ConnectorPlatformPropertyService` 中新增 `getConnectorConfigMaxBytes(appId)`
+2. `ConnectorVersionService.publish()` 中增加校验：`connectionConfig.getBytes(UTF_8).length ≤ maxBytes`
+3. 超限提示具体字节数与上限，拒绝发布
+
+---
 
 ### 2.2 连接流
 
-| # | 配置项 | 存储 | path | code | 默认值 | 按应用区分 | FR | 说明 |
-|---|--------|:---:|------|------|:---:|:---:|:--:|------|
-| 4 | 连接流版本数量上限 | Property | `connector_platform` | `flow_max_versions` | 1000 | ❌ | FR-024a | 每个连接流最多创建 1000 个版本，达上限禁止创建/复制草稿 (EC-020) |
-| 5 | 运行记录条数上限 | Property | `connector_platform` / `connector_platform_app_{appId}` | `max_execution_records_per_flow` | 1000 | ✅ | FR-042 | 每连接流运行记录最大保留条数，超出时 FIFO 清理最早记录 (EC-029)。与 30 天定期清理策略互补 |
-| 6 | 连接器节点超时上限 | Property | `connector_platform` / `connector_platform_app_{appId}` | `node_max_timeout_seconds` | 5 | ✅ | FR-034 | 连接流中连接器节点的最大超时秒数。发布时校验节点值 ≤ 此上限 (EC-028)；运行时取 min(节点值, 此上限) |
-| 7 | 连接流配置JSON长度上限 | Property | `connector_platform` / `connector_platform_app_{appId}` | `flow_config_max_bytes` | — | ✅ | FR-047 | 限制连接流版本编排配置 JSON 的最大字节数 |
-| 8 | 连接流最大QPS | Property | `connector_platform` / `connector_platform_app_{appId}` | `flow_max_qps` | 1000 | ✅ | FR-035 | 连接流入站限流 QPS 上限。发布时校验 flowConfig QPS ≤ 此上限 (EC-025)；运行时取 min(流配置值, 此上限)，超限返回 429 |
-| 9 | 连接流最大并发 | Property | `connector_platform` / `connector_platform_app_{appId}` | `flow_max_concurrency` | 1000 | ✅ | FR-035 | 连接流入站限流并发数上限。发布时校验 flowConfig 并发 ≤ 此上限 (EC-025)；运行时取 min(流配置值, 此上限) |
-| 10 | 连接流缓存TTL上限 | Property | `connector_platform` / `connector_platform_app_{appId}` | `flow_max_cache_ttl_seconds` | 1296000 | ✅ | FR-037 | 连接流缓存 TTL 最大秒数（默认 15 天）。发布时校验 flowConfig TTL ≤ 此上限 (EC-026) |
-| 11 | 连接流并行节点分支上限 | Property | `connector_platform` / `connector_platform_app_{appId}` | `flow_max_parallel_branches` | 8 | ✅ | FR-038a | 并行处理节点最大分支数。发布时校验分支数 ≤ 此上限 (EC-027) |
-| 12 | 脚本源码长度上限 | Property | `connector_platform` / `connector_platform_app_{appId}` | `script_max_length_chars` | 10000 | ✅ | FR-040a | 单个脚本节点的源码最大字符数，防止用户注入超大脚本。发布时校验 |
-| 13 | 脚本超时范围 | Property | `connector_platform` / `connector_platform_app_{appId}` | `script_max_timeout_seconds` | 30 | ✅ | FR-040a | 脚本节点最大执行超时秒数。用户可在 1~此上限之间选择，默认 5s。发布时校验脚本 timeout ≤ 此上限 |
+#### 2.2.1 #4 连接流版本数量上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` |
+| **code** | `flow_max_versions` |
+| **默认值** | 1000 |
+| **按应用区分** | ❌ |
+| **实现状态** | ⚠️ 硬编码，值正确，但与 #1 共用一个常量 |
+
+**现状**：与 #1 共用 `MAX_VERSION_COUNT = 1000`。`FlowVersionService.createDraft()` / `copyFromVersion()` 中校验。
+
+**方案**：在 `ConnectorPlatformPropertyService` 中新增 `getFlowMaxVersions()`，独立读取 `(connector_platform, flow_max_versions)`，与 #1 解耦。`FlowVersionService` 注入该 Service。
+
+---
+
+#### 2.2.2 #5 运行记录条数上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `max_execution_records_per_flow` |
+| **默认值** | 1000 |
+| **按应用区分** | ✅ |
+| **实现状态** | ⚠️ 硬编码，清理逻辑已实现但未接入调用链 |
+
+**现状**：`ConnectorPlatformConstants.DEFAULT_EXECUTION_RECORD_LIMIT = 1000`。`ExecutionRecordService.checkAndCleanFifo()` 方法已实现（FIFO 删除最旧记录），但 `FlowInvokeService` 写入运行记录后**未调用**该清理方法。30 天定期清理依赖 `@Scheduled` 定时任务。
+
+**方案**：
+1. 在 `ConnectorPlatformPropertyService` 中新增 `getMaxExecutionRecordsPerFlow(appId)`
+2. `FlowInvokeService` 写入运行记录后调用 `checkAndCleanFifo(flowId, maxRecords)`
+3. `ExecutionCleanupJob` 的 30 天清理保持不变，两种策略互补
+
+---
+
+#### 2.2.3 #6 连接器节点超时上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `node_max_timeout_seconds` |
+| **默认值** | 5 |
+| **按应用区分** | ✅ |
+| **实现状态** | ❌ 值错误 + 未接入 Property |
+
+**现状**：运行时硬编码 30000ms（30s）上限——`DagScheduler.resolveNodeTimeout()` 和 `ReactiveSequentialExecutor.resolveNodeTimeout()` 均使用 `Math.min(nodeTimeoutMs, 30000)`。`FlowPublishValidator.validateTimeoutAgainstAppMax()` 接受外部参数 `appMaxTimeoutMs`，但调用方传的是默认值而非 Property 值。`DEFAULT_TIMEOUT_SECONDS = 5` 常量存在但未被用于上限校验。
+
+**方案**：
+1. 在 `ConnectorPlatformPropertyService` 中新增 `getNodeMaxTimeoutSeconds(appId)`，默认 5
+2. 发布时：`FlowPublishValidator` 读取 Property 值，校验节点超时 ≤ 此上限
+3. 运行时：`DagScheduler` / `ReactiveSequentialExecutor` 读取 Property 值，将硬编码 30000 替换为 `nodeMaxTimeoutSeconds * 1000`
+
+---
+
+#### 2.2.4 #7 连接流配置JSON长度上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `flow_config_max_bytes` |
+| **默认值** | —（需设定） |
+| **按应用区分** | ✅ |
+| **实现状态** | ❌ 未实现 |
+
+**现状**：`FlowPublishValidator` 仅校验 JSON 语法，无字节数限制。
+
+**方案**：同 #3，作用于 `FlowPublishValidator.validateOrchestrationConfig()`——校验 `orchestrationConfig.getBytes(UTF_8).length ≤ maxBytes`。
+
+---
+
+#### 2.2.5 #8 连接流最大QPS
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `flow_max_qps` |
+| **默认值** | 1000 |
+| **按应用区分** | ✅ |
+| **实现状态** | ❌ 值错误 + 未接入 Property |
+
+**现状**：运行时硬编码 `APP_MAX_QPS = 10000`（`RateLimitConfigReader.java`），比规格默认值 1000 大 10 倍。`FlowPublishValidator.validateRateLimitAgainstAppMax()` 接受外部参数但未传入 Property 值。
+
+**方案**：
+1. 在 `ConnectorPlatformPropertyService` 中新增 `getFlowMaxQps(appId)`，默认 1000
+2. 发布时传入 Property 值给 `validateRateLimitAgainstAppMax()`
+3. 运行时 `RateLimitConfigReader` 读取 Property 值替换硬编码 10000
+
+---
+
+#### 2.2.6 #9 连接流最大并发
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `flow_max_concurrency` |
+| **默认值** | 1000 |
+| **按应用区分** | ✅ |
+| **实现状态** | ⚠️ 硬编码，值正确 |
+
+**现状**：`RateLimitConfigReader.APP_MAX_CONCURRENCY = 1000`，值与规格一致。同样未接入 Property。
+
+**方案**：同 #8，新增 `getFlowMaxConcurrency(appId)`，发布时 + 运行时读取。
+
+---
+
+#### 2.2.7 #10 连接流缓存TTL上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `flow_max_cache_ttl_seconds` |
+| **默认值** | 1296000（15 天） |
+| **按应用区分** | ✅ |
+| **实现状态** | ⚠️ 硬编码，值正确，发布校验+运行时均已生效 |
+
+**现状**：`MAX_CACHE_TTL_SECONDS = 1296000`。`FlowPublishValidator.validateOrchestrationConfig()` 发布时校验；`FlowCacheManager.writeCache()` 运行时取 min。未接入 Property，不支持按应用区分。
+
+**方案**：新增 `getFlowMaxCacheTtlSeconds(appId)`，替换两处硬编码。
+
+---
+
+#### 2.2.8 #11 连接流并行节点分支上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `flow_max_parallel_branches` |
+| **默认值** | 8 |
+| **按应用区分** | ✅ |
+| **实现状态** | ⚠️ 硬编码，值正确，发布校验已生效 |
+
+**现状**：`MAX_PARALLEL_BRANCHES = 8`。`FlowPublishValidator.validateOrchestrationConfig()` 发布时校验。前端有独立默认值 3。
+
+**方案**：新增 `getFlowMaxParallelBranches(appId)`，替换硬编码。前端也需从后端接口读取此值。
+
+---
+
+#### 2.2.9 #12 脚本源码长度上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `script_max_length_chars` |
+| **默认值** | 10000 |
+| **按应用区分** | ✅ |
+| **实现状态** | ⚠️ 硬编码，值正确，发布校验已生效 |
+
+**现状**：`MAX_SCRIPT_SOURCE_LENGTH = 10000`。`FlowPublishValidator.validateOrchestrationConfig()` 发布时校验。
+
+**方案**：新增 `getScriptMaxLengthChars(appId)`，替换硬编码。
+
+---
+
+#### 2.2.10 #13 脚本超时范围
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `script_max_timeout_seconds` |
+| **默认值** | 30 |
+| **按应用区分** | ✅ |
+| **实现状态** | ❌ 发布校验缺失 |
+
+**现状**：`MAX_SCRIPT_TIMEOUT_SECONDS = 30` 常量存在，`DEFAULT_SCRIPT_TIMEOUT_SECONDS = 5` 也存在，但 `FlowPublishValidator` **未校验脚本节点 timeout**。仅校验了脚本语法和源码长度。
+
+**方案**：
+1. 新增 `getScriptMaxTimeoutSeconds(appId)`，默认 30
+2. `FlowPublishValidator` 增加脚本节点超时校验：每个脚本节点 `timeout ≤ maxTimeoutSeconds`
+3. 用户未填 timeout 时默认取 `DEFAULT_SCRIPT_TIMEOUT_SECONDS`
+
+---
 
 ### 2.3 平台管控
 
-| # | 配置项 | 存储 | path | code / classify_code | 默认值 | 按应用区分 | FR | 说明 |
-|---|--------|:---:|------|------|:---:|:---:|:--:|------|
-| 14 | 日志采集开关 | Property | `connector_platform` / `connector_platform_app_{appId}` | `log_collection_enabled` | true | ✅ | FR-044 | 控制是否写入节点级运行日志。开启 → 写入节点 I/O 快照；关闭 → 仅保留运行记录基础信息，历史日志保留不变 (EC-030~032) |
-| 15 | 连接器平台开放应用范围清单 | Lookup | `connector_platform` | `app_whitelist` | — | ❌ | FR-045 | 控制哪些应用可开通连接器平台能力。白名单内 → 全部功能可用；非白名单 → 拒绝访问。应用移出后已有数据保留，新操作拒绝 (EC-015) |
+#### 2.3.1 #14 日志采集开关
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Property |
+| **path** | `connector_platform` / `connector_platform_app_{appId}` |
+| **code** | `log_collection_enabled` |
+| **默认值** | true |
+| **按应用区分** | ✅ |
+| **实现状态** | ❌ 完全未实现 |
+
+**现状**：无任何代码。运行时始终写入节点日志，无条件判断。
+
+**方案**：
+1. 新增 `isLogCollectionEnabled(appId)`，默认 true
+2. `ExecutionStepService` 写入节点日志前判断：`false` 时跳过写入，运行记录仅保留基础信息
+3. 历史已写入日志保留不变，不受开关影响
+4. 开关切换记录操作日志
+
+---
+
+#### 2.3.2 #15 连接器平台开放应用范围清单
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Lookup |
+| **path** | `connector_platform` |
+| **classify_code** | `app_whitelist` |
+| **默认值** | —（空白 = 全部禁止） |
+| **按应用区分** | ❌ |
+| **实现状态** | ⚠️ MVP 实现，未接入 Lookup |
+
+**现状**：`AppWhitelistService` 从 Spring 属性 `${cp.app-whitelist:}` 读取逗号分隔的应用 ID 列表，空白 = 全部放行（与规格"空白=全部禁止"相反）。`AppWhitelistInterceptor` 拦截 `/service/open/v2/connectors/**` 和 `/service/open/v2/flows/**`，读取 `X-App-Id` 请求头校验。`LookupWhitelistMapper` 基础设施已就绪（联查 `classify_t` + `item_t`），但仅用于 `APP_UI_WHITELIST` 场景，未接入 `app_whitelist`。
+
+**方案**：
+1. `AppWhitelistService` 改为调用 `LookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist")` 获取白名单
+2. 空白名单时行为改为**全部拒绝**（对齐规格）
+3. 增加 Caffeine 本地缓存（TTL 5min），减少 DB 查询
+4. 保留 Spring 属性作为 fallback（market-server 不可用时降级）
+
+---
 
 ### 2.4 实体级配置
 
@@ -92,25 +352,25 @@
 
 #### 2.4.1 连接器版本配置快照
 
-| 配置字段 | 受限于 | 存储位置 |
-|---------|--------|---------|
-| 目标 URL | #2 连接器URL正则规则 | ConnectorVersion 配置快照 → url |
-| 配置 JSON 大小 | #3 连接器配置JSON长度上限 | ConnectorVersion 配置快照（整体） |
-| 版本数量 | #1 连接器版本数量上限 | 每连接器的版本总数 |
+| 配置字段 | 受限于 | 存储位置 | 校验位置 |
+|---------|--------|---------|---------|
+| 目标 URL | #2 连接器URL正则规则 | ConnectorVersion 配置快照 → url | `ConnectorVersionService.publish()` |
+| 配置 JSON 大小 | #3 连接器配置JSON长度上限 | ConnectorVersion 配置快照（整体） | `ConnectorVersionService.publish()` |
+| 版本数量 | #1 连接器版本数量上限 | 每连接器的版本总数 | `ConnectorVersionService.createDraft()` / `copyToDraft()` |
 
 #### 2.4.2 连接流版本配置快照
 
-| 配置字段 | 受限于 | 存储位置 |
-|---------|--------|---------|
-| 连接器节点超时值 | #6 连接器节点超时上限 | FlowVersion 编排快照 → 连接器节点.timeout |
-| 配置 JSON 大小 | #7 连接流配置JSON长度上限 | FlowVersion 编排快照（整体） |
-| flowConfig.QPS | #8 连接流最大QPS | FlowVersion 编排快照 → flowConfig.qps |
-| flowConfig.并发数 | #9 连接流最大并发 | FlowVersion 编排快照 → flowConfig.concurrency |
-| flowConfig.缓存TTL | #10 连接流缓存TTL上限 | FlowVersion 编排快照 → flowConfig.cacheTtl |
-| 并行节点分支数 | #11 连接流并行节点分支上限 | FlowVersion 编排快照 → 并行节点.branches |
-| 脚本源码长度 | #12 脚本源码长度上限 | FlowVersion 编排快照 → 脚本节点.script |
-| 脚本超时值 | #13 脚本超时范围 | FlowVersion 编排快照 → 脚本节点.timeout |
-| 版本数量 | #4 连接流版本数量上限 | 每连接流的版本总数 |
+| 配置字段 | 受限于 | 存储位置 | 校验位置 |
+|---------|--------|---------|---------|
+| 连接器节点超时值 | #6 连接器节点超时上限 | FlowVersion 编排快照 → 连接器节点.timeout | `FlowPublishValidator` / `DagScheduler` |
+| 配置 JSON 大小 | #7 连接流配置JSON长度上限 | FlowVersion 编排快照（整体） | `FlowPublishValidator` |
+| flowConfig.QPS | #8 连接流最大QPS | FlowVersion 编排快照 → flowConfig.qps | `FlowPublishValidator` / `RateLimitConfigReader` |
+| flowConfig.并发数 | #9 连接流最大并发 | FlowVersion 编排快照 → flowConfig.concurrency | `FlowPublishValidator` / `RateLimitConfigReader` |
+| flowConfig.缓存TTL | #10 连接流缓存TTL上限 | FlowVersion 编排快照 → flowConfig.cacheTtl | `FlowPublishValidator` / `FlowCacheManager` |
+| 并行节点分支数 | #11 连接流并行节点分支上限 | FlowVersion 编排快照 → 并行节点.branches | `FlowPublishValidator` |
+| 脚本源码长度 | #12 脚本源码长度上限 | FlowVersion 编排快照 → 脚本节点.script | `FlowPublishValidator` |
+| 脚本超时值 | #13 脚本超时范围 | FlowVersion 编排快照 → 脚本节点.timeout | `FlowPublishValidator` |
+| 版本数量 | #4 连接流版本数量上限 | 每连接流的版本总数 | `FlowVersionService.createDraft()` / `copyFromVersion()` |
 
 ### 2.5 校验时机策略
 
@@ -123,8 +383,8 @@ V3 采用**「保存时不校验，发布时统一卡口」**的策略：
 发布时 ───── 全部校验集中执行：
    ├── 业务必填字段（名称、描述等非空）
    ├── 配置非空（编排/入参出参 Schema）
-   ├── URL 正则校验 ───── 对比 #2 url_regex_pattern
-   ├── JSON 长度校验 ───── 对比 #3 / #7 config_max_bytes
+   ├── 平台 URL 正则校验 ─── #2 url_regex_pattern
+   ├── JSON 长度校验 ─────── #3 connector_config_max_bytes / #7 flow_config_max_bytes
    ├── JSON 语法合法性 (FR-047)
    ├── 脚本语法合法性 (FR-040a)
    ├── 节点超时 ≤ #6 node_max_timeout_seconds (EC-028)
@@ -145,7 +405,105 @@ V3 采用**「保存时不校验，发布时统一卡口」**的策略：
 | 一键复制连接流 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **发布时 (FR-007 / FR-026)** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-> 💡 "平台限制"列在校验时机策略中指代 #1~#15 中所有可配置上限项——发布时取实际值与此处 Property 值做对比，超出即拦截。
+> 💡 "平台限制"列指 #1~#15 中所有可配置上限项——发布时取 Property/Lookup 实际值与用户输入做对比，超出即拦截。
+
+---
+
+### 2.6 Property 化实施路线
+
+#### 2.6.1 新增 Service 层
+
+新建 `ConnectorPlatformPropertyService`（open-server 侧），统一管理 15 项配置的 Property 读取：
+
+```java
+@Service
+public class ConnectorPlatformPropertyService {
+
+    private static final String PATH = "connector_platform";
+
+    // 全局配置
+    public int getConnectorMaxVersions()           // code=connector_max_versions, default=1000
+    public String getUrlRegexPattern()             // code=url_regex_pattern, default=null
+    public int getFlowMaxVersions()                // code=flow_max_versions, default=1000
+
+    // 按应用区分配置
+    public int getConnectorConfigMaxBytes(String appId)     // code=connector_config_max_bytes
+    public int getMaxExecutionRecordsPerFlow(String appId)  // code=max_execution_records_per_flow, default=1000
+    public int getNodeMaxTimeoutSeconds(String appId)       // code=node_max_timeout_seconds, default=5
+    public int getFlowConfigMaxBytes(String appId)          // code=flow_config_max_bytes
+    public int getFlowMaxQps(String appId)                  // code=flow_max_qps, default=1000
+    public int getFlowMaxConcurrency(String appId)          // code=flow_max_concurrency, default=1000
+    public int getFlowMaxCacheTtlSeconds(String appId)      // code=flow_max_cache_ttl_seconds, default=1296000
+    public int getFlowMaxParallelBranches(String appId)     // code=flow_max_parallel_branches, default=8
+    public int getScriptMaxLengthChars(String appId)        // code=script_max_length_chars, default=10000
+    public int getScriptMaxTimeoutSeconds(String appId)     // code=script_max_timeout_seconds, default=30
+    public boolean isLogCollectionEnabled(String appId)     // code=log_collection_enabled, default=true
+}
+```
+
+**查询逻辑**：按应用区分的项先查 `(connector_platform_app_{appId}, code)`，未命中回退 `(connector_platform, code)`，仍未命中返回方法默认值。
+
+#### 2.6.2 接入点汇总
+
+| # | 接入位置 | 方法 |
+|---|---------|------|
+| 1 | `ConnectorVersionService.createDraft()` / `copyToDraft()` | `getConnectorMaxVersions()` |
+| 2 | `ConnectorVersionService.publish()` | `getUrlRegexPattern()` |
+| 3 | `ConnectorVersionService.publish()` | `getConnectorConfigMaxBytes(appId)` |
+| 4 | `FlowVersionService.createDraft()` / `copyFromVersion()` | `getFlowMaxVersions()` |
+| 5 | `FlowInvokeService` → 写入记录后 | `getMaxExecutionRecordsPerFlow(appId)` |
+| 6 | `FlowPublishValidator` + `DagScheduler` + `ReactiveSequentialExecutor` | `getNodeMaxTimeoutSeconds(appId)` |
+| 7 | `FlowPublishValidator.validateOrchestrationConfig()` | `getFlowConfigMaxBytes(appId)` |
+| 8 | `FlowPublishValidator` + `RateLimitConfigReader` | `getFlowMaxQps(appId)` |
+| 9 | `FlowPublishValidator` + `RateLimitConfigReader` | `getFlowMaxConcurrency(appId)` |
+| 10 | `FlowPublishValidator` + `FlowCacheManager` | `getFlowMaxCacheTtlSeconds(appId)` |
+| 11 | `FlowPublishValidator.validateOrchestrationConfig()` | `getFlowMaxParallelBranches(appId)` |
+| 12 | `FlowPublishValidator.validateOrchestrationConfig()` | `getScriptMaxLengthChars(appId)` |
+| 13 | `FlowPublishValidator.validateOrchestrationConfig()` | `getScriptMaxTimeoutSeconds(appId)` |
+| 14 | `ExecutionStepService` | `isLogCollectionEnabled(appId)` |
+| 15 | `AppWhitelistService.isWhitelisted()` | `LookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist")` |
+
+#### 2.6.3 数据库初始化
+
+各 Property 默认值需通过 market-web 写入 `openplatform_property_t`：
+
+```sql
+-- 全局默认值 (path=connector_platform)
+INSERT INTO openplatform_property_t (path, code, name, value, status) VALUES
+('connector_platform', 'connector_max_versions',           '连接器版本数量上限',      '1000', 1),
+('connector_platform', 'url_regex_pattern',                 '连接器URL正则规则',       NULL,   1),
+('connector_platform', 'connector_config_max_bytes',        '连接器配置JSON长度上限',   NULL,   1),
+('connector_platform', 'flow_max_versions',                 '连接流版本数量上限',      '1000', 1),
+('connector_platform', 'max_execution_records_per_flow',    '运行记录条数上限',        '1000', 1),
+('connector_platform', 'node_max_timeout_seconds',          '连接器节点超时上限',      '5',    1),
+('connector_platform', 'flow_config_max_bytes',             '连接流配置JSON长度上限',   NULL,   1),
+('connector_platform', 'flow_max_qps',                      '连接流最大QPS',           '1000', 1),
+('connector_platform', 'flow_max_concurrency',              '连接流最大并发',          '1000', 1),
+('connector_platform', 'flow_max_cache_ttl_seconds',        '连接流缓存TTL上限',       '1296000', 1),
+('connector_platform', 'flow_max_parallel_branches',        '连接流并行节点分支上限',   '8',    1),
+('connector_platform', 'script_max_length_chars',           '脚本源码长度上限',        '10000', 1),
+('connector_platform', 'script_max_timeout_seconds',        '脚本超时范围',            '30',   1),
+('connector_platform', 'log_collection_enabled',            '日志采集开关',            'true', 1);
+```
+
+Lookup 初始化：
+```sql
+-- path=connector_platform, classify_code=app_whitelist
+INSERT INTO openplatform_lookup_classify_t (classify_code, classify_name, path, status) VALUES
+('app_whitelist', '连接器平台开放应用范围', 'connector_platform', 1);
+```
+
+#### 2.6.4 实施优先级
+
+| 优先级 | 项目 | 原因 |
+|:---:|------|------|
+| 🔴 P0 | #6 超时上限值修复 (30s→5s) | 当前 30s 硬编码与规格严重不符，影响生产 |
+| 🔴 P0 | #8 QPS 上限值修复 (10000→1000) | 当前值 10 倍于规格，限流失效 |
+| 🟡 P1 | #5 运行记录 FIFO 清理接入调用链 | 方法已实现但未调用，数据会无限增长 |
+| 🟡 P1 | #2 URL 正则规则、#3/#7 JSON 长度、#13 脚本超时校验 | 发布时校验缺失，存在安全风险 |
+| 🟡 P1 | #15 应用白名单接入 Lookup | MVP 基于 Spring 属性，需迁移 |
+| 🟢 P2 | #14 日志采集开关 | 存储优化类功能 |
+| 🟢 P2 | #1~#13 全部接入 Property 动态读取 | 将硬编码常量替换为 Property，支持运行时调整 |
 
 ## 附录 A：平台配置能力
 
