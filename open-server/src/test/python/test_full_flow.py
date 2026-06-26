@@ -807,14 +807,14 @@ def test_full_flow():
             if r.status_code in (200, 201):
                 try:
                     b = r.json()
-                    print(f"  ✅ TRIGGER (HTTP {r.status_code})  {url}")
+                    print(f"  ✅ 连接流执行 (HTTP {r.status_code})  {url}")
                     print(f"    响应头: {json.dumps({k: v for k, v in r.headers.items() if k.startswith('X-')}, ensure_ascii=False)}")
                     print(f"    响应体: {json.dumps(b, ensure_ascii=False, indent=2)}")
                 except Exception:
-                    print(f"  ✅ TRIGGER (HTTP {r.status_code})  {url}")
+                    print(f"  ✅ 连接流执行 (HTTP {r.status_code})  {url}")
                     print(f"    响应: {r.text[:500]}")
                 return True
-            os_fail(f"TRIGGER: HTTP {r.status_code}, {r.text[:200]}  {url}")
+            os_fail(f"连接流执行: HTTP {r.status_code}, {r.text[:200]}  {url}")
             return False
 
         def s18():
@@ -845,7 +845,7 @@ def test_full_flow():
         if not failed:
             if not step("START 启动", s16): failed = True
         if not failed:
-            if not step("HTTP TRIGGER 调用", s17): failed = True
+            if not step("连接流调用/执行", s17): failed = True
         if not failed:
             if not step("查询运行记录(DB只读)", s18): failed = True
         if not failed:
