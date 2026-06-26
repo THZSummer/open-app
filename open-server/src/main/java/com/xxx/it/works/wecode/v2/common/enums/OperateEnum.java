@@ -61,7 +61,7 @@ public enum OperateEnum {
             null, null),
 
     // ===== 应用管理 =====
-    CREATE_APP("CREATE", "APP", "应用基础信息",
+    CREATE_APP("ADD", "APP", "应用基础信息",
             "新增应用", "Create application",
             "新增应用:${appNameCn}", "Create application:${appNameEn}"),
     UPDATE_APP("UPDATE", "APP", "应用基础信息",
@@ -85,7 +85,7 @@ public enum OperateEnum {
     BIND_APP_EAMAP("UPDATE", "APP", "应用基础信息",
             "绑定EAMAP升级业务应用", "Bind EAMAP to Application",
             "绑定应用服务${eamapAppCode}", "Bind application service ${eamapAppCode}"),
-    ADD_APP_MEMBER("CREATE", "APP_MEMBER", "成员管理",
+    ADD_APP_MEMBER("ADD", "APP_MEMBER", "成员管理",
             "添加应用成员", "Add Application Member",
             "新增${memberTypeDesc}:${accountId}", "Add ${memberTypeDesc}:${accountId}"),
     DELETE_APP_MEMBER("DELETE", "APP_MEMBER", "成员管理",
@@ -94,10 +94,10 @@ public enum OperateEnum {
     TRANSFER_APP_OWNER("UPDATE", "APP_MEMBER", "成员管理",
             "转移应用Owner", "Transfer Application Owner",
             "转移Owner给${accountId}", "Transfer Owner to ${accountId}"),
-    ADD_APP_ABILITY("CREATE", "APP_ABILITY", "应用能力",
+    ADD_APP_ABILITY("ADD", "APP_ABILITY", "应用能力",
             "添加应用能力", "Add Application Ability",
             "新增${abilityTypeDesc}", "Add ${abilityTypeDesc}"),
-    CREATE_APP_VERSION("CREATE", "APP_VERSION", "版本",
+    CREATE_APP_VERSION("ADD", "APP_VERSION", "版本",
             "创建应用版本", "Create Application Version",
             "新增版本${versionCode}", "Create version ${versionCode}"),
     UPDATE_APP_VERSION("UPDATE", "APP_VERSION", "版本",
@@ -114,7 +114,7 @@ public enum OperateEnum {
             "删除版本${versionCode}", "Delete version ${versionCode}"),
 
     // ===== 连接器管理 =====
-    CREATE_CONNECTOR("CREATE", "CONNECTOR", "连接器",
+    CREATE_CONNECTOR("ADD", "CONNECTOR", "连接器",
             "创建连接器", "Create Connector",
             "创建连接器:${nameCn}", "Create Connector:${nameEn}"),
     UPDATE_CONNECTOR("UPDATE", "CONNECTOR", "连接器",
@@ -125,7 +125,7 @@ public enum OperateEnum {
             "删除连接器:${nameCn}", "Delete Connector:${nameEn}"),
 
     // ===== 连接流管理 =====
-    CREATE_FLOW("CREATE", "FLOW", "连接流",
+    CREATE_FLOW("ADD", "FLOW", "连接流",
             "创建连接流", "Create Flow",
             "创建连接流:${nameCn}", "Create Flow:${nameEn}"),
     UPDATE_FLOW("UPDATE", "FLOW", "连接流",
@@ -210,10 +210,21 @@ public enum OperateEnum {
 
     /**
      * diff 字段配置（仅当操作模板含 ${diffFields} 时需要配置）
-     *
-     * @return diff 配置，null 表示无 diff 需求
      */
     public DiffConfig diffConfig() {
         return null;
+    }
+
+    /**
+     * 返回值中实体 ID 的字段名，用于审计日志从返回值提取 resourceId。
+     * 新增模块只需在 switch 加 case。
+     */
+    public String entityIdField() {
+        return switch (operateObject) {
+            case "CONNECTOR" -> "connectorId";
+            case "FLOW" -> "flowId";
+            case "APP_VERSION" -> "versionId";
+            default -> "id";
+        };
     }
 }

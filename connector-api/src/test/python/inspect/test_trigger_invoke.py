@@ -161,11 +161,11 @@ CONNECTION_CONFIG = {
         "method": "GET",
         "headers": {}
     },
-    "authConfig": {
+    "authConfigs": [{
         "type": "NONE",
         "fields": []
-    },
-    "inputContract": {
+    }],
+    "input": {
         "protocol": "HTTP",
         "header": {
             "type": "object",
@@ -187,7 +187,7 @@ CONNECTION_CONFIG = {
             "required": []
         }
     },
-    "outputContract": {
+    "output": {
         "protocol": "HTTP",
         "body": {
             "type": "object",
@@ -237,12 +237,13 @@ TRIGGER_NODE = {
     "data": {
         "labelCn": "接收搜索请求",
         "labelEn": "Receive Search Request",
-        "type": "http",
-        "authConfig": {
+        "type": "trigger",
+        "triggerType": "http",
+        "authConfigs": [{
             "type": "SYSTOKEN",
             "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
-        },
-        "inputContract": {
+        }],
+        "input": {
             "protocol": "HTTP",
             "header": {
                 "type": "object",
@@ -329,7 +330,7 @@ EXIT_NODE = {
     "data": {
         "labelCn": "返回搜索结果",
         "labelEn": "Return Search Result",
-        "outputMapping": {
+        "output": {
             "header": {
                 "type": "object",
                 "properties": {
@@ -377,13 +378,13 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
         if "trigger_auth_type" in overrides:
             trigger["data"]["authConfig"]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
-            trigger["data"]["inputContract"]["body"]["required"] = overrides["trigger_input_required"]
+            trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
         if "trigger_rate_limit_qps" in overrides:
             trigger["data"]["rateLimitConfig"]["maxQps"] = overrides["trigger_rate_limit_qps"]
         if "connector_input_mapping" in overrides:
             connector["data"]["inputMapping"] = overrides["connector_input_mapping"]
         if "exit_output_mapping" in overrides:
-            exit_node["data"]["outputMapping"] = overrides["exit_output_mapping"]
+            exit_node["data"]["output"] = overrides["exit_output_mapping"]
 
     return {
         "nodes": [trigger, connector, exit_node],
@@ -405,12 +406,13 @@ TRIGGER_NODE_NO_CONNECTOR = {
     "data": {
         "labelCn": "接收请求",
         "labelEn": "Receive Request",
-        "type": "http",
-        "authConfig": {
+        "type": "trigger",
+        "triggerType": "http",
+        "authConfigs": [{
             "type": "SYSTOKEN",
             "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
-        },
-        "inputContract": {
+        }],
+        "input": {
             "protocol": "HTTP",
             "header": {
                 "type": "object",
@@ -442,7 +444,7 @@ EXIT_NODE_NO_CONNECTOR = {
     "data": {
         "labelCn": "返回结果",
         "labelEn": "Return Result",
-        "outputMapping": {
+        "output": {
             "header": {"type": "object", "properties": {}},
             "body": {
                 "type": "object",
@@ -463,11 +465,11 @@ def build_orchestration_no_connector(overrides=None):
         if "trigger_auth_type" in overrides:
             trigger["data"]["authConfig"]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
-            trigger["data"]["inputContract"]["body"]["required"] = overrides["trigger_input_required"]
+            trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
         if "trigger_rate_limit_qps" in overrides:
             trigger["data"]["rateLimitConfig"]["maxQps"] = overrides["trigger_rate_limit_qps"]
         if "exit_output_mapping" in overrides:
-            exit_node["data"]["outputMapping"] = overrides["exit_output_mapping"]
+            exit_node["data"]["output"] = overrides["exit_output_mapping"]
 
     return {
         "nodes": [trigger, exit_node],
@@ -488,8 +490,8 @@ FAIL_CONNECTION_CONFIG = {
         "method": "POST",
         "headers": {"Content-Type": "application/json"}
     },
-    "authConfig": {"type": "NONE", "fields": []},
-    "inputContract": {
+    "authConfigs": [{"type": "NONE", "fields": []}],
+    "input": {
         "protocol": "HTTP",
         "header": {"type": "object", "properties": {}, "required": []},
         "query":  {"type": "object", "properties": {}, "required": []},
@@ -499,7 +501,7 @@ FAIL_CONNECTION_CONFIG = {
             "required": ["user"]
         }
     },
-    "outputContract": {
+    "output": {
         "protocol": "HTTP",
         "body": {"type": "object", "properties": {}}
     },

@@ -7,7 +7,7 @@
   IT-SYS-003: 凭证不在白名单中 → 拒绝触发
   IT-SYS-004: 白名单配置在版本快照中生效
 
-验证 connector-api 能正确解析 trigger node authConfig.whitelist，
+验证 connector-api 能正确解析 trigger node authConfig.sysAccountWhitelist，
 在触发前校验 X-Sys-Token 头是否命中白名单，
 命中则放行，未命中则返回 401 或 403。
 
@@ -35,7 +35,7 @@ def build_orch(whitelist=None):
         ]
     }
     if whitelist is not None:
-        auth_cfg["whitelist"] = whitelist
+        auth_cfg["sysAccountWhitelist"] = whitelist
 
     return {
         "nodes": [
@@ -46,9 +46,10 @@ def build_orch(whitelist=None):
                 "data": {
                     "labelCn": "接收请求",
                     "labelEn": "Receive Request",
-                    "type": "http",
-                    "authConfig": auth_cfg,
-                    "inputContract": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [auth_cfg],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {},
                                    "required": []},
@@ -72,7 +73,7 @@ def build_orch(whitelist=None):
                 "data": {
                     "labelCn": "返回结果",
                     "labelEn": "Return Result",
-                    "outputMapping": {
+                    "output": {
                         "header": {"type": "object", "properties": {}},
                         "body": {
                             "type": "object",

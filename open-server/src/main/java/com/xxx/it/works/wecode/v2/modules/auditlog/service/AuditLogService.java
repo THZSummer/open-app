@@ -10,8 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Date;
-
 /**
  * 审计日志服务
  *
@@ -45,42 +43,16 @@ public class AuditLogService {
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void saveAsync(OperateLog operateLog) {
         try {
-            // 填充主键 ID
             if (operateLog.getId() == null) {
                 operateLog.setId(idGenerator.nextId());
             }
-
-            // 填充时间戳
-            Date now = new Date();
-            if (operateLog.getCreateTime() == null) {
-                operateLog.setCreateTime(now);
-            }
-            if (operateLog.getLastUpdateTime() == null) {
-                operateLog.setLastUpdateTime(now);
-            }
-
-            // 填充操作人（如果未设置则使用 operateUser）
-            if (operateLog.getCreateBy() == null || operateLog.getCreateBy().isEmpty()) {
-                operateLog.setCreateBy(operateLog.getOperateUser());
-            }
-            if (operateLog.getLastUpdateBy() == null || operateLog.getLastUpdateBy().isEmpty()) {
-                operateLog.setLastUpdateBy(operateLog.getOperateUser());
-            }
-
-            // 插入数据库
             operateLogMapper.insert(operateLog);
-
             log.debug("[AUDIT] Saved: id={}, type={}, object={}, user={}",
-                    operateLog.getId(),
-                    operateLog.getOperateType(),
-                    operateLog.getOperateObject(),
-                    operateLog.getOperateUser());
-
+                    operateLog.getId(), operateLog.getOperateType(),
+                    operateLog.getOperateObject(), operateLog.getOperateUser());
         } catch (Exception e) {
-            // 审计日志写入失败不应影响主业务，仅记录错误日志
             log.error("[AUDIT] Failed to save audit log: type={}, object={}, user={}",
-                    operateLog.getOperateType(),
-                    operateLog.getOperateObject(),
+                    operateLog.getOperateType(), operateLog.getOperateObject(),
                     operateLog.getOperateUser(), e);
         }
     }
