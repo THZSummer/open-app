@@ -299,7 +299,7 @@ def test_full_flow():
         print("❌ open-server 未运行! 请先执行:")
         print("   cd /home/usb/wks/open-app && bash open-server/scripts/restart.sh")
         print("   cd /home/usb/wks/open-app && bash connector-api/scripts/restart.sh")
-        return 1
+        return
     print("  ✅ open-server 就绪")
 
     try:
@@ -310,7 +310,7 @@ def test_full_flow():
             print(f"  ⚠️ connector-api 状态异常: HTTP {r2.status_code}")
     except Exception:
         print("  ❌ connector-api 未运行!")
-        return 1
+        return
 
     tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' LIMIT 1")
     if tpl:
@@ -331,7 +331,7 @@ def test_full_flow():
     mock = MockServer(port=18980)
     if not mock.start():
         print("❌ Mock Server 启动失败")
-        return 1
+        return
 
     cid = conn_vid = fid = fvid = aid = None
     failed = False
@@ -877,7 +877,8 @@ def test_full_flow():
         else:
             print("  🎉 全流程测试全部通过!")
         print("=" * 60)
-        return 1 if failed else 0
+        assert not failed, "全流程测试存在失败步骤"
+        return
 
     finally:
         # Cleanup
@@ -901,4 +902,4 @@ def test_full_flow():
 
 
 if __name__ == "__main__":
-    sys.exit(test_full_flow())
+    test_full_flow()
