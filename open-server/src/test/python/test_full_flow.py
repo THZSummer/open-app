@@ -312,7 +312,10 @@ def test_full_flow():
         print("  ❌ connector-api 未运行!")
         return
 
-    tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' LIMIT 1")
+    # V3: 优先查找应用级模板 (code + appId)，回退到全局模板
+    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id = {TEST_APP_ID} LIMIT 1")
+    if not tpl:
+        tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id IS NULL LIMIT 1")
     if tpl:
         print(f"  ✅ 审批流模板存在 (id={tpl})")
     else:
@@ -321,6 +324,7 @@ def test_full_flow():
             "code": "connector_flow_version_publish",
             "nameCn": "连接器流版本发布审批",
             "nameEn": "connector_flow_version_publish",
+            "appId": str(TEST_APP_ID),
             "nodes": [{"userId": "tester", "userName": "Test Approver"}]
         })
         if r and r.status_code in (200, 201):
