@@ -805,17 +805,14 @@ def test_full_flow():
                 os_fail("connector-api 连接失败")
                 return False
             if r.status_code in (200, 201):
-                print(f"  ✅ TRIGGER (HTTP {r.status_code})  {url}")
                 try:
                     b = r.json()
-                    print(f"    响应body: {json.dumps(b, ensure_ascii=False)[:500]}")
-                    # also print response headers
-                    for h in ["X-Flow-Id", "X-Execution-Id", "X-Status", "X-Duration-Ms", "X-Echo-Count"]:
-                        v = r.headers.get(h)
-                        if v:
-                            print(f"    {h}: {v}")
+                    print(f"  ✅ TRIGGER (HTTP {r.status_code})  {url}")
+                    print(f"    响应头: {json.dumps({k: v for k, v in r.headers.items() if k.startswith('X-')}, ensure_ascii=False)}")
+                    print(f"    响应体: {json.dumps(b, ensure_ascii=False, indent=2)}")
                 except Exception:
-                    print(f"    响应: {r.text[:200]}")
+                    print(f"  ✅ TRIGGER (HTTP {r.status_code})  {url}")
+                    print(f"    响应: {r.text[:500]}")
                 return True
             os_fail(f"TRIGGER: HTTP {r.status_code}, {r.text[:200]}  {url}")
             return False
