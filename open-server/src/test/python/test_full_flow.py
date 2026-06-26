@@ -901,4 +901,5 @@ def test_full_flow():
 
 
 if __name__ == "__main__":
-    sys.exit(test_full_flow())
+    result = test_full_flow()
+    sys.exit(1 if result else 0)
