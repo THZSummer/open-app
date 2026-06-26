@@ -41,8 +41,3 @@ class TestExecutionRecordList:
         assert resp.status_code == 200  # 不存在的 flowId 返回空列表，不是 404
 
 
-class TestExecutionRecordDetail:
-    @pytest.mark.L4
-    def test_detail_not_found(self):
-        resp = api("GET", "/executions/999999999999999999")
-        assert resp is not None

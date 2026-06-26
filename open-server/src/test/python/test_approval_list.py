@@ -26,19 +26,6 @@ class TestApprovalRecordList:
         assert resp.json()["code"] == "200"
 
 
-class TestApprovalRecordDetail:
-    @pytest.mark.L1
-    def test_detail_ok(self):
-        ar_id = db_val("SELECT id FROM openplatform_v2_approval_record_t WHERE business_type = 'connector_flow_version_publish' ORDER BY create_time DESC LIMIT 1")
-        if ar_id:
-            resp = api("GET", f"/approvals/{ar_id}")
-            assert resp.status_code == 200
-            assert resp.json()["code"] == "200"
-
-    @pytest.mark.L4
-    def test_detail_not_found(self):
-        resp = api("GET", "/approvals/999999999999999999")
-        assert resp is not None
 
 
 class TestApprovalBatch:

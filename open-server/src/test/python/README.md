@@ -59,13 +59,19 @@
 | `test_flow_version_cancel.py` | #37 | POST /flows/{id}/versions/{vid}/cancel |
 | `test_flow_version_urge.py` | #38 | POST /flows/{id}/versions/{vid}/urge |
 | `test_flow_version_debug.py` | #51 | POST /flows/{id}/versions/{vid}/debug |
-| **运行记录** | | |
-| `test_execution_records.py` | #49~#50 | GET /executions + 详情 |
-| **审批记录** | | |
-| `test_approval_records.py` | #39~#44 | 审批记录列表/详情/批量操作 |
+| **审批** | | |
+| `test_approval_approve.py` | #41 | POST /approvals/{id}/approve |
+| `test_approval_reject.py` | #42 | POST /approvals/{id}/reject |
+| `test_approval_cancel.py` | #37,#43,#44 | POST .../cancel + /approvals/{id}/cancel |
+| `test_approval_list.py` | #39 | GET /approvals/pending |
+| `test_approval_detail.py` | #40 | GET /approvals/{id} |
 | **审批流模板** | | |
-| `test_approval_flow_template.py` | #45~#48 | 审批流模板 CRUD |
-| **数据处理** | | |
+| `test_approval_flow_list.py` | #45 | GET /approval-flows |
+| `test_approval_flow_detail.py` | #46 | GET /approval-flows/{id} |
+| `test_approval_flow_create.py` | #47 | POST /approval-flows |
+| **运行记录** | | |
+| `test_execution_list.py` | #49 | GET /executions |
+| `test_execution_detail.py` | #50 | GET /executions/{id} |
 | **端到端** | | |
 | `test_flow_deploy_invoke.py` | – | 部署→启动→调用 全链路 |
 | `test_flow_stop_restart.py` | – | 停止→重启 全链路 |
