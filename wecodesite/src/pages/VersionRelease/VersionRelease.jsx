@@ -199,7 +199,10 @@ function VersionRelease() {
     if (action === 'publish') {
       modalInfo = {
         title: '确认发布',
-        content: `确认发布版本 ${versionCode}？发布后将提交审批。`,
+        content: {
+          confirmText: `确认发布版本 ${versionCode}？`,
+          impactText: '发布后将提交审批。',
+        },
         confirmButtonText: '确认发布',
         loadingText: '发布中...',
         dangerColor: '#1677ff',
@@ -217,7 +220,10 @@ function VersionRelease() {
     } else if (action === 'withdraw') {
       modalInfo = {
         title: '确认撤回',
-        content: `确认撤回版本 ${versionCode} 的发布申请？`,
+        content: {
+          confirmText: `确认撤回版本 ${versionCode} 的发布申请？`,
+          impactText: '',
+        },
         confirmButtonText: '确认撤回',
         loadingText: '撤回中...',
         dangerColor: '#faad14',
@@ -235,7 +241,10 @@ function VersionRelease() {
     } else if (action === 'delete') {
       modalInfo = {
         title: '确认删除',
-        content: `确认删除版本 ${versionCode}？该操作不可撤销。`,
+        content: {
+          confirmText: `确认删除版本 ${versionCode}？`,
+          impactText: '该操作不可撤销。',
+        },
         confirmButtonText: '确认删除',
         loadingText: '删除中...',
         dangerColor: '#ff4d4f',
