@@ -217,7 +217,20 @@ pytest -m ""                     # 空字符串覆盖 -m L0 默认
 KEEP_TEST_DATA=1 pytest -m "L0 or L1 or L2"
 ```
 
-### 目录
+#### 测试报告
+
+```bash
+# 需要先安装插件
+pip install pytest-html
+
+# 生成报告（全量）
+pytest -m "" --html=report.html
+
+# 指定层级
+pytest -m "L0 or L1" --html=report-l1.html
+```
+
+## 目录
 
 ```
 python/
