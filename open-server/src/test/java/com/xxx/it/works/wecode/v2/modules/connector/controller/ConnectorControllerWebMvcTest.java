@@ -453,7 +453,7 @@ class OpConnectorControllerWebMvcTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
-                                        "connectionConfig": "{\\"protocol\\":\\"HTTP\\",\\"url\\":\\"https://api.example.com\\"}"
+                                        "connectionConfig": "{\\"protocolConfig\\":{\\"url\\":\\"https://api.example.com\\"}}"
                                     }
                                     """)
                                      .header("X-App-Id", "1"))

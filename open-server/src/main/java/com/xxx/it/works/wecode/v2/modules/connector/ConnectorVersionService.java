@@ -328,8 +328,9 @@ public class ConnectorVersionService {
         if (urlRegexPattern != null && !urlRegexPattern.isEmpty()) {
             try {
                 com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(version.getConnectionConfig());
-                if (root.has("url") && !root.get("url").isNull()) {
-                    String targetUrl = root.get("url").asText();
+                com.fasterxml.jackson.databind.JsonNode protocolConfig = root.get("protocolConfig");
+                if (protocolConfig != null && protocolConfig.has("url") && !protocolConfig.get("url").isNull()) {
+                    String targetUrl = protocolConfig.get("url").asText();
                     if (targetUrl != null && !targetUrl.isEmpty()) {
                         Pattern urlPattern;
                         try {

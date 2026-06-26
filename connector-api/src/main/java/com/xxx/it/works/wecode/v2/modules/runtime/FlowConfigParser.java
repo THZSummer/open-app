@@ -39,13 +39,21 @@ public class FlowConfigParser {
             JsonNode root = objectMapper.readTree(flowConfigJson);
 
             Integer timeoutMs = getIntOrNull(root, "timeoutMs");
-            Integer rateLimitQps = getIntOrNull(root, "rateLimitQps");
-            Integer rateLimitConcurrency = getIntOrNull(root, "rateLimitConcurrency");
+
+            // rate limit: nested under rateLimitConfig
+            Integer maxQps = null;
+            Integer maxConcurrency = null;
+            JsonNode rateLimitConfig = root.get("rateLimitConfig");
+            if (rateLimitConfig != null) {
+                maxQps = getIntOrNull(rateLimitConfig, "maxQps");
+                maxConcurrency = getIntOrNull(rateLimitConfig, "maxConcurrency");
+            }
+
             Integer cacheTtl = getIntOrNull(root, "cacheTtl");
             String cacheKeyTemplate = root.has("cacheKeyTemplate")
                     ? root.get("cacheKeyTemplate").asText() : null;
 
-            return new FlowConfig(timeoutMs, rateLimitQps, rateLimitConcurrency,
+            return new FlowConfig(timeoutMs, maxQps, maxConcurrency,
                     cacheTtl, cacheKeyTemplate);
         } catch (Exception e) {
             log.warn("Failed to parse flowConfig, using defaults: {}", e.getMessage());

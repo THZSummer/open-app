@@ -160,14 +160,14 @@ public class FlowPublishValidator {
             // 校验 3：入站限流上限（当前仅记录校验项，应用最大值需外部传入）
             // 需由调用方传入 appMaxQps/appMaxConcurrency 参数
             // 此处仅做基本范围校验
-            JsonNode rateLimit = flowConfig.get("rateLimit");
-            if (rateLimit != null) {
-                JsonNode qps = rateLimit.get("qps");
-                if (qps != null && qps.isNumber() && qps.asInt() <= 0) {
+            JsonNode rateLimitConfig = flowConfig.get("rateLimitConfig");
+            if (rateLimitConfig != null) {
+                JsonNode maxQps = rateLimitConfig.get("maxQps");
+                if (maxQps != null && maxQps.isNumber() && maxQps.asInt() <= 0) {
                     errors.add("入站限流 QPS 必须大于 0");
                 }
-                JsonNode concurrency = rateLimit.get("concurrency");
-                if (concurrency != null && concurrency.isNumber() && concurrency.asInt() <= 0) {
+                JsonNode maxConcurrency = rateLimitConfig.get("maxConcurrency");
+                if (maxConcurrency != null && maxConcurrency.isNumber() && maxConcurrency.asInt() <= 0) {
                     errors.add("入站限流并发数必须大于 0");
                 }
             }
@@ -309,15 +309,15 @@ public class FlowPublishValidator {
             JsonNode config = objectMapper.readTree(orchestrationConfig);
             JsonNode flowConfig = config.get("flowConfig");
             if (flowConfig != null) {
-                JsonNode rateLimit = flowConfig.get("rateLimit");
-                if (rateLimit != null) {
-                    JsonNode qps = rateLimit.get("qps");
-                    if (qps != null && qps.isNumber() && qps.asInt() > appMaxQps) {
-                        errors.add("入站限流 QPS(" + qps.asInt() + ") 超过应用上限(" + appMaxQps + ")");
+                JsonNode rateLimitConfig = flowConfig.get("rateLimitConfig");
+                if (rateLimitConfig != null) {
+                    JsonNode maxQps = rateLimitConfig.get("maxQps");
+                    if (maxQps != null && maxQps.isNumber() && maxQps.asInt() > appMaxQps) {
+                        errors.add("入站限流 QPS(" + maxQps.asInt() + ") 超过应用上限(" + appMaxQps + ")");
                     }
-                    JsonNode concurrency = rateLimit.get("concurrency");
-                    if (concurrency != null && concurrency.isNumber() && concurrency.asInt() > appMaxConcurrency) {
-                        errors.add("入站限流并发(" + concurrency.asInt() + ") 超过应用上限(" + appMaxConcurrency + ")");
+                    JsonNode maxConcurrency = rateLimitConfig.get("maxConcurrency");
+                    if (maxConcurrency != null && maxConcurrency.isNumber() && maxConcurrency.asInt() > appMaxConcurrency) {
+                        errors.add("入站限流并发(" + maxConcurrency.asInt() + ") 超过应用上限(" + appMaxConcurrency + ")");
                     }
                 }
             }

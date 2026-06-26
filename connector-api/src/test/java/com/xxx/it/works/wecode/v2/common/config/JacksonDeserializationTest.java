@@ -219,8 +219,10 @@ class JacksonDeserializationTest {
                             "data": {
                                 "labelCn": "调用API",
                                 "connectorId": "123",
-                                "url": "https://api.example.com/send",
-                                "method": "POST",
+                                "protocolConfig": {
+                                    "url": "https://api.example.com/send",
+                                    "method": "POST"
+                                },
                                 "headers": {"Content-Type": "application/json"},
                                 "inputMapping": {
                                     "header": {"Authorization": "${$.node.node_trigger.input.token}"},

@@ -78,37 +78,36 @@ class JacksonDeserializationTest {
     }
 
     @Test
-    @DisplayName("旧格式 connectionConfig: authTypeSchema / inputSchema / outputSchema / rateLimit (@JsonAlias 兼容)")
+    @DisplayName("新格式 connectionConfig: authConfig / inputContract / outputContract / rateLimitConfig (v5.6)")
     void testOldConnectionConfig() throws Exception {
         String json = """
                 {
-                    "protocol": "HTTP",
                     "protocolConfig": {"url": "https://api.example.com", "method": "POST"},
-                    "authTypeSchema": {
+                    "authConfig": {
                         "type": "AKSK",
                         "fields": [{"name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true}]
                     },
-                    "inputSchema": {
+                    "inputContract": {
                         "type": "object",
                         "properties": {"message": {"type": "string"}},
                         "required": ["message"]
                     },
-                    "outputSchema": {
+                    "outputContract": {
                         "type": "object",
                         "properties": {"msgId": {"type": "string"}}
                     },
                     "timeoutMs": 30000,
-                    "rateLimit": {"maxQps": 10}
+                    "rateLimitConfig": {"maxQps": 10}
                 }
                 """;
 
         Map<String, Object> parsed = mapper.readValue(json, Map.class);
 
-        // 旧字段名仍可解析
-        assertTrue(parsed.containsKey("authTypeSchema"), "authTypeSchema 应存在（旧格式兼容）");
-        assertTrue(parsed.containsKey("inputSchema"), "inputSchema 应存在（旧格式兼容）");
-        assertTrue(parsed.containsKey("outputSchema"), "outputSchema 应存在（旧格式兼容）");
-        assertTrue(parsed.containsKey("rateLimit"), "rateLimit 应存在（旧格式兼容）");
+        // v5.6 字段名
+        assertTrue(parsed.containsKey("authConfig"), "authConfig 应存在");
+        assertTrue(parsed.containsKey("inputContract"), "inputContract 应存在");
+        assertTrue(parsed.containsKey("outputContract"), "outputContract 应存在");
+        assertTrue(parsed.containsKey("rateLimitConfig"), "rateLimitConfig 应存在");
     }
 
     // ==================== orchestrationConfig 新旧格式 ====================

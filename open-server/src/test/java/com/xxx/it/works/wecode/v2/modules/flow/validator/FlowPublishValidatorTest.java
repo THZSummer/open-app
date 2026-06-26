@@ -231,7 +231,7 @@ class FlowPublishValidatorTest {
     void testRateLimitQpsExceeded_Fail() {
         String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"},{\"id\":\"e\",\"type\":\"exit\"}]," +
                 "\"edges\":[]," +
-                "\"flowConfig\":{\"rateLimit\":{\"qps\":200}}}";
+                "\"flowConfig\":{\"rateLimitConfig\":{\"maxQps\":200}}}";
         List<String> errors = validator.validateRateLimitAgainstAppMax(config, 100, 50);
         assertEquals(1, errors.size());
         assertTrue(errors.get(0).contains("QPS"));
@@ -240,7 +240,7 @@ class FlowPublishValidatorTest {
     @Test
     @DisplayName("校验3: QPS ≤ 应用上限 → 通过")
     void testRateLimitQpsUnderLimit_Pass() {
-        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"rateLimit\":{\"qps\":50}}}";
+        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"maxQps\":50}}}";
         List<String> errors = validator.validateRateLimitAgainstAppMax(config, 100, 50);
         assertTrue(errors.isEmpty());
     }
@@ -248,7 +248,7 @@ class FlowPublishValidatorTest {
     @Test
     @DisplayName("校验3: 并发超过应用上限 → 失败")
     void testConcurrencyExceeded_Fail() {
-        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"rateLimit\":{\"concurrency\":60}}}";
+        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"maxConcurrency\":60}}}";
         List<String> errors = validator.validateRateLimitAgainstAppMax(config, 100, 50);
         assertEquals(1, errors.size());
         assertTrue(errors.get(0).contains("并发"));

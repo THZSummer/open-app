@@ -518,7 +518,6 @@ def test_full_flow():
         def s7():
             r = os_api("PUT", f"/flows/{fid}/versions/{fvid}", {
                 "orchestrationConfig": {
-                    "trigger": {},
                     "nodes": [
                         {"id": "trigger", "type": "trigger", "data": {
                             "type": "trigger",
