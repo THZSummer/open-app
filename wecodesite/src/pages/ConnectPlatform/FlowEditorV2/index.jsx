@@ -765,10 +765,18 @@ function FlowEditorV2() {
     });
     setDebugLoading(false);
     if (res?.code === '200') {
-      setDebugResult(res.data);
+      const data = res.data || {};
+
+      setDebugResult({
+        success: data.status === 'success',
+        duration: data.totalDurationMs,
+        steps: data.steps || [],
+        output: data.resultData,
+        error: data.errorMessage || data.errorInfo?.messageZh || data.errorInfo?.messageEn,
+      });
     } else {
       setDebugResult({
-        success: false, duration: 0, trace: [], output: null,
+        success: false, duration: 0, steps: [], output: null,
         error: res?.messageZh || '调试失败',
       });
     }
