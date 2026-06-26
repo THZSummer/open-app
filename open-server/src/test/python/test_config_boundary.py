@@ -65,13 +65,13 @@ def _set_connection_config(vid, config_dict):
 # ================================================================
 
 _BASE_ORCH = {
+    "trigger": {},
     "nodes": [
-        {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-        {"id": "n1", "type": "data_processor", "position": {"x": 300, "y": 0}, "data": {"script": "1 + 1"}},
-        {"id": "exit1", "type": "exit", "position": {"x": 600, "y": 0}, "data": {"outputMapping": {}}}
+        {"id": "n1", "type": "script", "data": {"script": "1 + 1"}},
+        {"id": "exit1", "type": "exit"}
     ],
     "edges": [
-        {"id": "e1", "source": "t1", "target": "n1"},
+        {"id": "e1", "source": "trigger", "target": "n1"},
         {"id": "e2", "source": "n1", "target": "exit1"}
     ]
 }
@@ -138,7 +138,7 @@ class TestUrlRegexPattern:
     def test_publish_with_url_succeeds_when_no_regex_configured(self, draft_connector):
         """未配置 url_regex_pattern 时 URL 不受限 → 发布成功"""
         cid, vid = draft_connector
-        _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://any-domain.com/api", "method": "GET"}})
+        _set_connection_config(vid, {"url": "http://any-domain.com/api", "protocol": "HTTP"})
         resp = _publish_connector(cid, vid)
         if resp is not None:
             assert resp.status_code in (200, 201), (
@@ -158,17 +158,20 @@ class TestUrlRegexPattern:
 
     @pytest.mark.L4
     def test_publish_connector_with_url_not_matching_regex_rejected(self, draft_connector):
-        """URL 不匹配正则 → 发布应被拒绝（当前服务尚未校验 protocolConfig 内 URL，待上线后断言 422）"""
+        """设置 url_regex_pattern = ^https://api.example.com/.* 后，URL 不匹配 → 422"""
         cid, vid = draft_connector
         # Override the session fixture's default with a restrictive pattern
         _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
-        _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://evil.com/api", "method": "GET"}})
+        _set_connection_config(vid, {"url": "http://evil.com/api", "protocol": "HTTP"})
         resp = _publish_connector(cid, vid)
         if resp is not None:
-            # TODO: 服务校验 protocolConfig.url 后改回 assert 422
-            assert resp.status_code in (200, 201, 422), (
-                f"Expected 200/201 (validator not yet checking protocolConfig.url) or 422, "
-                f"got {resp.status_code}: {resp.json() if resp else ''}"
+            assert resp.status_code == 422, (
+                f"Expected 422 for URL not matching regex, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
+            body = resp.json()
+            assert "URL" in body.get("messageZh", "") or "url" in body.get("messageEn", "").lower(), (
+                f"Expected URL-related error, got: {body}"
             )
         # Restore default permissive regex for test isolation
         _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
@@ -178,7 +181,7 @@ class TestUrlRegexPattern:
         """URL 匹配正则 → 发布成功"""
         cid, vid = draft_connector
         _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
-        _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "https://api.example.com/v1/users", "method": "GET"}})
+        _set_connection_config(vid, {"url": "https://api.example.com/v1/users", "protocol": "HTTP"})
         resp = _publish_connector(cid, vid)
         if resp is not None:
             assert resp.status_code in (200, 201), (
@@ -206,7 +209,7 @@ class TestConnectorConfigMaxBytes:
         cid, vid = draft_connector
         # Restore permissive URL regex in case a prior test narrowed it
         _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
-        _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "https://example.com", "method": "GET"}})
+        _set_connection_config(vid, {"protocol": "HTTP", "url": "https://example.com"})
         resp = _publish_connector(cid, vid)
         if resp is not None:
             assert resp.status_code in (200, 201), (
@@ -299,19 +302,10 @@ class TestNodeTimeoutLimit:
 
     @pytest.mark.L4
     def test_publish_with_flow_timeout_exceeds_5s_rejected(self, draft_flow):
-        """connectionConfig.timeoutMs = 10000ms > 5000ms → 422"""
+        """flowConfig.timeout = 10000ms > 5000ms → 422"""
         fid, fvid = draft_flow
-        config = {
-            "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "connector", "position": {"x": 300, "y": 0}, "data": {"connectorVersionId": "1", "timeoutMs": 10000}},
-                {"id": "exit1", "type": "exit", "position": {"x": 600, "y": 0}, "data": {"outputMapping": {}}}
-            ],
-            "edges": [
-                {"id": "e1", "source": "t1", "target": "n1"},
-                {"id": "e2", "source": "n1", "target": "exit1"}
-            ]
-        }
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"timeout": 10000}  # >> 5000ms
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -325,13 +319,13 @@ class TestNodeTimeoutLimit:
         """connector 节点 data.timeoutMs = 10000ms > 5000ms → 422"""
         fid, fvid = draft_flow
         config = {
+            "trigger": {},
             "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "connector", "position": {"x": 300, "y": 0}, "data": {"connectorVersionId": "1", "timeoutMs": 10000}},
-                {"id": "exit1", "type": "exit", "position": {"x": 600, "y": 0}, "data": {"outputMapping": {}}}
+                {"id": "n1", "type": "connector", "data": {"timeoutMs": 10000}},
+                {"id": "exit1", "type": "exit"}
             ],
             "edges": [
-                {"id": "e1", "source": "t1", "target": "n1"},
+                {"id": "e1", "source": "trigger", "target": "n1"},
                 {"id": "e2", "source": "n1", "target": "exit1"}
             ]
         }
@@ -345,19 +339,10 @@ class TestNodeTimeoutLimit:
 
     @pytest.mark.L4
     def test_publish_with_flow_timeout_within_limit_passes(self, draft_flow):
-        """connectionConfig.timeoutMs = 3000ms ≤ 5000ms → 发布成功"""
+        """flowConfig.timeout = 3000ms ≤ 5000ms → 发布成功"""
         fid, fvid = draft_flow
-        config = {
-            "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "connector", "position": {"x": 300, "y": 0}, "data": {"connectorVersionId": "1", "timeoutMs": 3000}},
-                {"id": "exit1", "type": "exit", "position": {"x": 600, "y": 0}, "data": {"outputMapping": {}}}
-            ],
-            "edges": [
-                {"id": "e1", "source": "t1", "target": "n1"},
-                {"id": "e2", "source": "n1", "target": "exit1"}
-            ]
-        }
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"timeout": 3000}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -405,31 +390,35 @@ class TestFlowConfigMaxBytes:
 # ================================================================
 
 class TestFlowMaxQps:
-    """#8 连接流最大 QPS (默认 1000，通过 DB Property 控制)
-
-    rateLimitConfig 属于 connectionConfig 字段，不在 orchestrationConfig 顶层。
-    平台级上限由 Property flow_max_qps 控制，验证属性存在及默认值。
-    """
+    """#8 连接流最大 QPS (默认 1000)"""
 
     @pytest.mark.L4
-    def test_flow_max_qps_property_default(self):
-        """验证 flow_max_qps 默认上限 1000"""
-        val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_max_qps' AND status = 1"
-        )
-        assert val is not None, "flow_max_qps should exist after session fixture init"
-        assert int(val) == 1000, f"Expected 1000, got {val}"
+    def test_publish_with_qps_exceeds_1000_rejected(self, draft_flow):
+        """flowConfig.rateLimit.qps = 2000 > 1000 → 422"""
+        fid, fvid = draft_flow
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"rateLimit": {"qps": 2000}}
+        _set_orchestration(fvid, config)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code == 422, (
+                f"Expected 422 for QPS > 1000, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
     @pytest.mark.L4
-    def test_flow_max_qps_positive(self):
-        """验证 flow_max_qps 大于 0"""
-        val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_max_qps' AND status = 1"
-        )
-        assert val is not None
-        assert int(val) > 0, f"QPS must be positive, got {val}"
+    def test_publish_with_qps_within_limit_passes(self, draft_flow):
+        """flowConfig.rateLimit.qps = 500 ≤ 1000 → 发布成功"""
+        fid, fvid = draft_flow
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"rateLimit": {"qps": 500}}
+        _set_orchestration(fvid, config)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code in (200, 201), (
+                f"Expected 200 for QPS within limit, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
 
 # ================================================================
@@ -437,31 +426,35 @@ class TestFlowMaxQps:
 # ================================================================
 
 class TestFlowMaxConcurrency:
-    """#9 连接流最大并发 (默认 1000，通过 DB Property 控制)
-
-    rateLimitConfig 属于 connectionConfig 字段，不在 orchestrationConfig 顶层。
-    平台级上限由 Property flow_max_concurrency 控制，验证属性存在及默认值。
-    """
+    """#9 连接流最大并发 (默认 1000)"""
 
     @pytest.mark.L4
-    def test_flow_max_concurrency_property_default(self):
-        """验证 flow_max_concurrency 默认上限 1000"""
-        val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_max_concurrency' AND status = 1"
-        )
-        assert val is not None, "flow_max_concurrency should exist after session fixture init"
-        assert int(val) == 1000, f"Expected 1000, got {val}"
+    def test_publish_with_concurrency_exceeds_1000_rejected(self, draft_flow):
+        """flowConfig.rateLimit.concurrency = 2000 > 1000 → 422"""
+        fid, fvid = draft_flow
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"rateLimit": {"concurrency": 2000}}
+        _set_orchestration(fvid, config)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code == 422, (
+                f"Expected 422 for concurrency > 1000, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
     @pytest.mark.L4
-    def test_flow_max_concurrency_positive(self):
-        """验证 flow_max_concurrency 大于 0"""
-        val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_max_concurrency' AND status = 1"
-        )
-        assert val is not None
-        assert int(val) > 0, f"Concurrency must be positive, got {val}"
+    def test_publish_with_concurrency_within_limit_passes(self, draft_flow):
+        """flowConfig.rateLimit.concurrency = 500 ≤ 1000 → 发布成功"""
+        fid, fvid = draft_flow
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"rateLimit": {"concurrency": 500}}
+        _set_orchestration(fvid, config)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code in (200, 201), (
+                f"Expected 200 for concurrency within limit, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
 
 # ================================================================
@@ -469,30 +462,35 @@ class TestFlowMaxConcurrency:
 # ================================================================
 
 class TestFlowCacheTtlLimit:
-    """#10 连接流缓存 TTL 上限 (1296000 秒 = 15 天，通过 DB Property 控制)
-
-    cache TTL 不在 orchestrationConfig schema 中，由平台级 Property flow_max_cache_ttl_seconds 控制。
-    """
+    """#10 连接流缓存 TTL 上限 (1296000 秒 = 15 天)"""
 
     @pytest.mark.L4
-    def test_cache_ttl_property_default(self):
-        """验证 flow_max_cache_ttl_seconds 默认上限 1296000"""
-        val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_max_cache_ttl_seconds' AND status = 1"
-        )
-        assert val is not None, "flow_max_cache_ttl_seconds should exist after session fixture init"
-        assert int(val) == 1296000, f"Expected 1296000 (15 days), got {val}"
+    def test_publish_with_cache_ttl_exceeds_15_days_rejected(self, draft_flow):
+        """flowConfig.cache.ttl = 2000000 > 1296000 → 422"""
+        fid, fvid = draft_flow
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"cache": {"ttl": 2000000}}  # > 15 days
+        _set_orchestration(fvid, config)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code == 422, (
+                f"Expected 422 for cache TTL > 1296000, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
     @pytest.mark.L4
-    def test_cache_ttl_property_readable(self):
-        """验证 flow_max_cache_ttl_seconds 属性大于 0"""
-        val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_max_cache_ttl_seconds' AND status = 1"
-        )
-        assert val is not None
-        assert int(val) > 0, f"Cache TTL must be positive, got {val}"
+    def test_publish_with_cache_ttl_under_limit_passes(self, draft_flow):
+        """flowConfig.cache.ttl = 3600 ≤ 1296000 → 发布成功"""
+        fid, fvid = draft_flow
+        config = json.loads(json.dumps(_BASE_ORCH))
+        config["flowConfig"] = {"cache": {"ttl": 3600}}
+        _set_orchestration(fvid, config)
+        resp = _publish_flow(fid, fvid)
+        if resp is not None:
+            assert resp.status_code in (200, 201), (
+                f"Expected 200 for cache TTL within limit, got {resp.status_code}: "
+                f"{resp.json() if resp else ''}"
+            )
 
 
 # ================================================================
@@ -507,17 +505,16 @@ class TestParallelBranchesLimit:
         """9 条并行边 → 422"""
         fid, fvid = draft_flow
         config = {
+            "trigger": {},
             "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "data_processor", "position": {"x": 300, "y": 0}, "data": {"script": "1+1"}},
+                {"id": "n1", "type": "script", "data": {"script": "1+1"}},
             ],
-            "edges": [
-                {"id": "e0", "source": "t1", "target": "n1"}
-            ]
+            "edges": [],
+            "flowConfig": {}
         }
         for i in range(1, 10):
             exit_id = f"exit{i}"
-            config["nodes"].append({"id": exit_id, "type": "exit", "position": {"x": 600, "y": i * 80}, "data": {"outputMapping": {}}})
+            config["nodes"].append({"id": exit_id, "type": "exit"})
             config["edges"].append({
                 "id": f"pe{i}", "source": "n1", "target": exit_id,
                 "data": {"connectionMode": "parallel"}
@@ -535,17 +532,16 @@ class TestParallelBranchesLimit:
         """8 条并行边 → 发布成功（边界内）"""
         fid, fvid = draft_flow
         config = {
+            "trigger": {},
             "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "data_processor", "position": {"x": 300, "y": 0}, "data": {"script": "1+1"}},
+                {"id": "n1", "type": "script", "data": {"script": "1+1"}},
             ],
-            "edges": [
-                {"id": "e0", "source": "t1", "target": "n1"}
-            ]
+            "edges": [],
+            "flowConfig": {}
         }
         for i in range(1, 9):
             exit_id = f"exit{i}"
-            config["nodes"].append({"id": exit_id, "type": "exit", "position": {"x": 600, "y": i * 80}, "data": {"outputMapping": {}}})
+            config["nodes"].append({"id": exit_id, "type": "exit"})
             config["edges"].append({
                 "id": f"pe{i}", "source": "n1", "target": exit_id,
                 "data": {"connectionMode": "parallel"}
@@ -572,13 +568,13 @@ class TestScriptLengthLimit:
         fid, fvid = draft_flow
         long_script = "let x = " + "1+" * 4000 + "0;"  # 约 12000 字符
         config = {
+            "trigger": {},
             "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "script", "position": {"x": 300, "y": 0}, "data": {"script": long_script}},
-                {"id": "exit1", "type": "exit", "position": {"x": 600, "y": 0}, "data": {"outputMapping": {}}}
+                {"id": "n1", "type": "script", "data": {"script": long_script}},
+                {"id": "exit1", "type": "exit"}
             ],
             "edges": [
-                {"id": "e1", "source": "t1", "target": "n1"},
+                {"id": "e1", "source": "trigger", "target": "n1"},
                 {"id": "e2", "source": "n1", "target": "exit1"}
             ]
         }
@@ -618,16 +614,16 @@ class TestScriptTimeoutLimit:
 
     @pytest.mark.L4
     def test_publish_with_script_timeout_exceeds_30s_rejected(self, draft_flow):
-        """script 节点 data.timeout = 60 > 30s → 422"""
+        """脚本 data.timeout = 60 > 30s → 422"""
         fid, fvid = draft_flow
         config = {
+            "trigger": {},
             "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "script", "position": {"x": 300, "y": 0}, "data": {"script": "1+1", "timeout": 60}},
-                {"id": "exit1", "type": "exit", "position": {"x": 600, "y": 0}, "data": {"outputMapping": {}}}
+                {"id": "n1", "type": "script", "data": {"script": "1+1", "timeout": 60}},
+                {"id": "exit1", "type": "exit"}
             ],
             "edges": [
-                {"id": "e1", "source": "t1", "target": "n1"},
+                {"id": "e1", "source": "trigger", "target": "n1"},
                 {"id": "e2", "source": "n1", "target": "exit1"}
             ]
         }
@@ -641,16 +637,16 @@ class TestScriptTimeoutLimit:
 
     @pytest.mark.L4
     def test_publish_with_script_timeout_under_limit_passes(self, draft_flow):
-        """script 节点 data.timeout = 10 ≤ 30s → 发布成功"""
+        """脚本 data.timeout = 10 ≤ 30s → 发布成功"""
         fid, fvid = draft_flow
         config = {
+            "trigger": {},
             "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "n1", "type": "script", "position": {"x": 300, "y": 0}, "data": {"script": "1+1", "timeout": 10}},
-                {"id": "exit1", "type": "exit", "position": {"x": 600, "y": 0}, "data": {"outputMapping": {}}}
+                {"id": "n1", "type": "script", "data": {"script": "1+1", "timeout": 10}},
+                {"id": "exit1", "type": "exit"}
             ],
             "edges": [
-                {"id": "e1", "source": "t1", "target": "n1"},
+                {"id": "e1", "source": "trigger", "target": "n1"},
                 {"id": "e2", "source": "n1", "target": "exit1"}
             ]
         }

@@ -119,6 +119,6 @@ def draft_flow(flow, request):
 def deployed_flow(flow, request):
     """已部署的连接流（含已发布版本 + deployed_version_id 指针）"""
     vid = _snow_id()
-    db(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, version_number, status, orchestration_config, create_by, last_update_by) VALUES ({vid}, {flow}, 1, 5, '{{\"nodes\":[{{\"id\":\"t1\",\"type\":\"trigger\",\"position\":{{\"x\":0,\"y\":0}},\"data\":{{\"type\":\"http\"}}}},{{\"id\":\"exit1\",\"type\":\"exit\",\"position\":{{\"x\":300,\"y\":0}},\"data\":{{\"outputMapping\":{{}}}}}}],\"edges\":[{{\"id\":\"e1\",\"source\":\"t1\",\"target\":\"exit1\"}}]}}', 'tester', 'tester')")
+    db(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, version_number, status, orchestration_config, create_by, last_update_by) VALUES ({vid}, {flow}, 1, 5, '{{\"trigger\":{{}},\"nodes\":[],\"edges\":[]}}', 'tester', 'tester')")
     db(f"UPDATE openplatform_v2_cp_flow_t SET deployed_version_id = {vid}, deployed_version_number = 1 WHERE id = {flow}")
     yield flow, vid

@@ -14,15 +14,7 @@ class TestFlowVersionUrge:
         fid, fvid = draft_flow
 
         # 前置：配置最小编排并提交审批 → status=2
-        config = {
-            "nodes": [
-                {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                {"id": "exit1", "type": "exit", "position": {"x": 300, "y": 0}, "data": {"outputMapping": {}}}
-            ],
-            "edges": [
-                {"id": "e1", "source": "t1", "target": "exit1"}
-            ]
-        }
+        config = {"trigger": {}, "nodes": [{"id": "n1", "type": "script", "data": {"script": "1+1"}}], "edges": []}
         db(f"UPDATE openplatform_v2_cp_flow_version_t SET orchestration_config = '{json.dumps(config)}' WHERE id = {fvid}")
         # 提交审批
         resp_pub = api("POST", f"/flows/{fid}/versions/{fvid}/publish")

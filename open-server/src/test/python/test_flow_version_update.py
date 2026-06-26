@@ -5,15 +5,7 @@ from _client import api
 
 
 class TestFlowVersionUpdate:
-    CONFIG = {
-        "nodes": [
-            {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-            {"id": "exit1", "type": "exit", "position": {"x": 300, "y": 0}, "data": {"outputMapping": {}}}
-        ],
-        "edges": [
-            {"id": "e1", "source": "t1", "target": "exit1"}
-        ]
-    }
+    CONFIG = {"flowConfig": {}, "nodes": [], "edges": []}
 
     @pytest.mark.L1
     def test_update_draft(self, draft_flow):

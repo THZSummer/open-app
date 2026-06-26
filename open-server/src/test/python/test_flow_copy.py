@@ -17,15 +17,7 @@ class TestFlowCopy:
     def test_copy_single_version(self, flow):
         vid = int(str(flow) + "1") if flow else 0
         if vid:
-            orch = {
-                "nodes": [
-                    {"id": "t1", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"type": "http"}},
-                    {"id": "exit1", "type": "exit", "position": {"x": 300, "y": 0}, "data": {"outputMapping": {}}}
-                ],
-                "edges": [
-                    {"id": "e1", "source": "t1", "target": "exit1"}
-                ]
-            }
+            orch = {"nodes": [], "edges": []}
             orch_s = json.dumps(orch, ensure_ascii=False).replace("'", "''")
             db(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, orchestration_config, status, create_by, last_update_by) VALUES ({vid}, {flow}, '{orch_s}', 5, 'tester', 'tester')")
             resp = api("POST", f"/flows/{flow}/copy", {})
