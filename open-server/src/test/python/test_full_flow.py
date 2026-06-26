@@ -647,7 +647,7 @@ def test_full_flow():
             if ok and r is not None:
                 try:
                     b = r.json()
-                    print(f"    响应: {json.dumps(b, ensure_ascii=False)[:300]}")
+                    print(f"    响应: {json.dumps(b, ensure_ascii=False)[:500]}")
                 except Exception:
                     pass
             return ok
@@ -770,7 +770,7 @@ def test_full_flow():
             if ok and r is not None:
                 try:
                     b = r.json()
-                    print(f"    响应: {json.dumps(b, ensure_ascii=False)[:300]}")
+                    print(f"    响应: {json.dumps(b, ensure_ascii=False)[:500]}")
                 except Exception:
                     pass
             return ok
