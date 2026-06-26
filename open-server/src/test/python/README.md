@@ -4,6 +4,35 @@
 - **第一部分：单接口测试** — 每个 API 端点一个测试文件，L0~L4 分层
 - **第二部分：全流程测试** — 一个脚本串联全部主流程
 
+## 快速开始
+
+```bash
+# L0 冒烟（每次 commit 必过，秒级反馈）
+pytest
+
+# PR 门禁
+pytest -m "L0 or L1"
+
+# 全量
+pytest -m ""
+
+# 全流程
+python3 test_full_flow.py
+```
+
+## 测试报告
+
+```bash
+# 安装
+pip install pytest-html
+
+# 生成
+pytest -m "" --html=reports/report.html
+
+# 查看
+echo "👉 http://localhost:18900/report.html" && python3 -m http.server 18900 -d reports
+```
+
 ---
 
 # 第一部分：单接口测试
