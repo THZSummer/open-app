@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -129,20 +132,53 @@ public final class JsonUtils {
     }
 
     /**
-     * 将对象类型的 JsonNode 字段扁平化合并到目标 Map（已存在的 key 不覆盖）。
-     * <ul>
-     *   <li>node 为 null 或非对象 → 直接返回</li>
-     *   <li>仅当 target 中不存在该 key 时才 put</li>
-     * </ul>
+     * 通过反射收集对象的顶层简单值字段（String/Number/Boolean）。
+     * List/Map/嵌套对象自动跳过，不做 Jackson 全量序列化。
      */
-    public static void flattenToMap(JsonNode node, Map<String, Object> target) {
-        if (node == null || !node.isObject()) {
-            return;
-        }
-        node.fields().forEachRemaining(entry -> {
-            if (!target.containsKey(entry.getKey())) {
-                target.put(entry.getKey(), entry.getValue());
+    public static Map<String, String> extractSimpleProperties(Object obj) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Field f : obj.getClass().getDeclaredFields()) {
+            if (Modifier.isStatic(f.getModifiers())) {
+                continue;
             }
-        });
+            try {
+                f.setAccessible(true);
+                Object v = f.get(obj);
+                if (v instanceof CharSequence || v instanceof Number || v instanceof Boolean) {
+                    result.put(f.getName(), v.toString());
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将参数名和参数值展平为 JsonNode。
+     * 简单类型按参数名直接放入，复杂对象提取顶层简单值字段。
+     * 用于审计日志模板渲染的降级数据源。
+     *
+     * @param paramNames 参数名数组
+     * @param args       参数值数组（与 paramNames 一一对应）
+     * @return JsonNode，无数据时返回 null
+     */
+    public static JsonNode toFlatNode(String[] paramNames, Object[] args) {
+        Map<String, String> flat = buildFlatMap(paramNames, args);
+        return flat.isEmpty() ? null : objectMapper.valueToTree(flat);
+    }
+
+    private static Map<String, String> buildFlatMap(String[] paramNames, Object[] args) {
+        Map<String, String> flat = new LinkedHashMap<>();
+        for (int i = 0; i < paramNames.length; i++) {
+            if (args[i] == null) {
+                continue;
+            }
+            if (args[i] instanceof CharSequence || args[i] instanceof Number || args[i] instanceof Boolean) {
+                flat.put(paramNames[i], args[i].toString());
+            } else {
+                flat.putAll(extractSimpleProperties(args[i]));
+            }
+        }
+        return flat;
     }
 }
