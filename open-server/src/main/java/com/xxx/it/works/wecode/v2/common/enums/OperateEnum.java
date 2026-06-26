@@ -210,10 +210,21 @@ public enum OperateEnum {
 
     /**
      * diff 字段配置（仅当操作模板含 ${diffFields} 时需要配置）
-     *
-     * @return diff 配置，null 表示无 diff 需求
      */
     public DiffConfig diffConfig() {
         return null;
+    }
+
+    /**
+     * 返回值中实体 ID 的字段名，用于审计日志从返回值提取 resourceId。
+     * 新增模块只需在 switch 加 case。
+     */
+    public String entityIdField() {
+        return switch (operateObject) {
+            case "CONNECTOR" -> "connectorId";
+            case "FLOW" -> "flowId";
+            case "APP_VERSION" -> "versionId";
+            default -> "id";
+        };
     }
 }
