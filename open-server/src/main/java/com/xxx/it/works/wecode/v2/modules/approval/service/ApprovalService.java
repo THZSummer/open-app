@@ -684,6 +684,9 @@ public class ApprovalService {
 
         // 3. 解析 combinedNodes，获取当前审批节点的审批人
         List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
+        if (nodes.isEmpty() || record.getCurrentNode() >= nodes.size()) {
+            throw new BusinessException("400", "审批节点配置异常", "Approval node configuration is invalid");
+        }
         ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
 
         // 4. 调用第三方发送催办卡片消息

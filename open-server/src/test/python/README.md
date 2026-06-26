@@ -56,6 +56,8 @@
 | `test_flow_version_invalidate.py` | #34 | PUT /flows/{id}/versions/{vid}/invalidate |
 | `test_flow_version_recover.py` | #35 | PUT /flows/{id}/versions/{vid}/recover |
 | `test_flow_version_delete.py` | #36 | DELETE /flows/{id}/versions/{vid} |
+| `test_flow_version_cancel.py` | #37 | POST /flows/{id}/versions/{vid}/cancel |
+| `test_flow_version_urge.py` | #38 | POST /flows/{id}/versions/{vid}/urge |
 | `test_flow_version_debug.py` | #51 | POST /flows/{id}/versions/{vid}/debug |
 | **运行记录** | | |
 | `test_execution_records.py` | #49~#50 | GET /executions + 详情 |
@@ -252,6 +254,8 @@ python/
 ├── test_flow_version_invalidate.py      ← #34 PUT .../invalidate
 ├── test_flow_version_recover.py         ← #35 PUT .../recover
 ├── test_flow_version_delete.py          ← #36 DELETE /flows/{id}/versions/{vid}
+├── test_flow_version_cancel.py          ← #37 POST .../cancel
+├── test_flow_version_urge.py            ← #38 POST .../urge
 ├── test_flow_version_debug.py           ← #51 POST .../debug
 ├── test_execution_records.py              ← #49~#50 运行记录列表/详情
 ├── test_approval_records.py               ← #39~#44 审批记录查询/批量
