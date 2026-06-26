@@ -217,7 +217,20 @@ pytest -m ""                     # 空字符串覆盖 -m L0 默认
 KEEP_TEST_DATA=1 pytest -m "L0 or L1 or L2"
 ```
 
-### 目录
+#### 测试报告
+
+```bash
+# 安装插件
+pip install pytest-html
+
+# 生成报告
+pytest -m "" --html=reports/report.html
+
+# 查看报告
+echo "👉 http://localhost:18900/report.html" && python3 -m http.server 18900 -d reports
+```
+
+## 目录
 
 ```
 python/
