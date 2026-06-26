@@ -643,7 +643,14 @@ def test_full_flow():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
                 "triggerData": {"message": "hello-draft-debug"}
             })
-            return check_ok(r, "DEBUG 草稿版本", f"POST /flows/{fid}/versions/{fvid}/debug")
+            ok = check_ok(r, "DEBUG 草稿版本", f"POST /flows/{fid}/versions/{fvid}/debug")
+            if ok and r is not None:
+                try:
+                    b = r.json()
+                    print(f"    响应: {json.dumps(b, ensure_ascii=False)[:500]}")
+                except Exception:
+                    pass
+            return ok
 
         if not failed:
             if not step("DEBUG 草稿版本", s8): failed = True
@@ -759,7 +766,14 @@ def test_full_flow():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
                 "triggerData": {"message": "hello-after-approval"}
             })
-            return check_ok(r, "DEBUG 已发布版本", f"POST /flows/{fid}/versions/{fvid}/debug")
+            ok = check_ok(r, "DEBUG 已发布版本", f"POST /flows/{fid}/versions/{fvid}/debug")
+            if ok and r is not None:
+                try:
+                    b = r.json()
+                    print(f"    响应: {json.dumps(b, ensure_ascii=False)[:500]}")
+                except Exception:
+                    pass
+            return ok
 
         if not failed:
             if not step("DEBUG 已发布版本", s14): failed = True
