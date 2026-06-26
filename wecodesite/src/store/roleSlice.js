@@ -19,27 +19,27 @@ export const fetchRole = createAsyncThunk(
 const roleSlice = createSlice({
   name: 'role',
   initialState: {
-    role: null,
-    roleLoading: false,
+    roleType: null,
+    roleTypeLoading: true,
   },
   reducers: {
     clearRole(state) {
-      state.role = null;
-      state.roleLoading = false;
+      state.roleType = null;
+      state.roleTypeLoading = false;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(fetchRole.pending, (state) => {
-        state.roleLoading = true;
+        state.roleTypeLoading = true;
       })
       .addCase(fetchRole.fulfilled, (state, action) => {
-        state.role = action.payload;
-        state.roleLoading = false;
+        state.roleType = action.payload;
+        state.roleTypeLoading = false;
       })
       .addCase(fetchRole.rejected, (state) => {
-        state.role = null;
-        state.roleLoading = false;
+        state.roleType = null;
+        state.roleTypeLoading = false;
       });
   },
 });
