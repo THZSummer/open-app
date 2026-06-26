@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Select, Input, InputNumber, Tabs, AutoComplete } from 'antd';
+import { Select, Input, InputNumber, Tabs, AutoComplete, Tag } from 'antd';
 import { CARRIER_TABS } from '../../constants';
+import { VERSION_STATUS_MAP as CONNECTOR_VERSION_STATUS_MAP } from '../../../ConnectorEditor/constants';
 import { fetchConnectorList, fetchConnectorVersions, fetchConnectorInputParams } from '../../thunk';
-import { collectUpstreamRefs } from '../../utils';
+import {
+  buildRefOptions,
+  collectUpstreamRefs,
+  normalizeMapping,
+  VALUE_MODE_OPTIONS,
+} from '../../utils';
 import './NodeCards.m.less';
 
 /**
@@ -11,44 +17,9 @@ import './NodeCards.m.less';
 const AUTH_METHOD_LABEL = {
   SOA: 'SOA 认证',
   APIG: 'APIG 认证',
+  Cookie: 'Cookie 认证',
+  SIGNATURE: '数字签名认证',
   NONE: '无认证',
-};
-
-/**
- * 取值模式选项：静态值 / 引用上游参数
- */
-const VALUE_MODE_OPTIONS = [
-  { value: 'static', label: '静态值' },
-  { value: 'ref', label: '引用上游参数' },
-];
-
-/**
- * 把上游 ref 列表转换为 AutoComplete options
- *
- * @param {Array} refs 上游引用列表
- * @returns {Array} AutoComplete options
- */
-const buildRefOptions = (refs) => {
-  // 将上游 ref 转为 ${source.name} 形式
-  return refs.map(item => ({
-    value: `\${${item.source}.${item.name}}`,
-    label: `\${${item.source}.${item.name}}（${item.type}）`,
-  }));
-};
-
-/**
- * 标准化 mapping，兼容旧字符串值
- *
- * @param {*} raw 原始 mapping 值
- * @returns {Object} 标准化后的 mapping 对象 { mode, value }
- */
-const normalizeMapping = (raw) => {
-  if (raw && typeof raw === 'object' && 'mode' in raw) {
-    return { mode: raw.mode || 'static', value: raw.value ?? '' };
-  }
-  // 兼容旧的字符串形式
-  const str = typeof raw === 'string' ? raw : '';
-  return { mode: 'static', value: str };
 };
 
 /**
@@ -69,8 +40,10 @@ const ConnectorCard = (props) => {
   const [connectorList, setConnectorList] = useState([]);
   // 当前连接器对应的版本列表
   const [versionList, setVersionList] = useState([]);
-  // 当前版本对应的入参 schema（来自后端 mock）
+  // 当前版本对应的入参 schema（来自连接器版本详情）
   const [paramsSchema, setParamsSchema] = useState({ header: [], body: [], query: [] });
+  // 当前版本对应的认证配置（来自连接器版本详情）
+  const [authConfigs, setAuthConfigs] = useState([]);
   // 当前激活的载体 Tab
   const [activeCarrier, setActiveCarrier] = useState('header');
 
@@ -129,6 +102,7 @@ const ConnectorCard = (props) => {
   useEffect(() => {
     if (!node.connectorId || !node.versionId) {
       setParamsSchema({ header: [], body: [], query: [] });
+      setAuthConfigs([]);
       return undefined;
     }
     let cancelled = false;
@@ -138,11 +112,32 @@ const ConnectorCard = (props) => {
     }).then((res) => {
       if (cancelled) return;
       if (res?.code === '200') {
+        // 版本详情返回的入参 schema 用于渲染入参映射表
         setParamsSchema({
           header: res.data?.header || [],
           body: res.data?.body || [],
           query: res.data?.query || [],
         });
+        // 版本详情返回的认证配置用于渲染认证明细块
+        setAuthConfigs(res.data?.authConfigs || []);
+        // 版本详情返回的出参 schema 与认证方式写入节点数据，用于后续上游引用平铺展开
+        const nextOutputParams = res.data?.outputParams || { header: [], body: [] };
+        const nextAuthConfigs = res.data?.rawAuthConfigs || [];
+        // 版本详情返回的完整连接器配置快照需要写入节点数据，供保存编排时自包含
+        const nextConnectorVersionConfig = res.data?.connectorVersionConfig || {};
+        const shouldSyncNode = JSON.stringify(node.connectorVersionConfig || {}) !== JSON.stringify(nextConnectorVersionConfig)
+          || JSON.stringify(node.outputParams || {}) !== JSON.stringify(nextOutputParams)
+          || JSON.stringify(node.authConfigs || []) !== JSON.stringify(nextAuthConfigs)
+          || (!!res.data?.authType && node.authMethodId !== res.data.authType);
+        if (shouldSyncNode) {
+          onChange({
+            ...node,
+            connectorVersionConfig: nextConnectorVersionConfig,
+            outputParams: nextOutputParams,
+            authConfigs: nextAuthConfigs,
+            authMethodId: res.data?.authType || node.authMethodId,
+          });
+        }
       }
     });
     return () => {
@@ -165,6 +160,10 @@ const ConnectorCard = (props) => {
       connectorId: value,
       versionId: '',
       authMethodId: '',
+      authMappings: {},
+      authConfigs: [],
+      connectorVersionConfig: {},
+      outputParams: { header: [], body: [] },
       inputMappings: {},
     });
   };
@@ -179,13 +178,17 @@ const ConnectorCard = (props) => {
       ...node,
       versionId: value,
       authMethodId: version?.authType || '',
+      authMappings: {},
+      authConfigs: [],
+      connectorVersionConfig: {},
+      outputParams: { header: [], body: [] },
       inputMappings: {},
     });
   };
 
   /**
    * 更新超时时间
-   * @param {number} value 超时秒数
+   * @param {number} value 超时毫秒数
    */
   const handleTimeoutChange = (value) => {
     onChange({ ...node, timeout: value });
@@ -216,6 +219,144 @@ const ConnectorCard = (props) => {
       ...node,
       inputMappings: { ...mappings, [carrier]: carrierMap },
     });
+  };
+
+  /**
+   * 更新 Cookie 认证映射的某个字段
+   *
+   * @param {Object} params
+   *   params.paramName 参数名
+   *   params.field     字段名（mode/value）
+   *   params.value     新值
+   */
+  const handleAuthMappingFieldChange = (params) => {
+    // params.paramName / params.field / params.value
+    const { paramName, field, value } = params;
+    const authMappings = node.authMappings || {};
+    const cookieMappings = { ...(authMappings.Cookie || {}) };
+    const current = normalizeMapping(cookieMappings[paramName]);
+    const next = { ...current, [field]: value };
+    // 切换来源时清空值，避免静态值和引用变量串用
+    if (field === 'mode') {
+      next.value = '';
+    }
+    cookieMappings[paramName] = next;
+    onChange({
+      ...node,
+      authMappings: { ...authMappings, Cookie: cookieMappings },
+    });
+  };
+
+  /**
+   * 渲染 Cookie 认证映射输入框
+   *
+   * @param {Object} param 认证参数
+   * @returns {JSX.Element} Cookie 输入控件
+   */
+  const renderCookieAuthValueInput = (param) => {
+    // 当前 Cookie 参数的映射配置
+    const mapping = normalizeMapping(node.authMappings?.Cookie?.[param.name]);
+    if (mapping.mode === 'ref') {
+      return (
+        <AutoComplete
+          placeholder="选择上游参数"
+          value={mapping.value}
+          disabled={!editable}
+          options={refOptions}
+          filterOption={(input, option) => {
+            // 分组选项本身不参与过滤，实际过滤由子选项完成
+            if (Array.isArray(option?.options)) return false;
+            return (option?.label || option?.value || '').toLowerCase().includes((input || '').toLowerCase());
+          }}
+          onChange={(value) => handleAuthMappingFieldChange({
+            paramName: param.name,
+            field: 'value',
+            value,
+          })}
+        />
+      );
+    }
+    return (
+      <Input
+        placeholder="请输入静态值"
+        value={mapping.value}
+        disabled={!editable}
+        onChange={(e) => handleAuthMappingFieldChange({
+          paramName: param.name,
+          field: 'value',
+          value: e.target.value,
+        })}
+      />
+    );
+  };
+
+  /**
+   * 渲染认证配置参数行
+   *
+   * @param {Object} params
+   *   params.authType 认证类型
+   *   params.param    认证参数
+   * @returns {JSX.Element} 认证参数行
+   */
+  const renderAuthParamRow = (params) => {
+    // params.authType / params.param
+    const { authType, param } = params;
+    const isCookie = authType === 'Cookie';
+    const mapping = normalizeMapping(node.authMappings?.Cookie?.[param.name]);
+
+    if (isCookie) {
+      return (
+        <div key={`${authType}-${param.carrier}-${param.name}`} className="auth-config-row auth-config-row-cookie">
+          <Input value={param.name} disabled />
+          <Input value={param.type} disabled />
+          <Input value={param.carrier} disabled />
+          <Select
+            value={mapping.mode}
+            disabled={!editable}
+            options={VALUE_MODE_OPTIONS}
+            onChange={(value) => handleAuthMappingFieldChange({
+              paramName: param.name,
+              field: 'mode',
+              value,
+            })}
+          />
+          {renderCookieAuthValueInput(param)}
+        </div>
+      );
+    }
+
+    return (
+      <div key={`${authType}-${param.carrier}-${param.name}`} className="auth-config-row">
+        <Input value={param.name} disabled />
+        <Input value={param.type} disabled />
+        <Input value={param.carrier} disabled />
+        <Input value={param.mappingValue} disabled />
+      </div>
+    );
+  };
+
+  /**
+   * 渲染认证配置区块
+   * @returns {JSX.Element} 认证配置区块
+   */
+  const renderAuthConfigs = () => {
+    if (authConfigs.length === 0) {
+      return <div className="param-empty">当前版本暂无认证配置</div>;
+    }
+
+    return (
+      <div className="auth-config-list">
+        {authConfigs.map((config) => (
+          <div className="auth-config-block" key={config.type}>
+            <div className="auth-config-title">
+              <span className="auth-method-tag">{config.type}</span>
+              <span>{AUTH_METHOD_LABEL[config.type] || config.type}</span>
+            </div>
+            {config.params.map((param) => renderAuthParamRow({ authType: config.type, param }))}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   /**
@@ -252,7 +393,7 @@ const ConnectorCard = (props) => {
               />
               {mapping.mode === 'ref' ? (
                 <AutoComplete
-                  placeholder="选择或输入引用表达式"
+                  placeholder="选择上游参数"
                   value={mapping.value}
                   disabled={!editable}
                   options={refOptions}
@@ -286,8 +427,27 @@ const ConnectorCard = (props) => {
     );
   };
 
-  // 超时上限
-  const timeoutMax = appLimits?.connectorTimeoutMax ?? 3;
+  /**
+   * 构建连接器版本下拉框选项
+   * @returns {Array} 版本选项列表
+   */
+  const buildVersionOptions = () => {
+    return versionList.map((item) => ({
+      value: item.versionId,
+      label: (
+        <div className="version-option">
+          <span className="version-option-name">{item.name}</span>
+          <span className="version-option-time">{item.createTime}</span>
+          <Tag color={CONNECTOR_VERSION_STATUS_MAP[item.status]?.color}>
+            {CONNECTOR_VERSION_STATUS_MAP[item.status]?.text}
+          </Tag>
+        </div>
+      ),
+    }));
+  };
+
+  // 超时上限（毫秒）
+  const timeoutMax = appLimits?.connectorTimeoutMax ?? 300000;
 
   return (
     <div>
@@ -313,7 +473,7 @@ const ConnectorCard = (props) => {
             placeholder="请选择连接器版本"
             value={node.versionId || undefined}
             disabled={!editable}
-            options={versionList.map((item) => ({ value: item.versionId, label: item.name }))}
+            options={buildVersionOptions()}
             onChange={handleVersionChange}
           />
         </div>
@@ -323,9 +483,7 @@ const ConnectorCard = (props) => {
       {currentVersion ? (
         <div className="node-card-section">
           <div className="section-title">认证方式</div>
-          <span className="auth-method-tag">
-            {AUTH_METHOD_LABEL[currentVersion.authType] || currentVersion.authType || '未知'}
-          </span>
+          {renderAuthConfigs()}
         </div>
       ) : null}
 
@@ -356,7 +514,7 @@ const ConnectorCard = (props) => {
             disabled={!editable}
             onChange={handleTimeoutChange}
           />
-          <span className="section-desc">秒（上限 {timeoutMax} 秒）</span>
+          <span className="section-desc">毫秒（上限 {timeoutMax} 毫秒）</span>
         </div>
       </div>
     </div>

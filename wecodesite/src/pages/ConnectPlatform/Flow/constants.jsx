@@ -7,9 +7,10 @@
  * 整改依据：连接流列表需求设计说明书 V1.3
  */
 import React from 'react';
-import { Badge, Button, Space, Tooltip, Dropdown } from 'antd';
+import { Badge, Button, Space, Dropdown } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 import { FLOW_LIFECYCLE_STATUS, FLOW_LIFECYCLE_STATUS_MAP } from '../../../utils/constants';
+import { renderTooltipTextCell } from '../../../utils/commonTableConfigs';
 
 /**
  * 页面配置信息
@@ -34,18 +35,6 @@ export const flowStatusOptions = [
   { value: FLOW_LIFECYCLE_STATUS.RUNNING, label: '运行中' },
   { value: FLOW_LIFECYCLE_STATUS.INVALID, label: '已失效' },
 ];
-
-/**
- * 渲染文本（带Tooltip）
- *
- * @param {string} text - 要渲染的文本
- * @returns {React.ReactNode} 包裹在Tooltip中的文本
- */
-const renderText = (text) => (
-  <Tooltip title={text}>
-    <span>{text || '-'}</span>
-  </Tooltip>
-);
 
 /**
  * 根据状态获取更多菜单项 key 列表
@@ -135,7 +124,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'id',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '中文名称',
@@ -143,7 +132,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'nameCn',
       width: 150,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '英文名称',
@@ -151,7 +140,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'nameEn',
       width: 150,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '中文描述',
@@ -159,7 +148,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'descriptionCn',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '英文描述',
@@ -167,7 +156,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'descriptionEn',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '状态',
@@ -187,7 +176,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'createBy',
       width: 120,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '创建时间',
@@ -195,7 +184,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'createTime',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '更新人',
@@ -203,7 +192,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'lastUpdateBy',
       width: 120,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '更新时间',
@@ -211,7 +200,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'lastUpdateTime',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '操作',

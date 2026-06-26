@@ -6,23 +6,10 @@
  * 定义连接器编辑页面的配置信息、状态映射、Tab 等基本信息
  */
 
-/**
- * 页面配置信息
- * 定义连接器编辑页面的标题等基本信息
- */
-export const editorPageInfo = {
-  createTitle: '新建连接器',
-  editTitle: '编辑连接器',
-};
-
-/**
- * 触发类型映射
- */
-export const TRIGGER_TYPE_MAP = {
-  webhook: { text: 'Webhook', color: 'blue' },
-  api: { text: 'API轮询', color: 'green' },
-  schedule: { text: '定时触发', color: 'purple' },
-};
+import {
+  HTTP_REQUEST_CARRIER_TABS,
+  HTTP_RESPONSE_CARRIER_TABS,
+} from '../../../utils/constants';
 
 /**
  * API配置的默认状态
@@ -38,9 +25,9 @@ export const DEFAULT_API_CONFIG = {
   authRequestSchema: {},
   // 数字签名独立配置：参数名 / carrier / 固定值 / 密钥
   signatureConfig: {
-    paramName: '',
+    paramName: 'X-Signature',
     carrier: 'header',
-    fixedValue: 'X-Signature',
+    fixedValue: 'signature',
     secret: '',
   },
   headerSchema: [],
@@ -64,12 +51,17 @@ export const DEFAULT_API_CONFIG = {
  * 单个认证方式的默认参数项工厂
  * @param {Object} options
  * options.paramName 默认参数名
+ * options.fixedValue 默认固定值
  */
 const buildAuthParam = (options) => {
   // options.paramName: 参数名称
-  const { paramName } = options;
+  // options.fixedValue: 固定值，用于页面值来源展示
+  const { paramName, fixedValue } = options;
+  console.log('paramName', paramName);
+  console.log('fixedValue', fixedValue);
   return {
     paramName,
+    fixedValue,
     paramType: 'string',
     description: '',
     carrier: 'header',
@@ -83,14 +75,14 @@ const buildAuthParam = (options) => {
  */
 export const AUTH_SCHEMA_MAP = {
   SOA: [
-    buildAuthParam({ paramName: 'X-Huawei-Auth' }),
+    buildAuthParam({ paramName: 'X-Soa-Token', fixedValue: 'soaToken' }),
   ],
   APIG: [
-    buildAuthParam({ paramName: 'X-HW-ID' }),
-    buildAuthParam({ paramName: 'X-HW-APPKEY' }),
+    buildAuthParam({ paramName: 'apigAppSecret', fixedValue: 'apigAppSecret' }),
+    buildAuthParam({ paramName: 'apigAppKey', fixedValue: 'apigAppKey' }),
   ],
   Cookie: [
-    buildAuthParam({ paramName: 'Cookie' }),
+    buildAuthParam({ paramName: 'Cookie', fixedValue: 'Cookie' }),
   ],
 };
 
@@ -103,7 +95,6 @@ export const HTTP_METHOD_OPTIONS = [
   'POST',
   'PUT',
   'DELETE',
-  'PATCH',
 ];
 
 /**
@@ -154,10 +145,30 @@ export const COOKIE_FIELD_MAPPING_PLACEHOLDER = '从连接流引用参数配置'
 export const SIGNATURE_DEFAULT_FIXED_VALUE = 'X-Signature';
 
 /**
- * Schema编辑器载体选项
- * 定义参数可以放置的位置
+ * 认证参数行展示配置
+ * 用于统一控制通用认证和数字签名的值来源列展示差异
  */
-export const CARRIER_OPTIONS = ['header', 'body', 'query'];
+export const AUTH_PARAM_ROW_CONFIG = {
+  // SOA 认证：展示系统值来源
+  SOA: {
+    valuePlaceholder: '值来源',
+  },
+  // APIG 认证：展示系统值来源
+  APIG: {
+    valuePlaceholder: '值来源',
+  },
+  // Cookie 认证：值来源由连接流引用参数配置
+  Cookie: {
+    value: '',
+    valuePlaceholder: COOKIE_FIELD_MAPPING_PLACEHOLDER,
+  },
+  // 数字签名：展示固定签名值，并额外展示签名密钥
+  SIGNATURE: {
+    value: SIGNATURE_DEFAULT_FIXED_VALUE,
+    valuePlaceholder: '签名固定值',
+    showSecret: true,
+  },
+};
 
 /**
  * Schema编辑器载体选项（仅请求）
@@ -173,37 +184,12 @@ export const RESPONSE_CARRIER_OPTIONS = ['header', 'body'];
  * 入参 Tab 配置
  * label 用于 Tab 标题，carrier 用于按位置过滤参数
  */
-export const REQUEST_TABS = [
-  { key: 'header', label: 'HTTP 请求头', carrier: 'header' },
-  { key: 'body', label: 'HTTP 请求体', carrier: 'body' },
-  { key: 'query', label: 'URL 查询参数', carrier: 'query' },
-];
+export const REQUEST_TABS = HTTP_REQUEST_CARRIER_TABS;
 
 /**
  * 出参 Tab 配置
  */
-export const RESPONSE_TABS = [
-  { key: 'header', label: 'HTTP 响应头', carrier: 'header' },
-  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
-];
-
-/**
- * 认证请求Schema配置（通用认证：SOA / APIG / Cookie 共用）
- */
-export const AUTH_REQUEST_SCHEMA_CONFIG = {
-  schemaType: 'authRequestSchema',
-  editable: true,
-  showCarrier: true,
-  carrierOptions: CARRIER_OPTIONS,
-  typeOptions: ['string'],
-  valueInputType: 'fieldName',
-  showActionButtons: false,
-  lockedFields: {
-    paramName: true,
-    paramType: true,
-    carrier: false,
-  },
-};
+export const RESPONSE_TABS = HTTP_RESPONSE_CARRIER_TABS;
 
 /**
  * 请求Schema配置（入参，全 carrier）

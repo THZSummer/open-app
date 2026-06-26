@@ -13,11 +13,8 @@ global.message = {
   info: jest.fn(),
 };
 
-if (!window.location) {
-  window.location = {};
-}
-window.location.search = '?appId=test-app-id';
-window.location.hash = '';
+// 通过 history API 初始化查询参数，避免 jsdom 直接设置 location.search 触发导航未实现报错。
+window.history.replaceState({}, '', '/?appId=test-app-id');
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

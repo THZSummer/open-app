@@ -27,6 +27,7 @@ const ClassifyFormModal = ({
   const handleOk = () => {
     form.validateFields().then((values) => {
       onSubmit?.(values);
+      handleCancel();
     });
   };
   

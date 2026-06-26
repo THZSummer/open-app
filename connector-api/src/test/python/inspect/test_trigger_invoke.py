@@ -364,13 +364,14 @@ EXIT_NODE = {
 }
 
 
-def build_orchestration(connector_version_id, overrides=None):
+def build_orchestration(connector_version_id, connection_config, overrides=None):
     """构建完整编排配置 JSON。overrides 支持的 key 见 build_orchestration_no_connector"""
     trigger = copy.deepcopy(TRIGGER_NODE)
     connector = copy.deepcopy(CONNECTOR_NODE)
     exit_node = copy.deepcopy(EXIT_NODE)
 
     connector["data"]["connectorVersionId"] = str(connector_version_id)
+    connector["data"]["connectorVersionConfig"] = connection_config
 
     if overrides:
         if "trigger_auth_type" in overrides:
@@ -531,12 +532,13 @@ FAIL_CONNECTOR_NODE = {
 }
 
 
-def build_fail_orchestration(connector_version_id):
+def build_fail_orchestration(connector_version_id, connection_config):
     trigger = copy.deepcopy(TRIGGER_NODE_NO_CONNECTOR)
     connector = copy.deepcopy(FAIL_CONNECTOR_NODE)
     exit_node = copy.deepcopy(EXIT_NODE_NO_CONNECTOR)
 
     connector["data"]["connectorVersionId"] = str(connector_version_id)
+    connector["data"]["connectorVersionConfig"] = connection_config
 
     return {
         "nodes": [trigger, connector, exit_node],
@@ -615,7 +617,7 @@ def test_trigger_invoke():
     fvid_049 = cid_049 = cvid_049 = None
     cid_049, cvid_049 = setup_connector()
     fid_049, fvid_049 = setup_flow(sid_049, lifecycle_status=1,
-                                   orchestration=build_orchestration(cvid_049),
+                                   orchestration=build_orchestration(cvid_049, CONNECTION_CONFIG),
                                    connector_id=cid_049, connector_version_id=cvid_049)
     # 不发送 X-Sys-Token header
     resp = trigger(fid_049, body={"keyword": "test"},
@@ -644,7 +646,7 @@ def test_trigger_invoke():
     fvid_051 = cid_051 = cvid_051 = None
     cid_051, cvid_051 = setup_connector()
     fid_051, fvid_051 = setup_flow(sid_051, lifecycle_status=0,
-                                   orchestration=build_orchestration(cvid_051),
+                                   orchestration=build_orchestration(cvid_051, CONNECTION_CONFIG),
                                    connector_id=cid_051, connector_version_id=cvid_051)
     resp = trigger(fid_051, body={"keyword": "test"},
                           headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-051"},
@@ -660,7 +662,7 @@ def test_trigger_invoke():
     fvid_060 = cid_060 = cvid_060 = None
     cid_060, cvid_060 = setup_connector()
     fid_060, fvid_060 = setup_flow(sid_060, lifecycle_status=1,
-                                   orchestration=build_orchestration(cvid_060),
+                                   orchestration=build_orchestration(cvid_060, CONNECTION_CONFIG),
                                    connector_id=cid_060, connector_version_id=cvid_060)
     resp = trigger(fid_060,
                           body={"keyword": "abc_search_keyword"},
@@ -728,7 +730,7 @@ def test_trigger_invoke():
     fvid_061 = cid_061 = cvid_061 = None
     cid_061, cvid_061 = setup_connector()
     fid_061, fvid_061 = setup_flow(sid_061, lifecycle_status=1,
-                                   orchestration=build_orchestration(cvid_061),
+                                   orchestration=build_orchestration(cvid_061, CONNECTION_CONFIG),
                                    connector_id=cid_061, connector_version_id=cvid_061)
     resp = trigger(fid_061,
                           body={"other": "no_keyword"},
@@ -744,7 +746,7 @@ def test_trigger_invoke():
     fvid_061b = cid_061b = cvid_061b = None
     cid_061b, cvid_061b = setup_connector()
     fid_061b, fvid_061b = setup_flow(sid_061b, lifecycle_status=1,
-                                     orchestration=build_orchestration(cvid_061b),
+                                     orchestration=build_orchestration(cvid_061b, CONNECTION_CONFIG),
                                      connector_id=cid_061b, connector_version_id=cvid_061b)
     # 不传 page query param
     resp = trigger(fid_061b,
@@ -761,7 +763,7 @@ def test_trigger_invoke():
     fvid_061c = cid_061c = cvid_061c = None
     cid_061c, cvid_061c = setup_connector()
     fid_061c, fvid_061c = setup_flow(sid_061c, lifecycle_status=1,
-                                     orchestration=build_orchestration(cvid_061c),
+                                     orchestration=build_orchestration(cvid_061c, CONNECTION_CONFIG),
                                      connector_id=cid_061c, connector_version_id=cvid_061c)
     # 不传 X-Trace-Id header
     resp = trigger(fid_061c,
@@ -777,7 +779,7 @@ def test_trigger_invoke():
     fvid_062 = cid_062 = cvid_062 = None
     cid_062, cvid_062 = setup_connector(FAIL_CONNECTION_CONFIG)
     fid_062, fvid_062 = setup_flow(sid_062, lifecycle_status=1,
-                                   orchestration=build_fail_orchestration(cvid_062),
+                                   orchestration=build_fail_orchestration(cvid_062, FAIL_CONNECTION_CONFIG),
                                    connector_id=cid_062, connector_version_id=cvid_062)
     resp = trigger(fid_062,
                           body={"sender": "test_user"},
@@ -792,7 +794,7 @@ def test_trigger_invoke():
     fvid_063 = cid_063 = cvid_063 = None
     cid_063, cvid_063 = setup_connector()
     fid_063, fvid_063 = setup_flow(sid_063, lifecycle_status=1,
-                                   orchestration=build_orchestration(cvid_063),
+                                   orchestration=build_orchestration(cvid_063, CONNECTION_CONFIG),
                                    connector_id=cid_063, connector_version_id=cvid_063)
     resp = trigger(fid_063,
                           body={"keyword": "expr_test"},
@@ -842,7 +844,7 @@ def test_trigger_invoke():
     cid_064, cvid_064 = setup_connector()
     fid_064, fvid_064 = setup_flow(sid_064, lifecycle_status=1,
                                    orchestration=build_orchestration(
-                                       cvid_064,
+                                       cvid_064, CONNECTION_CONFIG,
                                        overrides={"trigger_rate_limit_qps": 5}
                                    ),
                                    connector_id=cid_064, connector_version_id=cvid_064)

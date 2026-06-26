@@ -75,7 +75,7 @@ class FlowRuntimeEngineTest {
                 "\"edges\":[{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_exit\"}]}");
 
         FlowConfig flowConfig = FlowConfig.defaults();
-        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, Map.of(), flowConfig);
+        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, flowConfig);
 
         // Mock: VersionConfigResolver 正常返回
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));
@@ -226,7 +226,7 @@ class FlowRuntimeEngineTest {
         flowVersion.setVersionNumber(1);
         flowVersion.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
 
-        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, Map.of(), FlowConfig.defaults());
+        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, FlowConfig.defaults());
 
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));
         when(dagScheduler.schedule(any(ResolvedFlowConfig.class), any(ExecutionContext.class)))
@@ -266,7 +266,7 @@ class FlowRuntimeEngineTest {
         flowVersion.setVersionNumber(1);
         flowVersion.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
 
-        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, Map.of(), FlowConfig.defaults());
+        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, FlowConfig.defaults());
 
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));
         when(dagScheduler.schedule(any(ResolvedFlowConfig.class), any(ExecutionContext.class)))
@@ -308,7 +308,7 @@ class FlowRuntimeEngineTest {
         flowVersion.setVersionNumber(1);
         flowVersion.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
 
-        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, Map.of(), FlowConfig.defaults());
+        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, FlowConfig.defaults());
 
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));
         when(dagScheduler.schedule(any(ResolvedFlowConfig.class), any(ExecutionContext.class)))
@@ -362,7 +362,7 @@ class FlowRuntimeEngineTest {
         flowVersion.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
 
         FlowConfig cachedConfig = new FlowConfig(null, null, null, 600, "flow:{{flowId}}");
-        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, Map.of(), cachedConfig);
+        ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, cachedConfig);
 
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));
         when(dagScheduler.schedule(any(ResolvedFlowConfig.class), any(ExecutionContext.class)))

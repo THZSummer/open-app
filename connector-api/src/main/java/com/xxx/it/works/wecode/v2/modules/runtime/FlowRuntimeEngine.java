@@ -29,7 +29,6 @@ import java.util.*;
  * <ul>
  *   <li>Phase 1 未部署 → 503</li>
  *   <li>Phase 2 版本删除 → 500</li>
- *   <li>Phase 2 连接器版本失效 → 跳过该节点, 其余继续</li>
  * </ul>
  * </p>
  */
@@ -73,10 +72,9 @@ public class FlowRuntimeEngine {
 
         return versionConfigResolver.resolveFlowVersion(flowId)
                 .flatMap(resolved -> {
-                    log.info("Phase 2 completed: flowId={}, versionNumber={}, connectorNodes={}",
+                    log.info("Phase 2 completed: flowId={}, versionNumber={}",
                             flowId,
-                            resolved.getFlowVersion().getVersionNumber(),
-                            resolved.getConnectorConfigs().size());
+                            resolved.getFlowVersion().getVersionNumber());
 
                     // Phase 3: SYSTOKEN 白名单校验已由 WebFilter 完成 (在此做补充校验)
                     // Phase 4: 入站限流已由 InboundRateLimiter 完成 (Redis Token Bucket)

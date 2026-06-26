@@ -294,6 +294,14 @@ public class OpFlowService {
             version = new FlowVersion();
             version.setId(idGenerator.nextId());
             version.setFlowId(flowId);
+            // V3 fix: 显式设置 versionNumber，避免依赖 DB DEFAULT 1
+            int versionNumber = 1;
+            Integer maxVersion = flowVersionMapper.selectMaxVersionNumberByFlowId(flowId);
+            if (maxVersion != null && maxVersion > 0) {
+                versionNumber = maxVersion + 1;
+            }
+            version.setVersionNumber(versionNumber);
+            version.setStatus(com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus.DRAFT.getCode());
             version.setOrchestrationConfig(request.getOrchestrationConfig().toString());
             version.setCreateTime(now);
             version.setLastUpdateTime(now);

@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.approval;
 
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
@@ -14,9 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 /**
  * 连接流版本发布审批服务
@@ -134,65 +131,5 @@ public class FlowVersionApprovalService {
         log.info("Flow version approval cancelled: flowVersionId={}, appId={}, operator={}",
                  flowVersionId, appId, operator);
     }
-
-    /**
-     * 催办审批
-     *
-     * <p>向当前审批级别的审批人发送催办通知。</p>
-     *
-     * @param flowVersionId 流版本ID
-     * @param appId         归属应用ID
-     * @param operator      操作人
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void urgeApproval(Long flowVersionId, Long appId, String operator) {
-
-        // 1. 查找待审批的审批记录
-        ApprovalRecord record = recordMapper.selectLatestPendingByBusiness(
-                ApprovalEngine.BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH, flowVersionId);
-        if (record == null) {
-            throw BusinessException.badRequest("未找到待审批的审批记录",
-                    "No pending approval record found");
-        }
-
-        // 2. 校验申请人身份
-        if (!record.getApplicantId().equals(operator)) {
-            throw BusinessException.forbidden("只有申请人可以催办",
-                    "Only the applicant can urge the approval");
-        }
-
-        // 3. 解析当前审批节点
-        List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
-        if (nodes.isEmpty() || record.getCurrentNode() >= nodes.size()) {
-            throw BusinessException.badRequest("审批节点配置异常",
-                    "Approval node configuration is invalid");
-        }
-
-        ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
-
-        // 4. 发送催办通知
-        String cardId = approvalNotifyService.sendUrgeCard(
-                currentNode.getUserId(),
-                currentNode.getUserName(),
-                record.getId(),
-                record.getBusinessType(),
-                record.getBusinessId(),
-                record.getApplicantName()
-        );
-
-        // 5. 持久化cardId到combinedNodes
-        if (currentNode.getCardIds() == null) {
-            currentNode.setCardIds(new ArrayList<>());
-        }
-        currentNode.getCardIds().add(cardId);
-        record.setCombinedNodes(approvalEngine.serializeNodes(nodes));
-        record.setLastUpdateTime(new Date());
-        recordMapper.updateCombinedNodes(record);
-
-        log.info("Flow version approval urged: recordId={}, flowVersionId={}, appId={}, " +
-                 "approver={}, cardId={}",
-                 record.getId(), flowVersionId, appId, currentNode.getUserId(), cardId);
-    }
-
 
 }

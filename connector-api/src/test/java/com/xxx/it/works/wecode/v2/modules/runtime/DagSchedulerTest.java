@@ -65,7 +65,7 @@ class DagSchedulerTest {
         fv.setFlowId(100L);
         fv.setVersionNumber(1);
         fv.setOrchestrationConfig(orchestrationConfig);
-        return new ResolvedFlowConfig(flow, fv, Map.of(), FlowConfig.defaults());
+        return new ResolvedFlowConfig(flow, fv, FlowConfig.defaults());
     }
 
     private NodeOutput successOutput(String nodeId, String nodeType) {

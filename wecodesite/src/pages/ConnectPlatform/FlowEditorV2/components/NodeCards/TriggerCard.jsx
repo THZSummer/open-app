@@ -127,9 +127,12 @@ const TriggerCard = (props) => {
               />
               <Button
                 type="text"
+                danger
                 disabled={!editable}
                 onClick={() => handleRemoveSystoken(index)}
-              />
+              >
+                删除
+              </Button>
             </div>
           ))}
         </div>

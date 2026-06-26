@@ -39,22 +39,9 @@
   align-items: center;
 }
 
-/* 触发器：仅 参数名 + 类型 + 删除 */
-.param-row-name-type {
-  grid-template-columns: 1.4fr 1fr 36px;
-}
-
 /* 连接器/脚本/输出：参数名 + 类型 + 模式选择 + 值输入（无描述列） */
 .param-row-with-mode {
   grid-template-columns: 1.2fr 0.9fr 1fr 1.4fr 36px;
-}
-
-.param-row-with-value {
-  grid-template-columns: 1.2fr 0.9fr 1.2fr 1.2fr 36px;
-}
-
-.param-row-with-source {
-  grid-template-columns: 1.2fr 0.9fr 1.4fr 1.2fr 36px;
 }
 
 .param-empty {
@@ -91,6 +78,41 @@
   border: 1px solid #d6e4ff;
   border-radius: 4px;
   font-size: 12px;
+}
+
+.auth-config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-config-block {
+  padding: 12px;
+  background: #f7f8fa;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+}
+
+.auth-config-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2329;
+}
+
+.auth-config-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 0.8fr 1.6fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.auth-config-row-cookie {
+  grid-template-columns: 1.2fr 0.8fr 0.8fr 1fr 1.6fr;
 }
 
 .inline-form-row {

@@ -1,6 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import SchemaEditorV2 from '../../../../../components/SchemaEditor/SchemaEditorV2';
+import {
+  buildScriptContextType,
+  buildScriptMonacoExtraLib,
+  collectUpstreamRefs,
+} from '../../utils';
 import './NodeCards.m.less';
 
 /**
@@ -15,7 +20,7 @@ import './NodeCards.m.less';
  */
 const ScriptCard = (props) => {
   // props.node / props.editable / props.flowData / props.appLimits / props.onChange
-  const { node, editable, onChange } = props;
+  const { node, editable, flowData, onChange } = props;
 
   // Monaco Editor 加载状态：true=正常加载中/已加载, false=加载失败
   const [monacoReady, setMonacoReady] = useState(true);
@@ -23,6 +28,39 @@ const ScriptCard = (props) => {
   const [monacoLoading, setMonacoLoading] = useState(true);
   // 编辑器是否已挂载，用于决定是否在首次渲染前显示 fallback
   const editorMounted = useRef(false);
+  // Monaco 额外类型声明的释放函数，用于 Context 类型变化时清理旧声明
+  const extraLibDisposeRef = useRef(null);
+
+  /**
+   * 当前脚本节点之前的上游可引用参数
+   */
+  const upstreamRefs = useMemo(
+    () => collectUpstreamRefs({ flowData, currentNodeId: node.id }),
+    [flowData, node.id]
+  );
+
+  /**
+   * 根据上游参数生成 Context 类型提示
+   */
+  const contextTypeText = useMemo(
+    () => buildScriptContextType(upstreamRefs),
+    [upstreamRefs]
+  );
+
+  /**
+   * 给 Monaco TypeScript worker 注册 Context 类型声明
+   * @param {Object} monaco Monaco 实例
+   */
+  const registerContextExtraLib = (monaco) => {
+    if (!monaco?.languages?.typescript?.typescriptDefaults) return;
+    if (extraLibDisposeRef.current) {
+      extraLibDisposeRef.current.dispose();
+    }
+    extraLibDisposeRef.current = monaco.languages.typescript.typescriptDefaults.addExtraLib(
+      buildScriptMonacoExtraLib(contextTypeText),
+      `ts:script-context-${node.id}.d.ts`
+    );
+  };
 
   /**
    * 检查 Monaco loader 是否可用
@@ -60,9 +98,20 @@ const ScriptCard = (props) => {
   /**
    * Monaco Editor 挂载完成回调
    */
-  const handleEditorMount = () => {
-    editorMounted.current = true;
+  const handleEditorMount = (editor, monaco) => {
+    registerContextExtraLib(monaco);
   };
+
+  /**
+   * 组件卸载时清理 Monaco 额外类型声明
+   */
+  useEffect(() => {
+    return () => {
+      if (extraLibDisposeRef.current) {
+        extraLibDisposeRef.current.dispose();
+      }
+    };
+  }, []);
 
   /**
    * 更新脚本内容
@@ -136,6 +185,7 @@ const ScriptCard = (props) => {
       {/* 脚本编辑器 */}
       <div className="node-card-section">
         <div className="section-title">脚本内容</div>
+        <div className="section-desc">context 为当前脚本节点之前的上游节点参数，可在 transform(context) 中直接使用。</div>
         {renderEditor()}
       </div>
 

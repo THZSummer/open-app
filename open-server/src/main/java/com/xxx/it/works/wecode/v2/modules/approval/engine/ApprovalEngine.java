@@ -24,6 +24,9 @@ import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
 import com.xxx.it.works.wecode.v2.modules.version.enums.VersionStatusEnum;
 import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -77,6 +80,7 @@ public class ApprovalEngine {
     private final EventMapper eventMapper;
     private final CallbackMapper callbackMapper;
     private final AppVersionMapper appVersionMapper;
+    private final OpFlowVersionMapper flowVersionMapper;
 
     /**
      * 审批动作枚举
@@ -361,6 +365,8 @@ public class ApprovalEngine {
                 return "callback_permission_apply";
             case BusinessType.APP_VERSION_PUBLISH:
                 return "app_version_publish";
+            case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
+                return "connector_flow_version_publish";
             default:
                 log.warn("Unknown business type: {}, using default scene code", businessType);
                 return "api_permission_apply";  // 默认使用API权限申请审批
@@ -712,6 +718,30 @@ public class ApprovalEngine {
 
                     // 权限申请场景，由 updateSubscriptionStatus 处理
                     log.debug("Permission application scenario, not updating resource status");
+                    break;
+
+                case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
+                    FlowVersion flowVersion = flowVersionMapper.selectById(businessId);
+                    if (flowVersion != null) {
+                        Date now = new Date();
+                        if (status == Status.APPROVED) {
+                            // 审批通过 → 已发布
+                            flowVersion.setStatus(FlowVersionStatus.PUBLISHED.getCode());
+                            flowVersion.setPublishedTime(now);
+                            flowVersion.setPublishedBy(record.getApplicantId());
+                        } else if (status == Status.REJECTED) {
+                            // 审批驳回 → 已驳回
+                            flowVersion.setStatus(FlowVersionStatus.REJECTED.getCode());
+                        } else {
+                            // 审批撤销 → 已撤回
+                            flowVersion.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
+                        }
+                        flowVersion.setLastUpdateTime(now);
+                        flowVersion.setLastUpdateBy(record.getApplicantId());
+                        flowVersionMapper.update(flowVersion);
+                        log.info("Updated FlowVersion status: versionId={}, status={}",
+                                businessId, flowVersion.getStatus());
+                    }
                     break;
 
                 default:

@@ -39,6 +39,7 @@ import {
   publishVersion,
   createDraftVersion,
   expireVersion,
+  restoreVersion,
   withdrawVersion,
   deleteVersion,
   debugFlow,
@@ -47,6 +48,7 @@ import {
   VERSION_STATUS,
   FLOW_MODE,
   DEFAULT_APP_LIMITS,
+  FLOW_APP_CONFIG_LOOKUP_KEY,
   NODE_TYPE,
   FLOW_VERSION_EXPIRE_SECOND_MODAL_INFO,
   FLOW_VERSION_WITHDRAW_SECOND_MODAL_INFO,
@@ -61,8 +63,76 @@ import {
   validateForPublish,
   buildNodeTitles,
 } from './utils';
-import { queryParams, getSecondModalInfo } from '../../../utils/common';
+import { queryParams, getSecondModalInfo, getVersionObjectName } from '../../../utils/common';
 import './FlowEditorV2.m.less';
+
+/**
+ * 构建默认应用级配置
+ * @returns {Object} 应用级配置
+ */
+const buildDefaultAppConfig = () => ({
+  flowModeVisibility: {
+    single: true,
+    serial: false,
+    parallel: false,
+  },
+  rateLimitMax: DEFAULT_APP_LIMITS.rateLimitMax,
+  connectorTimeoutMax: DEFAULT_APP_LIMITS.connectorTimeoutMax,
+  serialConnectorMax: DEFAULT_APP_LIMITS.serialConnectorMax,
+  parallelBranchMax: DEFAULT_APP_LIMITS.parallelBranchMax,
+});
+
+/**
+ * 根据 showMoreFlowType 构建编排模式可见性
+ * @param {boolean} showMoreFlowType 是否展示串行编排和并行编排
+ * @returns {Object} 编排模式可见性配置
+ */
+const buildFlowModeVisibility = (showMoreFlowType) => ({
+  single: true,
+  serial: showMoreFlowType === true,
+  parallel: showMoreFlowType === true,
+});
+
+/**
+ * 将 lookup 配置映射为编辑器应用级配置
+ * @param {Object} config lookup itemValue 解析后的配置
+ * @returns {Object} 应用级配置
+ */
+const mapLookupConfigToAppConfig = (config) => {
+  // config.QPS / config.showMoreFlowType / config.serial / config.parallel / config.timeoutMs
+  return {
+    flowModeVisibility: buildFlowModeVisibility(config?.showMoreFlowType),
+    rateLimitMax: config?.QPS ?? DEFAULT_APP_LIMITS.rateLimitMax,
+    connectorTimeoutMax: config?.timeoutMs ?? DEFAULT_APP_LIMITS.connectorTimeoutMax,
+    serialConnectorMax: config?.serial ?? DEFAULT_APP_LIMITS.serialConnectorMax,
+    parallelBranchMax: config?.parallel ?? DEFAULT_APP_LIMITS.parallelBranchMax,
+  };
+};
+
+/**
+ * 从应用级配置响应中解析当前应用配置
+ * @param {Object} params 参数对象
+ * @param {Object} params.appRes 应用级配置接口响应
+ * @param {string} params.appId 当前应用 ID
+ * @returns {Object} 应用级配置
+ */
+const parseAppConfigByAppId = (params) => {
+  // params.appRes / params.appId
+  const { appRes, appId } = params;
+  try {
+    const items = appRes?.data?.lookups?.[FLOW_APP_CONFIG_LOOKUP_KEY]?.items || [];
+    const matchedItem = items.find(item => item?.itemCode === appId);
+
+    if (!matchedItem?.itemValue) {
+      return buildDefaultAppConfig();
+    }
+
+    const parsedConfig = JSON.parse(matchedItem.itemValue);
+    return mapLookupConfigToAppConfig(parsedConfig);
+  } catch {
+    return buildDefaultAppConfig();
+  }
+};
 
 /**
  * 连接流编辑器 V2 主组件
@@ -131,19 +201,15 @@ function FlowEditorV2() {
 
     const initPage = async () => {
       const appRes = await fetchAppConfig();
-      if (appRes?.code === '200' && appRes.data) {
-        const cfg = appRes.data;
-        setAppModeVisibility(cfg.flowModeVisibility || {
-          single: true, serial: true, parallel: true,
-        });
-        setAppLimits({
-          rateLimitMax: cfg.rateLimitMax ?? DEFAULT_APP_LIMITS.rateLimitMax,
-          connectorTimeoutMax: cfg.connectorTimeoutMax ?? DEFAULT_APP_LIMITS.connectorTimeoutMax,
-          serialConnectorMax: cfg.serialConnectorMax ?? DEFAULT_APP_LIMITS.serialConnectorMax,
-          parallelBranchMax: cfg.parallelBranchMax ?? DEFAULT_APP_LIMITS.parallelBranchMax,
-          cacheTimeMax: cfg.cacheTimeMax ?? DEFAULT_APP_LIMITS.cacheTimeMax,
-        });
-      }
+      const appConfig = parseAppConfigByAppId({ appRes, appId: queryParams('appId') });
+      setAppModeVisibility(appConfig.flowModeVisibility);
+      setAppLimits({
+        rateLimitMax: appConfig.rateLimitMax,
+        connectorTimeoutMax: appConfig.connectorTimeoutMax,
+        serialConnectorMax: appConfig.serialConnectorMax,
+        parallelBranchMax: appConfig.parallelBranchMax,
+        cacheTimeMax: DEFAULT_APP_LIMITS.cacheTimeMax,
+      });
       await loadVersions(flowId);
     };
 
@@ -253,6 +319,7 @@ function FlowEditorV2() {
       case 'publish': return handlePublish();
       case 'newDraft': return handleNewDraft();
       case 'expire': return handleExpire();
+      case 'restore': return doRestore();
       case 'withdraw': return handleWithdraw();
       case 'delete': return handleDelete();
       case 'detail': return handleOpenDetail();
@@ -290,6 +357,15 @@ function FlowEditorV2() {
       message.error(res?.messageZh || '创建失败');
     }
     setActionLoading(false);
+  };
+
+  /**
+   * 取消编辑并还原当前版本详情
+   */
+  const handleCancelEdit = async () => {
+    if (!currentVersion?.versionId) return;
+    setIsEditing(false);
+    await loadVersionDetail(flowId, currentVersion.versionId);
   };
 
   /**
@@ -335,9 +411,9 @@ function FlowEditorV2() {
       content: '发布后将进入审批中状态，是否继续？',
       onOk: async () => {
         setActionLoading(true);
-        const config = JSON.parse(JSON.stringify(flowData));
         const res = await publishVersion({
-          flowId, versionId: currentVersion.versionId, config,
+          flowId,
+          versionId: currentVersion.versionId,
         });
         if (res?.code === '200') {
           message.success('发布成功');
@@ -400,6 +476,26 @@ function FlowEditorV2() {
   };
 
   /**
+   * 执行恢复操作
+   */
+  const doRestore = async () => {
+    if (!currentVersion?.versionId) return;
+
+    setActionLoading(true);
+    const res = await restoreVersion({
+      flowId,
+      versionId: currentVersion.versionId,
+    });
+    if (res?.code === '200') {
+      message.success('已恢复');
+      await loadVersions(flowId, { preferVersionId: currentVersion.versionId });
+    } else {
+      message.error(res?.messageZh || '恢复失败');
+    }
+    setActionLoading(false);
+  };
+
+  /**
    * 撤回（触发二次确认弹窗）
    */
   const handleWithdraw = () => {
@@ -452,37 +548,11 @@ function FlowEditorV2() {
   };
 
   /**
-   * 拼接版本对象名
-   * 优先 "v{versionNo} ({versionName})"，缺失则按 versionName / versionNo / versionId 回退
-   */
-  const getVersionObjectName = () => {
-    // 当前选中版本
-    const version = currentVersion;
-    if (!version) return '';
-
-    // 版本号字段（兼容多种命名）
-    const versionNo = version.versionNo || version.versionNumber;
-    // 版本名称字段（兼容多种命名）
-    const versionName = version.versionName || version.name;
-
-    if (versionNo && versionName) {
-      return `v${versionNo} (${versionName})`;
-    }
-    if (versionNo) {
-      return `v${versionNo}`;
-    }
-    if (versionName) {
-      return versionName;
-    }
-    return version.versionId || '';
-  };
-
-  /**
    * 获取二次确认弹窗配置（含 onConfirm 回调）
    */
   const getConfirmModalInfo = () => {
     // 版本对象名（用于确认文案拼接）
-    const objectName = getVersionObjectName();
+    const objectName = getVersionObjectName(currentVersion);
 
     if (confirmModal.type === 'expire') {
       return {
@@ -628,16 +698,40 @@ function FlowEditorV2() {
    *
    * @param {Object} config 更多配置
    */
-  const handleSaveMoreConfig = (config) => {
-    setFlowData({
+  const handleSaveMoreConfig = async (config) => {
+    if (!editable || !currentVersion?.versionId) {
+      message.warning('请先进入编辑状态');
+      return;
+    }
+
+    const nextFlowData = {
       ...flowData,
       rateLimit: config.rateLimit,
       cacheEnabled: config.cacheEnabled,
       cacheTime: config.cacheTime,
       cacheKeys: config.cacheKeys,
+    };
+    const requestConfig = JSON.parse(JSON.stringify(nextFlowData));
+    const needReloadAfterSave = isWithdrawn || isRejected;
+
+    setActionLoading(true);
+    const res = await saveDraft({
+      flowId,
+      versionId: currentVersion.versionId,
+      config: requestConfig,
     });
-    message.success('更多配置已保存');
-    setMoreConfigVisible(false);
+    setActionLoading(false);
+
+    if (res?.code === '200') {
+      setFlowData(nextFlowData);
+      message.success('更多配置已保存');
+      setMoreConfigVisible(false);
+      if (needReloadAfterSave) {
+        await loadVersions(flowId, { preferVersionId: currentVersion.versionId });
+      }
+    } else {
+      message.error(res?.messageZh || '更多配置保存失败');
+    }
   };
 
   // ========================================
@@ -663,7 +757,12 @@ function FlowEditorV2() {
    */
   const handleDebug = async (paramValues) => {
     setDebugLoading(true);
-    const res = await debugFlow({ flowId, inputParams: paramValues });
+    // 传入当前版本 ID，用于调试指定版本。
+    const res = await debugFlow({
+      flowId,
+      versionId: currentVersion?.versionId,
+      inputParams: paramValues,
+    });
     setDebugLoading(false);
     if (res?.code === '200') {
       setDebugResult(res.data);
@@ -750,6 +849,7 @@ function FlowEditorV2() {
           actionLoading={actionLoading}
           isEditing={isEditing}
           onVersionChange={handleVersionChange}
+          onCancelEdit={handleCancelEdit}
           onAction={handleVersionAction}
         />
       </div>
@@ -812,7 +912,8 @@ function FlowEditorV2() {
                   <div className="node-card-header">
                     <div className="node-card-title">
                       <span className="node-card-tag">{getNodeTagText(activeNode.type)}</span>
-                      {getNodeTitleText(activeNode.type)}
+                      <span>{getNodeTitleText(activeNode.type)}</span>
+                      <span className="node-card-id">{activeNode.id}</span>
                     </div>
                   </div>
                   {renderActiveNodeCard()}
@@ -848,10 +949,12 @@ function FlowEditorV2() {
       {/* 更多配置抽屉 */}
       <MoreConfigDrawer
         visible={moreConfigVisible}
+        editable={editable}
         rateLimit={flowData.rateLimit}
         cacheEnabled={flowData.cacheEnabled}
         cacheTime={flowData.cacheTime}
         cacheKeys={flowData.cacheKeys}
+        triggerNodeId={flowData.trigger?.id}
         triggerInputParams={flowData.trigger?.inputParams}
         rateLimitMax={appLimits.rateLimitMax}
         cacheTimeMax={appLimits.cacheTimeMax}
