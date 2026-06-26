@@ -790,6 +790,7 @@ def test_full_flow():
             return True
 
         def s17():
+            url = f"POST http://localhost:18180/api/v1/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
             r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
                              {
                                  "filters": {"category": "tech", "minScore": 0.5},
@@ -804,7 +805,7 @@ def test_full_flow():
                 os_fail("connector-api 连接失败")
                 return False
             if r.status_code in (200, 201):
-                print(f"  ✅ TRIGGER (HTTP {r.status_code})")
+                print(f"  ✅ TRIGGER (HTTP {r.status_code})  {url}")
                 try:
                     b = r.json()
                     print(f"    响应body: {json.dumps(b, ensure_ascii=False)[:500]}")
@@ -816,7 +817,7 @@ def test_full_flow():
                 except Exception:
                     print(f"    响应: {r.text[:200]}")
                 return True
-            os_fail(f"TRIGGER: HTTP {r.status_code}, {r.text[:200]}")
+            os_fail(f"TRIGGER: HTTP {r.status_code}, {r.text[:200]}  {url}")
             return False
 
         def s18():
