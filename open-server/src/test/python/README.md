@@ -69,6 +69,7 @@
 | `test_approval_flow_list.py` | #45 | GET /approval-flows |
 | `test_approval_flow_detail.py` | #46 | GET /approval-flows/{id} |
 | `test_approval_flow_create.py` | #47 | POST /approval-flows |
+| `test_approval_flow_update.py` | #48 | PUT /approval-flows/{id} |
 | **运行记录** | | |
 | `test_execution_list.py` | #49 | GET /executions |
 | `test_execution_detail.py` | #50 | GET /executions/{id} |
