@@ -226,8 +226,8 @@ pip install pytest-html
 # 生成报告
 pytest -m "" --html=reports/report.html
 
-# 查看报告（启动临时 HTTP 服务，浏览器访问 http://localhost:18900/report.html）
-cd reports && python3 -m http.server 18900
+# 查看报告
+cd reports && echo "👉 http://localhost:18900/report.html" && python3 -m http.server 18900
 ```
 
 ## 目录
