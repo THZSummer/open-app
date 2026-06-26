@@ -56,7 +56,7 @@ function VersionRelease() {
   // 确认弹窗
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
-  const [confirmModalInfo, setConfirmModalInfo] = useState({});
+  const [confirmModalInfo, setConfirmModalInfo] = useState({ content: { confirmText: '', impactText: '' } });
   const [confirmLoading, setConfirmLoading] = useState(false);
 
   // 已订阅能力
