@@ -224,10 +224,10 @@ KEEP_TEST_DATA=1 pytest -m "L0 or L1 or L2"
 pip install pytest-html
 
 # 生成报告（全量）
-pytest -m "" --html=reports/report.html
+pytest -m "" --html=reports/report.html --self-contained-html
 
 # 指定层级
-pytest -m "L0 or L1" --html=reports/report-l1.html
+pytest -m "L0 or L1" --html=reports/report-l1.html --self-contained-html
 ```
 
 ## 目录
