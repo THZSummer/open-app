@@ -115,14 +115,14 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
             "method": method,
             "headers": {}
         },
-        "authConfig": {"type": "NONE", "fields": []},
-        "inputContract": {
+        "authConfigs": [{"type": "NONE", "fields": []}],
+        "input": {
             "protocol": "HTTP",
             "header": {"type": "object", "properties": {}, "required": []},
             "query": {"type": "object", "properties": {}, "required": []},
             "body": {"type": "object", "properties": {}, "required": []}
         },
-        "outputContract": {
+        "output": {
             "protocol": "HTTP",
             "body": {"type": "object", "properties": {}}
         },
@@ -175,15 +175,16 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
             "position": {"x": 100, "y": 200},
             "data": {
                 "labelCn": "接收", "labelEn": "Recv",
-                "type": "http",
-                "authConfig": {
+                "type": "trigger",
+                "triggerType": "http",
+                "authConfigs": [{
                     "type": "SYSTOKEN",
                     "fields": [
                         {"name": "token", "carrier": "header",
                          "fieldName": "X-Sys-Token"}
                     ]
-                },
-                "inputContract": {
+                }],
+                "input": {
                     "protocol": "HTTP",
                     "header": {"type": "object", "properties": {}, "required": []},
                     "query": {"type": "object", "properties": {}, "required": []},
@@ -227,7 +228,7 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
             "position": {"x": 600, "y": 200},
             "data": {
                 "labelCn": "返回", "labelEn": "Ret",
-                "outputMapping": {
+                "output": {
                     "header": {"type": "object", "properties": {}},
                     "body": {
                         "type": "object",
@@ -277,15 +278,16 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
             "position": {"x": 100, "y": 200},
             "data": {
                 "labelCn": "接收", "labelEn": "Recv",
-                "type": "http",
-                "authConfig": {
+                "type": "trigger",
+                "triggerType": "http",
+                "authConfigs": [{
                     "type": "SYSTOKEN",
                     "fields": [
                         {"name": "token", "carrier": "header",
                          "fieldName": "X-Sys-Token"}
                     ]
-                },
-                "inputContract": {
+                }],
+                "input": {
                     "protocol": "HTTP",
                     "header": {"type": "object", "properties": {}, "required": []},
                     "query": {"type": "object", "properties": {}, "required": []},
@@ -329,7 +331,7 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
         "position": {"x": 600, "y": 200},
         "data": {
             "labelCn": "返回", "labelEn": "Ret",
-            "outputMapping": {
+            "output": {
                 "header": {"type": "object", "properties": {}},
                 "body": {
                     "type": "object",

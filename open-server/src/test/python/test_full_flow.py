@@ -428,6 +428,13 @@ def test_full_flow():
                     },
                     "output": {
                         "protocol": "HTTP",
+                        "header": {
+                            "type": "object",
+                            "properties": {
+                                "X-Echo-Count": {"type": "string"},
+                                "X-Request-Header-Count": {"type": "string"}
+                            }
+                        },
                         "body": {
                             "type": "object",
                             "properties": {
@@ -442,13 +449,6 @@ def test_full_flow():
                                         "server_time": {"type": "string"},
                                         "call_number": {"type": "integer"}
                                     }
-                                }
-                            },
-                            "header": {
-                                "type": "object",
-                                "properties": {
-                                    "X-Echo-Count": {"type": "string"},
-                                    "X-Request-Header-Count": {"type": "string"}
                                 }
                             }
                         }
@@ -517,21 +517,25 @@ def test_full_flow():
                     "trigger": {},
                     "nodes": [
                         {"id": "trigger", "type": "trigger", "data": {
-                            "type": "http",
-                            "authConfig": {
-                                "type": "SYSTOKEN",
-                                "header": {
-                                    "type": "object",
-                                    "properties": {
-                                        "X-Sys-Token": {
-                                            "type": "string",
-                                            "required": True,
-                                            "sensitive": True
+                            "type": "trigger",
+                            "triggerType": "http",
+                            "authConfigs": [
+                                {
+                                    "type": "SYSTOKEN",
+                                    "header": {
+                                        "type": "object",
+                                        "properties": {
+                                            "X-Sys-Token": {
+                                                "type": "string",
+                                                "required": True,
+                                                "sensitive": True
+                                            }
                                         }
-                                    }
+                                    },
+                                    "sysAccountWhitelist": ["tester"]
                                 }
-                            },
-                            "inputContract": {
+                            ],
+                            "input": {
                                 "protocol": "HTTP",
                                 "header": {
                                     "type": "object",
@@ -570,6 +574,79 @@ def test_full_flow():
                         {"id": "conn1", "type": "connector", "data": {
                             "connectorId": str(cid),
                             "connectorVersionId": str(conn_vid),
+                            "connectorVersionConfig": {
+                                "protocol": "HTTP",
+                                "protocolConfig": {
+                                    "url": "http://localhost:18980/api/echo",
+                                    "method": "POST",
+                                    "headers": {
+                                        "Content-Type": "application/json",
+                                        "X-Custom-Header": "full-flow-test"
+                                    }
+                                },
+                                "authConfigs": [
+                                    {"type": "NONE"}
+                                ],
+                                "input": {
+                                    "protocol": "HTTP",
+                                    "header": {
+                                        "type": "object",
+                                        "properties": {
+                                            "X-Trace-Id": {"type": "string", "description": "追踪ID"}
+                                        }
+                                    },
+                                    "query": {
+                                        "type": "object",
+                                        "properties": {
+                                            "keyword": {"type": "string", "description": "搜索关键词"},
+                                            "page": {"type": "integer", "description": "页码"},
+                                            "size": {"type": "integer", "description": "每页条数"}
+                                        }
+                                    },
+                                    "body": {
+                                        "type": "object",
+                                        "properties": {
+                                            "message": {"type": "string", "description": "消息体"},
+                                            "filters": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "category": {"type": "string"},
+                                                    "minScore": {"type": "number"}
+                                                }
+                                            },
+                                            "sort": {"type": "string", "description": "排序字段"},
+                                            "traceId": {"type": "string", "description": "请求追踪ID"}
+                                        }
+                                    }
+                                },
+                                "output": {
+                                    "protocol": "HTTP",
+                                    "header": {
+                                        "type": "object",
+                                        "properties": {
+                                            "X-Echo-Count": {"type": "string"},
+                                            "X-Request-Header-Count": {"type": "string"}
+                                        }
+                                    },
+                                    "body": {
+                                        "type": "object",
+                                        "properties": {
+                                            "code": {"type": "integer"},
+                                            "message": {"type": "string"},
+                                            "data": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "echo_body": {"type": "object"},
+                                                    "echo_headers": {"type": "object"},
+                                                    "echo_query": {"type": "object"},
+                                                    "server_time": {"type": "string"},
+                                                    "call_number": {"type": "integer"}
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            },
                             "input": {
                                 "header": {
                                     "type": "object",
@@ -596,27 +673,37 @@ def test_full_flow():
                             }
                         }},
                         {"id": "exit", "type": "exit", "data": {
+                            "type": "exit",
                             "output": {
-                                "body": {
-                                    "code": {"type": "integer", "value": "${$.node.conn1.output.code}"},
-                                    "message": {"type": "string", "value": "${$.node.conn1.output.message}"},
-                                    "data": {
-                                        "type": "object",
-                                        "value": "${$.node.conn1.output.data.echo_body}"
-                                    },
-                                    "serverTime": {"type": "string", "value": "${$.node.conn1.output.data.server_time}"},
-                                    "callNumber": {"type": "integer", "value": "${$.node.conn1.output.data.call_number}"}
-                                },
                                 "header": {
-                                    "X-Echo-Count": {"type": "string", "value": "${$.node.conn1.output.data.call_number}"}
+                                    "type": "object",
+                                    "properties": {
+                                        "X-Echo-Count": {"type": "string", "value": "${$.node.conn1.output.data.call_number}"}
+                                    }
+                                },
+                                "body": {
+                                    "type": "object",
+                                    "properties": {
+                                        "code": {"type": "integer", "value": "${$.node.conn1.output.code}"},
+                                        "message": {"type": "string", "value": "${$.node.conn1.output.message}"},
+                                        "data": {
+                                            "type": "object",
+                                            "value": "${$.node.conn1.output.data.echo_body}"
+                                        },
+                                        "serverTime": {"type": "string", "value": "${$.node.conn1.output.data.server_time}"},
+                                        "callNumber": {"type": "integer", "value": "${$.node.conn1.output.data.call_number}"}
+                                    }
                                 }
                             }
                         }}
                     ],
                     "edges": [
-                        {"source": "trigger", "target": "conn1"},
-                        {"source": "conn1", "target": "exit"}
-                    ]
+                        {"id": "e1", "source": "trigger", "target": "conn1"},
+                        {"id": "e2", "source": "conn1", "target": "exit"}
+                    ],
+                    "flowConfig": {
+                        "rateLimitConfig": {"maxQps": 100, "maxConcurrency": 20}
+                    }
                 }
             })
             return check_ok(r, "UPDATE 编排配置", f"PUT /flows/{fid}/versions/{fvid}")

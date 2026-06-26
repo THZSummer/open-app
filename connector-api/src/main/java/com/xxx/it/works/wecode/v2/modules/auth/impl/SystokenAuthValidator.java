@@ -30,7 +30,8 @@ public class SystokenAuthValidator implements AuthValidator {
         if (fields == null || fields.isEmpty()) {
             return;
         }
-        List<String> whitelistTokens = (List<String>) authConfig.get("whitelist");
+        // Schema: sysAccountWhitelist (was "whitelist")
+        List<String> whitelistTokens = (List<String>) authConfig.get("sysAccountWhitelist");
         for (Map<String, Object> field : fields) {
             String carrier = (String) field.get("carrier");
             String fieldName = (String) field.get("fieldName");

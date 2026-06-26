@@ -141,15 +141,16 @@ def build_orch(connector_version_id, connection_config):
                 "position": {"x": 100, "y": 200},
                 "data": {
                     "labelCn": "接收", "labelEn": "Recv",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [
                             {"name": "token", "carrier": "header",
                              "fieldName": "X-Sys-Token"}
                         ]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {},
                                    "required": []},
@@ -181,7 +182,7 @@ def build_orch(connector_version_id, connection_config):
                 "position": {"x": 600, "y": 200},
                 "data": {
                     "labelCn": "返回", "labelEn": "Ret",
-                    "outputMapping": {
+                    "output": {
                         "header": {"type": "object", "properties": {}},
                         "body": {
                             "type": "object",
@@ -230,7 +231,7 @@ CONN_CONFIG_SOA_COOKIE = {
         "method": "GET",
         "headers": {}
     },
-    "authConfig": {
+    "authConfigs": [{
         "type": "MULTI",
         "fields": [
             {"name": "soa_key", "carrier": "header",
@@ -240,9 +241,9 @@ CONN_CONFIG_SOA_COOKIE = {
              "fieldName": "Cookie", "authType": "COOKIE",
              "value": "session=abc123"}
         ]
-    },
-    "inputContract": BASE_INPUT_CONTRACT,
-    "outputContract": BASE_OUTPUT_CONTRACT,
+    }],
+    "input": BASE_INPUT_CONTRACT,
+    "output": BASE_OUTPUT_CONTRACT,
     "timeoutMs": 5000
 }
 
@@ -256,7 +257,7 @@ CONN_CONFIG_DIGITALSIGN_COOKIE = {
         "method": "GET",
         "headers": {}
     },
-    "authConfig": {
+    "authConfigs": [{
         "type": "MULTI",
         "fields": [
             {"name": "sign", "carrier": "header",
@@ -266,9 +267,9 @@ CONN_CONFIG_DIGITALSIGN_COOKIE = {
              "fieldName": "Cookie", "authType": "COOKIE",
              "value": "session=xyz789"}
         ]
-    },
-    "inputContract": BASE_INPUT_CONTRACT,
-    "outputContract": BASE_OUTPUT_CONTRACT,
+    }],
+    "input": BASE_INPUT_CONTRACT,
+    "output": BASE_OUTPUT_CONTRACT,
     "timeoutMs": 5000
 }
 
@@ -282,7 +283,7 @@ CONN_CONFIG_TRIPLE_AUTH = {
         "method": "GET",
         "headers": {}
     },
-    "authConfig": {
+    "authConfigs": [{
         "type": "MULTI",
         "fields": [
             {"name": "soa_key", "carrier": "header",
@@ -295,9 +296,9 @@ CONN_CONFIG_TRIPLE_AUTH = {
              "fieldName": "Cookie", "authType": "COOKIE",
              "value": "session=triple123"}
         ]
-    },
-    "inputContract": BASE_INPUT_CONTRACT,
-    "outputContract": BASE_OUTPUT_CONTRACT,
+    }],
+    "input": BASE_INPUT_CONTRACT,
+    "output": BASE_OUTPUT_CONTRACT,
     "timeoutMs": 5000
 }
 
@@ -311,16 +312,16 @@ CONN_CONFIG_SOA_ONLY = {
         "method": "GET",
         "headers": {}
     },
-    "authConfig": {
+    "authConfigs": [{
         "type": "SOA",
         "fields": [
             {"name": "soa_key", "carrier": "header",
              "fieldName": "X-SOA-Key", "authType": "SOA",
              "value": "baseline-soa-key"}
         ]
-    },
-    "inputContract": BASE_INPUT_CONTRACT,
-    "outputContract": BASE_OUTPUT_CONTRACT,
+    }],
+    "input": BASE_INPUT_CONTRACT,
+    "output": BASE_OUTPUT_CONTRACT,
     "timeoutMs": 5000
 }
 
