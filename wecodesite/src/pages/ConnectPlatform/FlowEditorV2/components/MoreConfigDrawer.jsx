@@ -15,6 +15,21 @@ import '../FlowEditorV2.m.less';
 const { Option } = Select;
 
 /**
+ * 构建缓存 Key 的完整触发器入参引用路径
+ *
+ * @param {Object} params 参数对象
+ * @param {string} params.triggerNodeId 触发器节点 ID
+ * @param {string} params.carrier 参数位置
+ * @param {string} params.paramName 参数名称
+ * @returns {string} 缓存 Key 引用路径
+ */
+export const buildCacheKeyValue = (params) => {
+  // params.triggerNodeId / params.carrier / params.paramName
+  const { triggerNodeId, carrier, paramName } = params;
+  return `${triggerNodeId}.input.${carrier}.${paramName}`;
+};
+
+/**
  * 更多配置抽屉
  *
  * @param {Object} props
@@ -22,8 +37,9 @@ const { Option } = Select;
  * @param {number} props.rateLimit 当前限流值
  * @param {boolean} props.cacheEnabled 是否开启缓存
  * @param {number} props.cacheTime 缓存时间（秒）
- * @param {Array<string>} props.cacheKeys 缓存 Key 列表（存储字段名）
+ * @param {Array<string>} props.cacheKeys 缓存 Key 列表（存储完整引用路径）
  * @param {Array} props.triggerInputParams 触发器入参列表（用于缓存 Key 选择）
+ * @param {string} props.triggerNodeId 触发器节点 ID
  * @param {number} props.rateLimitMax 限流上限
  * @param {number} props.cacheTimeMax 缓存时间上限
  * @param {Function} props.onClose 关闭回调
@@ -32,11 +48,13 @@ const { Option } = Select;
 const MoreConfigDrawer = (props) => {
   const {
     visible,
+    editable = false,
     rateLimit,
     cacheEnabled,
     cacheTime,
     cacheKeys,
     triggerInputParams,
+    triggerNodeId,
     rateLimitMax,
     cacheTimeMax,
     onClose,
@@ -140,8 +158,8 @@ const MoreConfigDrawer = (props) => {
       destroyOnClose
       footer={
         <Space style={{ float: 'right' }}>
-          <Button onClick={onClose}>取消</Button>
-          <Button type="primary" onClick={handleSave}>保存配置</Button>
+          <Button onClick={onClose}>{editable ? '取消' : '关闭'}</Button>
+          {editable && <Button type="primary" onClick={handleSave}>保存配置</Button>}
         </Space>
       }
     >
@@ -167,6 +185,7 @@ const MoreConfigDrawer = (props) => {
           style={{ width: '100%' }}
           placeholder="请输入限流值"
           addonAfter="QPS"
+          disabled={!editable}
           onChange={(value) => setLocalRateLimit(value)}
         />
       </div>
@@ -181,6 +200,7 @@ const MoreConfigDrawer = (props) => {
             <Switch
               size="small"
               checked={localCacheEnabled}
+              disabled={!editable}
               onChange={(checked) => setLocalCacheEnabled(checked)}
             />
           </span>
@@ -205,6 +225,7 @@ const MoreConfigDrawer = (props) => {
                 style={{ width: '100%' }}
                 placeholder="请输入缓存时间"
                 addonAfter="秒"
+                disabled={!editable}
                 onChange={(value) => setLocalCacheTime(value)}
               />
             </div>
@@ -221,13 +242,19 @@ const MoreConfigDrawer = (props) => {
                     style={{ flex: 1 }}
                     value={keyValue || undefined}
                     placeholder="从触发器入参中选择字段"
+                    disabled={!editable}
                     onChange={(value) => handleUpdateCacheKey({ index: idx, value })}
                   >
                     {allTriggerParams.map(param => {
-                      // 兼容 SchemaEditorV2 字段
+                      // 兼容 SchemaEditorV2 字段，并保存为完整触发器入参引用路径
                       const pName = param.paramName ?? param.name;
+                      const cacheKeyValue = buildCacheKeyValue({
+                        triggerNodeId,
+                        carrier: param.carrier,
+                        paramName: pName,
+                      });
                       return (
-                        <Option key={`${param.carrier}-${pName}`} value={pName}>
+                        <Option key={`${param.carrier}-${pName}`} value={cacheKeyValue}>
                           {pName}（{param.carrier}）
                         </Option>
                       );
@@ -235,12 +262,17 @@ const MoreConfigDrawer = (props) => {
                   </Select>
                   <Button
                     danger
+                    aria-label="删除"
+                    disabled={!editable}
                     onClick={() => handleRemoveCacheKey(idx)}
-                  />
+                  >
+                    删除
+                  </Button>
                 </div>
               ))}
               <Button
                 type="dashed"
+                disabled={!editable}
                 onClick={handleAddCacheKey}
                 style={{ width: '100%', marginTop: 4 }}
               >

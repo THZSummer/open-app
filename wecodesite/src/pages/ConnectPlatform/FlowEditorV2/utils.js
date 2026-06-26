@@ -10,16 +10,192 @@ import { NODE_TYPE, FLOW_MODE, VALIDATE_SECTION } from './constants';
 
 /**
  * 生成唯一 ID
- * @returns {string} 唯一 ID
+ * @param {string} prefix ID 前缀，默认使用 node
+ * @returns {string} 格式：prefix_timestamp_randomString
  */
-export const generateId = () => `node_${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+export const generateId = (prefix = 'node') => {
+  // 使用时间戳与随机字符串组合，降低同一类型节点 ID 冲突概率
+  const timestamp = Date.now();
+  const randomStr = Math.random().toString(36).substr(2, 9);
+  return `${prefix}_${timestamp}_${randomStr}`;
+};
+
+/**
+ * 脚本 Context 默认类型声明
+ */
+export const DEFAULT_SCRIPT_CONTEXT_TYPE = 'type Context = Record<string, unknown>;';
+
+/**
+ * 匹配脚本中的 Context 类型声明块
+ */
+export const SCRIPT_CONTEXT_TYPE_PATTERN = /type\s+Context\s*=\s*(?:Record<string, unknown>|\{[\s\S]*?\n\};)/;
+
+/**
+ * 匹配脚本中的 TypeScript type 声明行
+ */
+export const SCRIPT_TYPE_LINE_PATTERN = /^\s*type\s+\w+\s*=.*;\s*$/gm;
+
+/**
+ * 将 schema 类型映射为 TypeScript 类型
+ * @param {string} type schema 参数类型
+ * @returns {string} TypeScript 类型
+ */
+const mapSchemaTypeToTsType = (type) => {
+  // 只转换编辑器提示需要的基础类型，未知类型统一使用 unknown。
+  if (type === 'string') return 'string';
+  if (type === 'number' || type === 'integer') return 'number';
+  if (type === 'boolean') return 'boolean';
+  if (type === 'array') return 'unknown[]';
+  if (type === 'object') return 'Record<string, unknown>';
+  return 'unknown';
+};
+
+/**
+ * 判断字段名是否可直接作为 TypeScript 对象属性
+ * @param {string} key 字段名
+ * @returns {boolean} 是否为合法标识符
+ */
+const isSafeTsKey = (key) => /^[A-Za-z_$][\w$]*$/.test(key);
+
+/**
+ * 格式化 TypeScript 对象属性名
+ * @param {string} key 字段名
+ * @returns {string} TypeScript 属性名
+ */
+const formatTsKey = (key) => (isSafeTsKey(key) ? key : JSON.stringify(key));
+
+/**
+ * 向 Context 类型树写入参数路径
+ * @param {Object} params 配置对象
+ * @param {Object} params.root 类型树根节点
+ * @param {Array<string>} params.path 参数路径
+ * @param {string} params.type schema 参数类型
+ */
+const setContextTypePath = (params) => {
+  // params.root / params.path / params.type
+  const { root, path, type } = params;
+  let current = root;
+  path.forEach((segment, index) => {
+    if (!segment) return;
+    if (index === path.length - 1) {
+      current[segment] = mapSchemaTypeToTsType(type);
+      return;
+    }
+    if (!current[segment] || typeof current[segment] !== 'object') {
+      current[segment] = {};
+    }
+    current = current[segment];
+  });
+};
+
+/**
+ * 将 Context 类型树渲染为 TypeScript 对象声明
+ * @param {Object} tree 类型树
+ * @param {number} level 缩进层级
+ * @returns {string} TypeScript 对象声明内容
+ */
+const renderContextTypeTree = (tree, level = 1) => {
+  const indent = '  '.repeat(level);
+  return Object.keys(tree).map((key) => {
+    const value = tree[key];
+    if (value && typeof value === 'object') {
+      return `${indent}${formatTsKey(key)}: {\n${renderContextTypeTree(value, level + 1)}\n${indent}};`;
+    }
+    return `${indent}${formatTsKey(key)}: ${value};`;
+  }).join('\n');
+};
+
+/**
+ * 根据上游引用参数生成脚本 Context 类型声明
+ * @param {Array} refs 上游引用参数列表
+ * @returns {string} Context 类型声明
+ */
+export const buildScriptContextType = (refs = []) => {
+  // 没有上游 schema 时使用宽泛类型，避免误导用户字段一定存在。
+  if (!refs.length) return DEFAULT_SCRIPT_CONTEXT_TYPE;
+
+  const tree = {};
+  refs.forEach((ref) => {
+    const path = [ref.nodeId, ref.scope, ref.carrier, ...(ref.name || '').split('.')].filter(Boolean);
+    setContextTypePath({ root: tree, path, type: ref.type });
+  });
+
+  return `type Context = {\n${renderContextTypeTree(tree)}\n};`;
+};
+
+/**
+ * 生成 Monaco TypeScript 额外类型声明
+ * @param {string} contextType Context 类型声明
+ * @returns {string} Monaco 额外类型声明
+ */
+export const buildScriptMonacoExtraLib = (contextType) => {
+  // 把 transform 的第二个参数和全局 context 都绑定到 Context 类型，提升补全命中率。
+  const safeContextType = contextType || DEFAULT_SCRIPT_CONTEXT_TYPE;
+  return `${safeContextType}\ndeclare const context: Context;\ndeclare function transform(context: Context): Record<string, unknown>;`;
+};
+
+/**
+ * 移除脚本中仅供编辑器使用的 TypeScript 类型声明
+ * @param {string} script 脚本内容
+ * @returns {string} 运行时脚本内容
+ */
+export const stripScriptEditorTypes = (script) => {
+  // GraalJS 运行 JavaScript，保存运行脚本前必须移除 TypeScript 类型声明和参数类型标注。
+  return (script || '')
+    .replace(SCRIPT_CONTEXT_TYPE_PATTERN, '')
+    .replace(SCRIPT_TYPE_LINE_PATTERN, '')
+    .replace(/(\w+)\s*:\s*Context/g, '$1')
+    .trim();
+};
+
+/**
+ * 取值模式选项：静态值 / 引用上游参数
+ */
+export const VALUE_MODE_OPTIONS = [
+  { value: 'static', label: '静态值' },
+  { value: 'ref', label: '引用上游参数' },
+];
+
+/**
+ * 把上游 ref 列表转换为分组选项
+ * @param {Array} refs 上游引用列表
+ * @returns {Array} 分组选项
+ */
+export const buildRefOptions = (refs = []) => {
+  // 按上游节点分组展示完整引用表达式，便于区分不同节点来源
+  const groupMap = new Map();
+  refs.forEach((item) => {
+    const groupLabel = item.groupLabel || item.nodeId || '上游参数';
+    const groupOptions = groupMap.get(groupLabel) || [];
+    groupOptions.push({
+      value: item.value,
+      label: item.label || item.path || item.value,
+    });
+    groupMap.set(groupLabel, groupOptions);
+  });
+  return Array.from(groupMap.entries()).map(([label, options]) => ({ label, options }));
+};
+
+/**
+ * 标准化 mapping，兼容旧字符串值
+ * @param {*} raw 原始 mapping 值
+ * @returns {Object} 标准化后的 mapping 对象
+ */
+export const normalizeMapping = (raw) => {
+  // 新版结构直接保留 mode/value，缺失字段用静态空值兜底
+  if (raw && typeof raw === 'object' && 'mode' in raw) {
+    return { mode: raw.mode || 'static', value: raw.value ?? '' };
+  }
+  const str = typeof raw === 'string' ? raw : '';
+  return { mode: 'static', value: str };
+};
 
 /**
  * 创建触发器节点
  * @returns {Object} 触发器节点
  */
 export const createTriggerNode = () => ({
-  id: 'trigger',
+  id: generateId(NODE_TYPE.TRIGGER),
   type: NODE_TYPE.TRIGGER,
   triggerType: 'http',
   systokens: [],
@@ -35,13 +211,20 @@ export const createTriggerNode = () => ({
  * @returns {Object} 连接器节点
  */
 export const createConnectorNode = () => ({
-  id: generateId(),
+  id: generateId(NODE_TYPE.CONNECTOR),
   type: NODE_TYPE.CONNECTOR,
   connectorId: '',
   versionId: '',
   authMethodId: '',
-  timeout: 3,
+  authMappings: {},
+  authConfigs: [],
+  connectorVersionConfig: {},
+  timeout: 3000,
   inputMappings: {},
+  outputParams: {
+    header: [],
+    body: [],
+  },
 });
 
 /**
@@ -49,13 +232,15 @@ export const createConnectorNode = () => ({
  * @returns {Object} 脚本处理节点
  */
 export const createScriptNode = () => ({
-  id: generateId(),
+  id: generateId(NODE_TYPE.SCRIPT),
   type: NODE_TYPE.SCRIPT,
-  script: `type Input = Record<string, unknown>;
-
-export function transform(input: Input) {
+  script: `/**
+ * 处理上游节点上下文。
+ * @param context 上游节点参数上下文
+ */
+export function transform(context: Context) {
   return {
-    result: input
+    result: context
   };
 }`,
   outputParams: [
@@ -68,12 +253,12 @@ export function transform(input: Input) {
  * @returns {Object} 并行节点（默认 2 个分支）
  */
 export const createParallelNode = () => ({
-  id: generateId(),
+  id: generateId(NODE_TYPE.PARALLEL),
   type: NODE_TYPE.PARALLEL,
   activeBranchId: '',
   branches: [
-    { id: generateId(), label: '分支1', connector: createConnectorNode() },
-    { id: generateId(), label: '分支2', connector: createConnectorNode() },
+    { id: generateId('branch'), label: '分支1', connector: createConnectorNode() },
+    { id: generateId('branch'), label: '分支2', connector: createConnectorNode() },
   ],
 });
 
@@ -82,7 +267,7 @@ export const createParallelNode = () => ({
  * @returns {Object} 数据输出节点
  */
 export const createOutputNode = () => ({
-  id: 'output',
+  id: generateId(NODE_TYPE.OUTPUT),
   type: NODE_TYPE.OUTPUT,
   assembleParams: {
     body: [],
@@ -250,28 +435,9 @@ const validateNode = (params) => {
   if (node.type === NODE_TYPE.CONNECTOR) {
     if (!node.connectorId) return '连接器节点：未选择连接器';
     if (!node.versionId) return '连接器节点：未选择连接器版本';
-    const timeoutMax = appLimits?.connectorTimeoutMax ?? 3;
+    const timeoutMax = appLimits?.connectorTimeoutMax ?? 300000;
     if (Number(node.timeout) > timeoutMax) {
-      return `连接器节点：超时时间超过应用上限 ${timeoutMax} 秒`;
-    }
-    // 校验入参映射的取值合法性
-    const mappings = node.inputMappings || {};
-    for (const carrier of ['header', 'body', 'query']) {
-      const carrierMap = mappings[carrier] || {};
-      for (const paramName of Object.keys(carrierMap)) {
-        const raw = carrierMap[paramName];
-        // 兼容旧字符串值：跳过校验
-        if (typeof raw === 'string') continue;
-        if (!raw || typeof raw !== 'object') continue;
-        const mode = raw.mode || 'static';
-        const value = raw.value;
-        if (mode === 'ref') {
-          // 引用模式：必须形如 ${...}
-          if (!value || typeof value !== 'string' || !/^\$\{.+\}$/.test(value.trim())) {
-            return `连接器节点：参数「${paramName}」引用表达式无效`;
-          }
-        }
-      }
+      return `连接器节点：超时时间超过应用上限 ${timeoutMax} 毫秒`;
     }
     return null;
   }
@@ -317,11 +483,22 @@ const validateNode = (params) => {
 
   if (node.type === NODE_TYPE.OUTPUT) {
     const all = [...(node.assembleParams?.body || []), ...(node.assembleParams?.header || [])];
-    // 用 SchemaEditorV2 的字段名：paramName
-    const names = all.map(p => p.paramName);
-    const hasEmpty = names.some(name => !name?.trim());
-    if (hasEmpty) return '数据输出节点：参数名称不能为空';
-    return null;
+
+    /**
+     * 递归收集输出参数名称与引用值合法性
+     * @param {Array} list 参数列表
+     * @returns {string|null} 错误信息
+     */
+    const validateOutputList = (list) => {
+      for (const param of list || []) {
+        if (!param.paramName?.trim()) return '数据输出节点：参数名称不能为空';
+        const childError = validateOutputList(param.children || []);
+        if (childError) return childError;
+      }
+      return null;
+    };
+
+    return validateOutputList(all);
   }
 
   return null;
@@ -374,91 +551,151 @@ export const validateForPublish = (params) => {
  * @returns {Array} 上游可引用参数列表
  */
 export const collectUpstreamRefs = (params) => {
+  // params.flowData / params.currentNodeId
   const { flowData, currentNodeId } = params;
   const refs = [];
 
   if (!flowData) return refs;
 
   /**
+   * 获取节点类型展示名称
+   * @param {string} nodeType 节点类型
+   * @returns {string} 节点类型展示名称
+   */
+  const getNodeTypeLabel = (nodeType) => {
+    if (nodeType === NODE_TYPE.TRIGGER) return '触发器节点';
+    if (nodeType === NODE_TYPE.CONNECTOR) return '连接器节点';
+    if (nodeType === NODE_TYPE.SCRIPT) return '脚本处理节点';
+    if (nodeType === NODE_TYPE.PARALLEL) return '并行节点';
+    if (nodeType === NODE_TYPE.OUTPUT) return '数据输出节点';
+    return '节点';
+  };
+
+  /**
+   * 写入一条上游引用参数
+   *
+   * @param {Object} options 配置对象
+   *   options.nodeId    节点 ID
+   *   options.nodeType  节点类型
+   *   options.scope     作用域，input 或 output
+   *   options.carrier   参数位置，header/query/body
+   *   options.name      参数路径
+   *   options.type      参数类型
+   *   options.groupName 自定义分组名称
+   */
+  const pushRef = (options) => {
+    // options.nodeId / options.nodeType / options.scope / options.carrier / options.name / options.type / options.groupName
+    const { nodeId, nodeType, scope, carrier, name, type, groupName } = options;
+    const path = `${nodeId}.${scope}.${carrier}.${name}`;
+    refs.push({
+      nodeId,
+      nodeType,
+      scope,
+      carrier,
+      name,
+      type,
+      path,
+      value: path,
+      label: path,
+      groupLabel: groupName || `${getNodeTypeLabel(nodeType)} ${nodeId}`,
+    });
+  };
+
+  /**
    * 递归把 SchemaEditorV2 结构里的参数（包括嵌套 children）平铺为 dotted name
    *
-   * @param {Object} options
+   * @param {Object} options 配置对象
    *   options.list      参数列表
    *   options.prefix    上层 name 拼接前缀
-   *   options.onLeaf    叶子节点回调（接收 { name, type }）
+   *   options.onItem    参数节点回调（接收 { name, type }）
    */
   const walkSchema = (options) => {
-    const { list, prefix, onLeaf } = options;
+    // options.list / options.prefix / options.onItem
+    const { list, prefix, onItem } = options;
     (list || []).forEach((param) => {
-      const name = param.paramName || '';
+      const name = param.paramName || param.name || '';
       if (!name) return;
       const fullName = prefix ? `${prefix}.${name}` : name;
-      onLeaf({ name: fullName, type: param.paramType || 'string' });
-      if ((param.paramType === 'object' || param.paramType === 'array') && Array.isArray(param.children) && param.children.length > 0) {
-        walkSchema({ list: param.children, prefix: fullName, onLeaf });
+      const type = param.paramType || param.type || 'string';
+      onItem({ name: fullName, type });
+      if ((type === 'object' || type === 'array') && Array.isArray(param.children) && param.children.length > 0) {
+        walkSchema({ list: param.children, prefix: fullName, onItem });
       }
     });
   };
 
-  // 触发器输出
+  /**
+   * 按位置收集参数列表
+   *
+   * @param {Object} options 配置对象
+   *   options.node      节点数据
+   *   options.scope     作用域
+   *   options.carriers  参数位置列表
+   *   options.sourceMap 各位置参数数组
+   *   options.groupName 自定义分组名称
+   */
+  const collectCarrierParams = (options) => {
+    // options.node / options.scope / options.carriers / options.sourceMap / options.groupName
+    const { node, scope, carriers, sourceMap, groupName } = options;
+    carriers.forEach((carrier) => {
+      walkSchema({
+        list: sourceMap?.[carrier] || [],
+        prefix: '',
+        onItem: ({ name, type }) => pushRef({
+          nodeId: node.id,
+          nodeType: node.type,
+          scope,
+          carrier,
+          name,
+          type,
+          groupName,
+        }),
+      });
+    });
+  };
+
+  // 触发器入参可作为后续节点的上游 input 引用
   const trigger = flowData.trigger;
   if (trigger && trigger.id !== currentNodeId) {
-    const inputParams = trigger.inputParams || {};
-    ['header', 'body', 'query'].forEach((group) => {
-      walkSchema({
-        list: inputParams[group] || [],
-        prefix: '',
-        onLeaf: ({ name, type }) => {
-          refs.push({
-            nodeId: trigger.id,
-            nodeType: trigger.type,
-            source: `trigger.${group}`,
-            name,
-            type,
-          });
-        },
-      });
+    collectCarrierParams({
+      node: trigger,
+      scope: 'input',
+      carriers: ['header', 'query', 'body'],
+      sourceMap: trigger.inputParams || {},
     });
   }
 
-  // 中间节点输出
+  // 中间节点按步骤顺序收集，遇到当前节点时停止
   for (const node of flowData.steps || []) {
     if (node.id === currentNodeId) break;
 
     if (node.type === NODE_TYPE.SCRIPT) {
-      walkSchema({
-        list: node.outputParams || [],
-        prefix: '',
-        onLeaf: ({ name, type }) => {
-          refs.push({
-            nodeId: node.id,
-            nodeType: node.type,
-            source: `${node.id}.output`,
-            name,
-            type,
-          });
-        },
+      collectCarrierParams({
+        node,
+        scope: 'output',
+        carriers: ['body'],
+        sourceMap: { body: node.outputParams || [] },
       });
     }
 
     if (node.type === NODE_TYPE.CONNECTOR) {
-      refs.push({
-        nodeId: node.id,
-        nodeType: node.type,
-        source: `${node.id}.response`,
-        name: 'response',
-        type: 'object',
+      collectCarrierParams({
+        node,
+        scope: 'output',
+        carriers: ['header', 'body'],
+        sourceMap: node.outputParams || {},
       });
     }
 
     if (node.type === NODE_TYPE.PARALLEL) {
       (node.branches || []).forEach((branch) => {
-        refs.push({
-          nodeId: node.id,
-          nodeType: node.type,
-          source: `${node.id}.${branch.id}.response`,
-          name: `${branch.label}.response`,
-          type: 'object',
+        const connector = branch.connector || {};
+        collectCarrierParams({
+          node: { ...connector, type: NODE_TYPE.CONNECTOR },
+          scope: 'output',
+          carriers: ['header', 'body'],
+          sourceMap: connector.outputParams || {},
+          groupName: `并行分支 ${branch.label || branch.id} ${connector.id || ''}`.trim(),
         });
       });
     }

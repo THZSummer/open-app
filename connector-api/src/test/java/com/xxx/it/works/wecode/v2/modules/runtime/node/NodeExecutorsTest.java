@@ -111,7 +111,7 @@ class NodeExecutorsTest {
     }
 
     @Test
-    @DisplayName("ExitNodeExecutor - 按outputMapping提取")
+    @DisplayName("ExitNodeExecutor - 按output提取")
     void testExitNodeExecutor_WithOutputFields() {
         context.setNodeOutput("node_upstream", Map.of("result", "ok", "count", 42));
 
@@ -122,7 +122,7 @@ class NodeExecutorsTest {
         Map<String, Object> resultField = Map.of("type", "string", "value", "${$.node.node_upstream.output.result}");
         Map<String, Object> countField = Map.of("type", "integer", "value", "${$.node.node_upstream.output.count}");
         Map<String, Object> bodyMapping = Map.of("type", "object", "properties", Map.of("result", resultField, "count", countField));
-        data.put("outputMapping", Map.of("body", bodyMapping));
+        data.put("output", Map.of("body", bodyMapping));
 
         Map<String, Object> nodeConfig = new HashMap<>();
         nodeConfig.put("id", "node_exit");
@@ -133,7 +133,7 @@ class NodeExecutorsTest {
 
         assertNotNull(output);
         assertEquals("success", output.getStatus());
-        // v5.5: outputMapping.body 映射到 output 分区的 body 字段
+        // v5.5: output.body 映射到 output 分区的 body 字段
         Map<String, Object> body = (Map<String, Object>) output.getOutput().get("body");
         assertNotNull(body);
         assertEquals("ok", body.get("result"));

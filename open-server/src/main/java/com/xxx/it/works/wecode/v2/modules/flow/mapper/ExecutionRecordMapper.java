@@ -46,6 +46,7 @@ public interface ExecutionRecordMapper {
             @Param("appId") Long appId,
             @Param("status") Integer status,
             @Param("triggerType") Integer triggerType,
+            @Param("keyword") String keyword,
             @Param("startTime") Date startTime,
             @Param("endTime") Date endTime,
             @Param("offset") Integer offset,
@@ -60,6 +61,7 @@ public interface ExecutionRecordMapper {
             @Param("appId") Long appId,
             @Param("status") Integer status,
             @Param("triggerType") Integer triggerType,
+            @Param("keyword") String keyword,
             @Param("startTime") Date startTime,
             @Param("endTime") Date endTime
     );

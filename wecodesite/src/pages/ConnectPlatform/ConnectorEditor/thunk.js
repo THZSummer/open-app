@@ -20,7 +20,16 @@
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
-import { buildVersionSummary } from '../../../utils/common';
+import {
+  buildSortedVersionSummaries,
+  buildVersionSummary,
+  normalizeJsonConfig,
+} from '../../../utils/common';
+import {
+  buildJsonFieldFromParam,
+  buildJsonObjectFromParams,
+  parseJsonObjectToParams,
+} from '../../../utils/flowUtilsV2';
 import {
   DEFAULT_API_CONFIG,
   MAX_SCHEMA_DEPTH,
@@ -109,36 +118,8 @@ const buildContractFromSchema = (options) => {
  * @returns {Array} SchemaEditor 参数数组
  */
 export const transformJsonSchemaToParams = (jsonSchema, defaultCarrier = 'body') => {
-  // 参数校验：jsonSchema 必须存在且包含 properties 字段
-  if (!jsonSchema || !jsonSchema.properties) {
-    return [];
-  }
-
-  // 初始化参数数组
-  const params = [];
-
-  // 遍历 jsonSchema 中的所有属性
-  Object.entries(jsonSchema.properties).forEach(([key, value]) => {
-    // 判断是否为复杂类型（对象或数组），复杂类型需要递归处理
-    const isComplex = value.type === 'object' || value.type === 'array';
-    let paramChildren = [];
-
-    // 如果是复杂类型且有子属性，则递归转换子属性
-    if (isComplex && value.properties) {
-      paramChildren = transformJsonSchemaToParams(value, defaultCarrier);
-    }
-
-    // 将每个属性转换为 SchemaEditor 参数格式
-    params.push({
-      paramName: key,
-      paramType: value.type,
-      description: value.description || '',
-      carrier: defaultCarrier,
-      children: paramChildren,
-    });
-  });
-
-  return params;
+  // 复用公共 jsonObjectDef 转参数树方法，保留原导出供历史引用使用
+  return parseJsonObjectToParams({ jsonObject: jsonSchema, carrier: defaultCarrier });
 };
 
 /**
@@ -148,29 +129,8 @@ export const transformJsonSchemaToParams = (jsonSchema, defaultCarrier = 'body')
  * @returns {Object} jsonObjectDef field 定义
  */
 export const transformParamToJsonSchemaField = (param) => {
-  // 判断是否为复杂类型（对象或数组）
-  const isComplex = param.paramType === 'object' || param.paramType === 'array';
-
-  // 构建基础字段定义
-  const fieldDef = {
-    type: param.paramType,
-    description: param.description,
-  };
-
-  // 复杂类型且含子参数时递归
-  if (isComplex && param.children && param.children.length > 0) {
-    const properties = {};
-
-    param.children.forEach((child) => {
-      if (child.paramName) {
-        properties[child.paramName] = transformParamToJsonSchemaField(child);
-      }
-    });
-
-    fieldDef.properties = properties;
-  }
-
-  return fieldDef;
+  // 复用公共参数节点转 jsonObjectDef 字段方法，保留原导出供历史引用使用
+  return buildJsonFieldFromParam(param);
 };
 
 /**
@@ -180,26 +140,8 @@ export const transformParamToJsonSchemaField = (param) => {
  * @returns {Object|null} jsonObjectDef 对象（无参数返回 null）
  */
 export const transformParamsToJsonSchema = (params) => {
-  // 参数校验：参数数组不能为空
-  if (!params || params.length === 0) {
-    return null;
-  }
-
-  // 初始化属性对象
-  const properties = {};
-
-  // 遍历所有参数，转换为 JSON Schema 属性
-  params.forEach((param) => {
-    if (param.paramName) {
-      properties[param.paramName] = transformParamToJsonSchemaField(param);
-    }
-  });
-
-  // 顶层固定为 object 类型
-  return {
-    type: 'object',
-    properties,
-  };
+  // 复用公共参数数组转 jsonObjectDef 方法，空数组保持 null
+  return buildJsonObjectFromParams(params);
 };
 
 /**
@@ -255,33 +197,6 @@ const parseAuthConfigs = (authConfigs) => {
 };
 
 /**
- * 归一化后端返回的 connectionConfig
- * 兼容两种返回形态：JSON 字符串 / 已解析对象
- *
- * @param {string|Object} rawConfig - 后端返回的 connectionConfig 原始值
- * @returns {Object|null} 解析后的 connectionConfig 对象；解析失败返回 null
- */
-const normalizeConnectionConfig = (rawConfig) => {
-  // 空值直接返回 null，由调用方走默认配置分支
-  if (!rawConfig) return null;
-
-  // 已经是对象：直接返回
-  if (typeof rawConfig === 'object') return rawConfig;
-
-  // 字符串：尝试 JSON.parse，解析失败返回 null
-  if (typeof rawConfig === 'string') {
-    try {
-      return JSON.parse(rawConfig);
-    } catch (err) {
-      return null;
-    }
-  }
-
-  // 其它非法类型：返回 null
-  return null;
-};
-
-/**
  * 将 V3 connectionConfig 转换为前端表单可编辑的 apiConfig
  *
  * @param {Object|string} connectionConfig - V3 connectionConfig 对象或其 JSON 字符串
@@ -289,7 +204,7 @@ const normalizeConnectionConfig = (rawConfig) => {
  */
 export const transformFromSchemaFormat = (connectionConfig) => {
   // 先做字符串/对象的兼容归一化
-  const normalized = normalizeConnectionConfig(connectionConfig);
+  const normalized = normalizeJsonConfig(connectionConfig);
 
   // 数据校验：缺失或解析失败时返回默认配置
   if (!normalized) {
@@ -466,11 +381,9 @@ export const fetchVersionList = async (connectorId) => {
     if (result?.code !== '200') return result || {};
 
     // 将后端数据映射为 UI 所需摘要结构（按创建时间倒序）
-    const list = (result.data || [])
-      .map(buildVersionSummary)
-      .sort((a, b) => (a.createTime < b.createTime ? 1 : -1));
+    const list = buildSortedVersionSummaries(result.data || []);
     return { code: '200', data: list };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -504,7 +417,7 @@ export const fetchVersionDetail = async (options) => {
         config: transformFromSchemaFormat(detail.connectionConfig),
       },
     };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -535,7 +448,7 @@ export const saveDraft = async (options) => {
       }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -567,7 +480,7 @@ export const publishVersion = async (options) => {
       { method: 'PUT' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -605,7 +518,7 @@ export const createDraftVersion = async (options) => {
       );
     }
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -630,7 +543,7 @@ export const expireVersion = async (options) => {
       { method: 'PUT' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -655,7 +568,7 @@ export const restoreVersion = async (options) => {
       { method: 'PUT' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -680,7 +593,7 @@ export const deleteVersion = async (options) => {
       { method: 'DELETE' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };

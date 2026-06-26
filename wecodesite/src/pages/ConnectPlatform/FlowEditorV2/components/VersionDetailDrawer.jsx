@@ -17,33 +17,33 @@
 import React from 'react';
 import { Drawer, Button, message } from 'antd';
 import { LinkOutlined, CopyOutlined } from '@ant-design/icons';
-import { VERSION_STATUS_MAP } from '../constants';
+import { VERSION_STATUS, VERSION_STATUS_MAP } from '../constants';
 import { copyToClipboard } from '../../../../utils/common';
 import '../FlowEditorV2.m.less';
 
 /**
  * 版本状态到 Hero 色调的映射
- * @param {string} status 版本状态
+ * @param {number} status 版本状态
  * @returns {string} hero class
  */
 const getHeroClass = (status) => {
-  if (status === 'PUBLISHED') return 'hero-success';
-  if (status === 'APPROVING') return 'hero-warning';
-  if (status === 'REJECTED') return 'hero-error';
-  if (status === 'DRAFT') return '';
+  if (status === VERSION_STATUS.PUBLISHED) return 'hero-success';
+  if (status === VERSION_STATUS.APPROVING) return 'hero-warning';
+  if (status === VERSION_STATUS.REJECTED) return 'hero-error';
+  if (status === VERSION_STATUS.DRAFT) return '';
   return 'hero-default';
 };
 
 /**
  * 版本状态到状态胶囊变体的映射
- * @param {string} status 版本状态
+ * @param {number} status 版本状态
  * @returns {string} pill class
  */
 const getPillClass = (status) => {
-  if (status === 'PUBLISHED') return 'pill-success';
-  if (status === 'APPROVING') return 'pill-warning';
-  if (status === 'REJECTED') return 'pill-error';
-  if (status === 'DRAFT') return 'pill-processing';
+  if (status === VERSION_STATUS.PUBLISHED) return 'pill-success';
+  if (status === VERSION_STATUS.APPROVING) return 'pill-warning';
+  if (status === VERSION_STATUS.REJECTED) return 'pill-error';
+  if (status === VERSION_STATUS.DRAFT) return 'pill-processing';
   return 'pill-default';
 };
 
@@ -123,35 +123,37 @@ const VersionDetailDrawer = (props) => {
         <div className="section-title">基础信息</div>
         <div className="kv-grid">
           <KvRow label="版本名称" value={versionInfo.name} />
-          <KvRow label="创建人" value={versionInfo.creator} />
+          <KvRow label="创建人" value={versionInfo.createBy} />
           <KvRow label="创建时间" value={versionInfo.createTime} />
-          <KvRow label="描述" value={versionInfo.description} />
+          <KvRow label="更新人" value={versionInfo.lastUpdateBy} />
+          <KvRow label="更新时间" value={versionInfo.lastUpdateTime} />
         </div>
       </div>
 
       {/* 已发布 */}
-      {status === 'PUBLISHED' && (
+      {status === VERSION_STATUS.PUBLISHED && (
         <div className="drawer-section">
           <div className="section-title">发布信息</div>
           <div className="kv-grid">
-            <KvRow label="发布人" value={versionInfo.publisher} />
-            <KvRow label="发布时间" value={versionInfo.publishTime} />
+            <KvRow label="发布人" value={versionInfo.publishedBy} />
+            <KvRow label="发布时间" value={versionInfo.publishedTime} />
           </div>
         </div>
       )}
 
       {/* 已失效 */}
-      {status === 'EXPIRED' && (
+      {status === VERSION_STATUS.EXPIRED && (
         <div className="drawer-section">
           <div className="section-title">失效信息</div>
           <div className="kv-grid">
+            <KvRow label="失效人" value={versionInfo.expireBy} />
             <KvRow label="失效时间" value={versionInfo.expireTime} />
           </div>
         </div>
       )}
 
       {/* 审批中 */}
-      {status === 'APPROVING' && (
+      {status === VERSION_STATUS.APPROVING && (
         <div className="drawer-section">
           <div className="section-title">
             审批信息
@@ -200,7 +202,7 @@ const VersionDetailDrawer = (props) => {
       )}
 
       {/* 已驳回 */}
-      {status === 'REJECTED' && (
+      {status === VERSION_STATUS.REJECTED && (
         <div className="drawer-section">
           <div className="section-title">驳回信息</div>
           <div className="kv-grid" style={{ marginBottom: 12 }}>
@@ -214,12 +216,12 @@ const VersionDetailDrawer = (props) => {
       )}
 
       {/* 已撤回 */}
-      {status === 'WITHDRAWN' && (
+      {status === VERSION_STATUS.WITHDRAWN && (
         <div className="drawer-section">
           <div className="section-title">撤回信息</div>
           <div className="kv-grid">
-            <KvRow label="撤回人" value={versionInfo.withdrawer} />
-            <KvRow label="撤回时间" value={versionInfo.withdrawTime} />
+            <KvRow label="撤回人" value={versionInfo.lastUpdateBy} />
+            <KvRow label="撤回时间" value={versionInfo.lastUpdateTime} />
           </div>
         </div>
       )}

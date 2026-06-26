@@ -55,8 +55,10 @@ public class ExecutionRecordService {
      * @return 分页运行记录列表
      */
     public ApiResponse<List<ExecutionRecordVO>> listRecords(
-            Long flowId, Long appId, Integer curPage, Integer pageSize,
-            Integer status, Integer triggerType) {
+            Long appId, Integer curPage, Integer pageSize,
+            Long flowId, String keyword,
+            Integer status, Integer triggerType,
+            String startTime, String endTime) {
 
         int page = curPage != null ? curPage : 1;
         int size = pageSize != null ? pageSize : 20;
@@ -64,9 +66,9 @@ public class ExecutionRecordService {
 
         // 查询
         List<ExecutionRecord> records = executionRecordMapper.selectList(
-                flowId, appId, status, triggerType, null, null, offset, size);
+                flowId, appId, status, triggerType, keyword, null, null, offset, size);
         Long total = executionRecordMapper.countList(
-                flowId, appId, status, triggerType, null, null);
+                flowId, appId, status, triggerType, keyword, null, null);
 
         // 转换为 VO
         List<ExecutionRecordVO> vos = new ArrayList<>();
@@ -100,14 +102,11 @@ public class ExecutionRecordService {
      * @param appId    应用ID（数据隔离）
      * @return 运行记录详情（含步骤列表）
      */
-    public ApiResponse<ExecutionRecordDetailVO> getDetail(Long flowId, Long recordId, Long appId) {
+    public ApiResponse<ExecutionRecordDetailVO> getDetail(Long recordId, Long appId) {
         ExecutionRecord record = executionRecordMapper.selectById(recordId);
 
         if (record == null) {
             return ApiResponse.error("404", "运行记录不存在", "Execution record not found");
-        }
-        if (!flowId.equals(record.getFlowId())) {
-            return ApiResponse.error("404", "运行记录不属于该连接流", "Execution record does not belong to this flow");
         }
         if (appId != null && !appId.equals(record.getAppId())) {
             return ApiResponse.error("404", "运行记录不属于该应用", "Execution record does not belong to this app");

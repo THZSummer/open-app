@@ -14,7 +14,7 @@ V2 运行时在 V1 的串行调度引擎基础上新增 6 个核心模块：
 
 | 模块 | 触发条件 | 关键能力 |
 |------|---------|---------|
-| 版本配置解析器 | 每次 HTTP/调试 触发 | 按 `deployed_version_id` 读取 FlowVersion → ConnectorVersion |
+| 版本配置解析器 | 每次 HTTP/调试 触发 | 按 `deployed_version_id` 读取 FlowVersion 编排快照，连接器配置直接从节点 `connectorVersionConfig` 快照获取（无需查询 ConnectorVersion） |
 | 并行分支执行器 | 编排中包含并行边 | Reactor `Flux.merge()` 并发执行，独立超时 + 错误汇聚 |
 | flowConfig 解析器 | 版本配置加载后 | 解析超时/限流/缓存配置，初始化运行环境 |
 | 脚本节点执行器 | 编排中包含 script 节点 | GraalJS 沙箱执行 `function main(ctx)`，详见 [plan-script.md](./plan-script.md) |
@@ -183,19 +183,6 @@ sequenceDiagram
         end
         EC-->>VCR: FlowVersion 实体
 
-        loop 每个 connector 节点
-            VCR->>EC: 读取 ConnectorVersion 实体
-            EC->>Redis: GET cp:entity:connectorversion:{cvId}
-            alt 命中
-                Redis-->>EC: ConnectorVersion JSON (含 connection_config MEDIUMTEXT)
-            else miss
-                EC->>DB: SELECT connector_version_t
-                DB-->>EC: ConnectorVersion row
-                EC->>Redis: SET (TTL 7d ± 2h)
-            end
-            EC-->>VCR: ConnectorVersion 实体
-        end
-
         VCR->>VCR: 解析 flowConfig（白名单/超时/限流/缓存）
         VCR-->>Runtime: ResolvedConfig
     end
@@ -242,7 +229,7 @@ sequenceDiagram
 | Phase | 负责模块 | 核心逻辑 | 异常出口 | 详见 |
 |-------|---------|---------|---------|------|
 | **1. 凭证认证** | CredentialValidator | 校验凭证格式与有效期，**纯内存操作**，不查 DB/Redis。无 flow 相关逻辑 | `401`（无效凭证） | — |
-| **2. 连接流存在性判断** | VersionConfigResolver | flowId → EntityCache → FlowVersion 快照 → ConnectorVersion 快照；解析 `flowConfig`（白名单 / 超时 / 限流 / 缓存） | `503`（未部署）/ `500`（版本失效） | §1, §3 |
+| **2. 连接流存在性判断** | VersionConfigResolver | flowId → EntityCache → FlowVersion 编排快照（含 connectorVersionConfig）；解析 `flowConfig`（白名单 / 超时 / 限流 / 缓存） | `503`（未部署）/ `500`（版本失效） | §1, §3 |
 | **3. 触发器鉴权** | SystokenWhitelistValidator | Phase 2 拿到白名单后，校验凭证是否在 `trigger.authConfig.systokenWhitelist` 中 | `403`（不在白名单 / 白名单为空） | §10 |
 | **4. 连接流限流** | InboundRateLimiter | 按流读取 `flowConfig.rateLimit`，Redis 令牌桶（QPS）或并发计数器 | `429`（超限）/ 降级放行 | §5 |
 | **5. 缓存处理 + 节点调度执行** | FlowCacheManager + DAG + PBE + DPE + Auth Injector + URL Validator | 缓存命中 → 直接返回；未命中 → DAG 遍历执行 | 节点级错误 → 降级/标记失败 | §6, §2, §4, §9, §11 |
@@ -301,6 +288,7 @@ sequenceDiagram
     participant Client
     participant TriggerHandler
     participant VersionConfigResolver
+    participant EC as "EntityCacheManager"
     participant Redis
     participant DB
     participant FlowRuntimeEngine
@@ -308,22 +296,31 @@ sequenceDiagram
     Client->>TriggerHandler: HTTP Request(flowId)
     TriggerHandler->>VersionConfigResolver: resolve(flowId)
 
-    VersionConfigResolver->>Redis: GET cp:config:flow:{flowId}:{versionId}
+    VersionConfigResolver->>EC: 读取 Flow 实体
+    EC->>Redis: GET cp:entity:flow:{flowId}
     alt 缓存命中
-        Redis-->>VersionConfigResolver: 返回缓存配置
+        Redis-->>EC: Flow JSON (含 deployed_version_id)
     else 缓存未命中
-        VersionConfigResolver->>DB: FlowEntity.findById(flowId)
-        DB-->>VersionConfigResolver: deployed_version_id
-        VersionConfigResolver->>DB: FlowVersionEntity.findById(deployedVersionId)
-        DB-->>VersionConfigResolver: 编排快照 (nodes + edges)
-        loop 每个 connector 节点
-            VersionConfigResolver->>DB: ConnectorVersionEntity.findById(cvId)
-            DB-->>VersionConfigResolver: 连接配置快照
-        end
-        VersionConfigResolver->>Redis: SET(key, config, TTL 5min)
+        EC->>DB: SELECT flow_t
+        DB-->>EC: Flow row
+        EC->>Redis: SET (TTL 7d ± 2h)
     end
+    EC-->>VersionConfigResolver: Flow 实体
 
-    VersionConfigResolver-->>TriggerHandler: ResolvedConfig {flowVersion, connectorVersionMap}
+    VersionConfigResolver->>EC: 读取 FlowVersion 实体
+    EC->>Redis: GET cp:entity:flowversion:{versionId}
+    alt 缓存命中
+        Redis-->>EC: FlowVersion JSON (含 orchestration_config，connector 节点已含 connectorVersionConfig 快照)
+    else 缓存未命中
+        EC->>DB: SELECT flow_version_t
+        DB-->>EC: FlowVersion row
+        EC->>Redis: SET (TTL 7d ± 2h)
+    end
+    EC-->>VersionConfigResolver: FlowVersion 实体
+
+    Note over VersionConfigResolver: 遍历编排 nodes[]，直接从 node.data.connectorVersionConfig 取连接器配置<br/>（编排自包含，无需查询 ConnectorVersion）
+
+    VersionConfigResolver-->>TriggerHandler: ResolvedConfig {flowVersion}
     TriggerHandler->>FlowRuntimeEngine: execute(resolvedConfig, triggerData)
 ```
 
@@ -336,18 +333,11 @@ flowchart TD
     DEPLOY -->|"有值"| LOAD_FV["加载 FlowVersion"]
     LOAD_FV --> FV_EXIST{"FlowVersion<br/>是否存在?"}
     FV_EXIST -->|"不存在/已删除"| E500["❌ 500<br/>Deployed version not found"]
-    FV_EXIST -->|"存在"| LOOP_NODES["遍历编排 nodes[]"]
-    LOOP_NODES --> NEXT{"下一个<br/>connector 节点?"}
-    NEXT -->|"有节点"| LOAD_CV["加载 ConnectorVersion"]
-    LOAD_CV --> CV_EXIST{"ConnectorVersion<br/>是否存在?"}
-    CV_EXIST -->|"存在且有效"| NEXT
-    CV_EXIST -->|"不存在/已失效"| MARK_FAIL["⚠️ 标记节点失败<br/>（降级：继续执行其余节点）"]
-    MARK_FAIL --> NEXT
-    NEXT -->|"遍历完毕"| RETURN["✅ 返回 ResolvedConfig"]
+    FV_EXIST -->|"存在"| PARSE["解析 orchestration_config<br/>connector 节点直接从 node.data.connectorVersionConfig 取配置"]
+    PARSE --> RETURN["✅ 返回 ResolvedConfig"]
 
     style E503 fill:#ffccbc
     style E500 fill:#ffccbc
-    style MARK_FAIL fill:#fff9c4
     style RETURN fill:#c8e6c9
 ```
 
@@ -355,12 +345,13 @@ flowchart TD
 |------|------|
 | `deployed_version_id` 为 NULL | 返回 503 "Flow not deployed" |
 | FlowVersion 不存在或已删除 | 返回 500 "Deployed version not found" |
-| ConnectorVersion 不存在或已失效 | 标记对应节点为失败，继续执行其余节点（降级） |
+| connectorVersionConfig 快照缺失 | 标记对应节点为失败，记录错误日志（编排快照不完整） |
+
 
 ### 1.3 缓存策略
 
-- FlowVersion + ConnectorVersion 配置读后写入 Redis 缓存
-- Key: `cp:config:flow:{flowId}:{versionId}`, TTL: 5 分钟
+- FlowVersion 编排配置读后写入 Redis 缓存（含完整的 connectorVersionConfig 快照，无需单独缓存 ConnectorVersion）
+- Key: `cp:entity:flowversion:{versionId}`, TTL: 7 天
 - 版本切换时主动失效对应缓存
 
 ---

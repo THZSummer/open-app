@@ -7,7 +7,9 @@ import com.xxx.it.works.wecode.v2.common.enums.FlowLifecycleStatus;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalActionResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.FlowVersionApprovalService;
+import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
 import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
@@ -50,7 +52,7 @@ public class FlowVersionService {
 
 
     @Autowired
-    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, AuditLogService auditLogService) {
+    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService) {
         this.flowMapper = flowMapper;
         this.flowVersionMapper = flowVersionMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
@@ -58,6 +60,7 @@ public class FlowVersionService {
         this.objectMapper = objectMapper;
         this.publishValidator = publishValidator;
         this.approvalService = approvalService;
+        this.genericApprovalService = genericApprovalService;
         this.auditLogService = auditLogService;
     }
     private final OpFlowMapper flowMapper;
@@ -67,6 +70,7 @@ public class FlowVersionService {
     private final ObjectMapper objectMapper;
     private final FlowPublishValidator publishValidator;
     private final FlowVersionApprovalService approvalService;
+    private final ApprovalService genericApprovalService;
     private final AuditLogService auditLogService;
 
     @Autowired(required = false)
@@ -672,18 +676,19 @@ public class FlowVersionService {
                     "Only pending approval versions can be urged");
         }
 
-        // 调用审批服务催办
+        // 调用通用审批服务催办
         try {
             String currentUser = UserContextHolder.getUserName();
-            approvalService.urgeApproval(versionId, appId, currentUser);
-            log.info("Approval urged for flow version: flowId={}, versionId={}", flowId, versionId);
+            ApprovalActionResponse result = genericApprovalService.urge(
+                    versionId, "connector_flow_version_publish", currentUser);
+            log.info("Approval urged for flow version: flowId={}, versionId={}, message={}",
+                    flowId, versionId, result.getMessage());
+            return ApiResponse.success(result.getMessage());
         } catch (Exception e) {
             log.error("Failed to urge approval for flow version: flowId={}, versionId={}, error={}",
                     flowId, versionId, e.getMessage(), e);
             return ApiResponse.error("500", "催办失败：" + e.getMessage(), "Urge failed: " + e.getMessage());
         }
-
-        return ApiResponse.success("催办成功，已通知审批人");
     }
 
     // ==================== 缓存失效 ====================

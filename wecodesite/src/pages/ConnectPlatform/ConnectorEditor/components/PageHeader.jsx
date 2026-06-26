@@ -13,10 +13,14 @@ import { queryParams } from '../../../../utils/common';
 /**
  * 页面头部组件
  * 渲染面包屑（连接器列表 > 接口配置）与标题区域
+ * 标题优先展示 URL 中携带的连接器名称
  */
 const PageHeader = () => {
   // 路由跳转 hook
   const navigate = useNavigate();
+
+  // 当前连接器名称，用于页面标题展示
+  const connectorName = queryParams('name') || '接口配置';
 
   /**
    * 跳转到连接器列表页
@@ -43,7 +47,7 @@ const PageHeader = () => {
 
       <div className="page-header">
         <div>
-          <h2>接口配置</h2>
+          <h2>{connectorName}</h2>
           <p className="page-desc">维护连接器接口契约。默认只读，草稿点击"编辑"后可修改。</p>
         </div>
       </div>

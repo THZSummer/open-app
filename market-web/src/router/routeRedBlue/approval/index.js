@@ -24,7 +24,7 @@ const Approval = () => {
   const fetchData = async (tab = activeTab, page = pagination) => {
     setLoading(true);
     const fetchFn = tab === 'pending' ? fetchPendingList : fetchPublishedList;
-    const result = await fetchFn({ pageNum: page.pageNum, pageSize: page.pageSize });
+    const result = await fetchFn({ curPage: page.pageNum, pageSize: page.pageSize });
     if (result && result.code === '200') {
       setDataSource(result.data || []);
       setPagination(prev => ({ ...prev, pageNum: result.page?.curPage || 1, total: result.page?.total || 0 }));
@@ -139,6 +139,7 @@ const Approval = () => {
             pageSize={pagination.pageSize}
             pageSizeOptions={PAGE_SIZE_OPTIONS}
             showSizeChanger
+            showQuickJumper
             showTotal={(total) => `共 ${total} 条`}
             onChange={handlePageChange}
           />

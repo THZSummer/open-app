@@ -595,7 +595,7 @@ connector-api 每次处理 HTTP 触发请求时，存在以下**必经的 MySQL 
 | 3 | Connector | `cp:entity:connector:{connectorId}` | `connector_t` | `id`, `status`, `app_id`, `connector_type`, `name_cn`, `name_en` |
 | 4 | ConnectorVersion | `cp:entity:connectorversion:{versionId}` | `connector_version_t` | `id`, `connector_id`, `version_number`, `status`, **`connection_config`**（MEDIUMTEXT）, `published_time`, `published_by` |
 
-> **为什么不缓存 lookup / property**：应用白名单（`openplatform_lookup_item_t`）和 URL 白名单规则（`openplatform_property_t`）仅供 open-server 管理面读取——open-server 不读缓存，因此这两类数据不纳入 connector-api 的缓存体系。URL 白名单规则已内嵌在 `ConnectorVersion.connection_config` 中，随 ConnectorVersion 实体一并缓存。
+> **为什么不缓存 lookup / property**：应用白名单（`openplatform_lookup_item_t`）和 URL 白名单规则（`openplatform_property_t`）仅供 open-server 管理面读取——open-server 不读缓存，因此这两类数据不纳入 connector-api 的缓存体系。URL 白名单规则存储在连接器级独立配置中（复用 openplatform_property_t），不随 ConnectorVersion 缓存。
 
 ### 12.3 缓存策略
 
@@ -675,7 +675,7 @@ redis.set(key, json, ttl);  // SET key value EX ttl
 
 | 事件（open-server） | 缓存操作 | 说明 |
 |------|:--:|------|
-| 发布草稿 | `SET` | **核心写入点**——运行时依赖此缓存读取 `connection_config` |
+| 发布草稿 | `SET` | 供管理面版本列表/详情查询使用；运行时不再依赖此缓存（配置已快照至 FlowVersion） |
 | 标记失效 | `DEL` | 失效版本不可被引用，移除缓存 |
 | 恢复版本 | `SET` | 恢复后可重新被引用 |
 | 物理删除 | `DEL` | 移除缓存 |
@@ -697,11 +697,7 @@ connector-api 收到 HTTP 触发请求
     │
     ▼
 ③ 遍历 DAG nodes，对每个 connector 节点：
-    ├── 从 orchestration_config.node.data.connectorVersionId 取版本 ID
-    ├── GET cp:entity:connectorversion:{versionId}
-    │   ├── 命中 → 取 connection_config（含 auth/URL白名单/protocol，跳过 MySQL）
-    │   └── 未命中 → 读 MySQL → SET 缓存 → 继续
-    └── （可选）GET cp:entity:connector:{connectorId} → 校验 connector.status
+    └── 直接从 node.data.connectorVersionConfig 快照取连接器配置（含 protocol/auth/input/output/timeoutMs）——编排自包含，无需查询 ConnectorVersion
     │
     ▼
 ④ 执行 DAG（已持有全部配置）
@@ -713,7 +709,7 @@ connector-api 收到 HTTP 触发请求
 
 | 策略 | 说明 |
 |------|------|
-| **部署时预热** | 连接流部署时，open-server 在写入 `deployed_version_id` 后立即 `SET` FlowVersion 缓存。同时遍历 DAG 中所有 connector 节点，逐一 `SET` ConnectorVersion 缓存 |
+| **部署时预热** | 连接流部署时，open-server 在写入 `deployed_version_id` 后立即 `SET` FlowVersion 缓存（含完整的 connectorVersionConfig 快照） |
 | **自然填充** | 未预热的版本由运行时首次请求时的 Cache-Aside 自动填充 |
 
 ### 12.7 两类缓存的关系

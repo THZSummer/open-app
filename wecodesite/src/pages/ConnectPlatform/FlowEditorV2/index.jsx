@@ -39,6 +39,7 @@ import {
   publishVersion,
   createDraftVersion,
   expireVersion,
+  restoreVersion,
   withdrawVersion,
   deleteVersion,
   debugFlow,
@@ -61,7 +62,7 @@ import {
   validateForPublish,
   buildNodeTitles,
 } from './utils';
-import { queryParams, getSecondModalInfo } from '../../../utils/common';
+import { queryParams, getSecondModalInfo, getVersionObjectName } from '../../../utils/common';
 import './FlowEditorV2.m.less';
 
 /**
@@ -253,6 +254,7 @@ function FlowEditorV2() {
       case 'publish': return handlePublish();
       case 'newDraft': return handleNewDraft();
       case 'expire': return handleExpire();
+      case 'restore': return doRestore();
       case 'withdraw': return handleWithdraw();
       case 'delete': return handleDelete();
       case 'detail': return handleOpenDetail();
@@ -290,6 +292,15 @@ function FlowEditorV2() {
       message.error(res?.messageZh || '创建失败');
     }
     setActionLoading(false);
+  };
+
+  /**
+   * 取消编辑并还原当前版本详情
+   */
+  const handleCancelEdit = async () => {
+    if (!currentVersion?.versionId) return;
+    setIsEditing(false);
+    await loadVersionDetail(flowId, currentVersion.versionId);
   };
 
   /**
@@ -335,9 +346,9 @@ function FlowEditorV2() {
       content: '发布后将进入审批中状态，是否继续？',
       onOk: async () => {
         setActionLoading(true);
-        const config = JSON.parse(JSON.stringify(flowData));
         const res = await publishVersion({
-          flowId, versionId: currentVersion.versionId, config,
+          flowId,
+          versionId: currentVersion.versionId,
         });
         if (res?.code === '200') {
           message.success('发布成功');
@@ -400,6 +411,26 @@ function FlowEditorV2() {
   };
 
   /**
+   * 执行恢复操作
+   */
+  const doRestore = async () => {
+    if (!currentVersion?.versionId) return;
+
+    setActionLoading(true);
+    const res = await restoreVersion({
+      flowId,
+      versionId: currentVersion.versionId,
+    });
+    if (res?.code === '200') {
+      message.success('已恢复');
+      await loadVersions(flowId, { preferVersionId: currentVersion.versionId });
+    } else {
+      message.error(res?.messageZh || '恢复失败');
+    }
+    setActionLoading(false);
+  };
+
+  /**
    * 撤回（触发二次确认弹窗）
    */
   const handleWithdraw = () => {
@@ -452,37 +483,11 @@ function FlowEditorV2() {
   };
 
   /**
-   * 拼接版本对象名
-   * 优先 "v{versionNo} ({versionName})"，缺失则按 versionName / versionNo / versionId 回退
-   */
-  const getVersionObjectName = () => {
-    // 当前选中版本
-    const version = currentVersion;
-    if (!version) return '';
-
-    // 版本号字段（兼容多种命名）
-    const versionNo = version.versionNo || version.versionNumber;
-    // 版本名称字段（兼容多种命名）
-    const versionName = version.versionName || version.name;
-
-    if (versionNo && versionName) {
-      return `v${versionNo} (${versionName})`;
-    }
-    if (versionNo) {
-      return `v${versionNo}`;
-    }
-    if (versionName) {
-      return versionName;
-    }
-    return version.versionId || '';
-  };
-
-  /**
    * 获取二次确认弹窗配置（含 onConfirm 回调）
    */
   const getConfirmModalInfo = () => {
     // 版本对象名（用于确认文案拼接）
-    const objectName = getVersionObjectName();
+    const objectName = getVersionObjectName(currentVersion);
 
     if (confirmModal.type === 'expire') {
       return {
@@ -628,16 +633,40 @@ function FlowEditorV2() {
    *
    * @param {Object} config 更多配置
    */
-  const handleSaveMoreConfig = (config) => {
-    setFlowData({
+  const handleSaveMoreConfig = async (config) => {
+    if (!editable || !currentVersion?.versionId) {
+      message.warning('请先进入编辑状态');
+      return;
+    }
+
+    const nextFlowData = {
       ...flowData,
       rateLimit: config.rateLimit,
       cacheEnabled: config.cacheEnabled,
       cacheTime: config.cacheTime,
       cacheKeys: config.cacheKeys,
+    };
+    const requestConfig = JSON.parse(JSON.stringify(nextFlowData));
+    const needReloadAfterSave = isWithdrawn || isRejected;
+
+    setActionLoading(true);
+    const res = await saveDraft({
+      flowId,
+      versionId: currentVersion.versionId,
+      config: requestConfig,
     });
-    message.success('更多配置已保存');
-    setMoreConfigVisible(false);
+    setActionLoading(false);
+
+    if (res?.code === '200') {
+      setFlowData(nextFlowData);
+      message.success('更多配置已保存');
+      setMoreConfigVisible(false);
+      if (needReloadAfterSave) {
+        await loadVersions(flowId, { preferVersionId: currentVersion.versionId });
+      }
+    } else {
+      message.error(res?.messageZh || '更多配置保存失败');
+    }
   };
 
   // ========================================
@@ -663,7 +692,12 @@ function FlowEditorV2() {
    */
   const handleDebug = async (paramValues) => {
     setDebugLoading(true);
-    const res = await debugFlow({ flowId, inputParams: paramValues });
+    // 传入当前版本 ID，用于调试指定版本。
+    const res = await debugFlow({
+      flowId,
+      versionId: currentVersion?.versionId,
+      inputParams: paramValues,
+    });
     setDebugLoading(false);
     if (res?.code === '200') {
       setDebugResult(res.data);
@@ -750,6 +784,7 @@ function FlowEditorV2() {
           actionLoading={actionLoading}
           isEditing={isEditing}
           onVersionChange={handleVersionChange}
+          onCancelEdit={handleCancelEdit}
           onAction={handleVersionAction}
         />
       </div>
@@ -812,7 +847,8 @@ function FlowEditorV2() {
                   <div className="node-card-header">
                     <div className="node-card-title">
                       <span className="node-card-tag">{getNodeTagText(activeNode.type)}</span>
-                      {getNodeTitleText(activeNode.type)}
+                      <span>{getNodeTitleText(activeNode.type)}</span>
+                      <span className="node-card-id">{activeNode.id}</span>
                     </div>
                   </div>
                   {renderActiveNodeCard()}
@@ -848,10 +884,12 @@ function FlowEditorV2() {
       {/* 更多配置抽屉 */}
       <MoreConfigDrawer
         visible={moreConfigVisible}
+        editable={editable}
         rateLimit={flowData.rateLimit}
         cacheEnabled={flowData.cacheEnabled}
         cacheTime={flowData.cacheTime}
         cacheKeys={flowData.cacheKeys}
+        triggerNodeId={flowData.trigger?.id}
         triggerInputParams={flowData.trigger?.inputParams}
         rateLimitMax={appLimits.rateLimitMax}
         cacheTimeMax={appLimits.cacheTimeMax}

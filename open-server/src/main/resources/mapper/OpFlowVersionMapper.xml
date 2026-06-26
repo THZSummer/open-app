@@ -39,6 +39,7 @@
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_flow_version_t
         WHERE flow_id = #{flowId}
+        ORDER BY version_number DESC
         LIMIT 1
     </select>
 

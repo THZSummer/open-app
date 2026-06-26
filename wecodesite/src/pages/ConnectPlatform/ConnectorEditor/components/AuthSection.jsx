@@ -19,8 +19,7 @@ import {
   AUTH_TYPE_OPTIONS,
   AUTH_TYPE_NAMES,
   AUTH_CARRIER_OPTIONS,
-  COOKIE_FIELD_MAPPING_PLACEHOLDER,
-  SIGNATURE_DEFAULT_FIXED_VALUE,
+  AUTH_PARAM_ROW_CONFIG,
   COMMON_AUTH_TYPES,
   SIGNATURE_AUTH_TYPE,
 } from '../constants';
@@ -109,28 +108,27 @@ const AuthSection = forwardRef((props, ref) => {
   };
 
   /**
-   * 渲染单条通用认证参数行（SOA / APIG / Cookie）
+   * 渲染认证参数行
    * @param {Object} options
-   * options.authType 认证方式标识
+   * options.rowKey 行唯一标识
    * options.item 参数对象
-   * options.index 参数索引
+   * options.valueColumnValue 固定值/值来源列展示值
+   * options.valueColumnPlaceholder 固定值/值来源列占位文案
+   * options.onParamNameChange 参数名称变更回调
+   * options.onCarrierChange carrier 变更回调
+   * options.extraFields 额外字段节点
    */
-  const renderCommonAuthRow = (options) => {
-    // 解构所需参数
-    const { authType, item, index } = options;
-    // 值来源/字段映射列：Cookie 默认空 + 占位文案；SOA/APIG 与参数名一致，仅展示
-    const isCookie = authType === 'Cookie';
-    const valueColumnValue = isCookie ? '' : (item.paramName || '');
-    const valueColumnPlaceholder = isCookie ? COOKIE_FIELD_MAPPING_PLACEHOLDER : '值来源';
-
+  const renderAuthParamRow = (options) => {
+    // 解构渲染认证参数行所需参数
+    const { rowKey, item, valueColumnValue, valueColumnPlaceholder, onParamNameChange, onCarrierChange, extraFields = null } = options;
     return (
-      <div className="auth-param-row" key={`${authType}-${index}`}>
+      <div className="auth-param-row" key={rowKey}>
         <Input
           className="auth-field-name input-border-radius"
           value={item.paramName}
           placeholder="参数名称"
           disabled={!editable}
-          onChange={(e) => updateAuthParam({ authType, index, field: 'paramName', value: e.target.value })}
+          onChange={(e) => onParamNameChange(e.target.value)}
         />
         <Select className="auth-field-type" value="string" disabled>
           <Option value="string">string</Option>
@@ -139,7 +137,7 @@ const AuthSection = forwardRef((props, ref) => {
           className="auth-field-carrier"
           value={item.carrier || 'header'}
           disabled={!editable}
-          onChange={(val) => updateAuthParam({ authType, index, field: 'carrier', value: val })}
+          onChange={onCarrierChange}
         >
           {AUTH_CARRIER_OPTIONS.map(opt => (
             <Option key={opt} value={opt}>{opt}</Option>
@@ -151,8 +149,35 @@ const AuthSection = forwardRef((props, ref) => {
           placeholder={valueColumnPlaceholder}
           disabled
         />
+        {extraFields}
       </div>
     );
+  };
+
+  /**
+   * 渲染单条通用认证参数行（SOA / APIG / Cookie）
+   * @param {Object} options
+   * options.authType 认证方式标识
+   * options.item 参数对象
+   * options.index 参数索引
+   */
+  const renderCommonAuthRow = (options) => {
+    // 解构所需参数
+    const { authType, item, index } = options;
+    // 当前认证方式的参数行展示配置
+    const rowConfig = AUTH_PARAM_ROW_CONFIG[authType] || {};
+    // 值来源/字段映射列：优先使用配置值，否则使用参数固定值
+    const valueColumnValue = Object.prototype.hasOwnProperty.call(rowConfig, 'value') ? rowConfig.value : (item.fixedValue || '');
+    const valueColumnPlaceholder = rowConfig.valuePlaceholder || '值来源';
+
+    return renderAuthParamRow({
+      rowKey: `${authType}-${index}`,
+      item,
+      valueColumnValue,
+      valueColumnPlaceholder,
+      onParamNameChange: (value) => updateAuthParam({ authType, index, field: 'paramName', value }),
+      onCarrierChange: (value) => updateAuthParam({ authType, index, field: 'carrier', value }),
+    });
   };
 
   /**
@@ -183,52 +208,40 @@ const AuthSection = forwardRef((props, ref) => {
   const renderSignatureBlock = () => {
     // 数字签名独立配置
     const sig = apiConfig.signatureConfig || {};
+    // 数字签名参数行展示配置
+    const rowConfig = AUTH_PARAM_ROW_CONFIG[SIGNATURE_AUTH_TYPE] || {};
+    // 数字签名额外展示签名密钥和显隐按钮
+    const extraFields = rowConfig.showSecret ? (
+      <>
+        <Input
+          className="auth-field-value input-border-radius"
+          type={signatureSecretMasked ? 'password' : 'text'}
+          value={sig.secret}
+          placeholder="签名密钥"
+          disabled={!editable}
+          onChange={(e) => handleSignatureChange('secret', e.target.value)}
+        />
+        <Button className="signature-mask-btn" onClick={toggleSecretMask}>
+          {signatureSecretMasked ? '显示' : '隐藏'}
+        </Button>
+      </>
+    ) : null;
+
     return (
       <div className="auth-sub-section" key="SIGNATURE">
         <div className="auth-sub-title">
           <span className="auth-sub-tag">数字签名</span>
           {AUTH_TYPE_NAMES[SIGNATURE_AUTH_TYPE]}
         </div>
-
-        <div className="auth-param-row">
-          <Input
-            className="auth-field-name input-border-radius"
-            value={sig.paramName}
-            placeholder="参数名称"
-            disabled={!editable}
-            onChange={(e) => handleSignatureChange('paramName', e.target.value)}
-          />
-          <Select className="auth-field-type" value="string" disabled>
-            <Option value="string">string</Option>
-          </Select>
-          <Select
-            className="auth-field-carrier"
-            value={sig.carrier || 'header'}
-            disabled={!editable}
-            onChange={(val) => handleSignatureChange('carrier', val)}
-          >
-            {AUTH_CARRIER_OPTIONS.map(opt => (
-              <Option key={opt} value={opt}>{opt}</Option>
-            ))}
-          </Select>
-          <Input
-            className="auth-field-value input-border-radius"
-            value={sig.fixedValue || SIGNATURE_DEFAULT_FIXED_VALUE}
-            placeholder="签名固定值"
-            disabled
-          />
-          <Input
-            className="auth-field-value input-border-radius"
-            type={signatureSecretMasked ? 'password' : 'text'}
-            value={sig.secret}
-            placeholder="签名密钥"
-            disabled={!editable}
-            onChange={(e) => handleSignatureChange('secret', e.target.value)}
-          />
-          <Button className="signature-mask-btn" onClick={toggleSecretMask}>
-            {signatureSecretMasked ? '显示' : '隐藏'}
-          </Button>
-        </div>
+        {renderAuthParamRow({
+          rowKey: SIGNATURE_AUTH_TYPE,
+          item: sig,
+          valueColumnValue: sig.fixedValue || rowConfig.value,
+          valueColumnPlaceholder: rowConfig.valuePlaceholder,
+          onParamNameChange: (value) => handleSignatureChange('paramName', value),
+          onCarrierChange: (value) => handleSignatureChange('carrier', value),
+          extraFields,
+        })}
       </div>
     );
   };

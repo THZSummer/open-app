@@ -7,6 +7,11 @@
  * 与旧版 FlowEditor/constants.js 完全独立。
  */
 
+import {
+  HTTP_REQUEST_CARRIER_TABS,
+  HTTP_RESPONSE_CARRIER_TABS,
+} from '../../../utils/constants';
+
 // ========================================
 // 编排模式
 // ========================================
@@ -105,6 +110,7 @@ export const VERSION_ACTIONS = {
   [VERSION_STATUS.EXPIRED]: [
     { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '恢复', action: 'restore', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.APPROVING]: [
@@ -112,13 +118,11 @@ export const VERSION_ACTIONS = {
     { label: '撤回', action: 'withdraw', type: 'default', danger: true },
   ],
   [VERSION_STATUS.REJECTED]: [
-    { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
     { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.WITHDRAWN]: [
-    { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
     { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
@@ -128,17 +132,17 @@ export const VERSION_ACTIONS = {
 /**
  * 版本栏按钮渲染顺序（从左到右）
  * 详情按钮独立渲染在最左侧；其余按钮按下方优先级稳定重排。
- * 顺序：更多配置 / 调试 → 新增草稿 / 编辑 / 保存 → 发布 / 撤回 → 失效 / 删除
+ * 顺序：新增草稿 / 编辑 / 取消编辑 / 保存 → 发布 / 撤回 → 失效 / 恢复 / 删除
  */
 export const VERSION_BUTTON_ORDER = [
-  'moreConfig',
-  'debug',
   'newDraft',
   'edit',
+  'cancelEdit',
   'save',
   'publish',
   'withdraw',
   'expire',
+  'restore',
   'delete',
 ];
 
@@ -148,8 +152,8 @@ export const VERSION_BUTTON_ORDER = [
 export const DEFAULT_APP_LIMITS = {
   /** 限流默认上限 */
   rateLimitMax: 1000,
-  /** 连接器超时默认上限（秒） */
-  connectorTimeoutMax: 3,
+  /** 连接器超时默认上限（毫秒） */
+  connectorTimeoutMax: 300000,
   /** 串行模式连接器数量上限 */
   serialConnectorMax: 3,
   /** 并行模式分支数量上限 */
@@ -161,11 +165,7 @@ export const DEFAULT_APP_LIMITS = {
 // ========================================
 // HTTP 请求载体 Tab 配置
 // ========================================
-export const CARRIER_TABS = [
-  { key: 'header', label: 'HTTP 请求头', carrier: 'header' },
-  { key: 'body', label: 'HTTP 请求体', carrier: 'body' },
-  { key: 'query', label: 'URL 查询参数', carrier: 'query' },
-];
+export const CARRIER_TABS = HTTP_REQUEST_CARRIER_TABS;
 
 // ========================================
 // 二次确认弹窗配置（版本失效 / 撤回 / 删除）
@@ -200,10 +200,7 @@ export const FLOW_VERSION_DELETE_SECOND_MODAL_INFO = {
 };
 
 /** 输出节点载体 Tab（无 query） */
-export const OUTPUT_CARRIER_TABS = [
-  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
-  { key: 'header', label: 'HTTP 响应头', carrier: 'header' },
-];
+export const OUTPUT_CARRIER_TABS = HTTP_RESPONSE_CARRIER_TABS;
 
 // ========================================
 // 触发方式

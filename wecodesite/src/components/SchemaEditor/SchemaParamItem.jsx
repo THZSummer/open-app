@@ -106,7 +106,6 @@ const SchemaParamItem = (props) => {
           value={param.paramName}
           onChange={(e) => onUpdate(path, { paramName: e.target.value })}
           placeholder="参数名称"
-          size="small"
           className="schema-param-name"
           disabled={!editable}
         />
@@ -115,7 +114,6 @@ const SchemaParamItem = (props) => {
         <Select
           value={param.paramType}
           onChange={handleTypeChange}
-          size="small"
           className="schema-param-type"
           disabled={!editable}
         >
@@ -129,7 +127,6 @@ const SchemaParamItem = (props) => {
           <Select
             value={effectiveCarrier}
             onChange={(val) => onUpdate(path, { carrier: val })}
-            size="small"
             className="schema-param-carrier"
             disabled={!editable || carrierLocked}
           >
@@ -144,7 +141,6 @@ const SchemaParamItem = (props) => {
           value={param.description}
           onChange={(e) => onUpdate(path, { description: e.target.value })}
           placeholder="描述"
-          size="small"
           className="schema-param-desc"
           disabled={!editable}
         />
@@ -157,12 +153,11 @@ const SchemaParamItem = (props) => {
               trigger={['click']}
               overlayClassName="schema-editor-v2-dropdown"
             >
-              <Button type="text" size="small" className="schema-add-btn">添加</Button>
+              <Button type="text" className="schema-add-btn">添加</Button>
             </Dropdown>
           ) : (
             <Button
               type="text"
-              size="small"
               className="schema-add-btn"
               onClick={() => onAddSibling(path)}
             >
@@ -175,7 +170,6 @@ const SchemaParamItem = (props) => {
         {editable && (
           <Button
             type="text"
-            size="small"
             className="schema-delete-btn"
             onClick={() => onDelete(path)}
           >

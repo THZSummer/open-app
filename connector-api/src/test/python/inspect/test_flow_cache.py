@@ -160,7 +160,7 @@ def build_conn_config():
 # Orchestration Builder — cache config in top-level flowConfig
 # ═══════════════════════════════════════════════════════════
 
-def build_orch(connector_version_id, cache_ttl=60):
+def build_orch(connector_version_id, connection_config, cache_ttl=60):
     """构建 trigger → connector → exit 编排
 
     cache_ttl: 缓存 TTL（秒），默认 60；None 表示不启用缓存
@@ -169,6 +169,7 @@ def build_orch(connector_version_id, cache_ttl=60):
         "labelCn": "缓存连接器",
         "labelEn": "CacheConn",
         "connectorVersionId": str(connector_version_id),
+        "connectorVersionConfig": connection_config,
         "inputMapping": {
             "header": {"type": "object", "properties": {}},
             "query": {"type": "object", "properties": {}},
@@ -252,10 +253,11 @@ def test_flow_cache():
     print("=== IT-CACHE-001: 缓存命中 — 第二次调用返回缓存结果 ===")
     sid_001 = snow_id()
     fvid_001 = cid_001 = cvid_001 = None
-    cid_001, cvid_001 = setup_connector(build_conn_config())
+    config_001 = build_conn_config()
+    cid_001, cvid_001 = setup_connector(config_001)
     fid_001, fvid_001 = setup_flow(
         sid_001, lifecycle_status=1,
-        orchestration=build_orch(cvid_001, cache_ttl=60)
+        orchestration=build_orch(cvid_001, config_001, cache_ttl=60)
     )
 
     # 第一次调用 — 应触发下游执行 (cache miss)
@@ -302,10 +304,11 @@ def test_flow_cache():
     print("\n=== IT-CACHE-002: 缓存未命中 — 首次调用触发完整执行 ===")
     sid_002 = snow_id()
     fvid_002 = cid_002 = cvid_002 = None
-    cid_002, cvid_002 = setup_connector(build_conn_config())
+    config_002 = build_conn_config()
+    cid_002, cvid_002 = setup_connector(config_002)
     fid_002, fvid_002 = setup_flow(
         sid_002, lifecycle_status=1,
-        orchestration=build_orch(cvid_002, cache_ttl=60)
+        orchestration=build_orch(cvid_002, config_002, cache_ttl=60)
     )
 
     # 重置计数器，首次调用应为 cache miss
@@ -327,10 +330,11 @@ def test_flow_cache():
     print("\n=== IT-CACHE-003: 发布校验 — 拒绝 TTL > 1296000 (15天) ===")
     sid_003 = snow_id()
     fvid_003 = cid_003 = cvid_003 = None
-    cid_003, cvid_003 = setup_connector(build_conn_config())
+    config_003 = build_conn_config()
+    cid_003, cvid_003 = setup_connector(config_003)
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=1,
-        orchestration=build_orch(cvid_003, cache_ttl=99999999)  # 超大 TTL
+        orchestration=build_orch(cvid_003, config_003, cache_ttl=99999999)  # 超大 TTL
     )
 
     # 尝试调用 open-server 的发布接口

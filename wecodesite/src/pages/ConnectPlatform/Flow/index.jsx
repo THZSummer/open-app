@@ -197,15 +197,11 @@ function FlowList() {
    */
   const executeFlowAction = async (params) => {
     // 接口方法
-    const { apiFn } = params;
     // 连接流 ID
-    const { id } = params;
     // 成功提示文案
-    const { successMsg } = params;
     // 失败兜底提示文案
-    const { errorMsg } = params;
     // 成功后是否回到第一页
-    const { resetToFirstPage = false } = params;
+    const { apiFn, id, successMsg, errorMsg, resetToFirstPage = false } = params;
 
     const res = await apiFn(id);
     if (res && res.code === '200') {
