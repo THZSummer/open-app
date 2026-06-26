@@ -148,7 +148,7 @@ public final class JsonUtils {
                     result.put(f.getName(), v.toString());
                 }
             } catch (Exception e) {
-                log.debug("[JsonUtils] Failed to extract field value: field={}, class={}", f.getName(), obj.getClass().getSimpleName(), e);
+                log.debug("[JsonUtils] Failed to extract field value", e);
             }
         }
         return result;

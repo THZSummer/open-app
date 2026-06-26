@@ -23,6 +23,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Date;
 import java.util.Objects;
@@ -58,13 +59,13 @@ public class OperateLogV2Aspect {
         OperateEnum op;
         Long resourceId;
         String appId;
-        /** before/after/request 统一存 JsonNode，写日志时按需转 String */
+        /**
+         * before/after/request 统一存 JsonNode，写日志时按需转 String
+         */
         JsonNode before;
         JsonNode after;
         JsonNode request;
     }
-
-    // ============================== 主流程 ==============================
 
     @Around("@annotation(auditLog)")
     public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {
@@ -86,7 +87,9 @@ public class OperateLogV2Aspect {
         return result;
     }
 
-    /** Phase 1: 提取 resourceId/appId/requestJson/beforeData。失败返回 null（跳过审计）。 */
+    /**
+     * Phase 1: 提取 resourceId/appId/requestJson/beforeData。失败返回 null（跳过审计）。
+     */
     private AuditContext prepareAuditContext(ProceedingJoinPoint joinPoint, AuditLog auditLog) {
         AuditContext ctx = new AuditContext();
         ctx.op = auditLog.value();
@@ -94,7 +97,7 @@ public class OperateLogV2Aspect {
             ctx.resourceId = extractResourceId(joinPoint, auditLog.resourceIdParam());
             ctx.request = buildRequestNode(joinPoint);
             ctx.appId = extractAppIdFromParams(joinPoint);
-            if (ctx.resourceId == null && isValid(ctx.appId)) {
+            if (ctx.resourceId == null && StringUtils.hasText(ctx.appId)) {
                 ctx.resourceId = resolveInternalIdFromAppId(ctx.appId);
             }
             loadBeforeData(ctx, joinPoint);
@@ -105,15 +108,17 @@ public class OperateLogV2Aspect {
         }
     }
 
-    /** Phase 3: 从返回值补全 appId/resourceId，加载 afterData。异常不影响主业务。 */
+    /**
+     * Phase 3: 从返回值补全 appId/resourceId，加载 afterData。异常不影响主业务。
+     */
     private void loadAfterData(AuditContext ctx, ProceedingJoinPoint joinPoint, Object result) {
         try {
             JsonNode dataNode = extractResultData(result);
 
             // appId 策略 3: 从返回值提取
-            if (!isValid(ctx.appId)) {
+            if (!StringUtils.hasText(ctx.appId)) {
                 ctx.appId = JsonUtils.getFieldText(dataNode, CommonConstants.FIELD_APP_ID);
-                if (ctx.resourceId == null && isValid(ctx.appId)) {
+                if (ctx.resourceId == null && StringUtils.hasText(ctx.appId)) {
                     ctx.resourceId = resolveInternalIdFromAppId(ctx.appId);
                 }
             }
@@ -141,9 +146,11 @@ public class OperateLogV2Aspect {
         }
     }
 
-    /** Phase 4: 渲染描述 + 异步保存。 */
+    /**
+     * Phase 4: 渲染描述 + 异步保存。
+     */
     private void writeAuditLog(AuditContext ctx, int status) {
-        if (!isValid(ctx.appId)) {
+        if (!StringUtils.hasText(ctx.appId)) {
             return;
         }
         try {
@@ -171,9 +178,9 @@ public class OperateLogV2Aspect {
         }
     }
 
-    // ============================== 快照加载 ==============================
-
-    /** 加载 beforeData（UPDATE/DELETE/CONFIG/WITHDRAW），并补全 appId 策略 2。 */
+    /**
+     * 加载 beforeData（UPDATE/DELETE/CONFIG/WITHDRAW），并补全 appId 策略 2。
+     */
     private void loadBeforeData(AuditContext ctx, ProceedingJoinPoint joinPoint) {
         if (ctx.op.needsBeforeData()) {
             EntitySnapshotLoader loader = snapshotLoaderFactory.getLoader(ctx.op.getOperateObject());
@@ -181,12 +188,14 @@ public class OperateLogV2Aspect {
                 ctx.before = JsonUtils.toTree(loader.loadBeforeData(joinPoint, ctx.resourceId));
             }
         }
-        if (!isValid(ctx.appId)) {
+        if (!StringUtils.hasText(ctx.appId)) {
             ctx.appId = extractAppIdFromEntity(ctx.before);
         }
     }
 
-    /** 从返回值（ApiResponse/ResponseEntity）提取 data 的 JsonNode，只序列化一次。 */
+    /**
+     * 从返回值（ApiResponse/ResponseEntity）提取 data 的 JsonNode，只序列化一次。
+     */
     private JsonNode extractResultData(Object result) {
         if (result == null) {
             return null;
@@ -202,9 +211,9 @@ public class OperateLogV2Aspect {
         return data != null ? JsonUtils.toTree(data) : null;
     }
 
-    // ============================== 模板渲染 ==============================
-
-    /** 渲染描述：diff 替换 + 占位符填充，失败回退静态描述。 */
+    /**
+     * 渲染描述：diff 替换 + 占位符填充，失败回退静态描述。
+     */
     private String fillTemplate(AuditContext ctx, boolean cn) {
         String template = cn ? ctx.op.getTemplateCn() : ctx.op.getTemplateEn();
         String fallback = cn ? ctx.op.getDescCn() : ctx.op.getDescEn();
@@ -220,7 +229,9 @@ public class OperateLogV2Aspect {
         }
     }
 
-    /** 替换 ${diffFields}：比较 before/after 变化字段，拼接为 diff 文本。 */
+    /**
+     * 替换 ${diffFields}：比较 before/after 变化字段，拼接为 diff 文本。
+     */
     private String renderDiff(String template, DiffConfig config, AuditContext ctx, boolean cn) {
         if (config == null || !template.contains(DiffConfig.DIFF_FIELDS_PLACEHOLDER)) {
             return template;
@@ -236,7 +247,9 @@ public class OperateLogV2Aspect {
         return template.replace(DiffConfig.DIFF_FIELDS_PLACEHOLDER, diff.toString());
     }
 
-    /** 替换 ${xxx}：按 after → before → request 顺序取值。 */
+    /**
+     * 替换 ${xxx}：按 after → before → request 顺序取值。
+     */
     private String fillPlaceholders(String template, AuditContext ctx) {
         Matcher m = PLACEHOLDER_PATTERN.matcher(template);
         StringBuilder sb = new StringBuilder();
@@ -255,9 +268,9 @@ public class OperateLogV2Aspect {
         return sb.toString();
     }
 
-    // ============================== ID 解析 ==============================
-
-    /** 按名查找方法参数值。 */
+    /**
+     * 按名查找方法参数值。
+     */
     private Object findParam(ProceedingJoinPoint joinPoint, String paramName) {
         MethodSignature sig = (MethodSignature) joinPoint.getSignature();
         String[] paramNames = sig.getParameterNames();
@@ -273,7 +286,9 @@ public class OperateLogV2Aspect {
         return null;
     }
 
-    /** 从方法参数提取 resourceId。 */
+    /**
+     * 从方法参数提取 resourceId。
+     */
     private Long extractResourceId(ProceedingJoinPoint joinPoint, String paramName) {
         Object arg = findParam(joinPoint, paramName);
         if (arg instanceof String s) {
@@ -288,16 +303,20 @@ public class OperateLogV2Aspect {
         return null;
     }
 
-    /** appId 策略 1: 从方法参数提取。 */
+    /**
+     * appId 策略 1: 从方法参数提取。
+     */
     private String extractAppIdFromParams(ProceedingJoinPoint joinPoint) {
         Object arg = findParam(joinPoint, CommonConstants.FIELD_APP_ID);
-        return arg != null ? arg.toString() : CommonConstants.UNKNOWN;
+        return arg != null ? arg.toString() : null;
     }
 
-    /** appId 策略 2: 从 beforeData 实体快照提取（内部 ID → 外部业务 ID）。 */
+    /**
+     * appId 策略 2: 从 beforeData 实体快照提取（内部 ID → 外部业务 ID）。
+     */
     private String extractAppIdFromEntity(JsonNode node) {
         if (node == null) {
-            return CommonConstants.UNKNOWN;
+            return null;
         }
         try {
             JsonNode appIdNode = node.get(CommonConstants.FIELD_APP_ID);
@@ -305,16 +324,18 @@ public class OperateLogV2Aspect {
                 appIdNode = node.get(CommonConstants.COL_APP_ID);
             }
             if (appIdNode == null || appIdNode.isNull()) {
-                return CommonConstants.UNKNOWN;
+                return null;
             }
             return appContextResolver.toExternalId(appIdNode.asLong());
         } catch (Exception e) {
             log.warn("[OPERATE_LOG] Failed to extract appId from entity", e);
-            return CommonConstants.UNKNOWN;
+            return null;
         }
     }
 
-    /** appId → internalId 转换（含权限校验）。 */
+    /**
+     * appId → internalId 转换（含权限校验）。
+     */
     private Long resolveInternalIdFromAppId(String appId) {
         try {
             AppContext appCtx = appContextResolver.resolveAndValidate(appId);
@@ -329,13 +350,9 @@ public class OperateLogV2Aspect {
         }
     }
 
-    private boolean isValid(String appId) {
-        return appId != null && !CommonConstants.UNKNOWN.equals(appId);
-    }
-
-    // ============================== 工具方法 ==============================
-
-    /** 从 JoinPoint 提取参数，委托 JsonUtils 生成 flat JSON。 */
+    /**
+     * 从 JoinPoint 提取参数，委托 JsonUtils 生成 flat JSON。
+     */
     private JsonNode buildRequestNode(ProceedingJoinPoint joinPoint) {
         try {
             MethodSignature sig = (MethodSignature) joinPoint.getSignature();
