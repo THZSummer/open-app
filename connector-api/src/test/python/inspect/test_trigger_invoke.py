@@ -176,8 +176,8 @@ CONNECTION_CONFIG = {
             "type": "object",
             "properties": {
                 "keyword": {"type": "string", "description": "搜索关键词"},
-                "page":    {"type": "integer", "description": "页码"},
-                "size":    {"type": "integer", "description": "每页条数"}
+                "page":    {"type": "number", "description": "页码"},
+                "size":    {"type": "number", "description": "每页条数"}
             },
             "required": ["keyword"]
         },
@@ -192,15 +192,15 @@ CONNECTION_CONFIG = {
         "body": {
             "type": "object",
             "properties": {
-                "code":    {"type": "integer"},
+                "code":    {"type": "number"},
                 "message": {"type": "string"},
                 "data": {
                     "type": "object",
                     "properties": {
                         "keyword": {"type": "string"},
-                        "page":    {"type": "integer"},
-                        "size":    {"type": "integer"},
-                        "total":   {"type": "integer"},
+                        "page":    {"type": "number"},
+                        "size":    {"type": "number"},
+                        "total":   {"type": "number"},
                         "items": {
                             "type": "array",
                             "items": {
@@ -255,8 +255,8 @@ TRIGGER_NODE = {
             "query": {
                 "type": "object",
                 "properties": {
-                    "page": {"type": "integer", "description": "页码"},
-                    "size": {"type": "integer", "description": "每页条数"}
+                    "page": {"type": "number", "description": "页码"},
+                    "size": {"type": "number", "description": "每页条数"}
                 },
                 "required": ["page"]
             },
@@ -300,12 +300,12 @@ CONNECTOR_NODE = {
                         "description": "关键词 (来自 trigger body)"
                     },
                     "page": {
-                        "type": "integer",
+                        "type": "number",
                         "value": "${$.node.node_trigger.input.query.page}",
                         "description": "页码 (来自 trigger query)"
                     },
                     "size": {
-                        "type": "integer",
+                        "type": "number",
                         "value": "${$.node.node_trigger.input.query.size}",
                         "description": "每页条数 (来自 trigger query)"
                     }
@@ -344,19 +344,19 @@ EXIT_NODE = {
             "body": {
                 "type": "object",
                 "properties": {
-                    "code":               {"type": "integer", "value": "${$.node.node_connector.output.code}"},
+                    "code":               {"type": "number", "value": "${$.node.node_connector.output.code}"},
                     "message":            {"type": "string",  "value": "${$.node.node_connector.output.message}"},
                     "searchKeyword":      {"type": "string",  "value": "${$.node.node_connector.output.data.keyword}"},
-                    "searchPage":         {"type": "integer", "value": "${$.node.node_connector.output.data.page}"},
-                    "searchSize":         {"type": "integer", "value": "${$.node.node_connector.output.data.size}"},
-                    "totalCount":         {"type": "integer", "value": "${$.node.node_connector.output.data.total}"},
+                    "searchPage":         {"type": "number", "value": "${$.node.node_connector.output.data.page}"},
+                    "searchSize":         {"type": "number", "value": "${$.node.node_connector.output.data.size}"},
+                    "totalCount":         {"type": "number", "value": "${$.node.node_connector.output.data.total}"},
                     "firstItemId":        {"type": "string",  "value": "${$.node.node_connector.output.data.items[0].id}"},
                     "firstItemName":      {"type": "string",  "value": "${$.node.node_connector.output.data.items[0].name}"},
                     "firstItemScore":     {"type": "number",  "value": "${$.node.node_connector.output.data.items[0].score}"},
                     "firstItemFirstTag":  {"type": "string",  "value": "${$.node.node_connector.output.data.items[0].tags[0]}"},
                     "firstItemDetailUrl": {"type": "string",  "value": "${$.node.node_connector.output.data.items[0].detail.url}"},
-                    "sourcePage":         {"type": "integer", "value": "${$.node.node_trigger.input.query.page}"},
-                    "sourceSize":         {"type": "integer", "value": "${$.node.node_trigger.input.query.size}"},
+                    "sourcePage":         {"type": "number", "value": "${$.node.node_trigger.input.query.page}"},
+                    "sourceSize":         {"type": "number", "value": "${$.node.node_trigger.input.query.size}"},
                     "echoConstant":       {"type": "string",  "value": "${$.constant:hello-constant}"}
                 }
             }
