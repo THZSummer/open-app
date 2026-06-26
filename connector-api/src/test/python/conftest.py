@@ -103,12 +103,13 @@ def deployed_flow(flow, request):
                 "id": "node_trigger", "type": "trigger",
                 "position": {"x": 100, "y": 200},
                 "data": {
-                    "labelCn": "接收", "labelEn": "Receive", "type": "http",
-                    "authConfig": {
+                    "labelCn": "接收", "labelEn": "Receive", "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {}, "required": []},
                         "query": {"type": "object", "properties": {}, "required": []},

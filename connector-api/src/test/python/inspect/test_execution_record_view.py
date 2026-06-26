@@ -32,15 +32,16 @@ def build_orch():
                 "position": {"x": 100, "y": 200},
                 "data": {
                     "labelCn": "接收", "labelEn": "Receive",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [
                             {"name": "token", "carrier": "header",
                              "fieldName": "X-Sys-Token"}
                         ]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {},
                                    "required": []},
@@ -60,7 +61,7 @@ def build_orch():
                 "position": {"x": 350, "y": 200},
                 "data": {
                     "labelCn": "返回", "labelEn": "Return",
-                    "outputMapping": {
+                    "output": {
                         "header": {"type": "object", "properties": {}},
                         "body": {
                             "type": "object",

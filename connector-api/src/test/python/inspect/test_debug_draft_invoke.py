@@ -31,13 +31,14 @@ def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_stat
                 "position": {"x": 100, "y": 200},
                 "data": {
                     "labelCn": "接收", "labelEn": "Receive",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [{"name": "token", "carrier": "header",
                                     "fieldName": "X-Sys-Token"}]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {}, "required": []},
                         "query": {"type": "object", "properties": {}, "required": []},
@@ -55,7 +56,7 @@ def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_stat
                 "position": {"x": 350, "y": 200},
                 "data": {
                     "labelCn": "返回", "labelEn": "Return",
-                    "outputMapping": {
+                    "output": {
                         "body": {
                             "type": "object",
                             "properties": {

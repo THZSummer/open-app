@@ -83,12 +83,12 @@ class FlowInvokeServiceTest {
     private FlowInvokeService triggerService;
 
     /**
-     * v5.7 有效的编排配置: 包含 trigger 节点 (type=http, authConfig, inputContract) + exit 节点
+     * v5.7 有效的编排配置: 包含 trigger 节点 (triggerType=http, authConfigs, input) + exit 节点
      */
     private static final String VALID_ORCHESTRATION_CONFIG =
             "{\"nodes\":["
             + "{\"id\":\"node_trigger\",\"type\":\"trigger\",\"position\":{\"x\":0,\"y\":0},"
-            + "\"data\":{\"type\":\"http\",\"authConfig\":{\"type\":\"SYSTOKEN\"},\"inputContract\":{\"body\":{}}}},"
+            + "\"data\":{\"triggerType\":\"http\",\"authConfigs\":[{\"type\":\"SYSTOKEN\"}],\"input\":{\"body\":{}}}},"
             + "{\"id\":\"n1\",\"type\":\"exit\",\"position\":{\"x\":300,\"y\":0},"
             + "\"data\":{\"labelCn\":\"结束\"}}"
             + "],\"edges\":[]}";

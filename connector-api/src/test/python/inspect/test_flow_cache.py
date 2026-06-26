@@ -138,17 +138,17 @@ def build_conn_config():
             "method": "GET",
             "headers": {}
         },
-        "authConfig": {
+        "authConfigs": [{
             "type": "NONE",
             "fields": []
-        },
-        "inputContract": {
+        }],
+        "input": {
             "protocol": "HTTP",
             "header": {"type": "object", "properties": {}, "required": []},
             "query": {"type": "object", "properties": {}, "required": []},
             "body": {"type": "object", "properties": {}, "required": []}
         },
-        "outputContract": {
+        "output": {
             "protocol": "HTTP",
             "body": {"type": "object", "properties": {}}
         },
@@ -192,15 +192,16 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
                 "position": {"x": 100, "y": 200},
                 "data": {
                     "labelCn": "接收", "labelEn": "Recv",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [
                             {"name": "token", "carrier": "header",
                              "fieldName": "X-Sys-Token"}
                         ]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {"type": "object", "properties": {},
                                    "required": []},
@@ -223,7 +224,7 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
                 "position": {"x": 600, "y": 200},
                 "data": {
                     "labelCn": "返回", "labelEn": "Ret",
-                    "outputMapping": {
+                    "output": {
                         "header": {"type": "object", "properties": {}},
                         "body": {
                             "type": "object",

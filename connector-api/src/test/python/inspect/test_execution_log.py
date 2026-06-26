@@ -29,7 +29,7 @@ def build_orch_with_auth():
     """构建 trigger→exit 编排，trigger 含 SYSTOKEN 认证配置。
 
     trigger 的 authConfig 中的 token 值不应以明文出现在步骤日志中。
-    exit outputMapping 引用 trigger input 以产生可验证的 I/O 链路。
+    exit output 引用 trigger input 以产生可验证的 I/O 链路。
     """
     return {
         "nodes": [
@@ -38,15 +38,16 @@ def build_orch_with_auth():
                 "position": {"x": 100, "y": 200},
                 "data": {
                     "labelCn": "接收请求", "labelEn": "ReceiveReq",
-                    "type": "http",
-                    "authConfig": {
+                    "type": "trigger",
+                    "triggerType": "http",
+                    "authConfigs": [{
                         "type": "SYSTOKEN",
                         "fields": [
                             {"name": "token", "carrier": "header",
                              "fieldName": "X-Sys-Token"}
                         ]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "header": {
                             "type": "object",
@@ -79,7 +80,7 @@ def build_orch_with_auth():
                 "position": {"x": 350, "y": 200},
                 "data": {
                     "labelCn": "返回结果", "labelEn": "ReturnResult",
-                    "outputMapping": {
+                    "output": {
                         "header": {
                             "type": "object",
                             "properties": {
