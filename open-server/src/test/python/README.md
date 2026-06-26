@@ -66,7 +66,6 @@
 | **审批流模板** | | |
 | `test_approval_flow_template.py` | #45~#48 | 审批流模板 CRUD |
 | **数据处理** | | |
-| `test_data_processor_functions.py` | #52 | GET /data-processor/functions |
 | **端到端** | | |
 | `test_flow_deploy_invoke.py` | – | 部署→启动→调用 全链路 |
 | `test_flow_stop_restart.py` | – | 停止→重启 全链路 |
@@ -260,7 +259,6 @@ python/
 ├── test_execution_records.py              ← #49~#50 运行记录列表/详情
 ├── test_approval_records.py               ← #39~#44 审批记录查询/批量
 ├── test_approval_flow_template.py         ← #45~#48 审批流模板 CRUD
-├── test_data_processor_functions.py       ← #52 数据处理函数列表
 ├── test_flow_deploy_invoke.py           ← 部署→启动→调用 全链路
 ├── test_flow_stop_restart.py            ← 停止→重启 全链路
 ├── test_approval.py                     ← #37~#48 审批
