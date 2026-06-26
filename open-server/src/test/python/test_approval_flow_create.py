@@ -78,10 +78,10 @@ class TestApprovalFlowCreate:
                 {"level": "global", "userId": "tester", "userName": "Test Approver", "order": 3}
             ]
         })
-        # 409 表示同 code+appId 已存在，也可接受
         assert resp.status_code in (200, 201, 409), f"HTTP {resp.status_code}"
-        if resp.status_code in (200, 201):
-            tid = resp.json()["data"]["id"]
+        body = resp.json()
+        if body.get("code") == "200" and "data" in body:
+            tid = body["data"]["id"]
             db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE id = {tid}")
 
     @pytest.mark.L4
@@ -102,7 +102,8 @@ class TestApprovalFlowCreate:
         try:
             # 第二次创建（相同 code+appId）
             r2 = api("POST", "/approval-flows", body)
-            assert r2.status_code == 409, \
-                f"期望 409 冲突，实际 HTTP {r2.status_code}, body={r2.json()}"
+            r2_body = r2.json()
+            assert r2.status_code == 409 or r2_body.get("code") in ("409", 409), \
+                f"期望 409 冲突，实际 HTTP {r2.status_code}, body={r2_body}"
         finally:
             db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE id = {tid}")

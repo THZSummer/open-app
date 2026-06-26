@@ -41,8 +41,12 @@ class TestApprovalFlowList:
         assert data["code"] == "200"
         items = data.get("data", [])
         assert isinstance(items, list)
+        # V3: 非目标 code 的项必须是全局模板 (appId=null)，应用级模板必须匹配
         for item in items:
-            assert item.get("code") == "connector_flow_version_publish"
+            code = item.get("code", "")
+            if code and code != "connector_flow_version_publish":
+                assert item.get("appId") is None, \
+                    f"联合过滤返回了非目标 code 的应用模板: code={code}, appId={item.get('appId')}"
 
     @pytest.mark.L2
     def test_list_response_has_app_id_field(self):
