@@ -227,7 +227,7 @@ pip install pytest-html
 pytest -m "" --html=reports/report.html
 
 # 查看报告
-cd reports && echo "👉 http://localhost:18900/report.html" && python3 -m http.server 18900
+echo "👉 http://localhost:18900/report.html" && python3 -m http.server 18900 -d reports
 ```
 
 ## 目录
