@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.flow.validator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
@@ -32,11 +33,27 @@ class FlowPublishValidatorTest {
     @Mock
     private OpConnectorVersionMapper connectorVersionMapper;
 
+    @Mock
+    private ConnectorPlatformPropertyService propertyService;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private FlowPublishValidator validator;
+
+    private static final String TEST_APP_ID = "test_app";
+
+    @BeforeEach
+    void setUp() {
+        // Set up default property values matching the old hardcoded constants
+        // so existing tests pass without changes to assertion values
+        lenient().when(propertyService.getFlowMaxCacheTtlSeconds(anyString())).thenReturn(1296000);
+        lenient().when(propertyService.getFlowMaxParallelBranches(anyString())).thenReturn(8);
+        lenient().when(propertyService.getScriptMaxLengthChars(anyString())).thenReturn(10000);
+        lenient().when(propertyService.getScriptMaxTimeoutSeconds(anyString())).thenReturn(30);
+        lenient().when(propertyService.getFlowConfigMaxBytes(anyString())).thenReturn(0); // 0 = not enforced
+    }
 
     // ===== 校验 1: 业务必填字段 =====
 
@@ -92,7 +109,7 @@ class FlowPublishValidatorTest {
                     "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"}," +
                     "{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}" +
                     "]}";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
         }
 
@@ -100,7 +117,7 @@ class FlowPublishValidatorTest {
         @DisplayName("非法 JSON → 失败")
         void testInvalidJson_Fail() {
             String config = "{ invalid json";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertEquals(1, errors.size());
             assertTrue(errors.get(0).contains("JSON 格式无效"));
         }
@@ -109,7 +126,7 @@ class FlowPublishValidatorTest {
         @DisplayName("无节点 → 失败")
         void testNoNodes_Fail() {
             String config = "{\"nodes\":[],\"edges\":[]}";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertEquals(1, errors.size());
             assertTrue(errors.get(0).contains("至少一个节点"));
         }
@@ -123,7 +140,7 @@ class FlowPublishValidatorTest {
                     "],\"edges\":[" +
                     "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"e\"}" +
                     "]}";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertEquals(1, errors.size());
             assertTrue(errors.get(0).contains("业务节点"));
         }
@@ -142,7 +159,7 @@ class FlowPublishValidatorTest {
                     "\"edges\":[]," +
                     "\"flowConfig\":{\"cache\":{\"ttl\":600}}}";
             // 无 business node 会报一个错，但 cache ttl 不报错
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             // 只有 "业务节点" 一个错误，cache ttl 600 不报错
             assertTrue(errors.stream().noneMatch(e -> e.contains("缓存 TTL")));
         }
@@ -153,7 +170,7 @@ class FlowPublishValidatorTest {
             String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"},{\"id\":\"c\",\"type\":\"connector\"},{\"id\":\"e\",\"type\":\"exit\"}]," +
                     "\"edges\":[{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"},{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}]," +
                     "\"flowConfig\":{\"cache\":{\"ttl\":2000000}}}";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.stream().anyMatch(e -> e.contains("缓存 TTL 超过上限")));
         }
 
@@ -163,7 +180,7 @@ class FlowPublishValidatorTest {
             String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"},{\"id\":\"c\",\"type\":\"connector\"},{\"id\":\"e\",\"type\":\"exit\"}]," +
                     "\"edges\":[{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"},{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}]," +
                     "\"flowConfig\":{\"cache\":{\"ttl\":0}}}";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.stream().anyMatch(e -> e.contains("缓存 TTL 必须 ≥")));
         }
     }
@@ -185,7 +202,7 @@ class FlowPublishValidatorTest {
                     "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"}," +
                     "{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}" +
                     "]}";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
         }
 
@@ -202,7 +219,7 @@ class FlowPublishValidatorTest {
                     "{\"id\":\"c\",\"type\":\"connector\"}," +
                     "{\"id\":\"e\",\"type\":\"exit\"}" +
                     "],\"edges\":[" + edges + "]}";
-            List<String> errors = validator.validateOrchestrationConfig(config);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.stream().anyMatch(e -> e.contains("并行分支数超过上限")));
         }
     }
@@ -336,7 +353,7 @@ class FlowPublishValidatorTest {
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
                 "]}";
-        List<String> errors = validator.validateOrchestrationConfig(config);
+        List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.stream().anyMatch(e -> e.contains("脚本源码超过最大长度")));
     }
 
@@ -352,7 +369,7 @@ class FlowPublishValidatorTest {
                 "{\"id\":\"c\",\"type\":\"connector\"}," +
                 nodes +
                 "],\"edges\":[]}";
-        List<String> errors = validator.validateOrchestrationConfig(config);
+        List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.stream().anyMatch(e -> e.contains("脚本节点数量超过上限")));
     }
 
@@ -370,7 +387,7 @@ class FlowPublishValidatorTest {
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
                 "]}";
-        List<String> errors = validator.validateOrchestrationConfig(config);
+        List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
     }
 
@@ -388,7 +405,7 @@ class FlowPublishValidatorTest {
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
                 "]}";
-        List<String> errors = validator.validateOrchestrationConfig(config);
+        List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.stream().anyMatch(e -> e.contains("语法错误")),
                 "Expected syntax error but got: " + errors);
     }
@@ -406,7 +423,7 @@ class FlowPublishValidatorTest {
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
                 "]}";
-        List<String> errors = validator.validateOrchestrationConfig(config);
+        List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.stream().anyMatch(e -> e.contains("源码不能为空")),
                 "Expected empty source error but got: " + errors);
     }

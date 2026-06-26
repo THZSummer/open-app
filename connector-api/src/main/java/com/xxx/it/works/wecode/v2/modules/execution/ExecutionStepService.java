@@ -34,6 +34,16 @@ public class ExecutionStepService {
     private final LogSanitizer logSanitizer;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Log collection toggle (default: enabled).
+     * <p>
+     * TODO: Read from Property when connector-api PropertyService is implemented.
+     * Should read from {@code cp.step-log.enabled} property (default true).
+     * Disabling suppresses execution_step writes to reduce DB load.
+     * </p>
+     */
+    private boolean logCollectionEnabled = true;
+
     public ExecutionStepService(ExecutionStepRepository repository,
                                 LogSanitizer logSanitizer,
                                 ObjectMapper objectMapper) {
@@ -60,6 +70,13 @@ public class ExecutionStepService {
                         String nodeName, Integer status,
                         Map<String, Object> input, Map<String, Object> output,
                         String error, Integer durationMs) {
+        // Check log collection toggle
+        if (!logCollectionEnabled) {
+            log.warn("Step log skipped (logCollectionEnabled=false): executionId={}, nodeId={}, status={}, durationMs={}",
+                    executionId, nodeId, status, durationMs);
+            return;
+        }
+
         LocalDateTime now = LocalDateTime.now();
 
         ExecutionStepEntity step = new ExecutionStepEntity();
@@ -101,6 +118,13 @@ public class ExecutionStepService {
      */
     public void logStepsBatch(Long executionId, List<StepLog> stepLogs) {
         if (stepLogs == null || stepLogs.isEmpty()) {
+            return;
+        }
+
+        // Check log collection toggle
+        if (!logCollectionEnabled) {
+            log.warn("Step logs batch skipped (logCollectionEnabled=false): executionId={}, count={}",
+                    executionId, stepLogs.size());
             return;
         }
 

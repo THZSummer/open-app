@@ -149,7 +149,7 @@ public class ReactiveSequentialExecutor {
      * 解析节点超时: min(node.data.timeoutMs, 30s), 默认 30s
      */
     private Duration resolveNodeTimeout(JsonNode nodeConfig) {
-        long defaultTimeoutMs = 30000;
+        long defaultTimeoutMs = 5000;
         JsonNode data = nodeConfig.get("data");
         if (data != null && data.has("timeoutMs")) {
             JsonNode timeoutNode = data.get("timeoutMs");

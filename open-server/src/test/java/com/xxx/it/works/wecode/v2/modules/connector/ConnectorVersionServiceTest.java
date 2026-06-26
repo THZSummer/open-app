@@ -1,9 +1,11 @@
 package com.xxx.it.works.wecode.v2.modules.connector;
 
+import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorStatus;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.Connector;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
@@ -42,6 +44,10 @@ class ConnectorVersionServiceTest {
     private ConnectorVersionRefMapper connectorVersionRefMapper;
     @Mock
     private IdGeneratorStrategy idGenerator;
+    @Mock
+    private AuditLogService auditLogService;
+    @Mock
+    private ConnectorPlatformPropertyService propertyService;
 
     @InjectMocks
     private ConnectorVersionService connectorVersionService;
@@ -60,6 +66,10 @@ class ConnectorVersionServiceTest {
         connector.setStatus(ConnectorStatus.UNAVAILABLE.getCode()); // 有效不可用
         connector.setConnectorType(1);
         when(idGenerator.nextId()).thenReturn(1000L);
+        // propertyService defaults for tests
+        lenient().when(propertyService.getConnectorMaxVersions()).thenReturn(1000);
+        lenient().when(propertyService.getConnectorConfigMaxBytes(anyString())).thenReturn(0); // 0 = not enforced
+        lenient().when(propertyService.getUrlRegexPattern()).thenReturn(null); // no URL validation
     }
 
     // ===== 创建草稿 =====

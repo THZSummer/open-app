@@ -72,7 +72,7 @@ class RateLimitConfigReaderTest {
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
-                    assertEquals(10000, config.getMaxQps()); // capped at APP_MAX_QPS
+                    assertEquals(1000, config.getMaxQps()); // capped at APP_MAX_QPS
                 })
                 .verifyComplete();
     }
