@@ -29,7 +29,7 @@ const PageHeader = () => {
   const handleBackToList = () => {
     // 当前 URL 上的 appId
     const appId = queryParams('appId');
-    navigate(`/connect/connectors?appId=${appId}`);
+    navigate(`/connectorList?appId=${appId}`);
   };
 
   return (

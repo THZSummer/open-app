@@ -143,7 +143,7 @@ function ConnectorList() {
   const handleConfigClick = (record) => {
     // 连接器配置页标题展示优先使用中文名称，缺省时使用英文名称
     const connectorName = record.nameCn || record.nameEn || '';
-    navigate(`/connect/connector-editor?id=${record.connectorId}&appId=${queryParams('appId')}&name=${encodeURIComponent(connectorName)}`);
+    navigate(`/connectorEditor?id=${record.connectorId}&appId=${queryParams('appId')}&name=${encodeURIComponent(connectorName)}`);
   };
 
   /**

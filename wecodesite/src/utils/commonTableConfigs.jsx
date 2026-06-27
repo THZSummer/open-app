@@ -66,6 +66,7 @@ export const createDrawerColumns = (type) => {
       dataIndex: ['resource', 'topic'],
       key: 'topic',
       width: 150,
+      ellipsis: true,
       render: (topic) => <code>{topic || '-'}</code>,
     },
     {
@@ -95,9 +96,8 @@ export const createDrawerColumns = (type) => {
   ];
   if (type === 'event') {
     return baseColumns;
-  } else {
-    return baseColumns.filter(item => item.key !== 'topic');
   }
+  return baseColumns.filter(item => item.key !== 'topic');
 };
 
 export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) => [

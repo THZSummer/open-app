@@ -195,7 +195,7 @@ function FlowEditorV2() {
   useEffect(() => {
     if (!flowId) {
       message.error('缺少连接流ID参数');
-      navigate('/connect/flows');
+      navigate('/flowList');
       return;
     }
 
@@ -838,7 +838,7 @@ function FlowEditorV2() {
       {/* 面包屑 */}
       <div className="content-card">
         <div className="page-breadcrumb">
-          <span className="page-breadcrumb-link" onClick={() => navigate(`/connect/flows?appId=${queryParams('appId')}`)}>连接流列表</span>
+          <span className="page-breadcrumb-link" onClick={() => navigate(`/flowList?appId=${queryParams('appId')}`)}>连接流列表</span>
           <span className="page-breadcrumb-sep">&gt;</span>
           <span>编排配置</span>
         </div>

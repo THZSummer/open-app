@@ -129,8 +129,8 @@ function Sidebar({ sidebarMainHeight }) {
       {
         category: '连接平台',
         children: [
-          { key: 'connect/connectors', icon: <ApiOutlined />, label: '连接器' },
-          { key: 'connect/flows', icon: <SwapOutlined />, label: '连接流' },
+          { key: 'connectorList', icon: <ApiOutlined />, label: '连接器' },
+          { key: 'flowList', icon: <SwapOutlined />, label: '连接流' },
         ],
       },
       {

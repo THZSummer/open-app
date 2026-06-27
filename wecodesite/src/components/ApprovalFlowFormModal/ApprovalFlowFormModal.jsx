@@ -88,8 +88,6 @@ function ApprovalFlowFormModal({
       onOk={handleOk}
       onCancel={handleCancel}
       confirmLoading={loading}
-      okText="保存"
-      cancelText="取消"
       width={700}
       destroyOnClose
     >

@@ -188,7 +188,7 @@ function FlowList() {
    */
   const handleConfig = (record) => {
     const appId = queryParams('appId');
-    navigate(`/connect/flows/editor?id=${record.id}&name=${encodeURIComponent(record.nameCn)}&appId=${appId}`);
+    navigate(`/flowEditor?id=${record.id}&name=${encodeURIComponent(record.nameCn)}&appId=${appId}`);
   };
 
   /**

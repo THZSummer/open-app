@@ -102,7 +102,7 @@ const createSubscribeOperations = (state, appId, options) => {
     const res = await options.subscribe(appId, { permissionIds });
     if (res && res.code === '200') {
       message.success('申请已提交');
-      loadDataRef?.(1, INIT_PAGECONFIG.pageSize);
+      loadDataRef?.(INIT_PAGECONFIG.curPage, INIT_PAGECONFIG.pageSize);
       setDrawerOpen(false);
     } else {
       message.error(res?.messageZh || res?.message || '申请失败');
@@ -142,7 +142,7 @@ const createApprovalOperations = (state) => {
 };
 
 const createDeleteOperations = (state, appId, options) => {
-  const { setDeleteModalOpen, setCurrentDeleteItem, setDeleteLoading, pagination } = state;
+  const { setDeleteModalOpen, setCurrentDeleteItem, setDeleteLoading } = state;
   let loadDataRef = null;
   const deleteItemRef = useRef(null);
 
@@ -187,7 +187,7 @@ const createDeleteOperations = (state, appId, options) => {
 };
 
 const createWithdrawOperations = (state, appId, options) => {
-  const { setCurrentWithdrawItem, setRevokePending, setRevokeVisible, pagination } = state;
+  const { setCurrentWithdrawItem, setRevokePending, setRevokeVisible } = state;
   let loadDataRef = null;
   const withdrawItemRef = useRef(null);
 

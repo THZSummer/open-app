@@ -48,7 +48,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessTy
       businessType,
     }
     
-    const result = await remindPeople({ eflowId });
+    const result = await remindPeople(params);
     
     if (result && result.code === '200') {
       message.success('催办成功');
@@ -61,7 +61,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessTy
   };
 
   // 根据条件构建footer按钮
-  const footButtons = [
+  const footerButtons = [
     <Button 
     key="remind" 
     type="primary" 
@@ -77,17 +77,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessTy
       title="复制审批地址"
       open={open}
       onCancel={onClose}
-      footer={[
-        <Button
-          key="remind"
-          type="primary"
-          onClick={handleRemind}
-          loading={remindLoading}
-        >
-          催办
-        </Button>,
-        <Button key="cancel" onClick={onClose}>关闭</Button>
-      ]}
+      footer={footerButtons}
       centered
       width={500}
     >
