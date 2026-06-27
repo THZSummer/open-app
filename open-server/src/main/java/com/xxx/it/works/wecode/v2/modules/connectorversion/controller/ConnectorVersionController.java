@@ -32,7 +32,6 @@ import java.util.List;
 @RequestMapping("/service/open/v2/connectors")
 @Tag(name = "连接器版本管理", description = "连接器版本 CRUD 及生命周期管理接口")
 public class ConnectorVersionController {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorVersionController.class);
 
     private final ConnectorVersionService connectorVersionService;
 

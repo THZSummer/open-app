@@ -45,7 +45,6 @@ import java.util.regex.PatternSyntaxException;
 @Slf4j
 @Service
 public class ConnectorVersionService {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorVersionService.class);
 
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;

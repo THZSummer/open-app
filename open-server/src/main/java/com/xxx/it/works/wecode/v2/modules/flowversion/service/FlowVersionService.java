@@ -53,7 +53,6 @@ import java.util.List;
 @Slf4j
 @Service
 public class FlowVersionService {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowVersionService.class);
 
 
 

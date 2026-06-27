@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class FlowService {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowService.class);
 
 
 

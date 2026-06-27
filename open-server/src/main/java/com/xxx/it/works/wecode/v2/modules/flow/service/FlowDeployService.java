@@ -27,7 +27,6 @@ import java.util.Date;
 @Slf4j
 @Service
 public class FlowDeployService {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowDeployService.class);
 
 
 

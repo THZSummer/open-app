@@ -31,7 +31,6 @@ import java.util.List;
 @RequestMapping("/service/open/v2/connectors")
 @Tag(name = "连接器管理", description = "连接器 CRUD 接口")
 public class ConnectorController {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorController.class);
 
     private final ConnectorService connectorService;
 
