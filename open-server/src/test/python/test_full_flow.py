@@ -44,6 +44,7 @@ os_fail = _osm.fail
 os_done = _osm.done
 TEST_APP_ID = _osm.TEST_APP_ID
 
+import pytest
 import requests
 CONNECTOR_API = "http://localhost:18180/api/v1"
 KEEP = os.environ.get("KEEP_TEST_DATA", "1") == "1"
@@ -286,6 +287,7 @@ def get_data(resp):
 # Test
 # ═══════════════════════════════════════════════════════════
 
+@pytest.mark.L3
 def test_full_flow():
     print("=" * 60)
     print("  全流程端到端测试 — 连接器平台 V3")
@@ -902,7 +904,7 @@ def test_full_flow():
                                  "traceId": _RUN_ID
                              },
                              headers={
-                                 "X-Sys-Token": "test-token",
+                                 "X-Sys-Token": "tester",
                                  "X-Trace-Id": f"trace-{_RUN_ID}"
                              })
             if r is None:
