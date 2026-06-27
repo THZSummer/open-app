@@ -6,6 +6,9 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 连接流运行时配置解析器
  * <p>
@@ -49,12 +52,25 @@ public class FlowConfigParser {
                 maxConcurrency = getIntOrNull(rateLimitConfig, "maxConcurrency");
             }
 
-            Integer cacheTtl = getIntOrNull(root, "cacheTtl");
-            String cacheKeyTemplate = root.has("cacheKeyTemplate")
-                    ? root.get("cacheKeyTemplate").asText() : null;
+            Integer cacheTtl = null;
+            List<String> cacheKeys = null;
+            JsonNode cache = root.get("cache");
+            if (cache != null) {
+                JsonNode ttlNode = cache.get("ttl");
+                if (ttlNode != null && ttlNode.isNumber()) {
+                    cacheTtl = ttlNode.asInt();
+                }
+                JsonNode keyNode = cache.get("key");
+                if (keyNode != null && keyNode.isArray()) {
+                    cacheKeys = new ArrayList<>();
+                    for (JsonNode k : keyNode) {
+                        cacheKeys.add(k.asText());
+                    }
+                }
+            }
 
             return new FlowConfig(timeoutMs, maxQps, maxConcurrency,
-                    cacheTtl, cacheKeyTemplate);
+                    cacheTtl, cacheKeys);
         } catch (Exception e) {
             log.warn("Failed to parse flowConfig, using defaults: {}", e.getMessage());
             return FlowConfig.defaults();

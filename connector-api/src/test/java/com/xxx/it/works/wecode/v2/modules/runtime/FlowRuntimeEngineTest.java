@@ -361,7 +361,7 @@ class FlowRuntimeEngineTest {
         flowVersion.setVersionNumber(1);
         flowVersion.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
 
-        FlowConfig cachedConfig = new FlowConfig(null, null, null, 600, "flow:{{flowId}}");
+        FlowConfig cachedConfig = new FlowConfig(null, null, null, 600, null);
         ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, cachedConfig);
 
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));

@@ -16,6 +16,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
@@ -40,8 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -311,7 +310,7 @@ public class FlowInvokeService {
                     // 11. 异步校验 URL 白名单 -> 缓存检查 -> 执行连接流
                     String flowIdStr = String.valueOf(flowId);
                     boolean cacheEnabled = flowConfig.getCacheTtl() != null && flowConfig.getCacheTtl() > 0;
-                    final String cacheKey = cacheEnabled ? buildCacheKey(context) : null;
+                    final String cacheKey = cacheEnabled ? buildCacheKey(context, flowConfig.getCacheKeys()) : null;
 
                     Mono<ExecutionResult> executionMono;
                     if (cacheEnabled) {
@@ -973,13 +972,21 @@ public class FlowInvokeService {
                 return FlowConfig.defaults();
             }
             FlowConfig fc = new FlowConfig();
-            Object ttl = flowConfigMap.get("cacheTtl");
-            if (ttl instanceof Number) {
-                fc.setCacheTtl(((Number) ttl).intValue());
-            }
-            Object template = flowConfigMap.get("cacheKeyTemplate");
-            if (template instanceof String) {
-                fc.setCacheKeyTemplate((String) template);
+            Object cacheObj = flowConfigMap.get("cache");
+            if (cacheObj instanceof Map) {
+                Map<String, Object> cacheMap = (Map<String, Object>) cacheObj;
+                Object ttl = cacheMap.get("ttl");
+                if (ttl instanceof Number) {
+                    fc.setCacheTtl(((Number) ttl).intValue());
+                }
+                Object key = cacheMap.get("key");
+                if (key instanceof List) {
+                    List<String> keys = new ArrayList<>();
+                    for (Object k : (List<?>) key) {
+                        keys.add(String.valueOf(k));
+                    }
+                    fc.setCacheKeys(keys);
+                }
             }
             return fc;
         } catch (Exception e) {
@@ -988,29 +995,18 @@ public class FlowInvokeService {
         }
     }
 
-    private String buildCacheKey(ExecutionContext ctx) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            if (ctx.getTriggerData() != null) {
-                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerData()));
-            }
-            if (ctx.getTriggerHeaders() != null) {
-                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerHeaders()));
-            }
-            if (ctx.getTriggerQueryParams() != null) {
-                digest.update(objectMapper.writeValueAsBytes(ctx.getTriggerQueryParams()));
-            }
-            byte[] hash = digest.digest();
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            return String.valueOf(Objects.hash(ctx.getExecutionId()));
-        } catch (Exception e) {
-            log.warn("Failed to compute cache key: {}", e.getMessage());
-            return String.valueOf(Objects.hash(ctx.getExecutionId()));
+    private String buildCacheKey(ExecutionContext ctx, List<String> cacheKeyExpressions) {
+        if (cacheKeyExpressions == null || cacheKeyExpressions.isEmpty()) {
+            return "";
         }
+        ExpressionResolver resolver = new ExpressionResolver();
+        StringBuilder sb = new StringBuilder();
+        for (String expr : cacheKeyExpressions) {
+            Object resolved = resolver.resolve(expr, ctx.getNodeContexts());
+            if (sb.length() > 0) sb.append(":");
+            sb.append(resolved != null ? resolved.toString() : "");
+        }
+        return sb.toString();
     }
+
 }
