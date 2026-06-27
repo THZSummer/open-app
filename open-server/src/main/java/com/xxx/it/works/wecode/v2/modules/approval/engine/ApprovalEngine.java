@@ -155,6 +155,12 @@ public class ApprovalEngine {
      * @return 组合后的审批节点列表
      */
     public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId, Long appId) {
+        // 版本发布等"审批人可选"业务类型：始终不组合审批节点，不受 global/scene 审批配置影响
+        if (BusinessType.OPTIONAL_APPROVER_TYPES.contains(businessType)) {
+            log.info("Business type [{}] allows empty approver, skip node composition (not affected by approval config)", businessType);
+            return new ArrayList<>();
+        }
+
         List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
         int order = 1;
 
