@@ -228,20 +228,24 @@ CONN_CONFIG_SOA_COOKIE = {
     "protocol": "HTTP",
     "protocolConfig": {
         "url": MOCK_TARGET_URL,
-        "method": "GET",
-        "headers": {}
+        "method": "GET"
     },
-    "authConfigs": [{
-        "type": "MULTI",
-        "fields": [
-            {"name": "soa_key", "carrier": "header",
-             "fieldName": "X-SOA-Key", "authType": "SOA",
-             "value": "soa-test-key"},
-            {"name": "cookie_token", "carrier": "header",
-             "fieldName": "Cookie", "authType": "COOKIE",
-             "value": "session=abc123"}
-        ]
-    }],
+    "authConfigs": [
+        {
+            "type": "SOA",
+            "fields": [
+                {"name": "soa_key", "carrier": "header",
+                 "fieldName": "X-SOA-Key", "value": "soa-test-key"}
+            ]
+        },
+        {
+            "type": "COOKIE",
+            "fields": [
+                {"name": "cookie_token", "carrier": "header",
+                 "fieldName": "Cookie", "value": "session=abc123"}
+            ]
+        }
+    ],
     "input": BASE_INPUT_CONTRACT,
     "output": BASE_OUTPUT_CONTRACT,
     "timeoutMs": 5000
@@ -254,20 +258,24 @@ CONN_CONFIG_DIGITALSIGN_COOKIE = {
     "protocol": "HTTP",
     "protocolConfig": {
         "url": MOCK_TARGET_URL,
-        "method": "GET",
-        "headers": {}
+        "method": "GET"
     },
-    "authConfigs": [{
-        "type": "MULTI",
-        "fields": [
-            {"name": "sign", "carrier": "header",
-             "fieldName": "X-Digital-Sign", "authType": "DIGITAL_SIGN",
-             "value": "sign-test-value"},
-            {"name": "cookie_token", "carrier": "header",
-             "fieldName": "Cookie", "authType": "COOKIE",
-             "value": "session=xyz789"}
-        ]
-    }],
+    "authConfigs": [
+        {
+            "type": "SIGNATURE",
+            "fields": [
+                {"name": "sign", "carrier": "header",
+                 "fieldName": "X-Digital-Sign", "value": "sign-test-value"}
+            ]
+        },
+        {
+            "type": "COOKIE",
+            "fields": [
+                {"name": "cookie_token", "carrier": "header",
+                 "fieldName": "Cookie", "value": "session=xyz789"}
+            ]
+        }
+    ],
     "input": BASE_INPUT_CONTRACT,
     "output": BASE_OUTPUT_CONTRACT,
     "timeoutMs": 5000
@@ -280,23 +288,31 @@ CONN_CONFIG_TRIPLE_AUTH = {
     "protocol": "HTTP",
     "protocolConfig": {
         "url": MOCK_TARGET_URL,
-        "method": "GET",
-        "headers": {}
+        "method": "GET"
     },
-    "authConfigs": [{
-        "type": "MULTI",
-        "fields": [
-            {"name": "soa_key", "carrier": "header",
-             "fieldName": "X-SOA-Key", "authType": "SOA",
-             "value": "triple-soa-key"},
-            {"name": "sign", "carrier": "header",
-             "fieldName": "X-Digital-Sign", "authType": "DIGITAL_SIGN",
-             "value": "triple-sign-value"},
-            {"name": "cookie_token", "carrier": "header",
-             "fieldName": "Cookie", "authType": "COOKIE",
-             "value": "session=triple123"}
-        ]
-    }],
+    "authConfigs": [
+        {
+            "type": "SOA",
+            "fields": [
+                {"name": "soa_key", "carrier": "header",
+                 "fieldName": "X-SOA-Key", "value": "triple-soa-key"}
+            ]
+        },
+        {
+            "type": "SIGNATURE",
+            "fields": [
+                {"name": "sign", "carrier": "header",
+                 "fieldName": "X-Digital-Sign", "value": "triple-sign-value"}
+            ]
+        },
+        {
+            "type": "COOKIE",
+            "fields": [
+                {"name": "cookie_token", "carrier": "header",
+                 "fieldName": "Cookie", "value": "session=triple123"}
+            ]
+        }
+    ],
     "input": BASE_INPUT_CONTRACT,
     "output": BASE_OUTPUT_CONTRACT,
     "timeoutMs": 5000
@@ -309,14 +325,13 @@ CONN_CONFIG_SOA_ONLY = {
     "protocol": "HTTP",
     "protocolConfig": {
         "url": MOCK_TARGET_URL,
-        "method": "GET",
-        "headers": {}
+        "method": "GET"
     },
     "authConfigs": [{
         "type": "SOA",
         "fields": [
             {"name": "soa_key", "carrier": "header",
-             "fieldName": "X-SOA-Key", "authType": "SOA",
+             "fieldName": "X-SOA-Key",
              "value": "baseline-soa-key"}
         ]
     }],

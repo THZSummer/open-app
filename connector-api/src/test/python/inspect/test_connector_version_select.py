@@ -140,9 +140,7 @@ def build_version_config(version_label, target_url):
         "protocol": "HTTP",
         "protocolConfig": {
             "url": target_url,
-            "method": "GET",
-            "headers": {}
-        },
+            "method": "GET",        },
         "authConfigs": [{"type": "NONE", "fields": []}],
         "input": {
             "protocol": "HTTP",

@@ -158,9 +158,7 @@ CONNECTION_CONFIG = {
     "protocol": "HTTP",
     "protocolConfig": {
         "url": f"{MOCK_BASE}/api/search",
-        "method": "GET",
-        "headers": {}
-    },
+        "method": "GET",    },
     "authConfigs": [{
         "type": "NONE",
         "fields": []
@@ -376,7 +374,7 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
 
     if overrides:
         if "trigger_auth_type" in overrides:
-            trigger["data"]["authConfig"]["type"] = overrides["trigger_auth_type"]
+            trigger["data"]["authConfigs"][0]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
             trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
         if "trigger_rate_limit_qps" in overrides:
@@ -463,7 +461,7 @@ def build_orchestration_no_connector(overrides=None):
 
     if overrides:
         if "trigger_auth_type" in overrides:
-            trigger["data"]["authConfig"]["type"] = overrides["trigger_auth_type"]
+            trigger["data"]["authConfigs"][0]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
             trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
         if "trigger_rate_limit_qps" in overrides:

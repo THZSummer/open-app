@@ -135,9 +135,7 @@ def build_conn_config():
         "protocol": "HTTP",
         "protocolConfig": {
             "url": f"{MOCK_BASE}/api/data",
-            "method": "GET",
-            "headers": {}
-        },
+            "method": "GET",        },
         "authConfigs": [{
             "type": "NONE",
             "fields": []

@@ -65,9 +65,7 @@ def build_conn_config(url, url_whitelist=None):
         "protocol": "HTTP",
         "protocolConfig": {
             "url": url,
-            "method": "GET",
-            "headers": {}
-        },
+            "method": "GET",        },
         "authConfigs": [{
             "type": "NONE",
             "fields": []

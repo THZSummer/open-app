@@ -65,9 +65,7 @@ def build_conn_config(url, timeout_ms=3000):
         "protocol": "HTTP",
         "protocolConfig": {
             "url": url,
-            "method": "GET",
-            "headers": {}
-        },
+            "method": "GET",        },
         "authConfigs": [{
             "type": "NONE",
             "fields": []

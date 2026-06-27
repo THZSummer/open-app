@@ -112,9 +112,7 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
         "protocol": "HTTP",
         "protocolConfig": {
             "url": target_url,
-            "method": method,
-            "headers": {}
-        },
+            "method": method,        },
         "authConfigs": [{"type": "NONE", "fields": []}],
         "input": {
             "protocol": "HTTP",
