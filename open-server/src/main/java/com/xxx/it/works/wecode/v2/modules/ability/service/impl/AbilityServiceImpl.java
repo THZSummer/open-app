@@ -74,7 +74,7 @@ public class AbilityServiceImpl implements AbilityService {
         // 从能力主表查询所有能力（过滤掉应用入群通知，不在列表展示）
         List<Ability> abilities = abilityMapper.selectAll().stream()
                 .filter(a -> Objects.nonNull(a.getAbilityType()) && !Objects.equals(a.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
-                .collect(Collectors.toList());
+                .toList();
 
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = abilities.stream().map(Ability::getId).collect(Collectors.toList());
@@ -186,9 +186,6 @@ public class AbilityServiceImpl implements AbilityService {
         Map<Integer, Ability> typeMap = allAbilities.stream()
                 .collect(Collectors.toMap(Ability::getAbilityType, a -> a, (a, b) -> a));
 
-        // 按能力的 orderNum 排序
-        relations.sort(Comparator.comparingInt(r -> typeMap.get(r.getAbilityType()).getOrderNum()));
-
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = allAbilities.stream().map(Ability::getId).collect(Collectors.toList());
         Map<Long, List<AbilityProperty>> propsMap = loadPropsMap(abilityIds);
@@ -206,6 +203,7 @@ public class AbilityServiceImpl implements AbilityService {
             vo.setAbilityId(String.valueOf(ability.getId()));
             vo.setNameCn(ability.getAbilityNameCn());
             vo.setNameEn(ability.getAbilityNameEn());
+            vo.setOrderNum(ability.getOrderNum());
 
             List<AbilityProperty> props = propsMap.getOrDefault(ability.getId(), Collections.emptyList());
             for (AbilityProperty p : props) {
@@ -216,6 +214,8 @@ public class AbilityServiceImpl implements AbilityService {
 
             list.add(vo);
         }
+        // 按 VO 的 orderNum 排序
+        list.sort(Comparator.comparingInt(AppAbilityDetailVO::getOrderNum));
         return list;
     }
 
