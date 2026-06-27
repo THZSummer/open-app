@@ -33,6 +33,8 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  *   <li>com.xxx.it.works.wecode.v2.modules.connector.ConnectorService.*</li>
  *   <li>com.xxx.it.works.wecode.v2.modules.connectorversion.service.ConnectorVersionService.*</li>
  *   <li>com.xxx.it.works.wecode.v2.modules.flow.service.*Service.*</li>
+ *   <li>com.xxx.it.works.wecode.v2.modules.flowversion.service.*Service.*</li>
+ *   <li>com.xxx.it.works.wecode.v2.modules.flowexecrecord.service.*Service.*</li>
  * </ul>
  *
  * @author SDDU Build Agent
@@ -56,7 +58,9 @@ public class AppDataIsolationAspect {
         return validateAndProceed(joinPoint);
     }
 
-    @Around("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.*Service.*(..))")
+    @Around("execution(* com.xxx.it.works.wecode.v2.modules.flow.service.*Service.*(..)) || "
+            + "execution(* com.xxx.it.works.wecode.v2.modules.flowversion.service.*Service.*(..)) || "
+            + "execution(* com.xxx.it.works.wecode.v2.modules.flowexecrecord.service.*Service.*(..))")
     public Object validateFlowAppIsolation(ProceedingJoinPoint joinPoint) throws Throwable {
         return validateAndProceed(joinPoint);
     }

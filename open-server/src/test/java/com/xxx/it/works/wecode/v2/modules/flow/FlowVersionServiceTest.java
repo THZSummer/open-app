@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.flow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.flowversion.service.FlowVersionService;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
@@ -16,6 +17,8 @@ import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.validator.FlowPublishValidator;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -73,6 +76,11 @@ class FlowVersionServiceTest {
 
     @BeforeEach
     void setUp() {
+        AppContextHolder.setCurrentContext(AppContext.builder()
+                .internalId(appId)
+                .externalId(String.valueOf(appId))
+                .build());
+
         flow = new Flow();
         flow.setId(flowId);
         flow.setNameCn("测试流");
@@ -88,6 +96,11 @@ class FlowVersionServiceTest {
         when(propertyService.getNodeMaxTimeoutSeconds(anyString())).thenReturn(30);
     }
 
+    @AfterEach
+    void tearDown() {
+        AppContextHolder.clear();
+    }
+
     // ===== 创建草稿 =====
 
     @Nested
@@ -101,7 +114,7 @@ class FlowVersionServiceTest {
             when(flowVersionMapper.selectListByFlowId(flowId, null)).thenReturn(new ArrayList<>());
             when(flowVersionMapper.selectMaxVersionNumberByFlowId(flowId)).thenReturn(null);
 
-            ApiResponse<?> response = flowVersionService.createDraft(flowId, appId);
+            ApiResponse<?> response = flowVersionService.createDraft(flowId);
 
             assertNotNull(response);
             assertEquals("200", response.getCode());
@@ -118,7 +131,7 @@ class FlowVersionServiceTest {
             when(flowVersionMapper.selectListByFlowId(flowId, null))
                     .thenReturn(List.of(existingDraft));
 
-            ApiResponse<?> response = flowVersionService.createDraft(flowId, appId);
+            ApiResponse<?> response = flowVersionService.createDraft(flowId);
 
             assertEquals("409", response.getCode());
             verify(flowVersionMapper, never()).insert(any());
@@ -137,7 +150,7 @@ class FlowVersionServiceTest {
             }
             when(flowVersionMapper.selectListByFlowId(flowId, null)).thenReturn(fullList);
 
-            ApiResponse<?> response = flowVersionService.createDraft(flowId, appId);
+            ApiResponse<?> response = flowVersionService.createDraft(flowId);
 
             assertEquals("422", response.getCode());
         }
@@ -156,7 +169,7 @@ class FlowVersionServiceTest {
             when(flowVersionMapper.selectListByFlowId(flowId, null)).thenReturn(list999);
             when(flowVersionMapper.selectMaxVersionNumberByFlowId(flowId)).thenReturn(999);
 
-            ApiResponse<?> response = flowVersionService.createDraft(flowId, appId);
+            ApiResponse<?> response = flowVersionService.createDraft(flowId);
 
             assertEquals("200", response.getCode());
             verify(flowVersionMapper).insert(any(FlowVersion.class));
@@ -181,7 +194,7 @@ class FlowVersionServiceTest {
             when(publishValidator.validateRateLimitAgainstAppMax(anyString(), anyInt(), anyInt())).thenReturn(List.of());
             when(publishValidator.validateTimeoutAgainstAppMax(anyString(), anyInt())).thenReturn(List.of());
 
-            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L, appId);
+            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L);
 
             assertEquals("200", response.getCode());
             assertNotNull(response.getData());
@@ -199,7 +212,7 @@ class FlowVersionServiceTest {
             when(publishValidator.validateBusinessFields(anyString(), anyString()))
                     .thenReturn(List.of("中文名称不能为空"));
 
-            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L, appId);
+            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L);
 
             assertEquals("422", response.getCode());
         }
@@ -213,7 +226,7 @@ class FlowVersionServiceTest {
             when(flowVersionMapper.selectById(200L)).thenReturn(version);
             when(publishValidator.validateBusinessFields(anyString(), anyString())).thenReturn(List.of());
 
-            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L, appId);
+            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L);
 
             assertEquals("422", response.getCode());
             assertTrue(response.getMessageZh().contains("编排配置为空"));
@@ -229,7 +242,7 @@ class FlowVersionServiceTest {
             when(publishValidator.validateOrchestrationConfig(anyString(), anyString()))
                     .thenReturn(List.of("编排配置 JSON 格式无效"));
 
-            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L, appId);
+            ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L);
 
             assertEquals("422", response.getCode());
         }
@@ -250,7 +263,7 @@ class FlowVersionServiceTest {
             when(flowVersionMapper.selectListByFlowId(flowId, null)).thenReturn(List.of(source));
             when(flowVersionMapper.selectMaxVersionNumberByFlowId(flowId)).thenReturn(2);
 
-            ApiResponse<?> response = flowVersionService.copyToDraft(flowId, 200L, appId);
+            ApiResponse<?> response = flowVersionService.copyToDraft(flowId, 200L);
 
             assertEquals("200", response.getCode());
             verify(flowVersionMapper).insert(any(FlowVersion.class));
@@ -268,7 +281,7 @@ class FlowVersionServiceTest {
             when(flowVersionMapper.selectById(200L)).thenReturn(source);
             when(flowVersionMapper.selectListByFlowId(flowId, null)).thenReturn(List.of(source, pending));
 
-            ApiResponse<?> response = flowVersionService.copyToDraft(flowId, 200L, appId);
+            ApiResponse<?> response = flowVersionService.copyToDraft(flowId, 200L);
 
             assertEquals("409", response.getCode());
         }
@@ -283,7 +296,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<?> response = flowVersionService.invalidateVersion(flowId, 200L, appId);
+        ApiResponse<?> response = flowVersionService.invalidateVersion(flowId, 200L);
 
         assertEquals("200", response.getCode());
         assertEquals(FlowVersionStatus.INVALIDATED.getCode(), version.getStatus());
@@ -297,7 +310,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<?> response = flowVersionService.invalidateVersion(flowId, 200L, appId);
+        ApiResponse<?> response = flowVersionService.invalidateVersion(flowId, 200L);
 
         assertEquals("422", response.getCode());
         assertTrue(response.getMessageZh().contains("当前部署版本"));
@@ -313,7 +326,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<?> response = flowVersionService.cancelApproval(flowId, 200L, appId);
+        ApiResponse<?> response = flowVersionService.cancelApproval(flowId, 200L);
 
         assertEquals("200", response.getCode());
         assertEquals(FlowVersionStatus.WITHDRAWN.getCode(), version.getStatus());
@@ -327,7 +340,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<?> response = flowVersionService.cancelApproval(flowId, 200L, appId);
+        ApiResponse<?> response = flowVersionService.cancelApproval(flowId, 200L);
 
         assertEquals("409", response.getCode());
     }
@@ -342,7 +355,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<?> response = flowVersionService.recoverVersion(flowId, 200L, appId);
+        ApiResponse<?> response = flowVersionService.recoverVersion(flowId, 200L);
 
         assertEquals("200", response.getCode());
         assertEquals(FlowVersionStatus.PUBLISHED.getCode(), version.getStatus());
@@ -358,7 +371,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<Void> response = flowVersionService.deleteVersion(flowId, 200L, appId);
+        ApiResponse<Void> response = flowVersionService.deleteVersion(flowId, 200L);
 
         assertEquals("200", response.getCode());
         verify(flowVersionMapper).deleteById(200L);
@@ -371,7 +384,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<Void> response = flowVersionService.deleteVersion(flowId, 200L, appId);
+        ApiResponse<Void> response = flowVersionService.deleteVersion(flowId, 200L);
 
         assertEquals("409", response.getCode());
         verify(flowVersionMapper, never()).deleteById(anyLong());
@@ -388,7 +401,7 @@ class FlowVersionServiceTest {
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
         String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"}],\"edges\":[]}";
-        ApiResponse<?> response = flowVersionService.updateDraft(flowId, 200L, config, appId);
+        ApiResponse<?> response = flowVersionService.updateDraft(flowId, 200L, config);
 
         assertEquals("200", response.getCode());
         verify(flowVersionMapper).update(any(FlowVersion.class));
@@ -402,7 +415,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<?> response = flowVersionService.updateDraft(flowId, 200L, "{invalid json", appId);
+        ApiResponse<?> response = flowVersionService.updateDraft(flowId, 200L, "{invalid json");
 
         assertEquals("400", response.getCode());
     }
@@ -419,7 +432,7 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectListByFlowId(flowId, null)).thenReturn(List.of(v1, v2));
 
-        var response = flowVersionService.getVersionList(flowId, null, appId);
+        var response = flowVersionService.getVersionList(flowId, null);
 
         assertEquals("200", response.getCode());
         assertNotNull(response.getData());

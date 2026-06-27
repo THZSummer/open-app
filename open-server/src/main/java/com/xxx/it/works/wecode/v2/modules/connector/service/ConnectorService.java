@@ -22,7 +22,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 连接器管理服务（V3 应用隔离版本 v2.1.0）
@@ -114,16 +113,11 @@ public class ConnectorService {
         int size = pageSize != null ? pageSize : 20;
         int offset = (page - 1) * size;
 
-        List<Connector> connectors = connectorMapper.selectAll(connectorType, keyword, internalAppId);
-
-        List<Connector> filtered = connectors.stream()
-                .filter(c -> status == null || status.equals(c.getStatus()))
-                .collect(Collectors.toList());
-
-        long total = filtered.size();
-        int fromIndex = Math.min(offset, filtered.size());
-        int toIndex = Math.min(offset + size, filtered.size());
-        List<Connector> pageItems = filtered.subList(fromIndex, toIndex);
+        // SQL 层过滤 + 分页（v2.1.0: status/appId/connectorType/keyword 全部下推到 SQL）
+        List<Connector> pageItems = connectorMapper.selectList(
+                connectorType, keyword, internalAppId, status, offset, size);
+        long total = connectorMapper.countList(
+                connectorType, keyword, internalAppId, status);
 
         List<ConnectorListResponse> items = new ArrayList<>();
         SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);

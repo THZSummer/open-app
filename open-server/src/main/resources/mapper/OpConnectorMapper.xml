@@ -84,7 +84,7 @@
         ORDER BY create_time DESC
     </select>
 
-    <!-- Select List (v2.0.0: 增加 app_id 过滤 + 分页) -->
+    <!-- Select List (v2.0.0: 增加 app_id 过滤 + 分页；v2.1.0: 增加 status 过滤) -->
     <select id="selectList" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_connector_t
@@ -94,6 +94,9 @@
             </if>
             <if test="connectorType != null">
                 AND connector_type = #{connectorType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
                 AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
@@ -106,13 +109,19 @@
         </if>
     </select>
 
-    <!-- Count List -->
+    <!-- Count List (v2.1.0: 增加 appId 和 status 过滤，修复 count 未按应用隔离的 bug) -->
     <select id="countList" resultType="java.lang.Long">
         SELECT COUNT(*)
         FROM openplatform_v2_cp_connector_t
         <where>
+            <if test="appId != null">
+                app_id = #{appId}
+            </if>
             <if test="connectorType != null">
                 AND connector_type = #{connectorType}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
             </if>
             <if test="keyword != null and keyword != ''">
                 AND (name_cn LIKE CONCAT('%', #{keyword}, '%')

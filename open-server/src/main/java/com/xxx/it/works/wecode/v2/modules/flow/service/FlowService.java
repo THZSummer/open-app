@@ -10,6 +10,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,7 +69,8 @@ public class FlowService {
      * 创建连接流基本信息，不自动生成草稿版本，lifecycleStatus=1 STOPPED
      */
     @Transactional
-    public ApiResponse<FlowCreateResponse> createFlow(FlowCreateRequest request, Long appId) {
+    public ApiResponse<FlowCreateResponse> createFlow(FlowCreateRequest request) {
+        Long appId = AppContextHolder.requireInternalAppId();
         log.info("Creating flow: nameCn={}, nameEn={}, appId={}", request.getNameCn(), request.getNameEn(), appId);
 
         long flowId = idGenerator.nextId();
@@ -114,8 +116,9 @@ public class FlowService {
      */
     public ApiResponse<List<FlowListResponse>> getFlowList(
             Integer lifecycleStatus, String keyword,
-            Integer curPage, Integer pageSize, Long appId) {
+            Integer curPage, Integer pageSize) {
 
+        Long appId = AppContextHolder.requireInternalAppId();
         int page = curPage != null ? curPage : 1;
         int size = pageSize != null ? pageSize : 20;
         int offset = (page - 1) * size;
@@ -159,7 +162,8 @@ public class FlowService {
      * API #19: GET /service/open/v2/flows/{flowId}
      * 详情查询，含 invokeUrl
      */
-    public ApiResponse<FlowDetailResponse> getFlowDetail(Long flowId, Long appId, String invokeUrlPrefix) {
+    public ApiResponse<FlowDetailResponse> getFlowDetail(Long flowId, String invokeUrlPrefix) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -200,7 +204,8 @@ public class FlowService {
      * 更新连接流基本信息
      */
     @Transactional
-    public ApiResponse<Void> updateFlow(Long flowId, FlowUpdateRequest request, Long appId) {
+    public ApiResponse<Void> updateFlow(Long flowId, FlowUpdateRequest request) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -234,7 +239,8 @@ public class FlowService {
      * 启动连接流，必须有已部署版本
      */
     @Transactional
-    public ApiResponse<FlowLifecycleResponse> startFlow(Long flowId, Long appId) {
+    public ApiResponse<FlowLifecycleResponse> startFlow(Long flowId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -276,7 +282,8 @@ public class FlowService {
      * 停止连接流
      */
     @Transactional
-    public ApiResponse<FlowLifecycleResponse> stopFlow(Long flowId, Long appId) {
+    public ApiResponse<FlowLifecycleResponse> stopFlow(Long flowId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -311,7 +318,8 @@ public class FlowService {
      * 标记失效，仅已停止状态可失效
      */
     @Transactional
-    public ApiResponse<?> invalidateFlow(Long flowId, Long appId) {
+    public ApiResponse<?> invalidateFlow(Long flowId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -339,7 +347,8 @@ public class FlowService {
      * 恢复连接流 → 已停止状态
      */
     @Transactional
-    public ApiResponse<?> recoverFlow(Long flowId, Long appId) {
+    public ApiResponse<?> recoverFlow(Long flowId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -367,7 +376,8 @@ public class FlowService {
      * 删除连接流，仅已失效状态可删除
      */
     @Transactional
-    public ApiResponse<Void> deleteFlow(Long flowId, Long appId) {
+    public ApiResponse<Void> deleteFlow(Long flowId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");

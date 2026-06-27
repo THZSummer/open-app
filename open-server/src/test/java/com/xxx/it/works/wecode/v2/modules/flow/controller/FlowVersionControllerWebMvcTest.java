@@ -39,27 +39,27 @@ class FlowVersionControllerWebMvcTest {
 
     @BeforeEach
     void setUp() {
-        when(flowVersionService.createDraft(anyLong(), anyLong()))
+        when(flowVersionService.createDraft(anyLong()))
                 .thenReturn(ApiResponse.success());
-        when(flowVersionService.getVersionList(anyLong(), any(), anyLong()))
+        when(flowVersionService.getVersionList(anyLong(), any()))
                 .thenReturn(ApiResponse.success(java.util.List.of()));
-        when(flowVersionService.getVersionDetail(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.getVersionDetail(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success(null));
-        when(flowVersionService.updateDraft(anyLong(), anyLong(), anyString(), anyLong()))
+        when(flowVersionService.updateDraft(anyLong(), anyLong(), anyString()))
                 .thenReturn(ApiResponse.success());
-        when(flowVersionService.publish(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.publish(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success(null));
-        when(flowVersionService.copyToDraft(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.copyToDraft(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success());
-        when(flowVersionService.invalidateVersion(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.invalidateVersion(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success());
-        when(flowVersionService.deleteVersion(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.deleteVersion(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success());
-        when(flowVersionService.cancelApproval(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.cancelApproval(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success());
-        when(flowVersionService.recoverVersion(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.recoverVersion(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success());
-        when(flowVersionService.urgeApproval(anyLong(), anyLong(), anyLong()))
+        when(flowVersionService.urgeApproval(anyLong(), anyLong()))
                 .thenReturn(ApiResponse.success());
     }
 
@@ -72,17 +72,17 @@ class FlowVersionControllerWebMvcTest {
         @Test
         @DisplayName("正常创建 → 200")
         void testCreateDraft_Success() {
-            var response = controller.createDraft(appId, flowId).getBody();
+            var response = controller.createDraft(flowId).getBody();
             assertEquals("200", response.getCode());
         }
 
         @Test
         @DisplayName("已有草稿 → 409")
         void testCreateDraft_Conflict() {
-            when(flowVersionService.createDraft(flowId, appId))
+            when(flowVersionService.createDraft(flowId))
                     .thenReturn(ApiResponse.error("409", "已存在草稿版本", "Draft exists"));
 
-            var response = controller.createDraft(appId, flowId).getBody();
+            var response = controller.createDraft(flowId).getBody();
             assertEquals("409", response.getCode());
         }
     }
@@ -92,7 +92,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#29 GET 版本列表 → 200")
     void testGetVersionList() {
-        var response = controller.getVersionList(appId, flowId, null).getBody();
+        var response = controller.getVersionList(flowId, null).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -101,7 +101,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#30 GET 版本详情 → 200")
     void testGetVersionDetail() {
-        var response = controller.getVersionDetail(appId, flowId, versionId).getBody();
+        var response = controller.getVersionDetail(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -113,7 +113,7 @@ class FlowVersionControllerWebMvcTest {
         FlowVersionSaveRequest request = new FlowVersionSaveRequest();
         request.setOrchestrationConfig(MAPPER.readTree("{\"nodes\":[],\"edges\":[]}"));
 
-        var response = controller.updateDraft(appId, flowId, versionId, request).getBody();
+        var response = controller.updateDraft(flowId, versionId, request).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -122,17 +122,17 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#32 POST 发布版本 → 200")
     void testPublish() {
-        var response = controller.publish(appId, flowId, versionId).getBody();
+        var response = controller.publish(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
     @Test
     @DisplayName("#32 发布校验失败 → 422")
     void testPublish_ValidationFail_Returns422() {
-        when(flowVersionService.publish(flowId, versionId, appId))
+        when(flowVersionService.publish(flowId, versionId))
                 .thenReturn(ApiResponse.error("422", "中文名称不能为空", "nameCn is empty"));
 
-        var response = controller.publish(appId, flowId, versionId).getBody();
+        var response = controller.publish(flowId, versionId).getBody();
         assertEquals("422", response.getCode());
     }
 
@@ -141,7 +141,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#33 POST 复制到草稿 → 200")
     void testCopyToDraft() {
-        var response = controller.copyToDraft(appId, flowId, versionId).getBody();
+        var response = controller.copyToDraft(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -150,7 +150,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#34 PUT 失效版本 → 200")
     void testInvalidateVersion() {
-        var response = controller.invalidateVersion(appId, flowId, versionId).getBody();
+        var response = controller.invalidateVersion(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -159,7 +159,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#35 PUT 恢复版本 → 200")
     void testRecoverVersion() {
-        var response = controller.recoverVersion(appId, flowId, versionId).getBody();
+        var response = controller.recoverVersion(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -168,7 +168,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#36 DELETE 删除版本 → 200")
     void testDeleteVersion() {
-        var response = controller.deleteVersion(appId, flowId, versionId).getBody();
+        var response = controller.deleteVersion(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -177,7 +177,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#37 POST 撤回审批 → 200")
     void testCancelApproval() {
-        var response = controller.cancelApproval(appId, flowId, versionId).getBody();
+        var response = controller.cancelApproval(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 
@@ -186,7 +186,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#38 POST 催办 → 200")
     void testUrgeApproval() {
-        var response = controller.urgeApproval(appId, flowId, versionId).getBody();
+        var response = controller.urgeApproval(flowId, versionId).getBody();
         assertEquals("200", response.getCode());
     }
 }

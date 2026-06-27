@@ -8,6 +8,7 @@ import com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionRecord;
 import com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionStep;
 import com.xxx.it.works.wecode.v2.modules.flowexecrecord.mapper.ExecutionRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.flowexecrecord.mapper.ExecutionStepMapper;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,11 +55,12 @@ public class ExecutionRecordService {
      * @return 分页运行记录列表
      */
     public ApiResponse<List<ExecutionRecordVO>> listRecords(
-            Long appId, Integer curPage, Integer pageSize,
+            Integer curPage, Integer pageSize,
             Long flowId, String keyword,
             Integer status, Integer triggerType,
             String startTime, String endTime) {
 
+        Long appId = AppContextHolder.requireInternalAppId();
         int page = curPage != null ? curPage : 1;
         int size = pageSize != null ? pageSize : 20;
         int offset = (page - 1) * size;
@@ -101,7 +103,8 @@ public class ExecutionRecordService {
      * @param appId    应用ID（数据隔离）
      * @return 运行记录详情（含步骤列表）
      */
-    public ApiResponse<ExecutionRecordDetailVO> getDetail(Long recordId, Long appId) {
+    public ApiResponse<ExecutionRecordDetailVO> getDetail(Long recordId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         ExecutionRecord record = executionRecordMapper.selectById(recordId);
 
         if (record == null) {

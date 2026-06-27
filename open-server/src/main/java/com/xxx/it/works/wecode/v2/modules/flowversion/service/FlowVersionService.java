@@ -26,6 +26,7 @@ import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.validator.FlowPublishValidator;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,7 +98,8 @@ public class FlowVersionService {
      * 创建空草稿，需版本上限校验
      */
     @Transactional
-    public ApiResponse<?> createDraft(Long flowId, Long appId) {
+    public ApiResponse<?> createDraft(Long flowId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -160,7 +162,8 @@ public class FlowVersionService {
      * API #29: GET /service/open/v2/flows/{flowId}/versions
      * 查询版本列表，支持 status 过滤，含 deployed 标记
      */
-    public ApiResponse<List<FlowVersionListResponse>> getVersionList(Long flowId, Integer status, Long appId) {
+    public ApiResponse<List<FlowVersionListResponse>> getVersionList(Long flowId, Integer status) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -199,7 +202,8 @@ public class FlowVersionService {
      * API #30: GET /service/open/v2/flows/{flowId}/versions/{versionId}
      * 版本详情，含编排配置快照
      */
-    public ApiResponse<FlowVersionDetailResponse> getVersionDetail(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<FlowVersionDetailResponse> getVersionDetail(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -266,7 +270,8 @@ public class FlowVersionService {
      * 更新草稿（仅 DB 存储级校验：JSON 可解析即可）
      */
     @Transactional
-    public ApiResponse<?> updateDraft(Long flowId, Long versionId, String orchestrationConfig, Long appId) {
+    public ApiResponse<?> updateDraft(Long flowId, Long versionId, String orchestrationConfig) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -329,7 +334,9 @@ public class FlowVersionService {
      * 发布版本：全量 9 项校验 → 提交审批
      */
     @Transactional
-    public ApiResponse<FlowPublishResponse> publish(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<FlowPublishResponse> publish(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
+        String externalAppId = AppContextHolder.getCurrentContext().getExternalId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -362,7 +369,7 @@ public class FlowVersionService {
         }
 
         // 校验 8：JSON 语法 + 校验 2、6、9、3/4/5 基础
-        errors = publishValidator.validateOrchestrationConfig(config, String.valueOf(appId));
+        errors = publishValidator.validateOrchestrationConfig(config, externalAppId);
         if (!errors.isEmpty()) {
             return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
         }
@@ -379,7 +386,7 @@ public class FlowVersionService {
         }
 
         // 校验 3、4：应用上限校验（从 PropertyService 获取按应用配置的上限值）
-        String appIdStr = String.valueOf(appId);
+        String appIdStr = externalAppId;
         int appMaxQps = propertyService.getFlowMaxQps(appIdStr);
         int appMaxConcurrency = propertyService.getFlowMaxConcurrency(appIdStr);
         int appMaxTimeoutMs = propertyService.getNodeMaxTimeoutSeconds(appIdStr) * 1000;
@@ -451,7 +458,8 @@ public class FlowVersionService {
      * 复制已有版本到新草稿，校验无待审批/已驳回/已撤回版本
      */
     @Transactional
-    public ApiResponse<?> copyToDraft(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<?> copyToDraft(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -540,7 +548,8 @@ public class FlowVersionService {
      * 失效版本，校验未部署
      */
     @Transactional
-    public ApiResponse<?> invalidateVersion(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<?> invalidateVersion(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -585,7 +594,8 @@ public class FlowVersionService {
      * 恢复版本 → 已发布
      */
     @Transactional
-    public ApiResponse<?> recoverVersion(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<?> recoverVersion(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -630,7 +640,8 @@ public class FlowVersionService {
      * 删除版本（仅草稿或已失效状态可删除）
      */
     @Transactional
-    public ApiResponse<Void> deleteVersion(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<Void> deleteVersion(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -668,7 +679,8 @@ public class FlowVersionService {
      * 撤回审批：待审批 → 已撤回
      */
     @Transactional
-    public ApiResponse<?> cancelApproval(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<?> cancelApproval(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
@@ -705,7 +717,8 @@ public class FlowVersionService {
      * API #38: POST /service/open/v2/flows/{flowId}/versions/{versionId}/urge
      * 催办：通知当前审批节点审批人
      */
-    public ApiResponse<?> urgeApproval(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<?> urgeApproval(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");

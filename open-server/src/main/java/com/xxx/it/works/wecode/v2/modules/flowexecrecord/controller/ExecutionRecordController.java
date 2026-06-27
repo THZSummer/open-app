@@ -41,7 +41,6 @@ public class ExecutionRecordController {
     @Operation(summary = "#49 查询运行记录列表",
                description = "分页查询当前应用下的执行记录，支持按 keyword/flowId/status/triggerType 过滤")
     public ApiResponse<List<ExecutionRecordVO>> listExecutionRecords(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流名称关键字（模糊匹配中英文）") @RequestParam(required = false) String keyword,
             @Parameter(description = "连接流ID") @RequestParam(required = false) Long flowId,
             @Parameter(description = "执行状态: 0=成功, 1=失败") @RequestParam(required = false) Integer status,
@@ -51,9 +50,9 @@ public class ExecutionRecordController {
             @Parameter(description = "当前页码") @RequestParam(required = false, defaultValue = "1") Integer curPage,
             @Parameter(description = "每页数量") @RequestParam(required = false, defaultValue = "20") Integer pageSize) {
 
-        log.info("GET /executions - appId={}, keyword={}, flowId={}, status={}, triggerType={}",
-                appId, keyword, flowId, status, triggerType);
-        return executionRecordService.listRecords(appId, curPage, pageSize,
+        log.info("GET /executions - keyword={}, flowId={}, status={}, triggerType={}",
+                keyword, flowId, status, triggerType);
+        return executionRecordService.listRecords(curPage, pageSize,
                 flowId, keyword, status, triggerType, startTime, endTime);
     }
 
@@ -64,10 +63,9 @@ public class ExecutionRecordController {
     @Operation(summary = "#50 查看运行记录详情",
                description = "查看单条执行记录详情，含步骤日志数组（节点 I/O 日志内嵌）")
     public ApiResponse<ExecutionRecordDetailVO> getExecutionDetail(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "执行记录ID") @PathVariable Long executionId) {
 
-        log.info("GET /executions/{} - appId={}", executionId, appId);
-        return executionRecordService.getDetail(executionId, appId);
+        log.info("GET /executions/{}", executionId);
+        return executionRecordService.getDetail(executionId);
     }
 }

@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.flow;
+package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.FlowLifecycleStatus;
@@ -10,6 +10,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,11 +57,11 @@ public class FlowCopyService {
      * 复制连接流
      *
      * @param sourceFlowId 源连接流ID
-     * @param appId        应用ID
      * @return 复制的连接流信息
      */
     @Transactional
-    public ApiResponse<FlowCopyResponse> copyFlow(Long sourceFlowId, Long appId) {
+    public ApiResponse<FlowCopyResponse> copyFlow(Long sourceFlowId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow sourceFlow = flowMapper.selectById(sourceFlowId);
         if (sourceFlow == null || !appId.equals(sourceFlow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");

@@ -51,10 +51,9 @@ public class FlowVersionController {
     @PostMapping("/{flowId}/versions")
     @Operation(summary = "#28 创建空草稿", description = "创建空草稿版本，版本上限 1000，已有草稿时返回 409")
     public ResponseEntity<ApiResponse<?>> createDraft(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId) {
-        log.info("POST /flows/{}/versions - create draft: appId={}", flowId, appId);
-        return toResponseEntity(flowVersionService.createDraft(flowId, appId));
+        log.info("POST /flows/{}/versions - create draft", flowId);
+        return toResponseEntity(flowVersionService.createDraft(flowId));
     }
 
     /**
@@ -63,11 +62,10 @@ public class FlowVersionController {
     @GetMapping("/{flowId}/versions")
     @Operation(summary = "#29 查询版本列表", description = "查询版本列表，支持 status 过滤，含 deployed 标记")
     public ResponseEntity<ApiResponse<List<FlowVersionListResponse>>> getVersionList(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本状态过滤") @RequestParam(required = false) Integer status) {
-        log.info("GET /flows/{}/versions - list: appId={}, status={}", flowId, appId, status);
-        return toResponseEntity(flowVersionService.getVersionList(flowId, status, appId));
+        log.info("GET /flows/{}/versions - list: status={}", flowId, status);
+        return toResponseEntity(flowVersionService.getVersionList(flowId, status));
     }
 
     /**
@@ -76,11 +74,10 @@ public class FlowVersionController {
     @GetMapping("/{flowId}/versions/{versionId}")
     @Operation(summary = "#30 查询版本详情", description = "版本详情，含编排配置快照")
     public ResponseEntity<ApiResponse<FlowVersionDetailResponse>> getVersionDetail(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId) {
-        log.info("GET /flows/{}/versions/{} - detail: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.getVersionDetail(flowId, versionId, appId));
+        log.info("GET /flows/{}/versions/{} - detail", flowId, versionId);
+        return toResponseEntity(flowVersionService.getVersionDetail(flowId, versionId));
     }
 
     /**
@@ -89,14 +86,13 @@ public class FlowVersionController {
     @PutMapping("/{flowId}/versions/{versionId}")
     @Operation(summary = "#31 更新草稿", description = "更新草稿编排配置（仅 DB 存储级校验：JSON 可解析即可）")
     public ResponseEntity<ApiResponse<?>> updateDraft(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId,
             @RequestBody FlowVersionSaveRequest request) {
-        log.info("PUT /flows/{}/versions/{} - update draft: appId={}", flowId, versionId, appId);
+        log.info("PUT /flows/{}/versions/{} - update draft", flowId, versionId);
         return toResponseEntity(flowVersionService.updateDraft(flowId, versionId,
                 request != null && request.getOrchestrationConfig() != null
-                    ? request.getOrchestrationConfig().toString() : null, appId));
+                    ? request.getOrchestrationConfig().toString() : null));
     }
 
     /**
@@ -105,11 +101,10 @@ public class FlowVersionController {
     @PostMapping("/{flowId}/versions/{versionId}/publish")
     @Operation(summary = "#32 发布版本", description = "发布版本：全部 9 项校验 → 提交审批（status → 2 PENDING_APPROVAL）")
     public ResponseEntity<ApiResponse<FlowPublishResponse>> publish(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId) {
-        log.info("POST /flows/{}/versions/{}/publish: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.publish(flowId, versionId, appId));
+        log.info("POST /flows/{}/versions/{}/publish", flowId, versionId);
+        return toResponseEntity(flowVersionService.publish(flowId, versionId));
     }
 
     /**
@@ -118,11 +113,10 @@ public class FlowVersionController {
     @PostMapping("/{flowId}/versions/{versionId}/copy-to-draft")
     @Operation(summary = "#33 复制到草稿", description = "复制已有版本到新草稿，校验无待审批/已驳回/已撤回版本")
     public ResponseEntity<ApiResponse<?>> copyToDraft(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "源版本ID") @PathVariable Long versionId) {
-        log.info("POST /flows/{}/versions/{}/copy-to-draft: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.copyToDraft(flowId, versionId, appId));
+        log.info("POST /flows/{}/versions/{}/copy-to-draft", flowId, versionId);
+        return toResponseEntity(flowVersionService.copyToDraft(flowId, versionId));
     }
 
     /**
@@ -131,11 +125,10 @@ public class FlowVersionController {
     @PutMapping("/{flowId}/versions/{versionId}/invalidate")
     @Operation(summary = "#34 失效版本", description = "失效版本（校验未部署，status → 6 INVALIDATED）")
     public ResponseEntity<ApiResponse<?>> invalidateVersion(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId) {
-        log.info("PUT /flows/{}/versions/{}/invalidate: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.invalidateVersion(flowId, versionId, appId));
+        log.info("PUT /flows/{}/versions/{}/invalidate", flowId, versionId);
+        return toResponseEntity(flowVersionService.invalidateVersion(flowId, versionId));
     }
 
     /**
@@ -144,11 +137,10 @@ public class FlowVersionController {
     @PutMapping("/{flowId}/versions/{versionId}/recover")
     @Operation(summary = "#35 恢复版本", description = "恢复版本 → 已发布（status 6→5）")
     public ResponseEntity<ApiResponse<?>> recoverVersion(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId) {
-        log.info("PUT /flows/{}/versions/{}/recover: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.recoverVersion(flowId, versionId, appId));
+        log.info("PUT /flows/{}/versions/{}/recover", flowId, versionId);
+        return toResponseEntity(flowVersionService.recoverVersion(flowId, versionId));
     }
 
     /**
@@ -157,11 +149,10 @@ public class FlowVersionController {
     @DeleteMapping("/{flowId}/versions/{versionId}")
     @Operation(summary = "#36 删除版本", description = "删除版本（仅草稿或已失效状态可删除）")
     public ResponseEntity<ApiResponse<Void>> deleteVersion(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId) {
-        log.info("DELETE /flows/{}/versions/{}: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.deleteVersion(flowId, versionId, appId));
+        log.info("DELETE /flows/{}/versions/{}", flowId, versionId);
+        return toResponseEntity(flowVersionService.deleteVersion(flowId, versionId));
     }
 
     /**
@@ -170,11 +161,10 @@ public class FlowVersionController {
     @PostMapping("/{flowId}/versions/{versionId}/cancel")
     @Operation(summary = "#37 撤回审批", description = "撤回审批：待审批 → 已撤回（status 2→3）")
     public ResponseEntity<ApiResponse<?>> cancelApproval(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId) {
-        log.info("POST /flows/{}/versions/{}/cancel: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.cancelApproval(flowId, versionId, appId));
+        log.info("POST /flows/{}/versions/{}/cancel", flowId, versionId);
+        return toResponseEntity(flowVersionService.cancelApproval(flowId, versionId));
     }
 
     /**
@@ -183,11 +173,10 @@ public class FlowVersionController {
     @PostMapping("/{flowId}/versions/{versionId}/urge")
     @Operation(summary = "#38 催办审批", description = "向当前审批级别审批人发送催办通知")
     public ResponseEntity<ApiResponse<?>> urgeApproval(
-            @RequestHeader("X-App-Id") Long appId,
             @Parameter(description = "连接流ID") @PathVariable Long flowId,
             @Parameter(description = "版本ID") @PathVariable Long versionId) {
-        log.info("POST /flows/{}/versions/{}/urge: appId={}", flowId, versionId, appId);
-        return toResponseEntity(flowVersionService.urgeApproval(flowId, versionId, appId));
+        log.info("POST /flows/{}/versions/{}/urge", flowId, versionId);
+        return toResponseEntity(flowVersionService.urgeApproval(flowId, versionId));
     }
 
     // ==================== 辅助方法 ====================

@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.flow;
+package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
@@ -8,6 +8,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,11 +52,11 @@ public class FlowDeployService {
      *
      * @param flowId    连接流ID
      * @param versionId 要部署的版本ID
-     * @param appId     应用ID（归属校验）
      * @return 部署结果
      */
     @Transactional
-    public ApiResponse<FlowDeployResponse> deployVersion(Long flowId, Long versionId, Long appId) {
+    public ApiResponse<FlowDeployResponse> deployVersion(Long flowId, Long versionId) {
+        Long appId = AppContextHolder.requireInternalAppId();
         Flow flow = flowMapper.selectById(flowId);
         if (flow == null || !appId.equals(flow.getAppId())) {
             return ApiResponse.error("404", "连接流不存在", "Flow not found");
