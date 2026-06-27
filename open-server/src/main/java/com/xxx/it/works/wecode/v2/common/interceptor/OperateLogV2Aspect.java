@@ -59,7 +59,6 @@ public class OperateLogV2Aspect {
         OperateEnum op;
         Long resourceId;
         String appId;
-        // before/after/request 统一存 JsonNode，写日志时按需转 String
         JsonNode before;
         JsonNode after;
         JsonNode request;
@@ -121,13 +120,9 @@ public class OperateLogV2Aspect {
                 }
             }
             // entityId 覆盖 resourceId
-            String idText = JsonUtils.getFieldText(dataNode, ctx.op.entityIdField());
-            if (idText != null) {
-                try {
-                    ctx.resourceId = Long.parseLong(idText);
-                } catch (NumberFormatException e) {
-                    log.debug("[OPERATE_LOG] entityId is not numeric, keeping original resourceId: field={}, value={}", ctx.op.entityIdField(), idText);
-                }
+            Long fromResult = JsonUtils.getFieldLong(dataNode, ctx.op.entityIdField());
+            if (fromResult != null) {
+                ctx.resourceId = fromResult;
             }
 
             if (!ctx.op.needsAfterData()) {
@@ -313,22 +308,11 @@ public class OperateLogV2Aspect {
      * appId 策略 2: 从 beforeData 实体快照提取（内部 ID → 外部业务 ID）。
      */
     private String extractAppIdFromEntity(JsonNode node) {
-        if (node == null) {
+        Long internalId = JsonUtils.getFieldLong(node, CommonConstants.FIELD_APP_ID);
+        if (internalId == null) {
             return null;
         }
-        try {
-            JsonNode appIdNode = node.get(CommonConstants.FIELD_APP_ID);
-            if (appIdNode == null) {
-                appIdNode = node.get(CommonConstants.COL_APP_ID);
-            }
-            if (appIdNode == null || appIdNode.isNull()) {
-                return null;
-            }
-            return appContextResolver.toExternalId(appIdNode.asLong());
-        } catch (Exception e) {
-            log.warn("[OPERATE_LOG] Failed to extract appId from entity", e);
-            return null;
-        }
+        return appContextResolver.toExternalId(internalId);
     }
 
     /**
