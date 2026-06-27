@@ -312,7 +312,10 @@ def test_full_flow():
         print("  ❌ connector-api 未运行!")
         return
 
-    tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' LIMIT 1")
+    # V3: 优先查找应用级模板 (code + appId)，回退到全局模板
+    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id = {TEST_APP_ID} LIMIT 1")
+    if not tpl:
+        tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id IS NULL LIMIT 1")
     if tpl:
         print(f"  ✅ 审批流模板存在 (id={tpl})")
     else:
@@ -321,6 +324,7 @@ def test_full_flow():
             "code": "connector_flow_version_publish",
             "nameCn": "连接器流版本发布审批",
             "nameEn": "connector_flow_version_publish",
+            "appId": str(TEST_APP_ID),
             "nodes": [{"userId": "tester", "userName": "Test Approver"}]
         })
         if r and r.status_code in (200, 201):
@@ -406,8 +410,8 @@ def test_full_flow():
                             "type": "object",
                             "properties": {
                                 "keyword": {"type": "string", "description": "搜索关键词"},
-                                "page": {"type": "integer", "description": "页码"},
-                                "size": {"type": "integer", "description": "每页条数"}
+                                "page": {"type": "number", "description": "页码"},
+                                "size": {"type": "number", "description": "每页条数"}
                             }
                         },
                         "body": {
@@ -438,7 +442,7 @@ def test_full_flow():
                         "body": {
                             "type": "object",
                             "properties": {
-                                "code": {"type": "integer"},
+                                "code": {"type": "number"},
                                 "message": {"type": "string"},
                                 "data": {
                                     "type": "object",
@@ -447,7 +451,7 @@ def test_full_flow():
                                         "echo_headers": {"type": "object"},
                                         "echo_query": {"type": "object"},
                                         "server_time": {"type": "string"},
-                                        "call_number": {"type": "integer"}
+                                        "call_number": {"type": "number"}
                                     }
                                 }
                             }
@@ -514,7 +518,6 @@ def test_full_flow():
         def s7():
             r = os_api("PUT", f"/flows/{fid}/versions/{fvid}", {
                 "orchestrationConfig": {
-                    "trigger": {},
                     "nodes": [
                         {"id": "trigger", "type": "trigger", "data": {
                             "type": "trigger",
@@ -548,8 +551,8 @@ def test_full_flow():
                                     "type": "object",
                                     "properties": {
                                         "keyword": {"type": "string", "description": "搜索关键词"},
-                                        "page": {"type": "integer", "description": "页码", "default": 1},
-                                        "size": {"type": "integer", "description": "每页条数", "default": 20}
+                                        "page": {"type": "number", "description": "页码", "default": 1},
+                                        "size": {"type": "number", "description": "每页条数", "default": 20}
                                     },
                                     "required": ["keyword"]
                                 },
@@ -599,8 +602,8 @@ def test_full_flow():
                                         "type": "object",
                                         "properties": {
                                             "keyword": {"type": "string", "description": "搜索关键词"},
-                                            "page": {"type": "integer", "description": "页码"},
-                                            "size": {"type": "integer", "description": "每页条数"}
+                                            "page": {"type": "number", "description": "页码"},
+                                            "size": {"type": "number", "description": "每页条数"}
                                         }
                                     },
                                     "body": {
@@ -631,7 +634,7 @@ def test_full_flow():
                                     "body": {
                                         "type": "object",
                                         "properties": {
-                                            "code": {"type": "integer"},
+                                            "code": {"type": "number"},
                                             "message": {"type": "string"},
                                             "data": {
                                                 "type": "object",
@@ -640,7 +643,7 @@ def test_full_flow():
                                                     "echo_headers": {"type": "object"},
                                                     "echo_query": {"type": "object"},
                                                     "server_time": {"type": "string"},
-                                                    "call_number": {"type": "integer"}
+                                                    "call_number": {"type": "number"}
                                                 }
                                             }
                                         }
@@ -684,14 +687,14 @@ def test_full_flow():
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "code": {"type": "integer", "value": "${$.node.conn1.output.code}"},
+                                        "code": {"type": "number", "value": "${$.node.conn1.output.code}"},
                                         "message": {"type": "string", "value": "${$.node.conn1.output.message}"},
                                         "data": {
                                             "type": "object",
                                             "value": "${$.node.conn1.output.data.echo_body}"
                                         },
                                         "serverTime": {"type": "string", "value": "${$.node.conn1.output.data.server_time}"},
-                                        "callNumber": {"type": "integer", "value": "${$.node.conn1.output.data.call_number}"}
+                                        "callNumber": {"type": "number", "value": "${$.node.conn1.output.data.call_number}"}
                                     }
                                 }
                             }

@@ -3061,7 +3061,7 @@ graph TB
           },
           "data": { "$ref": "#/definitions/nodeDataDef" }
         },
-        "required": ["id", "type", "position", "data"]
+        "required": ["id", "type", "data"]
       }
     },
     "edges": {
@@ -3129,7 +3129,7 @@ graph TB
 |------|------|:----:|------|
 | `id` | string | ✅ | 节点 ID，编排内部唯一 |
 | `type` | string | ✅ | React Flow 注册组件名（9 种枚举）。纯渲染类型，不承载业务语义 |
-| `position` | object | ✅ | 画布坐标 `{ x: number, y: number }` |
+| `position` | object | ❌ | 画布坐标 `{ x: number, y: number }`。编排保存时前端注入，API 提交时可选 |
 
 > `node.type` 的 10 种枚举值（框架层）：`trigger` / `connector` / `script` / `data_processor` / `exit` / `loop-v2` / `error-handler` / `parallel` / `condition-branch` / `text`
 

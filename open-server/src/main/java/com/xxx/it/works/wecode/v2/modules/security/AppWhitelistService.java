@@ -1,12 +1,14 @@
 package com.xxx.it.works.wecode.v2.modules.security;
 
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
+import com.xxx.it.works.wecode.v2.modules.lookup.mapper.LookupWhitelistMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -14,12 +16,17 @@ import java.util.Set;
  *
  * <p>校验应用是否开通了连接器平台能力（白名单准入）。</p>
  *
- * <p>MVP 实现：基于配置属性 cp.app-whitelist（逗号分隔的应用 ID 列表）。
- * 生产环境应改为调用 market-server Lookup API 查询 classify_code=cp_app_whitelist 的白名单。
- * 空列表表示所有应用均在白名单内（开发/测试便利模式）。</p>
+ * <p>查询优先级：
+ * <ol>
+ *   <li>Lookup 数据源（openplatform_lookup_classify_t / openplatform_lookup_item_t）
+ *       — classify_code=app_whitelist</li>
+ *   <li>Spring 属性 cp.app-whitelist（逗号分隔的应用 ID，降级回退）</li>
+ * </ol>
+ *
+ * <p>白名单为空时拒绝所有应用（安全默认），不再放行。</p>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 2.0.0
  * @see ConnectorPlatformConstants#APP_WHITELIST_CLASSIFY_CODE
  */
 @Slf4j
@@ -28,23 +35,29 @@ public class AppWhitelistService {
 
     /**
      * 应用白名单配置（逗号分隔的应用 ID 列表）
-     * 为空时表示所有应用均在白名单内（开发/测试模式）
+     * Lookup 不可用时降级回退到此属性。
      */
     @Value("${cp.app-whitelist:}")
     private String whitelistConfig;
 
     /**
+     * Lookup 白名单 Mapper（查询 openplatform_lookup_item_t）
+     */
+    private final LookupWhitelistMapper lookupWhitelistMapper;
+
+    public AppWhitelistService(LookupWhitelistMapper lookupWhitelistMapper) {
+        this.lookupWhitelistMapper = lookupWhitelistMapper;
+    }
+
+    /**
      * 检查指定应用是否在白名单内
      *
-     * <p>MVP 实现逻辑：
-     * <ul>
-     *   <li>白名单为空 → 所有应用放行（返回 true）</li>
-     *   <li>白名单非空 → 检查 appId 是否在列表中</li>
-     * </ul>
-     *
-     * <p>生产环境应改为：调用 market-server Lookup API，
-     * 查询 classify_code=cp_app_whitelist 下是否包含该 appId。
-     * market-server 不可用时降级放行（返回 true）。</p>
+     * <p>查询顺序：
+     * <ol>
+     *   <li>调用 Lookup 查询 classify_code=app_whitelist 的 item_value 列表</li>
+     *   <li>Lookup 不可用或返回 null 时降级为 Spring 属性 cp.app-whitelist</li>
+     *   <li>白名单为空 → 拒绝所有应用（返回 false）</li>
+     * </ol>
      *
      * @param appId 应用 ID
      * @return true 表示在白名单内，false 表示不在
@@ -55,12 +68,51 @@ public class AppWhitelistService {
             return false;
         }
 
+        String appIdStr = String.valueOf(appId);
+
+        // 1. Try Lookup (openplatform_lookup_classify_t + openplatform_lookup_item_t)
+        List<String> lookupApps = queryLookupWhitelist();
+        if (lookupApps != null && !lookupApps.isEmpty()) {
+            boolean allowed = lookupApps.contains(appIdStr);
+            if (!allowed) {
+                log.warn("App {} is not in the Lookup whitelist, access denied", appId);
+            }
+            return allowed;
+        }
+
+        // 2. Fallback to Spring property
+        return isWhitelistedByProperty(appId);
+    }
+
+    /**
+     * 从 Lookup 数据源查询白名单应用列表
+     *
+     * @return classify_code=app_whitelist 的 item_value 列表；异常时返回 null 触发降级
+     */
+    private List<String> queryLookupWhitelist() {
+        try {
+            return lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist");
+        } catch (Exception e) {
+            log.warn("Failed to read Lookup whitelist, falling back to property", e);
+            return null;
+        }
+    }
+
+    /**
+     * 基于 Spring 属性的白名单检查（降级回退）
+     *
+     * <p>白名单为空时拒绝所有应用（安全默认）。</p>
+     *
+     * @param appId 应用 ID
+     * @return true 表示在白名单内，false 表示不在
+     */
+    private boolean isWhitelistedByProperty(Long appId) {
         Set<Long> whitelist = parseWhitelist();
 
-        // 空白名单 → 所有应用放行（开发/测试便利模式）
+        // 白名单为空 → 拒绝所有应用（安全默认）
         if (whitelist.isEmpty()) {
-            log.debug("Whitelist is empty, all apps are allowed (dev/test mode)");
-            return true;
+            log.warn("Whitelist is empty (both Lookup and property), access denied for app {}", appId);
+            return false;
         }
 
         boolean allowed = whitelist.contains(appId);

@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.common.config;
 
 import com.xxx.it.works.wecode.v2.common.interceptor.UserResolveInterceptor;
+import com.xxx.it.works.wecode.v2.modules.security.AppWhitelistInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  *
  * <p>注意：标准环境无需修改此配置</p>
  * <p>标准环境的用户认证拦截器由基础模块注入，优先级为 0</p>
- * <p>本配置的拦截器优先级为 10，在标准环境拦截器之后执行</p>
+ * <p>本配置的拦截器优先级为 10/20，在标准环境拦截器之后执行</p>
  * <p>拦截器作用范围：/service/open/v2/**</p>
  *
  * @author SDDU Build Agent
@@ -26,6 +27,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final UserResolveInterceptor userResolveInterceptor;
+    private final AppWhitelistInterceptor appWhitelistInterceptor;
 
     @Value("${platform.file.upload-dir:./uploads}")
     private String uploadDir;
@@ -41,6 +43,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addInterceptor(userResolveInterceptor)
                 .addPathPatterns("/service/open/v2/**")
                 .order(10);
+
+        // 注册应用白名单拦截器
+        // 优先级 20：在用户解析之后执行白名单准入校验（#15 app_whitelist）
+        registry.addInterceptor(appWhitelistInterceptor)
+                .addPathPatterns("/service/open/v2/connectors/**", "/service/open/v2/flows/**")
+                .order(20);
     }
 
     /**
