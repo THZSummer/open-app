@@ -94,6 +94,9 @@
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_flow_t
         <where>
+            <if test="appId != null">
+                app_id = #{appId}
+            </if>
             <if test="lifecycleStatus != null">
                 AND lifecycle_status = #{lifecycleStatus}
             </if>
@@ -110,6 +113,9 @@
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_flow_t
         <where>
+            <if test="appId != null">
+                app_id = #{appId}
+            </if>
             <if test="lifecycleStatus != null">
                 AND lifecycle_status = #{lifecycleStatus}
             </if>
@@ -129,6 +135,9 @@
         SELECT COUNT(*)
         FROM openplatform_v2_cp_flow_t
         <where>
+            <if test="appId != null">
+                app_id = #{appId}
+            </if>
             <if test="lifecycleStatus != null">
                 AND lifecycle_status = #{lifecycleStatus}
             </if>

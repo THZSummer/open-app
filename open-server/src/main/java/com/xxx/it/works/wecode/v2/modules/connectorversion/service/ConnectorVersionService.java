@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.connector;
+package com.xxx.it.works.wecode.v2.modules.connectorversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;

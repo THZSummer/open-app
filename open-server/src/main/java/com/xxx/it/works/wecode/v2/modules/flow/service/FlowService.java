@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.flow;
+package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.FlowLifecycleStatus;
@@ -120,21 +120,9 @@ public class FlowService {
         int size = pageSize != null ? pageSize : 20;
         int offset = (page - 1) * size;
 
-        // 查询所有符合基本过滤条件的记录（不含 appId 过滤，在 Java 层处理）
-        List<Flow> allFlows = flowMapper.selectAll(lifecycleStatus, keyword);
-
-        // 按 appId 过滤
-        List<Flow> filtered = allFlows.stream()
-                .filter(f -> appId.equals(f.getAppId()))
-                .collect(Collectors.toList());
-
-        long total = filtered.size();
-        int fromIndex = Math.min(offset, filtered.size());
-        int toIndex = Math.min(offset + size, filtered.size());
-        List<Flow> pageItems = new ArrayList<>();
-        if (fromIndex < filtered.size()) {
-            pageItems = filtered.subList(fromIndex, toIndex);
-        }
+        // v2.1.0: SQL 层按 app_id 过滤，数据库层实现应用数据隔离
+        List<Flow> pageItems = flowMapper.selectList(lifecycleStatus, keyword, appId, offset, size);
+        long total = flowMapper.countList(lifecycleStatus, keyword, appId);
 
         // 转换为响应 DTO
         List<FlowListResponse> items = new ArrayList<>();

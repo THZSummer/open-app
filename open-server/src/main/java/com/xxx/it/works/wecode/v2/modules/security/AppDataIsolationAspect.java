@@ -31,7 +31,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  * <p>拦截范围：
  * <ul>
  *   <li>com.xxx.it.works.wecode.v2.modules.connector.ConnectorService.*</li>
- *   <li>com.xxx.it.works.wecode.v2.modules.connector.ConnectorVersionService.*</li>
+ *   <li>com.xxx.it.works.wecode.v2.modules.connectorversion.service.ConnectorVersionService.*</li>
  *   <li>com.xxx.it.works.wecode.v2.modules.flow.service.*Service.*</li>
  * </ul>
  *
@@ -50,8 +50,8 @@ public class AppDataIsolationAspect {
 
     private final AppContextResolver appContextResolver;
 
-    @Around("execution(* com.xxx.it.works.wecode.v2.modules.connector.ConnectorService.*(..)) || "
-            + "execution(* com.xxx.it.works.wecode.v2.modules.connector.ConnectorVersionService.*(..))")
+    @Around("execution(* com.xxx.it.works.wecode.v2.modules.connector.service.ConnectorService.*(..)) || "
+            + "execution(* com.xxx.it.works.wecode.v2.modules.connectorversion.service.ConnectorVersionService.*(..))")
     public Object validateConnectorAppIsolation(ProceedingJoinPoint joinPoint) throws Throwable {
         return validateAndProceed(joinPoint);
     }

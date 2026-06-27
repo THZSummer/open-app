@@ -1,8 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.flow.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
-import com.xxx.it.works.wecode.v2.modules.flow.FlowVersionController;
-import com.xxx.it.works.wecode.v2.modules.flow.FlowVersionService;
+import com.xxx.it.works.wecode.v2.modules.flowversion.controller.FlowVersionController;
+import com.xxx.it.works.wecode.v2.modules.flowversion.service.FlowVersionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.FlowVersionSaveRequest;
 import org.junit.jupiter.api.BeforeEach;

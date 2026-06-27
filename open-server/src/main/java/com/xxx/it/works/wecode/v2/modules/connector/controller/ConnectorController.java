@@ -1,9 +1,10 @@
-package com.xxx.it.works.wecode.v2.modules.connector;
+package com.xxx.it.works.wecode.v2.modules.connector.controller;
 
 import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
 import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
+import com.xxx.it.works.wecode.v2.modules.connector.service.ConnectorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

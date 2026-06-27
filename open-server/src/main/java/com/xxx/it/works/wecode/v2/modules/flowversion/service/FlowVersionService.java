@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.flow;
+package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
@@ -51,7 +51,6 @@ import java.util.List;
 @Service
 public class FlowVersionService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowVersionService.class);
-
 
 
 
@@ -770,7 +769,7 @@ public class FlowVersionService {
      * @param now       当前时间
      */
     private void syncConnectorVersionRefs(Long flowId, Long versionId, String config,
-                                           String operator, Date now) {
+                                            String operator, Date now) {
         if (config == null || config.trim().isEmpty()) {
             return;
         }
