@@ -12,7 +12,7 @@ import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
 import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper;
 import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorMapper;
 import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorVersionMapper;
-import lombok.RequiredArgsConstructor;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,14 +25,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 连接器管理服务（V3 应用隔离版本）
+ * 连接器管理服务（V3 应用隔离版本 v2.1.0）
  * <p>
  * 实现连接器实体 CRUD（API #1~#7），涵盖 FR-001~FR-004
- * V3 变更：
- * - 创建时不自动生成草稿版本
- * - 支持失效/恢复生命周期操作
- * - 所有操作校验 appId 数据归属
- * - 状态流转使用 ConnectorStatus.isValidTransition()
+ * </p>
+ * <p>
+ * v2.1.0 变更：
+ * - 移除方法签名的 appId 参数，由 AppDataIsolationAspect 从请求 Header 解析
+ *   后注入 AppContextHolder，Service 体内通过 AppContextHolder.requireInternalAppId() 获取
+ * - SQL 层 app_id 过滤实现数据库级应用数据隔离
  * </p>
  */
 @Slf4j
@@ -40,33 +41,29 @@ import java.util.stream.Collectors;
 public class ConnectorService {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConnectorService.class);
 
-
-
-
-    @Autowired
-    public ConnectorService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator) {
-        this.connectorMapper = connectorMapper;
-        this.connectorVersionMapper = connectorVersionMapper;
-        this.connectorVersionRefMapper = connectorVersionRefMapper;
-        this.idGenerator = idGenerator;
-    }
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
     private final IdGeneratorStrategy idGenerator;
 
+    @Autowired
+    public ConnectorService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper,
+                            ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator) {
+        this.connectorMapper = connectorMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+        this.connectorVersionRefMapper = connectorVersionRefMapper;
+        this.idGenerator = idGenerator;
+    }
+
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
     // ==================== #1 创建连接器 ====================
 
-    /**
-     * API #1: POST /service/open/v2/connectors
-     * 创建连接器基本信息，不自动生成草稿版本
-     */
     @Transactional
-    public ApiResponse<ConnectorCreateResponse> createConnector(ConnectorCreateRequest request, Long appId) {
-        log.info("Creating connector: nameCn={}, nameEn={}, type={}, appId={}",
-                request.getNameCn(), request.getNameEn(), request.getConnectorType(), appId);
+    public ApiResponse<ConnectorCreateResponse> createConnector(ConnectorCreateRequest request) {
+        Long internalAppId = AppContextHolder.requireInternalAppId();
+        log.info("Creating connector: nameCn={}, nameEn={}, type={}, internalAppId={}",
+                request.getNameCn(), request.getNameEn(), request.getConnectorType(), internalAppId);
 
         long connectorId = idGenerator.nextId();
         Date now = new Date();
@@ -80,7 +77,7 @@ public class ConnectorService {
         connector.setDescriptionEn(request.getDescriptionEn());
         connector.setConnectorType(request.getConnectorType());
         connector.setStatus(ConnectorStatus.UNAVAILABLE.getCode());
-        connector.setAppId(appId);
+        connector.setAppId(internalAppId);
         connector.setCreateTime(now);
         connector.setLastUpdateTime(now);
         connector.setCreateBy(currentUser);
@@ -88,7 +85,7 @@ public class ConnectorService {
 
         connectorMapper.insert(connector);
 
-        log.info("Connector created: id={}, appId={}", connectorId, appId);
+        log.info("Connector created: id={}, internalAppId={}", connectorId, internalAppId);
 
         SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         ConnectorCreateResponse response = ConnectorCreateResponse.builder()
@@ -97,7 +94,7 @@ public class ConnectorService {
                 .nameEn(request.getNameEn())
                 .connectorType(request.getConnectorType())
                 .status(ConnectorStatus.UNAVAILABLE.getCode())
-                .appId(String.valueOf(appId))
+                .appId(String.valueOf(internalAppId))
                 .createTime(sdf.format(now))
                 .note("创建连接器后需手动创建草稿版本")
                 .build();
@@ -107,24 +104,19 @@ public class ConnectorService {
 
     // ==================== #2 查询连接器列表 ====================
 
-    /**
-     * API #2: GET /service/open/v2/connectors
-     * 列表查询，支持 connectorType / status / keyword 过滤 + 分页
-     */
     public ApiResponse<List<ConnectorListResponse>> getConnectorList(
             Integer status, Integer connectorType, String keyword,
-            Integer curPage, Integer pageSize, Long appId) {
+            Integer curPage, Integer pageSize) {
+
+        Long internalAppId = AppContextHolder.requireInternalAppId();
 
         int page = curPage != null ? curPage : 1;
         int size = pageSize != null ? pageSize : 20;
         int offset = (page - 1) * size;
 
-        // 查询所有符合基本过滤条件的记录（不含 appId，在 Java 层过滤）
-        List<Connector> allConnectors = connectorMapper.selectAll(connectorType, keyword);
+        List<Connector> connectors = connectorMapper.selectAll(connectorType, keyword, internalAppId);
 
-        // 按 appId 和 status 过滤
-        List<Connector> filtered = allConnectors.stream()
-                .filter(c -> appId.equals(c.getAppId()))
+        List<Connector> filtered = connectors.stream()
                 .filter(c -> status == null || status.equals(c.getStatus()))
                 .collect(Collectors.toList());
 
@@ -133,7 +125,6 @@ public class ConnectorService {
         int toIndex = Math.min(offset + size, filtered.size());
         List<Connector> pageItems = filtered.subList(fromIndex, toIndex);
 
-        // 转换为响应 DTO
         List<ConnectorListResponse> items = new ArrayList<>();
         SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         for (Connector c : pageItems) {
@@ -151,18 +142,17 @@ public class ConnectorService {
             item.setLastUpdateBy(c.getLastUpdateBy());
             item.setLastUpdateTime(c.getLastUpdateTime() != null ? sdf.format(c.getLastUpdateTime()) : null);
 
-            // 查询版本信息
             List<ConnectorVersion> versions = connectorVersionMapper.selectListByConnectorId(c.getId(), null);
             Integer latestPublished = null;
             Integer draftNumber = null;
             if (versions != null) {
                 for (ConnectorVersion v : versions) {
-                    if (v.getStatus() != null && v.getStatus() == 2) { // PUBLISHED
+                    if (v.getStatus() != null && v.getStatus() == 2) {
                         if (latestPublished == null || v.getVersionNumber() > latestPublished) {
                             latestPublished = v.getVersionNumber();
                         }
                     }
-                    if (v.getStatus() != null && v.getStatus() == 1) { // DRAFT
+                    if (v.getStatus() != null && v.getStatus() == 1) {
                         draftNumber = v.getVersionNumber();
                     }
                 }
@@ -185,16 +175,14 @@ public class ConnectorService {
 
     // ==================== #3 查询连接器详情 ====================
 
-    /**
-     * API #3: GET /service/open/v2/connectors/{connectorId}
-     * 详情查询，校验 appId 归属
-     */
-    public ApiResponse<ConnectorDetailResponse> getConnectorDetail(Long connectorId, Long appId) {
+    public ApiResponse<ConnectorDetailResponse> getConnectorDetail(Long connectorId) {
+        Long internalAppId = AppContextHolder.requireInternalAppId();
+
         Connector connector = connectorMapper.selectById(connectorId);
         if (connector == null) {
             return ApiResponse.error("404", "连接器不存在", "Connector not found");
         }
-        if (!appId.equals(connector.getAppId())) {
+        if (!internalAppId.equals(connector.getAppId())) {
             return ApiResponse.error("404", "连接器不存在", "Connector not found");
         }
         return ApiResponse.success(toDetailResponse(connector));
@@ -202,14 +190,12 @@ public class ConnectorService {
 
     // ==================== #4 更新连接器基本信息 ====================
 
-    /**
-     * API #4: PUT /service/open/v2/connectors/{connectorId}
-     * 编辑基本信息
-     */
     @Transactional
-    public ApiResponse<Void> updateConnector(Long connectorId, ConnectorUpdateRequest request, Long appId) {
+    public ApiResponse<Void> updateConnector(Long connectorId, ConnectorUpdateRequest request) {
+        Long internalAppId = AppContextHolder.requireInternalAppId();
+
         Connector connector = connectorMapper.selectById(connectorId);
-        if (connector == null || !appId.equals(connector.getAppId())) {
+        if (connector == null || !internalAppId.equals(connector.getAppId())) {
             return ApiResponse.error("404", "连接器不存在", "Connector not found");
         }
 
@@ -225,20 +211,18 @@ public class ConnectorService {
         connector.setLastUpdateBy(currentUser);
 
         connectorMapper.update(connector);
-        log.info("Connector updated: id={}, appId={}", connectorId, appId);
+        log.info("Connector updated: id={}, internalAppId={}", connectorId, internalAppId);
         return ApiResponse.success();
     }
 
     // ==================== #5 失效连接器 ====================
 
-    /**
-     * API #5: PUT /service/open/v2/connectors/{connectorId}/invalidate
-     * 标记失效，校验无连接流引用
-     */
     @Transactional
-    public ApiResponse<?> invalidateConnector(Long connectorId, Long appId) {
+    public ApiResponse<?> invalidateConnector(Long connectorId) {
+        Long internalAppId = AppContextHolder.requireInternalAppId();
+
         Connector connector = connectorMapper.selectById(connectorId);
-        if (connector == null || !appId.equals(connector.getAppId())) {
+        if (connector == null || !internalAppId.equals(connector.getAppId())) {
             return ApiResponse.error("404", "连接器不存在", "Connector not found");
         }
 
@@ -247,10 +231,8 @@ public class ConnectorService {
             return ApiResponse.error("409", "非有效状态，不可失效", "Invalid status for invalidation");
         }
 
-        // 校验是否有连接流引用此连接器
         List<ConnectorVersionRef> refs = connectorVersionRefMapper.selectByConnectorId(connectorId);
         if (refs != null && !refs.isEmpty()) {
-            // 收集引用流名称（简单处理，返回引用数量）
             return ApiResponse.error("422",
                     "有 " + refs.size() + " 个连接流引用此连接器，请先移除引用关系",
                     "Connector is referenced by " + refs.size() + " flows, remove references first");
@@ -262,20 +244,18 @@ public class ConnectorService {
         connector.setLastUpdateBy(UserContextHolder.getUserName());
         connectorMapper.update(connector);
 
-        log.info("Connector invalidated: id={}, appId={}", connectorId, appId);
+        log.info("Connector invalidated: id={}, internalAppId={}", connectorId, internalAppId);
         return ApiResponse.success();
     }
 
     // ==================== #6 恢复连接器 ====================
 
-    /**
-     * API #6: PUT /service/open/v2/connectors/{connectorId}/recover
-     * 恢复连接器，根据已发布版本有无确定状态
-     */
     @Transactional
-    public ApiResponse<?> recoverConnector(Long connectorId, Long appId) {
+    public ApiResponse<?> recoverConnector(Long connectorId) {
+        Long internalAppId = AppContextHolder.requireInternalAppId();
+
         Connector connector = connectorMapper.selectById(connectorId);
-        if (connector == null || !appId.equals(connector.getAppId())) {
+        if (connector == null || !internalAppId.equals(connector.getAppId())) {
             return ApiResponse.error("404", "连接器不存在", "Connector not found");
         }
 
@@ -284,18 +264,15 @@ public class ConnectorService {
             return ApiResponse.error("409", "非已失效状态，不可恢复", "Only invalidated connectors can be recovered");
         }
 
-        // 检查是否有已发布版本
         List<ConnectorVersion> versions = connectorVersionMapper.selectListByConnectorId(connectorId, null);
         boolean hasPublishedVersion = versions != null && versions.stream()
                 .anyMatch(v -> v.getStatus() != null && v.getStatus() == 2);
 
         ConnectorStatus targetStatus;
-        String note = null;
         if (hasPublishedVersion) {
             targetStatus = ConnectorStatus.AVAILABLE;
         } else {
             targetStatus = ConnectorStatus.UNAVAILABLE;
-            note = "无已发布版本，连接器处于有效不可用状态，请先发布版本";
         }
 
         Date now = new Date();
@@ -304,20 +281,18 @@ public class ConnectorService {
         connector.setLastUpdateBy(UserContextHolder.getUserName());
         connectorMapper.update(connector);
 
-        log.info("Connector recovered: id={}, status={}, appId={}", connectorId, targetStatus.getCode(), appId);
+        log.info("Connector recovered: id={}, status={}, internalAppId={}", connectorId, targetStatus.getCode(), internalAppId);
         return ApiResponse.success();
     }
 
     // ==================== #7 删除连接器 ====================
 
-    /**
-     * API #7: DELETE /service/open/v2/connectors/{connectorId}
-     * 物理删除（仅已失效状态可删除）
-     */
     @Transactional
-    public ApiResponse<Void> deleteConnector(Long connectorId, Long appId) {
+    public ApiResponse<Void> deleteConnector(Long connectorId) {
+        Long internalAppId = AppContextHolder.requireInternalAppId();
+
         Connector connector = connectorMapper.selectById(connectorId);
-        if (connector == null || !appId.equals(connector.getAppId())) {
+        if (connector == null || !internalAppId.equals(connector.getAppId())) {
             return ApiResponse.error("404", "连接器不存在", "Connector not found");
         }
 
@@ -328,12 +303,10 @@ public class ConnectorService {
                     "Only invalidated connectors can be deleted");
         }
 
-        // 删除版本配置
         connectorVersionMapper.deleteByConnectorId(connectorId);
-        // 删除连接器基本信息
         connectorMapper.deleteById(connectorId);
 
-        log.info("Connector deleted: id={}, appId={}", connectorId, appId);
+        log.info("Connector deleted: id={}, internalAppId={}", connectorId, internalAppId);
         return ApiResponse.success();
     }
 

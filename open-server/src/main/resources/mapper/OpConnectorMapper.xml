@@ -65,11 +65,14 @@
         WHERE id = #{id}
     </delete>
 
-    <!-- Select All (no pagination) -->
+    <!-- Select All (v2.0.0: 增加 app_id 过滤，数据库层实现应用隔离) -->
     <select id="selectAll" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_connector_t
         <where>
+            <if test="appId != null">
+                app_id = #{appId}
+            </if>
             <if test="connectorType != null">
                 AND connector_type = #{connectorType}
             </if>
@@ -81,11 +84,14 @@
         ORDER BY create_time DESC
     </select>
 
-    <!-- Select List (with pagination) -->
+    <!-- Select List (v2.0.0: 增加 app_id 过滤 + 分页) -->
     <select id="selectList" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_v2_cp_connector_t
         <where>
+            <if test="appId != null">
+                app_id = #{appId}
+            </if>
             <if test="connectorType != null">
                 AND connector_type = #{connectorType}
             </if>
