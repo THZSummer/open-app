@@ -21,7 +21,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.xxx.it.works.wecode.v2.modules.security.SystokenWhitelistValidator;
+import com.xxx.it.works.wecode.v2.common.annotation.StandardTodo;
 import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -78,7 +78,6 @@ public class FlowInvokeService {
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
     private final DagScheduler dagScheduler;
-    private final SystokenWhitelistValidator systokenWhitelistValidator;
     private final UrlWhitelistValidator urlWhitelistValidator;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
     private final OpFlowReadRepository flowReadRepository;
@@ -92,7 +91,6 @@ public class FlowInvokeService {
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
-            SystokenWhitelistValidator systokenWhitelistValidator,
             UrlWhitelistValidator urlWhitelistValidator,
             ReactiveSequentialExecutor executor,
             DagScheduler dagScheduler,
@@ -106,7 +104,6 @@ public class FlowInvokeService {
             ExecutionStepService executionStepService,
             IdGenerator idGenerator) {
         this.objectMapper = objectMapper;
-        this.systokenWhitelistValidator = systokenWhitelistValidator;
         this.urlWhitelistValidator = urlWhitelistValidator;
         this.executor = executor;
         this.dagScheduler = dagScheduler;
@@ -835,10 +832,20 @@ public class FlowInvokeService {
             if (token == null || token.isEmpty()) {
                 throw new RuntimeException("Missing " + fieldName + " for SYSTOKEN auth");
             }
-            if (!systokenWhitelistValidator.validate(token, whitelistTokens)) {
-                throw new RuntimeException("SYSTOKEN not in whitelist: " + token);
+            if (whitelistTokens != null) {
+                if (whitelistTokens.isEmpty()) {
+                    throw new RuntimeException("SysAccount whitelist is empty, all requests rejected");
+                }
+                if (!whitelistTokens.contains(resolveSysAccount(token))) {
+                    throw new RuntimeException("SysAccount not in whitelist: " + resolveSysAccount(token));
+                }
             }
         }
+    }
+
+    @StandardTodo("对接 token 解析服务，根据 SysToken 解析出 SysAccount")
+    private String resolveSysAccount(String token) {
+        return token;
     }
 
     /**

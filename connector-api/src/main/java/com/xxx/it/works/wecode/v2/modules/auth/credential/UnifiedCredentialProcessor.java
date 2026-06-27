@@ -63,7 +63,7 @@ public class UnifiedCredentialProcessor {
 
         Map<String, Object> headerContainer = (Map<String, Object>) authConfig.get("header");
         if (headerContainer != null && headers != null) {
-            injectContainer(authType, headerContainer, headers, true, context);
+            injectContainer(authType, headerContainer, (Map) headers, true, context);
         }
 
         Map<String, Object> queryContainer = (Map<String, Object>) authConfig.get("query");
