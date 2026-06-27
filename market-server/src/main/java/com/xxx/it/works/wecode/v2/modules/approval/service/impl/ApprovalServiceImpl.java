@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.approval.service.impl;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalListRequest;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalProcessRequest;
+import com.xxx.it.works.wecode.v2.modules.approval.constant.ApprovalConstants;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.AbilityEntity;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.AppEntity;
@@ -74,7 +75,9 @@ public class ApprovalServiceImpl implements ApprovalService {
                     if (app != null) {
                         vo.setAppNameCn(app.getAppNameCn());
                         vo.setAppNameEn(app.getAppNameEn());
-                        vo.setAppId(app.getAppId());
+                        // appId 从应用属性表补查 eamap_app_code
+                        String eamapAppCode = recordMapper.selectThirdPartyAppId(app.getId());
+                        vo.setAppId(eamapAppCode);
                     }
 
                     String abilityIdsStr = recordMapper.selectVersionAbilityIds(versionId);
@@ -123,7 +126,12 @@ public class ApprovalServiceImpl implements ApprovalService {
                 Long appPkId = toLong(record.get("app_pk_id"));
                 Long versionId = toLong(record.get("version_id"));
 
-                vo.setAppId(toString(record.get("app_id")));
+                // id = 应用主键 ID
+                vo.setId(appPkId != null ? String.valueOf(appPkId) : null);
+                // appId 从应用属性表补查 eamap_app_code
+                if (appPkId != null) {
+                    vo.setAppId(recordMapper.selectThirdPartyAppId(appPkId));
+                }
                 vo.setAppNameCn(toString(record.get("app_name_cn")));
                 vo.setAppNameEn(toString(record.get("app_name_en")));
                 vo.setVersionNo(toString(record.get("version_code")));
