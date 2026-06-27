@@ -790,6 +790,7 @@ def test_full_flow():
                         {"id": f"e2_{_RUN_ID}", "source": nid_conn, "target": nid_exit}
                     ],
                     "flowConfig": {
+                        "flowMode": "single",
                         "rateLimitConfig": {"maxQps": 100, "maxConcurrency": 20},
                         "cache": {
                             "key": ["${$.node." + nid_trigger + ".input.body.traceId}"],
