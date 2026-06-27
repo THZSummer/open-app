@@ -29,6 +29,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,6 +185,9 @@ public class AbilityServiceImpl implements AbilityService {
         List<Ability> allAbilities = abilityMapper.selectAll();
         Map<Integer, Ability> typeMap = allAbilities.stream()
                 .collect(Collectors.toMap(Ability::getAbilityType, a -> a, (a, b) -> a));
+
+        // 按能力的 orderNum 排序
+        relations.sort(Comparator.comparingInt(r -> typeMap.get(r.getAbilityType()).getOrderNum()));
 
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = allAbilities.stream().map(Ability::getId).collect(Collectors.toList());
