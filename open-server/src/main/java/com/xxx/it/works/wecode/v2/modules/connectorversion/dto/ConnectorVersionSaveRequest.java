@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.connector.dto;
+package com.xxx.it.works.wecode.v2.modules.connectorversion.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.constraints.NotNull;

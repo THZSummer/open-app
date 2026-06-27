@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.flow.entity;
+package com.xxx.it.works.wecode.v2.modules.flowversion.entity;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

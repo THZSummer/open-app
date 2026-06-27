@@ -1,6 +1,6 @@
-package com.xxx.it.works.wecode.v2.modules.flow.mapper;
+package com.xxx.it.works.wecode.v2.modules.flowexecrecord.mapper;
 
-import com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionStep;
+import com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionStep;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

@@ -1,6 +1,6 @@
-package com.xxx.it.works.wecode.v2.modules.connector.mapper;
+package com.xxx.it.works.wecode.v2.modules.connectorversion.mapper;
 
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

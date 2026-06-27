@@ -1,6 +1,6 @@
-package com.xxx.it.works.wecode.v2.modules.flow.mapper;
+package com.xxx.it.works.wecode.v2.modules.flowversion.mapper;
 
-import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 

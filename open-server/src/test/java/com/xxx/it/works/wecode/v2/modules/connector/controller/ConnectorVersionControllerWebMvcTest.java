@@ -4,7 +4,7 @@ import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.controller.ConnectorVersionController;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.service.ConnectorVersionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.modules.connector.dto.ConnectorVersionSaveRequest;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.dto.ConnectorVersionSaveRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

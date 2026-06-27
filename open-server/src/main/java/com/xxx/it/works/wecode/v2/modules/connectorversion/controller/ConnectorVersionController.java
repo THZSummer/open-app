@@ -1,7 +1,9 @@
 package com.xxx.it.works.wecode.v2.modules.connectorversion.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
-import com.xxx.it.works.wecode.v2.modules.connector.dto.*;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.dto.ConnectorVersionDetailResponse;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.dto.ConnectorVersionListResponse;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.dto.ConnectorVersionSaveRequest;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.service.ConnectorVersionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

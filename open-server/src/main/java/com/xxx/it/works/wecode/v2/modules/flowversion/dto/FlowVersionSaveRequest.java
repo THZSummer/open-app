@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.flow.dto;
+package com.xxx.it.works.wecode.v2.modules.flowversion.dto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;

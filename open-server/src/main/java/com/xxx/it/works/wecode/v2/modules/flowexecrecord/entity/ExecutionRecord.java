@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.flow.entity;
+package com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity;
 
 import lombok.Data;
 
