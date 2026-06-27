@@ -137,8 +137,7 @@ def build_conn_config():
             "url": f"{MOCK_BASE}/api/data",
             "method": "GET",        },
         "authConfigs": [{
-            "type": "NONE",
-            "fields": []
+            "type": "NONE"
         }],
         "input": {
             "protocol": "HTTP",
@@ -194,10 +193,7 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
                     "triggerType": "http",
                     "authConfigs": [{
                         "type": "SYSTOKEN",
-                        "fields": [
-                            {"name": "token", "carrier": "header",
-                             "fieldName": "X-Sys-Token"}
-                        ]
+                        "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                     }],
                     "input": {
                         "protocol": "HTTP",

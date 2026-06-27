@@ -113,7 +113,7 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
         "protocolConfig": {
             "url": target_url,
             "method": method,        },
-        "authConfigs": [{"type": "NONE", "fields": []}],
+        "authConfigs": [{"type": "NONE"}],
         "input": {
             "protocol": "HTTP",
             "header": {"type": "object", "properties": {}, "required": []},
@@ -177,10 +177,7 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
                 "triggerType": "http",
                 "authConfigs": [{
                     "type": "SYSTOKEN",
-                    "fields": [
-                        {"name": "token", "carrier": "header",
-                         "fieldName": "X-Sys-Token"}
-                    ]
+                    "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                 }],
                 "input": {
                     "protocol": "HTTP",
@@ -280,10 +277,7 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
                 "triggerType": "http",
                 "authConfigs": [{
                     "type": "SYSTOKEN",
-                    "fields": [
-                        {"name": "token", "carrier": "header",
-                         "fieldName": "X-Sys-Token"}
-                    ]
+                    "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                 }],
                 "input": {
                     "protocol": "HTTP",

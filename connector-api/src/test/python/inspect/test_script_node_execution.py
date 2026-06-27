@@ -44,9 +44,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                     "triggerType": "http",
                     "authConfigs": [{
                         "type": "SYSTOKEN",
-                        "fields": [
-                            {"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}
-                        ]
+                        "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                     }],
                     "input": {
                         "protocol": "HTTP",

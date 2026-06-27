@@ -35,8 +35,7 @@ def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_stat
                     "triggerType": "http",
                     "authConfigs": [{
                         "type": "SYSTOKEN",
-                        "fields": [{"name": "token", "carrier": "header",
-                                    "fieldName": "X-Sys-Token"}]
+                        "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                     }],
                     "input": {
                         "protocol": "HTTP",

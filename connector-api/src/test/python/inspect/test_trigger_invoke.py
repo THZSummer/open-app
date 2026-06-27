@@ -160,8 +160,7 @@ CONNECTION_CONFIG = {
         "url": f"{MOCK_BASE}/api/search",
         "method": "GET",    },
     "authConfigs": [{
-        "type": "NONE",
-        "fields": []
+        "type": "NONE"
     }],
     "input": {
         "protocol": "HTTP",
@@ -239,7 +238,7 @@ TRIGGER_NODE = {
         "triggerType": "http",
         "authConfigs": [{
             "type": "SYSTOKEN",
-            "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
+            "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
         }],
         "input": {
             "protocol": "HTTP",
@@ -408,7 +407,7 @@ TRIGGER_NODE_NO_CONNECTOR = {
         "triggerType": "http",
         "authConfigs": [{
             "type": "SYSTOKEN",
-            "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
+            "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
         }],
         "input": {
             "protocol": "HTTP",
@@ -488,7 +487,7 @@ FAIL_CONNECTION_CONFIG = {
         "method": "POST",
         "headers": {"Content-Type": "application/json"}
     },
-    "authConfigs": [{"type": "NONE", "fields": []}],
+    "authConfigs": [{"type": "NONE"}],
     "input": {
         "protocol": "HTTP",
         "header": {"type": "object", "properties": {}, "required": []},

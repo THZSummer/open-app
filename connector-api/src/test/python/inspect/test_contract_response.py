@@ -38,9 +38,7 @@ def test_contract_response():
             {"id": "node_trigger", "type": "trigger",
              "position": {"x": 100, "y": 200},
              "data": {"labelCn": "接收", "labelEn": "Receive", "type": "trigger", "triggerType": "http",
-                      "authConfigs": [{"type": "SYSTOKEN", "fields": [
-                          {"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}
-                      ]}],
+                      "authConfigs": [{"type": "SYSTOKEN", "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}}],
                       "input": {"protocol": "HTTP",
                           "header": {"type": "object", "properties": {}, "required": []},
                           "query": {"type": "object", "properties": {}, "required": []},

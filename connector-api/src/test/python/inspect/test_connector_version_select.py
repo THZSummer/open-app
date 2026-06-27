@@ -141,7 +141,7 @@ def build_version_config(version_label, target_url):
         "protocolConfig": {
             "url": target_url,
             "method": "GET",        },
-        "authConfigs": [{"type": "NONE", "fields": []}],
+        "authConfigs": [{"type": "NONE"}],
         "input": {
             "protocol": "HTTP",
             "header": {"type": "object", "properties": {}, "required": []},
@@ -173,10 +173,7 @@ def build_orch(connector_version_id, connection_config):
                     "triggerType": "http",
                     "authConfigs": [{
                         "type": "SYSTOKEN",
-                        "fields": [
-                            {"name": "token", "carrier": "header",
-                             "fieldName": "X-Sys-Token"}
-                        ]
+                        "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                     }],
                     "input": {
                         "protocol": "HTTP",

@@ -30,9 +30,7 @@ def build_orch(whitelist=None):
     """
     auth_cfg = {
         "type": "SYSTOKEN",
-        "fields": [
-            {"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}
-        ]
+        "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
     }
     if whitelist is not None:
         auth_cfg["sysAccountWhitelist"] = whitelist

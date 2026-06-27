@@ -145,10 +145,7 @@ def build_orch(connector_version_id, connection_config):
                     "triggerType": "http",
                     "authConfigs": [{
                         "type": "SYSTOKEN",
-                        "fields": [
-                            {"name": "token", "carrier": "header",
-                             "fieldName": "X-Sys-Token"}
-                        ]
+                        "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                     }],
                     "input": {
                         "protocol": "HTTP",
@@ -233,17 +230,11 @@ CONN_CONFIG_SOA_COOKIE = {
     "authConfigs": [
         {
             "type": "SOA",
-            "fields": [
-                {"name": "soa_key", "carrier": "header",
-                 "fieldName": "X-SOA-Key", "value": "soa-test-key"}
-            ]
+            "header": {"type": "object", "properties": {"X-SOA-Key": {"type": "string", "required": True, "sensitive": True, "value": "soa-test-key"}}}
         },
         {
             "type": "COOKIE",
-            "fields": [
-                {"name": "cookie_token", "carrier": "header",
-                 "fieldName": "Cookie", "value": "session=abc123"}
-            ]
+            "header": {"type": "object", "properties": {"Cookie": {"type": "string", "required": True, "sensitive": True, "value": "session=abc123"}}}
         }
     ],
     "input": BASE_INPUT_CONTRACT,
@@ -263,17 +254,11 @@ CONN_CONFIG_DIGITALSIGN_COOKIE = {
     "authConfigs": [
         {
             "type": "SIGNATURE",
-            "fields": [
-                {"name": "sign", "carrier": "header",
-                 "fieldName": "X-Digital-Sign", "value": "sign-test-value"}
-            ]
+            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "sign-test-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True}}}
         },
         {
             "type": "COOKIE",
-            "fields": [
-                {"name": "cookie_token", "carrier": "header",
-                 "fieldName": "Cookie", "value": "session=xyz789"}
-            ]
+            "header": {"type": "object", "properties": {"Cookie": {"type": "string", "required": True, "sensitive": True, "value": "session=xyz789"}}}
         }
     ],
     "input": BASE_INPUT_CONTRACT,
@@ -293,24 +278,15 @@ CONN_CONFIG_TRIPLE_AUTH = {
     "authConfigs": [
         {
             "type": "SOA",
-            "fields": [
-                {"name": "soa_key", "carrier": "header",
-                 "fieldName": "X-SOA-Key", "value": "triple-soa-key"}
-            ]
+            "header": {"type": "object", "properties": {"X-SOA-Key": {"type": "string", "required": True, "sensitive": True, "value": "triple-soa-key"}}}
         },
         {
             "type": "SIGNATURE",
-            "fields": [
-                {"name": "sign", "carrier": "header",
-                 "fieldName": "X-Digital-Sign", "value": "triple-sign-value"}
-            ]
+            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "triple-sign-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True}}}
         },
         {
             "type": "COOKIE",
-            "fields": [
-                {"name": "cookie_token", "carrier": "header",
-                 "fieldName": "Cookie", "value": "session=triple123"}
-            ]
+            "header": {"type": "object", "properties": {"Cookie": {"type": "string", "required": True, "sensitive": True, "value": "session=triple123"}}}
         }
     ],
     "input": BASE_INPUT_CONTRACT,
@@ -329,11 +305,7 @@ CONN_CONFIG_SOA_ONLY = {
     },
     "authConfigs": [{
         "type": "SOA",
-        "fields": [
-            {"name": "soa_key", "carrier": "header",
-             "fieldName": "X-SOA-Key",
-             "value": "baseline-soa-key"}
-        ]
+        "header": {"type": "object", "properties": {"X-SOA-Key": {"type": "string", "required": True, "sensitive": True, "value": "baseline-soa-key"}}}
     }],
     "input": BASE_INPUT_CONTRACT,
     "output": BASE_OUTPUT_CONTRACT,

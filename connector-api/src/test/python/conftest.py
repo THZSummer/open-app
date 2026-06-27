@@ -107,7 +107,7 @@ def deployed_flow(flow, request):
                     "triggerType": "http",
                     "authConfigs": [{
                         "type": "SYSTOKEN",
-                        "fields": [{"name": "token", "carrier": "header", "fieldName": "X-Sys-Token"}]
+                        "header": {"type": "object", "properties": {"X-Sys-Token": {"type": "string", "required": True, "sensitive": True}}}
                     }],
                     "input": {
                         "protocol": "HTTP",
