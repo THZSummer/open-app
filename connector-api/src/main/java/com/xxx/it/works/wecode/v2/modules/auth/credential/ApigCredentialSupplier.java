@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.auth.credential;
 
+import com.xxx.it.works.wecode.v2.common.annotation.StandardTodo;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -9,9 +10,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ApigCredentialSupplier implements CredentialSupplier {
 
+    @StandardTodo("对接凭据管理服务获取 apigAppKey")
     @Value("${openapp.credential.apig.appkey:}")
     private String appKey;
 
+    @StandardTodo("对接凭据管理服务获取 apigAppSecret")
     @Value("${openapp.credential.apig.appsecret:}")
     private String appSecret;
 

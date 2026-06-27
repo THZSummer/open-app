@@ -1,13 +1,12 @@
 package com.xxx.it.works.wecode.v2.modules.auth.credential;
 
+import com.xxx.it.works.wecode.v2.common.annotation.StandardTodo;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import org.springframework.stereotype.Component;
 
-/**
- * 凭据提供桩实现 — 默认降级，兜底所有未匹配的 authType。
- */
+@StandardTodo("默认兜底实现，所有未匹配 authType 走此 Supplier")
 @Component
 public class StubCredentialSupplier implements CredentialSupplier {
 
