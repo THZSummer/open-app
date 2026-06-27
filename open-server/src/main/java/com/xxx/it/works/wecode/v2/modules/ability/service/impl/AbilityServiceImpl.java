@@ -77,13 +77,7 @@ public class AbilityServiceImpl implements AbilityService {
 
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = abilities.stream().map(Ability::getId).collect(Collectors.toList());
-        Map<Long, List<AbilityProperty>> propsMap = new HashMap<>();
-        if (!abilityIds.isEmpty()) {
-            List<AbilityProperty> allProps = abilityPropertyMapper.selectByParentIds(abilityIds);
-            for (AbilityProperty p : allProps) {
-                propsMap.computeIfAbsent(p.getParentId(), k -> new ArrayList<>()).add(p);
-            }
-        }
+        Map<Long, List<AbilityProperty>> propsMap = loadPropsMap(abilityIds);
 
         // 查询当前应用已订阅的能力类型
         List<AppAbilityRelation> subscribed = appAbilityRelationMapper.selectByAppId(internalAppId);
@@ -193,13 +187,7 @@ public class AbilityServiceImpl implements AbilityService {
 
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = allAbilities.stream().map(Ability::getId).collect(Collectors.toList());
-        Map<Long, List<AbilityProperty>> propsMap = new HashMap<>();
-        if (!abilityIds.isEmpty()) {
-            List<AbilityProperty> allProps = abilityPropertyMapper.selectByParentIds(abilityIds);
-            for (AbilityProperty p : allProps) {
-                propsMap.computeIfAbsent(p.getParentId(), k -> new ArrayList<>()).add(p);
-            }
-        }
+        Map<Long, List<AbilityProperty>> propsMap = loadPropsMap(abilityIds);
 
         List<AppAbilityDetailVO> list = new ArrayList<>();
         for (AppAbilityRelation r : relations) {
@@ -225,5 +213,22 @@ public class AbilityServiceImpl implements AbilityService {
             list.add(vo);
         }
         return list;
+    }
+
+    /**
+     * 批量查询指定能力的属性，按 parentId 分组
+     *
+     * @param abilityIds 能力 ID 列表
+     * @return parentId -> 属性列表 映射（空列表或 null 入参返回空 Map）
+     */
+    private Map<Long, List<AbilityProperty>> loadPropsMap(List<Long> abilityIds) {
+        Map<Long, List<AbilityProperty>> propsMap = new HashMap<>();
+        if (abilityIds != null && !abilityIds.isEmpty()) {
+            List<AbilityProperty> allProps = abilityPropertyMapper.selectByParentIds(abilityIds);
+            for (AbilityProperty p : allProps) {
+                propsMap.computeIfAbsent(p.getParentId(), k -> new ArrayList<>()).add(p);
+            }
+        }
+        return propsMap;
     }
 }

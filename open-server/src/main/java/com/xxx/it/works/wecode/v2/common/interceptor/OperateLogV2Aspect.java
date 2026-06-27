@@ -59,9 +59,7 @@ public class OperateLogV2Aspect {
         OperateEnum op;
         Long resourceId;
         String appId;
-        /**
-         * before/after/request 统一存 JsonNode，写日志时按需转 String
-         */
+        // before/after/request 统一存 JsonNode，写日志时按需转 String
         JsonNode before;
         JsonNode after;
         JsonNode request;
