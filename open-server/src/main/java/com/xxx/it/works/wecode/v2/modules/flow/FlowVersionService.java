@@ -10,6 +10,10 @@ import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalActionResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.FlowVersionApprovalService;
 import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
+import org.springframework.beans.factory.annotation.Value;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
 import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
@@ -52,7 +56,7 @@ public class FlowVersionService {
 
 
     @Autowired
-    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService) {
+    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService, ApprovalRecordMapper approvalRecordMapper) {
         this.flowMapper = flowMapper;
         this.flowVersionMapper = flowVersionMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
@@ -63,6 +67,7 @@ public class FlowVersionService {
         this.genericApprovalService = genericApprovalService;
         this.auditLogService = auditLogService;
         this.propertyService = propertyService;
+        this.approvalRecordMapper = approvalRecordMapper;
     }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
@@ -74,11 +79,15 @@ public class FlowVersionService {
     private final ApprovalService genericApprovalService;
     private final AuditLogService auditLogService;
     private final ConnectorPlatformPropertyService propertyService;
+    private final ApprovalRecordMapper approvalRecordMapper;
 
     @Autowired(required = false)
     private StringRedisTemplate stringRedisTemplate;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
+    @Value("${platform.approval-url-prefix}")
+    private String approvalUrlPrefix;
 
     // ==================== #28 创建草稿 ====================
 
@@ -213,6 +222,38 @@ public class FlowVersionService {
         response.setCreateBy(version.getCreateBy());
         response.setLastUpdateTime(version.getLastUpdateTime() != null ? sdf.format(version.getLastUpdateTime()) : null);
         response.setLastUpdateBy(version.getLastUpdateBy());
+
+        // 查询审批信息（待审批状态时查询审批人和审批地址）
+        if (version.getStatus() != null && version.getStatus() == FlowVersionStatus.PENDING_APPROVAL.getCode()) {
+            try {
+                ApprovalRecord record = approvalRecordMapper.selectLatestByBusiness(
+                        "connector_flow_version_publish", versionId);
+                if (record != null && record.getCombinedNodes() != null) {
+                    JsonNode nodesNode = objectMapper.readTree(record.getCombinedNodes());
+                    Integer currentNode = record.getCurrentNode();
+                    if (currentNode != null && currentNode >= 0
+                            && nodesNode.isArray() && currentNode < nodesNode.size()) {
+                        JsonNode nodeInfo = nodesNode.get(currentNode);
+                        String approverUserId = nodeInfo.has("userId")
+                                ? nodeInfo.get("userId").asText() : null;
+                        String approverUserName = nodeInfo.has("userName")
+                                ? nodeInfo.get("userName").asText() : null;
+
+                        FlowVersionDetailResponse.ApproverInfo approverInfo =
+                                new FlowVersionDetailResponse.ApproverInfo();
+                        approverInfo.setUserId(approverUserId);
+                        approverInfo.setUserName(approverUserName);
+                        response.setApprover(approverInfo);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to query approval info for flow version: versionId={}, error={}",
+                        versionId, e.getMessage());
+            }
+        }
+
+        // 审批地址
+        response.setApprovalUrl(approvalUrlPrefix + versionId);
 
         return ApiResponse.success(response);
     }

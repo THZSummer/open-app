@@ -1,6 +1,9 @@
 package com.xxx.it.works.wecode.v2.modules.flow.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 连接流版本详情响应
@@ -44,4 +47,27 @@ public class FlowVersionDetailResponse {
 
     /** 最后更新人 */
     private String lastUpdateBy;
+
+    /** 审批人信息（仅待审批状态有值） */
+    private ApproverInfo approver;
+
+    /** 审批地址 */
+    private String approvalUrl;
+
+    /**
+     * 审批人信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ApproverInfo implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
+
+        /** 审批人用户ID */
+        private String userId;
+
+        /** 审批人用户名称 */
+        private String userName;
+    }
 }

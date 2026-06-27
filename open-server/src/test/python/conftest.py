@@ -122,3 +122,17 @@ def deployed_flow(flow, request):
     db(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, version_number, status, orchestration_config, create_by, last_update_by) VALUES ({vid}, {flow}, 1, 5, '{{\"nodes\":[{{\"id\":\"trigger\",\"type\":\"trigger\",\"data\":{{\"triggerType\":\"http\"}}}}],\"edges\":[]}}', 'tester', 'tester')")
     db(f"UPDATE openplatform_v2_cp_flow_t SET deployed_version_id = {vid}, deployed_version_number = 1 WHERE id = {flow}")
     yield flow, vid
+
+@pytest.fixture
+def pending_approval_flow(flow, request):
+    """含待审批版本 + 审批记录的连接流（用于测试审批人/审批地址字段）"""
+    vid = _snow_id()
+    ar_id = _snow_id()
+    tag = request.node.name.replace("test_", "")[:40]
+    # 创建待审批版本 (status=2 = PENDING_APPROVAL)
+    db(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, version_number, status, orchestration_config, create_by, last_update_by) VALUES ({vid}, {flow}, 1, 2, '{{\"nodes\":[{{\"id\":\"trigger\",\"type\":\"trigger\",\"data\":{{\"triggerType\":\"http\"}}}}],\"edges\":[]}}', 'tester', 'tester')")
+    # 创建审批记录（含 combined_nodes + current_node=0）
+    db(f"INSERT INTO openplatform_v2_approval_record_t (id, combined_nodes, business_type, business_id, applicant_id, applicant_name, status, current_node, create_by, last_update_by) VALUES ({ar_id}, '[{{\"userId\":\"approver001\",\"userName\":\"测试审批人\",\"order\":1,\"level\":\"global\"}}]', 'connector_flow_version_publish', {vid}, 'admin', '管理员', 0, 0, 'admin', 'admin')")
+    yield flow, vid, ar_id
+    if not _KEEP:
+        db(f"DELETE FROM openplatform_v2_approval_record_t WHERE id = {ar_id}")
