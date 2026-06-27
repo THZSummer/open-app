@@ -3095,6 +3095,11 @@ graph TB
       "additionalProperties": false,
       "description": "连接流级配置（入站限流、缓存）。快照在 FlowVersion 中，不独立建表",
       "properties": {
+        "flowMode": {
+          "type": "string",
+          "enum": ["single", "serial", "parallel"],
+          "description": "编排模式：single(单节点)/serial(串行)/parallel(并行)。前端渲染编排画布必需"
+        },
         "rateLimitConfig": { "$ref": "#/definitions/rateLimitConfigDef" },
         "cache": {
           "type": "object",
@@ -3178,6 +3183,7 @@ graph TB
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:----:|------|
+| `flowMode` | string | ✅ | 编排模式：`single`（单节点：触发器→连接器→输出）/ `serial`（串行编排，可追加多节点）/ `parallel`（并行编排，多分支）。前端渲染编排画布必需 |
 | `rateLimitConfig` | object | ❌ | 入站限流配置，复用 `rateLimitConfigDef`（§4.3.3）。`maxQps`：每秒最大请求数（1-1000）；`maxConcurrency`：最大并发数（1-1000） |
 | `cache` | object | ❌ | 响应缓存配置，命中后跳过 DAG 执行直接返回 |
 | `cache.key` | string[] | ✅⚡ | 缓存键表达式列表，minItems 1。每个元素遵循 §3 值表达式体系，运行时按序解析后以冒号(`:`)拼接为完整缓存键 |
@@ -3185,6 +3191,19 @@ graph TB
 
 ⚡ = `cache` 存在时必填。
 
+> **示例** — 单节点模式 + 限流 + 缓存：
+>
+> ```json
+> {
+>   "flowMode": "single",
+>   "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 20 },
+>   "cache": {
+>     "key": ["${$.node.trigger.input.body.sender}", "${$.constant:msg_query}"],
+>     "ttl": 60
+>   }
+> }
+> ```
+>
 > **缓存语义**：`cache.key` 按表达式列表解析为具体值后拼接（如 `"${$.node.trigger.input.body.userId}"` → `"u001"`），再以冒号拼接为最终键（如 `"u001:queryOrders"`），查 Redis。命中则跳过 DAG 执行，直接返回上次缓存的响应。
 
 ### 6.4 DAG 拓扑约束
@@ -3251,6 +3270,7 @@ graph TB
     { "id":"e2", "source":"node_1",       "target":"node_exit", "data":{"businessType":"default"} }
   ],
   "flowConfig": {
+    "flowMode": "single",
     "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 20 },
     "cache": {
       "key": ["${$.node.trigger.input.body.sender}", "${$.constant:msg_query}"],
