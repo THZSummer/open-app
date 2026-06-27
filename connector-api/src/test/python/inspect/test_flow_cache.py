@@ -174,12 +174,12 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
         }
     }
 
-    # 构建 flowConfig (顶层, FlowRuntimeEngine 从此字段读取缓存配置)
-    # FlowConfigParser 直接从 flowConfig 根读取 cacheTtl / cacheKeyTemplate
     flow_config = {}
     if cache_ttl is not None:
-        flow_config["cacheTtl"] = cache_ttl
-        flow_config["cacheKeyTemplate"] = "cache_test_${.input.userId}"
+        flow_config["cache"] = {
+            "key": ["${$.node.node_trigger.input.body.msg}"],
+            "ttl": cache_ttl
+        }
 
     orch = {
         "flowConfig": flow_config,
