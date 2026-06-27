@@ -134,7 +134,7 @@ export const getConnectorColumns = (callbacks) => {
       render: renderTooltipTextCell,
     },
     {
-      title: '创建者',
+      title: '创建人',
       dataIndex: 'createBy',
       key: 'createBy',
       width: 120,

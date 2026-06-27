@@ -246,3 +246,15 @@ export const getVersionObjectName = (version) => {
   if (versionName) return versionName;
   return version.versionId || '';
 };
+
+/**
+ * 从审批链接中提取 eflowId
+ * @param {string} url - 审批地址URL
+ * @returns {string} eflowId 值或空字符串
+ */
+export const extractEflowId = (url) => {
+  if (!url) return '';
+  
+  const match = url.match(/eflowId=([^&]+)/);
+  return match ? match[1] : '';
+};

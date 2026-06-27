@@ -287,8 +287,6 @@ const buildAuthConfigs = (apiConfig) => {
         properties: {
           [signatureConfig.paramName]: {
             type: 'string',
-            required: true,
-            sensitive: true,
             value: signatureConfig.fixedValue || '',
             description: '签名头',
           },

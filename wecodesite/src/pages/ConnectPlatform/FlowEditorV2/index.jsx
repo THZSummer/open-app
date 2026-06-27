@@ -951,7 +951,6 @@ function FlowEditorV2() {
         visible={detailDrawerVisible}
         versionInfo={versionDetailInfo}
         onClose={() => { setDetailDrawerVisible(false); setVersionDetailInfo(null); }}
-        onUrge={() => { }}
       />
 
       {/* 更多配置抽屉 */}

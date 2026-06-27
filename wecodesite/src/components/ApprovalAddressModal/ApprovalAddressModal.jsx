@@ -2,19 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { remindPeople } from '../../pages/Admin/Approval/thunk';
-import { copyToClipboard } from '../../utils/common';
-
-/**
- * 从审批链接中提取 eflowId
- * @param {string} url - 审批地址URL
- * @returns {string} eflowId 值或空字符串
- */
-const extractEflowId = (url) => {
-  if (!url) return '';
-  
-  const match = url.match(/eflowId=([^&]+)/);
-  return match ? match[1] : '';
-};
+import { copyToClipboard, extractEflowId } from '../../utils/common';
 
 function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessType, approvalUser }) {
   const [remindLoading, setRemindLoading] = useState(false);
