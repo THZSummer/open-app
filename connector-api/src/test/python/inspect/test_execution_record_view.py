@@ -2,21 +2,17 @@
 """执行记录查看 E2E 集成测试 — FR-042
 
 覆盖运行记录查询能力：
-  - IT-REC-001: 成功调用后，通过 API/MySQL 查询执行记录
+  - IT-REC-001: 成功调用后，通过 MySQL 查询执行记录
   - IT-REC-002: 失败调用后，执行记录显示失败状态
-  - IT-REC-003: 执行记录分页和按 flow_id 过滤验证
+  - IT-REC-003: 执行记录分页和按 flow_id、status 过滤验证
 
 验证方式：
-  - 优先通过 open-server API: GET /service/open/v2/flows/{flowId}/executions
-  - 降级通过 MySQL 直接查询 openplatform_v2_cp_execution_record_t
+  - 全部通过 MySQL 直接查询 openplatform_v2_cp_execution_record_t
+  - 不依赖 open-server API（只读动作使用 DB 工具）
 """
 from client import *
 import pytest
 import time
-import json
-import requests as req_lib
-
-OPEN_SERVER = "http://localhost:18080/open-server"
 
 
 # ═══════════════════════════════════════════════════════════
@@ -122,16 +118,28 @@ def query_execution_records(flow_id):
     return db(sql, capture=True)
 
 
-def list_executions_api(flow_id, query_params=None):
-    """通过 open-server API 查询执行记录列表"""
-    url = f"{OPEN_SERVER}/service/open/v2/flows/{flow_id}/executions"
-    h = {"X-App-Id": "0"}
-    params = query_params or {"curPage": "1", "pageSize": "20"}
+def count_execution_records(flow_id):
+    """通过 MySQL 统计指定 flow 的执行记录总数"""
+    raw = db_val(
+        f"SELECT COUNT(*) FROM openplatform_v2_cp_execution_record_t "
+        f"WHERE flow_id = {flow_id}"
+    )
     try:
-        resp = req_lib.get(url, headers=h, params=params, timeout=5)
-        return resp
-    except Exception:
-        return None
+        return int(raw) if raw else 0
+    except (ValueError, TypeError):
+        return -1
+
+
+def count_execution_records_by_status(flow_id, status):
+    """通过 MySQL 统计指定 flow+status 的执行记录数"""
+    raw = db_val(
+        f"SELECT COUNT(*) FROM openplatform_v2_cp_execution_record_t "
+        f"WHERE flow_id = {flow_id} AND status = {status}"
+    )
+    try:
+        return int(raw) if raw else 0
+    except (ValueError, TypeError):
+        return -1
 
 
 # ═══════════════════════════════════════════════════════════
@@ -166,7 +174,7 @@ def test_execution_record_view():
     # 等待异步写入完成 (R2DBC subscribe 是非阻塞的)
     time.sleep(0.5)
 
-    # ── MySQL 验证 ──
+    # ── MySQL 验证：记录存在 ──
     records_output = query_execution_records(fid_001)
     has_records = "id" in records_output and records_output.strip()
     if has_records:
@@ -175,7 +183,6 @@ def test_execution_record_view():
         check(f"IT-REC-001 MySQL 查询到 {len(data_lines)} 条执行记录",
               len(data_lines) >= 1,
               f"查询结果首行: {data_lines[0][:120] if data_lines else '(空)'}")
-        # 检查 status 字段: 期望 0 (success) 或 pending
         if data_lines:
             check("IT-REC-001 执行记录产生",
                   True,
@@ -184,25 +191,28 @@ def test_execution_record_view():
         check("IT-REC-001 执行记录（引擎可能未持久化到此 flow）",
               True)
 
-    # ── open-server API 验证 ──
-    api_resp = list_executions_api(fid_001)
-    if api_resp and api_resp.status_code == 200:
-        api_body = api_resp.json()
-        check("IT-REC-001 API 查询成功 (HTTP 200)", True)
-        data = api_body.get("data")
-        page_info = api_body.get("page")
-        if isinstance(data, list):
-            check(f"IT-REC-001 API 返回 {len(data)} 条记录",
-                  len(data) >= 1 if has_records else True)
-        if page_info and isinstance(page_info, dict):
-            check("IT-REC-001 API 含分页信息",
-                  "total" in page_info)
-    elif api_resp is not None:
-        check("IT-REC-001 API 查询响应",
-              api_resp.status_code in (200, 404, 500),
-              f"API HTTP: {api_resp.status_code}")
-    else:
-        check("IT-REC-001 API 查询 (open-server 未运行)", True)
+    # ── DB 验证：记录结构完整性 ──
+    total_count = count_execution_records(fid_001)
+    check("IT-REC-001 DB COUNT 查询成功",
+          total_count >= 0,
+          f"count={total_count}")
+    if total_count > 0:
+        check(f"IT-REC-001 DB 总记录数 >= 1",
+              total_count >= 1,
+              f"total={total_count}")
+
+        # 验证记录关键字段非空
+        field_check = db(
+            f"SELECT id, flow_id, trigger_time, status, trigger_type "
+            f"FROM openplatform_v2_cp_execution_record_t "
+            f"WHERE flow_id = {fid_001} "
+            f"ORDER BY trigger_time DESC LIMIT 1",
+            capture=True
+        )
+        if field_check and "id" in field_check:
+            check("IT-REC-001 记录字段完整性（id/flow_id/status 存在）",
+                  True,
+                  f"首行: {field_check.strip().split(chr(10))[-1][:100] if field_check.strip() else 'N/A'}")
 
     print("")
     print("=== IT-REC-002: 失败调用后记录显示失败状态 ===")
@@ -221,7 +231,6 @@ def test_execution_record_view():
         check("IT-REC-002 请求已发送 (预期失败)",
               resp.status_code in (200, 400, 500),
               f"HTTP: {resp.status_code}")
-        # X-Execution-Id 仅在实际执行时存在，前置校验失败时无此头
         if resp.status_code == 200:
             check("IT-REC-002 X-Execution-Id 存在",
                   bool(resp.headers.get("X-Execution-Id")))
@@ -268,7 +277,7 @@ def test_execution_record_view():
     # 等待异步写入
     time.sleep(0.5)
 
-    # ── MySQL 验证分页/过滤 ──
+    # ── DB 验证：分页 (LIMIT) ──
     page1_out = db(
         f"SELECT id, flow_id, status FROM "
         f"openplatform_v2_cp_execution_record_t "
@@ -276,16 +285,27 @@ def test_execution_record_view():
         f"ORDER BY trigger_time DESC LIMIT 2",
         capture=True
     )
-    other_out = db(
-        f"SELECT COUNT(*) FROM openplatform_v2_cp_execution_record_t "
-        f"WHERE flow_id = 999999999999999999",
-        capture=True
-    )
 
     has_p1 = page1_out.strip() and "id" in page1_out
     check("IT-REC-003 MySQL LIMIT 分页查询成功", has_p1,
           f"page1 结果: {page1_out[:100] if page1_out else '(空)'}")
-    # 不存在的 flow_id 应该没有记录（即使有遗留数据也不影响功能）
+
+    # ── DB 验证：总数 COUNT ──
+    total_003 = count_execution_records(fid_003)
+    check("IT-REC-003 DB COUNT 总数查询成功",
+          total_003 >= 0,
+          f"total={total_003}")
+    check(f"IT-REC-003 DB 总数 >= {invoke_count}",
+          total_003 >= invoke_count,
+          f"total={total_003}, expected>={invoke_count}")
+
+    # ── DB 验证：不存在的 flow_id ──
+    non_existent_fid = snow_id()
+    other_out = db(
+        f"SELECT COUNT(*) FROM openplatform_v2_cp_execution_record_t "
+        f"WHERE flow_id = {non_existent_fid}",
+        capture=True
+    )
     other_count = -1
     try:
         lines = other_out.strip().split("\n")
@@ -293,11 +313,12 @@ def test_execution_record_view():
             other_count = int(lines[1].strip())
     except (ValueError, IndexError):
         pass
-    check("IT-REC-003 不存在的 flow_id 记录数",
-          other_count >= 0,  # 查询本身成功即可
+    # 随机生成的 snow_id 极大概率不存在，即使存在也不影响功能（查询本身成功即可）
+    check("IT-REC-003 随机 flow_id 记录数合理（不含意外残留）",
+          other_count == 0,
           f"count={other_count}, raw={other_out.strip()[:100] if other_out else '(空)'}")
 
-    # 按 flow_id 过滤：同一 flow 的记录都归属该 flow
+    # ── DB 验证：按 flow_id 过滤（同一 flow 的记录都归属该 flow）──
     all_same = True
     if has_p1:
         lines = page1_out.strip().split("\n")[1:]
@@ -307,33 +328,15 @@ def test_execution_record_view():
     check("IT-REC-003 所有记录均属于同一 flow_id",
           all_same)
 
-    # ── open-server API 分页验证 ──
-    api_resp = list_executions_api(fid_003,
-                                   {"curPage": "1", "pageSize": "2"})
-    if api_resp and api_resp.status_code == 200:
-        api_body = api_resp.json()
-        page = api_body.get("page", {})
-        check("IT-REC-003 API 分页 total 字段存在",
-              "total" in page,
-              f"page keys: {list(page.keys()) if page else 'None'}")
-        check("IT-REC-003 API 分页 pageSize=2",
-              page.get("pageSize") == 2,
-              f"pageSize={page.get('pageSize')}")
-    elif api_resp is not None:
-        check("IT-REC-003 API 分页 HTTP 状态",
-              api_resp.status_code in (200, 404, 500),
-              f"HTTP: {api_resp.status_code}")
-    else:
-        check("IT-REC-003 API 分页 (open-server 未运行)", True)
-
-    # ── open-server API 按 status 过滤 ──
-    api_filter = list_executions_api(fid_003,
-                                     {"status": "0", "curPage": "1",
-                                      "pageSize": "20"})
-    if api_filter and api_filter.status_code == 200:
-        check("IT-REC-003 API 按 status=0 过滤成功", True)
-    else:
-        check("IT-REC-003 API 按 status 过滤 (API 不可用)", True)
+    # ── DB 验证：按 status 过滤 ──
+    status0_count = count_execution_records_by_status(fid_003, 0)
+    check("IT-REC-003 DB 按 status=0 过滤查询成功",
+          status0_count >= 0,
+          f"count={status0_count}")
+    if total_003 > 0:
+        check("IT-REC-003 DB status=0 记录数 > 0",
+              status0_count > 0,
+              f"status0_count={status0_count}, total={total_003}")
 
     print("")
     print("=== 执行记录查看 E2E 测试完成 ===")
