@@ -19,6 +19,9 @@ public class ExecutionRecordVO implements Serializable {
     /** 执行记录ID */
     private String id;
 
+    /** 归属应用ID */
+    private String appId;
+
     /** 连接流ID */
     private String flowId;
 

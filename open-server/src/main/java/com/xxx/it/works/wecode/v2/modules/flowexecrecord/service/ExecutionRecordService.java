@@ -135,6 +135,7 @@ public class ExecutionRecordService {
     private ExecutionRecordVO toListVO(ExecutionRecord record) {
         ExecutionRecordVO vo = new ExecutionRecordVO();
         vo.setId(String.valueOf(record.getId()));
+        vo.setAppId(String.valueOf(record.getAppId()));
         vo.setFlowId(String.valueOf(record.getFlowId()));
         vo.setFlowVersionId(record.getFlowVersionId() != null ? String.valueOf(record.getFlowVersionId()) : null);
         vo.setFlowVersionNumber(record.getFlowVersionNumber());
