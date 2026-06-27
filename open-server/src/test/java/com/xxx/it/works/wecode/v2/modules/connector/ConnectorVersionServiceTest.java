@@ -5,13 +5,16 @@ import com.xxx.it.works.wecode.v2.common.enums.ConnectorStatus;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.service.ConnectorVersionService;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.Connector;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper;
 import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorMapper;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.OpConnectorVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -53,8 +56,8 @@ class ConnectorVersionServiceTest {
     private ConnectorVersionService connectorVersionService;
 
     private Connector connector;
-    private final Long appId = 1L;
     private final Long connectorId = 100L;
+    private static final Long TEST_APP_ID = 1L;
 
     @BeforeEach
     void setUp() {
@@ -62,7 +65,7 @@ class ConnectorVersionServiceTest {
         connector.setId(connectorId);
         connector.setNameCn("测试连接器");
         connector.setNameEn("test_connector");
-        connector.setAppId(appId);
+        connector.setAppId(TEST_APP_ID);
         connector.setStatus(ConnectorStatus.UNAVAILABLE.getCode()); // 有效不可用
         connector.setConnectorType(1);
         when(idGenerator.nextId()).thenReturn(1000L);
@@ -70,6 +73,7 @@ class ConnectorVersionServiceTest {
         lenient().when(propertyService.getConnectorMaxVersions()).thenReturn(1000);
         lenient().when(propertyService.getConnectorConfigMaxBytes(anyString())).thenReturn(0); // 0 = not enforced
         lenient().when(propertyService.getUrlRegexPattern()).thenReturn(null); // no URL validation
+        AppContextHolder.setCurrentContext(AppContext.builder().internalId(TEST_APP_ID).build());
     }
 
     // ===== 创建草稿 =====
@@ -85,7 +89,7 @@ class ConnectorVersionServiceTest {
             when(connectorVersionMapper.selectListByConnectorId(connectorId, null)).thenReturn(new ArrayList<>());
             when(connectorVersionMapper.selectMaxVersionNumberByConnectorId(connectorId)).thenReturn(null);
 
-            ApiResponse<?> response = connectorVersionService.createDraft(connectorId, appId);
+            ApiResponse<?> response = connectorVersionService.createDraft(connectorId);
 
             assertEquals("200", response.getCode());
             verify(connectorVersionMapper).insert(any(ConnectorVersion.class));
@@ -101,7 +105,7 @@ class ConnectorVersionServiceTest {
             when(connectorVersionMapper.selectListByConnectorId(connectorId, null))
                     .thenReturn(List.of(existingDraft));
 
-            ApiResponse<?> response = connectorVersionService.createDraft(connectorId, appId);
+            ApiResponse<?> response = connectorVersionService.createDraft(connectorId);
 
             assertEquals("409", response.getCode());
         }
@@ -119,7 +123,7 @@ class ConnectorVersionServiceTest {
             }
             when(connectorVersionMapper.selectListByConnectorId(connectorId, null)).thenReturn(fullList);
 
-            ApiResponse<?> response = connectorVersionService.createDraft(connectorId, appId);
+            ApiResponse<?> response = connectorVersionService.createDraft(connectorId);
 
             assertEquals("422", response.getCode());
         }
@@ -140,7 +144,7 @@ class ConnectorVersionServiceTest {
             when(connectorVersionMapper.selectById(200L)).thenReturn(draft);
             when(connectorVersionMapper.selectListByConnectorId(connectorId, null)).thenReturn(new ArrayList<>());
 
-            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L);
 
             assertEquals("200", response.getCode());
             assertEquals(ConnectorVersionStatus.PUBLISHED.getCode(), draft.getStatus());
@@ -157,7 +161,7 @@ class ConnectorVersionServiceTest {
             when(connectorMapper.selectById(connectorId)).thenReturn(connector);
             when(connectorVersionMapper.selectById(200L)).thenReturn(published);
 
-            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L);
 
             assertEquals("409", response.getCode());
         }
@@ -170,7 +174,7 @@ class ConnectorVersionServiceTest {
             when(connectorMapper.selectById(connectorId)).thenReturn(connector);
             when(connectorVersionMapper.selectById(200L)).thenReturn(draft);
 
-            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L);
 
             assertEquals("422", response.getCode());
             assertTrue(response.getMessageZh().contains("草稿配置为空"));
@@ -184,7 +188,7 @@ class ConnectorVersionServiceTest {
             when(connectorMapper.selectById(connectorId)).thenReturn(connector);
             when(connectorVersionMapper.selectById(200L)).thenReturn(draft);
 
-            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L);
 
             assertEquals("422", response.getCode());
             assertTrue(response.getMessageZh().contains("URL 白名单正则无效"));
@@ -207,7 +211,7 @@ class ConnectorVersionServiceTest {
             when(connectorVersionMapper.selectListByConnectorId(connectorId, null)).thenReturn(List.of(source));
             when(connectorVersionMapper.selectMaxVersionNumberByConnectorId(connectorId)).thenReturn(2);
 
-            ApiResponse<?> response = connectorVersionService.copyToDraft(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.copyToDraft(connectorId, 200L);
 
             assertEquals("200", response.getCode());
             verify(connectorVersionMapper).insert(any(ConnectorVersion.class));
@@ -226,7 +230,7 @@ class ConnectorVersionServiceTest {
                     .thenReturn(List.of(source, existingDraft));
             when(connectorVersionMapper.selectMaxVersionNumberByConnectorId(connectorId)).thenReturn(2);
 
-            ApiResponse<?> response = connectorVersionService.copyToDraft(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.copyToDraft(connectorId, 200L);
 
             assertEquals("200", response.getCode());
             verify(connectorVersionMapper).deleteById(99L);
@@ -250,7 +254,7 @@ class ConnectorVersionServiceTest {
             // 无其他已发布版本 → 状态联动
             when(connectorVersionMapper.selectListByConnectorId(connectorId, null)).thenReturn(List.of(version));
 
-            ApiResponse<?> response = connectorVersionService.invalidateVersion(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.invalidateVersion(connectorId, 200L);
 
             assertEquals("200", response.getCode());
             assertEquals(ConnectorVersionStatus.INVALIDATED.getCode(), version.getStatus());
@@ -268,7 +272,7 @@ class ConnectorVersionServiceTest {
             when(connectorVersionMapper.selectById(200L)).thenReturn(version);
             when(connectorVersionRefMapper.selectByConnectorVersionId(200L)).thenReturn(List.of(ref));
 
-            ApiResponse<?> response = connectorVersionService.invalidateVersion(connectorId, 200L, appId);
+            ApiResponse<?> response = connectorVersionService.invalidateVersion(connectorId, 200L);
 
             assertEquals("422", response.getCode());
             assertTrue(response.getMessageZh().contains("引用"));
@@ -287,7 +291,7 @@ class ConnectorVersionServiceTest {
         // 无其他已发布版本 → 连接器恢复为 AVAILABLE
         when(connectorVersionMapper.selectListByConnectorId(connectorId, null)).thenReturn(List.of(version));
 
-        ApiResponse<?> response = connectorVersionService.recoverVersion(connectorId, 200L, appId);
+        ApiResponse<?> response = connectorVersionService.recoverVersion(connectorId, 200L);
 
         assertEquals("200", response.getCode());
         assertEquals(ConnectorVersionStatus.PUBLISHED.getCode(), version.getStatus());
@@ -303,7 +307,7 @@ class ConnectorVersionServiceTest {
         when(connectorMapper.selectById(connectorId)).thenReturn(connector);
         when(connectorVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<Void> response = connectorVersionService.deleteVersion(connectorId, 200L, appId);
+        ApiResponse<Void> response = connectorVersionService.deleteVersion(connectorId, 200L);
 
         assertEquals("200", response.getCode());
         verify(connectorVersionMapper).deleteById(200L);
@@ -316,7 +320,7 @@ class ConnectorVersionServiceTest {
         when(connectorMapper.selectById(connectorId)).thenReturn(connector);
         when(connectorVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<Void> response = connectorVersionService.deleteVersion(connectorId, 200L, appId);
+        ApiResponse<Void> response = connectorVersionService.deleteVersion(connectorId, 200L);
 
         assertEquals("409", response.getCode());
     }
@@ -331,7 +335,7 @@ class ConnectorVersionServiceTest {
         when(connectorVersionMapper.selectById(200L)).thenReturn(version);
 
         ApiResponse<?> response = connectorVersionService.updateDraft(connectorId, 200L,
-                "{\"url\":\"https://updated.com\"}", appId);
+                "{\"url\":\"https://updated.com\"}");
 
         assertEquals("200", response.getCode());
         verify(connectorVersionMapper).update(any(ConnectorVersion.class));
@@ -345,7 +349,7 @@ class ConnectorVersionServiceTest {
         when(connectorVersionMapper.selectById(200L)).thenReturn(version);
 
         ApiResponse<?> response = connectorVersionService.updateDraft(connectorId, 200L,
-                "{invalid json", appId);
+                "{invalid json");
 
         assertEquals("400", response.getCode());
     }
@@ -359,7 +363,7 @@ class ConnectorVersionServiceTest {
         when(connectorMapper.selectById(connectorId)).thenReturn(connector);
         when(connectorVersionMapper.selectListByConnectorId(connectorId, null)).thenReturn(List.of(v1));
 
-        var response = connectorVersionService.getVersionList(connectorId, null, appId);
+        var response = connectorVersionService.getVersionList(connectorId, null);
 
         assertEquals("200", response.getCode());
         assertEquals(1, response.getData().size());

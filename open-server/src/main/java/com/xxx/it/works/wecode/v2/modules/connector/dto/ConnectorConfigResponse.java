@@ -1,6 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.connector.dto;
 
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion;
 import lombok.Data;
 
 import java.util.Date;

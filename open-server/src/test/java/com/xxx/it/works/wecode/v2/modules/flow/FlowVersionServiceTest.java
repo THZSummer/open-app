@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.flow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.flowversion.service.FlowVersionService;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
@@ -10,11 +11,11 @@ import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
 import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.FlowPublishResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
-import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.validator.FlowPublishValidator;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;

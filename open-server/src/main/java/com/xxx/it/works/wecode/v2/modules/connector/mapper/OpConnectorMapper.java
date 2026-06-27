@@ -7,9 +7,12 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 连接器 Mapper 接口
+ * 连接器 Mapper 接口（v2.0.0）
  * <p>
  * 连接器基本信息 CRUD
+ * </p>
+ * <p>
+ * v2.0.0 变更：selectAll / selectList 增加 appId 参数，SQL 层实现应用数据隔离
  * </p>
  */
 @Mapper
@@ -36,19 +39,25 @@ public interface OpConnectorMapper {
     int deleteById(@Param("id") Long id);
 
     /**
-     * 查询全部连接器列表（无分页）
+     * 查询连接器列表（v2.0.0: 增加 appId 过滤）
+     *
+     * @param connectorType 连接器类型过滤（可选）
+     * @param keyword       搜索关键词（可选）
+     * @param appId         应用内部 ID（v2.0.0 新增，数据库层隔离）
      */
     List<Connector> selectAll(
             @Param("connectorType") Integer connectorType,
-            @Param("keyword") String keyword
+            @Param("keyword") String keyword,
+            @Param("appId") Long appId
     );
 
     /**
-     * 分页查询连接器列表
+     * 分页查询连接器列表（v2.0.0: 增加 appId 过滤）
      */
     List<Connector> selectList(
             @Param("connectorType") Integer connectorType,
             @Param("keyword") String keyword,
+            @Param("appId") Long appId,
             @Param("offset") Integer offset,
             @Param("pageSize") Integer pageSize
     );

@@ -8,13 +8,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
+import java.util.List;
 
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 @DisplayName("AppWhitelistService 测试")
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AppWhitelistServiceTest {
 
     @Mock
@@ -25,98 +29,88 @@ class AppWhitelistServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Default: Lookup returns null → triggers property fallback
         lenient().when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist")).thenReturn(null);
     }
 
     @Test
-    @DisplayName("空白名单配置 + Lookup 降级 → 拒绝（安全默认）")
-    void testEmptyWhitelist_DeniesAll() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", "");
-
-        assertFalse(service.isWhitelisted(1L));
-        assertFalse(service.isWhitelisted(999L));
+    @DisplayName("Lookup 返回 null → 拒绝（安全默认）")
+    void testLookupNull_DeniesAll() {
+        assertFalse(service.isWhitelisted("1"));
+        assertFalse(service.isWhitelisted("999"));
     }
 
     @Test
-    @DisplayName("null 白名单配置 + Lookup 降级 → 拒绝（安全默认）")
-    void testNullWhitelist_DeniesAll() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", null);
+    @DisplayName("Lookup 返回空列表 → 拒绝（安全默认）")
+    void testLookupEmpty_DeniesAll() {
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+                .thenReturn(List.of());
 
-        assertFalse(service.isWhitelisted(1L));
-    }
-
-    @Test
-    @DisplayName("appId 在配置中 → 通过")
-    void testAppIdInWhitelist_Pass() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", "1,2,3");
-
-        assertTrue(service.isWhitelisted(2L));
-    }
-
-    @Test
-    @DisplayName("appId 不在配置中 → 拒绝")
-    void testAppIdNotInWhitelist_Denied() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", "1,2,3");
-
-        assertFalse(service.isWhitelisted(999L));
+        assertFalse(service.isWhitelisted("1"));
     }
 
     @Test
     @DisplayName("appId 为 null → 拒绝")
     void testNullAppId_Denied() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", "1,2,3");
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+                .thenReturn(List.of("1", "2", "3"));
 
-        assertFalse(service.isWhitelisted(null));
+        assertFalse(service.isWhitelisted((String) null));
     }
 
     @Test
-    @DisplayName("白名单含空格 → 正确解析")
-    void testWhitelistWithSpaces_ParsedCorrectly() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", " 1 , 2 , 3 ");
+    @DisplayName("appId 为空字符串 → 拒绝")
+    void testEmptyAppId_Denied() {
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+                .thenReturn(List.of("1", "2", "3"));
 
-        assertTrue(service.isWhitelisted(1L));
-        assertTrue(service.isWhitelisted(2L));
-        assertTrue(service.isWhitelisted(3L));
-        assertFalse(service.isWhitelisted(4L));
+        assertFalse(service.isWhitelisted(""));
+        assertFalse(service.isWhitelisted("  "));
+    }
+
+    @Test
+    @DisplayName("appId 在白名单中 → 通过")
+    void testAppIdInWhitelist_Pass() {
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+                .thenReturn(List.of("app_001", "app_002", "app_003"));
+
+        assertTrue(service.isWhitelisted("app_002"));
+    }
+
+    @Test
+    @DisplayName("appId 不在白名单中 → 拒绝")
+    void testAppIdNotInWhitelist_Denied() {
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+                .thenReturn(List.of("app_001", "app_002"));
+
+        assertFalse(service.isWhitelisted("app_999"));
     }
 
     @Test
     @DisplayName("Lookup 查询返回结果 → 使用 Lookup 数据")
-    void testLookupWhitelist_UsedWhenAvailable() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", "999");
+    void testLookupWhitelist_Used() {
         when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
-                .thenReturn(java.util.List.of("1", "2", "3"));
+                .thenReturn(List.of("app_a", "app_b", "app_c"));
 
-        assertTrue(service.isWhitelisted(1L));
-        assertFalse(service.isWhitelisted(999L));
+        assertTrue(service.isWhitelisted("app_a"));
+        assertFalse(service.isWhitelisted("app_x"));
     }
 
     @Test
-    @DisplayName("Lookup 抛出异常 → 降级到属性配置")
-    void testLookupException_FallbackToProperty() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", "5,6");
+    @DisplayName("Lookup 抛出异常 → 拒绝（安全默认）")
+    void testLookupException_Denied() {
         when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
                 .thenThrow(new RuntimeException("DB error"));
 
-        assertTrue(service.isWhitelisted(5L));
-        assertFalse(service.isWhitelisted(1L));
+        assertFalse(service.isWhitelisted("5"));
     }
 
     @Test
-    @DisplayName("market-server 不可用 → isWhitelistedWithMarketFallback 降级放行")
-    void testMarketFallback_Pass() {
+    @DisplayName("Long 兼容方法 → 内部转 String 后校验")
+    void testLongCompatMethod() {
         when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
-                .thenThrow(new RuntimeException("Market unavailable"));
+                .thenReturn(List.of("100", "200", "300"));
 
-        assertTrue(service.isWhitelistedWithMarketFallback(1L));
-    }
-
-    @Test
-    @DisplayName("非白名单应用 → isWhitelistedWithMarketFallback 拒绝")
-    void testMarketFallback_Denied() {
-        ReflectionTestUtils.setField(service, "whitelistConfig", "1,2");
-
-        assertFalse(service.isWhitelistedWithMarketFallback(999L));
+        assertTrue(service.isWhitelisted(200L));
+        assertFalse(service.isWhitelisted(999L));
     }
 }

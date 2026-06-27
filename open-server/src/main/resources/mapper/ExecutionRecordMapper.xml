@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.it.works.wecode.v2.modules.flow.mapper.ExecutionRecordMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.flowexecrecord.mapper.ExecutionRecordMapper">
 
     <!-- ResultMap -->
-    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionRecord">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionRecord">
         <id column="id" property="id"/>
         <result column="app_id" property="appId"/>
         <result column="flow_id" property="flowId"/>
@@ -45,7 +45,7 @@
     </sql>
 
     <!-- Insert -->
-    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionRecord">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionRecord">
         INSERT INTO openplatform_v2_cp_execution_record_t (
             id, app_id, flow_id, flow_version_id, flow_version_number,
             flow_version_snapshot, flow_name_cn, flow_name_en,
@@ -71,7 +71,7 @@
     </select>
 
     <!-- Update -->
-    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionRecord">
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionRecord">
         UPDATE openplatform_v2_cp_execution_record_t
         SET status              = #{status},
             duration_ms         = #{durationMs},
