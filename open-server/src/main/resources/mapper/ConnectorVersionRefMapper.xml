@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper">
 
     <!-- ResultMap -->
-    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef">
         <id column="id" property="id"/>
         <result column="flow_id" property="flowId"/>
         <result column="flow_version_id" property="flowVersionId"/>
@@ -23,7 +23,7 @@
     </sql>
 
     <!-- Insert -->
-    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef">
         INSERT INTO openplatform_v2_cp_connector_version_ref_t (
             id, flow_id, flow_version_id, node_id, connector_id, connector_version_id,
             create_time, last_update_time, create_by, last_update_by
