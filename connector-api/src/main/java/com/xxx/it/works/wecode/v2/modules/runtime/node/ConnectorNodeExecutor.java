@@ -1,7 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
@@ -42,20 +42,20 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
     private final ExpressionResolver expressionResolver;
-    private final CredentialInjectorRegistry credentialInjectorRegistry;
     private final OpConnectorVersionReadRepository connectorVersionReadRepository;
+    private final UnifiedCredentialProcessor credentialProcessor;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
     public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                   CredentialInjectorRegistry credentialInjectorRegistry,
-                                   OpConnectorVersionReadRepository connectorVersionReadRepository) {
+                                   OpConnectorVersionReadRepository connectorVersionReadRepository,
+                                   UnifiedCredentialProcessor credentialProcessor) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
         this.expressionResolver = new ExpressionResolver();
-        this.credentialInjectorRegistry = credentialInjectorRegistry;
         this.connectorVersionReadRepository = connectorVersionReadRepository;
+        this.credentialProcessor = credentialProcessor;
     }
 
     @Override
@@ -157,23 +157,14 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             }
         }
 
-        // 提取 authConfigs (多认证数组)
-        Object authConfigsObj = snapshot.get("authConfigs");
-        Map<String, Object> authConfig = null;
-        if (authConfigsObj instanceof java.util.List && !((java.util.List<?>) authConfigsObj).isEmpty()) {
-            authConfig = (Map<String, Object>) ((java.util.List<?>) authConfigsObj).get(0);
-        }
-
         // 从 data.input 结构化配置构建请求参数
         Map<String, Object> params = buildRequestParams(data, context);
         Map<String, String> headers = (Map<String, String>) params.get("headers");
         Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
         Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
 
-        // 注入凭证到请求头
-        if (authConfig != null) {
-            credentialInjectorRegistry.inject(authConfig, headers);
-        }
+        // v2: 凭证注入
+        credentialProcessor.apply(snapshot.get("authConfigs"), headers, queryParams, context);
 
         // 构建 input 分区
         Map<String, Object> input = new HashMap<>();
@@ -219,8 +210,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
         Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
 
-        Map<String, Object> authConfig = null;
-        credentialInjectorRegistry.inject(authConfig, headers);
+        // v2: 凭证注入已由 UnifiedCredentialProcessor 统一处理
+        // legacy 模式下 authConfigs 为空，不做注入
 
         Map<String, Object> input = new HashMap<>();
         input.put("url", url);

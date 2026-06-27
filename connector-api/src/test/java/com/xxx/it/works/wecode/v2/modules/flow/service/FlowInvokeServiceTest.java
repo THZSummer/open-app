@@ -16,7 +16,7 @@ import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
-import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
+import com.xxx.it.works.wecode.v2.modules.security.SystokenWhitelistValidator;
 import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,7 +50,7 @@ class FlowInvokeServiceTest {
     private DagScheduler dagScheduler;
 
     @Mock
-    private AuthValidatorRegistry authValidatorRegistry;
+    private SystokenWhitelistValidator systokenWhitelistValidator;
 
     @Mock
     private ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
@@ -97,7 +97,7 @@ class FlowInvokeServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         when(idGenerator.nextId()).thenReturn(1L);
-        triggerService = new FlowInvokeService(objectMapper, authValidatorRegistry, urlWhitelistValidator,
+        triggerService = new FlowInvokeService(objectMapper, systokenWhitelistValidator, urlWhitelistValidator,
                 executor, dagScheduler, flowVersionReadRepository, flowReadRepository,
                 connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle, cacheManager,
                 executionRecordService, executionStepService, idGenerator);

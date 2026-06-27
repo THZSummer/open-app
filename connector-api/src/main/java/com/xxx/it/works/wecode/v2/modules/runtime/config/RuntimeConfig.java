@@ -1,7 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
@@ -46,10 +46,10 @@ public class RuntimeConfig {
 
     @Bean
     public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                                         CredentialInjectorRegistry credentialInjectorRegistry,
-                                                         OpConnectorVersionReadRepository connectorVersionReadRepository) {
-        return new ConnectorNodeExecutor(objectMapper, webClient, credentialInjectorRegistry,
-                connectorVersionReadRepository);
+                                                         OpConnectorVersionReadRepository connectorVersionReadRepository,
+                                                         UnifiedCredentialProcessor credentialProcessor) {
+        return new ConnectorNodeExecutor(objectMapper, webClient,
+                connectorVersionReadRepository, credentialProcessor);
     }
 
     @Bean

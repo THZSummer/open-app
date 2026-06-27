@@ -21,7 +21,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.xxx.it.works.wecode.v2.modules.auth.AuthValidatorRegistry;
+import com.xxx.it.works.wecode.v2.modules.security.SystokenWhitelistValidator;
 import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -78,7 +78,7 @@ public class FlowInvokeService {
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
     private final DagScheduler dagScheduler;
-    private final AuthValidatorRegistry authValidatorRegistry;
+    private final SystokenWhitelistValidator systokenWhitelistValidator;
     private final UrlWhitelistValidator urlWhitelistValidator;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
     private final OpFlowReadRepository flowReadRepository;
@@ -92,7 +92,7 @@ public class FlowInvokeService {
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
-            AuthValidatorRegistry authValidatorRegistry,
+            SystokenWhitelistValidator systokenWhitelistValidator,
             UrlWhitelistValidator urlWhitelistValidator,
             ReactiveSequentialExecutor executor,
             DagScheduler dagScheduler,
@@ -106,7 +106,7 @@ public class FlowInvokeService {
             ExecutionStepService executionStepService,
             IdGenerator idGenerator) {
         this.objectMapper = objectMapper;
-        this.authValidatorRegistry = authValidatorRegistry;
+        this.systokenWhitelistValidator = systokenWhitelistValidator;
         this.urlWhitelistValidator = urlWhitelistValidator;
         this.executor = executor;
         this.dagScheduler = dagScheduler;
@@ -807,7 +807,36 @@ public class FlowInvokeService {
         }
         if (authConfigs != null) {
             for (Map<String, Object> ac : authConfigs) {
-                authValidatorRegistry.validate(ac, headers);
+                String authType = (String) ac.get("type");
+                if ("SYSTOKEN".equals(authType)) {
+                    validateSystoken(ac, headers);
+                }
+            }
+        }
+    }
+
+    /**
+     * SYSTOKEN 白名单校验 — 从 authConfig header.properties 中提取 token 字段，
+     * 校验请求 headers 中包含该字段且值在 sysAccountWhitelist 内。
+     */
+    @SuppressWarnings("unchecked")
+    private void validateSystoken(Map<String, Object> authConfig, Map<String, String> headers) {
+        Map<String, Object> headerContainer = (Map<String, Object>) authConfig.get("header");
+        if (headerContainer == null) return;
+
+        Map<String, Object> properties = (Map<String, Object>) headerContainer.get("properties");
+        if (properties == null || properties.isEmpty()) return;
+
+        List<String> whitelistTokens = (List<String>) authConfig.get("sysAccountWhitelist");
+
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            String fieldName = entry.getKey();
+            String token = headers != null ? headers.get(fieldName) : null;
+            if (token == null || token.isEmpty()) {
+                throw new RuntimeException("Missing " + fieldName + " for SYSTOKEN auth");
+            }
+            if (!systokenWhitelistValidator.validate(token, whitelistTokens)) {
+                throw new RuntimeException("SYSTOKEN not in whitelist: " + token);
             }
         }
     }
