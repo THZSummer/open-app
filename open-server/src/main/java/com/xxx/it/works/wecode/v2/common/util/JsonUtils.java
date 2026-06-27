@@ -57,24 +57,6 @@ public final class JsonUtils {
         }
     }
 
-    /**
-     * 解析 JSON 字符串为 JsonNode。
-     * <ul>
-     *   <li>null 或空字符串 → null</li>
-     *   <li>解析失败 → null（仅 warn 日志）</li>
-     * </ul>
-     */
-    public static JsonNode parseJson(String json) {
-        if (json == null || json.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.readTree(json);
-        } catch (Exception e) {
-            log.warn("[JSON] Failed to parse JSON string", e);
-            return null;
-        }
-    }
 
     /**
      * 将 Java 对象转换为 JsonNode（无需先序列化为字符串）。
@@ -132,6 +114,29 @@ public final class JsonUtils {
     }
 
     /**
+     * 从 JsonNode 中安全提取 Long 字段值。
+     * <ul>
+     *   <li>null node 或 null fieldName → null</li>
+     *   <li>字段不存在或为 null 值 → null</li>
+     *   <li>其他 → asLong()，转换失败返回 null</li>
+     * </ul>
+     */
+    public static Long getFieldLong(JsonNode node, String fieldName) {
+        if (node == null || fieldName == null) {
+            return null;
+        }
+        JsonNode field = node.get(fieldName);
+        if (field == null || field.isNull()) {
+            return null;
+        }
+        try {
+            return field.asLong();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * 通过反射收集对象的顶层简单值字段（String/Number/Boolean）。
      * List/Map/嵌套对象自动跳过，不做 Jackson 全量序列化。
      */
@@ -147,7 +152,8 @@ public final class JsonUtils {
                 if (v instanceof CharSequence || v instanceof Number || v instanceof Boolean) {
                     result.put(f.getName(), v.toString());
                 }
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                log.debug("[JsonUtils] Failed to extract field value", e);
             }
         }
         return result;
