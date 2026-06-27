@@ -353,6 +353,8 @@ public class FlowInvokeService {
                         String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
                         try {
                             executionRecordService.updateRecord(recordId, finalStatus, duration, errCode, errMsg);
+                            // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录
+                            executionRecordService.checkAndCleanFifo(flowId, 1000);
                         } catch (Exception ex) {
                             log.warn("Failed to update execution record: {}", ex.getMessage());
                         }
@@ -409,6 +411,8 @@ public class FlowInvokeService {
                     // ★ 执行失败 - 更新记录
                     try {
                         executionRecordService.updateRecord(recordId, 1, null, errorCode, errorMsg);
+                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录
+                        executionRecordService.checkAndCleanFifo(flowId, 1000);
                     } catch (Exception ex) {
                         log.warn("Failed to update execution record: {}", ex.getMessage());
                     }

@@ -20,7 +20,7 @@ import static io.r2dbc.spi.ConnectionFactoryOptions.*;
  * </p>
  */
 @Configuration
-@EnableR2dbcRepositories(basePackages = "com.xxx.it.works.wecode.v2.modules")
+@EnableR2dbcRepositories(basePackages = {"com.xxx.it.works.wecode.v2.modules", "com.xxx.it.works.wecode.v2.common.config"})
 public class R2dbcConfig extends AbstractR2dbcConfiguration {
 
     @Value("${spring.r2dbc.url}")

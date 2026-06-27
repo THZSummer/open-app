@@ -201,8 +201,10 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         long timeoutMs = DEFAULT_TIMEOUT_MS;
 
-        String url = (String) data.get("url");
-        String method = (String) data.getOrDefault("method", "POST");
+        Map<String, Object> protocolConfig = (Map<String, Object>) data.get("protocolConfig");
+        String url = protocolConfig != null ? (String) protocolConfig.get("url") : null;
+        String method = (protocolConfig != null && protocolConfig.get("method") != null)
+                ? protocolConfig.get("method").toString() : "POST";
         Integer timeout = null;
         Object timeoutObj = data.get("timeoutMs");
         if (timeoutObj instanceof Number) {

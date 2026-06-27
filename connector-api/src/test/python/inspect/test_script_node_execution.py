@@ -56,7 +56,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                             "type": "object",
                             "properties": {
                                 "name": {"type": "string"},
-                                "value": {"type": "integer"},
+                                "value": {"type": "number"},
                                 "message": {"type": "string"}
                             },
                             "required": []
@@ -93,7 +93,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                                     "value": "${$.node.node_script.output.result}"
                                 },
                                 "doubled": {
-                                    "type": "integer",
+                                    "type": "number",
                                     "value": "${$.node.node_script.output.doubled}"
                                 },
                                 "echo": {
@@ -101,7 +101,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                                     "value": "${$.node.node_script.output.echo}"
                                 },
                                 "length": {
-                                    "type": "integer",
+                                    "type": "number",
                                     "value": "${$.node.node_script.output.length}"
                                 },
                                 "items": {
@@ -113,7 +113,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                                     "value": "${$.node.node_script.output.nested}"
                                 },
                                 "sum": {
-                                    "type": "integer",
+                                    "type": "number",
                                     "value": "${$.node.node_script.output.sum}"
                                 }
                             }

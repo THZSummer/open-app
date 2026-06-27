@@ -1,8 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.connector;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
-import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorStatus;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
@@ -50,18 +50,20 @@ public class ConnectorVersionService {
 
 
     @Autowired
-    public ConnectorVersionService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, AuditLogService auditLogService) {
+    public ConnectorVersionService(OpConnectorMapper connectorMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService) {
         this.connectorMapper = connectorMapper;
         this.connectorVersionMapper = connectorVersionMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
         this.idGenerator = idGenerator;
         this.auditLogService = auditLogService;
+        this.propertyService = propertyService;
     }
     private final OpConnectorMapper connectorMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
     private final IdGeneratorStrategy idGenerator;
     private final AuditLogService auditLogService;
+    private final ConnectorPlatformPropertyService propertyService;
 
     private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -80,11 +82,12 @@ public class ConnectorVersionService {
         }
 
         // 版本上限校验
+        int maxVersionCount = propertyService.getConnectorMaxVersions();
         List<ConnectorVersion> existingVersions = connectorVersionMapper.selectListByConnectorId(connectorId, null);
-        if (existingVersions != null && existingVersions.size() >= ConnectorPlatformConstants.MAX_VERSION_COUNT) {
+        if (existingVersions != null && existingVersions.size() >= maxVersionCount) {
             return ApiResponse.error("422",
-                    "版本数量已达上限 " + ConnectorPlatformConstants.MAX_VERSION_COUNT,
-                    "Version count exceeds limit " + ConnectorPlatformConstants.MAX_VERSION_COUNT);
+                    "版本数量已达上限 " + maxVersionCount,
+                    "Version count exceeds limit " + maxVersionCount);
         }
 
         // 检查是否已有草稿
@@ -284,6 +287,17 @@ public class ConnectorVersionService {
                     "Invalid connection config JSON: " + e.getMessage());
         }
 
+        // 校验 #3：连接配置 JSON 长度上限（仅当 maxBytes > 0 时生效）
+        int maxBytes = propertyService.getConnectorConfigMaxBytes(String.valueOf(appId));
+        if (maxBytes > 0) {
+            int actualBytes = version.getConnectionConfig().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if (actualBytes > maxBytes) {
+                return ApiResponse.error("422",
+                        "连接配置 JSON 超过最大字节数限制 " + maxBytes + "，当前：" + actualBytes + "字节",
+                        "Connection config JSON exceeds max bytes " + maxBytes + ", actual: " + actualBytes);
+            }
+        }
+
         // URL 白名单正则校验（如果配置了 urlWhitelist）
         try {
             com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(version.getConnectionConfig());
@@ -307,6 +321,37 @@ public class ConnectorVersionService {
             return ApiResponse.error("400",
                     "连接配置 JSON 格式无效：" + e.getMessage(),
                     "Invalid connection config JSON: " + e.getMessage());
+        }
+
+        // 校验 #2：连接器目标 URL 正则校验（仅当 Property 配置了 url_regex_pattern 时生效）
+        String urlRegexPattern = propertyService.getUrlRegexPattern();
+        if (urlRegexPattern != null && !urlRegexPattern.isEmpty()) {
+            try {
+                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(version.getConnectionConfig());
+                com.fasterxml.jackson.databind.JsonNode protocolConfig = root.get("protocolConfig");
+                if (protocolConfig != null && protocolConfig.has("url") && !protocolConfig.get("url").isNull()) {
+                    String targetUrl = protocolConfig.get("url").asText();
+                    if (targetUrl != null && !targetUrl.isEmpty()) {
+                        Pattern urlPattern;
+                        try {
+                            urlPattern = Pattern.compile(urlRegexPattern);
+                        } catch (PatternSyntaxException e) {
+                            return ApiResponse.error("500",
+                                    "平台 URL 正则配置无效：" + urlRegexPattern,
+                                    "Invalid platform URL regex configuration: " + urlRegexPattern);
+                        }
+                        if (!urlPattern.matcher(targetUrl).matches()) {
+                            return ApiResponse.error("422",
+                                    "连接器目标 URL 不符合平台正则规则：" + urlRegexPattern,
+                                    "Connector target URL does not match platform regex: " + urlRegexPattern);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                return ApiResponse.error("400",
+                        "连接配置 JSON 格式无效：" + e.getMessage(),
+                        "Invalid connection config JSON: " + e.getMessage());
+            }
         }
 
         // 发布
@@ -384,11 +429,12 @@ public class ConnectorVersionService {
         }
 
         // 版本上限校验
+        int maxVersionCount = propertyService.getConnectorMaxVersions();
         List<ConnectorVersion> existingVersions = connectorVersionMapper.selectListByConnectorId(connectorId, null);
-        if (existingVersions != null && existingVersions.size() >= ConnectorPlatformConstants.MAX_VERSION_COUNT) {
+        if (existingVersions != null && existingVersions.size() >= maxVersionCount) {
             return ApiResponse.error("422",
-                    "版本数量已达上限 " + ConnectorPlatformConstants.MAX_VERSION_COUNT,
-                    "Version count exceeds limit " + ConnectorPlatformConstants.MAX_VERSION_COUNT);
+                    "版本数量已达上限 " + maxVersionCount,
+                    "Version count exceeds limit " + maxVersionCount);
         }
 
         // 查找并删除已有草稿

@@ -19,11 +19,11 @@ public class FlowConfig {
     /** 全流超时时间(毫秒), null 表示无限制 */
     private Integer timeoutMs;
 
-    /** QPS 限流值 (次/秒), null 表示无限流 */
-    private Integer rateLimitQps;
+    /** QPS 限流最大值 (次/秒), null 表示无限流 */
+    private Integer maxQps;
 
-    /** 并发限流值, null 表示无限制 */
-    private Integer rateLimitConcurrency;
+    /** 并发限流最大值, null 表示无限制 */
+    private Integer maxConcurrency;
 
     /** 缓存 TTL (秒), null 表示不缓存 */
     private Integer cacheTtl;

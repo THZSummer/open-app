@@ -29,7 +29,7 @@ public class RateLimitConfigReader {
     static final int DEFAULT_CONCURRENCY = 1000;
 
     /** 应用级最大 QPS 硬限制 */
-    private static final int APP_MAX_QPS = 10000;
+    private static final int APP_MAX_QPS = 1000;
 
     /** 应用级最大并发硬限制 */
     private static final int APP_MAX_CONCURRENCY = 1000;

@@ -1,8 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.flow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
-import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.enums.FlowLifecycleStatus;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
@@ -52,7 +52,7 @@ public class FlowVersionService {
 
 
     @Autowired
-    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService) {
+    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService) {
         this.flowMapper = flowMapper;
         this.flowVersionMapper = flowVersionMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
@@ -62,6 +62,7 @@ public class FlowVersionService {
         this.approvalService = approvalService;
         this.genericApprovalService = genericApprovalService;
         this.auditLogService = auditLogService;
+        this.propertyService = propertyService;
     }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
@@ -72,6 +73,7 @@ public class FlowVersionService {
     private final FlowVersionApprovalService approvalService;
     private final ApprovalService genericApprovalService;
     private final AuditLogService auditLogService;
+    private final ConnectorPlatformPropertyService propertyService;
 
     @Autowired(required = false)
     private StringRedisTemplate stringRedisTemplate;
@@ -92,11 +94,12 @@ public class FlowVersionService {
         }
 
         // 版本上限校验
+        int maxVersionCount = propertyService.getFlowMaxVersions();
         List<FlowVersion> existingVersions = flowVersionMapper.selectListByFlowId(flowId, null);
-        if (existingVersions != null && existingVersions.size() >= ConnectorPlatformConstants.MAX_VERSION_COUNT) {
+        if (existingVersions != null && existingVersions.size() >= maxVersionCount) {
             return ApiResponse.error("422",
-                    "版本数量已达上限 " + ConnectorPlatformConstants.MAX_VERSION_COUNT,
-                    "Version count exceeds limit " + ConnectorPlatformConstants.MAX_VERSION_COUNT);
+                    "版本数量已达上限 " + maxVersionCount,
+                    "Version count exceeds limit " + maxVersionCount);
         }
 
         // 检查是否已有草稿
@@ -317,7 +320,7 @@ public class FlowVersionService {
         }
 
         // 校验 8：JSON 语法 + 校验 2、6、9、3/4/5 基础
-        errors = publishValidator.validateOrchestrationConfig(config);
+        errors = publishValidator.validateOrchestrationConfig(config, String.valueOf(appId));
         if (!errors.isEmpty()) {
             return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
         }
@@ -333,10 +336,11 @@ public class FlowVersionService {
             return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
         }
 
-        // 校验 3、4：应用上限校验（使用默认上限值，实际可从 market-server 获取）
-        int appMaxQps = ConnectorPlatformConstants.DEFAULT_QPS_LIMIT;
-        int appMaxConcurrency = ConnectorPlatformConstants.DEFAULT_CONCURRENCY_LIMIT;
-        int appMaxTimeoutMs = 30000; // 默认 30s
+        // 校验 3、4：应用上限校验（从 PropertyService 获取按应用配置的上限值）
+        String appIdStr = String.valueOf(appId);
+        int appMaxQps = propertyService.getFlowMaxQps(appIdStr);
+        int appMaxConcurrency = propertyService.getFlowMaxConcurrency(appIdStr);
+        int appMaxTimeoutMs = propertyService.getNodeMaxTimeoutSeconds(appIdStr) * 1000;
         errors = publishValidator.validateRateLimitAgainstAppMax(config, appMaxQps, appMaxConcurrency);
         if (!errors.isEmpty()) {
             return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
@@ -437,10 +441,11 @@ public class FlowVersionService {
         long draftCount = existingVersions != null ? existingVersions.stream()
                 .filter(v -> v.getStatus() != null && v.getStatus() == FlowVersionStatus.DRAFT.getCode())
                 .count() : 0;
-        if (currentCount - draftCount >= ConnectorPlatformConstants.MAX_VERSION_COUNT) {
+        int maxVersionCount = propertyService.getFlowMaxVersions();
+        if (currentCount - draftCount >= maxVersionCount) {
             return ApiResponse.error("422",
-                    "版本数量已达上限 " + ConnectorPlatformConstants.MAX_VERSION_COUNT,
-                    "Version count exceeds limit " + ConnectorPlatformConstants.MAX_VERSION_COUNT);
+                    "版本数量已达上限 " + maxVersionCount,
+                    "Version count exceeds limit " + maxVersionCount);
         }
 
         // 查找并删除已有草稿

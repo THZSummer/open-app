@@ -1,10 +1,13 @@
 package com.xxx.it.works.wecode.v2.modules.flow;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.FlowVersionApprovalService;
+import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
+import com.xxx.it.works.wecode.v2.modules.auditlog.service.AuditLogService;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.FlowPublishResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
@@ -50,6 +53,12 @@ class FlowVersionServiceTest {
     private FlowPublishValidator publishValidator;
     @Mock
     private FlowVersionApprovalService approvalService;
+    @Mock
+    private ApprovalService genericApprovalService;
+    @Mock
+    private AuditLogService auditLogService;
+    @Mock
+    private ConnectorPlatformPropertyService propertyService;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -70,6 +79,12 @@ class FlowVersionServiceTest {
         flow.setAppId(appId);
         flow.setLifecycleStatus(2);
         when(idGenerator.nextId()).thenReturn(1000L);
+
+        // Default property service mocks matching hardcoded constants
+        when(propertyService.getFlowMaxVersions()).thenReturn(1000);
+        when(propertyService.getFlowMaxQps(anyString())).thenReturn(1000);
+        when(propertyService.getFlowMaxConcurrency(anyString())).thenReturn(1000);
+        when(propertyService.getNodeMaxTimeoutSeconds(anyString())).thenReturn(30);
     }
 
     // ===== 创建草稿 =====
@@ -160,7 +175,7 @@ class FlowVersionServiceTest {
             when(flowMapper.selectById(flowId)).thenReturn(flow);
             when(flowVersionMapper.selectById(200L)).thenReturn(version);
             when(publishValidator.validateBusinessFields(anyString(), anyString())).thenReturn(List.of());
-            when(publishValidator.validateOrchestrationConfig(anyString())).thenReturn(List.of());
+            when(publishValidator.validateOrchestrationConfig(anyString(), anyString())).thenReturn(List.of());
             when(publishValidator.validateConnectorVersionRefs(200L)).thenReturn(List.of());
             when(publishValidator.validateRateLimitAgainstAppMax(anyString(), anyInt(), anyInt())).thenReturn(List.of());
             when(publishValidator.validateTimeoutAgainstAppMax(anyString(), anyInt())).thenReturn(List.of());
@@ -210,7 +225,7 @@ class FlowVersionServiceTest {
             when(flowMapper.selectById(flowId)).thenReturn(flow);
             when(flowVersionMapper.selectById(200L)).thenReturn(version);
             when(publishValidator.validateBusinessFields(anyString(), anyString())).thenReturn(List.of());
-            when(publishValidator.validateOrchestrationConfig(anyString()))
+            when(publishValidator.validateOrchestrationConfig(anyString(), anyString()))
                     .thenReturn(List.of("编排配置 JSON 格式无效"));
 
             ApiResponse<FlowPublishResponse> response = flowVersionService.publish(flowId, 200L, appId);

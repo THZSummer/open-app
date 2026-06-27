@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.flow.validator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
@@ -16,6 +17,7 @@ import org.graalvm.polyglot.ResourceLimits;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -45,22 +47,25 @@ public class FlowPublishValidator {
 
 
     @Autowired
-    public FlowPublishValidator(ObjectMapper objectMapper, ConnectorVersionRefMapper connectorVersionRefMapper, OpConnectorVersionMapper connectorVersionMapper) {
+    public FlowPublishValidator(ObjectMapper objectMapper, ConnectorVersionRefMapper connectorVersionRefMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorPlatformPropertyService propertyService) {
         this.objectMapper = objectMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
         this.connectorVersionMapper = connectorVersionMapper;
+        this.propertyService = propertyService;
     }
     private final ObjectMapper objectMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
+    private final ConnectorPlatformPropertyService propertyService;
 
     /**
      * 校验编排配置，返回校验错误列表
      *
      * @param orchestrationConfig 编排配置 JSON 字符串
+     * @param appId               应用ID（用于按应用查询 Property 上限值）
      * @return 校验错误信息列表，空列表表示全部通过
      */
-    public List<String> validateOrchestrationConfig(String orchestrationConfig) {
+    public List<String> validateOrchestrationConfig(String orchestrationConfig, String appId) {
         List<String> errors = new ArrayList<>();
 
         // 校验 8：JSON 语法合法性
@@ -70,6 +75,15 @@ public class FlowPublishValidator {
         } catch (Exception e) {
             errors.add("编排配置 JSON 格式无效：" + e.getMessage());
             return errors; // JSON 解析失败则后续校验无意义
+        }
+
+        // 校验 7b：编排配置 JSON 长度上限（仅当 maxBytes > 0 时生效）
+        int maxBytes = propertyService.getFlowConfigMaxBytes(appId);
+        if (maxBytes > 0) {
+            int actualBytes = orchestrationConfig.getBytes(StandardCharsets.UTF_8).length;
+            if (actualBytes > maxBytes) {
+                errors.add("编排配置 JSON 超过最大字节数限制 " + maxBytes + "，当前：" + actualBytes + "字节");
+            }
         }
 
         // 校验 2：编排配置非空
@@ -116,8 +130,9 @@ public class FlowPublishValidator {
                     }
                 }
             }
-            if (parallelBranchCount > ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES) {
-                errors.add("并行分支数超过上限 " + ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES
+            int maxParallelBranches = propertyService.getFlowMaxParallelBranches(appId);
+            if (parallelBranchCount > maxParallelBranches) {
+                errors.add("并行分支数超过上限 " + maxParallelBranches
                         + "，当前：" + parallelBranchCount);
             }
         }
@@ -125,14 +140,15 @@ public class FlowPublishValidator {
         // 校验 3：入站限流值 ≤ 应用最大值（从 flowConfig 读取）
         JsonNode flowConfig = config.get("flowConfig");
         if (flowConfig != null) {
-            // 校验 5：缓存 TTL ≤ 1296000
+            // 校验 5：缓存 TTL ≤ 上限（从 PropertyService 获取）
             JsonNode cache = flowConfig.get("cache");
             if (cache != null) {
                 JsonNode ttl = cache.get("ttl");
                 if (ttl != null && ttl.isNumber()) {
                     long ttlValue = ttl.asLong();
-                    if (ttlValue > ConnectorPlatformConstants.MAX_CACHE_TTL_SECONDS) {
-                        errors.add("缓存 TTL 超过上限 " + ConnectorPlatformConstants.MAX_CACHE_TTL_SECONDS
+                    int maxCacheTtl = propertyService.getFlowMaxCacheTtlSeconds(appId);
+                    if (ttlValue > maxCacheTtl) {
+                        errors.add("缓存 TTL 超过上限 " + maxCacheTtl
                                 + "秒，当前：" + ttlValue + "秒");
                     }
                     if (ttlValue < ConnectorPlatformConstants.MIN_CACHE_TTL_SECONDS) {
@@ -144,14 +160,14 @@ public class FlowPublishValidator {
             // 校验 3：入站限流上限（当前仅记录校验项，应用最大值需外部传入）
             // 需由调用方传入 appMaxQps/appMaxConcurrency 参数
             // 此处仅做基本范围校验
-            JsonNode rateLimit = flowConfig.get("rateLimit");
-            if (rateLimit != null) {
-                JsonNode qps = rateLimit.get("qps");
-                if (qps != null && qps.isNumber() && qps.asInt() <= 0) {
+            JsonNode rateLimitConfig = flowConfig.get("rateLimitConfig");
+            if (rateLimitConfig != null) {
+                JsonNode maxQps = rateLimitConfig.get("maxQps");
+                if (maxQps != null && maxQps.isNumber() && maxQps.asInt() <= 0) {
                     errors.add("入站限流 QPS 必须大于 0");
                 }
-                JsonNode concurrency = rateLimit.get("concurrency");
-                if (concurrency != null && concurrency.isNumber() && concurrency.asInt() <= 0) {
+                JsonNode maxConcurrency = rateLimitConfig.get("maxConcurrency");
+                if (maxConcurrency != null && maxConcurrency.isNumber() && maxConcurrency.asInt() <= 0) {
                     errors.add("入站限流并发数必须大于 0");
                 }
             }
@@ -176,11 +192,12 @@ public class FlowPublishValidator {
                         if (scriptSource != null && !scriptSource.isNull()) {
                             String source = scriptSource.asText();
                             String nodeId = node.has("id") ? node.get("id").asText() : "unknown";
+                            int maxSourceLength = propertyService.getScriptMaxLengthChars(appId);
                             if (source == null || source.trim().isEmpty()) {
                                 errors.add(String.format("脚本节点 [%s] 源码不能为空", nodeId));
-                            } else if (source.length() > ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH) {
+                            } else if (source.length() > maxSourceLength) {
                                 errors.add("脚本源码超过最大长度限制 "
-                                        + ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH + "字符");
+                                        + maxSourceLength + "字符");
                             } else {
                                 // FR-026 校验项 i): 使用 GraalJS polyglot 进行语法预检
                                 try (Context ctx = Context.newBuilder("js")
@@ -198,6 +215,16 @@ public class FlowPublishValidator {
                                     log.error("脚本节点 [{}] GraalJS 校验异常", nodeId, e);
                                     errors.add(String.format("脚本节点 [%s] 校验异常: %s",
                                             nodeId, e.getMessage()));
+                                }
+                            }
+                            // 校验 13：脚本节点超时值上限
+                            JsonNode scriptTimeout = data.get("timeout");
+                            if (scriptTimeout != null && scriptTimeout.isNumber()) {
+                                int timeoutValue = scriptTimeout.asInt();
+                                int maxTimeoutSeconds = propertyService.getScriptMaxTimeoutSeconds(appId);
+                                if (timeoutValue > maxTimeoutSeconds) {
+                                    errors.add(String.format("脚本节点 [%s] 超时值(%d秒) 超过上限(%d秒)",
+                                            nodeId, timeoutValue, maxTimeoutSeconds));
                                 }
                             }
                         }
@@ -282,15 +309,15 @@ public class FlowPublishValidator {
             JsonNode config = objectMapper.readTree(orchestrationConfig);
             JsonNode flowConfig = config.get("flowConfig");
             if (flowConfig != null) {
-                JsonNode rateLimit = flowConfig.get("rateLimit");
-                if (rateLimit != null) {
-                    JsonNode qps = rateLimit.get("qps");
-                    if (qps != null && qps.isNumber() && qps.asInt() > appMaxQps) {
-                        errors.add("入站限流 QPS(" + qps.asInt() + ") 超过应用上限(" + appMaxQps + ")");
+                JsonNode rateLimitConfig = flowConfig.get("rateLimitConfig");
+                if (rateLimitConfig != null) {
+                    JsonNode maxQps = rateLimitConfig.get("maxQps");
+                    if (maxQps != null && maxQps.isNumber() && maxQps.asInt() > appMaxQps) {
+                        errors.add("入站限流 QPS(" + maxQps.asInt() + ") 超过应用上限(" + appMaxQps + ")");
                     }
-                    JsonNode concurrency = rateLimit.get("concurrency");
-                    if (concurrency != null && concurrency.isNumber() && concurrency.asInt() > appMaxConcurrency) {
-                        errors.add("入站限流并发(" + concurrency.asInt() + ") 超过应用上限(" + appMaxConcurrency + ")");
+                    JsonNode maxConcurrency = rateLimitConfig.get("maxConcurrency");
+                    if (maxConcurrency != null && maxConcurrency.isNumber() && maxConcurrency.asInt() > appMaxConcurrency) {
+                        errors.add("入站限流并发(" + maxConcurrency.asInt() + ") 超过应用上限(" + appMaxConcurrency + ")");
                     }
                 }
             }
