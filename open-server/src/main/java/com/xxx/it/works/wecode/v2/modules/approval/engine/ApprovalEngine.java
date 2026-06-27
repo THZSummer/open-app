@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 审批引擎
@@ -115,6 +116,11 @@ public class ApprovalEngine {
         public static final String CALLBACK_PERMISSION_APPLY = "callback_permission_apply";
         public static final String APP_VERSION_PUBLISH = "app_version_publish";
         public static final String CONNECTOR_FLOW_VERSION_PUBLISH = "connector_flow_version_publish";
+
+        /** 审批人可选的业务类型：未配置审批人时仍允许发起审批 */
+        private static final Set<String> OPTIONAL_APPROVER_TYPES = Set.of(
+                APP_VERSION_PUBLISH
+        );
     }
 
     /**
@@ -398,14 +404,9 @@ public class ApprovalEngine {
         // 1. 组合三级审批节点
         List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId, appId);
 
-        if (combinedNodes.isEmpty()) {
-            // 版本审批特殊处理：未配置审批人也允许发起审批（可撤回，同意时自动通过）
-            if (BusinessType.APP_VERSION_PUBLISH.equals(businessType)) {
-                log.info("Version publish approval has no approver nodes, creating PENDING record (auto-pass on approve): businessId={}", businessId);
-            } else {
-                throw new BusinessException("400", "审批节点配置为空，无法创建审批记录",
-                        "Approval nodes configuration is empty, cannot create approval record");
-            }
+        if (combinedNodes.isEmpty() && !BusinessType.OPTIONAL_APPROVER_TYPES.contains(businessType)) {
+            throw new BusinessException("400", "审批节点配置为空，无法创建审批记录",
+                    "Approval nodes configuration is empty, cannot create approval record");
         }
 
         // 2. 序列化审批节点为 JSON 字符串
