@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
@@ -23,13 +22,11 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.xxx.it.works.wecode.v2.common.annotation.StandardTodo;
-import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -56,7 +53,6 @@ import java.util.Locale;
  *   <li>出口节点的 output.header 映射为用户自定义 HTTP 响应头</li>
  *   <li>平台元数据 (executionId/flowId/status/durationMs/code/message) 改为 X- 前缀 HTTP 响应头</li>
  *   <li>前置校验失败按异常类型返回不同 HTTP Status (401/404/403/500)</li>
- *   <li>新增 connector 节点 URL 白名单校验 (data.urlWhitelist), 违规返回 403</li>
  * </ul>
  * v5.7 变更:
  * <ul>
@@ -78,10 +74,8 @@ public class FlowInvokeService {
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
     private final DagScheduler dagScheduler;
-    private final UrlWhitelistValidator urlWhitelistValidator;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
     private final OpFlowReadRepository flowReadRepository;
-    private final OpConnectorVersionReadRepository connectorVersionReadRepository;
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final CacheToggle cacheToggle;
     private final FlowCacheManager cacheManager;
@@ -91,12 +85,10 @@ public class FlowInvokeService {
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
-            UrlWhitelistValidator urlWhitelistValidator,
             ReactiveSequentialExecutor executor,
             DagScheduler dagScheduler,
             OpFlowVersionReadRepository flowVersionReadRepository,
             OpFlowReadRepository flowReadRepository,
-            OpConnectorVersionReadRepository connectorVersionReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
             CacheToggle cacheToggle,
             FlowCacheManager cacheManager,
@@ -104,12 +96,10 @@ public class FlowInvokeService {
             ExecutionStepService executionStepService,
             IdGenerator idGenerator) {
         this.objectMapper = objectMapper;
-        this.urlWhitelistValidator = urlWhitelistValidator;
         this.executor = executor;
         this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
         this.flowReadRepository = flowReadRepository;
-        this.connectorVersionReadRepository = connectorVersionReadRepository;
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.cacheToggle = cacheToggle;
         this.cacheManager = cacheManager;
@@ -244,7 +234,7 @@ public class FlowInvokeService {
                     // 4. 解析 flowConfig 缓存配置
                     FlowConfig flowConfig = parseFlowConfigFromOrchMap(config);
 
-                    // 5. 异步校验 URL 白名单 -> 缓存检查 -> 执行连接流
+                    // 5. 缓存检查 -> 执行连接流
                     String flowIdStr = String.valueOf(flowId);
                     boolean cacheEnabled = flowConfig.getCacheTtl() != null && flowConfig.getCacheTtl() > 0;
                     final String cacheKey = cacheEnabled ? buildCacheKey(context, flowConfig.getCacheKeys()) : null;
@@ -252,29 +242,27 @@ public class FlowInvokeService {
                     Mono<ExecutionResult> executionMono;
                     if (cacheEnabled) {
                         final int cacheTtl = flowConfig.getCacheTtl();
-                        executionMono = validateConnectorUrlWhitelist(nodes)
-                                .then(cacheManager.checkCache(flowId, cacheKey)
-                                        .flatMap(cachedResult -> {
-                                            log.info("Cache hit: flowId={}, cacheKey={}", flowId, cacheKey);
-                                            cachedResult.setCacheHit(true);
-                                            return Mono.just(cachedResult);
-                                        })
-                                        .switchIfEmpty(
-                                            dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
-                                                    .flatMap(updatedCtx -> {
-                                                        ExecutionResult result = buildResultFromExecutionContext(
-                                                                updatedCtx, executionId, flowIdStr, recordId);
-                                                        result.setCacheHit(false);
-                                                        return cacheManager.writeCache(flowId, cacheKey,
-                                                                result, cacheTtl)
-                                                                .thenReturn(result);
-                                                    })
-                                        ));
+                        executionMono = cacheManager.checkCache(flowId, cacheKey)
+                                .flatMap(cachedResult -> {
+                                    log.info("Cache hit: flowId={}, cacheKey={}", flowId, cacheKey);
+                                    cachedResult.setCacheHit(true);
+                                    return Mono.just(cachedResult);
+                                })
+                                .switchIfEmpty(
+                                    dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
+                                            .flatMap(updatedCtx -> {
+                                                ExecutionResult result = buildResultFromExecutionContext(
+                                                        updatedCtx, executionId, flowIdStr, recordId);
+                                                result.setCacheHit(false);
+                                                return cacheManager.writeCache(flowId, cacheKey,
+                                                        result, cacheTtl)
+                                                        .thenReturn(result);
+                                            })
+                                );
                     } else {
-                        executionMono = validateConnectorUrlWhitelist(nodes)
-                                .then(dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
-                                        .map(updatedCtx -> buildResultFromExecutionContext(
-                                                updatedCtx, executionId, flowIdStr, recordId)));
+                        executionMono = dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
+                                .map(updatedCtx -> buildResultFromExecutionContext(
+                                        updatedCtx, executionId, flowIdStr, recordId));
                     }
 
                     return executionMono.map(result -> {
@@ -930,96 +918,7 @@ public class FlowInvokeService {
         }
     }
 
-    /**
-     * 校验 connector 节点的目标 URL 是否在白名单中 (FR-015)
-     * <p>
-     * 遍历编排配置中所有 type=connector 节点, 从节点 data.connectorVersionId 加载
-     * 连接器版本, 解析 connection_config JSON 中的 urlWhitelist 进行校验.
-     * 空白名单（null 或空列表）允许所有 URL 通过, 不影响存量业务.
-     * </p>
-     */
-    @SuppressWarnings("unchecked")
-    private Mono<Void> validateConnectorUrlWhitelist(List<Map<String, Object>> nodes) {
-        if (nodes == null || nodes.isEmpty()) { return Mono.empty(); }
 
-        List<Mono<Void>> validations = new ArrayList<>();
-
-        for (Map<String, Object> node : nodes) {
-            String nodeType = (String) node.get("type");
-            if (!"connector".equals(nodeType)) { continue; }
-
-            Map<String, Object> connData = (Map<String, Object>) node.get("data");
-            if (connData == null) { continue; }
-
-            // 从节点 data 获取 connectorVersionId (支持 Number 和 String 两种格式)
-            Object connectorVersionIdObj = connData.get("connectorVersionId");
-            if (connectorVersionIdObj == null) { continue; }
-
-            Long connectorVersionId;
-            if (connectorVersionIdObj instanceof Number) {
-                connectorVersionId = ((Number) connectorVersionIdObj).longValue();
-            } else if (connectorVersionIdObj instanceof String) {
-                try {
-                    connectorVersionId = Long.valueOf((String) connectorVersionIdObj);
-                } catch (NumberFormatException e) {
-                    log.warn("Invalid connectorVersionId format: {}", connectorVersionIdObj);
-                    continue;
-                }
-            } else {
-                continue;
-            }
-
-            // 异步加载连接器版本, 从 connection_config 提取 urlWhitelist 并校验
-            Mono<Void> validation = connectorVersionReadRepository.findById(connectorVersionId)
-                    .<Void>flatMap(connVersion -> {
-                        Map<String, Object> connConfig = connVersion.parseConnectionConfig(objectMapper);
-
-                        // v5.9: 从 connection_config.protocolConfig.url 提取 URL（而非节点 data）
-                        Map<String, Object> protocolConfig = (Map<String, Object>) connConfig.get("protocolConfig");
-                        String url = protocolConfig != null ? (String) protocolConfig.get("url") : null;
-                        if (url == null || url.isEmpty()) {
-                            return Mono.empty();
-                        }
-
-                        List<String> whitelist = extractWhitelist(connConfig.get("urlWhitelist"));
-                        if (!urlWhitelistValidator.validate(url, whitelist)) {
-                            return Mono.<Void>error(new RuntimeException("URL not in whitelist: " + url));
-                        }
-                        return Mono.empty();
-                    })
-                    .onErrorResume(e -> {
-                        // 连接器版本未找到时允许通过 (向后兼容)
-                        if (e instanceof RuntimeException) {
-                            return Mono.error(e);
-                        }
-                        log.warn("Failed to load connector version {} for URL whitelist check: {}",
-                                connectorVersionId, e.getMessage());
-                        return Mono.empty();
-                    });
-            validations.add(validation);
-        }
-
-        if (validations.isEmpty()) { return Mono.empty(); }
-        return Flux.merge(validations).then();
-    }
-
-    /**
-     * 从连接配置中提取白名单模式，支持单字符串和字符串列表两种格式以保持向后兼容。
-     */
-    @SuppressWarnings("unchecked")
-    private List<String> extractWhitelist(Object whitelistObj) {
-        if (whitelistObj == null) {
-            return null;
-        }
-        if (whitelistObj instanceof List) {
-            return (List<String>) whitelistObj;
-        }
-        if (whitelistObj instanceof String) {
-            return List.of((String) whitelistObj);
-        }
-        log.warn("urlWhitelist has unexpected type: {}", whitelistObj.getClass().getName());
-        return null;
-    }
 
     @SuppressWarnings("unchecked")
     private FlowConfig parseFlowConfigFromOrchMap(Map<String, Object> config) {

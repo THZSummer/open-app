@@ -5,7 +5,6 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
-import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
@@ -16,7 +15,6 @@ import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
-import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,13 +53,7 @@ class FlowInvokeServiceTest {
     private CacheToggle cacheToggle;
 
     @Mock
-    private UrlWhitelistValidator urlWhitelistValidator;
-
-    @Mock
     private OpFlowReadRepository flowReadRepository;
-
-    @Mock
-    private OpConnectorVersionReadRepository connectorVersionReadRepository;
 
     @Mock
     private FlowCacheManager cacheManager;
@@ -93,9 +85,9 @@ class FlowInvokeServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         when(idGenerator.nextId()).thenReturn(1L);
-        triggerService = new FlowInvokeService(objectMapper, urlWhitelistValidator,
+        triggerService = new FlowInvokeService(objectMapper,
                 executor, dagScheduler, flowVersionReadRepository, flowReadRepository,
-                connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle, cacheManager,
+                reactiveRedisTemplate, cacheToggle, cacheManager,
                 executionRecordService, executionStepService, idGenerator);
     }
 
