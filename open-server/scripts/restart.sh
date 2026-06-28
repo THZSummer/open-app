@@ -46,7 +46,7 @@ echo "PID: $(cat $PID_FILE)"
 echo "⏳ 等待就绪..."
 for i in $(seq 1 30); do
     sleep 2
-    RESULT=$(curl -s "http://localhost:$PORT$CTX/actuator/health" 2>&1)
+    RESULT=$(curl -s "http://localhost:$PORT$CTX/actuator/health" 2>&1) || true
     if echo "$RESULT" | grep -q '"status":"UP"'; then
         echo "  [$i] ✅ $RESULT"
         echo "✅ 就绪! http://localhost:$PORT$CTX"

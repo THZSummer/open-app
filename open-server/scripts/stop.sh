@@ -28,7 +28,7 @@ fi
 # 端口兜底清理
 if lsof -ti:$PORT > /dev/null 2>&1; then
     echo "清理端口 $PORT..."
-    kill -9 $(lsof -ti:$PORT) 2>/dev/null
+    kill -9 $(lsof -ti:$PORT) 2>/dev/null || true
     stopped=1
 fi
 
