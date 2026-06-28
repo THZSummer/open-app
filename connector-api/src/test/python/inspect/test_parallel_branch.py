@@ -359,7 +359,7 @@ def test_parallel_branch():
     cvids_001 = [cvid_a, cvid_b]
 
     fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestration=build_parallel_orch(cvids_001, [config_a, config_b], parallel=True)
     )
 
@@ -403,7 +403,7 @@ def test_parallel_branch():
         configs_002.append(config)
 
     fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestration=build_parallel_orch_multi(cvids_002, configs_002)
     )
 
@@ -450,7 +450,7 @@ def test_parallel_branch():
     cvids_003 = [cvid_a, cvid_b]
 
     fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
+        sid_003, lifecycle_status=2,
         orchestration=build_parallel_orch(cvids_003, [config_a, config_b], parallel=False)
     )
 

@@ -14,7 +14,7 @@ import pytest
 import time, json
 
 
-def setup_flow(snow_id_val, lifecycle_status=1, orchestration=None, version_status=1):
+def setup_flow(snow_id_val, lifecycle_status=2, orchestration=None, version_status=1):
     """创建连接流 + 版本，返回 (flow_id, version_id)"""
     vid = snow_id()
     db(
@@ -90,7 +90,7 @@ def test_debug_draft_invoke():
     
     sid_115 = snow_id()
     vid_115 = None
-    fid, vid_115 = setup_flow(sid_115, lifecycle_status=1,
+    fid, vid_115 = setup_flow(sid_115, lifecycle_status=2,
                               version_status=0)  # 草稿状态
     resp = debug_run(fid, vid_115, {"mockTriggerData": {"sender": "debug_user"}})
     if resp is not None:
@@ -113,7 +113,7 @@ def test_debug_draft_invoke():
     
     sid_116 = snow_id()
     vid_116 = None
-    fid, vid_116 = setup_flow(sid_116, lifecycle_status=1,
+    fid, vid_116 = setup_flow(sid_116, lifecycle_status=2,
                               version_status=1)  # 已发布状态
     resp = debug_run(fid, vid_116, {"mockTriggerData": {"sender": "pub_user"}})
     if resp is not None:
@@ -128,7 +128,7 @@ def test_debug_draft_invoke():
     
     sid_117 = snow_id()
     vid_117 = None
-    fid, vid_117 = setup_flow(sid_117, lifecycle_status=1,
+    fid, vid_117 = setup_flow(sid_117, lifecycle_status=2,
                               version_status=6)  # 已失效状态 (status=6=invalidated)
     resp = debug_run(fid, vid_117, {"mockTriggerData": {"sender": "invalid_user"}})
     if resp is not None:
@@ -154,7 +154,7 @@ def test_debug_draft_invoke():
     db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
-        f"VALUES ({sid_118}, 'IT_空编排', 'IT_Empty', 1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"VALUES ({sid_118}, 'IT_空编排', 'IT_Empty', 2, {TEST_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
