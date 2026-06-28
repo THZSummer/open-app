@@ -98,7 +98,7 @@ public class LogSanitizer {
         if (fieldName == null) {
             return false;
         }
-        String lower = fieldName.toLowerCase();
+        String lower = fieldName.toLowerCase(Locale.ROOT);
         for (String sensitive : SENSITIVE_FIELDS) {
             if (lower.contains(sensitive)) {
                 return true;

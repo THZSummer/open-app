@@ -24,13 +24,13 @@ public class CookieCredentialSupplier implements CredentialSupplier {
     @SuppressWarnings("unchecked")
     public Map<String, String> resolve(Map<String, Object> fieldDefs, ExecutionContext context) {
         Map<String, String> result = new LinkedHashMap<>();
-        if (fieldDefs == null || context == null) return result;
+        if (fieldDefs == null || context == null) { return result; }
 
         for (Map.Entry<String, Object> entry : fieldDefs.entrySet()) {
             Map<String, Object> def = (Map<String, Object>) entry.getValue();
-            if (def == null) continue;
+            if (def == null) { continue; }
             String expr = (String) def.get("value");
-            if (expr == null) continue;
+            if (expr == null) { continue; }
 
             Object resolved = expressionResolver.resolve(expr, context.getNodeContexts());
             result.put(expr, resolved != null ? resolved.toString() : "");

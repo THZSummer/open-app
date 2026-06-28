@@ -9,7 +9,7 @@ import java.util.Map;
  * 透明穿透响应 (v5.8)
  * <p>
  * 替代旧的 ExecutionResult 信封模式, 将出口节点的 body/header 直接暴露为 HTTP 响应体/头.
- * 平台元数据 (executionId/flowId/status/durationMs/code/messageZh/messageEn/cacheStatus) 
+ * 平台元数据 (executionId/flowId/status/durationMs/code/messageZh/messageEn/cacheStatus)
  * 不再混在 Body 里, 改为 X- 前缀 HTTP 响应头.
  * </p>
  * <ul>

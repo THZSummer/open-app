@@ -203,7 +203,7 @@ public class InboundRateLimiter implements WebFilter {
      * </p>
      */
     private String extractFlowId(String path) {
-        if (path == null) return null;
+        if (path == null) { return null; }
 
         // path 格式: /api/v1/trigger/{flowId}/invoke 或 /api/v1/flows/{flowId}/invoke
         // split 结果: ["", "api", "v1", "trigger"|"flows", "{flowId}", "invoke"]

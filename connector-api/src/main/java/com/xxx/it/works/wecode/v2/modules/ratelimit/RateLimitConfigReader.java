@@ -98,7 +98,7 @@ public class RateLimitConfigReader {
             Object maxQpsObj = rateLimitConfig.get("maxQps");
             if (maxQpsObj instanceof Number) {
                 maxQps = Math.min(((Number) maxQpsObj).intValue(), APP_MAX_QPS);
-                if (maxQps < 1) maxQps = 1;
+                if (maxQps < 1) { maxQps = 1; }
             }
 
             // 读取 maxConcurrency (取 min(flow值, app最大值))
@@ -106,7 +106,7 @@ public class RateLimitConfigReader {
             Object maxConObj = rateLimitConfig.get("maxConcurrency");
             if (maxConObj instanceof Number) {
                 maxConcurrency = Math.min(((Number) maxConObj).intValue(), APP_MAX_CONCURRENCY);
-                if (maxConcurrency < 1) maxConcurrency = 1;
+                if (maxConcurrency < 1) { maxConcurrency = 1; }
             }
 
             return new RateLimitConfig(mode, maxQps, maxConcurrency);
