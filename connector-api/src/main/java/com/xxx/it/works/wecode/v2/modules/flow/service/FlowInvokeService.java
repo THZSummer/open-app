@@ -1,7 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;

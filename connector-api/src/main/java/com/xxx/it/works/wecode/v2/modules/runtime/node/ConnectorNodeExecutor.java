@@ -2,8 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -31,7 +29,7 @@ import java.util.Map;
  * <ul>
  *   <li>从 {@code data.connectorVersionConfig} 快照提取 {@code protocolConfig.url/method}、{@code authConfigs}、{@code timeoutMs}</li>
  *   <li>从 {@code data.input} 结构化配置构建请求参数</li>
- *   <li>向后兼容: 无 connectorVersionConfig 时从 connectorVersionId 查 DB (legacy)</li>
+ *   <li>无快照时走 legacy 模式 (从 data.protocolConfig 直接读取)</li>
  * </ul>
  * </p>
  */
@@ -42,19 +40,16 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
     private final ExpressionResolver expressionResolver;
-    private final OpConnectorVersionReadRepository connectorVersionReadRepository;
     private final UnifiedCredentialProcessor credentialProcessor;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
     public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                   OpConnectorVersionReadRepository connectorVersionReadRepository,
                                    UnifiedCredentialProcessor credentialProcessor) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
         this.expressionResolver = new ExpressionResolver();
-        this.connectorVersionReadRepository = connectorVersionReadRepository;
         this.credentialProcessor = credentialProcessor;
     }
 
@@ -89,35 +84,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             }
         }
 
-        // 降级: 无快照时尝试从 connectorVersionId 查 DB 加载连接器版本
-        Object versionIdObj = data.get("connectorVersionId");
-        Long connectorVersionId = null;
-        if (versionIdObj instanceof Number) {
-            connectorVersionId = ((Number) versionIdObj).longValue();
-        } else if (versionIdObj instanceof String) {
-            try {
-                connectorVersionId = Long.valueOf((String) versionIdObj);
-            } catch (NumberFormatException ignored) {
-                log.debug("Number format parsing ignored: {}", ignored.getMessage());
-            }
-        }
-
-        if (connectorVersionId != null) {
-            final Long cvId = connectorVersionId;
-            log.info("No snapshot, loading connector version from DB: nodeId={}, connectorVersionId={}",
-                    nodeId, cvId);
-            return connectorVersionReadRepository.findById(cvId)
-                    .flatMap(entity -> executeWithSnapshot(context, data, nodeId,
-                            buildSnapshotFromEntity(entity)))
-                    .switchIfEmpty(Mono.defer(() -> {
-                        log.warn("ConnectorVersion not found in DB: id={}, falling back to legacy: nodeId={}",
-                                cvId, nodeId);
-                        return executeLegacy(context, data, nodeId);
-                    }));
-        }
-
-        // 最终降级: 无快照无 versionId 时走 legacy 模式 (从 data.url/method 直接读取)
-        log.info("No connectorVersionConfig snapshot or connectorVersionId, using legacy mode: nodeId={}", nodeId);
+        // 无快照时走 legacy 模式 (从 data.protocolConfig 直接读取)
+        log.info("No connectorVersionConfig snapshot, using legacy mode: nodeId={}", nodeId);
         return executeLegacy(context, data, nodeId);
     }
 
@@ -226,21 +194,6 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         long startTime = System.currentTimeMillis();
         return executeHttpCallReactive(nodeId, url, method, headers, queryParams,
                 requestBody, timeoutMs, context, input, startTime);
-    }
-
-    /**
-     * 从 DB 加载的 ConnectorVersionEntity 构建 connectorVersionConfig 快照 Map
-     * <p>
-     * DB connection_config JSON 格式与 Schema §4.3.7 connectorVersionConfigDef 一致。
-     * </p>
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> buildSnapshotFromEntity(ConnectorVersionEntity entity) {
-        Map<String, Object> connConfig = entity.parseConnectionConfig(objectMapper);
-
-        Map<String, Object> snapshot = new HashMap<>(connConfig);
-
-        return snapshot;
     }
 
     /**
