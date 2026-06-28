@@ -19,10 +19,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -49,9 +49,8 @@ class FlowInvokeServiceTest {
 
     @Mock
     private ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
-
     @Mock
-    private CacheToggle cacheToggle;
+    private ReactiveValueOperations<String, String> valueOperations;
 
     @Mock
     private FlowCacheManager cacheManager;
@@ -85,10 +84,13 @@ class FlowInvokeServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
+        when(reactiveRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+        lenient().when(valueOperations.set(anyString(), anyString(), any())).thenReturn(Mono.just(true));
         when(idGenerator.nextId()).thenReturn(1L);
         triggerService = new FlowInvokeService(objectMapper,
                 executor, dagScheduler, flowVersionReadRepository,
-                reactiveRedisTemplate, cacheToggle, cacheManager, entityCacheManager,
+                reactiveRedisTemplate, cacheManager, entityCacheManager,
                 executionRecordService, executionStepService, idGenerator);
     }
 

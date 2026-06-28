@@ -26,7 +26,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
@@ -76,7 +75,6 @@ public class FlowInvokeService {
     private final DagScheduler dagScheduler;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
-    private final CacheToggle cacheToggle;
     private final EntityCacheManager entityCacheManager;
     private final FlowCacheManager cacheManager;
     private final ExecutionRecordService executionRecordService;
@@ -89,7 +87,6 @@ public class FlowInvokeService {
             DagScheduler dagScheduler,
             OpFlowVersionReadRepository flowVersionReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
-            CacheToggle cacheToggle,
             FlowCacheManager cacheManager,
             EntityCacheManager entityCacheManager,
             ExecutionRecordService executionRecordService,
@@ -100,7 +97,6 @@ public class FlowInvokeService {
         this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
         this.reactiveRedisTemplate = reactiveRedisTemplate;
-        this.cacheToggle = cacheToggle;
         this.cacheManager = cacheManager;
         this.entityCacheManager = entityCacheManager;
         this.executionRecordService = executionRecordService;
@@ -114,7 +110,6 @@ public class FlowInvokeService {
      * FR-043: 先加载 Flow entity 检查 deployed_version_id.
      * 如果已设置, 使用 findById() 加载特定版本; 否则回退到 findByFlowId().
      * 缓存 Key: {@code cp:flow:config:{flowId}}, TTL 120s.
-     * {@code connector.cache.enabled=false} 时直接穿透 R2DBC.
      * </p>
      *
      * @return (FlowVersionEntity, FlowEntity) 的 Tuple2，FlowEntity 可能为 null
@@ -149,9 +144,6 @@ public class FlowInvokeService {
      * 按 flowId 加载版本配置（带缓存 read-through）
      */
     private Mono<FlowVersionEntity> loadFlowVersionByFlowId(Long flowId) {
-        if (!cacheToggle.isEnabled()) {
-            return flowVersionReadRepository.findByFlowId(flowId);
-        }
         String key = "cp:flow:config:" + flowId;
         return reactiveRedisTemplate.opsForValue().get(key)
                 .flatMap(cachedJson -> {

@@ -104,7 +104,6 @@ public class EntityCacheManager {
     public Mono<Boolean> invalidateFlowCache(Long flowId) {
         String key = flowKey(flowId);
         return redisTemplate.opsForValue().delete(key)
-                .map(count -> count > 0)
                 .doOnSuccess(deleted -> log.info("Flow cache invalidated: flowId={}, deleted={}",
                         flowId, deleted));
     }

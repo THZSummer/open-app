@@ -36,11 +36,6 @@ spring:
           max-idle: 8
           min-idle: 0
 
-# 缓存配置（临时方案）
-connector:
-  cache:
-    enabled: true
-
 # 健康检查配置（不检查数据库和 Redis，避免因外部依赖未就绪导致启动检测失败）
 management:
   health:
