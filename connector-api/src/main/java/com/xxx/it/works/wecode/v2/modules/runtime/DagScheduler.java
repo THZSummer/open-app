@@ -352,14 +352,14 @@ public class DagScheduler {
      */
     private String getEdgeField(JsonNode edge, String newField, String oldField) {
         JsonNode val = edge.get(newField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         val = edge.get(oldField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         return null;
     }
 
     /**
-     * JsonNode Array → List<JsonNode>
+     * 将 JsonNode 数组转换为 List<JsonNode>
      */
     private List<JsonNode> toList(JsonNode arrayNode) {
         List<JsonNode> list = new ArrayList<>();

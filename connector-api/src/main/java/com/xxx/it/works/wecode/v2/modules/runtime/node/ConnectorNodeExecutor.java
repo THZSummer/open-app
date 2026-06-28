@@ -98,6 +98,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             try {
                 connectorVersionId = Long.valueOf((String) versionIdObj);
             } catch (NumberFormatException ignored) {
+                log.debug("Number format parsing ignored: {}", ignored.getMessage());
             }
         }
 

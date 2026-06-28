@@ -20,6 +20,6 @@ public interface OpFlowVersionReadRepository extends ReactiveCrudRepository<Flow
      * 按连接流ID查询最新版本配置
      * MVP 单版本模型: 每 flow 仅一条记录
      */
-    @Query("SELECT * FROM openplatform_v2_cp_flow_version_t WHERE flow_id = :flowId LIMIT 1")
+    @Query("SELECT id, flow_id, orchestration_config, version_number, status, published_time, published_by, create_time, last_update_time, create_by, last_update_by FROM openplatform_v2_cp_flow_version_t WHERE flow_id = :flowId LIMIT 1")
     Mono<FlowVersionEntity> findByFlowId(Long flowId);
 }

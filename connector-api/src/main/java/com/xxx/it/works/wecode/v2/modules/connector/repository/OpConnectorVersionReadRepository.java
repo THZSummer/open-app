@@ -20,6 +20,6 @@ public interface OpConnectorVersionReadRepository extends ReactiveCrudRepository
      * 按连接器ID查询最新版本配置
      * MVP 单版本模型: 每 connector 仅一条记录
      */
-    @Query("SELECT * FROM openplatform_v2_cp_connector_version_t WHERE connector_id = :connectorId LIMIT 1")
+    @Query("SELECT id, connector_id, connection_config, version_number, status, published_time, published_by, create_time, last_update_time, create_by, last_update_by FROM openplatform_v2_cp_connector_version_t WHERE connector_id = :connectorId LIMIT 1")
     Mono<ConnectorVersionEntity> findByConnectorId(Long connectorId);
 }

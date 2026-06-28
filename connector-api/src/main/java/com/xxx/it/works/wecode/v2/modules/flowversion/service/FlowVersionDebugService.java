@@ -137,7 +137,7 @@ public class FlowVersionDebugService {
      */
     @SuppressWarnings("unchecked")
     private String resolveTriggerNodeId(List<Map<String, Object>> nodes) {
-        if (nodes == null || nodes.isEmpty()) return null;
+        if (nodes == null || nodes.isEmpty()) { return null; }
         for (Map<String, Object> node : nodes) {
             String type = (String) node.get("type");
             if ("trigger".equals(type)) {

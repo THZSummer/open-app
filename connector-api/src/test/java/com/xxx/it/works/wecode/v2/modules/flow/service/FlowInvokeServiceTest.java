@@ -49,8 +49,6 @@ class FlowInvokeServiceTest {
     private DagScheduler dagScheduler;
 
     @Mock
-
-    @Mock
     private ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
 
     @Mock

@@ -1,6 +1,7 @@
 #!/bin/bash
 # connector-api 一键重启 — 先停止再启动
-set -uo pipefail
+# set 不含 -x：-x 会回显每条命令（含健康检查 JSON），淹没业务进度输出，故日常运维脚本静默化
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -42,7 +43,7 @@ echo "PID: $(cat $PID_FILE)"
 echo "⏳ 等待就绪..."
 for i in $(seq 1 30); do
     sleep 2
-    RESULT=$(curl -s "http://localhost:$PORT/actuator/health" 2>&1)
+    RESULT=$(curl -s "http://localhost:$PORT/actuator/health" 2>&1) || true
     if echo "$RESULT" | grep -q '"status":"UP"'; then
         echo "  [$i] ✅ $RESULT"
         echo "✅ 就绪! http://localhost:$PORT"

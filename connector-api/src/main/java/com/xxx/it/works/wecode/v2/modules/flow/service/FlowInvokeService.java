@@ -43,6 +43,7 @@ import java.util.Optional;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.Locale;
 
 /**
  * HTTP 触发服务 (v5.8)
@@ -126,7 +127,7 @@ public class FlowInvokeService {
      * {@code connector.cache.enabled=false} 时直接穿透 R2DBC.
      * </p>
      *
-     * @return Tuple2 of (FlowVersionEntity, FlowEntity) — FlowEntity may be null if not found
+     * @return (FlowVersionEntity, FlowEntity) 的 Tuple2，FlowEntity 可能为 null
      */
     private Mono<Tuple2<FlowVersionEntity, Optional<FlowEntity>>> loadFlowVersion(Long flowId) {
         return flowReadRepository.findById(flowId)
@@ -213,88 +214,24 @@ public class FlowInvokeService {
                     FlowVersionEntity flowVersion = tuple.getT1();
                     FlowEntity flow = tuple.getT2().orElse(null);
 
-                    // ★ 创建执行记录 (status=pending, 使用正确的 appId)
-                    Long appId = flow != null ? flow.getAppId() : null;
-                    try {
-                        executionRecordService.startRecord(recordId, flowId,
-                                flowVersion.getId(), appId, 1);
-                        log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
-                    } catch (Exception ex) {
-                        log.warn("Failed to start execution record: {}", ex.getMessage());
-                    }
+                    // ★ 初始化执行记录
+                    initExecutionRecord(recordId, flowId, executionId, flowVersion, flow);
 
-                    // ★ 补充流元数据（flowNameCn/flowNameEn/flowVersionSnapshot）
-                    if (flow != null) {
-                        try {
-                            executionRecordService.updateFlowMeta(recordId,
-                                    flowVersion.getId(),
-                                    flowVersion.getVersionNumber(),
-                                    flow.getAppId(),
-                                    flow.getNameCn(),
-                                    flow.getNameEn(),
-                                    flowVersion.getOrchestrationConfig());
-                        } catch (Exception ex) {
-                            log.warn("Failed to update flow meta for record {}: {}", recordId, ex.getMessage());
-                        }
-                    }
-
-                    // 1. 解析编排配置 (React Flow 格式)
+                    // 1. 解析编排配置
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
+                    TriggerParseResult trigger = parseAndValidateTrigger(config, headers, queryParams, triggerData);
+                    String triggerNodeId = trigger.triggerNodeId;
                     List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
 
-                    if (nodes == null || nodes.isEmpty()) {
-                        return Mono.error(new RuntimeException("Orchestration config has no nodes"));
-                    }
-
-                    // 2. 查找 trigger/entry 节点
-                    Map<String, Object> triggerNode = findTriggerNode(nodes);
-                    if (triggerNode == null) {
-                        return Mono.error(new RuntimeException("No trigger/entry node found in orchestration config"));
-                    }
-
-                    // 3. 获取 data 字段 (React Flow: node.data.xxx)
-                    Map<String, Object> nodeData = (Map<String, Object>) triggerNode.get("data");
-                    if (nodeData == null) {
-                        return Mono.error(new RuntimeException("Trigger node has no data field"));
-                    }
-
-                    String triggerNodeId = (String) triggerNode.get("id");
-
-                    // 4. 校验 data.triggerType (激活方式: http/manual)
-                    String triggerType = (String) nodeData.get("triggerType");
-                    if (triggerType == null || triggerType.isBlank()) {
-                        return Mono.error(new RuntimeException("Trigger node data.triggerType is required"));
-                    }
-                    if (!"http".equals(triggerType) && !"manual".equals(triggerType)) {
-                        return Mono.error(new RuntimeException("Unknown trigger type: " + triggerType));
-                    }
-
-                    // 5. 校验 authConfigs (HTTP 触发时必须存在)
-                    validateAuthConfig(nodeData, headers, triggerType);
-
-                    // 6. 校验 rateLimitConfig
-                    validateRateLimitConfig(nodeData);
-
-                    // 7. 校验 input (header / query / body 三段)
-                    Map<String, Object> input = (Map<String, Object>) nodeData.get("input");
-                    if ("http".equals(triggerType) && input == null) {
-                        return Mono.error(new RuntimeException("HTTP trigger requires input"));
-                    }
-                    if (input != null) {
-                        validateInputContractSections(input, headers, queryParams, triggerData);
-                    }
-
-                    // 7.5 校验 connector 节点 URL 白名单 (FR-015: 从 connector connection_config 读取)
-                    // 8. 构建执行上下文
+                    // 2. 构建执行上下文
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(triggerData);
                     context.setTriggerType(1); // HTTP触发
                     context.setTest(false);
-                    // 存储 header 和 query 到 context 供 TriggerNodeExecutor 使用
                     context.setTriggerHeaders(headers);
                     context.setTriggerQueryParams(queryParams);
 
-                    // 9. 建立触发节点的 NodeContext (结构化: {header, query, body})
+                    // 3. 建立触发节点的 NodeContext (结构化: {header, query, body})
                     NodeContext triggerNodeCtx = new NodeContext();
                     triggerNodeCtx.setNodeId(triggerNodeId);
                     triggerNodeCtx.setNodeType("trigger");
@@ -304,10 +241,10 @@ public class FlowInvokeService {
                     triggerNodeCtx.setStatus("success");
                     context.setNodeContext(triggerNodeCtx);
 
-                    // 10. 解析 flowConfig 缓存配置
+                    // 4. 解析 flowConfig 缓存配置
                     FlowConfig flowConfig = parseFlowConfigFromOrchMap(config);
 
-                    // 11. 异步校验 URL 白名单 -> 缓存检查 -> 执行连接流
+                    // 5. 异步校验 URL 白名单 -> 缓存检查 -> 执行连接流
                     String flowIdStr = String.valueOf(flowId);
                     boolean cacheEnabled = flowConfig.getCacheTtl() != null && flowConfig.getCacheTtl() > 0;
                     final String cacheKey = cacheEnabled ? buildCacheKey(context, flowConfig.getCacheKeys()) : null;
@@ -362,47 +299,10 @@ public class FlowInvokeService {
                     String flowIdStr = String.valueOf(flowId);
                     String msg = e.getMessage() != null ? e.getMessage() : "";
 
-                    String errorCode;
-                    String errorMsg;
-                    TransparentFlowResponse response;
-
-                    // 按异常消息分类错误码
-                    if (msg.contains("Flow not found")) {
-                        errorCode = "404";
-                        errorMsg = "流不存在: " + msg;
-                        response = TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.NOT_FOUND, errorCode,
-                                errorMsg, "Flow not found: " + msg);
-                    } else if (msg.contains("whitelist") || msg.contains("Whitelist")
-                            || msg.contains("URL not in")) {
-                        errorCode = "403";
-                        errorMsg = "URL 白名单拒绝: " + msg;
-                        response = TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.FORBIDDEN, errorCode,
-                                errorMsg, "URL whitelist denied: " + msg);
-                    } else if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
-                            || msg.contains("X-Sys-Token") || msg.contains("认证")) {
-                        errorCode = "401";
-                        errorMsg = "认证失败: " + msg;
-                        response = TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.UNAUTHORIZED, errorCode,
-                                errorMsg, "Authentication failed: " + msg);
-                    } else if (msg.contains("required field") || msg.contains("input")
-                            || msg.contains("must be") || msg.contains("Missing required")
-                            || e instanceof IllegalArgumentException) {
-                        errorCode = "400";
-                        errorMsg = "请求参数错误: " + msg;
-                        response = TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.BAD_REQUEST, errorCode,
-                                errorMsg, "Bad request: " + msg);
-                    } else {
-                        // 其他异常 → 500
-                        errorCode = "500";
-                        errorMsg = "触发执行失败: " + msg;
-                        response = TransparentFlowResponse.preExecutionError(
-                                flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, errorCode,
-                                errorMsg, "Trigger execution failed: " + msg);
-                    }
+                    String[] classified = classifyError(msg, e);
+                    String errorCode = classified[0];
+                    String errorMsg = classified[1];
+                    TransparentFlowResponse response = buildErrorResponse(flowIdStr, errorCode, errorMsg, msg);
 
                     // ★ 执行失败 - 更新记录
                     try {
@@ -415,6 +315,136 @@ public class FlowInvokeService {
 
                     return Mono.just(response);
                 });
+    }
+
+    /**
+     * 触发节点解析结果
+     */
+    private static class TriggerParseResult {
+        String triggerNodeId;
+    }
+
+    /**
+     * 初始化执行记录并补充流元数据
+     */
+    private void initExecutionRecord(Long recordId, Long flowId, String executionId,
+                                      FlowVersionEntity flowVersion, FlowEntity flow) {
+        Long appId = flow != null ? flow.getAppId() : null;
+        try {
+            executionRecordService.startRecord(recordId, flowId,
+                    flowVersion.getId(), appId, 1);
+            log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
+        } catch (Exception ex) {
+            log.warn("Failed to start execution record: {}", ex.getMessage());
+        }
+        if (flow != null) {
+            try {
+                executionRecordService.updateFlowMeta(recordId,
+                        flowVersion.getId(),
+                        flowVersion.getVersionNumber(),
+                        flow.getAppId(),
+                        flow.getNameCn(),
+                        flow.getNameEn(),
+                        flowVersion.getOrchestrationConfig());
+            } catch (Exception ex) {
+                log.warn("Failed to update flow meta for record {}: {}", recordId, ex.getMessage());
+            }
+        }
+    }
+
+    /**
+     * 解析编排配置并校验触发节点合法性
+     */
+    @SuppressWarnings("unchecked")
+    private TriggerParseResult parseAndValidateTrigger(Map<String, Object> config,
+                                                        Map<String, String> headers,
+                                                        Map<String, String> queryParams,
+                                                        Map<String, Object> triggerData) {
+        List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
+
+        if (nodes == null || nodes.isEmpty()) {
+            throw new RuntimeException("Orchestration config has no nodes");
+        }
+
+        Map<String, Object> triggerNode = findTriggerNode(nodes);
+        if (triggerNode == null) {
+            throw new RuntimeException("No trigger/entry node found in orchestration config");
+        }
+
+        Map<String, Object> nodeData = (Map<String, Object>) triggerNode.get("data");
+        if (nodeData == null) {
+            throw new RuntimeException("Trigger node has no data field");
+        }
+
+        String triggerNodeId = (String) triggerNode.get("id");
+
+        String triggerType = (String) nodeData.get("triggerType");
+        if (triggerType == null || triggerType.isBlank()) {
+            throw new RuntimeException("Trigger node data.triggerType is required");
+        }
+        if (!"http".equals(triggerType) && !"manual".equals(triggerType)) {
+            throw new RuntimeException("Unknown trigger type: " + triggerType);
+        }
+
+        validateAuthConfig(nodeData, headers, triggerType);
+        validateRateLimitConfig(nodeData);
+
+        Map<String, Object> input = (Map<String, Object>) nodeData.get("input");
+        if ("http".equals(triggerType) && input == null) {
+            throw new RuntimeException("HTTP trigger requires input");
+        }
+        if (input != null) {
+            validateInputContractSections(input, headers, queryParams, triggerData);
+        }
+
+        TriggerParseResult result = new TriggerParseResult();
+        result.triggerNodeId = triggerNodeId;
+        return result;
+    }
+
+    /**
+     * 根据异常消息分类错误码与错误消息
+     * @return 长度为2的数组：[errorCode, errorMsg]
+     */
+    private String[] classifyError(String msg, Throwable e) {
+        if (msg.contains("Flow not found")) {
+            return new String[]{"404", "流不存在: " + msg};
+        } else if (msg.contains("whitelist") || msg.contains("Whitelist") || msg.contains("URL not in")) {
+            return new String[]{"403", "URL 白名单拒绝: " + msg};
+        } else if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
+                || msg.contains("X-Sys-Token") || msg.contains("认证")) {
+            return new String[]{"401", "认证失败: " + msg};
+        } else if (msg.contains("required field") || msg.contains("input")
+                || msg.contains("must be") || msg.contains("Missing required")
+                || e instanceof IllegalArgumentException) {
+            return new String[]{"400", "请求参数错误: " + msg};
+        } else {
+            return new String[]{"500", "触发执行失败: " + msg};
+        }
+    }
+
+    /**
+     * 根据错误码构建对应的错误响应
+     */
+    private TransparentFlowResponse buildErrorResponse(String flowIdStr, String errorCode,
+                                                        String errorMsg, String msg) {
+        return switch (errorCode) {
+            case "404" -> TransparentFlowResponse.preExecutionError(
+                    flowIdStr, HttpStatus.NOT_FOUND, errorCode,
+                    errorMsg, "Flow not found: " + msg);
+            case "403" -> TransparentFlowResponse.preExecutionError(
+                    flowIdStr, HttpStatus.FORBIDDEN, errorCode,
+                    errorMsg, "URL whitelist denied: " + msg);
+            case "401" -> TransparentFlowResponse.preExecutionError(
+                    flowIdStr, HttpStatus.UNAUTHORIZED, errorCode,
+                    errorMsg, "Authentication failed: " + msg);
+            case "400" -> TransparentFlowResponse.preExecutionError(
+                    flowIdStr, HttpStatus.BAD_REQUEST, errorCode,
+                    errorMsg, "Bad request: " + msg);
+            default -> TransparentFlowResponse.preExecutionError(
+                    flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, errorCode,
+                    errorMsg, "Trigger execution failed: " + msg);
+        };
     }
 
     /**
@@ -461,17 +491,10 @@ public class FlowInvokeService {
             }
         }
 
-        // Prefer exit node output for response body — search by type, not hardcoded ID
-        NodeContext exitNodeCtx = null;
-        for (NodeContext nc : ctx.getNodeContexts().values()) {
-            if ("exit".equals(nc.getNodeType())) {
-                exitNodeCtx = nc;
-                break;
-            }
-        }
-        if (exitNodeCtx != null && exitNodeCtx.getOutput() != null
-                && !exitNodeCtx.getOutput().isEmpty()) {
-            lastOutput = exitNodeCtx.getOutput();
+        // 优先使用 exit 节点的输出作为响应体——按类型查找，而非硬编码 ID
+        Map<String, Object> exitOutput = findExitNodeOutput(ctx);
+        if (exitOutput != null) {
+            lastOutput = exitOutput;
         }
 
         result.setStatus(anyFailed ? "failed" : "success");
@@ -485,7 +508,30 @@ public class FlowInvokeService {
             result.setResultData(cleanOutput);
         }
 
-        // ★ 步骤日志持久化 (fire-and-forget, 不影响业务响应)
+        persistStepLogs(ctx, recordId);
+
+        return result;
+    }
+
+    /**
+     * 查找 exit 节点的输出（按类型查找，而非硬编码 ID）
+     */
+    private Map<String, Object> findExitNodeOutput(ExecutionContext ctx) {
+        for (NodeContext nc : ctx.getNodeContexts().values()) {
+            if ("exit".equals(nc.getNodeType())) {
+                if (nc.getOutput() != null && !nc.getOutput().isEmpty()) {
+                    return nc.getOutput();
+                }
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 持久化步骤日志（fire-and-forget，不影响业务响应）
+     */
+    private void persistStepLogs(ExecutionContext ctx, Long recordId) {
         try {
             List<StepLog> stepLogs = new ArrayList<>();
             for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
@@ -508,8 +554,6 @@ public class FlowInvokeService {
         } catch (Exception ex) {
             log.warn("Failed to log execution steps for record {}: {}", recordId, ex.getMessage());
         }
-
-        return result;
     }
 
     /**
@@ -518,8 +562,8 @@ public class FlowInvokeService {
      * @return 1=trigger, 2=connector, 3=script, 4=parallel, 5=exit, 0=unknown
      */
     private Integer mapNodeType(String nodeType) {
-        if (nodeType == null) return 0;
-        return switch (nodeType.toLowerCase()) {
+        if (nodeType == null) { return 0; }
+        return switch (nodeType.toLowerCase(Locale.ROOT)) {
             case "trigger" -> 1;
             case "connector" -> 2;
             case "script" -> 3;
@@ -560,7 +604,7 @@ public class FlowInvokeService {
             } else {
                 // 降级: 无 outputMapping 时, 整个 resultData 去掉 __ 元字段作为 body
                 Map<String, Object> fallback = new LinkedHashMap<>();
-                resultData.forEach((k, v) -> { if (!k.startsWith("__")) fallback.put(k, v); });
+                resultData.forEach((k, v) -> { if (!k.startsWith("__")) { fallback.put(k, v); } });
                 responseBody = fallback.isEmpty() ? null : fallback;
             }
         }
@@ -588,7 +632,7 @@ public class FlowInvokeService {
 
         r.getPlatformHeaders().put("X-Cache-Status", result.isCacheHit() ? "1" : "0");
 
-        // v5.9: set proper HTTP status for failures (was always 200)
+        // v5.9: 失败时设置正确的 HTTP 状态码（原先始终返回 200）
         if (execStatus != 0) {
             String xCode = r.getPlatformHeaders().get("X-Code");
             if (xCode != null && xCode.contains("timeout")) {
@@ -637,7 +681,7 @@ public class FlowInvokeService {
      * 将字符串值自动转换为合适的数值类型 (整型/浮点优先)
      */
     private Object coerceValue(String value) {
-        if (value == null) return null;
+        if (value == null) { return null; }
         try {
             return Long.parseLong(value);
         } catch (NumberFormatException e1) {
@@ -717,7 +761,7 @@ public class FlowInvokeService {
         if (properties != null && data != null) {
             for (Map.Entry<String, Object> prop : properties.entrySet()) {
                 String fieldName = prop.getKey();
-                if (!data.containsKey(fieldName)) continue;
+                if (!data.containsKey(fieldName)) { continue; }
                 Object value = data.get(fieldName);
                 Map<String, Object> propSchema = (Map<String, Object>) prop.getValue();
                 if (propSchema != null) {
@@ -743,36 +787,11 @@ public class FlowInvokeService {
                 break;
             case "integer":
             case "number":
-                if (value instanceof Number) {
-                    break;
-                }
-                // header/query 参数来自 HTTP，均为 String，尝试转换
-                if (value instanceof String) {
-                    try {
-                        Long.parseLong((String) value);
-                        break;
-                    } catch (NumberFormatException e1) {
-                        try {
-                            Double.parseDouble((String) value);
-                            break;
-                        } catch (NumberFormatException e2) {
-                            throw new IllegalArgumentException(
-                                    "Field '" + fieldName + "' must be number, got: '" + value + "'");
-                        }
-                    }
-                }
-                throw new IllegalArgumentException(
-                        "Field '" + fieldName + "' must be number, got: " + value.getClass().getSimpleName());
+                validateNumberType(fieldName, value);
+                break;
             case "boolean":
-                if (value instanceof Boolean) {
-                    break;
-                }
-                // 字符串 "true"/"false" 也接受
-                if (value instanceof String && ("true".equalsIgnoreCase((String) value) || "false".equalsIgnoreCase((String) value))) {
-                    break;
-                }
-                throw new IllegalArgumentException(
-                        "Field '" + fieldName + "' must be boolean, got: " + value.getClass().getSimpleName());
+                validateBooleanType(fieldName, value);
+                break;
             case "object":
                 if (!(value instanceof Map)) {
                     throw new IllegalArgumentException(
@@ -782,6 +801,45 @@ public class FlowInvokeService {
             default:
                 break;
         }
+    }
+
+    /**
+     * 校验数值类型字段（支持 String→Number 自动转换）
+     */
+    private void validateNumberType(String fieldName, Object value) {
+        if (value instanceof Number) {
+            return;
+        }
+        if (value instanceof String) {
+            try {
+                Long.parseLong((String) value);
+                return;
+            } catch (NumberFormatException e1) {
+                try {
+                    Double.parseDouble((String) value);
+                    return;
+                } catch (NumberFormatException e2) {
+                    throw new IllegalArgumentException(
+                            "Field '" + fieldName + "' must be number, got: '" + value + "'");
+                }
+            }
+        }
+        throw new IllegalArgumentException(
+                "Field '" + fieldName + "' must be number, got: " + value.getClass().getSimpleName());
+    }
+
+    /**
+     * 校验布尔类型字段
+     */
+    private void validateBooleanType(String fieldName, Object value) {
+        if (value instanceof Boolean) {
+            return;
+        }
+        if (value instanceof String && ("true".equalsIgnoreCase((String) value) || "false".equalsIgnoreCase((String) value))) {
+            return;
+        }
+        throw new IllegalArgumentException(
+                "Field '" + fieldName + "' must be boolean, got: " + value.getClass().getSimpleName());
     }
 
     /**
@@ -818,10 +876,10 @@ public class FlowInvokeService {
     @SuppressWarnings("unchecked")
     private void validateSystoken(Map<String, Object> authConfig, Map<String, String> headers) {
         Map<String, Object> headerContainer = (Map<String, Object>) authConfig.get("header");
-        if (headerContainer == null) return;
+        if (headerContainer == null) { return; }
 
         Map<String, Object> properties = (Map<String, Object>) headerContainer.get("properties");
-        if (properties == null || properties.isEmpty()) return;
+        if (properties == null || properties.isEmpty()) { return; }
 
         List<String> whitelistTokens = (List<String>) authConfig.get("sysAccountWhitelist");
 
@@ -882,20 +940,20 @@ public class FlowInvokeService {
      */
     @SuppressWarnings("unchecked")
     private Mono<Void> validateConnectorUrlWhitelist(List<Map<String, Object>> nodes) {
-        if (nodes == null || nodes.isEmpty()) return Mono.empty();
+        if (nodes == null || nodes.isEmpty()) { return Mono.empty(); }
 
         List<Mono<Void>> validations = new ArrayList<>();
 
         for (Map<String, Object> node : nodes) {
             String nodeType = (String) node.get("type");
-            if (!"connector".equals(nodeType)) continue;
+            if (!"connector".equals(nodeType)) { continue; }
 
             Map<String, Object> connData = (Map<String, Object>) node.get("data");
-            if (connData == null) continue;
+            if (connData == null) { continue; }
 
             // 从节点 data 获取 connectorVersionId (支持 Number 和 String 两种格式)
             Object connectorVersionIdObj = connData.get("connectorVersionId");
-            if (connectorVersionIdObj == null) continue;
+            if (connectorVersionIdObj == null) { continue; }
 
             Long connectorVersionId;
             if (connectorVersionIdObj instanceof Number) {
@@ -916,7 +974,7 @@ public class FlowInvokeService {
                     .<Void>flatMap(connVersion -> {
                         Map<String, Object> connConfig = connVersion.parseConnectionConfig(objectMapper);
 
-                        // v5.9: extract URL from connection_config.protocolConfig.url (not node data)
+                        // v5.9: 从 connection_config.protocolConfig.url 提取 URL（而非节点 data）
                         Map<String, Object> protocolConfig = (Map<String, Object>) connConfig.get("protocolConfig");
                         String url = protocolConfig != null ? (String) protocolConfig.get("url") : null;
                         if (url == null || url.isEmpty()) {
@@ -941,13 +999,12 @@ public class FlowInvokeService {
             validations.add(validation);
         }
 
-        if (validations.isEmpty()) return Mono.empty();
+        if (validations.isEmpty()) { return Mono.empty(); }
         return Flux.merge(validations).then();
     }
 
     /**
-     * Extract whitelist patterns from connection config, supporting both
-     * single string and list-of-strings formats for backward compatibility.
+     * 从连接配置中提取白名单模式，支持单字符串和字符串列表两种格式以保持向后兼容。
      */
     @SuppressWarnings("unchecked")
     private List<String> extractWhitelist(Object whitelistObj) {
@@ -1003,7 +1060,7 @@ public class FlowInvokeService {
         StringBuilder sb = new StringBuilder();
         for (String expr : cacheKeyExpressions) {
             Object resolved = resolver.resolve(expr, ctx.getNodeContexts());
-            if (sb.length() > 0) sb.append(":");
+            if (sb.length() > 0) { sb.append(":"); }
             sb.append(resolved != null ? resolved.toString() : "");
         }
         return sb.toString();

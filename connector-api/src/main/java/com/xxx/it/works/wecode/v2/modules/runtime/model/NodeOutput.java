@@ -98,11 +98,11 @@ public class NodeOutput {
     public String getErrorMessage() {
         if (errorInfo != null) {
             Object msg = errorInfo.get("message");
-            if (msg instanceof String) return (String) msg;
+            if (msg instanceof String) { return (String) msg; }
             Object msgEn = errorInfo.get("messageEn");
-            if (msgEn instanceof String) return (String) msgEn;
+            if (msgEn instanceof String) { return (String) msgEn; }
             Object msgZh = errorInfo.get("messageZh");
-            if (msgZh instanceof String) return (String) msgZh;
+            if (msgZh instanceof String) { return (String) msgZh; }
         }
         return null;
     }

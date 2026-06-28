@@ -43,7 +43,7 @@ public class FlowConfigParser {
 
             Integer timeoutMs = getIntOrNull(root, "timeoutMs");
 
-            // rate limit: nested under rateLimitConfig
+            // 限流配置：嵌套在 rateLimitConfig 下
             Integer maxQps = null;
             Integer maxConcurrency = null;
             JsonNode rateLimitConfig = root.get("rateLimitConfig");

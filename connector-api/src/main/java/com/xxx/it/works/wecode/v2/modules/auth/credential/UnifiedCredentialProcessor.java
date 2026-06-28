@@ -41,7 +41,7 @@ public class UnifiedCredentialProcessor {
                       Map<String, String> headers,
                       Map<String, Object> queryParams,
                       ExecutionContext context) {
-        if (!(authConfigsObj instanceof List)) return;
+        if (!(authConfigsObj instanceof List)) { return; }
         List<Map<String, Object>> authConfigs = (List<Map<String, Object>>) authConfigsObj;
         for (Map<String, Object> ac : authConfigs) {
             if (ac != null) {
@@ -88,7 +88,7 @@ public class UnifiedCredentialProcessor {
         for (Map.Entry<String, Object> entry : properties.entrySet()) {
             String fieldName = entry.getKey();
             Map<String, Object> fieldDef = (Map<String, Object>) entry.getValue();
-            if (fieldDef == null) continue;
+            if (fieldDef == null) { continue; }
 
             String expr = (String) fieldDef.get("value");
             String resolved = exprToValue.get(expr);

@@ -228,11 +228,11 @@ public class FlowRuntimeEngine {
             byte[] hash = digest.digest();
             StringBuilder hex = new StringBuilder();
             for (byte b : hash) {
-                hex.append(String.format("%02x", b));
+                hex.append(String.format(Locale.ROOT, "%02x", b));
             }
             return hex.toString();
         } catch (NoSuchAlgorithmException e) {
-            // SHA-256 always available in JVM
+            // SHA-256 在 JVM 中始终可用
             return String.valueOf(Objects.hash(flowId, ctx.getExecutionId()));
         } catch (Exception e) {
             log.warn("Failed to compute cache key: {}", e.getMessage());

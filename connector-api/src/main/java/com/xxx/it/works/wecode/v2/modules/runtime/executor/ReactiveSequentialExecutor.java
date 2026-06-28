@@ -268,9 +268,9 @@ public class ReactiveSequentialExecutor {
                     Object code = step.getErrorInfo().get("code");
                     Object msgZh = step.getErrorInfo().get("messageZh");
                     Object msgEn = step.getErrorInfo().get("messageEn");
-                    // fallback to "message" field
-                    if (msgZh == null) msgZh = step.getErrorInfo().get("message");
-                    if (msgEn == null) msgEn = step.getErrorInfo().get("message");
+                    // 回退到 "message" 字段
+                    if (msgZh == null) { msgZh = step.getErrorInfo().get("message"); }
+                    if (msgEn == null) { msgEn = step.getErrorInfo().get("message"); }
                     firstErrorCode = code instanceof String ? (String) code : "6001";
                     firstErrorMessageZh = msgZh instanceof String ? (String) msgZh : step.getStatus();
                     firstErrorMessageEn = msgEn instanceof String ? (String) msgEn : step.getStatus();
@@ -359,7 +359,7 @@ public class ReactiveSequentialExecutor {
         String currentId = entryNode.get("id").asText();
         while (edgeMap.containsKey(currentId)) {
             String nextId = edgeMap.get(currentId);
-            if (visited.contains(nextId)) break;
+            if (visited.contains(nextId)) { break; }
             visited.add(nextId);
             JsonNode nextNode = nodeMap.get(nextId);
             if (nextNode != null) {
@@ -383,9 +383,9 @@ public class ReactiveSequentialExecutor {
      */
     private String getEdgeField(JsonNode edge, String newField, String oldField) {
         JsonNode val = edge.get(newField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         val = edge.get(oldField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         return null;
     }
 

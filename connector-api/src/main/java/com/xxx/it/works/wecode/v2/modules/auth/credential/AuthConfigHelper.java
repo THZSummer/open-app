@@ -16,7 +16,7 @@ import java.util.Map;
 public final class AuthConfigHelper {
 
     private AuthConfigHelper() {
-        // utility class
+        // 工具类
     }
 
     /**
