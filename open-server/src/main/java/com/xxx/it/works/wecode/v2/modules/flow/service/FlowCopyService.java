@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 /**
@@ -139,7 +140,7 @@ public class FlowCopyService {
         String newName = null;
         for (int i = 0; i < MAX_RETRY; i++) {
             int suffix = random.nextInt(0x10000);
-            newName = originalName + "_copy_" + String.format("%04x", suffix);
+            newName = originalName + "_copy_" + String.format(Locale.ROOT, "%04x", suffix);
             // 简单碰撞检查（生产环境可加强）
             // 由于名称唯一性约束未强制，此处不做严格碰撞检测
         }
@@ -147,6 +148,6 @@ public class FlowCopyService {
             return newName;
         }
         // 保底：使用 timestamp 后缀
-        return originalName + "_copy_" + String.format("%04x", System.currentTimeMillis() % 0x10000);
+        return originalName + "_copy_" + String.format(Locale.ROOT, "%04x", System.currentTimeMillis() % 0x10000);
     }
 }
