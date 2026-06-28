@@ -1,5 +1,6 @@
 #!/bin/bash
 # open-server 一键停止
+# set 不含 -x：-x 会回显每条命令，淹没业务进度输出，故日常运维脚本静默化
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"

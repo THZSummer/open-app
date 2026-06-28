@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # ==================== 创建分类 ====================
 # 接口：POST /service/open/v2/categories

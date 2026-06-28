@@ -24,7 +24,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -65,7 +66,7 @@ public class ConnectorVersionService {
         this.propertyService = propertyService;
     }
 
-    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // ==================== #8 创建草稿版本 ====================
@@ -138,7 +139,6 @@ public class ConnectorVersionService {
 
         List<ConnectorVersion> versions = connectorVersionMapper.selectListByConnectorId(connectorId, status);
         List<ConnectorVersionListResponse> items = new ArrayList<>();
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
 
         if (versions != null) {
             for (ConnectorVersion v : versions) {
@@ -146,9 +146,9 @@ public class ConnectorVersionService {
                 item.setVersionId(String.valueOf(v.getId()));
                 item.setVersionNumber(v.getVersionNumber());
                 item.setStatus(v.getStatus());
-                item.setPublishedTime(v.getPublishedTime() != null ? sdf.format(v.getPublishedTime()) : null);
+                item.setPublishedTime(formatDate(v.getPublishedTime()));
                 item.setPublishedBy(v.getPublishedBy());
-                item.setCreateTime(v.getCreateTime() != null ? sdf.format(v.getCreateTime()) : null);
+                item.setCreateTime(formatDate(v.getCreateTime()));
                 item.setCreateBy(v.getCreateBy());
                 items.add(item);
             }
@@ -172,16 +172,15 @@ public class ConnectorVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         ConnectorVersionDetailResponse response = new ConnectorVersionDetailResponse();
         response.setVersionId(String.valueOf(version.getId()));
         response.setConnectorId(String.valueOf(version.getConnectorId()));
         response.setVersionNumber(version.getVersionNumber());
         response.setStatus(version.getStatus());
         response.setConnectionConfig(version.getConnectionConfig());
-        response.setPublishedTime(version.getPublishedTime() != null ? sdf.format(version.getPublishedTime()) : null);
+        response.setPublishedTime(formatDate(version.getPublishedTime()));
         response.setPublishedBy(version.getPublishedBy());
-        response.setCreateTime(version.getCreateTime() != null ? sdf.format(version.getCreateTime()) : null);
+        response.setCreateTime(formatDate(version.getCreateTime()));
         response.setCreateBy(version.getCreateBy());
 
         return ApiResponse.success(response);
@@ -257,81 +256,32 @@ public class ConnectorVersionService {
                     "Draft config is empty, complete connection config first");
         }
 
+        ApiResponse<?> result = validateConnectionConfigJson(version.getConnectionConfig());
+        if (result != null) return result;
+
+        result = validateConnectionConfigSize(version.getConnectionConfig(), internalAppId);
+        if (result != null) return result;
+
+        com.fasterxml.jackson.databind.JsonNode root;
         try {
-            objectMapper.readTree(version.getConnectionConfig());
+            root = objectMapper.readTree(version.getConnectionConfig());
         } catch (Exception e) {
             return ApiResponse.error("400",
                     "连接配置 JSON 格式无效：" + e.getMessage(),
                     "Invalid connection config JSON: " + e.getMessage());
         }
 
-        int maxBytes = propertyService.getConnectorConfigMaxBytes(String.valueOf(internalAppId));
-        if (maxBytes > 0) {
-            int actualBytes = version.getConnectionConfig().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
-            if (actualBytes > maxBytes) {
-                return ApiResponse.error("422",
-                        "连接配置 JSON 超过最大字节数限制 " + maxBytes + "，当前：" + actualBytes + "字节",
-                        "Connection config JSON exceeds max bytes " + maxBytes + ", actual: " + actualBytes);
-            }
-        }
-
-        try {
-            com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(version.getConnectionConfig());
-            if (root.has("urlWhitelist") && root.get("urlWhitelist").isArray()) {
-                for (com.fasterxml.jackson.databind.JsonNode rule : root.get("urlWhitelist")) {
-                    if (rule.has("pattern")) {
-                        String pattern = rule.get("pattern").asText();
-                        if (pattern != null && !pattern.isEmpty()) {
-                            try {
-                                Pattern.compile(pattern);
-                            } catch (PatternSyntaxException e) {
-                                return ApiResponse.error("422",
-                                        "URL 白名单正则无效：" + pattern + " — " + e.getMessage(),
-                                        "Invalid URL whitelist regex: " + pattern);
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            return ApiResponse.error("400",
-                    "连接配置 JSON 格式无效：" + e.getMessage(),
-                    "Invalid connection config JSON: " + e.getMessage());
-        }
+        result = validateUrlWhitelist(root);
+        if (result != null) return result;
 
         String urlRegexPattern = propertyService.getUrlRegexPattern();
         if (urlRegexPattern != null && !urlRegexPattern.isEmpty()) {
-            try {
-                com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(version.getConnectionConfig());
-                com.fasterxml.jackson.databind.JsonNode protocolConfig = root.get("protocolConfig");
-                if (protocolConfig != null && protocolConfig.has("url") && !protocolConfig.get("url").isNull()) {
-                    String targetUrl = protocolConfig.get("url").asText();
-                    if (targetUrl != null && !targetUrl.isEmpty()) {
-                        Pattern urlPattern;
-                        try {
-                            urlPattern = Pattern.compile(urlRegexPattern);
-                        } catch (PatternSyntaxException e) {
-                            return ApiResponse.error("500",
-                                    "平台 URL 正则配置无效：" + urlRegexPattern,
-                                    "Invalid platform URL regex configuration: " + urlRegexPattern);
-                        }
-                        if (!urlPattern.matcher(targetUrl).matches()) {
-                            return ApiResponse.error("422",
-                                    "连接器目标 URL 不符合平台正则规则：" + urlRegexPattern,
-                                    "Connector target URL does not match platform regex: " + urlRegexPattern);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                return ApiResponse.error("400",
-                        "连接配置 JSON 格式无效：" + e.getMessage(),
-                        "Invalid connection config JSON: " + e.getMessage());
-            }
+            result = validatePlatformUrlRegex(urlRegexPattern, root);
+            if (result != null) return result;
         }
 
         Date now = new Date();
         String currentUser = UserContextHolder.getUserName();
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
 
         version.setStatus(ConnectorVersionStatus.PUBLISHED.getCode());
         version.setPublishedTime(now);
@@ -376,7 +326,7 @@ public class ConnectorVersionService {
                 .versionNumber(version.getVersionNumber())
                 .status(ConnectorVersionStatus.PUBLISHED.getCode())
                 .connectorStatus(connector.getStatus())
-                .publishedTime(sdf.format(now))
+                .publishedTime(formatDate(now))
                 .build();
 
         return ApiResponse.success(response);
@@ -586,10 +536,113 @@ public class ConnectorVersionService {
 
     private boolean hasOtherPublishedVersion(Long connectorId, Long excludeVersionId) {
         List<ConnectorVersion> versions = connectorVersionMapper.selectListByConnectorId(connectorId, null);
-        if (versions == null) return false;
+        if (versions == null) {
+            return false;
+        }
         return versions.stream()
                 .anyMatch(v -> v.getStatus() != null
                         && v.getStatus() == ConnectorVersionStatus.PUBLISHED.getCode()
                         && !v.getId().equals(excludeVersionId));
+    }
+
+    /**
+     * 格式化日期为 "yyyy-MM-dd HH:mm:ss" 字符串
+     */
+    private static String formatDate(Date date) {
+        if (date == null) return null;
+        return DATE_FORMATTER.format(date.toInstant().atZone(ZoneId.systemDefault()));
+    }
+
+    /**
+     * 校验连接配置 JSON 语法
+     *
+     * @return ApiResponse.error 或 null（通过）
+     */
+    private ApiResponse<?> validateConnectionConfigJson(String connectionConfig) {
+        try {
+            objectMapper.readTree(connectionConfig);
+        } catch (Exception e) {
+            return ApiResponse.error("400",
+                    "连接配置 JSON 格式无效：" + e.getMessage(),
+                    "Invalid connection config JSON: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 校验连接配置 JSON 字节数是否超过上限
+     *
+     * @return ApiResponse.error 或 null（通过）
+     */
+    private ApiResponse<?> validateConnectionConfigSize(String connectionConfig, Long appId) {
+        int maxBytes = propertyService.getConnectorConfigMaxBytes(String.valueOf(appId));
+        if (maxBytes > 0) {
+            int actualBytes = connectionConfig.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if (actualBytes > maxBytes) {
+                return ApiResponse.error("422",
+                        "连接配置 JSON 超过最大字节数限制 " + maxBytes + "，当前：" + actualBytes + "字节",
+                        "Connection config JSON exceeds max bytes " + maxBytes + ", actual: " + actualBytes);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 校验 URL 白名单中的正则表达式是否合法
+     *
+     * @param root 连接配置 JSON 根节点
+     * @return ApiResponse.error 或 null（通过）
+     */
+    private ApiResponse<?> validateUrlWhitelist(com.fasterxml.jackson.databind.JsonNode root) {
+        if (!root.has("urlWhitelist") || !root.get("urlWhitelist").isArray()) {
+            return null;
+        }
+        for (com.fasterxml.jackson.databind.JsonNode rule : root.get("urlWhitelist")) {
+            if (rule.has("pattern")) {
+                String pattern = rule.get("pattern").asText();
+                if (pattern != null && !pattern.isEmpty()) {
+                    try {
+                        Pattern.compile(pattern);
+                    } catch (PatternSyntaxException e) {
+                        return ApiResponse.error("422",
+                                "URL 白名单正则无效：" + pattern + " — " + e.getMessage(),
+                                "Invalid URL whitelist regex: " + pattern);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 校验连接器目标 URL 是否符合平台正则规则
+     *
+     * @param urlRegexPattern 平台 URL 正则表达式
+     * @param root            连接配置 JSON 根节点
+     * @return ApiResponse.error 或 null（通过）
+     */
+    private ApiResponse<?> validatePlatformUrlRegex(String urlRegexPattern, com.fasterxml.jackson.databind.JsonNode root) {
+        com.fasterxml.jackson.databind.JsonNode protocolConfig = root.get("protocolConfig");
+        if (protocolConfig == null || !protocolConfig.has("url") || protocolConfig.get("url").isNull()) {
+            return null;
+        }
+        String targetUrl = protocolConfig.get("url").asText();
+        if (targetUrl == null || targetUrl.isEmpty()) {
+            return null;
+        }
+        Pattern urlPattern;
+        try {
+            urlPattern = Pattern.compile(urlRegexPattern);
+        } catch (PatternSyntaxException e) {
+            return ApiResponse.error("500",
+                    "平台 URL 正则配置无效：" + urlRegexPattern,
+                    "Invalid platform URL regex configuration: " + urlRegexPattern);
+        }
+        if (!urlPattern.matcher(targetUrl).matches()) {
+            return ApiResponse.error("422",
+                    "连接器目标 URL 不符合平台正则规则：" + urlRegexPattern,
+                    "Connector target URL does not match platform regex: " + urlRegexPattern);
+        }
+        return null;
     }
 }

@@ -110,8 +110,8 @@ class GlobalExceptionHandlerV2Test {
             ApiResponse<Void> response = handler.handleException(exception);
 
             assertEquals("500", response.getCode());
-            assertEquals("Internal server error", response.getMessageZh());
-            assertEquals("Internal Server Error", response.getMessageEn());
+            assertEquals("Internal server error: 数据库连接失败", response.getMessageZh());
+            assertEquals("Internal Server Error: 数据库连接失败", response.getMessageEn());
             assertNull(response.getData());
         }
     }

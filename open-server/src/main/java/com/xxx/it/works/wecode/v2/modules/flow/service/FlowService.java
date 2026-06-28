@@ -18,7 +18,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -55,10 +56,10 @@ public class FlowService {
     @Autowired(required = false)
     private StringRedisTemplate stringRedisTemplate;
 
-    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private String formatDate(Date date) {
-        return new SimpleDateFormat(DATE_FORMAT).format(date);
+        return DATE_FORMATTER.format(date.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime());
     }
 
     // ==================== #17 创建连接流 ====================
@@ -213,11 +214,21 @@ public class FlowService {
         Date now = new Date();
         String currentUser = UserContextHolder.getUserName();
 
-        if (request.getNameCn() != null) flow.setNameCn(request.getNameCn());
-        if (request.getNameEn() != null) flow.setNameEn(request.getNameEn());
-        if (request.getDescriptionCn() != null) flow.setDescriptionCn(request.getDescriptionCn());
-        if (request.getDescriptionEn() != null) flow.setDescriptionEn(request.getDescriptionEn());
-        if (request.getIconFileId() != null) flow.setIconFileId(request.getIconFileId());
+        if (request.getNameCn() != null) {
+            flow.setNameCn(request.getNameCn());
+        }
+        if (request.getNameEn() != null) {
+            flow.setNameEn(request.getNameEn());
+        }
+        if (request.getDescriptionCn() != null) {
+            flow.setDescriptionCn(request.getDescriptionCn());
+        }
+        if (request.getDescriptionEn() != null) {
+            flow.setDescriptionEn(request.getDescriptionEn());
+        }
+        if (request.getIconFileId() != null) {
+            flow.setIconFileId(request.getIconFileId());
+        }
 
         flow.setLastUpdateTime(now);
         flow.setLastUpdateBy(currentUser);
@@ -229,7 +240,7 @@ public class FlowService {
 
     // ==================== #22 部署（委托给 FlowDeployService） ====================
 
-    // Deployment is handled by FlowDeployService, invoked from FlowController
+    // 部署由 FlowDeployService 处理，从 FlowController 调用
 
     // ==================== #23 启动 ====================
 

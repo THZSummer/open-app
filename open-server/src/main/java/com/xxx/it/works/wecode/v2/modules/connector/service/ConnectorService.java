@@ -18,7 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -53,7 +54,7 @@ public class ConnectorService {
         this.idGenerator = idGenerator;
     }
 
-    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // ==================== #1 创建连接器 ====================
 
@@ -85,7 +86,6 @@ public class ConnectorService {
 
         log.info("Connector created: id={}, internalAppId={}", connectorId, internalAppId);
 
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         ConnectorCreateResponse response = ConnectorCreateResponse.builder()
                 .connectorId(String.valueOf(connectorId))
                 .nameCn(request.getNameCn())
@@ -93,7 +93,7 @@ public class ConnectorService {
                 .connectorType(request.getConnectorType())
                 .status(ConnectorStatus.UNAVAILABLE.getCode())
                 .appId(String.valueOf(internalAppId))
-                .createTime(sdf.format(now))
+                .createTime(DATE_FORMATTER.format(now.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()))
                 .note("创建连接器后需手动创建草稿版本")
                 .build();
 
@@ -119,7 +119,6 @@ public class ConnectorService {
                 connectorType, keyword, internalAppId, status);
 
         List<ConnectorListResponse> items = new ArrayList<>();
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         for (Connector c : pageItems) {
             ConnectorListResponse item = new ConnectorListResponse();
             item.setConnectorId(String.valueOf(c.getId()));
@@ -130,10 +129,10 @@ public class ConnectorService {
             item.setConnectorType(c.getConnectorType());
             item.setStatus(c.getStatus());
             item.setAppId(String.valueOf(c.getAppId()));
-            item.setCreateTime(c.getCreateTime() != null ? sdf.format(c.getCreateTime()) : null);
+            item.setCreateTime(c.getCreateTime() != null ? DATE_FORMATTER.format(c.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()) : null);
             item.setCreateBy(c.getCreateBy());
             item.setLastUpdateBy(c.getLastUpdateBy());
-            item.setLastUpdateTime(c.getLastUpdateTime() != null ? sdf.format(c.getLastUpdateTime()) : null);
+            item.setLastUpdateTime(c.getLastUpdateTime() != null ? DATE_FORMATTER.format(c.getLastUpdateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()) : null);
 
             List<ConnectorVersion> versions = connectorVersionMapper.selectListByConnectorId(c.getId(), null);
             Integer latestPublished = null;
@@ -195,10 +194,18 @@ public class ConnectorService {
         Date now = new Date();
         String currentUser = UserContextHolder.getUserName();
 
-        if (request.getNameCn() != null) connector.setNameCn(request.getNameCn());
-        if (request.getNameEn() != null) connector.setNameEn(request.getNameEn());
-        if (request.getDescriptionCn() != null) connector.setDescriptionCn(request.getDescriptionCn());
-        if (request.getDescriptionEn() != null) connector.setDescriptionEn(request.getDescriptionEn());
+        if (request.getNameCn() != null) {
+            connector.setNameCn(request.getNameCn());
+        }
+        if (request.getNameEn() != null) {
+            connector.setNameEn(request.getNameEn());
+        }
+        if (request.getDescriptionCn() != null) {
+            connector.setDescriptionCn(request.getDescriptionCn());
+        }
+        if (request.getDescriptionEn() != null) {
+            connector.setDescriptionEn(request.getDescriptionEn());
+        }
 
         connector.setLastUpdateTime(now);
         connector.setLastUpdateBy(currentUser);
@@ -306,7 +313,6 @@ public class ConnectorService {
     // ==================== 内部转换方法 ====================
 
     private ConnectorDetailResponse toDetailResponse(Connector c) {
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         ConnectorDetailResponse r = new ConnectorDetailResponse();
         r.setConnectorId(String.valueOf(c.getId()));
         r.setNameCn(c.getNameCn());
@@ -316,8 +322,8 @@ public class ConnectorService {
         r.setConnectorType(c.getConnectorType());
         r.setStatus(c.getStatus());
         r.setAppId(c.getAppId() != null ? String.valueOf(c.getAppId()) : null);
-        r.setCreateTime(c.getCreateTime() != null ? sdf.format(c.getCreateTime()) : null);
-        r.setLastUpdateTime(c.getLastUpdateTime() != null ? sdf.format(c.getLastUpdateTime()) : null);
+        r.setCreateTime(c.getCreateTime() != null ? DATE_FORMATTER.format(c.getCreateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()) : null);
+        r.setLastUpdateTime(c.getLastUpdateTime() != null ? DATE_FORMATTER.format(c.getLastUpdateTime().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime()) : null);
         return r;
     }
 }

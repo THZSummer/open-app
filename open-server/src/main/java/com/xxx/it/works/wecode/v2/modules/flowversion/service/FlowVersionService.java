@@ -34,7 +34,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.SimpleDateFormat;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -85,7 +86,7 @@ public class FlowVersionService {
     @Autowired(required = false)
     private StringRedisTemplate stringRedisTemplate;
 
-    private static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Value("${platform.approval-url-prefix}")
     private String approvalUrlPrefix;
@@ -170,7 +171,6 @@ public class FlowVersionService {
 
         List<FlowVersion> versions = flowVersionMapper.selectListByFlowId(flowId, status);
         List<FlowVersionListResponse> items = new ArrayList<>();
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
 
         Long deployedVersionId = flow.getDeployedVersionId();
 
@@ -180,9 +180,9 @@ public class FlowVersionService {
                 item.setVersionId(String.valueOf(v.getId()));
                 item.setVersionNumber(v.getVersionNumber());
                 item.setStatus(v.getStatus());
-                item.setPublishedTime(v.getPublishedTime() != null ? sdf.format(v.getPublishedTime()) : null);
+                item.setPublishedTime(formatDate(v.getPublishedTime()));
                 item.setPublishedBy(v.getPublishedBy());
-                item.setCreateTime(v.getCreateTime() != null ? sdf.format(v.getCreateTime()) : null);
+                item.setCreateTime(formatDate(v.getCreateTime()));
                 item.setCreateBy(v.getCreateBy());
 
                 // 设置 deployed 标记
@@ -213,18 +213,17 @@ public class FlowVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         FlowVersionDetailResponse response = new FlowVersionDetailResponse();
         response.setVersionId(String.valueOf(version.getId()));
         response.setFlowId(String.valueOf(version.getFlowId()));
         response.setVersionNumber(version.getVersionNumber());
         response.setStatus(version.getStatus());
         response.setOrchestrationConfig(version.getOrchestrationConfig());
-        response.setPublishedTime(version.getPublishedTime() != null ? sdf.format(version.getPublishedTime()) : null);
+        response.setPublishedTime(formatDate(version.getPublishedTime()));
         response.setPublishedBy(version.getPublishedBy());
-        response.setCreateTime(version.getCreateTime() != null ? sdf.format(version.getCreateTime()) : null);
+        response.setCreateTime(formatDate(version.getCreateTime()));
         response.setCreateBy(version.getCreateBy());
-        response.setLastUpdateTime(version.getLastUpdateTime() != null ? sdf.format(version.getLastUpdateTime()) : null);
+        response.setLastUpdateTime(formatDate(version.getLastUpdateTime()));
         response.setLastUpdateBy(version.getLastUpdateBy());
 
         // 查询审批信息（待审批状态时查询审批人和审批地址）
@@ -333,6 +332,7 @@ public class FlowVersionService {
      * 发布版本：全量 9 项校验 → 提交审批
      */
     @Transactional
+    @SuppressWarnings("unchecked")
     public ApiResponse<FlowPublishResponse> publish(Long flowId, Long versionId) {
         Long appId = AppContextHolder.requireInternalAppId();
         String externalAppId = AppContextHolder.getCurrentContext().getExternalId();
@@ -346,62 +346,26 @@ public class FlowVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        // 仅草稿可发布
-        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.DRAFT.getCode()) {
-            return ApiResponse.error("409",
-                    "非草稿状态，不可发布",
-                    "Only draft versions can be published");
-        }
+        ApiResponse<?> result = validateFlowVersionFields(version);
+        if (result != null) return (ApiResponse<FlowPublishResponse>) result;
 
-        // ── 校验 1：业务必填字段 ──
-        List<String> errors = publishValidator.validateBusinessFields(flow.getNameCn(), flow.getNameEn());
-        if (!errors.isEmpty()) {
-            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
-        }
+        result = validateOrchestration(flow, version, externalAppId);
+        if (result != null) return (ApiResponse<FlowPublishResponse>) result;
 
-        // ── 校验 2~9：编排配置校验 ──
+        // ── 同步引用并校验连接器版本引用可用性 ──
         String config = version.getOrchestrationConfig();
-        if (config == null || config.trim().isEmpty()) {
-            return ApiResponse.error("422",
-                    "草稿编排配置为空，请先保存编排配置",
-                    "Draft orchestration config is empty");
-        }
-
-        // 校验 8：JSON 语法 + 校验 2、6、9、3/4/5 基础
-        errors = publishValidator.validateOrchestrationConfig(config, externalAppId);
-        if (!errors.isEmpty()) {
-            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
-        }
-
-        // 同步 connector_version_ref 中间表（确保发布前引用关系最新）
         Date now = new Date();
         String currentUser = UserContextHolder.getUserName();
         syncConnectorVersionRefs(flowId, versionId, config, currentUser, now);
 
-        // 校验 7：连接器版本引用可用性（需先有引用数据，引用数据在保存编排时写入）
-        errors = publishValidator.validateConnectorVersionRefs(versionId);
-        if (!errors.isEmpty()) {
-            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
-        }
+        result = validateConnectorRefs(versionId);
+        if (result != null) return (ApiResponse<FlowPublishResponse>) result;
 
-        // 校验 3、4：应用上限校验（从 PropertyService 获取按应用配置的上限值）
-        String appIdStr = externalAppId;
-        int appMaxQps = propertyService.getFlowMaxQps(appIdStr);
-        int appMaxConcurrency = propertyService.getFlowMaxConcurrency(appIdStr);
-        int appMaxTimeoutMs = propertyService.getNodeMaxTimeoutSeconds(appIdStr) * 1000;
-        errors = publishValidator.validateRateLimitAgainstAppMax(config, appMaxQps, appMaxConcurrency);
-        if (!errors.isEmpty()) {
-            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
-        }
-        errors = publishValidator.validateTimeoutAgainstAppMax(config, appMaxTimeoutMs);
-        if (!errors.isEmpty()) {
-            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
-        }
+        // ── 应用上限校验 ──
+        result = validateRateLimits(config, externalAppId);
+        if (result != null) return (ApiResponse<FlowPublishResponse>) result;
 
         // ── 全部校验通过，提交审批 ──
-
-
-        // 调用审批服务创建审批实例
         try {
             approvalService.submitApproval(versionId, flowId,
                     flow.getNameCn(), flow.getNameEn(), appId,
@@ -438,16 +402,78 @@ public class FlowVersionService {
             log.warn("Failed to write audit log for flow publish: flowId={}, versionId={}", flowId, versionId, e);
         }
 
-        SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT);
         FlowPublishResponse response = FlowPublishResponse.builder()
                 .versionId(String.valueOf(versionId))
                 .versionNumber(version.getVersionNumber())
                 .status(FlowVersionStatus.PENDING_APPROVAL.getCode())
-                .submittedTime(sdf.format(now))
+                .submittedTime(formatDate(now))
                 .message("已提交审批，请等待审批结果")
                 .build();
 
         return ApiResponse.success(response);
+    }
+
+    /**
+     * 校验版本状态是否为草稿
+     */
+    private ApiResponse<?> validateFlowVersionFields(FlowVersion version) {
+        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.DRAFT.getCode()) {
+            return ApiResponse.error("409",
+                    "非草稿状态，不可发布",
+                    "Only draft versions can be published");
+        }
+        return null;
+    }
+
+    /**
+     * 校验编排配置不为空且通过编排校验器
+     */
+    private ApiResponse<?> validateOrchestration(Flow flow, FlowVersion version, String externalAppId) {
+        List<String> errors = publishValidator.validateBusinessFields(flow.getNameCn(), flow.getNameEn());
+        if (!errors.isEmpty()) {
+            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
+        }
+        String config = version.getOrchestrationConfig();
+        if (config == null || config.trim().isEmpty()) {
+            return ApiResponse.error("422",
+                    "草稿编排配置为空，请先保存编排配置",
+                    "Draft orchestration config is empty");
+        }
+        errors = publishValidator.validateOrchestrationConfig(config, externalAppId);
+        if (!errors.isEmpty()) {
+            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
+        }
+        return null;
+    }
+
+    /**
+     * 校验连接器版本引用可用性
+     */
+    private ApiResponse<?> validateConnectorRefs(Long versionId) {
+        List<String> errors = publishValidator.validateConnectorVersionRefs(versionId);
+        if (!errors.isEmpty()) {
+            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
+        }
+        return null;
+    }
+
+    /**
+     * 校验应用 QPS、并发数、超时时间上限
+     */
+    private ApiResponse<?> validateRateLimits(String config, String externalAppId) {
+        String appIdStr = externalAppId;
+        int appMaxQps = propertyService.getFlowMaxQps(appIdStr);
+        int appMaxConcurrency = propertyService.getFlowMaxConcurrency(appIdStr);
+        int appMaxTimeoutMs = propertyService.getNodeMaxTimeoutSeconds(appIdStr) * 1000;
+        List<String> errors = publishValidator.validateRateLimitAgainstAppMax(config, appMaxQps, appMaxConcurrency);
+        if (!errors.isEmpty()) {
+            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
+        }
+        errors = publishValidator.validateTimeoutAgainstAppMax(config, appMaxTimeoutMs);
+        if (!errors.isEmpty()) {
+            return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
+        }
+        return null;
     }
 
     // ==================== #33 复制到草稿 ====================
@@ -803,47 +829,7 @@ public class FlowVersionService {
             // 遍历节点，为 connector 节点创建引用
             java.util.List<ConnectorVersionRef> refs = new java.util.ArrayList<>();
             for (com.fasterxml.jackson.databind.JsonNode node : nodes) {
-                String type = node.has("type") ? node.get("type").asText() : null;
-                if (!"connector".equals(type)) {
-                    continue;
-                }
-
-                String nodeId = node.has("id") ? node.get("id").asText() : null;
-                if (nodeId == null) continue;
-
-                com.fasterxml.jackson.databind.JsonNode data = node.get("data");
-                if (data == null) continue;
-
-                // 获取 connectorId 和 connectorVersionId
-                Long connectorId = null;
-                Long connectorVersionId = null;
-                if (data.has("connectorId") && !data.get("connectorId").isNull()) {
-                    try {
-                        connectorId = Long.parseLong(data.get("connectorId").asText());
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-                if (data.has("connectorVersionId") && !data.get("connectorVersionId").isNull()) {
-                    try {
-                        connectorVersionId = Long.parseLong(data.get("connectorVersionId").asText());
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-
-                if (connectorVersionId != null) {
-                    ConnectorVersionRef ref = new ConnectorVersionRef();
-                    ref.setId(idGenerator.nextId());
-                    ref.setFlowId(flowId);
-                    ref.setFlowVersionId(versionId);
-                    ref.setNodeId(nodeId);
-                    ref.setConnectorId(connectorId);
-                    ref.setConnectorVersionId(connectorVersionId);
-                    ref.setCreateTime(now);
-                    ref.setLastUpdateTime(now);
-                    ref.setCreateBy(operator);
-                    ref.setLastUpdateBy(operator);
-                    refs.add(ref);
-                }
+                processConnectorRefNode(node, flowId, versionId, refs, operator, now);
             }
 
             if (!refs.isEmpty()) {
@@ -854,7 +840,78 @@ public class FlowVersionService {
         } catch (Exception e) {
             log.warn("Failed to sync connector version refs: flowId={}, versionId={}, error={}",
                     flowId, versionId, e.getMessage());
-            // 不阻塞流程，引用同步失败不影响保存
         }
+    }
+
+    /**
+     * 处理单个 connector 引用节点，解析 connectorId/connectorVersionId 并构建引用对象
+     *
+     * @param node      当前节点
+     * @param flowId    连接流ID
+     * @param versionId 连接流版本ID
+     * @param refs      引用列表（已初始化）
+     * @param operator  操作人
+     * @param now       当前时间
+     */
+    private void processConnectorRefNode(com.fasterxml.jackson.databind.JsonNode node, Long flowId, Long versionId,
+                                          java.util.List<ConnectorVersionRef> refs, String operator, Date now) {
+        String type = node.has("type") ? node.get("type").asText() : null;
+        if (!"connector".equals(type)) {
+            return;
+        }
+
+        String nodeId = node.has("id") ? node.get("id").asText() : null;
+        if (nodeId == null) {
+            return;
+        }
+
+        com.fasterxml.jackson.databind.JsonNode data = node.get("data");
+        if (data == null) {
+            return;
+        }
+
+        Long connectorId = parseLongSafely(data, "connectorId");
+        Long connectorVersionId = parseLongSafely(data, "connectorVersionId");
+
+        if (connectorVersionId != null) {
+            ConnectorVersionRef ref = new ConnectorVersionRef();
+            ref.setId(idGenerator.nextId());
+            ref.setFlowId(flowId);
+            ref.setFlowVersionId(versionId);
+            ref.setNodeId(nodeId);
+            ref.setConnectorId(connectorId);
+            ref.setConnectorVersionId(connectorVersionId);
+            ref.setCreateTime(now);
+            ref.setLastUpdateTime(now);
+            ref.setCreateBy(operator);
+            ref.setLastUpdateBy(operator);
+            refs.add(ref);
+        }
+    }
+
+    /**
+     * 安全地从 JsonNode 中解析 Long 字段值，解析失败时返回 null
+     *
+     * @param data      JsonNode 数据节点
+     * @param fieldName 字段名
+     * @return Long 值，解析失败返回 null
+     */
+    private Long parseLongSafely(com.fasterxml.jackson.databind.JsonNode data, String fieldName) {
+        if (data.has(fieldName) && !data.get(fieldName).isNull()) {
+            try {
+                return Long.parseLong(data.get(fieldName).asText());
+            } catch (NumberFormatException ignored) {
+                log.debug("Number format parsing ignored: {}", ignored.getMessage());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 格式化日期为 "yyyy-MM-dd HH:mm:ss" 字符串
+     */
+    private static String formatDate(Date date) {
+        if (date == null) return null;
+        return DATE_FORMATTER.format(date.toInstant().atZone(ZoneId.systemDefault()));
     }
 }
