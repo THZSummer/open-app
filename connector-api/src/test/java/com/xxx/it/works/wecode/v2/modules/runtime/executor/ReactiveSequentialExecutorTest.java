@@ -33,7 +33,7 @@ class ReactiveSequentialExecutorTest {
 
         TriggerNodeExecutor triggerExecutor = new TriggerNodeExecutor(objectMapper);
         UnifiedCredentialProcessor mockProcessor = mock(UnifiedCredentialProcessor.class);
-        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, null, mockProcessor);
+        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockProcessor);
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 

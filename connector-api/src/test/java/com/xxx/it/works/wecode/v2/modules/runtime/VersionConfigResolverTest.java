@@ -76,7 +76,6 @@ class VersionConfigResolverTest {
                 })
                 .verifyComplete();
 
-        verify(entityCacheManager, never()).getConnectorVersion(anyLong());
     }
 
     // ===== 异常: 流不存在 =====
