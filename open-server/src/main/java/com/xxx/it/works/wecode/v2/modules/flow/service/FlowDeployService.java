@@ -116,6 +116,8 @@ public class FlowDeployService {
             stringRedisTemplate.delete("cp:flow:config:" + flowId);
             // 删除新版 version-aware 缓存 (force fresh DB load of new version)
             stringRedisTemplate.delete("cp:flow:config:" + flowId + ":" + versionId);
+            // 删除 FlowEntity 缓存 (含 deployed_version_id，部署后需失效)
+            stringRedisTemplate.delete("cp:entity:flow:" + flowId);
             log.debug("Evicted flow config cache: flowId={}, versionId={}", flowId, versionId);
         } catch (Exception e) {
             log.warn("Failed to evict flow config cache: flowId={}, versionId={}, error={}",

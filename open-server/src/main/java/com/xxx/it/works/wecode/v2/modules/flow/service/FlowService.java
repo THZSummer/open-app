@@ -411,6 +411,8 @@ public class FlowService {
         }
         try {
             stringRedisTemplate.delete("cp:flow:config:" + flowId);
+            // 删除 FlowEntity 缓存 (含 lifecycle_status/deployed_version_id，状态变更后需失效)
+            stringRedisTemplate.delete("cp:entity:flow:" + flowId);
             log.debug("Evicted flow config cache: flowId={}", flowId);
         } catch (Exception e) {
             log.warn("Failed to evict flow config cache: flowId={}, error={}", flowId, e.getMessage());

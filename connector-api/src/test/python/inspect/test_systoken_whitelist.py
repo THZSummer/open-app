@@ -97,7 +97,7 @@ def build_orch(whitelist=None):
 # Flow Lifecycle Helpers
 # ═══════════════════════════════════════════════════════════
 
-def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
+def setup_flow(flow_id, lifecycle_status=2, orchestration=None):
     """创建 Flow + 版本。返回 (flow_id, flow_version_id)"""
     flow_version_id = snow_id()
     orch = orchestration or build_orch()
@@ -138,7 +138,7 @@ def test_systoken_whitelist():
     sid_001 = snow_id()
     fvid_001 = None
     fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestration=build_orch(whitelist=[])
     )
 
@@ -164,7 +164,7 @@ def test_systoken_whitelist():
     sid_002 = snow_id()
     fvid_002 = None
     fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestration=build_orch(whitelist=["allowed-token-001"])
     )
 
@@ -193,7 +193,7 @@ def test_systoken_whitelist():
     sid_003 = snow_id()
     fvid_003 = None
     fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
+        sid_003, lifecycle_status=2,
         orchestration=build_orch(whitelist=["allowed-token-001"])
     )
 
@@ -221,7 +221,7 @@ def test_systoken_whitelist():
     fvid_004_v2 = None
     # ── 创建 flow，version v1: whitelist = ["token_v1"] ──
     fid_004, fvid_004_v1 = setup_flow(
-        sid_004, lifecycle_status=1,
+        sid_004, lifecycle_status=2,
         orchestration=build_orch(whitelist=["token_v1"])
     )
 

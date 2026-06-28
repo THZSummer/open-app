@@ -256,7 +256,7 @@ def test_connector_version_select():
 
     # Flow 引用 Version 1
     fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestration=build_orch(vid_1, config_v1)
     )
 
@@ -291,7 +291,7 @@ def test_connector_version_select():
     # 创建一个不存在的 connector version ID
     non_existent_version_id = 999999999999999999
     fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestration=build_orch(non_existent_version_id, {})
     )
 
@@ -353,7 +353,7 @@ def test_connector_version_select():
 
     # Flow 引用这个未发布的版本
     fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
+        sid_003, lifecycle_status=2,
         orchestration=build_orch(vid_draft, config_draft)
     )
 

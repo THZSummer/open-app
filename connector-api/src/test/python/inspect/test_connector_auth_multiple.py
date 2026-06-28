@@ -365,7 +365,7 @@ def test_connector_auth_multiple():
     fvid_001 = cid_001 = cvid_001 = None
     cid_001, cvid_001 = setup_connector(CONN_CONFIG_SOA_COOKIE)
     fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestration=build_orch(cvid_001, CONN_CONFIG_SOA_COOKIE)
     )
 
@@ -380,7 +380,7 @@ def test_connector_auth_multiple():
     fvid_002 = cid_002 = cvid_002 = None
     cid_002, cvid_002 = setup_connector(CONN_CONFIG_DIGITALSIGN_COOKIE)
     fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestration=build_orch(cvid_002, CONN_CONFIG_DIGITALSIGN_COOKIE)
     )
 
@@ -395,7 +395,7 @@ def test_connector_auth_multiple():
     fvid_003 = cid_003 = cvid_003 = None
     cid_003, cvid_003 = setup_connector(CONN_CONFIG_TRIPLE_AUTH)
     fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
+        sid_003, lifecycle_status=2,
         orchestration=build_orch(cvid_003, CONN_CONFIG_TRIPLE_AUTH)
     )
 
@@ -410,7 +410,7 @@ def test_connector_auth_multiple():
     fvid_004 = cid_004 = cvid_004 = None
     cid_004, cvid_004 = setup_connector(CONN_CONFIG_SOA_ONLY)
     fid_004, fvid_004 = setup_flow(
-        sid_004, lifecycle_status=1,
+        sid_004, lifecycle_status=2,
         orchestration=build_orch(cvid_004, CONN_CONFIG_SOA_ONLY)
     )
 

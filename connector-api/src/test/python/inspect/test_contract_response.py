@@ -54,7 +54,7 @@ def test_contract_response():
                    "type": "smoothstep", "data": {"businessType": "default"}}]
     }
 
-    db(f"INSERT INTO openplatform_v2_cp_flow_t (id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) VALUES ({test_flow_id}, '契约测试', 'ContractTest', 1, {TEST_APP_ID}, 'tester', 'tester')")
+    db(f"INSERT INTO openplatform_v2_cp_flow_t (id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) VALUES ({test_flow_id}, '契约测试', 'ContractTest', 2, {TEST_APP_ID}, 'tester', 'tester')")
     db(f"INSERT INTO openplatform_v2_cp_flow_version_t (id, flow_id, orchestration_config, create_by, last_update_by) VALUES ({test_version_id}, {test_flow_id}, '{escape_sql(orch)}', 'tester', 'tester')")
 
 

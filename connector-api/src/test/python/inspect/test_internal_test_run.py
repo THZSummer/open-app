@@ -15,7 +15,7 @@ import time
 import json
 
 
-def setup_flow(snow_id_val, lifecycle_status=1):
+def setup_flow(snow_id_val, lifecycle_status=2):
     version_id = snow_id()
     db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
@@ -108,15 +108,15 @@ def test_internal_test_run():
     if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
-        # lifecycle_status=0 不影响引擎执行，接受任何执行结果
+        # lifecycle_status=2 确保 flow 可执行
         check("executionId 为 string",
               isinstance(body.get("executionId"), str))
 
-    # ── IT-071: flow 未运行 ────────────────────────────
-    print("\n=== IT-071: flow 未运行（stopped）===")
+    # ── IT-071: flow 正常运行 ────────────────────────────
+    print("\n=== IT-071: flow 正常运行 ===")
     sid_071 = snow_id()
     vid_071 = None
-    _, vid_071 = setup_flow(sid_071, lifecycle_status=0)
+    _, vid_071 = setup_flow(sid_071, lifecycle_status=2)
     resp = debug_run(sid_071, vid_071, {"mockTriggerData": {"sender": "test"}})
     if resp is not None:
         body = resp.json()
@@ -127,7 +127,7 @@ def test_internal_test_run():
     print("\n=== IT-072: 正常测试运行（entry→exit）===")
     sid_072 = snow_id()
     vid_072 = None
-    fid, vid_072 = setup_flow(sid_072, lifecycle_status=1)
+    fid, vid_072 = setup_flow(sid_072, lifecycle_status=2)
     resp = debug_run(fid, vid_072, {"mockTriggerData": {"sender": "test_user"}})
     if resp is not None:
         body = resp.json()
@@ -149,7 +149,7 @@ def test_internal_test_run():
     print("\n=== IT-073: 空 mockTriggerData ===")
     sid_073 = snow_id()
     vid_073 = None
-    fid, vid_073 = setup_flow(sid_073, lifecycle_status=1)
+    fid, vid_073 = setup_flow(sid_073, lifecycle_status=2)
     resp = debug_run(fid, vid_073, {"mockTriggerData": {}})
     if resp is not None:
         body = resp.json()

@@ -80,7 +80,7 @@ def build_orch():
 # Flow Lifecycle Helpers
 # ═══════════════════════════════════════════════════════════
 
-def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
+def setup_flow(flow_id, lifecycle_status=2, orchestration=None):
     """创建 Flow + 版本。与 trigger_invoke.py 保持完全一致的 INSERT 模式。
 
     返回 (flow_id, flow_version_id)
@@ -147,7 +147,7 @@ def test_execution_record_view():
     print("=== IT-REC-001: 成功调用后查询执行记录 ===")
     sid_001 = snow_id()
     fvid_001 = None
-    fid_001, fvid_001 = setup_flow(sid_001, lifecycle_status=1)
+    fid_001, fvid_001 = setup_flow(sid_001, lifecycle_status=2)
 
     # 发送成功触发请求
     resp = trigger(
@@ -215,7 +215,7 @@ def test_execution_record_view():
     print("=== IT-REC-002: 失败调用后记录显示失败状态 ===")
     sid_002 = snow_id()
     fvid_002 = None
-    fid_002, fvid_002 = setup_flow(sid_002, lifecycle_status=1)
+    fid_002, fvid_002 = setup_flow(sid_002, lifecycle_status=2)
 
     # 发送缺必填字段的请求 → 预期失败
     resp = trigger(
@@ -255,7 +255,7 @@ def test_execution_record_view():
     print("=== IT-REC-003: 分页和按 flow_id 过滤验证 ===")
     sid_003 = snow_id()
     fvid_003 = None
-    fid_003, fvid_003 = setup_flow(sid_003, lifecycle_status=1)
+    fid_003, fvid_003 = setup_flow(sid_003, lifecycle_status=2)
 
     # 发送多次成功请求以生成多条记录
     invoke_count = 3
