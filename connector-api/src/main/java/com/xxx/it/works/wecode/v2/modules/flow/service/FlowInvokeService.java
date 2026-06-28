@@ -3,9 +3,10 @@ package com.xxx.it.works.wecode.v2.modules.flow.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
+
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
+import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
@@ -74,9 +75,9 @@ public class FlowInvokeService {
     private final ReactiveSequentialExecutor executor;
     private final DagScheduler dagScheduler;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
-    private final OpFlowReadRepository flowReadRepository;
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final CacheToggle cacheToggle;
+    private final EntityCacheManager entityCacheManager;
     private final FlowCacheManager cacheManager;
     private final ExecutionRecordService executionRecordService;
     private final ExecutionStepService executionStepService;
@@ -87,10 +88,10 @@ public class FlowInvokeService {
             ReactiveSequentialExecutor executor,
             DagScheduler dagScheduler,
             OpFlowVersionReadRepository flowVersionReadRepository,
-            OpFlowReadRepository flowReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
             CacheToggle cacheToggle,
             FlowCacheManager cacheManager,
+            EntityCacheManager entityCacheManager,
             ExecutionRecordService executionRecordService,
             ExecutionStepService executionStepService,
             IdGenerator idGenerator) {
@@ -98,10 +99,10 @@ public class FlowInvokeService {
         this.executor = executor;
         this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
-        this.flowReadRepository = flowReadRepository;
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.cacheToggle = cacheToggle;
         this.cacheManager = cacheManager;
+        this.entityCacheManager = entityCacheManager;
         this.executionRecordService = executionRecordService;
         this.executionStepService = executionStepService;
         this.idGenerator = idGenerator;
@@ -119,8 +120,14 @@ public class FlowInvokeService {
      * @return (FlowVersionEntity, FlowEntity) 的 Tuple2，FlowEntity 可能为 null
      */
     private Mono<Tuple2<FlowVersionEntity, Optional<FlowEntity>>> loadFlowVersion(Long flowId) {
-        return flowReadRepository.findById(flowId)
+        return entityCacheManager.getFlow(flowId)
                 .flatMap(flow -> {
+                    // 校验连接流状态：仅运行中(RUNNING=2)才允许执行
+                    if (flow.getLifecycleStatus() == null || flow.getLifecycleStatus() != 2) {
+                        return Mono.error(new RuntimeException(
+                                "Flow is not running: flowId=" + flowId
+                                        + ", lifecycleStatus=" + flow.getLifecycleStatus()));
+                    }
                     Long deployedVersionId = flow.getDeployedVersionId();
                     if (deployedVersionId != null) {
                         log.debug("Flow {} has deployed_version_id={}, loading specific version",

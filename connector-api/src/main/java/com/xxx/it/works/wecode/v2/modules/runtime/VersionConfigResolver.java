@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ResolvedFlowConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +22,7 @@ import reactor.core.publisher.Mono;
  * <p>
  * 异常处理:
  * <ul>
+ *   <li>lifecycle_status 非 RUNNING → 503 (Flow not running)</li>
  *   <li>deployed_version_id 为 NULL → 503 (Flow not deployed)</li>
  *   <li>FlowVersion 已删除 → 500 (Deployed version not found)</li>
  * </ul>
@@ -32,16 +32,13 @@ import reactor.core.publisher.Mono;
 @Component
 public class VersionConfigResolver {
 
-    private final OpFlowReadRepository flowReadRepository;
     private final EntityCacheManager entityCacheManager;
     private final FlowConfigParser flowConfigParser;
     private final ObjectMapper objectMapper;
 
-    public VersionConfigResolver(OpFlowReadRepository flowReadRepository,
-                                  EntityCacheManager entityCacheManager,
+    public VersionConfigResolver(EntityCacheManager entityCacheManager,
                                   FlowConfigParser flowConfigParser,
                                   ObjectMapper objectMapper) {
-        this.flowReadRepository = flowReadRepository;
         this.entityCacheManager = entityCacheManager;
         this.flowConfigParser = flowConfigParser;
         this.objectMapper = objectMapper;
@@ -54,9 +51,15 @@ public class VersionConfigResolver {
      * @return Mono<ResolvedFlowConfig> 已解析的完整配置快照
      */
     public Mono<ResolvedFlowConfig> resolveFlowVersion(Long flowId) {
-        return flowReadRepository.findById(flowId)
+        return entityCacheManager.getFlow(flowId)
                 .switchIfEmpty(Mono.error(new FlowNotDeployedException("Flow not found: " + flowId)))
                 .flatMap(flow -> {
+                    // 校验连接流状态：仅运行中(RUNNING=2)才允许执行
+                    if (flow.getLifecycleStatus() == null || flow.getLifecycleStatus() != 2) {
+                        return Mono.error(new FlowNotDeployedException(
+                                "Flow is not running: flowId=" + flowId
+                                        + ", lifecycleStatus=" + flow.getLifecycleStatus()));
+                    }
                     if (flow.getDeployedVersionId() == null) {
                         return Mono.error(new FlowNotDeployedException(
                                 "Flow not deployed: flowId=" + flowId));

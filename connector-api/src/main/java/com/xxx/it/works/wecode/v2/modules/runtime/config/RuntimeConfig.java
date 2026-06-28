@@ -98,17 +98,17 @@ public class RuntimeConfig {
     @Bean
     public EntityCacheManager entityCacheManager(ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
                                                    ObjectMapper objectMapper,
-                                                   OpFlowVersionReadRepository flowVersionReadRepository) {
+                                                   OpFlowVersionReadRepository flowVersionReadRepository,
+                                                   OpFlowReadRepository flowReadRepository) {
         return new EntityCacheManager(reactiveRedisTemplate, objectMapper,
-                flowVersionReadRepository);
+                flowVersionReadRepository, flowReadRepository);
     }
 
     @Bean
-    public VersionConfigResolver versionConfigResolver(OpFlowReadRepository flowReadRepository,
-                                                         EntityCacheManager entityCacheManager,
+    public VersionConfigResolver versionConfigResolver(EntityCacheManager entityCacheManager,
                                                          FlowConfigParser flowConfigParser,
                                                          ObjectMapper objectMapper) {
-        return new VersionConfigResolver(flowReadRepository, entityCacheManager,
+        return new VersionConfigResolver(entityCacheManager,
                 flowConfigParser, objectMapper);
     }
 
