@@ -31,7 +31,7 @@ def _snow_id():
 # ═══════════════════════════════════════════════════════════
 _PLATFORM_PROPS = [
     ('connector_max_versions',          '连接器版本数量上限',       '1000'),
-    ('url_regex_pattern',               '连接器URL正则规则',       '^https?://.*'),
+    ('connector_url_regex_pattern',     '连接器URL正则规则',       '^https?://.*'),
     ('connector_config_max_bytes',      '连接器配置JSON长度上限',   '1048576'),
     ('flow_max_versions',               '连接流版本数量上限',       '1000'),
     ('max_execution_records_per_flow',  '运行记录条数上限',         '1000'),

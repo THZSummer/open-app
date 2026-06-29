@@ -129,14 +129,14 @@ class TestConnectorVersionLimit:
 class TestUrlRegexPattern:
     """#2 连接器目标 URL 需匹配平台正则规则
 
-    url_regex_pattern 由 ConnectorPlatformPropertyService 读取；
+    connector_url_regex_pattern 由 ConnectorPlatformPropertyService 读取；
     ConnectorVersionService.publish() 在发布时校验目标 URL 是否匹配正则。
     默认 fixture 写入的 pattern 是 "^https?://.*"，允许任何 http/https URL。
     """
 
     @pytest.mark.L4
     def test_publish_with_url_succeeds_when_no_regex_configured(self, draft_connector):
-        """未配置 url_regex_pattern 时 URL 不受限 → 发布成功"""
+        """未配置 connector_url_regex_pattern 时 URL 不受限 → 发布成功"""
         cid, vid = draft_connector
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://any-domain.com/api", "method": "GET"}})
         resp = _publish_connector(cid, vid)
@@ -148,24 +148,24 @@ class TestUrlRegexPattern:
 
     @pytest.mark.L4
     def test_url_regex_property_exists(self):
-        """验证 url_regex_pattern 属性已由 session fixture 写入 DB"""
+        """验证 connector_url_regex_pattern 属性已由 session fixture 写入 DB"""
         val = db_val(
             "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'url_regex_pattern' AND status = 1"
+            "WHERE path = 'connector_platform' AND code = 'connector_url_regex_pattern' AND status = 1"
         )
-        assert val is not None, "url_regex_pattern should exist after session fixture init"
+        assert val is not None, "connector_url_regex_pattern should exist after session fixture init"
         assert val.startswith("^"), f"Expected regex pattern, got {val}"
 
     @pytest.mark.L4
     def test_publish_connector_with_url_not_matching_regex_rejected(self, draft_connector):
-        """设置 url_regex_pattern = ^https://api.example.com/.* 后，URL 不匹配 → 422
+        """设置 connector_url_regex_pattern = ^https://api.example.com/.* 后，URL 不匹配 → 422
 
         TODO: 服务端发布校验尚未适配 protocolConfig 结构，当前不会触发 URL 校验。
         上线后应改为 assert resp.status_code == 422。
         """
         cid, vid = draft_connector
         # Override the session fixture's default with a restrictive pattern
-        _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
+        _set_property("connector_platform", "connector_url_regex_pattern", "^https://api\\.example\\.com/.*")
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://evil.com/api", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
@@ -174,13 +174,13 @@ class TestUrlRegexPattern:
                 f"{resp.json() if resp else ''}"
             )
         # Restore default permissive regex for test isolation
-        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+        _set_property("connector_platform", "connector_url_regex_pattern", "^https?://.*")
 
     @pytest.mark.L4
     def test_publish_connector_with_url_matching_regex_passes(self, draft_connector):
         """URL 匹配正则 → 发布成功"""
         cid, vid = draft_connector
-        _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
+        _set_property("connector_platform", "connector_url_regex_pattern", "^https://api\\.example\\.com/.*")
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "https://api.example.com/v1/users", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
@@ -189,7 +189,7 @@ class TestUrlRegexPattern:
                 f"{resp.json() if resp else ''}"
             )
         # Restore default permissive regex for test isolation
-        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+        _set_property("connector_platform", "connector_url_regex_pattern", "^https?://.*")
 
 
 # ================================================================
@@ -208,7 +208,7 @@ class TestConnectorConfigMaxBytes:
         """连接器配置在平台默认上限 1048576 字节内 → 发布成功"""
         cid, vid = draft_connector
         # Restore permissive URL regex in case a prior test narrowed it
-        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+        _set_property("connector_platform", "connector_url_regex_pattern", "^https?://.*")
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "https://example.com", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
