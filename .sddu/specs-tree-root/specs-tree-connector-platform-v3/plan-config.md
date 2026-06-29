@@ -37,7 +37,7 @@
 | # | 配置项 | 作用域 | 按应用区分 | 存储 | path | code | FR |
 |---|--------|--------|:---:|:---:|------|------|----|
 | 1 | 连接器版本数量上限 | 连接器 | ❌ | Property | `connector_platform` | `connector_max_versions` | FR-005a |
-| 2 | 连接器URL正则规则 | 连接器版本配置 | ❌ | Property | `connector_platform` | `url_regex_pattern` | FR-015 |
+| 2 | 连接器URL正则规则 | 连接器版本配置 | ❌ | Property | `connector_platform` | `connector_url_regex_pattern` | FR-015 |
 | 3 | 连接器配置JSON长度上限 | 连接器版本配置 | ✅ | Property | `connector_platform` | `connector_config_max_bytes` | FR-047 |
 | 4 | 连接流版本数量上限 | 连接流 | ❌ | Property | `connector_platform` | `flow_max_versions` | FR-024a |
 | 5 | 运行记录条数上限 | 连接流 | ✅ | Property | `connector_platform` | `max_execution_records_per_flow` | FR-042 |
@@ -84,7 +84,7 @@
 |------|-----|
 | **存储** | Property |
 | **path** | `connector_platform` |
-| **code** | `url_regex_pattern` |
+| **code** | `connector_url_regex_pattern` |
 | **默认值** | —（空白 = 不限制） |
 | **按应用区分** | ❌ |
 | **实现状态** | ❌ 未实现 |
@@ -92,9 +92,9 @@
 **现状**：无任何代码读取此 Property。当前连接器发布时校验的是连接器版本快照内的 **`urlWhitelist[]` 数组**（每条一个正则），非平台级统一规则。空白名单时放行所有 URL。
 
 **方案**：
-1. 在 `ConnectorPlatformPropertyService` 中新增 `getUrlRegexPattern()`，读取 `(connector_platform, url_regex_pattern)`
+1. 在 `ConnectorPlatformPropertyService` 中新增 `getUrlRegexPattern()`，读取 `(connector_platform, connector_url_regex_pattern)`
 2. `ConnectorVersionService.publish()` 中增加校验：若 Property 配置了正则，则用户填写的目标 URL 必须匹配此正则
-3. 此校验与现有的 `urlWhitelist[]` 校验并行——`urlWhitelist[]` 是用户自配的连接器级规则，`url_regex_pattern` 是平台级的兜底规则
+3. 此校验与现有的 `urlWhitelist[]` 校验并行——`urlWhitelist[]` 是用户自配的连接器级规则，`connector_url_regex_pattern` 是平台级的兜底规则
 
 ---
 
@@ -383,7 +383,7 @@ V3 采用**「保存时不校验，发布时统一卡口」**的策略：
 发布时 ───── 全部校验集中执行：
    ├── 业务必填字段（名称、描述等非空）
    ├── 配置非空（编排/入参出参 Schema）
-   ├── 平台 URL 正则校验 ─── #2 url_regex_pattern
+   ├── 平台 URL 正则校验 ─── #2 connector_url_regex_pattern
    ├── JSON 长度校验 ─────── #3 connector_config_max_bytes / #7 flow_config_max_bytes
    ├── JSON 语法合法性 (FR-047)
    ├── 脚本语法合法性 (FR-040a)
@@ -423,7 +423,7 @@ public class ConnectorPlatformPropertyService {
 
     // 全局配置
     public int getConnectorMaxVersions()           // code=connector_max_versions, default=1000
-    public String getUrlRegexPattern()             // code=url_regex_pattern, default=null
+    public String getUrlRegexPattern()             // code=connector_url_regex_pattern, default=null
     public int getFlowMaxVersions()                // code=flow_max_versions, default=1000
 
     // 按应用区分配置
@@ -508,7 +508,7 @@ public int getNodeMaxTimeoutSeconds(String appId) {
 -- 全局默认值 (path=connector_platform)
 INSERT INTO openplatform_property_t (path, code, name, value, status) VALUES
 ('connector_platform', 'connector_max_versions',           '连接器版本数量上限',      '1000', 1),
-('connector_platform', 'url_regex_pattern',                 '连接器URL正则规则',       NULL,   1),
+('connector_platform', 'connector_url_regex_pattern',                 '连接器URL正则规则',       NULL,   1),
 ('connector_platform', 'connector_config_max_bytes',        '连接器配置JSON长度上限',   NULL,   1),
 ('connector_platform', 'flow_max_versions',                 '连接流版本数量上限',      '1000', 1),
 ('connector_platform', 'max_execution_records_per_flow',    '运行记录条数上限',        '1000', 1),
@@ -705,7 +705,7 @@ openplatform_property_t
   ├── max_qps                           = 1000
   ├── max_concurrency                   = 1000
   ├── max_execution_records_per_flow    = 1000
-  ├── url_regex_pattern                 = "^https://api\\.example\\.com/.*"
+  ├── connector_url_regex_pattern                 = "^https://api\\.example\\.com/.*"
   ├── connector_max_versions            = 1000
   ├── flow_max_versions                 = 1000
   ├── flow_max_cache_ttl_seconds        = 1296000
