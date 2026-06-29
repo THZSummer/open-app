@@ -106,11 +106,13 @@ const SchemaEditorV2 = (props) => {
     }
 
     // 同步到 form.apiConfig，保证后续 getFieldValue 能拿到最新数据
-    if (form && form.setFieldValue) {
+    if (form && form.setFieldsValue) {
       const currentConfig = form.getFieldValue('apiConfig') || {};
-      form.setFieldValue('apiConfig', {
-        ...currentConfig,
-        [schemaType]: newSchema,
+      form.setFieldsValue({
+        apiConfig: {
+          ...currentConfig,
+          [schemaType]: newSchema,
+        },
       });
     }
 
@@ -194,12 +196,40 @@ const SchemaEditorV2 = (props) => {
   };
 
   /**
+   * 获取指定路径节点的直接父节点
+   * @param {Object} options 配置对象
+   * options.path 当前节点路径
+   * options.schema 当前完整 schema 数据
+   * @returns {Object|null} 当前节点的直接父节点
+   */
+  const getParentParamByPath = (options) => {
+    // options.path: 当前节点路径；options.schema: 当前完整 schema 数据
+    const { path, schema } = options;
+
+    if (!Array.isArray(path) || path.length <= 1) return null;
+
+    // 逐级向下查找，停在当前节点的直接父节点
+    let parentParam = null;
+    let currentList = schema;
+    for (let i = 0; i < path.length - 1; i += 1) {
+      parentParam = currentList[path[i]];
+      currentList = parentParam?.children || [];
+    }
+
+    return parentParam;
+  };
+
+  /**
    * 在指定节点同层追加兄弟节点
    * @param {Array} path 当前节点路径
    */
   const handleAddSibling = (path) => {
     const { newSchema, parentList } = cloneAndLocate({ path });
     const lastIndex = path[path.length - 1];
+    const parentParam = getParentParamByPath({ path, schema: newSchema });
+
+    // array 类型只能拥有一个子节点，阻止其子节点继续追加兄弟节点
+    if (parentParam?.paramType === 'array') return;
 
     // 兄弟节点 carrier 跟随当前节点
     const siblingCarrier = parentList[lastIndex].carrier || carrierFilter || '';

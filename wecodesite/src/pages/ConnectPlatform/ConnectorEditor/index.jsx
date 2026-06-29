@@ -108,7 +108,7 @@ const ConnectorEditor = () => {
       // 无版本：清空当前版本
       setCurrentVersion(null);
       setApiConfig(DEFAULT_API_CONFIG);
-      form.setFieldValue('apiConfig', DEFAULT_API_CONFIG);
+      form.setFieldsValue({ apiConfig: DEFAULT_API_CONFIG });
       setIsEditing(false);
       setDetailLoading(false);
       return;
@@ -147,7 +147,7 @@ const ConnectorEditor = () => {
     // 兼容历史配置缺失字段
     const merged = { ...DEFAULT_API_CONFIG, ...(detail.config || {}) };
     setApiConfig(merged);
-    form.setFieldValue('apiConfig', merged);
+    form.setFieldsValue({ apiConfig: merged });
     // 切版本必退出编辑态
     setIsEditing(false);
   };
@@ -166,8 +166,12 @@ const ConnectorEditor = () => {
    * @param {Object} nextApiConfig 新的 apiConfig
    */
   const handleApiConfigChange = (nextApiConfig) => {
-    setApiConfig(nextApiConfig);
-    form.setFieldValue('apiConfig', nextApiConfig);
+    const newApiConfig = {
+      ...apiConfig,
+      ...nextApiConfig,
+    }
+    setApiConfig(newApiConfig);
+    form.setFieldsValue({ apiConfig: newApiConfig });
   };
 
   /**

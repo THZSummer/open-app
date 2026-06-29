@@ -487,6 +487,114 @@ const isLegacyFlowDataConfig = (orchestrationConfig) => {
 };
 
 /**
+ * 将 React Flow 节点按类型还原为前端步骤节点
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - node: React Flow 节点
+ * - branchConnectorNodes: 并行分支连接器节点列表
+ * @returns {Object} 前端步骤节点
+ */
+const parseStepNode = (params) => {
+  // params.node / params.branchConnectorNodes
+  const { node, branchConnectorNodes } = params;
+  if (node?.type === 'script') return parseScriptNode(node);
+  if (node?.type === 'connector') return parseConnectorNode(node);
+  if (node?.type === 'parallel') return parseParallelNode({ parallelNode: node, branchConnectorNodes });
+  return { id: node?.id, type: node?.type };
+};
+
+/**
+ * 判断 React Flow 节点是否为普通步骤节点
+ * @param {Object} node React Flow 节点
+ * @returns {boolean} 是否为步骤节点
+ */
+const isCommonStepNode = (node) => {
+  // 普通模式排除触发器、出口和文本辅助节点。
+  return !['trigger', 'exit', 'text'].includes(node?.type);
+};
+
+/**
+ * 判断 React Flow 节点是否为并行模式步骤节点
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - node: React Flow 节点
+ * - branchConnectorIds: 并行分支连接器 ID 集合
+ * @returns {boolean} 是否为步骤节点
+ */
+const isParallelStepNode = (params) => {
+  // params.node / params.branchConnectorIds
+  const { node, branchConnectorIds } = params;
+  if (!isCommonStepNode(node)) return false;
+  return node?.type !== 'connector' || !branchConnectorIds.has(node?.id);
+};
+
+/**
+ * 从 React Flow 节点列表中获取基础回显节点
+ * @param {Array} nodes React Flow 节点列表
+ * @returns {Object} 基础节点集合
+ */
+const getFlowDisplayNodes = (nodes) => {
+  // 按类型定位触发器、出口和并行节点，用于回显组装。
+  return {
+    triggerNode: nodes.find(node => node?.type === 'trigger'),
+    outputNode: nodes.find(node => node?.type === 'exit'),
+    parallelNode: nodes.find(node => node?.type === 'parallel'),
+  };
+};
+
+/**
+ * 构建前端回显 flowData 基础结构
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - flowData: 流级配置回显字段
+ * - triggerNode: React Flow 触发器节点
+ * - outputNode: React Flow 出口节点
+ * - steps: 前端步骤节点
+ * @returns {Object} 前端 flowData 字段
+ */
+const buildDisplayFlowData = (params) => {
+  // params.flowData / params.triggerNode / params.outputNode / params.steps
+  const { flowData, triggerNode, outputNode, steps } = params;
+  return {
+    ...flowData,
+    trigger: parseTriggerNode(triggerNode),
+    steps,
+    output: parseExitNode(outputNode),
+  };
+};
+
+/**
+ * 构建普通模式前端步骤节点
+ * @param {Array} nodes React Flow 节点列表
+ * @returns {Array} 前端步骤节点列表
+ */
+const buildCommonDisplaySteps = (nodes) => {
+  // 普通模式直接按节点顺序还原脚本和连接器。
+  return nodes
+    .filter(isCommonStepNode)
+    .map(node => parseStepNode({ node, branchConnectorNodes: [] }));
+};
+
+/**
+ * 构建并行模式前端步骤节点
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - parallelNode: React Flow 并行节点
+ * - nodes: React Flow 节点列表
+ * - edges: React Flow 边列表
+ * @returns {Array} 前端步骤节点列表
+ */
+const buildParallelDisplaySteps = (params) => {
+  // params.parallelNode / params.nodes / params.edges
+  const { parallelNode, nodes, edges } = params;
+  const branchConnectorNodes = getParallelConnectorNodes({ parallelNode, nodes, edges });
+  const branchConnectorIds = new Set(branchConnectorNodes.map(node => node?.id));
+  return nodes
+    .filter(node => isParallelStepNode({ node, branchConnectorIds }))
+    .map(node => parseStepNode({ node, branchConnectorNodes }));
+};
+
+/**
  * 将文档 orchestrationConfig 转换为页面可回显的前端 flowData
  * @param {Object} orchestrationConfig 文档编排配置
  * @returns {Object|null} 前端 flowData 字段
@@ -500,45 +608,13 @@ const transformOrchestrationConfigToFlowData = (orchestrationConfig) => {
 
   const nodes = orchestrationConfig.nodes || [];
   const edges = orchestrationConfig.edges || [];
-  const triggerNode = nodes.find(node => node?.type === 'trigger');
-  const outputNode = nodes.find(node => node?.type === 'exit');
   const flowData = parseFlowConfigToFlowData(orchestrationConfig.flowConfig || {});
-  const parallelNode = nodes.find(node => node?.type === 'parallel');
+  const { triggerNode, outputNode, parallelNode } = getFlowDisplayNodes(nodes);
+  const steps = flowData.flowMode === 'parallel' && parallelNode
+    ? buildParallelDisplaySteps({ parallelNode, nodes, edges })
+    : buildCommonDisplaySteps(nodes);
 
-  if (flowData.flowMode === 'parallel' && parallelNode) {
-    // 并行模式需要根据 edges 将并行节点后的连接器还原成分支，而不是平铺进 steps。
-    const branchConnectorNodes = getParallelConnectorNodes({ parallelNode, nodes, edges });
-    const branchConnectorIds = new Set(branchConnectorNodes.map(node => node?.id));
-    const stepNodes = nodes.filter(node => (
-      !['trigger', 'exit', 'text', 'connector'].includes(node?.type)
-      || (node?.type === 'connector' && !branchConnectorIds.has(node?.id))
-    ));
-
-    return {
-      ...flowData,
-      trigger: parseTriggerNode(triggerNode),
-      steps: stepNodes.map((node) => {
-        if (node?.type === 'script') return parseScriptNode(node);
-        if (node?.type === 'connector') return parseConnectorNode(node);
-        if (node?.type === 'parallel') return parseParallelNode({ parallelNode: node, branchConnectorNodes });
-        return { id: node?.id, type: node?.type };
-      }),
-      output: parseExitNode(outputNode),
-    };
-  }
-
-  const stepNodes = nodes.filter(node => !['trigger', 'exit', 'text'].includes(node?.type));
-
-  return {
-    ...flowData,
-    trigger: parseTriggerNode(triggerNode),
-    steps: stepNodes.map((node) => {
-      if (node?.type === 'script') return parseScriptNode(node);
-      if (node?.type === 'connector') return parseConnectorNode(node);
-      return { id: node?.id, type: node?.type };
-    }),
-    output: parseExitNode(outputNode),
-  };
+  return buildDisplayFlowData({ flowData, triggerNode, outputNode, steps });
 };
 
 /**

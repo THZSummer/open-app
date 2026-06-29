@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { Input, Select, Button, Dropdown } from 'antd';
+import { Input, Select, Button, Dropdown, Menu } from 'antd';
 import { isComplexType, MAX_SCHEMA_DEPTH } from './constants';
 
 const { Option } = Select;
@@ -25,6 +25,7 @@ const { Option } = Select;
  * props.editable 是否可编辑
  * props.hideCarrier 是否隐藏 carrier 下拉
  * props.lockedCarrier 锁定的 carrier 值（来自 carrierFilter 或父参数）
+ * props.parentParamType 父级参数类型，用于控制 array 子节点的兄弟新增入口
  * props.carrierOptions carrier 候选项
  * props.typeOptions 类型候选项
  * props.onUpdate 路径更新回调
@@ -40,6 +41,7 @@ const SchemaParamItem = (props) => {
     editable,
     hideCarrier,
     lockedCarrier,
+    parentParamType,
     carrierOptions,
     typeOptions,
     onUpdate,
@@ -58,6 +60,10 @@ const SchemaParamItem = (props) => {
     && !(isArrayType && currentChildrenCount >= 1);
   // carrier 是否被锁定（顶层受 carrierFilter 锁定，子层级跟随父级）
   const carrierLocked = !!lockedCarrier;
+  // 当前节点是否允许添加兄弟节点；array 的子节点不能继续添加兄弟节点
+  const canAddSibling = parentParamType !== 'array';
+  // 当前节点是否存在可用添加动作，用于避免展示空菜单
+  const canShowAddButton = canAddChild || canAddSibling;
   // 实际展示的 carrier 值
   const effectiveCarrier = lockedCarrier || param.carrier || '';
 
@@ -82,7 +88,10 @@ const SchemaParamItem = (props) => {
     ...(canAddChild
       ? [{ key: 'child', label: '添加子节点' }]
       : []),
-    { key: 'sibling', label: '添加兄弟节点' },
+    // 仅在当前节点允许添加兄弟节点时提供“添加兄弟节点”
+    ...(canAddSibling
+      ? [{ key: 'sibling', label: '添加兄弟节点' }]
+      : []),
   ];
 
   /**
@@ -96,6 +105,18 @@ const SchemaParamItem = (props) => {
       onAddSibling(path);
     }
   };
+
+  /**
+   * 渲染复杂类型添加菜单
+   * @returns {React.ReactNode} 添加菜单节点
+   */
+  const renderAddMenu = () => (
+    <Menu onClick={handleAddMenuClick}>
+      {addMenuItems.map((item) => (
+        <Menu.Item key={item.key}>{item.label}</Menu.Item>
+      ))}
+    </Menu>
+  );
 
   return (
     <div data-depth={depth}>
@@ -148,14 +169,16 @@ const SchemaParamItem = (props) => {
         {/* 添加按钮：复杂类型为下拉菜单，基础类型为直接添加兄弟 */}
         {editable && (
           complex ? (
-            <Dropdown
-              menu={{ items: addMenuItems, onClick: handleAddMenuClick }}
-              trigger={['click']}
-              overlayClassName="schema-editor-v2-dropdown"
-            >
-              <Button type="text" className="schema-add-btn">添加</Button>
-            </Dropdown>
-          ) : (
+            canShowAddButton ? (
+              <Dropdown
+                overlay={renderAddMenu()}
+                trigger={['click']}
+                overlayClassName="schema-editor-v2-dropdown"
+              >
+                <Button type="text" className="schema-add-btn">添加</Button>
+              </Dropdown>
+            ) : null
+          ) : canAddSibling ? (
             <Button
               type="text"
               className="schema-add-btn"
@@ -163,7 +186,7 @@ const SchemaParamItem = (props) => {
             >
               添加
             </Button>
-          )
+          ) : null
         )}
 
         {/* 删除按钮 */}
@@ -191,6 +214,8 @@ const SchemaParamItem = (props) => {
               hideCarrier={hideCarrier}
               // 子参数 carrier 跟随父级，整树锁定到顶层 carrier
               lockedCarrier={effectiveCarrier || lockedCarrier}
+              // 子参数记录父级类型，用于限制 array 下只能存在一个子节点
+              parentParamType={param.paramType}
               carrierOptions={carrierOptions}
               typeOptions={typeOptions}
               onUpdate={onUpdate}

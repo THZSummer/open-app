@@ -170,12 +170,6 @@ const DebugDrawer = (props) => {
     );
   };
 
-  const tabItems = [
-    { key: 'header', label: 'HTTP 请求头', children: renderParamTable('header') },
-    { key: 'body', label: 'HTTP 请求体', children: renderParamTable('body') },
-    { key: 'query', label: 'URL 查询参数', children: renderParamTable('query') },
-  ];
-
   return (
     <Drawer
       title={null}
@@ -213,7 +207,17 @@ const DebugDrawer = (props) => {
           入参配置
           <span className="section-title-extra">参数名称与类型只读，仅参数值可编辑</span>
         </div>
-        <Tabs items={tabItems} defaultActiveKey="header" />
+        <Tabs defaultActiveKey="header">
+          <Tabs.TabPane tab="HTTP 请求头" key="header">
+            {renderParamTable('header')}
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="HTTP 请求体" key="body">
+            {renderParamTable('body')}
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="URL 查询参数" key="query">
+            {renderParamTable('query')}
+          </Tabs.TabPane>
+        </Tabs>
       </div>
 
       {/* 执行输出卡片 */}

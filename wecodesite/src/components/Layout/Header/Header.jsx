@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Dropdown } from 'antd';
+import { Dropdown, Menu } from 'antd';
 import { LogoutOutlined, DownOutlined, ApiOutlined } from '@ant-design/icons';
 import LoginModal from './LoginModal';
 import { getUserIdCookie, isLoggedIn, removeUserIdCookie } from '../../../utils/cookie';
@@ -70,6 +70,24 @@ function Header() {
         { key: 'login', label: '登录', onClick: () => setLoginModalOpen(true) }
       ];
 
+  /**
+   * 渲染用户菜单
+   * @returns {React.ReactNode} 用户菜单节点
+   */
+  const renderUserMenu = () => (
+    <Menu>
+      {menuItems.map((item) => (
+        item.type === 'divider' ? (
+          <Menu.Divider key="divider" />
+        ) : (
+          <Menu.Item key={item.key} icon={item.icon} onClick={item.onClick}>
+            {item.label}
+          </Menu.Item>
+        )
+      ))}
+    </Menu>
+  );
+
   // 显示名称：优先 userName，否则 userId，最后 "请登录"
   const displayName = loggedIn
     ? (userName || userId || '用户')
@@ -96,7 +114,7 @@ function Header() {
         </a>
       </div>
       <div className="header-right">
-        <Dropdown menu={{ items: menuItems }} trigger={['hover', 'click']}>
+        <Dropdown overlay={renderUserMenu()} trigger={['hover', 'click']}>
           <span className="header-user-trigger">
             {displayName}
             {loggedIn && <DownOutlined className="header-user-arrow" />}

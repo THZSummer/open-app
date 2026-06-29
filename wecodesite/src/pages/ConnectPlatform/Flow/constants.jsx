@@ -7,7 +7,7 @@
  * 整改依据：连接流列表需求设计说明书 V1.3
  */
 import React from 'react';
-import { Badge, Button, Space, Dropdown } from 'antd';
+import { Badge, Button, Space, Dropdown, Menu } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 import { FLOW_LIFECYCLE_STATUS, FLOW_LIFECYCLE_STATUS_MAP } from '../../../utils/constants';
 import { renderTooltipTextCell } from '../../../utils/commonTableConfigs';
@@ -102,6 +102,21 @@ const buildMoreMenuItems = (params) => {
     onClick: () => onMenuClick(key, record),
   }));
 };
+
+/**
+ * 渲染更多操作菜单
+ * @param {Array} items 菜单项配置
+ * @returns {React.ReactNode} 更多操作菜单节点
+ */
+const renderMoreMenu = (items) => (
+  <Menu>
+    {items.map((item) => (
+      <Menu.Item key={item.key} danger={item.danger} onClick={item.onClick}>
+        {item.label}
+      </Menu.Item>
+    ))}
+  </Menu>
+);
 
 /**
  * 获取表格列配置
@@ -223,7 +238,7 @@ export const getFlowColumns = (callbacks) => {
             <Button type="link" size="small" onClick={() => handleConfig(record)}>
               配置
             </Button>
-            <Dropdown menu={{ items }} trigger={['click']}>
+            <Dropdown overlay={renderMoreMenu(items)} trigger={['click']}>
               <Button type="link" size="small">
                 更多 <DownOutlined />
               </Button>

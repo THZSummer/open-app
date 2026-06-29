@@ -36,29 +36,26 @@ const SchemaTabsSection = forwardRef((props, ref) => {
     editable,
   } = props;
 
-  // 组装 Tab 项
-  const tabItems = tabs.map(tab => ({
-    key: tab.key,
-    label: tab.label,
-    children: (
-      <SchemaEditor
-        form={form}
-        apiConfig={apiConfig}
-        {...schemaConfig}
-        editable={editable}
-        carrierFilter={tab.carrier}
-        hideCarrier={hideCarrier}
-      />
-    ),
-  }));
-
   return (
     <div className="section-card" ref={ref}>
       <div className="section-title">
         {title}
         <span className="section-tip">{tip}</span>
       </div>
-      <Tabs defaultActiveKey={tabs[0].key} items={tabItems} />
+      <Tabs defaultActiveKey={tabs[0].key}>
+        {tabs.map(tab => (
+          <Tabs.TabPane tab={tab.label} key={tab.key}>
+            <SchemaEditor
+              form={form}
+              apiConfig={apiConfig}
+              {...schemaConfig}
+              editable={editable}
+              carrierFilter={tab.carrier}
+              hideCarrier={hideCarrier}
+            />
+          </Tabs.TabPane>
+        ))}
+      </Tabs>
     </div>
   );
 });

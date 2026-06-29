@@ -494,12 +494,13 @@ const ConnectorCard = (props) => {
           <Tabs
             activeKey={activeCarrier}
             onChange={setActiveCarrier}
-            items={CARRIER_TABS.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              children: renderMappingTable(tab.carrier),
-            }))}
-          />
+          >
+            {CARRIER_TABS.map((tab) => (
+              <Tabs.TabPane tab={tab.label} key={tab.key}>
+                {renderMappingTable(tab.carrier)}
+              </Tabs.TabPane>
+            ))}
+          </Tabs>
         </div>
       ) : null}
 

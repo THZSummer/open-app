@@ -514,12 +514,13 @@ const BranchConnectorEditor = (props) => {
           <Tabs
             activeKey={activeCarrier}
             onChange={setActiveCarrier}
-            items={CARRIER_TABS.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              children: renderMappingTable(tab.carrier),
-            }))}
-          />
+          >
+            {CARRIER_TABS.map((tab) => (
+              <Tabs.TabPane tab={tab.label} key={tab.key}>
+                {renderMappingTable(tab.carrier)}
+              </Tabs.TabPane>
+            ))}
+          </Tabs>
         </div>
       ) : null}
 
@@ -661,22 +662,24 @@ const ParallelCard = (props) => {
       <Tabs
         activeKey={activeBranchKey}
         onChange={handleTabChange}
-        items={branches.map((branch) => ({
-          key: branch.id,
-          label: (
-            <span>
-              {branch.label}
-              {editable && branches.length > 1 ? (
-                <Tooltip title="删除分支">
-                  <DeleteOutlined
-                    style={{ marginLeft: 8, color: '#f5222d' }}
-                    onClick={(event) => handleRemoveBranch({ branchId: branch.id, event })}
-                  />
-                </Tooltip>
-              ) : null}
-            </span>
-          ),
-          children: (
+      >
+        {branches.map((branch) => (
+          <Tabs.TabPane
+            tab={(
+              <span>
+                {branch.label}
+                {editable && branches.length > 1 ? (
+                  <Tooltip title="删除分支">
+                    <DeleteOutlined
+                      style={{ marginLeft: 8, color: '#f5222d' }}
+                      onClick={(event) => handleRemoveBranch({ branchId: branch.id, event })}
+                    />
+                  </Tooltip>
+                ) : null}
+              </span>
+            )}
+            key={branch.id}
+          >
             <div className="branch-body">
               {/* 分支名称 */}
               <div className="branch-label-row">
@@ -705,9 +708,9 @@ const ParallelCard = (props) => {
                 })}
               />
             </div>
-          ),
-        }))}
-      />
+          </Tabs.TabPane>
+        ))}
+      </Tabs>
     </div>
   );
 };

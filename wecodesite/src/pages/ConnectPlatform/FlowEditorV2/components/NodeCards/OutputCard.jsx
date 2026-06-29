@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Tabs, Input, Select, Button, Dropdown } from 'antd';
+import { Tabs, Input, Select, Button, Dropdown, Menu } from 'antd';
 import { OUTPUT_CARRIER_TABS } from '../../constants';
 import { buildRefOptions, collectUpstreamRefs } from '../../utils';
 import { DEFAULT_TYPE_OPTIONS, isComplexType, MAX_SCHEMA_DEPTH } from '../../../../../components/SchemaEditor/constants';
@@ -252,6 +252,30 @@ const OutputCard = (props) => {
       { key: 'sibling', label: '添加兄弟节点' },
     ];
 
+    /**
+     * 处理添加菜单点击
+     * @param {Object} info 菜单点击事件参数
+     */
+    const handleAddMenuClick = (info) => {
+      if (info.key === 'child') {
+        handleAddChild({ carrier, path });
+      } else {
+        handleAddSibling({ carrier, path });
+      }
+    };
+
+    /**
+     * 渲染复杂类型添加菜单
+     * @returns {React.ReactNode} 添加菜单节点
+     */
+    const renderAddMenu = () => (
+      <Menu onClick={handleAddMenuClick}>
+        {addMenuItems.map((item) => (
+          <Menu.Item key={item.key}>{item.label}</Menu.Item>
+        ))}
+      </Menu>
+    );
+
     return (
       <div key={path.join('-')} data-depth={depth}>
         <div className="schema-param-row output-param-row">
@@ -283,16 +307,7 @@ const OutputCard = (props) => {
           {editable && (
             complex ? (
               <Dropdown
-                menu={{
-                  items: addMenuItems,
-                  onClick: (info) => {
-                    if (info.key === 'child') {
-                      handleAddChild({ carrier, path });
-                    } else {
-                      handleAddSibling({ carrier, path });
-                    }
-                  },
-                }}
+                overlay={renderAddMenu()}
                 trigger={['click']}
                 overlayClassName="schema-editor-v2-dropdown"
               >
@@ -370,12 +385,13 @@ const OutputCard = (props) => {
         <Tabs
           activeKey={activeCarrier}
           onChange={setActiveCarrier}
-          items={OUTPUT_CARRIER_TABS.map((tab) => ({
-            key: tab.key,
-            label: tab.label,
-            children: renderOutputParams(tab.carrier),
-          }))}
-        />
+        >
+          {OUTPUT_CARRIER_TABS.map((tab) => (
+            <Tabs.TabPane tab={tab.label} key={tab.key}>
+              {renderOutputParams(tab.carrier)}
+            </Tabs.TabPane>
+          ))}
+        </Tabs>
       </div>
     </div>
   );

@@ -180,7 +180,7 @@ export const getConnectorColumns = (callbacks) => {
     {
       title: '操作',
       key: 'action',
-      width: 220,
+      width: 260,
       fixed: 'right',
       render: (_, record) => {
         // 当前连接器状态：1=有效不可用 / 2=有效可用 / 3=已失效
