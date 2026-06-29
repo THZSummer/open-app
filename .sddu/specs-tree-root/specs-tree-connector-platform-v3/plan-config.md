@@ -60,6 +60,7 @@
 | 13 | 脚本超时范围 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Timeout.Seconds` | FR-040a |
 | 14 | 日志采集开关 | 平台管控 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Log.Collection.Enabled` | FR-044 |
 | 15 | 连接器平台开放应用范围清单 | 平台管控 | ❌ | Lookup | `CEC.Open` | `Connector.Platform.AppWhitelist` | `appId` | FR-045 |
+| 16 | 串行编排连接器节点数量上限 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Serial.Connector.Nodes` | FR-026 |
 ---
 
 ## 2 配置详情
@@ -308,6 +309,26 @@
 1. 新增 `getScriptMaxTimeoutSeconds(appId)`，默认 30
 2. `FlowPublishValidator` 增加脚本节点超时校验：每个脚本节点 `timeout ≤ maxTimeoutSeconds`
 3. 用户未填 timeout 时默认取 `DEFAULT_SCRIPT_TIMEOUT_SECONDS`
+
+---
+
+#### 2.2.11 #16 串行编排连接器节点数量上限
+
+| 属性 | 值 |
+|------|-----|
+| **存储** | Lookup |
+| **path** | `CEC.Open` |
+| **classify_code** | `Connector.Platform.Config` |
+| **item_code** | `Flow.Max.Serial.Connector.Nodes` |
+| **默认值** | 3 |
+| **按应用区分** | ✅ |
+| **实现状态** | ❌ 未实现 |
+
+**说明**：当 flowMode 为 `serial`（串行编排）时，限制连接流中连接器节点的最大数量。该配置在发布时校验（FR-026 子项 j），超出上限则禁止提交。
+
+**方案**：
+1. `FlowPublishValidator.validateOrchestrationConfig()` 中增加校验：flowMode=serial 时，统计连接器节点数量，超出上限则拒绝发布
+2. 上限值从 Lookup 批量读取 `Flow.Max.Serial.Connector.Nodes`，未配置时 fallback 3
 
 ---
 
@@ -618,10 +639,11 @@ INSERT INTO openplatform_lookup_classify_t (classify_code, classify_name, path, 
 | 12 | script_max_length_chars | Script.Max.Length.Chars | 10000 | int | 是 |
 | 13 | script_max_timeout_seconds | Script.Max.Timeout.Seconds | 30 | int | 是 |
 | 14 | log_collection_enabled | Log.Collection.Enabled | true | boolean | 是 |
+| 16 | — | Flow.Max.Serial.Connector.Nodes | 3 | int | 是 |
 
 #15 白名单：item_code = appId，item_value = appId（如 app_001 / app_001）
 
-说明：#1/#2/#4 不支持按应用区分，仅在 Connector.Platform.Config 下存在；#3/#5~#14 支持按应用区分，可在 Connector.Platform.{appId}.Config 下覆盖。
+说明：#1/#2/#4 不支持按应用区分，仅在 Connector.Platform.Config 下存在；#3/#5~#14/#16 支持按应用区分，可在 Connector.Platform.{appId}.Config 下覆盖。
 
 #### 3.2.4 数据示例
 
@@ -634,7 +656,7 @@ openplatform_lookup_classify_t：
 | Connector.Platform.app_002.Config | CEC.Open | 连接器平台配置（app_002 覆盖） |
 | Connector.Platform.AppWhitelist | CEC.Open | 连接器平台应用白名单 |
 
-openplatform_lookup_item_t（平台默认组，14 项）：
+openplatform_lookup_item_t（平台默认组，15 项）：
 
 | item_code | item_value |
 |-----------|-----------|
@@ -652,6 +674,7 @@ openplatform_lookup_item_t（平台默认组，14 项）：
 | Script.Max.Length.Chars | 10000 |
 | Script.Max.Timeout.Seconds | 30 |
 | Log.Collection.Enabled | true |
+| Flow.Max.Serial.Connector.Nodes | 3 |
 
 openplatform_lookup_item_t（app_001 覆盖组，仅覆盖项）：
 
@@ -756,7 +779,7 @@ INSERT INTO openplatform_lookup_classify_t (classify_code, classify_name, path, 
 ('Connector.Platform.Config', '连接器平台配置-平台默认', 'CEC.Open', 1),
 ('Connector.Platform.AppWhitelist', '连接器平台应用白名单', 'CEC.Open', 1);
 
-#### 3.7.2 item 初始化（平台默认组，14 项）
+#### 3.7.2 item 初始化（平台默认组，15 项）
 
 classify_id 需替换为实际查询结果：
 
@@ -776,6 +799,7 @@ classify_id 需替换为实际查询结果：
 | Script.Max.Length.Chars | 脚本源码长度上限 | 10000 | 12 |
 | Script.Max.Timeout.Seconds | 脚本超时范围 | 30 | 13 |
 | Log.Collection.Enabled | 日志采集开关 | true | 14 |
+| Flow.Max.Serial.Connector.Nodes | 串行编排连接器节点数量上限 | 3 | 15 |
 
 ### 3.8 实施优先级
 
