@@ -58,11 +58,8 @@ function CreateAppModal(props) {
 
   // 提交
   const handleSubmit = async () => {
+    form.setFieldsValue({ icon: iconId || '' });
     const values = await form.validateFields();
-    if (!iconId) {
-      message.warning('请选择应用图标');
-      return;
-    }
     onOk({
       ...values,
       icon: iconId,
@@ -85,7 +82,9 @@ function CreateAppModal(props) {
     >
       <Form form={form} layout="vertical" className="create-app-form">
         {/* 图标选择 — 使用公共 IconPicker */}
-          <Form.Item label={<span><span className="required-mark">*</span> 应用图标</span>}>
+          <Form.Item name="icon" label={<span><span className="required-mark">*</span> 应用图标</span>}
+            rules={[{ required: true, message: '请上传应用图标' }]}
+          >
           <IconPicker
             value={iconId}
             uploadedUrl={iconUrl}
@@ -152,6 +151,8 @@ function CreateAppModal(props) {
             <span>
               绑定到应用服务
               <Tooltip
+                placement="topRight"
+                align={{ offset: [20, 0] }}
                 overlayStyle={{ maxWidth: 'none' }}
                 color="#eef4ff"
                 title={<span className="eamap-tooltip-text">开放平台按照应用服务维度做权限隔离，如需申请API权限等开放能力需要先绑定应用服务，如无权限请前往应用中心查询对应责任人</span>}
@@ -160,7 +161,7 @@ function CreateAppModal(props) {
               </Tooltip>
             </span>
           }
-          rules={[{ required: true, message: '请选择EAMAP' }]}
+          rules={[{ required: true, message: '请选择应用服务' }]}
         >
           <BindEamapSelect
             eamapOptions={eamapOptions}
