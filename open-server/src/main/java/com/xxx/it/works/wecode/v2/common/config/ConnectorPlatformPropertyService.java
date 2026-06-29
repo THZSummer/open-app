@@ -55,7 +55,7 @@ public class ConnectorPlatformPropertyService {
      * @return 配置的正则字符串；{@code null} 表示不启用正则校验
      */
     public String getUrlRegexPattern() {
-        return queryProperty(PATH_CONNECTOR_PLATFORM, "url_regex_pattern");
+        return queryProperty(PATH_CONNECTOR_PLATFORM, "connector_url_regex_pattern");
     }
 
     /**

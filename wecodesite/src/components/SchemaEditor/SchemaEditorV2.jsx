@@ -78,14 +78,6 @@ const SchemaEditorV2 = (props) => {
       return;
     }
 
-    // 其次从 form.apiConfig 取
-    if (form && form.getFieldValue) {
-      const currentConfig = form.getFieldValue('apiConfig') || {};
-      const schema = currentConfig[schemaType] || [];
-      setSchemaData(Array.isArray(schema) ? schema : []);
-      return;
-    }
-
     // 兜底从 apiConfig prop 取
     if (apiConfig && apiConfig[schemaType]) {
       const schema = apiConfig[schemaType] || [];

@@ -37,6 +37,7 @@ import {
   COMMON_AUTH_TYPES,
   SIGNATURE_AUTH_TYPE,
   VALIDATE_SECTION,
+  AUTH_SCHEMA_MAP,
 } from './constants';
 
 /* ========================================
@@ -145,6 +146,109 @@ export const transformParamsToJsonSchema = (params) => {
 };
 
 /**
+ * 从表达式中提取页面展示值
+ * @param {string} rawValue - 表达式或普通值
+ * @returns {string} 页面展示值
+ */
+const parseFixedValueFromExpression = (rawValue) => {
+  // 非字符串值没有可解析的页面展示值
+  if (typeof rawValue !== 'string') return '';
+
+  const systemMatched = rawValue.match(/^\$\{\$\.system\.env\.([^}]+)\}$/);
+  if (systemMatched) return systemMatched[1];
+
+  const constantMatched = rawValue.match(/^\$\{\$\.constant:(.*)\}$/);
+  if (constantMatched) return constantMatched[1];
+
+  return rawValue;
+};
+
+/**
+ * 获取认证参数默认展示值
+ * @param {Object} options - 选项对象
+ * 包含以下字段：
+ * - authType: 认证方式
+ * - paramName: 参数名称
+ * @returns {string} 默认展示值
+ */
+const getDefaultAuthFixedValue = (options) => {
+  // 解构传入对象中需要使用的参数
+  const { authType, paramName } = options;
+  const defaultItems = AUTH_SCHEMA_MAP[authType] || [];
+  const matchedItem = defaultItems.find(item => item.paramName === paramName);
+  return matchedItem?.fixedValue || '';
+};
+
+/**
+ * 补齐认证参数页面展示值
+ * @param {Object} options - 选项对象
+ * 包含以下字段：
+ * - authType: 认证方式
+ * - params: 认证参数数组
+ * @returns {Array} 补齐展示值后的认证参数数组
+ */
+const fillAuthFixedValues = (options) => {
+  // 解构传入对象中需要使用的参数
+  const { authType, params } = options;
+  return (params || []).map((param) => {
+    const fixedValue = param.fixedValue
+      || parseFixedValueFromExpression(param.value)
+      || getDefaultAuthFixedValue({ authType, paramName: param.paramName });
+    return { ...param, fixedValue };
+  });
+};
+
+/**
+ * 构建系统变量表达式
+ * @param {string} fixedValue 页面展示值
+ * @returns {string} 系统变量表达式
+ */
+const buildSystemEnvExpression = (fixedValue) => `\${$.system.env.${fixedValue}}`;
+
+/**
+ * 构建常量表达式
+ * @param {string} value 常量值
+ * @returns {string} 常量表达式
+ */
+const buildConstantExpression = (value) => `\${$.constant:${value}}`;
+
+/**
+ * 为认证 jsonObjectDef 字段补齐 value 与 fixedValue
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - jsonSchema: 认证载体 jsonObjectDef
+ * @returns {Object|null} 补齐后的认证载体 jsonObjectDef
+ */
+const fillAuthSchemaValues = (params) => {
+  // params.jsonSchema
+  const { jsonSchema } = params;
+  if (!jsonSchema?.properties) return jsonSchema;
+
+  const properties = {};
+  Object.keys(jsonSchema.properties).forEach((paramName) => {
+    const field = jsonSchema.properties[paramName] || {};
+    const fixedValue = field.fixedValue || parseFixedValueFromExpression(field.value) || paramName;
+    properties[paramName] = {
+      ...field,
+      value: buildSystemEnvExpression(fixedValue),
+      fixedValue,
+    };
+  });
+
+  return { ...jsonSchema, properties };
+};
+
+/**
+ * 获取数字签名密钥页面展示值
+ * @param {Object} secretField 密钥字段
+ * @returns {string} 密钥展示值
+ */
+const getSignatureSecretFixedValue = (secretField) => {
+  // 优先使用 fixedValue，兼容 value 为 constant 表达式或历史明文
+  return secretField?.fixedValue || parseFixedValueFromExpression(secretField?.value);
+};
+
+/**
  * 解析 V3 authConfigs[] 数组为前端 apiConfig 的 authType[] + authRequestSchema{}
  * 同时提取 signatureConfig（用于数字签名独立配置区）
  *
@@ -171,9 +275,15 @@ const parseAuthConfigs = (authConfigs) => {
     if (!authType.includes(type)) authType.push(type);
 
     if (COMMON_AUTH_TYPES.includes(type)) {
-      // 通用认证：合并 header / query 字段为单一参数数组
-      const headerParams = transformJsonSchemaToParams(item.header, 'header');
-      const queryParams = transformJsonSchemaToParams(item.query, 'query');
+      // 通用认证：合并 header / query 字段为单一参数数组，并补齐页面展示值
+      const headerParams = fillAuthFixedValues({
+        authType: type,
+        params: transformJsonSchemaToParams(item.header, 'header'),
+      });
+      const queryParams = fillAuthFixedValues({
+        authType: type,
+        params: transformJsonSchemaToParams(item.query, 'query'),
+      });
       authRequestSchema[type] = [...headerParams, ...queryParams];
     } else if (type === SIGNATURE_AUTH_TYPE) {
       // 数字签名：解析 secretKey + header 的首个字段
@@ -187,8 +297,8 @@ const parseAuthConfigs = (authConfigs) => {
       signatureConfig = {
         paramName: headerField?.[0] || '',
         carrier: 'header',
-        fixedValue: headerField?.[1]?.value || '',
-        secret: secretField?.[1]?.value || '',
+        fixedValue: headerField?.[1]?.fixedValue || parseFixedValueFromExpression(headerField?.[1]?.value),
+        secret: getSignatureSecretFixedValue(secretField?.[1]),
       };
     }
   });
@@ -270,8 +380,8 @@ const buildAuthConfigs = (apiConfig) => {
 
     // 构建 authConfig 项
     const config = { type };
-    const headerSchema = transformParamsToJsonSchema(headerItems);
-    const querySchema = transformParamsToJsonSchema(queryItems);
+    const headerSchema = fillAuthSchemaValues({ jsonSchema: transformParamsToJsonSchema(headerItems) });
+    const querySchema = fillAuthSchemaValues({ jsonSchema: transformParamsToJsonSchema(queryItems) });
 
     if (headerSchema) config.header = headerSchema;
     if (querySchema) config.query = querySchema;
@@ -287,7 +397,8 @@ const buildAuthConfigs = (apiConfig) => {
         properties: {
           [signatureConfig.paramName]: {
             type: 'string',
-            value: signatureConfig.fixedValue || '',
+            value: buildSystemEnvExpression(signatureConfig.fixedValue || ''),
+            fixedValue: signatureConfig.fixedValue || '',
             description: '签名头',
           },
         },
@@ -302,7 +413,8 @@ const buildAuthConfigs = (apiConfig) => {
             type: 'string',
             required: true,
             sensitive: true,
-            value: signatureConfig.secret,
+            value: buildConstantExpression(signatureConfig.secret),
+            fixedValue: signatureConfig.secret,
             description: '签名密钥',
           },
         },

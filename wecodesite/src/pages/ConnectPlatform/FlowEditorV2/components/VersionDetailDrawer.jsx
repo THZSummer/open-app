@@ -14,14 +14,12 @@
  * 视觉：操作控制台风格——左色条 Hero、分组卡片、KV 网格、状态胶囊。
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Drawer, Button, message } from 'antd';
 import { LinkOutlined, CopyOutlined } from '@ant-design/icons';
 import { VERSION_STATUS, VERSION_STATUS_MAP } from '../constants';
 import { copyToClipboard, extractEflowId } from '../../../../utils/common';
 import '../FlowEditorV2.m.less';
-
-import { remindPeople } from '../../../Admin/Approval/thunk';
 
 /**
  * 版本状态到 Hero 色调的映射
@@ -79,7 +77,6 @@ const KvRow = (params) => {
  */
 const VersionDetailDrawer = (props) => {
   const { visible, versionInfo, onClose } = props;
-  const [remindLoading, setRemindLoading] = useState(false);
 
   /**
    * 复制审批地址链接到剪贴板
@@ -94,35 +91,6 @@ const VersionDetailDrawer = (props) => {
     } else {
       message.error('复制失败，请检查浏览器权限');
     }
-  };
-
-  /**
-   * 处理催办按钮点击事件
-   * 从审批链接中提取 eflowId 并调用催办接口
-   */
-  const handleRemind = async () => {
-    const eflowId = extractEflowId(versionInfo.approvalUrl);
-
-    if (!eflowId) {
-      message.error('无法提取审批ID');
-      return;
-    }
-
-    const params = {
-      businessId: eflowId,
-      businessType: 'FLOW',
-    }
-    setRemindLoading(true);
-
-    const result = await remindPeople(params);
-
-    if (result && result.code === '200') {
-      message.success('催办成功');
-    } else {
-      message.error(result.messageZh || '催办失败');
-    }
-
-    setRemindLoading(false);
   };
 
   if (!versionInfo) return null;
@@ -214,16 +182,6 @@ const VersionDetailDrawer = (props) => {
               </span>
             </div>
           )}
-
-          <div style={{ marginTop: 12, textAlign: 'right' }}>
-            <Button
-              type="primary"
-              loading={remindLoading}
-              onClick={handleRemind}
-            >
-              催办审批
-            </Button>
-          </div>
         </div>
       )}
 

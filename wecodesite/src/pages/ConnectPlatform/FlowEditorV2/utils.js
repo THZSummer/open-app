@@ -468,54 +468,6 @@ const validateScriptNode = (params) => {
 };
 
 /**
- * 校验并行分支映射值
- *
- * @param {Object} params 参数对象
- * @returns {string|null} 错误信息（null 表示通过）
- */
-const validateParallelBranchMappingValue = (params) => {
-  // params.raw / params.branchLabel / params.paramName
-  const { raw, branchLabel, paramName } = params;
-  if (typeof raw === 'string') return null;
-  if (!raw || typeof raw !== 'object') return null;
-
-  const mode = raw.mode || 'static';
-  const value = raw.value;
-  if (mode !== 'ref') return null;
-
-  if (!value || typeof value !== 'string' || !/^\$\{.+\}$/.test(value.trim())) {
-    return `并行节点：分支「${branchLabel}」参数「${paramName}」引用表达式无效`;
-  }
-  return null;
-};
-
-/**
- * 校验并行分支连接器入参映射
- *
- * @param {Object} params 参数对象
- * @returns {string|null} 错误信息（null 表示通过）
- */
-const validateParallelBranchMappings = (params) => {
-  // params.branch
-  const { branch } = params;
-  const mappings = branch.connector?.inputMappings || {};
-
-  for (const carrier of ['header', 'body', 'query']) {
-    const carrierMap = mappings[carrier] || {};
-    for (const paramName of Object.keys(carrierMap)) {
-      const error = validateParallelBranchMappingValue({
-        raw: carrierMap[paramName],
-        branchLabel: branch.label,
-        paramName,
-      });
-      if (error) return error;
-    }
-  }
-
-  return null;
-};
-
-/**
  * 校验单个并行分支
  *
  * @param {Object} params 参数对象
@@ -527,7 +479,6 @@ const validateParallelBranch = (params) => {
   if (!branch.label?.trim()) return '并行节点：分支名称不能为空';
   if (!branch.connector?.connectorId) return `并行节点：分支「${branch.label}」未选择连接器`;
   if (!branch.connector?.versionId) return `并行节点：分支「${branch.label}」未选择连接器版本`;
-  return validateParallelBranchMappings({ branch });
 };
 
 /**

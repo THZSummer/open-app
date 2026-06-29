@@ -48,11 +48,11 @@ import {
   VERSION_STATUS,
   FLOW_MODE,
   DEFAULT_APP_LIMITS,
-  FLOW_APP_CONFIG_LOOKUP_KEY,
   NODE_TYPE,
   FLOW_VERSION_EXPIRE_SECOND_MODAL_INFO,
   FLOW_VERSION_WITHDRAW_SECOND_MODAL_INFO,
   FLOW_VERSION_DELETE_SECOND_MODAL_INFO,
+  parseFlowAppConfig,
 } from './constants';
 import {
   initFlowDataByMode,
@@ -65,74 +65,6 @@ import {
 } from './utils';
 import { queryParams, getSecondModalInfo, getVersionObjectName } from '../../../utils/common';
 import './FlowEditorV2.m.less';
-
-/**
- * 构建默认应用级配置
- * @returns {Object} 应用级配置
- */
-const buildDefaultAppConfig = () => ({
-  flowModeVisibility: {
-    single: true,
-    serial: false,
-    parallel: false,
-  },
-  rateLimitMax: DEFAULT_APP_LIMITS.rateLimitMax,
-  connectorTimeoutMax: DEFAULT_APP_LIMITS.connectorTimeoutMax,
-  serialConnectorMax: DEFAULT_APP_LIMITS.serialConnectorMax,
-  parallelBranchMax: DEFAULT_APP_LIMITS.parallelBranchMax,
-});
-
-/**
- * 根据 showMoreFlowType 构建编排模式可见性
- * @param {boolean} showMoreFlowType 是否展示串行编排和并行编排
- * @returns {Object} 编排模式可见性配置
- */
-const buildFlowModeVisibility = (showMoreFlowType) => ({
-  single: true,
-  serial: showMoreFlowType === true,
-  parallel: showMoreFlowType === true,
-});
-
-/**
- * 将 lookup 配置映射为编辑器应用级配置
- * @param {Object} config lookup itemValue 解析后的配置
- * @returns {Object} 应用级配置
- */
-const mapLookupConfigToAppConfig = (config) => {
-  // config.QPS / config.showMoreFlowType / config.serial / config.parallel / config.timeoutMs
-  return {
-    flowModeVisibility: buildFlowModeVisibility(config?.showMoreFlowType),
-    rateLimitMax: config?.QPS ?? DEFAULT_APP_LIMITS.rateLimitMax,
-    connectorTimeoutMax: config?.timeoutMs ?? DEFAULT_APP_LIMITS.connectorTimeoutMax,
-    serialConnectorMax: config?.serial ?? DEFAULT_APP_LIMITS.serialConnectorMax,
-    parallelBranchMax: config?.parallel ?? DEFAULT_APP_LIMITS.parallelBranchMax,
-  };
-};
-
-/**
- * 从应用级配置响应中解析当前应用配置
- * @param {Object} params 参数对象
- * @param {Object} params.appRes 应用级配置接口响应
- * @param {string} params.appId 当前应用 ID
- * @returns {Object} 应用级配置
- */
-const parseAppConfigByAppId = (params) => {
-  // params.appRes / params.appId
-  const { appRes, appId } = params;
-  try {
-    const items = appRes?.data?.lookups?.[FLOW_APP_CONFIG_LOOKUP_KEY]?.items || [];
-    const matchedItem = items.find(item => item?.itemCode === appId);
-
-    if (!matchedItem?.itemValue) {
-      return buildDefaultAppConfig();
-    }
-
-    const parsedConfig = JSON.parse(matchedItem.itemValue);
-    return mapLookupConfigToAppConfig(parsedConfig);
-  } catch {
-    return buildDefaultAppConfig();
-  }
-};
 
 /**
  * 连接流编辑器 V2 主组件
@@ -200,8 +132,8 @@ function FlowEditorV2() {
     }
 
     const initPage = async () => {
-      const appRes = await fetchAppConfig();
-      const appConfig = parseAppConfigByAppId({ appRes, appId: queryParams('appId') });
+      const appConfigRes = await fetchAppConfig();
+      const appConfig = parseFlowAppConfig(appConfigRes);
       setAppModeVisibility(appConfig.flowModeVisibility);
       setAppLimits({
         rateLimitMax: appConfig.rateLimitMax,

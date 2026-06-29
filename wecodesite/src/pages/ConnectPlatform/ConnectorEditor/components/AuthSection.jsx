@@ -124,7 +124,7 @@ const AuthSection = forwardRef((props, ref) => {
     return (
       <div className="auth-param-row" key={rowKey}>
         <Input
-          className="auth-field-name input-border-radius"
+          className="auth-field-name"
           value={item.paramName}
           placeholder="参数名称"
           disabled={!editable}
@@ -144,7 +144,7 @@ const AuthSection = forwardRef((props, ref) => {
           ))}
         </Select>
         <Input
-          className="auth-field-value input-border-radius"
+          className="auth-field-value"
           value={valueColumnValue}
           placeholder={valueColumnPlaceholder}
           disabled
@@ -214,7 +214,7 @@ const AuthSection = forwardRef((props, ref) => {
     const extraFields = rowConfig.showSecret ? (
       <>
         <Input
-          className="auth-field-value input-border-radius"
+          className="auth-field-value"
           type={signatureSecretMasked ? 'password' : 'text'}
           value={sig.secret}
           placeholder="签名密钥"

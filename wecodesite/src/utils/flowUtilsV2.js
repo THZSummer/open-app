@@ -35,6 +35,8 @@ export const parseJsonFieldToParam = (params) => {
     paramType: type,
     desc: field?.description || '',
     description: field?.description || '',
+    value: field?.value || '',
+    fixedValue: field?.fixedValue || '',
     children,
     carrier,
   };
@@ -62,9 +64,13 @@ export const parseJsonObjectToParams = (params) => {
  * @returns {Object} jsonObjectDef 字段
  */
 export const buildJsonFieldFromParam = (param) => {
-  // param.paramName / param.name / param.paramType / param.type / param.description / param.desc / param.children
+  // param.paramName / param.name / param.paramType / param.type / param.description / param.desc / param.value / param.fixedValue / param.children
   const type = param.paramType || param.type || 'string';
   const description = param.description || param.desc || '';
+  const valueProps = {
+    ...(param.value ? { value: param.value } : {}),
+    ...(param.fixedValue ? { fixedValue: param.fixedValue } : {}),
+  };
 
   if (type === 'object') {
     const childrenObject = buildJsonObjectFromParams(param.children || []);
@@ -72,6 +78,7 @@ export const buildJsonFieldFromParam = (param) => {
       type: 'object',
       properties: childrenObject?.properties || {},
       ...(description ? { description } : {}),
+      ...valueProps,
     };
   }
 
@@ -80,12 +87,14 @@ export const buildJsonFieldFromParam = (param) => {
       type: 'array',
       items: buildJsonObjectFromParams(param.children || []) || { type: 'object', properties: {} },
       ...(description ? { description } : {}),
+      ...valueProps,
     };
   }
 
   return {
     type,
     ...(description ? { description } : {}),
+    ...valueProps,
   };
 };
 
