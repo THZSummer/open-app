@@ -21,9 +21,9 @@ public class CreateVersionRequest implements Serializable {
     private String versionCode;
 
     @NotBlank(message = "中文描述不能为空")
-    @Size(max = 2000, message = "中文描述不能超过2000个字符")
+    @Size(max = 200, message = "中文描述不能超过200个字符")
     private String versionDescCn;
 
-    @Size(max = 2000, message = "英文描述不能超过2000个字符")
+    @Size(max = 200, message = "英文描述不能超过200个字符")
     private String versionDescEn;
 }

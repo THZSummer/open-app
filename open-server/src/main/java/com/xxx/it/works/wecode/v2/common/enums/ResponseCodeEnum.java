@@ -27,9 +27,9 @@ public enum ResponseCodeEnum {
     // ===== 应用管理业务错误 (1.x 接口) =====
     APP_NOT_FOUND("404100", "应用不存在", "Application not found"),
     APP_ACCESS_DENIED("403100", "无权访问应用", "No access to the application"),
-    APP_NAME_DUPLICATED("409100", "应用名称已存在", "Application name already exists"),
+    APP_NAME_DUPLICATED("409100", "应用中文（或英文）名称与其他应用重复，请检查！", "Application Chinese (or English) name duplicates with another application, please check!"),
     APP_PARAM_ERROR("400100", "应用参数错误", "Application parameter error"),
-    EAMAP_ALREADY_BOUND("409102", "EAMAP已被其他应用绑定", "EAMAP already bound by another application"),
+    EAMAP_ALREADY_BOUND("409102", "开放平台应用和his应用是一对一绑定关系！此his应用已绑定其他开放平台应用！", "The open platform app and the HIS app have a one-to-one binding relationship! This HIS app has already been bound to another open platform app!"),
     EAMAP_NOT_FOUND("400103", "EAMAP编码不存在", "EAMAP code not found"),
     NOT_EAMAP_OWNER("403104", "当前用户不是EAMAP的owner", "Current user is not the EAMAP owner"),
     ICON_NOT_FOUND("400101", "图标ID不存在", "Icon ID not found"),
