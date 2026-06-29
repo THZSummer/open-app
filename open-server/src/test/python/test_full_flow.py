@@ -24,6 +24,7 @@ import sys
 import json
 import time
 import threading
+import subprocess
 import importlib.util
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -42,6 +43,26 @@ os_db_val = _osm.db_val
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
+os_redis = _osm.redis
+# 覆盖为集群模式: -c 自动处理 MOVED redirect；多节点容错，任一可达即可
+_REDIS_NODES = [("192.168.3.201", "6379"), ("192.168.3.202", "6379"),
+                ("192.168.3.203", "6379"), ("192.168.3.204", "6379"),
+                ("192.168.3.205", "6379"), ("192.168.3.206", "6379")]
+_REDIS_PASS = "openapp"
+
+def os_redis(*args):
+    for host, port in _REDIS_NODES:
+        cmd = ["redis-cli", "-c", "-h", host, "-p", port,
+               "-a", _REDIS_PASS, "--no-auth-warning"]
+        cmd.extend([str(a) for a in args])
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+            if r.returncode == 0:
+                return r.stdout.strip()
+        except Exception:
+            continue
+    return None
+
 TEST_APP_ID = _osm.TEST_APP_ID
 
 import pytest
@@ -389,15 +410,43 @@ def test_full_flow():
                     "protocol": "HTTP",
                     "protocolConfig": {
                         "url": "http://localhost:18980/api/echo",
-                        "method": "POST",
-                        "headers": {
-                            "Content-Type": "application/json",
-                            "X-Custom-Header": "full-flow-test"
-                        }
+                        "method": "POST"
                     },
                     "authConfigs": [
                         {
-                            "type": "NONE"
+                            "type": "APIG",
+                            "query": {
+                                "type": "object",
+                                "properties": {
+                                    "apigAppKey": {
+                                        "type": "string",
+                                        "required": True,
+                                        "value": "${$.system.env.apigAppKey}",
+                                        "description": "APIG 应用标识"
+                                    },
+                                    "apigAppSecret": {
+                                        "type": "string",
+                                        "required": True,
+                                        "sensitive": True,
+                                        "value": "${$.system.env.apigAppSecret}",
+                                        "description": "APIG 应用密钥"
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "type": "COOKIE",
+                            "header": {
+                                "type": "object",
+                                "properties": {
+                                    "Cookie": {
+                                        "type": "string",
+                                        "required": True,
+                                        "sensitive": True,
+                                        "description": "Cookie 请求头，值来源在编排时设置"
+                                    }
+                                }
+                            }
                         }
                     ],
                     "input": {
@@ -518,10 +567,13 @@ def test_full_flow():
             return True
 
         def s7():
+            nid_trigger = f"trigger_{_RUN_ID}"
+            nid_conn = f"conn_{_RUN_ID}"
+            nid_exit = f"exit_{_RUN_ID}"
             r = os_api("PUT", f"/flows/{fid}/versions/{fvid}", {
                 "orchestrationConfig": {
                     "nodes": [
-                        {"id": "trigger", "type": "trigger", "data": {
+                        {"id": nid_trigger, "type": "trigger", "data": {
                             "type": "trigger",
                             "triggerType": "http",
                             "authConfigs": [
@@ -576,21 +628,52 @@ def test_full_flow():
                                 }
                             }
                         }},
-                        {"id": "conn1", "type": "connector", "data": {
+                        {"id": nid_conn, "type": "connector", "data": {
                             "connectorId": str(cid),
                             "connectorVersionId": str(conn_vid),
                             "connectorVersionConfig": {
                                 "protocol": "HTTP",
                                 "protocolConfig": {
                                     "url": "http://localhost:18980/api/echo",
-                                    "method": "POST",
-                                    "headers": {
-                                        "Content-Type": "application/json",
-                                        "X-Custom-Header": "full-flow-test"
-                                    }
+                                    "method": "POST"
                                 },
                                 "authConfigs": [
-                                    {"type": "NONE"}
+                                    {
+                                        "type": "APIG",
+                                        "query": {
+                                            "type": "object",
+                                            "properties": {
+                                                "apigAppKey": {
+                                                    "type": "string",
+                                                    "required": True,
+                                                    "value": "${$.system.env.apigAppKey}",
+                                                    "description": "APIG 应用标识"
+                                                },
+                                                "apigAppSecret": {
+                                                    "type": "string",
+                                                    "required": True,
+                                                    "sensitive": True,
+                                                    "value": "${$.system.env.apigAppSecret}",
+                                                    "description": "APIG 应用密钥"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "type": "COOKIE",
+                                        "header": {
+                                            "type": "object",
+                                            "properties": {
+                                                "Cookie": {
+                                                    "type": "string",
+                                                    "required": True,
+                                                    "sensitive": True,
+                                                    "value": "${$.node." + nid_trigger + ".input.header.Cookie}",
+                                                    "description": "Cookie 请求头，编排时设置值来源：引用触发器入参 Cookie"
+                                                }
+                                            }
+                                        }
+                                    }
                                 ],
                                 "input": {
                                     "protocol": "HTTP",
@@ -652,62 +735,68 @@ def test_full_flow():
                                     }
                                 }
                             },
+                            "timeoutMs": 3000,
                             "input": {
                                 "header": {
                                     "type": "object",
                                     "properties": {
-                                        "X-Trace-Id": {"type": "string", "value": "${$.node.trigger.input.header.X-Trace-Id}"}
+                                        "X-Trace-Id": {"type": "string", "value": "${$.node." + nid_trigger + ".input.header.X-Trace-Id}"}
                                     }
                                 },
                                 "query": {
                                     "type": "object",
                                     "properties": {
-                                        "keyword": {"type": "string", "value": "${$.node.trigger.input.query.keyword}"},
-                                        "page": {"type": "string", "value": "${$.node.trigger.input.query.page}"},
-                                        "size": {"type": "string", "value": "${$.node.trigger.input.query.size}"}
+                                        "keyword": {"type": "string", "value": "${$.node." + nid_trigger + ".input.query.keyword}"},
+                                        "page": {"type": "string", "value": "${$.node." + nid_trigger + ".input.query.page}"},
+                                        "size": {"type": "string", "value": "${$.node." + nid_trigger + ".input.query.size}"}
                                     }
                                 },
                                 "body": {
                                     "type": "object",
                                     "properties": {
                                         "message": {"type": "string", "value": "${$.constant:hello-from-e2e}"},
-                                        "traceId": {"type": "string", "value": "${$.node.trigger.input.body.traceId}"},
-                                        "sort": {"type": "string", "value": "${$.node.trigger.input.body.sort}"}
+                                        "traceId": {"type": "string", "value": "${$.node." + nid_trigger + ".input.body.traceId}"},
+                                        "sort": {"type": "string", "value": "${$.node." + nid_trigger + ".input.body.sort}"}
                                     }
                                 }
                             }
                         }},
-                        {"id": "exit", "type": "exit", "data": {
+                        {"id": nid_exit, "type": "exit", "data": {
                             "type": "exit",
                             "output": {
                                 "header": {
                                     "type": "object",
                                     "properties": {
-                                        "X-Echo-Count": {"type": "string", "value": "${$.node.conn1.output.data.call_number}"}
+                                        "X-Echo-Count": {"type": "string", "value": "${$.node." + nid_conn + ".output.data.call_number}"}
                                     }
                                 },
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "code": {"type": "number", "value": "${$.node.conn1.output.code}"},
-                                        "message": {"type": "string", "value": "${$.node.conn1.output.message}"},
+                                        "code": {"type": "number", "value": "${$.node." + nid_conn + ".output.code}"},
+                                        "message": {"type": "string", "value": "${$.node." + nid_conn + ".output.message}"},
                                         "data": {
                                             "type": "object",
-                                            "value": "${$.node.conn1.output.data.echo_body}"
+                                            "value": "${$.node." + nid_conn + ".output.data.echo_body}"
                                         },
-                                        "serverTime": {"type": "string", "value": "${$.node.conn1.output.data.server_time}"},
-                                        "callNumber": {"type": "number", "value": "${$.node.conn1.output.data.call_number}"}
+                                        "serverTime": {"type": "string", "value": "${$.node." + nid_conn + ".output.data.server_time}"},
+                                        "callNumber": {"type": "number", "value": "${$.node." + nid_conn + ".output.data.call_number}"}
                                     }
                                 }
                             }
                         }}
                     ],
                     "edges": [
-                        {"id": "e1", "source": "trigger", "target": "conn1"},
-                        {"id": "e2", "source": "conn1", "target": "exit"}
+                        {"id": f"e1_{_RUN_ID}", "source": nid_trigger, "target": nid_conn},
+                        {"id": f"e2_{_RUN_ID}", "source": nid_conn, "target": nid_exit}
                     ],
                     "flowConfig": {
-                        "rateLimitConfig": {"maxQps": 100, "maxConcurrency": 20}
+                        "flowMode": "single",
+                        "rateLimitConfig": {"maxQps": 100, "maxConcurrency": 20},
+                        "cache": {
+                            "key": ["${$.node." + nid_trigger + ".input.body.traceId}"],
+                            "ttl": 60
+                        }
                     }
                 }
             })
@@ -880,6 +969,8 @@ def test_full_flow():
         # ═══════════════════════════════════════════════════
         if not failed:
             print("\n── Phase 6: 部署 + 调用 ──")
+            first_resp_body = None
+            first_cache_status = None
 
         def s15():
             r = os_api("POST", f"/flows/{fid}/deploy", {"versionId": fvid})
@@ -896,6 +987,7 @@ def test_full_flow():
             return True
 
         def s17():
+            nonlocal first_resp_body, first_cache_status
             url = f"POST http://localhost:18180/api/v1/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
             r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
                              {
@@ -905,39 +997,114 @@ def test_full_flow():
                              },
                              headers={
                                  "X-Sys-Token": "tester",
-                                 "X-Trace-Id": f"trace-{_RUN_ID}"
+                                 "X-Trace-Id": f"trace-{_RUN_ID}",
+                                 "Cookie": f"session={_RUN_ID}; user=tester"
                              })
             if r is None:
                 os_fail("connector-api 连接失败")
                 return False
             if r.status_code in (200, 201):
-                print(f"  ✅ 连接流执行 (HTTP {r.status_code})  {url}")
-                print(f"    Content-Type: {r.headers.get('Content-Type','')}")
-                print(f"    Content-Length: {r.headers.get('Content-Length','')}")
+                print(f"  ✅ 首次调用 (HTTP {r.status_code})  {url}")
+                first_cache_status = r.headers.get("X-Cache-Status", "缺失")
+                print(f"    X-Cache-Status: {first_cache_status}")
                 try:
-                    b = r.json()
-                    print(f"    响应头: {json.dumps({k: v for k, v in r.headers.items() if k.lower().startswith('x-')}, ensure_ascii=False)}")
-                    print(f"    响应体: {json.dumps(b, ensure_ascii=False, indent=2)}")
+                    first_resp_body = r.json()
+                    print(f"    响应体: {json.dumps(first_resp_body, ensure_ascii=False)[:300]}")
                 except Exception as e:
                     print(f"    json解析失败: {e}")
-                    print(f"    raw响应: {r.text[:500] if r.text else '(空)'}")
                 return True
-            os_fail(f"连接流执行: HTTP {r.status_code}, {r.text[:200]}  {url}")
+            os_fail(f"首次调用: HTTP {r.status_code}, {r.text[:200]}  {url}")
             return False
 
         def s18():
+            nonlocal first_resp_body
+            url = f"POST http://localhost:18180/api/v1/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
+            r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
+                             {
+                                 "filters": {"category": "tech", "minScore": 0.5},
+                                 "sort": "score",
+                                 "traceId": _RUN_ID
+                             },
+                             headers={
+                                 "X-Sys-Token": "tester",
+                                 "X-Trace-Id": f"trace-{_RUN_ID}",
+                                 "Cookie": f"session={_RUN_ID}; user=tester"
+                             })
+            if r is None:
+                os_fail("connector-api 连接失败")
+                return False
+            if r.status_code not in (200, 201):
+                os_fail(f"第二次调用: HTTP {r.status_code}, {r.text[:200]}  {url}")
+                return False
+
+            print(f"  ✅ 第二次调用(相同traceId) (HTTP {r.status_code})  {url}")
+            cache_status = r.headers.get("X-Cache-Status", "缺失")
+            print(f"    X-Cache-Status: {cache_status}")
+            if cache_status != "1":
+                os_fail(f"缓存未命中: X-Cache-Status={cache_status}, 期望=1")
+                return False
+            print(f"    ✅ 缓存命中 (X-Cache-Status=1)")
+
+            try:
+                second_resp_body = r.json()
+            except Exception as e:
+                os_fail(f"json解析失败: {e}")
+                return False
+
+            # ===== Redis 精准验证 =====
+            redis_key = f"cp:cache:flow:{fid}:{_RUN_ID}"
+            checks = {}
+
+            # ① Redis EXISTS
+            v = os_redis("EXISTS", redis_key)
+            checks["EXISTS"] = v and v.strip() == "1"
+            print(f"    Redis EXISTS: {'1 ✅' if checks['EXISTS'] else '0'}")
+
+            # ② Redis TTL (1~60s)
+            v = os_redis("TTL", redis_key)
+            if v:
+                try:
+                    ttl_val = int(v.strip())
+                    checks["TTL"] = 1 <= ttl_val <= 60
+                    print(f"    Redis TTL: {ttl_val}s (配置60s) {'✅' if checks['TTL'] else '⚠️'}")
+                except ValueError:
+                    checks["TTL"] = False
+
+            # ③ Redis GET → 缓存值可解析
+            v = os_redis("GET", redis_key)
+            if v:
+                try:
+                    json.loads(v)
+                    checks["GET"] = True
+                    print(f"    Redis GET: ✅ 缓存JSON可解析")
+                except Exception:
+                    checks["GET"] = False
+
+            # ④ 首次调用响应 vs 第二次响应 一致性（缓存命中应返回相同结果）
+            if first_resp_body and isinstance(second_resp_body, dict):
+                checks["BODY"] = json.dumps(first_resp_body, sort_keys=True) == \
+                                 json.dumps(second_resp_body, sort_keys=True)
+                print(f"    首次↔二次: {'✅ 完全一致' if checks['BODY'] else '⚠️ 存在差异'}")
+
+            all_ok = all(checks.values()) if checks else False
+            print(f"    {'✅ 缓存精准验证全部通过 (EXISTS+TTL+GET+响应一致性)' if all_ok else '⚠️ 缓存精准验证部分未通过'}")
+            print(f"    响应体: {json.dumps(second_resp_body, ensure_ascii=False)[:300]}")
+            return True
+
+        def s19():
             time.sleep(1)
-            st = os_db_val(
-                f"SELECT status FROM openplatform_v2_cp_execution_record_t "
+            row = os_db_val(
+                f"SELECT CONCAT(status, ',', IFNULL(cache_status, -1)) FROM openplatform_v2_cp_execution_record_t "
                 f"WHERE flow_id={fid} ORDER BY create_time DESC LIMIT 1"
             )
-            if st:
-                print(f"    运行记录 status={st}")
+            if row:
+                parts = row.split(',')
+                print(f"    运行记录 status={parts[0]}, cache_status={parts[1]}")
                 return True
             print(f"    ⚠️ 未找到运行记录")
             return True  # non-blocking
 
-        def s19():
+        def s20():
             r = os_api("POST", f"/flows/{fid}/stop")
             if not check_ok(r, "STOP 停止", f"POST /flows/{fid}/stop"): return False
             r2 = os_api("GET", f"/flows/{fid}")
@@ -953,11 +1120,13 @@ def test_full_flow():
         if not failed:
             if not step("START 启动", s16): failed = True
         if not failed:
-            if not step("连接流调用/执行", s17): failed = True
+            if not step("首次调用(缓存未命中)", s17): failed = True
         if not failed:
-            if not step("查询运行记录(DB只读)", s18): failed = True
+            if not step("第二次调用(验证缓存命中)", s18): failed = True
         if not failed:
-            if not step("STOP 停止", s19): failed = True
+            if not step("查询运行记录(DB只读)", s19): failed = True
+        if not failed:
+            if not step("STOP 停止", s20): failed = True
 
         if not failed:
             print("  ✅ Phase 6 完成: 部署调用全链路通过")

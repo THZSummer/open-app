@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.runtime;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
@@ -361,7 +360,7 @@ class FlowRuntimeEngineTest {
         flowVersion.setVersionNumber(1);
         flowVersion.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
 
-        FlowConfig cachedConfig = new FlowConfig(null, null, null, 600, "flow:{{flowId}}");
+        FlowConfig cachedConfig = new FlowConfig(null, null, null, 600, null);
         ResolvedFlowConfig resolved = new ResolvedFlowConfig(flow, flowVersion, cachedConfig);
 
         when(versionConfigResolver.resolveFlowVersion(flowId)).thenReturn(Mono.just(resolved));

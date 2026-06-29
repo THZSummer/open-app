@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorVersionMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.OpConnectorVersionMapper">
 
     <!-- ResultMap -->
-    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion">
         <id column="id" property="id"/>
         <result column="connector_id" property="connectorId"/>
         <result column="version_number" property="versionNumber"/>
@@ -24,7 +24,7 @@
     </sql>
 
     <!-- Insert -->
-    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion">
         INSERT INTO openplatform_v2_cp_connector_version_t (
             id, connector_id, version_number, status, connection_config,
             published_time, published_by, create_time, last_update_time, create_by, last_update_by
@@ -43,7 +43,7 @@
     </select>
 
     <!-- Update -->
-    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion">
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion">
         UPDATE openplatform_v2_cp_connector_version_t
         SET connection_config  = #{connectionConfig},
             version_number     = #{versionNumber},

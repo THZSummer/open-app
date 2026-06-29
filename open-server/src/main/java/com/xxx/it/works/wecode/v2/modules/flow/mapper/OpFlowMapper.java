@@ -40,7 +40,8 @@ public interface OpFlowMapper {
      */
     List<Flow> selectAll(
             @Param("lifecycleStatus") Integer lifecycleStatus,
-            @Param("keyword") String keyword
+            @Param("keyword") String keyword,
+            @Param("appId") Long appId
     );
 
     /**
@@ -49,6 +50,7 @@ public interface OpFlowMapper {
     List<Flow> selectList(
             @Param("lifecycleStatus") Integer lifecycleStatus,
             @Param("keyword") String keyword,
+            @Param("appId") Long appId,
             @Param("offset") Integer offset,
             @Param("pageSize") Integer pageSize
     );
@@ -58,7 +60,8 @@ public interface OpFlowMapper {
      */
     Long countList(
             @Param("lifecycleStatus") Integer lifecycleStatus,
-            @Param("keyword") String keyword
+            @Param("keyword") String keyword,
+            @Param("appId") Long appId
     );
 
     /**

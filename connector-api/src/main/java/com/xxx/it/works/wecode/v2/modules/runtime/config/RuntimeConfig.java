@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
-import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -46,10 +45,8 @@ public class RuntimeConfig {
 
     @Bean
     public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                                         OpConnectorVersionReadRepository connectorVersionReadRepository,
                                                          UnifiedCredentialProcessor credentialProcessor) {
-        return new ConnectorNodeExecutor(objectMapper, webClient,
-                connectorVersionReadRepository, credentialProcessor);
+        return new ConnectorNodeExecutor(objectMapper, webClient, credentialProcessor);
     }
 
     @Bean
@@ -102,17 +99,16 @@ public class RuntimeConfig {
     public EntityCacheManager entityCacheManager(ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
                                                    ObjectMapper objectMapper,
                                                    OpFlowVersionReadRepository flowVersionReadRepository,
-                                                   OpConnectorVersionReadRepository connectorVersionReadRepository) {
+                                                   OpFlowReadRepository flowReadRepository) {
         return new EntityCacheManager(reactiveRedisTemplate, objectMapper,
-                flowVersionReadRepository, connectorVersionReadRepository);
+                flowVersionReadRepository, flowReadRepository);
     }
 
     @Bean
-    public VersionConfigResolver versionConfigResolver(OpFlowReadRepository flowReadRepository,
-                                                         EntityCacheManager entityCacheManager,
+    public VersionConfigResolver versionConfigResolver(EntityCacheManager entityCacheManager,
                                                          FlowConfigParser flowConfigParser,
                                                          ObjectMapper objectMapper) {
-        return new VersionConfigResolver(flowReadRepository, entityCacheManager,
+        return new VersionConfigResolver(entityCacheManager,
                 flowConfigParser, objectMapper);
     }
 

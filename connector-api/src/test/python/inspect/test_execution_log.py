@@ -115,7 +115,7 @@ def build_orch_with_auth():
 # Flow Lifecycle Helpers
 # ═══════════════════════════════════════════════════════════
 
-def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
+def setup_flow(flow_id, lifecycle_status=2, orchestration=None):
     """创建 Flow + 版本。与 trigger_invoke.py 保持完全一致的 INSERT 模式。
 
     返回 (flow_id, flow_version_id)
@@ -164,7 +164,7 @@ def test_execution_log():
     print("=== IT-LOG-001: 执行后每步骤日志记录 ===")
     sid_001 = snow_id()
     fvid_001 = None
-    fid_001, fvid_001 = setup_flow(sid_001, lifecycle_status=1)
+    fid_001, fvid_001 = setup_flow(sid_001, lifecycle_status=2)
 
     resp = trigger(
         fid_001,
@@ -218,7 +218,7 @@ def test_execution_log():
     print("=== IT-LOG-002: 日志包含 I/O 数据 ===")
     sid_002 = snow_id()
     fvid_002 = None
-    fid_002, fvid_002 = setup_flow(sid_002, lifecycle_status=1)
+    fid_002, fvid_002 = setup_flow(sid_002, lifecycle_status=2)
 
     resp = trigger(
         fid_002,
@@ -283,7 +283,7 @@ def test_execution_log():
     fvid_003 = None
     SENSITIVE_TOKEN = "my-secret-api-token-12345"
 
-    fid_003, fvid_003 = setup_flow(sid_003, lifecycle_status=1)
+    fid_003, fvid_003 = setup_flow(sid_003, lifecycle_status=2)
 
     resp = trigger(
         fid_003,

@@ -137,7 +137,7 @@ def build_script_orch(script_content, timeout_ms=5000):
 # Flow Lifecycle Helpers
 # ═══════════════════════════════════════════════════════════
 
-def setup_flow(flow_id, lifecycle_status=1, orchestration=None):
+def setup_flow(flow_id, lifecycle_status=2, orchestration=None):
     """Create a flow and its version in the database.
 
     Returns (flow_id, flow_version_id). Sets deployed_version_id on the flow
@@ -175,7 +175,7 @@ def test_script_node_execution():
         "}"
     )
     fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestration=build_script_orch(script_001)
     )
     resp = trigger(fid_001, body={"name": "world", "value": 21}, headers={"X-Sys-Token": "test-token"})
@@ -204,7 +204,7 @@ def test_script_node_execution():
         "}"
     )
     fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestration=build_script_orch(script_002)
     )
     resp = trigger(fid_002, body={"message": "test_message"}, headers={"X-Sys-Token": "test-token"})
@@ -230,7 +230,7 @@ def test_script_node_execution():
         "}"
     )
     fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
+        sid_003, lifecycle_status=2,
         orchestration=build_script_orch(script_003, timeout_ms=2000)
     )
     # Use a 5s HTTP timeout — server-side timeout is 2s, so response
@@ -259,7 +259,7 @@ def test_script_node_execution():
         "}"
     )
     fid_004, fvid_004 = setup_flow(
-        sid_004, lifecycle_status=1,
+        sid_004, lifecycle_status=2,
         orchestration=build_script_orch(script_004)
     )
     resp = trigger(fid_004, body={"name": "test", "value": 1}, headers={"X-Sys-Token": "test-token"})
@@ -288,7 +288,7 @@ def test_script_node_execution():
         "}"
     )
     fid_005, fvid_005 = setup_flow(
-        sid_005, lifecycle_status=1,
+        sid_005, lifecycle_status=2,
         orchestration=build_script_orch(script_005)
     )
     resp = trigger(fid_005, body={"name": "test", "value": 1}, headers={"X-Sys-Token": "test-token"})

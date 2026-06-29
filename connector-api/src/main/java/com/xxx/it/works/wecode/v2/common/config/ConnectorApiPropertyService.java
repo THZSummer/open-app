@@ -5,11 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Connector API platform property service.
+ * 连接器平台属性服务。
  *
  * <p>Reads runtime configuration from {@code openplatform_property_t} via R2DBC.
- * Each property has a hardcoded fallback default; failures to read the DB
- * never throw exceptions or return null.</p>
+ * 每个属性都有硬编码的兜底默认值；读取 DB 失败时
+ * 不会抛出异常或返回 null。</p>
  *
  * <p>Currently supports:
  * <ul>
@@ -33,12 +33,12 @@ public class ConnectorApiPropertyService {
     }
 
     /**
-     * Whether step log collection is enabled.
+     * 是否启用步骤日志采集。
      *
      * <p>Reads {@code connector_platform / log_collection_enabled} from the data dictionary.
-     * Defaults to {@code true} (enabled) when the DB is unreachable or the property is missing.</p>
+     * 当 DB 不可达或属性缺失时默认为 {@code true}（启用）。</p>
      *
-     * @return {@code true} if log collection is enabled, {@code false} otherwise
+     * @return 日志采集启用时返回 {@code true}，否则返回 {@code false}
      */
     public boolean isLogCollectionEnabled() {
         try {

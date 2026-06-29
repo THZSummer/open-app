@@ -185,7 +185,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
                     return resultMap;
                 }
             } catch (Exception ignored) {
-                // 非标准对象, 回退到通用转换
+                log.debug("Non-standard object, fallback to generic conversion: {}", ignored.getMessage());
             }
 
             // 通用类型转换
@@ -308,7 +308,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
      * 避免 HTTP 头写入时抛出 {@code IllegalArgumentException}.
      */
     private String sanitize(String msg) {
-        if (msg == null) return "";
+        if (msg == null) { return ""; }
         return msg.replace('\n', ' ').replace('\r', ' ');
     }
 }

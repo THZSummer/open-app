@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ResolvedFlowConfig;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,9 +34,6 @@ import static org.mockito.Mockito.*;
 class VersionConfigResolverTest {
 
     @Mock
-    private OpFlowReadRepository flowReadRepository;
-
-    @Mock
     private EntityCacheManager entityCacheManager;
 
     @Mock
@@ -52,7 +48,7 @@ class VersionConfigResolverTest {
 
     @BeforeEach
     void setUp() {
-        resolver = new VersionConfigResolver(flowReadRepository, entityCacheManager, flowConfigParser, objectMapper);
+        resolver = new VersionConfigResolver(entityCacheManager, flowConfigParser, objectMapper);
     }
 
     // ===== 正常: 部署的流 → 成功解析 =====
@@ -63,7 +59,7 @@ class VersionConfigResolverTest {
         FlowEntity flow = createFlow(FLOW_ID, DEPLOYED_VERSION_ID);
         FlowVersionEntity flowVersion = createFlowVersion(DEPLOYED_VERSION_ID, emptyOrchConfig());
 
-        when(flowReadRepository.findById(FLOW_ID)).thenReturn(Mono.just(flow));
+        when(entityCacheManager.getFlow(FLOW_ID)).thenReturn(Mono.just(flow));
         when(entityCacheManager.getFlowVersion(DEPLOYED_VERSION_ID)).thenReturn(Mono.just(flowVersion));
         when(flowConfigParser.parseFlowConfig(anyString())).thenReturn(FlowConfig.defaults());
 
@@ -76,7 +72,6 @@ class VersionConfigResolverTest {
                 })
                 .verifyComplete();
 
-        verify(entityCacheManager, never()).getConnectorVersion(anyLong());
     }
 
     // ===== 异常: 流不存在 =====
@@ -84,7 +79,21 @@ class VersionConfigResolverTest {
     @Test
     @DisplayName("异常: 流不存在 → 抛出 FlowNotDeployedException")
     void testFlowNotFound_ThrowsException() {
-        when(flowReadRepository.findById(FLOW_ID)).thenReturn(Mono.empty());
+        when(entityCacheManager.getFlow(FLOW_ID)).thenReturn(Mono.empty());
+
+        StepVerifier.create(resolver.resolveFlowVersion(FLOW_ID))
+                .expectError(VersionConfigResolver.FlowNotDeployedException.class)
+                .verify();
+    }
+
+    // ===== 异常: lifecycleStatus 非 RUNNING → 503 =====
+
+    @Test
+    @DisplayName("异常: lifecycleStatus=1(STOPPED) → FlowNotDeployedException")
+    void testLifecycleStatusStopped_Throws503() {
+        FlowEntity flow = createFlow(FLOW_ID, DEPLOYED_VERSION_ID);
+        flow.setLifecycleStatus(1);
+        when(entityCacheManager.getFlow(FLOW_ID)).thenReturn(Mono.just(flow));
 
         StepVerifier.create(resolver.resolveFlowVersion(FLOW_ID))
                 .expectError(VersionConfigResolver.FlowNotDeployedException.class)
@@ -97,7 +106,7 @@ class VersionConfigResolverTest {
     @DisplayName("异常: deployed_version_id 为 NULL → FlowNotDeployedException")
     void testDeployedVersionIdNull_Throws503() {
         FlowEntity flow = createFlow(FLOW_ID, null);
-        when(flowReadRepository.findById(FLOW_ID)).thenReturn(Mono.just(flow));
+        when(entityCacheManager.getFlow(FLOW_ID)).thenReturn(Mono.just(flow));
 
         StepVerifier.create(resolver.resolveFlowVersion(FLOW_ID))
                 .expectError(VersionConfigResolver.FlowNotDeployedException.class)
@@ -110,7 +119,7 @@ class VersionConfigResolverTest {
     @DisplayName("异常: 已部署版本不存在 → DeployedVersionNotFoundException")
     void testDeployedVersionNotFound_Throws500() {
         FlowEntity flow = createFlow(FLOW_ID, DEPLOYED_VERSION_ID);
-        when(flowReadRepository.findById(FLOW_ID)).thenReturn(Mono.just(flow));
+        when(entityCacheManager.getFlow(FLOW_ID)).thenReturn(Mono.just(flow));
         when(entityCacheManager.getFlowVersion(DEPLOYED_VERSION_ID)).thenReturn(Mono.empty());
 
         StepVerifier.create(resolver.resolveFlowVersion(FLOW_ID))
@@ -126,7 +135,7 @@ class VersionConfigResolverTest {
         FlowEntity flow = createFlow(FLOW_ID, DEPLOYED_VERSION_ID);
         FlowVersionEntity fv = createFlowVersion(DEPLOYED_VERSION_ID, "invalid-json{{{");
 
-        when(flowReadRepository.findById(FLOW_ID)).thenReturn(Mono.just(flow));
+        when(entityCacheManager.getFlow(FLOW_ID)).thenReturn(Mono.just(flow));
         when(entityCacheManager.getFlowVersion(DEPLOYED_VERSION_ID)).thenReturn(Mono.just(fv));
 
         StepVerifier.create(resolver.resolveFlowVersion(FLOW_ID))
@@ -145,7 +154,7 @@ class VersionConfigResolverTest {
         FlowEntity flow = createFlow(FLOW_ID, DEPLOYED_VERSION_ID);
         FlowVersionEntity fv = createFlowVersion(DEPLOYED_VERSION_ID, null);
 
-        when(flowReadRepository.findById(FLOW_ID)).thenReturn(Mono.just(flow));
+        when(entityCacheManager.getFlow(FLOW_ID)).thenReturn(Mono.just(flow));
         when(entityCacheManager.getFlowVersion(DEPLOYED_VERSION_ID)).thenReturn(Mono.just(fv));
 
         StepVerifier.create(resolver.resolveFlowVersion(FLOW_ID))

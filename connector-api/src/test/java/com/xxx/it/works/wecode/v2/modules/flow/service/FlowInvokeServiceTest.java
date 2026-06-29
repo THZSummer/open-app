@@ -3,9 +3,8 @@ package com.xxx.it.works.wecode.v2.modules.flow.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
+
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
-import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
@@ -16,14 +15,14 @@ import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
-import com.xxx.it.works.wecode.v2.modules.security.UrlWhitelistValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
+import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
@@ -49,24 +48,15 @@ class FlowInvokeServiceTest {
     private DagScheduler dagScheduler;
 
     @Mock
-
-    @Mock
     private ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
-
     @Mock
-    private CacheToggle cacheToggle;
-
-    @Mock
-    private UrlWhitelistValidator urlWhitelistValidator;
-
-    @Mock
-    private OpFlowReadRepository flowReadRepository;
-
-    @Mock
-    private OpConnectorVersionReadRepository connectorVersionReadRepository;
+    private ReactiveValueOperations<String, String> valueOperations;
 
     @Mock
     private FlowCacheManager cacheManager;
+
+    @Mock
+    private EntityCacheManager entityCacheManager;
 
     @Mock
     private ExecutionRecordService executionRecordService;
@@ -94,10 +84,13 @@ class FlowInvokeServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
+        when(reactiveRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+        lenient().when(valueOperations.set(anyString(), anyString(), any())).thenReturn(Mono.just(true));
         when(idGenerator.nextId()).thenReturn(1L);
-        triggerService = new FlowInvokeService(objectMapper, urlWhitelistValidator,
-                executor, dagScheduler, flowVersionReadRepository, flowReadRepository,
-                connectorVersionReadRepository, reactiveRedisTemplate, cacheToggle, cacheManager,
+        triggerService = new FlowInvokeService(objectMapper,
+                executor, dagScheduler, flowVersionReadRepository,
+                reactiveRedisTemplate, cacheManager, entityCacheManager,
                 executionRecordService, executionStepService, idGenerator);
     }
 
@@ -120,7 +113,7 @@ class FlowInvokeServiceTest {
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(dagScheduler.schedule(anyString(), any())).thenReturn(Mono.just(mockCtx));
-        when(flowReadRepository.findById(100L)).thenReturn(Mono.empty());
+        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of("sender", "test"), Map.of(), Map.of());
@@ -145,7 +138,7 @@ class FlowInvokeServiceTest {
     @Test
     @DisplayName("流不存在返回 404 (preExecutionError)")
     void testInvokeFlow_NotFound() {
-        when(flowReadRepository.findById(999L)).thenReturn(Mono.empty());
+        when(entityCacheManager.getFlow(999L)).thenReturn(Mono.empty());
         when(flowVersionReadRepository.findByFlowId(999L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
@@ -173,7 +166,7 @@ class FlowInvokeServiceTest {
 
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(dagScheduler.schedule(anyString(), any())).thenReturn(Mono.error(new RuntimeException("Execution error")));
-        when(flowReadRepository.findById(100L)).thenReturn(Mono.empty());
+        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of(), Map.of(), Map.of());

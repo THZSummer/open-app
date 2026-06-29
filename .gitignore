@@ -26,3 +26,5 @@ TestResults.xml
 opencode.json
 .idea/
 /.idea/
+# PID files
+.pid

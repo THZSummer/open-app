@@ -192,6 +192,9 @@ def try_set_deployed_version(flow_id, version_id):
             f"SET deployed_version_id = {version_id} "
             f"WHERE id = {flow_id}"
         )
+        # 清理 FlowEntity 缓存，模拟 FlowDeployService 的缓存失效行为
+        redis("DEL", f"cp:entity:flow:{flow_id}")
+        redis("DEL", f"cp:flow:config:{flow_id}")
         return True
     except Exception:
         # V2 schema: 列不存在 → 跳过
@@ -219,7 +222,7 @@ def test_version_config_resolve():
     version_ids_001 = []
     # 创建 2 个版本（V1 和 V2，编排不同）
     fid_001, version_ids_001 = create_flow_with_versions(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestrations=[
             (build_orch_v1(),),   # V1: version=v1
             (build_orch_v2(),),   # V2: version=v2
@@ -288,7 +291,7 @@ def test_version_config_resolve():
     sid_002 = snow_id()
     version_ids_002 = []
     fid_002, version_ids_002 = create_flow_with_versions(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestrations=[
             (build_orch_v1(),),   # V1: version=v1
             (build_orch_v2(),),   # V2: version=v2

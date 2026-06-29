@@ -174,12 +174,12 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
         }
     }
 
-    # 构建 flowConfig (顶层, FlowRuntimeEngine 从此字段读取缓存配置)
-    # FlowConfigParser 直接从 flowConfig 根读取 cacheTtl / cacheKeyTemplate
     flow_config = {}
     if cache_ttl is not None:
-        flow_config["cacheTtl"] = cache_ttl
-        flow_config["cacheKeyTemplate"] = "cache_test_${.input.userId}"
+        flow_config["cache"] = {
+            "key": ["${$.node.node_trigger.input.body.msg}"],
+            "ttl": cache_ttl
+        }
 
     orch = {
         "flowConfig": flow_config,
@@ -251,7 +251,7 @@ def test_flow_cache():
     config_001 = build_conn_config()
     cid_001, cvid_001 = setup_connector(config_001)
     fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestration=build_orch(cvid_001, config_001, cache_ttl=60)
     )
 
@@ -302,7 +302,7 @@ def test_flow_cache():
     config_002 = build_conn_config()
     cid_002, cvid_002 = setup_connector(config_002)
     fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestration=build_orch(cvid_002, config_002, cache_ttl=60)
     )
 
@@ -328,7 +328,7 @@ def test_flow_cache():
     config_003 = build_conn_config()
     cid_003, cvid_003 = setup_connector(config_003)
     fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
+        sid_003, lifecycle_status=2,
         orchestration=build_orch(cvid_003, config_003, cache_ttl=99999999)  # 超大 TTL
     )
 

@@ -253,11 +253,20 @@ def redis(*args):
     cmd = [
         "redis-cli", "-c",
         "-h", first["host"], "-p", str(first["port"]),
-        "-a", _REDIS_CLUSTER["password"], "--no-auth-warning"
     ]
+    if _REDIS_CLUSTER.get("password"):
+        cmd.extend(["-a", _REDIS_CLUSTER["password"], "--no-auth-warning"])
     cmd.extend([str(a) for a in args])
     r = subprocess.run(cmd, capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else None
+    if r.returncode == 0:
+        return r.stdout.strip()
+    # AUTH 失败时重试（Redis 可能未配置密码）
+    if "AUTH failed" in r.stderr:
+        cmd2 = ["redis-cli", "-c", "-h", first["host"], "-p", str(first["port"])]
+        cmd2.extend([str(a) for a in args])
+        r2 = subprocess.run(cmd2, capture_output=True, text=True)
+        return r2.stdout.strip() if r2.returncode == 0 else None
+    return None
 
 
 def trigger(flow_id, body=None, headers=None, query_params=None):

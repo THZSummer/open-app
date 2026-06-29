@@ -207,7 +207,7 @@ def test_node_timeout():
     )
     cid_001, cvid_001 = setup_connector(conn_config)
     fid_001, fvid_001 = setup_flow(
-        sid_001, lifecycle_status=1,
+        sid_001, lifecycle_status=2,
         orchestration=build_orch(cvid_001, conn_config, node_timeout_ms=1000)
     )
 
@@ -238,7 +238,7 @@ def test_node_timeout():
     )
     cid_002, cvid_002 = setup_connector(conn_config)
     fid_002, fvid_002 = setup_flow(
-        sid_002, lifecycle_status=1,
+        sid_002, lifecycle_status=2,
         orchestration=build_orch(cvid_002, conn_config, node_timeout_ms=None)
     )
 
@@ -265,7 +265,7 @@ def test_node_timeout():
     )
     cid_003, cvid_003 = setup_connector(conn_config)
     fid_003, fvid_003 = setup_flow(
-        sid_003, lifecycle_status=1,
+        sid_003, lifecycle_status=2,
         orchestration=build_orch(cvid_003, conn_config, node_timeout_ms=99999999)
     )
 

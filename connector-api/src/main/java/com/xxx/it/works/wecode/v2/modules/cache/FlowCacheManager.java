@@ -1,7 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,14 +38,10 @@ public class FlowCacheManager {
 
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final ObjectMapper objectMapper;
-    private final CacheToggle cacheToggle;
-
     public FlowCacheManager(ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
-                             ObjectMapper objectMapper,
-                             CacheToggle cacheToggle) {
+                             ObjectMapper objectMapper) {
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.objectMapper = objectMapper;
-        this.cacheToggle = cacheToggle;
     }
 
     /**
@@ -54,7 +49,6 @@ public class FlowCacheManager {
      * <p>
      * Redis GET 查询, 命中时反序列化并返回 ExecutionResult。
      * 未命中时返回 Mono.empty()。
-     * 缓存总开关关闭时, 直接返回 Mono.empty()。
      * </p>
      *
      * @param flowId   连接流 ID
@@ -62,10 +56,6 @@ public class FlowCacheManager {
      * @return Mono&lt;ExecutionResult&gt; (或 Mono.empty())
      */
     public Mono<ExecutionResult> checkCache(Long flowId, String cacheKey) {
-        if (!cacheToggle.isEnabled()) {
-            return Mono.empty();
-        }
-
         String redisKey = buildCacheKey(flowId, cacheKey);
         return reactiveRedisTemplate.opsForValue().get(redisKey)
                 .flatMap(cachedJson -> {
@@ -89,7 +79,6 @@ public class FlowCacheManager {
      * <p>
      * 将执行结果序列化为 JSON 写入 Redis。
      * TTL 受 {@link #MAX_CACHE_TTL} 上限约束。
-     * 缓存总开关关闭时, 不做任何操作。
      * </p>
      *
      * @param flowId      连接流 ID
@@ -99,10 +88,6 @@ public class FlowCacheManager {
      * @return Mono&lt;Void&gt;
      */
     public Mono<Void> writeCache(Long flowId, String cacheKey, Object result, int ttlSeconds) {
-        if (!cacheToggle.isEnabled()) {
-            return Mono.empty();
-        }
-
         String redisKey = buildCacheKey(flowId, cacheKey);
         int effectiveTtl = Math.min(ttlSeconds, MAX_CACHE_TTL);
         if (effectiveTtl <= 0) {
@@ -137,10 +122,6 @@ public class FlowCacheManager {
      * @return Mono&lt;Long&gt; 被删除的 key 数量
      */
     public Mono<Long> invalidateFlowCache(Long flowId) {
-        if (!cacheToggle.isEnabled()) {
-            return Mono.just(0L);
-        }
-
         String pattern = CACHE_KEY_PREFIX + flowId + ":*";
         return reactiveRedisTemplate.keys(pattern)
                 .collectList()

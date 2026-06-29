@@ -14,6 +14,8 @@ db = _client.db
 db_val = _client.db_val
 TEST_APP_ID = _client.TEST_APP_ID
 
+INTERNAL_APP_ID = int(db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
+
 _KEEP = os.environ.get("KEEP_TEST_DATA", "") == "1"
 
 _snow_seq = 0
@@ -76,7 +78,7 @@ def connector(request):
     """空连接器（无版本），name_cn 含测试名以追溯"""
     cid = _snow_id()
     tag = request.node.name.replace("test_", "")[:40]
-    db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) VALUES ({cid}, 'pytest_{tag}', 'pytest_{tag}', 1, {TEST_APP_ID}, 'tester', 'tester')")
+    db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) VALUES ({cid}, 'pytest_{tag}', 'pytest_{tag}', 1, {INTERNAL_APP_ID}, 'tester', 'tester')")
     yield cid
     if not _KEEP:
         db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE connector_id = {cid}")
@@ -101,7 +103,7 @@ def flow(request):
     """空连接流，name_cn 含测试名以追溯"""
     fid = _snow_id()
     tag = request.node.name.replace("test_", "")[:40]
-    db(f"INSERT INTO openplatform_v2_cp_flow_t (id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) VALUES ({fid}, 'pytest_flow_{tag}', 'pytest_flow_{tag}', 1, {TEST_APP_ID}, 'tester', 'tester')")
+    db(f"INSERT INTO openplatform_v2_cp_flow_t (id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) VALUES ({fid}, 'pytest_flow_{tag}', 'pytest_flow_{tag}', 1, {INTERNAL_APP_ID}, 'tester', 'tester')")
     yield fid
     if not _KEEP:
         db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE flow_id = {fid}")

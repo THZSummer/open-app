@@ -107,7 +107,7 @@ public class TriggerNodeExecutor implements NodeExecutor {
      * 将字符串值自动转换为合适的数值类型
      */
     private Object coerceValue(String value) {
-        if (value == null) return null;
+        if (value == null) { return null; }
         try {
             return Long.parseLong(value);
         } catch (NumberFormatException e1) {

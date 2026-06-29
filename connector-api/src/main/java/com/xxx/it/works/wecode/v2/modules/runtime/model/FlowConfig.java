@@ -1,5 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.model;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -28,8 +30,8 @@ public class FlowConfig {
     /** 缓存 TTL (秒), null 表示不缓存 */
     private Integer cacheTtl;
 
-    /** 缓存键模板 (支持表达式, 如 "flow:{flowId}:{body.sender}") */
-    private String cacheKeyTemplate;
+    /** 缓存键表达式列表 (minItems 1), 每个元素遵循 §3 值表达式体系。运行时按序解析后以冒号拼接 */
+    private List<String> cacheKeys;
 
     /**
      * 创建默认配置 (无超时/无限流/无缓存)

@@ -1,126 +1,137 @@
 package com.xxx.it.works.wecode.v2.modules.security;
 
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.reflect.MethodSignature;
+import org.aspectj.lang.Signature;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.lang.reflect.Method;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @DisplayName("AppDataIsolationAspect 测试")
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AppDataIsolationAspectTest {
+
+    @Mock
+    private AppContextResolver appContextResolver;
 
     private AppDataIsolationAspect aspect;
 
     @BeforeEach
     void setUp() {
-        aspect = new AppDataIsolationAspect();
+        aspect = new AppDataIsolationAspect(appContextResolver);
         AppContextHolder.clear();
+        RequestContextHolder.resetRequestAttributes();
     }
 
     @Test
-    @DisplayName("上下文 appId 未设置 → 放行")
-    void testContextAppIdNotSet_PassThrough() throws Throwable {
+    @DisplayName("无 HttpServletRequest → 放行")
+    void testNoRequest_PassThrough() throws Throwable {
         ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
-        when(joinPoint.getSignature()).thenReturn(mock(org.aspectj.lang.Signature.class));
+        when(joinPoint.getSignature()).thenReturn(mock(Signature.class));
         when(joinPoint.proceed()).thenReturn("result");
 
         Object result = aspect.validateConnectorAppIsolation(joinPoint);
 
         assertEquals("result", result);
         verify(joinPoint).proceed();
+        assertNull(AppContextHolder.getCurrentContext());
     }
 
     @Test
-    @DisplayName("上下文 appId 已设置 → 无 appId 参数时放行")
-    void testConnectorAppIsolation_NoAppIdParam_Passes() throws Throwable {
+    @DisplayName("有请求但无 X-App-Id Header → 放行")
+    void testNoHeader_PassThrough() throws Throwable {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
         ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
-        MethodSignature signature = mock(MethodSignature.class);
+        Signature signature = mock(Signature.class);
         when(joinPoint.getSignature()).thenReturn(signature);
         when(signature.toShortString()).thenReturn("ConnectorService.toString");
-        when(signature.getMethod()).thenReturn(Object.class.getMethod("toString"));
-        when(joinPoint.getArgs()).thenReturn(new Object[0]);
-        when(joinPoint.proceed()).thenReturn("created");
+        when(joinPoint.proceed()).thenReturn("proceeded");
 
-        AppContextHolder.setCurrentAppId(1L);
+        Object result = aspect.validateConnectorAppIsolation(joinPoint);
+
+        assertEquals("proceeded", result);
+        verify(appContextResolver, never()).resolveAndValidate(any());
+    }
+
+    @Test
+    @DisplayName("有 X-App-Id Header → resolveAndValidate → 注入上下文 → 执行后清除")
+    void testWithHeader_ResolvesAndInjects() throws Throwable {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-App-Id", "app_test_001");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        AppContext ctx = AppContext.builder().internalId(789L).externalId("app_test_001").build();
+        when(appContextResolver.resolveAndValidate("app_test_001")).thenReturn(ctx);
+
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+        Signature signature = mock(Signature.class);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(signature.toShortString()).thenReturn("ConnectorService.create");
+        when(joinPoint.proceed()).thenReturn("created");
 
         Object result = aspect.validateConnectorAppIsolation(joinPoint);
 
         assertEquals("created", result);
-        AppContextHolder.clear();
+        verify(appContextResolver).resolveAndValidate("app_test_001");
+
+        // 上下文在切面结束后应被清除
+        assertNull(AppContextHolder.getCurrentContext());
     }
 
     @Test
-    @DisplayName("连接流模块拦截 → 无 appId 参数时放行")
-    void testFlowAppIsolation_NoAppIdParam_Passes() throws Throwable {
-        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
-        MethodSignature signature = mock(MethodSignature.class);
-        when(joinPoint.getSignature()).thenReturn(signature);
-        when(signature.toShortString()).thenReturn("FlowService.toString");
-        when(signature.getMethod()).thenReturn(Object.class.getMethod("toString"));
-        when(joinPoint.getArgs()).thenReturn(new Object[0]);
-        when(joinPoint.proceed()).thenReturn("updated");
+    @DisplayName("resolveAndValidate 抛异常 → 异常向上传播，上下文被清除")
+    void testResolveFails_ClearsContext() throws Throwable {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-App-Id", "app_invalid");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        AppContextHolder.setCurrentAppId(1L);
+        when(appContextResolver.resolveAndValidate("app_invalid"))
+                .thenThrow(new RuntimeException("App not found"));
+
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+        Signature signature = mock(Signature.class);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(signature.toShortString()).thenReturn("ConnectorService.create");
+
+        assertThrows(RuntimeException.class, () -> aspect.validateConnectorAppIsolation(joinPoint));
+        verify(joinPoint, never()).proceed();
+        assertNull(AppContextHolder.getCurrentContext());
+    }
+
+    @Test
+    @DisplayName("连接流模块拦截 — 同样解析校验")
+    void testFlowModule_AlsoResolves() throws Throwable {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-App-Id", "app_flow_001");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        AppContext ctx = AppContext.builder().internalId(456L).externalId("app_flow_001").build();
+        when(appContextResolver.resolveAndValidate("app_flow_001")).thenReturn(ctx);
+
+        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
+        Signature signature = mock(Signature.class);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(signature.toShortString()).thenReturn("FlowService.update");
+        when(joinPoint.proceed()).thenReturn("updated");
 
         Object result = aspect.validateFlowAppIsolation(joinPoint);
 
         assertEquals("updated", result);
-        AppContextHolder.clear();
-    }
-
-    @Test
-    @DisplayName("跨应用拒绝 — appId 不匹配 → 抛出 SecurityException")
-    void testCrossAppAccess_Denied() throws Throwable {
-        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
-        MethodSignature signature = mock(MethodSignature.class);
-        when(joinPoint.getSignature()).thenReturn(signature);
-        when(signature.toShortString()).thenReturn("ConnectorService.getById");
-
-        // Use a real method that has Long appId parameter
-        Method method = TestService.class.getMethod("getById", Long.class, Long.class);
-        when(signature.getMethod()).thenReturn(method);
-        when(joinPoint.getArgs()).thenReturn(new Object[]{1L, 999L}); // id, appId
-        when(joinPoint.proceed()).thenReturn("some-result");
-
-        AppContextHolder.setCurrentAppId(1L); // context appId=1, param appId=999
-
-        assertThrows(SecurityException.class, () -> aspect.validateConnectorAppIsolation(joinPoint));
-        AppContextHolder.clear();
-    }
-
-    @Test
-    @DisplayName("相同 appId → 通过校验")
-    void testSameAppId_Passes() throws Throwable {
-        ProceedingJoinPoint joinPoint = mock(ProceedingJoinPoint.class);
-        MethodSignature signature = mock(MethodSignature.class);
-        when(joinPoint.getSignature()).thenReturn(signature);
-        when(signature.toShortString()).thenReturn("ConnectorService.getById");
-
-        Method method = TestService.class.getMethod("getById", Long.class, Long.class);
-        when(signature.getMethod()).thenReturn(method);
-        when(joinPoint.getArgs()).thenReturn(new Object[]{1L, 1L}); // id, appId match
-        when(joinPoint.proceed()).thenReturn("matched");
-
-        AppContextHolder.setCurrentAppId(1L);
-
-        Object result = aspect.validateConnectorAppIsolation(joinPoint);
-
-        assertEquals("matched", result);
-        AppContextHolder.clear();
-    }
-
-    /**
-     * 用于反射测试的内部类
-     */
-    static class TestService {
-        @SuppressWarnings("unused")
-        public String getById(Long id, Long appId) {
-            return "test";
-        }
+        verify(appContextResolver).resolveAndValidate("app_flow_001");
     }
 }

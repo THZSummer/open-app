@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # ==================== 创建 API ====================
 # 接口：POST /service/open/v2/apis

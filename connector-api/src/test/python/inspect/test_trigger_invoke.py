@@ -4,7 +4,7 @@
 覆盖 POST /api/v1/flows/{flowId}/invoke 全部场景：
   - IT-049: 凭证缺失 → HTTP 401 + X- 头
   - IT-050: flow 不存在 → HTTP 404 + X-Code 头
-  - IT-051: flow 未运行 (lifecycle_status=0) → 正常执行 + X- 头
+  - IT-051: flow 正常运行 (lifecycle_status=2) → 正常执行 + X- 头
   - IT-060: 快乐路径 — 三段参数 (header/query/body) 全链路透传 + 透明响应体
   - IT-061: 请求体缺必填字段 → HTTP 500 + X-Code 头
   - IT-062: Connector 下游失败 (POST /api/fail → 500) → X-Status=1
@@ -574,7 +574,7 @@ def setup_connector(connection_config=None):
     return connector_id, version_id
 
 
-def setup_flow(flow_id, lifecycle_status=1, orchestration=None,
+def setup_flow(flow_id, lifecycle_status=2, orchestration=None,
                connector_id=None, connector_version_id=None):
     flow_version_id = snow_id()
     db(
@@ -615,7 +615,7 @@ def test_trigger_invoke():
     sid_049 = snow_id()
     fvid_049 = cid_049 = cvid_049 = None
     cid_049, cvid_049 = setup_connector()
-    fid_049, fvid_049 = setup_flow(sid_049, lifecycle_status=1,
+    fid_049, fvid_049 = setup_flow(sid_049, lifecycle_status=2,
                                    orchestration=build_orchestration(cvid_049, CONNECTION_CONFIG),
                                    connector_id=cid_049, connector_version_id=cvid_049)
     # 不发送 X-Sys-Token header
@@ -638,13 +638,13 @@ def test_trigger_invoke():
 
 
     # ═══════════════════════════════════════════════════════════
-    # IT-051: Flow 未运行 (lifecycle_status=0)
+    # IT-051: Flow 正常运行 (lifecycle_status=2)
     # ═══════════════════════════════════════════════════════════
-    print("\n=== IT-051: Flow 未运行（lifecycle_status=0）===")
+    print("\n=== IT-051: Flow 正常运行（lifecycle_status=2）===")
     sid_051 = snow_id()
     fvid_051 = cid_051 = cvid_051 = None
     cid_051, cvid_051 = setup_connector()
-    fid_051, fvid_051 = setup_flow(sid_051, lifecycle_status=0,
+    fid_051, fvid_051 = setup_flow(sid_051, lifecycle_status=2,
                                    orchestration=build_orchestration(cvid_051, CONNECTION_CONFIG),
                                    connector_id=cid_051, connector_version_id=cvid_051)
     resp = trigger(fid_051, body={"keyword": "test"},
@@ -660,7 +660,7 @@ def test_trigger_invoke():
     sid_060 = snow_id()
     fvid_060 = cid_060 = cvid_060 = None
     cid_060, cvid_060 = setup_connector()
-    fid_060, fvid_060 = setup_flow(sid_060, lifecycle_status=1,
+    fid_060, fvid_060 = setup_flow(sid_060, lifecycle_status=2,
                                    orchestration=build_orchestration(cvid_060, CONNECTION_CONFIG),
                                    connector_id=cid_060, connector_version_id=cvid_060)
     resp = trigger(fid_060,
@@ -728,7 +728,7 @@ def test_trigger_invoke():
     sid_061 = snow_id()
     fvid_061 = cid_061 = cvid_061 = None
     cid_061, cvid_061 = setup_connector()
-    fid_061, fvid_061 = setup_flow(sid_061, lifecycle_status=1,
+    fid_061, fvid_061 = setup_flow(sid_061, lifecycle_status=2,
                                    orchestration=build_orchestration(cvid_061, CONNECTION_CONFIG),
                                    connector_id=cid_061, connector_version_id=cvid_061)
     resp = trigger(fid_061,
@@ -744,7 +744,7 @@ def test_trigger_invoke():
     sid_061b = snow_id()
     fvid_061b = cid_061b = cvid_061b = None
     cid_061b, cvid_061b = setup_connector()
-    fid_061b, fvid_061b = setup_flow(sid_061b, lifecycle_status=1,
+    fid_061b, fvid_061b = setup_flow(sid_061b, lifecycle_status=2,
                                      orchestration=build_orchestration(cvid_061b, CONNECTION_CONFIG),
                                      connector_id=cid_061b, connector_version_id=cvid_061b)
     # 不传 page query param
@@ -761,7 +761,7 @@ def test_trigger_invoke():
     sid_061c = snow_id()
     fvid_061c = cid_061c = cvid_061c = None
     cid_061c, cvid_061c = setup_connector()
-    fid_061c, fvid_061c = setup_flow(sid_061c, lifecycle_status=1,
+    fid_061c, fvid_061c = setup_flow(sid_061c, lifecycle_status=2,
                                      orchestration=build_orchestration(cvid_061c, CONNECTION_CONFIG),
                                      connector_id=cid_061c, connector_version_id=cvid_061c)
     # 不传 X-Trace-Id header
@@ -777,7 +777,7 @@ def test_trigger_invoke():
     sid_062 = snow_id()
     fvid_062 = cid_062 = cvid_062 = None
     cid_062, cvid_062 = setup_connector(FAIL_CONNECTION_CONFIG)
-    fid_062, fvid_062 = setup_flow(sid_062, lifecycle_status=1,
+    fid_062, fvid_062 = setup_flow(sid_062, lifecycle_status=2,
                                    orchestration=build_fail_orchestration(cvid_062, FAIL_CONNECTION_CONFIG),
                                    connector_id=cid_062, connector_version_id=cvid_062)
     resp = trigger(fid_062,
@@ -792,7 +792,7 @@ def test_trigger_invoke():
     sid_063 = snow_id()
     fvid_063 = cid_063 = cvid_063 = None
     cid_063, cvid_063 = setup_connector()
-    fid_063, fvid_063 = setup_flow(sid_063, lifecycle_status=1,
+    fid_063, fvid_063 = setup_flow(sid_063, lifecycle_status=2,
                                    orchestration=build_orchestration(cvid_063, CONNECTION_CONFIG),
                                    connector_id=cid_063, connector_version_id=cvid_063)
     resp = trigger(fid_063,
@@ -841,7 +841,7 @@ def test_trigger_invoke():
     sid_064 = snow_id()
     fvid_064 = cid_064 = cvid_064 = None
     cid_064, cvid_064 = setup_connector()
-    fid_064, fvid_064 = setup_flow(sid_064, lifecycle_status=1,
+    fid_064, fvid_064 = setup_flow(sid_064, lifecycle_status=2,
                                    orchestration=build_orchestration(
                                        cvid_064, CONNECTION_CONFIG,
                                        overrides={"trigger_rate_limit_qps": 5}

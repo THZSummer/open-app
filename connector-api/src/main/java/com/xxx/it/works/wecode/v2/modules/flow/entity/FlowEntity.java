@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
  * 连接流基本信息 R2DBC Entity
  * <p>
  * 对应表: openplatform_v2_cp_flow_t
- * lifecycle_status: 1=running(运行中), 2=stopped(已停止)
- * MVP 创建后默认 lifecycle_status=1 (running)
+ * lifecycle_status: 1=stopped(已停止), 2=running(运行中), 3=invalidated(已失效), 4=deleted(已删除)
+ * 创建后默认 lifecycle_status=1 (stopped)
  * </p>
  */
 @Table("openplatform_v2_cp_flow_t")

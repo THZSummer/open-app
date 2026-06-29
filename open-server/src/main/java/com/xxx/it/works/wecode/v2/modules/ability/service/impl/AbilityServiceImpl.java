@@ -29,6 +29,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,17 +74,11 @@ public class AbilityServiceImpl implements AbilityService {
         // 从能力主表查询所有能力（过滤掉应用入群通知，不在列表展示）
         List<Ability> abilities = abilityMapper.selectAll().stream()
                 .filter(a -> Objects.nonNull(a.getAbilityType()) && !Objects.equals(a.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
-                .collect(Collectors.toList());
+                .toList();
 
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = abilities.stream().map(Ability::getId).collect(Collectors.toList());
-        Map<Long, List<AbilityProperty>> propsMap = new HashMap<>();
-        if (!abilityIds.isEmpty()) {
-            List<AbilityProperty> allProps = abilityPropertyMapper.selectByParentIds(abilityIds);
-            for (AbilityProperty p : allProps) {
-                propsMap.computeIfAbsent(p.getParentId(), k -> new ArrayList<>()).add(p);
-            }
-        }
+        Map<Long, List<AbilityProperty>> propsMap = loadPropsMap(abilityIds);
 
         // 查询当前应用已订阅的能力类型
         List<AppAbilityRelation> subscribed = appAbilityRelationMapper.selectByAppId(internalAppId);
@@ -193,13 +188,7 @@ public class AbilityServiceImpl implements AbilityService {
 
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = allAbilities.stream().map(Ability::getId).collect(Collectors.toList());
-        Map<Long, List<AbilityProperty>> propsMap = new HashMap<>();
-        if (!abilityIds.isEmpty()) {
-            List<AbilityProperty> allProps = abilityPropertyMapper.selectByParentIds(abilityIds);
-            for (AbilityProperty p : allProps) {
-                propsMap.computeIfAbsent(p.getParentId(), k -> new ArrayList<>()).add(p);
-            }
-        }
+        Map<Long, List<AbilityProperty>> propsMap = loadPropsMap(abilityIds);
 
         List<AppAbilityDetailVO> list = new ArrayList<>();
         for (AppAbilityRelation r : relations) {
@@ -214,6 +203,7 @@ public class AbilityServiceImpl implements AbilityService {
             vo.setAbilityId(String.valueOf(ability.getId()));
             vo.setNameCn(ability.getAbilityNameCn());
             vo.setNameEn(ability.getAbilityNameEn());
+            vo.setOrderNum(ability.getOrderNum());
 
             List<AbilityProperty> props = propsMap.getOrDefault(ability.getId(), Collections.emptyList());
             for (AbilityProperty p : props) {
@@ -224,6 +214,25 @@ public class AbilityServiceImpl implements AbilityService {
 
             list.add(vo);
         }
+        // 按 VO 的 orderNum 排序
+        list.sort(Comparator.comparingInt(AppAbilityDetailVO::getOrderNum));
         return list;
+    }
+
+    /**
+     * 批量查询指定能力的属性，按 parentId 分组
+     *
+     * @param abilityIds 能力 ID 列表
+     * @return parentId -> 属性列表 映射（空列表或 null 入参返回空 Map）
+     */
+    private Map<Long, List<AbilityProperty>> loadPropsMap(List<Long> abilityIds) {
+        Map<Long, List<AbilityProperty>> propsMap = new HashMap<>();
+        if (abilityIds != null && !abilityIds.isEmpty()) {
+            List<AbilityProperty> allProps = abilityPropertyMapper.selectByParentIds(abilityIds);
+            for (AbilityProperty p : allProps) {
+                propsMap.computeIfAbsent(p.getParentId(), k -> new ArrayList<>()).add(p);
+            }
+        }
+        return propsMap;
     }
 }

@@ -354,7 +354,8 @@ public class VersionServiceImpl implements VersionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateVersion(String appId, Long versionId, UpdateVersionRequest request) {
-        appContextResolver.resolveAndValidate(appId);
+        AppContext ctx = appContextResolver.resolveAndValidate(appId);
+        Long internalAppId = ctx.getInternalId();
 
         AppVersion version = appVersionMapper.selectById(versionId);
         if (Objects.isNull(version)) {
@@ -374,9 +375,6 @@ public class VersionServiceImpl implements VersionService {
         }
 
         if (Objects.nonNull(request.getVersionCode())) {
-            AppContext updateCtx = appContextResolver.resolveAndValidate(appId);
-            Long internalAppId = updateCtx.getInternalId();
-
             // 校验版本号：格式 + 唯一 + 递增（排除自身）
             validateVersionCode(internalAppId, request.getVersionCode(), versionId, version.getVersionCode());
 
