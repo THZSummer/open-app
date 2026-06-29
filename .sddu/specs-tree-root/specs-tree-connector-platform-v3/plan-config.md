@@ -43,28 +43,28 @@
 >
 > 至于连接器名称、认证类型、编排图结构、JSON Schema 定义等，属于开放给用户的自由输入内容，不在配置约束范畴，不列入此清单。
 
-| # | 配置项 | 作用域 | 按应用区分 | 存储 | path | code | FR |
-|---|--------|--------|:---:|:---:|------|------|----|
-| 1 | 连接器版本数量上限 | 连接器 | ❌ | Property | `connector_platform` | `connector_max_versions` | FR-005a |
-| 2 | 连接器URL正则规则 | 连接器版本配置 | ❌ | Property | `connector_platform` | `connector_url_regex_pattern` | FR-015 |
-| 3 | 连接器配置JSON长度上限 | 连接器版本配置 | ✅ | Property | `connector_platform` | `connector_config_max_bytes` | FR-047 |
-| 4 | 连接流版本数量上限 | 连接流 | ❌ | Property | `connector_platform` | `flow_max_versions` | FR-024a |
-| 5 | 运行记录条数上限 | 连接流 | ✅ | Property | `connector_platform` | `max_execution_records_per_flow` | FR-042 |
-| 6 | 连接器节点超时上限 | 连接流版本配置 | ✅ | Property | `connector_platform` | `node_max_timeout_seconds` | FR-034 |
-| 7 | 连接流配置JSON长度上限 | 连接流版本配置 | ✅ | Property | `connector_platform` | `flow_config_max_bytes` | FR-047 |
-| 8 | 连接流最大QPS | 连接流版本配置 | ✅ | Property | `connector_platform` | `flow_max_qps` | FR-035 |
-| 9 | 连接流最大并发 | 连接流版本配置 | ✅ | Property | `connector_platform` | `flow_max_concurrency` | FR-035 |
-| 10 | 连接流缓存TTL上限 | 连接流版本配置 | ✅ | Property | `connector_platform` | `flow_max_cache_ttl_seconds` | FR-037 |
-| 11 | 连接流并行节点分支上限 | 连接流版本配置 | ✅ | Property | `connector_platform` | `flow_max_parallel_branches` | FR-038a |
-| 12 | 脚本源码长度上限 | 连接流版本配置 | ✅ | Property | `connector_platform` | `script_max_length_chars` | FR-040a |
-| 13 | 脚本超时范围 | 连接流版本配置 | ✅ | Property | `connector_platform` | `script_max_timeout_seconds` | FR-040a |
-| 14 | 日志采集开关 | 平台管控 | ✅ | Property | `connector_platform` | `log_collection_enabled` | FR-044 |
-| 15 | 连接器平台开放应用范围清单 | 平台管控 | ❌ | Lookup | `connector_platform` | `app_whitelist` | FR-045 |
+| # | 配置项 | 作用域 | 按应用区分 | 存储 | classify_code | item_code | FR |
+|:--|--------|--------|:---:|:---:|------|------|----|
+| 1 | 连接器版本数量上限 | 连接器 | ❌ | Lookup | `Connector.Platform.Config` | `Connector.Max.Versions` | FR-005a |
+| 2 | 连接器URL正则规则 | 连接器版本配置 | ❌ | Lookup | `Connector.Platform.Config` | `Connector.Url.Regex.Pattern` | FR-015 |
+| 3 | 连接器配置JSON长度上限 | 连接器版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Connector.Config.Max.Bytes` | FR-047 |
+| 4 | 连接流版本数量上限 | 连接流 | ❌ | Lookup | `Connector.Platform.Config` | `Flow.Max.Versions` | FR-024a |
+| 5 | 运行记录条数上限 | 连接流 | ✅ | Lookup | `Connector.Platform.Config` | `Max.Execution.Records.Per.Flow` | FR-042 |
+| 6 | 连接器节点超时上限 | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Node.Max.Timeout.Seconds` | FR-034 |
+| 7 | 连接流配置JSON长度上限 | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Flow.Config.Max.Bytes` | FR-047 |
+| 8 | 连接流最大QPS | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Flow.Max.Qps` | FR-035 |
+| 9 | 连接流最大并发 | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Flow.Max.Concurrency` | FR-035 |
+| 10 | 连接流缓存TTL上限 | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Flow.Max.Cache.Ttl.Seconds` | FR-037 |
+| 11 | 连接流并行节点分支上限 | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Flow.Max.Parallel.Branches` | FR-038a |
+| 12 | 脚本源码长度上限 | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Script.Max.Length.Chars` | FR-040a |
+| 13 | 脚本超时范围 | 连接流版本配置 | ✅ | Lookup | `Connector.Platform.Config` | `Script.Max.Timeout.Seconds` | FR-040a |
+| 14 | 日志采集开关 | 平台管控 | ✅ | Lookup | `Connector.Platform.Config` | `Log.Collection.Enabled` | FR-044 |
+| 15 | 连接器平台开放应用范围清单 | 平台管控 | ❌ | Lookup | `Connector.Platform.AppWhitelist` | `appId` | FR-045 |
 ---
 
 ## 2 配置详情
 
-当前全部 15 项配置均以 **Java 硬编码常量** 形式存在于 `ConnectorPlatformConstants.java`，尚未接入 Property 动态读取。以下逐项记录实现现状与 Property 化方案。
+当前全部 15 项配置均以 **Java 硬编码常量** 形式存在于 `ConnectorPlatformConstants.java`。v2.0 已将存储方案从 Property 逐项查询迁移到 Lookup 批量读取（详见 §3）。以下逐项记录实现现状。
 
 ---
 
