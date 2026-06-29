@@ -76,6 +76,7 @@ function CreateAppModal(props) {
       cancelText="取消"
       width={600}
       destroyOnClose
+      maskClosable={false}
       confirmLoading={confirmLoading}
       centered
       bodyStyle={{ paddingTop: 16 }}

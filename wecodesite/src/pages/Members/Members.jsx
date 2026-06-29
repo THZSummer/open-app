@@ -405,6 +405,7 @@ function Members() {
 
       {/* 删除成员确认 */}
       <DeleteConfirmModal
+        showIcon={false}
         open={deleteModalVisible}
         onClose={() => { setDeleteModalVisible(false); setDeletingMember(null); }}
         onConfirm={handleDelete}
@@ -419,6 +420,7 @@ function Members() {
 
       {/* 转移 Owner 二次确认 */}
       <DeleteConfirmModal
+        showIcon={false}
         open={transferConfirmVisible}
         onClose={() => setTransferConfirmVisible(false)}
         onConfirm={handleTransferConfirm}
