@@ -43,11 +43,11 @@ import { stripScriptEditorTypes } from './utils';
  *
  * @returns {Promise<Object>} 连接流配置响应
  */
-export const fetchAppConfig = async () => {
+export const fetchAppConfig = async (appId) => {
   try {
     const [globalRes, appRes] = await Promise.all([
       getCommonConfig(FLOW_APP_CONFIG_LOOKUP_KEY),
-      getCommonConfig(FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY),
+      getCommonConfig(FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY.replace('{appId}', appId)),
     ]);
 
     return { globalRes, appRes };

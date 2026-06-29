@@ -11,6 +11,7 @@ import {
   HTTP_REQUEST_CARRIER_TABS,
   HTTP_RESPONSE_CARRIER_TABS,
 } from '../../../utils/constants';
+import { queryParams } from '../../../utils/common';
 
 // ========================================
 // 编排模式
@@ -153,12 +154,12 @@ export const VERSION_BUTTON_ORDER = [
 /**
  * 连接流全局配置 lookup 查询键
  */
-export const FLOW_APP_CONFIG_LOOKUP_KEY = 'CEC.Open/Flow.AppId.Config';
+export const FLOW_APP_CONFIG_LOOKUP_KEY = 'CEC.Open/Connector.Platform.Config';
 
 /**
  * 连接流应用级配置 lookup 查询键
  */
-export const FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY = 'CEC.Open/Flow.AppId.19.Config';
+export const FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY = 'CEC.Open/Connector.Platform.{appId}}.Config';
 
 /**
  * 连接流 lookup 配置字段映射
@@ -169,7 +170,7 @@ export const FLOW_APP_CONFIG_FIELD_MAP = {
   /** 串行编排连接器节点最大上限 */
   flow_max_serial_connector_nodes: 'serialConnectorMax',
   /** 并行编排并行节点并行分支上限 */
-  flow_max_parrllel_branches: 'parallelBranchMax',
+  flow_max_parallel_branches: 'parallelBranchMax',
   /** 连接器超时时间配置 */
   node_max_timeout_seconds: 'connectorTimeoutMax',
 };
@@ -243,8 +244,9 @@ export const parseFlowAppConfig = (params) => {
   const globalConfig = transformLookupItemsToFlowConfig(
     getFlowConfigItems({ res: globalRes, lookupKey: FLOW_APP_CONFIG_LOOKUP_KEY })
   );
+  const appId = queryParams('appId');
   const appConfig = transformLookupItemsToFlowConfig(
-    getFlowConfigItems({ res: appRes, lookupKey: FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY })
+    getFlowConfigItems({ res: appRes, lookupKey: FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY.replace('{appId}', appId) })
   );
 
   // 按默认配置、全局配置、应用级配置的顺序合并，后面的同名字段覆盖前面的值。

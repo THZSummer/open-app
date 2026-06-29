@@ -30,8 +30,8 @@ const demo = {
                         'itemValue': "5"
                     },
                     {
-                        'itemCode': 'flow_max_parrllel_branches',
-                        'itemName': 'flow_max_parrllel_branches',
+                        'itemCode': 'flow_max_parallel_branches',
+                        'itemName': 'flow_max_parallel_branches',
                         'itemValue': "5"
                     },
                     {
@@ -65,8 +65,8 @@ const demo2 = {
                         'itemValue': "5"
                     },
                     {
-                        'itemCode': 'flow_max_parrllel_branches',
-                        'itemName': 'flow_max_parrllel_branches',
+                        'itemCode': 'flow_max_parallel_branches',
+                        'itemName': 'flow_max_parallel_branches',
                         'itemValue': "5"
                     },
                     {

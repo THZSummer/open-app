@@ -72,6 +72,7 @@ import './FlowEditorV2.m.less';
 function FlowEditorV2() {
   const navigate = useNavigate();
   const flowId = queryParams('id');
+  const appId = queryParams('appId');
   const flowName = queryParams('name') || '未命名连接流';
 
   // 版本管理
@@ -132,7 +133,7 @@ function FlowEditorV2() {
     }
 
     const initPage = async () => {
-      const appConfigRes = await fetchAppConfig();
+      const appConfigRes = await fetchAppConfig(appId);
       const appConfig = parseFlowAppConfig(appConfigRes);
       setAppModeVisibility(appConfig.flowModeVisibility);
       setAppLimits({
