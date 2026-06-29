@@ -34,6 +34,7 @@ function VersionRelease() {
   const location = useLocation();
   const { appBaseInfo } = useSelector(state => state.app);
   const appId = searchParams.get('appId');
+  const versionId = searchParams.get('versionId');
 
   // 页面级权限守卫
   const { loading: roleTypeLoading } = useRoleGuard(appId);
@@ -91,16 +92,26 @@ function VersionRelease() {
       return;
     }
 
-    // 每次依赖变化都刷新
-    setMode(MODE.LIST);
-    setVersionDetail(null);
-    loadVersions();
 
+    // 加载应用能力数据（所有模式都需要）
     fetchSubscribedAbilities(appId).then((abilityRes) => {
       if (abilityRes?.code === '200' && Array.isArray(abilityRes.data)) {
         setSubscribedAbilities(abilityRes.data);
       }
     });
+
+    // 如果有versionId参数，直接进入查看模式
+    if(versionId && mode === MODE.LIST){
+      enterView(versionId);
+      return;
+    }
+
+    // 每次依赖变化都刷新（仅在列表模式下）
+    if(!versionId){
+      setMode(MODE.LIST);
+      setVersionDetail(null);
+      loadVersions();
+    }
   }, [appId, appBaseInfo, roleTypeLoading, location.pathname, loadVersions]);
 
   const handlePageChange = (page, pageSize) => {
@@ -125,6 +136,10 @@ function VersionRelease() {
   const enterView = async (versionId) => {
     setDetailLoading(true);
     setMode(MODE.VIEW);
+
+    // 更新URL，添加versionId参数，支持刷新保持状态
+    navigate(`/version-release?appId=${appId}&versionId=${versionId}`,{ replace: true });
+
     try {
       const result = await fetchVersionDetail(appId, versionId);
       if (result?.code === '200') {
@@ -388,12 +403,14 @@ function VersionRelease() {
 
             <Form form={form} className="version-create-form">
               <div className="version-form-row">
-                <div className="version-form-label"><span className="version-form-required">*</span> 版本号</div>
+                <div className="version-form-label">
+                  {!isReadOnly && <span className="version-form-required">*</span>} 版本号：
+                  </div>
                 <div className="version-form-field">
                   <Form.Item
                     name="versionCode"
                     rules={[
-                      { required: true, message: '请输入版本号' },
+                      { required: !isReadOnly, message: '请输入版本号' },
                       { pattern: FORM_VALIDATION_RULES.versionCode.pattern, message: FORM_VALIDATION_RULES.versionCode.message },
                     ]}
                     style={{ marginBottom: 0 }}
@@ -406,11 +423,13 @@ function VersionRelease() {
               </div>
 
               <div className="version-form-row">
-                <div className="version-form-label"><span className="version-form-required">*</span> 版本描述</div>
+                <div className="version-form-label">
+                  {!isReadOnly && <span className="version-form-required">*</span>} 版本描述：
+                </div>
                 <div className="version-form-field">
                   <Form.Item
                     name="versionDescCn"
-                    rules={[{ required: true, message: '请输入版本描述' }, { max: 200, message: '描述不超过200字符' }]}
+                    rules={[{ required: !isReadOnly, message: '请输入版本描述' }, { max: 200, message: '描述不超过200字符' }]}
                     style={{ marginBottom: 0 }}
                   >
                     {isReadOnly
@@ -421,7 +440,7 @@ function VersionRelease() {
               </div>
 
               <div className="version-form-row">
-                <div className="version-form-label">应用能力</div>
+                <div className="version-form-label">应用能力：</div>
                 <div className="version-form-field version-form-field-wide">
                   <div className="ability-card-wrapper">
                     <div className="ability-card-list">
@@ -442,7 +461,7 @@ function VersionRelease() {
                               </div>
                               <span className="ability-card-name">{ability.nameCn || typeInfo.text || '能力'}</span>
                             </div>
-                            <div className="ability-card-status">已开启</div>
+                            <div className="ability-card-status">已启用</div>
                           </div>
                         );
                       })}
@@ -463,9 +482,24 @@ function VersionRelease() {
                 </div>
               )}
 
-              {/* 创建/编辑模式：保存 */}
+              {/* 创建/编辑模式：保存和取消 */}
               {(isCreate || (!isCreate && !isReadOnly)) && (
                 <div className="version-form-actions">
+                  <Button onClick={()=>{
+                    if(isCreate){
+                      backToList();
+                    } else {
+                      // 编辑模式取消：恢复原始数据，不重新请求接口
+                      setMode(MODE.VIEW);
+                      if (versionDetail) {
+                        form.setFieldsValue({
+                          versionCode: versionDetail.versionCode,
+                          versionDescCn: versionDetail.versionDescCn,
+                          versionDescEn: versionDetail.versionDescEn,
+                        });
+                      }
+                    }
+                  }}>取消</Button>
                   <Button type="primary" onClick={isCreate ? handleCreate : handleSave}>保存</Button>
                 </div>
               )}
