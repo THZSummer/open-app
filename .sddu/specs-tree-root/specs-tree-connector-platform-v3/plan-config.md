@@ -43,7 +43,7 @@
 >
 > 至于连接器名称、认证类型、编排图结构、JSON Schema 定义等，属于开放给用户的自由输入内容，不在配置约束范畴，不列入此清单。
 
-| # | 配置项 | 作用域 | 按应用区分 | 默认值 | 存储 | path | classify_code | item_code | FR |
+| # | 配置项 | 作用域 | 按应用 | 默认值 | 存储 | path | classify_code | item_code | FR |
 |:--|--------|--------|:---:|:--|:---:|:---:|------|------|----|
 | 1 | 连接器版本数量上限 | 连接器 | ❌ | 1000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Max.Versions` | FR-005a |
 | 2 | 连接器URL正则规则 | 连接器版本配置 | ❌ | — | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Url.Regex.Pattern` | FR-015 |
