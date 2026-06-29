@@ -99,7 +99,16 @@ function CreateAppModal(props) {
         <Form.Item
           name="chineseName"
           label="中文名称"
-          rules={[{ required: true, message: '应用中文名不能为空' }, { max: 255, message: '不超过255字符' }]}
+          rules={[
+            { required: true, message: '应用中文名不能为空' },
+            { max: 255, message: '不超过255字符' },
+            { validator: (_, value) => {
+              if (value && (value.startsWith(' ') || value.endsWith(' '))) {
+                return Promise.reject(new Error('前后不能有空格'));
+              }
+              return Promise.resolve();
+            } },
+          ]}
         >
           <Input placeholder="请输入应用中文名称" maxLength={255} showCount />
         </Form.Item>
@@ -107,7 +116,16 @@ function CreateAppModal(props) {
         <Form.Item
           name="englishName"
           label="英文名称"
-          rules={[{ required: true, message: '应用英文名不能为空' }, { max: 255, message: '不超过255字符' }]}
+          rules={[
+            { required: true, message: '应用英文名不能为空' },
+            { max: 255, message: '不超过255字符' },
+            { validator: (_, value) => {
+              if (value && (value.startsWith(' ') || value.endsWith(' '))) {
+                return Promise.reject(new Error('前后不能有空格'));
+              }
+              return Promise.resolve();
+            } },
+          ]}
         >
           <Input placeholder="请输入应用英文名称" maxLength={255} showCount />
         </Form.Item>
