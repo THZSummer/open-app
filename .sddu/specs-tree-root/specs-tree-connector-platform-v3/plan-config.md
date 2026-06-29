@@ -25,7 +25,6 @@
     - [3.4 缓存策略](#34-缓存策略)
     - [3.5 代码改造范围](#35-代码改造范围)
     - [3.6 效果对比](#36-效果对比)
-    - [3.7 数据库初始化](#37-数据库初始化)
     - [3.8 实施优先级](#38-实施优先级)
 - [附录 A：平台配置能力](#附录-a平台配置能力)
   - [A.1 Spring 配置文件](#a1-spring-配置文件)
@@ -770,36 +769,6 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 | 按应用区分 | path 区分 | classify_code 区分 |
 | 批量读取 | 不支持 | 一次拿回整组 15 项 |
 
-### 3.7 数据库初始化
-
-#### 3.7.1 classify 初始化
-
-INSERT INTO openplatform_lookup_classify_t (classify_code, classify_name, path, status) VALUES
-('Connector.Platform.Config', '连接器平台配置-平台默认', 'CEC.Open', 1),
-('Connector.Platform.AppWhitelist', '连接器平台应用白名单', 'CEC.Open', 1);
-
-#### 3.7.2 item 初始化（平台默认组，15 项）
-
-classify_id 需替换为实际查询结果：
-
-| item_code | item_name | item_value | item_index |
-|-----------|-----------|-----------|-----------|
-| Connector.Max.Versions | 连接器版本数量上限 | 1000 | 1 |
-| Connector.Url.Regex.Pattern | 连接器URL正则规则 | (空) | 2 |
-| Connector.Config.Max.Bytes | 连接器配置JSON长度上限 | 0 | 3 |
-| Flow.Max.Versions | 连接流版本数量上限 | 1000 | 4 |
-| Max.Execution.Records.Per.Flow | 运行记录条数上限 | 1000 | 5 |
-| Node.Max.Timeout.Seconds | 连接器节点超时上限 | 5 | 6 |
-| Flow.Config.Max.Bytes | 连接流配置JSON长度上限 | 0 | 7 |
-| Flow.Max.Qps | 连接流最大QPS | 1000 | 8 |
-| Flow.Max.Concurrency | 连接流最大并发 | 1000 | 9 |
-| Flow.Max.Cache.Ttl.Seconds | 连接流缓存TTL上限 | 1296000 | 10 |
-| Flow.Max.Parallel.Branches | 连接流并行节点分支上限 | 8 | 11 |
-| Flow.Max.Serial.Connector.Nodes | 串行编排连接器节点数量上限 | 3 | 12 |
-| Script.Max.Length.Chars | 脚本源码长度上限 | 10000 | 13 |
-| Script.Max.Timeout.Seconds | 脚本超时范围 | 5 | 14 |
-| Log.Collection.Enabled | 日志采集开关 | true | 15 |
-
 ### 3.8 实施优先级
 
 | 优先级 | 项目 | 原因 |
@@ -807,7 +776,6 @@ classify_id 需替换为实际查询结果：
 | P0 | LookupWhitelistMapper 扩展（open-server） | 新增 path 参数 + selectItemMapByPathAndClassifyCode，所有后续改造的基础 |
 | P0 | ConnectorPlatformPropertyService 重构（open-server） | 核心重构：逐项查 Property → 批量查 Lookup |
 | P1 | ConnectorApiPropertyService 扩展（connector-api） | 运行时批量读取 + Redis 缓存 |
-| P1 | 数据初始化 SQL（market-server） | 写入 classify + item 默认数据 |
 | P1 | AppWhitelistService 迁移 | classify_code 改为新命名规则 |
 | P2 | 运行时消费方接入 | DagScheduler / RateLimitConfigReader / FlowCacheManager |
 | P2 | Property 数据迁移脚本 | openplatform_property_t → openplatform_lookup_*_t |
