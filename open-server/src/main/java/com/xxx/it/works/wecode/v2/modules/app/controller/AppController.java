@@ -17,6 +17,8 @@ import com.xxx.it.works.wecode.v2.modules.app.vo.BindEamapVO;
 import com.xxx.it.works.wecode.v2.modules.app.vo.CreateAppVO;
 import com.xxx.it.works.wecode.v2.modules.app.vo.CurrentRoleVO;
 import com.xxx.it.works.wecode.v2.modules.app.vo.EamapVO;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,8 +86,8 @@ public class AppController {
      */
     @GetMapping("/list")
     public ApiResponse<List<AppListItemVO>> getAppList(
-            @RequestParam(defaultValue = "1") Integer curPage,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(defaultValue = "1") @Min(1) Integer curPage,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) Integer pageSize) {
         return appService.getAppList(curPage, pageSize);
     }
 
@@ -94,8 +96,8 @@ public class AppController {
      */
     @GetMapping("/eamap")
     public ApiResponse<List<EamapVO>> getEamapList(
-            @RequestParam(defaultValue = "1") Integer curPage,
-            @RequestParam(defaultValue = "20") Integer pageSize) {
+            @RequestParam(defaultValue = "1") @Min(1) Integer curPage,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) Integer pageSize) {
         return appService.getEamapList(curPage, pageSize);
     }
 

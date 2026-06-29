@@ -400,9 +400,9 @@ public class AppServiceImpl implements AppService {
             }
             if (!API_SECRET_PATTERN.matcher(request.getApiSecret()).matches()) {
                 throw new BusinessException(
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getCode(),
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getMessageZh(),
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getMessageEn()
+                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getCode(),
+                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getMessageZh(),
+                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getMessageEn()
                 );
             }
         }
