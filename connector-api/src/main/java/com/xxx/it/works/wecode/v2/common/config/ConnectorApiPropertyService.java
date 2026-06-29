@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.common.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -37,7 +38,7 @@ public class ConnectorApiPropertyService {
     private final ReactiveRedisTemplate<String, String> redisTemplate;
 
     public ConnectorApiPropertyService(OpenplatformLookupRepository lookupRepository,
-                                       ReactiveRedisTemplate<String, String> redisTemplate) {
+                                       @Qualifier("reactiveStringRedisTemplate") ReactiveRedisTemplate<String, String> redisTemplate) {
         this.lookupRepository = lookupRepository;
         this.redisTemplate = redisTemplate;
     }
