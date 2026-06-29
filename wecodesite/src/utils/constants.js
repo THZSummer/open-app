@@ -113,6 +113,7 @@ export const VERIFY_TYPE_MAP = {
   1: { text: 'SOAHeader', label: 'SOAHeader', needApiSecret: false, order: 2 },
   3: { text: 'SOAURL', label: 'SOAURL', needApiSecret: false, order: 3 },
   4: { text: 'APIG', label: 'APIG', needApiSecret: false, order: 4 },
+  5: { text: 'IntegrateToken', label: 'Token', needApiSecret: false, order: 5 },
 };
 
 export const ROLE_MAP = {
@@ -267,3 +268,20 @@ export const FILE_VALIDATION = {
     dimensionMessage: '示意图尺寸360x200px',
   },
 };
+
+/**
+ * HTTP 请求载体 Tab 配置
+ */
+export const HTTP_REQUEST_CARRIER_TABS = [
+  { key: 'header', label: 'HTTP 请求头', carrier: 'header' },
+  { key: 'body', label: 'HTTP 请求体', carrier: 'body' },
+  { key: 'query', label: 'URL 查询参数', carrier: 'query' },
+];
+
+/**
+ * HTTP 响应载体 Tab 配置
+ */
+export const HTTP_RESPONSE_CARRIER_TABS = [
+  { key: 'header', label: 'HTTP 响应头', carrier: 'header' },
+  { key: 'body', label: 'HTTP 响应体', carrier: 'body' },
+];

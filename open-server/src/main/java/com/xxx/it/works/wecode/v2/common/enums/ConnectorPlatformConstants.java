@@ -52,6 +52,9 @@ public final class ConnectorPlatformConstants {
     /** 平台默认超时（秒） */
     public static final int DEFAULT_TIMEOUT_SECONDS = 5;
 
+    /** 节点超时上限（秒） */
+    public static final int MAX_NODE_TIMEOUT_SECONDS = 5;
+
     /** 脚本节点默认超时（秒） */
     public static final int DEFAULT_SCRIPT_TIMEOUT_SECONDS = 5;
 

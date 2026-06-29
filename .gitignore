@@ -24,3 +24,7 @@ TestResults.xml
 ### OpenCode ###
 .opencode/
 opencode.json
+.idea/
+/.idea/
+# PID files
+.pid

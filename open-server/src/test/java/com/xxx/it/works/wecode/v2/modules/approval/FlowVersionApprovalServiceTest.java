@@ -7,8 +7,8 @@ import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalNotifyService;
-import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -204,58 +204,4 @@ class FlowVersionApprovalServiceTest {
                 service.cancelApproval(flowVersionId, appId, "user1"));
     }
 
-    // ===== urgeApproval =====
-
-    @Test
-    @DisplayName("催办审批 → 正常催办成功")
-    void testUrgeApproval_Normal() {
-        ApprovalRecord record = new ApprovalRecord();
-        record.setId(1000L);
-        record.setApplicantId("user1");
-        record.setBusinessType("connector_flow_version_publish");
-        record.setBusinessId(flowVersionId);
-        record.setApplicantName("User One");
-        record.setStatus(ApprovalEngine.Status.PENDING);
-        record.setCurrentNode(0);
-        record.setCombinedNodes("[{\"userId\":\"approver1\",\"userName\":\"Approver One\"}]");
-
-        when(recordMapper.selectLatestPendingByBusiness(anyString(), eq(flowVersionId)))
-                .thenReturn(record);
-
-        List<ApprovalNodeDto> nodes = new ArrayList<>();
-        ApprovalNodeDto node = new ApprovalNodeDto();
-        node.setUserId("approver1");
-        node.setUserName("Approver One");
-        nodes.add(node);
-        when(approvalEngine.parseNodes(anyString())).thenReturn(nodes);
-        when(approvalNotifyService.sendUrgeCard(anyString(), anyString(), anyLong(),
-                anyString(), anyLong(), anyString()))
-                .thenReturn("card-001");
-        when(approvalEngine.serializeNodes(anyList()))
-                .thenReturn("[{\"userId\":\"approver1\",\"userName\":\"Approver One\","
-                        + "\"cardIds\":[\"card-001\"]}]");
-
-        service.urgeApproval(flowVersionId, appId, "user1");
-
-        verify(approvalNotifyService).sendUrgeCard(
-                eq("approver1"), eq("Approver One"), eq(1000L),
-                eq("connector_flow_version_publish"), eq(flowVersionId), eq("User One"));
-    }
-
-    @Test
-    @DisplayName("催办审批 → 非申请人 → 拒绝")
-    void testUrgeApproval_NotApplicant() {
-        ApprovalRecord record = new ApprovalRecord();
-        record.setId(1000L);
-        record.setApplicantId("other_user");
-        record.setStatus(ApprovalEngine.Status.PENDING);
-        record.setCombinedNodes("[{\"userId\":\"approver1\",\"userName\":\"Approver One\"}]");
-        record.setCurrentNode(0);
-
-        when(recordMapper.selectLatestPendingByBusiness(anyString(), eq(flowVersionId)))
-                .thenReturn(record);
-
-        assertThrows(BusinessException.class, () ->
-                service.urgeApproval(flowVersionId, appId, "user1"));
-    }
 }

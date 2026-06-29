@@ -60,17 +60,6 @@ const AppChatbotBindTab = ({ appId }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [addMode, addValue]);
 
-  /** 绑定账号 */
-  const handleBind = async (accountId) => {
-    const result = await bindAccount(appId, accountId);
-    if (result && result.code === '200') {
-      message.success('绑定成功');
-      fetchData();
-    } else {
-      message.error(result?.messageZh || '绑定失败');
-    }
-  };
-
   /** 解绑确认 */
   const handleUnbind = (accountId) => {
     confirm({
@@ -185,13 +174,6 @@ const AppChatbotBindTab = ({ appId }) => {
           </button>
         )}
       </div>
-
-      {/* 空状态 */}
-      {accounts.length === 0 && !addMode && (
-        <div className={less.emptyWrapper}>
-          <Empty description="暂无绑定的机器人账号" />
-        </div>
-      )}
     </div>
   );
 };

@@ -81,11 +81,23 @@
     flex: none;
   }
 
-  // ===== 描述输入框（占用剩余空间） =====
+  // ===== 参数描述输入框（占用剩余空间） =====
   // 用 flex:1 让描述列自适应宽度，避免长描述被截断
   .schema-param-desc {
     flex: 1;
     min-width: 120px;
+  }
+
+  // ===== 参数取值来源选择器（输出节点使用） =====
+  .schema-param-source {
+    width: 120px;
+    flex: none;
+  }
+
+  // ===== 参数取值输入框（输出节点使用） =====
+  .schema-param-value {
+    flex: 1;
+    min-width: 220px;
   }
 
   // ===== 添加按钮（行尾） =====
@@ -116,6 +128,27 @@
     &:hover {
       color: @se-danger;
       background: @se-danger-soft;
+    }
+  }
+
+  // ===== 输出节点参数行控件高度统一 =====
+  .output-param-row {
+    align-items: center;
+
+    .ant-input,
+    .ant-btn {
+      height: 32px;
+      line-height: 30px;
+    }
+
+    .ant-select,
+    .ant-select-selector {
+      height: 32px !important;
+    }
+
+    .ant-select-selection-item,
+    .ant-select-selection-placeholder {
+      line-height: 30px !important;
     }
   }
 

@@ -64,8 +64,8 @@ export const API_CONFIG = {
     VERSION_DEBUG: '/flows/{flowId}/versions/{versionId}/debug',              // #51 调试代理
 
     // ===== 运行记录（#49~#50） =====
-    EXECUTIONS_LIST: '/flows/{flowId}/executions',                            // #49 查询运行记录列表
-    EXECUTION_DETAIL: '/flows/{flowId}/executions/{executionId}',             // #50 查询运行记录详情
+    EXECUTIONS_LIST: '/executions',                                            // #49 查询运行记录列表
+    EXECUTION_DETAIL: '/executions/{executionId}',                             // #50 查询运行记录详情
   },
 
   EVENTS: {

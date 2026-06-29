@@ -14,7 +14,6 @@ function EventDrawer({ open, onClose, onConfirm, selectedEvents = [], subscribeL
       appId={appId}
       title="添加事件"
       className="event-drawer"
-      placeholder="事件名称/Topic"
       fetchCategories={fetchEventCategories}
       fetchData={fetchEvents}
       columnType='event'

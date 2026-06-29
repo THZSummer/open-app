@@ -7,9 +7,10 @@
  * 整改依据：连接流列表需求设计说明书 V1.3
  */
 import React from 'react';
-import { Badge, Button, Space, Tooltip, Dropdown } from 'antd';
+import { Badge, Button, Space, Dropdown, Menu } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 import { FLOW_LIFECYCLE_STATUS, FLOW_LIFECYCLE_STATUS_MAP } from '../../../utils/constants';
+import { renderTooltipTextCell } from '../../../utils/commonTableConfigs';
 
 /**
  * 页面配置信息
@@ -34,18 +35,6 @@ export const flowStatusOptions = [
   { value: FLOW_LIFECYCLE_STATUS.RUNNING, label: '运行中' },
   { value: FLOW_LIFECYCLE_STATUS.INVALID, label: '已失效' },
 ];
-
-/**
- * 渲染文本（带Tooltip）
- *
- * @param {string} text - 要渲染的文本
- * @returns {React.ReactNode} 包裹在Tooltip中的文本
- */
-const renderText = (text) => (
-  <Tooltip title={text}>
-    <span>{text || '-'}</span>
-  </Tooltip>
-);
 
 /**
  * 根据状态获取更多菜单项 key 列表
@@ -115,6 +104,21 @@ const buildMoreMenuItems = (params) => {
 };
 
 /**
+ * 渲染更多操作菜单
+ * @param {Array} items 菜单项配置
+ * @returns {React.ReactNode} 更多操作菜单节点
+ */
+const renderMoreMenu = (items) => (
+  <Menu>
+    {items.map((item) => (
+      <Menu.Item key={item.key} danger={item.danger} onClick={item.onClick}>
+        {item.label}
+      </Menu.Item>
+    ))}
+  </Menu>
+);
+
+/**
  * 获取表格列配置
  *
  * @param {Object} callbacks - 回调函数对象
@@ -135,7 +139,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'id',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '中文名称',
@@ -143,7 +147,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'nameCn',
       width: 150,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '英文名称',
@@ -151,7 +155,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'nameEn',
       width: 150,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '中文描述',
@@ -159,7 +163,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'descriptionCn',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '英文描述',
@@ -167,7 +171,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'descriptionEn',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '状态',
@@ -182,12 +186,12 @@ export const getFlowColumns = (callbacks) => {
       },
     },
     {
-      title: '创建者',
+      title: '创建人',
       dataIndex: 'createBy',
       key: 'createBy',
       width: 120,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '创建时间',
@@ -195,7 +199,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'createTime',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '更新人',
@@ -203,7 +207,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'lastUpdateBy',
       width: 120,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '更新时间',
@@ -211,7 +215,7 @@ export const getFlowColumns = (callbacks) => {
       key: 'lastUpdateTime',
       width: 180,
       ellipsis: true,
-      render: renderText,
+      render: renderTooltipTextCell,
     },
     {
       title: '操作',
@@ -234,7 +238,7 @@ export const getFlowColumns = (callbacks) => {
             <Button type="link" size="small" onClick={() => handleConfig(record)}>
               配置
             </Button>
-            <Dropdown menu={{ items }} trigger={['click']}>
+            <Dropdown overlay={renderMoreMenu(items)} trigger={['click']}>
               <Button type="link" size="small">
                 更多 <DownOutlined />
               </Button>

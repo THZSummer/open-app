@@ -80,7 +80,7 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
       )}
 
       <Form form={form} layout="vertical" className="subscription-form">
-        <Form.Item name="channelType" label="订阅类型"
+        <Form.Item name="channelType" label="订阅方式"
         rules={[
           { required: true, message: '请选择订阅方式' }
         ]}
@@ -107,7 +107,7 @@ function EventSubscriptionDrawer({ open, onClose, onSave, event }) {
               label="请求地址"
               rules={[
                 { required: true, message: '请输入请求地址' },
-                { pattern: /^https?:\/\/.+/, message: '请求地址必须以 http:// 或 https:// 开头' }
+                { pattern: /^https?:\/\/.+/, message: '地址必须以 http:// 或 https:// 开头' }
               ]}
             >
               <Input placeholder="https://your-domain.com/webhook" />

@@ -24,6 +24,9 @@ import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
 import com.xxx.it.works.wecode.v2.modules.version.enums.VersionStatusEnum;
 import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -33,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 审批引擎
@@ -77,6 +81,7 @@ public class ApprovalEngine {
     private final EventMapper eventMapper;
     private final CallbackMapper callbackMapper;
     private final AppVersionMapper appVersionMapper;
+    private final OpFlowVersionMapper flowVersionMapper;
 
     /**
      * 审批动作枚举
@@ -111,6 +116,11 @@ public class ApprovalEngine {
         public static final String CALLBACK_PERMISSION_APPLY = "callback_permission_apply";
         public static final String APP_VERSION_PUBLISH = "app_version_publish";
         public static final String CONNECTOR_FLOW_VERSION_PUBLISH = "connector_flow_version_publish";
+
+        /** 审批人可选的业务类型：未配置审批人时仍允许发起审批 */
+        private static final Set<String> OPTIONAL_APPROVER_TYPES = Set.of(
+                APP_VERSION_PUBLISH
+        );
     }
 
     /**
@@ -145,6 +155,12 @@ public class ApprovalEngine {
      * @return 组合后的审批节点列表
      */
     public List<ApprovalNodeDto> composeApprovalNodes(String businessType, Long permissionId, Long appId) {
+        // 版本发布等"审批人可选"业务类型：始终不组合审批节点，不受 global/scene 审批配置影响
+        if (BusinessType.OPTIONAL_APPROVER_TYPES.contains(businessType)) {
+            log.info("Business type [{}] allows empty approver, skip node composition (not affected by approval config)", businessType);
+            return new ArrayList<>();
+        }
+
         List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
         int order = 1;
 
@@ -361,6 +377,8 @@ public class ApprovalEngine {
                 return "callback_permission_apply";
             case BusinessType.APP_VERSION_PUBLISH:
                 return "app_version_publish";
+            case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
+                return "connector_flow_version_publish";
             default:
                 log.warn("Unknown business type: {}, using default scene code", businessType);
                 return "api_permission_apply";  // 默认使用API权限申请审批
@@ -392,7 +410,7 @@ public class ApprovalEngine {
         // 1. 组合三级审批节点
         List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId, appId);
 
-        if (combinedNodes.isEmpty()) {
+        if (combinedNodes.isEmpty() && !BusinessType.OPTIONAL_APPROVER_TYPES.contains(businessType)) {
             throw new BusinessException("400", "审批节点配置为空，无法创建审批记录",
                     "Approval nodes configuration is empty, cannot create approval record");
         }
@@ -712,6 +730,30 @@ public class ApprovalEngine {
 
                     // 权限申请场景，由 updateSubscriptionStatus 处理
                     log.debug("Permission application scenario, not updating resource status");
+                    break;
+
+                case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
+                    FlowVersion flowVersion = flowVersionMapper.selectById(businessId);
+                    if (flowVersion != null) {
+                        Date now = new Date();
+                        if (status == Status.APPROVED) {
+                            // 审批通过 → 已发布
+                            flowVersion.setStatus(FlowVersionStatus.PUBLISHED.getCode());
+                            flowVersion.setPublishedTime(now);
+                            flowVersion.setPublishedBy(record.getApplicantId());
+                        } else if (status == Status.REJECTED) {
+                            // 审批驳回 → 已驳回
+                            flowVersion.setStatus(FlowVersionStatus.REJECTED.getCode());
+                        } else {
+                            // 审批撤销 → 已撤回
+                            flowVersion.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
+                        }
+                        flowVersion.setLastUpdateTime(now);
+                        flowVersion.setLastUpdateBy(record.getApplicantId());
+                        flowVersionMapper.update(flowVersion);
+                        log.info("Updated FlowVersion status: versionId={}, status={}",
+                                businessId, flowVersion.getStatus());
+                    }
                     break;
 
                 default:

@@ -9,7 +9,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Drawer, Spin, Empty } from 'antd';
-import { ClockCircleOutlined } from '@ant-design/icons';
+import ExecutionTraceViewer from '../../../components/ExecutionTraceViewer/ExecutionTraceViewer';
 import { fetchFlowRunDetail } from '../thunk';
 import {
   EXECUTION_STATUS,
@@ -18,20 +18,9 @@ import {
 } from '../../../utils/constants';
 
 /**
- * 步骤状态枚举（plan-api.md §1.8.7b）
- * 0=success / 1=failed / 2=timeout / 3=not_executed
- */
-const STEP_STATUS_MAP = {
-  0: { text: '成功', color: 'green', pillClass: 'pill-success' },
-  1: { text: '失败', color: 'red', pillClass: 'pill-error' },
-  2: { text: '超时', color: 'orange', pillClass: 'pill-error' },
-  3: { text: '未执行', color: 'default', pillClass: '' },
-};
-
-/**
- * 根据执行状态返回 Hero 区色调 class
+ * 根据执行状态返回 Hero 区色调 class。
  *
- * @param {number} status - 执行状态枚举值
+ * @param {number} status 执行状态枚举值
  * @returns {string} class 名称
  */
 const getHeroClass = (status) => {
@@ -41,9 +30,9 @@ const getHeroClass = (status) => {
 };
 
 /**
- * 根据执行状态返回状态胶囊 class
+ * 根据执行状态返回状态胶囊 class。
  *
- * @param {number} status - 执行状态枚举值
+ * @param {number} status 执行状态枚举值
  * @returns {string} class 名称
  */
 const getPillClass = (status) => {
@@ -53,13 +42,9 @@ const getPillClass = (status) => {
 };
 
 /**
- * 渲染 KV 单行
+ * 渲染 KV 单行。
  *
- * @param {Object} params - 参数对象
- * 包含以下字段：
- * - label: 字段标签
- * - value: 字段值（可为 ReactNode）
- *
+ * @param {Object} params 参数对象
  * @returns {React.ReactNode} KV 单行
  */
 const KvRow = (params) => {
@@ -73,9 +58,9 @@ const KvRow = (params) => {
 };
 
 /**
- * 渲染执行耗时（毫秒 → "xx ms"）
+ * 渲染执行耗时。
  *
- * @param {number} durationMs - 执行耗时（毫秒）
+ * @param {number} durationMs 执行耗时
  * @returns {string} 展示文案
  */
 const formatDuration = (durationMs) => {
@@ -84,38 +69,19 @@ const formatDuration = (durationMs) => {
 };
 
 /**
- * 渲染 JSON 数据（保持兼容字符串与对象两种入参）
+ * 连接流执行详情抽屉。
  *
- * @param {any} data - 输入/输出数据
- * @returns {string} 展示用的字符串
- */
-const formatJson = (data) => {
-  if (data == null) return '-';
-  if (typeof data === 'string') return data;
-  try {
-    return JSON.stringify(data, null, 2);
-  } catch (err) {
-    return String(data);
-  }
-};
-
-/**
- * 连接流执行详情抽屉
- *
- * @param {Object} props - 组件属性
- * 包含以下字段：
- * - open: 是否显示抽屉
- * - executionId: 执行 ID
- * - onClose: 关闭抽屉回调
+ * @param {Object} props 组件属性
+ * @returns {React.ReactNode} 运行详情抽屉
  */
 function RunDetailDrawer(props) {
   const { open, executionId, onClose } = props;
-  // 加载状态
+  // 加载状态。
   const [loading, setLoading] = useState(false);
-  // 详情数据（含 base + steps）
+  // 详情数据（含 base + steps）。
   const [detail, setDetail] = useState(null);
 
-  // 抽屉打开拉取详情；关闭清空
+  // 抽屉打开拉取详情，关闭时清空详情。
   useEffect(() => {
     if (open && executionId) {
       loadDetail();
@@ -127,7 +93,7 @@ function RunDetailDrawer(props) {
   }, [open, executionId]);
 
   /**
-   * 加载运行详情
+   * 加载运行详情。
    */
   const loadDetail = async () => {
     setLoading(true);
@@ -139,15 +105,20 @@ function RunDetailDrawer(props) {
     }
   };
 
-  // 渲染抽屉内容
+  /**
+   * 渲染抽屉内容。
+   *
+   * @returns {React.ReactNode} 抽屉内容
+   */
   const renderContent = () => {
     if (!detail || !detail.base) return <Empty description="暂无数据" />;
-    const { base, steps } = detail;
-    const stepCount = steps?.length || 0;
-
-    // 执行状态文案
+    const { base, steps = [] } = detail;
+    const stepCount = steps.length || 0;
+    // 节点展示顺序：接口数组后面的节点优先展示。
+    const displaySteps = steps.slice().reverse();
+    // 执行状态文案。
     const statusConfig = EXECUTION_STATUS_MAP[base.status] || { text: '-' };
-    // 触发方式文案
+    // 触发方式文案。
     const triggerTypeConfig = TRIGGER_TYPE_MAP[base.triggerType] || { text: '-' };
 
     return (
@@ -158,7 +129,7 @@ function RunDetailDrawer(props) {
             <span className={`status-pill ${getPillClass(base.status)}`}>{statusConfig.text}</span>
           </div>
           <div className="drawer-hero-sub">
-            <span className="mono">{base.executionId}</span>
+            <span className="mono">{base.executionId || base.id}</span>
             触发于 {base.triggerTime}
           </div>
         </div>
@@ -167,9 +138,9 @@ function RunDetailDrawer(props) {
         <div className="drawer-section">
           <div className="section-title">基础信息</div>
           <div className="kv-grid">
-            <KvRow label="执行ID" value={base.executionId} />
+            <KvRow label="执行ID" value={base.id} />
             <KvRow label="连接流名称" value={base.flowNameCn} />
-            <KvRow label="版本号" value={base.flowVersionNumber} />
+            <KvRow label="版本号" value={`v${base.flowVersionNumber}`} />
             <KvRow label="触发时间" value={base.triggerTime} />
             <KvRow label="触发方式" value={triggerTypeConfig.text} />
             <KvRow label="触发账号" value={base.triggerAccount} />
@@ -187,44 +158,12 @@ function RunDetailDrawer(props) {
         </div>
 
         {/* 节点执行时间线 */}
-        <div className="drawer-section">
+        <div className="drawer-section drawer-section-trace">
           <div className="section-title">
             节点执行时间线
             <span className="section-title-extra">共 {stepCount} 个节点</span>
           </div>
-          <div className="timeline">
-            {steps.map((step, idx) => {
-              // 步骤状态枚举映射
-              const stepConfig = STEP_STATUS_MAP[step.status] || { text: '-', pillClass: '' };
-              const isFailed = step.status === 1 || step.status === 2;
-              const itemClass = step.status === 0 ? 'timeline-success' : 'timeline-fail';
-              return (
-                <div key={step.nodeId || idx} className={`timeline-item ${itemClass}`}>
-                  <div className="timeline-card">
-                    <div className="timeline-head">
-                      <span className="timeline-name">{step.nodeLabelCn || step.nodeId}</span>
-                      <span className={`status-pill ${stepConfig.pillClass}`}>
-                        {stepConfig.text}
-                      </span>
-                      <span className="timeline-duration">
-                        <ClockCircleOutlined />
-                        {formatDuration(step.durationMs)}
-                      </span>
-                    </div>
-                    <div className="timeline-io">
-                      <pre className="code-panel" data-label="INPUT">{formatJson(step.inputData)}</pre>
-                      <pre
-                        className={`code-panel ${isFailed ? 'code-panel-error' : ''}`}
-                        data-label={isFailed ? 'ERROR' : 'OUTPUT'}
-                      >
-                        {isFailed ? (step.errorMessage || formatJson(step.outputData)) : formatJson(step.outputData)}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <ExecutionTraceViewer steps={displaySteps} />
         </div>
       </>
     );
@@ -233,7 +172,7 @@ function RunDetailDrawer(props) {
   return (
     <Drawer
       title="运行详情"
-      width={640}
+      width={760}
       open={open}
       onClose={onClose}
       destroyOnClose

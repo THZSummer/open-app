@@ -130,7 +130,7 @@ public class ExecutionContext {
      */
     @Deprecated
     public Object resolveNestedField(Map<String, Object> data, String fieldPath) {
-        if (data == null || fieldPath == null) return null;
+        if (data == null || fieldPath == null) { return null; }
         String[] parts = fieldPath.split("\\.");
         Object current = data;
         for (String part : parts) {

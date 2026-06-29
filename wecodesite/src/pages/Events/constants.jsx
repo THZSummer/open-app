@@ -70,14 +70,14 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
   {
     title: '状态',
     width: 100,
-    dataIndex: 'status',
     key: 'status',
+    dataIndex: 'status',
     render: renderStatus,
   },
   {
     title: '操作',
-    width: 300,
     key: 'action',
+    width: 300,
     fixed: 'right',
     render: (_, record) => (
       <div>
@@ -85,14 +85,14 @@ export const getEventColumns = ({ handleOpenDoc, handleEdit, handleCopyApprovalA
         {record.status === 1 && (
           <Button type="link" onClick={() => handleEdit(record)}>编辑</Button>
         )}
+        {record.status !== 0 && (
+          <Button type="link" danger onClick={() => handleDelete(record)}>删除</Button>
+        )}
         {record.status === 0 && (
           <>
             <Button type="link" onClick={() => handleCopyApprovalAddress(record)}>复制审批地址</Button>
             <Button type="link" onClick={() => handleWithdraw(record)}>撤回审核</Button>
           </>
-        )}
-        {record.status !== 0 && (
-          <Button type="link" danger onClick={() => handleDelete(record)}>删除</Button>
         )}
       </div>
     ),

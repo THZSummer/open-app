@@ -1,48 +1,19 @@
 /**
  * 部署版本选择弹窗样式
- * 默认选中当前部署版本时使用蓝色边框 + "(当前部署)" 标识
+ * 表格区域限制高度，超过后在弹窗内容区内滚动。
  */
 
 .deploy-flow-modal {
+  max-height: 60vh;
   padding: 8px 0;
+  overflow-y: auto;
 
-  &__radio-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  &__table {
     width: 100%;
 
-    // antd Radio.Group 内部包裹
-    :global(.ant-radio-wrapper) {
-      display: flex;
-      align-items: flex-start;
-      padding: 12px;
-      margin: 0;
-      border: 1px solid #dee0e3;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-
-      &:hover {
-        border-color: #3370ff;
-      }
+    :global(.ant-table-row) {
+      cursor: pointer;
     }
-
-    :global(.ant-radio-wrapper-checked) {
-      border-color: #3370ff;
-      background-color: rgba(51, 112, 255, 0.05);
-    }
-  }
-
-  // 当前部署版本：蓝色边框
-  &__radio--current {
-    border-color: #3370ff !important;
-  }
-
-  &__version-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
   }
 
   &__version-name {
@@ -51,11 +22,7 @@
     color: #1f2329;
   }
 
-  &__version-desc {
-    font-size: 12px;
-    color: #8f959e;
-  }
-
+  &__status-tag,
   &__current-tag {
     margin: 0;
   }

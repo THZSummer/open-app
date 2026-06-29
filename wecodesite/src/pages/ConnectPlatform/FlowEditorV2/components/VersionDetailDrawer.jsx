@@ -14,36 +14,38 @@
  * 视觉：操作控制台风格——左色条 Hero、分组卡片、KV 网格、状态胶囊。
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Drawer, Button, message } from 'antd';
 import { LinkOutlined, CopyOutlined } from '@ant-design/icons';
-import { VERSION_STATUS_MAP } from '../constants';
-import { copyToClipboard } from '../../../../utils/common';
+import { VERSION_STATUS, VERSION_STATUS_MAP } from '../constants';
+import { copyToClipboard, extractEflowId } from '../../../../utils/common';
 import '../FlowEditorV2.m.less';
+
+import { remindPeople } from '../../../Admin/Approval/thunk';
 
 /**
  * 版本状态到 Hero 色调的映射
- * @param {string} status 版本状态
+ * @param {number} status 版本状态
  * @returns {string} hero class
  */
 const getHeroClass = (status) => {
-  if (status === 'PUBLISHED') return 'hero-success';
-  if (status === 'APPROVING') return 'hero-warning';
-  if (status === 'REJECTED') return 'hero-error';
-  if (status === 'DRAFT') return '';
+  if (status === VERSION_STATUS.PUBLISHED) return 'hero-success';
+  if (status === VERSION_STATUS.APPROVING) return 'hero-warning';
+  if (status === VERSION_STATUS.REJECTED) return 'hero-error';
+  if (status === VERSION_STATUS.DRAFT) return '';
   return 'hero-default';
 };
 
 /**
  * 版本状态到状态胶囊变体的映射
- * @param {string} status 版本状态
+ * @param {number} status 版本状态
  * @returns {string} pill class
  */
 const getPillClass = (status) => {
-  if (status === 'PUBLISHED') return 'pill-success';
-  if (status === 'APPROVING') return 'pill-warning';
-  if (status === 'REJECTED') return 'pill-error';
-  if (status === 'DRAFT') return 'pill-processing';
+  if (status === VERSION_STATUS.PUBLISHED) return 'pill-success';
+  if (status === VERSION_STATUS.APPROVING) return 'pill-warning';
+  if (status === VERSION_STATUS.REJECTED) return 'pill-error';
+  if (status === VERSION_STATUS.DRAFT) return 'pill-processing';
   return 'pill-default';
 };
 
@@ -76,7 +78,8 @@ const KvRow = (params) => {
  * @param {Function} props.onUrge 催办回调
  */
 const VersionDetailDrawer = (props) => {
-  const { visible, versionInfo, onClose, onUrge } = props;
+  const { visible, versionInfo, onClose } = props;
+  const [remindLoading, setRemindLoading] = useState(false);
 
   /**
    * 复制审批地址链接到剪贴板
@@ -92,7 +95,36 @@ const VersionDetailDrawer = (props) => {
       message.error('复制失败，请检查浏览器权限');
     }
   };
-  
+
+  /**
+   * 处理催办按钮点击事件
+   * 从审批链接中提取 eflowId 并调用催办接口
+   */
+  const handleRemind = async () => {
+    const eflowId = extractEflowId(versionInfo.approvalUrl);
+
+    if (!eflowId) {
+      message.error('无法提取审批ID');
+      return;
+    }
+
+    const params = {
+      businessId: eflowId,
+      businessType: 'FLOW',
+    }
+    setRemindLoading(true);
+
+    const result = await remindPeople(params);
+
+    if (result && result.code === '200') {
+      message.success('催办成功');
+    } else {
+      message.error(result.messageZh || '催办失败');
+    }
+
+    setRemindLoading(false);
+  };
+
   if (!versionInfo) return null;
 
   const status = versionInfo.status || '';
@@ -117,49 +149,50 @@ const VersionDetailDrawer = (props) => {
           {versionInfo.name || '-'} · 创建于 {versionInfo.createTime || '-'}
         </div>
       </div>
-      
+
       {/* 基础信息卡片 */}
       <div className="drawer-section">
         <div className="section-title">基础信息</div>
         <div className="kv-grid">
           <KvRow label="版本名称" value={versionInfo.name} />
-          <KvRow label="创建人" value={versionInfo.creator} />
+          <KvRow label="创建人" value={versionInfo.createBy} />
           <KvRow label="创建时间" value={versionInfo.createTime} />
-          <KvRow label="描述" value={versionInfo.description} />
+          <KvRow label="更新人" value={versionInfo.lastUpdateBy} />
+          <KvRow label="更新时间" value={versionInfo.lastUpdateTime} />
         </div>
       </div>
 
       {/* 已发布 */}
-      {status === 'PUBLISHED' && (
+      {status === VERSION_STATUS.PUBLISHED && (
         <div className="drawer-section">
           <div className="section-title">发布信息</div>
           <div className="kv-grid">
-            <KvRow label="发布人" value={versionInfo.publisher} />
-            <KvRow label="发布时间" value={versionInfo.publishTime} />
+            <KvRow label="发布人" value={versionInfo.publishedBy} />
+            <KvRow label="发布时间" value={versionInfo.publishedTime} />
           </div>
         </div>
       )}
 
       {/* 已失效 */}
-      {status === 'EXPIRED' && (
+      {status === VERSION_STATUS.EXPIRED && (
         <div className="drawer-section">
           <div className="section-title">失效信息</div>
           <div className="kv-grid">
+            <KvRow label="失效人" value={versionInfo.expireBy} />
             <KvRow label="失效时间" value={versionInfo.expireTime} />
           </div>
         </div>
       )}
 
       {/* 审批中 */}
-      {status === 'APPROVING' && (
+      {status === VERSION_STATUS.APPROVING && (
         <div className="drawer-section">
           <div className="section-title">
             审批信息
             <span className="section-title-extra">点击催办可提醒审批人</span>
           </div>
           <div className="kv-grid" style={{ marginBottom: 12 }}>
-            <KvRow label="当前审批人" value={versionInfo.approver} />
-            <KvRow label="提交时间" value={versionInfo.submitTime} />
+            <KvRow label="当前审批人" value={versionInfo.approver.userId} />
           </div>
 
           {versionInfo.approvalUrl && (
@@ -175,10 +208,7 @@ const VersionDetailDrawer = (props) => {
               <span
                 className="link-card-arrow"
                 title="复制审批链接"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyApprovalUrl(versionInfo.approvalUrl);
-                }}
+                onClick={(e) => { handleCopyApprovalUrl(versionInfo.approvalUrl) }}
               >
                 <CopyOutlined />
               </span>
@@ -188,10 +218,8 @@ const VersionDetailDrawer = (props) => {
           <div style={{ marginTop: 12, textAlign: 'right' }}>
             <Button
               type="primary"
-              onClick={() => {
-                onUrge && onUrge();
-                message.success('已发送催办提醒');
-              }}
+              loading={remindLoading}
+              onClick={handleRemind}
             >
               催办审批
             </Button>
@@ -200,12 +228,11 @@ const VersionDetailDrawer = (props) => {
       )}
 
       {/* 已驳回 */}
-      {status === 'REJECTED' && (
+      {status === VERSION_STATUS.REJECTED && (
         <div className="drawer-section">
           <div className="section-title">驳回信息</div>
           <div className="kv-grid" style={{ marginBottom: 12 }}>
             <KvRow label="驳回人" value={versionInfo.rejector} />
-            <KvRow label="驳回时间" value={versionInfo.rejectTime} />
           </div>
           {versionInfo.rejectReason && (
             <div className="callout-error">{versionInfo.rejectReason}</div>
@@ -214,12 +241,12 @@ const VersionDetailDrawer = (props) => {
       )}
 
       {/* 已撤回 */}
-      {status === 'WITHDRAWN' && (
+      {status === VERSION_STATUS.WITHDRAWN && (
         <div className="drawer-section">
           <div className="section-title">撤回信息</div>
           <div className="kv-grid">
-            <KvRow label="撤回人" value={versionInfo.withdrawer} />
-            <KvRow label="撤回时间" value={versionInfo.withdrawTime} />
+            <KvRow label="撤回人" value={versionInfo.lastUpdateBy} />
+            <KvRow label="撤回时间" value={versionInfo.lastUpdateTime} />
           </div>
         </div>
       )}

@@ -94,8 +94,8 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
             <Form.Item
               name="channelAddress"
               label="回调地址"
-              validateStatus={null}
               rules={[
+                { required: true, message: '请输入回调地址' },
                 {
                   validator(_, value) {
                     if (!value) {
@@ -103,7 +103,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
                     }
                     
                     const protocolPattern = channelType === 3 ? /^wss?:\/\/.+/ : /^https?:\/\/.+/;
-                    const errorMessage = channelType === 3 ? 'WebSocket 回调地址必须以 ws:// 或 wss:// 开头'  : '回调地址必须以 http:// 或 https:// 开头';
+                    const errorMessage = channelType === 3 ? 'WebSocket 回调地址必须以 ws:// 或者 wss:// 开头' : '回调地址必须以 http:// 或者 https:// 开头';
                     
                     if (protocolPattern.test(value)) {
                       return Promise.resolve();
@@ -112,6 +112,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
                   },
                 },
               ]}
+              validateFirst={true}
             >
               <Input placeholder="https://your-domain.com/webhook" />
             </Form.Item>
@@ -122,7 +123,6 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
             </Form.Item>
           </>
         )}
-        
       </Form>
     </Drawer>
   );

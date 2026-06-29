@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 # ==================== 创建事件 ====================
 # 接口：POST /service/open/v2/events

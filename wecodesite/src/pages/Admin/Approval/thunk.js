@@ -215,13 +215,15 @@ export const deleteApprovalFlow = async (id) => {
 
 /**
  * 复制审批地址催办
- * @param {string} eflowId - 审批流ID
+ * @param {string} businessId - 审批流ID
+ * @param {string} businessType - 审批业务类型
  * @returns {Promise<Object>} 包含 code、messageZh 的响应对象
  */
-export const remindPeople = async (eflowId) => {
+export const remindPeople = async (params) => {
   try {
-    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.REMIND_APPROVE, { id: eflowId }), {
+    const result = await fetchApi(buildApiUrl(API_CONFIG.APPROVALS.REMIND_APPROVE, { id: params.businessId }), {
       method: 'POST',
+      body: JSON.stringify(params)
     });
     return result || {};
   } catch (err) {

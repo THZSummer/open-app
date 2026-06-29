@@ -69,7 +69,7 @@ public class DagScheduler {
     /**
      * 调度执行 DAG (直接传入编排配置 JSON 字符串)
      * <p>
-     * 用于已自行完成版本解析和校验的场景 (如 OpTriggerService),
+     * 用于已自行完成版本解析和校验的场景 (如 FlowInvokeService),
      * 避免重复加载 flow version.
      * </p>
      *
@@ -307,7 +307,7 @@ public class DagScheduler {
      * 解析节点超时: min(node.data.timeoutMs, 30s), 默认 30s
      */
     private Duration resolveNodeTimeout(JsonNode nodeConfig) {
-        long defaultTimeoutMs = 30000;
+        long defaultTimeoutMs = 5000;
         JsonNode data = nodeConfig.get("data");
         if (data != null && data.has("timeoutMs")) {
             JsonNode timeoutNode = data.get("timeoutMs");
@@ -352,14 +352,14 @@ public class DagScheduler {
      */
     private String getEdgeField(JsonNode edge, String newField, String oldField) {
         JsonNode val = edge.get(newField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         val = edge.get(oldField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         return null;
     }
 
     /**
-     * JsonNode Array → List<JsonNode>
+     * 将 JsonNode 数组转换为 List<JsonNode>
      */
     private List<JsonNode> toList(JsonNode arrayNode) {
         List<JsonNode> list = new ArrayList<>();

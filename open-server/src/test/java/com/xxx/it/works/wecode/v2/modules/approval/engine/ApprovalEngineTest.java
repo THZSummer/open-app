@@ -9,8 +9,8 @@ import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -111,9 +111,9 @@ class ApprovalEngineTest {
         @Test
         @DisplayName("appId 非 null，应用级模板存在 → 返回应用级+全局两级")
         void testWithAppId_AppLevelTemplateExists() {
-            when(flowMapper.selectByCodeAndAppId(eq("connector_flow_version_publish"), eq(appId)))
+            when(flowMapper.selectByCode(eq("connector_flow_version_publish")))
                     .thenReturn(appFlow);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(globalFlow);
 
             List<ApprovalNodeDto> nodes = engine.composeApprovalNodes(
@@ -133,13 +133,9 @@ class ApprovalEngineTest {
         @Test
         @DisplayName("appId 非 null，无应用模板 → 回退到平台级 + 全局")
         void testWithAppId_FallbackToPlatform() {
-            // 应用级不存在
-            when(flowMapper.selectByCodeAndAppId(eq("connector_flow_version_publish"), eq(appId)))
-                    .thenReturn(null);
-            // 回退到平台级
-            when(flowMapper.selectByCodeAndAppId(eq("connector_flow_version_publish"), isNull()))
+            when(flowMapper.selectByCode(eq("connector_flow_version_publish")))
                     .thenReturn(platformFlow);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(globalFlow);
 
             List<ApprovalNodeDto> nodes = engine.composeApprovalNodes(
@@ -153,9 +149,9 @@ class ApprovalEngineTest {
         @Test
         @DisplayName("appId 为 null → 直接使用平台级 + 全局")
         void testWithNullAppId_UsesPlatformDirectly() {
-            when(flowMapper.selectByCodeAndAppId(eq("connector_flow_version_publish"), isNull()))
+            when(flowMapper.selectByCode(eq("connector_flow_version_publish")))
                     .thenReturn(platformFlow);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(globalFlow);
 
             List<ApprovalNodeDto> nodes = engine.composeApprovalNodes(
@@ -163,8 +159,7 @@ class ApprovalEngineTest {
 
             assertEquals(2, nodes.size());
             assertEquals("platform_approver", nodes.get(0).getUserId());
-            // 验证不会尝试查询应用级（appId=null 时跳过 selectByCodeAndAppId(code, appId)）
-            verify(flowMapper, never()).selectByCodeAndAppId(eq("connector_flow_version_publish"), eq(123L));
+            assertEquals("global_approver", nodes.get(1).getUserId());
         }
 
         @Test
@@ -174,9 +169,9 @@ class ApprovalEngineTest {
             apiRegisterFlow.setCode("api_register");
             apiRegisterFlow.setNodes("[{\"userId\":\"api_approver\",\"userName\":\"API Approver\"}]");
 
-            when(flowMapper.selectByCodeAndAppId(eq("api_register"), isNull()))
+            when(flowMapper.selectByCode(eq("api_register")))
                     .thenReturn(apiRegisterFlow);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(globalFlow);
 
             List<ApprovalNodeDto> nodes = engine.composeApprovalNodes(
@@ -194,9 +189,9 @@ class ApprovalEngineTest {
             eventFlow.setCode("event_register");
             eventFlow.setNodes("[{\"userId\":\"event_approver\",\"userName\":\"Event Approver\"}]");
 
-            when(flowMapper.selectByCodeAndAppId(eq("event_register"), isNull()))
+            when(flowMapper.selectByCode(eq("event_register")))
                     .thenReturn(eventFlow);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(globalFlow);
 
             List<ApprovalNodeDto> nodes = engine.composeApprovalNodes(
@@ -208,9 +203,9 @@ class ApprovalEngineTest {
         @Test
         @DisplayName("场景模板和全局模板都为空 → 返回空列表，不抛异常")
         void testBothTemplatesEmpty_ReturnsEmpty() {
-            when(flowMapper.selectByCodeAndAppId(eq("connector_flow_version_publish"), isNull()))
+            when(flowMapper.selectByCode(eq("connector_flow_version_publish")))
                     .thenReturn(null);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(null);
 
             List<ApprovalNodeDto> nodes = engine.composeApprovalNodes(
@@ -229,9 +224,9 @@ class ApprovalEngineTest {
         @Test
         @DisplayName("V3 类型带 appId 创建审批记录 → 成功")
         void testCreateApproval_WithAppId() {
-            when(flowMapper.selectByCodeAndAppId(eq("connector_flow_version_publish"), eq(appId)))
+            when(flowMapper.selectByCode(eq("connector_flow_version_publish")))
                     .thenReturn(appFlow);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(globalFlow);
 
             ApprovalRecord record = engine.createApproval(
@@ -259,9 +254,9 @@ class ApprovalEngineTest {
             apiFlow.setCode("api_register");
             apiFlow.setNodes("[{\"userId\":\"api_approver\",\"userName\":\"API Approver\"}]");
 
-            when(flowMapper.selectByCodeAndAppId(eq("api_register"), isNull()))
+            when(flowMapper.selectByCode(eq("api_register")))
                     .thenReturn(apiFlow);
-            when(flowMapper.selectByCodeAndAppId(eq("global"), isNull()))
+            when(flowMapper.selectByCode(eq("global")))
                     .thenReturn(globalFlow);
 
             ApprovalRecord record = engine.createApproval(

@@ -12,8 +12,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Modal, Radio, Spin, Empty, Tag } from 'antd';
+import { Modal, Spin, Empty, Tag, Table } from 'antd';
 import { fetchPublishedVersions } from '../../pages/ConnectPlatform/Flow/thunk';
+import { VERSION_STATUS_MAP } from '../../pages/ConnectPlatform/FlowEditorV2/constants';
 import './DeployFlowModal.m.less';
 
 /**
@@ -45,7 +46,9 @@ function DeployFlowModal(props) {
    * 若连接流已有部署版本，默认选中当前部署版本
    */
   useEffect(() => {
-    if (!open || !flow?.flowId) return;
+    // 获取当前连接流 ID，列表记录中使用 id 字段。
+    const flowId = flow?.id;
+    if (!open || !flowId) return;
 
     // 重置选中状态
     setSelectedVersionId(null);
@@ -53,7 +56,7 @@ function DeployFlowModal(props) {
     // 拉取已发布版本（status=5 已发布）
     const loadVersions = async () => {
       setVersionsLoading(true);
-      const res = await fetchPublishedVersions(flow.flowId);
+      const res = await fetchPublishedVersions(flowId);
       if (res && res.code === '200') {
         const list = res.data || [];
         setVersions(list);
@@ -84,6 +87,52 @@ function DeployFlowModal(props) {
   // 是否禁用"确认部署"按钮：无已发布版本 或 未选中版本
   const okDisabled = versions.length === 0 || !selectedVersionId;
 
+  // 部署版本表格列配置
+  const columns = [
+    {
+      title: '版本',
+      dataIndex: 'versionNumber',
+      key: 'version',
+      render: (value, record) => (
+        <span className="deploy-flow-modal__version-name">
+          {value != null ? `v${value}` : record.versionId}
+        </span>
+      ),
+    },
+    {
+      title: '时间',
+      dataIndex: 'publishedTime',
+      key: 'time',
+      render: (value, record) => value || record.createTime || '-',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (value) => {
+        // 当前版本状态展示信息
+        const statusInfo = VERSION_STATUS_MAP[value] || {};
+        return (
+          <Tag color={statusInfo.color || 'default'} className="deploy-flow-modal__status-tag">
+            {statusInfo.text || value || '-'}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: '当前部署',
+      dataIndex: 'versionId',
+      key: 'current',
+      render: (value) => (
+        value === flow?.deployedVersionId ? (
+          <Tag color="blue" className="deploy-flow-modal__current-tag">
+            当前部署
+          </Tag>
+        ) : '-'
+      ),
+    },
+  ];
+
   return (
     <Modal
       title="选择部署版本"
@@ -93,6 +142,7 @@ function DeployFlowModal(props) {
       okText="确认部署"
       cancelText="取消"
       width={520}
+      centered
       okButtonProps={{ disabled: okDisabled, loading }}
       destroyOnClose
     >
@@ -102,42 +152,23 @@ function DeployFlowModal(props) {
             // 无可部署版本：提示并禁用确认按钮
             <Empty description="暂无已发布的版本" />
           ) : (
-            <Radio.Group
-              className="deploy-flow-modal__radio-group"
-              value={selectedVersionId}
-              onChange={(e) => setSelectedVersionId(e.target.value)}
-            >
-              {versions.map((version) => {
-                // 当前部署版本标识
-                const isCurrent = version.versionId === flow?.deployedVersionId;
-                return (
-                  <Radio
-                    key={version.versionId}
-                    value={version.versionId}
-                    className={isCurrent ? 'deploy-flow-modal__radio--current' : ''}
-                  >
-                    <div className="deploy-flow-modal__version-row">
-                      <span className="deploy-flow-modal__version-name">
-                        {/* 优先展示版本号；缺失时回退到版本 ID */}
-                        {version.versionNumber != null
-                          ? `v${version.versionNumber}`
-                          : version.versionId}
-                      </span>
-                      {version.description && (
-                        <span className="deploy-flow-modal__version-desc">
-                          {version.description}
-                        </span>
-                      )}
-                      {isCurrent && (
-                        <Tag color="blue" className="deploy-flow-modal__current-tag">
-                          (当前部署)
-                        </Tag>
-                      )}
-                    </div>
-                  </Radio>
-                );
+            <Table
+              className="deploy-flow-modal__table"
+              columns={columns}
+              dataSource={versions}
+              rowKey="versionId"
+              pagination={false}
+              size="small"
+              rowSelection={{
+                type: 'radio',
+                selectedRowKeys: selectedVersionId ? [selectedVersionId] : [],
+                onChange: (keys) => setSelectedVersionId(keys[0]),
+              }}
+              onRow={(record) => ({
+                // 点击整行时选中当前版本
+                onClick: () => setSelectedVersionId(record.versionId),
               })}
-            </Radio.Group>
+            />
           )}
         </div>
       </Spin>

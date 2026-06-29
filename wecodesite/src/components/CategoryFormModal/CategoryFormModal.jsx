@@ -58,7 +58,7 @@ function CategoryFormModal({
     if (result && result.code === '200') {
       form.resetFields();
     } else {
-      message.error(result.message || '提交失败')
+      message.error(result.message || result.messageZh || '提交失败')
     }
     setLoading(false);
   };
@@ -85,8 +85,6 @@ function CategoryFormModal({
       onOk={handleOk}
       onCancel={handleCancel}
       confirmLoading={loading}
-      okText="保存"
-      cancelText="取消"
       width={600}
       destroyOnClose
     >

@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.execution;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.execution.entity.ExecutionStepEntity;
 import com.xxx.it.works.wecode.v2.modules.execution.repository.ExecutionStepRepository;
 import org.slf4j.Logger;
@@ -23,7 +24,7 @@ import java.util.Map;
  * <p>写入失败不影响业务响应（异常吞掉仅记录日志）</p>
  *
  * @author SDDU Build Agent
- * @version 2.0.0
+ * @version 2.1.0
  */
 @Service
 public class ExecutionStepService {
@@ -33,13 +34,16 @@ public class ExecutionStepService {
     private final ExecutionStepRepository repository;
     private final LogSanitizer logSanitizer;
     private final ObjectMapper objectMapper;
+    private final ConnectorApiPropertyService propertyService;
 
     public ExecutionStepService(ExecutionStepRepository repository,
                                 LogSanitizer logSanitizer,
-                                ObjectMapper objectMapper) {
+                                ObjectMapper objectMapper,
+                                ConnectorApiPropertyService propertyService) {
         this.repository = repository;
         this.logSanitizer = logSanitizer;
         this.objectMapper = objectMapper;
+        this.propertyService = propertyService;
     }
 
     /**
@@ -60,6 +64,13 @@ public class ExecutionStepService {
                         String nodeName, Integer status,
                         Map<String, Object> input, Map<String, Object> output,
                         String error, Integer durationMs) {
+        // 检查日志采集开关 (#14: log_collection_enabled)
+        if (!propertyService.isLogCollectionEnabled()) {
+            log.warn("Step log skipped (logCollectionEnabled=false): executionId={}, nodeId={}, status={}, durationMs={}",
+                    executionId, nodeId, status, durationMs);
+            return;
+        }
+
         LocalDateTime now = LocalDateTime.now();
 
         ExecutionStepEntity step = new ExecutionStepEntity();
@@ -101,6 +112,13 @@ public class ExecutionStepService {
      */
     public void logStepsBatch(Long executionId, List<StepLog> stepLogs) {
         if (stepLogs == null || stepLogs.isEmpty()) {
+            return;
+        }
+
+        // 检查日志采集开关 (#14: log_collection_enabled)
+        if (!propertyService.isLogCollectionEnabled()) {
+            log.warn("Step logs batch skipped (logCollectionEnabled=false): executionId={}, count={}",
+                    executionId, stepLogs.size());
             return;
         }
 

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.it.works.wecode.v2.modules.flow.mapper.ExecutionStepMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.flowexecrecord.mapper.ExecutionStepMapper">
 
     <!-- ResultMap -->
-    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionStep">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionStep">
         <id column="id" property="id"/>
         <result column="execution_id" property="executionId"/>
         <result column="node_id" property="nodeId"/>
@@ -35,7 +35,7 @@
     </sql>
 
     <!-- Insert -->
-    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flow.entity.ExecutionStep">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.flowexecrecord.entity.ExecutionStep">
         INSERT INTO openplatform_v2_cp_execution_step_t (
             id, execution_id, node_id, node_type, node_label_cn, node_label_en,
             iteration, status, cache_status, cache_key, cache_ttl_remaining,

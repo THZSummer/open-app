@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
   KeyOutlined,
   TeamOutlined,
@@ -31,7 +32,8 @@ function DynamicIcon({ iconName, iconUrl, size = 14 }) {
 // 自定义事件：能力变更时通知 Sidebar 刷新
 const ABILITY_CHANGED_EVENT = 'app:ability-changed';
 
-function Sidebar({ sidebarMainHeight, appDetail }) {
+function Sidebar({ sidebarMainHeight }) {
+  const appBaseInfo = useSelector(state => state.app.appBaseInfo);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -41,9 +43,8 @@ function Sidebar({ sidebarMainHeight, appDetail }) {
 
   // 动态已订阅能力列表
   const [subscribedAbilities, setSubscribedAbilities] = useState([]);
-  // 从 appDetail prop 获取应用类型
-  const appType = appDetail?.appType ?? null;
-  const appSubType = appDetail?.appSubType ?? null;
+  const appType = appBaseInfo?.appType ?? null;
+  const appSubType = appBaseInfo?.appSubType ?? null;
 
   const loadSubscribedAbilities = useCallback(async () => {
     if (!appId) return;
@@ -128,8 +129,8 @@ function Sidebar({ sidebarMainHeight, appDetail }) {
       {
         category: '连接平台',
         children: [
-          { key: 'connect/connectors', icon: <ApiOutlined />, label: '连接器' },
-          { key: 'connect/flows', icon: <SwapOutlined />, label: '连接流' },
+          { key: 'connectorList', icon: <ApiOutlined />, label: '连接器' },
+          { key: 'flowList', icon: <SwapOutlined />, label: '连接流' },
         ],
       },
       {

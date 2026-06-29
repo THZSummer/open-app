@@ -124,9 +124,9 @@ public class ExecutionResult {
         public String getErrorMessage() {
             if (errorInfo != null) {
                 Object msg = errorInfo.get("message");
-                if (msg instanceof String) return (String) msg;
+                if (msg instanceof String) { return (String) msg; }
                 Object msgEn = errorInfo.get("messageEn");
-                if (msgEn instanceof String) return (String) msgEn;
+                if (msgEn instanceof String) { return (String) msgEn; }
             }
             return null;
         }
@@ -146,7 +146,7 @@ public class ExecutionResult {
         public Integer getDownstreamStatusCode() {
             if (errorInfo != null) {
                 Object code = errorInfo.get("downstreamStatusCode");
-                if (code instanceof Number) return ((Number) code).intValue();
+                if (code instanceof Number) { return ((Number) code).intValue(); }
                 if (code instanceof String) {
                     try { return Integer.parseInt((String) code); } catch (NumberFormatException ignored) { return null; }
                 }
@@ -204,9 +204,9 @@ public class ExecutionResult {
     public String getErrorMessage() {
         if (errorInfo != null) {
             Object msg = errorInfo.get("message");
-            if (msg instanceof String) return (String) msg;
+            if (msg instanceof String) { return (String) msg; }
             Object msgEn = errorInfo.get("messageEn");
-            if (msgEn instanceof String) return (String) msgEn;
+            if (msgEn instanceof String) { return (String) msgEn; }
         }
         return null;
     }

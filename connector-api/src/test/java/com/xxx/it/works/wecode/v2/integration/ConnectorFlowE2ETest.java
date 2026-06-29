@@ -109,8 +109,10 @@ class ConnectorFlowE2ETest {
                 "labelCn", "IM发送消息",
                 "labelEn", "IM Send",
                 "connectorId", "1234567890123456789",
-                "url", "https://httpbin.org/post",
-                "method", "POST",
+                "protocolConfig", Map.of(
+                    "url", "https://httpbin.org/post",
+                    "method", "POST"
+                ),
                 "timeoutMs", 5000
         ));
 

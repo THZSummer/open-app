@@ -22,9 +22,9 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
-import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
@@ -684,6 +684,9 @@ public class ApprovalService {
 
         // 3. 解析 combinedNodes，获取当前审批节点的审批人
         List<ApprovalNodeDto> nodes = approvalEngine.parseNodes(record.getCombinedNodes());
+        if (nodes.isEmpty() || record.getCurrentNode() >= nodes.size()) {
+            throw new BusinessException("400", "审批节点配置异常", "Approval node configuration is invalid");
+        }
         ApprovalNodeDto currentNode = nodes.get(record.getCurrentNode());
 
         // 4. 调用第三方发送催办卡片消息

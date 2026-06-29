@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tag, Button, Space } from 'antd';
+import { Tag, Button, Space, Tooltip } from 'antd';
 import { SUBSCRIPTION_STATUS, STATUS_MAP } from './constants';
 import { openUrl } from './common';
 
@@ -10,6 +10,19 @@ export const NEED_REVIEW_OPTIONS = [
 ];
 
 export const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
+/**
+ * 渲染带 Tooltip 的文本单元格
+ * 用于表格中显示文本内容，支持 Tooltip 和空值占位展示
+ *
+ * @param {string} text - 单元格文本
+ * @returns {React.ReactNode} 渲染后的文本单元格
+ */
+export const renderTooltipTextCell = (text) => (
+  <Tooltip title={text}>
+    <span>{text || '-'}</span>
+  </Tooltip>
+);
 
 export const renderSubscriptionStatus = (isSubscribed) => {
   const { text, color } = SUBSCRIPTION_STATUS[isSubscribed];
@@ -53,6 +66,7 @@ export const createDrawerColumns = (type) => {
       dataIndex: ['resource', 'topic'],
       key: 'topic',
       width: 150,
+      ellipsis: true,
       render: (topic) => <code>{topic || '-'}</code>,
     },
     {
@@ -82,9 +96,8 @@ export const createDrawerColumns = (type) => {
   ];
   if (type === 'event') {
     return baseColumns;
-  } else {
-    return baseColumns.filter(item => item.key !== 'topic');
   }
+  return baseColumns.filter(item => item.key !== 'topic');
 };
 
 export const adminTableBaseColumn = ({ handleView, handleEdit, handleDelete }) => [

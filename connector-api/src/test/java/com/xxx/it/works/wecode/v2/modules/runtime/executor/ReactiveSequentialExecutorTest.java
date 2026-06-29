@@ -6,7 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
-import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +18,7 @@ import reactor.test.StepVerifier;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 @DisplayName("ReactiveSequentialExecutor 测试")
 class ReactiveSequentialExecutorTest {
@@ -31,8 +32,8 @@ class ReactiveSequentialExecutorTest {
         WebClient webClient = WebClient.builder().build();
 
         TriggerNodeExecutor triggerExecutor = new TriggerNodeExecutor(objectMapper);
-        CredentialInjectorRegistry mockRegistry = new CredentialInjectorRegistry(List.of());
-                ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockRegistry, null, null, null);
+        UnifiedCredentialProcessor mockProcessor = mock(UnifiedCredentialProcessor.class);
+        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockProcessor);
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 

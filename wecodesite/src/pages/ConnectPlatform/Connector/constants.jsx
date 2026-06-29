@@ -7,8 +7,9 @@
  */
 
 import React from 'react';
-import { Tag, Button, Space, Tooltip } from 'antd';
+import { Tag, Button, Space } from 'antd';
 import { CONNECTOR_STATUS, CONNECTOR_STATUS_MAP } from '../../../utils/constants';
+import { renderTooltipTextCell } from '../../../utils/commonTableConfigs';
 
 /**
  * 连接器删除二次确认弹窗配置
@@ -27,19 +28,6 @@ export const CONNECTOR_DISABLE_SECOND_MODAL_INFO = {
   getConfirmText: ({ objectName }) => `确认要将这个连接器：${objectName} 置为失效吗？`,
   impactText: '操作影响：失效后，该连接器将不可被引用，已配置的触发器、动作或连接流可能无法正常运行。',
 };
-
-/**
- * 渲染文本单元格
- * 用于表格中显示文本内容，支持tooltip和空值显示
- *
- * @param {string} text - 单元格文本
- * @returns {React.ReactNode} 渲染的单元格组件
- */
-const renderTextCell = (text) => (
-  <Tooltip title={text}>
-    <span>{text || '-'}</span>
-  </Tooltip>
-);
 
 /**
  * 页面配置信息
@@ -98,7 +86,7 @@ export const getConnectorColumns = (callbacks) => {
       key: 'connectorId',
       width: 180,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '中文名称',
@@ -106,7 +94,7 @@ export const getConnectorColumns = (callbacks) => {
       key: 'nameCn',
       width: 160,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '英文名称',
@@ -114,7 +102,7 @@ export const getConnectorColumns = (callbacks) => {
       key: 'nameEn',
       width: 160,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '类型',
@@ -135,7 +123,7 @@ export const getConnectorColumns = (callbacks) => {
       key: 'descriptionCn',
       width: 180,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '英文描述',
@@ -143,15 +131,15 @@ export const getConnectorColumns = (callbacks) => {
       key: 'descriptionEn',
       width: 180,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
-      title: '创建者',
+      title: '创建人',
       dataIndex: 'createBy',
       key: 'createBy',
       width: 120,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '创建时间',
@@ -159,7 +147,7 @@ export const getConnectorColumns = (callbacks) => {
       key: 'createTime',
       width: 180,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '更新人',
@@ -167,7 +155,7 @@ export const getConnectorColumns = (callbacks) => {
       key: 'lastUpdateBy',
       width: 120,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '更新时间',
@@ -175,7 +163,7 @@ export const getConnectorColumns = (callbacks) => {
       key: 'lastUpdateTime',
       width: 180,
       ellipsis: true,
-      render: renderTextCell,
+      render: renderTooltipTextCell,
     },
     {
       title: '状态',
@@ -192,7 +180,7 @@ export const getConnectorColumns = (callbacks) => {
     {
       title: '操作',
       key: 'action',
-      width: 220,
+      width: 260,
       fixed: 'right',
       render: (_, record) => {
         // 当前连接器状态：1=有效不可用 / 2=有效可用 / 3=已失效

@@ -57,4 +57,8 @@ public final class CommonConstants {
 
     // ===== 日志兜底值 =====
     public static final String UNKNOWN = "unknown";
+
+    // ===== 通用字段名（JSON 字段 / 方法参数名）=====
+    /** JSON 驼峰字段名 / Java 方法参数名 */
+    public static final String FIELD_APP_ID = "appId";
 }

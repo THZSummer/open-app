@@ -2,19 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button, message } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { remindPeople } from '../../pages/Admin/Approval/thunk';
-import { copyToClipboard } from '../../utils/common';
-
-/**
- * 从审批链接中提取 eflowId
- * @param {string} url - 审批地址URL
- * @returns {string} eflowId 值或空字符串
- */
-const extractEflowId = (url) => {
-  if (!url) return '';
-  
-  const match = url.match(/eflowId=([^&]+)/);
-  return match ? match[1] : '';
-};
+import { copyToClipboard, extractEflowId } from '../../utils/common';
 
 function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessType, approvalUser }) {
   const [remindLoading, setRemindLoading] = useState(false);
@@ -48,7 +36,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessTy
       businessType,
     }
     
-    const result = await remindPeople({ eflowId });
+    const result = await remindPeople(params);
     
     if (result && result.code === '200') {
       message.success('催办成功');
@@ -61,7 +49,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessTy
   };
 
   // 根据条件构建footer按钮
-  const footButtons = [
+  const footerButtons = [
     <Button 
     key="remind" 
     type="primary" 
@@ -77,17 +65,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessTy
       title="复制审批地址"
       open={open}
       onCancel={onClose}
-      footer={[
-        <Button
-          key="remind"
-          type="primary"
-          onClick={handleRemind}
-          loading={remindLoading}
-        >
-          催办
-        </Button>,
-        <Button key="cancel" onClick={onClose}>关闭</Button>
-      ]}
+      footer={footerButtons}
       centered
       width={500}
     >

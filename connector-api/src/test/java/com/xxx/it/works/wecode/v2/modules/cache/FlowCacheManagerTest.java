@@ -1,7 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,16 +30,13 @@ class FlowCacheManagerTest {
     private ReactiveValueOperations<String, String> valueOperations;
 
     private ObjectMapper objectMapper;
-    private CacheToggle cacheToggle;
     private FlowCacheManager cacheManager;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         objectMapper = new ObjectMapper();
-        cacheToggle = new CacheToggle();
-        cacheToggle.setEnabled(true);
-        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, cacheToggle);
+        cacheManager = new FlowCacheManager(redisTemplate, objectMapper);
     }
 
     @Test
@@ -73,19 +69,6 @@ class FlowCacheManagerTest {
 
         StepVerifier.create(cacheManager.checkCache(100L, "key1"))
                 .verifyComplete();
-    }
-
-    @Test
-    @DisplayName("缓存开关关闭 → checkCache 直接返回空")
-    void testCheckCache_ToggleDisabled() {
-        cacheToggle = new CacheToggle();
-        cacheToggle.setEnabled(false);
-        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, cacheToggle);
-
-        StepVerifier.create(cacheManager.checkCache(100L, "key1"))
-                .verifyComplete();
-
-        verify(redisTemplate, never()).opsForValue();
     }
 
     @Test
@@ -135,16 +118,4 @@ class FlowCacheManagerTest {
                 .verifyComplete();
     }
 
-    @Test
-    @DisplayName("缓存开关关闭 → writeCache 不做操作")
-    void testWriteCache_ToggleDisabled() {
-        cacheToggle = new CacheToggle();
-        cacheToggle.setEnabled(false);
-        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, cacheToggle);
-
-        StepVerifier.create(cacheManager.writeCache(100L, "key1", "data", 3600))
-                .verifyComplete();
-
-        verify(redisTemplate, never()).opsForValue();
-    }
 }
