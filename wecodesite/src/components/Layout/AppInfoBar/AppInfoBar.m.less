@@ -15,6 +15,8 @@
   align-items: center;
   gap: 16px;
   padding: 8px 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .home-btn {
@@ -47,12 +49,19 @@
   flex-direction: column;
   height: 60px;
   justify-content: space-evenly;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .header-app-name {
   font-size: 16px;
   color: #1f2329;
   line-height: 1.5 !important;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-eamap {
@@ -60,6 +69,9 @@
   color: #3370ff;
   font-weight: 500;
   line-height: 1.5 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   .header-eamap-label {
     color: #8f959e;
@@ -71,6 +83,9 @@
   font-size: 12px;
   color: #8f959e;
   line-height: 1.5 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .header-eamap-bind {
