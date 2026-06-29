@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
+import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.FlowLifecycleStatus;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
@@ -39,6 +40,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 连接流版本管理服务（V3 多版本模型）
@@ -462,9 +464,10 @@ public class FlowVersionService {
      */
     private ApiResponse<?> validateRateLimits(String config, String externalAppId) {
         String appIdStr = externalAppId;
-        int appMaxQps = propertyService.getFlowMaxQps(appIdStr);
-        int appMaxConcurrency = propertyService.getFlowMaxConcurrency(appIdStr);
-        int appMaxTimeoutMs = propertyService.getNodeMaxTimeoutSeconds(appIdStr) * 1000;
+        Map<String, String> propertyConfig = propertyService.loadConfigBundle(appIdStr);
+        int appMaxQps = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_QPS, ConnectorPlatformConstants.DEFAULT_QPS_LIMIT);
+        int appMaxConcurrency = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_CONCURRENCY, ConnectorPlatformConstants.DEFAULT_CONCURRENCY_LIMIT);
+        int appMaxTimeoutMs = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_NODE_MAX_TIMEOUT_SECONDS, ConnectorPlatformConstants.DEFAULT_TIMEOUT_SECONDS) * 1000;
         List<String> errors = publishValidator.validateRateLimitAgainstAppMax(config, appMaxQps, appMaxConcurrency);
         if (!errors.isEmpty()) {
             return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
@@ -474,6 +477,13 @@ public class FlowVersionService {
             return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));
         }
         return null;
+    }
+
+    private int getIntFromConfig(Map<String, String> config, String key, int defaultVal) {
+        String value = config.get(key);
+        if (value == null || value.isEmpty()) return defaultVal;
+        try { return Integer.parseInt(value.trim()); }
+        catch (NumberFormatException e) { return defaultVal; }
     }
 
     // ==================== #33 复制到草稿 ====================

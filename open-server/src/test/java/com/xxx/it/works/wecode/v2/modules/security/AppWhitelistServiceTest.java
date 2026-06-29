@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.security;
 
+import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.modules.lookup.mapper.LookupWhitelistMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,7 +30,7 @@ class AppWhitelistServiceTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist")).thenReturn(null);
+        lenient().when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST)).thenReturn(null);
     }
 
     @Test
@@ -42,7 +43,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("Lookup 返回空列表 → 拒绝（安全默认）")
     void testLookupEmpty_DeniesAll() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenReturn(List.of());
 
         assertFalse(service.isWhitelisted("1"));
@@ -51,7 +52,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("appId 为 null → 拒绝")
     void testNullAppId_Denied() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenReturn(List.of("1", "2", "3"));
 
         assertFalse(service.isWhitelisted((String) null));
@@ -60,7 +61,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("appId 为空字符串 → 拒绝")
     void testEmptyAppId_Denied() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenReturn(List.of("1", "2", "3"));
 
         assertFalse(service.isWhitelisted(""));
@@ -70,7 +71,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("appId 在白名单中 → 通过")
     void testAppIdInWhitelist_Pass() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenReturn(List.of("app_001", "app_002", "app_003"));
 
         assertTrue(service.isWhitelisted("app_002"));
@@ -79,7 +80,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("appId 不在白名单中 → 拒绝")
     void testAppIdNotInWhitelist_Denied() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenReturn(List.of("app_001", "app_002"));
 
         assertFalse(service.isWhitelisted("app_999"));
@@ -88,7 +89,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("Lookup 查询返回结果 → 使用 Lookup 数据")
     void testLookupWhitelist_Used() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenReturn(List.of("app_a", "app_b", "app_c"));
 
         assertTrue(service.isWhitelisted("app_a"));
@@ -98,7 +99,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("Lookup 抛出异常 → 拒绝（安全默认）")
     void testLookupException_Denied() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenThrow(new RuntimeException("DB error"));
 
         assertFalse(service.isWhitelisted("5"));
@@ -107,7 +108,7 @@ class AppWhitelistServiceTest {
     @Test
     @DisplayName("Long 兼容方法 → 内部转 String 后校验")
     void testLongCompatMethod() {
-        when(lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist"))
+        when(lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST))
                 .thenReturn(List.of("100", "200", "300"));
 
         assertTrue(service.isWhitelisted(200L));
