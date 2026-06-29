@@ -26,7 +26,10 @@ import {
   normalizeJsonConfig,
 } from '../../../utils/common';
 import { getCommonConfig } from '../../../../routes-redBlue/utils/common';
-import { FLOW_APP_CONFIG_LOOKUP_KEY } from './constants';
+import {
+  FLOW_APP_CONFIG_LOOKUP_KEY,
+  FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY,
+} from './constants';
 import {
   buildHttpCarrierParams,
   buildJsonObjectFromParams,
@@ -36,13 +39,18 @@ import {
 import { stripScriptEditorTypes } from './utils';
 
 /**
- * 获取应用级配置
+ * 获取连接流配置
  *
- * @returns {Promise<Object>} 应用级配置响应
+ * @returns {Promise<Object>} 连接流配置响应
  */
 export const fetchAppConfig = async () => {
   try {
-    return await getCommonConfig(FLOW_APP_CONFIG_LOOKUP_KEY);
+    const [globalRes, appRes] = await Promise.all([
+      getCommonConfig(FLOW_APP_CONFIG_LOOKUP_KEY),
+      getCommonConfig(FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY),
+    ]);
+
+    return { globalRes, appRes };
   } catch {
     return {};
   }

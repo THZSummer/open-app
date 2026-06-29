@@ -23,8 +23,8 @@ function AppCard(props) {
   const roleInfo = ROLE_MAP[app.currentUserRole] || ROLE_MAP[0];
   const roleText = roleInfo.text;
 
-  const ownerName = app.owner?.memberNameCn || 'Unknown';
-  const ownerAccount = app.owner?.w3Account || '';
+  const ownerName = app.owner?.memberNameCn ?? 'null';
+  const ownerAccount = app.owner?.w3Account ?? 'null';
 
   // 格式化时间：ISO → YYYY-MM-DD HH:mm:ss
   const formatTime = (isoStr) => {
@@ -74,7 +74,7 @@ function AppCard(props) {
         <div className="app-card-meta-item">
             <span className="app-card-meta-label">所有者：</span>
           <span className="app-card-meta-value owner">
-            {ownerName}{ownerAccount ? ` ${ownerAccount}` : ''}
+            {ownerName} {ownerAccount}
           </span>
         </div>
         <div className="app-card-meta-item">
