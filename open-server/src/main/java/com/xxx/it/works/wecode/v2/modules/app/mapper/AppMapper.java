@@ -40,6 +40,11 @@ public interface AppMapper {
 
     List<AppProperty> selectPropertiesByParentId(@Param("parentId") Long parentId);
 
+    /**
+     * 批量查询多个父级的属性
+     */
+    List<AppProperty> selectPropertiesByParentIds(@Param("parentIds") List<Long> parentIds);
+
     int insertProperty(AppProperty property);
 
     int batchInsertProperties(@Param("list") List<AppProperty> list);

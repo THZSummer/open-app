@@ -26,6 +26,13 @@ public interface AppMemberMapper {
             @Param("appId") Long appId,
             @Param("accountId") String accountId);
 
+    /**
+     * 按 appIds + accountId 批量查询（如批量查多个应用下某用户的成员记录）
+     */
+    List<AppMember> selectByAppIdsAndAccountId(
+            @Param("appIds") List<Long> appIds,
+            @Param("accountId") String accountId);
+
     AppMember selectById(@Param("id") Long id);
 
     int insert(AppMember member);
