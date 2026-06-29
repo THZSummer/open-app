@@ -4,7 +4,9 @@
 >
 > **效果图**: 浏览器打开 [`approval-page-mockup.html`](./approval-page-mockup.html) 可交互预览
 >
-> **v10.1 变更摘要**: 待审批列表主查询由 3 表 JOIN 改为单表查询 approval_record_t，version/app 数据由 Service 层单表补查后整合；新增 AppEntity / AppVersionEntity / AppMapper / AppVersionMapper；AppVersionPublishHandler 通过/驳回时使用 AppVersionStatusEnum 更新版本状态；审批接口改为平台级单层审批（去除节点流转）；appId 改为从属性表 `eamap_app_code` 获取；更新 §1.4 / §2.1 / §5.1 / §5.3 / §6.1
+> **v10.2 变更摘要**: 响应 VO 新增 `hisAppId` 字段（`openplatform_app_p_t.eamap_app_code`，用于前端展示），`appId` 恢复为 `openplatform_app_t.app_id`（用于路由跳转应用详情）；前端应用ID列 dataIndex 改为 hisAppId，查看按钮路由使用 appId；更新 §2.1 / §2.2.4 / §4.2
+>
+> **v10.1 变更摘要**: 待审批列表主查询由 3 表 JOIN 改为单表查询 approval_record_t，version/app 数据由 Service 层单表补查后整合；新增 AppEntity / AppVersionEntity / AppMapper / AppVersionMapper；AppVersionPublishHandler 通过/驳回时使用 AppVersionStatusEnum 更新版本状态；审批接口改为平台级单层审批（去除节点流转）；更新 §1.4 / §2.1 / §5.1 / §5.3 / §6.1
 >
 > **v10.0 变更摘要**: API URL 路径前缀由 `/approvals/` 重命名为 `/apps/`；端点名 `app-pending` → `pending`、`app-published` → `publish`、`app-process` → `approval`；同步更新 §2.1 / §2.2.3 / §5.1 / §6.1 / §6.3 中所有引用
 >
@@ -155,7 +157,8 @@ GET /service/open/v2/apps/pending
       "id": 1,
       "businessType": "app_version_publish",
       "businessId": "1001",
-      "appId": "app_third_party_001",
+      "appId": "app_001",
+      "hisAppId": "app_third_party_001",
       "appNameCn": "订单管理应用",
       "appNameEn": "Order Management App",
       "versionNo": "v2.1.0",
@@ -181,7 +184,8 @@ GET /service/open/v2/apps/pending
 | id | Long | 审批记录 ID |
 | businessType | String | 业务类型 |
 | businessId | String | 业务 ID（版本 ID） |
-| appId | String | 第三方应用 ID（从 `openplatform_app_p_t` 属性表 `eamap_app_code` 获取，Service 层补查） |
+| appId | String | 应用 ID（`openplatform_app_t.app_id`，用于路由跳转应用详情） |
+| hisAppId | String | 历史应用编码（从 `openplatform_app_p_t` 属性表 `eamap_app_code` 获取，Service 层补查，用于展示） |
 | appNameCn | String | 应用中文名 |
 | appNameEn | String | 应用英文名 |
 | versionNo | String | 版本号 |
@@ -283,7 +287,8 @@ GET /service/open/v2/apps/publish
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | Long | 应用主键 ID（`app_t.id`，非审批记录 ID） |
-| appId | String | 应用编码（从 `openplatform_app_p_t` 属性表 `eamap_app_code` 补查） |
+| appId | String | 应用 ID（直接从 `app_t.app_id` 获取，用于路由跳转） |
+| hisAppId | String | 历史应用编码（从 `openplatform_app_p_t` 属性表 `eamap_app_code` 补查，用于展示） |
 | appNameCn | String | 应用中文名（`app_t.app_name_cn`） |
 | appNameEn | String | 应用英文名（`app_t.app_name_en`） |
 | versionNo | String | 版本号（最新已上架版本的 `version_code`） |
@@ -485,7 +490,7 @@ APPROVAL_PROCESS: '/market-web/service/open/v2/apps/approval',
 | 应用名称 | appNameCn / appNameEn | 150px | 根据当前语言切换展示（中/英文）`#I18N_SWITCH` |
 | 应用能力 | capabilityNames | 160px | 文本（逗号分隔，超长省略） |
 | 版本号 | versionNo | 90px | 文本 |
-| 应用ID | appId | 120px | 文本（第三方应用 ID，从 `openplatform_app_p_t` 补查） |
+| 应用ID | hisAppId | 120px | 文本（历史应用编码，从 `openplatform_app_p_t` 补查） |
 | 申请账号 | applicantId | 100px | 文本（账号 ID） |
 | 申请时间 | createTime | 155px | yyyy-MM-dd HH:mm:ss |
 | 操作 | - | 180px | 按钮组（查看 + 同意 + 拒绝） |
@@ -497,7 +502,7 @@ APPROVAL_PROCESS: '/market-web/service/open/v2/apps/approval',
 | 应用名称 | appNameCn / appNameEn | 150px | 根据当前语言切换展示（中/英文）`#I18N_SWITCH` |
 | 应用能力 | capabilityNames | 160px | 文本（逗号分隔，超长省略） |
 | 版本号 | versionNo | 90px | 文本 |
-| 应用ID | appId | 120px | 文本（第三方应用 ID，从 `app_t.app_id` 直接获取） |
+| 应用ID | hisAppId | 120px | 文本（历史应用编码，从 `openplatform_app_p_t` 补查） |
 | 申请账号 | applicantId | 100px | 文本（账号 ID，Service 层从审批记录补查） |
 | 创建时间 | createTime | 155px | yyyy-MM-dd HH:mm:ss（应用创建时间） |
 | 操作 | - | 100px | 仅查看按钮 |
@@ -506,7 +511,7 @@ APPROVAL_PROCESS: '/market-web/service/open/v2/apps/approval',
 
 | 按钮 | 待审批 Tab | 已上架 Tab | 行为 |
 |------|:----------:|:----------:|------|
-| 查看 | ✓ | ✓ | `window.open('/app-detail/' + record.appId, '_blank')` — 新开浏览器标签页跳转应用详情 |
+| 查看 | ✓ | ✓ | `window.open('/app-detail/' + record.appId, '_blank')` — 使用 `appId`（非 hisAppId）跳转应用详情 |
 | 同意 | ✓ | — | `Modal.confirm` 二次确认 → 调用 process API（action=0）→ 成功后 `message.success('审批通过')` + `fetchData()` |
 | 拒绝 | ✓ | — | `Modal.confirm` 二次确认 → 调用 process API（action=1）→ 成功后 `message.success('已拒绝')` + `fetchData()` |
 
@@ -911,8 +916,9 @@ CREATE TABLE `openplatform_app_version_p_t` (
 > - `openplatform_app_p_t` 为 KV 属性表，应用编码通过 `property_name = 'eamap_app_code'` 获取
 > - `openplatform_app_version_p_t` 为版本 KV 属性表，能力 ID 列表通过 `property_name = 'abilityIds'` 获取（`property_value` 为逗号分隔的能力主键 ID）
 > - `openplatform_app_ability_relation_t.app_id` 关联的是 `openplatform_app_t.id`（主键），不是 `app_id` 字段
-> - **待审批列表**：响应 VO 中的 `appId` = `openplatform_app_p_t.property_value`（Service 层补查），因为主表是 approval_record
-> - **已上架列表**：响应 VO 中的 `appId` = `openplatform_app_p_t.property_value`（`property_name = 'eamap_app_code'`，Service 层补查）
+> - **待审批列表**：响应 VO 中 `appId` = `openplatform_app_t.app_id`（Service 层通过 version→app 补查），`hisAppId` = `openplatform_app_p_t.property_value`（`property_name = 'eamap_app_code'`，Service 层补查）
+> - **已上架列表**：响应 VO 中 `appId` = `openplatform_app_t.app_id`（直接从主表获取），`hisAppId` = `openplatform_app_p_t.property_value`（`property_name = 'eamap_app_code'`，Service 层补查）
+> - **查看跳转**：前端查看按钮路由拼接使用 `appId`（非 `hisAppId`）
 > - 响应 VO 中的 `versionNo` 对应数据库字段 `openplatform_app_version_t.version_code`
 > - **已上架列表设计要点**：主表为 `openplatform_app_t`（筛选 status=1, app_type=1），通过子查询取每个应用最新已上架版本（version.status=4 即 APPROVED，MAX(version_code)），appId 从属性表 `eamap_app_code` 补查，applicantId 由 Service 层从 approval_record 补查
 > - **版本状态枚举**：`openplatform_app_version_t.status` 使用 `AppVersionStatusEnum`（1=草稿, 2=流程中, 3=驳回, 4=审批通过, 5=取消申请），详见 5.7 节

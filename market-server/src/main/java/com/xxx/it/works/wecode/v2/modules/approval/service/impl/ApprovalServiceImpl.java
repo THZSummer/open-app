@@ -3,7 +3,6 @@ package com.xxx.it.works.wecode.v2.modules.approval.service.impl;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalListRequest;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalProcessRequest;
-import com.xxx.it.works.wecode.v2.modules.approval.constant.ApprovalConstants;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.AbilityEntity;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.AppEntity;
@@ -75,9 +74,9 @@ public class ApprovalServiceImpl implements ApprovalService {
                     if (app != null) {
                         vo.setAppNameCn(app.getAppNameCn());
                         vo.setAppNameEn(app.getAppNameEn());
-                        // appId 从应用属性表补查 eamap_app_code
-                        String eamapAppCode = recordMapper.selectThirdPartyAppId(app.getId());
-                        vo.setAppId(eamapAppCode);
+                        vo.setAppId(app.getAppId());
+                        // hisAppId 从应用属性表补查 eamap_app_code
+                        vo.setHisAppId(recordMapper.selectThirdPartyAppId(app.getId()));
                     }
 
                     String abilityIdsStr = recordMapper.selectVersionAbilityIds(versionId);
@@ -128,9 +127,11 @@ public class ApprovalServiceImpl implements ApprovalService {
 
                 // id = 应用主键 ID
                 vo.setId(appPkId != null ? String.valueOf(appPkId) : null);
-                // appId 从应用属性表补查 eamap_app_code
+                // appId = openplatform_app_t.app_id（用于路由跳转）
+                vo.setAppId(toString(record.get("app_id")));
+                // hisAppId 从应用属性表补查 eamap_app_code
                 if (appPkId != null) {
-                    vo.setAppId(recordMapper.selectThirdPartyAppId(appPkId));
+                    vo.setHisAppId(recordMapper.selectThirdPartyAppId(appPkId));
                 }
                 vo.setAppNameCn(toString(record.get("app_name_cn")));
                 vo.setAppNameEn(toString(record.get("app_name_en")));
