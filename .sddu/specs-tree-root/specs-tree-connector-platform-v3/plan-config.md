@@ -43,24 +43,24 @@
 >
 > 至于连接器名称、认证类型、编排图结构、JSON Schema 定义等，属于开放给用户的自由输入内容，不在配置约束范畴，不列入此清单。
 
-| # | 配置项 | 作用域 | 按应用区分 | 存储 | path | classify_code | item_code | FR |
-|:--|--------|--------|:---:|:---:|:---:|------|------|----|
-| 1 | 连接器版本数量上限 | 连接器 | ❌ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Max.Versions` | FR-005a |
-| 2 | 连接器URL正则规则 | 连接器版本配置 | ❌ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Url.Regex.Pattern` | FR-015 |
-| 3 | 连接器配置JSON长度上限 | 连接器版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Config.Max.Bytes` | FR-047 |
-| 4 | 连接流版本数量上限 | 连接流 | ❌ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Versions` | FR-024a |
-| 5 | 运行记录条数上限 | 连接流 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Max.Execution.Records.Per.Flow` | FR-042 |
-| 6 | 连接器节点超时上限 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Node.Max.Timeout.Seconds` | FR-034 |
-| 7 | 连接流配置JSON长度上限 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Config.Max.Bytes` | FR-047 |
-| 8 | 连接流最大QPS | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Qps` | FR-035 |
-| 9 | 连接流最大并发 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Concurrency` | FR-035 |
-| 10 | 连接流缓存TTL上限 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Cache.Ttl.Seconds` | FR-037 |
-| 11 | 连接流并行节点分支上限 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Parallel.Branches` | FR-038a |
-| 11a | 串行编排连接器节点数量上限 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Serial.Connector.Nodes` | FR-026 |
-| 12 | 脚本源码长度上限 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Length.Chars` | FR-040a |
-| 13 | 脚本超时范围 | 连接流版本配置 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Timeout.Seconds` | FR-040a |
-| 14 | 日志采集开关 | 平台管控 | ✅ | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Log.Collection.Enabled` | FR-044 |
-| 15 | 连接器平台开放应用范围清单 | 平台管控 | ❌ | Lookup | `CEC.Open` | `Connector.Platform.AppWhitelist` | `appId` | FR-045 |
+| # | 配置项 | 作用域 | 按应用区分 | 默认值 | 存储 | path | classify_code | item_code | FR |
+|:--|--------|--------|:---:|:--|:---:|:---:|------|------|----|
+| 1 | 连接器版本数量上限 | 连接器 | ❌ | 1000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Max.Versions` | FR-005a |
+| 2 | 连接器URL正则规则 | 连接器版本配置 | ❌ | — | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Url.Regex.Pattern` | FR-015 |
+| 3 | 连接器配置JSON长度上限 | 连接器版本配置 | ✅ | 0 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Connector.Config.Max.Bytes` | FR-047 |
+| 4 | 连接流版本数量上限 | 连接流 | ❌ | 1000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Versions` | FR-024a |
+| 5 | 运行记录条数上限 | 连接流 | ✅ | 1000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Max.Execution.Records.Per.Flow` | FR-042 |
+| 6 | 连接器节点超时上限 | 连接流版本配置 | ✅ | 5 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Node.Max.Timeout.Seconds` | FR-034 |
+| 7 | 连接流配置JSON长度上限 | 连接流版本配置 | ✅ | 0 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Config.Max.Bytes` | FR-047 |
+| 8 | 连接流最大QPS | 连接流版本配置 | ✅ | 1000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Qps` | FR-035 |
+| 9 | 连接流最大并发 | 连接流版本配置 | ✅ | 1000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Concurrency` | FR-035 |
+| 10 | 连接流缓存TTL上限 | 连接流版本配置 | ✅ | 1296000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Cache.Ttl.Seconds` | FR-037 |
+| 11 | 连接流并行节点分支上限 | 连接流版本配置 | ✅ | 8 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Parallel.Branches` | FR-038a |
+| 11a | 串行编排连接器节点数量上限 | 连接流版本配置 | ✅ | 3 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Serial.Connector.Nodes` | FR-026 |
+| 12 | 脚本源码长度上限 | 连接流版本配置 | ✅ | 10000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Length.Chars` | FR-040a |
+| 13 | 脚本超时范围 | 连接流版本配置 | ✅ | 30 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Timeout.Seconds` | FR-040a |
+| 14 | 日志采集开关 | 平台管控 | ✅ | true | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Log.Collection.Enabled` | FR-044 |
+| 15 | 连接器平台开放应用范围清单 | 平台管控 | ❌ | — | Lookup | `CEC.Open` | `Connector.Platform.AppWhitelist` | `appId` | FR-045 |
 ---
 
 ## 2 配置详情
