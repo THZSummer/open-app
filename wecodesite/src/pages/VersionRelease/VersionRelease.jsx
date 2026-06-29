@@ -120,6 +120,7 @@ function VersionRelease() {
 
   // 返回列表
   const backToList = () => {
+    navigate(`/version-release?appId=${appId}`, { replace: true });
     setMode(MODE.LIST);
     setVersionDetail(null);
     form.resetFields();
