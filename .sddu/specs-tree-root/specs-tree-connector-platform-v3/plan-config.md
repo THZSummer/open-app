@@ -58,7 +58,7 @@
 | 11 | 连接流并行节点分支上限 | 连接流版本配置 | ✅ | 8 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Parallel.Branches` | FR-038a |
 | 11a | 串行编排连接器节点数量上限 | 连接流版本配置 | ✅ | 3 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Flow.Max.Serial.Connector.Nodes` | FR-026 |
 | 12 | 脚本源码长度上限 | 连接流版本配置 | ✅ | 10000 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Length.Chars` | FR-040a |
-| 13 | 脚本超时范围 | 连接流版本配置 | ✅ | 30 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Timeout.Seconds` | FR-040a |
+| 13 | 脚本超时范围 | 连接流版本配置 | ✅ | 5 | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Script.Max.Timeout.Seconds` | FR-040a |
 | 14 | 日志采集开关 | 平台管控 | ✅ | true | Lookup | `CEC.Open` | `Connector.Platform.Config` | `Log.Collection.Enabled` | FR-044 |
 | 15 | 连接器平台开放应用范围清单 | 平台管控 | ❌ | — | Lookup | `CEC.Open` | `Connector.Platform.AppWhitelist` | `appId` | FR-045 |
 ---
@@ -319,7 +319,7 @@
 | **存储** | Property |
 | **path** | `connector_platform` / `connector_platform_app_{appId}` |
 | **code** | `script_max_timeout_seconds` |
-| **默认值** | 30 |
+| **默认值** | 5 |
 | **按应用区分** | ✅ |
 | **实现状态** | ❌ 发布校验缺失 |
 
@@ -640,7 +640,7 @@ INSERT INTO openplatform_lookup_classify_t (classify_code, classify_name, path, 
 | 11 | flow_max_parallel_branches | Flow.Max.Parallel.Branches | 8 | int | 是 |
 | 11a | — | Flow.Max.Serial.Connector.Nodes | 3 | int | 是 |
 | 12 | script_max_length_chars | Script.Max.Length.Chars | 10000 | int | 是 |
-| 13 | script_max_timeout_seconds | Script.Max.Timeout.Seconds | 30 | int | 是 |
+| 13 | script_max_timeout_seconds | Script.Max.Timeout.Seconds | 5 | int | 是 |
 | 14 | log_collection_enabled | Log.Collection.Enabled | true | boolean | 是 |
 
 #15 白名单：item_code = appId，item_value = appId（如 app_001 / app_001）
@@ -675,7 +675,7 @@ openplatform_lookup_item_t（平台默认组，14 项）：
 | Flow.Max.Parallel.Branches | 8 |
 | Flow.Max.Serial.Connector.Nodes | 3 |
 | Script.Max.Length.Chars | 10000 |
-| Script.Max.Timeout.Seconds | 30 |
+| Script.Max.Timeout.Seconds | 5 |
 | Log.Collection.Enabled | true |
 
 openplatform_lookup_item_t（app_001 覆盖组，仅覆盖项）：
@@ -800,7 +800,7 @@ classify_id 需替换为实际查询结果：
 | Flow.Max.Parallel.Branches | 连接流并行节点分支上限 | 8 | 11 |
 | Flow.Max.Serial.Connector.Nodes | 串行编排连接器节点数量上限 | 3 | — |
 | Script.Max.Length.Chars | 脚本源码长度上限 | 10000 | 12 |
-| Script.Max.Timeout.Seconds | 脚本超时范围 | 30 | 13 |
+| Script.Max.Timeout.Seconds | 脚本超时范围 | 5 | 13 |
 | Log.Collection.Enabled | 日志采集开关 | true | 14 |
 
 ### 3.8 实施优先级
