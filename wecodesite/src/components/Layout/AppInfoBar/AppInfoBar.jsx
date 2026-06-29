@@ -79,18 +79,18 @@ function AppInfoBar() {
           </button>
           <div className="header-divider"></div>
           <div className="header-app-info">
-            <span className="header-app-name">
+            <div className="header-app-name" title={appBaseInfo?.nameCn || appBaseInfo?.nameEn || ''}>
               {appBaseInfo?.nameCn || appBaseInfo?.nameEn || '加载中...'}
-            </span>
+            </div>
             {/* 业务应用：显示已绑定信息 */}
             {!isPersonalApp && hasEamap && (
-              <span className="header-eamap"><span className="header-eamap-label">已绑定:</span> {appBaseInfo.eamapAppName || ''} {appBaseInfo.eamapAppCode}</span>
+              <div className="header-eamap" title={`已绑定: ${appBaseInfo.eamapAppName || ''} ${appBaseInfo.eamapAppCode}`}><span className="header-eamap-label">已绑定:</span> {appBaseInfo.eamapAppName || ''} {appBaseInfo.eamapAppCode}</div>
             )}
             {/* 存量个人应用：显示 未绑定应用服务: 立即绑定 */}
             {isLegacyPersonal && (
-              <span className="header-eamap-unbound">
+              <div className="header-eamap-unbound">
                 未绑定应用服务: <span className="header-eamap-bind" onClick={handleBindEamapOpen}>立即绑定</span>
-              </span>
+              </div>
             )}
             {/* 普通个人应用（appType=0, appSubType≠0）：不显示任何额外内容 */}
           </div>

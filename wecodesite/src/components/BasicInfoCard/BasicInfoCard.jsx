@@ -145,7 +145,16 @@ function BasicInfoCard() {
             <div className="edit-form-row">
               <div className="edit-form-label"><span className="edit-form-required">*</span> 中文名称</div>
               <div className="edit-form-field">
-                <Form.Item name="nameCn" rules={[{ required: true, message: '应用中文名不能为空' }, { max: 255, message: '不超过255字符' }]} style={{ marginBottom: 0 }}>
+                <Form.Item name="nameCn" rules={[
+                  { required: true, message: '应用中文名不能为空' },
+                  { max: 255, message: '不超过255字符' },
+                  { validator: (_, value) => {
+                    if (value && (value.startsWith(' ') || value.endsWith(' '))) {
+                      return Promise.reject(new Error('前后不能有空格'));
+                    }
+                    return Promise.resolve();
+                  } },
+                ]} style={{ marginBottom: 0 }}>
                   <Input maxLength={255} showCount />
                 </Form.Item>
               </div>
@@ -154,7 +163,16 @@ function BasicInfoCard() {
             <div className="edit-form-row">
               <div className="edit-form-label"><span className="edit-form-required">*</span> 英文名称</div>
               <div className="edit-form-field">
-                <Form.Item name="nameEn" rules={[{ required: true, message: '应用英文名不能为空' }, { max: 255, message: '不超过255字符' }]} style={{ marginBottom: 0 }}>
+                <Form.Item name="nameEn" rules={[
+                  { required: true, message: '应用英文名不能为空' },
+                  { max: 255, message: '不超过255字符' },
+                  { validator: (_, value) => {
+                    if (value && (value.startsWith(' ') || value.endsWith(' '))) {
+                      return Promise.reject(new Error('前后不能有空格'));
+                    }
+                    return Promise.resolve();
+                  } },
+                ]} style={{ marginBottom: 0 }}>
                   <Input maxLength={255} showCount />
                 </Form.Item>
               </div>
