@@ -30,6 +30,7 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.dto.*;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
+import com.xxx.it.works.wecode.v2.modules.permission.validator.ChannelAddressWhitelistValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,6 +71,7 @@ public class PermissionService {
     private final ApprovalEngine approvalEngine;
     private final ApprovalRecordMapper approvalRecordMapper;
     private final AppContextResolver appContextResolver;
+    private final ChannelAddressWhitelistValidator channelAddressWhitelistValidator;
 
 
 
@@ -572,6 +574,11 @@ public class PermissionService {
             throw new BusinessException("400", "通道类型不能为空", "Channel type cannot be null");
         }
 
+        // 通道地址白名单校验（ADR-004）
+        channelAddressWhitelistValidator.validate(
+                request.getChannelAddress(),
+                ChannelAddressWhitelistValidator.CODE_PREFIX_EVENT);
+
         subscriptionMapper.updateConfig(subIdLong, request.getChannelType(),
                 request.getChannelAddress(), request.getAuthType(), now, currentUser);
 
@@ -830,6 +837,11 @@ public class PermissionService {
         if (subscription == null) {
             throw new BusinessException("404", "订阅记录不存在", "Subscription not found");
         }
+
+        // 通道地址白名单校验（ADR-004）
+        channelAddressWhitelistValidator.validate(
+                request.getChannelAddress(),
+                ChannelAddressWhitelistValidator.CODE_PREFIX_CALLBACK);
 
         Date now = new Date();
         String currentUser = getCurrentUser();

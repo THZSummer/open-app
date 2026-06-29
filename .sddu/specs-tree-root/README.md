@@ -52,6 +52,8 @@
 - [数据库设计](./specs-tree-capability-open-platform/plan-db.md) - 15 张表 DDL
 - [任务分解](./specs-tree-capability-open-platform/tasks.md) - 13 个任务、5 个波次、103 人天
 - [ADR-001~003](./specs-tree-capability-open-platform/ADR-001.md) - 架构决策记录（3 份）
+- [ADR-004](./specs-tree-capability-open-platform/ADR-004.md) - 事件/回调通道地址白名单控制（ACCEPTED）
+- [通道地址白名单补丁规划](./specs-tree-capability-open-platform/plan-channel-whitelist.md) - 白名单校验方案、任务分解、测试计划（2d）
 - [实现报告](./specs-tree-capability-open-platform/build.md) - TASK-012 实现完成报告
 - [代码审查](./specs-tree-capability-open-platform/review.md) - 代码审查报告（4.5/5）
 - [验证报告](./specs-tree-capability-open-platform/validation-report.md) - 规范验证报告（100% FR 覆盖）

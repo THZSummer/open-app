@@ -212,4 +212,14 @@
           AND status = 1
     </select>
 
+    <!-- 查询数据字典（openplatform_property_t）按 path + code 前缀，返回有效记录的 value 列表 -->
+    <select id="selectDictionaryValuesByPathAndCodePrefix" resultType="string">
+        SELECT value
+        FROM openplatform_property_t
+        WHERE path = #{path}
+          AND code LIKE CONCAT(#{codePrefix}, '%')
+          AND status = 1
+        ORDER BY code
+    </select>
+
 </mapper>
