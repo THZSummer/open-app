@@ -296,7 +296,7 @@ def test_connector_version_select():
     )
 
     # 尝试调用 open-server 的发布接口
-    open_server_url = f"http://localhost:18080/open-server/api/v1/flows/{fid_002}/publish"
+    open_server_url = f"{OPEN_SERVER_BASE}/api/v1/flows/{fid_002}/publish"
     try:
         pub_resp = req_lib.post(
             open_server_url,
@@ -358,7 +358,7 @@ def test_connector_version_select():
     )
 
     # 尝试调用 open-server 的发布接口
-    open_server_url = f"http://localhost:18080/open-server/api/v1/flows/{fid_003}/publish"
+    open_server_url = f"{OPEN_SERVER_BASE}/api/v1/flows/{fid_003}/publish"
     try:
         pub_resp = req_lib.post(
             open_server_url,

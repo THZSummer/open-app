@@ -22,6 +22,18 @@ TEST_APP_ID = "202606241730488926"
 _DEFAULT_USER  = "admin"
 _DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
 _REDIS = {"host": "192.168.3.201", "port": 6379, "password": "openapp"}
+# Redis 集群节点（full_flow 测试用）
+_REDIS_CLUSTER_NODES = [
+    ("192.168.3.201", "6379"), ("192.168.3.202", "6379"),
+    ("192.168.3.203", "6379"), ("192.168.3.204", "6379"),
+    ("192.168.3.205", "6379"), ("192.168.3.206", "6379"),
+]
+
+# 关联服务地址
+CONNECTOR_API_BASE = "http://localhost:18180/api/v1"
+CONNECTOR_API_HEALTH = "http://localhost:18180/actuator/health"
+OPEN_SERVER_BASE = "http://localhost:18080/open-server"
+MOCK_SERVER_URL = "http://localhost:18980"
 _TIMEOUT = 10
 
 # ═══════════════════════════════════════════════════════════

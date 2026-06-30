@@ -45,13 +45,10 @@ os_fail = _osm.fail
 os_done = _osm.done
 os_redis = _osm.redis
 # 覆盖为集群模式: -c 自动处理 MOVED redirect；多节点容错，任一可达即可
-_REDIS_NODES = [("192.168.3.201", "6379"), ("192.168.3.202", "6379"),
-                ("192.168.3.203", "6379"), ("192.168.3.204", "6379"),
-                ("192.168.3.205", "6379"), ("192.168.3.206", "6379")]
 _REDIS_PASS = "openapp"
 
 def os_redis(*args):
-    for host, port in _REDIS_NODES:
+    for host, port in _REDIS_CLUSTER_NODES:
         cmd = ["redis-cli", "-c", "-h", host, "-p", port,
                "-a", _REDIS_PASS, "--no-auth-warning"]
         cmd.extend([str(a) for a in args])
@@ -65,9 +62,10 @@ def os_redis(*args):
 
 TEST_APP_ID = _osm.TEST_APP_ID
 
+from client import _REDIS_CLUSTER_NODES, CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, OPEN_SERVER_BASE
+
 import pytest
 import requests
-CONNECTOR_API = "http://localhost:18180/api/v1"
 KEEP = os.environ.get("KEEP_TEST_DATA", "1") == "1"
 
 import random
@@ -249,7 +247,7 @@ def snow_id():
     return int(time.time() * 1000000) % 100000000000000000
 
 def api_connector(method, path, body=None, headers=None):
-    url = f"{CONNECTOR_API}{path}"
+    url = f"{CONNECTOR_API_BASE}{path}"
     h = {"Content-Type": "application/json"}
     if headers:
         h.update(headers)
@@ -326,7 +324,7 @@ def test_full_flow():
     print("  ✅ open-server 就绪")
 
     try:
-        r2 = requests.get("http://localhost:18180/actuator/health", timeout=5)
+        r2 = requests.get(CONNECTOR_API_HEALTH, timeout=5)
         if r2.status_code == 200:
             print("  ✅ connector-api 就绪")
         else:
@@ -409,7 +407,7 @@ def test_full_flow():
                 "connectionConfig": {
                     "protocol": "HTTP",
                     "protocolConfig": {
-                        "url": "http://localhost:18980/api/echo",
+                        "url": f"{MOCK_SERVER_URL}/api/echo",
                         "method": "POST"
                     },
                     "authConfigs": [
@@ -634,7 +632,7 @@ def test_full_flow():
                             "connectorVersionConfig": {
                                 "protocol": "HTTP",
                                 "protocolConfig": {
-                                    "url": "http://localhost:18980/api/echo",
+                                    "url": f"{MOCK_SERVER_URL}/api/echo",
                                     "method": "POST"
                                 },
                                 "authConfigs": [
@@ -988,7 +986,7 @@ def test_full_flow():
 
         def s17():
             nonlocal first_resp_body, first_cache_status
-            url = f"POST http://localhost:18180/api/v1/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
+            url = f"POST {CONNECTOR_API_BASE}/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
             r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
                              {
                                  "filters": {"category": "tech", "minScore": 0.5},
@@ -1018,7 +1016,7 @@ def test_full_flow():
 
         def s18():
             nonlocal first_resp_body
-            url = f"POST http://localhost:18180/api/v1/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
+            url = f"POST {CONNECTOR_API_BASE}/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
             r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
                              {
                                  "filters": {"category": "tech", "minScore": 0.5},
