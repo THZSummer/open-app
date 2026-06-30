@@ -67,11 +67,12 @@ public class ApprovalController {
 
         ApprovalFlowListRequest request = new ApprovalFlowListRequest();
         request.setKeyword(keyword);
+        request.setAppId(appId);
         request.setCurPage(curPage);
         request.setPageSize(pageSize);
 
         List<ApprovalFlowListResponse> data = approvalService.getFlowList(request);
-        Long total = approvalService.countFlowList(keyword);
+        Long total = approvalService.countFlowList(keyword, appId);
 
         ApiResponse.PageResponse page = ApiResponse.PageResponse.builder()
                 .curPage(curPage)

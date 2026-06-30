@@ -59,7 +59,7 @@ class ApprovalControllerTest {
             List<ApprovalFlowListResponse> mockList = Collections.singletonList(response1);
 
             when(approvalService.getFlowList(any())).thenReturn(mockList);
-            when(approvalService.countFlowList(any())).thenReturn(1L);
+            when(approvalService.countFlowList(any(), any())).thenReturn(1L);
 
             ApiResponse<List<ApprovalFlowListResponse>> response = approvalController.getFlowList(
                     "审批", null, 1, 20);
@@ -72,7 +72,7 @@ class ApprovalControllerTest {
             assertNotNull(response.getPage());
             assertEquals(1L, response.getPage().getTotal());
             verify(approvalService).getFlowList(any());
-            verify(approvalService).countFlowList(any());
+            verify(approvalService).countFlowList(any(), any());
         }
 
         @Test

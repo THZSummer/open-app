@@ -78,7 +78,7 @@ class ApprovalServiceTest {
             flow.setStatus(1);
             flow.setNodes("[]");
 
-            when(flowMapper.selectList("test", 0, 10)).thenReturn(List.of(flow));
+            when(flowMapper.selectList("test", null, 0, 10)).thenReturn(List.of(flow));
             when(approvalEngine.parseNodes("[]")).thenReturn(new ArrayList<>());
 
             List<ApprovalFlowListResponse> result = approvalService.getFlowList(request);
@@ -87,7 +87,7 @@ class ApprovalServiceTest {
             assertEquals(1, result.size());
             assertEquals("1", result.get(0).getId());
             assertEquals("测试流程", result.get(0).getNameCn());
-            verify(flowMapper).selectList("test", 0, 10);
+            verify(flowMapper).selectList("test", null, 0, 10);
         }
 
         @Test
@@ -251,9 +251,9 @@ class ApprovalServiceTest {
         @Test
         @DisplayName("统计流程数量成功")
         void countFlowList_success() {
-            when(flowMapper.countList("test")).thenReturn(10L);
+            when(flowMapper.countList("test", null)).thenReturn(10L);
 
-            Long result = approvalService.countFlowList("test");
+            Long result = approvalService.countFlowList("test", null);
 
             assertEquals(10L, result);
         }
