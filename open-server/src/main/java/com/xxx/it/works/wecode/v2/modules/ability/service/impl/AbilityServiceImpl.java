@@ -140,7 +140,14 @@ public class AbilityServiceImpl implements AbilityService {
         Ability ability = abilityMapper.selectAll().stream()
                 .filter(a -> a.getAbilityType().equals(abilityType))
                 .findFirst().orElse(null);
-        Long abilityId = Objects.nonNull(ability) ? ability.getId() : (long) abilityType;
+        if (ability == null) {
+            throw new BusinessException(
+                    ResponseCodeEnum.ABILITY_TYPE_INVALID.getCode(),
+                    ResponseCodeEnum.ABILITY_TYPE_INVALID.getMessageZh(),
+                    ResponseCodeEnum.ABILITY_TYPE_INVALID.getMessageEn()
+            );
+        }
+        Long abilityId = ability.getId();
 
         AppAbilityRelation relation = new AppAbilityRelation();
         relation.setId(idGenerator.nextId());

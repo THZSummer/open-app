@@ -114,6 +114,7 @@
 - 级别：一般
 - 问题原因：enums/ResponseCodeEnum.java:51 NO_ADD_ROLE_PERMISSION("403201") 与 L64 NO_ABILITY_PERMISSION("403201") 错误码重复，不同语义用相同码，前端无法区分
 - 修改建议：NO_ABILITY_PERMISSION 改用独立错误码（如 403401）
+- **✅ 已修复（2026-06-30）**：NO_ABILITY_PERMISSION 经确认无任何使用点，直接删除
 
 ### 意见 10
 - 大类：软件结构
@@ -121,6 +122,7 @@
 - 级别：建议
 - 问题原因：model/ApiResponse.java:11 已有 @Builder，L38-53 又手写 ApiResponseBuilder + builder()，与 Lombok 生成重复
 - 修改建议：删除手写 Builder，依赖 @Builder
+- **✅ 已修复（2026-06-30）**：ApiResponse + PageResponse 的手写 getter/setter + Builder 全部删除（-52 行），保留 @Data @Builder 注解
 
 ### 意见 11
 - 大类：安全编码

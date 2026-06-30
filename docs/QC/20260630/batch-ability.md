@@ -37,6 +37,7 @@
 - 级别：一般
 - 问题原因：service/impl/AbilityServiceImpl.java:143 `abilityId = ability!=null ? ability.getId() : (long)abilityType`。主表缺失时用 abilityType(int) 强转 Long 当 ID，潜在数据不一致（relation 表 abilityId 与 ability 主表 id 不匹配）
 - 修改建议：主表缺失时抛异常，不用 abilityType 兜底
+- **✅ 已修复（2026-06-30）**：主表缺失时抛 `BusinessException(ABILITY_TYPE_INVALID)`，`abilityId = ability.getId()`，不再用 abilityType 兜底
 
 ## 批次结论
 
