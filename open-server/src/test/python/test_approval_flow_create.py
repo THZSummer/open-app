@@ -8,7 +8,7 @@
 """
 import time
 import pytest
-from conftest import api, db, TEST_APP_ID
+from conftest import api, db, TEST_APP_ID, INTERNAL_APP_ID
 
 
 def _snow_id():
@@ -39,7 +39,7 @@ class TestApprovalFlowCreate:
         code = f"pytest_appid_{_snow_id()}"
         resp = api("POST", "/approval-flows", {
             "nameCn": f"测试_{code}", "nameEn": f"test_{code}",
-            "code": code, "appId": TEST_APP_ID,
+            "code": code, "appId": INTERNAL_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test Approver"}]
         })
         assert resp.status_code in (200, 201), \
@@ -55,7 +55,7 @@ class TestApprovalFlowCreate:
         code = f"pytest_verify_{_snow_id()}"
         resp = api("POST", "/approval-flows", {
             "nameCn": f"验证_{code}", "nameEn": f"verify_{code}",
-            "code": code, "appId": TEST_APP_ID,
+            "code": code, "appId": INTERNAL_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test Approver"}]
         })
         assert resp.status_code in (200, 201)
@@ -65,8 +65,8 @@ class TestApprovalFlowCreate:
         assert resp2.status_code == 200
         d = resp2.json()["data"]
         assert "appId" in d
-        assert str(d.get("appId")) == str(TEST_APP_ID), \
-            f"appId 不匹配: 期望 {TEST_APP_ID}, 实际 {d.get('appId')}"
+        assert str(d.get("appId")) == str(INTERNAL_APP_ID), \
+            f"appId 不匹配: 期望 {INTERNAL_APP_ID}, 实际 {d.get('appId')}"
         db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE id = {tid}")
 
     # ═══════════════════════════════════════════════════════
@@ -96,7 +96,7 @@ class TestApprovalFlowCreate:
             # Step 2: 尝试创建同 code 但不同 appId 的模板
             r2 = api("POST", "/approval-flows", {
                 "nameCn": f"应用_{code}", "nameEn": f"app_{code}",
-                "code": code, "appId": TEST_APP_ID,
+                "code": code, "appId": INTERNAL_APP_ID,
                 "nodes": [{"userId": "tester", "userName": "Test"}]
             })
 
@@ -127,7 +127,7 @@ class TestApprovalFlowCreate:
         code = f"pytest_dup_{_snow_id()}"
         body = {
             "nameCn": f"冲突_{code}", "nameEn": f"dup_{code}",
-            "code": code, "appId": TEST_APP_ID,
+            "code": code, "appId": INTERNAL_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test"}]
         }
         r1 = api("POST", "/approval-flows", body)

@@ -72,6 +72,7 @@ def os_redis(*args):
         return None
 
 TEST_APP_ID = _osm.TEST_APP_ID
+INTERNAL_APP_ID = int(os_db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
 
 import pytest
 import requests
@@ -343,7 +344,7 @@ def test_full_flow():
         return
 
     # V3: 优先查找应用级模板 (code + appId)，回退到全局模板
-    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id = {TEST_APP_ID} LIMIT 1")
+    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id = {INTERNAL_APP_ID} LIMIT 1")
     if not tpl:
         tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id IS NULL LIMIT 1")
     if tpl:
@@ -354,7 +355,7 @@ def test_full_flow():
             "code": "connector_flow_version_publish",
             "nameCn": "连接器流版本发布审批",
             "nameEn": "connector_flow_version_publish",
-            "appId": str(TEST_APP_ID),
+            "appId": INTERNAL_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test Approver"}]
         })
         if r and r.status_code in (200, 201):
@@ -1064,14 +1065,14 @@ def test_full_flow():
 
             # ① Redis EXISTS
             v = os_redis("EXISTS", redis_key)
-            checks["EXISTS"] = v and v.strip() == "1"
+            checks["EXISTS"] = v is not None and (v == 1 or v == "1")
             print(f"    Redis EXISTS: {'1 ✅' if checks['EXISTS'] else '0'}")
 
             # ② Redis TTL (1~60s)
             v = os_redis("TTL", redis_key)
             if v:
                 try:
-                    ttl_val = int(v.strip())
+                    ttl_val = v if isinstance(v, int) else int(v.strip())
                     checks["TTL"] = 1 <= ttl_val <= 60
                     print(f"    Redis TTL: {ttl_val}s (配置60s) {'✅' if checks['TTL'] else '⚠️'}")
                 except ValueError:
