@@ -48,13 +48,14 @@ public interface ApprovalFlowMapper {
      */
     List<ApprovalFlow> selectList(
             @Param("keyword") String keyword,
+            @Param("appId") Long appId,
             @Param("offset") Integer offset,
             @Param("pageSize") Integer pageSize);
 
     /**
      * 统计审批流程数量
      */
-    Long countList(@Param("keyword") String keyword);
+    Long countList(@Param("keyword") String keyword, @Param("appId") Long appId);
 
     /**
      * 更新审批流程
@@ -76,6 +77,21 @@ public interface ApprovalFlowMapper {
      */
     int countByCodeExcludeId(
             @Param("code") String code,
+            @Param("excludeId") Long excludeId);
+
+    /**
+     * 检查 code+appId 组合是否存在（V3 修复：唯一性校验带 appId）
+     */
+    int countByCodeAndAppId(
+            @Param("code") String code,
+            @Param("appId") Long appId);
+
+    /**
+     * 检查 code+appId 组合是否存在（排除指定ID，用于更新校验）
+     */
+    int countByCodeAndAppIdExcludeId(
+            @Param("code") String code,
+            @Param("appId") Long appId,
             @Param("excludeId") Long excludeId);
 
     /**
