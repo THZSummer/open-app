@@ -86,7 +86,8 @@ public class AppWhitelistService {
 
     private List<String> queryLookupWhitelist() {
         try {
-            return lookupWhitelistMapper.selectItemValuesByClassifyCode(ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST);
+            return lookupWhitelistMapper.selectItemValuesByClassifyCode(
+                    ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST);
         } catch (Exception e) {
             log.warn("Failed to read Lookup whitelist, access denied", e);
             return null;

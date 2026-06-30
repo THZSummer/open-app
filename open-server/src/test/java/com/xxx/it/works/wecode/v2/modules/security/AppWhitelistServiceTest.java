@@ -114,4 +114,5 @@ class AppWhitelistServiceTest {
         assertTrue(service.isWhitelisted(200L));
         assertFalse(service.isWhitelisted(999L));
     }
+
 }
