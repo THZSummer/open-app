@@ -12,7 +12,10 @@ import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalActionResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.FlowVersionApprovalService;
 import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
+import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
+import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import org.springframework.beans.factory.annotation.Value;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
@@ -60,7 +63,7 @@ public class FlowVersionService {
 
 
     @Autowired
-    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService, ApprovalRecordMapper approvalRecordMapper) {
+    public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService, ApprovalRecordMapper approvalRecordMapper, ApprovalLogMapper approvalLogMapper) {
         this.flowMapper = flowMapper;
         this.flowVersionMapper = flowVersionMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
@@ -72,6 +75,7 @@ public class FlowVersionService {
         this.auditLogService = auditLogService;
         this.propertyService = propertyService;
         this.approvalRecordMapper = approvalRecordMapper;
+        this.approvalLogMapper = approvalLogMapper;
     }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
@@ -84,6 +88,7 @@ public class FlowVersionService {
     private final AuditLogService auditLogService;
     private final ConnectorPlatformPropertyService propertyService;
     private final ApprovalRecordMapper approvalRecordMapper;
+    private final ApprovalLogMapper approvalLogMapper;
 
     @Autowired(required = false)
     private StringRedisTemplate stringRedisTemplate;
@@ -228,32 +233,55 @@ public class FlowVersionService {
         response.setLastUpdateTime(formatDate(version.getLastUpdateTime()));
         response.setLastUpdateBy(version.getLastUpdateBy());
 
-        // 查询审批信息（待审批状态时查询审批人和审批地址）
-        if (version.getStatus() != null && version.getStatus() == FlowVersionStatus.PENDING_APPROVAL.getCode()) {
-            try {
-                ApprovalRecord record = approvalRecordMapper.selectLatestByBusiness(
-                        "connector_flow_version_publish", versionId);
-                if (record != null && record.getCombinedNodes() != null) {
-                    JsonNode nodesNode = objectMapper.readTree(record.getCombinedNodes());
-                    Integer currentNode = record.getCurrentNode();
-                    if (currentNode != null && currentNode >= 0
-                            && nodesNode.isArray() && currentNode < nodesNode.size()) {
-                        JsonNode nodeInfo = nodesNode.get(currentNode);
-                        String approverUserId = nodeInfo.has("userId")
-                                ? nodeInfo.get("userId").asText() : null;
-                        String approverUserName = nodeInfo.has("userName")
-                                ? nodeInfo.get("userName").asText() : null;
+        // 查询审批信息
+        if (version.getStatus() != null) {
+            Integer versionStatus = version.getStatus();
+            // 非草稿状态时查询审批记录和操作日志
+            if (versionStatus != FlowVersionStatus.DRAFT.getCode()) {
+                try {
+                    ApprovalRecord record = approvalRecordMapper.selectLatestByBusiness(
+                            ApprovalEngine.BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH, versionId);
+                    if (record != null) {
+                        // 待审批状态：返回当前审批人
+                        if (versionStatus == FlowVersionStatus.PENDING_APPROVAL.getCode()
+                                && record.getCombinedNodes() != null) {
+                            JsonNode nodesNode = objectMapper.readTree(record.getCombinedNodes());
+                            Integer currentNode = record.getCurrentNode();
+                            if (currentNode != null && currentNode >= 0
+                                    && nodesNode.isArray() && currentNode < nodesNode.size()) {
+                                JsonNode nodeInfo = nodesNode.get(currentNode);
+                                String approverUserId = nodeInfo.has("userId")
+                                        ? nodeInfo.get("userId").asText() : null;
+                                String approverUserName = nodeInfo.has("userName")
+                                        ? nodeInfo.get("userName").asText() : null;
 
-                        FlowVersionDetailResponse.ApproverInfo approverInfo =
-                                new FlowVersionDetailResponse.ApproverInfo();
-                        approverInfo.setUserId(approverUserId);
-                        approverInfo.setUserName(approverUserName);
-                        response.setApprover(approverInfo);
+                                FlowVersionDetailResponse.ApproverInfo approverInfo =
+                                        new FlowVersionDetailResponse.ApproverInfo();
+                                approverInfo.setUserId(approverUserId);
+                                approverInfo.setUserName(approverUserName);
+                                response.setApprover(approverInfo);
+                            }
+                        }
+
+                        // 查询最近一条审批操作日志（通过/驳回/撤回）
+                        List<ApprovalLog> logs = approvalLogMapper.selectByRecordId(record.getId());
+                        if (logs != null && !logs.isEmpty()) {
+                            // 取最新一条（按 create_time 倒序的第一条）
+                            ApprovalLog latestLog = logs.get(logs.size() - 1);  // 已按时间排序，最后一条最新
+                            FlowVersionDetailResponse.ApprovalLogInfo logInfo =
+                                    new FlowVersionDetailResponse.ApprovalLogInfo();
+                            logInfo.setOperatorId(latestLog.getOperatorId());
+                            logInfo.setOperatorName(latestLog.getOperatorName());
+                            logInfo.setAction(latestLog.getAction());
+                            logInfo.setComment(latestLog.getComment());
+                            logInfo.setActionTime(formatDate(latestLog.getCreateTime()));
+                            response.setLatestApprovalLog(logInfo);
+                        }
                     }
+                } catch (Exception e) {
+                    log.warn("Failed to query approval info for flow version: versionId={}, error={}",
+                            versionId, e.getMessage());
                 }
-            } catch (Exception e) {
-                log.warn("Failed to query approval info for flow version: versionId={}, error={}",
-                        versionId, e.getMessage());
             }
         }
 
