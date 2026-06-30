@@ -41,6 +41,9 @@ _LOOKUP_CONFIG_ITEMS = [
 def platform_property_defaults():
     """在全部测试开始前一次性插入 15 项 Lookup 配置 + App 白名单 Lookup。
     测试直接读 DB，不再需要 _set_property/_set_lookup_item 手动插入。"""
+    # 清理上次中断遗留的测试数据（避免唯一约束冲突）
+    db("DELETE FROM openplatform_lookup_item_t WHERE classify_id IN (SELECT classify_id FROM openplatform_lookup_classify_t WHERE classify_code IN ('Connector.Platform.Config','Connector.Platform.AppWhitelist') AND path = 'CEC.Open')")
+    db("DELETE FROM openplatform_lookup_classify_t WHERE classify_code IN ('Connector.Platform.Config','Connector.Platform.AppWhitelist') AND path = 'CEC.Open'")
     _config_classify_id = _snow_id()
     _whitelist_classify_id = _snow_id()
     _item_ids = []

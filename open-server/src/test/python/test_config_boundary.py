@@ -281,25 +281,15 @@ class TestExecutionRecordLimit:
         if default_val is not None:
             assert int(default_val) == 1000, f"Expected 1000, got {default_val}"
 
-    @pytest.mark.L4
-    def test_fifo_cleanup_config_exists(self):
-        """验证 FIFO 清理机制的常量存在 (1000 条上限，30 天保留)"""
-        retention = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'execution_record_retention_days' AND status = 1"
-        )
-        if retention is not None:
-            assert int(retention) > 0, f"Retention days must be positive, got {retention}"
-
 
 # ================================================================
 # #6 连接流节点超时上限
 # ================================================================
 
 class TestNodeTimeoutLimit:
-    """#6 连接流节点超时上限（默认 5 秒，由 Property node_max_timeout_seconds 控制）
+    """#6 连接流节点超时上限（默认 5 秒，由 Lookup Node.Max.Timeout.Seconds 控制）
 
-    FlowVersionService.publish() 从 PropertyService 读取 node_max_timeout_seconds，
+    FlowVersionService.publish() 从 ConnectorPlatformPropertyService (Lookup) 读取 Node.Max.Timeout.Seconds，
     转换为毫秒后传入 FlowPublishValidator.validateTimeoutAgainstAppMax()。
     fixture 写入的默认值是 5 秒（5000ms）。
     """
