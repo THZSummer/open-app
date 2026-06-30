@@ -383,7 +383,7 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
         if "exit_output_mapping" in overrides:
             exit_node["data"]["output"] = overrides["exit_output_mapping"]
 
-    return {
+    result = {
         "nodes": [trigger, connector, exit_node],
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_connector",
@@ -392,6 +392,17 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
              "type": "smoothstep", "data": {"businessType": "default"}}
         ]
     }
+
+    if overrides and "trigger_rate_limit_qps" in overrides:
+        result["flowConfig"] = {
+            "rateLimitConfig": {
+                "mode": "qps",
+                "maxQps": overrides["trigger_rate_limit_qps"],
+                "maxConcurrency": 1000
+            }
+        }
+
+    return result
 
 
 # ── 无 connector 的编排骨架 (trigger → exit) ──
@@ -593,12 +604,13 @@ def setup_flow(flow_id, lifecycle_status=2, orchestration=None,
     return flow_id, flow_version_id
 
 
-def _concurrent_invoke(flow_id, idx):
+def _concurrent_invoke(flow_id, idx, query_params=None):
     """模块级函数：并发触发请求（供 ThreadPoolExecutor 使用）"""
     try:
         resp = trigger(flow_id, body={"keyword": f"test_{idx}"},
                        headers={"X-Sys-Token": "test-token",
-                                "X-Trace-Id": f"trace-{idx}"})
+                                "X-Trace-Id": f"trace-{idx}"},
+                       query_params=query_params)
         return resp.status_code if resp is not None else 0
     except Exception as e:
         print(f"  CONCURRENT ERROR: {e}")
@@ -849,7 +861,7 @@ def test_trigger_invoke():
                                    connector_id=cid_064, connector_version_id=cvid_064)
     statuses = []
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(_concurrent_invoke, fid_064, i) for i in range(10)]
+        futures = [executor.submit(_concurrent_invoke, fid_064, i, {"page": "1", "size": "10"}) for i in range(10)]
         for f in as_completed(futures):
             s = f.result()
             if s is not None and s > 0:

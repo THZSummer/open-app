@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
@@ -67,6 +68,9 @@ class FlowInvokeServiceTest {
     @Mock
     private IdGenerator idGenerator;
 
+    @Mock
+    private ConnectorApiPropertyService propertyService;
+
     private ObjectMapper objectMapper;
     private FlowInvokeService triggerService;
 
@@ -91,7 +95,8 @@ class FlowInvokeServiceTest {
         triggerService = new FlowInvokeService(objectMapper,
                 executor, dagScheduler, flowVersionReadRepository,
                 reactiveRedisTemplate, cacheManager, entityCacheManager,
-                executionRecordService, executionStepService, idGenerator);
+                executionRecordService, executionStepService, idGenerator,
+                propertyService);
     }
 
     @Test

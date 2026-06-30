@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
@@ -80,6 +81,7 @@ public class FlowInvokeService {
     private final ExecutionRecordService executionRecordService;
     private final ExecutionStepService executionStepService;
     private final IdGenerator idGenerator;
+    private final ConnectorApiPropertyService propertyService;
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
@@ -91,7 +93,8 @@ public class FlowInvokeService {
             EntityCacheManager entityCacheManager,
             ExecutionRecordService executionRecordService,
             ExecutionStepService executionStepService,
-            IdGenerator idGenerator) {
+            IdGenerator idGenerator,
+            ConnectorApiPropertyService propertyService) {
         this.objectMapper = objectMapper;
         this.executor = executor;
         this.dagScheduler = dagScheduler;
@@ -102,6 +105,7 @@ public class FlowInvokeService {
         this.executionRecordService = executionRecordService;
         this.executionStepService = executionStepService;
         this.idGenerator = idGenerator;
+        this.propertyService = propertyService;
     }
 
     /**
@@ -272,8 +276,9 @@ public class FlowInvokeService {
                         String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
                         try {
                             executionRecordService.updateRecord(recordId, finalStatus, duration, errCode, errMsg);
-                            // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录
-                            executionRecordService.checkAndCleanFifo(flowId, 1000);
+                            // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
+                            int maxRecords = resolveMaxExecutionRecords();
+                            executionRecordService.checkAndCleanFifo(flowId, maxRecords);
                         } catch (Exception ex) {
                             log.warn("Failed to update execution record: {}", ex.getMessage());
                         }
@@ -293,8 +298,9 @@ public class FlowInvokeService {
                     // ★ 执行失败 - 更新记录
                     try {
                         executionRecordService.updateRecord(recordId, 1, null, errorCode, errorMsg);
-                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录
-                        executionRecordService.checkAndCleanFifo(flowId, 1000);
+                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
+                        int maxRecords = resolveMaxExecutionRecords();
+                        executionRecordService.checkAndCleanFifo(flowId, maxRecords);
                     } catch (Exception ex) {
                         log.warn("Failed to update execution record: {}", ex.getMessage());
                     }
@@ -947,6 +953,20 @@ public class FlowInvokeService {
             log.warn("Failed to parse flowConfig from orchestration map: {}", e.getMessage());
             return FlowConfig.defaults();
         }
+    }
+
+    /**
+     * 读取①平台全局: 单流最大执行记录数
+     */
+    private int resolveMaxExecutionRecords() {
+        return propertyService.loadPlatformDefaults()
+                .map(config -> {
+                    String val = config.get("Max.Execution.Records.Per.Flow");
+                    if (val == null || val.isEmpty()) return 1000;
+                    try { return Integer.parseInt(val.trim()); }
+                    catch (NumberFormatException e) { return 1000; }
+                })
+                .blockOptional().orElse(1000);
     }
 
     private String buildCacheKey(ExecutionContext ctx, List<String> cacheKeyExpressions) {

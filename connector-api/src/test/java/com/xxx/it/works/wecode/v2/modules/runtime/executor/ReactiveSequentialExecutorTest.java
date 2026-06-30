@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.executor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
@@ -18,7 +19,8 @@ import reactor.test.StepVerifier;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @DisplayName("ReactiveSequentialExecutor 测试")
 class ReactiveSequentialExecutorTest {
@@ -37,8 +39,11 @@ class ReactiveSequentialExecutorTest {
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 
+        ConnectorApiPropertyService propertyService = mock(ConnectorApiPropertyService.class);
+        when(propertyService.getNodeMaxTimeoutSeconds()).thenReturn(Mono.just(30));
+
         executor = new ReactiveSequentialExecutor(
-                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor, null);
+                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor, null, propertyService);
     }
 
     @Test

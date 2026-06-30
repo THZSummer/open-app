@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
@@ -66,14 +67,16 @@ public class RuntimeConfig {
             ConnectorNodeExecutor connectorNodeExecutor,
             DataProcessorExecutor dataProcessorExecutor,
             ExitNodeExecutor exitNodeExecutor,
-            ScriptNodeExecutor scriptNodeExecutor) {
+            ScriptNodeExecutor scriptNodeExecutor,
+            ConnectorApiPropertyService propertyService) {
         return new ReactiveSequentialExecutor(
                 objectMapper,
                 triggerNodeExecutor,
                 connectorNodeExecutor,
                 dataProcessorExecutor,
                 exitNodeExecutor,
-                scriptNodeExecutor);
+                scriptNodeExecutor,
+                propertyService);
     }
 
     @Bean
@@ -119,8 +122,9 @@ public class RuntimeConfig {
 
     @Bean
     public DagScheduler dagScheduler(ObjectMapper objectMapper,
-                                       List<NodeExecutor> nodeExecutors) {
-        return new DagScheduler(objectMapper, nodeExecutors);
+                                       List<NodeExecutor> nodeExecutors,
+                                       ConnectorApiPropertyService propertyService) {
+        return new DagScheduler(objectMapper, nodeExecutors, propertyService);
     }
 
     @Bean
