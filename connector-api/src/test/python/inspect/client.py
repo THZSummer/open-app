@@ -217,7 +217,7 @@ def _get_db_conn():
     return _db_conn
 
 def db(sql, capture=False):
-    """执行 SQL。capture=True 返回查询结果列表。"""
+    """执行 SQL。capture=True 返回 TSV 格式字符串（兼容旧版 mysql CLI 输出）。"""
     try:
         conn = _get_db_conn()
         with conn.cursor() as cursor:
@@ -225,16 +225,35 @@ def db(sql, capture=False):
             if capture and cursor.description:
                 cols = [d[0] for d in cursor.description]
                 rows = cursor.fetchall()
-                return [dict(zip(cols, row)) for row in rows]
+                lines = ["\t".join(cols)]
+                for row in rows:
+                    lines.append("\t".join(str(v) if v is not None else "NULL" for v in row))
+                return "\n".join(lines)
     except Exception as e:
         print(f"  DB ERROR: {e}")
     return None
 
+
+def db_rows(sql):
+    """执行 SQL 并返回结构化数据 list[dict]。用于需要结构化访问的场景。"""
+    try:
+        conn = _get_db_conn()
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+            if cursor.description:
+                cols = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                return [dict(zip(cols, row)) for row in rows]
+    except Exception as e:
+        print(f"  DB ERROR: {e}")
+    return []
+
+
 def db_val(sql):
     """执行 SQL 并返回单个值（第一行第一列）。"""
-    result = db(sql, capture=True)
-    if result and len(result) > 0:
-        first_col = list(result[0].values())[0]
+    rows = db_rows(sql)
+    if rows:
+        first_col = list(rows[0].values())[0]
         return str(first_col) if first_col is not None else None
     return None
 
