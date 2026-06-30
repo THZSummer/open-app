@@ -9,14 +9,9 @@ class TestFlowVersionCancel:
     """FR-031: 撤回待审批的连接流版本"""
 
     @pytest.mark.L2
-    def test_cancel_pending(self, draft_flow):
-        """撤回待审批版本：status 2→1(草稿)"""
-        fid, fvid = draft_flow
-
-        # 前置：配置最小编排并提交审批 → status=2
-        config = {"nodes": [{"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}}, {"id": "n1", "type": "script", "data": {"script": "1+1"}}], "edges": []}
-        db(f"UPDATE openplatform_v2_cp_flow_version_t SET orchestration_config = '{json.dumps(config)}' WHERE id = {fvid}")
-        db(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 2 WHERE id = {fvid}")
+    def test_cancel_pending(self, pending_approval_flow):
+        """撤回待审批版本：status 2→3(已撤回)"""
+        fid, fvid, ar_id = pending_approval_flow
 
         # 前置确认：待审批
         resp0 = api("GET", f"/flows/{fid}/versions/{fvid}")
@@ -32,8 +27,8 @@ class TestFlowVersionCancel:
         resp2 = api("GET", f"/flows/{fid}/versions/{fvid}")
         assert resp2.status_code == 200
         after = resp2.json()["data"]
-        assert after.get("status") in (1, "1", 3, "3"), \
-            f"Expected status=1(草稿) or 3(已撤回), got {after.get('status')}"
+        assert after.get("status") in (3, "3"), \
+            f"Expected status=3(已撤回), got {after.get('status')}"
 
     @pytest.mark.L4
     def test_cancel_published_rejected(self, draft_flow):
