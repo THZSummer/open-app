@@ -38,6 +38,11 @@ public interface ConnectorVersionRefMapper {
     int deleteByFlowVersionId(@Param("flowVersionId") Long flowVersionId);
 
     /**
+     * 按连接流ID删除所有引用（级联清理，用于连接流删除时）
+     */
+    int deleteByFlowId(@Param("flowId") Long flowId);
+
+    /**
      * 按连接流版本ID和节点ID查询引用
      */
     ConnectorVersionRef selectByFlowVersionAndNode(

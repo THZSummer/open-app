@@ -10,6 +10,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper;
 import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,13 +45,17 @@ public class FlowService {
 
 
     @Autowired
-    public FlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, IdGeneratorStrategy idGenerator) {
+    public FlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper,
+                       ConnectorVersionRefMapper connectorVersionRefMapper,
+                       IdGeneratorStrategy idGenerator) {
         this.flowMapper = flowMapper;
         this.flowVersionMapper = flowVersionMapper;
+        this.connectorVersionRefMapper = connectorVersionRefMapper;
         this.idGenerator = idGenerator;
     }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
+    private final ConnectorVersionRefMapper connectorVersionRefMapper;
     private final IdGeneratorStrategy idGenerator;
 
     @Autowired(required = false)
@@ -400,6 +405,8 @@ public class FlowService {
                     "Only invalidated flows can be deleted");
         }
 
+        // 级联删除连接器版本引用记录
+        connectorVersionRefMapper.deleteByFlowId(flowId);
         // 级联删除版本记录
         flowVersionMapper.deleteByFlowId(flowId);
         // 删除连接流基本信息
