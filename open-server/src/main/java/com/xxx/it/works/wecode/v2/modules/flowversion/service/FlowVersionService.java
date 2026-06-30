@@ -733,13 +733,9 @@ public class FlowVersionService {
                     "Only pending approval versions can be cancelled");
         }
 
-        Date now = new Date();
-        String currentUser = UserContextHolder.getUserName();
-
-        version.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
-        version.setLastUpdateTime(now);
-        version.setLastUpdateBy(currentUser);
-        flowVersionMapper.update(version);
+        // 委托给 FlowVersionApprovalService，同时更新 approval_record 和 flow_version 状态
+        String operator = UserContextHolder.getUserId();
+        approvalService.cancelApproval(versionId, appId, operator);
 
         log.info("Flow version approval cancelled: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
