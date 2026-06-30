@@ -11,7 +11,7 @@
     resp = api("GET", "/connectors/999", app_id="99999")  # 覆盖 app
     ok(resp, 403, "无权限访问")
 """
-import sys, json, time, subprocess
+import sys, json, time
 import requests
 
 # ═══════════════════════════════════════════════════════════
@@ -64,24 +64,74 @@ def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeou
 # ═══════════════════════════════════════════════════════════
 # DB — 直接执行 SQL
 # ═══════════════════════════════════════════════════════════
+_db_conn = None
+
+def _get_db_conn():
+    global _db_conn
+    if _db_conn is None or not _db_conn.open:
+        import pymysql
+        _db_conn = pymysql.connect(
+            host=_DB["host"],
+            user=_DB["user"],
+            password=_DB["passwd"],
+            database=_DB["db"],
+            charset="utf8mb4",
+            autocommit=True
+        )
+    return _db_conn
+
 def db(sql, capture=False):
-    """执行 SQL。capture=True 返回 stdout"""
-    cmd = ["mysql", f"-h{_DB['host']}", f"-u{_DB['user']}", f"-p{_DB['passwd']}", _DB['db'], "-e", sql]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    return r.stdout if capture else None
+    """执行 SQL。capture=True 返回查询结果列表。"""
+    try:
+        conn = _get_db_conn()
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+            if capture and cursor.description:
+                cols = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                return [dict(zip(cols, row)) for row in rows]
+    except Exception as e:
+        print(f"  DB ERROR: {e}")
+    return None
 
 def db_val(sql):
-    """执行 SQL 并返回单个值（第一列第一行）"""
-    out = db(sql, capture=True)
-    lines = out.strip().split('\n')
-    return lines[-1].strip() if len(lines) > 1 else None
+    """执行 SQL 并返回单个值（第一行第一列）。"""
+    result = db(sql, capture=True)
+    if result and len(result) > 0:
+        first_col = list(result[0].values())[0]
+        return str(first_col) if first_col is not None else None
+    return None
+
+_redis_client = None
 
 def redis(*args):
-    """执行 redis-cli 命令。如 redis("KEYS", "*") → redis("SET", "k", "v")"""
-    cmd = ["redis-cli", "-h", _REDIS["host"], "-p", str(_REDIS["port"]), "-a", _REDIS["password"], "--no-auth-warning"]
-    cmd.extend([str(a) for a in args])
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else None
+    """执行 Redis 命令。如 redis("GET", "key") → 返回值"""
+    global _redis_client
+    try:
+        import redis as redis_lib
+        if _redis_client is None:
+            _redis_client = redis_lib.Redis(
+                host=_REDIS["host"],
+                port=_REDIS["port"],
+                password=_REDIS["password"],
+                decode_responses=True
+            )
+        cmd = args[0].upper() if args else ""
+        if cmd == "GET":
+            return _redis_client.get(args[1])
+        elif cmd == "SET":
+            return _redis_client.set(args[1], args[2])
+        elif cmd == "DEL":
+            return _redis_client.delete(args[1])
+        elif cmd == "KEYS":
+            return _redis_client.keys(args[1] if len(args) > 1 else "*")
+        elif cmd == "FLUSHDB":
+            return _redis_client.flushdb()
+        else:
+            return _redis_client.execute_command(*args)
+    except Exception as e:
+        print(f"  REDIS ERROR: {e}")
+        return None
 
 # ═══════════════════════════════════════════════════════════
 # 断言

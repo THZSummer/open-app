@@ -31,7 +31,6 @@ import json
 import requests
 import time
 import re
-import subprocess
 
 _pass_count = 0
 _fail_count = 0
@@ -201,31 +200,43 @@ def check_camel_case(name):
 # V4: 数据库基础设施 — 所有脚本共享
 # ═══════════════════════════════════════════════════════════
 
+_db_conn = None
+
+def _get_db_conn():
+    global _db_conn
+    if _db_conn is None or not _db_conn.open:
+        import pymysql
+        _db_conn = pymysql.connect(
+            host=_DB["host"],
+            user=_DB["user"],
+            password=_DB["passwd"],
+            database=_DB["db"],
+            charset="utf8mb4",
+            autocommit=True
+        )
+    return _db_conn
+
 def db(sql, capture=False):
-    """执行 MySQL SQL 语句。
-
-    Args:
-        sql: 要执行的 SQL 语句
-        capture: 如果为 True，返回 stdout 字符串；否则返回 None
-    """
-    cmd = [
-        "mysql", f"-h{_DB['host']}", f"-u{_DB['user']}",
-        f"-p{_DB['passwd']}", _DB['db'], "-e", sql
-    ]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    return r.stdout if capture else None
-
+    """执行 SQL。capture=True 返回查询结果列表。"""
+    try:
+        conn = _get_db_conn()
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+            if capture and cursor.description:
+                cols = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                return [dict(zip(cols, row)) for row in rows]
+    except Exception as e:
+        print(f"  DB ERROR: {e}")
+    return None
 
 def db_val(sql):
-    """执行 SQL 并返回单个值（第一列第一行）。
-
-    用于 COUNT(*)、获取某个字段值等场景。
-    """
-    out = db(sql, capture=True)
-    if out is None:
-        return None
-    lines = out.strip().split('\n')
-    return lines[-1].strip() if len(lines) > 1 else None
+    """执行 SQL 并返回单个值（第一行第一列）。"""
+    result = db(sql, capture=True)
+    if result and len(result) > 0:
+        first_col = list(result[0].values())[0]
+        return str(first_col) if first_col is not None else None
+    return None
 
 
 def snow_id():
@@ -244,29 +255,39 @@ def escape_sql(obj):
     return json.dumps(obj).replace("\\", "\\\\").replace("'", "''")
 
 
-def redis(*args):
-    """执行 redis-cli 命令（Cluster 模式）。
+_redis_client = None
 
-    例: redis("KEYS", "*") → redis("SET", "k", "v") → redis("GET", "k")
-    """
-    first = _REDIS_CLUSTER["nodes"][0]
-    cmd = [
-        "redis-cli", "-c",
-        "-h", first["host"], "-p", str(first["port"]),
-    ]
-    if _REDIS_CLUSTER.get("password"):
-        cmd.extend(["-a", _REDIS_CLUSTER["password"], "--no-auth-warning"])
-    cmd.extend([str(a) for a in args])
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode == 0:
-        return r.stdout.strip()
-    # AUTH 失败时重试（Redis 可能未配置密码）
-    if "AUTH failed" in r.stderr:
-        cmd2 = ["redis-cli", "-c", "-h", first["host"], "-p", str(first["port"])]
-        cmd2.extend([str(a) for a in args])
-        r2 = subprocess.run(cmd2, capture_output=True, text=True)
-        return r2.stdout.strip() if r2.returncode == 0 else None
-    return None
+def redis(*args):
+    """执行 Redis 命令（Cluster 模式）。"""
+    global _redis_client
+    try:
+        from redis.cluster import RedisCluster
+        if _redis_client is None:
+            startup_nodes = [
+                {"host": n["host"], "port": n["port"]}
+                for n in _REDIS_CLUSTER["nodes"]
+            ]
+            _redis_client = RedisCluster(
+                startup_nodes=startup_nodes,
+                password=_REDIS_CLUSTER.get("password"),
+                decode_responses=True
+            )
+        cmd = args[0].upper() if args else ""
+        if cmd == "GET":
+            return _redis_client.get(args[1])
+        elif cmd == "SET":
+            return _redis_client.set(args[1], args[2])
+        elif cmd == "DEL":
+            return _redis_client.delete(args[1])
+        elif cmd == "KEYS":
+            return _redis_client.keys(args[1] if len(args) > 1 else "*")
+        elif cmd == "FLUSHDB":
+            return _redis_client.flushdb()
+        else:
+            return _redis_client.execute_command(*args)
+    except Exception as e:
+        print(f"  REDIS ERROR: {e}")
+        return None
 
 
 def trigger(flow_id, body=None, headers=None, query_params=None):
