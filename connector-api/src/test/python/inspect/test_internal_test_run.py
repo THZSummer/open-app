@@ -21,7 +21,7 @@ def setup_flow(snow_id_val, lifecycle_status=2):
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({snow_id_val}, 'IT_测试运行', 'IT_TestRun', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
 
     orchestration = {

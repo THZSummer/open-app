@@ -129,7 +129,7 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
-        f"1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"1, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
@@ -146,7 +146,7 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_并行测试', 'IT_ParallelTest', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "

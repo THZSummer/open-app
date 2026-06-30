@@ -42,7 +42,7 @@ __all__ = [
     "_print_request", "_print_response", "_is_pass",
     # V4: DB 基础设施
     "db", "db_val", "snow_id", "escape_sql",
-    "_DB", "_API_HOST", "TEST_APP_ID",
+    "_DB", "_API_HOST", "TEST_APP_ID", "INTERNAL_APP_ID",
     "redis",
     # HTTP 快捷方法
     "trigger", "debug_run",
@@ -71,6 +71,7 @@ _REDIS_CLUSTER = {
 }
 _API_HOST = "localhost:18180"
 TEST_APP_ID = "20250730213114178360970"  # 与 open-server 共用测试应用
+INTERNAL_APP_ID = None  # 内部主键 ID，首次使用时从 DB 查询
 
 
 def is_quiet():
@@ -256,6 +257,18 @@ def db_val(sql):
         first_col = list(rows[0].values())[0]
         return str(first_col) if first_col is not None else None
     return None
+
+
+def _init_internal_app_id():
+    """lazy 初始化 INTERNAL_APP_ID"""
+    global INTERNAL_APP_ID
+    if INTERNAL_APP_ID is None:
+        val = db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1")
+        INTERNAL_APP_ID = int(val) if val else None
+    return INTERNAL_APP_ID
+
+
+_init_internal_app_id()
 
 
 def snow_id():
