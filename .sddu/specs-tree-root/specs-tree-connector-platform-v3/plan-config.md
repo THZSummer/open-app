@@ -106,9 +106,9 @@
 **现状**：无任何代码读取此 Property。当前连接器发布时校验的是连接器版本快照内的 **`urlWhitelist[]` 数组**（每条一个正则），非平台级统一规则。空白名单时放行所有 URL。
 
 **方案**：
-1. 在 `ConnectorPlatformPropertyService` 中新增 `getUrlRegexPattern()`，读取 `(connector_platform, connector_url_regex_pattern)`
+1. 在 `ConnectorPlatformPropertyService` 中新增 `getUrlRegexPattern()`，从 Lookup 批量读取 item_code=`Connector.Url.Regex.Pattern`
 2. `ConnectorVersionService.publish()` 中增加校验：若 Property 配置了正则，则用户填写的目标 URL 必须匹配此正则
-3. 此校验与现有的 `urlWhitelist[]` 校验并行——`urlWhitelist[]` 是用户自配的连接器级规则，`connector_url_regex_pattern` 是平台级的兜底规则
+3. 此校验与现有的 `urlWhitelist[]` 校验并行——`urlWhitelist[]` 是用户自配的连接器级规则，`Connector.Url.Regex.Pattern` 是平台级的兜底规则
 
 ---
 
@@ -149,7 +149,7 @@
 
 **现状**：与 #1 共用 `MAX_VERSION_COUNT = 1000`。`FlowVersionService.createDraft()` / `copyFromVersion()` 中校验。
 
-**方案**：在 `ConnectorPlatformPropertyService` 中新增 `getFlowMaxVersions()`，独立读取 `(connector_platform, flow_max_versions)`，与 #1 解耦。`FlowVersionService` 注入该 Service。
+**方案**：在 `ConnectorPlatformPropertyService` 中新增 `getFlowMaxVersions()`，从 Lookup 批量读取 item_code=`Flow.Max.Versions`，与 #1 解耦。`FlowVersionService` 注入该 Service。
 
 ---
 
