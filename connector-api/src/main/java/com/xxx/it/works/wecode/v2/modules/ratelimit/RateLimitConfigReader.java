@@ -84,6 +84,16 @@ public class RateLimitConfigReader {
             Object maxQpsObj = rateLimitConfig.get("maxQps");
             Object maxConObj = rateLimitConfig.get("maxConcurrency");
 
+            // ③的 maxQps 和 maxConcurrency 都存在 → 直接用③，不读①
+            if (maxQpsObj instanceof Number && maxConObj instanceof Number) {
+                int maxQps = ((Number) maxQpsObj).intValue();
+                if (maxQps < 1) maxQps = 1;
+                int maxConcurrency = ((Number) maxConObj).intValue();
+                if (maxConcurrency < 1) maxConcurrency = 1;
+                return Mono.just(new RateLimitConfig(mode, maxQps, maxConcurrency));
+            }
+
+            // ③的某个字段不存在 → 该字段回退①
             return propertyService.getFlowMaxQps()
                     .zipWith(propertyService.getFlowMaxConcurrency())
                     .map(tuple -> {

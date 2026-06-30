@@ -18,7 +18,7 @@ import java.util.Map;
  * <p>
  * 对应表: openplatform_v2_cp_flow_version_t
  * MVP 单版本模型: 每 flow 仅一条记录, 编辑即生效
- * 编排配置 v5.5: {node:{id,type,position:{x,y},data:{labelCn,labelEn,authConfig,inputContract,rateLimitConfig,...}},
+ * 编排配置 v5.5: {node:{id,type,position:{x,y},data:{labelCn,labelEn,authConfig,inputContract,...}}, flowConfig:{rateLimitConfig:{maxQps,maxConcurrency}, cache:{ttl,key}}, ...}
  *                 edges:[{id,source,target,data:{businessType}}]}
  * 旧格式兼容: 通过 @JsonAlias 和运行时 getEdgeField() 双字段名 fallback
  * </p>

@@ -182,7 +182,7 @@ public class FlowInvokeService {
      * 2. 解析 React Flow 格式编排配置, 查找 trigger/entry 节点<br>
      * 3. 校验 {@code data.type} 子类型<br>
      * 4. 校验 {@code data.authConfig} 认证声明<br>
-     * 5. 校验 {@code data.rateLimitConfig} 限流配置<br>
+     * 5. 校验 {@code flowConfig.rateLimitConfig} 限流配置<br>
      * 6. 校验 {@code data.inputContract} header / query / body 三段契约<br>
      * 7. 构建 ExecutionContext (结构化 NodeContext: {header, query, body})<br>
      * 8. 缓存检查 (FR-037): 若 flowConfig.cacheTtl > 0, 先查缓存<br>
@@ -379,7 +379,7 @@ public class FlowInvokeService {
         }
 
         validateAuthConfig(nodeData, headers, triggerType);
-        validateRateLimitConfig(nodeData);
+        validateRateLimitConfig(config);
 
         Map<String, Object> input = (Map<String, Object>) nodeData.get("input");
         if ("http".equals(triggerType) && input == null) {
@@ -898,26 +898,31 @@ public class FlowInvokeService {
     }
 
     /**
-     * 校验 rateLimitConfig
+     * 校验 flowConfig.rateLimitConfig 基本合法性（§3.3.4: 运行态不做上限截断，设计态已校验）
      */
     @SuppressWarnings("unchecked")
-    private void validateRateLimitConfig(Map<String, Object> nodeData) {
-        Map<String, Object> rateLimitConfig = (Map<String, Object>) nodeData.get("rateLimitConfig");
+    private void validateRateLimitConfig(Map<String, Object> config) {
+        Map<String, Object> flowConfig = (Map<String, Object>) config.get("flowConfig");
+        if (flowConfig == null) {
+            return;
+        }
+        Map<String, Object> rateLimitConfig = (Map<String, Object>) flowConfig.get("rateLimitConfig");
         if (rateLimitConfig == null) {
             return;
         }
+        // 仅校验基本合法性（>0），不做上限截断（设计态已校验 ③ <= ②覆盖①）
         Object maxQpsObj = rateLimitConfig.get("maxQps");
         if (maxQpsObj instanceof Number) {
             int maxQps = ((Number) maxQpsObj).intValue();
-            if (maxQps < 1 || maxQps > 10000) {
-                throw new RuntimeException("Rate limit maxQps must be between 1 and 10000, got: " + maxQps);
+            if (maxQps < 1) {
+                throw new RuntimeException("Rate limit maxQps must be greater than 0, got: " + maxQps);
             }
         }
         Object maxConcurrencyObj = rateLimitConfig.get("maxConcurrency");
         if (maxConcurrencyObj instanceof Number) {
             int maxConcurrency = ((Number) maxConcurrencyObj).intValue();
-            if (maxConcurrency < 1 || maxConcurrency > 1000) {
-                throw new RuntimeException("Rate limit maxConcurrency must be between 1 and 1000, got: " + maxConcurrency);
+            if (maxConcurrency < 1) {
+                throw new RuntimeException("Rate limit maxConcurrency must be greater than 0, got: " + maxConcurrency);
             }
         }
     }
