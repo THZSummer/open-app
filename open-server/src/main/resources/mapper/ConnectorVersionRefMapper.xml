@@ -57,6 +57,12 @@
         WHERE flow_version_id = #{flowVersionId}
     </delete>
 
+    <!-- Delete By FlowId -->
+    <delete id="deleteByFlowId">
+        DELETE FROM openplatform_v2_cp_connector_version_ref_t
+        WHERE flow_id = #{flowId}
+    </delete>
+
     <!-- Select By FlowVersion And Node -->
     <select id="selectByFlowVersionAndNode" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
