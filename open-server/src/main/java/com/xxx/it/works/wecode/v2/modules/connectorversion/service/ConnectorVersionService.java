@@ -431,11 +431,11 @@ public class ConnectorVersionService {
             return ApiResponse.error("409", "非已发布状态，不可失效", "Only published versions can be invalidated");
         }
 
-        List<ConnectorVersionRef> refs = connectorVersionRefMapper.selectByConnectorVersionId(versionId);
-        if (refs != null && !refs.isEmpty()) {
+        List<String> runningFlowNames = connectorVersionRefMapper.selectRunningFlowNamesByConnectorVersionId(versionId);
+        if (runningFlowNames != null && !runningFlowNames.isEmpty()) {
             return ApiResponse.error("422",
-                    "有 " + refs.size() + " 个连接流引用此版本，请先移除引用关系",
-                    "Version is referenced by " + refs.size() + " flows, remove references first");
+                    "以下运行中的连接流引用了此版本：" + String.join("、", runningFlowNames) + "，请先停止相关连接流",
+                    "Version is referenced by running flows: " + runningFlowNames);
         }
 
         Date now = new Date();
