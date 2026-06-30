@@ -648,6 +648,24 @@ public class ApprovalEngine {
 
         recordMapper.update(record);
 
+        // 写入审批操作日志
+        ApprovalLog cancelLog = new ApprovalLog();
+        cancelLog.setId(idGenerator.nextId());
+        cancelLog.setRecordId(record.getId());
+        cancelLog.setNodeIndex(record.getCurrentNode());
+        List<ApprovalNodeDto> nodes = parseNodes(record.getCombinedNodes());
+        if (nodes != null && record.getCurrentNode() < nodes.size()) {
+            cancelLog.setLevel(nodes.get(record.getCurrentNode()).getLevel());
+        }
+        cancelLog.setOperatorId(operator);
+        cancelLog.setOperatorName(operator);
+        cancelLog.setAction(Action.CANCEL);
+        cancelLog.setCreateTime(new Date());
+        cancelLog.setLastUpdateTime(new Date());
+        cancelLog.setCreateBy(operator);
+        cancelLog.setLastUpdateBy(operator);
+        logMapper.insert(cancelLog);
+
         // 更新资源状态（资源注册场景）
         updateResourceStatus(record, Status.CANCELLED);
 
