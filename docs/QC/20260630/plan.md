@@ -232,6 +232,20 @@ batch 报告里**每条 QC 意见**必须按以下 5 项输出，缺一不可。
 7. **执行中不抛问题**：全程不向用户提问，自主决策推进到底。
 8. **只 QC 不改代码**：只审查记录意见，不修改任何源代码（`/remove-ai-slops` 等改代码动作一律不做）。
 
+### 编码硬性规定（QC 审查 + 修复代码时必须遵守）
+
+| # | 规定 | 反例 | 正例 |
+|---|------|------|------|
+| 1 | **禁止防御性 null 检查** | `if (name == null) return false;` | 调用方保证非 null，直接用；或用 `@NonNull` 注解 |
+| 2 | **禁止魔法值** | `if (status == 1)` | `if (status == STATUS_ACTIVE)` |
+| 3 | **禁止手写 Builder/getter/setter** | `@Data` 类手写 `getCode()/setCode()` | 只用注解，删除手写 |
+| 4 | **异常不许吞** | `catch(Exception e) { log.error(...); }` 不 rethrow | rethrow / 补偿 / 注释说明为何安全忽略 |
+| 5 | **未使用代码必须删除** | 未引用的错误码/方法/变量 | 直接删除 |
+| 6 | **if/else/for/while 必须带 {}** | `if (x) return;` | `if (x) { return; }` |
+| 7 | **toLowerCase/toUpperCase 必须指定 Locale** | `name.toLowerCase()` | `name.toLowerCase(Locale.ROOT)` |
+
+> **此规定适用于所有人**：QC 审查时按此提意见，修复代码时按此执行。说一套做一套 = 违规。
+
 ---
 
 ## 5. 产出文件

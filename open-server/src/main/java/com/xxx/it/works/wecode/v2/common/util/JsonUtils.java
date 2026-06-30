@@ -173,7 +173,8 @@ public final class JsonUtils {
 
     private static Map<String, String> buildFlatMap(String[] paramNames, Object[] args) {
         Map<String, String> flat = new LinkedHashMap<>();
-        for (int i = 0; i < paramNames.length; i++) {
+        int len = Math.min(paramNames.length, args.length);
+        for (int i = 0; i < len; i++) {
             if (args[i] == null) {
                 continue;
             }
