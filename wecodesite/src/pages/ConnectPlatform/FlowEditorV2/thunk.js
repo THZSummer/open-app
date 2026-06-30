@@ -1185,28 +1185,95 @@ const buildSerialFlowGraph = (flowData) => {
 };
 
 /**
+ * 按顺序构建脚本节点，累积上游节点 ID
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - steps: 待过滤的步骤节点列表
+ * - baseUpstreamIds: 起始上游节点 ID 列表
+ * @returns {Array} 脚本节点列表
+ */
+const buildScriptFlowNodes = (params) => {
+  // params.steps / params.baseUpstreamIds
+  const { steps, baseUpstreamIds } = params;
+  const upstreamIds = [...baseUpstreamIds];
+  const scriptNodes = [];
+  for (const step of steps || []) {
+    if (step?.type !== 'script') continue;
+    scriptNodes.push(buildScriptFlowNode({ node: step, upstreamNodeIds: [...upstreamIds] }));
+    upstreamIds.push(step.id);
+  }
+  return scriptNodes;
+};
+
+/**
+ * 构建串联边列表
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - nodes: 需要串联的节点列表
+ * - connectionMode: 连接模式
+ * @returns {Array} React Flow 边列表
+ */
+const buildSerialEdges = (params) => {
+  // params.nodes / params.connectionMode
+  const { nodes, connectionMode } = params;
+  const edges = [];
+  for (let i = 0; i < nodes.length - 1; i++) {
+    edges.push(buildFlowEdge({
+      source: nodes[i].id,
+      target: nodes[i + 1].id,
+      connectionMode,
+    }));
+  }
+  return edges;
+};
+
+/**
  * 构建并行模式的 nodes/edges
  * @param {Object} flowData 前端连接流数据
  * @returns {Object} React Flow nodes/edges
  */
 const buildParallelFlowGraph = (flowData) => {
-  // 并行图按照 trigger -> parallel -> branch connectors -> output 生成
+  // 并行图按照 trigger -> 前置脚本 -> parallel -> 分支连接器 -> 后置脚本 -> output 生成
   const triggerNode = buildTriggerFlowNode({ trigger: flowData.trigger });
-  const parallel = (flowData.steps || []).find(item => item?.type === 'parallel');
-  if (!parallel) return buildSerialFlowGraph(flowData);
+  const steps = flowData.steps || [];
+  const parallelIndex = steps.findIndex(item => item?.type === 'parallel');
+  // 未找到并行节点时退化为串行图
+  if (parallelIndex === -1) return buildSerialFlowGraph(flowData);
 
+  const parallel = steps[parallelIndex];
   const parallelNode = buildParallelFlowNode({ node: parallel });
   const branchNodes = (parallel.branches || []).map((branch) => buildConnectorFlowNode({
     node: branch.connector,
   }));
   const outputNode = buildExitFlowNode({ output: flowData.output });
-  const nodes = [triggerNode, parallelNode, ...branchNodes, outputNode];
-  const edges = [buildFlowEdge({
-    source: triggerNode.id,
-    target: parallelNode.id,
-    connectionMode: 'serial',
-  })];
 
+  // 按位置切分前后脚本节点
+  const beforeScriptNodes = buildScriptFlowNodes({
+    steps: steps.slice(0, parallelIndex),
+    baseUpstreamIds: [triggerNode.id],
+  });
+  const afterScriptNodes = buildScriptFlowNodes({
+    steps: steps.slice(parallelIndex + 1),
+    baseUpstreamIds: [triggerNode.id, parallelNode.id],
+  });
+  // 并行分支汇聚点：优先第一个后置脚本，否则为出口节点
+  const parallelExitNode = afterScriptNodes[0] || outputNode;
+
+  const nodes = [
+    triggerNode,
+    ...beforeScriptNodes,
+    parallelNode,
+    ...branchNodes,
+    ...afterScriptNodes,
+    outputNode,
+  ];
+
+  // 前置链路串行边：trigger -> 前置脚本 -> parallel
+  const edges = buildSerialEdges({
+    nodes: [triggerNode, ...beforeScriptNodes, parallelNode],
+    connectionMode: 'serial',
+  });
+  // 并行分支边：parallel -> 分支 -> 汇聚点
   branchNodes.forEach((branchNode) => {
     edges.push(buildFlowEdge({
       source: parallelNode.id,
@@ -1215,10 +1282,23 @@ const buildParallelFlowGraph = (flowData) => {
     }));
     edges.push(buildFlowEdge({
       source: branchNode.id,
-      target: outputNode.id,
+      target: parallelExitNode.id,
       connectionMode: 'parallel',
     }));
   });
+  // 无分支时补一条 parallel -> 汇聚点的串行边
+  if (branchNodes.length === 0) {
+    edges.push(buildFlowEdge({
+      source: parallelNode.id,
+      target: parallelExitNode.id,
+      connectionMode: 'serial',
+    }));
+  }
+  // 后置链路串行边：汇聚点 -> 后置脚本 -> output
+  edges.push(...buildSerialEdges({
+    nodes: [parallelExitNode, ...afterScriptNodes.slice(1), outputNode],
+    connectionMode: 'serial',
+  }));
 
   return { nodes, edges };
 };
@@ -1261,6 +1341,10 @@ const buildOrchestrationConfig = (flowData) => {
     nodes: graph.nodes,
     edges: graph.edges,
   };
+};
+
+export const __testables = {
+  buildOrchestrationConfig,
 };
 
 /**
