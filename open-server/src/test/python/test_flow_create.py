@@ -37,3 +37,39 @@ class TestFlowCreate:
     def test_missing_name_en(self):
         resp = api("POST", "/flows", {"nameCn": "测试"})
         assert resp.status_code == 400
+
+    @pytest.mark.L4
+    def test_name_cn_exactly_128(self):
+        """边界值：nameCn 恰好 128 字符应创建成功（对齐 DB VARCHAR(128)）"""
+        name = "测" * 128
+        body = {"nameCn": name, "nameEn": "FlowBoundary128"}
+        resp = api("POST", "/flows", body)
+        assert resp.status_code == 200
+        assert resp.json()["code"] == "200"
+        assert resp.json()["data"]["nameCn"] == name
+
+    @pytest.mark.L4
+    def test_name_cn_exceed_128(self):
+        """边界值：nameCn 129 字符应被拦截（400）"""
+        name = "测" * 129
+        body = {"nameCn": name, "nameEn": "FlowBoundary129"}
+        resp = api("POST", "/flows", body)
+        assert resp.status_code == 400
+
+    @pytest.mark.L4
+    def test_name_en_exactly_128(self):
+        """边界值：nameEn 恰好 128 字符应创建成功"""
+        name = "a" * 128
+        body = {"nameCn": "连接流英文名边界128", "nameEn": name}
+        resp = api("POST", "/flows", body)
+        assert resp.status_code == 200
+        assert resp.json()["code"] == "200"
+        assert resp.json()["data"]["nameEn"] == name
+
+    @pytest.mark.L4
+    def test_name_en_exceed_128(self):
+        """边界值：nameEn 129 字符应被拦截（400）"""
+        name = "a" * 129
+        body = {"nameCn": "连接流英文名边界129", "nameEn": name}
+        resp = api("POST", "/flows", body)
+        assert resp.status_code == 400
