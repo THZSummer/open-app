@@ -54,6 +54,9 @@ public class FlowVersionDetailResponse {
     /** 审批地址 */
     private String approvalUrl;
 
+    /** 最近审批操作信息（来自 approval_log_t，草稿/待审批状态下为 null） */
+    private ApprovalLogInfo latestApprovalLog;
+
     /**
      * 审批人信息
      */
@@ -69,5 +72,31 @@ public class FlowVersionDetailResponse {
 
         /** 审批人用户名称 */
         private String userName;
+    }
+
+    /**
+     * 审批操作日志信息（对应 approval_log_t 一条记录）
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ApprovalLogInfo implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
+
+        /** 操作人 ID */
+        private String operatorId;
+
+        /** 操作人名称 */
+        private String operatorName;
+
+        /** 操作类型：0=通过, 1=驳回, 2=撤回 */
+        private Integer action;
+
+        /** 审批意见（驳回时为驳回原因） */
+        private String comment;
+
+        /** 操作时间 */
+        private String actionTime;
     }
 }

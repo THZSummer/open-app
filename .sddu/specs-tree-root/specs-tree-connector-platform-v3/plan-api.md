@@ -2052,38 +2052,86 @@
 | orchestrationConfig.flowConfig | object | 流级配置（限流/缓存），见 plan-json-schema.md §6.4 |
 | orchestrationConfig.nodes | array | 节点列表，每项含 `id/type/position/data`，`data` 按 `node.type` 路由到 9 种 data Schema |
 | orchestrationConfig.edges | array | 边列表，每项含 `id/source/target/type/data`，`data` 承载控制流语义（businessType/connectionMode/conditionExpr/isStructural/iterationVar） |
-| publishedTime | string | 发布时间 |
+| publishedTime | string | 发布时间（草稿/已撤回/已驳回状态下为 null） |
 | publishedBy | string | 发布人 |
 | createTime | string | 创建时间 |
+| createBy | string | 创建人 |
+| lastUpdateTime | string | 最后更新时间 |
+| lastUpdateBy | string | 最后更新人 |
+| approver | object | 当前审批人（仅待审批状态有值），含 `userId` / `userName` |
+| approvalUrl | string | 审批页面地址 |
+| latestApprovalLog | object | 最近审批操作信息（对应 approval_log_t 一条记录），草稿/待审批状态下为 null |
+| latestApprovalLog.operatorId | string | 操作人 ID |
+| latestApprovalLog.operatorName | string | 操作人名称 |
+| latestApprovalLog.action | int | 操作类型（0=通过, 1=驳回, 2=撤回） |
+| latestApprovalLog.comment | string | 审批意见（驳回时为驳回原因） |
+| latestApprovalLog.actionTime | string | 操作时间 |
 
-**示例**（精简，完整结构见 #31 请求体）
+**示例**
 
 ```json
-// 响应体 200
+// 响应体 200 — 已驳回版本
 {
   "code": "200",
   "data": {
     "versionId": "6666666666666666666",
     "flowId": "4444444444444444444",
     "versionNumber": 2,
-    "status": 5,
-    "orchestrationConfig": {
-      "flowConfig": {
-        "rateLimitConfig": { "maxQps": 100, "maxConcurrency": 10 },
-        "cache": { "key": ["${$.node.trigger.input.body.userId}"], "ttl": 300 }
-      },
-      "nodes": [
-        { "id":"node_trigger", "type":"trigger", "position":{"x":100,"y":200}, "data":{ "type":"trigger", "triggerType":"http", ... } },
-        { "id":"node_1", "type":"connector", "position":{"x":350,"y":200}, "data":{ "type":"connector", "labelCn":"发送消息", "connectorId":"1234567890123456000", "connectorVersionId":"1234567890123456789", "connectorVersionConfig":{/* 连接器配置快照，§4.3.7 */}, "input":{/* 字段映射 */} } },
-        { "id":"node_exit", "type":"exit", "position":{"x":600,"y":200}, "data":{ "type":"exit", "output":{...} } }
-      ],
-      "edges": [ {"id":"e1","source":"node_trigger","target":"node_1","type":"smoothstep","data":{"connectionMode":"serial"}} ]
-    },
-    "publishedTime": "2026-06-07 09:00:00",
-    "publishedBy": "lisi",
-    "createTime": "2026-06-07 08:00:00"
+    "status": 4,
+    "orchestrationConfig": { ... },
+    "publishedTime": null,
+    "publishedBy": null,
+    "createTime": "2026-06-07 08:00:00",
+    "createBy": "zhangsan",
+    "lastUpdateTime": "2026-06-07 10:30:00",
+    "lastUpdateBy": "zhangsan",
+    "approver": null,
+    "approvalUrl": "https://example.com/approval/6666666666666666666",
+    "latestApprovalLog": {
+      "operatorId": "lisi",
+      "operatorName": "李四",
+      "action": 1,
+      "comment": "输入参数缺少必填字段 userId",
+      "actionTime": "2026-06-07 10:30:00"
+    }
   },
   "page": null
+}
+
+// 响应体 200 — 已发布版本
+{
+  "code": "200",
+  "data": {
+    "versionId": "7777777777777777777",
+    "status": 5,
+    "publishedTime": "2026-06-07 11:00:00",
+    "publishedBy": "zhangsan",
+    "latestApprovalLog": {
+      "operatorId": "wangwu",
+      "operatorName": "王五",
+      "action": 0,
+      "comment": "审批通过",
+      "actionTime": "2026-06-07 11:00:00"
+    },
+    ...
+  }
+}
+
+// 响应体 200 — 已撤回版本
+{
+  "code": "200",
+  "data": {
+    "versionId": "8888888888888888888",
+    "status": 3,
+    "latestApprovalLog": {
+      "operatorId": "zhangsan",
+      "operatorName": "张三",
+      "action": 2,
+      "comment": null,
+      "actionTime": "2026-06-07 09:30:00"
+    },
+    ...
+  }
 }
 ```
 
