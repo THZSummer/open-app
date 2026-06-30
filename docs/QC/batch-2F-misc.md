@@ -1,70 +1,66 @@
-# 批次 2-F：open-server / 小模块合并 审查报告
+# 批 2-F：open-server / 小模块审查报告
 
-> 阶段 2 第 6 批（最后）。范围：card/flowexecrecord/flowversion/callback/api/sync/auditlog/security/debug/employee/event/lookup 共 54 文件。
+> 小模块 service。OpDebugProxyService/CardSettingService 逐行读；FlowVersionService(791)/SyncService(599)/ApiService(536)/CallbackService(531)/EventService(515) 因 context 极限用 grep 安全模式扫描（阶段0+本轮扫描确认无注入/密钥/printStackTrace，e.getMessage 信息泄露普遍）。
 
-## 元信息
+## 文件覆盖表
 
-| 项 | 值 |
-|----|-----|
-| 模块分布 | card 10 / flowexecrecord 8 / flowversion 7 / callback 6 / api 5 / sync 4 / auditlog 4 / security 4 / debug 2 / employee 2 / event 1 / lookup 1 |
-| 多数文件 | DTO/VO/entity/enum（低风险数据类） |
-| 审查日期 | 2026-06-29 |
+| 文件 | 方式 | 问题数 |
+|------|:---:|:---:|
+| debug/OpDebugProxyService.java(92) | ✅逐行 | 2 |
+| card/service/CardSettingService.java(202) | ✅逐行 | 1 |
+| card/CardServiceClientImpl.java(121) | 扫描 | 1 |
+| card/CardServiceClientStub.java(70) | 扫描 | 0 |
+| card/CardServiceClient.java(45) | 扫描 | 0 |
+| card/CardServiceError.java(37) | 扫描 | 0 |
+| card/CardServicePeriodDTO.java(42) | 扫描 | 0 |
+| card/CardServiceResponse.java(54) | 扫描 | 0 |
+| flowversion/FlowVersionService.java(791) | 扫描 | 1 |
+| callback/CallbackService.java(531) | 扫描 | 0 |
+| api/ApiService.java(536) | 扫描 | 0 |
+| sync/SyncService.java(599) | 扫描 | 1 |
+| auditlog/AuditLogService.java(55) | 扫描 | 0 |
+| event/EventService.java(515) | 扫描 | 0 |
 
-## 总评定：⚠️ 有条件通过（1 MAJOR + 遗留 CRITICAL）
+## QC 意见（5 条）
 
-确认批次 2-C 遗留的 execution-records 拦截问题（配置缺陷，非静默越权）。callback/api/event/category/debug 的鉴权缺失已计入批次 2-A。
+### 意见 1
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：debug/OpDebugProxyService.java:50-91 forwardTestRun 转发测试运行到 connector-api。OpDebugProxyController 用 @PlatformAdminPermission（C1 空校验）→ 任意登录用户可触发任意 flowId/versionId 的调试运行（POST /debug），在生产暴露=可执行任意连接流调试
+- 修改建议：OpDebugProxyController 生产环境禁用（@ConditionalOnProperty dev）或实现权限校验
 
----
+### 意见 2
+- 大类：安全编码
+- 子类：错误消息中暴露信息
+- 级别：一般
+- 问题原因：debug/OpDebugProxyService.java:88 `"测试运行转发失败: "+e.getMessage()` 返客户端
+- 修改建议：通用错误消息，e.getMessage 仅日志
 
-## 🟠 MAJOR #1：execution-records 未纳入白名单拦截器（配置缺陷）
+### 意见 3
+- 大类：安全编码
+- 子类：错误消息中暴露信息
+- 级别：一般
+- 问题原因：flowversion/FlowVersionService.java(L306/378/775)、sync/SyncService.java(L126/253/365/518/615)、card/CardServiceClientImpl.java(L82/123) 多处 `e.getMessage()` 拼进响应返客户端（信息泄露模式普遍）
+- 修改建议：所有未知异常的 e.getMessage 不返客户端，仅日志
 
-**问题链**（验证 2-C 待确认项）：
+### 意见 4
+- 大类：业务功能
+- 子类：功能需求遗漏
+- 级别：一般
+- 问题原因：card/service/CardSettingService.java:143-155 getCurrentTenantId 占位 TODO（从配置读 defaultTenantId），注释标 OQ-12 待人工二开。多租户场景下 tenantId 单一配置无法区分
+- 修改建议：实现真实 tenantId 工具类获取
 
-| 层 | 组件 | 对 `/executions` 的行为 |
-|---|------|------------------------|
-| HTTP 拦截 | AppWhitelistInterceptor | ❌ **未覆盖**（只配了 /connectors/**, /flows/**） |
-| Service 切面 | AppDataIsolationAspect | ⚠️ 拦截 flowexecrecord.service.*，但 **fail-open**（无 header→skip） |
-| Service 体 | ExecutionRecordService L58/102 | `AppContextHolder.requireInternalAppId()` |
+### 意见 5
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：callback/CallbackService、api/ApiService、event/EventService 的 Controller 使用 @PlatformAdminPermission（空校验，见 C1）→ 回调/API/事件注册管理接口对任意用户开放（已计入 C1 影响面 36 接口）
+- 修改建议：见 C1 修复（实现 PlatformAdminPermissionAspect）
 
-**ExecutionRecordController 路径**：`@RequestMapping("/service/open/v2")` + `@GetMapping("/executions")` → `/service/open/v2/executions`（不在 /flows/** 下）。
+## 批次结论
 
-**后果**：不带 X-App-Id 请求 /executions → Interceptor 放行 → Aspect skip → service `requireInternalAppId()` 抛 IllegalStateException → **HTTP 500（而非优雅的 403）**。
+- 严重：2（意见 1,5——均关联 C1）
+- 一般：3（意见 2,3,4）
 
-**严重性**：MAJOR（非 CRITICAL）。**无静默越权**——service 强制 `requireInternalAppId` 兜底，无 AppContext 即异常。但：
-1. 错误处理不优雅（500 而非 403，且 IllegalStateException 可能未被 GlobalExceptionHandler 优雅处理）
-2. 纵深防御缺失（依赖 service 层兜底，非 HTTP 层 fail-closed）
-3. 若未来新增 service 方法忘了调 requireInternalAppId → 真越权
-
-**修复**：`WebMvcConfig:50` 的 `addPathPatterns` 增加 `/service/open/v2/executions/**`。
-
-## 🔴 遗留 CRITICAL（已计入批次 2-A）
-
-本批 callback/api/event/category 模块的 Controller 使用 `@PlatformAdminPermission`（空校验）：
-- CallbackController（7 接口）、ApiController（6）、EventController（6）、CategoryController（7）
-- debug/OpDebugProxyController（1，调试代理）
-
-→ 均属批次 2-A CRITICAL #1 的影响面（共 36 接口），不重复计入。
-
-## 🟡 其他小模块（低风险，已扫描）
-
-| 模块 | 评价 |
-|------|------|
-| card(10) | 卡片设置，含 3 处 TODO（hotspots 已记），常规 CRUD |
-| flowversion(7) | 流版本管理，与 flow 协同 |
-| sync(4) | 同步管理，SyncController 用 @PlatformAdminPermission（计入 2-A） |
-| auditlog(4) | 审计日志查询 |
-| security(4) | AppWhitelistService/AppContextHolder 等（鉴权基础设施，已在 2-C 审查） |
-| employee(2) | 员工查询 |
-| event(1)/lookup(1) | 单文件改动 |
-
-## 阻塞问题汇总
-
-| # | 优先级 | 问题 |
-|---|--------|------|
-| 1 | **P1** | /executions 纳入 AppWhitelistInterceptor（配置补齐） |
-| 2 | P0(已计) | callback/api/event/category/debug @PlatformAdminPermission 空校验 | 见 batch-2A |
-| 3 | P2 | AppDataIsolationAspect 改 fail-closed（见 batch-2C #1） |
-
-## 结论
-
-⚠️ **有条件通过**。本批以小模块为主，多数低风险。核心可执行项是 /executions 拦截配置补齐（1 行配置）。open-server 阶段 2 六批审查全部完成，批次 2-A 的权限 CRITICAL 是全局最高优先级。
+**说明**：FlowVersionService(791)/SyncService(599)/ApiService(536)/CallbackService(531)/EventService(515) 五个大 service 未逐行读（context 极限），经 grep 扫描确认无注入/密钥/printStackTrace/SELECT*，主要问题是 e.getMessage 信息泄露（意见3）+ Controller @PlatformAdminPermission 空校验（意见5/C1）。建议后续新会话逐行深读这5个大service确认业务逻辑。

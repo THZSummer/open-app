@@ -1,102 +1,154 @@
-# 批次 2-A：open-server / common 审查报告
+# 批 2-A：open-server / common 审查报告
 
-> 阶段 2 第 1 批。范围：`v2/common/` 下 43 文件（重构删 489 行，安全敏感）。
+> 43 文件（42 现存逐行读 + AuditLogAspect 已删除确认）。意见按 §2.2 格式，分类按 §2.1。
 
-## 元信息
+## 文件覆盖表（43/43）
 
-| 项 | 值 |
-|----|-----|
-| 范围 | common 43 文件（config/enums/exception/file/id/interceptor/model/security/user/util/snapshot/controller/constants/annotation） |
-| 重构热点 | AuditLogAspect 删86行（已被 OperateLogV2Aspect 取代）、OperateLogV2Aspect +223/-215、annotation/AuditLog -25 |
-| 审查日期 | 2026-06-29 |
+| 文件 | 逐行读 | 问题数 |
+|------|:---:|:---:|
+| annotation/AuditLog.java | ✅ | 0 |
+| config/AsyncConfig.java | ✅ | 0 |
+| config/ConnectorPlatformPropertyService.java | ✅ | 0 |
+| config/IdGeneratorConfig.java | ✅ | 1 |
+| config/JacksonConfig.java | ✅ | 0 |
+| config/WebMvcConfig.java | ✅ | 1 |
+| constants/CommonConstants.java | ✅ | 0 |
+| controller/LookupController.java | ✅ | 0 |
+| enums/AppIdSourceEnum.java | ✅(已删除) | 0 |
+| enums/AuthTypeEnum.java | ✅ | 0 |
+| enums/ConnectorPlatformConstants.java | ✅ | 0 |
+| enums/ConnectorStatus.java | ✅ | 0 |
+| enums/ConnectorVersionStatus.java | ✅ | 0 |
+| enums/ExecutionEnums.java | ✅ | 0 |
+| enums/FlowLifecycleStatus.java | ✅ | 0 |
+| enums/FlowVersionStatus.java | ✅ | 0 |
+| enums/OperateEnum.java | ✅ | 0 |
+| enums/OperateResultEnum.java | ✅ | 0 |
+| enums/ResponseCodeEnum.java | ✅ | 1 |
+| enums/StatusEnum.java | ✅ | 0 |
+| exception/BusinessException.java | ✅ | 0 |
+| exception/GlobalExceptionHandlerV2.java | ✅ | 1 |
+| file/controller/FileV2Controller.java | ✅ | 1 |
+| file/entity/FileEntity.java | ✅ | 0 |
+| file/mapper/FileMapper.java | ✅ | 0 |
+| file/service/FileV2Service.java | ✅ | 2 |
+| file/vo/FileV2VO.java | ✅ | 0 |
+| id/DevIdGeneratorStrategy.java | ✅ | 1 |
+| interceptor/AuditLogAspect.java | ✅(已删除,被OperateLogV2Aspect取代) | 0 |
+| interceptor/DiffConfig.java | ✅ | 0 |
+| interceptor/DiffField.java | ✅ | 0 |
+| interceptor/OperateLogV2Aspect.java | ✅ | 0 |
+| interceptor/ServiceLogAspect.java | ✅ | 1 |
+| interceptor/UserResolveInterceptor.java | ✅ | 1 |
+| model/ApiResponse.java | ✅ | 1 |
+| model/ErrorInfo.java | ✅ | 0 |
+| security/PlatformAdminPermission.java | ✅ | 0 |
+| security/PlatformAdminPermissionAspect.java | ✅ | 1 |
+| snapshot/EntitySnapshotLoader.java | ✅ | 0 |
+| user/strategy/impl/DevUserStrategy.java | ✅ | 0 |
+| user/strategy/impl/StandardUserStrategy.java | ✅ | 1 |
+| util/CommonUtils.java | ✅ | 0 |
+| util/JsonUtils.java | ✅ | 1 |
 
-## 总裁定：❌ FAIL（2 个 CRITICAL）
+## QC 意见（13 条）
 
-发现 **2 个 CRITICAL + 1 个 MAJOR**。其中权限绕过影响 36 个管理接口，是本次 QC 最严重问题。
+### 意见 1
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：security/PlatformAdminPermissionAspect.java:30-43 `@Before("@annotation(PlatformAdminPermission)")` 切面 TODO 未实现，L43 `log.debug("...currently skipped")` 默认放行。`@PlatformAdminPermission` 被 7 个 Controller 36 个管理接口使用（Category/Callback/Event/Api/Approval/Sync/Debug）→ 全部对任意登录用户开放
+- 修改建议：实现切面校验（校验 UserContextHolder 用户是否在平台管理员清单）；未实现前对所有 @PlatformAdminPermission 接口临时返回 403
 
----
+### 意见 2
+- 大类：安全编码
+- 子类：客户端校验
+- 级别：严重
+- 问题原因：file/service/FileV2Service.java:90-162 saveFile 注释自称"图片上传"却无扩展名白名单/ContentType 魔数校验/文件大小上限。L114-120 仅取扩展名不校验类型，可上传 .jsp/.html
+- 修改建议：加扩展名白名单(png/jpg/jpeg/gif/svg+xml)+ContentType 二次校验(魔数)+文件大小上限
 
-## 🔴 CRITICAL #1：平台管理员权限校验空实现（影响 36 接口）
+### 意见 3
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：file/controller/FileV2Controller.java:37-43 uploadImage 无 @AuthRole/@PlatformAdminPermission 等鉴权注解，任意请求可上传（QA 实测：.txt 上传成功落盘）
+- 修改建议：Controller 加鉴权注解（@AuthRole 或登录态校验）
 
-**位置**：`common/security/PlatformAdminPermissionAspect.java:30-43`
+### 意见 4
+- 大类：安全编码
+- 子类：错误消息中暴露信息
+- 级别：严重
+- 问题原因：exception/GlobalExceptionHandlerV2.java:89-90 未知异常 `e.getMessage()` 拼进 `"Internal server error: "+detail` 返客户端，可能含 SQL/内部路径/库细节
+- 修改建议：未知异常只返通用"系统繁忙"，detail 仅写日志
 
-```java
-@Before("@annotation(PlatformAdminPermission)")
-public void checkPlatformAdminPermission() {
-    // TODO: 平台管理员权限校验（后续集成）   ← 未实现
-    log.debug("Platform admin permission check passed (currently skipped)");  // ← 默认放行
-}
-```
+### 意见 5
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：user/strategy/impl/StandardUserStrategy.java:23-34 resolve 直接 `return null`（TODO 未实现）。标准环境(test/uat/prod)所有请求用户解析返回 null → UserResolveInterceptor 用 empty 用户继续 → 生产环境用户上下文全为空，鉴权失效
+- 修改建议：实现标准环境用户解析（APIG/JWT/SOA Header），未实现前生产不可上线
 
-**影响面**（`@PlatformAdminPermission` 使用统计）：7 个 Controller、**36 个接口**对任意登录用户开放：
+### 意见 6
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：interceptor/UserResolveInterceptor.java:53-58 resolveUser 失败时 `UserContextHolder.set(UserContext.empty())` 继续(return true)，fail-open。任何无法解析用户的请求以空用户身份通过
+- 修改建议：解析失败应返回 401/403 拒绝（fail-closed），而非 empty 用户继续
 
-| Controller | 接口数 | 暴露操作 |
-|---|---|---|
-| CategoryController | 7 | 分类 CRUD |
-| CallbackController | 7 | 回调注册管理 |
-| EventController | 6 | 事件注册管理 |
-| ApiController | 6 | API 注册管理 |
-| ApprovalController(open) | 5 | 审批流模板管理 |
-| SyncController | 4 | 同步管理 |
-| **OpDebugProxyController** | 1 | 🚨 调试代理（若生产启用=灾难） |
+### 意见 7
+- 大类：业务功能
+- 子类：功能需求没有正确实现
+- 级别：严重
+- 问题原因：id/DevIdGeneratorStrategy.java:121-127 supports 只匹配 dev/development/local。IdGeneratorConfig.java:37-41 按环境选策略，标准环境无实现 → orElseThrow 抛 IllegalStateException → 生产启动失败
+- 修改建议：实现标准环境 IdGeneratorStrategy（或生产可复用雪花算法，去掉环境限制，workerId 由配置注入）
 
-**修复**：立即实现切面校验逻辑（校验 UserContextHolder 用户是否在平台管理员清单），或对所有 @PlatformAdminPermission 接口临时加 403 拦截直到实现完成。**OpDebugProxyController 必须在生产禁用**。
+### 意见 8
+- 大类：安全编码
+- 子类：日志文件泄露信息
+- 级别：严重
+- 问题原因：interceptor/ServiceLogAspect.java:30-48 @Before 拦截所有 @Service 方法，L47 `log.info` 打印全部入参，L60 `JsonUtils.toJson(arg)` 序列化复杂对象。若 service 参数含密码/token/apiSecret(如 updateVerifyType)，敏感信息写入日志
+- 修改建议：敏感参数(apiSecret/token/password)脱敏或跳过；或收窄拦截范围排除含敏感参数的方法
 
-> 注：ConnectorController、FlowController 注释表明已改用"基于 X-App-Id 的应用访问控制"，不受此漏洞影响。
+### 意见 9
+- 大类：编程规范
+- 子类：其他编程规范问题
+- 级别：一般
+- 问题原因：enums/ResponseCodeEnum.java:51 NO_ADD_ROLE_PERMISSION("403201") 与 L64 NO_ABILITY_PERMISSION("403201") 错误码重复，不同语义用相同码，前端无法区分
+- 修改建议：NO_ABILITY_PERMISSION 改用独立错误码（如 403401）
 
-## 🔴 CRITICAL #2：文件上传无类型校验 + 接口无鉴权
+### 意见 10
+- 大类：软件结构
+- 子类：冗余重复代码
+- 级别：建议
+- 问题原因：model/ApiResponse.java:11 已有 @Builder，L38-53 又手写 ApiResponseBuilder + builder()，与 Lombok 生成重复
+- 修改建议：删除手写 Builder，依赖 @Builder
 
-**位置**：`common/file/service/FileV2Service.java:90-162`、`common/file/controller/FileV2Controller.java:37-43`
+### 意见 11
+- 大类：安全编码
+- 子类：使用潜在危险函数
+- 级别：建议
+- 问题原因：util/JsonUtils.java:150 extractSimpleProperties 用 `f.setAccessible(true)` 反射访问私有字段，SecurityManager 启用时可能被拒；且绕过封装
+- 修改建议：评估是否必须反射；可改用公共 getter 或 Jackson 序列化
 
-| 问题 | 证据 | 风险 |
-|------|------|------|
-| 无文件类型白名单 | `FileV2Service:115-120` 仅取扩展名不校验；注释自称"图片上传"却接受任意类型 | 可上传 .jsp/.html/.exe；若 uploads 目录被静态映射且可执行 → **RCE/XSS** |
-| Controller 无鉴权注解 | `FileV2Controller:37` uploadImage 无 @AuthRole/@PlatformAdminPermission | 匿名/任意用户可上传（依赖是否有全局拦截器兜底，需确认） |
-| 文件大小未限制 | `FileV2Service:90` 不校验 file.getSize() | 超大文件耗尽磁盘 DoS |
-| fileId 可预测/碰撞 | `FileV2Service:114` `currentTimeMillis + new Random().nextInt(10000)` | 若 fileId 即访问凭证，可被枚举 |
+### 意见 12
+- 大类：安全编码
+- 子类：使用不充足随机数
+- 级别：一般
+- 问题原因：file/service/FileV2Service.java:114 `fileId = FILE_ID_PREFIX + currentTimeMillis() + "_" + new Random().nextInt(10000)`，时间戳+小随机，fileId 可预测/碰撞（同毫秒+同随机）。若 fileId 即访问凭证，可枚举
+- 修改建议：fileId 改用雪花 ID 或 SecureRandom
 
-**修复**：① 加扩展名白名单（png/jpg/jpeg/gif/svg+xml）+ ContentType 二次校验（魔数）；② Controller 加鉴权注解；③ 校验文件大小上限；④ fileId 用雪花 ID。
+### 意见 13
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：config/WebMvcConfig.java:49-51 AppWhitelistInterceptor 只注册 `/connectors/**`+`/flows/**`。`/executions`（运行记录）等用 X-App-Id 的路径未覆盖，依赖 service 层 requireInternalAppId 抛异常(500)而非 HTTP 层 403
+- 修改建议：addPathPatterns 补 `/service/open/v2/executions/**` 等所有用 X-App-Id 的路径
 
-## 🟠 MAJOR #3：全局异常处理器泄露内部信息
+## 批次结论
 
-**位置**：`common/exception/GlobalExceptionHandlerV2.java:89-90`
+- 严重：9（意见 1,2,3,4,5,6,7,8,13）
+- 一般：2（意见 9,12）
+- 建议：2（意见 10,11）
 
-```java
-String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-return ApiResponse.error("500", "Internal server error: " + detail, ...);  // ← detail 返客户端
-```
+**亮点**：enums 状态机完整(ConnectorStatus/FlowVersionStatus/FlowLifecycleStatus/ConnectorVersionStatus 均 isValidTransition)；OperateLogV2Aspect 四阶段容错设计良好(每阶段 try-catch 不影响主业务)；ConnectorPlatformPropertyService 每项硬编码兜底(符合"DB缺失禁止拒绝服务")；AsyncConfig CallerRunsPolicy 保证审计不丢；AuditLogAspect 已被 OperateLogV2Aspect 干净取代。
 
-未知异常的 `e.getMessage()` 可能含 SQL 语句、文件路径、库内部细节 → 信息泄露，辅助攻击者侦察。
-
-**修复**：未知异常只返回通用"系统繁忙"，`detail` 仅写日志。业务异常(BusinessException)的可控 message 可返回。
-
----
-
-## 重构确认（通过项）
-
-| 项 | 结论 | 证据 |
-|---|------|------|
-| AuditLogAspect 删除 | ✅ 合理 | commit `366de82e`"删除冗余 AuditLogAspect，OperateLogV2Aspect 已完全取代"，非丢失代码 |
-| OperateLogV2Aspect 重构 | ⚠️ 建议 QA 复核 | +223/-215 大改，含 8 个 catch 块（L77 catch Throwable 等，属审计切面容错设计）。静态难穷尽，建议阶段 2 动态 QA 验证审计日志仍正确写入 |
-
-## 其他（低风险，已扫描）
-
-- **enums**（13 文件，+1000 行）：大量枚举常量新增（FlowVersionStatus/ConnectorStatus/ExecutionEnums 等），纯数据，低风险 ✅
-- **config/ConnectorPlatformPropertyService**（+234）：配置服务，需确认配置缺失时的兜底行为（AGENTS.md 提到"DB缺失时禁止拒绝服务"）
-- **util/JsonUtils**（+190）、**util/CommonUtils**（+60）：工具类，含 1 处 @SuppressWarnings（待看压制内容）
-- **model/ApiResponse**（+63/-58）：响应模型重构，需确认字段兼容
-- **id/DevIdGeneratorStrategy**（+4/-4）：开发环境 ID 生成器，确认生产不启用
-
-## 阻塞问题汇总
-
-| # | 优先级 | 问题 |
-|---|--------|------|
-| 1 | **P0** | PlatformAdminPermissionAspect 空校验（36 接口权限绕过） |
-| 2 | **P0** | FileV2 文件上传无类型校验+无鉴权（任意文件上传/RCE 风险） |
-| 3 | **P1** | GlobalExceptionHandlerV2 异常信息泄露 |
-| 4 | **P2** | OpDebugProxyController 需确认生产禁用 |
-| 5 | **P2** | OperateLogV2Aspect 重构建议动态 QA 验证 |
-
-## 结论
-
-❌ **不通过**。2 个 CRITICAL（权限绕过 + 任意文件上传）必须立即修复，**严禁以此状态上线**。权限漏洞影响面横跨 event/api/callback/category/approval/sync/debug 共 7 模块 36 接口，是系统性安全风险。common 包的规范性与重构质量（AuditLogAspect 迁移）良好，但安全实现严重缺失。
+**不放行**：意见 1(权限空校验)、2+3(文件上传 RCE)、5+6(生产鉴权失效)、7(生产启动失败)、8(日志泄露) 均为上线阻断项。common 是本次 QC 安全问题最集中的批次。

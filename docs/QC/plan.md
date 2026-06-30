@@ -1,276 +1,285 @@
-# 后端代码 QC 计划（open-server + market-server）
+# 后端代码 QC 计划
 
-> 本文档是后端代码质量审查的执行计划与追踪文档。基于 `/review-work` 5-agent 框架，针对大范围改动改造为分批流水线。
+> 本计划从零制定。审查什么、每项做到什么程度，逐条写清。执行时遵循 §4 约定，杜绝「已扫描」含糊措辞。
 
-## 0. 元信息
+## 1. 审查范围
 
-| 项 | 值 |
-|----|-----|
-| 计划日期 | 2026-06-29 |
-| 审查范围 | `open-server` + `market-server` 两个后端模块 |
-| 基线 commit | `4650daed`（2026-06-10） |
-| 范围终点 | HEAD（2026-06-27） |
-| 涉及 commit | 421 个 |
-| QC 维度 | ①代码质量+规范 ②安全漏洞 ③AI生成代码坏味道 ④架构一致性 |
-| 执行策略 | open-server **全覆盖 6 批**；market-server 1 批 |
-| 产出目录 | `docs/QC/`（hotspots / batch-1-market / batch-2A~2F / dualwrite-audit / ai-slops-cleanup / report） |
-| 负责人 | _待填_ |
+### 1.1 基线
+- 基线 commit：`4650daed`（2026-06-10）→ HEAD
+- 涉及 commit：421 个
 
----
+### 1.2 代码范围（按 git diff 客观统计）
 
-## 1. 改动范围统计
+| 模块 | main java | test java | 非 java |
+|------|-----------|-----------|---------|
+| market-server | 49 | — | mapper xml(8) / yml(1) |
+| open-server | 240 | 24 | mapper xml(~25) / yml(3) / pom(1) / sql migration(2) |
 
-### 1.1 总量
+### 1.3 open-server 模块文件分布（分批依据）
 
-| 模块 | 改动 java 文件 | 增行 | 删行 | 性质 |
-|------|---------------|------|------|------|
-| **open-server** | 264 | +26,017 | -4,955 | 增量改动（含大量重构） |
-| **market-server** | 49 | +2,261 | -107 | 偏新增 |
-| **合计** | **313** | **+28,278** | **-5,062** | — |
-
-> ⚠️ open-server 有 **-4,955 删除行**，疑似大规模重构，是本次 QC 的重点排查对象。
-
-### 1.2 open-server 模块改动分布（按文件数）
-
-| 模块 | java 文件 | 删行(实测) | 备注 |
-|------|-----------|-----------|------|
-| common | 43 | 489 | 配置/枚举/拦截器，安全敏感 |
-| app | 35 | 54 | 应用管理 |
-| open-server 顶层 | 24 | **1942** | 🔴 重构最重（启动/全局配置） |
-| flow | 20 | **550** | 🔴 审批流，重构重 |
-| connector | 18 | **547** | 🔴 连接器，重构重 |
-| ability | 15 | 0 | 能力 |
-| version | 13 | 0 | 版本 |
-| approval | 13 | 26 | 审批 |
-| member | 12 | 0 | 成员 |
-| card | 10 | 0 | 卡片 |
-| connectorversion | 9 | 0 | 连接器版本 |
-| flowexecrecord | 8 | 0 | 流执行记录 |
-| permission | 8 | 75 | 权限，安全敏感 |
-| flowversion | 7 | 0 | 流版本 |
-| callback | 6 | 12 | 回调 |
-| api | 5 | 10 | API |
-| sync | 4 | 8 | 同步 |
-| auditlog | 4 | 35 | 审计日志 |
-| security | 4 | 0 | 安全 |
-| debug/employee/event/lookup | 6 | 19 | 小模块 |
-
-### 1.3 market-server 模块改动分布
-
-| 模块 | java 文件 | 备注 |
-|------|-----------|------|
-| approval | 25 | 审批引擎，逻辑核心 |
-| chatbotbindtab | 10 | 机器人绑定页签 |
-| lookup | 8 | 字典查找 |
-| dictionary | 4 | 数据字典 |
-| common | 2 | 配置 |
-
-### 1.4 跨模块重叠（架构一致性风险）
-
-`market-server` 与 `open-server` 同时存在 **approval / dictionary / lookup** 同名模块，且本次 6.10 后两边 approval 都有改动（market 25 文件 / open 13 文件）。
-
-> **架构发现（查 spec §1.3 确认）**：market 与 open **共享同一 MySQL `openapp` 库**，approval 的 Entity（`ApprovalRecord`/`ApprovalLog`/`ApprovalFlow`）**故意与 open-server 字段同构**——**不是复制代码，而是"共享 DB + 双写"架构**。
->
-> 因此阶段 3 的 approval 不应做"代码查重"，而应聚焦：① 同库双写的**字段一致性** ② 并发写**安全**（两服务同时写同一表） ③ 操作语义对齐。dictionary / lookup 是否也同构待执行时确认。
+| 模块 | 文件数 | 性质 |
+|------|--------|------|
+| common | 43 | 配置/拦截器/枚举/异常/文件/安全（含权限切面） |
+| app | 35 | 应用管理 |
+| flow | 20 | 连接流（含发布校验、部署、复制） |
+| connector | 18 | 连接器 |
+| ability | 15 | 能力订阅 |
+| version | 13 | 应用版本 |
+| approval | 13 | 审批发起/编排（与 market 共享 DB） |
+| member | 12 | 成员/角色 |
+| permission | 8 | 权限订阅 |
+| card | 10 | 卡片设置 |
+| connectorversion | 9 | 连接器版本 |
+| flowexecrecord | 8 | 运行记录 |
+| flowversion | 7 | 流版本 |
+| callback | 6 | 回调注册 |
+| api | 5 | API 注册 |
+| sync/auditlog/security/debug/employee/event/lookup | 17 | 小模块 |
 
 ---
 
-## 2. 四阶段执行方案
+## 2. 审查维度（5 项，每个模块都覆盖）
+
+| 维度 | 审什么 |
+|------|--------|
+| ① 安全 | 鉴权/越权、注入、密钥、文件上传、信息泄露、依赖 |
+| ② 代码质量 | 正确性、并发、事务、异常处理、资源泄漏、边界 |
+| ③ 规范符合 | SQL 规范、命名、分层、API 契约、错误码 |
+| ④ 架构一致 | 应用隔离机制、双写一致性、模块边界、重复代码 |
+| ⑤ QA 实测 | 起服务 curl 验证关键接口（尤其安全类） |
+
+---
+
+## 2.1 检视意见分类标准（问题归类与定级）
+
+> 以下为**初版框架**，用于审查发现的问题统一归类与定级。请你给出具体约束，或在下表基础上调整/补充/覆盖。所有 batch 报告的问题都按此表归类。
+
+| 检视意见大类 | 子类 | 建议严重级别 |
+|---|---|---|
+| 编程规范 | 排版/命名 | 建议 |
+| 编程规范 | 注释/可读性 | 建议 |
+| 编程规范 | 常量左值/魔鬼数字 | 建议 |
+| 编程规范 | 断言调试/打印 | 一般 |
+| 编程规范 | 异常处理 | 验证 |
+| 编程规范 | 其他编程规范问题 | 建议 |
+| 非编码规范 | 参数/返回值/操作优先级 | 建议 |
+| 非编码规范 | 指针/数组/字符串赋值 | 建议 |
+| 非编码规范 | 资源申请释放 | 严重 |
+| 非编码规范 | 终端/效率/移植性 | 一般 |
+| 非编码规范 | 循环/if/switch | 建议 |
+| 非编码规范 | 结构/宏/枚举 | 建议 |
+| 非编码规范 | 逻辑 | 严重 |
+| 非编码规范 | 其他非编码规范问题 | 建议 |
+| 业务功能 | 功能需求遗漏 | 严重 |
+| 业务功能 | 功能需求没有正确实现 | 严重 |
+| 业务功能 | 其他功能问题 | 严重 |
+| 软件结构 | 函数功能不单一 | 一般 |
+| 软件结构 | 函数复杂度高 | 一般 |
+| 软件结构 | 数据依赖多（全局，局部变量，参数） | 一般 |
+| 软件结构 | 全局变量访问不合理 | 一般 |
+| 软件结构 | 冗余重复代码 | 一般 |
+| 软件结构 | 其他软件结构问题 | 一般 |
+| 安全编码 | SQL注入 | 严重 |
+| 安全编码 | 命令注入 | 严重 |
+| 安全编码 | 代码注入 | 严重 |
+| 安全编码 | 资源注入 | 严重 |
+| 安全编码 | 未受控制的格式化字符串 | 严重 |
+| 安全编码 | 跨站脚本 | 严重 |
+| 安全编码 | 跨站请求伪造 | 严重 |
+| 安全编码 | XML注入 | 严重 |
+| 安全编码 | 日志注入 | 严重 |
+| 安全编码 | 客户端校验 | 严重 |
+| 安全编码 | 使用内在危险函数 | 严重 |
+| 安全编码 | 不安全临时文件 | 严重 |
+| 安全编码 | 使用不充足随机数 | 严重 |
+| 安全编码 | 错误消息中暴露信息 | 严重 |
+| 安全编码 | 敏感信息释放前未清理 | 严重 |
+| 安全编码 | 调试信息中泄露信息 | 严重 |
+| 安全编码 | 日志文件泄露信息 | 严重 |
+| 安全编码 | 源代码泄漏信息 | 严重 |
+| 安全编码 | 序列化类包含敏感数据 | 严重 |
+| 安全编码 | 使用潜在危险函数 | 严重 |
+| 安全编码 | 硬编码安全相关的常量 | 严重 |
+| 安全编码 | 违反安全编程规范 | 严重 |
+| 安全编码 | 关键资源权限分配不当 | 严重 |
+| 安全编码 | 其他 | 严重 |
+| 基本代码问题 | 可读性问题 | 建议 |
+| 基本代码问题 | 常量问题 | 建议 |
+| 基本代码问题 | 字符串问题 | 建议 |
+| 基本代码问题 | 日志输出问题 | 建议 |
+| 基本代码问题 | 资源使用问题 | 严重 |
+| 基本代码问题 | 合法性校验问题 | 严重 |
+| 基本代码问题 | 性能和效率问题 | 严重 |
+| 基本代码问题 | 多线程问题 | 严重 |
+| 基本代码问题 | 信息安全性问题 | 严重 |
+| 基本代码问题 | 代码逻辑错误 | 严重 |
+| 基本代码问题 | 相似代码 | 一般 |
+| 基本代码问题 | 集合/数组问题 | 一般 |
+| 代码设计问题 | SOLID设计原则问题 | 一般 |
+| 代码设计问题 | 代码结构设计问题 | 一般 |
+| 代码设计问题 | 代码逻辑设计问题 | 一般 |
+| 其他问题 | GIT操作错误 | 严重 |
+| 其他问题 | 工程设置错误 | 严重 |
+| 其他问题 | 待开发二次确认问题 | 建议 |
+
+**严重级别定义**（与上表一致）：
+- **严重**：必须修复，影响功能正确性/安全/上线
+- **验证**：疑似问题，需进一步验证确认
+- **一般**：建议修复，影响可维护性/质量
+- **建议**：改进建议，可选
+
+---
+
+## 2.2 QC 意见输出格式（强制）
+
+batch 报告里**每条 QC 意见**必须按以下 5 项输出，缺一不可。大类/子类/级别必须取自 §2.1 表格。
+
+| 字段 | 说明 |
+|---|---|
+| **大类** | 取自 §2.1「检视意见大类」列（编程规范/非编码规范/业务功能/软件结构/安全编码/基本代码问题/代码设计问题/其他问题） |
+| **子类** | 取自 §2.1 对应「子类」列 |
+| **级别** | 严重 / 验证 / 一般 / 建议（取自 §2.1） |
+| **问题原因** | 具体问题：`文件:行号` + 现象 + 为何是问题 |
+| **修改建议** | 具体可执行的修复方案（不是「建议优化」这类空话） |
+
+**单条意见示例**：
 
 ```
-阶段0  快扫热点（grep/ast_grep，全量313文件）   → 圈定优先级、发现低悬果实
-  ↓
-阶段1  market-server 快速过（1批，2.3k行）       → 轻量，approval 为核心
-  ↓
-阶段2  open-server 分批深审（6批，26k行）        → 本次 QC 核心
-  ↓
-阶段3  跨模块查重 + AI痕迹清理                   → 架构一致性
+- 大类：安全编码
+- 子类：关键资源权限分配不当
+- 级别：严重
+- 问题原因：PlatformAdminPermissionAspect.java:30-43 @PlatformAdminPermission 切面 TODO 未实现，
+  默认 log.debug 放行，36 个管理接口对任意登录用户开放
+- 修改建议：实现切面校验（校验 UserContextHolder 用户是否在平台管理员清单），
+  或对所有 @PlatformAdminPermission 接口临时加 403 拦截
 ```
 
-### 阶段 0：轻量快扫（全量，不用 review-work）
-
-**目的**：全量扫 313 个改动文件的明显坏味道，产出热点排名，为阶段 2 的 Oracle 圈定该深读哪些文件，并发现低悬果实。
-
-**扫描清单**：
-
-| # | 模式 | 维度 | 工具 |
-|---|------|------|------|
-| 1 | 硬编码密码/密钥/token（`password=`、`secret`、`apikey`） | 安全 | grep |
-| 2 | `System.out.println` / `printStackTrace()` | 质量 | grep |
-| 3 | 空 catch（`catch (... e) {}`） | 质量 | ast_grep |
-| 4 | SQL 字符串拼接（`"... " + var`） | 安全 | ast_grep |
-| 5 | `TODO` / `FIXME` / `HACK` / `XXX` | 质量 | grep |
-| 6 | 硬编码 URL/IP（`http://`、`https://` 明文） | 安全 | grep |
-| 7 | `@SuppressWarnings` 滥用 | 质量 | grep |
-| 8 | `new Random()`（安全场景误用） | 安全 | ast_grep |
-
-**产出**：`docs/QC/hotspots.md`（按文件聚合命中数，降序排名）。
-
-### 阶段 1：market-server（1 批）
-
-49 文件、+2,261 行，**一次 review-work 跑完**（Oracle 可装下）。重点：approval 25 文件的审批引擎逻辑。
-
-### 阶段 2：open-server（6 批，核心）
-
-按业务域聚合 + 文件数均衡划分。每批跑一次 review-work 5-agent。
-
-| 批次 | 范围 | 文件 | 风险标签 | 重点 |
-|------|------|------|---------|------|
-| **2-A** | common | 43 | 🟠 重构+安全敏感 | 配置/拦截器/枚举，删489行，权限&加解密相关 |
-| **2-B** | app | 35 | 🟡 常规 | 应用管理 CRUD |
-| **2-C** | open-server顶层 + flow | 44 | 🔴 重构最重 | 删 1942+550 行，挖"删了什么、为何删" |
-| **2-D** | connector + ability + connectorversion | 41 | 🔴 重构重 | 删 547 行，连接器域 |
-| **2-E** | version + approval + member + permission | 46 | 🟠 安全敏感 | permission 删75行，权限+审批+成员 |
-| **2-F** | card + flowexecrecord + flowversion + callback + api + sync + auditlog + security + 其余 | 54 | 🟢 小模块合并 | 审计日志/回调/同步等 |
-
-> **动态拆批规则**：若某批实测改动行数 > 8,000（Oracle context 预警线），执行时再按子包（如 common 拆 config/enums vs service/controller）拆分。
-
-### 阶段 3：跨模块查重 + AI 痕迹清理（不用 review-work）
-
-| 任务 | 方法 | 输出 |
-|------|------|------|
-| market.approval ↔ open.approval 一致性 | **同库双写审查**：Entity 字段一致性 + 并发写安全 + 操作语义对齐（spec 已确认共享 DB 同构，非代码查重） | 双写风险清单 |
-| market.dictionary vs open.dictionary | 待确认是否同构；若复制则查重，若同构转一致性审查 | 重复/风险清单 |
-| market.lookup vs open.lookup | 同上 | 重复/风险清单 |
-| AI 生成代码坏味道清理 | `/remove-ai-slops`（先回归测试锁定行为） | 清理报告 |
-| 分层架构一致性 | `lsp_find_references` + 手动 | 架构偏离清单 |
+> 约束：问题原因必须落到具体文件:行号；修改建议必须可执行。空泛的「建议优化」「需改进」不算合格意见。
 
 ---
 
-## 3. review-work 5-Agent 定制（针对本次事后 QC）
+## 3. 分批审查计划（每模块单独一批，单独一个 batch 文件）
 
-本次是**事后大范围 QC**，非单次实现验证，5 个 agent 需定制：
+> **设计原则**：每个模块独立成批、独立产出一个 batch 文件。不合并模块。单批文件量小（5-43），context 友好，不易跳过。做完一个模块的 batch 文件，再做下一个。
 
-| Agent | 默认角色 | 本次定制 | 必要性 |
-|-------|---------|---------|--------|
-| **1 Goal Verify** | 验证单一实现 goal | ⚠️ 无单一 goal。**改造为**：API 契约/返回结构/异常规范一致性验证；或对照 `docs/market-server/*-spec.md` 做规范符合性验证；或直接用 `@sddu-review` 替代 | 可选 |
-| **2 QA Execution** | hands-on 跑应用 | 后端服务，curl 打 API。均按 `AGENTS.md` 用 **WMI** 起服务（禁用 Start-Process）。market-server：`MarketServerApplication`，端口18080/context `/market-server`；open-server：端口18080/context `/open-server`。⚠️**两者端口冲突，审谁起谁，不可同时运行** | 主 |
-| **3 Code Quality** | Oracle 看全文 | ✅ 核心。注入该批 file_contents（含 diff）。10 维度审查 | 主 |
-| **4 Security** | Oracle 看全文 | ✅ 核心。注入该批 file_contents。10 项安全清单 | 副 |
-| **5 Context Miner** | 挖 git/引用 | ✅ 重点挖"重构删除原因"（`git log` 追溯被删代码历史）+ 跨模块引用影响 | 主 |
+### 已完成（按原合并批执行，需补独立文件）
+- **批 common**（43文件）→ `batch-common.md` ✅ 已有 batch-2A-common.md
+- **批 app**（35文件）→ `batch-app.md` ✅ 已有 batch-2B-app.md
+- **批 flow**（20文件）→ `batch-flow.md` ✅ 已有 batch-2C-flow.md
 
-**Oracle 投喂规则**：Oracle 不能读文件，必须把该批所有改动文件的**完整内容 + diff + 邻近参考文件**塞进 prompt。投喂前用 `git diff --numstat` 实测行数，超 8k 行则拆批。
+### 待执行（每模块单独一批）
+| 批次 | 模块 | 文件数 | 产出文件 |
+|------|------|--------|---------|
+| 批 connector | connector | 18 | `batch-connector.md` |
+| 批 ability | ability | 15 | `batch-ability.md` |
+| 批 connectorversion | connectorversion | 9 | `batch-connectorversion.md` |
+| 批 version | version | 13 | `batch-version.md` |
+| 批 approval | approval(open) | 13 | `batch-approval.md` |
+| 批 member | member | 12 | `batch-member.md` |
+| 批 permission | permission | 8 | `batch-permission.md` |
+| 批 card | card | 10 | `batch-card.md` |
+| 批 flowversion | flowversion | 7 | `batch-flowversion.md` |
+| 批 flowexecrecord | flowexecrecord | 8 | `batch-flowexecrecord.md` |
+| 批 callback | callback | 6 | `batch-callback.md` |
+| 批 api | api | 5 | `batch-api.md` |
+| 批 sync | sync | 4 | `batch-sync.md` |
+| 批 auditlog | auditlog | 4 | `batch-auditlog.md` |
+| 批 security | security | 4 | `batch-security.md` |
+| 批 debug | debug | 2 | `batch-debug.md` |
+| 批 employee | employee | 2 | `batch-employee.md` |
+| 批 event | event | 1 | `batch-event.md` |
+| 批 lookup | lookup | 1 | `batch-lookup.md` |
 
----
+### market-server（已完成的单模块批）
+- **批 market**（49文件）→ `batch-market.md` ✅ 已有 batch-1-market.md
 
-## 4. 执行反馈机制（中粒度）
+### 小模块合并批（2F，已执行，需拆分重做）
+> 原 batch-2F-misc.md 合并了多个小模块，需拆为上表各独立批。其中 OpDebugProxyService/CardSettingService 已逐行读，5 大 service（FlowVersion/Sync/Api/Callback/Event）仅扫描。
 
-执行期间在每个有意义的时间点**主动**输出进度，绝不静默。粒度：每个 agent 完成报一行 + 阶段切换报 + 每批汇总。
+### 非java（单独）
+- **批 非java**（mapper xml/yml/pom/sql）→ `non-java-audit.md` ✅ 已有
 
-### 4.1 阶段 0 快扫（同步执行，逐项报）
-- 每项报命中数：`✓ 扫描 3/8 空catch：命中 X 处`
-- 全部完成报 Top5 热点，并写入 `docs/QC/hotspots.md`
+### 每批必做
+- **必读**：该模块全部文件（service/controller/entity/mapper/dto/vo/enum），逐行读不抽样
+- **审什么**：5 维度（安全/质量/规范/架构/正确性）
+- **产出**：独立的 `batch-{模块}.md`，含文件覆盖表（每文件一行）+ §2.2 格式意见
+- **完成标志**：batch 文件写完才算完成；context 不够就停在该批，不跳到下一个
 
-### 4.2 review-work 每批（5 个后台 agent，异步轮询）
+### 批 3：非 java + test
+- **mapper xml（market 8 + open ~25）**：逐个读，审 SQL 注入（`${}`）、SELECT *、JOIN 超限、SQL 正确性
+- **yml 配置（4）**：审敏感配置（密钥/凭证明文）、端口、profile
+- **pom.xml（2）**：审依赖变更（新增/升级），查 CVE、可疑包
+- **sql migration（V2/V3）**：审 DDL（索引/约束/字段类型/外键）
+- **test（open 24）**：覆盖核查（删除的测试是否丢关键场景）
+- **产出**：`non-java-audit.md`
 
-| 节点 | 反馈内容 |
-|------|---------|
-| T0 启动 | 「开始批次 X（N 文件），5 个 agent 已派发」 |
-| 执行中 | agent 阶段切换/完成时报：`活跃 5/5｜Agent3 代码质量 审查中…` |
-| 静默预警 | agent 超时无信号，主动报「Agent4 仍在跑（已 90s），未卡死」 |
-| 单 agent 完成 | 「Agent3 完成 → PASS，2 个 MAJOR」 |
-| 批次完成 | 「批次 X 完成：3 PASS / 1 FAIL，阻塞 N 个，已写 batch-*.md」 |
-| 批次间 | 「总进度 m/8 批，累计阻塞 X 个」 |
+### 批 4：QA 实测
+- 起服务（WMI，按 AGENTS.md）curl 验证：鉴权类接口（权限切面/越权）、文件上传、应用隔离边界
+- **产出**：写入对应 batch 报告 + `report.md` 实证章节
 
-### 4.3 收尾
-全部完成后写 `docs/QC/report.md` 汇总，给出阻塞问题修复优先级。
-
-> **承诺**：后台 agent 异步运行，采用**轮询式主动汇报**，不会"派发完就没动静"。单 agent 静默超阈值主动预警；确认卡死则标 INCONCLUSIVE 并重派更小的 reviewer。
-
----
-
-## 5. 工具与命令映射
-
-| 维度 | 首选工具 | 备注 |
-|------|---------|------|
-| 代码质量+规范 | `/review-work` Agent3 + ast_grep | 静态模式扫描 |
-| 安全漏洞 | `/review-work` Agent4（或 `/security-review` 专项深审） | 敏感模块可追加专项 |
-| AI 生成坏味道 | `/remove-ai-slops` | 阶段 3 统一清理 |
-| 架构一致性 | `/review-work` Agent5 + 手动查重 | 阶段 3 跨模块 |
-
-**服务启动（QA agent 必读）**：严格遵循 `AGENTS.md` 第一条——**必须用 WMI 启动**，禁止 `Start-Process`/`cmd start`，否则 bash 工具永久卡死。
-
----
-
-## 6. 风险与待确认事项
-
-| # | 事项 | 状态 | 影响 |
-|---|------|------|------|
-| 1 | market-server 启动方式 | ✅ 已确认 | 独立 SpringBoot 应用（`MarketServerApplication`，jar），端口 **18080**/context-path `/market-server`，共享 `openapp` 库；⚠️ **与 open-server 端口冲突**，QA 不可同时起两个服务 |
-| 2 | Agent1 Goal Verify 处理方式 | ✅ 已确认 | market 批 → 对照 `app-version-approval-spec.md`/`app-single-chatbot-bindtab-spec.md` 做 **spec 符合性验证**；open 批 → 无统一 spec，**省略**或降级为 API 契约/异常规范一致性轻验证 |
-| 3 | git 未跟踪文件是否纳入（`start-server.bat`/`server.log`/`uploads/`） | ❓ 待定 | 影响 QC 边界 |
-| 4 | 单批行数实测，超 8k 行则动态拆批 | ⏳ 执行时验证 | Oracle context 上限 |
-| 5 | open-server -4955 删除行的重构动机 | ❓ 待 Context Miner 挖掘 | 是否引入回归风险 |
-| 6 | 26k 行全覆盖 = 6 批 × 5 agent，耗时长，建议分会话推进 | ⚠️ 已知 | 排期 |
+> 双写一致性（market↔open 共享表）按约定不做。
 
 ---
 
-## 7. 执行追踪表
+## 4. 执行约定（防虚标）
 
-> 每完成一项勾选；正式执行时用此表对应 `todowrite` 追踪。
-
-### 准备阶段
-- [x] 确定基线 commit（`4650daed`）
-- [x] 统计改动范围与模块分布
-- [x] 制定分批方案
-- [x] 本计划落盘
-- [x] 确认 market-server 启动方式（待确认事项1）
-- [x] 确定 Agent1 处理方式（待确认事项2）
-
-### 阶段 0：快扫 ✅
-- [x] 执行 8 项坏味道扫描
-- [x] 产出 `docs/QC/hotspots.md` 热点排名
-
-### 阶段 1：market-server
-- [x] 批 1-M：market-server 全量（49 文件）review-work
-- [x] 产出 market-server 审查报告
-
-### 阶段 2：open-server（6 批）
-- [x] 批 2-A：common（43）
-- [x] 批 2-B：app（35）
-- [x] 批 2-C：open-server顶层 + flow（44）
-- [x] 批 2-D：connector + ability + connectorversion（41）
-- [x] 批 2-E：version + approval + member + permission（46）
-- [x] 批 2-F：小模块合并（54）
-- [x] 汇总 open-server 6 批审查报告
-
-### 阶段 3：查重 + AI痕迹
-- [x] approval 跨模块查重
-- [x] dictionary 跨模块查重
-- [x] lookup 跨模块查重
-- [x] `/remove-ai-slops` 清理
-- [x] 架构一致性核查
-
-### 收尾
-- [x] 汇总总报告 `docs/QC/report.md`
-- [x] 阻塞问题修复跟踪
+1. **逐文件读**：§3「必读」文件逐行读，不抽样、不假设低风险。
+2. **结论标来源**：每条结论标注「深读/扫描/未审」，禁用「已扫描/低风险/通过」含糊词。
+3. **未读即标未审**：没读的文件明确写「未审」，不许写「通过」。
+4. **数据类（DTO/VO/entity/enum）**：可扫描非逐行，但须声明「扫描非深读」。
+5. **改代码动作**（修复/`/remove-ai-slops`）：不自主做，等授权。
+6. **进度反馈**：每个模块完成后报结论（PASS/FAIL + 问题数），不静默。
+7. **执行中不抛问题**：全程不向用户提问，自主决策推进到底。
+8. **只 QC 不改代码**：只审查记录意见，不修改任何源代码（`/remove-ai-slops` 等改代码动作一律不做）。
 
 ---
 
-## 附录 A：数据获取命令
+## 5. 产出文件
 
-```bash
-# 基线
-git log --before="2026-06-10" --pretty=format:"%h" -1   # → 4650daed
+| 文件 | 内容 |
+|------|------|
+| `plan.md` | 本计划 |
+| `hotspots.md` | 阶段 0 坏味道快扫 |
+| `batch-1-market.md` | market 审查 |
+| `batch-2A~2F-*.md` | open 6 批审查 |
+| `non-java-audit.md` | 非 java（xml/yml/pom/sql）+ test 审查 |
+| `report.md` | 最终汇总（含 QA 实证、阻塞问题、修复优先级） |
 
-# 某批改动文件清单（以批2-A common 为例）
-git diff --name-only 4650daed HEAD -- "open-server/src/main/java/com/xxx/it/works/wecode/v2/common/*.java"
+---
 
-# 某批改动 diff（投喂 Oracle 用）
-git diff 4650daed HEAD -- "open-server/src/main/java/com/xxx/it/works/wecode/v2/common/"
+## 6. 执行顺序
 
-# 某批实测行数（拆批判断）
-git diff --numstat 4650daed HEAD -- "open-server/src/main/java/com/xxx/it/works/wecode/v2/common/" | awk '{a+=$1;d+=$2} END{print "add="a" del="d}'
-```
+阶段 0 快扫 → 批 1(market) → 批 2-A~2-F(open) → 批 3(非 java+test) → 批 4(QA 实测) → `report.md` 汇总
 
-## 附录 B：批次→模块路径速查
+> 每个 batch 按 §3「必读」清单逐文件审，按 §4 约定标注深度。全部完成后写 `report.md`。
 
-| 批次 | git pathspec 关键词 |
-|------|---------------------|
-| 2-A | `v2/common/` |
-| 2-B | `v2/modules/app/` |
-| 2-C | `v2/OpenServerApplication*` 等 + `v2/modules/flow/` |
-| 2-D | `v2/modules/connector/` + `ability/` + `connectorversion/` |
-| 2-E | `v2/modules/version/` + `approval/` + `member/` + `permission/` |
-| 2-F | `card/` + `flowexecrecord/` + `flowversion/` + `callback/` + `api/` + `sync/` + `auditlog/` + `security/` + `debug/` + `employee/` + `event/` + `lookup/` |
-| 1-M | `market-server/src/main/java/.../v2/` 全部 |
+---
+
+## 7. 执行方法（逐文件，零跳过）
+
+**最小单位 = 单个文件**。不按模块抽样，不假设任何文件低风险（含 DTO/VO/entity/enum/常量类）。可以慢，不允许跳过任何文件或代码。
+
+### 7.1 单文件流程
+1. `read` 文件全文（不跳行、不抽样）
+2. 逐行对照 §2 维度 + §2.1 分类表
+3. 发现的问题按 §2.2 五项格式记录；无问题明确记「该文件无问题」
+4. 标记该文件「已逐行读」
+
+### 7.2 防跳过硬约束：文件覆盖表
+每个 batch 报告**必须**含「文件覆盖表」，每个文件一行，缺一不可：
+
+| 文件 | 逐行读 | 问题数 |
+|------|:---:|:---:|
+| .../ApprovalController.java | ✅ | 2 |
+| .../ApprovalServiceImpl.java | ✅ | 5 |
+| .../ApprovalListVo.java | ✅ | 0 |
+
+> **文件覆盖表缺一个文件，该批次就不算完成。** 这是「没跳过」的硬证据。
+
+### 7.3 节奏
+- 一次推进几个文件（不一锅端），每读完几个报一次进度
+- 慢可接受，跳过任何文件/代码不允许
+- 总量：338 java + 非 java，逐文件全读，预计多轮推进
+
+### 7.4 进度反馈
+每完成若干文件报：已读文件清单 + 各文件问题摘要 + 剩余文件数。不静默。
