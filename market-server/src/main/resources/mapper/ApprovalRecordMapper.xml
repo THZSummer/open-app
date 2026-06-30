@@ -113,11 +113,11 @@
           AND property_name = 'abilityIds'
     </select>
 
-    <!-- ==================== selectThirdPartyAppId ==================== -->
+    <!-- ==================== selectThirdPartyAppId（查询应用编码 eamap_app_code） ==================== -->
     <select id="selectThirdPartyAppId" resultType="string">
         SELECT property_value
         FROM openplatform_app_p_t
-        WHERE parent_id = #{appPkId} AND property_name = 'third_party_app_id'
+        WHERE parent_id = #{appPkId} AND property_name = 'eamap_app_code'
     </select>
 
 </mapper>

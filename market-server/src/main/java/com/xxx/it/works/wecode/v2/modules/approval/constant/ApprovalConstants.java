@@ -18,8 +18,8 @@ public final class ApprovalConstants {
     // 业务类型
     public static final String BUSINESS_TYPE_APP_VERSION_PUBLISH = "app_version_publish";
 
-    // 第三方应用ID属性名
-    public static final String PROPERTY_THIRD_PARTY_APP_ID = "third_party_app_id";
+    // 应用编码属性名（从应用属性表 openplatform_app_p_t 获取）
+    public static final String PROPERTY_EAMAP_APP_CODE = "eamap_app_code";
 
     private ApprovalConstants() {
     }

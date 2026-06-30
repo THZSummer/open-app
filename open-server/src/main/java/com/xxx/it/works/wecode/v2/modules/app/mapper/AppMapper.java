@@ -61,4 +61,14 @@ public interface AppMapper {
      * 查询数据字典（openplatform_property_t）按 path + code
      */
     String selectDictionaryValue(@Param("path") String path, @Param("code") String code);
+
+    /**
+     * 查询数据字典（openplatform_property_t）按 path + code 前缀，返回有效记录的 value 列表
+     *
+     * @param path       分组路径
+     * @param codePrefix code 前缀（如 "callback_url_regex"）
+     * @return 匹配的 value 列表
+     */
+    List<String> selectDictionaryValuesByPathAndCodePrefix(
+            @Param("path") String path, @Param("codePrefix") String codePrefix);
 }

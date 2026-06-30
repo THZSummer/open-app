@@ -75,6 +75,8 @@ public class ApprovalServiceImpl implements ApprovalService {
                         vo.setAppNameCn(app.getAppNameCn());
                         vo.setAppNameEn(app.getAppNameEn());
                         vo.setAppId(app.getAppId());
+                        // hisAppId 从应用属性表补查 eamap_app_code
+                        vo.setHisAppId(recordMapper.selectThirdPartyAppId(app.getId()));
                     }
 
                     String abilityIdsStr = recordMapper.selectVersionAbilityIds(versionId);
@@ -123,7 +125,14 @@ public class ApprovalServiceImpl implements ApprovalService {
                 Long appPkId = toLong(record.get("app_pk_id"));
                 Long versionId = toLong(record.get("version_id"));
 
+                // id = 应用主键 ID
+                vo.setId(appPkId != null ? String.valueOf(appPkId) : null);
+                // appId = openplatform_app_t.app_id（用于路由跳转）
                 vo.setAppId(toString(record.get("app_id")));
+                // hisAppId 从应用属性表补查 eamap_app_code
+                if (appPkId != null) {
+                    vo.setHisAppId(recordMapper.selectThirdPartyAppId(appPkId));
+                }
                 vo.setAppNameCn(toString(record.get("app_name_cn")));
                 vo.setAppNameEn(toString(record.get("app_name_en")));
                 vo.setVersionNo(toString(record.get("version_code")));
