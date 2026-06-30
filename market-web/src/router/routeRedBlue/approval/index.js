@@ -11,8 +11,8 @@ import less from './index.module.less';
 const { TabPane } = Tabs;
 const { confirm } = Modal;
 
-// const Contextroot = processApproval.env.NODE_ENV === 'development' ? '' : '/appstore-market-admin';
-const Contextroot = '';
+// const CONTEXT_ROOT = processApproval.env.NODE_ENV === 'development' ? '' : '/appstore-market-admin';
+const CONTEXT_ROOT = '';
 
 const Approval = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -49,7 +49,7 @@ const Approval = () => {
   };
 
   const handleView = (record) => {
-    // openWindow(`#${Contextroot}/approveDetail?appId=${record.appId}`);
+    // openWindow(`#${CONTEXT_ROOT}/approveDetail?appId=${record.appId}`);
     openWindow(`/market-web/approveDetail?appId=${record.appId}`);
   };
 
