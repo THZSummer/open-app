@@ -41,37 +41,26 @@ _LOOKUP_CONFIG_ITEMS = [
 def platform_property_defaults():
     """在全部测试开始前一次性插入 15 项 Lookup 配置 + App 白名单 Lookup。
     测试直接读 DB，不再需要 _set_property/_set_lookup_item 手动插入。"""
-    # 清理上次中断遗留的测试数据（避免唯一约束冲突）
-    db("DELETE FROM openplatform_lookup_item_t WHERE classify_id IN (SELECT classify_id FROM openplatform_lookup_classify_t WHERE classify_code IN ('Connector.Platform.Config','Connector.Platform.AppWhitelist') AND path = 'CEC.Open')")
-    db("DELETE FROM openplatform_lookup_classify_t WHERE classify_code IN ('Connector.Platform.Config','Connector.Platform.AppWhitelist') AND path = 'CEC.Open'")
-    _config_classify_id = _snow_id()
-    _whitelist_classify_id = _snow_id()
-    _item_ids = []
-    _whitelist_item_id = _snow_id()
+    # 平台默认配置 — 如果已存在则跳过（保留上次测试的数据）
+    existing = db_val("SELECT classify_id FROM openplatform_lookup_classify_t WHERE classify_code = 'Connector.Platform.Config' AND path = 'CEC.Open' AND status = 1")
+    if existing is None:
+        _config_classify_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) VALUES ({_config_classify_id}, 'Connector.Platform.Config', '连接器平台默认配置', 'CEC.Open', 1)")
+        for item_code, item_value in _LOOKUP_CONFIG_ITEMS:
+            item_id = _snow_id()
+            db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) VALUES ({item_id}, {_config_classify_id}, '{item_code}', '{item_code}', '{item_value}', 1)")
+    else:
+        _config_classify_id = existing
 
-    db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) "
-       f"VALUES ({_config_classify_id}, 'Connector.Platform.Config', '连接器平台默认配置', 'CEC.Open', 1)")
-
-    for item_code, item_value in _LOOKUP_CONFIG_ITEMS:
-        item_id = _snow_id()
-        _item_ids.append(item_id)
-        db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) "
-           f"VALUES ({item_id}, {_config_classify_id}, '{item_code}', '{item_code}', '{item_value}', 1)")
-
-    db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) "
-       f"VALUES ({_whitelist_classify_id}, 'Connector.Platform.AppWhitelist', '连接器平台开放应用范围', 'CEC.Open', 1)")
-
-    db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) "
-       f"VALUES ({_whitelist_item_id}, {_whitelist_classify_id}, '001', '测试应用', '{TEST_APP_ID}', 1)")
+    # 白名单 — 同上
+    existing_whitelist = db_val("SELECT classify_id FROM openplatform_lookup_classify_t WHERE classify_code = 'Connector.Platform.AppWhitelist' AND path = 'CEC.Open' AND status = 1")
+    if existing_whitelist is None:
+        _whitelist_classify_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) VALUES ({_whitelist_classify_id}, 'Connector.Platform.AppWhitelist', '连接器平台开放应用范围', 'CEC.Open', 1)")
+        _whitelist_item_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) VALUES ({_whitelist_item_id}, {_whitelist_classify_id}, '{TEST_APP_ID}', '测试应用', '{TEST_APP_ID}', 1)")
 
     yield
-
-    if not _KEEP:
-        for iid in _item_ids:
-            db(f"DELETE FROM openplatform_lookup_item_t WHERE item_id = {iid}")
-        db(f"DELETE FROM openplatform_lookup_item_t WHERE item_id = {_whitelist_item_id}")
-        db(f"DELETE FROM openplatform_lookup_classify_t WHERE classify_id = {_config_classify_id}")
-        db(f"DELETE FROM openplatform_lookup_classify_t WHERE classify_id = {_whitelist_classify_id}")
 
 
 @pytest.fixture
