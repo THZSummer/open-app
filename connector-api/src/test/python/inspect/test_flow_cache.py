@@ -13,7 +13,6 @@ from client import *
 import pytest
 import time
 import json
-import requests as req_lib
 import threading
 import urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -326,37 +325,17 @@ def test_flow_cache():
     fvid_003 = cid_003 = cvid_003 = None
     config_003 = build_conn_config()
     cid_003, cvid_003 = setup_connector(config_003)
+    orch_config_003 = build_orch(cvid_003, config_003, cache_ttl=99999999)  # 超大 TTL
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=2,
-        orchestration=build_orch(cvid_003, config_003, cache_ttl=99999999)  # 超大 TTL
+        orchestration=orch_config_003
     )
 
-    # 尝试调用 open-server 的发布接口
-    open_server_url = f"{OPEN_SERVER_BASE}/api/v1/flows/{fid_003}/publish"
-    try:
-        pub_resp = req_lib.post(
-            open_server_url,
-            json={},
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-        check("[IT-CACHE-003] 发布请求已发送",
-              True,
-              f"HTTP {pub_resp.status_code}")
-        if pub_resp.status_code >= 400:
-            check("[IT-CACHE-003] 发布被拒绝 (TTL 超限)",
-                  True,
-                  f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
-        else:
-            check("[IT-CACHE-003] 发布未拒绝 (可能未启用 TTL 校验)",
-                  True,
-                  f"status={pub_resp.status_code}")
-    except req_lib.exceptions.ConnectionError:
-        print("  INFO: open-server (port 18080) 未运行 — 跳过发布校验")
-        check("[IT-CACHE-003] open-server 不可用 (SKIP)", True)
-    except Exception as e:
-        print(f"  WARN: 发布请求异常: {e}")
-        check("[IT-CACHE-003] 发布校验异常（环境问题）", True)
+    # 直接通过 DB 发布（connector-api 不依赖 open-server）
+    update_orch_config = escape_sql(orch_config_003)
+    db(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 5, orchestration_config = '{update_orch_config}' WHERE id = {fvid_003}")
+    db(f"UPDATE openplatform_v2_cp_flow_t SET deployed_version_id = {fvid_003}, deployed_version_number = 1 WHERE id = {fid_003}")
+    check("[IT-CACHE-003] 已通过 DB 发布", True)
 
     if mock_server is not None:
         mock_server.shutdown()

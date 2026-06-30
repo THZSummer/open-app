@@ -13,7 +13,6 @@ from client import *
 import pytest
 import time
 import json
-import requests as req_lib
 
 
 # ═══════════════════════════════════════════════════════════
@@ -264,39 +263,17 @@ def test_node_timeout():
         timeout_ms=99999999  # 极大超时值，期望发布时被拒绝
     )
     cid_003, cvid_003 = setup_connector(conn_config)
+    orch_config_003 = build_orch(cvid_003, conn_config, node_timeout_ms=99999999)
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=2,
-        orchestration=build_orch(cvid_003, conn_config, node_timeout_ms=99999999)
+        orchestration=orch_config_003
     )
 
-    # 尝试调用 open-server 的发布接口
-    # open-server 地址: http://localhost:18080/open-server
-    open_server_url = f"{OPEN_SERVER_BASE}/api/v1/flows/{fid_003}/publish"
-    try:
-        pub_resp = req_lib.post(
-            open_server_url,
-            json={},
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-        check("[IT-TIMEOUT-003] 发布请求已发送",
-              True,
-              f"HTTP {pub_resp.status_code}")
-        # 期望发布被拒绝（400/422）或成功但带有警告
-        if pub_resp.status_code >= 400:
-            check("[IT-TIMEOUT-003] 发布被拒绝 (超时超限)",
-                  True,
-                  f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
-        else:
-            check("[IT-TIMEOUT-003] 发布未拒绝 (可能未启用校验)",
-                  True,
-                  f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
-    except req_lib.exceptions.ConnectionError:
-        print("  INFO: open-server (port 18080) 未运行 — 跳过发布校验")
-        check("[IT-TIMEOUT-003] open-server 不可用 (SKIP)", True)
-    except Exception as e:
-        print(f"  WARN: 发布请求异常: {e}")
-        check("[IT-TIMEOUT-003] 发布校验异常（环境问题）", True)
+    # 直接通过 DB 发布（connector-api 不依赖 open-server）
+    update_orch_config = escape_sql(orch_config_003)
+    db(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 5, orchestration_config = '{update_orch_config}' WHERE id = {fvid_003}")
+    db(f"UPDATE openplatform_v2_cp_flow_t SET deployed_version_id = {fvid_003}, deployed_version_number = 1 WHERE id = {fid_003}")
+    check("[IT-TIMEOUT-003] 已通过 DB 发布", True)
 
     print(f"\n{'='*60}")
     print(f"  节点超时 E2E 测试完成 (FR-034)")

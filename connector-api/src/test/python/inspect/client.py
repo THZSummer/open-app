@@ -46,8 +46,6 @@ __all__ = [
     "redis",
     # HTTP 快捷方法
     "trigger", "debug_run",
-    # 关联服务地址
-    "OPEN_SERVER_BASE",
 ]
 
 BASE_URL = "http://localhost:18180/api/v1"
@@ -73,7 +71,6 @@ _REDIS_CLUSTER = {
 }
 _API_HOST = "localhost:18180"
 TEST_APP_ID = "20250730213114178360970"  # 与 open-server 共用测试应用
-OPEN_SERVER_BASE = "http://localhost:18080/open-server"
 
 
 def is_quiet():
