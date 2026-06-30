@@ -75,7 +75,7 @@
 ### 意见 3
 - 大类：编程规范
 - 子类：异常处理
-- 级别：验证
+- 级别：严重
 - 问题原因：ApprovalServiceImpl.java:50-107、111-163 整方法包 `catch(Exception)`，单条 record 的 businessId 坏→整页 500，非跳过坏数据返回部分结果
 - 修改建议：循环内单条 try-catch 跳过坏数据，记 warn 日志，返回有效部分
 
