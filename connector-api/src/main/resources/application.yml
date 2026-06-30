@@ -26,6 +26,7 @@ spring:
           - 192.168.3.203:6379
           - 192.168.3.204:6379
           - 192.168.3.205:6379
+          - 192.168.3.206:6379
         max-redirects: 3
       timeout: 5000
       lettuce:
@@ -34,11 +35,6 @@ spring:
           max-wait: -1ms
           max-idle: 8
           min-idle: 0
-
-# 缓存配置（临时方案）
-connector:
-  cache:
-    enabled: true
 
 # 健康检查配置（不检查数据库和 Redis，避免因外部依赖未就绪导致启动检测失败）
 management:

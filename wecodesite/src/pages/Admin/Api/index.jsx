@@ -23,7 +23,7 @@ function ApiList() {
     categories,
     closeModal,
     currentItem,
-    data: appList,
+    data: apiList,
     handleAdd,
     handleCategoryChange,
     handleDelete,
@@ -91,12 +91,12 @@ function ApiList() {
           />
 
           <Spin spinning={loading}>
-            {appList.length > 0 ? (
+            {apiList.length > 0 ? (
               <>
                 <div className="table-wrapper">
                   <Table
                     columns={columns}
-                    dataSource={appList}
+                    dataSource={apiList}
                     rowKey="id"
                     pagination={false}
                   />

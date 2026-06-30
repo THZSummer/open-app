@@ -14,10 +14,17 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Jackson 新旧格式反序列化兼容测试
+ * Jackson 反序列化基础能力验证
  *
- * <p>确保 v5.5 新 JSON 格式可正常反序列化，
- * 且旧 v2.8.1 格式通过 @JsonAlias 向后兼容。</p>
+ * <p>验证 Jackson ObjectMapper 能正确解析连接器平台各 JSON 结构
+ * （connectionConfig、orchestrationConfig、表达式等），不验证 schema 合规性。
+ *
+ * <p>字段名以 plan-json-schema.md v5.6 为准：
+ * connectionConfig: authConfigs / input / output / rateLimitConfig / timeoutMs
+ * triggerNodeData:  triggerType / authConfigs / input
+ * exitNodeData:     output
+ * rateLimitConfig:  maxQps / maxConcurrency
+ * flowConfig:       rateLimitConfig / cache.key / cache.ttl
  */
 @DisplayName("Jackson Deserialization Compatibility Test")
 class JacksonDeserializationTest {
@@ -33,21 +40,21 @@ class JacksonDeserializationTest {
     // ==================== connectionConfig 新旧格式 ====================
 
     @Test
-    @DisplayName("新格式 connectionConfig: authConfig / inputContract / outputContract / rateLimitConfig")
+    @DisplayName("新格式 connectionConfig: authConfigs / input / output / rateLimitConfig")
     void testNewConnectionConfig() throws Exception {
         String json = """
                 {
                     "protocol": "HTTP",
                     "protocolConfig": {"url": "https://api.example.com", "method": "POST"},
-                    "authConfig": {
+                    "authConfigs": [{
                         "type": "AKSK",
                         "fields": [{"name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true}]
-                    },
-                    "inputContract": {
+                    }],
+                    "input": {
                         "protocol": "HTTP",
                         "body": {"type": "object", "properties": {"message": {"type": "string"}}, "required": ["message"]}
                     },
-                    "outputContract": {
+                    "output": {
                         "protocol": "HTTP",
                         "body": {"type": "object", "properties": {"msgId": {"type": "string"}}}
                     },
@@ -59,18 +66,19 @@ class JacksonDeserializationTest {
         Map<String, Object> parsed = mapper.readValue(json, Map.class);
 
         // 新字段名存在
-        assertTrue(parsed.containsKey("authConfig"), "authConfig 应存在");
-        assertTrue(parsed.containsKey("inputContract"), "inputContract 应存在");
-        assertTrue(parsed.containsKey("outputContract"), "outputContract 应存在");
+        assertTrue(parsed.containsKey("authConfigs"), "authConfigs 应存在");
+        assertTrue(parsed.containsKey("input"), "input 应存在");
+        assertTrue(parsed.containsKey("output"), "output 应存在");
         assertTrue(parsed.containsKey("rateLimitConfig"), "rateLimitConfig 应存在");
 
-        // authConfig 内部结构
-        Map<String, Object> authConfig = (Map<String, Object>) parsed.get("authConfig");
-        assertEquals("AKSK", authConfig.get("type"));
+        // authConfigs 内部结构
+        java.util.List<Map<String, Object>> authConfigs = (java.util.List<Map<String, Object>>) parsed.get("authConfigs");
+        assertEquals(1, authConfigs.size());
+        assertEquals("AKSK", authConfigs.get(0).get("type"));
 
-        // inputContract protocol 字段
-        Map<String, Object> inputContract = (Map<String, Object>) parsed.get("inputContract");
-        assertEquals("HTTP", inputContract.get("protocol"));
+        // input protocol 字段
+        Map<String, Object> input = (Map<String, Object>) parsed.get("input");
+        assertEquals("HTTP", input.get("protocol"));
 
         // rateLimitConfig
         Map<String, Object> rateLimitConfig = (Map<String, Object>) parsed.get("rateLimitConfig");
@@ -78,37 +86,36 @@ class JacksonDeserializationTest {
     }
 
     @Test
-    @DisplayName("旧格式 connectionConfig: authTypeSchema / inputSchema / outputSchema / rateLimit (@JsonAlias 兼容)")
+    @DisplayName("新格式 connectionConfig: authConfigs / input / output / rateLimitConfig (v5.6)")
     void testOldConnectionConfig() throws Exception {
         String json = """
                 {
-                    "protocol": "HTTP",
                     "protocolConfig": {"url": "https://api.example.com", "method": "POST"},
-                    "authTypeSchema": {
+                    "authConfigs": [{
                         "type": "AKSK",
                         "fields": [{"name": "accessKey", "carrier": "header", "fieldName": "AK", "required": true, "sensitive": true}]
-                    },
-                    "inputSchema": {
+                    }],
+                    "input": {
                         "type": "object",
                         "properties": {"message": {"type": "string"}},
                         "required": ["message"]
                     },
-                    "outputSchema": {
+                    "output": {
                         "type": "object",
                         "properties": {"msgId": {"type": "string"}}
                     },
                     "timeoutMs": 30000,
-                    "rateLimit": {"maxQps": 10}
+                    "rateLimitConfig": {"maxQps": 10}
                 }
                 """;
 
         Map<String, Object> parsed = mapper.readValue(json, Map.class);
 
-        // 旧字段名仍可解析
-        assertTrue(parsed.containsKey("authTypeSchema"), "authTypeSchema 应存在（旧格式兼容）");
-        assertTrue(parsed.containsKey("inputSchema"), "inputSchema 应存在（旧格式兼容）");
-        assertTrue(parsed.containsKey("outputSchema"), "outputSchema 应存在（旧格式兼容）");
-        assertTrue(parsed.containsKey("rateLimit"), "rateLimit 应存在（旧格式兼容）");
+        // v5.6 字段名
+        assertTrue(parsed.containsKey("authConfigs"), "authConfigs 应存在");
+        assertTrue(parsed.containsKey("input"), "input 应存在");
+        assertTrue(parsed.containsKey("output"), "output 应存在");
+        assertTrue(parsed.containsKey("rateLimitConfig"), "rateLimitConfig 应存在");
     }
 
     // ==================== orchestrationConfig 新旧格式 ====================
@@ -127,8 +134,8 @@ class JacksonDeserializationTest {
                                 "labelCn": "接收",
                                 "labelEn": "Receive",
                                 "type": "http",
-                                "authConfig": {"type": "SYSTOKEN", "fields": []},
-                                "inputContract": {"protocol": "HTTP", "body": {"type": "object", "properties": {"sender": {"type": "string"}}, "required": ["sender"]}},
+                                "authConfigs": [{"type": "SYSTOKEN", "fields": []}],
+                                "input": {"protocol": "HTTP", "body": {"type": "object", "properties": {"sender": {"type": "string"}}, "required": ["sender"]}},
                                 "rateLimitConfig": {"maxQps": 100}
                             }
                         },
@@ -139,7 +146,7 @@ class JacksonDeserializationTest {
                             "data": {
                                 "labelCn": "返回",
                                 "labelEn": "Return",
-                                "outputMapping": {"body": {"msgId": "${$.node.node_trigger.input.sender}"}}
+                                "output": {"body": {"msgId": "${$.node.node_trigger.input.sender}"}}
                             }
                         }
                     ],

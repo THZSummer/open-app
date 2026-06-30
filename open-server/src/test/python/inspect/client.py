@@ -11,17 +11,28 @@
     resp = api("GET", "/connectors/999", app_id="99999")  # 覆盖 app
     ok(resp, 403, "无权限访问")
 """
-import sys, json, time, subprocess
+import sys, json, time
 import requests
 
 # ═══════════════════════════════════════════════════════════
 # 配置 — 只改这里
 # ═══════════════════════════════════════════════════════════
 _API_BASE = "http://localhost:18080/open-server"
-TEST_APP_ID = "202606241730488926"
+TEST_APP_ID = "20250730213114178360970"
 _DEFAULT_USER  = "admin"
 _DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
-_REDIS = {"host": "192.168.3.201", "port": 6379, "password": "openapp"}
+# Redis 集群节点（full_flow 测试用）
+_REDIS_CLUSTER_NODES = [
+    ("192.168.3.201", "6379"), ("192.168.3.202", "6379"),
+    ("192.168.3.203", "6379"), ("192.168.3.204", "6379"),
+    ("192.168.3.205", "6379"), ("192.168.3.206", "6379"),
+]
+
+# 关联服务地址
+CONNECTOR_API_BASE = "http://localhost:18180/api/v1"
+CONNECTOR_API_HEALTH = "http://localhost:18180/actuator/health"
+OPEN_SERVER_BASE = "http://localhost:18080/open-server"
+MOCK_SERVER_URL = "http://localhost:18980"
 _TIMEOUT = 10
 
 # ═══════════════════════════════════════════════════════════
@@ -64,24 +75,62 @@ def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeou
 # ═══════════════════════════════════════════════════════════
 # DB — 直接执行 SQL
 # ═══════════════════════════════════════════════════════════
+_db_conn = None
+
+def _get_db_conn():
+    global _db_conn
+    if _db_conn is None or not _db_conn.open:
+        import pymysql
+        _db_conn = pymysql.connect(
+            host=_DB["host"],
+            user=_DB["user"],
+            password=_DB["passwd"],
+            database=_DB["db"],
+            charset="utf8mb4",
+            autocommit=True
+        )
+    return _db_conn
+
 def db(sql, capture=False):
-    """执行 SQL。capture=True 返回 stdout"""
-    cmd = ["mysql", f"-h{_DB['host']}", f"-u{_DB['user']}", f"-p{_DB['passwd']}", _DB['db'], "-e", sql]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    return r.stdout if capture else None
+    """执行 SQL。capture=True 返回 TSV 格式字符串（兼容旧版 mysql CLI 输出）。"""
+    try:
+        conn = _get_db_conn()
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+            if capture and cursor.description:
+                cols = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                lines = ["\t".join(cols)]
+                for row in rows:
+                    lines.append("\t".join(str(v) if v is not None else "NULL" for v in row))
+                return "\n".join(lines)
+    except Exception as e:
+        print(f"  DB ERROR: {e}")
+    return None
+
+
+def db_rows(sql):
+    """执行 SQL 并返回结构化数据 list[dict]。用于需要结构化访问的场景。"""
+    try:
+        conn = _get_db_conn()
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
+            if cursor.description:
+                cols = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                return [dict(zip(cols, row)) for row in rows]
+    except Exception as e:
+        print(f"  DB ERROR: {e}")
+    return []
+
 
 def db_val(sql):
-    """执行 SQL 并返回单个值（第一列第一行）"""
-    out = db(sql, capture=True)
-    lines = out.strip().split('\n')
-    return lines[-1].strip() if len(lines) > 1 else None
-
-def redis(*args):
-    """执行 redis-cli 命令。如 redis("KEYS", "*") → redis("SET", "k", "v")"""
-    cmd = ["redis-cli", "-h", _REDIS["host"], "-p", str(_REDIS["port"]), "-a", _REDIS["password"], "--no-auth-warning"]
-    cmd.extend([str(a) for a in args])
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else None
+    """执行 SQL 并返回单个值（第一行第一列）。"""
+    rows = db_rows(sql)
+    if rows:
+        first_col = list(rows[0].values())[0]
+        return str(first_col) if first_col is not None else None
+    return None
 
 # ═══════════════════════════════════════════════════════════
 # 断言

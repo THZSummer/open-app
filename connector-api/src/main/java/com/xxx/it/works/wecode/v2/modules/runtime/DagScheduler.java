@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ResolvedFlowConfig;
@@ -28,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <ul>
  *   <li>串行边: flatMap 顺序链式执行</li>
  *   <li>并行边 (edge.data.connectionMode=parallel): Flux.merge() 并发执行</li>
- *   <li>节点超时: min(node config timeout, 30s)</li>
+ *   <li>节点超时: ③(node.data.timeoutMs)存在用③不截断, ③不存在回退①(平台全局)</li>
  *   <li>单分支失败不影响其他并行分支</li>
  * </ul>
  * </p>
@@ -39,15 +40,18 @@ public class DagScheduler {
 
     private final ObjectMapper objectMapper;
     private final Map<String, NodeExecutor> executorMap;
+    private final ConnectorApiPropertyService propertyService;
 
     /** script 节点执行器 (TASK-011 实现后注入, 当前可为 null) */
     @Autowired(required = false)
     private NodeExecutor scriptNodeExecutor;
 
     public DagScheduler(ObjectMapper objectMapper,
-                         List<NodeExecutor> nodeExecutors) {
+                         List<NodeExecutor> nodeExecutors,
+                         ConnectorApiPropertyService propertyService) {
         this.objectMapper = objectMapper;
         this.executorMap = new HashMap<>();
+        this.propertyService = propertyService;
         // 自动注册所有 NodeExecutor Bean
         for (NodeExecutor executor : nodeExecutors) {
             executorMap.put(executor.getNodeType(), executor);
@@ -69,7 +73,7 @@ public class DagScheduler {
     /**
      * 调度执行 DAG (直接传入编排配置 JSON 字符串)
      * <p>
-     * 用于已自行完成版本解析和校验的场景 (如 OpTriggerService),
+     * 用于已自行完成版本解析和校验的场景 (如 FlowInvokeService),
      * 避免重复加载 flow version.
      * </p>
      *
@@ -258,30 +262,28 @@ public class DagScheduler {
 
         log.info("DAG executing node: id={}, type={}", nodeId, nodeType);
 
-        // 获取节点超时时间
-        Duration timeout = resolveNodeTimeout(nodeConfig);
-
-        return executor.execute(ctx, configMap)
-                .doOnNext(output -> {
-                    output.setDurationMs(System.currentTimeMillis() - nodeStart);
-                    log.info("DAG node completed: id={}, type={}, status={}, duration={}ms",
-                            output.getNodeId(), output.getNodeType(),
-                            output.getStatus(), output.getDurationMs());
-                })
-                .timeout(timeout)
-                .onErrorResume(e -> {
-                    NodeOutput errorOutput = new NodeOutput(nodeId, nodeType,
-                            new HashMap<>(), new HashMap<>());
-                    errorOutput.setStatus("timeout");
-                    errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
-                    Map<String, Object> errorInfo = new HashMap<>();
-                    errorInfo.put("code", "6002");
-                    errorInfo.put("message", "Node execution timeout or error: " + e.getMessage());
-                    errorInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
-                    errorInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
-                    errorOutput.setErrorInfo(errorInfo);
-                    return Mono.just(errorOutput);
-                });
+        return resolveNodeTimeout(nodeConfig)
+                .flatMap(timeout -> executor.execute(ctx, configMap)
+                        .doOnNext(output -> {
+                            output.setDurationMs(System.currentTimeMillis() - nodeStart);
+                            log.info("DAG node completed: id={}, type={}, status={}, duration={}ms",
+                                    output.getNodeId(), output.getNodeType(),
+                                    output.getStatus(), output.getDurationMs());
+                        })
+                        .timeout(timeout)
+                        .onErrorResume(e -> {
+                            NodeOutput errorOutput = new NodeOutput(nodeId, nodeType,
+                                    new HashMap<>(), new HashMap<>());
+                            errorOutput.setStatus("timeout");
+                            errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
+                            Map<String, Object> errorInfo = new HashMap<>();
+                            errorInfo.put("code", "6002");
+                            errorInfo.put("message", "Node execution timeout or error: " + e.getMessage());
+                            errorInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
+                            errorInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
+                            errorOutput.setErrorInfo(errorInfo);
+                            return Mono.just(errorOutput);
+                        }));
     }
 
     /**
@@ -304,19 +306,20 @@ public class DagScheduler {
     }
 
     /**
-     * 解析节点超时: min(node.data.timeoutMs, 30s), 默认 30s
+     * 解析节点超时: ③(node.data.timeoutMs)存在用③不截断, ③不存在回退①(平台全局)
      */
-    private Duration resolveNodeTimeout(JsonNode nodeConfig) {
-        long defaultTimeoutMs = 30000;
+    private Mono<Duration> resolveNodeTimeout(JsonNode nodeConfig) {
+        // §3.3.4: ③(node.data.timeoutMs)存在直接用，不截断；③不存在回退①(平台全局)
         JsonNode data = nodeConfig.get("data");
         if (data != null && data.has("timeoutMs")) {
             JsonNode timeoutNode = data.get("timeoutMs");
-            if (timeoutNode.isNumber()) {
-                long nodeTimeoutMs = timeoutNode.asLong();
-                return Duration.ofMillis(Math.min(nodeTimeoutMs, defaultTimeoutMs));
+            if (timeoutNode.isNumber() && timeoutNode.asLong() > 0) {
+                return Mono.just(Duration.ofMillis(timeoutNode.asLong()));
             }
         }
-        return Duration.ofMillis(defaultTimeoutMs);
+        return propertyService.getNodeMaxTimeoutSeconds()
+                .map(seconds -> Duration.ofMillis(seconds * 1000L))
+                .defaultIfEmpty(Duration.ofSeconds(5));
     }
 
     /**
@@ -352,14 +355,14 @@ public class DagScheduler {
      */
     private String getEdgeField(JsonNode edge, String newField, String oldField) {
         JsonNode val = edge.get(newField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         val = edge.get(oldField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         return null;
     }
 
     /**
-     * JsonNode Array → List<JsonNode>
+     * 将 JsonNode 数组转换为 List<JsonNode>
      */
     private List<JsonNode> toList(JsonNode arrayNode) {
         List<JsonNode> list = new ArrayList<>();

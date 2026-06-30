@@ -11,6 +11,10 @@
   flex-direction: column;
   transition: opacity 0.3s;
 
+  input {
+    height: 35px;
+  }
+
   &.loading {
     opacity: 0.6;
     pointer-events: none;
@@ -55,13 +59,6 @@
       margin: 4px 0 0;
       font-size: 13px;
       color: #8f959e;
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
     }
   }
 
@@ -178,10 +175,6 @@
 
   .form-item-no-spacing {
     margin-bottom: 0;
-  }
-
-  .input-border-radius {
-    border-radius: 6px;
   }
 
   .placeholder-text {
@@ -312,11 +305,6 @@
       background: #f54a45;
       border-color: #f54a45;
     }
-  }
-
-  // ===== 状态 Tag 间距 =====
-  .status-tag {
-    margin-left: 4px;
   }
 }
 

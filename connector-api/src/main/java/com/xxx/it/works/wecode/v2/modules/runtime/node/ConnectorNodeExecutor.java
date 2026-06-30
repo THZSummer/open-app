@@ -1,9 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.connector.repository.OpConnectorVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -11,28 +9,27 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.reactive.function.client.WebClient;
-import java.time.Duration;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
+import java.time.Duration;
 import org.springframework.web.util.UriComponentsBuilder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
  * 连接器节点执行器
  * <p>
- * v5.7:
+ * v6.0: 编排自包含 — 直接从 {@code data.connectorVersionConfig} 快照取连接器配置,
+ * 不再查询 connector_version_t.
  * <ul>
- *   <li>从 {@code data.connectorVersionId} 查找 {@code connector_version_t.connection_config}</li>
- *   <li>从 connectionConfig 提取 {@code protocolConfig.url/method}、{@code authConfig}、{@code timeoutMs}</li>
- *   <li>从 {@code data.inputMapping} 结构化配置构建请求参数</li>
- *   <li>向后兼容: 无 connectorVersionId 时从 data 直接读取 url/method</li>
+ *   <li>从 {@code data.connectorVersionConfig} 快照提取 {@code protocolConfig.url/method}、{@code authConfigs}、{@code timeoutMs}</li>
+ *   <li>从 {@code data.input} 结构化配置构建请求参数</li>
+ *   <li>无快照时走 legacy 模式 (从 data.protocolConfig 直接读取)</li>
  * </ul>
  * </p>
  */
@@ -43,54 +40,17 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final ObjectMapper objectMapper;
     private final WebClient webClient;
     private final ExpressionResolver expressionResolver;
-    private final CredentialInjectorRegistry credentialInjectorRegistry;
-    private final OpConnectorVersionReadRepository connectorVersionReadRepository;
-    private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
-    private final CacheToggle cacheToggle;
+    private final UnifiedCredentialProcessor credentialProcessor;
 
     /** 默认超时时间 (30秒) */
     private static final long DEFAULT_TIMEOUT_MS = 30000;
 
     public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                  CredentialInjectorRegistry credentialInjectorRegistry,
-                                  OpConnectorVersionReadRepository connectorVersionReadRepository,
-                                  ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
-                                  CacheToggle cacheToggle) {
+                                   UnifiedCredentialProcessor credentialProcessor) {
         this.objectMapper = objectMapper;
         this.webClient = webClient;
         this.expressionResolver = new ExpressionResolver();
-        this.credentialInjectorRegistry = credentialInjectorRegistry;
-        this.connectorVersionReadRepository = connectorVersionReadRepository;
-        this.reactiveRedisTemplate = reactiveRedisTemplate;
-        this.cacheToggle = cacheToggle;
-    }
-
-    /**
-     * 加载连接器版本配置（带 Redis 缓存 read-through）
-     * <p>
-     * 缓存 Key: {@code cp:conn:config:{connVersionId}}, TTL 300s.
-     * 命中时用缓存的 connectionConfig 重建最小 entity, 跳过 R2DBC.
-     * {@code connector.cache.enabled=false} 时直接穿透 R2DBC.
-     * </p>
-     */
-    private Mono<ConnectorVersionEntity> loadConnectorVersion(Long connectorVersionId) {
-        if (!cacheToggle.isEnabled()) {
-            return connectorVersionReadRepository.findById(connectorVersionId);
-        }
-        String key = "cp:conn:config:" + connectorVersionId;
-        return reactiveRedisTemplate.opsForValue().get(key)
-                .flatMap(cachedJson -> {
-                    ConnectorVersionEntity entity = new ConnectorVersionEntity();
-                    entity.setConnectionConfig(cachedJson);
-                    entity.setId(connectorVersionId);
-                    return Mono.just(entity);
-                })
-                .switchIfEmpty(
-                    connectorVersionReadRepository.findById(connectorVersionId)
-                            .flatMap(entity -> reactiveRedisTemplate.opsForValue()
-                                    .set(key, entity.getConnectionConfig(), Duration.ofSeconds(300))
-                                    .thenReturn(entity))
-                );
+        this.credentialProcessor = credentialProcessor;
     }
 
     @Override
@@ -110,46 +70,35 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         String nodeId = (String) config.get("id");
 
-        // v5.5: React Flow 格式 — 节点配置在 data 字段内
+        // React Flow 格式 — 节点配置在 data 字段内
         Map<String, Object> data = (Map<String, Object>) config.getOrDefault("data", config);
 
         log.info("Connector node executing: nodeId={}", nodeId);
 
-        // v5.7: 从 connectorVersionId 查找连接器配置
-        Object connectorVersionIdObj = data.get("connectorVersionId");
-        if (connectorVersionIdObj != null) {
-            Long connectorVersionId;
-            if (connectorVersionIdObj instanceof Number) {
-                connectorVersionId = ((Number) connectorVersionIdObj).longValue();
-            } else {
-                connectorVersionId = Long.valueOf(connectorVersionIdObj.toString());
+        // v6.0: 优先从 connectorVersionConfig 快照读取 (编排自包含)
+        Object snapshotObj = data.get("connectorVersionConfig");
+        if (snapshotObj instanceof Map) {
+            Map<String, Object> snapshot = (Map<String, Object>) snapshotObj;
+            if (!snapshot.isEmpty()) {
+                return executeWithSnapshot(context, data, nodeId, snapshot);
             }
-            return loadConnectorVersion(connectorVersionId)
-                    .flatMap(versionEntity -> executeWithConnectionConfig(context, config, data, nodeId, versionEntity))
-                    .switchIfEmpty(Mono.defer(() -> executeLegacy(context, config, data, nodeId)));
         }
 
-        // 向后兼容: 无 connectorVersionId 时从 data 直接读取
-        return executeLegacy(context, config, data, nodeId);
+        // 无快照时走 legacy 模式 (从 data.protocolConfig 直接读取)
+        log.info("No connectorVersionConfig snapshot, using legacy mode: nodeId={}", nodeId);
+        return executeLegacy(context, data, nodeId);
     }
 
     /**
-     * v5.7: 从 connectionConfig 提取配置并执行
+     * v6.0: 从 connectorVersionConfig 快照提取配置并执行
      */
     @SuppressWarnings("unchecked")
-    private Mono<NodeOutput> executeWithConnectionConfig(ExecutionContext context,
-                                                          Map<String, Object> config,
-                                                          Map<String, Object> data,
-                                                          String nodeId,
-                                                          ConnectorVersionEntity versionEntity) {
-        Map<String, Object> connectionConfig = versionEntity.parseConnectionConfig(objectMapper);
-        if (connectionConfig.isEmpty()) {
-            log.warn("Connector version {} has empty connectionConfig, falling back to legacy", versionEntity.getId());
-            return executeLegacy(context, config, data, nodeId);
-        }
-
+    private Mono<NodeOutput> executeWithSnapshot(ExecutionContext context,
+                                                  Map<String, Object> data,
+                                                  String nodeId,
+                                                  Map<String, Object> snapshot) {
         // 提取 protocolConfig
-        Map<String, Object> protocolConfig = (Map<String, Object>) connectionConfig.get("protocolConfig");
+        Map<String, Object> protocolConfig = (Map<String, Object>) snapshot.get("protocolConfig");
         String url = null;
         String method = "POST";
         if (protocolConfig != null) {
@@ -158,50 +107,38 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             if (m != null) {
                 method = m.toString();
             }
-        } else {
-            // 向后兼容: protocolConfig 可能直接在顶层
-            url = (String) connectionConfig.get("url");
-            Object m = connectionConfig.get("method");
-            if (m != null) {
-                method = m.toString();
-            }
         }
 
         if (url == null || url.isBlank()) {
-            log.warn("No url found in connectionConfig for connector version {}, falling back to legacy",
-                    versionEntity.getId());
-            return executeLegacy(context, config, data, nodeId);
+            log.warn("No url found in connectorVersionConfig snapshot for node {}, falling back to legacy", nodeId);
+            return executeLegacy(context, data, nodeId);
         }
 
-        // 提取 timeoutMs: 优先从 data (编排配置节点级) 读取, 回退到 connectionConfig (连接器级)
+        // 提取 timeoutMs: node 级 > 快照级 > 默认
         long timeoutMs = DEFAULT_TIMEOUT_MS;
         Object dataTimeoutObj = data.get("timeoutMs");
         if (dataTimeoutObj instanceof Number && ((Number) dataTimeoutObj).longValue() > 0) {
             timeoutMs = ((Number) dataTimeoutObj).longValue();
         } else {
-            Object connTimeoutObj = connectionConfig.get("timeoutMs");
-            if (connTimeoutObj instanceof Number && ((Number) connTimeoutObj).longValue() > 0) {
-                timeoutMs = ((Number) connTimeoutObj).longValue();
+            Object snapshotTimeoutObj = snapshot.get("timeoutMs");
+            if (snapshotTimeoutObj instanceof Number && ((Number) snapshotTimeoutObj).longValue() > 0) {
+                timeoutMs = ((Number) snapshotTimeoutObj).longValue();
             }
         }
 
-        // 提取 authConfig
-        Map<String, Object> authConfig = versionEntity.getAuthConfig(objectMapper);
-
-        // v5.6: 从 data.inputMapping 结构化配置构建请求
+        // 从 data.input 结构化配置构建请求参数
         Map<String, Object> params = buildRequestParams(data, context);
         Map<String, String> headers = (Map<String, String>) params.get("headers");
         Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
         Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
 
-        // 注入凭证到请求头
-        credentialInjectorRegistry.inject(authConfig, headers);
+        // v2: 凭证注入
+        credentialProcessor.apply(snapshot.get("authConfigs"), headers, queryParams, context);
 
         // 构建 input 分区
         Map<String, Object> input = new HashMap<>();
         input.put("url", url);
         input.put("method", method);
-        input.put("connectorVersionId", versionEntity.getId());
         input.put("headers", new HashMap<>(headers));
         input.put("body", new HashMap<>(requestBody));
         if (queryParams != null && !queryParams.isEmpty()) {
@@ -209,10 +146,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         }
 
         long startTime = System.currentTimeMillis();
-        String finalUrl = url;
-        String finalMethod = method;
 
-        return executeHttpCallReactive(nodeId, finalUrl, finalMethod, headers, queryParams,
+        return executeHttpCallReactive(nodeId, url, method, headers, queryParams,
                 requestBody, timeoutMs, context, input, startTime);
     }
 
@@ -220,14 +155,16 @@ public class ConnectorNodeExecutor implements NodeExecutor {
      * 向后兼容: 从 data 直接读取 url/method (旧格式)
      */
     @SuppressWarnings("unchecked")
-    private Mono<NodeOutput> executeLegacy(ExecutionContext context, Map<String, Object> config,
+    private Mono<NodeOutput> executeLegacy(ExecutionContext context,
                                             Map<String, Object> data, String nodeId) {
         log.info("Connector node executing (legacy mode): nodeId={}", nodeId);
 
         long timeoutMs = DEFAULT_TIMEOUT_MS;
 
-        String url = (String) data.get("url");
-        String method = (String) data.getOrDefault("method", "POST");
+        Map<String, Object> protocolConfig = (Map<String, Object>) data.get("protocolConfig");
+        String url = protocolConfig != null ? (String) protocolConfig.get("url") : null;
+        String method = (protocolConfig != null && protocolConfig.get("method") != null)
+                ? protocolConfig.get("method").toString() : "POST";
         Integer timeout = null;
         Object timeoutObj = data.get("timeoutMs");
         if (timeoutObj instanceof Number) {
@@ -242,8 +179,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
         Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
 
-        Map<String, Object> authConfig = (Map<String, Object>) data.get("authConfig");
-        credentialInjectorRegistry.inject(authConfig, headers);
+        // v2: 凭证注入已由 UnifiedCredentialProcessor 统一处理
+        // legacy 模式下 authConfigs 为空，不做注入
 
         Map<String, Object> input = new HashMap<>();
         input.put("url", url);
@@ -260,7 +197,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     }
 
     /**
-     * v5.6: 从映射字段提取值，兼容旧格式（裸字符串）和新格式（{type, value} 对象）
+     * 从映射字段提取值，兼容旧格式（裸字符串）和新格式（{type, value} 对象）
      */
     @SuppressWarnings("unchecked")
     private Object extractMappedValue(Object fieldDef) {
@@ -271,7 +208,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     }
 
     /**
-     * v5.6: 规范化映射段（{type, properties: {key: {type, value}}}）
+     * 规范化映射段（{type, properties: {key: {type, value}}}）
      * 返回 {字段名 -> 表达式值} 的 Map
      */
     @SuppressWarnings("unchecked")
@@ -294,7 +231,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     }
 
     /**
-     * 构建 HTTP 请求参数 (从 inputMapping 提取)
+     * 构建 HTTP 请求参数 (从 input 提取)
      */
     @SuppressWarnings("unchecked")
     private Map<String, Object> buildRequestParams(Map<String, Object> data, ExecutionContext context) {
@@ -302,6 +239,13 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         Map<String, Object> queryParams = new HashMap<>();
         Map<String, Object> requestBody = new HashMap<>();
 
+        // v6.0: 优先从 data.input 读取映射 (新格式)
+        Object inputObj = data.get("input");
+        if (inputObj instanceof Map) {
+            return buildFromInput((Map<String, Object>) inputObj, context);
+        }
+
+        // 向后兼容: 从 data.inputMapping 读取 (旧格式)
         Object inputMappingObj = data.get("inputMapping");
         if (!(inputMappingObj instanceof Map)) {
             return Map.of("headers", headers, "queryParams", queryParams, "requestBody", requestBody);
@@ -339,6 +283,39 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     }
 
     @SuppressWarnings("unchecked")
+    private Map<String, Object> buildFromInput(Map<String, Object> input, ExecutionContext context) {
+        Map<String, String> headers = new HashMap<>();
+        Map<String, Object> queryParams = new HashMap<>();
+        Map<String, Object> requestBody = new HashMap<>();
+
+        Map<String, Object> headerMap = normalizeMappingSegment(input.get("header"));
+        for (Map.Entry<String, Object> entry : headerMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                headers.put(entry.getKey(), String.valueOf(resolved));
+            }
+        }
+
+        Map<String, Object> queryMap = normalizeMappingSegment(input.get("query"));
+        for (Map.Entry<String, Object> entry : queryMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                queryParams.put(entry.getKey(), resolved);
+            }
+        }
+
+        Map<String, Object> bodyMap = normalizeMappingSegment(input.get("body"));
+        for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
+            Object resolved = resolveValue(context, entry.getValue());
+            if (resolved != null) {
+                requestBody.put(entry.getKey(), resolved);
+            }
+        }
+
+        return Map.of("headers", headers, "queryParams", queryParams, "requestBody", requestBody);
+    }
+
+    @SuppressWarnings("unchecked")
     private Object resolveValue(ExecutionContext context, Object value) {
         if (value instanceof String) {
             String expr = (String) value;
@@ -362,7 +339,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         output.setNodeType("connector");
         output.setInput(input);
 
-        // 构建 URI，包含 query 参数（UriComponentsBuilder 自动处理 URL 编码）
+        // 构建 URI，包含 query 参数
         String requestUri;
         if (queryParams != null && !queryParams.isEmpty()) {
             UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url);
@@ -383,7 +360,6 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             requestSpec.bodyValue(body);
         }
 
-        // 全 reactive 链: 无 .block()
         return requestSpec
                 .retrieve()
                 .bodyToMono(String.class)

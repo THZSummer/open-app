@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Table, Button, Tag, Modal, Radio, Select, message, Spin, Tooltip, Pagination } from 'antd';
 import { PlusOutlined, DeleteOutlined, SwapOutlined } from '@ant-design/icons';
 import DeleteConfirmModal from '../../components/DeleteConfirmModal/DeleteConfirmModal';
-import { useAppDetail } from '../../contexts/AppContext';
+import { useSelector } from 'react-redux';
 import { useRoleGuard } from '../../hooks/useRoleGuard';
 import { fetchMemberList, searchUsers, addMembers, deleteMember, transferOwner } from './thunk';
 import { ROLE_MAP, INIT_PAGECONFIG, PAGE_SIZE_OPTIONS } from '../../utils/constants';
@@ -13,17 +13,46 @@ import './Members.m.less';
 
 const { Option } = Select;
 
+function useUserSearch(appId) {
+  const searchFnRef = useRef();
+  useEffect(() => {
+    searchFnRef.current = async (keyword, setResults, setFetching) => {
+      if (!keyword || keyword.trim().length === 0) {
+        setResults([]);
+        return;
+      }
+      setFetching(true);
+      try {
+        const result = await searchUsers(appId, keyword.trim());
+        if (result?.code === '200') {
+          setResults(result.data || []);
+        } else {
+          setResults([]);
+        }
+      } catch {
+        setResults([]);
+      } finally {
+        setFetching(false);
+      }
+    };
+  }, [appId]);
+
+  return useMemo(() => debounce((keyword, setResults, setFetching) => {
+    searchFnRef.current(keyword, setResults, setFetching);
+  }, 500), []);
+}
+
 /**
  * 成员管理页
  */
 function Members() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { appDetail } = useAppDetail();
+  const { appBaseInfo } = useSelector(state => state.app);
   const appId = searchParams.get('appId');
 
   // 页面级权限守卫：不是成员则跳回列表
-  const { role, loading: roleLoading } = useRoleGuard(appId);
+  const { roleType, loading: roleTypeLoading } = useRoleGuard(appId);
 
   const [members, setMembers] = useState([]);
   const [pagination, setPagination] = useState(INIT_PAGECONFIG);
@@ -57,21 +86,20 @@ function Members() {
     return Array.from(map.values());
   })();
 
-  // 权限校验通过后（role 已拿到），从 Context 拿 appDetail 加载数据
+  // 权限校验通过后（role 已拿到），从 Context 拿 appBaseInfo 加载数据
   useEffect(() => {
-    if (!appId || roleLoading || role === null) return;
-    if (!appDetail) return;
-    if (appDetail.appType !== 1) {
+    if (!appId || roleTypeLoading || roleType === null) return;
+    if (!appBaseInfo) return;
+    if (appBaseInfo.appType !== 1) {
       navigate(`/basic-info?appId=${appId}`);
       return;
     }
-    setAppData(appDetail);
-    // 根据 role 设置添加成员时的默认角色
-    if (role === 1) setSelectedRole(2);
-    else if (role === 2) setSelectedRole(0);
+    setAppData(appBaseInfo);
+    if (roleType === 1) setSelectedRole(2);
+    else if (roleType === 2) setSelectedRole(0);
     else setSelectedRole(0);
     loadMembers();
-  }, [appId, appDetail, role, roleLoading]);
+  }, [appId, appBaseInfo, roleType, roleTypeLoading]);
 
   const loadMembers = async (params = { curPage: 1, pageSize: 10 }) => {
     setLoading(true);
@@ -96,47 +124,7 @@ function Members() {
     loadMembers({ curPage: page, pageSize });
   };
 
-  // 搜索用户（添加成员用）— 模糊搜索
-  const handleSearch = debounce(async (keyword) => {
-    if (!keyword || keyword.trim().length === 0) {
-      setSearchResults([]);
-      return;
-    }
-    setSearchFetching(true);
-    try {
-      const result = await searchUsers(appId, keyword.trim());
-      if (result?.code === '200') {
-        setSearchResults(result.data || []);
-      } else {
-        setSearchResults([]);
-      }
-    } catch {
-      setSearchResults([]);
-    } finally {
-      setSearchFetching(false);
-    }
-  }, 300);
-
-  // 搜索用户（转移Owner用）
-  const handleTransferSearch = debounce(async (keyword) => {
-    if (!keyword || keyword.trim().length === 0) {
-      setTransferSearchResults([]);
-      return;
-    }
-    setTransferSearchFetching(true);
-    try {
-      const result = await searchUsers(appId, keyword.trim());
-      if (result?.code === '200') {
-        setTransferSearchResults(result.data || []);
-      } else {
-        setTransferSearchResults([]);
-      }
-    } catch {
-      setTransferSearchResults([]);
-    } finally {
-      setTransferSearchFetching(false);
-    }
-  }, 300);
+  const searchUsersDebounced = useUserSearch(appId);
 
   // 添加成员
   const handleAddMembers = async () => {
@@ -199,10 +187,9 @@ function Members() {
     }
   };
 
-  // 当前用户权限
-  const isOwner = role === 1;
-  const isAdmin = role === 2;
-  const isDeveloper = role === 0;
+  const isOwner = roleType === 1;
+  const isAdmin = roleType === 2;
+  const isDeveloper = roleType === 0;
   const canAdd = isOwner || isAdmin;
 
   // 权限矩阵：判断按钮是否可执行 / 置灰 / 不展示
@@ -311,6 +298,7 @@ function Members() {
       <Modal
         title="添加人员"
         open={addModalVisible}
+        width={600}
         onOk={handleAddMembers}
         onCancel={() => { setAddModalVisible(false); setSelectedUsers([]); setSearchValue(''); setSearchResults([]); }}
       okText="确认添加"
@@ -323,7 +311,7 @@ function Members() {
               mode="multiple"
               placeholder="请输入姓名或工号搜索成员，可同时添加多个成员"
               value={selectedUsers.map((u) => u.welinkId)}
-              onSearch={(val) => { setSearchValue(val); handleSearch(val); }}
+              onSearch={(val) => { setSearchValue(val); searchUsersDebounced(val, setSearchResults, setSearchFetching); }}
               onChange={(values) => {
                 const map = new Map(allOptions.map((u) => [u.welinkId, u]));
                 const newSelected = values.map((id) => map.get(id)).filter(Boolean);
@@ -335,7 +323,7 @@ function Members() {
               dropdownClassName="member-select-dropdown"
               optionLabelProp="label"
             >
-              {allOptions.map((user) => (
+              {searchResults.map((user) => (
                   <Option key={user.welinkId} value={user.welinkId} label={`${user.memberNameCn} ${user.w3Account} ${user.deptName || ''}`}>
                     <div className="member-option">
                       <span className="member-option-name">{user.memberNameCn}</span>
@@ -347,7 +335,7 @@ function Members() {
             </Select>
           </div>
 
-          <div className="role-select">
+          <div className="form-item">
             <label className="form-label"><span style={{ color: '#f54a45' }}>* </span>角色：</label>
             <Radio.Group value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
               {isOwner && <Radio value={2}>管理员</Radio>}
@@ -392,7 +380,7 @@ function Members() {
             placeholder="请输入姓名或工号搜索成员"
             style={{ width: '100%' }}
             value={transferTarget?.welinkId || undefined}
-            onSearch={(val) => { setTransferSearchValue(val); handleTransferSearch(val); }}
+            onSearch={(val) => { setTransferSearchValue(val); searchUsersDebounced(val, setTransferSearchResults, setTransferSearchFetching); }}
             onChange={(value) => {
               const user = transferSearchResults.find((u) => u.welinkId === value);
               setTransferTarget(user || null);
@@ -422,7 +410,7 @@ function Members() {
         onConfirm={handleDelete}
         modalInfo={{
           title: '确认删除',
-          content: `确认将 ${deletingMember?.memberNameCn || ''} 从应用中移除？该操作不可撤销`,
+          content: { confirmText: '确定要删除成员吗？', impactText: '' },
           confirmButtonText: '确认删除',
           loadingText: '删除中...',
           dangerColor: '#ff4d4f',
@@ -436,21 +424,7 @@ function Members() {
         onConfirm={handleTransferConfirm}
         modalInfo={{
           title: '确认转移 Owner',
-          content: `确认将 Owner 转移给 ${transferTarget?.memberNameCn || ''}？`,
-          confirmButtonText: '确认转移',
-          loadingText: '转移中...',
-          dangerColor: '#faad14',
-        }}
-      />
-
-      {/* 转移 Owner 二次确认 */}
-      <DeleteConfirmModal
-        open={transferConfirmVisible}
-        onClose={() => setTransferConfirmVisible(false)}
-        onConfirm={handleTransferConfirm}
-        modalInfo={{
-          title: '确认转移 Owner',
-          content: `确认将 Owner 转移给 ${transferTarget?.memberNameCn || ''}？`,
+          content: { confirmText: '确定要转移该成员吗？', impactText: '' },
           confirmButtonText: '确认转移',
           loadingText: '转移中...',
           dangerColor: '#faad14',

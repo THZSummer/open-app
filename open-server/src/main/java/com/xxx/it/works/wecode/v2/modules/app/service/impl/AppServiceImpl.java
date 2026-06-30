@@ -50,10 +50,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -221,6 +221,8 @@ public class AppServiceImpl implements AppService {
 
         List<Long> appIds = apps.stream().map(App::getId).collect(Collectors.toList());
         Map<Long, EmployeeInfoVO> ownerMap = getOwnerMap(appIds);
+        Map<Long, Boolean> eamapBoundMap = buildEamapBoundMap(appIds);
+        Map<Long, Integer> currentUserRoleMap = buildCurrentUserRoleMap(appIds, accountId);
 
         List<AppListItemVO> list = apps.stream().map(app -> {
             AppListItemVO vo = new AppListItemVO();
@@ -234,21 +236,15 @@ public class AppServiceImpl implements AppService {
             vo.setAppSubType(app.getAppSubType());
             vo.setStatus(app.getStatus());
 
-            // EAMAP 绑定状态
-            List<AppProperty> props = appMapper.selectPropertiesByParentId(app.getId());
-            boolean eamapBound = props.stream()
-                    .anyMatch(p -> AppPropertyConstants.PROP_EAMAP_CODE.equals(p.getPropertyName())
-                            && StringUtils.hasText(p.getPropertyValue()));
-            vo.setEamapBound(eamapBound);
+            // EAMAP 绑定状态（批量预取）
+            vo.setEamapBound(eamapBoundMap.getOrDefault(app.getId(), false));
 
             // Owner 信息（从批量查询结果取）
             EmployeeInfoVO owner = ownerMap.get(app.getId());
             vo.setOwner(owner != null ? owner : new EmployeeInfoVO());
 
-            // 当前用户角色（多条记录取最高权限）
-            List<AppMember> currentMemberRecords = appMemberMapper.selectByAppIdAndAccountId(app.getId(), accountId);
-            AppMember currentMember = MemberUtils.getHighestRoleMember(currentMemberRecords);
-            vo.setCurrentUserRole(Objects.nonNull(currentMember) ? currentMember.getMemberType() : null);
+            // 当前用户角色（批量预取，已按 appId 取最高权限）
+            vo.setCurrentUserRole(currentUserRoleMap.get(app.getId()));
 
             vo.setLastUpdateTime(app.getLastUpdateTime().toString());
             return vo;
@@ -306,6 +302,44 @@ public class AppServiceImpl implements AppService {
         ));
     }
 
+    /**
+     * 批量构建 appId -> 是否已绑定 EAMAP
+     */
+    private Map<Long, Boolean> buildEamapBoundMap(List<Long> appIds) {
+        if (CollectionUtils.isEmpty(appIds)) {
+            return Collections.emptyMap();
+        }
+        Map<Long, List<AppProperty>> propsByApp = appMapper.selectPropertiesByParentIds(appIds).stream()
+                .collect(Collectors.groupingBy(AppProperty::getParentId));
+        Map<Long, Boolean> result = new HashMap<>();
+        for (Long appId : appIds) {
+            List<AppProperty> props = propsByApp.get(appId);
+            boolean bound = props != null && props.stream()
+                    .anyMatch(p -> AppPropertyConstants.PROP_EAMAP_CODE.equals(p.getPropertyName())
+                            && StringUtils.hasText(p.getPropertyValue()));
+            result.put(appId, bound);
+        }
+        return result;
+    }
+
+    /**
+     * 批量构建 appId -> 当前用户在该应用下的最高角色 memberType
+     */
+    private Map<Long, Integer> buildCurrentUserRoleMap(List<Long> appIds, String accountId) {
+        if (CollectionUtils.isEmpty(appIds) || !StringUtils.hasText(accountId)) {
+            return Collections.emptyMap();
+        }
+        Map<Long, List<AppMember>> membersByApp = appMemberMapper.selectByAppIdsAndAccountId(appIds, accountId).stream()
+                .collect(Collectors.groupingBy(AppMember::getAppId));
+        Map<Long, Integer> result = new HashMap<>();
+        for (Long appId : appIds) {
+            List<AppMember> members = membersByApp.getOrDefault(appId, Collections.emptyList());
+            AppMember highest = MemberUtils.getHighestRoleMember(members);
+            result.put(appId, Objects.nonNull(highest) ? highest.getMemberType() : null);
+        }
+        return result;
+    }
+
     @Override
     public ApiResponse<List<EamapVO>> getEamapList(Integer curPage, Integer pageSize) {
         int offset = (curPage - 1) * pageSize;
@@ -324,7 +358,8 @@ public class AppServiceImpl implements AppService {
         for (String fileId : iconIds) {
             FileEntity file = fileMapper.selectByFileId(fileId);
             if (Objects.nonNull(file)) {
-                list.add(new FileV2VO(file.getFileId(), file.getUrl()));
+                // 用 fileV2Service 构建 VO，确保 url 前缀与当前配置一致
+                list.add(fileV2Service.buildFileVO(fileId));
             }
         }
         return list;
@@ -399,9 +434,9 @@ public class AppServiceImpl implements AppService {
             }
             if (!API_SECRET_PATTERN.matcher(request.getApiSecret()).matches()) {
                 throw new BusinessException(
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getCode(),
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getMessageZh(),
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getMessageEn()
+                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getCode(),
+                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getMessageZh(),
+                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getMessageEn()
                 );
             }
         }
@@ -592,7 +627,7 @@ public class AppServiceImpl implements AppService {
     private String generateAppId() {
         String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern(CommonConstants.APP_ID_DATE_FORMAT));
         int random = new Random().nextInt(9000) + 1000; // 1000~9999
-        return CommonConstants.APP_ID_PREFIX + timestamp + random;
+        return timestamp + random;
     }
 
     /**

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
@@ -39,6 +40,9 @@ class DagSchedulerTest {
     @Mock
     private NodeExecutor exitExecutor;
 
+    @Mock
+    private ConnectorApiPropertyService propertyService;
+
     private ObjectMapper objectMapper;
     private DagScheduler scheduler;
 
@@ -50,9 +54,11 @@ class DagSchedulerTest {
         when(triggerExecutor.getNodeType()).thenReturn("trigger");
         when(connectorExecutor.getNodeType()).thenReturn("connector");
         when(exitExecutor.getNodeType()).thenReturn("exit");
+        lenient().when(propertyService.getNodeMaxTimeoutSeconds()).thenReturn(Mono.just(30));
 
         scheduler = new DagScheduler(objectMapper,
-                List.of(triggerExecutor, connectorExecutor, exitExecutor));
+                List.of(triggerExecutor, connectorExecutor, exitExecutor),
+                propertyService);
     }
 
     // ===== 辅助方法 =====
@@ -65,7 +71,7 @@ class DagSchedulerTest {
         fv.setFlowId(100L);
         fv.setVersionNumber(1);
         fv.setOrchestrationConfig(orchestrationConfig);
-        return new ResolvedFlowConfig(flow, fv, Map.of(), FlowConfig.defaults());
+        return new ResolvedFlowConfig(flow, fv, FlowConfig.defaults());
     }
 
     private NodeOutput successOutput(String nodeId, String nodeType) {

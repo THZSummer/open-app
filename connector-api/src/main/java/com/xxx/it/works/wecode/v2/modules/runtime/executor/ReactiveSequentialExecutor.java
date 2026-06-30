@@ -10,6 +10,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.script.ScriptNodeExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ public class ReactiveSequentialExecutor {
 
     private final ObjectMapper objectMapper;
     private final Map<String, NodeExecutor> executorMap;
+    private final ConnectorApiPropertyService propertyService;
 
     public ReactiveSequentialExecutor(
             ObjectMapper objectMapper,
@@ -46,10 +48,12 @@ public class ReactiveSequentialExecutor {
             ConnectorNodeExecutor connectorNodeExecutor,
             DataProcessorExecutor dataProcessorExecutor,
             ExitNodeExecutor exitNodeExecutor,
-            ScriptNodeExecutor scriptNodeExecutor) {
+            ScriptNodeExecutor scriptNodeExecutor,
+            ConnectorApiPropertyService propertyService) {
 
         this.objectMapper = objectMapper;
         this.executorMap = new HashMap<>();
+        this.propertyService = propertyService;
         executorMap.put("trigger", triggerNodeExecutor);
         executorMap.put("connector", connectorNodeExecutor);
         executorMap.put("data_processor", dataProcessorExecutor);
@@ -119,46 +123,46 @@ public class ReactiveSequentialExecutor {
         Map<String, Object> configMap = objectMapper.convertValue(nodeConfig, Map.class);
         log.info("Executing node: id={}, type={}", nodeConfig.get("id"), nodeConfig.get("type"));
 
-        Duration nodeTimeout = resolveNodeTimeout(nodeConfig);
-
-        return executor.execute(context, configMap)
-                .timeout(nodeTimeout)
-                .doOnNext(output -> {
-                    output.setDurationMs(System.currentTimeMillis() - nodeStart);
-                    log.info("Node {} executed: status={}, duration={}ms",
-                            output.getNodeId(), output.getStatus(), output.getDurationMs());
-                })
-                .onErrorResume(e -> {
-                    log.warn("Node {} execution timeout or error: {}", nodeConfig.get("id").asText(), e.getMessage());
-                    NodeOutput errorOutput = new NodeOutput(
-                            nodeConfig.get("id").asText(), nodeConfig.get("type").asText(),
-                            new HashMap<>(), new HashMap<>());
-                    errorOutput.setStatus("timeout");
-                    errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
-                    Map<String, Object> errInfo = new HashMap<>();
-                    errInfo.put("code", "6002");
-                    errInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
-                    errInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
-                    errInfo.put("message", e.getMessage());
-                    errorOutput.setErrorInfo(errInfo);
-                    return Mono.just(errorOutput);
-                });
+        return resolveNodeTimeout(nodeConfig)
+                .flatMap(nodeTimeout -> executor.execute(context, configMap)
+                        .timeout(nodeTimeout)
+                        .doOnNext(output -> {
+                            output.setDurationMs(System.currentTimeMillis() - nodeStart);
+                            log.info("Node {} executed: status={}, duration={}ms",
+                                    output.getNodeId(), output.getStatus(), output.getDurationMs());
+                        })
+                        .onErrorResume(e -> {
+                            log.warn("Node {} execution timeout or error: {}", nodeConfig.get("id").asText(), e.getMessage());
+                            NodeOutput errorOutput = new NodeOutput(
+                                    nodeConfig.get("id").asText(), nodeConfig.get("type").asText(),
+                                    new HashMap<>(), new HashMap<>());
+                            errorOutput.setStatus("timeout");
+                            errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
+                            Map<String, Object> errInfo = new HashMap<>();
+                            errInfo.put("code", "6002");
+                            errInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
+                            errInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
+                            errInfo.put("message", e.getMessage());
+                            errorOutput.setErrorInfo(errInfo);
+                            return Mono.just(errorOutput);
+                        }));
     }
 
     /**
-     * 解析节点超时: min(node.data.timeoutMs, 30s), 默认 30s
+     * 解析节点超时: ③(node.data.timeoutMs)存在用③不截断, ③不存在回退①(平台全局)
      */
-    private Duration resolveNodeTimeout(JsonNode nodeConfig) {
-        long defaultTimeoutMs = 30000;
+    private Mono<Duration> resolveNodeTimeout(JsonNode nodeConfig) {
+        // §3.3.4: ③(node.data.timeoutMs)存在直接用，不截断；③不存在回退①(平台全局)
         JsonNode data = nodeConfig.get("data");
         if (data != null && data.has("timeoutMs")) {
             JsonNode timeoutNode = data.get("timeoutMs");
-            if (timeoutNode.isNumber()) {
-                long nodeTimeoutMs = timeoutNode.asLong();
-                return Duration.ofMillis(Math.min(nodeTimeoutMs, defaultTimeoutMs));
+            if (timeoutNode.isNumber() && timeoutNode.asLong() > 0) {
+                return Mono.just(Duration.ofMillis(timeoutNode.asLong()));
             }
         }
-        return Duration.ofMillis(defaultTimeoutMs);
+        return propertyService.getNodeMaxTimeoutSeconds()
+                .map(seconds -> Duration.ofMillis(seconds * 1000L))
+                .defaultIfEmpty(Duration.ofSeconds(5));
     }
 
     /**
@@ -268,9 +272,9 @@ public class ReactiveSequentialExecutor {
                     Object code = step.getErrorInfo().get("code");
                     Object msgZh = step.getErrorInfo().get("messageZh");
                     Object msgEn = step.getErrorInfo().get("messageEn");
-                    // fallback to "message" field
-                    if (msgZh == null) msgZh = step.getErrorInfo().get("message");
-                    if (msgEn == null) msgEn = step.getErrorInfo().get("message");
+                    // 回退到 "message" 字段
+                    if (msgZh == null) { msgZh = step.getErrorInfo().get("message"); }
+                    if (msgEn == null) { msgEn = step.getErrorInfo().get("message"); }
                     firstErrorCode = code instanceof String ? (String) code : "6001";
                     firstErrorMessageZh = msgZh instanceof String ? (String) msgZh : step.getStatus();
                     firstErrorMessageEn = msgEn instanceof String ? (String) msgEn : step.getStatus();
@@ -359,7 +363,7 @@ public class ReactiveSequentialExecutor {
         String currentId = entryNode.get("id").asText();
         while (edgeMap.containsKey(currentId)) {
             String nextId = edgeMap.get(currentId);
-            if (visited.contains(nextId)) break;
+            if (visited.contains(nextId)) { break; }
             visited.add(nextId);
             JsonNode nextNode = nodeMap.get(nextId);
             if (nextNode != null) {
@@ -383,9 +387,9 @@ public class ReactiveSequentialExecutor {
      */
     private String getEdgeField(JsonNode edge, String newField, String oldField) {
         JsonNode val = edge.get(newField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         val = edge.get(oldField);
-        if (val != null) return val.asText();
+        if (val != null) { return val.asText(); }
         return null;
     }
 

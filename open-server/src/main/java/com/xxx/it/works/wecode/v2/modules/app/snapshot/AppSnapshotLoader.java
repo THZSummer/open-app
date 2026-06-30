@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.app.snapshot;
 
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoader;
+import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
 import com.xxx.it.works.wecode.v2.modules.app.constants.AppPropertyConstants;
 import com.xxx.it.works.wecode.v2.modules.app.entity.App;
 import com.xxx.it.works.wecode.v2.modules.app.entity.AppProperty;
@@ -10,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -47,22 +47,7 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
             return null;
         }
 
-        Map<String, Object> snapshot = new HashMap<>();
-        snapshot.put("id", app.getId());
-        snapshot.put("appId", app.getAppId());
-        snapshot.put("tenantId", app.getTenantId());
-        snapshot.put("iconId", app.getIconId());
-        snapshot.put("appNameCn", app.getAppNameCn());
-        snapshot.put("appNameEn", app.getAppNameEn());
-        snapshot.put("appDescCn", app.getAppDescCn());
-        snapshot.put("appDescEn", app.getAppDescEn());
-        snapshot.put("appType", app.getAppType());
-        snapshot.put("appSubType", app.getAppSubType());
-        snapshot.put("status", app.getStatus());
-        snapshot.put("createBy", app.getCreateBy());
-        snapshot.put("createTime", app.getCreateTime());
-        snapshot.put("lastUpdateBy", app.getLastUpdateBy());
-        snapshot.put("lastUpdateTime", app.getLastUpdateTime());
+        Map<String, Object> snapshot = JsonUtils.toMap(app);
 
         // 从 property 表加载扩展属性（funcImgId、verifyType）
         loadProperties(id, snapshot);

@@ -13,9 +13,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 应用白名单准入拦截器
+ * 应用白名单准入拦截器（v2.0.1）
  *
- * <p>通过 X-App-Id Header 获取应用 ID，校验应用是否在连接器平台白名单内。
+ * <p>通过 X-App-Id Header 获取应用外部 ID（String），直接校验应用是否在连接器平台白名单内。
  * 非白名单应用返回 403 Forbidden。</p>
  *
  * <p>拦截路径范围：
@@ -24,47 +24,32 @@ import java.nio.charset.StandardCharsets;
  *   <li>/service/open/v2/flows/**</li>
  * </ul>
  *
- * <p>校验通过后，将 appId 设置到 AppContextHolder 供后续服务层使用。
- * 请求完成后由 afterCompletion 清除上下文。</p>
+ * <p><b>v2.0.1 变更：</b>
+ * Header 值直接以 String 透传给白名单服务，不再做 Long.parseLong 类型转换。
+ * 因为白名单数据源（Lookup item_value / Spring 属性）存的本身就是字符串，
+ * String → Long → String.valueOf() 是完全冗余的。</p>
+ *
+ * <p><b>v2.0.0 变更：</b>
+ * 本拦截器仅负责平台级白名单准入校验，不再设置 ThreadLocal 上下文。
+ * 应用上下文（含内部 ID、成员校验）由 {@link AppDataIsolationAspect}
+ * 在服务层方法切面中通过 {@code AppContextResolver.resolveAndValidate()} 统一注入。</p>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
+ * @version 2.0.1
  * @see AppWhitelistService
- * @see AppContextHolder
+ * @see AppDataIsolationAspect
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class AppWhitelistInterceptor implements HandlerInterceptor {
 
-    /**
-     * X-App-Id Header 名称
-     */
     private static final String HEADER_APP_ID = "X-App-Id";
-
-    /**
-     * 403 错误码
-     */
     private static final String ERROR_CODE = "403";
 
-    /**
-     * 白名单校验失败 - 中文消息
-     */
     private static final String NOT_WHITELISTED_ZH = "该应用未开通连接器平台能力";
-
-    /**
-     * 白名单校验失败 - 英文消息
-     */
     private static final String NOT_WHITELISTED_EN = "This app does not have connector platform capability";
-
-    /**
-     * 缺少 Header - 中文消息
-     */
     private static final String MISSING_HEADER_ZH = "缺少 X-App-Id Header";
-
-    /**
-     * 缺少 Header - 英文消息
-     */
     private static final String MISSING_HEADER_EN = "Missing X-App-Id header";
 
     private final AppWhitelistService appWhitelistService;
@@ -73,26 +58,16 @@ public class AppWhitelistInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
                              Object handler) throws Exception {
-        // 获取 X-App-Id Header
-        String appIdHeader = request.getHeader(HEADER_APP_ID);
-        if (appIdHeader == null || appIdHeader.trim().isEmpty()) {
+        String appId = request.getHeader(HEADER_APP_ID);
+        if (appId == null || appId.trim().isEmpty()) {
             log.warn("Request blocked: missing X-App-Id header, path={}", request.getRequestURI());
             writeErrorResponse(response, MISSING_HEADER_ZH, MISSING_HEADER_EN);
             return false;
         }
 
-        // 解析应用 ID
-        Long appId;
-        try {
-            appId = Long.parseLong(appIdHeader.trim());
-        } catch (NumberFormatException e) {
-            log.warn("Request blocked: invalid X-App-Id header value '{}', path={}",
-                    appIdHeader, request.getRequestURI());
-            writeErrorResponse(response, NOT_WHITELISTED_ZH, NOT_WHITELISTED_EN);
-            return false;
-        }
+        appId = appId.trim();
 
-        // 白名单校验
+        // v2.0.1: 直接以 String 外部 ID 校验白名单，不经过 Long.parseLong 转换
         if (!appWhitelistService.isWhitelisted(appId)) {
             log.warn("Request blocked: appId {} not in whitelist, path={}, method={}",
                     appId, request.getRequestURI(), request.getMethod());
@@ -100,26 +75,16 @@ public class AppWhitelistInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // 设置应用上下文
-        AppContextHolder.setCurrentAppId(appId);
+        // 不设 ThreadLocal — 交由 AppDataIsolationAspect 统一管理
         return true;
     }
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception ex) {
-        // 清除应用上下文，防止内存泄漏
         AppContextHolder.clear();
     }
 
-    /**
-     * 写入 JSON 格式的 403 错误响应
-     *
-     * @param response  HTTP 响应
-     * @param messageZh 中文错误消息
-     * @param messageEn 英文错误消息
-     * @throws IOException 写入失败时抛出
-     */
     private void writeErrorResponse(HttpServletResponse response, String messageZh, String messageEn)
             throws IOException {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);

@@ -27,8 +27,8 @@ export const getEventListColumns = ({ handleView, handleEdit, handleDelete }) =>
     },
     {
       title: '分类',
-      dataIndex: 'categoryName',
       key: 'categoryName',
+      dataIndex: 'categoryName',
       width: 120,
     },
     {

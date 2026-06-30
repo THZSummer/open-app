@@ -13,6 +13,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.entity.Ability;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AppAbilityRelation;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper;
+import com.xxx.it.works.wecode.v2.modules.ability.enums.AbilityTypeEnum;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AppAbilityRelationMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
@@ -166,7 +167,7 @@ public class VersionServiceImpl implements VersionService {
         // 自动带出当前应用已订阅的能力 ID 列表，写入版本属性表
         List<AppAbilityRelation> relations = appAbilityRelationMapper.selectByAppId(internalAppId);
         String abilityIds = relations.stream()
-                .filter(r -> Objects.nonNull(r.getAbilityType()) && !Objects.equals(r.getAbilityType(), 6))
+                .filter(r -> Objects.nonNull(r.getAbilityType()) && !Objects.equals(r.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
                 .map(r -> String.valueOf(r.getAbilityId()))
                 .collect(java.util.stream.Collectors.joining(","));
         appVersionMapper.insertProperty(idGenerator.nextId(), version.getId(), VersionPropertyConstants.PROP_ABILITY_IDS, abilityIds);
@@ -339,7 +340,7 @@ public class VersionServiceImpl implements VersionService {
             );
         }
 
-        if (!Objects.equals(version.getStatus(), VersionStatusEnum.PENDING_RELEASE.getCode()) && version.getStatus() != VersionStatusEnum.REJECTED.getCode()) {
+        if (!Objects.equals(version.getStatus(), VersionStatusEnum.PENDING_RELEASE.getCode()) && !Objects.equals(version.getStatus(), VersionStatusEnum.REJECTED.getCode())) {
             throw new BusinessException(
                     ResponseCodeEnum.VERSION_DELETE_NOT_ALLOWED.getCode(),
                     ResponseCodeEnum.VERSION_DELETE_NOT_ALLOWED.getMessageZh(),
@@ -353,7 +354,8 @@ public class VersionServiceImpl implements VersionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateVersion(String appId, Long versionId, UpdateVersionRequest request) {
-        appContextResolver.resolveAndValidate(appId);
+        AppContext ctx = appContextResolver.resolveAndValidate(appId);
+        Long internalAppId = ctx.getInternalId();
 
         AppVersion version = appVersionMapper.selectById(versionId);
         if (Objects.isNull(version)) {
@@ -373,9 +375,6 @@ public class VersionServiceImpl implements VersionService {
         }
 
         if (Objects.nonNull(request.getVersionCode())) {
-            AppContext updateCtx = appContextResolver.resolveAndValidate(appId);
-            Long internalAppId = updateCtx.getInternalId();
-
             // 校验版本号：格式 + 唯一 + 递增（排除自身）
             validateVersionCode(internalAppId, request.getVersionCode(), versionId, version.getVersionCode());
 

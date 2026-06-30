@@ -2,7 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/lib/locale/zh_CN';
-import { AppProvider } from './contexts/AppContext';
+import { Provider } from 'react-redux';
+import store from './store';
 import Layout from './components/Layout/Layout';
 import AppList from './pages/AppList/AppList';
 import BasicInfo from './pages/BasicInfo/BasicInfo';
@@ -38,7 +39,7 @@ function App() {
         },
       }}
     >
-      <AppProvider>
+      <Provider store={store}>
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route path="appList" element={<AppList />} />
@@ -64,17 +65,17 @@ function App() {
           <Route path="admin/events" element={<EventList />} />
           <Route path="admin/callbacks" element={<CallbackList />} />
           <Route path="admin/approvals" element={<ApprovalCenter />} />
-          <Route path="connect/connectors" element={<ConnectorList />} />
-          <Route path="connect/connector-editor" element={<ConnectorEditor />} />
-          <Route path="connect/flows" element={<FlowList />} />
+          <Route path="connectorList" element={<ConnectorList />} />
+          <Route path="connectorEditor" element={<ConnectorEditor />} />
+          <Route path="flowList" element={<FlowList />} />
           {/* V2 连接流编辑器（步骤条形态） */}
-          <Route path="connect/flows/editor" element={<FlowEditorV2 />} />
+          <Route path="flowEditor" element={<FlowEditorV2 />} />
           {/* 旧版连接流编辑器（画布拖拽形态，保留供管理使用） */}
           {/* <Route path="connect/history/flows/editor" element={<FlowEditor />} /> */}
           <Route path="*" element={<Navigate to="/appList" replace />} />
         </Route>
       </Routes>
-      </AppProvider>
+      </Provider>
     </ConfigProvider>
   );
 }

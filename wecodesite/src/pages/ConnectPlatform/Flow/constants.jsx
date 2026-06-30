@@ -7,9 +7,10 @@
  * 整改依据：连接流列表需求设计说明书 V1.3
  */
 import React from 'react';
-import { Badge, Button, Space, Tooltip, Dropdown } from 'antd';
+import { Badge, Button, Space, Dropdown, Menu } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 import { FLOW_LIFECYCLE_STATUS, FLOW_LIFECYCLE_STATUS_MAP } from '../../../utils/constants';
+import { renderTooltipTextCell } from '../../../utils/commonTableConfigs';
 
 /**
  * 页面配置信息
@@ -34,18 +35,6 @@ export const flowStatusOptions = [
   { value: FLOW_LIFECYCLE_STATUS.RUNNING, label: '运行中' },
   { value: FLOW_LIFECYCLE_STATUS.INVALID, label: '已失效' },
 ];
-
-/**
- * 渲染文本（带Tooltip）
- *
- * @param {string} text - 要渲染的文本
- * @returns {React.ReactNode} 包裹在Tooltip中的文本
- */
-const renderText = (text) => (
-  <Tooltip title={text}>
-    <span>{text || '-'}</span>
-  </Tooltip>
-);
 
 /**
  * 根据状态获取更多菜单项 key 列表
@@ -115,6 +104,224 @@ const buildMoreMenuItems = (params) => {
 };
 
 /**
+ * 渲染更多操作菜单
+ * @param {Array} items 菜单项配置
+ * @returns {React.ReactNode} 更多操作菜单节点
+ */
+const renderMoreMenu = (items) => (
+  <Menu>
+    {items.map((item) => (
+      <Menu.Item key={item.key} danger={item.danger} onClick={item.onClick}>
+        {item.label}
+      </Menu.Item>
+    ))}
+  </Menu>
+);
+
+/**
+ * 渲染部署版本列内容
+ *
+ * @param {number|string} value - 部署版本号
+ * @returns {React.ReactNode} 部署版本展示节点
+ */
+const renderDeployedVersionCell = (value) => {
+  // 无部署版本时展示默认占位
+  return <span>{value ? `v${value}` : '-'}</span>;
+};
+
+/**
+ * 渲染连接流状态列内容
+ *
+ * @param {number} status - 连接流生命周期状态
+ * @returns {React.ReactNode} 状态徽标展示节点
+ */
+const renderFlowStatusCell = (status) => {
+  // 未知状态展示默认占位
+  const config = FLOW_LIFECYCLE_STATUS_MAP[status] || { text: '-', color: 'default' };
+  return <Badge color={config.color} text={config.text} />;
+};
+
+/**
+ * 获取连接流基础信息列配置
+ *
+ * @returns {Array} 基础信息列配置数组
+ */
+const getFlowBaseColumns = () => [
+  {
+    title: '连接流 ID',
+    dataIndex: 'id',
+    key: 'id',
+    width: 180,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+  {
+    title: '中文名称',
+    dataIndex: 'nameCn',
+    key: 'nameCn',
+    width: 150,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+  {
+    title: '英文名称',
+    dataIndex: 'nameEn',
+    key: 'nameEn',
+    width: 150,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+  {
+    title: '中文描述',
+    dataIndex: 'descriptionCn',
+    key: 'descriptionCn',
+    width: 180,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+  {
+    title: '英文描述',
+    dataIndex: 'descriptionEn',
+    key: 'descriptionEn',
+    width: 180,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+];
+
+/**
+ * 获取连接流运行状态相关列配置
+ *
+ * @returns {Array} 运行状态相关列配置数组
+ */
+const getFlowRuntimeColumns = () => [
+  {
+    title: '部署版本',
+    dataIndex: 'deployedVersionNumber',
+    key: 'deployedVersionNumber',
+    width: 180,
+    ellipsis: true,
+    render: renderDeployedVersionCell,
+  },
+  {
+    title: '状态',
+    dataIndex: 'lifecycleStatus',
+    key: 'lifecycleStatus',
+    width: 100,
+    align: 'center',
+    render: renderFlowStatusCell,
+  },
+];
+
+/**
+ * 获取连接流时间审计列配置
+ *
+ * @returns {Array} 时间审计列配置数组
+ */
+const getFlowAuditColumns = () => [
+  {
+    title: '创建人',
+    dataIndex: 'createBy',
+    key: 'createBy',
+    width: 120,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+  {
+    title: '创建时间',
+    dataIndex: 'createTime',
+    key: 'createTime',
+    width: 180,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+  {
+    title: '更新人',
+    dataIndex: 'lastUpdateBy',
+    key: 'lastUpdateBy',
+    width: 120,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+  {
+    title: '更新时间',
+    dataIndex: 'lastUpdateTime',
+    key: 'lastUpdateTime',
+    width: 180,
+    ellipsis: true,
+    render: renderTooltipTextCell,
+  },
+];
+
+/**
+ * 渲染连接流操作列内容
+ *
+ * @param {Object} params - 渲染参数对象
+ * 包含以下字段：
+ * - record: 当前连接流记录
+ * - handleEdit: 编辑回调
+ * - handleConfig: 配置按钮点击回调
+ * - handleMoreMenuClick: 更多菜单点击回调
+ *
+ * @returns {React.ReactNode} 操作列展示节点
+ */
+const renderFlowActionCell = (params) => {
+  // 解构传入对象中需要使用的参数
+  const { record, handleEdit, handleConfig, handleMoreMenuClick } = params;
+  // 操作列固定展示：编辑、配置、更多
+  const items = buildMoreMenuItems({
+    status: record.lifecycleStatus,
+    record,
+    onMenuClick: handleMoreMenuClick,
+  });
+
+  return (
+    <Space size="small">
+      <Button type="link" size="small" onClick={() => handleEdit(record)}>
+        编辑
+      </Button>
+      <Button type="link" size="small" onClick={() => handleConfig(record)}>
+        配置
+      </Button>
+      <Dropdown overlay={renderMoreMenu(items)} trigger={['click']}>
+        <Button type="link" size="small">
+          更多 <DownOutlined />
+        </Button>
+      </Dropdown>
+    </Space>
+  );
+};
+
+/**
+ * 获取连接流操作列配置
+ *
+ * @param {Object} callbacks - 回调函数对象
+ * 包含以下字段：
+ * - handleEdit: 编辑回调
+ * - handleConfig: 配置按钮点击回调
+ * - handleMoreMenuClick: 更多菜单点击回调
+ *
+ * @returns {Object} 操作列配置
+ */
+const getFlowActionColumn = (callbacks) => {
+  // 解构传入对象中需要使用的回调
+  const { handleEdit, handleConfig, handleMoreMenuClick } = callbacks;
+
+  return {
+    title: '操作',
+    key: 'action',
+    width: 200,
+    fixed: 'right',
+    render: (_, record) => renderFlowActionCell({
+      record,
+      handleEdit,
+      handleConfig,
+      handleMoreMenuClick,
+    }),
+  };
+};
+
+/**
  * 获取表格列配置
  *
  * @param {Object} callbacks - 回调函数对象
@@ -126,123 +333,12 @@ const buildMoreMenuItems = (params) => {
  * @returns {Array} 表格列配置数组
  */
 export const getFlowColumns = (callbacks) => {
-  const { handleEdit, handleConfig, handleMoreMenuClick } = callbacks;
-
+  // 按业务分组组合连接流表格列
   return [
-    {
-      title: '连接流 ID',
-      dataIndex: 'id',
-      key: 'id',
-      width: 180,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '中文名称',
-      dataIndex: 'nameCn',
-      key: 'nameCn',
-      width: 150,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '英文名称',
-      dataIndex: 'nameEn',
-      key: 'nameEn',
-      width: 150,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '中文描述',
-      dataIndex: 'descriptionCn',
-      key: 'descriptionCn',
-      width: 180,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '英文描述',
-      dataIndex: 'descriptionEn',
-      key: 'descriptionEn',
-      width: 180,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '状态',
-      dataIndex: 'lifecycleStatus',
-      key: 'lifecycleStatus',
-      width: 100,
-      align: 'center',
-      render: (status) => {
-        // 未知状态展示默认占位
-        const config = FLOW_LIFECYCLE_STATUS_MAP[status] || { text: '-', color: 'default' };
-        return <Badge color={config.color} text={config.text} />;
-      },
-    },
-    {
-      title: '创建者',
-      dataIndex: 'createBy',
-      key: 'createBy',
-      width: 120,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createTime',
-      key: 'createTime',
-      width: 180,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '更新人',
-      dataIndex: 'lastUpdateBy',
-      key: 'lastUpdateBy',
-      width: 120,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '更新时间',
-      dataIndex: 'lastUpdateTime',
-      key: 'lastUpdateTime',
-      width: 180,
-      ellipsis: true,
-      render: renderText,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 200,
-      fixed: 'right',
-      render: (_, record) => {
-        // 操作列固定展示：编辑、配置、更多
-        const items = buildMoreMenuItems({
-          status: record.lifecycleStatus,
-          record,
-          onMenuClick: handleMoreMenuClick,
-        });
-
-        return (
-          <Space size="small">
-            <Button type="link" size="small" onClick={() => handleEdit(record)}>
-              编辑
-            </Button>
-            <Button type="link" size="small" onClick={() => handleConfig(record)}>
-              配置
-            </Button>
-            <Dropdown menu={{ items }} trigger={['click']}>
-              <Button type="link" size="small">
-                更多 <DownOutlined />
-              </Button>
-            </Dropdown>
-          </Space>
-        );
-      },
-    },
+    ...getFlowBaseColumns(),
+    ...getFlowRuntimeColumns(),
+    ...getFlowAuditColumns(),
+    getFlowActionColumn(callbacks),
   ];
 };
 

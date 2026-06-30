@@ -1,7 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,10 +17,10 @@ import java.time.Duration;
  * Phase 5 缓存管理:
  * 在连接流执行完成后将结果写入 Redis 缓存,
  * 后续相同 cacheKey 的请求可直接命中缓存返回。
+ * §3.3.4: ③(ttlSeconds)存在用③不截断, ③不存在回退①(平台全局)。
  * </p>
  * <p>
  * 缓存 Key 格式: {@code cp:cache:flow:{flowId}:{cacheKey}}
- * TTL 上限: 1296000 秒 (15天) 对齐 {@code ConnectorPlatformConstants.MAX_CACHE_TTL}
  * </p>
  */
 @Component
@@ -31,22 +31,18 @@ public class FlowCacheManager {
     /** Redis Key 前缀 */
     private static final String CACHE_KEY_PREFIX = "cp:cache:flow:";
 
-    /** 最大缓存 TTL: 1296000 秒 = 15 天 */
-    static final int MAX_CACHE_TTL = 1296000;
-
     /** SCAN 每批数量 */
     private static final int SCAN_BATCH_SIZE = 100;
 
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final ObjectMapper objectMapper;
-    private final CacheToggle cacheToggle;
-
+    private final ConnectorApiPropertyService propertyService;
     public FlowCacheManager(ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
                              ObjectMapper objectMapper,
-                             CacheToggle cacheToggle) {
+                             ConnectorApiPropertyService propertyService) {
         this.reactiveRedisTemplate = reactiveRedisTemplate;
         this.objectMapper = objectMapper;
-        this.cacheToggle = cacheToggle;
+        this.propertyService = propertyService;
     }
 
     /**
@@ -54,7 +50,6 @@ public class FlowCacheManager {
      * <p>
      * Redis GET 查询, 命中时反序列化并返回 ExecutionResult。
      * 未命中时返回 Mono.empty()。
-     * 缓存总开关关闭时, 直接返回 Mono.empty()。
      * </p>
      *
      * @param flowId   连接流 ID
@@ -62,10 +57,6 @@ public class FlowCacheManager {
      * @return Mono&lt;ExecutionResult&gt; (或 Mono.empty())
      */
     public Mono<ExecutionResult> checkCache(Long flowId, String cacheKey) {
-        if (!cacheToggle.isEnabled()) {
-            return Mono.empty();
-        }
-
         String redisKey = buildCacheKey(flowId, cacheKey);
         return reactiveRedisTemplate.opsForValue().get(redisKey)
                 .flatMap(cachedJson -> {
@@ -88,23 +79,19 @@ public class FlowCacheManager {
      * 写入缓存
      * <p>
      * 将执行结果序列化为 JSON 写入 Redis。
-     * TTL 受 {@link #MAX_CACHE_TTL} 上限约束。
-     * 缓存总开关关闭时, 不做任何操作。
+     * §3.3.4: ③(ttlSeconds)存在用③不截断, ③不存在回退①(平台全局)。
      * </p>
      *
      * @param flowId      连接流 ID
      * @param cacheKey    缓存 key (已解析)
      * @param result      执行结果
-     * @param ttlSeconds  缓存 TTL (秒), 上限 1296000
+     * @param ttlSeconds  缓存 TTL (秒)
      * @return Mono&lt;Void&gt;
      */
     public Mono<Void> writeCache(Long flowId, String cacheKey, Object result, int ttlSeconds) {
-        if (!cacheToggle.isEnabled()) {
-            return Mono.empty();
-        }
-
         String redisKey = buildCacheKey(flowId, cacheKey);
-        int effectiveTtl = Math.min(ttlSeconds, MAX_CACHE_TTL);
+        // §3.3.4: ③(ttlSeconds)存在直接用，不截断；③不存在回退①
+        int effectiveTtl = ttlSeconds > 0 ? ttlSeconds : propertyService.getFlowMaxCacheTtlSeconds().blockOptional().orElse(1296000);
         if (effectiveTtl <= 0) {
             effectiveTtl = 60; // 最小 60 秒
         }
@@ -137,10 +124,6 @@ public class FlowCacheManager {
      * @return Mono&lt;Long&gt; 被删除的 key 数量
      */
     public Mono<Long> invalidateFlowCache(Long flowId) {
-        if (!cacheToggle.isEnabled()) {
-            return Mono.just(0L);
-        }
-
         String pattern = CACHE_KEY_PREFIX + flowId + ":*";
         return reactiveRedisTemplate.keys(pattern)
                 .collectList()

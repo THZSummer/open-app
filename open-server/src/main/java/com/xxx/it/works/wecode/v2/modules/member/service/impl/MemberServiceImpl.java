@@ -166,11 +166,7 @@ public class MemberServiceImpl implements MemberService {
         Long memberId = Long.parseLong(id);
         AppMember member = appMemberMapper.selectById(memberId);
         if (Objects.isNull(member)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.MEMBER_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.MEMBER_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.MEMBER_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.MEMBER_NOT_FOUND);
         }
 
         validateMemberOperationPermission(operator.getMemberType(), member.getMemberType());
@@ -192,10 +188,7 @@ public class MemberServiceImpl implements MemberService {
         AppMember fromOwnerRecord = appMemberMapper.selectByAppIdAccountIdAndType(
                 internalAppId, fromAccountId, MemberTypeEnum.OWNER.getCode());
         if (Objects.isNull(fromOwnerRecord)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.NO_TRANSFER_PERMISSION.getCode(),
-                    ResponseCodeEnum.NO_TRANSFER_PERMISSION.getMessageZh(),
-                    ResponseCodeEnum.NO_TRANSFER_PERMISSION.getMessageEn());
+            throw BusinessException.of(ResponseCodeEnum.NO_TRANSFER_PERMISSION);
         }
 
         // 新增目标用户的 Owner 记录（若已有其他角色记录，保留不动）
@@ -258,9 +251,9 @@ public class MemberServiceImpl implements MemberService {
             throw BusinessException.of(ResponseCodeEnum.NO_MEMBER_OPERATION_PERMISSION);
         }
 
-        // 目标是 Owner：添加走转移流程，删除不允许
+        // 目标是 Owner：Owner 不能直接添加或删除，只能通过转移流程
         if (targetRole == MemberTypeEnum.OWNER.getCode()) {
-            throw BusinessException.of(ResponseCodeEnum.CANNOT_DELETE_OWNER);
+            throw BusinessException.of(ResponseCodeEnum.CANNOT_OPERATE_OWNER);
         }
     }
 
@@ -282,11 +275,7 @@ public class MemberServiceImpl implements MemberService {
     private AppMember buildMember(Long internalAppId, String accountId, Integer memberType, String operatorAccountId) {
         Employee emp = employeeMapper.selectByWelinkId(accountId);
         if (ObjectUtils.isEmpty(emp) || !StringUtils.hasText(emp.getChineseName())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.MEMBER_ACCOUNT_INVALID.getCode(),
-                    ResponseCodeEnum.MEMBER_ACCOUNT_INVALID.getMessageZh(),
-                    ResponseCodeEnum.MEMBER_ACCOUNT_INVALID.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.MEMBER_ACCOUNT_INVALID);
         }
         AppMember member = new AppMember();
         member.setId(idGenerator.nextId());

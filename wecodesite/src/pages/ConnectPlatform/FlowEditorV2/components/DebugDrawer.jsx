@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Input, Button, Space, Empty, Spin } from 'antd';
 import { ApiOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
+import ExecutionTraceViewer from '../../../../components/ExecutionTraceViewer/ExecutionTraceViewer';
 import '../FlowEditorV2.m.less';
 
 /**
@@ -110,17 +111,6 @@ const DebugDrawer = (props) => {
   };
 
   /**
-   * 根据 trace 单项的状态获取样式 class
-   * @param {string} traceStatus trace 状态
-   * @returns {string} class 名
-   */
-  const getTraceItemClass = (traceStatus) => {
-    if (traceStatus === 'success') return 'trace-item trace-success';
-    if (traceStatus === 'error' || traceStatus === 'fail') return 'trace-item trace-error';
-    return 'trace-item';
-  };
-
-  /**
    * 渲染调试输出
    * @returns {React.ReactNode} 输出渲染
    */
@@ -141,6 +131,7 @@ const DebugDrawer = (props) => {
       );
     }
 
+    const steps = debugResult.steps || [];
     const pillClass = debugResult.success ? 'status-pill pill-success' : 'status-pill pill-error';
 
     return (
@@ -151,48 +142,18 @@ const DebugDrawer = (props) => {
           <span className="metrics-item">
             耗时 <span className="metrics-num">{debugResult.duration}ms</span>
           </span>
-          {debugResult.trace && (
-            <span className="metrics-item">
-              节点 <span className="metrics-num">{debugResult.trace.length}</span>
-            </span>
-          )}
+          <span className="metrics-item">
+            节点 <span className="metrics-num">{steps.length}</span>
+          </span>
         </div>
 
-        {/* Trace 时间轴 */}
-        {debugResult.trace && debugResult.trace.length > 0 && (
+        {/* 节点执行时间线 */}
+        {steps.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 13, color: '#4e5969', marginBottom: 8, fontWeight: 500 }}>
-              节点执行链路
+              节点执行时间线
             </div>
-            <div className="trace-timeline">
-              {debugResult.trace.map((item, idx) => (
-                <div key={idx} className={getTraceItemClass(item.status)}>
-                  <div className="trace-row">
-                    <span className="trace-name">{item.nodeName}</span>
-                    <span className="trace-meta">
-                      <span
-                        className={`status-pill ${item.status === 'success' ? 'pill-success' : 'pill-error'}`}
-                      >
-                        {item.status}
-                      </span>
-                      <span>{item.duration}ms</span>
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 输出数据：暗色 JSON */}
-        {debugResult.output && (
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 13, color: '#4e5969', marginBottom: 8, fontWeight: 500 }}>
-              输出数据
-            </div>
-            <div className="code-panel" data-label="output">
-              <pre>{JSON.stringify(debugResult.output, null, 2)}</pre>
-            </div>
+            <ExecutionTraceViewer steps={steps} />
           </div>
         )}
 
@@ -208,12 +169,6 @@ const DebugDrawer = (props) => {
       </>
     );
   };
-
-  const tabItems = [
-    { key: 'header', label: 'HTTP 请求头', children: renderParamTable('header') },
-    { key: 'body', label: 'HTTP 请求体', children: renderParamTable('body') },
-    { key: 'query', label: 'URL 查询参数', children: renderParamTable('query') },
-  ];
 
   return (
     <Drawer
@@ -252,7 +207,17 @@ const DebugDrawer = (props) => {
           入参配置
           <span className="section-title-extra">参数名称与类型只读，仅参数值可编辑</span>
         </div>
-        <Tabs items={tabItems} defaultActiveKey="header" />
+        <Tabs defaultActiveKey="header">
+          <Tabs.TabPane tab="HTTP 请求头" key="header">
+            {renderParamTable('header')}
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="HTTP 请求体" key="body">
+            {renderParamTable('body')}
+          </Tabs.TabPane>
+          <Tabs.TabPane tab="URL 查询参数" key="query">
+            {renderParamTable('query')}
+          </Tabs.TabPane>
+        </Tabs>
       </div>
 
       {/* 执行输出卡片 */}

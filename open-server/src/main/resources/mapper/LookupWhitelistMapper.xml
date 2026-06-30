@@ -22,6 +22,17 @@
         ORDER BY i.item_index
     </select>
 
+    <select id="selectItemMapByPathAndClassifyCode" resultType="java.util.Map">
+        SELECT i.item_code AS item_code, i.item_value AS item_value
+        FROM openplatform_lookup_item_t i
+                 JOIN openplatform_lookup_classify_t c ON c.classify_id = i.classify_id
+        WHERE c.path = #{path}
+          AND c.classify_code = #{classifyCode}
+          AND c.status = 1
+          AND i.status = 1
+        ORDER BY i.item_index
+    </select>
+
     <select id="selectItemValueByCode" resultType="java.lang.String">
         SELECT i.item_value
         FROM openplatform_lookup_item_t i

@@ -137,12 +137,12 @@ function ConnectorFormModal({ type = 'connector', visible, onCancel, onOk, initi
           name="descriptionCn"
           label="中文描述"
           rules={[
-            { max: 500, message: '中文描述不能超过500个字符' }
+            { max: 512, message: '中文描述不能超过500个字符' }
           ]}
         >
           <TextArea
             placeholder="请输入中文描述"
-            maxLength={500}
+            maxLength={512}
             showCount
             rows={4}
           />

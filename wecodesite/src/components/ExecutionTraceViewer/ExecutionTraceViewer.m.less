@@ -1,0 +1,387 @@
+/* ========================================
+ * 公共执行链路展示组件样式
+ * ========================================
+ */
+
+.execution-trace-viewer {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 16px 18px, rgba(51, 112, 255, 0.08), transparent 120px),
+    linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+
+  .timeline {
+    position: relative;
+    padding-left: 36px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 14px;
+      bottom: 14px;
+      width: 2px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(51, 112, 255, 0.25) 0%, rgba(126, 91, 239, 0.2) 48%, rgba(20, 184, 166, 0.2) 100%);
+    }
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: -34px;
+      top: 15px;
+      width: 30px;
+      height: 30px;
+      border-radius: 12px;
+      background: #fff;
+      border: 1px solid rgba(51, 112, 255, 0.24);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      box-shadow: 0 8px 18px rgba(31, 35, 41, 0.08);
+      transition: all 0.22s ease;
+
+      .timeline-dot-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        color: #3370ff;
+      }
+    }
+
+    &.node-trigger .timeline-dot {
+      border-color: rgba(51, 112, 255, 0.32);
+      box-shadow: 0 8px 18px rgba(51, 112, 255, 0.14);
+
+      .timeline-dot-icon {
+        color: #3370ff;
+      }
+    }
+
+    &.node-connector .timeline-dot {
+      border-color: rgba(126, 91, 239, 0.32);
+      box-shadow: 0 8px 18px rgba(126, 91, 239, 0.14);
+
+      .timeline-dot-icon {
+        color: #7e5bef;
+      }
+    }
+
+    &.node-processor .timeline-dot {
+      border-color: rgba(250, 173, 20, 0.36);
+      box-shadow: 0 8px 18px rgba(250, 173, 20, 0.14);
+
+      .timeline-dot-icon {
+        color: #d48806;
+      }
+    }
+
+    &.node-exit .timeline-dot {
+      border-color: rgba(20, 184, 166, 0.34);
+      box-shadow: 0 8px 18px rgba(20, 184, 166, 0.14);
+
+      .timeline-dot-icon {
+        color: #0f9f8f;
+      }
+    }
+
+    &.timeline-fail .timeline-dot {
+      border-color: rgba(245, 74, 69, 0.38);
+      box-shadow: 0 8px 20px rgba(245, 74, 69, 0.18);
+
+      .timeline-dot-icon {
+        color: #f54a45;
+      }
+    }
+
+    &.timeline-muted .timeline-dot {
+      border-color: #dee0e3;
+      box-shadow: none;
+
+      .timeline-dot-icon {
+        color: #8f959e;
+      }
+    }
+
+    .timeline-card {
+      position: relative;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid #edf0f5;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 10px 28px rgba(31, 35, 41, 0.04);
+      transition: all 0.22s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+        border-color: #c9d6f7;
+        box-shadow: 0 14px 34px rgba(51, 112, 255, 0.09);
+      }
+    }
+
+    &:hover .timeline-dot {
+      transform: scale(1.04);
+      box-shadow: 0 10px 26px rgba(51, 112, 255, 0.18);
+    }
+
+    &.timeline-fail:hover .timeline-dot {
+      box-shadow: 0 10px 26px rgba(245, 74, 69, 0.22);
+    }
+
+    .timeline-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 10px;
+    }
+
+    .timeline-title-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .timeline-index {
+      flex: none;
+      min-width: 34px;
+      padding: 3px 6px;
+      border-radius: 8px;
+      background: #f4f7ff;
+      color: #3370ff;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      text-align: center;
+    }
+
+    .timeline-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1f2329;
+      line-height: 20px;
+      word-break: break-all;
+    }
+
+    .timeline-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #86909c;
+
+      .mono {
+        font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      }
+    }
+
+    .node-type-chip,
+    .iteration-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: #f2f6ff;
+      color: #3370ff;
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    .iteration-chip {
+      background: #fff7e6;
+      color: #d48806;
+    }
+
+    .timeline-stat-group {
+      flex: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-duration {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 22px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: #f7f8fa;
+      color: #4e5969;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      white-space: nowrap;
+    }
+
+    .duration-meter {
+      height: 4px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #eef1f6;
+
+      span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #3370ff 0%, #7e5bef 100%);
+        transition: width 0.28s ease;
+      }
+    }
+
+    &.timeline-success .duration-meter span {
+      background: linear-gradient(90deg, #00b42a 0%, #3370ff 100%);
+    }
+
+    &.timeline-fail .duration-meter span {
+      background: linear-gradient(90deg, #f54a45 0%, #ff9f1a 100%);
+    }
+
+    .timeline-io {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
+      margin-top: 8px;
+    }
+  }
+
+  .code-shell {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #20304f;
+    border-radius: 12px;
+    background: #101b2f;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .code-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 34px;
+    padding: 0 10px 0 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+    color: #8fb3e8;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+  }
+
+  .code-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 7px;
+    border: 1px solid rgba(143, 179, 232, 0.18);
+    border-radius: 999px;
+    background: rgba(143, 179, 232, 0.08);
+    color: #b8c9e6;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+
+    &:hover {
+      border-color: rgba(143, 179, 232, 0.36);
+      background: rgba(143, 179, 232, 0.14);
+      color: #ffffff;
+    }
+  }
+
+  .code-panel {
+    margin: 0;
+    padding: 12px;
+    max-height: 220px;
+    overflow: auto;
+    color: #dbe7ff;
+    font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+
+    .json-key {
+      color: #8bd5ff;
+    }
+
+    .json-string {
+      color: #b8f7c7;
+    }
+
+    .json-number {
+      color: #ffd38a;
+    }
+
+    .json-literal {
+      color: #ffb0d4;
+    }
+  }
+
+  .code-shell-error {
+    border-color: #593036;
+    background: #2a1418;
+
+    .code-toolbar {
+      color: #ffaaa5;
+      background: linear-gradient(180deg, rgba(245, 74, 69, 0.16), rgba(245, 74, 69, 0.05));
+    }
+
+    .code-panel {
+      color: #ffd5d2;
+    }
+  }
+
+  .code-shell-empty {
+    min-height: 112px;
+    border-color: #d9f1df;
+    background: linear-gradient(180deg, #f5fff8 0%, #ffffff 100%);
+
+    .code-toolbar {
+      color: #00873a;
+      border-bottom-color: #e8f7ec;
+      background: rgba(0, 180, 42, 0.06);
+    }
+  }
+
+  .code-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 76px;
+    color: #00873a;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  @media (max-width: 720px) {
+    .timeline-item .timeline-head,
+    .timeline-item .timeline-stat-group {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+}
+
+.execution-trace-empty {
+  padding: 24px 0;
+  color: #86909c;
+  font-size: 13px;
+  text-align: center;
+}

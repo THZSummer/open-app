@@ -77,7 +77,7 @@ public class DataProcessorExecutor implements NodeExecutor {
                     Object sourceValue = mapping.get("sourceValue");
                     String sourceType = (String) mapping.getOrDefault("sourceType", "reference");
 
-                    if (targetField == null) continue;
+                    if (targetField == null) { continue; }
 
                     Object resolvedValue;
                     switch (sourceType) {

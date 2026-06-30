@@ -1,16 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchAppDetail, clearAppDetail } from '../../../store/appSlice';
+import { fetchRole, clearRole } from '../../../store/roleSlice';
 import { message } from 'antd';
 import { fetchEamapOptions } from '../../../pages/AppList/thunk';
-import { bindEamap } from '../../../pages/BasicInfo/thunk';
+import { bindEamap } from './thunk';
 import BindEamapModal from '../../BindEamapModal/BindEamapModal';
 
 import './AppInfoBar.m.less';
 
-function AppInfoBar({ appDetail }) {
+function AppInfoBar() {
+  const appBaseInfo = useSelector(state => state.app.appBaseInfo);
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId') || '';
+
+  useEffect(() => {
+    if (appId) {
+      dispatch(fetchAppDetail(appId));
+      dispatch(fetchRole(appId));
+    }
+    return () => {
+      dispatch(clearAppDetail());
+      dispatch(clearRole());
+    };
+  }, [appId, dispatch]);
   const [eamapOptions, setEamapOptions] = useState([]);
   const [bindModalVisible, setBindModalVisible] = useState(false);
 
@@ -36,7 +52,7 @@ function AppInfoBar({ appDetail }) {
       if (result?.code === '200') {
         message.success('绑定成功，应用已升级为业务应用');
         setBindModalVisible(false);
-        // 刷新页面让 Layout 重新加载 appDetail
+        // 刷新页面让 Layout 重新加载 appBaseInfo
         window.location.reload();
       } else {
         message.error(result?.messageZh || result?.messageEn || '绑定失败');
@@ -47,9 +63,9 @@ function AppInfoBar({ appDetail }) {
   };
 
   // 判断应用类型
-  const isPersonalApp = appDetail?.appType === 0;
-  const isLegacyPersonal = isPersonalApp && appDetail?.appSubType === 0;
-  const hasEamap = !!appDetail?.eamapAppCode;
+  const isPersonalApp = appBaseInfo?.appType === 0;
+  const isLegacyPersonal = isPersonalApp && appBaseInfo?.appSubType === 0;
+  const hasEamap = !!appBaseInfo?.eamapAppCode;
 
   return (
     <>
@@ -63,18 +79,18 @@ function AppInfoBar({ appDetail }) {
           </button>
           <div className="header-divider"></div>
           <div className="header-app-info">
-            <span className="header-app-name">
-              {appDetail?.nameCn || appDetail?.nameEn || '加载中...'}
-            </span>
+            <div className="header-app-name" title={appBaseInfo?.nameCn || appBaseInfo?.nameEn || ''}>
+              {appBaseInfo?.nameCn || appBaseInfo?.nameEn || '加载中...'}
+            </div>
             {/* 业务应用：显示已绑定信息 */}
             {!isPersonalApp && hasEamap && (
-              <span className="header-eamap"><span className="header-eamap-label">已绑定:</span> {appDetail.eamapAppName || ''} {appDetail.eamapAppCode}</span>
+              <div className="header-eamap" title={`已绑定: ${appBaseInfo.eamapAppName || ''} ${appBaseInfo.eamapAppCode}`}><span className="header-eamap-label">已绑定:</span> {appBaseInfo.eamapAppName || ''} {appBaseInfo.eamapAppCode}</div>
             )}
             {/* 存量个人应用：显示 未绑定应用服务: 立即绑定 */}
             {isLegacyPersonal && (
-              <span className="header-eamap-unbound">
+              <div className="header-eamap-unbound">
                 未绑定应用服务: <span className="header-eamap-bind" onClick={handleBindEamapOpen}>立即绑定</span>
-              </span>
+              </div>
             )}
             {/* 普通个人应用（appType=0, appSubType≠0）：不显示任何额外内容 */}
           </div>

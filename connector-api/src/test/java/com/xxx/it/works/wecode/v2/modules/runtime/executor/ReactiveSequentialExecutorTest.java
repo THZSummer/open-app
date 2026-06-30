@@ -1,12 +1,13 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.executor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
-import com.xxx.it.works.wecode.v2.modules.auth.credential.CredentialInjectorRegistry;
+import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +19,8 @@ import reactor.test.StepVerifier;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @DisplayName("ReactiveSequentialExecutor 测试")
 class ReactiveSequentialExecutorTest {
@@ -31,13 +34,16 @@ class ReactiveSequentialExecutorTest {
         WebClient webClient = WebClient.builder().build();
 
         TriggerNodeExecutor triggerExecutor = new TriggerNodeExecutor(objectMapper);
-        CredentialInjectorRegistry mockRegistry = new CredentialInjectorRegistry(List.of());
-                ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockRegistry, null, null, null);
+        UnifiedCredentialProcessor mockProcessor = mock(UnifiedCredentialProcessor.class);
+        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockProcessor);
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 
+        ConnectorApiPropertyService propertyService = mock(ConnectorApiPropertyService.class);
+        when(propertyService.getNodeMaxTimeoutSeconds()).thenReturn(Mono.just(30));
+
         executor = new ReactiveSequentialExecutor(
-                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor, null);
+                objectMapper, triggerExecutor, connectorExecutor, dataProcessor, exitExecutor, null, propertyService);
     }
 
     @Test

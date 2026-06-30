@@ -6,7 +6,7 @@ from _client import api, db
 
 
 class TestFlowVersionPublish:
-    CONFIG = {"trigger": {}, "nodes": [{"id": "n1", "type": "script", "data": {"script": "1+1"}}], "edges": []}
+    CONFIG = {"nodes": [{"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}}, {"id": "n1", "type": "script", "data": {"script": "1+1"}}], "edges": []}
 
     @pytest.mark.L2
     def test_publish(self, draft_flow):

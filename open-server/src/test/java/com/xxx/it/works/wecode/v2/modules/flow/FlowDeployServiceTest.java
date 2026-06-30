@@ -2,11 +2,15 @@ package com.xxx.it.works.wecode.v2.modules.flow;
 
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.FlowDeployResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
-import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowDeployService;
+import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +42,11 @@ class FlowDeployServiceTest {
 
     @BeforeEach
     void setUp() {
+        AppContextHolder.setCurrentContext(AppContext.builder()
+                .internalId(appId)
+                .externalId(String.valueOf(appId))
+                .build());
+
         flow = new Flow();
         flow.setId(100L);
         flow.setNameCn("测试流");
@@ -53,6 +62,11 @@ class FlowDeployServiceTest {
         version.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
     }
 
+    @AfterEach
+    void tearDown() {
+        AppContextHolder.clear();
+    }
+
     // ===== 正常部署 =====
 
     @Test
@@ -61,7 +75,7 @@ class FlowDeployServiceTest {
         when(flowMapper.selectById(100L)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L);
 
         assertNotNull(response);
         assertEquals("200", response.getCode());
@@ -80,7 +94,7 @@ class FlowDeployServiceTest {
     void testFlowNotFound_Returns404() {
         when(flowMapper.selectById(999L)).thenReturn(null);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(999L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(999L, 200L);
 
         assertNotNull(response);
         assertEquals("404", response.getCode());
@@ -97,7 +111,7 @@ class FlowDeployServiceTest {
         flow.setAppId(999L);
         when(flowMapper.selectById(100L)).thenReturn(flow);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L);
 
         assertEquals("404", response.getCode());
     }
@@ -110,7 +124,7 @@ class FlowDeployServiceTest {
         when(flowMapper.selectById(100L)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(null);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L);
 
         assertEquals("404", response.getCode());
     }
@@ -124,7 +138,7 @@ class FlowDeployServiceTest {
         when(flowMapper.selectById(100L)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L);
 
         assertEquals("404", response.getCode());
     }
@@ -138,7 +152,7 @@ class FlowDeployServiceTest {
         when(flowMapper.selectById(100L)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L);
 
         assertEquals("409", response.getCode());
         assertTrue(response.getMessageZh().contains("仅已发布"));
@@ -151,7 +165,7 @@ class FlowDeployServiceTest {
         when(flowMapper.selectById(100L)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L);
 
         assertEquals("409", response.getCode());
     }
@@ -163,7 +177,7 @@ class FlowDeployServiceTest {
         when(flowMapper.selectById(100L)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> response = deployService.deployVersion(100L, 200L);
 
         assertEquals("409", response.getCode());
     }
@@ -177,11 +191,11 @@ class FlowDeployServiceTest {
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
         // 第一次部署
-        ApiResponse<FlowDeployResponse> r1 = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> r1 = deployService.deployVersion(100L, 200L);
         assertEquals("200", r1.getCode());
 
         // 第二次部署同一版本
-        ApiResponse<FlowDeployResponse> r2 = deployService.deployVersion(100L, 200L, appId);
+        ApiResponse<FlowDeployResponse> r2 = deployService.deployVersion(100L, 200L);
         assertEquals("200", r2.getCode());
 
         // deploy 被调用两次（幂等由 DB 层保证）

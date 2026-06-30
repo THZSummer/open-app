@@ -5,7 +5,7 @@
   "phase": "validated",
   "status": "completed",
   "created_at": "2026-06-17T10:00:00+08:00",
-  "updated_at": "2026-06-22T16:00:00+08:00",
+  "updated_at": "2026-06-26T10:00:00+08:00",
   "stateHistory": [
     {
       "state": "registered",
@@ -31,6 +31,11 @@
       "state": "drift_fixed",
       "timestamp": "2026-06-22T16:00:00+08:00",
       "note": "DRIFT-01 修复：FlowPublishValidator.java fieldName scriptSource→script。增量 review + validate 通过。Python E2E 字段名同步修复 (scriptContent→script)。"
+    },
+    {
+      "state": "config_documented",
+      "timestamp": "2026-06-26T10:00:00+08:00",
+      "note": "plan-config.md 创建 — 全量配置场景系统化记录（开关/白名单/上限/阈值/审批人）"
     }
   ],
   "artifacts": {
@@ -39,7 +44,8 @@
     "tasks": { "specification": "./tasks.md", "status": "completed" },
     "build": { "specification": "./build.md", "status": "completed" },
     "review": { "specification": "./review.md", "status": "completed" },
-    "validation": { "specification": "./validation-report.md", "status": "completed" }
+    "validation": { "specification": "./validation-report.md", "status": "completed" },
+    "plan_config": { "specification": "./plan-config.md", "status": "completed" }
   },
   "dependencies": {
     "v2_feature": "CONN-PLAT-002",

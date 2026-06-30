@@ -2,12 +2,13 @@ package com.xxx.it.works.wecode.v2.modules.flow.validator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersion;
-import com.xxx.it.works.wecode.v2.modules.connector.entity.ConnectorVersionRef;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.ConnectorVersionRefMapper;
-import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.OpConnectorVersionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.graalvm.polyglot.Context;
@@ -16,9 +17,12 @@ import org.graalvm.polyglot.ResourceLimits;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -39,29 +43,29 @@ import java.util.Set;
 @Slf4j
 @Component
 public class FlowPublishValidator {
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FlowPublishValidator.class);
-
-
-
 
     @Autowired
-    public FlowPublishValidator(ObjectMapper objectMapper, ConnectorVersionRefMapper connectorVersionRefMapper, OpConnectorVersionMapper connectorVersionMapper) {
+    public FlowPublishValidator(ObjectMapper objectMapper, ConnectorVersionRefMapper connectorVersionRefMapper, OpConnectorVersionMapper connectorVersionMapper, ConnectorPlatformPropertyService propertyService) {
         this.objectMapper = objectMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
         this.connectorVersionMapper = connectorVersionMapper;
+        this.propertyService = propertyService;
     }
     private final ObjectMapper objectMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
     private final OpConnectorVersionMapper connectorVersionMapper;
+    private final ConnectorPlatformPropertyService propertyService;
 
     /**
      * 校验编排配置，返回校验错误列表
      *
      * @param orchestrationConfig 编排配置 JSON 字符串
+     * @param appId               应用ID（用于按应用查询 Property 上限值）
      * @return 校验错误信息列表，空列表表示全部通过
      */
-    public List<String> validateOrchestrationConfig(String orchestrationConfig) {
+    public List<String> validateOrchestrationConfig(String orchestrationConfig, String appId) {
         List<String> errors = new ArrayList<>();
+        Map<String, String> propertyConfig = propertyService.loadConfigBundle(appId);
 
         // 校验 8：JSON 语法合法性
         JsonNode config;
@@ -69,37 +73,85 @@ public class FlowPublishValidator {
             config = objectMapper.readTree(orchestrationConfig);
         } catch (Exception e) {
             errors.add("编排配置 JSON 格式无效：" + e.getMessage());
-            return errors; // JSON 解析失败则后续校验无意义
+            return errors;
         }
 
-        // 校验 2：编排配置非空
+        validateConfigSize(orchestrationConfig, propertyConfig, errors);
+        validateNodes(config, errors);
+        validateParallelBranches(config, propertyConfig, errors);
+
+        JsonNode flowConfig = config.get("flowConfig");
+        if (flowConfig != null) {
+            validateCacheConfig(flowConfig, propertyConfig, errors);
+            validateRateLimit(flowConfig, errors);
+            validateTimeout(flowConfig, errors);
+        }
+
+        JsonNode nodes = config.get("nodes");
+        validateScriptNodes(nodes, propertyConfig, errors);
+        validateConnectorRefs(errors);
+
+        return errors;
+    }
+
+    /**
+     * 校验编排配置 JSON 字节大小是否超过应用上限
+     *
+     * @param orchestrationConfig 编排配置 JSON 字符串
+     * @param appId               应用ID
+     * @param errors              错误列表
+     */
+    private void validateConfigSize(String orchestrationConfig, Map<String, String> propertyConfig, List<String> errors) {
+        int maxBytes = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_CONFIG_MAX_BYTES, 0);
+        if (maxBytes > 0) {
+            int actualBytes = orchestrationConfig.getBytes(StandardCharsets.UTF_8).length;
+            if (actualBytes > maxBytes) {
+                errors.add("编排配置 JSON 超过最大字节数限制 " + maxBytes + "，当前：" + actualBytes + "字节");
+            }
+        }
+    }
+
+    /**
+     * 校验节点非空且至少包含一个业务节点（非 trigger/exit）
+     *
+     * @param config 编排配置 JSON 节点
+     * @param errors 错误列表
+     */
+    private void validateNodes(JsonNode config, List<String> errors) {
         JsonNode nodes = config.get("nodes");
         if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
             errors.add("编排配置必须包含至少一个节点");
+            return;
         }
 
         JsonNode edges = config.get("edges");
         boolean hasEdges = edges != null && edges.isArray() && edges.size() > 0;
 
-        // 校验 2 补充：至少含非 trigger/exit 节点
-        if (nodes != null && nodes.isArray()) {
-            boolean hasBusinessNode = false;
-            for (JsonNode node : nodes) {
-                JsonNode type = node.get("type");
-                if (type != null) {
-                    String typeStr = type.asText();
-                    if (!"trigger".equals(typeStr) && !"exit".equals(typeStr)) {
-                        hasBusinessNode = true;
-                        break;
-                    }
+        boolean hasBusinessNode = false;
+        for (JsonNode node : nodes) {
+            JsonNode type = node.get("type");
+            if (type != null) {
+                String typeStr = type.asText();
+                if (!"trigger".equals(typeStr) && !"exit".equals(typeStr)) {
+                    hasBusinessNode = true;
+                    break;
                 }
             }
-            if (!hasBusinessNode && hasEdges) {
-                errors.add("编排配置至少需要一个业务节点（connector 或 script）");
-            }
         }
+        if (!hasBusinessNode && hasEdges) {
+            errors.add("编排配置至少需要一个业务节点（connector 或 script）");
+        }
+    }
 
-        // 校验 6：并行分支数 ≤ 8
+    /**
+     * 校验并行分支数是否超过应用上限
+     *
+     * @param config 编排配置 JSON 节点
+     * @param appId  应用ID
+     * @param errors 错误列表
+     */
+    private void validateParallelBranches(JsonNode config, Map<String, String> propertyConfig, List<String> errors) {
+        JsonNode edges = config.get("edges");
         if (edges != null && edges.isArray()) {
             int parallelBranchCount = 0;
             for (JsonNode edge : edges) {
@@ -116,104 +168,163 @@ public class FlowPublishValidator {
                     }
                 }
             }
-            if (parallelBranchCount > ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES) {
-                errors.add("并行分支数超过上限 " + ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES
+            int maxParallelBranches = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_PARALLEL_BRANCHES, ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES);
+            if (parallelBranchCount > maxParallelBranches) {
+                errors.add("并行分支数超过上限 " + maxParallelBranches
                         + "，当前：" + parallelBranchCount);
             }
         }
+    }
 
-        // 校验 3：入站限流值 ≤ 应用最大值（从 flowConfig 读取）
-        JsonNode flowConfig = config.get("flowConfig");
-        if (flowConfig != null) {
-            // 校验 5：缓存 TTL ≤ 1296000
-            JsonNode cache = flowConfig.get("cache");
-            if (cache != null) {
-                JsonNode ttl = cache.get("ttl");
-                if (ttl != null && ttl.isNumber()) {
-                    long ttlValue = ttl.asLong();
-                    if (ttlValue > ConnectorPlatformConstants.MAX_CACHE_TTL_SECONDS) {
-                        errors.add("缓存 TTL 超过上限 " + ConnectorPlatformConstants.MAX_CACHE_TTL_SECONDS
-                                + "秒，当前：" + ttlValue + "秒");
-                    }
-                    if (ttlValue < ConnectorPlatformConstants.MIN_CACHE_TTL_SECONDS) {
-                        errors.add("缓存 TTL 必须 ≥ " + ConnectorPlatformConstants.MIN_CACHE_TTL_SECONDS + "秒");
-                    }
+    /**
+     * 校验缓存 TTL 是否在允许范围内
+     *
+     * @param flowConfig flowConfig 子节点
+     * @param appId      应用ID
+     * @param errors     错误列表
+     */
+    private void validateCacheConfig(JsonNode flowConfig, Map<String, String> propertyConfig, List<String> errors) {
+        JsonNode cache = flowConfig.get("cache");
+        if (cache != null) {
+            JsonNode ttl = cache.get("ttl");
+            if (ttl != null && ttl.isNumber()) {
+                long ttlValue = ttl.asLong();
+                int maxCacheTtl = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_CACHE_TTL_SECONDS, ConnectorPlatformConstants.MAX_CACHE_TTL_SECONDS);
+                if (ttlValue > maxCacheTtl) {
+                    errors.add("缓存 TTL 超过上限 " + maxCacheTtl
+                            + "秒，当前：" + ttlValue + "秒");
                 }
-            }
-
-            // 校验 3：入站限流上限（当前仅记录校验项，应用最大值需外部传入）
-            // 需由调用方传入 appMaxQps/appMaxConcurrency 参数
-            // 此处仅做基本范围校验
-            JsonNode rateLimit = flowConfig.get("rateLimit");
-            if (rateLimit != null) {
-                JsonNode qps = rateLimit.get("qps");
-                if (qps != null && qps.isNumber() && qps.asInt() <= 0) {
-                    errors.add("入站限流 QPS 必须大于 0");
+                if (ttlValue < ConnectorPlatformConstants.MIN_CACHE_TTL_SECONDS) {
+                    errors.add("缓存 TTL 必须 ≥ " + ConnectorPlatformConstants.MIN_CACHE_TTL_SECONDS + "秒");
                 }
-                JsonNode concurrency = rateLimit.get("concurrency");
-                if (concurrency != null && concurrency.isNumber() && concurrency.asInt() <= 0) {
-                    errors.add("入站限流并发数必须大于 0");
-                }
-            }
-
-            // 校验 4：超时上限
-            JsonNode timeout = flowConfig.get("timeout");
-            if (timeout != null && timeout.isNumber() && timeout.asInt() <= 0) {
-                errors.add("节点超时必须大于 0");
             }
         }
+    }
 
-        // 校验 9：脚本语法合法性（FR-026 校验项 i: GraalJS parse 预检）
-        if (nodes != null && nodes.isArray()) {
-            int scriptNodeCount = 0;
-            for (JsonNode node : nodes) {
-                JsonNode type = node.get("type");
-                if (type != null && "script".equals(type.asText())) {
-                    scriptNodeCount++;
-                    JsonNode data = node.get("data");
-                    if (data != null) {
-                        JsonNode scriptSource = data.get("script");
-                        if (scriptSource != null && !scriptSource.isNull()) {
-                            String source = scriptSource.asText();
-                            String nodeId = node.has("id") ? node.get("id").asText() : "unknown";
-                            if (source == null || source.trim().isEmpty()) {
-                                errors.add(String.format("脚本节点 [%s] 源码不能为空", nodeId));
-                            } else if (source.length() > ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH) {
-                                errors.add("脚本源码超过最大长度限制 "
-                                        + ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH + "字符");
-                            } else {
-                                // FR-026 校验项 i): 使用 GraalJS polyglot 进行语法预检
-                                try (Context ctx = Context.newBuilder("js")
-                                        .allowExperimentalOptions(true)
-                                        .option("js.ecmascript-version", "2022")
-                                        .resourceLimits(ResourceLimits.newBuilder()
-                                                .statementLimit(1000, null)
-                                                .build())
-                                        .build()) {
-                                    ctx.eval("js", source);
-                                } catch (PolyglotException e) {
-                                    errors.add(String.format("脚本节点 [%s] 语法错误: %s",
-                                            nodeId, e.getMessage()));
-                                } catch (Exception e) {
-                                    log.error("脚本节点 [{}] GraalJS 校验异常", nodeId, e);
-                                    errors.add(String.format("脚本节点 [%s] 校验异常: %s",
-                                            nodeId, e.getMessage()));
-                                }
+    /**
+     * 校验入站限流配置基本范围合法性
+     *
+     * @param flowConfig flowConfig 子节点
+     * @param errors     错误列表
+     */
+    private void validateRateLimit(JsonNode flowConfig, List<String> errors) {
+        JsonNode rateLimitConfig = flowConfig.get("rateLimitConfig");
+        if (rateLimitConfig != null) {
+            JsonNode maxQps = rateLimitConfig.get("maxQps");
+            if (maxQps != null && maxQps.isNumber() && maxQps.asInt() <= 0) {
+                errors.add("入站限流 QPS 必须大于 0");
+            }
+            JsonNode maxConcurrency = rateLimitConfig.get("maxConcurrency");
+            if (maxConcurrency != null && maxConcurrency.isNumber() && maxConcurrency.asInt() <= 0) {
+                errors.add("入站限流并发数必须大于 0");
+            }
+        }
+    }
+
+    /**
+     * 校验 flowConfig 级别的超时值基本合法性
+     *
+     * @param flowConfig flowConfig 子节点
+     * @param errors     错误列表
+     */
+    private void validateTimeout(JsonNode flowConfig, List<String> errors) {
+        JsonNode timeout = flowConfig.get("timeout");
+        if (timeout != null && timeout.isNumber() && timeout.asInt() <= 0) {
+            errors.add("节点超时必须大于 0");
+        }
+    }
+
+    /**
+     * 校验脚本节点的源码合法性、长度限制、GraalJS 语法预检及超时值上限
+     *
+     * @param nodes  nodes 节点数组
+     * @param appId  应用ID
+     * @param errors 错误列表
+     */
+    private void validateScriptNodes(JsonNode nodes, Map<String, String> propertyConfig, List<String> errors) {
+        if (nodes == null || !nodes.isArray()) {
+            return;
+        }
+        int scriptNodeCount = 0;
+        for (JsonNode node : nodes) {
+            JsonNode type = node.get("type");
+            if (type != null && "script".equals(type.asText())) {
+                scriptNodeCount++;
+                JsonNode data = node.get("data");
+                if (data != null) {
+                    JsonNode scriptSource = data.get("script");
+                    if (scriptSource != null && !scriptSource.isNull()) {
+                        String source = scriptSource.asText();
+                        String nodeId = node.has("id") ? node.get("id").asText() : "unknown";
+                        int maxSourceLength = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_SCRIPT_MAX_LENGTH_CHARS, ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH);
+                        if (source == null || source.trim().isEmpty()) {
+                            errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 源码不能为空", nodeId));
+                        } else if (source.length() > maxSourceLength) {
+                            errors.add("脚本源码超过最大长度限制 "
+                                    + maxSourceLength + "字符");
+                        } else {
+                            executeScriptValidation(source, nodeId, errors);
+                        }
+                        // 校验 13：脚本节点超时值上限
+                        JsonNode scriptTimeout = data.get("timeout");
+                        if (scriptTimeout != null && scriptTimeout.isNumber()) {
+                            int timeoutValue = scriptTimeout.asInt();
+                            int maxTimeoutSeconds = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_SCRIPT_MAX_TIMEOUT_SECONDS, ConnectorPlatformConstants.MAX_SCRIPT_TIMEOUT_SECONDS);
+                            if (timeoutValue > maxTimeoutSeconds) {
+                                errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 超时值(%d秒) 超过上限(%d秒)",
+                                        nodeId, timeoutValue, maxTimeoutSeconds));
                             }
                         }
                     }
                 }
             }
-            if (scriptNodeCount > ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW) {
-                errors.add("脚本节点数量超过上限 " + ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW
-                        + "，当前：" + scriptNodeCount);
-            }
         }
+        if (scriptNodeCount > ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW) {
+            errors.add("脚本节点数量超过上限 " + ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW
+                    + "，当前：" + scriptNodeCount);
+        }
+    }
 
+    private int getIntFromConfig(Map<String, String> config, String key, int defaultVal) {
+        String value = config.get(key);
+        if (value == null || value.isEmpty()) {
+            return defaultVal;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Invalid int value '{}' for key '{}', using default {}", value, key, defaultVal);
+            return defaultVal;
+        }
+    }
+
+    private void executeScriptValidation(String source, String nodeId, List<String> errors) {
+        try (Context ctx = Context.newBuilder("js")
+                .allowExperimentalOptions(true)
+                .option("js.ecmascript-version", "2022")
+                .resourceLimits(ResourceLimits.newBuilder()
+                        .statementLimit(1000, null)
+                        .build())
+                .build()) {
+            ctx.eval("js", source);
+        } catch (PolyglotException e) {
+            errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 语法错误: %s",
+                    nodeId, e.getMessage()));
+        } catch (Exception e) {
+            log.error("Script node [{}] GraalJS validation error", nodeId, e);
+            errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 校验异常: %s",
+                    nodeId, e.getMessage()));
+        }
+    }
+
+    /**
+     * 占位方法：连接器版本引用可用性由调用方通过 validateConnectorVersionRefs 校验
+     *
+     * @param errors 错误列表
+     */
+    private void validateConnectorRefs(List<String> errors) {
         // 校验 7：连接器版本引用可用性（需传入 flowVersionId 由调用方处理）
         // 此处由调用方在外部调用 validateConnectorVersionRefs()
-
-        return errors;
     }
 
     /**
@@ -234,7 +345,9 @@ public class FlowPublishValidator {
         }
 
         for (ConnectorVersionRef ref : refs) {
-            if (ref.getConnectorVersionId() == null) continue;
+            if (ref.getConnectorVersionId() == null) {
+                continue;
+            }
             ConnectorVersion cv = connectorVersionMapper.selectById(ref.getConnectorVersionId());
             if (cv == null) {
                 errors.add("节点 [" + ref.getNodeId() + "] 引用的连接器版本不存在（versionId="
@@ -282,15 +395,15 @@ public class FlowPublishValidator {
             JsonNode config = objectMapper.readTree(orchestrationConfig);
             JsonNode flowConfig = config.get("flowConfig");
             if (flowConfig != null) {
-                JsonNode rateLimit = flowConfig.get("rateLimit");
-                if (rateLimit != null) {
-                    JsonNode qps = rateLimit.get("qps");
-                    if (qps != null && qps.isNumber() && qps.asInt() > appMaxQps) {
-                        errors.add("入站限流 QPS(" + qps.asInt() + ") 超过应用上限(" + appMaxQps + ")");
+                JsonNode rateLimitConfig = flowConfig.get("rateLimitConfig");
+                if (rateLimitConfig != null) {
+                    JsonNode maxQps = rateLimitConfig.get("maxQps");
+                    if (maxQps != null && maxQps.isNumber() && maxQps.asInt() > appMaxQps) {
+                        errors.add("入站限流 QPS(" + maxQps.asInt() + ") 超过应用上限(" + appMaxQps + ")");
                     }
-                    JsonNode concurrency = rateLimit.get("concurrency");
-                    if (concurrency != null && concurrency.isNumber() && concurrency.asInt() > appMaxConcurrency) {
-                        errors.add("入站限流并发(" + concurrency.asInt() + ") 超过应用上限(" + appMaxConcurrency + ")");
+                    JsonNode maxConcurrency = rateLimitConfig.get("maxConcurrency");
+                    if (maxConcurrency != null && maxConcurrency.isNumber() && maxConcurrency.asInt() > appMaxConcurrency) {
+                        errors.add("入站限流并发(" + maxConcurrency.asInt() + ") 超过应用上限(" + appMaxConcurrency + ")");
                     }
                 }
             }
@@ -298,6 +411,30 @@ public class FlowPublishValidator {
             errors.add("解析限流配置失败：" + e.getMessage());
         }
         return errors;
+    }
+
+    /**
+     * 校验各节点超时不超过应用上限
+     *
+     * @param config           编排配置 JSON 节点
+     * @param appMaxTimeoutMs  应用最大超时（毫秒）
+     * @param errors           错误列表
+     */
+    private void validateNodeTimeouts(JsonNode config, int appMaxTimeoutMs, List<String> errors) {
+        JsonNode nodes = config.get("nodes");
+        if (nodes != null && nodes.isArray()) {
+            for (JsonNode node : nodes) {
+                JsonNode data = node.get("data");
+                if (data != null) {
+                    JsonNode nodeTimeout = data.get("timeoutMs");
+                    if (nodeTimeout != null && nodeTimeout.isNumber()
+                            && nodeTimeout.asInt() > appMaxTimeoutMs) {
+                        errors.add("节点 [" + node.get("id").asText() + "] 超时("
+                                + nodeTimeout.asInt() + "ms) 超过应用上限(" + appMaxTimeoutMs + "ms)");
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -319,21 +456,7 @@ public class FlowPublishValidator {
                 }
             }
 
-            // 同时检查各 connector 节点的 timeoutMs
-            JsonNode nodes = config.get("nodes");
-            if (nodes != null && nodes.isArray()) {
-                for (JsonNode node : nodes) {
-                    JsonNode data = node.get("data");
-                    if (data != null) {
-                        JsonNode nodeTimeout = data.get("timeoutMs");
-                        if (nodeTimeout != null && nodeTimeout.isNumber()
-                                && nodeTimeout.asInt() > appMaxTimeoutMs) {
-                            errors.add("节点 [" + node.get("id").asText() + "] 超时("
-                                    + nodeTimeout.asInt() + "ms) 超过应用上限(" + appMaxTimeoutMs + "ms)");
-                        }
-                    }
-                }
-            }
+            validateNodeTimeouts(config, appMaxTimeoutMs, errors);
         } catch (Exception e) {
             errors.add("解析超时配置失败：" + e.getMessage());
         }

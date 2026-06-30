@@ -83,7 +83,7 @@ function ApiRegister({ visible, api, mode = 'create', onSuccess, onCancel }) {
       return {
         propertyName: findRes ? prop.propertyName : '__custom__',
         propertyValue: prop.propertyValue,
-        customPropertyName: findRes ? undefined : prop.customPropertyName,
+        customPropertyName: findRes ? undefined : prop.propertyName,
       }
     }) || []
   }

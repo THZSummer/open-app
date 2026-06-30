@@ -10,8 +10,16 @@ def _snow_id():
 
 
 class TestAppWhitelist:
+    """白名单准入测试
+
+    注意：当前服务版本 AppWhitelistInterceptor 已实现但未注册到拦截器链。
+    白名单校验逻辑（空白名单=拒绝所有）已在 AppWhitelistService 中实现，
+    但请求尚未被拦截。以下测试验证当前行为，并在注释中标注上线后预期。
+    """
+
     @pytest.mark.L2
     def test_whitelist_app_ok(self, connector):
+        """TEST_APP_ID 可正常访问连接器（当前+未来均通过）"""
         resp = api("GET", f"/connectors/{connector}")
         if resp is not None:
             assert resp.status_code == 200
@@ -19,11 +27,18 @@ class TestAppWhitelist:
 
     @pytest.mark.L2
     def test_missing_app_id_header(self, connector):
+        """缺少 X-App-Id Header → 上线后应为 403（当前拦截器未注册，不拦截）"""
+        # client.py 默认设置 X-App-Id = TEST_APP_ID，app_id=None 无法去掉 header
         resp = api("GET", f"/connectors/{connector}", app_id=None)
         assert resp is not None
 
     @pytest.mark.L2
-    def test_any_app_allowed_empty_whitelist(self, connector):
+    def test_empty_whitelist_rejects_all_post_registration(self, connector):
+        """空白名单=全部拒绝（安全默认）— 拦截器注册后生效。
+
+        当前因为 AppWhitelistInterceptor 未注册，所有请求通过。
+        上线后此测试应改为 assert resp.status_code == 403。
+        """
         resp = api("GET", f"/connectors/{connector}")
         if resp is not None:
             assert resp.status_code == 200
@@ -41,6 +56,7 @@ class TestOperationLog:
             if data.get("code") in ("200", 200) and data.get("data"):
                 api_cid = data["data"].get("connectorId")
         if api_cid:
+            time.sleep(0.5)  # 等待异步操作日志写入
             log_count = db_val(f"SELECT COUNT(*) FROM openplatform_operate_log_t WHERE after_data LIKE '%{api_cid}%'")
             assert log_count is not None
             assert int(log_count) >= 1, f"Expected >=1 log for connector {api_cid}, got {log_count}"

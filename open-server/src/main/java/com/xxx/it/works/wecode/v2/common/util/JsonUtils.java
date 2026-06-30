@@ -1,8 +1,14 @@
 package com.xxx.it.works.wecode.v2.common.util;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * JSON 工具类
@@ -16,7 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public final class JsonUtils {
 
-    private static ObjectMapper objectMapper;
+    private static volatile ObjectMapper objectMapper;
 
     private JsonUtils() {
     }
@@ -25,7 +31,7 @@ public final class JsonUtils {
      * 注入 Spring 配置好的 ObjectMapper（由 JacksonConfig 启动时调用一次）
      */
     public static void init(ObjectMapper mapper) {
-        objectMapper = mapper;
+        objectMapper = mapper.copy();
     }
 
     /**
@@ -51,24 +57,6 @@ public final class JsonUtils {
         }
     }
 
-    /**
-     * 解析 JSON 字符串为 JsonNode。
-     * <ul>
-     *   <li>null 或空字符串 → null</li>
-     *   <li>解析失败 → null（仅 warn 日志）</li>
-     * </ul>
-     */
-    public static JsonNode parseJson(String json) {
-        if (json == null || json.isEmpty()) {
-            return null;
-        }
-        try {
-            return objectMapper.readTree(json);
-        } catch (Exception e) {
-            log.warn("[JSON] Failed to parse JSON string", e);
-            return null;
-        }
-    }
 
     /**
      * 将 Java 对象转换为 JsonNode（无需先序列化为字符串）。
@@ -82,6 +70,26 @@ public final class JsonUtils {
             return objectMapper.valueToTree(obj);
         } catch (Exception e) {
             log.warn("[JSON] Failed to convert object to tree: {}", obj.getClass().getSimpleName(), e);
+            return null;
+        }
+    }
+
+    /**
+     * 将 Java 对象转换为 {@code Map<String, Object>}（通过 Jackson convertValue）。
+     * <ul>
+     *   <li>null → null</li>
+     *   <li>转换失败 → null（仅 warn 日志）</li>
+     *   <li>返回的是可变的 LinkedHashMap，调用方可继续 put 扩展字段</li>
+     * </ul>
+     */
+    public static Map<String, Object> toMap(Object obj) {
+        if (obj == null) {
+            return null;
+        }
+        try {
+            return objectMapper.convertValue(obj, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("[JSON] Failed to convert object to Map: {}", obj.getClass().getSimpleName(), e);
             return null;
         }
     }
@@ -103,5 +111,80 @@ public final class JsonUtils {
             return null;
         }
         return field.asText();
+    }
+
+    /**
+     * 从 JsonNode 中安全提取 Long 字段值。
+     * <ul>
+     *   <li>null node 或 null fieldName → null</li>
+     *   <li>字段不存在或为 null 值 → null</li>
+     *   <li>其他 → asLong()，转换失败返回 null</li>
+     * </ul>
+     */
+    public static Long getFieldLong(JsonNode node, String fieldName) {
+        if (node == null || fieldName == null) {
+            return null;
+        }
+        JsonNode field = node.get(fieldName);
+        if (field == null || field.isNull()) {
+            return null;
+        }
+        try {
+            return field.asLong();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 通过反射收集对象的顶层简单值字段（String/Number/Boolean）。
+     * List/Map/嵌套对象自动跳过，不做 Jackson 全量序列化。
+     */
+    public static Map<String, String> extractSimpleProperties(Object obj) {
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Field f : obj.getClass().getDeclaredFields()) {
+            if (Modifier.isStatic(f.getModifiers())) {
+                continue;
+            }
+            try {
+                f.setAccessible(true);
+                Object v = f.get(obj);
+                if (v instanceof CharSequence || v instanceof Number || v instanceof Boolean) {
+                    result.put(f.getName(), v.toString());
+                }
+            } catch (Exception e) {
+                log.debug("[JsonUtils] Failed to extract field value", e);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将参数名和参数值展平为 JsonNode。
+     * 简单类型按参数名直接放入，复杂对象提取顶层简单值字段。
+     * 用于审计日志模板渲染的降级数据源。
+     *
+     * @param paramNames 参数名数组
+     * @param args       参数值数组（与 paramNames 一一对应）
+     * @return JsonNode，无数据时返回 null
+     */
+    public static JsonNode toFlatNode(String[] paramNames, Object[] args) {
+        Map<String, String> flat = buildFlatMap(paramNames, args);
+        return flat.isEmpty() ? null : objectMapper.valueToTree(flat);
+    }
+
+    private static Map<String, String> buildFlatMap(String[] paramNames, Object[] args) {
+        Map<String, String> flat = new LinkedHashMap<>();
+        for (int i = 0; i < paramNames.length; i++) {
+            if (args[i] == null) {
+                continue;
+            }
+            if (args[i] instanceof CharSequence || args[i] instanceof Number || args[i] instanceof Boolean) {
+                flat.put(paramNames[i], args[i].toString());
+            } else {
+                flat.putAll(extractSimpleProperties(args[i]));
+            }
+        }
+        return flat;
     }
 }

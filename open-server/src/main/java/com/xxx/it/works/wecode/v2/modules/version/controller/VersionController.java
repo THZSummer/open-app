@@ -8,6 +8,8 @@ import com.xxx.it.works.wecode.v2.modules.version.dto.UpdateVersionRequest;
 import com.xxx.it.works.wecode.v2.modules.version.service.VersionService;
 import com.xxx.it.works.wecode.v2.modules.version.vo.AppVersionDetailVO;
 import com.xxx.it.works.wecode.v2.modules.version.vo.VersionVO;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.extern.slf4j.Slf4j;
@@ -45,8 +47,8 @@ public class VersionController {
     @GetMapping("/list")
     public ApiResponse<List<VersionVO>> getVersionList(
             @RequestParam @NotBlank String appId,
-            @RequestParam(defaultValue = "1") Integer curPage,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(defaultValue = "1") @Min(1) Integer curPage,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) Integer pageSize) {
         return versionService.getVersionList(appId, curPage, pageSize);
     }
 

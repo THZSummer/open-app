@@ -63,7 +63,6 @@ const BaseSection = forwardRef((props, ref) => {
           disabled={!editable}
           onChange={(e) => updateConfig('protocolAddress', e.target.value)}
           placeholder="https://api.example.com/endpoint"
-          className="input-border-radius"
         />
       </Form.Item>
     </div>

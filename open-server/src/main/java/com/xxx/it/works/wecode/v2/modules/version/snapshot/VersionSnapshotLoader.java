@@ -1,16 +1,15 @@
 package com.xxx.it.works.wecode.v2.modules.version.snapshot;
 
-import com.xxx.it.works.wecode.v2.common.util.CommonUtils;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoader;
+import com.xxx.it.works.wecode.v2.common.util.CommonUtils;
+import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
 import com.xxx.it.works.wecode.v2.modules.version.dto.CreateVersionRequest;
 import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 版本快照加载器
@@ -34,11 +33,7 @@ public class VersionSnapshotLoader implements EntitySnapshotLoader {
         // 先尝试从方法参数提取（CREATE_APP_VERSION）
         CreateVersionRequest req = CommonUtils.findArg(joinPoint, CreateVersionRequest.class);
         if (req != null) {
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("versionCode", req.getVersionCode());
-            data.put("versionDescCn", req.getVersionDescCn());
-            data.put("versionDescEn", req.getVersionDescEn());
-            return data;
+            return JsonUtils.toMap(req);
         }
 
         // 标准路径：从 DB 查

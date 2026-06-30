@@ -52,6 +52,9 @@ public final class ConnectorPlatformConstants {
     /** 平台默认超时（秒） */
     public static final int DEFAULT_TIMEOUT_SECONDS = 5;
 
+    /** 节点超时上限（秒） */
+    public static final int MAX_NODE_TIMEOUT_SECONDS = 5;
+
     /** 脚本节点默认超时（秒） */
     public static final int DEFAULT_SCRIPT_TIMEOUT_SECONDS = 5;
 
@@ -107,4 +110,54 @@ public final class ConnectorPlatformConstants {
 
     /** URL 白名单正则编译缓存 TTL（秒）：5 分钟 */
     public static final int URL_WHITELIST_PATTERN_CACHE_TTL_SECONDS = 300;
+
+    // ===== Lookup 配置（v2.0）=====
+
+    /** Lookup 配置统一 path */
+    public static final String LOOKUP_PATH = "CEC.Open";
+
+    /** 平台默认配置 classify_code */
+    public static final String LOOKUP_CLASSIFY_PLATFORM_CONFIG = "Connector.Platform.Config";
+
+    /** 应用覆盖配置 classify_code 前缀 */
+    public static final String LOOKUP_CLASSIFY_APP_CONFIG_PREFIX = "Connector.Platform.";
+
+    /** 应用覆盖配置 classify_code 后缀 */
+    public static final String LOOKUP_CLASSIFY_APP_CONFIG_SUFFIX = ".Config";
+
+    /** 应用白名单 classify_code */
+    public static final String LOOKUP_CLASSIFY_APP_WHITELIST = "Connector.Platform.AppWhitelist";
+
+    // ===== item_code 常量（v2.0）=====
+
+    /** 连接器版本数量上限 */
+    public static final String ITEM_CONNECTOR_MAX_VERSIONS = "Connector.Max.Versions";
+    /** 连接器URL正则规则 */
+    public static final String ITEM_CONNECTOR_URL_REGEX_PATTERN = "Connector.Url.Regex.Pattern";
+    /** 连接器配置JSON长度上限 */
+    public static final String ITEM_CONNECTOR_CONFIG_MAX_BYTES = "Connector.Config.Max.Bytes";
+    /** 连接流版本数量上限 */
+    public static final String ITEM_FLOW_MAX_VERSIONS = "Flow.Max.Versions";
+    /** 运行记录条数上限 */
+    public static final String ITEM_MAX_EXECUTION_RECORDS_PER_FLOW = "Max.Execution.Records.Per.Flow";
+    /** 连接器节点超时上限 */
+    public static final String ITEM_NODE_MAX_TIMEOUT_SECONDS = "Node.Max.Timeout.Seconds";
+    /** 连接流配置JSON长度上限 */
+    public static final String ITEM_FLOW_CONFIG_MAX_BYTES = "Flow.Config.Max.Bytes";
+    /** 连接流最大QPS */
+    public static final String ITEM_FLOW_MAX_QPS = "Flow.Max.Qps";
+    /** 连接流最大并发 */
+    public static final String ITEM_FLOW_MAX_CONCURRENCY = "Flow.Max.Concurrency";
+    /** 连接流缓存TTL上限 */
+    public static final String ITEM_FLOW_MAX_CACHE_TTL_SECONDS = "Flow.Max.Cache.Ttl.Seconds";
+    /** 连接流并行节点分支上限 */
+    public static final String ITEM_FLOW_MAX_PARALLEL_BRANCHES = "Flow.Max.Parallel.Branches";
+    /** 串行编排连接器节点数量上限 */
+    public static final String ITEM_FLOW_MAX_SERIAL_CONNECTOR_NODES = "Flow.Max.Serial.Connector.Nodes";
+    /** 脚本源码长度上限 */
+    public static final String ITEM_SCRIPT_MAX_LENGTH_CHARS = "Script.Max.Length.Chars";
+    /** 脚本超时范围 */
+    public static final String ITEM_SCRIPT_MAX_TIMEOUT_SECONDS = "Script.Max.Timeout.Seconds";
+    /** 日志采集开关 */
+    public static final String ITEM_LOG_COLLECTION_ENABLED = "Log.Collection.Enabled";
 }

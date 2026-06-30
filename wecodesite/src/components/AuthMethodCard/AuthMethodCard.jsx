@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Checkbox, Input, message, Modal } from 'antd';
+import { useSearchParams } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { Card, Checkbox, Input, message, Modal, Spin } from 'antd';
 import { EditOutlined, WarningOutlined } from '@ant-design/icons';
 import { VERIFY_TYPE_MAP, FORM_VALIDATION_RULES } from '../../utils/constants';
+import { fetchAppDetail } from '../../store/appSlice';
+import { fetchVerifyType, updateVerifyType } from './thunk';
 
 import './AuthMethodCard.m.less';
 
@@ -11,36 +15,35 @@ const MUTUAL_EXCLUSIVE = { 1: 3, 3: 1 };
 /** 认证方式红色警告文案（spec FR-005） */
 const AUTH_WARNING_TEXT = '认证方式切换后,将影响已发送卡片的数据回调,请谨慎选择。';
 
-/**
- * 认证方式卡片组件
- *
- * @param {number[]} value - 当前选中的认证方式列表
- * @param {string} apiSecret - 数字签名 apiSecret
- * @param {boolean} editing - 是否处于编辑态
- * @param {Function} onEdit - 点击配置按钮回调
- * @param {Function} onSave - 保存回调 (selectedTypes, apiSecret) => void
- * @param {Function} onCancel - 取消回调
- */
-function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, onSave, onCancel }) {
-  const [selectedTypes, setSelectedTypes] = useState(value);
-  const [secret, setSecret] = useState(apiSecret);
+function AuthMethodCard() {
+  const [searchParams] = useSearchParams();
+  const dispatch = useDispatch();
+  const appId = searchParams.get('appId');
+  const [verifyType, setVerifyType] = useState([0]);
+  const [apiSecret, setApiSecret] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState([0]);
+  const [secret, setSecret] = useState('');
   const [secretError, setSecretError] = useState('');
 
-  // 脱敏展示：只显示前4位和后4位，中间用 * 填充
-  const maskSecret = (s) => {
-    if (!s) return '';
-    if (s.length <= 8) return s.slice(0, 2) + '****' + s.slice(-2);
-    return s.slice(0, 4) + '********' + s.slice(-4);
-  };
-
-  // 外部 value 变化时同步内部状态
   useEffect(() => {
-    setSelectedTypes(value);
-  }, [value]);
-
-  useEffect(() => {
-    setSecret(apiSecret);
-  }, [apiSecret]);
+    if (!appId) return;
+    setLoading(true);
+    fetchVerifyType(appId)
+      .then((result) => {
+        if (result?.code === '200' && result.data) {
+          const data = result.data;
+          setVerifyType(data.verifyType || [0]);
+          setApiSecret(data.apiSecret || '');
+          setSelectedTypes(data.verifyType || [0]);
+          setSecret(data.apiSecret || '');
+        } else {
+          message.error(result?.messageZh || '获取认证方式失败');
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [appId]);
 
   const handleTypeChange = (checkedValues) => {
     // SOAHeader(1) 与 SOAURL(3) 互斥：选中其中一个时自动取消另一个
@@ -62,6 +65,12 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
     }
   };
 
+  function maskSecret(secret) {
+    if (!secret) return '';
+    if (secret.length <= 6) return secret.slice(0, 2) + '****';
+    return secret.slice(0, 4) + '****' + secret.slice(-4);
+  }
+
   const handleSecretChange = (e) => {
     const val = e.target.value;
     setSecret(val);
@@ -72,7 +81,7 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (selectedTypes.length === 0) {
       message.error('请至少选择 1 种认证方式');
       return;
@@ -93,8 +102,17 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
       content: '确定要修改认证方式吗？',
       okText: '确定',
       cancelText: '取消',
-      onOk: () => {
-        onSave(selectedTypes, secret);
+      onOk: async () => {
+        const result = await updateVerifyType(appId, { verifyType: selectedTypes, apiSecret: secret });
+        if (result?.code === '200') {
+          message.success('认证方式保存成功');
+          setEditing(false);
+          setVerifyType(selectedTypes);
+          setApiSecret(secret);
+          dispatch(fetchAppDetail(appId));
+        } else {
+          message.error(result?.messageZh || '保存失败');
+        }
       },
     });
   };
@@ -106,7 +124,7 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
         label: item.label || item.text,
         value: Number(key),
       }));
-    const hasDigitalSignature = value.includes(2);
+    const hasDigitalSignature = verifyType.includes(2);
     return (
       <div className="auth-method-view">
         <div className="auth-form-row">
@@ -114,7 +132,7 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
           <div className="auth-form-field">
             <Checkbox.Group
               options={options}
-              value={value}
+              value={verifyType}
               disabled
               className="auth-method-checkboxes auth-method-checkboxes-readonly"
             />
@@ -124,7 +142,7 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
           <div className="auth-form-row">
             <div className="auth-form-label"><span className="auth-form-required">*</span> apiSecret：</div>
             <div className="auth-form-field">
-              <span className="secret-view-text">{apiSecret}</span>
+              <span className="secret-view-text">{maskSecret(apiSecret)}</span>
             </div>
           </div>
         )}
@@ -172,7 +190,7 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
           </div>
         )}
         <div className="auth-form-actions">
-          <span className="btn-cancel" onClick={onCancel}>取消</span>
+          <span className="btn-cancel" onClick={() => { setEditing(false); setSelectedTypes(verifyType); setSecret(apiSecret); setSecretError(''); }}>取消</span>
           <span className="btn-save" onClick={handleSave}>保存</span>
         </div>
       </div>
@@ -186,14 +204,16 @@ function AuthMethodCard({ value = [0], apiSecret = '', editing = false, onEdit, 
         <span className="card-title-with-action">
           认证方式
           {!editing && (
-            <span className="edit-link" onClick={onEdit}>
+            <span className="edit-link" onClick={() => { setSelectedTypes(verifyType); setSecret(apiSecret); setSecretError(''); setEditing(true); }}>
               <EditOutlined /> 配置
             </span>
           )}
         </span>
       }
     >
-      {editing ? renderEditMode() : renderViewMode()}
+      <Spin spinning={loading}>
+        {editing ? renderEditMode() : renderViewMode()}
+      </Spin>
     </Card>
   );
 }

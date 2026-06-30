@@ -64,24 +64,25 @@ server:
 ### 一键启停（推荐）
 
 ```bash
-# 启动（后台运行，自动检查端口占用，等待服务就绪）
+# 启动（优先 java -jar，无 jar 自动编译 → 后台运行 → 2s 间隔轮询就绪）
 ./scripts/start.sh
 
 # 停止
 ./scripts/stop.sh
 ```
 
-脚本自动完成：Maven 编译启动 → 日志输出到 `logs/open-server.log` → PID 记录到 `.pid` → 轮询 `/actuator/health` 确认就绪。
+脚本自动完成：检查/编译 jar → `java -jar` 启动 → 日志输出到 `logs/open-server.log` → PID 记录到 `.pid` → 2s 间隔轮询 `/actuator/health`（最多 60s）。
+
+可通过环境变量切换 profile：`SPRING_PROFILES_ACTIVE=prod ./scripts/start.sh`
 
 ### 手动启动
 
 ```bash
-# 开发环境
-cd open-server && mvn spring-boot:run
-
-# 或先打包再启动
+# 打包
 mvn package -DskipTests
-java -jar target/open-server-1.0.0-SNAPSHOT.jar --spring.profiles.active=prod
+
+# 启动
+java -jar target/open-server-1.0.0-SNAPSHOT.jar --spring.profiles.active=dev
 ```
 
 服务启动后访问：

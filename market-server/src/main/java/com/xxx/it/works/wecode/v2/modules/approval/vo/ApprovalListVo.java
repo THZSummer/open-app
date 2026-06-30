@@ -22,8 +22,11 @@ public class ApprovalListVo implements Serializable {
     @Schema(description = "业务ID")
     private String businessId;
 
-    @Schema(description = "应用ID")
+    @Schema(description = "应用ID（openplatform_app_t.app_id，用于路由跳转）")
     private String appId;
+
+    @Schema(description = "历史应用编码（openplatform_app_p_t.eamap_app_code，用于展示）")
+    private String hisAppId;
 
     @Schema(description = "应用中文名称")
     private String appNameCn;

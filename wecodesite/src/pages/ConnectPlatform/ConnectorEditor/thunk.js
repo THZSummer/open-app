@@ -20,7 +20,16 @@
  */
 
 import { API_CONFIG, buildApiUrl, fetchApi } from '../../../configs/web.config';
-import { buildVersionSummary } from '../../../utils/common';
+import {
+  buildSortedVersionSummaries,
+  buildVersionSummary,
+  normalizeJsonConfig,
+} from '../../../utils/common';
+import {
+  buildJsonFieldFromParam,
+  buildJsonObjectFromParams,
+  parseJsonObjectToParams,
+} from '../../../utils/flowUtilsV2';
 import {
   DEFAULT_API_CONFIG,
   MAX_SCHEMA_DEPTH,
@@ -28,6 +37,7 @@ import {
   COMMON_AUTH_TYPES,
   SIGNATURE_AUTH_TYPE,
   VALIDATE_SECTION,
+  AUTH_SCHEMA_MAP,
 } from './constants';
 
 /* ========================================
@@ -109,36 +119,8 @@ const buildContractFromSchema = (options) => {
  * @returns {Array} SchemaEditor 参数数组
  */
 export const transformJsonSchemaToParams = (jsonSchema, defaultCarrier = 'body') => {
-  // 参数校验：jsonSchema 必须存在且包含 properties 字段
-  if (!jsonSchema || !jsonSchema.properties) {
-    return [];
-  }
-
-  // 初始化参数数组
-  const params = [];
-
-  // 遍历 jsonSchema 中的所有属性
-  Object.entries(jsonSchema.properties).forEach(([key, value]) => {
-    // 判断是否为复杂类型（对象或数组），复杂类型需要递归处理
-    const isComplex = value.type === 'object' || value.type === 'array';
-    let paramChildren = [];
-
-    // 如果是复杂类型且有子属性，则递归转换子属性
-    if (isComplex && value.properties) {
-      paramChildren = transformJsonSchemaToParams(value, defaultCarrier);
-    }
-
-    // 将每个属性转换为 SchemaEditor 参数格式
-    params.push({
-      paramName: key,
-      paramType: value.type,
-      description: value.description || '',
-      carrier: defaultCarrier,
-      children: paramChildren,
-    });
-  });
-
-  return params;
+  // 复用公共 jsonObjectDef 转参数树方法，保留原导出供历史引用使用
+  return parseJsonObjectToParams({ jsonObject: jsonSchema, carrier: defaultCarrier });
 };
 
 /**
@@ -148,29 +130,8 @@ export const transformJsonSchemaToParams = (jsonSchema, defaultCarrier = 'body')
  * @returns {Object} jsonObjectDef field 定义
  */
 export const transformParamToJsonSchemaField = (param) => {
-  // 判断是否为复杂类型（对象或数组）
-  const isComplex = param.paramType === 'object' || param.paramType === 'array';
-
-  // 构建基础字段定义
-  const fieldDef = {
-    type: param.paramType,
-    description: param.description,
-  };
-
-  // 复杂类型且含子参数时递归
-  if (isComplex && param.children && param.children.length > 0) {
-    const properties = {};
-
-    param.children.forEach((child) => {
-      if (child.paramName) {
-        properties[child.paramName] = transformParamToJsonSchemaField(child);
-      }
-    });
-
-    fieldDef.properties = properties;
-  }
-
-  return fieldDef;
+  // 复用公共参数节点转 jsonObjectDef 字段方法，保留原导出供历史引用使用
+  return buildJsonFieldFromParam(param);
 };
 
 /**
@@ -180,26 +141,111 @@ export const transformParamToJsonSchemaField = (param) => {
  * @returns {Object|null} jsonObjectDef 对象（无参数返回 null）
  */
 export const transformParamsToJsonSchema = (params) => {
-  // 参数校验：参数数组不能为空
-  if (!params || params.length === 0) {
-    return null;
-  }
+  // 复用公共参数数组转 jsonObjectDef 方法，空数组保持 null
+  return buildJsonObjectFromParams(params);
+};
 
-  // 初始化属性对象
+/**
+ * 从表达式中提取页面展示值
+ * @param {string} rawValue - 表达式或普通值
+ * @returns {string} 页面展示值
+ */
+const parseFixedValueFromExpression = (rawValue) => {
+  // 非字符串值没有可解析的页面展示值
+  if (typeof rawValue !== 'string') return '';
+
+  const systemMatched = rawValue.match(/^\$\{\$\.system\.env\.([^}]+)\}$/);
+  if (systemMatched) return systemMatched[1];
+
+  const constantMatched = rawValue.match(/^\$\{\$\.constant:(.*)\}$/);
+  if (constantMatched) return constantMatched[1];
+
+  return rawValue;
+};
+
+/**
+ * 获取认证参数默认展示值
+ * @param {Object} options - 选项对象
+ * 包含以下字段：
+ * - authType: 认证方式
+ * - paramName: 参数名称
+ * @returns {string} 默认展示值
+ */
+const getDefaultAuthFixedValue = (options) => {
+  // 解构传入对象中需要使用的参数
+  const { authType, paramName } = options;
+  const defaultItems = AUTH_SCHEMA_MAP[authType] || [];
+  const matchedItem = defaultItems.find(item => item.paramName === paramName);
+  return matchedItem?.fixedValue || '';
+};
+
+/**
+ * 补齐认证参数页面展示值
+ * @param {Object} options - 选项对象
+ * 包含以下字段：
+ * - authType: 认证方式
+ * - params: 认证参数数组
+ * @returns {Array} 补齐展示值后的认证参数数组
+ */
+const fillAuthFixedValues = (options) => {
+  // 解构传入对象中需要使用的参数
+  const { authType, params } = options;
+  return (params || []).map((param) => {
+    const fixedValue = param.fixedValue
+      || parseFixedValueFromExpression(param.value)
+      || getDefaultAuthFixedValue({ authType, paramName: param.paramName });
+    return { ...param, fixedValue };
+  });
+};
+
+/**
+ * 构建系统变量表达式
+ * @param {string} fixedValue 页面展示值
+ * @returns {string} 系统变量表达式
+ */
+const buildSystemEnvExpression = (fixedValue) => `\${$.system.env.${fixedValue}}`;
+
+/**
+ * 构建常量表达式
+ * @param {string} value 常量值
+ * @returns {string} 常量表达式
+ */
+const buildConstantExpression = (value) => `\${$.constant:${value}}`;
+
+/**
+ * 为认证 jsonObjectDef 字段补齐 value 与 fixedValue
+ * @param {Object} params 参数对象
+ * 包含以下字段：
+ * - jsonSchema: 认证载体 jsonObjectDef
+ * @returns {Object|null} 补齐后的认证载体 jsonObjectDef
+ */
+const fillAuthSchemaValues = (params) => {
+  // params.jsonSchema
+  const { jsonSchema } = params;
+  if (!jsonSchema?.properties) return jsonSchema;
+
   const properties = {};
-
-  // 遍历所有参数，转换为 JSON Schema 属性
-  params.forEach((param) => {
-    if (param.paramName) {
-      properties[param.paramName] = transformParamToJsonSchemaField(param);
-    }
+  Object.keys(jsonSchema.properties).forEach((paramName) => {
+    const field = jsonSchema.properties[paramName] || {};
+    const fixedValue = field.fixedValue || parseFixedValueFromExpression(field.value) || paramName;
+    properties[paramName] = {
+      ...field,
+      value: buildSystemEnvExpression(fixedValue),
+      fixedValue,
+    };
   });
 
-  // 顶层固定为 object 类型
-  return {
-    type: 'object',
-    properties,
-  };
+  return { ...jsonSchema, properties };
+};
+
+/**
+ * 获取数字签名密钥页面展示值
+ * @param {Object} secretField 密钥字段
+ * @returns {string} 密钥展示值
+ */
+const getSignatureSecretFixedValue = (secretField) => {
+  // 优先使用 fixedValue，兼容 value 为 constant 表达式或历史明文
+  return secretField?.fixedValue || parseFixedValueFromExpression(secretField?.value);
 };
 
 /**
@@ -229,9 +275,15 @@ const parseAuthConfigs = (authConfigs) => {
     if (!authType.includes(type)) authType.push(type);
 
     if (COMMON_AUTH_TYPES.includes(type)) {
-      // 通用认证：合并 header / query 字段为单一参数数组
-      const headerParams = transformJsonSchemaToParams(item.header, 'header');
-      const queryParams = transformJsonSchemaToParams(item.query, 'query');
+      // 通用认证：合并 header / query 字段为单一参数数组，并补齐页面展示值
+      const headerParams = fillAuthFixedValues({
+        authType: type,
+        params: transformJsonSchemaToParams(item.header, 'header'),
+      });
+      const queryParams = fillAuthFixedValues({
+        authType: type,
+        params: transformJsonSchemaToParams(item.query, 'query'),
+      });
       authRequestSchema[type] = [...headerParams, ...queryParams];
     } else if (type === SIGNATURE_AUTH_TYPE) {
       // 数字签名：解析 secretKey + header 的首个字段
@@ -245,40 +297,13 @@ const parseAuthConfigs = (authConfigs) => {
       signatureConfig = {
         paramName: headerField?.[0] || '',
         carrier: 'header',
-        fixedValue: headerField?.[1]?.value || '',
-        secret: secretField?.[1]?.value || '',
+        fixedValue: headerField?.[1]?.fixedValue || parseFixedValueFromExpression(headerField?.[1]?.value),
+        secret: getSignatureSecretFixedValue(secretField?.[1]),
       };
     }
   });
 
   return { authType, authRequestSchema, signatureConfig };
-};
-
-/**
- * 归一化后端返回的 connectionConfig
- * 兼容两种返回形态：JSON 字符串 / 已解析对象
- *
- * @param {string|Object} rawConfig - 后端返回的 connectionConfig 原始值
- * @returns {Object|null} 解析后的 connectionConfig 对象；解析失败返回 null
- */
-const normalizeConnectionConfig = (rawConfig) => {
-  // 空值直接返回 null，由调用方走默认配置分支
-  if (!rawConfig) return null;
-
-  // 已经是对象：直接返回
-  if (typeof rawConfig === 'object') return rawConfig;
-
-  // 字符串：尝试 JSON.parse，解析失败返回 null
-  if (typeof rawConfig === 'string') {
-    try {
-      return JSON.parse(rawConfig);
-    } catch (err) {
-      return null;
-    }
-  }
-
-  // 其它非法类型：返回 null
-  return null;
 };
 
 /**
@@ -289,7 +314,7 @@ const normalizeConnectionConfig = (rawConfig) => {
  */
 export const transformFromSchemaFormat = (connectionConfig) => {
   // 先做字符串/对象的兼容归一化
-  const normalized = normalizeConnectionConfig(connectionConfig);
+  const normalized = normalizeJsonConfig(connectionConfig);
 
   // 数据校验：缺失或解析失败时返回默认配置
   if (!normalized) {
@@ -355,8 +380,8 @@ const buildAuthConfigs = (apiConfig) => {
 
     // 构建 authConfig 项
     const config = { type };
-    const headerSchema = transformParamsToJsonSchema(headerItems);
-    const querySchema = transformParamsToJsonSchema(queryItems);
+    const headerSchema = fillAuthSchemaValues({ jsonSchema: transformParamsToJsonSchema(headerItems) });
+    const querySchema = fillAuthSchemaValues({ jsonSchema: transformParamsToJsonSchema(queryItems) });
 
     if (headerSchema) config.header = headerSchema;
     if (querySchema) config.query = querySchema;
@@ -372,9 +397,8 @@ const buildAuthConfigs = (apiConfig) => {
         properties: {
           [signatureConfig.paramName]: {
             type: 'string',
-            required: true,
-            sensitive: true,
-            value: signatureConfig.fixedValue || '',
+            value: buildSystemEnvExpression(signatureConfig.fixedValue || ''),
+            fixedValue: signatureConfig.fixedValue || '',
             description: '签名头',
           },
         },
@@ -389,7 +413,8 @@ const buildAuthConfigs = (apiConfig) => {
             type: 'string',
             required: true,
             sensitive: true,
-            value: signatureConfig.secret,
+            value: buildConstantExpression(signatureConfig.secret),
+            fixedValue: signatureConfig.secret,
             description: '签名密钥',
           },
         },
@@ -466,11 +491,9 @@ export const fetchVersionList = async (connectorId) => {
     if (result?.code !== '200') return result || {};
 
     // 将后端数据映射为 UI 所需摘要结构（按创建时间倒序）
-    const list = (result.data || [])
-      .map(buildVersionSummary)
-      .sort((a, b) => (a.createTime < b.createTime ? 1 : -1));
+    const list = buildSortedVersionSummaries(result.data || []);
     return { code: '200', data: list };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -504,7 +527,7 @@ export const fetchVersionDetail = async (options) => {
         config: transformFromSchemaFormat(detail.connectionConfig),
       },
     };
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -535,7 +558,7 @@ export const saveDraft = async (options) => {
       }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -567,7 +590,7 @@ export const publishVersion = async (options) => {
       { method: 'PUT' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -605,7 +628,7 @@ export const createDraftVersion = async (options) => {
       );
     }
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -630,7 +653,7 @@ export const expireVersion = async (options) => {
       { method: 'PUT' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -655,7 +678,7 @@ export const restoreVersion = async (options) => {
       { method: 'PUT' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };
@@ -680,7 +703,7 @@ export const deleteVersion = async (options) => {
       { method: 'DELETE' }
     );
     return result || {};
-  } catch (err) {
+  } catch {
     return {};
   }
 };

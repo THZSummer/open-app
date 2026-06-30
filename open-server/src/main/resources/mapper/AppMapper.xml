@@ -168,6 +168,25 @@
           AND status = 1
     </select>
 
+    <select id="selectPropertiesByParentIds" resultMap="AppPropertyResultMap">
+        SELECT id,
+               parent_id,
+               property_name,
+               property_value,
+               tenant_id,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_app_p_t
+        WHERE status = 1
+          AND parent_id IN
+        <foreach collection="parentIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <insert id="insertProperty">
         INSERT INTO openplatform_app_p_t (id, parent_id, property_name, property_value, tenant_id, status,
                                           create_by, create_time, last_update_by, last_update_time)
@@ -210,6 +229,16 @@
         WHERE path = #{path}
           AND code = #{code}
           AND status = 1
+    </select>
+
+    <!-- 查询数据字典（openplatform_property_t）按 path + code 前缀，返回有效记录的 value 列表 -->
+    <select id="selectDictionaryValuesByPathAndCodePrefix" resultType="string">
+        SELECT value
+        FROM openplatform_property_t
+        WHERE path = #{path}
+          AND code LIKE CONCAT(#{codePrefix}, '%')
+          AND status = 1
+        ORDER BY code
     </select>
 
 </mapper>

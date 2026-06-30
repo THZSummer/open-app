@@ -1,7 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.common.config.CacheToggle;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,17 +30,17 @@ class FlowCacheManagerTest {
     @Mock
     private ReactiveValueOperations<String, String> valueOperations;
 
+    @Mock
+    private ConnectorApiPropertyService propertyService;
+
     private ObjectMapper objectMapper;
-    private CacheToggle cacheToggle;
     private FlowCacheManager cacheManager;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         objectMapper = new ObjectMapper();
-        cacheToggle = new CacheToggle();
-        cacheToggle.setEnabled(true);
-        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, cacheToggle);
+        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, propertyService);
     }
 
     @Test
@@ -76,19 +76,6 @@ class FlowCacheManagerTest {
     }
 
     @Test
-    @DisplayName("缓存开关关闭 → checkCache 直接返回空")
-    void testCheckCache_ToggleDisabled() {
-        cacheToggle = new CacheToggle();
-        cacheToggle.setEnabled(false);
-        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, cacheToggle);
-
-        StepVerifier.create(cacheManager.checkCache(100L, "key1"))
-                .verifyComplete();
-
-        verify(redisTemplate, never()).opsForValue();
-    }
-
-    @Test
     @DisplayName("写入缓存 → 正确调用 SETEX")
     void testWriteCache_Normal() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -106,8 +93,8 @@ class FlowCacheManagerTest {
     }
 
     @Test
-    @DisplayName("写入缓存 TTL 超过上限 → 受限于 max 1296000")
-    void testWriteCache_TtlCapped() {
+    @DisplayName("写入缓存使用给定 TTL（不截断）")
+    void testWriteCache_UseGivenTtl() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.set(anyString(), anyString(), any(Duration.class)))
                 .thenReturn(Mono.just(Boolean.TRUE));
@@ -119,7 +106,7 @@ class FlowCacheManagerTest {
                 .verifyComplete();
 
         verify(valueOperations).set(anyString(), anyString(),
-                eq(Duration.ofSeconds(1296000)));
+                eq(Duration.ofSeconds(9999999)));
     }
 
     @Test
@@ -135,16 +122,4 @@ class FlowCacheManagerTest {
                 .verifyComplete();
     }
 
-    @Test
-    @DisplayName("缓存开关关闭 → writeCache 不做操作")
-    void testWriteCache_ToggleDisabled() {
-        cacheToggle = new CacheToggle();
-        cacheToggle.setEnabled(false);
-        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, cacheToggle);
-
-        StepVerifier.create(cacheManager.writeCache(100L, "key1", "data", 3600))
-                .verifyComplete();
-
-        verify(redisTemplate, never()).opsForValue();
-    }
 }

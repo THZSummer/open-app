@@ -1,118 +1,96 @@
 package com.xxx.it.works.wecode.v2.modules.security;
 
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
+import com.xxx.it.works.wecode.v2.modules.lookup.mapper.LookupWhitelistMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 /**
- * 应用白名单服务
+ * 应用白名单服务（v2.0.2）
  *
- * <p>校验应用是否开通了连接器平台能力（白名单准入）。</p>
+ * <p>校验应用是否开通了连接器平台能力（白名单准入）。
+ * 仅从 Lookup 数据源（openplatform_lookup_item_t, classify_code=Connector.Platform.AppWhitelist）读取白名单。</p>
  *
- * <p>MVP 实现：基于配置属性 cp.app-whitelist（逗号分隔的应用 ID 列表）。
- * 生产环境应改为调用 market-server Lookup API 查询 classify_code=cp_app_whitelist 的白名单。
- * 空列表表示所有应用均在白名单内（开发/测试便利模式）。</p>
+ * <p>白名单为空或 Lookup 不可用时拒绝所有应用（安全默认）。</p>
+ *
+ * <p><b>v2.0.2 变更：</b>移除 Spring 属性 cp.app-whitelist 降级逻辑，统一使用 Lookup 数据源。</p>
+ * <p><b>v2.0.1 变更：</b>isWhitelisted 主方法接受 String（外部业务 ID）。</p>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
- * @see ConnectorPlatformConstants#APP_WHITELIST_CLASSIFY_CODE
+ * @version 2.0.2
+ * @see ConnectorPlatformConstants#LOOKUP_CLASSIFY_APP_WHITELIST
  */
 @Slf4j
 @Service
 public class AppWhitelistService {
 
-    /**
-     * 应用白名单配置（逗号分隔的应用 ID 列表）
-     * 为空时表示所有应用均在白名单内（开发/测试模式）
-     */
-    @Value("${cp.app-whitelist:}")
-    private String whitelistConfig;
+    private final LookupWhitelistMapper lookupWhitelistMapper;
+
+    public AppWhitelistService(LookupWhitelistMapper lookupWhitelistMapper) {
+        this.lookupWhitelistMapper = lookupWhitelistMapper;
+    }
+
+    // ==================== 主 API ====================
 
     /**
      * 检查指定应用是否在白名单内
      *
-     * <p>MVP 实现逻辑：
-     * <ul>
-     *   <li>白名单为空 → 所有应用放行（返回 true）</li>
-     *   <li>白名单非空 → 检查 appId 是否在列表中</li>
-     * </ul>
+     * <p>从 Lookup 数据源查询 classify_code=Connector.Platform.AppWhitelist 的 item_value 列表，
+     * 直接以 String 比对。白名单为空或 Lookup 不可用时拒绝所有应用。</p>
      *
-     * <p>生产环境应改为：调用 market-server Lookup API，
-     * 查询 classify_code=cp_app_whitelist 下是否包含该 appId。
-     * market-server 不可用时降级放行（返回 true）。</p>
-     *
-     * @param appId 应用 ID
+     * @param appId 应用外部 ID（String，来自 X-App-Id Header 原值）
      * @return true 表示在白名单内，false 表示不在
      */
+    public boolean isWhitelisted(String appId) {
+        if (appId == null || appId.trim().isEmpty()) {
+            log.warn("AppId is null or empty, whitelist check cannot proceed");
+            return false;
+        }
+
+        String trimmed = appId.trim();
+
+        List<String> lookupApps = queryLookupWhitelist();
+        if (lookupApps == null || lookupApps.isEmpty()) {
+            log.warn("Lookup whitelist is empty or unavailable, access denied for app {}", trimmed);
+            return false;
+        }
+
+        boolean allowed = lookupApps.contains(trimmed);
+        if (!allowed) {
+            log.warn("App {} is not in the Lookup whitelist, access denied", trimmed);
+        }
+        return allowed;
+    }
+
+    // ==================== 兼容 API ====================
+
+    /**
+     * 检查指定应用是否在白名单内（Long 参数兼容方法）
+     *
+     * @param appId 应用内部 ID（Long）
+     * @return true 表示在白名单内，false 表示不在
+     * @deprecated 推荐使用 {@link #isWhitelisted(String)}
+     */
+    @Deprecated
     public boolean isWhitelisted(Long appId) {
         if (appId == null) {
             log.warn("AppId is null, whitelist check cannot proceed");
             return false;
         }
-
-        Set<Long> whitelist = parseWhitelist();
-
-        // 空白名单 → 所有应用放行（开发/测试便利模式）
-        if (whitelist.isEmpty()) {
-            log.debug("Whitelist is empty, all apps are allowed (dev/test mode)");
-            return true;
-        }
-
-        boolean allowed = whitelist.contains(appId);
-        if (!allowed) {
-            log.warn("App {} is not in the whitelist, access denied", appId);
-        }
-        return allowed;
+        return isWhitelisted(String.valueOf(appId));
     }
 
-    /**
-     * 解析白名单配置字符串为 Long 集合
-     *
-     * @return 白名单应用 ID 集合（不可变）
-     */
-    private Set<Long> parseWhitelist() {
-        if (whitelistConfig == null || whitelistConfig.trim().isEmpty()) {
-            return Collections.emptySet();
-        }
+    // ==================== 私有方法 ====================
 
-        Set<Long> whitelist = new HashSet<>();
-        for (String part : whitelistConfig.split(",")) {
-            String trimmed = part.trim();
-            if (!trimmed.isEmpty()) {
-                try {
-                    whitelist.add(Long.parseLong(trimmed));
-                } catch (NumberFormatException e) {
-                    log.warn("Invalid app ID in whitelist config: '{}', skipping", trimmed);
-                }
-            }
-        }
-        return Collections.unmodifiableSet(whitelist);
-    }
-
-    /**
-     * 市场服务降级检查（生产环境使用）
-     *
-     * <p>TODO: 当 market-server 集成就绪后，调用 Lookup API 替代当前的属性配置方式。
-     * market-server 不可用时降级放行（记录告警日志）。</p>
-     *
-     * @param appId 应用 ID
-     * @return true 表示在白名单内或 market-server 不可用（降级放行）
-     */
-    public boolean isWhitelistedWithMarketFallback(Long appId) {
+    private List<String> queryLookupWhitelist() {
         try {
-            // TODO: 调用 market-server Lookup API
-            // MarketLookupResponse response = marketClient.lookup(appId, APP_WHITELIST_CLASSIFY_CODE);
-            // return response.isFound();
-            log.warn("Market server integration not yet implemented, falling back to property-based whitelist");
-            return isWhitelisted(appId);
+            return lookupWhitelistMapper.selectItemValuesByClassifyCode(
+                    ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST);
         } catch (Exception e) {
-            log.warn("Market server unavailable, whitelist check degraded to pass for appId={}", appId, e);
-            return true;
+            log.warn("Failed to read Lookup whitelist, access denied", e);
+            return null;
         }
     }
 }

@@ -51,8 +51,8 @@ public class CacheKeyResolver {
         Matcher matcher = EXPR_PATTERN.matcher(keyTemplate);
 
         while (matcher.find()) {
-            String fullExpr = matcher.group(0); // e.g., ${$.trigger.input.body.userId}
-            String exprPath = matcher.group(1); // e.g., $.trigger.input.body.userId
+            String fullExpr = matcher.group(0); // 示例：${$.trigger.input.body.userId}
+            String exprPath = matcher.group(1); // 示例：$.trigger.input.body.userId
 
             // 从 context 中查找对应的值
             Object value = context.get(exprPath);

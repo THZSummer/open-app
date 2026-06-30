@@ -46,6 +46,7 @@ specs-tree-connector-platform-v3/
 ├── plan-json-schema.md                    # JSON Schema 设计规范 v9.10
 ├── plan-code.md                           # 代码规范（沿用 V1）
 ├── plan-cache.md                          # 缓存设计方案 v4.0
+├── plan-config.md                         # 配置设计 — 全量配置场景（开关/白名单/上限/审批人）
 ├── plan-flow-invoke-temp.md               # 临时方案：#54 调用连接流返回格式
 ├── tasks.md                               # 任务分解（14 任务，4 波次）
 ├── tasks.json                             # 任务数据（JSON 格式）
@@ -87,6 +88,7 @@ specs-tree-connector-platform-v3/
 | plan-code.md | **代码规范** — 沿用 V1 全部规范（16 条规则） | — |
 | plan-cache.md | **缓存设计方案** — 连接流响应缓存策略 | v4.0 |
 | plan-flow-invoke-temp.md | **临时方案** — #54 调用连接流返回格式调整（透明穿透） | DRAFT |
+| plan-config.md | **配置设计** — 全量配置场景：开关（日志采集）、白名单（URL/SYSTOKEN/应用）、上限（超时/限流/缓存/分支/版本/脚本）、审批人、实体级配置、应用级系统参数 | v1.0 |
 
 ### 📂 任务分解 (tasks)
 

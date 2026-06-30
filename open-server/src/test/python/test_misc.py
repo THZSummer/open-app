@@ -2,7 +2,7 @@
 """杂项测试: API删除 + 事件删除 + 回调删除 + JSON校验"""
 import time, json
 import pytest
-from conftest import api, db, TEST_APP_ID
+from conftest import api, db, TEST_APP_ID, INTERNAL_APP_ID
 
 
 def _snow_id():
@@ -227,7 +227,7 @@ class TestJsonValidation:
         vid = _snow_id()
         try:
             cfg = json.dumps(self.VALID_CONFIG).replace("'", "''")
-            db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, status, create_by, last_update_by) VALUES ({cid}, 'JSON-001', 'JSON-001', 1, {TEST_APP_ID}, 1, 'tester', 'tester')")
+            db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, status, create_by, last_update_by) VALUES ({cid}, 'JSON-001', 'JSON-001', 1, {INTERNAL_APP_ID}, 1, 'tester', 'tester')")
             db(f"INSERT INTO openplatform_v2_cp_connector_version_t (id, connector_id, connection_config, status, create_by, last_update_by) VALUES ({vid}, {cid}, '{cfg}', 1, 'tester', 'tester')")
             resp = api("PUT", f"/connectors/{cid}/versions/{vid}/publish")
             if resp is not None:
@@ -242,7 +242,7 @@ class TestJsonValidation:
         cid = _snow_id()
         vid = _snow_id()
         try:
-            db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, status, create_by, last_update_by) VALUES ({cid}, 'JSON-002', 'JSON-002', 1, {TEST_APP_ID}, 1, 'tester', 'tester')")
+            db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, status, create_by, last_update_by) VALUES ({cid}, 'JSON-002', 'JSON-002', 1, {INTERNAL_APP_ID}, 1, 'tester', 'tester')")
             db(f"INSERT INTO openplatform_v2_cp_connector_version_t (id, connector_id, connection_config, status, create_by, last_update_by) VALUES ({vid}, {cid}, '{{invalid json!!!', 1, 'tester', 'tester')")
             resp = api("PUT", f"/connectors/{cid}/versions/{vid}/publish")
             if resp is not None:
@@ -257,7 +257,7 @@ class TestJsonValidation:
         vid = _snow_id()
         try:
             cfg = json.dumps({"foo": "bar", "baz": 123}).replace("'", "''")
-            db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, status, create_by, last_update_by) VALUES ({cid}, 'JSON-003', 'JSON-003', 1, {TEST_APP_ID}, 1, 'tester', 'tester')")
+            db(f"INSERT INTO openplatform_v2_cp_connector_t (id, name_cn, name_en, connector_type, app_id, status, create_by, last_update_by) VALUES ({cid}, 'JSON-003', 'JSON-003', 1, {INTERNAL_APP_ID}, 1, 'tester', 'tester')")
             db(f"INSERT INTO openplatform_v2_cp_connector_version_t (id, connector_id, connection_config, status, create_by, last_update_by) VALUES ({vid}, {cid}, '{cfg}', 1, 'tester', 'tester')")
             resp = api("PUT", f"/connectors/{cid}/versions/{vid}/publish")
             if resp is not None:

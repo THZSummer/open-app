@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.script;
 
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
@@ -35,7 +36,7 @@ import java.util.Map;
  *
  * <h3>超时与隔离</h3>
  * <ul>
- *   <li>超时 = min(配置超时, 30s), 默认 5s</li>
+ *   <li>§3.3.4: ③(data.timeoutMs)存在用③不截断, ③不存在回退①(平台全局)</li>
  *   <li>执行线程: boundedElastic (独立线程池)</li>
  *   <li>超时后 Context.close(true) 强制终止</li>
  *   <li>每流最多 10 个脚本节点 (编排保存时校验, 此处不限制)</li>
@@ -47,19 +48,19 @@ import java.util.Map;
 @Component
 public class ScriptNodeExecutor implements NodeExecutor {
 
-    /** 脚本节点最大超时 (毫秒) */
-    private static final int MAX_TIMEOUT_MS = 30000;
-
-    /** 脚本节点默认超时 (毫秒) */
+    /** 脚本节点默认超时 (毫秒), 仅作为极端兜底 */
     private static final int DEFAULT_TIMEOUT_MS = 5000;
 
     private final GraalJsContextFactory contextFactory;
     private final CtxAssembler ctxAssembler;
+    private final ConnectorApiPropertyService propertyService;
 
     @Autowired
-    public ScriptNodeExecutor(GraalJsContextFactory contextFactory, CtxAssembler ctxAssembler) {
+    public ScriptNodeExecutor(GraalJsContextFactory contextFactory, CtxAssembler ctxAssembler,
+                               ConnectorApiPropertyService propertyService) {
         this.contextFactory = contextFactory;
         this.ctxAssembler = ctxAssembler;
+        this.propertyService = propertyService;
     }
 
     @Override
@@ -89,16 +90,15 @@ public class ScriptNodeExecutor implements NodeExecutor {
             return Mono.just(buildFailedOutput(nodeId, "Script source is empty"));
         }
 
-        // 2. 提取超时配置 (取 min)
-        int timeoutMs = DEFAULT_TIMEOUT_MS;
+        // 2. 提取超时配置 (§3.3.4: ③存在用③不截断, ③不存在回退①)
         Object timeoutObj = data.get("timeoutMs");
-        if (timeoutObj instanceof Number num) {
+        int timeoutMs;
+        if (timeoutObj instanceof Number num && num.intValue() > 0) {
             timeoutMs = num.intValue();
-            if (timeoutMs <= 0) {
-                timeoutMs = DEFAULT_TIMEOUT_MS;
-            }
+        } else {
+            timeoutMs = propertyService.getScriptMaxTimeoutSeconds()
+                    .blockOptional().orElse(5) * 1000;
         }
-        timeoutMs = Math.min(timeoutMs, MAX_TIMEOUT_MS);
 
         // 3. 提取上游节点 ID 列表
         List<String> upstreamNodeIds = null;
@@ -185,7 +185,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
                     return resultMap;
                 }
             } catch (Exception ignored) {
-                // 非标准对象, 回退到通用转换
+                log.debug("Non-standard object, fallback to generic conversion: {}", ignored.getMessage());
             }
 
             // 通用类型转换
@@ -308,7 +308,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
      * 避免 HTTP 头写入时抛出 {@code IllegalArgumentException}.
      */
     private String sanitize(String msg) {
-        if (msg == null) return "";
+        if (msg == null) { return ""; }
         return msg.replace('\n', ' ').replace('\r', ' ');
     }
 }
