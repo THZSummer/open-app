@@ -72,7 +72,7 @@ _REDIS_CLUSTER = {
     "password": "openapp",
 }
 _API_HOST = "localhost:18180"
-TEST_APP_ID = "202606241730488926"  # 与 open-server 共用测试应用
+TEST_APP_ID = "20250730213114178360970"  # 与 open-server 共用测试应用
 OPEN_SERVER_BASE = "http://localhost:18080/open-server"
 
 

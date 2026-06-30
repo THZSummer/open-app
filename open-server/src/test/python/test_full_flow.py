@@ -24,7 +24,7 @@ import sys
 import json
 import time
 import threading
-import subprocess
+
 import importlib.util
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -43,26 +43,35 @@ os_db_val = _osm.db_val
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-os_redis = _osm.redis
-# 覆盖为集群模式: -c 自动处理 MOVED redirect；多节点容错，任一可达即可
-_REDIS_PASS = "openapp"
+from client import _REDIS_CLUSTER_NODES, CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, OPEN_SERVER_BASE
+from redis.cluster import RedisCluster
+
+_redis_pass = "openapp"
+_first_node = _REDIS_CLUSTER_NODES[0]
+_redis_client = RedisCluster(
+    host=_first_node[0], port=int(_first_node[1]),
+    password=_redis_pass, decode_responses=True
+)
 
 def os_redis(*args):
-    for host, port in _REDIS_CLUSTER_NODES:
-        cmd = ["redis-cli", "-c", "-h", host, "-p", port,
-               "-a", _REDIS_PASS, "--no-auth-warning"]
-        cmd.extend([str(a) for a in args])
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
-            if r.returncode == 0:
-                return r.stdout.strip()
-        except Exception:
-            continue
-    return None
+    """执行 Redis 命令"""
+    try:
+        cmd = args[0].upper() if args else ""
+        if cmd == "EXISTS":
+            return _redis_client.exists(args[1])
+        elif cmd == "TTL":
+            return _redis_client.ttl(args[1])
+        elif cmd == "GET":
+            return _redis_client.get(args[1])
+        elif cmd == "KEYS":
+            return _redis_client.keys(args[1] if len(args) > 1 else "*")
+        else:
+            return _redis_client.execute_command(*args)
+    except Exception as e:
+        print(f"  REDIS ERROR: {e}")
+        return None
 
 TEST_APP_ID = _osm.TEST_APP_ID
-
-from client import _REDIS_CLUSTER_NODES, CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, OPEN_SERVER_BASE
 
 import pytest
 import requests

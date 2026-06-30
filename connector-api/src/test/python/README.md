@@ -85,7 +85,7 @@ pytest -m "L0 or L1 or L2"
 
 # 跑完后 DB 中保留全部测试数据，可直接查询
 mysql -h 192.168.3.155 -u openapp -popenapp openapp \
-  -e "SELECT name_cn, lifecycle_status FROM openplatform_v2_cp_flow_t WHERE app_id='202606241730488926'"
+  -e "SELECT name_cn, lifecycle_status FROM openplatform_v2_cp_flow_t WHERE app_id='20250730213114178360970'"
 ```
 
 ### 配置：单一入口

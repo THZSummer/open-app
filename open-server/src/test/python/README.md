@@ -216,7 +216,7 @@ pytest_flow_invalidate / pytest_flow_publish / pytest_flow_start / ...
 所有基础设施配置（数据库、Redis、测试应用、用户）集中在 `inspect/client.py`：
 
 ```python
-TEST_APP_ID = "202606241730488926"
+TEST_APP_ID = "20250730213114178360970"
 # 切换环境只需改这一个文件
 ```
 

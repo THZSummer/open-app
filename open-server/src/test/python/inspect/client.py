@@ -18,10 +18,9 @@ import requests
 # 配置 — 只改这里
 # ═══════════════════════════════════════════════════════════
 _API_BASE = "http://localhost:18080/open-server"
-TEST_APP_ID = "202606241730488926"
+TEST_APP_ID = "20250730213114178360970"
 _DEFAULT_USER  = "admin"
 _DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
-_REDIS = {"host": "192.168.3.201", "port": 6379, "password": "openapp"}
 # Redis 集群节点（full_flow 测试用）
 _REDIS_CLUSTER_NODES = [
     ("192.168.3.201", "6379"), ("192.168.3.202", "6379"),
@@ -132,37 +131,6 @@ def db_val(sql):
         first_col = list(rows[0].values())[0]
         return str(first_col) if first_col is not None else None
     return None
-
-_redis_client = None
-
-def redis(*args):
-    """执行 Redis 命令。如 redis("GET", "key") → 返回值"""
-    global _redis_client
-    try:
-        import redis as redis_lib
-        if _redis_client is None:
-            _redis_client = redis_lib.Redis(
-                host=_REDIS["host"],
-                port=_REDIS["port"],
-                password=_REDIS["password"],
-                decode_responses=True
-            )
-        cmd = args[0].upper() if args else ""
-        if cmd == "GET":
-            return _redis_client.get(args[1])
-        elif cmd == "SET":
-            return _redis_client.set(args[1], args[2])
-        elif cmd == "DEL":
-            return _redis_client.delete(args[1])
-        elif cmd == "KEYS":
-            return _redis_client.keys(args[1] if len(args) > 1 else "*")
-        elif cmd == "FLUSHDB":
-            return _redis_client.flushdb()
-        else:
-            return _redis_client.execute_command(*args)
-    except Exception as e:
-        print(f"  REDIS ERROR: {e}")
-        return None
 
 # ═══════════════════════════════════════════════════════════
 # 断言
