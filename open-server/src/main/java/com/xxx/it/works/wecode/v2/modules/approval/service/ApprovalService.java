@@ -841,6 +841,11 @@ public class ApprovalService {
         if (version.getFlowId() != null) {
             Flow flow = cpFlowMapper.selectById(version.getFlowId());
             if (flow != null) {
+                // nameCn/nameEn 拼接版本号，与其他业务类型的 key 对齐
+                // businessName 解析逻辑统一查 "nameCn"，拼上版本号让用户知道批的是哪个版本
+                String versionSuffix = " (版本" + version.getVersionNumber() + ")";
+                data.put("nameCn", flow.getNameCn() + versionSuffix);
+                data.put("nameEn", flow.getNameEn() + versionSuffix);
                 data.put("flowNameCn", flow.getNameCn());
                 data.put("flowNameEn", flow.getNameEn());
                 data.put("appId", flow.getAppId());
