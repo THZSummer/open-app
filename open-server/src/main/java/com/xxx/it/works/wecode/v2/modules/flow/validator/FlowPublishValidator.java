@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -64,6 +65,7 @@ public class FlowPublishValidator {
      */
     public List<String> validateOrchestrationConfig(String orchestrationConfig, String appId) {
         List<String> errors = new ArrayList<>();
+        Map<String, String> propertyConfig = propertyService.loadConfigBundle(appId);
 
         // 校验 8：JSON 语法合法性
         JsonNode config;
@@ -74,19 +76,19 @@ public class FlowPublishValidator {
             return errors;
         }
 
-        validateConfigSize(orchestrationConfig, appId, errors);
+        validateConfigSize(orchestrationConfig, propertyConfig, errors);
         validateNodes(config, errors);
-        validateParallelBranches(config, appId, errors);
+        validateParallelBranches(config, propertyConfig, errors);
 
         JsonNode flowConfig = config.get("flowConfig");
         if (flowConfig != null) {
-            validateCacheConfig(flowConfig, appId, errors);
+            validateCacheConfig(flowConfig, propertyConfig, errors);
             validateRateLimit(flowConfig, errors);
             validateTimeout(flowConfig, errors);
         }
 
         JsonNode nodes = config.get("nodes");
-        validateScriptNodes(nodes, appId, errors);
+        validateScriptNodes(nodes, propertyConfig, errors);
         validateConnectorRefs(errors);
 
         return errors;
@@ -99,8 +101,8 @@ public class FlowPublishValidator {
      * @param appId               应用ID
      * @param errors              错误列表
      */
-    private void validateConfigSize(String orchestrationConfig, String appId, List<String> errors) {
-        int maxBytes = propertyService.getFlowConfigMaxBytes(appId);
+    private void validateConfigSize(String orchestrationConfig, Map<String, String> propertyConfig, List<String> errors) {
+        int maxBytes = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_CONFIG_MAX_BYTES, 0);
         if (maxBytes > 0) {
             int actualBytes = orchestrationConfig.getBytes(StandardCharsets.UTF_8).length;
             if (actualBytes > maxBytes) {
@@ -148,7 +150,7 @@ public class FlowPublishValidator {
      * @param appId  应用ID
      * @param errors 错误列表
      */
-    private void validateParallelBranches(JsonNode config, String appId, List<String> errors) {
+    private void validateParallelBranches(JsonNode config, Map<String, String> propertyConfig, List<String> errors) {
         JsonNode edges = config.get("edges");
         if (edges != null && edges.isArray()) {
             int parallelBranchCount = 0;
@@ -166,7 +168,7 @@ public class FlowPublishValidator {
                     }
                 }
             }
-            int maxParallelBranches = propertyService.getFlowMaxParallelBranches(appId);
+            int maxParallelBranches = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_PARALLEL_BRANCHES, ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES);
             if (parallelBranchCount > maxParallelBranches) {
                 errors.add("并行分支数超过上限 " + maxParallelBranches
                         + "，当前：" + parallelBranchCount);
@@ -181,13 +183,13 @@ public class FlowPublishValidator {
      * @param appId      应用ID
      * @param errors     错误列表
      */
-    private void validateCacheConfig(JsonNode flowConfig, String appId, List<String> errors) {
+    private void validateCacheConfig(JsonNode flowConfig, Map<String, String> propertyConfig, List<String> errors) {
         JsonNode cache = flowConfig.get("cache");
         if (cache != null) {
             JsonNode ttl = cache.get("ttl");
             if (ttl != null && ttl.isNumber()) {
                 long ttlValue = ttl.asLong();
-                int maxCacheTtl = propertyService.getFlowMaxCacheTtlSeconds(appId);
+                int maxCacheTtl = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_CACHE_TTL_SECONDS, ConnectorPlatformConstants.MAX_CACHE_TTL_SECONDS);
                 if (ttlValue > maxCacheTtl) {
                     errors.add("缓存 TTL 超过上限 " + maxCacheTtl
                             + "秒，当前：" + ttlValue + "秒");
@@ -239,7 +241,7 @@ public class FlowPublishValidator {
      * @param appId  应用ID
      * @param errors 错误列表
      */
-    private void validateScriptNodes(JsonNode nodes, String appId, List<String> errors) {
+    private void validateScriptNodes(JsonNode nodes, Map<String, String> propertyConfig, List<String> errors) {
         if (nodes == null || !nodes.isArray()) {
             return;
         }
@@ -254,7 +256,7 @@ public class FlowPublishValidator {
                     if (scriptSource != null && !scriptSource.isNull()) {
                         String source = scriptSource.asText();
                         String nodeId = node.has("id") ? node.get("id").asText() : "unknown";
-                        int maxSourceLength = propertyService.getScriptMaxLengthChars(appId);
+                        int maxSourceLength = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_SCRIPT_MAX_LENGTH_CHARS, ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH);
                         if (source == null || source.trim().isEmpty()) {
                             errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 源码不能为空", nodeId));
                         } else if (source.length() > maxSourceLength) {
@@ -267,7 +269,7 @@ public class FlowPublishValidator {
                         JsonNode scriptTimeout = data.get("timeout");
                         if (scriptTimeout != null && scriptTimeout.isNumber()) {
                             int timeoutValue = scriptTimeout.asInt();
-                            int maxTimeoutSeconds = propertyService.getScriptMaxTimeoutSeconds(appId);
+                            int maxTimeoutSeconds = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_SCRIPT_MAX_TIMEOUT_SECONDS, ConnectorPlatformConstants.MAX_SCRIPT_TIMEOUT_SECONDS);
                             if (timeoutValue > maxTimeoutSeconds) {
                                 errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 超时值(%d秒) 超过上限(%d秒)",
                                         nodeId, timeoutValue, maxTimeoutSeconds));
@@ -280,6 +282,19 @@ public class FlowPublishValidator {
         if (scriptNodeCount > ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW) {
             errors.add("脚本节点数量超过上限 " + ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW
                     + "，当前：" + scriptNodeCount);
+        }
+    }
+
+    private int getIntFromConfig(Map<String, String> config, String key, int defaultVal) {
+        String value = config.get(key);
+        if (value == null || value.isEmpty()) {
+            return defaultVal;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            log.warn("Invalid int value '{}' for key '{}', using default {}", value, key, defaultVal);
+            return defaultVal;
         }
     }
 

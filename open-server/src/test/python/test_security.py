@@ -56,6 +56,7 @@ class TestOperationLog:
             if data.get("code") in ("200", 200) and data.get("data"):
                 api_cid = data["data"].get("connectorId")
         if api_cid:
+            time.sleep(0.5)  # 等待异步操作日志写入
             log_count = db_val(f"SELECT COUNT(*) FROM openplatform_operate_log_t WHERE after_data LIKE '%{api_cid}%'")
             assert log_count is not None
             assert int(log_count) >= 1, f"Expected >=1 log for connector {api_cid}, got {log_count}"

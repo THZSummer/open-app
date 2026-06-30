@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+
 
 function DeleteConfirmModal({
   open,
@@ -42,7 +42,7 @@ function DeleteConfirmModal({
       width={400}
     >
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
-        <ExclamationCircleOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }} />
+
         <div style={{ color: '#8c8c8c', textAlign: 'left' }}>
           <div style={{ marginBottom: 8 }}>{modalInfo.content.confirmText}</div>
           <div>{modalInfo.content.impactText}</div>

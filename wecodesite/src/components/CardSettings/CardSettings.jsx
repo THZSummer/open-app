@@ -67,7 +67,11 @@ function CardSettings() {
   const handleCardSettingSaveRow = async (field) => {
     const constraint = CARD_FIELD_CONSTRAINTS[field];
     const draftValue = cardSettingDraft[field];
-    if (draftValue == null || draftValue < constraint.min || draftValue > constraint.max) {
+    if (draftValue == null || !Number.isInteger(draftValue) || draftValue < 1) {
+      message.error('无法保存，请输入正整数类型的值');
+      return;
+    }
+    if (draftValue > constraint.max) {
       return;
     }
     setCardSettingRowSaving({ ...cardSettingRowSaving, [field]: true });
@@ -103,7 +107,6 @@ function CardSettings() {
             {cardSettingRowEditing.expiration ? (
               <>
                 <InputNumber
-                  min={1}
                   max={7}
                   value={cardSettingDraft.expiration}
                   onChange={(v) => setCardSettingDraft({ ...cardSettingDraft, expiration: v })}
@@ -142,7 +145,6 @@ function CardSettings() {
             {cardSettingRowEditing.deletion ? (
               <>
                 <InputNumber
-                  min={1}
                   max={30}
                   value={cardSettingDraft.deletion}
                   onChange={(v) => setCardSettingDraft({ ...cardSettingDraft, deletion: v })}

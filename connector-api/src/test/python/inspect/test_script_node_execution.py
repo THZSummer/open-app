@@ -60,7 +60,6 @@ def build_script_orch(script_content, timeout_ms=5000):
                             "required": []
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -129,7 +128,8 @@ def build_script_orch(script_content, timeout_ms=5000):
                 "id": "e2", "source": "node_script", "target": "node_exit",
                 "type": "smoothstep", "data": {"businessType": "default"}
             }
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 
@@ -149,7 +149,7 @@ def setup_flow(flow_id, lifecycle_status=2, orchestration=None):
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, '脚本测试', 'ScriptTest', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "

@@ -65,7 +65,7 @@ public class ExecutionStepService {
                         Map<String, Object> input, Map<String, Object> output,
                         String error, Integer durationMs) {
         // 检查日志采集开关 (#14: log_collection_enabled)
-        if (!propertyService.isLogCollectionEnabled()) {
+        if (!propertyService.isLogCollectionEnabled().blockOptional().orElse(true)) {
             log.warn("Step log skipped (logCollectionEnabled=false): executionId={}, nodeId={}, status={}, durationMs={}",
                     executionId, nodeId, status, durationMs);
             return;
@@ -116,7 +116,7 @@ public class ExecutionStepService {
         }
 
         // 检查日志采集开关 (#14: log_collection_enabled)
-        if (!propertyService.isLogCollectionEnabled()) {
+        if (!propertyService.isLogCollectionEnabled().blockOptional().orElse(true)) {
             log.warn("Step logs batch skipped (logCollectionEnabled=false): executionId={}, count={}",
                     executionId, stepLogs.size());
             return;

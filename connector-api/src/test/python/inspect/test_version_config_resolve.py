@@ -51,7 +51,6 @@ def build_orch_v1():
                             "required": ["data"]
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -81,7 +80,8 @@ def build_orch_v1():
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 
@@ -112,7 +112,6 @@ def build_orch_v2():
                             "required": ["data"]
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -142,7 +141,8 @@ def build_orch_v2():
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 
@@ -163,7 +163,7 @@ def create_flow_with_versions(flow_id, lifecycle_status, orchestrations):
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_版本测试', 'IT_VerTest', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
 
     version_ids = []

@@ -27,6 +27,7 @@ db = _client.db
 snow_id = _client.snow_id
 escape_sql = _client.escape_sql
 TEST_APP_ID = _client.TEST_APP_ID
+INTERNAL_APP_ID = _client.INTERNAL_APP_ID
 
 # ═══════════════════════════════════════════════════════════
 # 配置
@@ -48,7 +49,7 @@ def connector(request):
     db(
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
-        f"VALUES ({cid}, 'pytest_{tag}', 'pytest_{tag}', 1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"VALUES ({cid}, 'pytest_{tag}', 'pytest_{tag}', 1, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     yield cid
     if not _KEEP:
@@ -84,7 +85,7 @@ def flow(request):
     db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
-        f"VALUES ({fid}, 'pytest_flow_{tag}', 'pytest_flow_{tag}', 1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"VALUES ({fid}, 'pytest_flow_{tag}', 'pytest_flow_{tag}', 1, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     yield fid
     if not _KEEP:
@@ -121,8 +122,7 @@ def deployed_flow(flow, request):
                             },
                             "required": ["sender"]
                         }
-                    },
-                    "rateLimitConfig": {"maxQps": 100}
+                    }
                 }
             },
             {
@@ -145,7 +145,8 @@ def deployed_flow(flow, request):
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "

@@ -4,7 +4,7 @@
 """
 import time
 import pytest
-from conftest import api, db, db_val, TEST_APP_ID
+from conftest import api, db, db_val, TEST_APP_ID, INTERNAL_APP_ID
 
 
 def _snow_id():
@@ -40,7 +40,7 @@ class TestApprovalFlowUpdate:
 
         try:
             # 更新 appId
-            r2 = api("PUT", f"/approval-flows/{tid}", {"appId": TEST_APP_ID})
+            r2 = api("PUT", f"/approval-flows/{tid}", {"appId": INTERNAL_APP_ID})
             assert r2.status_code in (200, 201), \
                 f"更新 appId 失败: HTTP {r2.status_code}"
 
@@ -49,8 +49,8 @@ class TestApprovalFlowUpdate:
             assert r3.status_code == 200
             d = r3.json()["data"]
             assert "appId" in d
-            assert str(d.get("appId")) == str(TEST_APP_ID), \
-                f"更新后 appId 不匹配: 期望 {TEST_APP_ID}, 实际 {d.get('appId')}"
+            assert str(d.get("appId")) == str(INTERNAL_APP_ID), \
+                f"更新后 appId 不匹配: 期望 {INTERNAL_APP_ID}, 实际 {d.get('appId')}"
         finally:
             db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE id = {tid}")
 
@@ -60,7 +60,7 @@ class TestApprovalFlowUpdate:
         code = f"pytest_null_{_snow_id()}"
         r = api("POST", "/approval-flows", {
             "nameCn": f"null测试_{code}", "nameEn": f"null_{code}",
-            "code": code, "appId": TEST_APP_ID,
+            "code": code, "appId": INTERNAL_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test"}]
         })
         assert r.status_code in (200, 201)

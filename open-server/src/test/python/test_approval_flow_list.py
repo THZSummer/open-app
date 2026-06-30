@@ -9,7 +9,7 @@
 """
 import time
 import pytest
-from conftest import api, db, db_val, TEST_APP_ID
+from conftest import api, db, db_val, TEST_APP_ID, INTERNAL_APP_ID
 
 
 def _snow_id():
@@ -71,7 +71,7 @@ class TestApprovalFlowList:
         # 创建应用模板 (appId=TEST_APP_ID)
         r2 = api("POST", "/approval-flows", {
             "nameCn": f"应用_{code}", "nameEn": f"app_{code}",
-            "code": code, "appId": TEST_APP_ID,
+            "code": code, "appId": INTERNAL_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test"}]
         })
         # GAP-2: countByCode 会拦截相同 code 的第二次创建
@@ -88,7 +88,7 @@ class TestApprovalFlowList:
 
         try:
             # ── 实际行为: ?appId 被丢弃，返回全部模板 ──
-            resp = api("GET", f"/approval-flows?appId={TEST_APP_ID}")
+            resp = api("GET", f"/approval-flows?appId={INTERNAL_APP_ID}")
             assert resp.status_code == 200
             items = resp.json().get("data", [])
             codes_in_response = [it.get("code") for it in items]
@@ -102,7 +102,7 @@ class TestApprovalFlowList:
             # GAP-1 确认: 若 appId 过滤生效，全局模板 (appId=null) 不应出现
             # 但当前 Controller 丢弃了 appId，所以会出现
             if has_non_matching:
-                print(f"  ⚠️ GAP-1 确认: ?appId={TEST_APP_ID} 返回了 appId=null 的模板 "
+                print(f"  ⚠️ GAP-1 确认: ?appId={INTERNAL_APP_ID} 返回了 appId=null 的模板 "
                       f"(code={code})，appId 过滤无效")
         finally:
             db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE code = '{code}'")

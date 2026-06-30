@@ -103,7 +103,7 @@ def setup_connector(config):
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
-        f"1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"1, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
@@ -121,7 +121,7 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_多认证测试', 'IT_MultiAuthTest', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
@@ -157,7 +157,6 @@ def build_orch(connector_version_id, connection_config):
                                  "properties": {"msg": {"type": "string"}},
                                  "required": ["msg"]}
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -196,7 +195,8 @@ def build_orch(connector_version_id, connection_config):
              "type": "smoothstep", "data": {"businessType": "default"}},
             {"id": "e2", "source": "node_connector", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 

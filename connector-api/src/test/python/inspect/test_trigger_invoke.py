@@ -265,7 +265,6 @@ TRIGGER_NODE = {
                 "required": ["keyword"]
             }
         },
-        "rateLimitConfig": {"maxQps": 100}
     }
 }
 
@@ -376,15 +375,14 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
             trigger["data"]["authConfigs"][0]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
             trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
-        if "trigger_rate_limit_qps" in overrides:
-            trigger["data"]["rateLimitConfig"]["maxQps"] = overrides["trigger_rate_limit_qps"]
         if "connector_input_mapping" in overrides:
             connector["data"]["inputMapping"] = overrides["connector_input_mapping"]
         if "exit_output_mapping" in overrides:
             exit_node["data"]["output"] = overrides["exit_output_mapping"]
 
-    return {
+    result = {
         "nodes": [trigger, connector, exit_node],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}},
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_connector",
              "type": "smoothstep", "data": {"businessType": "default"}},
@@ -392,6 +390,17 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
              "type": "smoothstep", "data": {"businessType": "default"}}
         ]
     }
+
+    if overrides and "trigger_rate_limit_qps" in overrides:
+        result["flowConfig"] = {
+            "rateLimitConfig": {
+                "mode": "qps",
+                "maxQps": overrides["trigger_rate_limit_qps"],
+                "maxConcurrency": 1000
+            }
+        }
+
+    return result
 
 
 # ── 无 connector 的编排骨架 (trigger → exit) ──
@@ -430,7 +439,6 @@ TRIGGER_NODE_NO_CONNECTOR = {
                 "required": ["sender"]
             }
         },
-        "rateLimitConfig": {"maxQps": 100}
     }
 }
 
@@ -463,13 +471,12 @@ def build_orchestration_no_connector(overrides=None):
             trigger["data"]["authConfigs"][0]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
             trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
-        if "trigger_rate_limit_qps" in overrides:
-            trigger["data"]["rateLimitConfig"]["maxQps"] = overrides["trigger_rate_limit_qps"]
         if "exit_output_mapping" in overrides:
             exit_node["data"]["output"] = overrides["exit_output_mapping"]
 
     return {
         "nodes": [trigger, exit_node],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}},
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
@@ -541,6 +548,7 @@ def build_fail_orchestration(connector_version_id, connection_config):
 
     return {
         "nodes": [trigger, connector, exit_node],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}},
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_connector",
              "type": "smoothstep", "data": {"businessType": "default"}},
@@ -563,7 +571,7 @@ def setup_connector(connection_config=None):
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
-        f"1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"1, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
@@ -581,7 +589,7 @@ def setup_flow(flow_id, lifecycle_status=2, orchestration=None,
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_触发测试', 'IT_TriggerTest', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     orch = orchestration or build_orchestration_no_connector()
     db(
@@ -593,12 +601,13 @@ def setup_flow(flow_id, lifecycle_status=2, orchestration=None,
     return flow_id, flow_version_id
 
 
-def _concurrent_invoke(flow_id, idx):
+def _concurrent_invoke(flow_id, idx, query_params=None):
     """模块级函数：并发触发请求（供 ThreadPoolExecutor 使用）"""
     try:
         resp = trigger(flow_id, body={"keyword": f"test_{idx}"},
                        headers={"X-Sys-Token": "test-token",
-                                "X-Trace-Id": f"trace-{idx}"})
+                                "X-Trace-Id": f"trace-{idx}"},
+                       query_params=query_params)
         return resp.status_code if resp is not None else 0
     except Exception as e:
         print(f"  CONCURRENT ERROR: {e}")
@@ -849,7 +858,7 @@ def test_trigger_invoke():
                                    connector_id=cid_064, connector_version_id=cvid_064)
     statuses = []
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = [executor.submit(_concurrent_invoke, fid_064, i) for i in range(10)]
+        futures = [executor.submit(_concurrent_invoke, fid_064, i, {"page": "1", "size": "10"}) for i in range(10)]
         for f in as_completed(futures):
             s = f.result()
             if s is not None and s > 0:

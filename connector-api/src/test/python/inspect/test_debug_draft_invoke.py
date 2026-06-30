@@ -21,7 +21,7 @@ def setup_flow(snow_id_val, lifecycle_status=2, orchestration=None, version_stat
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({snow_id_val}, 'IT_调试测试', 'IT_Debug', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
 
     orch = orchestration or {
@@ -47,7 +47,6 @@ def setup_flow(snow_id_val, lifecycle_status=2, orchestration=None, version_stat
                             "required": ["sender"]
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -70,7 +69,8 @@ def setup_flow(snow_id_val, lifecycle_status=2, orchestration=None, version_stat
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
     db(
@@ -154,7 +154,7 @@ def test_debug_draft_invoke():
     db(
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
-        f"VALUES ({sid_118}, 'IT_空编排', 'IT_Empty', 2, {TEST_APP_ID}, 'tester', 'tester')"
+        f"VALUES ({sid_118}, 'IT_空编排', 'IT_Empty', 2, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "

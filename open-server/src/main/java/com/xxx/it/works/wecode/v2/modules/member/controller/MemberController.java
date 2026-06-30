@@ -8,6 +8,8 @@ import com.xxx.it.works.wecode.v2.modules.member.dto.TransferOwnerRequest;
 import com.xxx.it.works.wecode.v2.modules.member.service.MemberService;
 import com.xxx.it.works.wecode.v2.modules.member.vo.MemberVO;
 import com.xxx.it.works.wecode.v2.modules.member.vo.UserDataVO;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,8 +45,8 @@ public class MemberController {
     @GetMapping("/list")
     public ApiResponse<List<MemberVO>> getMemberList(
             @RequestParam @NotBlank String appId,
-            @RequestParam(defaultValue = "1") Integer curPage,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
+            @RequestParam(defaultValue = "1") @Min(1) Integer curPage,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) Integer pageSize) {
         return memberService.getMemberList(appId, curPage, pageSize);
     }
 

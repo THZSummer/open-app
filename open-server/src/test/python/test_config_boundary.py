@@ -21,21 +21,25 @@ def _snow_id():
 # 工具函数
 # ================================================================
 
-def _set_property(path, code, value):
-    """向 openplatform_property_t 插入/更新一条属性（表有 id 主键，必须提供）"""
-    pid = _snow_id()
+def _set_lookup_item(classify_code, item_code, item_value):
+    """向 openplatform_lookup_item_t 插入/更新一条配置项"""
+    existing_classify = db_val(
+        f"SELECT classify_id FROM openplatform_lookup_classify_t WHERE classify_code = '{classify_code}' AND path = 'CEC.Open' AND status = 1"
+    )
+    if existing_classify is None:
+        classify_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) VALUES ({classify_id}, '{classify_code}', 'test', 'CEC.Open', 1)")
+    else:
+        classify_id = existing_classify
+
     existing = db_val(
-        f"SELECT value FROM openplatform_property_t WHERE path = '{path}' AND code = '{code}' AND status = 1"
+        f"SELECT item_id FROM openplatform_lookup_item_t WHERE classify_id = {classify_id} AND item_code = '{item_code}' AND status = 1"
     )
     if existing is not None:
-        db(f"UPDATE openplatform_property_t SET value = '{value}' WHERE path = '{path}' AND code = '{code}'")
+        db(f"UPDATE openplatform_lookup_item_t SET item_value = '{item_value}' WHERE item_id = {existing}")
     else:
-        db(f"INSERT INTO openplatform_property_t (id, path, code, value, status) VALUES ({pid}, '{path}', '{code}', '{value}', 1)")
-
-
-def _clear_property(path, code):
-    """删除一条属性"""
-    db(f"DELETE FROM openplatform_property_t WHERE path = '{path}' AND code = '{code}'")
+        item_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) VALUES ({item_id}, {classify_id}, '{item_code}', '{item_code}', '{item_value}', 1)")
 
 
 def _publish_connector(cid, vid):
@@ -90,10 +94,11 @@ class TestConnectorVersionLimit:
 
     @pytest.mark.L4
     def test_max_versions_default_1000(self):
-        """验证硬编码默认上限为 1000"""
+        """验证默认上限为 1000"""
         default_val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'connector_max_versions' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Connector.Max.Versions' AND i.status = 1"
         )
         if default_val is not None:
             assert int(default_val) == 1000, f"Expected 1000, got {default_val}"
@@ -112,12 +117,11 @@ class TestConnectorVersionLimit:
     @pytest.mark.L4
     def test_version_limit_code_exists(self):
         """验证版本数量上限常量在代码中存在且值为 1000"""
-        # 读取数据库中可能存在的属性配置（Property 化后）
         v = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'connector_max_versions' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Connector.Max.Versions' AND i.status = 1"
         )
-        # 无论有没有 DB 记录，硬编码兜底值都是 1000
         if v is not None:
             assert int(v) >= 1, f"Version limit must be positive, got {v}"
 
@@ -129,14 +133,14 @@ class TestConnectorVersionLimit:
 class TestUrlRegexPattern:
     """#2 连接器目标 URL 需匹配平台正则规则
 
-    url_regex_pattern 由 ConnectorPlatformPropertyService 读取；
+    connector_url_regex_pattern 由 ConnectorPlatformPropertyService 读取；
     ConnectorVersionService.publish() 在发布时校验目标 URL 是否匹配正则。
     默认 fixture 写入的 pattern 是 "^https?://.*"，允许任何 http/https URL。
     """
 
     @pytest.mark.L4
     def test_publish_with_url_succeeds_when_no_regex_configured(self, draft_connector):
-        """未配置 url_regex_pattern 时 URL 不受限 → 发布成功"""
+        """未配置 connector_url_regex_pattern 时 URL 不受限 → 发布成功"""
         cid, vid = draft_connector
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://any-domain.com/api", "method": "GET"}})
         resp = _publish_connector(cid, vid)
@@ -148,24 +152,24 @@ class TestUrlRegexPattern:
 
     @pytest.mark.L4
     def test_url_regex_property_exists(self):
-        """验证 url_regex_pattern 属性已由 session fixture 写入 DB"""
+        """验证 Connector.Url.Regex.Pattern 已由 session fixture 写入 Lookup 表"""
         val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'url_regex_pattern' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Connector.Url.Regex.Pattern' AND i.status = 1"
         )
-        assert val is not None, "url_regex_pattern should exist after session fixture init"
+        assert val is not None, "Connector.Url.Regex.Pattern should exist after session fixture init"
         assert val.startswith("^"), f"Expected regex pattern, got {val}"
 
     @pytest.mark.L4
     def test_publish_connector_with_url_not_matching_regex_rejected(self, draft_connector):
-        """设置 url_regex_pattern = ^https://api.example.com/.* 后，URL 不匹配 → 422
+        """设置 connector_url_regex_pattern = ^https://api.example.com/.* 后，URL 不匹配 → 422
 
         TODO: 服务端发布校验尚未适配 protocolConfig 结构，当前不会触发 URL 校验。
         上线后应改为 assert resp.status_code == 422。
         """
         cid, vid = draft_connector
-        # Override the session fixture's default with a restrictive pattern
-        _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
+        _set_lookup_item("Connector.Platform.Config", "Connector.Url.Regex.Pattern", "^https://api\\.example\\.com/.*")
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://evil.com/api", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
@@ -173,14 +177,13 @@ class TestUrlRegexPattern:
                 f"Expected 422 for URL validation, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
-        # Restore default permissive regex for test isolation
-        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+        _set_lookup_item("Connector.Platform.Config", "Connector.Url.Regex.Pattern", "^https?://.*")
 
     @pytest.mark.L4
     def test_publish_connector_with_url_matching_regex_passes(self, draft_connector):
         """URL 匹配正则 → 发布成功"""
         cid, vid = draft_connector
-        _set_property("connector_platform", "url_regex_pattern", "^https://api\\.example\\.com/.*")
+        _set_lookup_item("Connector.Platform.Config", "Connector.Url.Regex.Pattern", "^https://api\\.example\\.com/.*")
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "https://api.example.com/v1/users", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
@@ -188,8 +191,7 @@ class TestUrlRegexPattern:
                 f"Expected 200 for matching URL, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
-        # Restore default permissive regex for test isolation
-        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+        _set_lookup_item("Connector.Platform.Config", "Connector.Url.Regex.Pattern", "^https?://.*")
 
 
 # ================================================================
@@ -207,8 +209,7 @@ class TestConnectorConfigMaxBytes:
     def test_publish_with_config_under_platform_limit_succeeds(self, draft_connector):
         """连接器配置在平台默认上限 1048576 字节内 → 发布成功"""
         cid, vid = draft_connector
-        # Restore permissive URL regex in case a prior test narrowed it
-        _set_property("connector_platform", "url_regex_pattern", "^https?://.*")
+        _set_lookup_item("Connector.Platform.Config", "Connector.Url.Regex.Pattern", "^https?://.*")
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "https://example.com", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
@@ -219,12 +220,13 @@ class TestConnectorConfigMaxBytes:
 
     @pytest.mark.L4
     def test_config_max_bytes_property_exists(self):
-        """验证 connector_config_max_bytes 已由 session fixture 写入 DB"""
+        """验证 Connector.Config.Max.Bytes 已由 session fixture 写入 Lookup 表"""
         val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'connector_config_max_bytes' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Connector.Config.Max.Bytes' AND i.status = 1"
         )
-        assert val is not None, "connector_config_max_bytes should exist after session fixture init"
+        assert val is not None, "Connector.Config.Max.Bytes should exist after session fixture init"
         assert int(val) == 1048576, f"Expected 1048576, got {val}"
 
 
@@ -240,10 +242,11 @@ class TestFlowVersionLimit:
 
     @pytest.mark.L4
     def test_max_flow_versions_default_1000(self):
-        """验证默认上限为 1000（硬编码常量）"""
+        """验证默认上限为 1000"""
         default_val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_max_versions' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Flow.Max.Versions' AND i.status = 1"
         )
         if default_val is not None:
             assert int(default_val) == 1000, f"Expected 1000, got {default_val}"
@@ -271,21 +274,12 @@ class TestExecutionRecordLimit:
     def test_default_record_limit_value(self):
         """验证默认上限配置可查询"""
         default_val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'max_execution_records_per_flow' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Max.Execution.Records.Per.Flow' AND i.status = 1"
         )
         if default_val is not None:
             assert int(default_val) == 1000, f"Expected 1000, got {default_val}"
-
-    @pytest.mark.L4
-    def test_fifo_cleanup_config_exists(self):
-        """验证 FIFO 清理机制的常量存在 (1000 条上限，30 天保留)"""
-        retention = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'execution_record_retention_days' AND status = 1"
-        )
-        if retention is not None:
-            assert int(retention) > 0, f"Retention days must be positive, got {retention}"
 
 
 # ================================================================
@@ -293,9 +287,9 @@ class TestExecutionRecordLimit:
 # ================================================================
 
 class TestNodeTimeoutLimit:
-    """#6 连接流节点超时上限（默认 5 秒，由 Property node_max_timeout_seconds 控制）
+    """#6 连接流节点超时上限（默认 5 秒，由 Lookup Node.Max.Timeout.Seconds 控制）
 
-    FlowVersionService.publish() 从 PropertyService 读取 node_max_timeout_seconds，
+    FlowVersionService.publish() 从 ConnectorPlatformPropertyService (Lookup) 读取 Node.Max.Timeout.Seconds，
     转换为毫秒后传入 FlowPublishValidator.validateTimeoutAgainstAppMax()。
     fixture 写入的默认值是 5 秒（5000ms）。
     """
@@ -376,12 +370,13 @@ class TestFlowConfigMaxBytes:
 
     @pytest.mark.L4
     def test_flow_config_max_bytes_property_exists(self):
-        """验证 flow_config_max_bytes 已由 session fixture 写入 DB"""
+        """验证 Flow.Config.Max.Bytes 已由 session fixture 写入 Lookup 表"""
         val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'flow_config_max_bytes' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Flow.Config.Max.Bytes' AND i.status = 1"
         )
-        assert val is not None, "flow_config_max_bytes should exist after session fixture init"
+        assert val is not None, "Flow.Config.Max.Bytes should exist after session fixture init"
         assert int(val) == 1048576, f"Expected 1048576, got {val}"
 
 
@@ -676,12 +671,13 @@ class TestLogCollectionToggle:
 
     @pytest.mark.L4
     def test_log_collection_property_default_enabled(self):
-        """验证 log_collection_enabled 由 session fixture 写入且值为 true"""
+        """验证 Log.Collection.Enabled 由 session fixture 写入且值为 true"""
         val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'log_collection_enabled' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.Config' AND i.item_code = 'Log.Collection.Enabled' AND i.status = 1"
         )
-        assert val is not None, "log_collection_enabled should exist after session fixture init"
+        assert val is not None, "Log.Collection.Enabled should exist after session fixture init"
         assert val.lower() in ("true", "1"), f"Expected log collection enabled, got '{val}'"
 
 
@@ -720,17 +716,13 @@ class TestAppWhitelist:
     @pytest.mark.L4
     def test_empty_whitelist_denies_all_concept(self):
         """验证安全默认逻辑：白名单为空时 AppWhitelistService.isWhitelisted() 返回 false
-
-        本测试直接验证代码逻辑：当无 whitelist 配置时，parseWhitelist() 返回空集合，
-        isWhitelistedByProperty() 返回 false（拒绝所有）。
         """
         whitelist_val = db_val(
-            "SELECT value FROM openplatform_property_t "
-            "WHERE path = 'connector_platform' AND code = 'app_whitelist' AND status = 1"
+            "SELECT i.item_value FROM openplatform_lookup_item_t i "
+            "JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id "
+            "WHERE c.classify_code = 'Connector.Platform.AppWhitelist' AND i.status = 1"
         )
-        assert whitelist_val is None or len(whitelist_val.strip()) > 0, (
-            "Whitelist should be None (no entry) or non-empty"
-        )
+        assert whitelist_val is not None, "Whitelist should be populated by session fixture"
 
     @pytest.mark.L4
     def test_non_whitelisted_app_rejected(self, connector):

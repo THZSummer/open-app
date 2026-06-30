@@ -24,7 +24,7 @@ import sys
 import json
 import time
 import threading
-import subprocess
+
 import importlib.util
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -43,31 +43,39 @@ os_db_val = _osm.db_val
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-os_redis = _osm.redis
-# 覆盖为集群模式: -c 自动处理 MOVED redirect；多节点容错，任一可达即可
-_REDIS_NODES = [("192.168.3.201", "6379"), ("192.168.3.202", "6379"),
-                ("192.168.3.203", "6379"), ("192.168.3.204", "6379"),
-                ("192.168.3.205", "6379"), ("192.168.3.206", "6379")]
-_REDIS_PASS = "openapp"
+from client import _REDIS_CLUSTER_NODES, CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, OPEN_SERVER_BASE
+from redis.cluster import RedisCluster
+
+_redis_pass = "openapp"
+_first_node = _REDIS_CLUSTER_NODES[0]
+_redis_client = RedisCluster(
+    host=_first_node[0], port=int(_first_node[1]),
+    password=_redis_pass, decode_responses=True
+)
 
 def os_redis(*args):
-    for host, port in _REDIS_NODES:
-        cmd = ["redis-cli", "-c", "-h", host, "-p", port,
-               "-a", _REDIS_PASS, "--no-auth-warning"]
-        cmd.extend([str(a) for a in args])
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
-            if r.returncode == 0:
-                return r.stdout.strip()
-        except Exception:
-            continue
-    return None
+    """执行 Redis 命令"""
+    try:
+        cmd = args[0].upper() if args else ""
+        if cmd == "EXISTS":
+            return _redis_client.exists(args[1])
+        elif cmd == "TTL":
+            return _redis_client.ttl(args[1])
+        elif cmd == "GET":
+            return _redis_client.get(args[1])
+        elif cmd == "KEYS":
+            return _redis_client.keys(args[1] if len(args) > 1 else "*")
+        else:
+            return _redis_client.execute_command(*args)
+    except Exception as e:
+        print(f"  REDIS ERROR: {e}")
+        return None
 
 TEST_APP_ID = _osm.TEST_APP_ID
+INTERNAL_APP_ID = int(os_db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
 
 import pytest
 import requests
-CONNECTOR_API = "http://localhost:18180/api/v1"
 KEEP = os.environ.get("KEEP_TEST_DATA", "1") == "1"
 
 import random
@@ -249,7 +257,7 @@ def snow_id():
     return int(time.time() * 1000000) % 100000000000000000
 
 def api_connector(method, path, body=None, headers=None):
-    url = f"{CONNECTOR_API}{path}"
+    url = f"{CONNECTOR_API_BASE}{path}"
     h = {"Content-Type": "application/json"}
     if headers:
         h.update(headers)
@@ -326,7 +334,7 @@ def test_full_flow():
     print("  ✅ open-server 就绪")
 
     try:
-        r2 = requests.get("http://localhost:18180/actuator/health", timeout=5)
+        r2 = requests.get(CONNECTOR_API_HEALTH, timeout=5)
         if r2.status_code == 200:
             print("  ✅ connector-api 就绪")
         else:
@@ -336,7 +344,7 @@ def test_full_flow():
         return
 
     # V3: 优先查找应用级模板 (code + appId)，回退到全局模板
-    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id = {TEST_APP_ID} LIMIT 1")
+    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id = {INTERNAL_APP_ID} LIMIT 1")
     if not tpl:
         tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id IS NULL LIMIT 1")
     if tpl:
@@ -347,7 +355,7 @@ def test_full_flow():
             "code": "connector_flow_version_publish",
             "nameCn": "连接器流版本发布审批",
             "nameEn": "connector_flow_version_publish",
-            "appId": str(TEST_APP_ID),
+            "appId": INTERNAL_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test Approver"}]
         })
         if r and r.status_code in (200, 201):
@@ -409,7 +417,7 @@ def test_full_flow():
                 "connectionConfig": {
                     "protocol": "HTTP",
                     "protocolConfig": {
-                        "url": "http://localhost:18980/api/echo",
+                        "url": f"{MOCK_SERVER_URL}/api/echo",
                         "method": "POST"
                     },
                     "authConfigs": [
@@ -634,7 +642,7 @@ def test_full_flow():
                             "connectorVersionConfig": {
                                 "protocol": "HTTP",
                                 "protocolConfig": {
-                                    "url": "http://localhost:18980/api/echo",
+                                    "url": f"{MOCK_SERVER_URL}/api/echo",
                                     "method": "POST"
                                 },
                                 "authConfigs": [
@@ -988,7 +996,7 @@ def test_full_flow():
 
         def s17():
             nonlocal first_resp_body, first_cache_status
-            url = f"POST http://localhost:18180/api/v1/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
+            url = f"POST {CONNECTOR_API_BASE}/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
             r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
                              {
                                  "filters": {"category": "tech", "minScore": 0.5},
@@ -1018,7 +1026,7 @@ def test_full_flow():
 
         def s18():
             nonlocal first_resp_body
-            url = f"POST http://localhost:18180/api/v1/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
+            url = f"POST {CONNECTOR_API_BASE}/flows/{fid}/invoke?keyword=ai-search&page=1&size=10"
             r = api_connector("POST", f"/flows/{fid}/invoke?keyword=ai-search&page=1&size=10",
                              {
                                  "filters": {"category": "tech", "minScore": 0.5},
@@ -1057,14 +1065,14 @@ def test_full_flow():
 
             # ① Redis EXISTS
             v = os_redis("EXISTS", redis_key)
-            checks["EXISTS"] = v and v.strip() == "1"
+            checks["EXISTS"] = v is not None and (v == 1 or v == "1")
             print(f"    Redis EXISTS: {'1 ✅' if checks['EXISTS'] else '0'}")
 
             # ② Redis TTL (1~60s)
             v = os_redis("TTL", redis_key)
             if v:
                 try:
-                    ttl_val = int(v.strip())
+                    ttl_val = v if isinstance(v, int) else int(v.strip())
                     checks["TTL"] = 1 <= ttl_val <= 60
                     print(f"    Redis TTL: {ttl_val}s (配置60s) {'✅' if checks['TTL'] else '⚠️'}")
                 except ValueError:

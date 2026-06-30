@@ -410,7 +410,7 @@ function Members() {
         onConfirm={handleDelete}
         modalInfo={{
           title: '确认删除',
-          content: `确认将 ${deletingMember?.memberNameCn || ''} 从应用中移除？该操作不可撤销`,
+          content: { confirmText: '确定要删除成员吗？', impactText: '' },
           confirmButtonText: '确认删除',
           loadingText: '删除中...',
           dangerColor: '#ff4d4f',
@@ -424,7 +424,7 @@ function Members() {
         onConfirm={handleTransferConfirm}
         modalInfo={{
           title: '确认转移 Owner',
-          content: `确认将 Owner 转移给 ${transferTarget?.memberNameCn || ''}？`,
+          content: { confirmText: '确定要转移该成员吗？', impactText: '' },
           confirmButtonText: '确认转移',
           loadingText: '转移中...',
           dangerColor: '#faad14',

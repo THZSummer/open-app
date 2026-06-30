@@ -11,6 +11,7 @@ import {
   HTTP_REQUEST_CARRIER_TABS,
   HTTP_RESPONSE_CARRIER_TABS,
 } from '../../../utils/constants';
+import { queryParams } from '../../../utils/common';
 
 // ========================================
 // 编排模式
@@ -151,9 +152,70 @@ export const VERSION_BUTTON_ORDER = [
 // ========================================
 
 /**
+ * 连接流全局配置 lookup 查询键
+ */
+export const FLOW_APP_CONFIG_LOOKUP_KEY = 'CEC.Open/Connector.Platform.Config';
+
+/**
  * 连接流应用级配置 lookup 查询键
  */
-export const FLOW_APP_CONFIG_LOOKUP_KEY = 'CEC.Open/Flow.AppId.Config';
+export const FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY = 'CEC.Open/Connector.Platform.{appId}}.Config';
+
+/**
+ * 连接流 lookup 配置字段映射
+ */
+export const FLOW_APP_CONFIG_FIELD_MAP = {
+  /** 限流配置 */
+  flow_max_qps: 'rateLimitMax',
+  /** 串行编排连接器节点最大上限 */
+  flow_max_serial_connector_nodes: 'serialConnectorMax',
+  /** 并行编排并行节点并行分支上限 */
+  flow_max_parallel_branches: 'parallelBranchMax',
+  /** 连接器超时时间配置 */
+  node_max_timeout_seconds: 'connectorTimeoutMax',
+};
+
+/**
+ * 编排模式默认可见性
+ */
+export const DEFAULT_FLOW_MODE_VISIBILITY = {
+  single: true,
+  serial: true,
+  parallel: true,
+};
+
+/**
+ * 将 lookup items 转换为连接流上限配置
+ * @param {Array} items lookup 配置项
+ * @returns {Object} 连接流上限配置
+ */
+export const transformLookupItemsToFlowConfig = (items = []) => {
+  // 非数组配置不参与转换，避免异常响应影响默认值兜底。
+  if (!Array.isArray(items)) return {};
+
+  return items.reduce((config, item) => {
+    const targetKey = FLOW_APP_CONFIG_FIELD_MAP[item?.itemCode];
+    const value = Number(item?.itemValue);
+
+    if (!targetKey || Number.isNaN(value)) return config;
+
+    return {
+      ...config,
+      [targetKey]: value,
+    };
+  }, {});
+};
+
+/**
+ * 从 lookup 响应中提取连接流配置项
+ * @param {Object} params 参数对象
+ * @returns {Array} lookup 配置项
+ */
+export const getFlowConfigItems = (params) => {
+  // params.res / params.lookupKey
+  const { res, lookupKey } = params;
+  return res?.data?.lookups?.[lookupKey]?.items || [];
+};
 
 // ========================================
 // 应用级配置默认上限
@@ -169,6 +231,31 @@ export const DEFAULT_APP_LIMITS = {
   parallelBranchMax: 3,
   /** 缓存时间上限（秒） */
   cacheTimeMax: 1296000,
+};
+
+/**
+ * 解析连接流应用配置
+ * @param {Object} params 参数对象
+ * @returns {Object} 连接流应用配置
+ */
+export const parseFlowAppConfig = (params) => {
+  // params.globalRes / params.appRes
+  const { globalRes, appRes } = params;
+  const globalConfig = transformLookupItemsToFlowConfig(
+    getFlowConfigItems({ res: globalRes, lookupKey: FLOW_APP_CONFIG_LOOKUP_KEY })
+  );
+  const appId = queryParams('appId');
+  const appConfig = transformLookupItemsToFlowConfig(
+    getFlowConfigItems({ res: appRes, lookupKey: FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY.replace('{appId}', appId) })
+  );
+
+  // 按默认配置、全局配置、应用级配置的顺序合并，后面的同名字段覆盖前面的值。
+  return {
+    flowModeVisibility: DEFAULT_FLOW_MODE_VISIBILITY,
+    ...DEFAULT_APP_LIMITS,
+    ...globalConfig,
+    ...appConfig,
+  };
 };
 
 // ========================================

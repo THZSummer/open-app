@@ -11,7 +11,7 @@ import java.util.List;
  * 应用白名单服务（v2.0.2）
  *
  * <p>校验应用是否开通了连接器平台能力（白名单准入）。
- * 仅从 Lookup 数据源（openplatform_lookup_item_t, classify_code=app_whitelist）读取白名单。</p>
+ * 仅从 Lookup 数据源（openplatform_lookup_item_t, classify_code=Connector.Platform.AppWhitelist）读取白名单。</p>
  *
  * <p>白名单为空或 Lookup 不可用时拒绝所有应用（安全默认）。</p>
  *
@@ -20,7 +20,7 @@ import java.util.List;
  *
  * @author SDDU Build Agent
  * @version 2.0.2
- * @see ConnectorPlatformConstants#APP_WHITELIST_CLASSIFY_CODE
+ * @see ConnectorPlatformConstants#LOOKUP_CLASSIFY_APP_WHITELIST
  */
 @Slf4j
 @Service
@@ -37,7 +37,7 @@ public class AppWhitelistService {
     /**
      * 检查指定应用是否在白名单内
      *
-     * <p>从 Lookup 数据源查询 classify_code=app_whitelist 的 item_value 列表，
+     * <p>从 Lookup 数据源查询 classify_code=Connector.Platform.AppWhitelist 的 item_value 列表，
      * 直接以 String 比对。白名单为空或 Lookup 不可用时拒绝所有应用。</p>
      *
      * @param appId 应用外部 ID（String，来自 X-App-Id Header 原值）
@@ -86,7 +86,8 @@ public class AppWhitelistService {
 
     private List<String> queryLookupWhitelist() {
         try {
-            return lookupWhitelistMapper.selectItemValuesByClassifyCode("app_whitelist");
+            return lookupWhitelistMapper.selectItemValuesByClassifyCode(
+                    ConnectorPlatformConstants.LOOKUP_CLASSIFY_APP_WHITELIST);
         } catch (Exception e) {
             log.warn("Failed to read Lookup whitelist, access denied", e);
             return null;

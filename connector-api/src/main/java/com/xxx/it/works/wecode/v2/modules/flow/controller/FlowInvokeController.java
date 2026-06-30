@@ -34,7 +34,7 @@ import java.util.Map;
  * <ul>
  *   <li>触发配置从 {@code config.nodes[].data.*} (React Flow 格式) 读取</li>
  *   <li>认证校验: {@code data.authConfig.type} (SYSTOKEN 等)</li>
- *   <li>限流校验: {@code data.rateLimitConfig.maxQps}</li>
+ *   <li>限流校验: {@code flowConfig.rateLimitConfig.maxQps}</li>
  *   <li>请求体验证: {@code data.inputContract} JSON Schema</li>
  *   <li>响应 {@code errorInfo} 使用结构化格式 {@code {code, messageZh, messageEn}}</li>
  * </ul>

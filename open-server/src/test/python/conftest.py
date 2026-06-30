@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
 """共享 fixtures：自动管理测试数据生命周期"""
-import os, time, importlib.util
+import os, time
 import pytest
-
-_spec = importlib.util.spec_from_file_location(
-    "inspect_client",
-    os.path.join(os.path.dirname(__file__), "inspect", "client.py")
-)
-_client = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_client)
-api = _client.api
-db = _client.db
-db_val = _client.db_val
-TEST_APP_ID = _client.TEST_APP_ID
+from _client import api, db, db_val, TEST_APP_ID
 
 INTERNAL_APP_ID = int(db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
 
@@ -27,50 +17,50 @@ def _snow_id():
     return (int(time.time_ns() / 1000) % 100000000000000000) + _snow_seq
 
 # ═══════════════════════════════════════════════════════════
-# 会话级 Property 默认值 (14 项 + App 白名单)
+# 会话级 Lookup 默认值 (15 项配置 + App 白名单)
 # ═══════════════════════════════════════════════════════════
-_PLATFORM_PROPS = [
-    ('connector_max_versions',          '连接器版本数量上限',       '1000'),
-    ('url_regex_pattern',               '连接器URL正则规则',       '^https?://.*'),
-    ('connector_config_max_bytes',      '连接器配置JSON长度上限',   '1048576'),
-    ('flow_max_versions',               '连接流版本数量上限',       '1000'),
-    ('max_execution_records_per_flow',  '运行记录条数上限',         '1000'),
-    ('node_max_timeout_seconds',        '连接器节点超时上限',       '5'),
-    ('flow_config_max_bytes',           '连接流配置JSON长度上限',   '1048576'),
-    ('flow_max_qps',                    '连接流最大QPS',           '1000'),
-    ('flow_max_concurrency',            '连接流最大并发',           '1000'),
-    ('flow_max_cache_ttl_seconds',      '连接流缓存TTL上限',       '1296000'),
-    ('flow_max_parallel_branches',      '连接流并行节点分支上限',   '8'),
-    ('script_max_length_chars',         '脚本源码长度上限',         '10000'),
-    ('script_max_timeout_seconds',      '脚本超时范围',             '30'),
-    ('log_collection_enabled',          '日志采集开关',             'true'),
+_LOOKUP_CONFIG_ITEMS = [
+    ('Connector.Max.Versions',              '1000'),
+    ('Connector.Url.Regex.Pattern',         '^https?://.*'),
+    ('Connector.Config.Max.Bytes',          '1048576'),
+    ('Flow.Max.Versions',                   '1000'),
+    ('Max.Execution.Records.Per.Flow',      '1000'),
+    ('Node.Max.Timeout.Seconds',            '5'),
+    ('Flow.Config.Max.Bytes',               '1048576'),
+    ('Flow.Max.Qps',                        '1000'),
+    ('Flow.Max.Concurrency',                '1000'),
+    ('Flow.Max.Cache.Ttl.Seconds',          '1296000'),
+    ('Flow.Max.Parallel.Branches',          '8'),
+    ('Flow.Max.Serial.Connector.Nodes',     '3'),
+    ('Script.Max.Length.Chars',             '10000'),
+    ('Script.Max.Timeout.Seconds',          '30'),
+    ('Log.Collection.Enabled',              'true'),
 ]
 
 @pytest.fixture(scope="session", autouse=True)
 def platform_property_defaults():
-    """在全部测试开始前一次性插入 14 项 connector_platform Property + App 白名单 Lookup。
-    测试直接读 DB，不再需要 _set_property 手动插入。"""
-    _prop_ids = [_snow_id() for _ in _PLATFORM_PROPS]
-    _classify_id = _snow_id()
-    _item_id = _snow_id()
+    """在全部测试开始前一次性插入 15 项 Lookup 配置 + App 白名单 Lookup。
+    测试直接读 DB，不再需要 _set_property/_set_lookup_item 手动插入。"""
+    # 平台默认配置 — 如果已存在则跳过（保留上次测试的数据）
+    existing = db_val("SELECT classify_id FROM openplatform_lookup_classify_t WHERE classify_code = 'Connector.Platform.Config' AND path = 'CEC.Open' AND status = 1")
+    if existing is None:
+        _config_classify_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) VALUES ({_config_classify_id}, 'Connector.Platform.Config', '连接器平台默认配置', 'CEC.Open', 1)")
+        for item_code, item_value in _LOOKUP_CONFIG_ITEMS:
+            item_id = _snow_id()
+            db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) VALUES ({item_id}, {_config_classify_id}, '{item_code}', '{item_code}', '{item_value}', 1)")
+    else:
+        _config_classify_id = existing
 
-    for i, (code, name, value) in enumerate(_PLATFORM_PROPS):
-        db(f"INSERT INTO openplatform_property_t (id, path, code, name, value, status) "
-           f"VALUES ({_prop_ids[i]}, 'connector_platform', '{code}', '{name}', '{value}', 1)")
-
-    db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) "
-       f"VALUES ({_classify_id}, 'app_whitelist', '连接器平台开放应用范围', 'connector_platform', 1)")
-
-    db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) "
-       f"VALUES ({_item_id}, {_classify_id}, '001', '测试应用', '{TEST_APP_ID}', 1)")
+    # 白名单 — 同上
+    existing_whitelist = db_val("SELECT classify_id FROM openplatform_lookup_classify_t WHERE classify_code = 'Connector.Platform.AppWhitelist' AND path = 'CEC.Open' AND status = 1")
+    if existing_whitelist is None:
+        _whitelist_classify_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_classify_t (classify_id, classify_code, classify_name, path, status) VALUES ({_whitelist_classify_id}, 'Connector.Platform.AppWhitelist', '连接器平台开放应用范围', 'CEC.Open', 1)")
+        _whitelist_item_id = _snow_id()
+        db(f"INSERT INTO openplatform_lookup_item_t (item_id, classify_id, item_code, item_name, item_value, status) VALUES ({_whitelist_item_id}, {_whitelist_classify_id}, '{TEST_APP_ID}', '测试应用', '{TEST_APP_ID}', 1)")
 
     yield
-
-    if not _KEEP:
-        db(f"DELETE FROM openplatform_lookup_item_t WHERE item_id = {_item_id}")
-        db(f"DELETE FROM openplatform_lookup_classify_t WHERE classify_id = {_classify_id}")
-        for pid in _prop_ids:
-            db(f"DELETE FROM openplatform_property_t WHERE id = {pid}")
 
 
 @pytest.fixture

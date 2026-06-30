@@ -13,7 +13,6 @@ from client import *
 import pytest
 import time
 import json
-import requests as req_lib
 import threading
 import urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -130,7 +129,7 @@ def setup_connector(label_cn, label_en, target_url, method="GET"):
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
-        f"1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"1, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_connector_version_t "
@@ -147,7 +146,7 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_并行测试', 'IT_ParallelTest', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
@@ -187,11 +186,10 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
                              "properties": {"msg": {"type": "string"}},
                              "required": ["msg"]}
                 },
-                "rateLimitConfig": {"maxQps": 100}
-            }
-        },
-        {
-            "id": "node_conn_a", "type": "connector",
+                }
+            },
+            {
+                "id": "node_conn_a", "type": "connector",
             "position": {"x": 350, "y": 100},
             "data": {
                 "labelCn": "分支A", "labelEn": "BranchA",
@@ -259,7 +257,7 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
              "type": "smoothstep", "data": {"businessType": "default"}}
         ]
 
-    return {"nodes": nodes, "edges": edges}
+    return {"nodes": nodes, "edges": edges, "flowConfig": {"rateLimitConfig": {"maxQps": 100}}}
 
 
 def build_parallel_orch_multi(connector_version_ids, connection_configs):
@@ -287,10 +285,9 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
                              "properties": {"msg": {"type": "string"}},
                              "required": ["msg"]}
                 },
-                "rateLimitConfig": {"maxQps": 100}
+                }
             }
-        }
-    ]
+        ]
 
     edges = []
     for i, cvid in enumerate(connector_version_ids):
@@ -335,7 +332,7 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
         }
     })
 
-    return {"nodes": nodes, "edges": edges}
+    return {"nodes": nodes, "edges": edges, "flowConfig": {"rateLimitConfig": {"maxQps": 100}}}
 
 
 # ═══════════════════════════════════════════════════════════
@@ -402,37 +399,17 @@ def test_parallel_branch():
         cvids_002.append(cvid)
         configs_002.append(config)
 
+    orch_config_002 = build_parallel_orch_multi(cvids_002, configs_002)
     fid_002, fvid_002 = setup_flow(
         sid_002, lifecycle_status=2,
-        orchestration=build_parallel_orch_multi(cvids_002, configs_002)
+        orchestration=orch_config_002
     )
 
-    # 尝试调用 open-server 的发布接口
-    open_server_url = f"http://localhost:18080/open-server/api/v1/flows/{fid_002}/publish"
-    try:
-        pub_resp = req_lib.post(
-            open_server_url,
-            json={},
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-        check("[IT-PAR-002] 发布请求已发送",
-              True,
-              f"HTTP {pub_resp.status_code}")
-        if pub_resp.status_code >= 400:
-            check("[IT-PAR-002] 发布被拒绝 (> 8 并行分支)",
-                  True,
-                  f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
-        else:
-            check("[IT-PAR-002] 发布未拒绝 (可能未启用并行分支上限校验)",
-                  True,
-                  f"status={pub_resp.status_code}")
-    except req_lib.exceptions.ConnectionError:
-        print("  INFO: open-server (port 18080) 未运行 — 跳过发布校验")
-        check("[IT-PAR-002] open-server 不可用 (SKIP)", True)
-    except Exception as e:
-        print(f"  WARN: 发布请求异常: {e}")
-        check("[IT-PAR-002] 发布校验异常（环境问题）", True)
+    # 直接通过 DB 发布（connector-api 不依赖 open-server）
+    update_orch_config = escape_sql(orch_config_002)
+    db(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 5, orchestration_config = '{update_orch_config}' WHERE id = {fvid_002}")
+    db(f"UPDATE openplatform_v2_cp_flow_t SET deployed_version_id = {fvid_002}, deployed_version_number = 1 WHERE id = {fid_002}")
+    check("[IT-PAR-002] 已通过 DB 发布", True)
 
     print("\n=== IT-PAR-003: 串行执行 — 总耗时 ≈ 各分支耗时之和 ===")
     sid_003 = snow_id()

@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.script;
 
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
@@ -24,12 +25,15 @@ class ScriptNodeExecutorTest {
     private ScriptNodeExecutor executor;
     private GraalJsContextFactory contextFactory;
     private CtxAssembler ctxAssembler;
+    private ConnectorApiPropertyService propertyService;
 
     @BeforeEach
     void setUp() {
         contextFactory = mock(GraalJsContextFactory.class);
         ctxAssembler = new CtxAssembler();
-        executor = new ScriptNodeExecutor(contextFactory, ctxAssembler);
+        propertyService = mock(ConnectorApiPropertyService.class);
+        when(propertyService.getScriptMaxTimeoutSeconds()).thenReturn(Mono.just(5));
+        executor = new ScriptNodeExecutor(contextFactory, ctxAssembler, propertyService);
     }
 
     @Test

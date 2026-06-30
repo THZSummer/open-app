@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.ratelimit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,13 +25,18 @@ class RateLimitConfigReaderTest {
     @Mock
     private OpFlowVersionReadRepository repository;
 
+    @Mock
+    private ConnectorApiPropertyService propertyService;
+
     private ObjectMapper objectMapper;
     private RateLimitConfigReader reader;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        reader = new RateLimitConfigReader(objectMapper, repository);
+        when(propertyService.getFlowMaxQps()).thenReturn(Mono.just(1000));
+        when(propertyService.getFlowMaxConcurrency()).thenReturn(Mono.just(1000));
+        reader = new RateLimitConfigReader(objectMapper, repository, propertyService);
     }
 
     @Test
@@ -40,18 +47,18 @@ class RateLimitConfigReaderTest {
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
                     assertEquals("qps", config.getMode());
-                    assertEquals(RateLimitConfigReader.DEFAULT_QPS, config.getMaxQps());
-                    assertEquals(RateLimitConfigReader.DEFAULT_CONCURRENCY, config.getMaxConcurrency());
+                    assertEquals(1000, config.getMaxQps());
+                    assertEquals(1000, config.getMaxConcurrency());
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("流配置了自定义 QPS → 取 min(流配置, 应用上限)")
-    void testCustomQps_MinApplied() {
+    @DisplayName("流配置了自定义 QPS → 使用流配置值")
+    void testCustomQps_UseFlowConfig() {
         FlowVersionEntity entity = new FlowVersionEntity();
         entity.setFlowId(100L);
-        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{\"rateLimitConfig\":{\"mode\":\"qps\",\"maxQps\":500}}}],\"edges\":[]}");
+        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"mode\":\"qps\",\"maxQps\":500}}}");
         when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
@@ -63,38 +70,38 @@ class RateLimitConfigReaderTest {
     }
 
     @Test
-    @DisplayName("QPS 超过应用上限 10000 → 受限于 10000")
-    void testQpsExceedsAppLimit_CappedAtMax() {
+    @DisplayName("QPS 使用流配置值（不由 Reader 截断）")
+    void testQpsUsesFlowConfig() {
         FlowVersionEntity entity = new FlowVersionEntity();
         entity.setFlowId(100L);
-        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{\"rateLimitConfig\":{\"mode\":\"qps\",\"maxQps\":99999}}}],\"edges\":[]}");
+        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"mode\":\"qps\",\"maxQps\":99999}}}");
         when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
-                    assertEquals(1000, config.getMaxQps()); // capped at APP_MAX_QPS
+                    assertEquals(99999, config.getMaxQps());
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("并发上限超过应用限制 1000 → 受限于 1000")
-    void testConcurrencyExceedsAppLimit_CappedAtMax() {
+    @DisplayName("并发上限使用流配置值（不由 Reader 截断）")
+    void testConcurrencyUsesFlowConfig() {
         FlowVersionEntity entity = new FlowVersionEntity();
         entity.setFlowId(100L);
-        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{\"rateLimitConfig\":{\"mode\":\"concurrency\",\"maxConcurrency\":5000}}}],\"edges\":[]}");
+        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"mode\":\"concurrency\",\"maxConcurrency\":5000}}}");
         when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
-                    assertEquals(1000, config.getMaxConcurrency()); // capped at APP_MAX_CONCURRENCY
+                    assertEquals(5000, config.getMaxConcurrency());
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("trigger 节点中无 rateLimitConfig → 返回默认配置")
-    void testEmptyTriggerConfig_Defaults() {
+    @DisplayName("flowConfig 中无 rateLimitConfig → 返回默认配置")
+    void testEmptyFlowConfig_Defaults() {
         FlowVersionEntity entity = new FlowVersionEntity();
         entity.setFlowId(100L);
         entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[]}");
@@ -102,7 +109,7 @@ class RateLimitConfigReaderTest {
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
-                    assertEquals(RateLimitConfigReader.DEFAULT_QPS, config.getMaxQps());
+                    assertEquals(1000, config.getMaxQps());
                 })
                 .verifyComplete();
     }
@@ -117,7 +124,7 @@ class RateLimitConfigReaderTest {
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
-                    assertEquals(RateLimitConfigReader.DEFAULT_QPS, config.getMaxQps());
+                    assertEquals(1000, config.getMaxQps());
                 })
                 .verifyComplete();
     }

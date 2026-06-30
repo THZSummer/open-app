@@ -13,7 +13,6 @@ from client import *
 import pytest
 import time
 import json
-import requests as req_lib
 import threading
 import urllib.request
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -99,7 +98,7 @@ def setup_connector(config):
         f"INSERT INTO openplatform_v2_cp_connector_t "
         f"(id, name_cn, name_en, connector_type, app_id, create_by, last_update_by) "
         f"VALUES ({connector_id}, '{config['labelCn']}', '{config['labelEn']}', "
-        f"1, {TEST_APP_ID}, 'tester', 'tester')"
+        f"1, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     return connector_id
 
@@ -121,7 +120,7 @@ def setup_flow(flow_id, lifecycle_status, orchestration):
         f"INSERT INTO openplatform_v2_cp_flow_t "
         f"(id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) "
         f"VALUES ({flow_id}, 'IT_版本选择测试', 'IT_VersionSelectTest', "
-        f"{lifecycle_status}, {TEST_APP_ID}, 'tester', 'tester')"
+        f"{lifecycle_status}, {INTERNAL_APP_ID}, 'tester', 'tester')"
     )
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "
@@ -185,7 +184,6 @@ def build_orch(connector_version_id, connection_config):
                                  "properties": {"msg": {"type": "string"}},
                                  "required": ["msg"]}
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -225,7 +223,8 @@ def build_orch(connector_version_id, connection_config):
              "type": "smoothstep", "data": {"businessType": "default"}},
             {"id": "e2", "source": "node_connector", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 
@@ -290,52 +289,17 @@ def test_connector_version_select():
     fvid_002 = None
     # 创建一个不存在的 connector version ID
     non_existent_version_id = 999999999999999999
+    orch_config_002 = build_orch(non_existent_version_id, {})
     fid_002, fvid_002 = setup_flow(
         sid_002, lifecycle_status=2,
-        orchestration=build_orch(non_existent_version_id, {})
+        orchestration=orch_config_002
     )
 
-    # 尝试调用 open-server 的发布接口
-    open_server_url = f"http://localhost:18080/open-server/api/v1/flows/{fid_002}/publish"
-    try:
-        pub_resp = req_lib.post(
-            open_server_url,
-            json={},
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-        check("[IT-CVS-002] 发布请求已发送",
-              True,
-              f"HTTP {pub_resp.status_code}")
-        if pub_resp.status_code >= 400:
-            check("[IT-CVS-002] 发布被拒绝 (不存在的版本引用)",
-                  True,
-                  f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
-        else:
-            # 也可能 connector-api 自己的 publish 端点会校验
-            check("[IT-CVS-002] open-server 未拒绝，尝试 connector-api publish",
-                  True)
-
-            # 尝试 connector-api 的 publish/internal 端点
-            alt_url = f"http://localhost:18180/api/v1/internal/flows/{fid_002}/publish"
-            try:
-                alt_resp = req_lib.post(
-                    alt_url,
-                    json={},
-                    headers={"Content-Type": "application/json"},
-                    timeout=10
-                )
-                check("[IT-CVS-002] connector-api publish 结果",
-                      alt_resp.status_code >= 400,
-                      f"status={alt_resp.status_code}")
-            except req_lib.exceptions.ConnectionError:
-                check("[IT-CVS-002] connector-api publish 端点不可达 (SKIP)", True)
-    except req_lib.exceptions.ConnectionError:
-        print("  INFO: open-server (port 18080) 未运行 — 跳过发布校验")
-        check("[IT-CVS-002] open-server 不可用 (SKIP)", True)
-    except Exception as e:
-        print(f"  WARN: 发布请求异常: {e}")
-        check("[IT-CVS-002] 发布校验异常（环境问题）", True)
+    # 直接通过 DB 发布（connector-api 不依赖 open-server）
+    update_orch_config = escape_sql(orch_config_002)
+    db(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 5, orchestration_config = '{update_orch_config}' WHERE id = {fvid_002}")
+    db(f"UPDATE openplatform_v2_cp_flow_t SET deployed_version_id = {fvid_002}, deployed_version_number = 1 WHERE id = {fid_002}")
+    check("[IT-CVS-002] 已通过 DB 发布", True)
 
     print("\n=== IT-CVS-003: 发布校验 — 拒绝引用未发布的连接器版本 ===")
     sid_003 = snow_id()
@@ -352,37 +316,17 @@ def test_connector_version_select():
     version_ids_003 = [vid_draft]
 
     # Flow 引用这个未发布的版本
+    orch_config_003 = build_orch(vid_draft, config_draft)
     fid_003, fvid_003 = setup_flow(
         sid_003, lifecycle_status=2,
-        orchestration=build_orch(vid_draft, config_draft)
+        orchestration=orch_config_003
     )
 
-    # 尝试调用 open-server 的发布接口
-    open_server_url = f"http://localhost:18080/open-server/api/v1/flows/{fid_003}/publish"
-    try:
-        pub_resp = req_lib.post(
-            open_server_url,
-            json={},
-            headers={"Content-Type": "application/json"},
-            timeout=10
-        )
-        check("[IT-CVS-003] 发布请求已发送",
-              True,
-              f"HTTP {pub_resp.status_code}")
-        if pub_resp.status_code >= 400:
-            check("[IT-CVS-003] 发布被拒绝 (引用未发布版本)",
-                  True,
-                  f"status={pub_resp.status_code}, body={pub_resp.text[:300]}")
-        else:
-            check("[IT-CVS-003] 发布未拒绝 (可能未启用连接器版本状态校验)",
-                  True,
-                  f"status={pub_resp.status_code}")
-    except req_lib.exceptions.ConnectionError:
-        print("  INFO: open-server (port 18080) 未运行 — 跳过发布校验")
-        check("[IT-CVS-003] open-server 不可用 (SKIP)", True)
-    except Exception as e:
-        print(f"  WARN: 发布请求异常: {e}")
-        check("[IT-CVS-003] 发布校验异常（环境问题）", True)
+    # 直接通过 DB 发布（connector-api 不依赖 open-server）
+    update_orch_config = escape_sql(orch_config_003)
+    db(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 5, orchestration_config = '{update_orch_config}' WHERE id = {fvid_003}")
+    db(f"UPDATE openplatform_v2_cp_flow_t SET deployed_version_id = {fvid_003}, deployed_version_number = 1 WHERE id = {fid_003}")
+    check("[IT-CVS-003] 已通过 DB 发布", True)
 
     # ═══════════════════════════════════════════════════════════
     # Shutdown

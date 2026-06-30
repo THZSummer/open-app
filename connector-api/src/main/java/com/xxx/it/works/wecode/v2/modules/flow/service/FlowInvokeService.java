@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
@@ -80,6 +81,7 @@ public class FlowInvokeService {
     private final ExecutionRecordService executionRecordService;
     private final ExecutionStepService executionStepService;
     private final IdGenerator idGenerator;
+    private final ConnectorApiPropertyService propertyService;
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
@@ -91,7 +93,8 @@ public class FlowInvokeService {
             EntityCacheManager entityCacheManager,
             ExecutionRecordService executionRecordService,
             ExecutionStepService executionStepService,
-            IdGenerator idGenerator) {
+            IdGenerator idGenerator,
+            ConnectorApiPropertyService propertyService) {
         this.objectMapper = objectMapper;
         this.executor = executor;
         this.dagScheduler = dagScheduler;
@@ -102,6 +105,7 @@ public class FlowInvokeService {
         this.executionRecordService = executionRecordService;
         this.executionStepService = executionStepService;
         this.idGenerator = idGenerator;
+        this.propertyService = propertyService;
     }
 
     /**
@@ -178,7 +182,7 @@ public class FlowInvokeService {
      * 2. 解析 React Flow 格式编排配置, 查找 trigger/entry 节点<br>
      * 3. 校验 {@code data.type} 子类型<br>
      * 4. 校验 {@code data.authConfig} 认证声明<br>
-     * 5. 校验 {@code data.rateLimitConfig} 限流配置<br>
+     * 5. 校验 {@code flowConfig.rateLimitConfig} 限流配置<br>
      * 6. 校验 {@code data.inputContract} header / query / body 三段契约<br>
      * 7. 构建 ExecutionContext (结构化 NodeContext: {header, query, body})<br>
      * 8. 缓存检查 (FR-037): 若 flowConfig.cacheTtl > 0, 先查缓存<br>
@@ -272,8 +276,9 @@ public class FlowInvokeService {
                         String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
                         try {
                             executionRecordService.updateRecord(recordId, finalStatus, duration, errCode, errMsg);
-                            // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录
-                            executionRecordService.checkAndCleanFifo(flowId, 1000);
+                            // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
+                            int maxRecords = resolveMaxExecutionRecords();
+                            executionRecordService.checkAndCleanFifo(flowId, maxRecords);
                         } catch (Exception ex) {
                             log.warn("Failed to update execution record: {}", ex.getMessage());
                         }
@@ -293,8 +298,9 @@ public class FlowInvokeService {
                     // ★ 执行失败 - 更新记录
                     try {
                         executionRecordService.updateRecord(recordId, 1, null, errorCode, errorMsg);
-                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录
-                        executionRecordService.checkAndCleanFifo(flowId, 1000);
+                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
+                        int maxRecords = resolveMaxExecutionRecords();
+                        executionRecordService.checkAndCleanFifo(flowId, maxRecords);
                     } catch (Exception ex) {
                         log.warn("Failed to update execution record: {}", ex.getMessage());
                     }
@@ -373,7 +379,7 @@ public class FlowInvokeService {
         }
 
         validateAuthConfig(nodeData, headers, triggerType);
-        validateRateLimitConfig(nodeData);
+        validateRateLimitConfig(config);
 
         Map<String, Object> input = (Map<String, Object>) nodeData.get("input");
         if ("http".equals(triggerType) && input == null) {
@@ -892,26 +898,31 @@ public class FlowInvokeService {
     }
 
     /**
-     * 校验 rateLimitConfig
+     * 校验 flowConfig.rateLimitConfig 基本合法性（§3.3.4: 运行态不做上限截断，设计态已校验）
      */
     @SuppressWarnings("unchecked")
-    private void validateRateLimitConfig(Map<String, Object> nodeData) {
-        Map<String, Object> rateLimitConfig = (Map<String, Object>) nodeData.get("rateLimitConfig");
+    private void validateRateLimitConfig(Map<String, Object> config) {
+        Map<String, Object> flowConfig = (Map<String, Object>) config.get("flowConfig");
+        if (flowConfig == null) {
+            return;
+        }
+        Map<String, Object> rateLimitConfig = (Map<String, Object>) flowConfig.get("rateLimitConfig");
         if (rateLimitConfig == null) {
             return;
         }
+        // 仅校验基本合法性（>0），不做上限截断（设计态已校验 ③ <= ②覆盖①）
         Object maxQpsObj = rateLimitConfig.get("maxQps");
         if (maxQpsObj instanceof Number) {
             int maxQps = ((Number) maxQpsObj).intValue();
-            if (maxQps < 1 || maxQps > 10000) {
-                throw new RuntimeException("Rate limit maxQps must be between 1 and 10000, got: " + maxQps);
+            if (maxQps < 1) {
+                throw new RuntimeException("Rate limit maxQps must be greater than 0, got: " + maxQps);
             }
         }
         Object maxConcurrencyObj = rateLimitConfig.get("maxConcurrency");
         if (maxConcurrencyObj instanceof Number) {
             int maxConcurrency = ((Number) maxConcurrencyObj).intValue();
-            if (maxConcurrency < 1 || maxConcurrency > 1000) {
-                throw new RuntimeException("Rate limit maxConcurrency must be between 1 and 1000, got: " + maxConcurrency);
+            if (maxConcurrency < 1) {
+                throw new RuntimeException("Rate limit maxConcurrency must be greater than 0, got: " + maxConcurrency);
             }
         }
     }
@@ -947,6 +958,20 @@ public class FlowInvokeService {
             log.warn("Failed to parse flowConfig from orchestration map: {}", e.getMessage());
             return FlowConfig.defaults();
         }
+    }
+
+    /**
+     * 读取①平台全局: 单流最大执行记录数
+     */
+    private int resolveMaxExecutionRecords() {
+        return propertyService.loadPlatformDefaults()
+                .map(config -> {
+                    String val = config.get("Max.Execution.Records.Per.Flow");
+                    if (val == null || val.isEmpty()) return 1000;
+                    try { return Integer.parseInt(val.trim()); }
+                    catch (NumberFormatException e) { return 1000; }
+                })
+                .blockOptional().orElse(1000);
     }
 
     private String buildCacheKey(ExecutionContext ctx, List<String> cacheKeyExpressions) {

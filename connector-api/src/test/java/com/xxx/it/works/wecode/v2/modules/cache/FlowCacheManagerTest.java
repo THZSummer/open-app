@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.cache;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,9 @@ class FlowCacheManagerTest {
     @Mock
     private ReactiveValueOperations<String, String> valueOperations;
 
+    @Mock
+    private ConnectorApiPropertyService propertyService;
+
     private ObjectMapper objectMapper;
     private FlowCacheManager cacheManager;
 
@@ -36,7 +40,7 @@ class FlowCacheManagerTest {
     @SuppressWarnings("unchecked")
     void setUp() {
         objectMapper = new ObjectMapper();
-        cacheManager = new FlowCacheManager(redisTemplate, objectMapper);
+        cacheManager = new FlowCacheManager(redisTemplate, objectMapper, propertyService);
     }
 
     @Test
@@ -89,8 +93,8 @@ class FlowCacheManagerTest {
     }
 
     @Test
-    @DisplayName("写入缓存 TTL 超过上限 → 受限于 max 1296000")
-    void testWriteCache_TtlCapped() {
+    @DisplayName("写入缓存使用给定 TTL（不截断）")
+    void testWriteCache_UseGivenTtl() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.set(anyString(), anyString(), any(Duration.class)))
                 .thenReturn(Mono.just(Boolean.TRUE));
@@ -102,7 +106,7 @@ class FlowCacheManagerTest {
                 .verifyComplete();
 
         verify(valueOperations).set(anyString(), anyString(),
-                eq(Duration.ofSeconds(1296000)));
+                eq(Duration.ofSeconds(9999999)));
     }
 
     @Test
