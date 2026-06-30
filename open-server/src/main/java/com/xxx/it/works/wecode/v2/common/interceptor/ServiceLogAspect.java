@@ -10,6 +10,8 @@ import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Set;
+
 /**
  * Service 入参日志切面
  *
@@ -22,6 +24,11 @@ import org.springframework.web.multipart.MultipartFile;
 @Aspect
 @Component
 public class ServiceLogAspect {
+
+    private static final Set<String> SENSITIVE_KEYWORDS = Set.of(
+            "password", "passwd", "secret", "token", "apisecret",
+            "privatekey", "sk", "credential", "authorization"
+    );
 
     @Pointcut("@within(org.springframework.stereotype.Service) && within(com.xxx.it.works.wecode.v2.modules..*)")
     public void serviceMethod() {
@@ -41,7 +48,11 @@ public class ServiceLogAspect {
                 sb.append(", ");
             }
             String name = (paramNames != null && i < paramNames.length) ? paramNames[i] : "arg" + i;
-            sb.append(name).append("=").append(formatArg(args[i]));
+            if (isSensitiveName(name)) {
+                sb.append(name).append("=").append("***");
+            } else {
+                sb.append(name).append("=").append(formatArg(args[i]));
+            }
         }
 
         log.info("[{}] {}({})", className, methodName, sb);
@@ -58,6 +69,26 @@ public class ServiceLogAspect {
             return arg.getClass().getSimpleName();
         }
         String json = JsonUtils.toJson(arg);
-        return json != null ? json : arg.toString();
+        return json != null ? maskSensitiveFields(json) : arg.toString();
+    }
+
+    /**
+     * 判断参数名是否含敏感关键字（不区分大小写）
+     */
+    private static boolean isSensitiveName(String name) {
+        if (name == null) return false;
+        String lower = name.toLowerCase();
+        return SENSITIVE_KEYWORDS.stream().anyMatch(lower::contains);
+    }
+
+    /**
+     * 对 JSON 字符串中敏感字段名的值替换为 ***（不区分大小写）
+     * 例如：{"apiSecret":"abc123"} → {"apiSecret":"***"}
+     */
+    private static String maskSensitiveFields(String json) {
+        for (String key : SENSITIVE_KEYWORDS) {
+            json = json.replaceAll("(?i)(\"" + key + "\"\\s*:\\s*)\"[^\"]*\"", "$1\"***\"");
+        }
+        return json;
     }
 }

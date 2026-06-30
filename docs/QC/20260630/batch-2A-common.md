@@ -107,6 +107,7 @@
 - 级别：严重
 - 问题原因：interceptor/ServiceLogAspect.java:30-48 @Before 拦截所有 @Service 方法，L47 `log.info` 打印全部入参，L60 `JsonUtils.toJson(arg)` 序列化复杂对象。若 service 参数含密码/token/apiSecret(如 updateVerifyType)，敏感信息写入日志
 - 修改建议：敏感参数(apiSecret/token/password)脱敏或跳过；或收窄拦截范围排除含敏感参数的方法
+- **✅ 已修复（2026-06-30）**：新增 SENSITIVE_KEYWORDS 黑名单（password/secret/token/apiSecret/sk 等9个），参数名匹配→显示`***`，复杂对象 JSON 字段匹配→值替换`***`。双层脱敏
 
 ### 意见 9
 - 大类：编程规范
@@ -130,6 +131,7 @@
 - 级别：建议
 - 问题原因：util/JsonUtils.java:150 extractSimpleProperties 用 `f.setAccessible(true)` 反射访问私有字段，SecurityManager 启用时可能被拒；且绕过封装
 - 修改建议：评估是否必须反射；可改用公共 getter 或 Jackson 序列化
+- **✅ 已修复（2026-06-30）**：改用 `objectMapper.convertValue(obj, Map)` 走 getter 读取，删除反射 `setAccessible`，删除 `import Field/Modifier`
 
 ### 意见 12
 - 大类：安全编码

@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -137,24 +135,24 @@ public final class JsonUtils {
     }
 
     /**
-     * 通过反射收集对象的顶层简单值字段（String/Number/Boolean）。
-     * List/Map/嵌套对象自动跳过，不做 Jackson 全量序列化。
+     * 通过 Jackson convertValue 收集对象的顶层简单值字段（String/Number/Boolean）。
+     * 内部走 getter 方法读取，不使用反射 setAccessible。
+     * List/Map/嵌套对象序列化后自动过滤。
      */
     public static Map<String, String> extractSimpleProperties(Object obj) {
         Map<String, String> result = new LinkedHashMap<>();
-        for (Field f : obj.getClass().getDeclaredFields()) {
-            if (Modifier.isStatic(f.getModifiers())) {
-                continue;
-            }
-            try {
-                f.setAccessible(true);
-                Object v = f.get(obj);
+        try {
+            Map<String, Object> map = objectMapper.convertValue(obj,
+                    new TypeReference<>() {
+                    });
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                Object v = entry.getValue();
                 if (v instanceof CharSequence || v instanceof Number || v instanceof Boolean) {
-                    result.put(f.getName(), v.toString());
+                    result.put(entry.getKey(), v.toString());
                 }
-            } catch (Exception e) {
-                log.debug("[JsonUtils] Failed to extract field value", e);
             }
+        } catch (Exception e) {
+            log.debug("[JsonUtils] Failed to extract simple properties", e);
         }
         return result;
     }
