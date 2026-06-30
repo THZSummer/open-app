@@ -15,9 +15,9 @@ import lombok.Data;
 @Data
 public class ConnectorCreateRequest {
 
-    /** 中文名称，最长 64 字符 */
+    /** 中文名称，最长 128 字符 */
     @NotBlank(message = "中文名称不能为空")
-    @Size(max = 64, message = "中文名称长度不能超过64")
+    @Size(max = 128, message = "中文名称长度不能超过128")
     private String nameCn;
 
     /** 英文名称，最长 128 字符 */
