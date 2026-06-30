@@ -10,3 +10,4 @@ _spec.loader.exec_module(_m)
 api = _m.api
 db = _m.db
 db_val = _m.db_val
+TEST_APP_ID = _m.TEST_APP_ID

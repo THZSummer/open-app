@@ -1,18 +1,8 @@
 #!/usr/bin/env python3
 """共享 fixtures：自动管理测试数据生命周期"""
-import os, time, importlib.util
+import os, time
 import pytest
-
-_spec = importlib.util.spec_from_file_location(
-    "inspect_client",
-    os.path.join(os.path.dirname(__file__), "inspect", "client.py")
-)
-_client = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_client)
-api = _client.api
-db = _client.db
-db_val = _client.db_val
-TEST_APP_ID = _client.TEST_APP_ID
+from _client import api, db, db_val, TEST_APP_ID
 
 INTERNAL_APP_ID = int(db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
 
