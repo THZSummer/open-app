@@ -174,7 +174,7 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
         }
     }
 
-    flow_config = {}
+    flow_config = {"rateLimitConfig": {"maxQps": 100}}
     if cache_ttl is not None:
         flow_config["cache"] = {
             "key": ["${$.node.node_trigger.input.body.msg}"],
@@ -205,7 +205,6 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
                                  "properties": {"msg": {"type": "string"}},
                                  "required": ["msg"]}
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {

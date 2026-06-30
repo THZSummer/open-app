@@ -51,7 +51,6 @@ def build_orch_v1():
                             "required": ["data"]
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -81,7 +80,8 @@ def build_orch_v1():
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 
@@ -112,7 +112,6 @@ def build_orch_v2():
                             "required": ["data"]
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -142,7 +141,8 @@ def build_orch_v2():
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 

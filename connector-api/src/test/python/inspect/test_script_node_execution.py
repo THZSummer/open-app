@@ -60,7 +60,6 @@ def build_script_orch(script_content, timeout_ms=5000):
                             "required": []
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -129,7 +128,8 @@ def build_script_orch(script_content, timeout_ms=5000):
                 "id": "e2", "source": "node_script", "target": "node_exit",
                 "type": "smoothstep", "data": {"businessType": "default"}
             }
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 

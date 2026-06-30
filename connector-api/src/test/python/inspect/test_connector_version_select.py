@@ -185,7 +185,6 @@ def build_orch(connector_version_id, connection_config):
                                  "properties": {"msg": {"type": "string"}},
                                  "required": ["msg"]}
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -225,7 +224,8 @@ def build_orch(connector_version_id, connection_config):
              "type": "smoothstep", "data": {"businessType": "default"}},
             {"id": "e2", "source": "node_connector", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 

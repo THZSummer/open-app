@@ -121,8 +121,7 @@ def deployed_flow(flow, request):
                             },
                             "required": ["sender"]
                         }
-                    },
-                    "rateLimitConfig": {"maxQps": 100}
+                    }
                 }
             },
             {
@@ -145,7 +144,8 @@ def deployed_flow(flow, request):
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
     db(
         f"INSERT INTO openplatform_v2_cp_flow_version_t "

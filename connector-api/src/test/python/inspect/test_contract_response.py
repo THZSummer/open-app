@@ -43,7 +43,7 @@ def test_contract_response():
                           "header": {"type": "object", "properties": {}, "required": []},
                           "query": {"type": "object", "properties": {}, "required": []},
                           "body": {"type": "object", "properties": {}, "required": []}},
-                      "rateLimitConfig": {"maxQps": 100}}},
+                       }},
             {"id": "node_exit", "type": "exit",
              "position": {"x": 350, "y": 200},
              "data": {"labelCn": "返回", "labelEn": "Return",
@@ -51,7 +51,8 @@ def test_contract_response():
                           "body": {"type": "object", "properties": {"ok": {"type": "boolean", "value": True}}}}}}
         ],
         "edges": [{"id": "e1", "source": "node_trigger", "target": "node_exit",
-                   "type": "smoothstep", "data": {"businessType": "default"}}]
+                   "type": "smoothstep", "data": {"businessType": "default"}}],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
     db(f"INSERT INTO openplatform_v2_cp_flow_t (id, name_cn, name_en, lifecycle_status, app_id, create_by, last_update_by) VALUES ({test_flow_id}, '契约测试', 'ContractTest', 2, {TEST_APP_ID}, 'tester', 'tester')")

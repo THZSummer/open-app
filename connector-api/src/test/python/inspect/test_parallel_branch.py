@@ -187,11 +187,10 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
                              "properties": {"msg": {"type": "string"}},
                              "required": ["msg"]}
                 },
-                "rateLimitConfig": {"maxQps": 100}
-            }
-        },
-        {
-            "id": "node_conn_a", "type": "connector",
+                }
+            },
+            {
+                "id": "node_conn_a", "type": "connector",
             "position": {"x": 350, "y": 100},
             "data": {
                 "labelCn": "分支A", "labelEn": "BranchA",
@@ -259,7 +258,7 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
              "type": "smoothstep", "data": {"businessType": "default"}}
         ]
 
-    return {"nodes": nodes, "edges": edges}
+    return {"nodes": nodes, "edges": edges, "flowConfig": {"rateLimitConfig": {"maxQps": 100}}}
 
 
 def build_parallel_orch_multi(connector_version_ids, connection_configs):
@@ -287,10 +286,9 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
                              "properties": {"msg": {"type": "string"}},
                              "required": ["msg"]}
                 },
-                "rateLimitConfig": {"maxQps": 100}
+                }
             }
-        }
-    ]
+        ]
 
     edges = []
     for i, cvid in enumerate(connector_version_ids):
@@ -335,7 +333,7 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
         }
     })
 
-    return {"nodes": nodes, "edges": edges}
+    return {"nodes": nodes, "edges": edges, "flowConfig": {"rateLimitConfig": {"maxQps": 100}}}
 
 
 # ═══════════════════════════════════════════════════════════

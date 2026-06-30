@@ -61,7 +61,6 @@ def build_orch(whitelist=None):
                             "required": []
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -89,7 +88,8 @@ def build_orch(whitelist=None):
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
 

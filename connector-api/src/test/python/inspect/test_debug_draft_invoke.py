@@ -47,7 +47,6 @@ def setup_flow(snow_id_val, lifecycle_status=2, orchestration=None, version_stat
                             "required": ["sender"]
                         }
                     },
-                    "rateLimitConfig": {"maxQps": 100}
                 }
             },
             {
@@ -70,7 +69,8 @@ def setup_flow(snow_id_val, lifecycle_status=2, orchestration=None, version_stat
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
-        ]
+        ],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}}
     }
 
     db(

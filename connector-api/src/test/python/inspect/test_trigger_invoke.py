@@ -265,7 +265,6 @@ TRIGGER_NODE = {
                 "required": ["keyword"]
             }
         },
-        "rateLimitConfig": {"maxQps": 100}
     }
 }
 
@@ -376,8 +375,6 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
             trigger["data"]["authConfigs"][0]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
             trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
-        if "trigger_rate_limit_qps" in overrides:
-            trigger["data"]["rateLimitConfig"]["maxQps"] = overrides["trigger_rate_limit_qps"]
         if "connector_input_mapping" in overrides:
             connector["data"]["inputMapping"] = overrides["connector_input_mapping"]
         if "exit_output_mapping" in overrides:
@@ -385,6 +382,7 @@ def build_orchestration(connector_version_id, connection_config, overrides=None)
 
     result = {
         "nodes": [trigger, connector, exit_node],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}},
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_connector",
              "type": "smoothstep", "data": {"businessType": "default"}},
@@ -441,7 +439,6 @@ TRIGGER_NODE_NO_CONNECTOR = {
                 "required": ["sender"]
             }
         },
-        "rateLimitConfig": {"maxQps": 100}
     }
 }
 
@@ -474,13 +471,12 @@ def build_orchestration_no_connector(overrides=None):
             trigger["data"]["authConfigs"][0]["type"] = overrides["trigger_auth_type"]
         if "trigger_input_required" in overrides:
             trigger["data"]["input"]["body"]["required"] = overrides["trigger_input_required"]
-        if "trigger_rate_limit_qps" in overrides:
-            trigger["data"]["rateLimitConfig"]["maxQps"] = overrides["trigger_rate_limit_qps"]
         if "exit_output_mapping" in overrides:
             exit_node["data"]["output"] = overrides["exit_output_mapping"]
 
     return {
         "nodes": [trigger, exit_node],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}},
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_exit",
              "type": "smoothstep", "data": {"businessType": "default"}}
@@ -552,6 +548,7 @@ def build_fail_orchestration(connector_version_id, connection_config):
 
     return {
         "nodes": [trigger, connector, exit_node],
+        "flowConfig": {"rateLimitConfig": {"maxQps": 100}},
         "edges": [
             {"id": "e1", "source": "node_trigger", "target": "node_connector",
              "type": "smoothstep", "data": {"businessType": "default"}},
