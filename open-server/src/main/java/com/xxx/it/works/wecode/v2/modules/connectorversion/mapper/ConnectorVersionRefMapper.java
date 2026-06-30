@@ -71,6 +71,18 @@ public interface ConnectorVersionRefMapper {
     List<ConnectorVersionRef> selectByConnectorId(@Param("connectorId") Long connectorId);
 
     /**
+     * 按连接器ID查询引用此连接器的运行中状态的连接流名称（仅 lifecycle_status=2 RUNNING）
+     * 用于失效连接器时校验：只有运行中流引用时才拦截
+     */
+    List<String> selectRunningFlowNamesByConnectorId(@Param("connectorId") Long connectorId);
+
+    /**
+     * 按连接器版本ID查询引用此版本的运行中状态的连接流名称（仅 lifecycle_status=2 RUNNING）
+     * 用于失效连接器版本时校验：只有运行中流引用时才拦截
+     */
+    List<String> selectRunningFlowNamesByConnectorVersionId(@Param("connectorVersionId") Long connectorVersionId);
+
+    /**
      * 按连接器版本ID + 连接流ID + 连接流版本ID 查询引用
      */
     List<ConnectorVersionRef> selectByConnectorVersionAndFlow(

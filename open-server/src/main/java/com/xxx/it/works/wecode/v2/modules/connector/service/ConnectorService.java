@@ -231,11 +231,11 @@ public class ConnectorService {
             return ApiResponse.error("409", "非有效状态，不可失效", "Invalid status for invalidation");
         }
 
-        List<ConnectorVersionRef> refs = connectorVersionRefMapper.selectByConnectorId(connectorId);
-        if (refs != null && !refs.isEmpty()) {
+        List<String> runningFlowNames = connectorVersionRefMapper.selectRunningFlowNamesByConnectorId(connectorId);
+        if (runningFlowNames != null && !runningFlowNames.isEmpty()) {
             return ApiResponse.error("422",
-                    "有 " + refs.size() + " 个连接流引用此连接器，请先移除引用关系",
-                    "Connector is referenced by " + refs.size() + " flows, remove references first");
+                    "以下运行中的连接流引用了此连接器：" + String.join("、", runningFlowNames) + "，请先停止相关连接流",
+                    "Connector is referenced by running flows: " + runningFlowNames);
         }
 
         Date now = new Date();

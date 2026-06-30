@@ -99,6 +99,24 @@
         WHERE connector_id = #{connectorId}
     </select>
 
+    <!-- Select Running Flow Names By ConnectorId (仅运行中状态的连接流, lifecycle_status=2) -->
+    <select id="selectRunningFlowNamesByConnectorId" resultType="java.lang.String">
+        SELECT DISTINCT f.name_cn
+        FROM openplatform_v2_cp_connector_version_ref_t ref
+        JOIN openplatform_v2_cp_flow_t f ON ref.flow_id = f.id
+        WHERE ref.connector_id = #{connectorId}
+          AND f.lifecycle_status = 2
+    </select>
+
+    <!-- Select Running Flow Names By ConnectorVersionId (仅运行中状态的连接流, lifecycle_status=2) -->
+    <select id="selectRunningFlowNamesByConnectorVersionId" resultType="java.lang.String">
+        SELECT DISTINCT f.name_cn
+        FROM openplatform_v2_cp_connector_version_ref_t ref
+        JOIN openplatform_v2_cp_flow_t f ON ref.flow_id = f.id
+        WHERE ref.connector_version_id = #{connectorVersionId}
+          AND f.lifecycle_status = 2
+    </select>
+
     <!-- Select By ConnectorVersion And Flow -->
     <select id="selectByConnectorVersionAndFlow" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
