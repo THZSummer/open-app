@@ -282,12 +282,10 @@ def redis(*args):
     try:
         from redis.cluster import RedisCluster
         if _redis_client is None:
-            startup_nodes = [
-                {"host": n["host"], "port": n["port"]}
-                for n in _REDIS_CLUSTER["nodes"]
-            ]
+            first = _REDIS_CLUSTER["nodes"][0]
             _redis_client = RedisCluster(
-                startup_nodes=startup_nodes,
+                host=first["host"],
+                port=first["port"],
                 password=_REDIS_CLUSTER.get("password"),
                 decode_responses=True
             )
