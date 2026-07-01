@@ -54,6 +54,9 @@ public class DiffConfig {
      * 渲染单个字段的 diff 行
      */
     public String renderField(DiffField field, String beforeVal, String afterVal, boolean isChinese) {
+        if (field == null) {
+            return "";
+        }
         String label = isChinese ? field.labelCn() : field.labelEn();
         String template = field.labelOnly()
                 ? (isChinese ? formatCnLabelOnly : formatEnLabelOnly)
