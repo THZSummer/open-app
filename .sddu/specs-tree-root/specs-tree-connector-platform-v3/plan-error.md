@@ -75,7 +75,7 @@ connector-api 有两个面向外部/内部的执行接口：
 
 ### 2.2 业务差异清单
 
-调试和调用有 10 项合理业务差异、6 项应统一的不合理差异。
+调试和调用有 9 项合理业务差异、5 项应统一的不合理差异。
 
 #### 合理差异（两套服务路径，逻辑不同）
 
@@ -99,7 +99,7 @@ connector-api 有两个面向外部/内部的执行接口：
 |---|------|:---:|:---:|------|
 | 11 | 错误码 | 6002/6004 | HTTP 码 (404/403/500) | 统一使用本文档第 5 章错误码 |
 | 12 | 错误消息 | 底层异常透传 | 字符串匹配分类 | 统一从 errorInfo 读取 |
-| 13 | 错误包装 | DagScheduler 统一 catch，直接设置 NodeOutput.errorInfo | — | 节点层产出，调度层不再二次包装 |
+| 13 | 错误包装 | `onErrorResume` 重新包为 6002 | `classifyError` 字符串匹配分类 | 节点层产出细分错误码，两边透传不二次包装 |
 | 14 | isDebug 字段 | 无统一字段，硬编码 | 硬编码 | ExecutionContext.isDebug |
 | 15 | 编排解析 | 只读 nodes | 完整解析 flowConfig | 统一解析逻辑 |
 
@@ -481,7 +481,7 @@ X-Status: 1
 
 | # | 修改 | 文件 |
 |---|------|------|
-| 7 | 执行引擎传递结构化错误（节点名 + 错误码 + 下游状态） | ReactiveSequentialExecutor + 各 NodeExecutor |
+| 7 | 执行引擎传递结构化错误（节点名 + 错误码 + 下游状态） | DagScheduler + 各 NodeExecutor |
 | 8 | 调试接口 onErrorResume 按错误码分类，使用统一模板 | FlowVersionDebugService |
 | 9 | 调用接口 buildErrorResponse 支持 6xxxx 码段 | FlowInvokeService |
 
