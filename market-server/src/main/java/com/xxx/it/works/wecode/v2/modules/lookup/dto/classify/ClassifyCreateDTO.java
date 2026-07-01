@@ -46,7 +46,8 @@ public class ClassifyCreateDTO implements Serializable {
      */
     @NotBlank(message = "路径不能为空")
     @Size(max = 100, message = "路径长度不能超过100字符")
-    @Schema(description = "路径，必填，用于层级归类，1-100字符",
+    @Pattern(regexp = "^[a-zA-Z0-9_./*-]+$", message = "路径只能包含字母、数字、下划线、点、横杠、斜杠和星号")
+    @Schema(description = "路径，必填，用于层级归类，1-100字符，支持字母、数字、下划线、点、横杠、斜杠、星号",
             requiredMode = Schema.RequiredMode.REQUIRED,
             example = "system/user")
     private String path;

@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
 import java.util.regex.Pattern;
@@ -282,17 +283,17 @@ public class AppServiceImpl implements AppService {
         Map<String, Employee> empMap = CollectionUtils.isEmpty(welinkIds)
                 ? Collections.emptyMap()
                 : employeeMapper.selectByWelinkIds(welinkIds).stream()
-                .collect(Collectors.toMap(Employee::getWelinkId, e -> e, (a, b) -> a));
+                .collect(Collectors.toMap(e -> e.getWelinkId().toLowerCase(Locale.ROOT), e -> e, (a, b) -> a));
 
         // 3. 组装 appId -> EmployeeInfoVO
         return ownerMembers.stream().collect(Collectors.toMap(
                 AppMember::getAppId,
                 m -> {
                     EmployeeInfoVO vo = new EmployeeInfoVO();
-                    vo.setWelinkId(m.getAccountId());
+                    vo.setWelinkId(m.getAccountId().toLowerCase(Locale.ROOT));
                     vo.setMemberNameCn(m.getMemberNameCn());
                     vo.setMemberNameEn(m.getMemberNameEn());
-                    Employee emp = empMap.get(m.getAccountId());
+                    Employee emp = empMap.get(m.getAccountId().toLowerCase(Locale.ROOT));
                     if (Objects.nonNull(emp)) {
                         vo.setW3Account(emp.getW3Account());
                     }
@@ -371,7 +372,7 @@ public class AppServiceImpl implements AppService {
         AppContext ctx = appContextResolver.resolveAndValidate(appId);
         App app = ctx.getApp();
 
-        validateVerifyType(request);
+        validateVerifyType(app, request);
 
         // 更新 verify_type
         String verifyTypeStr = request.getVerifyType().stream()
@@ -390,54 +391,39 @@ public class AppServiceImpl implements AppService {
         appCommonService.notifyCardService(appId, CommonConstants.EVENT_UPDATE_VERIFY_TYPE);
     }
 
-    private void validateVerifyType(UpdateVerifyTypeRequest request) {
+    private void validateVerifyType(App app, UpdateVerifyTypeRequest request) {
+        // 校验：仅业务应用可修改认证方式
+        if (!Objects.equals(app.getAppType(), AppTypeEnum.BUSINESS.getCode())) {
+            throw BusinessException.of(ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED);
+        }
+
         // 白名单校验：数据字典控制是否允许多选
         String multiselectValue = appMapper.selectDictionaryValue(CommonConstants.DICT_CATEGORY_APP, CommonConstants.DICT_VERIFY_TYPE_MULTI_SWITCH);
         if (CommonConstants.FLAG_FALSE.equalsIgnoreCase(multiselectValue)) {
             if (request.getVerifyType().size() > 1) {
-                throw new BusinessException(
-                        ResponseCodeEnum.VERIFY_TYPE_SINGLE_ONLY.getCode(),
-                        ResponseCodeEnum.VERIFY_TYPE_SINGLE_ONLY.getMessageZh(),
-                        ResponseCodeEnum.VERIFY_TYPE_SINGLE_ONLY.getMessageEn()
-                );
+                throw BusinessException.of(ResponseCodeEnum.VERIFY_TYPE_SINGLE_ONLY);
             }
         }
 
         // 校验 verifyType 合法性（枚举校验）
         for (Integer vt : request.getVerifyType()) {
             if (!VerifyTypeEnum.isValidCode(vt)) {
-                throw new BusinessException(
-                        ResponseCodeEnum.VERIFY_TYPE_INVALID.getCode(),
-                        ResponseCodeEnum.VERIFY_TYPE_INVALID.getMessageZh(),
-                        ResponseCodeEnum.VERIFY_TYPE_INVALID.getMessageEn()
-                );
+                throw BusinessException.of(ResponseCodeEnum.VERIFY_TYPE_INVALID);
             }
         }
 
         // 校验 SOAHeader(1) 和 SOAURL(3) 互斥
         if (request.getVerifyType().contains(VerifyTypeEnum.SOA_HEADER.getCode()) && request.getVerifyType().contains(VerifyTypeEnum.SOA_URL.getCode())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERIFY_TYPE_MUTUALLY_EXCLUSIVE.getCode(),
-                    ResponseCodeEnum.VERIFY_TYPE_MUTUALLY_EXCLUSIVE.getMessageZh(),
-                    ResponseCodeEnum.VERIFY_TYPE_MUTUALLY_EXCLUSIVE.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERIFY_TYPE_MUTUALLY_EXCLUSIVE);
         }
 
         // 校验 apiSecret
         if (request.getVerifyType().contains(VerifyTypeEnum.DIGITAL_SIGNATURE.getCode())) {
             if (!StringUtils.hasText(request.getApiSecret())) {
-                throw new BusinessException(
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getCode(),
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getMessageZh(),
-                        ResponseCodeEnum.API_SECRET_REQUIRED.getMessageEn()
-                );
+                throw BusinessException.of(ResponseCodeEnum.API_SECRET_REQUIRED);
             }
             if (!API_SECRET_PATTERN.matcher(request.getApiSecret()).matches()) {
-                throw new BusinessException(
-                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getCode(),
-                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getMessageZh(),
-                        ResponseCodeEnum.API_SECRET_FORMAT_ERROR.getMessageEn()
-                );
+                throw BusinessException.of(ResponseCodeEnum.API_SECRET_FORMAT_ERROR);
             }
         }
     }
@@ -450,11 +436,7 @@ public class AppServiceImpl implements AppService {
         // 从 identity 凭证表查询 ak/sk
         AppIdentity identity = appIdentityMapper.selectByAppId(app.getId());
         if (Objects.isNull(identity)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.APP_IDENTITY_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.APP_IDENTITY_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.APP_IDENTITY_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.APP_IDENTITY_NOT_FOUND);
         }
         AppIdentityVO vo = new AppIdentityVO();
         vo.setAk(identity.getAk());
@@ -475,7 +457,7 @@ public class AppServiceImpl implements AppService {
                 verifyTypeStr = p.getPropertyValue();
             }
             if (AppPropertyConstants.PROP_API_SECRET.equals(p.getPropertyName())) {
-                apiSecret = decryptApiSecret(p.getPropertyValue());
+                apiSecret = p.getPropertyValue();
             }
         }
 
@@ -485,8 +467,8 @@ public class AppServiceImpl implements AppService {
 
         AppVerifyTypeVO vo = new AppVerifyTypeVO();
         vo.setVerifyType(verifyTypes);
-        if (verifyTypes.contains(VerifyTypeEnum.DIGITAL_SIGNATURE.getCode())) {
-            vo.setApiSecret(apiSecret);
+        if (verifyTypes.contains(VerifyTypeEnum.DIGITAL_SIGNATURE.getCode()) && Objects.nonNull(apiSecret)) {
+            vo.setApiSecret(decryptApiSecret(apiSecret));
         }
         return vo;
     }
@@ -499,11 +481,7 @@ public class AppServiceImpl implements AppService {
 
         // 校验是否为存量个人应用
         if (!Objects.equals(app.getAppType(), AppTypeEnum.PERSONAL.getCode()) || !Objects.equals(app.getAppSubType(), AppSubTypeEnum.LEGACY_PERSONAL.getCode())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED.getCode(),
-                    ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED.getMessageZh(),
-                    ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED);
         }
 
         // 校验 EAMAP 绑定条件
@@ -526,11 +504,7 @@ public class AppServiceImpl implements AppService {
         // 从成员表查询当前用户角色
         App app = appMapper.selectByAppId(appId);
         if (Objects.isNull(app)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.APP_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.APP_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.APP_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.APP_NOT_FOUND);
         }
 
         // 从 UserContextHolder 获取当前用户 accountId
@@ -552,18 +526,10 @@ public class AppServiceImpl implements AppService {
      */
     private void validateAppName(String nameCn, String nameEn, String originNameCn, String originNameEn) {
         if (!Objects.equals(nameCn, originNameCn) && appMapper.countByNameCn(nameCn) > 0) {
-            throw new BusinessException(
-                    ResponseCodeEnum.APP_NAME_DUPLICATED.getCode(),
-                    ResponseCodeEnum.APP_NAME_DUPLICATED.getMessageZh(),
-                    ResponseCodeEnum.APP_NAME_DUPLICATED.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.APP_NAME_DUPLICATED);
         }
         if (!Objects.equals(nameEn, originNameEn) && appMapper.countByNameEn(nameEn) > 0) {
-            throw new BusinessException(
-                    ResponseCodeEnum.APP_NAME_DUPLICATED.getCode(),
-                    ResponseCodeEnum.APP_NAME_DUPLICATED.getMessageZh(),
-                    ResponseCodeEnum.APP_NAME_DUPLICATED.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.APP_NAME_DUPLICATED);
         }
     }
 
@@ -604,11 +570,7 @@ public class AppServiceImpl implements AppService {
     private void saveOwnerMember(Long appInternalId, String currentUserId) {
         Employee ownerEmp = employeeMapper.selectByWelinkId(currentUserId);
         if (Objects.isNull(ownerEmp)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.EMPLOYEE_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.EMPLOYEE_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.EMPLOYEE_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.EMPLOYEE_NOT_FOUND);
         }
         AppMember ownerMember = new AppMember();
         ownerMember.setId(idGenerator.nextId());
@@ -661,31 +623,19 @@ public class AppServiceImpl implements AppService {
     private Eamap validateEamapBinding(String eamapAppCode) {
         // 校验 EAMAP 是否已被其他应用绑定
         if (appMapper.countByPropertyNameAndValue(AppPropertyConstants.PROP_EAMAP_CODE, eamapAppCode) > 0) {
-            throw new BusinessException(
-                    ResponseCodeEnum.EAMAP_ALREADY_BOUND.getCode(),
-                    ResponseCodeEnum.EAMAP_ALREADY_BOUND.getMessageZh(),
-                    ResponseCodeEnum.EAMAP_ALREADY_BOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.EAMAP_ALREADY_BOUND);
         }
 
         // 校验 EAMAP 编码存在
         Eamap eamap = eamapMapper.selectByEamapAppCode(eamapAppCode);
         if (Objects.isNull(eamap)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.EAMAP_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.EAMAP_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.EAMAP_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.EAMAP_NOT_FOUND);
         }
 
         // 校验当前用户是 EAMAP 负责人
         String currentUserId = UserContextHolder.getUserId();
         if (!currentUserId.equals(eamap.getOwnerAccountId())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.NOT_EAMAP_OWNER.getCode(),
-                    ResponseCodeEnum.NOT_EAMAP_OWNER.getMessageZh(),
-                    ResponseCodeEnum.NOT_EAMAP_OWNER.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.NOT_EAMAP_OWNER);
         }
 
         return eamap;

@@ -48,9 +48,6 @@ public enum ResponseCodeEnum {
     MEMBER_ALREADY_EXISTS("409200", "成员已存在", "Member already exists"),
     MEMBER_NOT_FOUND("404200", "成员不存在", "Member not found"),
     CANNOT_OPERATE_OWNER("409207", "不能直接添加或删除Owner，请通过转移流程", "Cannot directly add or remove Owner; use the transfer flow"),
-    NO_ADD_ROLE_PERMISSION("403201", "当前用户角色无添加该角色成员的权限", "No permission to add member with this role"),
-    NO_DELETE_PERMISSION("403202", "当前用户角色无删除成员权限", "No permission to delete member"),
-    NO_DELETE_ROLE_PERMISSION("403203", "当前用户角色无删除该角色成员的权限", "No permission to delete member with this role"),
     NO_TRANSFER_PERMISSION("403204", "仅Owner可操作", "Only the Owner can perform this action"),
     CANNOT_TRANSFER_TO_SELF("409202", "不能将Owner转移给自己", "Cannot transfer Owner to yourself"),
     TARGET_NOT_MEMBER("409203", "目标用户不是应用成员", "Target user is not an application member"),
@@ -61,7 +58,6 @@ public enum ResponseCodeEnum {
     // ===== 能力管理业务错误 (3.x 接口) =====
     ABILITY_TYPE_INVALID("400104", "能力类型非法", "Invalid ability type"),
     ABILITY_ALREADY_SUBSCRIBED("409400", "能力已订阅", "Ability already subscribed"),
-    NO_ABILITY_PERMISSION("403201", "非成员无权限", "No permission for ability operation"),
 
     // ===== 版本管理业务错误 (4.x 接口) =====
     VERSION_CODE_FORMAT_ERROR("400105", "版本号格式错误", "Version code format error"),

@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.version.mapper;
 
 import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
+import com.xxx.it.works.wecode.v2.modules.version.entity.VersionProperty;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -28,9 +29,9 @@ public interface AppVersionMapper {
             @Param("appId") Long appId,
             @Param("versionCode") String versionCode);
 
-    List<AppVersion> selectByAppIdAndStatus(
+    List<AppVersion> selectByAppIdAndStatuses(
             @Param("appId") Long appId,
-            @Param("status") Integer status);
+            @Param("statuses") List<Integer> statuses);
 
     int insert(AppVersion version);
 
@@ -49,11 +50,7 @@ public interface AppVersionMapper {
     /**
      * 写入版本属性（K-V）
      */
-    int insertProperty(
-            @Param("id") Long id,
-            @Param("parentId") Long parentId,
-            @Param("propertyName") String propertyName,
-            @Param("propertyValue") String propertyValue);
+    int insertProperty(VersionProperty property);
 
     /**
      * 按版本 ID + 属性名查属性值

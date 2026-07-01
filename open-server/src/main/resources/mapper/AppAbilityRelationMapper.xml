@@ -16,33 +16,20 @@
         <result column="last_update_time" property="lastUpdateTime"/>
     </resultMap>
 
+    <sql id="Base_Column_List">
+        id, app_id, ability_id, ability_type, tenant_id, status,
+        create_by, create_time, last_update_by, last_update_time
+    </sql>
+
     <select id="selectByAppId" resultMap="AppAbilityRelationResultMap">
-        SELECT id,
-               app_id,
-               ability_id,
-               ability_type,
-               tenant_id,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_ability_relation_t
         WHERE app_id = #{appId,jdbcType=BIGINT}
           AND status = 1
     </select>
 
     <select id="selectByAppIdAndAbilityType" resultMap="AppAbilityRelationResultMap">
-        SELECT id,
-               app_id,
-               ability_id,
-               ability_type,
-               tenant_id,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_ability_relation_t
         WHERE app_id = #{appId,jdbcType=BIGINT}
           AND ability_type = #{abilityType,jdbcType=INTEGER}
@@ -50,16 +37,7 @@
     </select>
 
     <select id="selectById" resultMap="AppAbilityRelationResultMap">
-        SELECT id,
-               app_id,
-               ability_id,
-               ability_type,
-               tenant_id,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_ability_relation_t
         WHERE id = #{id,jdbcType=BIGINT}
     </select>

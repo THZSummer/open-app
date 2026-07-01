@@ -120,27 +120,22 @@ public class AbilityServiceImpl implements AbilityService {
 
         Integer abilityType = request.getAbilityType();
         if (!AbilityTypeEnum.isValidCode(abilityType)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.ABILITY_TYPE_INVALID.getCode(),
-                    ResponseCodeEnum.ABILITY_TYPE_INVALID.getMessageZh(),
-                    ResponseCodeEnum.ABILITY_TYPE_INVALID.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.ABILITY_TYPE_INVALID);
         }
 
         // 校验是否已订阅
         if (Objects.nonNull(appAbilityRelationMapper.selectByAppIdAndAbilityType(internalAppId, abilityType))) {
-            throw new BusinessException(
-                    ResponseCodeEnum.ABILITY_ALREADY_SUBSCRIBED.getCode(),
-                    ResponseCodeEnum.ABILITY_ALREADY_SUBSCRIBED.getMessageZh(),
-                    ResponseCodeEnum.ABILITY_ALREADY_SUBSCRIBED.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.ABILITY_ALREADY_SUBSCRIBED);
         }
 
         // 从能力主表查询 abilityId
         Ability ability = abilityMapper.selectAll().stream()
                 .filter(a -> a.getAbilityType().equals(abilityType))
                 .findFirst().orElse(null);
-        Long abilityId = Objects.nonNull(ability) ? ability.getId() : (long) abilityType;
+        if (ability == null) {
+            throw BusinessException.of(ResponseCodeEnum.ABILITY_TYPE_INVALID);
+        }
+        Long abilityId = ability.getId();
 
         AppAbilityRelation relation = new AppAbilityRelation();
         relation.setId(idGenerator.nextId());

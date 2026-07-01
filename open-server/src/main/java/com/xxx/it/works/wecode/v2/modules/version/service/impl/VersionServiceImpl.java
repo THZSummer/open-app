@@ -2,12 +2,14 @@ package com.xxx.it.works.wecode.v2.modules.version.service.impl;
 
 import com.xxx.it.works.wecode.v2.common.constants.CommonConstants;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
+import com.xxx.it.works.wecode.v2.common.enums.StatusEnum;
 import com.xxx.it.works.wecode.v2.common.enums.ResponseCodeEnum;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.file.entity.FileEntity;
 import com.xxx.it.works.wecode.v2.common.file.mapper.FileMapper;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.common.util.CommonUtils;
 import com.xxx.it.works.wecode.v2.modules.ability.constants.AbilityPropertyConstants;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.Ability;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
@@ -25,6 +27,7 @@ import com.xxx.it.works.wecode.v2.modules.version.constants.VersionPropertyConst
 import com.xxx.it.works.wecode.v2.modules.version.dto.CreateVersionRequest;
 import com.xxx.it.works.wecode.v2.modules.version.dto.UpdateVersionRequest;
 import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
+import com.xxx.it.works.wecode.v2.modules.version.entity.VersionProperty;
 import com.xxx.it.works.wecode.v2.modules.version.enums.VersionStatusEnum;
 import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.version.service.VersionService;
@@ -35,13 +38,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 版本服务实现
@@ -140,15 +146,12 @@ public class VersionServiceImpl implements VersionService {
         validateVersionCode(internalAppId, request.getVersionCode(), null, null);
 
         // 校验是否存在待发布/审批中/审批未通过的版本
-        List<AppVersion> pendingVersions = appVersionMapper.selectByAppIdAndStatus(internalAppId, VersionStatusEnum.PENDING_RELEASE.getCode());
-        List<AppVersion> reviewingVersions = appVersionMapper.selectByAppIdAndStatus(internalAppId, VersionStatusEnum.UNDER_REVIEW.getCode());
-        List<AppVersion> rejectedVersions = appVersionMapper.selectByAppIdAndStatus(internalAppId, VersionStatusEnum.REJECTED.getCode());
-        if (!pendingVersions.isEmpty() || !reviewingVersions.isEmpty() || !rejectedVersions.isEmpty()) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_PENDING_EXISTS.getCode(),
-                    ResponseCodeEnum.VERSION_PENDING_EXISTS.getMessageZh(),
-                    ResponseCodeEnum.VERSION_PENDING_EXISTS.getMessageEn()
-            );
+        List<AppVersion> pendingVersions = appVersionMapper.selectByAppIdAndStatuses(internalAppId,
+                List.of(VersionStatusEnum.PENDING_RELEASE.getCode(),
+                        VersionStatusEnum.UNDER_REVIEW.getCode(),
+                        VersionStatusEnum.REJECTED.getCode()));
+        if (!CollectionUtils.isEmpty(pendingVersions)) {
+            throw BusinessException.of(ResponseCodeEnum.VERSION_PENDING_EXISTS);
         }
 
         String currentUser = UserContextHolder.getUserId();
@@ -170,7 +173,7 @@ public class VersionServiceImpl implements VersionService {
                 .filter(r -> Objects.nonNull(r.getAbilityType()) && !Objects.equals(r.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
                 .map(r -> String.valueOf(r.getAbilityId()))
                 .collect(java.util.stream.Collectors.joining(","));
-        appVersionMapper.insertProperty(idGenerator.nextId(), version.getId(), VersionPropertyConstants.PROP_ABILITY_IDS, abilityIds);
+        appVersionMapper.insertProperty(createVersionProperty(version.getId(), VersionPropertyConstants.PROP_ABILITY_IDS, abilityIds));
 
         return String.valueOf(version.getId());
     }
@@ -181,11 +184,7 @@ public class VersionServiceImpl implements VersionService {
 
         AppVersion version = appVersionMapper.selectById(versionId);
         if (Objects.isNull(version)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_NOT_FOUND);
         }
 
         AppVersionDetailVO vo = new AppVersionDetailVO();
@@ -196,28 +195,32 @@ public class VersionServiceImpl implements VersionService {
         vo.setStatus(version.getStatus());
 
         // 加载版本关联的能力列表（含图标）
-        vo.setAbilityList(buildAbilityList(version.getId(), versionId));
+        vo.setAbilityList(buildAbilityList(version.getId()));
 
         return vo;
     }
 
     /**
-     * 解析能力ID字符串 → 加载能力详情 → 组装 VO 列表
+     * 解析能力ID字符串 → 批量加载能力详情 → 组装 VO 列表
      */
-    private List<AppVersionAbilityVO> buildAbilityList(Long versionDbId, Long versionId) {
+    private List<AppVersionAbilityVO> buildAbilityList(Long versionDbId) {
         String abilityIdsStr = appVersionMapper.selectPropertyValue(versionDbId, VersionPropertyConstants.PROP_ABILITY_IDS);
         if (!StringUtils.hasText(abilityIdsStr)) {
             return Collections.emptyList();
         }
 
+        // 批量查能力详情（selectAll 数据量不大，内存过滤）
+        Map<Long, Ability> abilityMap = abilityMapper.selectAll().stream()
+                .collect(Collectors.toMap(Ability::getId, a -> a));
+
         List<AppVersionAbilityVO> list = new ArrayList<>();
         for (String idStr : abilityIdsStr.split(",")) {
-            Long abilityId = parseLongSafe(idStr.trim(), versionId);
+            Long abilityId = CommonUtils.parseLongSafe(idStr.trim());
             if (abilityId == null) {
                 continue;
             }
 
-            Ability ability = abilityMapper.selectById(abilityId);
+            Ability ability = abilityMap.get(abilityId);
             if (ability == null) {
                 continue;
             }
@@ -230,21 +233,6 @@ public class VersionServiceImpl implements VersionService {
             list.add(vo);
         }
         return list;
-    }
-
-    /**
-     * 安全解析能力ID，解析失败返回 null 并记录日志
-     */
-    private Long parseLongSafe(String str, Long versionId) {
-        if (str.isEmpty()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(str);
-        } catch (NumberFormatException e) {
-            log.warn("Failed to parse version ability ID: versionId={}, abilityId={}", versionId, str, e);
-            return null;
-        }
     }
 
     /**
@@ -269,11 +257,7 @@ public class VersionServiceImpl implements VersionService {
 
         AppVersion version = appVersionMapper.selectById(versionId);
         if (Objects.isNull(version) || !Objects.equals(version.getStatus(), VersionStatusEnum.PENDING_RELEASE.getCode())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE.getCode(),
-                    ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE.getMessageZh(),
-                    ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE);
         }
 
         String currentUser = UserContextHolder.getUserId();
@@ -303,11 +287,7 @@ public class VersionServiceImpl implements VersionService {
 
         AppVersion version = appVersionMapper.selectById(versionId);
         if (Objects.isNull(version) || !Objects.equals(version.getStatus(), VersionStatusEnum.UNDER_REVIEW.getCode())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY.getCode(),
-                    ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY.getMessageZh(),
-                    ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY);
         }
 
         String currentUser = UserContextHolder.getUserId();
@@ -316,11 +296,7 @@ public class VersionServiceImpl implements VersionService {
         ApprovalRecord pendingRecord = approvalRecordMapper.selectLatestPendingByBusiness(
                 ApprovalEngine.BusinessType.APP_VERSION_PUBLISH, versionId);
         if (Objects.isNull(pendingRecord)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY.getCode(),
-                    ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY.getMessageZh(),
-                    ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_WITHDRAW_REVIEW_ONLY);
         }
         approvalEngine.cancel(pendingRecord.getId(), currentUser);
         log.info("Version publish approval cancelled: versionId={}", versionId);
@@ -333,19 +309,11 @@ public class VersionServiceImpl implements VersionService {
 
         AppVersion version = appVersionMapper.selectById(versionId);
         if (Objects.isNull(version)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_NOT_FOUND);
         }
 
         if (!Objects.equals(version.getStatus(), VersionStatusEnum.PENDING_RELEASE.getCode()) && !Objects.equals(version.getStatus(), VersionStatusEnum.REJECTED.getCode())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_DELETE_NOT_ALLOWED.getCode(),
-                    ResponseCodeEnum.VERSION_DELETE_NOT_ALLOWED.getMessageZh(),
-                    ResponseCodeEnum.VERSION_DELETE_NOT_ALLOWED.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_DELETE_NOT_ALLOWED);
         }
 
         appVersionMapper.deleteById(versionId);
@@ -359,19 +327,11 @@ public class VersionServiceImpl implements VersionService {
 
         AppVersion version = appVersionMapper.selectById(versionId);
         if (Objects.isNull(version)) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getCode(),
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getMessageZh(),
-                    ResponseCodeEnum.VERSION_NOT_FOUND.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_NOT_FOUND);
         }
 
         if (!Objects.equals(version.getStatus(), VersionStatusEnum.PENDING_RELEASE.getCode())) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE.getCode(),
-                    ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE.getMessageZh(),
-                    ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_STATUS_NOT_EDITABLE);
         }
 
         if (Objects.nonNull(request.getVersionCode())) {
@@ -402,31 +362,36 @@ public class VersionServiceImpl implements VersionService {
     private void validateVersionCode(Long internalAppId, String versionCode, Long excludeId, String currentVersionCode) {
         // 1. 格式校验
         if (!VERSION_PATTERN.matcher(versionCode).matches()) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_CODE_FORMAT_ERROR.getCode(),
-                    ResponseCodeEnum.VERSION_CODE_FORMAT_ERROR.getMessageZh(),
-                    ResponseCodeEnum.VERSION_CODE_FORMAT_ERROR.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_CODE_FORMAT_ERROR);
         }
 
         // 2. 唯一性校验（编辑时，版本号未改动则跳过）
         if (!versionCode.equals(currentVersionCode)
                 && Objects.nonNull(appVersionMapper.selectByAppIdAndVersionCode(internalAppId, versionCode))) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_CODE_DUPLICATED.getCode(),
-                    ResponseCodeEnum.VERSION_CODE_DUPLICATED.getMessageZh(),
-                    ResponseCodeEnum.VERSION_CODE_DUPLICATED.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_CODE_DUPLICATED);
         }
 
         // 3. 递增校验：必须高于最近创建的版本号
         String latestVersionCode = appVersionMapper.selectLatestVersionCodeExcludeId(internalAppId, excludeId);
         if (Objects.nonNull(latestVersionCode) && compareSemVer(versionCode, latestVersionCode) <= 0) {
-            throw new BusinessException(
-                    ResponseCodeEnum.VERSION_CODE_NOT_INCREMENTAL.getCode(),
-                    ResponseCodeEnum.VERSION_CODE_NOT_INCREMENTAL.getMessageZh(),
-                    ResponseCodeEnum.VERSION_CODE_NOT_INCREMENTAL.getMessageEn()
-            );
+            throw BusinessException.of(ResponseCodeEnum.VERSION_CODE_NOT_INCREMENTAL);
         }
+    }
+
+    /**
+     * 构造版本属性实体
+     */
+    private VersionProperty createVersionProperty(Long parentId, String name, String value) {
+        String currentUser = UserContextHolder.getUserId();
+        VersionProperty prop = new VersionProperty();
+        prop.setId(idGenerator.nextId());
+        prop.setParentId(parentId);
+        prop.setPropertyName(name);
+        prop.setPropertyValue(value);
+        prop.setTenantId(CommonConstants.DEFAULT_TENANT_ID);
+        prop.setStatus(StatusEnum.ENABLED.getCode());
+        prop.setCreateBy(currentUser);
+        prop.setLastUpdateBy(currentUser);
+        return prop;
     }
 }

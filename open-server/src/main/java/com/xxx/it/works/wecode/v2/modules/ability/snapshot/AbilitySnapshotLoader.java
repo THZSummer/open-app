@@ -35,7 +35,7 @@ public class AbilitySnapshotLoader implements EntitySnapshotLoader {
         AddAbilityRequest req = CommonUtils.findArg(joinPoint, AddAbilityRequest.class);
         if (req != null) {
             Map<String, Object> data = new LinkedHashMap<>();
-            AbilityTypeEnum abilityType = findAbilityType(req.getAbilityType());
+            AbilityTypeEnum abilityType = AbilityTypeEnum.fromCode(req.getAbilityType());
             data.put("abilityTypeDesc", abilityType != null ? abilityType.getDesc() : String.valueOf(req.getAbilityType()));
             return data;
         }
@@ -50,17 +50,5 @@ public class AbilitySnapshotLoader implements EntitySnapshotLoader {
     @Override
     public Object loadById(Long id) {
         return abilityRelationMapper.selectById(id);
-    }
-
-    private AbilityTypeEnum findAbilityType(Integer code) {
-        if (code == null) {
-            return null;
-        }
-        for (AbilityTypeEnum e : AbilityTypeEnum.values()) {
-            if (e.getCode() == code) {
-                return e;
-            }
-        }
-        return null;
     }
 }
