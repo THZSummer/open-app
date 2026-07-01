@@ -25,9 +25,123 @@ connector-api 有两个面向外部/内部的执行接口：
 
 ---
 
-## 2. 现状分析
+## 2. 接口架构设计
 
-### 2.1 调试接口（当前）
+### 2.1 共享与隔离
+
+调试和调用共享**节点执行层**（NodeExecutor），隔离**流程控制层**（FlowService）。
+
+```
+                          ┌──────────────────────────┐
+                          │    NodeExecutor (共享)     │
+                          │  ConnectorNodeExecutor    │
+                          │  ScriptNodeExecutor       │
+                          │  ParallelBranchExecutor   │
+                          │  TriggerNodeExecutor      │
+                          │  ExitNodeExecutor         │
+                          └──────────┬───────────────┘
+                                     │ 统一错误码 + 消息模板
+                          ┌──────────┴───────────────┐
+                          │                          │
+              ┌───────────▼──────────┐  ┌────────────▼──────────┐
+              │  ReactiveSequential  │  │     DagScheduler      │
+              │     Executor         │  │                        │
+              │  (线性拓扑)           │  │  (DAG 拓扑 + 并行分支)   │
+              └───────────┬──────────┘  └────────────┬──────────┘
+                          │                          │
+              ┌───────────▼──────────┐  ┌────────────▼──────────┐
+              │  FlowVersionDebug    │  │   FlowInvokeService   │
+              │     Service          │  │                        │
+              │                      │  │                        │
+              │  前置校验:            │  │  前置校验:              │
+              │  • 版本存在性         │  │  • 流存在性+绑定版本    │
+              │  • 版本状态(非已失效)  │  │  • 运行状态(RUNNING)   │
+              │  • 编排非空           │  │  • SYSTOKEN 认证       │
+              │  • 版本状态(草稿/已发布)│  │  • 入站限流             │
+              │                      │  │                        │
+              │  执行策略:            │  │  执行策略:              │
+              │  • 不写执行记录        │  │  • 写执行记录 + 步骤日志  │
+              │  • 不走缓存            │  │  • 命中/写入响应缓存     │
+              │  • 不走限流            │  │  • FIFO 清理旧记录      │
+              │  • 跳过认证            │  │  • triggerType = 1     │
+              │  • triggerType = 3    │  │  • isDebug = false     │
+              │  • isDebug = true     │  │                        │
+              │                      │  │                        │
+              │  返回格式:            │  │  返回格式:              │
+              │  ExecutionResult JSON │  │  透传 HTTP (body+header)│
+              └──────────────────────┘  └────────────────────────┘
+```
+
+### 2.2 业务差异清单
+
+调试和调用有 10 项合理业务差异、6 项应统一的不合理差异。
+
+#### 合理差异（两套服务路径，逻辑不同）
+
+| # | 维度 | 调试 | 调用 | 理由 |
+|---|------|:---:|:---:|------|
+| 1 | 版本绑定 | 传入 versionId | deployed_version_id | 调试可指定任意版本 |
+| 2 | 运行状态 | 不检查 lifecycle_status | 必须 RUNNING(2) | 调试不需要流运行 |
+| 3 | 执行记录 | 不写 | 写 execution_record + step_log | 调试不产生运维数据 |
+| 4 | 认证校验 | 跳过 | SYSTOKEN 白名单 | 调试不需要外部凭证 |
+| 5 | 入站限流 | 跳过 | QPS/并发限制 | 调试不限制频率 |
+| 6 | 响应缓存 | 跳过 | 命中/写入 cache | 调试每次真实执行 |
+| 7 | 输入格式 | 扁平 Map | {header,query,body} 结构化 | 调试简化输入 |
+| 8 | 响应格式 | ExecutionResult JSON（含 steps） | 透传 HTTP body + X- 响应头 | 调试要看到步骤详情 |
+| 9 | isDebug | true | false | 节点层通过此标记判断行为 |
+| 10 | 执行引擎 | ReactiveSequentialExecutor（线性） | DagScheduler（DAG + 并行） | 调试不需要并行拓扑 |
+
+#### 不合理差异（应统一）
+
+| # | 维度 | 调试 | 调用 | 应改为 |
+|---|------|:---:|:---:|------|
+| 11 | 错误码 | 6002/6004 | HTTP 码 (404/403/500) | 统一使用本文档第 5 章错误码 |
+| 12 | 错误消息 | 底层异常透传 | 字符串匹配分类 | 统一从 errorInfo 读取 |
+| 13 | 错误包装 | onErrorResume 重新包 | classifyError 重新包 | 节点层产出，两边透传 |
+| 14 | isDebug 字段 | 无统一字段，硬编码 | 硬编码 | ExecutionContext.isDebug |
+| 15 | 编排解析 | 只读 nodes | 完整解析 flowConfig | 统一解析逻辑 |
+| 16 | NodeExecutor 注入 | 构造器逐个注入 | List 自动收集 | 统一注册机制 |
+
+### 2.3 isDebug 标记
+
+在 `ExecutionContext` 中增加 `isDebug` 字段，替代当前分散在各处的硬编码判断。
+
+```java
+public class ExecutionContext {
+    private boolean debug;  // true=调试模式, false=调用模式
+    // ...
+}
+```
+
+| 使用位置 | 判断逻辑 | 影响 |
+|---------|---------|------|
+| DagScheduler | `if (ctx.isDebug()) skip = true` | 跳过执行记录写入 |
+| ConnectorNodeExecutor | `if (ctx.isDebug()) skip auth validation` | 跳过认证校验 |
+| ScriptNodeExecutor | `if (ctx.isDebug()) skip statementLimit` | 放宽脚本资源限制 |
+| FlowInvokeService | `if (!ctx.isDebug()) write cache` | 仅调用模式写缓存 |
+| FlowVersionDebugService | `ctx.setDebug(true)` | 创建 context 时标记 |
+
+### 2.4 错误码统一路径
+
+节点执行器（共享层）产出细分错误码，调试和调用两侧都不再重新包装，只做格式转换：
+
+```
+节点执行器产出:
+  NodeOutput.errorInfo { code: 63001, messageZh: "脚本节点[xxx]语法错误...", messageEn: "..." }
+       │
+       ├── 调试侧 → ExecutionResult.errorInfo = NodeOutput.errorInfo（原样透传）
+       │
+       └── 调用侧 → X-Code: 63001, X-Message-Zh: NodeOutput.messageZh
+                    HTTP 状态码按 code 首段映射: 63xxx→502
+```
+
+两侧不再各自 `onErrorResume` 重新生成 errorInfo。
+
+---
+
+## 3. 现状分析
+
+### 3.1 调试接口（当前）
 
 **返回方式**：始终 HTTP 200，错误封装在 `ExecutionResult` JSON body 中。
 
@@ -59,7 +173,7 @@ connector-api 有两个面向外部/内部的执行接口：
 
 **核心问题**：前置校验不足，几乎所有错误都进入执行流程后报 6002，用户看到的全是底层技术异常 message。
 
-### 2.2 调用接口（当前）
+### 3.2 调用接口（当前）
 
 **返回方式**：HTTP 状态码 + X- 响应头，body 为 null。
 
@@ -82,7 +196,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 
 **核心问题**：`classifyError()` 靠字符串匹配异常 message，漏匹配就归为 500。"流未运行"应该用 409，但匹配不到正确分支。
 
-### 2.3 错误码现状对比
+### 3.3 错误码现状对比
 
 | 错误类型 | 调试接口 code | 调用接口 X-Code | 统一？ |
 |---------|:---:|:---:|:---:|
@@ -99,9 +213,9 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 
 ---
 
-## 3. 场景矩阵
+## 4. 场景矩阵
 
-### 3.1 调试独有场景（调用不会有）
+### 4.1 调试独有场景（调用不会有）
 
 | 场景 | 原因 | 时机 |
 |------|------|:---:|
@@ -110,7 +224,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 版本状态不支持调试 | 仅草稿(1)和已发布(5)可调试，待审批(2)/已撤回(3)/已驳回(4)不可调试 | 前置 |
 | 编排配置为空 | 草稿版本编排可能为空 | 前置 |
 
-### 3.2 调用独有场景（调试不会有）
+### 4.2 调用独有场景（调试不会有）
 
 | 场景 | 原因 | 时机 |
 |------|------|:---:|
@@ -120,7 +234,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | SYSTOKEN 认证失败 | 调用需校验凭证白名单；调试不校验 | 前置 |
 | 入站限流 | 调用有限流保护；调试不限流 | 前置 |
 
-### 3.3 共用场景（两个接口都可能）
+### 4.3 共用场景（两个接口都可能）
 
 | 场景 | 时机 |
 |------|:---:|
@@ -134,9 +248,9 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 
 ---
 
-## 4. 统一错误码设计
+## 5. 统一错误码设计
 
-### 4.1 错误码分层
+### 5.1 错误码分层
 
 | 码段 | 含义 | 适用场景 |
 |:---:|------|------|
@@ -154,7 +268,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 66xxx | 执行层 — 出口节点 | 执行中：输出映射错误 |
 | 500 | 内部未知错误 | 兜底：无法归类的系统异常 |
 
-### 4.2 前置校验错误（调试 + 调用共用 HTTP 码）
+### 5.2 前置校验错误（调试 + 调用共用 HTTP 码）
 
 | code | 场景 | messageZh 模板 | 调试? | 调用? |
 |:---:|------|-----------|:---:|:---:|
@@ -173,7 +287,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 422 | 连接器版本已失效 | "连接器[{连接器名}]版本[{版本号}]已失效，请更新编排引用" | ✅ | ✅ |
 | 422 | 连接器已失效 | "连接器[{连接器名}]已失效，请更新编排引用后再运行" | ✅ | ✅ |
 
-### 4.3 触发器节点 (trigger)
+### 5.3 触发器节点 (trigger)
 
 用户在页面上配置：触发方式（HTTP）、SYSTOKEN 认证
 
@@ -183,7 +297,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 61011 | 触发凭证不存在 | "触发器节点的 SYSTOKEN 凭证不存在或已过期" |
 | 61012 | 触发凭证不在白名单 | "调用凭证不在白名单中，请检查触发器节点的 SYSTOKEN 配置" |
 
-### 4.4 连接器节点 (connector)
+### 5.4 连接器节点 (connector)
 
 用户在页面上配置：连接器选择、版本选择、超时时间、入参映射、认证配置
 
@@ -210,7 +324,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 62006 | 请求体序列化失败 | "连接器[{连接器名}]请求参数序列化失败：{detail}" |
 | 62007 | 响应体过大 | "连接器[{连接器名}]下游响应体超过 {max} 字节，已截断" |
 
-### 4.5 脚本节点 (script)
+### 5.5 脚本节点 (script)
 
 用户在页面上配置：脚本源码、超时时间
 
@@ -233,7 +347,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 63004 | 脚本返回值不是对象 | "脚本节点[{节点名}]返回值不是对象类型，请确保 return 一个对象 map" |
 | 63005 | 访问不存在的上游字段 | "脚本节点[{节点名}]访问了不存在的上游字段：{field}" |
 
-### 4.6 并行处理节点 (parallel)
+### 5.6 并行处理节点 (parallel)
 
 用户在页面上配置：分支数（2~8）、各分支的编排节点
 
@@ -246,7 +360,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 65002 | 分支执行超时 | "并行处理节点分支[{index}]执行超时" |
 | 65003 | 所有分支均失败 | "并行处理节点所有 {total} 个分支均执行失败" |
 
-### 4.7 出口节点 (exit)
+### 5.7 出口节点 (exit)
 
 用户在页面上配置：响应体映射、响应头映射、状态码映射
 
@@ -257,7 +371,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 66001 | 响应体序列化失败 | "出口节点响应体序列化失败：{detail}" |
 | 66002 | 响应头设置失败 | "出口节点响应头[{headerName}]设置失败：{detail}" |
 
-### 4.8 编排通用错误
+### 5.8 编排通用错误
 
 | code | 场景 | messageZh 模板 |
 |:---:|------|-----------|
@@ -266,7 +380,7 @@ X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 | 61003 | 出口节点缺失 | "编排中缺少出口节点" |
 | 61004 | 节点间边关系缺失 | "节点[{节点名}]缺少上游/下游连接" |
 
-### 4.9 返回格式
+### 5.9 返回格式
 
 #### 调试接口（始终 HTTP 200）
 
@@ -313,9 +427,9 @@ X-Status: 1
 
 ---
 
-## 5. 错误消息规范
+## 6. 错误消息规范
 
-### 5.1 前置校验错误
+### 6.1 前置校验错误
 
 前置校验在执行编排之前完成，消息直接返回给调用方，不应包含底层技术细节。
 
@@ -325,7 +439,7 @@ X-Status: 1
 | 告诉用户下一步 | "编排配置为空，请先完成编排后再调试" | "NullPointerException: nodes is null" |
 | 指明具体对象 | "版本状态为「待审批」，仅草稿和已发布版本可调试" | "Invalid status" |
 
-### 5.2 执行层错误
+### 6.2 执行层错误
 
 执行层错误发生在编排执行过程中，消息需包含：
 - **定位信息**：哪个节点出错（节点名/连接器名/脚本节点名）
@@ -338,13 +452,13 @@ X-Status: 1
 | 含上下文 | "脚本节点[data_transform]执行失败：SyntaxError at line 3" | "Script execution failed" |
 | 含关键数据 | "节点[conn_1]执行超时（超过5000ms）" | "timeout" |
 
-### 5.3 下游错误截断
+### 6.3 下游错误截断
 
 连接器节点调用下游返回的错误 body 可能很长，截断至 **512 字符**，保留关键信息。
 
 ---
 
-## 6. 实现计划
+## 7. 实现计划
 
 ### Phase 1：前置校验补全（调试接口）
 
