@@ -97,6 +97,7 @@
         <set>
             <if test="nameCn != null">name_cn = #{nameCn},</if>
             <if test="nameEn != null">name_en = #{nameEn},</if>
+            <if test="code != null">code = #{code},</if>
             <if test="descriptionCn != null">description_cn = #{descriptionCn},</if>
             <if test="descriptionEn != null">description_en = #{descriptionEn},</if>
             app_id = #{appId},

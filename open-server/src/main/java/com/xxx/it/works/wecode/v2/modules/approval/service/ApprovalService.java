@@ -210,12 +210,15 @@ public class ApprovalService {
         }
 
         // 更新前检查 code+appId 唯一性（排除自身）
-        String effectiveCode = flow.getCode();
+        String effectiveCode = request.getCode() != null ? request.getCode() : flow.getCode();
         Long effectiveAppId = request.getAppId() != null ? request.getAppId() : flow.getAppId();
         if (flowMapper.countByCodeAndAppIdExcludeId(effectiveCode, effectiveAppId, id) > 0) {
             throw new BusinessException("409", "流程编码已存在", "Flow code already exists for this app");
         }
 
+        if (request.getCode() != null) {
+            flow.setCode(request.getCode());
+        }
         flow.setNameCn(request.getNameCn());
         flow.setNameEn(request.getNameEn());
         flow.setAppId(request.getAppId());
