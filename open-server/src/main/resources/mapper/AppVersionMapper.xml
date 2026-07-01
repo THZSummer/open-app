@@ -16,18 +16,13 @@
         <result column="last_update_time" property="lastUpdateTime"/>
     </resultMap>
 
+    <sql id="Base_Column_List">
+        id, app_id, version_desc_cn, version_desc_en, version_code, tenant_id,
+        status, create_by, create_time, last_update_by, last_update_time
+    </sql>
+
     <select id="selectByAppId" resultMap="AppVersionResultMap">
-        SELECT id,
-               app_id,
-               version_desc_cn,
-               version_desc_en,
-               version_code,
-               tenant_id,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_version_t
         WHERE app_id = #{appId,jdbcType=BIGINT}
         ORDER BY create_time DESC
@@ -40,54 +35,27 @@
         WHERE app_id = #{appId,jdbcType=BIGINT}
     </select>
 
+    <select id="selectByAppIdAndStatuses" resultMap="AppVersionResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_app_version_t
+        WHERE app_id = #{appId,jdbcType=BIGINT}
+          AND status IN
+        <foreach collection="statuses" item="s" open="(" separator="," close=")">
+            #{s}
+        </foreach>
+    </select>
+
     <select id="selectById" resultMap="AppVersionResultMap">
-        SELECT id,
-               app_id,
-               version_desc_cn,
-               version_desc_en,
-               version_code,
-               tenant_id,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_version_t
         WHERE id = #{id,jdbcType=BIGINT}
     </select>
 
     <select id="selectByAppIdAndVersionCode" resultMap="AppVersionResultMap">
-        SELECT id,
-               app_id,
-               version_desc_cn,
-               version_desc_en,
-               version_code,
-               tenant_id,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_version_t
         WHERE app_id = #{appId,jdbcType=BIGINT}
           AND version_code = #{versionCode,jdbcType=VARCHAR}
-    </select>
-
-    <select id="selectByAppIdAndStatus" resultMap="AppVersionResultMap">
-        SELECT id,
-               app_id,
-               version_desc_cn,
-               version_desc_en,
-               version_code,
-               tenant_id,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
-        FROM openplatform_app_version_t
-        WHERE app_id = #{appId,jdbcType=BIGINT}
-          AND status = #{status,jdbcType=INTEGER}
     </select>
 
     <insert id="insert">
@@ -133,7 +101,8 @@
         INSERT INTO openplatform_app_version_p_t (id, parent_id, property_name, property_value, tenant_id, status,
                                                   create_by, create_time, last_update_by, last_update_time)
         VALUES (#{id,jdbcType=BIGINT}, #{parentId,jdbcType=BIGINT}, #{propertyName,jdbcType=VARCHAR},
-                #{propertyValue,jdbcType=VARCHAR}, 'default', 1, 'system', NOW(3), 'system', NOW(3))
+                #{propertyValue,jdbcType=VARCHAR}, #{tenantId,jdbcType=VARCHAR}, #{status,jdbcType=INTEGER},
+                #{createBy,jdbcType=VARCHAR}, NOW(3), #{lastUpdateBy,jdbcType=VARCHAR}, NOW(3))
     </insert>
 
     <select id="selectPropertyValue" resultType="string">

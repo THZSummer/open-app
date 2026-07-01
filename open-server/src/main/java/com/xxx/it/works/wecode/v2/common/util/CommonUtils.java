@@ -17,6 +17,24 @@ public final class CommonUtils {
     }
 
     /**
+     * 安全解析字符串为 Long，解析失败返回 null。
+     *
+     * @param str 数字字符串，允许为空
+     * @return Long 值，空串或解析失败返回 null
+     */
+    public static Long parseLongSafe(String str) {
+        if (str == null || str.isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(str);
+        } catch (NumberFormatException e) {
+            log.debug("[CommonUtils] Failed to parse long: str={}", str);
+            return null;
+        }
+    }
+
+    /**
      * 从方法参数中查找指定类型的参数
      */
     @SuppressWarnings("unchecked")

@@ -25,14 +25,21 @@ public enum AbilityTypeEnum {
     private final String desc;
 
     public static boolean isValidCode(Integer code) {
+        return fromCode(code) != null;
+    }
+
+    /**
+     * 根据 code 查找枚举，未匹配返回 null
+     */
+    public static AbilityTypeEnum fromCode(Integer code) {
         if (code == null) {
-            return false;
+            return null;
         }
         for (AbilityTypeEnum value : values()) {
             if (value.code == code) {
-                return true;
+                return value;
             }
         }
-        return false;
+        return null;
     }
 }
