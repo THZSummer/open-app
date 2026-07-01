@@ -11,6 +11,13 @@ import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.OpConnectorVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion;
+import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef;
+import com.xxx.it.works.wecode.v2.modules.connector.mapper.OpConnectorMapper;
+import com.xxx.it.works.wecode.v2.modules.connector.entity.Connector;
+import com.xxx.it.works.wecode.v2.common.enums.ConnectorStatus;
+import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
 import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,15 +54,21 @@ public class FlowService {
     @Autowired
     public FlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper,
                        ConnectorVersionRefMapper connectorVersionRefMapper,
+                       OpConnectorVersionMapper connectorVersionMapper,
+                       OpConnectorMapper connectorMapper,
                        IdGeneratorStrategy idGenerator) {
         this.flowMapper = flowMapper;
         this.flowVersionMapper = flowVersionMapper;
         this.connectorVersionRefMapper = connectorVersionRefMapper;
+        this.connectorVersionMapper = connectorVersionMapper;
+        this.connectorMapper = connectorMapper;
         this.idGenerator = idGenerator;
     }
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
     private final ConnectorVersionRefMapper connectorVersionRefMapper;
+    private final OpConnectorVersionMapper connectorVersionMapper;
+    private final OpConnectorMapper connectorMapper;
     private final IdGeneratorStrategy idGenerator;
 
     @Autowired(required = false)
@@ -266,6 +279,41 @@ public class FlowService {
             return ApiResponse.error("422",
                     "连接流尚未部署版本，请先部署一个版本",
                     "Flow has no deployed version, deploy a version first");
+        }
+
+        // 校验已部署版本状态（防止版本被失效后仍能启动）
+        FlowVersion deployedVersion = flowVersionMapper.selectById(flow.getDeployedVersionId());
+        if (deployedVersion == null) {
+            return ApiResponse.error("422",
+                    "已部署版本不存在，请重新部署有效版本后再启动",
+                    "Deployed version not found, please redeploy");
+        }
+        if (deployedVersion.getStatus() == null
+                || deployedVersion.getStatus() != FlowVersionStatus.PUBLISHED.getCode()) {
+            return ApiResponse.error("422",
+                    "已部署版本（版本" + deployedVersion.getVersionNumber() + "）已失效，请重新部署有效版本后再启动",
+                    "Deployed version is invalidated, please redeploy");
+        }
+
+        // 校验引用的连接器版本及其所属连接器状态
+        List<ConnectorVersionRef> refs = connectorVersionRefMapper.selectByFlowVersionId(deployedVersion.getId());
+        if (refs != null) {
+            for (ConnectorVersionRef ref : refs) {
+                ConnectorVersion cv = connectorVersionMapper.selectById(ref.getConnectorVersionId());
+                if (cv == null || cv.getStatus() == null
+                        || cv.getStatus() != ConnectorVersionStatus.PUBLISHED.getCode()) {
+                    return ApiResponse.error("422",
+                            "引用的连接器版本（版本" + (cv != null ? cv.getVersionNumber() : ref.getConnectorVersionId()) + "）已失效，请重新编排部署后再启动",
+                            "Referenced connector version is invalidated");
+                }
+                Connector connector = connectorMapper.selectById(ref.getConnectorId());
+                if (connector == null || connector.getStatus() == null
+                        || connector.getStatus() == ConnectorStatus.INVALIDATED.getCode()) {
+                    return ApiResponse.error("422",
+                            "连接器（" + (connector != null ? connector.getNameCn() : ref.getConnectorId()) + "）已失效，请重新编排部署后再启动",
+                            "Referenced connector is invalidated");
+                }
+            }
         }
 
         FlowLifecycleStatus currentStatus = FlowLifecycleStatus.fromValue(flow.getLifecycleStatus());
