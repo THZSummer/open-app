@@ -68,7 +68,7 @@ class FlowVersionDebugServiceTest {
         mockResult.setExecutionId("exec-001");
         mockResult.setFlowId("100");
         mockResult.setStatus("success");
-        mockResult.setTest(true);
+        mockResult.setDebug(true);
         when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
 
         Map<String, Object> mockTriggerData = new HashMap<>();
@@ -77,7 +77,7 @@ class FlowVersionDebugServiceTest {
         StepVerifier.create(service.executeTestRun(100L, 200L, mockTriggerData))
                 .assertNext(result -> {
                     assertEquals("success", result.getStatus());
-                    assertTrue(result.isTest());
+                    assertTrue(result.isDebug());
                 })
                 .verifyComplete();
     }
@@ -90,15 +90,15 @@ class FlowVersionDebugServiceTest {
         StepVerifier.create(service.executeTestRun(999L, 999L, Map.of()))
                 .assertNext(result -> {
                     assertEquals("failed", result.getStatus());
-                    assertTrue(result.isTest());
+                    assertTrue(result.isDebug());
                     assertNotNull(result.getErrorInfo());
-                    assertEquals("6002", result.getErrorInfo().get("code"));
+                    assertEquals("404", result.getErrorInfo().get("code"));
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("调试触发 → triggerType=3, isTest=true")
+    @DisplayName("调试触发 → triggerType=3, isDebug=true")
     void testExecuteTestRun_TriggerTypeCorrect() {
         FlowVersionEntity entity = spy(new FlowVersionEntity());
         entity.setFlowId(100L);
@@ -121,12 +121,12 @@ class FlowVersionDebugServiceTest {
         mockResult.setExecutionId("exec-002");
         mockResult.setFlowId("100");
         mockResult.setStatus("success");
-        mockResult.setTest(true);
+        mockResult.setDebug(true);
         when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
 
         StepVerifier.create(service.executeTestRun(100L, 200L, Map.of()))
                 .assertNext(result -> {
-                    assertTrue(result.isTest());
+                    assertTrue(result.isDebug());
                 })
                 .verifyComplete();
     }

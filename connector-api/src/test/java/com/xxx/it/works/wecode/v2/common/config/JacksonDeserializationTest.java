@@ -152,7 +152,7 @@ class JacksonDeserializationTest {
                             "durationMs": 5
                         }
                     },
-                    "isTest": false
+                    "debug": false
                 }
                 """;
 

@@ -6,6 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepos
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,7 @@ import java.util.UUID;
  * v5.5 变更:
  * <ul>
  *   <li>{@code triggerType = 3} (运行时记录维度, 非编排 JSON 中的 trigger.type)</li>
- *   <li>{@code isTest = true}</li>
+   *   <li>{@code isDebug = true}</li>
  *   <li>mockTriggerData 存入 {@code NodeContext.input} 分区</li>
  *   <li>凭证从 {@code config.nodes[].data.authConfig} 声明读取</li>
  *   <li>响应 {@code errorInfo} 使用结构化格式</li>
@@ -71,25 +72,48 @@ public class FlowVersionDebugService {
         String executionId = UUID.randomUUID().toString().replace("-", "");
 
         return flowVersionReadRepository.findById(versionId)
-                .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
+                .switchIfEmpty(Mono.error(new PreCheckException(
+                        ErrorCode.PRECHECK_VERSION_NOT_FOUND, "版本不存在，请检查版本 ID", "Version not found")))
                 .flatMap(flowVersion -> {
                     Integer status = flowVersion.getStatus();
+                    // 版本已失效
                     if (status != null && status == 6) {
-                        return Mono.error(new RuntimeException("该版本已失效，不可调试"));
+                        return Mono.error(new PreCheckException(
+                                ErrorCode.PRECHECK_VERSION_INVALIDATED,
+                                "版本已失效，不可调试",
+                                "The version has been invalidated and cannot be debugged"));
                     }
-                    // 1. 解析编排配置 (React Flow 格式)
+                    // 版本状态不支持调试: 仅 DRAFT(1) 和 PUBLISHED(5) 可调试
+                    if (status != null && status != 1 && status != 5) {
+                        String statusName = switch (status) {
+                            case 2 -> "待审批"; case 3 -> "已撤回"; case 4 -> "已驳回";
+                            default -> String.valueOf(status);
+                        };
+                        return Mono.error(new PreCheckException(
+                                ErrorCode.PRECHECK_VERSION_STATUS_NOT_DEBUGGABLE,
+                                "版本状态为「" + statusName + "」，仅草稿和已发布版本可调试",
+                                "Version status is '" + statusName + "', only draft and published versions can be debugged"));
+                    }
+                    // 编排配置非空校验
+                    String orchConfig = flowVersion.getOrchestrationConfig();
+                    if (orchConfig == null || orchConfig.isBlank()) {
+                        return Mono.error(new PreCheckException(
+                                ErrorCode.PRECHECK_ORCHESTRATION_EMPTY,
+                                "编排配置为空，请先完成编排后再调试",
+                                "Orchestration config is empty"));
+                    }
+                    // 解析编排配置
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
                     List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
                     String triggerNodeId = resolveTriggerNodeId(nodes);
 
-                    // 2. 创建执行上下文 (标记为测试模式)
+                    // 创建执行上下文 (标记为调试模式)
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(mockTriggerData != null ? mockTriggerData : Map.of());
-                    // v5.5: triggerType = 3 (运行时记录维度, 非编排 JSON 中的 trigger.type)
                     context.setTriggerType(3);
-                    context.setTest(true);
+                    context.setDebug(true);
 
-                    // 3. 建立触发节点的 NodeContext (mockTriggerData 作为 input 分区)
+                    // 建立触发节点的 NodeContext
                     if (triggerNodeId != null) {
                         NodeContext triggerNodeCtx = new NodeContext();
                         triggerNodeCtx.setNodeId(triggerNodeId);
@@ -104,30 +128,35 @@ public class FlowVersionDebugService {
                         context.setNodeContext(triggerNodeCtx);
                     }
 
-                    // 4. 执行连接流 (debug 不写执行记录)
-                    return executor.execute(context, flowVersion.getOrchestrationConfig());
+                    // 执行连接流 (debug 不写执行记录)
+                    return executor.execute(context, orchConfig);
+                })
+                .onErrorResume(PreCheckException.class, e -> {
+                    log.warn("Pre-check failed for debug: flowId={}, versionId={}, code={}, msg={}",
+                            flowId, versionId, e.getCode(), e.getMessageZh());
+                    ExecutionResult errorResult = new ExecutionResult();
+                    errorResult.setExecutionId(executionId);
+                    errorResult.setFlowId(String.valueOf(flowId));
+                    errorResult.setStatus("failed");
+                    errorResult.setDebug(true);
+                    errorResult.setErrorInfo(e.toErrorInfo());
+                    return Mono.just(errorResult);
                 })
                 .onErrorResume(e -> {
+                    // 执行层错误 — 保留 DagScheduler/NodeExecutor 产出的 errorInfo
                     log.error("Test run failed: flowId={}, error={}", flowId, e.getMessage());
                     ExecutionResult errorResult = new ExecutionResult();
                     errorResult.setExecutionId(executionId);
                     errorResult.setFlowId(String.valueOf(flowId));
                     errorResult.setStatus("failed");
-                    // v5.5: 使用结构化 errorInfo
+                    errorResult.setDebug(true);
+                    // 兜底 errorInfo
                     Map<String, Object> errInfo = new HashMap<>();
-                    String msg = e.getMessage();
-                    if (msg != null && msg.contains("已失效")) {
-                        errInfo.put("code", "6004");
-                        errInfo.put("messageZh", msg);
-                        errInfo.put("messageEn", "The version has been invalidated and cannot be debugged");
-                    } else {
-                        errInfo.put("code", "6002");
-                        errInfo.put("messageZh", "测试执行失败: " + msg);
-                        errInfo.put("messageEn", "Test execution failed: " + msg);
-                    }
-                    errInfo.put("cause", msg);
+                    String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                    errInfo.put("code", "60001");
+                    errInfo.put("messageZh", "测试执行失败: " + msg);
+                    errInfo.put("messageEn", "Test execution failed: " + msg);
                     errorResult.setErrorInfo(errInfo);
-                    errorResult.setTest(true);
                     return Mono.just(errorResult);
                 });
     }
@@ -148,5 +177,33 @@ public class FlowVersionDebugService {
         // 退化为第一个节点
         Object id = nodes.get(0).get("id");
         return id != null ? id.toString() : null;
+    }
+
+    /**
+     * 前置校验异常 — 携带结构化错误码
+     */
+    public static class PreCheckException extends RuntimeException {
+        private final String code;
+        private final String messageZh;
+        private final String messageEn;
+
+        public PreCheckException(String code, String messageZh, String messageEn) {
+            super(messageZh);
+            this.code = code;
+            this.messageZh = messageZh;
+            this.messageEn = messageEn;
+        }
+
+        public String getCode() { return code; }
+        public String getMessageZh() { return messageZh; }
+        public String getMessageEn() { return messageEn; }
+
+        public Map<String, Object> toErrorInfo() {
+            Map<String, Object> info = new HashMap<>();
+            info.put("code", code);
+            info.put("messageZh", messageZh);
+            info.put("messageEn", messageEn != null ? messageEn : messageZh);
+            return info;
+        }
     }
 }

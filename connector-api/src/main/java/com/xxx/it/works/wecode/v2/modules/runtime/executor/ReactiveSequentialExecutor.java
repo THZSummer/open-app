@@ -253,7 +253,7 @@ public class ReactiveSequentialExecutor {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(context.getExecutionId());
         result.setFlowId(context.getFlowId());
-        result.setTest(context.isTest());
+        result.setDebug(context.isDebug());
         result.setTotalDurationMs(System.currentTimeMillis() - startTime);
 
         boolean anyFailed = false;
@@ -408,7 +408,7 @@ public class ReactiveSequentialExecutor {
         result.setErrorInfo(errorInfo);
 
         result.setTotalDurationMs(System.currentTimeMillis() - startTime);
-        result.setTest(context.isTest());
+        result.setDebug(context.isDebug());
         return result;
     }
 }

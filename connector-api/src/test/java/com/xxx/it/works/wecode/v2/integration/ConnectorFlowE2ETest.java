@@ -178,7 +178,7 @@ class ConnectorFlowE2ETest {
         com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext context =
                 new com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext("test-exec-001", "test-flow-001");
         context.setTriggerData(Map.of("sender", "test_user", "content", "hello world"));
-        context.setTest(true);
+        context.setDebug(true);
 
         // Act
         Mono<ExecutionResult> resultMono = executor.execute(context, configJson);
@@ -232,7 +232,7 @@ class ConnectorFlowE2ETest {
         com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext context =
                 new com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext("test-exec-002", "test-flow-002");
         context.setTriggerData(Map.of("sender", "ext_system", "message", "test message"));
-        context.setTest(true);
+        context.setDebug(true);
 
         // Act
         Mono<ExecutionResult> resultMono = executor.execute(context, configJson);
@@ -282,7 +282,7 @@ class ConnectorFlowE2ETest {
         com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext context =
                 new com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext("test-exec-003", "test-flow-003");
         context.setTriggerData(Map.of());
-        context.setTest(true);
+        context.setDebug(true);
 
         // Act
         Mono<ExecutionResult> resultMono = executor.execute(context, configJson);

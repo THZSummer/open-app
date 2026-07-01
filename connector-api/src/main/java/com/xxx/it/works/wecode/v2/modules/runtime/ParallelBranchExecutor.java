@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.runtime;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
@@ -57,13 +58,24 @@ public class ParallelBranchExecutor implements NodeExecutor {
         List<Map<String, Object>> branches = extractBranches(configMap);
         if (branches == null || branches.isEmpty()) {
             log.info("Parallel node {} has no branches, returning empty", nodeId);
-            return emptyOutput(nodeId, startTime);
+            NodeOutput errOutput = new NodeOutput(nodeId, NODE_TYPE, new HashMap<>(), new HashMap<>());
+            errOutput.setStatus("failed");
+            errOutput.setDurationMs(System.currentTimeMillis() - startTime);
+            errOutput.setErrorInfo(ErrorCode.errorInfo(ErrorCode.PARALLEL_TOO_FEW_BRANCHES,
+                    "并行处理节点最少需要 2 个分支",
+                    "Parallel node requires at least 2 branches"));
+            return Mono.just(errOutput);
         }
 
         if (branches.size() > MAX_BRANCHES) {
-            log.warn("Parallel node {} has {} branches, exceeding limit {}, truncating",
-                    nodeId, branches.size(), MAX_BRANCHES);
-            branches = new ArrayList<>(branches.subList(0, MAX_BRANCHES));
+            log.warn("Parallel node {} has {} branches, exceeding limit {}", nodeId, branches.size(), MAX_BRANCHES);
+            NodeOutput errOutput = new NodeOutput(nodeId, NODE_TYPE, new HashMap<>(), new HashMap<>());
+            errOutput.setStatus("failed");
+            errOutput.setDurationMs(System.currentTimeMillis() - startTime);
+            errOutput.setErrorInfo(ErrorCode.errorInfo(ErrorCode.PARALLEL_TOO_MANY_BRANCHES,
+                    "并行处理节点分支数超过上限（最多 " + MAX_BRANCHES + " 个分支）",
+                    "Parallel node exceeds max " + MAX_BRANCHES + " branches"));
+            return Mono.just(errOutput);
         }
 
         final int totalBranches = branches.size();
@@ -107,8 +119,20 @@ public class ParallelBranchExecutor implements NodeExecutor {
                 .map(results -> {
                     NodeOutput output = new NodeOutput(nodeId, NODE_TYPE,
                             new HashMap<>(), new HashMap<>());
-                    output.setStatus(failCount.get() == 0 ? "success" : "partial_success");
+                    boolean allFailed = failCount.get() == totalBranches;
+                    boolean anyFailed = failCount.get() > 0;
+                    output.setStatus(allFailed ? "failed" : (anyFailed ? "partial_success" : "success"));
                     output.setDurationMs(System.currentTimeMillis() - startTime);
+
+                    if (allFailed) {
+                        output.setErrorInfo(ErrorCode.errorInfo(ErrorCode.PARALLEL_ALL_FAILED,
+                                "并行处理节点所有 " + totalBranches + " 个分支均执行失败",
+                                "All " + totalBranches + " parallel branches failed"));
+                    } else if (anyFailed) {
+                        output.setErrorInfo(ErrorCode.errorInfo(ErrorCode.PARALLEL_BRANCH_FAILED,
+                                "并行处理节点 " + failCount.get() + "/" + totalBranches + " 个分支执行失败",
+                                failCount.get() + "/" + totalBranches + " parallel branches failed"));
+                    }
 
                     Map<String, Object> extra = new HashMap<>();
                     extra.put("totalBranches", totalBranches);

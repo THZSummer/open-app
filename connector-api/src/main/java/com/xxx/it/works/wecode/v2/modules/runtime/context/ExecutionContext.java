@@ -36,8 +36,8 @@ public class ExecutionContext {
     /** 节点上下文缓存 (nodeId → NodeContext), 替代旧 nodeOutputs */
     private final Map<String, NodeContext> nodeContexts;
 
-    /** 是否测试运行 */
-    private boolean isTest;
+    /** 是否调试模式 */
+    private boolean debug;
 
     /** 触发类型: 1=HTTP触发, 2=测试执行, 3=手动触发 */
     private int triggerType;
@@ -80,8 +80,8 @@ public class ExecutionContext {
 
     public Map<String, NodeContext> getNodeContexts() { return nodeContexts; }
 
-    public boolean isTest() { return isTest; }
-    public void setTest(boolean test) { isTest = test; }
+    public boolean isDebug() { return debug; }
+    public void setDebug(boolean debug) { this.debug = debug; }
 
     public int getTriggerType() { return triggerType; }
     public void setTriggerType(int triggerType) { this.triggerType = triggerType; }

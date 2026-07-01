@@ -24,12 +24,12 @@ import java.util.Map;
  * <ul>
  *   <li>使用 {@code mockTriggerData} 作为触发输入</li>
  *   <li>{@code triggerType = 3} (运行时记录维度, 非编排 JSON 中)</li>
- *   <li>{@code isTest = true}</li>
- *   <li>凭证从 {@code data.authConfig} 声明读取</li>
- *   <li>响应 {@code errorInfo} 使用结构化格式 {@code {code, messageZh, messageEn}}</li>
- * </ul>
- * </p>
- */
+   *   <li>{@code isDebug = true}</li>
+   *   <li>凭证从 {@code data.authConfig} 声明读取</li>
+   *   <li>响应 {@code errorInfo} 使用结构化格式 {@code {code, messageZh, messageEn}}</li>
+   * </ul>
+   * </p>
+   */
 @RestController
 @Tag(name = "测试执行", description = "内部测试执行接口，供 open-server debug-proxy 调用 (v5.5)")
 public class FlowVersionDebugController {
@@ -48,15 +48,15 @@ public class FlowVersionDebugController {
      * 接收 mockTriggerData + credentials (按 connectorVersionId 分组)
      * <ul>
      *   <li>{@code triggerType = 3} (运行时记录维度)</li>
-     *   <li>{@code isTest = true}</li>
-     *   <li>触发数据从 {@code request.mockTriggerData} 读取</li>
+   *   <li>{@code isDebug = true}</li>
+   *   <li>触发数据从 {@code request.mockTriggerData} 读取</li>
      * </ul>
      * </p>
      */
     @PostMapping(value = "/api/v1/flows/{flowId}/versions/{versionId}/debug", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "执行测试运行 (v5.5)",
                description = "内部端点，接收模拟触发数据和凭证，同步执行连接流并返回结果."
-                            + " triggerType=3 (运行时记录维度), isTest=true.")
+                            + " triggerType=3 (运行时记录维度), isDebug=true.")
     public Mono<ExecutionResult> executeTestRun(
             @Parameter(description = "连接流ID")
             @PathVariable Long flowId,

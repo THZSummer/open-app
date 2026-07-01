@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.script;
 
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -258,11 +259,20 @@ public class ScriptNodeExecutor implements NodeExecutor {
         output.setInput(new HashMap<>());
         output.setOutput(new HashMap<>());
 
+        String code;
+        String msgZh;
+        if (errorMsg.contains("empty") || errorMsg.contains("Script source is empty")) {
+            code = ErrorCode.SCRIPT_EMPTY;
+            msgZh = "脚本节点[" + nodeId + "]源码为空，请编写脚本";
+        } else {
+            code = ErrorCode.SCRIPT_SYNTAX_ERROR;
+            msgZh = "脚本节点[" + nodeId + "]错误: " + errorMsg;
+        }
+
         Map<String, Object> errorInfo = new HashMap<>();
-        errorInfo.put("code", "6001");
-        errorInfo.put("message", errorMsg);
-        errorInfo.put("messageEn", errorMsg);
-        errorInfo.put("messageZh", errorMsg);
+        errorInfo.put("code", code);
+        errorInfo.put("messageZh", msgZh);
+        errorInfo.put("messageEn", "Script error: " + errorMsg);
         output.setErrorInfo(errorInfo);
 
         return output;
@@ -273,19 +283,35 @@ public class ScriptNodeExecutor implements NodeExecutor {
      */
     private NodeOutput buildFailedOutput(String nodeId, Map<String, Object> input, long duration, Throwable e) {
         String errorMsg;
+        String code;
+        String msgZh;
+
         if (e instanceof PolyglotException pe) {
             if (pe.isCancelled()) {
+                code = ErrorCode.SCRIPT_TIMEOUT;
                 errorMsg = sanitize("Script execution cancelled (timeout or resource limit): " + pe.getMessage());
+                msgZh = "脚本节点[" + nodeId + "]执行超时或被取消";
                 log.warn("Script node {} cancelled: {}", nodeId, pe.getMessage());
             } else {
+                code = ErrorCode.SCRIPT_RUNTIME_ERROR;
                 errorMsg = sanitize("Script execution error: " + pe.getMessage());
+                msgZh = "脚本节点[" + nodeId + "]运行时错误: " + errorMsg;
                 log.warn("Script node {} execution error: {}", nodeId, pe.getMessage());
             }
         } else if (e instanceof java.util.concurrent.TimeoutException) {
+            code = ErrorCode.SCRIPT_TIMEOUT;
             errorMsg = "Script execution timed out";
+            msgZh = "脚本节点[" + nodeId + "]执行超时";
             log.warn("Script node {} timed out", nodeId);
+        } else if (e instanceof IllegalStateException && e.getMessage() != null
+                && e.getMessage().contains("main(ctx)")) {
+            code = ErrorCode.SCRIPT_NO_MAIN;
+            errorMsg = sanitize(e.getMessage());
+            msgZh = "脚本节点[" + nodeId + "]缺少 main(ctx) 函数定义";
         } else {
+            code = ErrorCode.SCRIPT_RUNTIME_ERROR;
             errorMsg = sanitize(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            msgZh = "脚本节点[" + nodeId + "]执行失败: " + errorMsg;
             log.error("Script node {} unexpected error: {}", nodeId, errorMsg, e);
         }
 
@@ -294,10 +320,10 @@ public class ScriptNodeExecutor implements NodeExecutor {
         output.setDurationMs(duration);
 
         Map<String, Object> errorInfo = new HashMap<>();
-        errorInfo.put("code", "6001");
+        errorInfo.put("code", code);
         errorInfo.put("message", errorMsg);
         errorInfo.put("messageEn", errorMsg);
-        errorInfo.put("messageZh", errorMsg);
+        errorInfo.put("messageZh", msgZh);
         output.setErrorInfo(errorInfo);
 
         return output;
