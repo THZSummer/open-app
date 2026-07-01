@@ -10,6 +10,7 @@ import com.xxx.it.works.wecode.v2.modules.app.enums.VerifyTypeEnum;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -56,12 +57,12 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
     }
 
     private void loadProperties(Long id, Map<String, Object> snapshot) {
-        try {
-            List<AppProperty> properties = appMapper.selectPropertiesByParentId(id);
-            if (properties == null) {
-                return;
-            }
-            for (AppProperty p : properties) {
+        List<AppProperty> properties = appMapper.selectPropertiesByParentId(id);
+        if (CollectionUtils.isEmpty(properties)) {
+            return;
+        }
+        for (AppProperty p : properties) {
+            try {
                 if (AppPropertyConstants.PROP_VERIFY_TYPE.equals(p.getPropertyName())) {
                     List<Integer> verifyTypeList = List.of(p.getPropertyValue().split(","))
                             .stream()
@@ -85,9 +86,9 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
                     // EAMAP 编码，用于审计日志 BIND_APP_EAMAP 模板占位符 ${eamapAppCode}
                     snapshot.put("eamapAppCode", p.getPropertyValue());
                 }
+            } catch (Exception e) {
+                log.warn("[AppSnapshotLoader] Failed to process property: id={}, name={}", id, p.getPropertyName(), e);
             }
-        } catch (Exception e) {
-            log.warn("[AppSnapshotLoader] Failed to load properties for id={}", id, e);
         }
     }
 }
