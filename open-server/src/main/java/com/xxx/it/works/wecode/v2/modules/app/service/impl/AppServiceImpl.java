@@ -56,6 +56,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Random;
 import java.util.regex.Pattern;
@@ -282,17 +283,17 @@ public class AppServiceImpl implements AppService {
         Map<String, Employee> empMap = CollectionUtils.isEmpty(welinkIds)
                 ? Collections.emptyMap()
                 : employeeMapper.selectByWelinkIds(welinkIds).stream()
-                .collect(Collectors.toMap(Employee::getWelinkId, e -> e, (a, b) -> a));
+                .collect(Collectors.toMap(e -> e.getWelinkId().toLowerCase(Locale.ROOT), e -> e, (a, b) -> a));
 
         // 3. 组装 appId -> EmployeeInfoVO
         return ownerMembers.stream().collect(Collectors.toMap(
                 AppMember::getAppId,
                 m -> {
                     EmployeeInfoVO vo = new EmployeeInfoVO();
-                    vo.setWelinkId(m.getAccountId());
+                    vo.setWelinkId(m.getAccountId().toLowerCase(Locale.ROOT));
                     vo.setMemberNameCn(m.getMemberNameCn());
                     vo.setMemberNameEn(m.getMemberNameEn());
-                    Employee emp = empMap.get(m.getAccountId());
+                    Employee emp = empMap.get(m.getAccountId().toLowerCase(Locale.ROOT));
                     if (Objects.nonNull(emp)) {
                         vo.setW3Account(emp.getW3Account());
                     }
@@ -371,7 +372,7 @@ public class AppServiceImpl implements AppService {
         AppContext ctx = appContextResolver.resolveAndValidate(appId);
         App app = ctx.getApp();
 
-        validateVerifyType(request);
+        validateVerifyType(app, request);
 
         // 更新 verify_type
         String verifyTypeStr = request.getVerifyType().stream()
@@ -390,7 +391,16 @@ public class AppServiceImpl implements AppService {
         appCommonService.notifyCardService(appId, CommonConstants.EVENT_UPDATE_VERIFY_TYPE);
     }
 
-    private void validateVerifyType(UpdateVerifyTypeRequest request) {
+    private void validateVerifyType(App app, UpdateVerifyTypeRequest request) {
+        // 校验：仅业务应用可修改认证方式
+        if (!Objects.equals(app.getAppType(), AppTypeEnum.BUSINESS.getCode())) {
+            throw new BusinessException(
+                    ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED.getCode(),
+                    ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED.getMessageZh(),
+                    ResponseCodeEnum.APP_TYPE_NOT_SUPPORTED.getMessageEn()
+            );
+        }
+
         // 白名单校验：数据字典控制是否允许多选
         String multiselectValue = appMapper.selectDictionaryValue(CommonConstants.DICT_CATEGORY_APP, CommonConstants.DICT_VERIFY_TYPE_MULTI_SWITCH);
         if (CommonConstants.FLAG_FALSE.equalsIgnoreCase(multiselectValue)) {
@@ -475,7 +485,7 @@ public class AppServiceImpl implements AppService {
                 verifyTypeStr = p.getPropertyValue();
             }
             if (AppPropertyConstants.PROP_API_SECRET.equals(p.getPropertyName())) {
-                apiSecret = decryptApiSecret(p.getPropertyValue());
+                apiSecret = p.getPropertyValue();
             }
         }
 
@@ -485,8 +495,8 @@ public class AppServiceImpl implements AppService {
 
         AppVerifyTypeVO vo = new AppVerifyTypeVO();
         vo.setVerifyType(verifyTypes);
-        if (verifyTypes.contains(VerifyTypeEnum.DIGITAL_SIGNATURE.getCode())) {
-            vo.setApiSecret(apiSecret);
+        if (verifyTypes.contains(VerifyTypeEnum.DIGITAL_SIGNATURE.getCode()) && Objects.nonNull(apiSecret)) {
+            vo.setApiSecret(decryptApiSecret(apiSecret));
         }
         return vo;
     }
