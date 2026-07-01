@@ -266,11 +266,9 @@ class ConnectorVersionServiceTest {
         @DisplayName("失效有引用的版本 → 422")
         void testInvalidateVersion_WithRefs_Returns422() {
             ConnectorVersion version = makePublishedVersion(200L);
-            ConnectorVersionRef ref = new ConnectorVersionRef();
-            ref.setFlowId(1L);
             when(connectorMapper.selectById(connectorId)).thenReturn(connector);
             when(connectorVersionMapper.selectById(200L)).thenReturn(version);
-            when(connectorVersionRefMapper.selectByConnectorVersionId(200L)).thenReturn(List.of(ref));
+            when(connectorVersionRefMapper.selectRunningFlowNamesByConnectorVersionId(200L)).thenReturn(List.of("运行中的连接流"));
 
             ApiResponse<?> response = connectorVersionService.invalidateVersion(connectorId, 200L);
 

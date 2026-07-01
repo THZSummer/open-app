@@ -1,5 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.connectorversion.controller;
 
+import com.xxx.it.works.wecode.v2.common.annotation.AuditLog;
+import com.xxx.it.works.wecode.v2.common.enums.OperateEnum;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.dto.ConnectorVersionDetailResponse;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.dto.ConnectorVersionListResponse;
@@ -43,6 +45,7 @@ public class ConnectorVersionController {
     /**
      * #8 创建草稿版本
      */
+    @AuditLog(value = OperateEnum.CREATE_CONNECTOR_VERSION, resourceIdParam = "connectorId")
     @PostMapping("/{connectorId}/versions")
     @Operation(summary = "#8 创建连接器草稿版本", description = "创建空草稿，版本上限 1000 校验")
     public ResponseEntity<ApiResponse<?>> createDraft(
@@ -78,6 +81,7 @@ public class ConnectorVersionController {
     /**
      * #11 更新草稿版本
      */
+    @AuditLog(value = OperateEnum.UPDATE_CONNECTOR_VERSION, resourceIdParam = "versionId")
     @PutMapping("/{connectorId}/versions/{versionId}")
     @Operation(summary = "#11 更新连接器版本", description = "更新草稿（仅 DB 存储级校验）")
     public ResponseEntity<ApiResponse<?>> updateDraft(
@@ -91,6 +95,7 @@ public class ConnectorVersionController {
     /**
      * #12 发布版本
      */
+    @AuditLog(value = OperateEnum.PUBLISH_CONNECTOR_VERSION, resourceIdParam = "versionId")
     @PutMapping("/{connectorId}/versions/{versionId}/publish")
     @Operation(summary = "#12 发布连接器版本", description = "发布版本：全量业务校验 + 状态联动")
     public ResponseEntity<ApiResponse<?>> publish(
@@ -103,6 +108,7 @@ public class ConnectorVersionController {
     /**
      * #13 复制版本到草稿
      */
+    @AuditLog(value = OperateEnum.COPY_CONNECTOR_VERSION, resourceIdParam = "versionId")
     @PostMapping("/{connectorId}/versions/{versionId}/copy-to-draft")
     @Operation(summary = "#13 复制连接器版本到草稿", description = "复制已有版本到新草稿")
     public ResponseEntity<ApiResponse<?>> copyToDraft(
@@ -115,6 +121,7 @@ public class ConnectorVersionController {
     /**
      * #14 失效版本
      */
+    @AuditLog(value = OperateEnum.INVALIDATE_CONNECTOR_VERSION, resourceIdParam = "versionId")
     @PutMapping("/{connectorId}/versions/{versionId}/invalidate")
     @Operation(summary = "#14 失效连接器版本", description = "失效版本，校验无连接流引用")
     public ResponseEntity<ApiResponse<?>> invalidateVersion(
@@ -127,6 +134,7 @@ public class ConnectorVersionController {
     /**
      * #15 恢复版本
      */
+    @AuditLog(value = OperateEnum.RECOVER_CONNECTOR_VERSION, resourceIdParam = "versionId")
     @PutMapping("/{connectorId}/versions/{versionId}/recover")
     @Operation(summary = "#15 恢复连接器版本", description = "恢复版本到已发布状态")
     public ResponseEntity<ApiResponse<?>> recoverVersion(
@@ -139,6 +147,7 @@ public class ConnectorVersionController {
     /**
      * #16 删除版本
      */
+    @AuditLog(value = OperateEnum.DELETE_CONNECTOR_VERSION, resourceIdParam = "versionId")
     @DeleteMapping("/{connectorId}/versions/{versionId}")
     @Operation(summary = "#16 删除连接器版本", description = "删除版本（仅草稿或已失效状态可删除）")
     public ResponseEntity<ApiResponse<Void>> deleteVersion(

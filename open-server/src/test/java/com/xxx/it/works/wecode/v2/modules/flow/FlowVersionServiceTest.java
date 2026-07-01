@@ -326,6 +326,11 @@ class FlowVersionServiceTest {
         when(flowMapper.selectById(flowId)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
+        doAnswer(invocation -> {
+            version.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
+            return null;
+        }).when(approvalService).cancelApproval(anyLong(), anyLong(), anyString());
+
         ApiResponse<?> response = flowVersionService.cancelApproval(flowId, 200L);
 
         assertEquals("200", response.getCode());
