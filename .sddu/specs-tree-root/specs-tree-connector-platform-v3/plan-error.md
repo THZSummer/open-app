@@ -461,29 +461,136 @@ X-Status: 1
 
 ## 7. 实现计划
 
-### Phase 1：前置校验补全（调试接口）
+### Phase 1：isDebug 基础设施
 
 | # | 修改 | 文件 |
 |---|------|------|
-| 1 | 增加版本状态校验：仅 DRAFT(1) 和 PUBLISHED(5) 可调试，其他状态返回 422 | FlowVersionDebugService |
-| 2 | 增加编排配置非空校验：编排为空时返回 422 | FlowVersionDebugService |
-| 3 | 版本不存在返回 404（非 6002） | FlowVersionDebugService |
+| 1 | ExecutionContext 新增 `isDebug` 字段 | DagScheduler.ExecutionContext |
+| 2 | DagScheduler 读 `ctx.isDebug()` 跳过执行记录写入 | DagScheduler |
+| 3 | ConnectorNodeExecutor 读 `ctx.isDebug()` 跳过认证校验 | ConnectorNodeExecutor |
+| 4 | ScriptNodeExecutor 读 `ctx.isDebug()` 放宽脚本语句上限 | ScriptNodeExecutor |
+| 5 | FlowInvokeService 创建 context 时 `setDebug(false)` | FlowInvokeService |
+| 6 | FlowVersionDebugService 创建 context 时 `setDebug(true)` | FlowVersionDebugService |
 
-### Phase 2：错误分类修复（调用接口）
+### Phase 2：前置校验补全
 
-| # | 修改 | 文件 |
-|---|------|------|
-| 4 | 流未运行改为 409 | FlowInvokeService.classifyError |
-| 5 | 补充"已部署版本不可用"校验 | FlowInvokeService.loadFlowVersion |
-| 6 | 统一错误消息模板，去掉英文堆栈信息 | FlowInvokeService.classifyError + buildErrorResponse |
-
-### Phase 3：执行层错误码统一
+#### 2.1 调试侧新增校验
 
 | # | 修改 | 文件 |
 |---|------|------|
-| 7 | 执行引擎传递结构化错误（节点名 + 错误码 + 下游状态） | DagScheduler + 各 NodeExecutor |
-| 8 | 调试接口 onErrorResume 按错误码分类，使用统一模板 | FlowVersionDebugService |
-| 9 | 调用接口 buildErrorResponse 支持 6xxxx 码段 | FlowInvokeService |
+| 7 | 版本不存在 → 404（不再进入执行报 6002） | FlowVersionDebugService |
+| 8 | 版本状态不支持调试（仅 DRAFT/PUBLISHED） → 422 | FlowVersionDebugService |
+| 9 | 编排配置为空 → 422 | FlowVersionDebugService |
+| 10 | 连接器不存在 → 404 | FlowVersionDebugService |
+| 11 | 连接器版本不存在 → 404 | FlowVersionDebugService |
+| 12 | 连接器版本已失效 → 422 | FlowVersionDebugService |
+| 13 | 连接器已失效 → 422 | FlowVersionDebugService |
+
+#### 2.2 调用侧新增校验
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 14 | 流不存在 → 404 | FlowInvokeService |
+| 15 | 流未运行 → 409（由 500 修正） | FlowInvokeService.classifyError |
+| 16 | 已部署版本不可用 → 422 | FlowInvokeService.loadFlowVersion |
+| 17 | SYSTOKEN 认证失败 → 401 | FlowInvokeService |
+| 18 | 连接器不存在 → 404 | FlowInvokeService |
+| 19 | 连接器版本不存在 → 404 | FlowInvokeService |
+| 20 | 连接器版本已失效 → 422 | FlowInvokeService |
+| 21 | 连接器已失效 → 422 | FlowInvokeService |
+
+#### 2.3 调用侧前置校验统一
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 22 | 请求参数错误 → 400（统一消息模板） | FlowInvokeService |
+| 23 | 统一错误消息模板，去掉英文堆栈信息 | FlowInvokeService.buildErrorResponse |
+
+### Phase 3：错误处理框架重构
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 24 | 定义 ErrorInfo 结构体（code + messageZh + messageEn + cause） | 新建 common 类 |
+| 25 | 定义错误码常量类（61xxx~66xxx 全部码值） | 新建 ErrorCode 常量类 |
+| 26 | DagScheduler 异常捕获后产出 NodeOutput.errorInfo（不吞异常细节） | DagScheduler |
+| 27 | 调试侧移除 `onErrorResume` 重新包装，原样透传 NodeOutput.errorInfo | FlowVersionDebugService |
+| 28 | 调用侧移除 `classifyError()` 字符串匹配，从 NodeOutput.errorInfo 读取业务码 | FlowInvokeService |
+| 29 | 调用侧 HTTP 状态码映射：61xxx~66xxx → 502，超时 → 504 | FlowInvokeService.buildErrorResponse |
+
+### Phase 4：节点层错误码产出
+
+#### 4.1 编排通用
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 30 | 61001 编排配置 JSON 解析失败 | DagScheduler / FlowConfigParser |
+| 31 | 61002 触发器节点缺失 | DagScheduler |
+| 32 | 61003 出口节点缺失 | DagScheduler |
+| 33 | 61004 节点间边关系缺失 | DagScheduler |
+
+#### 4.2 触发器节点
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 34 | 61010 触发方式未配置 | TriggerNodeExecutor |
+| 35 | 61011 触发凭证不存在 | TriggerNodeExecutor |
+| 36 | 61012 触发凭证不在白名单 | TriggerNodeExecutor |
+
+#### 4.3 连接器节点
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 37 | 61020~61025 连接器节点前置/配置错误（未选连接器、未选版本、超时超限、字段不存在、认证缺失、认证类型未选） | ConnectorNodeExecutor |
+| 38 | 62001 HTTP 调用失败（含下游 statusCode + 截断 body） | ConnectorNodeExecutor |
+| 39 | 62002 连接超时 | ConnectorNodeExecutor |
+| 40 | 62003 读取超时 | ConnectorNodeExecutor |
+| 41 | 62004 DNS 解析失败 | ConnectorNodeExecutor |
+| 42 | 62005 SSL 握手失败 | ConnectorNodeExecutor |
+| 43 | 62006 请求体序列化失败 | ConnectorNodeExecutor |
+| 44 | 62007 响应体过大（截断逻辑） | ConnectorNodeExecutor |
+
+#### 4.4 脚本节点
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 45 | 61030~61033 脚本前置/配置错误（空源码、超长、缺 main、语法错误） | ScriptNodeExecutor |
+| 46 | 63001 脚本运行时异常 | ScriptNodeExecutor |
+| 47 | 63002 脚本执行超时 | ScriptNodeExecutor |
+| 48 | 63003 脚本超过语句上限 | ScriptNodeExecutor |
+| 49 | 63004 脚本返回值不是对象 | ScriptNodeExecutor |
+| 50 | 63005 访问不存在的上游字段 | ScriptNodeExecutor |
+
+#### 4.5 并行处理节点
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 51 | 61040~61042 并行配置错误（分支数不足/超限、分支内无节点） | ParallelBranchExecutor |
+| 52 | 65001 分支执行失败 | ParallelBranchExecutor |
+| 53 | 65002 分支执行超时 | ParallelBranchExecutor |
+| 54 | 65003 所有分支均失败 | ParallelBranchExecutor |
+
+#### 4.6 出口节点
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 55 | 61050~61051 出口配置错误（映射字段不存在、格式错误） | ExitNodeExecutor |
+| 56 | 66001 响应体序列化失败 | ExitNodeExecutor |
+| 57 | 66002 响应头设置失败 | ExitNodeExecutor |
+
+### Phase 5：返回格式适配
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 58 | 调试侧 ExecutionResult.steps[].errorInfo 产出细分 code（非 6002） | FlowVersionDebugService |
+| 59 | 调试侧 ExecutionResult.errorInfo 产出细分 code（非 6002） | FlowVersionDebugService |
+| 60 | 调用侧 X-Code 响应头写入业务错误码（6xxxx 码段） | FlowInvokeService |
+| 61 | 调用侧 X-Message-Zh/X-Message-En 从 ErrorInfo 读取 | FlowInvokeService |
+
+### Phase 6：下游错误截断
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 62 | 连接器节点下游响应 body 截断 ≤ 512 字符 | ConnectorNodeExecutor |
 
 ---
 
