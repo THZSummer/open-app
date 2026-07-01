@@ -17,19 +17,13 @@
         <result column="last_update_time" property="lastUpdateTime"/>
     </resultMap>
 
+    <sql id="Base_Column_List">
+        id, tenant_id, app_id, member_name_cn, member_name_en, account_id,
+        member_type, status, create_by, create_time, last_update_by, last_update_time
+    </sql>
+
     <select id="selectByAppId" resultMap="AppMemberResultMap">
-        SELECT id,
-               tenant_id,
-               app_id,
-               member_name_cn,
-               member_name_en,
-               account_id,
-               member_type,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_member_t
         WHERE app_id = #{appId,jdbcType=BIGINT}
           AND status = 1
@@ -45,18 +39,7 @@
     </select>
 
     <select id="selectByAppIdAndAccountId" resultMap="AppMemberResultMap">
-        SELECT id,
-               tenant_id,
-               app_id,
-               member_name_cn,
-               member_name_en,
-               account_id,
-               member_type,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_member_t
         WHERE app_id = #{appId,jdbcType=BIGINT}
           AND account_id = #{accountId,jdbcType=VARCHAR}
@@ -64,18 +47,7 @@
     </select>
 
     <select id="selectByAppIdsAndAccountId" resultMap="AppMemberResultMap">
-        SELECT id,
-               tenant_id,
-               app_id,
-               member_name_cn,
-               member_name_en,
-               account_id,
-               member_type,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_member_t
         WHERE account_id = #{accountId,jdbcType=VARCHAR}
           AND status = 1
@@ -86,18 +58,7 @@
     </select>
 
     <select id="selectById" resultMap="AppMemberResultMap">
-        SELECT id,
-               tenant_id,
-               app_id,
-               member_name_cn,
-               member_name_en,
-               account_id,
-               member_type,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_member_t
         WHERE id = #{id,jdbcType=BIGINT}
     </select>
@@ -130,18 +91,7 @@
     </delete>
 
     <select id="selectByAppIdAccountIdAndType" resultMap="AppMemberResultMap">
-        SELECT id,
-               tenant_id,
-               app_id,
-               member_name_cn,
-               member_name_en,
-               account_id,
-               member_type,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_member_t
         WHERE app_id = #{appId,jdbcType=BIGINT}
           AND account_id = #{accountId,jdbcType=VARCHAR}
@@ -150,10 +100,12 @@
     </select>
 
     <select id="selectByAppIdAndAccountIdsAndType" resultMap="AppMemberResultMap">
-        SELECT id, tenant_id, app_id, member_name_cn, member_name_en, account_id, member_type, status, create_by,
-        create_time, last_update_by, last_update_time FROM openplatform_app_member_t
-        WHERE app_id = #{appId,jdbcType=BIGINT} AND member_type = #{memberType,jdbcType=INTEGER} AND status = 1
-        AND account_id IN
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_app_member_t
+        WHERE app_id = #{appId,jdbcType=BIGINT}
+          AND member_type = #{memberType,jdbcType=INTEGER}
+          AND status = 1
+          AND account_id IN
         <foreach collection="accountIds" item="aid" open="(" separator="," close=")">
             #{aid,jdbcType=VARCHAR}
         </foreach>
@@ -175,18 +127,7 @@
     </insert>
 
     <select id="selectByAppIdsAndMemberType" resultMap="AppMemberResultMap">
-        SELECT id,
-               tenant_id,
-               app_id,
-               member_name_cn,
-               member_name_en,
-               account_id,
-               member_type,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_app_member_t
         WHERE member_type = #{memberType,jdbcType=INTEGER}
           AND status = 1
