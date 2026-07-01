@@ -32,6 +32,11 @@ function DeleteConfirmModal({
     }
   };
 
+  // 兼容 content 为字符串（主调方传整段文案）或对象（{confirmText, impactText}）
+  const rawContent = modalInfo?.content;
+  const confirmTextLine = typeof rawContent === 'string' ? rawContent : (rawContent?.confirmText || '');
+  const impactTextLine = (rawContent && typeof rawContent === 'object') ? (rawContent.impactText || '') : '';
+
   return (
     <Modal
       title={null}
@@ -44,8 +49,8 @@ function DeleteConfirmModal({
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
 
         <div style={{ color: '#8c8c8c', textAlign: 'left' }}>
-          <div style={{ marginBottom: 8 }}>{modalInfo.content.confirmText}</div>
-          <div>{modalInfo.content.impactText}</div>
+          {confirmTextLine ? <div style={{ marginBottom: 8 }}>{confirmTextLine}</div> : null}
+          {impactTextLine ? <div>{impactTextLine}</div> : null}
         </div>
       </div>
 

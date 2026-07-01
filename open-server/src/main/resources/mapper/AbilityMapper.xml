@@ -17,37 +17,20 @@
         <result column="last_update_time" property="lastUpdateTime"/>
     </resultMap>
 
+    <sql id="Base_Column_List">
+        id, ability_name_cn, ability_name_en, ability_desc_cn, ability_desc_en,
+        ability_type, order_num, status, create_by, create_time, last_update_by, last_update_time
+    </sql>
+
     <select id="selectAll" resultMap="AbilityResultMap">
-        SELECT id,
-               ability_name_cn,
-               ability_name_en,
-               ability_desc_cn,
-               ability_desc_en,
-               ability_type,
-               order_num,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_ability_t
         WHERE status = 1
         ORDER BY order_num, id
     </select>
 
     <select id="selectById" resultMap="AbilityResultMap">
-        SELECT id,
-               ability_name_cn,
-               ability_name_en,
-               ability_desc_cn,
-               ability_desc_en,
-               ability_type,
-               order_num,
-               status,
-               create_by,
-               create_time,
-               last_update_by,
-               last_update_time
+        SELECT <include refid="Base_Column_List"/>
         FROM openplatform_ability_t
         WHERE id = #{id,jdbcType=BIGINT}
           AND status = 1
