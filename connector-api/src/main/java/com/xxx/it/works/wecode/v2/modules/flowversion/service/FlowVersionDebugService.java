@@ -5,6 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
+import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
@@ -45,14 +46,17 @@ public class FlowVersionDebugService {
     private final ObjectMapper objectMapper;
     private final ReactiveSequentialExecutor executor;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
+    private final LogSanitizer logSanitizer;
 
     public FlowVersionDebugService(
             ObjectMapper objectMapper,
             ReactiveSequentialExecutor executor,
-            OpFlowVersionReadRepository flowVersionReadRepository) {
+            OpFlowVersionReadRepository flowVersionReadRepository,
+            LogSanitizer logSanitizer) {
         this.objectMapper = objectMapper;
         this.executor = executor;
         this.flowVersionReadRepository = flowVersionReadRepository;
+        this.logSanitizer = logSanitizer;
     }
 
     /**
@@ -152,7 +156,7 @@ public class FlowVersionDebugService {
                     errorResult.setDebug(true);
                     // 兜底 errorInfo
                     Map<String, Object> errInfo = new HashMap<>();
-                    String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
+                    String msg = logSanitizer.sanitizeText(e.getMessage() != null ? e.getMessage() : "Unknown error");
                     errInfo.put("code", "60001");
                     errInfo.put("messageZh", "测试执行失败: " + msg);
                     errInfo.put("messageEn", "Test execution failed: " + msg);

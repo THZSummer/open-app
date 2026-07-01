@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
+import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,12 +33,14 @@ class FlowVersionDebugServiceTest {
 
     private ObjectMapper objectMapper;
     private FlowVersionDebugService service;
+    private LogSanitizer logSanitizer;
     private final Long versionId = 200L;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        service = new FlowVersionDebugService(objectMapper, executor, flowVersionReadRepository);
+        logSanitizer = mock(LogSanitizer.class);
+        service = new FlowVersionDebugService(objectMapper, executor, flowVersionReadRepository, logSanitizer);
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.runtime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
+import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
@@ -45,10 +46,12 @@ class DagSchedulerTest {
 
     private ObjectMapper objectMapper;
     private DagScheduler scheduler;
+    private LogSanitizer logSanitizer;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
+        logSanitizer = mock(LogSanitizer.class);
 
         // 注册 Mock 执行器
         when(triggerExecutor.getNodeType()).thenReturn("trigger");
@@ -56,9 +59,12 @@ class DagSchedulerTest {
         when(exitExecutor.getNodeType()).thenReturn("exit");
         lenient().when(propertyService.getNodeMaxTimeoutSeconds()).thenReturn(Mono.just(30));
 
+        lenient().when(logSanitizer.sanitizeText(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(logSanitizer.sanitizeUrl(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
         scheduler = new DagScheduler(objectMapper,
                 List.of(triggerExecutor, connectorExecutor, exitExecutor),
-                propertyService);
+                propertyService, logSanitizer);
     }
 
     // ===== 辅助方法 =====

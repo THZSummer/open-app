@@ -14,6 +14,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
+import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -71,6 +72,9 @@ class FlowInvokeServiceTest {
     @Mock
     private ConnectorApiPropertyService propertyService;
 
+    @Mock
+    private LogSanitizer logSanitizer;
+
     private ObjectMapper objectMapper;
     private FlowInvokeService triggerService;
 
@@ -92,11 +96,12 @@ class FlowInvokeServiceTest {
         when(valueOperations.get(anyString())).thenReturn(Mono.empty());
         lenient().when(valueOperations.set(anyString(), anyString(), any())).thenReturn(Mono.just(true));
         when(idGenerator.nextId()).thenReturn(1L);
+        lenient().when(logSanitizer.sanitizeText(any())).thenAnswer(invocation -> invocation.getArgument(0));
         triggerService = new FlowInvokeService(objectMapper,
                 executor, dagScheduler, flowVersionReadRepository,
                 reactiveRedisTemplate, cacheManager, entityCacheManager,
                 executionRecordService, executionStepService, idGenerator,
-                propertyService);
+                propertyService, logSanitizer);
     }
 
     @Test

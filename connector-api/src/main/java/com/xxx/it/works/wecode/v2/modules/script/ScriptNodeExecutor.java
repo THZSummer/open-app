@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.script;
 
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
+import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
@@ -55,13 +56,16 @@ public class ScriptNodeExecutor implements NodeExecutor {
     private final GraalJsContextFactory contextFactory;
     private final CtxAssembler ctxAssembler;
     private final ConnectorApiPropertyService propertyService;
+    private final LogSanitizer logSanitizer;
 
     @Autowired
     public ScriptNodeExecutor(GraalJsContextFactory contextFactory, CtxAssembler ctxAssembler,
-                               ConnectorApiPropertyService propertyService) {
+                               ConnectorApiPropertyService propertyService,
+                               LogSanitizer logSanitizer) {
         this.contextFactory = contextFactory;
         this.ctxAssembler = ctxAssembler;
         this.propertyService = propertyService;
+        this.logSanitizer = logSanitizer;
     }
 
     @Override
@@ -269,10 +273,11 @@ public class ScriptNodeExecutor implements NodeExecutor {
             msgZh = "脚本节点[" + nodeId + "]错误: " + errorMsg;
         }
 
+        String sanitizedMsg = logSanitizer.sanitizeText(errorMsg);
         Map<String, Object> errorInfo = new HashMap<>();
         errorInfo.put("code", code);
-        errorInfo.put("messageZh", msgZh);
-        errorInfo.put("messageEn", "Script error: " + errorMsg);
+        errorInfo.put("messageZh", msgZh != null ? logSanitizer.sanitizeText(msgZh) : msgZh);
+        errorInfo.put("messageEn", logSanitizer.sanitizeText("Script error: " + errorMsg));
         output.setErrorInfo(errorInfo);
 
         return output;
@@ -321,9 +326,9 @@ public class ScriptNodeExecutor implements NodeExecutor {
 
         Map<String, Object> errorInfo = new HashMap<>();
         errorInfo.put("code", code);
-        errorInfo.put("message", errorMsg);
-        errorInfo.put("messageEn", errorMsg);
-        errorInfo.put("messageZh", msgZh);
+        errorInfo.put("message", logSanitizer.sanitizeText(errorMsg));
+        errorInfo.put("messageEn", logSanitizer.sanitizeText(errorMsg));
+        errorInfo.put("messageZh", logSanitizer.sanitizeText(msgZh));
         output.setErrorInfo(errorInfo);
 
         return output;
@@ -335,6 +340,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
      */
     private String sanitize(String msg) {
         if (msg == null) { return ""; }
-        return msg.replace('\n', ' ').replace('\r', ' ');
+        String cleaned = msg.replace('\n', ' ').replace('\r', ' ');
+        return logSanitizer.sanitizeText(cleaned);
     }
 }
