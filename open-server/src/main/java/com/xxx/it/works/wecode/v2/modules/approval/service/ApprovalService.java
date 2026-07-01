@@ -210,7 +210,7 @@ public class ApprovalService {
         }
 
         // 更新前检查 code+appId 唯一性（排除自身）
-        String effectiveCode = request.getCode() != null ? request.getCode() : flow.getCode();
+        String effectiveCode = flow.getCode();
         Long effectiveAppId = request.getAppId() != null ? request.getAppId() : flow.getAppId();
         if (flowMapper.countByCodeAndAppIdExcludeId(effectiveCode, effectiveAppId, id) > 0) {
             throw new BusinessException("409", "流程编码已存在", "Flow code already exists for this app");
