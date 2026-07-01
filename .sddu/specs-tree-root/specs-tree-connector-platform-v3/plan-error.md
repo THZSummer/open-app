@@ -1,4 +1,4 @@
-# 错误处理设计：connector-api 调试与触发接口
+# 错误处理设计：connector-api 调试与调用接口
 
 **Feature ID**: CONN-PLAT-002
 **版本**: v1.0-draft
@@ -14,11 +14,11 @@ connector-api 有两个面向外部/内部的执行接口：
 | 接口 | 端点 | 用途 | 调用方 |
 |------|------|------|--------|
 | 调试接口 | `POST /api/v1/flows/{flowId}/versions/{versionId}/debug` | 草稿/已发布版本调试执行 | wecodesite 前端 |
-| 触发接口 | `POST /api/v1/flows/{flowId}/invoke` | 运行中连接流 HTTP 触发 | 外部系统 |
+| 调用接口 | `POST /api/v1/flows/{flowId}/invoke` | 运行中连接流 HTTP 调用 | 外部系统 |
 
 两个接口共用同一套执行引擎（DagScheduler），但前置校验和错误返回方式完全不同，导致：
 - 调试接口几乎所有错误都是 `code: 6002`，用户无法区分具体原因
-- 触发接口靠字符串匹配分类错误，"流未运行"被归为 500
+- 调用接口靠字符串匹配分类错误，"流未运行"被归为 500
 - 两个接口错误码体系不统一
 
 本文档定义统一的错误码体系和错误消息规范。
@@ -59,7 +59,7 @@ connector-api 有两个面向外部/内部的执行接口：
 
 **核心问题**：前置校验不足，几乎所有错误都进入执行流程后报 6002，用户看到的全是底层技术异常 message。
 
-### 2.2 触发接口（当前）
+### 2.2 调用接口（当前）
 
 **返回方式**：HTTP 状态码 + X- 响应头，body 为 null。
 
@@ -67,13 +67,13 @@ connector-api 有两个面向外部/内部的执行接口：
 HTTP/1.1 500 Internal Server Error
 X-Flow-Id: xxx
 X-Code: 500
-X-Message-Zh: 触发执行失败: Flow is not running: flowId=xxx
+X-Message-Zh: 调用执行失败: Flow is not running: flowId=xxx
 ```
 
 | 场景 | HTTP | X-Code | X-Message-Zh | 问题 |
 |------|:---:|:---:|-------------|------|
 | 流不存在 | 404 | 404 | "流不存在: Flow not found: xxx" | ⚠️ 半中半英 |
-| 流未运行 | **500** | 500 | "触发执行失败: Flow is not running: xxx" | ❌ 应该是 409/422 |
+| 流未运行 | **500** | 500 | "调用执行失败: Flow is not running: xxx" | ❌ 应该是 409/422 |
 | URL 白名单拒绝 | 403 | 403 | "URL 白名单拒绝: xxx" | ✅ |
 | 认证失败 | 401 | 401 | "认证失败: xxx" | ✅ |
 | 请求参数错误 | 400 | 400 | "请求参数错误: xxx" | ⚠️ 底层细节 |
@@ -84,7 +84,7 @@ X-Message-Zh: 触发执行失败: Flow is not running: flowId=xxx
 
 ### 2.3 错误码现状对比
 
-| 错误类型 | 调试接口 code | 触发接口 X-Code | 统一？ |
+| 错误类型 | 调试接口 code | 调用接口 X-Code | 统一？ |
 |---------|:---:|:---:|:---:|
 | 版本/流不存在 | 6002 | 404 | ❌ |
 | 版本已失效 | **6004** | 无（调试专属） | ❌ |
@@ -101,7 +101,7 @@ X-Message-Zh: 触发执行失败: Flow is not running: flowId=xxx
 
 ## 3. 场景矩阵
 
-### 3.1 调试独有场景（触发不会有）
+### 3.1 调试独有场景（调用不会有）
 
 | 场景 | 原因 | 时机 |
 |------|------|:---:|
@@ -110,15 +110,15 @@ X-Message-Zh: 触发执行失败: Flow is not running: flowId=xxx
 | 版本状态不支持调试 | 仅草稿(1)和已发布(5)可调试，待审批(2)/已撤回(3)/已驳回(4)不可调试 | 前置 |
 | 编排配置为空 | 草稿版本编排可能为空 | 前置 |
 
-### 3.2 触发独有场景（调试不会有）
+### 3.2 调用独有场景（调试不会有）
 
 | 场景 | 原因 | 时机 |
 |------|------|:---:|
-| 流不存在 | 触发通过 flowId 查流 | 前置 |
-| 流未运行 | 触发要求 lifecycle_status=2 | 前置 |
+| 流不存在 | 调用通过 flowId 查流 | 前置 |
+| 流未运行 | 调用要求 lifecycle_status=2 | 前置 |
 | 已部署版本不可用 | 已部署版本可能被失效（FR-028 校验失败时） | 前置 |
-| SYSTOKEN 认证失败 | 触发需校验凭证白名单；调试不校验 | 前置 |
-| 入站限流 | 触发有限流保护；调试不限流 | 前置 |
+| SYSTOKEN 认证失败 | 调用需校验凭证白名单；调试不校验 | 前置 |
+| 入站限流 | 调用有限流保护；调试不限流 | 前置 |
 
 ### 3.3 共用场景（两个接口都可能）
 
@@ -154,12 +154,12 @@ X-Message-Zh: 触发执行失败: Flow is not running: flowId=xxx
 
 ### 4.2 完整错误码表
 
-#### 前置校验错误（调试 + 触发共用 HTTP 码）
+#### 前置校验错误（调试 + 调用共用 HTTP 码）
 
-| code | 场景 | messageZh 模板 | 调试? | 触发? |
+| code | 场景 | messageZh 模板 | 调试? | 调用? |
 |:---:|------|-----------|:---:|:---:|
 | 400 | 请求参数错误 | "请求参数错误：{具体字段}" | ✅ | ✅ |
-| 401 | 认证失败 | "触发凭证校验失败：SYSTOKEN 不在白名单中" | — | ✅ |
+| 401 | 认证失败 | "调用凭证校验失败：SYSTOKEN 不在白名单中" | — | ✅ |
 | 403 | URL 白名单拒绝 | "连接器[{连接器名}] URL [{url}] 未通过白名单校验" | ✅ | ✅ |
 | 404 | 流不存在 | "连接流不存在" | — | ✅ |
 | 404 | 版本不存在 | "版本不存在，请检查版本 ID" | ✅ | — |
@@ -169,7 +169,7 @@ X-Message-Zh: 触发执行失败: Flow is not running: flowId=xxx
 | 422 | 编排配置为空 | "编排配置为空，请先完成编排后再调试" | ✅ | — |
 | 422 | 已部署版本不可用 | "已部署版本不可用，请重新部署后再调用" | — | ✅ |
 
-#### 执行层错误（调试 + 触发共用 6xxxx 码，调试封装在 ExecutionResult 中，触发封装在 X- 响应头中）
+#### 执行层错误（调试 + 调用共用 6xxxx 码，调试封装在 ExecutionResult 中，调用封装在 X- 响应头中）
 
 | code | 场景 | messageZh 模板 | 
 |:---:|------|-----------|
@@ -201,7 +201,7 @@ X-Message-Zh: 触发执行失败: Flow is not running: flowId=xxx
 }
 ```
 
-#### 触发接口（HTTP 状态码 + X- 响应头）
+#### 调用接口（HTTP 状态码 + X- 响应头）
 
 ```
 HTTP/1.1 409 Conflict
@@ -258,7 +258,7 @@ X-Status: 1
 | 2 | 增加编排配置非空校验：编排为空时返回 422 | FlowVersionDebugService |
 | 3 | 版本不存在返回 404（非 6002） | FlowVersionDebugService |
 
-### Phase 2：错误分类修复（触发接口）
+### Phase 2：错误分类修复（调用接口）
 
 | # | 修改 | 文件 |
 |---|------|------|
@@ -272,7 +272,7 @@ X-Status: 1
 |---|------|------|
 | 7 | 执行引擎传递结构化错误（节点名 + 错误码 + 下游状态） | ReactiveSequentialExecutor + 各 NodeExecutor |
 | 8 | 调试接口 onErrorResume 按错误码分类，使用统一模板 | FlowVersionDebugService |
-| 9 | 触发接口 buildErrorResponse 支持 6xxxx 码段 | FlowInvokeService |
+| 9 | 调用接口 buildErrorResponse 支持 6xxxx 码段 | FlowInvokeService |
 
 ---
 
