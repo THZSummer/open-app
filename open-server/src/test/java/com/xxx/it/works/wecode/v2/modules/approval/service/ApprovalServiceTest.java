@@ -163,7 +163,7 @@ class ApprovalServiceTest {
             request.setCode("existing_code");
             request.setNodes(new ArrayList<>());
 
-            when(flowMapper.countByCode("existing_code")).thenReturn(1);
+            when(flowMapper.countByCodeAndAppId("existing_code", null)).thenReturn(1);
 
             BusinessException exception = assertThrows(BusinessException.class,
                 () -> approvalService.createFlow(request, "admin"));

@@ -96,6 +96,7 @@ public class ConnectorController {
     /**
      * #5 失效连接器
      */
+    @AuditLog(value = OperateEnum.INVALIDATE_CONNECTOR, resourceIdParam = "connectorId")
     @PutMapping("/{connectorId}/invalidate")
     @Operation(summary = "#5 失效连接器", description = "标记失效，校验无运行中流引用")
     public ResponseEntity<ApiResponse<?>> invalidateConnector(
@@ -107,6 +108,7 @@ public class ConnectorController {
     /**
      * #6 恢复连接器
      */
+    @AuditLog(value = OperateEnum.RECOVER_CONNECTOR, resourceIdParam = "connectorId")
     @PutMapping("/{connectorId}/recover")
     @Operation(summary = "#6 恢复连接器", description = "恢复连接器，根据已发布版本有无确定状态")
     public ApiResponse<?> recoverConnector(

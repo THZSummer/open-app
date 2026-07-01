@@ -151,7 +151,64 @@ public enum OperateEnum {
             "失效连接流:${nameCn}", "Invalidate Flow:${nameEn}"),
     RECOVER_FLOW("RECOVER", "FLOW", "连接流",
             "恢复连接流", "Recover Flow",
-            "恢复连接流:${nameCn}", "Recover Flow:${nameEn}");
+            "恢复连接流:${nameCn}", "Recover Flow:${nameEn}"),
+    INVALIDATE_CONNECTOR("INVALIDATE", "CONNECTOR", "连接器",
+            "失效连接器", "Invalidate Connector",
+            "失效连接器:${nameCn}", "Invalidate Connector:${nameEn}"),
+    RECOVER_CONNECTOR("RECOVER", "CONNECTOR", "连接器",
+            "恢复连接器", "Recover Connector",
+            "恢复连接器:${nameCn}", "Recover Connector:${nameEn}"),
+    CREATE_CONNECTOR_VERSION("ADD", "CONNECTOR_VERSION", "连接器版本",
+            "创建连接器版本草稿", "Create Connector Version Draft",
+            "新增版本${versionNumber}", "Create version ${versionNumber}"),
+    UPDATE_CONNECTOR_VERSION("UPDATE", "CONNECTOR_VERSION", "连接器版本",
+            "更新连接器版本草稿", "Update Connector Version Draft",
+            "更新版本${versionNumber}", "Update version ${versionNumber}"),
+    PUBLISH_CONNECTOR_VERSION("PUBLISH", "CONNECTOR_VERSION", "连接器版本",
+            "发布连接器版本", "Publish Connector Version",
+            "发布版本${versionNumber}", "Publish version ${versionNumber}"),
+    COPY_CONNECTOR_VERSION("COPY", "CONNECTOR_VERSION", "连接器版本",
+            "复制连接器版本到草稿", "Copy Connector Version to Draft",
+            "复制版本${versionNumber}", "Copy version ${versionNumber}"),
+    INVALIDATE_CONNECTOR_VERSION("INVALIDATE", "CONNECTOR_VERSION", "连接器版本",
+            "失效连接器版本", "Invalidate Connector Version",
+            "失效版本${versionNumber}", "Invalidate version ${versionNumber}"),
+    RECOVER_CONNECTOR_VERSION("RECOVER", "CONNECTOR_VERSION", "连接器版本",
+            "恢复连接器版本", "Recover Connector Version",
+            "恢复版本${versionNumber}", "Recover version ${versionNumber}"),
+    DELETE_CONNECTOR_VERSION("DELETE", "CONNECTOR_VERSION", "连接器版本",
+            "删除连接器版本", "Delete Connector Version",
+            "删除版本${versionNumber}", "Delete version ${versionNumber}"),
+    COPY_FLOW("COPY", "FLOW", "连接流",
+            "复制连接流", "Copy Flow",
+            "复制连接流:${nameCn}", "Copy Flow:${nameEn}"),
+    CREATE_FLOW_VERSION("ADD", "FLOW_VERSION", "流版本",
+            "创建流版本草稿", "Create Flow Version Draft",
+            "新增版本${versionNumber}", "Create version ${versionNumber}"),
+    UPDATE_FLOW_VERSION("UPDATE", "FLOW_VERSION", "流版本",
+            "更新流版本草稿", "Update Flow Version Draft",
+            "更新版本${versionNumber}", "Update version ${versionNumber}"),
+    PUBLISH_FLOW_VERSION("PUBLISH", "FLOW_VERSION", "流版本",
+            "发布流版本", "Publish Flow Version",
+            "发布版本${versionNumber}", "Publish version ${versionNumber}"),
+    COPY_FLOW_VERSION("COPY", "FLOW_VERSION", "流版本",
+            "复制流版本到草稿", "Copy Flow Version to Draft",
+            "复制版本${versionNumber}", "Copy version ${versionNumber}"),
+    INVALIDATE_FLOW_VERSION("INVALIDATE", "FLOW_VERSION", "流版本",
+            "失效流版本", "Invalidate Flow Version",
+            "失效版本${versionNumber}", "Invalidate version ${versionNumber}"),
+    RECOVER_FLOW_VERSION("RECOVER", "FLOW_VERSION", "流版本",
+            "恢复流版本", "Recover Flow Version",
+            "恢复版本${versionNumber}", "Recover version ${versionNumber}"),
+    DELETE_FLOW_VERSION("DELETE", "FLOW_VERSION", "流版本",
+            "删除流版本", "Delete Flow Version",
+            "删除版本${versionNumber}", "Delete version ${versionNumber}"),
+    CANCEL_FLOW_VERSION_APPROVAL("CANCEL", "FLOW_VERSION", "流版本",
+            "取消流版本审批", "Cancel Flow Version Approval",
+            "取消流版本审批:${nameCn}", "Cancel Flow Version Approval:${nameEn}"),
+    URGE_FLOW_VERSION_APPROVAL("URGE", "FLOW_VERSION", "流版本",
+            "催办流版本审批", "Urge Flow Version Approval",
+            "催办流版本审批:${nameCn}", "Urge Flow Version Approval:${nameEn}");
 
     /**
      * DB operate_type 字段值
@@ -195,7 +252,9 @@ public enum OperateEnum {
         return "UPDATE".equals(operateType)
                 || "DELETE".equals(operateType)
                 || "WITHDRAW".equals(operateType)
-                || "CONFIG".equals(operateType);
+                || "CONFIG".equals(operateType)
+                || "INVALIDATE".equals(operateType)
+                || "RECOVER".equals(operateType);
     }
 
     /**
@@ -223,7 +282,7 @@ public enum OperateEnum {
         return switch (operateObject) {
             case "CONNECTOR" -> "connectorId";
             case "FLOW" -> "flowId";
-            case "APP_VERSION" -> "versionId";
+            case "APP_VERSION", "CONNECTOR_VERSION", "FLOW_VERSION" -> "versionId";
             default -> "id";
         };
     }

@@ -134,6 +134,10 @@ public class OperateLogV2Aspect {
             } else {
                 ctx.after = dataNode;
             }
+            // appId fallback: extract from X-App-Id request header
+            if (!StringUtils.hasText(ctx.appId)) {
+                ctx.appId = extractAppIdFromRequestHeader();
+            }
         } catch (Exception e) {
             log.warn("[OPERATE_LOG] Phase 3 failed", e);
         }
@@ -183,6 +187,10 @@ public class OperateLogV2Aspect {
         }
         if (!StringUtils.hasText(ctx.appId)) {
             ctx.appId = extractAppIdFromEntity(ctx.before);
+        }
+        // appId fallback: extract from X-App-Id request header
+        if (!StringUtils.hasText(ctx.appId)) {
+            ctx.appId = extractAppIdFromRequestHeader();
         }
     }
 
@@ -312,7 +320,7 @@ public class OperateLogV2Aspect {
         if (internalId == null) {
             return null;
         }
-        return appContextResolver.toExternalId(internalId);
+        return String.valueOf(internalId);
     }
 
     /**
@@ -348,5 +356,29 @@ public class OperateLogV2Aspect {
             log.debug("[OPERATE_LOG] Failed to build request JSON", e);
             return null;
         }
+    }
+
+    /**
+     * 从 X-App-Id 请求头提取内部 appId（Controller 层可用）
+     */
+    private String extractAppIdFromRequestHeader() {
+        try {
+            org.springframework.web.context.request.ServletRequestAttributes attrs =
+                    (org.springframework.web.context.request.ServletRequestAttributes)
+                            org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attrs != null) {
+                jakarta.servlet.http.HttpServletRequest request = attrs.getRequest();
+                String headerAppId = request.getHeader("X-App-Id");
+                if (headerAppId != null && !headerAppId.trim().isEmpty()) {
+                    Long internalId = resolveInternalIdFromAppId(headerAppId.trim());
+                    if (internalId != null) {
+                        return String.valueOf(internalId);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("[OPERATE_LOG] Failed to extract appId from request header", e);
+        }
+        return null;
     }
 }

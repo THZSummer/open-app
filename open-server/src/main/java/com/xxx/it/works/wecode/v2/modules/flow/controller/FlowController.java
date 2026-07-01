@@ -118,6 +118,7 @@ public class FlowController {
     /**
      * #21 复制连接流
      */
+    @AuditLog(value = OperateEnum.COPY_FLOW, resourceIdParam = "flowId")
     @PostMapping("/{flowId}/copy")
     @Operation(summary = "#21 复制连接流", description = "复制全部版本历史，名称追加 _copy_xxxxx")
     public ResponseEntity<ApiResponse<FlowCopyResponse>> copyFlow(

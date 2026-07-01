@@ -26,6 +26,7 @@ import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import com.xxx.it.works.wecode.v2.modules.permission.dto.*;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
+import com.xxx.it.works.wecode.v2.modules.permission.validator.ChannelAddressWhitelistValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -91,6 +92,9 @@ class PermissionServiceTest {
     @Mock
     private ApprovalRecordMapper approvalRecordMapper;
 
+    @Mock
+    private ChannelAddressWhitelistValidator channelAddressWhitelistValidator;
+
     @InjectMocks
     private PermissionService permissionService;
 
@@ -123,6 +127,9 @@ class PermissionServiceTest {
         testCategory.setNameCn("测试分类");
         testCategory.setNameEn("Test Category");
         testCategory.setPath("/1/10/");
+
+        // 默认 mock ChannelAddressWhitelistValidator
+        lenient().doNothing().when(channelAddressWhitelistValidator).validate(anyString(), anyString());
 
         // 默认 mock AppContextResolver
         AppContext defaultAppContext = AppContext.builder()
