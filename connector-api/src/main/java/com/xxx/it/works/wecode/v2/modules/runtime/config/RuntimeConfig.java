@@ -7,7 +7,6 @@ import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowReadRepository;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
-import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import io.netty.channel.ChannelOption;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
@@ -47,9 +46,8 @@ public class RuntimeConfig {
 
     @Bean
     public ConnectorNodeExecutor connectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
-                                                         UnifiedCredentialProcessor credentialProcessor,
-                                                         LogSanitizer logSanitizer) {
-        return new ConnectorNodeExecutor(objectMapper, webClient, credentialProcessor, logSanitizer);
+                                                         UnifiedCredentialProcessor credentialProcessor) {
+        return new ConnectorNodeExecutor(objectMapper, webClient, credentialProcessor);
     }
 
     @Bean
@@ -125,9 +123,8 @@ public class RuntimeConfig {
     @Bean
     public DagScheduler dagScheduler(ObjectMapper objectMapper,
                                        List<NodeExecutor> nodeExecutors,
-                                       ConnectorApiPropertyService propertyService,
-                                       LogSanitizer logSanitizer) {
-        return new DagScheduler(objectMapper, nodeExecutors, propertyService, logSanitizer);
+                                       ConnectorApiPropertyService propertyService) {
+        return new DagScheduler(objectMapper, nodeExecutors, propertyService);
     }
 
     @Bean

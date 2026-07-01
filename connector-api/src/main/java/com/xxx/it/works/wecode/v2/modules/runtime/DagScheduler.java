@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
-import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
@@ -43,7 +42,6 @@ public class DagScheduler {
     private final ObjectMapper objectMapper;
     private final Map<String, NodeExecutor> executorMap;
     private final ConnectorApiPropertyService propertyService;
-    private final LogSanitizer logSanitizer;
 
     /** script 节点执行器 (TASK-011 实现后注入, 当前可为 null) */
     @Autowired(required = false)
@@ -51,12 +49,10 @@ public class DagScheduler {
 
     public DagScheduler(ObjectMapper objectMapper,
                          List<NodeExecutor> nodeExecutors,
-                         ConnectorApiPropertyService propertyService,
-                         LogSanitizer logSanitizer) {
+                         ConnectorApiPropertyService propertyService) {
         this.objectMapper = objectMapper;
         this.executorMap = new HashMap<>();
         this.propertyService = propertyService;
-        this.logSanitizer = logSanitizer;
         // 自动注册所有 NodeExecutor Bean
         for (NodeExecutor executor : nodeExecutors) {
             executorMap.put(executor.getNodeType(), executor);
@@ -386,7 +382,6 @@ public class DagScheduler {
 
     private String sanitize(String msg) {
         if (msg == null) return "";
-        String cleaned = msg.replace('\n', ' ').replace('\r', ' ');
-        return logSanitizer.sanitizeText(cleaned);
+        return msg.replace('\n', ' ').replace('\r', ' ');
     }
 }

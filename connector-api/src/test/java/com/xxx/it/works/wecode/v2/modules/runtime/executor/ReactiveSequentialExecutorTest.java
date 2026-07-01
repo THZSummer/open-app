@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2.modules.runtime.executor;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
-import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
@@ -36,8 +35,7 @@ class ReactiveSequentialExecutorTest {
 
         TriggerNodeExecutor triggerExecutor = new TriggerNodeExecutor(objectMapper);
         UnifiedCredentialProcessor mockProcessor = mock(UnifiedCredentialProcessor.class);
-        LogSanitizer logSanitizer = mock(LogSanitizer.class);
-        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockProcessor, logSanitizer);
+        ConnectorNodeExecutor connectorExecutor = new ConnectorNodeExecutor(objectMapper, webClient, mockProcessor);
         DataProcessorExecutor dataProcessor = new DataProcessorExecutor(objectMapper);
         ExitNodeExecutor exitExecutor = new ExitNodeExecutor(objectMapper);
 

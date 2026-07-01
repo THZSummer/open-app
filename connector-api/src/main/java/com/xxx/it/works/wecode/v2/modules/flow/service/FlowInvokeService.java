@@ -11,7 +11,6 @@ import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
-import com.xxx.it.works.wecode.v2.modules.execution.LogSanitizer;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService.StepLog;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
@@ -84,7 +83,6 @@ public class FlowInvokeService {
     private final ExecutionStepService executionStepService;
     private final IdGenerator idGenerator;
     private final ConnectorApiPropertyService propertyService;
-    private final LogSanitizer logSanitizer;
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
@@ -97,8 +95,7 @@ public class FlowInvokeService {
             ExecutionRecordService executionRecordService,
             ExecutionStepService executionStepService,
             IdGenerator idGenerator,
-            ConnectorApiPropertyService propertyService,
-            LogSanitizer logSanitizer) {
+            ConnectorApiPropertyService propertyService) {
         this.objectMapper = objectMapper;
         this.executor = executor;
         this.dagScheduler = dagScheduler;
@@ -110,7 +107,6 @@ public class FlowInvokeService {
         this.executionStepService = executionStepService;
         this.idGenerator = idGenerator;
         this.propertyService = propertyService;
-        this.logSanitizer = logSanitizer;
     }
 
     /**
@@ -292,7 +288,7 @@ public class FlowInvokeService {
                 .onErrorResume(e -> {
                     log.error("Trigger invoke failed: flowId={}, error={}", flowId, e.getMessage());
                     String flowIdStr = String.valueOf(flowId);
-                    String msg = logSanitizer.sanitizeText(e.getMessage() != null ? e.getMessage() : "");
+                    String msg = e.getMessage() != null ? e.getMessage() : "";
 
                     String[] classified = classifyError(msg, e);
                     String errorCode = classified[0];

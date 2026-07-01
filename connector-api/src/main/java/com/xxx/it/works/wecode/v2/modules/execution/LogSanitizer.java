@@ -7,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -89,76 +88,6 @@ public class LogSanitizer {
         } catch (JsonProcessingException e) {
             log.warn("Failed to parse/sanitize JSON data, returning original: {}", e.getMessage());
             return jsonData;
-        }
-    }
-
-    /**
-     * 脱敏纯文本中的敏感信息
-     * <p>
-     * 处理场景:
-     * <ul>
-     *   <li>URL 中携带敏感 query 参数: token=xxx, apiKey=xxx → token=***, apiKey=***</li>
-     *   <li>异常消息中嵌入的凭证: password=123456 → password=***</li>
-     *   <li>HTTP Header 值: Authorization: Bearer xxx → Authorization: ***</li>
-     *   <li>SYSTOKEN/Token 值: X-Sys-Token: abc → X-Sys-Token: ***</li>
-     * </ul>
-     * </p>
-     *
-     * @param text 原始文本（异常消息/错误描述）
-     * @return 脱敏后的文本
-     */
-    public String sanitizeText(String text) {
-        if (text == null || text.isEmpty()) {
-            return text;
-        }
-        String result = text;
-
-        // 1. URL 中的敏感 query 参数: key=value → key=***
-        for (String field : SENSITIVE_FIELDS) {
-            // token=xxx 模式
-            result = result.replaceAll(
-                    "(?i)(" + Pattern.quote(field) + ")\\s*=\\s*[^&\\s,\\)]+",
-                    "$1=***");
-            // token: xxx 模式 (JSON / log)
-            result = result.replaceAll(
-                    "(?i)(" + Pattern.quote(field) + ")\\s*:\\s*\"[^\"]*\"",
-                    "$1:\"***\"");
-            result = result.replaceAll(
-                    "(?i)(" + Pattern.quote(field) + ")\\s*:\\s*[^,\\s\\}]+",
-                    "$1:***");
-        }
-
-        // 2. Authorization / Bearer token header
-        result = result.replaceAll(
-                "(?i)(Authorization|X-Sys-Token|X-Soa-Token|X-AKSK-Signature)\\s*[:=]\\s*[^\\s,\\n\\)]+",
-                "$1: ***");
-
-        // 3. SysToken / token 值暴露 (如 "token value is xxx")
-        result = result.replaceAll(
-                "(?i)(token|credential|password|secret)\\s+(value\\s+is|为)\\s*[^\\s,\\.]+",
-                "$1 $2 ***");
-
-        return result;
-    }
-
-    /**
-     * 移除 URL 中的 query 参数, 仅保留 scheme + host + path
-     *
-     * @param url 原始 URL
-     * @return 脱敏后的 URL（不含 query string）
-     */
-    public String sanitizeUrl(String url) {
-        if (url == null || url.isEmpty()) {
-            return url;
-        }
-        try {
-            int queryIdx = url.indexOf('?');
-            if (queryIdx >= 0) {
-                return url.substring(0, queryIdx);
-            }
-            return url;
-        } catch (Exception e) {
-            return url;
         }
     }
 
