@@ -17,6 +17,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
@@ -124,8 +125,7 @@ public class FlowInvokeService {
                     // 校验连接流状态：仅运行中(RUNNING=2)才允许执行
                     if (flow.getLifecycleStatus() == null || flow.getLifecycleStatus() != 2) {
                         return Mono.error(new RuntimeException(
-                                "Flow is not running: flowId=" + flowId
-                                        + ", lifecycleStatus=" + flow.getLifecycleStatus()));
+                                "FLOW_NOT_RUNNING:" + flowId));  // marker prefix for classifyError replacement
                     }
                     Long deployedVersionId = flow.getDeployedVersionId();
                     if (deployedVersionId != null) {
@@ -219,7 +219,7 @@ public class FlowInvokeService {
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(triggerData);
                     context.setTriggerType(1); // HTTP触发
-                    context.setTest(false);
+                    context.setDebug(false);
                     context.setTriggerHeaders(headers);
                     context.setTriggerQueryParams(queryParams);
 
@@ -395,24 +395,34 @@ public class FlowInvokeService {
     }
 
     /**
-     * 根据异常消息分类错误码与错误消息
+     * 根据异常消息前缀分类错误码与错误消息
+     * <p>
+     * 前置校验层抛出的异常使用特定前缀标记，执行层异常携带 NodeOutput.errorInfo 中的细分码.
+     * </p>
      * @return 长度为2的数组：[errorCode, errorMsg]
      */
     private String[] classifyError(String msg, Throwable e) {
+        if (msg == null) { msg = ""; }
+        if (msg.startsWith("FLOW_NOT_RUNNING:")) {
+            String flowIdStr = msg.substring("FLOW_NOT_RUNNING:".length());
+            return new String[]{ErrorCode.PRECHECK_FLOW_NOT_RUNNING, "连接流未启动，请先启动后再调用"};
+        }
         if (msg.contains("Flow not found")) {
-            return new String[]{"404", "流不存在: " + msg};
-        } else if (msg.contains("whitelist") || msg.contains("Whitelist") || msg.contains("URL not in")) {
-            return new String[]{"403", "URL 白名单拒绝: " + msg};
-        } else if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
+            return new String[]{ErrorCode.PRECHECK_FLOW_NOT_FOUND, "连接流不存在"};
+        }
+        if (msg.contains("whitelist") || msg.contains("Whitelist") || msg.contains("URL not in")) {
+            return new String[]{ErrorCode.PRECHECK_URL_WHITELIST_DENIED, "URL 白名单拒绝: " + msg};
+        }
+        if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
                 || msg.contains("X-Sys-Token") || msg.contains("认证")) {
-            return new String[]{"401", "认证失败: " + msg};
-        } else if (msg.contains("required field") || msg.contains("input")
+            return new String[]{ErrorCode.PRECHECK_AUTH_FAILED, "认证失败: " + msg};
+        }
+        if (msg.contains("required field") || msg.contains("input")
                 || msg.contains("must be") || msg.contains("Missing required")
                 || e instanceof IllegalArgumentException) {
-            return new String[]{"400", "请求参数错误: " + msg};
-        } else {
-            return new String[]{"500", "触发执行失败: " + msg};
+            return new String[]{ErrorCode.PRECHECK_BAD_REQUEST, "请求参数错误: " + msg};
         }
+        return new String[]{"500", "调用执行失败: " + msg};
     }
 
     /**
@@ -433,6 +443,9 @@ public class FlowInvokeService {
             case "400" -> TransparentFlowResponse.preExecutionError(
                     flowIdStr, HttpStatus.BAD_REQUEST, errorCode,
                     errorMsg, "Bad request: " + msg);
+            case "409" -> TransparentFlowResponse.preExecutionError(
+                    flowIdStr, HttpStatus.CONFLICT, errorCode,
+                    errorMsg, "Flow not running: " + msg);
             default -> TransparentFlowResponse.preExecutionError(
                     flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, errorCode,
                     errorMsg, "Trigger execution failed: " + msg);
@@ -447,7 +460,7 @@ public class FlowInvokeService {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(executionId);
         result.setFlowId(flowId);
-        result.setTest(ctx.isTest());
+        result.setDebug(ctx.isDebug());
 
         boolean anyFailed = false;
         Map<String, Object> lastOutput = null;

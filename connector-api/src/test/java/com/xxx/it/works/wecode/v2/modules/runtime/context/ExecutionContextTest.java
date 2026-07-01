@@ -76,9 +76,9 @@ class ExecutionContextTest {
     void testModeAndTriggerType() {
         ExecutionContext ctx = new ExecutionContext("exec-007", "flow-001");
 
-        assertFalse(ctx.isTest());
-        ctx.setTest(true);
-        assertTrue(ctx.isTest());
+        assertFalse(ctx.isDebug());
+        ctx.setDebug(true);
+        assertTrue(ctx.isDebug());
 
         ctx.setTriggerType(2);
         assertEquals(2, ctx.getTriggerType());

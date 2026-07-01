@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.model;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,8 +43,10 @@ public class ExecutionResult {
     @JsonAlias({"errorInfo", "errorMessage"})
     private Map<String, Object> errorInfo;
 
-    /** 是否测试运行 */
-    private boolean isTest;
+    /** 是否调试模式 */
+    @JsonAlias({"test", "isTest"})
+    @JsonProperty("debug")
+    private boolean debug;
 
     /** 缓存命中标记 (FR-037), 默认 false */
     private boolean cacheHit;
@@ -188,8 +191,8 @@ public class ExecutionResult {
     public Map<String, Object> getErrorInfo() { return errorInfo; }
     public void setErrorInfo(Map<String, Object> errorInfo) { this.errorInfo = errorInfo; }
 
-    public boolean isTest() { return isTest; }
-    public void setTest(boolean test) { isTest = test; }
+    public boolean isDebug() { return debug; }
+    public void setDebug(boolean debug) { this.debug = debug; }
 
     public boolean isCacheHit() { return cacheHit; }
     public void setCacheHit(boolean cacheHit) { this.cacheHit = cacheHit; }

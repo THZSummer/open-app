@@ -6,6 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ResolvedFlowConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -274,14 +275,19 @@ public class DagScheduler {
                         .onErrorResume(e -> {
                             NodeOutput errorOutput = new NodeOutput(nodeId, nodeType,
                                     new HashMap<>(), new HashMap<>());
-                            errorOutput.setStatus("timeout");
+                            boolean isTimeout = e instanceof java.util.concurrent.TimeoutException
+                                    || (e.getMessage() != null && e.getMessage().contains("timeout"));
+                            errorOutput.setStatus(isTimeout ? "timeout" : "failed");
                             errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
-                            Map<String, Object> errorInfo = new HashMap<>();
-                            errorInfo.put("code", "6002");
-                            errorInfo.put("message", "Node execution timeout or error: " + e.getMessage());
-                            errorInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
-                            errorInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
-                            errorOutput.setErrorInfo(errorInfo);
+                            // 保留 NodeExecutor 已设置的 errorInfo, 仅兜底
+                            if (errorOutput.getErrorInfo() == null || errorOutput.getErrorInfo().isEmpty()) {
+                                Map<String, Object> errorInfo = new HashMap<>();
+                                errorInfo.put("code", isTimeout ? "64000" : "60001");
+                                String msg = sanitize(e.getMessage());
+                                errorInfo.put("messageZh", "节点[" + nodeId + "]执行" + (isTimeout ? "超时" : "失败") + ": " + msg);
+                                errorInfo.put("messageEn", "Node [" + nodeId + "] execution " + (isTimeout ? "timeout" : "failed") + ": " + msg);
+                                errorOutput.setErrorInfo(errorInfo);
+                            }
                             return Mono.just(errorOutput);
                         }));
     }
@@ -372,5 +378,10 @@ public class DagScheduler {
             }
         }
         return list;
+    }
+
+    private String sanitize(String msg) {
+        if (msg == null) return "";
+        return msg.replace('\n', ' ').replace('\r', ' ');
     }
 }

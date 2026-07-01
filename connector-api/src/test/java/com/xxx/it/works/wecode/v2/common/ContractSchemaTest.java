@@ -217,15 +217,15 @@ class ContractSchemaTest {
 
         String[] validFields = {"nameCn", "nameEn", "connectorType", "lifecycleStatus",
                 "createTime", "lastUpdateTime", "connectorId", "flowId",
-                "isTest", "hasConfig", "orchestrationConfig", "connectionConfig"};
+                "debug", "hasConfig", "orchestrationConfig", "connectionConfig"};
 
         for (String field : validFields) {
             assertTrue(field.matches(camelCasePattern),
                     "字段名 '" + field + "' 不符合 camelCase 规范");
         }
 
-        // 验证 isXxx 布尔字段以 is 开头
-        String[] booleanFields = {"isTest", "isDeleted", "hasConfig"};
+        // 验证 isXxx 布尔字段以 is/has 开头
+        String[] booleanFields = {"isDeleted", "hasConfig"};
         for (String field : booleanFields) {
             assertTrue(field.startsWith("is") || field.startsWith("has"),
                     "布尔字段应使用 is/has 前缀: " + field);

@@ -137,7 +137,7 @@ public class FlowRuntimeEngine {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(ctx.getExecutionId());
         result.setFlowId(ctx.getFlowId());
-        result.setTest(ctx.isTest());
+        result.setDebug(ctx.isDebug());
         result.setTotalDurationMs(System.currentTimeMillis() - startTime);
 
         // 收集各节点执行结果
@@ -195,7 +195,7 @@ public class FlowRuntimeEngine {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(ctx.getExecutionId());
         result.setFlowId(ctx.getFlowId());
-        result.setTest(ctx.isTest());
+        result.setDebug(ctx.isDebug());
         result.setStatus("failed");
         result.setTotalDurationMs(System.currentTimeMillis() - startTime);
 

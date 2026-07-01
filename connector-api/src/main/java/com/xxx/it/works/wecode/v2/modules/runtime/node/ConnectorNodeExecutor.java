@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.node;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
@@ -385,10 +386,32 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                     log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
 
                     Map<String, Object> errorInfo = new HashMap<>();
-                    errorInfo.put("code", "6001");
-                    errorInfo.put("message", e.getMessage());
-                    errorInfo.put("messageEn", e.getMessage());
-                    errorInfo.put("messageZh", e.getMessage());
+                    String code;
+                    String msgZh;
+
+                    if (e instanceof java.util.concurrent.TimeoutException
+                            || (e.getMessage() != null && e.getMessage().toLowerCase().contains("timeout"))) {
+                        code = ErrorCode.CONNECTOR_READ_TIMEOUT;
+                        msgZh = "连接器调用超时（超过" + timeoutMs + "ms），目标地址 [" + url + "] 未在规定时间内响应";
+                    } else if (e.getMessage() != null && e.getMessage().toLowerCase().contains("connection refused")) {
+                        code = ErrorCode.CONNECTOR_CONNECT_TIMEOUT;
+                        msgZh = "连接器连接超时，目标地址 [" + url + "] 不可达";
+                    } else if (e.getMessage() != null && e.getMessage().toLowerCase().contains("unknown host")
+                            || (e.getMessage() != null && e.getMessage().toLowerCase().contains("dns"))) {
+                        code = ErrorCode.CONNECTOR_DNS_FAILED;
+                        msgZh = "连接器目标地址 DNS 解析失败，请检查 URL 配置";
+                    } else if (e.getMessage() != null && (e.getMessage().toLowerCase().contains("ssl")
+                            || e.getMessage().toLowerCase().contains("certificate"))) {
+                        code = ErrorCode.CONNECTOR_SSL_FAILED;
+                        msgZh = "连接器 SSL 证书校验失败，目标地址可能使用了不受信任的证书";
+                    } else {
+                        code = ErrorCode.CONNECTOR_HTTP_FAILED;
+                        msgZh = "连接器调用失败: " + e.getMessage();
+                    }
+
+                    errorInfo.put("code", code);
+                    errorInfo.put("messageZh", msgZh);
+                    errorInfo.put("messageEn", "Connector call failed: " + e.getMessage());
 
                     Map<String, Object> outputData = new HashMap<>();
                     outputData.put("__status", "failed");
