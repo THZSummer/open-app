@@ -592,6 +592,63 @@ X-Status: 1
 |---|------|------|
 | 62 | 连接器节点下游响应 body 截断 ≤ 512 字符 | ConnectorNodeExecutor |
 
+### Phase 7：测试对齐
+
+#### 7.1 Java 单元测试（connector-api）
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 63 | ExecutionContext.isDebug 字段 getter/setter + 默认值 false | ExecutionContextTest |
+| 64 | DagScheduler：isDebug=true 时跳过执行记录写入 | DagSchedulerTest |
+| 65 | DagScheduler：节点异常后产出结构化 ErrorInfo（含 code + 节点名） | DagSchedulerTest |
+| 66 | ConnectorNodeExecutor：61020~61025 配置错误各 1 条用例 | NodeExecutorsTest |
+| 67 | ConnectorNodeExecutor：62001~62007 运行时错误各 1 条用例 | NodeExecutorsTest |
+| 68 | ConnectorNodeExecutor：isDebug=true 跳过认证校验 | NodeExecutorsTest |
+| 69 | ScriptNodeExecutor：61030~61033 配置错误各 1 条用例 | ScriptNodeExecutorTest |
+| 70 | ScriptNodeExecutor：63001~63005 运行时错误各 1 条用例 | ScriptNodeExecutorTest |
+| 71 | ScriptNodeExecutor：isDebug=true 放宽语句上限不抛 63003 | ScriptNodeExecutorTest |
+| 72 | ParallelBranchExecutor：61040~61042 配置错误各 1 条用例 | 新建 ParallelBranchExecutorTest |
+| 73 | ParallelBranchExecutor：65001~65003 运行时错误各 1 条用例 | ParallelBranchExecutorTest |
+| 74 | ExitNodeExecutor：61050~61051 配置错误各 1 条用例 | NodeExecutorsTest |
+| 75 | ExitNodeExecutor：66001~66002 运行时错误各 1 条用例 | NodeExecutorsTest |
+| 76 | TriggerNodeExecutor：61010~61012 配置错误各 1 条用例 | NodeExecutorsTest |
+| 77 | FlowVersionDebugService：版本不存在→404、状态不支持→422、编排为空→422 | FlowVersionDebugServiceTest |
+| 78 | FlowVersionDebugService：连接器/版本不存在→404、连接器/版本失效→422 | FlowVersionDebugServiceTest |
+| 79 | FlowVersionDebugService：执行失败后 ExecutionResult.errorInfo.code ≠ 6002（细分码） | FlowVersionDebugServiceTest |
+| 80 | FlowInvokeService：流不存在→404、流未运行→409、版本不可用→422 | FlowInvokeServiceTest |
+| 81 | FlowInvokeService：连接器/版本不存在→404、连接器/版本失效→422 | FlowInvokeServiceTest |
+| 82 | FlowInvokeService：X-Code 正确映射业务错误码（非 classifyError 字符串匹配） | FlowInvokeServiceTest |
+| 83 | ErrorCode 常量类所有码值唯一性校验 | 新建 ErrorCodeTest |
+
+#### 7.2 Python 集成测试（connector-api）
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 84 | 调试接口：版本不存在 → HTTP 200 + errorInfo.code=404 | test_debug_draft_invoke.py |
+| 85 | 调试接口：版本状态不支持调试（待审批/已撤回/已驳回）→ code=422 | test_debug_draft_invoke.py |
+| 86 | 调试接口：编排为空 → code=422 | test_debug_draft_invoke.py |
+| 87 | 调试接口：连接器不存在/版本不存在/失效 → code=404/422 | test_debug_draft_invoke.py |
+| 88 | 调试接口：脚本语法错误 → code=61033（非 6002） | test_internal_test_run.py |
+| 89 | 调用接口：流未运行 → HTTP 409 + X-Message-Zh 中文提示 | test_trigger_invoke.py |
+| 90 | 调用接口：连接器调用失败 → X-Code=62001 + X-Message-Zh 含连接器名 | test_trigger_invoke.py |
+| 91 | 调用接口：脚本执行失败 → X-Code=63001 | test_script_node_execution.py |
+| 92 | 调用接口：脚本为空 → X-Code=61030 | test_script_node_execution.py |
+| 93 | 调用接口：并行分支失败 → X-Code=65001 | test_parallel_branch.py |
+| 94 | 调用接口：所有分支均失败 → X-Code=65003 | test_parallel_branch.py |
+| 95 | 调用接口：节点超时 → X-Code 含 62003/63002/65002 之一 + X-Message-Zh 含超时阈值 | test_node_timeout.py |
+| 96 | 调用接口：SYSTOKEN 白名单拒绝 → X-Code=61012 | test_systoken_whitelist.py |
+| 97 | 下游 body 截断：mock 服务器返回 >512 字符 → X-Message-Zh 截断 | 新建 test_error_response.py |
+| 98 | 综合：6 种节点类型各至少 1 条错误码场景覆盖 | test_error_response.py |
+
+### Phase 8：isTest → isDebug 重命名
+
+| # | 修改 | 文件 |
+|---|------|------|
+| 99 | `isTest` 字段/变量/方法全量重命名为 `isDebug` | connector-api 全模块 |
+| 100 | ExecutionResult 中 `test` JSON 字段改为 `debug` | ExecutionResult |
+| 101 | FlowVersionDebugService 中 `isTest` 参数重命名 | FlowVersionDebugService |
+| 102 | 前端调试面板中 `isTest` 参数重命名（需协调） | 非本文档范围，记录备忘 |
+
 ---
 
 ## 修订记录
@@ -599,3 +656,4 @@ X-Status: 1
 | 版本 | 日期 | 修订内容 | 修订人 |
 |------|------|---------|--------|
 | v1.0-draft | 2026-07-01 | 初始版本：现状分析 + 统一错误码体系 | Summer |
+| v1.1-draft | 2026-07-01 | 重写 §7 实现计划为 8 个 Phase 102 条；新增测试对齐 + isTest→isDebug | Summer |
