@@ -44,8 +44,10 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 版本服务实现
@@ -193,19 +195,23 @@ public class VersionServiceImpl implements VersionService {
         vo.setStatus(version.getStatus());
 
         // 加载版本关联的能力列表（含图标）
-        vo.setAbilityList(buildAbilityList(version.getId(), versionId));
+        vo.setAbilityList(buildAbilityList(version.getId()));
 
         return vo;
     }
 
     /**
-     * 解析能力ID字符串 → 加载能力详情 → 组装 VO 列表
+     * 解析能力ID字符串 → 批量加载能力详情 → 组装 VO 列表
      */
-    private List<AppVersionAbilityVO> buildAbilityList(Long versionDbId, Long versionId) {
+    private List<AppVersionAbilityVO> buildAbilityList(Long versionDbId) {
         String abilityIdsStr = appVersionMapper.selectPropertyValue(versionDbId, VersionPropertyConstants.PROP_ABILITY_IDS);
         if (!StringUtils.hasText(abilityIdsStr)) {
             return Collections.emptyList();
         }
+
+        // 批量查能力详情（selectAll 数据量不大，内存过滤）
+        Map<Long, Ability> abilityMap = abilityMapper.selectAll().stream()
+                .collect(Collectors.toMap(Ability::getId, a -> a));
 
         List<AppVersionAbilityVO> list = new ArrayList<>();
         for (String idStr : abilityIdsStr.split(",")) {
@@ -214,7 +220,7 @@ public class VersionServiceImpl implements VersionService {
                 continue;
             }
 
-            Ability ability = abilityMapper.selectById(abilityId);
+            Ability ability = abilityMap.get(abilityId);
             if (ability == null) {
                 continue;
             }
