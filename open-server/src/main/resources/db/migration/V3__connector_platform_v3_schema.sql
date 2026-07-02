@@ -14,68 +14,63 @@
 -- ============================================================================
 
 -- ============================================================================
--- 第 1 部分: 已有表结构变更 (5 ALTER)
+-- 第 1 部分: 已有表结构变更 (5 张表)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
 -- 1.1 connector_t: 新增 app_id，启用 status 4 状态
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_connector_t
-    ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID（0=全局，迁移前数据默认0）',
-    MODIFY COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=有效不可用（无已发布版本）, 2=有效可用（有已发布版本）, 3=已失效, 4=物理删除',
-    ADD INDEX idx_app_status (app_id, status),
-    ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询',
-    ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
+ALTER TABLE openplatform_v2_cp_connector_t ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID（0=全局，迁移前数据默认0）';
+ALTER TABLE openplatform_v2_cp_connector_t MODIFY COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=有效不可用（无已发布版本）, 2=有效可用（有已发布版本）, 3=已失效, 4=物理删除';
+ALTER TABLE openplatform_v2_cp_connector_t ADD INDEX idx_app_status (app_id, status);
+ALTER TABLE openplatform_v2_cp_connector_t ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询';
+ALTER TABLE openplatform_v2_cp_connector_t ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
 
 -- ----------------------------------------------------------------------------
 -- 1.2 connector_version_t: 移除 1:1 约束，新增版本号/状态/发布时间字段，connection_config 改为可空（草稿无需配置）
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_connector_version_t
-    DROP INDEX idx_connector_id,
-    MODIFY COLUMN connection_config MEDIUMTEXT NULL COMMENT '连接配置JSON（V3多版本：草稿可为空，发布时必填）',
-    ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增',
-    ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=已发布, 3=已失效, 4=物理删除',
-    ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（首次发布时刻）',
-    ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人（发布操作人）',
-    ADD INDEX idx_connector_version (connector_id, version_number),
-    ADD INDEX idx_connector_status (connector_id, status);
+ALTER TABLE openplatform_v2_cp_connector_version_t DROP INDEX idx_connector_id;
+ALTER TABLE openplatform_v2_cp_connector_version_t MODIFY COLUMN connection_config MEDIUMTEXT NULL COMMENT '连接配置JSON（V3多版本：草稿可为空，发布时必填）';
+ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增';
+ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=已发布, 3=已失效, 4=物理删除';
+ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（首次发布时刻）';
+ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人（发布操作人）';
+ALTER TABLE openplatform_v2_cp_connector_version_t ADD INDEX idx_connector_version (connector_id, version_number);
+ALTER TABLE openplatform_v2_cp_connector_version_t ADD INDEX idx_connector_status (connector_id, status);
 
 -- ----------------------------------------------------------------------------
 -- 1.3 flow_t: 新增部署版本指针/app_id，扩展 lifecycle_status 4 状态
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_flow_t
-    ADD COLUMN deployed_version_id BIGINT(20) NULL COMMENT '当前部署的版本ID（运行时按此指针读取编排快照）',
-    ADD COLUMN deployed_version_number INT NULL COMMENT '当前部署的版本号（冗余，避免列表查询 JOIN flow_version_t）',
-    ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID',
-    MODIFY COLUMN lifecycle_status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '生命周期：1=已停止, 2=运行中, 3=已失效, 4=物理删除',
-    ADD INDEX idx_deployed_version (deployed_version_id),
-    ADD INDEX idx_app_status (app_id, lifecycle_status),
-    ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询',
-    ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
+ALTER TABLE openplatform_v2_cp_flow_t ADD COLUMN deployed_version_id BIGINT(20) NULL COMMENT '当前部署的版本ID（运行时按此指针读取编排快照）';
+ALTER TABLE openplatform_v2_cp_flow_t ADD COLUMN deployed_version_number INT NULL COMMENT '当前部署的版本号（冗余，避免列表查询 JOIN flow_version_t）';
+ALTER TABLE openplatform_v2_cp_flow_t ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID';
+ALTER TABLE openplatform_v2_cp_flow_t MODIFY COLUMN lifecycle_status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '生命周期：1=已停止, 2=运行中, 3=已失效, 4=物理删除';
+ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_deployed_version (deployed_version_id);
+ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_app_status (app_id, lifecycle_status);
+ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询';
+ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
 
 -- ----------------------------------------------------------------------------
 -- 1.4 flow_version_t: 移除 1:1 约束，新增版本号/7状态/发布时间字段，orchestration_config 改为可空（草稿无需编排）
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_flow_version_t
-    DROP INDEX idx_flow_id,
-    MODIFY COLUMN orchestration_config MEDIUMTEXT NULL COMMENT '编排配置JSON（V3多版本：草稿可为空，发布时必填）',
-    ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增',
-    ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除',
-    ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（审批通过的时刻）',
-    ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人（提交审批的人）',
-    ADD INDEX idx_flow_version (flow_id, version_number),
-    ADD INDEX idx_flow_status (flow_id, status);
+ALTER TABLE openplatform_v2_cp_flow_version_t DROP INDEX idx_flow_id;
+ALTER TABLE openplatform_v2_cp_flow_version_t MODIFY COLUMN orchestration_config MEDIUMTEXT NULL COMMENT '编排配置JSON（V3多版本：草稿可为空，发布时必填）';
+ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增';
+ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除';
+ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（审批通过的时刻）';
+ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人（提交审批的人）';
+ALTER TABLE openplatform_v2_cp_flow_version_t ADD INDEX idx_flow_version (flow_id, version_number);
+ALTER TABLE openplatform_v2_cp_flow_version_t ADD INDEX idx_flow_status (flow_id, status);
 
 -- ----------------------------------------------------------------------------
 -- 1.5 approval_flow_t: 新增 app_id，uk_code → uk_code_app
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_approval_flow_t
-    DROP INDEX uk_code,
-    ADD COLUMN app_id BIGINT(20) NULL COMMENT '应用ID（NULL=全局配置，非NULL=指定应用配置）',
-    ADD UNIQUE KEY uk_code_app (code, app_id);
+ALTER TABLE openplatform_v2_approval_flow_t DROP INDEX uk_code;
+ALTER TABLE openplatform_v2_approval_flow_t ADD COLUMN app_id BIGINT(20) NULL COMMENT '应用ID（NULL=全局配置，非NULL=指定应用配置）';
+ALTER TABLE openplatform_v2_approval_flow_t ADD UNIQUE KEY uk_code_app (code, app_id);
 
 -- ============================================================================
--- 第 2 部分: 新建表 (4 CREATE)
+-- 第 2 部分: 新建表 (3 CREATE)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -170,36 +165,10 @@ CREATE TABLE IF NOT EXISTS openplatform_v2_cp_execution_step_t (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行步骤详情表';
 
 -- ============================================================================
--- 第 3 部分: 审计日志表 (FR-046)
--- ============================================================================
-
--- ----------------------------------------------------------------------------
--- 3.1 操作日志表 (openplatform_operate_log_t)
---     记录连接器/连接流发布等关键操作，供审计追溯
--- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS openplatform_operate_log_t (
-    id BIGINT NOT NULL COMMENT '雪花ID',
-    operate_type VARCHAR(50) NOT NULL COMMENT '操作类型: CREATE/UPDATE/DELETE/PUBLISH',
-    operate_object VARCHAR(500) COMMENT '操作对象标识',
-    operate_content TEXT COMMENT '操作内容JSON',
-    operator VARCHAR(100) COMMENT '操作人',
-    operate_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
-    app_id BIGINT DEFAULT 0 COMMENT '应用ID',
-    create_by VARCHAR(100),
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    last_update_by VARCHAR(100),
-    last_update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    INDEX idx_operate_type (operate_type),
-    INDEX idx_operate_time (operate_time),
-    INDEX idx_app_id (app_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='操作日志表';
-
--- ============================================================================
 -- 迁移完成标记
 -- ============================================================================
 -- 连接器平台 V3 Schema 迁移完成
 -- 变更汇总:
---   ALTER (5 + 2 MODIFY): connector_t, connector_version_t (connection_config→NULL for draft), flow_t, flow_version_t (orchestration_config→NULL for draft), approval_flow_t
---   CREATE (4): connector_version_ref_t, execution_record_t, execution_step_t, openplatform_operate_log_t
+--   ALTER (5 表 / 32 条): connector_t(5), connector_version_t(8), flow_t(8), flow_version_t(8), approval_flow_t(3)
+--   CREATE (3): connector_version_ref_t, execution_record_t, execution_step_t
 -- ============================================================================
