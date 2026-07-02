@@ -15,6 +15,7 @@ import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepLog;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
+import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
@@ -704,7 +705,7 @@ public class FlowInvokeService {
     @SuppressWarnings("unchecked")
     private Map<String, Object> findTriggerNode(List<Map<String, Object>> nodes) {
         for (Map<String, Object> node : nodes) {
-            String type = (String) node.get("type");
+            String type = NodeTypeResolver.businessType(node);
             if ("trigger".equals(type)) {
                 return node;
             }

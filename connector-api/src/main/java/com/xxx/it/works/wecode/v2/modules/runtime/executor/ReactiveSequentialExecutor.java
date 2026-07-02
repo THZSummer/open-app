@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
@@ -109,7 +110,7 @@ public class ReactiveSequentialExecutor {
             storeNodeOutputToContext(context, prevOutput);
         }
 
-        String nodeType = nodeConfig.get("type").asText();
+        String nodeType = NodeTypeResolver.businessType(nodeConfig);
         NodeExecutor executor = executorMap.get(nodeType);
         if (executor == null) {
             log.warn("Unknown node type: {}, skipping", nodeType);
@@ -186,7 +187,7 @@ public class ReactiveSequentialExecutor {
      */
     private ExecutionResult.StepDetail buildStepDetail(JsonNode node, ExecutionContext context) {
         String nodeId = node.get("id").asText();
-        String nodeType = node.get("type").asText();
+        String nodeType = NodeTypeResolver.businessType(node);
         NodeContext nodeCtx = context.getNodeContext(nodeId);
 
         ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
@@ -330,7 +331,7 @@ public class ReactiveSequentialExecutor {
         // 找 trigger 节点作为 DAG 入口
         JsonNode entryNode = null;
         for (JsonNode node : nodes) {
-            if ("trigger".equals(node.get("type").asText())) {
+            if ("trigger".equals(NodeTypeResolver.businessType(node))) {
                 entryNode = node;
                 break;
             }

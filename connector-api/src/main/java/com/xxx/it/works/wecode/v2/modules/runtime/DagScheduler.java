@@ -245,7 +245,7 @@ public class DagScheduler {
      */
     private Mono<NodeOutput> executeNode(ExecutionContext ctx, JsonNode nodeConfig, long startTime) {
         String nodeId = nodeConfig.get("id").asText();
-        String nodeType = nodeConfig.get("type").asText();
+        String nodeType = NodeTypeResolver.businessType(nodeConfig);
         long nodeStart = System.currentTimeMillis();
 
         NodeExecutor executor = resolveExecutor(nodeType);
@@ -349,7 +349,7 @@ public class DagScheduler {
      */
     private String findEntryNode(JsonNode nodes) {
         for (JsonNode node : nodes) {
-            if ("trigger".equals(node.get("type").asText())) {
+            if ("trigger".equals(NodeTypeResolver.businessType(node))) {
                 return node.get("id").asText();
             }
         }

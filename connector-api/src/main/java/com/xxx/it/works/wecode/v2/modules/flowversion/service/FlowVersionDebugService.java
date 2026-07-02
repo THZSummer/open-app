@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
@@ -168,7 +169,7 @@ public class FlowVersionDebugService {
     private String resolveTriggerNodeId(List<Map<String, Object>> nodes) {
         if (nodes == null || nodes.isEmpty()) { return null; }
         for (Map<String, Object> node : nodes) {
-            String type = (String) node.get("type");
+            String type = NodeTypeResolver.businessType(node);
             if ("trigger".equals(type)) {
                 Object id = node.get("id");
                 return id != null ? id.toString() : null;
