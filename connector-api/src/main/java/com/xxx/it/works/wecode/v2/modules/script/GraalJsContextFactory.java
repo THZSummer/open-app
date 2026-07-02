@@ -68,6 +68,7 @@ public class GraalJsContextFactory {
                          .allowMapAccess(true)
                          .allowListAccess(true)
                          .allowBufferAccess(true)
+                         .allowAccessAnnotatedBy(HostAccess.Export.class)
                          .build())
                 .allowAllAccess(false)                // 5. 最大限制
                 // === 语句限制 ===

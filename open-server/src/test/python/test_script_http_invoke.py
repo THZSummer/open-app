@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Script node direct HTTP call test — trigger → script(fetch mock API) → exit
+Script node HTTP call via ctx.http — trigger → script(ctx.http.post) → exit
 
 Simplified 3-node flow:
   trigger  — receives HTTP request {name, email, age}
-  script   — reads ctx.trigger.input.body, calls mock HTTP API directly
-  exit     — would return script output (but sandbox blocks HTTP first)
+  script   — reads ctx.trigger.input.body, calls ctx.http.post(mock API)
+  exit     — returns script output
 
-Since GraalJS sandbox is allowIO=false, the script's HTTP call is BLOCKED.
-Expected: sandbox returns SCRIPT_RUNTIME_ERROR (63001), X-Status=1.
+Controlled by Spring config script.http.client.enabled (default true).
+Scripts access HTTP via ctx.http.get(url) / ctx.http.post(url, body).
 
 Prerequisites:
   - connector-api running on localhost:18180
@@ -157,21 +157,16 @@ def test_script_http_invoke():
             script_src = (
                 "function main(ctx) {\n"
                 "    var input = ctx.trigger.input.body;\n"
-                "    var payload = JSON.stringify({\n"
+                "    var resp = ctx.http.post('" + MOCK_URL + "/api/user', {\n"
                 "        name: input.name,\n"
                 "        email: input.email,\n"
                 "        age: input.age\n"
                 "    });\n"
-                "    var resp = fetch('" + MOCK_URL + "/api/user', {\n"
-                "        method: 'POST',\n"
-                "        headers: { 'Content-Type': 'application/json' },\n"
-                "        body: payload\n"
-                "    });\n"
-                "    var data = resp.json();\n"
+                "    var data = resp.body.data;\n"
                 "    return {\n"
-                "        result: data.data.display_name,\n"
-                "        domain: data.data.email_domain,\n"
-                "        group: data.data.age_group\n"
+                "        result: data.display_name,\n"
+                "        domain: data.email_domain,\n"
+                "        group: data.age_group\n"
                 "    };\n"
                 "}"
             )
@@ -244,36 +239,47 @@ def test_script_http_invoke():
             if resp is None:
                 os_fail("connector-api unreachable"); return False
 
-            # Sandbox blocks HTTP → expect error
-            is_err = resp.status_code != 200 or resp.headers.get("X-Status") == "1"
-            code = resp.headers.get("X-Code", "")
-            body_empty = len(resp.content) == 0
-
             print(f"    HTTP {resp.status_code}, X-Status={resp.headers.get('X-Status')}")
-            print(f"    X-Code={code}")
 
-            if is_err:
-                print("  [OK] Sandbox blocked HTTP call")
+            if resp.status_code != 200:
+                os_fail(f"Expected HTTP 200, got {resp.status_code}, body={resp.text[:200]}")
+                return False
+
+            try:
+                body = resp.json()
+            except Exception:
+                os_fail("Response is not JSON"); return False
+
+            display_name = body.get("result", "")
+            email_domain = body.get("domain", "")
+            age_group = body.get("group", "")
+
+            check_ok_result = True
+            if display_name == "ZHANGSAN":
+                print(f"  [OK] display_name: {display_name}")
             else:
-                os_fail(f"Expected sandbox rejection, got HTTP {resp.status_code}")
+                os_fail(f"display_name={display_name}, expected='ZHANGSAN'")
+                check_ok_result = False
 
-            if code:
-                print(f"  [OK] Error code: {code}")
+            if email_domain == "c.com":
+                print(f"  [OK] email_domain: {email_domain}")
             else:
-                os_fail("Missing X-Code header")
+                os_fail(f"email_domain={email_domain}, expected='c.com'")
+                check_ok_result = False
 
-            if body_empty:
-                print("  [OK] Response body empty (error spec)")
+            if age_group == "adult":
+                print(f"  [OK] age_group: {age_group}")
             else:
-                print(f"    body: {resp.content[:200]}")
+                os_fail(f"age_group={age_group}, expected='adult'")
+                check_ok_result = False
 
-            return is_err and bool(code)
+            return check_ok_result
 
         # ====== Step 3: verify trigger→script data path ======
         # Since script fails at HTTP, we can't see output. But we verify
         # the flow didn't crash before reaching the script.
         def s3():
-            # Check execution record exists (means flow started)
+            # Check execution record exists
             row = os_db_val(
                 f"SELECT COUNT(*) FROM openplatform_v2_cp_execution_record_t WHERE flow_id={fid}")
             if row and int(row) >= 1:
@@ -289,7 +295,7 @@ def test_script_http_invoke():
         if failed:
             print("  [FAIL] Script HTTP invoke test FAILED")
         else:
-            print("  [PASS] Script sandbox correctly blocked HTTP call")
+            print("  [PASS] Script HTTP call via ctx.http succeeded!")
         print("=" * 60)
         assert not failed
 

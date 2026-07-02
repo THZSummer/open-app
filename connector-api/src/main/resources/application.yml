@@ -50,3 +50,6 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Script HTTP client (default enabled, scripts can call ctx.http.get/post/put)
+script.http.client.enabled: true

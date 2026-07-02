@@ -52,6 +52,10 @@ public class ScriptNodeExecutor implements NodeExecutor {
     /** 脚本节点默认超时 (毫秒), 仅作为极端兜底 */
     private static final int DEFAULT_TIMEOUT_MS = 5000;
 
+    /** Whether script HTTP client is enabled (script.http.client.enabled, default true) */
+    @org.springframework.beans.factory.annotation.Value("${script.http.client.enabled:true}")
+    private boolean scriptHttpEnabled;
+
     private final GraalJsContextFactory contextFactory;
     private final CtxAssembler ctxAssembler;
     private final ConnectorApiPropertyService propertyService;
@@ -110,6 +114,12 @@ public class ScriptNodeExecutor implements NodeExecutor {
 
         // 4. 组装 ctx Map
         final Map<String, Object> ctxMap = ctxAssembler.assembleCtx(ctx, upstreamNodeIds);
+
+        // Inject HTTP client for script HTTP calls (controlled by script.http.client.enabled, default true)
+        if (scriptHttpEnabled) {
+            ctxMap.put("http", new ScriptHttpClient());
+        }
+
         final int finalTimeoutMs = timeoutMs;
 
         long startTime = System.currentTimeMillis();
