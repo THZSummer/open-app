@@ -204,7 +204,7 @@ public class EntityCacheManager {
     private Mono<RateLimitConfig> loadRateLimitFromDb(Long flowId) {
         // 通过已缓存的 FlowVersion 获取限流配置
         return getFlowVersionByFlowId(flowId)
-                .map(this::extractRateLimitConfig)
+                .flatMap(this::extractRateLimitConfig)
                 .flatMap(config -> {
                     try {
                         String json = objectMapper.writeValueAsString(config);
