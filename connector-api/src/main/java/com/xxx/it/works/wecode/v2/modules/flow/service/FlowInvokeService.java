@@ -200,14 +200,18 @@ public class FlowInvokeService {
         String executionId = UUID.randomUUID().toString().replace("-", "");
         Long recordId = idGenerator.nextId();
 
-        return loadFlowVersion(flowId)
+        // 异步读取日志采集开关 (默认开启): 关闭时不写 execution_record / execution_step 两张表
+        return propertyService.isLogCollectionEnabled()
+                .defaultIfEmpty(true)
+                .onErrorReturn(true)
+                .flatMap(logEnabled -> loadFlowVersion(flowId)
                 .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
                 .flatMap(tuple -> {
                     FlowVersionEntity flowVersion = tuple.getT1();
                     FlowEntity flow = tuple.getT2().orElse(null);
 
-                    // ★ 初始化执行记录
-                    initExecutionRecord(recordId, flowId, executionId, flowVersion, flow);
+                    // ★ 初始化执行记录 (开关关闭时跳过)
+                    initExecutionRecord(recordId, flowId, executionId, flowVersion, flow, logEnabled);
 
                     // 1. 解析编排配置
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
@@ -254,7 +258,7 @@ public class FlowInvokeService {
                                     dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
                                             .flatMap(updatedCtx -> {
                                                 ExecutionResult result = buildResultFromExecutionContext(
-                                                        updatedCtx, executionId, flowIdStr, recordId);
+                                                        updatedCtx, executionId, flowIdStr, recordId, logEnabled);
                                                 result.setCacheHit(false);
                                                 return cacheManager.writeCache(flowId, cacheKey,
                                                         result, cacheTtl)
@@ -264,7 +268,7 @@ public class FlowInvokeService {
                     } else {
                         executionMono = dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
                                 .map(updatedCtx -> buildResultFromExecutionContext(
-                                        updatedCtx, executionId, flowIdStr, recordId));
+                                        updatedCtx, executionId, flowIdStr, recordId, logEnabled));
                     }
 
                     return executionMono.flatMap(result -> {
@@ -275,7 +279,7 @@ public class FlowInvokeService {
                         String errCode = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("code") : null;
                         String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
                         // 异步取①平台全局最大记录数, 避免在 reactor/lettuce 线程上 block 导致自死锁
-                        return finalizeExecutionRecord(recordId, flowId, finalStatus, duration, errCode, errMsg)
+                        return finalizeExecutionRecord(recordId, flowId, finalStatus, duration, errCode, errMsg, logEnabled)
                                 .thenReturn(buildTransparentResponse(flowIdStr, result));
                     });
                 })
@@ -290,9 +294,9 @@ public class FlowInvokeService {
                     TransparentFlowResponse response = buildErrorResponse(flowIdStr, errorCode, errorMsg, msg);
 
                     // ★ 执行失败 - 更新记录
-                    return finalizeExecutionRecord(recordId, flowId, 1, null, errorCode, errorMsg)
+                    return finalizeExecutionRecord(recordId, flowId, 1, null, errorCode, errorMsg, logEnabled)
                             .thenReturn(response);
-                });
+                }));
     }
 
     /**
@@ -306,7 +310,11 @@ public class FlowInvokeService {
      * 初始化执行记录并补充流元数据
      */
     private void initExecutionRecord(Long recordId, Long flowId, String executionId,
-                                      FlowVersionEntity flowVersion, FlowEntity flow) {
+                                      FlowVersionEntity flowVersion, FlowEntity flow, boolean logEnabled) {
+        if (!logEnabled) {
+            log.debug("Execution record skipped (logCollectionEnabled=false): flowId={}", flowId);
+            return;
+        }
         Long appId = flow != null ? flow.getAppId() : null;
         try {
             executionRecordService.startRecord(recordId, flowId,
@@ -442,7 +450,7 @@ public class FlowInvokeService {
      * 从 ExecutionContext 构建 ExecutionResult (DagScheduler 输出桥接)
      */
     private ExecutionResult buildResultFromExecutionContext(
-            ExecutionContext ctx, String executionId, String flowId, Long recordId) {
+            ExecutionContext ctx, String executionId, String flowId, Long recordId, boolean logEnabled) {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(executionId);
         result.setFlowId(flowId);
@@ -499,7 +507,7 @@ public class FlowInvokeService {
             result.setResultData(cleanOutput);
         }
 
-        persistStepLogs(ctx, recordId);
+        persistStepLogs(ctx, recordId, logEnabled);
 
         return result;
     }
@@ -522,7 +530,10 @@ public class FlowInvokeService {
     /**
      * 持久化步骤日志（fire-and-forget，不影响业务响应）
      */
-    private void persistStepLogs(ExecutionContext ctx, Long recordId) {
+    private void persistStepLogs(ExecutionContext ctx, Long recordId, boolean logEnabled) {
+        if (!logEnabled) {
+            return;
+        }
         try {
             List<StepLog> stepLogs = new ArrayList<>();
             for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
@@ -970,7 +981,11 @@ public class FlowInvokeService {
      * §3.3.4: 读①平台全局值.
      */
     private Mono<Void> finalizeExecutionRecord(Long recordId, Long flowId, Integer status,
-                                                Integer durationMs, String errorCode, String errorMsg) {
+                                                Integer durationMs, String errorCode, String errorMsg,
+                                                boolean logEnabled) {
+        if (!logEnabled) {
+            return Mono.empty();
+        }
         return propertyService.loadPlatformDefaults()
                 .map(config -> {
                     String val = config.get("Max.Execution.Records.Per.Flow");
