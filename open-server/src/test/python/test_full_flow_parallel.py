@@ -21,27 +21,18 @@ _osm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_osm)
 
 os_api = _osm.api
-os_db = _osm.db
-os_db_val = _osm.db_val
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-
-from client import (
-    CONNECTOR_API_BASE, CONNECTOR_API_HEALTH
-)
+from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_PARALLEL_URL
 import requests
 
 TEST_APP_ID = _osm.TEST_APP_ID
-INTERNAL_APP_ID = int(os_db_val(
-    f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"
-))
-
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 
-# ── Mock HTTP Server (带延迟, 端口 18982) ──
+# ── Mock HTTP Server (带延迟, 端口见 client.py MOCK_SERVER_PARALLEL_URL) ──
+MOCK_BASE = MOCK_SERVER_PARALLEL_URL
 MOCK_PORT = 18982
-MOCK_BASE = f"http://localhost:{MOCK_PORT}"
 BRANCH_DELAYS = {"a": 1.5, "b": 1.5}
 
 
@@ -562,11 +553,17 @@ def test_full_flow_parallel():
 
         def s5():
             nonlocal aid
-            aid = os_db_val(
-                f"SELECT id FROM openplatform_v2_approval_record_t "
-                f"WHERE business_type='connector_flow_version_publish' AND business_id={fvid} "
-                f"ORDER BY create_time DESC LIMIT 1"
-            )
+            r = os_api("GET", "/approvals/pending?businessType=connector_flow_version_publish")
+            if not check_ok(r, "查询审批记录", "GET /approvals/pending?"):
+                return False
+            items = get_data(r)
+            if isinstance(items, dict):
+                items = items.get("items", items.get("data", []))
+            if isinstance(items, list):
+                for item in items:
+                    if str(item.get("businessId")) == str(fvid):
+                        aid = item.get("id")
+                        break
             if not aid:
                 os_fail("未找到审批记录")
                 return False
