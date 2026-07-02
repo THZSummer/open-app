@@ -46,7 +46,9 @@ public class ExecutionRecordService {
      */
     public Long startRecord(Long recordId, Long flowId, Long flowVersionId,
                             Long appId, Integer triggerType,
-                            String flowNameCn, String flowNameEn) {
+                            Integer flowVersionNumber, String flowVersionSnapshot,
+                            String flowNameCn, String flowNameEn,
+                            String triggerAccount) {
         LocalDateTime now = LocalDateTime.now();
 
         ExecutionRecordEntity record = new ExecutionRecordEntity();
@@ -59,8 +61,11 @@ public class ExecutionRecordService {
         record.setTriggerTime(now);
         record.setCreateTime(now);
         record.setLastUpdateTime(now);
+        record.setFlowVersionNumber(flowVersionNumber);
+        record.setFlowVersionSnapshot(flowVersionSnapshot);
         record.setFlowNameCn(flowNameCn != null ? flowNameCn : "");
         record.setFlowNameEn(flowNameEn != null ? flowNameEn : "");
+        record.setTriggerAccount(triggerAccount != null ? triggerAccount : "");
         record.setRateLimitStatus(0);
         record.setCacheStatus(0);
         record.setCreateBy("SYSTEM");

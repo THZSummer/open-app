@@ -210,7 +210,8 @@ public class FlowInvokeService {
                     FlowEntity flow = tuple.getT2().orElse(null);
 
                     // ★ 初始化执行记录 (开关关闭时跳过)
-                    initExecutionRecord(recordId, flowId, executionId, flowVersion, flow, logEnabled);
+                    String triggerAccount = resolveSysAccount(headers.getOrDefault("X-Sys-Token", ""));
+                    initExecutionRecord(recordId, flowId, executionId, flowVersion, flow, triggerAccount, logEnabled);
 
                     // 1. 解析编排配置
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
@@ -309,7 +310,8 @@ public class FlowInvokeService {
      * 初始化执行记录并补充流元数据
      */
     private void initExecutionRecord(Long recordId, Long flowId, String executionId,
-                                      FlowVersionEntity flowVersion, FlowEntity flow, boolean logEnabled) {
+                                      FlowVersionEntity flowVersion, FlowEntity flow,
+                                      String triggerAccount, boolean logEnabled) {
         if (!logEnabled) {
             log.debug("Execution record skipped (logCollectionEnabled=false): flowId={}", flowId);
             return;
@@ -317,9 +319,13 @@ public class FlowInvokeService {
         Long appId = flow != null ? flow.getAppId() : null;
         String nameCn = flow != null ? flow.getNameCn() : "";
         String nameEn = flow != null ? flow.getNameEn() : "";
+        Integer versionNumber = flowVersion.getVersionNumber() != null
+                ? flowVersion.getVersionNumber() : 1;
+        String snapshot = flowVersion.getOrchestrationConfig();
         try {
             executionRecordService.startRecord(recordId, flowId,
-                    flowVersion.getId(), appId, 1, nameCn, nameEn);
+                    flowVersion.getId(), appId, 1,
+                    versionNumber, snapshot, nameCn, nameEn, triggerAccount);
             log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
         } catch (Exception ex) {
             log.warn("Failed to start execution record: {}", ex.getMessage());
