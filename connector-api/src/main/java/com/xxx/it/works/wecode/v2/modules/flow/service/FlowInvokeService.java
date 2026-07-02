@@ -123,21 +123,19 @@ public class FlowInvokeService {
     private Mono<Tuple2<FlowVersionEntity, Optional<FlowEntity>>> loadFlowVersion(Long flowId) {
         return entityCacheManager.getFlow(flowId)
                 .flatMap(flow -> {
-                    // 校验连接流状态：仅运行中(RUNNING=2)才允许执行
                     if (flow.getLifecycleStatus() == null || flow.getLifecycleStatus() != 2) {
                         return Mono.error(new RuntimeException(
-                                "FLOW_NOT_RUNNING:" + flowId));  // marker prefix for classifyError replacement
+                                "FLOW_NOT_RUNNING:" + flowId));
                     }
                     Long deployedVersionId = flow.getDeployedVersionId();
+                    Mono<FlowVersionEntity> versionMono;
                     if (deployedVersionId != null) {
-                        log.debug("Flow {} has deployed_version_id={}, loading specific version",
-                                flowId, deployedVersionId);
-                        return entityCacheManager.getFlowVersion(deployedVersionId)
-                                .map(fv -> Tuples.of(fv, Optional.of(flow)));
+                        versionMono = entityCacheManager.getFlowVersion(deployedVersionId)
+                                .switchIfEmpty(loadFlowVersionByFlowId(flowId));
+                    } else {
+                        versionMono = loadFlowVersionByFlowId(flowId);
                     }
-                    // 未设置部署版本, 回退到按 flowId 查询
-                    return loadFlowVersionByFlowId(flowId)
-                            .map(fv -> Tuples.of(fv, Optional.of(flow)));
+                    return versionMono.map(fv -> Tuples.of(fv, Optional.of(flow)));
                 })
                 .switchIfEmpty(
                     loadFlowVersionByFlowId(flowId)
@@ -317,6 +315,8 @@ public class FlowInvokeService {
             return;
         }
         Long appId = flow != null ? flow.getAppId() : null;
+        String nameCn = flow != null ? flow.getNameCn() : "";
+        String nameEn = flow != null ? flow.getNameEn() : "";
         try {
             executionRecordService.startRecord(recordId, flowId,
                     flowVersion.getId(), appId, 1);
@@ -324,18 +324,16 @@ public class FlowInvokeService {
         } catch (Exception ex) {
             log.warn("Failed to start execution record: {}", ex.getMessage());
         }
-        if (flow != null) {
-            try {
-                executionRecordService.updateFlowMeta(recordId,
-                        flowVersion.getId(),
-                        flowVersion.getVersionNumber(),
-                        flow.getAppId(),
-                        flow.getNameCn(),
-                        flow.getNameEn(),
-                        flowVersion.getOrchestrationConfig());
-            } catch (Exception ex) {
-                log.warn("Failed to update flow meta for record {}: {}", recordId, ex.getMessage());
-            }
+        try {
+            executionRecordService.updateFlowMeta(recordId,
+                    flowVersion.getId(),
+                    flowVersion.getVersionNumber(),
+                    appId,
+                    nameCn,
+                    nameEn,
+                    flowVersion.getOrchestrationConfig());
+        } catch (Exception ex) {
+            log.warn("Failed to update flow meta for record {}: {}", recordId, ex.getMessage());
         }
     }
 
