@@ -603,9 +603,12 @@ public class FlowInvokeService {
         int execStatus = "success".equals(result.getStatus()) ? 0
                 : ("timeout".equals(result.getStatus()) ? 2 : 1);
 
+        // v5.8: 执行失败/超时时, 响应体必须为空 (错误信息仅通过 X- 头传递, 对齐 preExecutionError 语义)
+        Object effectiveBody = execStatus == 0 ? responseBody : null;
+
         TransparentFlowResponse r = TransparentFlowResponse.success(
                 flowId, result.getExecutionId(), execStatus, result.getTotalDurationMs(),
-                userHeaders, responseBody);
+                userHeaders, effectiveBody);
 
         // v5.8: 执行失败/超时时补充 X-Code / X-Message-* 错误头
         if (execStatus != 0 && result.getErrorInfo() != null) {
