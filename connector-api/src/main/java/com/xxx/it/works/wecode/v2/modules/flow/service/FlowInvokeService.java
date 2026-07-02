@@ -11,7 +11,7 @@ import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
-import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService.StepLog;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepLog;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
@@ -535,10 +535,10 @@ public class FlowInvokeService {
             return;
         }
         try {
-            List<StepLog> stepLogs = new ArrayList<>();
+            List<ExecutionStepLog> stepLogs = new ArrayList<>();
             for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
                 NodeContext nodeCtx = entry.getValue();
-                StepLog sl = new StepLog();
+                ExecutionStepLog sl = new ExecutionStepLog();
                 sl.stepId = idGenerator.nextId();
                 sl.nodeId = nodeCtx.getNodeId();
                 sl.nodeType = mapNodeType(nodeCtx.getNodeType());

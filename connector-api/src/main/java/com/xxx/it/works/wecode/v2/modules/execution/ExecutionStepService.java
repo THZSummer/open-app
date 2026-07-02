@@ -115,7 +115,7 @@ public class ExecutionStepService {
      * @param executionId 执行记录ID
      * @param stepLogs    步骤日志列表
      */
-    public void logStepsBatch(Long executionId, List<StepLog> stepLogs) {
+    public void logStepsBatch(Long executionId, List<ExecutionStepLog> stepLogs) {
         if (stepLogs == null || stepLogs.isEmpty()) {
             return;
         }
@@ -133,7 +133,7 @@ public class ExecutionStepService {
                     LocalDateTime now = LocalDateTime.now();
                     List<ExecutionStepEntity> steps = new ArrayList<>();
 
-                    for (StepLog sl : stepLogs) {
+                    for (ExecutionStepLog sl : stepLogs) {
                         ExecutionStepEntity step = new ExecutionStepEntity();
                         step.setId(sl.stepId);
                         step.setExecutionId(executionId);
@@ -184,18 +184,4 @@ public class ExecutionStepService {
         }
     }
 
-    /**
-     * 步骤日志数据对象
-     */
-    public static class StepLog {
-        public Long stepId;
-        public String nodeId;
-        public Integer nodeType;
-        public String nodeName;
-        public Integer status;
-        public Map<String, Object> input;
-        public Map<String, Object> output;
-        public String error;
-        public Integer durationMs;
-    }
 }
