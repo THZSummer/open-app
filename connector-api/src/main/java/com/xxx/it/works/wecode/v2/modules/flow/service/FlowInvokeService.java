@@ -319,21 +319,10 @@ public class FlowInvokeService {
         String nameEn = flow != null ? flow.getNameEn() : "";
         try {
             executionRecordService.startRecord(recordId, flowId,
-                    flowVersion.getId(), appId, 1);
+                    flowVersion.getId(), appId, 1, nameCn, nameEn);
             log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
         } catch (Exception ex) {
             log.warn("Failed to start execution record: {}", ex.getMessage());
-        }
-        try {
-            executionRecordService.updateFlowMeta(recordId,
-                    flowVersion.getId(),
-                    flowVersion.getVersionNumber(),
-                    appId,
-                    nameCn,
-                    nameEn,
-                    flowVersion.getOrchestrationConfig());
-        } catch (Exception ex) {
-            log.warn("Failed to update flow meta for record {}: {}", recordId, ex.getMessage());
         }
     }
 

@@ -45,7 +45,8 @@ public class ExecutionRecordService {
      * @return recordId
      */
     public Long startRecord(Long recordId, Long flowId, Long flowVersionId,
-                            Long appId, Integer triggerType) {
+                            Long appId, Integer triggerType,
+                            String flowNameCn, String flowNameEn) {
         LocalDateTime now = LocalDateTime.now();
 
         ExecutionRecordEntity record = new ExecutionRecordEntity();
@@ -58,9 +59,8 @@ public class ExecutionRecordService {
         record.setTriggerTime(now);
         record.setCreateTime(now);
         record.setLastUpdateTime(now);
-        // NOT NULL 字段默认值（后续由调用方通过 updateFlowMeta 更新实际值）
-        record.setFlowNameCn("");
-        record.setFlowNameEn("");
+        record.setFlowNameCn(flowNameCn != null ? flowNameCn : "");
+        record.setFlowNameEn(flowNameEn != null ? flowNameEn : "");
         record.setRateLimitStatus(0);
         record.setCacheStatus(0);
         record.setCreateBy("SYSTEM");
