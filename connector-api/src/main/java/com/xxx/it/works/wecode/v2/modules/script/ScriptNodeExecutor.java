@@ -134,6 +134,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
                 .timeout(Duration.ofMillis(finalTimeoutMs))
                 .map(result -> {
                     long duration = System.currentTimeMillis() - startTime;
+                    ctxMap.remove("http");
                     NodeOutput output = new NodeOutput(nodeId, "script", ctxMap, result);
                     output.setStatus("success");
                     output.setDurationMs(duration);
