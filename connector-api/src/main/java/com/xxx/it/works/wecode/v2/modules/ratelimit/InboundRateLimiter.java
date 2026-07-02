@@ -42,8 +42,8 @@ public class InboundRateLimiter implements WebFilter {
     /** Redis Key 前缀: 并发 */
     private static final String CONCURRENCY_KEY_PREFIX = "cp:ratelimit:concurrency:";
 
-    /** 限流 Key TTL (秒) — QPS 秒级桶的存活时间 */
-    private static final int QPS_KEY_TTL_SECONDS = 2;
+    /** 限流 Key TTL (秒) — QPS 秒级桶, 1s 足够覆盖当前秒内所有请求, 下秒自动换桶 */
+    private static final int QPS_KEY_TTL_SECONDS = 1;
 
     /** 并发 Key TTL (秒) — 防止异常情况下的 key 泄漏 */
     private static final int CONCURRENCY_KEY_TTL_SECONDS = 300;

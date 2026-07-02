@@ -1,7 +1,7 @@
 -- Redis Token Bucket 限流脚本 (connector-api)
 -- KEYS[1]: 限流 key (e.g., cp:ratelimit:qps:{flowId}:{second})
 -- ARGV[1]: 最大令牌数 (QPS 限制)
--- ARGV[2]: TTL (秒, 建议 2s for QPS)
+-- ARGV[2]: TTL (秒, 建议 1s for QPS)
 -- 返回: 1 = 允许, 0 = 拒绝
 
 local key = KEYS[1]
