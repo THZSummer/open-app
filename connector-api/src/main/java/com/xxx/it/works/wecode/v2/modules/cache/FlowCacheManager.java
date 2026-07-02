@@ -91,26 +91,34 @@ public class FlowCacheManager {
     public Mono<Void> writeCache(Long flowId, String cacheKey, Object result, int ttlSeconds) {
         String redisKey = buildCacheKey(flowId, cacheKey);
         // §3.3.4: ③(ttlSeconds)存在直接用，不截断；③不存在回退①
-        int effectiveTtl = ttlSeconds > 0 ? ttlSeconds : propertyService.getFlowMaxCacheTtlSeconds().blockOptional().orElse(1296000);
-        if (effectiveTtl <= 0) {
-            effectiveTtl = 60; // 最小 60 秒
-        }
-        final int finalEffectiveTtl = effectiveTtl;
-
+        // 异步取①平台全局 TTL, 避免在 reactor/lettuce 线程上 block 导致自死锁
+        final String json;
         try {
-            String json = objectMapper.writeValueAsString(result);
-            return reactiveRedisTemplate.opsForValue()
-                    .set(redisKey, json, Duration.ofSeconds(finalEffectiveTtl))
-                    .doOnSuccess(v -> log.debug("Cache written: flowId={}, cacheKey={}, ttl={}s",
-                            flowId, cacheKey, finalEffectiveTtl))
-                    .doOnError(e -> log.warn("Failed to write cache for flowId={}, cacheKey={}: {}",
-                            flowId, cacheKey, e.getMessage()))
-                    .then();
+            json = objectMapper.writeValueAsString(result);
         } catch (Exception e) {
             log.warn("Failed to serialize result for cache write: flowId={}, cacheKey={}: {}",
                     flowId, cacheKey, e.getMessage());
             return Mono.empty();
         }
+
+        Mono<Integer> ttlMono = ttlSeconds > 0
+                ? Mono.just(ttlSeconds)
+                : propertyService.getFlowMaxCacheTtlSeconds()
+                        .defaultIfEmpty(1296000)
+                        .onErrorReturn(1296000);
+
+        return ttlMono
+                .map(t -> t > 0 ? t : 60)
+                .flatMap(effectiveTtl ->
+                        reactiveRedisTemplate.opsForValue()
+                                .set(redisKey, json, Duration.ofSeconds(effectiveTtl))
+                                .doOnSuccess(v -> log.debug("Cache written: flowId={}, cacheKey={}, ttl={}s",
+                                        flowId, cacheKey, effectiveTtl))
+                                .doOnError(err -> log.warn("Failed to write cache for flowId={}, cacheKey={}: {}",
+                                        flowId, cacheKey, err.getMessage()))
+                                .then()
+                )
+                .onErrorResume(e -> Mono.empty());
     }
 
     /**

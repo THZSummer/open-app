@@ -8,6 +8,7 @@ import com.xxx.it.works.wecode.v2.modules.execution.repository.ExecutionStepRepo
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -64,43 +65,47 @@ public class ExecutionStepService {
                         String nodeName, Integer status,
                         Map<String, Object> input, Map<String, Object> output,
                         String error, Integer durationMs) {
-        // 检查日志采集开关 (#14: log_collection_enabled)
-        if (!propertyService.isLogCollectionEnabled().blockOptional().orElse(true)) {
-            log.warn("Step log skipped (logCollectionEnabled=false): executionId={}, nodeId={}, status={}, durationMs={}",
-                    executionId, nodeId, status, durationMs);
-            return;
-        }
+        // 检查日志采集开关 (#14: log_collection_enabled) — 异步串联, 避免在 reactor/lettuce 线程上 block 导致自死锁
+        propertyService.isLogCollectionEnabled()
+                .defaultIfEmpty(true)
+                .onErrorReturn(true)
+                .flatMap(enabled -> {
+                    if (!enabled) {
+                        log.warn("Step log skipped (logCollectionEnabled=false): executionId={}, nodeId={}, status={}, durationMs={}",
+                                executionId, nodeId, status, durationMs);
+                        return Mono.empty();
+                    }
+                    LocalDateTime now = LocalDateTime.now();
+                    ExecutionStepEntity step = new ExecutionStepEntity();
+                    step.setId(stepId);
+                    step.setExecutionId(executionId);
+                    step.setNodeId(nodeId);
+                    step.setNodeType(nodeType);
+                    step.setNodeLabelCn(nodeName);
+                    step.setStatus(status);
+                    step.setDurationMs(durationMs);
+                    step.setErrorCode(status != null && status == 1 ? "NODE_ERROR" : null);
+                    step.setErrorMessage(error);
 
-        LocalDateTime now = LocalDateTime.now();
+                    if (input != null) {
+                        Map<String, Object> sanitizedInput = logSanitizer.sanitize(input);
+                        step.setInputData(toJson(sanitizedInput));
+                    }
+                    if (output != null) {
+                        Map<String, Object> sanitizedOutput = logSanitizer.sanitize(output);
+                        step.setOutputData(toJson(sanitizedOutput));
+                    }
 
-        ExecutionStepEntity step = new ExecutionStepEntity();
-        step.setId(stepId);
-        step.setExecutionId(executionId);
-        step.setNodeId(nodeId);
-        step.setNodeType(nodeType);
-        step.setNodeLabelCn(nodeName);
-        step.setStatus(status);
-        step.setDurationMs(durationMs);
-        step.setErrorCode(status != null && status == 1 ? "NODE_ERROR" : null);
-        step.setErrorMessage(error);
+                    step.setCreateTime(now);
+                    step.setLastUpdateTime(now);
 
-        if (input != null) {
-            Map<String, Object> sanitizedInput = logSanitizer.sanitize(input);
-            step.setInputData(toJson(sanitizedInput));
-        }
-        if (output != null) {
-            Map<String, Object> sanitizedOutput = logSanitizer.sanitize(output);
-            step.setOutputData(toJson(sanitizedOutput));
-        }
-
-        step.setCreateTime(now);
-        step.setLastUpdateTime(now);
-
-        repository.save(step)
-                .doOnSuccess(s -> log.debug("Execution step logged: stepId={}, executionId={}, nodeId={}, status={}, durationMs={}",
-                        stepId, executionId, nodeId, status, durationMs))
-                .doOnError(e -> log.error("Failed to log execution step: executionId={}, nodeId={}, error={}",
-                        executionId, nodeId, e.getMessage(), e))
+                    return repository.save(step)
+                            .doOnSuccess(s -> log.debug("Execution step logged: stepId={}, executionId={}, nodeId={}, status={}, durationMs={}",
+                                    stepId, executionId, nodeId, status, durationMs))
+                            .doOnError(e -> log.error("Failed to log execution step: executionId={}, nodeId={}, error={}",
+                                    executionId, nodeId, e.getMessage(), e))
+                            .then();
+                })
                 .subscribe();
     }
 
@@ -115,47 +120,52 @@ public class ExecutionStepService {
             return;
         }
 
-        // 检查日志采集开关 (#14: log_collection_enabled)
-        if (!propertyService.isLogCollectionEnabled().blockOptional().orElse(true)) {
-            log.warn("Step logs batch skipped (logCollectionEnabled=false): executionId={}, count={}",
-                    executionId, stepLogs.size());
-            return;
-        }
+        // 检查日志采集开关 (#14: log_collection_enabled) — 异步串联, 避免在 reactor/lettuce 线程上 block 导致自死锁
+        propertyService.isLogCollectionEnabled()
+                .defaultIfEmpty(true)
+                .onErrorReturn(true)
+                .flatMap(enabled -> {
+                    if (!enabled) {
+                        log.warn("Step logs batch skipped (logCollectionEnabled=false): executionId={}, count={}",
+                                executionId, stepLogs.size());
+                        return Mono.empty();
+                    }
+                    LocalDateTime now = LocalDateTime.now();
+                    List<ExecutionStepEntity> steps = new ArrayList<>();
 
-        LocalDateTime now = LocalDateTime.now();
-        List<ExecutionStepEntity> steps = new ArrayList<>();
+                    for (StepLog sl : stepLogs) {
+                        ExecutionStepEntity step = new ExecutionStepEntity();
+                        step.setId(sl.stepId);
+                        step.setExecutionId(executionId);
+                        step.setNodeId(sl.nodeId);
+                        step.setNodeType(sl.nodeType);
+                        step.setNodeLabelCn(sl.nodeName);
+                        step.setStatus(sl.status);
+                        step.setDurationMs(sl.durationMs);
+                        step.setErrorCode(sl.status != null && sl.status == 1 ? "NODE_ERROR" : null);
+                        step.setErrorMessage(sl.error);
 
-        for (StepLog sl : stepLogs) {
-            ExecutionStepEntity step = new ExecutionStepEntity();
-            step.setId(sl.stepId);
-            step.setExecutionId(executionId);
-            step.setNodeId(sl.nodeId);
-            step.setNodeType(sl.nodeType);
-            step.setNodeLabelCn(sl.nodeName);
-            step.setStatus(sl.status);
-            step.setDurationMs(sl.durationMs);
-            step.setErrorCode(sl.status != null && sl.status == 1 ? "NODE_ERROR" : null);
-            step.setErrorMessage(sl.error);
+                        if (sl.input != null) {
+                            Map<String, Object> sanitizedInput = logSanitizer.sanitize(sl.input);
+                            step.setInputData(toJson(sanitizedInput));
+                        }
+                        if (sl.output != null) {
+                            Map<String, Object> sanitizedOutput = logSanitizer.sanitize(sl.output);
+                            step.setOutputData(toJson(sanitizedOutput));
+                        }
 
-            if (sl.input != null) {
-                Map<String, Object> sanitizedInput = logSanitizer.sanitize(sl.input);
-                step.setInputData(toJson(sanitizedInput));
-            }
-            if (sl.output != null) {
-                Map<String, Object> sanitizedOutput = logSanitizer.sanitize(sl.output);
-                step.setOutputData(toJson(sanitizedOutput));
-            }
+                        step.setCreateTime(now);
+                        step.setLastUpdateTime(now);
+                        steps.add(step);
+                    }
 
-            step.setCreateTime(now);
-            step.setLastUpdateTime(now);
-            steps.add(step);
-        }
-
-        repository.saveAll(steps)
-                .doOnComplete(() -> log.debug("Execution steps batch logged: executionId={}, count={}",
-                        executionId, steps.size()))
-                .doOnError(e -> log.error("Failed to batch log execution steps: executionId={}, error={}",
-                        executionId, e.getMessage(), e))
+                    return repository.saveAll(steps)
+                            .doOnComplete(() -> log.debug("Execution steps batch logged: executionId={}, count={}",
+                                    executionId, steps.size()))
+                            .doOnError(e -> log.error("Failed to batch log execution steps: executionId={}, error={}",
+                                    executionId, e.getMessage(), e))
+                            .then();
+                })
                 .subscribe();
     }
 

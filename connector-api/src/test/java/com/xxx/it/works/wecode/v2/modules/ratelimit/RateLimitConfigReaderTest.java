@@ -1,9 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.ratelimit;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
+import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
-import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +14,6 @@ import reactor.test.StepVerifier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,26 +21,24 @@ import static org.mockito.Mockito.when;
 class RateLimitConfigReaderTest {
 
     @Mock
-    private OpFlowVersionReadRepository repository;
+    private EntityCacheManager entityCacheManager;
 
     @Mock
     private ConnectorApiPropertyService propertyService;
 
-    private ObjectMapper objectMapper;
     private RateLimitConfigReader reader;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
         when(propertyService.getFlowMaxQps()).thenReturn(Mono.just(1000));
         when(propertyService.getFlowMaxConcurrency()).thenReturn(Mono.just(1000));
-        reader = new RateLimitConfigReader(objectMapper, repository, propertyService);
+        reader = new RateLimitConfigReader(entityCacheManager, propertyService);
     }
 
     @Test
     @DisplayName("流未找到 → 返回默认配置")
     void testFlowNotFound_ReturnsDefault() {
-        when(repository.findByFlowId(anyLong())).thenReturn(Mono.empty());
+        when(entityCacheManager.getRateLimitConfig(anyLong())).thenReturn(Mono.empty());
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
@@ -56,10 +52,7 @@ class RateLimitConfigReaderTest {
     @Test
     @DisplayName("流配置了自定义 QPS → 使用流配置值")
     void testCustomQps_UseFlowConfig() {
-        FlowVersionEntity entity = new FlowVersionEntity();
-        entity.setFlowId(100L);
-        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"mode\":\"qps\",\"maxQps\":500}}}");
-        when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
+        when(entityCacheManager.getRateLimitConfig(anyLong())).thenReturn(Mono.just(new RateLimitConfig("qps", 500, 1000)));
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
@@ -72,10 +65,7 @@ class RateLimitConfigReaderTest {
     @Test
     @DisplayName("QPS 使用流配置值（不由 Reader 截断）")
     void testQpsUsesFlowConfig() {
-        FlowVersionEntity entity = new FlowVersionEntity();
-        entity.setFlowId(100L);
-        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"mode\":\"qps\",\"maxQps\":99999}}}");
-        when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
+        when(entityCacheManager.getRateLimitConfig(anyLong())).thenReturn(Mono.just(new RateLimitConfig("qps", 99999, 1000)));
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
@@ -87,10 +77,7 @@ class RateLimitConfigReaderTest {
     @Test
     @DisplayName("并发上限使用流配置值（不由 Reader 截断）")
     void testConcurrencyUsesFlowConfig() {
-        FlowVersionEntity entity = new FlowVersionEntity();
-        entity.setFlowId(100L);
-        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"mode\":\"concurrency\",\"maxConcurrency\":5000}}}");
-        when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
+        when(entityCacheManager.getRateLimitConfig(anyLong())).thenReturn(Mono.just(new RateLimitConfig("concurrency", 1000, 5000)));
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
@@ -100,12 +87,9 @@ class RateLimitConfigReaderTest {
     }
 
     @Test
-    @DisplayName("flowConfig 中无 rateLimitConfig → 返回默认配置")
+    @DisplayName("无限流配置（Mono.empty）→ 返回默认配置")
     void testEmptyFlowConfig_Defaults() {
-        FlowVersionEntity entity = new FlowVersionEntity();
-        entity.setFlowId(100L);
-        entity.setOrchestrationConfig("{\"nodes\":[{\"type\":\"trigger\",\"id\":\"t1\",\"data\":{}}],\"edges\":[]}");
-        when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
+        when(entityCacheManager.getRateLimitConfig(anyLong())).thenReturn(Mono.empty());
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {
@@ -115,12 +99,9 @@ class RateLimitConfigReaderTest {
     }
 
     @Test
-    @DisplayName("JSON 解析异常 → 降级返回默认配置")
-    void testParseException_Defaults() {
-        FlowVersionEntity entity = new FlowVersionEntity();
-        entity.setFlowId(100L);
-        entity.setOrchestrationConfig("invalid json");
-        when(repository.findByFlowId(anyLong())).thenReturn(Mono.just(entity));
+    @DisplayName("读取异常 → 降级返回默认配置")
+    void testReadException_Defaults() {
+        when(entityCacheManager.getRateLimitConfig(anyLong())).thenReturn(Mono.error(new RuntimeException("simulated error")));
 
         StepVerifier.create(reader.readFlowRateLimit(100L))
                 .assertNext(config -> {

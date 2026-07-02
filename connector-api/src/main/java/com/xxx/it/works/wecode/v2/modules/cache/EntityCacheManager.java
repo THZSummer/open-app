@@ -241,7 +241,7 @@ public class EntityCacheManager {
      * 按 flowId 获取 FlowVersion (不走 versionId 缓存, 用 flowId 查)
      */
     private Mono<FlowVersionEntity> getFlowVersionByFlowId(Long flowId) {
-        return flowVersionReadRepository.findByFlowId(flowId).next();
+        return flowVersionReadRepository.findByFlowId(flowId);
     }
 
     // ===== Lookup 配置缓存 (TTL 5min) =====

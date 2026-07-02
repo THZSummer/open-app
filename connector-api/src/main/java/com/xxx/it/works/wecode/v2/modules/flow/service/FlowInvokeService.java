@@ -267,22 +267,16 @@ public class FlowInvokeService {
                                         updatedCtx, executionId, flowIdStr, recordId));
                     }
 
-                    return executionMono.map(result -> {
+                    return executionMono.flatMap(result -> {
                         // ★ 执行成功 - 更新记录
                         Integer finalStatus = "success".equals(result.getStatus()) ? 0 : 1;
                         long totalMs = result.getTotalDurationMs();
                         Integer duration = totalMs > 0 ? (int) totalMs : null;
                         String errCode = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("code") : null;
                         String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
-                        try {
-                            executionRecordService.updateRecord(recordId, finalStatus, duration, errCode, errMsg);
-                            // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
-                            int maxRecords = resolveMaxExecutionRecords();
-                            executionRecordService.checkAndCleanFifo(flowId, maxRecords);
-                        } catch (Exception ex) {
-                            log.warn("Failed to update execution record: {}", ex.getMessage());
-                        }
-                        return buildTransparentResponse(flowIdStr, result);
+                        // 异步取①平台全局最大记录数, 避免在 reactor/lettuce 线程上 block 导致自死锁
+                        return finalizeExecutionRecord(recordId, flowId, finalStatus, duration, errCode, errMsg)
+                                .thenReturn(buildTransparentResponse(flowIdStr, result));
                     });
                 })
                 .onErrorResume(e -> {
@@ -296,16 +290,8 @@ public class FlowInvokeService {
                     TransparentFlowResponse response = buildErrorResponse(flowIdStr, errorCode, errorMsg, msg);
 
                     // ★ 执行失败 - 更新记录
-                    try {
-                        executionRecordService.updateRecord(recordId, 1, null, errorCode, errorMsg);
-                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
-                        int maxRecords = resolveMaxExecutionRecords();
-                        executionRecordService.checkAndCleanFifo(flowId, maxRecords);
-                    } catch (Exception ex) {
-                        log.warn("Failed to update execution record: {}", ex.getMessage());
-                    }
-
-                    return Mono.just(response);
+                    return finalizeExecutionRecord(recordId, flowId, 1, null, errorCode, errorMsg)
+                            .thenReturn(response);
                 });
     }
 
@@ -974,9 +960,14 @@ public class FlowInvokeService {
     }
 
     /**
-     * 读取①平台全局: 单流最大执行记录数
+     * 异步收尾执行记录: 读取①平台全局最大记录数后更新记录并执行 FIFO 清理.
+     * <p>
+     * 读取配置改为异步, 避免在 reactor/lettuce 线程上 block 导致 Redis 命令自死锁超时.
+     * updateRecord / checkAndCleanFifo 本身为 fire-and-forget (内部 subscribe), 不阻塞响应链.
+     * §3.3.4: 读①平台全局值.
      */
-    private int resolveMaxExecutionRecords() {
+    private Mono<Void> finalizeExecutionRecord(Long recordId, Long flowId, Integer status,
+                                                Integer durationMs, String errorCode, String errorMsg) {
         return propertyService.loadPlatformDefaults()
                 .map(config -> {
                     String val = config.get("Max.Execution.Records.Per.Flow");
@@ -984,7 +975,18 @@ public class FlowInvokeService {
                     try { return Integer.parseInt(val.trim()); }
                     catch (NumberFormatException e) { return 1000; }
                 })
-                .blockOptional().orElse(1000);
+                .defaultIfEmpty(1000)
+                .onErrorReturn(1000)
+                .doOnNext(maxRecords -> {
+                    try {
+                        executionRecordService.updateRecord(recordId, status, durationMs, errorCode, errorMsg);
+                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
+                        executionRecordService.checkAndCleanFifo(flowId, maxRecords);
+                    } catch (Exception ex) {
+                        log.warn("Failed to update execution record: {}", ex.getMessage());
+                    }
+                })
+                .then();
     }
 
     private String buildCacheKey(ExecutionContext ctx, List<String> cacheKeyExpressions) {
