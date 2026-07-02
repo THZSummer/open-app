@@ -33,7 +33,7 @@ class TestFlowStart:
     def test_start_without_deploy(self, flow):
         """无部署版本时启动应被拒绝"""
         resp = api("POST", f"/flows/{flow}/start")
-        assert resp.status_code >= 400
+        assert resp.json()["code"] not in ("200",)
 
     @pytest.mark.L4
     def test_start_nonexistent(self):

@@ -26,4 +26,4 @@ class TestFlowStopRestart:
     @pytest.mark.L4
     def test_start_without_deploy_rejected(self, flow):
         resp = api("POST", f"/flows/{flow}/start")
-        assert resp.status_code >= 400
+        assert resp.json()["code"] not in ("200",)

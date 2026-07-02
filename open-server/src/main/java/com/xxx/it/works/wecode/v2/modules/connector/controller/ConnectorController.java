@@ -12,8 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -99,10 +97,10 @@ public class ConnectorController {
     @AuditLog(value = OperateEnum.INVALIDATE_CONNECTOR, resourceIdParam = "connectorId")
     @PutMapping("/{connectorId}/invalidate")
     @Operation(summary = "#5 失效连接器", description = "标记失效，校验无运行中流引用")
-    public ResponseEntity<ApiResponse<?>> invalidateConnector(
+    public ApiResponse<?> invalidateConnector(
             @Parameter(description = "连接器ID") @PathVariable Long connectorId) {
         log.info("PUT /connectors/{}/invalidate", connectorId);
-        return toResponseEntity(connectorService.invalidateConnector(connectorId));
+        return connectorService.invalidateConnector(connectorId);
     }
 
     /**
@@ -129,18 +127,5 @@ public class ConnectorController {
         return connectorService.deleteConnector(connectorId);
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private ResponseEntity toResponseEntity(ApiResponse response) {
-        if (response == null) {
-            return ResponseEntity.ok(ApiResponse.success());
-        }
-        String code = response.getCode();
-        if ("200".equals(code)) return ResponseEntity.ok(response);
-        if ("400".equals(code)) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-        if ("404".equals(code)) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-        if ("409".equals(code)) return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-        if ("422".equals(code)) return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(response);
-        if ("500".equals(code)) return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-    }
+
 }

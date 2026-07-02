@@ -72,7 +72,7 @@ class FlowVersionControllerWebMvcTest {
         @Test
         @DisplayName("正常创建 → 200")
         void testCreateDraft_Success() {
-            var response = controller.createDraft(flowId).getBody();
+            var response = controller.createDraft(flowId);
             assertEquals("200", response.getCode());
         }
 
@@ -82,7 +82,7 @@ class FlowVersionControllerWebMvcTest {
             when(flowVersionService.createDraft(flowId))
                     .thenReturn(ApiResponse.error("409", "已存在草稿版本", "Draft exists"));
 
-            var response = controller.createDraft(flowId).getBody();
+            var response = controller.createDraft(flowId);
             assertEquals("409", response.getCode());
         }
     }
@@ -92,7 +92,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#29 GET 版本列表 → 200")
     void testGetVersionList() {
-        var response = controller.getVersionList(flowId, null).getBody();
+        var response = controller.getVersionList(flowId, null);
         assertEquals("200", response.getCode());
     }
 
@@ -101,7 +101,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#30 GET 版本详情 → 200")
     void testGetVersionDetail() {
-        var response = controller.getVersionDetail(flowId, versionId).getBody();
+        var response = controller.getVersionDetail(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 
@@ -113,7 +113,7 @@ class FlowVersionControllerWebMvcTest {
         FlowVersionSaveRequest request = new FlowVersionSaveRequest();
         request.setOrchestrationConfig(MAPPER.readTree("{\"nodes\":[],\"edges\":[]}"));
 
-        var response = controller.updateDraft(flowId, versionId, request).getBody();
+        var response = controller.updateDraft(flowId, versionId, request);
         assertEquals("200", response.getCode());
     }
 
@@ -122,7 +122,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#32 POST 发布版本 → 200")
     void testPublish() {
-        var response = controller.publish(flowId, versionId).getBody();
+        var response = controller.publish(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 
@@ -132,7 +132,7 @@ class FlowVersionControllerWebMvcTest {
         when(flowVersionService.publish(flowId, versionId))
                 .thenReturn(ApiResponse.error("422", "中文名称不能为空", "nameCn is empty"));
 
-        var response = controller.publish(flowId, versionId).getBody();
+        var response = controller.publish(flowId, versionId);
         assertEquals("422", response.getCode());
     }
 
@@ -141,7 +141,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#33 POST 复制到草稿 → 200")
     void testCopyToDraft() {
-        var response = controller.copyToDraft(flowId, versionId).getBody();
+        var response = controller.copyToDraft(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 
@@ -150,7 +150,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#34 PUT 失效版本 → 200")
     void testInvalidateVersion() {
-        var response = controller.invalidateVersion(flowId, versionId).getBody();
+        var response = controller.invalidateVersion(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 
@@ -159,7 +159,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#35 PUT 恢复版本 → 200")
     void testRecoverVersion() {
-        var response = controller.recoverVersion(flowId, versionId).getBody();
+        var response = controller.recoverVersion(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 
@@ -168,7 +168,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#36 DELETE 删除版本 → 200")
     void testDeleteVersion() {
-        var response = controller.deleteVersion(flowId, versionId).getBody();
+        var response = controller.deleteVersion(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 
@@ -177,7 +177,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#37 POST 撤回审批 → 200")
     void testCancelApproval() {
-        var response = controller.cancelApproval(flowId, versionId).getBody();
+        var response = controller.cancelApproval(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 
@@ -186,7 +186,7 @@ class FlowVersionControllerWebMvcTest {
     @Test
     @DisplayName("#38 POST 催办 → 200")
     void testUrgeApproval() {
-        var response = controller.urgeApproval(flowId, versionId).getBody();
+        var response = controller.urgeApproval(flowId, versionId);
         assertEquals("200", response.getCode());
     }
 }

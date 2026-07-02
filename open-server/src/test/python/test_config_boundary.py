@@ -173,8 +173,8 @@ class TestUrlRegexPattern:
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://evil.com/api", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
-            assert resp.status_code == 422, (
-                f"Expected 422 for URL validation, got {resp.status_code}: "
+            assert resp.json()["code"] == "422", (
+                f"Expected code='422' for URL validation, got {resp.json()['code']}: "
                 f"{resp.json() if resp else ''}"
             )
         _set_lookup_item("Connector.Platform.Config", "Connector.Url.Regex.Pattern", "^https?://.*")
@@ -303,7 +303,7 @@ class TestNodeTimeoutLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for timeout exceeding 5s limit, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -326,7 +326,7 @@ class TestNodeTimeoutLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for connector node timeout > 5s, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -400,7 +400,7 @@ class TestFlowMaxQps:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for maxQps validation, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -440,7 +440,7 @@ class TestFlowMaxConcurrency:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for maxConcurrency validation, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -476,7 +476,7 @@ class TestFlowCacheTtlLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for cache TTL > 1296000, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -525,7 +525,7 @@ class TestParallelBranchesLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for 9 parallel branches > 8, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -584,7 +584,7 @@ class TestScriptLengthLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for script > 10000 chars, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -633,7 +633,7 @@ class TestScriptTimeoutLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for script timeout > 30s, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )

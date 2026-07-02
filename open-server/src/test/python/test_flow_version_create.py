@@ -22,4 +22,4 @@ class TestFlowVersionCreate:
         """FR-024a③: 已有草稿时再创建返回 409"""
         fid, _ = draft_flow
         resp = api("POST", f"/flows/{fid}/versions")
-        assert resp.status_code == 409
+        assert resp.json()["code"] == "409"
