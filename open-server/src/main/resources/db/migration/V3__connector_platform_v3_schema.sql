@@ -18,10 +18,11 @@
 -- 第 0 部分: 公共存储过程（幂等 DDL 安全执行）
 --   同一类逻辑抽取公共存储过程，通过 information_schema 判断对象是否存在
 --   满足条件才执行，不满足则跳过，实现无条件可重复执行
+--   所有存储过程均兼容表不存在的场景（表不存在时安全跳过，不报错）
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 0.1 safe_add_column: 列不存在时才添加
+-- 0.1 safe_add_column: 表存在且列不存在时才添加
 --     参数: p_table=表名, p_column=列名, p_definition=列定义(类型+约束+COMMENT)
 -- ----------------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS safe_add_column;
@@ -32,7 +33,11 @@ CREATE PROCEDURE safe_add_column(
     IN p_definition TEXT
 )
 BEGIN
-    IF NOT EXISTS (
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+    ) AND NOT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE()
           AND table_name = p_table
@@ -47,7 +52,7 @@ END$$
 DELIMITER ;
 
 -- ----------------------------------------------------------------------------
--- 0.2 safe_modify_column: 列存在时才修改
+-- 0.2 safe_modify_column: 表存在且列存在时才修改
 --     参数: p_table=表名, p_column=列名, p_definition=列定义(类型+约束+COMMENT)
 -- ----------------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS safe_modify_column;
@@ -59,6 +64,10 @@ CREATE PROCEDURE safe_modify_column(
 )
 BEGIN
     IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+    ) AND EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = DATABASE()
           AND table_name = p_table
@@ -73,7 +82,7 @@ END$$
 DELIMITER ;
 
 -- ----------------------------------------------------------------------------
--- 0.3 safe_add_index: 索引不存在时才添加（支持普通索引和唯一索引）
+-- 0.3 safe_add_index: 表存在且索引不存在时才添加（支持普通索引和唯一索引）
 --     参数: p_table=表名, p_index=索引名, p_index_type='INDEX'|'UNIQUE KEY',
 --           p_columns=列定义如'(app_id, status)', p_comment=注释或NULL
 -- ----------------------------------------------------------------------------
@@ -87,7 +96,11 @@ CREATE PROCEDURE safe_add_index(
     IN p_comment    VARCHAR(500)
 )
 BEGIN
-    IF NOT EXISTS (
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+    ) AND NOT EXISTS (
         SELECT 1 FROM information_schema.statistics
         WHERE table_schema = DATABASE()
           AND table_name = p_table
@@ -106,7 +119,7 @@ END$$
 DELIMITER ;
 
 -- ----------------------------------------------------------------------------
--- 0.4 safe_drop_index: 索引存在时才删除
+-- 0.4 safe_drop_index: 表存在且索引存在时才删除
 --     参数: p_table=表名, p_index=索引名
 -- ----------------------------------------------------------------------------
 DROP PROCEDURE IF EXISTS safe_drop_index;
@@ -117,6 +130,10 @@ CREATE PROCEDURE safe_drop_index(
 )
 BEGIN
     IF EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+    ) AND EXISTS (
         SELECT 1 FROM information_schema.statistics
         WHERE table_schema = DATABASE()
           AND table_name = p_table
