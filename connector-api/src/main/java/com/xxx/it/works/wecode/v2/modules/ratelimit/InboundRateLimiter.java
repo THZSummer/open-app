@@ -3,8 +3,12 @@ package com.xxx.it.works.wecode.v2.modules.ratelimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpStatus;
+import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -15,14 +19,14 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
- * 入站请求限流过滤器 (connector-api) — Redis INCR + EXPIRE
+ * 入站请求限流过滤器 (connector-api) — Redis Lua 原子限流
  * <p>
- * 取代旧的 Bucket4j 本地限流, 基于 Redis 实现分布式限流。
  * 支持两种模式:
  * <ul>
- *   <li>QPS 模式: Redis INCR + EXPIRE, 按秒级粒度限流</li>
+ *   <li>QPS 模式: Lua 令牌桶脚本 (SET+EX+DECR 原子操作), 按秒级粒度限流</li>
  *   <li>Concurrency 模式: Redis INCR/DECR, 控制同时在途请求数</li>
  * </ul>
  * </p>
@@ -50,6 +54,16 @@ public class InboundRateLimiter implements WebFilter {
 
     /** 限流命中后的等待时间 (秒) */
     private static final int RETRY_AFTER_SECONDS = 1;
+
+    /** QPS 限流 Lua 脚本 (令牌桶, 原子操作: GET→SET/DECR→return) */
+    private static final RedisScript<Long> QPS_SCRIPT;
+    static {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setScriptSource(new ResourceScriptSource(
+                new ClassPathResource("lua/rate_limit_token_bucket.lua")));
+        script.setResultType(Long.class);
+        QPS_SCRIPT = script;
+    }
 
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final RateLimitConfigReader rateLimitConfigReader;
@@ -102,7 +116,15 @@ public class InboundRateLimiter implements WebFilter {
     }
 
     /**
-     * QPS 限流: Redis INCR + EXPIRE (秒级粒度)
+     * QPS 限流: Lua 令牌桶脚本 (原子操作)
+     * <p>
+     * 脚本逻辑: GET key → 不存在则 SET(maxTokens-1, EX, ttl) 返回1 →
+     * 存在且>0则 DECR 返回1 → 否则返回0
+     * </p>
+     * <p>
+     * 相比 INCR+EXPIRE 两步方案, Lua 脚本保证原子性:
+     * 无竞态窗口, 无 EXPIRE 丢失风险, 单次 Redis 往返
+     * </p>
      */
     private Mono<Void> applyQpsLimit(ServerWebExchange exchange, WebFilterChain chain,
                                        String flowId, RateLimitConfig config) {
@@ -114,24 +136,21 @@ public class InboundRateLimiter implements WebFilter {
 
         int maxQps = config.getMaxQps();
 
-        return reactiveRedisTemplate.opsForValue().increment(key)
-                .flatMap(current -> {
-                    // 首次使用设置 TTL
-                    if (current == 1) {
-                        return reactiveRedisTemplate.expire(key, Duration.ofSeconds(QPS_KEY_TTL_SECONDS))
-                                .thenReturn(current);
-                    }
-                    return Mono.just(current);
-                })
-                .flatMap(current -> {
-                    if (current <= maxQps) {
-                        return chain.filter(exchange);
-                    } else {
-                        log.warn("QPS rate limit exceeded: flowId={}, current={}, maxQps={}",
-                                flowId, current, maxQps);
-                        return writeRateLimitResponse(exchange, flowId);
-                    }
-                });
+        // 执行 Lua 脚本: KEYS[1]=key, ARGV[1]=maxQps, ARGV[2]=ttl
+        // 返回 1=允许, 0=拒绝
+        return reactiveRedisTemplate.execute(
+                QPS_SCRIPT,
+                List.of(key),
+                List.of(String.valueOf(maxQps), String.valueOf(QPS_KEY_TTL_SECONDS))
+        ).next()
+        .flatMap(result -> {
+            if (result != null && result == 1L) {
+                return chain.filter(exchange);
+            } else {
+                log.warn("QPS rate limit exceeded: flowId={}, maxQps={}", flowId, maxQps);
+                return writeRateLimitResponse(exchange, flowId);
+            }
+        });
     }
 
     /**
