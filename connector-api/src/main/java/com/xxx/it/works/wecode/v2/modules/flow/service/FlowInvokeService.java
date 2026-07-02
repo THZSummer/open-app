@@ -131,7 +131,7 @@ public class FlowInvokeService {
                     if (deployedVersionId != null) {
                         log.debug("Flow {} has deployed_version_id={}, loading specific version",
                                 flowId, deployedVersionId);
-                        return flowVersionReadRepository.findById(deployedVersionId)
+                        return entityCacheManager.getFlowVersion(deployedVersionId)
                                 .map(fv -> Tuples.of(fv, Optional.of(flow)));
                     }
                     // 未设置部署版本, 回退到按 flowId 查询

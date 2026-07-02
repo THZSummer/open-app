@@ -2,12 +2,10 @@ package com.xxx.it.works.wecode.v2.common.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -30,16 +28,10 @@ public class ConnectorApiPropertyService {
     private static final String PATH = "CEC.Open";
     private static final String CLASSIFY_PLATFORM_CONFIG = "Connector.Platform.Config";
 
-    // Redis cache key prefix — must match market-server CacheServiceV2
-    private static final String CACHE_KEY_PREFIX = "OPENPLATFORM:LOOK:UP:ITEM:";
+    private final EntityCacheManager entityCacheManager;
 
-    private final OpenplatformLookupRepository lookupRepository;
-    private final ReactiveRedisTemplate<String, String> redisTemplate;
-
-    public ConnectorApiPropertyService(OpenplatformLookupRepository lookupRepository,
-                                       @Qualifier("reactiveStringRedisTemplate") ReactiveRedisTemplate<String, String> redisTemplate) {
-        this.lookupRepository = lookupRepository;
-        this.redisTemplate = redisTemplate;
+    public ConnectorApiPropertyService(EntityCacheManager entityCacheManager) {
+        this.entityCacheManager = entityCacheManager;
     }
 
     // ================================================================
@@ -53,43 +45,7 @@ public class ConnectorApiPropertyService {
      * @return item_code → item_value 的平台默认 Map
      */
     public Mono<Map<String, String>> loadPlatformDefaults() {
-        return loadWithCache(PATH, CLASSIFY_PLATFORM_CONFIG);
-    }
-
-    /**
-     * 带 Redis 缓存的 classify 加载。
-     * 缓存 key: OPENPLATFORM:LOOK:UP:ITEM:{path}:{classifyCode}
-     */
-    private Mono<Map<String, String>> loadWithCache(String path, String classifyCode) {
-        String cacheKey = CACHE_KEY_PREFIX + path + ":" + classifyCode;
-
-        return redisTemplate.opsForValue()
-                .get(cacheKey)
-                .flatMap(cached -> loadFromDb(path, classifyCode))
-                .switchIfEmpty(loadFromDb(path, classifyCode));
-    }
-
-    /**
-     * 从 DB 加载 classify 下所有 item_code → item_value。
-     * DB 不可用时返回空 Map（调用方使用硬编码默认值）。
-     */
-    private Mono<Map<String, String>> loadFromDb(String path, String classifyCode) {
-        return lookupRepository.findByPathAndClassifyCode(path, classifyCode)
-                .collectList()
-                .map(items -> {
-                    Map<String, String> result = new HashMap<>();
-                    for (LookupItemEntity item : items) {
-                        if (item.getItemCode() != null) {
-                            result.put(item.getItemCode(), item.getItemValue());
-                        }
-                    }
-                    return result;
-                })
-                .onErrorResume(e -> {
-                    log.warn("Failed to load Lookup items (path={}, classifyCode={}), using defaults",
-                            path, classifyCode, e);
-                    return Mono.just(new HashMap<>());
-                });
+        return entityCacheManager.getLookupConfig(CLASSIFY_PLATFORM_CONFIG);
     }
 
     // ================================================================
