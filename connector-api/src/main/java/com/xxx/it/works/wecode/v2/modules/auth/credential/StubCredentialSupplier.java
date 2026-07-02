@@ -14,7 +14,7 @@ public class StubCredentialSupplier implements CredentialSupplier {
     public String getAuthType() { return "DEFAULT"; }
 
     @Override
-    public Map<String, String> resolve(Map<String, Object> fieldDefs, ExecutionContext context) {
+    public Map<String, String> resolve(Map<String, Object> fieldDefs, Map<String, Object> authConfig, ExecutionContext context) {
         return new LinkedHashMap<>();
     }
 }

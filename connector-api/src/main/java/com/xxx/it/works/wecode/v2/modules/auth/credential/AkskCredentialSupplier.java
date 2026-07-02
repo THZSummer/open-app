@@ -13,7 +13,7 @@ public class AkskCredentialSupplier implements CredentialSupplier {
     public String getAuthType() { return "AKSK"; }
 
     @Override
-    public Map<String, String> resolve(Map<String, Object> fieldDefs, ExecutionContext context) {
+    public Map<String, String> resolve(Map<String, Object> fieldDefs, Map<String, Object> authConfig, ExecutionContext context) {
         Map<String, String> result = new LinkedHashMap<>();
         result.put("${$.system.env.akskSignature}", getSignature());
         return result;

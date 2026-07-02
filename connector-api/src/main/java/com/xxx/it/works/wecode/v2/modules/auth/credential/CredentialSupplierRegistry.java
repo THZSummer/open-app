@@ -28,8 +28,8 @@ public class CredentialSupplierRegistry {
     }
 
     public Map<String, String> resolve(String authType, Map<String, Object> fieldDefs,
-                                        ExecutionContext context) {
+                                        Map<String, Object> authConfig, ExecutionContext context) {
         CredentialSupplier supplier = supplierMap.getOrDefault(authType, defaultSupplier);
-        return supplier != null ? supplier.resolve(fieldDefs, context) : new HashMap<>();
+        return supplier != null ? supplier.resolve(fieldDefs, authConfig, context) : new HashMap<>();
     }
 }

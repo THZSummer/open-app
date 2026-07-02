@@ -22,7 +22,7 @@ public class ApigCredentialSupplier implements CredentialSupplier {
     public String getAuthType() { return "APIG"; }
 
     @Override
-    public Map<String, String> resolve(Map<String, Object> fieldDefs, ExecutionContext context) {
+    public Map<String, String> resolve(Map<String, Object> fieldDefs, Map<String, Object> authConfig, ExecutionContext context) {
         Map<String, String> result = new LinkedHashMap<>();
         result.put("${$.system.env.apigAppKey}", appKey);
         result.put("${$.system.env.apigAppSecret}", appSecret);

@@ -254,7 +254,7 @@ CONN_CONFIG_DIGITALSIGN_COOKIE = {
     "authConfigs": [
         {
             "type": "SIGNATURE",
-            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "sign-test-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True}}}
+            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "sign-test-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True, "value": "${$.system.env.signature}"}}}
         },
         {
             "type": "COOKIE",
@@ -282,7 +282,7 @@ CONN_CONFIG_TRIPLE_AUTH = {
         },
         {
             "type": "SIGNATURE",
-            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "triple-sign-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True}}}
+            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "triple-sign-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True, "value": "${$.system.env.signature}"}}}
         },
         {
             "type": "COOKIE",
